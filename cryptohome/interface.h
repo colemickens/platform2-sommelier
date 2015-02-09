@@ -432,6 +432,9 @@ gboolean cryptohome_get_login_status(Cryptohome* self,
 gboolean cryptohome_get_tpm_status(Cryptohome* self,
                                    GArray* request,
                                    DBusGMethodInvocation* resp);
+gboolean cryptohome_get_endorsement_info(Cryptohome* self,
+                                         GArray* request,
+                                         DBusGMethodInvocation* resp);
 
 }  // namespace gobject
 }  // namespace cryptohome

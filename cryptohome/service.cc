@@ -2855,6 +2855,37 @@ gboolean Service::GetTpmStatus(const GArray* request,
   return TRUE;
 }
 
+void Service::DoGetEndorsementInfo(const chromeos::SecureBlob& request,
+                                   DBusGMethodInvocation* context) {
+  GetEndorsementInfoRequest request_pb;
+  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+    SendInvalidArgsReply(context, "Bad GetEndorsementInfoRequest");
+    return;
+  }
+  BaseReply reply;
+  SecureBlob public_key;
+  SecureBlob certificate;
+  if (tpm_->GetEndorsementPublicKey(&public_key) &&
+      tpm_->GetEndorsementCredential(&certificate)) {
+    GetEndorsementInfoReply* extension = reply.MutableExtension(
+        GetEndorsementInfoReply::reply);
+    extension->set_ek_public_key(public_key.to_string());
+    extension->set_ek_certificate(certificate.to_string());
+  } else {
+    reply.set_error(CRYPTOHOME_ERROR_TPM_EK_NOT_AVAILABLE);
+  }
+  SendReply(context, reply);
+}
+
+gboolean Service::GetEndorsementInfo(const GArray* request,
+                                     DBusGMethodInvocation* context) {
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoGetEndorsementInfo, base::Unretained(this),
+                 SecureBlob(request->data, request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   base::DictionaryValue dv;
   base::ListValue* mounts = new base::ListValue();

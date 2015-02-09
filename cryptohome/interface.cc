@@ -729,6 +729,12 @@ gboolean cryptohome_get_tpm_status(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(GetTpmStatus, request);
 }
 
+gboolean cryptohome_get_endorsement_info(Cryptohome* self,
+                                         GArray* request,
+                                         DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(GetEndorsementInfo, request);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

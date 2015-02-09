@@ -196,6 +196,7 @@ namespace switches {
   static const char kFileSwitch[] = "file";
   static const char kEnsureEphemeralSwitch[] = "ensure_ephemeral";
   static const char kCrosCoreSwitch[] = "cros_core";
+  static const char kProtobufSwitch[] = "protobuf";
 }  // namespace switches
 
 #define DBUS_METHOD(method_name) \
@@ -2245,24 +2246,41 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_GET_EK],
       action.c_str())) {
-    chromeos::glib::ScopedError error;
-    gboolean success = FALSE;
-    gchar* ek_info = NULL;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_get_ek(
-            proxy.gproxy(),
-            &ek_info,
-            &success,
-            &chromeos::Resetter(&error).lvalue())) {
-      printf("AsyncTpmAttestationGetEK call failed: %s.\n", error->message);
-      return 1;
-    }
-    if (!success) {
-      printf("Failed to get EK.\n");
+    if (cl->HasSwitch(switches::kProtobufSwitch)) {
+      // Get the EK info as a protobuf.
+      cryptohome::GetEndorsementInfoRequest request;
+      cryptohome::BaseReply reply;
+      if (!MakeProtoDBusCall("GetEndorsementInfo",
+                             DBUS_METHOD(get_endorsement_info),
+                             DBUS_METHOD(get_endorsement_info_async),
+                             cl, &proxy, request, &reply)) {
+        return -1;
+      }
+      if (!reply.HasExtension(cryptohome::GetEndorsementInfoReply::reply)) {
+        printf("GetEndorsementInfoReply missing.\n");
+        return -1;
+      }
+      printf("GetEndorsmentInfo (protobuf) success.\n");
+    } else {
+      chromeos::glib::ScopedError error;
+      gboolean success = FALSE;
+      gchar* ek_info = NULL;
+      if (!org_chromium_CryptohomeInterface_tpm_attestation_get_ek(
+              proxy.gproxy(),
+              &ek_info,
+              &success,
+              &chromeos::Resetter(&error).lvalue())) {
+        printf("AsyncTpmAttestationGetEK call failed: %s.\n", error->message);
+        return 1;
+      }
+      if (!success) {
+        printf("Failed to get EK.\n");
+        g_free(ek_info);
+        return 1;
+      }
+      printf("%s\n", ek_info);
       g_free(ek_info);
-      return 1;
     }
-    printf("%s\n", ek_info);
-    g_free(ek_info);
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_RESET_IDENTITY],
       action.c_str())) {

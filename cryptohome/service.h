@@ -531,6 +531,11 @@ class Service : public chromeos::dbus::AbstractDbusService,
                               DBusGMethodInvocation* context);
   virtual gboolean GetTpmStatus(const GArray* request,
                                 DBusGMethodInvocation* context);
+  // Runs on the mount thread.
+  virtual void DoGetEndorsementInfo(const chromeos::SecureBlob& request,
+                                    DBusGMethodInvocation* context);
+  virtual gboolean GetEndorsementInfo(const GArray* request,
+                                      DBusGMethodInvocation* context);
 
  protected:
   FRIEND_TEST(Standalone, StoreEnrollmentState);
