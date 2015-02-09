@@ -140,22 +140,6 @@ TEST_F(SecurityManagerTest, ParseAccessToken) {
   }
 }
 
-/*
-TEST_F(SecurityManagerTest, TlsData) {
-  security_.InitTlsData();
-
-  std::string key_str = security_.GetTlsPrivateKey().to_string();
-  EXPECT_TRUE(
-      StartsWithASCII(key_str, "-----BEGIN RSA PRIVATE KEY-----", false));
-  EXPECT_TRUE(EndsWith(key_str, "-----END RSA PRIVATE KEY-----\n", false));
-
-  std::string cert_str{
-      chromeos::string_utils::GetBytesAsString(security_.GetTlsCertificate())};
-  EXPECT_TRUE(StartsWithASCII(cert_str, "-----BEGIN CERTIFICATE-----", false));
-  EXPECT_TRUE(EndsWith(cert_str, "-----END CERTIFICATE-----\n", false));
-}
-*/
-
 TEST_F(SecurityManagerTest, PairingNoSession) {
   std::string fingerprint;
   std::string signature;
