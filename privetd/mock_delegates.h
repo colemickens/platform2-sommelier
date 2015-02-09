@@ -70,7 +70,6 @@ class MockSecurityDelegate : public SecurityDelegate {
   MOCK_CONST_METHOD0(GetPairingTypes, std::vector<PairingType>());
   MOCK_CONST_METHOD0(GetCryptoTypes, std::vector<CryptoType>());
   MOCK_CONST_METHOD1(IsValidPairingCode, bool(const std::string&));
-  MOCK_METHOD1(SetCertificateFingerprint, void(const chromeos::Blob&));
   MOCK_METHOD4(StartPairing,
                Error(PairingType, CryptoType, std::string*, std::string*));
   MOCK_METHOD4(ConfirmPairing,

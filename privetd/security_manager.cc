@@ -243,7 +243,7 @@ Error SecurityManager::ConfirmPairing(const std::string& session_id,
   auto session = pending_sessions_.find(session_id);
   if (session == pending_sessions_.end())
     return Error::kUnknownSession;
-  CHECK(!TLS_certificate_fingerprint_.empty());
+  CHECK(!certificate_fingerprint_.empty());
 
   chromeos::ErrorPtr error;
   chromeos::Blob commitment{Base64Decode(client_commitment)};
@@ -257,10 +257,10 @@ Error SecurityManager::ConfirmPairing(const std::string& session_id,
   std::string key = session->second->GetKey();
   VLOG(3) << "KEY " << base::HexEncode(key.data(), key.size());
 
-  *fingerprint = Base64Encode(TLS_certificate_fingerprint_);
+  *fingerprint = Base64Encode(certificate_fingerprint_);
   chromeos::Blob cert_hmac =
       HmacSha256(chromeos::SecureBlob(session->second->GetKey()),
-                 TLS_certificate_fingerprint_);
+                 certificate_fingerprint_);
   *signature = Base64Encode(cert_hmac);
   confirmed_sessions_.emplace(session->first, std::move(session->second));
   base::MessageLoop::current()->PostDelayedTask(

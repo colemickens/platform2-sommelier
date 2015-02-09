@@ -61,9 +61,6 @@ class SecurityDelegate {
   // obtain |auth_code| during pairing process.
   virtual bool IsValidPairingCode(const std::string& auth_code) const = 0;
 
-  // Sets the fingerprint of the certificate currently used by HTTPS connection.
-  virtual void SetCertificateFingerprint(const chromeos::Blob& fingerprint) = 0;
-
   virtual Error StartPairing(PairingType mode,
                              CryptoType crypto,
                              std::string* session_id,

@@ -54,9 +54,6 @@ class SecurityManager : public SecurityDelegate {
   std::vector<PairingType> GetPairingTypes() const override;
   std::vector<CryptoType> GetCryptoTypes() const override;
   bool IsValidPairingCode(const std::string& auth_code) const override;
-  void SetCertificateFingerprint(const chromeos::Blob& fingerprint) override {
-    TLS_certificate_fingerprint_ = fingerprint;
-  }
 
   Error StartPairing(PairingType mode,
                      CryptoType crypto,
@@ -70,6 +67,10 @@ class SecurityManager : public SecurityDelegate {
   void RegisterPairingListeners(const PairingStartListener& on_start,
                                 const PairingEndListener& on_end);
 
+  void SetCertificateFingerprint(const chromeos::Blob& fingerprint) {
+    certificate_fingerprint_ = fingerprint;
+  }
+
  private:
   void ClosePendingSession(const std::string& session_id);
   void CloseConfirmedSession(const std::string& session_id);
@@ -80,7 +81,7 @@ class SecurityManager : public SecurityDelegate {
   std::map<std::string, std::unique_ptr<KeyExchanger>> pending_sessions_;
   std::map<std::string, std::unique_ptr<KeyExchanger>> confirmed_sessions_;
   chromeos::SecureBlob secret_;
-  chromeos::Blob TLS_certificate_fingerprint_;
+  chromeos::Blob certificate_fingerprint_;
   PairingStartListener on_start_;
   PairingEndListener on_end_;
 
