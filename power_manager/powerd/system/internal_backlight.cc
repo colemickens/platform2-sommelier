@@ -45,6 +45,7 @@ bool ReadBrightnessLevelFromFile(const base::FilePath& path, int64_t* level) {
 // Writes |level| to |path|. Returns false on failure.
 bool WriteBrightnessLevelToFile(const base::FilePath& path, int64_t level) {
   std::string buf = base::Int64ToString(level);
+  VLOG(1) << "Writing " << buf << " to " << path.value();
   if (base::WriteFile(path, buf.data(), buf.size()) == -1) {
     LOG(ERROR) << "Unable to write brightness \"" << buf << "\" to "
                << path.value();
@@ -209,7 +210,8 @@ void InternalBacklight::HandleTransitionTimeout() {
     new_level = transition_start_level_ + intermediate_amount;
   }
 
-  if (WriteBrightnessLevelToFile(brightness_path_, new_level))
+  if (new_level != current_brightness_level_ &&
+      WriteBrightnessLevelToFile(brightness_path_, new_level))
     current_brightness_level_ = new_level;
 }
 
