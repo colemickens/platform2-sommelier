@@ -10,6 +10,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos/cryptohome.h>
+#include <chromeos/data_encoding.h>
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -1123,12 +1124,16 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
   KeyAuthorizationSecret* auth_secret = auth_data->add_secrets();
   // Add an encryption secret to ensure later upgrades are viable.
   auth_secret->mutable_usage()->set_encrypt(true);
-  std::string cipher_key = CryptoLib::Base64Decode(kB64CipherKey);
+  std::string cipher_key;
+  ASSERT_TRUE(chromeos::data_encoding::Base64Decode(kB64CipherKey,
+                                                    &cipher_key));
   auth_secret->set_symmetric_key(cipher_key);
   // Add the signing key
   auth_secret = auth_data->add_secrets();
   auth_secret->mutable_usage()->set_sign(true);
-  std::string signing_key = CryptoLib::Base64Decode(kB64SigningKey);
+  std::string signing_key;
+  ASSERT_TRUE(chromeos::data_encoding::Base64Decode(kB64SigningKey,
+                                                    &signing_key));
   auth_secret->set_symmetric_key(signing_key);
 
   std::string vk_path = "some/path/master.0";
@@ -1139,7 +1144,8 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
   EXPECT_CALL(*active_vk_, Save(vk_path))
     .WillOnce(Return(true));
 
-  std::string signature = CryptoLib::Base64Decode(kB64Signature);
+  std::string signature;
+  ASSERT_TRUE(chromeos::data_encoding::Base64Decode(kB64Signature, &signature));
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
             homedirs_.UpdateKeyset(*up_,
                                    const_cast<const Key *>(&new_key),

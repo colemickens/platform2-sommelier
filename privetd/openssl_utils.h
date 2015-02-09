@@ -17,9 +17,6 @@ const size_t kSha256OutputSize = 32;
 chromeos::Blob HmacSha256(const chromeos::SecureBlob& key,
                           const chromeos::Blob& data);
 
-std::string Base64Encode(const chromeos::Blob& input);
-chromeos::Blob Base64Decode(std::string input);
-
 }  // namespace privetd
 
 #endif  // PRIVETD_OPENSSL_UTILS_H_

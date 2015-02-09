@@ -9,6 +9,7 @@
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <chromeos/data_encoding.h>
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -153,11 +154,11 @@ class AttestationTest : public testing::Test {
 
   string EncodeCertChain(const string& cert1, const string& cert2) {
     string chain = "-----BEGIN CERTIFICATE-----\n";
-    chain += CryptoLib::Base64Encode(cert1, true);
+    chain += chromeos::data_encoding::Base64EncodeWrapLines(cert1);
     chain += "-----END CERTIFICATE-----";
     if (!cert2.empty()) {
       chain += "\n-----BEGIN CERTIFICATE-----\n";
-      chain += CryptoLib::Base64Encode(cert2, true);
+      chain += chromeos::data_encoding::Base64EncodeWrapLines(cert2);
       chain += "-----END CERTIFICATE-----";
     }
     return chain;

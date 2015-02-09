@@ -12,6 +12,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <chromeos/data_encoding.h>
 #include <chromeos/secure_blob.h>
 #include <google/protobuf/repeated_field.h>
 #include <openssl/evp.h>
@@ -1731,7 +1732,7 @@ string Attestation::CreatePEMCertificate(const string& certificate) {
   const char kEndCertificate[] = "-----END CERTIFICATE-----";
 
   string pem = kBeginCertificate;
-  pem += CryptoLib::Base64Encode(certificate, true);
+  pem += chromeos::data_encoding::Base64EncodeWrapLines(certificate);
   pem += kEndCertificate;
   return pem;
 }

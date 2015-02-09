@@ -526,38 +526,6 @@ void CryptoLib::BlobToHexToBuffer(const chromeos::Blob& blob,
     *char_buffer = '\x00';
 }
 
-string CryptoLib::Base64Encode(const string& input, bool include_newlines) {
-  BIO* base64 = BIO_new(BIO_f_base64());
-  if (!include_newlines)
-    BIO_set_flags(base64, BIO_FLAGS_BASE64_NO_NL);
-  BIO* bio = BIO_new(BIO_s_mem());
-  bio = BIO_push(base64, bio);
-  BIO_write(bio, input.data(), input.size());
-  static_cast<void>(BIO_flush(bio));
-  char *data;
-  size_t length = BIO_get_mem_data(bio, &data);
-  string output(data, length);
-  chromeos::SecureMemset(data, 0, length);
-  BIO_free_all(bio);
-  return output;
-}
-
-string CryptoLib::Base64Decode(const string& input) {
-  std::vector<char> result(input.size(), 0);
-  BIO* base64 = BIO_new(BIO_f_base64());
-  BIO* bio = BIO_new_mem_buf(const_cast<char*>(input.c_str()),
-                             input.length());
-  bio = BIO_push(base64, bio);
-  int size = BIO_read(bio, vector_as_array(&result), input.size());
-  BIO_free_all(bio);
-  if (size <= 0) {
-    LOG(ERROR) << "Base64Decode failed: " << size;
-    return std::string();
-  }
-  return std::string(vector_as_array(&result), size);
-}
-
-
 string CryptoLib::ComputeEncryptedDataHMAC(const EncryptedData& encrypted_data,
                                            const SecureBlob& hmac_key) {
   SecureBlob blob1(encrypted_data.iv().data(), encrypted_data.iv().length());

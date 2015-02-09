@@ -18,6 +18,7 @@
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <chromeos/data_encoding.h>
 #include <chromeos/strings/string_utils.h>
 #include <crypto/p224_spake.h>
 #include <gmock/gmock.h>
@@ -77,7 +78,7 @@ class SecurityManagerTest : public testing::Test {
         crypto::P224EncryptedKeyExchange::kPeerTypeClient, "1234"};
 
     std::string client_commitment_base64{
-        Base64Encode(chromeos::SecureBlob{spake.GetMessage()})};
+        chromeos::data_encoding::Base64Encode(spake.GetMessage())};
 
     EXPECT_EQ(Error::kNone,
               security_.ConfirmPairing(session_id, client_commitment_base64,
@@ -85,7 +86,9 @@ class SecurityManagerTest : public testing::Test {
     EXPECT_TRUE(IsBase64(*fingerprint));
     EXPECT_TRUE(IsBase64(*signature));
 
-    chromeos::Blob device_commitment{Base64Decode(device_commitment_base64)};
+    chromeos::Blob device_commitment;
+    ASSERT_TRUE(chromeos::data_encoding::Base64Decode(device_commitment_base64,
+                                                      &device_commitment));
     spake.ProcessMessage(
         chromeos::string_utils::GetBytesAsString(device_commitment));
 
@@ -93,7 +96,8 @@ class SecurityManagerTest : public testing::Test {
         HmacSha256(chromeos::SecureBlob{spake.GetUnverifiedKey()},
                    chromeos::SecureBlob{session_id})};
 
-    std::string auth_code_base64{Base64Encode(auth_code)};
+    std::string auth_code_base64{
+        chromeos::data_encoding::Base64Encode(auth_code)};
 
     EXPECT_TRUE(security_.IsValidPairingCode(auth_code_base64));
   }
@@ -186,7 +190,7 @@ TEST_F(SecurityManagerTest, NotifiesListenersOfSessionStartAndEnd) {
     crypto::P224EncryptedKeyExchange spake{
         crypto::P224EncryptedKeyExchange::kPeerTypeServer, "1234"};
     std::string client_commitment =
-        Base64Encode(chromeos::SecureBlob(spake.GetMessage()));
+        chromeos::data_encoding::Base64Encode(spake.GetMessage());
     std::string fingerprint, signature;
     // Regardless of whether the commitment is valid or not, we should get a
     // callback indicating that the pairing session is gone.
