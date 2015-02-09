@@ -92,8 +92,7 @@ int PortTracker::AddLifelineFd(int dbus_fd) {
   int fd = dup(dbus_fd);
 
   struct epoll_event epevent;
-  epevent.events =
-      EPOLLIN | EPOLLET;  // EPOLLERR | EPOLLHUP are always waited for.
+  epevent.events = EPOLLIN;  // EPOLLERR | EPOLLHUP are always waited for.
   epevent.data.fd = fd;
   LOG(INFO) << "Adding file descriptor " << fd << " to epoll instance";
   if (epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &epevent) != 0) {
