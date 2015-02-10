@@ -1335,11 +1335,26 @@ void DeviceInfoTechnologyTest::CreateInfoSymLink(const string &name,
 
 TEST_F(DeviceInfoTechnologyTest, Unknown) {
   // With a uevent file but no driver symlink, we should act as if this
-  // is a regular Ethernet driver.
+  // is a regular Ethernet driver by default.
   EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
 
   // Should be unknown without a uevent file.
   EXPECT_TRUE(base::DeleteFile(GetInfoPath("uevent"), false));
+  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, UnknownWithNoSymlink) {
+  // If the manager is setup to ignore devices with no device symlink,
+  // this device should instead be unknown.
+  manager_.SetIgnoreUnknownEthernet(true);
+  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, IgnoredPrefix) {
+  test_device_name_ = "veth0";
+  // A new uevent file is needed since the device name has changed.
+  CreateInfoFile("uevent", "xxx");
+  // A device with a "veth" prefix should be ignored.
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
 }
 

@@ -70,6 +70,7 @@ static string ObjectID(const DeviceInfo *d) { return "(device_info)"; }
 // static
 const char DeviceInfo::kModemPseudoDeviceNamePrefix[] = "pseudomodem";
 const char DeviceInfo::kEthernetPseudoDeviceNamePrefix[] = "pseudoethernet";
+const char DeviceInfo::kIgnoredDeviceNamePrefix[] = "veth";
 const char DeviceInfo::kDeviceInfoRoot[] = "/sys/class/net";
 const char DeviceInfo::kDriverCdcEther[] = "cdc_ether";
 const char DeviceInfo::kDriverCdcNcm[] = "cdc_ncm";
@@ -281,6 +282,13 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
     return Technology::kEthernet;
   }
 
+  // Special case for devices which should be ignored.
+  if (iface_name.find(kIgnoredDeviceNamePrefix) == 0) {
+    SLOG(this, 2) << StringPrintf(
+        "%s: device %s should be ignored", __func__, iface_name.c_str());
+    return Technology::kUnknown;
+  }
+
   FilePath driver_path;
   if (!GetDeviceInfoSymbolicLink(iface_name, kInterfaceDriver, &driver_path)) {
     SLOG(this, 2) << StringPrintf("%s: device %s has no device symlink",
@@ -306,12 +314,20 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
       return Technology::kTunnel;
     }
 
-    // We don't know what sort of device it is.  Act the same as if there
-    // was a driver symlink, but we did not recognize the driver name.
-    SLOG(this, 2) << StringPrintf("%s: device %s, without driver name "
-                                  "is defaulted to type ethernet",
-                                  __func__, iface_name.c_str());
-    return Technology::kEthernet;
+    // We don't know what sort of device it is.
+    if (manager_->ignore_unknown_ethernet()) {
+      SLOG(this, 2) << StringPrintf("%s: device %s, without driver name "
+                                    "will be ignored",
+                                    __func__, iface_name.c_str());
+      return Technology::kUnknown;
+    } else {
+      // Act the same as if there was a driver symlink, but we did not
+      // recognize the driver name.
+      SLOG(this, 2) << StringPrintf("%s: device %s, without driver name "
+                                    "is defaulted to type ethernet",
+                                    __func__, iface_name.c_str());
+      return Technology::kEthernet;
+    }
   }
 
   string driver_name(driver_path.BaseName().value());

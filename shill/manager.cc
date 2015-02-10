@@ -136,6 +136,7 @@ Manager::Manager(ControlInterface *control_interface,
       termination_actions_(dispatcher),
       suspend_delay_registered_(false),
       is_wake_on_lan_enabled_(true),
+      ignore_unknown_ethernet_(false),
       default_service_callback_tag_(0),
       crypto_util_proxy_(new CryptoUtilProxy(dispatcher, glib)),
       health_checker_remote_ips_(new IPAddressStore()) {
@@ -1080,6 +1081,11 @@ void Manager::SetPassiveMode() {
   // the default claimer to specify the devices for shill to manage.
   device_claimer_.reset(
       new DeviceClaimer(kDefaultClaimerName, &device_info_, true));
+}
+
+void Manager::SetIgnoreUnknownEthernet(bool ignore) {
+  LOG(INFO) << __func__ << "(" << ignore << ")";
+  ignore_unknown_ethernet_ = ignore;
 }
 
 void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {

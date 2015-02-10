@@ -36,6 +36,8 @@ namespace switches {
 static const char kForeground[] = "foreground";
 // Don't attempt to manage these devices.
 static const char kDeviceBlackList[] = "device-black-list";
+// Ignore Ethernet-like devices that don't have any driver information.
+static const char kIgnoreUnknownEthernet[] = "ignore-unknown-ethernet";
 // Technologies to enable for portal check at startup.
 static const char kPortalList[] = "portal-list";
 // When in passive mode, Shill will not manage any devices by default.
@@ -52,6 +54,8 @@ static const char kHelpMessage[] = "\n"
     "    Don\'t daemon()ize; run in foreground.\n"
     "  --device-black-list=device1,device2\n"
     "    Do not manage devices named device1 or device2\n"
+    "  --ignore-unknown-ethernet\n"
+    "    Ignore Ethernet-like devices that do not report a driver\n"
     "  --log-level=N\n"
     "    Logging level:\n"
     "      0 = LOG(INFO), 1 = LOG(WARNING), 2 = LOG(ERROR),\n"
@@ -162,6 +166,10 @@ int main(int argc, char** argv) {
     for (const auto &device : device_list) {
       daemon.AddDeviceToBlackList(device);
     }
+  }
+
+  if (cl->HasSwitch(switches::kIgnoreUnknownEthernet)) {
+    daemon.SetIgnoreUnknownEthernet(true);
   }
 
   if (cl->HasSwitch(switches::kPortalList)) {

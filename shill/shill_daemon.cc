@@ -65,6 +65,10 @@ void Daemon::SetPassiveMode() {
   manager_->SetPassiveMode();
 }
 
+void Daemon::SetIgnoreUnknownEthernet(bool ignore) {
+  manager_->SetIgnoreUnknownEthernet(ignore);
+}
+
 void Daemon::Run() {
   Start();
   SLOG(this, 1) << "Running main loop.";

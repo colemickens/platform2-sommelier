@@ -428,6 +428,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // default claimer (with "" as claimer_name).
   void SetPassiveMode();
 
+  // Decides whether Ethernet-like devices are treated as unknown devices
+  // if they do not indicate a driver name.
+  void SetIgnoreUnknownEthernet(bool ignore);
+  bool ignore_unknown_ethernet() const { return ignore_unknown_ethernet_; }
+
  private:
   friend class CellularTest;
   friend class DeviceInfoTest;
@@ -723,6 +728,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Whether Wake on LAN should be enabled for all Ethernet devices.
   bool is_wake_on_lan_enabled_;
+
+  // Whether to ignore Ethernet-like devices that don't have an assigned driver.
+  bool ignore_unknown_ethernet_;
 
   // Maps tags to callbacks for monitoring default service changes.
   std::map<int, ServiceCallback> default_service_callbacks_;

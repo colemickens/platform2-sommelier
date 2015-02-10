@@ -32,6 +32,7 @@ class Daemon {
   ~Daemon();
 
   void AddDeviceToBlackList(const std::string &device_name);
+  void SetIgnoreUnknownEthernet(bool ignore);
   void SetStartupPortalList(const std::string &portal_list);
   void SetPassiveMode();
 
