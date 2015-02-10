@@ -26,22 +26,23 @@ const char kOddsFilename[] = "../src/testdata/simple_odds_file.txt";
 
 // This function tests whether the results are close enough to the odds (within
 // 1%).
-void CheckResultsAgainstOdds(const std::map<std::string, double> odds,
-                             const std::map<std::string, double> results) {
+void CheckResultsAgainstOdds(
+    const std::vector<RandomSelector::OddsAndValue>& odds,
+    const std::map<std::string, int>& results) {
   EXPECT_EQ(odds.size(), results.size());
 
-  double odds_sum = debugd::GetSumOfMapValues(odds);
-  double results_sum = debugd::GetSumOfMapValues(results);
+  const double odds_sum = RandomSelector::SumOdds(odds);
+  int results_sum = 0;
+  for (const auto& item : results) {
+    results_sum += item.second;
+  }
 
-  for (std::map<std::string, double>::const_iterator odd = odds.begin();
-       odd != odds.end();
-       ++odd) {
-    std::map<std::string, double>::const_iterator result =
-        results.find(odd->first);
+  for (const auto& odd : odds) {
+    const auto result = results.find(odd.value);
     EXPECT_NE(result, results.end());
-    double results_ratio = result->second / results_sum;
-    double odds_ratio = odd->second / odds_sum;
-    double abs_diff = fabs(results_ratio - odds_ratio);
+    const double results_ratio = 1.0*result->second / results_sum;
+    const double odds_ratio = odd.weight / odds_sum;
+    const double abs_diff = fabs(results_ratio - odds_ratio);
     EXPECT_LT(abs_diff, kEpsilon);
   }
 }
@@ -76,7 +77,7 @@ class RandomSelectorWithCustomRNG : public RandomSelector {
 // generate is |iterations|.
 void GenerateResults(size_t iterations,
                      RandomSelector* random_selector,
-                     std::map<std::string, double>* results) {
+                     std::map<std::string, int>* results) {
   for (size_t i = 0; i < iterations; ++i) {
     std::string next_value;
     random_selector->GetNext(&next_value);
@@ -84,12 +85,12 @@ void GenerateResults(size_t iterations,
   }
 }
 
-// Test the RandomSelector class given the odds in the |odds| map.
-void TestOdds(const std::map<std::string, double> odds) {
+// Test the RandomSelector class given the odds in the |odds| list.
+void TestOdds(const std::vector<RandomSelector::OddsAndValue>& odds) {
   RandomSelectorWithCustomRNG random_selector(kLargeNumber);
   random_selector.SetOdds(odds);
   // Generate a lot of values.
-  std::map<std::string, double> results;
+  std::map<std::string, int> results;
   GenerateResults(kLargeNumber, &random_selector, &results);
   // Ensure the values and odds are related.
   CheckResultsAgainstOdds(odds, results);
@@ -99,10 +100,11 @@ void TestOdds(const std::map<std::string, double> odds) {
 
 // Ensure RandomSelector is able to generate results from given odds.
 TEST(RandomSelector, GenerateTest) {
-  std::map<std::string, double> odds;
-  odds["a"] = 1;
-  odds["b"] = 2;
-  odds["c"] = 3;
+  std::vector<RandomSelector::OddsAndValue> odds = {
+    {1, "a"},
+    {2, "b"},
+    {3, "c"},
+  };
   TestOdds(odds);
 }
 
@@ -110,11 +112,12 @@ TEST(RandomSelector, GenerateTest) {
 TEST(RandomSelector, SetOddsFromFileTest) {
   RandomSelectorWithCustomRNG random_selector(kLargeNumber);
   random_selector.SetOddsFromFile(std::string(kOddsFilename));
-  std::map<std::string, double> results;
-  std::map<std::string, double> odds;
-  odds["afile"] = 3;
-  odds["bfile"] = 2;
-  odds["cfile"] = 1;
+  std::map<std::string, int> results;
+  std::vector<RandomSelector::OddsAndValue> odds = {
+    {3, "afile"},
+    {2, "bfile"},
+    {1, "cfile"},
+  };
   GenerateResults(kLargeNumber, &random_selector, &results);
   CheckResultsAgainstOdds(odds, results);
 }

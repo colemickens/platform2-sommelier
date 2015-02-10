@@ -6,7 +6,6 @@
 
 #include <cstdlib>
 #include <fstream>  // NOLINT
-#include <map>
 #include <string>
 #include <vector>
 
@@ -25,11 +24,11 @@ const char kWhitespace = ' ';
 
 namespace debugd {
 
-double GetSumOfMapValues(const std::map<std::string, double> map_to_sum) {
+double RandomSelector::SumOdds(const std::vector<OddsAndValue>& odds) {
   double sum = 0.0;
-  std::map<std::string, double>::const_iterator it;
-  for (it = map_to_sum.begin(); it != map_to_sum.end(); ++it)
-    sum += it->second;
+  for (const auto& odd : odds) {
+    sum += odd.weight;
+  }
   return sum;
 }
 
@@ -50,20 +49,19 @@ void RandomSelector::SetOddsFromFile(const std::string& filename) {
     CHECK(base::StringToDouble(tokens[0], &odd));
     tokens.erase(tokens.begin(), tokens.begin() + 1);
     std::string value = JoinString(tokens, kWhitespace);
-    odds_[value] = odd;
+    odds_.push_back({odd, value});
   }
+  sum_of_odds_ = SumOdds(odds_);
 }
 
-void RandomSelector::SetOdds(const std::map<std::string, double>& odds) {
-  odds_.clear();
-  odds_.insert(odds.begin(), odds.end());
+void RandomSelector::SetOdds(const std::vector<OddsAndValue>& odds) {
+  odds_ = odds;
+  sum_of_odds_ = SumOdds(odds_);
 }
 
 void RandomSelector::GetNext(std::string* next) {
-  // Sum up all the odds.
-  double sum = GetSumOfMapValues(odds_);
   // Get a random double between 0 and the sum.
-  double random = RandDoubleUpTo(sum);
+  double random = RandDoubleUpTo(sum_of_odds_);
   // Figure out what it belongs to.
   GetKeyOf(random, next);
 }
@@ -75,16 +73,14 @@ double RandomSelector::RandDoubleUpTo(double max) {
 
 void RandomSelector::GetKeyOf(double value, std::string* key) {
   double current = 0.0;
-  std::map<std::string, double>::const_iterator it;
-  for (it = odds_.begin(); it != odds_.end(); ++it) {
-    current += it->second;
-    if (value <= current) {
-      *key = it->first;
+  for (const auto& odd : odds_) {
+    current += odd.weight;
+    if (value < current) {
+      *key = odd.value;
       return;
     }
   }
-
-  NOTREACHED() << "Invalid value for key.";
+  NOTREACHED() << "Invalid value for key: " << value;
 }
 
 }  // namespace debugd
