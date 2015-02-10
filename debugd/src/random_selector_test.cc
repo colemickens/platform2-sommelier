@@ -79,8 +79,7 @@ void GenerateResults(size_t iterations,
                      RandomSelector* random_selector,
                      std::map<std::string, int>* results) {
   for (size_t i = 0; i < iterations; ++i) {
-    std::string next_value;
-    random_selector->GetNext(&next_value);
+    std::string next_value = random_selector->GetNext();
     (*results)[next_value]++;
   }
 }

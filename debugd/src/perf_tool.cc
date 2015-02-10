@@ -83,8 +83,7 @@ PerfTool::PerfTool() {
 
 std::vector<uint8_t> PerfTool::GetRichPerfData(const uint32_t& duration_secs,
                                                DBus::Error* error) {
-  std::string perf_command_line;
-  random_selector_.GetNext(&perf_command_line);
+  std::string perf_command_line = random_selector_.GetNext();
   std::string output_string;
   GetPerfDataHelper(duration_secs, perf_command_line, error, &output_string);
   return std::vector<uint8_t>(output_string.begin(), output_string.end());

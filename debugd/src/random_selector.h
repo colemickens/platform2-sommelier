@@ -27,8 +27,7 @@ namespace debugd {
 // The following should give you "a" with a probability of 50%, "b" with a
 // probability of 40% and "c" with a probability of 10%.
 //
-// std::string selection;
-// random_selector.GetNext(&selection);
+// std::string selection = random_selector.GetNext();
 class RandomSelector {
  public:
   struct OddsAndValue {
@@ -44,7 +43,7 @@ class RandomSelector {
   void SetOdds(const std::vector<OddsAndValue>& odds);
 
   // Get the next randomly picked string in |next|.
-  void GetNext(std::string* next);
+  const std::string& GetNext();
 
   // Returns the number of string entries.
   size_t GetNumStrings() const {
@@ -60,7 +59,7 @@ class RandomSelector {
 
   // Get a string corresponding to a random double |value| that is in our odds
   // vector. Stores the result in |key|.
-  void GetKeyOf(double value, std::string* key);
+  const std::string& GetKeyOf(double value);
 
   // A dictionary representing the strings to choose from and associated odds.
   std::vector<OddsAndValue> odds_;

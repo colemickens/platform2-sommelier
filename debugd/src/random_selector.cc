@@ -59,11 +59,11 @@ void RandomSelector::SetOdds(const std::vector<OddsAndValue>& odds) {
   sum_of_odds_ = SumOdds(odds_);
 }
 
-void RandomSelector::GetNext(std::string* next) {
+const std::string& RandomSelector::GetNext() {
   // Get a random double between 0 and the sum.
   double random = RandDoubleUpTo(sum_of_odds_);
   // Figure out what it belongs to.
-  GetKeyOf(random, next);
+  return GetKeyOf(random);
 }
 
 double RandomSelector::RandDoubleUpTo(double max) {
@@ -71,16 +71,17 @@ double RandomSelector::RandDoubleUpTo(double max) {
   return max * base::RandDouble();
 }
 
-void RandomSelector::GetKeyOf(double value, std::string* key) {
+const std::string& RandomSelector::GetKeyOf(double value) {
   double current = 0.0;
   for (const auto& odd : odds_) {
     current += odd.weight;
     if (value < current) {
-      *key = odd.value;
-      return;
+      return odd.value;
     }
   }
   NOTREACHED() << "Invalid value for key: " << value;
+  static const std::string kEmptyString;
+  return kEmptyString;
 }
 
 }  // namespace debugd
