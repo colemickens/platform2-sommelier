@@ -83,14 +83,14 @@ PerfTool::PerfTool() {
 
 std::vector<uint8_t> PerfTool::GetRichPerfData(const uint32_t& duration_secs,
                                                DBus::Error* error) {
-  std::string perf_command_line = random_selector_.GetNext();
+  const std::vector<std::string>& perf_args = random_selector_.GetNext();
   std::string output_string;
-  GetPerfDataHelper(duration_secs, perf_command_line, error, &output_string);
+  GetPerfDataHelper(duration_secs, perf_args, error, &output_string);
   return std::vector<uint8_t>(output_string.begin(), output_string.end());
 }
 
 void PerfTool::GetPerfDataHelper(const uint32_t& duration_secs,
-                                 const std::string& perf_command_line,
+                                 const std::vector<std::string>& perf_args,
                                  DBus::Error* error,
                                  std::string* data_string) {
   // This whole method is synchronous, so we create a subprocess, let it run to
@@ -103,7 +103,9 @@ void PerfTool::GetPerfDataHelper(const uint32_t& duration_secs,
   // interface; there's support for adding options specifically.
   process.AddArg(kQuipperLocation);
   process.AddArg(StringPrintf("%u", duration_secs));
-  process.AddArg(perf_command_line);
+  for (const auto& arg : perf_args) {
+    process.AddArg(arg);
+  }
   // Run the process to completion. If the process might take a while, you may
   // have to make this asynchronous using .Start().
   int status = process.Run();

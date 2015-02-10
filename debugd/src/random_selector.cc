@@ -48,8 +48,7 @@ void RandomSelector::SetOddsFromFile(const std::string& filename) {
     double odd;
     CHECK(base::StringToDouble(tokens[0], &odd));
     tokens.erase(tokens.begin(), tokens.begin() + 1);
-    std::string value = JoinString(tokens, kWhitespace);
-    odds_.push_back({odd, value});
+    odds_.push_back({odd, tokens});
   }
   sum_of_odds_ = SumOdds(odds_);
 }
@@ -59,7 +58,7 @@ void RandomSelector::SetOdds(const std::vector<OddsAndValue>& odds) {
   sum_of_odds_ = SumOdds(odds_);
 }
 
-const std::string& RandomSelector::GetNext() {
+const std::vector<std::string>& RandomSelector::GetNext() {
   // Get a random double between 0 and the sum.
   double random = RandDoubleUpTo(sum_of_odds_);
   // Figure out what it belongs to.
@@ -71,7 +70,7 @@ double RandomSelector::RandDoubleUpTo(double max) {
   return max * base::RandDouble();
 }
 
-const std::string& RandomSelector::GetKeyOf(double value) {
+const std::vector<std::string>& RandomSelector::GetKeyOf(double value) {
   double current = 0.0;
   for (const auto& odd : odds_) {
     current += odd.weight;
@@ -80,8 +79,8 @@ const std::string& RandomSelector::GetKeyOf(double value) {
     }
   }
   NOTREACHED() << "Invalid value for key: " << value;
-  static const std::string kEmptyString;
-  return kEmptyString;
+  static const std::vector<std::string> kEmptyVector;
+  return kEmptyVector;
 }
 
 }  // namespace debugd

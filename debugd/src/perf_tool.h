@@ -31,7 +31,7 @@ class PerfTool {
   // Helper function that runs perf for a given |duration_secs| returning the
   // collected data in |data_string|.
   void GetPerfDataHelper(const uint32_t& duration_secs,
-                         const std::string& perf_command_line,
+                         const std::vector<std::string>& perf_args,
                          DBus::Error* error,
                          std::string* data_string);
 

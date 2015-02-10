@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/strings/string_util.h>
 #include <cmath>
 #include <gtest/gtest.h>
 #include <map>
@@ -38,7 +39,7 @@ void CheckResultsAgainstOdds(
   }
 
   for (const auto& odd : odds) {
-    const auto result = results.find(odd.value);
+    const auto result = results.find(JoinString(odd.value, ' '));
     EXPECT_NE(result, results.end());
     const double results_ratio = 1.0*result->second / results_sum;
     const double odds_ratio = odd.weight / odds_sum;
@@ -79,8 +80,9 @@ void GenerateResults(size_t iterations,
                      RandomSelector* random_selector,
                      std::map<std::string, int>* results) {
   for (size_t i = 0; i < iterations; ++i) {
-    std::string next_value = random_selector->GetNext();
-    (*results)[next_value]++;
+    const std::vector<std::string>& next_value = random_selector->GetNext();
+    std::string joined = JoinString(next_value, ' ');
+    (*results)[joined]++;
   }
 }
 
@@ -100,9 +102,9 @@ void TestOdds(const std::vector<RandomSelector::OddsAndValue>& odds) {
 // Ensure RandomSelector is able to generate results from given odds.
 TEST(RandomSelector, GenerateTest) {
   std::vector<RandomSelector::OddsAndValue> odds = {
-    {1, "a"},
-    {2, "b"},
-    {3, "c"},
+    {1, {"a", "1"}},
+    {2, {"b", "--help"}},
+    {3, {"c", "bar"}},
   };
   TestOdds(odds);
 }
@@ -113,9 +115,9 @@ TEST(RandomSelector, SetOddsFromFileTest) {
   random_selector.SetOddsFromFile(std::string(kOddsFilename));
   std::map<std::string, int> results;
   std::vector<RandomSelector::OddsAndValue> odds = {
-    {3, "afile"},
-    {2, "bfile"},
-    {1, "cfile"},
+    {3, {"afile"}},
+    {2, {"bfile", "-o", "output"}},
+    {1, {"cfile", "-e", "cycles"}},
   };
   GenerateResults(kLargeNumber, &random_selector, &results);
   CheckResultsAgainstOdds(odds, results);

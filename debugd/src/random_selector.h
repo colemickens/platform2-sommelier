@@ -10,29 +10,29 @@
 
 namespace debugd {
 
-// RandomSelector is a class that can be used to pick strings according to
-// certain probabilities. The probabilities are set using SetOdds(). A randomly
-// picked string can be got by calling GetNext().
+// RandomSelector can be used to pick vectors of strings according to certain
+// probabilities. The probabilities are set using SetOdds(). A randomly picked
+// vector can be obtained by calling GetNext().
 //
 // Sample usage:
 //
 // RandomSelector random_selector;
 // std::vector<RandomSelector::OddsAndValue> odds {
-//   {50, "a"},
-//   {40, "b"},
-//   {10, "c"}
+//   {50, {"a"}},
+//   {40, {"b"}},
+//   {10, {"c"}}
 // };
 // random_selector.SetOdds(odds);
 //
-// The following should give you "a" with a probability of 50%, "b" with a
-// probability of 40% and "c" with a probability of 10%.
+// // The following should return "a" with a probability of 50%,
+// // "b" with a probability of 40%, and "c" with a probability of 10%:
 //
-// std::string selection = random_selector.GetNext();
+// std::vector<std::string>& selection = random_selector.GetNext();
 class RandomSelector {
  public:
   struct OddsAndValue {
     double weight;
-    std::string value;
+    std::vector<std::string> value;
   };
 
   // Read probabilities from a file. The file is a bunch of lines each with:
@@ -43,7 +43,7 @@ class RandomSelector {
   void SetOdds(const std::vector<OddsAndValue>& odds);
 
   // Get the next randomly picked string in |next|.
-  const std::string& GetNext();
+  const std::vector<std::string>& GetNext();
 
   // Returns the number of string entries.
   size_t GetNumStrings() const {
@@ -59,7 +59,7 @@ class RandomSelector {
 
   // Get a string corresponding to a random double |value| that is in our odds
   // vector. Stores the result in |key|.
-  const std::string& GetKeyOf(double value);
+  const std::vector<std::string>& GetKeyOf(double value);
 
   // A dictionary representing the strings to choose from and associated odds.
   std::vector<OddsAndValue> odds_;
