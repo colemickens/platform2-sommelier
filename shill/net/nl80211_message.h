@@ -410,7 +410,7 @@ class SHILL_EXPORT GetScanMessage : public Nl80211Message {
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  GetScanMessage() : Nl80211Message(kCommand, kCommandString) {}
+  GetScanMessage();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(GetScanMessage);

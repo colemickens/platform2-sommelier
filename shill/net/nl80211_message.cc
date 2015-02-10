@@ -551,6 +551,13 @@ const char ScanAbortedMessage::kCommandString[] = "NL80211_CMD_SCAN_ABORTED";
 const uint8_t GetScanMessage::kCommand = NL80211_CMD_GET_SCAN;
 const char GetScanMessage::kCommandString[] = "NL80211_CMD_GET_SCAN";
 
+GetScanMessage::GetScanMessage()
+    : Nl80211Message(kCommand, kCommandString) {
+  attributes()->CreateAttribute(
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                 NetlinkMessage::MessageContext()));
+}
+
 const uint8_t TriggerScanMessage::kCommand = NL80211_CMD_TRIGGER_SCAN;
 const char TriggerScanMessage::kCommandString[] = "NL80211_CMD_TRIGGER_SCAN";
 
