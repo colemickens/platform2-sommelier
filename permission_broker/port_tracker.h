@@ -7,6 +7,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
@@ -21,8 +22,8 @@ class PortTracker {
   explicit PortTracker(org::chromium::FirewalldProxyInterface* firewalld);
   virtual ~PortTracker();
 
-  bool ProcessTcpPort(uint16_t port, int dbus_fd);
-  bool ProcessUdpPort(uint16_t port, int dbus_fd);
+  bool ProcessTcpPort(uint16_t port, const std::string& iface, int dbus_fd);
+  bool ProcessUdpPort(uint16_t port, const std::string& iface, int dbus_fd);
 
  protected:
   PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
@@ -43,9 +44,9 @@ class PortTracker {
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   int epfd_;
 
-  // For each fd (process), keep track of which port it requested.
-  std::unordered_map<int, uint16_t> tcp_ports_;
-  std::unordered_map<int, uint16_t> udp_ports_;
+  // For each fd (process), keep track of which port and interface it requested.
+  std::unordered_map<int, std::pair<uint16_t, std::string>> tcp_ports_;
+  std::unordered_map<int, std::pair<uint16_t, std::string>> udp_ports_;
 
   // |firewalld_| is owned by the PermissionBroker object owning this instance
   // of PortTracker.

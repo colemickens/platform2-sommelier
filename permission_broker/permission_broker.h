@@ -42,8 +42,10 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
   bool RequestPathAccess(const std::string& in_path,
                          int32_t in_interface_id) override;
   bool RequestTcpPortAccess(uint16_t in_port,
+                            const std::string& in_interface,
                             const dbus::FileDescriptor& dbus_fd) override;
   bool RequestUdpPortAccess(uint16_t in_port,
+                            const std::string& in_interface,
                             const dbus::FileDescriptor& dbus_fd) override;
 
   RuleEngine rule_engine_;

@@ -109,6 +109,7 @@ void FirewallManager::AddUdpPortRule(uint16_t port) {
   fd.CheckValidity();
   chromeos::ErrorPtr error;
   if (!permission_broker_proxy_->RequestUdpPortAccess(port,
+                                                      "", /* interface */
                                                       fd,
                                                       &allowed,
                                                       &error)) {

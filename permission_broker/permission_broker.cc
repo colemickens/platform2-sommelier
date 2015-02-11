@@ -93,14 +93,18 @@ bool PermissionBroker::RequestPathAccess(const std::string& in_path,
 
 bool PermissionBroker::RequestTcpPortAccess(
     uint16_t in_port,
+    const std::string& in_interface,
     const dbus::FileDescriptor& in_lifeline_fd) {
-  return port_tracker_.ProcessTcpPort(in_port, in_lifeline_fd.value());
+  return port_tracker_.ProcessTcpPort(in_port, in_interface,
+                                      in_lifeline_fd.value());
 }
 
 bool PermissionBroker::RequestUdpPortAccess(
     uint16_t in_port,
+    const std::string& in_interface,
     const dbus::FileDescriptor& in_lifeline_fd) {
-  return port_tracker_.ProcessUdpPort(in_port, in_lifeline_fd.value());
+  return port_tracker_.ProcessUdpPort(in_port, in_interface,
+                                      in_lifeline_fd.value());
 }
 
 }  // namespace permission_broker
