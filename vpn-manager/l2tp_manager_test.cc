@@ -80,7 +80,8 @@ std::string L2tpManagerTest::GetExpectedConfig(std::string remote_address_text,
       "name = me\n"
       "%s"
       "pppoptfile = %s/pppd.config\n"
-      "length bit = yes\n",
+      "length bit = yes\n"
+      "bps = 1000000\n",
       remote_address_text.c_str(),
       debug ? "ppp debug = yes\n" : "",
       test_path_.value().c_str());

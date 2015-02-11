@@ -30,6 +30,7 @@ const char kLnsAddress[] = "LNS_ADDRESS";
 const char kPppInterfacePath[] = "/sys/class/net/ppp0";
 const char kPppLogPrefix[] = "pppd: ";
 const char kPppAuthenticationFailurePattern[] = "*authentication failed*";
+const char kBpsParameter[] = "1000000";
 
 }  // namespace
 
@@ -151,6 +152,7 @@ std::string L2tpManager::FormatL2tpdConfiguration(
   }
   AddString(&l2tpd_config, "pppoptfile", ppp_config_path);
   AddBool(&l2tpd_config, "length bit", length_bit_);
+  AddString(&l2tpd_config, "bps", kBpsParameter);
   return l2tpd_config;
 }
 
