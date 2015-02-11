@@ -214,6 +214,21 @@ bool DeviceRegistrationInfo::Load() {
   std::string device_robot_account;
   if (!dict->GetString(storage_keys::kRobotAccount, &device_robot_account))
     return false;
+  std::string device_kind;
+  if (!dict->GetString(storage_keys::kDeviceKind, &device_kind))
+    return false;
+  std::string name;
+  if (!dict->GetString(storage_keys::kName, &name))
+    return false;
+  std::string display_name;
+  if (!dict->GetString(storage_keys::kDisplayName, &display_name))
+    return false;
+  std::string description;
+  if (!dict->GetString(storage_keys::kDescription, &description))
+    return false;
+  std::string location;
+  if (!dict->GetString(storage_keys::kLocation, &location))
+    return false;
 
   client_id_            = client_id;
   client_secret_        = client_secret;
@@ -223,6 +238,11 @@ bool DeviceRegistrationInfo::Load() {
   oauth_url_            = oauth_url;
   service_url_          = service_url;
   device_robot_account_ = device_robot_account;
+  device_kind_          = device_kind;
+  name_                 = name;
+  display_name_         = display_name;
+  description_          = description;
+  location_             = location;
   return true;
 }
 
@@ -236,6 +256,12 @@ bool DeviceRegistrationInfo::Save() const {
   dict.SetString(storage_keys::kOAuthURL,     oauth_url_);
   dict.SetString(storage_keys::kServiceURL,   service_url_);
   dict.SetString(storage_keys::kRobotAccount, device_robot_account_);
+  dict.SetString(storage_keys::kDeviceKind,   device_kind_);
+  dict.SetString(storage_keys::kName,         name_);
+  dict.SetString(storage_keys::kDisplayName,  display_name_);
+  dict.SetString(storage_keys::kDescription,  description_);
+  dict.SetString(storage_keys::kLocation,     location_);
+
   return storage_->Save(&dict);
 }
 

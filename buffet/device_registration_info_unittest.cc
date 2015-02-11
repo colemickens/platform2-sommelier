@@ -67,6 +67,11 @@ void InitDefaultStorage(base::DictionaryValue* data) {
   data->SetString(storage_keys::kOAuthURL, test_data::kOAuthURL);
   data->SetString(storage_keys::kServiceURL, test_data::kServiceURL);
   data->SetString(storage_keys::kRobotAccount, "");
+  data->SetString(storage_keys::kDeviceKind, "");
+  data->SetString(storage_keys::kName, "");
+  data->SetString(storage_keys::kDisplayName, "");
+  data->SetString(storage_keys::kDescription, "");
+  data->SetString(storage_keys::kLocation, "");
 }
 
 // Add the test device registration information.
@@ -151,13 +156,17 @@ void FinalizeTicketHandler(const ServerRequest& request,
 
 }  // anonymous namespace
 
-// This is a helper class that allows the unit tests to set the private
-// member DeviceRegistrationInfo::ticket_id_, since TestHelper is declared
-// as a friend to DeviceRegistrationInfo.
+// This is a helper class that allows the unit tests to access private
+// methods and data since TestHelper is declared as a friend to
+// DeviceRegistrationInfo.
 class DeviceRegistrationInfo::TestHelper {
  public:
   static void SetTestTicketId(DeviceRegistrationInfo* info) {
     info->ticket_id_ = test_data::kClaimTicketId;
+  }
+
+  static bool Save(DeviceRegistrationInfo* info) {
+    return info->Save();
   }
 };
 
@@ -214,6 +223,35 @@ TEST_F(DeviceRegistrationInfoTest, GetServiceURL) {
     {"key", test_data::kApiKey},
     {"restart", "true"},
   }));
+}
+
+TEST_F(DeviceRegistrationInfoTest, VerifySave) {
+  base::DictionaryValue data;
+  data.SetString(storage_keys::kClientId, "a");
+  data.SetString(storage_keys::kClientSecret, "b");
+  data.SetString(storage_keys::kApiKey, "c");
+  data.SetString(storage_keys::kRefreshToken, "d");
+  data.SetString(storage_keys::kDeviceId, "e");
+  data.SetString(storage_keys::kOAuthURL, "f");
+  data.SetString(storage_keys::kServiceURL, "g");
+  data.SetString(storage_keys::kRobotAccount, "h");
+  data.SetString(storage_keys::kDeviceKind, "i");
+  data.SetString(storage_keys::kName, "j");
+  data.SetString(storage_keys::kDisplayName, "k");
+  data.SetString(storage_keys::kDescription, "l");
+  data.SetString(storage_keys::kLocation, "m");
+
+  storage_->Save(&data);
+
+  // This test isn't really trying to test Load, it is just the easiest
+  // way to initialize the properties in dev_reg_.
+  EXPECT_TRUE(dev_reg_->Load());
+
+  // Clear the storage to get a clean test.
+  base::DictionaryValue empty;
+  storage_->Save(&empty);
+  EXPECT_TRUE(DeviceRegistrationInfo::TestHelper::Save(dev_reg_.get()));
+  EXPECT_TRUE(storage_->Load()->Equals(&data));
 }
 
 TEST_F(DeviceRegistrationInfoTest, GetOAuthURL) {
