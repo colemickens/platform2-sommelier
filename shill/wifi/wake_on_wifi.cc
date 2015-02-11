@@ -578,7 +578,7 @@ void WakeOnWiFi::AddWakeOnPacketConnection(const string &ip_endpoint,
                           "Invalid ip_address " + ip_endpoint);
     return;
   }
-  if (wake_on_wifi_triggers_.size() >= wake_on_wifi_max_patterns_) {
+  if (wake_on_packet_connections_.Count() >= wake_on_wifi_max_patterns_) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
         "Max number of IP address patterns already registered");

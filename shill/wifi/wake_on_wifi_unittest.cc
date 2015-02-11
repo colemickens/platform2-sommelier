@@ -1663,14 +1663,16 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, AddRemoveWakeOnPacketConnection) {
   // of IP address patterns have already been registered.
   EnableWakeOnWiFiFeaturesPacketSSID();
   GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kPattern);
-  SetWakeOnWiFiMaxPatterns(0);
-  AddWakeOnPacketConnection(ip_string1, &e);
+  SetWakeOnWiFiMaxPatterns(1);
+  GetWakeOnPacketConnections()->AddUnique(IPAddress(ip_string1));
+  AddWakeOnPacketConnection(ip_string2, &e);
   EXPECT_EQ(e.type(), Error::kOperationFailed);
   EXPECT_STREQ(e.message().c_str(),
                "Max number of IP address patterns already registered");
 
   // Add and remove operations will still execute even when the wake on packet
   // feature has been disabled.
+  GetWakeOnPacketConnections()->Clear();
   SetWakeOnWiFiMaxPatterns(50);
   DisableWakeOnWiFiFeatures();
   GetWakeOnWiFiTriggersSupported()->insert(WakeOnWiFi::kPattern);
