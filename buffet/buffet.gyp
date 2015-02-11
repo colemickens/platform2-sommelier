@@ -43,6 +43,8 @@
         'states/state_manager.cc',
         'states/state_package.cc',
         'utils.cc',
+        'xmpp/xmpp_client.cc',
+        'xmpp/xmpp_connection.cc',
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
       'actions': [
@@ -117,6 +119,7 @@
             'states/state_change_queue_unittest.cc',
             'states/state_manager_unittest.cc',
             'states/state_package_unittest.cc',
+            'xmpp/xmpp_client_unittest.cc',
           ],
         },
       ],
