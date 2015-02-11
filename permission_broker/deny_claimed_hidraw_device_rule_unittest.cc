@@ -77,15 +77,69 @@ TEST_F(DenyClaimedHidrawDeviceRuleTest, DenyClaimedHidrawDevices) {
         if (usb_interface_path == other_usb_interface_path) {
           ASSERT_FALSE(
               DenyClaimedHidrawDeviceRule::
-                  ShouldSiblingSubsystemExcludeHidAccess(
-                      udev_device_get_subsystem(other_device.get()))) <<
-                          "This rule should IGNORE claimed devices.";
+                  ShouldSiblingSubsystemExcludeHidAccess(other_device.get()))
+                      << "This rule should IGNORE claimed devices.";
         }
       }
     } else if (result != Rule::DENY) {
       FAIL() << "This rule should only either IGNORE or DENY devices.";
     }
   }
+}
+
+TEST_F(DenyClaimedHidrawDeviceRuleTest, InputCapabilityExclusions) {
+  const char* kKeyboardKeys;
+  const char* kMouseKeys;
+  const char* kHeadsetKeys;
+  const char* kBrailleKeys;
+
+  // The size of these bitfield chunks is the width of a userspace long.
+  switch (sizeof(long)) {  // NOLINT(runtime/int)
+    case 4:
+      kKeyboardKeys =
+          "10000 00000007 ff9f207a c14057ff "
+          "febeffdf ffefffff ffffffff fffffffe";
+      kMouseKeys =
+          "1f0000 0 0 0 0 0 0 0 0";
+      kHeadsetKeys =
+          "18000 178 0 8e0000 0 0 0";
+      kBrailleKeys =
+          "7fe0000 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0";
+      break;
+    case 8:
+      kKeyboardKeys =
+          "1000000000007 ff9f207ac14057ff febeffdfffefffff fffffffffffffffe";
+      kMouseKeys =
+          "1f0000 0 0 0 0";
+      kHeadsetKeys =
+          "18000 17800000000 8e000000000000 0";
+      kBrailleKeys =
+          "7fe000000000000 0 0 0 0 0 0 0";
+      break;
+    default:
+      FAIL() << "Unsupported platform long width.";
+  }
+
+  // Example capabilities from a real keyboard. Should be excluded.
+  EXPECT_TRUE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          "0", "0", kKeyboardKeys));
+
+  // Example capabilities from a real mouse. Should be excluded.
+  EXPECT_TRUE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          "0", "103", kMouseKeys));
+
+  // Example capabilities from a headset with some telephony buttons. Should not
+  // be excluded.
+  EXPECT_FALSE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          "0", "0", kHeadsetKeys));
+
+  // A braille input device (made up). Should be excluded.
+  EXPECT_TRUE(
+      DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+          "0", "0", kBrailleKeys));
 }
 
 }  // namespace permission_broker

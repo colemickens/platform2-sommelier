@@ -5,10 +5,16 @@
 #include "permission_broker/deny_claimed_hidraw_device_rule.h"
 
 #include <libudev.h>
+#include <linux/input.h>
 
+#include <limits>
 #include <string>
+#include <vector>
 
+#include "base/containers/adapters.h"
 #include "base/logging.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_split.h"
 #include "permission_broker/udev_scopers.h"
 
 namespace permission_broker {
@@ -17,7 +23,44 @@ namespace {
 
 const char kLogitechUnifyingReceiverDriver[] = "logitech-djreceiver";
 
+// The kernel expresses capabilities as a bitfield, broken into long-sized
+// chunks encoded in hexadecimal.
+bool ParseInputCapabilities(const char* input, std::vector<uint64>* output) {
+  std::vector<std::string> chunks;
+  base::SplitString(input, ' ', &chunks);
+
+  output->clear();
+  output->reserve(chunks.size());
+
+  // The most-significant chunk of the bitmask is stored first, iterate over
+  // the chunks in reverse so that the result is easier to work with.
+  for (const std::string& chunk : base::Reversed(chunks)) {
+    uint64 value = 0;
+    if (!base::HexStringToUInt64(chunk, &value)) {
+      LOG(ERROR) << "Failed to parse: " << chunk;
+      return false;
+    }
+    // NOLINTNEXTLINE(runtime/int)
+    if (value > std::numeric_limits<unsigned long>::max()) {
+      LOG(ERROR) << "Chunk value too large for platform: " << value;
+      return false;
+    }
+    output->push_back(value);
+  }
+
+  return true;
 }
+
+bool IsCapabilityBitSet(const std::vector<uint64>& bitfield, size_t bit) {
+  size_t offset = bit / (sizeof(long) * 8);  // NOLINT(runtime/int)
+  if (offset >= bitfield.size()) {
+    return false;
+  }
+  // NOLINTNEXTLINE(runtime/int)
+  return bitfield[offset] & (1ULL << (bit - offset * sizeof(long) * 8));
+}
+
+}  // namespace
 
 DenyClaimedHidrawDeviceRule::DenyClaimedHidrawDeviceRule()
     : HidrawSubsystemUdevRule("DenyClaimedHidrawDeviceRule") {}
@@ -75,8 +118,7 @@ Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
     // This device shares a USB interface with the hidraw device in question.
     // Check its subsystem to see if it should block hidraw access.
     if (child_usb_interface_path == usb_interface_path) {
-      const char* subsystem = udev_device_get_subsystem(child.get());
-      if (ShouldSiblingSubsystemExcludeHidAccess(subsystem)) {
+      if (ShouldSiblingSubsystemExcludeHidAccess(child.get())) {
         return DENY;
       }
     }
@@ -86,13 +128,82 @@ Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
 }
 
 bool DenyClaimedHidrawDeviceRule::ShouldSiblingSubsystemExcludeHidAccess(
-    const char *subsystem) {
-  // Return true iff subsystem something other than NULL or generic USB/HID.
-  return subsystem &&
-    strcmp(subsystem, "hid") &&
-    strcmp(subsystem, "hidraw") &&
-    strcmp(subsystem, "usb") &&
-    strcmp(subsystem, "usbmisc");
+    struct udev_device* sibling) {
+  const char* subsystem = udev_device_get_subsystem(sibling);
+  if (!subsystem) {
+    return false;
+  }
+
+  // Generic USB/HID is okay.
+  if (strcmp(subsystem, "hid") == 0 ||
+      strcmp(subsystem, "hidraw") == 0 ||
+      strcmp(subsystem, "usb") == 0 ||
+      strcmp(subsystem, "usbmisc") == 0) {
+    return false;
+  }
+
+  if (strcmp(subsystem, "input") == 0 &&
+      !ShouldInputCapabilitiesExcludeHidAccess(
+          udev_device_get_sysattr_value(sibling, "capabilities/abs"),
+          udev_device_get_sysattr_value(sibling, "capabilities/rel"),
+          udev_device_get_sysattr_value(sibling, "capabilities/key"))) {
+    return false;
+  }
+
+  return true;
+}
+
+bool DenyClaimedHidrawDeviceRule::ShouldInputCapabilitiesExcludeHidAccess(
+    const char* abs_capabilities,
+    const char* rel_capabilities,
+    const char* key_capabilities) {
+  std::vector<uint64> capabilities;
+  if (abs_capabilities) {
+    if (!ParseInputCapabilities(abs_capabilities, &capabilities)) {
+      // Parse error? Fail safe.
+      return true;
+    }
+    for (uint64 value : capabilities) {
+      if (value != 0) {
+        // Any absolute pointer capabilities exclude access.
+        return true;
+      }
+    }
+  }
+
+  if (rel_capabilities) {
+    if (!ParseInputCapabilities(rel_capabilities, &capabilities)) {
+      // Parse error? Fail safe.
+      return true;
+    }
+    for (uint64 value : capabilities) {
+      if (value != 0) {
+        // Any relative pointer capabilities exclude access.
+        return true;
+      }
+    }
+  }
+
+  if (key_capabilities) {
+    if (!ParseInputCapabilities(key_capabilities, &capabilities)) {
+      // Parse error? Fail safe.
+      return true;
+    }
+    // Any key code <= KEY_KPDOT (83) excludes access.
+    for (int key = 0; key <= KEY_KPDOT; key++) {
+      if (IsCapabilityBitSet(capabilities, key)) {
+        return true;
+      }
+    }
+    // Braille dots are outside the "normal keyboard keys" range.
+    for (int key = KEY_BRL_DOT1; key <= KEY_BRL_DOT10; key++) {
+      if (IsCapabilityBitSet(capabilities, key)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 }  // namespace permission_broker

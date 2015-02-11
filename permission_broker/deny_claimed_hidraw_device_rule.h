@@ -21,7 +21,13 @@ class DenyClaimedHidrawDeviceRule : public HidrawSubsystemUdevRule {
 
   // Indicates if a hidraw device should be inaccessible given the subsystem
   // identifier of one of its siblings.
-  static bool ShouldSiblingSubsystemExcludeHidAccess(const char* subsystem);
+  static bool ShouldSiblingSubsystemExcludeHidAccess(
+      struct udev_device* sibling);
+
+  static bool ShouldInputCapabilitiesExcludeHidAccess(
+      const char* abs_capabilities,
+      const char* rel_capabilities,
+      const char* key_capabilities);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DenyClaimedHidrawDeviceRule);
