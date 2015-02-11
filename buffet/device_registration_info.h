@@ -13,12 +13,14 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
+#include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/http/http_transport.h>
 
 #include "buffet/storage_interface.h"
+#include "buffet/xmpp/xmpp_client.h"
 
 namespace base {
 class Value;
@@ -38,7 +40,7 @@ extern const char kErrorDomainGCD[];
 extern const char kErrorDomainGCDServer[];
 
 // The DeviceRegistrationInfo class represents device registration information.
-class DeviceRegistrationInfo {
+class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
  public:
   // This is a helper class for unit testing.
   class TestHelper;
@@ -50,7 +52,17 @@ class DeviceRegistrationInfo {
       const std::shared_ptr<chromeos::http::Transport>& transport,
       const std::shared_ptr<StorageInterface>& state_store);
 
-  ~DeviceRegistrationInfo();
+  ~DeviceRegistrationInfo() override;
+
+  void OnFileCanReadWithoutBlocking(int fd) override {
+    if (xmpp_client_ && xmpp_client_->GetFileDescriptor() == fd) {
+      xmpp_client_->Read();
+    }
+  }
+
+  void OnFileCanWriteWithoutBlocking(int fd) override {
+    LOG(FATAL) << "No write watcher is configured";
+  }
 
   // Returns the authorization HTTP header that can be used to talk
   // to GCD server for authenticated device communication.
@@ -179,6 +191,9 @@ class DeviceRegistrationInfo {
   std::unique_ptr<base::DictionaryValue> BuildDeviceResource(
       chromeos::ErrorPtr* error);
 
+  std::unique_ptr<XmppClient> xmpp_client_;
+  base::MessageLoopForIO::FileDescriptorWatcher fd_watcher_;
+
   std::string client_id_;
   std::string client_secret_;
   std::string api_key_;
@@ -187,16 +202,16 @@ class DeviceRegistrationInfo {
   std::string device_robot_account_;
   std::string oauth_url_;
   std::string service_url_;
-
-  // Transient data
-  std::string access_token_;
-  base::Time access_token_expiration_;
-  std::string ticket_id_;
   std::string device_kind_;
   std::string name_;
   std::string display_name_;
   std::string description_;
   std::string location_;
+
+  // Transient data
+  std::string access_token_;
+  base::Time access_token_expiration_;
+  std::string ticket_id_;
 
   // HTTP transport used for communications.
   std::shared_ptr<chromeos::http::Transport> transport_;

@@ -326,12 +326,24 @@ bool DeviceRegistrationInfo::ValidateAndRefreshAccessToken(
                            "Access token unavailable");
     return false;
   }
-
   access_token_expiration_ = base::Time::Now() +
                              base::TimeDelta::FromSeconds(expires_in);
-
   LOG(INFO) << "Access token is refreshed for additional " << expires_in
             << " seconds.";
+
+  // If no MessageLoop assume we're in unittests.
+  if (base::MessageLoop::current()) {
+    std::unique_ptr<XmppConnection> connection(new XmppConnection());
+    CHECK(connection->Initialize()) << "Failed to connect to XMPP server";
+    xmpp_client_.reset(new XmppClient(device_robot_account_, access_token_,
+                                      std::move(connection)));
+    CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
+        xmpp_client_->GetFileDescriptor(), true,
+        base::MessageLoopForIO::WATCH_READ, &fd_watcher_, this))
+        << "Failed to watch XMPP file descriptor";
+    xmpp_client_->StartStream();
+  }
+
   return true;
 }
 

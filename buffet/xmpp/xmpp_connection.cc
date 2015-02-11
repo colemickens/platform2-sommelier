@@ -56,12 +56,12 @@ bool XmppConnection::Read(std::string* msg) const {
     return false;
   }
   *msg = std::string{buffer, static_cast<size_t>(bytes)};
-  VLOG(1) << "READ: (" << msg->size() << ")" << *msg;
+  LOG(INFO) << "Read: (" << msg->size() << ")" << *msg;
   return true;
 }
 
 bool XmppConnection::Write(const std::string& msg) const {
-  VLOG(1) << "WRITE: (" << msg.size() << ")" << msg;
+  LOG(INFO) << "Write: (" << msg.size() << ")" << msg;
   if (!base::WriteFileDescriptor(fd_, msg.c_str(), msg.size())) {
     LOG(WARNING) << "Failure writing";
     return false;
