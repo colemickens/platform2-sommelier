@@ -181,6 +181,9 @@ class PropertyStoreTest : public testing::TestWithParam<::DBus::Variant> {
   EventDispatcher *dispatcher() { return &dispatcher_; }
   MockGLib *glib() { return &glib_; }
   MockMetrics *metrics() { return &metrics_; }
+  const std::vector<Technology::Identifier> &default_technology_order() {
+    return default_technology_order_;
+  }
 
   const std::string &run_path() const { return path_; }
   const std::string &storage_path() const { return path_; }
@@ -199,6 +202,7 @@ class PropertyStoreTest : public testing::TestWithParam<::DBus::Variant> {
   EventDispatcher dispatcher_;
   testing::NiceMock<MockMetrics> metrics_;
   MockGLib glib_;
+  const std::vector<Technology::Identifier> default_technology_order_;
   Manager manager_;
 };
 

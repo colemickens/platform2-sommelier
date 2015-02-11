@@ -23,6 +23,7 @@
 using base::Bind;
 using base::Unretained;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -32,7 +33,8 @@ static string ObjectID(Daemon *d) { return "(shill_daemon)"; }
 }
 
 
-Daemon::Daemon(Config *config, ControlInterface *control)
+Daemon::Daemon(Config *config, ControlInterface *control,
+               const vector<Technology::Identifier> &default_technology_order)
     : config_(config),
       control_(control),
       metrics_(new Metrics(&dispatcher_)),
@@ -47,7 +49,8 @@ Daemon::Daemon(Config *config, ControlInterface *control)
                            &glib_,
                            config->GetRunDirectory(),
                            config->GetStorageDirectory(),
-                           config->GetUserStorageDirectory())),
+                           config->GetUserStorageDirectory(),
+                           default_technology_order)),
       callback80211_metrics_(metrics_.get()) {
 }
 

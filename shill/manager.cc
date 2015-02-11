@@ -100,7 +100,8 @@ Manager::Manager(ControlInterface *control_interface,
                  GLib *glib,
                  const string &run_directory,
                  const string &storage_directory,
-                 const string &user_storage_directory)
+                 const string &user_storage_directory,
+                 const vector<Technology::Identifier> &default_technology_order)
     : dispatcher_(dispatcher),
       run_path_(FilePath(run_directory)),
       storage_path_(FilePath(storage_directory)),
@@ -195,13 +196,8 @@ Manager::Manager(ControlInterface *control_interface,
                                   &Manager::UninitializedTechnologies);
   store_.RegisterBool(kWakeOnLanEnabledProperty, &is_wake_on_lan_enabled_);
 
-  // Set default technology order "by hand", to avoid invoking side
-  // effects of SetTechnologyOrder.
-  technology_order_.push_back(Technology::IdentifierFromName(kTypeVPN));
-  technology_order_.push_back(Technology::IdentifierFromName(kTypeEthernet));
-  technology_order_.push_back(Technology::IdentifierFromName(kTypeWifi));
-  technology_order_.push_back(Technology::IdentifierFromName(kTypeWimax));
-  technology_order_.push_back(Technology::IdentifierFromName(kTypeCellular));
+  // Do not invoke SetTechnologyOrder here because of its side effects.
+  technology_order_ = default_technology_order;
 
   UpdateProviderMapping();
 

@@ -19,6 +19,7 @@
 #include <chromeos/syslog_logging.h>
 
 #include "shill/dbus_control.h"
+#include "shill/error.h"
 #include "shill/glib_io_handler_factory.h"
 #include "shill/logging.h"
 #include "shill/net/io_handler_factory_container.h"
@@ -44,6 +45,8 @@ static const char kPortalList[] = "portal-list";
 // Remote service can instruct Shill to manage/unmanage devices through
 // org.chromium.flimflam.Manager's ClaimInterface/ReleaseInterface APIs.
 static const char kPassiveMode[] = "passive-mode";
+// Default priority order of the technologies.
+static const char kDefaultTechnologyOrder[] = "default-technology-order";
 // Flag that causes shill to show the help message and exit.
 static const char kHelp[] = "help";
 
@@ -65,7 +68,9 @@ static const char kHelpMessage[] = "\n"
     "  --portal-list=technology1,technology2\n"
     "    Specify technologies to perform portal detection on at startup.\n"
     "  --passive-mode\n"
-    "    Do not manage any devices by default\n";
+    "    Do not manage any devices by default\n"
+    "  --default-technology-order=technology1,technology2\n"
+    "    Specify the default priority order of the technologies.\n";
 }  // namespace switches
 
 namespace {
@@ -153,10 +158,34 @@ int main(int argc, char** argv) {
   shill::DBusControl* dbus_control = new shill::DBusControl();
   dbus_control->Init();
 
+  vector<shill::Technology::Identifier> technology_order;
+  if (cl->HasSwitch(switches::kDefaultTechnologyOrder)) {
+    shill::Error error;
+    string order_flag = cl->GetSwitchValueASCII(
+        switches::kDefaultTechnologyOrder);
+    if (!shill::Technology::GetTechnologyVectorFromString(
+        order_flag, &technology_order, &error)) {
+      LOG(ERROR) << "Invalid default technology order: [" << order_flag
+                 << "] Error: " << error.message();
+    }
+  }
+  if (technology_order.empty()) {
+    technology_order.push_back(
+        shill::Technology::IdentifierFromName(shill::kTypeVPN));
+    technology_order.push_back(
+        shill::Technology::IdentifierFromName(shill::kTypeEthernet));
+    technology_order.push_back(
+        shill::Technology::IdentifierFromName(shill::kTypeWifi));
+    technology_order.push_back(
+        shill::Technology::IdentifierFromName(shill::kTypeWimax));
+    technology_order.push_back(
+        shill::Technology::IdentifierFromName(shill::kTypeCellular));
+  }
+
   shill::Config config;
 
   // Passes ownership of dbus_control.
-  shill::Daemon daemon(&config, dbus_control);
+  shill::Daemon daemon(&config, dbus_control, technology_order);
 
   if (cl->HasSwitch(switches::kDeviceBlackList)) {
     vector<string> device_list;

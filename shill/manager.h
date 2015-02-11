@@ -89,7 +89,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
           GLib *glib,
           const std::string &run_directory,
           const std::string &storage_directory,
-          const std::string &user_storage_directory);
+          const std::string &user_storage_directory,
+          const std::vector<Technology::Identifier> &default_technology_order);
   virtual ~Manager();
 
   void AddDeviceToBlackList(const std::string &device_name);

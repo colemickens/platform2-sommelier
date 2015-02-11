@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
@@ -28,7 +29,8 @@ class RTNLHandler;
 
 class Daemon {
  public:
-  Daemon(Config *config, ControlInterface *control);
+  Daemon(Config *config, ControlInterface *control,
+         const std::vector<Technology::Identifier> &default_technology_order);
   ~Daemon();
 
   void AddDeviceToBlackList(const std::string &device_name);

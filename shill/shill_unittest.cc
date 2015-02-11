@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/cancelable_callback.h>
@@ -33,6 +34,7 @@ using base::Callback;
 using base::CancelableClosure;
 using base::Unretained;
 using base::WeakPtrFactory;
+using std::vector;
 
 using ::testing::Expectation;
 using ::testing::Gt;
@@ -183,7 +185,8 @@ class MockEventDispatchTester {
 class ShillDaemonTest : public Test {
  public:
   ShillDaemonTest()
-      : daemon_(&config_, new MockControl()),  // Passes ownership.
+      : daemon_(&config_, new MockControl(),
+                vector<Technology::Identifier>()),  // Passes ownership.
         metrics_(new MockMetrics(&daemon_.dispatcher_)),
         manager_(new MockManager(daemon_.control_.get(),
                                  &daemon_.dispatcher_,

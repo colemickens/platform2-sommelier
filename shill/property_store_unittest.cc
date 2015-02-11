@@ -79,13 +79,19 @@ PropertyStoreTest::PropertyStoreTest()
       invalid_prop_(kErrorResultInvalidProperty),
       path_(dir_.CreateUniqueTempDir() ? dir_.path().value() : ""),
       metrics_(dispatcher()),
+      default_technology_order_{Technology::kVPN,
+                                Technology::kEthernet,
+                                Technology::kWifi,
+                                Technology::kWiMax,
+                                Technology::kCellular},
       manager_(control_interface(),
                dispatcher(),
                metrics(),
                glib(),
                run_path(),
                storage_path(),
-               string()) {
+               string(),
+               default_technology_order()) {
 }
 
 PropertyStoreTest::~PropertyStoreTest() {}

@@ -617,7 +617,8 @@ TEST_F(ManagerTest, ServiceRegistration) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  string());
+                  string(),
+                  default_technology_order());
   ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
   ASSERT_TRUE(profile.get());
   AdoptProfile(&manager, profile);
@@ -670,7 +671,8 @@ TEST_F(ManagerTest, RegisterKnownService) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  string());
+                  string(),
+                  default_technology_order());
   ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
   ASSERT_TRUE(profile.get());
   AdoptProfile(&manager, profile);
@@ -703,7 +705,8 @@ TEST_F(ManagerTest, RegisterUnknownService) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  string());
+                  string(),
+                  default_technology_order());
   ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
   ASSERT_TRUE(profile.get());
   AdoptProfile(&manager, profile);
@@ -805,7 +808,8 @@ TEST_F(ManagerTest, MoveService) {
                   glib(),
                   run_path(),
                   storage_path(),
-                  string());
+                  string(),
+                  default_technology_order());
   scoped_refptr<MockService> s2(new MockService(control_interface(),
                                                 dispatcher(),
                                                 metrics(),
@@ -929,7 +933,8 @@ TEST_F(ManagerTest, CreateProfile) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value());
+                  temp_dir.path().value(),
+                  default_technology_order());
 
   // Invalid name should be rejected.
   EXPECT_EQ(Error::kInvalidArguments, TestCreateProfile(&manager, ""));
@@ -969,7 +974,8 @@ TEST_F(ManagerTest, PushPopProfile) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value());
+                  temp_dir.path().value(),
+                  default_technology_order());
   vector<ProfileRefPtr> &profiles = GetProfiles(&manager);
 
   // Pushing an invalid profile should fail.
@@ -1145,7 +1151,8 @@ TEST_F(ManagerTest, RemoveProfile) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value());
+                  temp_dir.path().value(),
+                  default_technology_order());
 
   const char kProfile0[] = "profile0";
   FilePath profile_path(
@@ -1259,7 +1266,8 @@ TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value());
+                  temp_dir.path().value(),
+                  default_technology_order());
 
   const char kProfile0[] = "profile0";
   FilePath profile_path(
@@ -4310,7 +4318,8 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value());
+                  temp_dir.path().value(),
+                  default_technology_order());
   // Can't use |wifi_provider_|, because it's owned by the Manager
   // object in the fixture.
   MockWiFiProvider *wifi_provider = new NiceMock<MockWiFiProvider>();
@@ -4366,7 +4375,8 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
                             &glib,
                             run_path(),
                             temp_dir.path().value(),
-                            temp_dir.path().value()));
+                            temp_dir.path().value(),
+                            default_technology_order()));
   manager->InitializeProfiles();
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager->props_.check_portal_list);
@@ -4393,7 +4403,8 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
                             &glib,
                             run_path(),
                             temp_dir.path().value(),
-                            temp_dir.path().value()));
+                            temp_dir.path().value(),
+                            default_technology_order()));
   manager->InitializeProfiles();
   EXPECT_EQ(kCustomCheckPortalList, manager->props_.check_portal_list);
 
@@ -4406,7 +4417,8 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
                             &glib,
                             run_path(),
                             temp_dir.path().value(),
-                            temp_dir.path().value()));
+                            temp_dir.path().value(),
+                            default_technology_order()));
   manager->InitializeProfiles();
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager->props_.check_portal_list);
@@ -4425,7 +4437,8 @@ TEST_F(ManagerTest, ProfileStackChangeLogging) {
                             &glib,
                             run_path(),
                             temp_dir.path().value(),
-                            temp_dir.path().value()));
+                            temp_dir.path().value(),
+                            default_technology_order()));
 
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
