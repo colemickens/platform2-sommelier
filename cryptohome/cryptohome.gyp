@@ -156,6 +156,9 @@
       'target_name': 'cryptohome',
       'type': 'executable',
       'dependencies': [
+        'cryptohome-dbus-client',
+        'cryptohome-proto',
+        'cryptohome-proto-external',
         'libcrostpm',
         'libcryptohome',
       ],
