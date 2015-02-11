@@ -60,11 +60,13 @@ int main(int argc, char* argv[]) {
                 "Path to file containing config information.");
   DEFINE_string(state_path, kDefaultStateFilePath,
                 "Path to file containing state information.");
+  chromeos::FlagHelper::Init(argc, argv, "Privet protocol handler daemon");
+
   if (FLAGS_config_path.empty())
     FLAGS_config_path = kDefaultConfigFilePath;
   if (FLAGS_state_path.empty())
     FLAGS_state_path = kDefaultStateFilePath;
-  chromeos::FlagHelper::Init(argc, argv, "Privet protocol handler daemon");
+
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
   buffet::Daemon daemon{base::FilePath{FLAGS_config_path},
                         base::FilePath{FLAGS_state_path}};
