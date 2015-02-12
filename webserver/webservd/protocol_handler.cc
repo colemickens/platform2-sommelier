@@ -137,38 +137,29 @@ std::string ProtocolHandler::FindRequestHandler(
   return handler_id;
 }
 
-bool ProtocolHandler::Start(uint16_t port) {
-  return StartWithTLS(port, {}, {}, {});
-}
-
-bool ProtocolHandler::StartWithTLS(
-    uint16_t port,
-    const chromeos::SecureBlob& private_key,
-    const chromeos::Blob& certificate,
-    const chromeos::Blob& certificate_fingerprint) {
+bool ProtocolHandler::Start(const Config::ProtocolHandler& config) {
   if (server_) {
     LOG(ERROR) << "Web server is already running.";
     return false;
   }
 
-  // Either both keys and certificate must be specified or both must be omitted.
-  CHECK_EQ(private_key.empty(), certificate.empty());
-  // Same with cert fingerprint.
-  CHECK_EQ(certificate.empty(), certificate_fingerprint.empty());
+  // If using TLS, the certificate, private key and fingerprint must be
+  // provided.
+  CHECK_EQ(config.use_tls, !config.private_key.empty());
+  CHECK_EQ(config.use_tls, !config.certificate.empty());
+  CHECK_EQ(config.use_tls, !config.certificate_fingerprint.empty());
 
-  const bool use_tls = !private_key.empty();
+  LOG(INFO) << "Starting " << (config.use_tls ? "HTTPS" : "HTTP")
+            << " Server on port: " << config.port;
 
-  LOG(INFO) << "Starting " << (use_tls ? "HTTPS" : "HTTP")
-            << " Server on port: " << port;
-
-  port_ = port;
-  protocol_ = (use_tls ? "https" : "http");
-  certificate_fingerprint_ = certificate_fingerprint;
+  port_ = config.port;
+  protocol_ = (config.use_tls ? "https" : "http");
+  certificate_fingerprint_ = config.certificate_fingerprint;
 
   auto callback_addr =
       reinterpret_cast<intptr_t>(&ServerHelper::RequestCompleted);
   uint32_t flags = MHD_NO_FLAG;
-  if (server_interface_->UseDebugInfo())
+  if (server_interface_->GetConfig().use_debug)
     flags |= MHD_USE_DEBUG;
 
   std::vector<MHD_OptionItem> options{
@@ -179,12 +170,12 @@ bool ProtocolHandler::StartWithTLS(
 
   // libmicrohttpd expects both the key and certificate to be zero-terminated
   // strings. Make sure they are terminated properly.
-  chromeos::SecureBlob private_key_copy = private_key;
-  chromeos::Blob certificate_copy = certificate;
+  chromeos::SecureBlob private_key_copy = config.private_key;
+  chromeos::Blob certificate_copy = config.certificate;
   private_key_copy.push_back(0);
   certificate_copy.push_back(0);
 
-  if (use_tls) {
+  if (config.use_tls) {
     flags |= MHD_USE_SSL;
     options.push_back(
         MHD_OptionItem{MHD_OPTION_HTTPS_MEM_KEY, 0, private_key_copy.data()});
@@ -194,11 +185,11 @@ bool ProtocolHandler::StartWithTLS(
 
   options.push_back(MHD_OptionItem{MHD_OPTION_END, 0, nullptr});
 
-  server_ = MHD_start_daemon(flags, port, nullptr, nullptr,
+  server_ = MHD_start_daemon(flags, config.port, nullptr, nullptr,
                              &ServerHelper::ConnectionHandler, this,
                              MHD_OPTION_ARRAY, options.data(), MHD_OPTION_END);
   if (!server_) {
-    LOG(ERROR) << "Failed to start the web server on port " << port;
+    LOG(ERROR) << "Failed to start the web server on port " << config.port;
     return false;
   }
   server_interface_->ProtocolHandlerStarted(this);

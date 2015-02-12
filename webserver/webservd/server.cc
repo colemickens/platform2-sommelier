@@ -24,16 +24,11 @@ using chromeos::dbus_utils::ExportedObjectManager;
 
 namespace webservd {
 
-Server::Server(ExportedObjectManager* object_manager,
-               uint16_t http_port,
-               uint16_t https_port,
-               bool debug)
+Server::Server(ExportedObjectManager* object_manager, const Config& config)
     : dbus_object_{new DBusObject{
           object_manager, object_manager->GetBus(),
           org::chromium::WebServer::ServerAdaptor::GetObjectPath()}},
-      http_port_{http_port},
-      https_port_{https_port},
-      debug_{debug} {
+      config_{config} {
   dbus_adaptor_.SetDefaultHttp(dbus::ObjectPath{"/"});
   dbus_adaptor_.SetDefaultHttps(dbus::ObjectPath{"/"});
 }
@@ -45,10 +40,10 @@ void Server::RegisterAsync(
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   dbus_adaptor_.RegisterWithDBusObject(dbus_object_.get());
 
-  if (http_port_)
-    CreateProtocolHandler(http_port_, ProtocolHandler::kHttp, false);
-  if (https_port_)
-    CreateProtocolHandler(https_port_, ProtocolHandler::kHttps, true);
+  InitTlsData();
+
+  for (const auto& pair : config_.protocol_handlers)
+    CreateProtocolHandler(pair.first, pair.second);
 
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed exporting Server.", true));
@@ -95,23 +90,13 @@ void Server::ProtocolHandlerStopped(ProtocolHandler* handler) {
       << "Unknown protocol handler";
 }
 
-void Server::CreateProtocolHandler(uint16_t port,
-                                   const std::string& id,
-                                   bool use_tls) {
+void Server::CreateProtocolHandler(
+    const std::string& id, const Config::ProtocolHandler& handler_config) {
   std::unique_ptr<ProtocolHandler> protocol_handler{
       new ProtocolHandler{id, this}};
 
-  if (use_tls) {
-    InitTlsData();
-    if (protocol_handler->StartWithTLS(port,
-                                       TLS_private_key_,
-                                       TLS_certificate_,
-                                       TLS_certificate_fingerprint_))
-      protocol_handlers_.emplace(id, std::move(protocol_handler));
-  } else {
-    if (protocol_handler->Start(port))
-      protocol_handlers_.emplace(id, std::move(protocol_handler));
-  }
+  if (protocol_handler->Start(handler_config))
+    protocol_handlers_.emplace(id, std::move(protocol_handler));
 }
 
 void Server::InitTlsData() {
@@ -119,7 +104,7 @@ void Server::InitTlsData() {
     return;  // Already initialized.
 
   // TODO(avakulenko): verify these constants and provide sensible values
-  // for the long-term.
+  // for the long-term. See brbug.com/227
   const int kKeyLengthBits = 1024;
   const base::TimeDelta kCertExpiration = base::TimeDelta::FromDays(365);
   const char kCommonName[] = "Brillo device";
@@ -151,6 +136,15 @@ void Server::InitTlsData() {
   TLS_certificate_ = StoreCertificate(cert.get());
   TLS_certificate_fingerprint_ = GetSha256Fingerprint(cert.get());
   TLS_private_key_ = std::move(private_key);
+
+  // Update the TLS data in protocol handler config.
+  for (auto& pair : config_.protocol_handlers) {
+    if (pair.second.use_tls) {
+      pair.second.certificate = TLS_certificate_;
+      pair.second.certificate_fingerprint = TLS_certificate_fingerprint_;
+      pair.second.private_key = TLS_private_key_;
+    }
+  }
 }
 
 }  // namespace webservd

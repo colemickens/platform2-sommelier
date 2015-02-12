@@ -60,7 +60,7 @@ void DBusRequestHandler::HandleRequest(Request* request) {
 
   auto error_callback = base::Bind(&OnError,
                                    base::Unretained(request),
-                                   server_->UseDebugInfo());
+                                   server_->GetConfig().use_debug);
 
   auto request_id = std::make_tuple(request->GetProtocolHandlerID(),
                                     request->GetRequestHandlerID(),

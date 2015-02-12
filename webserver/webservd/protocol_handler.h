@@ -15,6 +15,8 @@
 #include <base/strings/string_piece.h>
 #include <chromeos/secure_blob.h>
 
+#include "webserver/webservd/config.h"
+
 struct MHD_Daemon;
 
 namespace webservd {
@@ -47,13 +49,7 @@ class ProtocolHandler final {
   std::string FindRequestHandler(const base::StringPiece& url,
                                  const base::StringPiece& method) const;
   // Binds the socket and listens to HTTP requests on it.
-  bool Start(uint16_t port);
-
-  // Binds the socket and listens to HTTPS requests on it.
-  bool StartWithTLS(uint16_t port,
-                    const chromeos::SecureBlob& private_key,
-                    const chromeos::Blob& certificate,
-                    const chromeos::Blob& certificate_fingerprint);
+  bool Start(const Config::ProtocolHandler& config);
 
   // Stops listening for requests.
   bool Stop();

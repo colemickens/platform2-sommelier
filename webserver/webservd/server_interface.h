@@ -7,6 +7,8 @@
 
 #include <base/macros.h>
 
+#include "webserver/webservd/config.h"
+
 namespace webservd {
 
 class ProtocolHandler;
@@ -22,10 +24,8 @@ class ServerInterface {
   virtual void ProtocolHandlerStarted(ProtocolHandler* handler) = 0;
   virtual void ProtocolHandlerStopped(ProtocolHandler* handler) = 0;
 
-  // Helper method to obtain the Debug-Request flag. This flag controls
-  // additional logging from libmicrohttpd as well as more debug info sent
-  // to browser in case of an error response.
-  virtual bool UseDebugInfo() const = 0;
+  // Returns the server configuration data.
+  virtual const Config& GetConfig() const = 0;
 
  protected:
   // This interface should not be used to control the life-time of the class

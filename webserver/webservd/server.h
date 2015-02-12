@@ -33,9 +33,7 @@ class Server final : public org::chromium::WebServer::ServerInterface,
                      public ServerInterface {
  public:
   Server(chromeos::dbus_utils::ExportedObjectManager* object_manager,
-         uint16_t http_port,
-         uint16_t https_port,
-         bool debug);
+         const Config& config);
   // Need to off-line the destructor to allow |protocol_handler_map_| to contain
   // a forward-declared pointer to DBusProtocolHandler.
   ~Server();
@@ -49,21 +47,18 @@ class Server final : public org::chromium::WebServer::ServerInterface,
   // Overrides from webservd::ServerInterface.
   void ProtocolHandlerStarted(ProtocolHandler* handler) override;
   void ProtocolHandlerStopped(ProtocolHandler* handler) override;
-  bool UseDebugInfo() const override { return debug_; }
+  const Config& GetConfig() const override { return config_; }
 
   scoped_refptr<dbus::Bus> GetBus() { return dbus_object_->GetBus(); }
 
  private:
-  void CreateProtocolHandler(uint16_t port,
-                             const std::string& id,
-                             bool use_tls);
+  void CreateProtocolHandler(const std::string& id,
+                             const Config::ProtocolHandler& handler_config);
   void InitTlsData();
 
   org::chromium::WebServer::ServerAdaptor dbus_adaptor_{this};
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
-  uint16_t http_port_{0};
-  uint16_t https_port_{0};
-  bool debug_{false};
+  Config config_;
   int last_protocol_handler_index_{0};
   chromeos::Blob TLS_certificate_;
   chromeos::Blob TLS_certificate_fingerprint_;

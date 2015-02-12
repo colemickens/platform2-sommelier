@@ -75,10 +75,12 @@
         },
       },
       'sources': [
+        'webservd/config.cc',
         'webservd/dbus_bindings/org.chromium.WebServer.ProtocolHandler.xml',
         'webservd/dbus_bindings/org.chromium.WebServer.Server.xml',
         'webservd/dbus_protocol_handler.cc',
         'webservd/dbus_request_handler.cc',
+        'webservd/error_codes.cc',
         'webservd/protocol_handler.cc',
         'webservd/request.cc',
         'webservd/server.cc',
@@ -154,6 +156,7 @@
           ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'webservd/config_unittest.cc',
             'webservd/webservd_testrunner.cc',
           ],
         },

@@ -6,6 +6,7 @@
 #include <sysexits.h>
 
 #include <base/command_line.h>
+#include <base/files/file_util.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/daemons/dbus_daemon.h>
@@ -13,12 +14,14 @@
 #include <chromeos/minijail/minijail.h>
 #include <chromeos/syslog_logging.h>
 
+#include "webserver/webservd/config.h"
 #include "webserver/webservd/server.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 
 namespace {
 
+const char kDefaultConfigFilePath[] = "/etc/webservd/config";
 const char kServiceName[] = "org.chromium.WebServer";
 const char kRootServicePath[] = "/org/chromium/WebServer";
 const char kWebServerUserName[] = "webservd";
@@ -26,26 +29,19 @@ const char kWebServerGroupName[] = "webservd";
 
 class Daemon : public chromeos::DBusServiceDaemon {
  public:
-  Daemon(uint16_t http_port, uint16_t https_port, bool debug)
+  explicit Daemon(webservd::Config config)
       : DBusServiceDaemon{kServiceName, kRootServicePath},
-        http_port_{http_port},
-        https_port_{https_port},
-        debug_{debug} {}
+        config_{std::move(config)} {}
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    server_.reset(new webservd::Server{object_manager_.get(),
-                                       http_port_,
-                                       https_port_,
-                                       debug_});
+    server_.reset(new webservd::Server{object_manager_.get(), config_});
     server_->RegisterAsync(
         sequencer->GetHandler("Server.RegisterAsync() failed.", true));
   }
 
  private:
-  uint16_t http_port_{0};
-  uint16_t https_port_{0};
-  bool debug_{false};
+  webservd::Config config_;
   std::unique_ptr<webservd::Server> server_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
@@ -54,11 +50,9 @@ class Daemon : public chromeos::DBusServiceDaemon {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  DEFINE_int32(http_port, 80,
-               "HTTP port to listen for requests on (0 to disable)");
-  DEFINE_int32(https_port, 443,
-               "HTTPS port to listen for requests on (0 to disable)");
   DEFINE_bool(log_to_stderr, false, "log trace messages to stderr as well");
+  DEFINE_string(config_path, "",
+                "path to a file containing server configuration");
   DEFINE_bool(debug, false,
               "return debug error information in web requests");
   chromeos::FlagHelper::Init(argc, argv, "Brillo web server daemon");
@@ -68,19 +62,23 @@ int main(int argc, char* argv[]) {
     flags |= chromeos::kLogToStderr;
   chromeos::InitLog(flags | chromeos::kLogHeader);
 
-  if (FLAGS_http_port < 0 || FLAGS_http_port > 0xFFFF) {
-    LOG(ERROR) << "Invalid HTTP port specified: '" << FLAGS_http_port << "'.";
-    return EX_USAGE;
+  webservd::Config config;
+  base::FilePath default_file_path{kDefaultConfigFilePath};
+  if (!FLAGS_config_path.empty()) {
+    // In tests, we'll override the board specific and default configurations
+    // with a test specific configuration.
+    webservd::LoadConfigFromFile(base::FilePath{FLAGS_config_path}, &config);
+  } else if (base::PathExists(default_file_path)) {
+    // Some boards have a configuration they will want to use to override
+    // our defaults.  Part of our interface is to look for this in a
+    // standard location.
+    CHECK(webservd::LoadConfigFromFile(default_file_path, &config));
+  } else {
+    webservd::LoadDefaultConfig(&config);
   }
 
-  if (FLAGS_https_port < 0 || FLAGS_https_port > 0xFFFF) {
-    LOG(ERROR) << "Invalid HTTPS port specified: '" << FLAGS_https_port << "'.";
-    return EX_USAGE;
-  }
-
-  Daemon daemon{static_cast<uint16_t>(FLAGS_http_port),
-                static_cast<uint16_t>(FLAGS_https_port),
-                FLAGS_debug};
+  config.use_debug = FLAGS_debug;
+  Daemon daemon{std::move(config)};
 
   // Drop privileges and use 'webservd' user. We need to do this after Daemon
   // object is constructed since it creates an instance of base::AtExitManager
