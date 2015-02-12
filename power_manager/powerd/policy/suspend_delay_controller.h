@@ -30,7 +30,7 @@ class SuspendDelayObserver;
 // time to do last-minute cleanup.
 class SuspendDelayController {
  public:
-  explicit SuspendDelayController(int initial_delay_id);
+  SuspendDelayController(int initial_delay_id, const std::string& description);
   ~SuspendDelayController();
 
   bool ready_for_suspend() const { return delay_ids_being_waited_on_.empty(); }
@@ -82,6 +82,11 @@ class SuspendDelayController {
     std::string description;
   };
 
+  // Returns a substring to use in log messages to describe the types of
+  // suspends controlled by this object. If |description_| is non-empty,
+  // |description_| + " suspend"; otherwise, just "suspend".
+  std::string GetLogDescription() const;
+
   // Returns the human-readable description of |delay_id|.
   std::string GetDelayDescription(int delay_id) const;
 
@@ -109,6 +114,11 @@ class SuspendDelayController {
   // Map from delay ID to registered delay.
   typedef std::map<int, DelayInfo> DelayInfoMap;
   DelayInfoMap registered_delays_;
+
+  // Optional human-readable descriptor to include in log messages to
+  // distinguish between multiple controllers, e.g. "dark" for dark-suspend or
+  // "" for regular suspend.
+  std::string description_;
 
   // Next delay ID that will be returned in response to a call to
   // RegisterSuspendDelay().

@@ -71,13 +71,13 @@ void Suspender::Init(Delegate* delegate,
 
   const int initial_id = delegate_->GetInitialSuspendId();
   suspend_request_id_ = initial_id - 1;
-  suspend_delay_controller_.reset(new SuspendDelayController(initial_id));
+  suspend_delay_controller_.reset(new SuspendDelayController(initial_id, ""));
   suspend_delay_controller_->AddObserver(this);
 
   const int initial_dark_id = delegate_->GetInitialDarkSuspendId();
   dark_suspend_id_ = initial_dark_id - 1;
   dark_suspend_delay_controller_.reset(
-      new SuspendDelayController(initial_dark_id));
+      new SuspendDelayController(initial_dark_id, "dark"));
   dark_suspend_delay_controller_->AddObserver(this);
 
   int64_t retry_delay_ms = 0;

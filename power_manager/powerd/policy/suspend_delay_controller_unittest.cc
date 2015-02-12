@@ -56,7 +56,7 @@ class TestObserver : public SuspendDelayObserver {
 
 class SuspendDelayControllerTest : public ::testing::Test {
  public:
-  SuspendDelayControllerTest() : controller_(1) {
+  SuspendDelayControllerTest() : controller_(1, "") {
     controller_.AddObserver(&observer_);
   }
 
