@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -116,6 +117,19 @@ bool PermissionBroker::ReleaseTcpPort(uint16_t in_port,
 bool PermissionBroker::ReleaseUdpPort(uint16_t in_port,
                                       const std::string& in_interface) {
   return port_tracker_.ReleaseUdpPort(in_port, in_interface);
+}
+
+bool PermissionBroker::RequestVpnSetup(
+    const std::vector<std::string>& usernames,
+    const std::string& interface,
+    const dbus::FileDescriptor& in_lifeline_fd) {
+  return port_tracker_.ProcessVpnSetup(usernames,
+                                       interface,
+                                       in_lifeline_fd.value());
+}
+
+bool PermissionBroker::RemoveVpnSetup() {
+  return port_tracker_.RemoveVpnSetup();
 }
 
 }  // namespace permission_broker

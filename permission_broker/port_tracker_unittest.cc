@@ -205,4 +205,43 @@ TEST_F(PortTrackerTest, ReleaseUdpPortEpollFailure) {
   ASSERT_FALSE(port_tracker.ReleaseUdpPort(udp_port, interface));
 }
 
+TEST_F(PortTrackerTest, RequestVpnSetupSuccess) {
+  const std::string interface = "tun0";
+  const std::vector<std::string> usernames(1, "user");
+  const int kInvalidHandle = -1;
+
+  EXPECT_CALL(firewalld, RequestVpnSetup(usernames, interface, _, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+  ASSERT_EQ(port_tracker.vpn_lifeline_, kInvalidHandle);
+  ASSERT_TRUE(port_tracker.ProcessVpnSetup(usernames, interface, dbus_fd));
+  ASSERT_EQ(port_tracker.vpn_usernames_, usernames);
+  ASSERT_EQ(port_tracker.vpn_interface_, interface);
+  ASSERT_NE(port_tracker.vpn_lifeline_, kInvalidHandle);
+  // Setup should fail when called after setup.
+  ASSERT_FALSE(port_tracker.ProcessVpnSetup(usernames, interface, dbus_fd));
+
+  EXPECT_CALL(firewalld, RemoveVpnSetup(_, _, _, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+  ASSERT_TRUE(port_tracker.RemoveVpnSetup());
+  ASSERT_EQ(port_tracker.vpn_usernames_.size(), 0);
+  ASSERT_EQ(port_tracker.vpn_interface_.size(), 0);
+  ASSERT_EQ(port_tracker.vpn_lifeline_, kInvalidHandle);
+  // Cleanup should fail when called after cleanup.
+  ASSERT_FALSE(port_tracker.RemoveVpnSetup());
+}
+
+TEST_F(PortTrackerTest, RequestVpnSetupFailure) {
+  const std::string interface = "tun0";
+  const std::vector<std::string> usernames(1, "user");
+  const int kInvalidHandle = -1;
+
+  EXPECT_CALL(firewalld, RequestVpnSetup(usernames, interface, _, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(false)));
+  ASSERT_EQ(port_tracker.vpn_lifeline_, kInvalidHandle);
+  ASSERT_FALSE(port_tracker.ProcessVpnSetup(usernames, interface, dbus_fd));
+  ASSERT_EQ(port_tracker.vpn_usernames_.size(), 0);
+  ASSERT_EQ(port_tracker.vpn_interface_.size(), 0);
+  ASSERT_EQ(port_tracker.vpn_lifeline_, kInvalidHandle);
+}
+
 }  // namespace permission_broker

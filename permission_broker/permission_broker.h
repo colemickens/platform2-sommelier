@@ -8,6 +8,7 @@
 #include <dbus/dbus.h>
 
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
@@ -51,6 +52,10 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                       const std::string& in_interface) override;
   bool ReleaseUdpPort(uint16_t in_port,
                       const std::string& in_interface) override;
+  bool RequestVpnSetup(const std::vector<std::string>& usernames,
+                       const std::string& interface,
+                       const dbus::FileDescriptor& dbus_fd) override;
+  bool RemoveVpnSetup() override;
 
   RuleEngine rule_engine_;
   chromeos::dbus_utils::DBusObject dbus_object_;

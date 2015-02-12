@@ -8,6 +8,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
@@ -29,11 +30,19 @@ class PortTracker {
   bool ReleaseTcpPort(uint16_t port, const std::string& iface);
   bool ReleaseUdpPort(uint16_t port, const std::string& iface);
 
+  bool ProcessVpnSetup(const std::vector<std::string> &usernames,
+                       const std::string &interface,
+                       int dbus_fd);
+  bool RemoveVpnSetup();
+
  protected:
   PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
               org::chromium::FirewalldProxyInterface* firewalld);
 
  private:
+  FRIEND_TEST(PortTrackerTest, RequestVpnSetupSuccess);
+  FRIEND_TEST(PortTrackerTest, RequestVpnSetupFailure);
+
   // Helper functions for process lifetime tracking.
   virtual int AddLifelineFd(int dbus_fd);
   virtual bool DeleteLifelineFd(int fd);
@@ -41,6 +50,7 @@ class PortTracker {
   virtual void ScheduleLifelineCheck();
 
   bool PlugFirewallHole(int fd);
+  bool DeleteVpnRules();
 
   // epoll(7) helper functions.
   virtual bool InitializeEpollOnce();
@@ -58,6 +68,11 @@ class PortTracker {
   // |{tcp|udp}_holes_| each time.
   std::map<Hole, int> tcp_fds_;
   std::map<Hole, int> udp_fds_;
+
+  // Keep track of which fd corresponds to VPN rules.
+  int vpn_lifeline_;
+  std::vector<std::string> vpn_usernames_;
+  std::string vpn_interface_;
 
   // |firewalld_| is owned by the PermissionBroker object owning this instance
   // of PortTracker.
