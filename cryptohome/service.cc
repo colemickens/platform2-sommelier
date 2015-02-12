@@ -12,6 +12,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
@@ -78,6 +79,9 @@ const char kDefaultEntropySource[] = "/dev/urandom";
 const char kPreservedEnrollmentStatePath[] =
     "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb";
 const mode_t kPreservedEnrollmentStatePermissions = 0600;
+
+const char kAutoInitializeTpmSwitch[] = "auto_initialize_tpm";
+const char kRetainEndorsementDataSwitch[] = "retain_endorsement_data";
 
 // A helper function which maps an integer to a valid CertificateProfile.
 CertificateProfile GetProfile(int profile_value) {
@@ -374,7 +378,9 @@ bool Service::Initialize() {
   // Pass in all the shared dependencies here rather than
   // needing to always get the Attestation object to set them
   // during testing.
-  attestation_->Initialize(tpm_, tpm_init_, platform_, crypto_, install_attrs_);
+  attestation_->Initialize(tpm_, tpm_init_, platform_, crypto_, install_attrs_,
+                           CommandLine::ForCurrentProcess()->HasSwitch(
+                               kRetainEndorsementDataSwitch));
 
   // TODO(wad) Determine if this should only be called if
   //           tpm->IsEnabled() is true.
@@ -384,8 +390,12 @@ bool Service::Initialize() {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
     }
     chromeos::SecureBlob password;
-    if (tpm_init_->IsTpmReady() && tpm_init_->GetTpmPassword(&password))
+    if (tpm_init_->IsTpmReady() && tpm_init_->GetTpmPassword(&password)) {
       attestation_->PrepareForEnrollmentAsync();
+    }
+    if (CommandLine::ForCurrentProcess()->HasSwitch(kAutoInitializeTpmSwitch)) {
+      tpm_init_->AsyncInitializeTpm();
+    }
   }
 
   // Install the type-info for the service with dbus.
@@ -632,8 +642,9 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
 }
 
 void Service::InitializeTpmComplete(bool status, bool took_ownership) {
+  bool auto_initialize_tpm = CommandLine::ForCurrentProcess()->HasSwitch(
+      kAutoInitializeTpmSwitch);
   if (took_ownership) {
-    gboolean mounted = FALSE;
     ReportTimerStop(kTpmTakeOwnershipTimer);
     // When TPM initialization finishes, we need to tell every Mount to
     // reinitialize its TPM context, since the TPM is now useable, and we might
@@ -657,12 +668,6 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
     // Initialize the install-time locked attributes since we
     // can't do it prior to ownership.
     InitializeInstallAttributes(true);
-    // If we mounted before the TPM finished initialization, we must
-    // finalize the install attributes now too, otherwise it takes a
-    // full re-login cycle to finalize.
-    if (IsMounted(&mounted, NULL) && mounted &&
-        install_attrs_->is_first_install())
-      install_attrs_->Finalize();
   }
   // The event source will free this object
   TpmInitStatus* tpm_init_status = new TpmInitStatus();
@@ -672,6 +677,24 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
 
   // Do attestation work after AddEvent because it may take long.
   attestation_->PrepareForEnrollment();
+
+  // If we mounted before the TPM finished initialization, we must
+  // finalize the install attributes now too, otherwise it takes a
+  // full re-login cycle to finalize.
+  gboolean mounted = FALSE;
+  bool is_mounted = (IsMounted(&mounted, NULL) && mounted);
+  // If the --auto_initialize_tpm option is enabled we also want to finalize
+  // the install attributes.
+  if (((is_mounted && took_ownership) || auto_initialize_tpm) &&
+      install_attrs_->is_first_install()) {
+    install_attrs_->Finalize();
+  }
+
+  // If the --auto_initialize_tpm option is enabled we also want to clear the
+  // owner password asap.
+  if (auto_initialize_tpm) {
+    tpm_init_->ClearStoredTpmPassword();
+  }
 }
 
 gboolean Service::CheckKey(gchar *userid,
@@ -2865,8 +2888,9 @@ void Service::DoGetEndorsementInfo(const chromeos::SecureBlob& request,
   BaseReply reply;
   SecureBlob public_key;
   SecureBlob certificate;
-  if (tpm_->GetEndorsementPublicKey(&public_key) &&
-      tpm_->GetEndorsementCredential(&certificate)) {
+  if (attestation_->GetCachedEndorsementData(&public_key, &certificate) ||
+      (tpm_->GetEndorsementPublicKey(&public_key) &&
+       tpm_->GetEndorsementCredential(&certificate))) {
     GetEndorsementInfoReply* extension = reply.MutableExtension(
         GetEndorsementInfoReply::reply);
     extension->set_ek_public_key(public_key.to_string());

@@ -231,7 +231,8 @@ Attestation::Attestation()
       enterprise_test_key_(NULL),
       install_attributes_observer_(this),
       is_tpm_ready_(false),
-      is_prepare_in_progress_(false) {
+      is_prepare_in_progress_(false),
+      retain_endorsement_data_(false) {
 }
 
 Attestation::~Attestation() {
@@ -244,7 +245,8 @@ void Attestation::Initialize(Tpm* tpm,
                              TpmInit* tpm_init,
                              Platform* platform,
                              Crypto* crypto,
-                             InstallAttributes* install_attributes) {
+                             InstallAttributes* install_attributes,
+                             bool retain_endorsement_data) {
   base::AutoLock lock(lock_);
   // Inject dependencies.
   tpm_ = tpm;
@@ -255,6 +257,7 @@ void Attestation::Initialize(Tpm* tpm,
     install_attributes_ = install_attributes;
     install_attributes_observer_.Add(install_attributes_);
   }
+  retain_endorsement_data_ = retain_endorsement_data;
 
   if (tpm_) {
     ExtendPCR1IfClear();
@@ -310,7 +313,7 @@ void Attestation::PrepareForEnrollment() {
     return;
   if (IsPreparedForEnrollment())
     return;
-  if (install_attributes_->is_first_install()) {
+  if (!retain_endorsement_data_ && install_attributes_->is_first_install()) {
     LOG(INFO) << "Attestation: Waiting for install attributes to be finalized.";
     return;
   }
@@ -2015,14 +2018,20 @@ int Attestation::ChooseTemporalIndex(const std::string& user,
 }
 
 void Attestation::FinalizeEndorsementData() {
+  if (retain_endorsement_data_) {
+    return;
+  }
   // Only finalize endorsement data after install attributes are finalized.
-  if (install_attributes_->is_first_install())
+  if (install_attributes_->is_first_install()) {
     return;
-  if (!database_pb_.has_credentials())
+  }
+  if (!database_pb_.has_credentials()) {
     return;
+  }
   TPMCredentials* credentials = database_pb_.mutable_credentials();
-  if (!credentials->has_endorsement_credential())
+  if (!credentials->has_endorsement_credential()) {
     return;
+  }
   if (!credentials->has_default_encrypted_endorsement_credential()) {
     LOG(INFO) << "Attestation: Migrating endorsement data.";
     if (!EncryptEndorsementCredential(
@@ -2066,6 +2075,24 @@ bool Attestation::GetDelegateCredentials(chromeos::SecureBlob* blob,
   secret->swap(tmp_secret);
   *has_reset_lock_permissions =
       database_pb_.delegate().has_reset_lock_permissions();
+  return true;
+}
+
+bool Attestation::GetCachedEndorsementData(
+    chromeos::SecureBlob* ek_public_key,
+    chromeos::SecureBlob* ek_certificate) {
+  if (!database_pb_.has_credentials()) {
+    return false;
+  }
+  const TPMCredentials& credentials = database_pb_.credentials();
+  if (!credentials.has_endorsement_public_key() ||
+      !credentials.has_endorsement_credential()) {
+    return false;
+  }
+  SecureBlob tmp_public_key(credentials.endorsement_public_key());
+  ek_public_key->swap(tmp_public_key);
+  SecureBlob tmp_credential(credentials.endorsement_credential());
+  ek_certificate->swap(tmp_credential);
   return true;
 }
 

@@ -73,7 +73,8 @@ class AttestationTest : public testing::Test {
 
   virtual void Initialize() {
     attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-                            &install_attributes_);
+                            &install_attributes_,
+                            false /* retain_endorsement_data */);
   }
 
   virtual bool WriteDB(const string& db) {
@@ -299,7 +300,8 @@ TEST(AttestationTest_, NullTpm) {
   Crypto crypto(NULL);
   InstallAttributes install_attributes(NULL);
   Attestation without_tpm;
-  without_tpm.Initialize(NULL, NULL, NULL, &crypto, &install_attributes);
+  without_tpm.Initialize(NULL, NULL, NULL, &crypto, &install_attributes,
+                         false /* retain_endorsement_data */);
   without_tpm.PrepareForEnrollment();
   EXPECT_FALSE(without_tpm.IsPreparedForEnrollment());
   EXPECT_FALSE(without_tpm.Verify(false));
@@ -622,12 +624,38 @@ TEST_F(AttestationTest, FinalizeEndorsementData) {
 
   // Simulate second login.
   attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
-      &install_attributes_);
+      &install_attributes_, false /* retain_endorsement_data */);
   // Expect endorsement data to be no longer available.
   db = GetPersistentDatabase();
   EXPECT_TRUE(db.has_credentials() &&
               !db.credentials().has_endorsement_public_key() &&
               !db.credentials().has_endorsement_credential());
+}
+
+TEST_F(AttestationTest, RetainEndorsementData) {
+  // Simulate first login.
+  attestation_.PrepareForEnrollment();
+  // Expect endorsement data to be available.
+  AttestationDatabase db = GetPersistentDatabase();
+  EXPECT_TRUE(db.has_credentials() &&
+              db.credentials().has_endorsement_public_key() &&
+              db.credentials().has_endorsement_credential());
+
+  // Simulate second login.
+  attestation_.Initialize(&tpm_, &tpm_init_, &platform_, &crypto_,
+      &install_attributes_, true /* retain_endorsement_data */);
+  // Expect endorsement data to be still available.
+  db = GetPersistentDatabase();
+  EXPECT_TRUE(db.has_credentials() &&
+              db.credentials().has_endorsement_public_key() &&
+              db.credentials().has_endorsement_credential());
+
+  attestation_.FinalizeEndorsementData();
+  // Expect endorsement data to be still available.
+  db = GetPersistentDatabase();
+  EXPECT_TRUE(db.has_credentials() &&
+              db.credentials().has_endorsement_public_key() &&
+              db.credentials().has_endorsement_credential());
 }
 
 TEST_F(AttestationTest, CertChainWithNoIntermediateCA) {

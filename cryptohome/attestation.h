@@ -47,12 +47,15 @@ class Attestation : public base::PlatformThread::Delegate,
   Attestation();
   virtual ~Attestation();
 
-  // Must be called before any other method.
+  // Must be called before any other method. If |retain_endorsement_data| is set
+  // then this instance will not perform any finalization of endorsement data.
+  // That is, it will continue to be available in an unencrypted state.
   virtual void Initialize(Tpm* tpm,
                           TpmInit* tpm_init,
                           Platform* platform,
                           Crypto* crypto,
-                          InstallAttributes* install_attributes);
+                          InstallAttributes* install_attributes,
+                          bool retain_endorsement_data);
 
   // Returns true if the attestation enrollment blobs already exist.
   virtual bool IsPreparedForEnrollment();
@@ -333,6 +336,11 @@ class Attestation : public base::PlatformThread::Delegate,
                                       chromeos::SecureBlob* secret,
                                       bool* has_reset_lock_permissions);
 
+  // Provides cached |ek_public_key| and |ek_certificate| if they exist,
+  // otherwise returns false.
+  virtual bool GetCachedEndorsementData(chromeos::SecureBlob* ek_public_key,
+                                        chromeos::SecureBlob* ek_certificate);
+
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
     database_path_ = base::FilePath(path);
@@ -427,6 +435,7 @@ class Attestation : public base::PlatformThread::Delegate,
   // Don't use directly, use IsTPMReady() instead.
   bool is_tpm_ready_;
   bool is_prepare_in_progress_;
+  bool retain_endorsement_data_;
 
   // Serializes and encrypts an attestation database.
   bool EncryptDatabase(const AttestationDatabase& db,

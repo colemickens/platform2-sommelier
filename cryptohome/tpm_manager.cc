@@ -76,7 +76,8 @@ int TakeOwnership(bool finalize) {
   crypto.Init(&tpm_init);
   cryptohome::Attestation attestation;
   attestation.Initialize(tpm, &tpm_init, &platform, &crypto,
-                         &install_attributes);
+                         &install_attributes,
+                         true /* retain_endorsement_data */);
   attestation.PrepareForEnrollment();
   if (!attestation.IsPreparedForEnrollment()) {
     LOG(ERROR) << "Failed to initialize attestation.";
@@ -104,7 +105,8 @@ int VerifyEK(bool is_cros_core) {
   crypto.Init(&tpm_init);
   cryptohome::Attestation attestation;
   attestation.Initialize(tpm, &tpm_init, &platform, &crypto,
-                         &install_attributes);
+                         &install_attributes,
+                         true /* retain_endorsement_data */);
   if (!attestation.VerifyEK(is_cros_core)) {
     LOG(ERROR) << "Failed to verify TPM endorsement.";
     return -1;
@@ -155,7 +157,8 @@ int DumpStatus() {
   crypto.Init(&tpm_init);
   cryptohome::Attestation attestation;
   attestation.Initialize(tpm, &tpm_init, &platform, &crypto,
-                         &install_attributes);
+                         &install_attributes,
+                         true /* retain_endorsement_data */);
   status.set_attestation_prepared(attestation.IsPreparedForEnrollment());
   status.set_attestation_enrolled(attestation.IsEnrolled());
   status.set_verified_boot_measured(attestation.IsPCR0VerifiedMode());
