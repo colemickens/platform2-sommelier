@@ -138,10 +138,18 @@ void Manager::RegisterDevice(DBusMethodResponse<std::string> response,
                             pair.first, pair.second.Get<std::string>());
   }
   std::string device_id = device_info_->RegisterDevice(str_params, &error);
-  if (error)
-    response->ReplyWithError(error.get());
-  else
+  if (!device_id.empty()) {
     response->Return(device_id);
+    return;
+  }
+  if (!error) {
+    // TODO(zeuthen): This can be changed to CHECK(error) once
+    // RegisterDevice() has been fixed to set |error| when failing.
+    chromeos::Error::AddTo(&error, FROM_HERE, kErrorDomainGCD,
+                           "internal_error",
+                           "device_id empty but error not set");
+  }
+  response->ReplyWithError(error.get());
 }
 
 void Manager::UpdateState(DBusMethodResponse<> response,

@@ -388,8 +388,10 @@ std::string DeviceRegistrationInfo::RegisterDevice(
                                                      error);
   if (!json_resp)
     return std::string();
-  if (!response->IsSuccessful())
+  if (!response->IsSuccessful()) {
+    ParseGCDError(json_resp.get(), error);
     return std::string();
+  }
 
   url = GetServiceURL("registrationTickets/" + ticket_id_ +
                       "/finalize?key=" + api_key_);
