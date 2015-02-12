@@ -14,34 +14,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "installer/inst_util.h"
+
 using std::string;
-
-namespace {
-
-// A class to automatically close a pure file descriptor. A ScopedFileDescriptor
-// object can be treated as any regular file descriptor. You can call read(),
-// write(), etc. on these objects.
-// This is NOT the same as update_engine::ScopedFileDescriptorCloser because
-// that other class wraps an update_engine::FileDescriptor.
-class ScopedFileDescriptor {
- public:
-  explicit ScopedFileDescriptor(int fd) : fd_(fd) {}
-  virtual ~ScopedFileDescriptor() {
-    if (fd_ >= 0) {
-      if (close(fd_)) {
-        PLOG(ERROR) << "Cannot close file descriptor";
-      }
-    }
-  }
-  operator int() { return fd_; }
-
- private:
-  int fd_;
-
-  DISALLOW_COPY_AND_ASSIGN(ScopedFileDescriptor);
-};
-
-}  // namespace
 
 namespace chromeos {
 

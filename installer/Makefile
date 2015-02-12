@@ -25,6 +25,7 @@ CXX_STATIC_BINARY(cros_installer): \
 		cros_installer_main.o
 
 CXX_BINARY(nand_partition): \
+		inst_util.o \
 		nand_partition.o \
 		nand_partition_main.o
 CXX_BINARY(nand_partition): CXXFLAGS += $(PC_CFLAGS) -std=c++11

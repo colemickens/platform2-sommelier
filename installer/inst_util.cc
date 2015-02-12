@@ -6,6 +6,7 @@
 
 #include <ctype.h>
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <linux/fs.h>
 #include <stdarg.h>
@@ -27,6 +28,26 @@ using std::vector;
 
 // Used by LoggingTimerStart/Finish methods.
 static time_t START_TIME = 0;
+
+ScopedFileDescriptor::~ScopedFileDescriptor() {
+  if (fd_ >= 0) {
+    if (::close(fd_)) {
+      fprintf(stderr, "Cannot automatically close file descriptor: %s\n",
+              strerror(errno));
+    }
+  }
+}
+
+int ScopedFileDescriptor::release() {
+  int cur = fd_;
+  fd_ = -1;
+  return cur;
+}
+
+int ScopedFileDescriptor::close() {
+  int cur = release();
+  return ::close(cur);
+}
 
 // Start a logging timer. There can only be one active at a time.
 void LoggingTimerStart() {
@@ -457,7 +478,7 @@ bool R10FileSystemPatch(const string& dev_name) {
   // See bug chromium-os:11517. This fixes an old FS corruption problem.
   const int offset = 1400;
 
-  int fd = open(dev_name.c_str(), O_WRONLY);
+  ScopedFileDescriptor fd(open(dev_name.c_str(), O_WRONLY));
 
   if (fd == -1) {
     printf("Failed to open\n");
@@ -477,13 +498,13 @@ bool R10FileSystemPatch(const string& dev_name) {
     return false;
   }
 
-  return (close(fd) == 0);
+  return (fd.close() == 0);
 }
 
 bool MakeFileSystemRw(const string& dev_name, bool rw) {
   const int offset = 0x464 + 3;  // Set 'highest' byte
 
-  int fd = open(dev_name.c_str(), O_WRONLY);
+  ScopedFileDescriptor fd(open(dev_name.c_str(), O_WRONLY));
 
   if (fd == -1) {
     printf("Failed to open\n");
@@ -504,7 +525,7 @@ bool MakeFileSystemRw(const string& dev_name, bool rw) {
     return false;
   }
 
-  return (close(fd) == 0);
+  return (fd.close() == 0);
 }
 
 // hdparm -r 1 /device
