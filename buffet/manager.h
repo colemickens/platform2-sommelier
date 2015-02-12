@@ -50,6 +50,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   void RegisterAsync(
       const base::FilePath& config_path,
       const base::FilePath& state_path,
+      const base::FilePath& test_definitions_path,
       const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
  private:

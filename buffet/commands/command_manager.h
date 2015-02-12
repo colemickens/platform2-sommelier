@@ -70,10 +70,13 @@ class CommandManager final {
                     chromeos::ErrorPtr* error);
 
   // Startup method to be called by buffet daemon at startup.
-  // Initializes the object and loads the standard GCD command
-  // dictionary as well as static vendor-provided command definitions for
-  // the current device.
-  void Startup();
+  // Initializes the object and reads files in |definitions_path| to load
+  //   1) the standard GCD command dictionary
+  //   2) static vendor-provided command definitions
+  // If |test_definitions_path| is not empty, we'll also look there for
+  // additional commands.
+  void Startup(const base::FilePath& definitions_path,
+               const base::FilePath& test_definitions_path);
 
   // Adds a new command to the command queue.
   void AddCommand(std::unique_ptr<CommandInstance> command_instance);

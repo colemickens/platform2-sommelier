@@ -45,10 +45,12 @@ Manager::~Manager() {}
 void Manager::RegisterAsync(
     const base::FilePath& config_path,
     const base::FilePath& state_path,
+    const base::FilePath& test_definitions_path,
     const AsyncEventSequencer::CompletionAction& cb) {
   command_manager_ =
       std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
-  command_manager_->Startup();
+  command_manager_->Startup(base::FilePath{"/etc/buffet"},
+                            test_definitions_path);
   state_change_queue_ = std::unique_ptr<StateChangeQueue>(
       new StateChangeQueue(kMaxStateChangeQueueSize));
   state_manager_ = std::make_shared<StateManager>(state_change_queue_.get());

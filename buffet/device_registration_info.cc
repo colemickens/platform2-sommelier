@@ -34,17 +34,16 @@ const char buffet::kErrorDomainGCDServer[] = "gcd_server";
 namespace buffet {
 namespace storage_keys {
 
-// Statically configured fields
-const char kApiKey[]        = "api_key";
+// Persistent keys
 const char kClientId[]      = "client_id";
 const char kClientSecret[]  = "client_secret";
+const char kApiKey[]        = "api_key";
+const char kRefreshToken[]  = "refresh_token";
+const char kDeviceId[]      = "device_id";
 const char kOAuthURL[]      = "oauth_url";
 const char kServiceURL[]    = "service_url";
-// Credentials related to a particular registration.
-const char kDeviceId[]      = "device_id";
-const char kRefreshToken[]  = "refresh_token";
 const char kRobotAccount[]  = "robot_account";
-// Fields in our device metadata.
+// Transient keys
 const char kDeviceKind[]    = "device_kind";
 const char kName[]          = "name";
 const char kDisplayName[]   = "display_name";

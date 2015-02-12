@@ -24,10 +24,12 @@ namespace buffet {
 class Daemon : public DBusServiceDaemon {
  public:
   Daemon(const base::FilePath& config_path,
-         const base::FilePath& state_path)
+         const base::FilePath& state_path,
+         const base::FilePath& test_definitions_path)
       : DBusServiceDaemon(kServiceName, kRootServicePath),
         config_path_{config_path},
-        state_path_{state_path} {}
+        state_path_{state_path},
+        test_definitions_path_{test_definitions_path} {}
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
@@ -35,6 +37,7 @@ class Daemon : public DBusServiceDaemon {
     manager_->RegisterAsync(
         config_path_,
         state_path_,
+        test_definitions_path_,
         sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
   }
 
@@ -42,6 +45,7 @@ class Daemon : public DBusServiceDaemon {
   std::unique_ptr<buffet::Manager> manager_;
   const base::FilePath config_path_;
   const base::FilePath state_path_;
+  const base::FilePath test_definitions_path_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
@@ -60,15 +64,17 @@ int main(int argc, char* argv[]) {
                 "Path to file containing config information.");
   DEFINE_string(state_path, kDefaultStateFilePath,
                 "Path to file containing state information.");
+  DEFINE_string(test_definitions_path, "",
+                "Path to directory containing additional command "
+                "and state definitions.  For use in test only.");
   chromeos::FlagHelper::Init(argc, argv, "Privet protocol handler daemon");
-
   if (FLAGS_config_path.empty())
     FLAGS_config_path = kDefaultConfigFilePath;
   if (FLAGS_state_path.empty())
     FLAGS_state_path = kDefaultStateFilePath;
-
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
   buffet::Daemon daemon{base::FilePath{FLAGS_config_path},
-                        base::FilePath{FLAGS_state_path}};
+                        base::FilePath{FLAGS_state_path},
+                        base::FilePath{FLAGS_test_definitions_path}};
   return daemon.Run();
 }

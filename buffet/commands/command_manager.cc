@@ -60,26 +60,32 @@ bool CommandManager::LoadCommands(const base::FilePath& json_file_path,
   return LoadCommands(*json, category, error);
 }
 
-void CommandManager::Startup() {
+void CommandManager::Startup(const base::FilePath& definitions_path,
+                             const base::FilePath& test_definitions_path) {
   LOG(INFO) << "Initializing CommandManager.";
   // Load global standard GCD command dictionary.
-  base::FilePath base_command_file("/etc/buffet/gcd.json");
+  base::FilePath base_command_file{definitions_path.Append("gcd.json")};
   LOG(INFO) << "Loading standard commands from " << base_command_file.value();
   CHECK(LoadBaseCommands(base_command_file, nullptr))
       << "Failed to load the standard command definitions.";
 
-  // Load static device command definitions.
-  base::FilePath device_command_dir("/etc/buffet/commands");
-  base::FileEnumerator enumerator(device_command_dir, false,
-                                  base::FileEnumerator::FILES,
-                                  FILE_PATH_LITERAL("*.json"));
-  base::FilePath json_file_path = enumerator.Next();
-  while (!json_file_path.empty()) {
-    LOG(INFO) << "Loading command schema from " << json_file_path.value();
-    CHECK(LoadCommands(json_file_path, nullptr))
-        << "Failed to load the command definition file.";
-    json_file_path = enumerator.Next();
-  }
+  auto LoadPackages = [this](const base::FilePath& root,
+                             const base::FilePath::StringType& pattern) {
+    base::FilePath device_command_dir{root.Append("commands")};
+    VLOG(2) << "Looking for commands in " << root.value();
+    base::FileEnumerator enumerator(device_command_dir, false,
+                                    base::FileEnumerator::FILES,
+                                    pattern);
+    base::FilePath json_file_path = enumerator.Next();
+    while (!json_file_path.empty()) {
+      LOG(INFO) << "Loading command schema from " << json_file_path.value();
+      CHECK(this->LoadCommands(json_file_path, nullptr))
+          << "Failed to load the command definition file.";
+      json_file_path = enumerator.Next();
+    }
+  };
+  LoadPackages(definitions_path, FILE_PATH_LITERAL("*.json"));
+  LoadPackages(test_definitions_path, FILE_PATH_LITERAL("*test.json"));
 }
 
 void CommandManager::AddCommand(
