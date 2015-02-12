@@ -1271,10 +1271,24 @@ bool Manager::UnloadService(vector<ServiceRefPtr>::iterator *service_iterator) {
 
 void Manager::UpdateService(const ServiceRefPtr &to_update) {
   CHECK(to_update);
-  LOG(INFO) << "Service " << to_update->unique_name() << " updated;"
-            << " state: " << Service::ConnectStateToString(to_update->state())
-            << " failure: "
-            << Service::ConnectFailureToString(to_update->failure());
+  bool is_interesting_state_change = false;
+  const auto &state_it = watched_service_states_.find(to_update->unique_name());
+  if (state_it != watched_service_states_.end()) {
+    is_interesting_state_change = (to_update->state() != state_it->second);
+  } else {
+    is_interesting_state_change = to_update->IsActive(nullptr);
+  }
+
+  string log_message = StringPrintf(
+      "Service %s updated; state: %s failure %s",
+      to_update->unique_name().c_str(),
+      Service::ConnectStateToString(to_update->state()),
+      Service::ConnectFailureToString(to_update->failure()));
+  if (is_interesting_state_change) {
+    LOG(INFO) << log_message;
+  } else {
+    SLOG(this, 2) << log_message;
+  }
   SLOG(this, 2) << "IsConnected(): " << to_update->IsConnected();
   SLOG(this, 2) << "IsConnecting(): " << to_update->IsConnecting();
   if (to_update->IsConnected()) {
@@ -2019,9 +2033,11 @@ RpcIdentifiers Manager::EnumerateCompleteServices(Error */*error*/) {
 
 RpcIdentifiers Manager::EnumerateWatchedServices(Error */*error*/) {
   RpcIdentifiers service_rpc_ids;
+  watched_service_states_.clear();
   for (const auto &service : services_) {
     if (service->IsVisible() && service->IsActive(nullptr)) {
       service_rpc_ids.push_back(service->GetRpcIdentifier());
+      watched_service_states_[service->unique_name()] = service->state();
     }
   }
   return service_rpc_ids;

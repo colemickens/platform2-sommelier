@@ -520,7 +520,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::vector<std::string> UninitializedTechnologies(Error *error);
   RpcIdentifiers EnumerateDevices(Error *error);
   RpcIdentifiers EnumerateProfiles(Error *error);
-  // TODO(cmasone): This should be implemented by filtering |services_|.
   RpcIdentifiers EnumerateWatchedServices(Error *error);
   std::string GetActiveProfileRpcIdentifier(Error *error);
   std::string GetCheckPortalList(Error *error);
@@ -750,6 +749,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Stores the state of the highest ranked connected service.
   std::string connection_state_;
+
+  // Stores the most recent state of all watched services.
+  std::map<std::string, Service::ConnectState> watched_service_states_;
 
   // Device claimer is a remote application/service that claim/release devices
   // from/to shill. To reduce complexity, only allow one device claimer at a

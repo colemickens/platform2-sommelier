@@ -2896,6 +2896,67 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistAutoConnect) {
   mock_service->set_profile(nullptr);
 }
 
+TEST_F(ManagerTest, UpdateServiceLogging) {
+  ScopedMockLog log;
+  MockServiceRefPtr mock_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  string updated_message = base::StringPrintf(
+      "Service %s updated;", mock_service->unique_name().c_str());
+
+  // An idle service should not create a log message by default.
+  EXPECT_CALL(*mock_service.get(), state())
+      .WillRepeatedly(Return(Service::kStateIdle));
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr(updated_message)))
+      .Times(0);
+  manager()->RegisterService(mock_service);
+  CompleteServiceSort();
+  manager()->UpdateService(mock_service);
+  CompleteServiceSort();
+  Mock::VerifyAndClearExpectations(mock_service.get());
+  Mock::VerifyAndClearExpectations(&log);
+
+  // A service leaving the idle state should create a log message.
+  EXPECT_CALL(*mock_service.get(), state())
+      .WillRepeatedly(Return(Service::kStateAssociating));
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr(updated_message)))
+      .Times(1);
+  manager()->UpdateService(mock_service.get());
+  CompleteServiceSort();
+  Mock::VerifyAndClearExpectations(&log);
+
+  // A service in a non-idle state should not create a log message if its
+  // state did not change.
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr(updated_message)))
+      .Times(0);
+  manager()->UpdateService(mock_service);
+  CompleteServiceSort();
+  Mock::VerifyAndClearExpectations(mock_service.get());
+  Mock::VerifyAndClearExpectations(&log);
+
+  // A service transitioning between two non-idle states should create
+  // a log message.
+  EXPECT_CALL(*mock_service.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr(updated_message)))
+      .Times(1);
+  manager()->UpdateService(mock_service.get());
+  CompleteServiceSort();
+  Mock::VerifyAndClearExpectations(mock_service.get());
+  Mock::VerifyAndClearExpectations(&log);
+
+  // A service transitioning from a non-idle state to idle should create
+  // a log message.
+  EXPECT_CALL(*mock_service.get(), state())
+      .WillRepeatedly(Return(Service::kStateIdle));
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _, HasSubstr(updated_message)))
+      .Times(1);
+  manager()->UpdateService(mock_service.get());
+  CompleteServiceSort();
+}
+
 TEST_F(ManagerTest, SaveSuccessfulService) {
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(
