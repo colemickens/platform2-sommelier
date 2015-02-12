@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/macros.h>
 #include <chromeos/errors/error.h>
@@ -32,6 +33,11 @@ class IpTables : public org::chromium::FirewalldInterface {
   bool PunchUdpHole(uint16_t in_port, const std::string& in_interface) override;
   bool PlugTcpHole(uint16_t in_port, const std::string& in_interface) override;
   bool PlugUdpHole(uint16_t in_port, const std::string& in_interface) override;
+
+  bool RequestVpnSetup(const std::vector<std::string>& usernames,
+                       const std::string& interface) override;
+  bool RemoveVpnSetup(const std::vector<std::string>& usernames,
+                      const std::string& interface) override;
 
  protected:
   // Test-only.
@@ -65,6 +71,18 @@ class IpTables : public org::chromium::FirewalldInterface {
                         ProtocolEnum protocol,
                         uint16_t port,
                         const std::string& interface);
+
+  bool ApplyVpnSetup(const std::vector<std::string>& usernames,
+                     const std::string& interface,
+                     bool add);
+
+  bool ApplyMasquerade(const std::string& interface,
+                       bool add);
+
+  bool ApplyMarkForUserTraffic(const std::string& user_name,
+                               bool add);
+
+  bool ApplyRuleForUserTraffic(bool add);
 
   std::string ip4_exec_path_;
   std::string ip6_exec_path_;

@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/process.h>
 
@@ -15,11 +16,17 @@ namespace {
 const char kIpTablesPath[] = "/sbin/iptables";
 const char kIp6TablesPath[] = "/sbin/ip6tables";
 
+const char kIpPath[] = "/bin/ip";
+
 // Interface names must be shorter than 'IFNAMSIZ' chars.
 // See http://man7.org/linux/man-pages/man7/netdevice.7.html
 // 'IFNAMSIZ' is 16 in recent kernels.
 // See http://lxr.free-electrons.com/source/include/uapi/linux/if.h#L26
 const size_t kInterfaceNameSize = 16;
+
+const char kMarkForUserTraffic[] = "1";
+
+const char kTableIdForUserTraffic[] = "1";
 
 bool IsValidInterfaceName(const std::string& iface) {
   // |iface| should be shorter than |kInterfaceNameSize| chars,
@@ -62,6 +69,16 @@ bool IpTables::PlugTcpHole(uint16_t in_port, const std::string& in_interface) {
 
 bool IpTables::PlugUdpHole(uint16_t in_port, const std::string& in_interface) {
   return PlugHole(in_port, in_interface, &udp_holes_, kProtocolUdp);
+}
+
+bool IpTables::RequestVpnSetup(const std::vector<std::string>& usernames,
+                               const std::string& interface) {
+  return ApplyVpnSetup(usernames, interface, true /* add */);
+}
+
+bool IpTables::RemoveVpnSetup(const std::vector<std::string>& usernames,
+                              const std::string& interface) {
+  return ApplyVpnSetup(usernames, interface, false /* delete */);
 }
 
 bool IpTables::PunchHole(uint16_t port,
@@ -221,6 +238,98 @@ bool IpTables::DeleteAcceptRule(const std::string& executable_path,
   iptables.AddArg("ACCEPT");
 
   return iptables.Run() == 0;
+}
+
+bool IpTables::ApplyVpnSetup(const std::vector<std::string>& usernames,
+                             const std::string& interface,
+                             bool add) {
+  bool return_value = true;
+
+  if (!ApplyRuleForUserTraffic(add)) {
+    LOG(ERROR) << (add ? "Adding" : "Removing")
+               << " rule for user traffic failed";
+    if (add)
+      return false;
+    return_value = false;
+  }
+
+  if (!ApplyMasquerade(interface, add)) {
+    LOG(ERROR) << (add ? "Adding" : "Removing")
+               << " masquerade failed for interface "
+               << interface;
+    if (add) {
+      ApplyRuleForUserTraffic(false);
+      return false;
+    }
+    return_value = false;
+  }
+
+  std::vector<std::string> added_usernames;
+  for (const auto& username : usernames) {
+    if (!ApplyMarkForUserTraffic(username, add)) {
+      LOG(ERROR) << (add ? "Adding" : "Removing")
+                 << " mark failed for user "
+                 << username;
+      if (add) {
+        ApplyVpnSetup(added_usernames, interface, false);
+        return false;
+      }
+      return_value = false;
+    }
+    if (add) {
+      added_usernames.push_back(username);
+    }
+  }
+
+  return return_value;
+}
+
+bool IpTables::ApplyMasquerade(const std::string& interface, bool add) {
+  chromeos::ProcessImpl iptables;
+  iptables.AddArg(ip4_exec_path_);
+  iptables.AddArg("-t");  // table
+  iptables.AddArg("nat");
+  iptables.AddArg(add ? "-A" : "-D");  // rule
+  iptables.AddArg("POSTROUTING");
+  iptables.AddArg("-o");  // output interface
+  iptables.AddArg(interface);
+  iptables.AddArg("-j");
+  iptables.AddArg("MASQUERADE");
+
+  return iptables.Run() == 0;
+}
+
+bool IpTables::ApplyMarkForUserTraffic(const std::string& user_name,
+                                       bool add) {
+  chromeos::ProcessImpl iptables;
+  iptables.AddArg(ip4_exec_path_);
+  iptables.AddArg("-t");  // table
+  iptables.AddArg("mangle");
+  iptables.AddArg(add ? "-A" : "-D");  // rule
+  iptables.AddArg("OUTPUT");
+  iptables.AddArg("-m");
+  iptables.AddArg("owner");
+  iptables.AddArg("--uid-owner");
+  iptables.AddArg(user_name);
+  iptables.AddArg("-j");
+  iptables.AddArg("MARK");
+  iptables.AddArg("--set-mark");
+  iptables.AddArg(kMarkForUserTraffic);
+
+  return iptables.Run() == 0;
+}
+
+bool IpTables::ApplyRuleForUserTraffic(bool add) {
+  chromeos::ProcessImpl ip;
+  ip.AddArg(kIpPath);
+  ip.AddArg("rule");
+  ip.AddArg(add ? "add" : "delete");
+  ip.AddArg("fwmark");
+  ip.AddArg(kMarkForUserTraffic);
+  ip.AddArg("table");
+  ip.AddArg(kTableIdForUserTraffic);
+
+  return ip.Run() == 0;
 }
 
 }  // namespace firewalld
