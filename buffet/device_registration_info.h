@@ -157,10 +157,17 @@ class DeviceRegistrationInfo {
 
   void PublishStateUpdates();
 
-  void GetParamValue(
+  // Looks up the value for parameter with name |param_name| in
+  // |params|, supplying a default value if one is available and
+  // |params| doesn't have a value for |param_name|. The value will be
+  // returned in |param_value|. Returns |true| if a value was set
+  // (either from |params| or a default), |false| otherwise and
+  // |error| will be set.
+  bool GetParamValue(
     const std::map<std::string, std::string>& params,
     const std::string& param_name,
-    std::string* param_value);
+    std::string* param_value,
+    chromeos::ErrorPtr* error);
 
   // Builds Cloud API devices collection REST resouce which matches
   // current state of the device including command definitions

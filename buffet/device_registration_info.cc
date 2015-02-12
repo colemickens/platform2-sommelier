@@ -350,33 +350,25 @@ std::unique_ptr<base::Value> DeviceRegistrationInfo::GetDeviceInfo(
   return std::unique_ptr<base::Value>(json.release());
 }
 
-bool CheckParam(const std::string& param_name,
-                const std::string& param_value,
-                chromeos::ErrorPtr* error) {
-  if (!param_value.empty())
-    return true;
-
-  chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
-                               "missing_parameter",
-                               "Parameter %s not specified",
-                               param_name.c_str());
-  return false;
-}
-
 std::string DeviceRegistrationInfo::RegisterDevice(
     const std::map<std::string, std::string>& params,
     chromeos::ErrorPtr* error) {
-  GetParamValue(params, "ticket_id", &ticket_id_);
-  GetParamValue(params, storage_keys::kClientId, &client_id_);
-  GetParamValue(params, storage_keys::kClientSecret, &client_secret_);
-  GetParamValue(params, storage_keys::kApiKey, &api_key_);
-  GetParamValue(params, storage_keys::kDeviceKind, &device_kind_);
-  GetParamValue(params, storage_keys::kName, &name_);
-  GetParamValue(params, storage_keys::kDisplayName, &display_name_);
-  GetParamValue(params, storage_keys::kDescription, &description_);
-  GetParamValue(params, storage_keys::kLocation, &location_);
-  GetParamValue(params, storage_keys::kOAuthURL, &oauth_url_);
-  GetParamValue(params, storage_keys::kServiceURL, &service_url_);
+  if (!GetParamValue(params, "ticket_id", &ticket_id_, error) ||
+      !GetParamValue(params, storage_keys::kClientId, &client_id_, error) ||
+      !GetParamValue(params, storage_keys::kClientSecret, &client_secret_,
+                     error) ||
+      !GetParamValue(params, storage_keys::kApiKey, &api_key_, error) ||
+      !GetParamValue(params, storage_keys::kDeviceKind, &device_kind_,
+                     error) ||
+      !GetParamValue(params, storage_keys::kName, &name_, error) ||
+      !GetParamValue(params, storage_keys::kDisplayName, &display_name_,
+                     error) ||
+      !GetParamValue(params, storage_keys::kDescription, &description_,
+                     error) ||
+      !GetParamValue(params, storage_keys::kLocation, &location_, error) ||
+      !GetParamValue(params, storage_keys::kOAuthURL, &oauth_url_, error) ||
+      !GetParamValue(params, storage_keys::kServiceURL, &service_url_, error))
+    return std::string();
 
   std::unique_ptr<base::DictionaryValue> device_draft =
       BuildDeviceResource(error);
@@ -804,18 +796,26 @@ void DeviceRegistrationInfo::PublishStateUpdates() {
       base::Bind(&IgnoreCloudResult), base::Bind(&IgnoreCloudError));
 }
 
-void DeviceRegistrationInfo::GetParamValue(
+bool DeviceRegistrationInfo::GetParamValue(
     const std::map<std::string, std::string>& params,
     const std::string& param_name,
-    std::string* param_value) {
+    std::string* param_value,
+    chromeos::ErrorPtr* error) {
   auto p = params.find(param_name);
   if (p != params.end()) {
     *param_value = p->second;
-    return;
+    return true;
   }
 
-  bool present = config_store_->GetString(param_name, param_value);
-  CHECK(present) << "No default for parameter " << param_name;
+  bool default_was_set = config_store_->GetString(param_name, param_value);
+  if (default_was_set)
+    return true;
+
+  chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
+                               "missing_parameter",
+                               "Parameter %s not specified",
+                               param_name.c_str());
+  return false;
 }
 
 }  // namespace buffet
