@@ -26,6 +26,11 @@ using std::string;
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kVPN;
+static string ObjectID(const VPNService *s) { return s->GetRpcIdentifier(); }
+}
+
 const char VPNService::kAutoConnNeverConnected[] = "never connected";
 const char VPNService::kAutoConnVPNAlreadyActive[] = "vpn already active";
 
@@ -68,7 +73,7 @@ void VPNService::Connect(Error *error, const char *reason) {
 }
 
 void VPNService::Disconnect(Error *error, const char *reason) {
-  LOG(INFO) << "Disconnect from service " << unique_name();
+  SLOG(this, 1) << "Disconnect from service " << unique_name();
   Service::Disconnect(error, reason);
   driver_->Disconnect();
 }

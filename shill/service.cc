@@ -312,7 +312,13 @@ void Service::Connect(Error */*error*/, const char *reason) {
 }
 
 void Service::Disconnect(Error */*error*/, const char *reason) {
-  LOG(INFO) << "Disconnecting from service " << unique_name_ << ": " << reason;
+  string log_message = base::StringPrintf(
+      "Disconnecting from service %s: %s", unique_name_.c_str(), reason);
+  if (IsActive(nullptr)) {
+    LOG(INFO) << log_message;
+  } else {
+    SLOG(this, 1) << log_message;
+  }
 }
 
 void Service::DisconnectWithFailure(ConnectFailure failure,
