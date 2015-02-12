@@ -702,14 +702,18 @@ void WiFiService::UpdateFromEndpoints() {
   WiFiRefPtr wifi;
   if (representative_endpoint) {
     wifi = representative_endpoint->device();
-    LOG(INFO)
-        << "Representative endpoint updated for service " << unique_name()
-        << ". "
-        << WiFi::LogSSID(representative_endpoint->ssid_string()) << ", "
-        << "bssid: " << representative_endpoint->bssid_string() << ", "
-        << "signal: " << representative_endpoint->signal_strength() << ", "
-        << "security: " << representative_endpoint->security_mode() << ", "
-        << "frequency: " << representative_endpoint->frequency();
+    if (bssid_ != representative_endpoint->bssid_string() ||
+        raw_signal_strength_ != representative_endpoint->signal_strength() ||
+        frequency_ != representative_endpoint->frequency()) {
+        LOG(INFO)
+            << "Representative endpoint updated for service " << unique_name()
+            << ". "
+            << WiFi::LogSSID(representative_endpoint->ssid_string()) << ", "
+            << "bssid: " << representative_endpoint->bssid_string() << ", "
+            << "signal: " << representative_endpoint->signal_strength() << ", "
+            << "security: " << representative_endpoint->security_mode() << ", "
+            << "frequency: " << representative_endpoint->frequency();
+    }
   } else if (IsConnected() || IsConnecting()) {
     LOG(WARNING) << "Service " << unique_name()
                  << " will disconnect due to no remaining endpoints.";
