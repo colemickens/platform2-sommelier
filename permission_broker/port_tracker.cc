@@ -48,7 +48,7 @@ bool PortTracker::ProcessTcpPort(uint16_t port, int dbus_fd) {
   tcp_ports_[lifeline_fd] = port;
 
   bool success;
-  firewalld_->PunchTcpHole(port, &success, nullptr);
+  firewalld_->PunchTcpHole(port, "", &success, nullptr);
   if (!success) {
     // If we fail to punch the hole in the firewall, stop tracking the lifetime
     // of the process.
@@ -73,7 +73,7 @@ bool PortTracker::ProcessUdpPort(uint16_t port, int dbus_fd) {
   udp_ports_[lifeline_fd] = port;
 
   bool success;
-  firewalld_->PunchUdpHole(port, &success, nullptr);
+  firewalld_->PunchUdpHole(port, "", &success, nullptr);
   if (!success) {
     // If we fail to punch the hole in the firewall, stop tracking the lifetime
     // of the process.
@@ -170,7 +170,7 @@ void PortTracker::PlugFirewallHole(int fd) {
   if (tcp_ports_.find(fd) != tcp_ports_.end()) {
     // It was a TCP port.
     port = tcp_ports_[fd];
-    firewalld_->PlugTcpHole(port, &success, nullptr);
+    firewalld_->PlugTcpHole(port, "", &success, nullptr);
     tcp_ports_.erase(fd);
     if (!success) {
       LOG(ERROR) << "Failed to plug hole for TCP port " << port;
@@ -178,7 +178,7 @@ void PortTracker::PlugFirewallHole(int fd) {
   } else if (udp_ports_.find(fd) != udp_ports_.end()) {
     // It was a UDP port.
     port = udp_ports_[fd];
-    firewalld_->PlugUdpHole(port, &success, nullptr);
+    firewalld_->PlugUdpHole(port, "", &success, nullptr);
     udp_ports_.erase(fd);
     if (!success) {
       LOG(ERROR) << "Failed to plug hole for UDP port " << port;

@@ -3,21 +3,25 @@
   <interface name="org.chromium.Firewalld">
     <method name="PunchTcpHole">
       <arg type="q" name="port" direction="in" />
+      <arg type="s" name="interface" direction="in"/>
       <arg type="b" name="success" direction="out" />
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="PunchUdpHole">
       <arg type="q" name="port" direction="in" />
+      <arg type="s" name="interface" direction="in"/>
       <arg type="b" name="success" direction="out" />
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="PlugTcpHole">
       <arg type="q" name="port" direction="in" />
+      <arg type="s" name="interface" direction="in"/>
       <arg type="b" name="success" direction="out" />
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="PlugUdpHole">
       <arg type="q" name="port" direction="in" />
+      <arg type="s" name="interface" direction="in"/>
       <arg type="b" name="success" direction="out" />
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
