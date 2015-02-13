@@ -4042,7 +4042,7 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokesOnDHCPLeaseObtained) {
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
-  ScopeLogger::GetInstance()->set_verbose_level(2);
+  ScopeLogger::GetInstance()->set_verbose_level(3);
   EXPECT_CALL(log, Log(_, _, HasSubstr("IPv4 DHCP lease obtained")));
   EXPECT_CALL(*wake_on_wifi_, OnDHCPLeaseObtained(_, _));
   EXPECT_CALL(*manager(), device_info()).WillOnce(Return(device_info()));

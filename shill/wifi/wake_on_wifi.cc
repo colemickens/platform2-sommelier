@@ -925,7 +925,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
     return;
   }
   if (wake_on_wifi_triggers_.empty()) {
-    LOG(INFO) << "No triggers to be programmed, so disable wake on WiFi";
+    SLOG(this, 1) << "No triggers to be programmed, so disable wake on WiFi";
     DisableWakeOnWiFi();
     return;
   }
@@ -1221,8 +1221,8 @@ void WakeOnWiFi::OnBeforeSuspend(
     const Closure &renew_dhcp_lease_callback,
     const Closure &remove_supplicant_networks_callback, bool have_dhcp_lease,
     uint32_t time_to_next_lease_renewal) {
-  LOG(INFO) << __func__ << ": "
-            << (is_connected ? "connected" : "not connected");
+  SLOG(this, 1) << __func__ << ": "
+                << (is_connected ? "connected" : "not connected");
 #if defined(DISABLE_WAKE_ON_WIFI)
   // Wake on WiFi disabled, so immediately report success.
   done_callback.Run(Error(Error::kSuccess));
@@ -1248,7 +1248,7 @@ void WakeOnWiFi::OnBeforeSuspend(
 }
 
 void WakeOnWiFi::OnAfterResume() {
-  LOG(INFO) << __func__;
+  SLOG(this, 1) << __func__;
 #if !defined(DISABLE_WAKE_ON_WIFI)
   wake_to_scan_timer_.Stop();
   dhcp_lease_renewal_timer_.Stop();
@@ -1268,9 +1268,9 @@ void WakeOnWiFi::OnDarkResume(
     const Closure &renew_dhcp_lease_callback,
     const Closure &initiate_scan_callback,
     const Closure &remove_supplicant_networks_callback) {
-  LOG(INFO) << __func__ << ": "
-            << (is_connected ? "connected" : "not connected")
-            << ", Wake reason " << last_wake_reason_;
+  SLOG(this, 1) << __func__ << ": "
+                << (is_connected ? "connected" : "not connected")
+                << ", Wake reason " << last_wake_reason_;
 #if defined(DISABLE_WAKE_ON_WIFI)
   done_callback.Run(Error(Error::kSuccess));
 #else
@@ -1351,7 +1351,7 @@ void WakeOnWiFi::BeforeSuspendActions(
     bool start_lease_renewal_timer,
     uint32_t time_to_next_lease_renewal,
     const Closure &remove_supplicant_networks_callback) {
-  SLOG(this, 3) << __func__ << ": "
+  SLOG(this, 1) << __func__ << ": "
                 << (is_connected ? "connected" : "not connected");
   // Note: No conditional compilation because all entry points to this functions
   // are already conditionally compiled based on DISABLE_WAKE_ON_WIFI.
@@ -1419,8 +1419,8 @@ void WakeOnWiFi::BeforeSuspendActions(
   if (!in_dark_resume_ && wake_on_wifi_triggers_.empty()) {
     // No need program NIC on normal resume in this case since wake on WiFi
     // would already have been disabled on the last (non-dark) resume.
-    LOG(INFO) << "No need to disable wake on WiFi on NIC in regular "
-                 "suspend";
+    SLOG(this, 1) << "No need to disable wake on WiFi on NIC in regular "
+                     "suspend";
     RunAndResetSuspendActionsDoneCallback(Error(Error::kSuccess));
     return;
   }
@@ -1484,7 +1484,7 @@ void WakeOnWiFi::OnDHCPLeaseObtained(bool start_lease_renewal_timer,
   SLOG(this, 3) << __func__;
   if (in_dark_resume_) {
 #if defined(DISABLE_WAKE_ON_WIFI)
-    SLOG(this, 2) << "Wake on WiFi not supported, so do nothing";
+    SLOG(this, 3) << "Wake on WiFi not supported, so do nothing";
 #else
     // If we obtain a DHCP lease, we are connected, so the callback to have
     // supplicant remove networks will not be invoked in
@@ -1493,7 +1493,7 @@ void WakeOnWiFi::OnDHCPLeaseObtained(bool start_lease_renewal_timer,
                          time_to_next_lease_renewal, base::Closure());
 #endif  // DISABLE_WAKE_ON_WIFI
   } else {
-    SLOG(this, 2) << "Not in dark resume, so do nothing";
+    SLOG(this, 3) << "Not in dark resume, so do nothing";
   }
 }
 

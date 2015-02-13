@@ -1812,14 +1812,18 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // already have been disabled on the NIC on a previous resume.
   EXPECT_CALL(*this, DoneCallback(_)).Times(1);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  ScopeLogger::GetInstance()->EnableScopesByName("wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(1);
   EXPECT_CALL(
       log,
-      Log(logging::LOG_INFO, _,
+      Log(_, _,
           HasSubstr(
               "No need to disable wake on WiFi on NIC in regular suspend")));
   BeforeSuspendActions(is_connected, start_lease_renewal_timer,
                        kTimeToNextLeaseRenewalLong);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
+  ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
+  ScopeLogger::GetInstance()->set_verbose_level(0);
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
@@ -3040,7 +3044,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   ScopedMockLog log;
   const bool start_lease_renewal_timer = true;
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
-  ScopeLogger::GetInstance()->set_verbose_level(2);
+  ScopeLogger::GetInstance()->set_verbose_level(3);
 
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   SetInDarkResume(true);

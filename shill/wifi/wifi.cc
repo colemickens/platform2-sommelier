@@ -2896,7 +2896,7 @@ void WiFi::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,
                              bool new_lease_acquired) {
   Device::OnIPConfigUpdated(ipconfig, new_lease_acquired);
   if (new_lease_acquired) {
-    SLOG(this, 2) << __func__ << ": "
+    SLOG(this, 3) << __func__ << ": "
                   << "IPv4 DHCP lease obtained";
     uint32_t time_to_next_lease_renewal;
     bool have_dhcp_lease =
@@ -2904,7 +2904,7 @@ void WiFi::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,
     wake_on_wifi_->OnDHCPLeaseObtained(have_dhcp_lease,
                                        time_to_next_lease_renewal);
   } else {
-    SLOG(this, 2) << __func__ << ": "
+    SLOG(this, 3) << __func__ << ": "
                   << "Gateway ARP received";
     // Do nothing since we are waiting until the DHCP lease is actually
     // obtained.
@@ -2914,7 +2914,7 @@ void WiFi::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,
 
 void WiFi::OnIPv6ConfigUpdated() {
   Device::OnIPv6ConfigUpdated();
-  SLOG(this, 2) << __func__ << ": " << "IPv6 configuration obtained";
+  SLOG(this, 3) << __func__ << ": " << "IPv6 configuration obtained";
   uint32_t time_to_next_lease_renewal;
   bool have_dhcp_lease =
       TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
