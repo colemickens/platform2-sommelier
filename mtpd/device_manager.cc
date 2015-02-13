@@ -244,6 +244,39 @@ bool DeviceManager::ReadFileChunk(const std::string& storage_name,
   return ReadFileChunk(mtp_device, file_id, offset, count, out);
 }
 
+bool DeviceManager::CopyFileFromLocal(const std::string& storage_name,
+                                      const uint32_t file_descriptor,
+                                      const uint32_t parent_id,
+                                      const std::string& file_name) {
+  // Get device.
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+
+  // Get file size.
+  struct stat file_stat;
+  if (fstat(file_descriptor, &file_stat) != 0)
+    return false;
+
+  // Create a new file
+  LIBMTP_file_t* const new_file = LIBMTP_new_file_t();
+  new_file->filename = strdup(file_name.c_str());
+  new_file->filesize = file_stat.st_size;
+  new_file->parent_id = parent_id;
+
+  // Transfer a file.
+  int transfer_status = LIBMTP_Send_File_From_File_Descriptor(
+      mtp_device,
+      file_descriptor,
+      new_file,
+      NULL,
+      NULL);
+
+  LIBMTP_destroy_file_t(new_file);
+  return transfer_status == 0;
+}
+
 bool DeviceManager::AddStorageForTest(const std::string& storage_name,
                                       const StorageInfo& storage_info) {
   std::string device_location;

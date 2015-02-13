@@ -150,6 +150,23 @@ std::vector<uint8_t> MtpdServer::ReadFileChunk(const std::string& handle,
   return file_contents;
 }
 
+void MtpdServer::CopyFileFromLocal(const std::string& handle,
+                                   const DBus::FileDescriptor& fileDescriptor,
+                                   const uint32_t& parentId,
+                                   const std::string& fileName,
+                                   DBus::Error& error) {
+  const std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty())
+    return InvalidHandle<void>(handle, &error);
+
+  if (!device_manager_.CopyFileFromLocal(storage_name,
+                                         fileDescriptor.get(),
+                                         parentId,
+                                         fileName)) {
+    error.set(kMtpdServiceError, "CopyFileFromLocal failed");
+  }
+}
+
 bool MtpdServer::IsAlive(DBus::Error& error) {
   return true;
 }

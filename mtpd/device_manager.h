@@ -96,6 +96,13 @@ class DeviceManager {
                      uint32_t count,
                      std::vector<uint8_t>* out);
 
+  // Copies file of |file_descriptor| to |file_name| in a folder |parent_id|.
+  // On success, returns true.
+  bool CopyFileFromLocal(const std::string& storage_name,
+                         const uint32_t file_descriptor,
+                         const uint32_t parent_id,
+                         const std::string& file_name);
+
  protected:
   // Used in testing to add dummy storages.
   // Returns whether the test storage has been successfully added.

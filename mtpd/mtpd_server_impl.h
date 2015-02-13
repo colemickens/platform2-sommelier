@@ -49,6 +49,11 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
                                      const uint32_t& offset,
                                      const uint32_t& count,
                                      DBus::Error& error) override;
+  void CopyFileFromLocal(const std::string& handle,
+                         const DBus::FileDescriptor& fileDescriptor,
+                         const uint32_t& parentId,
+                         const std::string& fileName,
+                         DBus::Error& error) override;
   bool IsAlive(DBus::Error& error) override;
 
   // DeviceEventDelegate implementation.
