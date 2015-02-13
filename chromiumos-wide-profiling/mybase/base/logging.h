@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <cstdlib>
 #include <iostream>  // NOLINT(readability/streams)
 #include <sstream>
 
@@ -32,6 +33,9 @@ class LOG {
 
   ~LOG() {
     std::cerr << ss_.str() << std::endl;
+    if (level_ <= FATAL) {
+      std::exit(EXIT_FAILURE);
+    }
   }
 
   template <class T> LOG& operator <<(const T& x) {
