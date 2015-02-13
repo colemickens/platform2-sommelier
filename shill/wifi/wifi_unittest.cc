@@ -675,6 +675,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   bool RemoveNetwork(const ::DBus::Path &network) {
     return wifi_->RemoveNetwork(network);
   }
+  map<string, ::DBus::Variant> CreateBSSProperties(const string &ssid,
+                                                   const string &bssid,
+                                                   int16_t signal_strength,
+                                                   uint16_t frequency,
+                                                   const char *mode);
   void RemoveBSS(const ::DBus::Path &bss_path);
   void ReportBSS(const ::DBus::Path &bss_path,
                  const string &ssid,
@@ -688,6 +693,16 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ReportIPConfigCompleteGatewayArpReceived() {
     wifi_->OnIPConfigUpdated(dhcp_config_, false);
   }
+
+  // Calls the delayed version of the BSS methods.
+  void BSSAdded(const ::DBus::Path &bss_path,
+                const map<string, ::DBus::Variant> &properties) {
+    wifi_->BSSAdded(bss_path, properties);
+  }
+  void BSSRemoved(const ::DBus::Path &bss_path) {
+    wifi_->BSSRemoved(bss_path);
+  }
+
   void ReportIPv6ConfigComplete() {
     wifi_->OnIPv6ConfigUpdated();
   }
@@ -1010,14 +1025,13 @@ void WiFiObjectTest::RemoveBSS(const ::DBus::Path &bss_path) {
   wifi_->BSSRemovedTask(bss_path);
 }
 
-void WiFiObjectTest::ReportBSS(const ::DBus::Path &bss_path,
-                             const string &ssid,
-                             const string &bssid,
-                             int16_t signal_strength,
-                             uint16_t frequency,
-                             const char *mode) {
+map<string, ::DBus::Variant> WiFiObjectTest::CreateBSSProperties(
+    const string &ssid,
+    const string &bssid,
+    int16_t signal_strength,
+    uint16_t frequency,
+    const char *mode) {
   map<string, ::DBus::Variant> bss_properties;
-
   {
     DBus::MessageIter writer(bss_properties["SSID"].writer());
     writer << vector<uint8_t>(ssid.begin(), ssid.end());
@@ -1036,7 +1050,19 @@ void WiFiObjectTest::ReportBSS(const ::DBus::Path &bss_path,
   bss_properties[WPASupplicant::kBSSPropertyFrequency].writer().
       append_uint16(frequency);
   bss_properties[WPASupplicant::kBSSPropertyMode].writer().append_string(mode);
-  wifi_->BSSAddedTask(bss_path, bss_properties);
+
+  return bss_properties;
+}
+
+void WiFiObjectTest::ReportBSS(const ::DBus::Path &bss_path,
+                             const string &ssid,
+                             const string &bssid,
+                             int16_t signal_strength,
+                             uint16_t frequency,
+                             const char *mode) {
+  wifi_->BSSAddedTask(
+      bss_path,
+      CreateBSSProperties(ssid, bssid, signal_strength, frequency, mode));
 }
 
 // Most of our tests involve using a real EventDispatcher object.
@@ -4141,6 +4167,42 @@ TEST_F(WiFiMainTest, TriggerPassiveScan) {
                                                   TriggerScanMessage::kCommand),
                                  _, _, _));
   TriggerPassiveScan();
+}
+
+TEST_F(WiFiMainTest, PendingScanEvents) {
+  // This test essentially performs ReportBSS(), but ensures that the
+  // WiFi object successfully dispatches events in order.
+  StartWiFi();
+  BSSAdded(
+      "bss0",
+      CreateBSSProperties("ssid0", "00:00:00:00:00:00", 0, 0,
+                          kNetworkModeInfrastructure));
+  BSSAdded(
+      "bss1",
+      CreateBSSProperties("ssid1", "00:00:00:00:00:01", 0, 0,
+                          kNetworkModeInfrastructure));
+  BSSRemoved("bss0");
+  BSSAdded(
+      "bss2",
+      CreateBSSProperties("ssid2", "00:00:00:00:00:02", 0, 0,
+                          kNetworkModeInfrastructure));
+
+  WiFiEndpointRefPtr ap0 = MakeEndpoint("ssid0", "00:00:00:00:00:00");
+  WiFiEndpointRefPtr ap1 = MakeEndpoint("ssid1", "00:00:00:00:00:01");
+  WiFiEndpointRefPtr ap2 = MakeEndpoint("ssid2", "00:00:00:00:00:02");
+
+  InSequence seq;
+  EXPECT_CALL(*wifi_provider(), OnEndpointAdded(EndpointMatch(ap0)));
+  EXPECT_CALL(*wifi_provider(), OnEndpointAdded(EndpointMatch(ap1)));
+  WiFiServiceRefPtr null_service;
+  EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(EndpointMatch(ap0)))
+      .WillOnce(Return(null_service));
+  EXPECT_CALL(*wifi_provider(), OnEndpointAdded(EndpointMatch(ap2)));
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(wifi_provider());
+
+  const WiFi::EndpointMap &endpoints_by_rpcid = GetEndpointMap();
+  EXPECT_EQ(2, endpoints_by_rpcid.size());
 }
 
 }  // namespace shill

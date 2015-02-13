@@ -266,6 +266,33 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     kScanFoundNothing
   };
 
+  // Result from a BSSAdded or BSSRemoved event.
+  struct ScanResult {
+    ScanResult() : is_removal(false) {}
+    ScanResult(const ::DBus::Path &path_in,
+               const std::map<std::string, ::DBus::Variant> &properties_in,
+               bool is_removal_in)
+        : path(path_in), properties(properties_in), is_removal(is_removal_in) {}
+    ::DBus::Path path;
+    std::map<std::string, ::DBus::Variant> properties;
+    bool is_removal;
+  };
+
+  struct PendingScanResults {
+    PendingScanResults() : is_complete(false) {}
+    explicit PendingScanResults(const base::Closure &process_results_callback)
+        : is_complete(false), callback(process_results_callback) {}
+
+    // List of pending scan results to process.
+    std::vector<ScanResult> results;
+
+    // If true, denotes that the scan is complete (ScanDone() was called).
+    bool is_complete;
+
+    // Cancelable closure used to process the scan results.
+    base::CancelableClosure callback;
+  };
+
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
   friend class WiFiTimerTest;  // kNumFastScanAttempts, kFastScanIntervalSeconds
   friend class WiFiMainTest;  // ScanState, ScanMethod
@@ -284,6 +311,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, LinkMonitorFailure);  // set_link_monitor()
   FRIEND_TEST(WiFiMainTest, NoScansWhileConnecting_FullScan);  // ScanState
   FRIEND_TEST(WiFiMainTest, NoScansWhileConnecting);  // ScanState
+  FRIEND_TEST(WiFiMainTest, PendingScanEvents);  // EndpointMap
   FRIEND_TEST(WiFiMainTest, ProgressiveScanConnectingToConnected);
   FRIEND_TEST(WiFiMainTest, ProgressiveScanConnectingToNotFound);
   FRIEND_TEST(WiFiMainTest, ProgressiveScanDuringFull);  // ScanState
@@ -543,6 +571,16 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // with the same name in WakeOnWiFi.
   void ReportConnectedToServiceAfterWake();
 
+  // Add a scan result to the list of pending scan results, and post a task
+  // for handling these results if one is not already running.
+  void AddPendingScanResult(
+    const ::DBus::Path &path,
+    const std::map<std::string, ::DBus::Variant> &properties,
+    bool is_removal);
+
+  // Callback invoked to handle pending scan results from AddPendingScanResult.
+  void PendingScanResultsHandler();
+
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider *provider_;
 
@@ -623,6 +661,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   size_t min_frequencies_to_scan_;
   size_t max_frequencies_to_scan_;
   bool scan_all_frequencies_;
+
+  // Holds the list of scan results waiting to be processed and a cancelable
+  // closure for processing the pending tasks in PendingScanResultsHandler().
+  std::unique_ptr<PendingScanResults> pending_scan_results_;
 
   // Fraction of previously seen scan frequencies to include in each
   // progressive scan batch (since the frequencies are sorted, the sum of the

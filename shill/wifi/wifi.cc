@@ -449,20 +449,30 @@ void WiFi::Scan(ScanType scan_type, Error */*error*/, const string &reason) {
   }
 }
 
+void WiFi::AddPendingScanResult(
+    const ::DBus::Path &path,
+    const map<string, ::DBus::Variant> &properties,
+    bool is_removal) {
+  if (!pending_scan_results_) {
+    pending_scan_results_.reset(new PendingScanResults(
+        Bind(&WiFi::PendingScanResultsHandler,
+             weak_ptr_factory_.GetWeakPtr())));
+    dispatcher()->PostTask(pending_scan_results_->callback.callback());
+  }
+  pending_scan_results_->results.emplace_back(path, properties, is_removal);
+}
+
 void WiFi::BSSAdded(const ::DBus::Path &path,
                     const map<string, ::DBus::Variant> &properties) {
   // Called from a D-Bus signal handler, and may need to send a D-Bus
   // message. So defer work to event loop.
-  dispatcher()->PostTask(Bind(&WiFi::BSSAddedTask,
-                              weak_ptr_factory_.GetWeakPtr(),
-                              path, properties));
+  AddPendingScanResult(path, properties, false);
 }
 
 void WiFi::BSSRemoved(const ::DBus::Path &path) {
   // Called from a D-Bus signal handler, and may need to send a D-Bus
   // message. So defer work to event loop.
-  dispatcher()->PostTask(Bind(&WiFi::BSSRemovedTask,
-                              weak_ptr_factory_.GetWeakPtr(), path));
+  AddPendingScanResult(path, {}, true);
 }
 
 void WiFi::Certification(const map<string, ::DBus::Variant> &properties) {
@@ -492,8 +502,12 @@ void WiFi::ScanDone() {
   // may require the the registration of new D-Bus objects. And such
   // registration can't be done in the context of a D-Bus signal
   // handler.
-  dispatcher()->PostTask(Bind(&WiFi::ScanDoneTask,
-                              weak_ptr_factory_.GetWeakPtr()));
+  if (pending_scan_results_) {
+    pending_scan_results_->is_complete = true;
+  } else {
+    dispatcher()->PostTask(Bind(&WiFi::ScanDoneTask,
+                                weak_ptr_factory_.GetWeakPtr()));
+  }
 }
 
 void WiFi::ConnectTo(WiFiService *service) {
@@ -1204,6 +1218,24 @@ bool WiFi::RemoveNetworkForService(const WiFiService *service, Error *error) {
   return true;
 }
 
+void WiFi::PendingScanResultsHandler() {
+  CHECK(pending_scan_results_);
+  SLOG(this, 2) << __func__ << " with " << pending_scan_results_->results.size()
+                << " results and is_complete set to "
+                << pending_scan_results_->is_complete;
+  for (const auto result : pending_scan_results_->results) {
+    if (result.is_removal) {
+      BSSRemovedTask(result.path);
+    } else {
+      BSSAddedTask(result.path, result.properties);
+    }
+  }
+  if (pending_scan_results_->is_complete) {
+    ScanDoneTask();
+  }
+  pending_scan_results_.reset();
+}
+
 void WiFi::BSSAddedTask(
     const ::DBus::Path &path,
     const map<string, ::DBus::Variant> &properties) {
@@ -1347,14 +1379,15 @@ void WiFi::ScanDoneTask() {
     metrics()->NotifyDarkResumeScanResultsReceived();
   }
   if (scan_session_) {
-    // Post |ProgressiveScanTask| so it runs after any |BSSAddedTask|s that have
-    // been posted.  This allows connections on new BSSes to be started before
-    // we decide whether to abort the progressive scan or continue scanning.
+    // Post |ProgressiveScanTask| so it runs after any pending scan results
+    // have been processed.  This allows connections on new BSSes to be
+    // started before we decide whether to abort the progressive scan or
+    // continue scanning.
     dispatcher()->PostTask(
         Bind(&WiFi::ProgressiveScanTask, weak_ptr_factory_.GetWeakPtr()));
   } else {
-    // Post |UpdateScanStateAfterScanDone| so it runs after any |BSSAddedTask|s
-    // that have been posted.  This allows connections on new BSSes to be
+    // Post |UpdateScanStateAfterScanDone| so it runs after any pending scan
+    // results have been processed.  This allows connections on new BSSes to be
     // started before we decide whether the scan was fruitful.
     dispatcher()->PostTask(Bind(&WiFi::UpdateScanStateAfterScanDone,
                                 weak_ptr_factory_.GetWeakPtr()));
