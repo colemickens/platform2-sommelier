@@ -364,6 +364,7 @@
         'metrics.cc',
         'passive_link_monitor.cc',
         'pending_activation_store.cc',
+        'permission_broker_proxy.cc',
         'portal_detector.cc',
         'power_manager.cc',
         'power_manager_proxy.cc',

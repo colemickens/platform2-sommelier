@@ -21,6 +21,8 @@
 namespace shill {
 
 class DeviceInfo;
+class PermissionBrokerProxyInterface;
+class ProxyFactory;
 class RTNLHandler;
 class Resolver;
 class RoutingTable;
@@ -93,6 +95,9 @@ class Connection : public base::RefCounted<Connection> {
   virtual const std::string &ipconfig_rpc_identifier() const {
     return ipconfig_rpc_identifier_;
   }
+
+  virtual bool SetupIptableEntries();
+  virtual bool TearDownIptableEntries();
 
   // Request to accept traffic routed to this connection even if it is not
   // the default.  This request is ref-counted so the caller must call
@@ -208,6 +213,9 @@ class Connection : public base::RefCounted<Connection> {
   Resolver *resolver_;
   RoutingTable *routing_table_;
   RTNLHandler *rtnl_handler_;
+
+  ProxyFactory* proxy_factory_;
+  std::unique_ptr<PermissionBrokerProxyInterface> permission_broker_;
 
   DISALLOW_COPY_AND_ASSIGN(Connection);
 };

@@ -111,14 +111,6 @@ class RoutingTable {
   // Flush the routing cache for all interfaces.
   virtual bool FlushCache();
 
-  virtual bool AddRuleForSecondaryTable(IPAddress::Family family,
-                                        uint8_t table_id,
-                                        uint32_t mark);
-
-  virtual bool DeleteRuleForSecondaryTable(IPAddress::Family family,
-                                           uint8_t table_id,
-                                           uint32_t mark);
-
   // Reset local state for this interface.
   virtual void ResetTable(int interface_index);
 

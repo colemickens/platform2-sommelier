@@ -28,6 +28,7 @@ class ModemManagerClassic;
 class ModemManagerProxyInterface;
 class ModemProxyInterface;
 class ModemSimpleProxyInterface;
+class PermissionBrokerProxyInterface;
 class PowerManagerProxyDelegate;
 class PowerManagerProxyInterface;
 class SupplicantBSSProxyInterface;
@@ -94,6 +95,8 @@ class ProxyFactory {
   virtual UpstartProxyInterface *CreateUpstartProxy();
 
   virtual DHCPProxyInterface *CreateDHCPProxy(const std::string &service);
+
+  virtual PermissionBrokerProxyInterface *CreatePermissionBrokerProxy();
 
 #if !defined(DISABLE_CELLULAR)
 

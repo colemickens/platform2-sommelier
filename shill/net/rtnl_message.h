@@ -28,7 +28,6 @@ class SHILL_EXPORT RTNLMessage {
     kTypeLink,
     kTypeAddress,
     kTypeRoute,
-    kTypeRule,
     kTypeRdnss,
     kTypeDnssl
   };
@@ -105,12 +104,6 @@ class SHILL_EXPORT RTNLMessage {
     unsigned char flags;
   };
 
-  struct RuleStatus {
-    RuleStatus() : table(0) {}
-    explicit RuleStatus(unsigned char table_in) : table(table_in) {}
-    unsigned char table;
-  };
-
   struct RdnssOption {
     RdnssOption()
         : lifetime(0) {}
@@ -162,10 +155,6 @@ class SHILL_EXPORT RTNLMessage {
   void set_route_status(const RouteStatus &route_status) {
     route_status_ = route_status;
   }
-  const RuleStatus &rule_status() const { return rule_status_; }
-  void set_rule_status(const RuleStatus &rule_status) {
-    rule_status_ = rule_status;
-  }
   const RdnssOption &rdnss_option() const { return rdnss_option_; }
   void set_rdnss_option(const RdnssOption &rdnss_option) {
     rdnss_option_ = rdnss_option;
@@ -198,10 +187,6 @@ class SHILL_EXPORT RTNLMessage {
                                  Mode mode,
                                  rtattr **attr_data,
                                  int *attr_length);
-  SHILL_PRIVATE bool DecodeRule(const RTNLHeader *hdr,
-                                Mode mode,
-                                rtattr **attr_data,
-                                int *attr_length);
   SHILL_PRIVATE bool DecodeNdUserOption(const RTNLHeader *hdr,
                                         Mode mode,
                                         rtattr **attr_data,
@@ -212,7 +197,6 @@ class SHILL_EXPORT RTNLMessage {
   SHILL_PRIVATE bool EncodeLink(RTNLHeader *hdr) const;
   SHILL_PRIVATE bool EncodeAddress(RTNLHeader *hdr) const;
   SHILL_PRIVATE bool EncodeRoute(RTNLHeader *hdr) const;
-  SHILL_PRIVATE bool EncodeRule(RTNLHeader *hdr) const;
 
   Type type_;
   Mode mode_;
@@ -224,7 +208,6 @@ class SHILL_EXPORT RTNLMessage {
   LinkStatus link_status_;
   AddressStatus address_status_;
   RouteStatus route_status_;
-  RuleStatus rule_status_;
   RdnssOption rdnss_option_;
   std::unordered_map<uint16_t, ByteString> attributes_;
 

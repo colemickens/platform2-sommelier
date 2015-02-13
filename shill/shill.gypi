@@ -24,6 +24,7 @@
         '<(xml2cpp_in_dir)/org.chromium.flimflam.Profile.xml',
         '<(xml2cpp_in_dir)/org.chromium.flimflam.Service.xml',
         '<(xml2cpp_in_dir)/org.chromium.flimflam.Task.xml',
+        '../permission_broker/dbus_bindings/org.chromium.PermissionBroker.xml',
       ],
       'conditions': [
         ['USE_cellular == 1', {

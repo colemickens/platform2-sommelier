@@ -19,6 +19,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
+#include "shill/mock_permission_broker_proxy.h"
 #include "shill/mock_resolver.h"
 #include "shill/mock_routing_table.h"
 #include "shill/net/mock_rtnl_handler.h"
@@ -334,10 +335,13 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
       RequestRouteToHost(IsIPAddress(address1, address1.prefix()), -1,
                          kTestDeviceInterfaceIndex0, IsNonNullCallback(), 1))
       .WillOnce(Return(true));
-  EXPECT_CALL(routing_table_,
-              AddRuleForSecondaryTable(properties_.address_family, 1, 1));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
                                              IPConfig::kDefaultMTU));
+
+  MockPermissionBrokerProxy *permission_broker =
+      new MockPermissionBrokerProxy();
+  connection->permission_broker_.reset(permission_broker);
+  EXPECT_CALL(*permission_broker, RequestVpnSetup(_, _));
   properties_.user_traffic_only = true;
   properties_.exclusion_list.push_back(kExcludeAddress1);
   properties_.exclusion_list.push_back(kExcludeAddress2);
@@ -412,8 +416,7 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   connection->SetIsDefault(false);
   EXPECT_FALSE(connection->is_default());
   AddDestructorExpectations();
-  EXPECT_CALL(routing_table_,
-              DeleteRuleForSecondaryTable(properties_.address_family, 1, 1));
+  EXPECT_CALL(*permission_broker, RemoveVpnSetup());
 }
 
 TEST_F(ConnectionTest, AddConfigIPv6) {

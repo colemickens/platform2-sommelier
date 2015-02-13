@@ -6,7 +6,6 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <linux/fib_rules.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <netinet/ether.h>
@@ -492,33 +491,6 @@ bool RoutingTable::FlushCache() {
   }
 
   return ret;
-}
-
-bool RoutingTable::AddRuleForSecondaryTable(IPAddress::Family family,
-                                            uint8_t table_id, uint32_t mark) {
-  SLOG(this, 2) << base::StringPrintf(
-      "%s: family %d table %d mark %d", __func__, family, table_id, mark);
-
-  RTNLMessage message(RTNLMessage::kTypeRule, RTNLMessage::kModeAdd, 0, 0, 0, 0,
-                      family);
-  message.set_rule_status(RTNLMessage::RuleStatus(table_id));
-  message.SetAttribute(FRA_FWMARK, ByteString::CreateFromCPUUInt32(mark));
-
-  return rtnl_handler_->SendMessage(&message);
-}
-
-bool RoutingTable::DeleteRuleForSecondaryTable(IPAddress::Family family,
-                                               uint8_t table_id,
-                                               uint32_t mark) {
-  SLOG(this, 2) << base::StringPrintf(
-      "%s: family %d table %d mark %d", __func__, family, table_id, mark);
-
-  RTNLMessage message(RTNLMessage::kTypeRule, RTNLMessage::kModeDelete, 0, 0, 0,
-                      0, family);
-  message.set_rule_status(RTNLMessage::RuleStatus(table_id));
-  message.SetAttribute(FRA_FWMARK, ByteString::CreateFromCPUUInt32(mark));
-
-  return rtnl_handler_->SendMessage(&message);
 }
 
 bool RoutingTable::RequestRouteToHost(const IPAddress &address,

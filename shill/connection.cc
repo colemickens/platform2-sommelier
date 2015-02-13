@@ -14,6 +14,8 @@
 #include "shill/device_info.h"
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/permission_broker_proxy.h"
+#include "shill/proxy_factory.h"
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
 
@@ -104,6 +106,7 @@ Connection::Connection(int interface_index,
   SLOG(this, 2) << __func__ << "(" << interface_index << ", "
                 << interface_name << ", "
                 << Technology::NameFromIdentifier(technology) << ")";
+  proxy_factory_ = ProxyFactory::GetInstance();
 }
 
 Connection::~Connection() {
@@ -115,10 +118,7 @@ Connection::~Connection() {
   routing_table_->FlushRoutes(interface_index_);
   routing_table_->FlushRoutesWithTag(interface_index_);
   device_info_->FlushAddresses(interface_index_);
-  if (user_traffic_only_) {
-    routing_table_->DeleteRuleForSecondaryTable(local_.family(), table_id_,
-                                                kMarkForUserTraffic);
-  }
+  TearDownIptableEntries();
 }
 
 void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
@@ -217,8 +217,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   }
 
   if (user_traffic_only_) {
-    routing_table_->AddRuleForSecondaryTable(
-        properties.address_family, table_id_, kMarkForUserTraffic);
+    SetupIptableEntries();
   }
 
   // Install any explicitly configured routes at the default metric.
@@ -254,6 +253,26 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   local_ = local;
   gateway_ = gateway;
   has_broadcast_domain_ = !peer.IsValid();
+}
+
+bool Connection::SetupIptableEntries() {
+  if (!permission_broker_) {
+    permission_broker_.reset(proxy_factory_->CreatePermissionBrokerProxy());
+  }
+
+  std::vector<std::string> user_names;
+  user_names.push_back("chronos");
+
+  if (!permission_broker_->RequestVpnSetup(user_names, interface_name_)) {
+    LOG(ERROR) << "VPN iptables setup request failed.";
+    return false;
+  }
+
+  return true;
+}
+
+bool Connection::TearDownIptableEntries() {
+  return permission_broker_ ? permission_broker_->RemoveVpnSetup() : true;
 }
 
 void Connection::SetIsDefault(bool is_default) {

@@ -45,6 +45,8 @@ class MockProxyFactory : public ProxyFactory {
 
   MOCK_METHOD0(CreateUpstartProxy, UpstartProxyInterface *());
 
+  MOCK_METHOD0(CreatePermissionBrokerProxy, PermissionBrokerProxyInterface *());
+
 #if !defined(DISABLE_CELLULAR)
 
   MOCK_METHOD2(CreateDBusObjectManagerProxy,

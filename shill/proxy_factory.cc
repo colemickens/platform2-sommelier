@@ -8,6 +8,7 @@
 #include "shill/dbus_service_proxy.h"
 #include "shill/dhcpcd_proxy.h"
 #include "shill/logging.h"
+#include "shill/permission_broker_proxy.h"
 #include "shill/power_manager_proxy.h"
 #include "shill/shared_dbus_connection.h"
 #include "shill/supplicant/supplicant_bss_proxy.h"
@@ -114,6 +115,10 @@ DHCPProxyInterface *ProxyFactory::CreateDHCPProxy(const string &service) {
 
 UpstartProxyInterface *ProxyFactory::CreateUpstartProxy() {
   return new UpstartProxy(GetConnection());
+}
+
+PermissionBrokerProxyInterface *ProxyFactory::CreatePermissionBrokerProxy() {
+  return new PermissionBrokerProxy(GetConnection());
 }
 
 #if !defined(DISABLE_CELLULAR)
