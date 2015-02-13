@@ -21,10 +21,6 @@
 
 namespace {
 
-// Specify buffer size to be used to read files.
-// This is allocated on the stack, so make sure it's less than 16k.
-const int kFileReadSize = 1024;
-
 // Number of hex digits in a byte.
 const int kNumHexDigitsInByte = 2;
 
@@ -244,25 +240,6 @@ bool WriteDataToFile(const std::vector<char>& data, const string& filename) {
   out.seekp(0, std::ios::beg);
   out.write(&data[0], data.size());
   return out.good();
-}
-
-bool RunCommandAndGetStdout(const string& command, std::vector<char>* output) {
-  FILE* fp = popen(command.c_str(), "r");
-  if (!fp)
-    return false;
-
-  output->clear();
-  char buf[kFileReadSize];
-  while (!feof(fp)) {
-    size_t size_read = fread(buf, 1, sizeof(buf), fp);
-    size_t prev_size = output->size();
-    output->resize(prev_size + size_read);
-    memcpy(&(*output)[prev_size], buf, size_read);
-  }
-  if (pclose(fp))
-    return false;
-
-  return true;
 }
 
 void TrimWhitespace(string* str) {

@@ -15,6 +15,7 @@
 
 #include "chromiumos-wide-profiling/perf_serializer.h"
 #include "chromiumos-wide-profiling/quipper_proto.h"
+#include "chromiumos-wide-profiling/run_command.h"
 #include "chromiumos-wide-profiling/utils.h"
 
 using quipper::PerfDataProto;
@@ -46,30 +47,6 @@ enum {
   PERF_REPORT_SHARED_OBJECT,
   NUM_PERF_REPORT_FIELDS,
 };
-
-string GetPerfCommandString(const string& args, const string& filename) {
-  // Construct the commands.
-  string command = quipper::GetPerfPath() + " " + args;
-
-  // Redirecting stderr does lose warnings and errors, but serious errors should
-  // be caught by the return value of perf report.
-  command += filename + " 2>/dev/null";
-
-  return command;
-}
-
-// Constructs a set of args for perf to list build IDs.
-string GetPerfBuildIDArgs() {
-  const char* kPerfBuildIDArgs[] = {
-    "buildid-list",               // Tells perf to list the build IDs.
-    "--force",                    // Ignore file permissions.
-    "-i",                         // Specify the input file.
-  };
-  string args;
-  for (size_t i = 0; i < arraysize(kPerfBuildIDArgs); ++i)
-    args += string(kPerfBuildIDArgs[i]) + " ";
-  return args;
-}
 
 // Splits a character array by |delimiter| into a vector of strings tokens.
 void SplitString(const string& str,
@@ -173,15 +150,15 @@ bool CompareFileContents(const string& filename1, const string& filename2) {
 
 bool GetPerfBuildIDMap(const string& filename,
                        std::map<string, string>* output) {
-  // Try reading from an pre-generated report.  If it doesn't exist, call perf
+  // Try reading from a pre-generated report.  If it doesn't exist, call perf
   // buildid-list.
   std::vector<char> buildid_list;
   LOG(INFO) << filename + kBuildIDListExtension;
   if (!quipper::FileToBuffer(filename + kBuildIDListExtension, &buildid_list)) {
     buildid_list.clear();
-    string cmd = GetPerfCommandString(GetPerfBuildIDArgs(), filename);
-    if (!quipper::RunCommandAndGetStdout(cmd, &buildid_list)) {
-      LOG(ERROR) << "Failed to run command: " << cmd;
+    if (!RunCommand({GetPerfPath(), "buildid-list", "--force", "-i", filename},
+                    &buildid_list)) {
+      LOG(ERROR) << "Failed to run perf buildid-list";
       return false;
     }
   }
@@ -194,8 +171,7 @@ bool GetPerfBuildIDMap(const string& filename,
      7ac2d19f88118a4970adb48a84ed897b963e3fb7 /lib64/libpthread-2.15.so
   */
   output->clear();
-  for (size_t i = 0; i < lines.size(); ++i) {
-    string line = lines[i];
+  for (string line : lines) {
     TrimWhitespace(&line);
     size_t separator = line.find(' ');
     string build_id = line.substr(0, separator);
