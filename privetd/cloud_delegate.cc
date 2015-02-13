@@ -23,6 +23,9 @@ namespace {
 using chromeos::VariantDictionary;
 using chromeos::ErrorPtr;
 
+const int kMaxSetupRetries = 5;
+const int kFirstRetryTimeoutMs = 100;
+
 class CloudDelegateImpl : public CloudDelegate {
  public:
   CloudDelegateImpl(const scoped_refptr<dbus::Bus>& bus,
@@ -70,7 +73,7 @@ class CloudDelegateImpl : public CloudDelegate {
     cloud_id_.clear();
     base::MessageLoop::current()->PostTask(
         FROM_HERE, base::Bind(&CloudDelegateImpl::CallManagerRegisterDevice,
-                              weak_factory_.GetWeakPtr(), ticket_id));
+                              setup_weak_factory_.GetWeakPtr(), ticket_id, 0));
     on_changed_.Run();
     // Return true because we tried setup.
     return true;
@@ -79,7 +82,7 @@ class CloudDelegateImpl : public CloudDelegate {
   std::string GetCloudId() const override { return cloud_id_; }
 
  private:
-  void CallManagerRegisterDevice(const std::string& ticket_id) {
+  void CallManagerRegisterDevice(const std::string& ticket_id, int retries) {
     VariantDictionary params{
         {"ticket_id", ticket_id},
         {"display_name", device_->GetName()},
@@ -91,7 +94,15 @@ class CloudDelegateImpl : public CloudDelegate {
     // TODO(vitalybuka): async call with updating setup_state_ from result.
     if (!manager_proxy_.RegisterDevice(params, &cloud_id_, &error)) {
       LOG(ERROR) << "Failed to receive a response:" << error->GetMessage();
-      setup_state_ = SetupState(Error::kServerError);
+      if (retries >= kMaxSetupRetries) {
+        setup_state_ = SetupState(Error::kServerError);
+        return;
+      }
+      base::MessageLoop::current()->PostDelayedTask(
+          FROM_HERE,
+          base::Bind(&CloudDelegateImpl::CallManagerRegisterDevice,
+                     setup_weak_factory_.GetWeakPtr(), ticket_id, retries + 1),
+          base::TimeDelta::FromSeconds(kFirstRetryTimeoutMs * (1 << retries)));
       return;
     }
     VLOG(1) << "Device registered: " << cloud_id_ << std::endl;
@@ -115,7 +126,7 @@ class CloudDelegateImpl : public CloudDelegate {
   // Cloud ID if device is registered.
   std::string cloud_id_;
 
-  base::WeakPtrFactory<CloudDelegateImpl> weak_factory_{this};
+  base::WeakPtrFactory<CloudDelegateImpl> setup_weak_factory_{this};
 };
 
 }  // namespace
