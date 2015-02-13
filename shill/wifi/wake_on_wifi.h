@@ -39,6 +39,96 @@ class PropertyStore;
 class SetWakeOnPacketConnMessage;
 class WiFi;
 
+// |WakeOnWiFi| performs all wake on WiFi related tasks and logic (e.g.
+// suspend/dark resume/resume logic, NIC wowlan programming via nl80211), and
+// stores the state necessary to perform these actions.
+//
+// One of the most significant roles of |WakeOnWiFi| is performing the correct
+// actions before suspend, during dark resume, and after resume in order to
+// maintain system connectivity (if the relevant wake on WiFi features  are
+// supported and enabled). The state machines determining which actions are
+// performed in these situations are described below:
+//
+// OnBeforeSuspend
+// ================
+// This function is run when Manager announces an upcoming system suspend.
+//
+//         +--------------+
+//         |          Yes |   +----------------+
+// +-------+--------+     +-->|Renew DHCP Lease|
+// |  Connected &   |         +------+---------+
+// |holding expiring|                |
+// |  DHCP lease?   |                v
+// +------+---------+         +--------------------+
+//        |               +-> |BeforeSuspendActions|
+//        |           No  |   +--------------------+
+//        +---------------+
+//
+// OnDarkResume
+// =============
+// This function is run when Manager announces that the system has entered
+// dark resume and that there is an upcoming system suspend.
+//
+// +-------------+      +------------+     Unsupported     +----------+
+// |  Too many   +----->|Wake reason?+-------------------->|Connected?|
+// |dark resumes?|  No  +-++---------+                     +-+-----+--+
+// +------+------+        |       |                          |     |
+//        | Yes           |       | Disconnect/           No |     | Yes
+//        v               |       |    SSID                  |     |
+// +----------------+     |       v                          |     |
+// |  Disable Wake  |     |     +------------+               |     v
+// |   on WiFi &    |     |     |  Initiate  |<--------------+    +--------+
+// |report readiness|     |     |passive scan|                    |Get DHCP|
+// +----------------+     |     +-+----------+           +------->| Lease  |
+//                        |       | ScanDone         Yes |        +--+---+-+
+//    +-------------------+       v                      |           |   |
+//    | Pattern                 +-------------+      +---------+     |   |
+//    |                    No   | Any services| Yes  |Connected|     |   |
+//    |    +--------------------+available for+----->| to AP?  |     |   |
+//    |    |                    | autoconnect?|      +---+-----+     |   |
+//    |    |                    +-------------+          |           |   |
+//    |    |                                             |No         |   |
+//    v    v                                             |           |   |
+// +--------------------+       +-------+                |           |   |
+// |BeforeSuspendActions|<------+Timeout|<---------------+       No  |   |
+// +--------------------+       +-------+<---------------------------+   |
+//         ^                                                             |
+//         |                   +-------------------+                     |
+//         +-------------------+ OnIPConfigUpdated/|             Yes     |
+//                             |OnIPv6ConfigUpdated|<--------------------+
+//                             +-------------------+
+//
+// BeforeSuspendActions
+// =====================
+// This function is run immediately before the system reports suspend readiness
+// to Manager. This is the common "exit path" taken by OnBeforeSuspend and
+// OnDarkResume before suspending.
+//
+//            Yes   +----------------------------+                   +---------+
+//          +-----> |Set Wake on Disconnect flag,+--+    +-------+   |Report   |
+//          |       |Start Lease Renewal Timer*  |  |    |Program|   |Suspend  |
+//          |       +----------------------------+  +--> |  NIC  |   |Readiness|
+// +--------+-+                                     |    +-+-----+   +---------+
+// |Connected?|                                     |      |   ^        ^
+// +--------+-+                                     |      |   |Failed  |
+//          |                                       |      v   |        |Success
+//          |       +----------------------------+  |  +-------+---+    |
+//          +-----> |Set Wake on SSID flag,      +--+  |  Verify   +----+
+//            No    |Start Wake To Scan Timer**  |     |Programming|
+//                  +----------------------------+     +-----------+
+//
+// *  if necessary (as indicated by caller of BeforeSuspendActions).
+// ** if we want to whitelist more SSIDs than our NIC supports.
+//
+// OnAfterResume
+// ==============
+// This is run after Manager announces that the system has fully resumed from
+// suspend.
+//
+// Wake on WiFi is disabled on the NIC if it was enabled before suspend or
+// dark resume, and both the wake to scan timer and DHCP lease renewal timers
+// are stopped.
+
 class WakeOnWiFi {
  public:
   typedef std::pair<std::vector<uint8_t>, std::vector<uint32_t>>
@@ -94,9 +184,7 @@ class WakeOnWiFi {
   // Note: Assumes only one wakeup reason is received. If more than one is
   // received, the only first one parsed will be handled.
   virtual void OnWakeupReasonReceived(const NetlinkMessage &netlink_message);
-  // Performs pre-suspend actions relevant to wake on wireless functionality.
-  // Initiates DHCP lease renewal if there is a lease due to renewal soon,
-  // then calls WakeOnWiFi::BeforeSuspendActions.
+  // Performs pre-suspend actions relevant to wake on WiFi functionality.
   //
   // Arguments:
   //  - |is_connected|: whether the WiFi device is connected.
@@ -122,24 +210,6 @@ class WakeOnWiFi {
   // Performs post-resume actions relevant to wake on wireless functionality.
   virtual void OnAfterResume();
   // Performs and post actions to be performed in dark resume.
-  // When we wake up in dark resume and wake on WiFi is supported, we start a
-  // timeout timer, and do one of two things depending on whether the WiFi
-  // device is connected to a service:
-  //   - If the WiFi device is connected before suspend, initiate DHCP lease
-  //     renewal.
-  //   - Otherwise, WiFi device is not connected, so initiate a scan.
-  // There are two possible outcomes from these actions:
-  //   - A DHCP lease is obtained, either because of connection to a network
-  //     or successful lease renewal.
-  //   - The timer expires, so dark resume actions time out.
-  // In either case, WakeOnWiFi::BeforeSuspendActions is invoked asynchronously.
-  // If WiFi device is connected (in the case where we got the DHCP lease),
-  // we start the lease renewal timer, disable wake on SSID, and enable wake on
-  // disconnect. Otherwise, we stop the lease renewal timer, enable wake on
-  // SSID, disable wake on disconnect, and remove all networks from WPA
-  // supplicant. This is the same logic applied before regular suspend, and
-  // should ensure that the correct actions are taken both before regular
-  // suspend and suspend in dark resume to maintain connectivity.
   //
   // Arguments:
   //  - |is_connected|: whether the WiFi device is connected.
