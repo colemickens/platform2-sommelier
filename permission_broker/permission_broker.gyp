@@ -14,6 +14,7 @@
       'target_name': 'permission_broker_adaptors',
       'type': 'none',
       'variables': {
+        'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
         'dbus_adaptors_out_dir': 'include/permission_broker/dbus_adaptors',
       },
       'sources': [

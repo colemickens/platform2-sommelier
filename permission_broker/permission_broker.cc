@@ -47,18 +47,19 @@ const uint16_t kLinuxFoundationUsbVendorId = 0x1d6b;
 
 namespace permission_broker {
 
-PermissionBroker::PermissionBroker(const scoped_refptr<dbus::Bus>& bus,
-                                   const std::string& access_group_name,
-                                   const std::string& udev_run_path,
-                                   int poll_interval_msecs)
+PermissionBroker::PermissionBroker(
+    chromeos::dbus_utils::ExportedObjectManager* object_manager,
+    const std::string& access_group_name,
+    const std::string& udev_run_path,
+    int poll_interval_msecs)
     : org::chromium::PermissionBrokerAdaptor(this),
       rule_engine_(access_group_name, udev_run_path, poll_interval_msecs),
-      dbus_object_(nullptr,
-                   bus,
+      dbus_object_(object_manager,
+                   object_manager->GetBus(),
                    dbus::ObjectPath(kPermissionBrokerServicePath)),
       // Create the FirewalldProxy object here, that way the PortTracker object
       // doesn't need to know about D-Bus, which makes testing easier.
-      firewalld_(bus, firewalld::kServiceName),
+      firewalld_(object_manager->GetBus(), firewalld::kServiceName),
       // |firewalld_| is owned by PermissionBroker, the PortTracker object
       // will only call D-Bus methods.
       port_tracker_(&firewalld_) {

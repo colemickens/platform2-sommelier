@@ -13,10 +13,14 @@
 
 namespace permission_broker {
 
+const char kObjectServicePath[] =
+    "/org/chromium/PermissionBroker/ObjectManager";
+
 class Daemon : public chromeos::DBusServiceDaemon {
  public:
   Daemon(std::string access_group, std::string udev_run_path, int poll_interval)
-      : DBusServiceDaemon(kPermissionBrokerServiceName, dbus::ObjectPath{}),
+      : DBusServiceDaemon(kPermissionBrokerServiceName,
+                          dbus::ObjectPath{kObjectServicePath}),
         access_group_(access_group),
         udev_run_path_(udev_run_path),
         poll_interval_(poll_interval) {}
@@ -24,8 +28,8 @@ class Daemon : public chromeos::DBusServiceDaemon {
  protected:
   void RegisterDBusObjectsAsync(
       chromeos::dbus_utils::AsyncEventSequencer* sequencer) override {
-    broker_.reset(new PermissionBroker(bus_, access_group_, udev_run_path_,
-                                       poll_interval_));
+    broker_.reset(new PermissionBroker(object_manager_.get(), access_group_,
+                                       udev_run_path_, poll_interval_));
     broker_->RegisterAsync(
         sequencer->GetHandler("PermissionBroker.RegisterAsync() failed.",
                               true));

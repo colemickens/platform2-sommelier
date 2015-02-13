@@ -8,11 +8,11 @@
 #include <dbus/dbus.h>
 
 #include <string>
-#include <unordered_map>
 
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 #include <base/sequenced_task_runner.h>
+#include <chromeos/dbus/exported_object_manager.h>
 
 #include "firewalld/dbus-proxies.h"
 #include "permission_broker/dbus_adaptors/org.chromium.PermissionBroker.h"
@@ -27,7 +27,7 @@ namespace permission_broker {
 class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                          public org::chromium::PermissionBrokerInterface {
  public:
-  PermissionBroker(const scoped_refptr<dbus::Bus>& bus,
+  PermissionBroker(chromeos::dbus_utils::ExportedObjectManager* object_manager,
                    const std::string& access_group,
                    const std::string& udev_run_path,
                    int poll_interval_msecs);
