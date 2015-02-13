@@ -238,7 +238,7 @@ Error SecurityManager::StartPairing(PairingType mode,
 
   *session_id = session;
   *device_commitment = chromeos::data_encoding::Base64Encode(commitment);
-  VLOG(3) << "Pairing code for session " << *session_id << " is " << code;
+  LOG(INFO) << "Pairing code for session " << *session_id << " is " << code;
   // TODO(vitalybuka): Handle case when device can't start multiple pairing
   // simultaneously and implement throttling to avoid brute force attack.
   if (!on_start_.is_null())
