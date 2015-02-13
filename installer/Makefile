@@ -11,12 +11,16 @@ PC_DEPS = libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
+VBOOT_CFLAGS := $(shell $(PKG_CONFIG) --cflags vboot_host)
+VBOOT_LIBS := $(shell $(PKG_CONFIG) --libs vboot_host)
+
 CPPFLAGS += \
+	${VBOOT_CFLAGS} \
 	-DCHROMEOS_ENVIRONMENT \
 	-I$(SRC)/.. \
 	-I$(SRC)/../verity/include
 
-LDLIBS += -lvboot_host -ldm-bht
+LDLIBS += ${VBOOT_LIBS} -ldm-bht
 
 CXX_STATIC_BINARY(cros_installer): \
 		$(C_OBJECTS) \
