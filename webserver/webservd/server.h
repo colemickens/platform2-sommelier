@@ -11,17 +11,14 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/dbus_object.h>
+#include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/secure_blob.h>
 
+#include "permission_broker/dbus-proxies.h"
 #include "webservd/org.chromium.WebServer.Server.h"
 #include "webserver/webservd/server_interface.h"
-
-namespace chromeos {
-namespace dbus_utils {
-class ExportedObjectManager;
-}  // dbus_utils
-}  // chromeos
 
 namespace webservd {
 
@@ -55,9 +52,13 @@ class Server final : public org::chromium::WebServer::ServerInterface,
   void CreateProtocolHandler(const std::string& id,
                              const Config::ProtocolHandler& handler_config);
   void InitTlsData();
+  void OnPermissionBrokerOnline(org::chromium::PermissionBrokerProxy* proxy);
 
   org::chromium::WebServer::ServerAdaptor dbus_adaptor_{this};
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  std::unique_ptr<org::chromium::PermissionBroker::ObjectManagerProxy>
+      permission_broker_object_manager_;
+
   Config config_;
   int last_protocol_handler_index_{0};
   chromeos::Blob TLS_certificate_;
@@ -68,6 +69,13 @@ class Server final : public org::chromium::WebServer::ServerInterface,
            std::unique_ptr<DBusProtocolHandler>> protocol_handler_map_;
   std::map<std::string, std::unique_ptr<ProtocolHandler>> protocol_handlers_;
 
+  // File descriptors for the two ends of the pipe used for communicating with
+  // remote firewall server (permission_broker), where the remote firewall
+  // server will use the read end of the pipe to detect when this process exits.
+  int lifeline_read_fd_{-1};
+  int lifeline_write_fd_{-1};
+
+  base::WeakPtrFactory<Server> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Server);
 };
 

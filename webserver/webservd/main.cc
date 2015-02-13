@@ -40,6 +40,10 @@ class Daemon : public chromeos::DBusServiceDaemon {
         sequencer->GetHandler("Server.RegisterAsync() failed.", true));
   }
 
+  void OnShutdown(int* return_code) override {
+    server_.reset();
+  }
+
  private:
   webservd::Config config_;
   std::unique_ptr<webservd::Server> server_;

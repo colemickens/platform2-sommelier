@@ -12,7 +12,6 @@
 #include <base/rand_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/async_event_sequencer.h>
-#include <chromeos/dbus/exported_object_manager.h>
 
 #include "webserver/webservd/dbus_protocol_handler.h"
 #include "webserver/webservd/protocol_handler.h"
@@ -21,6 +20,25 @@
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::DBusObject;
 using chromeos::dbus_utils::ExportedObjectManager;
+
+namespace {
+
+void OnFirewallSuccess(const std::string& itf_name,
+                       uint16_t port,
+                       bool allowed) {
+  if (allowed) {
+    LOG(INFO) << "Successfully opened up port " << port << " on interface "
+              << itf_name;
+  } else {
+    LOG(ERROR) << "Failed to open up port " << port << ", interface: "
+               << itf_name;
+  }
+}
+
+void IgnoreFirewallDBusMethodError(chromeos::Error* error) {
+}
+
+}  // anonymous namespace
 
 namespace webservd {
 
@@ -31,9 +49,17 @@ Server::Server(ExportedObjectManager* object_manager, const Config& config)
       config_{config} {
   dbus_adaptor_.SetDefaultHttp(dbus::ObjectPath{"/"});
   dbus_adaptor_.SetDefaultHttps(dbus::ObjectPath{"/"});
+
+  int fds[2];
+  PCHECK(pipe(fds) == 0) << "Failed to create firewall lifeline pipe";
+  lifeline_read_fd_ = fds[0];
+  lifeline_write_fd_ = fds[1];
 }
 
-Server::~Server() {}
+Server::~Server() {
+  close(lifeline_read_fd_);
+  close(lifeline_write_fd_);
+}
 
 void Server::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {
@@ -45,6 +71,13 @@ void Server::RegisterAsync(
   for (const auto& pair : config_.protocol_handlers)
     CreateProtocolHandler(pair.first, pair.second);
 
+  permission_broker_object_manager_.reset(
+      new org::chromium::PermissionBroker::ObjectManagerProxy{
+          dbus_object_->GetBus()});
+  permission_broker_object_manager_->SetPermissionBrokerAddedCallback(
+      base::Bind(&Server::OnPermissionBrokerOnline,
+                 weak_ptr_factory_.GetWeakPtr()));
+
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed exporting Server.", true));
 
@@ -53,6 +86,22 @@ void Server::RegisterAsync(
         sequencer->GetHandler("Failed exporting ProtocolHandler.", false));
   }
   sequencer->OnAllTasksCompletedCall({completion_callback});
+}
+
+void Server::OnPermissionBrokerOnline(
+    org::chromium::PermissionBrokerProxy* proxy) {
+  LOG(INFO) << "Permission broker is on-line. "
+            << "Opening firewall for protocol handlers";
+  dbus::FileDescriptor dbus_fd{lifeline_read_fd_};
+  dbus_fd.CheckValidity();
+  for (auto& pair : config_.protocol_handlers) {
+    proxy->RequestTcpPortAccessAsync(
+        pair.second.port,
+        "",
+        dbus_fd,
+        base::Bind(&OnFirewallSuccess, "", pair.second.port),
+        base::Bind(&IgnoreFirewallDBusMethodError));
+  }
 }
 
 std::string Server::Ping() {

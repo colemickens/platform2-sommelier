@@ -35,6 +35,13 @@ DBusProtocolHandler::DBusProtocolHandler(
       protocol_handler->GetCertificateFingerprint());
 }
 
+DBusProtocolHandler::~DBusProtocolHandler() {
+  for (const auto& pair : dbus_service_data_) {
+    server_->GetBus()->UnlistenForServiceOwnerChange(
+        pair.first, pair.second.on_client_disconnected_callback);
+  }
+}
+
 void DBusProtocolHandler::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());

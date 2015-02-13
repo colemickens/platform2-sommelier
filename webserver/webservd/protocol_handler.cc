@@ -139,7 +139,7 @@ std::string ProtocolHandler::FindRequestHandler(
 
 bool ProtocolHandler::Start(const Config::ProtocolHandler& config) {
   if (server_) {
-    LOG(ERROR) << "Web server is already running.";
+    LOG(ERROR) << "Protocol handler is already running.";
     return false;
   }
 
@@ -150,7 +150,7 @@ bool ProtocolHandler::Start(const Config::ProtocolHandler& config) {
   CHECK_EQ(config.use_tls, !config.certificate_fingerprint.empty());
 
   LOG(INFO) << "Starting " << (config.use_tls ? "HTTPS" : "HTTP")
-            << " Server on port: " << config.port;
+            << " protocol handler on port: " << config.port;
 
   port_ = config.port;
   protocol_ = (config.use_tls ? "https" : "http");
@@ -189,22 +189,22 @@ bool ProtocolHandler::Start(const Config::ProtocolHandler& config) {
                              &ServerHelper::ConnectionHandler, this,
                              MHD_OPTION_ARRAY, options.data(), MHD_OPTION_END);
   if (!server_) {
-    LOG(ERROR) << "Failed to start the web server on port " << config.port;
+    LOG(ERROR) << "Failed to create protocol handler on port " << config.port;
     return false;
   }
   server_interface_->ProtocolHandlerStarted(this);
   DoWork();
-  LOG(INFO) << "Server started";
+  LOG(INFO) << "Protocol handler started";
   return true;
 }
 
 bool ProtocolHandler::Stop() {
   if (server_) {
-    LOG(INFO) << "Shutting down the web server...";
+    LOG(INFO) << "Shutting down the protocol handler...";
     MHD_stop_daemon(server_);
     server_ = nullptr;
     server_interface_->ProtocolHandlerStopped(this);
-    LOG(INFO) << "Server shutdown complete";
+    LOG(INFO) << "Protocol handler shutdown complete";
   }
   port_ = 0;
   protocol_.clear();

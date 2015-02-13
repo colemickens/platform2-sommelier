@@ -41,6 +41,8 @@ class DBusProtocolHandler final
       const dbus::ObjectPath& object_path,
       ProtocolHandler* protocol_handler,
       Server* server);
+  ~DBusProtocolHandler();
+
   void RegisterAsync(
       const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
