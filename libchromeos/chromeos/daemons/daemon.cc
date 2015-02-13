@@ -20,19 +20,33 @@ Daemon::~Daemon() {
 }
 
 int Daemon::Run() {
-  base::RunLoop run_loop;
-  quit_closure_ = run_loop.QuitClosure();
-
   int return_code = OnInit();
   if (return_code != EX_OK) {
     quit_closure_.Reset();
     return return_code;
   }
 
-  run_loop.Run();
-  quit_closure_.Reset();
+  // Scope.
+  {
+    // The main run loop.
+    base::RunLoop run_loop;
+    quit_closure_ = run_loop.QuitClosure();
+    run_loop.Run();
+    quit_closure_.Reset();
+  }
 
   OnShutdown(&return_code);
+
+  // Scope.
+  {
+    // base::RunLoop::QuitClosure() causes the message loop to quit
+    // immediately, even if pending tasks are still queued.
+    // Run a secondary loop to make sure all those are processed.
+    // This becomes important when working with D-Bus since dbus::Bus does
+    // a bunch of clean-up tasks asynchronously when shutting down.
+    base::RunLoop run_loop;
+    run_loop.RunUntilIdle();
+  }
 
   return return_code;
 }
