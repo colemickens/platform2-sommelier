@@ -11,12 +11,15 @@ namespace firewalld {
 class IpTablesTest : public testing::Test {
  public:
   IpTablesTest()
-      : iptables_succeeds{"/bin/true"}, iptables_fails{"/bin/false"} {}
+      : iptables_succeeds{"/bin/true", "/bin/true"},
+        iptables_fails{"/bin/false", "/bin/false"},
+        ip4succeeds_ip6fails{"/bin/true", "/bin/false"} {}
   ~IpTablesTest() override = default;
 
  protected:
   IpTables iptables_succeeds;
   IpTables iptables_fails;
+  IpTables ip4succeeds_ip6fails;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(IpTablesTest);
@@ -83,6 +86,16 @@ TEST_F(IpTablesTest, PunchTcpHoleFails) {
 TEST_F(IpTablesTest, PunchUdpHoleFails) {
   // Punch hole for UDP port 53, should fail.
   ASSERT_FALSE(iptables_fails.PunchUdpHole(53, "iface"));
+}
+
+TEST_F(IpTablesTest, PunchTcpHoleIpv6Fails) {
+  // Punch hole for TCP port 80, should fail because 'ip6tables' fails.
+  ASSERT_FALSE(ip4succeeds_ip6fails.PunchTcpHole(80, "iface"));
+}
+
+TEST_F(IpTablesTest, PunchUdpHoleIpv6Fails) {
+  // Punch hole for UDP port 53, should fail because 'ip6tables' fails.
+  ASSERT_FALSE(ip4succeeds_ip6fails.PunchUdpHole(53, "iface"));
 }
 
 }  // namespace firewalld

@@ -35,7 +35,7 @@ class IpTables : public org::chromium::FirewalldInterface {
 
  protected:
   // Test-only.
-  explicit IpTables(const std::string& path);
+  explicit IpTables(const std::string& ip4_path, const std::string& ip6_path);
 
  private:
   friend class IpTablesTest;
@@ -43,22 +43,31 @@ class IpTables : public org::chromium::FirewalldInterface {
   bool PunchHole(uint16_t port,
                  const std::string& interface,
                  std::set<Hole>* holes,
-                 enum ProtocolEnum protocol);
+                 ProtocolEnum protocol);
   bool PlugHole(uint16_t port,
                 const std::string& interface,
                 std::set<Hole>* holes,
-                enum ProtocolEnum protocol);
+                ProtocolEnum protocol);
 
   void PlugAllHoles();
 
-  bool AddAllowRule(enum ProtocolEnum protocol,
-                    uint16_t port,
-                    const std::string& interface);
-  bool DeleteAllowRule(enum ProtocolEnum protocol,
-                       uint16_t port,
-                       const std::string& interface);
+  bool AddAcceptRules(ProtocolEnum protocol,
+                      uint16_t port,
+                      const std::string& interface);
+  bool DeleteAcceptRules(ProtocolEnum protocol,
+                         uint16_t port,
+                         const std::string& interface);
+  bool AddAcceptRule(const std::string& executable_path,
+                     ProtocolEnum protocol,
+                     uint16_t port,
+                     const std::string& interface);
+  bool DeleteAcceptRule(const std::string& executable_path,
+                        ProtocolEnum protocol,
+                        uint16_t port,
+                        const std::string& interface);
 
-  std::string executable_path_;
+  std::string ip4_exec_path_;
+  std::string ip6_exec_path_;
 
   // Keep track of firewall holes to avoid adding redundant firewall rules.
   std::set<Hole> tcp_holes_;

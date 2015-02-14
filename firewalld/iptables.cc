@@ -12,7 +12,8 @@
 #include <chromeos/process.h>
 
 namespace {
-const char kIptablesPath[] = "/sbin/iptables";
+const char kIpTablesPath[] = "/sbin/iptables";
+const char kIp6TablesPath[] = "/sbin/ip6tables";
 
 // Interface names must be shorter than 'IFNAMSIZ' chars.
 // See http://man7.org/linux/man-pages/man7/netdevice.7.html
@@ -37,9 +38,10 @@ bool IsValidInterfaceName(const std::string& iface) {
 
 namespace firewalld {
 
-IpTables::IpTables() : IpTables{kIptablesPath} {}
+IpTables::IpTables() : IpTables{kIpTablesPath, kIp6TablesPath} {}
 
-IpTables::IpTables(const std::string& path) : executable_path_{path} {}
+IpTables::IpTables(const std::string& ip4_path, const std::string& ip6_path)
+    : ip4_exec_path_{ip4_path}, ip6_exec_path_{ip6_path} {}
 
 IpTables::~IpTables() {
   // Plug all holes when destructed.
@@ -65,7 +67,7 @@ bool IpTables::PlugUdpHole(uint16_t in_port, const std::string& in_interface) {
 bool IpTables::PunchHole(uint16_t port,
                          const std::string& interface,
                          std::set<Hole>* holes,
-                         enum ProtocolEnum protocol) {
+                         ProtocolEnum protocol) {
   if (port == 0) {
     // Port 0 is not a valid TCP/UDP port.
     return false;
@@ -86,9 +88,9 @@ bool IpTables::PunchHole(uint16_t port,
   std::string sprotocol = protocol == kProtocolTcp ? "TCP" : "UDP";
   LOG(INFO) << "Punching hole for " << sprotocol << " port " << port
             << " on interface '" << interface << "'";
-  if (!IpTables::AddAllowRule(protocol, port, interface)) {
+  if (!AddAcceptRules(protocol, port, interface)) {
     // If the 'iptables' command fails, this method fails.
-    LOG(ERROR) << "Calling 'iptables' failed";
+    LOG(ERROR) << "Adding ACCEPT rules failed";
     return false;
   }
 
@@ -101,7 +103,7 @@ bool IpTables::PunchHole(uint16_t port,
 bool IpTables::PlugHole(uint16_t port,
                         const std::string& interface,
                         std::set<Hole>* holes,
-                        enum ProtocolEnum protocol) {
+                        ProtocolEnum protocol) {
   if (port == 0) {
     // Port 0 is not a valid TCP/UDP port.
     return false;
@@ -119,9 +121,9 @@ bool IpTables::PlugHole(uint16_t port,
   std::string sprotocol = protocol == kProtocolTcp ? "TCP" : "UDP";
   LOG(INFO) << "Plugging hole for " << sprotocol << " port " << port
             << " on interface '" << interface << "'";
-  if (!IpTables::DeleteAllowRule(protocol, port, interface)) {
+  if (!DeleteAcceptRules(protocol, port, interface)) {
     // If the 'iptables' command fails, this method fails.
-    LOG(ERROR) << "Calling 'iptables' failed";
+    LOG(ERROR) << "Deleting ACCEPT rules failed";
     return false;
   }
 
@@ -151,19 +153,44 @@ void IpTables::PlugAllHoles() {
   CHECK(udp_holes_.size() == 0) << "Failed to plug all UDP holes.";
 }
 
-bool IpTables::AddAllowRule(enum ProtocolEnum protocol,
-                            uint16_t port,
-                            const std::string& interface) {
+bool IpTables::AddAcceptRules(ProtocolEnum protocol,
+                              uint16_t port,
+                              const std::string& interface) {
+  if (!AddAcceptRule(ip4_exec_path_, protocol, port, interface)) {
+    LOG(ERROR) << "Could not add ACCEPT rule using '" << ip4_exec_path_ << "'";
+    return false;
+  }
+  if (!AddAcceptRule(ip6_exec_path_, protocol, port, interface)) {
+    LOG(ERROR) << "Could not add ACCEPT rule using '" << ip6_exec_path_ << "'";
+    DeleteAcceptRule(ip4_exec_path_, protocol, port, interface);
+    return false;
+  }
+  return true;
+}
+
+bool IpTables::DeleteAcceptRules(ProtocolEnum protocol,
+                                 uint16_t port,
+                                 const std::string& interface) {
+  bool ip4_success = DeleteAcceptRule(ip4_exec_path_, protocol, port,
+                                      interface);
+  bool ip6_success = DeleteAcceptRule(ip6_exec_path_, protocol, port,
+                                      interface);
+  return ip4_success && ip6_success;
+}
+
+bool IpTables::AddAcceptRule(const std::string& executable_path,
+                             ProtocolEnum protocol,
+                             uint16_t port,
+                             const std::string& interface) {
   chromeos::ProcessImpl iptables;
-  iptables.AddArg(executable_path_);
+  iptables.AddArg(executable_path);
   iptables.AddArg("-I");  // insert
   iptables.AddArg("INPUT");
   iptables.AddArg("-p");  // protocol
   iptables.AddArg(protocol == kProtocolTcp ? "tcp" : "udp");
   iptables.AddArg("--dport");  // destination port
-  std::string port_number = base::StringPrintf("%d", port);
-  iptables.AddArg(port_number.c_str());
-  if (interface != "") {
+  iptables.AddArg(std::to_string(port));
+  if (!interface.empty()) {
     iptables.AddArg("-i");  // interface
     iptables.AddArg(interface);
   }
@@ -173,11 +200,12 @@ bool IpTables::AddAllowRule(enum ProtocolEnum protocol,
   return iptables.Run() == 0;
 }
 
-bool IpTables::DeleteAllowRule(enum ProtocolEnum protocol,
-                               uint16_t port,
-                               const std::string& interface) {
+bool IpTables::DeleteAcceptRule(const std::string& executable_path,
+                                ProtocolEnum protocol,
+                                uint16_t port,
+                                const std::string& interface) {
   chromeos::ProcessImpl iptables;
-  iptables.AddArg(executable_path_);
+  iptables.AddArg(executable_path);
   iptables.AddArg("-D");  // delete
   iptables.AddArg("INPUT");
   iptables.AddArg("-p");  // protocol
