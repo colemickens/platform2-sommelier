@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <string>
+#include <vector>
 
 #include <arpa/inet.h>
 #include <base/stl_util.h>
@@ -13,6 +14,8 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/data_encoding.h>
+#include <chromeos/http/http_utils.h>
+#include <chromeos/mime_utils.h>
 #include <chromeos/secure_blob.h>
 #include <google/protobuf/repeated_field.h>
 #include <openssl/evp.h>
@@ -35,6 +38,7 @@ using chromeos::SecureBlob;
 using std::string;
 
 namespace {
+
 // Resets a boolean when it falls out of scope.
 class ScopedBool {
  public:
@@ -45,6 +49,7 @@ class ScopedBool {
   bool* target_;
   bool reset_value_;
 };
+
 }  // namespace
 
 namespace cryptohome {
@@ -72,6 +77,8 @@ const char Attestation::kDefaultPCAPublicKey[] =
 // This value is opaque; it is proprietary to the system managing the private
 // key.  In this case the value has been supplied by the PCA maintainers.
 const char Attestation::kDefaultPCAPublicKeyID[] = "\x00\xc7\x0e\x50\xb1";
+const char Attestation::kDefaultPCAWebOrigin[] =
+    "https://chromeos-ca.gstatic.com";
 #else
 // The test instance uses different keys.
 const char Attestation::kDefaultPCAPublicKey[] =
@@ -85,6 +92,8 @@ const char Attestation::kDefaultPCAPublicKey[] =
     "7D1DC5B6AE210C52B008D87F2A7BFF6EB5C4FB32D6ECEC6505796173951A3167";
 
 const char Attestation::kDefaultPCAPublicKeyID[] = "\x00\xc2\xb0\x56\x2d";
+const char Attestation::kDefaultPCAWebOrigin[] =
+    "https://asbestos-qa.corp.google.com";
 #endif
 
 const char Attestation::kEnterpriseSigningPublicKey[] =
@@ -223,11 +232,13 @@ const char Attestation::kAlternatePCAKeyAttributeName[] =
     "enterprise.alternate_pca_key";
 const char Attestation::kAlternatePCAKeyIDAttributeName[] =
     "enterprise.alternate_pca_key_id";
+const char Attestation::kAlternatePCAUrlAttributeName[] =
+    "enterprise.alternate_pca_url";
 
 Attestation::Attestation()
     : database_path_(kDefaultDatabasePath),
       pkcs11_key_store_(new Pkcs11KeyStore()),
-      user_key_store_(pkcs11_key_store_.get()),
+      key_store_(pkcs11_key_store_.get()),
       enterprise_test_key_(NULL),
       install_attributes_observer_(this),
       is_tpm_ready_(false),
@@ -844,13 +855,13 @@ bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
   certified_key_pb.set_certified_key_credential(
       response_pb.certified_key_credential());
   certified_key_pb.set_intermediate_ca_cert(response_pb.intermediate_ca_cert());
+  certified_key_pb.mutable_additional_intermediate_ca_cert()->MergeFrom(
+      response_pb.additional_intermediate_ca_cert());
   certified_key_pb.set_key_name(key_name);
   if (!SaveKey(is_user_specific, username, key_name, certified_key_pb))
     return false;
   LOG(INFO) << "Attestation: Certified key credential received and stored.";
-  return CreatePEMCertificateChain(response_pb.certified_key_credential(),
-                                   response_pb.intermediate_ca_cert(),
-                                   certificate_chain);
+  return CreatePEMCertificateChain(certified_key_pb, certificate_chain);
 }
 
 bool Attestation::GetCertificateChain(bool is_user_specific,
@@ -863,9 +874,7 @@ bool Attestation::GetCertificateChain(bool is_user_specific,
     LOG(ERROR) << __func__ << ": Could not find certified key: " << key_name;
     return false;
   }
-  return CreatePEMCertificateChain(key.certified_key_credential(),
-                                   key.intermediate_ca_cert(),
-                                   certificate_chain);
+  return CreatePEMCertificateChain(key, certificate_chain);
 }
 
 bool Attestation::GetPublicKey(bool is_user_specific,
@@ -957,9 +966,7 @@ bool Attestation::SignEnterpriseChallenge(
   // Only include the certificate if this is a user key.
   if (is_user_specific) {
     SecureBlob certificate_chain;
-    if (!CreatePEMCertificateChain(key.certified_key_credential(),
-                                   key.intermediate_ca_cert(),
-                                   &certificate_chain)) {
+    if (!CreatePEMCertificateChain(key, &certificate_chain)) {
       LOG(ERROR) << __func__ << ": Failed to construct certificate chain.";
       return false;
     }
@@ -1023,29 +1030,47 @@ bool Attestation::SignSimpleChallenge(bool is_user_specific,
 
 bool Attestation::RegisterKey(bool is_user_specific,
                               const string& username,
-                              const string& key_name) {
-  if (!is_user_specific) {
-    // Currently there are no use cases which require a non-user key to be
-    // registered.  This prevents any accidental or malicious registration.
-    LOG(WARNING) << "Attestation: Rejecting attempt to register machine key.";
-    return false;
-  }
+                              const string& key_name,
+                              bool include_certificates) {
   base::AutoLock lock(lock_);
   CertifiedKey key;
-  if (!FindKeyByName(true, username, key_name, &key)) {
+  if (!FindKeyByName(is_user_specific, username, key_name, &key)) {
     LOG(ERROR) << __func__ << ": Key not found.";
     return false;
   }
-  if (!user_key_store_->Register(
-      username,
-      SecureBlob(key.key_blob()),
-      SecureBlob(key.public_key()))) {
+  SecureBlob certificate;
+  if (include_certificates) {
+    certificate = SecureBlob(key.certified_key_credential());
+  }
+  if (!key_store_->Register(is_user_specific,
+                            username,
+                            key_name,
+                            SecureBlob(key.key_blob()),
+                            SecureBlob(key.public_key()),
+                            certificate)) {
     LOG(ERROR) << __func__ << ": Failed to register key.";
     return false;
   }
-  if (!user_key_store_->Delete(username, key_name)) {
-    LOG(WARNING) << __func__ << ": Failed to delete registered key.";
+  if (include_certificates) {
+    if (key.has_intermediate_ca_cert()) {
+      if (!key_store_->RegisterCertificate(
+          is_user_specific,
+          username,
+          SecureBlob(key.intermediate_ca_cert()))) {
+        LOG(WARNING) << __func__ << ": Failed to register certificate.";
+      }
+    }
+    for (int i = 0; i < key.additional_intermediate_ca_cert_size(); ++i) {
+      if (!key_store_->RegisterCertificate(
+          is_user_specific,
+          username,
+          SecureBlob(key.additional_intermediate_ca_cert(i)))) {
+        LOG(WARNING) << __func__ << ": Failed to register certificate.";
+      }
+    }
   }
+  // Once registered with key store, we don't want to keep our copy.
+  DeleteKey(is_user_specific, username, key_name);
   return true;
 }
 
@@ -1083,7 +1108,7 @@ bool Attestation::DeleteKeysByPrefix(bool is_user_specific,
                                      const string& key_prefix) {
   base::AutoLock lock(lock_);
   if (is_user_specific) {
-    return user_key_store_->DeleteByPrefix(username, key_prefix);
+    return key_store_->DeleteByPrefix(is_user_specific, username, key_prefix);
   }
   // Manipulate the device keys protobuf field.  Linear time strategy is to swap
   // all elements we want to keep to the front and then truncate.
@@ -1662,13 +1687,33 @@ bool Attestation::AddDeviceKey(const string& key_name,
   return PersistDatabaseChanges();
 }
 
+void Attestation::RemoveDeviceKey(const std::string& key_name) {
+  bool found = false;
+  for (int i = 0; i < database_pb_.device_keys_size(); ++i) {
+    if (database_pb_.device_keys(i).key_name() == key_name) {
+      found = true;
+      int last = database_pb_.device_keys_size() - 1;
+      if (i < last) {
+        database_pb_.mutable_device_keys()->SwapElements(i, last);
+      }
+      database_pb_.mutable_device_keys()->RemoveLast();
+      break;
+    }
+  }
+  if (found) {
+    if (!PersistDatabaseChanges()) {
+      LOG(WARNING) << __func__ << ": Failed to persist key deletion.";
+    }
+  }
+}
+
 bool Attestation::FindKeyByName(bool is_user_specific,
                                 const string& username,
                                 const string& key_name,
                                 CertifiedKey* key) {
   if (is_user_specific) {
     SecureBlob key_data;
-    if (!user_key_store_->Read(username, key_name, &key_data)) {
+    if (!key_store_->Read(is_user_specific, username, key_name, &key_data)) {
       LOG(INFO) << "Key not found: " << key_name;
       return false;
     }
@@ -1700,7 +1745,7 @@ bool Attestation::SaveKey(bool is_user_specific,
     }
     SecureBlob blob(tmp);
     ClearString(&tmp);
-    if (!user_key_store_->Write(username, key_name, blob)) {
+    if (!key_store_->Write(is_user_specific, username, key_name, blob)) {
       LOG(ERROR) << __func__ << ": Failed to store certified key for user.";
       return false;
     }
@@ -1713,17 +1758,30 @@ bool Attestation::SaveKey(bool is_user_specific,
   return true;
 }
 
-bool Attestation::CreatePEMCertificateChain(const string& leaf_certificate,
-                                            const string& intermediate_ca_cert,
+void Attestation::DeleteKey(bool is_user_specific,
+                            const string& username,
+                            const string& key_name) {
+  if (is_user_specific) {
+    key_store_->Delete(is_user_specific, username, key_name);
+  } else {
+    RemoveDeviceKey(key_name);
+  }
+}
+
+bool Attestation::CreatePEMCertificateChain(const CertifiedKey& key,
                                             SecureBlob* certificate_chain) {
-  if (leaf_certificate.empty()) {
+  if (key.certified_key_credential().empty()) {
     LOG(ERROR) << "Certificate is empty.";
     return false;
   }
-  string pem = CreatePEMCertificate(leaf_certificate);
-  if (!intermediate_ca_cert.empty()) {
+  string pem = CreatePEMCertificate(key.certified_key_credential());
+  if (!key.intermediate_ca_cert().empty()) {
     pem += "\n";
-    pem += CreatePEMCertificate(intermediate_ca_cert);
+    pem += CreatePEMCertificate(key.intermediate_ca_cert());
+  }
+  for (int i = 0; i < key.additional_intermediate_ca_cert_size(); ++i) {
+    pem += "\n";
+    pem += CreatePEMCertificate(key.additional_intermediate_ca_cert(i));
   }
   *certificate_chain = SecureBlob(pem);
   ClearString(&pem);
@@ -2127,6 +2185,67 @@ void Attestation::ExtendPCR1IfClear() {
   if (hwid.length() == 0 || !tpm_->ExtendPCR(1, extension)) {
     LOG(WARNING) << "Failed to extend PCR1.";
   }
+}
+
+bool Attestation::SendPCARequestAndBlock(PCAType pca_type,
+                                         PCARequestType request_type,
+                                         const chromeos::SecureBlob& request,
+                                         chromeos::SecureBlob* reply) {
+  std::shared_ptr<chromeos::http::Transport> transport = http_transport_;
+  if (!transport) {
+    transport = chromeos::http::Transport::CreateDefault();
+  }
+  std::unique_ptr<chromeos::http::Response> response = PostBinaryAndBlock(
+      GetPCAURL(pca_type, request_type),
+      request.const_data(),
+      request.size(),
+      chromeos::mime::application::kOctet_stream,
+      {},  // headers
+      transport,
+      NULL);  // error
+  if (!response->IsSuccessful()) {
+    LOG(ERROR) << "HTTP request to PCA failed.";
+    return false;
+  }
+  const std::vector<uint8_t>& response_data = response->GetData();
+  SecureBlob tmp(response_data.begin(), response_data.end());
+  reply->swap(tmp);
+  return true;
+}
+
+std::string Attestation::GetPCAURL(PCAType pca_type,
+                                   PCARequestType request_type) const {
+  std::string url;
+  switch (pca_type) {
+    case kDefaultPCA:
+      url = kDefaultPCAWebOrigin;
+      break;
+    case kAlternatePCA:
+      {
+        chromeos::SecureBlob url_blob;
+        if (!install_attributes_->Get(kAlternatePCAUrlAttributeName,
+                                      &url_blob)) {
+          LOG(ERROR) << "Cannot find alternate PCA URL.";
+          return std::string();
+        }
+        url = url_blob.to_string();
+      }
+      break;
+    default:
+      NOTREACHED();
+  }
+
+  switch (request_type) {
+    case kEnroll:
+      url += "/enroll";
+      break;
+    case kGetCertificate:
+      url += "/sign";
+      break;
+    default:
+      NOTREACHED();
+  }
+  return url;
 }
 
 void Attestation::RSADeleter::operator()(void* ptr) const {

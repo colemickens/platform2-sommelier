@@ -2899,6 +2899,100 @@ gboolean Service::GetEndorsementInfo(const GArray* request,
   return TRUE;
 }
 
+void Service::DoInitializeCastKey(const chromeos::SecureBlob& request,
+                                  DBusGMethodInvocation* context) {
+  const char kCastCertificateOrigin[] = "CAST";
+  const char kCastKeyLabel[] = "CERTIFIED_CAST_KEY";
+
+  LOG(INFO) << "Initializing Cast Key";
+  InitializeCastKeyRequest request_pb;
+  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+    SendInvalidArgsReply(context, "Bad InitializeCastKeyRequest");
+    return;
+  }
+  BaseReply reply;
+  if (!attestation_->IsPreparedForEnrollment() ||
+      !pkcs11_init_->IsSystemTokenOK()) {
+    reply.set_error(CRYPTOHOME_ERROR_ATTESTATION_NOT_READY);
+    SendReply(context, reply);
+    return;
+  }
+  if (!attestation_->IsEnrolled()) {
+    chromeos::SecureBlob enroll_request;
+    if (!attestation_->CreateEnrollRequest(Attestation::kDefaultPCA,
+                                           &enroll_request)) {
+      reply.set_error(CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+      SendReply(context, reply);
+      return;
+    }
+    chromeos::SecureBlob enroll_reply;
+    if (!attestation_->SendPCARequestAndBlock(Attestation::kDefaultPCA,
+                                              Attestation::kEnroll,
+                                              enroll_request,
+                                              &enroll_reply)) {
+      reply.set_error(CRYPTOHOME_ERROR_CANNOT_CONNECT_TO_CA);
+      SendReply(context, reply);
+      return;
+    }
+    if (!attestation_->Enroll(Attestation::kDefaultPCA, enroll_reply)) {
+      reply.set_error(CRYPTOHOME_ERROR_CA_REFUSED_ENROLLMENT);
+      SendReply(context, reply);
+      return;
+    }
+  }
+  if (!attestation_->DoesKeyExist(false,  // is_user_specific
+                                  "",     // username
+                                  kCastKeyLabel)) {
+    chromeos::SecureBlob certificate_request;
+    if (!attestation_->CreateCertRequest(Attestation::kDefaultPCA,
+                                         CAST_CERTIFICATE,
+                                         "",  // username
+                                         kCastCertificateOrigin,
+                                         &certificate_request)) {
+      reply.set_error(CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+      SendReply(context, reply);
+      return;
+    }
+    chromeos::SecureBlob certificate_reply;
+    if (!attestation_->SendPCARequestAndBlock(Attestation::kDefaultPCA,
+                                              Attestation::kGetCertificate,
+                                              certificate_request,
+                                              &certificate_reply)) {
+      reply.set_error(CRYPTOHOME_ERROR_CANNOT_CONNECT_TO_CA);
+      SendReply(context, reply);
+      return;
+    }
+    chromeos::SecureBlob certificate_chain;
+    if (!attestation_->FinishCertRequest(certificate_reply,
+                                         false,  // is_user_specific
+                                         "",     // username
+                                         kCastKeyLabel,
+                                         &certificate_chain)) {
+      reply.set_error(CRYPTOHOME_ERROR_CA_REFUSED_CERTIFICATE);
+      SendReply(context, reply);
+      return;
+    }
+  }
+  if (!attestation_->RegisterKey(false,    // is_user_specific
+                                 "",       // username
+                                 kCastKeyLabel,
+                                 true)) {  // include_certificates
+    reply.set_error(CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+    SendReply(context, reply);
+    return;
+  }
+  SendReply(context, reply);
+}
+
+gboolean Service::InitializeCastKey(const GArray* request,
+                                    DBusGMethodInvocation* context) {
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&Service::DoInitializeCastKey, base::Unretained(this),
+                 SecureBlob(request->data, request->len),
+                 base::Unretained(context)));
+  return TRUE;
+}
+
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   base::DictionaryValue dv;
   base::ListValue* mounts = new base::ListValue();

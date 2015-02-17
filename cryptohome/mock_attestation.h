@@ -70,9 +70,10 @@ class MockAttestation : public Attestation {
                                          const std::string&,
                                          const chromeos::SecureBlob&,
                                          chromeos::SecureBlob*));
-  MOCK_METHOD3(RegisterKey, bool(bool,
+  MOCK_METHOD4(RegisterKey, bool(bool,
                                  const std::string&,
-                                 const std::string&));
+                                 const std::string&,
+                                 bool));
   MOCK_METHOD4(GetKeyPayload, bool(bool,
                                    const std::string&,
                                    const std::string&,

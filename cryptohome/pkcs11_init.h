@@ -46,6 +46,9 @@ class Pkcs11Init {
   // Check if the user's PKCS #11 token is valid.
   virtual bool IsUserTokenOK();
 
+  // Check if the system PKCS #11 token is valid.
+  virtual bool IsSystemTokenOK();
+
   static const char kDefaultPin[];
   static const char kDefaultSystemLabel[];
   static const char kDefaultUserLabelPrefix[];

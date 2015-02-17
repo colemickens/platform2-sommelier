@@ -333,6 +333,7 @@
               'dbus-1',
               'dbus-glib-1',
               'glib-2.0',
+              'libchromeos-test-<(libbase_ver)',
               'libecryptfs',
               'openssl',
               'protobuf',

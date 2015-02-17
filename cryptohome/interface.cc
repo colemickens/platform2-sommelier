@@ -735,6 +735,12 @@ gboolean cryptohome_get_endorsement_info(Cryptohome* self,
   CRYPTOHOME_WRAP_METHOD(GetEndorsementInfo, request);
 }
 
+gboolean cryptohome_initialize_cast_key(Cryptohome* self,
+                                        GArray* request,
+                                        DBusGMethodInvocation* error) {
+  CRYPTOHOME_WRAP_METHOD(InitializeCastKey, request);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

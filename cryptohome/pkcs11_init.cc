@@ -129,6 +129,10 @@ bool Pkcs11Init::IsUserTokenOK() {
   return false;
 }
 
+bool Pkcs11Init::IsSystemTokenOK() {
+  return CheckTokenInSlot(0, kDefaultSystemLabel);
+}
+
 bool Pkcs11Init::CheckTokenInSlot(CK_SLOT_ID slot_id,
                                   const std::string& expected_label_prefix) {
   CK_RV rv;

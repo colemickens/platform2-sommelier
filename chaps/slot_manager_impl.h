@@ -47,7 +47,7 @@ class SlotManagerImpl : public SlotManager,
   virtual bool Init();
 
   // SlotManager methods.
-  virtual int GetSlotCount() const;
+  virtual int GetSlotCount();
   virtual bool IsTokenAccessible(const chromeos::SecureBlob& isolate_credential,
                                  int slot_id) const;
   virtual bool IsTokenPresent(const chromeos::SecureBlob& isolate_credential,

@@ -30,8 +30,10 @@ class SlotManager {
   virtual ~SlotManager() {}
   // Returns the total number of slots available. A slot is identified by zero-
   // based offset. I.e. If there are two slots, 0 and 1 are valid 'slot_id'
-  // values.
-  virtual int GetSlotCount() const = 0;
+  // values. This method should be used to verify slot IDs are valid before
+  // using the ID with other methods. This method is not const because
+  // implementations may refresh internal slot information when this is called.
+  virtual int GetSlotCount() = 0;
   virtual bool IsTokenAccessible(const chromeos::SecureBlob& isolate_credential,
                                  int slot_id) const = 0;
   virtual bool IsTokenPresent(const chromeos::SecureBlob& isolate_credential,

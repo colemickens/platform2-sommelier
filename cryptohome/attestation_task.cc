@@ -208,7 +208,8 @@ void RegisterKeyTask::Run() {
   if (attestation_) {
     bool status = attestation_->RegisterKey(is_user_specific_,
                                             username_,
-                                            key_name_);
+                                            key_name_,
+                                            false);  // include_certificates
     result()->set_return_status(status);
   }
   Notify();

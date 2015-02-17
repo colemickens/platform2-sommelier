@@ -22,19 +22,30 @@ class MockKeyStore : public KeyStore {
   MockKeyStore();
   virtual ~MockKeyStore();
 
-  MOCK_METHOD3(Read, bool(const std::string& username,
+  MOCK_METHOD4(Read, bool(bool is_user_specific,
+                          const std::string& username,
                           const std::string& name,
                           chromeos::SecureBlob* key_data));
-  MOCK_METHOD3(Write, bool(const std::string& username,
+  MOCK_METHOD4(Write, bool(bool is_user_specific,
+                           const std::string& username,
                            const std::string& name,
                            const chromeos::SecureBlob& key_data));
-  MOCK_METHOD2(Delete, bool(const std::string& username,
+  MOCK_METHOD3(Delete, bool(bool is_user_specific,
+                            const std::string& username,
                             const std::string& name));
-  MOCK_METHOD2(DeleteByPrefix, bool(const std::string& username,
+  MOCK_METHOD3(DeleteByPrefix, bool(bool is_user_specific,
+                                    const std::string& username,
                                     const std::string& key_prefix));
-  MOCK_METHOD3(Register, bool(const std::string& username,
-                              const chromeos::SecureBlob&,
-                              const chromeos::SecureBlob&));
+  MOCK_METHOD6(Register, bool(bool is_user_specific,
+                              const std::string& username,
+                              const std::string& label,
+                              const chromeos::SecureBlob& private_key_blob,
+                              const chromeos::SecureBlob& public_key_der,
+                              const chromeos::SecureBlob& certificate));
+  MOCK_METHOD3(RegisterCertificate,
+               bool(bool is_user_specific,
+                    const std::string& username,
+                    const chromeos::SecureBlob& certificate));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockKeyStore);

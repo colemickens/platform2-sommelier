@@ -121,6 +121,7 @@ namespace switches {
     "set_boot_attribute",
     "flush_and_sign_boot_attributes",
     "get_login_status",
+    "initialize_cast_key",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -177,7 +178,8 @@ namespace switches {
     ACTION_GET_BOOT_ATTRIBUTE,
     ACTION_SET_BOOT_ATTRIBUTE,
     ACTION_FLUSH_AND_SIGN_BOOT_ATTRIBUTES,
-    ACTION_GET_LOGIN_STATUS
+    ACTION_GET_LOGIN_STATUS,
+    ACTION_INITIALIZE_CAST_KEY,
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -2476,6 +2478,18 @@ int main(int argc, char **argv) {
       return -1;
     }
     printf("GetLoginStatus success.\n");
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_INITIALIZE_CAST_KEY],
+      action.c_str())) {
+    cryptohome::InitializeCastKeyRequest request;
+    cryptohome::BaseReply reply;
+    if (!MakeProtoDBusCall("InitializeCastKey",
+                           DBUS_METHOD(initialize_cast_key),
+                           DBUS_METHOD(initialize_cast_key_async),
+                           cl, &proxy, request, &reply)) {
+      return -1;
+    }
+    printf("InitializeCastKey success.\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

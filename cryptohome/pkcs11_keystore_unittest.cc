@@ -31,12 +31,64 @@ using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StartsWith;
 
+namespace {
+
+const uint64_t kSession = 7;  // Arbitrary non-zero value.
+const char kDefaultUser[] = "test_user";
+
+const char kValidPublicKeyHex[] =
+    "3082010A0282010100"
+    "961037BC12D2A298BEBF06B2D5F8C9B64B832A2237F8CF27D5F96407A6041A4D"
+    "AD383CB5F88E625F412E8ACD5E9D69DF0F4FA81FCE7955829A38366CBBA5A2B1"
+    "CE3B48C14B59E9F094B51F0A39155874C8DE18A0C299EBF7A88114F806BE4F25"
+    "3C29A509B10E4B19E31675AFE3B2DA77077D94F43D8CE61C205781ED04D183B4"
+    "C349F61B1956C64B5398A3A98FAFF17D1B3D9120C832763EDFC8F4137F6EFBEF"
+    "46D8F6DE03BD00E49DEF987C10BDD5B6F8758B6A855C23C982DDA14D8F0F2B74"
+    "E6DEFA7EEE5A6FC717EB0FF103CB8049F693A2C8A5039EF1F5C025DC44BD8435"
+    "E8D8375DADE00E0C0F5C196E04B8483CC98B1D5B03DCD7E0048B2AB343FFC11F"
+    "0203"
+    "010001";
+
+const char kValidCertificateHex[] =
+    "3082040f308202f7a003020102020900bd0f8fd6bf496b67300d06092a864886"
+    "f70d01010b050030819d310b3009060355040613025553311330110603550408"
+    "0c0a43616c69666f726e69613116301406035504070c0d4d6f756e7461696e20"
+    "5669657731133011060355040a0c0a4368726f6d69756d4f533111300f060355"
+    "040b0c08556e6974546573743117301506035504030c0e506b637331314b6579"
+    "53746f72653120301e06092a864886f70d010901161174657374406368726f6d"
+    "69756d2e6f7267301e170d3135303231383137303132345a170d313731313133"
+    "3137303132345a30819d310b3009060355040613025553311330110603550408"
+    "0c0a43616c69666f726e69613116301406035504070c0d4d6f756e7461696e20"
+    "5669657731133011060355040a0c0a4368726f6d69756d4f533111300f060355"
+    "040b0c08556e6974546573743117301506035504030c0e506b637331314b6579"
+    "53746f72653120301e06092a864886f70d010901161174657374406368726f6d"
+    "69756d2e6f726730820122300d06092a864886f70d01010105000382010f0030"
+    "82010a0282010100a8fb9e12b1e5298b9a24fabc3901d00c32057392c763836e"
+    "0b55cff8e67d39b9b9853920fd615688b3e13c03a10cb5668187819172d1d269"
+    "70f0ff8d4371ac581f6970a0e43a1d0d61a94741a771fe86aee45ab0ca059b1f"
+    "c067f7416f08544cc4d08ec884b6d4327bb3ec0dc0789639375bd159df0efd87"
+    "1cf4d605778c7a68c96b94cf0a6c29f9a23bc027e8250084eb2dfca817b20f57"
+    "a6fe09513f884389db7b90788aea70c6e1638f24e39553ac0f859e585965c425"
+    "9ed7b9680fde3e059f254d8c9494f6ab425ede80d63366dfcb7cc311f5bc6fb0"
+    "1c27d81f4c5112d04b7614c37ba19c014916816372c773e4e44564fac34565ad"
+    "ebf38fe56c1413170203010001a350304e301d0603551d0e04160414fe13c7db"
+    "459bd2881e9113198e1f072e16cea144301f0603551d23041830168014fe13c7"
+    "db459bd2881e9113198e1f072e16cea144300c0603551d13040530030101ff30"
+    "0d06092a864886f70d01010b05000382010100a163d636ac64bd6f67eca53708"
+    "5f92abc993a40fd0c0222a56b262c29f88057a3edf9abac024756ad85d7453d8"
+    "4782e0be65d176aecfb0fbfc88ca567d17124fa190cb5ce832264360dd6daee1"
+    "e121428de28dda0b8ba117a1be3cf438efd060a3b5fc812e7eba70cec12cb609"
+    "738fc7d0912546c42b5aaadb142adce2167c7f30cd9e0049687d384334335aff"
+    "72aebd1745a0aac4be816365969347f064f36f7fdec69f970f28b87061650470"
+    "c63be8475bb23d0485985fb77c7cdd9d9fe008211a9ddd0fe68efb0b47cf629c"
+    "941d31e3c2f88e670e7e4ef1129febad000e6a16222779fbfe34641e5243ca38"
+    "74e2ad06f9585a00bec014744d3175ecc4808d";
+
+}  // namespace
+
 namespace cryptohome {
 
 typedef chaps::ChapsProxyMock Pkcs11Mock;
-
-const uint64_t kSession = 7;  // Arbitrary non-zero value.
-const char* kDefaultUser = "test_user";
 
 // Implements a fake PKCS #11 object store.  Labeled data blobs can be stored
 // and later retrieved.  The mocked interface is ChapsInterface so these
@@ -140,20 +192,29 @@ class KeyStoreTest : public testing::Test {
     return CKR_OK;
   }
 
-  // Finds stored objects by CKA_LABEL.  If no CKA_LABEL find all objects.
+  // Finds stored objects by CKA_LABEL or CKA_VALUE. If no CKA_LABEL or
+  // CKA_VALUE, find all objects.
   virtual uint32_t FindObjectsInit(const SecureBlob& isolate_credential,
                                    uint64_t session_id,
                                    const vector<uint8_t>& attributes) {
     string label = GetValue(attributes, CKA_LABEL);
+    string value = GetValue(attributes, CKA_VALUE);
     found_objects_.clear();
-    if (label.empty()) {
-      for (map<uint64_t, string>::iterator it = handles_.begin();
-           it != handles_.end();
-           ++it) {
-        found_objects_.push_back(it->first);
+    if (label.empty() && value.empty()) {
+      // Find all objects.
+      for (const auto& item : handles_) {
+        found_objects_.push_back(item.first);
       }
-    } else if (labels_.count(label) > 0) {
+    } else if (!label.empty() && labels_.count(label) > 0) {
+      // Find only the object with |label|.
       found_objects_.push_back(labels_[label]);
+    } else {
+      // Find all objects with |value|.
+      for (const auto& item : values_) {
+        if (item.second == value && labels_.count(item.first) > 0) {
+          found_objects_.push_back(labels_[item.first]);
+        }
+      }
     }
     return CKR_OK;
   }
@@ -215,8 +276,10 @@ class KeyStoreTest : public testing::Test {
 TEST(KeyStoreTest_NoMock, Pkcs11NotAvailable) {
   Pkcs11KeyStore key_store;
   SecureBlob blob;
-  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
-  EXPECT_FALSE(key_store.Write(kDefaultUser, "test", blob));
+  EXPECT_FALSE(key_store.Read(true, kDefaultUser, "test", &blob));
+  EXPECT_FALSE(key_store.Write(true, kDefaultUser, "test", blob));
+  EXPECT_FALSE(key_store.Read(false, kDefaultUser, "test", &blob));
+  EXPECT_FALSE(key_store.Write(false, kDefaultUser, "test", blob));
 }
 
 // Exercises the key store when PKCS #11 returns success.  This exercises all
@@ -224,26 +287,57 @@ TEST(KeyStoreTest_NoMock, Pkcs11NotAvailable) {
 TEST_F(KeyStoreTest, Pkcs11Success) {
   Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob blob;
-  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
-  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
-  EXPECT_TRUE(key_store.Read(kDefaultUser, "test", &blob));
+  EXPECT_FALSE(key_store.Read(true, kDefaultUser, "test", &blob));
+  EXPECT_TRUE(key_store.Write(true, kDefaultUser, "test",
+                              SecureBlob("test_data")));
+  EXPECT_TRUE(key_store.Read(true, kDefaultUser, "test", &blob));
   EXPECT_TRUE(CompareBlob(blob, "test_data"));
   // Try with a different key name.
-  EXPECT_FALSE(key_store.Read(kDefaultUser, "test2", &blob));
-  EXPECT_TRUE(key_store.Write(kDefaultUser, "test2", SecureBlob("test_data2")));
-  EXPECT_TRUE(key_store.Read(kDefaultUser, "test2", &blob));
+  EXPECT_FALSE(key_store.Read(true, kDefaultUser, "test2", &blob));
+  EXPECT_TRUE(key_store.Write(true, kDefaultUser, "test2",
+                              SecureBlob("test_data2")));
+  EXPECT_TRUE(key_store.Read(true, kDefaultUser, "test2", &blob));
   EXPECT_TRUE(CompareBlob(blob, "test_data2"));
   // Read the original key again.
-  EXPECT_TRUE(key_store.Read(kDefaultUser, "test", &blob));
+  EXPECT_TRUE(key_store.Read(true, kDefaultUser, "test", &blob));
   EXPECT_TRUE(CompareBlob(blob, "test_data"));
   // Replace key data.
-  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data3")));
-  EXPECT_TRUE(key_store.Read(kDefaultUser, "test", &blob));
+  EXPECT_TRUE(key_store.Write(true, kDefaultUser, "test",
+                              SecureBlob("test_data3")));
+  EXPECT_TRUE(key_store.Read(true, kDefaultUser, "test", &blob));
   EXPECT_TRUE(CompareBlob(blob, "test_data3"));
   // Delete key data.
-  EXPECT_TRUE(key_store.Delete(kDefaultUser, "test2"));
-  EXPECT_FALSE(key_store.Read(kDefaultUser, "test2", &blob));
-  EXPECT_TRUE(key_store.Read(kDefaultUser, "test", &blob));
+  EXPECT_TRUE(key_store.Delete(true, kDefaultUser, "test2"));
+  EXPECT_FALSE(key_store.Read(true, kDefaultUser, "test2", &blob));
+  EXPECT_TRUE(key_store.Read(true, kDefaultUser, "test", &blob));
+}
+
+TEST_F(KeyStoreTest, Pkcs11Success_NoUser) {
+  Pkcs11KeyStore key_store(&pkcs11_init_);
+  SecureBlob blob;
+  EXPECT_FALSE(key_store.Read(false, kDefaultUser, "test", &blob));
+  EXPECT_TRUE(key_store.Write(false, kDefaultUser, "test",
+                              SecureBlob("test_data")));
+  EXPECT_TRUE(key_store.Read(false, kDefaultUser, "test", &blob));
+  EXPECT_TRUE(CompareBlob(blob, "test_data"));
+  // Try with a different key name.
+  EXPECT_FALSE(key_store.Read(false, kDefaultUser, "test2", &blob));
+  EXPECT_TRUE(key_store.Write(false, kDefaultUser, "test2",
+                              SecureBlob("test_data2")));
+  EXPECT_TRUE(key_store.Read(false, kDefaultUser, "test2", &blob));
+  EXPECT_TRUE(CompareBlob(blob, "test_data2"));
+  // Read the original key again.
+  EXPECT_TRUE(key_store.Read(false, kDefaultUser, "test", &blob));
+  EXPECT_TRUE(CompareBlob(blob, "test_data"));
+  // Replace key data.
+  EXPECT_TRUE(key_store.Write(false, kDefaultUser, "test",
+                              SecureBlob("test_data3")));
+  EXPECT_TRUE(key_store.Read(false, kDefaultUser, "test", &blob));
+  EXPECT_TRUE(CompareBlob(blob, "test_data3"));
+  // Delete key data.
+  EXPECT_TRUE(key_store.Delete(false, kDefaultUser, "test2"));
+  EXPECT_FALSE(key_store.Read(false, kDefaultUser, "test2", &blob));
+  EXPECT_TRUE(key_store.Read(false, kDefaultUser, "test", &blob));
 }
 
 // Tests the key store when PKCS #11 fails to open a session.
@@ -252,8 +346,9 @@ TEST_F(KeyStoreTest, NoSession) {
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
   Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob blob;
-  EXPECT_FALSE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
+  EXPECT_FALSE(key_store.Write(true, kDefaultUser, "test",
+                               SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(true, kDefaultUser, "test", &blob));
 }
 
 // Tests the key store when PKCS #11 fails to create an object.
@@ -262,8 +357,9 @@ TEST_F(KeyStoreTest, CreateObjectFail) {
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
   Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob blob;
-  EXPECT_FALSE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
+  EXPECT_FALSE(key_store.Write(true, kDefaultUser, "test",
+                               SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(true, kDefaultUser, "test", &blob));
 }
 
 // Tests the key store when PKCS #11 fails to read attribute values.
@@ -272,8 +368,9 @@ TEST_F(KeyStoreTest, ReadValueFail) {
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
   Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob blob;
-  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
+  EXPECT_TRUE(key_store.Write(true, kDefaultUser, "test",
+                              SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(true, kDefaultUser, "test", &blob));
 }
 
 // Tests the key store when PKCS #11 fails to delete key data.
@@ -281,9 +378,11 @@ TEST_F(KeyStoreTest, DeleteValueFail) {
   EXPECT_CALL(pkcs11_, DestroyObject(_, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
   Pkcs11KeyStore key_store(&pkcs11_init_);
-  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data2")));
-  EXPECT_FALSE(key_store.Delete(kDefaultUser, "test"));
+  EXPECT_TRUE(key_store.Write(true, kDefaultUser, "test",
+                              SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Write(true, kDefaultUser, "test",
+                               SecureBlob("test_data2")));
+  EXPECT_FALSE(key_store.Delete(true, kDefaultUser, "test"));
 }
 
 // Tests the key store when PKCS #11 fails to find objects.  Tests each part of
@@ -293,22 +392,25 @@ TEST_F(KeyStoreTest, FindFail) {
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
   Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob blob;
-  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
+  EXPECT_TRUE(key_store.Write(true, kDefaultUser, "test",
+                              SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(true, kDefaultUser, "test", &blob));
 
   EXPECT_CALL(pkcs11_, FindObjectsInit(_, _, _))
       .WillRepeatedly(Return(CKR_OK));
   EXPECT_CALL(pkcs11_, FindObjects(_, _, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
-  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
+  EXPECT_TRUE(key_store.Write(true, kDefaultUser, "test",
+                              SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(true, kDefaultUser, "test", &blob));
 
   EXPECT_CALL(pkcs11_, FindObjects(_, _, _, _))
       .WillRepeatedly(Return(CKR_OK));
   EXPECT_CALL(pkcs11_, FindObjectsFinal(_, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
-  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
+  EXPECT_TRUE(key_store.Write(true, kDefaultUser, "test",
+                              SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(true, kDefaultUser, "test", &blob));
 }
 
 // Tests the key store when PKCS #11 successfully finds zero objects.
@@ -318,32 +420,104 @@ TEST_F(KeyStoreTest, FindNoObjects) {
       .WillRepeatedly(DoAll(SetArgumentPointee<3>(empty), Return(CKR_OK)));
   Pkcs11KeyStore key_store(&pkcs11_init_);
   SecureBlob blob;
-  EXPECT_TRUE(key_store.Write(kDefaultUser, "test", SecureBlob("test_data")));
-  EXPECT_FALSE(key_store.Read(kDefaultUser, "test", &blob));
+  EXPECT_TRUE(key_store.Write(true, kDefaultUser, "test",
+                              SecureBlob("test_data")));
+  EXPECT_FALSE(key_store.Read(true, kDefaultUser, "test", &blob));
 }
 
-TEST_F(KeyStoreTest, Register) {
+TEST_F(KeyStoreTest, RegisterKeyWithoutCertificate) {
   Pkcs11KeyStore key_store(&pkcs11_init_);
-  EXPECT_FALSE(key_store.Register(kDefaultUser,
+  // Try with a malformed public key.
+  EXPECT_FALSE(key_store.Register(true, kDefaultUser, "test_label",
                                   SecureBlob("private_key_blob"),
-                                  SecureBlob("bad_pubkey")));
-  const char* public_key_der_hex =
-      "3082010A0282010100"
-      "961037BC12D2A298BEBF06B2D5F8C9B64B832A2237F8CF27D5F96407A6041A4D"
-      "AD383CB5F88E625F412E8ACD5E9D69DF0F4FA81FCE7955829A38366CBBA5A2B1"
-      "CE3B48C14B59E9F094B51F0A39155874C8DE18A0C299EBF7A88114F806BE4F25"
-      "3C29A509B10E4B19E31675AFE3B2DA77077D94F43D8CE61C205781ED04D183B4"
-      "C349F61B1956C64B5398A3A98FAFF17D1B3D9120C832763EDFC8F4137F6EFBEF"
-      "46D8F6DE03BD00E49DEF987C10BDD5B6F8758B6A855C23C982DDA14D8F0F2B74"
-      "E6DEFA7EEE5A6FC717EB0FF103CB8049F693A2C8A5039EF1F5C025DC44BD8435"
-      "E8D8375DADE00E0C0F5C196E04B8483CC98B1D5B03DCD7E0048B2AB343FFC11F"
-      "0203"
-      "010001";
+                                  SecureBlob("bad_pubkey"),
+                                  SecureBlob()));
+  // Try with a well-formed public key.
   SecureBlob public_key_der;
-  base::HexStringToBytes(public_key_der_hex, &public_key_der);
-  EXPECT_TRUE(key_store.Register(kDefaultUser,
+  base::HexStringToBytes(kValidPublicKeyHex, &public_key_der);
+  EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
+      .Times(2)  // Public, private (no certificate).
+      .WillRepeatedly(Return(CKR_OK));
+  EXPECT_TRUE(key_store.Register(true, kDefaultUser, "test_label",
                                  SecureBlob("private_key_blob"),
-                                 public_key_der));
+                                 public_key_der,
+                                 SecureBlob()));
+}
+
+TEST_F(KeyStoreTest, RegisterKeyWithCertificate) {
+  EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
+      .Times(3)  // Public, private, and certificate.
+      .WillRepeatedly(Return(CKR_OK));
+  Pkcs11KeyStore key_store(&pkcs11_init_);
+  SecureBlob public_key_der;
+  base::HexStringToBytes(kValidPublicKeyHex, &public_key_der);
+  SecureBlob certificate_der;
+  base::HexStringToBytes(kValidCertificateHex, &certificate_der);
+  EXPECT_TRUE(key_store.Register(true, kDefaultUser, "test_label",
+                                 SecureBlob("private_key_blob"),
+                                 public_key_der,
+                                 certificate_der));
+  // Also try with the system token.
+  EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
+      .Times(3)  // Public, private, and certificate.
+      .WillRepeatedly(Return(CKR_OK));
+  EXPECT_TRUE(key_store.Register(false, kDefaultUser, "test_label",
+                                 SecureBlob("private_key_blob"),
+                                 public_key_der,
+                                 certificate_der));
+}
+
+TEST_F(KeyStoreTest, RegisterKeyWithBadCertificate) {
+  EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
+      .Times(3)  // Public, private, and certificate.
+      .WillRepeatedly(Return(CKR_OK));
+  Pkcs11KeyStore key_store(&pkcs11_init_);
+  SecureBlob public_key_der;
+  base::HexStringToBytes(kValidPublicKeyHex, &public_key_der);
+  EXPECT_TRUE(key_store.Register(true, kDefaultUser, "test_label",
+                                 SecureBlob("private_key_blob"),
+                                 public_key_der,
+                                 SecureBlob("bad_certificate")));
+}
+
+TEST_F(KeyStoreTest, RegisterCertificate) {
+  Pkcs11KeyStore key_store(&pkcs11_init_);
+  SecureBlob certificate_der;
+  base::HexStringToBytes(kValidCertificateHex, &certificate_der);
+  EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
+      .Times(2);  // Once for valid, once for invalid.
+  // Try with a valid certificate (hit multiple times to check dup logic).
+  EXPECT_TRUE(key_store.RegisterCertificate(true, kDefaultUser,
+                                            certificate_der));
+  EXPECT_TRUE(key_store.RegisterCertificate(true, kDefaultUser,
+                                            certificate_der));
+  EXPECT_TRUE(key_store.RegisterCertificate(true, kDefaultUser,
+                                            certificate_der));
+  // Try with an invalid certificate.
+  EXPECT_TRUE(key_store.RegisterCertificate(true, kDefaultUser,
+                                            SecureBlob("bad_certificate")));
+}
+
+TEST_F(KeyStoreTest, RegisterCertificateError) {
+  Pkcs11KeyStore key_store(&pkcs11_init_);
+  SecureBlob certificate_der;
+  base::HexStringToBytes(kValidCertificateHex, &certificate_der);
+  // Handle an error from PKCS #11.
+  EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
+      .WillOnce(Return(CKR_GENERAL_ERROR));
+  EXPECT_FALSE(key_store.RegisterCertificate(true, kDefaultUser,
+                                             certificate_der));
+}
+
+TEST_F(KeyStoreTest, RegisterCertificateSystemToken) {
+  Pkcs11KeyStore key_store(&pkcs11_init_);
+  SecureBlob certificate_der;
+  base::HexStringToBytes(kValidCertificateHex, &certificate_der);
+  // Try with the system token.
+  EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
+      .WillOnce(Return(CKR_OK));
+  EXPECT_TRUE(key_store.RegisterCertificate(false, kDefaultUser,
+                                            certificate_der));
 }
 
 // Tests that the DeleteByPrefix() method removes the correct objects and only
@@ -352,37 +526,40 @@ TEST_F(KeyStoreTest, DeleteByPrefix) {
   Pkcs11KeyStore key_store(&pkcs11_init_);
 
   // Test with no keys.
-  ASSERT_TRUE(key_store.DeleteByPrefix(kDefaultUser, "prefix"));
+  ASSERT_TRUE(key_store.DeleteByPrefix(true, kDefaultUser, "prefix"));
 
   // Test with a single matching key.
-  ASSERT_TRUE(key_store.Write(kDefaultUser, "prefix_test", SecureBlob("test")));
-  ASSERT_TRUE(key_store.DeleteByPrefix(kDefaultUser, "prefix"));
+  ASSERT_TRUE(key_store.Write(true, kDefaultUser, "prefix_test",
+                              SecureBlob("test")));
+  ASSERT_TRUE(key_store.DeleteByPrefix(true, kDefaultUser, "prefix"));
   SecureBlob blob;
-  EXPECT_FALSE(key_store.Read(kDefaultUser, "prefix_test", &blob));
+  EXPECT_FALSE(key_store.Read(true, kDefaultUser, "prefix_test", &blob));
 
   // Test with a single non-matching key.
-  ASSERT_TRUE(key_store.Write(kDefaultUser, "_prefix_", SecureBlob("test")));
-  ASSERT_TRUE(key_store.DeleteByPrefix(kDefaultUser, "prefix"));
-  EXPECT_TRUE(key_store.Read(kDefaultUser, "_prefix_", &blob));
+  ASSERT_TRUE(key_store.Write(true, kDefaultUser, "_prefix_",
+                              SecureBlob("test")));
+  ASSERT_TRUE(key_store.DeleteByPrefix(true, kDefaultUser, "prefix"));
+  EXPECT_TRUE(key_store.Read(true, kDefaultUser, "_prefix_", &blob));
 
   // Test with an empty prefix.
-  ASSERT_TRUE(key_store.DeleteByPrefix(kDefaultUser, ""));
-  EXPECT_FALSE(key_store.Read(kDefaultUser, "_prefix_", &blob));
+  ASSERT_TRUE(key_store.DeleteByPrefix(true, kDefaultUser, ""));
+  EXPECT_FALSE(key_store.Read(true, kDefaultUser, "_prefix_", &blob));
 
   // Test with multiple matching and non-matching keys.
   const int kNumKeys = 110;  // Pkcs11KeyStore max is 100 for FindObjects.
-  key_store.Write(kDefaultUser, "other1", SecureBlob("test"));
+  key_store.Write(true, kDefaultUser, "other1", SecureBlob("test"));
   for (int i = 0; i < kNumKeys; ++i) {
     string key_name = string("prefix") + base::IntToString(i);
-    key_store.Write(kDefaultUser, key_name, SecureBlob(key_name));
+    key_store.Write(true, kDefaultUser, key_name, SecureBlob(key_name));
   }
-  ASSERT_TRUE(key_store.Write(kDefaultUser, "other2", SecureBlob("test")));
-  ASSERT_TRUE(key_store.DeleteByPrefix(kDefaultUser, "prefix"));
-  EXPECT_TRUE(key_store.Read(kDefaultUser, "other1", &blob));
-  EXPECT_TRUE(key_store.Read(kDefaultUser, "other2", &blob));
+  ASSERT_TRUE(key_store.Write(true, kDefaultUser, "other2",
+                              SecureBlob("test")));
+  ASSERT_TRUE(key_store.DeleteByPrefix(true, kDefaultUser, "prefix"));
+  EXPECT_TRUE(key_store.Read(true, kDefaultUser, "other1", &blob));
+  EXPECT_TRUE(key_store.Read(true, kDefaultUser, "other2", &blob));
   for (int i = 0; i < kNumKeys; ++i) {
     string key_name = string("prefix") + base::IntToString(i);
-    EXPECT_FALSE(key_store.Read(kDefaultUser, key_name, &blob));
+    EXPECT_FALSE(key_store.Read(true, kDefaultUser, key_name, &blob));
   }
 }
 

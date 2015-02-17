@@ -41,19 +41,29 @@ class Pkcs11KeyStore : public KeyStore {
   virtual ~Pkcs11KeyStore();
 
   // KeyStore interface.
-  virtual bool Read(const std::string& username,
+  virtual bool Read(bool is_user_specific,
+                    const std::string& username,
                     const std::string& key_name,
                     chromeos::SecureBlob* key_data);
-  virtual bool Write(const std::string& username,
+  virtual bool Write(bool is_user_specific,
+                     const std::string& username,
                      const std::string& key_name,
                      const chromeos::SecureBlob& key_data);
-  virtual bool Delete(const std::string& username,
+  virtual bool Delete(bool is_user_specific,
+                      const std::string& username,
                       const std::string& key_name);
-  virtual bool DeleteByPrefix(const std::string& username,
+  virtual bool DeleteByPrefix(bool is_user_specific,
+                              const std::string& username,
                               const std::string& key_prefix);
-  virtual bool Register(const std::string& username,
+  virtual bool Register(bool is_user_specific,
+                        const std::string& username,
+                        const std::string& label,
                         const chromeos::SecureBlob& private_key_blob,
-                        const chromeos::SecureBlob& public_key_der);
+                        const chromeos::SecureBlob& public_key_der,
+                        const chromeos::SecureBlob& certificate);
+  virtual bool RegisterCertificate(bool is_user_specific,
+                                   const std::string& username,
+                                   const chromeos::SecureBlob& certificate);
 
  private:
   typedef base::Callback<bool(const std::string& key_name,
@@ -68,9 +78,11 @@ class Pkcs11KeyStore : public KeyStore {
   CK_OBJECT_HANDLE FindObject(CK_SESSION_HANDLE session_handle,
                               const std::string& key_name);
 
-  // Gets a slot for the given user.  If |username| is empty then the default
-  // slot (0) is provided.  Returns false if no slot is found for |username|.
-  bool GetUserSlot(const std::string& username, CK_SLOT_ID_PTR slot);
+  // Gets a slot for the given |username| if |is_user_specific| or the system
+  // slot otherwise. Returns false if no appropriate slot is found.
+  bool GetUserSlot(bool is_user_specific,
+                   const std::string& username,
+                   CK_SLOT_ID_PTR slot);
 
   // Enumerates all PKCS #11 objects associated with keys.  The |callback| is
   // called once for each object.
@@ -90,6 +102,15 @@ class Pkcs11KeyStore : public KeyStore {
                              const std::string& key_prefix,
                              const std::string& key_name,
                              CK_OBJECT_HANDLE object_handle);
+
+  // Extracts the subject information from an X.509 certificate. Returns false
+  // if the subject cannot be determined.
+  bool GetCertificateSubject(const chromeos::SecureBlob& certificate,
+                             chromeos::SecureBlob* subject);
+
+  // Returns true iff the given certificate already exists in the token.
+  bool DoesCertificateExist(CK_SESSION_HANDLE session_handle,
+                            const chromeos::SecureBlob& certificate);
 
   DISALLOW_COPY_AND_ASSIGN(Pkcs11KeyStore);
 };

@@ -459,7 +459,7 @@
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in" />
       <arg type="ay" name="reply" direction="out" />
-    </method>"
+    </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
          request: GetTpmStatusRequest
          reply: BaseReply with a GetTpmStatusReply extension on success
@@ -468,7 +468,7 @@
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in" />
       <arg type="ay" name="reply" direction="out" />
-    </method>"
+    </method>
     <!-- May be called asynchronously.  Both arguments are protobufs:
          request: GetEndorsementInfoRequest
          reply: BaseReply with a GetEndorsementInfoReply extension on success
@@ -477,7 +477,24 @@
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
       <arg type="ay" name="request" direction="in" />
       <arg type="ay" name="reply" direction="out" />
-    </method>"
+    </method>
+    <!-- May be called asynchronously.  Both arguments are protobufs:
+         request: InitializeCastKey
+         reply: BaseReply
+    -->
+    <method name="InitializeCastKey">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true"/>
+      <arg type="ay" name="request" direction="in" />
+      <arg type="ay" name="reply" direction="out" />
+    </method>
+
+    <!-- Signals:
+           TpmInitStatus: Emitted when TPM initialization status changes.
+           AsyncCallStatus: Emitted when a legacy asynchronous call has
+               finished and the call returns only status.
+           AsyncCallStatusWithData: Emitted when a legacy asynchronous call has
+               finished and the call returns status and data.
+    -->
     <signal name="TpmInitStatus">
       <arg type="b" name="ready" />
       <arg type="b" name="owned" />

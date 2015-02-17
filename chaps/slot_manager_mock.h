@@ -22,7 +22,7 @@ class SlotManagerMock : public SlotManager {
   SlotManagerMock();
   virtual ~SlotManagerMock();
 
-  MOCK_CONST_METHOD0(GetSlotCount, int());
+  MOCK_METHOD0(GetSlotCount, int());
   MOCK_CONST_METHOD2(IsTokenPresent, bool(const chromeos::SecureBlob&, int));
   MOCK_CONST_METHOD2(IsTokenAccessible, bool(const chromeos::SecureBlob&,
                                              int));

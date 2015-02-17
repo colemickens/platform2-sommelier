@@ -14,6 +14,7 @@
 #include <base/scoped_observer.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/platform_thread.h>
+#include <chromeos/http/http_transport.h>
 #include <chromeos/secure_blob.h>
 #include <openssl/evp.h>
 
@@ -43,13 +44,17 @@ class Attestation : public base::PlatformThread::Delegate,
     kAlternatePCA,  // An alternate Privacy CA specified by enterprise policy.
     kMaxPCAType
   };
-  // The caller retains ownership of all pointers.
+  enum PCARequestType {
+    kEnroll,          // Enrolls a device, certifying an identity key.
+    kGetCertificate,  // Issues a certificate for a TPM-backed key.
+  };
   Attestation();
   virtual ~Attestation();
 
   // Must be called before any other method. If |retain_endorsement_data| is set
   // then this instance will not perform any finalization of endorsement data.
   // That is, it will continue to be available in an unencrypted state.
+  // The caller retains ownership of all pointers.
   virtual void Initialize(Tpm* tpm,
                           TpmInit* tpm_init,
                           Platform* platform,
@@ -259,9 +264,12 @@ class Attestation : public base::PlatformThread::Delegate,
   //              |is_user_specific| is false.
   //   key_name - The key name; this is the same name previously passed to
   //              FinishCertRequest.
+  //   include_certificates - Whether to also register the certificate chain
+  //                          associated with the key.
   virtual bool RegisterKey(bool is_user_specific,
                            const std::string& username,
-                           const std::string& key_name);
+                           const std::string& key_name,
+                           bool include_certificates);
 
   // Gets a payload previously set for a key.  If the key exists but no payload
   // has been set, the payload will be empty.  Returns true on success.
@@ -341,18 +349,30 @@ class Attestation : public base::PlatformThread::Delegate,
   virtual bool GetCachedEndorsementData(chromeos::SecureBlob* ek_public_key,
                                         chromeos::SecureBlob* ek_certificate);
 
+  // Sends a |request| to a Privacy CA and waits for the |reply|. This is a
+  // blocking call. Returns true on success.
+  virtual bool SendPCARequestAndBlock(PCAType pca_type,
+                                      PCARequestType request_type,
+                                      const chromeos::SecureBlob& request,
+                                      chromeos::SecureBlob* reply);
+
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
     database_path_ = base::FilePath(path);
   }
 
   // Sets an alternate key store.
-  virtual void set_user_key_store(KeyStore* user_key_store) {
-    user_key_store_ = user_key_store;
+  virtual void set_key_store(KeyStore* key_store) {
+    key_store_ = key_store;
   }
 
   virtual void set_enterprise_test_key(RSA* enterprise_test_key) {
     enterprise_test_key_ = enterprise_test_key;
+  }
+
+  virtual void set_http_transport(
+      std::shared_ptr<chromeos::http::Transport> transport) {
+    http_transport_ = transport;
   }
 
   // PlatformThread::Delegate interface.
@@ -394,6 +414,7 @@ class Attestation : public base::PlatformThread::Delegate,
   static const char kDefaultDatabasePath[];
   static const char kDefaultPCAPublicKey[];
   static const char kDefaultPCAPublicKeyID[];
+  static const char kDefaultPCAWebOrigin[];
   static const char kEnterpriseSigningPublicKey[];
   static const char kEnterpriseEncryptionPublicKey[];
   static const char kEnterpriseEncryptionPublicKeyID[];
@@ -410,6 +431,7 @@ class Attestation : public base::PlatformThread::Delegate,
   // Install attribute names for alternate PCA attributes.
   static const char kAlternatePCAKeyAttributeName[];
   static const char kAlternatePCAKeyIDAttributeName[];
+  static const char kAlternatePCAUrlAttributeName[];
 
   Tpm* tpm_;
   TpmInit* tpm_init_;
@@ -425,7 +447,7 @@ class Attestation : public base::PlatformThread::Delegate,
   base::PlatformThreadHandle thread_;
   CertRequestMap pending_cert_requests_;
   scoped_ptr<Pkcs11KeyStore> pkcs11_key_store_;
-  KeyStore* user_key_store_;
+  KeyStore* key_store_;
   // If set, this will be used to sign / encrypt enterprise challenge-response
   // data instead of using kEnterprise*PublicKey.
   RSA* enterprise_test_key_;
@@ -436,6 +458,8 @@ class Attestation : public base::PlatformThread::Delegate,
   bool is_tpm_ready_;
   bool is_prepare_in_progress_;
   bool retain_endorsement_data_;
+  // Can be used to override the default transport (e.g. during testing).
+  std::shared_ptr<chromeos::http::Transport> http_transport_;
 
   // Serializes and encrypts an attestation database.
   bool EncryptDatabase(const AttestationDatabase& db,
@@ -523,6 +547,9 @@ class Attestation : public base::PlatformThread::Delegate,
   // Adds named device-wide key to the attestation database.
   bool AddDeviceKey(const std::string& key_name, const CertifiedKey& key);
 
+  // Removes a device-wide key from the attestation database.
+  void RemoveDeviceKey(const std::string& key_name);
+
   // Finds a key by name.
   bool FindKeyByName(bool is_user_specific,
                      const std::string& username,
@@ -535,11 +562,14 @@ class Attestation : public base::PlatformThread::Delegate,
                const std::string& key_name,
                const CertifiedKey& key);
 
-  // Assembles a certificate chain in PEM format given a leaf certificate and an
-  // intermediate CA certificate.  By convention, the leaf certificate will be
-  // first.
-  bool CreatePEMCertificateChain(const std::string& leaf_certificate,
-                                 const std::string& intermediate_ca_cert,
+  // Deletes a key either from the device or user key store.
+  void DeleteKey(bool is_user_specific,
+                 const std::string& username,
+                 const std::string& key_name);
+
+  // Assembles a certificate chain in PEM format for a certified key. By
+  // convention, the leaf certificate will be first.
+  bool CreatePEMCertificateChain(const CertifiedKey& key,
                                  chromeos::SecureBlob* certificate_chain);
 
   // Creates a certificate in PEM format from a DER encoded X.509 certificate.
@@ -599,6 +629,9 @@ class Attestation : public base::PlatformThread::Delegate,
   // If PCR1 is clear (i.e. all 0 bytes), extends the PCR with the HWID. This is
   // a fallback if the device firmware does not already do this.
   void ExtendPCR1IfClear();
+
+  // Creates a PCA URL for the given |pca_type| and |request_type|.
+  std::string GetPCAURL(PCAType pca_type, PCARequestType request_type) const;
 
   // Injects a TpmInit object to be used for RemoveTpmOwnerDependency
   void set_tpm_init(TpmInit* value) { tpm_init_ = value; }

@@ -10,6 +10,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/data_encoding.h>
+#include <chromeos/http/http_transport_fake.h>
+#include <chromeos/mime_utils.h>
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -57,7 +59,9 @@ class AttestationTest : public testing::Test {
 
   virtual void SetUp() {
     attestation_.set_database_path(kTestPath);
-    attestation_.set_user_key_store(&key_store_);
+    attestation_.set_key_store(&key_store_);
+    http_transport_ = std::make_shared<chromeos::http::fake::Transport>();
+    attestation_.set_http_transport(http_transport_);
     // Fake up a single file by default.
     ON_CALL(platform_,
             WriteStringToFileAtomicDurable(StartsWith(kTestPath), _, _))
@@ -97,6 +101,7 @@ class AttestationTest : public testing::Test {
   Crypto crypto_;
   NiceMock<MockKeyStore> key_store_;
   NiceMock<MockInstallAttributes> install_attributes_;
+  std::shared_ptr<chromeos::http::fake::Transport> http_transport_;
   Attestation attestation_;
   RSA* rsa_;  // Access with rsa().
 
@@ -294,6 +299,12 @@ class AttestationTest : public testing::Test {
   AttestationDatabase& GetMutableDatabase() {
     return attestation_.database_pb_;
   }
+
+  // Gets the Google Privacy CA web-origin -- this can change depending on
+  // whether the test server is being targeted.
+  std::string GetDefaultPCAWebOrigin() const {
+    return attestation_.kDefaultPCAWebOrigin;
+  }
 };
 
 TEST(AttestationTest_, NullTpm) {
@@ -379,13 +390,13 @@ TEST_F(AttestationTest, CertRequest) {
 }
 
 TEST_F(AttestationTest, CertRequestStorageFailure) {
-  EXPECT_CALL(key_store_, Write(kTestUser, "test", _))
+  EXPECT_CALL(key_store_, Write(true, kTestUser, "test", _))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(key_store_, Read(kTestUser, "test", _))
+  EXPECT_CALL(key_store_, Read(true, kTestUser, "test", _))
       .WillOnce(Return(false))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<2>(GetCertifiedKeyBlob("", true)),
+          SetArgumentPointee<3>(GetCertifiedKeyBlob("", true)),
           Return(true)));
   SecureBlob blob;
   attestation_.PrepareForEnrollment();
@@ -499,9 +510,9 @@ TEST_F(AttestationTest, EUKChallenge) {
   EXPECT_CALL(tpm_, Sign(_, _, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<2>(SecureBlob("signature")),
                             Return(true)));
-  EXPECT_CALL(key_store_, Read(kTestUser, "test", _))
+  EXPECT_CALL(key_store_, Read(true, kTestUser, "test", _))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<2>(GetCertifiedKeyBlob("", true)),
+          SetArgumentPointee<3>(GetCertifiedKeyBlob("", true)),
           Return(true)));
   chromeos::SecureBlob blob;
   SecureBlob challenge = GetEnterpriseChallenge("EnterpriseKeyChallenge", true);
@@ -523,12 +534,12 @@ TEST_F(AttestationTest, EUKChallenge) {
 }
 
 TEST_F(AttestationTest, Payload) {
-  EXPECT_CALL(key_store_, Write(kTestUser, "test",
+  EXPECT_CALL(key_store_, Write(true, kTestUser, "test",
                                 GetCertifiedKeyBlob("test_payload", true)))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(key_store_, Read(kTestUser, "test", _))
+  EXPECT_CALL(key_store_, Read(true, kTestUser, "test", _))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<2>(GetCertifiedKeyBlob("stored_payload", true)),
+          SetArgumentPointee<3>(GetCertifiedKeyBlob("stored_payload", true)),
           Return(true)));
   EXPECT_CALL(tpm_, CreateCertifiedKey(_, _, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<3>(GetPKCS1PublicKey()),
@@ -659,9 +670,9 @@ TEST_F(AttestationTest, RetainEndorsementData) {
 }
 
 TEST_F(AttestationTest, CertChainWithNoIntermediateCA) {
-  EXPECT_CALL(key_store_, Read(kTestUser, "test", _))
+  EXPECT_CALL(key_store_, Read(true, kTestUser, "test", _))
       .WillRepeatedly(DoAll(
-          SetArgumentPointee<2>(GetCertifiedKeyBlob("", false)),
+          SetArgumentPointee<3>(GetCertifiedKeyBlob("", false)),
           Return(true)));
   SecureBlob blob;
   EXPECT_TRUE(attestation_.GetCertificateChain(true, kTestUser, "test",
@@ -759,6 +770,74 @@ TEST_F(AttestationTest, IdentityResetRequest) {
   EXPECT_TRUE(attestation_.GetIdentityResetRequest("token", &blob));
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.GetIdentityResetRequest("token", &blob));
+}
+
+TEST_F(AttestationTest, PCARequest_Enroll) {
+  std::string expected_url = GetDefaultPCAWebOrigin() + "/enroll";
+  http_transport_->AddSimpleReplyHandler(
+      expected_url,
+      chromeos::http::request_type::kPost,
+      chromeos::http::status_code::Ok,
+      "response",
+      chromeos::mime::application::kOctet_stream);
+  SecureBlob response;
+  EXPECT_TRUE(attestation_.SendPCARequestAndBlock(Attestation::kDefaultPCA,
+                                                  Attestation::kEnroll,
+                                                  SecureBlob("request"),
+                                                  &response));
+  EXPECT_TRUE(CompareBlob(response, "response"));
+}
+
+TEST_F(AttestationTest, PCARequest_GetCertificate) {
+  std::string expected_url = GetDefaultPCAWebOrigin() + "/sign";
+  http_transport_->AddSimpleReplyHandler(
+      expected_url,
+      chromeos::http::request_type::kPost,
+      chromeos::http::status_code::Ok,
+      "response",
+      chromeos::mime::application::kOctet_stream);
+  SecureBlob response;
+  EXPECT_TRUE(attestation_.SendPCARequestAndBlock(Attestation::kDefaultPCA,
+                                                  Attestation::kGetCertificate,
+                                                  SecureBlob("request"),
+                                                  &response));
+  EXPECT_TRUE(CompareBlob(response, "response"));
+}
+
+TEST_F(AttestationTest, AlternatePCARequest) {
+  EXPECT_CALL(install_attributes_, Get("enterprise.alternate_pca_url", _))
+      .WillRepeatedly(DoAll(
+          SetArgumentPointee<1>(SecureBlob("https://alternate")),
+          Return(true)));
+  std::string expected_url = "https://alternate/enroll";
+  http_transport_->AddSimpleReplyHandler(
+      expected_url,
+      chromeos::http::request_type::kPost,
+      chromeos::http::status_code::Ok,
+      "response",
+      chromeos::mime::application::kOctet_stream);
+  SecureBlob response;
+  EXPECT_TRUE(attestation_.SendPCARequestAndBlock(Attestation::kAlternatePCA,
+                                                  Attestation::kEnroll,
+                                                  SecureBlob("request"),
+                                                  &response));
+  EXPECT_TRUE(CompareBlob(response, "response"));
+}
+
+TEST_F(AttestationTest, PCARequestWithServerError) {
+  std::string expected_url = GetDefaultPCAWebOrigin() + "/enroll";
+  http_transport_->AddSimpleReplyHandler(
+      expected_url,
+      chromeos::http::request_type::kPost,
+      chromeos::http::status_code::BadRequest,
+      "response",
+      chromeos::mime::application::kOctet_stream);
+  SecureBlob response;
+  EXPECT_FALSE(attestation_.SendPCARequestAndBlock(Attestation::kDefaultPCA,
+                                                   Attestation::kEnroll,
+                                                   SecureBlob("request"),
+                                                   &response));
+  EXPECT_FALSE(CompareBlob(response, "response"));
 }
 
 // An AttestationTest class which does not initialize the Attestation instance.

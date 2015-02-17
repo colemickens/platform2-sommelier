@@ -348,7 +348,8 @@ bool SlotManagerImpl::InitStage2() {
   return true;
 }
 
-int SlotManagerImpl::GetSlotCount() const {
+int SlotManagerImpl::GetSlotCount() {
+  InitStage2();
   return slot_list_.size();
 }
 

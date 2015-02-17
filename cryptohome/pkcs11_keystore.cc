@@ -16,6 +16,7 @@
 #include <chromeos/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
+#include <openssl/x509.h>
 
 #include "cryptohome/cryptolib.h"
 #include "cryptohome/pkcs11_init.h"
@@ -24,6 +25,8 @@ using chromeos::SecureBlob;
 using std::string;
 
 namespace cryptohome {
+
+typedef crypto::ScopedOpenSSL<X509, X509_free>::Type ScopedX509;
 
 // An arbitrary application ID to identify PKCS #11 objects.
 const char kApplicationID[] = "CrOS_d5bbc079d2497110feadfc97c40d718ae46f4658";
@@ -75,11 +78,12 @@ Pkcs11KeyStore::Pkcs11KeyStore(Pkcs11Init* pkcs11_init)
 
 Pkcs11KeyStore::~Pkcs11KeyStore() {}
 
-bool Pkcs11KeyStore::Read(const string& username,
+bool Pkcs11KeyStore::Read(bool is_user_specific,
+                          const string& username,
                           const string& key_name,
                           SecureBlob* key_data) {
   CK_SLOT_ID slot;
-  if (!GetUserSlot(username, &slot))
+  if (!GetUserSlot(is_user_specific, username, &slot))
     return false;
   ScopedSession session(slot);
   if (!session.IsValid())
@@ -107,14 +111,15 @@ bool Pkcs11KeyStore::Read(const string& username,
   return true;
 }
 
-bool Pkcs11KeyStore::Write(const string& username,
+bool Pkcs11KeyStore::Write(bool is_user_specific,
+                           const string& username,
                            const string& key_name,
                            const SecureBlob& key_data) {
   // Delete any existing key with the same name.
-  if (!Delete(username, key_name))
+  if (!Delete(is_user_specific, username, key_name))
     return false;
   CK_SLOT_ID slot;
-  if (!GetUserSlot(username, &slot))
+  if (!GetUserSlot(is_user_specific, username, &slot))
     return false;
   ScopedSession session(slot);
   if (!session.IsValid())
@@ -155,10 +160,11 @@ bool Pkcs11KeyStore::Write(const string& username,
   return true;
 }
 
-bool Pkcs11KeyStore::Delete(const string& username,
+bool Pkcs11KeyStore::Delete(bool is_user_specific,
+                            const string& username,
                             const std::string& key_name) {
   CK_SLOT_ID slot;
-  if (!GetUserSlot(username, &slot))
+  if (!GetUserSlot(is_user_specific, username, &slot))
     return false;
   ScopedSession session(slot);
   if (!session.IsValid())
@@ -173,10 +179,11 @@ bool Pkcs11KeyStore::Delete(const string& username,
   return true;
 }
 
-bool Pkcs11KeyStore::DeleteByPrefix(const std::string& username,
+bool Pkcs11KeyStore::DeleteByPrefix(bool is_user_specific,
+                                    const std::string& username,
                                     const std::string& key_prefix) {
   CK_SLOT_ID slot;
-  if (!GetUserSlot(username, &slot))
+  if (!GetUserSlot(is_user_specific, username, &slot))
     return false;
   ScopedSession session(slot);
   if (!session.IsValid())
@@ -193,20 +200,23 @@ bool Pkcs11KeyStore::DeleteByPrefix(const std::string& username,
   return true;
 }
 
-bool Pkcs11KeyStore::Register(const string& username,
+bool Pkcs11KeyStore::Register(bool is_user_specific,
+                              const string& username,
+                              const string& label,
                               const chromeos::SecureBlob& private_key_blob,
-                              const chromeos::SecureBlob& public_key_der) {
+                              const chromeos::SecureBlob& public_key_der,
+                              const chromeos::SecureBlob& certificate) {
   const CK_ATTRIBUTE_TYPE kKeyBlobAttribute = CKA_VENDOR_DEFINED + 1;
 
   CK_SLOT_ID slot;
-  if (!GetUserSlot(username, &slot))
+  if (!GetUserSlot(is_user_specific, username, &slot))
     return false;
   ScopedSession session(slot);
   if (!session.IsValid())
     return false;
 
   // Extract the modulus from the public key.
-  const unsigned char* asn1_ptr = &public_key_der.front();
+  const unsigned char* asn1_ptr = vector_as_array(&public_key_der);
   crypto::ScopedRSA public_key(d2i_RSAPublicKey(NULL,
                                                 &asn1_ptr,
                                                 public_key_der.size()));
@@ -215,7 +225,7 @@ bool Pkcs11KeyStore::Register(const string& username,
     return false;
   }
   SecureBlob modulus(BN_num_bytes(public_key.get()->n));
-  int length = BN_bn2bin(public_key.get()->n, &modulus.front());
+  int length = BN_bn2bin(public_key.get()->n, vector_as_array(&modulus));
   if (length <= 0) {
     LOG(ERROR) << "Pkcs11KeyStore: Failed to extract public key modulus.";
     return false;
@@ -228,6 +238,7 @@ bool Pkcs11KeyStore::Register(const string& username,
   CK_KEY_TYPE key_type = CKK_RSA;
   CK_OBJECT_CLASS public_key_class = CKO_PUBLIC_KEY;
   SecureBlob id = CryptoLib::Sha1(modulus);
+  SecureBlob mutable_label(label);
   CK_ULONG modulus_bits = modulus.size() * 8;
   unsigned char public_exponent[] = {1, 0, 1};
   CK_ATTRIBUTE public_key_attributes[] = {
@@ -240,6 +251,7 @@ bool Pkcs11KeyStore::Register(const string& username,
     {CKA_ENCRYPT, &false_value, sizeof(false_value)},
     {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
     {CKA_ID, id.data(), id.size()},
+    {CKA_LABEL, mutable_label.data(), mutable_label.size()},
     {CKA_MODULUS_BITS, &modulus_bits, sizeof(modulus_bits)},
     {CKA_PUBLIC_EXPONENT, public_exponent, arraysize(public_exponent)},
     {CKA_MODULUS, modulus.data(), modulus.size()}
@@ -269,6 +281,7 @@ bool Pkcs11KeyStore::Register(const string& username,
     {CKA_DECRYPT, &false_value, sizeof(false_value)},
     {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
     {CKA_ID, id.data(), id.size()},
+    {CKA_LABEL, mutable_label.data(), mutable_label.size()},
     {CKA_PUBLIC_EXPONENT, public_exponent, arraysize(public_exponent)},
     {CKA_MODULUS, modulus.data(), modulus.size()},
     {
@@ -286,10 +299,83 @@ bool Pkcs11KeyStore::Register(const string& username,
     return false;
   }
 
+  if (!certificate.empty()) {
+    chromeos::SecureBlob subject;
+    if (!GetCertificateSubject(certificate, &subject)) {
+      LOG(WARNING) << "Pkcs11KeyStore: Failed to find certificate subject.";
+    }
+    // Construct a PKCS #11 template for a certificate object.
+    SecureBlob mutable_certificate(certificate.begin(), certificate.end());
+    CK_OBJECT_CLASS certificate_class = CKO_CERTIFICATE;
+    CK_CERTIFICATE_TYPE certificate_type = CKC_X_509;
+    CK_ATTRIBUTE certificate_attributes[] = {
+      {CKA_CLASS, &certificate_class, sizeof(certificate_class)},
+      {CKA_TOKEN, &true_value, sizeof(true_value)},
+      {CKA_PRIVATE, &false_value, sizeof(false_value)},
+      {CKA_ID, id.data(), id.size()},
+      {CKA_LABEL, mutable_label.data(), mutable_label.size()},
+      {CKA_CERTIFICATE_TYPE, &certificate_type, sizeof(certificate_type)},
+      {CKA_SUBJECT, subject.data(), subject.size()},
+      {CKA_VALUE, mutable_certificate.data(), mutable_certificate.size()}
+    };
+
+    if (C_CreateObject(session.handle(),
+                       certificate_attributes,
+                       arraysize(certificate_attributes),
+                       &object_handle) != CKR_OK) {
+      LOG(ERROR) << "Pkcs11KeyStore: Failed to create certificate object.";
+      return false;
+    }
+  }
+
   // Close all sessions in an attempt to trigger other modules to find the new
   // objects.
   C_CloseAllSessions(slot);
 
+  return true;
+}
+
+bool Pkcs11KeyStore::RegisterCertificate(
+    bool is_user_specific,
+    const string& username,
+    const chromeos::SecureBlob& certificate) {
+  CK_SLOT_ID slot;
+  if (!GetUserSlot(is_user_specific, username, &slot))
+    return false;
+  ScopedSession session(slot);
+  if (!session.IsValid())
+    return false;
+
+  if (DoesCertificateExist(session.handle(), certificate)) {
+    LOG(INFO) << "Pkcs11KeyStore: Certificate already exists.";
+    return true;
+  }
+  chromeos::SecureBlob subject;
+  if (!GetCertificateSubject(certificate, &subject)) {
+    LOG(WARNING) << "Pkcs11KeyStore: Failed to find certificate subject.";
+  }
+  // Construct a PKCS #11 template for a certificate object.
+  SecureBlob mutable_certificate(certificate.begin(), certificate.end());
+  CK_OBJECT_CLASS certificate_class = CKO_CERTIFICATE;
+  CK_CERTIFICATE_TYPE certificate_type = CKC_X_509;
+  CK_BBOOL true_value = CK_TRUE;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_ATTRIBUTE certificate_attributes[] = {
+    {CKA_CLASS, &certificate_class, sizeof(certificate_class)},
+    {CKA_TOKEN, &true_value, sizeof(true_value)},
+    {CKA_PRIVATE, &false_value, sizeof(false_value)},
+    {CKA_CERTIFICATE_TYPE, &certificate_type, sizeof(certificate_type)},
+    {CKA_SUBJECT, subject.data(), subject.size()},
+    {CKA_VALUE, mutable_certificate.data(), mutable_certificate.size()}
+  };
+  CK_OBJECT_HANDLE object_handle = CK_INVALID_HANDLE;
+  if (C_CreateObject(session.handle(),
+                     certificate_attributes,
+                     arraysize(certificate_attributes),
+                     &object_handle) != CKR_OK) {
+    LOG(ERROR) << "Pkcs11KeyStore: Failed to create certificate object.";
+    return false;
+  }
   return true;
 }
 
@@ -330,10 +416,14 @@ CK_OBJECT_HANDLE Pkcs11KeyStore::FindObject(CK_SESSION_HANDLE session_handle,
   return CK_INVALID_HANDLE;
 }
 
-bool Pkcs11KeyStore::GetUserSlot(const string& username, CK_SLOT_ID_PTR slot) {
-  const char *kChapsDaemonName = "chaps";
-  base::FilePath token_path =
-      chromeos::cryptohome::home::GetDaemonPath(username, kChapsDaemonName);
+bool Pkcs11KeyStore::GetUserSlot(bool is_user_specific,
+                                 const string& username,
+                                 CK_SLOT_ID_PTR slot) {
+  const char kChapsDaemonName[] = "chaps";
+  const char kChapsSystemToken[] = "/var/lib/chaps";
+  base::FilePath token_path = is_user_specific ?
+      chromeos::cryptohome::home::GetDaemonPath(username, kChapsDaemonName) :
+      base::FilePath(kChapsSystemToken);
   return pkcs11_init_->GetTpmTokenSlotForPath(token_path, slot);
 }
 
@@ -416,6 +506,52 @@ bool Pkcs11KeyStore::DeleteIfMatchesPrefix(CK_SESSION_HANDLE session_handle,
     }
   }
   return true;
+}
+
+bool Pkcs11KeyStore::GetCertificateSubject(
+    const chromeos::SecureBlob& certificate,
+    chromeos::SecureBlob* subject) {
+  const unsigned char* asn1_ptr = vector_as_array(&certificate);
+  ScopedX509 x509(d2i_X509(NULL, &asn1_ptr, certificate.size()));
+  if (!x509.get() || !x509->cert_info || !x509->cert_info->subject) {
+    LOG(WARNING) << "Pkcs11KeyStore: Failed to decode certificate.";
+    return false;
+  }
+  unsigned char* buffer = NULL;
+  int length = i2d_X509_NAME(x509->cert_info->subject, &buffer);
+  crypto::ScopedOpenSSLBytes scoped_buffer(buffer);
+  if (length <= 0) {
+    LOG(WARNING) << "Pkcs11KeyStore: Failed to encode certificate subject.";
+    return false;
+  }
+  SecureBlob tmp(buffer, length);
+  subject->swap(tmp);
+  return true;
+}
+
+bool Pkcs11KeyStore::DoesCertificateExist(
+    CK_SESSION_HANDLE session_handle,
+    const chromeos::SecureBlob& certificate) {
+  CK_OBJECT_CLASS object_class = CKO_CERTIFICATE;
+  CK_BBOOL true_value = CK_TRUE;
+  CK_BBOOL false_value = CK_FALSE;
+  SecureBlob mutable_certificate(certificate.begin(), certificate.end());
+  CK_ATTRIBUTE attributes[] = {
+    {CKA_CLASS, &object_class, sizeof(object_class)},
+    {CKA_TOKEN, &true_value, sizeof(true_value)},
+    {CKA_PRIVATE, &false_value, sizeof(false_value)},
+    {CKA_VALUE, mutable_certificate.data(), mutable_certificate.size()}
+  };
+  CK_OBJECT_HANDLE object_handle = CK_INVALID_HANDLE;
+  CK_ULONG count = 0;
+  if ((C_FindObjectsInit(session_handle,
+                         attributes,
+                         arraysize(attributes)) != CKR_OK) ||
+      (C_FindObjects(session_handle, &object_handle, 1, &count) != CKR_OK) ||
+      (C_FindObjectsFinal(session_handle) != CKR_OK)) {
+    return false;
+  }
+  return (count > 0);
 }
 
 }  // namespace cryptohome
