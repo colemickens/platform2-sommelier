@@ -1,3 +1,12 @@
+This file is intended for onboarding new SWEs hacking on buffet.
+
+ A. Common workflows.
+ B. Registering your DUT.
+
+---
+A. COMMON WORKFLOWS
+---
+
 Some common workflows for developing with buffet:
 
 # Tell portage that you'd like to make local changes to Buffet:
@@ -22,3 +31,117 @@ cros deploy --board=${BOARD} <remote host> buffet
 #      privacy concerns).
 #  3 - enable low-level CURL tracing for HTTP communication.
 buffet --v=2
+
+---
+B. REGISTERING YOUR DUT
+---
+
+This process in described in great detail at
+
+ https://developers.google.com/cloud-devices/v1/dev-guides/getting-started/register
+
+but since these instructions are generic and comprehensive, here's
+exactly what you need to do to get started when working with
+buffet/Brillo, in ten simple steps.
+
+The word DUT in this context is meant as the device that you want to
+associate with the cloud - for most buffet/Brillo developers this will
+be a Chromebook or another embedded device. These notes assume you
+have shell access to the DUT and also have access to a normal Linux
+workstation with shell and browser access.
+
+1. Open an Incognito window in Chrome on your workstation, go to
+https://www.google.com and log in with your test google account (NEVER
+use @google.com credentials on DUTs). In the following we're using
+<GMAIL_TEST_ACCOUNT> which you should replace with whatever you're
+using, e.g. my-testing-account-xyz@gmail.com.
+
+2. First we need an Authorization Code for the test user. This is
+covered in more detail in
+
+ https://developers.google.com/cloud-devices/v1/dev-guides/getting-started/authorizing#code
+
+but basically amounts to entering the following URL in the Incognito window
+
+ https://accounts.google.com/o/oauth2/auth?scope=https://www.googleapis.com/auth/clouddevices&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&client_id=58855907228.apps.googleusercontent.com
+
+If you're not using the default buffet gcd-project, replace the
+client_id parameter in the URL with the one for the product you
+registered as per
+
+ https://developers.google.com/cloud-devices/v1/dev-guides/getting-started/authorizing#setup
+
+3. The browser window should display a prompt saying that
+"clouddevicesclient" would like to "Manage your cloud device". Press
+the "Accept" button and write down the Authorization Code
+displayed. It should look something like this
+
+ 4/J23qfSkXYFgF_0H7DCOtwS5O7HO69zF9LtnG9_ILIGA.QhJE9WLeqwcaJvIeHux6iLavlvowlwI
+
+4. Open a bash prompt on your Linux workstation and type the following
+
+ export SETUP_USER=<GMAIL_TEST_ACCOUNT>
+ export SETUP_CODE=4/J23qfSkXYFgF_0H7DCOtwS5O7HO69zF9LtnG9_ILIGA.QhJE9WLeqwcaJvIeHux6iLavlvowlwI
+ export SETUP_CLIENT_ID=58855907228.apps.googleusercontent.com
+ export SETUP_CLIENT_SECRET=eHSAREAHrIqPsHBxCE9zPPBi
+
+replacing the values for SETUP_USER and SETUP_CODE as
+appropriate. Again, if you're not using the default buffet gcd-project
+replace the values SETUP_CLIENT_ID and SETUP_CLIENT_SECRET as
+appropriate.
+
+5. Now we can get an Access Token. Run the following command from the shell:
+
+ curl -d "code=${SETUP_CODE}&client_id=${SETUP_CLIENT_ID}&client_secret=${SETUP_CLIENT_SECRET}&redirect_uri=urn:ietf:wg:oauth:2.0:oob&grant_type=authorization_code" https://accounts.google.com/o/oauth2/token
+
+It should print out something like this:
+
+ {
+   "access_token" : "ya29.HQE<...>",
+   "token_type" : "Bearer",
+   "expires_in" : 3600,
+   "refresh_token" : "1/iMq4<...>"
+ }
+
+6. Export the access token in the shell:
+
+ export SETUP_ACCESS_TOKEN=ya29.HQE<...>
+
+7. Now we can get the Registration Ticket Id for the device. Run the following
+
+ curl --header "Authorization: Bearer ${SETUP_ACCESS_TOKEN}" --header "Content-Type: application/json; charset=UTF-8" --data "{ \"userEmail\": \"${SETUP_USER}\" }" https://www.googleapis.com/clouddevices/v1/registrationTickets
+
+It should print out something like this
+
+ {
+  "kind": "clouddevices#registrationTicket",
+  "id": "453f1139-bd<...>",
+  "deviceId": "77500a3f-458b-<...>",
+  "userEmail": "<GMAIL_TEST_ACCOUNT>",
+  "creationTimeMs": "1424193538212",
+  "expirationTimeMs": "1424193778212"
+ }
+
+8. Now, open a shell on the DUT and export the following
+
+ export DUT_SETUP_TICKET_ID=453f1139-bd<...>
+
+9. Run the following command on the DUT shell
+
+ buffet_client RegisterDevice ticket_id=${DUT_SETUP_TICKET_ID}
+
+appropriate. If you're not using the default buffet gcd-project you
+also need to pass other parameters such as client_id, client_secret
+and api_key.
+
+It should succeed and print the device-id
+
+ Device registered: 77500a3f-458b-<...>
+
+10. The registered DUT should now show up in the Google account that
+you associated it with. In the Incognito window opened in step 1, go
+to
+
+ https://security.google.com/settings/security/permissions
+
+where you can e.g. revoke access to the device.
