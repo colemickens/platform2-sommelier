@@ -111,10 +111,6 @@ void Server::Connect(
   dbus_object_->RegisterAsync(cb);
   on_server_online_ = on_server_online;
   on_server_offline_ = on_server_offline;
-  AddProtocolHandler(std::unique_ptr<ProtocolHandler>{
-      new ProtocolHandler{ProtocolHandler::kHttp, this}});
-  AddProtocolHandler(std::unique_ptr<ProtocolHandler>{
-    new ProtocolHandler{ProtocolHandler::kHttps, this}});
   object_manager_.reset(new org::chromium::WebServer::ObjectManagerProxy{bus});
   object_manager_->SetServerAddedCallback(
       base::Bind(&Server::Online, base::Unretained(this)));
@@ -135,6 +131,7 @@ void Server::Disconnect() {
 }
 
 void Server::Online(org::chromium::WebServer::ServerProxy* server) {
+  VLOG(1) << "Web server is on-line.";
   proxy_ = server;
   if (!on_server_online_.is_null())
     on_server_online_.Run();
@@ -144,10 +141,14 @@ void Server::Offline(const dbus::ObjectPath& object_path) {
   if (!on_server_offline_.is_null())
     on_server_offline_.Run();
   proxy_ = nullptr;
+  VLOG(1) << "Web server is off-line.";
 }
 
 void Server::ProtocolHandlerAdded(
     org::chromium::WebServer::ProtocolHandlerProxy* handler) {
+  VLOG(1) << "Server-side protocol handler with ID '" << handler->id()
+          << "' is on-line.";
+
   protocol_handler_id_map_.emplace(handler->GetObjectPath(), handler->id());
   ProtocolHandler* registered_handler = GetProtocolHandler(handler->id());
   if (registered_handler) {
@@ -162,6 +163,9 @@ void Server::ProtocolHandlerRemoved(const dbus::ObjectPath& object_path) {
   if (p == protocol_handler_id_map_.end())
     return;
 
+  VLOG(1) << "Server-side protocol handler with ID '" << p->second
+          << "' is off-line.";
+
   ProtocolHandler* registered_handler = GetProtocolHandler(p->second);
   if (registered_handler) {
     if (!on_protocol_handler_disconnected_.is_null())
@@ -172,16 +176,23 @@ void Server::ProtocolHandlerRemoved(const dbus::ObjectPath& object_path) {
   protocol_handler_id_map_.erase(p);
 }
 
-ProtocolHandler* Server::GetProtocolHandler(const std::string& id) const {
+ProtocolHandler* Server::GetProtocolHandler(const std::string& id) {
   auto p = protocol_handlers_.find(id);
-  return (p != protocol_handlers_.end()) ? p->second.get() : nullptr;
+  if (p == protocol_handlers_.end()) {
+    VLOG(1) << "Creating a client-side instance of web server's protocol "
+            << "handler with ID '" << id << "'";
+    p = protocol_handlers_.emplace(
+        id,
+        std::unique_ptr<ProtocolHandler>{new ProtocolHandler{id, this}}).first;
+  }
+  return p->second.get();
 }
 
-ProtocolHandler* Server::GetDefaultHttpHandler() const {
+ProtocolHandler* Server::GetDefaultHttpHandler() {
   return GetProtocolHandler(ProtocolHandler::kHttp);
 }
 
-ProtocolHandler* Server::GetDefaultHttpsHandler() const {
+ProtocolHandler* Server::GetDefaultHttpsHandler() {
   return GetProtocolHandler(ProtocolHandler::kHttps);
 }
 
@@ -193,12 +204,6 @@ void Server::OnProtocolHandlerConnected(
 void Server::OnProtocolHandlerDisconnected(
     const base::Callback<void(ProtocolHandler*)>& callback) {
   on_protocol_handler_disconnected_ = callback;
-}
-
-void Server::AddProtocolHandler(std::unique_ptr<ProtocolHandler> handler) {
-  // Make sure a handler with this ID isn't already registered.
-  CHECK(protocol_handlers_.find(handler->GetID()) == protocol_handlers_.end());
-  protocol_handlers_.emplace(handler->GetID(), std::move(handler));
 }
 
 }  // namespace libwebserv

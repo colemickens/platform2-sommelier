@@ -58,10 +58,21 @@ class LIBWEBSERV_EXPORT Server final {
   void Disconnect();
 
   // A helper method that returns the default handler for "http".
-  ProtocolHandler* GetDefaultHttpHandler() const;
+  ProtocolHandler* GetDefaultHttpHandler();
 
   // A helper method that returns the default handler for "https".
-  ProtocolHandler* GetDefaultHttpsHandler() const;
+  ProtocolHandler* GetDefaultHttpsHandler();
+
+  // Returns an existing protocol handler by ID.  If the handler with the
+  // requested |id| does not exist, a new one will be created.   See
+  // documentation in ProtocolHandler about IDs and how they work with
+  // webservd.
+  //
+  // The created handler is purely client side, and depends on the server
+  // being configured to open a corresponding handler with the given ID.
+  // Because clients and the server come up asynchronously, we allow clients
+  // to register anticipated handlers before server starts up.
+  ProtocolHandler* GetProtocolHandler(const std::string& id);
 
   // Returns true if the web server daemon is connected to DBus and our
   // connection to it has been established.
@@ -83,11 +94,6 @@ class LIBWEBSERV_EXPORT Server final {
   friend class ProtocolHandler;
   class RequestHandler;
 
-  // Returns an existing protocol handler by ID.  See documentation in
-  // ProtocolHandler about IDs and how they work with webservd.
-  LIBWEBSERV_PRIVATE ProtocolHandler* GetProtocolHandler(
-      const std::string& id) const;
-
   // Handler invoked when a connection is established to web server daemon.
   LIBWEBSERV_PRIVATE void Online(org::chromium::WebServer::ServerProxy* server);
 
@@ -102,9 +108,6 @@ class LIBWEBSERV_EXPORT Server final {
   // Handler invoked when a protocol handler D-Bus proxy object disappears.
   LIBWEBSERV_PRIVATE void ProtocolHandlerRemoved(
       const dbus::ObjectPath& object_path);
-
-  LIBWEBSERV_PRIVATE void AddProtocolHandler(
-      std::unique_ptr<ProtocolHandler> handler);
 
   // Private implementation of D-Bus RequestHandlerInterface called by the web
   // server daemon whenever a new request is available to be processed.
