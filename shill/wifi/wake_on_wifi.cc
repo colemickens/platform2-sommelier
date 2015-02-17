@@ -1192,16 +1192,7 @@ void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage &netlink_message) {
     SLOG(this, 3) << __func__ << ": "
                   << "Wakeup reason: SSID";
     last_wake_reason_ = kWakeTriggerSSID;
-    WakeOnSSIDResults results = ParseWakeOnWakeOnSSIDResults(results_list);
-    int ssid_num = 0;
-    for (const auto &result : results) {
-      SLOG(this, 3) << "SSID " << ssid_num << ": "
-                    << std::string(result.first.begin(), result.first.end());
-      for (uint32_t freq : result.second) {
-        SLOG(this, 7) << "Frequency: " << freq;
-      }
-      ++ssid_num;
-    }
+    last_ssid_match_freqs_ = ParseWakeOnWakeOnSSIDResults(results_list);
     return;
   }
   SLOG(this, 3) << __func__ << ": "
@@ -1261,7 +1252,7 @@ void WakeOnWiFi::OnDarkResume(
     const vector<ByteString> &ssid_whitelist,
     const ResultCallback &done_callback,
     const Closure &renew_dhcp_lease_callback,
-    const Closure &initiate_scan_callback,
+    const InitiateScanCallback &initiate_scan_callback,
     const Closure &remove_supplicant_networks_callback) {
   SLOG(this, 1) << __func__ << ": "
                 << (is_connected ? "connected" : "not connected")
@@ -1289,7 +1280,7 @@ void WakeOnWiFi::OnDarkResume(
           kDarkResumeFrequencySamplingPeriodLongMinutes * 60,
           EventHistory::kClockTypeBoottime) >= kMaxDarkResumesPerPeriodLong) {
     LOG(ERROR) << __func__ << ": "
-               << "Too many dark resumes; disabling wake on WiFi";
+               << "Too many dark resumes; disabling wake on WiFi temporarily";
     // If too many dark resumes have triggered recently, we are probably
     // thrashing. Stop this by disabling wake on WiFi on the NIC, and
     // starting the wake to scan timer so that normal wake on WiFi behavior
@@ -1301,6 +1292,7 @@ void WakeOnWiFi::OnDarkResume(
     DisableWakeOnWiFi();
     dark_resume_history_.Clear();
     metrics_->NotifyWakeOnWiFiThrottled();
+    last_ssid_match_freqs_.clear();
     return;
   }
 
@@ -1318,7 +1310,9 @@ void WakeOnWiFi::OnDarkResume(
     case kWakeTriggerDisconnect: {
       remove_supplicant_networks_callback.Run();
       metrics_->NotifyDarkResumeInitiateScan();
-      initiate_scan_callback.Run();
+      initiate_scan_callback.Run(last_wake_reason_ == kWakeTriggerSSID
+                                     ? last_ssid_match_freqs_
+                                     : WiFi::FreqSet());
       break;
     }
     case kWakeTriggerUnsupported:
@@ -1328,7 +1322,7 @@ void WakeOnWiFi::OnDarkResume(
       } else {
         remove_supplicant_networks_callback.Run();
         metrics_->NotifyDarkResumeInitiateScan();
-        initiate_scan_callback.Run();
+        initiate_scan_callback.Run(WiFi::FreqSet());
       }
     }
   }
@@ -1357,6 +1351,7 @@ void WakeOnWiFi::BeforeSuspendActions(
   // Note: No conditional compilation because all entry points to this functions
   // are already conditionally compiled based on DISABLE_WAKE_ON_WIFI.
 
+  last_ssid_match_freqs_.clear();
   last_wake_reason_ = kWakeTriggerUnsupported;
   // Add relevant triggers to be programmed into the NIC.
   wake_on_wifi_triggers_.clear();
@@ -1435,23 +1430,24 @@ void WakeOnWiFi::BeforeSuspendActions(
 }
 
 // static
-WakeOnWiFi::WakeOnSSIDResults WakeOnWiFi::ParseWakeOnWakeOnSSIDResults(
+WiFi::FreqSet WakeOnWiFi::ParseWakeOnWakeOnSSIDResults(
     AttributeListConstRefPtr results_list) {
-  WakeOnSSIDResults results;
+  WiFi::FreqSet freqs;
   AttributeIdIterator results_iter(*results_list);
   if (results_iter.AtEnd()) {
     SLOG(WiFi, nullptr, 3) << __func__ << ": "
                            << "Wake on SSID results not available";
-    return results;
+    return freqs;
   }
   AttributeListConstRefPtr result;
+  int ssid_num = 0;
   for (; !results_iter.AtEnd(); results_iter.Advance()) {
     if (!results_list->ConstGetNestedAttributeList(results_iter.GetId(),
                                                    &result)) {
       LOG(ERROR) << __func__ << ": "
                  << "Could not get result #" << results_iter.GetId()
                  << " in ssid_results";
-      return results;
+      return freqs;
     }
     ByteString ssid_bytestring;
     if (!result->GetRawAttributeValue(NL80211_ATTR_SSID, &ssid_bytestring)) {
@@ -1460,10 +1456,10 @@ WakeOnWiFi::WakeOnSSIDResults WakeOnWiFi::ParseWakeOnWakeOnSSIDResults(
                  << "No SSID available for result #" << results_iter.GetId();
       continue;
     }
-    vector<uint8_t> ssid(
-        ssid_bytestring.GetConstData(),
-        ssid_bytestring.GetConstData() + ssid_bytestring.GetLength());
-    vector<uint32_t> freq_list;
+    SLOG(WiFi, nullptr, 3) << "SSID " << ssid_num << ": "
+                           << std::string(ssid_bytestring.GetConstData(),
+                                          ssid_bytestring.GetConstData() +
+                                              ssid_bytestring.GetLength());
     AttributeListConstRefPtr frequencies;
     uint32_t freq_value;
     if (result->ConstGetNestedAttributeList(NL80211_ATTR_SCAN_FREQUENCIES,
@@ -1471,7 +1467,8 @@ WakeOnWiFi::WakeOnSSIDResults WakeOnWiFi::ParseWakeOnWakeOnSSIDResults(
       AttributeIdIterator freq_iter(*frequencies);
       for (; !freq_iter.AtEnd(); freq_iter.Advance()) {
         if (frequencies->GetU32AttributeValue(freq_iter.GetId(), &freq_value)) {
-          freq_list.push_back(freq_value);
+          freqs.insert(freq_value);
+          SLOG(WiFi, nullptr, 7) << "Frequency: " << freq_value;
         }
       }
     } else {
@@ -1479,9 +1476,9 @@ WakeOnWiFi::WakeOnSSIDResults WakeOnWiFi::ParseWakeOnWakeOnSSIDResults(
                              << "No frequencies available for result #"
                              << results_iter.GetId();
     }
-    results.push_back(SSIDFreqListPair(ssid, freq_list));
+    ++ssid_num;
   }
-  return results;
+  return freqs;
 }
 
 void WakeOnWiFi::OnDHCPLeaseObtained(bool start_lease_renewal_timer,

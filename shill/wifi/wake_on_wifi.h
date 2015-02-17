@@ -26,6 +26,7 @@
 #include "shill/net/ip_address.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/refptr_types.h"
+#include "shill/wifi/wifi.h"
 
 namespace shill {
 
@@ -37,7 +38,6 @@ class Metrics;
 class Nl80211Message;
 class PropertyStore;
 class SetWakeOnPacketConnMessage;
-class WiFi;
 
 // |WakeOnWiFi| performs all wake on WiFi related tasks and logic (e.g.
 // suspend/dark resume/resume logic, NIC wowlan programming via nl80211), and
@@ -131,10 +131,7 @@ class WiFi;
 
 class WakeOnWiFi {
  public:
-  typedef std::pair<std::vector<uint8_t>, std::vector<uint32_t>>
-      SSIDFreqListPair;
-  typedef std::vector<std::pair<std::vector<uint8_t>, std::vector<uint32_t>>>
-      WakeOnSSIDResults;
+  typedef base::Callback<void(const WiFi::FreqSet &)> InitiateScanCallback;
 
   // Types of triggers that we can program the NIC to wake the WiFi device.
   enum WakeOnWiFiTrigger {
@@ -225,7 +222,7 @@ class WakeOnWiFi {
       const std::vector<ByteString> &ssid_whitelist,
       const ResultCallback &done_callback,
       const base::Closure &renew_dhcp_lease_callback,
-      const base::Closure &initiate_scan_callback,
+      const InitiateScanCallback &initiate_scan_callback,
       const base::Closure &remove_supplicant_networks_callback);
   // Wrapper around WakeOnWiFi::BeforeSuspendActions that checks if shill is
   // currently in dark resume before invoking the function.
@@ -433,8 +430,8 @@ class WakeOnWiFi {
 
   // Parses an attribute list containing the SSID matches that caused the
   // system wake, along with the corresponding channels that these SSIDs were
-  // detected in. Returns a list on wake on SSID results (SSID-frequency list
-  // pairs) representing the reported SSID matches.
+  // detected in. Returns a set of unique frequencies that the reported
+  // SSID matches occured in.
   //
   // Arguments:
   //  - |results_list|: Nested attribute list containing an array of nested
@@ -442,7 +439,7 @@ class WakeOnWiFi {
   //    NL80211_ATTR_SCAN_FREQUENCIES attributes. This attribute list is assumed
   //    to have been extracted from a NL80211_CMD_SET_WOWLAN response message
   //    using the NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS id.
-  static WakeOnSSIDResults ParseWakeOnWakeOnSSIDResults(
+  static WiFi::FreqSet ParseWakeOnWakeOnSSIDResults(
       AttributeListConstRefPtr results_list);
 
   // Pointers to objects owned by the WiFi object that created this object.
@@ -505,6 +502,9 @@ class WakeOnWiFi {
   WakeOnWiFiTrigger last_wake_reason_;
   // Whether or not to always start |wake_to_scan_timer_| before suspend.
   bool force_wake_to_scan_timer_;
+  // Frequencies that the last wake on SSID matches reported by the kernel
+  // occurred in.
+  WiFi::FreqSet last_ssid_match_freqs_;
 
   base::WeakPtrFactory<WakeOnWiFi> weak_ptr_factory_;
 

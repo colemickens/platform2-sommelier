@@ -1956,7 +1956,7 @@ void WiFi::OnAfterResume() {
   need_bss_flush_ = true;
 
   if (!IsConnectedToCurrentService()) {
-    InitiateScan(kProgressiveScan, false);
+    InitiateScan(kProgressiveScan);
   }
 
   // Since we stopped the scan timer before suspending, start it again here.
@@ -1976,27 +1976,31 @@ void WiFi::AbortScan() {
   SetScanState(kScanIdle, kScanMethodNone, __func__);
 }
 
-void WiFi::InitiateScan(ScanType scan_type, bool do_passive_scan) {
-  LOG(INFO) << __func__ << ": " << (do_passive_scan ? "Passive" : "Active");
+void WiFi::InitiateScan(ScanType scan_type) {
+  LOG(INFO) << __func__;
   // Abort any current scan (at the shill-level; let any request that's
   // already gone out finish) since we don't know when it started.
   AbortScan();
 
   if (IsIdle()) {
     // Not scanning/connecting/connected, so let's get things rolling.
-    if (do_passive_scan) {
-      TriggerPassiveScan();
-    } else {
-      Scan(scan_type, nullptr, __func__);
-      RestartFastScanAttempts();
-    }
+    Scan(scan_type, nullptr, __func__);
+    RestartFastScanAttempts();
   } else {
     SLOG(this, 1) << __func__
                   << " skipping scan, already connecting or connected.";
   }
 }
 
-void WiFi::InitiateScanInDarkResume() {
+void WiFi::InitiateScanInDarkResume(const FreqSet &freqs) {
+  LOG(INFO) << __func__;
+  AbortScan();
+  if (!IsIdle()) {
+    SLOG(this, 1) << __func__
+                  << " skipping scan, already connecting or connected.";
+    return;
+  }
+
   CHECK(supplicant_interface_proxy_);
   // Force complete flush of BSS cache since we want WPA supplicant and shill to
   // have an accurate view of what endpoints are available in dark resume. This
@@ -2012,14 +2016,42 @@ void WiFi::InitiateScanInDarkResume() {
   // Suppress any autoconnect attempts until this scan is done and endpoints
   // are updated.
   manager()->set_suppress_autoconnect(true);
-  InitiateScan(kFullScan, true);
+
+  TriggerPassiveScan(freqs);
 }
 
-void WiFi::TriggerPassiveScan() {
+void WiFi::TriggerPassiveScan(const FreqSet &freqs) {
   LOG(INFO) << __func__;
   TriggerScanMessage trigger_scan;
   trigger_scan.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                                   interface_index());
+  if (!freqs.empty()) {
+    SLOG(this, 3) << __func__ << ": " << "Scanning on specific channels";
+    trigger_scan.attributes()->CreateNl80211Attribute(
+        NL80211_ATTR_SCAN_FREQUENCIES, NetlinkMessage::MessageContext());
+
+    AttributeListRefPtr frequency_list;
+    if (!trigger_scan.attributes()->GetNestedAttributeList(
+            NL80211_ATTR_SCAN_FREQUENCIES, &frequency_list) ||
+        !frequency_list) {
+      LOG(ERROR) << __func__ << ": "
+                 << "Couldn't get NL80211_ATTR_SCAN_FREQUENCIES";
+    }
+    trigger_scan.attributes()->SetNestedAttributeHasAValue(
+        NL80211_ATTR_SCAN_FREQUENCIES);
+
+    string attribute_name;
+    int i = 0;
+    for (uint32_t freq : freqs) {
+      SLOG(this, 7) << __func__ << ": "
+                    << "Frequency-" << i << ": " << freq;
+      attribute_name = StringPrintf("Frequency-%d", i);
+      frequency_list->CreateU32Attribute(i, attribute_name.c_str());
+      frequency_list->SetU32AttributeValue(i, freq);
+      ++i;
+    }
+  }
+
   netlink_manager_->SendNl80211Message(
       &trigger_scan,
       Bind(&WiFi::OnTriggerPassiveScanResponse, weak_ptr_factory_.GetWeakPtr()),

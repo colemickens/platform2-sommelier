@@ -93,19 +93,18 @@
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
-#include "shill/metrics.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
-#include "shill/wifi/wake_on_wifi.h"
 
 namespace shill {
 
 class Error;
 class GeolocationInfo;
 class Mac80211Monitor;
+class Metrics;
 class NetlinkManager;
 class NetlinkMessage;
 class Nl80211Message;
@@ -114,12 +113,15 @@ class ScanSession;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
+class WakeOnWiFi;
 class WiFiProvider;
 class WiFiService;
 
 // WiFi class. Specialization of Device for WiFi.
 class WiFi : public Device, public SupplicantEventDelegateInterface {
  public:
+  typedef std::set<uint32_t> FreqSet;
+
   WiFi(ControlInterface *control_interface,
        EventDispatcher *dispatcher,
        Metrics *metrics,
@@ -509,13 +511,17 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // already gone out finish).
   void AbortScan();
   // Abort any current scan and start a new scan of type |type| if shill is
-  // currently idle. |type| is ignored and a full passive scan is launched iff
-  // |do_passive_scan| is true.
-  void InitiateScan(ScanType scan_type, bool do_passive_scan);
-  // Wrapper around WiFi::InitiateScan that suppresses auto-connects before
-  // calling InitiateScan to trigger a passive scan.
-  void InitiateScanInDarkResume();
-  void TriggerPassiveScan();
+  // currently idle.
+  void InitiateScan(ScanType scan_type);
+  // Suppresses manager auto-connects and flushes supplicant BSS cache, then
+  // triggers the passive scan. Meant for use in dark resume where we want to
+  // ensure that shill and supplicant do not use stale information to launch
+  // connection attempts.
+  void InitiateScanInDarkResume(const FreqSet &freqs);
+  // If |freqs| contains at least one frequency channel a passive scan is
+  // launched on all the frequencies in |freqs|. Otherwise, a passive scan is
+  // launched on all channels.
+  void TriggerPassiveScan(const FreqSet &freqs);
   // Starts a timer in order to limit the length of an attempt to
   // connect to a pending network.
   void StartPendingTimer();
