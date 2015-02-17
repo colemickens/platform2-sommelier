@@ -162,6 +162,8 @@ bool ProtocolHandler::Start(const Config::ProtocolHandler& config) {
   if (server_interface_->GetConfig().use_debug)
     flags |= MHD_USE_DEBUG;
 
+  flags |= MHD_USE_DUAL_STACK;  // Enable both IPv4 and IPv6.
+
   std::vector<MHD_OptionItem> options{
     {MHD_OPTION_CONNECTION_LIMIT, 10, nullptr},
     {MHD_OPTION_CONNECTION_TIMEOUT, 60, nullptr},
