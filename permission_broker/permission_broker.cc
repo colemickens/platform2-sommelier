@@ -108,4 +108,14 @@ bool PermissionBroker::RequestUdpPortAccess(
                                       in_lifeline_fd.value());
 }
 
+bool PermissionBroker::ReleaseTcpPort(uint16_t in_port,
+                                      const std::string& in_interface) {
+  return port_tracker_.ReleaseTcpPort(in_port, in_interface);
+}
+
+bool PermissionBroker::ReleaseUdpPort(uint16_t in_port,
+                                      const std::string& in_interface) {
+  return port_tracker_.ReleaseUdpPort(in_port, in_interface);
+}
+
 }  // namespace permission_broker

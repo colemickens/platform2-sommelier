@@ -5,8 +5,8 @@
 #ifndef PERMISSION_BROKER_PORT_TRACKER_H_
 #define PERMISSION_BROKER_PORT_TRACKER_H_
 
+#include <map>
 #include <string>
-#include <unordered_map>
 #include <utility>
 
 #include <base/macros.h>
@@ -19,11 +19,15 @@ namespace permission_broker {
 
 class PortTracker {
  public:
+  typedef std::pair<uint16_t, std::string> Hole;
+
   explicit PortTracker(org::chromium::FirewalldProxyInterface* firewalld);
   virtual ~PortTracker();
 
   bool ProcessTcpPort(uint16_t port, const std::string& iface, int dbus_fd);
   bool ProcessUdpPort(uint16_t port, const std::string& iface, int dbus_fd);
+  bool ReleaseTcpPort(uint16_t port, const std::string& iface);
+  bool ReleaseUdpPort(uint16_t port, const std::string& iface);
 
  protected:
   PortTracker(scoped_refptr<base::SequencedTaskRunner> task_runner,
@@ -36,7 +40,7 @@ class PortTracker {
   virtual void CheckLifelineFds();
   virtual void ScheduleLifelineCheck();
 
-  void PlugFirewallHole(int fd);
+  bool PlugFirewallHole(int fd);
 
   // epoll(7) helper functions.
   virtual bool InitializeEpollOnce();
@@ -44,9 +48,16 @@ class PortTracker {
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   int epfd_;
 
-  // For each fd (process), keep track of which port and interface it requested.
-  std::unordered_map<int, std::pair<uint16_t, std::string>> tcp_ports_;
-  std::unordered_map<int, std::pair<uint16_t, std::string>> udp_ports_;
+  // For each fd (process), keep track of which hole (port, interface)
+  // it requested.
+  std::map<int, Hole> tcp_holes_;
+  std::map<int, Hole> udp_holes_;
+
+  // For each hole (port, interface), keep track of which fd requested it.
+  // We need this for Release{Tcp|Udp}Port(), to avoid traversing
+  // |{tcp|udp}_holes_| each time.
+  std::map<Hole, int> tcp_fds_;
+  std::map<Hole, int> udp_fds_;
 
   // |firewalld_| is owned by the PermissionBroker object owning this instance
   // of PortTracker.

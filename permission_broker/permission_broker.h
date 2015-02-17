@@ -47,6 +47,10 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
   bool RequestUdpPortAccess(uint16_t in_port,
                             const std::string& in_interface,
                             const dbus::FileDescriptor& dbus_fd) override;
+  bool ReleaseTcpPort(uint16_t in_port,
+                      const std::string& in_interface) override;
+  bool ReleaseUdpPort(uint16_t in_port,
+                      const std::string& in_interface) override;
 
   RuleEngine rule_engine_;
   chromeos::dbus_utils::DBusObject dbus_object_;

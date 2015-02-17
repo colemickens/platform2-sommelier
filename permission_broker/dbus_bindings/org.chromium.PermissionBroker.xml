@@ -23,5 +23,17 @@
       <arg name="allowed" type="b" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="ReleaseTcpPort">
+      <arg type="q" name="port" direction="in"/>
+      <arg type="s" name="interface" direction="in"/>
+      <arg name="success" type="b" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="ReleaseUdpPort">
+      <arg type="q" name="port" direction="in"/>
+      <arg type="s" name="interface" direction="in"/>
+      <arg name="success" type="b" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

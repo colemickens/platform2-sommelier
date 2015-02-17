@@ -45,6 +45,12 @@ bool PortTracker::ProcessTcpPort(uint16_t port,
     return false;
   }
 
+  Hole hole = std::make_pair(port, iface);
+  if (tcp_fds_.find(hole) != tcp_fds_.end()) {
+    LOG(ERROR) << "Hole already punched";
+    return false;
+  }
+
   // We use |lifeline_fd| to track the lifetime of the process requesting
   // port access.
   int lifeline_fd = AddLifelineFd(dbus_fd);
@@ -54,7 +60,8 @@ bool PortTracker::ProcessTcpPort(uint16_t port,
   }
 
   // Track the hole.
-  tcp_ports_[lifeline_fd] = std::make_pair(port, iface);
+  tcp_holes_[lifeline_fd] = hole;
+  tcp_fds_[hole] = lifeline_fd;
 
   bool success;
   firewalld_->PunchTcpHole(port, iface, &success, nullptr);
@@ -63,7 +70,8 @@ bool PortTracker::ProcessTcpPort(uint16_t port,
     // of the process.
     LOG(ERROR) << "Failed to punch hole for TCP port " << port;
     DeleteLifelineFd(lifeline_fd);
-    tcp_ports_.erase(lifeline_fd);
+    tcp_holes_.erase(lifeline_fd);
+    tcp_fds_.erase(hole);
     return false;
   }
   return true;
@@ -78,6 +86,12 @@ bool PortTracker::ProcessUdpPort(uint16_t port,
     return false;
   }
 
+  Hole hole = std::make_pair(port, iface);
+  if (udp_fds_.find(hole) != udp_fds_.end()) {
+    LOG(ERROR) << "Hole already punched";
+    return false;
+  }
+
   // We use |lifeline_fd| to track the lifetime of the process requesting
   // port access.
   int lifeline_fd = AddLifelineFd(dbus_fd);
@@ -87,7 +101,8 @@ bool PortTracker::ProcessUdpPort(uint16_t port,
   }
 
   // Track the hole.
-  udp_ports_[lifeline_fd] = std::make_pair(port, iface);
+  udp_holes_[lifeline_fd] = hole;
+  udp_fds_[hole] = lifeline_fd;
 
   bool success;
   firewalld_->PunchUdpHole(port, iface, &success, nullptr);
@@ -96,10 +111,53 @@ bool PortTracker::ProcessUdpPort(uint16_t port,
     // of the process.
     LOG(ERROR) << "Failed to punch hole for UDP port " << port;
     DeleteLifelineFd(lifeline_fd);
-    udp_ports_.erase(lifeline_fd);
+    udp_holes_.erase(lifeline_fd);
+    udp_fds_.erase(hole);
     return false;
   }
   return true;
+}
+
+bool PortTracker::ReleaseTcpPort(uint16_t port, const std::string& iface) {
+  Hole hole = std::make_pair(port, iface);
+  if (tcp_fds_.find(hole) == tcp_fds_.end()) {
+    LOG(ERROR) << "Not tracking TCP port " << port << " on interface '" << iface
+               << "'";
+    return false;
+  }
+
+  int fd = tcp_fds_[hole];
+  bool plugged = PlugFirewallHole(fd);
+  bool deleted = DeleteLifelineFd(fd);
+  // PlugFirewallHole() prints an error message on failure,
+  // but DeleteLifelineFd() does not, and even if it did,
+  // we mock it out in tests.
+  if (!deleted) {
+    LOG(ERROR) << "Failed to delete file descriptor " << fd
+               << " from epoll instance";
+  }
+  return plugged && deleted;
+}
+
+bool PortTracker::ReleaseUdpPort(uint16_t port, const std::string& iface) {
+  Hole hole = std::make_pair(port, iface);
+  if (udp_fds_.find(hole) == udp_fds_.end()) {
+    LOG(ERROR) << "Not tracking UDP port " << port << " on interface '" << iface
+               << "'";
+    return false;
+  }
+
+  int fd = udp_fds_[hole];
+  bool plugged = PlugFirewallHole(fd);
+  bool deleted = DeleteLifelineFd(fd);
+  // PlugFirewallHole() prints an error message on failure,
+  // but DeleteLifelineFd() does not, and even if it did,
+  // we mock it out in tests.
+  if (!deleted) {
+    LOG(ERROR) << "Failed to delete file descriptor " << fd
+               << " from epoll instance";
+  }
+  return plugged && deleted;
 }
 
 int PortTracker::AddLifelineFd(int dbus_fd) {
@@ -118,7 +176,7 @@ int PortTracker::AddLifelineFd(int dbus_fd) {
   }
 
   // If this is the first port request, start lifeline checks.
-  if (tcp_ports_.size() + udp_ports_.size() == 0) {
+  if (tcp_holes_.size() + udp_holes_.size() == 0) {
     LOG(INFO) << "Starting lifeline checks";
     ScheduleLifelineCheck();
   }
@@ -167,7 +225,7 @@ void PortTracker::CheckLifelineFds() {
   }
 
   // If there's still processes to track, schedule lifeline checks.
-  if (tcp_ports_.size() + udp_ports_.size() > 0) {
+  if (tcp_holes_.size() + udp_holes_.size() > 0) {
     ScheduleLifelineCheck();
   } else {
     LOG(INFO) << "Stopping lifeline checks";
@@ -181,30 +239,34 @@ void PortTracker::ScheduleLifelineCheck() {
       base::TimeDelta::FromSeconds(kLifelineIntervalSeconds));
 }
 
-void PortTracker::PlugFirewallHole(int fd) {
-  bool success = false;
-  std::pair<uint16_t, std::string> hole;
-  if (tcp_ports_.find(fd) != tcp_ports_.end()) {
+bool PortTracker::PlugFirewallHole(int fd) {
+  bool dbus_sucess = false;
+  Hole hole;
+  if (tcp_holes_.find(fd) != tcp_holes_.end()) {
     // It was a TCP hole.
-    hole = tcp_ports_[fd];
-    firewalld_->PlugTcpHole(hole.first, hole.second, &success, nullptr);
-    tcp_ports_.erase(fd);
-    if (!success) {
+    hole = tcp_holes_[fd];
+    firewalld_->PlugTcpHole(hole.first, hole.second, &dbus_sucess, nullptr);
+    tcp_holes_.erase(fd);
+    if (!dbus_sucess) {
       LOG(ERROR) << "Failed to plug hole for TCP port " << hole.first
                  << " on interface '" << hole.second << "'";
+      return false;
     }
-  } else if (udp_ports_.find(fd) != udp_ports_.end()) {
+  } else if (udp_holes_.find(fd) != udp_holes_.end()) {
     // It was a UDP hole.
-    hole = udp_ports_[fd];
-    firewalld_->PlugUdpHole(hole.first, hole.second, &success, nullptr);
-    udp_ports_.erase(fd);
-    if (!success) {
+    hole = udp_holes_[fd];
+    firewalld_->PlugUdpHole(hole.first, hole.second, &dbus_sucess, nullptr);
+    udp_holes_.erase(fd);
+    if (!dbus_sucess) {
       LOG(ERROR) << "Failed to plug hole for UDP port " << hole.first
                  << " on interface '" << hole.second << "'";
+      return false;
     }
   } else {
     LOG(ERROR) << "File descriptor " << fd << " was not being tracked";
+    return false;
   }
+  return true;
 }
 
 bool PortTracker::InitializeEpollOnce() {
