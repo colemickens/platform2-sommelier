@@ -18,12 +18,10 @@ MockTpm::MockTpm() {
       .WillByDefault(Invoke(this, &MockTpm::Xor));
   ON_CALL(*this, DecryptBlob(_, _, _, _, _, _))
       .WillByDefault(Invoke(this, &MockTpm::Xor));
-  ON_CALL(*this, Connect(_))
-      .WillByDefault(Return(true));
   ON_CALL(*this, GetPublicKey(_, _))
       .WillByDefault(Invoke(this, &MockTpm::GetBlankPublicKey));
   ON_CALL(*this, GetPublicKeyHash(_, _, _))
-      .WillByDefault(Return(Tpm::Fatal));
+      .WillByDefault(Return(Tpm::kTpmRetryFatal));
   ON_CALL(*this, GetEndorsementPublicKey(_))
       .WillByDefault(Return(true));
   ON_CALL(*this, GetEndorsementCredential(_))

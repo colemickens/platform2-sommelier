@@ -34,6 +34,7 @@
 #include "cryptohome/homedirs.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/tpm.h"
 #include "cryptohome/username_passkey.h"
 #include "cryptohome/vault_keyset.h"
 

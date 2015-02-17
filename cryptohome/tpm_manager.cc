@@ -19,6 +19,7 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/install_attributes.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/tpm.h"
 #include "cryptohome/tpm_init.h"
 #include "rpc.pb.h"  // NOLINT(build/include)
 

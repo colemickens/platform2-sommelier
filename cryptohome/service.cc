@@ -2911,15 +2911,17 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
                   tpm_init_->GetCryptohomeKey(),
                   &tpm_status_info);
   base::DictionaryValue* tpm = new base::DictionaryValue();
-  tpm->SetBoolean("can_connect", tpm_status_info.CanConnect);
-  tpm->SetBoolean("can_load_srk", tpm_status_info.CanLoadSrk);
-  tpm->SetBoolean("can_load_srk_pubkey", tpm_status_info.CanLoadSrkPublicKey);
-  tpm->SetBoolean("has_cryptohome_key", tpm_status_info.HasCryptohomeKey);
-  tpm->SetBoolean("can_encrypt", tpm_status_info.CanEncrypt);
-  tpm->SetBoolean("can_decrypt", tpm_status_info.CanDecrypt);
-  tpm->SetBoolean("has_context", tpm_status_info.ThisInstanceHasContext);
-  tpm->SetBoolean("has_key_handle", tpm_status_info.ThisInstanceHasKeyHandle);
-  tpm->SetInteger("last_error", tpm_status_info.LastTpmError);
+  tpm->SetBoolean("can_connect", tpm_status_info.can_connect);
+  tpm->SetBoolean("can_load_srk", tpm_status_info.can_load_srk);
+  tpm->SetBoolean("can_load_srk_pubkey",
+                  tpm_status_info.can_load_srk_public_key);
+  tpm->SetBoolean("has_cryptohome_key", tpm_status_info.has_cryptohome_key);
+  tpm->SetBoolean("can_encrypt", tpm_status_info.can_encrypt);
+  tpm->SetBoolean("can_decrypt", tpm_status_info.can_decrypt);
+  tpm->SetBoolean("has_context", tpm_status_info.this_instance_has_context);
+  tpm->SetBoolean("has_key_handle",
+                  tpm_status_info.this_instance_has_key_handle);
+  tpm->SetInteger("last_error", tpm_status_info.last_tpm_error);
 
   tpm->SetBoolean("enabled", tpm_->IsEnabled());
   tpm->SetBoolean("owned", tpm_->IsOwned());

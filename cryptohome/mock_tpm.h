@@ -24,9 +24,6 @@ class MockTpm : public Tpm {
  public:
   MockTpm();
   ~MockTpm();
-  MOCK_CONST_METHOD0(IsOwned, bool());
-  MOCK_CONST_METHOD0(IsBeingOwned, bool());
-  MOCK_METHOD1(Connect, bool(TpmRetryAction*));  // NOLINT
   MOCK_METHOD6(EncryptBlob, bool(TSS_HCONTEXT, TSS_HKEY,
                                  const chromeos::SecureBlob&,
                                  const chromeos::SecureBlob&,
@@ -36,11 +33,19 @@ class MockTpm : public Tpm {
                                  const chromeos::SecureBlob&,
                                  chromeos::SecureBlob*, TSS_RESULT*));
   MOCK_METHOD2(GetPublicKey, bool(chromeos::SecureBlob*, TpmRetryAction*));
-  MOCK_METHOD3(GetPublicKeyHash, Tpm::TpmRetryAction(TSS_HCONTEXT,
-                                                     TSS_HKEY,
-                                                     chromeos::SecureBlob*));
+  MOCK_METHOD3(GetPublicKeyHash, TpmRetryAction(TSS_HCONTEXT,
+                                                TSS_HKEY,
+                                                chromeos::SecureBlob*));
   MOCK_METHOD1(GetOwnerPassword, bool(chromeos::Blob*));
   MOCK_CONST_METHOD0(IsEnabled, bool());
+  MOCK_METHOD1(SetIsEnabled, void(bool));
+  MOCK_CONST_METHOD0(IsOwned, bool());
+  MOCK_METHOD1(SetIsOwned, void(bool));
+  MOCK_METHOD2(PerformEnabledOwnedCheck, bool(bool*, bool*));
+  MOCK_CONST_METHOD0(IsInitialized, bool());
+  MOCK_METHOD1(SetIsInitialized, void(bool));
+  MOCK_CONST_METHOD0(IsBeingOwned, bool());
+  MOCK_METHOD1(SetIsBeingOwned, void(bool));
   MOCK_METHOD2(GetRandomData, bool(size_t, chromeos::Blob*));
   MOCK_METHOD2(DefineLockOnceNvram, bool(uint32_t, size_t));
   MOCK_METHOD2(WriteNvram, bool(uint32_t, const chromeos::SecureBlob&));
@@ -49,6 +54,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(IsNvramDefined, bool(uint32_t));
   MOCK_METHOD1(IsNvramLocked, bool(uint32_t));
   MOCK_METHOD1(GetNvramSize, unsigned int(uint32_t));
+  MOCK_METHOD1(set_srk_auth, void(const chromeos::SecureBlob&));
   MOCK_METHOD1(GetEndorsementPublicKey, bool(chromeos::SecureBlob*));
   MOCK_METHOD1(GetEndorsementCredential, bool(chromeos::SecureBlob*));
   MOCK_METHOD9(MakeIdentity, bool(chromeos::SecureBlob*,
@@ -60,12 +66,6 @@ class MockTpm : public Tpm {
                                   chromeos::SecureBlob*,
                                   chromeos::SecureBlob*,
                                   chromeos::SecureBlob*));
-  MOCK_METHOD6(ActivateIdentity, bool(const chromeos::SecureBlob&,
-                                      const chromeos::SecureBlob&,
-                                      const chromeos::SecureBlob&,
-                                      const chromeos::SecureBlob&,
-                                      const chromeos::SecureBlob&,
-                                      chromeos::SecureBlob*));
   MOCK_METHOD6(QuotePCR, bool(int,
                               const chromeos::SecureBlob&,
                               const chromeos::SecureBlob&,
@@ -74,9 +74,6 @@ class MockTpm : public Tpm {
                               chromeos::SecureBlob*));
   MOCK_METHOD2(SealToPCR0, bool(const chromeos::Blob&, chromeos::Blob*));
   MOCK_METHOD2(Unseal, bool(const chromeos::Blob&, chromeos::Blob*));
-  MOCK_METHOD3(CreateDelegate, bool(const chromeos::SecureBlob&,
-                                    chromeos::SecureBlob*,
-                                    chromeos::SecureBlob*));
   MOCK_METHOD7(CreateCertifiedKey, bool(const chromeos::SecureBlob&,
                                         const chromeos::SecureBlob&,
                                         chromeos::SecureBlob*,
@@ -84,6 +81,21 @@ class MockTpm : public Tpm {
                                         chromeos::SecureBlob*,
                                         chromeos::SecureBlob*,
                                         chromeos::SecureBlob*));
+  MOCK_METHOD3(CreateDelegate, bool(const chromeos::SecureBlob&,
+                                    chromeos::SecureBlob*,
+                                    chromeos::SecureBlob*));
+  MOCK_METHOD6(ActivateIdentity, bool(const chromeos::SecureBlob&,
+                                      const chromeos::SecureBlob&,
+                                      const chromeos::SecureBlob&,
+                                      const chromeos::SecureBlob&,
+                                      const chromeos::SecureBlob&,
+                                      chromeos::SecureBlob*));
+  MOCK_METHOD3(TssCompatibleEncrypt, bool(const chromeos::SecureBlob&,
+                                          const chromeos::SecureBlob&,
+                                          chromeos::SecureBlob*));
+  MOCK_METHOD3(TpmCompatibleOAEPEncrypt, bool(RSA* key,
+                                              const chromeos::SecureBlob&,
+                                              chromeos::SecureBlob*));
   MOCK_METHOD3(Sign, bool(const chromeos::SecureBlob&,
                           const chromeos::SecureBlob&,
                           chromeos::SecureBlob*));
@@ -96,6 +108,43 @@ class MockTpm : public Tpm {
                                        const chromeos::SecureBlob&));
   MOCK_METHOD2(ExtendPCR, bool(int, const chromeos::SecureBlob&));
   MOCK_METHOD2(ReadPCR, bool(int, chromeos::SecureBlob*));
+  MOCK_METHOD2(OpenAndConnectTpm, bool(TSS_HCONTEXT*, TSS_RESULT*));
+  MOCK_METHOD0(ConnectContext, TSS_HCONTEXT());
+  MOCK_CONST_METHOD1(CloseContext, void(TSS_HCONTEXT));
+  MOCK_METHOD1(IsEndorsementKeyAvailable, bool(TSS_HCONTEXT));
+  MOCK_METHOD1(CreateEndorsementKey, bool(TSS_HCONTEXT));
+  MOCK_METHOD3(TakeOwnership, bool(TSS_HCONTEXT, int,
+                                   const chromeos::SecureBlob&));
+  MOCK_METHOD2(ZeroSrkPassword, bool(TSS_HCONTEXT,
+                                     const chromeos::SecureBlob&));
+  MOCK_METHOD2(UnrestrictSrk, bool(TSS_HCONTEXT, const chromeos::SecureBlob&));
+  MOCK_METHOD3(ChangeOwnerPassword, bool(TSS_HCONTEXT,
+                                         const chromeos::SecureBlob&,
+                                         const chromeos::SecureBlob&));
+  MOCK_METHOD3(GetTpmWithAuth, bool(TSS_HCONTEXT,
+                                    const chromeos::SecureBlob&,
+                                    TSS_HTPM*));
+  MOCK_METHOD1(TestTpmAuth, bool(TSS_HTPM));
+  MOCK_METHOD1(SetOwnerPassword, void(const chromeos::SecureBlob&));
+  MOCK_CONST_METHOD3(LoadSrk, bool(TSS_HCONTEXT, TSS_HKEY*, TSS_RESULT*));
+  MOCK_METHOD1(IsTransient, bool(TSS_RESULT));
+  MOCK_CONST_METHOD4(GetPublicKeyBlob, bool(TSS_HCONTEXT, TSS_HKEY,
+                                            chromeos::SecureBlob*,
+                                            TSS_RESULT*));
+  MOCK_CONST_METHOD4(GetKeyBlob, bool(TSS_HCONTEXT, TSS_HKEY,
+                                      chromeos::SecureBlob*, TSS_RESULT*));
+  MOCK_METHOD2(CreateWrappedRsaKey, bool(TSS_HCONTEXT,
+                                         chromeos::SecureBlob*));
+  MOCK_CONST_METHOD4(LoadWrappedKey, bool(TSS_HCONTEXT,
+                                          const chromeos::SecureBlob&,
+                                          TSS_HKEY*, TSS_RESULT*));
+  MOCK_CONST_METHOD5(LoadKeyByUuid, bool(TSS_HCONTEXT, TSS_UUID, TSS_HKEY*,
+                                         chromeos::SecureBlob*, TSS_RESULT*));
+  MOCK_METHOD1(HandleError, TpmRetryAction(TSS_RESULT));
+  MOCK_METHOD3(GetStatus, void(TSS_HCONTEXT, TSS_HKEY, TpmStatusInfo*));
+  MOCK_METHOD4(GetDictionaryAttackInfo, bool(int*, int*, bool*, int*));
+  MOCK_METHOD2(ResetDictionaryAttackMitigation,
+               bool(const chromeos::SecureBlob&, const chromeos::SecureBlob&));
 
  private:
   bool Xor(TSS_HCONTEXT _context,

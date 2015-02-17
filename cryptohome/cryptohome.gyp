@@ -112,6 +112,7 @@
         'pkcs11_keystore.cc',
         'platform.cc',
         'tpm.cc',
+        'tpm_impl.cc',
         'tpm_init.cc',
       ],
     },

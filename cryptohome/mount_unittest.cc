@@ -760,7 +760,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   chromeos::SecureBlob fake_pub_key("A", 1);
   EXPECT_CALL(tpm_, GetPublicKeyHash(_, _, _))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(fake_pub_key),
-                          Return(Tpm::RetryNone)));
+                          Return(Tpm::kTpmRetryNone)));
 
   chromeos::Blob migrated_keyset;
   EXPECT_CALL(platform_, WriteFileAtomicDurable(user->keyset_path, _, _))

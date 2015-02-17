@@ -225,13 +225,13 @@ void Crypto::ClearKeyset() const {
 Crypto::CryptoError Crypto::TpmErrorToCrypto(
     Tpm::TpmRetryAction retry_action) const {
   switch (retry_action) {
-    case Tpm::Fatal:
+    case Tpm::kTpmRetryFatal:
       return Crypto::CE_TPM_FATAL;
-    case Tpm::RetryCommFailure:
+    case Tpm::kTpmRetryCommFailure:
       return Crypto::CE_TPM_COMM_ERROR;
-    case Tpm::RetryDefendLock:
+    case Tpm::kTpmRetryDefendLock:
       return Crypto::CE_TPM_DEFEND_LOCK;
-    case Tpm::RetryReboot:
+    case Tpm::kTpmRetryReboot:
       return Crypto::CE_TPM_REBOOT;
     default:
       return Crypto::CE_NONE;
@@ -277,7 +277,7 @@ bool Crypto::IsTPMPubkeyHash(const string& hash,
   retry_action = tpm_->GetPublicKeyHash(tpm_init_->GetCryptohomeContext(),
                                         tpm_init_->GetCryptohomeKey(),
                                         &pub_key_hash);
-  if (retry_action == Tpm::RetryCommFailure) {
+  if (retry_action == Tpm::kTpmRetryCommFailure) {
     if (!tpm_init_->ReloadCryptohomeKey()) {
       LOG(ERROR) << "Unable to reload key";
     } else {
@@ -286,7 +286,7 @@ bool Crypto::IsTPMPubkeyHash(const string& hash,
                                             &pub_key_hash);
     }
   }
-  if (retry_action != Tpm::RetryNone) {
+  if (retry_action != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Unable to get the cryptohome public key from the TPM.";
     ReportCryptohomeError(kCannotReadTpmPublicKey);
     if (error)
@@ -387,7 +387,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
                          &local_vault_key,
                          &result)) {
     retry_action = tpm_->HandleError(result);
-    if (retry_action == Tpm::RetryCommFailure) {
+    if (retry_action == Tpm::kTpmRetryCommFailure) {
       if (!tpm_init_->ReloadCryptohomeKey()) {
         LOG(ERROR) << "Unable to reload Cryptohome key.";
         tpm_unwrap_success = false;
@@ -655,7 +655,7 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
   SecureBlob pub_key_hash;
   if (tpm_->GetPublicKeyHash(tpm_init_->GetCryptohomeContext(),
                              tpm_init_->GetCryptohomeKey(),
-                             &pub_key_hash) == Tpm::RetryNone)
+                             &pub_key_hash) == Tpm::kTpmRetryNone)
     serialized->set_tpm_public_key_hash(pub_key_hash.const_data(),
                                         pub_key_hash.size());
 
