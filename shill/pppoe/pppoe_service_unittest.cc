@@ -13,9 +13,9 @@
 #include <base/memory/ref_counted.h>
 
 #include "shill/ethernet/mock_ethernet.h"
+#include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_external_task.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
@@ -57,7 +57,11 @@ class PPPoEServiceTest : public testing::Test {
     manager_.set_mock_device_info(&device_info_);
   }
 
-  ~PPPoEServiceTest() override {}
+  ~PPPoEServiceTest() override {
+    Error error;
+    service_->Disconnect(&error, __func__);
+    dispatcher_.DispatchPendingEvents();
+  }
 
  protected:
   void FakeConnectionSuccess() {
@@ -70,7 +74,7 @@ class PPPoEServiceTest : public testing::Test {
     EXPECT_TRUE(error.IsSuccess());
   }
 
-  MockEventDispatcher dispatcher_;
+  EventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockGLib glib_;
   MockControl control_interface_;
