@@ -131,6 +131,8 @@ int main(int argc, char** argv) {
   }
   display.PrintValue("voltage (V)", status.line_power_voltage);
   display.PrintValue("current (A)", status.line_power_current);
+  display.PrintValue("max voltage (V)", status.line_power_max_voltage);
+  display.PrintValue("max current (A)", status.line_power_max_current);
 
   display.PrintStringValue("active source", status.external_power_source_id);
   std::vector<std::string> sources;

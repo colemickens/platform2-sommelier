@@ -110,6 +110,10 @@ extern const char kBatteryStabilizedAfterResumeMsPref[];
 extern const char kMaxCurrentSamplesPref[];
 extern const char kMaxChargeSamplesPref[];
 
+// Minimum maximum power in watts that must be reported by a USB power source in
+// order for it to be classified as an AC power source.
+extern const char kUsbMinAcWattsPref[];
+
 // Milliseconds to wait after setting the backlight to 0 before asking Chrome to
 // turn off the display via DPMS.
 extern const char kTurnOffScreenTimeoutMsPref[];

@@ -73,8 +73,10 @@ struct PowerStatus {
   std::string line_power_type;
 
   // Line power statistics. These may be unset even if line power is connected.
-  double line_power_voltage;  // In volts.
-  double line_power_current;  // In amperes.
+  double line_power_voltage;      // In volts.
+  double line_power_max_voltage;  // In volts.
+  double line_power_current;      // In amperes.
+  double line_power_max_current;  // In amperes.
 
   // Amount of energy, measured in Wh, in the battery.
   double battery_energy;
@@ -353,6 +355,11 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // if unset. If both |low_battery_shutdown_time_| and this setting are
   // supplied, only |low_battery_shutdown_percent_| will take effect.
   double low_battery_shutdown_percent_;
+
+  // Minimum maximally-available power in watts that must be reported by a USB
+  // power source in order for it to be classified as an AC power source. Read
+  // from kUsbMinAcWattsPref.
+  double usb_min_ac_watts_;
 
   bool is_suspended_;
 

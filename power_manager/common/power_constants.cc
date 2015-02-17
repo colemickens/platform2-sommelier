@@ -53,6 +53,7 @@ const char kBatteryStabilizedAfterResumeMsPref[] =
     "battery_stabilized_after_resume_ms";
 const char kMaxCurrentSamplesPref[] = "max_current_samples";
 const char kMaxChargeSamplesPref[] = "max_charge_samples";
+const char kUsbMinAcWattsPref[] = "usb_min_ac_watts";
 const char kTurnOffScreenTimeoutMsPref[] = "turn_off_screen_timeout_ms";
 const char kDisableDarkResumePref[] = "disable_dark_resume";
 const char kDarkResumeSuspendDurationsPref[] = "dark_resume_suspend_durations";

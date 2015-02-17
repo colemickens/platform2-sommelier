@@ -312,6 +312,8 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   WriteValue(line1_dir, "type", kUnknownType);
   WriteValue(line1_dir, "online", "0");
   WriteValue(line1_dir, "status", kNotCharging);
+  WriteDoubleValue(line1_dir, "current_max", 0.0);
+  WriteDoubleValue(line1_dir, "voltage_max_design", 0.0);
   WriteValue(line1_dir, "manufacturer", kLine1Manufacturer);
   WriteValue(line1_dir, "model_name", kLine1ModelName);
 
@@ -323,8 +325,15 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   WriteValue(line2_dir, "type", kUnknownType);
   WriteValue(line2_dir, "online", "0");
   WriteValue(line2_dir, "status", kNotCharging);
+  WriteDoubleValue(line2_dir, "current_max", 0.0);
+  WriteDoubleValue(line2_dir, "voltage_max_design", 0.0);
   WriteValue(line2_dir, "manufacturer", kLine2Manufacturer);
   WriteValue(line2_dir, "model_name", kLine2ModelName);
+
+  // Set the minimum power for being classified as an AC charger.
+  const double kCurrentMax = 2.0;
+  const double kVoltageMax = 12.0;
+  prefs_.SetDouble(kUsbMinAcWattsPref, kCurrentMax * kVoltageMax);
 
   Init();
   PowerStatus status;
@@ -338,10 +347,12 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_EQ("", status.external_power_source_id);
   EXPECT_TRUE(status.supports_dual_role_devices);
 
-  // Start charging from the first power source.
+  // Start charging from the first power source at a high level.
   WriteValue(line1_dir, "type", kUsbType);
   WriteValue(line1_dir, "online", "1");
   WriteValue(line1_dir, "status", kCharging);
+  WriteDoubleValue(line1_dir, "current_max", kCurrentMax);
+  WriteDoubleValue(line1_dir, "voltage_max_design", kVoltageMax);
   WriteValue(battery_dir_, "status", kCharging);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.line_power_on);
@@ -353,20 +364,23 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
             status.available_external_power_sources[0].manufacturer_id);
   EXPECT_EQ(kLine1ModelName,
             status.available_external_power_sources[0].model_id);
-  EXPECT_FALSE(status.available_external_power_sources[0].active_by_default);
+  EXPECT_TRUE(status.available_external_power_sources[0].active_by_default);
   EXPECT_EQ(kLine1Id, status.external_power_source_id);
   EXPECT_TRUE(status.supports_dual_role_devices);
 
-  // Disconnect the first power source and start charging from the second one.
+  // Disconnect the first power source and start charging from the second one at
+  // a low power.
   WriteValue(line1_dir, "type", kUnknownType);
   WriteValue(line1_dir, "online", "0");
   WriteValue(line1_dir, "status", kNotCharging);
-  WriteValue(line2_dir, "type", kAcType);
+  WriteValue(line2_dir, "type", kUsbType);
   WriteValue(line2_dir, "online", "1");
   WriteValue(line2_dir, "status", kCharging);
+  WriteDoubleValue(line2_dir, "current_max", kCurrentMax / 2.0);
+  WriteDoubleValue(line2_dir, "voltage_max_design", kVoltageMax / 2.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.line_power_on);
-  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, status.external_power);
   EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
   ASSERT_EQ(1u, status.available_external_power_sources.size());
   EXPECT_EQ(kLine2Id, status.available_external_power_sources[0].id);
@@ -384,7 +398,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   WriteValue(line1_dir, "status", kDischarging);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.line_power_on);
-  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, status.external_power);
   EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
   ASSERT_EQ(2u, status.available_external_power_sources.size());
   EXPECT_EQ(kLine1Id, status.available_external_power_sources[0].id);
@@ -392,7 +406,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
             status.available_external_power_sources[0].manufacturer_id);
   EXPECT_EQ(kLine1ModelName,
             status.available_external_power_sources[0].model_id);
-  EXPECT_FALSE(status.available_external_power_sources[0].active_by_default);
+  EXPECT_TRUE(status.available_external_power_sources[0].active_by_default);
   EXPECT_EQ(kLine2Id, status.available_external_power_sources[1].id);
   EXPECT_EQ(kLine2Manufacturer,
             status.available_external_power_sources[1].manufacturer_id);

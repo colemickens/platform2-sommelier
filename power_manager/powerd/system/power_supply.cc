@@ -181,6 +181,10 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
       if (status.line_power_current || status.line_power_voltage) {
         output += base::StringPrintf(", %.3fA at %.1fV",
             status.line_power_current, status.line_power_voltage);
+        if (status.line_power_max_current && status.line_power_max_voltage) {
+          output += base::StringPrintf(", max %.1fA at %.1fV",
+              status.line_power_max_current, status.line_power_max_voltage);
+        }
       }
       output += ") with battery at ";
       break;
@@ -243,7 +247,9 @@ PowerStatus::Source::~Source() {}
 PowerStatus::PowerStatus()
     : line_power_on(false),
       line_power_voltage(0.0),
+      line_power_max_voltage(0.0),
       line_power_current(0.0),
+      line_power_max_current(0.0),
       battery_energy(0.0),
       battery_energy_rate(0.0),
       battery_voltage(0.0),
@@ -299,6 +305,7 @@ PowerSupply::PowerSupply()
       clock_(new Clock),
       power_status_initialized_(false),
       low_battery_shutdown_percent_(0.0),
+      usb_min_ac_watts_(0.0),
       is_suspended_(false),
       full_factor_(1.0) {
 }
@@ -334,6 +341,8 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
 
   prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
   full_factor_ = std::min(std::max(kEpsilon, full_factor_), 1.0);
+
+  prefs_->GetDouble(kUsbMinAcWattsPref, &usb_min_ac_watts_);
 
   int64_t shutdown_time_sec = 0;
   if (prefs_->GetInt64(kLowBatteryShutdownTimePref, &shutdown_time_sec)) {
@@ -609,11 +618,13 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   // Okay, this is a potential power source. Add it to the list.
   const std::string id = GetIdForPath(path);
 
-  // Most dedicated chargers will be reported as "Mains". On spring, low-power
-  // USB chargers instead have a "USB"-prefixed type, but they _don't_ have a
-  // "status" file (which _is_ present for dual-role USB PD devices).
-  const bool active_by_default =
-      type == kMainsType || (IsUsbChargerType(type) && line_status.empty());
+  // TODO(derat): In the past, dedicated chargers have been reported as "Mains".
+  // On spring, low-power USB chargers have a "USB"-prefixed type but an empty
+  // |line_status|. The USB PD currently doesn't provide any way to detect
+  // whether a device is a dedicated charger (and hence active as a source by
+  // default) vs. a dual-role device (http://crbug.com/459412). Sort this out
+  // once there's a way to tell the difference.
+  const bool active_by_default = true;
 
   std::string manufacturer_id, model_id;
   ReadAndTrimString(path, "manufacturer", &manufacturer_id);
@@ -636,16 +647,26 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   status->line_power_on = true;
   status->line_power_path = path.value();
   status->line_power_type = type;
+  status->line_power_voltage = ReadScaledDouble(path, "voltage_now");
+  status->line_power_max_voltage = ReadScaledDouble(path, "voltage_max_design");
+  status->line_power_current = ReadScaledDouble(path, "current_now");
+  status->line_power_max_current = ReadScaledDouble(path, "current_max");
   if (IsUsbChargerType(status->line_power_type)) {
-    status->external_power = line_status.empty() ?
-        PowerSupplyProperties_ExternalPower_USB :
-        // TODO(derat): Consider reporting this as USB_PD.
-        PowerSupplyProperties_ExternalPower_AC;
+    if (!line_status.empty()) {
+      // The USB PD kernel driver reports all types of chargers as "USB". Check
+      // the maximum power the charger claims to be able to deliver to determine
+      // whether it should be reported as AC.
+      const double max_watts = status->line_power_max_current *
+          status->line_power_max_voltage;
+      status->external_power = (max_watts >= usb_min_ac_watts_) ?
+          PowerSupplyProperties_ExternalPower_AC :
+          PowerSupplyProperties_ExternalPower_USB;
+    } else {
+      status->external_power = PowerSupplyProperties_ExternalPower_USB;
+    }
   } else {
     status->external_power = PowerSupplyProperties_ExternalPower_AC;
   }
-  status->line_power_voltage = ReadScaledDouble(path, "voltage_now");
-  status->line_power_current = ReadScaledDouble(path, "current_now");
   status->external_power_source_id = id;
 
   VLOG(1) << "Found line power of type \"" << status->line_power_type
@@ -654,7 +675,7 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
 
 bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
                                        PowerStatus* status) {
-  VLOG(1) << "Reading battery status from  " << path.value();
+  VLOG(1) << "Reading battery status from " << path.value();
   status->battery_path = path.value();
   status->battery_is_present = IsBatteryPresent(path);
   if (!status->battery_is_present)
