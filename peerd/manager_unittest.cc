@@ -24,8 +24,34 @@ using std::string;
 using std::unique_ptr;
 using testing::AnyNumber;
 using testing::Mock;
+using testing::Return;
+using testing::_;
 
 namespace peerd {
+namespace {
+
+// Chrome doesn't bother mocking out their objects completely.
+class EspeciallyMockedBus : public dbus::MockBus {
+ public:
+  using dbus::MockBus::MockBus;
+
+  MOCK_METHOD2(GetServiceOwner,
+               void(const std::string& service_name,
+                    const GetServiceOwnerCallback& callback));
+
+  MOCK_METHOD2(ListenForServiceOwnerChange,
+               void(const std::string& service_name,
+                    const GetServiceOwnerCallback& callback));
+
+  MOCK_METHOD2(UnlistenForServiceOwnerChange,
+               void(const std::string& service_name,
+                    const GetServiceOwnerCallback& callback));
+
+ protected:
+  virtual ~EspeciallyMockedBus() = default;
+};
+
+}  // namespace
 
 class ManagerTest : public testing::Test {
  public:
@@ -40,7 +66,8 @@ class ManagerTest : public testing::Test {
     peer_ = new MockPublishedPeer{mock_bus_, ObjectPath{"/peer/prefix"}};
     peer_manager_ = new MockPeerManager();
     avahi_client_ = new MockAvahiClient(mock_bus_, peer_manager_);
-    manager_.reset(new Manager{std::move(dbus_object),
+    manager_.reset(new Manager{scoped_refptr<dbus::Bus>{mock_bus_.get()},
+                               std::move(dbus_object),
                                unique_ptr<PublishedPeer>{peer_},
                                unique_ptr<PeerManagerInterface>{peer_manager_},
                                unique_ptr<AvahiClient>{avahi_client_},
@@ -53,7 +80,8 @@ class ManagerTest : public testing::Test {
 
   const std::map<std::string, chromeos::Any> kNoOptions;
   const std::vector<std::string> kOnlyMdns{technologies::kMDNSText};
-  scoped_refptr<MockBus> mock_bus_{new MockBus{dbus::Bus::Options{}}};
+  scoped_refptr<EspeciallyMockedBus>
+      mock_bus_{new EspeciallyMockedBus{dbus::Bus::Options{}}};
   unique_ptr<Manager> manager_;
   MockPublishedPeer* peer_;  // manager_ owns this object.
   MockPeerManager* peer_manager_;  // manager_ owns this object.
@@ -140,6 +168,23 @@ TEST_F(ManagerTest, StopMonitoring_HandlesMultipleSubscriptions) {
   Mock::VerifyAndClearExpectations(avahi_client_);
   EXPECT_CALL(*avahi_client_, StopMonitoring());
   manager_->StopMonitoring(&error, token2);
+}
+
+TEST_F(ManagerTest, ShouldRemoveServicesOnRemoteDeath) {
+  const string kServiceId{"a_service_id"};
+  const string kDBusSender{"a-dbus-connection-id"};
+  EXPECT_CALL(*peer_, AddPublishedService(_, kServiceId, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_bus_, ListenForServiceOwnerChange(kDBusSender, _));
+  EXPECT_CALL(*mock_bus_, GetServiceOwner(kDBusSender, _));
+  string service_token;
+  EXPECT_TRUE(manager_->ExposeServiceImpl(
+        nullptr, kDBusSender, kServiceId, {}, {}, &service_token));
+  Mock::VerifyAndClearExpectations(peer_);
+  Mock::VerifyAndClearExpectations(mock_bus_.get());
+  EXPECT_CALL(*peer_, RemoveService(_, kServiceId));
+  EXPECT_CALL(*mock_bus_, UnlistenForServiceOwnerChange(kDBusSender, _));
+  manager_->OnDBusServiceDeath(service_token);
 }
 
 }  // namespace peerd

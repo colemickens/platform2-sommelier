@@ -9,11 +9,13 @@
 #include <set>
 #include <stdint.h>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/macros.h>
 #include <chromeos/any.h>
 #include <chromeos/dbus/dbus_object.h>
+#include <chromeos/dbus/dbus_service_watcher.h>
 #include <chromeos/errors/error.h>
 
 #include "peerd/avahi_client.h"
@@ -76,7 +78,8 @@ class Manager : public org::chromium::peerd::ManagerInterface {
 
  private:
   // Used in unit tests to inject mocks.
-  Manager(std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object,
+  Manager(scoped_refptr<dbus::Bus> bus,
+          std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object,
           std::unique_ptr<PublishedPeer> self,
           std::unique_ptr<PeerManagerInterface> peer_manager,
           std::unique_ptr<AvahiClient> avahi_client,
@@ -99,17 +102,25 @@ class Manager : public org::chromium::peerd::ManagerInterface {
   // and StopMonitoring on technologies as appropriate.
   void UpdateMonitoredTechnologies();
 
+  void OnDBusServiceDeath(const std::string& service_token);
+
+  scoped_refptr<dbus::Bus> bus_;
   org::chromium::peerd::ManagerAdaptor dbus_adaptor_{this};
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<PublishedPeer> self_;
   std::unique_ptr<PeerManagerInterface> peer_manager_;
   std::unique_ptr<AvahiClient> avahi_client_;
-  std::map<std::string, std::string> service_token_to_id_;
+  using ExposedService =
+      std::pair<std::string,
+                std::unique_ptr<chromeos::dbus_utils::DBusServiceWatcher>>;
+  // A map of service tokens to pairs of service_ids and DBusServiceWatchers.
+  std::map<std::string, ExposedService> exposed_services_;
   std::map<std::string, technologies::TechnologySet> monitoring_requests_;
   size_t services_added_{0};
   size_t monitoring_tokens_issued_{0};
 
   FRIEND_TEST(ManagerTest, ShouldRejectSerbusServiceId);
+  FRIEND_TEST(ManagerTest, ShouldRemoveServicesOnRemoteDeath);
   friend class ManagerDBusProxyTest;
   friend class ManagerTest;
   DISALLOW_COPY_AND_ASSIGN(Manager);

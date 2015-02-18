@@ -24,6 +24,9 @@ using chromeos::Error;
 using chromeos::ErrorPtr;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::DBusObject;
+using chromeos::dbus_utils::DBusParamReader;
+using chromeos::dbus_utils::DBusParamWriter;
+using chromeos::dbus_utils::DBusServiceWatcher;
 using chromeos::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
 using peerd::constants::kSerbusServiceId;
@@ -34,8 +37,6 @@ using std::set;
 using std::string;
 using std::unique_ptr;
 using std::vector;
-using chromeos::dbus_utils::DBusParamReader;
-using chromeos::dbus_utils::DBusParamWriter;
 
 namespace peerd {
 
@@ -86,7 +87,8 @@ const char kInvalidServiceToken[] = "manager.service_token";
 
 Manager::Manager(ExportedObjectManager* object_manager,
                  const string& initial_mdns_prefix)
-  : Manager(unique_ptr<DBusObject>{new DBusObject{
+  : Manager(object_manager->GetBus(),
+            unique_ptr<DBusObject>{new DBusObject{
                 object_manager, object_manager->GetBus(),
                 org::chromium::peerd::ManagerAdaptor::GetObjectPath()}},
             unique_ptr<PublishedPeer>{},
@@ -95,31 +97,28 @@ Manager::Manager(ExportedObjectManager* object_manager,
             initial_mdns_prefix) {
 }
 
-Manager::Manager(unique_ptr<DBusObject> dbus_object,
+Manager::Manager(scoped_refptr<dbus::Bus> bus,
+                 unique_ptr<DBusObject> dbus_object,
                  unique_ptr<PublishedPeer> self,
                  unique_ptr<PeerManagerInterface> peer_manager,
                  unique_ptr<AvahiClient> avahi_client,
                  const string& initial_mdns_prefix)
-    : dbus_object_{std::move(dbus_object)},
+    : bus_{bus},
+      dbus_object_{std::move(dbus_object)},
       self_{std::move(self)},
       peer_manager_{std::move(peer_manager)},
       avahi_client_{std::move(avahi_client)} {
   // If we haven't gotten mocks for these objects, make real ones.
   if (!self_) {
-    self_.reset(
-        new PublishedPeer{dbus_object_->GetObjectManager()->GetBus(),
-                          dbus_object_->GetObjectManager().get(),
-                          ObjectPath{kSelfPath}});
+    self_.reset(new PublishedPeer{
+        bus_, dbus_object_->GetObjectManager().get(), ObjectPath{kSelfPath}});
   }
   if (!peer_manager_) {
     peer_manager_.reset(
-        new PeerManagerImpl{dbus_object_->GetObjectManager()->GetBus(),
-                            dbus_object_->GetObjectManager().get()});
+        new PeerManagerImpl{bus_, dbus_object_->GetObjectManager().get()});
   }
   if (!avahi_client_) {
-    avahi_client_.reset(
-        new AvahiClient{dbus_object_->GetObjectManager()->GetBus(),
-                        peer_manager_.get()});
+    avahi_client_.reset( new AvahiClient{bus_, peer_manager_.get()});
     avahi_client_->AttemptToUseMDnsPrefix(initial_mdns_prefix);
   }
 }
@@ -240,16 +239,22 @@ bool Manager::ExposeServiceImpl(chromeos::ErrorPtr* error,
     return false;
   }
   *service_token = "service_token_" + std::to_string(++services_added_);
-  service_token_to_id_.emplace(*service_token, service_id);
   // TODO(wiley) Maybe trigger an advertisement run since we have updated
   //             information.
+  std::unique_ptr<DBusServiceWatcher> service_watcher{
+      new DBusServiceWatcher{bus_, sender,
+                             base::Bind(&Manager::OnDBusServiceDeath,
+                                        base::Unretained(this),
+                                        *service_token)}};
+  exposed_services_.emplace(
+      *service_token, std::make_pair(service_id, std::move(service_watcher)));
   return true;
 }
 
 bool Manager::RemoveExposedService(chromeos::ErrorPtr* error,
                                    const string& service_token) {
-  auto it = service_token_to_id_.find(service_token);
-  if (it == service_token_to_id_.end()) {
+  auto it = exposed_services_.find(service_token);
+  if (it == exposed_services_.end()) {
     Error::AddTo(error,
                  FROM_HERE,
                  kPeerdErrorDomain,
@@ -257,10 +262,10 @@ bool Manager::RemoveExposedService(chromeos::ErrorPtr* error,
                  "Invalid service token given to RemoveExposedService.");
     return false;
   }
-  bool success = self_->RemoveService(error, it->second);
+  bool success = self_->RemoveService(error, it->second.first);
   // Maybe RemoveService returned with an error, but either way, we should
   // forget this service token.
-  service_token_to_id_.erase(it);
+  exposed_services_.erase(it);
   // TODO(wiley) Maybe trigger an advertisement run since we have updated
   //             information.
   return success;
@@ -291,6 +296,16 @@ void Manager::UpdateMonitoredTechnologies() {
   } else {
     avahi_client_->StopMonitoring();
   }
+}
+
+void Manager::OnDBusServiceDeath(const std::string& service_token) {
+  auto it = exposed_services_.find(service_token);
+  if (it == exposed_services_.end()) {
+    return;
+  }
+  // Note that this invalidates |it| because it changes the state
+  // of |exposed_services_|.
+  RemoveExposedService(nullptr, service_token);
 }
 
 }  // namespace peerd

@@ -66,6 +66,7 @@
         'chromeos/dbus/dbus_method_invoker.cc',
         'chromeos/dbus/dbus_method_response.cc',
         'chromeos/dbus/dbus_object.cc',
+        'chromeos/dbus/dbus_service_watcher.cc',
         'chromeos/dbus/dbus_signal.cc',
         'chromeos/dbus/exported_object_manager.cc',
         'chromeos/dbus/exported_property_set.cc',
