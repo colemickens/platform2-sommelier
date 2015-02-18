@@ -14,6 +14,9 @@ extern const char kInvalidClientCommitment[];
 
 }  // namespace errors
 
+// Time to reply on privet HTTP.
+const int kSetupDelaySeconds = 1;
+
 }  // namespace privetd
 
 #endif  // PRIVETD_CONSTANTS_H_

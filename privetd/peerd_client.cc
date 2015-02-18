@@ -6,6 +6,7 @@
 
 #include <map>
 
+#include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 
 #include "privetd/cloud_delegate.h"
@@ -14,6 +15,13 @@
 #include "privetd/wifi_ssid_generator.h"
 
 namespace privetd {
+
+namespace {
+// Commit changes only if no update request happened during the timeout.
+// Usually updates happen in batches, so we don't want to flood network with
+// updates relevant for a short amount of time.
+const int kCommitTimeoutSeconds = 3;
+}
 
 PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus,
                          const DeviceDelegate* device,
@@ -34,13 +42,21 @@ PeerdClient::~PeerdClient() {
   Stop();
 }
 
+void PeerdClient::Update() {
+  // Abort pending updates, and wait for more changes.
+  restart_weak_ptr_factory_.InvalidateWeakPtrs();
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE, base::Bind(&PeerdClient::RestartImpl,
+                            restart_weak_ptr_factory_.GetWeakPtr()),
+      base::TimeDelta::FromSeconds(kCommitTimeoutSeconds));
+}
+
 void PeerdClient::OnPeerdOnline(
     org::chromium::peerd::ManagerProxy* manager_proxy) {
   peerd_manager_proxy_ = manager_proxy;
   VLOG(1) << "Peerd manager is online at '"
           << manager_proxy->GetObjectPath().value() << "'.";
-  const uint16_t port = device_->GetHttpEnpoint().first;
-  if (port != 0)
+  if (device_->GetHttpEnpoint().first != 0)
     Start();
 }
 
@@ -108,6 +124,12 @@ void PeerdClient::Stop() {
     LOG(ERROR) << "RemoveExposedService failed:" << error->GetMessage();
   }
   service_token_.clear();
+}
+
+void PeerdClient::RestartImpl() {
+  Stop();
+  if (device_->GetHttpEnpoint().first != 0)
+    Start();
 }
 
 }  // namespace privetd

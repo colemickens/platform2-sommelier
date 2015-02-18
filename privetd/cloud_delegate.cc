@@ -13,6 +13,7 @@
 #include <dbus/bus.h>
 
 #include "buffet/dbus-proxies.h"
+#include "privetd/constants.h"
 #include "privetd/device_delegate.h"
 #include "privetd/peerd_client.h"
 
@@ -71,9 +72,11 @@ class CloudDelegateImpl : public CloudDelegate {
             << ", user:" << user;
     setup_state_ = SetupState(SetupState::kInProgress);
     cloud_id_.clear();
-    base::MessageLoop::current()->PostTask(
+    setup_weak_factory_.InvalidateWeakPtrs();
+    base::MessageLoop::current()->PostDelayedTask(
         FROM_HERE, base::Bind(&CloudDelegateImpl::CallManagerRegisterDevice,
-                              setup_weak_factory_.GetWeakPtr(), ticket_id, 0));
+                              setup_weak_factory_.GetWeakPtr(), ticket_id, 0),
+        base::TimeDelta::FromSeconds(kSetupDelaySeconds));
     on_changed_.Run();
     // Return true because we tried setup.
     return true;

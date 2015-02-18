@@ -32,15 +32,17 @@ class PeerdClient {
               const WifiDelegate* wifi);
   ~PeerdClient();
 
-  // Starts publishing.
-  void Start();
-
-  // Stops publishing.
-  void Stop();
+  // Updates published information.  Removes service if HTTP is not alive.
+  void Update();
 
  private:
   void OnPeerdOnline(org::chromium::peerd::ManagerProxy* manager_proxy);
   void OnPeerdOffline(const dbus::ObjectPath& object_path);
+
+  void Start();
+  void Stop();
+
+  void RestartImpl();
 
   org::chromium::peerd::ObjectManagerProxy peerd_object_manager_proxy_;
   // |peerd_manager_proxy_| is owned by |peerd_object_manager_proxy_|.
@@ -52,6 +54,7 @@ class PeerdClient {
   const CloudDelegate* cloud_{nullptr};  // Can be nullptr.
   const WifiDelegate* wifi_{nullptr};      // Can be nullptr.
 
+  base::WeakPtrFactory<PeerdClient> restart_weak_ptr_factory_{this};
   base::WeakPtrFactory<PeerdClient> weak_ptr_factory_{this};
 };
 

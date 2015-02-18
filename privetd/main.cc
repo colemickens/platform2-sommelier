@@ -205,10 +205,8 @@ class Daemon : public chromeos::DBusServiceDaemon {
   }
 
   void OnChanged() {
-    if (peerd_client_ && web_server_.GetDefaultHttpHandler()->IsConnected()) {
-      peerd_client_->Stop();
-      peerd_client_->Start();
-    }
+    if (peerd_client_)
+      peerd_client_->Update();
   }
 
   void OnConnectivityChanged(bool online) {
@@ -219,7 +217,7 @@ class Daemon : public chromeos::DBusServiceDaemon {
     if (protocol_handler->GetID() == ProtocolHandler::kHttp) {
       device_->SetHttpPort(protocol_handler->GetPort());
       if (peerd_client_)
-        peerd_client_->Start();
+        peerd_client_->Update();
     } else if (protocol_handler->GetID() == ProtocolHandler::kHttps) {
       device_->SetHttpsPort(protocol_handler->GetPort());
       security_->SetCertificateFingerprint(
@@ -229,9 +227,9 @@ class Daemon : public chromeos::DBusServiceDaemon {
 
   void OnProtocolHandlerDisconnected(ProtocolHandler* protocol_handler) {
     if (protocol_handler->GetID() == ProtocolHandler::kHttp) {
-      if (peerd_client_)
-        peerd_client_->Stop();
       device_->SetHttpPort(0);
+      if (peerd_client_)
+        peerd_client_->Update();
     } else if (protocol_handler->GetID() == ProtocolHandler::kHttps) {
       device_->SetHttpsPort(0);
       security_->SetCertificateFingerprint({});

@@ -12,6 +12,7 @@
 #include <chromeos/key_value_store.h>
 
 #include "privetd/ap_manager_client.h"
+#include "privetd/constants.h"
 #include "privetd/shill_client.h"
 
 namespace privetd {
@@ -162,10 +163,12 @@ SetupState WifiBootstrapManager::GetSetupState() const {
 bool WifiBootstrapManager::ConfigureCredentials(const std::string& ssid,
                                                 const std::string& passphrase) {
   setup_state_ = SetupState{SetupState::kInProgress};
-  base::MessageLoop::current()->PostTask(
-      FROM_HERE,
-      base::Bind(&WifiBootstrapManager::StartConnecting,
-                 tasks_weak_factory_.GetWeakPtr(), ssid, passphrase));
+  // TODO(vitalybuka): Find more reliable way to finish request or move delay
+  // into PrivetHandler as it's very HTTP specific.
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE, base::Bind(&WifiBootstrapManager::StartConnecting,
+                            tasks_weak_factory_.GetWeakPtr(), ssid, passphrase),
+      base::TimeDelta::FromSeconds(kSetupDelaySeconds));
   return true;
 }
 
