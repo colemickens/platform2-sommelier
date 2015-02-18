@@ -50,7 +50,7 @@ class Server final : public org::chromium::WebServer::ServerInterface,
 
  private:
   void CreateProtocolHandler(const std::string& id,
-                             const Config::ProtocolHandler& handler_config);
+                             Config::ProtocolHandler* handler_config);
   void InitTlsData();
   void OnPermissionBrokerOnline(org::chromium::PermissionBrokerProxy* proxy);
 

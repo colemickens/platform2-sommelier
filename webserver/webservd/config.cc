@@ -19,6 +19,7 @@ namespace {
 const char kProtocolHandlersKey[] = "protocol_handlers";
 const char kPortKey[] = "port";
 const char kUseTLSKey[] = "use_tls";
+const char kInterfaceKey[] = "interface";
 
 // Default configuration for the web server.
 const char kDefaultConfig[] = R"({
@@ -61,10 +62,20 @@ bool LoadHandlerConfig(const base::DictionaryValue* handler_value,
   if (handler_value->GetBoolean(kUseTLSKey, &use_tls))
     handler_config->use_tls = use_tls;
 
+  // "interface" is also optional.
+  std::string interface_name;
+  if (handler_value->GetString(kInterfaceKey, &interface_name))
+    handler_config->interface_name = interface_name;
+
   return true;
 }
 
 }  // anonymous namespace
+
+Config::ProtocolHandler::~ProtocolHandler() {
+  if (socket_fd != -1)
+    close(socket_fd);
+}
 
 void LoadDefaultConfig(Config* config) {
   LOG(INFO) << "Loading default server configuration...";

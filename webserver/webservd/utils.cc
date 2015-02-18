@@ -4,6 +4,8 @@
 
 #include "webserver/webservd/utils.h"
 
+#include <sys/socket.h>
+
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
@@ -86,6 +88,29 @@ chromeos::Blob GetSha256Fingerprint(X509* cert) {
   CHECK(X509_digest(cert, EVP_sha256(), fingerprint.data(), &len));
   CHECK_EQ(len, fingerprint.size());
   return fingerprint;
+}
+
+int CreateNetworkInterfaceSocket(const std::string& if_name) {
+  // The following is basically the steps libmicrohttpd normally takes
+  // when creating a new listening socket and binding it to a port.
+  int socket_fd = socket(PF_INET6, SOCK_STREAM | SOCK_CLOEXEC, 0);
+  if (socket_fd < 0 && errno == EINVAL)
+    socket_fd = socket(PF_INET6, SOCK_STREAM, 0);
+  if (socket_fd < 0) {
+    PLOG(ERROR) << "Unable to create a listening socket";
+    return -1;
+  }
+
+  // Now, specify that we want this socket to bind only to a particular
+  // network interface. Note, this call requires root privileges, so this
+  // should be done before the privileges are dropped.
+  if (setsockopt(socket_fd, SOL_SOCKET, SO_BINDTODEVICE,
+                 if_name.c_str(), if_name.size()) < 0) {
+    PLOG(WARNING) << "Failed to bind socket (SO_BINDTODEVICE) to " << if_name;
+    close(socket_fd);
+    return -1;
+  }
+  return socket_fd;
 }
 
 }  // namespace webservd

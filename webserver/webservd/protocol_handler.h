@@ -49,7 +49,7 @@ class ProtocolHandler final {
   std::string FindRequestHandler(const base::StringPiece& url,
                                  const base::StringPiece& method) const;
   // Binds the socket and listens to HTTP requests on it.
-  bool Start(const Config::ProtocolHandler& config);
+  bool Start(Config::ProtocolHandler* config);
 
   // Stops listening for requests.
   bool Stop();

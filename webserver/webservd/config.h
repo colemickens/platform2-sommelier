@@ -15,20 +15,31 @@
 namespace webservd {
 
 // This class contains global server configuration.
-struct Config {
+struct Config final {
  public:
   // Configuration of one specific protocol handler.
-  struct ProtocolHandler {
+  struct ProtocolHandler final {
+    ~ProtocolHandler();
     // Port to use.
     uint16_t port{0};
     // Specifies whether the handler is for HTTPS (true) or HTTP (false).
     bool use_tls{false};
+    // Interface name to use if the protocol handler should work only on
+    // particular network interface. If empty, the TCP socket will be open
+    // on the specified port for all network interfaces.
+    std::string interface_name;
     // For HTTPS handlers, these specify the certificates/private keys used
     // during TLS handshake and communication session. For HTTP protocol
     // handlers these fields are not used and are empty.
     chromeos::SecureBlob private_key;
     chromeos::Blob certificate;
     chromeos::Blob certificate_fingerprint;
+
+    // Custom socket created for protocol handlers that are bound to specific
+    // network interfaces only. SO_BINDTODEVICE option on a socket does exactly
+    // what is required but it needs root access. So we create those sockets
+    // before we drop privileges.
+    int socket_fd{-1};
   };
 
   // List of all registered protocol handlers for the web server.

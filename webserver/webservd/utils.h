@@ -34,6 +34,10 @@ chromeos::Blob StoreCertificate(X509* cert);
 // Same as openssl x509 -fingerprint -sha256.
 chromeos::Blob GetSha256Fingerprint(X509* cert);
 
+// Creates a socket bound to a specified network interface.
+// Returns a socket file descriptor or -1 on error.
+int CreateNetworkInterfaceSocket(const std::string& if_name);
+
 }  // namespace webservd
 
 #endif  // WEBSERVER_WEBSERVD_UTILS_H_

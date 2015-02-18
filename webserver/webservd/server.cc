@@ -68,8 +68,8 @@ void Server::RegisterAsync(
 
   InitTlsData();
 
-  for (const auto& pair : config_.protocol_handlers)
-    CreateProtocolHandler(pair.first, pair.second);
+  for (auto& pair : config_.protocol_handlers)
+    CreateProtocolHandler(pair.first, &pair.second);
 
   permission_broker_object_manager_.reset(
       new org::chromium::PermissionBroker::ObjectManagerProxy{
@@ -95,11 +95,15 @@ void Server::OnPermissionBrokerOnline(
   dbus::FileDescriptor dbus_fd{lifeline_read_fd_};
   dbus_fd.CheckValidity();
   for (auto& pair : config_.protocol_handlers) {
+    VLOG(1) << "Firewall request: Protocol Handler = " << pair.first
+            << ", Port = " << pair.second.port << ", Interface = "
+            << pair.second.interface_name;
     proxy->RequestTcpPortAccessAsync(
         pair.second.port,
-        "",
+        pair.second.interface_name,
         dbus_fd,
-        base::Bind(&OnFirewallSuccess, "", pair.second.port),
+        base::Bind(&OnFirewallSuccess, pair.second.interface_name,
+                   pair.second.port),
         base::Bind(&IgnoreFirewallDBusMethodError));
   }
 }
@@ -140,7 +144,7 @@ void Server::ProtocolHandlerStopped(ProtocolHandler* handler) {
 }
 
 void Server::CreateProtocolHandler(
-    const std::string& id, const Config::ProtocolHandler& handler_config) {
+    const std::string& id, Config::ProtocolHandler* handler_config) {
   std::unique_ptr<ProtocolHandler> protocol_handler{
       new ProtocolHandler{id, this}};
 

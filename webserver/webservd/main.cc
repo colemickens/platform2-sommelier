@@ -16,6 +16,7 @@
 
 #include "webserver/webservd/config.h"
 #include "webserver/webservd/server.h"
+#include "webserver/webservd/utils.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 
@@ -79,6 +80,22 @@ int main(int argc, char* argv[]) {
     CHECK(webservd::LoadConfigFromFile(default_file_path, &config));
   } else {
     webservd::LoadDefaultConfig(&config);
+  }
+
+  // For protocol handlers bound to specific network interfaces, we need root
+  // access to create those bound sockets. Do that here before we drop
+  // privileges.
+  for (auto& pair : config.protocol_handlers) {
+    if (!pair.second.interface_name.empty()) {
+      int socket_fd =
+          webservd::CreateNetworkInterfaceSocket(pair.second.interface_name);
+      if (socket_fd < 0) {
+        LOG(ERROR) << "Failed to create a socket for network interface "
+                   << pair.second.interface_name;
+        return EX_SOFTWARE;
+      }
+      pair.second.socket_fd = socket_fd;
+    }
   }
 
   config.use_debug = FLAGS_debug;
