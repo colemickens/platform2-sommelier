@@ -63,7 +63,7 @@ class ManagerTest : public testing::Test {
 TEST_F(ManagerTest, ShouldRejectSerbusServiceId) {
   chromeos::ErrorPtr error;
   string service_token;
-  EXPECT_FALSE(manager_->ExposeService(&error, kSerbusServiceId, {}, {},
+  EXPECT_FALSE(manager_->ExposeServiceImpl(&error, "", kSerbusServiceId, {}, {},
                &service_token));
   EXPECT_TRUE(service_token.empty());
   EXPECT_NE(nullptr, error.get());
