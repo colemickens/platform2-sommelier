@@ -10,6 +10,7 @@
 #include <time.h>
 
 #include <algorithm>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -51,6 +52,7 @@ using base::Bind;
 using base::Callback;
 using base::FilePath;
 using base::StringPrintf;
+using std::set;
 using std::string;
 using std::vector;
 
@@ -521,6 +523,7 @@ void Device::OnIPv6AddressChanged() {
   // It is possible for device to receive DNS server notification before IP
   // address notification, so preserve the saved DNS server if it exist.
   properties.dns_servers = ip6config_->properties().dns_servers;
+  PrependDNSServers(IPAddress::kFamilyIPv6, &properties.dns_servers);
   ip6config_->set_properties(properties);
   UpdateIPConfigsProperty();
   OnIPv6ConfigUpdated();
@@ -561,6 +564,8 @@ void Device::OnIPv6DnsServerAddressesChanged() {
   } else {
     ip6config_->ResetLeaseExpirationTime();
   }
+
+  PrependDNSServers(IPAddress::kFamilyIPv6, &addresses_str);
 
   // Done if no change in server addresses.
   if (ip6config_->properties().dns_servers == addresses_str) {
@@ -808,9 +813,39 @@ void Device::SetupConnection(const IPConfigRefPtr &ipconfig) {
   StartTrafficMonitor();
 }
 
+void Device::PrependDNSServersIntoIPConfig(const IPConfigRefPtr &ipconfig) {
+  const auto &properties = ipconfig->properties();
+
+  vector<string> servers(properties.dns_servers.begin(),
+                         properties.dns_servers.end());
+  PrependDNSServers(properties.address_family, &servers);
+  if (servers == properties.dns_servers) {
+    // If the server list is the same after being augmented then there's no need
+    // to update the config's list of servers.
+    return;
+  }
+
+  ipconfig->UpdateDNSServers(servers);
+}
+
+void Device::PrependDNSServers(const IPAddress::Family family,
+                               vector<string> *servers) {
+  vector<string> suffix(servers->begin(), servers->end());
+  manager_->FilterPrependDNSServersByFamily(family, servers);
+
+  set<string> unique(servers->begin(), servers->end());
+  for (const auto &server : suffix) {
+    if (unique.find(server) == unique.end()) {
+      servers->push_back(server);
+      unique.insert(server);
+    }
+  }
+}
+
 void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,
                                bool /*new_lease_acquired*/) {
   SLOG(this, 2) << __func__;
+  PrependDNSServersIntoIPConfig(ipconfig);
   if (selected_service_) {
     ipconfig->ApplyStaticIPParameters(
         selected_service_->mutable_static_ip_parameters());

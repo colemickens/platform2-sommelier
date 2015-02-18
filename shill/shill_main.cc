@@ -47,6 +47,8 @@ static const char kPortalList[] = "portal-list";
 static const char kPassiveMode[] = "passive-mode";
 // Default priority order of the technologies.
 static const char kDefaultTechnologyOrder[] = "default-technology-order";
+// Comma-separated list of DNS servers to prepend to the resolver list.
+static const char kPrependDNSServers[] = "prepend-dns-servers";
 // Flag that causes shill to show the help message and exit.
 static const char kHelp[] = "help";
 
@@ -70,7 +72,9 @@ static const char kHelpMessage[] = "\n"
     "  --passive-mode\n"
     "    Do not manage any devices by default\n"
     "  --default-technology-order=technology1,technology2\n"
-    "    Specify the default priority order of the technologies.\n";
+    "    Specify the default priority order of the technologies.\n"
+    "  --prepend-dns-servers=server1,server2,...\n"
+    "    Prepend the provided DNS servers to the resolver list.\n";
 }  // namespace switches
 
 namespace {
@@ -207,6 +211,11 @@ int main(int argc, char** argv) {
 
   if (cl->HasSwitch(switches::kPassiveMode)) {
     daemon.SetPassiveMode();
+  }
+
+  if (cl->HasSwitch(switches::kPrependDNSServers)) {
+    daemon.SetPrependDNSServers(cl->GetSwitchValueASCII(
+        switches::kPrependDNSServers));
   }
 
   g_unix_signal_add(SIGINT, ExitSigHandler, &daemon);

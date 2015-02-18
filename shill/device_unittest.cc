@@ -1349,6 +1349,85 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   Mock::VerifyAndClearExpectations(connection.get());
 }
 
+TEST_F(DeviceTest, PrependIPv4DNSServers) {
+  MockManager manager(control_interface(), dispatcher(), metrics(), glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+
+  scoped_refptr<IPConfig> ipconfig =
+      new IPConfig(control_interface(), kDeviceName);
+
+  {
+    IPConfig::Properties properties;
+    properties.address_family = IPAddress::kFamilyIPv4;
+    ipconfig->set_properties(properties);
+
+    device_->set_ipconfig(ipconfig);
+    manager.SetPrependDNSServers("8.8.8.8");
+
+    OnIPConfigUpdated(ipconfig.get());
+
+    vector<string> expected = {"8.8.8.8"};
+    EXPECT_EQ(device_->ipconfig()->properties().dns_servers, expected);
+  }
+  {
+    IPConfig::Properties properties;
+    properties.address_family = IPAddress::kFamilyIPv4;
+    properties.dns_servers = {"8.8.8.8"};
+    ipconfig->set_properties(properties);
+
+    device_->set_ipconfig(ipconfig);
+    manager.SetPrependDNSServers("8.8.8.8,2001:4860:4860::8888");
+
+    OnIPConfigUpdated(ipconfig.get());
+
+    vector<string> expected = {"8.8.8.8"};
+    EXPECT_EQ(device_->ipconfig()->properties().dns_servers, expected);
+  }
+  {
+    IPConfig::Properties properties;
+    properties.address_family = IPAddress::kFamilyIPv4;
+    properties.dns_servers = {"8.8.8.8", "8.8.4.4"};
+    ipconfig->set_properties(properties);
+
+    device_->set_ipconfig(ipconfig);
+    manager.SetPrependDNSServers("8.8.4.4");
+
+    OnIPConfigUpdated(ipconfig.get());
+
+    vector<string> expected = {"8.8.4.4", "8.8.8.8"};
+    EXPECT_EQ(device_->ipconfig()->properties().dns_servers, expected);
+  }
+}
+
+TEST_F(DeviceTest, PrependIPv6DNSServers) {
+  MockManager manager(control_interface(), dispatcher(), metrics(), glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+
+  vector<IPAddress> dns_server_addresses = {
+    IPAddress("2001:4860:4860::8888"),
+    IPAddress("2001:4860:4860::8844"),
+  };
+
+  EXPECT_CALL(device_info_, GetIPv6DnsServerAddresses(_, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(dns_server_addresses),
+                            Return(true)));
+  device_->OnIPv6DnsServerAddressesChanged();
+
+  vector<string> expected = {"2001:4860:4860::8888", "2001:4860:4860::8844"};
+  EXPECT_EQ(device_->ip6config()->properties().dns_servers, expected);
+
+  manager.SetPrependDNSServers("8.8.8.8");
+  device_->OnIPv6DnsServerAddressesChanged();
+  EXPECT_EQ(device_->ip6config()->properties().dns_servers, expected);
+
+  manager.SetPrependDNSServers("2001:4860:4860::8844");
+  device_->OnIPv6DnsServerAddressesChanged();
+  std::reverse(expected.begin(), expected.end());
+  EXPECT_EQ(device_->ip6config()->properties().dns_servers, expected);
+}
+
 class DevicePortalDetectionTest : public DeviceTest {
  public:
   DevicePortalDetectionTest()

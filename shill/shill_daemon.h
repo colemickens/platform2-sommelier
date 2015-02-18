@@ -37,6 +37,7 @@ class Daemon {
   void SetIgnoreUnknownEthernet(bool ignore);
   void SetStartupPortalList(const std::string &portal_list);
   void SetPassiveMode();
+  void SetPrependDNSServers(const std::string &prepend_dns_servers);
 
   // Main for connection manager.  Starts main process and holds event loop.
   void Run();

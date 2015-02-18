@@ -26,6 +26,7 @@
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
 #include "shill/metrics.h"
+#include "shill/net/ip_address.h"
 #include "shill/power_manager.h"
 #include "shill/profile.h"
 #include "shill/property_store.h"
@@ -79,6 +80,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     std::string prohibited_technologies;
     // Comma-separated list of DNS search paths to be ignored.
     std::string ignored_dns_search_paths;
+    // Comma-separated list of DNS servers to prepend to resolver list.
+    std::string prepend_dns_servers;
     // Salt value use for calculating network connection ID.
     int connection_id_salt;
   };
@@ -433,6 +436,16 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // if they do not indicate a driver name.
   void SetIgnoreUnknownEthernet(bool ignore);
   bool ignore_unknown_ethernet() const { return ignore_unknown_ethernet_; }
+
+  // Set the list of prepended DNS servers to |prepend_dns_servers|.
+  void SetPrependDNSServers(const std::string &prepend_dns_servers);
+
+  // Filter the list of prepended DNS servers, copying only those that match
+  // |family| into |dns_servers|.  |dns_servers| is cleared, regardless of
+  // whether or not there are any addresses that match |family|.
+  virtual void FilterPrependDNSServersByFamily(
+      const IPAddress::Family family,
+      std::vector<std::string> *dns_servers);
 
  private:
   friend class CellularTest;

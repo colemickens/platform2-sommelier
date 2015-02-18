@@ -1084,6 +1084,23 @@ void Manager::SetIgnoreUnknownEthernet(bool ignore) {
   ignore_unknown_ethernet_ = ignore;
 }
 
+void Manager::SetPrependDNSServers(const std::string &prepend_dns_servers) {
+  props_.prepend_dns_servers = prepend_dns_servers;
+}
+
+void Manager::FilterPrependDNSServersByFamily(const IPAddress::Family family,
+                                              vector<string> *dns_servers) {
+  dns_servers->clear();
+  vector<string> split_servers;
+  base::SplitString(props_.prepend_dns_servers, ',', &split_servers);
+  for (const auto &server : split_servers) {
+    const IPAddress address(server);
+    if (address.family() == family) {
+      dns_servers->push_back(server);
+    }
+  }
+}
+
 void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
   LOG(INFO) << "Device " << to_manage->FriendlyName() << " registered.";
   // Manager is running in passive mode when default claimer is created, which
