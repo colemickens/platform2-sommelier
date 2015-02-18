@@ -19,6 +19,7 @@
         'perf_reader.cc',
         'perf_recorder.cc',
         'perf_serializer.cc',
+        'run_command.cc',
         'scoped_temp_path.cc',
         'utils.cc',
       ],
@@ -161,6 +162,17 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'perf_serializer_test.cc',
+          ]
+        },
+        {
+          'target_name': 'run_command_test',
+          'type': 'executable',
+          'dependencies': [
+            'common',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'run_command_test.cc',
           ]
         },
         {
