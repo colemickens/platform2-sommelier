@@ -248,6 +248,17 @@ class CHROMEOS_EXPORT DBusInterface final {
     Handler<RawDBusInterfaceMethodHandler>::Add(this, method_name, handler);
   }
 
+  // Register a raw D-Bus method handler for |method_name| as a class member
+  // function.
+  template<typename Instance, typename Class>
+  inline void AddRawMethodHandler(
+      const std::string& method_name,
+      Instance instance,
+      void(Class::*handler)(dbus::MethodCall*, ResponseSender)) {
+    Handler<RawDBusInterfaceMethodHandler>::Add(
+        this, method_name, base::Bind(handler, instance));
+  }
+
   // Register a D-Bus property.
   void AddProperty(const std::string& property_name,
                    ExportedPropertyBase* prop_base);
