@@ -4,6 +4,7 @@
 
 #include "chromiumos-wide-profiling/perf_recorder.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <sstream>
@@ -11,29 +12,41 @@
 
 #include "chromiumos-wide-profiling/perf_serializer.h"
 #include "chromiumos-wide-profiling/quipper_string.h"
+#include "chromiumos-wide-profiling/run_command.h"
 #include "chromiumos-wide-profiling/scoped_temp_path.h"
 #include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 
-string PerfRecorder::GetSleepCommand(const int time) {
+namespace {
+string IntToString(const int i) {
   stringstream ss;
-  ss << "sleep " << time;
+  ss << i;
   return ss.str();
 }
+}  // namespace
 
 bool PerfRecorder::RecordAndConvertToProtobuf(
-    const string& perf_command,
+    const std::vector<string>& perf_args,
     const int time,
     quipper::PerfDataProto* perf_data) {
   ScopedTempFile output_file;
-  string full_perf_command = perf_command + " -o " + output_file.path() +
-                             " -- " + GetSleepCommand(time);
+  if (std::find(perf_args.begin(), perf_args.end(), "--") != perf_args.end()) {
+    // Perf uses '--' to mark the end of arguments and the beginning of the
+    // command to run and profile. We need to run sleep, so disallow this.
+    LOG(ERROR) << "perf_args may contain a command. Refusing to run it!";
+    return false;
+  }
+  std::vector<string> full_perf_args(perf_args.begin(), perf_args.end());
+  full_perf_args.insert(full_perf_args.end(),
+                        {"-o", output_file.path(),
+                         "--",
+                         "sleep", IntToString(time)});
 
-  // The perf command writes the output to a file. |stdout_data| is just a dummy
-  // container so we have something to pass to RunCommandAndGetStdout().
-  std::vector<char> stdout_data;
-  RunCommandAndGetStdout(full_perf_command, &stdout_data);
+  // The perf command writes the output to a file, so ignore stdout.
+  if (!RunCommand(full_perf_args, nullptr)) {
+    return false;
+  }
 
   // Now convert it into a protobuf.
   PerfSerializer perf_serializer;

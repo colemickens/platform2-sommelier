@@ -13,10 +13,19 @@
 #include "chromiumos-wide-profiling/quipper_string.h"
 
 namespace {
+
 const char kDefaultOutputFile[] = "/dev/stdout";
+
+int StringToInt(const string& s) {
+  int r;
+  stringstream ss;
+  ss << s;
+  ss >> r;
+  return r;
 }
 
-bool ParseArguments(int argc, char* argv[], string* perf_command_line,
+bool ParseArguments(int argc, char* argv[],
+                    std::vector<string>* perf_args,
                     int* duration) {
   if (argc < 3) {
     LOG(ERROR) << "Invalid command line.";
@@ -27,29 +36,28 @@ bool ParseArguments(int argc, char* argv[], string* perf_command_line,
     return false;
   }
 
-  stringstream ss;
-  ss << argv[1];
-  ss >> *duration;
+  *duration = StringToInt(argv[1]);
 
   for (int i = 2; i < argc; i++) {
-    *perf_command_line += " ";
-    *perf_command_line += argv[i];
+    perf_args->emplace_back(argv[i]);
   }
   return true;
 }
 
+}  // namespace
+
 // Usage is:
 // <exe> <duration in seconds> <perf command line>
 int main(int argc, char* argv[]) {
-  string perf_command_line;
+  std::vector<string> perf_args;
   int perf_duration;
 
-  if (!ParseArguments(argc, argv, &perf_command_line, &perf_duration))
+  if (!ParseArguments(argc, argv, &perf_args, &perf_duration))
     return 1;
 
   quipper::PerfRecorder perf_recorder;
   quipper::PerfDataProto perf_data_proto;
-  if (!perf_recorder.RecordAndConvertToProtobuf(perf_command_line,
+  if (!perf_recorder.RecordAndConvertToProtobuf(perf_args,
                                                 perf_duration,
                                                 &perf_data_proto))
     return 1;

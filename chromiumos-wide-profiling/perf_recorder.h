@@ -6,6 +6,7 @@
 #define CHROMIUMOS_WIDE_PROFILING_PERF_RECORDER_H_
 
 #include <string>
+#include <vector>
 
 #include "base/macros.h"
 
@@ -18,11 +19,10 @@ namespace quipper {
 class PerfRecorder {
  public:
   PerfRecorder() {}
-  bool RecordAndConvertToProtobuf(const string& perf_command,
+  bool RecordAndConvertToProtobuf(const std::vector<string>& perf_args,
                                   const int time,
                                   quipper::PerfDataProto* perf_data);
  private:
-  string GetSleepCommand(const int time);
   DISALLOW_COPY_AND_ASSIGN(PerfRecorder);
 };
 

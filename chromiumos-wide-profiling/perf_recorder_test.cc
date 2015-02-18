@@ -19,12 +19,18 @@ TEST(PerfRecorderTest, TestRecord) {
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
   quipper::PerfDataProto perf_data_proto;
-  string perf_command_line = "sudo " + GetPerfPath() + " record";
   PerfRecorder perf_recorder;
-  EXPECT_TRUE(perf_recorder.RecordAndConvertToProtobuf(perf_command_line,
-                                                       1,
-                                                       &perf_data_proto));
+  EXPECT_TRUE(perf_recorder.RecordAndConvertToProtobuf(
+      {"sudo", GetPerfPath(), "record"}, 1, &perf_data_proto));
   EXPECT_GT(perf_data_proto.build_ids_size(), 0);
+}
+
+TEST(PerfRecorderTest, DontAllowCommands) {
+  quipper::PerfDataProto perf_data_proto;
+  PerfRecorder perf_recorder;
+  EXPECT_FALSE(perf_recorder.RecordAndConvertToProtobuf(
+      {"sudo", GetPerfPath(), "record" "--", "sh", "-c", "echo 'malicious'"},
+      1, &perf_data_proto));
 }
 
 }  // namespace quipper
