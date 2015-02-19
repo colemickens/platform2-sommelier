@@ -38,7 +38,7 @@ bool ConfigureInstall(const string& install_dev,
       break;
     default:
       fprintf(stderr,
-              "Not a valid target parition number: %i\n", root.number());
+              "Not a valid target partition number: %i\n", root.number());
       return false;
   }
 
@@ -375,6 +375,11 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 
       return false;
     }
+  }
+
+  if (cgpt_manager.Finalize()) {
+    fprintf(stderr, "Failed to write GPT changes back.\n");
+    return false;
   }
 
   printf("ChromeosChrootPostinst complete\n");

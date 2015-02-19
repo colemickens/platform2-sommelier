@@ -38,6 +38,12 @@ class CgptManager {
   // This device is automatically closed when this object is destructed.
   CgptErrorCode Initialize(const std::string& device_name);
 
+  // Performs any necessary write-backs so that the GPT structs are written to
+  // the device. This method is called in the destructor but its error code is
+  // not checked. Therefore, it is best to call Finalize yourself and check the
+  // returned code.
+  CgptErrorCode Finalize();
+
   // Clears all the existing contents of the GPT and PMBR on the current
   // device.
   CgptErrorCode ClearAll();
@@ -161,7 +167,11 @@ class CgptManager {
   CgptErrorCode Validate();
 
  private:
+  // The device name that is passed to Initialize.
   std::string device_name_;
+  // The size of that device in case we store GPT structs off site (such as on
+  // NOR flash). Zero if we store GPT structs on the same device.
+  uint64_t device_size_;
   bool is_initialized_;
 
   CgptManager(const CgptManager &);

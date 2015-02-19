@@ -4,7 +4,16 @@
 
 #include "installer/cgpt_manager.h"
 
+#include <err.h>
+#include <linux/major.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include "installer/inst_util.h"
 
 extern "C" {
 #include <vboot/vboot_host.h>
@@ -12,18 +21,188 @@ extern "C" {
 
 using std::string;
 
+namespace {
+
+// Create a temp file, read GPT structs from NOR flash to that file, and return
+// true on success. On success, |file_name| contains the path to the temp file.
+bool ReadGptFromNor(string* file_name) {
+  char tmp_name[] = "/tmp/cgptmanagerXXXXXX";
+  int fd = mkstemp(tmp_name);
+  if (fd < 0) {
+    warn("Cannot create temp file to store GPT structs read from NOR");
+    return false;
+  }
+  // Extra parens to work around the compiler parser.
+  ScopedPathRemover remover((string(tmp_name)));
+  // Close fd so that flashrom can write to the file right after.
+  close(fd);
+  string cmd = StringPrintf("flashrom -i \"RW_GPT:%s\" -r", tmp_name);
+  if (RunCommand(cmd) != 0) {
+    return false;
+  }
+  // Keep the temp file.
+  remover.release();
+  *file_name = tmp_name;
+  return true;
+}
+
+// Write |data| to NOR flash at FMAP |region|. Return true on success.
+bool WriteToNor(const string& data, const string& region) {
+  char tmp_name[] = "/tmp/cgptmanagerXXXXXX";
+  ScopedFileDescriptor fd(mkstemp(tmp_name));
+  if (fd < 0) {
+    warn("Cannot create temp file to write to NOR flash");
+    return false;
+  }
+
+  // Extra parens to work around the compiler parser.
+  ScopedPathRemover remover((string(tmp_name)));
+  if (!WriteFullyToFileDescriptor(data, fd)) {
+    warnx("Cannot write data to temp file %s.\n", tmp_name);
+    return false;
+  }
+
+  // Close fd so that flashrom can open it right after.
+  if (fd.close() != 0) {
+    warn("Cannot close file %s", tmp_name);
+    return false;
+  }
+
+  string cmd = StringPrintf("flashrom -i \"%s:%s\" -w --fast-verify",
+                            region.c_str(), tmp_name);
+  if (RunCommand(cmd) != 0) {
+    warnx("Cannot write %s to %s section.\n", tmp_name, region.c_str());
+    return false;
+  }
+
+  return true;
+}
+
+// Write GPT data in |file_name| file to NOR flash. This function writes the
+// content in two halves, one to RW_GPT_PRIMARY, and another to RW_GPT_SECONDARY
+// sections. Return negative on failure, 0 on success, a positive integer means
+// that many parts failed. Due to the way GPT works, we usually could recover
+// from one failure.
+int WriteGptToNor(const string& file_name) {
+  string gpt_data;
+  if (!ReadFileToString(file_name, &gpt_data)) {
+    warnx("Cannot read from %s.\n", file_name.c_str());
+    return -1;
+  }
+
+  int ret = 0;
+  if (!WriteToNor(gpt_data.substr(0, gpt_data.length() / 2),
+                  "RW_GPT_PRIMARY")) {
+    ret++;
+  }
+  if (!WriteToNor(gpt_data.substr(gpt_data.length() / 2),
+                  "RW_GPT_SECONDARY")) {
+    ret++;
+  }
+
+  switch (ret) {
+    case 0: {
+      break;
+    }
+    case 1: {
+      warnx("Failed to write some part. It might still be okay.\n");
+      break;
+    }
+    case 2: {
+      warnx("Cannot write either part to flashrom.\n");
+      break;
+    }
+    default: {
+      errx(-1, "Unexpected number of write failures (%d)", ret);
+    }
+  }
+  return ret;
+}
+
+// Set or clear |is_mtd| depending on if |block_dev| points to an MTD device.
+bool IsMtd(const string& block_dev, bool* is_mtd) {
+  struct stat stat_buf;
+  if (stat(block_dev.c_str(), &stat_buf) != 0) {
+    warn("Failed to stat %s", block_dev.c_str());
+    return false;
+  }
+  *is_mtd = (major(stat_buf.st_rdev) == MTD_CHAR_MAJOR);
+  return true;
+}
+
+// Return the size of MTD device |block_dev| in |ret|.
+bool GetMtdSize(const string& block_dev, uint64_t* ret) {
+  string size_file = StringPrintf("/sys/class/mtd/%s/size",
+                                  basename(block_dev.c_str()));
+  string size_string;
+  if (!ReadFileToString(size_file, &size_string)) {
+    warnx("Cannot read MTD size from %s.\n", size_file.c_str());
+    return false;
+  }
+
+  uint64_t size;
+  char* end;
+  size = strtoull(size_string.c_str(), &end, 10);
+  if (*end != '\x0A') {
+    warn("Cannot convert %s into decimal", size_string.c_str());
+    return false;
+  }
+
+  *ret = size;
+  return true;
+}
+
+}  // namespace
+
 // This file implements the C++ wrapper methods over the C cgpt methods.
 
 CgptManager::CgptManager():
+  device_size_(0),
   is_initialized_(false) {
 }
 
 CgptManager::~CgptManager() {
+  Finalize();
 }
 
 CgptErrorCode CgptManager::Initialize(const string& device_name) {
   device_name_ = device_name;
+  bool is_mtd;
+  if (!IsMtd(device_name, &is_mtd)) {
+    warnx("Cannot determine if %s is an MTD device.\n", device_name.c_str());
+    return kCgptNotInitialized;
+  }
+  if (is_mtd) {
+    warnx("%s is an MTD device.\n", device_name.c_str());
+    if (!GetMtdSize(device_name, &device_size_)) {
+      warnx("But we do not know its size.\n");
+      return kCgptNotInitialized;
+    }
+    if (!ReadGptFromNor(&device_name_)) {
+      warnx("Failed to read GPT structs from NOR flash.\n");
+      return kCgptNotInitialized;
+    }
+  }
   is_initialized_ = true;
+  return kCgptSuccess;
+}
+
+CgptErrorCode CgptManager::Finalize() {
+  if (!is_initialized_) {
+    return kCgptNotInitialized;
+  }
+
+  if (device_size_) {
+    if (WriteGptToNor(device_name_) != 0) {
+      return kCgptUnknownError;
+    }
+    if (unlink(device_name_.c_str()) != 0) {
+      warn("Cannot remove temp file %s", device_name_.c_str());
+    }
+  }
+
+  device_size_ = 0;
+  is_initialized_ = false;
   return kCgptSuccess;
 }
 
@@ -35,6 +214,7 @@ CgptErrorCode CgptManager::ClearAll() {
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.zap = 0;
 
   int retval = CgptCreate(&params);
@@ -56,6 +236,7 @@ CgptErrorCode CgptManager::AddPartition(const string& label,
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.label = const_cast<char *>(label.c_str());
 
   params.type_guid = partition_type_guid;
@@ -91,6 +272,7 @@ CgptErrorCode CgptManager::GetNumNonEmptyPartitions(
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   int retval = CgptGetNumNonEmptyPartitions(&params);
 
   if (retval != CGPT_OK)
@@ -110,6 +292,7 @@ CgptErrorCode CgptManager::SetPmbr(uint32_t boot_partition_number,
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   if (!boot_file_name.empty())
     params.bootfile = const_cast<char *>(boot_file_name.c_str());
 
@@ -135,6 +318,7 @@ CgptErrorCode CgptManager::GetPmbrBootPartitionNumber(
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
 
   int retval = CgptGetBootPartitionNumber(&params);
   if (retval != CGPT_OK)
@@ -154,6 +338,7 @@ CgptErrorCode CgptManager::SetSuccessful(
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.partition = partition_number;
 
   params.successful = is_successful;
@@ -178,6 +363,7 @@ CgptErrorCode CgptManager::GetSuccessful(uint32_t partition_number,
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.partition = partition_number;
 
   int retval = CgptGetPartitionDetails(&params);
@@ -197,6 +383,7 @@ CgptErrorCode CgptManager::SetNumTriesLeft(uint32_t partition_number,
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.partition = partition_number;
 
   params.tries = numTries;
@@ -221,6 +408,7 @@ CgptErrorCode CgptManager::GetNumTriesLeft(uint32_t partition_number,
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.partition = partition_number;
 
   int retval = CgptGetPartitionDetails(&params);
@@ -240,6 +428,7 @@ CgptErrorCode CgptManager::SetPriority(uint32_t partition_number,
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.partition = partition_number;
 
   params.priority = priority;
@@ -264,6 +453,7 @@ CgptErrorCode CgptManager::GetPriority(uint32_t partition_number,
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.partition = partition_number;
 
   int retval = CgptGetPartitionDetails(&params);
@@ -286,6 +476,7 @@ CgptErrorCode CgptManager::GetBeginningOffset(uint32_t partition_number,
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.partition = partition_number;
 
   int retval = CgptGetPartitionDetails(&params);
@@ -308,6 +499,7 @@ CgptErrorCode CgptManager::GetNumSectors(uint32_t partition_number,
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.partition = partition_number;
 
   int retval = CgptGetPartitionDetails(&params);
@@ -330,6 +522,7 @@ CgptErrorCode CgptManager::GetPartitionTypeId(uint32_t partition_number,
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.partition = partition_number;
 
   int retval = CgptGetPartitionDetails(&params);
@@ -352,6 +545,7 @@ CgptErrorCode CgptManager::GetPartitionUniqueId(uint32_t partition_number,
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.partition = partition_number;
 
   int retval = CgptGetPartitionDetails(&params);
@@ -375,6 +569,7 @@ CgptErrorCode CgptManager::GetPartitionNumberByUniqueId(
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.unique_guid = unique_id;
   params.set_unique = 1;
 
@@ -395,6 +590,7 @@ CgptErrorCode CgptManager::SetHighestPriority(uint32_t partition_number,
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
+  params.drive_size = device_size_;
   params.set_partition = partition_number;
   params.max_priority = highest_priority;
 
