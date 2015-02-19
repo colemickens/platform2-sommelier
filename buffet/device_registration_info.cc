@@ -50,6 +50,8 @@ const char kName[]          = "name";
 const char kDisplayName[]   = "display_name";
 const char kDescription[]   = "description";
 const char kLocation[]      = "location";
+const char kModelId[]       = "model_id";
+
 
 }  // namespace storage_keys
 }  // namespace buffet
@@ -230,6 +232,11 @@ bool DeviceRegistrationInfo::Load() {
   if (!dict->GetString(storage_keys::kLocation, &location))
     return false;
 
+  // Temporarily tolerate missing modelId. Older registrations will not have a
+  // modelId in their state files.
+  // TODO(vitalybuka): Add result check back. Should be safe starting Mar 2015.
+  dict->GetString(storage_keys::kModelId, &model_id_);
+
   client_id_            = client_id;
   client_secret_        = client_secret;
   api_key_              = api_key;
@@ -243,6 +250,7 @@ bool DeviceRegistrationInfo::Load() {
   display_name_         = display_name;
   description_          = description;
   location_             = location;
+
   return true;
 }
 
@@ -261,6 +269,7 @@ bool DeviceRegistrationInfo::Save() const {
   dict.SetString(storage_keys::kDisplayName,  display_name_);
   dict.SetString(storage_keys::kDescription,  description_);
   dict.SetString(storage_keys::kLocation,     location_);
+  dict.SetString(storage_keys::kModelId,      model_id_);
 
   return storage_->Save(&dict);
 }
@@ -387,6 +396,8 @@ DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
     resource->SetString("description", description_);
   if (!location_.empty())
     resource->SetString("location", location_);
+  if (!model_id_.empty())
+    resource->SetString("modelManifestId", model_id_);
   resource->SetString("channel.supportedType", "xmpp");
   resource->Set("commandDefs", commands.release());
   resource->Set("state", state.release());
@@ -425,17 +436,18 @@ std::string DeviceRegistrationInfo::RegisterDevice(
       !GetParamValue(params, storage_keys::kClientSecret, &client_secret_,
                      error) ||
       !GetParamValue(params, storage_keys::kApiKey, &api_key_, error) ||
-      !GetParamValue(params, storage_keys::kDeviceKind, &device_kind_,
-                     error) ||
+      !GetParamValue(params, storage_keys::kDeviceKind, &device_kind_, error) ||
       !GetParamValue(params, storage_keys::kName, &name_, error) ||
       !GetParamValue(params, storage_keys::kDisplayName, &display_name_,
                      error) ||
       !GetParamValue(params, storage_keys::kDescription, &description_,
                      error) ||
       !GetParamValue(params, storage_keys::kLocation, &location_, error) ||
+      !GetParamValue(params, storage_keys::kModelId, &model_id_, error) ||
       !GetParamValue(params, storage_keys::kOAuthURL, &oauth_url_, error) ||
-      !GetParamValue(params, storage_keys::kServiceURL, &service_url_, error))
+      !GetParamValue(params, storage_keys::kServiceURL, &service_url_, error)) {
     return std::string();
+  }
 
   std::unique_ptr<base::DictionaryValue> device_draft =
       BuildDeviceResource(error);

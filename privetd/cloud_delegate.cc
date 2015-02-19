@@ -91,6 +91,7 @@ class CloudDelegateImpl : public CloudDelegate {
         {"display_name", device_->GetName()},
         {"description", device_->GetDescription()},
         {"location", device_->GetLocation()},
+        {"model_id", device_->GetModelId()},
     };
 
     ErrorPtr error;

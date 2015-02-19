@@ -72,6 +72,7 @@ void InitDefaultStorage(base::DictionaryValue* data) {
   data->SetString(storage_keys::kDisplayName, "");
   data->SetString(storage_keys::kDescription, "");
   data->SetString(storage_keys::kLocation, "");
+  data->SetString(storage_keys::kModelId, "");
 }
 
 // Add the test device registration information.
@@ -185,6 +186,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     config_store->SetString("display_name",  "Coffee Pot");
     config_store->SetString("description",  "Easy to clean");
     config_store->SetString("location",  "Kitchen");
+    config_store->SetString("model_id", "AAA");
     config_store->SetString("oauth_url", test_data::kOAuthURL);
     config_store->SetString("service_url", test_data::kServiceURL);
     dev_reg_ = std::unique_ptr<DeviceRegistrationInfo>(
@@ -236,6 +238,7 @@ TEST_F(DeviceRegistrationInfoTest, VerifySave) {
   data.SetString(storage_keys::kDisplayName, "k");
   data.SetString(storage_keys::kDescription, "l");
   data.SetString(storage_keys::kLocation, "m");
+  data.SetString(storage_keys::kModelId, "n");
 
   storage_->Save(&data);
 
@@ -342,6 +345,8 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
     EXPECT_EQ("Easy to clean", value);
     EXPECT_TRUE(json->GetString("deviceDraft.location", &value));
     EXPECT_EQ("Kitchen", value);
+    EXPECT_TRUE(json->GetString("deviceDraft.modelManifestId", &value));
+    EXPECT_EQ("AAA", value);
     EXPECT_TRUE(json->GetString("deviceDraft.displayName", &value));
     EXPECT_EQ("Coffee Pot", value);
     base::DictionaryValue* commandDefs = nullptr;

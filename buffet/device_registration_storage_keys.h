@@ -26,6 +26,7 @@ extern const char kName[];
 extern const char kDisplayName[];
 extern const char kDescription[];
 extern const char kLocation[];
+extern const char kModelId[];
 
 }  // namespace storage_keys
 }  // namespace buffet

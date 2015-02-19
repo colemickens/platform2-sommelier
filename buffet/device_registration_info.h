@@ -211,6 +211,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   std::string display_name_;
   std::string description_;
   std::string location_;
+  std::string model_id_;
 
   // Transient data
   std::string access_token_;
