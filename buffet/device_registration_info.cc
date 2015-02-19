@@ -402,7 +402,8 @@ std::unique_ptr<base::Value> DeviceRegistrationInfo::GetDeviceInfo(
 std::string DeviceRegistrationInfo::RegisterDevice(
     const std::map<std::string, std::string>& params,
     chromeos::ErrorPtr* error) {
-  if (!GetParamValue(params, "ticket_id", &ticket_id_, error) ||
+  std::string ticket_id;
+  if (!GetParamValue(params, "ticket_id", &ticket_id, error) ||
       !GetParamValue(params, storage_keys::kClientId, &client_id_, error) ||
       !GetParamValue(params, storage_keys::kClientSecret, &client_secret_,
                      error) ||
@@ -425,11 +426,11 @@ std::string DeviceRegistrationInfo::RegisterDevice(
     return std::string();
 
   base::DictionaryValue req_json;
-  req_json.SetString("id", ticket_id_);
+  req_json.SetString("id", ticket_id);
   req_json.SetString("oauthClientId", client_id_);
   req_json.Set("deviceDraft", device_draft.release());
 
-  auto url = GetServiceURL("registrationTickets/" + ticket_id_,
+  auto url = GetServiceURL("registrationTickets/" + ticket_id,
                            {{"key", api_key_}});
   std::unique_ptr<chromeos::http::Response> response =
       chromeos::http::PatchJsonAndBlock(url, &req_json, {}, transport_, error);
@@ -442,7 +443,7 @@ std::string DeviceRegistrationInfo::RegisterDevice(
     return std::string();
   }
 
-  url = GetServiceURL("registrationTickets/" + ticket_id_ +
+  url = GetServiceURL("registrationTickets/" + ticket_id +
                       "/finalize?key=" + api_key_);
   response = chromeos::http::SendRequestWithNoDataAndBlock(
       chromeos::http::request_type::kPost, url, {}, transport_, error);

@@ -211,7 +211,6 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   // Transient data
   std::string access_token_;
   base::Time access_token_expiration_;
-  std::string ticket_id_;
 
   // HTTP transport used for communications.
   std::shared_ptr<chromeos::http::Transport> transport_;

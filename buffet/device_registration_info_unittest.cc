@@ -161,10 +161,6 @@ void FinalizeTicketHandler(const ServerRequest& request,
 // DeviceRegistrationInfo.
 class DeviceRegistrationInfo::TestHelper {
  public:
-  static void SetTestTicketId(DeviceRegistrationInfo* info) {
-    info->ticket_id_ = test_data::kClaimTicketId;
-  }
-
   static bool Save(DeviceRegistrationInfo* info) {
     return info->Save();
   }
@@ -415,7 +411,6 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
                          chromeos::http::request_type::kPost,
                          base::Bind(OAuth2Handler));
   storage_->reset_save_count();
-  DeviceRegistrationInfo::TestHelper::SetTestTicketId(dev_reg_.get());
 
   std::map<std::string, std::string> params;
   params["ticket_id"] = test_data::kClaimTicketId;
