@@ -453,6 +453,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // power_manager->suspending() is true), false otherwise.
   virtual bool IsSuspending();
 
+  void set_suppress_autoconnect(bool val) { suppress_autoconnect_ = val; }
+  bool suppress_autoconnect() { return suppress_autoconnect_; }
+
  private:
   friend class CellularTest;
   friend class DeviceInfoTest;
@@ -778,6 +781,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // time.
   std::unique_ptr<DeviceClaimer> device_claimer_;
   std::vector<DeviceClaim> pending_device_claims_;
+
+  // When true, suppresses autoconnects in Manager::AutoConnect.
+  bool suppress_autoconnect_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

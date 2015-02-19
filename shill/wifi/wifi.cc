@@ -1383,6 +1383,9 @@ void WiFi::PropertiesChangedTask(
 
 void WiFi::ScanDoneTask() {
   SLOG(this, 2) << __func__ << " need_bss_flush_ " << need_bss_flush_;
+  // Unsets this flag if it was set in InitiateScanInDarkResume since that scan
+  // has completed.
+  manager()->set_suppress_autoconnect(false);
   if (wake_on_wifi_->in_dark_resume()) {
     metrics()->NotifyDarkResumeScanResultsReceived();
   }
@@ -1847,8 +1850,7 @@ void WiFi::OnDarkResume(const ResultCallback &callback) {
       provider_->GetSsidsConfiguredForAutoConnect(),
       callback,
       Bind(&Device::RenewDHCPLease, weak_ptr_factory_.GetWeakPtr()),
-      Bind(&WiFi::InitiateScan, weak_ptr_factory_.GetWeakPtr(), kFullScan,
-           true),
+      Bind(&WiFi::InitiateScanInDarkResume, weak_ptr_factory_.GetWeakPtr()),
       Bind(&WiFi::RemoveSupplicantNetworks, weak_ptr_factory_.GetWeakPtr()));
 }
 
@@ -1911,6 +1913,25 @@ void WiFi::InitiateScan(ScanType scan_type, bool do_passive_scan) {
     SLOG(this, 1) << __func__
                   << " skipping scan, already connecting or connected.";
   }
+}
+
+void WiFi::InitiateScanInDarkResume() {
+  CHECK(supplicant_interface_proxy_);
+  // Force complete flush of BSS cache since we want WPA supplicant and shill to
+  // have an accurate view of what endpoints are available in dark resume. This
+  // prevents either from performing incorrect actions that can prolong dark
+  // resume (e.g. attempting to auto-connect to a WiFi service whose endpoint
+  // disappeared before the dark resume).
+  try {
+    supplicant_interface_proxy_->FlushBSS(0);
+  } catch (const DBus::Error &e) {  // NOLINT
+    LOG(WARNING) << __func__
+                 << ": Failed to flush wpa_supplicant BSS cache: " << e.what();
+  }
+  // Suppress any autoconnect attempts until this scan is done and endpoints
+  // are updated.
+  manager()->set_suppress_autoconnect(true);
+  InitiateScan(kFullScan, true);
 }
 
 void WiFi::TriggerPassiveScan() {

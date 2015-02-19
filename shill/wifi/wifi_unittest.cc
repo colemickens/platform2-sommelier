@@ -813,6 +813,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void InitiateScan(Device::ScanType scan_type, bool do_passive_scan) {
     wifi_->InitiateScan(scan_type, do_passive_scan);
   }
+  void InitiateScanInDarkResume() {
+    wifi_->InitiateScanInDarkResume();
+  }
   void TriggerPassiveScan() {
     wifi_->TriggerPassiveScan();
   }
@@ -1691,7 +1694,9 @@ TEST_F(WiFiMainTest, ScanCompleted) {
             kNetworkModeInfrastructure);
   ReportBSS("bss2", ap2->ssid_string(), ap2->bssid_string(), 0, 0,
             kNetworkModeInfrastructure);
+  manager()->set_suppress_autoconnect(true);
   ReportScanDone();
+  EXPECT_FALSE(manager()->suppress_autoconnect());
   Mock::VerifyAndClearExpectations(wifi_provider());
 
   EXPECT_CALL(*wifi_provider(), OnEndpointAdded(_)).Times(0);
@@ -4212,6 +4217,21 @@ TEST_F(WiFiMainTest, InitiateScan_Idle_ActiveScan) {
   ASSERT_TRUE(wifi()->IsIdle());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Scan [progressive]")));
   InitiateScan(scan_type, do_passive_scan);
+}
+
+TEST_F(WiFiMainTest, InitiateScanInDarkResume) {
+  StartWiFi();
+  ScopedMockLog log;
+  manager()->set_suppress_autoconnect(false);
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, HasSubstr("TriggerPassiveScan")));
+  EXPECT_CALL(netlink_manager_,
+              SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
+                                                  TriggerScanMessage::kCommand),
+                                 _, _, _));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), FlushBSS(0));
+  InitiateScanInDarkResume();
+  EXPECT_TRUE(manager()->suppress_autoconnect());
 }
 
 TEST_F(WiFiMainTest, TriggerPassiveScan) {

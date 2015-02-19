@@ -499,6 +499,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // currently idle. |type| is ignored and a full passive scan is launched iff
   // |do_passive_scan| is true.
   void InitiateScan(ScanType scan_type, bool do_passive_scan);
+  // Wrapper around WiFi::InitiateScan that suppresses auto-connects before
+  // calling InitiateScan to trigger a passive scan.
+  void InitiateScanInDarkResume();
   void TriggerPassiveScan();
   // Starts a timer in order to limit the length of an attempt to
   // connect to a pending network.
