@@ -143,6 +143,10 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   // Makes sure the access token is available and up-to-date.
   bool ValidateAndRefreshAccessToken(chromeos::ErrorPtr* error);
 
+  // This attempts to open the XMPP channel. The XMPP channel needs to be
+  // restarted anytime the access_token is refreshed.
+  void StartXmpp();
+
   using CloudRequestCallback =
       base::Callback<void(const base::DictionaryValue&)>;
   using CloudRequestErrorCallback =

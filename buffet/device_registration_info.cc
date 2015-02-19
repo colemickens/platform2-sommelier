@@ -331,20 +331,37 @@ bool DeviceRegistrationInfo::ValidateAndRefreshAccessToken(
   LOG(INFO) << "Access token is refreshed for additional " << expires_in
             << " seconds.";
 
-  // If no MessageLoop assume we're in unittests.
-  if (base::MessageLoop::current()) {
-    std::unique_ptr<XmppConnection> connection(new XmppConnection());
-    CHECK(connection->Initialize()) << "Failed to connect to XMPP server";
-    xmpp_client_.reset(new XmppClient(device_robot_account_, access_token_,
-                                      std::move(connection)));
-    CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
-        xmpp_client_->GetFileDescriptor(), true,
-        base::MessageLoopForIO::WATCH_READ, &fd_watcher_, this))
-        << "Failed to watch XMPP file descriptor";
-    xmpp_client_->StartStream();
-  }
+  StartXmpp();
 
   return true;
+}
+
+void DeviceRegistrationInfo::StartXmpp() {
+  // If no MessageLoop assume we're in unittests.
+  if (!base::MessageLoop::current()) {
+    LOG(INFO) << "No MessageLoop, not starting XMPP";
+    return;
+  }
+
+  if (!fd_watcher_.StopWatchingFileDescriptor()) {
+    LOG(WARNING) << "Failed to stop the previous watcher";
+    return;
+  }
+
+  std::unique_ptr<XmppConnection> connection(new XmppConnection());
+  if (!connection->Initialize()) {
+    LOG(WARNING) << "Failed to connect to XMPP server";
+    return;
+  }
+  xmpp_client_.reset(new XmppClient(device_robot_account_, access_token_,
+                                    std::move(connection)));
+  if (!base::MessageLoopForIO::current()->WatchFileDescriptor(
+          xmpp_client_->GetFileDescriptor(), true /* persistent */,
+          base::MessageLoopForIO::WATCH_READ, &fd_watcher_, this)) {
+    LOG(WARNING) << "Failed to watch XMPP file descriptor";
+    return;
+  }
+  xmpp_client_->StartStream();
 }
 
 std::unique_ptr<base::DictionaryValue>
@@ -498,6 +515,7 @@ std::string DeviceRegistrationInfo::RegisterDevice(
                              base::TimeDelta::FromSeconds(expires_in);
 
   Save();
+  StartXmpp();
 
   // We're going to respond with our success immediately and we'll StartDevice
   // shortly after.
