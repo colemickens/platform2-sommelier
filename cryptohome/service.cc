@@ -642,8 +642,6 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
 }
 
 void Service::InitializeTpmComplete(bool status, bool took_ownership) {
-  bool auto_initialize_tpm = CommandLine::ForCurrentProcess()->HasSwitch(
-      kAutoInitializeTpmSwitch);
   if (took_ownership) {
     ReportTimerStop(kTpmTakeOwnershipTimer);
     // When TPM initialization finishes, we need to tell every Mount to
@@ -683,17 +681,8 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
   // full re-login cycle to finalize.
   gboolean mounted = FALSE;
   bool is_mounted = (IsMounted(&mounted, NULL) && mounted);
-  // If the --auto_initialize_tpm option is enabled we also want to finalize
-  // the install attributes.
-  if (((is_mounted && took_ownership) || auto_initialize_tpm) &&
-      install_attrs_->is_first_install()) {
+  if (is_mounted && took_ownership && install_attrs_->is_first_install()) {
     install_attrs_->Finalize();
-  }
-
-  // If the --auto_initialize_tpm option is enabled we also want to clear the
-  // owner password asap.
-  if (auto_initialize_tpm) {
-    tpm_init_->ClearStoredTpmPassword();
   }
 }
 
