@@ -230,6 +230,24 @@ TEST(UtilTest, VersionLessTest) {
   EXPECT_EQ(VersionLess("12.13.2.4", "12.13.1"), true);     // 4 digit, 3 digit
 }
 
+TEST(UtilTest, StartsWith) {
+  EXPECT_EQ(StartsWith("", "abc"), false);
+  EXPECT_EQ(StartsWith("a", "abc"), false);
+  EXPECT_EQ(StartsWith("ab", "abc"), false);
+  EXPECT_EQ(StartsWith("abc", "abc"), true);
+  EXPECT_EQ(StartsWith("abcd", "abc"), true);
+  EXPECT_EQ(StartsWith("dabc", "abc"), false);
+}
+
+TEST(UtilTest, EndsWith) {
+  EXPECT_EQ(EndsWith("", "abc"), false);
+  EXPECT_EQ(EndsWith("a", "abc"), false);
+  EXPECT_EQ(EndsWith("ab", "abc"), false);
+  EXPECT_EQ(EndsWith("abc", "abc"), true);
+  EXPECT_EQ(EndsWith("abcd", "abc"), false);
+  EXPECT_EQ(EndsWith("dabc", "abc"), true);
+}
+
 TEST(UtilTest, GetBlockDevFromPartitionDev) {
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/sda3"), "/dev/sda");
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/sda321"), "/dev/sda");
@@ -239,6 +257,10 @@ TEST(UtilTest, GetBlockDevFromPartitionDev) {
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/mmcblk0"), "/dev/mmcblk0");
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/loop0"), "/dev/loop0");
   EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/loop32p12"), "/dev/loop32");
+  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/mtd0"), "/dev/mtd0");
+  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/ubi1_0"), "/dev/mtd0");
+  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/mtd2_0"), "/dev/mtd0");
+  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/ubiblock3_0"), "/dev/mtd0");
 }
 
 TEST(UtilTest, GetPartitionDevTest) {
@@ -251,6 +273,15 @@ TEST(UtilTest, GetPartitionDevTest) {
   EXPECT_EQ(GetPartitionFromPartitionDev("3"), 3);
   EXPECT_EQ(GetPartitionFromPartitionDev("/dev/loop1"), 0);
   EXPECT_EQ(GetPartitionFromPartitionDev("/dev/loop1p12"), 12);
+  EXPECT_EQ(GetPartitionFromPartitionDev("/dev/mtd0"), 0);
+  EXPECT_EQ(GetPartitionFromPartitionDev("/dev/ubi1_0"), 1);
+  EXPECT_EQ(GetPartitionFromPartitionDev("/dev/mtd2_0"), 2);
+  EXPECT_EQ(GetPartitionFromPartitionDev("/dev/ubiblock3_0"), 3);
+  EXPECT_EQ(GetPartitionFromPartitionDev("/dev/mtd4_0"), 4);
+  EXPECT_EQ(GetPartitionFromPartitionDev("/dev/ubiblock5_0"), 5);
+  EXPECT_EQ(GetPartitionFromPartitionDev("/dev/mtd6_0"), 6);
+  EXPECT_EQ(GetPartitionFromPartitionDev("/dev/ubiblock7_0"), 7);
+  EXPECT_EQ(GetPartitionFromPartitionDev("/dev/ubi8_0"), 8);
 }
 
 TEST(UtilTest, MakePartitionDevTest) {
@@ -260,6 +291,12 @@ TEST(UtilTest, MakePartitionDevTest) {
   EXPECT_EQ(MakePartitionDev("/dev/mmcblk12", 321), "/dev/mmcblk12p321");
   EXPECT_EQ(MakePartitionDev("/dev/loop16", 321), "/dev/loop16p321");
   EXPECT_EQ(MakePartitionDev("", 0), "0");
+  EXPECT_EQ(MakePartitionDev("/dev/mtd0", 0), "/dev/mtd0");
+  EXPECT_EQ(MakePartitionDev("/dev/mtd0", 1), "/dev/ubi1_0");
+  EXPECT_EQ(MakePartitionDev("/dev/mtd0", 2), "/dev/mtd2");
+  EXPECT_EQ(MakePartitionDev("/dev/mtd0", 3), "/dev/ubiblock3_0");
+  EXPECT_EQ(MakePartitionDev("/dev/mtd0", 4), "/dev/mtd4");
+  EXPECT_EQ(MakePartitionDev("/dev/mtd0", 5), "/dev/ubiblock5_0");
 }
 
 TEST(UtilTest, DirnameTest) {
@@ -453,6 +490,9 @@ TEST(UtilTest, IsReadonlyTest) {
   EXPECT_EQ(IsReadonly("/dev/sda3"), false);
   EXPECT_EQ(IsReadonly("/dev/dm-0"), true);
   EXPECT_EQ(IsReadonly("/dev/dm-1"), true);
+  EXPECT_EQ(IsReadonly("/dev/ubi1_0"), true);
+  EXPECT_EQ(IsReadonly("/dev/ubo1_0"), false);
+  EXPECT_EQ(IsReadonly("/dev/ubiblock1_0"), true);
 }
 
 TEST(UtilTest, ReplaceAllTest) {

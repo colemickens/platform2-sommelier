@@ -29,6 +29,26 @@ using std::vector;
 // Used by LoggingTimerStart/Finish methods.
 static time_t START_TIME = 0;
 
+namespace {
+
+// This function returns the appropriate device name for the corresponding
+// |partition| number on a NAND setup. It favors a mountable device name such
+// as "/dev/ubiblockX_0" over the read-write devices such as "/dev/ubiX_0".
+string MakeNandPartitionDevForMounting(int partition) {
+  if (partition == 0) {
+    return "/dev/mtd0";
+  }
+  if (partition == 2 || partition == 4 || partition == 6) {
+    return StringPrintf("/dev/mtd%d", partition);
+  }
+  if (partition == 3 || partition == 5 || partition == 7) {
+    return StringPrintf("/dev/ubiblock%d_0", partition);
+  }
+  return StringPrintf("/dev/ubi%d_0", partition);
+}
+
+}  // namespace
+
 ScopedFileDescriptor::~ScopedFileDescriptor() {
   if (fd_ >= 0) {
     if (::close(fd_)) {
@@ -321,7 +341,23 @@ bool VersionLess(const string& left, const string& right) {
 // which use the 'p' notation to denote partitions.
 const char *numbered_devices[] = {"/dev/mmcblk", "/dev/loop"};
 
+bool StartsWith(const string& s, const string& prefix) {
+  return s.compare(0, prefix.length(), prefix) == 0;
+}
+
+bool EndsWith(const string& s, const string& suffix) {
+  if (s.length() < suffix.length()) {
+    return false;
+  }
+  return s.compare(s.length() - suffix.length(), suffix.length(), suffix) == 0;
+}
+
 string GetBlockDevFromPartitionDev(const string& partition_dev) {
+  if (StartsWith(partition_dev, "/dev/mtd") ||
+      StartsWith(partition_dev, "/dev/ubi")) {
+    return "/dev/mtd0";
+  }
+
   size_t i = partition_dev.length();
 
   while (i > 0 && isdigit(partition_dev[i-1]))
@@ -348,6 +384,9 @@ string GetBlockDevFromPartitionDev(const string& partition_dev) {
 
 int GetPartitionFromPartitionDev(const string& partition_dev) {
   size_t i = partition_dev.length();
+  if (EndsWith(partition_dev, "_0")) {
+    i -= 2;
+  }
 
   while (i > 0 && isdigit(partition_dev[i-1]))
     i--;
@@ -368,12 +407,17 @@ int GetPartitionFromPartitionDev(const string& partition_dev) {
   int result = atoi(partition_str.c_str());
 
   if (result == 0)
-    printf("Bad partiion number from '%s'\n", partition_dev.c_str());
+    printf("Bad partition number from '%s'\n", partition_dev.c_str());
 
   return result;
 }
 
 string MakePartitionDev(const string& block_dev, int partition) {
+  if (StartsWith(block_dev, "/dev/mtd") ||
+      StartsWith(block_dev, "/dev/ubi")) {
+    return MakeNandPartitionDevForMounting(partition);
+  }
+
   for (const char **nd = begin(numbered_devices);
        nd != end(numbered_devices); nd++) {
     size_t nd_len = strlen(*nd);
@@ -669,6 +713,5 @@ bool SetKernelArg(const string& key,
 // For the purposes of ChromeOS, devices that start with
 // "/dev/dm" are to be treated as read-only.
 bool IsReadonly(const string& device) {
-  string readonlydev("/dev/dm");
-  return device.substr(0, readonlydev.size()) == readonlydev;
+  return StartsWith(device, "/dev/dm") || StartsWith(device, "/dev/ubi");
 }

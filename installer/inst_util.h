@@ -48,6 +48,12 @@ T * end(T (&ra)[N]) {
     return ra + N;
 }
 
+// Return true if |s| starts with |prefix|.
+bool StartsWith(const std::string& s, const std::string& prefix);
+
+// Return true if |s| ends with |suffix|.
+bool EndsWith(const std::string& s, const std::string& suffix);
+
 // Start a timer (there can only be one active).
 void LoggingTimerStart();
 
@@ -83,10 +89,21 @@ bool LsbReleaseValue(const std::string& file,
 bool VersionLess(const std::string& left,
                  const std::string& right);
 
+// Given root partition dev node (such as /dev/sda3, /dev/mmcblk0p3,
+// /dev/ubiblock3_0), return the block dev (/dev/sda, /dev/mmcblk0, /dev/mtd0).
 std::string GetBlockDevFromPartitionDev(const std::string& partition_dev);
 
+// Given root partition dev node (such as /dev/sda3, /dev/mmcblk0p3,
+// /dev/ubiblock3_0), return the partition number (3).
 int GetPartitionFromPartitionDev(const std::string& partition_dev);
 
+// Given block dev node (/dev/sda, /dev/mmcblk0, /dev/mtd0) and a partition
+// number (such as 3), return a new dev node pointing to the partition
+// (/dev/sda3, /dev/mmcblk0p3, /dev/ubiblock3_0). On NAND media, the partitions
+// can change widely, though they have the same block /dev/mtd0:
+//   * Root partitions ubiblockX_0
+//   * Kernel partitions mtdX
+//   * Stateful and OEM partitions ubiX_0
 std::string MakePartitionDev(const std::string& partition_dev,
                              int partition);
 
