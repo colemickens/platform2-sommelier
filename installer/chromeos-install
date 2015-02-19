@@ -696,8 +696,6 @@ fi
 
 if [ "${DST}" = "/dev/mtd0" ]; then
   FLAGS_mtd_layout=${FLAGS_TRUE}
-  # TODO(namnguyen): postinst does not work with MTD device at the moment.
-  FLAGS_skip_postinstall=${FLAGS_TRUE}
 fi
 
 # Check out the dst device.
@@ -791,13 +789,25 @@ fi
 # script had better not try to access it, for the reasons we just gave.
 # We can't run this if the target arch isn't the same as the host arch
 if [ "${FLAGS_skip_postinstall}" -eq "${FLAGS_FALSE}" ]; then
-  loop_offset_setup ${DST} ${START_ROOTFS_A}
+  if [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
+    if ! [ -b "/dev/ubiblock${ROOTFS_A_PART}_0" ]; then
+      ubiblock -c "/dev/ubi${ROOTFS_A_PART}_0"
+    fi
+    LOOP_DEV="/dev/ubiblock${ROOTFS_A_PART}_0"
+    # We need to pass the __writable__ device to postinst, hence ubiX_0.
+    DST_ROOTFS_DEV="/dev/ubi${ROOTFS_A_PART}_0"
+  else
+    loop_offset_setup ${DST} ${START_ROOTFS_A}
+    DST_ROOTFS_DEV=$(make_partition_dev ${DST} ${ROOTFS_A_PART})
+  fi
+
   mount_on_loop_dev
-  IS_INSTALL="1" ${TMPMNT}/postinst \
-    $(make_partition_dev ${DST} ${ROOTFS_A_PART}) \
+  IS_INSTALL="1" ${TMPMNT}/postinst "${DST_ROOTFS_DEV}" \
     ${SUB_CMD_DEBUG_FLAG} "${POSTINST_BIOS_ARGS}"
   umount_from_loop_dev
-  loop_offset_cleanup
+  if [ ${FLAGS_mtd_layout} -eq ${FLAGS_FALSE} ]; then
+    loop_offset_cleanup
+  fi
 fi
 
 # Force data to disk before we declare done.
