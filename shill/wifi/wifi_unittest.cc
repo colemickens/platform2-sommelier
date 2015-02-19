@@ -264,6 +264,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ON_CALL(dhcp_provider_, CreateConfig(_, _, _, _))
         .WillByDefault(Return(dhcp_config_));
     ON_CALL(*dhcp_config_.get(), RequestIP()).WillByDefault(Return(true));
+    ON_CALL(*manager(), IsSuspending()).WillByDefault(Return(false));
 
     ON_CALL(proxy_factory_, CreateDBusServiceProxy())
         .WillByDefault(ReturnAndReleasePointee(&dbus_service_proxy_));
@@ -858,6 +859,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->RestartFastScanAttempts();
   }
 
+  void SetFastScansRemaining(int num) {
+    wifi_->fast_scans_remaining_ = num;
+  }
+
   void StartReconnectTimer() {
     wifi_->StartReconnectTimer();
   }
@@ -963,6 +968,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   void ReportConnectedToServiceAfterWake() {
     wifi_->ReportConnectedToServiceAfterWake();
+  }
+
+  void StartScanTimer() {
+    wifi_->StartScanTimer();
   }
 
   MOCK_METHOD1(SuspendCallback, void(const Error &error));
@@ -2763,6 +2772,23 @@ TEST_F(WiFiMainTest, ScanTimerConnecting) {
   EXPECT_FALSE(GetScanTimer().IsCancelled());  // Automatically re-armed.
 }
 
+TEST_F(WiFiMainTest, ScanTimerSuspending) {
+  EnableFullScan();
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  ReportScanDone();
+  CancelScanTimer();
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
+
+  EXPECT_CALL(*manager(), OnDeviceGeolocationInfoUpdated(_));
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_CALL(*manager(), IsSuspending()).WillOnce(Return(true));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  FireScanTimer();
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_TRUE(GetScanTimer().IsCancelled());  // Do not re-arm.
+}
+
 TEST_F(WiFiMainTest, ScanTimerReconfigured) {
   StartWiFi();
   CancelScanTimer();
@@ -3326,6 +3352,33 @@ TEST_F(WiFiTimerTest, ResumeDispatchesConnectivityReportTask) {
       mock_dispatcher_,
       PostDelayedTask(_, WiFi::kPostWakeConnectivityReportDelayMilliseconds));
   OnAfterResume();
+}
+
+TEST_F(WiFiTimerTest, StartScanTimer_ReturnsImmediately) {
+  Error e;
+  // Return immediately if scan interval is 0.
+  SetScanInterval(0, &e);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(0);
+  StartScanTimer();
+}
+
+TEST_F(WiFiTimerTest, StartScanTimer_HaveFastScansRemaining) {
+  Error e;
+  const int scan_interval = 10;
+  SetScanInterval(scan_interval, &e);
+  SetFastScansRemaining(1);
+  EXPECT_CALL(mock_dispatcher_,
+              PostDelayedTask(_, WiFi::kFastScanIntervalSeconds * 1000));
+  StartScanTimer();
+}
+
+TEST_F(WiFiTimerTest, StartScanTimer_NoFastScansRemaining) {
+  Error e;
+  const int scan_interval = 10;
+  SetScanInterval(scan_interval, &e);
+  SetFastScansRemaining(0);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, scan_interval * 1000));
+  StartScanTimer();
 }
 
 TEST_F(WiFiMainTest, EAPCertification) {

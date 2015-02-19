@@ -332,6 +332,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiTimerTest, RequestStationInfo);  // kRequestStationInfoPeriod
   // kPostWakeConnectivityReportDelayMilliseconds
   FRIEND_TEST(WiFiTimerTest, ResumeDispatchesConnectivityReportTask);
+  // kFastScanIntervalSeconds
+  FRIEND_TEST(WiFiTimerTest, StartScanTimer_HaveFastScansRemaining);
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<const WiFiService *, std::string> ReverseServiceMap;

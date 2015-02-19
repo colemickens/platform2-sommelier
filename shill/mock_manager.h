@@ -71,6 +71,7 @@ class MockManager : public Manager {
                                  const std::string &technology, Error *error));
   MOCK_CONST_METHOD0(GetPortalCheckURL, const std::string &());
   MOCK_CONST_METHOD0(GetPortalCheckInterval, int());
+  MOCK_METHOD0(IsSuspending, bool());
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo *mock_device_info() { return mock_device_info_; }

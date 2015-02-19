@@ -449,6 +449,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
       const IPAddress::Family family,
       std::vector<std::string> *dns_servers);
 
+  // Returns true iff |power_manager_| exists and is suspending (i.e.
+  // power_manager->suspending() is true), false otherwise.
+  virtual bool IsSuspending();
+
  private:
   friend class CellularTest;
   friend class DeviceInfoTest;

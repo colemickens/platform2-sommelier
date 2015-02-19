@@ -1101,6 +1101,13 @@ void Manager::FilterPrependDNSServersByFamily(const IPAddress::Family family,
   }
 }
 
+bool Manager::IsSuspending() {
+  if (power_manager_ && power_manager_->suspending()) {
+    return true;
+  }
+  return false;
+}
+
 void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
   LOG(INFO) << "Device " << to_manage->FriendlyName() << " registered.";
   // Manager is running in passive mode when default claimer is created, which

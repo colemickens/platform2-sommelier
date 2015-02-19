@@ -2003,6 +2003,10 @@ void WiFi::StopScanTimer() {
 
 void WiFi::ScanTimerHandler() {
   SLOG(this, 2) << "WiFi Device " << link_name() << ": " << __func__;
+  if (manager()->IsSuspending()) {
+    SLOG(this, 5) << "Not scanning: still in suspend";
+    return;
+  }
   if (scan_state_ == kScanIdle && IsIdle()) {
     Scan(kProgressiveScan, nullptr, __func__);
     if (fast_scans_remaining_ > 0) {
