@@ -57,6 +57,8 @@ class CHROMEOS_EXPORT Transport : public http::Transport {
 
   bool CancelRequest(int request_id) override;
 
+  void SetDefaultTimeout(base::TimeDelta timeout) override;
+
   // Helper methods to convert CURL error codes (CURLcode and CURLMcode)
   // into chromeos::Error object.
   static void AddEasyCurlError(chromeos::ErrorPtr* error,
@@ -142,6 +144,8 @@ class CHROMEOS_EXPORT Transport : public http::Transport {
   base::TimeDelta timer_delay_;
   // The last request ID used for asynchronous operations.
   int last_request_id_{0};
+  // The connection timeout for the requests made.
+  base::TimeDelta connection_timeout_;
 
   base::WeakPtrFactory<Transport> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Transport);

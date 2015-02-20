@@ -13,6 +13,7 @@
 #include <base/callback_forward.h>
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/time/time.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
 
@@ -72,6 +73,9 @@ class CHROMEOS_EXPORT Transport
 
   // Cancels a pending asynchronous request. Returns true on success.
   virtual bool CancelRequest(int request_id) = 0;
+
+  // Set the default timeout of requests made.
+  virtual void SetDefaultTimeout(base::TimeDelta timeout) = 0;
 
   // Creates a default http::Transport (currently, using http::curl::Transport).
   static std::shared_ptr<Transport> CreateDefault();

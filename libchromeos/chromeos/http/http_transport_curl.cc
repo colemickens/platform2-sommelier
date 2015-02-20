@@ -4,6 +4,8 @@
 
 #include <chromeos/http/http_transport_curl.h>
 
+#include <limits>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
@@ -137,6 +139,15 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
   if (code == CURLE_OK && !proxy_.empty()) {
     code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_PROXY, proxy_);
   }
+  if (code == CURLE_OK) {
+    int64_t timeout_ms = connection_timeout_.InMillisecondsRoundedUp();
+
+    if (timeout_ms > 0 && timeout_ms <= std::numeric_limits<int>::max()) {
+      code = curl_interface_->EasySetOptInt(
+          curl_handle, CURLOPT_TIMEOUT_MS,
+          static_cast<int>(timeout_ms));
+    }
+  }
 
   // Setup HTTP request method and optional request body.
   if (code == CURLE_OK) {
@@ -230,6 +241,10 @@ bool Transport::CancelRequest(int request_id) {
   VLOG(1) << "Canceling HTTP request #" << request_id;
   CleanAsyncConnection(p->second);
   return true;
+}
+
+void Transport::SetDefaultTimeout(base::TimeDelta timeout) {
+  connection_timeout_ = timeout;
 }
 
 void Transport::AddEasyCurlError(chromeos::ErrorPtr* error,

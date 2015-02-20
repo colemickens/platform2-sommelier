@@ -31,6 +31,7 @@ class MockTransport : public Transport {
   MOCK_METHOD3(StartAsyncTransfer,
                int(Connection*, const SuccessCallback&, const ErrorCallback&));
   MOCK_METHOD1(CancelRequest, bool(int));
+  MOCK_METHOD1(SetDefaultTimeout, void(base::TimeDelta));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockTransport);

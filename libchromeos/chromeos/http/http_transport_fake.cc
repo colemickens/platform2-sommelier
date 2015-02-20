@@ -79,6 +79,9 @@ bool Transport::CancelRequest(int request_id) {
   return false;
 }
 
+void Transport::SetDefaultTimeout(base::TimeDelta timeout) {
+}
+
 static inline std::string GetHandlerMapKey(const std::string& url,
                                            const std::string& method) {
   return method + ":" + url;

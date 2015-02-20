@@ -88,6 +88,8 @@ class Transport : public http::Transport {
 
   bool CancelRequest(int request_id) override;
 
+  void SetDefaultTimeout(base::TimeDelta timeout) override;
+
  private:
   // A list of user-supplied request handlers.
   std::multimap<std::string, HandlerCallback> handlers_;
