@@ -22,10 +22,10 @@ namespace http {
 
 namespace {
 void SuccessCallbackStringWrapper(
-    const base::Callback<void(const std::string&)>& success_callback,
+    const base::Callback<void(int, const std::string&)>& success_callback,
     int request_id,
     scoped_ptr<Response> response) {
-  success_callback.Run(response->GetDataAsString());
+  success_callback.Run(request_id, response->GetDataAsString());
 }
 }  // anonymous namespace
 
@@ -62,7 +62,7 @@ int GetAsString(
     const std::string& url,
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
-    const base::Callback<void(const std::string&)>& success_callback,
+    const base::Callback<void(int, const std::string&)>& success_callback,
     const ErrorCallback& error_callback) {
   return Get(url,
              headers,

@@ -128,7 +128,8 @@ CHROMEOS_EXPORT int GetAsString(
     const std::string& url,
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
-    const base::Callback<void(const std::string&)>& success_callback,
+    const base::Callback<void(int /*request_id*/,
+                              const std::string&)>& success_callback,
     const ErrorCallback& error_callback);
 
 // Performs a GET request. Success status, returned data and additional
