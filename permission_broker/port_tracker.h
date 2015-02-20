@@ -37,7 +37,7 @@ class PortTracker {
   // Helper functions for process lifetime tracking.
   virtual int AddLifelineFd(int dbus_fd);
   virtual bool DeleteLifelineFd(int fd);
-  virtual void CheckLifelineFds();
+  virtual void CheckLifelineFds(bool reschedule_check);
   virtual void ScheduleLifelineCheck();
 
   bool PlugFirewallHole(int fd);

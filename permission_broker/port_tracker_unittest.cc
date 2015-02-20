@@ -25,10 +25,10 @@ class MockPortTracker : public PortTracker {
 
   MOCK_METHOD1(AddLifelineFd, int(int));
   MOCK_METHOD1(DeleteLifelineFd, bool(int));
-  MOCK_METHOD0(CheckLifelineFds, void(void));
-  MOCK_METHOD0(ScheduleLifelineCheck, void(void));
+  MOCK_METHOD1(CheckLifelineFds, void(bool));
+  MOCK_METHOD0(ScheduleLifelineCheck, void());
 
-  MOCK_METHOD0(InitializeEpollOnce, bool(void));
+  MOCK_METHOD0(InitializeEpollOnce, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPortTracker);
