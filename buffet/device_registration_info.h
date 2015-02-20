@@ -54,11 +54,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
 
   ~DeviceRegistrationInfo() override;
 
-  void OnFileCanReadWithoutBlocking(int fd) override {
-    if (xmpp_client_ && xmpp_client_->GetFileDescriptor() == fd) {
-      xmpp_client_->Read();
-    }
-  }
+  void OnFileCanReadWithoutBlocking(int fd) override;
 
   void OnFileCanWriteWithoutBlocking(int fd) override {
     LOG(FATAL) << "No write watcher is configured";

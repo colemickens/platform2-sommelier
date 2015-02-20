@@ -61,11 +61,11 @@ std::string BuildXmppSubscribeCommand(const std::string& account) {
 
 }  // namespace
 
-void XmppClient::Read() {
+bool XmppClient::Read() {
   std::string msg;
   if (!connection_->Read(&msg) || msg.size() <= 0) {
-    LOG(ERROR) << "Failed to read from stream";
-    return;
+    LOG(ERROR) << "Failed to read from stream. The socket was probably closed";
+    return false;
   }
 
   // TODO(nathanbullock): Need to add support for TLS (brillo:191).
@@ -82,6 +82,9 @@ void XmppClient::Read() {
       if (std::string::npos != msg.find("success")) {
         state_ = XmppState::kStreamRestartedPostAuthentication;
         connection_->Write(BuildXmppStartStreamCommand());
+      } else if (std::string::npos != msg.find("not-authorized")) {
+        state_ = XmppState::kAuthenticationFailed;
+        return false;
       }
       break;
     case XmppState::kStreamRestartedPostAuthentication:
@@ -114,6 +117,7 @@ void XmppClient::Read() {
     default:
       break;
   }
+  return true;
 }
 
 void XmppClient::StartStream() {

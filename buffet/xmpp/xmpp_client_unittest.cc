@@ -34,8 +34,11 @@ constexpr char kStartStreamResponse[] =
     "<required/></starttls><mechanisms "
     "xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\"><mechanism>X-OAUTH2</mechanism>"
     "<mechanism>X-GOOGLE-TOKEN</mechanism></mechanisms></stream:features>";
-constexpr char kAuthenticationResponse[] =
+constexpr char kAuthenticationSucceededResponse[] =
     "<success xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\"/>";
+constexpr char kAuthenticationFailedResponse[] =
+    "<failure xmlns=\"urn:ietf:params:xml:ns:xmpp-sasl\"><not-authorized/>"
+    "</failure></stream:stream>";
 constexpr char kRestartStreamResponse[] =
     "<stream:stream from=\"clouddevices.gserviceaccount.com\" "
     "id=\"BE7D34E0B7589E2A\" version=\"1.0\" "
@@ -143,17 +146,32 @@ TEST_F(XmppClientTest, HandleStartedResponse) {
             XmppClient::XmppState::kAuthenticationStarted);
 }
 
-TEST_F(XmppClientTest, HandleAuthenticationResponse) {
+TEST_F(XmppClientTest, HandleAuthenticationSucceededResponse) {
   TestHelper::SetState(
       xmpp_client_.get(),
       XmppClient::XmppState::kAuthenticationStarted);
   EXPECT_CALL(*connection_, Read(_))
-      .WillOnce(DoAll(SetArgPointee<0>(kAuthenticationResponse), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<0>(kAuthenticationSucceededResponse),
+                      Return(true)));
   EXPECT_CALL(*connection_, Write(kStartStreamMessage))
       .WillOnce(Return(true));
   xmpp_client_->Read();
   EXPECT_EQ(TestHelper::GetState(*xmpp_client_),
             XmppClient::XmppState::kStreamRestartedPostAuthentication);
+}
+
+TEST_F(XmppClientTest, HandleAuthenticationFailedResponse) {
+  TestHelper::SetState(
+      xmpp_client_.get(),
+      XmppClient::XmppState::kAuthenticationStarted);
+  EXPECT_CALL(*connection_, Read(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kAuthenticationFailedResponse),
+                      Return(true)));
+  EXPECT_CALL(*connection_, Write(_))
+      .Times(0);
+  xmpp_client_->Read();
+  EXPECT_EQ(TestHelper::GetState(*xmpp_client_),
+            XmppClient::XmppState::kAuthenticationFailed);
 }
 
 TEST_F(XmppClientTest, HandleStreamRestartedResponse) {

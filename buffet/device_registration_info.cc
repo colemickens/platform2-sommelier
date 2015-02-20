@@ -373,6 +373,17 @@ void DeviceRegistrationInfo::StartXmpp() {
   xmpp_client_->StartStream();
 }
 
+void DeviceRegistrationInfo::OnFileCanReadWithoutBlocking(int fd) {
+  if (xmpp_client_ && xmpp_client_->GetFileDescriptor() == fd) {
+    if (!xmpp_client_->Read()) {
+      // Authentication failed or the socket was closed.
+      if (!fd_watcher_.StopWatchingFileDescriptor()) {
+        LOG(WARNING) << "Failed to stop the watcher";
+      }
+    }
+  }
+}
+
 std::unique_ptr<base::DictionaryValue>
 DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
   std::unique_ptr<base::DictionaryValue> commands =

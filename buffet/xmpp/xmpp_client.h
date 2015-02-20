@@ -31,7 +31,7 @@ class XmppClient final {
   }
 
   // Needs to be called when new data is available from the connection.
-  void Read();
+  bool Read();
 
   // Start talking to the XMPP server (authenticate, etc.)
   void StartStream();
@@ -41,6 +41,7 @@ class XmppClient final {
     kNotStarted,
     kStarted,
     kAuthenticationStarted,
+    kAuthenticationFailed,
     kStreamRestartedPostAuthentication,
     kBindSent,
     kSessionStarted,
