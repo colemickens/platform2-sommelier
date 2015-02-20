@@ -45,7 +45,7 @@ class Transport::SocketPollData : public base::MessageLoopForIO::Watcher {
     OnSocketReady(fd, CURL_CSELECT_OUT);
   }
 
-  // Data on the socket is available to be read to or written from.
+  // Data on the socket is available to be read from or written to.
   // Notify CURL of the action it needs to take on the socket file descriptor.
   void OnSocketReady(int fd, int action) {
     CHECK_EQ(socket_fd_, fd) << "Unexpected socket file descriptor";
@@ -355,6 +355,16 @@ int Transport::MultiSocketCallback(CURL* easy,
       LOG(FATAL) << "Unknown CURL socket action: " << what;
       break;
   }
+
+  // WatchFileDescriptor() can be called with the same controller object
+  // (watcher) to amend the watch mode, however this has cumulative effect.
+  // For example, if we were watching a file descriptor for READ operations
+  // and now call it to watch for WRITE, it will end up watching for both
+  // READ and WRITE. This is not what we want here, so stop watching the
+  // file descriptor on previous controller before starting with a different
+  // mode.
+  LOG_IF(WARNING, !poll_data->GetWatcher()->StopWatchingFileDescriptor())
+      << "Failed to stop watching the previous socket descriptor";
   CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
       s, true, watch_mode, poll_data->GetWatcher(), poll_data))
       << "Failed to watch the CURL socket.";
