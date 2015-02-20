@@ -293,48 +293,35 @@ void ThirdPartyVpnDriver::SetParameters(
   ip_properties_ = IPConfig::Properties();
   ip_properties_.address_family = IPAddress::kFamilyIPv4;
 
-  ProcessIp(parameters, "address", &ip_properties_.address, true,
-            error_message);
-  ProcessIp(parameters, "broadcast_address", &ip_properties_.broadcast_address,
-            false, error_message);
+  ProcessIp(parameters, kAddressParameterThirdPartyVpn, &ip_properties_.address,
+            true, error_message);
+  ProcessIp(parameters, kBroadcastAddressParameterThirdPartyVpn,
+            &ip_properties_.broadcast_address, false, error_message);
 
-  // TODO(kaliamoorthi): Remove the hack and make gateway mandatory.
   ip_properties_.gateway = ip_properties_.address;
-  ProcessIp(parameters, "gateway", &ip_properties_.gateway, false,
-            error_message);
 
-  ProcessInt32(parameters, "subnet_prefix", &ip_properties_.subnet_prefix, 0,
-               32, true, error_message);
-  ProcessInt32(parameters, "mtu", &ip_properties_.mtu, IPConfig::kMinIPv4MTU,
-               kConstantMaxMtu, false, error_message);
+  ProcessInt32(parameters, kSubnetPrefixParameterThirdPartyVpn,
+               &ip_properties_.subnet_prefix, 0, 32, true, error_message);
+  ProcessInt32(parameters, kMtuParameterThirdPartyVpn, &ip_properties_.mtu,
+               IPConfig::kMinIPv4MTU, kConstantMaxMtu, false, error_message);
 
-  ProcessSearchDomainArray(parameters, "domain_search", kNonIPDelimiter,
-                           &ip_properties_.domain_search, false, error_message);
-  ProcessIPArray(parameters, "dns_servers", kIPDelimiter,
+  ProcessSearchDomainArray(parameters, kDomainSearchParameterThirdPartyVpn,
+                           kNonIPDelimiter, &ip_properties_.domain_search,
+                           false, error_message);
+  ProcessIPArray(parameters, kDnsServersParameterThirdPartyVpn, kIPDelimiter,
                  &ip_properties_.dns_servers, true, error_message,
                  warning_message);
 
   known_cidrs_.clear();
 
-  ProcessIPArrayCIDR(parameters, "exclusion_list", kIPDelimiter,
-                     &ip_properties_.exclusion_list, false, error_message,
-                     warning_message);
-
-  // TODO(kaliamoorthi): Remove trusted_ips and make exclusion_list and
-  // inclusion_list mandatory.
-  std::vector<std::string> trusted_ips;
-  ProcessIPArray(parameters, "bypass_tunnel_for_ip", kIPDelimiter, &trusted_ips,
-                 true, error_message, warning_message);
-  if (trusted_ips.size()) {
-    size_t prefix =
-        IPAddress::GetMaxPrefixLength(ip_properties_.address_family);
-    ip_properties_.exclusion_list.push_back(trusted_ips[0] + "/" +
-                                            base::SizeTToString(prefix));
-  }
+  ProcessIPArrayCIDR(parameters, kExclusionListParameterThirdPartyVpn,
+                     kIPDelimiter, &ip_properties_.exclusion_list, true,
+                     error_message, warning_message);
 
   std::vector<std::string> inclusion_list;
-  ProcessIPArrayCIDR(parameters, "inclusion_list", kIPDelimiter,
-                     &inclusion_list, false, error_message, warning_message);
+  ProcessIPArrayCIDR(parameters, kInclusionListParameterThirdPartyVpn,
+                     kIPDelimiter, &inclusion_list, true, error_message,
+                     warning_message);
 
   IPAddress ip_address(ip_properties_.address_family);
   IPConfig::Route route;

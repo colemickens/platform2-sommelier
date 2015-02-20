@@ -324,10 +324,6 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
                                   IsIPAddress(broadcast_address_, 0),
                                   IsIPAddress(default_address_, 0)));
   EXPECT_CALL(routing_table_,
-              SetDefaultRoute(
-                  kTestDeviceInterfaceIndex0, IsIPAddress(gateway_address_, 0),
-                  GetNonDefaultMetricBase() + kTestDeviceInterfaceIndex0, 1));
-  EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0, ipconfig_,
                               GetDefaultMetric(), 1));
   EXPECT_CALL(

@@ -54,14 +54,21 @@ bool PermissionBrokerProxy::RequestVpnSetup(
 }
 
 bool PermissionBrokerProxy::RemoveVpnSetup() {
+  bool return_value = true;
   if (lifeline_read_fd_ != kInvalidHandle &&
       lifeline_write_fd_ != kInvalidHandle) {
     close(lifeline_read_fd_);
     close(lifeline_write_fd_);
     lifeline_read_fd_ = kInvalidHandle;
     lifeline_write_fd_ = kInvalidHandle;
+    try {
+      return_value = proxy_.RemoveVpnSetup();
+    } catch (const DBus::Error &e) {
+      return_value = false;
+      LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    }
   }
-  return true;
+  return return_value;
 }
 
 PermissionBrokerProxy::Proxy::Proxy(DBus::Connection *connection)
