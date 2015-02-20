@@ -60,7 +60,7 @@ class Technology {
       Error *error);
 
   // Returns true if |technology| is a primary connectivity technology, i.e.
-  // Ethernet, Cellular, WiFi, or WiMAX.
+  // Ethernet, Cellular, WiFi, WiMAX, or PPPoE.
   static bool IsPrimaryConnectivityTechnology(Identifier technology);
 
  private:

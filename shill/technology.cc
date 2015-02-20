@@ -135,7 +135,8 @@ bool Technology::IsPrimaryConnectivityTechnology(Identifier technology) {
   return (technology == kCellular ||
           technology == kEthernet ||
           technology == kWifi ||
-          technology == kWiMax);
+          technology == kWiMax ||
+          technology == kPPPoE);
 }
 
 }  // namespace shill
