@@ -52,6 +52,8 @@ TEST_F(HttpCurlTransportTest, RequestGet) {
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
       .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
+      .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_USERAGENT, "User Agent"))
       .WillOnce(Return(CURLE_OK));
@@ -80,6 +82,8 @@ TEST_F(HttpCurlTransportTest, RequestHead) {
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/head"))
       .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
+      .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_NOBODY, 1))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_PRIVATE, _))
@@ -98,6 +102,8 @@ TEST_F(HttpCurlTransportTest, RequestPut) {
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/put"))
       .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
+      .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_UPLOAD, 1))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_PRIVATE, _))
@@ -115,6 +121,8 @@ TEST_F(HttpCurlTransportTest, RequestPost) {
   EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://www.foo.bar/post"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_POST, 1))
       .WillOnce(Return(CURLE_OK));
@@ -135,6 +143,8 @@ TEST_F(HttpCurlTransportTest, RequestPatch) {
   EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://www.foo.bar/patch"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_POST, 1))
       .WillOnce(Return(CURLE_OK));
@@ -159,6 +169,8 @@ TEST_F(HttpCurlTransportTest, CurlFailure) {
   EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
       .WillOnce(Return(CURLE_OUT_OF_MEMORY));
@@ -203,6 +215,8 @@ TEST_F(HttpCurlTransportAsyncTest, StartAsyncTransfer) {
   EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
       .WillOnce(Return(CURLE_OK));
@@ -296,6 +310,8 @@ TEST_F(HttpCurlTransportTest, RequestGetTimeout) {
   EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_TIMEOUT_MS, 2000))
       .WillOnce(Return(CURLE_OK));

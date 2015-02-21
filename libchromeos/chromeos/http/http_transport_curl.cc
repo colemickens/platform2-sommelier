@@ -13,6 +13,12 @@
 #include <chromeos/http/http_request.h>
 #include <chromeos/strings/string_utils.h>
 
+namespace {
+
+const char kChromeOSCACertificatePath[] = "/usr/share/chromeos-ca-certificates";
+
+}  // namespace
+
 namespace chromeos {
 namespace http {
 namespace curl {
@@ -128,6 +134,10 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
   LOG(INFO) << "Sending a " << method << " request to " << url;
   CURLcode code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_URL, url);
 
+  if (code == CURLE_OK) {
+    code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_CAPATH,
+                                          kChromeOSCACertificatePath);
+  }
   if (code == CURLE_OK && !user_agent.empty()) {
     code = curl_interface_->EasySetOptStr(
         curl_handle, CURLOPT_USERAGENT, user_agent);
