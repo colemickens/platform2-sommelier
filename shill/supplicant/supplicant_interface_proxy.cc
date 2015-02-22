@@ -220,6 +220,17 @@ void SupplicantInterfaceProxy::SetDisableHighBitrates(
   }
 }
 
+void SupplicantInterfaceProxy::SetSchedScan(bool enable) {
+  SLOG(&proxy_.path(), 2) << __func__;
+  try {
+    return proxy_.SchedScan(enable);
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
+               << "enable: " << enable;
+    throw;  // Re-throw the exception.
+  }
+}
+
 void SupplicantInterfaceProxy::TDLSDiscover(const string &peer) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {

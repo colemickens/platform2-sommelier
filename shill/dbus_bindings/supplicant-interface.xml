@@ -83,6 +83,7 @@
     <property name="RoamThreshold" type="q" access="readwrite"/>
     <property name="ScanInterval" type="i" access="readwrite"/>
     <property name="DisableHighBitrates" type="b" access="readwrite"/>
+    <property name="SchedScan" type="b" access="readwrite"/>
     <signal name="ScanDone">
       <arg name="success" type="b"/>
     </signal>
