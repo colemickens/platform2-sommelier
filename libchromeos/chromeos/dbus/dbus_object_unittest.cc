@@ -40,6 +40,8 @@ const char kTestMethod_CheckNonEmpty[] = "CheckNonEmpty";
 
 const char kTestInterface3[] = "org.chromium.Test.NoOpInterface";
 const char kTestMethod_NoOp[] = "NoOp";
+const char kTestMethod_WithMessage[] = "TestWithMessage";
+const char kTestMethod_WithMessageAsync[] = "TestWithMessageAsync";
 
 struct Calc {
   int Add(int x, int y) { return x + y; }
@@ -72,6 +74,18 @@ bool CheckNonEmpty(ErrorPtr* error, const std::string& str) {
 }
 
 void NoOp() {}
+
+bool TestWithMessage(ErrorPtr* error,
+                     dbus::Message* message,
+                     std::string* str) {
+  *str = message->GetSender();
+  return true;
+}
+
+void TestWithMessageAsync(scoped_ptr<DBusMethodResponse<std::string>> response,
+                         dbus::Message* message) {
+  response->Return(message->GetSender());
+}
 
 }  // namespace
 
@@ -115,6 +129,10 @@ class DBusObjectTest : public ::testing::Test {
     DBusInterface* itf3 = dbus_object_->AddOrGetInterface(kTestInterface3);
     base::Callback<void()> noop_callback = base::Bind(NoOp);
     itf3->AddSimpleMethodHandler(kTestMethod_NoOp, noop_callback);
+    itf3->AddSimpleMethodHandlerWithErrorAndMessage(
+        kTestMethod_WithMessage, base::Bind(&TestWithMessage));
+    itf3->AddMethodHandlerWithMessage(kTestMethod_WithMessageAsync,
+                                      base::Bind(&TestWithMessageAsync));
 
     dbus_object_->RegisterAsync(
         AsyncEventSequencer::GetDefaultCompletionAction());
@@ -267,6 +285,32 @@ TEST_F(DBusObjectTest, NoOp) {
   auto response = testing::CallMethod(*dbus_object_, &method_call);
   dbus::MessageReader reader(response.get());
   ASSERT_FALSE(reader.HasMoreData());
+}
+
+TEST_F(DBusObjectTest, TestWithMessage) {
+  const std::string sender{":1.2345"};
+  dbus::MethodCall method_call(kTestInterface3, kTestMethod_WithMessage);
+  method_call.SetSerial(123);
+  method_call.SetSender(sender);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
+  dbus::MessageReader reader(response.get());
+  std::string message;
+  ASSERT_TRUE(reader.PopString(&message));
+  ASSERT_FALSE(reader.HasMoreData());
+  EXPECT_EQ(sender, message);
+}
+
+TEST_F(DBusObjectTest, TestWithMessageAsync) {
+  const std::string sender{":6.7890"};
+  dbus::MethodCall method_call(kTestInterface3, kTestMethod_WithMessageAsync);
+  method_call.SetSerial(123);
+  method_call.SetSender(sender);
+  auto response = testing::CallMethod(*dbus_object_, &method_call);
+  dbus::MessageReader reader(response.get());
+  std::string message;
+  ASSERT_TRUE(reader.PopString(&message));
+  ASSERT_FALSE(reader.HasMoreData());
+  EXPECT_EQ(sender, message);
 }
 
 TEST_F(DBusObjectTest, TooFewParams) {

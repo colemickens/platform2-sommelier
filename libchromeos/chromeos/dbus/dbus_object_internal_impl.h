@@ -186,6 +186,58 @@ class SimpleDBusInterfaceMethodHandlerWithError
   DISALLOW_COPY_AND_ASSIGN(SimpleDBusInterfaceMethodHandlerWithError);
 };
 
+// An implementation of SimpleDBusInterfaceMethodHandlerWithErrorAndMessage
+// which is almost identical to SimpleDBusInterfaceMethodHandlerWithError with
+// the exception that the callback takes an additional parameter - raw D-Bus
+// message used to invoke the method handler.
+// The handler is expected to take an arbitrary number of arguments of type
+// |Args...| which can contain both inputs (passed in by value or constant
+// reference) and outputs (passed in as pointers)...
+// In case of an error, the handler must return false and set the error details
+// into the |error| object provided.
+// The signature of the callback handler is expected to be:
+//    bool(ErrorPtr*, dbus::Message*, Args...)
+template<typename... Args>
+class SimpleDBusInterfaceMethodHandlerWithErrorAndMessage
+    : public DBusInterfaceMethodHandlerInterface {
+ public:
+  // A constructor that takes a |handler| to be called when HandleMethod()
+  // virtual function is invoked.
+  explicit SimpleDBusInterfaceMethodHandlerWithErrorAndMessage(
+      const base::Callback<bool(ErrorPtr*, dbus::Message*, Args...)>& handler)
+      : handler_(handler) {}
+
+  void HandleMethod(dbus::MethodCall* method_call,
+                    ResponseSender sender) override {
+    DBusMethodResponseBase method_response(method_call, sender);
+    auto invoke_callback =
+        [this, method_call, &method_response](const Args&... args) {
+      ErrorPtr error;
+      if (!handler_.Run(&error, method_call, args...)) {
+        method_response.ReplyWithError(error.get());
+      } else {
+        auto response = method_response.CreateCustomResponse();
+        dbus::MessageWriter writer(response.get());
+        DBusParamWriter::AppendDBusOutParams(&writer, args...);
+        method_response.SendRawResponse(response.Pass());
+      }
+    };
+
+    ErrorPtr param_reader_error;
+    dbus::MessageReader reader(method_call);
+    if (!DBusParamReader<true, Args...>::Invoke(
+            invoke_callback, &reader, &param_reader_error)) {
+      // Error parsing method arguments.
+      method_response.ReplyWithError(param_reader_error.get());
+    }
+  }
+
+ private:
+  // C++ callback to be called when a DBus method is dispatched.
+  base::Callback<bool(ErrorPtr*, dbus::Message*, Args...)> handler_;
+  DISALLOW_COPY_AND_ASSIGN(SimpleDBusInterfaceMethodHandlerWithErrorAndMessage);
+};
+
 // An implementation of DBusInterfaceMethodHandlerInterface for more generic
 // (and possibly asynchronous) method handlers. The handler is expected
 // to take an arbitrary number of input arguments of type |Args...| and send
@@ -227,6 +279,52 @@ class DBusInterfaceMethodHandler : public DBusInterfaceMethodHandlerInterface {
   base::Callback<void(scoped_ptr<Response>, Args...)> handler_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusInterfaceMethodHandler);
+};
+
+// An implementation of DBusInterfaceMethodHandlerWithMessage which is almost
+// identical to AddSimpleMethodHandlerWithError with the exception that the
+// callback takes an additional parameter - raw D-Bus message.
+// The handler is expected to take an arbitrary number of input arguments of
+// type |Args...| and send the method call response (including a possible error
+// response) using the provided DBusMethodResponse object.
+// The signature of the callback handler is expected to be:
+//    void(scoped_ptr<DBusMethodResponse<RetTypes...>, dbus::Message*, Args...);
+template<typename Response, typename... Args>
+class DBusInterfaceMethodHandlerWithMessage
+    : public DBusInterfaceMethodHandlerInterface {
+ public:
+  // A constructor that takes a |handler| to be called when HandleMethod()
+  // virtual function is invoked.
+  explicit DBusInterfaceMethodHandlerWithMessage(
+      const base::Callback<void(scoped_ptr<Response>, dbus::Message*,
+                                Args...)>& handler)
+      : handler_(handler) {}
+
+  // This method forwards the call to |handler_| after extracting the required
+  // arguments from the DBus message buffer specified in |method_call|.
+  // The output parameters of |handler_| (if any) are sent back to the called.
+  void HandleMethod(dbus::MethodCall* method_call,
+                    ResponseSender sender) override {
+    auto invoke_callback = [this, method_call, &sender](const Args&... args) {
+      scoped_ptr<Response> response(new Response(method_call, sender));
+      handler_.Run(response.Pass(), method_call, args...);
+    };
+
+    ErrorPtr param_reader_error;
+    dbus::MessageReader reader(method_call);
+    if (!DBusParamReader<false, Args...>::Invoke(
+            invoke_callback, &reader, &param_reader_error)) {
+      // Error parsing method arguments.
+      DBusMethodResponseBase method_response(method_call, sender);
+      method_response.ReplyWithError(param_reader_error.get());
+    }
+  }
+
+ private:
+  // C++ callback to be called when a D-Bus method is dispatched.
+  base::Callback<void(scoped_ptr<Response>, dbus::Message*, Args...)> handler_;
+
+  DISALLOW_COPY_AND_ASSIGN(DBusInterfaceMethodHandlerWithMessage);
 };
 
 // An implementation of DBusInterfaceMethodHandlerInterface that has custom

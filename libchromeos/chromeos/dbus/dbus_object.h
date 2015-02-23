@@ -101,8 +101,13 @@ class DBusObject;
 //    void(Args... args)                  [IN/OUT]
 // The signature of the handler for AddSimpleMethodHandlerWithError must be:
 //    bool(ErrorPtr* error, Args... args) [IN/OUT]
+// The signature of the handler for AddSimpleMethodHandlerWithErrorAndMessage:
+//    bool(ErrorPtr* error, dbus::Message* msg, Args... args) [IN/OUT]
 // The signature of the handler for AddMethodHandler must be:
-//    void(scoped_ptr<DBusMethodResponse> response, Args... args) [IN only]
+//    void(scoped_ptr<DBusMethodResponse<T...>> response, Args... args) [IN]
+// The signature of the handler for AddMethodHandlerWithMessage must be:
+//    void(scoped_ptr<DBusMethodResponse<T...>> response,
+//         dbus::Message* msg, Args... args) [IN]
 // There is also an AddRawMethodHandler() call that lets provide a custom
 // handler that can parse its own input parameter and construct a custom
 // response.
@@ -189,6 +194,50 @@ class CHROMEOS_EXPORT DBusInterface final {
         this, method_name, base::Bind(handler, instance));
   }
 
+  // Register sync DBus method handler for |method_name| as base::Callback.
+  // Passing the method sender as a first parameter to the callback.
+  template<typename... Args>
+  inline void AddSimpleMethodHandlerWithErrorAndMessage(
+      const std::string& method_name,
+      const base::Callback<bool(ErrorPtr*, dbus::Message*, Args...)>&
+          handler) {
+    Handler<SimpleDBusInterfaceMethodHandlerWithErrorAndMessage<Args...>>::Add(
+        this, method_name, handler);
+  }
+
+  // Register sync D-Bus method handler for |method_name| as a static
+  // function. Passing the method D-Bus message as the second parameter to the
+  // callback.
+  template<typename... Args>
+  inline void AddSimpleMethodHandlerWithErrorAndMessage(
+      const std::string& method_name,
+      bool(*handler)(ErrorPtr*, dbus::Message*, Args...)) {
+    Handler<SimpleDBusInterfaceMethodHandlerWithErrorAndMessage<Args...>>::Add(
+        this, method_name, base::Bind(handler));
+  }
+
+  // Register sync D-Bus method handler for |method_name| as a class member
+  // function. Passing the method D-Bus message as the second parameter to the
+  // callback.
+  template<typename Instance, typename Class, typename... Args>
+  inline void AddSimpleMethodHandlerWithErrorAndMessage(
+      const std::string& method_name,
+      Instance instance,
+      bool(Class::*handler)(ErrorPtr*, dbus::Message*, Args...)) {
+    Handler<SimpleDBusInterfaceMethodHandlerWithErrorAndMessage<Args...>>::Add(
+        this, method_name, base::Bind(handler, instance));
+  }
+
+  // Same as above but for const-method of a class.
+  template<typename Instance, typename Class, typename... Args>
+  inline void AddSimpleMethodHandlerWithErrorAndMessage(
+      const std::string& method_name,
+      Instance instance,
+      bool(Class::*handler)(ErrorPtr*, dbus::Message*, Args...) const) {
+    Handler<SimpleDBusInterfaceMethodHandlerWithErrorAndMessage<Args...>>::Add(
+        this, method_name, base::Bind(handler, instance));
+  }
+
   // Register an async DBus method handler for |method_name| as base::Callback.
   template<typename Response, typename... Args>
   inline void AddMethodHandler(
@@ -239,6 +288,62 @@ class CHROMEOS_EXPORT DBusInterface final {
     static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
                   "Response must be DBusMethodResponse<T...>");
     Handler<DBusInterfaceMethodHandler<Response, Args...>>::Add(
+        this, method_name, base::Bind(handler, instance));
+  }
+
+  // Register an async DBus method handler for |method_name| as base::Callback.
+  template<typename Response, typename... Args>
+  inline void AddMethodHandlerWithMessage(
+      const std::string& method_name,
+      const base::Callback<void(scoped_ptr<Response>, dbus::Message*,
+                                Args...)>& handler) {
+    static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
+                  "Response must be DBusMethodResponse<T...>");
+    Handler<DBusInterfaceMethodHandlerWithMessage<Response, Args...>>::Add(
+        this, method_name, handler);
+  }
+
+  // Register an async D-Bus method handler for |method_name| as a static
+  // function.
+  template<typename Response, typename... Args>
+  inline void AddMethodHandlerWithMessage(
+      const std::string& method_name,
+      void (*handler)(scoped_ptr<Response>, dbus::Message*, Args...)) {
+    static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
+                  "Response must be DBusMethodResponse<T...>");
+    Handler<DBusInterfaceMethodHandlerWithMessage<Response, Args...>>::Add(
+        this, method_name, base::Bind(handler));
+  }
+
+  // Register an async D-Bus method handler for |method_name| as a class member
+  // function.
+  template<typename Response,
+           typename Instance,
+           typename Class,
+           typename... Args>
+  inline void AddMethodHandlerWithMessage(
+      const std::string& method_name,
+      Instance instance,
+      void(Class::*handler)(scoped_ptr<Response>, dbus::Message*, Args...)) {
+    static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
+                  "Response must be DBusMethodResponse<T...>");
+    Handler<DBusInterfaceMethodHandlerWithMessage<Response, Args...>>::Add(
+        this, method_name, base::Bind(handler, instance));
+  }
+
+  // Same as above but for const-method of a class.
+  template<typename Response,
+           typename Instance,
+           typename Class,
+           typename... Args>
+  inline void AddMethodHandlerWithMessage(
+      const std::string& method_name,
+      Instance instance,
+      void(Class::*handler)(scoped_ptr<Response>, dbus::Message*,
+                            Args...) const) {
+    static_assert(std::is_base_of<DBusMethodResponseBase, Response>::value,
+                  "Response must be DBusMethodResponse<T...>");
+    Handler<DBusInterfaceMethodHandlerWithMessage<Response, Args...>>::Add(
         this, method_name, base::Bind(handler, instance));
   }
 
