@@ -12,6 +12,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 
 namespace {
 const size_t kMaxInterfaceNameLen = 16;
@@ -277,6 +278,13 @@ bool PortTracker::DeleteLifelineFd(int fd) {
   if (epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, NULL) != 0) {
     PLOG(ERROR) << "epoll_ctl(EPOLL_CTL_DEL)";
     return false;
+  }
+
+  // AddLifelineFd() calls dup(), so this function should close the fd.
+  // We still return true since at this point the fd has been deleted from the
+  // epoll instance.
+  if (IGNORE_EINTR(close(fd)) < 0) {
+    PLOG(ERROR) << "close(lifeline_fd)";
   }
   return true;
 }
