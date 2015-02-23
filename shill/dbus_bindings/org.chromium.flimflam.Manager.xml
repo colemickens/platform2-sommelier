@@ -143,6 +143,9 @@
 			<arg name="claimer_name" type="s" direction="in"/>
 			<arg name="interface_name" type="s" direction="in"/>
 		</method>
+		<method name="SetSchedScan">
+			<arg type="b" direction="in"/>
+		</method>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>

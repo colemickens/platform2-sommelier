@@ -484,4 +484,12 @@ void ManagerDBusAdaptor::ReleaseInterface(const string &claimer_name,
   e.ToDBusError(&error);
 }
 
+void ManagerDBusAdaptor::SetSchedScan(const bool &enable,
+                                      DBus::Error &error) {  // NOLINT
+  SLOG(this, 2) << __func__ << ": " << enable;
+  Error e;
+  manager_->SetSchedScan(enable, &e);
+  e.ToDBusError(&error);
+}
+
 }  // namespace shill

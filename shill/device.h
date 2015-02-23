@@ -114,6 +114,8 @@ class Device : public base::RefCounted<Device> {
   // The default implementation sets |error| to kNotSupported.
   virtual void Scan(ScanType scan_type, Error *error,
                     const std::string &reason);
+  // The default implementation sets |error| to kNotSupported.
+  virtual void SetSchedScan(bool enable, Error *error);
   virtual void RegisterOnNetwork(const std::string &network_id, Error *error,
                                  const ResultCallback &callback);
   virtual void RequirePIN(const std::string &pin, bool require,

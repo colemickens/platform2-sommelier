@@ -155,6 +155,9 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                         const std::string &interface_name,
                         DBus::Error &error) override;  // NOLINT
 
+  void SetSchedScan(const bool &enable,
+                    DBus::Error &error) override;  // NOLINT
+
  private:
   Manager *manager_;
 

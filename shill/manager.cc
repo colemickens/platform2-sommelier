@@ -2390,6 +2390,12 @@ void Manager::RequestScan(Device::ScanType scan_type,
   }
 }
 
+void Manager::SetSchedScan(bool enable, Error *error) {
+  for (const auto &wifi_device : FilterByTechnology(Technology::kWifi)) {
+    wifi_device->SetSchedScan(enable, error);
+  }
+}
+
 string Manager::GetTechnologyOrder() {
   vector<string> technology_names;
   for (const auto &technology : technology_order_) {

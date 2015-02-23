@@ -449,6 +449,14 @@ void WiFi::Scan(ScanType scan_type, Error */*error*/, const string &reason) {
   }
 }
 
+void WiFi::SetSchedScan(bool enable, Error */*error*/) {
+  // Needs to send a D-Bus message, but may be called from D-Bus
+  // signal handler context (via Manager::SetSchedScan). So defer work
+  // to event loop.
+  dispatcher()->PostTask(
+      Bind(&WiFi::SetSchedScanTask, weak_ptr_factory_.GetWeakPtr(), enable));
+}
+
 void WiFi::AddPendingScanResult(
     const ::DBus::Path &path,
     const map<string, ::DBus::Variant> &properties,
@@ -1527,6 +1535,19 @@ void WiFi::ProgressiveScanTask() {
   LOG(INFO) << "Scan [full] on " << link_name()
             << " (connected to nothing on progressive scan) from " << __func__;
   ScanTask();
+}
+
+void WiFi::SetSchedScanTask(bool enable) {
+  if (!supplicant_present_ || !supplicant_interface_proxy_.get()) {
+    SLOG(this, 2) << "Ignoring sched scan configure request "
+                  << "while supplicant is not present.";
+    return;
+  }
+  try {
+    supplicant_interface_proxy_->SetSchedScan(enable);
+  } catch (const DBus::Error &e) {  // NOLINT
+    LOG(WARNING) << "Failed to set SchedScan: " << e.what();
+  }
 }
 
 void WiFi::OnFailedProgressiveScan() {
