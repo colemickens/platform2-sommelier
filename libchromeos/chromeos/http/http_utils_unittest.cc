@@ -232,17 +232,16 @@ TEST(HttpUtils, Get) {
   transport->AddHandler(kFakeUrl, request_type::kGet, base::Bind(GetHandler));
   transport->AddHandler(kMethodEchoUrl, "*", base::Bind(EchoMethodHandler));
 
-  // Make sure Get/GetAsString actually do the GET request
+  // Make sure Get() actually does the GET request
   auto response = http::GetAndBlock(kMethodEchoUrl, {}, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
   EXPECT_EQ(request_type::kGet, response->GetDataAsString());
-  EXPECT_EQ(request_type::kGet,
-            http::GetAsStringAndBlock(kMethodEchoUrl, {}, transport, nullptr));
 
   for (std::string data : {"blah", "some data", ""}) {
     std::string url = chromeos::url::AppendQueryParam(kFakeUrl, "test", data);
-    EXPECT_EQ(data, http::GetAsStringAndBlock(url, {}, transport, nullptr));
+    response = http::GetAndBlock(url, {}, transport, nullptr);
+    EXPECT_EQ(data, response->GetDataAsString());
   }
 }
 

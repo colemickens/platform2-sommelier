@@ -114,24 +114,6 @@ CHROMEOS_EXPORT int SendRequestWithNoData(
     const SuccessCallback& success_callback,
     const ErrorCallback& error_callback);
 
-// Performs a simple GET request and returns the data as a string.
-CHROMEOS_EXPORT std::string GetAsStringAndBlock(
-    const std::string& url,
-    const HeaderList& headers,
-    std::shared_ptr<Transport> transport,
-    chromeos::ErrorPtr* error);
-
-// Performs a simple asynchronous GET request.
-// Returns the ID of the request which can be used to cancel the pending
-// request using Transport::CancelRequest().
-CHROMEOS_EXPORT int GetAsString(
-    const std::string& url,
-    const HeaderList& headers,
-    std::shared_ptr<Transport> transport,
-    const base::Callback<void(int /*request_id*/,
-                              const std::string&)>& success_callback,
-    const ErrorCallback& error_callback);
-
 // Performs a GET request. Success status, returned data and additional
 // information (such as returned HTTP headers) can be obtained from
 // the returned Response object.

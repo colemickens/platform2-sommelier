@@ -20,15 +20,6 @@ using chromeos::mime::RemoveParameters;
 namespace chromeos {
 namespace http {
 
-namespace {
-void SuccessCallbackStringWrapper(
-    const base::Callback<void(int, const std::string&)>& success_callback,
-    int request_id,
-    scoped_ptr<Response> response) {
-  success_callback.Run(request_id, response->GetDataAsString());
-}
-}  // anonymous namespace
-
 std::unique_ptr<Response> GetAndBlock(const std::string& url,
                                       const HeaderList& headers,
                                       std::shared_ptr<Transport> transport,
@@ -48,27 +39,6 @@ int Get(const std::string& url,
                                transport,
                                success_callback,
                                error_callback);
-}
-
-std::string GetAsStringAndBlock(const std::string& url,
-                                const HeaderList& headers,
-                                std::shared_ptr<Transport> transport,
-                                chromeos::ErrorPtr* error) {
-  auto resp = GetAndBlock(url, headers, transport, error);
-  return resp ? resp->GetDataAsString() : std::string();
-}
-
-int GetAsString(
-    const std::string& url,
-    const HeaderList& headers,
-    std::shared_ptr<Transport> transport,
-    const base::Callback<void(int, const std::string&)>& success_callback,
-    const ErrorCallback& error_callback) {
-  return Get(url,
-             headers,
-             transport,
-             base::Bind(SuccessCallbackStringWrapper, success_callback),
-             error_callback);
 }
 
 std::unique_ptr<Response> HeadAndBlock(const std::string& url,
