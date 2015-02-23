@@ -228,7 +228,7 @@ void AdaptorGenerator::RegisterInterface(const string& itf_name,
       text->PopOffset();
       text->PopOffset();
     }
-    text->AddLine(StringPrintf("itf->AddProperty(\"%s\", &%s_);",
+    text->AddLine(StringPrintf("itf->AddProperty(%sName(), &%s_);",
                                property.name.c_str(), variable_name.c_str()));
   }
 }
@@ -424,8 +424,12 @@ void AdaptorGenerator::AddPropertyMethodImplementation(
     CHECK(signature.Parse(property.type, &type));
     string variable_name = NameParser{property.name}.MakeVariableName();
 
-    // Getter method.
+    // Property name accessor.
     block.AddComments(property.doc_string);
+    block.AddLine(StringPrintf("static const char* %sName() { return \"%s\"; }",
+                               property.name.c_str(), property.name.c_str()));
+
+    // Getter method.
     block.AddLine(StringPrintf("%s Get%s() const {",
                                type.c_str(),
                                property.name.c_str()));

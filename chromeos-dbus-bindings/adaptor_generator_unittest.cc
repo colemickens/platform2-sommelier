@@ -102,13 +102,13 @@ class TestAdaptor {
     signal_Update_ = itf->RegisterSignalOfType<SignalUpdateType>("Update");
     signal_Mapping_ = itf->RegisterSignalOfType<SignalMappingType>("Mapping");
 
-    itf->AddProperty("CharacterName", &character_name_);
+    itf->AddProperty(CharacterNameName(), &character_name_);
     write_property_.SetAccessMode(
         chromeos::dbus_utils::ExportedPropertyBase::Access::kReadWrite);
     write_property_.SetValidator(
         base::Bind(&TestAdaptor::ValidateWriteProperty,
                    base::Unretained(this)));
-    itf->AddProperty("WriteProperty", &write_property_);
+    itf->AddProperty(WritePropertyName(), &write_property_);
   }
 
   void SendUpdateSignal() {
@@ -124,6 +124,7 @@ class TestAdaptor {
       signal->Send(in_key, in_2);
   }
 
+  static const char* CharacterNameName() { return "CharacterName"; }
   std::string GetCharacterName() const {
     return character_name_.GetValue().Get<std::string>();
   }
@@ -131,6 +132,7 @@ class TestAdaptor {
     character_name_.SetValue(character_name);
   }
 
+  static const char* WritePropertyName() { return "WriteProperty"; }
   std::string GetWriteProperty() const {
     return write_property_.GetValue().Get<std::string>();
   }

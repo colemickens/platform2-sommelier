@@ -522,7 +522,7 @@ void ProxyGenerator::AddPropertySet(const ServiceConfig& config,
   block.PushOffset(kBlockOffset);
   for (const auto& prop : interface.properties) {
     block.AddLine(
-        StringPrintf("RegisterProperty(\"%s\", &%s);",
+        StringPrintf("RegisterProperty(%sName(), &%s);",
                      prop.name.c_str(),
                      NameParser{prop.name}.MakeVariableName().c_str()));
   }
@@ -562,6 +562,12 @@ void ProxyGenerator::AddProperties(const ServiceConfig& config,
 
   DbusSignature signature;
   for (const auto& prop : interface.properties) {
+    if (declaration_only) {
+      text->AddLine(
+          StringPrintf("static const char* %sName() { return \"%s\"; }",
+                       prop.name.c_str(),
+                       prop.name.c_str()));
+    }
     string type;
     CHECK(signature.Parse(prop.type, &type));
     MakeConstReferenceIfNeeded(&type);

@@ -564,6 +564,7 @@ namespace chromium {
 // Abstract interface proxy for org::chromium::Itf1.
 class Itf1ProxyInterface {
  public:
+  static const char* DataName() { return "Data"; }
   virtual const std::string& data() const = 0;
 
  protected:
@@ -586,7 +587,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
         : dbus::PropertySet{object_proxy,
                             "org.chromium.Itf1",
                             callback} {
-      RegisterProperty("data", &data);
+      RegisterProperty(DataName(), &data);
     }
 
     chromeos::dbus_utils::Property<std::string> data;
@@ -1338,7 +1339,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithObjectManager) {
   interface.name = "org.chromium.Itf1";
   interface.path = "/org/chromium/Test/Object";
   interface.signals.emplace_back("Closer");
-  interface.properties.emplace_back("data", "s", "read");
+  interface.properties.emplace_back("Data", "s", "read");
   Interface interface2;
   interface2.name = "org.chromium.Itf2";
   vector<Interface> interfaces{interface, interface2};
