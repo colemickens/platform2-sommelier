@@ -245,7 +245,7 @@ TEST_F(ThirdPartyVpnDriverTest, SetParameters) {
 
   error.clear();
   warning.clear();
-  parameters["exclusion_list"] = "123.211.21.29/31 123.211.21.1/24";
+  parameters["exclusion_list"] = "0.0.0.0/0 123.211.21.29/31 123.211.21.1/24";
   parameters["inclusion_list"] =
       "400.400.400.400/12 1.1.1.1/44 1.1.1.1/-1 "
       "123.211.22.0/24 123.211.22.1/24 "
@@ -266,9 +266,10 @@ TEST_F(ThirdPartyVpnDriverTest, SetParameters) {
   parameters["dns_servers"] = "123.211.21.18 123.211.21.19";
   parameters["inclusion_list"] = "123.211.61.29/7 123.211.42.29/17";
   driver_->SetParameters(parameters, &error, &warning);
-  EXPECT_EQ(driver_->ip_properties_.exclusion_list.size(), 2);
+  EXPECT_EQ(driver_->ip_properties_.exclusion_list.size(), 3);
   EXPECT_EQ(driver_->ip_properties_.exclusion_list[0], "123.211.21.29/31");
-  EXPECT_EQ(driver_->ip_properties_.exclusion_list[1], "123.211.21.1/24");
+  EXPECT_EQ(driver_->ip_properties_.exclusion_list[1], "0.0.0.0/0");
+  EXPECT_EQ(driver_->ip_properties_.exclusion_list[2], "123.211.21.1/24");
   EXPECT_EQ(driver_->ip_properties_.routes.size(), 2);
   EXPECT_EQ(driver_->ip_properties_.routes[0].host, "123.211.61.29");
   EXPECT_EQ(driver_->ip_properties_.routes[1].host, "123.211.42.29");

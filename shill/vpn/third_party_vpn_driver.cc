@@ -4,6 +4,8 @@
 
 #include "shill/vpn/third_party_vpn_driver.h"
 
+#include <algorithm>
+
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -317,6 +319,24 @@ void ThirdPartyVpnDriver::SetParameters(
   ProcessIPArrayCIDR(parameters, kExclusionListParameterThirdPartyVpn,
                      kIPDelimiter, &ip_properties_.exclusion_list, true,
                      error_message, warning_message);
+  if (!ip_properties_.exclusion_list.empty()) {
+    // The first excluded IP is used to find the default gateway. The logic that
+    // finds the default gateway does not work for default route "0.0.0.0/0".
+    // Hence, this code ensures that the first IP is not default.
+    IPAddress address(ip_properties_.address_family);
+    address.SetAddressAndPrefixFromString(ip_properties_.exclusion_list[0]);
+    if (address.IsDefault() && !address.prefix()) {
+      if (ip_properties_.exclusion_list.size() > 1) {
+        swap(ip_properties_.exclusion_list[0],
+             ip_properties_.exclusion_list[1]);
+      } else {
+        // When there is only a single entry which is a default address, it can
+        // be cleared since the default behavior is to not route any traffic to
+        // the tunnel interface.
+        ip_properties_.exclusion_list.clear();
+      }
+    }
+  }
 
   std::vector<std::string> inclusion_list;
   ProcessIPArrayCIDR(parameters, kInclusionListParameterThirdPartyVpn,
@@ -337,6 +357,7 @@ void ThirdPartyVpnDriver::SetParameters(
 
   if (error_message->empty()) {
     ip_properties_.user_traffic_only = true;
+    ip_properties_.default_route = false;
     device_->SelectService(service_);
     device_->UpdateIPConfig(ip_properties_);
     device_->SetLooseRouting(true);

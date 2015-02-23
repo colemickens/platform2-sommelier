@@ -40,6 +40,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
     Properties() : address_family(IPAddress::kFamilyUnknown),
                    subnet_prefix(0),
                    user_traffic_only(false),
+                   default_route(true),
                    blackhole_ipv6(false),
                    mtu(kUndefinedMTU),
                    lease_duration_seconds(0) {}
@@ -59,6 +60,9 @@ class IPConfig : public base::RefCounted<IPConfig> {
     // primary routing table will be used for traffic from privileged processes
     // which will bypass VPN.
     bool user_traffic_only;
+    // Set the flag to true when the interface should be set as the default
+    // route.
+    bool default_route;
     // A list of IP blocks in CIDR format that should be excluded from VPN.
     std::vector<std::string> exclusion_list;
     bool blackhole_ipv6;

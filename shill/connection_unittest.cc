@@ -339,6 +339,7 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   connection->permission_broker_.reset(permission_broker);
   EXPECT_CALL(*permission_broker, RequestVpnSetup(_, _));
   properties_.user_traffic_only = true;
+  properties_.default_route = false;
   properties_.exclusion_list.push_back(kExcludeAddress1);
   properties_.exclusion_list.push_back(kExcludeAddress2);
   UpdateProperties();

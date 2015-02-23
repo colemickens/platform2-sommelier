@@ -210,7 +210,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
             << " gateway=" << gateway.ToString();
   rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast, peer);
 
-  if (gateway.IsValid() && !user_traffic_only_) {
+  if (gateway.IsValid() && properties.default_route) {
     routing_table_->SetDefaultRoute(interface_index_, gateway,
                                     GetMetric(is_default_),
                                     table_id_);
