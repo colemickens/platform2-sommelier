@@ -26,7 +26,6 @@ using chromeos::ErrorPtr;
 
 const int kMaxSetupRetries = 5;
 const int kFirstRetryTimeoutMs = 100;
-const char kBuffetStatus[] = "Status";
 
 class CloudDelegateImpl : public CloudDelegate {
  public:
@@ -80,13 +79,14 @@ class CloudDelegateImpl : public CloudDelegate {
     manager->SetPropertyChangedCallback(
         base::Bind(&CloudDelegateImpl::OnManagerPropertyChanged,
                    weak_factory_.GetWeakPtr()));
-    OnManagerPropertyChanged(manager, kBuffetStatus);
+    OnManagerPropertyChanged(manager,
+                             org::chromium::Buffet::ManagerProxy::StatusName());
     // TODO(wiley) Get the device id (cloud_id_) here if we're online
   }
 
   void OnManagerPropertyChanged(org::chromium::Buffet::ManagerProxy* manager,
                                 const std::string& property_name) {
-    if (property_name != kBuffetStatus)
+    if (property_name != org::chromium::Buffet::ManagerProxy::StatusName())
       return;
     std::string status{manager->status()};
     if (status == "offline")
