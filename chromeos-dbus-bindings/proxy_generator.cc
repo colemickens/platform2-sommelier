@@ -924,22 +924,38 @@ void ProxyGenerator::ObjectManager::AddInterfaceAccessors(
   string map_name = itf_name.MakeVariableName() + "_instances_";
 
   // GetProxy().
-  text->AddLine(StringPrintf("%s* Get%s(",
-                              itf_name.MakeProxyName(true).c_str(),
-                              itf_name.MakeProxyName(false).c_str()));
-  text->PushOffset(kLineContinuationOffset);
-  text->AddLine("const dbus::ObjectPath& object_path) {");
-  text->PopOffset();
-  text->PushOffset(kBlockOffset);
-  text->AddLine(StringPrintf("auto p = %s.find(object_path);",
-                              map_name.c_str()));
-  text->AddLine(StringPrintf("if (p != %s.end())", map_name.c_str()));
-  text->PushOffset(kBlockOffset);
-  text->AddLine("return p->second.get();");
-  text->PopOffset();
-  text->AddLine("return nullptr;");
-  text->PopOffset();
-  text->AddLine("}");
+  if (interface.path.empty()) {
+    // We have no fixed path, so there could be multiple instances of this itf.
+    text->AddLine(StringPrintf("%s* Get%s(",
+                                itf_name.MakeProxyName(true).c_str(),
+                                itf_name.MakeProxyName(false).c_str()));
+    text->PushOffset(kLineContinuationOffset);
+    text->AddLine("const dbus::ObjectPath& object_path) {");
+    text->PopOffset();
+    text->PushOffset(kBlockOffset);
+    text->AddLine(StringPrintf("auto p = %s.find(object_path);",
+                                map_name.c_str()));
+    text->AddLine(StringPrintf("if (p != %s.end())", map_name.c_str()));
+    text->PushOffset(kBlockOffset);
+    text->AddLine("return p->second.get();");
+    text->PopOffset();
+    text->AddLine("return nullptr;");
+    text->PopOffset();
+    text->AddLine("}");
+  } else {
+    // We have a fixed path, so the object could be considered a "singleton".
+    // Skip the object_path parameter and return the first available instance.
+    text->AddLine(StringPrintf("%s* Get%s() {",
+                                itf_name.MakeProxyName(true).c_str(),
+                                itf_name.MakeProxyName(false).c_str()));
+    text->PushOffset(kBlockOffset);
+    text->AddLine(StringPrintf("if (%s.empty())", map_name.c_str()));
+    text->AddLineWithOffset("return nullptr;", kBlockOffset);
+    text->AddLine(StringPrintf("return %s.begin()->second.get();",
+                               map_name.c_str()));
+    text->PopOffset();
+    text->AddLine("}");
+  }
 
   // GetInstances().
   text->AddLine(StringPrintf("std::vector<%s*> Get%sInstances() const {",

@@ -756,12 +756,10 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     return dbus_object_manager_;
   }
 
-  org::chromium::Itf1Proxy* GetItf1Proxy(
-      const dbus::ObjectPath& object_path) {
-    auto p = itf1_instances_.find(object_path);
-    if (p != itf1_instances_.end())
-      return p->second.get();
-    return nullptr;
+  org::chromium::Itf1Proxy* GetItf1Proxy() {
+    if (itf1_instances_.empty())
+      return nullptr;
+    return itf1_instances_.begin()->second.get();
   }
   std::vector<org::chromium::Itf1Proxy*> GetItf1Instances() const {
     std::vector<org::chromium::Itf1Proxy*> values;
@@ -1103,12 +1101,10 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     return dbus_object_manager_;
   }
 
-  org::chromium::Itf1Proxy* GetItf1Proxy(
-      const dbus::ObjectPath& object_path) {
-    auto p = itf1_instances_.find(object_path);
-    if (p != itf1_instances_.end())
-      return p->second.get();
-    return nullptr;
+  org::chromium::Itf1Proxy* GetItf1Proxy() {
+    if (itf1_instances_.empty())
+      return nullptr;
+    return itf1_instances_.begin()->second.get();
   }
   std::vector<org::chromium::Itf1Proxy*> GetItf1Instances() const {
     std::vector<org::chromium::Itf1Proxy*> values;

@@ -146,12 +146,11 @@ class Daemon : public chromeos::DBusDaemon {
       return return_code;
 
     object_manager_.reset(new org::chromium::Buffet::ObjectManagerProxy{bus_});
-    auto manager_instances = object_manager_->GetManagerInstances();
-    if (manager_instances.empty()) {
+    manager_proxy_ = object_manager_->GetManagerProxy();
+    if (!manager_proxy_) {
       fprintf(stderr, "Buffet daemon was offline.");
       return EX_UNAVAILABLE;
     }
-    manager_proxy_ = manager_instances.front();
 
     auto args = CommandLine::ForCurrentProcess()->GetArgs();
 

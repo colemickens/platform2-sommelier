@@ -49,7 +49,7 @@ class CloudDelegateImpl : public CloudDelegate {
 
   bool Setup(const std::string& ticket_id, const std::string& user) override {
     if (setup_state_.status == SetupState::kInProgress ||
-        GetManagerProxy() == nullptr)
+        object_manager_.GetManagerProxy() == nullptr)
       return false;
     VLOG(1) << "GCD Setup started. ticket_id: " << ticket_id
             << ", user:" << user;
@@ -68,14 +68,7 @@ class CloudDelegateImpl : public CloudDelegate {
   std::string GetCloudId() const override { return cloud_id_; }
 
  private:
-  org::chromium::Buffet::ManagerProxy* GetManagerProxy() {
-    if (!manager_path_.IsValid())
-      return nullptr;
-    return object_manager_.GetManagerProxy(manager_path_);
-  }
-
   void OnManagerAdded(org::chromium::Buffet::ManagerProxy* manager) {
-    manager_path_ = manager->GetObjectPath();
     manager->SetPropertyChangedCallback(
         base::Bind(&CloudDelegateImpl::OnManagerPropertyChanged,
                    weak_factory_.GetWeakPtr()));
@@ -106,7 +99,6 @@ class CloudDelegateImpl : public CloudDelegate {
 
   void OnManagerRemoved(const dbus::ObjectPath& path) {
     state_ = ConnectionState(ConnectionState::kOffline);
-    manager_path_ = dbus::ObjectPath();
     on_changed_.Run();
   }
 
@@ -132,7 +124,7 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
   void CallManagerRegisterDevice(const std::string& ticket_id, int retries) {
-    auto manager_proxy = GetManagerProxy();
+    auto manager_proxy = object_manager_.GetManagerProxy();
     if (!manager_proxy) {
       LOG(ERROR) << "Couldn't register because Buffet was offline.";
       RetryRegister(ticket_id, retries, nullptr);
@@ -156,7 +148,6 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
   org::chromium::Buffet::ObjectManagerProxy object_manager_;
-  dbus::ObjectPath manager_path_;
 
   DeviceDelegate* device_;
 
