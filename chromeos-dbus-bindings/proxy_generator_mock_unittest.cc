@@ -22,28 +22,14 @@ namespace chromeos_dbus_bindings {
 
 namespace {
 
-const char kInterfaceName[] = "org.chromium.TestInterface";
-const char kInterfaceName2[] = "org.chromium.TestInterface2";
-const char kMethod1Name[] = "Elements";
-const char kMethod1Return[] = "s";
-const char kMethod1Argument1[] = "s";
-const char kMethod1ArgumentName1[] = "space_walk";
-const char kMethod1Argument2[] = "ao";
-const char kMethod1ArgumentName2[] = "ramblin_man";
-const char kMethod2Name[] = "ReturnToPatagonia";
-const char kMethod2Return[] = "x";
-const char kMethod3Name[] = "NiceWeatherForDucks";
-const char kMethod3Argument1[] = "b";
-const char kMethod4Name[] = "ExperimentNumberSix";
-const char kMethod5Name[] = "GetPersonInfo";
-const char kMethod5Argument1[] = "s";
-const char kMethod5ArgumentName1[] = "name";
-const char kMethod5Argument2[] = "i";
-const char kMethod5ArgumentName2[] = "age";
-const char kSignal1Name[] = "Closer";
-const char kSignal2Name[] = "TheCurseOfKaZar";
-const char kSignal2Argument1[] = "as";
-const char kSignal2Argument2[] = "y";
+const char kDBusTypeArryOfObjects[] = "ao";
+const char kDBusTypeArryOfStrings[] = "as";
+const char kDBusTypeBool[] = "b";
+const char kDBusTypeByte[] = "y";
+const char kDBusTypeInt32[] = "i";
+const char kDBusTypeInt64[] = "x";
+const char kDBusTypeString[] = "s";
+
 const char kExpectedContent[] = R"literal_string(
 #include <string>
 #include <vector>
@@ -155,38 +141,38 @@ class ProxyGeneratorMockTest : public Test {
 
 TEST_F(ProxyGeneratorMockTest, GenerateMocks) {
   Interface interface;
-  interface.name = kInterfaceName;
+  interface.name = "org.chromium.TestInterface";
   interface.path = "/org/chromium/Test";
   interface.methods.emplace_back(
-      kMethod1Name,
+      "Elements",
       vector<Interface::Argument>{
-          {kMethod1ArgumentName1, kMethod1Argument1},
-          {kMethod1ArgumentName2, kMethod1Argument2}},
-      vector<Interface::Argument>{{"", kMethod1Return}});
+          {"space_walk", kDBusTypeString},
+          {"ramblin_man", kDBusTypeArryOfObjects}},
+      vector<Interface::Argument>{{"", kDBusTypeString}});
   interface.methods.emplace_back(
-      kMethod2Name,
+      "ReturnToPatagonia",
       vector<Interface::Argument>{},
-      vector<Interface::Argument>{{"", kMethod2Return}});
+      vector<Interface::Argument>{{"", kDBusTypeInt64}});
   interface.methods.emplace_back(
-      kMethod3Name,
-      vector<Interface::Argument>{{"", kMethod3Argument1}},
+      "NiceWeatherForDucks",
+      vector<Interface::Argument>{{"", kDBusTypeBool}},
       vector<Interface::Argument>{});
-  interface.methods.emplace_back(kMethod4Name);
-  interface.signals.emplace_back(kSignal1Name);
+  interface.methods.emplace_back("ExperimentNumberSix");
+  interface.signals.emplace_back("Closer");
   interface.signals.emplace_back(
-      kSignal2Name,
+      "TheCurseOfKaZar",
       vector<Interface::Argument>{
-          {"", kSignal2Argument1},
-          {"", kSignal2Argument2}});
+          {"", kDBusTypeArryOfStrings},
+          {"", kDBusTypeByte}});
   interface.methods.back().doc_string = "Comment line1\nline2";
   Interface interface2;
-  interface2.name = kInterfaceName2;
+  interface2.name = "org.chromium.TestInterface2";
   interface2.methods.emplace_back(
-      kMethod5Name,
+      "GetPersonInfo",
       vector<Interface::Argument>{},
       vector<Interface::Argument>{
-          {kMethod5ArgumentName1, kMethod5Argument1},
-          {kMethod5ArgumentName2, kMethod5Argument2}});
+          {"name", kDBusTypeString},
+          {"age", kDBusTypeInt32}});
   vector<Interface> interfaces{interface, interface2};
   base::FilePath output_path = temp_dir_.path().Append("output.h");
   base::FilePath proxy_path = temp_dir_.path().Append("proxies.h");

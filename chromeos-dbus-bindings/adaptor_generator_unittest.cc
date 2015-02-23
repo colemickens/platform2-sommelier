@@ -22,38 +22,18 @@ namespace chromeos_dbus_bindings {
 
 namespace {
 
-const char kMethod0Name[] = "Kaneda";
-const char kMethod0Return[] = "s";
-const char kMethod0Argument0[] = "s";
-const char kMethod0ArgumentName0[] = "iwata";
-const char kMethod0Argument1[] = "ao";
-const char kMethod0ArgumentName1[] = "clarke";
-const char kMethod1Name[] = "Tetsuo";
-const char kMethod1Argument1[] = "i";
-const char kMethod1Return[] = "x";
-const char kMethod2Name[] = "Kei";
-const char kMethod3Name[] = "Kiyoko";
-const char kMethod3ReturnName0[] = "akira";
-const char kMethod3Return0[] = "x";
-const char kMethod3Return1[] = "s";
-const char kSignal0Name[] = "Update";
-const char kSignal1Name[] = "Mapping";
-const char kSignal1Argument0[] = "s";
-const char kSignal1ArgumentName0[] = "key";
-const char kSignal1Argument1[] = "ao";
-const char kProperty0Name[] = "CharacterName";
-const char kProperty0Type[] = "s";
-const char kProperty0Access[] = "read";
-const char kProperty1Name[] = "WriteProperty";
-const char kProperty1Type[] = "s";
-const char kProperty1Access[] = "readwrite";
+const char kDBusTypeArryOfObjects[] = "ao";
+const char kDBusTypeBool[] = "b";
+const char kDBusTypeInt32[] = "i";
+const char kDBusTypeInt64[] = "x";
+const char kDBusTypeString[] = "s";
+
+const char kPropertyAccessReadOnly[] = "read";
+const char kPropertyAccessReadWrite[] = "readwrite";
 
 const char kInterfaceName[] = "org.chromium.Test";
 const char kInterfaceName2[] = "org.chromium.Test2";
-const char kMethod0Name2[] = "Kaneda2";
-const char kMethod1Name2[] = "Tetsuo2";
-const char kMethod2Name2[] = "Kei2";
-const char kMethod2Return[] = "b";
+
 const char kExpectedContent[] = R"literal_string(
 #include <memory>
 #include <string>
@@ -261,60 +241,59 @@ TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
   interface.name = kInterfaceName;
   interface.path = "/org/chromium/Test";
   interface.methods.emplace_back(
-      kMethod0Name,
+      "Kaneda",
       vector<Interface::Argument>{
-          {kMethod0ArgumentName0, kMethod0Argument0},
-          {kMethod0ArgumentName1, kMethod0Argument1}},
-      vector<Interface::Argument>{{"", kMethod0Return}});
+          {"iwata", kDBusTypeString},
+          {"clarke", kDBusTypeArryOfObjects}},
+      vector<Interface::Argument>{{"", kDBusTypeString}});
   interface.methods.back().include_dbus_message = true;
   interface.methods.emplace_back(
-      kMethod1Name,
-      vector<Interface::Argument>{{"", kMethod1Argument1}},
-      vector<Interface::Argument>{{"", kMethod1Return}});
-  interface.methods.emplace_back(kMethod2Name);
+      "Tetsuo",
+      vector<Interface::Argument>{{"", kDBusTypeInt32}},
+      vector<Interface::Argument>{{"", kDBusTypeInt64}});
+  interface.methods.emplace_back("Kei");
   // Interface methods with more than one return argument should be ignored.
   interface.methods.emplace_back(
-      kMethod3Name,
+      "Kiyoko",
       vector<Interface::Argument>{},
       vector<Interface::Argument>{
-          {kMethod3ReturnName0, kMethod3Return0},
-          {"", kMethod3Return1}});
+          {"akira", kDBusTypeInt64},
+          {"", kDBusTypeString}});
   // Signals generate helper methods to send them.
   interface.signals.emplace_back(
-      kSignal0Name,
+      "Update",
       vector<Interface::Argument>{});
   interface.signals.emplace_back(
-      kSignal1Name,
+      "Mapping",
       vector<Interface::Argument>{
-          {kSignal1ArgumentName0, kSignal1Argument0},
-          {"", kSignal1Argument1}});
+          {"key", kDBusTypeString},
+          {"", kDBusTypeArryOfObjects}});
   interface.properties.emplace_back(
-      kProperty0Name,
-      kProperty0Type,
-      kProperty0Access);
+      "CharacterName",
+      kDBusTypeString,
+      kPropertyAccessReadOnly);
   interface.properties.emplace_back(
-      kProperty1Name,
-      kProperty1Type,
-      kProperty1Access);
+      "WriteProperty",
+      kDBusTypeString,
+      kPropertyAccessReadWrite);
 
   Interface interface2;
   interface2.name = kInterfaceName2;
   interface2.methods.emplace_back(
-      kMethod0Name2,
-      vector<Interface::Argument>{
-          {kMethod0ArgumentName0, kMethod0Argument0}},
-      vector<Interface::Argument>{{"", kMethod0Return}});
+      "Kaneda2",
+      vector<Interface::Argument>{{"iwata", kDBusTypeString}},
+      vector<Interface::Argument>{{"", kDBusTypeString}});
   interface2.methods.back().is_const = true;
   interface2.methods.back().kind = Interface::Method::Kind::kSimple;
   interface2.methods.emplace_back(
-      kMethod1Name2,
-      vector<Interface::Argument>{{"", kMethod1Argument1}},
-      vector<Interface::Argument>{{"", kMethod1Return}});
+      "Tetsuo2",
+      vector<Interface::Argument>{{"", kDBusTypeInt32}},
+      vector<Interface::Argument>{{"", kDBusTypeInt64}});
   interface2.methods.back().kind = Interface::Method::Kind::kAsync;
   interface2.methods.emplace_back(
-      kMethod2Name2,
+      "Kei2",
       vector<Interface::Argument>{},
-      vector<Interface::Argument>{{"", kMethod2Return}});
+      vector<Interface::Argument>{{"", kDBusTypeBool}});
   interface2.methods.back().kind = Interface::Method::Kind::kAsync;
   interface2.methods.back().include_dbus_message = true;
 
