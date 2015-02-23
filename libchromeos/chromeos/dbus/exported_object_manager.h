@@ -86,23 +86,25 @@ class CHROMEOS_EXPORT ExportedObjectManager
 
   ExportedObjectManager(scoped_refptr<dbus::Bus> bus,
                         const dbus::ObjectPath& path);
+  virtual ~ExportedObjectManager() = default;
 
   // Registers methods implementing the ObjectManager interface on the object
   // exported on the path given in the constructor. Must be called on the
   // origin thread.
-  void RegisterAsync(
+  virtual void RegisterAsync(
       const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction&
           completion_callback);
 
   // Trigger a signal that |path| has added an interface |interface_name|
   // with properties as given by |writer|.
-  void ClaimInterface(const dbus::ObjectPath& path,
-                      const std::string& interface_name,
-                      const ExportedPropertySet::PropertyWriter& writer);
+  virtual void ClaimInterface(
+      const dbus::ObjectPath& path,
+      const std::string& interface_name,
+      const ExportedPropertySet::PropertyWriter& writer);
 
   // Trigger a signal that |path| has removed an interface |interface_name|.
-  void ReleaseInterface(const dbus::ObjectPath& path,
-                        const std::string& interface_name);
+  virtual void ReleaseInterface(const dbus::ObjectPath& path,
+                                const std::string& interface_name);
 
   const scoped_refptr<dbus::Bus>& GetBus() const { return bus_; }
 

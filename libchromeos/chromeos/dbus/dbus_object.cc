@@ -54,15 +54,30 @@ void DBusInterface::ExportAsync(
   if (object_manager) {
     auto property_writer_callback =
         dbus_object_->property_set_.GetPropertyWriter(interface_name_);
-    actions.push_back(sequencer->WrapCompletionTask(
-        base::Bind(&ExportedObjectManager::ClaimInterface,
+    actions.push_back(
+        base::Bind(&DBusInterface::ClaimInterface,
+                   weak_factory_.GetWeakPtr(),
                    object_manager->AsWeakPtr(),
                    object_path,
-                   interface_name_,
-                   property_writer_callback)));
+                   property_writer_callback));
   }
   actions.push_back(completion_callback);
   sequencer->OnAllTasksCompletedCall(actions);
+}
+
+void DBusInterface::ClaimInterface(
+      base::WeakPtr<ExportedObjectManager> object_manager,
+      const dbus::ObjectPath& object_path,
+      const ExportedPropertySet::PropertyWriter& writer,
+      bool all_succeeded) {
+  if (!all_succeeded || !object_manager) {
+    LOG(ERROR) << "Skipping claiming interface: " << interface_name_;
+    return;
+  }
+  object_manager->ClaimInterface(object_path, interface_name_, writer);
+  release_interface_cb_.Reset(
+      base::Bind(&ExportedObjectManager::ReleaseInterface,
+                 object_manager, object_path, interface_name_));
 }
 
 void DBusInterface::HandleMethodCall(dbus::MethodCall* method_call,
@@ -115,11 +130,6 @@ DBusObject::DBusObject(ExportedObjectManager* object_manager,
 }
 
 DBusObject::~DBusObject() {
-  if (object_manager_) {
-    for (const auto& pair : interfaces_)
-      object_manager_->ReleaseInterface(object_path_, pair.first);
-  }
-
   if (exported_object_)
     exported_object_->Unregister();
 }

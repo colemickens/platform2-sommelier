@@ -8,6 +8,7 @@
 
 #include <base/bind.h>
 #include <chromeos/dbus/dbus_object_test_helpers.h>
+#include <chromeos/dbus/mock_exported_object_manager.h>
 #include <dbus/message.h>
 #include <dbus/property.h>
 #include <dbus/object_path.h>
@@ -17,12 +18,15 @@
 using ::testing::AnyNumber;
 using ::testing::Return;
 using ::testing::Invoke;
+using ::testing::Mock;
 using ::testing::_;
 
 namespace chromeos {
 namespace dbus_utils {
 
 namespace {
+
+const char kMethodsExportedOn[] = "/export";
 
 const char kTestInterface1[] = "org.chromium.Test.MathInterface";
 const char kTestMethod_Add[] = "Add";
@@ -81,7 +85,8 @@ class DBusObjectTest : public ::testing::Test {
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
     // Use a mock exported object.
-    const dbus::ObjectPath kMethodsExportedOnPath(std::string("/export"));
+    const dbus::ObjectPath kMethodsExportedOnPath{
+        std::string{kMethodsExportedOn}};
     mock_exported_object_ =
         new dbus::MockExportedObject(bus_.get(), kMethodsExportedOnPath);
     EXPECT_CALL(*bus_, GetExportedObject(kMethodsExportedOnPath))
@@ -316,6 +321,25 @@ TEST_F(DBusObjectTest, UnknownMethod) {
   writer.AppendBool(false);
   auto response = testing::CallMethod(*dbus_object_, &method_call);
   ExpectError(response.get(), DBUS_ERROR_UNKNOWN_METHOD);
+}
+
+TEST_F(DBusObjectTest, ShouldReleaseOnlyClaimedInterfaces) {
+  const dbus::ObjectPath kObjectManagerPath{std::string{"/"}};
+  const dbus::ObjectPath kMethodsExportedOnPath{
+      std::string{kMethodsExportedOn}};
+  MockExportedObjectManager mock_object_manager{bus_, kObjectManagerPath};
+  dbus_object_ = std::unique_ptr<DBusObject>(
+      new DBusObject(&mock_object_manager, bus_, kMethodsExportedOnPath));
+  EXPECT_CALL(mock_object_manager, ClaimInterface(_, _, _)).Times(0);
+  EXPECT_CALL(mock_object_manager, ReleaseInterface(_, _)).Times(0);
+  DBusInterface* itf1 = dbus_object_->AddOrGetInterface(kTestInterface1);
+  itf1->AddSimpleMethodHandler(
+      kTestMethod_Add, base::Unretained(&calc_), &Calc::Add);
+  // When we tear down our DBusObject, it should release only interfaces it has
+  // previously claimed.  This prevents a check failing inside the
+  // ExportedObjectManager.  Since no interfaces have finished exporting
+  // handlers, nothing should be released.
+  dbus_object_.reset();
 }
 
 }  // namespace dbus_utils

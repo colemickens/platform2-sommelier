@@ -65,6 +65,7 @@ class MyDbusObject {
 #include <string>
 
 #include <base/bind.h>
+#include <base/callback_helpers.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/chromeos_export.h>
@@ -360,6 +361,12 @@ class CHROMEOS_EXPORT DBusInterface final {
       const dbus::ObjectPath& object_path,
       const AsyncEventSequencer::CompletionAction& completion_callback);
 
+  CHROMEOS_PRIVATE void ClaimInterface(
+      base::WeakPtr<ExportedObjectManager> object_manager,
+      const dbus::ObjectPath& object_path,
+      const ExportedPropertySet::PropertyWriter& writer,
+      bool all_succeeded);
+
   // Method registration map.
   std::map<std::string, std::unique_ptr<DBusInterfaceMethodHandlerInterface>>
       handlers_;
@@ -370,7 +377,9 @@ class CHROMEOS_EXPORT DBusInterface final {
   friend class DBusInterfaceTestHelper;
   DBusObject* dbus_object_;
   std::string interface_name_;
+  base::ScopedClosureRunner release_interface_cb_;
 
+  base::WeakPtrFactory<DBusInterface> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(DBusInterface);
 };
 
