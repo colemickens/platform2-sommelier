@@ -1,0 +1,82 @@
+Soma
+--------------------------------------------------------------------------------
+Soma is the Brillo daemon that manages the on-disk presence of Brillo service
+bundles.
+
+Currently, this mostly entails determining the appropriate containment
+policy for a given service at runtime. By convention, an appropriately
+packaged service bundle installs a config file in its own filesystem
+overlay at /etc/services/<service-name>.conf. Soma handles locating
+this file within the appropriate service bundle, interpreting it and
+exporting the info as a handy data structure upon request.
+
+The Soma API consists of one function that takes the fully-qualified
+name of a service and returns a specification describing how it should
+be contained.
+
+
+
+Methods
+--------------------------------------------------------------------------------
+
+ContainerSpec GetContainerSpec(String service-id)
+
+  Given a fully-qualified service identifier (e.g. org.chromium.Bluez), return
+  a ContainerSpec that describes how the service should be contained.
+
+
+
+Structs
+--------------------------------------------------------------------------------
+
+ContainerSpec - Structured data containing all the info needed to contain a
+                service at runtime
+
+  struct ContainerSpec {
+    String ServiceBundlePath;
+    Int DesiredUser;
+    Int DesiredGroup;
+
+    List<Int> ListeningPorts;
+    List<DeviceFilter> DeviceFilters;
+    List<SysfsPathFilter> SysfsPathFilters;
+    List<UsbDeviceFilter> UsbDeviceFilters;
+  };
+
+ Required fields:
+  ServiceBundlePath: The abs path to the service's service bundle FS overlay.
+  DesiredUser: UID as which to run the service.
+  DesiredGroup: GID as which to run the service.
+
+ Optional fields:
+  ListeningPorts: List of network ports on which the service can listen.
+  DeviceFilters: Filters indicating which device nodes should be visible.
+  SysfsPathFilters: Filters indicating which sysfs paths should be visible.
+  UsbDeviceFilters; Filters indicating which USB devices should be visible.
+
+
+Filter types - Several kinds of filters used to control access to pieces of
+               hardware at runtime.
+
+  struct DeviceFilter {};
+
+  struct DeviceNodeFilter : DeviceFilter {
+    Int major;		May be a wildcard
+    Int minor;		May be a wildcard
+  };
+
+  struct DevicePathFilter : DeviceFilter {
+    String filter;	May contain globs (language TBD)
+  };
+
+  struct SysfsPathFilter {
+    String filter;	May contain globs (language TBD)
+  };
+
+  struct UsbDeviceFilter {
+    Int vid;		May be a wildcard
+    Int pid;		May be a wildcard
+  };
+
+  All fields are required. We haven't decided what language to use to provide
+  path-based filtering for /dev and /sys that allows globs.
