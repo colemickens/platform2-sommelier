@@ -52,6 +52,8 @@ const char kInterfaceName[] = "org.chromium.Test";
 const char kInterfaceName2[] = "org.chromium.Test2";
 const char kMethod0Name2[] = "Kaneda2";
 const char kMethod1Name2[] = "Tetsuo2";
+const char kMethod2Name2[] = "Kei2";
+const char kMethod2Return[] = "b";
 const char kExpectedContent[] = R"literal_string(
 #include <memory>
 #include <string>
@@ -75,6 +77,7 @@ class TestInterface {
 
   virtual bool Kaneda(
       chromeos::ErrorPtr* error,
+      dbus::Message* message,
       const std::string& in_iwata,
       const std::vector<dbus::ObjectPath>& in_clarke,
       std::string* out_3) = 0;
@@ -99,7 +102,7 @@ class TestAdaptor {
     chromeos::dbus_utils::DBusInterface* itf =
         object->AddOrGetInterface("org.chromium.Test");
 
-    itf->AddSimpleMethodHandlerWithError(
+    itf->AddSimpleMethodHandlerWithErrorAndMessage(
         "Kaneda",
         base::Unretained(interface_),
         &TestInterface::Kaneda);
@@ -196,6 +199,9 @@ class Test2Interface {
   virtual void Tetsuo2(
       scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<int64_t>> response,
       int32_t in_1) = 0;
+  virtual void Kei2(
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<bool>> response,
+      dbus::Message* message) = 0;
 };
 
 // Interface adaptor for org::chromium::Test2.
@@ -215,6 +221,10 @@ class Test2Adaptor {
         "Tetsuo2",
         base::Unretained(interface_),
         &Test2Interface::Tetsuo2);
+    itf->AddMethodHandlerWithMessage(
+        "Kei2",
+        base::Unretained(interface_),
+        &Test2Interface::Kei2);
   }
 
  private:
@@ -256,6 +266,7 @@ TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
           {kMethod0ArgumentName0, kMethod0Argument0},
           {kMethod0ArgumentName1, kMethod0Argument1}},
       vector<Interface::Argument>{{"", kMethod0Return}});
+  interface.methods.back().include_dbus_message = true;
   interface.methods.emplace_back(
       kMethod1Name,
       vector<Interface::Argument>{{"", kMethod1Argument1}},
@@ -300,6 +311,12 @@ TEST_F(AdaptorGeneratorTest, GenerateAdaptors) {
       vector<Interface::Argument>{{"", kMethod1Argument1}},
       vector<Interface::Argument>{{"", kMethod1Return}});
   interface2.methods.back().kind = Interface::Method::Kind::kAsync;
+  interface2.methods.emplace_back(
+      kMethod2Name2,
+      vector<Interface::Argument>{},
+      vector<Interface::Argument>{{"", kMethod2Return}});
+  interface2.methods.back().kind = Interface::Method::Kind::kAsync;
+  interface2.methods.back().include_dbus_message = true;
 
   base::FilePath output_path = temp_dir_.path().Append("output.h");
   EXPECT_TRUE(AdaptorGenerator::GenerateAdaptors({interface, interface2},

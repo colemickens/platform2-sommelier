@@ -41,6 +41,7 @@ struct Interface {
     std::string doc_string;
     Kind kind{Kind::kNormal};
     bool is_const{false};
+    bool include_dbus_message{false};
   };
   struct Signal {
     Signal(const std::string& name_in,

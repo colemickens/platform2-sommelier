@@ -27,6 +27,8 @@ const char kGoodInterfaceFileContents[] = R"literal_string(
     <method name="Scan">
       <arg name="args" type="a{sv}" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+      <annotation name="org.chromium.DBus.Method.IncludeDBusMessage"
+                  value="true"/>
     </method>
     <method name="GetBlob">
       <arg name="name" type="s"/>
@@ -85,6 +87,7 @@ TEST_F(XmlInterfaceParserTest, GoodInputFile) {
   EXPECT_EQ(kScanMethod, interface.methods[0].name);
   EXPECT_EQ(Interface::Method::Kind::kAsync, interface.methods[0].kind);
   EXPECT_FALSE(interface.methods[0].is_const);
+  EXPECT_TRUE(interface.methods[0].include_dbus_message);
   ASSERT_EQ(1, interface.methods[0].input_arguments.size());
 
   // <arg name="args" type="a{sv}" direction="in"/>
@@ -97,6 +100,7 @@ TEST_F(XmlInterfaceParserTest, GoodInputFile) {
   EXPECT_EQ(kGetBlobMethod, interface.methods[1].name);
   EXPECT_EQ(Interface::Method::Kind::kNormal, interface.methods[1].kind);
   EXPECT_TRUE(interface.methods[1].is_const);
+  EXPECT_FALSE(interface.methods[1].include_dbus_message);
   EXPECT_EQ(1, interface.methods[1].input_arguments.size());
   EXPECT_EQ(1, interface.methods[1].output_arguments.size());
 

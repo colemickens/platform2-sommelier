@@ -160,10 +160,16 @@ void AdaptorGenerator::RegisterInterface(const string& itf_name,
         add_handler_name = "AddSimpleMethodHandler";
         break;
       case Interface::Method::Kind::kNormal:
-        add_handler_name = "AddSimpleMethodHandlerWithError";
+        if (method.include_dbus_message)
+          add_handler_name = "AddSimpleMethodHandlerWithErrorAndMessage";
+        else
+          add_handler_name = "AddSimpleMethodHandlerWithError";
         break;
       case Interface::Method::Kind::kAsync:
-        add_handler_name = "AddMethodHandler";
+        if (method.include_dbus_message)
+          add_handler_name = "AddMethodHandlerWithMessage";
+        else
+          add_handler_name = "AddMethodHandler";
         break;
       case Interface::Method::Kind::kRaw:
         add_handler_name = "AddRawMethodHandler";
@@ -253,6 +259,8 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
         break;
       case Interface::Method::Kind::kNormal:
         method_params.push_back("chromeos::ErrorPtr* error");
+        if (method.include_dbus_message)
+          method_params.push_back("dbus::Message* message");
         return_type = "bool";
         break;
       case Interface::Method::Kind::kAsync: {
@@ -265,6 +273,8 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
         method_params.push_back(base::StringPrintf(
             "scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<%s>> response",
              chromeos::string_utils::Join(", ", out_types).c_str()));
+        if (method.include_dbus_message)
+          method_params.push_back("dbus::Message* message");
         output_arguments_copy.clear();
         break;
       }

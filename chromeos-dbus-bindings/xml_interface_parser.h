@@ -64,6 +64,7 @@ class XmlInterfaceParser {
 
   static const char kMethodConst[];
   static const char kMethodAsync[];
+  static const char kMethodIncludeDBusMessage[];
 
   static const char kMethodKind[];
   static const char kMethodKindSimple[];

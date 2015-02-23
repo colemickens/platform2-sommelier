@@ -41,6 +41,8 @@ const char XmlInterfaceParser::kMethodConst[] =
     "org.chromium.DBus.Method.Const";
 const char XmlInterfaceParser::kMethodAsync[] =
     "org.freedesktop.DBus.GLib.Async";
+const char XmlInterfaceParser::kMethodIncludeDBusMessage[] =
+    "org.chromium.DBus.Method.IncludeDBusMessage";
 
 const char XmlInterfaceParser::kMethodKind[] = "org.chromium.DBus.Method.Kind";
 const char XmlInterfaceParser::kMethodKindSimple[] = "simple";
@@ -155,6 +157,9 @@ void XmlInterfaceParser::OnOpenElement(
       if (name == kMethodConst) {
         CHECK(value == kTrue || value == kFalse);
         method.is_const = (value == kTrue);
+      } else if (name == kMethodIncludeDBusMessage) {
+        CHECK(value == kTrue || value == kFalse);
+        method.include_dbus_message = (value == kTrue);
       } else if (name == kMethodAsync) {
         // Support GLib.Async annotation as well.
         method.kind = Interface::Method::Kind::kAsync;
