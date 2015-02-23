@@ -91,8 +91,9 @@ class ManagerTest : public testing::Test {
 TEST_F(ManagerTest, ShouldRejectSerbusServiceId) {
   chromeos::ErrorPtr error;
   string service_token;
-  EXPECT_FALSE(manager_->ExposeServiceImpl(&error, "", kSerbusServiceId, {}, {},
-               &service_token));
+  dbus::MethodCall method_call{"org.chromium.peerd.Manager", "ExposeService"};
+  EXPECT_FALSE(manager_->ExposeService(&error, &method_call, kSerbusServiceId,
+                                       {}, {}, &service_token));
   EXPECT_TRUE(service_token.empty());
   EXPECT_NE(nullptr, error.get());
 }
@@ -172,14 +173,16 @@ TEST_F(ManagerTest, StopMonitoring_HandlesMultipleSubscriptions) {
 
 TEST_F(ManagerTest, ShouldRemoveServicesOnRemoteDeath) {
   const string kServiceId{"a_service_id"};
-  const string kDBusSender{"a-dbus-connection-id"};
+  const string kDBusSender{"a.dbus.connection.id"};
   EXPECT_CALL(*peer_, AddPublishedService(_, kServiceId, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_bus_, ListenForServiceOwnerChange(kDBusSender, _));
   EXPECT_CALL(*mock_bus_, GetServiceOwner(kDBusSender, _));
   string service_token;
-  EXPECT_TRUE(manager_->ExposeServiceImpl(
-        nullptr, kDBusSender, kServiceId, {}, {}, &service_token));
+  dbus::MethodCall method_call{"org.chromium.peerd.Manager", "ExposeService"};
+  method_call.SetSender(kDBusSender);
+  EXPECT_TRUE(manager_->ExposeService(nullptr, &method_call, kServiceId, {}, {},
+                                      &service_token));
   Mock::VerifyAndClearExpectations(peer_);
   Mock::VerifyAndClearExpectations(mock_bus_.get());
   EXPECT_CALL(*peer_, RemoveService(_, kServiceId));

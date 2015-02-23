@@ -39,41 +39,6 @@ using std::unique_ptr;
 using std::vector;
 
 namespace peerd {
-
-namespace {
-
-template<typename... Args>
-void RedirectDbusCall(Manager* mgr,
-                      bool (Manager::*fnc)(chromeos::ErrorPtr* /*error*/,
-                                           const std::string& /*sender_addr*/,
-                                           Args...),
-                      dbus::MethodCall* method_call,
-                      chromeos::dbus_utils::ResponseSender sender) {
-  chromeos::dbus_utils::DBusMethodResponseBase method_response(method_call,
-                                                               sender);
-  auto invoke_callback =
-      [mgr, fnc, method_call, &method_response](const Args&... args) {
-    ErrorPtr error;
-    if (!(mgr->*fnc)(&error, method_call->GetSender(), args...)) {
-      method_response.ReplyWithError(error.get());
-    } else {
-      auto response = method_response.CreateCustomResponse();
-      dbus::MessageWriter writer(response.get());
-      DBusParamWriter::AppendDBusOutParams(&writer, args...);
-      method_response.SendRawResponse(response.Pass());
-    }
-  };
-  ErrorPtr param_reader_error;
-  dbus::MessageReader reader(method_call);
-  if (!DBusParamReader<true, Args...>::Invoke(invoke_callback, &reader,
-                                              &param_reader_error)) {
-    // Error parsing method arguments.
-    method_response.ReplyWithError(param_reader_error.get());
-  }
-}
-
-}  // namespace
-
 namespace errors {
 namespace manager {
 
@@ -214,17 +179,12 @@ bool Manager::StopMonitoring(chromeos::ErrorPtr* error,
 }
 
 
-void Manager::ExposeService(dbus::MethodCall* method_call,
-                            chromeos::dbus_utils::ResponseSender sender) {
-  RedirectDbusCall(this, &Manager::ExposeServiceImpl, method_call, sender);
-}
-
-bool Manager::ExposeServiceImpl(chromeos::ErrorPtr* error,
-                                const std::string& sender,
-                                const string& service_id,
-                                const map<string, string>& service_info,
-                                const map<string, Any>& options,
-                                std::string* service_token) {
+bool Manager::ExposeService(chromeos::ErrorPtr* error,
+                            dbus::Message* message,
+                            const string& service_id,
+                            const map<string, string>& service_info,
+                            const map<string, Any>& options,
+                            std::string* service_token) {
   VLOG(1) << "Exposing service '" << service_id << "'.";
   if (service_id == kSerbusServiceId) {
     Error::AddToPrintf(error,
@@ -242,7 +202,7 @@ bool Manager::ExposeServiceImpl(chromeos::ErrorPtr* error,
   // TODO(wiley) Maybe trigger an advertisement run since we have updated
   //             information.
   std::unique_ptr<DBusServiceWatcher> service_watcher{
-      new DBusServiceWatcher{bus_, sender,
+      new DBusServiceWatcher{bus_, message->GetSender(),
                              base::Bind(&Manager::OnDBusServiceDeath,
                                         base::Unretained(this),
                                         *service_token)}};

@@ -63,8 +63,13 @@ class Manager : public org::chromium::peerd::ManagerInterface {
       const std::map<std::string, chromeos::Any>& options,
       std::string* monitoring_token) override;
 
-  void ExposeService(dbus::MethodCall* method_call,
-                     chromeos::dbus_utils::ResponseSender sender) override;
+  bool ExposeService(
+      chromeos::ErrorPtr* error,
+      dbus::Message* message,
+      const std::string& service_id,
+      const std::map<std::string, std::string>& service_info,
+      const std::map<std::string, chromeos::Any>& options,
+      std::string* service_token) override;
 
   bool StopMonitoring(
       chromeos::ErrorPtr* error,
@@ -84,15 +89,6 @@ class Manager : public org::chromium::peerd::ManagerInterface {
           std::unique_ptr<PeerManagerInterface> peer_manager,
           std::unique_ptr<AvahiClient> avahi_client,
           const std::string& initial_mdns_prefix);
-
-  bool ExposeServiceImpl(
-      chromeos::ErrorPtr* error,
-      const std::string& sender,
-      const std::string& service_id,
-      const std::map<std::string, std::string>& service_info,
-      const std::map<std::string, chromeos::Any>& options,
-      std::string* service_token);
-
 
   // Called from AvahiClient.
   void ShouldRefreshAvahiPublisher();
