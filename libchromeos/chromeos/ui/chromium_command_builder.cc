@@ -473,10 +473,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("gpu_sandbox_start_early"))
     AddArg("--gpu-sandbox-start-early");
 
-  if (IsBoard("peach_pit") || IsBoard("peach_pi") || IsBoard("nyan") ||
-      IsBoard("nyan_big") || IsBoard("nyan_blaze") || IsBoard("nyan_kitty"))
-    AddArg("--enable-webrtc-hw-vp8-encoding");
-
   if (IsBoard("peach_pi") || IsBoard("nyan") || IsBoard("nyan_big") ||
       IsBoard("nyan_blaze") || IsBoard("nyan_kitty"))
     AddArg("--ignore-resolution-limits-for-accelerated-video-decode");
