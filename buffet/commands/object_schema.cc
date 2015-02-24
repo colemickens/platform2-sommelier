@@ -236,6 +236,18 @@ static std::string DetectObjectType(const base::DictionaryValue* dict,
       commands::attributes::kOneOf_Enum, &list))
     return DetectArrayType(list, base_schema);
 
+  // If we have "default", try to use it for type detection.
+  if (dict->Get(commands::attributes::kDefault, &value)) {
+    if (value->IsType(base::Value::TYPE_DOUBLE))
+      return PropType::GetTypeStringFromType(ValueType::Double);
+    if (value->IsType(base::Value::TYPE_INTEGER))
+      return PropType::GetTypeStringFromType(ValueType::Int);
+    if (value->IsType(base::Value::TYPE_BOOLEAN))
+      return PropType::GetTypeStringFromType(ValueType::Boolean);
+    if (value->IsType(base::Value::TYPE_STRING))
+      return PropType::GetTypeStringFromType(ValueType::String);
+  }
+
   return std::string();
 }
 

@@ -21,7 +21,8 @@ std::unique_ptr<base::DictionaryValue> CreateDictionaryValue(const char* json) {
   std::string json2(json);
   std::replace(json2.begin(), json2.end(), '\'', '"');
   base::Value* value = base::JSONReader::Read(json2);
-  base::DictionaryValue* dict;
+  CHECK(value) << "Failed to load JSON: " << json2;
+  base::DictionaryValue* dict = nullptr;
   value->GetAsDictionary(&dict);
   return std::unique_ptr<base::DictionaryValue>(dict);
 }

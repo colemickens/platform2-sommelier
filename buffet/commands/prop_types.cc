@@ -32,6 +32,9 @@ std::string PropType::GetTypeAsString() const {
 }
 
 bool PropType::HasOverriddenAttributes() const {
+  if (default_.value && !default_.is_inherited)
+    return true;
+
   for (const auto& pair : constraints_) {
     if (pair.second->HasOverriddenAttributes())
       return true;
@@ -79,6 +82,14 @@ std::unique_ptr<base::Value> PropType::ToJson(bool full_schema,
     if (!pair.second->AddToJsonDict(dict.get(), !full_schema, error))
       return std::unique_ptr<base::Value>();
   }
+
+  if (default_.value && (full_schema || !default_.is_inherited)) {
+    auto defval = default_.value->ToJson(error);
+    if (!defval)
+      return std::unique_ptr<base::Value>();
+    dict->Set(commands::attributes::kDefault, defval.release());
+  }
+
   return std::unique_ptr<base::Value>(dict.release());
 }
 
@@ -95,7 +106,14 @@ bool PropType::FromJson(const base::DictionaryValue* value,
   }
   based_on_schema_ = (base_schema != nullptr);
   constraints_.clear();
-  std::set<std::string> processed_keys{commands::attributes::kType};
+  // Add the well-known object properties first (like "type", "displayName",
+  // "default") to the list of "processed" keys so we do not complain about them
+  // when we check for unknown/unexpected keys below.
+  std::set<std::string> processed_keys{
+      commands::attributes::kType,
+      commands::attributes::kDisplayName,
+      commands::attributes::kDefault,
+  };
   if (!ObjectSchemaFromJson(value, base_schema, &processed_keys, error))
     return false;
   if (base_schema) {
@@ -121,6 +139,31 @@ bool PropType::FromJson(const base::DictionaryValue* value,
     iter.Advance();
   }
 
+  // Read the default value, if specified.
+  // We need to do this last since the current type definition must be complete,
+  // so we can parse and validate the value of the default.
+  const base::Value* defval = nullptr;  // Owned by value
+  if (value->GetWithoutPathExpansion(commands::attributes::kDefault, &defval)) {
+    std::shared_ptr<PropValue> prop_value = CreateValue();
+    if (!prop_value->FromJson(defval, error) ||
+        !ValidateValue(prop_value->GetValueAsAny(), error)) {
+      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                                   errors::commands::kInvalidPropValue,
+                                   "Invalid value for property '%s'",
+                                   commands::attributes::kDefault);
+      return false;
+    }
+    default_.value = prop_value;
+    default_.is_inherited = false;
+  } else if (base_schema) {
+    // If we have the base schema, inherit the type's default value from it.
+    // It doesn't matter if the base schema actually has a default value
+    // specified or not. If it doesn't, then the current type definition will
+    // have no default value set either (|default_.value| is a shared_ptr to
+    // PropValue, which can be set to nullptr).
+    default_.value = base_schema->default_.value;
+    default_.is_inherited = true;
+  }
   return true;
 }
 

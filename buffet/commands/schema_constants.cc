@@ -30,6 +30,7 @@ namespace commands {
 namespace attributes {
 const char kType[] = "type";
 const char kDisplayName[] = "displayName";
+const char kDefault[] = "default";
 
 const char kNumeric_Min[] = "minimum";
 const char kNumeric_Max[] = "maximum";

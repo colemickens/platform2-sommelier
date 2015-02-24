@@ -34,6 +34,7 @@ namespace attributes {
 // Command description JSON schema attributes.
 extern const char kType[];
 extern const char kDisplayName[];
+extern const char kDefault[];
 
 extern const char kNumeric_Min[];
 extern const char kNumeric_Max[];
