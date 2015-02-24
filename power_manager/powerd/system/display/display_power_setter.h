@@ -24,9 +24,9 @@ class DisplayPowerSetterInterface {
   DisplayPowerSetterInterface() {}
   virtual ~DisplayPowerSetterInterface() {}
 
-  // Configures displays to use |state| after |delay|.  If another change
-  // has already been scheduled, it will be aborted.  Note that even with
-  // an empty delay, the change may be applied asynchronously.
+  // Configures displays to use |state| after |delay|. If another change has
+  // already been scheduled, it will be aborted. If |delay| is zero, the change
+  // will be applied synchronously.
   virtual void SetDisplayPower(chromeos::DisplayPowerState state,
                                base::TimeDelta delay) = 0;
 

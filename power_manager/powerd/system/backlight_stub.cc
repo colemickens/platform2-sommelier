@@ -8,7 +8,8 @@ namespace power_manager {
 namespace system {
 
 BacklightStub::BacklightStub(int64_t max_level, int64_t current_level)
-    : max_level_(max_level),
+    : clock_(nullptr),
+      max_level_(max_level),
       current_level_(current_level),
       resume_level_(-1),
       transition_in_progress_(false),
@@ -27,6 +28,10 @@ int64_t BacklightStub::GetCurrentBrightnessLevel() {
 
 bool BacklightStub::SetBrightnessLevel(int64_t level,
                                        base::TimeDelta interval) {
+  if (level != current_level_) {
+    last_set_brightness_level_time_ =
+        clock_ ? clock_->GetCurrentTime() : base::TimeTicks::Now();
+  }
   if (should_fail_)
     return false;
   current_level_ = level;

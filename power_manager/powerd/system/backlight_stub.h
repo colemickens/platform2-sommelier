@@ -9,6 +9,7 @@
 #include <base/macros.h>
 #include <base/time/time.h>
 
+#include "power_manager/common/clock.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {
@@ -20,6 +21,7 @@ class BacklightStub : public BacklightInterface {
   BacklightStub(int64_t max_level, int64_t current_level);
   virtual ~BacklightStub();
 
+  void set_clock(Clock* clock) { clock_ = clock; }
   void set_max_level(int64_t level) { max_level_ = level; }
   void set_current_level(int64_t level) { current_level_ = level; }
   void set_transition_in_progress(bool in_progress) {
@@ -31,6 +33,9 @@ class BacklightStub : public BacklightInterface {
   int64_t current_level() const { return current_level_; }
   int64_t resume_level() const { return resume_level_; }
   base::TimeDelta current_interval() const { return current_interval_; }
+  base::TimeTicks last_set_brightness_level_time() const {
+    return last_set_brightness_level_time_;
+  }
 
   // BacklightInterface implementation:
   int64_t GetMaxBrightnessLevel() override;
@@ -40,6 +45,10 @@ class BacklightStub : public BacklightInterface {
   bool TransitionInProgress() const override;
 
  private:
+  // Not owned and may be null. Used to update
+  // |last_set_brightness_level_time_|.
+  Clock* clock_;
+
   // Maximum backlight level.
   int64_t max_level_;
 
@@ -57,6 +66,9 @@ class BacklightStub : public BacklightInterface {
 
   // Should we report failure in response to future requests?
   bool should_fail_;
+
+  // Last time at which SetBrightnessLevel() was called with a new level.
+  base::TimeTicks last_set_brightness_level_time_;
 
   DISALLOW_COPY_AND_ASSIGN(BacklightStub);
 };

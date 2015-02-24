@@ -8,7 +8,8 @@ namespace power_manager {
 namespace system {
 
 DisplayPowerSetterStub::DisplayPowerSetterStub()
-    : state_(chromeos::DISPLAY_POWER_ALL_ON),
+    : clock_(nullptr),
+      state_(chromeos::DISPLAY_POWER_ALL_ON),
       num_power_calls_(0),
       dimmed_(false) {
 }
@@ -20,6 +21,8 @@ void DisplayPowerSetterStub::SetDisplayPower(chromeos::DisplayPowerState state,
   state_ = state;
   delay_ = delay;
   num_power_calls_++;
+  last_set_display_power_time_ =
+      clock_ ? clock_->GetCurrentTime() : base::TimeTicks::Now();
 }
 
 void DisplayPowerSetterStub::SetDisplaySoftwareDimming(bool dimmed) {
