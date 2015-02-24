@@ -42,10 +42,12 @@ namespace peerd {
 namespace errors {
 namespace manager {
 
+const char kAlreadyExposed[] = "manager.already_exposed";
 const char kInvalidMonitoringOption[] = "manager.option";
 const char kInvalidMonitoringTechnology[] = "manager.invalid_technology";
 const char kInvalidMonitoringToken[] = "manager.monitoring_token";
-const char kInvalidServiceToken[] = "manager.service_token";
+const char kNotOwner[] = "manager.not_owner";
+const char kUnknownServiceId[] = "manager.unknown_service_id";
 
 }  // namespace manager
 }  // namespace errors
@@ -183,8 +185,7 @@ bool Manager::ExposeService(chromeos::ErrorPtr* error,
                             dbus::Message* message,
                             const string& service_id,
                             const map<string, string>& service_info,
-                            const map<string, Any>& options,
-                            std::string* service_token) {
+                            const map<string, Any>& options) {
   VLOG(1) << "Exposing service '" << service_id << "'.";
   if (service_id == kSerbusServiceId) {
     Error::AddToPrintf(error,
@@ -195,36 +196,48 @@ bool Manager::ExposeService(chromeos::ErrorPtr* error,
                        kSerbusServiceId);
     return false;
   }
+  auto it = exposed_services_.find(service_id);
+  // Regardless of whether |it| is valid, it will become invalid in this block.
+  if (it != exposed_services_.end()) {
+    // TODO(wiley) We should be updating, but for now, remove and add again.
+    //             brbug.com/14 .
+    if (!RemoveExposedService(error, message, service_id)) {
+      return false;
+    }
+  }
   if (!self_->AddPublishedService(error, service_id, service_info, options)) {
     return false;
   }
-  *service_token = "service_token_" + std::to_string(++services_added_);
   // TODO(wiley) Maybe trigger an advertisement run since we have updated
   //             information.
-  std::unique_ptr<DBusServiceWatcher> service_watcher{
-      new DBusServiceWatcher{bus_, message->GetSender(),
-                             base::Bind(&Manager::OnDBusServiceDeath,
-                                        base::Unretained(this),
-                                        *service_token)}};
-  exposed_services_.emplace(
-      *service_token, std::make_pair(service_id, std::move(service_watcher)));
+  base::Closure on_connection_vanish = base::Bind(
+      &Manager::OnDBusServiceDeath, base::Unretained(this), service_id);
+  exposed_services_[service_id].reset(
+      new DBusServiceWatcher{bus_, message->GetSender(), on_connection_vanish});
   return true;
 }
 
 bool Manager::RemoveExposedService(chromeos::ErrorPtr* error,
-                                   const string& service_token) {
-  auto it = exposed_services_.find(service_token);
+                                   dbus::Message* message,
+                                   const string& service_id) {
+  auto it = exposed_services_.find(service_id);
   if (it == exposed_services_.end()) {
     Error::AddTo(error,
                  FROM_HERE,
                  kPeerdErrorDomain,
-                 errors::manager::kInvalidServiceToken,
-                 "Invalid service token given to RemoveExposedService.");
+                 errors::manager::kUnknownServiceId,
+                 "Unknown service id given to RemoveExposedService.");
     return false;
   }
-  bool success = self_->RemoveService(error, it->second.first);
+  if (it->second->connection_name() != message->GetSender()) {
+    Error::AddToPrintf(
+        error, FROM_HERE, kPeerdErrorDomain, errors::manager::kNotOwner,
+        "Service %s is owned by another local process.", service_id.c_str());
+    return false;
+  }
+  bool success = self_->RemoveService(error, it->first);
   // Maybe RemoveService returned with an error, but either way, we should
-  // forget this service token.
+  // forget this service.
   exposed_services_.erase(it);
   // TODO(wiley) Maybe trigger an advertisement run since we have updated
   //             information.
@@ -258,14 +271,11 @@ void Manager::UpdateMonitoredTechnologies() {
   }
 }
 
-void Manager::OnDBusServiceDeath(const std::string& service_token) {
-  auto it = exposed_services_.find(service_token);
-  if (it == exposed_services_.end()) {
-    return;
-  }
-  // Note that this invalidates |it| because it changes the state
-  // of |exposed_services_|.
-  RemoveExposedService(nullptr, service_token);
+void Manager::OnDBusServiceDeath(const std::string& service_id) {
+  auto it = exposed_services_.find(service_id);
+  if (it == exposed_services_.end()) { return; }
+  self_->RemoveService(nullptr, it->first);
+  exposed_services_.erase(it);
 }
 
 }  // namespace peerd

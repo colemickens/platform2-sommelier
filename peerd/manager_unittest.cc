@@ -90,11 +90,9 @@ class ManagerTest : public testing::Test {
 
 TEST_F(ManagerTest, ShouldRejectSerbusServiceId) {
   chromeos::ErrorPtr error;
-  string service_token;
   dbus::MethodCall method_call{"org.chromium.peerd.Manager", "ExposeService"};
   EXPECT_FALSE(manager_->ExposeService(&error, &method_call, kSerbusServiceId,
-                                       {}, {}, &service_token));
-  EXPECT_TRUE(service_token.empty());
+                                       {}, {}));
   EXPECT_NE(nullptr, error.get());
 }
 
@@ -109,7 +107,7 @@ TEST_F(ManagerTest, StartMonitoring_ShouldRejectInvalidTechnologies) {
   chromeos::ErrorPtr error;
   string token;
   EXPECT_FALSE(manager_->StartMonitoring(
-        &error, {"hot air balloon"}, kNoOptions, &token));
+      &error, {"hot air balloon"}, kNoOptions, &token));
   EXPECT_NE(nullptr, error.get());
   EXPECT_EQ(GetMonitoredTechnologies(), std::vector<string>{});
 }
@@ -119,7 +117,7 @@ TEST_F(ManagerTest, StartMonitoring_ShouldAcceptMDNS) {
   EXPECT_CALL(*avahi_client_, StartMonitoring());
   string token;
   EXPECT_TRUE(manager_->StartMonitoring(
-        &error, {technologies::kMDNSText}, kNoOptions, &token));
+      &error, {technologies::kMDNSText}, kNoOptions, &token));
   EXPECT_TRUE(!token.empty());
   EXPECT_EQ(nullptr, error.get());
   EXPECT_EQ(GetMonitoredTechnologies(), kOnlyMdns);
@@ -178,16 +176,15 @@ TEST_F(ManagerTest, ShouldRemoveServicesOnRemoteDeath) {
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_bus_, ListenForServiceOwnerChange(kDBusSender, _));
   EXPECT_CALL(*mock_bus_, GetServiceOwner(kDBusSender, _));
-  string service_token;
   dbus::MethodCall method_call{"org.chromium.peerd.Manager", "ExposeService"};
   method_call.SetSender(kDBusSender);
-  EXPECT_TRUE(manager_->ExposeService(nullptr, &method_call, kServiceId, {}, {},
-                                      &service_token));
+  EXPECT_TRUE(manager_->ExposeService(
+      nullptr, &method_call, kServiceId, {}, {}));
   Mock::VerifyAndClearExpectations(peer_);
   Mock::VerifyAndClearExpectations(mock_bus_.get());
   EXPECT_CALL(*peer_, RemoveService(_, kServiceId));
   EXPECT_CALL(*mock_bus_, UnlistenForServiceOwnerChange(kDBusSender, _));
-  manager_->OnDBusServiceDeath(service_token);
+  manager_->OnDBusServiceDeath(kServiceId);
 }
 
 }  // namespace peerd

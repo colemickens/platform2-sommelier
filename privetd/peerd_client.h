@@ -48,8 +48,6 @@ class PeerdClient {
   // |peerd_manager_proxy_| is owned by |peerd_object_manager_proxy_|.
   org::chromium::peerd::ManagerProxy* peerd_manager_proxy_{nullptr};
 
-  std::string service_token_;
-
   const DeviceDelegate* device_{nullptr};  // Can't be nullptr.
   const CloudDelegate* cloud_{nullptr};  // Can be nullptr.
   const WifiDelegate* wifi_{nullptr};      // Can be nullptr.

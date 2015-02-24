@@ -40,10 +40,12 @@ namespace peerd {
 namespace errors {
 namespace manager {
 
+extern const char kAlreadyExposed[];
 extern const char kInvalidMonitoringOption[];
 extern const char kInvalidMonitoringTechnology[];
 extern const char kInvalidMonitoringToken[];
-extern const char kInvalidServiceToken[];
+extern const char kNotOwner[];
+extern const char kUnknownServiceId[];
 
 }  // namespace manager
 }  // namespace errors
@@ -63,21 +65,20 @@ class Manager : public org::chromium::peerd::ManagerInterface {
       const std::map<std::string, chromeos::Any>& options,
       std::string* monitoring_token) override;
 
+  bool StopMonitoring(
+      chromeos::ErrorPtr* error,
+      const std::string& monitoring_token) override;
+
   bool ExposeService(
       chromeos::ErrorPtr* error,
       dbus::Message* message,
       const std::string& service_id,
       const std::map<std::string, std::string>& service_info,
-      const std::map<std::string, chromeos::Any>& options,
-      std::string* service_token) override;
+      const std::map<std::string, chromeos::Any>& options) override;
 
-  bool StopMonitoring(
-      chromeos::ErrorPtr* error,
-      const std::string& monitoring_token) override;
-
-  bool RemoveExposedService(
-      chromeos::ErrorPtr* error,
-      const std::string& service_token) override;
+  bool RemoveExposedService(chromeos::ErrorPtr* error,
+                            dbus::Message* message,
+                            const std::string& service_id) override;
 
   std::string Ping() override;
 
@@ -98,7 +99,7 @@ class Manager : public org::chromium::peerd::ManagerInterface {
   // and StopMonitoring on technologies as appropriate.
   void UpdateMonitoredTechnologies();
 
-  void OnDBusServiceDeath(const std::string& service_token);
+  void OnDBusServiceDeath(const std::string& service_id);
 
   scoped_refptr<dbus::Bus> bus_;
   org::chromium::peerd::ManagerAdaptor dbus_adaptor_{this};
@@ -106,13 +107,10 @@ class Manager : public org::chromium::peerd::ManagerInterface {
   std::unique_ptr<PublishedPeer> self_;
   std::unique_ptr<PeerManagerInterface> peer_manager_;
   std::unique_ptr<AvahiClient> avahi_client_;
-  using ExposedService =
-      std::pair<std::string,
-                std::unique_ptr<chromeos::dbus_utils::DBusServiceWatcher>>;
-  // A map of service tokens to pairs of service_ids and DBusServiceWatchers.
-  std::map<std::string, ExposedService> exposed_services_;
+  using DBusServiceWatcher = chromeos::dbus_utils::DBusServiceWatcher;
+  // A map of service ids to DBusServiceWatchers.
+  std::map<std::string, std::unique_ptr<DBusServiceWatcher>> exposed_services_;
   std::map<std::string, technologies::TechnologySet> monitoring_requests_;
-  size_t services_added_{0};
   size_t monitoring_tokens_issued_{0};
 
   FRIEND_TEST(ManagerTest, ShouldRejectSerbusServiceId);

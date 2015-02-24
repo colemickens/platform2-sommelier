@@ -33,6 +33,7 @@ class CHROMEOS_EXPORT DBusServiceWatcher {
                      const std::string& connection_name,
                      const base::Closure& on_connection_vanish);
   virtual ~DBusServiceWatcher();
+  virtual std::string connection_name() const { return connection_name_; }
 
  private:
   void OnServiceOwnerChange(const std::string& service_owner);

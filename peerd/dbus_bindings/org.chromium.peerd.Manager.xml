@@ -22,14 +22,15 @@
       <arg name="service_id" type="s" direction="in"/>
       <arg name="service_info" type="a{ss}" direction="in"/>
       <arg name="options" type="a{sv}" direction="in"/>
-      <arg name="service_token" type="s" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
       <annotation name="org.chromium.DBus.Method.IncludeDBusMessage"
                   value="true"/>
     </method>
     <method name="RemoveExposedService">
-      <arg name="service_token" type="s" direction="in"/>
+      <arg name="service_id" type="s" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+      <annotation name="org.chromium.DBus.Method.IncludeDBusMessage"
+                  value="true"/>
     </method>
     <method name="Ping">
       <arg name="message" type="s" direction="out"/>

@@ -21,6 +21,9 @@ namespace {
 // Usually updates happen in batches, so we don't want to flood network with
 // updates relevant for a short amount of time.
 const int kCommitTimeoutSeconds = 3;
+// The name of the service we'll expose via peerd.
+const char kPrivetServiceId[] = "privet";
+
 }
 
 PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus,
@@ -62,13 +65,10 @@ void PeerdClient::OnPeerdOnline(
 
 void PeerdClient::OnPeerdOffline(const dbus::ObjectPath& object_path) {
   peerd_manager_proxy_ = nullptr;
-  service_token_.clear();
   VLOG(1) << "Peerd manager is now offline.";
 }
 
 void PeerdClient::Start() {
-  CHECK(service_token_.empty());
-
   // If peerd hasn't started yet, don't do anything.
   if (peerd_manager_proxy_ == nullptr)
     return;
@@ -107,23 +107,21 @@ void PeerdClient::Start() {
     txt_record.emplace("note", device_->GetDescription());
 
   chromeos::ErrorPtr error;
-  if (!peerd_manager_proxy_->ExposeService("privet", txt_record,
-                                           {{"mdns", mdns_options}},
-                                           &service_token_, &error)) {
+  if (!peerd_manager_proxy_->ExposeService(kPrivetServiceId, txt_record,
+                                           {{"mdns", mdns_options}}, &error)) {
     LOG(ERROR) << "ExposeService failed:" << error->GetMessage();
   }
 }
 
 void PeerdClient::Stop() {
-  if (service_token_.empty() || peerd_manager_proxy_ == nullptr)
+  if (peerd_manager_proxy_ == nullptr)
     return;
 
   VLOG(1) << "Stopping peerd advertising.";
   chromeos::ErrorPtr error;
-  if (!peerd_manager_proxy_->RemoveExposedService(service_token_, &error)) {
+  if (!peerd_manager_proxy_->RemoveExposedService(kPrivetServiceId, &error)) {
     LOG(ERROR) << "RemoveExposedService failed:" << error->GetMessage();
   }
-  service_token_.clear();
 }
 
 void PeerdClient::RestartImpl() {
