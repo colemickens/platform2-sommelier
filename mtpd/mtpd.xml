@@ -29,8 +29,7 @@
       </arg>
       <arg name="mode" type="s" direction="in">
       <tp:docstring>
-        Mode to open the storage in.
-        Currently the only valid mode is "readonly".
+        Mode to open the storage in. Readonly and readwrite modes are valid.
       </tp:docstring>
       </arg>
       <arg name="handle" type="s" direction="out">
@@ -127,6 +126,19 @@
       <arg name="fileName" type="s" direction="in">
         <tp:docstring>
           Destination file name.
+        </tp:docstring>
+      </arg>
+    </method>
+
+    <method name="DeleteObject">
+      <arg name="handle" type="s" direction="in">
+        <tp:docstring>
+          Handle to the storage from OpenStorage.
+        </tp:docstring>
+      </arg>
+      <arg name="objectId" type="u" direction="in">
+        <tp:docstring>
+          Object id of an object to be deleted.
         </tp:docstring>
       </arg>
     </method>

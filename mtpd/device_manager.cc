@@ -277,6 +277,45 @@ bool DeviceManager::CopyFileFromLocal(const std::string& storage_name,
   return transfer_status == 0;
 }
 
+bool DeviceManager::DeleteObject(const std::string& storage_name,
+                                 const uint32_t object_id) {
+  // Get the device.
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+
+  // The root node cannot be deleted.
+  if (object_id == kRootFileId)
+    return false;
+
+  // Check the object exists.
+  LIBMTP_file_t* file = LIBMTP_Get_Filemetadata(mtp_device, object_id);
+  if (file == NULL)
+    return false;
+
+  // If the object is a directory, check it is empty.
+  bool is_directory = file->filetype == LIBMTP_FILETYPE_FOLDER;
+  LIBMTP_destroy_file_t(file);
+
+  if (is_directory) {
+    uint32_t* children;
+    int num_of_children = LIBMTP_Get_Children(mtp_device,
+                                              storage_id,
+                                              object_id,
+                                              &children);
+    free(children);
+
+    if (num_of_children != 0)
+      return false;
+  }
+
+  // Delete an object.
+  int delete_status = LIBMTP_Delete_Object(mtp_device, object_id);
+
+  return delete_status == 0;
+}
+
 bool DeviceManager::AddStorageForTest(const std::string& storage_name,
                                       const StorageInfo& storage_info) {
   std::string device_location;

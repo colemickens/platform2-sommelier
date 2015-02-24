@@ -54,6 +54,9 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
                          const uint32_t& parentId,
                          const std::string& fileName,
                          DBus::Error& error) override;
+  void DeleteObject(const std::string& handle,
+                    const uint32_t& objectId,
+                    DBus::Error& error) override;
   bool IsAlive(DBus::Error& error) override;
 
   // DeviceEventDelegate implementation.
@@ -67,11 +70,17 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
   void ProcessDeviceEvents();
 
  private:
-  // Handle to StorageName map.
-  typedef std::map<std::string, std::string> HandleMap;
+  // StorageHandleInfo is a pair of StorageName and Mode.
+  typedef std::pair<std::string, std::string> StorageHandleInfo;
+
+  // Handle to StorageHandleInfo map.
+  typedef std::map<std::string, StorageHandleInfo> HandleMap;
 
   // Returns the StorageName for a handle, or an empty string on failure.
   std::string LookupHandle(const std::string& handle);
+
+  // Returns true if the storage is opened with write access.
+  bool IsOpenedWithWrite(const std::string& handle);
 
   HandleMap handle_map_;
 

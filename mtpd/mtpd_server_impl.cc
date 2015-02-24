@@ -57,8 +57,7 @@ std::vector<uint8_t> MtpdServer::GetStorageInfo(const std::string& storageName,
 std::string MtpdServer::OpenStorage(const std::string& storageName,
                                     const std::string& mode,
                                     DBus::Error& error) {
-  // TODO(thestig) Handle read-write and possibly append-only modes.
-  if (mode != kReadOnlyMode) {
+  if (!(mode == kReadOnlyMode || mode == kReadWriteMode)) {
     std::string error_msg = "Cannot open " + storageName + " in mode: " + mode;
     error.set(kMtpdServiceError, error_msg.c_str());
     return std::string();
@@ -77,7 +76,7 @@ std::string MtpdServer::OpenStorage(const std::string& storageName,
     id = base::HexEncode(random_data, sizeof(random_data));
   } while (ContainsKey(handle_map_, id));
 
-  handle_map_.insert(std::make_pair(id, storageName));
+  handle_map_.insert(std::make_pair(id, std::make_pair(storageName, mode)));
   return id;
 }
 
@@ -156,7 +155,7 @@ void MtpdServer::CopyFileFromLocal(const std::string& handle,
                                    const std::string& fileName,
                                    DBus::Error& error) {
   const std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty())
+  if (storage_name.empty() || !IsOpenedWithWrite(handle))
     return InvalidHandle<void>(handle, &error);
 
   if (!device_manager_.CopyFileFromLocal(storage_name,
@@ -164,6 +163,18 @@ void MtpdServer::CopyFileFromLocal(const std::string& handle,
                                          parentId,
                                          fileName)) {
     error.set(kMtpdServiceError, "CopyFileFromLocal failed");
+  }
+}
+
+void MtpdServer::DeleteObject(const std::string& handle,
+                              const uint32_t& objectId,
+                              DBus::Error& error) {
+  const std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty() || !IsOpenedWithWrite(handle))
+    return InvalidHandle<void>(handle, &error);
+
+  if (!device_manager_.DeleteObject(storage_name, objectId)) {
+    error.set(kMtpdServiceError, "DeleteObject failed");
   }
 }
 
@@ -191,7 +202,13 @@ void MtpdServer::ProcessDeviceEvents() {
 
 std::string MtpdServer::LookupHandle(const std::string& handle) {
   HandleMap::const_iterator it = handle_map_.find(handle);
-  return (it == handle_map_.end()) ? std::string() : it->second;
+  return (it == handle_map_.end()) ? std::string() : it->second.first;
+}
+
+bool MtpdServer::IsOpenedWithWrite(const std::string& handle) {
+  HandleMap::const_iterator it = handle_map_.find(handle);
+  return (it == handle_map_.end()) ? false
+                                   : it->second.second == kReadWriteMode;
 }
 
 }  // namespace mtpd

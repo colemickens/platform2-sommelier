@@ -103,6 +103,11 @@ class DeviceManager {
                          const uint32_t parent_id,
                          const std::string& file_name);
 
+  // Delete |object_id|. For deleting a directory, the directory should be
+  // empty. On success, this method returns true.
+  bool DeleteObject(const std::string& storage_name,
+                    const uint32_t object_id);
+
  protected:
   // Used in testing to add dummy storages.
   // Returns whether the test storage has been successfully added.
