@@ -34,11 +34,12 @@ ContainerSpec - Structured data containing all the info needed to contain a
 
   struct ContainerSpec {
     String ServiceBundlePath;
-    Int DesiredUser;
-    Int DesiredGroup;
+    Int DesiredUserID;
+    Int DesiredGroupID;
 
     List<Int> ListeningPorts;
-    List<DeviceFilter> DeviceFilters;
+    List<DeviceNodeFilter> DeviceNodeFilters;
+    List<DevicePathFilter> DevicePathFilters;
     List<SysfsPathFilter> SysfsPathFilters;
     List<UsbDeviceFilter> UsbDeviceFilters;
   };
@@ -50,7 +51,8 @@ ContainerSpec - Structured data containing all the info needed to contain a
 
  Optional fields:
   ListeningPorts: List of network ports on which the service can listen.
-  DeviceFilters: Filters indicating which device nodes should be visible.
+  DeviceNodeFilters: Filters indicating which device nodes should be visible.
+  DevicePathFilters: Filters indicating which device paths should be visible.
   SysfsPathFilters: Filters indicating which sysfs paths should be visible.
   UsbDeviceFilters; Filters indicating which USB devices should be visible.
 
@@ -58,14 +60,12 @@ ContainerSpec - Structured data containing all the info needed to contain a
 Filter types - Several kinds of filters used to control access to pieces of
                hardware at runtime.
 
-  struct DeviceFilter {};
-
-  struct DeviceNodeFilter : DeviceFilter {
+  struct DeviceNodeFilter {
     Int major;		May be a wildcard
     Int minor;		May be a wildcard
   };
 
-  struct DevicePathFilter : DeviceFilter {
+  struct DevicePathFilter {
     String filter;	May contain globs (language TBD)
   };
 

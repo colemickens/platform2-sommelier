@@ -3,13 +3,23 @@
     'defines': [
       '__STDC_FORMAT_MACROS',
     ],
+    'variables': {
+      'deps': [
+        'libchrome-<(libbase_ver)',
+      ],
+    },
   },
   'targets': [
     {
       'target_name': 'libsoma',
       'type': 'static_library',
       'sources': [
+        'container_spec.cc',
+        'device_filter.cc',
+        'spec_reader.cc',
+        'sysfs_filter.cc',
         'soma.cc',
+        'usb_device_filter.cc',
       ],
     },
   ],
@@ -23,7 +33,9 @@
           'defines': ['UNIT_TEST'],
           'dependencies': ['libsoma'],
           'sources': [
+            'container_spec_unittest.cc',
             'soma_testrunner.cc',
+            'spec_reader_unittest.cc',
           ],
         },
       ],
