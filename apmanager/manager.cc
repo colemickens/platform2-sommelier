@@ -41,11 +41,8 @@ void Manager::RegisterAsync(ExportedObjectManager* object_manager,
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
   bus_ = bus;
 
-  // Initialize shill proxy.
   shill_proxy_.Init(bus);
-
-  // Start firewall manager.
-  firewall_manager_.Start(bus);
+  firewall_manager_.Init(bus);
 }
 
 void Manager::Start() {
@@ -129,6 +126,14 @@ void Manager::ClaimInterface(const string& interface_name) {
 
 void Manager::ReleaseInterface(const string& interface_name) {
   shill_proxy_.ReleaseInterface(interface_name);
+}
+
+void Manager::RequestDHCPPortAccess(const string& interface) {
+  firewall_manager_.RequestDHCPPortAccess(interface);
+}
+
+void Manager::ReleaseDHCPPortAccess(const string& interface) {
+  firewall_manager_.ReleaseDHCPPortAccess(interface);
 }
 
 void Manager::OnServiceRegistered(

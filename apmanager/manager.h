@@ -61,6 +61,10 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   // Release the given interface |interface_name| to shill.
   virtual void ReleaseInterface(const std::string& interface_name);
 
+  // Request/release access to DHCP port for the specified interface.
+  virtual void RequestDHCPPortAccess(const std::string& interface);
+  virtual void ReleaseDHCPPortAccess(const std::string& interface);
+
  private:
   friend class ManagerTest;
 

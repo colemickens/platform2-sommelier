@@ -30,7 +30,7 @@ FirewallManager::~FirewallManager() {
   }
 }
 
-void FirewallManager::Start(const scoped_refptr<dbus::Bus>& bus) {
+void FirewallManager::Init(const scoped_refptr<dbus::Bus>& bus) {
   CHECK(!permission_broker_proxy_) << "Already started";
 
   if (!SetupLifelinePipe()) {
@@ -59,6 +59,29 @@ void FirewallManager::Start(const scoped_refptr<dbus::Bus>& bus) {
                  base::Unretained(this)));
 }
 
+void FirewallManager::RequestDHCPPortAccess(const std::string& interface) {
+  CHECK(permission_broker_proxy_) << "Proxy not initialized yet";
+  if (dhcp_access_interfaces_.find(interface) !=
+      dhcp_access_interfaces_.end()) {
+    LOG(ERROR) << "DHCP access already requested for interface: " << interface;
+    return;
+  }
+  RequestUdpPortAccess(interface, kDhcpServerPort);
+  dhcp_access_interfaces_.insert(interface);
+}
+
+void FirewallManager::ReleaseDHCPPortAccess(const std::string& interface) {
+  CHECK(permission_broker_proxy_) << "Proxy not initialized yet";
+  if (dhcp_access_interfaces_.find(interface) ==
+      dhcp_access_interfaces_.end()) {
+    LOG(ERROR) << "DHCP access has not been requested for interface: "
+               << interface;
+    return;
+  }
+  ReleaseUdpPortAccess(interface, kDhcpServerPort);
+  dhcp_access_interfaces_.erase(interface);
+}
+
 bool FirewallManager::SetupLifelinePipe() {
   if (lifeline_read_fd_ != kInvalidFd) {
     LOG(ERROR) << "Lifeline pipe already created";
@@ -83,7 +106,7 @@ void FirewallManager::OnServiceAvailable(bool service_available) {
   if (!service_available) {
     return;
   }
-  AddFirewallRules();
+  RequestAllPortsAccess();
 }
 
 void FirewallManager::OnServiceNameChanged(const string& old_owner,
@@ -94,14 +117,18 @@ void FirewallManager::OnServiceNameChanged(const string& old_owner,
   if (new_owner.empty()) {
     return;
   }
-  AddFirewallRules();
+  RequestAllPortsAccess();
 }
 
-void FirewallManager::AddFirewallRules() {
-  AddUdpPortRule(kDhcpServerPort);
+void FirewallManager::RequestAllPortsAccess() {
+  // Request access to DHCP port for all specified interfaces.
+  for (const auto& dhcp_interface : dhcp_access_interfaces_) {
+    RequestUdpPortAccess(dhcp_interface, kDhcpServerPort);
+  }
 }
 
-void FirewallManager::AddUdpPortRule(uint16_t port) {
+void FirewallManager::RequestUdpPortAccess(const string& interface,
+                                           uint16_t port) {
   bool allowed = false;
   // Pass the read end of the pipe to permission_broker, for it to monitor this
   // process.
@@ -109,18 +136,42 @@ void FirewallManager::AddUdpPortRule(uint16_t port) {
   fd.CheckValidity();
   chromeos::ErrorPtr error;
   if (!permission_broker_proxy_->RequestUdpPortAccess(port,
-                                                      "", /* interface */
+                                                      interface,
                                                       fd,
                                                       &allowed,
                                                       &error)) {
-    LOG(ERROR) << "Failed request UDP port access: "
+    LOG(ERROR) << "Failed to request UDP port access: "
                << error->GetCode() << " " << error->GetMessage();
     return;
   }
   if (!allowed) {
-    LOG(ERROR) << "Access request for UDP port " << port << " is denied";
+    LOG(ERROR) << "Access request for UDP port " << port
+               << " on interface " << interface << " is denied";
+    return;
   }
-  LOG(INFO) << "Added UDP port " << port;
+  LOG(INFO) << "Access granted for UDP port " << port
+            << " on interface " << interface;;
+}
+
+void FirewallManager::ReleaseUdpPortAccess(const string& interface,
+                                           uint16_t port) {
+  chromeos::ErrorPtr error;
+  bool success;
+  if (!permission_broker_proxy_->ReleaseUdpPort(port,
+                                                interface,
+                                                &success,
+                                                &error)) {
+    LOG(ERROR) << "Failed to release UDP port access: "
+               << error->GetCode() << " " << error->GetMessage();
+    return;
+  }
+  if (!success) {
+    LOG(ERROR) << "Release request for UDP port " << port
+               << " on interface " << interface << " is denied";
+    return;
+  }
+  LOG(INFO) << "Access released for UDP port " << port
+            << " on interface " << interface;
 }
 
 }  // namespace apmanager

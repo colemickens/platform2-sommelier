@@ -27,6 +27,8 @@ class MockManager : public Manager {
                scoped_refptr<Device>(const std::string& interface_name));
   MOCK_METHOD1(ClaimInterface, void(const std::string& interface_name));
   MOCK_METHOD1(ReleaseInterface, void(const std::string& interface_name));
+  MOCK_METHOD1(RequestDHCPPortAccess, void(const std::string& interface));
+  MOCK_METHOD1(ReleaseDHCPPortAccess, void(const std::string& interface));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockManager);

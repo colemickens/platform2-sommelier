@@ -137,6 +137,7 @@ bool Service::Start(chromeos::ErrorPtr* error) {
       ReleaseResources();
       return false;
     }
+    manager_->RequestDHCPPortAccess(config_->selected_interface());
   }
 
   // Start monitoring hostapd.
@@ -196,6 +197,7 @@ void Service::ReleaseResources() {
   StopHostapdProcess();
   dhcp_server_.reset();
   config_->ReleaseDevice();
+  manager_->ReleaseDHCPPortAccess(config_->selected_interface());
 }
 
 void Service::HostapdEventCallback(HostapdMonitor::Event event,

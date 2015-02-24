@@ -40,11 +40,11 @@ namespace apmanager {
 class ServiceTest : public testing::Test {
  public:
   ServiceTest()
-      : service_(&manager_, kServiceIdentifier),
-        dhcp_server_factory_(MockDHCPServerFactory::GetInstance()),
+      : dhcp_server_factory_(MockDHCPServerFactory::GetInstance()),
         file_writer_(MockFileWriter::GetInstance()),
         process_factory_(MockProcessFactory::GetInstance()),
-        hostapd_monitor_(new MockHostapdMonitor()) {}
+        hostapd_monitor_(new MockHostapdMonitor()),
+        service_(&manager_, kServiceIdentifier) {}
 
   virtual void SetUp() {
     service_.dhcp_server_factory_ = dhcp_server_factory_;
@@ -66,12 +66,12 @@ class ServiceTest : public testing::Test {
   }
 
  protected:
-  Service service_;
   MockManager manager_;
   MockDHCPServerFactory* dhcp_server_factory_;
   MockFileWriter* file_writer_;
   MockProcessFactory* process_factory_;
   MockHostapdMonitor* hostapd_monitor_;
+  Service service_;
 };
 
 MATCHER_P(IsServiceErrorStartingWith, message, "") {
@@ -121,6 +121,7 @@ TEST_F(ServiceTest, StartSuccess) {
   EXPECT_CALL(*dhcp_server_factory_, CreateDHCPServer(_, _))
       .WillOnce(Return(dhcp_server));
   EXPECT_CALL(*dhcp_server, Start()).WillOnce(Return(true));
+  EXPECT_CALL(manager_, RequestDHCPPortAccess(_));
   EXPECT_CALL(*hostapd_monitor_, Start());
   EXPECT_TRUE(service_.Start(&error));
   EXPECT_EQ(nullptr, error);
