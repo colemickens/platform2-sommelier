@@ -82,7 +82,7 @@ class HmacAuthorizationDelegateFixture : public testing::Test {
   HmacAuthorizationDelegateFixture() {}
   ~HmacAuthorizationDelegateFixture() override {}
 
-  void SetUp() {
+  void SetUp() override {
     session_handle_ = HMAC_SESSION_FIRST;
     session_nonce_.size = kAesKeySize;
     memset(session_nonce_.buffer, 0, kAesKeySize);

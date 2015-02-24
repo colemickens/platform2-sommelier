@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/sha1.h>
 #include <base/stl_util.h>
 #include <crypto/secure_hash.h>
 #include <crypto/sha2.h>
@@ -44,21 +45,16 @@ std::string NameFromHandle(trunks::TPM_HANDLE handle) {
   return name;
 }
 
-// Returns the digest size (in bytes) of the given TPM hash algorithm.
-// Returns -1 when the algorithm is not recognized.
-size_t GetDigestSize(trunks::TPM_ALG_ID hash_alg) {
+std::string HashString(const std::string& plaintext,
+                       trunks::TPM_ALG_ID hash_alg) {
   switch (hash_alg) {
     case trunks::TPM_ALG_SHA1:
-      return SHA1_DIGEST_SIZE;
+      return base::SHA1HashString(plaintext);
     case trunks::TPM_ALG_SHA256:
-      return SHA256_DIGEST_SIZE;
-    case trunks::TPM_ALG_SHA384:
-      return SHA384_DIGEST_SIZE;
-    case trunks::TPM_ALG_SHA512:
-      return SHA512_DIGEST_SIZE;
+      return crypto::SHA256HashString(plaintext);
   }
   NOTREACHED();
-  return -1;
+  return std::string();
 }
 
 }  // namespace
@@ -476,16 +472,12 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
                             TPM_ALG_ID scheme,
                             TPM_ALG_ID hash_alg,
                             const std::string& password,
-                            const std::string& digest,
+                            const std::string& plaintext,
                             AuthorizationSession* session,
                             std::string* signature) {
   TPMT_SIG_SCHEME in_scheme;
   if (hash_alg == TPM_ALG_NULL) {
     hash_alg = TPM_ALG_SHA256;
-  }
-  size_t hash_size = GetDigestSize(hash_alg);
-  if (digest.size() != hash_size) {
-    return SAPI_RC_BAD_PARAMETER;
   }
   if (scheme == TPM_ALG_RSAPSS) {
     in_scheme.scheme = TPM_ALG_RSAPSS;
@@ -497,7 +489,6 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
     LOG(ERROR) << "Invalid Signing scheme used.";
     return SAPI_RC_BAD_PARAMETER;
   }
-
   TPM2B_PUBLIC public_area;
   TPM_RC return_code = GetKeyPublicArea(key_handle, &public_area);
   if (return_code) {
@@ -520,6 +511,7 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
     LOG(ERROR) << "Error finding key name for: " << key_handle;
     return return_code;
   }
+  std::string digest = HashString(plaintext, hash_alg);
   TPM2B_DIGEST tpm_digest = Make_TPM2B_DIGEST(digest);
   TPMT_SIGNATURE signature_out;
   TPMT_TK_HASHCHECK validation;
@@ -564,7 +556,7 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
 TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
                               TPM_ALG_ID scheme,
                               TPM_ALG_ID hash_alg,
-                              const std::string& digest,
+                              const std::string& plaintext,
                               const std::string& signature) {
   TPM2B_PUBLIC public_area;
   TPM_RC return_code = GetKeyPublicArea(key_handle, &public_area);
@@ -584,10 +576,6 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
   if (hash_alg == TPM_ALG_NULL) {
     hash_alg = TPM_ALG_SHA256;
   }
-  size_t hash_size = GetDigestSize(hash_alg);
-  if (digest.size() != hash_size) {
-    return SAPI_RC_BAD_PARAMETER;
-  }
 
   TPMT_SIGNATURE signature_in;
   if (scheme == TPM_ALG_RSAPSS) {
@@ -604,6 +592,7 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
   }
   std::string key_name;
   TPMT_TK_VERIFIED verified;
+  std::string digest = HashString(plaintext, hash_alg);
   TPM2B_DIGEST tpm_digest = Make_TPM2B_DIGEST(digest);
   return_code = factory_.GetTpm()->VerifySignatureSync(key_handle,
                                                        key_name,

@@ -99,7 +99,7 @@ class CHROMEOS_EXPORT TpmUtility {
                                    std::string* plaintext) = 0;
 
   // This method takes an unrestricted signing key referenced by |key_handle|
-  // and uses it to sign the value of |digest|. The signature produced is
+  // and uses it to sign the hash of |plaintext|. The signature produced is
   // returned using the |signature| argument. We use the |password| argument
   // to authorize use of the key. |scheme| is used to specify the signature
   // scheme used. By default it is TPM_ALG_RSASSA, but TPM_ALG_RSAPPS can
@@ -112,20 +112,20 @@ class CHROMEOS_EXPORT TpmUtility {
                       TPM_ALG_ID scheme,
                       TPM_ALG_ID hash_alg,
                       const std::string& password,
-                      const std::string& digest,
+                      const std::string& plaintext,
                       AuthorizationSession* session,
                       std::string* signature) = 0;
 
-  // This method verifies that the signature produced on the digest was
+  // This method verifies that the signature produced on the plaintext was
   // performed by |key_handle|. |scheme| and |hash| refer to the signature
-  // scheme used to sign |digest| and produce the signature. This value is by
-  // default TPM_ALG_RSASSA with TPM_ALG_SHA256 but can take the value of
-  // TPM_ALG_RSAPPS with other hash algorithms supported by the tpm.
-  // Returns TPM_RC_SUCCESS when the signature is correct.
+  // scheme used to sign the hash of |plaintext| and produce the signature.
+  // This value is by default TPM_ALG_RSASSA with TPM_ALG_SHA256 but can take
+  // the value of TPM_ALG_RSAPPS with other hash algorithms supported by the
+  // tpm. Returns TPM_RC_SUCCESS when the signature is correct.
   virtual TPM_RC Verify(TPM_HANDLE key_handle,
                         TPM_ALG_ID scheme,
                         TPM_ALG_ID hash_alg,
-                        const std::string& digest,
+                        const std::string& plaintext,
                         const std::string& signature) = 0;
 
   // This method is used to change the authorization value associated with a

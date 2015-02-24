@@ -26,14 +26,6 @@ using testing::SetArgPointee;
 
 namespace trunks {
 
-namespace {
-
-const trunks::TPMA_OBJECT kRestricted = 1U << 16;
-const trunks::TPMA_OBJECT kDecrypt = 1U << 17;
-const trunks::TPMA_OBJECT kSign = 1U << 18;
-
-}  // namespace
-
 // A test fixture for TpmUtility tests.
 class TpmUtilityTest : public testing::Test {
  public:
@@ -854,13 +846,13 @@ TEST_F(TpmUtilityTest, SignSchemeForward) {
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, utility.Sign(key_handle,
                                          TPM_ALG_RSAPSS,
-                                         TPM_ALG_SHA512,
+                                         TPM_ALG_SHA1,
                                          password,
                                          digest,
                                          NULL,
                                          &signature));
   EXPECT_EQ(scheme.scheme, TPM_ALG_RSAPSS);
-  EXPECT_EQ(scheme.details.rsapss.hash_alg, TPM_ALG_SHA512);
+  EXPECT_EQ(scheme.details.rsapss.hash_alg, TPM_ALG_SHA1);
 }
 
 TEST_F(TpmUtilityTest, VerifySuccess) {
@@ -1034,11 +1026,11 @@ TEST_F(TpmUtilityTest, VerifySchemeForward) {
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, utility.Verify(key_handle,
                                            TPM_ALG_RSAPSS,
-                                           TPM_ALG_SHA512,
+                                           TPM_ALG_SHA1,
                                            digest,
                                            signature));
   EXPECT_EQ(signature_in.sig_alg, TPM_ALG_RSAPSS);
-  EXPECT_EQ(signature_in.signature.rsassa.hash, TPM_ALG_SHA512);
+  EXPECT_EQ(signature_in.signature.rsassa.hash, TPM_ALG_SHA1);
 }
 
 TEST_F(TpmUtilityTest, ChangeAuthDataSuccess) {

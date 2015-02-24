@@ -56,7 +56,7 @@ class CHROMEOS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
   bool GetCommandAuthorization(const std::string& command_hash,
                                bool is_command_parameter_encryption_possible,
                                bool is_response_parameter_encryption_possible,
-                               std::string* authorization);
+                               std::string* authorization) override;
   bool CheckResponseAuthorization(const std::string& response_hash,
                                   const std::string& authorization) override;
   bool EncryptCommandParameter(std::string* parameter) override;

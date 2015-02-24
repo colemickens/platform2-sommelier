@@ -55,13 +55,13 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
               TPM_ALG_ID scheme,
               TPM_ALG_ID hash_alg,
               const std::string& password,
-              const std::string& digest,
+              const std::string& plaintext,
               AuthorizationSession* session,
               std::string* signature) override;
   TPM_RC Verify(TPM_HANDLE key_handle,
                 TPM_ALG_ID scheme,
                 TPM_ALG_ID hash_alg,
-                const std::string& digest,
+                const std::string& plaintext,
                 const std::string& signature) override;
   TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,
                                     const std::string& old_password,
