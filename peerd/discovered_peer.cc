@@ -56,7 +56,7 @@ void DiscoveredPeer::UpdateService(const std::string& service_id,
       LOG(WARNING) << "Discarding stale service update.";
       return;
     }
-    if (!service_it->second->Update(nullptr, addresses, info)) {
+    if (!service_it->second->Update(nullptr, addresses, info, {})) {
       LOG(WARNING) << "Discarding invalid service update.";
       return;
     }

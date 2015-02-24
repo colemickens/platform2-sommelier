@@ -75,17 +75,20 @@ class Service : public org::chromium::peerd::ServiceInterface {
   // entire update is discarded.  Returns true if update is applied.
   bool Update(chromeos::ErrorPtr* error,
               const IpAddresses& addresses,
-              const ServiceInfo& info);
+              const ServiceInfo& info,
+              const std::map<std::string, chromeos::Any>& options);
 
  private:
   // Parses options for services being published by this device.
   bool ParseOptions(chromeos::ErrorPtr* error,
-                    const std::map<std::string, chromeos::Any>& options);
+                    const std::map<std::string, chromeos::Any>& options,
+                    MDnsOptions* mdns_options_out);
   // Checks that |maybe_mdns_options| is a map<string, Any> and then removes
   // values from that dictionary.  Stores the appropriate parsed values into
   // |mdns_options_|.
   bool ExtractMDnsOptions(chromeos::ErrorPtr* error,
-                          chromeos::Any* maybe_mdns_options);
+                          chromeos::Any* maybe_mdns_options,
+                          MDnsOptions* mdns_options_out);
 
 
   org::chromium::peerd::ServiceAdaptor dbus_adaptor_{this};

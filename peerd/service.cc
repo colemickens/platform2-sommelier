@@ -61,11 +61,8 @@ bool Service::RegisterAsync(chromeos::ErrorPtr* error,
                             const map<string, Any>& options,
                             const CompletionAction& completion_callback) {
   if (!IsValidServiceId(error, service_id)) { return false; }
-  if (!IsValidServiceInfo(error, service_info)) { return false; }
-  if (!ParseOptions(error, options)) { return false; }
+  if (!Update(error, addresses, service_info, options)) { return false;}
   dbus_adaptor_.SetServiceId(service_id);
-  dbus_adaptor_.SetIpInfos(addresses);
-  dbus_adaptor_.SetServiceInfo(service_info);
   dbus_adaptor_.RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(completion_callback);
   return true;
@@ -88,12 +85,14 @@ const Service::MDnsOptions& Service::GetMDnsOptions() const {
 
 bool Service::Update(chromeos::ErrorPtr* error,
                      const IpAddresses& addresses,
-                     const ServiceInfo& info) {
-  if (!IsValidServiceInfo(error, info)) {
-    return false;
-  }
+                     const ServiceInfo& info,
+                     const map<string, Any>& options) {
+  MDnsOptions mdns_options;
+  if (!IsValidServiceInfo(error, info)) { return false; }
+  if (!ParseOptions(error, options, &mdns_options)) { return false; }
   dbus_adaptor_.SetIpInfos(addresses);
   dbus_adaptor_.SetServiceInfo(info);
+  parsed_mdns_options_ = mdns_options;
   return true;
 }
 
@@ -168,11 +167,14 @@ bool Service::IsValidServiceInfo(chromeos::ErrorPtr* error,
 }
 
 bool Service::ParseOptions(chromeos::ErrorPtr* error,
-                           const map<string, Any>& orig_options) {
+                           const map<string, Any>& orig_options,
+                           MDnsOptions* mdns_options_out) {
   map<string, Any> options{orig_options};
   auto mdns_it = options.find(kMDNSSectionName);
   if (mdns_it != options.end()) {
-    if (!ExtractMDnsOptions(error, &mdns_it->second)) { return false; }
+    if (!ExtractMDnsOptions(error, &mdns_it->second, mdns_options_out)) {
+      return false;
+    }
     options.erase(mdns_it);
   }
   if (!options.empty()) {
@@ -187,7 +189,8 @@ bool Service::ParseOptions(chromeos::ErrorPtr* error,
 }
 
 bool Service::ExtractMDnsOptions(chromeos::ErrorPtr* error,
-                                 Any* maybe_mdns_options) {
+                                 Any* maybe_mdns_options,
+                                 MDnsOptions* mdns_options_out) {
   map<string, Any>* mdns_options =
       maybe_mdns_options->GetPtr<map<string, Any>>();
   if (mdns_options == nullptr) {
@@ -211,7 +214,7 @@ bool Service::ExtractMDnsOptions(chromeos::ErrorPtr* error,
                    "Invalid entry for mDNS port.");
       return false;
     }
-    parsed_mdns_options_.port = static_cast<uint16_t>(port);
+    mdns_options_out->port = static_cast<uint16_t>(port);
     mdns_options->erase(port_it);
   }
   if (!mdns_options->empty()) {

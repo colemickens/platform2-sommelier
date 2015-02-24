@@ -42,8 +42,25 @@ class PublishedPeer : public Peer {
   virtual void RegisterServicePublisher(
       base::WeakPtr<ServicePublisherInterface> publisher);
 
+  // Updates an existing service by setting |service_info| and |options| to
+  // these new values.
+  virtual bool UpdateService(
+      chromeos::ErrorPtr* error,
+      const std::string& service_id,
+      const std::map<std::string, std::string>& service_info,
+      const std::map<std::string, chromeos::Any>& options);
+
  private:
+  // Removes invalid publishers.
+  void CleanPublishers();
+  // Notify all the publishers we know about that we have a new or updated
+  // service.
+  bool PublishService(chromeos::ErrorPtr* error, const Service& service);
+
   std::vector<base::WeakPtr<ServicePublisherInterface>> publishers_;
+
+  FRIEND_TEST(PublishedPeerTest, ShouldRejectInvalidUpdates);
+  FRIEND_TEST(PublishedPeerTest, ShouldAcceptValidUpdates);
   DISALLOW_COPY_AND_ASSIGN(PublishedPeer);
 };
 

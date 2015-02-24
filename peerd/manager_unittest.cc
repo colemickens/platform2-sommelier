@@ -91,8 +91,8 @@ class ManagerTest : public testing::Test {
 TEST_F(ManagerTest, ShouldRejectSerbusServiceId) {
   chromeos::ErrorPtr error;
   dbus::MethodCall method_call{"org.chromium.peerd.Manager", "ExposeService"};
-  EXPECT_FALSE(manager_->ExposeService(&error, &method_call, kSerbusServiceId,
-                                       {}, {}));
+  EXPECT_FALSE(manager_->ExposeService(
+      &error, &method_call, kSerbusServiceId, {}, {}));
   EXPECT_NE(nullptr, error.get());
 }
 

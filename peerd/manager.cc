@@ -115,7 +115,7 @@ bool Manager::StartMonitoring(
     const vector<string>& requested_technologies,
     const map<string, Any>& options,
     std::string* monitoring_token) {
-  if (requested_technologies.empty())  {
+  if (requested_technologies.empty()) {
     Error::AddTo(error,
                  FROM_HERE,
                  kPeerdErrorDomain,
@@ -197,13 +197,15 @@ bool Manager::ExposeService(chromeos::ErrorPtr* error,
     return false;
   }
   auto it = exposed_services_.find(service_id);
-  // Regardless of whether |it| is valid, it will become invalid in this block.
   if (it != exposed_services_.end()) {
-    // TODO(wiley) We should be updating, but for now, remove and add again.
-    //             brbug.com/14 .
-    if (!RemoveExposedService(error, message, service_id)) {
+    if (it->second->connection_name() != message->GetSender()) {
+      Error::AddToPrintf(
+          error, FROM_HERE, kPeerdErrorDomain, errors::manager::kAlreadyExposed,
+          "Service %s was already exposed by another local process.",
+          service_id.c_str());
       return false;
     }
+    return self_->UpdateService(error, service_id, service_info, options);
   }
   if (!self_->AddPublishedService(error, service_id, service_info, options)) {
     return false;

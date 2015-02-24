@@ -16,9 +16,11 @@
 #include "peerd/service.h"
 #include "peerd/test_util.h"
 
+using chromeos::Any;
 using chromeos::ErrorPtr;
 using dbus::MockBus;
 using dbus::ObjectPath;
+using std::map;
 using std::string;
 using std::unique_ptr;
 using testing::AnyNumber;
@@ -98,6 +100,66 @@ TEST_F(PublishedPeerTest, ShouldPrunePublisherList) {
   EXPECT_TRUE(peer_.AddPublishedService(
         &error, "another-service", Service::ServiceInfo{}, {}));
   EXPECT_EQ(nullptr, error.get());
+}
+
+TEST_F(PublishedPeerTest, ShouldRejectInvalidUpdates) {
+  const uint16_t kPort{9080};
+  const string kServiceId{"some-service"};
+  const Service::ServiceInfo kServiceInfo{
+      {"Legume_Duprix", "West Virginia University"},
+  };
+  const map<string, Any> kOptions{
+      {"mdns", map<string, Any>{ {"port", kPort}, },
+      },
+  };
+  const Service::ServiceInfo kUpdatedServiceInfo{
+      {"Splendiferous Finch", "Northwestern University"},
+  };
+  const map<string, Any> kInvalidOptions{
+      {"mdns", kPort + 1},
+  };
+  ErrorPtr error;
+  EXPECT_TRUE(peer_.AddPublishedService(
+        &error, kServiceId, kServiceInfo, kOptions));
+  // Unknown service ID is an error.
+  EXPECT_FALSE(peer_.UpdateService(
+        nullptr, "other-service", kUpdatedServiceInfo, kOptions));
+  // If the update contains invalid updated values, that's also an error.
+  EXPECT_FALSE(peer_.UpdateService(
+        nullptr, kServiceId, kUpdatedServiceInfo, kInvalidOptions));
+  // Since we've have no valid updates, we should see that the service
+  // is the same as before.
+  Service* service = peer_.services_[kServiceId].get();
+  EXPECT_EQ(kServiceInfo, service->GetServiceInfo());
+  EXPECT_EQ(kPort, service->GetMDnsOptions().port);
+}
+
+TEST_F(PublishedPeerTest, ShouldAcceptValidUpdates) {
+  const uint16_t kPort{9080};
+  const uint16_t kUpdatedPort{9081};
+  const string kServiceId{"some-service"};
+  const Service::ServiceInfo kServiceInfo{
+      {"Legume_Duprix", "West Virginia University"},
+  };
+  const map<string, Any> kOptions{
+      {"mdns", map<string, Any>{ {"port", kPort}, },
+      },
+  };
+  const Service::ServiceInfo kUpdatedServiceInfo{
+      {"Splendiferous_Finch", "Northwestern University"},
+  };
+  const map<string, Any> kUpdatedOptions{
+      {"mdns", map<string, Any>{ {"port", kUpdatedPort}, },
+      },
+  };
+  ErrorPtr error;
+  EXPECT_TRUE(peer_.AddPublishedService(
+        &error, kServiceId, kServiceInfo, kOptions));
+  EXPECT_TRUE(peer_.UpdateService(
+        &error, kServiceId, kUpdatedServiceInfo, kUpdatedOptions));
+  Service* service = peer_.services_[kServiceId].get();
+  EXPECT_EQ(kUpdatedServiceInfo, service->GetServiceInfo());
+  EXPECT_EQ(kUpdatedPort, service->GetMDnsOptions().port);
 }
 
 }  // namespace peerd
