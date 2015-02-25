@@ -13,6 +13,7 @@
       'type': 'static_library',
       'sources': [
         'daemon.cc',
+        'launcher.cc',
       ],
     },
     {
