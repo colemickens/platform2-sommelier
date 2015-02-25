@@ -54,6 +54,7 @@ class SupplicantInterfaceProxy
   void SetScanInterval(int seconds) override;
   void SetDisableHighBitrates(bool disable_high_bitrates) override;
   void SetSchedScan(bool enable) override;
+  void SetScan(bool enable) override;
   void TDLSDiscover(const std::string &peer) override;
   void TDLSSetup(const std::string &peer) override;
   std::string TDLSStatus(const std::string &peer) override;

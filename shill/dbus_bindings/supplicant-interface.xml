@@ -84,6 +84,7 @@
     <property name="ScanInterval" type="i" access="readwrite"/>
     <property name="DisableHighBitrates" type="b" access="readwrite"/>
     <property name="SchedScan" type="b" access="readwrite"/>
+    <property name="Scan" type="b" access="readwrite"/>
     <signal name="ScanDone">
       <arg name="success" type="b"/>
     </signal>

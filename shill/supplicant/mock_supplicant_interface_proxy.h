@@ -44,6 +44,7 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MOCK_METHOD1(SetScanInterval, void(int32_t seconds));
   MOCK_METHOD1(SetDisableHighBitrates, void(bool disable_high_bitrates));
   MOCK_METHOD1(SetSchedScan, void(bool enable));
+  MOCK_METHOD1(SetScan, void(bool enable));
   MOCK_METHOD1(TDLSDiscover, void(const std::string &peer));
   MOCK_METHOD1(TDLSSetup, void(const std::string &peer));
   MOCK_METHOD1(TDLSStatus, std::string(const std::string &peer));
