@@ -16,6 +16,7 @@ namespace webservd {
 
 namespace {
 
+const char kLogDirectoryKey[] = "log_directory";
 const char kProtocolHandlersKey[] = "protocol_handlers";
 const char kPortKey[] = "port";
 const char kUseTLSKey[] = "use_tls";
@@ -114,6 +115,9 @@ bool LoadConfigFromString(const std::string& config_json,
                            "JSON object is expected.");
     return false;
   }
+
+  // "log_directory" is optional, so ignoring the return value here.
+  dict_value->GetString(kLogDirectoryKey, &config->log_directory);
 
   const base::DictionaryValue* protocol_handlers = nullptr;  // Owned by |value|
   if (dict_value->GetDictionary(kProtocolHandlersKey, &protocol_handlers)) {

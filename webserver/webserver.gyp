@@ -94,6 +94,7 @@
         'webservd/dbus_protocol_handler.cc',
         'webservd/dbus_request_handler.cc',
         'webservd/error_codes.cc',
+        'webservd/log_manager.cc',
         'webservd/protocol_handler.cc',
         'webservd/request.cc',
         'webservd/server.cc',
@@ -170,6 +171,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'webservd/config_unittest.cc',
+            'webservd/log_manager_unittest.cc',
             'webservd/webservd_testrunner.cc',
           ],
         },

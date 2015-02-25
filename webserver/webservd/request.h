@@ -53,6 +53,7 @@ class Request final {
   Request(const std::string& request_handler_id,
           const std::string& url,
           const std::string& method,
+          const std::string& version,
           MHD_Connection* connection,
           ProtocolHandler* protocol_handler);
   ~Request();
@@ -146,6 +147,7 @@ class Request final {
   std::string request_handler_id_;
   std::string url_;
   std::string method_;
+  std::string version_;
   MHD_Connection* connection_{nullptr};
   MHD_PostProcessor* post_processor_{nullptr};
   std::vector<uint8_t> raw_data_;

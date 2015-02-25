@@ -12,6 +12,7 @@
 #include <chromeos/http/http_utils.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/strings/string_utils.h>
+#include "webserver/webservd/log_manager.h"
 #include "webserver/webservd/protocol_handler.h"
 #include "webserver/webservd/request_handler_interface.h"
 
@@ -71,12 +72,14 @@ Request::Request(
     const std::string& request_handler_id,
     const std::string& url,
     const std::string& method,
+    const std::string& version,
     MHD_Connection* connection,
     ProtocolHandler* protocol_handler)
     : id_{base::GenerateGUID()},
       request_handler_id_{request_handler_id},
       url_{url},
       method_{method},
+      version_{version},
       connection_{connection},
       protocol_handler_{protocol_handler} {
   post_processor_ = MHD_create_post_processor(
@@ -110,6 +113,12 @@ bool Request::Complete(
   }
   response_data_ = data;
   state_ = State::kResponseReceived;
+  const MHD_ConnectionInfo* info =
+      MHD_get_connection_info(connection_, MHD_CONNECTION_INFO_CLIENT_ADDRESS);
+
+  const sockaddr* client_addr = (info ? info->client_addr : nullptr);
+  LogManager::OnRequestCompleted(base::Time::Now(), client_addr, method_, url_,
+                                 version_, status_code, data.size());
   protocol_handler_->OnResponseDataReceived();
   return true;
 }

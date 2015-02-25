@@ -40,7 +40,7 @@ class ServerHelper {
     if (nullptr == *con_cls) {
       std::string request_handler_id = handler->FindRequestHandler(url, method);
       std::unique_ptr<Request> request{new Request{
-          request_handler_id, url, method, connection, handler
+          request_handler_id, url, method, version, connection, handler
       }};
       if (!request->BeginRequestData())
         return MHD_NO;

@@ -23,6 +23,7 @@ const char kTestConfig[] = R"({
     },
   },
   "dummy_data_to_ignore2": "ignore me",
+  "log_directory": "/var/log/mylogs",
 })";
 
 const char kInvalidConfig_NotDict[] = R"({
@@ -49,6 +50,7 @@ const char kInvalidConfig_InvalidPort[] = R"({
 
 void ValidateConfig(const webservd::Config& config) {
   EXPECT_FALSE(config.use_debug);
+  EXPECT_EQ("/var/log/mylogs", config.log_directory);
 
   ASSERT_EQ(1u, config.protocol_handlers.size());
 
@@ -69,6 +71,7 @@ TEST(Config, LoadDefault) {
   Config config;
   LoadDefaultConfig(&config);
   EXPECT_FALSE(config.use_debug);
+  EXPECT_EQ("/var/log/webservd", config.log_directory);
 
   ASSERT_EQ(2u, config.protocol_handlers.size());
 

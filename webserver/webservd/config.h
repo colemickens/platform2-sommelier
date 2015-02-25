@@ -50,6 +50,13 @@ struct Config final {
   // well as includes additional information in error responses delivered to
   // HTTP clients.
   bool use_debug{false};
+
+  // Output directory for web server's request log in Common Log Format
+  // (see http://www.w3.org/Daemon/User/Config/Logging.html).
+  // The files in this directory contain only the "official" request logs, not
+  // general logging messages from the webserver, which still go to the standard
+  // system log at /var/log/messages.
+  std::string log_directory{"/var/log/webservd"};
 };
 
 // Initializes the config with default preset settings (two handlers, one for

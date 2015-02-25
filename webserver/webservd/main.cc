@@ -15,6 +15,7 @@
 #include <chromeos/syslog_logging.h>
 
 #include "webserver/webservd/config.h"
+#include "webserver/webservd/log_manager.h"
 #include "webserver/webservd/server.h"
 #include "webserver/webservd/utils.h"
 
@@ -36,6 +37,7 @@ class Daemon : public chromeos::DBusServiceDaemon {
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
+    webservd::LogManager::Init(base::FilePath{config_.log_directory});
     server_.reset(new webservd::Server{object_manager_.get(), config_});
     server_->RegisterAsync(
         sequencer->GetHandler("Server.RegisterAsync() failed.", true));
