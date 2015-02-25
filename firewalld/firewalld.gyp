@@ -16,6 +16,20 @@
         'firewall_service.cc',
         'iptables.cc',
       ],
+      'actions': [
+        {
+          'action_name': 'generate-permission_broker-proxies',
+          'variables': {
+            'dbus_service_config': '<(platform2_root)/permission_broker/dbus_bindings/dbus-service-config.json',
+            'proxy_output_file': 'include/permission_broker/dbus-proxies.h',
+            'dbus_adaptors_out_dir': '',
+          },
+          'sources': [
+            '<(platform2_root)/permission_broker/dbus_bindings/org.chromium.PermissionBroker.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
+      ],
     },
     {
       'target_name': 'firewalld-dbus-adaptor',
@@ -34,7 +48,7 @@
       'type': 'executable',
       'dependencies': [
         'libfirewalld',
-        'firewalld-dbus-adaptor'
+        'firewalld-dbus-adaptor',
       ],
       'sources': ['main.cc'],
     },

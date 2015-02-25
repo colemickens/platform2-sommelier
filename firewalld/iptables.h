@@ -39,6 +39,9 @@ class IpTables : public org::chromium::FirewalldInterface {
   bool RemoveVpnSetup(const std::vector<std::string>& usernames,
                       const std::string& interface) override;
 
+  // Close all outstanding firewall holes.
+  void PlugAllHoles();
+
  protected:
   // Test-only.
   explicit IpTables(const std::string& ip4_path, const std::string& ip6_path);
@@ -54,8 +57,6 @@ class IpTables : public org::chromium::FirewalldInterface {
                 const std::string& interface,
                 std::set<Hole>* holes,
                 ProtocolEnum protocol);
-
-  void PlugAllHoles();
 
   bool AddAcceptRules(ProtocolEnum protocol,
                       uint16_t port,
