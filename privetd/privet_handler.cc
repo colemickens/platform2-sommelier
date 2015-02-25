@@ -16,6 +16,7 @@
 
 #include "privetd/cloud_delegate.h"
 #include "privetd/device_delegate.h"
+#include "privetd/identity_delegate.h"
 #include "privetd/security_delegate.h"
 #include "privetd/wifi_delegate.h"
 
@@ -277,8 +278,13 @@ void ReturnNotFound(const PrivetHandler::RequestCallback& callback) {
 PrivetHandler::PrivetHandler(CloudDelegate* cloud,
                              DeviceDelegate* device,
                              SecurityDelegate* security,
-                             WifiDelegate* wifi)
-    : cloud_(cloud), device_(device), security_(security), wifi_(wifi) {
+                             WifiDelegate* wifi,
+                             IdentityDelegate* identity)
+    : cloud_(cloud),
+      device_(device),
+      security_(security),
+      wifi_(wifi),
+      identity_(identity) {
   handlers_[kInfoApiPath] = std::make_pair(
       AuthScope::kGuest,
       base::Bind(&PrivetHandler::HandleInfo, base::Unretained(this)));
@@ -342,7 +348,7 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
                                const RequestCallback& callback) {
   base::DictionaryValue output;
   output.SetString(kInfoVersionKey, kInfoVersionValue);
-  output.SetString(kInfoIdKey, device_->GetId());
+  output.SetString(kInfoIdKey, identity_->GetId());
   output.SetString(kNameKey, device_->GetName());
 
   std::string description{device_->GetDescription()};

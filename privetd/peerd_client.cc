@@ -14,17 +14,21 @@
 #include "privetd/wifi_bootstrap_manager.h"
 #include "privetd/wifi_ssid_generator.h"
 
+using org::chromium::peerd::PeerProxy;
+
 namespace privetd {
 
 namespace {
+
 // Commit changes only if no update request happened during the timeout.
 // Usually updates happen in batches, so we don't want to flood network with
 // updates relevant for a short amount of time.
 const int kCommitTimeoutSeconds = 3;
 // The name of the service we'll expose via peerd.
 const char kPrivetServiceId[] = "privet";
+const char kSelfPath[] = "/org/chromium/peerd/Self";
 
-}
+}  // namespace
 
 PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus,
                          const DeviceDelegate* device,
@@ -39,10 +43,16 @@ PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus,
       base::Bind(&PeerdClient::OnPeerdOnline, weak_ptr_factory_.GetWeakPtr()));
   peerd_object_manager_proxy_.SetManagerRemovedCallback(
       base::Bind(&PeerdClient::OnPeerdOffline, weak_ptr_factory_.GetWeakPtr()));
+  peerd_object_manager_proxy_.SetPeerAddedCallback(
+      base::Bind(&PeerdClient::OnNewPeer, weak_ptr_factory_.GetWeakPtr()));
 }
 
 PeerdClient::~PeerdClient() {
   Stop();
+}
+
+std::string PeerdClient::GetId() const {
+  return device_id_;
 }
 
 void PeerdClient::Update() {
@@ -54,11 +64,34 @@ void PeerdClient::Update() {
       base::TimeDelta::FromSeconds(kCommitTimeoutSeconds));
 }
 
+void PeerdClient::OnNewPeer(PeerProxy* peer) {
+  if (!peer || peer->GetObjectPath().value() != kSelfPath)
+    return;
+  peer->SetPropertyChangedCallback(
+      base::Bind(&PeerdClient::OnPeerPropertyChanged,
+                 weak_ptr_factory_.GetWeakPtr()));
+  OnPeerPropertyChanged(peer, PeerProxy::UUIDName());
+}
+
+void PeerdClient::OnPeerPropertyChanged(
+    PeerProxy* peer,
+    const std::string& property_name) {
+  if (property_name != PeerProxy::UUIDName() ||
+      peer->GetObjectPath().value() != kSelfPath)
+    return;
+  const std::string new_id{peer->u_u_i_d()};
+  if (new_id != device_id_) {
+    device_id_ = new_id;
+    Update();
+  }
+}
+
 void PeerdClient::OnPeerdOnline(
     org::chromium::peerd::ManagerProxy* manager_proxy) {
   peerd_manager_proxy_ = manager_proxy;
   VLOG(1) << "Peerd manager is online at '"
           << manager_proxy->GetObjectPath().value() << "'.";
+
   if (device_->GetHttpEnpoint().first != 0)
     Start();
 }
@@ -81,7 +114,6 @@ void PeerdClient::Start() {
 
   DCHECK_NE(port, 0);
   DCHECK(!device_->GetName().empty());
-  DCHECK(!device_->GetId().empty());
   DCHECK_EQ(device_->GetClass().size(), 2U);
   DCHECK_EQ(device_->GetModelId().size(), 3U);
 
@@ -94,7 +126,7 @@ void PeerdClient::Start() {
       {"txtvers", "3"},
       {"ty", device_->GetName()},
       {"services", services},
-      {"id", device_->GetId()},
+      {"id", GetId()},
       {"class", device_->GetClass()},
       {"model_id", device_->GetModelId()},
       {"flags", WifiSsidGenerator{device_, cloud_, wifi_}.GenerateFlags()},

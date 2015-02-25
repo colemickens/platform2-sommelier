@@ -23,20 +23,10 @@ class DeviceDelegateImpl : public DeviceDelegate {
       : config_(config),
         state_store_(state_store),
         on_changed_(on_changed) {
-    if (GetId().empty()) {
-      // TODO(wiley) This should probably be consistent with the peerd UUID.
-      state_store_->SetString(state_key::kDeviceId, base::GenerateGUID());
-      state_store_->Save();
-    }
   }
   ~DeviceDelegateImpl() override {}
 
   // DeviceDelegate methods.
-  std::string GetId() const override {
-    std::string id;
-    state_store_->GetString(state_key::kDeviceId, &id);
-    return id;
-  }
   std::string GetName() const override {
     std::string name;
     state_store_->GetString(state_key::kDeviceName, &name);

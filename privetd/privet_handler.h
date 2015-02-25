@@ -22,6 +22,7 @@ namespace privetd {
 
 class CloudDelegate;
 class DeviceDelegate;
+class IdentityDelegate;
 class SecurityDelegate;
 class WifiDelegate;
 
@@ -41,7 +42,8 @@ class PrivetHandler {
   PrivetHandler(CloudDelegate* cloud,
                 DeviceDelegate* device,
                 SecurityDelegate* pairing,
-                WifiDelegate* wifi);
+                WifiDelegate* wifi,
+                IdentityDelegate* identity);
   ~PrivetHandler();
 
   // Handles HTTP/HTTPS Privet request.
@@ -84,6 +86,7 @@ class PrivetHandler {
   DeviceDelegate* device_ = nullptr;
   SecurityDelegate* security_ = nullptr;
   WifiDelegate* wifi_ = nullptr;
+  IdentityDelegate* identity_ = nullptr;
 
   std::map<std::string, std::pair<AuthScope, ApiHandler>> handlers_;
 

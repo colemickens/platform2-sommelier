@@ -14,6 +14,7 @@
 
 #include "privetd/cloud_delegate.h"
 #include "privetd/device_delegate.h"
+#include "privetd/identity_delegate.h"
 #include "privetd/security_delegate.h"
 #include "privetd/wifi_delegate.h"
 
@@ -27,7 +28,6 @@ class MockDeviceDelegate : public DeviceDelegate {
   using IntPair = std::pair<uint16_t, uint16_t>;
 
  public:
-  MOCK_CONST_METHOD0(GetId, std::string());
   MOCK_CONST_METHOD0(GetName, std::string());
   MOCK_CONST_METHOD0(GetDescription, std::string());
   MOCK_CONST_METHOD0(GetLocation, std::string());
@@ -44,7 +44,6 @@ class MockDeviceDelegate : public DeviceDelegate {
   MOCK_METHOD1(SetHttpsPort, void(uint16_t));
 
   MockDeviceDelegate() {
-    EXPECT_CALL(*this, GetId()).WillRepeatedly(Return("TestId"));
     EXPECT_CALL(*this, GetName()).WillRepeatedly(Return("TestDevice"));
     EXPECT_CALL(*this, GetDescription()).WillRepeatedly(Return(""));
     EXPECT_CALL(*this, GetLocation()).WillRepeatedly(Return(""));
@@ -150,6 +149,15 @@ class MockCloudDelegate : public CloudDelegate {
     EXPECT_CALL(*this, GetSetupState())
         .WillRepeatedly(Return(SetupState(SetupState::kNone)));
     EXPECT_CALL(*this, GetCloudId()).WillRepeatedly(Return("TestCloudId"));
+  }
+};
+
+class MockIdentityDelegate : public IdentityDelegate {
+ public:
+  MOCK_CONST_METHOD0(GetId, std::string());
+
+  MockIdentityDelegate() {
+    EXPECT_CALL(*this, GetId()).WillRepeatedly(Return("TestId"));
   }
 };
 

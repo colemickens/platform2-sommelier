@@ -16,7 +16,6 @@
 namespace privetd {
 
 class DaemonState;
-class PeerdClient;
 class PrivetdConfigParser;
 
 // Interface to provide access to general information about device.
@@ -24,9 +23,6 @@ class DeviceDelegate {
  public:
   DeviceDelegate();
   virtual ~DeviceDelegate();
-
-  // Returns unique id of device. e.g MAC address.
-  virtual std::string GetId() const = 0;
 
   // Returns the name of device. Could be default of set by user.
   virtual std::string GetName() const = 0;

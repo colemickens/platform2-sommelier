@@ -106,12 +106,13 @@ class Daemon : public chromeos::DBusServiceDaemon {
       wifi_bootstrap_manager_->Init();
     }
 
-    privet_handler_.reset(new PrivetHandler(cloud_.get(), device_.get(),
-                                            security_.get(),
-                                            wifi_bootstrap_manager_.get()));
-
     peerd_client_.reset(new PeerdClient(bus_, device_.get(), cloud_.get(),
                                         wifi_bootstrap_manager_.get()));
+
+    privet_handler_.reset(new PrivetHandler(cloud_.get(), device_.get(),
+                                            security_.get(),
+                                            wifi_bootstrap_manager_.get(),
+                                            peerd_client_.get()));
 
     web_server_.OnProtocolHandlerConnected(
         base::Bind(&Daemon::OnProtocolHandlerConnected,
@@ -248,8 +249,8 @@ class Daemon : public chromeos::DBusServiceDaemon {
   std::unique_ptr<ShillClient> shill_client_;
   std::unique_ptr<ApManagerClient> ap_manager_client_;
   std::unique_ptr<WifiBootstrapManager> wifi_bootstrap_manager_;
-  std::unique_ptr<PrivetHandler> privet_handler_;
   std::unique_ptr<PeerdClient> peerd_client_;
+  std::unique_ptr<PrivetHandler> privet_handler_;
   std::unique_ptr<DBusManager> dbus_manager_;
   libwebserv::Server web_server_;
 

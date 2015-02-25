@@ -12,6 +12,7 @@
 #include <base/memory/ref_counted.h>
 
 #include "peerd/dbus-proxies.h"
+#include "privetd/identity_delegate.h"
 
 namespace dbus {
 class Bus;
@@ -24,7 +25,7 @@ class DeviceDelegate;
 class WifiDelegate;
 
 // Publishes prived service on mDns using peerd.
-class PeerdClient {
+class PeerdClient : public IdentityDelegate {
  public:
   PeerdClient(const scoped_refptr<dbus::Bus>& bus,
               const DeviceDelegate* device,
@@ -32,12 +33,19 @@ class PeerdClient {
               const WifiDelegate* wifi);
   ~PeerdClient();
 
+  // Get the unique identifier for this device.  Note that if peerd has
+  // never been seen, this may be the empty string.
+  std::string GetId() const override;
+
   // Updates published information.  Removes service if HTTP is not alive.
   void Update();
 
  private:
   void OnPeerdOnline(org::chromium::peerd::ManagerProxy* manager_proxy);
   void OnPeerdOffline(const dbus::ObjectPath& object_path);
+  void OnNewPeer(org::chromium::peerd::PeerProxy* peer_proxy);
+  void OnPeerPropertyChanged(org::chromium::peerd::PeerProxy* peer_proxy,
+                             const std::string& property_name);
 
   void Start();
   void Stop();
@@ -51,6 +59,9 @@ class PeerdClient {
   const DeviceDelegate* device_{nullptr};  // Can't be nullptr.
   const CloudDelegate* cloud_{nullptr};  // Can be nullptr.
   const WifiDelegate* wifi_{nullptr};      // Can be nullptr.
+
+  // Cached value of the device ID that we got from peerd.
+  std::string device_id_;
 
   base::WeakPtrFactory<PeerdClient> restart_weak_ptr_factory_{this};
   base::WeakPtrFactory<PeerdClient> weak_ptr_factory_{this};
