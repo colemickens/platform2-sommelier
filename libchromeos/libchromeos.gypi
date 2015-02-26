@@ -23,6 +23,7 @@
         'libchromeos-cryptohome-<(libbase_ver)',
         'libchromeos-http-<(libbase_ver)',
         'libchromeos-minijail-<(libbase_ver)',
+        'libchromeos-streams-<(libbase_ver)',
         'libchromeos-ui-<(libbase_ver)',
         'libpolicy-<(libbase_ver)',
       ],
@@ -112,6 +113,18 @@
         'chromeos/http/http_transport.cc',
         'chromeos/http/http_transport_curl.cc',
         'chromeos/http/http_utils.cc',
+      ],
+    },
+    {
+      'target_name': 'libchromeos-streams-<(libbase_ver)',
+      'type': 'shared_library',
+      'dependencies': [
+        'libchromeos-core-<(libbase_ver)',
+      ],
+      'sources': [
+        'chromeos/streams/stream.cc',
+        'chromeos/streams/stream_errors.cc',
+        'chromeos/streams/stream_utils.cc',
       ],
     },
     {
@@ -283,6 +296,8 @@
             'chromeos/osrelease_reader_unittest.cc',
             'chromeos/process_test.cc',
             'chromeos/secure_blob_unittest.cc',
+            'chromeos/streams/stream_unittest.cc',
+            'chromeos/streams/stream_utils_unittest.cc',
             'chromeos/strings/string_utils_unittest.cc',
             'chromeos/ui/chromium_command_builder_unittest.cc',
             'chromeos/ui/x_server_runner_unittest.cc',
