@@ -1558,10 +1558,13 @@ Properties	boolean AutoConnect [readwrite]
 			signals to identify when roaming changes the
 			current AP.
 
+			The BSSID is formatted as colon-separated octets.
+			E.g. "00:01:02:03:04:05".
+
 		boolean WiFi.HiddenSSID [readwrite]
 
 			(WiFi only) If true, the associated WiFi network
-			does not broadcast it's SSID in beacon frames.
+			does not broadcast its SSID in beacon frames.
 			This property instructs shill to actively scan
 			for this SSID.  This value is cleared when this
 			service is removed from all active profiles.
