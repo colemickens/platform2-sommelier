@@ -266,7 +266,6 @@ fi
 
 # Flush linux caches.
 sync
-echo 3 > /proc/sys/vm/drop_caches
 
 # Do any board specific wiping here.
 # board_factory_wipe.sh will be installed by the board overlay if necessary.
