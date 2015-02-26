@@ -79,7 +79,7 @@ void PeerdClient::OnPeerPropertyChanged(
   if (property_name != PeerProxy::UUIDName() ||
       peer->GetObjectPath().value() != kSelfPath)
     return;
-  const std::string new_id{peer->u_u_i_d()};
+  const std::string new_id{peer->uuid()};
   if (new_id != device_id_) {
     device_id_ = new_id;
     Update();

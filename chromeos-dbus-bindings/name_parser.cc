@@ -46,12 +46,15 @@ std::string NameParser::MakeFullCppName() const {
 std::string NameParser::MakeVariableName() const {
   // Convert CamelCase name to google_style variable name.
   std::string result;
+  bool last_upper = true;
   for (char c : type_name) {
-    if (isupper(c)) {
-      if (!result.empty())
+    bool is_upper = isupper(c);
+    if (is_upper) {
+      if (!last_upper)
         result += '_';
       c = base::ToLowerASCII(c);
     }
+    last_upper = is_upper;
     result.push_back(c);
   }
   return result;

@@ -50,6 +50,16 @@ TEST(NameParser, MakeVariableName_NoInitialCapital) {
   EXPECT_EQ("foo_bar_baz", parser.MakeVariableName());
 }
 
+TEST(NameParser, MakeVariableName_AllCapitals) {
+  NameParser parser{"UUID"};
+  EXPECT_EQ("uuid", parser.MakeVariableName());
+}
+
+TEST(NameParser, MakeVariableName_MixedCapital) {
+  NameParser parser{"FOObarBaz"};
+  EXPECT_EQ("foobar_baz", parser.MakeVariableName());
+}
+
 TEST(NameParser, MakeInterfaceName) {
   NameParser parser{"foo.bar.FooBar"};
   EXPECT_EQ("FooBarInterface", parser.MakeInterfaceName(false));
