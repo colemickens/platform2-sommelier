@@ -5,6 +5,5 @@
 #include "psyche/psyche.h"
 
 int main(int argc, char **argv) {
-  psyche::PrintHelloWorld();
   return 0;
 }
