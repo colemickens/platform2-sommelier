@@ -5,11 +5,13 @@
 #ifndef APMANAGER_MANAGER_H_
 #define APMANAGER_MANAGER_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
+#include <chromeos/dbus/dbus_service_watcher.h>
 
 #include "apmanager/dbus_adaptors/org.chromium.apmanager.Manager.h"
 
@@ -32,9 +34,11 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   // dbus objects complete the DBus service registration.
   virtual void CreateService(
       scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<dbus::ObjectPath>>
-          response);
+          response,
+      dbus::Message* message);
   // Handles calls to org.chromium.apmanager.Manager.RemoveService().
   virtual bool RemoveService(chromeos::ErrorPtr* error,
+                             dbus::Message* message,
                              const dbus::ObjectPath& in_service);
 
   // Register DBus object.
@@ -80,12 +84,18 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   // exported successfully and ready to be used.
   void OnDeviceRegistered(scoped_refptr<Device> device, bool success);
 
+  // This is invoked when the owner of an AP service disappeared.
+  void OnAPServiceOwnerDisappeared(int service_identifier);
+
   int service_identifier_;
   int device_identifier_;
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   scoped_refptr<dbus::Bus> bus_;
   std::vector<std::unique_ptr<Service>> services_;
   std::vector<scoped_refptr<Device>> devices_;
+  // DBus service watchers for the owner of AP services.
+  using DBusServiceWatcher = chromeos::dbus_utils::DBusServiceWatcher;
+  std::map<int, std::unique_ptr<DBusServiceWatcher>> service_watchers_;
   DeviceInfo device_info_;
 
   // Proxy to shill DBus services.

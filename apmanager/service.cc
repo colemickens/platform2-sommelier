@@ -36,7 +36,7 @@ const char Service::kStateFailed[] = "Failed";
 Service::Service(Manager* manager, int service_identifier)
     : org::chromium::apmanager::ServiceAdaptor(this),
       manager_(manager),
-      service_identifier_(service_identifier),
+      identifier_(service_identifier),
       service_path_(
           base::StringPrintf("%s/services/%d",
                              ManagerAdaptor::GetObjectPath().value().c_str(),
@@ -50,7 +50,7 @@ Service::Service(Manager* manager, int service_identifier)
   SetState(kStateIdle);
   // TODO(zqiu): come up with better server address management. This is good
   // enough for now.
-  config_->SetServerAddressIndex(service_identifier_ & 0xFF);
+  config_->SetServerAddressIndex(identifier_ & 0xFF);
 }
 
 Service::~Service() {
@@ -99,7 +99,7 @@ bool Service::Start(chromeos::ErrorPtr* error) {
 
   // Write configuration to a file.
   string config_file_name = base::StringPrintf(kHostapdConfigPathFormat,
-                                               service_identifier_);
+                                               identifier_);
   if (!file_writer_->Write(config_file_name, config_str)) {
     chromeos::Error::AddTo(
         error, FROM_HERE, chromeos::errors::dbus::kDomain, kServiceError,

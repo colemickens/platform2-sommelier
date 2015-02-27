@@ -13,6 +13,8 @@
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+      <annotation name="org.chromium.DBus.Method.IncludeDBusMessage"
+                  value="true"/>
     </method>
     <method name="RemoveService">
       <tp:docstring>
@@ -23,6 +25,8 @@
           Service for managing an access point.
         </tp:docstring>
       </arg>
+      <annotation name="org.chromium.DBus.Method.IncludeDBusMessage"
+                  value="true"/>
     </method>
   </interface>
 </node>

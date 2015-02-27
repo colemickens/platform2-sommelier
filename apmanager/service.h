@@ -39,6 +39,8 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
 
   const dbus::ObjectPath& dbus_path() const { return dbus_path_; }
 
+  int identifier() const { return identifier_; }
+
  private:
   friend class ServiceTest;
 
@@ -69,7 +71,7 @@ class Service : public org::chromium::apmanager::ServiceAdaptor,
                             const std::string& data);
 
   Manager* manager_;
-  int service_identifier_;
+  int identifier_;
   std::string service_path_;
   dbus::ObjectPath dbus_path_;
   std::unique_ptr<Config> config_;
