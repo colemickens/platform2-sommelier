@@ -6,8 +6,10 @@
 
 #include <ctype.h>
 #include <dirent.h>
+#include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <ftw.h>
 #include <linux/fs.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -15,6 +17,8 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -47,6 +51,12 @@ string MakeNandPartitionDevForMounting(int partition) {
   return StringPrintf("/dev/ubi%d_0", partition);
 }
 
+// Callback used by nftw().
+int RemoveFileOrDir(const char* fpath, const struct stat* /* sb */,
+                    int /* typeflag */, struct FTW* /*ftwbuf */) {
+  return remove(fpath);
+}
+
 }  // namespace
 
 ScopedFileDescriptor::~ScopedFileDescriptor() {
@@ -67,6 +77,33 @@ int ScopedFileDescriptor::release() {
 int ScopedFileDescriptor::close() {
   int cur = release();
   return ::close(cur);
+}
+
+ScopedPathRemover::~ScopedPathRemover() {
+  if (root_.empty()) {
+    return;
+  }
+  struct stat stat_buf;
+  if (stat(root_.c_str(), &stat_buf) != 0) {
+    warn("Cannot stat %s", root_.c_str());
+    return;
+  }
+  if (S_ISDIR(stat_buf.st_mode)) {
+    if (nftw(root_.c_str(), RemoveFileOrDir, 20,
+             FTW_DEPTH | FTW_MOUNT | FTW_PHYS) != 0) {
+      warn("Cannot remove directory %s", root_.c_str());
+    }
+  } else {
+    if (unlink(root_.c_str()) != 0) {
+      warn("Cannot unlink %s", root_.c_str());
+    }
+  }
+}
+
+string ScopedPathRemover::release() {
+  string r = root_;
+  root_.clear();
+  return r;
 }
 
 // Start a logging timer. There can only be one active at a time.

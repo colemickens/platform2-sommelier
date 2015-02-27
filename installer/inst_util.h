@@ -31,6 +31,24 @@ class ScopedFileDescriptor {
   void operator =(const ScopedFileDescriptor& other) {}
 };
 
+// A class to automatically remove directories/files with nftw().
+// The removal is done at object destruction time and hence no error will be
+// boubled up. If need to, use release() and handle the deletion yourself.
+class ScopedPathRemover {
+ public:
+  explicit ScopedPathRemover(const std::string& root) : root_(root) {}
+  virtual ~ScopedPathRemover();
+
+  // Return the root path and no longer remove it.
+  std::string release();
+
+ private:
+  std::string root_;
+
+  ScopedPathRemover(const ScopedPathRemover& other) {}
+  void operator=(const ScopedPathRemover& other) {}
+};
+
 #define RUN_OR_RETURN_FALSE(_x)                                 \
   do {                                                          \
     if (RunCommand(_x) != 0) return false;                      \

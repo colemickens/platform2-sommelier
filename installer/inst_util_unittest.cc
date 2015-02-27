@@ -507,3 +507,45 @@ TEST(UtilTest, ReplaceAllTest) {
   ReplaceAll(&b, "bcd", "rs");
   EXPECT_EQ(b, "arsxyzrse");
 }
+
+TEST(UtilTest, ScopedPathRemoverWithFile) {
+  const string filename = tmpnam(NULL);
+  EXPECT_EQ(WriteStringToFile("abc", filename), true);
+  ASSERT_EQ(access(filename.c_str(), F_OK), 0);
+
+  // Release early to prevent removal.
+  {
+    ScopedPathRemover remover(filename);
+    remover.release();
+  }
+  EXPECT_EQ(access(filename.c_str(), F_OK), 0);
+
+  // No releasing, the file should be removed.
+  {
+    ScopedPathRemover remover(filename);
+  }
+  EXPECT_EQ(access(filename.c_str(), F_OK), -1);
+}
+
+TEST(UtilTest, ScopedPathRemoverWithDirectory) {
+  const string dirname = tmpnam(NULL);
+  const string filename = dirname + "/abc";
+  ASSERT_EQ(mkdir(dirname.c_str(), 0700), 0);
+  ASSERT_EQ(access(dirname.c_str(), F_OK), 0);
+  EXPECT_EQ(WriteStringToFile("abc", filename), true);
+  ASSERT_EQ(access(filename.c_str(), F_OK), 0);
+  {
+    ScopedPathRemover remover(dirname);
+  }
+  EXPECT_EQ(access(filename.c_str(), F_OK), -1);
+  EXPECT_EQ(access(dirname.c_str(), F_OK), -1);
+}
+
+TEST(UtilTest, ScopedPathRemoverWithNonExistingPath) {
+  string filename = tmpnam(NULL);
+  ASSERT_EQ(access(filename.c_str(), F_OK), -1);
+  {
+    ScopedPathRemover remover(filename);
+  }
+  // There should be no crash.
+}
