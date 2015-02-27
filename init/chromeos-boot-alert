@@ -430,6 +430,18 @@ main() {
   shift
   shift
 
+  # For headless devices, we want to provide some messages so people can know
+  # what goes wrong.
+  local output
+  for output in /dev/kmsg /dev/console; do
+    (echo "chromeos-boot-alert: ${mode}" >>"${output}") 2>/dev/null || true
+  done
+
+  if [ -x /usr/sbin/board_boot_alert ]; then
+    # Allow overriding boot-alert behavior (usually for headless devices).
+    /usr/sbin/board_boot_alert "${mode}" "${STDOUT}" "$@" && exit
+  fi
+
   # Wait until the boot-alert-ready abstract job has started, indicating that
   # it's safe to display an alert onscreen.
   if ! initctl status boot-alert-ready | grep -q running; then
@@ -456,8 +468,4 @@ main() {
 }
 
 # Main Entry
-if [ -x /usr/sbin/board_boot_alert ]; then
-  # Allow overriding boot-alert behavior for headless devices.
-  /usr/sbin/board_boot_alert "$@" && exit
-fi
 main "$@"
