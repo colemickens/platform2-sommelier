@@ -4,10 +4,13 @@
 
 #include "leaderd/manager.h"
 
+#include <base/logging.h>
+
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::DBusObject;
 using chromeos::dbus_utils::ExportedObjectManager;
 using org::chromium::leaderd::ManagerAdaptor;
+using dbus::ObjectPath;
 
 namespace leaderd {
 
@@ -17,16 +20,22 @@ const char kPingResponse[] = "Hello world!";
 
 }  // namespace
 
-Manager::Manager(ExportedObjectManager* object_manager)
-    : dbus_object_{object_manager, object_manager->GetBus(),
-                                  ManagerAdaptor::GetObjectPath()} {}
+Manager::Manager(const scoped_refptr<dbus::Bus>& bus,
+                 ExportedObjectManager* object_manager,
+                 std::unique_ptr<PeerdClient> peerd_client)
+    : bus_(bus),
+      dbus_object_{object_manager, bus, ManagerAdaptor::GetObjectPath()},
+      peerd_client_(std::move(peerd_client)) {
+  peerd_client_->SetDelegate(this);
+}
 
-void Manager::RegisterAsync(const CompletionAction& completion_callback) {
-  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
+Manager::~Manager() {}
+
+void Manager::RegisterAsync(
+    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(
-      sequencer->GetHandler("Failed exporting Manager.", true));
-  sequencer->OnAllTasksCompletedCall({completion_callback});
+      sequencer->GetHandler("Failed exporting DBusManager.", true));
 }
 
 bool Manager::JoinGroup(chromeos::ErrorPtr* error, dbus::Message* message,
@@ -37,5 +46,41 @@ bool Manager::JoinGroup(chromeos::ErrorPtr* error, dbus::Message* message,
 }
 
 std::string Manager::Ping() { return kPingResponse; }
+
+void Manager::OnPeerdManagerAdded(
+    org::chromium::peerd::ManagerProxyInterface* manager_proxy) {
+  VLOG(1) << "Peerd manager added.";
+}
+
+void Manager::OnPeerdManagerRemoved(const dbus::ObjectPath& object_path) {
+  VLOG(1) << "Peerd manager removed '" << object_path.value() << "'.";
+}
+
+void Manager::OnPeerdPeerAdded(
+    org::chromium::peerd::PeerProxyInterface* peer_proxy,
+    const dbus::ObjectPath& object_path) {
+  VLOG(1) << "Peerd peer added '" << object_path.value() << "'.";
+}
+
+void Manager::OnPeerdPeerRemoved(const dbus::ObjectPath& object_path) {
+  VLOG(1) << "Peerd peer removed '" << object_path.value() << "'.";
+}
+
+void Manager::OnPeerdServiceAdded(
+    org::chromium::peerd::ServiceProxyInterface* service_proxy,
+    const dbus::ObjectPath& object_path) {
+  VLOG(1) << "Peerd service added '" << object_path.value() << "'.";
+}
+
+void Manager::OnPeerdServiceRemoved(const dbus::ObjectPath& object_path) {
+  VLOG(1) << "Peerd service removed '" << object_path.value() << "'.";
+}
+
+void Manager::OnPeerdServiceChanged(
+    org::chromium::peerd::ServiceProxyInterface* service_proxy,
+    const dbus::ObjectPath& object_path, const std::string& property) {
+  VLOG(1) << "Peerd service update '" << object_path.value() << "', '"
+          << service_proxy->service_id() << "'";
+}
 
 }  // namespace leaderd

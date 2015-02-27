@@ -11,10 +11,13 @@
 #include <chromeos/syslog_logging.h>
 
 #include "leaderd/manager.h"
+#include "leaderd/peerd_client.h"
 
 using chromeos::DBusServiceDaemon;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using leaderd::Manager;
+using leaderd::PeerdClient;
+using leaderd::PeerdClientImpl;
 
 namespace {
 
@@ -35,9 +38,10 @@ class Daemon : public DBusServiceDaemon {
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    manager_.reset(new Manager{object_manager_.get()});
-    manager_->RegisterAsync(
-        sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+    std::unique_ptr<PeerdClient> peerd_client(new PeerdClientImpl(bus_));
+    manager_.reset(
+        new Manager{bus_, object_manager_.get(), std::move(peerd_client)});
+    manager_->RegisterAsync(sequencer);
     LOG(INFO) << "leaderd starting";
   }
 
