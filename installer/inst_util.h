@@ -97,6 +97,10 @@ bool ReadFileToString(const std::string& path, std::string* contents);
 
 bool WriteStringToFile(const std::string& contents, const std::string& path);
 
+// Write |content| to |fd| fully. This function will call write() as many times
+// as needed to ensure that |content| is fully written. Return false on error.
+bool WriteFullyToFileDescriptor(const std::string& content, int fd);
+
 // Copies a single file.
 bool CopyFile(const std::string& from_path, const std::string& to_path);
 

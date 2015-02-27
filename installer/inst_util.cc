@@ -266,13 +266,27 @@ bool WriteStringToFile(const string& contents, const string& path) {
     return false;
   }
 
-  bool success = (write(fd, contents.c_str(), contents.size()) ==
-                  static_cast<int>(contents.size()));
+  bool success = WriteFullyToFileDescriptor(contents, fd);
 
   if (close(fd) != 0)
     return false;
 
   return success;
+}
+
+bool WriteFullyToFileDescriptor(const string& content, int fd) {
+  const char* buf = content.data();
+  size_t nr_written = 0;
+  while (nr_written < content.length()) {
+    size_t to_write = content.length() - nr_written;
+    ssize_t nr_chunk = write(fd, buf + nr_written, to_write);
+    if (nr_chunk < 0) {
+      warn("Fail to write %d bytes", static_cast<int>(to_write));
+      return false;
+    }
+    nr_written += nr_chunk;
+  }
+  return true;
 }
 
 bool CopyFile(const string& from_path, const string& to_path) {
