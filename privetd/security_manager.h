@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/secure_blob.h>
@@ -42,7 +43,7 @@ class SecurityManager : public SecurityDelegate {
     virtual const std::string& GetKey() const = 0;
   };
 
-  explicit SecurityManager(const std::string& embedded_code,
+  explicit SecurityManager(const base::FilePath& embedded_code_path,
                            bool disable_security = false);
   ~SecurityManager() override;
 
@@ -82,7 +83,8 @@ class SecurityManager : public SecurityDelegate {
 
   // If true allows unencrypted pairing and accepts any access code.
   bool is_security_disabled_{false};
-  const std::string embedded_code_;
+  const base::FilePath embedded_code_path_;
+  std::string embedded_code_;
   std::map<std::string, std::unique_ptr<KeyExchanger>> pending_sessions_;
   std::map<std::string, std::unique_ptr<KeyExchanger>> confirmed_sessions_;
   mutable int pairing_attemts_{0};

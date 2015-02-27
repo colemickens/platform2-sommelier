@@ -36,7 +36,7 @@ const char kDeviceModel[] = "device_model";
 const char kDeviceModelId[] = "device_model_id";
 const char kDeviceName[] = "device_name";
 const char kDeviceDescription[] = "device_description";
-const char kEmbeddedCode[] = "embedded_code";
+const char kEmbeddedCodePath[] = "embedded_code_path";
 
 }  // namespace
 
@@ -129,7 +129,7 @@ TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
   static const char kExpectedDeviceModelId[]{"BBB"};
   static const char kExpectedDeviceName[]{"testDevice"};
   static const char kExpectedDeviceDescription[]{"testDescription"};
-  static const char kExpectedEmbeddedCode[]{"123ABC"};
+  static const char kExpectedEmbeddedCodePath[]{"123ABC"};
   const ConfDict conf_dict{
       {kWiFiBootstrapMode, "automatic"},
       {kGcdBootstrapMode, "automatic"},
@@ -144,7 +144,7 @@ TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
       {kDeviceModelId, kExpectedDeviceModelId},
       {kDeviceName, kExpectedDeviceName},
       {kDeviceDescription, kExpectedDeviceDescription},
-      {kEmbeddedCode, kExpectedEmbeddedCode},
+      {kEmbeddedCodePath, kExpectedEmbeddedCodePath},
   };
   KeyValueStore store;
   FillKeyValueStore(conf_dict, &store);
@@ -163,7 +163,7 @@ TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
   EXPECT_EQ(kExpectedDeviceModelId, parser.device_model_id());
   EXPECT_EQ(kExpectedDeviceName, parser.device_name());
   EXPECT_EQ(kExpectedDeviceDescription, parser.device_description());
-  EXPECT_EQ(kExpectedEmbeddedCode, parser.embedded_code());
+  EXPECT_EQ(kExpectedEmbeddedCodePath, parser.embedded_code_path().value());
 }
 
 TEST_F(PrivetdConfParserTest, CriticalDefaults) {
@@ -178,7 +178,7 @@ TEST_F(PrivetdConfParserTest, CriticalDefaults) {
   EXPECT_FALSE(parser.device_model().empty());
   EXPECT_EQ(3, parser.device_model_id().size());
   EXPECT_FALSE(parser.device_name().empty());
-  EXPECT_TRUE(parser.embedded_code().empty());
+  EXPECT_TRUE(parser.embedded_code_path().empty());
 }
 
 }  // namespace privetd

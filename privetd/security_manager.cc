@@ -19,6 +19,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/data_encoding.h>
+#include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
 #include <crypto/p224_spake.h>
 
@@ -34,6 +35,8 @@ const int kSessionExpirationTimeMinutes = 5;
 const int kPairingExpirationTimeMinutes = 5;
 const int kMaxAllowedPairingAttemts = 3;
 const int kPairingBlockingTimeMinutes = 1;
+
+const char kEmbeddedCode[] = "embedded_code";
 
 // Returns "scope:time".
 std::string CreateTokenData(AuthScope scope, const base::Time& time) {
@@ -56,6 +59,14 @@ AuthScope SplitTokenData(const std::string& token, base::Time* time) {
     return AuthScope::kNone;
   *time = base::Time::FromTimeT(timestamp);
   return static_cast<AuthScope>(scope);
+}
+
+std::string LoadEmbeddedCode(const base::FilePath& path) {
+  std::string code;
+  chromeos::KeyValueStore store;
+  if (store.Load(path))
+    store.GetString(kEmbeddedCode, &code);
+  return code;
 }
 
 class Spakep224Exchanger : public SecurityManager::KeyExchanger {
@@ -118,10 +129,10 @@ class UnsecureKeyExchanger : public SecurityManager::KeyExchanger {
 
 }  // namespace
 
-SecurityManager::SecurityManager(const std::string& embedded_code,
+SecurityManager::SecurityManager(const base::FilePath& embedded_code_path,
                                  bool disable_security)
     : is_security_disabled_(disable_security),
-      embedded_code_(embedded_code),
+      embedded_code_path_(embedded_code_path),
       secret_(kSha256OutputSize) {
   base::RandBytes(secret_.data(), kSha256OutputSize);
 }
@@ -155,8 +166,8 @@ AuthScope SecurityManager::ParseAccessToken(const std::string& token,
 }
 
 std::vector<PairingType> SecurityManager::GetPairingTypes() const {
-  return {embedded_code_.empty() ? PairingType::kPinCode
-                                 : PairingType::kEmbeddedCode};
+  return {embedded_code_path_.empty() ? PairingType::kPinCode
+                                      : PairingType::kEmbeddedCode};
 }
 
 std::vector<CryptoType> SecurityManager::GetCryptoTypes() const {
@@ -195,6 +206,15 @@ Error SecurityManager::StartPairing(PairingType mode,
   std::string code;
   switch (mode) {
     case PairingType::kEmbeddedCode:
+      if (embedded_code_path_.empty())
+        return Error::kInvalidParams;
+
+      if (embedded_code_.empty())
+        embedded_code_ = LoadEmbeddedCode(embedded_code_path_);
+
+      if (embedded_code_.empty())  // File is not created yet.
+        return Error::kDeviceBusy;
+
       code = embedded_code_;
       break;
     case PairingType::kPinCode:

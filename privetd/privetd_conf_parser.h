@@ -49,7 +49,9 @@ class PrivetdConfigParser {
   const std::string& device_model_id() const { return device_model_id_; }
   const std::string& device_name() const { return device_name_; }
   const std::string& device_description() const { return device_description_; }
-  const std::string& embedded_code() const { return embedded_code_; }
+  const base::FilePath& embedded_code_path() const {
+    return embedded_code_path_;
+  }
 
  private:
   WiFiBootstrapMode wifi_bootstrap_mode_;
@@ -65,7 +67,7 @@ class PrivetdConfigParser {
   std::string device_model_id_;
   std::string device_name_;
   std::string device_description_;
-  std::string embedded_code_;
+  base::FilePath embedded_code_path_;
 };
 
 }  // namespace privetd

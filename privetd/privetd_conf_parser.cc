@@ -25,7 +25,7 @@ const char kDeviceModel[] = "device_model";
 const char kDeviceModelId[] = "device_model_id";
 const char kDeviceName[] = "device_name";
 const char kDeviceDescription[] = "device_description";
-const char kEmbeddedCode[] = "embedded_code";
+const char kEmbeddedCodePath[] = "embedded_code_path";
 
 const char kBootstrapModeOff[] = "off";
 const char kBootstrapModeAutomatic[] = "automatic";
@@ -163,7 +163,9 @@ bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {
 
   config_store.GetString(kDeviceDescription, &device_description_);
 
-  config_store.GetString(kEmbeddedCode, &embedded_code_);
+  std::string embedded_code_path;
+  if (config_store.GetString(kEmbeddedCodePath, &embedded_code_path))
+    embedded_code_path_ = base::FilePath(embedded_code_path);
 
   return true;
 }

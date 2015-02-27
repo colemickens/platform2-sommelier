@@ -13,12 +13,14 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/data_encoding.h>
+#include <chromeos/key_value_store.h>
 #include <chromeos/strings/string_utils.h>
 #include <crypto/p224_spake.h>
 #include <gmock/gmock.h>
@@ -51,6 +53,12 @@ class MockPairingCallbacks {
   MOCK_METHOD1(OnPairingEnd, void(const std::string& session_id));
 };
 
+base::FilePath GetTempFilePath() {
+  base::FilePath file_path;
+  EXPECT_TRUE(base::CreateTemporaryFile(&file_path));
+  return file_path;
+}
+
 }  // namespace
 
 class SecurityManagerTest : public testing::Test {
@@ -60,7 +68,13 @@ class SecurityManagerTest : public testing::Test {
     fingerprint.resize(256 / 8);
     base::RandBytes(fingerprint.data(), fingerprint.size());
     security_.SetCertificateFingerprint(fingerprint);
+
+    chromeos::KeyValueStore store;
+    store.SetString("embedded_code", "1234");
+    EXPECT_TRUE(store.Save(embedded_code_path_));
   }
+
+  void TearDown() override { base::DeleteFile(embedded_code_path_, false); }
 
  protected:
   void PairAndAuthenticate(std::string* fingerprint, std::string* signature) {
@@ -104,7 +118,8 @@ class SecurityManagerTest : public testing::Test {
 
   const base::Time time_ = base::Time::FromTimeT(1410000000);
   base::MessageLoop message_loop_;
-  SecurityManager security_{"1234"};
+  base::FilePath embedded_code_path_{GetTempFilePath()};
+  SecurityManager security_{embedded_code_path_};
 };
 
 TEST_F(SecurityManagerTest, IsBase64) {
@@ -129,13 +144,14 @@ TEST_F(SecurityManagerTest, CreateTokenDifferentTime) {
 
 TEST_F(SecurityManagerTest, CreateTokenDifferentInstance) {
   EXPECT_NE(security_.CreateAccessToken(AuthScope::kGuest, time_),
-            SecurityManager("555").CreateAccessToken(AuthScope::kGuest, time_));
+            SecurityManager(base::FilePath{})
+                .CreateAccessToken(AuthScope::kGuest, time_));
 }
 
 TEST_F(SecurityManagerTest, ParseAccessToken) {
   // Multiple attempts with random secrets.
   for (size_t i = 0; i < 1000; ++i) {
-    SecurityManager security{"0987"};
+    SecurityManager security{base::FilePath{}};
     std::string token = security.CreateAccessToken(AuthScope::kUser, time_);
     base::Time time2;
     EXPECT_EQ(AuthScope::kUser, security.ParseAccessToken(token, &time2));
@@ -271,6 +287,16 @@ TEST_F(SecurityManagerTest, DontBlockForCanceledSessions) {
                                      &device_commitment));
     EXPECT_EQ(Error::kNone, security_.CancelPairing(session_id));
   }
+}
+
+TEST_F(SecurityManagerTest, EmbeddedCodeNotReady) {
+  std::string session_id;
+  std::string device_commitment;
+  base::DeleteFile(embedded_code_path_, false);
+  EXPECT_EQ(Error::kDeviceBusy,
+            security_.StartPairing(PairingType::kEmbeddedCode,
+                                   CryptoType::kSpake_p224, &session_id,
+                                   &device_commitment));
 }
 
 }  // namespace privetd
