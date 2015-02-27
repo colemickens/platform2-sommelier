@@ -1400,7 +1400,7 @@ TEST_F(DeviceTest, PrependIPv4DNSServers) {
   }
 }
 
-TEST_F(DeviceTest, PrependIPv6DNSServers) {
+TEST_F(DeviceTest, DISABLED_PrependIPv6DNSServers) {
   MockManager manager(control_interface(), dispatcher(), metrics(), glib());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
