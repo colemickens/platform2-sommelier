@@ -51,6 +51,7 @@
       'type': 'none',
       'dependencies': [
         '../common-mk/external_dependencies.gyp:dbus-proxies',
+        '../login_manager/login_manager.gyp:session_manager_proxies',
         '../shill/shill.gypi:shill-proxies',
       ],
       'conditions': [
@@ -76,6 +77,7 @@
       },
       'sources': [
         'src/anonymizer_tool.cc',
+        'src/constants.cc',
         'src/cpu_info_parser.cc',
         'src/crash_sender_tool.cc',
         'src/debug_daemon.cc',
@@ -98,6 +100,7 @@
         'src/random_selector.cc',
         'src/route_tool.cc',
         'src/sandboxed_process.cc',
+        'src/session_manager_proxy.cc',
         'src/storage_tool.cc',
         'src/subprocess_tool.cc',
         'src/sysrq_tool.cc',
@@ -137,6 +140,16 @@
       ],
       'sources': [
         'src/helpers/capture_packets.cc',
+      ]
+    },
+    {
+      'target_name': 'dev_features_chrome_remote_debugging',
+      'type': 'executable',
+      'dependencies': [
+        'libdebugd'
+      ],
+      'sources': [
+        'src/helpers/dev_features_chrome_remote_debugging.cc',
       ]
     },
     {

@@ -29,6 +29,19 @@
   },
   'targets': [
     {
+      'target_name': 'session_manager_proxies',
+      'type': 'none',
+      'variables': {
+        'xml2cpp_type': 'proxy',
+        'xml2cpp_in_dir': '.',
+        'xml2cpp_out_dir': 'include/session_manager/dbus_proxies',
+      },
+      'sources': [
+        '<(xml2cpp_in_dir)/org.chromium.SessionManagerInterface.xml',
+      ],
+      'includes': ['../common-mk/xml2cpp.gypi'],
+    },
+    {
       'target_name': 'libsession_manager',
       'type': 'static_library',
       'dependencies': [

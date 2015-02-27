@@ -37,6 +37,9 @@ class DevFeaturesTool {
                             bool system,
                             DBus::Error* error) const;
 
+  void EnableChromeRemoteDebugging(DBus::Error* error) const;
+  bool EnableChromeRemoteDebuggingQuery(DBus::Error* error) const;
+
   void EnableChromeDevFeatures(const std::string& root_password,
                                DBus::Error* error) const;
 

@@ -30,13 +30,13 @@ class DevModeNoOwnerRestriction {
   // Returns true if tool access is allowed.
   bool AllowToolUse(DBus::Error* error);
 
- private:
-  DBus::Connection* system_dbus_;
-
   // Virtual member functions to allow overrides for testing.
-  virtual bool InDevMode();
+  virtual bool InDevMode() const;
   virtual bool GetOwnerAndLockboxStatus(bool* owner_user_exists,
                                         bool* boot_lockbox_finalized);
+
+ private:
+  DBus::Connection* system_dbus_;
 
   DISALLOW_COPY_AND_ASSIGN(DevModeNoOwnerRestriction);
 };

@@ -88,6 +88,10 @@ class RestrictedToolWrapper {
     return false;
   }
 
+  const DevModeNoOwnerRestriction& restriction() const {
+    return restriction_;
+  }
+
  private:
   T tool_;
   DevModeNoOwnerRestriction restriction_;

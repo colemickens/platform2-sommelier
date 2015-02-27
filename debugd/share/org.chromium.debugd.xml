@@ -474,6 +474,14 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="EnableChromeRemoteDebugging">
+      <tp:docstring>
+        Sets up Chrome for remote debugging. It will take effect after a reboot
+        and using port 9222.
+        Requires that rootfs verification has been removed. Restricted to
+        pre-owner dev mode.
+      </tp:docstring>
+    </method>
     <method name="EnableChromeDevFeatures">
       <tp:docstring>
         Convenience function to enable a predefined set of tools from the Chrome
@@ -546,6 +554,14 @@
                     value="0x0020">
         <tp:docstring>
           The system root account password has been set.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="DEV_FEATURE_CHROME_REMOTE_DEBUGGING_ENABLED"
+                    value="0x0040">
+        <tp:docstring>
+          The Chrome remote debugging feature has been enabled. Chrome will
+          be listening on port 9222. The port is not publicly accessible. User
+          needs to use SSH port forwarding to be able to access it.
         </tp:docstring>
       </tp:enumvalue>
     </tp:enum>

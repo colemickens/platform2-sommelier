@@ -96,6 +96,25 @@ bool DevFeaturesTool::ConfigureSshServerQuery(DBus::Error* error) const {
                    error) == 0;
 }
 
+void DevFeaturesTool::EnableChromeRemoteDebugging(DBus::Error* error) const {
+  if (RemoveRootfsVerificationQuery(error)) {
+    RunHelper("dev_features_chrome_remote_debugging", ArgList{},
+              true,  // requires root to write to rootfs directories.
+              nullptr,  // no stdin.
+              error);
+  } else if (!error->is_set()) {
+    error->set(kDevFeaturesErrorString, kRootfsLockedErrorString);
+  }
+}
+
+bool DevFeaturesTool::EnableChromeRemoteDebuggingQuery(
+    DBus::Error* error) const {
+  return RunHelper("dev_features_chrome_remote_debugging", ArgList{"-q"},
+                   false,
+                   nullptr,  // no stdin.
+                   error) == 0;
+}
+
 void DevFeaturesTool::SetUserPassword(const std::string& username,
                                       const std::string& password,
                                       DBus::Error* error) const {
@@ -144,9 +163,6 @@ void DevFeaturesTool::EnableChromeDevFeatures(const std::string& root_password,
   SetUserPassword("root",
                   root_password.empty() ? kDefaultRootPassword : root_password,
                   error);
-  if (error->is_set()) {
-    return;
-  }
 }
 
 namespace {
@@ -172,6 +188,9 @@ int32_t DevFeaturesTool::QueryDevFeatures(DBus::Error* error) const {
       Query(std::bind(&DevFeaturesTool::EnableBootFromUsbQuery,
                       this, error),
             DEV_FEATURE_BOOT_FROM_USB_ENABLED),
+      Query(std::bind(&DevFeaturesTool::EnableChromeRemoteDebuggingQuery,
+                      this, error),
+            DEV_FEATURE_CHROME_REMOTE_DEBUGGING_ENABLED),
       Query(std::bind(&DevFeaturesTool::ConfigureSshServerQuery,
                       this, error),
             DEV_FEATURE_SSH_SERVER_CONFIGURED),

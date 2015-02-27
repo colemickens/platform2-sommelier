@@ -4,9 +4,13 @@
 
 #include "debugd/src/debug_daemon.h"
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/dbus.h>
+
+#include "debugd/src/constants.h"
 
 namespace debugd {
 
@@ -41,6 +45,12 @@ bool DebugDaemon::Init() {
   if (!dbus_->acquire_name(kDebugdServiceName)) {
     LOG(ERROR) << "Failed to acquire D-Bus name " << kDebugdServiceName;
     return false;
+  }
+  session_manager_proxy_.reset(new SessionManagerProxy(dbus_));
+  if (dev_features_tool_wrapper_->restriction().InDevMode() &&
+      base::PathExists(
+      base::FilePath(debugd::kDevFeaturesChromeRemoteDebuggingFlagPath))) {
+    session_manager_proxy_->EnableChromeRemoteDebugging();
   }
   return true;
 }
@@ -238,6 +248,14 @@ void DebugDaemon::RemoveRootfsVerification(DBus::Error& error) {  // NOLINT
 void DebugDaemon::EnableBootFromUsb(DBus::Error& error) {  // NOLINT
   dev_features_tool_wrapper_->CallToolFunction(
       [&error](DevFeaturesTool* tool) { tool->EnableBootFromUsb(&error); },
+      &error);
+}
+
+void DebugDaemon::EnableChromeRemoteDebugging(DBus::Error& error) {  // NOLINT
+  dev_features_tool_wrapper_->CallToolFunction(
+      [&error](DevFeaturesTool* tool) {
+        tool->EnableChromeRemoteDebugging(&error);
+      },
       &error);
 }
 

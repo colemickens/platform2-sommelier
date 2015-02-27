@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -30,6 +31,7 @@
 #include "debugd/src/ping_tool.h"
 #include "debugd/src/restricted_tool_wrapper.h"
 #include "debugd/src/route_tool.h"
+#include "debugd/src/session_manager_proxy.h"
 #include "debugd/src/storage_tool.h"
 #include "debugd/src/sysrq_tool.h"
 #include "debugd/src/systrace_tool.h"
@@ -37,8 +39,6 @@
 #include "debugd/src/wimax_status_tool.h"
 
 namespace debugd {
-
-class ProcessWithId;
 
 class DebugDaemon : public org::chromium::debugd_adaptor,
                     public DBus::ObjectAdaptor,
@@ -154,6 +154,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   void UploadCrashes(DBus::Error& error) override;  // NOLINT
   void RemoveRootfsVerification(DBus::Error& error) override;  // NOLINT
   void EnableBootFromUsb(DBus::Error& error) override;  // NOLINT
+  void EnableChromeRemoteDebugging(DBus::Error& error) override;  // NOLINT
   void ConfigureSshServer(DBus::Error& error) override;  // NOLINT
   void SetUserPassword(const std::string& username,
                        const std::string& password,
@@ -166,6 +167,9 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   DBus::Connection* dbus_;
   DBus::BusDispatcher* dispatcher_;
 
+  std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
+
+  // TODO(xiaohuic) Consider using unique_ptr for the pointers below.
   CrashSenderTool* crash_sender_tool_ = nullptr;
   DebugLogsTool* debug_logs_tool_ = nullptr;
   DebugModeTool* debug_mode_tool_ = nullptr;

@@ -106,7 +106,7 @@ bool DevModeNoOwnerRestriction::AllowToolUse(DBus::Error* error) {
   return false;
 }
 
-bool DevModeNoOwnerRestriction::InDevMode() {
+bool DevModeNoOwnerRestriction::InDevMode() const {
   // The is_developer_end_user script provides a common way to access this
   // information rather than duplicating logic here.
   return ProcessWithOutput::RunProcess("/usr/sbin/is_developer_end_user",
