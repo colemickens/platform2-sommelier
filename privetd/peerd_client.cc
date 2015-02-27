@@ -8,6 +8,7 @@
 
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
+#include <chromeos/errors/error.h>
 
 #include "privetd/cloud_delegate.h"
 #include "privetd/device_delegate.h"
@@ -23,10 +24,15 @@ namespace {
 // Commit changes only if no update request happened during the timeout.
 // Usually updates happen in batches, so we don't want to flood network with
 // updates relevant for a short amount of time.
-const int kCommitTimeoutSeconds = 3;
+const int kCommitTimeoutSeconds = 1;
+
 // The name of the service we'll expose via peerd.
 const char kPrivetServiceId[] = "privet";
 const char kSelfPath[] = "/org/chromium/peerd/Self";
+
+void OnError(const std::string& operation, chromeos::Error* error) {
+  LOG(ERROR) << operation << " failed:" << error->GetMessage();
+}
 
 }  // namespace
 
@@ -48,7 +54,7 @@ PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus,
 }
 
 PeerdClient::~PeerdClient() {
-  Stop();
+  RemoveService();
 }
 
 std::string PeerdClient::GetId() const {
@@ -59,7 +65,7 @@ void PeerdClient::Update() {
   // Abort pending updates, and wait for more changes.
   restart_weak_ptr_factory_.InvalidateWeakPtrs();
   base::MessageLoop::current()->PostDelayedTask(
-      FROM_HERE, base::Bind(&PeerdClient::RestartImpl,
+      FROM_HERE, base::Bind(&PeerdClient::UpdateImpl,
                             restart_weak_ptr_factory_.GetWeakPtr()),
       base::TimeDelta::FromSeconds(kCommitTimeoutSeconds));
 }
@@ -91,9 +97,7 @@ void PeerdClient::OnPeerdOnline(
   peerd_manager_proxy_ = manager_proxy;
   VLOG(1) << "Peerd manager is online at '"
           << manager_proxy->GetObjectPath().value() << "'.";
-
-  if (device_->GetHttpEnpoint().first != 0)
-    Start();
+  Update();
 }
 
 void PeerdClient::OnPeerdOffline(const dbus::ObjectPath& object_path) {
@@ -101,8 +105,8 @@ void PeerdClient::OnPeerdOffline(const dbus::ObjectPath& object_path) {
   VLOG(1) << "Peerd manager is now offline.";
 }
 
-void PeerdClient::Start() {
-  // If peerd hasn't started yet, don't do anything.
+void PeerdClient::ExposeService() {
+  // Do nothing if peerd hasn't started yet.
   if (peerd_manager_proxy_ == nullptr)
     return;
 
@@ -138,28 +142,24 @@ void PeerdClient::Start() {
   if (!device_->GetDescription().empty())
     txt_record.emplace("note", device_->GetDescription());
 
-  chromeos::ErrorPtr error;
-  if (!peerd_manager_proxy_->ExposeService(kPrivetServiceId, txt_record,
-                                           {{"mdns", mdns_options}}, &error)) {
-    LOG(ERROR) << "ExposeService failed:" << error->GetMessage();
-  }
+  peerd_manager_proxy_->ExposeServiceAsync(
+      kPrivetServiceId, txt_record, {{"mdns", mdns_options}}, base::Closure(),
+      base::Bind(&OnError, "ExposeService"));
 }
 
-void PeerdClient::Stop() {
+void PeerdClient::RemoveService() {
   if (peerd_manager_proxy_ == nullptr)
     return;
 
   VLOG(1) << "Stopping peerd advertising.";
-  chromeos::ErrorPtr error;
-  if (!peerd_manager_proxy_->RemoveExposedService(kPrivetServiceId, &error)) {
-    LOG(ERROR) << "RemoveExposedService failed:" << error->GetMessage();
-  }
+  peerd_manager_proxy_->RemoveExposedServiceAsync(
+      kPrivetServiceId, base::Closure(), base::Bind(&OnError, "RemoveService"));
 }
 
-void PeerdClient::RestartImpl() {
-  Stop();
-  if (device_->GetHttpEnpoint().first != 0)
-    Start();
+void PeerdClient::UpdateImpl() {
+  if (device_->GetHttpEnpoint().first == 0)
+    return RemoveService();
+  ExposeService();
 }
 
 }  // namespace privetd

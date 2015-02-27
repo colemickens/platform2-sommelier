@@ -47,10 +47,10 @@ class PeerdClient : public IdentityDelegate {
   void OnPeerPropertyChanged(org::chromium::peerd::PeerProxy* peer_proxy,
                              const std::string& property_name);
 
-  void Start();
-  void Stop();
+  void ExposeService();
+  void RemoveService();
 
-  void RestartImpl();
+  void UpdateImpl();
 
   org::chromium::peerd::ObjectManagerProxy peerd_object_manager_proxy_;
   // |peerd_manager_proxy_| is owned by |peerd_object_manager_proxy_|.
