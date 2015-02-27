@@ -5,13 +5,28 @@
 #ifndef GERM_LAUNCHER_H_
 #define GERM_LAUNCHER_H_
 
+#include "sys/types.h"
+
+#include <memory>
 #include <string>
+
+#include <base/macros.h>
 
 namespace germ {
 
+class UidService;
+
 class Launcher {
  public:
-  static int Run(const std::string& name, const std::string& executable);
+  Launcher();
+  ~Launcher();
+
+  int Run(const std::string& name, const std::string& executable);
+
+ private:
+  std::unique_ptr<UidService> uid_service_;
+
+  DISALLOW_COPY_AND_ASSIGN(Launcher);
 };
 
 }  // namespace germ

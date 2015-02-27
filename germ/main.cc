@@ -16,5 +16,6 @@ int main(int argc, char** argv) {
   chromeos::FlagHelper::Init(argc, argv, "germ");
   chromeos::InitLog(chromeos::kLogToSyslog);
 
-  return germ::Launcher::Run(FLAGS_name, FLAGS_executable);
+  germ::Launcher launcher;
+  return launcher.Run(FLAGS_name, FLAGS_executable);
 }
