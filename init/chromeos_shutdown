@@ -8,10 +8,6 @@ set +e
 
 bootstat shutdown-start
 
-# Sync the system clock to the hardware clock.
-hwclock --systohc --utc --noadjfile &
-HWCLOCK_PID=$!
-
 . /sbin/killers
 
 # Remount root in case a developer has remounted it rw for some reason.
@@ -23,9 +19,6 @@ mount -n -o remount,ro /
 # or the crypto-home and then unmount. These should be all that we need
 # to unmount for a clean shutdown.
 kill_with_open_files_on /mnt/stateful_partition /home/chronos /var
-
-# join hwclock setting, already in progress.
-wait $HWCLOCK_PID
 
 # Signal that the clean shutdown point was reached (or at least as
 # close to that point as we can be before stateful is unmounted).
