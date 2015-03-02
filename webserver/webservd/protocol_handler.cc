@@ -21,9 +21,6 @@
 
 namespace webservd {
 
-const char ProtocolHandler::kHttp[] = "http";
-const char ProtocolHandler::kHttps[] = "https";
-
 // Helper class to provide static callback methods to libmicrohttpd library,
 // with the ability to access private methods of Server class.
 class ServerHelper {
@@ -71,12 +68,11 @@ class ServerHelper {
   }
 };
 
-ProtocolHandler::ProtocolHandler(const std::string& id,
+ProtocolHandler::ProtocolHandler(const std::string& name,
                                  ServerInterface* server_interface)
-    : id_{id}, server_interface_{server_interface} {
-  if (id_.empty())
-    id_ = base::GenerateGUID();
-}
+    : id_{base::GenerateGUID()},
+      name_{name},
+      server_interface_{server_interface} {}
 
 ProtocolHandler::~ProtocolHandler() {
   Stop();

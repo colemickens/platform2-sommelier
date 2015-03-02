@@ -28,8 +28,9 @@ void IgnoreError(chromeos::Error* error) {}
 const char ProtocolHandler::kHttp[] = "http";
 const char ProtocolHandler::kHttps[] = "https";
 
-ProtocolHandler::ProtocolHandler(const std::string& id, Server* server)
-    : id_{id}, server_{server} {}
+ProtocolHandler::ProtocolHandler(const std::string& name, Server* server)
+    : name_{name}, server_{server} {
+}
 
 ProtocolHandler::~ProtocolHandler() {
   // Remove any existing handlers, so the web server knows that we don't
@@ -43,23 +44,32 @@ ProtocolHandler::~ProtocolHandler() {
   }
 }
 
-std::string ProtocolHandler::GetID() const {
-  return id_;
+std::string ProtocolHandler::GetName() const {
+  return name_;
 }
 
-uint16_t ProtocolHandler::GetPort() const {
-  CHECK(IsConnected());
-  return proxy_->port();
+std::set<uint16_t> ProtocolHandler::GetPorts() const {
+  std::set<uint16_t> ports;
+  for (const auto& pair : proxies_)
+    ports.insert(pair.second->port());
+  return ports;
 }
 
-std::string ProtocolHandler::GetProtocol() const {
-  CHECK(IsConnected());
-  return proxy_->protocol();
+std::set<std::string> ProtocolHandler::GetProtocols() const {
+  std::set<std::string> protocols;
+  for (const auto& pair : proxies_)
+    protocols.insert(pair.second->protocol());
+  return protocols;
 }
 
 chromeos::Blob ProtocolHandler::GetCertificateFingerprint() const {
-  CHECK(IsConnected());
-  return proxy_->certificate_fingerprint();
+  chromeos::Blob fingerprint;
+  for (const auto& pair : proxies_) {
+    fingerprint = pair.second->certificate_fingerprint();
+    if (!fingerprint.empty())
+      break;
+  }
+  return fingerprint;
 }
 
 int ProtocolHandler::AddHandler(
@@ -69,8 +79,8 @@ int ProtocolHandler::AddHandler(
   request_handlers_.emplace(++last_handler_id_,
                             HandlerMapEntry{url, method, std::string{},
                                             std::move(handler)});
-  if (proxy_) {
-    proxy_->AddRequestHandlerAsync(
+  for (const auto& pair : proxies_) {
+    pair.second->AddRequestHandlerAsync(
         url,
         method,
         server_->service_name_,
@@ -99,8 +109,8 @@ bool ProtocolHandler::RemoveHandler(int handler_id) {
   if (p == request_handlers_.end())
     return false;
 
-  if (proxy_) {
-    proxy_->RemoveRequestHandlerAsync(
+  for (const auto& pair : proxies_) {
+    pair.second->RemoveRequestHandlerAsync(
         p->second.remote_handler_id,
         base::Bind(&base::DoNothing),
         base::Bind(&IgnoreError));
@@ -110,11 +120,10 @@ bool ProtocolHandler::RemoveHandler(int handler_id) {
   return true;
 }
 
-void ProtocolHandler::Connect(
-    org::chromium::WebServer::ProtocolHandlerProxy* proxy) {
-  proxy_ = proxy;
+void ProtocolHandler::Connect(ProtocolHandlerProxy* proxy) {
+  proxies_.emplace(proxy->GetObjectPath(), proxy);
   for (const auto& pair : request_handlers_) {
-    proxy_->AddRequestHandlerAsync(
+    proxy->AddRequestHandlerAsync(
         pair.second.url,
         pair.second.method,
         server_->service_name_,
@@ -127,9 +136,10 @@ void ProtocolHandler::Connect(
   }
 }
 
-void ProtocolHandler::Disconnect() {
-  proxy_ = nullptr;
-  remote_handler_id_map_.clear();
+void ProtocolHandler::Disconnect(const dbus::ObjectPath& object_path) {
+  proxies_.erase(object_path);
+  if (proxies_.empty())
+    remote_handler_id_map_.clear();
 }
 
 void ProtocolHandler::AddHandlerSuccess(int handler_id,
@@ -145,10 +155,12 @@ void ProtocolHandler::AddHandlerError(int handler_id, chromeos::Error* error) {
   // Nothing to do at the moment.
 }
 
-bool ProtocolHandler::ProcessRequest(const std::string& remote_handler_id,
+bool ProtocolHandler::ProcessRequest(const std::string& protocol_handler_id,
+                                     const std::string& remote_handler_id,
                                      const std::string& request_id,
                                      std::unique_ptr<Request> request,
                                      chromeos::ErrorPtr* error) {
+  request_id_map_.emplace(request_id, protocol_handler_id);
   auto id_iter = remote_handler_id_map_.find(remote_handler_id);
   if (id_iter == remote_handler_id_map_.end()) {
     chromeos::Error::AddToPrintf(error, FROM_HERE,
@@ -178,19 +190,18 @@ void ProtocolHandler::CompleteRequest(
     int status_code,
     const std::multimap<std::string, std::string>& headers,
     const std::vector<uint8_t>& data) {
-  if (!proxy_) {
-    LOG(WARNING) << "Completing a request after the handler proxy is removed";
+  ProtocolHandlerProxy* proxy = GetRequestProtocolHandlerProxy(request_id);
+  if (!proxy)
     return;
-  }
 
   std::vector<std::tuple<std::string, std::string>> header_list;
   header_list.reserve(headers.size());
   for (const auto& pair : headers)
     header_list.emplace_back(pair.first, pair.second);
 
-  proxy_->CompleteRequestAsync(request_id, status_code, header_list, data,
-                               base::Bind(&base::DoNothing),
-                               base::Bind([](chromeos::Error*) {}));
+  proxy->CompleteRequestAsync(request_id, status_code, header_list, data,
+                              base::Bind(&base::DoNothing),
+                              base::Bind([](chromeos::Error*) {}));
 }
 
 void ProtocolHandler::GetFileData(
@@ -198,9 +209,32 @@ void ProtocolHandler::GetFileData(
     int file_id,
     const base::Callback<void(const std::vector<uint8_t>&)>& success_callback,
     const base::Callback<void(chromeos::Error*)>& error_callback) {
-  CHECK(proxy_);
-  proxy_->GetRequestFileDataAsync(
+  ProtocolHandlerProxy* proxy = GetRequestProtocolHandlerProxy(request_id);
+  CHECK(proxy);
+
+  proxy->GetRequestFileDataAsync(
       request_id, file_id, success_callback, error_callback);
+}
+
+ProtocolHandler::ProtocolHandlerProxy*
+ProtocolHandler::GetRequestProtocolHandlerProxy(
+    const std::string& request_id) const {
+  auto iter = request_id_map_.find(request_id);
+  if (iter == request_id_map_.end()) {
+    LOG(ERROR) << "Can't find pending request with ID " << request_id;
+    return nullptr;
+  }
+  std::string handler_id = iter->second;
+  auto find_proxy_by_id = [handler_id](decltype(*proxies_.begin()) pair) {
+    return pair.second->id() == handler_id;
+  };
+  auto proxy_iter = std::find_if(proxies_.begin(), proxies_.end(),
+                                 find_proxy_by_id);
+  if (proxy_iter == proxies_.end()) {
+    LOG(WARNING) << "Completing a request after the handler proxy is removed";
+    return nullptr;
+  }
+  return proxy_iter->second;
 }
 
 

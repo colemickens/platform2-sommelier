@@ -47,9 +47,6 @@ Server::Server(ExportedObjectManager* object_manager, const Config& config)
           object_manager, object_manager->GetBus(),
           org::chromium::WebServer::ServerAdaptor::GetObjectPath()}},
       config_{config} {
-  dbus_adaptor_.SetDefaultHttp(dbus::ObjectPath{"/"});
-  dbus_adaptor_.SetDefaultHttps(dbus::ObjectPath{"/"});
-
   int fds[2];
   PCHECK(pipe(fds) == 0) << "Failed to create firewall lifeline pipe";
   lifeline_read_fd_ = fds[0];
@@ -68,8 +65,8 @@ void Server::RegisterAsync(
 
   InitTlsData();
 
-  for (auto& pair : config_.protocol_handlers)
-    CreateProtocolHandler(pair.first, &pair.second);
+  for (auto& handler_config : config_.protocol_handlers)
+    CreateProtocolHandler(&handler_config);
 
   permission_broker_object_manager_.reset(
       new org::chromium::PermissionBroker::ObjectManagerProxy{
@@ -94,16 +91,16 @@ void Server::OnPermissionBrokerOnline(
             << "Opening firewall for protocol handlers";
   dbus::FileDescriptor dbus_fd{lifeline_read_fd_};
   dbus_fd.CheckValidity();
-  for (auto& pair : config_.protocol_handlers) {
-    VLOG(1) << "Firewall request: Protocol Handler = " << pair.first
-            << ", Port = " << pair.second.port << ", Interface = "
-            << pair.second.interface_name;
+  for (auto& handler_config : config_.protocol_handlers) {
+    VLOG(1) << "Firewall request: Protocol Handler = " << handler_config.name
+            << ", Port = " << handler_config.port << ", Interface = "
+            << handler_config.interface_name;
     proxy->RequestTcpPortAccessAsync(
-        pair.second.port,
-        pair.second.interface_name,
+        handler_config.port,
+        handler_config.interface_name,
         dbus_fd,
-        base::Bind(&OnFirewallSuccess, pair.second.interface_name,
-                   pair.second.port),
+        base::Bind(&OnFirewallSuccess, handler_config.interface_name,
+                   handler_config.port),
         base::Bind(&IgnoreFirewallDBusMethodError));
   }
 }
@@ -115,15 +112,8 @@ std::string Server::Ping() {
 void Server::ProtocolHandlerStarted(ProtocolHandler* handler) {
   CHECK(protocol_handler_map_.find(handler) == protocol_handler_map_.end())
       << "Protocol handler already registered";
-  std::string dbus_id;
-  if (handler->GetID() == ProtocolHandler::kHttp ||
-      handler->GetID() == ProtocolHandler::kHttps)
-    dbus_id = handler->GetID();
-  else
-    dbus_id = std::to_string(++last_protocol_handler_index_);
-
-  std::string path = base::StringPrintf("/org/chromium/WebServer/Servers/%s",
-                                        dbus_id.c_str());
+  std::string path = base::StringPrintf("/org/chromium/WebServer/Servers/%d",
+                                        ++last_protocol_handler_index_);
   dbus::ObjectPath object_path{path};
   std::unique_ptr<DBusProtocolHandler> dbus_protocol_handler{
       new DBusProtocolHandler{dbus_object_->GetObjectManager().get(),
@@ -132,10 +122,6 @@ void Server::ProtocolHandlerStarted(ProtocolHandler* handler) {
                               this}
   };
   protocol_handler_map_.emplace(handler, std::move(dbus_protocol_handler));
-  if (handler->GetID() == ProtocolHandler::kHttp)
-    dbus_adaptor_.SetDefaultHttps(object_path);
-  else if (handler->GetID() == ProtocolHandler::kHttps)
-    dbus_adaptor_.SetDefaultHttp(object_path);
 }
 
 void Server::ProtocolHandlerStopped(ProtocolHandler* handler) {
@@ -143,13 +129,11 @@ void Server::ProtocolHandlerStopped(ProtocolHandler* handler) {
       << "Unknown protocol handler";
 }
 
-void Server::CreateProtocolHandler(
-    const std::string& id, Config::ProtocolHandler* handler_config) {
+void Server::CreateProtocolHandler(Config::ProtocolHandler* handler_config) {
   std::unique_ptr<ProtocolHandler> protocol_handler{
-      new ProtocolHandler{id, this}};
-
+      new ProtocolHandler{handler_config->name, this}};
   if (protocol_handler->Start(handler_config))
-    protocol_handlers_.emplace(id, std::move(protocol_handler));
+    protocol_handlers_.push_back(std::move(protocol_handler));
 }
 
 void Server::InitTlsData() {
@@ -191,11 +175,11 @@ void Server::InitTlsData() {
   TLS_private_key_ = std::move(private_key);
 
   // Update the TLS data in protocol handler config.
-  for (auto& pair : config_.protocol_handlers) {
-    if (pair.second.use_tls) {
-      pair.second.certificate = TLS_certificate_;
-      pair.second.certificate_fingerprint = TLS_certificate_fingerprint_;
-      pair.second.private_key = TLS_private_key_;
+  for (auto& handler_config : config_.protocol_handlers) {
+    if (handler_config.use_tls) {
+      handler_config.certificate = TLS_certificate_;
+      handler_config.certificate_fingerprint = TLS_certificate_fingerprint_;
+      handler_config.private_key = TLS_private_key_;
     }
   }
 }

@@ -16,36 +16,61 @@
 namespace {
 
 const char kTestConfig[] = R"({
-  "protocol_handlers": {
-    "ue_p2p": {
+  "protocol_handlers": [
+    {
+      "name": "ue_p2p",
       "port": 16725,
       "dummy_data_to_ignore": 123,
     },
-  },
+  ],
   "dummy_data_to_ignore2": "ignore me",
   "log_directory": "/var/log/mylogs",
 })";
 
+const char kMultipleHandlers[] = R"({
+  "protocol_handlers": [
+    {
+      "name": "http",
+      "port": 80
+    },
+    {
+      "name": "http",
+      "port": 8080
+    }
+  ]
+})";
+
 const char kInvalidConfig_NotDict[] = R"({
-  "protocol_handlers": {
-    "http": "not_a_dict"
-  }
+  "protocol_handlers": [
+    "not_a_dict"
+  ]
+})";
+
+const char kInvalidConfig_NoName[] = R"({
+  "protocol_handlers": [
+    {
+      "port": 80,
+      "use_tls": true
+    }
+  ]
 })";
 
 const char kInvalidConfig_NoPort[] = R"({
-  "protocol_handlers": {
-    "http": {
+  "protocol_handlers": [
+    {
+      "name": "http",
       "use_tls": true
     }
-  }
+  ]
 })";
 
 const char kInvalidConfig_InvalidPort[] = R"({
-  "protocol_handlers": {
-    "https": {
+  "protocol_handlers": [
+    {
+      "name": "https",
       "port": 65536
     }
-  }
+  ]
 })";
 
 void ValidateConfig(const webservd::Config& config) {
@@ -55,12 +80,12 @@ void ValidateConfig(const webservd::Config& config) {
   ASSERT_EQ(1u, config.protocol_handlers.size());
 
   auto it = config.protocol_handlers.begin();
-  EXPECT_EQ("ue_p2p", it->first);
-  EXPECT_EQ(16725u, it->second.port);
-  EXPECT_FALSE(it->second.use_tls);
-  EXPECT_TRUE(it->second.certificate.empty());
-  EXPECT_TRUE(it->second.certificate_fingerprint.empty());
-  EXPECT_TRUE(it->second.private_key.empty());
+  EXPECT_EQ("ue_p2p", it->name);
+  EXPECT_EQ(16725u, it->port);
+  EXPECT_FALSE(it->use_tls);
+  EXPECT_TRUE(it->certificate.empty());
+  EXPECT_TRUE(it->certificate_fingerprint.empty());
+  EXPECT_TRUE(it->private_key.empty());
 }
 
 }  // anonymous namespace
@@ -75,23 +100,25 @@ TEST(Config, LoadDefault) {
 
   ASSERT_EQ(2u, config.protocol_handlers.size());
 
-  const Config::ProtocolHandler& http_config =
-      config.protocol_handlers[ProtocolHandler::kHttp];
-  EXPECT_EQ(80u, http_config.port);
-  EXPECT_FALSE(http_config.use_tls);
-  EXPECT_TRUE(http_config.certificate.empty());
-  EXPECT_TRUE(http_config.certificate_fingerprint.empty());
-  EXPECT_TRUE(http_config.private_key.empty());
+  for (const auto& handler_config : config.protocol_handlers) {
+    if (handler_config.name == "http") {
+      EXPECT_EQ(80u, handler_config.port);
+      EXPECT_FALSE(handler_config.use_tls);
+      EXPECT_TRUE(handler_config.certificate.empty());
+      EXPECT_TRUE(handler_config.certificate_fingerprint.empty());
+      EXPECT_TRUE(handler_config.private_key.empty());
+    } else if (handler_config.name == "https") {
+      EXPECT_EQ(443u, handler_config.port);
+      EXPECT_TRUE(handler_config.use_tls);
 
-  const Config::ProtocolHandler& https_config =
-      config.protocol_handlers[ProtocolHandler::kHttps];
-  EXPECT_EQ(443u, https_config.port);
-  EXPECT_TRUE(https_config.use_tls);
-
-  // TLS keys/certificates are set later in webservd::Server, not on load.
-  EXPECT_TRUE(https_config.certificate.empty());
-  EXPECT_TRUE(https_config.certificate_fingerprint.empty());
-  EXPECT_TRUE(https_config.private_key.empty());
+      // TLS keys/certificates are set later in webservd::Server, not on load.
+      EXPECT_TRUE(handler_config.certificate.empty());
+      EXPECT_TRUE(handler_config.certificate_fingerprint.empty());
+      EXPECT_TRUE(handler_config.private_key.empty());
+    } else {
+      FAIL() << "Unexpected handler: " << handler_config.name;
+    }
+  }
 }
 
 TEST(Config, LoadConfigFromString) {
@@ -113,13 +140,36 @@ TEST(Config, LoadConfigFromFile) {
   ValidateConfig(config);
 }
 
+TEST(Config, MultipleHandlers) {
+  Config config;
+  ASSERT_TRUE(LoadConfigFromString(kMultipleHandlers, &config, nullptr));
+  ASSERT_EQ(2u, config.protocol_handlers.size());
+
+  auto it = config.protocol_handlers.begin();
+  EXPECT_EQ("http", it->name);
+  EXPECT_EQ(80, it->port);
+  ++it;
+  EXPECT_EQ("http", it->name);
+  EXPECT_EQ(8080, it->port);
+}
+
 TEST(Config, ParseError_ProtocolHandlersNotDict) {
   chromeos::ErrorPtr error;
   Config config;
   ASSERT_FALSE(LoadConfigFromString(kInvalidConfig_NotDict, &config, &error));
   EXPECT_EQ(chromeos::errors::json::kDomain, error->GetDomain());
   EXPECT_EQ(chromeos::errors::json::kObjectExpected, error->GetCode());
-  EXPECT_EQ("Protocol handler definition for 'http' must be a JSON object",
+  EXPECT_EQ("Protocol handler definition must be a JSON object",
+            error->GetMessage());
+}
+
+TEST(Config, ParseError_NoName) {
+  chromeos::ErrorPtr error;
+  Config config;
+  ASSERT_FALSE(LoadConfigFromString(kInvalidConfig_NoName, &config, &error));
+  EXPECT_EQ(webservd::errors::kDomain, error->GetDomain());
+  EXPECT_EQ(webservd::errors::kInvalidConfig, error->GetCode());
+  EXPECT_EQ("Protocol handler definition must include its name",
             error->GetMessage());
 }
 

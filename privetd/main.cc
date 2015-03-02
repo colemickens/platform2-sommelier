@@ -215,23 +215,23 @@ class Daemon : public chromeos::DBusServiceDaemon {
   }
 
   void OnProtocolHandlerConnected(ProtocolHandler* protocol_handler) {
-    if (protocol_handler->GetID() == ProtocolHandler::kHttp) {
-      device_->SetHttpPort(protocol_handler->GetPort());
+    if (protocol_handler->GetName() == ProtocolHandler::kHttp) {
+      device_->SetHttpPort(*protocol_handler->GetPorts().begin());
       if (peerd_client_)
         peerd_client_->Update();
-    } else if (protocol_handler->GetID() == ProtocolHandler::kHttps) {
-      device_->SetHttpsPort(protocol_handler->GetPort());
+    } else if (protocol_handler->GetName() == ProtocolHandler::kHttps) {
+      device_->SetHttpsPort(*protocol_handler->GetPorts().begin());
       security_->SetCertificateFingerprint(
           protocol_handler->GetCertificateFingerprint());
     }
   }
 
   void OnProtocolHandlerDisconnected(ProtocolHandler* protocol_handler) {
-    if (protocol_handler->GetID() == ProtocolHandler::kHttp) {
+    if (protocol_handler->GetName() == ProtocolHandler::kHttp) {
       device_->SetHttpPort(0);
       if (peerd_client_)
         peerd_client_->Update();
-    } else if (protocol_handler->GetID() == ProtocolHandler::kHttps) {
+    } else if (protocol_handler->GetName() == ProtocolHandler::kHttps) {
       device_->SetHttpsPort(0);
       security_->SetCertificateFingerprint({});
     }

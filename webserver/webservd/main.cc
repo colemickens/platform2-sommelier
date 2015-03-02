@@ -87,16 +87,16 @@ int main(int argc, char* argv[]) {
   // For protocol handlers bound to specific network interfaces, we need root
   // access to create those bound sockets. Do that here before we drop
   // privileges.
-  for (auto& pair : config.protocol_handlers) {
-    if (!pair.second.interface_name.empty()) {
+  for (auto& handler_config : config.protocol_handlers) {
+    if (!handler_config.interface_name.empty()) {
       int socket_fd =
-          webservd::CreateNetworkInterfaceSocket(pair.second.interface_name);
+          webservd::CreateNetworkInterfaceSocket(handler_config.interface_name);
       if (socket_fd < 0) {
         LOG(ERROR) << "Failed to create a socket for network interface "
-                   << pair.second.interface_name;
+                   << handler_config.interface_name;
         return EX_SOFTWARE;
       }
-      pair.second.socket_fd = socket_fd;
+      handler_config.socket_fd = socket_fd;
     }
   }
 

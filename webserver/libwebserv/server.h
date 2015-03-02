@@ -63,16 +63,14 @@ class LIBWEBSERV_EXPORT Server final {
   // A helper method that returns the default handler for "https".
   ProtocolHandler* GetDefaultHttpsHandler();
 
-  // Returns an existing protocol handler by ID.  If the handler with the
-  // requested |id| does not exist, a new one will be created.   See
-  // documentation in ProtocolHandler about IDs and how they work with
-  // webservd.
+  // Returns an existing protocol handler by name.  If the handler with the
+  // requested |name| does not exist, a new one will be created.
   //
   // The created handler is purely client side, and depends on the server
-  // being configured to open a corresponding handler with the given ID.
+  // being configured to open a corresponding handler with the given name.
   // Because clients and the server come up asynchronously, we allow clients
   // to register anticipated handlers before server starts up.
-  ProtocolHandler* GetProtocolHandler(const std::string& id);
+  ProtocolHandler* GetProtocolHandler(const std::string& name);
 
   // Returns true if the web server daemon is connected to DBus and our
   // connection to it has been established.
@@ -109,6 +107,10 @@ class LIBWEBSERV_EXPORT Server final {
   LIBWEBSERV_PRIVATE void ProtocolHandlerRemoved(
       const dbus::ObjectPath& object_path);
 
+  // Looks up a protocol handler by ID. If not found, returns nullptr.
+  LIBWEBSERV_PRIVATE ProtocolHandler* GetProtocolHandlerByID(
+      const std::string& id) const;
+
   // Private implementation of D-Bus RequestHandlerInterface called by the web
   // server daemon whenever a new request is available to be processed.
   std::unique_ptr<RequestHandler> request_handler_;
@@ -118,9 +120,11 @@ class LIBWEBSERV_EXPORT Server final {
   // D-Bus object to handler registration of RequestHandlerInterface.
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
 
+  // A mapping of protocol handler name to the associated object.
+  std::map<std::string, std::unique_ptr<ProtocolHandler>>
+      protocol_handlers_names_;
   // A mapping of protocol handler IDs to the associated object.
-  // Handler IDs are either GUIDs or the two well-known handler IDs.
-  std::map<std::string, std::unique_ptr<ProtocolHandler>> protocol_handlers_;
+  std::map<std::string, ProtocolHandler*> protocol_handlers_ids_;
   // A map between D-Bus object path of protocol handler and remote protocol
   // handler ID.
   std::map<dbus::ObjectPath, std::string> protocol_handler_id_map_;

@@ -29,6 +29,7 @@ DBusProtocolHandler::DBusProtocolHandler(
       protocol_handler_{protocol_handler},
       server_{server} {
   dbus_adaptor_.SetId(protocol_handler->GetID());
+  dbus_adaptor_.SetName(protocol_handler->GetName());
   dbus_adaptor_.SetPort(protocol_handler->GetPort());
   dbus_adaptor_.SetProtocol(protocol_handler->GetProtocol());
   dbus_adaptor_.SetCertificateFingerprint(

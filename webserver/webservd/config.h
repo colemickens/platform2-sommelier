@@ -5,8 +5,8 @@
 #ifndef WEBSERVER_WEBSERVD_CONFIG_H_
 #define WEBSERVER_WEBSERVD_CONFIG_H_
 
-#include <map>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <chromeos/errors/error.h>
@@ -20,6 +20,8 @@ struct Config final {
   // Configuration of one specific protocol handler.
   struct ProtocolHandler final {
     ~ProtocolHandler();
+    // Protocol Handler Name.
+    std::string name;
     // Port to use.
     uint16_t port{0};
     // Specifies whether the handler is for HTTPS (true) or HTTP (false).
@@ -43,7 +45,7 @@ struct Config final {
   };
 
   // List of all registered protocol handlers for the web server.
-  std::map<std::string, ProtocolHandler> protocol_handlers;
+  std::vector<ProtocolHandler> protocol_handlers;
 
   // Specifies whether additional debugging information should be included.
   // When set, this turns out additional diagnostic logging in libmicrohttpd as

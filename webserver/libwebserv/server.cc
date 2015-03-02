@@ -49,7 +49,7 @@ bool Server::RequestHandler::ProcessRequest(
   std::string url = std::get<3>(in_request_info);
   std::string method = std::get<4>(in_request_info);
   ProtocolHandler* protocol_handler =
-      server_->GetProtocolHandler(protocol_handler_id);
+      server_->GetProtocolHandlerByID(protocol_handler_id);
   if (!protocol_handler) {
     chromeos::Error::AddToPrintf(error, FROM_HERE,
                                  chromeos::errors::dbus::kDomain,
@@ -84,7 +84,8 @@ bool Server::RequestHandler::ProcessRequest(
 
   request->raw_data_ = in_body;
 
-  return protocol_handler->ProcessRequest(request_handler_id,
+  return protocol_handler->ProcessRequest(protocol_handler_id,
+                                          request_handler_id,
                                           request_id,
                                           std::move(request),
                                           error);
@@ -127,7 +128,8 @@ void Server::Disconnect() {
   on_server_offline_.Reset();
   on_server_online_.Reset();
   dbus_object_.reset();
-  protocol_handlers_.clear();
+  protocol_handlers_ids_.clear();
+  protocol_handlers_names_.clear();
 }
 
 void Server::Online(org::chromium::WebServer::ServerProxy* server) {
@@ -147,11 +149,12 @@ void Server::Offline(const dbus::ObjectPath& object_path) {
 void Server::ProtocolHandlerAdded(
     org::chromium::WebServer::ProtocolHandlerProxy* handler) {
   VLOG(1) << "Server-side protocol handler with ID '" << handler->id()
-          << "' is on-line.";
+          << "' is on-line (" << handler->name() << ")";
 
   protocol_handler_id_map_.emplace(handler->GetObjectPath(), handler->id());
-  ProtocolHandler* registered_handler = GetProtocolHandler(handler->id());
+  ProtocolHandler* registered_handler = GetProtocolHandler(handler->name());
   if (registered_handler) {
+    protocol_handlers_ids_.emplace(handler->id(), registered_handler);
     registered_handler->Connect(handler);
     if (!on_protocol_handler_connected_.is_null())
       on_protocol_handler_connected_.Run(registered_handler);
@@ -166,24 +169,26 @@ void Server::ProtocolHandlerRemoved(const dbus::ObjectPath& object_path) {
   VLOG(1) << "Server-side protocol handler with ID '" << p->second
           << "' is off-line.";
 
-  ProtocolHandler* registered_handler = GetProtocolHandler(p->second);
+  ProtocolHandler* registered_handler = GetProtocolHandlerByID(p->second);
   if (registered_handler) {
     if (!on_protocol_handler_disconnected_.is_null())
       on_protocol_handler_disconnected_.Run(registered_handler);
-    registered_handler->Disconnect();
+    registered_handler->Disconnect(object_path);
+    protocol_handlers_ids_.erase(p->second);
   }
 
   protocol_handler_id_map_.erase(p);
 }
 
-ProtocolHandler* Server::GetProtocolHandler(const std::string& id) {
-  auto p = protocol_handlers_.find(id);
-  if (p == protocol_handlers_.end()) {
+ProtocolHandler* Server::GetProtocolHandler(const std::string& name) {
+  auto p = protocol_handlers_names_.find(name);
+  if (p == protocol_handlers_names_.end()) {
     VLOG(1) << "Creating a client-side instance of web server's protocol "
-            << "handler with ID '" << id << "'";
-    p = protocol_handlers_.emplace(
-        id,
-        std::unique_ptr<ProtocolHandler>{new ProtocolHandler{id, this}}).first;
+            << "handler with name '" << name << "'";
+    p = protocol_handlers_names_.emplace(
+        name,
+        std::unique_ptr<ProtocolHandler>{new ProtocolHandler{name, this}})
+            .first;
   }
   return p->second.get();
 }
@@ -194,6 +199,15 @@ ProtocolHandler* Server::GetDefaultHttpHandler() {
 
 ProtocolHandler* Server::GetDefaultHttpsHandler() {
   return GetProtocolHandler(ProtocolHandler::kHttps);
+}
+
+ProtocolHandler* Server::GetProtocolHandlerByID(const std::string& id) const {
+  auto p = protocol_handlers_ids_.find(id);
+  if (p == protocol_handlers_ids_.end()) {
+    LOG(ERROR) << "Unable to locate protocol handler with ID '" << id << "'";
+    return nullptr;
+  }
+  return p->second;
 }
 
 void Server::OnProtocolHandlerConnected(

@@ -29,7 +29,7 @@ class ServerInterface;
 // particular port to handle requests on.
 class ProtocolHandler final {
  public:
-  ProtocolHandler(const std::string& id,
+  ProtocolHandler(const std::string& name,
                   ServerInterface* server_interface);
   ~ProtocolHandler();
 
@@ -66,11 +66,12 @@ class ProtocolHandler final {
     return certificate_fingerprint_;
   }
 
-  // Returns the unique request handler ID. This will normally by a GUID, unless
-  // this is one of the two default handlers for HTTP/HTTPS protocols with
-  // default ports, in which case the IDs will be "http" and "https"
-  // respectively.
+  // Returns the unique protocol handler ID (GUID).
   const std::string& GetID() const { return id_; }
+
+  // Handler's name identifier (as provided in "name" setting of config file).
+  // Standard/default handler names are "http" and "https".
+  std::string GetName() const { return name_; }
 
   // Returns the pointer to the Server object.
   ServerInterface* GetServer() const { return server_interface_; }
@@ -83,9 +84,6 @@ class ProtocolHandler final {
 
   // Notification of incoming reply from the request handler.
   void OnResponseDataReceived();
-
-  static const char kHttp[];
-  static const char kHttps[];
 
  private:
   friend class Request;
@@ -110,6 +108,8 @@ class ProtocolHandler final {
   std::map<std::string, Request*> requests_;
   // Protocol Handler ID.
   std::string id_;
+  // Protocol Handler name.
+  std::string name_;
   // Reference back to the Server.
   ServerInterface* server_interface_{nullptr};
   // The port we are listening to.

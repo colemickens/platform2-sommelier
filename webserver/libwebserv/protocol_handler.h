@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,7 @@
 #include <base/memory/weak_ptr.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/secure_blob.h>
+#include <dbus/object_path.h>
 
 #include <libwebserv/export.h>
 #include <libwebserv/request_handler_interface.h>
@@ -40,33 +42,32 @@ class Request;
 // information.
 class LIBWEBSERV_EXPORT ProtocolHandler final {
  public:
-  explicit ProtocolHandler(const std::string& id, Server* server);
+  explicit ProtocolHandler(const std::string& name, Server* server);
   ~ProtocolHandler();
 
   // Returns true if the protocol handler object is connected to the web server
   // daemon's proxy object and is capable of processing incoming requests.
-  bool IsConnected() const { return proxy_ != nullptr; }
+  bool IsConnected() const { return !proxies_.empty(); }
 
-  // Handler's unique ID. This is generally a GUID string, except for the
-  // default HTTP and HTTPS handlers which have IDs of "http" and "https"
-  // respectively.
-  std::string GetID() const;
+  // Handler's name identifier (as provided in "name" setting of config file).
+  // Standard/default handler names are "http" and "https".
+  std::string GetName() const;
 
-  // Returns the port the handler is bound to.
-  // ATTENTION: The handler must be connected to the web server before this
-  // method can be called.
-  uint16_t GetPort() const;
+  // Returns the ports the handler is bound to. There could be multiple.
+  // If the handler is not connected to the server, this will return an empty
+  // set.
+  std::set<uint16_t> GetPorts() const;
 
   // Returns the transport protocol that is served by this handler.
   // Can be either "http" or "https".
-  // ATTENTION: The handler must be connected to the web server before this
-  // method can be called.
-  std::string GetProtocol() const;
+  // If the handler is not connected to the server, this will return an empty
+  // set.
+  std::set<std::string> GetProtocols() const;
 
   // Returns a SHA-256 fingerprint of HTTPS certificate used. Returns an empty
   // byte buffer if this handler does not serve the HTTPS protocol.
-  // ATTENTION: The handler must be connected to the web server before this
-  // method can be called.
+  // If the handler is not connected to the server, this will return an empty
+  // array.
   chromeos::Blob GetCertificateFingerprint() const;
 
   // Adds a request handler for given |url|. If the |url| ends with a '/', this
@@ -117,6 +118,8 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
   friend class Server;
   friend class Response;
 
+  using ProtocolHandlerProxy = org::chromium::WebServer::ProtocolHandlerProxy;
+
   struct LIBWEBSERV_PRIVATE HandlerMapEntry {
     std::string url;
     std::string method;
@@ -127,11 +130,10 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
   // Called by the Server class when the D-Bus proxy object gets connected
   // to the web server daemon.
 
-  LIBWEBSERV_PRIVATE void Connect(
-      org::chromium::WebServer::ProtocolHandlerProxy* proxy);
+  LIBWEBSERV_PRIVATE void Connect(ProtocolHandlerProxy* proxy);
   // Called by the Server class when the D-Bus proxy object gets disconnected
   // from the web server daemon.
-  LIBWEBSERV_PRIVATE void Disconnect();
+  LIBWEBSERV_PRIVATE void Disconnect(const dbus::ObjectPath& object_path);
 
   // Asynchronous callbacks to handle successful or failed request handler
   // registration over D-Bus.
@@ -141,7 +143,8 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
                                           chromeos::Error* error);
 
   // Called by Server when an incoming request is dispatched.
-  LIBWEBSERV_PRIVATE bool ProcessRequest(const std::string& remote_handler_id,
+  LIBWEBSERV_PRIVATE bool ProcessRequest(const std::string& protocol_handler_id,
+                                         const std::string& remote_handler_id,
                                          const std::string& request_id,
                                          std::unique_ptr<Request> request,
                                          chromeos::ErrorPtr* error);
@@ -157,26 +160,36 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
   // obtain the file content of uploaded file (identified by |file_id|) during
   // request with |request_id|.
   LIBWEBSERV_PRIVATE void GetFileData(
-    const std::string& request_id,
-    int file_id,
-    const base::Callback<void(const std::vector<uint8_t>&)>& success_callback,
-    const base::Callback<void(chromeos::Error*)>& error_callback);
+      const std::string& request_id,
+      int file_id,
+      const base::Callback<void(const std::vector<uint8_t>&)>& success_callback,
+      const base::Callback<void(chromeos::Error*)>& error_callback);
 
-  // Protocol Handler unique ID.
-  std::string id_;
+  // A helper method to obtain a corresponding protocol handler D-Bus proxy for
+  // outstanding request with ID |request_id|.
+  LIBWEBSERV_PRIVATE ProtocolHandlerProxy* GetRequestProtocolHandlerProxy(
+      const std::string& request_id) const;
+
+  // Protocol Handler name.
+  std::string name_;
   // Back reference to the server object.
   Server* server_{nullptr};
   // Handler data map. The key is the client-facing request handler ID returned
   // by AddHandler() when registering the handler.
   std::map<int, HandlerMapEntry> request_handlers_;
+  // The counter to generate new handler IDs.
+  int last_handler_id_{0};
   // Map of remote handler IDs (GUID strings) to client-facing request handler
   // IDs (int) which are returned by AddHandler() and used as a key in
   // |request_handlers_|.
   std::map<std::string, int> remote_handler_id_map_;
-  // The counter to generate new handler IDs.
-  int last_handler_id_{0};
-  // Remove D-Bus proxy for the server protocol handler object.
-  org::chromium::WebServer::ProtocolHandlerProxy* proxy_{nullptr};
+  // Remote D-Bus proxies for the server protocol handler objects.
+  // There could be multiple protocol handlers with the same name (to make
+  // it possible to server the same requests on different ports, for example).
+  std::map<dbus::ObjectPath, ProtocolHandlerProxy*> proxies_;
+  // A map of request ID to protocol handler ID. Used to locate the appropriate
+  // protocol handler D-Bus proxy for given request.
+  std::map<std::string, std::string> request_id_map_;
 
   base::WeakPtrFactory<ProtocolHandler> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ProtocolHandler);

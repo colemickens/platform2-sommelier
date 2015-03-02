@@ -49,8 +49,7 @@ class Server final : public org::chromium::WebServer::ServerInterface,
   scoped_refptr<dbus::Bus> GetBus() { return dbus_object_->GetBus(); }
 
  private:
-  void CreateProtocolHandler(const std::string& id,
-                             Config::ProtocolHandler* handler_config);
+  void CreateProtocolHandler(Config::ProtocolHandler* handler_config);
   void InitTlsData();
   void OnPermissionBrokerOnline(org::chromium::PermissionBrokerProxy* proxy);
 
@@ -67,7 +66,11 @@ class Server final : public org::chromium::WebServer::ServerInterface,
 
   std::map<ProtocolHandler*,
            std::unique_ptr<DBusProtocolHandler>> protocol_handler_map_;
-  std::map<std::string, std::unique_ptr<ProtocolHandler>> protocol_handlers_;
+  // |protocol_handlers_| is currently used to maintain the lifetime of
+  // ProtocolHandler object instances. When (if) we start to add/remove
+  // protocol handlers dynamically at run-time, it will be used to locate
+  // existing handlers so they can be removed.
+  std::vector<std::unique_ptr<ProtocolHandler>> protocol_handlers_;
 
   // File descriptors for the two ends of the pipe used for communicating with
   // remote firewall server (permission_broker), where the remote firewall

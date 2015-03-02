@@ -8,16 +8,5 @@
       <arg name="message" type="s" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
-    <!-- Properties -->
-    <property name="DefaultHttp" type="o" access="read">
-      <tp:docstring>
-        Returns the D-Bus object path for the default HTTP protocol handler.
-      </tp:docstring>
-    </property>
-    <property name="DefaultHttps" type="o" access="read">
-      <tp:docstring>
-        Returns the D-Bus object path for the default HTTPS protocol handler.
-      </tp:docstring>
-    </property>
   </interface>
 </node>

@@ -18,22 +18,25 @@ namespace {
 
 const char kLogDirectoryKey[] = "log_directory";
 const char kProtocolHandlersKey[] = "protocol_handlers";
+const char kNameKey[] = "name";
 const char kPortKey[] = "port";
 const char kUseTLSKey[] = "use_tls";
 const char kInterfaceKey[] = "interface";
 
 // Default configuration for the web server.
 const char kDefaultConfig[] = R"({
-  "protocol_handlers": {
-    "http": {
+  "protocol_handlers": [
+    {
+      "name": "http",
       "port": 80,
       "use_tls": false
     },
-    "https": {
+    {
+      "name": "https",
       "port": 443,
       "use_tls": true
     }
-  }
+  ]
 })";
 
 bool LoadHandlerConfig(const base::DictionaryValue* handler_value,
@@ -119,36 +122,44 @@ bool LoadConfigFromString(const std::string& config_json,
   // "log_directory" is optional, so ignoring the return value here.
   dict_value->GetString(kLogDirectoryKey, &config->log_directory);
 
-  const base::DictionaryValue* protocol_handlers = nullptr;  // Owned by |value|
-  if (dict_value->GetDictionary(kProtocolHandlersKey, &protocol_handlers)) {
-    base::DictionaryValue::Iterator iterator{*protocol_handlers};
-    while (!iterator.IsAtEnd()) {
-      const base::DictionaryValue* handler_value = nullptr;  // Owned by |value|
-      if (!iterator.value().GetAsDictionary(&handler_value)) {
-        chromeos::Error::AddToPrintf(
+  const base::ListValue* protocol_handlers = nullptr;  // Owned by |value|
+  if (dict_value->GetList(kProtocolHandlersKey, &protocol_handlers)) {
+    for (base::Value* handler_value : *protocol_handlers) {
+      const base::DictionaryValue* handler_dict = nullptr;  // Owned by |value|
+      if (!handler_value->GetAsDictionary(&handler_dict)) {
+        chromeos::Error::AddTo(
             error,
             FROM_HERE,
             chromeos::errors::json::kDomain,
             chromeos::errors::json::kObjectExpected,
-            "Protocol handler definition for '%s' must be a JSON object",
-            iterator.key().c_str());
+            "Protocol handler definition must be a JSON object");
+        return false;
+      }
+
+      std::string name;
+      if (!handler_dict->GetString(kNameKey, &name)) {
+        chromeos::Error::AddTo(
+            error,
+            FROM_HERE,
+            errors::kDomain,
+            errors::kInvalidConfig,
+            "Protocol handler definition must include its name");
         return false;
       }
 
       Config::ProtocolHandler handler_config;
-      if (!LoadHandlerConfig(handler_value, &handler_config, error)) {
+      handler_config.name = name;
+      if (!LoadHandlerConfig(handler_dict, &handler_config, error)) {
         chromeos::Error::AddToPrintf(
             error,
             FROM_HERE,
             errors::kDomain,
             errors::kInvalidConfig,
             "Unable to parse config for protocol handler '%s'",
-            iterator.key().c_str());
+            name.c_str());
         return false;
       }
-      config->protocol_handlers.emplace(iterator.key(),
-                                        std::move(handler_config));
-      iterator.Advance();
+      config->protocol_handlers.push_back(std::move(handler_config));
     }
   }
   return true;
