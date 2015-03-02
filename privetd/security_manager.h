@@ -56,16 +56,19 @@ class SecurityManager : public SecurityDelegate {
   std::vector<CryptoType> GetCryptoTypes() const override;
   bool IsValidPairingCode(const std::string& auth_code) const override;
 
-  Error StartPairing(PairingType mode,
-                     CryptoType crypto,
-                     std::string* session_id,
-                     std::string* device_commitment) override;
+  bool StartPairing(PairingType mode,
+                    CryptoType crypto,
+                    std::string* session_id,
+                    std::string* device_commitment,
+                    chromeos::ErrorPtr* error) override;
 
-  Error ConfirmPairing(const std::string& session_id,
-                       const std::string& client_commitment,
-                       std::string* fingerprint,
-                       std::string* signature) override;
-  Error CancelPairing(const std::string& session_id) override;
+  bool ConfirmPairing(const std::string& session_id,
+                      const std::string& client_commitment,
+                      std::string* fingerprint,
+                      std::string* signature,
+                      chromeos::ErrorPtr* error) override;
+  bool CancelPairing(const std::string& session_id,
+                     chromeos::ErrorPtr* error) override;
 
   void RegisterPairingListeners(const PairingStartListener& on_start,
                                 const PairingEndListener& on_end);
@@ -77,7 +80,7 @@ class SecurityManager : public SecurityDelegate {
  private:
   FRIEND_TEST_ALL_PREFIXES(SecurityManagerTest, ThrottlePairing);
   // Allows limited number of new sessions without successful authorization.
-  bool CheckIfPairingAllowed();
+  bool CheckIfPairingAllowed(chromeos::ErrorPtr* error);
   bool ClosePendingSession(const std::string& session_id);
   bool CloseConfirmedSession(const std::string& session_id);
 

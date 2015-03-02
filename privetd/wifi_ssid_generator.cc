@@ -26,10 +26,11 @@ const char kSsidFormat[] = "%s %s.%2.2s%3.3s%2.2sprv";
 const char base64chars[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-bool IsSetupNeeded(ConnectionState::Status status) {
-  switch (status) {
+bool IsSetupNeeded(const ConnectionState& state) {
+  if (state.error())
+    return true;
+  switch (state.status()) {
     case ConnectionState::kUnconfigured:
-    case ConnectionState::kError:
       return true;
     case ConnectionState::kDisabled:
     case ConnectionState::kConnecting:
@@ -55,9 +56,9 @@ WifiSsidGenerator::WifiSsidGenerator(const DeviceDelegate* device,
 std::string WifiSsidGenerator::GenerateFlags() const {
   std::bitset<6> flags1;
   // Device needs WiFi configuration.
-  flags1[0] = wifi_ && IsSetupNeeded(wifi_->GetConnectionState().status);
+  flags1[0] = wifi_ && IsSetupNeeded(wifi_->GetConnectionState());
   // Device needs GCD registration.
-  flags1[1] = gcd_ && IsSetupNeeded(gcd_->GetConnectionState().status);
+  flags1[1] = gcd_ && IsSetupNeeded(gcd_->GetConnectionState());
 
   std::bitset<6> flags2;
   // Device is discoverable over WiFi.

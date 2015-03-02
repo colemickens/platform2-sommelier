@@ -7,70 +7,70 @@
 
 #include <string>
 
+#include <chromeos/errors/error.h>
+
 namespace privetd {
 
-enum class Error {
-  kNone,
-  kInvalidFormat,
-  kMissingAuthorization,
-  kInvalidAuthorization,
-  kInvalidAuthorizationScope,
-  kCommitmentMismatch,
-  kUnknownSession,
-  kInvalidAuthCode,
-  kInvalidAuthMode,
-  kInvalidRequestedScope,
-  kAccessDenied,
-  kInvalidParams,
-  kSetupUnavailable,
-  kDeviceBusy,
-  kInvalidTicket,
-  kServerError,
-  kDeviceConfigError,
-  kInvalidSsid,
-  kInvalidPassphrase,
-};
-
-struct ConnectionState {
+class ConnectionState {
+ public:
   enum Status {
     kDisabled,
     kUnconfigured,
     kConnecting,
     kOnline,
     kOffline,
-    kError,
   };
 
-  explicit ConnectionState(Status status) : status(status) {}
+  explicit ConnectionState(Status status) : status_(status) {}
+  explicit ConnectionState(chromeos::ErrorPtr error)
+      : status_(kOffline), error_(std::move(error)) {}
 
-  explicit ConnectionState(Error error) : status(kError), error(error) {}
+  Status status() const {
+    CHECK(!error_);
+    return status_;
+  }
 
-  ConnectionState(Error error, const std::string& error_message)
-      : status(kError), error(error), error_message(error_message) {}
+  bool IsStatusEqual(Status status) const {
+    if (error_)
+      return false;
+    return status_ == status;
+  }
 
-  Status status;
-  Error error = Error::kNone;
-  std::string error_message;
+  const chromeos::Error* error() const { return error_.get(); }
+
+ private:
+  Status status_;
+  chromeos::ErrorPtr error_;
 };
 
-struct SetupState {
+class SetupState {
+ public:
   enum Status {
     kNone,
     kInProgress,
     kSuccess,
-    kError,
   };
 
-  explicit SetupState(Status status) : status(status) {}
+  explicit SetupState(Status status) : status_(status) {}
+  explicit SetupState(chromeos::ErrorPtr error)
+      : status_(kNone), error_(std::move(error)) {}
 
-  explicit SetupState(Error error) : status(kError), error(error) {}
+  Status status() const {
+    CHECK(!error_);
+    return status_;
+  }
 
-  SetupState(Error error, const std::string& error_message)
-      : status(kError), error(error), error_message(error_message) {}
+  bool IsStatusEqual(Status status) const {
+    if (error_)
+      return false;
+    return status_ == status;
+  }
 
-  Status status;
-  Error error = Error::kNone;
-  std::string error_message;
+  const chromeos::Error* error() const { return error_.get(); }
+
+ private:
+  Status status_;
+  chromeos::ErrorPtr error_;
 };
 
 }  // namespace privetd

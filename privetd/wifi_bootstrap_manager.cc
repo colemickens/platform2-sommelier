@@ -42,6 +42,7 @@ void WifiBootstrapManager::Init() {
                                &last_configured_ssid_)) {
     have_ever_been_bootstrapped_ = false;
   }
+  UpdateConnectionState();
   shill_client_->RegisterConnectivityListener(
       base::Bind(&WifiBootstrapManager::OnConnectivityChange,
                  lifetime_weak_factory_.GetWeakPtr()));
@@ -133,35 +134,17 @@ void WifiBootstrapManager::NotifyStateListeners(State new_state) const {
     listener.Run(new_state);
 }
 
-ConnectionState WifiBootstrapManager::GetConnectionState() const {
-  if (!have_ever_been_bootstrapped_) {
-    return ConnectionState{ConnectionState::kUnconfigured};
-  }
-  ShillClient::ServiceState service_state{shill_client_->GetConnectionState()};
-  switch (service_state) {
-    case ShillClient::kOffline:
-      return ConnectionState{ConnectionState::kOffline};
-    case ShillClient::kFailure:
-      // TODO(wiley) Pull error information from somewhere.
-      return ConnectionState{ConnectionState::kError};
-    case ShillClient::kConnecting:
-      return ConnectionState{ConnectionState::kConnecting};
-    case ShillClient::kConnected:
-      return ConnectionState{ConnectionState::kOnline};
-    default:
-      LOG(WARNING) << "Unknown state returned from ShillClient: "
-                   << service_state;
-      break;
-  }
-  return ConnectionState{Error::kDeviceConfigError};
+const ConnectionState& WifiBootstrapManager::GetConnectionState() const {
+  return connection_state_;
 }
 
-SetupState WifiBootstrapManager::GetSetupState() const {
+const SetupState& WifiBootstrapManager::GetSetupState() const {
   return setup_state_;
 }
 
 bool WifiBootstrapManager::ConfigureCredentials(const std::string& ssid,
-                                                const std::string& passphrase) {
+                                                const std::string& passphrase,
+                                                chromeos::ErrorPtr* error) {
   setup_state_ = SetupState{SetupState::kInProgress};
   // TODO(vitalybuka): Find more reliable way to finish request or move delay
   // into PrivetHandler as it's very HTTP specific.
@@ -207,12 +190,18 @@ void WifiBootstrapManager::OnBootstrapTimeout() {
 
 void WifiBootstrapManager::OnConnectTimeout() {
   VLOG(1) << "Wifi timed out while connecting";
-  setup_state_ = SetupState{SetupState::kError};
+  chromeos::ErrorPtr error;
+  chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
+                         errors::kInvalidState,
+                         "Failed to connect to provided network");
+  setup_state_ = SetupState{std::move(error)};
   StartBootstrapping();
 }
 
 void WifiBootstrapManager::OnConnectivityChange(bool is_connected) {
   VLOG(3) << "ConnectivityChanged: " << is_connected;
+  UpdateConnectionState();
+
   if (state_ != kMonitoring) {
     return;
   }
@@ -232,6 +221,38 @@ void WifiBootstrapManager::OnMonitorTimeout() {
   VLOG(1) << "Spent too long offline.  Entering bootstrap mode.";
   // TODO(wiley) Retrieve relevant errors from shill.
   StartBootstrapping();
+}
+
+void WifiBootstrapManager::UpdateConnectionState() {
+  connection_state_ = ConnectionState{ConnectionState::kUnconfigured};
+  if (!have_ever_been_bootstrapped_) {
+    return;
+  }
+  ShillClient::ServiceState service_state{shill_client_->GetConnectionState()};
+  switch (service_state) {
+    case ShillClient::kOffline:
+      connection_state_ = ConnectionState{ConnectionState::kOffline};
+      return;
+    case ShillClient::kFailure: {
+      // TODO(wiley) Pull error information from somewhere.
+      chromeos::ErrorPtr error;
+      chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
+                             errors::kInvalidState, "Unknown WiFi error");
+      connection_state_ = ConnectionState{std::move(error)};
+      return;
+    }
+    case ShillClient::kConnecting:
+      connection_state_ = ConnectionState{ConnectionState::kConnecting};
+      return;
+    case ShillClient::kConnected:
+      connection_state_ = ConnectionState{ConnectionState::kOnline};
+      return;
+  }
+  chromeos::ErrorPtr error;
+  chromeos::Error::AddToPrintf(
+      &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
+      "Unknown state returned from ShillClient: %d", service_state);
+  connection_state_ = ConnectionState{std::move(error)};
 }
 
 }  // namespace privetd

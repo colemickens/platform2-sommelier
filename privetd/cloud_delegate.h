@@ -28,13 +28,15 @@ class CloudDelegate {
   virtual ~CloudDelegate();
 
   // Returns status of the GCD connection.
-  virtual ConnectionState GetConnectionState() const = 0;
+  virtual const ConnectionState& GetConnectionState() const = 0;
 
   // Returns status of the last setup.
-  virtual SetupState GetSetupState() const = 0;
+  virtual const SetupState& GetSetupState() const = 0;
 
   // Starts GCD setup.
-  virtual bool Setup(const std::string& ticket_id, const std::string& user) = 0;
+  virtual bool Setup(const std::string& ticket_id,
+                     const std::string& user,
+                     chromeos::ErrorPtr* error) = 0;
 
   // Returns cloud id if the registered device or empty string if unregistered.
   virtual std::string GetCloudId() const = 0;

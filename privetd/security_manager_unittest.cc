@@ -81,10 +81,9 @@ class SecurityManagerTest : public testing::Test {
     std::string session_id;
     std::string device_commitment_base64;
 
-    EXPECT_EQ(Error::kNone,
-              security_.StartPairing(PairingType::kEmbeddedCode,
-                                     CryptoType::kSpake_p224, &session_id,
-                                     &device_commitment_base64));
+    EXPECT_TRUE(security_.StartPairing(PairingType::kEmbeddedCode,
+                                       CryptoType::kSpake_p224, &session_id,
+                                       &device_commitment_base64, nullptr));
     EXPECT_FALSE(session_id.empty());
     EXPECT_FALSE(device_commitment_base64.empty());
 
@@ -94,9 +93,8 @@ class SecurityManagerTest : public testing::Test {
     std::string client_commitment_base64{
         chromeos::data_encoding::Base64Encode(spake.GetMessage())};
 
-    EXPECT_EQ(Error::kNone,
-              security_.ConfirmPairing(session_id, client_commitment_base64,
-                                       fingerprint, signature));
+    EXPECT_TRUE(security_.ConfirmPairing(session_id, client_commitment_base64,
+                                         fingerprint, signature, nullptr));
     EXPECT_TRUE(IsBase64(*fingerprint));
     EXPECT_TRUE(IsBase64(*signature));
 
@@ -163,8 +161,10 @@ TEST_F(SecurityManagerTest, ParseAccessToken) {
 TEST_F(SecurityManagerTest, PairingNoSession) {
   std::string fingerprint;
   std::string signature;
-  EXPECT_EQ(Error::kUnknownSession,
-            security_.ConfirmPairing("123", "345", &fingerprint, &signature));
+  chromeos::ErrorPtr error;
+  ASSERT_FALSE(
+      security_.ConfirmPairing("123", "345", &fingerprint, &signature, &error));
+  EXPECT_EQ("unknownSession", error->GetCode());
 }
 
 TEST_F(SecurityManagerTest, Pairing) {
@@ -193,10 +193,9 @@ TEST_F(SecurityManagerTest, NotifiesListenersOfSessionStartAndEnd) {
     std::string session_id;
     std::string device_commitment;
     EXPECT_CALL(callbacks, OnPairingStart(_, PairingType::kEmbeddedCode, _));
-    EXPECT_EQ(Error::kNone,
-              security_.StartPairing(PairingType::kEmbeddedCode,
-                                     CryptoType::kSpake_p224, &session_id,
-                                     &device_commitment));
+    EXPECT_TRUE(security_.StartPairing(PairingType::kEmbeddedCode,
+                                       CryptoType::kSpake_p224, &session_id,
+                                       &device_commitment, nullptr));
     EXPECT_FALSE(session_id.empty());
     EXPECT_FALSE(device_commitment.empty());
     testing::Mock::VerifyAndClearExpectations(&callbacks);
@@ -211,7 +210,7 @@ TEST_F(SecurityManagerTest, NotifiesListenersOfSessionStartAndEnd) {
     // Regardless of whether the commitment is valid or not, we should get a
     // callback indicating that the pairing session is gone.
     security_.ConfirmPairing(session_id, client_commitment + commitment_suffix,
-                             &fingerprint, &signature);
+                             &fingerprint, &signature, nullptr);
     testing::Mock::VerifyAndClearExpectations(&callbacks);
   }
 }
@@ -226,23 +225,23 @@ TEST_F(SecurityManagerTest, CancelPairing) {
   std::string session_id;
   std::string device_commitment;
   EXPECT_CALL(callbacks, OnPairingStart(_, PairingType::kEmbeddedCode, _));
-  EXPECT_EQ(Error::kNone,
-            security_.StartPairing(PairingType::kEmbeddedCode,
-                                   CryptoType::kSpake_p224, &session_id,
-                                   &device_commitment));
+  EXPECT_TRUE(security_.StartPairing(PairingType::kEmbeddedCode,
+                                     CryptoType::kSpake_p224, &session_id,
+                                     &device_commitment, nullptr));
   EXPECT_CALL(callbacks, OnPairingEnd(Eq(session_id)));
-  EXPECT_EQ(Error::kNone, security_.CancelPairing(session_id));
+  EXPECT_TRUE(security_.CancelPairing(session_id, nullptr));
 }
 
 TEST_F(SecurityManagerTest, ThrottlePairing) {
   auto pair = [this]() {
     std::string session_id;
     std::string device_commitment;
-    Error error = security_.StartPairing(PairingType::kEmbeddedCode,
+    chromeos::ErrorPtr error;
+    bool result = security_.StartPairing(PairingType::kEmbeddedCode,
                                          CryptoType::kSpake_p224, &session_id,
-                                         &device_commitment);
-    EXPECT_TRUE(error == Error::kDeviceBusy || error == Error::kNone);
-    return error == Error::kNone;
+                                         &device_commitment, &error);
+    EXPECT_TRUE(result || error->GetCode() == "deviceBusy");
+    return result;
   };
 
   EXPECT_TRUE(pair());
@@ -281,11 +280,10 @@ TEST_F(SecurityManagerTest, DontBlockForCanceledSessions) {
   for (int i = 0; i < 20; ++i) {
     std::string session_id;
     std::string device_commitment;
-    EXPECT_EQ(Error::kNone,
-              security_.StartPairing(PairingType::kEmbeddedCode,
-                                     CryptoType::kSpake_p224, &session_id,
-                                     &device_commitment));
-    EXPECT_EQ(Error::kNone, security_.CancelPairing(session_id));
+    EXPECT_TRUE(security_.StartPairing(PairingType::kEmbeddedCode,
+                                       CryptoType::kSpake_p224, &session_id,
+                                       &device_commitment, nullptr));
+    EXPECT_TRUE(security_.CancelPairing(session_id, nullptr));
   }
 }
 
@@ -293,10 +291,11 @@ TEST_F(SecurityManagerTest, EmbeddedCodeNotReady) {
   std::string session_id;
   std::string device_commitment;
   base::DeleteFile(embedded_code_path_, false);
-  EXPECT_EQ(Error::kDeviceBusy,
-            security_.StartPairing(PairingType::kEmbeddedCode,
-                                   CryptoType::kSpake_p224, &session_id,
-                                   &device_commitment));
+  chromeos::ErrorPtr error;
+  ASSERT_FALSE(security_.StartPairing(PairingType::kEmbeddedCode,
+                                      CryptoType::kSpake_p224, &session_id,
+                                      &device_commitment, &error));
+  EXPECT_EQ("deviceBusy", error->GetCode());
 }
 
 }  // namespace privetd

@@ -26,22 +26,17 @@ class WifiSsidGeneratorTest : public testing::Test {
 TEST_F(WifiSsidGeneratorTest, GenerateFlags) {
   EXPECT_EQ(ssid_generator_.GenerateFlags().size(), 2);
 
-  EXPECT_CALL(wifi_, GetConnectionState())
-      .WillRepeatedly(Return(ConnectionState{ConnectionState::kUnconfigured}));
-  EXPECT_CALL(gcd_, GetConnectionState())
-      .WillRepeatedly(Return(ConnectionState{ConnectionState::kUnconfigured}));
+  wifi_.connection_state_ = ConnectionState{ConnectionState::kUnconfigured};
+  gcd_.connection_state_ = ConnectionState{ConnectionState::kUnconfigured};
   EXPECT_EQ("DB", ssid_generator_.GenerateFlags());
 
-  EXPECT_CALL(wifi_, GetConnectionState())
-      .WillRepeatedly(Return(ConnectionState{ConnectionState::kOnline}));
+  wifi_.connection_state_ = ConnectionState{ConnectionState::kOnline};
   EXPECT_EQ("CB", ssid_generator_.GenerateFlags());
 
-  EXPECT_CALL(gcd_, GetConnectionState())
-      .WillRepeatedly(Return(ConnectionState{ConnectionState::kOffline}));
+  gcd_.connection_state_ = ConnectionState{ConnectionState::kOffline};
   EXPECT_EQ("AB", ssid_generator_.GenerateFlags());
 
-  EXPECT_CALL(wifi_, GetConnectionState())
-      .WillRepeatedly(Return(ConnectionState{ConnectionState::kUnconfigured}));
+  wifi_.connection_state_ = ConnectionState{ConnectionState::kUnconfigured};
   EXPECT_EQ("BB", ssid_generator_.GenerateFlags());
 }
 

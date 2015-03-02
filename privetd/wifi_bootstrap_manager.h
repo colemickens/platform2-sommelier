@@ -49,10 +49,11 @@ class WifiBootstrapManager : public WifiDelegate {
   void RegisterStateListener(const StateListener& listener);
 
   // Overrides from WifiDelegate.
-  ConnectionState GetConnectionState() const override;
-  SetupState GetSetupState() const override;
+  const ConnectionState& GetConnectionState() const override;
+  const SetupState& GetSetupState() const override;
   bool ConfigureCredentials(const std::string& ssid,
-                            const std::string& passphrase) override;
+                            const std::string& passphrase,
+                            chromeos::ErrorPtr* error) override;
   std::string GetCurrentlyConnectedSsid() const override;
   std::string GetHostedSsid() const override;
   std::vector<WifiType> GetTypes() const override;
@@ -86,11 +87,13 @@ class WifiBootstrapManager : public WifiDelegate {
   void OnConnectSuccess(const std::string& ssid);
   void OnConnectivityChange(bool is_connected);
   void OnMonitorTimeout();
+  void UpdateConnectionState();
 
   State state_{kDisabled};
   // Setup state is the temporal state of the most recent bootstrapping attempt.
   // It is not persisted to disk.
   SetupState setup_state_{SetupState::kNone};
+  ConnectionState connection_state_{ConnectionState::kDisabled};
   DaemonState* state_store_;
   ShillClient* shill_client_;
   ApManagerClient* ap_manager_client_;

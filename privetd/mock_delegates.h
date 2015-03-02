@@ -20,6 +20,7 @@
 
 using testing::_;
 using testing::Return;
+using testing::ReturnRef;
 using testing::SetArgPointee;
 
 namespace privetd {
@@ -69,14 +70,19 @@ class MockSecurityDelegate : public SecurityDelegate {
   MOCK_CONST_METHOD0(GetPairingTypes, std::vector<PairingType>());
   MOCK_CONST_METHOD0(GetCryptoTypes, std::vector<CryptoType>());
   MOCK_CONST_METHOD1(IsValidPairingCode, bool(const std::string&));
-  MOCK_METHOD4(StartPairing,
-               Error(PairingType, CryptoType, std::string*, std::string*));
-  MOCK_METHOD4(ConfirmPairing,
-               Error(const std::string&,
-                     const std::string&,
-                     std::string*,
-                     std::string*));
-  MOCK_METHOD1(CancelPairing, Error(const std::string&));
+  MOCK_METHOD5(StartPairing,
+               bool(PairingType,
+                    CryptoType,
+                    std::string*,
+                    std::string*,
+                    chromeos::ErrorPtr*));
+  MOCK_METHOD5(ConfirmPairing,
+               bool(const std::string&,
+                    const std::string&,
+                    std::string*,
+                    std::string*,
+                    chromeos::ErrorPtr*));
+  MOCK_METHOD2(CancelPairing, bool(const std::string&, chromeos::ErrorPtr*));
 
   MockSecurityDelegate() {
     EXPECT_CALL(*this, CreateAccessToken(_, _))
@@ -99,34 +105,34 @@ class MockSecurityDelegate : public SecurityDelegate {
             CryptoType::kSpake_p224, CryptoType::kSpake_p256,
         }));
 
-    EXPECT_CALL(*this, StartPairing(_, _, _, _))
+    EXPECT_CALL(*this, StartPairing(_, _, _, _, _))
         .WillRepeatedly(DoAll(SetArgPointee<2>("testSession"),
                               SetArgPointee<3>("testCommitment"),
-                              Return(Error::kNone)));
+                              Return(true)));
 
-    EXPECT_CALL(*this, ConfirmPairing(_, _, _, _))
+    EXPECT_CALL(*this, ConfirmPairing(_, _, _, _, _))
         .WillRepeatedly(DoAll(SetArgPointee<2>("testFingerprint"),
-                              SetArgPointee<3>("testSignature"),
-                              Return(Error::kNone)));
-    EXPECT_CALL(*this, CancelPairing(_)).WillRepeatedly(Return(Error::kNone));
+                              SetArgPointee<3>("testSignature"), Return(true)));
+    EXPECT_CALL(*this, CancelPairing(_, _)).WillRepeatedly(Return(true));
   }
 };
 
 class MockWifiDelegate : public WifiDelegate {
  public:
-  MOCK_CONST_METHOD0(GetConnectionState, ConnectionState());
-  MOCK_CONST_METHOD0(GetSetupState, SetupState());
-  MOCK_METHOD2(ConfigureCredentials,
-               bool(const std::string&, const std::string&));
+  MOCK_CONST_METHOD0(GetConnectionState, const ConnectionState&());
+  MOCK_CONST_METHOD0(GetSetupState, const SetupState&());
+  MOCK_METHOD3(ConfigureCredentials,
+               bool(const std::string&,
+                    const std::string&,
+                    chromeos::ErrorPtr*));
   MOCK_CONST_METHOD0(GetCurrentlyConnectedSsid, std::string());
   MOCK_CONST_METHOD0(GetHostedSsid, std::string());
   MOCK_CONST_METHOD0(GetTypes, std::vector<WifiType>());
 
   MockWifiDelegate() {
     EXPECT_CALL(*this, GetConnectionState())
-        .WillRepeatedly(Return(ConnectionState(ConnectionState::kOffline)));
-    EXPECT_CALL(*this, GetSetupState())
-        .WillRepeatedly(Return(SetupState(SetupState::kNone)));
+        .WillRepeatedly(ReturnRef(connection_state_));
+    EXPECT_CALL(*this, GetSetupState()).WillRepeatedly(ReturnRef(setup_state_));
     EXPECT_CALL(*this, GetCurrentlyConnectedSsid())
         .WillRepeatedly(Return("TestSsid"));
     EXPECT_CALL(*this, GetHostedSsid())
@@ -134,22 +140,30 @@ class MockWifiDelegate : public WifiDelegate {
     EXPECT_CALL(*this, GetTypes())
         .WillRepeatedly(Return(std::vector<WifiType>{WifiType::kWifi24}));
   }
+
+  ConnectionState connection_state_{ConnectionState::kOffline};
+  SetupState setup_state_{SetupState::kNone};
 };
 
 class MockCloudDelegate : public CloudDelegate {
  public:
-  MOCK_CONST_METHOD0(GetConnectionState, ConnectionState());
-  MOCK_CONST_METHOD0(GetSetupState, SetupState());
-  MOCK_METHOD2(Setup, bool(const std::string&, const std::string&));
+  MOCK_CONST_METHOD0(GetConnectionState, const ConnectionState&());
+  MOCK_CONST_METHOD0(GetSetupState, const SetupState&());
+  MOCK_METHOD3(Setup,
+               bool(const std::string&,
+                    const std::string&,
+                    chromeos::ErrorPtr*));
   MOCK_CONST_METHOD0(GetCloudId, std::string());
 
   MockCloudDelegate() {
     EXPECT_CALL(*this, GetConnectionState())
-        .WillRepeatedly(Return(ConnectionState(ConnectionState::kOnline)));
-    EXPECT_CALL(*this, GetSetupState())
-        .WillRepeatedly(Return(SetupState(SetupState::kNone)));
+        .WillRepeatedly(ReturnRef(connection_state_));
+    EXPECT_CALL(*this, GetSetupState()).WillRepeatedly(ReturnRef(setup_state_));
     EXPECT_CALL(*this, GetCloudId()).WillRepeatedly(Return("TestCloudId"));
   }
+
+  ConnectionState connection_state_{ConnectionState::kOnline};
+  SetupState setup_state_{SetupState::kNone};
 };
 
 class MockIdentityDelegate : public IdentityDelegate {

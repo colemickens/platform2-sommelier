@@ -61,17 +61,20 @@ class SecurityDelegate {
   // obtain |auth_code| during pairing process.
   virtual bool IsValidPairingCode(const std::string& auth_code) const = 0;
 
-  virtual Error StartPairing(PairingType mode,
-                             CryptoType crypto,
-                             std::string* session_id,
-                             std::string* device_commitment) = 0;
+  virtual bool StartPairing(PairingType mode,
+                            CryptoType crypto,
+                            std::string* session_id,
+                            std::string* device_commitment,
+                            chromeos::ErrorPtr* error) = 0;
 
-  virtual Error ConfirmPairing(const std::string& sessionId,
-                               const std::string& client_commitment,
-                               std::string* fingerprint,
-                               std::string* signature) = 0;
+  virtual bool ConfirmPairing(const std::string& session_id,
+                              const std::string& client_commitment,
+                              std::string* fingerprint,
+                              std::string* signature,
+                              chromeos::ErrorPtr* error) = 0;
 
-  virtual Error CancelPairing(const std::string& sessionId) = 0;
+  virtual bool CancelPairing(const std::string& session_id,
+                             chromeos::ErrorPtr* error) = 0;
 };
 
 }  // namespace privetd

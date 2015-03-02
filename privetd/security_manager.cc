@@ -84,7 +84,7 @@ class Spakep224Exchanger : public SecurityManager::KeyExchanger {
       case crypto::P224EncryptedKeyExchange::kResultPending:
         return true;
       case crypto::P224EncryptedKeyExchange::kResultFailed:
-        chromeos::Error::AddTo(error, FROM_HERE, errors::kPrivetdErrorDomain,
+        chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
                                errors::kInvalidClientCommitment,
                                spake_.error());
         return false;
@@ -115,7 +115,7 @@ class UnsecureKeyExchanger : public SecurityManager::KeyExchanger {
                       chromeos::ErrorPtr* error) override {
     if (password_ == message)
       return true;
-    chromeos::Error::AddTo(error, FROM_HERE, errors::kPrivetdErrorDomain,
+    chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
                            errors::kInvalidClientCommitment,
                            "Commitment does not match the pairing code.");
     return false;
@@ -196,24 +196,33 @@ bool SecurityManager::IsValidPairingCode(const std::string& auth_code) const {
   return false;
 }
 
-Error SecurityManager::StartPairing(PairingType mode,
-                                    CryptoType crypto,
-                                    std::string* session_id,
-                                    std::string* device_commitment) {
-  if (!CheckIfPairingAllowed())
-    return Error::kDeviceBusy;
+bool SecurityManager::StartPairing(PairingType mode,
+                                   CryptoType crypto,
+                                   std::string* session_id,
+                                   std::string* device_commitment,
+                                   chromeos::ErrorPtr* error) {
+  if (!CheckIfPairingAllowed(error))
+    return false;
 
   std::string code;
   switch (mode) {
     case PairingType::kEmbeddedCode:
-      if (embedded_code_path_.empty())
-        return Error::kInvalidParams;
+      if (embedded_code_path_.empty()) {
+        chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                               errors::kInvalidParams,
+                               "Embedded code is not supported");
+        return false;
+      }
 
       if (embedded_code_.empty())
         embedded_code_ = LoadEmbeddedCode(embedded_code_path_);
 
-      if (embedded_code_.empty())  // File is not created yet.
-        return Error::kDeviceBusy;
+      if (embedded_code_.empty()) {  // File is not created yet.
+        chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                               errors::kDeviceBusy,
+                               "Embedded code is not ready");
+        return false;
+      }
 
       code = embedded_code_;
       break;
@@ -221,21 +230,27 @@ Error SecurityManager::StartPairing(PairingType mode,
       code = base::StringPrintf("%04i", base::RandInt(0, 9999));
       break;
     default:
-      return Error::kInvalidParams;
+      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                             errors::kInvalidParams,
+                             "Unsupported pairing mode");
+      return false;
   }
 
   std::unique_ptr<KeyExchanger> spake;
   switch (crypto) {
-    case CryptoType::kNone:
-      if (!is_security_disabled_)
-        return Error::kInvalidParams;
-      spake.reset(new UnsecureKeyExchanger(code));
-      break;
     case CryptoType::kSpake_p224:
       spake.reset(new Spakep224Exchanger(code));
       break;
+    case CryptoType::kNone:
+      if (is_security_disabled_) {
+        spake.reset(new UnsecureKeyExchanger(code));
+        break;
+      }
+    // Fall through...
     default:
-      return Error::kInvalidParams;
+      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                             errors::kInvalidParams, "Unsupported crypto");
+      return false;
   }
 
   // Allow only a single session at a time for now.
@@ -264,31 +279,38 @@ Error SecurityManager::StartPairing(PairingType mode,
   if (!on_start_.is_null())
     on_start_.Run(session, mode, code);
 
-  return Error::kNone;
+  return true;
 }
 
-Error SecurityManager::ConfirmPairing(const std::string& session_id,
-                                      const std::string& client_commitment,
-                                      std::string* fingerprint,
-                                      std::string* signature) {
+bool SecurityManager::ConfirmPairing(const std::string& session_id,
+                                     const std::string& client_commitment,
+                                     std::string* fingerprint,
+                                     std::string* signature,
+                                     chromeos::ErrorPtr* error) {
   auto session = pending_sessions_.find(session_id);
-  if (session == pending_sessions_.end())
-    return Error::kUnknownSession;
+  if (session == pending_sessions_.end()) {
+    chromeos::Error::AddToPrintf(
+        error, FROM_HERE, errors::kDomain, errors::kUnknownSession,
+        "Unknown session id: '%s'", session_id.c_str());
+    return false;
+  }
   CHECK(!certificate_fingerprint_.empty());
 
-  chromeos::ErrorPtr error;
   chromeos::Blob commitment;
   if (!chromeos::data_encoding::Base64Decode(client_commitment, &commitment)) {
-    LOG(ERROR) << "Invalid commitment string: " << client_commitment;
     ClosePendingSession(session_id);
-    return Error::kInvalidFormat;
+    chromeos::Error::AddToPrintf(
+        error, FROM_HERE, errors::kDomain, errors::kInvalidFormat,
+        "Invalid commitment string: '%s'", client_commitment.c_str());
+    return false;
   }
 
   if (!session->second->ProcessMessage(
-          std::string(commitment.begin(), commitment.end()), &error)) {
-    LOG(ERROR) << "Confirmation failed: " << error->GetMessage();
+          std::string(commitment.begin(), commitment.end()), error)) {
     ClosePendingSession(session_id);
-    return Error::kCommitmentMismatch;
+    chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                           errors::kCommitmentMismatch, (*error)->GetMessage());
+    return false;
   }
 
   std::string key = session->second->GetKey();
@@ -307,10 +329,11 @@ Error SecurityManager::ConfirmPairing(const std::string& session_id,
                  weak_ptr_factory_.GetWeakPtr(), session_id),
       base::TimeDelta::FromMinutes(kSessionExpirationTimeMinutes));
   ClosePendingSession(session_id);
-  return Error::kNone;
+  return true;
 }
 
-Error SecurityManager::CancelPairing(const std::string& session_id) {
+bool SecurityManager::CancelPairing(const std::string& session_id,
+                                    chromeos::ErrorPtr* error) {
   bool confirmed = CloseConfirmedSession(session_id);
   bool pending = ClosePendingSession(session_id);
   if (pending) {
@@ -318,7 +341,12 @@ Error SecurityManager::CancelPairing(const std::string& session_id) {
     --pairing_attemts_;
   }
   CHECK(!confirmed || !pending);
-  return (confirmed || pending) ? Error::kNone : Error::kUnknownSession;
+  if (confirmed || pending)
+    return true;
+  chromeos::Error::AddToPrintf(error, FROM_HERE, errors::kDomain,
+                               errors::kUnknownSession,
+                               "Unknown session id: '%s'", session_id.c_str());
+  return false;
 }
 
 void SecurityManager::RegisterPairingListeners(
@@ -329,12 +357,13 @@ void SecurityManager::RegisterPairingListeners(
   on_end_  = on_end;
 }
 
-bool SecurityManager::CheckIfPairingAllowed() {
+bool SecurityManager::CheckIfPairingAllowed(chromeos::ErrorPtr* error) {
   if (is_security_disabled_)
     return true;
 
   if (block_pairing_until_ > base::Time::Now()) {
-    LOG(ERROR) << "Pairing is blocked.";
+    chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                           errors::kDeviceBusy, "Temporarily blocked");
     return false;
   }
 

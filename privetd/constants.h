@@ -9,8 +9,27 @@ namespace privetd {
 
 namespace errors {
 
-extern const char kPrivetdErrorDomain[];
+extern const char kDomain[];
+
 extern const char kInvalidClientCommitment[];
+extern const char kInvalidFormat[];
+extern const char kMissingAuthorization[];
+extern const char kInvalidAuthorization[];
+extern const char kInvalidAuthorizationScope[];
+extern const char kCommitmentMismatch[];
+extern const char kUnknownSession[];
+extern const char kInvalidAuthCode[];
+extern const char kInvalidAuthMode[];
+extern const char kInvalidRequestedScope[];
+extern const char kAccessDenied[];
+extern const char kInvalidParams[];
+extern const char kSetupUnavailable[];
+extern const char kDeviceBusy[];
+extern const char kInvalidState[];
+extern const char kInvalidTicket[];
+extern const char kServerError[];
+extern const char kInvalidSsid[];
+extern const char kInvalidPassphrase[];
 
 }  // namespace errors
 

@@ -25,18 +25,18 @@ class WifiDelegate {
   virtual ~WifiDelegate() = default;
 
   // Returns status of the WiFi connection.
-  virtual ConnectionState GetConnectionState() const = 0;
+  virtual const ConnectionState& GetConnectionState() const = 0;
 
   // Returns status of the last WiFi setup.
-  virtual SetupState GetSetupState() const = 0;
+  virtual const SetupState& GetSetupState() const = 0;
 
   // Starts WiFi setup. Device should try to connect to provided SSID and
   // password and store them on success. Result of setup should be available
   // using GetSetupState().
-  // Returns false only if device is busy. Any other failures should be stored
-  // in GetSetupState().
+  // Final setup state can be retrieved with GetSetupState().
   virtual bool ConfigureCredentials(const std::string& ssid,
-                                    const std::string& password) = 0;
+                                    const std::string& password,
+                                    chromeos::ErrorPtr* error) = 0;
 
   // Returns SSID of the currently configured WiFi network. Empty string, if
   // WiFi has not been configured yet.

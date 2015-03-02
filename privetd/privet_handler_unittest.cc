@@ -20,6 +20,8 @@
 #include "privetd/mock_delegates.h"
 
 using testing::_;
+using testing::DoAll;
+using testing::Invoke;
 using testing::Return;
 using testing::SetArgPointee;
 
@@ -119,6 +121,10 @@ class PrivetHandlerTest : public testing::Test {
   void HandlerCallback(int status, const base::DictionaryValue& output) {
     EXPECT_NE(output.HasKey("reason"), status == 200);
     output_.MergeDictionary(&output);
+    // Don't test messages, error code is only important.
+    output_.Remove("message", nullptr);
+    output_.Remove("wifi.error.message", nullptr);
+    output_.Remove("gcd.error.message", nullptr);
   }
 
   static void HandlerNoFound(int status, const base::DictionaryValue&) {
@@ -400,8 +406,7 @@ TEST_F(PrivetHandlerSetupTest, StatusEmpty) {
 }
 
 TEST_F(PrivetHandlerSetupTest, StatusWifi) {
-  EXPECT_CALL(wifi_, GetSetupState())
-      .WillRepeatedly(Return(SetupState(SetupState::kSuccess)));
+  wifi_.setup_state_ = SetupState{SetupState::kSuccess};
 
   const char kExpected[] = R"({
     'wifi': {
@@ -414,8 +419,9 @@ TEST_F(PrivetHandlerSetupTest, StatusWifi) {
 }
 
 TEST_F(PrivetHandlerSetupTest, StatusWifiError) {
-  EXPECT_CALL(wifi_, GetSetupState())
-      .WillRepeatedly(Return(SetupState(Error::kInvalidPassphrase)));
+  chromeos::ErrorPtr error;
+  chromeos::Error::AddTo(&error, FROM_HERE, "test", "invalidPassphrase", "");
+  wifi_.setup_state_ = SetupState{std::move(error)};
 
   const char kExpected[] = R"({
     'wifi': {
@@ -430,8 +436,7 @@ TEST_F(PrivetHandlerSetupTest, StatusWifiError) {
 }
 
 TEST_F(PrivetHandlerSetupTest, StatusGcd) {
-  EXPECT_CALL(cloud_, GetSetupState())
-      .WillRepeatedly(Return(SetupState(SetupState::kSuccess)));
+  cloud_.setup_state_ = SetupState{SetupState::kSuccess};
 
   const char kExpected[] = R"({
     'gcd': {
@@ -444,8 +449,9 @@ TEST_F(PrivetHandlerSetupTest, StatusGcd) {
 }
 
 TEST_F(PrivetHandlerSetupTest, StatusGcdError) {
-  EXPECT_CALL(cloud_, GetSetupState())
-      .WillRepeatedly(Return(SetupState(Error::kInvalidTicket)));
+  chromeos::ErrorPtr error;
+  chromeos::Error::AddTo(&error, FROM_HERE, "test", "invalidTicket", "");
+  cloud_.setup_state_ = SetupState{std::move(error)};
 
   const char kExpected[] = R"({
     'gcd': {
@@ -505,7 +511,12 @@ TEST_F(PrivetHandlerSetupTest, WifiSetup) {
       'passphrase': 'testPass'
     }
   })";
-  EXPECT_CALL(wifi_, ConfigureCredentials(_, _)).WillOnce(Return(false));
+  auto set_error =
+      [](const std::string&, const std::string&, chromeos::ErrorPtr* error) {
+        chromeos::Error::AddTo(error, FROM_HERE, "test", "deviceBusy", "");
+      };
+  EXPECT_CALL(wifi_, ConfigureCredentials(_, _, _))
+      .WillOnce(DoAll(Invoke(set_error), Return(false)));
   EXPECT_PRED2(IsEqualJson, "{'reason':'deviceBusy'}",
                HandleRequest("/privet/v3/setup/start", kInput));
 
@@ -514,9 +525,8 @@ TEST_F(PrivetHandlerSetupTest, WifiSetup) {
       'status': 'inProgress'
     }
   })";
-  EXPECT_CALL(wifi_, GetSetupState())
-      .WillRepeatedly(Return(SetupState(SetupState::kInProgress)));
-  EXPECT_CALL(wifi_, ConfigureCredentials("testSsid", "testPass"))
+  wifi_.setup_state_ = SetupState{SetupState::kInProgress};
+  EXPECT_CALL(wifi_, ConfigureCredentials("testSsid", "testPass", _))
       .WillOnce(Return(true));
   EXPECT_PRED2(IsEqualJson, kExpected,
                HandleRequest("/privet/v3/setup/start", kInput));
@@ -535,7 +545,13 @@ TEST_F(PrivetHandlerSetupTest, GcdSetup) {
       'user': 'testUser'
     }
   })";
-  EXPECT_CALL(cloud_, Setup(_, _)).WillOnce(Return(false));
+
+  auto set_error =
+      [](const std::string&, const std::string&, chromeos::ErrorPtr* error) {
+        chromeos::Error::AddTo(error, FROM_HERE, "test", "deviceBusy", "");
+      };
+  EXPECT_CALL(cloud_, Setup(_, _, _))
+      .WillOnce(DoAll(Invoke(set_error), Return(false)));
   EXPECT_PRED2(IsEqualJson,
                "{'reason':'deviceBusy'}",
                HandleRequest("/privet/v3/setup/start", kInput));
@@ -545,9 +561,9 @@ TEST_F(PrivetHandlerSetupTest, GcdSetup) {
       'status': 'inProgress'
     }
   })";
-  EXPECT_CALL(cloud_, GetSetupState())
-      .WillRepeatedly(Return(SetupState(SetupState::kInProgress)));
-  EXPECT_CALL(cloud_, Setup("testTicket", "testUser")).WillOnce(Return(true));
+  cloud_.setup_state_ = SetupState{SetupState::kInProgress};
+  EXPECT_CALL(cloud_, Setup("testTicket", "testUser", _))
+      .WillOnce(Return(true));
   EXPECT_PRED2(IsEqualJson, kExpected,
                HandleRequest("/privet/v3/setup/start", kInput));
 }

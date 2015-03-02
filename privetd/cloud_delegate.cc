@@ -43,14 +43,23 @@ class CloudDelegateImpl : public CloudDelegate {
 
   ~CloudDelegateImpl() override = default;
 
-  ConnectionState GetConnectionState() const override { return state_; }
+  const ConnectionState& GetConnectionState() const override { return state_; }
 
-  SetupState GetSetupState() const override { return setup_state_; }
+  const SetupState& GetSetupState() const override { return setup_state_; }
 
-  bool Setup(const std::string& ticket_id, const std::string& user) override {
-    if (setup_state_.status == SetupState::kInProgress ||
-        object_manager_.GetManagerProxy() == nullptr)
+  bool Setup(const std::string& ticket_id,
+             const std::string& user,
+             chromeos::ErrorPtr* error) override {
+    if (!object_manager_.GetManagerProxy()) {
+      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                             errors::kDeviceBusy, "Buffet is not ready");
       return false;
+    }
+    if (setup_state_.IsStatusEqual(SetupState::kInProgress)) {
+      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                             errors::kDeviceBusy, "Setup in progress");
+      return false;
+    }
     VLOG(1) << "GCD Setup started. ticket_id: " << ticket_id
             << ", user:" << user;
     setup_state_ = SetupState(SetupState::kInProgress);
@@ -82,18 +91,21 @@ class CloudDelegateImpl : public CloudDelegate {
     if (property_name != org::chromium::Buffet::ManagerProxy::StatusName())
       return;
     std::string status{manager->status()};
-    if (status == "offline")
-      state_ = ConnectionState(ConnectionState::kOffline);
-    else if (status == "cloud_error")
-      state_ = ConnectionState(ConnectionState::kError);
-    else if (status == "unregistered")
-      state_ = ConnectionState(ConnectionState::kUnconfigured);
-    else if (status == "registering")
-      state_ = ConnectionState(ConnectionState::kConnecting);
-    else if (status == "registered")
-      state_ = ConnectionState(ConnectionState::kOnline);
-    else
-      state_ = ConnectionState(ConnectionState::kError);
+    if (status == "offline") {
+      state_ = ConnectionState{ConnectionState::kOffline};
+    } else if (status == "unregistered") {
+      state_ = ConnectionState{ConnectionState::kUnconfigured};
+    } else if (status == "registering") {
+      state_ = ConnectionState{ConnectionState::kConnecting};
+    } else if (status == "registered") {
+      state_ = ConnectionState{ConnectionState::kOnline};
+    } else {
+      chromeos::ErrorPtr error;
+      chromeos::Error::AddToPrintf(
+          &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
+          "Unexpected buffet status: %s", status.c_str());
+      state_ = ConnectionState{std::move(error)};
+    }
     on_changed_.Run();
   }
 
@@ -106,7 +118,16 @@ class CloudDelegateImpl : public CloudDelegate {
                      int retries,
                      chromeos::Error* error) {
     if (retries >= kMaxSetupRetries) {
-      setup_state_ = SetupState(Error::kServerError);
+      chromeos::ErrorPtr new_error;
+      if (error) {
+        chromeos::Error::AddTo(&new_error, FROM_HERE, error->GetDomain(),
+                               error->GetCode(), error->GetMessage());
+      } else {
+        chromeos::Error::AddTo(&new_error, FROM_HERE, errors::kDomain,
+                               errors::kInvalidState,
+                               "Failed to register device");
+      }
+      setup_state_ = SetupState{std::move(new_error)};
       return;
     }
     base::MessageLoop::current()->PostDelayedTask(
