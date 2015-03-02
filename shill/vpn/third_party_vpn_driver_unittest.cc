@@ -162,6 +162,16 @@ TEST_F(ThirdPartyVpnDriverTest, UpdateConnectionState) {
   EXPECT_CALL(*service_, SetState(Service::kStateConnected)).Times(1);
   driver_->UpdateConnectionState(Service::kStateConnected, &error);
   EXPECT_TRUE(error.empty());
+  Mock::VerifyAndClearExpectations(service_.get());
+
+  EXPECT_CALL(*service_, SetState(Service::kStateFailure)).Times(1);
+  EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
+                                       ThirdPartyVpnDriver::kDisconnected)))
+      .Times(1);
+  driver_->UpdateConnectionState(Service::kStateFailure, &error);
+  EXPECT_TRUE(error.empty());
+  Mock::VerifyAndClearExpectations(service_.get());
+  Mock::VerifyAndClearExpectations(adaptor_interface_);
 }
 
 TEST_F(ThirdPartyVpnDriverTest, SetParameters) {

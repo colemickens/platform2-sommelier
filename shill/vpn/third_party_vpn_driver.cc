@@ -139,9 +139,13 @@ void ThirdPartyVpnDriver::UpdateConnectionState(
     error_message->append("Unexpected call");
     return;
   }
-  if (service_ && connection_state >= Service::kStateConnected &&
-      connection_state <= Service::kStateOnline) {
+  if (service_ && (connection_state == Service::kStateConnected ||
+                   connection_state == Service::kStateFailure)) {
     service_->SetState(connection_state);
+    if (Service::kStateFailure == connection_state) {
+      Cleanup(Service::kStateFailure, Service::kFailureUnknown,
+              Service::kErrorDetailsNone);
+    }
   } else {
     error_message->append("Invalid argument");
   }
