@@ -32,8 +32,8 @@ void PrintUsage() {
   puts("  --startup - Performs startup and self-tests.");
   puts("  --clear - Clears the TPM. Use before initializing the TPM.");
   puts("  --init_tpm - Initializes a TPM as CrOS firmware does.");
-  puts("  --own=<owner_password> - Takes ownership of the TPM with the "
-       "given password.");
+  puts("  --own - Takes ownership of the TPM with the provided password.");
+  puts("  --owner_password - used to provide an owner password");
 }
 
 int Startup() {
@@ -298,6 +298,51 @@ int AuthChangeTest() {
   return 0;
 }
 
+int NvramTest(const std::string& owner_password) {
+  trunks::TrunksFactoryImpl factory;
+  scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
+  trunks::TPM_RC rc;
+  scoped_ptr<trunks::AuthorizationSession> session(
+      factory.GetAuthorizationSession());
+  rc = session->StartUnboundSession(true);
+  if (rc) {
+    LOG(ERROR) << "Error starting authorization session: "
+               << trunks::GetErrorString(rc);
+    return rc;
+  }
+  uint32_t index = 3;
+  session->SetEntityAuthorizationValue(owner_password);
+  std::string nv_data("nv_data");
+  rc = utility->DefineNVSpace(index, nv_data.size(), session.get());
+  if (rc) {
+    LOG(ERROR) << "Error defining nvram: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  session->SetEntityAuthorizationValue(owner_password);
+  rc = utility->WriteNVSpace(index, 0, nv_data, session.get());
+  if (rc) {
+    LOG(ERROR) << "Error writing nvram: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  std::string new_nvdata;
+  session->SetEntityAuthorizationValue("");
+  rc = utility->ReadNVSpace(index, 0, nv_data.size(),
+                            &new_nvdata, session.get());
+  if (rc) {
+    LOG(ERROR) << "Error reading nvram: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  session->SetEntityAuthorizationValue(owner_password);
+  rc = utility->DestroyNVSpace(index, session.get());
+  if (rc) {
+    LOG(ERROR) << "Error destroying nvram: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  CHECK_EQ(0, nv_data.compare(new_nvdata));
+  LOG(INFO) << "Test completed successfully.";
+  return 0;
+}
+
 int DumpStatus() {
   trunks::TrunksFactoryImpl factory;
   scoped_ptr<trunks::TpmState> state = factory.GetTpmState();
@@ -347,7 +392,7 @@ int main(int argc, char **argv) {
     return 0;
   }
   if (cl->HasSwitch("own")) {
-    return TakeOwnership(cl->GetSwitchValueASCII("own"));
+    return TakeOwnership(cl->GetSwitchValueASCII("owner_password"));
   }
   if (cl->HasSwitch("sign_test")) {
     return SignTest();
@@ -360,6 +405,9 @@ int main(int argc, char **argv) {
   }
   if (cl->HasSwitch("auth_change_test")) {
     return AuthChangeTest();
+  }
+  if (cl->HasSwitch("nvram_test")) {
+    return NvramTest(cl->GetSwitchValueASCII("owner_password"));
   }
   puts("Invalid options!");
   PrintUsage();

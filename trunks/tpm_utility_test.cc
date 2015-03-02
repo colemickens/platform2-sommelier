@@ -14,6 +14,7 @@
 #include "trunks/mock_authorization_session.h"
 #include "trunks/mock_tpm.h"
 #include "trunks/mock_tpm_state.h"
+#include "trunks/tpm_constants.h"
 #include "trunks/tpm_utility_impl.h"
 #include "trunks/trunks_factory_for_test.h"
 
@@ -1277,6 +1278,251 @@ TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyFail2) {
       NULL,
       &key_handle,
       NULL));
+}
+
+TEST_F(TpmUtilityTest, DefineNVSpaceSuccess) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 59;
+  uint32_t nvram_index = NV_INDEX_FIRST + index;
+  size_t length  = 256;
+  TPM2B_NV_PUBLIC public_data;
+  EXPECT_CALL(mock_tpm_, NV_DefineSpaceSync(TPM_RH_OWNER, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<3>(&public_data),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility.DefineNVSpace(index, length, &mock_authorization_session_));
+  EXPECT_EQ(public_data.nv_public.nv_index, nvram_index);
+  EXPECT_EQ(public_data.nv_public.name_alg, TPM_ALG_SHA256);
+  EXPECT_EQ(public_data.nv_public.attributes,
+            TPMA_NV_OWNERWRITE | TPMA_NV_WRITEDEFINE | TPMA_NV_AUTHREAD);
+  EXPECT_EQ(public_data.nv_public.data_size, length);
+}
+
+TEST_F(TpmUtilityTest, DefineNVSpaceBadLength) {
+  TpmUtilityImpl utility(factory_);
+  size_t bad_length = 3000;
+  EXPECT_EQ(SAPI_RC_BAD_SIZE,
+            utility.DefineNVSpace(0, bad_length, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, DefineNVSpaceBadIndex) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t bad_index = 1<<29;
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
+            utility.DefineNVSpace(bad_index, 2, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, DefineNVSpaceBadSession) {
+  TpmUtilityImpl utility(factory_);
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility.DefineNVSpace(0, 2, NULL));
+}
+
+TEST_F(TpmUtilityTest, DefineNVSpaceFail) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 59;
+  size_t length  = 256;
+  EXPECT_CALL(mock_tpm_, NV_DefineSpaceSync(TPM_RH_OWNER, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility.DefineNVSpace(index, length, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, DestroyNVSpaceSuccess) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  uint32_t nvram_index = NV_INDEX_FIRST + index;
+  EXPECT_CALL(mock_tpm_,
+              NV_UndefineSpaceSync(TPM_RH_OWNER, _, nvram_index, _, _));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility.DestroyNVSpace(index, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, DestroyNVSpaceBadIndex) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t bad_index = 1<<29;
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
+            utility.DestroyNVSpace(bad_index, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, DestroyNVSpaceBadSession) {
+  TpmUtilityImpl utility(factory_);
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility.DestroyNVSpace(3, NULL));
+}
+
+TEST_F(TpmUtilityTest, DestroyNVSpaceFailure) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  uint32_t nvram_index = NV_INDEX_FIRST + index;
+  EXPECT_CALL(mock_tpm_,
+              NV_UndefineSpaceSync(TPM_RH_OWNER, _, nvram_index, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility.DestroyNVSpace(index, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, LockNVSpaceSuccess) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  uint32_t nvram_index = NV_INDEX_FIRST + index;
+  EXPECT_CALL(mock_tpm_, NV_WriteLockSync(nvram_index, _, nvram_index, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility.LockNVSpace(index, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, LockNVSpaceBadIndex) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t bad_index = 1<<24;
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
+            utility.LockNVSpace(bad_index, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, LockNVSpaceBadSession) {
+  TpmUtilityImpl utility(factory_);
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility.LockNVSpace(52, NULL));
+}
+
+TEST_F(TpmUtilityTest, LockNVSpaceFailure) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  uint32_t nvram_index = NV_INDEX_FIRST + index;
+  EXPECT_CALL(mock_tpm_, NV_WriteLockSync(nvram_index, _, nvram_index, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility.LockNVSpace(index, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, WriteNVSpaceSuccess) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  uint32_t offset = 5;
+  uint32_t nvram_index = NV_INDEX_FIRST + index;
+  EXPECT_CALL(mock_tpm_,
+              NV_WriteSync(TPM_RH_OWNER, _, nvram_index, _, _, offset, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.WriteNVSpace(
+      index, offset, "", &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, WriteNVSpaceBadSize) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  std::string nvram_data(1025, 0);
+  EXPECT_EQ(SAPI_RC_BAD_SIZE, utility.WriteNVSpace(
+      index, 0, nvram_data, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, WriteNVSpaceBadIndex) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t bad_index = 1<<24;
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.WriteNVSpace(
+      bad_index, 0, "", &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, WriteNVSpaceBadSessions) {
+  TpmUtilityImpl utility(factory_);
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility.WriteNVSpace(53, 0, "", NULL));
+}
+
+TEST_F(TpmUtilityTest, WriteNVSpaceFailure) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  uint32_t offset = 5;
+  uint32_t nvram_index = NV_INDEX_FIRST + index;
+  EXPECT_CALL(mock_tpm_,
+              NV_WriteSync(TPM_RH_OWNER, _, nvram_index, _, _, offset, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.WriteNVSpace(
+      index, offset, "", &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, ReadNVSpaceSuccess) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  uint32_t offset = 5;
+  uint32_t nv_index = NV_INDEX_FIRST + index;
+  size_t length = 24;
+  std::string nvram_data;
+  EXPECT_CALL(mock_tpm_,
+              NV_ReadSync(nv_index, _, nv_index, _, length, offset, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.ReadNVSpace(
+      index, offset, length, &nvram_data, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, ReadNVSpaceBadReadLength) {
+  TpmUtilityImpl utility(factory_);
+  size_t length = 1025;
+  std::string nvram_data;
+  EXPECT_EQ(SAPI_RC_BAD_SIZE, utility.ReadNVSpace(
+      52, 0, length, &nvram_data, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, ReadNVSpaceBadIndex) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t bad_index = 1<<24;
+  std::string nvram_data;
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.ReadNVSpace(
+      bad_index, 0, 5, &nvram_data, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, ReadNVSpaceBadSession) {
+  TpmUtilityImpl utility(factory_);
+  std::string nvram_data;
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS,
+            utility.ReadNVSpace(53, 0, 5, &nvram_data, NULL));
+}
+
+TEST_F(TpmUtilityTest, ReadNVSpaceFailure) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  uint32_t offset = 5;
+  uint32_t nv_index = NV_INDEX_FIRST + index;
+  size_t length = 24;
+  std::string nvram_data;
+  EXPECT_CALL(mock_tpm_,
+              NV_ReadSync(nv_index, _, nv_index, _, length, offset, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.ReadNVSpace(
+      index, offset, length, &nvram_data, &mock_authorization_session_));
+}
+
+TEST_F(TpmUtilityTest, GetNVSpaceNameSuccess) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  uint32_t nvram_index = NV_INDEX_FIRST + index;
+  std::string name;
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(nvram_index, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.GetNVSpaceName(index, &name));
+}
+
+TEST_F(TpmUtilityTest, GetNVSpaceNameFailure) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  std::string name;
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(_, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.GetNVSpaceName(index, &name));
+}
+
+TEST_F(TpmUtilityTest, GetNVSpacePublicAreaSuccess) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  uint32_t nvram_index = NV_INDEX_FIRST + index;
+  TPMS_NV_PUBLIC public_area;
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(nvram_index, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.GetNVSpacePublicArea(index, &public_area));
+}
+
+TEST_F(TpmUtilityTest, GetNVSpacePublicAreaFailure) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  TPMS_NV_PUBLIC public_area;
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(_, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.GetNVSpacePublicArea(index, &public_area));
 }
 
 TEST_F(TpmUtilityTest, RootKeysSuccess) {

@@ -198,6 +198,51 @@ class CHROMEOS_EXPORT TpmUtility {
   virtual TPM_RC GetKeyPublicArea(TPM_HANDLE handle,
                                   TPM2B_PUBLIC* public_data) = 0;
 
+  // This method defines a non-volatile storage area in the TPM, referenced
+  // by |index| of size |num_bytes|. This command needs owner authorization.
+  // By default non-volatile space created is unlocked and anyone can write to
+  // it. The space can be permanently locked for writing by calling the
+  // LockNVSpace method.
+  virtual TPM_RC DefineNVSpace(uint32_t index,
+                               size_t num_bytes,
+                               AuthorizationSession* session) = 0;
+
+  // This method destroys the non-volatile space referred to by |index|.
+  // This command needs owner authorization.
+  virtual TPM_RC DestroyNVSpace(uint32_t index,
+                                AuthorizationSession* session) = 0;
+
+  // This method locks the non-volatile space referred to by |index|. After a
+  // non-volatile space has been locked, it cannot be written to. Locked spaces
+  // can still be freely read.
+  virtual TPM_RC LockNVSpace(uint32_t index, AuthorizationSession* session) = 0;
+
+  // This method writes |nvram_data| to the non-volatile space referenced by
+  // |index|, at |offset| bytes from the start of the non-volatile space.
+  virtual TPM_RC WriteNVSpace(uint32_t index,
+                              uint32_t offset,
+                              const std::string& nvram_data,
+                              AuthorizationSession* session) = 0;
+
+  // This method reads |num_bytes| of data from the |offset| located at the
+  // non-volatile space defined by |index|. This method returns an error if
+  // |length| + |offset| is larger than the size of the defined non-volatile
+  // space.
+  virtual TPM_RC ReadNVSpace(uint32_t index,
+                             uint32_t offset,
+                             size_t num_bytes,
+                             std::string* nvram_data,
+                             AuthorizationSession* session) = 0;
+
+  // This function sets |name| to the name of the non-volatile space referenced
+  // by |index|.
+  virtual TPM_RC GetNVSpaceName(uint32_t index, std::string* name) = 0;
+
+  // This function returns the public area of an non-volatile space defined in
+  // the TPM.
+  virtual TPM_RC GetNVSpacePublicArea(uint32_t index,
+                                      TPMS_NV_PUBLIC* public_data) = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmUtility);
 };

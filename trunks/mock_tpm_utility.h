@@ -81,6 +81,24 @@ class MockTpmUtility : public TpmUtility {
                                TPM_HANDLE*));
   MOCK_METHOD2(GetKeyName, TPM_RC(TPM_HANDLE, std::string*));
   MOCK_METHOD2(GetKeyPublicArea, TPM_RC(TPM_HANDLE, TPM2B_PUBLIC*));
+  MOCK_METHOD3(DefineNVSpace, TPM_RC(uint32_t,
+                                     size_t,
+                                     AuthorizationSession*));
+  MOCK_METHOD2(DestroyNVSpace, TPM_RC(uint32_t,
+                                      AuthorizationSession*));
+  MOCK_METHOD2(LockNVSpace, TPM_RC(uint32_t,
+                                   AuthorizationSession*));
+  MOCK_METHOD4(WriteNVSpace, TPM_RC(uint32_t,
+                                    uint32_t,
+                                    const std::string&,
+                                    AuthorizationSession*));
+  MOCK_METHOD5(ReadNVSpace, TPM_RC(uint32_t,
+                                   uint32_t,
+                                   size_t,
+                                   std::string*,
+                                   AuthorizationSession*));
+  MOCK_METHOD2(GetNVSpaceName, TPM_RC(uint32_t, std::string*));
+  MOCK_METHOD2(GetNVSpacePublicArea, TPM_RC(uint32_t, TPMS_NV_PUBLIC*));
 };
 
 }  // namespace trunks

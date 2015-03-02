@@ -18,6 +18,7 @@
 #include "trunks/error_codes.h"
 #include "trunks/hmac_authorization_delegate.h"
 #include "trunks/scoped_key_handle.h"
+#include "trunks/tpm_constants.h"
 #include "trunks/tpm_state.h"
 #include "trunks/trunks_factory.h"
 
@@ -25,15 +26,9 @@ namespace {
 
 const char kPlatformPassword[] = "cros-platform";
 const char kWellKnownPassword[] = "cros-password";
-const trunks::TPMA_OBJECT kFixedTPM = 1U << 1;
-const trunks::TPMA_OBJECT kFixedParent = 1U << 4;
-const trunks::TPMA_OBJECT kSensitiveDataOrigin = 1U << 5;
-const trunks::TPMA_OBJECT kUserWithAuth = 1U << 6;
-const trunks::TPMA_OBJECT kNoDA = 1U << 10;
-const trunks::TPMA_OBJECT kRestricted = 1U << 16;
-const trunks::TPMA_OBJECT kDecrypt = 1U << 17;
-const trunks::TPMA_OBJECT kSign = 1U << 18;
 const size_t kMaxPasswordLength = 32;
+// The below maximum is defined in TPM 2.0 Library Spec Part 2 Section 13.1
+const uint32_t kMaxNVSpaceIndex = (1<<24) - 1;
 
 // Returns a serialized representation of the unmodified handle. This is useful
 // for predefined handle values, like TPM_RH_OWNER. For details on what types of
@@ -948,6 +943,262 @@ TPM_RC TpmUtilityImpl::GetKeyPublicArea(TPM_HANDLE handle,
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::DefineNVSpace(uint32_t index,
+                                     size_t num_bytes,
+                                     AuthorizationSession* session) {
+  TPM_RC result;
+  if (num_bytes > MAX_NV_INDEX_SIZE) {
+    result = SAPI_RC_BAD_SIZE;
+    LOG(ERROR) << "Cannot define non-volatile space of given size: "
+               << GetErrorString(result);
+    return result;
+  }
+  if (index > kMaxNVSpaceIndex) {
+    result = SAPI_RC_BAD_PARAMETER;
+    LOG(ERROR) << "Cannot define non-volatile space with the given index: "
+               << GetErrorString(result);
+    return result;
+  }
+  if (session == NULL) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << "This method needs a valid authorization session: "
+               << GetErrorString(result);
+    return result;
+  }
+  uint32_t nv_index = NV_INDEX_FIRST + index;
+  TPMS_NV_PUBLIC public_data;
+  public_data.nv_index = nv_index;
+  public_data.name_alg = TPM_ALG_SHA256;
+  public_data.attributes = TPMA_NV_OWNERWRITE |
+                           TPMA_NV_WRITEDEFINE |
+                           TPMA_NV_AUTHREAD;
+  public_data.auth_policy = Make_TPM2B_DIGEST("");
+  public_data.data_size = num_bytes;
+  TPM2B_AUTH authorization = Make_TPM2B_DIGEST("");
+  TPM2B_NV_PUBLIC public_area = Make_TPM2B_NV_PUBLIC(public_data);
+  result = factory_.GetTpm()->NV_DefineSpaceSync(
+      TPM_RH_OWNER,
+      NameFromHandle(TPM_RH_OWNER),
+      authorization,
+      public_area,
+      session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error defining non-volatile space: "
+               << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::DestroyNVSpace(uint32_t index,
+                                      AuthorizationSession* session) {
+  TPM_RC result;
+  if (index > kMaxNVSpaceIndex) {
+    result = SAPI_RC_BAD_PARAMETER;
+    LOG(ERROR) << "Cannot undefine non-volatile space with the given index: "
+               << GetErrorString(result);
+    return result;
+  }
+  if (session == NULL) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << "This method needs a valid authorization session: "
+               << GetErrorString(result);
+    return result;
+  }
+  std::string nv_name;
+  result = GetNVSpaceName(index, &nv_name);
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
+  uint32_t nv_index = NV_INDEX_FIRST + index;
+  result = factory_.GetTpm()->NV_UndefineSpaceSync(
+      TPM_RH_OWNER,
+      NameFromHandle(TPM_RH_OWNER),
+      nv_index,
+      nv_name,
+      session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error undefining non-volatile space: "
+               << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::LockNVSpace(uint32_t index,
+                                   AuthorizationSession* session) {
+  TPM_RC result;
+  if (index > kMaxNVSpaceIndex) {
+    result = SAPI_RC_BAD_PARAMETER;
+    LOG(ERROR) << "Cannot lock non-volatile space with the given index: "
+               << GetErrorString(result);
+    return result;
+  }
+  if (session == NULL) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << "This method needs a valid authorization session: "
+               << GetErrorString(result);
+    return result;
+  }
+  std::string nv_name;
+  result = GetNVSpaceName(index, &nv_name);
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
+  uint32_t nv_index = NV_INDEX_FIRST + index;
+  result = factory_.GetTpm()->NV_WriteLockSync(nv_index,
+                                               nv_name,
+                                               nv_index,
+                                               nv_name,
+                                               session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error locking non-volatile spaces: "
+               << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::WriteNVSpace(uint32_t index,
+                                    uint32_t offset,
+                                    const std::string& nvram_data,
+                                    AuthorizationSession* session) {
+  TPM_RC result;
+  if (nvram_data.size() > MAX_NV_BUFFER_SIZE) {
+    result = SAPI_RC_BAD_SIZE;
+    LOG(ERROR) << "Insufficient buffer for non-volatile write: "
+               << GetErrorString(result);
+    return result;
+  }
+  if (index > kMaxNVSpaceIndex) {
+    result = SAPI_RC_BAD_PARAMETER;
+    LOG(ERROR) << "Cannot write to non-volatile space with the given index: "
+               << GetErrorString(result);
+    return result;
+  }
+  if (session == NULL) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << "This method needs a valid authorization session: "
+               << GetErrorString(result);
+    return result;
+  }
+  std::string nv_name;
+  result = GetNVSpaceName(index, &nv_name);
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
+  uint32_t nv_index = NV_INDEX_FIRST + index;
+  result = factory_.GetTpm()->NV_WriteSync(TPM_RH_OWNER,
+                                           NameFromHandle(TPM_RH_OWNER),
+                                           nv_index,
+                                           nv_name,
+                                           Make_TPM2B_MAX_NV_BUFFER(nvram_data),
+                                           offset,
+                                           session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error writing to non-volatile space: "
+               << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::ReadNVSpace(uint32_t index,
+                                   uint32_t offset,
+                                   size_t num_bytes,
+                                   std::string* nvram_data,
+                                   AuthorizationSession* session) {
+  TPM_RC result;
+  if (num_bytes > MAX_NV_BUFFER_SIZE) {
+    result = SAPI_RC_BAD_SIZE;
+    LOG(ERROR) << "Insufficient buffer for non-volatile read: "
+               << GetErrorString(result);
+    return result;
+  }
+  if (index > kMaxNVSpaceIndex) {
+    result = SAPI_RC_BAD_PARAMETER;
+    LOG(ERROR) << "Cannot read from non-volatile space with the given index: "
+               << GetErrorString(result);
+    return result;
+  }
+  if (session == NULL) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << "This method needs a valid authorization session: "
+               << GetErrorString(result);
+    return result;
+  }
+  std::string nv_name;
+  result = GetNVSpaceName(index, &nv_name);
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
+  uint32_t nv_index = NV_INDEX_FIRST + index;
+  TPM2B_MAX_NV_BUFFER data_buffer;
+  data_buffer.size = 0;
+  result = factory_.GetTpm()->NV_ReadSync(nv_index,
+                                          nv_name,
+                                          nv_index,
+                                          nv_name,
+                                          num_bytes,
+                                          offset,
+                                          &data_buffer,
+                                          session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error reading from non-volatile space: "
+               << GetErrorString(result);
+    return result;
+  }
+  nvram_data->assign(StringFrom_TPM2B_MAX_NV_BUFFER(data_buffer));
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::GetNVSpaceName(uint32_t index, std::string* name) {
+  TPM_RC result;
+  if (index > kMaxNVSpaceIndex) {
+    result = SAPI_RC_BAD_PARAMETER;
+    LOG(ERROR) << "Cannot read from non-volatile space with the given index: "
+               << GetErrorString(result);
+    return result;
+  }
+  TPMS_NV_PUBLIC nv_public_data;
+  result = GetNVSpacePublicArea(index, &nv_public_data);
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
+  result = ComputeNVSpaceName(nv_public_data, name);
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::GetNVSpacePublicArea(uint32_t index,
+                                            TPMS_NV_PUBLIC* public_data) {
+  TPM_RC result;
+  if (index > kMaxNVSpaceIndex) {
+    result = SAPI_RC_BAD_PARAMETER;
+    LOG(ERROR) << "Cannot read from non-volatile space with the given index: "
+               << GetErrorString(result);
+    return result;
+  }
+  TPM2B_NAME nvram_name;
+  TPM2B_NV_PUBLIC public_area;
+  public_area.nv_public.nv_index = 0;
+  uint32_t nv_index = NV_INDEX_FIRST + index;
+  result = factory_.GetTpm()->NV_ReadPublicSync(nv_index,
+                                                "",
+                                                &public_area,
+                                                &nvram_name,
+                                                NULL);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error reading non-volatile space public information: "
+               << GetErrorString(result);
+    return result;
+  }
+  *public_data = public_area.nv_public;
+  return TPM_RC_SUCCESS;
+}
+
 bool TpmUtilityImpl::ParseHeader(const std::string& message,
                                  bool* has_sessions,
                                  uint32_t* size,
@@ -1286,6 +1537,32 @@ TPM_RC TpmUtilityImpl::ComputeKeyName(const TPMT_PUBLIC& public_area,
   }
   object_name->assign(serialized_name_alg +
                       crypto::SHA256HashString(serialized_public_area));
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::ComputeNVSpaceName(const TPMS_NV_PUBLIC& nv_public_area,
+                                          std::string* nv_name) {
+  CHECK(nv_name);
+  if ((nv_public_area.nv_index & NV_INDEX_FIRST) == 0) {
+    // If the index is not an nvram index, we do not compute a name.
+    nv_name->clear();
+    return TPM_RC_SUCCESS;
+  }
+  std::string serialized_public_area;
+  TPM_RC result = Serialize_TPMS_NV_PUBLIC(nv_public_area,
+                                           &serialized_public_area);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error serializing public area: " << GetErrorString(result);
+    return result;
+  }
+  std::string serialized_name_alg;
+  result = Serialize_TPM_ALG_ID(TPM_ALG_SHA256, &serialized_name_alg);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error serializing public area: " << GetErrorString(result);
+    return result;
+  }
+  nv_name->assign(serialized_name_alg +
+                  crypto::SHA256HashString(serialized_public_area));
   return TPM_RC_SUCCESS;
 }
 

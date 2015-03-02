@@ -92,6 +92,23 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name) override;
   TPM_RC GetKeyPublicArea(TPM_HANDLE handle,
                           TPM2B_PUBLIC* public_data) override;
+  TPM_RC DefineNVSpace(uint32_t index,
+                       size_t num_bytes,
+                       AuthorizationSession* session) override;
+  TPM_RC DestroyNVSpace(uint32_t index, AuthorizationSession* session) override;
+  TPM_RC LockNVSpace(uint32_t index, AuthorizationSession* session) override;
+  TPM_RC WriteNVSpace(uint32_t index,
+                      uint32_t offset,
+                      const std::string& nvram_data,
+                      AuthorizationSession* session) override;
+  TPM_RC ReadNVSpace(uint32_t index,
+                     uint32_t offset,
+                     size_t num_bytes,
+                     std::string* nvram_data,
+                     AuthorizationSession* session) override;
+  TPM_RC GetNVSpaceName(uint32_t index, std::string* name) override;
+  TPM_RC GetNVSpacePublicArea(uint32_t index,
+                              TPMS_NV_PUBLIC* public_data) override;
 
   // Creates a well-formed response with the given |error_code|.
   static std::string CreateErrorResponse(TPM_RC error_code);
@@ -159,6 +176,12 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
   // object_name = HashAlg || Hash(public_area);
   TPM_RC ComputeKeyName(const TPMT_PUBLIC& public_area,
                         std::string* object_name);
+
+  // Given a public area, this method computers the NVSpace's name.
+  // It follows TPM2.0 Specification Part 1 section 16,
+  // nv_name = HashAlg || Hash(nv_public_area);
+  TPM_RC ComputeNVSpaceName(const TPMS_NV_PUBLIC& nv_public_area,
+                            std::string* nv_name);
 
   // This encrypts the |sensitive_data| struct according to the specification
   // defined in TPM2.0 spec Part 1: Figure 19.

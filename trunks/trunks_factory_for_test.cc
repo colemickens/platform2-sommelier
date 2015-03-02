@@ -210,6 +210,46 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->GetKeyPublicArea(handle, public_data);
   }
 
+  TPM_RC DefineNVSpace(uint32_t index,
+                       size_t num_bytes,
+                       AuthorizationSession* session) override {
+    return target_->DefineNVSpace(index, num_bytes, session);
+  }
+
+  TPM_RC DestroyNVSpace(uint32_t index,
+                        AuthorizationSession* session) override {
+    return target_->DestroyNVSpace(index, session);
+  }
+
+  TPM_RC LockNVSpace(uint32_t index,
+                     AuthorizationSession* session) override {
+    return target_->LockNVSpace(index, session);
+  }
+
+  TPM_RC WriteNVSpace(uint32_t index,
+                      uint32_t offset,
+                      const std::string& nvram_data,
+                      AuthorizationSession* session) override {
+    return target_->WriteNVSpace(index, offset, nvram_data, session);
+  }
+
+  TPM_RC ReadNVSpace(uint32_t index,
+                     uint32_t offset,
+                     size_t num_bytes,
+                     std::string* nvram_data,
+                     AuthorizationSession* session) override {
+    return target_->ReadNVSpace(index, offset, num_bytes, nvram_data, session);
+  }
+
+  TPM_RC GetNVSpaceName(uint32_t index, std::string* name) override {
+    return target_->GetNVSpaceName(index, name);
+  }
+
+  TPM_RC GetNVSpacePublicArea(uint32_t index,
+                              TPMS_NV_PUBLIC* public_data) override {
+    return target_->GetNVSpacePublicArea(index, public_data);
+  }
+
  private:
   TpmUtility* target_;
 };
