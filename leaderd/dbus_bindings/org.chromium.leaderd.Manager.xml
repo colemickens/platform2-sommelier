@@ -7,6 +7,14 @@
       The Manager is responsible for global state of leaderd.  It exposes
       functionality affecting the entire daemon, such as joining groups.
     </tp:docstring>
+    <method name="JoinGroup">
+      <arg name="group_id" type="s" direction="in"/>
+      <arg name="options" type="a{sv}" direction="in"/>
+      <arg name="group_path" type="o" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+      <annotation name="org.chromium.DBus.Method.IncludeDBusMessage"
+                  value="true"/>
+    </method>
     <method name="Ping">
       <arg name="message" type="s" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>

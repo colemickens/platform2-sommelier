@@ -18,21 +18,24 @@ const char kPingResponse[] = "Hello world!";
 }  // namespace
 
 Manager::Manager(ExportedObjectManager* object_manager)
-    : dbus_object_{new DBusObject{object_manager,
-                                  object_manager->GetBus(),
-                                  ManagerAdaptor::GetObjectPath()}} {
-}
+    : dbus_object_{object_manager, object_manager->GetBus(),
+                                  ManagerAdaptor::GetObjectPath()} {}
 
 void Manager::RegisterAsync(const CompletionAction& completion_callback) {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  dbus_adaptor_.RegisterWithDBusObject(dbus_object_.get());
-  dbus_object_->RegisterAsync(
+  dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
+  dbus_object_.RegisterAsync(
       sequencer->GetHandler("Failed exporting Manager.", true));
   sequencer->OnAllTasksCompletedCall({completion_callback});
 }
 
-std::string Manager::Ping() {
-  return kPingResponse;
+bool Manager::JoinGroup(chromeos::ErrorPtr* error, dbus::Message* message,
+                        const std::string& group_guid,
+                        const std::map<std::string, chromeos::Any>& options,
+                        dbus::ObjectPath* out_object_path) {
+  return true;
 }
+
+std::string Manager::Ping() { return kPingResponse; }
 
 }  // namespace leaderd

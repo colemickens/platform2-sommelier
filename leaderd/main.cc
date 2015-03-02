@@ -23,15 +23,15 @@ const char kServiceName[] = "org.chromium.leaderd";
 const char kRootServicePath[] = "/org/chromium/leaderd";
 
 const char kHelpFlag[] = "help";
-const char kHelpMessage[] = "\n"
+const char kHelpMessage[] =
+    "\n"
     "This daemon allows groups of devices to elect a leader device.\n"
     "Usage: leaderd [--v=<logging level>]\n"
     "               [--vmodule=<see base/logging.h>]\n";
 
 class Daemon : public DBusServiceDaemon {
  public:
-  Daemon() : DBusServiceDaemon{kServiceName, kRootServicePath} {
-  }
+  Daemon() : DBusServiceDaemon{kServiceName, kRootServicePath} {}
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {

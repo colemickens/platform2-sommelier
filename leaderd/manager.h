@@ -5,6 +5,7 @@
 #ifndef LEADERD_MANAGER_H_
 #define LEADERD_MANAGER_H_
 
+#include <map>
 #include <string>
 
 #include <base/macros.h>
@@ -30,11 +31,16 @@ class Manager : public org::chromium::leaderd::ManagerInterface {
   ~Manager() override = default;
   void RegisterAsync(const CompletionAction& completion_callback);
 
+  // DBus handlers.
+  bool JoinGroup(chromeos::ErrorPtr* error, dbus::Message* message,
+                 const std::string& group_id,
+                 const std::map<std::string, chromeos::Any>& options,
+                 dbus::ObjectPath* group_path) override;
   std::string Ping() override;
 
  private:
   org::chromium::leaderd::ManagerAdaptor dbus_adaptor_{this};
-  std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
+  chromeos::dbus_utils::DBusObject dbus_object_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

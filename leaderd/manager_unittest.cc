@@ -8,10 +8,8 @@
 
 namespace leaderd {
 
-class ManagerTest : public testing::Test {
-};
+class ManagerTest : public testing::Test {};
 
-TEST_F(ManagerTest, DummyTest) {
-}
+TEST_F(ManagerTest, DummyTest) {}
 
 }  // namespace leaderd

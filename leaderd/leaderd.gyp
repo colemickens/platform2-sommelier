@@ -16,7 +16,9 @@
         'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
       },
       'sources': [
+        'dbus_bindings/org.chromium.leaderd.Group.xml',
         'dbus_bindings/org.chromium.leaderd.Manager.xml',
+        'group.cc',
         'manager.cc',
       ],
       'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
@@ -48,6 +50,7 @@
           },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'group_unittest.cc',
             'manager_unittest.cc',
             'leaderd_testrunner.cc',
           ],
