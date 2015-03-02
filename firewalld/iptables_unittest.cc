@@ -40,6 +40,12 @@ TEST_F(IpTablesTest, InvalidInterfaceName) {
   ASSERT_FALSE(iptables_succeeds.PunchUdpHole(53, "reallylonginterfacename"));
   ASSERT_FALSE(iptables_succeeds.PunchUdpHole(53, "with spaces"));
   ASSERT_FALSE(iptables_succeeds.PunchUdpHole(53, "with$ymbols"));
+  ASSERT_FALSE(iptables_succeeds.PunchUdpHole(53, "-startdash"));
+  ASSERT_FALSE(iptables_succeeds.PunchUdpHole(53, "enddash-"));
+}
+
+TEST_F(IpTablesTest, ValidInterfaceName) {
+  ASSERT_TRUE(iptables_succeeds.PunchUdpHole(53, "middle-dash"));
 }
 
 TEST_F(IpTablesTest, PunchTcpHoleSucceeds) {

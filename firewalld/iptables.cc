@@ -9,6 +9,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/process.h>
 
@@ -29,13 +30,17 @@ const char kMarkForUserTraffic[] = "1";
 const char kTableIdForUserTraffic[] = "1";
 
 bool IsValidInterfaceName(const std::string& iface) {
-  // |iface| should be shorter than |kInterfaceNameSize| chars,
-  // and have only alphanumeric characters.
+  // |iface| should be shorter than |kInterfaceNameSize| chars and have only
+  // alphanumeric characters (embedded hypens are also permitted).
   if (iface.length() >= kInterfaceNameSize) {
     return false;
   }
+  if (StartsWithASCII(iface, "-", true /* case_sensitive */) ||
+      EndsWith(iface, "-", true /* case_sensitive */)) {
+    return false;
+  }
   for (auto c : iface) {
-    if (!std::isalnum(c)) {
+    if (!std::isalnum(c) && (c != '-')) {
       return false;
     }
   }
