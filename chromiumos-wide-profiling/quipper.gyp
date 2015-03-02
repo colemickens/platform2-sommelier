@@ -176,6 +176,18 @@
           ]
         },
         {
+          'target_name': 'scoped_temp_path_test',
+          'type': 'executable',
+          'dependencies': [
+            'common',
+            'common_test',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'scoped_temp_path_test.cc',
+          ]
+        },
+        {
           'target_name': 'utils_test',
           'type': 'executable',
           'dependencies': [
