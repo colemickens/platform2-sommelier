@@ -21,27 +21,21 @@ class ContainerSpecTest : public ::testing::Test {
 };
 
 TEST_F(ContainerSpecTest, DevicePathFilterTest) {
-  base::ScopedTempDir tmpdir;
-  base::FilePath scratch;
-  ASSERT_TRUE(tmpdir.CreateUniqueTempDir());
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir.path(), &scratch));
-
   ContainerSpec spec(base::FilePath("/foo/bar"), 0, 0);
   std::string device_path("/dev/thing");
-  spec.AddDevicePathFilter(device_path);
+  DevicePathFilterSet filters;
+  filters.insert(DevicePathFilter(base::FilePath(device_path)));
+  spec.SetDevicePathFilters(filters);
 
   EXPECT_TRUE(spec.DevicePathIsAllowed(base::FilePath(device_path)));
   EXPECT_FALSE(spec.DevicePathIsAllowed(base::FilePath("/not/a/thing")));
 }
 
 TEST_F(ContainerSpecTest, DeviceNodeFilterTest) {
-  base::ScopedTempDir tmpdir;
-  base::FilePath scratch;
-  ASSERT_TRUE(tmpdir.CreateUniqueTempDir());
-  ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir.path(), &scratch));
-
   ContainerSpec spec(base::FilePath("/foo/bar"), 0, 0);
-  spec.AddDeviceNodeFilter(1, 2);
+  DeviceNodeFilterSet filters;
+  filters.insert(DeviceNodeFilter(1, 2));
+  spec.SetDeviceNodeFilters(filters);
 
   EXPECT_TRUE(spec.DeviceNodeIsAllowed(1, 2));
   EXPECT_FALSE(spec.DeviceNodeIsAllowed(0, 1));

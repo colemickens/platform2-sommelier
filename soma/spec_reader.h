@@ -27,10 +27,6 @@ class ContainerSpecReader {
   static const char kUidKey[];
   static const char kGidKey[];
 
-  // Keys for optional fields in a container specification.
-  static const char kDevicePathFiltersKey[];
-  static const char kDeviceNodeFiltersKey[];
-
   ContainerSpecReader();
   virtual ~ContainerSpecReader();
 

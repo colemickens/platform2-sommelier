@@ -29,18 +29,6 @@ ContainerSpec::ContainerSpec(const base::FilePath& service_bundle_path,
 
 ContainerSpec::~ContainerSpec() {}
 
-void ContainerSpec::AddListenPort(int port) {
-  listen_ports_.insert(port);
-}
-
-void ContainerSpec::AddDevicePathFilter(const std::string& filter) {
-  device_path_filters_.push_back(new DevicePathFilter(base::FilePath(filter)));
-}
-
-void ContainerSpec::AddDeviceNodeFilter(int major, int minor) {
-  device_node_filters_.push_back(new DeviceNodeFilter(major, minor));
-}
-
 void ContainerSpec::AddSysfsFilter(const std::string& filter) {
   sysfs_filters_.push_back(new SysfsFilter(base::FilePath(filter)));
 }
@@ -49,12 +37,21 @@ void ContainerSpec::AddUSBDeviceFilter(int vid, int pid) {
   usb_device_filters_.push_back(new USBDeviceFilter(vid, pid));
 }
 
+bool ContainerSpec::ShouldApplyNamespace(ns::Kind candidate) {
+  return namespaces_.find(candidate) != namespaces_.end();
+}
+
+bool ContainerSpec::ListenPortIsAllowed(listen_port::Number port) {
+  return (listen_ports_.find(listen_port::kWildcard) != listen_ports_.end() ||
+          listen_ports_.find(port) != listen_ports_.end());
+}
+
 bool ContainerSpec::DevicePathIsAllowed(const base::FilePath& query) {
   return
       device_path_filters_.end() !=
       std::find_if(device_path_filters_.begin(), device_path_filters_.end(),
-                   [query](DevicePathFilter* to_check) {
-                     return to_check->Allows(query);
+                   [query](const DevicePathFilter& to_check) {
+                     return to_check.Allows(query);
                    });
 }
 
@@ -62,8 +59,8 @@ bool ContainerSpec::DeviceNodeIsAllowed(int major, int minor) {
   return
       device_node_filters_.end() !=
       std::find_if(device_node_filters_.begin(), device_node_filters_.end(),
-                   [major, minor](DeviceNodeFilter* to_check) {
-                     return to_check->Allows(major, minor);
+                   [major, minor](const DeviceNodeFilter& to_check) {
+                     return to_check.Allows(major, minor);
                    });
 }
 

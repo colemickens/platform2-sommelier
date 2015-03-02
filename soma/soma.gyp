@@ -16,6 +16,8 @@
       'sources': [
         'container_spec.cc',
         'device_filter.cc',
+        'namespace.cc',
+        'port.cc',
         'spec_reader.cc',
         'sysfs_filter.cc',
         'soma.cc',

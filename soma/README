@@ -37,6 +37,7 @@ ContainerSpec - Structured data containing all the info needed to contain a
     Int DesiredUserID;
     Int DesiredGroupID;
 
+    List<Int> Namespaces;
     List<Int> ListeningPorts;
     List<DeviceNodeFilter> DeviceNodeFilters;
     List<DevicePathFilter> DevicePathFilters;
@@ -50,6 +51,7 @@ ContainerSpec - Structured data containing all the info needed to contain a
   DesiredGroup: GID as which to run the service.
 
  Optional fields:
+  Namespaces: List of the namespaces to be unshared with the service.
   ListeningPorts: List of network ports on which the service can listen.
   DeviceNodeFilters: Filters indicating which device nodes should be visible.
   DevicePathFilters: Filters indicating which device paths should be visible.
