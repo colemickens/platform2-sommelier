@@ -758,6 +758,17 @@ bool WiFi::IsIdle() const {
 void WiFi::ClearCachedCredentials(const WiFiService *service) {
   Error unused_error;
   RemoveNetworkForService(service, &unused_error);
+
+  // Give up on the connection attempt for the pending service immediately since
+  // the credential for it had already changed. This will allow the Manager to
+  // start a new connection attempt for the pending service immediately without
+  // waiting for the pending connection timeout.
+  // current_service_ will get disconnect notification from the CurrentBSS
+  // change event, so no need to explicitly disconnect here.
+  if (service == pending_service_) {
+    LOG(INFO) << "Disconnect pending service: credential changed";
+    DisconnectFrom(pending_service_.get());
+  }
 }
 
 void WiFi::NotifyEndpointChanged(const WiFiEndpointConstRefPtr &endpoint) {
