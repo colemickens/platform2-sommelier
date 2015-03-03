@@ -8,6 +8,7 @@
 
 #include <vector>
 
+#include "base/logging.h"
 #include "chromiumos-wide-profiling/quipper_test.h"
 
 namespace {
@@ -15,11 +16,42 @@ namespace {
 // For testing the creation of multiple temp paths.
 const int kNumMultiplePaths = 32;
 
+// When testing non-empty directories, populate them with this many files.
+const int kNumFilesPerNonEmptyDirectory = 10;
+
 // Tests if |path| exists on the file system.
 bool PathExists(const string& path) {
   struct stat buf;
   // stat() returns 0 on success, i.e. if the path exists and is valid.
   return !stat(path.c_str(), &buf);
+}
+
+// Creates some files in a directory. Returns the number of files created.
+int PopulateDirectoryWithFiles(const string& dir, int num_files) {
+  // The last six characters of the file template must be "XXXXXX".
+  const char kPathTemplateSuffix[] = "/testXXXXXX";
+
+  // The string providing the path template for creating temp files must not be
+  // constant, so allocate some space here.
+  size_t buf_size = dir.size() + strlen(kPathTemplateSuffix) + 1;
+  char* path_template = new char[buf_size];
+
+  int num_files_created = 0;
+  for (int i = 0; i < num_files; ++i) {
+    // Construct the mutable path template.
+    snprintf(path_template, buf_size, "%s%s", dir.c_str(), kPathTemplateSuffix);
+    // Create the file and make sure it is valid.
+    int fd = mkstemp(path_template);
+    if (fd == -1) {
+      LOG(ERROR) << "Could not create file, errno=" << errno;
+      continue;
+    }
+    ++num_files_created;
+    close(fd);
+  }
+  delete [] path_template;
+
+  return num_files_created;
 }
 
 }  // namespace
@@ -79,7 +111,40 @@ TEST(ScopedTempPathTest, MultipleEmptyDirs) {
   }
 }
 
-// TODO(sque): Add tests for non-empty directories.
+// Create a directory with some files in it, and make sure it is deleted when
+// out of scope.
+TEST(ScopedTempPathTest, OneNonEmptyDir) {
+  string path;
+  {
+    ScopedTempDir temp_path;
+    path = temp_path.path();
+    EXPECT_TRUE(PathExists(path)) << path;
+    // Populate the directory with files.
+    EXPECT_EQ(kNumFilesPerNonEmptyDirectory,
+              PopulateDirectoryWithFiles(path, kNumFilesPerNonEmptyDirectory));
+  }
+  EXPECT_FALSE(PathExists(path)) << path;
+}
+
+// Create many empty directories with files in them, and make sure they are
+// deleted when out of scope.
+TEST(ScopedTempPathTest, MultipleNonEmptyDirs) {
+  std::vector<string> paths(kNumMultiplePaths);
+  {
+    std::vector<ScopedTempDir> temp_dirs(kNumMultiplePaths);
+    for (size_t i = 0; i < kNumMultiplePaths; ++i) {
+      paths[i] = temp_dirs[i].path();
+      EXPECT_TRUE(PathExists(paths[i])) << paths[i];
+      // Populate the directory with files.
+      EXPECT_EQ(
+          kNumFilesPerNonEmptyDirectory,
+          PopulateDirectoryWithFiles(paths[i], kNumFilesPerNonEmptyDirectory));
+    }
+  }
+  for (size_t i = 0; i < kNumMultiplePaths; ++i) {
+    EXPECT_FALSE(PathExists(paths[i])) << paths[i];
+  }
+}
 
 }  // namespace quipper
 
