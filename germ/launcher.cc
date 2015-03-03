@@ -4,12 +4,17 @@
 
 #include "germ/launcher.h"
 
+#include <sys/types.h>
+
 #include <vector>
 
 #include <base/logging.h>
 #include <base/rand_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/minijail/minijail.h>
 #include <chromeos/process.h>
+
+#include "germ/environment.h"
 
 namespace {
 const char* kSandboxedServiceTemplate = "germ_template";
@@ -41,15 +46,11 @@ int Launcher::RunInteractive(const std::string& name,
                              const std::string& executable) {
   uid_t uid = uid_service_->GetUid();
 
-  std::vector<char *> cmdline;
-  cmdline.push_back(const_cast<char *>(executable.c_str()));
+  std::vector<char*> cmdline;
+  cmdline.push_back(const_cast<char*>(executable.c_str()));
 
-  chromeos::Minijail *minijail = chromeos::Minijail::GetInstance();
-  struct minijail *jail = minijail->New();
-
-  minijail->DropRoot(jail, uid, uid);
-  minijail->EnterNewPidNamespace(jail);
-  minijail->MountTmp(jail);
+  chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
+  struct minijail* jail = Environment::GetInteractiveEnvironment(uid);
 
   int status;
   minijail->RunSyncAndDestroy(jail, cmdline, &status);
@@ -66,7 +67,7 @@ int Launcher::RunService(const std::string& name,
   initctl.AddArg("start");
   initctl.AddArg(kSandboxedServiceTemplate);
   initctl.AddArg(base::StringPrintf("NAME=%s", name.c_str()));
-  initctl.AddArg(base::StringPrintf("ENVIRONMENT=-u %d -g %d -p -t", uid, uid));
+  initctl.AddArg(Environment::GetServiceEnvironment(uid));
   initctl.AddArg(base::StringPrintf("EXECUTABLE=%s", executable.c_str()));
 
   // Since we're running 'initctl', and not the executable itself,

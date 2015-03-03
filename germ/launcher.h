@@ -5,8 +5,6 @@
 #ifndef GERM_LAUNCHER_H_
 #define GERM_LAUNCHER_H_
 
-#include "sys/types.h"
-
 #include <memory>
 #include <string>
 
