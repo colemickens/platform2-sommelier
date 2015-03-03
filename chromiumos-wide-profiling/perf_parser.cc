@@ -7,11 +7,13 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <limits>
 #include <set>
 
 #include "base/logging.h"
 
 #include "chromiumos-wide-profiling/address_mapper.h"
+#include "chromiumos-wide-profiling/limits.h"
 #include "chromiumos-wide-profiling/quipper_string.h"
 #include "chromiumos-wide-profiling/utils.h"
 
@@ -413,7 +415,7 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
 
   if (mapped) {
     if (dso_and_offset) {
-      uint64_t id = kuint64max;
+      uint64_t id = kUint64Max;
       CHECK(mapper->GetMappedIDAndOffset(ip, &id, &dso_and_offset->offset_));
       // Make sure the ID points to a valid event.
       CHECK_LE(id, parsed_events_sorted_by_time_.size());

@@ -19,6 +19,8 @@
 #include "base/logging.h"
 #include "base/macros.h"
 
+#include "chromiumos-wide-profiling/limits.h"
+
 namespace {
 
 // Number of hex digits in a byte.
@@ -150,7 +152,7 @@ size_t GetUint64AlignedStringLength(const string& str) {
 
 uint64_t GetSampleFieldsForEventType(uint32_t event_type,
                                      uint64_t sample_type) {
-  uint64_t mask = kuint64max;
+  uint64_t mask = kUint64Max;
   switch (event_type) {
   case PERF_RECORD_MMAP:
   case PERF_RECORD_LOST:
@@ -174,7 +176,7 @@ uint64_t GetSampleFieldsForEventType(uint32_t event_type,
 }
 
 uint64_t GetPerfSampleDataOffset(const event_t& event) {
-  uint64_t offset = kuint64max;
+  uint64_t offset = kUint64Max;
   switch (event.header.type) {
   case PERF_RECORD_SAMPLE:
     offset = offsetof(event_t, sample.array);
@@ -210,7 +212,7 @@ uint64_t GetPerfSampleDataOffset(const event_t& event) {
     break;
   }
   // Make sure the offset was valid
-  CHECK_NE(offset, kuint64max);
+  CHECK_NE(offset, kUint64Max);
   CHECK_EQ(offset % sizeof(uint64_t), 0U);
   return offset;
 }

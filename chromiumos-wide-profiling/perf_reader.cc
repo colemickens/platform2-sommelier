@@ -17,6 +17,7 @@
 
 #include "base/logging.h"
 
+#include "chromiumos-wide-profiling/limits.h"
 #include "chromiumos-wide-profiling/quipper_string.h"
 #include "chromiumos-wide-profiling/utils.h"
 
@@ -1147,7 +1148,7 @@ u32 PerfReader::ReadPerfEventAttrSize(const ConstBufferWithSize& data,
   size_t attr_size_offset = attr_offset + offsetof(perf_event_attr, size);
   if (!ReadDataFromBuffer(data, sizeof(perf_event_attr::size),
                           "attr.size", &attr_size_offset, &attr_size)) {
-    return kuint32max;
+    return kUint32Max;
   }
   return MaybeSwap(attr_size, is_cross_endian_);
 }
@@ -1159,7 +1160,7 @@ bool PerfReader::ReadEventAttr(const ConstBufferWithSize& data, size_t* offset,
 
   // read just size first
   u32 attr_size = ReadPerfEventAttrSize(data, *offset);
-  if (attr_size == kuint32max) {
+  if (attr_size == kUint32Max) {
     return false;
   }
 

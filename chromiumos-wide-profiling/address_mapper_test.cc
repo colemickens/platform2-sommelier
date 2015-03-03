@@ -9,7 +9,10 @@
 
 #include "base/logging.h"
 
+#include "chromiumos-wide-profiling/limits.h"
 #include "chromiumos-wide-profiling/quipper_test.h"
+
+namespace quipper {
 
 namespace {
 
@@ -19,10 +22,10 @@ struct Range {
   uint64_t id;
   uint64_t base_offset;
 
-  Range() : addr(0), size(0), id(kuint64max), base_offset(0) {}
+  Range() : addr(0), size(0), id(kUint64Max), base_offset(0) {}
 
   Range(uint64_t addr, uint64_t size)
-      : addr(addr), size(size), id(kuint64max), base_offset(0) {}
+      : addr(addr), size(size), id(kUint64Max), base_offset(0) {}
 
   Range(uint64_t addr, uint64_t size, uint64_t id)
       : addr(addr), size(size), id(id), base_offset(0) {}
@@ -77,13 +80,13 @@ const Range kEndRegion = Range(0xffffffff00000000, 0x100000000);
 const Range kOutOfBoundsRegion = Range(0xffffffff00000000, 0x200000000);
 
 // A huge region that covers all of the available space.
-const Range kFullRegion = Range(0, kuint64max);
+const Range kFullRegion = Range(0, kUint64Max);
 
 // Number of regularly-spaced intervals within a mapped range to test.
 const int kNumRangeTestIntervals = 8;
 
 // The default range ID when it is not explicitly defined during a mapping.
-const uint64_t kUndefinedRangeID = kuint64max;
+const uint64_t kUndefinedRangeID = kUint64Max;
 
 // A simple test function to convert a real address to a mapped address.
 // Address ranges in |ranges| are mapped starting at address 0.
@@ -103,8 +106,6 @@ uint64_t GetMappedAddressFromRanges(const Range* ranges,
 }
 
 }  // namespace
-
-using quipper::AddressMapper;
 
 // The unit test class for AddressMapper.
 class AddressMapperTest : public ::testing::Test {
@@ -148,7 +149,7 @@ class AddressMapperTest : public ::testing::Test {
                              const uint64_t expected_mapped_addr,
                              const uint64_t expected_id,
                              const uint64_t expected_base_offset) {
-    uint64_t mapped_addr = kuint64max;
+    uint64_t mapped_addr = kUint64Max;
 
     LOG(INFO) << "Testing range at " << std::hex << range.addr
               << " with length of " << std::hex << range.size;
@@ -320,7 +321,7 @@ TEST_F(AddressMapperTest, OverlapBig) {
   // not mapped.
   for (i = 0; i < arraysize(kAddressesNotInRanges); ++i) {
     uint64_t addr = kAddressesNotInRanges[i];
-    uint64_t mapped_addr = kuint64max;
+    uint64_t mapped_addr = kUint64Max;
     bool map_success = mapper_->GetMappedAddress(addr, &mapped_addr);
     if (kBigRegion.contains(addr)) {
       EXPECT_TRUE(map_success);
@@ -338,7 +339,7 @@ TEST_F(AddressMapperTest, OverlapBig) {
     for (uint64_t addr = range.addr;
          addr < range.addr + range.size;
          addr += range.size / kNumRangeTestIntervals) {
-      uint64_t mapped_addr = kuint64max;
+      uint64_t mapped_addr = kUint64Max;
       bool map_success = mapper_->GetMappedAddress(addr, &mapped_addr);
       if (kBigRegion.contains(addr)) {
         EXPECT_TRUE(map_success);
@@ -437,6 +438,8 @@ TEST_F(AddressMapperTest, SplitRangeWithOffsetBase) {
   TestMappedRangeWithID(kSecondRange, kSecondRange.addr - kFirstRange.addr,
                         kSecondRange.id, 0);
 }
+
+}  // namespace quipper
 
 int main(int argc, char * argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
