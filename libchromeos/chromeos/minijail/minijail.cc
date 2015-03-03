@@ -48,6 +48,10 @@ void Minijail::EnterNewPidNamespace(struct minijail* jail) {
   minijail_namespace_pids(jail);
 }
 
+void Minijail::MountTmp(struct minijail* jail) {
+  minijail_mount_tmp(jail);
+}
+
 void Minijail::UseSeccompFilter(struct minijail* jail, const char* path) {
   minijail_no_new_privs(jail);
   minijail_use_seccomp_filter(jail);

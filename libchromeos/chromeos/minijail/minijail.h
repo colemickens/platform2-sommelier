@@ -41,6 +41,9 @@ class Minijail {
   // minijail_namespace_pids
   virtual void EnterNewPidNamespace(struct minijail* jail);
 
+  // minijail_mount_tmp
+  virtual void MountTmp(struct minijail* jail);
+
   // minijail_use_seccomp_filter/minijail_no_new_privs/
   // minijail_parse_seccomp_filters
   virtual void UseSeccompFilter(struct minijail* jail, const char* path);

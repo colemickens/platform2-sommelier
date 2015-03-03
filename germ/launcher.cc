@@ -49,6 +49,7 @@ int Launcher::RunInteractive(const std::string& name,
 
   minijail->DropRoot(jail, uid, uid);
   minijail->EnterNewPidNamespace(jail);
+  minijail->MountTmp(jail);
 
   int status;
   minijail->RunSyncAndDestroy(jail, cmdline, &status);
@@ -65,7 +66,7 @@ int Launcher::RunService(const std::string& name,
   initctl.AddArg("start");
   initctl.AddArg(kSandboxedServiceTemplate);
   initctl.AddArg(base::StringPrintf("NAME=%s", name.c_str()));
-  initctl.AddArg(base::StringPrintf("ENVIRONMENT=-u %d -g %d -p", uid, uid));
+  initctl.AddArg(base::StringPrintf("ENVIRONMENT=-u %d -g %d -p -t", uid, uid));
   initctl.AddArg(base::StringPrintf("EXECUTABLE=%s", executable.c_str()));
 
   // Since we're running 'initctl', and not the executable itself,
