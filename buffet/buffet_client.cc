@@ -6,10 +6,12 @@
 #include <string>
 #include <sysexits.h>
 
+#include <base/cancelable_callback.h>
 #include <base/command_line.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/weak_ptr.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <chromeos/any.h>
@@ -29,6 +31,7 @@
 
 using chromeos::Error;
 using chromeos::ErrorPtr;
+using org::chromium::Buffet::ManagerProxy;
 
 namespace {
 
@@ -146,73 +149,11 @@ class Daemon : public chromeos::DBusDaemon {
       return return_code;
 
     object_manager_.reset(new org::chromium::Buffet::ObjectManagerProxy{bus_});
-    manager_proxy_ = object_manager_->GetManagerProxy();
-    if (!manager_proxy_) {
-      fprintf(stderr, "Buffet daemon was offline.");
-      return EX_UNAVAILABLE;
-    }
-
-    auto args = CommandLine::ForCurrentProcess()->GetArgs();
-
-    // Pop the command off of the args list.
-    std::string command = args.front();
-    args.erase(args.begin());
-
-    if (command.compare("TestMethod") == 0) {
-      if (args.empty() || CheckArgs(command, args, 1)) {
-        std::string message;
-        if (!args.empty())
-          message = args.back();
-        PostTask(&Daemon::CallTestMethod, message);
-      }
-    } else if (command.compare("StartDevice") == 0 ||
-               command.compare("sd") == 0) {
-      if (CheckArgs(command, args, 0))
-        PostTask(&Daemon::CallStartDevice);
-    } else if (command.compare("CheckDeviceRegistered") == 0 ||
-               command.compare("cr") == 0) {
-      if (CheckArgs(command, args, 0))
-        PostTask(&Daemon::CallCheckDeviceRegistered);
-    } else if (command.compare("GetDeviceInfo") == 0 ||
-               command.compare("di") == 0) {
-      if (CheckArgs(command, args, 0))
-        PostTask(&Daemon::CallGetDeviceInfo);
-    } else if (command.compare("RegisterDevice") == 0 ||
-               command.compare("rd") == 0) {
-      if (args.empty() || CheckArgs(command, args, 1)) {
-        std::string dict;
-        if (!args.empty())
-          dict = args.back();
-        PostTask(&Daemon::CallRegisterDevice, dict);
-      }
-    } else if (command.compare("UpdateState") == 0 ||
-               command.compare("us") == 0) {
-      if (CheckArgs(command, args, 2))
-        PostTask(&Daemon::CallUpdateState, args.front(), args.back());
-    } else if (command.compare("GetState") == 0 ||
-               command.compare("gs") == 0) {
-      if (CheckArgs(command, args, 0))
-        PostTask(&Daemon::CallGetState);
-    } else if (command.compare("AddCommand") == 0 ||
-               command.compare("ac") == 0) {
-      if (CheckArgs(command, args, 1))
-        PostTask(&Daemon::CallAddCommand, args.back());
-    } else if (command.compare("PendingCommands") == 0 ||
-               command.compare("pc") == 0) {
-      if (CheckArgs(command, args, 0))
-        // CallGetPendingCommands relies on ObjectManager but it is being
-        // initialized asynchronously without a way to get a callback when
-        // it is ready to be used. So, just wait a bit before calling its
-        // methods.
-        PostDelayedTask(&Daemon::CallGetPendingCommands,
-                        base::TimeDelta::FromMilliseconds(100));
-    } else {
-      fprintf(stderr, "Unknown command: '%s'\n", command.c_str());
+    return_code = ScheduleActions();
+    if (return_code == EX_USAGE) {
       usage();
-      Quit();
-      return EX_USAGE;
     }
-    return EX_OK;
+    return return_code;
   }
 
   void OnShutdown(int* return_code) override {
@@ -221,11 +162,108 @@ class Daemon : public chromeos::DBusDaemon {
   }
 
  private:
+  int ScheduleActions() {
+    auto args = CommandLine::ForCurrentProcess()->GetArgs();
+
+    // Pop the command off of the args list.
+    std::string command = args.front();
+    args.erase(args.begin());
+    base::Callback<void(ManagerProxy*)> job;
+    if (command.compare("TestMethod") == 0) {
+      if (!args.empty() && !CheckArgs(command, args, 1))
+        return EX_USAGE;
+      std::string message;
+      if (!args.empty())
+        message = args.back();
+      job = base::Bind(&Daemon::CallTestMethod, weak_factory_.GetWeakPtr(),
+                       message);
+    } else if (command.compare("StartDevice") == 0 ||
+               command.compare("sd") == 0) {
+      if (!CheckArgs(command, args, 0))
+        return EX_USAGE;
+      job = base::Bind(&Daemon::CallStartDevice, weak_factory_.GetWeakPtr());
+    } else if (command.compare("CheckDeviceRegistered") == 0 ||
+               command.compare("cr") == 0) {
+      if (!CheckArgs(command, args, 0))
+        return EX_USAGE;
+      job = base::Bind(&Daemon::CallCheckDeviceRegistered,
+                       weak_factory_.GetWeakPtr());
+    } else if (command.compare("GetDeviceInfo") == 0 ||
+               command.compare("di") == 0) {
+      if (!CheckArgs(command, args, 0))
+        return EX_USAGE;
+      job = base::Bind(&Daemon::CallGetDeviceInfo,
+                       weak_factory_.GetWeakPtr());
+    } else if (command.compare("RegisterDevice") == 0 ||
+               command.compare("rd") == 0) {
+      if (!args.empty() && !CheckArgs(command, args, 1))
+        return EX_USAGE;
+      std::string dict;
+      if (!args.empty())
+        dict = args.back();
+      job = base::Bind(&Daemon::CallRegisterDevice,
+                       weak_factory_.GetWeakPtr(), dict);
+    } else if (command.compare("UpdateState") == 0 ||
+               command.compare("us") == 0) {
+      if (!CheckArgs(command, args, 2))
+        return EX_USAGE;
+      job = base::Bind(&Daemon::CallUpdateState, weak_factory_.GetWeakPtr(),
+                       args.front(), args.back());
+    } else if (command.compare("GetState") == 0 ||
+               command.compare("gs") == 0) {
+      if (!CheckArgs(command, args, 0))
+        return EX_USAGE;
+      job = base::Bind(&Daemon::CallGetState, weak_factory_.GetWeakPtr());
+    } else if (command.compare("AddCommand") == 0 ||
+               command.compare("ac") == 0) {
+      if (!CheckArgs(command, args, 1))
+        return EX_USAGE;
+      job = base::Bind(&Daemon::CallAddCommand, weak_factory_.GetWeakPtr(),
+                       args.back());
+    } else if (command.compare("PendingCommands") == 0 ||
+               command.compare("pc") == 0) {
+      if (!CheckArgs(command, args, 0))
+        return EX_USAGE;
+      // CallGetPendingCommands relies on ObjectManager but it is being
+      // initialized asynchronously without a way to get a callback when
+      // it is ready to be used. So, just wait a bit before calling its
+      // methods.
+      base::MessageLoop::current()->PostDelayedTask(
+          FROM_HERE,
+          base::Bind(&Daemon::CallGetPendingCommands,
+                     weak_factory_.GetWeakPtr()),
+          base::TimeDelta::FromMilliseconds(100));
+    } else {
+      fprintf(stderr, "Unknown command: '%s'\n", command.c_str());
+      return EX_USAGE;
+    }
+    if (!job.is_null())
+      object_manager_->SetManagerAddedCallback(job);
+    timeout_task_.Reset(
+        base::Bind(&Daemon::OnJobTimeout, weak_factory_.GetWeakPtr()));
+    base::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE,
+        timeout_task_.callback(),
+        base::TimeDelta::FromSeconds(10));
+
+    return EX_OK;
+  }
+
+  void OnJobComplete() {
+    timeout_task_.Cancel();
+    Quit();
+  }
+
+  void OnJobTimeout() {
+    fprintf(stderr, "Timed out before completing request.");
+    Quit();
+  }
+
   void ReportError(Error* error) {
     fprintf(stderr, "Failed to receive a response: %s\n",
             error->GetMessage().c_str());
     exit_code_ = EX_UNAVAILABLE;
-    Quit();
+    OnJobComplete();
   }
 
   bool CheckArgs(const std::string& command,
@@ -235,69 +273,53 @@ class Daemon : public chromeos::DBusDaemon {
       return true;
     fprintf(stderr, "Invalid number of arguments for command '%s'\n",
             command.c_str());
-    usage();
-    exit_code_ = EX_USAGE;
-    Quit();
     return false;
   }
 
-  template<typename... Args>
-  void PostTask(void (Daemon::*fn)(const Args&...), const Args&... args) {
-    base::MessageLoop::current()->PostTask(
-        FROM_HERE, base::Bind(fn, base::Unretained(this), args...));
-  }
-
-  template<typename... Args>
-  void PostDelayedTask(void (Daemon::*fn)(const Args&...),
-                       const base::TimeDelta& delay,
-                       const Args&... args) {
-    base::MessageLoop::current()->PostDelayedTask(
-        FROM_HERE, base::Bind(fn, base::Unretained(this), args...), delay);
-  }
-
-  void CallTestMethod(const std::string& message) {
+  void CallTestMethod(const std::string& message, ManagerProxy* manager_proxy) {
     ErrorPtr error;
     std::string response_message;
-    if (!manager_proxy_->TestMethod(message, &response_message, &error)) {
+    if (!manager_proxy->TestMethod(message, &response_message, &error)) {
       return ReportError(error.get());
     }
     printf("Received a response: %s\n", response_message.c_str());
-    Quit();
+    OnJobComplete();
   }
 
-  void CallStartDevice() {
+  void CallStartDevice(ManagerProxy* manager_proxy) {
     ErrorPtr error;
-    if (!manager_proxy_->StartDevice(&error)) {
+    if (!manager_proxy->StartDevice(&error)) {
       return ReportError(error.get());
     }
-    Quit();
+    OnJobComplete();
   }
 
-  void CallCheckDeviceRegistered() {
+  void CallCheckDeviceRegistered(ManagerProxy* manager_proxy) {
     ErrorPtr error;
     std::string device_id;
-    if (!manager_proxy_->CheckDeviceRegistered(&device_id, &error)) {
+    if (!manager_proxy->CheckDeviceRegistered(&device_id, &error)) {
       return ReportError(error.get());
     }
 
     printf("Device ID: %s\n",
            device_id.empty() ? "<unregistered>" : device_id.c_str());
-    Quit();
+    OnJobComplete();
   }
 
-  void CallGetDeviceInfo() {
+  void CallGetDeviceInfo(ManagerProxy* manager_proxy) {
     ErrorPtr error;
     std::string device_info;
-    if (!manager_proxy_->GetDeviceInfo(&device_info, &error)) {
+    if (!manager_proxy->GetDeviceInfo(&device_info, &error)) {
       return ReportError(error.get());
     }
 
     printf("Device Info: %s\n",
            device_info.empty() ? "<unregistered>" : device_info.c_str());
-    Quit();
+    OnJobComplete();
   }
 
-  void CallRegisterDevice(const std::string& args) {
+  void CallRegisterDevice(const std::string& args,
+                          ManagerProxy* manager_proxy) {
     chromeos::VariantDictionary params;
     if (!args.empty()) {
       auto key_values = chromeos::data_encoding::WebParamsDecode(args);
@@ -308,15 +330,17 @@ class Daemon : public chromeos::DBusDaemon {
 
     ErrorPtr error;
     std::string device_id;
-    if (!manager_proxy_->RegisterDevice(params, &device_id, &error)) {
+    if (!manager_proxy->RegisterDevice(params, &device_id, &error)) {
       return ReportError(error.get());
     }
 
     printf("Device registered: %s\n", device_id.c_str());
-    Quit();
+    OnJobComplete();
   }
 
-  void CallUpdateState(const std::string& prop, const std::string& value) {
+  void CallUpdateState(const std::string& prop,
+                       const std::string& value,
+                       ManagerProxy* manager_proxy) {
     ErrorPtr error;
     std::string error_message;
     std::unique_ptr<base::Value> json(base::JSONReader::ReadAndReturnError(
@@ -328,28 +352,28 @@ class Daemon : public chromeos::DBusDaemon {
     }
 
     chromeos::VariantDictionary property_set{{prop, JsonToAny(*json)}};
-    if (!manager_proxy_->UpdateState(property_set, &error)) {
+    if (!manager_proxy->UpdateState(property_set, &error)) {
       return ReportError(error.get());
     }
-    Quit();
+    OnJobComplete();
   }
 
-  void CallGetState() {
+  void CallGetState(ManagerProxy* manager_proxy) {
     std::string json;
     ErrorPtr error;
-    if (!manager_proxy_->GetState(&json, &error)) {
+    if (!manager_proxy->GetState(&json, &error)) {
       return ReportError(error.get());
     }
     printf("Device State: %s\n", json.c_str());
-    Quit();
+    OnJobComplete();
   }
 
-  void CallAddCommand(const std::string& command) {
+  void CallAddCommand(const std::string& command, ManagerProxy* manager_proxy) {
     ErrorPtr error;
-    if (!manager_proxy_->AddCommand(command, &error)) {
+    if (!manager_proxy->AddCommand(command, &error)) {
       return ReportError(error.get());
     }
-    Quit();
+    OnJobComplete();
   }
 
   void CallGetPendingCommands() {
@@ -361,13 +385,14 @@ class Daemon : public chromeos::DBusDaemon {
              cmd->name().c_str(),
              cmd->id().c_str());
     }
-    Quit();
+    OnJobComplete();
   }
 
   std::unique_ptr<org::chromium::Buffet::ObjectManagerProxy> object_manager_;
-  org::chromium::Buffet::ManagerProxy* manager_proxy_{nullptr};
   int exit_code_{EX_OK};
+  base::CancelableCallback<void()> timeout_task_;
 
+  base::WeakPtrFactory<Daemon> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 
