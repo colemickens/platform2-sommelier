@@ -21,7 +21,10 @@ class Launcher {
   Launcher();
   ~Launcher();
 
-  int Run(const std::string& name, const std::string& executable);
+  int RunInteractive(const std::string& name,
+                     const std::string& executable);
+  int RunService(const std::string& name,
+                 const std::string& executable);
 
  private:
   std::unique_ptr<UidService> uid_service_;

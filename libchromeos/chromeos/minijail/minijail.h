@@ -9,6 +9,7 @@
 
 extern "C" {
 #include <linux/capability.h>
+#include <sys/types.h>
 }
 
 #include <base/lazy_instance.h>
@@ -29,10 +30,16 @@ class Minijail {
   // minijail_destroy
   virtual void Destroy(struct minijail* jail);
 
+  // minijail_change_uid/minijail_change_gid
+  virtual void DropRoot(struct minijail* jail, uid_t uid, gid_t gid);
+
   // minijail_change_user/minijail_change_group
   virtual bool DropRoot(struct minijail* jail,
                         const char* user,
                         const char* group);
+
+  // minijail_namespace_pids
+  virtual void EnterNewPidNamespace(struct minijail* jail);
 
   // minijail_use_seccomp_filter/minijail_no_new_privs/
   // minijail_parse_seccomp_filters

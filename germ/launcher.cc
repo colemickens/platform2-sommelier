@@ -4,8 +4,11 @@
 
 #include "germ/launcher.h"
 
+#include <vector>
+
 #include <base/logging.h>
 #include <base/rand_util.h>
+#include <chromeos/minijail/minijail.h>
 #include <chromeos/process.h>
 
 namespace {
@@ -34,7 +37,26 @@ Launcher::Launcher() {
 
 Launcher::~Launcher() {}
 
-int Launcher::Run(const std::string& name, const std::string& executable) {
+int Launcher::RunInteractive(const std::string& name,
+                             const std::string& executable) {
+  uid_t uid = uid_service_->GetUid();
+
+  std::vector<char *> cmdline;
+  cmdline.push_back(const_cast<char *>(executable.c_str()));
+
+  chromeos::Minijail *minijail = chromeos::Minijail::GetInstance();
+  struct minijail *jail = minijail->New();
+
+  minijail->DropRoot(jail, uid, uid);
+  minijail->EnterNewPidNamespace(jail);
+
+  int status;
+  minijail->RunSyncAndDestroy(jail, cmdline, &status);
+  return status;
+}
+
+int Launcher::RunService(const std::string& name,
+                         const std::string& executable) {
   // initctl start germ_template NAME=yes ENVIRONMENT= EXECUTABLE=/bin/yes
   uid_t uid = uid_service_->GetUid();
 

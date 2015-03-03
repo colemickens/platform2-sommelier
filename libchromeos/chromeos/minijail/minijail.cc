@@ -30,6 +30,11 @@ void Minijail::Destroy(struct minijail* jail) {
   minijail_destroy(jail);
 }
 
+void Minijail::DropRoot(struct minijail* jail, uid_t uid, gid_t gid) {
+  minijail_change_uid(jail, uid);
+  minijail_change_gid(jail, gid);
+}
+
 bool Minijail::DropRoot(struct minijail* jail,
                         const char* user,
                         const char* group) {
@@ -37,6 +42,10 @@ bool Minijail::DropRoot(struct minijail* jail,
   // calls can fail is ENOMEM.
   return !minijail_change_user(jail, user) &&
          !minijail_change_group(jail, group);
+}
+
+void Minijail::EnterNewPidNamespace(struct minijail* jail) {
+  minijail_namespace_pids(jail);
 }
 
 void Minijail::UseSeccompFilter(struct minijail* jail, const char* path) {
