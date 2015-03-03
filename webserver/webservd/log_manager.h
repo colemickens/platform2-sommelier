@@ -25,6 +25,7 @@ class LogManager {
   // LogManager provides its own implementation for writing to a log file,
   // while tests can do something different.
   struct LoggerInterface {
+    virtual ~LoggerInterface() = default;
     virtual void Log(const base::Time& timestamp, const std::string& entry) = 0;
   };
 

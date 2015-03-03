@@ -19,12 +19,12 @@ namespace webservd {
 
 namespace {
 
-std::string g_last_entry;
-
 struct TestLogger : public LogManager::LoggerInterface {
+  explicit TestLogger(std::string& last_entry) : last_entry_{last_entry} {}
   void Log(const base::Time& timestamp, const std::string& entry) override {
-    g_last_entry = entry;
+    last_entry_ = entry;
   }
+  std::string& last_entry_;
 };
 
 }  // Anonymous namespace
@@ -65,8 +65,9 @@ class LogManagerTest : public testing::Test {
 };
 
 TEST_F(LogManagerTest, OnRequestCompleted) {
+  std::string last_entry;
   LogManager::SetLogger(
-      std::unique_ptr<LogManager::LoggerInterface>(new TestLogger));
+      std::unique_ptr<LogManager::LoggerInterface>(new TestLogger{last_entry}));
   base::Time timestamp = base::Time::Now();
   LogEntry(timestamp);
 
@@ -78,7 +79,7 @@ TEST_F(LogManagerTest, OnRequestCompleted) {
   std::string match = base::StringPrintf(
       "10.11.12.13 - - [%s] \"POST /test HTTP/1.0\" 200 123456\n",
       str_buf);
-  EXPECT_EQ(match, g_last_entry);
+  EXPECT_EQ(match, last_entry);
 }
 
 TEST_F(LogManagerTest, LogFileManagement) {
