@@ -25,7 +25,7 @@ using chromeos::VariantDictionary;
 using chromeos::ErrorPtr;
 
 const int kMaxSetupRetries = 5;
-const int kFirstRetryTimeoutMs = 100;
+const int kFirstRetryTimeoutSec = 1;
 
 class CloudDelegateImpl : public CloudDelegate {
  public:
@@ -113,7 +113,7 @@ class CloudDelegateImpl : public CloudDelegate {
         FROM_HERE,
         base::Bind(&CloudDelegateImpl::CallManagerRegisterDevice,
                    setup_weak_factory_.GetWeakPtr(), ticket_id, retries + 1),
-        base::TimeDelta::FromSeconds(kFirstRetryTimeoutMs * (1 << retries)));
+        base::TimeDelta::FromSeconds(kFirstRetryTimeoutSec << retries));
   }
 
   void OnRegisterSuccess(const std::string& device_id) {
