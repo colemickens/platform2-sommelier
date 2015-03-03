@@ -692,6 +692,17 @@ Properties	string Address [readonly]
 			NIC performs Net Detect scans while the system is suspended. Changes to
 			this property will take effect at the next system suspend.
 
+		boolean ForceWakeToScanTimer [readwrite]
+
+			(Defined in WiFi)
+
+			If true, forces shill to start an RTC timer that wakes the system
+			periodically to scan for networks if the system is going into suspend
+			while disconnected. This will likely be used for testing only. Otherwise,
+			if this property is false, shill will only start this timer if it has more
+			SSIDs to whitelist than the NIC supports for net detect. Changes to this
+			property will take effect at the next system suspend.
+
 		void AddWakeOnPacketConnection(string endpoint)
 
 			(WiFi only) Program a wake-on-packet rule into the NIC to wake

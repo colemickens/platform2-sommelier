@@ -500,6 +500,8 @@ class WakeOnWiFi {
   EventHistory dark_resume_history_;
   // Last wake reason reported by the kernel.
   WakeOnWiFiTrigger last_wake_reason_;
+  // Whether or not to always start |wake_to_scan_timer_| before suspend.
+  bool force_wake_to_scan_timer_;
 
   base::WeakPtrFactory<WakeOnWiFi> weak_ptr_factory_;
 

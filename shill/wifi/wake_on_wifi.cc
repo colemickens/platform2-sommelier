@@ -93,6 +93,7 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
       wake_to_scan_period_seconds_(kDefaultWakeToScanPeriodSeconds),
       net_detect_scan_period_seconds_(kDefaultNetDetectScanPeriodSeconds),
       last_wake_reason_(kWakeTriggerUnsupported),
+      force_wake_to_scan_timer_(false),
       weak_ptr_factory_(this) {
   netlink_manager_->AddBroadcastHandler(Bind(
       &WakeOnWiFi::OnWakeupReasonReceived, weak_ptr_factory_.GetWeakPtr()));
@@ -110,6 +111,8 @@ void WakeOnWiFi::InitPropertyStore(PropertyStore *store) {
                         &wake_to_scan_period_seconds_);
   store->RegisterUint32(kNetDetectScanPeriodSecondsProperty,
                         &net_detect_scan_period_seconds_);
+  store->RegisterBool(kForceWakeToScanTimerProperty,
+                      &force_wake_to_scan_timer_);
 }
 
 void WakeOnWiFi::StartMetricsTimer() {
@@ -1396,10 +1399,14 @@ void WakeOnWiFi::BeforeSuspendActions(
       }
       int num_extra_ssids =
           wake_on_ssid_whitelist_.size() - wake_on_wifi_max_ssids_;
-      if (num_extra_ssids > 0) {
+      if (num_extra_ssids > 0 || force_wake_to_scan_timer_) {
         SLOG(this, 3) << __func__ << ": "
-                      << "Starting wake to scan timer and removing last "
-                      << num_extra_ssids << " SSIDs from whitelist";
+                      << "Starting wake to scan timer - "
+                      << (num_extra_ssids > 0 ? "extra SSIDs" : "forced");
+        if (num_extra_ssids > 0) {
+          SLOG(this, 3) << __func__ << ": " << num_extra_ssids
+                        << " extra SSIDs.";
+        }
         // Start wake to scan timer in case the only SSIDs available for
         // auto-connect during suspend are the ones that we do not program our
         // NIC to wake on.
