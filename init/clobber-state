@@ -293,6 +293,7 @@ sync
 # Do any board specific wiping here.
 # board_factory_wipe.sh will be installed by the board overlay if necessary.
 if [ "$FACTORY_WIPE" = "factory" ]; then
+  [ -n "${FACTORY_RETURN_AFTER_WIPING}" ] && exit
   BOARD_WIPE=/usr/sbin/board_factory_wipe.sh
   if [ -x "${BOARD_WIPE}" ]; then
     ${BOARD_WIPE} ${WIPE_OPTION}
