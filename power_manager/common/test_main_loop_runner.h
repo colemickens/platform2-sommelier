@@ -29,14 +29,18 @@ class TestMainLoopRunner {
   TestMainLoopRunner();
   ~TestMainLoopRunner();
 
-  // Runs |loop_| until StopLoop() is called or |timeout_delay| has elapsed.
-  // Returns true if the loop was stopped via StopLoop() or false if the timeout
-  // was hit.
+  // Runs the event loop until StopLoop() is called or |timeout_delay| has
+  // elapsed. Returns true if the loop was stopped via StopLoop() or false if
+  // the timeout was hit.
   bool StartLoop(base::TimeDelta timeout_delay);
 
-  // Stops |loop_|, resulting in control returning to StartLoop() (which will
-  // return true).
+  // Stops the event loop, resulting in control returning to StartLoop() (which
+  // will return true).
   void StopLoop();
+
+  // Returns true if StartLoop() was called and neither StopLoop() nor
+  // OnTimeout() has been called.
+  bool LoopIsRunning() const;
 
  private:
   // Called when |timeout_delay| elapses without the loop having been stopped.

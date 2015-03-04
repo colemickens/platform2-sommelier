@@ -286,6 +286,13 @@ PowerStatus::Source::Source(const std::string& id,
 
 PowerStatus::Source::~Source() {}
 
+bool PowerStatus::Source::operator==(const Source& o) const {
+  return id == o.id &&
+      manufacturer_id == o.manufacturer_id &&
+      model_id == o.model_id &&
+      active_by_default == o.active_by_default;
+}
+
 PowerStatus::PowerStatus()
     : line_power_on(false),
       line_power_voltage(0.0),
@@ -455,16 +462,7 @@ PowerStatus PowerSupply::GetPowerStatus() const {
 }
 
 bool PowerSupply::RefreshImmediately() {
-  const bool success = UpdatePowerStatus();
-  if (!is_suspended_)
-    SchedulePoll();
-  if (success) {
-    notify_observers_task_.Reset(
-        base::Bind(&PowerSupply::NotifyObservers, base::Unretained(this)));
-    base::MessageLoop::current()->PostTask(
-        FROM_HERE, notify_observers_task_.callback());
-  }
-  return success;
+  return PerformUpdate(UPDATE_UNCONDITIONALLY, NOTIFY_ASYNCHRONOUSLY);
 }
 
 void PowerSupply::SetSuspended(bool suspended) {
@@ -480,7 +478,7 @@ void PowerSupply::SetSuspended(bool suspended) {
     DeferBatterySampling(battery_stabilized_after_resume_delay_);
     charge_samples_->Clear();
     current_samples_on_line_power_->Clear();
-    RefreshImmediately();
+    PerformUpdate(UPDATE_UNCONDITIONALLY, NOTIFY_ASYNCHRONOUSLY);
   }
 }
 
@@ -506,9 +504,12 @@ bool PowerSupply::SetPowerSource(const std::string& id) {
 void PowerSupply::OnUdevEvent(const std::string& subsystem,
                               const std::string& sysname,
                               UdevAction action) {
-  VLOG(1) << "Heard about udev event";
+  VLOG(1) << "Got udev event for " << sysname;
+  // Bail out of the update if the available power sources didn't actually
+  // change to avoid recording new samples and updating battery estimates in
+  // response to spurious udev events (see http://crosbug.com/p/37403).
   if (!is_suspended_)
-    RefreshImmediately();
+    PerformUpdate(UPDATE_ONLY_IF_STATE_CHANGED, NOTIFY_SYNCHRONOUSLY);
 }
 
 std::string PowerSupply::GetIdForPath(const base::FilePath& path) const {
@@ -547,7 +548,7 @@ void PowerSupply::DeferBatterySampling(base::TimeDelta stabilized_delay) {
           << " ms for battery current and charge to stabilize";
 }
 
-bool PowerSupply::UpdatePowerStatus() {
+bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
   CHECK(prefs_) << "PowerSupply::Init() wasn't called";
 
   VLOG(1) << "Updating power status";
@@ -613,6 +614,16 @@ bool PowerSupply::UpdatePowerStatus() {
 
   // Finally, read the battery status.
   if (!battery_path.empty() && !ReadBatteryDirectory(battery_path, &status))
+    return false;
+
+  // Bail out before recording charge and current samples if this was a spurious
+  // update request.
+  if (policy == UPDATE_ONLY_IF_STATE_CHANGED &&
+      power_status_initialized_ &&
+      status.external_power == power_status_.external_power &&
+      status.battery_state == power_status_.battery_state &&
+      (status.available_external_power_sources ==
+       power_status_.available_external_power_sources))
     return false;
 
   // Update running averages and use them to compute battery estimates.
@@ -987,6 +998,24 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
   return below_threshold;
 }
 
+bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
+                                NotifyPolicy notify_policy) {
+  const bool success = UpdatePowerStatus(update_policy);
+  if (!is_suspended_)
+    SchedulePoll();
+  if (success) {
+    if (notify_policy == NOTIFY_SYNCHRONOUSLY) {
+      NotifyObservers();
+    } else {
+      notify_observers_task_.Reset(
+          base::Bind(&PowerSupply::NotifyObservers, base::Unretained(this)));
+      base::MessageLoop::current()->PostTask(
+          FROM_HERE, notify_observers_task_.callback());
+    }
+  }
+  return success;
+}
+
 void PowerSupply::SchedulePoll() {
   base::TimeDelta delay = poll_delay_;
   base::TimeTicks now = clock_->GetCurrentTime();
@@ -1003,10 +1032,7 @@ void PowerSupply::SchedulePoll() {
 
 void PowerSupply::HandlePollTimeout() {
   current_poll_delay_for_testing_ = base::TimeDelta();
-  const bool success = UpdatePowerStatus();
-  SchedulePoll();
-  if (success)
-    NotifyObservers();
+  PerformUpdate(UPDATE_UNCONDITIONALLY, NOTIFY_SYNCHRONOUSLY);
 }
 
 void PowerSupply::NotifyObservers() {

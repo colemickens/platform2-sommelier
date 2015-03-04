@@ -49,8 +49,11 @@ const base::TimeTicks kStartTime = base::TimeTicks::FromInternalValue(1000);
 
 class TestObserver : public PowerSupplyObserver {
  public:
-  TestObserver() {}
+  TestObserver() : num_updates_(0) {}
   virtual ~TestObserver() {}
+
+  int num_updates() const { return num_updates_; }
+  void reset_num_updates() { num_updates_ = 0; }
 
   // Runs the event loop until OnPowerStatusUpdate() is invoked or a timeout is
   // hit. Returns true if the method was invoked and false if it wasn't.
@@ -60,10 +63,15 @@ class TestObserver : public PowerSupplyObserver {
 
   // PowerSupplyObserver overrides:
   void OnPowerStatusUpdate() override {
-    runner_.StopLoop();
+    num_updates_++;
+    if (runner_.LoopIsRunning())
+      runner_.StopLoop();
   }
 
  private:
+  // Number of times that OnPowerStatusUpdate() has been called.
+  int num_updates_;
+
   TestMainLoopRunner runner_;
 
   DISALLOW_COPY_AND_ASSIGN(TestObserver);
@@ -175,6 +183,15 @@ class PowerSupplyTest : public ::testing::Test {
         time_to_empty_sec, time_to_shutdown_sec, time_to_full_sec);
   }
 
+  std::string GetEstimateStringFromStatus(const PowerStatus& status) {
+    return base::StringPrintf(
+        "calculating=%d empty=%d shutdown=%d full=%d",
+        status.is_calculating_battery_time,
+        static_cast<int>(status.battery_time_to_empty.InSeconds()),
+        static_cast<int>(status.battery_time_to_shutdown.InSeconds()),
+        static_cast<int>(status.battery_time_to_full.InSeconds()));
+  }
+
   // Call UpdateStatus() and return a string describing the returned battery
   // estimates, suitable for comparison with a string built via
   // MakeEstimateString().
@@ -182,12 +199,7 @@ class PowerSupplyTest : public ::testing::Test {
     PowerStatus status;
     if (!UpdateStatus(&status))
       return std::string();
-    return base::StringPrintf(
-        "calculating=%d empty=%d shutdown=%d full=%d",
-        status.is_calculating_battery_time,
-        static_cast<int>(status.battery_time_to_empty.InSeconds()),
-        static_cast<int>(status.battery_time_to_shutdown.InSeconds()),
-        static_cast<int>(status.battery_time_to_full.InSeconds()));
+    return GetEstimateStringFromStatus(status);
   }
 
   // Refreshes and updates |status|. Returns false if the refresh failed (but
@@ -197,6 +209,12 @@ class PowerSupplyTest : public ::testing::Test {
     const bool success = power_supply_->RefreshImmediately();
     *status = power_supply_->GetPowerStatus();
     return success;
+  }
+
+  // Sends a udev event to |power_supply_|.
+  void SendUdevEvent() {
+    power_supply_->OnUdevEvent(
+        PowerSupply::kUdevSubsystem, "AC", UDEV_ACTION_CHANGE);
   }
 
   FakePrefs prefs_;
@@ -671,8 +689,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
 
   // Connect AC, report a udev event, and check that the status is updated.
   UpdatePowerSourceAndBatteryStatus(POWER_AC, kAcType, kCharging);
-  power_supply_->OnUdevEvent(
-      PowerSupply::kUdevSubsystem, "AC", UDEV_ACTION_CHANGE);
+  SendUdevEvent();
   status = power_supply_->GetPowerStatus();
   EXPECT_TRUE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);
@@ -689,8 +706,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
 
   // Now test the delay when going back to battery power.
   UpdatePowerSourceAndBatteryStatus(POWER_BATTERY, kAcType, kDischarging);
-  power_supply_->OnUdevEvent(
-      PowerSupply::kUdevSubsystem, "AC", UDEV_ACTION_CHANGE);
+  SendUdevEvent();
   status = power_supply_->GetPowerStatus();
   EXPECT_FALSE(status.line_power_on);
   EXPECT_TRUE(status.is_calculating_battery_time);
@@ -1252,6 +1268,102 @@ TEST_F(PowerSupplyTest, RegisterForUdevEvents) {
   power_supply_.reset();
   EXPECT_FALSE(udev_.HasSubsystemObserver(PowerSupply::kUdevSubsystem,
                                           dead_ptr));
+}
+
+TEST_F(PowerSupplyTest, IgnoreSpuriousUdevEvents) {
+  TestObserver observer;
+  power_supply_->AddObserver(&observer);
+  WriteDefaultValues(POWER_AC);
+  prefs_.SetInt64(kMaxCurrentSamplesPref, 3);
+  prefs_.SetInt64(kLowBatteryShutdownTimePref, 0);
+  prefs_.SetInt64(kBatteryStabilizedAfterStartupMsPref, 0);
+  prefs_.SetInt64(kBatteryStabilizedAfterLinePowerConnectedMsPref, 0);
+  prefs_.SetInt64(kBatteryStabilizedAfterLinePowerDisconnectedMsPref, 0);
+  prefs_.SetDouble(kPowerSupplyFullFactorPref, 1.0);
+  Init();
+
+  const double kCharge = 0.5;
+  const double kLowCurrent = 1.0;
+  const double kHighCurrent = 2.0;
+
+  // The amount of time that a battery at kCharge will take to reach full or
+  // empty at kLowCurrent.
+  const int kLowCurrentSec = 1800;
+
+  // The notification from RefreshImmediately() should be asynchronous.
+  UpdateChargeAndCurrent(kCharge, kLowCurrent);
+  ASSERT_TRUE(power_supply_->RefreshImmediately());
+  EXPECT_EQ(0, observer.num_updates());
+  EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
+            GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
+
+  // Switch to battery power and check that a udev event triggers a synchronous
+  // notification.
+  UpdatePowerSourceAndBatteryStatus(POWER_BATTERY, kAcType, kDischarging);
+  SendUdevEvent();
+  EXPECT_EQ(1, observer.num_updates());
+  EXPECT_EQ(MakeEstimateString(false, kLowCurrentSec, 0),
+            GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
+
+  // A second udev event should be disregarded if nothing has changed. Even
+  // though the current has changed, the battery estimates shouldn't be updated.
+  UpdateChargeAndCurrent(kCharge, kHighCurrent);
+  SendUdevEvent();
+  EXPECT_EQ(1, observer.num_updates());
+  EXPECT_EQ(MakeEstimateString(false, kLowCurrentSec, 0),
+            GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
+
+  // Return to the low current and check that the high current sample wasn't
+  // incorporated into the average.
+  UpdateChargeAndCurrent(kCharge, kLowCurrent);
+  EXPECT_EQ(MakeEstimateString(false, kLowCurrentSec, 0),
+            UpdateAndGetEstimateString());
+
+  // Switch to AC and check that another event triggers another notification and
+  // updated estimates.
+  observer.reset_num_updates();
+  UpdatePowerSourceAndBatteryStatus(POWER_AC, kAcType, kCharging);
+  SendUdevEvent();
+  EXPECT_EQ(1, observer.num_updates());
+  EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
+            GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
+
+  // Send another spurious event.
+  UpdateChargeAndCurrent(kCharge, kHighCurrent);
+  SendUdevEvent();
+  EXPECT_EQ(1, observer.num_updates());
+  EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
+            GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
+
+  // Check that the high current sample wasn't recorded.
+  UpdateChargeAndCurrent(kCharge, kLowCurrent);
+  EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
+            UpdateAndGetEstimateString());
+
+  // Add a power supply with an unknown type and check that it doesn't trigger a
+  // notification.
+  observer.reset_num_updates();
+  const base::FilePath dir = temp_dir_.path().Append("foo");
+  ASSERT_TRUE(base::CreateDirectory(dir));
+  WriteValue(dir, "type", kUnknownType);
+  WriteValue(dir, "online", "1");
+  WriteValue(dir, "status", kNotCharging);
+  UpdateChargeAndCurrent(kCharge, kHighCurrent);
+  SendUdevEvent();
+  EXPECT_EQ(0, observer.num_updates());
+  EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
+            GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
+
+  // Switch the power supply's type so it's recognized and check that a
+  // notification is sent.
+  WriteValue(dir, "type", kUsbType);
+  UpdateChargeAndCurrent(kCharge, kLowCurrent);
+  SendUdevEvent();
+  EXPECT_EQ(1, observer.num_updates());
+  EXPECT_EQ(MakeEstimateString(false, 0, kLowCurrentSec),
+            GetEstimateStringFromStatus(power_supply_->GetPowerStatus()));
+
+  power_supply_->RemoveObserver(&observer);
 }
 
 TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {

@@ -34,6 +34,10 @@ void TestMainLoopRunner::StopLoop() {
   runner_->Quit();
 }
 
+bool TestMainLoopRunner::LoopIsRunning() const {
+  return runner_.get();
+}
+
 void TestMainLoopRunner::OnTimeout() {
   CHECK(runner_.get());
   timed_out_ = true;

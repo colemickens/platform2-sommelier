@@ -53,6 +53,8 @@ struct PowerStatus {
            bool active_by_default);
     ~Source();
 
+    bool operator==(const Source& o) const;
+
     // Opaque ID corresponding to the power source.
     std::string id;
 
@@ -187,8 +189,9 @@ class PowerSupplyInterface {
   // observers will be notified asynchronously.
   virtual bool RefreshImmediately() = 0;
 
-  // On suspend, stops polling. On resume, updates the status immediately and
-  // schedules a poll for the near future.
+  // On suspend, stops polling. On resume, updates the status immediately,
+  // notifies observers asynchronously, and schedules a poll for the near
+  // future.
   virtual void SetSuspended(bool suspended) = 0;
 
   // Handles a request to use the PowerStatus::Source described by |id|,
@@ -279,6 +282,23 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
                    UdevAction action) override;
 
  private:
+  // Specifies when UpdatePowerStatus() should update |power_status_|.
+  enum UpdatePolicy {
+    // Update the status after any successful refresh.
+    UPDATE_UNCONDITIONALLY,
+    // Update the status only if the new state (i.e. the connected power sources
+    // or the battery state) differs from the current state.
+    UPDATE_ONLY_IF_STATE_CHANGED,
+  };
+
+  // Specifies how PerformUpdate() should notify observers.
+  enum NotifyPolicy {
+    // Call NotifyObservers() directly.
+    NOTIFY_SYNCHRONOUSLY,
+    // Post |notify_observers_task_| to call NotifyObservers() asynchronously.
+    NOTIFY_ASYNCHRONOUSLY,
+  };
+
   std::string GetIdForPath(const base::FilePath& path) const;
   base::FilePath GetPathForId(const std::string& id) const;
 
@@ -294,8 +314,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
   // Reads data from |power_supply_path_| and updates |power_status_|. Returns
   // false if an error is encountered that prevents the status from being
-  // initialized.
-  bool UpdatePowerStatus();
+  // initialized or if |policy| was UPDATE_ONLY_IF_SOURCES_CHANGED but the
+  // connected power sources have not changed.
+  bool UpdatePowerStatus(UpdatePolicy policy);
 
   // Helper method for UpdatePowerStatus() that reads |path|, a directory under
   // |power_supply_path_| corresponding to a line power source (e.g. anything
@@ -326,6 +347,10 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // should be shut down.  |status|'s |battery_percentage|,
   // |battery_time_to_*|, and |line_power_on| fields must already be set.
   bool IsBatteryBelowShutdownThreshold(const PowerStatus& status) const;
+
+  // Calls UpdatePowerStatus() and SchedulePoll() and notifies observers
+  // according to |notify_policy| on success.
+  bool PerformUpdate(UpdatePolicy update_policy, NotifyPolicy notify_policy);
 
   // Schedules |poll_timer_| to call HandlePollTimeout().
   void SchedulePoll();
