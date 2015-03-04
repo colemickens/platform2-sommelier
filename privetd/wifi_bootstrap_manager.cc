@@ -78,7 +78,6 @@ void WifiBootstrapManager::StartConnecting(const std::string& ssid,
                                            const std::string& passphrase) {
   VLOG(1) << "WiFi is attempting to connect. (ssid=" << ssid
           << ", pass=" << passphrase << ").";
-  // TODO(wiley) Shut down the ap we've started via apmanager
   UpdateState(kConnecting);
   base::MessageLoop::current()->PostDelayedTask(
       FROM_HERE, base::Bind(&WifiBootstrapManager::OnConnectTimeout,
@@ -95,8 +94,9 @@ void WifiBootstrapManager::EndConnecting() {
 
 void WifiBootstrapManager::StartMonitoring() {
   VLOG(1) << "Monitoring connectivity.";
+  // We already have a callback in place with |shill_client_| to update our
+  // connectivity state.  See OnConnectivityChange().
   UpdateState(kMonitoring);
-  // TODO(wiley) Set up callbacks so that we get told when we go offline
 }
 
 void WifiBootstrapManager::EndMonitoring() {
@@ -161,8 +161,7 @@ std::string WifiBootstrapManager::GetCurrentlyConnectedSsid() const {
 }
 
 std::string WifiBootstrapManager::GetHostedSsid() const {
-  // TODO(wiley) When we talk to apmanager to set up a hosted SSID, store it.
-  return std::string{};
+  return ap_manager_client_->GetSsid();
 }
 
 std::vector<WifiType> WifiBootstrapManager::GetTypes() const {

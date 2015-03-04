@@ -25,6 +25,8 @@ class ApManagerClient {
   void Start(const std::string& ssid);
   void Stop();
 
+  std::string GetSsid() const { return ssid_; }
+
  private:
   void RemoveService(const dbus::ObjectPath& object_path);
 

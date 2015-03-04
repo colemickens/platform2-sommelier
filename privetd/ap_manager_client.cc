@@ -46,6 +46,7 @@ void ApManagerClient::Stop() {
   service_proxy_ = nullptr;
   manager_proxy_ = nullptr;
   object_manager_proxy_.reset();
+  ssid_.clear();
 }
 
 void ApManagerClient::RemoveService(const dbus::ObjectPath& object_path) {
