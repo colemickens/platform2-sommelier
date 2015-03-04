@@ -473,8 +473,8 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("ozone_platform_gbm")) {
     AddArg("--ozone-platform=gbm");
     AddArg("--ozone-use-surfaceless");
-  } else if (UseFlagIsSet("ozone_platform_dri")) {
-    AddArg("--ozone-platform=dri");
+  } else if (UseFlagIsSet("ozone_platform_drm")) {
+    AddArg("--ozone-platform=drm");
 
     // TODO(spang): Fix hardware acceleration.
     AddArg("--disable-gpu");
