@@ -4,6 +4,7 @@
       'deps': [
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'libwebserv-<(libbase_ver)',
       ],
     },
   },
@@ -21,6 +22,7 @@
         'group.cc',
         'manager.cc',
         'peerd_client.cc',
+        'webserver_client.cc',
       ],
       'actions': [
         {
@@ -68,8 +70,9 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'group_unittest.cc',
-            'manager_unittest.cc',
             'leaderd_testrunner.cc',
+            'manager_unittest.cc',
+            'webserver_client_unittest.cc',
           ],
         },
       ],

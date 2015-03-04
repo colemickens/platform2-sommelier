@@ -47,6 +47,24 @@ bool Manager::JoinGroup(chromeos::ErrorPtr* error, dbus::Message* message,
 
 std::string Manager::Ping() { return kPingResponse; }
 
+void Manager::SetWebServerPort(uint16_t port) { web_port_ = port; }
+
+bool Manager::ChallengeLeader(const std::string& in_uuid,
+                              const std::string& in_guid, int32_t in_score,
+                              std::string* out_leader,
+                              std::string* out_my_uuid) {
+  VLOG(1) << "Challenge Leader group='" << in_guid << "', uuid='" << in_uuid
+          << "', score=" << in_score;
+  auto it = groups_.find(in_guid);
+  if (it == groups_.end()) {
+    VLOG(1) << "Group not found";
+    return false;
+  }
+
+  it->second->ChallengeLeader(in_uuid, in_score, out_leader, out_my_uuid);
+  return true;
+}
+
 void Manager::OnPeerdManagerAdded(
     org::chromium::peerd::ManagerProxyInterface* manager_proxy) {
   VLOG(1) << "Peerd manager added.";

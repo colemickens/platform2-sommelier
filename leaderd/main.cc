@@ -6,18 +6,24 @@
 #include <sysexits.h>
 
 #include <base/command_line.h>
+#include <base/json/json_reader.h>
+#include <base/values.h>
 #include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/dbus/async_event_sequencer.h>
+#include <chromeos/http/http_request.h>
+#include <chromeos/mime_utils.h>
 #include <chromeos/syslog_logging.h>
 
 #include "leaderd/manager.h"
 #include "leaderd/peerd_client.h"
+#include "leaderd/webserver_client.h"
 
 using chromeos::DBusServiceDaemon;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using leaderd::Manager;
 using leaderd::PeerdClient;
 using leaderd::PeerdClientImpl;
+using leaderd::WebServerClient;
 
 namespace {
 
@@ -42,11 +48,14 @@ class Daemon : public DBusServiceDaemon {
     manager_.reset(
         new Manager{bus_, object_manager_.get(), std::move(peerd_client)});
     manager_->RegisterAsync(sequencer);
+    webserver_.reset(new WebServerClient(manager_.get()));
+    webserver_->RegisterAsync(bus_, sequencer);
     LOG(INFO) << "leaderd starting";
   }
 
  private:
   std::unique_ptr<Manager> manager_;
+  std::unique_ptr<WebServerClient> webserver_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };

@@ -43,6 +43,9 @@ bool Group::SetScore(chromeos::ErrorPtr* error, int32_t in_score) {
   return true;
 }
 
+void Group::ChallengeLeader(const std::string& uuid, int score,
+                            std::string* leader, std::string* my_uuid) {}
+
 bool Group::PokeLeader(chromeos::ErrorPtr* error) { return true; }
 
 }  // namespace leaderd

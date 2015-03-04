@@ -11,8 +11,10 @@
 #include <base/macros.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 
+#include "leaderd/group.h"
 #include "leaderd/org.chromium.leaderd.Manager.h"
 #include "leaderd/peerd_client.h"
+#include "leaderd/webserver_client.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -24,6 +26,7 @@ namespace leaderd {
 
 // Manages global state of leaderd.
 class Manager : public org::chromium::leaderd::ManagerInterface,
+                public WebServerClient::Delegate,
                 public PeerdClient::Delegate {
  public:
   Manager(const scoped_refptr<dbus::Bus>& bus,
@@ -33,6 +36,11 @@ class Manager : public org::chromium::leaderd::ManagerInterface,
 
   void RegisterAsync(chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
+  // WebServerClient::Delegate overrides.
+  void SetWebServerPort(uint16_t port) override;
+  bool ChallengeLeader(const std::string& in_uuid, const std::string& in_guid,
+                       int32_t in_score, std::string* out_leader,
+                       std::string* out_my_uuid) override;
   // DBus handlers.
   bool JoinGroup(chromeos::ErrorPtr* error, dbus::Message* message,
                  const std::string& group_id,
@@ -63,6 +71,8 @@ class Manager : public org::chromium::leaderd::ManagerInterface,
   std::string uuid_;
   std::unique_ptr<PeerdClient> peerd_client_;
 
+  std::map<std::string, std::unique_ptr<Group>> groups_;
+  uint16_t web_port_;
   base::WeakPtrFactory<Manager> weak_ptr_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(Manager);

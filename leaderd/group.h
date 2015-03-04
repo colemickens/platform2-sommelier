@@ -40,6 +40,9 @@ class Group : public org::chromium::leaderd::GroupInterface {
   bool SetScore(chromeos::ErrorPtr* error, int32_t in_score) override;
   bool PokeLeader(chromeos::ErrorPtr* error) override;
 
+  void ChallengeLeader(const std::string& uuid, int score, std::string* leader,
+                       std::string* my_uuid);
+
  private:
   const std::string guid_;
   const dbus::ObjectPath object_path_;
