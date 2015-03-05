@@ -304,7 +304,8 @@ bool DeviceManager::DeleteObject(const std::string& storage_name,
                                               storage_id,
                                               object_id,
                                               &children);
-    free(children);
+    if (num_of_children > 0)
+      free(children);
 
     if (num_of_children != 0)
       return false;
