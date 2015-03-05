@@ -63,6 +63,7 @@
           'dependencies': ['libfirewalld'],
           'sources': [
             'iptables_unittest.cc',
+            'mock_iptables.cc',
             'run_all_tests.cc',
           ],
         },

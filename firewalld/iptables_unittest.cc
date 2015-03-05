@@ -6,7 +6,12 @@
 
 #include <gtest/gtest.h>
 
+#include "firewalld/mock_iptables.h"
+
 namespace firewalld {
+
+using testing::_;
+using testing::Return;
 
 class IpTablesTest : public testing::Test {
  public:
@@ -102,6 +107,156 @@ TEST_F(IpTablesTest, PunchTcpHoleIpv6Fails) {
 TEST_F(IpTablesTest, PunchUdpHoleIpv6Fails) {
   // Punch hole for UDP port 53, should fail because 'ip6tables' fails.
   ASSERT_FALSE(ip4succeeds_ip6fails.PunchUdpHole(53, "iface"));
+}
+
+TEST_F(IpTablesTest, ApplyVpnSetupAddSuccess) {
+  const std::vector<std::string> usernames = {"testuser0", "testuser1"};
+  const std::string interface = "ifc0";
+  const bool add = true;
+  const bool success = true;
+
+  MockIpTables mock_iptables;
+  EXPECT_CALL(mock_iptables, ApplyMasquerade(interface, add))
+      .WillOnce(Return(success));
+  EXPECT_CALL(mock_iptables, ApplyMarkForUserTraffic(usernames[0], add))
+      .WillOnce(Return(success));
+  EXPECT_CALL(mock_iptables, ApplyMarkForUserTraffic(usernames[1], add))
+      .WillOnce(Return(success));
+  EXPECT_CALL(mock_iptables, ApplyRuleForUserTraffic(add))
+      .WillOnce(Return(success));
+
+  EXPECT_EQ(success, mock_iptables.ApplyVpnSetup(usernames, interface, add));
+}
+
+TEST_F(IpTablesTest, ApplyVpnSetupAddFailureInUsername) {
+  const std::vector<std::string> usernames = {"testuser0", "testuser1"};
+  const std::string interface = "ifc0";
+  const bool remove = false;
+  const bool add = true;
+  const bool failure = false;
+  const bool success = true;
+
+  MockIpTables mock_iptables;
+  EXPECT_CALL(mock_iptables, ApplyMasquerade(interface, add))
+      .Times(1)
+      .WillOnce(Return(success));
+  EXPECT_CALL(mock_iptables, ApplyMarkForUserTraffic(usernames[0], add))
+      .Times(1)
+      .WillOnce(Return(success));
+  EXPECT_CALL(mock_iptables, ApplyMarkForUserTraffic(usernames[1], add))
+      .Times(1)
+      .WillOnce(Return(failure));
+  EXPECT_CALL(mock_iptables, ApplyRuleForUserTraffic(add))
+      .Times(1)
+      .WillOnce(Return(success));
+
+  EXPECT_CALL(mock_iptables, ApplyMasquerade(interface, remove))
+      .Times(1)
+      .WillOnce(Return(success));
+  EXPECT_CALL(mock_iptables, ApplyMarkForUserTraffic(usernames[0], remove))
+      .Times(1)
+      .WillOnce(Return(failure));
+  EXPECT_CALL(mock_iptables, ApplyMarkForUserTraffic(usernames[1], remove))
+      .Times(0);
+  EXPECT_CALL(mock_iptables, ApplyRuleForUserTraffic(remove))
+      .Times(1)
+      .WillOnce(Return(failure));
+
+  EXPECT_EQ(failure, mock_iptables.ApplyVpnSetup(usernames, interface, add));
+}
+
+TEST_F(IpTablesTest, ApplyVpnSetupAddFailureInMasquerade) {
+  const std::vector<std::string> usernames = {"testuser0", "testuser1"};
+  const std::string interface = "ifc0";
+  const bool remove = false;
+  const bool add = true;
+  const bool failure = false;
+  const bool success = true;
+
+  MockIpTables mock_iptables;
+  EXPECT_CALL(mock_iptables, ApplyMasquerade(interface, add))
+      .Times(1)
+      .WillOnce(Return(failure));
+  EXPECT_CALL(mock_iptables, ApplyMarkForUserTraffic(_, _)).Times(0);
+  EXPECT_CALL(mock_iptables, ApplyRuleForUserTraffic(add))
+      .Times(1)
+      .WillOnce(Return(success));
+
+  EXPECT_CALL(mock_iptables, ApplyMasquerade(interface, remove)).Times(0);
+  EXPECT_CALL(mock_iptables, ApplyRuleForUserTraffic(remove))
+      .Times(1)
+      .WillOnce(Return(success));
+
+  EXPECT_EQ(failure, mock_iptables.ApplyVpnSetup(usernames, interface, add));
+}
+
+TEST_F(IpTablesTest, ApplyVpnSetupAddFailureInRuleForUserTraffic) {
+  const std::vector<std::string> usernames = {"testuser0", "testuser1"};
+  const std::string interface = "ifc0";
+  const bool remove = false;
+  const bool add = true;
+  const bool failure = false;
+
+  MockIpTables mock_iptables;
+  EXPECT_CALL(mock_iptables, ApplyMasquerade(interface, _)).Times(0);
+  EXPECT_CALL(mock_iptables, ApplyMarkForUserTraffic(_, _)).Times(0);
+  EXPECT_CALL(mock_iptables, ApplyRuleForUserTraffic(add))
+      .Times(1)
+      .WillOnce(Return(failure));
+
+  EXPECT_CALL(mock_iptables, ApplyRuleForUserTraffic(remove)).Times(0);
+
+  EXPECT_EQ(failure, mock_iptables.ApplyVpnSetup(usernames, interface, add));
+}
+
+TEST_F(IpTablesTest, ApplyVpnSetupRemoveSuccess) {
+  const std::vector<std::string> usernames = {"testuser0", "testuser1"};
+  const std::string interface = "ifc0";
+  const bool remove = false;
+  const bool add = true;
+  const bool success = true;
+
+  MockIpTables mock_iptables;
+  EXPECT_CALL(mock_iptables, ApplyMasquerade(interface, remove))
+      .Times(1)
+      .WillOnce(Return(success));
+  EXPECT_CALL(mock_iptables, ApplyMarkForUserTraffic(_, remove))
+      .Times(2)
+      .WillRepeatedly(Return(success));
+  EXPECT_CALL(mock_iptables, ApplyRuleForUserTraffic(remove))
+      .Times(1)
+      .WillOnce(Return(success));
+
+  EXPECT_CALL(mock_iptables, ApplyMasquerade(interface, add)).Times(0);
+  EXPECT_CALL(mock_iptables, ApplyMarkForUserTraffic(_, add)).Times(0);
+  EXPECT_CALL(mock_iptables, ApplyRuleForUserTraffic(add)).Times(0);
+
+  EXPECT_EQ(success, mock_iptables.ApplyVpnSetup(usernames, interface, remove));
+}
+
+TEST_F(IpTablesTest, ApplyVpnSetupRemoveFailure) {
+  const std::vector<std::string> usernames = {"testuser0", "testuser1"};
+  const std::string interface = "ifc0";
+  const bool remove = false;
+  const bool add = true;
+  const bool failure = false;
+
+  MockIpTables mock_iptables;
+  EXPECT_CALL(mock_iptables, ApplyMasquerade(interface, remove))
+      .Times(1)
+      .WillOnce(Return(failure));
+  EXPECT_CALL(mock_iptables, ApplyMarkForUserTraffic(_, remove))
+      .Times(2)
+      .WillRepeatedly(Return(failure));
+  EXPECT_CALL(mock_iptables, ApplyRuleForUserTraffic(remove))
+      .Times(1)
+      .WillOnce(Return(failure));
+
+  EXPECT_CALL(mock_iptables, ApplyMasquerade(interface, add)).Times(0);
+  EXPECT_CALL(mock_iptables, ApplyMarkForUserTraffic(_, add)).Times(0);
+  EXPECT_CALL(mock_iptables, ApplyRuleForUserTraffic(add)).Times(0);
+
+  EXPECT_EQ(failure, mock_iptables.ApplyVpnSetup(usernames, interface, remove));
 }
 
 }  // namespace firewalld

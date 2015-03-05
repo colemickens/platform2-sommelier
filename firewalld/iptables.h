@@ -48,6 +48,12 @@ class IpTables : public org::chromium::FirewalldInterface {
 
  private:
   friend class IpTablesTest;
+  FRIEND_TEST(IpTablesTest, ApplyVpnSetupAddSuccess);
+  FRIEND_TEST(IpTablesTest, ApplyVpnSetupAddFailureInUsername);
+  FRIEND_TEST(IpTablesTest, ApplyVpnSetupAddFailureInMasquerade);
+  FRIEND_TEST(IpTablesTest, ApplyVpnSetupAddFailureInRuleForUserTraffic);
+  FRIEND_TEST(IpTablesTest, ApplyVpnSetupRemoveSuccess);
+  FRIEND_TEST(IpTablesTest, ApplyVpnSetupRemoveFailure);
 
   bool PunchHole(uint16_t port,
                  const std::string& interface,
@@ -77,13 +83,13 @@ class IpTables : public org::chromium::FirewalldInterface {
                      const std::string& interface,
                      bool add);
 
-  bool ApplyMasquerade(const std::string& interface,
-                       bool add);
-
-  bool ApplyMarkForUserTraffic(const std::string& user_name,
+  virtual bool ApplyMasquerade(const std::string& interface,
                                bool add);
 
-  bool ApplyRuleForUserTraffic(bool add);
+  virtual bool ApplyMarkForUserTraffic(const std::string& user_name,
+                                       bool add);
+
+  virtual bool ApplyRuleForUserTraffic(bool add);
 
   std::string ip4_exec_path_;
   std::string ip6_exec_path_;
