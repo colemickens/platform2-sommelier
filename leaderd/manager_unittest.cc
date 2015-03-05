@@ -64,6 +64,8 @@ class ManagerTest : public testing::Test {
         .WillRepeatedly(Return(peerd_manager_.get()));
     EXPECT_CALL(*peerd_manager_, StartMonitoring(_, _, _, _, _))
         .WillRepeatedly(Return(true));
+    EXPECT_CALL(*peerd_manager_, ExposeService(_, _, _, _, _))
+        .WillRepeatedly(Return(true));
 
     LOG(INFO) << "Before create manager";
     manager_.reset(

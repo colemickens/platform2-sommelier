@@ -4,9 +4,11 @@
 
 #include "leaderd/manager.h"
 
+#include <base/bind.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+
 #include "leaderd/group.h"
 
 using chromeos::ErrorPtr;
@@ -24,7 +26,7 @@ const char kEmptyGroupId[] = "manager.empty_group";
 const char kLeaderdErrorDomain[] = "leaderd";
 const char kPingResponse[] = "Hello world!";
 
-void DoneCallback(bool success) {}
+void DoneCallback(bool success) { VLOG(1) << "Done register " << success; }
 
 }  // namespace
 
@@ -51,6 +53,7 @@ void Manager::RemoveGroup(const std::string& group) {
   if (groups_.empty()) {
     peerd_client_->StopMonitoring();
   }
+  PublishService();
 }
 
 const std::string& Manager::GetUUID() const { return uuid_; }
@@ -60,7 +63,10 @@ std::vector<std::tuple<std::vector<uint8_t>, uint16_t>> Manager::GetIPInfo(
   return peerd_client_->GetIPInfo(peer_uuid);
 }
 
-void Manager::SetWebServerPort(uint16_t port) { web_port_ = port; }
+void Manager::SetWebServerPort(uint16_t port) {
+  web_port_ = port;
+  PublishService();
+}
 
 bool Manager::ChallengeLeader(const std::string& in_uuid,
                               const std::string& in_guid, int32_t in_score,
@@ -109,12 +115,13 @@ bool Manager::JoinGroup(chromeos::ErrorPtr* error, dbus::Message* message,
   groups_[in_group_id].swap(group);
   *out_group_path = path;
 
+  PublishService();
   return true;
 }
 
 std::string Manager::Ping() { return kPingResponse; }
 
-void Manager::OnPeerdAvailable() {}
+void Manager::OnPeerdAvailable() { PublishService(); }
 
 void Manager::OnPeerdDeath() {
   for (auto& group : groups_) {
@@ -134,6 +141,18 @@ void Manager::OnPeerGroupsChanged(const std::string& peer_uuid,
       joined_group.second->AddPeer(peer_uuid);
     }
   }
+}
+
+void Manager::PublishService() {
+  if (!web_port_) {
+    return;
+  }
+  std::vector<std::string> groups;
+  for (const auto& group : groups_) {
+    groups.push_back(group.first);
+  }
+
+  peerd_client_->PublishGroups(web_port_, groups);
 }
 
 }  // namespace leaderd

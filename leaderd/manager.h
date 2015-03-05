@@ -68,6 +68,7 @@ class Manager : public org::chromium::leaderd::ManagerInterface,
 
  private:
   friend class ManagerTest;
+  void PublishService();
 
   scoped_refptr<dbus::Bus> bus_;
   org::chromium::leaderd::ManagerAdaptor dbus_adaptor_{this};

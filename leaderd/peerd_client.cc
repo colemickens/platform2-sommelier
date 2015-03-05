@@ -4,12 +4,14 @@
 
 #include "leaderd/peerd_client.h"
 
+#include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 namespace leaderd {
-
 namespace {
+const char kGroupFieldFormat[] = "group_%" PRIuS;
 const char kGroupFieldPrefix[] = "group_";
 const char kPeerdPeerSelfPath[] = "/org/chromium/peerd/Self";
 const char kServiceName[] = "privet-ldrsp";
@@ -119,6 +121,34 @@ void PeerdClient::RemovePeerService(const dbus::ObjectPath& object_path) {
   delegate_->OnPeerGroupsChanged(path_to_uuid->second, {});
   uuids_to_paths_.erase(path_to_uuid->second);
   paths_to_uuids_.erase(path_to_uuid);
+}
+
+void PeerdClient::PublishGroups(uint16_t port,
+                                const std::vector<std::string>& groups) {
+  org::chromium::peerd::ManagerProxyInterface* proxy = GetManagerProxy();
+  if (!proxy) {
+    return;
+  }
+
+  std::map<std::string, chromeos::Any> mdns_options{
+      {"port", chromeos::Any{port}},
+  };
+
+  std::map<std::string, std::string> txt_record{
+      {"leaderd_ver", "1.0"},
+  };
+
+  size_t group_index = 0;
+  for (const auto& group : groups) {
+    std::string field = base::StringPrintf(kGroupFieldFormat, ++group_index);
+    txt_record.emplace(field, group);
+  }
+
+  chromeos::ErrorPtr error;
+  if (!proxy->ExposeService(kServiceName, txt_record, {{"mdns", mdns_options}},
+                            &error)) {
+    LOG(ERROR) << "ExposeService failed:" << error->GetMessage();
+  }
 }
 
 PeerdClientImpl::PeerdClientImpl(const scoped_refptr<dbus::Bus>& bus)

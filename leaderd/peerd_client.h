@@ -37,6 +37,7 @@ class PeerdClient {
   void StopMonitoring();
   std::vector<std::tuple<std::vector<uint8_t>, uint16_t>> GetIPInfo(
       const std::string& peer_uuid);
+  void PublishGroups(uint16_t port, const std::vector<std::string>& groups);
 
  protected:
   virtual org::chromium::peerd::PeerProxyInterface* GetPeerProxy(
