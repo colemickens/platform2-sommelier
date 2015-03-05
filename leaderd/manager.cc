@@ -4,10 +4,13 @@
 
 #include "leaderd/manager.h"
 
+#include <base/format_macros.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
+#include "leaderd/group.h"
 
+using chromeos::ErrorPtr;
 using chromeos::dbus_utils::AsyncEventSequencer;
-using chromeos::dbus_utils::DBusObject;
 using chromeos::dbus_utils::ExportedObjectManager;
 using org::chromium::leaderd::ManagerAdaptor;
 using dbus::ObjectPath;
@@ -16,7 +19,12 @@ namespace leaderd {
 
 namespace {
 
+const char kGroupObjectPathFormat[] = "/org/chromium/leaderd/groups/%" PRIuS;
+const char kEmptyGroupId[] = "manager.empty_group";
+const char kLeaderdErrorDomain[] = "leaderd";
 const char kPingResponse[] = "Hello world!";
+
+void DoneCallback(bool success) {}
 
 }  // namespace
 
@@ -38,14 +46,19 @@ void Manager::RegisterAsync(
       sequencer->GetHandler("Failed exporting DBusManager.", true));
 }
 
-bool Manager::JoinGroup(chromeos::ErrorPtr* error, dbus::Message* message,
-                        const std::string& group_guid,
-                        const std::map<std::string, chromeos::Any>& options,
-                        dbus::ObjectPath* out_object_path) {
-  return true;
+void Manager::RemoveGroup(const std::string& group) {
+  groups_.erase(group);
+  if (groups_.empty()) {
+    peerd_client_->StopMonitoring();
+  }
 }
 
-std::string Manager::Ping() { return kPingResponse; }
+const std::string& Manager::GetUUID() const { return uuid_; }
+
+std::vector<std::tuple<std::vector<uint8_t>, uint16_t>> Manager::GetIPInfo(
+    const std::string& peer_uuid) const {
+  return peerd_client_->GetIPInfo(peer_uuid);
+}
 
 void Manager::SetWebServerPort(uint16_t port) { web_port_ = port; }
 
@@ -65,40 +78,62 @@ bool Manager::ChallengeLeader(const std::string& in_uuid,
   return true;
 }
 
-void Manager::OnPeerdManagerAdded(
-    org::chromium::peerd::ManagerProxyInterface* manager_proxy) {
-  VLOG(1) << "Peerd manager added.";
+bool Manager::JoinGroup(chromeos::ErrorPtr* error, dbus::Message* message,
+                        const std::string& in_group_id,
+                        const std::map<std::string, chromeos::Any>& options,
+                        dbus::ObjectPath* out_group_path) {
+  const std::string& dbus_client = message->GetSender();
+  LOG(INFO) << "Join group=" << in_group_id << " from " << dbus_client;
+  if (in_group_id.empty()) {
+    chromeos::Error::AddTo(error, FROM_HERE, kLeaderdErrorDomain, kEmptyGroupId,
+                           "Expected non-empty group id.");
+    return false;
+  }
+  auto it = groups_.find(in_group_id);
+  if (it != groups_.end()) {
+    *out_group_path = it->second->GetObjectPath();
+    return true;
+  }
+
+  peerd_client_->StartMonitoring();
+
+  dbus::ObjectPath path{
+      base::StringPrintf(kGroupObjectPathFormat, ++last_group_dbus_id_)};
+  std::unique_ptr<Group> group{new Group{
+      in_group_id, bus_, dbus_object_.GetObjectManager().get(), path,
+      dbus_client, peerd_client_->GetPeersMatchingGroup(in_group_id), this}};
+  scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
+  group->RegisterAsync(sequencer->GetHandler("Failed to expose Group.", true));
+  sequencer->OnAllTasksCompletedCall({base::Bind(&DoneCallback)});
+
+  groups_[in_group_id].swap(group);
+  *out_group_path = path;
+
+  return true;
 }
 
-void Manager::OnPeerdManagerRemoved(const dbus::ObjectPath& object_path) {
-  VLOG(1) << "Peerd manager removed '" << object_path.value() << "'.";
+std::string Manager::Ping() { return kPingResponse; }
+
+void Manager::OnPeerdAvailable() {}
+
+void Manager::OnPeerdDeath() {
+  for (auto& group : groups_) {
+    group.second->ClearPeers();
+  }
 }
 
-void Manager::OnPeerdPeerAdded(
-    org::chromium::peerd::PeerProxyInterface* peer_proxy,
-    const dbus::ObjectPath& object_path) {
-  VLOG(1) << "Peerd peer added '" << object_path.value() << "'.";
-}
+void Manager::OnSelfIdChanged(const std::string& uuid) { uuid_ = uuid; }
 
-void Manager::OnPeerdPeerRemoved(const dbus::ObjectPath& object_path) {
-  VLOG(1) << "Peerd peer removed '" << object_path.value() << "'.";
-}
-
-void Manager::OnPeerdServiceAdded(
-    org::chromium::peerd::ServiceProxyInterface* service_proxy,
-    const dbus::ObjectPath& object_path) {
-  VLOG(1) << "Peerd service added '" << object_path.value() << "'.";
-}
-
-void Manager::OnPeerdServiceRemoved(const dbus::ObjectPath& object_path) {
-  VLOG(1) << "Peerd service removed '" << object_path.value() << "'.";
-}
-
-void Manager::OnPeerdServiceChanged(
-    org::chromium::peerd::ServiceProxyInterface* service_proxy,
-    const dbus::ObjectPath& object_path, const std::string& property) {
-  VLOG(1) << "Peerd service update '" << object_path.value() << "', '"
-          << service_proxy->service_id() << "'";
+void Manager::OnPeerGroupsChanged(const std::string& peer_uuid,
+                                  const std::set<std::string>& groups) {
+  // Tell all the groups about the updated peer
+  for (const auto& joined_group : groups_) {
+    if (groups.find(joined_group.first) == groups.end()) {
+      joined_group.second->RemovePeer(peer_uuid);
+    } else {
+      joined_group.second->AddPeer(peer_uuid);
+    }
+  }
 }
 
 }  // namespace leaderd

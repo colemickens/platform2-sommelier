@@ -2,16 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "leaderd/group.h"
-
 #include <string>
 
+#include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/object_path.h>
 #include <gtest/gtest.h>
+
+#include "leaderd/group.h"
+#include "leaderd/manager.h"
 
 using dbus::MockBus;
 using dbus::MockExportedObject;
@@ -27,6 +29,36 @@ namespace {
 const char kGroupName[] = "ABC";
 const std::string kMyUUID = "012";
 const char kScore = 25;
+const char kTestDBusSource[] = "TestDBusSource";
+
+// Chrome doesn't bother mocking out their objects completely.
+class EspeciallyMockedBus : public dbus::MockBus {
+ public:
+  using dbus::MockBus::MockBus;
+
+  MOCK_METHOD2(GetServiceOwner, void(const std::string& service_name,
+                                     const GetServiceOwnerCallback& callback));
+
+  MOCK_METHOD2(ListenForServiceOwnerChange,
+               void(const std::string& service_name,
+                    const GetServiceOwnerCallback& callback));
+
+  MOCK_METHOD2(UnlistenForServiceOwnerChange,
+               void(const std::string& service_name,
+                    const GetServiceOwnerCallback& callback));
+
+ protected:
+  virtual ~EspeciallyMockedBus() = default;
+};
+
+class MockGroupDelegate : public Group::Delegate {
+ public:
+  MOCK_CONST_METHOD0(GetUUID, const std::string&());
+  MOCK_METHOD1(RemoveGroup, void(const std::string&));
+  MOCK_CONST_METHOD1(GetIPInfo,
+                     std::vector<std::tuple<std::vector<uint8_t>, uint16_t>>(
+                         const std::string&));
+};
 
 }  // namespace
 
@@ -36,10 +68,24 @@ class GroupTest : public testing::Test {
     // Ignore threading concerns.
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
-    group_.reset(new Group{kGroupName, bus_, nullptr,
-                           dbus::ObjectPath("/manager/object/path"), nullptr});
+    EXPECT_CALL(*bus_, ListenForServiceOwnerChange(kTestDBusSource, _));
+    EXPECT_CALL(*bus_, GetServiceOwner(kTestDBusSource, _));
+    object_manager_.reset(new ExportedObjectManager(
+        bus_, dbus::ObjectPath("/manager/object/path")));
+
+    group_.reset(new Group{kGroupName,
+                           bus_,
+                           nullptr,
+                           dbus::ObjectPath("/manager/object/path"),
+                           kTestDBusSource,
+                           {},
+                           &group_delegate_});
   }
-  scoped_refptr<MockBus> bus_{new MockBus{dbus::Bus::Options{}}};
+  base::MessageLoop message_loop_;
+  std::unique_ptr<ExportedObjectManager> object_manager_;
+  scoped_refptr<EspeciallyMockedBus> bus_{
+      new EspeciallyMockedBus{dbus::Bus::Options{}}};
+  MockGroupDelegate group_delegate_;
   std::unique_ptr<Group> group_;
 };
 
@@ -51,6 +97,7 @@ TEST_F(GroupTest, LeaveGroup) {
 
 TEST_F(GroupTest, SetScore) {
   chromeos::ErrorPtr error;
+  LOG(INFO) << "Set score";
   EXPECT_TRUE(group_->SetScore(&error, kScore));
   EXPECT_EQ(nullptr, error.get());
 }
