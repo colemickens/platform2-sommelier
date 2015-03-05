@@ -25,7 +25,6 @@ namespace {
 
 const char kWiFiBootstrapMode[] = "wifi_bootstrapping_mode";
 const char kGcdBootstrapMode[] = "gcd_bootstrapping_mode";
-const char kWiFiBootstrapInterfaces[] = "automatic_mode_interfaces";
 const char kConnectTimeout[] = "connect_timeout_seconds";
 const char kBootstrapTimeout[] = "bootstrap_timeout_seconds";
 const char kMonitorTimeout[] = "monitor_timeout_seconds";

@@ -49,34 +49,49 @@ bool GetStateForService(ServiceProxy* service, string* state) {
   return true;
 }
 
-ShillClient::ServiceState ShillServiceStateToServiceState(const string& state) {
+ServiceState ShillServiceStateToServiceState(const string& state) {
   // TODO(wiley) What does "unconfigured" mean in a world with multiple sets
   //             of WiFi credentials?
   // TODO(wiley) Detect disabled devices, update state appropriately.
   if ((state.compare(shill::kStateReady) == 0) ||
       (state.compare(shill::kStatePortal) == 0) ||
       (state.compare(shill::kStateOnline) == 0)) {
-    return ShillClient::kConnected;
+    return ServiceState::kConnected;
   }
   if ((state.compare(shill::kStateAssociation) == 0) ||
       (state.compare(shill::kStateConfiguration) == 0)) {
-    return ShillClient::kConnecting;
+    return ServiceState::kConnecting;
   }
   if ((state.compare(shill::kStateFailure) == 0) ||
       (state.compare(shill::kStateActivationFailure) == 0)) {
     // TODO(wiley) Get error information off the service object.
-    return ShillClient::kFailure;
+    return ServiceState::kFailure;
   }
   if ((state.compare(shill::kStateIdle) == 0) ||
       (state.compare(shill::kStateOffline) == 0) ||
       (state.compare(shill::kStateDisconnect) == 0)) {
-    return ShillClient::kOffline;
+    return ServiceState::kOffline;
   }
   LOG(WARNING) << "Unknown state found: '" << state << "'";
-  return ShillClient::kOffline;
+  return ServiceState::kOffline;
 }
 
 }  // namespace
+
+std::string ServiceStateToString(ServiceState state) {
+  switch (state) {
+    case ServiceState::kOffline:
+      return "offline";
+    case ServiceState::kFailure:
+      return "failure";
+    case ServiceState::kConnecting:
+      return "connecting";
+    case ServiceState::kConnected:
+      return "connected";
+  }
+  LOG(ERROR) << "Unknown ServiceState value!";
+  return "unknown";
+}
 
 ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus,
                          const vector<string>& device_whitelist)
@@ -99,7 +114,7 @@ void ShillClient::Init() {
   VLOG(2) << "ShillClient::Init();";
   CleanupConnectingService(false);
   devices_.clear();
-  connectivity_state_ = kOffline;
+  connectivity_state_ = ServiceState::kOffline;
   VariantDictionary properties;
   if (!manager_proxy_.GetProperties(&properties, nullptr)) {
     LOG(ERROR) << "Unable to get properties from Manager, waiting for "
@@ -145,8 +160,12 @@ bool ShillClient::ConnectToService(const string& ssid,
   return true;
 }
 
-ShillClient::ServiceState ShillClient::GetConnectionState() const {
+ServiceState ShillClient::GetConnectionState() const {
   return connectivity_state_;
+}
+
+bool ShillClient::AmOnline() const {
+  return connectivity_state_ == ServiceState::kConnected;
 }
 
 void ShillClient::RegisterConnectivityListener(
@@ -183,7 +202,7 @@ void ShillClient::OnShillServiceOwnerChange(const string& old_owner,
   if (new_owner.empty()) {
     CleanupConnectingService(false);
     devices_.clear();
-    connectivity_state_ = kOffline;
+    connectivity_state_ = ServiceState::kOffline;
   } else {
     Init();  // New service owner means shill reset!
   }
@@ -305,7 +324,7 @@ void ShillClient::OnDevicePropertyChange(const ObjectPath& device_path,
       return;  // Spurious update?
     }
     device_state.selected_service.reset();
-    device_state.service_state = kOffline;
+    device_state.service_state = ServiceState::kOffline;
     removed_old_service = true;
   }
   std::shared_ptr<ServiceProxy> new_service;
@@ -410,7 +429,7 @@ void ShillClient::OnStateChangeForConnectingService(
     const string& state) {
   if (!connecting_service_ ||
       connecting_service_->GetObjectPath() != service_path ||
-      ShillServiceStateToServiceState(state) != kConnected) {
+      ShillServiceStateToServiceState(state) != ServiceState::kConnected) {
     return;
   }
   connecting_service_reset_pending_ = true;
@@ -456,16 +475,16 @@ void ShillClient::OnStateChangeForSelectedService(
 void ShillClient::UpdateConnectivityState() {
   // Update the connectivity state of the device by picking the
   // state of the currently most connected selected service.
-  ServiceState new_connectivity_state{kOffline};
+  ServiceState new_connectivity_state{ServiceState::kOffline};
   for (const auto& kv : devices_) {
     if (kv.second.service_state > new_connectivity_state) {
       new_connectivity_state = kv.second.service_state;
     }
   }
-  VLOG(3) << "New connectivity state is " << new_connectivity_state;
+  VLOG(3) << "New connectivity state is "
+          << ServiceStateToString(new_connectivity_state);
   if (new_connectivity_state != connectivity_state_) {
     connectivity_state_ = new_connectivity_state;
-    const bool am_online = new_connectivity_state == kConnected;
     // We may call UpdateConnectivityState whenever we mutate a data structure
     // such that our connectivity status could change.  However, we don't want
     // to allow people to call into ShillClient while some other operation is
@@ -474,7 +493,7 @@ void ShillClient::UpdateConnectivityState() {
     base::MessageLoop::current()->PostTask(
         FROM_HERE,
         base::Bind(&ShillClient::NotifyConnectivityListeners,
-                   weak_factory_.GetWeakPtr(), am_online));
+                   weak_factory_.GetWeakPtr(), AmOnline()));
   }
 }
 

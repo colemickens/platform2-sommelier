@@ -81,6 +81,16 @@ class Daemon : public chromeos::DBusServiceDaemon {
           << "Failed to read configuration file.";
     }
     state_store_->Init();
+    // This state store key doesn't exist naturally, but developers
+    // sometime put it in their state store to cause the device to bring
+    // up WiFi bootstrapping while being connected to an ethernet interface.
+    std::string test_device_whitelist;
+    if (device_whitelist_.empty() &&
+        state_store_->GetString(kWiFiBootstrapInterfaces,
+                                &test_device_whitelist)) {
+      device_whitelist_ = chromeos::string_utils::Split(
+         test_device_whitelist, ',', true, true);
+    }
     device_ = DeviceDelegate::CreateDefault(
         &parser_, state_store_.get(),
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));

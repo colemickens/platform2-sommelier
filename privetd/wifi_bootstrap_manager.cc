@@ -59,8 +59,20 @@ void WifiBootstrapManager::RegisterStateListener(
 }
 
 void WifiBootstrapManager::StartBootstrapping() {
+  if (shill_client_->AmOnline()) {
+    // If one of the devices we monitor for connectivity is online, we need not
+    // start an AP.  For most devices, this is a situation which happens in
+    // testing when we have an ethernet connection.  If you need to always
+    // start an AP to bootstrap WiFi credentials, then add your WiFi interface
+    // to the device whitelist.
+    StartMonitoring();
+    return;
+  }
   UpdateState(kBootstrapping);
   if (have_ever_been_bootstrapped_) {
+    // If we have been configured before, we'd like to periodically take down
+    // our AP and find out if we can connect again.  Many kinds of failures are
+    // transient, and having an AP up prohibits us from connecting as a client.
     base::MessageLoop::current()->PostDelayedTask(
         FROM_HERE, base::Bind(&WifiBootstrapManager::OnBootstrapTimeout,
                               tasks_weak_factory_.GetWeakPtr()),
@@ -121,12 +133,16 @@ void WifiBootstrapManager::UpdateState(State new_state) {
       break;
   }
 
-  state_ = new_state;
-
-  // Post with weak ptr to avoid notification after this object destroyed.
-  base::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(&WifiBootstrapManager::NotifyStateListeners,
-                            lifetime_weak_factory_.GetWeakPtr(), new_state));
+  if (new_state != state_) {
+    state_ = new_state;
+    // Post with weak ptr to avoid notification after this object destroyed.
+    base::MessageLoop::current()->PostTask(
+        FROM_HERE, base::Bind(&WifiBootstrapManager::NotifyStateListeners,
+                              lifetime_weak_factory_.GetWeakPtr(), new_state));
+  } else {
+    VLOG(3) << "Not notifying listeners of state change, "
+            << "because the states are the same.";
+  }
 }
 
 void WifiBootstrapManager::NotifyStateListeners(State new_state) const {
@@ -201,18 +217,22 @@ void WifiBootstrapManager::OnConnectivityChange(bool is_connected) {
   VLOG(3) << "ConnectivityChanged: " << is_connected;
   UpdateConnectionState();
 
-  if (state_ != kMonitoring) {
+  if (state_ == kBootstrapping) {
+    StartMonitoring();
     return;
   }
-  if (is_connected) {
-    tasks_weak_factory_.InvalidateWeakPtrs();
-  } else {
-    // Tasks queue may have more than one OnMonitorTimeout enqueued. The first
-    // one could be executed as it would change the state and abort the rest.
-    base::MessageLoop::current()->PostDelayedTask(
-        FROM_HERE, base::Bind(&WifiBootstrapManager::OnMonitorTimeout,
-                              tasks_weak_factory_.GetWeakPtr()),
-        base::TimeDelta::FromSeconds(monitor_timeout_seconds_));
+  if (state_ == kMonitoring) {
+    if (is_connected) {
+      tasks_weak_factory_.InvalidateWeakPtrs();
+    } else {
+      // Tasks queue may have more than one OnMonitorTimeout enqueued. The
+      // first one could be executed as it would change the state and abort the
+      // rest.
+      base::MessageLoop::current()->PostDelayedTask(
+          FROM_HERE, base::Bind(&WifiBootstrapManager::OnMonitorTimeout,
+                                tasks_weak_factory_.GetWeakPtr()),
+          base::TimeDelta::FromSeconds(monitor_timeout_seconds_));
+    }
   }
 }
 
@@ -227,12 +247,12 @@ void WifiBootstrapManager::UpdateConnectionState() {
   if (!have_ever_been_bootstrapped_) {
     return;
   }
-  ShillClient::ServiceState service_state{shill_client_->GetConnectionState()};
+  ServiceState service_state{shill_client_->GetConnectionState()};
   switch (service_state) {
-    case ShillClient::kOffline:
+    case ServiceState::kOffline:
       connection_state_ = ConnectionState{ConnectionState::kOffline};
       return;
-    case ShillClient::kFailure: {
+    case ServiceState::kFailure: {
       // TODO(wiley) Pull error information from somewhere.
       chromeos::ErrorPtr error;
       chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
@@ -240,17 +260,18 @@ void WifiBootstrapManager::UpdateConnectionState() {
       connection_state_ = ConnectionState{std::move(error)};
       return;
     }
-    case ShillClient::kConnecting:
+    case ServiceState::kConnecting:
       connection_state_ = ConnectionState{ConnectionState::kConnecting};
       return;
-    case ShillClient::kConnected:
+    case ServiceState::kConnected:
       connection_state_ = ConnectionState{ConnectionState::kOnline};
       return;
   }
   chromeos::ErrorPtr error;
   chromeos::Error::AddToPrintf(
       &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
-      "Unknown state returned from ShillClient: %d", service_state);
+      "Unknown state returned from ShillClient: %s",
+      ServiceStateToString(service_state).c_str());
   connection_state_ = ConnectionState{std::move(error)};
 }
 

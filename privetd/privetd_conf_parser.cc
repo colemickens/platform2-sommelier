@@ -14,7 +14,6 @@ namespace {
 
 const char kWiFiBootstrapMode[] = "wifi_bootstrapping_mode";
 const char kGcdBootstrapMode[] = "gcd_bootstrapping_mode";
-const char kWiFiBootstrapInterfaces[] = "automatic_mode_interfaces";
 const char kConnectTimeout[] = "connect_timeout_seconds";
 const char kBootstrapTimeout[] = "bootstrap_timeout_seconds";
 const char kMonitorTimeout[] = "monitor_timeout_seconds";
@@ -37,6 +36,8 @@ const char kDefaultDeviceModel[] = "Brillo";
 const char kDefaultDeviceModelId[] = "AAA";  // Model is not registered.
 
 }  // namespace
+
+const char kWiFiBootstrapInterfaces[] = "automatic_mode_interfaces";
 
 PrivetdConfigParser::PrivetdConfigParser()
     : wifi_bootstrap_mode_{WiFiBootstrapMode::kDisabled},

@@ -20,15 +20,17 @@
 
 namespace privetd {
 
+enum class ServiceState {
+  kOffline = 0,
+  kFailure,
+  kConnecting,
+  kConnected,
+};
+
+std::string ServiceStateToString(ServiceState state);
+
 class ShillClient {
  public:
-  enum ServiceState {
-    kOffline = 0,
-    kFailure,
-    kConnecting,
-    kConnected,
-  };
-
   // A callback that interested parties can register to be notified of
   // transitions from online to offline and vice versa.  The boolean
   // parameter will be true if we're online, and false if we're offline.
@@ -53,6 +55,7 @@ class ShillClient {
                         const base::Closure& on_success,
                         chromeos::ErrorPtr* error);
   ServiceState GetConnectionState() const;
+  bool AmOnline() const;
 
  private:
   struct DeviceState {
@@ -62,7 +65,7 @@ class ShillClient {
     // service (for instance, in the period between configuring a WiFi service
     // with credentials, and when Connect() is called.)
     std::shared_ptr<org::chromium::flimflam::ServiceProxy> selected_service;
-    ServiceState service_state{kOffline};
+    ServiceState service_state{ServiceState::kOffline};
   };
 
   bool IsMonitoredDevice(org::chromium::flimflam::DeviceProxy* device);
@@ -118,7 +121,7 @@ class ShillClient {
 
   // State for tracking our online connectivity.
   std::map<dbus::ObjectPath, DeviceState> devices_;
-  ServiceState connectivity_state_{kOffline};
+  ServiceState connectivity_state_{ServiceState::kOffline};
 
   base::WeakPtrFactory<ShillClient> weak_factory_{this};
 

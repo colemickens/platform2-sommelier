@@ -12,6 +12,8 @@
 
 namespace privetd {
 
+extern const char kWiFiBootstrapInterfaces[];
+
 enum class WiFiBootstrapMode {
   kDisabled,
   kManual,
