@@ -682,4 +682,12 @@ std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateGcdSection() const {
   return std::move(gcd);
 }
 
+bool StringToPairingType(const std::string& mode, PairingType* id) {
+  return StringToEnum(mode, id);
+}
+
+std::string PairingTypeToString(PairingType id) {
+  return EnumToString(id);
+}
+
 }  // namespace privetd

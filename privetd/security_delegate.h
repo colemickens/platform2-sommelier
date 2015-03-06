@@ -77,6 +77,9 @@ class SecurityDelegate {
                              chromeos::ErrorPtr* error) = 0;
 };
 
+bool StringToPairingType(const std::string& mode, PairingType* id);
+std::string PairingTypeToString(PairingType id);
+
 }  // namespace privetd
 
 #endif  // PRIVETD_SECURITY_DELEGATE_H_

@@ -129,12 +129,18 @@ class UnsecureKeyExchanger : public SecurityManager::KeyExchanger {
 
 }  // namespace
 
-SecurityManager::SecurityManager(const base::FilePath& embedded_code_path,
+SecurityManager::SecurityManager(const std::vector<PairingType>& pairing_modes,
+                                 const base::FilePath& embedded_code_path,
                                  bool disable_security)
     : is_security_disabled_(disable_security),
+      pairing_modes_(pairing_modes),
       embedded_code_path_(embedded_code_path),
       secret_(kSha256OutputSize) {
   base::RandBytes(secret_.data(), kSha256OutputSize);
+
+  CHECK_EQ(embedded_code_path_.empty(),
+           std::find(pairing_modes_.begin(), pairing_modes_.end(),
+                     PairingType::kEmbeddedCode) == pairing_modes_.end());
 }
 
 SecurityManager::~SecurityManager() {
@@ -166,8 +172,7 @@ AuthScope SecurityManager::ParseAccessToken(const std::string& token,
 }
 
 std::vector<PairingType> SecurityManager::GetPairingTypes() const {
-  return {embedded_code_path_.empty() ? PairingType::kPinCode
-                                      : PairingType::kEmbeddedCode};
+  return pairing_modes_;
 }
 
 std::vector<CryptoType> SecurityManager::GetCryptoTypes() const {
@@ -204,15 +209,18 @@ bool SecurityManager::StartPairing(PairingType mode,
   if (!CheckIfPairingAllowed(error))
     return false;
 
+  if (std::find(pairing_modes_.begin(), pairing_modes_.end(), mode) ==
+      pairing_modes_.end()) {
+    chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                           errors::kInvalidParams,
+                           "Pairing mode is not enabled");
+    return false;
+  }
+
   std::string code;
   switch (mode) {
     case PairingType::kEmbeddedCode:
-      if (embedded_code_path_.empty()) {
-        chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
-                               errors::kInvalidParams,
-                               "Embedded code is not supported");
-        return false;
-      }
+      CHECK(!embedded_code_path_.empty());
 
       if (embedded_code_.empty())
         embedded_code_ = LoadEmbeddedCode(embedded_code_path_);
@@ -226,6 +234,11 @@ bool SecurityManager::StartPairing(PairingType mode,
 
       code = embedded_code_;
       break;
+    case PairingType::kUltrasound32:
+    case PairingType::kAudible32: {
+      code = base::RandBytesAsString(4);
+      break;
+    }
     case PairingType::kPinCode:
       code = base::StringPrintf("%04i", base::RandInt(0, 9999));
       break;
@@ -276,8 +289,10 @@ bool SecurityManager::StartPairing(PairingType mode,
   LOG(INFO) << "Pairing code for session " << *session_id << " is " << code;
   // TODO(vitalybuka): Handle case when device can't start multiple pairing
   // simultaneously and implement throttling to avoid brute force attack.
-  if (!on_start_.is_null())
-    on_start_.Run(session, mode, code);
+  if (!on_start_.is_null()) {
+    on_start_.Run(session, mode,
+                  chromeos::string_utils::GetStringAsBytes(code));
+  }
 
   return true;
 }

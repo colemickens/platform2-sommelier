@@ -47,9 +47,10 @@ bool IsBase64(const std::string& text) {
 
 class MockPairingCallbacks {
  public:
-  MOCK_METHOD3(OnPairingStart, void(const std::string& session_id,
-                                    PairingType pairing_type,
-                                    const std::string& code));
+  MOCK_METHOD3(OnPairingStart,
+               void(const std::string& session_id,
+                    PairingType pairing_type,
+                    const std::vector<uint8_t>& code));
   MOCK_METHOD1(OnPairingEnd, void(const std::string& session_id));
 };
 
@@ -117,7 +118,7 @@ class SecurityManagerTest : public testing::Test {
   const base::Time time_ = base::Time::FromTimeT(1410000000);
   base::MessageLoop message_loop_;
   base::FilePath embedded_code_path_{GetTempFilePath()};
-  SecurityManager security_{embedded_code_path_};
+  SecurityManager security_{{PairingType::kEmbeddedCode}, embedded_code_path_};
 };
 
 TEST_F(SecurityManagerTest, IsBase64) {
@@ -142,14 +143,14 @@ TEST_F(SecurityManagerTest, CreateTokenDifferentTime) {
 
 TEST_F(SecurityManagerTest, CreateTokenDifferentInstance) {
   EXPECT_NE(security_.CreateAccessToken(AuthScope::kGuest, time_),
-            SecurityManager(base::FilePath{})
+            SecurityManager({}, base::FilePath{})
                 .CreateAccessToken(AuthScope::kGuest, time_));
 }
 
 TEST_F(SecurityManagerTest, ParseAccessToken) {
   // Multiple attempts with random secrets.
   for (size_t i = 0; i < 1000; ++i) {
-    SecurityManager security{base::FilePath{}};
+    SecurityManager security{{}, base::FilePath{}};
     std::string token = security.CreateAccessToken(AuthScope::kUser, time_);
     base::Time time2;
     EXPECT_EQ(AuthScope::kUser, security.ParseAccessToken(token, &time2));

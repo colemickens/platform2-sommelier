@@ -29,7 +29,7 @@ class SecurityManager : public SecurityDelegate {
   using PairingStartListener =
       base::Callback<void(const std::string& session_id,
                           PairingType pairing_type,
-                          const std::string& code)>;
+                          const std::vector<uint8_t>& code)>;
   using PairingEndListener =
       base::Callback<void(const std::string& session_id)>;
 
@@ -43,8 +43,9 @@ class SecurityManager : public SecurityDelegate {
     virtual const std::string& GetKey() const = 0;
   };
 
-  explicit SecurityManager(const base::FilePath& embedded_code_path,
-                           bool disable_security = false);
+  SecurityManager(const std::vector<PairingType>& pairing_modes,
+                  const base::FilePath& embedded_code_path,
+                  bool disable_security = false);
   ~SecurityManager() override;
 
   // SecurityDelegate methods
@@ -86,6 +87,7 @@ class SecurityManager : public SecurityDelegate {
 
   // If true allows unencrypted pairing and accepts any access code.
   bool is_security_disabled_{false};
+  std::vector<PairingType> pairing_modes_;
   const base::FilePath embedded_code_path_;
   std::string embedded_code_;
   std::map<std::string, std::unique_ptr<KeyExchanger>> pending_sessions_;

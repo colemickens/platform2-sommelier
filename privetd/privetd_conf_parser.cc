@@ -8,6 +8,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/strings/string_utils.h>
 
+#include "privetd/security_delegate.h"
+
 namespace privetd {
 
 namespace {
@@ -24,6 +26,7 @@ const char kDeviceModel[] = "device_model";
 const char kDeviceModelId[] = "device_model_id";
 const char kDeviceName[] = "device_name";
 const char kDeviceDescription[] = "device_description";
+const char kPairingModes[] = "pairing_modes";
 const char kEmbeddedCodePath[] = "embedded_code_path";
 
 const char kBootstrapModeOff[] = "off";
@@ -49,7 +52,8 @@ PrivetdConfigParser::PrivetdConfigParser()
       device_make_{kDefaultDeviceMake},
       device_model_{kDefaultDeviceModel},
       device_model_id_{kDefaultDeviceModelId},
-      device_name_{device_make_ + " " + device_model_} {
+      device_name_{device_make_ + " " + device_model_},
+      pairing_modes_{PairingType::kPinCode} {
 }
 
 bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {
@@ -164,9 +168,32 @@ bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {
 
   config_store.GetString(kDeviceDescription, &device_description_);
 
+  std::vector<PairingType> pairing_modes;
   std::string embedded_code_path;
-  if (config_store.GetString(kEmbeddedCodePath, &embedded_code_path))
+  if (config_store.GetString(kEmbeddedCodePath, &embedded_code_path)) {
     embedded_code_path_ = base::FilePath(embedded_code_path);
+    if (!embedded_code_path_.empty())
+      pairing_modes.push_back(PairingType::kEmbeddedCode);
+  }
+
+  std::string modes_str;
+  if (config_store.GetString(kPairingModes, &modes_str)) {
+    for (const std::string& mode :
+         chromeos::string_utils::Split(modes_str, ',', true, true)) {
+      PairingType pairing_mode;
+      if (!StringToPairingType(mode, &pairing_mode)) {
+        LOG(ERROR) << "Invalid pairing mode : " << mode;
+        return false;
+      }
+      if (std::find(pairing_modes.begin(), pairing_modes.end(), pairing_mode) ==
+          pairing_modes.end()) {
+        pairing_modes.push_back(pairing_mode);
+      }
+    }
+  }
+
+  if (!pairing_modes.empty())
+    pairing_modes_ = std::move(pairing_modes);
 
   return true;
 }

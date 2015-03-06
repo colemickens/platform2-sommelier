@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <chromeos/dbus/async_event_sequencer.h>
@@ -62,7 +63,7 @@ class DBusManager : public org::chromium::privetd::ManagerInterface {
   void UpdateWiFiBootstrapState(WifiBootstrapManager::State state);
   void OnPairingStart(const std::string& session_id,
                       PairingType pairing_type,
-                      const std::string& code);
+                      const std::vector<uint8_t>& code);
   void OnPairingEnd(const std::string& session_id);
 
   org::chromium::privetd::ManagerAdaptor dbus_adaptor_{this};

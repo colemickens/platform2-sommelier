@@ -26,6 +26,8 @@ enum class GcdBootstrapMode {
   kAutomatic,
 };
 
+enum class PairingType;
+
 class PrivetdConfigParser {
  public:
   PrivetdConfigParser();
@@ -51,6 +53,7 @@ class PrivetdConfigParser {
   const std::string& device_model_id() const { return device_model_id_; }
   const std::string& device_name() const { return device_name_; }
   const std::string& device_description() const { return device_description_; }
+  const std::vector<PairingType>& pairing_modes() { return pairing_modes_; }
   const base::FilePath& embedded_code_path() const {
     return embedded_code_path_;
   }
@@ -69,6 +72,7 @@ class PrivetdConfigParser {
   std::string device_model_id_;
   std::string device_name_;
   std::string device_description_;
+  std::vector<PairingType> pairing_modes_;
   base::FilePath embedded_code_path_;
 };
 

@@ -14,6 +14,8 @@
 #include <chromeos/strings/string_utils.h>
 #include <gtest/gtest.h>
 
+#include "privetd/security_delegate.h"
+
 using chromeos::string_utils::Join;
 using chromeos::KeyValueStore;
 using std::map;
@@ -35,6 +37,7 @@ const char kDeviceModel[] = "device_model";
 const char kDeviceModelId[] = "device_model_id";
 const char kDeviceName[] = "device_name";
 const char kDeviceDescription[] = "device_description";
+const char kPairingModes[] = "pairing_modes";
 const char kEmbeddedCodePath[] = "embedded_code_path";
 
 }  // namespace
@@ -128,6 +131,8 @@ TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
   static const char kExpectedDeviceModelId[]{"BBB"};
   static const char kExpectedDeviceName[]{"testDevice"};
   static const char kExpectedDeviceDescription[]{"testDescription"};
+  const std::vector<PairingType> kExpectedPairingModes{
+      PairingType::kEmbeddedCode, PairingType::kPinCode};
   static const char kExpectedEmbeddedCodePath[]{"123ABC"};
   const ConfDict conf_dict{
       {kWiFiBootstrapMode, "automatic"},
@@ -143,6 +148,7 @@ TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
       {kDeviceModelId, kExpectedDeviceModelId},
       {kDeviceName, kExpectedDeviceName},
       {kDeviceDescription, kExpectedDeviceDescription},
+      {kPairingModes, "pinCode"},
       {kEmbeddedCodePath, kExpectedEmbeddedCodePath},
   };
   KeyValueStore store;
@@ -162,6 +168,7 @@ TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
   EXPECT_EQ(kExpectedDeviceModelId, parser.device_model_id());
   EXPECT_EQ(kExpectedDeviceName, parser.device_name());
   EXPECT_EQ(kExpectedDeviceDescription, parser.device_description());
+  EXPECT_EQ(kExpectedPairingModes, parser.pairing_modes());
   EXPECT_EQ(kExpectedEmbeddedCodePath, parser.embedded_code_path().value());
 }
 
@@ -177,6 +184,8 @@ TEST_F(PrivetdConfParserTest, CriticalDefaults) {
   EXPECT_FALSE(parser.device_model().empty());
   EXPECT_EQ(3, parser.device_model_id().size());
   EXPECT_FALSE(parser.device_name().empty());
+  EXPECT_EQ(std::vector<PairingType>{PairingType::kPinCode},
+            parser.pairing_modes());
   EXPECT_TRUE(parser.embedded_code_path().empty());
 }
 

@@ -139,27 +139,12 @@ void DBusManager::UpdateWiFiBootstrapState(WifiBootstrapManager::State state) {
 
 void DBusManager::OnPairingStart(const std::string& session_id,
                                  PairingType pairing_type,
-                                 const std::string& code) {
+                                 const std::vector<uint8_t>& code) {
   // For now, just overwrite the exposed PairInfo with
   // the most recent pairing attempt.
-  std::string pairing_type_str;
-  switch (pairing_type) {
-    case PairingType::kPinCode:
-      pairing_type_str = "pinCode";
-      break;
-    case PairingType::kEmbeddedCode:
-      pairing_type_str = "embeddedCode";
-      break;
-    case PairingType::kUltrasound32:
-      pairing_type_str = "ultrasound32";
-      break;
-    case PairingType::kAudible32:
-      pairing_type_str = "audible32";
-      break;
-  }
   dbus_adaptor_.SetPairingInfo(chromeos::VariantDictionary{
       {kPairingSessionIdKey, session_id},
-      {kPairingModeKey, pairing_type_str},
+      {kPairingModeKey, PairingTypeToString(pairing_type)},
       {kPairingCodeKey, code},
   });
 }
