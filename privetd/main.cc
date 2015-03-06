@@ -101,7 +101,9 @@ class Daemon : public chromeos::DBusServiceDaemon {
     }
     security_.reset(
         new SecurityManager(parser_.embedded_code_path(), disable_security_));
-    shill_client_.reset(new ShillClient(bus_, device_whitelist_));
+    shill_client_.reset(new ShillClient(
+        bus_, device_whitelist_.empty() ? parser_.automatic_wifi_interfaces()
+                                        : device_whitelist_));
     shill_client_->RegisterConnectivityListener(
         base::Bind(&Daemon::OnConnectivityChanged, base::Unretained(this)));
     ap_manager_client_.reset(new ApManagerClient(bus_));
