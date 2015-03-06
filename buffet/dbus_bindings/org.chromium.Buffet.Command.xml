@@ -11,12 +11,23 @@
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="Abort">
+      <tp:docstring>
+        Mark the command as aborted. This tells the cloud that the device did
+        not successfully complete executing the command.
+      </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="Cancel">
+      <tp:docstring>
+        Mark the command as cancelled. Unlike Abort() this should be used when
+        the device detects a user request to cancel a command.
+      </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="Done">
+      <tp:docstring>
+        Mark the command as successfully completed.
+      </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <property name="Name" type="s" access="read"/>
