@@ -38,7 +38,6 @@ namespace {
 void usage() {
   printf(R"(Possible commands:
   - TestMethod <message>
-  - StartDevice
   - CheckDeviceRegistered
   - GetDeviceInfo
   - RegisterDevice param1=val1&param2=val2...
@@ -177,11 +176,6 @@ class Daemon : public chromeos::DBusDaemon {
         message = args.back();
       job = base::Bind(&Daemon::CallTestMethod, weak_factory_.GetWeakPtr(),
                        message);
-    } else if (command.compare("StartDevice") == 0 ||
-               command.compare("sd") == 0) {
-      if (!CheckArgs(command, args, 0))
-        return EX_USAGE;
-      job = base::Bind(&Daemon::CallStartDevice, weak_factory_.GetWeakPtr());
     } else if (command.compare("CheckDeviceRegistered") == 0 ||
                command.compare("cr") == 0) {
       if (!CheckArgs(command, args, 0))
@@ -283,14 +277,6 @@ class Daemon : public chromeos::DBusDaemon {
       return ReportError(error.get());
     }
     printf("Received a response: %s\n", response_message.c_str());
-    OnJobComplete();
-  }
-
-  void CallStartDevice(ManagerProxy* manager_proxy) {
-    ErrorPtr error;
-    if (!manager_proxy->StartDevice(&error)) {
-      return ReportError(error.get());
-    }
     OnJobComplete();
   }
 

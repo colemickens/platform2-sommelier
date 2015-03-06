@@ -58,6 +58,9 @@ const char kModelId[]       = "model_id";
 
 namespace {
 
+const int kMaxStartDeviceRetryDelayMinutes{1};
+const int64_t kMinStartDeviceRetryDelaySeconds{5};
+
 std::pair<std::string, std::string> BuildAuthHeader(
     const std::string& access_token_type,
     const std::string& access_token) {
@@ -110,7 +113,17 @@ std::string BuildURL(const std::string& url,
 void IgnoreCloudError(const chromeos::Error*) {
 }
 
+void IgnoreCloudErrorWithCallback(const base::Closure& cb,
+                                  const chromeos::Error*) {
+  cb.Run();
+}
+
 void IgnoreCloudResult(const base::DictionaryValue&) {
+}
+
+void IgnoreCloudResultWithCallback(const base::Closure& cb,
+                                   const base::DictionaryValue&) {
+  cb.Run();
 }
 
 }  // anonymous namespace
@@ -229,8 +242,16 @@ bool DeviceRegistrationInfo::Load() {
   description_          = description;
   location_             = location;
 
-  if (HaveRegistrationCredentials(nullptr))
+  if (HaveRegistrationCredentials(nullptr)) {
     SetRegistrationStatus(RegistrationStatus::kOffline);
+    // Wait a significant amount of time for local daemons to publish their
+    // state to Buffet before publishing it to the cloud.
+    // TODO(wiley) We could do a lot of things here to either expose this
+    //             timeout as a configurable knob or allow local
+    //             daemons to signal that their state is up to date so that
+    //             we need not wait for them.
+    ScheduleStartDevice(base::TimeDelta::FromSeconds(5));
+  }
 
   return true;
 }
@@ -259,10 +280,18 @@ void DeviceRegistrationInfo::ScheduleStartDevice(const base::TimeDelta& later) {
   base::MessageLoop* current = base::MessageLoop::current();
   if (!current)
     return;  // Assume we're in unittests
+  base::TimeDelta max_delay =
+      base::TimeDelta::FromMinutes(kMaxStartDeviceRetryDelayMinutes);
+  base::TimeDelta min_delay =
+      base::TimeDelta::FromSeconds(kMinStartDeviceRetryDelaySeconds);
+  base::TimeDelta retry_delay = later * 2;
+  if (retry_delay > max_delay) { retry_delay = max_delay; }
+  if (retry_delay < min_delay) { retry_delay = min_delay; }
   current->PostDelayedTask(
       FROM_HERE,
       base::Bind(&DeviceRegistrationInfo::StartDevice,
-                 weak_factory_.GetWeakPtr(), nullptr),
+                 weak_factory_.GetWeakPtr(), nullptr,
+                 retry_delay),
       later);
 }
 
@@ -718,22 +747,35 @@ void DeviceRegistrationInfo::DoCloudRequest(
                          error_callackback_with_reauthorization);
 }
 
-void DeviceRegistrationInfo::StartDevice(chromeos::ErrorPtr* error) {
+void DeviceRegistrationInfo::StartDevice(
+    chromeos::ErrorPtr* error,
+    const base::TimeDelta& retry_delay) {
   if (!HaveRegistrationCredentials(error))
     return;
-
-  base::Bind(
-      &DeviceRegistrationInfo::UpdateDeviceResource,
-      base::Unretained(this),
-      base::Bind(
-          &DeviceRegistrationInfo::FetchCommands,
-          base::Unretained(this),
-          base::Bind(
-              &DeviceRegistrationInfo::AbortLimboCommands,
-              base::Unretained(this),
-              base::Bind(
-                  &DeviceRegistrationInfo::PeriodicallyPollCommands,
-                  base::Unretained(this))))).Run();
+  auto handle_start_device_failure_cb = base::Bind(
+      &IgnoreCloudErrorWithCallback,
+      base::Bind(&DeviceRegistrationInfo::ScheduleStartDevice,
+                 weak_factory_.GetWeakPtr(),
+                 retry_delay));
+  // "Starting" a device just means that we:
+  //   1) push an updated device resource
+  //   2) fetch an initial set of outstanding commands
+  //   3) abort any commands that we've previously marked as "in progress"
+  //      or as being in an error state.
+  //   4) Initiate periodic polling for commands.
+  auto periodically_poll_commands_cb = base::Bind(
+      &DeviceRegistrationInfo::PeriodicallyPollCommands,
+      weak_factory_.GetWeakPtr());
+  auto abort_commands_cb = base::Bind(
+      &DeviceRegistrationInfo::AbortLimboCommands,
+      weak_factory_.GetWeakPtr(),
+      periodically_poll_commands_cb);
+  auto fetch_commands_cb = base::Bind(
+      &DeviceRegistrationInfo::FetchCommands,
+      weak_factory_.GetWeakPtr(),
+      abort_commands_cb,
+      handle_start_device_failure_cb);
+  UpdateDeviceResource(fetch_commands_cb, handle_start_device_failure_cb);
 }
 
 void DeviceRegistrationInfo::UpdateCommand(
@@ -746,7 +788,9 @@ void DeviceRegistrationInfo::UpdateCommand(
       base::Bind(&IgnoreCloudResult), base::Bind(&IgnoreCloudError));
 }
 
-void DeviceRegistrationInfo::UpdateDeviceResource(base::Closure callback) {
+void DeviceRegistrationInfo::UpdateDeviceResource(
+    const base::Closure& on_success,
+    const CloudRequestErrorCallback& on_failure) {
   std::unique_ptr<base::DictionaryValue> device_resource =
       BuildDeviceResource(nullptr);
   if (!device_resource)
@@ -756,33 +800,38 @@ void DeviceRegistrationInfo::UpdateDeviceResource(base::Closure callback) {
       chromeos::http::request_type::kPut,
       GetDeviceURL(),
       device_resource.get(),
-      base::Bind([callback](const base::DictionaryValue&){
-        base::MessageLoop::current()->PostTask(FROM_HERE, callback);
-      }),
-      // TODO(antonm): Failure to update device resource probably deserves
-      // some additional actions.
-      base::Bind(&IgnoreCloudError));
+      base::Bind(&IgnoreCloudResultWithCallback, on_success),
+      on_failure);
 }
 
+namespace {
+
+void HandleFetchCommandsResult(
+    const base::Callback<void(const base::ListValue&)>& callback,
+    const base::DictionaryValue& json) {
+  const base::ListValue* commands{nullptr};
+  if (!json.GetList("commands", &commands)) {
+    VLOG(1) << "No commands in the response.";
+  }
+  const base::ListValue empty;
+  callback.Run(commands ? *commands : empty);
+}
+
+}  // namespace
+
 void DeviceRegistrationInfo::FetchCommands(
-    base::Callback<void(const base::ListValue&)> callback) {
+    const base::Callback<void(const base::ListValue&)>& on_success,
+    const CloudRequestErrorCallback& on_failure) {
   DoCloudRequest(
       chromeos::http::request_type::kGet,
       GetServiceURL("commands/queue", {{"deviceId", device_id_}}),
       nullptr,
-      base::Bind([callback](const base::DictionaryValue& json) {
-        const base::ListValue* commands{nullptr};
-        if (!json.GetList("commands", &commands)) {
-          VLOG(1) << "No commands in the response.";
-        }
-        const base::ListValue empty;
-        callback.Run(commands ? *commands : empty);
-      }),
-      base::Bind(&IgnoreCloudError));
+      base::Bind(&HandleFetchCommandsResult, on_success),
+      on_failure);
 }
 
 void DeviceRegistrationInfo::AbortLimboCommands(
-    base::Closure callback, const base::ListValue& commands) {
+    const base::Closure& callback, const base::ListValue& commands) {
   const size_t size{commands.GetSize()};
   for (size_t i = 0; i < size; ++i) {
     const base::DictionaryValue* command{nullptr};
@@ -809,6 +858,7 @@ void DeviceRegistrationInfo::AbortLimboCommands(
 
     std::unique_ptr<base::DictionaryValue> command_copy{command->DeepCopy()};
     command_copy->SetString("state", "aborted");
+    // TODO(wiley) We could consider handling this error case more gracefully.
     DoCloudRequest(
         chromeos::http::request_type::kPut,
         GetServiceURL("commands/" + command_id),
@@ -827,7 +877,8 @@ void DeviceRegistrationInfo::PeriodicallyPollCommands() {
           &DeviceRegistrationInfo::FetchCommands,
           base::Unretained(this),
           base::Bind(&DeviceRegistrationInfo::PublishCommands,
-                     base::Unretained(this))),
+                     base::Unretained(this)),
+          base::Bind(&IgnoreCloudError)),
       base::TimeDelta::FromSeconds(7));
   // TODO(antonm): Use better trigger: when StateManager registers new updates,
   // it should call closure which will post a task, probably with some

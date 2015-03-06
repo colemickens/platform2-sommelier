@@ -8,9 +8,6 @@
       interfaces which affect the entire device such as device registration and
       device state.
     </tp:docstring>
-    <method name="StartDevice">
-      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
-    </method>
     <method name="CheckDeviceRegistered">
       <arg name="device_id" type="s" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>

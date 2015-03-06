@@ -55,8 +55,6 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
 
  private:
   // DBus methods:
-  // Handles calls to org.chromium.Buffet.Manager.StartDevice().
-  void StartDevice(DBusMethodResponse<> response) override;
   // Handles calls to org.chromium.Buffet.Manager.CheckDeviceRegistered().
   void CheckDeviceRegistered(DBusMethodResponse<std::string> response) override;
   // Handles calls to org.chromium.Buffet.Manager.GetDeviceInfo().

@@ -106,9 +106,6 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   // Loads the device registration information from cache.
   bool Load();
 
-  // Cause DeviceRegistrationInfo to attempt to StartDevice on its own later.
-  void ScheduleStartDevice(const base::TimeDelta& later);
-
   // Checks for the valid device registration as well as refreshes
   // the device access token, if available.
   bool CheckRegistration(chromeos::ErrorPtr* error);
@@ -128,12 +125,6 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
     const std::map<std::string, std::string>& params,
     chromeos::ErrorPtr* error);
 
-  // Starts device execution.
-  // Device will do required start up chores and then start to listen
-  // to new commands.
-  // TODO(antonm): Consider moving into some other class.
-  void StartDevice(chromeos::ErrorPtr* error);
-
   // Updates a command.
   // TODO(antonm): Should solve the issues with async vs. sync.
   // TODO(antonm): Consider moving some other class.
@@ -141,6 +132,16 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
                      const base::DictionaryValue& command_patch);
 
  private:
+  // Cause DeviceRegistrationInfo to attempt to StartDevice on its own later.
+  void ScheduleStartDevice(const base::TimeDelta& later);
+
+  // Starts device execution.
+  // Device will do required start up chores and then start to listen
+  // to new commands.
+  // TODO(antonm): Consider moving into some other class.
+  void StartDevice(chromeos::ErrorPtr* error,
+                   const base::TimeDelta& retry_delay);
+
   // Saves the device registration to cache.
   bool Save() const;
 
@@ -181,11 +182,14 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
       const CloudRequestCallback& success_callback,
       const CloudRequestErrorCallback& error_callback);
 
-  void UpdateDeviceResource(base::Closure callback);
+  void UpdateDeviceResource(const base::Closure& on_success,
+                            const CloudRequestErrorCallback& on_failure);
 
-  void FetchCommands(base::Callback<void(const base::ListValue&)> callback);
+  void FetchCommands(
+      const base::Callback<void(const base::ListValue&)>& on_success,
+      const CloudRequestErrorCallback& on_failure);
 
-  void AbortLimboCommands(base::Closure callback,
+  void AbortLimboCommands(const base::Closure& callback,
                           const base::ListValue& commands);
 
   void PeriodicallyPollCommands();

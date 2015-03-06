@@ -73,26 +73,8 @@ void Manager::RegisterAsync(
                      base::Unretained(this))));
   device_info_->Load();
   OnRegistrationStatusChange(device_info_->GetRegistrationStatus());
-  // Wait a significant amount of time for local daemons to publish their
-  // state to Buffet before publishing it to the cloud.
-  // TODO(wiley) We could do a lot of things here to either expose this
-  //             timeout as a configurable knob or allow local
-  //             daemons to signal that their state is up to date so that
-  //             we need not wait for them.
-  device_info_->ScheduleStartDevice(base::TimeDelta::FromSeconds(15));
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(cb);
-}
-
-void Manager::StartDevice(DBusMethodResponse<> response) {
-  LOG(INFO) << "Received call to Manager.StartDevice()";
-
-  chromeos::ErrorPtr error;
-  device_info_->StartDevice(&error);
-  if (error)
-    response->ReplyWithError(error.get());
-  else
-    response->Return();
 }
 
 void Manager::CheckDeviceRegistered(DBusMethodResponse<std::string> response) {
