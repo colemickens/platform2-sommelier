@@ -52,6 +52,20 @@ int Sockets::BindToDevice(int sockfd, const std::string &device) const {
                                  sizeof(dev_name)));
 }
 
+int Sockets::ReuseAddress(int sockfd) const {
+  int value = 1;
+  return HANDLE_EINTR(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &value,
+                                 sizeof(value)));
+}
+
+int Sockets::AddMulticastMembership(int sockfd, in_addr_t addr) const {
+  ip_mreq mreq;
+  mreq.imr_multiaddr.s_addr = addr;
+  mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+  return HANDLE_EINTR(setsockopt(sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq,
+                                 sizeof(mreq)));
+}
+
 int Sockets::Close(int fd) const {
   return IGNORE_EINTR(close(fd));
 }

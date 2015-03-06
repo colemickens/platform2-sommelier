@@ -6,6 +6,7 @@
 #define SHILL_NET_SOCKETS_H_
 
 #include <linux/filter.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 
@@ -40,6 +41,12 @@ class SHILL_EXPORT Sockets {
 
   // setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE ...)
   virtual int BindToDevice(int sockfd, const std::string &device) const;
+
+  // setsockopt(s, SOL_SOCKET, SO_REUSEADDR, ...)
+  virtual int ReuseAddress(int sockfd) const;
+
+  // setsockopt(s, IPPROTO_IP, IP_ADD_MEMBERSHIP, ...)
+  virtual int AddMulticastMembership(int sockfd, in_addr_t addr) const;
 
   // close
   virtual int Close(int fd) const;
