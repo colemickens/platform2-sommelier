@@ -143,6 +143,8 @@ enum CertificateProfile {
 
   // A certificate intended for cast devices.
   CAST_CERTIFICATE = 4;
+
+  GFSC_CERTIFICATE = 5;
 }
 
 // The certificate request to be sent to the attestation server.
