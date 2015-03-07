@@ -18,7 +18,7 @@
 #include <leveldb/db.h>
 #include <leveldb/env.h>
 #ifndef NO_MEMENV
-#include <leveldb/memenv.h>
+#include <leveldb/helpers/memenv.h>
 #endif
 #ifndef NO_METRICS
 #include <metrics/metrics_library.h>
