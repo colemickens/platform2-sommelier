@@ -13,6 +13,7 @@
 #include <base/values.h>
 
 namespace soma {
+namespace parser {
 
 const char DevicePathFilter::kListKey[] = "device path filters";
 const char DeviceNodeFilter::kListKey[] = "device node filters";
@@ -35,7 +36,8 @@ DevicePathFilterSet::DevicePathFilterSet()
           &DevicePathFilter::Comp) {
 }
 
-DevicePathFilterSet ParseDevicePathFilters(base::ListValue* filters) {
+// static
+DevicePathFilterSet DevicePathFilterSet::Parse(base::ListValue* filters) {
   DevicePathFilterSet to_return;
   std::string temp_filter_string;
   for (base::Value* filter : *filters) {
@@ -89,7 +91,8 @@ std::vector<std::pair<int, int>> ParseIntegerPairs(base::ListValue* filters) {
 }
 }  // anonymous namespace
 
-DeviceNodeFilterSet ParseDeviceNodeFilters(base::ListValue* filters) {
+// static
+DeviceNodeFilterSet DeviceNodeFilterSet::Parse(base::ListValue* filters) {
   DeviceNodeFilterSet to_return;
   for (const auto& num_pair : ParseIntegerPairs(filters)) {
     to_return.insert(DeviceNodeFilter(num_pair.first, num_pair.second));
@@ -97,4 +100,5 @@ DeviceNodeFilterSet ParseDeviceNodeFilters(base::ListValue* filters) {
   return to_return;
 }
 
+}  // namespace parser
 }  // namespace soma

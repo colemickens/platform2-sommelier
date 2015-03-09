@@ -16,11 +16,12 @@
 #include <base/values.h>
 #include <gtest/gtest.h>
 
-#include "soma/container_spec.h"
+#include "soma/container_spec_wrapper.h"
 #include "soma/namespace.h"
 #include "soma/port.h"
 
 namespace soma {
+namespace parser {
 
 class ContainerSpecReaderTest : public ::testing::Test {
  public:
@@ -50,7 +51,7 @@ class ContainerSpecReaderTest : public ::testing::Test {
         value_string.length());
   }
 
-  void CheckSpecBaseline(ContainerSpec* spec) {
+  void CheckSpecBaseline(ContainerSpecWrapper* spec) {
     ASSERT_TRUE(spec);
     ASSERT_EQ(spec->service_bundle_path(),
               base::FilePath(kServiceBundlePath));
@@ -76,25 +77,25 @@ TEST_F(ContainerSpecReaderTest, BaselineSpec) {
   scoped_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
   WriteValue(baseline.get(), scratch_);
 
-  scoped_ptr<ContainerSpec> spec = reader_.Read(scratch_);
+  scoped_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   CheckSpecBaseline(spec.get());
 }
 
 TEST_F(ContainerSpecReaderTest, SpecWithListenPorts) {
   scoped_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
 
-  const listen_port::Number port1 = 80;
-  const listen_port::Number port2 = 9222;
-  const listen_port::Number invalid_port = -8;
+  const parser::port::Number port1 = 80;
+  const parser::port::Number port2 = 9222;
+  const parser::port::Number invalid_port = -8;
   scoped_ptr<base::ListValue> listen_ports(new base::ListValue);
   listen_ports->AppendInteger(port1);
   listen_ports->AppendInteger(port2);
   listen_ports->AppendInteger(invalid_port);
-  baseline->Set(listen_port::kListKey, listen_ports.release());
+  baseline->Set(parser::port::kListKey, listen_ports.release());
 
   WriteValue(baseline.get(), scratch_);
 
-  scoped_ptr<ContainerSpec> spec = reader_.Read(scratch_);
+  scoped_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   CheckSpecBaseline(spec.get());
   EXPECT_TRUE(spec->ListenPortIsAllowed(port2));
   EXPECT_TRUE(spec->ListenPortIsAllowed(port1));
@@ -106,12 +107,12 @@ TEST_F(ContainerSpecReaderTest, SpecWithWildcardPort) {
   scoped_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
 
   scoped_ptr<base::ListValue> listen_ports(new base::ListValue);
-  listen_ports->AppendInteger(listen_port::kWildcard);
-  baseline->Set(listen_port::kListKey, listen_ports.release());
+  listen_ports->AppendInteger(parser::port::kWildcard);
+  baseline->Set(parser::port::kListKey, listen_ports.release());
 
   WriteValue(baseline.get(), scratch_);
 
-  scoped_ptr<ContainerSpec> spec = reader_.Read(scratch_);
+  scoped_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   CheckSpecBaseline(spec.get());
   EXPECT_TRUE(spec->ListenPortIsAllowed(80));
   EXPECT_TRUE(spec->ListenPortIsAllowed(90));
@@ -143,7 +144,7 @@ TEST_F(ContainerSpecReaderTest, SpecWithDeviceFilters) {
 
   WriteValue(baseline.get(), scratch_);
 
-  scoped_ptr<ContainerSpec> spec = reader_.Read(scratch_);
+  scoped_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   CheckSpecBaseline(spec.get());
   EXPECT_TRUE(spec->DevicePathIsAllowed(base::FilePath(kPathFilter1)));
   EXPECT_TRUE(spec->DevicePathIsAllowed(base::FilePath(kPathFilter2)));
@@ -161,11 +162,12 @@ TEST_F(ContainerSpecReaderTest, SpecWithNamespaces) {
 
   WriteValue(baseline.get(), scratch_);
 
-  scoped_ptr<ContainerSpec> spec = reader_.Read(scratch_);
+  scoped_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   CheckSpecBaseline(spec.get());
-  EXPECT_TRUE(spec->ShouldApplyNamespace(ns::Kind::NEWIPC));
-  EXPECT_TRUE(spec->ShouldApplyNamespace(ns::Kind::NEWPID));
-  EXPECT_FALSE(spec->ShouldApplyNamespace(ns::Kind::NEWNS));
+  EXPECT_TRUE(spec->ShouldApplyNamespace(ContainerSpec::NEWIPC));
+  EXPECT_TRUE(spec->ShouldApplyNamespace(ContainerSpec::NEWPID));
+  EXPECT_FALSE(spec->ShouldApplyNamespace(ContainerSpec::NEWNS));
 }
 
+}  // namespace parser
 }  // namespace soma

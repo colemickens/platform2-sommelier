@@ -14,6 +14,7 @@ class ListValue;
 }  // namespace base
 
 namespace soma {
+namespace parser {
 
 // NB: These are copyable and assignable!
 class DevicePathFilter {
@@ -26,6 +27,7 @@ class DevicePathFilter {
   DevicePathFilter& operator=(const DevicePathFilter& that) = default;
 
   bool Allows(const base::FilePath& rhs) const;
+  const base::FilePath& filter() const { return filter_; }
 
  private:
   friend class DevicePathFilterSet;
@@ -42,9 +44,9 @@ class DevicePathFilterSet
  public:
   DevicePathFilterSet();
   virtual ~DevicePathFilterSet() = default;
-};
 
-DevicePathFilterSet ParseDevicePathFilters(base::ListValue* filters);
+  static DevicePathFilterSet Parse(base::ListValue* filters);
+};
 
 // NB: These are copyable and assignable!
 class DeviceNodeFilter{
@@ -57,6 +59,8 @@ class DeviceNodeFilter{
   DeviceNodeFilter& operator=(const DeviceNodeFilter& that) = default;
 
   bool Allows(int major, int minor) const;
+  int major() const { return major_; }
+  int minor() const { return minor_; }
 
  private:
   friend class DeviceNodeFilterSet;
@@ -74,9 +78,10 @@ class DeviceNodeFilterSet
  public:
   DeviceNodeFilterSet();
   virtual ~DeviceNodeFilterSet() = default;
+
+  static DeviceNodeFilterSet Parse(base::ListValue* filters);
 };
 
-DeviceNodeFilterSet ParseDeviceNodeFilters(base::ListValue* filters);
-
+}  // namespace parser
 }  // namespace soma
 #endif  // SOMA_DEVICE_FILTER_H_

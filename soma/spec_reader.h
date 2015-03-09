@@ -16,10 +16,11 @@ class ListValue;
 }
 
 namespace soma {
-class ContainerSpec;
+class ContainerSpecWrapper;
 
+namespace parser {
 // A class that handles reading a container specification written in JSON
-// from disk and parsing it into a ContainerSpec object.
+// from disk and parsing it into a ContainerSpecWrapper object.
 class ContainerSpecReader {
  public:
   // Keys for required fields in a container specification.
@@ -30,18 +31,20 @@ class ContainerSpecReader {
   ContainerSpecReader();
   virtual ~ContainerSpecReader();
 
-  // Read a container specification at spec_file and return a ContainerSpec
-  // object. Returns nullptr on failures and logs appropriate messages.
-  scoped_ptr<ContainerSpec> Read(const base::FilePath& spec_file);
+  // Read a container specification at spec_file and return a
+  // ContainerSpecWrapper object. Returns nullptr on failures and logs
+  // appropriate messages.
+  scoped_ptr<ContainerSpecWrapper> Read(const base::FilePath& spec_file);
 
  private:
   // Workhorse for doing the parsing of specific fields in the spec.
-  scoped_ptr<ContainerSpec> Parse(const std::string& json);
+  scoped_ptr<ContainerSpecWrapper> Parse(const std::string& json);
 
   base::JSONReader reader_;
 
   DISALLOW_COPY_AND_ASSIGN(ContainerSpecReader);
 };
+}  // namespace parser
 }  // namespace soma
 
 #endif  // SOMA_SPEC_READER_H_

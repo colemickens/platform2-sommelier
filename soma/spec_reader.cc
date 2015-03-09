@@ -12,11 +12,12 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/values.h>
 
-#include "soma/container_spec.h"
+#include "soma/container_spec_wrapper.h"
 #include "soma/namespace.h"
 #include "soma/port.h"
 
 namespace soma {
+namespace parser {
 
 const char ContainerSpecReader::kServiceBundlePathKey[] = "service bundle path";
 const char ContainerSpecReader::kUidKey[] = "uid";
@@ -29,7 +30,7 @@ ContainerSpecReader::ContainerSpecReader()
 ContainerSpecReader::~ContainerSpecReader() {
 }
 
-scoped_ptr<ContainerSpec> ContainerSpecReader::Read(
+scoped_ptr<ContainerSpecWrapper> ContainerSpecReader::Read(
     const base::FilePath& spec_file) {
   VLOG(1) << "Reading container spec at " << spec_file.value();
   std::string spec_string;
@@ -40,7 +41,8 @@ scoped_ptr<ContainerSpec> ContainerSpecReader::Read(
   return Parse(spec_string);
 }
 
-scoped_ptr<ContainerSpec> ContainerSpecReader::Parse(const std::string& json) {
+scoped_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
+    const std::string& json) {
   scoped_ptr<base::Value> root = make_scoped_ptr(reader_.ReadToValue(json));
   if (!root) {
     LOG(ERROR) << "Failed to parse: " << reader_.GetErrorMessage();
@@ -65,8 +67,8 @@ scoped_ptr<ContainerSpec> ContainerSpecReader::Parse(const std::string& json) {
     return nullptr;
   }
 
-  scoped_ptr<ContainerSpec> spec(
-      new ContainerSpec(base::FilePath(service_bundle_path), uid, gid));
+  scoped_ptr<ContainerSpecWrapper> spec(
+      new ContainerSpecWrapper(base::FilePath(service_bundle_path), uid, gid));
 
   base::ListValue* namespaces = nullptr;
   if (spec_dict->GetList(ns::kListKey, &namespaces)) {
@@ -74,21 +76,21 @@ scoped_ptr<ContainerSpec> ContainerSpecReader::Parse(const std::string& json) {
   }
 
   base::ListValue* listen_ports = nullptr;
-  if (spec_dict->GetList(listen_port::kListKey, &listen_ports)) {
-    spec->SetListenPorts(listen_port::ParseList(listen_ports));
+  if (spec_dict->GetList(parser::port::kListKey, &listen_ports)) {
+    spec->SetListenPorts(parser::port::ParseList(listen_ports));
   }
 
   base::ListValue* device_path_filters = nullptr;
   if (spec_dict->GetList(DevicePathFilter::kListKey, &device_path_filters)) {
-    spec->SetDevicePathFilters(ParseDevicePathFilters(device_path_filters));
+    spec->SetDevicePathFilters(DevicePathFilterSet::Parse(device_path_filters));
   }
 
   base::ListValue* device_node_filters = nullptr;
   if (spec_dict->GetList(DeviceNodeFilter::kListKey, &device_node_filters)) {
-    spec->SetDeviceNodeFilters(ParseDeviceNodeFilters(device_node_filters));
+    spec->SetDeviceNodeFilters(DeviceNodeFilterSet::Parse(device_node_filters));
   }
 
   return spec.Pass();
 }
-
+}  // namespace parser
 }  // namespace soma

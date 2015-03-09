@@ -11,6 +11,7 @@
 #include <base/values.h>
 
 namespace soma {
+namespace parser {
 namespace ns {
 const char kListKey[] = "namespaces";
 const char kNewIpc[] = "CLONE_NEWIPC";
@@ -21,38 +22,41 @@ const char kNewUser[] = "CLONE_NEWUSER";
 const char kNewUts[] = "CLONE_NEWUTS";
 
 namespace {
-ns::Kind Resolve(const std::string& namespace_string) {
+bool Resolve(const std::string& namespace_string, Kind* out) {
+  DCHECK(out);
   if (namespace_string == kNewIpc)
-    return ns::Kind::NEWIPC;
+    *out = ContainerSpec::NEWIPC;
   else if (namespace_string == kNewNet)
-    return ns::Kind::NEWNET;
+    *out = ContainerSpec::NEWNET;
   else if (namespace_string == kNewNs)
-    return ns::Kind::NEWNS;
+    *out = ContainerSpec::NEWNS;
   else if (namespace_string == kNewPid)
-    return ns::Kind::NEWPID;
+    *out = ContainerSpec::NEWPID;
   else if (namespace_string == kNewUser)
-    return ns::Kind::NEWUSER;
+    *out = ContainerSpec::NEWUSER;
   else if (namespace_string == kNewUts)
-    return ns::Kind::NEWUTS;
-
-  return ns::Kind::INVALID;
+    *out = ContainerSpec::NEWUTS;
+  else
+    return false;
+  return true;
 }
 }  // anonymous namespace
 
-std::set<ns::Kind> ParseList(base::ListValue* namespaces) {
-  std::set<ns::Kind> to_return;
+std::set<Kind> ParseList(base::ListValue* namespaces) {
+  std::set<Kind> to_return;
   std::string namespace_string;
   for (base::Value* namespace_value : *namespaces) {
     if (!namespace_value->GetAsString(&namespace_string)) {
       LOG(ERROR) << "Namespace specifiers must be strings";
       continue;
     }
-    ns::Kind ns = Resolve(namespace_string);
-    if (ns != ns::Kind::INVALID)
+    Kind ns;
+    if (Resolve(namespace_string, &ns))
       to_return.insert(ns);
   }
   return to_return;
 }
 
 }  // namespace ns
+}  // namespace parser
 }  // namespace soma

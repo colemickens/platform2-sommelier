@@ -11,7 +11,8 @@
 #include <base/values.h>
 
 namespace soma {
-namespace listen_port {
+namespace parser {
+namespace port {
 const char kListKey[] = "listen ports";
 const Number kWildcard = -1;
 
@@ -39,5 +40,6 @@ std::set<Number> ParseList(base::ListValue* listen_ports) {
   }
   return to_return;
 }
-}  // namespace listen_port
+}  // namespace port
+}  // namespace parser
 }  // namespace soma

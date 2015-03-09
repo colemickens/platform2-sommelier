@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "soma/container_spec.h"
+#include "soma/container_spec_wrapper.h"
 
 #include <string>
 
@@ -14,27 +14,27 @@
 
 namespace soma {
 
-class ContainerSpecTest : public ::testing::Test {
+class ContainerSpecWrapperTest : public ::testing::Test {
  public:
-  ContainerSpecTest() {}
-  virtual ~ContainerSpecTest() {}
+  ContainerSpecWrapperTest() {}
+  virtual ~ContainerSpecWrapperTest() {}
 };
 
-TEST_F(ContainerSpecTest, DevicePathFilterTest) {
-  ContainerSpec spec(base::FilePath("/foo/bar"), 0, 0);
+TEST_F(ContainerSpecWrapperTest, DevicePathFilterTest) {
+  ContainerSpecWrapper spec(base::FilePath("/foo/bar"), 0, 0);
   std::string device_path("/dev/thing");
-  DevicePathFilterSet filters;
-  filters.insert(DevicePathFilter(base::FilePath(device_path)));
+  parser::DevicePathFilterSet filters;
+  filters.insert(parser::DevicePathFilter(base::FilePath(device_path)));
   spec.SetDevicePathFilters(filters);
 
   EXPECT_TRUE(spec.DevicePathIsAllowed(base::FilePath(device_path)));
   EXPECT_FALSE(spec.DevicePathIsAllowed(base::FilePath("/not/a/thing")));
 }
 
-TEST_F(ContainerSpecTest, DeviceNodeFilterTest) {
-  ContainerSpec spec(base::FilePath("/foo/bar"), 0, 0);
-  DeviceNodeFilterSet filters;
-  filters.insert(DeviceNodeFilter(1, 2));
+TEST_F(ContainerSpecWrapperTest, DeviceNodeFilterTest) {
+  ContainerSpecWrapper spec(base::FilePath("/foo/bar"), 0, 0);
+  parser::DeviceNodeFilterSet filters;
+  filters.insert(parser::DeviceNodeFilter(1, 2));
   spec.SetDeviceNodeFilters(filters);
 
   EXPECT_TRUE(spec.DeviceNodeIsAllowed(1, 2));

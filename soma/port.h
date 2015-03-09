@@ -12,7 +12,8 @@ class ListValue;
 }
 
 namespace soma {
-namespace listen_port {
+namespace parser {
+namespace port {
 
 using Number = int;
 
@@ -21,6 +22,7 @@ extern const Number kWildcard;
 
 std::set<Number> ParseList(base::ListValue* listen_ports);
 
-}  // namespace listen_port
+}  // namespace port
+}  // namespace parser
 }  // namespace soma
 #endif  // SOMA_PORT_H_
