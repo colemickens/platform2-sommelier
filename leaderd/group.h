@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/timer/timer.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/dbus_service_watcher.h>
 #include <chromeos/http/http_transport.h>
@@ -66,9 +67,18 @@ class Group : public org::chromium::leaderd::GroupInterface {
   void OnDBusServiceDeath();
   void RemoveSoon();
   void RemoveNow();
-
   bool IsScoreGreater(int score, const std::string& guid) const;
   void SetRole(State state, const std::string& leader);
+  void OnWandererTimeout();
+  void AskPeerForLeaderInfo(const std::string& peer_uuid);
+
+  void GetChallengeLeaderText(std::string* text, std::string* mime_type) const;
+  void SendChallengeLeader(
+      const std::string& peer_uuid,
+      const chromeos::http::SuccessCallback& success_callback);
+  void HandleChallengeLeaderError(int request_id, const chromeos::Error* error);
+  void HandleChallengeLeaderResponse(
+      int request_id, scoped_ptr<chromeos::http::Response> response);
 
   const std::string guid_;
   const dbus::ObjectPath object_path_;
@@ -79,6 +89,8 @@ class Group : public org::chromium::leaderd::GroupInterface {
   State state_{State::WANDERER};
   int score_{0};
   std::string leader_;
+  std::shared_ptr<chromeos::http::Transport> transport_;
+  base::OneShotTimer<Group> wanderer_timer_;
 
   org::chromium::leaderd::GroupAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
