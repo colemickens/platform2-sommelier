@@ -25,7 +25,7 @@ class MockDevice : public Device {
                void(const WiFiInterface& interface));
   MOCK_METHOD1(ParseWiphyCapability,
                void(const shill::Nl80211Message& msg));
-  MOCK_METHOD0(ClaimDevice, bool());
+  MOCK_METHOD1(ClaimDevice, bool(bool full_control));
   MOCK_METHOD0(ReleaseDevice, bool());
   MOCK_METHOD1(InterfaceExists, bool(const std::string& interface_name));
   MOCK_METHOD2(GetHTCapability, bool(uint16_t channel, std::string* ht_capab));

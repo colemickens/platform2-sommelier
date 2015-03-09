@@ -139,19 +139,22 @@ void Device::ParseWiphyCapability(const shill::Nl80211Message& msg) {
   }
 }
 
-bool Device::ClaimDevice() {
+bool Device::ClaimDevice(bool full_control) {
   if (GetInUsed()) {
     LOG(ERROR) << "Failed to claim device [" << GetDeviceName()
                << "]: already in used.";
     return false;
   }
 
-  // Issue DBus calls to shill to claim all interfaces on this
-  // device.
-  for (const auto& interface : interface_list_) {
-    manager_->ClaimInterface(interface.iface_name);
+  if (full_control) {
+    for (const auto& interface : interface_list_) {
+      manager_->ClaimInterface(interface.iface_name);
+      claimed_interfaces_.insert(interface.iface_name);
+    }
+  } else {
+    manager_->ClaimInterface(GetPreferredApInterface());
+    claimed_interfaces_.insert(GetPreferredApInterface());
   }
-
   SetInUsed(true);
   return true;
 }
@@ -163,12 +166,10 @@ bool Device::ReleaseDevice() {
     return false;
   }
 
-  // Issue DBus calls to shill to release all interfaces on this
-  // device.
-  for (const auto& interface : interface_list_) {
-    manager_->ReleaseInterface(interface.iface_name);
+  for (const auto& interface : claimed_interfaces_) {
+    manager_->ReleaseInterface(interface);
   }
-
+  claimed_interfaces_.clear();
   SetInUsed(false);
   return true;
 }

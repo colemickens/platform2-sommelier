@@ -272,23 +272,23 @@ TEST_F(DeviceTest, ParseWiphyCapability) {
   EXPECT_EQ(kBand5GHzHTCapability, band_5ghz_cap);
 }
 
-TEST_F(DeviceTest, ClaimAndReleaseDevice) {
+TEST_F(DeviceTest, ClaimAndReleaseDeviceWithFullControl) {
   EnableApModeSupport();
 
   // Register multiple interfaces.
   device_->RegisterInterface(kApModeInterface1);
   device_->RegisterInterface(kManagedModeInterface1);
 
-  // Claim the device should claim all interfaces registered on this device.
+  // Claim the device should claim all interfaces registered on this device..
   EXPECT_CALL(manager_, ClaimInterface(kApModeInterface1.iface_name)).Times(1);
   EXPECT_CALL(manager_,
               ClaimInterface(kManagedModeInterface1.iface_name)).Times(1);
-  EXPECT_TRUE(device_->ClaimDevice());
+  EXPECT_TRUE(device_->ClaimDevice(true));
   Mock::VerifyAndClearExpectations(&manager_);
 
   // Claim the device when it is already claimed.
   EXPECT_CALL(manager_, ClaimInterface(_)).Times(0);
-  EXPECT_FALSE(device_->ClaimDevice());
+  EXPECT_FALSE(device_->ClaimDevice(true));
   Mock::VerifyAndClearExpectations(&manager_);
 
   // Release the device should release all interfaces registered on this device.
@@ -296,6 +296,41 @@ TEST_F(DeviceTest, ClaimAndReleaseDevice) {
               ReleaseInterface(kApModeInterface1.iface_name)).Times(1);
   EXPECT_CALL(manager_,
               ReleaseInterface(kManagedModeInterface1.iface_name)).Times(1);
+  EXPECT_TRUE(device_->ReleaseDevice());
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  // Release the device when it is not claimed.
+  EXPECT_CALL(manager_, ReleaseInterface(_)).Times(0);
+  EXPECT_FALSE(device_->ReleaseDevice());
+  Mock::VerifyAndClearExpectations(&manager_);
+}
+
+TEST_F(DeviceTest, ClaimAndReleaseDeviceWithoutFullControl) {
+  EnableApModeSupport();
+
+  // Register multiple interfaces.
+  device_->RegisterInterface(kApModeInterface1);
+  device_->RegisterInterface(kManagedModeInterface1);
+
+  // Claim the device should only claim the preferred AP interface registered
+  // on this device.
+  EXPECT_CALL(manager_, ClaimInterface(kApModeInterface1.iface_name)).Times(1);
+  EXPECT_CALL(manager_,
+              ClaimInterface(kManagedModeInterface1.iface_name)).Times(0);
+  EXPECT_TRUE(device_->ClaimDevice(false));
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  // Claim the device when it is already claimed.
+  EXPECT_CALL(manager_, ClaimInterface(_)).Times(0);
+  EXPECT_FALSE(device_->ClaimDevice(false));
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  // Release the device should release the preferred AP interface registered
+  // on this device.
+  EXPECT_CALL(manager_,
+              ReleaseInterface(kApModeInterface1.iface_name)).Times(1);
+  EXPECT_CALL(manager_,
+              ReleaseInterface(kManagedModeInterface1.iface_name)).Times(0);
   EXPECT_TRUE(device_->ReleaseDevice());
   Mock::VerifyAndClearExpectations(&manager_);
 

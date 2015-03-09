@@ -12,5 +12,6 @@
     <property name="HiddenNetwork" type="b" access="readwrite"/>
     <property name="BridgeInterface" type="s" access="readwrite"/>
     <property name="ServerAddressIndex" type="q" access="readwrite"/>
+    <property name="FullDeviceControl" type="b" access="readwrite"/>
   </interface>
 </node>

@@ -86,6 +86,7 @@ Config::Config(Manager* manager, const string& service_path)
   SetServerAddressIndex(kPropertyDefaultServerAddressIndex);
   SetChannel(kPropertyDefaultChannel);
   SetHiddenNetwork(kPropertyDefaultHiddenNetwork);
+  SetFullDeviceControl(true);
 }
 
 Config::~Config() {}
@@ -254,7 +255,7 @@ bool Config::ClaimDevice() {
     LOG(ERROR) << "Failed to claim device: device doesn't exist.";
     return false;
   }
-  return device_->ClaimDevice();
+  return device_->ClaimDevice(GetFullDeviceControl());
 }
 
 bool Config::ReleaseDevice() {

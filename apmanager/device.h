@@ -5,6 +5,7 @@
 #ifndef APMANAGER_DEVICE_H_
 #define APMANAGER_DEVICE_H_
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -70,10 +71,12 @@ class Device : public base::RefCounted<Device>,
   // Parse device capability from NL80211 message.
   void ParseWiphyCapability(const shill::Nl80211Message& msg);
 
-  // Function for claiming/releasing ownership of this device. This will invoke
-  // dbus calls to shill to claim/release all the interfaces reside on this
-  // device.
-  virtual bool ClaimDevice();
+  // Claim ownership of this device for AP operation. When |full_control| is
+  // set to true, this will claim all interfaces reside on this device.
+  // When it is set to false, this will only claim the interface used for AP
+  // operation.
+  virtual bool ClaimDevice(bool full_control);
+  // Release any claimed interfaces.
   virtual bool ReleaseDevice();
 
   // Return true if interface with |interface_name| resides on this device,
@@ -116,6 +119,9 @@ class Device : public base::RefCounted<Device>,
 
   // Wiphy band capabilities.
   std::vector<BandCapability> band_capability_;
+
+  // List of claimed interfaces.
+  std::set<std::string> claimed_interfaces_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };
