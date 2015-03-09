@@ -34,6 +34,7 @@ bool is_vaapi_support_formats(int fd, VAProfile* profiles,
 extern bool detect_webcam(void);
 extern bool detect_video_acc_h264(void);
 extern bool detect_video_acc_vp8(void);
+extern bool detect_video_acc_vp9(void);
 extern bool detect_video_acc_enc_h264(void);
 extern bool detect_video_acc_enc_vp8(void);
 

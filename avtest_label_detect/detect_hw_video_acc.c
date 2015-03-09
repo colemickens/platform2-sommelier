@@ -11,6 +11,11 @@
 
 #include "label_detect.h"
 
+// TODO(kcwu): remove after linux-header patched
+#ifndef V4L2_PIX_FMT_VP9
+#define V4L2_PIX_FMT_VP9 v4l2_fourcc('V', 'P', '9', '0')
+#endif
+
 static const char* kVideoDevicePattern = "/dev/video*";
 static const char* kDRMDevicePattern = "/dev/dri/card*";
 
@@ -105,6 +110,26 @@ bool detect_video_acc_vp8(void) {
   if (is_any_device(kVideoDevicePattern, is_v4l2_dec_vp8_device))
     return true;
   return false;
+}
+
+/* Helper function for detect_video_acc_vp9.
+ * A V4L2 device supports VP9 decoding, if it's a mem-to-mem V4L2 device,
+ * i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*, V4L2_CAP_VIDEO_OUTPUT_* and
+ * V4L2_CAP_STREAMING capabilities and it supports V4L2_PIX_FMT_VP9 as it's
+ * input, i.e. for its V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE queue.
+*/
+static bool is_v4l2_dec_vp9_device(int fd) {
+  return is_hw_video_acc_device(fd) &&
+    (is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+         V4L2_PIX_FMT_VP9));
+}
+
+/* Determines "hw_video_acc_vp9" label. That is, either the VAAPI device
+ * supports VP9 profile, has decoding entry point, and output YUV420
+ * formats. Or there is a /dev/video* device supporting VP9 decoding.
+ */
+bool detect_video_acc_vp9(void) {
+  return is_any_device(kVideoDevicePattern, is_v4l2_dec_vp9_device);
 }
 
 /* Helper function for detect_video_acc_enc_h264.
