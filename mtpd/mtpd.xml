@@ -143,6 +143,24 @@
       </arg>
     </method>
 
+    <method name="RenameObject">
+      <arg name="handle" type="s" direction="in">
+        <tp:docstring>
+          Handle to the storage from OpenStorage.
+        </tp:docstring>
+      </arg>
+      <arg name="objectId" type="u" direction="in">
+        <tp:docstring>
+          Object id of an object to be renamed.
+        </tp:docstring>
+      </arg>
+      <arg name="newName" type="s" direction="in">
+        <tp:docstring>
+          New name.
+        </tp:docstring>
+      </arg>
+    </method>
+
     <method name="IsAlive">
       <tp:docstring>
         Test method to verify that the MTP service is working.

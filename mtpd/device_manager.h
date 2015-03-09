@@ -108,6 +108,11 @@ class DeviceManager {
   bool DeleteObject(const std::string& storage_name,
                     const uint32_t object_id);
 
+  // Renames |object_id| to |new_name|.
+  bool RenameObject(const std::string& storage_name,
+                    const uint32_t object_id,
+                    const std::string& new_name);
+
  protected:
   // Used in testing to add dummy storages.
   // Returns whether the test storage has been successfully added.

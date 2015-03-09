@@ -57,6 +57,10 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
   void DeleteObject(const std::string& handle,
                     const uint32_t& objectId,
                     DBus::Error& error) override;
+  void RenameObject(const std::string& handle,
+                    const uint32_t& objectId,
+                    const std::string& newName,
+                    DBus::Error& error) override;
   bool IsAlive(DBus::Error& error) override;
 
   // DeviceEventDelegate implementation.

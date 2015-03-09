@@ -260,20 +260,20 @@ bool DeviceManager::CopyFileFromLocal(const std::string& storage_name,
     return false;
 
   // Create a new file
-  LIBMTP_file_t* const new_file = LIBMTP_new_file_t();
-  new_file->filename = strdup(file_name.c_str());
-  new_file->filesize = file_stat.st_size;
-  new_file->parent_id = parent_id;
+  LIBMTP_file_t* const file = LIBMTP_new_file_t();
+  file->filename = strdup(file_name.c_str());
+  file->filesize = file_stat.st_size;
+  file->parent_id = parent_id;
+  scoped_ptr<LIBMTP_file_t, LibmtpFileDeleter> new_file(file);
 
   // Transfer a file.
   int transfer_status = LIBMTP_Send_File_From_File_Descriptor(
       mtp_device,
       file_descriptor,
-      new_file,
+      new_file.get(),
       NULL,
       NULL);
 
-  LIBMTP_destroy_file_t(new_file);
   return transfer_status == 0;
 }
 
@@ -293,10 +293,10 @@ bool DeviceManager::DeleteObject(const std::string& storage_name,
   LIBMTP_file_t* file = LIBMTP_Get_Filemetadata(mtp_device, object_id);
   if (file == NULL)
     return false;
+  scoped_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
 
   // If the object is a directory, check it is empty.
-  bool is_directory = file->filetype == LIBMTP_FILETYPE_FOLDER;
-  LIBMTP_destroy_file_t(file);
+  bool is_directory = current_file->filetype == LIBMTP_FILETYPE_FOLDER;
 
   if (is_directory) {
     uint32_t* children;
@@ -315,6 +315,35 @@ bool DeviceManager::DeleteObject(const std::string& storage_name,
   int delete_status = LIBMTP_Delete_Object(mtp_device, object_id);
 
   return delete_status == 0;
+}
+
+bool DeviceManager::RenameObject(const std::string& storage_name,
+                                 const uint32_t object_id,
+                                 const std::string& new_name) {
+  // Get the device.
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+
+  // The root node cannot be renamed.
+  if (object_id == kRootFileId)
+    return false;
+
+  // Check the object exists.
+  LIBMTP_file_t* file = LIBMTP_Get_Filemetadata(mtp_device, object_id);
+  if (file == NULL)
+    return false;
+  scoped_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
+
+  // Rename the object. While libmtp provides LIBMTP_Set_Folder_Name and other
+  // methods for other types, they result in the same call of
+  // set_object_filename.
+  int rename_status = LIBMTP_Set_File_Name(mtp_device,
+                                           current_file.get(),
+                                           new_name.c_str());
+
+  return rename_status == 0;
 }
 
 bool DeviceManager::AddStorageForTest(const std::string& storage_name,

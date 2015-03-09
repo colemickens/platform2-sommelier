@@ -178,6 +178,19 @@ void MtpdServer::DeleteObject(const std::string& handle,
   }
 }
 
+void MtpdServer::RenameObject(const std::string& handle,
+                              const uint32_t& objectId,
+                              const std::string& newName,
+                              DBus::Error& error) {
+  const std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty() || !IsOpenedWithWrite(handle))
+    return InvalidHandle<void>(handle, &error);
+
+  if (!device_manager_.RenameObject(storage_name, objectId, newName)) {
+    error.set(kMtpdServiceError, "RenameObject failed");
+  }
+}
+
 bool MtpdServer::IsAlive(DBus::Error& error) {
   return true;
 }
