@@ -379,9 +379,12 @@ bool SecurityManager::CheckIfPairingAllowed(chromeos::ErrorPtr* error) {
 }
 
 bool SecurityManager::ClosePendingSession(const std::string& session_id) {
-  const size_t num_erased = pending_sessions_.erase(session_id);
+  // The most common source of these session_id values is the map containing
+  // the sessions, which we're about to clear out.  Make a local copy.
+  const std::string safe_session_id{session_id};
+  const size_t num_erased = pending_sessions_.erase(safe_session_id);
   if (num_erased > 0 && !on_end_.is_null())
-    on_end_.Run(session_id);
+    on_end_.Run(safe_session_id);
   return num_erased != 0;
 }
 
