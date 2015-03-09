@@ -19,8 +19,8 @@ namespace privetd {
 enum class PairingType {
   kPinCode,
   kEmbeddedCode,
-  kUltrasoundDsssBroadcaster,
-  kAudibleDtmfBroadcaster
+  kUltrasound32,
+  kAudible32,
 };
 
 // Scopes in order of increasing privileges.

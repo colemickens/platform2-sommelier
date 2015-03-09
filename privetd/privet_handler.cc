@@ -174,8 +174,8 @@ template <>
 const EnumToStringMap<PairingType>::Map EnumToStringMap<PairingType>::kMap[] = {
     {PairingType::kPinCode, "pinCode"},
     {PairingType::kEmbeddedCode, "embeddedCode"},
-    {PairingType::kUltrasoundDsssBroadcaster, "ultrasoundDsssBroadcaster"},
-    {PairingType::kAudibleDtmfBroadcaster, "audibleDtmfBroadcaster"},
+    {PairingType::kUltrasound32, "ultrasound32"},
+    {PairingType::kAudible32, "audible32"},
 };
 
 template <>

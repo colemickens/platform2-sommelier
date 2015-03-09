@@ -248,8 +248,8 @@ TEST_F(PrivetHandlerTest, Info) {
       'pairing': [
         'pinCode',
         'embeddedCode',
-        'ultrasoundDsssBroadcaster',
-        'audibleDtmfBroadcaster'
+        'ultrasound32',
+        'audible32'
       ],
       'crypto': [
         'p224_spake2',

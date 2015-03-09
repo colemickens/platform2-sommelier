@@ -150,10 +150,10 @@ void DBusManager::OnPairingStart(const std::string& session_id,
     case PairingType::kEmbeddedCode:
       pairing_type_str = "embeddedCode";
       break;
-    case PairingType::kUltrasoundDsssBroadcaster:
+    case PairingType::kUltrasound32:
       pairing_type_str = "ultrasound32";
       break;
-    case PairingType::kAudibleDtmfBroadcaster:
+    case PairingType::kAudible32:
       pairing_type_str = "audible32";
       break;
   }
