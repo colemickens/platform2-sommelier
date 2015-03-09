@@ -194,7 +194,7 @@ static int write_hash(const char *dev, void *buf, size_t size, off64_t offset) {
 
 int chromeos_verity(const char *alg, const char *device, unsigned blocksize,
                     uint64_t fs_blocks, const char *salt, const char *expected,
-                    int warn)
+                    int enforce_rootfs_verification)
 {
   struct dm_bht bht;
   int ret, fd;
@@ -286,11 +286,15 @@ int chromeos_verity(const char *alg, const char *device, unsigned blocksize,
 
   dm_bht_root_hexdigest(&bht, digest, DM_BHT_MAX_DIGEST_SIZE);
 
-  if (warn && memcmp(digest, expected, bht.digest_size)) {
+  if (memcmp(digest, expected, bht.digest_size)) {
     printf("Filesystem hash verification failed\n");
-    printf("Expected %s != %s\n",digest, expected);
-    free(hash_buffer);
-    return -1;
+    printf("Expected %s != actual %s\n", expected, digest);
+    if (enforce_rootfs_verification) {
+      free(hash_buffer);
+      return -1;
+    } else {
+      printf("Verified Boot not enabled; ignoring\n");
+    }
   }
 
 
