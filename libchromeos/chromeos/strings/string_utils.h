@@ -61,11 +61,35 @@ inline bool SplitAtFirst(const std::string& str,
   return SplitAtFirst(str, delimiter, left_part, right_part, true);
 }
 
-// Joins an array of strings into a single string separated by |delimiter|.
-CHROMEOS_EXPORT std::string Join(char delimiter,
-                                 const std::vector<std::string>& strings);
-CHROMEOS_EXPORT std::string Join(const std::string& delimiter,
-                                 const std::vector<std::string>& strings);
+// Joins strings into a single string separated by |delimiter|.
+template <class Delimiter, class InputIterator>
+std::string JoinRange(const Delimiter& delimiter,
+                      InputIterator first,
+                      InputIterator last) {
+  std::string result;
+  if (first == last)
+    return result;
+  result = *first;
+  for (++first; first != last; ++first) {
+    result += delimiter;
+    result += *first;
+  }
+  return result;
+}
+
+template <class Delimiter, class Container>
+std::string Join(const Delimiter& delimiter, const Container& strings) {
+  using std::begin;
+  using std::end;
+  return JoinRange(delimiter, begin(strings), end(strings));
+}
+
+template <class Delimiter>
+std::string Join(const Delimiter& delimiter,
+                 std::initializer_list<std::string> strings) {
+  return JoinRange(delimiter, strings.begin(), strings.end());
+}
+
 CHROMEOS_EXPORT std::string Join(char delimiter,
                                  const std::string& str1,
                                  const std::string& str2);

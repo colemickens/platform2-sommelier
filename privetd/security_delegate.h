@@ -6,8 +6,8 @@
 #define PRIVETD_SECURITY_DELEGATE_H_
 
 #include <memory>
+#include <set>
 #include <string>
-#include <vector>
 
 #include <base/time/time.h>
 #include <chromeos/secure_blob.h>
@@ -52,10 +52,10 @@ class SecurityDelegate {
                                      base::Time* time) const = 0;
 
   // Returns list of pairing methods by device.
-  virtual std::vector<PairingType> GetPairingTypes() const = 0;
+  virtual std::set<PairingType> GetPairingTypes() const = 0;
 
   // Returns list of crypto methods supported by devices.
-  virtual std::vector<CryptoType> GetCryptoTypes() const = 0;
+  virtual std::set<CryptoType> GetCryptoTypes() const = 0;
 
   // Returns true if |auth_code| provided by client is valid. Client should
   // obtain |auth_code| during pairing process.

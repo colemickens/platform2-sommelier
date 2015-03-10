@@ -7,6 +7,7 @@
 #include <set>
 
 #include <base/message_loop/message_loop.h>
+#include <base/stl_util.h>
 #include <chromeos/any.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/errors/error.h>
@@ -94,7 +95,7 @@ std::string ServiceStateToString(ServiceState state) {
 }
 
 ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus,
-                         const vector<string>& device_whitelist)
+                         const set<string>& device_whitelist)
     : bus_{bus},
       manager_proxy_{bus_, ObjectPath{"/"}},
       device_whitelist_{device_whitelist} {
@@ -187,13 +188,7 @@ bool ShillClient::IsMonitoredDevice(DeviceProxy* device) {
     LOG(ERROR) << "Failed to find interface property in device properties.";
     return false;
   }
-  const string& interface = it->second.TryGet<string>();
-  if (std::find(device_whitelist_.begin(),
-                device_whitelist_.end(),
-                interface) == device_whitelist_.end()) {
-    return false;
-  }
-  return true;
+  return ContainsKey(device_whitelist_, it->second.TryGet<string>());
 }
 
 void ShillClient::OnShillServiceOwnerChange(const string& old_owner,

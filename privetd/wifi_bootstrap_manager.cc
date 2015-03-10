@@ -180,7 +180,7 @@ std::string WifiBootstrapManager::GetHostedSsid() const {
   return ap_manager_client_->GetSsid();
 }
 
-std::vector<WifiType> WifiBootstrapManager::GetTypes() const {
+std::set<WifiType> WifiBootstrapManager::GetTypes() const {
   // TODO(wiley) This should do some system work to figure this out.
   return {WifiType::kWifi24};
 }

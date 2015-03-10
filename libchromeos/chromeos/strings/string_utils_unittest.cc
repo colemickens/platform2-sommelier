@@ -4,6 +4,11 @@
 
 #include <chromeos/strings/string_utils.h>
 
+#include <list>
+#include <set>
+#include <string>
+#include <vector>
+
 #include <gtest/gtest.h>
 
 namespace chromeos {
@@ -100,8 +105,12 @@ TEST(StringUtils, Join_Char) {
 TEST(StringUtils, Join_String) {
   EXPECT_EQ("", string_utils::Join(",", {}));
   EXPECT_EQ("abc", string_utils::Join(",", {"abc"}));
+  EXPECT_EQ("abc,,xyz", string_utils::Join(",", {"abc", "", "xyz"}));
   EXPECT_EQ("abc,defg", string_utils::Join(",", {"abc", "defg"}));
   EXPECT_EQ("1 : 2 : 3", string_utils::Join(" : ", {"1", "2", "3"}));
+  EXPECT_EQ("1:2", string_utils::Join(":", std::set<std::string>{"1", "2"}));
+  EXPECT_EQ("1:2", string_utils::Join(":", std::vector<std::string>{"1", "2"}));
+  EXPECT_EQ("1:2", string_utils::Join(":", std::list<std::string>{"1", "2"}));
   EXPECT_EQ("123", string_utils::Join("", {"1", "2", "3"}));
 }
 

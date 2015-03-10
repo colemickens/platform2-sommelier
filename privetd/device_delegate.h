@@ -6,9 +6,9 @@
 #define PRIVETD_DEVICE_DELEGATE_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/callback.h>
 #include <base/time/time.h>
@@ -41,7 +41,7 @@ class DeviceDelegate {
 
   // Returns the list of services supported by device.
   // E.g. printer, scanner etc. Should match services published on mDNS.
-  virtual std::vector<std::string> GetServices() const = 0;
+  virtual std::set<std::string> GetServices() const = 0;
 
   // Returns HTTP ports for Privet. The first one is the primary port,
   // the second is the port for a pooling updates requests. The second value

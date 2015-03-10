@@ -4,9 +4,9 @@
 
 #include "privetd/privet_handler.h"
 
+#include <set>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/json/json_reader.h>
@@ -169,9 +169,9 @@ TEST_F(PrivetHandlerTest, InvalidAuthScope) {
 TEST_F(PrivetHandlerTest, InfoMinimal) {
   SetNoWifiAndGcd();
   EXPECT_CALL(security_, GetPairingTypes())
-      .WillRepeatedly(Return(std::vector<PairingType>{}));
+      .WillRepeatedly(Return(std::set<PairingType>{}));
   EXPECT_CALL(security_, GetCryptoTypes())
-      .WillRepeatedly(Return(std::vector<CryptoType>{}));
+      .WillRepeatedly(Return(std::set<CryptoType>{}));
 
   const char kExpected[] = R"({
     'version': '3.0',
@@ -215,7 +215,7 @@ TEST_F(PrivetHandlerTest, Info) {
       .WillRepeatedly(Return("TestDescription"));
   EXPECT_CALL(device_, GetLocation()).WillRepeatedly(Return("TestLocation"));
   EXPECT_CALL(device_, GetServices())
-      .WillRepeatedly(Return(std::vector<std::string>{"service1", "service2"}));
+      .WillRepeatedly(Return(std::set<std::string>{"service1", "service2"}));
   EXPECT_CALL(device_, GetHttpEnpoint())
       .WillRepeatedly(Return(std::make_pair(80, 10080)));
   EXPECT_CALL(device_, GetHttpsEnpoint())

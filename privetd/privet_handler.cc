@@ -5,12 +5,13 @@
 #include "privetd/privet_handler.h"
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/location.h>
+#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <chromeos/http/http_request.h>
@@ -107,7 +108,8 @@ const int kAccesssTokenExpirationSeconds = 3600;
 // between device and client. Value is just a guess.
 const int kAccesssTokenExpirationThresholdSeconds = 300;
 
-std::unique_ptr<base::ListValue> ToValue(const std::vector<std::string> list) {
+template <class Container>
+std::unique_ptr<base::ListValue> ToValue(const Container& list) {
   std::unique_ptr<base::ListValue> value_list(new base::ListValue());
   for (const std::string& val : list)
     value_list->AppendString(val);
@@ -397,9 +399,8 @@ void PrivetHandler::HandlePairingStart(const base::DictionaryValue& input,
   input.GetString(kCryptoKey, &crypto_str);
 
   PairingType pairing;
-  std::vector<PairingType> modes = security_->GetPairingTypes();
-  if (!StringToEnum(pairing_str, &pairing) ||
-      std::find(modes.begin(), modes.end(), pairing) == modes.end()) {
+  std::set<PairingType> modes = security_->GetPairingTypes();
+  if (!StringToEnum(pairing_str, &pairing) || !ContainsKey(modes, pairing)) {
     chromeos::Error::AddToPrintf(
         &error, FROM_HERE, errors::kDomain, errors::kInvalidParams,
         kInvalidParamValueFormat, kPairingKey, pairing_str.c_str());
@@ -407,9 +408,8 @@ void PrivetHandler::HandlePairingStart(const base::DictionaryValue& input,
   }
 
   CryptoType crypto;
-  std::vector<CryptoType> cryptos = security_->GetCryptoTypes();
-  if (!StringToEnum(crypto_str, &crypto) ||
-      std::find(cryptos.begin(), cryptos.end(), crypto) == cryptos.end()) {
+  std::set<CryptoType> cryptos = security_->GetCryptoTypes();
+  if (!StringToEnum(crypto_str, &crypto) || !ContainsKey(cryptos, crypto)) {
     chromeos::Error::AddToPrintf(
         &error, FROM_HERE, errors::kDomain, errors::kInvalidParams,
         kInvalidParamValueFormat, kCryptoKey, crypto_str.c_str());

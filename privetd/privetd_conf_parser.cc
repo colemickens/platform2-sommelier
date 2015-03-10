@@ -92,8 +92,9 @@ bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {
   std::string wifi_interface_list_str;
   if (config_store.GetString(kWiFiBootstrapInterfaces,
                              &wifi_interface_list_str)) {
-    automatic_wifi_interfaces_ =
+    auto interfaces =
         chromeos::string_utils::Split(wifi_interface_list_str, ',', true, true);
+    automatic_wifi_interfaces_.insert(interfaces.begin(), interfaces.end());
   }
 
   auto parse_timeout = [](const std::string& input, uint32_t* parsed_value) {
@@ -134,8 +135,9 @@ bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {
 
   std::string device_services_str;
   if (config_store.GetString(kDeviceServices, &device_services_str)) {
-    device_services_ =
+    auto services =
         chromeos::string_utils::Split(device_services_str, ',', true, true);
+    device_services_.insert(services.begin(), services.end());
     for (const std::string& service : device_services_) {
       if (service.front() != '_') {
         LOG(ERROR) << "Invalid service name: " << service;
@@ -168,12 +170,12 @@ bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {
 
   config_store.GetString(kDeviceDescription, &device_description_);
 
-  std::vector<PairingType> pairing_modes;
+  std::set<PairingType> pairing_modes;
   std::string embedded_code_path;
   if (config_store.GetString(kEmbeddedCodePath, &embedded_code_path)) {
     embedded_code_path_ = base::FilePath(embedded_code_path);
     if (!embedded_code_path_.empty())
-      pairing_modes.push_back(PairingType::kEmbeddedCode);
+      pairing_modes.insert(PairingType::kEmbeddedCode);
   }
 
   std::string modes_str;
@@ -185,10 +187,7 @@ bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {
         LOG(ERROR) << "Invalid pairing mode : " << mode;
         return false;
       }
-      if (std::find(pairing_modes.begin(), pairing_modes.end(), pairing_mode) ==
-          pairing_modes.end()) {
-        pairing_modes.push_back(pairing_mode);
-      }
+      pairing_modes.insert(pairing_mode);
     }
   }
 

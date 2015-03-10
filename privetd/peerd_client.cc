@@ -7,14 +7,15 @@
 #include <map>
 
 #include <base/message_loop/message_loop.h>
-#include <base/strings/string_util.h>
 #include <chromeos/errors/error.h>
+#include <chromeos/strings/string_utils.h>
 
 #include "privetd/cloud_delegate.h"
 #include "privetd/device_delegate.h"
 #include "privetd/wifi_bootstrap_manager.h"
 #include "privetd/wifi_ssid_generator.h"
 
+using chromeos::string_utils::Join;
 using org::chromium::peerd::PeerProxy;
 
 namespace privetd {
@@ -124,7 +125,7 @@ void PeerdClient::ExposeService() {
   std::string services;
   if (!device_->GetServices().empty())
     services += "_";
-  services += JoinString(device_->GetServices(), ",_");
+  services += Join(",_", device_->GetServices());
 
   std::map<std::string, std::string> txt_record{
       {"txtvers", "3"},

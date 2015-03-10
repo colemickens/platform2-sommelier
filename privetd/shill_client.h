@@ -6,6 +6,7 @@
 #define PRIVETD_SHILL_CLIENT_H_
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -37,7 +38,7 @@ class ShillClient {
   using ConnectivityListener = base::Callback<void(bool)>;
 
   ShillClient(const scoped_refptr<dbus::Bus>& bus,
-              const std::vector<std::string>& device_whitelist);
+              const std::set<std::string>& device_whitelist);
   ~ShillClient() = default;
 
 
@@ -110,7 +111,7 @@ class ShillClient {
   org::chromium::flimflam::ManagerProxy manager_proxy_;
   // There is logic that assumes we will never change this device list
   // in OnManagerPropertyChange.  Do not be tempted to remove this const.
-  const std::vector<std::string> device_whitelist_;
+  const std::set<std::string> device_whitelist_;
   std::vector<ConnectivityListener> connectivity_listeners_;
 
   // State for tracking where we are in our attempts to connect to a service.

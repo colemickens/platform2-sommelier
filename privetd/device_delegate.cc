@@ -45,7 +45,7 @@ class DeviceDelegateImpl : public DeviceDelegate {
   }
   std::string GetClass() const override { return config_->device_class(); }
   std::string GetModelId() const override { return config_->device_model_id(); }
-  std::vector<std::string> GetServices() const override {
+  std::set<std::string> GetServices() const override {
     return config_->device_services();
   }
   std::pair<uint16_t, uint16_t> GetHttpEnpoint() const override {

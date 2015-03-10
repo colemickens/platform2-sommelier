@@ -5,6 +5,7 @@
 #ifndef PRIVETD_WIFI_BOOTSTRAP_MANAGER_H_
 #define PRIVETD_WIFI_BOOTSTRAP_MANAGER_H_
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -56,7 +57,7 @@ class WifiBootstrapManager : public WifiDelegate {
                             chromeos::ErrorPtr* error) override;
   std::string GetCurrentlyConnectedSsid() const override;
   std::string GetHostedSsid() const override;
-  std::vector<WifiType> GetTypes() const override;
+  std::set<WifiType> GetTypes() const override;
 
  private:
   // These Start* tasks:

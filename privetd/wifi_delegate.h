@@ -6,8 +6,8 @@
 #define PRIVETD_WIFI_DELEGATE_H_
 
 #include <memory>
+#include <set>
 #include <string>
-#include <vector>
 
 #include "privetd/privet_types.h"
 
@@ -47,7 +47,7 @@ class WifiDelegate {
   virtual std::string GetHostedSsid() const = 0;
 
   // Returns list of supported WiFi types. Currently it's just frequencies.
-  virtual std::vector<WifiType> GetTypes() const = 0;
+  virtual std::set<WifiType> GetTypes() const = 0;
 };
 
 }  // namespace privetd

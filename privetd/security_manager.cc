@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <limits>
 #include <memory>
-#include <vector>
+#include <set>
 
 #include <base/bind.h>
 #include <base/guid.h>
@@ -129,7 +129,7 @@ class UnsecureKeyExchanger : public SecurityManager::KeyExchanger {
 
 }  // namespace
 
-SecurityManager::SecurityManager(const std::vector<PairingType>& pairing_modes,
+SecurityManager::SecurityManager(const std::set<PairingType>& pairing_modes,
                                  const base::FilePath& embedded_code_path,
                                  bool disable_security)
     : is_security_disabled_(disable_security),
@@ -171,14 +171,14 @@ AuthScope SecurityManager::ParseAccessToken(const std::string& token,
   return SplitTokenData(data.to_string(), time);
 }
 
-std::vector<PairingType> SecurityManager::GetPairingTypes() const {
+std::set<PairingType> SecurityManager::GetPairingTypes() const {
   return pairing_modes_;
 }
 
-std::vector<CryptoType> SecurityManager::GetCryptoTypes() const {
-  std::vector<CryptoType> result{CryptoType::kSpake_p224};
+std::set<CryptoType> SecurityManager::GetCryptoTypes() const {
+  std::set<CryptoType> result{CryptoType::kSpake_p224};
   if (is_security_disabled_)
-    result.push_back(CryptoType::kNone);
+    result.insert(CryptoType::kNone);
   return result;
 }
 

@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -43,7 +44,7 @@ class SecurityManager : public SecurityDelegate {
     virtual const std::string& GetKey() const = 0;
   };
 
-  SecurityManager(const std::vector<PairingType>& pairing_modes,
+  SecurityManager(const std::set<PairingType>& pairing_modes,
                   const base::FilePath& embedded_code_path,
                   bool disable_security = false);
   ~SecurityManager() override;
@@ -53,8 +54,8 @@ class SecurityManager : public SecurityDelegate {
                                 const base::Time& time) const override;
   AuthScope ParseAccessToken(const std::string& token,
                              base::Time* time) const override;
-  std::vector<PairingType> GetPairingTypes() const override;
-  std::vector<CryptoType> GetCryptoTypes() const override;
+  std::set<PairingType> GetPairingTypes() const override;
+  std::set<CryptoType> GetCryptoTypes() const override;
   bool IsValidPairingCode(const std::string& auth_code) const override;
 
   bool StartPairing(PairingType mode,
@@ -87,7 +88,7 @@ class SecurityManager : public SecurityDelegate {
 
   // If true allows unencrypted pairing and accepts any access code.
   bool is_security_disabled_{false};
-  std::vector<PairingType> pairing_modes_;
+  std::set<PairingType> pairing_modes_;
   const base::FilePath embedded_code_path_;
   std::string embedded_code_;
   std::map<std::string, std::unique_ptr<KeyExchanger>> pending_sessions_;

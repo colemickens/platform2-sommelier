@@ -5,6 +5,7 @@
 #include "privetd/privetd_conf_parser.h"
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -61,7 +62,7 @@ class PrivetdConfParserTest : public testing::Test {
   void FillKeyValueStore(const ConfDict& conf_dict, KeyValueStore* store) {
     std::vector<string> file_pieces;
     for (const auto& it : conf_dict) {
-      file_pieces.push_back(Join('=', {it.first, it.second}));
+      file_pieces.push_back(Join('=', it.first, it.second));
     }
     string blob{Join('\n', file_pieces)};
     int expected_len = blob.length();
@@ -120,19 +121,19 @@ TEST_F(PrivetdConfParserTest, ShouldRejectInvalidName) {
 }
 
 TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
-  const std::vector<std::string> kExpectedWiFiInterfaces{"eth1", "clown shoes"};
+  const std::set<std::string> kExpectedWiFiInterfaces{"eth1", "clown shoes"};
   const uint32_t kExpectedConnectTimeout{1};
   const uint32_t kExpectedBootstrapTimeout{2};
   const uint32_t kExpectedMonitorTimeout{3};
-  const std::vector<std::string> kExpectedDeviceServices{"_a", "_b", "_c"};
+  const std::set<std::string> kExpectedDeviceServices{"_a", "_b", "_c"};
   static const char kExpectedDeviceClass[]{"BB"};
   static const char kExpectedDeviceMake[]{"testMade"};
   static const char kExpectedDeviceModel[]{"testModel"};
   static const char kExpectedDeviceModelId[]{"BBB"};
   static const char kExpectedDeviceName[]{"testDevice"};
   static const char kExpectedDeviceDescription[]{"testDescription"};
-  const std::vector<PairingType> kExpectedPairingModes{
-      PairingType::kEmbeddedCode, PairingType::kPinCode};
+  const std::set<PairingType> kExpectedPairingModes{PairingType::kEmbeddedCode,
+                                                    PairingType::kPinCode};
   static const char kExpectedEmbeddedCodePath[]{"123ABC"};
   const ConfDict conf_dict{
       {kWiFiBootstrapMode, "automatic"},
@@ -184,7 +185,7 @@ TEST_F(PrivetdConfParserTest, CriticalDefaults) {
   EXPECT_FALSE(parser.device_model().empty());
   EXPECT_EQ(3, parser.device_model_id().size());
   EXPECT_FALSE(parser.device_name().empty());
-  EXPECT_EQ(std::vector<PairingType>{PairingType::kPinCode},
+  EXPECT_EQ(std::set<PairingType>{PairingType::kPinCode},
             parser.pairing_modes());
   EXPECT_TRUE(parser.embedded_code_path().empty());
 }

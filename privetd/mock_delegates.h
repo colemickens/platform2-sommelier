@@ -5,9 +5,9 @@
 #ifndef PRIVETD_MOCK_DELEGATES_H_
 #define PRIVETD_MOCK_DELEGATES_H_
 
+#include <set>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -34,7 +34,7 @@ class MockDeviceDelegate : public DeviceDelegate {
   MOCK_CONST_METHOD0(GetLocation, std::string());
   MOCK_CONST_METHOD0(GetClass, std::string());
   MOCK_CONST_METHOD0(GetModelId, std::string());
-  MOCK_CONST_METHOD0(GetServices, std::vector<std::string>());
+  MOCK_CONST_METHOD0(GetServices, std::set<std::string>());
   MOCK_CONST_METHOD0(GetHttpEnpoint, IntPair());
   MOCK_CONST_METHOD0(GetHttpsEnpoint, IntPair());
   MOCK_CONST_METHOD0(GetUptime, base::TimeDelta());
@@ -51,7 +51,7 @@ class MockDeviceDelegate : public DeviceDelegate {
     EXPECT_CALL(*this, GetClass()).WillRepeatedly(Return("AB"));
     EXPECT_CALL(*this, GetModelId()).WillRepeatedly(Return("MID"));
     EXPECT_CALL(*this, GetServices())
-        .WillRepeatedly(Return(std::vector<std::string>{}));
+        .WillRepeatedly(Return(std::set<std::string>{}));
     EXPECT_CALL(*this, GetHttpEnpoint())
         .WillRepeatedly(Return(std::make_pair(0, 0)));
     EXPECT_CALL(*this, GetHttpsEnpoint())
@@ -67,8 +67,8 @@ class MockSecurityDelegate : public SecurityDelegate {
                      std::string(AuthScope, const base::Time&));
   MOCK_CONST_METHOD2(ParseAccessToken,
                      AuthScope(const std::string&, base::Time*));
-  MOCK_CONST_METHOD0(GetPairingTypes, std::vector<PairingType>());
-  MOCK_CONST_METHOD0(GetCryptoTypes, std::vector<CryptoType>());
+  MOCK_CONST_METHOD0(GetPairingTypes, std::set<PairingType>());
+  MOCK_CONST_METHOD0(GetCryptoTypes, std::set<CryptoType>());
   MOCK_CONST_METHOD1(IsValidPairingCode, bool(const std::string&));
   MOCK_METHOD5(StartPairing,
                bool(PairingType,
@@ -93,7 +93,7 @@ class MockSecurityDelegate : public SecurityDelegate {
                               Return(AuthScope::kGuest)));
 
     EXPECT_CALL(*this, GetPairingTypes())
-        .WillRepeatedly(Return(std::vector<PairingType>{
+        .WillRepeatedly(Return(std::set<PairingType>{
             PairingType::kPinCode,
             PairingType::kEmbeddedCode,
             PairingType::kUltrasound32,
@@ -101,7 +101,7 @@ class MockSecurityDelegate : public SecurityDelegate {
         }));
 
     EXPECT_CALL(*this, GetCryptoTypes())
-        .WillRepeatedly(Return(std::vector<CryptoType>{
+        .WillRepeatedly(Return(std::set<CryptoType>{
             CryptoType::kSpake_p224, CryptoType::kSpake_p256,
         }));
 
@@ -127,7 +127,7 @@ class MockWifiDelegate : public WifiDelegate {
                     chromeos::ErrorPtr*));
   MOCK_CONST_METHOD0(GetCurrentlyConnectedSsid, std::string());
   MOCK_CONST_METHOD0(GetHostedSsid, std::string());
-  MOCK_CONST_METHOD0(GetTypes, std::vector<WifiType>());
+  MOCK_CONST_METHOD0(GetTypes, std::set<WifiType>());
 
   MockWifiDelegate() {
     EXPECT_CALL(*this, GetConnectionState())
@@ -138,7 +138,7 @@ class MockWifiDelegate : public WifiDelegate {
     EXPECT_CALL(*this, GetHostedSsid())
         .WillRepeatedly(Return("Test_device.BBABCLAprv"));
     EXPECT_CALL(*this, GetTypes())
-        .WillRepeatedly(Return(std::vector<WifiType>{WifiType::kWifi24}));
+        .WillRepeatedly(Return(std::set<WifiType>{WifiType::kWifi24}));
   }
 
   ConnectionState connection_state_{ConnectionState::kOffline};

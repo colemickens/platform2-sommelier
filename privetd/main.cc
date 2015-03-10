@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <set>
 #include <string>
 #include <sysexits.h>
 
@@ -61,7 +62,7 @@ class Daemon : public chromeos::DBusServiceDaemon {
  public:
   Daemon(bool disable_security,
          bool enable_ping,
-         const std::vector<std::string>& device_whitelist,
+         const std::set<std::string>& device_whitelist,
          const base::FilePath& config_path,
          const base::FilePath& state_path)
       : DBusServiceDaemon(kServiceName, kRootPath),
@@ -88,8 +89,9 @@ class Daemon : public chromeos::DBusServiceDaemon {
     if (device_whitelist_.empty() &&
         state_store_->GetString(kWiFiBootstrapInterfaces,
                                 &test_device_whitelist)) {
-      device_whitelist_ = chromeos::string_utils::Split(
-         test_device_whitelist, ',', true, true);
+      auto interfaces =
+          chromeos::string_utils::Split(test_device_whitelist, ',', true, true);
+      device_whitelist_.insert(interfaces.begin(), interfaces.end());
     }
     device_ = DeviceDelegate::CreateDefault(
         &parser_, state_store_.get(),
@@ -253,7 +255,7 @@ class Daemon : public chromeos::DBusServiceDaemon {
   bool disable_security_;
   bool enable_ping_;
   PrivetdConfigParser parser_;
-  std::vector<std::string> device_whitelist_;
+  std::set<std::string> device_whitelist_;
   base::FilePath config_path_;
   std::unique_ptr<DaemonState> state_store_;
   std::unique_ptr<CloudDelegate> cloud_;
@@ -303,8 +305,9 @@ int main(int argc, char* argv[]) {
   auto device_whitelist =
       chromeos::string_utils::Split(FLAGS_device_whitelist, ',', true, true);
 
-  privetd::Daemon daemon(FLAGS_disable_security, FLAGS_enable_ping,
-                         device_whitelist, base::FilePath(FLAGS_config_path),
-                         base::FilePath(FLAGS_state_path));
+  privetd::Daemon daemon(
+      FLAGS_disable_security, FLAGS_enable_ping,
+      std::set<std::string>(device_whitelist.begin(), device_whitelist.end()),
+      base::FilePath(FLAGS_config_path), base::FilePath(FLAGS_state_path));
   return daemon.Run();
 }

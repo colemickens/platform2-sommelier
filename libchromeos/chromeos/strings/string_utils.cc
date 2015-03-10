@@ -89,15 +89,6 @@ std::pair<std::string, std::string> SplitAtFirst(const std::string& str,
   return pair;
 }
 
-std::string Join(char delimiter, const std::vector<std::string>& strings) {
-  return JoinString(strings, delimiter);
-}
-
-std::string Join(const std::string& delimiter,
-                 const std::vector<std::string>& strings) {
-  return JoinString(strings, delimiter);
-}
-
 std::string Join(char delimiter,
                  const std::string& str1,
                  const std::string& str2) {
@@ -119,13 +110,11 @@ std::string ToString(bool value) {
 }
 
 std::string GetBytesAsString(const std::vector<uint8_t>& buffer) {
-  auto ptr = reinterpret_cast<const char*>(buffer.data());
-  return std::string{ptr, ptr + buffer.size()};
+  return std::string(buffer.begin(), buffer.end());
 }
 
 std::vector<uint8_t> GetStringAsBytes(const std::string& str) {
-  auto ptr = reinterpret_cast<const uint8_t*>(str.data());
-  return std::vector<uint8_t>{ptr, ptr + str.size()};
+  return std::vector<uint8_t>(str.begin(), str.end());
 }
 
 }  // namespace string_utils
