@@ -72,6 +72,7 @@ void PassiveLinkMonitor::Stop() {
   num_requests_received_ = 0;
   num_cycles_passed_ = 0;
   monitor_cycle_timeout_callback_.Cancel();
+  monitor_completed_callback_.Cancel();
 }
 
 bool PassiveLinkMonitor::StartArpClient() {
@@ -131,8 +132,9 @@ void PassiveLinkMonitor::CycleTimeoutHandler() {
   // Post a task to perform cleanup and invoke result callback, since this
   // function is invoked from the callback that will be cancelled during
   // cleanup.
-  dispatcher_->PostTask(
+  monitor_completed_callback_.Reset(
       Bind(&PassiveLinkMonitor::MonitorCompleted, Unretained(this), status));
+  dispatcher_->PostTask(monitor_completed_callback_.callback());
 }
 
 void PassiveLinkMonitor::MonitorCompleted(bool status) {

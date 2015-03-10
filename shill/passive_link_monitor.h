@@ -83,6 +83,8 @@ class PassiveLinkMonitor {
   std::unique_ptr<IOHandler> receive_request_handler_;
   // Callback for handling cycle timeout.
   base::CancelableClosure monitor_cycle_timeout_callback_;
+  // Callback for handling monitor completed event.
+  base::CancelableClosure monitor_completed_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(PassiveLinkMonitor);
 };
