@@ -124,6 +124,8 @@
       'sources': [
         'chromeos/streams/file_stream.cc',
         'chromeos/streams/input_stream_set.cc',
+        'chromeos/streams/memory_containers.cc',
+        'chromeos/streams/memory_stream.cc',
         'chromeos/streams/stream.cc',
         'chromeos/streams/stream_errors.cc',
         'chromeos/streams/stream_utils.cc',
@@ -300,6 +302,8 @@
             'chromeos/secure_blob_unittest.cc',
             'chromeos/streams/file_stream_unittest.cc',
             'chromeos/streams/input_stream_set_unittest.cc',
+            'chromeos/streams/memory_containers_unittest.cc',
+            'chromeos/streams/memory_stream_unittest.cc',
             'chromeos/streams/stream_unittest.cc',
             'chromeos/streams/stream_utils_unittest.cc',
             'chromeos/strings/string_utils_unittest.cc',
