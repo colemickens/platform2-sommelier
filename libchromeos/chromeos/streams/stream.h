@@ -156,7 +156,7 @@ class CHROMEOS_EXPORT Stream {
   // == Seek operations =======================================================
 
   // Gets the position of the stream I/O pointer from the beginning of the
-  // stream.
+  // stream. If the stream position is unavailable/unknown, it returns 0.
   virtual uint64_t GetPosition() const = 0;
 
   // Moves the stream pointer to the specified position, relative to the
@@ -413,6 +413,17 @@ class CHROMEOS_EXPORT Stream {
 
 // A smart pointer to the stream used to pass the stream object around.
 using StreamPtr = std::unique_ptr<Stream>;
+
+// Helper functions to determine if read or write operation can be performed
+// for streams open with the given access mode.
+inline bool IsReadAccess(Stream::AccessMode mode) {
+  return mode == Stream::AccessMode::READ ||
+         mode == Stream::AccessMode::READ_WRITE;
+}
+inline bool IsWriteAccess(Stream::AccessMode mode) {
+  return mode == Stream::AccessMode::WRITE ||
+         mode == Stream::AccessMode::READ_WRITE;
+}
 
 }  // namespace chromeos
 

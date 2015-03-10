@@ -122,6 +122,7 @@
         'libchromeos-core-<(libbase_ver)',
       ],
       'sources': [
+        'chromeos/streams/file_stream.cc',
         'chromeos/streams/stream.cc',
         'chromeos/streams/stream_errors.cc',
         'chromeos/streams/stream_utils.cc',
@@ -296,6 +297,7 @@
             'chromeos/osrelease_reader_unittest.cc',
             'chromeos/process_test.cc',
             'chromeos/secure_blob_unittest.cc',
+            'chromeos/streams/file_stream_unittest.cc',
             'chromeos/streams/stream_unittest.cc',
             'chromeos/streams/stream_utils_unittest.cc',
             'chromeos/strings/string_utils_unittest.cc',
