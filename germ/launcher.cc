@@ -50,10 +50,12 @@ int Launcher::RunInteractive(const std::string& name,
   cmdline.push_back(const_cast<char*>(executable.c_str()));
 
   chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
-  struct minijail* jail = Environment::GetInteractiveEnvironment(uid);
+
+  Environment env(uid, uid);
 
   int status;
-  minijail->RunSyncAndDestroy(jail, cmdline, &status);
+  minijail->RunSyncAndDestroy(env.GetForInteractive(), cmdline,
+                              &status);
   return status;
 }
 
@@ -62,12 +64,14 @@ int Launcher::RunService(const std::string& name,
   // initctl start germ_template NAME=yes ENVIRONMENT= EXECUTABLE=/bin/yes
   uid_t uid = uid_service_->GetUid();
 
+  Environment env(uid, uid);
+
   chromeos::ProcessImpl initctl;
   initctl.AddArg("/sbin/initctl");
   initctl.AddArg("start");
   initctl.AddArg(kSandboxedServiceTemplate);
   initctl.AddArg(base::StringPrintf("NAME=%s", name.c_str()));
-  initctl.AddArg(Environment::GetServiceEnvironment(uid));
+  initctl.AddArg(env.GetForService());
   initctl.AddArg(base::StringPrintf("EXECUTABLE=%s", executable.c_str()));
 
   // Since we're running 'initctl', and not the executable itself,

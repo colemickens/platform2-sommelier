@@ -8,18 +8,38 @@
 
 namespace germ {
 
-std::string Environment::GetServiceEnvironment(uid_t uid) {
-  return base::StringPrintf("ENVIRONMENT=-u %d -g %d -p -t", uid, uid);
+Environment::Environment(uid_t uid, gid_t gid)
+    : uid_{uid},
+      gid_{gid},
+      do_pid_namespace_{true},
+      do_mount_tmp_{true},
+      env_manager_{chromeos::Minijail::GetInstance()} {
 }
 
-struct minijail* Environment::GetInteractiveEnvironment(uid_t uid) {
-  chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
-  struct minijail* jail = minijail->New();
+void Environment::SetEnterNewPidNamespace(bool enabled) {
+  do_pid_namespace_ = enabled;
+}
 
-  minijail->DropRoot(jail, uid, uid);
-  minijail->EnterNewPidNamespace(jail);
-  minijail->MountTmp(jail);
-  return jail;
+void Environment::SetMountTmp(bool enabled) {
+  do_mount_tmp_ = enabled;
+}
+
+std::string Environment::GetForService() {
+  return base::StringPrintf("ENVIRONMENT=-u %d -g %d %s %s", uid_, gid_,
+                            do_pid_namespace_ ? "-p" : "",
+                            do_mount_tmp_ ? "-t" : "");
+}
+
+struct minijail* Environment::GetForInteractive() {
+  struct minijail* env_description = env_manager_->New();
+  env_manager_->DropRoot(env_description, uid_, gid_);
+  if (do_pid_namespace_) {
+    env_manager_->EnterNewPidNamespace(env_description);
+  }
+  if (do_mount_tmp_) {
+    env_manager_->MountTmp(env_description);
+  }
+  return env_description;
 }
 
 }  // namespace germ
