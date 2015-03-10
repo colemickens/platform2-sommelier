@@ -141,10 +141,12 @@ int DecryptTest() {
   }
   trunks::ScopedKeyHandle scoped_key(factory, decrypt_key);
   std::string ciphertext;
+  session->SetEntityAuthorizationValue("decrypt");
   rc = utility->AsymmetricEncrypt(scoped_key.get(),
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
                                   "plaintext",
+                                  session.get(),
                                   &ciphertext);
   if (rc) {
     LOG(ERROR) << "Error encrypting: " << trunks::GetErrorString(rc);
@@ -209,10 +211,12 @@ int ImportTest() {
   }
   trunks::ScopedKeyHandle scoped_key(factory, key_handle);
   std::string ciphertext;
+  session->SetEntityAuthorizationValue("import");
   rc = utility->AsymmetricEncrypt(scoped_key.get(),
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
                                   "plaintext",
+                                  session.get(),
                                   &ciphertext);
   if (rc) {
     LOG(ERROR) << "Error encrypting: " << trunks::GetErrorString(rc);
@@ -285,10 +289,12 @@ int AuthChangeTest() {
 
   trunks::ScopedKeyHandle scoped_key(factory, key_handle);
   std::string ciphertext;
+  session->SetEntityAuthorizationValue("new_pass");
   rc = utility->AsymmetricEncrypt(scoped_key.get(),
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
                                   "plaintext",
+                                  session.get(),
                                   &ciphertext);
   if (rc) {
     LOG(ERROR) << "Error encrypting: " << trunks::GetErrorString(rc);

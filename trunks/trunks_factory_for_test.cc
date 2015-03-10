@@ -88,16 +88,21 @@ class TpmUtilityForwarder : public TpmUtility {
                                   lockout_password);
   }
 
-  TPM_RC StirRandom(const std::string& entropy_data) override {
-    return target_->StirRandom(entropy_data);
+  TPM_RC StirRandom(const std::string& entropy_data,
+                    AuthorizationSession* session) override {
+    return target_->StirRandom(entropy_data, session);
   }
 
-  TPM_RC GenerateRandom(size_t num_bytes, std::string* random_data) override {
-    return target_->GenerateRandom(num_bytes, random_data);
+  TPM_RC GenerateRandom(size_t num_bytes,
+                        AuthorizationSession* session,
+                        std::string* random_data) override {
+    return target_->GenerateRandom(num_bytes, session, random_data);
   }
 
-  TPM_RC ExtendPCR(int pcr_index, const std::string& extend_data) override {
-    return target_->ExtendPCR(pcr_index, extend_data);
+  TPM_RC ExtendPCR(int pcr_index,
+                   const std::string& extend_data,
+                   AuthorizationSession* session) override {
+    return target_->ExtendPCR(pcr_index, extend_data, session);
   }
 
   TPM_RC ReadPCR(int pcr_index, std::string* pcr_value) override {
@@ -108,11 +113,13 @@ class TpmUtilityForwarder : public TpmUtility {
                            TPM_ALG_ID scheme,
                            TPM_ALG_ID hash_alg,
                            const std::string& plaintext,
+                           AuthorizationSession* session,
                            std::string* ciphertext) override {
     return target_->AsymmetricEncrypt(key_handle,
                                       scheme,
                                       hash_alg,
                                       plaintext,
+                                      session,
                                       ciphertext);
   }
 
@@ -203,7 +210,7 @@ class TpmUtilityForwarder : public TpmUtility {
   }
 
   TPM_RC GetKeyPublicArea(TPM_HANDLE handle,
-                          TPM2B_PUBLIC* public_data) override {
+                          TPMT_PUBLIC* public_data) override {
     return target_->GetKeyPublicArea(handle, public_data);
   }
 

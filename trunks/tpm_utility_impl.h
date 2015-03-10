@@ -35,15 +35,20 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC TakeOwnership(const std::string& owner_password,
                        const std::string& endorsement_password,
                        const std::string& lockout_password) override;
-  TPM_RC StirRandom(const std::string& entropy_data) override;
+  TPM_RC StirRandom(const std::string& entropy_data,
+                    AuthorizationSession* session) override;
   TPM_RC GenerateRandom(size_t num_bytes,
+                        AuthorizationSession* session,
                         std::string* random_data) override;
-  TPM_RC ExtendPCR(int pcr_index, const std::string& extend_data) override;
+  TPM_RC ExtendPCR(int pcr_index,
+                   const std::string& extend_data,
+                   AuthorizationSession* session) override;
   TPM_RC ReadPCR(int pcr_index, std::string* pcr_value) override;
   TPM_RC AsymmetricEncrypt(TPM_HANDLE key_handle,
                            TPM_ALG_ID scheme,
                            TPM_ALG_ID hash_alg,
                            const std::string& plaintext,
+                           AuthorizationSession* session,
                            std::string* ciphertext) override;
   TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
                            TPM_ALG_ID scheme,
@@ -89,7 +94,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                  TPM_HANDLE* key_handle) override;
   TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name) override;
   TPM_RC GetKeyPublicArea(TPM_HANDLE handle,
-                          TPM2B_PUBLIC* public_data) override;
+                          TPMT_PUBLIC* public_data) override;
   TPM_RC DefineNVSpace(uint32_t index,
                        size_t num_bytes,
                        AuthorizationSession* session) override;

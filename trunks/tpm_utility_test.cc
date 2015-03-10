@@ -237,17 +237,21 @@ TEST_F(TpmUtilityTest, TakeOwnershipLockoutFailure) {
 TEST_F(TpmUtilityTest, StirRandomSuccess) {
   TpmUtilityImpl utility(factory_);
   std::string entropy_data("large test data", 100);
-  EXPECT_CALL(mock_tpm_, StirRandomSync(_, _))
+  NiceMock<MockAuthorizationDelegate> delegate;
+  EXPECT_CALL(mock_authorization_session_, GetDelegate())
+      .WillOnce(Return(&delegate));
+  EXPECT_CALL(mock_tpm_, StirRandomSync(_, &delegate))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.StirRandom(entropy_data));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility.StirRandom(entropy_data, &mock_authorization_session_));
 }
 
 TEST_F(TpmUtilityTest, StirRandomFails) {
   TpmUtilityImpl utility(factory_);
   std::string entropy_data("test data");
-  EXPECT_CALL(mock_tpm_, StirRandomSync(_, _))
+  EXPECT_CALL(mock_tpm_, StirRandomSync(_, NULL))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.StirRandom(entropy_data));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.StirRandom(entropy_data, NULL));
 }
 
 TEST_F(TpmUtilityTest, GenerateRandomSuccess) {
@@ -261,15 +265,19 @@ TEST_F(TpmUtilityTest, GenerateRandomSuccess) {
   large_random.size = 32;
   TPM2B_DIGEST small_random;
   small_random.size = 8;
-
-  EXPECT_CALL(mock_tpm_, GetRandomSync(_, _, _))
+  NiceMock<MockAuthorizationDelegate> delegate;
+  EXPECT_CALL(mock_authorization_session_, GetDelegate())
+      .WillOnce(Return(&delegate));
+  EXPECT_CALL(mock_tpm_, GetRandomSync(_, _, &delegate))
       .Times(2)
       .WillRepeatedly(DoAll(SetArgPointee<1>(large_random),
                             Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, GetRandomSync(8, _, _))
+  EXPECT_CALL(mock_tpm_, GetRandomSync(8, _, &delegate))
       .WillOnce(DoAll(SetArgPointee<1>(small_random),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.GenerateRandom(num_bytes, &random_data));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.GenerateRandom(num_bytes,
+                                                   &mock_authorization_session_,
+                                                   &random_data));
   EXPECT_EQ(num_bytes, random_data.size());
 }
 
@@ -277,14 +285,22 @@ TEST_F(TpmUtilityTest, GenerateRandomFails) {
   TpmUtilityImpl utility(factory_);
   int num_bytes = 5;
   std::string random_data;
-  EXPECT_CALL(mock_tpm_, GetRandomSync(_, _, _))
+  EXPECT_CALL(mock_tpm_, GetRandomSync(_, _, NULL))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.GenerateRandom(num_bytes, &random_data));
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility.GenerateRandom(num_bytes, NULL, &random_data));
 }
 
 TEST_F(TpmUtilityTest, ExtendPCRSuccess) {
   TpmUtilityImpl utility(factory_);
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.ExtendPCR(1, "test digest"));
+  TPM_HANDLE pcr_handle = HR_PCR + 1;
+  NiceMock<MockAuthorizationDelegate> delegate;
+  EXPECT_CALL(mock_authorization_session_, GetDelegate())
+      .WillOnce(Return(&delegate));
+  EXPECT_CALL(mock_tpm_, PCR_ExtendSync(pcr_handle, _, _, &delegate))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility.ExtendPCR(1, "test digest", &mock_authorization_session_));
 }
 
 TEST_F(TpmUtilityTest, ExtendPCRFail) {
@@ -293,12 +309,12 @@ TEST_F(TpmUtilityTest, ExtendPCRFail) {
   TPM_HANDLE pcr_handle = HR_PCR + pcr_index;
   EXPECT_CALL(mock_tpm_, PCR_ExtendSync(pcr_handle, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.ExtendPCR(pcr_index, "test digest"));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.ExtendPCR(pcr_index, "test digest", NULL));
 }
 
 TEST_F(TpmUtilityTest, ExtendPCRBadParam) {
   TpmUtilityImpl utility(factory_);
-  EXPECT_EQ(TPM_RC_FAILURE, utility.ExtendPCR(-1, "test digest"));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.ExtendPCR(-1, "test digest", NULL));
 }
 
 TEST_F(TpmUtilityTest, ReadPCRSuccess) {
@@ -349,17 +365,24 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptSuccess) {
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, _))
+  NiceMock<MockAuthorizationDelegate> delegate;
+  EXPECT_CALL(mock_authorization_session_, GetDelegate())
+      .WillOnce(Return(&delegate));
+  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, &delegate))
       .WillOnce(DoAll(SetArgPointee<5>(out_message),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricEncrypt(key_handle,
-                                                      TPM_ALG_NULL,
-                                                      TPM_ALG_NULL,
-                                                      plaintext,
-                                                      &ciphertext));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricEncrypt(
+      key_handle,
+      TPM_ALG_NULL,
+      TPM_ALG_NULL,
+      plaintext,
+      &mock_authorization_session_,
+      &ciphertext));
   EXPECT_EQ(0, ciphertext.compare(output_ciphertext));
 }
 
@@ -371,15 +394,18 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptFail) {
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, _))
+  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, NULL))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility.AsymmetricEncrypt(key_handle,
                                                       TPM_ALG_NULL,
                                                       TPM_ALG_NULL,
                                                       plaintext,
+                                                      NULL,
                                                       &ciphertext));
 }
 
@@ -391,13 +417,14 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptBadParams) {
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt | kRestricted;
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, NULL))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.AsymmetricEncrypt(key_handle,
                                                              TPM_ALG_RSAES,
                                                              TPM_ALG_NULL,
                                                              plaintext,
+                                                             NULL,
                                                              &ciphertext));
 }
 
@@ -412,11 +439,13 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptNullSchemeForward) {
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
   TPMT_RSA_DECRYPT scheme;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, _))
+  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, NULL))
       .WillOnce(DoAll(SetArgPointee<5>(out_message),
                       SaveArg<3>(&scheme),
                       Return(TPM_RC_SUCCESS)));
@@ -424,6 +453,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptNullSchemeForward) {
                                                       TPM_ALG_NULL,
                                                       TPM_ALG_NULL,
                                                       plaintext,
+                                                      NULL,
                                                       &ciphertext));
   EXPECT_EQ(scheme.scheme, TPM_ALG_OAEP);
   EXPECT_EQ(scheme.details.oaep.hash_alg, TPM_ALG_SHA256);
@@ -440,11 +470,13 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptSchemeForward) {
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
   TPMT_RSA_DECRYPT scheme;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, _))
+  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, NULL))
       .WillOnce(DoAll(SetArgPointee<5>(out_message),
                       SaveArg<3>(&scheme),
                       Return(TPM_RC_SUCCESS)));
@@ -452,6 +484,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptSchemeForward) {
                                                       TPM_ALG_RSAES,
                                                       TPM_ALG_NULL,
                                                       plaintext,
+                                                      NULL,
                                                       &ciphertext));
   EXPECT_EQ(scheme.scheme, TPM_ALG_RSAES);
 }
@@ -469,6 +502,8 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptSuccess) {
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
@@ -494,6 +529,8 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptFail) {
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
@@ -553,6 +590,8 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptNullSchemeForward) {
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
   TPMT_RSA_DECRYPT scheme;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
@@ -584,6 +623,8 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptSchemeForward) {
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
   TPMT_RSA_DECRYPT scheme;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
@@ -616,6 +657,8 @@ TEST_F(TpmUtilityTest, SignSuccess) {
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
@@ -640,6 +683,8 @@ TEST_F(TpmUtilityTest, SignFail) {
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
@@ -774,6 +819,8 @@ TEST_F(TpmUtilityTest, SignNullSchemeForward) {
   TPMT_SIG_SCHEME scheme;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
@@ -803,6 +850,8 @@ TEST_F(TpmUtilityTest, SignSchemeForward) {
   TPMT_SIG_SCHEME scheme;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kSign;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
@@ -1032,6 +1081,13 @@ TEST_F(TpmUtilityTest, ChangeAuthDataWithReturnSuccess) {
   TPM_HANDLE key_handle = 1;
   std::string new_password;
   std::string key_blob;
+  TPM2B_PUBLIC public_area;
+  public_area.public_area.type = TPM_ALG_RSA;
+  public_area.public_area.auth_policy.size = 0;
+  public_area.public_area.unique.rsa.size = 0;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
+                            Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, utility.ChangeKeyAuthorizationData(
     key_handle, new_password, &mock_authorization_session_, &key_blob));
 }

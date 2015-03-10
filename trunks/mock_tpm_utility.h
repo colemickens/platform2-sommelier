@@ -25,14 +25,18 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD3(TakeOwnership, TPM_RC(const std::string& owner_password,
                                      const std::string& endorsement_password,
                                      const std::string& lockout_password));
-  MOCK_METHOD1(StirRandom, TPM_RC(const std::string&));
-  MOCK_METHOD2(GenerateRandom, TPM_RC(size_t, std::string*));
-  MOCK_METHOD2(ExtendPCR, TPM_RC(int, const std::string&));
+  MOCK_METHOD2(StirRandom, TPM_RC(const std::string&, AuthorizationSession*));
+  MOCK_METHOD3(GenerateRandom, TPM_RC(size_t,
+                                      AuthorizationSession*,
+                                      std::string*));
+  MOCK_METHOD3(ExtendPCR,
+               TPM_RC(int, const std::string&, AuthorizationSession*));
   MOCK_METHOD2(ReadPCR, TPM_RC(int, std::string*));
-  MOCK_METHOD5(AsymmetricEncrypt, TPM_RC(TPM_HANDLE,
+  MOCK_METHOD6(AsymmetricEncrypt, TPM_RC(TPM_HANDLE,
                                          TPM_ALG_ID,
                                          TPM_ALG_ID,
                                          const std::string&,
+                                         AuthorizationSession*,
                                          std::string*));
   MOCK_METHOD6(AsymmetricDecrypt, TPM_RC(TPM_HANDLE,
                                          TPM_ALG_ID,
@@ -77,7 +81,7 @@ class MockTpmUtility : public TpmUtility {
                                AuthorizationSession*,
                                TPM_HANDLE*));
   MOCK_METHOD2(GetKeyName, TPM_RC(TPM_HANDLE, std::string*));
-  MOCK_METHOD2(GetKeyPublicArea, TPM_RC(TPM_HANDLE, TPM2B_PUBLIC*));
+  MOCK_METHOD2(GetKeyPublicArea, TPM_RC(TPM_HANDLE, TPMT_PUBLIC*));
   MOCK_METHOD3(DefineNVSpace, TPM_RC(uint32_t,
                                      size_t,
                                      AuthorizationSession*));
