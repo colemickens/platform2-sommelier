@@ -35,9 +35,7 @@ AudioClient::AudioClient()
     : cras_proxy_(NULL),
       num_active_streams_(0),
       headphone_jack_plugged_(false),
-      hdmi_active_(false),
-      mute_stored_(false),
-      originally_muted_(false) {
+      hdmi_active_(false) {
 }
 
 AudioClient::~AudioClient() {
@@ -56,41 +54,6 @@ void AudioClient::AddObserver(AudioObserver* observer) {
 void AudioClient::RemoveObserver(AudioObserver* observer) {
   DCHECK(observer);
   observers_.RemoveObserver(observer);
-}
-
-void AudioClient::MuteSystem() {
-  if (mute_stored_)
-    return;
-
-  dbus::MethodCall method_call(cras::kCrasControlInterface,
-                               cras::kGetVolumeState);
-  scoped_ptr<dbus::Response> response(
-      cras_proxy_->CallMethodAndBlock(&method_call, kCrasDBusTimeoutMs));
-  if (response) {
-    int output_volume = 0;
-    bool output_mute = false;
-    dbus::MessageReader reader(response.get());
-    if (reader.PopInt32(&output_volume) && reader.PopBool(&output_mute)) {
-      originally_muted_ = output_mute;
-      mute_stored_ = true;
-    } else {
-      LOG(WARNING) << "Unable to read " << cras::kGetVolumeState << " args";
-    }
-  }
-
-  if (mute_stored_) {
-    LOG(INFO) << "Muting system; old state was " << originally_muted_;
-    SetOutputMute(true);
-  }
-}
-
-void AudioClient::RestoreMutedState() {
-  if (!mute_stored_)
-    return;
-
-  LOG(INFO) << "Restoring system mute state to " << originally_muted_;
-  SetOutputMute(originally_muted_);
-  mute_stored_ = false;
 }
 
 void AudioClient::LoadInitialState() {
@@ -179,11 +142,11 @@ void AudioClient::UpdateNumActiveStreams() {
   }
 }
 
-void AudioClient::SetOutputMute(bool mute) {
+void AudioClient::SetSuspended(bool suspended) {
   dbus::MethodCall method_call(cras::kCrasControlInterface,
-                               cras::kSetOutputMute);
+                               cras::kSetSuspendAudio);
   dbus::MessageWriter writer(&method_call);
-  writer.AppendBool(mute);
+  writer.AppendBool(suspended);
   scoped_ptr<dbus::Response> response(
       cras_proxy_->CallMethodAndBlock(&method_call, kCrasDBusTimeoutMs));
 }

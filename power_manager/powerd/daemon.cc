@@ -630,7 +630,7 @@ void Daemon::PrepareToSuspend() {
 
   power_supply_->SetSuspended(true);
   if (audio_client_)
-    audio_client_->MuteSystem();
+    audio_client_->SetSuspended(true);
   metrics_collector_->PrepareForSuspend();
 }
 
@@ -711,7 +711,7 @@ void Daemon::UndoPrepareToSuspend(bool success,
     ShutDown(SHUTDOWN_MODE_POWER_OFF, SHUTDOWN_REASON_EXIT_DARK_RESUME_FAILED);
 
   if (audio_client_)
-    audio_client_->RestoreMutedState();
+    audio_client_->SetSuspended(false);
   power_supply_->SetSuspended(false);
 
   // Allow virtual terminal switching again.

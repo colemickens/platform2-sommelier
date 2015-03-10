@@ -31,12 +31,8 @@ class AudioClient {
   void AddObserver(AudioObserver* observer);
   void RemoveObserver(AudioObserver* observer);
 
-  // Mutes the system.
-  void MuteSystem();
-
-  // Restores the muted state the system had before the call to MuteSystem.
-  // Multiple calls to MuteSystem do not stack.
-  void RestoreMutedState();
+  // Suspends or resumes the audio according to the value of |suspended|.
+  void SetSuspended(bool suspended);
 
   // Calls Update*() to load the initial state from CRAS.
   void LoadInitialState();
@@ -48,9 +44,6 @@ class AudioClient {
   void UpdateNumActiveStreams();
 
  private:
-  // Sends a request to CRAS asking it to mute or unmute the system volume.
-  void SetOutputMute(bool mute);
-
   dbus::ObjectProxy* cras_proxy_;  // weak
 
   // Number of audio streams (either input or output) currently active.
@@ -61,13 +54,6 @@ class AudioClient {
 
   // Is an HDMI output active?
   bool hdmi_active_;
-
-  // Indicates whether the muted state was successfully stored by a call to
-  // MuteSystem().
-  bool mute_stored_;
-
-  // The state the system was in before the call to MuteSystem().
-  bool originally_muted_;
 
   ObserverList<AudioObserver> observers_;
 
