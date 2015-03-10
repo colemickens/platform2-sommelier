@@ -207,7 +207,6 @@ TEST_F(HttpCurlTransportAsyncTest, StartAsyncTransfer) {
   // relies on a message loop to run all the async tasks.
   // For this, create a temporary I/O message loop and run it ourselves for the
   // duration of the test.
-  base::AtExitManager at_exit_mgr;  // AtExitManager is needed for MessageLoop.
   base::MessageLoopForIO message_loop;
   base::RunLoop run_loop;
 

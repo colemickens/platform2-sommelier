@@ -10,7 +10,6 @@
 
 #include <vector>
 
-#include <base/at_exit.h>
 #include <base/bind.h>
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
@@ -40,7 +39,6 @@ class AsynchronousSignalHandlerTest : public ::testing::Test {
   }
 
  protected:
-  base::AtExitManager at_exit_;
   base::MessageLoopForIO loop_;
   std::vector<struct signalfd_siginfo> infos_;
   AsynchronousSignalHandler handler_;
