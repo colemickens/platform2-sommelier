@@ -48,15 +48,15 @@ restart_powerd() {
 }
 
 disable_dark_resume() {
-  temp_prefs=$(mktemp -d /tmp/power_manager.XXXXXXXXXXXX)
-  echo 1 > ${temp_prefs}/disable_dark_resume
-  mount --bind /var/lib/power_manager ${temp_prefs}
+  temp_file=$(mktemp /tmp/powerd_disable_dark_resume.XXXXXXXXXXXX)
+  echo 1 > ${temp_file}
+  mount --bind ${temp_file} /var/lib/power_manager/disable_dark_resume
   restart_powerd
 }
 
 restore_dark_resume_state() {
-  umount ${temp_prefs}
-  rm -rf ${temp_prefs}
+  umount /var/lib/power_manager/disable_dark_resume
+  rm -f ${temp_file}
   restart_powerd
 }
 
