@@ -17,7 +17,7 @@
 #include <linux/android/binder.h>
 
 #include "binder_host.h"
-#include "brillobinder.h"
+#include "protobinder.h"
 
 namespace brillobinder {
 

@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "brillobinder.h"
+#include "protobinder.h"
 #include "parcel.h"
 
 namespace brillobinder {

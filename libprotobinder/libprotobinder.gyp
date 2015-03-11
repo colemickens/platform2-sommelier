@@ -1,7 +1,7 @@
 {
   'targets': [
     {
-      'target_name': 'libbrillobinder',
+      'target_name': 'libprotobinder',
       'type': 'shared_library',
       'sources': [
         'binder_manager.cc',
