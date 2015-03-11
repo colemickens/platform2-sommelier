@@ -1,0 +1,4 @@
+Name: libpsyche
+Description: Service registration and lookup client library
+Version: @PV@
+Libs: -lpsyche -lprotobinder

@@ -1,0 +1,53 @@
+syntax = "proto2";
+package psyche;
+option optimize_for = LITE_RUNTIME;
+
+import "binder.proto";
+
+message RegisterServiceRequest {
+  required string name = 1;
+  required protobinder.StrongBinder binder = 2;
+}
+
+message RegisterServiceResponse {
+  required bool success = 1;
+}
+
+message RequestServiceRequest {
+  required string name = 1;
+  required protobinder.StrongBinder client_binder = 2;
+}
+
+message RequestServiceResponse {
+  // TODO(derat): Notify the client about immediate errors via ReceiveService.
+  required bool success = 1;
+}
+
+// Interface implemented by the psyched daemon.
+service Psyched {
+  // Called to register an already-running service with psyched.
+  rpc RegisterService (RegisterServiceRequest)
+      returns (RegisterServiceResponse);
+
+  // Called to asynchronously request a handle to an already-registered service.
+  // TODO(derat): This needs to be a one-way call so the client won't block on
+  // the service being started.
+  rpc RequestService (RequestServiceRequest) returns (RequestServiceResponse);
+}
+
+message ReceiveServiceRequest {
+  required string name = 1;
+  optional protobinder.StrongBinder binder = 2;
+}
+
+message ReceiveServiceResponse {}
+
+// Interface implemented by clients that communicate with psyched.
+service PsycheClient {
+  // Invoked with the response to an earlier Psyched.RequestService call or when
+  // a service has been restarted and clients must begin using a new binder to
+  // communicate with it.
+  // TODO(derat): This needs to be a one-way call so psyched won't block on the
+  // client.
+  rpc ReceiveService (ReceiveServiceRequest) returns (ReceiveServiceResponse);
+}
