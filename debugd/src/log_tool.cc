@@ -170,6 +170,7 @@ static const Log common_logs[] = {
   { "syslog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
               " /var/log/messages" },
   { "tlsdate", "/bin/cat /var/log/tlsdate.log" },
+  { "input_devices", "/bin/cat /proc/bus/input/devices" },
   { "touchpad", "/opt/google/touchpad/tpcontrol status" },
   { "touchpad_activity", "/opt/google/input/cmt_feedback alt" },
   { "touch_fw_version", "grep -E"
