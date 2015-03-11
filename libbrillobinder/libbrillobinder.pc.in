@@ -1,0 +1,4 @@
+Name: libbrillobinder
+Description: Brillo Binder IPC library
+Version: @PV@
+Libs: -lbrillobinder
