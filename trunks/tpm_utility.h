@@ -84,34 +84,28 @@ class CHROMEOS_EXPORT TpmUtility {
 
   // This method performs a decyption operating using a loaded RSA key
   // referenced by its handle |key_handle|. The |ciphertext| is then decrypted
-  // to give us the |plaintext|. We need |password| to authorize use of the
-  // key. |scheme| refers to the decryption scheme used. By default it is
-  // OAEP, but TPM_ALG_RSAES can be specified. |session| is an optional
-  // argument pointing to the Authorization session to be used with this
-  // command. If it is not specified, we request and initialize a new
-  // session.
+  // to give us the |plaintext|. |scheme| refers to the decryption scheme
+  // used. By default it is OAEP, but TPM_ALG_RSAES can be specified.
+  // |session| is an AuthorizationSession that has been populated with
+  // the authorization to use the given |key_handle|.
   virtual TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
                                    TPM_ALG_ID scheme,
                                    TPM_ALG_ID hash_alg,
-                                   const std::string& password,
                                    const std::string& ciphertext,
                                    AuthorizationSession* session,
                                    std::string* plaintext) = 0;
 
   // This method takes an unrestricted signing key referenced by |key_handle|
   // and uses it to sign the hash of |plaintext|. The signature produced is
-  // returned using the |signature| argument. We use the |password| argument
-  // to authorize use of the key. |scheme| is used to specify the signature
-  // scheme used. By default it is TPM_ALG_RSASSA, but TPM_ALG_RSAPPS can
-  // be specified. hash_alg is the algorithm used in the signing operation.
-  // It is by default TPM_ALG_SHA256. |session| is an optional
-  // argument pointing to the Authorization session to be used with this
-  // command. If it is not specified, we request and initialize a new
-  // session.
+  // returned using the |signature| argument. |scheme| is used to specify the
+  // signature scheme used. By default it is TPM_ALG_RSASSA, but TPM_ALG_RSAPPS
+  // can be specified. |hash_alg| is the algorithm used in the signing
+  // operation. It is by default TPM_ALG_SHA256. |session| is an
+  // AuthorizationSession that has been populated with the authorization
+  // to use the given |key_handle|.
   virtual TPM_RC Sign(TPM_HANDLE key_handle,
                       TPM_ALG_ID scheme,
                       TPM_ALG_ID hash_alg,
-                      const std::string& password,
                       const std::string& plaintext,
                       AuthorizationSession* session,
                       std::string* signature) = 0;
@@ -129,12 +123,12 @@ class CHROMEOS_EXPORT TpmUtility {
                         const std::string& signature) = 0;
 
   // This method is used to change the authorization value associated with a
-  // |key_handle|, from |old_password| to |new_password|.
+  // |key_handle| to |new_password|. |session| is an AuthorizationSession
+  // that is loaded with the old authorization value of |key_handle|.
   // When |key_blob| is not null, it is populated with the new encrypted key
   // blob. Note: the key must be unloaded and reloaded to use the
   // new authorization value.
   virtual TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,
-                                            const std::string& old_password,
                                             const std::string& new_password,
                                             AuthorizationSession* session,
                                             std::string* key_blob) = 0;

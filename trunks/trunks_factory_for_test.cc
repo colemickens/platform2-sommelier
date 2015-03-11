@@ -119,14 +119,12 @@ class TpmUtilityForwarder : public TpmUtility {
   TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
                            TPM_ALG_ID scheme,
                            TPM_ALG_ID hash_alg,
-                           const std::string& password,
                            const std::string& ciphertext,
                            AuthorizationSession* session,
                            std::string* plaintext) override {
     return target_->AsymmetricDecrypt(key_handle,
                                       scheme,
                                       hash_alg,
-                                      password,
                                       ciphertext,
                                       session,
                                       plaintext);
@@ -135,14 +133,12 @@ class TpmUtilityForwarder : public TpmUtility {
   TPM_RC Sign(TPM_HANDLE key_handle,
               TPM_ALG_ID scheme,
               TPM_ALG_ID hash_alg,
-              const std::string& password,
               const std::string& plaintext,
               AuthorizationSession* session,
               std::string* signature) override {
     return target_->Sign(key_handle,
                          scheme,
                          hash_alg,
-                         password,
                          plaintext,
                          session,
                          signature);
@@ -157,12 +153,13 @@ class TpmUtilityForwarder : public TpmUtility {
   }
 
   TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,
-                                    const std::string& old_password,
                                     const std::string& new_password,
                                     AuthorizationSession* session,
                                     std::string* key_blob) override {
-    return target_->ChangeKeyAuthorizationData(key_handle, old_password,
-                                               new_password, session, key_blob);
+    return target_->ChangeKeyAuthorizationData(key_handle,
+                                               new_password,
+                                               session,
+                                               key_blob);
   }
 
   TPM_RC ImportRSAKey(AsymmetricKeyUsage key_type,

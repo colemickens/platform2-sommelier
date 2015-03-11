@@ -390,7 +390,6 @@ TPM_RC TpmUtilityImpl::AsymmetricEncrypt(TPM_HANDLE key_handle,
 TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
                                          TPM_ALG_ID scheme,
                                          TPM_ALG_ID hash_alg,
-                                         const std::string& password,
                                          const std::string& ciphertext,
                                          AuthorizationSession* session,
                                          std::string* plaintext) {
@@ -407,12 +406,18 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
     LOG(ERROR) << "Invalid Signing scheme used.";
     return SAPI_RC_BAD_PARAMETER;
   }
-
+  TPM_RC result;
+  if (session == NULL) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << "This method needs a valid authorization session: "
+               << GetErrorString(result);
+    return result;
+  }
   TPM2B_PUBLIC public_area;
-  TPM_RC return_code = GetKeyPublicArea(key_handle, &public_area);
-  if (return_code) {
+  result = GetKeyPublicArea(key_handle, &public_area);
+  if (result) {
     LOG(ERROR) << "Error finding public area for: " << key_handle;
-    return return_code;
+    return result;
   } else if (public_area.public_area.type != TPM_ALG_RSA) {
     LOG(ERROR) << "Key handle given is not an RSA key";
     return SAPI_RC_BAD_PARAMETER;
@@ -425,39 +430,27 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
     return SAPI_RC_BAD_PARAMETER;
   }
   std::string key_name;
-  return_code = GetKeyName(key_handle, &key_name);
-  if (return_code) {
+  result = GetKeyName(key_handle, &key_name);
+  if (result) {
     LOG(ERROR) << "Error finding key name for: " << key_handle;
-    return return_code;
+    return result;
   }
 
   TPM2B_DATA label;
   label.size = 0;
   TPM2B_PUBLIC_KEY_RSA in_message = Make_TPM2B_PUBLIC_KEY_RSA(ciphertext);
   TPM2B_PUBLIC_KEY_RSA out_message;
-  scoped_ptr<AuthorizationSession> local_session;
-  if (session == NULL) {
-    local_session  = factory_.GetAuthorizationSession();
-    return_code = local_session->StartUnboundSession(true);
-    if (return_code) {
-      LOG(ERROR) << "Error initializing Authorization Session: "
-                 << GetErrorString(return_code);
-      return return_code;
-    }
-    session = local_session.get();
-  }
-  session->SetEntityAuthorizationValue(password);
-  return_code = factory_.GetTpm()->RSA_DecryptSync(key_handle,
-                                                   key_name,
-                                                   in_message,
-                                                   in_scheme,
-                                                   label,
-                                                   &out_message,
-                                                   session->GetDelegate());
-  if (return_code) {
+  result = factory_.GetTpm()->RSA_DecryptSync(key_handle,
+                                              key_name,
+                                              in_message,
+                                              in_scheme,
+                                              label,
+                                              &out_message,
+                                              session->GetDelegate());
+  if (result) {
     LOG(ERROR) << "Error performing RSA decrypt: "
-               << GetErrorString(return_code);
-    return return_code;
+               << GetErrorString(result);
+    return result;
   }
   plaintext->assign(StringFrom_TPM2B_PUBLIC_KEY_RSA(out_message));
   return TPM_RC_SUCCESS;
@@ -466,7 +459,6 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
 TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
                             TPM_ALG_ID scheme,
                             TPM_ALG_ID hash_alg,
-                            const std::string& password,
                             const std::string& plaintext,
                             AuthorizationSession* session,
                             std::string* signature) {
@@ -484,11 +476,18 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
     LOG(ERROR) << "Invalid Signing scheme used.";
     return SAPI_RC_BAD_PARAMETER;
   }
+  TPM_RC result;
+  if (session == NULL) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << "This method needs a valid authorization session: "
+               << GetErrorString(result);
+    return result;
+  }
   TPM2B_PUBLIC public_area;
-  TPM_RC return_code = GetKeyPublicArea(key_handle, &public_area);
-  if (return_code) {
+  result = GetKeyPublicArea(key_handle, &public_area);
+  if (result) {
     LOG(ERROR) << "Error finding public area for: " << key_handle;
-    return return_code;
+    return result;
   } else if (public_area.public_area.type != TPM_ALG_RSA) {
     LOG(ERROR) << "Key handle given is not an RSA key";
     return SAPI_RC_BAD_PARAMETER;
@@ -501,10 +500,10 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
   }
 
   std::string key_name;
-  return_code = GetKeyName(key_handle, &key_name);
-  if (return_code) {
+  result = GetKeyName(key_handle, &key_name);
+  if (result) {
     LOG(ERROR) << "Error finding key name for: " << key_handle;
-    return return_code;
+    return result;
   }
   std::string digest = HashString(plaintext, hash_alg);
   TPM2B_DIGEST tpm_digest = Make_TPM2B_DIGEST(digest);
@@ -513,28 +512,16 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
   validation.tag = TPM_ST_HASHCHECK;
   validation.hierarchy = TPM_RH_NULL;
   validation.digest.size = 0;
-  scoped_ptr<AuthorizationSession> local_session;
-  if (session == NULL) {
-    local_session = factory_.GetAuthorizationSession();
-    return_code = local_session->StartUnboundSession(true);
-    if (return_code) {
-      LOG(ERROR) << "Error initializing Authorization Session: "
-                 << GetErrorString(return_code);
-      return return_code;
-    }
-    session = local_session.get();
-  }
-  session->SetEntityAuthorizationValue(password);
-  return_code = factory_.GetTpm()->SignSync(key_handle,
-                                            key_name,
-                                            tpm_digest,
-                                            in_scheme,
-                                            validation,
-                                            &signature_out,
-                                            session->GetDelegate());
-  if (return_code) {
-    LOG(ERROR) << "Error signing digest: " << GetErrorString(return_code);
-    return return_code;
+  result = factory_.GetTpm()->SignSync(key_handle,
+                                       key_name,
+                                       tpm_digest,
+                                       in_scheme,
+                                       validation,
+                                       &signature_out,
+                                       session->GetDelegate());
+  if (result) {
+    LOG(ERROR) << "Error signing digest: " << GetErrorString(result);
+    return result;
   }
   if (scheme == TPM_ALG_RSAPSS) {
     signature->resize(signature_out.signature.rsapss.sig.size);
@@ -607,13 +594,19 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
 
 TPM_RC TpmUtilityImpl::ChangeKeyAuthorizationData(
     TPM_HANDLE key_handle,
-    const std::string& old_password,
     const std::string& new_password,
     AuthorizationSession* session,
     std::string* key_blob) {
+  TPM_RC result;
+  if (session == NULL) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << "This method needs a valid authorization session: "
+               << GetErrorString(result);
+    return result;
+  }
   std::string key_name;
   std::string parent_name;
-  TPM_RC result = GetKeyName(key_handle, &key_name);
+  result = GetKeyName(key_handle, &key_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting Key name for key_handle: "
                << GetErrorString(result);
@@ -628,18 +621,6 @@ TPM_RC TpmUtilityImpl::ChangeKeyAuthorizationData(
   TPM2B_AUTH new_auth = Make_TPM2B_DIGEST(new_password);
   TPM2B_PRIVATE new_private_data;
   new_private_data.size = 0;
-  scoped_ptr<AuthorizationSession> local_session;
-  if (session == NULL) {
-    local_session  = factory_.GetAuthorizationSession();
-    result = local_session->StartUnboundSession(true);
-    if (result != TPM_RC_SUCCESS) {
-      LOG(ERROR) << "Error initializing Authorization Session: "
-                 << GetErrorString(result);
-      return result;
-    }
-    session = local_session.get();
-  }
-  session->SetEntityAuthorizationValue(old_password);
   result = factory_.GetTpm()->ObjectChangeAuthSync(key_handle,
                                                    key_name,
                                                    kRSAStorageRootKey,
@@ -674,8 +655,15 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
                                     const std::string& password,
                                     AuthorizationSession* session,
                                     std::string* key_blob) {
+  TPM_RC result;
+  if (session == NULL) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << "This method needs a valid authorization session: "
+               << GetErrorString(result);
+    return result;
+  }
   std::string parent_name;
-  TPM_RC result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  result = GetKeyName(kRSAStorageRootKey, &parent_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting Key name for RSA-SRK: "
                << GetErrorString(result);
@@ -722,18 +710,6 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
   }
   TPM2B_PRIVATE tpm_private_data;
   tpm_private_data.size = 0;
-  scoped_ptr<AuthorizationSession> local_session;
-  if (session == NULL) {
-    local_session  = factory_.GetAuthorizationSession();
-    result = local_session->StartUnboundSession(true);
-    if (result != TPM_RC_SUCCESS) {
-      LOG(ERROR) << "Error initializing Authorization Session: "
-                 << GetErrorString(result);
-      return result;
-    }
-    session = local_session.get();
-  }
-  session->SetEntityAuthorizationValue("");
   result = factory_.GetTpm()->ImportSync(kRSAStorageRootKey,
                                          parent_name,
                                          encryption_key,
@@ -784,8 +760,15 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                                         AuthorizationSession* session,
                                         std::string* key_blob) {
   CHECK(key_blob);
+  TPM_RC result;
+  if (session == NULL) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << "This method needs a valid authorization session: "
+               << GetErrorString(result);
+    return result;
+  }
   std::string parent_name;
-  TPM_RC result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  result = GetKeyName(kRSAStorageRootKey, &parent_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting Key name for RSA-SRK: "
                << GetErrorString(result);
@@ -822,18 +805,6 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
   TPM2B_CREATION_DATA creation_data;
   TPM2B_DIGEST creation_hash;
   TPMT_TK_CREATION creation_ticket;
-  scoped_ptr<AuthorizationSession> local_session;
-  if (session == NULL) {
-    local_session = factory_.GetAuthorizationSession();
-    result = local_session->StartUnboundSession(true);
-    if (result != TPM_RC_SUCCESS) {
-      LOG(ERROR) << "Error initializing Authorization Session: "
-                 << GetErrorString(result);
-      return result;
-    }
-    session = local_session.get();
-  }
-  session->SetEntityAuthorizationValue("");
   result = factory_.GetTpm()->CreateSync(kRSAStorageRootKey,
                                          parent_name,
                                          sensitive_create,
@@ -861,8 +832,15 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
 TPM_RC TpmUtilityImpl::LoadKey(const std::string& key_blob,
                                AuthorizationSession* session,
                                TPM_HANDLE* key_handle) {
+  TPM_RC result;
+  if (session == NULL) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << "This method needs a valid authorization session: "
+               << GetErrorString(result);
+    return result;
+  }
   std::string parent_name;
-  TPM_RC result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  result = GetKeyName(kRSAStorageRootKey, &parent_name);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting parent key name: " << GetErrorString(result);
     return result;
@@ -877,18 +855,6 @@ TPM_RC TpmUtilityImpl::LoadKey(const std::string& key_blob,
   CHECK(key_handle);
   TPM2B_NAME key_name;
   key_name.size = 0;
-  scoped_ptr<AuthorizationSession> local_session;
-  if (session == NULL) {
-    local_session = factory_.GetAuthorizationSession();
-    result = local_session->StartUnboundSession(true);
-    if (result != TPM_RC_SUCCESS) {
-      LOG(ERROR) << "Error initializing Authorization Session: "
-                 << GetErrorString(result);
-      return result;
-    }
-    session = local_session.get();
-  }
-  session->SetEntityAuthorizationValue("");
   result = factory_.GetTpm()->LoadSync(kRSAStorageRootKey,
                                        parent_name,
                                        in_private,

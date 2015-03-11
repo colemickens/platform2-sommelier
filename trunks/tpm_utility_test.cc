@@ -472,15 +472,12 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptSuccess) {
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_authorization_session_,
-              SetEntityAuthorizationValue(password));
   EXPECT_CALL(mock_tpm_, RSA_DecryptSync(key_handle, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(out_message),
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricDecrypt(key_handle,
                                                       TPM_ALG_NULL,
                                                       TPM_ALG_NULL,
-                                                      password,
                                                       ciphertext,
                                                       session.get(),
                                                       &plaintext));
@@ -502,13 +499,13 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptFail) {
                             Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_, RSA_DecryptSync(key_handle, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.AsymmetricDecrypt(key_handle,
-                                                      TPM_ALG_NULL,
-                                                      TPM_ALG_NULL,
-                                                      password,
-                                                      ciphertext,
-                                                      NULL,
-                                                      &plaintext));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.AsymmetricDecrypt(
+      key_handle,
+      TPM_ALG_NULL,
+      TPM_ALG_NULL,
+      ciphertext,
+      &mock_authorization_session_,
+      &plaintext));
 }
 
 TEST_F(TpmUtilityTest, AsymmetricDecryptBadParams) {
@@ -524,37 +521,24 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptBadParams) {
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.AsymmetricDecrypt(key_handle,
-                                                             TPM_ALG_RSAES,
-                                                             TPM_ALG_NULL,
-                                                             password,
-                                                             ciphertext,
-                                                             NULL,
-                                                             &plaintext));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.AsymmetricDecrypt(
+      key_handle,
+      TPM_ALG_RSAES,
+      TPM_ALG_NULL,
+      ciphertext,
+      &mock_authorization_session_,
+      &plaintext));
 }
 
 TEST_F(TpmUtilityTest, AsymmetricDecryptBadSession) {
   TpmUtilityImpl utility(factory_);
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = TPM_RH_FIRST;
   std::string key_name;
   std::string plaintext;
   std::string ciphertext;
   std::string password;
-  TPM2B_PUBLIC public_area;
-  public_area.public_area.type = TPM_ALG_RSA;
-  public_area.public_area.object_attributes = kDecrypt;
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
-                            Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_authorization_session_, StartUnboundSession(true))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.AsymmetricDecrypt(key_handle,
-                                                      TPM_ALG_RSAES,
-                                                      TPM_ALG_NULL,
-                                                      password,
-                                                      ciphertext,
-                                                      NULL,
-                                                      &plaintext));
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility.AsymmetricDecrypt(
+      key_handle, TPM_ALG_RSAES, TPM_ALG_NULL, ciphertext, NULL, &plaintext));
 }
 
 TEST_F(TpmUtilityTest, AsymmetricDecryptNullSchemeForward) {
@@ -577,13 +561,13 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptNullSchemeForward) {
       .WillOnce(DoAll(SetArgPointee<5>(out_message),
                       SaveArg<3>(&scheme),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricDecrypt(key_handle,
-                                                      TPM_ALG_NULL,
-                                                      TPM_ALG_NULL,
-                                                      password,
-                                                      ciphertext,
-                                                      NULL,
-                                                      &plaintext));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricDecrypt(
+      key_handle,
+      TPM_ALG_NULL,
+      TPM_ALG_NULL,
+      ciphertext,
+      &mock_authorization_session_,
+      &plaintext));
   EXPECT_EQ(scheme.scheme, TPM_ALG_OAEP);
   EXPECT_EQ(scheme.details.oaep.hash_alg, TPM_ALG_SHA256);
 }
@@ -608,13 +592,13 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptSchemeForward) {
       .WillOnce(DoAll(SetArgPointee<5>(out_message),
                       SaveArg<3>(&scheme),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricDecrypt(key_handle,
-                                                      TPM_ALG_RSAES,
-                                                      TPM_ALG_NULL,
-                                                      password,
-                                                      ciphertext,
-                                                      NULL,
-                                                      &plaintext));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.AsymmetricDecrypt(
+      key_handle,
+      TPM_ALG_RSAES,
+      TPM_ALG_NULL,
+      ciphertext,
+      &mock_authorization_session_,
+      &plaintext));
   EXPECT_EQ(scheme.scheme, TPM_ALG_RSAES);
 }
 
@@ -635,15 +619,12 @@ TEST_F(TpmUtilityTest, SignSuccess) {
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_authorization_session_,
-              SetEntityAuthorizationValue(password));
   EXPECT_CALL(mock_tpm_, SignSync(key_handle, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(signature_out),
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, utility.Sign(key_handle,
                                          TPM_ALG_NULL,
                                          TPM_ALG_NULL,
-                                         password,
                                          digest,
                                          session.get(),
                                          &signature));
@@ -667,9 +648,8 @@ TEST_F(TpmUtilityTest, SignFail) {
   EXPECT_EQ(TPM_RC_FAILURE, utility.Sign(key_handle,
                                          TPM_ALG_NULL,
                                          TPM_ALG_NULL,
-                                         password,
                                          digest,
-                                         NULL,
+                                         &mock_authorization_session_,
                                          &signature));
 }
 
@@ -688,33 +668,23 @@ TEST_F(TpmUtilityTest, SignBadParams1) {
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Sign(key_handle,
                                                 TPM_ALG_RSAPSS,
                                                 TPM_ALG_NULL,
-                                                password,
                                                 digest,
-                                                NULL,
+                                                &mock_authorization_session_,
                                                 &signature));
 }
 
 TEST_F(TpmUtilityTest, SignBadAuthorizationSession) {
   TpmUtilityImpl utility(factory_);
-  TPM_HANDLE key_handle;
+  TPM_HANDLE key_handle = TPM_RH_FIRST;
   std::string password;
   std::string digest(32, 'a');
   std::string signature;
-  TPM2B_PUBLIC public_area;
-  public_area.public_area.type = TPM_ALG_RSA;
-  public_area.public_area.object_attributes = kSign;
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
-                            Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_authorization_session_, StartUnboundSession(true))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.Sign(key_handle,
-                                         TPM_ALG_RSAPSS,
-                                         TPM_ALG_NULL,
-                                         password,
-                                         digest,
-                                         NULL,
-                                         &signature));
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility.Sign(key_handle,
+                                                   TPM_ALG_RSAPSS,
+                                                   TPM_ALG_NULL,
+                                                   digest,
+                                                   NULL,
+                                                   &signature));
 }
 
 TEST_F(TpmUtilityTest, SignBadParams2) {
@@ -732,9 +702,8 @@ TEST_F(TpmUtilityTest, SignBadParams2) {
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Sign(key_handle,
                                                 TPM_ALG_RSAPSS,
                                                 TPM_ALG_NULL,
-                                                password,
                                                 digest,
-                                                NULL,
+                                                &mock_authorization_session_,
                                                 &signature));
 }
 
@@ -753,9 +722,8 @@ TEST_F(TpmUtilityTest, SignBadParams3) {
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Sign(key_handle,
                                                 TPM_ALG_RSAPSS,
                                                 TPM_ALG_NULL,
-                                                password,
                                                 digest,
-                                                NULL,
+                                                &mock_authorization_session_,
                                                 &signature));
 }
 
@@ -774,9 +742,8 @@ TEST_F(TpmUtilityTest, SignBadParams4) {
   EXPECT_EQ(TPM_RC_FAILURE, utility.Sign(key_handle,
                                          TPM_ALG_RSAPSS,
                                          TPM_ALG_NULL,
-                                         password,
                                          digest,
-                                         NULL,
+                                         &mock_authorization_session_,
                                          &signature));
 }
 
@@ -789,9 +756,8 @@ TEST_F(TpmUtilityTest, SignBadParams5) {
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility.Sign(key_handle,
                                                 TPM_ALG_AES,
                                                 TPM_ALG_NULL,
-                                                password,
                                                 digest,
-                                                NULL,
+                                                &mock_authorization_session_,
                                                 &signature));
 }
 
@@ -818,9 +784,8 @@ TEST_F(TpmUtilityTest, SignNullSchemeForward) {
   EXPECT_EQ(TPM_RC_SUCCESS, utility.Sign(key_handle,
                                          TPM_ALG_NULL,
                                          TPM_ALG_NULL,
-                                         password,
                                          digest,
-                                         NULL,
+                                         &mock_authorization_session_,
                                          &signature));
   EXPECT_EQ(scheme.scheme, TPM_ALG_RSASSA);
   EXPECT_EQ(scheme.details.rsassa.hash_alg, TPM_ALG_SHA256);
@@ -848,9 +813,8 @@ TEST_F(TpmUtilityTest, SignSchemeForward) {
   EXPECT_EQ(TPM_RC_SUCCESS, utility.Sign(key_handle,
                                          TPM_ALG_RSAPSS,
                                          TPM_ALG_SHA1,
-                                         password,
                                          digest,
-                                         NULL,
+                                         &mock_authorization_session_,
                                          &signature));
   EXPECT_EQ(scheme.scheme, TPM_ALG_RSAPSS);
   EXPECT_EQ(scheme.details.rsapss.hash_alg, TPM_ALG_SHA1);
@@ -1037,13 +1001,9 @@ TEST_F(TpmUtilityTest, VerifySchemeForward) {
 TEST_F(TpmUtilityTest, ChangeAuthDataSuccess) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle = 1;
-  std::string old_password;
   std::string new_password;
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.ChangeKeyAuthorizationData(key_handle,
-                                                               old_password,
-                                                               new_password,
-                                                               NULL,
-                                                               NULL));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.ChangeKeyAuthorizationData(
+    key_handle, new_password, &mock_authorization_session_, NULL));
 }
 
 TEST_F(TpmUtilityTest, ChangeAuthDataKeyNameFail) {
@@ -1053,38 +1013,27 @@ TEST_F(TpmUtilityTest, ChangeAuthDataKeyNameFail) {
   std::string new_password;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.ChangeKeyAuthorizationData(key_handle,
-                                                               old_password,
-                                                               new_password,
-                                                               NULL,
-                                                               NULL));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.ChangeKeyAuthorizationData(
+      key_handle, new_password, &mock_authorization_session_, NULL));
 }
 
 TEST_F(TpmUtilityTest, ChangeAuthDataFailure) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle = 1;
-  std::string old_password;
   std::string new_password;
   EXPECT_CALL(mock_tpm_, ObjectChangeAuthSync(key_handle, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.ChangeKeyAuthorizationData(key_handle,
-                                                               old_password,
-                                                               new_password,
-                                                               NULL,
-                                                               NULL));
+  EXPECT_EQ(TPM_RC_FAILURE, utility.ChangeKeyAuthorizationData(
+      key_handle, new_password, &mock_authorization_session_, NULL));
 }
 
 TEST_F(TpmUtilityTest, ChangeAuthDataWithReturnSuccess) {
   TpmUtilityImpl utility(factory_);
   TPM_HANDLE key_handle = 1;
-  std::string old_password;
   std::string new_password;
   std::string key_blob;
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.ChangeKeyAuthorizationData(key_handle,
-                                                               old_password,
-                                                               new_password,
-                                                               NULL,
-                                                               &key_blob));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.ChangeKeyAuthorizationData(
+    key_handle, new_password, &mock_authorization_session_, &key_blob));
 }
 
 TEST_F(TpmUtilityTest, ImportRSAKeySuccess) {
@@ -1104,7 +1053,12 @@ TEST_F(TpmUtilityTest, ImportRSAKeySuccess) {
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, utility.ImportRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey,
-      modulus, public_exponent, prime_factor, password, NULL, &key_blob));
+      modulus,
+      public_exponent,
+      prime_factor,
+      password,
+      &mock_authorization_session_,
+      &key_blob));
   // Validate that the public area was properly constructed.
   EXPECT_EQ(public_data.public_area.parameters.rsa_detail.key_bits,
             modulus.size() * 8);
@@ -1158,7 +1112,12 @@ TEST_F(TpmUtilityTest, ImportRSAKeySuccessWithNoBlob) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(TPM_RC_SUCCESS, utility.ImportRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey,
-      modulus, public_exponent, prime_factor, password, NULL, NULL));
+      modulus,
+      public_exponent,
+      prime_factor,
+      password,
+      &mock_authorization_session_,
+      NULL));
 }
 
 TEST_F(TpmUtilityTest, ImportRSAKeyParentNameFail) {
@@ -1171,7 +1130,12 @@ TEST_F(TpmUtilityTest, ImportRSAKeyParentNameFail) {
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility.ImportRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey,
-      modulus, public_exponent, prime_factor, password, NULL, NULL));
+      modulus,
+      public_exponent,
+      prime_factor,
+      password,
+      &mock_authorization_session_,
+      NULL));
 }
 
 TEST_F(TpmUtilityTest, ImportRSAKeyFail) {
@@ -1183,7 +1147,12 @@ TEST_F(TpmUtilityTest, ImportRSAKeyFail) {
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility.ImportRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey,
-      modulus, 0x10001, prime_factor, password, NULL, NULL));
+      modulus,
+      0x10001,
+      prime_factor,
+      password,
+      &mock_authorization_session_,
+      NULL));
 }
 
 TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyDecryptSuccess) {
@@ -1196,8 +1165,6 @@ TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyDecryptSuccess) {
                       Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_CALL(mock_authorization_session_, SetEntityAuthorizationValue(""))
-      .Times(2);
   EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateAndLoadRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey,
       "password",
@@ -1222,7 +1189,7 @@ TEST_F(TpmUtilityTest, CreateAndLoadRSAKeySignSuccess) {
   EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateAndLoadRSAKey(
       TpmUtility::AsymmetricKeyUsage::kSignKey,
       "password",
-      NULL,
+      &mock_authorization_session_,
       &key_handle,
       NULL));
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
@@ -1243,7 +1210,7 @@ TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyLegacySuccess) {
   EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateAndLoadRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
       "password",
-      NULL,
+      &mock_authorization_session_,
       &key_handle,
       NULL));
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
@@ -1260,7 +1227,7 @@ TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyFail1) {
   EXPECT_EQ(TPM_RC_FAILURE, utility.CreateAndLoadRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey,
       "password",
-      NULL,
+      &mock_authorization_session_,
       &key_handle,
       NULL));
 }
@@ -1275,7 +1242,7 @@ TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyFail2) {
   EXPECT_EQ(TPM_RC_FAILURE, utility.CreateAndLoadRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey,
       "password",
-      NULL,
+      &mock_authorization_session_,
       &key_handle,
       NULL));
 }

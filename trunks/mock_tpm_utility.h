@@ -34,17 +34,15 @@ class MockTpmUtility : public TpmUtility {
                                          TPM_ALG_ID,
                                          const std::string&,
                                          std::string*));
-  MOCK_METHOD7(AsymmetricDecrypt, TPM_RC(TPM_HANDLE,
+  MOCK_METHOD6(AsymmetricDecrypt, TPM_RC(TPM_HANDLE,
                                          TPM_ALG_ID,
                                          TPM_ALG_ID,
-                                         const std::string&,
                                          const std::string&,
                                          AuthorizationSession*,
                                          std::string*));
-  MOCK_METHOD7(Sign, TPM_RC(TPM_HANDLE,
+  MOCK_METHOD6(Sign, TPM_RC(TPM_HANDLE,
                             TPM_ALG_ID,
                             TPM_ALG_ID,
-                            const std::string&,
                             const std::string&,
                             AuthorizationSession*,
                             std::string*));
@@ -53,8 +51,7 @@ class MockTpmUtility : public TpmUtility {
                               TPM_ALG_ID,
                               const std::string&,
                               const std::string&));
-  MOCK_METHOD5(ChangeKeyAuthorizationData, TPM_RC(TPM_HANDLE,
-                                                  const std::string&,
+  MOCK_METHOD4(ChangeKeyAuthorizationData, TPM_RC(TPM_HANDLE,
                                                   const std::string&,
                                                   AuthorizationSession*,
                                                   std::string*));

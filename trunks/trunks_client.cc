@@ -78,6 +78,7 @@ int SignTest() {
                << trunks::GetErrorString(rc);
     return rc;
   }
+  session->SetEntityAuthorizationValue("");
   rc = utility->CreateAndLoadRSAKey(
       trunks::TpmUtility::AsymmetricKeyUsage::kSignKey,
       "sign",
@@ -90,10 +91,10 @@ int SignTest() {
   }
   trunks::ScopedKeyHandle scoped_key(factory, signing_key);
   std::string signature;
+  session->SetEntityAuthorizationValue("sign");
   rc = utility->Sign(scoped_key.get(),
                      trunks::TPM_ALG_NULL,
                      trunks::TPM_ALG_NULL,
-                     "sign",
                      std::string(32, 'a'),
                      session.get(),
                      &signature);
@@ -118,11 +119,20 @@ int DecryptTest() {
   trunks::TrunksFactoryImpl factory;
   trunks::TPM_HANDLE decrypt_key;
   trunks::TPM_RC rc;
+  scoped_ptr<trunks::AuthorizationSession> session(
+      factory.GetAuthorizationSession());
+  rc = session->StartUnboundSession(true);
+  if (rc) {
+    LOG(ERROR) << "Error starting authorization session: "
+               << trunks::GetErrorString(rc);
+    return rc;
+  }
   scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
+  session->SetEntityAuthorizationValue("");
   rc = utility->CreateAndLoadRSAKey(
       trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey,
       "decrypt",
-      NULL,
+      session.get(),
       &decrypt_key,
       NULL);
   if (rc) {
@@ -141,12 +151,12 @@ int DecryptTest() {
     return rc;
   }
   std::string plaintext;
+  session->SetEntityAuthorizationValue("decrypt");
   rc = utility->AsymmetricDecrypt(scoped_key.get(),
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
-                                  "decrypt",
                                   ciphertext,
-                                  NULL,
+                                  session.get(),
                                   &plaintext);
   if (rc) {
     LOG(ERROR) << "Error decrypting: " << trunks::GetErrorString(rc);
@@ -178,6 +188,7 @@ int ImportTest() {
   std::string prime_factor(BN_num_bytes(rsa.get()->p), 0);
   BN_bn2bin(rsa.get()->p,
             reinterpret_cast<unsigned char*>(string_as_array(&prime_factor)));
+  session->SetEntityAuthorizationValue("");
   rc = utility->ImportRSAKey(
       trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
       modulus,
@@ -208,10 +219,10 @@ int ImportTest() {
     return rc;
   }
   std::string plaintext;
+  session->SetEntityAuthorizationValue("import");
   rc = utility->AsymmetricDecrypt(scoped_key.get(),
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
-                                  "import",
                                   ciphertext,
                                   session.get(),
                                   &plaintext);
@@ -237,6 +248,7 @@ int AuthChangeTest() {
     return rc;
   }
   trunks::TPM_HANDLE key_handle;
+  session->SetEntityAuthorizationValue("");
   rc = utility->CreateAndLoadRSAKey(
       trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
       "old_pass",
@@ -249,8 +261,8 @@ int AuthChangeTest() {
     return rc;
   }
   std::string key_blob;
+  session->SetEntityAuthorizationValue("old_pass");
   rc = utility->ChangeKeyAuthorizationData(key_handle,
-                                           "old_pass",
                                            "new_pass",
                                            session.get(),
                                            &key_blob);
@@ -264,6 +276,7 @@ int AuthChangeTest() {
     LOG(ERROR) << "Error flushing key: " << trunks::GetErrorString(rc);
     return rc;
   }
+  session->SetEntityAuthorizationValue("");
   rc = utility->LoadKey(key_blob, session.get(), &key_handle);
   if (rc) {
     LOG(ERROR) << "Error reloading key: " << trunks::GetErrorString(rc);
@@ -282,10 +295,10 @@ int AuthChangeTest() {
     return rc;
   }
   std::string plaintext;
+  session->SetEntityAuthorizationValue("new_pass");
   rc = utility->AsymmetricDecrypt(scoped_key.get(),
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
-                                  "new_pass",
                                   ciphertext,
                                   session.get(),
                                   &plaintext);

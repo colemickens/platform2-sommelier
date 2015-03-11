@@ -47,14 +47,12 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
                            TPM_ALG_ID scheme,
                            TPM_ALG_ID hash_alg,
-                           const std::string& password,
                            const std::string& ciphertext,
                            AuthorizationSession* session,
                            std::string* plaintext) override;
   TPM_RC Sign(TPM_HANDLE key_handle,
               TPM_ALG_ID scheme,
               TPM_ALG_ID hash_alg,
-              const std::string& password,
               const std::string& plaintext,
               AuthorizationSession* session,
               std::string* signature) override;
@@ -64,7 +62,6 @@ class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
                 const std::string& plaintext,
                 const std::string& signature) override;
   TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,
-                                    const std::string& old_password,
                                     const std::string& new_password,
                                     AuthorizationSession* session,
                                     std::string* key_blob) override;
