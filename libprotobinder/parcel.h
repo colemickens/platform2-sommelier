@@ -32,11 +32,16 @@ class BINDER_EXPORT Parcel {
   bool Write(void* data, size_t len);
   bool WriteString16(uint16_t* str);
   bool WriteString16FromCString(const char* str);
+  bool WriteString(const std::string str);
 
   bool WriteStrongBinder(IBinder* binder);
   bool WriteObject(const flat_binder_object& object);
   bool WriteRawBinder(void* binder);
   bool WriteRawHandle(uint32_t handle);
+
+  bool WriteFd(int fd);
+
+  bool WriteParcel(Parcel* parcel);
 
   template <class T>
   bool readAligned(T* pArg);
@@ -47,8 +52,14 @@ class BINDER_EXPORT Parcel {
   uint32_t ReadInt32();
   //bool ReadInt32(uint32_t* val);  // TODO(leecam): Change all reads to this.
   std::string* ReadString16();
+  bool ReadString(std::string* new_string);
   IBinder* ReadStrongBinder();
   uintptr_t ReadPointer();
+
+  bool ReadFd(int* fd);
+
+  bool GetFdAtOffset(int* fd, size_t offset);
+
   bool Read(void* data, size_t len);
 
   void* Data() const { return (void*)data_; }
@@ -81,6 +92,7 @@ class BINDER_EXPORT Parcel {
   void* AllocatePaddedBuffer(size_t len);
   void* GetPaddedBuffer(size_t len);
   const flat_binder_object* ReadObject();
+  const flat_binder_object* GetObjectAtOffset(size_t offset);
 
   // Buffer
   uint8_t* data_;         // Data buffer.

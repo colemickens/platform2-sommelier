@@ -166,6 +166,23 @@ bool Parcel::WriteString16FromCString(const char* str) {
   return true;
 }
 
+bool Parcel::WriteString(const std::string str) {
+  size_t len = str.size();
+  // Only 32bit lengths are supported.
+  if (len >= 0x100000000)
+    return false;
+  if (!WriteInt32(len))
+    return false;
+  size_t alloc_len = (len + 1) * sizeof(char);
+  if (alloc_len < len)
+    return false;
+  char* buf = (char*)AllocatePaddedBuffer(alloc_len);
+  if (buf == NULL)
+    return false;
+  memcpy(buf, str.c_str(), len);
+  return true;
+}
+
 bool Parcel::WriteRawHandle(uint32_t handle) {
   struct flat_binder_object object;
   object.type = BINDER_TYPE_HANDLE;
@@ -242,6 +259,42 @@ bool Parcel::WriteObject(const flat_binder_object& object) {
   objects_count_++;
 
   AdvancePostion(sizeof(object));
+  return true;
+}
+
+bool Parcel::WriteFd(int fd) {
+  struct flat_binder_object object;
+  object.type = BINDER_TYPE_FD;
+  object.flags = 0x7f | FLAT_BINDER_FLAG_ACCEPTS_FDS;
+  object.handle = fd;
+  object.cookie = 0;
+  return WriteObject(object);
+}
+
+bool Parcel::WriteParcel(Parcel* parcel) {
+  size_t required_object_count = objects_count_ + parcel->ObjectCount();
+  if (required_object_count < objects_count_)
+    return false;
+  if (required_object_count >= objects_capacity_) {
+    size_t new_capacity = required_object_count + 16;
+    if (new_capacity < required_object_count)
+      return false;
+    binder_size_t* new_objects =
+        (binder_size_t*)realloc(objects_, new_capacity);
+    if (new_objects == NULL)
+      return false;
+    objects_ = new_objects;
+    objects_capacity_ = new_capacity;
+  }
+  size_t base = data_pos_;
+
+  if (!Write(parcel->Data(), parcel->Len()))
+    return false;
+
+  for(size_t i = 0; i < parcel->ObjectCount(); i++) {
+    objects_[objects_count_] = base + parcel->ObjectData()[i];
+    objects_count_++;
+  }
   return true;
 }
 
@@ -338,6 +391,16 @@ std::string* Parcel::ReadString16() {
   return new_string;
 }
 
+bool Parcel::ReadString(std::string* new_string) {
+  uint32_t len = ReadInt32();
+  char* buf = (char*)GetPaddedBuffer(len);
+  if (buf == NULL)
+    return false;
+  for (uint32_t i = 0; i < len; i++)
+    new_string->push_back(buf[i]);
+  return true;
+}
+
 const flat_binder_object* Parcel::ReadObject() {
   if (data_pos_ + sizeof(flat_binder_object) < data_pos_)
     return NULL;
@@ -347,6 +410,21 @@ const flat_binder_object* Parcel::ReadObject() {
       reinterpret_cast<const flat_binder_object*>(data_ + data_pos_);
   // TODO: Validate this object
   data_pos_ += sizeof(flat_binder_object);
+  return obj;
+}
+
+const flat_binder_object* Parcel::GetObjectAtOffset(size_t offset) {
+  size_t base = data_pos_ + (offset * sizeof(flat_binder_object));
+  if (base <  (offset * sizeof(flat_binder_object)))
+    return NULL;
+
+  if (base + sizeof(flat_binder_object) < data_pos_)
+    return NULL;
+  if ((base + sizeof(flat_binder_object)) > data_len_)
+    return NULL;
+  const flat_binder_object* obj =
+      reinterpret_cast<const flat_binder_object*>(data_ + base);
+  // TODO: Validate this object
   return obj;
 }
 
@@ -362,6 +440,26 @@ IBinder* Parcel::ReadStrongBinder() {
       return new BinderProxy(flat_object->handle);
   }
   return NULL;
+}
+
+bool Parcel::ReadFd(int* fd) {
+  const flat_binder_object* flat_object = ReadObject();
+  if (flat_object == NULL)
+    return false;
+  if (flat_object->type != BINDER_TYPE_FD)
+    return false;
+  *fd = flat_object->handle;
+  return true;
+}
+
+bool Parcel::GetFdAtOffset(int* fd, size_t offset) {
+  const flat_binder_object* flat_object = GetObjectAtOffset(offset);
+  if (flat_object == NULL)
+    return false;
+  if (flat_object->type != BINDER_TYPE_FD)
+    return false;
+  *fd = flat_object->handle;
+  return true;
 }
 
 }  // namespace brillobinder

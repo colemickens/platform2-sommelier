@@ -15,13 +15,17 @@ namespace brillobinder {
 // AIDL class inherits from this.
 // Just need some basic stuff to return a binder.
 // Mainly interface holder to force both sides to implement the methods.
-class BINDER_EXPORT IInterface {};
+class BINDER_EXPORT IInterface {
+ public:
+  IInterface() {}
+  ~IInterface() {}
+};
 
 template <typename INTERFACE>
 class BINDER_EXPORT BinderHostInterface : public INTERFACE, public BinderHost {
  public:
  protected:
-  virtual ~BinderHostInterface();
+  virtual ~BinderHostInterface() {}
 };
 
 template <typename INTERFACE>

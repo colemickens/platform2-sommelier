@@ -227,6 +227,7 @@ int BinderManager::Transact(uint32_t handle,
                             const Parcel& data,
                             Parcel* reply,
                             uint32_t flags) {
+  flags |= TF_ACCEPT_FDS;
   int ret = SetupTransaction(false, handle, code, data, flags);
 
   if (ret < 0) {
