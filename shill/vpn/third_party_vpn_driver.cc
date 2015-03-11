@@ -42,6 +42,7 @@ static std::string ObjectID(const ThirdPartyVpnDriver *v) {
 namespace {
 
 const int32_t kConstantMaxMtu = (1 << 16) - 1;
+const int32_t kConnectTimeoutSeconds = 60*5;
 
 std::string IPAddressFingerprint(const IPAddress &address) {
   static const std::string hex_to_bin[] = {
@@ -429,7 +430,7 @@ void ThirdPartyVpnDriver::Connect(const VPNServiceRefPtr &service,
   SLOG(this, 2) << __func__;
   CHECK(adaptor_interface_);
   CHECK(!active_client_);
-  StartConnectTimeout(kDefaultConnectTimeoutSeconds);
+  StartConnectTimeout(kConnectTimeoutSeconds);
   ip_properties_ = IPConfig::Properties();
   service_ = service;
   service_->SetState(Service::kStateConfiguring);
