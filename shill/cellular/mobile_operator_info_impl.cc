@@ -85,11 +85,10 @@ void MobileOperatorInfoImpl::AddDatabasePath(const FilePath &absolute_path) {
 }
 
 bool MobileOperatorInfoImpl::Init() {
-  ScopedVector<MobileOperatorDB> databases;
-
   // |database_| is guaranteed to be set once |Init| is called.
   database_.reset(new MobileOperatorDB());
 
+  bool found_databases = false;
   for (const auto &database_path : database_paths_) {
     const char *database_path_cstr = database_path.value().c_str();
     std::unique_ptr<CopyingInputStreamAdaptor> database_stream;
@@ -100,30 +99,27 @@ bool MobileOperatorInfoImpl::Init() {
       continue;
     }
 
-    std::unique_ptr<MobileOperatorDB> database(new MobileOperatorDB());
-    if (!database->ParseFromZeroCopyStream(database_stream.get())) {
+    MobileOperatorDB database;
+    if (!database.ParseFromZeroCopyStream(database_stream.get())) {
       LOG(ERROR) << "Could not parse mobile operator database: "
                  << database_path_cstr;
       continue;
     }
     LOG(INFO) << "Successfully loaded database: " << database_path_cstr;
-    // Hand over ownership to the vector.
-    databases.push_back(database.release());
+    // Collate loaded databases into one as they're found.
+    // TODO(pprabhu) This merge might be very costly. Determine if we need to
+    // implement move semantics / bias the merge to use the largest database
+    // as the base database and merge other databases into it.
+    database_->MergeFrom(database);
+    found_databases = true;
   }
 
-  // Collate all loaded databases into one.
-  if (databases.size() == 0) {
+  if (!found_databases) {
     LOG(ERROR) << "Could not read any mobile operator database. "
                << "Will not be able to determine MVNO.";
     return false;
   }
 
-  for (const auto &database : databases) {
-    // TODO(pprabhu) This merge might be very costly. Determine if we need to
-    // implement move semantics / bias the merge to use the largest database
-    // as the base database and merge other databases into it.
-    database_->MergeFrom(*database);
-  }
   PreprocessDatabase();
   return true;
 }
