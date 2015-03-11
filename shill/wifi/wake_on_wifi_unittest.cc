@@ -2624,20 +2624,20 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
             GetDarkResumeHistory()->Size());
 
   // Max dark resumes per (short) period reached, so disable wake on WiFi and
-  // stop all RTC timers.
+  // start wake to scan timer.
   SetInDarkResume(false);
   ResetSuspendActionsDoneCallback();
   StartDHCPLeaseRenewalTimer();
-  StartWakeToScanTimer();
+  StopWakeToScanTimer();
   EXPECT_TRUE(SuspendActionsCallbackIsNull());
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
-  EXPECT_TRUE(WakeToScanTimerIsRunning());
+  EXPECT_FALSE(WakeToScanTimerIsRunning());
   EXPECT_FALSE(GetDarkResumeHistory()->Empty());
   EXPECT_CALL(metrics_, NotifyWakeOnWiFiThrottled());
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(SuspendActionsCallbackIsNull());
   EXPECT_FALSE(DHCPLeaseRenewalTimerIsRunning());
-  EXPECT_FALSE(WakeToScanTimerIsRunning());
+  EXPECT_TRUE(WakeToScanTimerIsRunning());
   EXPECT_TRUE(GetDarkResumeHistory()->Empty());
   EXPECT_FALSE(GetInDarkResume());
 }
@@ -2657,20 +2657,20 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
             GetDarkResumeHistory()->Size());
 
   // Max dark resumes per (long) period reached, so disable wake on WiFi and
-  // stop all RTC timers.
+  // start wake to scan timer.
   SetInDarkResume(false);
   ResetSuspendActionsDoneCallback();
   StartDHCPLeaseRenewalTimer();
-  StartWakeToScanTimer();
+  StopWakeToScanTimer();
   EXPECT_TRUE(SuspendActionsCallbackIsNull());
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
-  EXPECT_TRUE(WakeToScanTimerIsRunning());
+  EXPECT_FALSE(WakeToScanTimerIsRunning());
   EXPECT_FALSE(GetDarkResumeHistory()->Empty());
   EXPECT_CALL(metrics_, NotifyWakeOnWiFiThrottled());
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(SuspendActionsCallbackIsNull());
   EXPECT_FALSE(DHCPLeaseRenewalTimerIsRunning());
-  EXPECT_FALSE(WakeToScanTimerIsRunning());
+  EXPECT_TRUE(WakeToScanTimerIsRunning());
   EXPECT_TRUE(GetDarkResumeHistory()->Empty());
   EXPECT_FALSE(GetInDarkResume());
 }
