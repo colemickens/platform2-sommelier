@@ -136,8 +136,8 @@ bool ShillClient::ConnectToService(const string& ssid,
   service_properties[shill::kTypeProperty] = Any{string{shill::kTypeWifi}};
   service_properties[shill::kSSIDProperty] = Any{ssid};
   service_properties[shill::kPassphraseProperty] = Any{passphrase};
-  service_properties[shill::kSecurityProperty] =
-      Any{string{shill::kSecurityPsk}};
+  service_properties[shill::kSecurityProperty] = Any{
+      string{passphrase.empty() ? shill::kSecurityNone : shill::kSecurityPsk}};
   service_properties[shill::kSaveCredentialsProperty] = Any{true};
   service_properties[shill::kAutoConnectProperty] = Any{true};
   ObjectPath service_path;
