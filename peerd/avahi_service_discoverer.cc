@@ -76,7 +76,7 @@ bool AvahiServiceDiscoverer::txt_list2service_info(const TxtList& txt_list,
   for (const vector<uint8_t>& label : txt_list) {
     string label_str{label.cbegin(), label.cend()};
     string key, value;
-    chromeos::string_utils::SplitAtFirst(label_str, '=', &key, &value, false);
+    chromeos::string_utils::SplitAtFirst(label_str, "=", &key, &value, false);
     info->emplace(key, value);
   }
   return Service::IsValidServiceInfo(nullptr, *info);

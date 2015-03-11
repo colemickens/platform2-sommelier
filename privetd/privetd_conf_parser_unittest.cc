@@ -62,9 +62,9 @@ class PrivetdConfParserTest : public testing::Test {
   void FillKeyValueStore(const ConfDict& conf_dict, KeyValueStore* store) {
     std::vector<string> file_pieces;
     for (const auto& it : conf_dict) {
-      file_pieces.push_back(Join('=', it.first, it.second));
+      file_pieces.push_back(Join("=", it.first, it.second));
     }
-    string blob{Join('\n', file_pieces)};
+    string blob{Join("\n", file_pieces)};
     int expected_len = blob.length();
     CHECK(expected_len == base::WriteFile(temp_file_,
                                           blob.c_str(),
@@ -137,11 +137,11 @@ TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
   const ConfDict conf_dict{
       {kWiFiBootstrapMode, "automatic"},
       {kGcdBootstrapMode, "automatic"},
-      {kWiFiBootstrapInterfaces, Join(',', kExpectedWiFiInterfaces)},
+      {kWiFiBootstrapInterfaces, Join(",", kExpectedWiFiInterfaces)},
       {kConnectTimeout, std::to_string(kExpectedConnectTimeout)},
       {kBootstrapTimeout, std::to_string(kExpectedBootstrapTimeout)},
       {kMonitorTimeout, std::to_string(kExpectedMonitorTimeout)},
-      {kDeviceServices, Join(',', kExpectedDeviceServices)},
+      {kDeviceServices, Join(",", kExpectedDeviceServices)},
       {kDeviceClass, kExpectedDeviceClass},
       {kDeviceMake, kExpectedDeviceMake},
       {kDeviceModel, kExpectedDeviceModel},

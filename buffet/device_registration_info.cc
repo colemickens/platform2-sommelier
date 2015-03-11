@@ -65,7 +65,7 @@ std::pair<std::string, std::string> BuildAuthHeader(
     const std::string& access_token_type,
     const std::string& access_token) {
   std::string authorization =
-      chromeos::string_utils::Join(' ', access_token_type, access_token);
+      chromeos::string_utils::Join(" ", access_token_type, access_token);
   return {chromeos::http::request_header::kAuthorization, authorization};
 }
 

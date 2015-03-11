@@ -22,7 +22,7 @@ extern const char kSerbusName[];
 extern const char kSerbusNote[];
 extern const char kSerbusServiceList[];
 
-extern const char kSerbusServiceDelimiter;
+extern const char kSerbusServiceDelimiter[];
 
 }  // namespace mdns
 

@@ -93,7 +93,7 @@ bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {
   if (config_store.GetString(kWiFiBootstrapInterfaces,
                              &wifi_interface_list_str)) {
     auto interfaces =
-        chromeos::string_utils::Split(wifi_interface_list_str, ',', true, true);
+        chromeos::string_utils::Split(wifi_interface_list_str, ",", true, true);
     automatic_wifi_interfaces_.insert(interfaces.begin(), interfaces.end());
   }
 
@@ -136,7 +136,7 @@ bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {
   std::string device_services_str;
   if (config_store.GetString(kDeviceServices, &device_services_str)) {
     auto services =
-        chromeos::string_utils::Split(device_services_str, ',', true, true);
+        chromeos::string_utils::Split(device_services_str, ",", true, true);
     device_services_.insert(services.begin(), services.end());
     for (const std::string& service : device_services_) {
       if (service.front() == '_') {
@@ -181,7 +181,7 @@ bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {
   std::string modes_str;
   if (config_store.GetString(kPairingModes, &modes_str)) {
     for (const std::string& mode :
-         chromeos::string_utils::Split(modes_str, ',', true, true)) {
+         chromeos::string_utils::Split(modes_str, ",", true, true)) {
       PairingType pairing_mode;
       if (!StringToPairingType(mode, &pairing_mode)) {
         LOG(ERROR) << "Invalid pairing mode : " << mode;

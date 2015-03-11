@@ -234,12 +234,12 @@ size_t Connection::header_callback(char* ptr,
   if (!me->status_text_set_) {
     // First header - response code as "HTTP/1.1 200 OK".
     // Need to extract the OK part
-    auto pair = SplitAtFirst(header, ' ');
+    auto pair = SplitAtFirst(header, " ");
     me->protocol_version_ = pair.first;
-    me->status_text_ = SplitAtFirst(pair.second, ' ').second;
+    me->status_text_ = SplitAtFirst(pair.second, " ").second;
     me->status_text_set_ = true;
   } else {
-    auto pair = SplitAtFirst(header, ':');
+    auto pair = SplitAtFirst(header, ":");
     if (!pair.second.empty())
       me->headers_.insert(pair);
   }

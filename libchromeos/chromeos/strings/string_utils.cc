@@ -15,62 +15,42 @@ namespace chromeos {
 namespace string_utils {
 
 std::vector<std::string> Split(const std::string& str,
-                               char delimiter,
+                               const std::string& delimiter,
                                bool trim_whitespaces,
                                bool purge_empty_strings) {
   std::vector<std::string> tokens;
-  if (delimiter == 0)
+  if (str.empty())
     return tokens;
 
-  const char* sz = str.c_str();
-  if (sz) {
-    const char* szNext = strchr(sz, delimiter);
-    while (szNext) {
-      if (szNext != sz || !purge_empty_strings)
-        tokens.emplace_back(sz, szNext - sz);
-      sz = szNext + 1;
-      szNext = strchr(sz, delimiter);
-    }
-    if (*sz != 0 || !purge_empty_strings)
-      tokens.emplace_back(sz);
+  for (std::string::size_type i = 0;;) {
+    const std::string::size_type pos =
+        delimiter.empty() ? (i + 1) : str.find(delimiter, i);
+    std::string tmp_str{str.substr(i, pos - i)};
+    if (trim_whitespaces)
+      base::TrimWhitespaceASCII(tmp_str, base::TRIM_ALL, &tmp_str);
+    if (!tmp_str.empty() || !purge_empty_strings)
+      tokens.emplace_back(std::move(tmp_str));
+    if (pos >= str.size())
+      break;
+    i = pos + delimiter.size();
   }
-
-  if (trim_whitespaces) {
-    std::for_each(tokens.begin(), tokens.end(), [](std::string& str) {
-      base::TrimWhitespaceASCII(str, base::TRIM_ALL, &str);
-    });
-    if (purge_empty_strings) {
-      // We might have removed all the characters from a string if they were
-      // all whitespaces. If we don't want empty strings, make sure we remove
-      // them.
-      tokens.erase(std::remove(tokens.begin(), tokens.end(), std::string{}),
-                   tokens.end());
-    }
-  }
-
   return tokens;
 }
 
 bool SplitAtFirst(const std::string& str,
-                  char delimiter,
+                  const std::string& delimiter,
                   std::string* left_part,
                   std::string* right_part,
                   bool trim_whitespaces) {
-  if (delimiter == 0) {
-    left_part->clear();
-    right_part->clear();
-    return false;
-  }
-
   bool delimiter_found = false;
-  const char* sz = str.c_str();
-  const char* szNext = strchr(sz, delimiter);
-  if (szNext) {
-    *left_part = std::string(sz, szNext);
-    *right_part = std::string(szNext + 1);
+  std::string::size_type pos = str.find(delimiter);
+  if (pos != std::string::npos) {
+    *left_part = str.substr(0, pos);
+    *right_part = str.substr(pos + delimiter.size());
     delimiter_found = true;
   } else {
     *left_part = str;
+    right_part->clear();
   }
 
   if (trim_whitespaces) {
@@ -82,23 +62,11 @@ bool SplitAtFirst(const std::string& str,
 }
 
 std::pair<std::string, std::string> SplitAtFirst(const std::string& str,
-                                                 char delimiter,
+                                                 const std::string& delimiter,
                                                  bool trim_whitespaces) {
   std::pair<std::string, std::string> pair;
   SplitAtFirst(str, delimiter, &pair.first, &pair.second, trim_whitespaces);
   return pair;
-}
-
-std::string Join(char delimiter,
-                 const std::string& str1,
-                 const std::string& str2) {
-  return str1 + delimiter + str2;
-}
-
-std::string Join(const std::string& delimiter,
-                 const std::string& str1,
-                 const std::string& str2) {
-  return str1 + delimiter + str2;
 }
 
 std::string ToString(double value) {

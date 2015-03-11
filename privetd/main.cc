@@ -90,7 +90,7 @@ class Daemon : public chromeos::DBusServiceDaemon {
         state_store_->GetString(kWiFiBootstrapInterfaces,
                                 &test_device_whitelist)) {
       auto interfaces =
-          chromeos::string_utils::Split(test_device_whitelist, ',', true, true);
+          chromeos::string_utils::Split(test_device_whitelist, ",", true, true);
       device_whitelist_.insert(interfaces.begin(), interfaces.end());
     }
     device_ = DeviceDelegate::CreateDefault(
@@ -303,7 +303,7 @@ int main(int argc, char* argv[]) {
     FLAGS_state_path = privetd::kDefaultStateFilePath;
 
   auto device_whitelist =
-      chromeos::string_utils::Split(FLAGS_device_whitelist, ',', true, true);
+      chromeos::string_utils::Split(FLAGS_device_whitelist, ",", true, true);
 
   privetd::Daemon daemon(
       FLAGS_disable_security, FLAGS_enable_ping,

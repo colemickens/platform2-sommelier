@@ -250,7 +250,7 @@ bool Request::SendRequestIfNeeded(chromeos::ErrorPtr* error) {
       if (!ranges.empty())
         headers.emplace_back(
             request_header::kRange,
-            "bytes=" + chromeos::string_utils::Join(',', ranges));
+            "bytes=" + chromeos::string_utils::Join(",", ranges));
 
       headers.emplace_back(request_header::kAccept, GetAccept());
       if (method_ != request_type::kGet && method_ != request_type::kHead) {

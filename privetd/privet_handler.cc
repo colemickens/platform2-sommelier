@@ -217,7 +217,7 @@ AuthScope AuthScopeFromString(const std::string& scope, AuthScope auto_scope) {
 std::string GetAuthTokenFromAuthHeader(const std::string& auth_header) {
   std::string name;
   std::string value;
-  chromeos::string_utils::SplitAtFirst(auth_header, ' ', &name, &value);
+  chromeos::string_utils::SplitAtFirst(auth_header, " ", &name, &value);
   return value;
 }
 

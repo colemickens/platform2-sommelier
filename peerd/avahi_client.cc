@@ -118,7 +118,7 @@ string AvahiClient::GetServiceType(const string& service_id) {
 }
 
 string AvahiClient::GetServiceId(const string& service_type) {
-  string service_id = SplitAtFirst(service_type, '.', false).first;
+  string service_id = SplitAtFirst(service_type, ".", false).first;
   if (!service_id.empty()) { service_id = service_id.substr(1); }
   return service_id;
 }

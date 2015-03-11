@@ -53,7 +53,7 @@ const char XmlInterfaceParser::kMethodKindRaw[] = "raw";
 namespace {
 
 string GetElementPath(const vector<string>& path) {
-  return chromeos::string_utils::Join('/', path);
+  return chromeos::string_utils::Join("/", path);
 }
 
 }  // anonymous namespace

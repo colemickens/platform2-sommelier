@@ -111,7 +111,7 @@ bool StateManager::SetPropertyValue(const std::string& full_property_name,
   std::string package_name;
   std::string property_name;
   bool split = chromeos::string_utils::SplitAtFirst(
-      full_property_name, '.', &package_name, &property_name);
+      full_property_name, ".", &package_name, &property_name);
   if (full_property_name.empty() || (split && property_name.empty())) {
     chromeos::Error::AddTo(error, FROM_HERE, errors::state::kDomain,
                            errors::state::kPropertyNameMissing,

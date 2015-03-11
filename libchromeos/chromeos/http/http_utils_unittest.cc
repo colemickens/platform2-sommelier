@@ -418,7 +418,7 @@ TEST(HttpUtils, ParseJsonResponse) {
 
   // Test valid JSON responses (with success or error codes).
   for (auto item : {"200;data", "400;wrong", "500;Internal Server error"}) {
-    auto pair = chromeos::string_utils::SplitAtFirst(item, ';');
+    auto pair = chromeos::string_utils::SplitAtFirst(item, ";");
     auto response = http::PostFormDataAndBlock(
         kFakeUrl, {
           {"code", pair.first},

@@ -54,7 +54,7 @@ std::unique_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
 void AddDBusError(chromeos::ErrorPtr* error,
                   const std::string& dbus_error_name,
                   const std::string& dbus_error_message) {
-  std::vector<std::string> parts = string_utils::Split(dbus_error_message, ';');
+  std::vector<std::string> parts = string_utils::Split(dbus_error_message, ";");
   std::vector<std::tuple<std::string, std::string, std::string>> errors;
   for (const std::string& part : parts) {
     // Each part should be in format of "domain/code:message"

@@ -20,7 +20,7 @@ const char kSerbusName[] = "name";
 const char kSerbusNote[] = "note";
 const char kSerbusServiceList[] = "services";
 
-const char kSerbusServiceDelimiter = '.';
+const char kSerbusServiceDelimiter[] = ".";
 
 }  // namespace mdns
 

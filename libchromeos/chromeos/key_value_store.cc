@@ -53,7 +53,7 @@ bool KeyValueStore::Load(const base::FilePath& path) {
 
     std::string key;
     std::string value;
-    if (!string_utils::SplitAtFirst(line, '=', &key, &value, false))
+    if (!string_utils::SplitAtFirst(line, "=", &key, &value, false))
       return false;
 
     base::TrimWhitespace(key, base::TRIM_TRAILING, &key);

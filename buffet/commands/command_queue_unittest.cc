@@ -52,7 +52,7 @@ class FakeDispatchInterface : public buffet::CommandDispachInterface {
   // command queue.
   std::string GetIDs() const {
     using chromeos::string_utils::Join;
-    return Join(',', std::vector<std::string>(ids_.begin(), ids_.end()));
+    return Join(",", std::vector<std::string>(ids_.begin(), ids_.end()));
   }
 
  private:
@@ -107,7 +107,7 @@ TEST(CommandQueue, Dispatch) {
   queue.Add(CreateDummyCommandInstance("base.reboot", id2));
   std::set<std::string> ids{id1, id2};  // Make sure they are sorted properly.
   std::string expected_set = chromeos::string_utils::Join(
-      ',', std::vector<std::string>(ids.begin(), ids.end()));
+      ",", std::vector<std::string>(ids.begin(), ids.end()));
   EXPECT_EQ(expected_set, dispatch.GetIDs());
   queue.Remove(id1);
   EXPECT_EQ(id2, dispatch.GetIDs());

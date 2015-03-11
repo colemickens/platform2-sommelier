@@ -27,7 +27,7 @@ void AddCloseNamespace(IndentedText *text, const std::string& name) {
 }  // anonymous namespace
 
 NameParser::NameParser(const std::string& name)
-    : namespaces{chromeos::string_utils::Split(name, '.')} {
+    : namespaces{chromeos::string_utils::Split(name, ".")} {
   CHECK(!namespaces.empty()) << "Empty name specified";
   type_name = namespaces.back();
   namespaces.pop_back();

@@ -64,8 +64,8 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
         return false;
       }
       // Construct the compound command name as "pkg_name.cmd_name".
-      std::string full_command_name = chromeos::string_utils::Join(
-          '.', package_name, command_name);
+      std::string full_command_name =
+          chromeos::string_utils::Join(".", package_name, command_name);
 
       const ObjectSchema* base_parameters_def = nullptr;
       const ObjectSchema* base_results_def = nullptr;
@@ -186,7 +186,7 @@ std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
       dict.reset();
       return dict;
     }
-    auto cmd_name_parts = chromeos::string_utils::SplitAtFirst(pair.first, '.');
+    auto cmd_name_parts = chromeos::string_utils::SplitAtFirst(pair.first, ".");
     std::string package_name = cmd_name_parts.first;
     std::string command_name = cmd_name_parts.second;
     base::DictionaryValue* package = nullptr;

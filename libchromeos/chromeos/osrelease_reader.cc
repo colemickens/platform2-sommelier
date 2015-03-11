@@ -47,7 +47,7 @@ void OsReleaseReader::Load(const base::FilePath& root_dir) {
     }
     // There might be a trailing new line. Strip it to keep only the first line
     // of the file.
-    content = chromeos::string_utils::SplitAtFirst(content, '\n', true).first;
+    content = chromeos::string_utils::SplitAtFirst(content, "\n", true).first;
     store_.SetString(path.BaseName().value(), content);
   }
   initialized_ = true;
