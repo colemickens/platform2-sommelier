@@ -8,10 +8,10 @@
 #include <string>
 
 #include <base/gtest_prod_util.h>
-#include <chromeos/chromeos_export.h>
 
 #include "trunks/authorization_delegate.h"
 #include "trunks/tpm_generated.h"
+#include "trunks/trunks_export.h"
 
 namespace trunks {
 
@@ -20,7 +20,7 @@ namespace trunks {
 // initialization of this delegate, we feed in the plaintext password. This
 // password is then used to authorize the commands issued with this delegate.
 // This delegate performs no parameter encryption.
-class CHROMEOS_EXPORT PasswordAuthorizationDelegate
+class TRUNKS_EXPORT PasswordAuthorizationDelegate
     : public AuthorizationDelegate {
  public:
   explicit PasswordAuthorizationDelegate(const std::string& password);

@@ -6,14 +6,14 @@
 #define TRUNKS_TPM_STATE_H_
 
 #include <base/macros.h>
-#include <chromeos/chromeos_export.h>
 
 #include "trunks/tpm_generated.h"
+#include "trunks/trunks_export.h"
 
 namespace trunks {
 
 // TpmState is an interface which provides access to TPM state information.
-class CHROMEOS_EXPORT TpmState {
+class TRUNKS_EXPORT TpmState {
  public:
   TpmState() {}
   virtual ~TpmState() {}

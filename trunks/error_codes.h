@@ -7,9 +7,8 @@
 
 #include <string>
 
-#include <chromeos/chromeos_export.h>
-
 #include "trunks/tpm_generated.h"  // For TPM_RC.
+#include "trunks/trunks_export.h"
 
 namespace trunks {
 
@@ -57,13 +56,13 @@ const TPM_RC SAPI_RC_MALFORMED_RESPONSE = kSapiErrorBase + 14;
 const TPM_RC SAPI_RC_BAD_TCTI_STRUCTURE = kSapiErrorBase + 15;
 
 // Returns a description of |error|.
-std::string CHROMEOS_EXPORT GetErrorString(TPM_RC error);
+TRUNKS_EXPORT std::string GetErrorString(TPM_RC error);
 
 // Strips the P and N bits from a 'format one' error. If the given error code
 // is not a format one error, it is returned as is. The error that is returned
 // can be compared to TPM_RC_* constant values. See TPM 2.0 Part 2 Section 6.6
 // for details on format one errors.
-TPM_RC CHROMEOS_EXPORT GetFormatOneError(TPM_RC error);
+TRUNKS_EXPORT TPM_RC GetFormatOneError(TPM_RC error);
 
 }  // namespace trunks
 

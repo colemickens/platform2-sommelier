@@ -11,9 +11,9 @@
 
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/chromeos_export.h>
 
 #include "trunks/password_authorization_delegate.h"
+#include "trunks/trunks_export.h"
 
 namespace trunks {
 
@@ -38,7 +38,7 @@ class TpmUtility;
 //   MockTpmState mock_tpm_state;
 //   factory.set_tpm_state(mock_tpm_state);
 //   // Set expectations on mock_tpm_state...
-class CHROMEOS_EXPORT TrunksFactoryForTest : public TrunksFactory {
+class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
  public:
   TrunksFactoryForTest();
   virtual ~TrunksFactoryForTest();

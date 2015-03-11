@@ -5,9 +5,8 @@
 #ifndef TRUNKS_SCOPED_KEY_HANDLE_H_
 #define TRUNKS_SCOPED_KEY_HANDLE_H_
 
-#include <chromeos/chromeos_export.h>
-
 #include "trunks/tpm_generated.h"
+#include "trunks/trunks_export.h"
 #include "trunks/trunks_factory.h"
 
 namespace trunks {
@@ -17,7 +16,7 @@ namespace trunks {
  * It provides a destructor that cleans up TPM resources associated with
  * that handle.
  */
-class CHROMEOS_EXPORT ScopedKeyHandle {
+class TRUNKS_EXPORT ScopedKeyHandle {
  public:
   // We provide a factory to the constructor so that we can later free
   // resources associated with the handle.

@@ -8,10 +8,10 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/chromeos_export.h>
 
 #include "trunks/authorization_session.h"
 #include "trunks/tpm_generated.h"
+#include "trunks/trunks_export.h"
 
 namespace trunks {
 
@@ -21,7 +21,7 @@ const TPMI_DH_PERSISTENT kECCStorageRootKey = PERSISTENT_FIRST + 1;
 const TPMI_DH_PERSISTENT kSaltingKey = PERSISTENT_FIRST + 2;
 
 // An interface which provides convenient methods for common TPM operations.
-class CHROMEOS_EXPORT TpmUtility {
+class TRUNKS_EXPORT TpmUtility {
  public:
   enum AsymmetricKeyUsage {
     kDecryptKey,

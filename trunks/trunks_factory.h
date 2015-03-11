@@ -9,7 +9,8 @@
 
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/chromeos_export.h>
+
+#include "trunks/trunks_export.h"
 
 namespace trunks {
 
@@ -22,7 +23,7 @@ class TpmUtility;
 // TrunksFactory is an interface to act as a factory for trunks objects. This
 // mechanism assists in injecting mocks for testing. This class is not
 // thread-safe.
-class CHROMEOS_EXPORT TrunksFactory {
+class TRUNKS_EXPORT TrunksFactory {
  public:
   TrunksFactory() {}
   virtual ~TrunksFactory() {}

@@ -10,10 +10,10 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/chromeos_export.h>
 
 #include "trunks/hmac_authorization_delegate.h"
 #include "trunks/password_authorization_delegate.h"
+#include "trunks/trunks_export.h"
 #include "trunks/trunks_factory.h"
 
 namespace trunks {
@@ -34,7 +34,7 @@ namespace trunks {
  * TPM Ownership is taken. This is because starting a session uses the
  * SaltingKey, which is only created after ownership is taken.
  */
-class CHROMEOS_EXPORT AuthorizationSessionImpl: public AuthorizationSession {
+class TRUNKS_EXPORT AuthorizationSessionImpl: public AuthorizationSession {
  public:
   // The constructor for AuthroizationSessionImpl needs a factory. In
   // producation code, this factory is used to access the TPM class to forward

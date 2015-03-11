@@ -11,7 +11,8 @@
 
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/chromeos_export.h>
+
+#include "trunks/trunks_export.h"
 
 namespace trunks {
 
@@ -19,7 +20,7 @@ class Tpm;
 class TrunksProxy;
 
 // TrunksFactoryImpl is the default TrunksFactory implementation.
-class CHROMEOS_EXPORT TrunksFactoryImpl : public TrunksFactory {
+class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
  public:
   TrunksFactoryImpl();
   virtual ~TrunksFactoryImpl();

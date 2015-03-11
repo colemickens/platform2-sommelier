@@ -8,12 +8,12 @@
 #include <string>
 
 #include <base/gtest_prod_util.h>
-#include <chromeos/chromeos_export.h>
 #include <crypto/secure_hash.h>
 #include <gtest/gtest_prod.h>
 
 #include "trunks/authorization_delegate.h"
 #include "trunks/tpm_generated.h"
+#include "trunks/trunks_export.h"
 
 namespace trunks {
 
@@ -47,7 +47,7 @@ const size_t kHashDigestSize = 32;  // 256 bits is SHA256 digest size.
  *  hmac.set_entity_auth_value(...);
  *  tpm.Load(..., &hmac);
  */
-class CHROMEOS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
+class TRUNKS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
  public:
   HmacAuthorizationDelegate();
   ~HmacAuthorizationDelegate() override;

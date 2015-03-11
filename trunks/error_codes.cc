@@ -202,7 +202,7 @@ std::string GetErrorString(TPM_RC error) {
   return ss.str();
 }
 
-TPM_RC CHROMEOS_EXPORT GetFormatOneError(TPM_RC error) {
+TPM_RC GetFormatOneError(TPM_RC error) {
   if (IsFormatOne(error)) {
     return (error & kFormatOneErrorMask);
   }

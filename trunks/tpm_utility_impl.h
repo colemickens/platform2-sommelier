@@ -11,8 +11,9 @@
 
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/chromeos_export.h>
 #include <gtest/gtest_prod.h>
+
+#include "trunks/trunks_export.h"
 
 namespace trunks {
 
@@ -21,7 +22,7 @@ class AuthorizationSession;
 class TrunksFactory;
 
 // A default implementation of TpmUtility.
-class CHROMEOS_EXPORT TpmUtilityImpl : public TpmUtility {
+class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
  public:
   explicit TpmUtilityImpl(const TrunksFactory& factory);
   virtual ~TpmUtilityImpl();

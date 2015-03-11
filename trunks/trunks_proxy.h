@@ -11,17 +11,18 @@
 
 #include <base/callback.h>
 #include <base/memory/weak_ptr.h>
-#include <chromeos/chromeos_export.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+
+#include "trunks/trunks_export.h"
 
 namespace trunks {
 
 // TrunksProxy is a CommandTransceiver implementation that forwards all commands
 // to the trunksd D-Bus daemon. See TrunksService for details on how the
 // commands are handled once they reach trunksd.
-class CHROMEOS_EXPORT TrunksProxy: public CommandTransceiver {
+class TRUNKS_EXPORT TrunksProxy: public CommandTransceiver {
  public:
   TrunksProxy();
   virtual ~TrunksProxy();

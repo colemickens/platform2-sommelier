@@ -8,16 +8,16 @@
 #include "trunks/tpm_state.h"
 
 #include <base/macros.h>
-#include <chromeos/chromeos_export.h>
 
 #include "trunks/tpm_generated.h"
+#include "trunks/trunks_export.h"
 
 namespace trunks {
 
 class TrunksFactory;
 
 // TpmStateImpl is the default implementation of the TpmState interface.
-class CHROMEOS_EXPORT TpmStateImpl : public TpmState {
+class TRUNKS_EXPORT TpmStateImpl : public TpmState {
  public:
   explicit TpmStateImpl(const TrunksFactory& factory);
   virtual ~TpmStateImpl();

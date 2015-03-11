@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 
 # Copyright 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -87,7 +87,8 @@ _HEADER_FILE_INCLUDES = """
 
 #include <base/basictypes.h>
 #include <base/callback_forward.h>
-#include <chromeos/chromeos_export.h>
+
+#include "trunks/trunks_export.h"
 """
 _IMPLEMENTATION_FILE_INCLUDES = """
 #include <string>
@@ -120,7 +121,7 @@ class AuthorizationDelegate;
 class CommandTransceiver;
 """
 _CLASS_BEGIN = """
-class CHROMEOS_EXPORT Tpm {
+class TRUNKS_EXPORT Tpm {
  public:
   // Does not take ownership of |transceiver|.
   explicit Tpm(CommandTransceiver* transceiver) : transceiver_(transceiver) {}
@@ -186,24 +187,24 @@ TPM_RC Parse_%(type)s(
 }
 """
 _SERIALIZE_DECLARATION = """
-TPM_RC CHROMEOS_EXPORT Serialize_%(type)s(
+TRUNKS_EXPORT TPM_RC Serialize_%(type)s(
     const %(type)s& value,
     std::string* buffer);
 
-TPM_RC CHROMEOS_EXPORT Parse_%(type)s(
+TRUNKS_EXPORT TPM_RC Parse_%(type)s(
     std::string* buffer,
     %(type)s* value,
     std::string* value_bytes);
 """
 
 _SIMPLE_TPM2B_HELPERS_DECLARATION = """
-%(type)s CHROMEOS_EXPORT Make_%(type)s(
+TRUNKS_EXPORT %(type)s Make_%(type)s(
     const std::string& bytes);
-std::string CHROMEOS_EXPORT StringFrom_%(type)s(
+TRUNKS_EXPORT std::string StringFrom_%(type)s(
     const %(type)s& tpm2b);
 """
 _COMPLEX_TPM2B_HELPERS_DECLARATION = """
-%(type)s CHROMEOS_EXPORT Make_%(type)s(
+TRUNKS_EXPORT %(type)s Make_%(type)s(
     const %(inner_type)s& inner);
 """
 
