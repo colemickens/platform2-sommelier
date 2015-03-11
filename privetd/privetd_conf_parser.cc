@@ -139,7 +139,7 @@ bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {
         chromeos::string_utils::Split(device_services_str, ',', true, true);
     device_services_.insert(services.begin(), services.end());
     for (const std::string& service : device_services_) {
-      if (service.front() != '_') {
+      if (service.front() == '_') {
         LOG(ERROR) << "Invalid service name: " << service;
         return false;
       }

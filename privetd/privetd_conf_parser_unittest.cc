@@ -52,11 +52,11 @@ class PrivetdConfParserTest : public testing::Test {
     temp_file_ = temp_dir_.path().Append("temp.conf");
   }
 
-  void AssertInvalidConf(const ConfDict& conf_dict) {
+  bool IsValid(const ConfDict& conf_dict) {
     KeyValueStore store;
     FillKeyValueStore(conf_dict, &store);
     PrivetdConfigParser config;
-    EXPECT_FALSE(config.Parse(store));
+    return config.Parse(store);
   }
 
   void FillKeyValueStore(const ConfDict& conf_dict, KeyValueStore* store) {
@@ -78,46 +78,45 @@ class PrivetdConfParserTest : public testing::Test {
 };
 
 TEST_F(PrivetdConfParserTest, ShouldRejectInvalidTimeouts) {
-  AssertInvalidConf({{kConnectTimeout, "-1"}});
-  AssertInvalidConf({{kConnectTimeout, "a"}});
-  AssertInvalidConf({{kConnectTimeout, ""}});
-  AssertInvalidConf({{kConnectTimeout, "30 430"}});
+  EXPECT_FALSE(IsValid({{kConnectTimeout, "-1"}}));
+  EXPECT_FALSE(IsValid({{kConnectTimeout, "a"}}));
+  EXPECT_FALSE(IsValid({{kConnectTimeout, ""}}));
+  EXPECT_FALSE(IsValid({{kConnectTimeout, "30 430"}}));
 }
 
 TEST_F(PrivetdConfParserTest, ShouldRejectInvalidWiFiBootstrapModes) {
-  AssertInvalidConf({{kWiFiBootstrapMode, ""}});
-  AssertInvalidConf({{kWiFiBootstrapMode, "clown_shoes"}});
-  AssertInvalidConf({{kWiFiBootstrapMode, "off is invalid"}});
-  AssertInvalidConf({{kWiFiBootstrapMode, "30"}});
+  EXPECT_FALSE(IsValid({{kWiFiBootstrapMode, ""}}));
+  EXPECT_FALSE(IsValid({{kWiFiBootstrapMode, "clown_shoes"}}));
+  EXPECT_FALSE(IsValid({{kWiFiBootstrapMode, "off is invalid"}}));
+  EXPECT_FALSE(IsValid({{kWiFiBootstrapMode, "30"}}));
 }
 
 TEST_F(PrivetdConfParserTest, ShouldRejectInvalidGcdBootstrapModes) {
-  AssertInvalidConf({{kGcdBootstrapMode, ""}});
-  AssertInvalidConf({{kGcdBootstrapMode, "clown_shoes"}});
-  AssertInvalidConf({{kGcdBootstrapMode, "off is invalid"}});
-  AssertInvalidConf({{kGcdBootstrapMode, "30"}});
+  EXPECT_FALSE(IsValid({{kGcdBootstrapMode, ""}}));
+  EXPECT_FALSE(IsValid({{kGcdBootstrapMode, "clown_shoes"}}));
+  EXPECT_FALSE(IsValid({{kGcdBootstrapMode, "off is invalid"}}));
+  EXPECT_FALSE(IsValid({{kGcdBootstrapMode, "30"}}));
 }
 
 TEST_F(PrivetdConfParserTest, ShouldRejectInvalidServices) {
-  AssertInvalidConf({{kDeviceServices, "abc"}});
-  AssertInvalidConf({{kDeviceServices, "_a,b"}});
+  EXPECT_FALSE(IsValid({{kDeviceServices, "_a,b"}}));
 }
 
 TEST_F(PrivetdConfParserTest, ShouldRejectInvalidDeviceClass) {
-  AssertInvalidConf({{kDeviceClass, ""}});
-  AssertInvalidConf({{kDeviceClass, "a"}});
-  AssertInvalidConf({{kDeviceClass, "aaaa"}});
+  EXPECT_FALSE(IsValid({{kDeviceClass, ""}}));
+  EXPECT_FALSE(IsValid({{kDeviceClass, "a"}}));
+  EXPECT_FALSE(IsValid({{kDeviceClass, "aaaa"}}));
 }
 
 TEST_F(PrivetdConfParserTest, ShouldRejectInvalidModelId) {
-  AssertInvalidConf({{kDeviceModelId, ""}});
-  AssertInvalidConf({{kDeviceModelId, "a"}});
-  AssertInvalidConf({{kDeviceModelId, "bb"}});
-  AssertInvalidConf({{kDeviceModelId, "cccc"}});
+  EXPECT_FALSE(IsValid({{kDeviceModelId, ""}}));
+  EXPECT_FALSE(IsValid({{kDeviceModelId, "a"}}));
+  EXPECT_FALSE(IsValid({{kDeviceModelId, "bb"}}));
+  EXPECT_FALSE(IsValid({{kDeviceModelId, "cccc"}}));
 }
 
 TEST_F(PrivetdConfParserTest, ShouldRejectInvalidName) {
-  AssertInvalidConf({{kDeviceName, ""}});
+  EXPECT_FALSE(IsValid({{kDeviceName, ""}}));
 }
 
 TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
@@ -125,7 +124,7 @@ TEST_F(PrivetdConfParserTest, ShouldParseSettings) {
   const uint32_t kExpectedConnectTimeout{1};
   const uint32_t kExpectedBootstrapTimeout{2};
   const uint32_t kExpectedMonitorTimeout{3};
-  const std::set<std::string> kExpectedDeviceServices{"_a", "_b", "_c"};
+  const std::set<std::string> kExpectedDeviceServices{"a", "b", "xwz"};
   static const char kExpectedDeviceClass[]{"BB"};
   static const char kExpectedDeviceMake[]{"testMade"};
   static const char kExpectedDeviceModel[]{"testModel"};
