@@ -41,6 +41,7 @@ class SHILL_EXPORT RTNLHandler {
   static const int kRequestAddr = 2;
   static const int kRequestRoute = 4;
   static const int kRequestRdnss = 8;
+  static const int kRequestNeighbor = 16;
 
   virtual ~RTNLHandler();
 

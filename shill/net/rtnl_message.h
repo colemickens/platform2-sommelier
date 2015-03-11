@@ -29,7 +29,8 @@ class SHILL_EXPORT RTNLMessage {
     kTypeAddress,
     kTypeRoute,
     kTypeRdnss,
-    kTypeDnssl
+    kTypeDnssl,
+    kTypeNeighbor,
   };
 
   enum Mode {
@@ -104,6 +105,22 @@ class SHILL_EXPORT RTNLMessage {
     unsigned char flags;
   };
 
+  struct NeighborStatus {
+    NeighborStatus()
+        : state(0),
+          flags(0),
+          type(0) {}
+    NeighborStatus(uint16_t state_in,
+                   uint8_t flags_in,
+                   uint8_t type_in)
+        : state(state_in),
+          flags(flags_in),
+          type(type_in) {}
+    uint16_t state;
+    uint8_t flags;
+    uint8_t type;
+  };
+
   struct RdnssOption {
     RdnssOption()
         : lifetime(0) {}
@@ -159,6 +176,10 @@ class SHILL_EXPORT RTNLMessage {
   void set_rdnss_option(const RdnssOption &rdnss_option) {
     rdnss_option_ = rdnss_option;
   }
+  const NeighborStatus &neighbor_status() const { return neighbor_status_; }
+  void set_neighbor_status(const NeighborStatus &neighbor_status) {
+    neighbor_status_ = neighbor_status;
+  }
   // GLint hates "unsigned short", and I don't blame it, but that's the
   // type that's used in the system headers.  Use uint16_t instead and hope
   // that the conversion never ends up truncating on some strange platform.
@@ -194,9 +215,14 @@ class SHILL_EXPORT RTNLMessage {
   SHILL_PRIVATE bool ParseRdnssOption(const uint8_t *data,
                                       int length,
                                       uint32_t lifetime);
+  SHILL_PRIVATE bool DecodeNeighbor(const RTNLHeader *hdr,
+                                    Mode mode,
+                                    rtattr **attr_data,
+                                    int *attr_length);
   SHILL_PRIVATE bool EncodeLink(RTNLHeader *hdr) const;
   SHILL_PRIVATE bool EncodeAddress(RTNLHeader *hdr) const;
   SHILL_PRIVATE bool EncodeRoute(RTNLHeader *hdr) const;
+  SHILL_PRIVATE bool EncodeNeighbor(RTNLHeader *hdr) const;
 
   Type type_;
   Mode mode_;
@@ -208,6 +234,7 @@ class SHILL_EXPORT RTNLMessage {
   LinkStatus link_status_;
   AddressStatus address_status_;
   RouteStatus route_status_;
+  NeighborStatus neighbor_status_;
   RdnssOption rdnss_option_;
   std::unordered_map<uint16_t, ByteString> attributes_;
 

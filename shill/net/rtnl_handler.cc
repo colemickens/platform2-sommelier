@@ -229,6 +229,9 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   } else if ((request_flags_ & kRequestLink) != 0) {
     type = RTNLMessage::kTypeLink;
     flag = kRequestLink;
+  } else if ((request_flags_ & kRequestNeighbor) != 0) {
+    type = RTNLMessage::kTypeNeighbor;
+    flag = kRequestNeighbor;
   } else {
     VLOG(2) << "Done with requests";
     in_request_ = false;
@@ -302,6 +305,9 @@ void RTNLHandler::ParseRTNL(InputData *data) {
           break;
         case RTNLMessage::kTypeRdnss:
           DispatchEvent(kRequestRdnss, msg);
+          break;
+        case RTNLMessage::kTypeNeighbor:
+          DispatchEvent(kRequestNeighbor, msg);
           break;
         case RTNLMessage::kTypeDnssl:
           NOTIMPLEMENTED();

@@ -42,6 +42,10 @@ ACTION(SetInterfaceIndex) {
   }
 }
 
+MATCHER_P(MessageType, message_type, "") {
+  return std::get<0>(arg).type() == message_type;
+}
+
 }  // namespace
 
 class RTNLHandlerTest : public Test {
@@ -68,6 +72,7 @@ class RTNLHandlerTest : public Test {
   static const char kTestDeviceName[];
 
   void AddLink();
+  void AddNeighbor();
   void StartRTNLHandler();
   void StopRTNLHandler();
 
@@ -110,18 +115,37 @@ void RTNLHandlerTest::AddLink() {
   RTNLHandler::GetInstance()->ParseRTNL(&data);
 }
 
-TEST_F(RTNLHandlerTest, AddLinkTest) {
+void RTNLHandlerTest::AddNeighbor() {
+  RTNLMessage message(RTNLMessage::kTypeNeighbor,
+                      RTNLMessage::kModeAdd,
+                      0,
+                      0,
+                      0,
+                      kTestDeviceIndex,
+                      IPAddress::kFamilyIPv4);
+  ByteString encoded(message.Encode());
+  InputData data(encoded.GetData(), encoded.GetLength());
+  RTNLHandler::GetInstance()->ParseRTNL(&data);
+}
+
+TEST_F(RTNLHandlerTest, ListenersInvoked) {
   StartRTNLHandler();
+
   std::unique_ptr<RTNLListener> link_listener(
       new RTNLListener(RTNLHandler::kRequestLink, callback_));
+  std::unique_ptr<RTNLListener> neighbor_listener(
+      new RTNLListener(RTNLHandler::kRequestNeighbor, callback_));
 
-  EXPECT_CALL(*this, HandlerCallback(A<const RTNLMessage &>())).Times(1);
+  EXPECT_CALL(*this, HandlerCallback(A<const RTNLMessage &>()))
+      .With(MessageType(RTNLMessage::kTypeLink));
+  EXPECT_CALL(*this, HandlerCallback(A<const RTNLMessage &>()))
+      .With(MessageType(RTNLMessage::kTypeNeighbor));
 
   AddLink();
+  AddNeighbor();
 
   StopRTNLHandler();
 }
-
 
 TEST_F(RTNLHandlerTest, GetInterfaceName) {
   EXPECT_EQ(-1, RTNLHandler::GetInstance()->GetInterfaceIndex(""));

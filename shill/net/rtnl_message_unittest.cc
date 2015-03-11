@@ -532,6 +532,28 @@ class RTNLMessageTest : public Test {
     EXPECT_EQ(lifetime, rdnss.lifetime);
     EXPECT_EQ(dns_server_addresses, addresses);
   }
+
+  void TestParseNeighbor(const ByteString &packet,
+                         RTNLMessage::Mode mode,
+                         IPAddress::Family family,
+                         int interface_index,
+                         uint16_t state,
+                         uint8_t flags,
+                         uint8_t type) {
+    RTNLMessage msg;
+
+    EXPECT_TRUE(msg.Decode(packet));
+    EXPECT_EQ(RTNLMessage::kTypeNeighbor, msg.type());
+    EXPECT_EQ(mode, msg.mode());
+    EXPECT_EQ(family, msg.family());
+    EXPECT_EQ(interface_index, msg.interface_index());
+
+    RTNLMessage::NeighborStatus neighbor = msg.neighbor_status();
+
+    EXPECT_EQ(neighbor.state, state);
+    EXPECT_EQ(neighbor.flags, flags);
+    EXPECT_EQ(neighbor.type, type);
+  }
 };
 
 TEST_F(RTNLMessageTest, NewLinkWlan0) {
@@ -652,10 +674,31 @@ TEST_F(RTNLMessageTest, AddRouteBusted) {
 }
 
 TEST_F(RTNLMessageTest, AddNeighbor) {
-  // RTNLMessage doesn't parse Add-Neighbor messages -- ensure this fails
-  RTNLMessage msg;
-  EXPECT_FALSE(msg.Decode(
-      ByteString(kAddNeighborMessage, sizeof(kAddNeighborMessage))));
+  TestParseNeighbor(
+      ByteString(kAddNeighborMessage, sizeof(kAddNeighborMessage)),
+      RTNLMessage::kModeAdd,
+      IPAddress::kFamilyIPv4,
+      8,
+      NUD_REACHABLE,
+      0,
+      NDA_DST);
+}
+
+TEST_F(RTNLMessageTest, EncodeDelNeighbor) {
+  RTNLMessage msg(RTNLMessage::kTypeNeighbor,
+                  RTNLMessage::kModeDelete,
+                  0, 1, 2, 0,
+                  IPAddress::kFamilyIPv4);
+  msg.set_neighbor_status(RTNLMessage::NeighborStatus(
+      0, NTF_ROUTER, NDA_LLADDR));
+
+  TestParseNeighbor(msg.Encode(),
+                    RTNLMessage::kModeDelete,
+                    IPAddress::kFamilyIPv4,
+                    0,
+                    0,
+                    NTF_ROUTER,
+                    NDA_LLADDR);
 }
 
 TEST_F(RTNLMessageTest, EncodeRouteAdd) {
@@ -678,7 +721,6 @@ TEST_F(RTNLMessageTest, EncodeRouteAdd) {
   msg.SetAttribute(RTA_GATEWAY, gateway.address());
   msg.SetAttribute(RTA_OIF, ByteString::CreateFromCPUUInt32(12));
   msg.SetAttribute(RTA_PRIORITY, ByteString::CreateFromCPUUInt32(13));
-
 
   TestParseRoute(msg.Encode(),
                  RTNLMessage::kModeAdd,
@@ -703,7 +745,6 @@ TEST_F(RTNLMessageTest, EncodeLinkDel) {
                   0,
                   kInterfaceIndex,
                   IPAddress::kFamilyUnknown);
-
 
   RTNLMessage msg;
   EXPECT_TRUE(msg.Decode(pmsg.Encode()));
