@@ -9,4 +9,4 @@ OUT=$1
 
 sed \
   -e "s/@PV@/${PV}/g" \
-  "libbrillobinder.pc.in" >"${OUT}/libbrillobinder.pc"
+  "libprotobinder.pc.in" >"${OUT}/libprotobinder.pc"
