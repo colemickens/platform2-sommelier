@@ -146,7 +146,8 @@ class ProxyGenerator : public HeaderGenerator {
                                      IndentedText* text);
 
     // Generates ObjectAdded() method.
-    static void AddObjectAdded(const std::vector<Interface>& interfaces,
+    static void AddObjectAdded(const ServiceConfig& config,
+                               const std::vector<Interface>& interfaces,
                                IndentedText* text);
 
     // Generates ObjectRemoved() method.
@@ -159,7 +160,8 @@ class ProxyGenerator : public HeaderGenerator {
                                     IndentedText* text);
 
     // Generates data members of the class.
-    static void AddDataMembers(const std::vector<Interface>& interfaces,
+    static void AddDataMembers(const ServiceConfig& config,
+                               const std::vector<Interface>& interfaces,
                                const std::string& class_name,
                                IndentedText* text);
   };

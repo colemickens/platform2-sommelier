@@ -740,6 +740,7 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   ObjectManagerProxy(const scoped_refptr<dbus::Bus>& bus,
                      const std::string& service_name)
       : bus_{bus},
+        service_name_{service_name},
         dbus_object_manager_{bus->GetObjectManager(
             service_name,
             dbus::ObjectPath{"/org/chromium/Test"})} {
@@ -821,7 +822,7 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
           static_cast<org::chromium::Itf1Proxy::PropertySet*>(
               dbus_object_manager_->GetProperties(object_path, interface_name));
       std::unique_ptr<org::chromium::Itf1Proxy> itf1_proxy{
-        new org::chromium::Itf1Proxy{bus_, property_set}
+        new org::chromium::Itf1Proxy{bus_, service_name_, property_set}
       };
       auto p = itf1_instances_.emplace(object_path, std::move(itf1_proxy));
       if (!on_itf1_added_.is_null())
@@ -830,7 +831,7 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
     }
     if (interface_name == "org.chromium.Itf2") {
       std::unique_ptr<org::chromium::Itf2Proxy> itf2_proxy{
-        new org::chromium::Itf2Proxy{bus_, object_path}
+        new org::chromium::Itf2Proxy{bus_, service_name_, object_path}
       };
       auto p = itf2_instances_.emplace(object_path, std::move(itf2_proxy));
       if (!on_itf2_added_.is_null())
@@ -890,6 +891,7 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   }
 
   scoped_refptr<dbus::Bus> bus_;
+  std::string service_name_;
   dbus::ObjectManager* dbus_object_manager_;
   std::map<dbus::ObjectPath,
            std::unique_ptr<org::chromium::Itf1Proxy>> itf1_instances_;

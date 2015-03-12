@@ -837,10 +837,10 @@ void ProxyGenerator::ObjectManager::GenerateProxy(
   text->AddLineWithOffset("private:", kScopeOffset);
   text->PushOffset(kBlockOffset);
   AddOnPropertyChanged(interfaces, text);
-  AddObjectAdded(interfaces, text);
+  AddObjectAdded(config, interfaces, text);
   AddObjectRemoved(interfaces, text);
   AddCreateProperties(interfaces, class_name, text);
-  AddDataMembers(interfaces, class_name, text);
+  AddDataMembers(config, interfaces, class_name, text);
 
   text->AddLine(StringPrintf("DISALLOW_COPY_AND_ASSIGN(%s);",
                               class_name.c_str()));
@@ -870,6 +870,9 @@ void ProxyGenerator::ObjectManager::AddConstructor(
   text->PushOffset(kLineContinuationOffset);
   text->AddLine(": bus_{bus},");
   text->PushOffset(kBlockOffset);
+  if (config.service_name.empty()) {
+    text->AddLine("service_name_{service_name},");
+  }
   text->AddLine("dbus_object_manager_{bus->GetObjectManager(");
   text->PushOffset(kLineContinuationOffset);
   if (config.service_name.empty()) {
@@ -1037,6 +1040,7 @@ void ProxyGenerator::ObjectManager::AddOnPropertyChanged(
 }
 
 void ProxyGenerator::ObjectManager::AddObjectAdded(
+    const ServiceConfig& config,
     const std::vector<Interface>& interfaces,
     IndentedText* text) {
   text->AddLine("void ObjectAdded(");
@@ -1068,6 +1072,9 @@ void ProxyGenerator::ObjectManager::AddObjectAdded(
     text->PushOffset(kBlockOffset);
     string new_instance = StringPrintf("new %s{bus_",
                                        itf_name.MakeProxyName(true).c_str());
+    if (config.service_name.empty()) {
+      new_instance += ", service_name_";
+    }
     if (itf.path.empty())
       new_instance += ", object_path";
     if (!itf.properties.empty())
@@ -1177,10 +1184,14 @@ void ProxyGenerator::ObjectManager::AddCreateProperties(
 }
 
 void ProxyGenerator::ObjectManager::AddDataMembers(
+    const ServiceConfig& config,
     const std::vector<Interface>& interfaces,
     const std::string& class_name,
     IndentedText* text) {
   text->AddLine("scoped_refptr<dbus::Bus> bus_;");
+  if (config.service_name.empty()) {
+    text->AddLine("std::string service_name_;");
+  }
   text->AddLine("dbus::ObjectManager* dbus_object_manager_;");
   for (const auto& itf : interfaces) {
     NameParser itf_name{itf.name};
