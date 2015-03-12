@@ -5,6 +5,7 @@
 #include "trunks/authorization_session_impl.h"
 
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -36,6 +37,25 @@ class AuthorizationSessionTest : public testing::Test {
     return &(session->hmac_delegate_);
   }
 
+  TPM2B_PUBLIC_KEY_RSA GetValidRSAPublicKey() {
+    const char kValidModulus[] =
+        "A1D50D088994000492B5F3ED8A9C5FC8772706219F4C063B2F6A8C6B74D3AD6B"
+        "212A53D01DABB34A6261288540D420D3BA59ED279D859DE6227A7AB6BD88FADD"
+        "FC3078D465F4DF97E03A52A587BD0165AE3B180FE7B255B7BEDC1BE81CB1383F"
+        "E9E46F9312B1EF28F4025E7D332E33F4416525FEB8F0FC7B815E8FBB79CDABE6"
+        "327B5A155FEF13F559A7086CB8A543D72AD6ECAEE2E704FF28824149D7F4E393"
+        "D3C74E721ACA97F7ADBE2CCF7B4BCC165F7380F48065F2C8370F25F066091259"
+        "D14EA362BAF236E3CD8771A94BDEDA3900577143A238AB92B6C55F11DEFAFB31"
+        "7D1DC5B6AE210C52B008D87F2A7BFF6EB5C4FB32D6ECEC6505796173951A3167";
+    std::vector<uint8> bytes;
+    CHECK(base::HexStringToBytes(kValidModulus, &bytes));
+    CHECK_EQ(bytes.size(), 256u);
+    TPM2B_PUBLIC_KEY_RSA rsa;
+    rsa.size = bytes.size();
+    memcpy(rsa.buffer, bytes.data(), bytes.size());
+    return rsa;
+  }
+
  protected:
   TrunksFactoryForTest factory_;
   NiceMock<MockTpm> mock_tpm_;
@@ -44,8 +64,7 @@ class AuthorizationSessionTest : public testing::Test {
 TEST_F(AuthorizationSessionTest, StartUnboundSuccess) {
   AuthorizationSessionImpl session(factory_);
   TPM2B_PUBLIC public_data;
-  public_data.public_area.unique.rsa.size = 256;
-  public_data.public_area.unique.rsa.buffer[0] = 1;
+  public_data.public_area.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, NULL))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),
                       Return(TPM_RC_SUCCESS)));
@@ -77,8 +96,7 @@ TEST_F(AuthorizationSessionTest, StartUnboundWithBadSaltingKey) {
 TEST_F(AuthorizationSessionTest, StartUnboundFail) {
   AuthorizationSessionImpl session(factory_);
   TPM2B_PUBLIC public_data;
-  public_data.public_area.unique.rsa.size = 256;
-  public_data.public_area.unique.rsa.buffer[0] = 1;
+  public_data.public_area.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, NULL))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),
                       Return(TPM_RC_SUCCESS)));
@@ -92,8 +110,7 @@ TEST_F(AuthorizationSessionTest, StartUnboundFail) {
 TEST_F(AuthorizationSessionTest, StartUnboundWithBadNonce) {
   AuthorizationSessionImpl session(factory_);
   TPM2B_PUBLIC public_data;
-  public_data.public_area.unique.rsa.size = 256;
-  public_data.public_area.unique.rsa.buffer[0] = 1;
+  public_data.public_area.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, NULL))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),
                       Return(TPM_RC_SUCCESS)));
@@ -110,8 +127,7 @@ TEST_F(AuthorizationSessionTest, StartUnboundWithBadNonce) {
 TEST_F(AuthorizationSessionTest, StartBoundSuccess) {
   AuthorizationSessionImpl session(factory_);
   TPM2B_PUBLIC public_data;
-  public_data.public_area.unique.rsa.size = 256;
-  public_data.public_area.unique.rsa.buffer[0] = 1;
+  public_data.public_area.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, NULL))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),
                       Return(TPM_RC_SUCCESS)));
