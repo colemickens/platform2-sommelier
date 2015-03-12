@@ -30,8 +30,8 @@ DEFINE_boolean preserve_stateful ${FLAGS_FALSE} \
   "Don't create a new filesystem for the stateful partition. Be careful \
 using this option as this may make the stateful partition not mountable."
 DEFINE_string arch "" \
-  "Architecture for this image, must be one of 'ARM' or 'INTEL'.  If \
-unset, auto-detect."
+  "Architecture for this image, must be one of 'ARM', 'MIPS', or 'INTEL'.  \
+If unset, auto-detect."
 DEFINE_string payload_image "" "Path to a Chromium OS image to install onto \
 the device's hard drive"
 DEFINE_string gpt_layout "" "Path to a script for pre-defined GPT partition \
@@ -72,13 +72,16 @@ if [ -z "$FLAGS_arch" ]; then
   arm*|aarch64)
     ARCH="ARM"
     ;;
+  mips*)
+    ARCH="MIPS"
+    ;;
   *)
     echo "Error: Failed to auto detect architecture" >&2
     exit 1
   esac
 else
   case ${FLAGS_arch} in
-  INTEL|ARM)
+  INTEL|ARM|MIPS)
     ;;
   *)
     echo "Error: Unknown architecture '$FLAGS_arch'." >& 2
