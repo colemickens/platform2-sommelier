@@ -4,23 +4,22 @@
 
 #include "buffet/registration_status.h"
 
+#include <base/logging.h>
+
 namespace buffet {
 
 std::string StatusToString(RegistrationStatus status) {
   switch (status) {
-    case RegistrationStatus::kOffline:
-      return "offline";
-    case RegistrationStatus::kCloudError:
-      return "cloud_error";
-    case RegistrationStatus::kUnregistered:
-      return "unregistered";
-    case RegistrationStatus::kRegistering:
-      return "registering";
-    case RegistrationStatus::kRegistered:
-      return "registered";
+    case RegistrationStatus::kUnconfigured:
+      return "unconfigured";
+    case RegistrationStatus::kConnecting:
+      return "connecting";
+    case RegistrationStatus::kConnected:
+      return "connected";
     case RegistrationStatus::kInvalidCredentials:
       return "invalid_credentials";
   }
+  CHECK(0) << "Unknown status";
   return "unknown";
 }
 

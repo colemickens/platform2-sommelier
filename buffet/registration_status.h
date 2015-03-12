@@ -11,11 +11,9 @@ namespace buffet {
 
 // See the DBus interface XML file for complete descriptions of these states.
 enum class RegistrationStatus {
-  kOffline,  // We have credentials but are offline.
-  kCloudError,  // We're online, but can't talk to cloud services.
-  kUnregistered,  // We have no credentials.
-  kRegistering,  // We've just been given credentials.
-  kRegistered,  // We're registered and online.
+  kUnconfigured,        // We have no credentials.
+  kConnecting,          // We have credentials but not yet connected.
+  kConnected,           // We're registered and connected to the cloud.
   kInvalidCredentials,  // Our registration has been revoked.
 };
 

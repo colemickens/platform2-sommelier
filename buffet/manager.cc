@@ -71,8 +71,9 @@ void Manager::RegisterAsync(
           std::move(state_store),
           base::Bind(&Manager::OnRegistrationStatusChange,
                      base::Unretained(this))));
-  device_info_->Load();
+  // Reset D-Bus properties.
   OnRegistrationStatusChange(device_info_->GetRegistrationStatus());
+  device_info_->Load();
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(cb);
 }

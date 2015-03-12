@@ -319,8 +319,7 @@ TEST_F(DeviceRegistrationInfoTest, CheckAuthenticationFailure) {
   SetDefaultDeviceRegistration(&data_);
   storage_->Save(&data_);
   EXPECT_TRUE(dev_reg_->Load());
-  EXPECT_EQ(RegistrationStatus::kOffline,
-            dev_reg_->GetRegistrationStatus());
+  EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
 
   transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
                          chromeos::http::request_type::kPost,
@@ -331,16 +330,14 @@ TEST_F(DeviceRegistrationInfoTest, CheckAuthenticationFailure) {
   EXPECT_EQ(1, transport_->GetRequestCount());
   EXPECT_TRUE(error->HasError(buffet::kErrorDomainOAuth2,
                               "unable_to_authenticate"));
-  EXPECT_EQ(RegistrationStatus::kOffline,
-            dev_reg_->GetRegistrationStatus());
+  EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
 }
 
 TEST_F(DeviceRegistrationInfoTest, CheckDeregistration) {
   SetDefaultDeviceRegistration(&data_);
   storage_->Save(&data_);
   EXPECT_TRUE(dev_reg_->Load());
-  EXPECT_EQ(RegistrationStatus::kOffline,
-            dev_reg_->GetRegistrationStatus());
+  EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
 
   transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
                          chromeos::http::request_type::kPost,
@@ -493,7 +490,7 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
   EXPECT_EQ(1,
             storage_->save_count());  // The device info must have been saved.
   EXPECT_EQ(3, transport_->GetRequestCount());
-  EXPECT_EQ(RegistrationStatus::kRegistered, dev_reg_->GetRegistrationStatus());
+  EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
 
   // Validate the device info saved to storage...
   auto storage_data = storage_->Load();
@@ -522,13 +519,13 @@ TEST_F(DeviceRegistrationInfoTest, OOBRegistrationStatus) {
   // After we've been initialized, we should be either offline or unregistered,
   // depending on whether or not we've found credentials.
   EXPECT_TRUE(dev_reg_->Load());
-  EXPECT_EQ(RegistrationStatus::kUnregistered,
+  EXPECT_EQ(RegistrationStatus::kUnconfigured,
             dev_reg_->GetRegistrationStatus());
   // Put some credentials into our state, make sure we call that offline.
   SetDefaultDeviceRegistration(&data_);
   storage_->Save(&data_);
   EXPECT_TRUE(dev_reg_->Load());
-  EXPECT_EQ(RegistrationStatus::kOffline, dev_reg_->GetRegistrationStatus());
+  EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
 }
 
 }  // namespace buffet

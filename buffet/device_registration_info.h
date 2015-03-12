@@ -254,7 +254,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<chromeos::KeyValueStore> config_store_;
 
   // Tracks our current registration status.
-  RegistrationStatus registration_status_{RegistrationStatus::kUnregistered};
+  RegistrationStatus registration_status_{RegistrationStatus::kUnconfigured};
   StatusHandler registration_status_handler_;
 
   friend class TestHelper;

@@ -176,6 +176,7 @@ std::string DeviceRegistrationInfo::GetDeviceId(chromeos::ErrorPtr* error) {
 }
 
 bool DeviceRegistrationInfo::Load() {
+  SetRegistrationStatus(RegistrationStatus::kUnconfigured);
   auto value = storage_->Load();
   const base::DictionaryValue* dict = nullptr;
   if (!value || !value->GetAsDictionary(&dict))
@@ -243,7 +244,6 @@ bool DeviceRegistrationInfo::Load() {
   location_             = location;
 
   if (HaveRegistrationCredentials(nullptr)) {
-    SetRegistrationStatus(RegistrationStatus::kOffline);
     // Wait a significant amount of time for local daemons to publish their
     // state to Buffet before publishing it to the cloud.
     // TODO(wiley) We could do a lot of things here to either expose this
@@ -277,6 +277,7 @@ bool DeviceRegistrationInfo::Save() const {
 }
 
 void DeviceRegistrationInfo::ScheduleStartDevice(const base::TimeDelta& later) {
+  SetRegistrationStatus(RegistrationStatus::kConnecting);
   base::MessageLoop* current = base::MessageLoop::current();
   if (!current)
     return;  // Assume we're in unittests
@@ -414,17 +415,18 @@ void DeviceRegistrationInfo::StartXmpp() {
     LOG(WARNING) << "Failed to watch XMPP file descriptor";
     return;
   }
+
   xmpp_client_->StartStream();
 }
 
 void DeviceRegistrationInfo::OnFileCanReadWithoutBlocking(int fd) {
-  if (xmpp_client_ && xmpp_client_->GetFileDescriptor() == fd) {
-    if (!xmpp_client_->Read()) {
-      // Authentication failed or the socket was closed.
-      if (!fd_watcher_.StopWatchingFileDescriptor()) {
-        LOG(WARNING) << "Failed to stop the watcher";
-      }
-    }
+  if (!xmpp_client_ || xmpp_client_->GetFileDescriptor() != fd)
+    return;
+  if (!xmpp_client_->Read()) {
+    // Authentication failed or the socket was closed.
+    if (!fd_watcher_.StopWatchingFileDescriptor())
+      LOG(WARNING) << "Failed to stop the watcher";
+    return;
   }
 }
 
@@ -587,7 +589,6 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   // We're going to respond with our success immediately and we'll StartDevice
   // shortly after.
   ScheduleStartDevice(base::TimeDelta::FromSeconds(0));
-  SetRegistrationStatus(RegistrationStatus::kRegistered);
   return device_id_;
 }
 
@@ -693,8 +694,12 @@ void DeviceRegistrationInfo::DoCloudRequest(
       chromeos::mime::parameters::kCharset,
       "utf-8")};
 
-  auto request_cb =
-      [success_callback, error_callback](int request_id, ResponsePtr response) {
+  auto status_cb = base::Bind(&DeviceRegistrationInfo::SetRegistrationStatus,
+                              weak_factory_.GetWeakPtr());
+
+  auto request_cb = [success_callback, error_callback, status_cb](
+      int request_id, ResponsePtr response) {
+    status_cb.Run(RegistrationStatus::kConnected);
     chromeos::ErrorPtr error;
 
     std::unique_ptr<base::DictionaryValue> json_resp{
@@ -713,30 +718,29 @@ void DeviceRegistrationInfo::DoCloudRequest(
   };
 
   auto transport = transport_;
-  auto error_callackback_with_reauthorization =
-      base::Bind([method, url, data, mime_type, transport, request_cb, error_cb]
-          (DeviceRegistrationInfo* self,
-          int request_id,
-          const chromeos::Error* error) {
-    if (error->HasError(chromeos::errors::http::kDomain,
-                        std::to_string(chromeos::http::status_code::Denied))) {
-      chromeos::ErrorPtr reauthorization_error;
-      // Forcibly refresh the access token.
-      if (!self->RefreshAccessToken(&reauthorization_error)) {
-        // TODO(antonm): Check if the device has been actually removed.
-        error_cb(request_id, reauthorization_error.get());
-        return;
-      }
-      SendRequestWithRetries(method, url,
-                             data, mime_type,
-                             {self->GetAuthorizationHeader()},
-                             transport,
-                             7,
-                             base::Bind(request_cb), base::Bind(error_cb));
-    } else {
-      error_cb(request_id, error);
-    }
-  }, base::Unretained(this));
+  auto error_callackback_with_reauthorization = base::Bind(
+      [method, url, data, mime_type, transport, request_cb, error_cb,
+       status_cb](DeviceRegistrationInfo* self, int request_id,
+                  const chromeos::Error* error) {
+        status_cb.Run(RegistrationStatus::kConnecting);
+        if (error->HasError(
+                chromeos::errors::http::kDomain,
+                std::to_string(chromeos::http::status_code::Denied))) {
+          chromeos::ErrorPtr reauthorization_error;
+          // Forcibly refresh the access token.
+          if (!self->RefreshAccessToken(&reauthorization_error)) {
+            // TODO(antonm): Check if the device has been actually removed.
+            error_cb(request_id, reauthorization_error.get());
+            return;
+          }
+          SendRequestWithRetries(method, url, data, mime_type,
+                                 {self->GetAuthorizationHeader()}, transport, 7,
+                                 base::Bind(request_cb), base::Bind(error_cb));
+        } else {
+          error_cb(request_id, error);
+        }
+      },
+      base::Unretained(this));
 
   SendRequestWithRetries(method, url,
                          data, mime_type,
@@ -888,10 +892,6 @@ void DeviceRegistrationInfo::PeriodicallyPollCommands() {
       base::Bind(&DeviceRegistrationInfo::PublishStateUpdates,
                  base::Unretained(this)),
       base::TimeDelta::FromSeconds(7));
-  // TODO(wiley): This is the very bare minimum of state to report to local
-  //              services interested in our GCD state.  Build a more
-  //              robust model of our state with respect to the server.
-  SetRegistrationStatus(RegistrationStatus::kRegistered);
 }
 
 void DeviceRegistrationInfo::PublishCommands(const base::ListValue& commands) {

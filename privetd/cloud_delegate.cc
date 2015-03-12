@@ -21,8 +21,8 @@ namespace privetd {
 
 namespace {
 
-using chromeos::VariantDictionary;
 using chromeos::ErrorPtr;
+using chromeos::VariantDictionary;
 
 const int kMaxSetupRetries = 5;
 const int kFirstRetryTimeoutSec = 1;
@@ -83,21 +83,20 @@ class CloudDelegateImpl : public CloudDelegate {
                    weak_factory_.GetWeakPtr()));
     OnManagerPropertyChanged(manager,
                              org::chromium::Buffet::ManagerProxy::StatusName());
-    // TODO(wiley) Get the device id (cloud_id_) here if we're online
   }
 
   void OnManagerPropertyChanged(org::chromium::Buffet::ManagerProxy* manager,
                                 const std::string& property_name) {
     if (property_name != org::chromium::Buffet::ManagerProxy::StatusName())
       return;
-    std::string status{manager->status()};
-    if (status == "offline") {
-      state_ = ConnectionState{ConnectionState::kOffline};
-    } else if (status == "unregistered") {
+
+    const std::string& status = manager->status();
+    if (status == "unconfigured") {
       state_ = ConnectionState{ConnectionState::kUnconfigured};
-    } else if (status == "registering") {
+    } else if (status == "connecting") {
+      // TODO(vitalybuka): Find conditions for kOffline.
       state_ = ConnectionState{ConnectionState::kConnecting};
-    } else if (status == "registered") {
+    } else if (status == "connected") {
       state_ = ConnectionState{ConnectionState::kOnline};
     } else {
       chromeos::ErrorPtr error;
@@ -106,6 +105,7 @@ class CloudDelegateImpl : public CloudDelegate {
           "Unexpected buffet status: %s", status.c_str());
       state_ = ConnectionState{std::move(error)};
     }
+
     on_changed_.Run();
   }
 

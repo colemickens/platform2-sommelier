@@ -43,20 +43,17 @@
       <tp:docstring>
         State of Buffet's cloud registration.
         Possible values include:
+          "unconfigured": Buffet has no credentials, either from an out of box
+                          state, or because device was unregistered.
 
-        "offline": Buffet has credentials, but no connectivity to the Internet.
-        "cloud_error": Buffet has credentials, but cannot contact cloud services
-                       to verify their validity.  This could indicate that cloud
-                       services are down, or that DNS is not resolving.
-        "invalid_credentials": Buffet has credentials, but they are no longer
-                               valid.
-        "unregistered": Buffet has no credentials, either from an out of
-                        box state, or because those credentials have been
-                        rejected by the cloud service.  Note that we
-                        can unregistered with or without Internet connectivity.
-        "registering": Buffet has been provided with credentials, and is
-                       registering with the cloud.
-        "registered": Buffet is online and registered with cloud services.
+          "connecting": Buffet is registered and attempting to connect to the
+                        cloud.
+
+          "connected": Buffet is online and connected to the cloud. Note that
+                       only this state requires internet connectivity.
+
+          "invalid_credentials": Buffet has credentials, but they are no longer
+                                 valid.
       </tp:docstring>
     </property>
   </interface>
