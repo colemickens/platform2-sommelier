@@ -61,6 +61,10 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
                     const uint32_t& objectId,
                     const std::string& newName,
                     DBus::Error& error) override;
+  void CreateDirectory(const std::string& handle,
+                       const uint32_t& parentId,
+                       const std::string& directoryName,
+                       DBus::Error& error) override;
   bool IsAlive(DBus::Error& error) override;
 
   // DeviceEventDelegate implementation.

@@ -161,6 +161,24 @@
       </arg>
     </method>
 
+    <method name="CreateDirectory">
+      <arg name="handle" type="s" direction="in">
+        <tp:docstring>
+          Handle to the storage from OpenStorage.
+        </tp:docstring>
+      </arg>
+      <arg name="parentId" type="u" direction="in">
+        <tp:docstring>
+          Object id of a parent directory.
+        </tp:docstring>
+      </arg>
+      <arg name="directoryName" type="s" direction="in">
+        <tp:docstring>
+          Directory name of a new directory.
+        </tp:docstring>
+      </arg>
+    </method>
+
     <method name="IsAlive">
       <tp:docstring>
         Test method to verify that the MTP service is working.

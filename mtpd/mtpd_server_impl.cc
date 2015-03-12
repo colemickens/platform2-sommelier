@@ -191,6 +191,19 @@ void MtpdServer::RenameObject(const std::string& handle,
   }
 }
 
+void MtpdServer::CreateDirectory(const std::string& handle,
+                                 const uint32_t& parentId,
+                                 const std::string& directoryName,
+                                 DBus::Error& error) {
+  const std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty() || !IsOpenedWithWrite(handle))
+    return InvalidHandle<void>(handle, &error);
+
+  if (!device_manager_.CreateDirectory(storage_name, parentId, directoryName)) {
+    error.set(kMtpdServiceError, "CreateDirectory failed.");
+  }
+}
+
 bool MtpdServer::IsAlive(DBus::Error& error) {
   return true;
 }

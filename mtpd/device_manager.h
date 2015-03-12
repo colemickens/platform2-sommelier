@@ -113,6 +113,11 @@ class DeviceManager {
                     const uint32_t object_id,
                     const std::string& new_name);
 
+  // Creates a directory |directory_name| on |parent_id|.
+  bool CreateDirectory(const std::string& storage_name,
+                       const uint32_t parent_id,
+                       const std::string& directory_name);
+
  protected:
   // Used in testing to add dummy storages.
   // Returns whether the test storage has been successfully added.
@@ -164,6 +169,13 @@ class DeviceManager {
                      uint32_t offset,
                      uint32_t count,
                      std::vector<uint8_t>* out);
+
+  // Deletes |object_id| on |storage_id| of |mtp_device|. For deleting a
+  // directory, the directory should be empty. On success, this method returns
+  // true.
+  bool DeleteObjectInternal(LIBMTP_mtpdevice_t* mtp_device,
+                            const uint32_t storage_id,
+                            const uint32_t object_id);
 
   // Reads the metadata of |file_id| from a storage on |device| with
   // |storage_id|.

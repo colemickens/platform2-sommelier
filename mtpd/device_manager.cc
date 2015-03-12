@@ -285,36 +285,7 @@ bool DeviceManager::DeleteObject(const std::string& storage_name,
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
 
-  // The root node cannot be deleted.
-  if (object_id == kRootFileId)
-    return false;
-
-  // Check the object exists.
-  LIBMTP_file_t* file = LIBMTP_Get_Filemetadata(mtp_device, object_id);
-  if (file == NULL)
-    return false;
-  scoped_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
-
-  // If the object is a directory, check it is empty.
-  bool is_directory = current_file->filetype == LIBMTP_FILETYPE_FOLDER;
-
-  if (is_directory) {
-    uint32_t* children;
-    int num_of_children = LIBMTP_Get_Children(mtp_device,
-                                              storage_id,
-                                              object_id,
-                                              &children);
-    if (num_of_children > 0)
-      free(children);
-
-    if (num_of_children != 0)
-      return false;
-  }
-
-  // Delete an object.
-  int delete_status = LIBMTP_Delete_Object(mtp_device, object_id);
-
-  return delete_status == 0;
+  return DeleteObjectInternal(mtp_device, storage_id, object_id);
 }
 
 bool DeviceManager::RenameObject(const std::string& storage_name,
@@ -344,6 +315,38 @@ bool DeviceManager::RenameObject(const std::string& storage_name,
                                            new_name.c_str());
 
   return rename_status == 0;
+}
+
+bool DeviceManager::CreateDirectory(const std::string& storage_name,
+                                    const uint32_t parent_id,
+                                    const std::string& directory_name) {
+  // Do not allow to create a directory with empty string.
+  if (directory_name.empty())
+    return false;
+
+  // Get the device.
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+
+  // Creates a directory.
+  char* new_directory_name = strdup(directory_name.c_str());
+  int new_directory_object_id = LIBMTP_Create_Folder(mtp_device,
+                                                     new_directory_name,
+                                                     parent_id,
+                                                     storage_id);
+  int directory_name_changed = strcmp(new_directory_name, directory_name.c_str());
+  free(new_directory_name);
+
+  if (directory_name_changed != 0) {
+    // When directory name is changed, handle it as an error.
+    if (new_directory_object_id > 0)
+      DeleteObjectInternal(mtp_device, storage_id, new_directory_object_id);
+    return false;
+  }
+
+  return new_directory_object_id > 0;
 }
 
 bool DeviceManager::AddStorageForTest(const std::string& storage_name,
@@ -422,6 +425,41 @@ bool DeviceManager::ReadFileChunk(LIBMTP_mtpdevice_t* device,
   for (size_t i = 0; i < count; ++i)
     out->push_back(data[i]);
   return true;
+}
+
+bool DeviceManager::DeleteObjectInternal(LIBMTP_mtpdevice_t* mtp_device,
+                                         const uint32_t storage_id,
+                                         const uint32_t object_id) {
+  // The root node cannot be deleted.
+  if (object_id == kRootFileId)
+    return false;
+
+  // Check the object exists.
+  LIBMTP_file_t* file = LIBMTP_Get_Filemetadata(mtp_device, object_id);
+  if (file == NULL)
+    return false;
+  scoped_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
+
+  // If the object is a directory, check it is empty.
+  bool is_directory = current_file->filetype == LIBMTP_FILETYPE_FOLDER;
+
+  if (is_directory) {
+    uint32_t* children;
+    int num_of_children = LIBMTP_Get_Children(mtp_device,
+                                              storage_id,
+                                              object_id,
+                                              &children);
+    if (num_of_children > 0)
+      free(children);
+
+    if (num_of_children != 0)
+      return false;
+  }
+
+  // Delete an object.
+  int delete_status = LIBMTP_Delete_Object(mtp_device, object_id);
+
+  return delete_status == 0;
 }
 
 bool DeviceManager::GetFileInfoInternal(LIBMTP_mtpdevice_t* device,
