@@ -63,7 +63,8 @@ class PeerdClient {
 
 class PeerdClientImpl : public PeerdClient {
  public:
-  explicit PeerdClientImpl(const scoped_refptr<dbus::Bus>& bus);
+  PeerdClientImpl(const scoped_refptr<dbus::Bus>& bus,
+                  const std::string& peerd_service_name);
   ~PeerdClientImpl() override = default;
 
  protected:

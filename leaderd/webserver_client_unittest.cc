@@ -21,7 +21,7 @@ const char kMyUUID[] = "GHI";
 class WebServerClientTest : public testing::Test,
                             public WebServerClient::Delegate {
  public:
-  WebServerClientTest() : webserver_(this) {}
+  WebServerClientTest() : webserver_(this, "protocol_handler_name") {}
 
   std::unique_ptr<base::DictionaryValue> ChallengeRequestHandler(
       const base::DictionaryValue* input) {

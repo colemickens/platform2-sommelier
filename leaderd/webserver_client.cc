@@ -24,13 +24,16 @@ const char kLeadershipScoreKey[] = "score";
 const char kLeadershipGroupKey[] = "group";
 const char kLeadershipIdKey[] = "uuid";
 const char kLeadershipLeaderKey[] = "leader";
-const char kServiceName[] = "org.chromium.leaderd";
 
 }  // namespace
 
-WebServerClient::WebServerClient(Delegate* delegate) : delegate_(delegate) {}
+WebServerClient::WebServerClient(Delegate* delegate,
+                                 const std::string& web_handler_name)
+    : delegate_(delegate),
+      protocol_handler_name_{web_handler_name} {}
 
 void WebServerClient::RegisterAsync(const scoped_refptr<dbus::Bus>& bus,
+                                    const std::string& leaderd_service_name,
                                     AsyncEventSequencer* sequencer) {
   web_server_.OnProtocolHandlerConnected(
       base::Bind(&WebServerClient::OnProtocolHandlerConnected,
@@ -40,7 +43,8 @@ void WebServerClient::RegisterAsync(const scoped_refptr<dbus::Bus>& bus,
                  weak_ptr_factory_.GetWeakPtr()));
 
   web_server_.Connect(
-      bus, kServiceName, sequencer->GetHandler("Server::Connect failed.", true),
+      bus, leaderd_service_name,
+      sequencer->GetHandler("Server::Connect failed.", true),
       base::Bind(&base::DoNothing), base::Bind(&base::DoNothing));
 
   web_server_.GetDefaultHttpHandler()->AddHandlerCallback(
@@ -96,13 +100,13 @@ std::unique_ptr<base::DictionaryValue> WebServerClient::ProcessChallenge(
 
 void WebServerClient::OnProtocolHandlerConnected(
     ProtocolHandler* protocol_handler) {
-  if (protocol_handler->GetName() == ProtocolHandler::kHttp)
+  if (protocol_handler->GetName() == protocol_handler_name_)
     delegate_->SetWebServerPort(*protocol_handler->GetPorts().begin());
 }
 
 void WebServerClient::OnProtocolHandlerDisconnected(
     ProtocolHandler* protocol_handler) {
-  if (protocol_handler->GetName() == ProtocolHandler::kHttp)
+  if (protocol_handler->GetName() == protocol_handler_name_)
     delegate_->SetWebServerPort(0);
 }
 

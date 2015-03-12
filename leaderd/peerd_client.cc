@@ -151,8 +151,9 @@ void PeerdClient::PublishGroups(uint16_t port,
   }
 }
 
-PeerdClientImpl::PeerdClientImpl(const scoped_refptr<dbus::Bus>& bus)
-    : peerd_object_manager_proxy_{bus} {
+PeerdClientImpl::PeerdClientImpl(const scoped_refptr<dbus::Bus>& bus,
+                                 const std::string& peerd_service_name)
+    : peerd_object_manager_proxy_{bus, peerd_service_name} {
   peerd_object_manager_proxy_.SetManagerAddedCallback(base::Bind(
       &PeerdClientImpl::OnPeerdManagerAdded, weak_ptr_factory_.GetWeakPtr()));
   peerd_object_manager_proxy_.SetManagerRemovedCallback(base::Bind(

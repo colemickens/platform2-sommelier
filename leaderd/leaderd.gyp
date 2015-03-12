@@ -29,7 +29,7 @@
           #Import D - Bus bindings from peerd.
           'action_name': 'generate-peerd-proxies',
           'variables': {
-            'dbus_service_config': '../peerd/dbus_bindings/dbus-service-config.json',
+            'dbus_service_config': 'dbus_bindings/peerd-dbus-service-config.json',
             'proxy_output_file': 'include/peerd/dbus-proxies.h'
           },
           'sources': [

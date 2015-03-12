@@ -32,10 +32,12 @@ class WebServerClient {
                                  std::string* out_my_uuid) = 0;
   };
 
-  explicit WebServerClient(Delegate* delegate);
+  WebServerClient(Delegate* delegate,
+                  const std::string& web_handler_name);
   virtual ~WebServerClient() = default;
 
   void RegisterAsync(const scoped_refptr<dbus::Bus>& bus,
+                     const std::string& leaderd_service_name,
                      chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
  private:
@@ -50,6 +52,7 @@ class WebServerClient {
       libwebserv::ProtocolHandler* protocol_handler);
 
   Delegate* delegate_;
+  const std::string protocol_handler_name_;
   libwebserv::Server web_server_;
   base::WeakPtrFactory<WebServerClient> weak_ptr_factory_{this};
 
