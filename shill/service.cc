@@ -843,6 +843,10 @@ bool Service::HasStaticIPAddress() const {
   return static_ip_parameters().ContainsAddress();
 }
 
+bool Service::HasStaticNameServers() const {
+  return static_ip_parameters().ContainsNameServers();
+}
+
 void Service::SetAutoConnect(bool connect) {
   if (auto_connect() == connect) {
     return;

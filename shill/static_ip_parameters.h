@@ -50,6 +50,9 @@ class StaticIPParameters {
   // Return whether configuration parameters contain an address property.
   bool ContainsAddress() const;
 
+  // Return whether configuration parameters contain a namerservers property.
+  bool ContainsNameServers() const;
+
  private:
   friend class StaticIPParametersTest;
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);

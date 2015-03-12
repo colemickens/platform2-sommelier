@@ -587,6 +587,8 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service, HasStaticNameServers())
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
   EXPECT_CALL(*service, SetConnection(NotNullRefPtr()));
   EXPECT_CALL(*GetDeviceMockAdaptor(),
@@ -1368,7 +1370,7 @@ TEST_F(DeviceTest, PrependIPv4DNSServers) {
     OnIPConfigUpdated(ipconfig.get());
 
     vector<string> expected = {"8.8.8.8"};
-    EXPECT_EQ(device_->ipconfig()->properties().dns_servers, expected);
+    EXPECT_EQ(expected, device_->ipconfig()->properties().dns_servers);
   }
   {
     IPConfig::Properties properties;
@@ -1382,7 +1384,7 @@ TEST_F(DeviceTest, PrependIPv4DNSServers) {
     OnIPConfigUpdated(ipconfig.get());
 
     vector<string> expected = {"8.8.8.8"};
-    EXPECT_EQ(device_->ipconfig()->properties().dns_servers, expected);
+    EXPECT_EQ(expected, device_->ipconfig()->properties().dns_servers);
   }
   {
     IPConfig::Properties properties;
@@ -1396,7 +1398,7 @@ TEST_F(DeviceTest, PrependIPv4DNSServers) {
     OnIPConfigUpdated(ipconfig.get());
 
     vector<string> expected = {"8.8.4.4", "8.8.8.8"};
-    EXPECT_EQ(device_->ipconfig()->properties().dns_servers, expected);
+    EXPECT_EQ(expected, device_->ipconfig()->properties().dns_servers);
   }
 }
 
@@ -1416,16 +1418,16 @@ TEST_F(DeviceTest, DISABLED_PrependIPv6DNSServers) {
   device_->OnIPv6DnsServerAddressesChanged();
 
   vector<string> expected = {"2001:4860:4860::8888", "2001:4860:4860::8844"};
-  EXPECT_EQ(device_->ip6config()->properties().dns_servers, expected);
+  EXPECT_EQ(expected, device_->ip6config()->properties().dns_servers);
 
   manager.SetPrependDNSServers("8.8.8.8");
   device_->OnIPv6DnsServerAddressesChanged();
-  EXPECT_EQ(device_->ip6config()->properties().dns_servers, expected);
+  EXPECT_EQ(expected, device_->ip6config()->properties().dns_servers);
 
   manager.SetPrependDNSServers("2001:4860:4860::8844");
   device_->OnIPv6DnsServerAddressesChanged();
   std::reverse(expected.begin(), expected.end());
-  EXPECT_EQ(device_->ip6config()->properties().dns_servers, expected);
+  EXPECT_EQ(expected, device_->ip6config()->properties().dns_servers);
 }
 
 TEST_F(DeviceTest, PrependWithStaticConfiguration) {
@@ -1436,33 +1438,37 @@ TEST_F(DeviceTest, PrependWithStaticConfiguration) {
 
   scoped_refptr<IPConfig> ipconfig = new IPConfig(control_interface(),
                                                   kDeviceName);
+  device_->set_ipconfig(ipconfig);
 
   scoped_refptr<MockService> service = new MockService(control_interface(),
                                                        dispatcher(),
                                                        metrics(),
                                                        &manager);
-
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
   SelectService(service);
 
   auto parameters = service->mutable_static_ip_parameters();
   parameters->args_.SetString(kAddressProperty, "1.1.1.1");
-  parameters->args_.SetStrings(kNameServersProperty,
-                               {"8.8.4.4", "8.8.8.8", "2.2.2.2"});
   parameters->args_.SetInt(kPrefixlenProperty, 16);
 
   scoped_refptr<MockConnection> connection = new MockConnection(&device_info_);
   SetConnection(connection);
 
-  device_->set_ipconfig(ipconfig);
+  // Ensure that in the absence of statically configured nameservers that the
+  // prepend DNS servers are still prepended.
+  const vector<string> servers = {"8.8.8.8"};
+  EXPECT_CALL(*service, HasStaticNameServers()).WillOnce(Return(false));
   OnIPConfigUpdated(ipconfig.get());
-
-  // We expect that the prepend DNS servers have been added to the resolver set,
-  // and that the prepend servers (if present in the static configuration) have
-  // been pulled to the front.
-  const vector<string> servers = {"8.8.8.8", "8.8.4.4", "2.2.2.2"};
   EXPECT_EQ(servers, device_->ipconfig()->properties().dns_servers);
+
+  // Ensure that when nameservers are statically configured that the prepend DNS
+  // servers are not used.
+  const vector<string> static_servers = {"4.4.4.4", "5.5.5.5"};
+  parameters->args_.SetStrings(kNameServersProperty, static_servers);
+  EXPECT_CALL(*service, HasStaticNameServers()).WillOnce(Return(true));
+  OnIPConfigUpdated(ipconfig.get());
+  EXPECT_EQ(static_servers, device_->ipconfig()->properties().dns_servers);
 }
 
 class DevicePortalDetectionTest : public DeviceTest {

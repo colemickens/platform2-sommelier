@@ -666,6 +666,13 @@ bool Device::IsUsingStaticIP() const {
   return selected_service_->HasStaticIPAddress();
 }
 
+bool Device::IsUsingStaticNameServers() const {
+  if (!selected_service_) {
+    return false;
+  }
+  return selected_service_->HasStaticNameServers();
+}
+
 bool Device::AcquireIPConfig() {
   return AcquireIPConfigWithLeaseName(string());
 }
@@ -865,7 +872,9 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,
       ipconfig->ReleaseIP(IPConfig::kReleaseReasonStaticIP);
     }
   }
-  PrependDNSServersIntoIPConfig(ipconfig);
+  if (!IsUsingStaticNameServers()) {
+    PrependDNSServersIntoIPConfig(ipconfig);
+  }
   SetupConnection(ipconfig);
   UpdateIPConfigsProperty();
 }

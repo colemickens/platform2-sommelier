@@ -280,6 +280,10 @@ bool StaticIPParameters::ContainsAddress() const {
       args_.ContainsInt(kPrefixlenProperty);
 }
 
+bool StaticIPParameters::ContainsNameServers() const {
+  return args_.ContainsStrings(kNameServersProperty);
+}
+
 void StaticIPParameters::ClearMappedProperty(
     const size_t &index, Error *error) {
   CHECK(index < arraysize(kProperties));

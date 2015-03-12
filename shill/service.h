@@ -338,6 +338,10 @@ class Service : public base::RefCounted<Service> {
   // parameters, false otherwise.
   virtual bool HasStaticIPAddress() const;
 
+  // Returns true if this service contains nameservers in its static IP
+  // parameters, false otherwise.
+  virtual bool HasStaticNameServers() const;
+
   // The inherited class that needs to send metrics after the service has
   // transitioned to the ready state should override this method.
   // |time_resume_to_ready_milliseconds| holds the elapsed time from when
