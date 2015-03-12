@@ -24,7 +24,7 @@
 #include "buffet/xmpp/xmpp_client.h"
 
 namespace base {
-class Value;
+class DictionaryValue;
 }  // namespace base
 
 namespace chromeos {
@@ -112,7 +112,8 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
 
   // Gets the full device description JSON object, or nullptr if
   // the device is not registered or communication failure.
-  std::unique_ptr<base::Value> GetDeviceInfo(chromeos::ErrorPtr* error);
+  std::unique_ptr<base::DictionaryValue> GetDeviceInfo(
+      chromeos::ErrorPtr* error);
 
   // Registers the device.
   //

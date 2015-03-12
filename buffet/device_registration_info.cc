@@ -460,10 +460,10 @@ DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
   return resource;
 }
 
-std::unique_ptr<base::Value> DeviceRegistrationInfo::GetDeviceInfo(
+std::unique_ptr<base::DictionaryValue> DeviceRegistrationInfo::GetDeviceInfo(
     chromeos::ErrorPtr* error) {
   if (!CheckRegistration(error))
-    return std::unique_ptr<base::Value>();
+    return std::unique_ptr<base::DictionaryValue>();
 
   // TODO(antonm): Switch to DoCloudRequest later.
   auto response = chromeos::http::GetAndBlock(
@@ -476,10 +476,10 @@ std::unique_ptr<base::Value> DeviceRegistrationInfo::GetDeviceInfo(
       LOG(WARNING) << "Failed to retrieve the device info. Response code = "
                    << status_code;
       ParseGCDError(json.get(), error);
-      return std::unique_ptr<base::Value>();
+      return std::unique_ptr<base::DictionaryValue>();
     }
   }
-  return std::unique_ptr<base::Value>(json.release());
+  return json;
 }
 
 std::string DeviceRegistrationInfo::RegisterDevice(
