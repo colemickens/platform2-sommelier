@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBBRILLOBINDER_IBINDER_H_
-#define LIBBRILLOBINDER_IBINDER_H_
+#ifndef LIBPROTOBINDER_IBINDER_H_
+#define LIBPROTOBINDER_IBINDER_H_
 
 #define BINDER_EXPORT __attribute__((visibility("default")))
 
@@ -12,7 +12,7 @@
 
 #include <linux/android/binder.h>
 
-namespace brillobinder {
+namespace protobinder {
 
 class Parcel;
 class BinderHost;
@@ -38,12 +38,14 @@ class BINDER_EXPORT IBinder {
   virtual ~IBinder();
 
   virtual int Transact(uint32_t code,
-                       Parcel& data,
+                       const Parcel& data,
                        Parcel* reply,
                        uint32_t flags) = 0;
 
   virtual BinderHost* GetBinderHost();
   virtual BinderProxy* GetBinderProxy();
 };
-}
-#endif
+
+}  // namespace protobinder
+
+#endif  // LIBPROTOBINDER_IBINDER_H_

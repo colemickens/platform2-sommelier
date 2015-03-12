@@ -2,18 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBBRILLOBINDER_PARCEL_H_
-#define LIBBRILLOBINDER_PARCEL_H_
+#ifndef LIBPROTOBINDER_PARCEL_H_
+#define LIBPROTOBINDER_PARCEL_H_
 
 #include <stdint.h>
 #include <stdlib.h>
+
 #include <linux/android/binder.h>
 
 #include <string>
 
 #define BINDER_EXPORT __attribute__((visibility("default")))
 
-namespace brillobinder {
+namespace protobinder {
 
 class IBinder;
 
@@ -50,7 +51,7 @@ class BINDER_EXPORT Parcel {
   T readAligned();
 
   uint32_t ReadInt32();
-  //bool ReadInt32(uint32_t* val);  // TODO(leecam): Change all reads to this.
+  // bool ReadInt32(uint32_t* val);  // TODO(leecam): Change all reads to this.
   std::string* ReadString16();
   bool ReadString(std::string* new_string);
   IBinder* ReadStrongBinder();
@@ -62,7 +63,7 @@ class BINDER_EXPORT Parcel {
 
   bool Read(void* data, size_t len);
 
-  void* Data() const { return (void*)data_; }
+  void* Data() const { return reinterpret_cast<void*>(data_); }
   size_t Len() const { return data_len_; }
   size_t Capacity() const { return data_capacity_; }
   bool SetCapacity(size_t capacity);
@@ -112,6 +113,6 @@ class BINDER_EXPORT Parcel {
   release_func owners_release_function_;
 };
 
-}  // namespace brillobinder
+}  // namespace protobinder
 
-#endif
+#endif  // LIBPROTOBINDER_PARCEL_H_

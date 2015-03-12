@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "binder_proxy.h"
+#include "libprotobinder/binder_proxy.h"
 
 #include <stdint.h>
 #include <stdio.h>
 
-#include "binder_manager.h"
+#include "libprotobinder/binder_manager.h"
 
-namespace brillobinder {
+namespace protobinder {
 
 BinderProxy::BinderProxy(uint32_t handle) : handle_(handle) {
   BinderManager::GetBinderManager()->IncWeakHandle(handle);
@@ -20,7 +20,7 @@ BinderProxy::~BinderProxy() {
 }
 
 int BinderProxy::Transact(uint32_t code,
-                          Parcel& data,
+                          const Parcel& data,
                           Parcel* reply,
                           uint32_t flags) {
   return BinderManager::GetBinderManager()->Transact(handle_, code, data, reply,
@@ -30,4 +30,5 @@ int BinderProxy::Transact(uint32_t code,
 BinderProxy* BinderProxy::GetBinderProxy() {
   return this;
 }
-}
+
+}  // namespace protobinder

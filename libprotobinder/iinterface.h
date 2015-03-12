@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBBRILLOBINDER_IINTERFACE_H_
-#define LIBBRILLOBINDER_IINTERFACE_H_
+#ifndef LIBPROTOBINDER_IINTERFACE_H_
+#define LIBPROTOBINDER_IINTERFACE_H_
 
-#include "ibinder.h"
-#include "binder_host.h"
-#include "binder_proxy_interface_base.h"
+#include "libprotobinder/binder_host.h"
+#include "libprotobinder/binder_proxy_interface_base.h"
+#include "libprotobinder/ibinder.h"
 
 #define BINDER_EXPORT __attribute__((visibility("default")))
 
-namespace brillobinder {
+namespace protobinder {
 // AIDL class inherits from this.
 // Just need some basic stuff to return a binder.
 // Mainly interface holder to force both sides to implement the methods.
@@ -32,7 +32,8 @@ template <typename INTERFACE>
 class BINDER_EXPORT BinderProxyInterface : public INTERFACE,
                                            public BinderProxyInterfaceBase {
  public:
-  BinderProxyInterface(IBinder* remote) : BinderProxyInterfaceBase(remote) {}
+  explicit BinderProxyInterface(IBinder* remote)
+      : BinderProxyInterfaceBase(remote) {}
 
  protected:
   virtual ~BinderProxyInterface() {}
@@ -59,6 +60,7 @@ inline INTERFACE* BinderToInterface(IBinder* obj) {
   }                                                       \
   I##INTERFACE::I##INTERFACE() {}                         \
   I##INTERFACE::~I##INTERFACE() {}
-}
 
-#endif
+}  // namespace protobinder
+
+#endif  // LIBPROTOBINDER_IINTERFACE_H_

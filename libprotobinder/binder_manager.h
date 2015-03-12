@@ -6,17 +6,17 @@
 // All interactions with the binder driver are implemented
 // by this class.
 
-#ifndef LIBBRILLOBINDER_BINDER_MANAGER_H_
-#define LIBBRILLOBINDER_BINDER_MANAGER_H_
+#ifndef LIBPROTOBINDER_BINDER_MANAGER_H_
+#define LIBPROTOBINDER_BINDER_MANAGER_H_
 
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
 
-#include "parcel.h"
+#include "libprotobinder/parcel.h"
 
 #define BINDER_EXPORT __attribute__((visibility("default")))
 
-namespace brillobinder {
+namespace protobinder {
 
 class BINDER_EXPORT BinderManager {
  public:
@@ -67,6 +67,6 @@ class BINDER_EXPORT BinderManager {
   Parcel in_commands_;
 };
 
-}  // namespace brillobinder
+}  // namespace protobinder
 
-#endif
+#endif  // LIBPROTOBINDER_BINDER_MANAGER_H_

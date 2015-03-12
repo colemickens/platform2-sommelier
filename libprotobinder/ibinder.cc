@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "ibinder.h"
+#include "libprotobinder/ibinder.h"
 
 #include <stddef.h>
 
-namespace brillobinder {
+namespace protobinder {
 
 IBinder::IBinder() {
 }
@@ -20,4 +20,5 @@ BinderHost* IBinder::GetBinderHost() {
 BinderProxy* IBinder::GetBinderProxy() {
   return NULL;
 }
-}
+
+}  // namespace protobinder

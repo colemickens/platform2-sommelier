@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "binder_host.h"
+#include "libprotobinder/binder_host.h"
 
 #include <stdint.h>
 #include <stdio.h>
 
-#include "protobinder.h"
-#include "parcel.h"
+#include "libprotobinder/parcel.h"
+#include "libprotobinder/protobinder.h"
 
-namespace brillobinder {
+namespace protobinder {
 
 BinderHost::BinderHost() {
 }
@@ -19,7 +19,7 @@ BinderHost::~BinderHost() {
 }
 
 int BinderHost::Transact(uint32_t code,
-                         Parcel& data,
+                         const Parcel& data,
                          Parcel* reply,
                          uint32_t flags) {
   int ret;
@@ -31,7 +31,7 @@ int BinderHost::Transact(uint32_t code,
 
 // Is called by BinderManager...
 int BinderHost::OnTransact(uint32_t code,
-                           Parcel& data,
+                           const Parcel& data,
                            Parcel* reply,
                            uint32_t flags) {
   printf("OnTransact: Unknown code%d\n", code);
@@ -42,4 +42,4 @@ BinderHost* BinderHost::GetBinderHost() {
   return this;
 }
 
-}  // namespace brillobinder
+}  // namespace protobinder

@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "iservice_manager.h"
+#include "libprotobinder/iservice_manager.h"
 
 #include <stdint.h>
 #include <stdio.h>
 
-#include "protobinder.h"
-#include "binder_proxy.h"
-#include "parcel.h"
+#include "libprotobinder/binder_proxy.h"
+#include "libprotobinder/parcel.h"
+#include "libprotobinder/protobinder.h"
 
-namespace brillobinder {
+namespace protobinder {
 
 IServiceManager* g_service_manager = NULL;
 
@@ -26,7 +26,7 @@ IServiceManager* GetServiceManager() {
 
 class IServiceManagerProxy : public BinderProxyInterface<IServiceManager> {
  public:
-  IServiceManagerProxy(IBinder* impl)
+  explicit IServiceManagerProxy(IBinder* impl)
       : BinderProxyInterface<IServiceManager>(impl) {}
 
   virtual int AddService(const char* name, IBinder* binder) {
@@ -53,4 +53,5 @@ class IServiceManagerProxy : public BinderProxyInterface<IServiceManager> {
 };
 
 IMPLEMENT_META_INTERFACE(ServiceManager, "Test")
-}
+
+}  // namespace protobinder

@@ -2,20 +2,20 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBBRILLOBINDER_BINDER_PROXY_INTERFACE_BASE_H_
-#define LIBBRILLOBINDER_BINDER_PROXY_INTERFACE_BASE_H_
+#ifndef LIBPROTOBINDER_BINDER_PROXY_INTERFACE_BASE_H_
+#define LIBPROTOBINDER_BINDER_PROXY_INTERFACE_BASE_H_
 
 #include <stdint.h>
 
-#include "ibinder.h"
+#include "libprotobinder/ibinder.h"
 
 #define BINDER_EXPORT __attribute__((visibility("default")))
 
-namespace brillobinder {
+namespace protobinder {
 
 class BINDER_EXPORT BinderProxyInterfaceBase {
  public:
-  BinderProxyInterfaceBase(IBinder* binder);
+  explicit BinderProxyInterfaceBase(IBinder* binder);
   ~BinderProxyInterfaceBase();
 
   inline IBinder* Remote() { return remote_; }
@@ -23,6 +23,7 @@ class BINDER_EXPORT BinderProxyInterfaceBase {
  private:
   IBinder* remote_;
 };
-}
 
-#endif
+}  // namespace protobinder
+
+#endif  // LIBPROTOBINDER_BINDER_PROXY_INTERFACE_BASE_H_

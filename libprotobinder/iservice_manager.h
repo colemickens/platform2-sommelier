@@ -2,17 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBBRILLOBINDER_ISERVICE_MANAGER_H_
-#define LIBBRILLOBINDER_ISERVICE_MANAGER_H_
+#ifndef LIBPROTOBINDER_ISERVICE_MANAGER_H_
+#define LIBPROTOBINDER_ISERVICE_MANAGER_H_
 
 #include <stdint.h>
 
-#include "ibinder.h"
-#include "iinterface.h"
+#include "libprotobinder/ibinder.h"
+#include "libprotobinder/iinterface.h"
 
 #define BINDER_EXPORT __attribute__((visibility("default")))
 
-namespace brillobinder {
+namespace protobinder {
 
 class BINDER_EXPORT IServiceManager : public IInterface {
  public:
@@ -33,12 +33,13 @@ class BINDER_EXPORT IServiceManagerHostInterface
     : BinderHostInterface<IServiceManager> {
  public:
   virtual int OnTransact(uint32_t code,
-                         Parcel& data,
+                         const Parcel& data,
                          Parcel* reply,
                          uint32_t flags);
 };
 
 BINDER_EXPORT IServiceManager* GetServiceManager();
-}
 
-#endif
+}  // namespace protobinder
+
+#endif  // LIBPROTOBINDER_ISERVICE_MANAGER_H_

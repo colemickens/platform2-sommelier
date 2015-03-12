@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "binder_proxy_interface_base.h"
+#include "libprotobinder/binder_proxy_interface_base.h"
 
 #include <stdint.h>
 #include <stdio.h>
 
-#include "binder_manager.h"
+#include "libprotobinder/binder_manager.h"
 
-namespace brillobinder {
+namespace protobinder {
 
 BinderProxyInterfaceBase::BinderProxyInterfaceBase(IBinder* binder) {
   remote_ = binder;
@@ -17,4 +17,5 @@ BinderProxyInterfaceBase::BinderProxyInterfaceBase(IBinder* binder) {
 
 BinderProxyInterfaceBase::~BinderProxyInterfaceBase() {
 }
-}
+
+}  // namespace protobinder

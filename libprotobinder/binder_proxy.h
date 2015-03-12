@@ -2,26 +2,29 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBBRILLOBINDER_BINDER_PROXY_H_
-#define LIBBRILLOBINDER_BINDER_PROXY_H_
+#ifndef LIBPROTOBINDER_BINDER_PROXY_H_
+#define LIBPROTOBINDER_BINDER_PROXY_H_
 
 #include <stdint.h>
 
-#include "ibinder.h"
+#include "libprotobinder/ibinder.h"
 
 #define BINDER_EXPORT __attribute__((visibility("default")))
 
-namespace brillobinder {
+namespace protobinder {
 
 class Parcel;
 
 // Maintanins the client side of a binder.
 class BINDER_EXPORT BinderProxy : public IBinder {
  public:
-  BinderProxy(uint32_t handle);
+  explicit BinderProxy(uint32_t handle);
   ~BinderProxy();
 
-  int Transact(uint32_t code, Parcel& data, Parcel* reply, uint32_t flags);
+  int Transact(uint32_t code,
+               const Parcel& data,
+               Parcel* reply,
+               uint32_t flags);
 
   uint32_t Handle() { return handle_; }
 
@@ -31,6 +34,7 @@ class BINDER_EXPORT BinderProxy : public IBinder {
   // Binder handle
   const uint32_t handle_;
 };
-}
 
-#endif
+}  // namespace protobinder
+
+#endif  // LIBPROTOBINDER_BINDER_PROXY_H_

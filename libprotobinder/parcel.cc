@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "parcel.h"
+#include "libprotobinder/parcel.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -11,12 +11,12 @@
 
 #include <string>
 
-#include "binder_proxy.h"
-#include "binder_host.h"
+#include "libprotobinder/binder_host.h"
+#include "libprotobinder/binder_proxy.h"
 
 #define PAD_SIZE(s) (((s) + 3) & ~3)
 
-namespace brillobinder {
+namespace protobinder {
 
 Parcel::Parcel()
     : data_(NULL),
@@ -69,7 +69,7 @@ bool Parcel::SetCapacity(size_t capacity) {
   if (capacity < data_capacity_)
     return false;
   size_t new_capacity = PAD_SIZE(capacity);
-  uint8_t* new_data = (uint8_t*)realloc(data_, new_capacity);
+  uint8_t* new_data = reinterpret_cast<uint8_t*>(realloc(data_, new_capacity));
   if (new_data == NULL)
     return false;
   data_ = new_data;
@@ -95,7 +95,7 @@ bool Parcel::Grow(size_t len) {
   size_t new_capacity = PAD_SIZE(data_capacity_ + len) * 2;
   if (new_capacity < data_capacity_)
     return false;
-  uint8_t* new_data = (uint8_t*)realloc(data_, new_capacity);
+  uint8_t* new_data = reinterpret_cast<uint8_t*>(realloc(data_, new_capacity));
   if (new_data == NULL)
     return false;
   data_ = new_data;
@@ -157,7 +157,7 @@ bool Parcel::WriteString16FromCString(const char* str) {
   size_t alloc_len = (len + 1) * sizeof(uint16_t);
   if (alloc_len < len)
     return false;
-  uint16_t* buf = (uint16_t*)AllocatePaddedBuffer(alloc_len);
+  uint16_t* buf = reinterpret_cast<uint16_t*>(AllocatePaddedBuffer(alloc_len));
   if (buf == NULL)
     return false;
   while (*str)
@@ -176,7 +176,7 @@ bool Parcel::WriteString(const std::string str) {
   size_t alloc_len = (len + 1) * sizeof(char);
   if (alloc_len < len)
     return false;
-  char* buf = (char*)AllocatePaddedBuffer(alloc_len);
+  void* buf = AllocatePaddedBuffer(alloc_len);
   if (buf == NULL)
     return false;
   memcpy(buf, str.c_str(), len);
@@ -245,7 +245,7 @@ bool Parcel::WriteObject(const flat_binder_object& object) {
     if (new_capacity < objects_capacity_)
       return false;
     binder_size_t* new_objects =
-        (binder_size_t*)realloc(objects_, new_capacity);
+        reinterpret_cast<binder_size_t*>(realloc(objects_, new_capacity));
     if (new_objects == NULL)
       return false;
     objects_ = new_objects;
@@ -280,7 +280,7 @@ bool Parcel::WriteParcel(Parcel* parcel) {
     if (new_capacity < required_object_count)
       return false;
     binder_size_t* new_objects =
-        (binder_size_t*)realloc(objects_, new_capacity);
+        reinterpret_cast<binder_size_t*>(realloc(objects_, new_capacity));
     if (new_objects == NULL)
       return false;
     objects_ = new_objects;
@@ -291,7 +291,7 @@ bool Parcel::WriteParcel(Parcel* parcel) {
   if (!Write(parcel->Data(), parcel->Len()))
     return false;
 
-  for(size_t i = 0; i < parcel->ObjectCount(); i++) {
+  for (size_t i = 0; i < parcel->ObjectCount(); i++) {
     objects_[objects_count_] = base + parcel->ObjectData()[i];
     objects_count_++;
   }
@@ -382,7 +382,7 @@ bool Parcel::Read(void* data, size_t len) {
 
 std::string* Parcel::ReadString16() {
   uint32_t len = ReadInt32();
-  uint16_t* buf = (uint16_t*)GetPaddedBuffer(len);
+  uint16_t* buf = reinterpret_cast<uint16_t*>(GetPaddedBuffer(len));
   if (buf == NULL)
     return NULL;
   std::string* new_string = new std::string();
@@ -393,7 +393,7 @@ std::string* Parcel::ReadString16() {
 
 bool Parcel::ReadString(std::string* new_string) {
   uint32_t len = ReadInt32();
-  char* buf = (char*)GetPaddedBuffer(len);
+  char* buf = reinterpret_cast<char*>(GetPaddedBuffer(len));
   if (buf == NULL)
     return false;
   for (uint32_t i = 0; i < len; i++)
@@ -408,7 +408,7 @@ const flat_binder_object* Parcel::ReadObject() {
     return NULL;
   const flat_binder_object* obj =
       reinterpret_cast<const flat_binder_object*>(data_ + data_pos_);
-  // TODO: Validate this object
+  // TODO(leecam): Validate this object.
   data_pos_ += sizeof(flat_binder_object);
   return obj;
 }
@@ -424,7 +424,7 @@ const flat_binder_object* Parcel::GetObjectAtOffset(size_t offset) {
     return NULL;
   const flat_binder_object* obj =
       reinterpret_cast<const flat_binder_object*>(data_ + base);
-  // TODO: Validate this object
+  // TODO(leecam): Validate this object
   return obj;
 }
 
@@ -462,4 +462,5 @@ bool Parcel::GetFdAtOffset(int* fd, size_t offset) {
   return true;
 }
 
-}  // namespace brillobinder
+}  // namespace protobinder
+

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "binder_manager.h"
+#include "libprotobinder/binder_manager.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -16,10 +16,10 @@
 // Out of order due to this bad header requiring sys/types.h
 #include <linux/android/binder.h>
 
-#include "binder_host.h"
-#include "protobinder.h"
+#include "libprotobinder/binder_host.h"
+#include "libprotobinder/protobinder.h"
 
-namespace brillobinder {
+namespace protobinder {
 
 BinderManager* g_binder_manager = NULL;
 
@@ -107,22 +107,21 @@ int BinderManager::ProcessCommand(uint32_t cmd) {
       if (!in_commands_.Read(&tr, sizeof(tr)))
         return false;
       Parcel data;
-      if (!data.InitFromBinderTransaction((void*)tr.data.ptr.buffer,
-                                          tr.data_size,
-                                          (binder_size_t*)tr.data.ptr.offsets,
-                                          tr.offsets_size, ReleaseBinderBuffer))
+      if (!data.InitFromBinderTransaction(
+              reinterpret_cast<void*>(tr.data.ptr.buffer), tr.data_size,
+              reinterpret_cast<binder_size_t*>(tr.data.ptr.offsets),
+              tr.offsets_size, ReleaseBinderBuffer))
         return false;
       Parcel reply;
       int err;
       if (tr.target.ptr) {
-        BinderHost* binder((BinderHost*)tr.cookie);
+        BinderHost* binder(reinterpret_cast<BinderHost*>(tr.cookie));
         err = binder->Transact(tr.code, data, &reply, tr.flags);
       }
 
       if ((tr.flags & TF_ONE_WAY) == 0) {
         SendReply(reply, err);
       }
-
     } break;
     default:
       printf("Unknown Command\n");
@@ -158,9 +157,9 @@ int BinderManager::WaitAndActionReply(Parcel* reply) {
           if ((tr.flags & TF_STATUS_CODE) == 0) {
             printf("Status code4\n");
             if (!reply->InitFromBinderTransaction(
-                    (void*)tr.data.ptr.buffer, tr.data_size,
-                    (binder_size_t*)tr.data.ptr.offsets, tr.offsets_size,
-                    ReleaseBinderBuffer)) {
+                    reinterpret_cast<void*>(tr.data.ptr.buffer), tr.data_size,
+                    reinterpret_cast<binder_size_t*>(tr.data.ptr.offsets),
+                    tr.offsets_size, ReleaseBinderBuffer)) {
               err = ERROR_REPLY_PARCEL;
             }
           } else {
@@ -183,7 +182,6 @@ int BinderManager::WaitAndActionReply(Parcel* reply) {
         }
 
         return err;
-
       } break;
       default:
         ProcessCommand(cmd);
@@ -398,4 +396,4 @@ BinderManager::BinderManager() {
   out_commands_.SetCapacity(256);
 }
 
-}  // namespace brillobinder
+}  // namespace protobinder
