@@ -287,6 +287,7 @@
             'chromeos/ui/chromium_command_builder_unittest.cc',
             'chromeos/ui/x_server_runner_unittest.cc',
             'chromeos/url_utils_unittest.cc',
+            'chromeos/variant_dictionary_unittest.cc',
             'testrunner.cc',
           ]
         },
