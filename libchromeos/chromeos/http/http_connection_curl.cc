@@ -75,10 +75,8 @@ bool Connection::SendHeaders(const HeaderList& headers,
   return true;
 }
 
-bool Connection::SetRequestData(
-    std::unique_ptr<DataReaderInterface> data_reader,
-    chromeos::ErrorPtr* error) {
-  request_data_reader_ = std::move(data_reader);
+bool Connection::SetRequestData(StreamPtr stream, chromeos::ErrorPtr* error) {
+  request_data_stream_ = std::move(stream);
   return true;
 }
 
@@ -91,7 +89,7 @@ void Connection::PrepareRequest() {
 
   // Set up HTTP request data.
   uint64_t data_size =
-      request_data_reader_ ? request_data_reader_->GetDataSize() : 0;
+      request_data_stream_ ? request_data_stream_->GetRemainingSize() : 0;
   if (method_ == request_type::kPut) {
     curl_interface_->EasySetOptOffT(
         curl_handle_, CURLOPT_INFILESIZE_LARGE, data_size);
@@ -99,7 +97,7 @@ void Connection::PrepareRequest() {
     curl_interface_->EasySetOptOffT(
         curl_handle_, CURLOPT_POSTFIELDSIZE_LARGE, data_size);
   }
-  if (request_data_reader_) {
+  if (request_data_stream_) {
     curl_interface_->EasySetOptCallback(
         curl_handle_, CURLOPT_READFUNCTION, &Connection::read_callback);
     curl_interface_->EasySetOptPtr(curl_handle_, CURLOPT_READDATA, this);
@@ -211,8 +209,8 @@ size_t Connection::read_callback(char* ptr,
   size_t data_len = size * num;
 
   size_t read_size = 0;
-  bool success =
-      me->request_data_reader_->ReadData(ptr, data_len, &read_size, nullptr);
+  bool success = me->request_data_stream_->ReadBlocking(ptr, data_len,
+                                                        &read_size, nullptr);
   VLOG_IF(3, success) << "Sending data: " << std::string{ptr, read_size};
   return success ? read_size : CURL_READFUNC_ABORT;
 }

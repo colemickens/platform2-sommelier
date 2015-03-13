@@ -26,13 +26,13 @@ namespace chromeos {
 namespace http {
 
 MATCHER_P(ContainsStringData, str, "") {
-  if (arg->GetDataSize() != str.size())
+  if (arg->GetSize() != str.size())
     return false;
 
   std::string data;
   char buf[100];
   size_t read = 0;
-  while (arg->ReadData(buf, sizeof(buf), &read, nullptr) && read > 0) {
+  while (arg->ReadBlocking(buf, sizeof(buf), &read, nullptr) && read > 0) {
     data.append(buf, read);
   }
   return data == str;

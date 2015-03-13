@@ -238,8 +238,7 @@ class CHROMEOS_EXPORT Request {
 
   // Adds a request body. This is not to be used with GET method
   bool AddRequestBody(const void* data, size_t size, chromeos::ErrorPtr* error);
-  bool AddRequestBody(std::unique_ptr<DataReaderInterface> data_reader,
-                      chromeos::ErrorPtr* error);
+  bool AddRequestBody(StreamPtr stream, chromeos::ErrorPtr* error);
 
   // Adds a request body. This is not to be used with GET method.
   // This method also sets the correct content-type of the request, including

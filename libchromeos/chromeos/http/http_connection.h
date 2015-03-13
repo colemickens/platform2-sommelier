@@ -13,8 +13,8 @@
 #include <base/macros.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
-#include <chromeos/http/data_reader.h>
 #include <chromeos/http/http_transport.h>
+#include <chromeos/streams/stream.h>
 
 namespace chromeos {
 namespace http {
@@ -56,7 +56,7 @@ class CHROMEOS_EXPORT Connection
   virtual bool SendHeaders(const HeaderList& headers,
                            chromeos::ErrorPtr* error) = 0;
   // If needed, this function can be called to send the request body data.
-  virtual bool SetRequestData(std::unique_ptr<DataReaderInterface> data_reader,
+  virtual bool SetRequestData(StreamPtr stream,
                               chromeos::ErrorPtr* error) = 0;
   // This function is called when all the data is sent off and it's time
   // to receive the response data. The method will block until the whole

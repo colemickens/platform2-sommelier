@@ -80,7 +80,7 @@ CHROMEOS_EXPORT std::unique_ptr<Response> SendRequestWithNoDataAndBlock(
 CHROMEOS_EXPORT RequestID SendRequest(
     const std::string& method,
     const std::string& url,
-    std::unique_ptr<DataReaderInterface> data_reader,
+    StreamPtr stream,
     const std::string& mime_type,
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,
@@ -167,7 +167,7 @@ CHROMEOS_EXPORT std::unique_ptr<Response> PostBinaryAndBlock(
 // request using Transport::CancelRequest().
 CHROMEOS_EXPORT RequestID PostBinary(
     const std::string& url,
-    std::unique_ptr<DataReaderInterface> data_reader,
+    StreamPtr stream,
     const std::string& mime_type,
     const HeaderList& headers,
     std::shared_ptr<Transport> transport,

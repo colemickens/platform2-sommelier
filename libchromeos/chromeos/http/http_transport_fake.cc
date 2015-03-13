@@ -13,6 +13,7 @@
 #include <chromeos/http/http_connection_fake.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/mime_utils.h>
+#include <chromeos/streams/memory_stream.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/url_utils.h>
 
@@ -127,15 +128,14 @@ Transport::HandlerCallback Transport::GetHandler(
   return (p != handlers_.end()) ? p->second : HandlerCallback();
 }
 
-void ServerRequestResponseBase::SetData(
-    std::unique_ptr<DataReaderInterface> data_reader) {
+void ServerRequestResponseBase::SetData(StreamPtr stream) {
   data_.clear();
-  if (data_reader) {
+  if (stream) {
     uint8_t buffer[1024];
     size_t size = 0;
-    data_.reserve(data_reader->GetDataSize());
+    data_.reserve(stream->GetRemainingSize());
     do {
-      CHECK(data_reader->ReadData(buffer, sizeof(buffer), &size, nullptr));
+      CHECK(stream->ReadBlocking(buffer, sizeof(buffer), &size, nullptr));
       data_.insert(data_.end(), buffer, buffer + size);
     } while (size > 0);
   }
@@ -219,8 +219,7 @@ void ServerResponse::Reply(int status_code,
                            const std::string& mime_type) {
   data_.clear();
   status_code_ = status_code;
-  SetData(std::unique_ptr<DataReaderInterface>{
-      new MemoryDataReader{data, data_size}});
+  SetData(MemoryStream::OpenCopyOf(data, data_size, nullptr));
   AddHeaders({{response_header::kContentLength,
                chromeos::string_utils::ToString(data_size)},
               {response_header::kContentType, mime_type}});

@@ -9,10 +9,23 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <chromeos/mime_utils.h>
+#include <chromeos/streams/file_stream.h>
+#include <chromeos/streams/input_stream_set.h>
 #include <gtest/gtest.h>
 
 namespace chromeos {
 namespace http {
+namespace {
+std::string GetFormFieldData(FormField* field) {
+  std::vector<StreamPtr> streams;
+  CHECK(field->ExtractDataStreams(&streams));
+  StreamPtr stream = InputStreamSet::Create(std::move(streams), nullptr);
+
+  std::vector<uint8_t> data(stream->GetSize());
+  EXPECT_TRUE(stream->ReadAllBlocking(data.data(), data.size(), nullptr));
+  return std::string{data.begin(), data.end()};
+}
+}  // anonymous namespace
 
 TEST(HttpFormData, TextFormField) {
   TextFormField form_field{"field1", "abcdefg", mime::text::kPlain, "7bit"};
@@ -22,12 +35,7 @@ TEST(HttpFormData, TextFormField) {
       "Content-Transfer-Encoding: 7bit\r\n"
       "\r\n";
   EXPECT_EQ(expected_header, form_field.GetContentHeader());
-  EXPECT_EQ(7u, form_field.GetDataSize());
-  char buffer[100];
-  size_t read = 0;
-  EXPECT_TRUE(form_field.ReadData(buffer, sizeof(buffer), &read, nullptr));
-  EXPECT_EQ(7u, read);
-  EXPECT_EQ("abcdefg", (std::string{buffer, read}));
+  EXPECT_EQ("abcdefg", GetFormFieldData(&form_field));
 }
 
 TEST(HttpFormData, FileFormField) {
@@ -39,10 +47,12 @@ TEST(HttpFormData, FileFormField) {
             static_cast<size_t>(base::WriteFile(
                 file_name, file_content.data(), file_content.size())));
 
-  base::File file{file_name, base::File::FLAG_READ | base::File::FLAG_OPEN};
-  ASSERT_TRUE(file.IsValid());
+  StreamPtr stream = FileStream::Open(file_name, Stream::AccessMode::READ,
+                                      FileStream::Disposition::OPEN_EXISTING,
+                                      nullptr);
+  ASSERT_NE(nullptr, stream);
   FileFormField form_field{"test_file",
-                           file.Pass(),
+                           std::move(stream),
                            "sample.txt",
                            content_disposition::kFormData,
                            mime::text::kPlain,
@@ -53,12 +63,7 @@ TEST(HttpFormData, FileFormField) {
       "Content-Type: text/plain\r\n"
       "\r\n";
   EXPECT_EQ(expected_header, form_field.GetContentHeader());
-  EXPECT_EQ(file_content.size(), form_field.GetDataSize());
-  char buffer[100];
-  size_t read = 0;
-  EXPECT_TRUE(form_field.ReadData(buffer, sizeof(buffer), &read, nullptr));
-  EXPECT_EQ(file_content.size(), read);
-  EXPECT_EQ(file_content, (std::string{buffer, read}));
+  EXPECT_EQ(file_content, GetFormFieldData(&form_field));
 }
 
 TEST(HttpFormData, MultiPartFormField) {
@@ -92,15 +97,6 @@ TEST(HttpFormData, MultiPartFormField) {
       "Content-Type: multipart/form-data; boundary=\"Delimiter\"\r\n"
       "\r\n";
   EXPECT_EQ(expected_header, form_field.GetContentHeader());
-  std::string all_data;
-  for (;;) {
-    char buffer[1000];
-    size_t read = 0;
-    ASSERT_TRUE(form_field.ReadData(buffer, sizeof(buffer), &read, nullptr));
-    if (read == 0)
-      break;
-    all_data.append(buffer, buffer + read);
-  }
   const char expected_data[] =
       "--Delimiter\r\n"
       "Content-Disposition: form-data; name=\"name\"\r\n"
@@ -121,8 +117,7 @@ TEST(HttpFormData, MultiPartFormField) {
       "\r\n"
       "\x01\x02\x03\x04\x05\r\n"
       "--Delimiter--";
-  EXPECT_EQ(expected_data, all_data);
-  EXPECT_EQ(all_data.size(), form_field.GetDataSize());
+  EXPECT_EQ(expected_data, GetFormFieldData(&form_field));
 }
 
 TEST(HttpFormData, MultiPartBoundary) {
@@ -174,15 +169,10 @@ TEST(HttpFormData, FormData) {
   form_data.AddCustomField(std::move(files));
   EXPECT_EQ("multipart/form-data; boundary=\"boundary1\"",
             form_data.GetContentType());
-  std::string all_data;
-  for (;;) {
-    char buffer[8];
-    size_t read = 0;
-    ASSERT_TRUE(form_data.ReadData(buffer, sizeof(buffer), &read, nullptr));
-    if (read == 0)
-      break;
-    all_data.append(buffer, buffer + read);
-  }
+
+  StreamPtr stream = form_data.ExtractDataStream();
+  std::vector<uint8_t> data(stream->GetSize());
+  EXPECT_TRUE(stream->ReadAllBlocking(data.data(), data.size(), nullptr));
   const char expected_data[] =
       "--boundary1\r\n"
       "Content-Disposition: form-data; name=\"name\"\r\n"
@@ -206,8 +196,7 @@ TEST(HttpFormData, FormData) {
       "\x01\x02\x03\x04\x05\r\n"
       "--boundary2--\r\n"
       "--boundary1--";
-  EXPECT_EQ(expected_data, all_data);
-  EXPECT_EQ(all_data.size(), form_data.GetDataSize());
+  EXPECT_EQ(expected_data, (std::string{data.begin(), data.end()}));
 }
 }  // namespace http
 }  // namespace chromeos

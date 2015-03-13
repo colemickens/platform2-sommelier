@@ -20,7 +20,7 @@ class MockConnection : public Connection {
   using Connection::Connection;
 
   MOCK_METHOD2(SendHeaders, bool(const HeaderList&, ErrorPtr*));
-  MOCK_METHOD2(MockSetRequestData, bool(DataReaderInterface*, ErrorPtr*));
+  MOCK_METHOD2(MockSetRequestData, bool(Stream*, ErrorPtr*));
   MOCK_METHOD1(FinishRequest, bool(ErrorPtr*));
   MOCK_METHOD2(FinishRequestAsync,
                RequestID(const SuccessCallback&, const ErrorCallback&));
@@ -32,9 +32,8 @@ class MockConnection : public Connection {
   MOCK_METHOD4(ReadResponseData, bool(void*, size_t, size_t*, ErrorPtr*));
 
  private:
-  bool SetRequestData(std::unique_ptr<DataReaderInterface> data_reader,
-                      chromeos::ErrorPtr* error) override {
-    return MockSetRequestData(data_reader.get(), error);
+  bool SetRequestData(StreamPtr stream, chromeos::ErrorPtr* error) override {
+    return MockSetRequestData(stream.get(), error);
   }
 
   DISALLOW_COPY_AND_ASSIGN(MockConnection);

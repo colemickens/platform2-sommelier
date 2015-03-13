@@ -92,6 +92,10 @@
     {
       'target_name': 'libchromeos-http-<(libbase_ver)',
       'type': 'shared_library',
+      'dependencies': [
+        'libchromeos-core-<(libbase_ver)',
+        'libchromeos-streams-<(libbase_ver)',
+      ],
       'variables': {
         'exported_deps': [
           'libcurl',
@@ -107,7 +111,6 @@
       },
       'sources': [
         'chromeos/http/curl_api.cc',
-        'chromeos/http/data_reader.cc',
         'chromeos/http/http_connection_curl.cc',
         'chromeos/http/http_form_data.cc',
         'chromeos/http/http_request.cc',
@@ -295,7 +298,6 @@
             'chromeos/file_utils_unittest.cc',
             'chromeos/flag_helper_unittest.cc',
             'chromeos/glib/object_unittest.cc',
-            'chromeos/http/data_reader_unittest.cc',
             'chromeos/http/http_connection_curl_unittest.cc',
             'chromeos/http/http_form_data_unittest.cc',
             'chromeos/http/http_request_unittest.cc',

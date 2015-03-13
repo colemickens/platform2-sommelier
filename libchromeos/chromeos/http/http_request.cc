@@ -10,6 +10,7 @@
 #include <chromeos/http/http_form_data.h>
 #include <chromeos/map_utils.h>
 #include <chromeos/mime_utils.h>
+#include <chromeos/streams/memory_stream.h>
 #include <chromeos/strings/string_utils.h>
 
 namespace chromeos {
@@ -188,16 +189,13 @@ bool Request::AddRequestBody(const void* data,
                              chromeos::ErrorPtr* error) {
   if (!SendRequestIfNeeded(error))
     return false;
-  std::unique_ptr<DataReaderInterface> data_reader{
-      new MemoryDataReader{data, size}
-  };
-  return connection_->SetRequestData(std::move(data_reader), error);
+  StreamPtr stream = MemoryStream::OpenCopyOf(data, size, error);
+  return stream && connection_->SetRequestData(std::move(stream), error);
 }
 
-bool Request::AddRequestBody(std::unique_ptr<DataReaderInterface> data_reader,
-                             chromeos::ErrorPtr* error) {
+bool Request::AddRequestBody(StreamPtr stream, chromeos::ErrorPtr* error) {
   return SendRequestIfNeeded(error) &&
-         connection_->SetRequestData(std::move(data_reader), error);
+         connection_->SetRequestData(std::move(stream), error);
 }
 
 bool Request::AddRequestBodyAsFormData(std::unique_ptr<FormData> form_data,
@@ -205,7 +203,7 @@ bool Request::AddRequestBodyAsFormData(std::unique_ptr<FormData> form_data,
   AddHeader(request_header::kContentType, form_data->GetContentType());
   if (!SendRequestIfNeeded(error))
     return false;
-  return connection_->SetRequestData(std::move(form_data), error);
+  return connection_->SetRequestData(form_data->ExtractDataStream(), error);
 }
 
 const std::string& Request::GetRequestURL() const {

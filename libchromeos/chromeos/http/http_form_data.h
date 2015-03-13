@@ -9,12 +9,11 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
-#include <chromeos/http/data_reader.h>
+#include <chromeos/streams/stream.h>
 
 namespace chromeos {
 namespace http {
@@ -31,7 +30,7 @@ CHROMEOS_EXPORT extern const char kFile[];
 //    http://www.ietf.org/rfc/rfc2388
 // For more details on MIME and content headers, see the following RFC:
 //    http://www.ietf.org/rfc/rfc2045
-class CHROMEOS_EXPORT FormField : public DataReaderInterface {
+class CHROMEOS_EXPORT FormField {
  public:
   // The constructor that takes the basic data part information common to
   // all part types. An example of part's headers could include:
@@ -64,6 +63,12 @@ class CHROMEOS_EXPORT FormField : public DataReaderInterface {
   // Returns a string with all of the field headers, delimited by CRLF
   // characters ("\r\n").
   std::string GetContentHeader() const;
+
+  // Adds the data stream(s) to the list of streams to read from.
+  // This is a potentially destructive operation and can be guaranteed to
+  // succeed only on the first try. Subsequent calls will fail for certain
+  // types of form fields.
+  virtual bool ExtractDataStreams(std::vector<StreamPtr>* streams) = 0;
 
  protected:
   // Form field name. If not empty, it will be appended to Content-Disposition
@@ -99,15 +104,10 @@ class CHROMEOS_EXPORT TextFormField : public FormField {
                 const std::string& content_type = {},
                 const std::string& transfer_encoding = {});
 
-  // Overrides from DataReaderInterface.
-  uint64_t GetDataSize() const override;
-  bool ReadData(void* buffer,
-                size_t size_to_read,
-                size_t* size_read,
-                chromeos::ErrorPtr* error) override;
+  bool ExtractDataStreams(std::vector<StreamPtr>* streams) override;
 
  private:
-  MemoryDataReader data_;  // Buffer/reader for field data.
+  std::string data_;  // Buffer/reader for field data.
 
   DISALLOW_COPY_AND_ASSIGN(TextFormField);
 };
@@ -117,14 +117,14 @@ class CHROMEOS_EXPORT FileFormField : public FormField {
  public:
   // Constructor. Parameters:
   //  name: field name
-  //  file: open file descriptor with the contents of the file.
+  //  stream: open stream with the contents of the file.
   //  file_name: just the base file name of the file, e.g. "file.txt".
   //      Used in "filename" parameter of Content-Disposition header.
   //  content_type: valid content type of the file.
   //  transfer_encoding: the encoding type of data.
   //      If omitted, "binary" is used.
   FileFormField(const std::string& name,
-                base::File file,
+                StreamPtr stream,
                 const std::string& file_name,
                 const std::string& content_disposition,
                 const std::string& content_type,
@@ -134,15 +134,10 @@ class CHROMEOS_EXPORT FileFormField : public FormField {
   // Appends "filename" parameter to Content-Disposition header.
   std::string GetContentDisposition() const override;
 
-  // Overrides from DataReaderInterface.
-  uint64_t GetDataSize() const override;
-  bool ReadData(void* buffer,
-                size_t size_to_read,
-                size_t* size_read,
-                chromeos::ErrorPtr* error) override;
+  bool ExtractDataStreams(std::vector<StreamPtr>* streams) override;
 
  private:
-  base::File file_;
+  StreamPtr stream_;
   std::string file_name_;
 
   DISALLOW_COPY_AND_ASSIGN(FileFormField);
@@ -167,12 +162,7 @@ class CHROMEOS_EXPORT MultiPartFormField : public FormField {
   // Appends "boundary" parameter to Content-Type header.
   std::string GetContentType() const override;
 
-  // Overrides from DataReaderInterface.
-  uint64_t GetDataSize() const override;
-  bool ReadData(void* buffer,
-                size_t size_to_read,
-                size_t* size_read,
-                chromeos::ErrorPtr* error) override;
+  bool ExtractDataStreams(std::vector<StreamPtr>* streams) override;
 
   // Adds a form field to the form data. The |field| could be a simple text
   // field, a file upload field or a multipart form field.
@@ -192,17 +182,6 @@ class CHROMEOS_EXPORT MultiPartFormField : public FormField {
   const std::string& GetBoundary() const { return boundary_; }
 
  private:
-  enum class ReadStage {
-    kStart,          // We haven't read any data from this FormField yet.
-    kBoundarySetup,  // Fills a local buffer with data for the current boundary
-                     // and headers for the next section (or simply the final
-                     // boundary if we have no more parts).
-    kBoundaryData,   // Read data from our local buffer before reading the
-                     // actual data of the current form section.
-    kPart,           // Read data from the form section we're in.
-    kEnd,            // No more data to read.
-  };
-
   // Returns the starting boundary string: "--<boundary>".
   std::string GetBoundaryStart() const;
   // Returns the ending boundary string: "--<boundary>--".
@@ -211,16 +190,11 @@ class CHROMEOS_EXPORT MultiPartFormField : public FormField {
   std::string boundary_;  // Boundary string used as field separator.
   std::vector<std::unique_ptr<FormField>> parts_;  // Form field list.
 
-  // Internal implementation data for ReadData() method.
-  ReadStage read_stage_{ReadStage::kStart};
-  size_t read_part_index_{0};
-  MemoryDataReader boundary_reader_;
-
   DISALLOW_COPY_AND_ASSIGN(MultiPartFormField);
 };
 
 // A class representing a multipart form data for sending as HTTP POST request.
-class CHROMEOS_EXPORT FormData final : public DataReaderInterface {
+class CHROMEOS_EXPORT FormData final {
  public:
   FormData();
   // Allows to specify a custom |boundary| separator string.
@@ -242,12 +216,9 @@ class CHROMEOS_EXPORT FormData final : public DataReaderInterface {
   // Returns the complete content type string to be used in HTTP requests.
   std::string GetContentType() const;
 
-  // Overrides from DataReaderInterface.
-  uint64_t GetDataSize() const override;
-  bool ReadData(void* buffer,
-                size_t size_to_read,
-                size_t* size_read,
-                chromeos::ErrorPtr* error) override;
+  // Returns the data stream for the form data. This is a potentially
+  // destructive operation and can be called only once.
+  StreamPtr ExtractDataStream();
 
  private:
   MultiPartFormField form_data_;

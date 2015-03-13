@@ -13,6 +13,9 @@
 #include <chromeos/errors/error_codes.h>
 #include <chromeos/http/http_transport.h>
 #include <chromeos/mime_utils.h>
+#include <chromeos/streams/file_stream.h>
+#include <chromeos/streams/input_stream_set.h>
+#include <chromeos/streams/memory_stream.h>
 
 namespace chromeos {
 namespace http {
@@ -80,35 +83,20 @@ TextFormField::TextFormField(const std::string& name,
       data_{data} {
 }
 
-uint64_t TextFormField::GetDataSize() const {
-  return data_.GetDataSize();
-}
-
-bool TextFormField::ReadData(void* buffer,
-                             size_t size_to_read,
-                             size_t* size_read,
-                             chromeos::ErrorPtr* error) {
-  return data_.ReadData(buffer, size_to_read, size_read, error);
+bool TextFormField::ExtractDataStreams(std::vector<StreamPtr>* streams) {
+  streams->push_back(MemoryStream::OpenCopyOf(data_, nullptr));
+  return true;
 }
 
 FileFormField::FileFormField(const std::string& name,
-                             base::File file,
+                             StreamPtr stream,
                              const std::string& file_name,
                              const std::string& content_disposition,
                              const std::string& content_type,
                              const std::string& transfer_encoding)
     : FormField{name, content_disposition, content_type, transfer_encoding},
-      file_{file.Pass()},
+      stream_{std::move(stream)},
       file_name_{file_name} {
-}
-
-uint64_t FileFormField::GetDataSize() const {
-  // Unfortunately base::File::GetLength() is not a const method of the class,
-  // for no apparent reason, so have to const_cast the file reference.
-  // TODO(avakulenko): Remove this cast once the base::File::GetLength() is
-  // fixed. See crbug.com/446528
-  int64_t size = const_cast<base::File&>(file_).GetLength();
-  return size < 0 ? 0 : size;
 }
 
 std::string FileFormField::GetContentDisposition() const {
@@ -117,26 +105,10 @@ std::string FileFormField::GetContentDisposition() const {
   return disposition;
 }
 
-bool FileFormField::ReadData(void* buffer,
-                             size_t size_to_read,
-                             size_t* size_read,
-                             chromeos::ErrorPtr* error) {
-  // base::File uses 'int' for sizes. On 64 bit systems size_t can be larger
-  // than what 'int' can contain, so limit the reading to the max size.
-  // This is acceptable because ReadData is not guaranteed to read all the data
-  // at once. The caller is expected to keep calling this function until all
-  // the data have been read.
-  const size_t max_size = std::numeric_limits<int>::max();
-  if (size_to_read > max_size)
-    size_to_read = max_size;
-
-  int read = file_.ReadAtCurrentPosNoBestEffort(reinterpret_cast<char*>(buffer),
-                                                size_to_read);
-  if (read < 0) {
-    chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
+bool FileFormField::ExtractDataStreams(std::vector<StreamPtr>* streams) {
+  if (!stream_)
     return false;
-  }
-  *size_read = read;
+  streams->push_back(std::move(stream_));
   return true;
 }
 
@@ -152,77 +124,25 @@ MultiPartFormField::MultiPartFormField(const std::string& name,
     boundary_ = base::StringPrintf("%016" PRIx64, base::RandUint64());
 }
 
-uint64_t MultiPartFormField::GetDataSize() const {
-  uint64_t boundary_size = GetBoundaryStart().size();
-  uint64_t size = 0;
-  for (const auto& part : parts_) {
-    size += boundary_size;
-    size += part->GetContentHeader().size();
-    size += part->GetDataSize();
-    size += 2;  // CRLF
+bool MultiPartFormField::ExtractDataStreams(std::vector<StreamPtr>* streams) {
+  for (auto& part : parts_) {
+    std::string data = GetBoundaryStart() + part->GetContentHeader();
+    streams->push_back(MemoryStream::OpenCopyOf(data, nullptr));
+    if (!part->ExtractDataStreams(streams))
+      return false;
+
+    streams->push_back(MemoryStream::OpenRef("\r\n", nullptr));
   }
-  if (!parts_.empty())
-    size += GetBoundaryEnd().size();
-  return size;
+  if (!parts_.empty()) {
+    std::string data = GetBoundaryEnd();
+    streams->push_back(MemoryStream::OpenCopyOf(data, nullptr));
+  }
+  return true;
 }
 
 std::string MultiPartFormField::GetContentType() const {
   return base::StringPrintf(
       "%s; boundary=\"%s\"", content_type_.c_str(), boundary_.c_str());
-}
-
-bool MultiPartFormField::ReadData(void* buffer,
-                                  size_t size_to_read,
-                                  size_t* size_read,
-                                  chromeos::ErrorPtr* error) {
-  if (read_stage_ == ReadStage::kStart) {
-    if (parts_.empty()) {
-      *size_read = 0;
-      return true;
-    }
-    read_stage_ = ReadStage::kBoundarySetup;
-    read_part_index_ = 0;
-  }
-
-  for (;;) {
-    if (read_stage_ == ReadStage::kBoundarySetup &&
-        read_part_index_ < parts_.size()) {
-      // Starting a new part. Read the part boundary and headers first.
-      read_stage_ = ReadStage::kBoundaryData;
-      std::string boundary;
-      if (read_part_index_ > 0)
-        boundary = "\r\n";
-      boundary +=
-          GetBoundaryStart() + parts_[read_part_index_]->GetContentHeader();
-      boundary_reader_.SetData(boundary);
-    } else if (read_stage_ == ReadStage::kBoundarySetup &&
-               read_part_index_ >= parts_.size()) {
-      // Final part has been read. Read the closing boundary.
-      read_stage_ = ReadStage::kEnd;
-      boundary_reader_.SetData("\r\n" + GetBoundaryEnd());
-    } else if (read_stage_ == ReadStage::kBoundaryData ||
-               read_stage_ == ReadStage::kEnd) {
-      // Reading the boundary data (possibly the closing boundary).
-      if (!boundary_reader_.ReadData(buffer, size_to_read, size_read, error))
-        return false;
-      // Remain in the current stage for as long as there is data in the buffer,
-      // or we're in kEnd (since there is no next stage for kEnd).
-      if (*size_read > 0 || read_stage_ == ReadStage::kEnd)
-        return true;
-      read_stage_ = ReadStage::kPart;
-    } else if (read_stage_ == ReadStage::kPart) {
-      // Reading the actual part data.
-      if (!parts_[read_part_index_]->ReadData(
-              buffer, size_to_read, size_read, error)) {
-        return false;
-      }
-      if (*size_read > 0)
-        return true;
-      read_part_index_++;
-      read_stage_ = ReadStage::kBoundarySetup;
-    }
-  }
-  return false;
 }
 
 void MultiPartFormField::AddCustomField(std::unique_ptr<FormField> field) {
@@ -239,14 +159,14 @@ bool MultiPartFormField::AddFileField(const std::string& name,
                                       const std::string& content_disposition,
                                       const std::string& content_type,
                                       chromeos::ErrorPtr* error) {
-  base::File file{file_path, base::File::FLAG_OPEN | base::File::FLAG_READ};
-  if (!file.IsValid()) {
-    chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
+  StreamPtr stream = FileStream::Open(file_path, Stream::AccessMode::READ,
+                                      FileStream::Disposition::OPEN_EXISTING,
+                                      error);
+  if (!stream)
     return false;
-  }
   std::string file_name = file_path.BaseName().value();
   std::unique_ptr<FormField> file_field{new FileFormField{name,
-                                                          file.Pass(),
+                                                          std::move(stream),
                                                           file_name,
                                                           content_disposition,
                                                           content_type,
@@ -290,15 +210,11 @@ std::string FormData::GetContentType() const {
   return form_data_.GetContentType();
 }
 
-uint64_t FormData::GetDataSize() const {
-  return form_data_.GetDataSize();
-}
-
-bool FormData::ReadData(void* buffer,
-                        size_t size_to_read,
-                        size_t* size_read,
-                        chromeos::ErrorPtr* error) {
-  return form_data_.ReadData(buffer, size_to_read, size_read, error);
+StreamPtr FormData::ExtractDataStream() {
+  std::vector<StreamPtr> source_streams;
+  if (form_data_.ExtractDataStreams(&source_streams))
+    return InputStreamSet::Create(std::move(source_streams), nullptr);
+  return {};
 }
 
 }  // namespace http

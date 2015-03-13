@@ -111,7 +111,7 @@ class ServerRequestResponseBase {
   ServerRequestResponseBase() = default;
 
   // Add/retrieve request/response body data.
-  void SetData(std::unique_ptr<DataReaderInterface> data_reader);
+  void SetData(StreamPtr stream);
   const std::vector<uint8_t>& GetData() const { return data_; }
   std::string GetDataAsString() const;
   std::unique_ptr<base::DictionaryValue> GetDataAsJson() const;

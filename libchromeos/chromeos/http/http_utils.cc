@@ -13,6 +13,7 @@
 #include <chromeos/data_encoding.h>
 #include <chromeos/errors/error_codes.h>
 #include <chromeos/mime_utils.h>
+#include <chromeos/streams/memory_stream.h>
 
 using chromeos::mime::AppendParameter;
 using chromeos::mime::RemoveParameters;
@@ -120,7 +121,7 @@ std::unique_ptr<Response> SendRequestWithNoDataAndBlock(
 
 RequestID SendRequest(const std::string& method,
                       const std::string& url,
-                      std::unique_ptr<DataReaderInterface> data_reader,
+                      StreamPtr stream,
                       const std::string& mime_type,
                       const HeaderList& headers,
                       std::shared_ptr<Transport> transport,
@@ -128,12 +129,12 @@ RequestID SendRequest(const std::string& method,
                       const ErrorCallback& error_callback) {
   Request request(url, method, transport);
   request.AddHeaders(headers);
-  if (data_reader && data_reader->GetDataSize() > 0) {
+  if (stream && stream->GetRemainingSize() > 0) {
     CHECK(!mime_type.empty()) << "MIME type must be specified if request body "
                                  "message is provided";
     request.SetContentType(mime_type);
     chromeos::ErrorPtr error;
-    if (!request.AddRequestBody(std::move(data_reader), &error)) {
+    if (!request.AddRequestBody(std::move(stream), &error)) {
       transport->RunCallbackAsync(
           FROM_HERE, base::Bind(error_callback,
                                 0, base::Owned(error.release())));
@@ -152,11 +153,9 @@ RequestID SendRequest(const std::string& method,
                       std::shared_ptr<Transport> transport,
                       const SuccessCallback& success_callback,
                       const ErrorCallback& error_callback) {
-  std::unique_ptr<DataReaderInterface> data_reader{
-      new MemoryDataReader(data, data_size)};
   return SendRequest(method,
                      url,
-                     std::move(data_reader),
+                     MemoryStream::OpenCopyOf(data, data_size, nullptr),
                      mime_type,
                      headers,
                      transport,
@@ -199,7 +198,7 @@ std::unique_ptr<Response> PostBinaryAndBlock(
 }
 
 RequestID PostBinary(const std::string& url,
-                     std::unique_ptr<DataReaderInterface> data_reader,
+                     StreamPtr stream,
                      const std::string& mime_type,
                      const HeaderList& headers,
                      std::shared_ptr<Transport> transport,
@@ -207,7 +206,7 @@ RequestID PostBinary(const std::string& url,
                      const ErrorCallback& error_callback) {
   return SendRequest(request_type::kPost,
                      url,
-                     std::move(data_reader),
+                     std::move(stream),
                      mime_type,
                      headers,
                      transport,

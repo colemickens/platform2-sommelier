@@ -12,6 +12,7 @@
 #include <chromeos/http/http_transport.h>
 #include <chromeos/http/mock_curl_api.h>
 #include <chromeos/http/mock_transport.h>
+#include <chromeos/streams/memory_stream.h>
 #include <chromeos/strings/string_utils.h>
 #include <chromeos/mime_utils.h>
 #include <gmock/gmock.h>
@@ -174,8 +175,8 @@ class HttpCurlConnectionTest : public testing::Test {
 
 TEST_F(HttpCurlConnectionTest, FinishRequestAsync) {
   std::string request_data{"Foo Bar Baz"};
-  std::unique_ptr<MemoryDataReader> reader{new MemoryDataReader{request_data}};
-  EXPECT_TRUE(connection_->SetRequestData(std::move(reader), nullptr));
+  StreamPtr stream = MemoryStream::OpenRef(request_data, nullptr);
+  EXPECT_TRUE(connection_->SetRequestData(std::move(stream), nullptr));
   EXPECT_TRUE(connection_->SendHeaders({{"X-Foo", "bar"}}, nullptr));
 
   if (VLOG_IS_ON(3)) {
@@ -219,14 +220,14 @@ TEST_F(HttpCurlConnectionTest, FinishRequestAsync) {
 TEST_F(HttpCurlConnectionTest, FinishRequest) {
   // Set up the request data.
   std::string request_data{"Foo Bar Baz"};
-  std::unique_ptr<MemoryDataReader> reader{new MemoryDataReader{request_data}};
+  StreamPtr stream = MemoryStream::OpenRef(request_data, nullptr);
   HeaderList headers{
       {request_header::kAccept, "*/*"},
       {request_header::kContentType, mime::text::kPlain},
       {request_header::kContentLength, std::to_string(request_data.size())},
       {"X-Foo", "bar"},
   };
-  EXPECT_TRUE(connection_->SetRequestData(std::move(reader), nullptr));
+  EXPECT_TRUE(connection_->SetRequestData(std::move(stream), nullptr));
   EXPECT_TRUE(connection_->SendHeaders(headers, nullptr));
 
   // Expectations for Connection::FinishRequest() call.

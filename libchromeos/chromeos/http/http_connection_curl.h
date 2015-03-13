@@ -32,8 +32,7 @@ class CHROMEOS_EXPORT Connection : public http::Connection {
   // See http_connection.h for description of these methods.
   bool SendHeaders(const HeaderList& headers,
                    chromeos::ErrorPtr* error) override;
-  bool SetRequestData(std::unique_ptr<DataReaderInterface> data_reader,
-                      chromeos::ErrorPtr* error) override;
+  bool SetRequestData(StreamPtr stream, chromeos::ErrorPtr* error) override;
   bool FinishRequest(chromeos::ErrorPtr* error) override;
   RequestID FinishRequestAsync(
       const SuccessCallback& success_callback,
@@ -74,7 +73,7 @@ class CHROMEOS_EXPORT Connection : public http::Connection {
   std::string method_;
 
   // Binary data for request body.
-  std::unique_ptr<DataReaderInterface> request_data_reader_;
+  StreamPtr request_data_stream_;
 
   // Received response data.
   std::vector<unsigned char> response_data_;
