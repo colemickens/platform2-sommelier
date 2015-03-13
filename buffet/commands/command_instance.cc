@@ -22,7 +22,7 @@ const char CommandInstance::kStatusInProgress[] = "inProgress";
 const char CommandInstance::kStatusPaused[] = "paused";
 const char CommandInstance::kStatusError[] = "error";
 const char CommandInstance::kStatusDone[] = "done";
-const char CommandInstance::kStatusCanceled[] = "canceled";
+const char CommandInstance::kStatusCancelled[] = "cancelled";
 const char CommandInstance::kStatusAborted[] = "aborted";
 const char CommandInstance::kStatusExpired[] = "expired";
 
@@ -182,7 +182,7 @@ void CommandInstance::Abort() {
 }
 
 void CommandInstance::Cancel() {
-  SetStatus(kStatusCanceled);
+  SetStatus(kStatusCancelled);
   RemoveFromQueue();
   // The command will be destroyed after that, so do not access any members.
 }

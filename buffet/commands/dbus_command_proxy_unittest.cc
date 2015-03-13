@@ -195,7 +195,7 @@ TEST_F(DBusCommandProxyTest, Abort) {
 TEST_F(DBusCommandProxyTest, Cancel) {
   EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
   GetCommandInterface()->Cancel();
-  EXPECT_EQ(CommandInstance::kStatusCanceled,
+  EXPECT_EQ(CommandInstance::kStatusCancelled,
             GetCommandAdaptor()->GetStatus());
 }
 

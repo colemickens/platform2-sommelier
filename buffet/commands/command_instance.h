@@ -99,7 +99,7 @@ class CommandInstance final {
   static const char kStatusPaused[];
   static const char kStatusError[];
   static const char kStatusDone[];
-  static const char kStatusCanceled[];
+  static const char kStatusCancelled[];
   static const char kStatusAborted[];
   static const char kStatusExpired[];
 
