@@ -42,7 +42,7 @@ class Request;
 // information.
 class LIBWEBSERV_EXPORT ProtocolHandler final {
  public:
-  explicit ProtocolHandler(const std::string& name, Server* server);
+  ProtocolHandler(const std::string& name, Server* server);
   ~ProtocolHandler();
 
   // Returns true if the protocol handler object is connected to the web server
@@ -123,7 +123,7 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
   struct LIBWEBSERV_PRIVATE HandlerMapEntry {
     std::string url;
     std::string method;
-    std::string remote_handler_id;
+    std::map<ProtocolHandlerProxy*, std::string> remote_handler_ids;
     std::unique_ptr<RequestHandlerInterface> handler;
   };
 
@@ -138,7 +138,9 @@ class LIBWEBSERV_EXPORT ProtocolHandler final {
   // Asynchronous callbacks to handle successful or failed request handler
   // registration over D-Bus.
   LIBWEBSERV_PRIVATE void AddHandlerSuccess(
-      int handler_id, const std::string& remote_handler_id);
+      int handler_id,
+      ProtocolHandlerProxy* proxy,
+      const std::string& remote_handler_id);
   LIBWEBSERV_PRIVATE void AddHandlerError(int handler_id,
                                           chromeos::Error* error);
 

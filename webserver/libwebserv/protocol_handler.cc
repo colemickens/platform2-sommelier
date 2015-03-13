@@ -76,9 +76,13 @@ int ProtocolHandler::AddHandler(
     const std::string& url,
     const std::string& method,
     std::unique_ptr<RequestHandlerInterface> handler) {
-  request_handlers_.emplace(++last_handler_id_,
-                            HandlerMapEntry{url, method, std::string{},
-                                            std::move(handler)});
+  request_handlers_.emplace(
+      ++last_handler_id_,
+      HandlerMapEntry{url, method,
+                      std::map<ProtocolHandlerProxy*, std::string>{},
+                      std::move(handler)});
+  // For each instance of remote protocol handler object sharing the same name,
+  // add the request handler.
   for (const auto& pair : proxies_) {
     pair.second->AddRequestHandlerAsync(
         url,
@@ -86,7 +90,8 @@ int ProtocolHandler::AddHandler(
         server_->service_name_,
         base::Bind(&ProtocolHandler::AddHandlerSuccess,
                    weak_ptr_factory_.GetWeakPtr(),
-                   last_handler_id_),
+                   last_handler_id_,
+                   pair.second),
         base::Bind(&ProtocolHandler::AddHandlerError,
                    weak_ptr_factory_.GetWeakPtr(),
                    last_handler_id_));
@@ -109,9 +114,9 @@ bool ProtocolHandler::RemoveHandler(int handler_id) {
   if (p == request_handlers_.end())
     return false;
 
-  for (const auto& pair : proxies_) {
-    pair.second->RemoveRequestHandlerAsync(
-        p->second.remote_handler_id,
+  for (const auto& pair : p->second.remote_handler_ids) {
+    pair.first->RemoveRequestHandlerAsync(
+        pair.second,
         base::Bind(&base::DoNothing),
         base::Bind(&IgnoreError));
   }
@@ -129,7 +134,8 @@ void ProtocolHandler::Connect(ProtocolHandlerProxy* proxy) {
         server_->service_name_,
         base::Bind(&ProtocolHandler::AddHandlerSuccess,
                    weak_ptr_factory_.GetWeakPtr(),
-                   pair.first),
+                   pair.first,
+                   proxy),
         base::Bind(&ProtocolHandler::AddHandlerError,
                    weak_ptr_factory_.GetWeakPtr(),
                    pair.first));
@@ -140,13 +146,16 @@ void ProtocolHandler::Disconnect(const dbus::ObjectPath& object_path) {
   proxies_.erase(object_path);
   if (proxies_.empty())
     remote_handler_id_map_.clear();
+  for (auto& pair : request_handlers_)
+    pair.second.remote_handler_ids.clear();
 }
 
 void ProtocolHandler::AddHandlerSuccess(int handler_id,
+                                        ProtocolHandlerProxy* proxy,
                                         const std::string& remote_handler_id) {
   auto p = request_handlers_.find(handler_id);
   CHECK(p != request_handlers_.end());
-  p->second.remote_handler_id = remote_handler_id;
+  p->second.remote_handler_ids.emplace(proxy, remote_handler_id);
 
   remote_handler_id_map_.emplace(remote_handler_id, handler_id);
 }
