@@ -3,6 +3,7 @@
     'cc_dir': '<(SHARED_INTERMEDIATE_DIR)/<(proto_out_dir)',
     'proto_in_dir%': '.',
     'protoc': '<!(which protoc)',
+    'gen_bidl%': 0,
   },
   'rules': [
     {
@@ -15,11 +16,24 @@
         '<(cc_dir)/<(RULE_INPUT_ROOT).pb.cc',
         '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
       ],
+      'variables': {
+        'conditions': [
+          ['gen_bidl==1', {
+            'out_args': ['--bidl_out', '<(cc_dir)'],
+            'outputs': [
+              '<(cc_dir)/<(RULE_INPUT_ROOT).pb.rpc.cc',
+              '<(cc_dir)/<(RULE_INPUT_ROOT).pb.rpc.h',
+            ],
+          }, {
+            'out_args': ['--cpp_out', '<(cc_dir)'],
+          }],
+        ],
+      },
       'action': [
         '<(protoc)',
         '--proto_path','<(proto_in_dir)',
         '<(proto_in_dir)/<(RULE_INPUT_ROOT)<(RULE_INPUT_EXT)',
-        '--cpp_out', '<(cc_dir)',
+        '>@(out_args)',
       ],
       'msvs_cygwin_shell': 0,
       'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
