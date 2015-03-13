@@ -12,7 +12,7 @@
 
 #include <string>
 
-#define BINDER_EXPORT __attribute__((visibility("default")))
+#include "libprotobinder/binder_export.h"
 
 namespace protobinder {
 

@@ -7,9 +7,8 @@
 
 #include <stdint.h>
 
+#include "libprotobinder/binder_export.h"
 #include "libprotobinder/ibinder.h"
-
-#define BINDER_EXPORT __attribute__((visibility("default")))
 
 namespace protobinder {
 
@@ -21,12 +20,12 @@ class BINDER_EXPORT BinderProxy : public IBinder {
   explicit BinderProxy(uint32_t handle);
   ~BinderProxy();
 
+  uint32_t handle() { return handle_; }
+
   int Transact(uint32_t code,
                const Parcel& data,
                Parcel* reply,
                uint32_t flags);
-
-  uint32_t Handle() { return handle_; }
 
   virtual BinderProxy* GetBinderProxy();
 

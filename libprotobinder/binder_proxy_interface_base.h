@@ -7,9 +7,8 @@
 
 #include <stdint.h>
 
+#include "libprotobinder/binder_export.h"
 #include "libprotobinder/ibinder.h"
-
-#define BINDER_EXPORT __attribute__((visibility("default")))
 
 namespace protobinder {
 

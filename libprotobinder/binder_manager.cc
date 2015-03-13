@@ -21,20 +21,25 @@
 
 namespace protobinder {
 
+namespace {
+
+const size_t kBinderMappedSize = (1 * 1024 * 1024) - (4096 * 2);
+
 BinderManager* g_binder_manager = NULL;
 
+}  // namespace
+
 BinderManager* BinderManager::GetBinderManager() {
-  if (g_binder_manager)
-    return g_binder_manager;
-  g_binder_manager = new BinderManager();
+  if (!g_binder_manager)
+    g_binder_manager = new BinderManager();
   return g_binder_manager;
 }
 
 void BinderManager::ReleaseBinderBuffer(Parcel* parcel,
                                         const uint8_t* data,
-                                        size_t dataSize,
+                                        size_t data_size,
                                         const binder_size_t* objects,
-                                        size_t objectsSize,
+                                        size_t objects_size,
                                         void* cookie) {
   printf("Binder Free\n");
   // TODO(leecam): Close FDs in Parcel
@@ -54,16 +59,15 @@ void BinderManager::DecWeakHandle(uint32_t handle) {
 
 int BinderManager::SendReply(const Parcel& reply, int error_code) {
   Parcel err_reply;
-  int ret;
+  int ret = -1;
   if (error_code < 0) {
     err_reply.WriteInt32(error_code);
-    ret = SetupTransaction(true, -1, 0, err_reply, TF_STATUS_CODE);
+    ret = SetUpTransaction(true, -1, 0, err_reply, TF_STATUS_CODE);
   } else {
-    ret = SetupTransaction(true, -1, 0, reply, 0);
+    ret = SetUpTransaction(true, -1, 0, reply, 0);
   }
-  if (ret < 0) {
+  if (ret < 0)
     return ret;
-  }
 
   return WaitAndActionReply(NULL);
 }
@@ -106,22 +110,22 @@ int BinderManager::ProcessCommand(uint32_t cmd) {
       binder_transaction_data tr;
       if (!in_commands_.Read(&tr, sizeof(tr)))
         return false;
+
       Parcel data;
       if (!data.InitFromBinderTransaction(
               reinterpret_cast<void*>(tr.data.ptr.buffer), tr.data_size,
               reinterpret_cast<binder_size_t*>(tr.data.ptr.offsets),
               tr.offsets_size, ReleaseBinderBuffer))
         return false;
+
       Parcel reply;
-      int err;
+      int err = SUCCESS;
       if (tr.target.ptr) {
         BinderHost* binder(reinterpret_cast<BinderHost*>(tr.cookie));
         err = binder->Transact(tr.code, data, &reply, tr.flags);
       }
-
-      if ((tr.flags & TF_ONE_WAY) == 0) {
+      if ((tr.flags & TF_ONE_WAY) == 0)
         SendReply(reply, err);
-      }
     } break;
     default:
       printf("Unknown Command\n");
@@ -133,12 +137,12 @@ int BinderManager::WaitAndActionReply(Parcel* reply) {
   while (1) {
     if (!DoBinderReadWriteIoctl(true))
       break;
-    uint32_t cmd = in_commands_.ReadInt32();
+    const uint32_t cmd = in_commands_.ReadInt32();
     printf("Got reply command %x\n", cmd);
     switch (cmd) {
       case BR_TRANSACTION_COMPLETE:
         printf("Cmd BR_TRANSACTION_COMPLETE\n");
-        if (reply == NULL)
+        if (!reply)
           return SUCCESS;
         break;
       case BR_DEAD_REPLY:
@@ -159,9 +163,8 @@ int BinderManager::WaitAndActionReply(Parcel* reply) {
             if (!reply->InitFromBinderTransaction(
                     reinterpret_cast<void*>(tr.data.ptr.buffer), tr.data_size,
                     reinterpret_cast<binder_size_t*>(tr.data.ptr.offsets),
-                    tr.offsets_size, ReleaseBinderBuffer)) {
+                    tr.offsets_size, ReleaseBinderBuffer))
               err = ERROR_REPLY_PARCEL;
-            }
           } else {
             printf("Status code1\n");
             err = *reinterpret_cast<const int*>(tr.data.ptr.buffer);
@@ -180,7 +183,6 @@ int BinderManager::WaitAndActionReply(Parcel* reply) {
               tr.offsets_size / sizeof(binder_size_t), NULL);
           continue;
         }
-
         return err;
       } break;
       default:
@@ -191,7 +193,7 @@ int BinderManager::WaitAndActionReply(Parcel* reply) {
   return true;
 }
 
-int BinderManager::SetupTransaction(bool is_reply,
+int BinderManager::SetUpTransaction(bool is_reply,
                                     uint32_t handle,
                                     uint32_t code,
                                     const Parcel& data,
@@ -208,9 +210,9 @@ int BinderManager::SetupTransaction(bool is_reply,
   tr.sender_euid = 0;
 
   tr.data_size = data.Len();
-  tr.data.ptr.buffer = (binder_uintptr_t)data.Data();
+  tr.data.ptr.buffer = reinterpret_cast<binder_uintptr_t>(data.Data());
   tr.offsets_size = data.ObjectCount() * sizeof(binder_size_t);
-  tr.data.ptr.offsets = (binder_uintptr_t)data.ObjectData();
+  tr.data.ptr.offsets = reinterpret_cast<binder_uintptr_t>(data.ObjectData());
 
   const uint32_t command = is_reply ? BC_REPLY : BC_TRANSACTION;
   if (!out_commands_.WriteInt32(command))
@@ -226,11 +228,9 @@ int BinderManager::Transact(uint32_t handle,
                             Parcel* reply,
                             uint32_t flags) {
   flags |= TF_ACCEPT_FDS;
-  int ret = SetupTransaction(false, handle, code, data, flags);
-
-  if (ret < 0) {
+  const int ret = SetUpTransaction(false, handle, code, data, flags);
+  if (ret < 0)
     return ret;
-  }
   return WaitAndActionReply(reply);
 }
 
@@ -239,7 +239,7 @@ bool BinderManager::WriteCmd(void* data, size_t len) {
 
   bwr.write_size = len;
   bwr.write_consumed = 0;
-  bwr.write_buffer = (uintptr_t)data;
+  bwr.write_buffer = reinterpret_cast<uintptr_t>(data);
   bwr.read_size = 0;
   bwr.read_consumed = 0;
   bwr.read_buffer = 0;
@@ -262,7 +262,7 @@ bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
   if (do_read && !outstanding_unprocessed_cmds) {
     // Caller requested a read and there is no outstanding data.
     bwr.read_size = in_commands_.Capacity();
-    bwr.read_buffer = (uintptr_t)in_commands_.Data();
+    bwr.read_buffer = reinterpret_cast<uintptr_t>(in_commands_.Data());
   } else {
     // If there are unprocessed commands, dont get anymore.
     bwr.read_size = 0;
@@ -275,7 +275,7 @@ bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
   } else {
     bwr.write_size = out_commands_.Len();
   }
-  bwr.write_buffer = (uintptr_t)out_commands_.Data();
+  bwr.write_buffer = reinterpret_cast<uintptr_t>(out_commands_.Data());
 
   bwr.write_consumed = 0;
   bwr.read_consumed = 0;
@@ -343,16 +343,16 @@ void BinderManager::EnterLoop() {
   bwr.write_buffer = 0;
 
   readbuf[0] = BC_ENTER_LOOPER;
-  WriteCmd(readbuf, sizeof(uint32_t));
+  WriteCmd(readbuf, sizeof(readbuf[0]));
 
-  while (1) {
+  while (true) {
     bwr.read_size = sizeof(readbuf);
     bwr.read_consumed = 0;
-    bwr.read_buffer = (uintptr_t)readbuf;
+    bwr.read_buffer = reinterpret_cast<uintptr_t>(readbuf);
 
     // wait or a reply
     printf("Waiting for message\n");
-    int ret = ioctl(binder_fd_, BINDER_WRITE_READ, &bwr);
+    const int ret = ioctl(binder_fd_, BINDER_WRITE_READ, &bwr);
     if (ret < 0) {
       printf("Loop ioctl failed %d\n", ret);
       break;

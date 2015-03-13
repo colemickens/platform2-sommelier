@@ -5,12 +5,12 @@
 #ifndef LIBPROTOBINDER_IBINDER_H_
 #define LIBPROTOBINDER_IBINDER_H_
 
-#define BINDER_EXPORT __attribute__((visibility("default")))
-
 #include <stdint.h>
 #include <sys/types.h>
 
 #include <linux/android/binder.h>
+
+#include "libprotobinder/binder_export.h"
 
 namespace protobinder {
 
@@ -34,6 +34,7 @@ class BINDER_EXPORT IBinder {
 
     FLAG_ONEWAY = 0x00000001
   };
+
   IBinder();
   virtual ~IBinder();
 

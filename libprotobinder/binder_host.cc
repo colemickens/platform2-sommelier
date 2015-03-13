@@ -12,34 +12,30 @@
 
 namespace protobinder {
 
-BinderHost::BinderHost() {
-}
-
-BinderHost::~BinderHost() {
-}
+BinderHost::BinderHost() {}
 
 int BinderHost::Transact(uint32_t code,
                          const Parcel& data,
                          Parcel* reply,
                          uint32_t flags) {
-  int ret;
-  ret = OnTransact(code, data, reply, flags);
+  const int ret = OnTransact(code, data, reply, flags);
   if (reply)
     reply->SetPos(0);
   return ret;
 }
 
-// Is called by BinderManager...
+BinderHost* BinderHost::GetBinderHost() {
+  return this;
+}
+
+BinderHost::~BinderHost() {}
+
 int BinderHost::OnTransact(uint32_t code,
                            const Parcel& data,
                            Parcel* reply,
                            uint32_t flags) {
   printf("OnTransact: Unknown code%d\n", code);
   return ERROR_UNKNOWN_CODE;
-}
-
-BinderHost* BinderHost::GetBinderHost() {
-  return this;
 }
 
 }  // namespace protobinder

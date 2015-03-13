@@ -218,7 +218,7 @@ bool Parcel::WriteStrongBinder(IBinder* binder) {
       if (proxy == NULL) {
         object.handle = 0;
       } else {
-        object.handle = proxy->Handle();
+        object.handle = proxy->handle();
       }
     }
   } else {
@@ -463,4 +463,3 @@ bool Parcel::GetFdAtOffset(int* fd, size_t offset) {
 }
 
 }  // namespace protobinder
-

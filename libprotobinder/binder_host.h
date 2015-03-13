@@ -7,9 +7,8 @@
 
 #include <stdint.h>
 
+#include "libprotobinder/binder_export.h"
 #include "libprotobinder/ibinder.h"
-
-#define BINDER_EXPORT __attribute__((visibility("default")))
 
 namespace protobinder {
 
@@ -22,14 +21,17 @@ class BINDER_EXPORT BinderHost : public IBinder {
  public:
   BinderHost();
 
-  virtual int Transact(uint32_t code,
-                       const Parcel& data,
-                       Parcel* reply,
-                       uint32_t flags);
-  virtual BinderHost* GetBinderHost();
+  // IBinder overrides:
+  int Transact(uint32_t code,
+               const Parcel& data,
+               Parcel* reply,
+               uint32_t flags) override;
+  BinderHost* GetBinderHost() override;
 
  protected:
-  virtual ~BinderHost();
+  ~BinderHost() override;
+
+  // Called by BinderManager.
   virtual int OnTransact(uint32_t code,
                          const Parcel& data,
                          Parcel* reply,

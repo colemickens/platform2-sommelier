@@ -7,10 +7,9 @@
 
 #include <stdint.h>
 
+#include "libprotobinder/binder_export.h"
 #include "libprotobinder/ibinder.h"
 #include "libprotobinder/iinterface.h"
-
-#define BINDER_EXPORT __attribute__((visibility("default")))
 
 namespace protobinder {
 
@@ -27,15 +26,6 @@ class BINDER_EXPORT IServiceManager : public IInterface {
     ADD_SERVICE_TRANSACTION,
     LIST_SERVICES_TRANSACTION,
   };
-};
-
-class BINDER_EXPORT IServiceManagerHostInterface
-    : BinderHostInterface<IServiceManager> {
- public:
-  virtual int OnTransact(uint32_t code,
-                         const Parcel& data,
-                         Parcel* reply,
-                         uint32_t flags);
 };
 
 BINDER_EXPORT IServiceManager* GetServiceManager();

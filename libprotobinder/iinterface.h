@@ -5,13 +5,13 @@
 #ifndef LIBPROTOBINDER_IINTERFACE_H_
 #define LIBPROTOBINDER_IINTERFACE_H_
 
+#include "libprotobinder/binder_export.h"
 #include "libprotobinder/binder_host.h"
 #include "libprotobinder/binder_proxy_interface_base.h"
 #include "libprotobinder/ibinder.h"
 
-#define BINDER_EXPORT __attribute__((visibility("default")))
-
 namespace protobinder {
+
 // AIDL class inherits from this.
 // Just need some basic stuff to return a binder.
 // Mainly interface holder to force both sides to implement the methods.
