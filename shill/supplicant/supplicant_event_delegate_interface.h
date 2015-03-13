@@ -41,7 +41,7 @@ class SupplicantEventDelegateInterface {
   virtual void PropertiesChanged(const PropertyMap &properties) = 0;
 
   // A scan has completed on this interface.
-  virtual void ScanDone() = 0;
+  virtual void ScanDone(const bool &success) = 0;
 };
 
 }  // namespace shill

@@ -169,7 +169,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
       const std::string &status, const std::string &parameter) override;
   void PropertiesChanged(
       const std::map<std::string, ::DBus::Variant> &properties) override;
-  void ScanDone() override;
+  void ScanDone(const bool &success) override;
 
   // Called by WiFiService.
   virtual void ConnectTo(WiFiService *service);
@@ -335,6 +335,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // kFastScanIntervalSeconds
   FRIEND_TEST(WiFiTimerTest, StartScanTimer_HaveFastScansRemaining);
   FRIEND_TEST(WiFiMainTest, ParseWiphyIndex_Success);  // kDefaultWiphyIndex
+  // ScanMethod, ScanState
+  FRIEND_TEST(WiFiMainTest, ResetScanStateWhenScanFailed);
+  // kPostScanFailedDelayMilliseconds
+  FRIEND_TEST(WiFiTimerTest, ScanDoneDispatchesTasks);
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<const WiFiService *, std::string> ReverseServiceMap;
@@ -367,6 +371,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // any attempts to match the default value of |wiphy_index_| against an actual
   // wiphy index reported in an NL80211 message will fail.
   static const uint32_t kDefaultWiphyIndex;
+  // Number of milliseconds to wait after failing to launch a scan before
+  // resetting the scan state to idle.
+  static const int kPostScanFailedDelayMilliseconds;
 
   // TODO(wdg): Remove after progressive scan field trial is over.
   void ParseFieldTrialFile(const base::FilePath &field_trial_file_path);
@@ -423,6 +430,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void PropertiesChangedTask(
       const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDoneTask();
+  void ScanFailedTask();
   // UpdateScanStateAfterScanDone is spawned as a task from ScanDoneTask in
   // order to guarantee that it is run after the start of any connections that
   // result from a scan.  This works because supplicant sends all BSSAdded
@@ -652,6 +660,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Executes periodically while a service is connected, to update the
   // signal strength from the currently connected AP.
   base::CancelableClosure request_station_info_callback_;
+  // Executes when WPA supplicant reports that a scan has failed via a ScanDone
+  // signal.
+  base::CancelableClosure scan_failed_callback_;
   // Number of remaining fast scans to be done during startup and disconnect.
   int fast_scans_remaining_;
   // Indicates that the current BSS has reached the completed state according

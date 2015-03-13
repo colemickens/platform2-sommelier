@@ -353,11 +353,9 @@ void SupplicantInterfaceProxy::Proxy::PropertiesChanged(
   delegate_->PropertiesChanged(properties);
 }
 
-void SupplicantInterfaceProxy::Proxy::ScanDone(const bool& success) {
+void SupplicantInterfaceProxy::Proxy::ScanDone(const bool &success) {
   SLOG(&path(), 2) << __func__ << ": " << success;
-  if (success) {
-    delegate_->ScanDone();
-  }
+  delegate_->ScanDone(success);
 }
 
 }  // namespace shill

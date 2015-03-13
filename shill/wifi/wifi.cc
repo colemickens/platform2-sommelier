@@ -104,6 +104,7 @@ const size_t WiFi::kStuckQueueLengthThreshold = 40;  // ~1 full-channel scan
 // its state.
 const int WiFi::kPostWakeConnectivityReportDelayMilliseconds = 1000;
 const uint32_t WiFi::kDefaultWiphyIndex = UINT32_MAX;
+const int WiFi::kPostScanFailedDelayMilliseconds = 10000;
 
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
@@ -507,7 +508,7 @@ void WiFi::PropertiesChanged(const map<string, ::DBus::Variant> &properties) {
                               weak_ptr_factory_.GetWeakPtr(), properties));
 }
 
-void WiFi::ScanDone() {
+void WiFi::ScanDone(const bool &success) {
   LOG(INFO) << __func__;
 
   // Defer handling of scan result processing, because that processing
@@ -516,9 +517,17 @@ void WiFi::ScanDone() {
   // handler.
   if (pending_scan_results_) {
     pending_scan_results_->is_complete = true;
+    return;
+  }
+  if (success) {
+    scan_failed_callback_.Cancel();
+    dispatcher()->PostTask(
+        Bind(&WiFi::ScanDoneTask, weak_ptr_factory_.GetWeakPtr()));
   } else {
-    dispatcher()->PostTask(Bind(&WiFi::ScanDoneTask,
-                                weak_ptr_factory_.GetWeakPtr()));
+    scan_failed_callback_.Reset(
+        Bind(&WiFi::ScanFailedTask, weak_ptr_factory_.GetWeakPtr()));
+    dispatcher()->PostDelayedTask(scan_failed_callback_.callback(),
+                                  kPostScanFailedDelayMilliseconds);
   }
 }
 
@@ -1492,6 +1501,11 @@ void WiFi::ScanDoneTask() {
     need_bss_flush_ = false;
   }
   StartScanTimer();
+}
+
+void WiFi::ScanFailedTask() {
+  SLOG(this, 2) << __func__;
+  SetScanState(kScanIdle, kScanMethodNone, __func__);
 }
 
 void WiFi::UpdateScanStateAfterScanDone() {

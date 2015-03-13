@@ -237,7 +237,7 @@ void Ethernet::PropertiesChanged(
                               properties_it->second.reader().get_string()));
 }
 
-void Ethernet::ScanDone() {
+void Ethernet::ScanDone(const bool &/*success*/) {
   NOTREACHED() << __func__ << " is not implented for Ethernet";
 }
 

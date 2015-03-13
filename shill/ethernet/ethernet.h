@@ -70,7 +70,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   const std::string &status, const std::string &parameter) override;
   void PropertiesChanged(
       const std::map<std::string, ::DBus::Variant> &properties) override;
-  void ScanDone() override;
+  void ScanDone(const bool &/*success*/) override;
 
   virtual bool link_up() const { return link_up_; }
 

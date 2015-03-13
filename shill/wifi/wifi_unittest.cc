@@ -1052,6 +1052,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ReportLinkUp() {
     wifi_->LinkEvent(IFF_LOWER_UP, IFF_LOWER_UP);
   }
+  void ScanDone(const bool &success) {
+    wifi_->ScanDone(success);
+  }
+  void ReportScanFailed() {
+    wifi_->ScanFailedTask();
+  }
   void ReportScanDone() {
     // Eliminate |scan_session| so |ScanDoneTask| doesn't launch another scan.
     wifi_->scan_session_.reset();
@@ -1327,6 +1333,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   void OnScanStarted(const NetlinkMessage &netlink_message) {
     wifi_->OnScanStarted(netlink_message);
+  }
+
+  bool ScanFailedCallbackIsCancelled() {
+    return wifi_->scan_failed_callback_.IsCancelled();
   }
 
   MOCK_METHOD1(SuspendCallback, void(const Error &error));
@@ -1886,6 +1896,14 @@ TEST_F(WiFiMainTest, NoScansWhileConnecting) {
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(service.get());
   Mock::VerifyAndClearExpectations(scan_session_);
+}
+
+TEST_F(WiFiMainTest, ResetScanStateWhenScanFailed) {
+  StartScan(WiFi::kScanMethodFull);
+  ExpectScanStop();
+  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodFull);
+  ReportScanFailed();
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
 }
 
 TEST_F(WiFiMainTest, ResumeStartsScanWhenIdle_FullScan) {
@@ -3766,6 +3784,21 @@ TEST_F(WiFiMainTest, EAPCertification) {
       .append_string(kSubject.c_str());
   EXPECT_CALL(*service, AddEAPCertification(kSubject, kDepth)).Times(1);
   ReportCertification(args);
+}
+
+TEST_F(WiFiTimerTest, ScanDoneDispatchesTasks) {
+  // Dispatch WiFi::ScanFailedTask if scan failed.
+  EXPECT_TRUE(ScanFailedCallbackIsCancelled());
+  EXPECT_CALL(mock_dispatcher_,
+              PostDelayedTask(_, WiFi::kPostScanFailedDelayMilliseconds));
+  ScanDone(false);
+  EXPECT_FALSE(ScanFailedCallbackIsCancelled());
+
+  // Dispatch WiFi::ScanDoneTask if scan succeeded, and cancel the scan failed
+  // callback if has been dispatched.
+  EXPECT_CALL(mock_dispatcher_, PostTask(_));
+  ScanDone(true);
+  EXPECT_TRUE(ScanFailedCallbackIsCancelled());
 }
 
 TEST_F(WiFiMainTest, EAPEvent) {
