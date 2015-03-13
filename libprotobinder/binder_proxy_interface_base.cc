@@ -11,8 +11,8 @@
 
 namespace protobinder {
 
-BinderProxyInterfaceBase::BinderProxyInterfaceBase(IBinder* binder) {
-  remote_ = binder;
+BinderProxyInterfaceBase::BinderProxyInterfaceBase(IBinder* binder)
+    : remote_(binder) {
 }
 
 BinderProxyInterfaceBase::~BinderProxyInterfaceBase() {

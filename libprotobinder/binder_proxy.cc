@@ -20,14 +20,14 @@ BinderProxy::~BinderProxy() {
 }
 
 int BinderProxy::Transact(uint32_t code,
-                          const Parcel& data,
+                          Parcel* data,
                           Parcel* reply,
                           uint32_t flags) {
-  return BinderManager::GetBinderManager()->Transact(handle_, code, data, reply,
-                                                     flags);
+  return BinderManager::GetBinderManager()->Transact(handle_, code, *data,
+                                                     reply, flags);
 }
 
-BinderProxy* BinderProxy::GetBinderProxy() {
+const BinderProxy* BinderProxy::GetBinderProxy() const {
   return this;
 }
 

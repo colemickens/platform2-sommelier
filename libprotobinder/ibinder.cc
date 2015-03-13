@@ -13,12 +13,12 @@ IBinder::IBinder() {
 IBinder::~IBinder() {
 }
 
-BinderHost* IBinder::GetBinderHost() {
-  return NULL;
+const BinderHost* IBinder::GetBinderHost() const {
+  return nullptr;
 }
 
-BinderProxy* IBinder::GetBinderProxy() {
-  return NULL;
+const BinderProxy* IBinder::GetBinderProxy() const {
+  return nullptr;
 }
 
 }  // namespace protobinder

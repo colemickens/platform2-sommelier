@@ -31,7 +31,7 @@ class ITestProxy : public BinderProxyInterface<ITest> {
   void alert() override {
     Parcel data, reply;
     data.WriteInt32(200);
-    int ret = Remote()->Transact(ALERT, data, &reply, 0);
+    int ret = Remote()->Transact(ALERT, &data, &reply, 0);
     LOG(INFO) << "ret " << ret;
   }
 };

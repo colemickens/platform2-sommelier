@@ -20,14 +20,14 @@ class BINDER_EXPORT BinderProxy : public IBinder {
   explicit BinderProxy(uint32_t handle);
   ~BinderProxy();
 
-  uint32_t handle() { return handle_; }
+  uint32_t handle() const { return handle_; }
 
   int Transact(uint32_t code,
-               const Parcel& data,
+               Parcel* data,
                Parcel* reply,
                uint32_t flags);
 
-  virtual BinderProxy* GetBinderProxy();
+  virtual const BinderProxy* GetBinderProxy() const;
 
  private:
   // Binder handle

@@ -23,7 +23,7 @@ class PingHost : public BinderHost {
 
   // Called by BinderManager.
   int OnTransact(uint32_t code,
-                 const Parcel& data,
+                 Parcel* data,
                  Parcel* reply,
                  uint32_t flags) override {
     LOG(INFO) << "code " << code;

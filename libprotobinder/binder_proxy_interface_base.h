@@ -5,8 +5,6 @@
 #ifndef LIBPROTOBINDER_BINDER_PROXY_INTERFACE_BASE_H_
 #define LIBPROTOBINDER_BINDER_PROXY_INTERFACE_BASE_H_
 
-#include <stdint.h>
-
 #include "libprotobinder/binder_export.h"
 #include "libprotobinder/ibinder.h"
 

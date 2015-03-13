@@ -74,37 +74,39 @@ int BinderManager::SendReply(const Parcel& reply, int error_code) {
 
 // Process a single command from binder.
 int BinderManager::ProcessCommand(uint32_t cmd) {
+  uintptr_t ptr = 0;
   switch (cmd) {
     case BR_NOOP:
       break;
     case BR_INCREFS:
       printf("BR_INCREFS\n");
-      in_commands_.ReadPointer();
-      in_commands_.ReadPointer();
+      in_commands_.ReadPointer(&ptr);
+      in_commands_.ReadPointer(&ptr);
       break;
     case BR_DECREFS:
       printf("BR_DECREFS\n");
-      in_commands_.ReadPointer();
-      in_commands_.ReadPointer();
+      in_commands_.ReadPointer(&ptr);
+      in_commands_.ReadPointer(&ptr);
       break;
     case BR_ACQUIRE:
       printf("BR_ACQUIRE\n");
-      in_commands_.ReadPointer();
-      in_commands_.ReadPointer();
+      in_commands_.ReadPointer(&ptr);
+      in_commands_.ReadPointer(&ptr);
       break;
     case BR_RELEASE:
       printf("BR_RELEASE\n");
-      in_commands_.ReadPointer();
-      in_commands_.ReadPointer();
+      in_commands_.ReadPointer(&ptr);
+      in_commands_.ReadPointer(&ptr);
       break;
     case BR_OK:
       printf("BR_OK\n");
       break;
-    case BR_ERROR:
+    case BR_ERROR: {
       printf("BR_ERROR\n");
-      in_commands_.ReadInt32();
+      uint32_t error_code = 0;
+      in_commands_.ReadUInt32(&error_code);
       return false;
-      break;
+    } break;
     case BR_TRANSACTION: {
       printf("BR_TRANSACTION\n");
       binder_transaction_data tr;
@@ -122,7 +124,7 @@ int BinderManager::ProcessCommand(uint32_t cmd) {
       int err = SUCCESS;
       if (tr.target.ptr) {
         BinderHost* binder(reinterpret_cast<BinderHost*>(tr.cookie));
-        err = binder->Transact(tr.code, data, &reply, tr.flags);
+        err = binder->Transact(tr.code, &data, &reply, tr.flags);
       }
       if ((tr.flags & TF_ONE_WAY) == 0)
         SendReply(reply, err);
@@ -137,7 +139,10 @@ int BinderManager::WaitAndActionReply(Parcel* reply) {
   while (1) {
     if (!DoBinderReadWriteIoctl(true))
       break;
-    const uint32_t cmd = in_commands_.ReadInt32();
+    uint32_t cmd = 0;
+    if (!in_commands_.ReadUInt32(&cmd)) {
+      return ERROR_CMD_PARCEL;
+    }
     printf("Got reply command %x\n", cmd);
     switch (cmd) {
       case BR_TRANSACTION_COMPLETE:
@@ -320,7 +325,9 @@ bool BinderManager::GetFdForPolling(int* fd) {
 
 bool BinderManager::GetNextCommandAndProcess() {
   DoBinderReadWriteIoctl(true);
-  uint32_t cmd = in_commands_.ReadInt32();
+  uint32_t cmd = 0;
+  if (!in_commands_.ReadUInt32(&cmd))
+    return false;
   return ProcessCommand(cmd);
 }
 

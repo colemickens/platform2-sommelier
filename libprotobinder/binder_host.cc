@@ -15,7 +15,7 @@ namespace protobinder {
 BinderHost::BinderHost() {}
 
 int BinderHost::Transact(uint32_t code,
-                         const Parcel& data,
+                         Parcel* data,
                          Parcel* reply,
                          uint32_t flags) {
   const int ret = OnTransact(code, data, reply, flags);
@@ -24,14 +24,14 @@ int BinderHost::Transact(uint32_t code,
   return ret;
 }
 
-BinderHost* BinderHost::GetBinderHost() {
+const BinderHost* BinderHost::GetBinderHost() const {
   return this;
 }
 
 BinderHost::~BinderHost() {}
 
 int BinderHost::OnTransact(uint32_t code,
-                           const Parcel& data,
+                           Parcel* data,
                            Parcel* reply,
                            uint32_t flags) {
   printf("OnTransact: Unknown code%d\n", code);

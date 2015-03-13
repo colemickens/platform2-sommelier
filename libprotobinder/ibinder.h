@@ -39,12 +39,12 @@ class BINDER_EXPORT IBinder {
   virtual ~IBinder();
 
   virtual int Transact(uint32_t code,
-                       const Parcel& data,
+                       Parcel* data,
                        Parcel* reply,
                        uint32_t flags) = 0;
 
-  virtual BinderHost* GetBinderHost();
-  virtual BinderProxy* GetBinderProxy();
+  virtual const BinderHost* GetBinderHost() const;
+  virtual const BinderProxy* GetBinderProxy() const;
 };
 
 }  // namespace protobinder

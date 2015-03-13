@@ -13,7 +13,7 @@
 
 namespace protobinder {
 
-IServiceManager* g_service_manager = NULL;
+IServiceManager* g_service_manager = nullptr;
 
 IServiceManager* GetServiceManager() {
   if (g_service_manager)
@@ -32,23 +32,23 @@ class IServiceManagerProxy : public BinderProxyInterface<IServiceManager> {
   virtual int AddService(const char* name, IBinder* binder) {
     Parcel data, reply;
     data.WriteInt32(0);
-    data.WriteString16FromCString("android.os.IServiceManager");
-    data.WriteString16FromCString(name);
+    data.WriteString16("android.os.IServiceManager");
+    data.WriteString16(name);
     data.WriteStrongBinder(binder);
-    return Remote()->Transact(ADD_SERVICE_TRANSACTION, data, &reply, 0);
+    return Remote()->Transact(ADD_SERVICE_TRANSACTION, &data, &reply, 0);
   }
 
   virtual IBinder* GetService(const char* name) {
     Parcel data, reply;
     data.WriteInt32(0);
-    data.WriteString16FromCString("android.os.IServiceManager");
-    data.WriteString16FromCString(name);
-    if (Remote()->Transact(CHECK_SERVICE_TRANSACTION, data, &reply, 0) ==
-        SUCCESS) {
-      return reply.ReadStrongBinder();
-    } else {
-      return NULL;
-    }
+    data.WriteString16("android.os.IServiceManager");
+    data.WriteString16(name);
+    if (Remote()->Transact(CHECK_SERVICE_TRANSACTION, &data, &reply, 0) !=
+        SUCCESS)
+      return nullptr;
+
+    IBinder* binder = nullptr;
+    return reply.ReadStrongBinder(&binder) ? binder : nullptr;
   }
 };
 

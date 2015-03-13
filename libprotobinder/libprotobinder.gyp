@@ -43,4 +43,20 @@
       ],
     },
   ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'libprotobinder_test',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'dependencies': ['libprotobinder'],
+          'sources': [
+            'libprotobinder_testrunner.cc',
+            'parcel_unittest.cc',
+          ],
+        },
+      ],
+    }],
+  ],
 }

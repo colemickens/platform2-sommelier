@@ -23,17 +23,17 @@ class BINDER_EXPORT BinderHost : public IBinder {
 
   // IBinder overrides:
   int Transact(uint32_t code,
-               const Parcel& data,
+               Parcel* data,
                Parcel* reply,
                uint32_t flags) override;
-  BinderHost* GetBinderHost() override;
+  const BinderHost* GetBinderHost() const override;
 
  protected:
   ~BinderHost() override;
 
   // Called by BinderManager.
   virtual int OnTransact(uint32_t code,
-                         const Parcel& data,
+                         Parcel* data,
                          Parcel* reply,
                          uint32_t flags);
 };
