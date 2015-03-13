@@ -48,22 +48,20 @@ int Sockets::BindToDevice(int sockfd, const std::string &device) const {
   CHECK_GT(sizeof(dev_name), device.length());
   memset(&dev_name, 0, sizeof(dev_name));
   snprintf(dev_name, sizeof(dev_name), "%s", device.c_str());
-  return HANDLE_EINTR(setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, &dev_name,
-                                 sizeof(dev_name)));
+  return setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, &dev_name,
+                    sizeof(dev_name));
 }
 
 int Sockets::ReuseAddress(int sockfd) const {
   int value = 1;
-  return HANDLE_EINTR(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &value,
-                                 sizeof(value)));
+  return setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
 }
 
 int Sockets::AddMulticastMembership(int sockfd, in_addr_t addr) const {
   ip_mreq mreq;
   mreq.imr_multiaddr.s_addr = addr;
   mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-  return HANDLE_EINTR(setsockopt(sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq,
-                                 sizeof(mreq)));
+  return setsockopt(sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
 }
 
 int Sockets::Close(int fd) const {
