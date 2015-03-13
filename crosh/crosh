@@ -72,6 +72,12 @@ HELP='
 '
 
 HELP_ADVANCED='
+ battery_firmware <info|check|update>
+  info   : query battery info
+  check  : checks AC Adapter is connnected or not.
+           also checks the battery firmware is the latest or not.
+  update : trigger battery firmware update
+
  battery_test [<test length>]
   Tests battery discharge rate for given number of seconds. Without an argument,
   defaults to 300 seconds.
@@ -936,6 +942,19 @@ cmd_memory_test() (
     return 1
   fi
   rm -rf "$(dirname ${fifo})"
+)
+
+cmd_battery_firmware() (
+  option="$1"
+  case "${option}" in
+    info|check|update)
+      debugd BatteryFirmware "string:${option}"
+      echo ""
+      ;;
+    *)
+      echo "Unknown option: ${option}"
+      ;;
+  esac
 )
 
 cmd_battery_test() (

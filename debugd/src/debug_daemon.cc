@@ -28,6 +28,7 @@ DebugDaemon::DebugDaemon(DBus::Connection* connection,
       dispatcher_(dispatcher) {}
 
 bool DebugDaemon::Init() {
+  battery_tool_ = new BatteryTool();
   crash_sender_tool_ = new CrashSenderTool();
   debug_logs_tool_ = new DebugLogsTool();
   debug_mode_tool_ = new DebugModeTool(dbus_);
@@ -195,6 +196,11 @@ std::string DebugDaemon::TestICMPWithOptions(
     const std::map<std::string, std::string>& options,
     DBus::Error& error) {  // NOLINT
   return icmp_tool_->TestICMPWithOptions(host, options, &error);
+}
+
+std::string DebugDaemon::BatteryFirmware(const std::string& option,
+                                         DBus::Error& error) {  // NOLINT
+  return battery_tool_->BatteryFirmware(option, &error);
 }
 
 std::string DebugDaemon::Smartctl(const std::string& option,

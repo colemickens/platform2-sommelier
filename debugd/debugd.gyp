@@ -77,6 +77,7 @@
       },
       'sources': [
         'src/anonymizer_tool.cc',
+        'src/battery_tool.cc',
         'src/constants.cc',
         'src/cpu_info_parser.cc',
         'src/crash_sender_tool.cc',

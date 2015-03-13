@@ -15,6 +15,7 @@
 #include <dbus-c++/dbus.h>
 
 #include "debugd/dbus_adaptors/org.chromium.debugd.h"
+#include "debugd/src/battery_tool.h"
 #include "debugd/src/crash_sender_tool.h"
 #include "debugd/src/debug_logs_tool.h"
 #include "debugd/src/debug_mode_tool.h"
@@ -81,6 +82,8 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
 
   // Public methods below this point are part of the DBus interface presented by
   // this object, and are documented in </share/org.chromium.debugd.xml>.
+  std::string BatteryFirmware(const std::string& option,
+                              DBus::Error& error) override;  // NOLINT
   std::string PingStart(const DBus::FileDescriptor& outfd,
                         const std::string& dest,
                         const std::map<std::string, DBus::Variant>& options,
@@ -188,6 +191,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   PingTool* ping_tool_ = nullptr;
   RouteTool* route_tool_ = nullptr;
   StorageTool* storage_tool_ = nullptr;
+  BatteryTool* battery_tool_ = nullptr;
   SysrqTool* sysrq_tool_ = nullptr;
   SystraceTool* systrace_tool_ = nullptr;
   TracePathTool* tracepath_tool_ = nullptr;
