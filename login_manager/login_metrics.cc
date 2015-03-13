@@ -21,6 +21,7 @@ const char kLoginConsumerAllowsNewUsersMetric[] =
     "Login.ConsumerNewUsersAllowed";
 const char kLoginPolicyFilesMetric[] = "Login.PolicyFilesStatePerBoot";
 const char kLoginUserTypeMetric[] = "Login.UserType";
+const char kLoginStateKeyGenerationStatus[] = "Login.StateKeyGenerationStatus";
 const int kMaxPolicyFilesValue = 64;
 const char kLoginMetricsFlagFile[] = "per_boot_flag";
 }  // namespace
@@ -59,6 +60,12 @@ bool LoginMetrics::SendPolicyFilesStatus(const PolicyFilesStatus& status) {
     return true;
   }
   return false;
+}
+
+void LoginMetrics::SendStateKeyGenerationStatus(
+    StateKeyGenerationStatus status) {
+  metrics_lib_.SendEnumToUMA(kLoginStateKeyGenerationStatus, status,
+                             STATE_KEY_STATUS_COUNT);
 }
 
 void LoginMetrics::RecordStats(const char* tag) {

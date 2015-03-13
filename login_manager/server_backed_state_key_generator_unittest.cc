@@ -17,9 +17,15 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "login_manager/login_metrics.h"
+#include "login_manager/mock_metrics.h"
 #include "login_manager/system_utils_impl.h"
+
+using testing::SaveArg;
+using testing::_;
 
 namespace login_manager {
 
@@ -51,7 +57,13 @@ class FakeSystemUtils : public SystemUtilsImpl {
 class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
  public:
   ServerBackedStateKeyGeneratorTest()
-      : generator_(&system_utils_), state_keys_received_(false) {}
+      : generator_(&system_utils_, &metrics_),
+        state_keys_received_(false),
+        last_state_key_generation_status_(
+            LoginMetrics::STATE_KEY_STATUS_MISSING_IDENTIFIERS) {
+    EXPECT_CALL(metrics_, SendStateKeyGenerationStatus(_))
+        .WillRepeatedly(SaveArg<0>(&last_state_key_generation_status_));
+  }
   virtual ~ServerBackedStateKeyGeneratorTest() {}
 
   // Installs mock data for the required parameters.
@@ -59,6 +71,8 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
     std::map<std::string, std::string> params;
     params["serial_number"] = "fake-machine-serial-number";
     params["root_disk_serial_number"] = "fake-disk-serial-number";
+    params["stable_device_secret_DO_NOT_SHARE"] =
+        "11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff";
     ASSERT_TRUE(generator_.InitMachineInfo(params));
   }
 
@@ -77,11 +91,14 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
   }
 
   FakeSystemUtils system_utils_;
+  MockMetrics metrics_;
 
   ServerBackedStateKeyGenerator generator_;
 
   bool state_keys_received_;
   std::vector<std::vector<uint8_t>> state_keys_;
+
+  LoginMetrics::StateKeyGenerationStatus last_state_key_generation_status_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ServerBackedStateKeyGeneratorTest);
@@ -90,6 +107,20 @@ class ServerBackedStateKeyGeneratorTest : public ::testing::Test {
 TEST_F(ServerBackedStateKeyGeneratorTest, RequestStateKeys) {
   InitMachineInfo();
   RequestStateKeys(true);
+  EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
+            last_state_key_generation_status_);
+  ASSERT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
+            state_keys_.size());
+}
+
+TEST_F(ServerBackedStateKeyGeneratorTest, RequestStateKeysLegacy) {
+  std::map<std::string, std::string> params;
+  params["serial_number"] = "fake-machine-serial-number";
+  params["root_disk_serial_number"] = "fake-disk-serial-number";
+  ASSERT_TRUE(generator_.InitMachineInfo(params));
+  RequestStateKeys(true);
+  EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_IDENTIFIER_HASH,
+            last_state_key_generation_status_);
   ASSERT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
 }
@@ -100,6 +131,8 @@ TEST_F(ServerBackedStateKeyGeneratorTest, TimedStateKeys) {
 
   // The correct number of state keys gets returned.
   RequestStateKeys(true);
+  EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
+            last_state_key_generation_status_);
   ASSERT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
   std::vector<std::vector<uint8_t>> initial_state_keys = state_keys_;
@@ -113,6 +146,8 @@ TEST_F(ServerBackedStateKeyGeneratorTest, TimedStateKeys) {
   // Moving forward just a little yields the same keys.
   system_utils_.forward_time(base::TimeDelta::FromDays(1).InSeconds());
   RequestStateKeys(true);
+  EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
+            last_state_key_generation_status_);
   EXPECT_EQ(initial_state_keys, state_keys_);
 
   // Jumping to a future quantum results in the state keys rolling forward.
@@ -121,6 +156,8 @@ TEST_F(ServerBackedStateKeyGeneratorTest, TimedStateKeys) {
   system_utils_.forward_time(2 * step);
 
   RequestStateKeys(true);
+  EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
+            last_state_key_generation_status_);
   ASSERT_EQ(ServerBackedStateKeyGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
   EXPECT_TRUE(std::equal(initial_state_keys.begin() + 2,
@@ -151,6 +188,8 @@ TEST_F(ServerBackedStateKeyGeneratorTest, PendingMachineInfoFailure) {
 
   // Later requests get answered immediately.
   RequestStateKeys(true);
+  EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_MISSING_IDENTIFIERS,
+            last_state_key_generation_status_);
   EXPECT_EQ(0, state_keys_.size());
 }
 
@@ -159,9 +198,12 @@ TEST_F(ServerBackedStateKeyGeneratorTest, ParseMachineInfoSuccess) {
   EXPECT_TRUE(ServerBackedStateKeyGenerator::ParseMachineInfo(
       "\"serial_number\"=\"fake-machine-serial-number\"\n"
       "# This is a comment.\n"
-      "root_disk_serial_number=fake-disk-serial-number\n",
+      "root_disk_serial_number=fake-disk-serial-number\n"
+      "\"serial_number\"=\"key_collision\"\n"
+      "\"stable_device_secret_DO_NOT_SHARE\"="
+      "\"11223344556677889900aabbccddeeff11223344556677889900aabbccddeeff\"\n",
       &params));
-  EXPECT_EQ(2, params.size());
+  EXPECT_EQ(3, params.size());
   EXPECT_EQ("fake-machine-serial-number", params["serial_number"]);
   EXPECT_EQ("fake-disk-serial-number", params["root_disk_serial_number"]);
 }

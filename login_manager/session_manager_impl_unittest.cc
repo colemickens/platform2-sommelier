@@ -73,7 +73,7 @@ class SessionManagerImplTest : public ::testing::Test {
  public:
   SessionManagerImplTest()
       : device_policy_service_(new MockDevicePolicyService),
-        state_key_generator_(&utils_),
+        state_key_generator_(&utils_, &metrics_),
         impl_(scoped_ptr<UpstartSignalEmitter>(new StubUpstartSignalEmitter),
               &dbus_emitter_,
               base::Bind(&SessionManagerImplTest::FakeLockScreen,

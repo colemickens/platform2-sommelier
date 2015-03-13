@@ -118,7 +118,7 @@ SessionManagerService::SessionManagerService(
       system_(utils),
       nss_(NssUtil::Create()),
       key_gen_(uid, utils),
-      state_key_generator_(utils),
+      state_key_generator_(utils, metrics),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
       shutting_down_(false),

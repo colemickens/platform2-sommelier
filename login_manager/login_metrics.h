@@ -31,6 +31,15 @@ class LoginMetrics {
     DEV_OTHER = 5,
     NUM_TYPES = 6
   };
+  enum StateKeyGenerationStatus {
+    STATE_KEY_STATUS_GENERATION_METHOD_IDENTIFIER_HASH = 0,
+    STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET = 1,
+    STATE_KEY_STATUS_MISSING_IDENTIFIERS = 2,
+    STATE_KEY_STATUS_BAD_DEVICE_SECRET = 3,
+    STATE_KEY_STATUS_HMAC_INIT_FAILURE = 4,
+    STATE_KEY_STATUS_HMAC_SIGN_FAILURE = 5,
+    STATE_KEY_STATUS_COUNT  // must be last.
+  };
 
   // Holds the state of several policy-related files on disk.
   // We leave an extra bit for future state-space expansion.
@@ -78,6 +87,10 @@ class LoginMetrics {
   // prefs file to UMA using the metrics library.
   // Returns true if stats are sent.
   virtual bool SendPolicyFilesStatus(const PolicyFilesStatus& status);
+
+  // Writes a histogram indicating the state key generation method used.
+  virtual void SendStateKeyGenerationStatus(
+      StateKeyGenerationStatus status);
 
   // Record a stat called |tag| via the bootstat library.
   virtual void RecordStats(const char* tag);

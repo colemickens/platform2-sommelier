@@ -20,6 +20,7 @@
 namespace login_manager {
 
 class ChildOutputCollector;
+class LoginMetrics;
 class SystemUtils;
 
 // Generates time-based opaque device identifiers used as keys in server-side
@@ -58,7 +59,8 @@ class ServerBackedStateKeyGenerator {
   // make up for the clipping, yielding a total of 5 quanta.
   static const int kDeviceStateKeyFutureQuanta = 5;
 
-  explicit ServerBackedStateKeyGenerator(SystemUtils* system_utils);
+  ServerBackedStateKeyGenerator(SystemUtils* system_utils,
+                                LoginMetrics* metrics);
   virtual ~ServerBackedStateKeyGenerator();
 
   // Parses a machine information string containing newline-separated key=value
@@ -83,12 +85,18 @@ class ServerBackedStateKeyGenerator {
   void ComputeKeys(std::vector<std::vector<uint8_t>>* state_keys);
 
   SystemUtils* system_utils_;
+  LoginMetrics* metrics_;
 
   // Pending state key generation callbacks.
   std::vector<StateKeyCallback> pending_callbacks_;
 
   // The data required to generate state keys.
   bool machine_info_available_;
+  std::string stable_device_secret_;
+
+  // TODO(mnissler): Remove these and the corresponding code once the old way
+  // of generating state keys is no longer used in the wild, i.e. all devices
+  // can be assumed to have a stable device secret.
   std::string machine_serial_number_;
   std::string disk_serial_number_;
   std::string group_code_key_;
