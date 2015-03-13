@@ -10,7 +10,6 @@
 #include "trunks/dbus_interface.h"
 #include "trunks/dbus_interface.pb.h"
 #include "trunks/error_codes.h"
-#include "trunks/tpm_utility_impl.h"
 
 namespace {
 
@@ -64,7 +63,7 @@ void TrunksProxy::OnResponse(const ResponseCallback& callback,
                              dbus::Response* response) {
   if (!response) {
     LOG(ERROR) << "TrunksProxy: No response!";
-    callback.Run(TpmUtilityImpl::CreateErrorResponse(
+    callback.Run(CreateErrorResponse(
         SAPI_RC_NO_RESPONSE_RECEIVED));
     return;
   }
@@ -76,7 +75,7 @@ std::string TrunksProxy::GetResponseData(dbus::Response* response) {
   SendCommandResponse tpm_response_proto;
   if (!reader.PopArrayOfBytesAsProto(&tpm_response_proto)) {
     LOG(ERROR) << "TrunksProxy was not able to parse the response.";
-    return TpmUtilityImpl::CreateErrorResponse(SAPI_RC_MALFORMED_RESPONSE);
+    return CreateErrorResponse(SAPI_RC_MALFORMED_RESPONSE);
   }
   return tpm_response_proto.response();
 }

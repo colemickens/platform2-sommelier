@@ -12,7 +12,6 @@
 #include "trunks/dbus_interface.h"
 #include "trunks/dbus_interface.pb.h"
 #include "trunks/error_codes.h"
-#include "trunks/tpm_utility_impl.h"
 
 namespace trunks {
 
@@ -44,7 +43,7 @@ void TrunksService::HandleSendCommand(
       !tpm_command_proto.has_command() ||
       tpm_command_proto.command().empty()) {
     LOG(ERROR) << "TrunksService: Invalid request.";
-    callback.Run(TpmUtilityImpl::CreateErrorResponse(SAPI_RC_BAD_PARAMETER));
+    callback.Run(CreateErrorResponse(SAPI_RC_BAD_PARAMETER));
     return;
   }
   transceiver_->SendCommand(tpm_command_proto.command(), callback);

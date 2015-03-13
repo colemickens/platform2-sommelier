@@ -64,6 +64,9 @@ TRUNKS_EXPORT std::string GetErrorString(TPM_RC error);
 // for details on format one errors.
 TRUNKS_EXPORT TPM_RC GetFormatOneError(TPM_RC error);
 
+// Creates a well-formed response with the given |error_code|.
+TRUNKS_EXPORT std::string CreateErrorResponse(TPM_RC error_code);
+
 }  // namespace trunks
 
 #endif  // TRUNKS_ERROR_CODES_H_

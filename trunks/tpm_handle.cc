@@ -11,8 +11,6 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
-#include "trunks/tpm_utility_impl.h"
-
 namespace {
 
 const char kTpmDevice[] = "/dev/tpm0";
@@ -53,7 +51,7 @@ std::string TpmHandle::SendCommandAndWait(const std::string& command) {
   std::string response;
   TPM_RC result = SendCommandInternal(command, &response);
   if (result != TPM_RC_SUCCESS) {
-    response = TpmUtilityImpl::CreateErrorResponse(result);
+    response = CreateErrorResponse(result);
   }
   return response;
 }
@@ -61,10 +59,6 @@ std::string TpmHandle::SendCommandAndWait(const std::string& command) {
 TPM_RC TpmHandle::SendCommandInternal(const std::string& command,
                                       std::string* response) {
   CHECK_NE(fd_, kInvalidFileDescriptor);
-  TPM_RC command_verify = VerifyMessage(command);
-  if (command_verify != TPM_RC_SUCCESS) {
-    return command_verify;
-  }
   int result = HANDLE_EINTR(write(fd_, command.data(), command.length()));
   if (result < 0) {
     PLOG(ERROR) << "TPM: Error writing to TPM handle.";
@@ -82,20 +76,6 @@ TPM_RC TpmHandle::SendCommandInternal(const std::string& command,
     return TRUNKS_RC_READ_ERROR;
   }
   response->assign(response_buf, static_cast<size_t>(result));
-  return VerifyMessage(*response);
-}
-
-TPM_RC TpmHandle::VerifyMessage(const std::string& message) {
-  if (message.length() > kTpmBufferSize) {
-    LOG(ERROR) << "TPM: message length: " << message.length()
-               << " exceeds TPM buffer length: " << kTpmBufferSize;
-    return TCTI_RC_INSUFFICIENT_BUFFER;
-  }
-  if (!TpmUtilityImpl::ParseHeader(message, NULL, NULL, NULL)) {
-    LOG(ERROR) << "TPM: Invalid message header.";
-    return TCTI_RC_BAD_PARAMETER;
-  }
-  VLOG(1) << "TPM: Message successfully verified.";
   return TPM_RC_SUCCESS;
 }
 

@@ -209,4 +209,13 @@ TPM_RC GetFormatOneError(TPM_RC error) {
   return error;
 }
 
+std::string CreateErrorResponse(TPM_RC error_code) {
+  const uint32_t kErrorResponseSize = 10;
+  std::string response;
+  CHECK_EQ(Serialize_TPM_ST(TPM_ST_NO_SESSIONS, &response), TPM_RC_SUCCESS);
+  CHECK_EQ(Serialize_UINT32(kErrorResponseSize, &response), TPM_RC_SUCCESS);
+  CHECK_EQ(Serialize_TPM_RC(error_code, &response), TPM_RC_SUCCESS);
+  return response;
+}
+
 }  // namespace trunks

@@ -15,13 +15,14 @@ namespace trunks {
 
 // Sends commands to a TPM device via a handle to /dev/tpm0. All commands are
 // sent synchronously. The SendCommand method is supported but does not return
-// until a response is received and the callback has been called.
+// until a response is received and the callback has been called. Command and
+// response data are opaque to this class; it performs no validation.
 //
 // Example:
 //   TpmHandle handle;
 //   if (!handle.Init()) {...}
 //   std::string response = handle.SendCommandAndWait(command);
-class TpmHandle: public CommandTransceiver  {
+class TpmHandle : public CommandTransceiver  {
  public:
   TpmHandle();
   ~TpmHandle() override;
@@ -39,10 +40,6 @@ class TpmHandle: public CommandTransceiver  {
   // Writes a |command| to /dev/tpm0 and reads the |response|. Returns
   // TPM_RC_SUCCESS on success.
   TPM_RC SendCommandInternal(const std::string& command, std::string* response);
-
-  // Sanity checks a |message| for header correctness. Returns TPM_RC_SUCCESS on
-  // success.
-  TPM_RC VerifyMessage(const std::string& message);
 
   int fd_;  // A file descriptor for /dev/tpm0.
 
