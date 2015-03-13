@@ -1344,14 +1344,12 @@ class MockTpm : public Tpm {
       TPM_RC(const TPMS_CONTEXT& context,
              TPMI_DH_CONTEXT* loaded_handle,
              AuthorizationDelegate* authorization_delegate));
-  MOCK_METHOD4(FlushContext,
+  MOCK_METHOD3(FlushContext,
       void(const TPMI_DH_CONTEXT& flush_handle,
-           const std::string& flush_handle_name,
            AuthorizationDelegate* authorization_delegate,
            const FlushContextResponse& callback));
-  MOCK_METHOD3(FlushContextSync,
+  MOCK_METHOD2(FlushContextSync,
       TPM_RC(const TPMI_DH_CONTEXT& flush_handle,
-             const std::string& flush_handle_name,
              AuthorizationDelegate* authorization_delegate));
   MOCK_METHOD7(EvictControl,
       void(const TPMI_RH_PROVISION& auth,

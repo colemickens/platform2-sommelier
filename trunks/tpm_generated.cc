@@ -34920,7 +34920,6 @@ TPM_RC Tpm::ContextLoadSync(
 
 TPM_RC Tpm::SerializeCommand_FlushContext(
       const TPMI_DH_CONTEXT& flush_handle,
-      const std::string& flush_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(2) << __func__;
@@ -34950,9 +34949,9 @@ TPM_RC Tpm::SerializeCommand_FlushContext(
       crypto::SecureHash::SHA256));
   hash->Update(command_code_bytes.data(),
                command_code_bytes.size());
-  hash->Update(flush_handle_name.data(),
-               flush_handle_name.size());
-  handle_section_bytes += flush_handle_bytes;
+  hash->Update(flush_handle_bytes.data(),
+               flush_handle_bytes.size());
+  parameter_section_bytes += flush_handle_bytes;
   command_size += flush_handle_bytes.size();
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
@@ -35115,7 +35114,6 @@ void FlushContextResponseParser(
 
 void Tpm::FlushContext(
       const TPMI_DH_CONTEXT& flush_handle,
-      const std::string& flush_handle_name,
       AuthorizationDelegate* authorization_delegate,
       const FlushContextResponse& callback) {
   VLOG(1) << __func__;
@@ -35128,7 +35126,6 @@ void Tpm::FlushContext(
   std::string command;
   TPM_RC rc = SerializeCommand_FlushContext(
       flush_handle,
-      flush_handle_name,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
@@ -35140,13 +35137,11 @@ void Tpm::FlushContext(
 
 TPM_RC Tpm::FlushContextSync(
       const TPMI_DH_CONTEXT& flush_handle,
-      const std::string& flush_handle_name,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(1) << __func__;
   std::string command;
   TPM_RC rc = SerializeCommand_FlushContext(
       flush_handle,
-      flush_handle_name,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {

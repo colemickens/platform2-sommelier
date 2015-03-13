@@ -1703,8 +1703,10 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     handles = []
     parameters = []
     always_handle = set(['TPM_HANDLE'])
-    # Handle types that exclusively appear as command parameters.
+    # Handle types that appear as command parameters.
     always_parameter = set(['TPMI_RH_ENABLES', 'TPMI_DH_PERSISTENT'])
+    if self.command_code == 'TPM_CC_FlushContext':
+      always_parameter.add('TPMI_DH_CONTEXT')
     for arg in args:
       if (arg['type'] in always_handle or
           (self._HANDLE_RE.search(arg['type']) and

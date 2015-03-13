@@ -215,10 +215,7 @@ void AuthorizationSessionImpl::CloseSession() {
   if (hmac_handle_ == kUninitializedHandle) {
     return;
   }
-  Tpm* tpm = factory_.GetTpm();
-  TPM_RC result = tpm->FlushContextSync(hmac_handle_,
-                                        "",
-                                        NULL);
+  TPM_RC result = factory_.GetTpm()->FlushContextSync(hmac_handle_, NULL);
   if (result != TPM_RC_SUCCESS) {
     LOG(WARNING) << "Error closing authorization session: "
                  << GetErrorString(result);

@@ -271,7 +271,7 @@ int AuthChangeTest() {
                << trunks::GetErrorString(rc);
     return rc;
   }
-  rc = factory.GetTpm()->FlushContextSync(key_handle, "", NULL);
+  rc = factory.GetTpm()->FlushContextSync(key_handle, NULL);
   if (rc) {
     LOG(ERROR) << "Error flushing key: " << trunks::GetErrorString(rc);
     return rc;

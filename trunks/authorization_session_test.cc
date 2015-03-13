@@ -79,7 +79,7 @@ TEST_F(AuthorizationSessionTest, StartUnboundSuccess) {
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, session.StartUnboundSession(false));
   EXPECT_EQ(session_handle, GetHmacDelegate(&session)->session_handle());
-  EXPECT_CALL(mock_tpm_, FlushContextSync(session_handle, _, _))
+  EXPECT_CALL(mock_tpm_, FlushContextSync(session_handle, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
 }
 

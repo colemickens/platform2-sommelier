@@ -6125,7 +6125,6 @@ class TRUNKS_EXPORT Tpm {
       TPM_RC response_code)> FlushContextResponse;
   static TPM_RC SerializeCommand_FlushContext(
       const TPMI_DH_CONTEXT& flush_handle,
-      const std::string& flush_handle_name,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate);
   static TPM_RC ParseResponse_FlushContext(
@@ -6133,12 +6132,10 @@ class TRUNKS_EXPORT Tpm {
       AuthorizationDelegate* authorization_delegate);
   virtual void FlushContext(
       const TPMI_DH_CONTEXT& flush_handle,
-      const std::string& flush_handle_name,
       AuthorizationDelegate* authorization_delegate,
       const FlushContextResponse& callback);
   virtual TPM_RC FlushContextSync(
       const TPMI_DH_CONTEXT& flush_handle,
-      const std::string& flush_handle_name,
       AuthorizationDelegate* authorization_delegate);
   typedef base::Callback<void(
       TPM_RC response_code)> EvictControlResponse;
