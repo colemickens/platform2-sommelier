@@ -60,6 +60,7 @@ const char kDefaultStateFilePath[] = "/var/lib/buffet/device_reg_info";
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  DEFINE_bool(log_to_stderr, false, "log trace messages to stderr as well");
   DEFINE_string(config_path, kDefaultConfigFilePath,
                 "Path to file containing config information.");
   DEFINE_string(state_path, kDefaultStateFilePath,
@@ -72,7 +73,11 @@ int main(int argc, char* argv[]) {
     FLAGS_config_path = kDefaultConfigFilePath;
   if (FLAGS_state_path.empty())
     FLAGS_state_path = kDefaultStateFilePath;
-  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
+  int flags = chromeos::kLogToSyslog | chromeos::kLogHeader;
+  if (FLAGS_log_to_stderr)
+    flags |= chromeos::kLogToStderr;
+  chromeos::InitLog(flags);
+
   buffet::Daemon daemon{base::FilePath{FLAGS_config_path},
                         base::FilePath{FLAGS_state_path},
                         base::FilePath{FLAGS_test_definitions_path}};
