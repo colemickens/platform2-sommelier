@@ -8,6 +8,24 @@
       functionality affecting the entire daemon, such as joining groups.
     </tp:docstring>
     <method name="JoinGroup">
+      <tp:docstring>
+        Request leaderd to join a group on the local subnet.
+
+        Membership of a group is global for a device.  Only the first
+        request to join a particular group will be successful; following
+        requests will be rejected.  If the process requesting membership
+        loses its DBus connection, leaderd will automatically leave the
+        group.  Group membership is not persistent across reboots.
+
+        Parameters:
+          group_id: UUID identifier of group to join.
+          options: a dictionary containing zero or more key/value pairs.
+                   See design doc.
+
+        Returns:
+          group_path: object path of DBus object fullfilling the
+                      org.chromium.leaderd.Group interface.
+      </tp:docstring>
       <arg name="group_id" type="s" direction="in"/>
       <arg name="options" type="a{sv}" direction="in"/>
       <arg name="group_path" type="o" direction="out"/>
@@ -16,6 +34,9 @@
                   value="true"/>
     </method>
     <method name="Ping">
+      <tp:docstring>
+        Test method. Always returns “Hello world!”
+      </tp:docstring>
       <arg name="message" type="s" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
