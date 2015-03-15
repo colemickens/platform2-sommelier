@@ -127,14 +127,64 @@ fast_dd() {
     $count_arg
 }
 
+# Get the specified env var for the specified partition.
+#  $1 the field name such as "PARTITION_SIZE", "FS_FORMAT"
+#  $2 the partition such as "1", or "ROOT_A"
+_get_field() {
+  local field part
+  field="$1"
+  part="$2"
+  eval echo \""\${${field}_${part}}"\"
+}
+
 get_format() {
-  local part=$1
-  eval echo \${FORMAT_${part}}
+  _get_field FORMAT "$@"
 }
 
 get_fs_format() {
-  local part=$1
-  eval echo \${FS_FORMAT_${part}}
+  _get_field FS_FORMAT "$@"
+}
+
+get_partition_size() {
+  _get_field PARTITION_SIZE "$@"
+}
+
+get_reserved_ebs() {
+  _get_field RESERVED_EBS "$@"
+}
+
+# Calculate the maximum number of bad blocks per 1024 blocks for UBI.
+#  $1 partition number
+calculate_max_beb_per_1024() {
+  local part_no mtd_size eb_size nr_blocks
+  part_no="$1"
+  # The max beb per 1024 is on the total device size, not the partition size.
+  mtd_size=$(cat /sys/class/mtd/mtd0/size)
+  eb_size=$(cat /sys/class/mtd/mtd0/erasesize)
+  nr_blocks=$((mtd_size / eb_size))
+  reserved_ebs=$(get_reserved_ebs "${part_no}")
+  echo $((reserved_ebs * 1024 / nr_blocks))
+}
+
+# Format and make UBI volume if it's not already there.
+#  $1 partition number such as "1", "2"
+#  $2 volume name
+init_ubi_volume() {
+  local part_no volume_name phy_ubi log_ubi
+  part_no="$1"
+  volume_name="$2"
+  phy_ubi="/dev/ubi${part_no}"
+  log_ubi="${phy_ubi}_0"
+  if [ ! -e "${phy_ubi}" ]; then
+    ubiformat -y -e 0 "/dev/mtd${part_no}"
+    ubiattach -d "${part_no}" -m "${part_no}" \
+              --max-beb-per1024 $(calculate_max_beb_per_1024 "${part_no}")
+  fi
+  if [ ! -e "${log_ubi}" ]; then
+    local volume_size
+    volume_size=$(get_partition_size "${part_no}")
+    ubimkvol -s "${volume_size}" -N "${volume_name}" "${phy_ubi}"
+  fi
 }
 
 # Update a specific partition in the destination device.
@@ -166,14 +216,7 @@ write_partition() {
     local log_ubi="${phy_ubi}_0"
     local sysfs_name="/sys/class/mtd/mtd${user_part}/name"
 
-    # Do we have to initialize it first?
-    if [ ! -e ${phy_ubi} ]; then
-      ubiformat -y -e 0 /dev/mtd${user_part}
-      ubiattach -d ${user_part} -m ${user_part}
-    fi
-    if [ ! -e ${log_ubi} ]; then
-      ubimkvol -m ${phy_ubi} -N "$(cat "${sysfs_name}")"
-    fi
+    init_ubi_volume "${user_part}" "$(cat "${sysfs_name}")"
 
     fs_format=$(get_fs_format ${user_part})
     case ${fs_format} in
@@ -425,14 +468,7 @@ wipe_stateful() {
     local log_ubi="${phy_ubi}_0"
     local sysfs_name="/sys/class/mtd/mtd${STATEFUL_PART}/name"
 
-    # Do we have to initialize it first?
-    if [ ! -e ${phy_ubi} ]; then
-      ubiformat -y -e 0 /dev/mtd${STATEFUL_PART}
-      ubiattach -d ${STATEFUL_PART} -m ${STATEFUL_PART}
-    fi
-    if [ ! -e ${log_ubi} ]; then
-      ubimkvol -m ${phy_ubi} -N "$(cat "${sysfs_name}")"
-    fi
+    init_ubi_volume "${STATEFUL_PART}" "$(cat "${sysfs_name}")"
     ;;
   *)
     loop_offset_setup ${DST} ${START_STATEFUL}
