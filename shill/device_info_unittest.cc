@@ -138,6 +138,10 @@ class DeviceInfoTest : public Test {
     manager_.UpdateProviderMapping();
   }
 
+  void SetManagerRunning(bool running) {
+    manager_.running_ = running;
+  }
+
  protected:
   static const int kTestDeviceIndex;
   static const char kTestDeviceName[];
@@ -645,6 +649,19 @@ TEST_F(DeviceInfoTest, CreateDeviceUnknown) {
 }
 
 TEST_F(DeviceInfoTest, DeviceBlackList) {
+  // Manager is not running by default.
+  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(0);
+  device_info_.AddDeviceToBlackList(kTestDeviceName);
+  unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  SendMessageToDeviceInfo(*message);
+
+  DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
+  ASSERT_TRUE(device.get());
+  EXPECT_TRUE(device->technology() == Technology::kBlacklisted);
+}
+
+TEST_F(DeviceInfoTest, AddDeviceToBlackListWithManagerRunning) {
+  SetManagerRunning(true);
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
   device_info_.AddDeviceToBlackList(kTestDeviceName);
   unique_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
