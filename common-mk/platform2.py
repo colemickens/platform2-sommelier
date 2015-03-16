@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python2
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -31,10 +31,11 @@ class Platform2(object):
 
   def __init__(self, use_flags, board=None, host=False, libdir=None,
                incremental=True, verbose=False, enable_tests=False,
-               cache_dir=None):
+               cache_dir=None, jobs=None):
     self.board = board
     self.host = host
     self.incremental = incremental
+    self.jobs = jobs
     self.verbose = verbose
 
     if use_flags:
@@ -247,7 +248,10 @@ class Platform2(object):
 
     if not args:
       args = ['all']
-    ninja_args = ['ninja', '-C', self.get_products_path()] + args
+    ninja_args = ['ninja', '-C', self.get_products_path()]
+    if self.jobs:
+      ninja_args += ['-j', str(self.jobs)]
+    ninja_args += args
 
     if self.verbose:
       ninja_args.append('-v')
@@ -297,6 +301,8 @@ def main(argv):
                       help='the libdir for the specific board, eg /usr/lib64')
   parser.add_argument('--use_flags',
                       action=_ParseStringSetAction, help='USE flags to enable')
+  parser.add_argument('-j', '--jobs', type=int, default=None,
+                      help='number of jobs to run in parallel')
   parser.add_argument('--verbose', action='store_true', default=None,
                       help='enable verbose log output')
   parser.add_argument('args', nargs='*')
@@ -312,7 +318,7 @@ def main(argv):
 
   p2 = Platform2(options.use_flags, options.board, options.host,
                  options.libdir, options.incremental, options.verbose,
-                 options.enable_tests, options.cache_dir)
+                 options.enable_tests, options.cache_dir, jobs=options.jobs)
   getattr(p2, options.action)(options.args)
 
 
