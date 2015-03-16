@@ -14,8 +14,11 @@
 
 namespace trunks {
 
+TrunksFactoryImpl::TrunksFactoryImpl(Tpm* tpm) : tpm_(tpm) {}
+
 TrunksFactoryImpl::TrunksFactoryImpl() : proxy_(new TrunksProxy()),
-                                         tpm_(new Tpm(proxy_.get())) {
+                                         default_tpm_(new Tpm(proxy_.get())),
+                                         tpm_(default_tpm_.get()) {
   if (!proxy_->Init()) {
     LOG(ERROR) << "Failed to initialize trunks proxy.";
   }
@@ -25,7 +28,7 @@ TrunksFactoryImpl::~TrunksFactoryImpl() {
 }
 
 Tpm* TrunksFactoryImpl::GetTpm() const {
-  return tpm_.get();
+  return tpm_;
 }
 
 scoped_ptr<TpmState> TrunksFactoryImpl::GetTpmState() const {

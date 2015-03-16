@@ -22,8 +22,13 @@ class TrunksProxy;
 // TrunksFactoryImpl is the default TrunksFactory implementation.
 class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
  public:
+  // All objects created by this factory will share |tpm|. This class does not
+  // take ownership of the pointer, it must remain valid for the lifetime of the
+  // factory.
+  explicit TrunksFactoryImpl(Tpm* tpm);
+  // A default Tpm instance will be used which sends commands to a TrunksProxy.
   TrunksFactoryImpl();
-  virtual ~TrunksFactoryImpl();
+  ~TrunksFactoryImpl() override;
 
   // TrunksFactory methods.
   Tpm* GetTpm() const override;
@@ -35,7 +40,8 @@ class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
 
  private:
   scoped_ptr<TrunksProxy> proxy_;
-  scoped_ptr<Tpm> tpm_;
+  scoped_ptr<Tpm> default_tpm_;
+  Tpm* tpm_;
 
   DISALLOW_COPY_AND_ASSIGN(TrunksFactoryImpl);
 };
