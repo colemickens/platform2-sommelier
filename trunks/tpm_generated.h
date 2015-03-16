@@ -1609,6 +1609,9 @@ struct TPM2B_CREATION_DATA {
 };
 
 
+TRUNKS_EXPORT size_t GetNumberOfRequestHandles(TPM_CC command_code);
+TRUNKS_EXPORT size_t GetNumberOfResponseHandles(TPM_CC command_code);
+
 TRUNKS_EXPORT TPM_RC Serialize_uint8_t(
     const uint8_t& value,
     std::string* buffer);

@@ -120,6 +120,10 @@ _FORWARD_DECLARATIONS = """
 class AuthorizationDelegate;
 class CommandTransceiver;
 """
+_FUNCTION_DECLARATIONS = """
+TRUNKS_EXPORT size_t GetNumberOfRequestHandles(TPM_CC command_code);
+TRUNKS_EXPORT size_t GetNumberOfResponseHandles(TPM_CC command_code);
+"""
 _CLASS_BEGIN = """
 class TRUNKS_EXPORT Tpm {
  public:
@@ -208,6 +212,17 @@ TRUNKS_EXPORT %(type)s Make_%(type)s(
     const %(inner_type)s& inner);
 """
 
+_HANDLE_COUNT_FUNCTION_START = """
+size_t GetNumberOf%(handle_type)sHandles(TPM_CC command_code) {
+  switch (command_code) {"""
+_HANDLE_COUNT_FUNCTION_CASE = """
+    case %(command_code)s: return %(handle_count)s;"""
+_HANDLE_COUNT_FUNCTION_END = """
+    default: NOTREACHED();
+  }
+  return 0;
+}
+"""
 
 def FixName(name):
   """Fixes names to conform to Chromium style."""
@@ -1600,6 +1615,14 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
                                                   prefix='&',
                                                   trailing_comma=True)})
 
+  def GetNumberOfRequestHandles(self):
+    """Returns the number of input handles for this command."""
+    return len(self._SplitArgs(self.request_args)[0])
+
+  def GetNumberOfResponseHandles(self):
+    """Returns the number of output handles for this command."""
+    return len(self._SplitArgs(self.response_args)[0])
+
   def _OutputMethodSignatures(self, out_file):
     """Prints method declaration statements for this command.
 
@@ -1891,6 +1914,27 @@ class CommandParser(object):
     return args
 
 
+def GenerateHandleCountFunctions(commands, out_file):
+  """Generates the GetNumberOf*Handles functions given a list of commands.
+
+  Args:
+    commands: A list of Command objects.
+    out_file: The output file.
+  """
+  out_file.write(_HANDLE_COUNT_FUNCTION_START % {'handle_type': 'Request'})
+  for command in commands:
+    out_file.write(_HANDLE_COUNT_FUNCTION_CASE %
+                   {'command_code': command.command_code,
+                    'handle_count': command.GetNumberOfRequestHandles()})
+  out_file.write(_HANDLE_COUNT_FUNCTION_END)
+  out_file.write(_HANDLE_COUNT_FUNCTION_START % {'handle_type': 'Response'})
+  for command in commands:
+    out_file.write(_HANDLE_COUNT_FUNCTION_CASE %
+                   {'command_code': command.command_code,
+                    'handle_count': command.GetNumberOfResponseHandles()})
+  out_file.write(_HANDLE_COUNT_FUNCTION_END)
+
+
 def GenerateHeader(types, constants, structs, defines, typemap, commands):
   """Generates a header file with declarations for all given generator objects.
 
@@ -1932,6 +1976,8 @@ def GenerateHeader(types, constants, structs, defines, typemap, commands):
   # Generate structs.  All non-struct dependencies should be already declared.
   for struct in structs:
     struct.Output(out_file, defined_types, typemap)
+  # Helper function declarations.
+  out_file.write(_FUNCTION_DECLARATIONS)
   # Generate serialize / parse function declarations.
   for basic_type in _BASIC_TYPES:
     out_file.write(_SERIALIZE_DECLARATION % {'type': basic_type})
@@ -1970,6 +2016,7 @@ def GenerateImplementation(types, structs, typemap, commands):
   out_file.write(_LOCAL_INCLUDE % {'filename': _OUTPUT_FILE_H})
   out_file.write(_IMPLEMENTATION_FILE_INCLUDES)
   out_file.write(_NAMESPACE_BEGIN)
+  GenerateHandleCountFunctions(commands, out_file)
   serialized_types = set(_BASIC_TYPES)
   for basic_type in _BASIC_TYPES:
     out_file.write(_SERIALIZE_BASIC_TYPE % {'type': basic_type})
