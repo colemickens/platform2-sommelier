@@ -72,7 +72,7 @@ void Manager::RegisterAsync(
           base::Bind(&Manager::OnRegistrationStatusChange,
                      base::Unretained(this))));
   // Reset D-Bus properties.
-  OnRegistrationStatusChange(device_info_->GetRegistrationStatus());
+  OnRegistrationStatusChange();
   device_info_->Load();
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(cb);
@@ -90,17 +90,7 @@ void Manager::CheckDeviceRegistered(DBusMethodResponse<std::string> response) {
     return;
   }
 
-  std::string device_id;
-  if (registered) {
-    error.reset();
-    device_id = device_info_->GetDeviceId(&error);
-    if (error) {
-      response->ReplyWithError(error.get());
-      return;
-    }
-  }
-
-  response->Return(device_id);
+  response->Return(registered ? device_info_->GetDeviceId() : std::string());
 }
 
 void Manager::GetDeviceInfo(DBusMethodResponse<std::string> response) {
@@ -205,8 +195,10 @@ std::string Manager::TestMethod(const std::string& message) {
   return message;
 }
 
-void Manager::OnRegistrationStatusChange(RegistrationStatus status) {
-  dbus_adaptor_.SetStatus(StatusToString(status));
+void Manager::OnRegistrationStatusChange() {
+  dbus_adaptor_.SetStatus(
+      StatusToString(device_info_->GetRegistrationStatus()));
+  dbus_adaptor_.SetDeviceId(device_info_->GetDeviceId());
 }
 
 }  // namespace buffet

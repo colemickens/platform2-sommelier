@@ -56,5 +56,10 @@
                                  valid.
       </tp:docstring>
     </property>
+    <property name="DeviceId" type="s" access="read">
+      <tp:docstring>
+        GCD ID if the device is registered or empty otherwise.
+      </tp:docstring>
+    </property>
   </interface>
 </node>

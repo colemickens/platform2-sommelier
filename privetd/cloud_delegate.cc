@@ -63,13 +63,11 @@ class CloudDelegateImpl : public CloudDelegate {
     VLOG(1) << "GCD Setup started. ticket_id: " << ticket_id
             << ", user:" << user;
     setup_state_ = SetupState(SetupState::kInProgress);
-    cloud_id_.clear();
     setup_weak_factory_.InvalidateWeakPtrs();
     base::MessageLoop::current()->PostDelayedTask(
         FROM_HERE, base::Bind(&CloudDelegateImpl::CallManagerRegisterDevice,
                               setup_weak_factory_.GetWeakPtr(), ticket_id, 0),
         base::TimeDelta::FromSeconds(kSetupDelaySeconds));
-    on_changed_.Run();
     // Return true because we tried setup.
     return true;
   }
@@ -81,36 +79,43 @@ class CloudDelegateImpl : public CloudDelegate {
     manager->SetPropertyChangedCallback(
         base::Bind(&CloudDelegateImpl::OnManagerPropertyChanged,
                    weak_factory_.GetWeakPtr()));
+
+    // Read initial values.
     OnManagerPropertyChanged(manager,
                              org::chromium::Buffet::ManagerProxy::StatusName());
+    OnManagerPropertyChanged(
+        manager, org::chromium::Buffet::ManagerProxy::DeviceIdName());
   }
 
   void OnManagerPropertyChanged(org::chromium::Buffet::ManagerProxy* manager,
                                 const std::string& property_name) {
-    if (property_name != org::chromium::Buffet::ManagerProxy::StatusName())
-      return;
-
-    const std::string& status = manager->status();
-    if (status == "unconfigured") {
-      state_ = ConnectionState{ConnectionState::kUnconfigured};
-    } else if (status == "connecting") {
-      // TODO(vitalybuka): Find conditions for kOffline.
-      state_ = ConnectionState{ConnectionState::kConnecting};
-    } else if (status == "connected") {
-      state_ = ConnectionState{ConnectionState::kOnline};
-    } else {
-      chromeos::ErrorPtr error;
-      chromeos::Error::AddToPrintf(
-          &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
-          "Unexpected buffet status: %s", status.c_str());
-      state_ = ConnectionState{std::move(error)};
+    if (property_name == org::chromium::Buffet::ManagerProxy::StatusName()) {
+      const std::string& status = manager->status();
+      if (status == "unconfigured") {
+        state_ = ConnectionState{ConnectionState::kUnconfigured};
+      } else if (status == "connecting") {
+        // TODO(vitalybuka): Find conditions for kOffline.
+        state_ = ConnectionState{ConnectionState::kConnecting};
+      } else if (status == "connected") {
+        state_ = ConnectionState{ConnectionState::kOnline};
+      } else {
+        chromeos::ErrorPtr error;
+        chromeos::Error::AddToPrintf(
+            &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
+            "Unexpected buffet status: %s", status.c_str());
+        state_ = ConnectionState{std::move(error)};
+      }
+      on_changed_.Run();
+    } else if (property_name ==
+               org::chromium::Buffet::ManagerProxy::DeviceIdName()) {
+      cloud_id_ = manager->device_id();
+      on_changed_.Run();
     }
-
-    on_changed_.Run();
   }
 
   void OnManagerRemoved(const dbus::ObjectPath& path) {
-    state_ = ConnectionState(ConnectionState::kOffline);
+    state_ = ConnectionState(ConnectionState::kDisabled);
+    cloud_id_.clear();
     on_changed_.Run();
   }
 
@@ -139,9 +144,7 @@ class CloudDelegateImpl : public CloudDelegate {
 
   void OnRegisterSuccess(const std::string& device_id) {
     VLOG(1) << "Device registered: " << device_id;
-    cloud_id_ = device_id;
     setup_state_ = SetupState(SetupState::kSuccess);
-    on_changed_.Run();
   }
 
   void CallManagerRegisterDevice(const std::string& ticket_id, int retries) {
@@ -175,7 +178,7 @@ class CloudDelegateImpl : public CloudDelegate {
   base::Closure on_changed_;
 
   // Primary state of GCD.
-  ConnectionState state_{ConnectionState::kUnconfigured};
+  ConnectionState state_{ConnectionState::kDisabled};
 
   // State of the current or last setup.
   SetupState setup_state_{SetupState::kNone};

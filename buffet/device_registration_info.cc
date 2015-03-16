@@ -171,8 +171,8 @@ std::string DeviceRegistrationInfo::GetOAuthURL(
   return BuildURL(oauth_url_, {subpath}, params);
 }
 
-std::string DeviceRegistrationInfo::GetDeviceId(chromeos::ErrorPtr* error) {
-  return CheckRegistration(error) ? device_id_ : std::string();
+const std::string& DeviceRegistrationInfo::GetDeviceId() const {
+  return device_id_;
 }
 
 bool DeviceRegistrationInfo::Load() {
@@ -233,7 +233,6 @@ bool DeviceRegistrationInfo::Load() {
   client_secret_        = client_secret;
   api_key_              = api_key;
   refresh_token_        = refresh_token;
-  device_id_            = device_id;
   oauth_url_            = oauth_url;
   service_url_          = service_url;
   device_robot_account_ = device_robot_account;
@@ -242,6 +241,8 @@ bool DeviceRegistrationInfo::Load() {
   display_name_         = display_name;
   description_          = description;
   location_             = location;
+
+  SetDeviceId(device_id);
 
   if (HaveRegistrationCredentials(nullptr)) {
     // Wait a significant amount of time for local daemons to publish their
@@ -544,14 +545,16 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   }
 
   std::string auth_code;
+  std::string device_id;
   if (!json_resp->GetString("robotAccountEmail", &device_robot_account_) ||
       !json_resp->GetString("robotAccountAuthorizationCode", &auth_code) ||
-      !json_resp->GetString("deviceDraft.id", &device_id_)) {
+      !json_resp->GetString("deviceDraft.id", &device_id)) {
     chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainGCD,
                            "unexpected_response",
                            "Device account missing in response");
     return std::string();
   }
+  SetDeviceId(device_id);
 
   // Now get access_token and refresh_token
   response = chromeos::http::PostFormDataAndBlock(GetOAuthURL("token"), {
@@ -994,7 +997,15 @@ void DeviceRegistrationInfo::SetRegistrationStatus(
   VLOG(1) << "Changing registration status to " << StatusToString(new_status);
   registration_status_ = new_status;
   if (!registration_status_handler_.is_null())
-    registration_status_handler_.Run(registration_status_);
+    registration_status_handler_.Run();
+}
+
+void DeviceRegistrationInfo::SetDeviceId(const std::string& device_id) {
+  if (device_id == device_id_)
+    return;
+  device_id_ = device_id;
+  if (!registration_status_handler_.is_null())
+    registration_status_handler_.Run();
 }
 
 }  // namespace buffet

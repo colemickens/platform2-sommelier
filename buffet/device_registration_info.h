@@ -45,7 +45,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
  public:
   // This is a helper class for unit testing.
   class TestHelper;
-  using StatusHandler = base::Callback<void(RegistrationStatus)>;
+  using StatusHandler = base::Closure;
 
   DeviceRegistrationInfo(
       const std::shared_ptr<CommandManager>& command_manager,
@@ -100,8 +100,8 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
     const std::string& subpath = {},
     const chromeos::data_encoding::WebParamList& params = {}) const;
 
-  // Returns the registered device ID (GUID) or empty string if failed
-  std::string GetDeviceId(chromeos::ErrorPtr* error);
+  // Returns the registered device ID (GUID) or empty string.
+  const std::string& GetDeviceId() const;
 
   // Loads the device registration information from cache.
   bool Load();
@@ -218,6 +218,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
       chromeos::ErrorPtr* error);
 
   void SetRegistrationStatus(RegistrationStatus new_status);
+  void SetDeviceId(const std::string& device_id);
 
   std::unique_ptr<XmppClient> xmpp_client_;
   base::MessageLoopForIO::FileDescriptorWatcher fd_watcher_;

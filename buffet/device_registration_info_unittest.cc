@@ -221,7 +221,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
                                    mock_callback));
   }
 
-  MOCK_METHOD1(OnRegistrationStatusChange, void(RegistrationStatus));
+  MOCK_METHOD0(OnRegistrationStatusChange, void());
 
   base::DictionaryValue data_;
   std::shared_ptr<MemStorage> storage_;
@@ -385,8 +385,7 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceId) {
   transport_->AddHandler(dev_reg_->GetDeviceURL(),
                          chromeos::http::request_type::kGet,
                          base::Bind(DeviceInfoHandler));
-  std::string id = dev_reg_->GetDeviceId(nullptr);
-  EXPECT_EQ(test_data::kDeviceId, id);
+  EXPECT_EQ(test_data::kDeviceId, dev_reg_->GetDeviceId());
 }
 
 TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
