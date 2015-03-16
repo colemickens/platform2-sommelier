@@ -346,7 +346,9 @@ int Transport::MultiSocketCallback(CURL* easy,
     transport->curl_interface_->MultiAssign(
         transport->curl_multi_handle_, s, nullptr);
     transport->poll_data_map_.erase(std::make_pair(easy, s));
-    delete poll_data;
+    // This method can be called indirectly from SocketPollData::OnSocketReady,
+    // so delay destruction of SocketPollData object till the next loop cycle.
+    base::MessageLoopForIO::current()->DeleteSoon(FROM_HERE, poll_data);
     return 0;
   }
 
