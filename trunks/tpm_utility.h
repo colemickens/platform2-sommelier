@@ -67,7 +67,7 @@ class TRUNKS_EXPORT TpmUtility {
   // |session| specifies an optional authorization session to be used. If
   // |session| is NULL, authorization is not used for this command.
   virtual TPM_RC GenerateRandom(size_t num_bytes,
-                                AuthorizationSession*,
+                                AuthorizationSession* session,
                                 std::string* random_data) = 0;
 
   // This method extends the pcr specified by |pcr_index| with the SHA256

@@ -33,6 +33,9 @@ void PrintUsage() {
   puts("  --clear - Clears the TPM. Use before initializing the TPM.");
   puts("  --init_tpm - Initializes a TPM as CrOS firmware does.");
   puts("  --own - Takes ownership of the TPM with the provided password.");
+  puts("  --regression_test - Runs some basic regression tests. If");
+  puts("                      owner_password is supplied, it runs tests that");
+  puts("                      need owner permissions.");
   puts("  --owner_password - used to provide an owner password");
 }
 
@@ -65,6 +68,43 @@ int TakeOwnership(const std::string& owner_password) {
   return 0;
 }
 
+int RNGTest() {
+  trunks::TrunksFactoryImpl factory;
+  scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
+  scoped_ptr<trunks::AuthorizationSession> session =
+      factory.GetAuthorizationSession();
+  std::string entropy_data("entropy_data");
+  std::string random_data;
+  size_t num_bytes = 70;
+  trunks::TPM_RC rc;
+  rc = session->StartUnboundSession(true /* enable encryption */);
+  if (rc) {
+    LOG(ERROR) << "Error starting authorization session: "
+               << trunks::GetErrorString(rc);
+    return rc;
+  }
+  session->SetEntityAuthorizationValue("");
+  rc = utility->StirRandom(entropy_data, session.get());
+  if (rc) {
+    LOG(ERROR) << "Error stirring TPM random number generator: "
+               << trunks::GetErrorString(rc);
+    return rc;
+  }
+  session->SetEntityAuthorizationValue("");
+  rc = utility->GenerateRandom(num_bytes, session.get(), &random_data);
+  if (rc) {
+    LOG(ERROR) << "Error getting random bytes from TPM: "
+               << trunks::GetErrorString(rc);
+    return rc;
+  }
+  if (num_bytes != random_data.size()) {
+    LOG(ERROR) << "Error not enough random bytes received.";
+    return -1;
+  }
+  LOG(INFO) << "Test completed successfully.";
+  return 0;
+}
+
 int SignTest() {
   trunks::TrunksFactoryImpl factory;
   trunks::TPM_HANDLE signing_key;
@@ -72,7 +112,7 @@ int SignTest() {
   scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
   scoped_ptr<trunks::AuthorizationSession> session(
       factory.GetAuthorizationSession());
-  rc = session->StartUnboundSession(true);
+  rc = session->StartUnboundSession(true /* enable encryption */);
   if (rc) {
     LOG(ERROR) << "Error starting authorization session: "
                << trunks::GetErrorString(rc);
@@ -121,7 +161,7 @@ int DecryptTest() {
   trunks::TPM_RC rc;
   scoped_ptr<trunks::AuthorizationSession> session(
       factory.GetAuthorizationSession());
-  rc = session->StartUnboundSession(true);
+  rc = session->StartUnboundSession(true /* enable encryption */);
   if (rc) {
     LOG(ERROR) << "Error starting authorization session: "
                << trunks::GetErrorString(rc);
@@ -141,7 +181,7 @@ int DecryptTest() {
   }
   trunks::ScopedKeyHandle scoped_key(factory, decrypt_key);
   std::string ciphertext;
-  session->SetEntityAuthorizationValue("decrypt");
+  session->SetEntityAuthorizationValue("");
   rc = utility->AsymmetricEncrypt(scoped_key.get(),
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
@@ -176,7 +216,7 @@ int ImportTest() {
   std::string key_blob;
   scoped_ptr<trunks::AuthorizationSession> session(
       factory.GetAuthorizationSession());
-  rc = session->StartUnboundSession(true);
+  rc = session->StartUnboundSession(true /* enable encryption */);
   if (rc) {
     LOG(ERROR) << "Error starting authorization session: "
                << trunks::GetErrorString(rc);
@@ -211,7 +251,7 @@ int ImportTest() {
   }
   trunks::ScopedKeyHandle scoped_key(factory, key_handle);
   std::string ciphertext;
-  session->SetEntityAuthorizationValue("import");
+  session->SetEntityAuthorizationValue("");
   rc = utility->AsymmetricEncrypt(scoped_key.get(),
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
@@ -245,7 +285,7 @@ int AuthChangeTest() {
   trunks::TPM_RC rc;
   scoped_ptr<trunks::AuthorizationSession> session(
       factory.GetAuthorizationSession());
-  rc = session->StartUnboundSession(true);
+  rc = session->StartUnboundSession(true /* enable encryption */);
   if (rc) {
     LOG(ERROR) << "Error starting authorization session: "
                << trunks::GetErrorString(rc);
@@ -289,7 +329,7 @@ int AuthChangeTest() {
 
   trunks::ScopedKeyHandle scoped_key(factory, key_handle);
   std::string ciphertext;
-  session->SetEntityAuthorizationValue("new_pass");
+  session->SetEntityAuthorizationValue("");
   rc = utility->AsymmetricEncrypt(scoped_key.get(),
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
@@ -323,7 +363,7 @@ int NvramTest(const std::string& owner_password) {
   trunks::TPM_RC rc;
   scoped_ptr<trunks::AuthorizationSession> session(
       factory.GetAuthorizationSession());
-  rc = session->StartUnboundSession(true);
+  rc = session->StartUnboundSession(true /* enable encryption */);
   if (rc) {
     LOG(ERROR) << "Error starting authorization session: "
                << trunks::GetErrorString(rc);
@@ -413,20 +453,26 @@ int main(int argc, char **argv) {
   if (cl->HasSwitch("own")) {
     return TakeOwnership(cl->GetSwitchValueASCII("owner_password"));
   }
-  if (cl->HasSwitch("sign_test")) {
-    return SignTest();
-  }
-  if (cl->HasSwitch("decrypt_test")) {
-    return DecryptTest();
-  }
-  if (cl->HasSwitch("import_test")) {
-    return ImportTest();
-  }
-  if (cl->HasSwitch("auth_change_test")) {
-    return AuthChangeTest();
-  }
-  if (cl->HasSwitch("nvram_test")) {
-    return NvramTest(cl->GetSwitchValueASCII("owner_password"));
+  if (cl->HasSwitch("regression_test")) {
+    int rc;
+    LOG(INFO) << "Running RNG test.";
+    if ((rc = RNGTest())) { return rc; }
+    LOG(INFO) << "Running SignTest.";
+    if ((rc = SignTest())) { return rc; }
+    LOG(INFO) << "Running DecryptTest.";
+    if ((rc = DecryptTest())) { return rc; }
+    LOG(INFO) << "Running ImportTest.";
+    if ((rc = ImportTest())) { return rc; }
+    LOG(INFO) << "Running AuthChangeTest.";
+    if ((rc = AuthChangeTest())) { return rc; }
+    std::string owner_password;
+    if (cl->HasSwitch("owner_password")) {
+      owner_password = cl->GetSwitchValueASCII("owner_password");
+      LOG(INFO) << "Running NvramTest.";
+      if ((rc = NvramTest(owner_password))) { return rc; }
+    }
+    LOG(INFO) << "All tests were run successfully.";
+    return 0;
   }
   puts("Invalid options!");
   PrintUsage();
