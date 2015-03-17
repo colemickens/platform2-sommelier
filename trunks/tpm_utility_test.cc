@@ -31,8 +31,8 @@ namespace trunks {
 class TpmUtilityTest : public testing::Test {
  public:
   TpmUtilityTest() {}
-  virtual ~TpmUtilityTest() {}
-  void SetUp() {
+  ~TpmUtilityTest() override {}
+  void SetUp() override {
     factory_.set_tpm_state(&mock_tpm_state_);
     factory_.set_tpm(&mock_tpm_);
     factory_.set_authorization_session(&mock_authorization_session_);

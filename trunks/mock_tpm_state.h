@@ -14,7 +14,7 @@ namespace trunks {
 class MockTpmState : public TpmState {
  public:
   MockTpmState();
-  virtual ~MockTpmState();
+  ~MockTpmState() override;
 
   MOCK_METHOD0(Initialize, TPM_RC());
   MOCK_METHOD0(IsOwnerPasswordSet, bool());

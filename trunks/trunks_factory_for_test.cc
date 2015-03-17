@@ -24,7 +24,7 @@ namespace trunks {
 class TpmStateForwarder : public TpmState {
  public:
   explicit TpmStateForwarder(TpmState* target) : target_(target) {}
-  virtual ~TpmStateForwarder() {}
+  ~TpmStateForwarder() override {}
 
   TPM_RC Initialize() override {
     return target_->Initialize();
@@ -62,7 +62,7 @@ class TpmStateForwarder : public TpmState {
 class TpmUtilityForwarder : public TpmUtility {
  public:
   explicit TpmUtilityForwarder(TpmUtility* target) : target_(target) {}
-  virtual ~TpmUtilityForwarder() {}
+  ~TpmUtilityForwarder() override {}
 
   TPM_RC Startup() override {
     return target_->Startup();
@@ -263,7 +263,7 @@ class AuthorizationDelegateForwarder : public AuthorizationDelegate {
  public:
   explicit AuthorizationDelegateForwarder(AuthorizationDelegate* target)
       : target_(target) {}
-  virtual ~AuthorizationDelegateForwarder() {}
+  ~AuthorizationDelegateForwarder() override {}
 
   bool GetCommandAuthorization(const std::string& command_hash,
                                bool is_command_parameter_encryption_possible,
@@ -298,7 +298,7 @@ class AuthorizationSessionForwarder : public AuthorizationSession {
  public:
   explicit AuthorizationSessionForwarder(AuthorizationSession* target)
       : target_(target) {}
-  virtual ~AuthorizationSessionForwarder() {}
+  ~AuthorizationSessionForwarder() override {}
 
   AuthorizationDelegate* GetDelegate() override {
     return target_->GetDelegate();

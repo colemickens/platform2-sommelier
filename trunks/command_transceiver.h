@@ -17,6 +17,8 @@ class CommandTransceiver {
  public:
   typedef base::Callback<void(const std::string& response)> ResponseCallback;
 
+  virtual ~CommandTransceiver() {}
+
   // Sends a TPM |command| asynchronously. When a |response| is received,
   // |callback| will be called with the |response| data from the TPM. If a
   // transmission error occurs |callback| will be called with a well-formed

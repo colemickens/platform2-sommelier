@@ -17,7 +17,7 @@ namespace trunks {
 class MockTpm : public Tpm {
  public:
   MockTpm();
-  virtual ~MockTpm();
+  ~MockTpm() override;
 
   MOCK_METHOD3(Startup,
       void(const TPM_SU& startup_type,
@@ -55,6 +55,7 @@ class MockTpm : public Tpm {
       TPM_RC(TPM2B_MAX_BUFFER* out_data,
              TPM_RC* test_result,
              AuthorizationDelegate* authorization_delegate));
+  // Too many args to mock, forward to *Short version.
   void StartAuthSession(const TPMI_DH_OBJECT& tpm_key,
                         const std::string& tpm_key_name,
                         const TPMI_DH_ENTITY& bind,
@@ -65,12 +66,7 @@ class MockTpm : public Tpm {
                         const TPMT_SYM_DEF& symmetric,
                         const TPMI_ALG_HASH& auth_hash,
                         AuthorizationDelegate* authorization_delegate,
-                        const StartAuthSessionResponse& callback) {
-    // Too many args to mock, forward to *Short version.
-    StartAuthSessionShort(tpm_key, bind, nonce_caller, encrypted_salt,
-                          session_type, symmetric, auth_hash,
-                          authorization_delegate, callback);
-  }
+                        const StartAuthSessionResponse& callback) override;
   MOCK_METHOD9(StartAuthSessionShort,
       void(const TPMI_DH_OBJECT& tpm_key,
            const TPMI_DH_ENTITY& bind,
@@ -81,24 +77,20 @@ class MockTpm : public Tpm {
            const TPMI_ALG_HASH& auth_hash,
            AuthorizationDelegate* authorization_delegate,
            const StartAuthSessionResponse& callback));
-  TPM_RC StartAuthSessionSync(const TPMI_DH_OBJECT& tpm_key,
-                              const std::string& tpm_key_name,
-                              const TPMI_DH_ENTITY& bind,
-                              const std::string& bind_name,
-                              const TPM2B_NONCE& nonce_caller,
-                              const TPM2B_ENCRYPTED_SECRET& encrypted_salt,
-                              const TPM_SE& session_type,
-                              const TPMT_SYM_DEF& symmetric,
-                              const TPMI_ALG_HASH& auth_hash,
-                              TPMI_SH_AUTH_SESSION* session_handle,
-                              TPM2B_NONCE* nonce_tpm,
-                              AuthorizationDelegate* authorization_delegate) {
-    // Too many args to mock, forward to *Short version.
-    return StartAuthSessionSyncShort(tpm_key, bind, nonce_caller,
-                                     encrypted_salt, session_type, symmetric,
-                                     auth_hash, session_handle, nonce_tpm,
-                                     authorization_delegate);
-  }
+  // Too many args to mock, forward to *Short version.
+  TPM_RC StartAuthSessionSync(
+      const TPMI_DH_OBJECT& tpm_key,
+      const std::string& tpm_key_name,
+      const TPMI_DH_ENTITY& bind,
+      const std::string& bind_name,
+      const TPM2B_NONCE& nonce_caller,
+      const TPM2B_ENCRYPTED_SECRET& encrypted_salt,
+      const TPM_SE& session_type,
+      const TPMT_SYM_DEF& symmetric,
+      const TPMI_ALG_HASH& auth_hash,
+      TPMI_SH_AUTH_SESSION* session_handle,
+      TPM2B_NONCE* nonce_tpm,
+      AuthorizationDelegate* authorization_delegate) override;
   MOCK_METHOD10(StartAuthSessionSyncShort,
       TPM_RC(const TPMI_DH_OBJECT& tpm_key,
              const TPMI_DH_ENTITY& bind,
@@ -128,6 +120,7 @@ class MockTpm : public Tpm {
            const TPML_PCR_SELECTION& creation_pcr,
            AuthorizationDelegate* authorization_delegate,
            const CreateResponse& callback));
+  // Too many args to mock, forward to *Short version.
   TPM_RC CreateSync(const TPMI_DH_OBJECT& parent_handle,
                     const std::string& parent_handle_name,
                     const TPM2B_SENSITIVE_CREATE& in_sensitive,
@@ -139,13 +132,7 @@ class MockTpm : public Tpm {
                     TPM2B_CREATION_DATA* creation_data,
                     TPM2B_DIGEST* creation_hash,
                     TPMT_TK_CREATION* creation_ticket,
-                    AuthorizationDelegate* authorization_delegate) {
-    // Too many args to mock, forward to *Short version.
-    return CreateSyncShort(parent_handle, in_sensitive, in_public, creation_pcr,
-                           out_private, out_public, creation_data,
-                           creation_hash, creation_ticket,
-                           authorization_delegate);
-  }
+                    AuthorizationDelegate* authorization_delegate) override;
   MOCK_METHOD10(CreateSyncShort,
       TPM_RC(const TPMI_DH_OBJECT& parent_handle,
              const TPM2B_SENSITIVE_CREATE& in_sensitive,
@@ -557,23 +544,19 @@ class MockTpm : public Tpm {
            const TPMT_TK_CREATION& creation_ticket,
            AuthorizationDelegate* authorization_delegate,
            const CertifyCreationResponse& callback));
-  TPM_RC CertifyCreationSync(const TPMI_DH_OBJECT& sign_handle,
-                             const std::string& sign_handle_name,
-                             const TPMI_DH_OBJECT& object_handle,
-                             const std::string& object_handle_name,
-                             const TPM2B_DATA& qualifying_data,
-                             const TPM2B_DIGEST& creation_hash,
-                             const TPMT_SIG_SCHEME& in_scheme,
-                             const TPMT_TK_CREATION& creation_ticket,
-                             TPM2B_ATTEST* certify_info,
-                             TPMT_SIGNATURE* signature,
-                             AuthorizationDelegate* authorization_delegate) {
-    // Too many args to mock, forward to *Short version.
-    return CertifyCreationSyncShort(sign_handle, object_handle,
-                                    qualifying_data, creation_hash, in_scheme,
-                                    creation_ticket, certify_info, signature,
-                                    authorization_delegate);
-  }
+  // Too many args to mock, forward to *Short version.
+  TPM_RC CertifyCreationSync(
+      const TPMI_DH_OBJECT& sign_handle,
+      const std::string& sign_handle_name,
+      const TPMI_DH_OBJECT& object_handle,
+      const std::string& object_handle_name,
+      const TPM2B_DATA& qualifying_data,
+      const TPM2B_DIGEST& creation_hash,
+      const TPMT_SIG_SCHEME& in_scheme,
+      const TPMT_TK_CREATION& creation_ticket,
+      TPM2B_ATTEST* certify_info,
+      TPMT_SIGNATURE* signature,
+      AuthorizationDelegate* authorization_delegate) override;
   MOCK_METHOD9(CertifyCreationSyncShort,
       TPM_RC(const TPMI_DH_OBJECT& sign_handle,
              const TPMI_DH_OBJECT& object_handle,
@@ -612,6 +595,7 @@ class MockTpm : public Tpm {
            const TPMT_SIG_SCHEME& in_scheme,
            AuthorizationDelegate* authorization_delegate,
            const GetSessionAuditDigestResponse& callback));
+  // Too many args to mock, forward to *Short version.
   TPM_RC GetSessionAuditDigestSync(
       const TPMI_RH_ENDORSEMENT& privacy_admin_handle,
       const std::string& privacy_admin_handle_name,
@@ -623,13 +607,7 @@ class MockTpm : public Tpm {
       const TPMT_SIG_SCHEME& in_scheme,
       TPM2B_ATTEST* audit_info,
       TPMT_SIGNATURE* signature,
-      AuthorizationDelegate* authorization_delegate) {
-    // Too many args to mock, forward to *Short version.
-    return GetSessionAuditDigestSyncShort(privacy_admin_handle, sign_handle,
-                                          session_handle, qualifying_data,
-                                          in_scheme, audit_info, signature,
-                                          authorization_delegate);
-  }
+      AuthorizationDelegate* authorization_delegate) override;
   MOCK_METHOD8(GetSessionAuditDigestSyncShort,
       TPM_RC(const TPMI_RH_ENDORSEMENT& privacy_admin_handle,
              const TPMI_DH_OBJECT& sign_handle,
@@ -686,6 +664,7 @@ class MockTpm : public Tpm {
            const TPM2B_ECC_PARAMETER& y2,
            AuthorizationDelegate* authorization_delegate,
            const CommitResponse& callback));
+  // Too many args to mock, forward to *Short version.
   TPM_RC CommitSync(const TPMI_DH_OBJECT& sign_handle,
                     const std::string& sign_handle_name,
                     const UINT32& param_size,
@@ -697,11 +676,7 @@ class MockTpm : public Tpm {
                     TPM2B_ECC_POINT* l,
                     TPM2B_ECC_POINT* e,
                     UINT16* counter,
-                    AuthorizationDelegate* authorization_delegate) {
-    // Too many args to mock, forward to *Short version.
-    return CommitSyncShort(sign_handle, param_size, p1, y2, param_size_out, k,
-                           l, e, counter, authorization_delegate);
-  }
+                    AuthorizationDelegate* authorization_delegate) override;
   MOCK_METHOD10(CommitSyncShort,
       TPM_RC(const TPMI_DH_OBJECT& sign_handle,
              const UINT32& param_size,
@@ -866,22 +841,19 @@ class MockTpm : public Tpm {
            const TPMT_SIGNATURE& auth,
            AuthorizationDelegate* authorization_delegate,
            const PolicySignedResponse& callback));
-  TPM_RC PolicySignedSync(const TPMI_DH_OBJECT& auth_object,
-                          const std::string& auth_object_name,
-                          const TPMI_SH_POLICY& policy_session,
-                          const std::string& policy_session_name,
-                          const TPM2B_NONCE& nonce_tpm,
-                          const TPM2B_DIGEST& cp_hash_a,
-                          const TPM2B_NONCE& policy_ref,
-                          const TPMT_SIGNATURE& auth,
-                          TPM2B_TIMEOUT* timeout,
-                          TPMT_TK_AUTH* policy_ticket,
-                          AuthorizationDelegate* authorization_delegate) {
-    // Too many args to mock, forward to *Short version.
-    return PolicySignedSyncShort(auth_object, policy_session, nonce_tpm,
-                                 cp_hash_a, policy_ref, auth, timeout,
-                                 policy_ticket, authorization_delegate);
-  }
+  // Too many args to mock, forward to *Short version.
+  TPM_RC PolicySignedSync(
+      const TPMI_DH_OBJECT& auth_object,
+      const std::string& auth_object_name,
+      const TPMI_SH_POLICY& policy_session,
+      const std::string& policy_session_name,
+      const TPM2B_NONCE& nonce_tpm,
+      const TPM2B_DIGEST& cp_hash_a,
+      const TPM2B_NONCE& policy_ref,
+      const TPMT_SIGNATURE& auth,
+      TPM2B_TIMEOUT* timeout,
+      TPMT_TK_AUTH* policy_ticket,
+      AuthorizationDelegate* authorization_delegate) override;
   MOCK_METHOD9(PolicySignedSyncShort,
       TPM_RC(const TPMI_DH_OBJECT& auth_object,
              const TPMI_SH_POLICY& policy_session,
@@ -967,6 +939,7 @@ class MockTpm : public Tpm {
              const std::string& policy_session_name,
              const TPMA_LOCALITY& locality,
              AuthorizationDelegate* authorization_delegate));
+  // Too many args to mock, forward to *Short version.
   void PolicyNV(const TPMI_RH_NV_AUTH& auth_handle,
                 const std::string& auth_handle_name,
                 const TPMI_RH_NV_INDEX& nv_index,
@@ -977,11 +950,7 @@ class MockTpm : public Tpm {
                 const UINT16& offset,
                 const TPM_EO& operation,
                 AuthorizationDelegate* authorization_delegate,
-                const PolicyNVResponse& callback) {
-    // Too many args to mock, forward to *Short version.
-    PolicyNVShort(auth_handle, nv_index, policy_session, operand_b, offset,
-                  operation, authorization_delegate, callback);
-  }
+                const PolicyNVResponse& callback) override;
   MOCK_METHOD8(PolicyNVShort,
       void(const TPMI_RH_NV_AUTH& auth_handle,
            const TPMI_RH_NV_INDEX& nv_index,
@@ -1139,25 +1108,21 @@ class MockTpm : public Tpm {
            const TPML_PCR_SELECTION& creation_pcr,
            AuthorizationDelegate* authorization_delegate,
            const CreatePrimaryResponse& callback));
-  TPM_RC CreatePrimarySync(const TPMI_RH_HIERARCHY& primary_handle,
-                           const std::string& primary_handle_name,
-                           const TPM2B_SENSITIVE_CREATE& in_sensitive,
-                           const TPM2B_PUBLIC& in_public,
-                           const TPM2B_DATA& outside_info,
-                           const TPML_PCR_SELECTION& creation_pcr,
-                           TPM_HANDLE* object_handle,
-                           TPM2B_PUBLIC* out_public,
-                           TPM2B_CREATION_DATA* creation_data,
-                           TPM2B_DIGEST* creation_hash,
-                           TPMT_TK_CREATION* creation_ticket,
-                           TPM2B_NAME* name,
-                           AuthorizationDelegate* authorization_delegate) {
-    // Too many args to mock, forward to *Short version.
-    return CreatePrimarySyncShort(primary_handle, in_public, creation_pcr,
-                                  object_handle, out_public, creation_data,
-                                  creation_hash, creation_ticket, name,
-                                  authorization_delegate);
-  }
+  // Too many args to mock, forward to *Short version.
+  TPM_RC CreatePrimarySync(
+      const TPMI_RH_HIERARCHY& primary_handle,
+      const std::string& primary_handle_name,
+      const TPM2B_SENSITIVE_CREATE& in_sensitive,
+      const TPM2B_PUBLIC& in_public,
+      const TPM2B_DATA& outside_info,
+      const TPML_PCR_SELECTION& creation_pcr,
+      TPM_HANDLE* object_handle,
+      TPM2B_PUBLIC* out_public,
+      TPM2B_CREATION_DATA* creation_data,
+      TPM2B_DIGEST* creation_hash,
+      TPMT_TK_CREATION* creation_ticket,
+      TPM2B_NAME* name,
+      AuthorizationDelegate* authorization_delegate) override;
   MOCK_METHOD10(CreatePrimarySyncShort,
       TPM_RC(const TPMI_RH_HIERARCHY& primary_handle,
              const TPM2B_PUBLIC& in_public,
@@ -1591,6 +1556,7 @@ class MockTpm : public Tpm {
              const std::string& nv_index_name,
              const TPM2B_AUTH& new_auth,
              AuthorizationDelegate* authorization_delegate));
+  // Too many args to mock, forward to *Short version.
   void NV_Certify(const TPMI_DH_OBJECT& sign_handle,
                   const std::string& sign_handle_name,
                   const TPMI_RH_NV_AUTH& auth_handle,
@@ -1602,11 +1568,7 @@ class MockTpm : public Tpm {
                   const UINT16& size,
                   const UINT16& offset,
                   AuthorizationDelegate* authorization_delegate,
-                  const NV_CertifyResponse& callback) {
-    // Too many args to mock, forward to *Short version.
-    NV_CertifyShort(sign_handle, auth_handle, nv_index, qualifying_data,
-                    in_scheme, size, offset, authorization_delegate, callback);
-  }
+                  const NV_CertifyResponse& callback) override;
   MOCK_METHOD9(NV_CertifyShort,
       void(const TPMI_DH_OBJECT& sign_handle,
            const TPMI_RH_NV_AUTH& auth_handle,
@@ -1617,24 +1579,21 @@ class MockTpm : public Tpm {
            const UINT16& offset,
            AuthorizationDelegate* authorization_delegate,
            const NV_CertifyResponse& callback));
-  TPM_RC NV_CertifySync(const TPMI_DH_OBJECT& sign_handle,
-                        const std::string& sign_handle_name,
-                        const TPMI_RH_NV_AUTH& auth_handle,
-                        const std::string& auth_handle_name,
-                        const TPMI_RH_NV_INDEX& nv_index,
-                        const std::string& nv_index_name,
-                        const TPM2B_DATA& qualifying_data,
-                        const TPMT_SIG_SCHEME& in_scheme,
-                        const UINT16& size,
-                        const UINT16& offset,
-                        TPM2B_ATTEST* certify_info,
-                        TPMT_SIGNATURE* signature,
-                        AuthorizationDelegate* authorization_delegate) {
-    // Too many args to mock, forward to *Short version.
-    return NV_CertifySyncShort(sign_handle, auth_handle, nv_index,
-                               qualifying_data, in_scheme, size, offset,
-                               certify_info, signature, authorization_delegate);
-  }
+  // Too many args to mock, forward to *Short version.
+  TPM_RC NV_CertifySync(
+      const TPMI_DH_OBJECT& sign_handle,
+      const std::string& sign_handle_name,
+      const TPMI_RH_NV_AUTH& auth_handle,
+      const std::string& auth_handle_name,
+      const TPMI_RH_NV_INDEX& nv_index,
+      const std::string& nv_index_name,
+      const TPM2B_DATA& qualifying_data,
+      const TPMT_SIG_SCHEME& in_scheme,
+      const UINT16& size,
+      const UINT16& offset,
+      TPM2B_ATTEST* certify_info,
+      TPMT_SIGNATURE* signature,
+      AuthorizationDelegate* authorization_delegate) override;
   MOCK_METHOD10(NV_CertifySyncShort,
       TPM_RC(const TPMI_DH_OBJECT& sign_handle,
              const TPMI_RH_NV_AUTH& auth_handle,

@@ -41,7 +41,7 @@ class TpmUtility;
 class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
  public:
   TrunksFactoryForTest();
-  virtual ~TrunksFactoryForTest();
+  ~TrunksFactoryForTest() override;
 
   // TrunksFactory methods.
   Tpm* GetTpm() const override;

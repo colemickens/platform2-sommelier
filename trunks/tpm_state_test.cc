@@ -24,9 +24,9 @@ namespace trunks {
 class TpmStateTest : public testing::Test {
  public:
   TpmStateTest() {}
-  virtual ~TpmStateTest() {}
+  ~TpmStateTest() override {}
 
-  void SetUp() {
+  void SetUp() override {
     factory_.set_tpm(&mock_tpm_);
     permanent_data_ = GetValidCapabilityData(TPM_PT_PERMANENT, 0);
     startup_clear_data_ = GetValidCapabilityData(TPM_PT_STARTUP_CLEAR, 0);

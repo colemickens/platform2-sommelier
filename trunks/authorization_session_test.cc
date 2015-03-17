@@ -26,9 +26,9 @@ namespace trunks {
 class AuthorizationSessionTest : public testing::Test {
  public:
   AuthorizationSessionTest() {}
-  virtual ~AuthorizationSessionTest() {}
+  ~AuthorizationSessionTest() override {}
 
-  void SetUp() {
+  void SetUp() override {
     factory_.set_tpm(&mock_tpm_);
   }
 

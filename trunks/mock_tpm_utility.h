@@ -16,7 +16,7 @@ namespace trunks {
 class MockTpmUtility : public TpmUtility {
  public:
   MockTpmUtility();
-  virtual ~MockTpmUtility();
+  ~MockTpmUtility() override;
 
   MOCK_METHOD0(Startup, TPM_RC());
   MOCK_METHOD0(Clear, TPM_RC());

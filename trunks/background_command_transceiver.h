@@ -36,7 +36,7 @@ class BackgroundCommandTransceiver: public CommandTransceiver  {
   explicit BackgroundCommandTransceiver(
       CommandTransceiver* next_transceiver,
       const scoped_refptr<base::SequencedTaskRunner>& task_runner);
-  virtual ~BackgroundCommandTransceiver();
+  ~BackgroundCommandTransceiver() override;
 
   // CommandTranceiver methods.
   void SendCommand(const std::string& command,

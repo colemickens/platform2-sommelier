@@ -25,7 +25,7 @@ namespace trunks {
 class TRUNKS_EXPORT TrunksProxy: public CommandTransceiver {
  public:
   TrunksProxy();
-  virtual ~TrunksProxy();
+  ~TrunksProxy() override;
 
   // Initializes the D-Bus client. Returns true on success.
   bool Init();

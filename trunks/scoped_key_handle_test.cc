@@ -25,9 +25,9 @@ namespace trunks {
 class ScopedKeyHandleTest : public testing::Test {
  public:
   ScopedKeyHandleTest() {}
-  virtual ~ScopedKeyHandleTest() {}
+  ~ScopedKeyHandleTest() override {}
 
-  void SetUp() {
+  void SetUp() override {
     factory_.set_tpm(&mock_tpm_);
   }
 

@@ -20,7 +20,7 @@ class TrunksFactory;
 class TRUNKS_EXPORT TpmStateImpl : public TpmState {
  public:
   explicit TpmStateImpl(const TrunksFactory& factory);
-  virtual ~TpmStateImpl();
+  ~TpmStateImpl() override;
 
   // TpmState methods.
   TPM_RC Initialize() override;

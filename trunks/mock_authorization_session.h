@@ -16,7 +16,7 @@ namespace trunks {
 class MockAuthorizationSession : public AuthorizationSession {
  public:
   MockAuthorizationSession();
-  virtual ~MockAuthorizationSession();
+  ~MockAuthorizationSession() override;
 
   MOCK_METHOD0(GetDelegate, AuthorizationDelegate*());
   MOCK_METHOD3(StartBoundSession, TPM_RC(

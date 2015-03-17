@@ -17,7 +17,7 @@ namespace trunks {
 class MockAuthorizationDelegate : public AuthorizationDelegate {
  public:
   MockAuthorizationDelegate();
-  virtual ~MockAuthorizationDelegate();
+  ~MockAuthorizationDelegate() override;
 
   MOCK_METHOD4(GetCommandAuthorization, bool(const std::string&,
                                              bool,

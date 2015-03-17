@@ -40,7 +40,7 @@ class TRUNKS_EXPORT AuthorizationSessionImpl: public AuthorizationSession {
   // producation code, this factory is used to access the TPM class to forward
   // commands to the TPM. In test code, this is used to mock out the TPM calls.
   explicit AuthorizationSessionImpl(const TrunksFactory& factory);
-  virtual ~AuthorizationSessionImpl();
+  ~AuthorizationSessionImpl() override;
 
   // AuthorizationSession methods.
   AuthorizationDelegate* GetDelegate() override;

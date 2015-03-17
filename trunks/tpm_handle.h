@@ -24,7 +24,7 @@ namespace trunks {
 class TpmHandle: public CommandTransceiver  {
  public:
   TpmHandle();
-  virtual ~TpmHandle();
+  ~TpmHandle() override;
 
   // Initializes a TpmHandle instance. This method must be called successfully
   // before any other method. Returns true on success.

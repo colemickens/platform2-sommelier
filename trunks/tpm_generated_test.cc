@@ -249,7 +249,7 @@ TEST(GeneratorTest, SynchronousCommandResponseTest) {
 class CommandFlowTest : public testing::Test {
  public:
   CommandFlowTest() : response_code_(TPM_RC_SUCCESS) {}
-  virtual ~CommandFlowTest() {}
+  ~CommandFlowTest() override {}
 
   void StartupCallback(TPM_RC response_code) {
     response_code_ = response_code;

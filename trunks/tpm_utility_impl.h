@@ -25,7 +25,7 @@ class TrunksFactory;
 class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
  public:
   explicit TpmUtilityImpl(const TrunksFactory& factory);
-  virtual ~TpmUtilityImpl();
+  ~TpmUtilityImpl() override;
 
   // TpmUtility methods.
   TPM_RC Startup() override;

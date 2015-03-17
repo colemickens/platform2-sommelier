@@ -57,7 +57,7 @@ class BackgroundTransceiverTest : public testing::Test {
     CHECK(test_thread_.Start());
   }
 
-  virtual ~BackgroundTransceiverTest() {}
+  ~BackgroundTransceiverTest() override {}
 
  protected:
   base::MessageLoopForIO message_loop_;
