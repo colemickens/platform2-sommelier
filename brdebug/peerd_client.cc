@@ -4,10 +4,11 @@
 
 #include "brdebug/peerd_client.h"
 
-#include <map>
-#include <string>
-
+#include <base/bind.h>
 #include <chromeos/errors/error.h>
+
+using std::map;
+using std::string;
 
 namespace brdebug {
 
@@ -25,8 +26,10 @@ void OnError(const std::string& operation, chromeos::Error* error) {
 
 }  // namespace
 
-PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus)
-    : peerd_object_manager_proxy_{bus} {
+PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus,
+                         const map<string, string>& service_info)
+    : peerd_object_manager_proxy_{bus},
+      service_info_{service_info} {
   peerd_object_manager_proxy_.SetManagerAddedCallback(
       base::Bind(&PeerdClient::OnPeerdOnline, weak_ptr_factory_.GetWeakPtr()));
   peerd_object_manager_proxy_.SetManagerRemovedCallback(
@@ -35,6 +38,11 @@ PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus)
 
 PeerdClient::~PeerdClient() {
   RemoveService();
+}
+
+void PeerdClient::UpdateServiceInfo(const map<string, string>& info) {
+  service_info_ = info;
+  ExposeService();
 }
 
 void PeerdClient::OnPeerdOnline(
@@ -53,14 +61,10 @@ void PeerdClient::OnPeerdOffline(const dbus::ObjectPath& object_path) {
 void PeerdClient::ExposeService() {
   if (peerd_manager_proxy_ == nullptr) return;
 
-  // TODO(yimingc): Replace this with actual device properties (brbug.com/566).
-  std::map<std::string, std::string> dev_props{
-      {"test_key", "test_value"},
-  };
-
   VLOG(1) << "Starting peerd advertising.";
   peerd_manager_proxy_->ExposeServiceAsync(
-      kBrdebugServiceId, dev_props, {}, base::Bind(&OnSuccess, "ExposeService"),
+      kBrdebugServiceId, service_info_, {},
+      base::Bind(&OnSuccess, "ExposeService"),
       base::Bind(&OnError, "ExposeService"));
 }
 

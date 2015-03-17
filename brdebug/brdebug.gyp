@@ -19,7 +19,7 @@
       'target_name': 'libbrdebug',
       'type': 'static_library',
       'sources': [
-        'brdebug.cc',
+        'device_property_watcher.cc',
         'peerd_client.cc',
       ],
       'actions': [
