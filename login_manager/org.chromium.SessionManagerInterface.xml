@@ -90,16 +90,13 @@
     <!--
         SessionStateChanged:
         @state: State the device has changed to.
-        @user: User for whom a session has changed state.
 
         Signal emitted to announce session state changes. Supported values for
         @state include <quote>started</quote>, <quote>stopping</quote>, and
-        <quote>stopped</quote>. Currently, @user will only be populated when
-        we're announcing the beginning of a session.
+        <quote>stopped</quote>.
     -->
     <signal name="SessionStateChanged">
       <arg type="s" name="state" />
-      <arg type="s" name="user" />
     </signal>
 
     <!--

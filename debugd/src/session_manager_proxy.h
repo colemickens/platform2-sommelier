@@ -27,8 +27,7 @@ class SessionManagerProxy : public org::chromium::SessionManagerInterface_proxy,
                           login_manager::kSessionManagerServiceName) {}
   ~SessionManagerProxy() override = default;
   void LoginPromptVisible() override;
-  void SessionStateChanged(const std::string &state,
-                           const std::string &user) override {};
+  void SessionStateChanged(const std::string &state) override {};
   void ScreenIsLocked() override {};
   void ScreenIsUnlocked() override {};
 
