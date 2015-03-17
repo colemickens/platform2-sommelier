@@ -26,6 +26,8 @@ using testing::_;
 namespace leaderd {
 
 namespace {
+const char kObjectManagerPath[] = "/objman";
+const char kGroupPath[] = "/objman/group";
 const char kGroupName[] = "ABC";
 const std::string kMyUUID = "012";
 const char kScore = 25;
@@ -70,21 +72,28 @@ class GroupTest : public testing::Test {
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, ListenForServiceOwnerChange(kTestDBusSource, _));
     EXPECT_CALL(*bus_, GetServiceOwner(kTestDBusSource, _));
-    object_manager_.reset(new ExportedObjectManager(
-        bus_, dbus::ObjectPath("/manager/object/path")));
+
+    EXPECT_CALL(group_delegate_, GetUUID())
+        .WillRepeatedly(ReturnRef(self_uuid_));
 
     group_.reset(new Group{kGroupName,
                            bus_,
-                           nullptr,
-                           dbus::ObjectPath("/manager/object/path"),
+                           object_manager_.get(),
+                           dbus::ObjectPath(kGroupPath),
                            kTestDBusSource,
                            {},
                            &group_delegate_});
   }
+
+  // The delegate makes us return a reference, not a value.
+  const std::string self_uuid_{"this-is-my-own-uuid"};
+
   base::MessageLoop message_loop_;
-  std::unique_ptr<ExportedObjectManager> object_manager_;
   scoped_refptr<EspeciallyMockedBus> bus_{
       new EspeciallyMockedBus{dbus::Bus::Options{}}};
+  std::unique_ptr<ExportedObjectManager> object_manager_{
+      new ExportedObjectManager(bus_,
+                                dbus::ObjectPath(kObjectManagerPath))};
   MockGroupDelegate group_delegate_;
   std::unique_ptr<Group> group_;
 };

@@ -168,6 +168,7 @@ PeerdClientImpl::PeerdClientImpl(const scoped_refptr<dbus::Bus>& bus,
 
 void PeerdClientImpl::OnPeerdManagerAdded(
     org::chromium::peerd::ManagerProxy* manager_proxy) {
+  VLOG(1) << "peerd manager online.";
   if (monitoring_) {
     // StartMonitoring will adjust it back; setting it false forces us to
     // reconnect to it.
@@ -179,6 +180,7 @@ void PeerdClientImpl::OnPeerdManagerAdded(
 
 void PeerdClientImpl::OnPeerdManagerRemoved(
     const dbus::ObjectPath& object_path) {
+  VLOG(1) << "peerd manager offline.";
   delegate_->OnPeerdDeath();
   monitor_token_.clear();
 }

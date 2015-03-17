@@ -129,7 +129,22 @@ void Manager::OnPeerdDeath() {
   }
 }
 
-void Manager::OnSelfIdChanged(const std::string& uuid) { uuid_ = uuid; }
+void Manager::OnSelfIdChanged(const std::string& uuid) {
+  if (uuid_ == uuid) {
+    return;
+  }
+  VLOG(1) << "Setting leaderd identity to " << uuid;
+  std::string old_uuid = uuid_;
+  uuid_ = uuid;
+  for (const auto& joined_group : groups_) {
+    if (!old_uuid.empty()) {
+      joined_group.second->RemovePeer(old_uuid);
+    }
+    if (!uuid_.empty()) {
+      joined_group.second->AddPeer(uuid_);
+    }
+  }
+}
 
 void Manager::OnPeerGroupsChanged(const std::string& peer_uuid,
                                   const std::set<std::string>& groups) {

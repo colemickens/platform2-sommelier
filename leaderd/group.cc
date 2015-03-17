@@ -73,6 +73,7 @@ Group::Group(const std::string& guid, const scoped_refptr<dbus::Bus>& bus,
   service_watcher_.reset(new DBusServiceWatcher(
       bus, dbus_connection_id,
       base::Bind(&Group::OnDBusServiceDeath, weak_ptr_factory_.GetWeakPtr())));
+  AddPeer(delegate_->GetUUID());
 }
 
 void Group::RegisterAsync(const CompletionAction& completion_callback) {
@@ -123,11 +124,13 @@ void Group::ChallengeLeader(const std::string& uuid, int score,
 
 void Group::AddPeer(const std::string& uuid) {
   peers_.insert(uuid);
+  dbus_adaptor_.SetMemberUUIDs({peers_.begin(), peers_.end()});
   AskPeerForLeaderInfo(uuid);
 }
 
 void Group::RemovePeer(const std::string& uuid) {
   peers_.erase(uuid);
+  dbus_adaptor_.SetMemberUUIDs({peers_.begin(), peers_.end()});
   if (uuid == leader_) {
     Reelect();
   }
@@ -136,6 +139,7 @@ void Group::RemovePeer(const std::string& uuid) {
 void Group::ClearPeers() {
   // This occurs when peerd crashes.
   peers_.clear();
+  dbus_adaptor_.SetMemberUUIDs({peers_.begin(), peers_.end()});
   Reelect();
 }
 
