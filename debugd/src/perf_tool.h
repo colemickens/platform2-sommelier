@@ -7,19 +7,45 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
 #include <dbus-c++/dbus.h>
 
-#include "debugd/src/random_selector.h"
-
 namespace debugd {
+
+class RandomSelector;
 
 class PerfTool {
  public:
+  // Class that returns the CPU arch and model. This is in a separate class so
+  // it can be mocked out for testing.
+  class CPUInfoReader {
+   public:
+    CPUInfoReader();
+    virtual ~CPUInfoReader() {}
+
+    // Accessors
+    const std::string& arch() const {
+      return arch_;
+    }
+    const std::string& model() const {
+      return model_;
+    }
+
+   protected:
+    // The CPU arch and model info.
+    std::string arch_;
+    std::string model_;
+  };
+
   PerfTool();
+  // This is a special constructor for testing that takes in CPUInfoReader and
+  // RandomSelector args. In particular, it takes ownership of
+  // |random_selector|.
+  PerfTool(const CPUInfoReader& cpu_info, RandomSelector* random_selector);
   ~PerfTool() = default;
 
   // Randomly runs the perf tool in various modes and collects various events
@@ -27,6 +53,7 @@ class PerfTool {
   // data.
   std::vector<uint8_t> GetRichPerfData(const uint32_t& duration_secs,
                                        DBus::Error* error);
+
  private:
   // Helper function that runs perf for a given |duration_secs| returning the
   // collected data in |data_string|.
@@ -35,7 +62,7 @@ class PerfTool {
                          DBus::Error* error,
                          std::string* data_string);
 
-  RandomSelector random_selector_;
+  std::unique_ptr<RandomSelector> random_selector_;
 
   DISALLOW_COPY_AND_ASSIGN(PerfTool);
 };

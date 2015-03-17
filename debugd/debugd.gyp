@@ -273,6 +273,7 @@
             'src/helpers/dev_features_password_utils_test.cc',
             'src/log_tool_test.cc',
             'src/modem_status_tool_test.cc',
+            'src/perf_tool_unittest.cc',
             'src/process_with_id_test.cc',
             'src/random_selector_test.cc',
             'src/sandboxed_process_test.cc',

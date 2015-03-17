@@ -6,11 +6,13 @@
 
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <sys/utsname.h>
 
 #include <algorithm>
 
 #include "debugd/src/cpu_info_parser.h"
 #include "debugd/src/process_with_output.h"
+#include "debugd/src/random_selector.h"
 
 using base::StringPrintf;
 
@@ -26,12 +28,32 @@ const char kCPUModelNameKey[] = "model name";
 const char kRegisteredTrademarkSymbol[] = "(R)";
 
 // Processor model name substrings for which we have perf commands.
-const char* kCPUOddsFiles[] = {
-  "unknown",
-  "core",
+
+// For 64-bit x86 processors.
+const char* kx86_64CPUOddsFiles[] = {
   "celeron-2955u",
-  "arm",
+  NULL,
 };
+
+// For 32-bit x86 processors.
+const char* kx86_32CPUOddsFiles[] = {
+  // 32-bit x86 doesn't have any special cases, so all processors use the
+  // default commands. Add future special cases here.
+  NULL,
+};
+
+// For ARMv7 processors.
+const char* kARMv7CPUOddsFiles[] = {
+  // ARMv7 doesn't have any special cases, so all processors use the default
+  // commands. Add future special cases here.
+  NULL,
+};
+
+// For miscellaneous processors models of a known architecture.
+const char kMiscCPUModelOddsFile[] = "default";
+
+// Odds file name for miscellaneous processor architectures.
+const char kMiscCPUArchOddsFile[] = "unknown";
 
 // Prefix path to attach to the CPU odds file.
 const char kCPUOddsFilePrefix[] = "/etc/perf_commands/";
@@ -51,42 +73,70 @@ std::string ModelNameToFileName(const std::string& model_name) {
   return base::StringToLowerASCII(result);
 }
 
-// Goes through the list of kCPUOddsFiles, and if the any of those strings is a
-// substring of the |cpu_model_name|, returns that string. If no matches are
-// found, returns the first string of |kCPUOddsFiles| ("unknown").
-void GetOddsFilenameForCPU(const std::string& cpu_model_name,
-                           std::string* odds_filename) {
+// For the given |cpu_arch| and |cpu_model_name|, look for the CPU odds file
+// that corresponds to these strings. If no matches are found for |CPU_arch|,
+// return the odds file for unknown CPU types. If |cpu_arch| is valid, but no
+// matches are found |cpu_model_name|, return the odds file for unknown models
+// of class |cpu_arch|.
+std::string GetOddsFilenameForCPU(const std::string& cpu_arch,
+                                  const std::string& cpu_model_name) {
+  const char** cpu_odds_file_list = NULL;
+  if (cpu_arch == "i386" || cpu_arch == "i486" || cpu_arch == "i586" ||
+      cpu_arch == "i686") {
+    cpu_odds_file_list = kx86_32CPUOddsFiles;
+  } else if (cpu_arch == "amd64" || cpu_arch == "x86_64") {
+    cpu_odds_file_list = kx86_64CPUOddsFiles;
+  } else if (cpu_arch == "armv7l") {
+    cpu_odds_file_list = kARMv7CPUOddsFiles;
+  } else {
+    // If the CPU arch doesn't match any of the recognized arch families, just
+    // use the CPU odds file for unknown CPU types.
+    return kMiscCPUArchOddsFile;
+  }
+
   std::string adjusted_model_name = ModelNameToFileName(cpu_model_name);
-  for (size_t i = 0; i < arraysize(kCPUOddsFiles); ++i) {
-    if (adjusted_model_name.find(kCPUOddsFiles[i]) != std::string::npos) {
-      *odds_filename = kCPUOddsFiles[i];
-      return;
+  for (size_t i = 0; cpu_odds_file_list[i]; ++i) {
+    if (adjusted_model_name.find(cpu_odds_file_list[i]) != std::string::npos) {
+      return cpu_arch + "/" + cpu_odds_file_list[i];
     }
   }
-  *odds_filename = kCPUOddsFiles[0];
+  // If there isn't an odds file for the particular model, use the generic odds
+  // for the CPU arch.
+  return cpu_arch + "/" + kMiscCPUModelOddsFile;
 }
 
 }  // namespace
 
 namespace debugd {
 
-PerfTool::PerfTool() {
-  std::string cpu_model_name;
-  debugd::CPUInfoParser cpu_info_parser;
-  cpu_info_parser.GetKey(kCPUModelNameKey, &cpu_model_name);
-  std::string odds_filename;
-  GetOddsFilenameForCPU(cpu_model_name, &odds_filename);
-  std::string odds_file_path =
-      std::string(kCPUOddsFilePrefix) + odds_filename + kCPUOddsFileSuffix;
-  random_selector_.SetOddsFromFile(odds_file_path);
+PerfTool::PerfTool() : PerfTool(CPUInfoReader(), new RandomSelector) {}
+
+PerfTool::PerfTool(const CPUInfoReader& cpu_info,
+                   RandomSelector* random_selector)
+    : random_selector_(random_selector) {
+  std::string odds_filename =
+      GetOddsFilenameForCPU(cpu_info.arch(), cpu_info.model());
+  random_selector_->SetOddsFromFile(
+      kCPUOddsFilePrefix + odds_filename + kCPUOddsFileSuffix);
 }
 
 std::vector<uint8_t> PerfTool::GetRichPerfData(const uint32_t& duration_secs,
                                                DBus::Error* error) {
-  const std::vector<std::string>& perf_args = random_selector_.GetNext();
+  const std::vector<std::string>& perf_args = random_selector_->GetNext();
   std::string output_string;
   GetPerfDataHelper(duration_secs, perf_args, error, &output_string);
   return std::vector<uint8_t>(output_string.begin(), output_string.end());
+}
+
+PerfTool::CPUInfoReader::CPUInfoReader() {
+  // Get CPU model name, e.g. "Intel(R) Celeron(R) 2955U @ 1.40GHz".
+  debugd::CPUInfoParser cpu_info_parser;
+  cpu_info_parser.GetKey(kCPUModelNameKey, &model_);
+
+  // Get CPU machine hardware class, e.g. "i686", "x86_64", "armv7l".
+  struct utsname uname_info;
+  if (!uname(&uname_info))
+    arch_ = uname_info.machine;
 }
 
 void PerfTool::GetPerfDataHelper(const uint32_t& duration_secs,

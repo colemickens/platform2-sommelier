@@ -35,9 +35,11 @@ class RandomSelector {
     std::vector<std::string> value;
   };
 
+  virtual ~RandomSelector() {}
+
   // Read probabilities from a file. The file is a bunch of lines each with:
   // <odds> <corresponding string>
-  void SetOddsFromFile(const std::string& filename);
+  virtual void SetOddsFromFile(const std::string& filename);
 
   // Set the probabilities for various strings.
   void SetOdds(const std::vector<OddsAndValue>& odds);
