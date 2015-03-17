@@ -7,6 +7,7 @@
 
 #include "trunks/tpm_utility.h"
 
+#include <map>
 #include <string>
 
 #include <base/macros.h>
@@ -113,20 +114,11 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC GetNVSpacePublicArea(uint32_t index,
                               TPMS_NV_PUBLIC* public_data) override;
 
- protected:
-  FRIEND_TEST(TpmUtilityTest, ImportRSAKeySuccess);
-  FRIEND_TEST(TpmUtilityTest, RootKeysSuccess);
-  FRIEND_TEST(TpmUtilityTest, RootKeysHandleConsistency);
-  FRIEND_TEST(TpmUtilityTest, RootKeysCreateFailure);
-  FRIEND_TEST(TpmUtilityTest, RootKeysPersistFailure);
-  FRIEND_TEST(TpmUtilityTest, SaltingKeySuccess);
-  FRIEND_TEST(TpmUtilityTest, SaltingKeyConsistency);
-  FRIEND_TEST(TpmUtilityTest, SaltingKeyCreateFailure);
-  FRIEND_TEST(TpmUtilityTest, SaltingKeyLoadFailure);
-  FRIEND_TEST(TpmUtilityTest, SaltingKeyPersistFailure);
-
  private:
+  friend class TpmUtilityTest;
+
   const TrunksFactory& factory_;
+  std::map<uint32_t, TPMS_NV_PUBLIC> nvram_public_area_map_;
 
   // Synchronously derives storage root keys for RSA and ECC and persists the
   // keys in the TPM. This operation must be authorized by the |owner_password|

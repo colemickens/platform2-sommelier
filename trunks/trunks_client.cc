@@ -369,7 +369,7 @@ int NvramTest(const std::string& owner_password) {
                << trunks::GetErrorString(rc);
     return rc;
   }
-  uint32_t index = 3;
+  uint32_t index = 1;
   session->SetEntityAuthorizationValue(owner_password);
   std::string nv_data("nv_data");
   rc = utility->DefineNVSpace(index, nv_data.size(), session.get());
@@ -391,13 +391,31 @@ int NvramTest(const std::string& owner_password) {
     LOG(ERROR) << "Error reading nvram: " << trunks::GetErrorString(rc);
     return rc;
   }
+  CHECK_EQ(0, nv_data.compare(new_nvdata));
+  rc = utility->LockNVSpace(index, session.get());
+  if (rc) {
+    LOG(ERROR) << "Error locking nvram: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  rc = utility->ReadNVSpace(index, 0, nv_data.size(),
+                            &new_nvdata, session.get());
+  if (rc) {
+    LOG(ERROR) << "Error reading nvram: " << trunks::GetErrorString(rc);
+    return rc;
+  }
+  CHECK_EQ(0, nv_data.compare(new_nvdata));
+  session->SetEntityAuthorizationValue(owner_password);
+  rc = utility->WriteNVSpace(index, 0, nv_data, session.get());
+  if (rc == trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Wrote nvram after locking: " << trunks::GetErrorString(rc);
+    return rc;
+  }
   session->SetEntityAuthorizationValue(owner_password);
   rc = utility->DestroyNVSpace(index, session.get());
   if (rc) {
     LOG(ERROR) << "Error destroying nvram: " << trunks::GetErrorString(rc);
     return rc;
   }
-  CHECK_EQ(0, nv_data.compare(new_nvdata));
   LOG(INFO) << "Test completed successfully.";
   return 0;
 }

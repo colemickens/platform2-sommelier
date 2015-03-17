@@ -981,6 +981,7 @@ TPM_RC TpmUtilityImpl::DefineNVSpace(uint32_t index,
                << GetErrorString(result);
     return result;
   }
+  nvram_public_area_map_[index] = public_data;
   return TPM_RC_SUCCESS;
 }
 
@@ -1016,6 +1017,7 @@ TPM_RC TpmUtilityImpl::DestroyNVSpace(uint32_t index,
                << GetErrorString(result);
     return result;
   }
+  nvram_public_area_map_.erase(index);
   return TPM_RC_SUCCESS;
 }
 
@@ -1049,6 +1051,10 @@ TPM_RC TpmUtilityImpl::LockNVSpace(uint32_t index,
     LOG(ERROR) << "Error locking non-volatile spaces: "
                << GetErrorString(result);
     return result;
+  }
+  auto it = nvram_public_area_map_.find(index);
+  if (it != nvram_public_area_map_.end()) {
+    it->second.attributes |= TPMA_NV_WRITELOCKED;
   }
   return TPM_RC_SUCCESS;
 }
@@ -1093,6 +1099,10 @@ TPM_RC TpmUtilityImpl::WriteNVSpace(uint32_t index,
     LOG(ERROR) << "Error writing to non-volatile space: "
                << GetErrorString(result);
     return result;
+  }
+  auto it = nvram_public_area_map_.find(index);
+  if (it != nvram_public_area_map_.end()) {
+    it->second.attributes |= TPMA_NV_WRITTEN;
   }
   return TPM_RC_SUCCESS;
 }
@@ -1175,6 +1185,11 @@ TPM_RC TpmUtilityImpl::GetNVSpacePublicArea(uint32_t index,
                << GetErrorString(result);
     return result;
   }
+  auto it = nvram_public_area_map_.find(index);
+  if (it != nvram_public_area_map_.end()) {
+    *public_data = it->second;
+    return TPM_RC_SUCCESS;
+  }
   TPM2B_NAME nvram_name;
   TPM2B_NV_PUBLIC public_area;
   public_area.nv_public.nv_index = 0;
@@ -1190,6 +1205,7 @@ TPM_RC TpmUtilityImpl::GetNVSpacePublicArea(uint32_t index,
     return result;
   }
   *public_data = public_area.nv_public;
+  nvram_public_area_map_[index] = public_area.nv_public;
   return TPM_RC_SUCCESS;
 }
 

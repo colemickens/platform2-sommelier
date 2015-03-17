@@ -37,6 +37,40 @@ class TpmUtilityTest : public testing::Test {
     factory_.set_tpm(&mock_tpm_);
     factory_.set_authorization_session(&mock_authorization_session_);
   }
+
+  TPM_RC CreateStorageRootKeys(TpmUtilityImpl utility,
+                               const std::string& password) {
+    return utility.CreateStorageRootKeys(password);
+  }
+
+  TPM_RC CreateSaltingKey(TpmUtilityImpl utility,
+                          const std::string& password) {
+    return utility.CreateSaltingKey(password);
+  }
+
+  TPM_RC ComputeKeyName(TpmUtilityImpl utility,
+                        const TPMT_PUBLIC& public_area,
+                        std::string* object_name) {
+    return utility.ComputeKeyName(public_area, object_name);
+  }
+
+  void SetNVRAMMap(TpmUtilityImpl utility,
+                   uint32_t index,
+                   const TPMS_NV_PUBLIC& public_area) {
+    utility.nvram_public_area_map_[index] = public_area;
+  }
+
+  TPM_RC GetNVRAMMap(TpmUtilityImpl utility,
+                     uint32_t index,
+                     TPMS_NV_PUBLIC* public_area) {
+    auto it = utility.nvram_public_area_map_.find(index);
+    if (it == utility.nvram_public_area_map_.end()) {
+      return TPM_RC_FAILURE;
+    }
+    *public_area = it->second;
+    return TPM_RC_SUCCESS;
+  }
+
  protected:
   TrunksFactoryForTest factory_;
   NiceMock<MockTpmState> mock_tpm_state_;
@@ -1138,8 +1172,8 @@ TEST_F(TpmUtilityTest, ImportRSAKeySuccess) {
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM2B_DIGEST(&unencrypted_private,
                                                &inner_integrity, NULL));
   std::string object_name;
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.ComputeKeyName(public_data.public_area,
-                                                   &object_name));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            ComputeKeyName(utility, public_data.public_area, &object_name));
   std::string integrity_value = crypto::SHA256HashString(unencrypted_private +
                                                          object_name);
   EXPECT_EQ(integrity_value.size(), inner_integrity.size);
@@ -1391,6 +1425,9 @@ TEST_F(TpmUtilityTest, LockNVSpaceSuccess) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility.LockNVSpace(index, &mock_authorization_session_));
+  TPMS_NV_PUBLIC public_area;
+  EXPECT_EQ(TPM_RC_SUCCESS, GetNVRAMMap(utility, index, &public_area));
+  EXPECT_EQ(public_area.attributes & TPMA_NV_WRITELOCKED, TPMA_NV_WRITELOCKED);
 }
 
 TEST_F(TpmUtilityTest, LockNVSpaceBadIndex) {
@@ -1425,6 +1462,9 @@ TEST_F(TpmUtilityTest, WriteNVSpaceSuccess) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(TPM_RC_SUCCESS, utility.WriteNVSpace(
       index, offset, "", &mock_authorization_session_));
+  TPMS_NV_PUBLIC public_area;
+  EXPECT_EQ(TPM_RC_SUCCESS, GetNVRAMMap(utility, index, &public_area));
+  EXPECT_EQ(public_area.attributes & TPMA_NV_WRITTEN, TPMA_NV_WRITTEN);
 }
 
 TEST_F(TpmUtilityTest, WriteNVSpaceBadSize) {
@@ -1529,6 +1569,16 @@ TEST_F(TpmUtilityTest, GetNVSpaceNameFailure) {
   EXPECT_EQ(TPM_RC_FAILURE, utility.GetNVSpaceName(index, &name));
 }
 
+TEST_F(TpmUtilityTest, GetNVSpacePublicAreaCachedSuccess) {
+  TpmUtilityImpl utility(factory_);
+  uint32_t index = 53;
+  TPMS_NV_PUBLIC public_area;
+  SetNVRAMMap(utility, index, public_area);
+  EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(_, _, _, _, _))
+      .Times(0);
+  EXPECT_EQ(TPM_RC_SUCCESS, utility.GetNVSpacePublicArea(index, &public_area));
+}
+
 TEST_F(TpmUtilityTest, GetNVSpacePublicAreaSuccess) {
   TpmUtilityImpl utility(factory_);
   uint32_t index = 53;
@@ -1550,7 +1600,7 @@ TEST_F(TpmUtilityTest, GetNVSpacePublicAreaFailure) {
 
 TEST_F(TpmUtilityTest, RootKeysSuccess) {
   TpmUtilityImpl utility(factory_);
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateStorageRootKeys("password"));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreateStorageRootKeys(utility, "password"));
 }
 
 TEST_F(TpmUtilityTest, RootKeysHandleConsistency) {
@@ -1561,26 +1611,26 @@ TEST_F(TpmUtilityTest, RootKeysHandleConsistency) {
                             Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, test_handle, _, _, _))
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateStorageRootKeys("password"));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreateStorageRootKeys(utility, "password"));
 }
 
 TEST_F(TpmUtilityTest, RootKeysCreateFailure) {
   TpmUtilityImpl utility(factory_);
   EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.CreateStorageRootKeys("password"));
+  EXPECT_EQ(TPM_RC_FAILURE, CreateStorageRootKeys(utility, "password"));
 }
 
 TEST_F(TpmUtilityTest, RootKeysPersistFailure) {
   TpmUtilityImpl utility(factory_);
   EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.CreateStorageRootKeys("password"));
+  EXPECT_EQ(TPM_RC_FAILURE, CreateStorageRootKeys(utility, "password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeySuccess) {
   TpmUtilityImpl utility(factory_);
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey(utility, "password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyConsistency) {
@@ -1591,28 +1641,28 @@ TEST_F(TpmUtilityTest, SaltingKeyConsistency) {
                             Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, test_handle, _, _, _))
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility.CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey(utility, "password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyCreateFailure) {
   TpmUtilityImpl utility(factory_);
   EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey(utility, "password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyLoadFailure) {
   TpmUtilityImpl utility(factory_);
   EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey(utility, "password"));
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyPersistFailure) {
   TpmUtilityImpl utility(factory_);
   EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility.CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey(utility, "password"));
 }
 
 }  // namespace trunks
