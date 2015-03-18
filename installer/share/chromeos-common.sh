@@ -250,18 +250,37 @@ legacy_offset_size_export() {
   ESP_IMG_SECTORS=$(partsize $1 12)
 }
 
-install_hybrid_mbr() {
-  # Creates a hybrid MBR which points the MBR partition 1 to GPT
-  # partition 12 (ESP). This is useful on ARM boards that boot
-  # from MBR formatted disks only
-  echo "Creating hybrid MBR"
+edit_mbr() {
   locate_gpt
   local start_esp=$(partoffset "$1" 12)
   local num_esp_sectors=$(partsize "$1" 12)
-  sudo sfdisk "${1}" <<EOF
+  sfdisk "${1}" <<EOF
 unit: sectors
 
 disk1 : start=   $start_esp, size=    $num_esp_sectors, Id= c, bootable
 disk2 : start=   1, size=    1, Id= ee
 EOF
+}
+
+install_hybrid_mbr() {
+  # Creates a hybrid MBR which points the MBR partition 1 to GPT
+  # partition 12 (ESP). This is useful on ARM boards that boot
+  # from MBR formatted disks only
+  #
+  # Currently, this code path is used principally to install to
+  # SD cards using chromeos-install run from inside the chroot.
+  # In that environment, the kernel sometime gives `sfdisk` EBUSY
+  # when it calls BLKRRPART for the target disk.  The busy state
+  # clears up after a few seconds.  (This behavior is seen at
+  # least on the version of Ubuntu Trusty in use at Google).
+  #
+  # We work around this sfdisk/kernel misbehavior by the simple
+  # expedient of retrying the call once after waiting a decent
+  # interval.
+
+  echo "Creating hybrid MBR"
+  if ! edit_mbr "${1}"; then
+    sleep 10
+    blockdev --rereadpt "${1}"
+  fi
 }
