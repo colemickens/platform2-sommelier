@@ -78,7 +78,8 @@ class PropType {
   virtual ObjectPropType const* GetObject() const { return nullptr; }
 
   // Makes a full copy of this type definition.
-  virtual std::shared_ptr<PropType> Clone() const = 0;
+  virtual std::unique_ptr<PropType> Clone() const;
+
   // Creates an instance of associated value object, using the parameter
   // type as a factory class.
   virtual std::shared_ptr<PropValue> CreateValue() const = 0;
@@ -101,7 +102,8 @@ class PropType {
   // Returns true on success, otherwise fills in the |error| with additional
   // error information.
   virtual bool FromJson(const base::DictionaryValue* value,
-                        const PropType* base_schema, chromeos::ErrorPtr* error);
+                        const PropType* base_schema,
+                        chromeos::ErrorPtr* error);
   // Helper function to load object schema from JSON.
   virtual bool ObjectSchemaFromJson(const base::DictionaryValue* value,
                                     const PropType* base_schema,
@@ -142,22 +144,15 @@ class PropType {
   static std::unique_ptr<PropType> Create(ValueType type);
 
   // Adds a constraint to the type definition.
-  void AddConstraint(std::shared_ptr<Constraint> constraint);
+  void AddConstraint(const std::shared_ptr<Constraint>& constraint);
   // Removes a constraint of given type, if it exists.
   void RemoveConstraint(ConstraintType constraint_type);
+  // Removes all constraints.
+  void RemoveAllConstraints();
 
   // Finds a constraint of given type. Returns nullptr if not found.
   const Constraint* GetConstraint(ConstraintType constraint_type) const;
   Constraint* GetConstraint(ConstraintType constraint_type);
-
-  // Returns a schema for Object-type parameter. This will be nullptr for
-  // every type but Object.
-  const ObjectSchema* GetObjectSchemaPtr() const {
-    return GetObjectSchema().get();
-  }
-  virtual std::shared_ptr<const ObjectSchema> GetObjectSchema() const {
-    return std::shared_ptr<const ObjectSchema>();
-  }
 
   // Validates the given value against all the constraints.
   bool ValidateConstraints(const PropValue& value,
@@ -187,9 +182,6 @@ template<class Derived, class Value, typename T>
 class PropTypeBase : public PropType {
  public:
   ValueType GetType() const override { return GetValueType<T>(); }
-  std::shared_ptr<PropType> Clone() const override {
-    return std::make_shared<Derived>(*static_cast<const Derived*>(this));
-  }
   std::shared_ptr<PropValue> CreateValue() const override {
     return std::make_shared<Value>(this);
   }
@@ -305,6 +297,8 @@ class ObjectPropType
   ObjectPropType* GetObject() override { return this; }
   ObjectPropType const* GetObject() const override { return this; }
 
+  std::unique_ptr<PropType> Clone() const override;
+
   std::unique_ptr<base::Value> ToJson(bool full_schema,
                                       chromeos::ErrorPtr* error) const override;
   bool ObjectSchemaFromJson(const base::DictionaryValue* value,
@@ -312,7 +306,11 @@ class ObjectPropType
                             std::set<std::string>* processed_keys,
                             chromeos::ErrorPtr* error) override;
 
-  std::shared_ptr<const ObjectSchema> GetObjectSchema() const override {
+  // Returns a schema for Object-type parameter.
+  inline const ObjectSchema* GetObjectSchemaPtr() const {
+    return GetObjectSchema().get();
+  }
+  std::shared_ptr<const ObjectSchema> GetObjectSchema() const {
     return object_schema_.value;
   }
   void SetObjectSchema(const std::shared_ptr<const ObjectSchema>& schema) {

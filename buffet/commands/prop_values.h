@@ -137,8 +137,7 @@ class TypedValueBase : public PropValue {
   }
 
   bool FromJson(const base::Value* value, chromeos::ErrorPtr* error) override {
-    return TypedValueFromJson(value, GetPropType()->GetObjectSchemaPtr(),
-                              &value_, error);
+    return TypedValueFromJson(value, GetPropType(), &value_, error);
   }
 
   bool IsEqual(const PropValue* value) const override {
@@ -190,8 +189,8 @@ class BooleanValue final : public TypedValueBase<BooleanValue, bool> {
 };
 
 // Value of type Object.
-class ObjectValue final : public TypedValueBase<ObjectValue,
-                                                native_types::Object> {
+class ObjectValue final
+    : public TypedValueBase<ObjectValue, native_types::Object> {
  public:
   using _Base::_Base;  // Expose the custom constructor of the base class.
   ObjectValue* GetObject() override { return this; }

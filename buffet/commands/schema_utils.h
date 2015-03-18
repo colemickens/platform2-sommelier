@@ -78,19 +78,23 @@ std::unique_ptr<base::Value> TypedValueToJson(const std::vector<T>& values,
 // helper methods allow to extract specific C++ data types from base::Value.
 // Also used in template classes below to simplify specialization logic.
 bool TypedValueFromJson(const base::Value* value_in,
-                        const ObjectSchema* object_schema,
-                        bool* value_out, chromeos::ErrorPtr* error);
+                        const PropType* type,
+                        bool* value_out,
+                        chromeos::ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
-                        const ObjectSchema* object_schema,
-                        int* value_out, chromeos::ErrorPtr* error);
+                        const PropType* type,
+                        int* value_out,
+                        chromeos::ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
-                        const ObjectSchema* object_schema,
-                        double* value_out, chromeos::ErrorPtr* error);
+                        const PropType* type,
+                        double* value_out,
+                        chromeos::ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
-                        const ObjectSchema* object_schema,
-                        std::string* value_out, chromeos::ErrorPtr* error);
+                        const PropType* type,
+                        std::string* value_out,
+                        chromeos::ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
-                        const ObjectSchema* object_schema,
+                        const PropType* type,
                         native_types::Object* value_out,
                         chromeos::ErrorPtr* error);
 

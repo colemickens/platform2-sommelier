@@ -63,36 +63,15 @@ class ObjectSchema final {
   // Loads the object schema from JSON. If |object_schema| is not nullptr, it is
   // used as a base schema to inherit omitted properties and constraints from.
   bool FromJson(const base::DictionaryValue* value,
-                const ObjectSchema* object_schema, chromeos::ErrorPtr* error);
+                const ObjectSchema* object_schema,
+                chromeos::ErrorPtr* error);
+
+  // Helper method to load property type definitions from JSON.
+  static std::unique_ptr<PropType> PropFromJson(const base::Value& value,
+                                                const PropType* base_schema,
+                                                chromeos::ErrorPtr* error);
 
  private:
-  // Internal helper method to load individual parameter type definitions.
-  bool PropFromJson(const std::string& prop_name,
-                    const base::Value& value,
-                    const PropType* base_schema,
-                    Properties* properties, chromeos::ErrorPtr* error) const;
-  // Helper function in case the parameter is defined as JSON string like this:
-  //   "prop":"..."
-  bool PropFromJsonString(const std::string& prop_name,
-                          const base::Value& value,
-                          const PropType* base_schema,
-                          Properties* properties,
-                          chromeos::ErrorPtr* error) const;
-  // Helper function in case the parameter is defined as JSON array like this:
-  //   "prop":[...]
-  bool PropFromJsonArray(const std::string& prop_name,
-                         const base::Value& value,
-                         const PropType* base_schema,
-                         Properties* properties,
-                         chromeos::ErrorPtr* error) const;
-  // Helper function in case the parameter is defined as JSON object like this:
-  //   "prop":{...}
-  bool PropFromJsonObject(const std::string& prop_name,
-                          const base::Value& value,
-                          const PropType* base_schema,
-                          Properties* properties,
-                          chromeos::ErrorPtr* error) const;
-
   // Internal parameter type definition map.
   Properties properties_;
   bool extra_properties_allowed_{false};

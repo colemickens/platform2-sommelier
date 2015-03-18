@@ -54,7 +54,8 @@ class Constraint {
   // Saves the constraint into the specified JSON |dict| object, representing
   // the object schema. If |overridden_only| is set to true, then the
   // inherited constraints will not be added to the schema object.
-  virtual bool AddToJsonDict(base::DictionaryValue* dict, bool overridden_only,
+  virtual bool AddToJsonDict(base::DictionaryValue* dict,
+                             bool overridden_only,
                              chromeos::ErrorPtr* error) const;
   // Saves the value of constraint to JSON value. E.g., if the numeric
   // constraint was defined as {"minimum":20} this will create a JSON value

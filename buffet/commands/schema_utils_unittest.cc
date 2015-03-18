@@ -159,18 +159,20 @@ TEST(CommandSchemaUtils, TypedValueFromJson_String) {
 
 TEST(CommandSchemaUtils, TypedValueFromJson_Object) {
   buffet::native_types::Object value;
-  buffet::ObjectSchema schema;
+  auto schema = std::make_shared<buffet::ObjectSchema>();
 
   auto age_prop = std::make_shared<buffet::IntPropType>();
   age_prop->AddMinMaxConstraint(0, 150);
-  schema.AddProp("age", age_prop);
+  schema->AddProp("age", age_prop);
 
   auto name_prop = std::make_shared<buffet::StringPropType>();
   name_prop->AddLengthConstraint(1, 30);
-  schema.AddProp("name", name_prop);
+  schema->AddProp("name", name_prop);
 
+  buffet::ObjectPropType type;
+  type.SetObjectSchema(schema);
   EXPECT_TRUE(buffet::TypedValueFromJson(
-      CreateValue("{'age':20,'name':'Bob'}").get(), &schema, &value, nullptr));
+      CreateValue("{'age':20,'name':'Bob'}").get(), &type, &value, nullptr));
   buffet::native_types::Object value2;
   value2.insert(std::make_pair("age", age_prop->CreateValue(20, nullptr)));
   value2.insert(std::make_pair("name",

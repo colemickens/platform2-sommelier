@@ -548,7 +548,7 @@ TEST(CommandSchema, ObjectPropType_FromJson) {
   EXPECT_TRUE(base_prop.FromJson(CreateDictionaryValue(
       "{'properties':{'name':'string','age':'integer'}}").get(), nullptr,
       nullptr));
-  auto schema = base_prop.GetObjectSchemaPtr();
+  auto schema = base_prop.GetObject()->GetObjectSchemaPtr();
   const buffet::PropType* prop = schema->GetProp("name");
   EXPECT_EQ(buffet::ValueType::String, prop->GetType());
   prop = schema->GetProp("age");

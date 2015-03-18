@@ -12,6 +12,7 @@
 #include "buffet/commands/command_dictionary.h"
 #include "buffet/commands/command_proxy_interface.h"
 #include "buffet/commands/command_queue.h"
+#include "buffet/commands/prop_types.h"
 #include "buffet/commands/schema_constants.h"
 #include "buffet/commands/schema_utils.h"
 
@@ -85,8 +86,9 @@ bool GetCommandParameters(const base::DictionaryValue* json,
 
   // Now read in the parameters and validate their values against the command
   // definition schema.
-  if (!TypedValueFromJson(params, command_def->GetParameters().get(),
-                          parameters, error)) {
+  ObjectPropType obj_prop_type;
+  obj_prop_type.SetObjectSchema(command_def->GetParameters());
+  if (!TypedValueFromJson(params, &obj_prop_type, parameters, error)) {
     return false;
   }
   return true;

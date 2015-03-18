@@ -82,43 +82,49 @@ std::unique_ptr<base::Value> TypedValueToJson(const native_types::Object& value,
 }
 
 bool TypedValueFromJson(const base::Value* value_in,
-                        const ObjectSchema* object_schema,
-                        bool* value_out, chromeos::ErrorPtr* error) {
+                        const PropType* type,
+                        bool* value_out,
+                        chromeos::ErrorPtr* error) {
   return value_in->GetAsBoolean(value_out) ||
          ReportUnexpectedJson(value_in, value_out, error);
 }
 
 bool TypedValueFromJson(const base::Value* value_in,
-                        const ObjectSchema* object_schema,
-                        int* value_out, chromeos::ErrorPtr* error) {
+                        const PropType* type,
+                        int* value_out,
+                        chromeos::ErrorPtr* error) {
   return value_in->GetAsInteger(value_out) ||
          ReportUnexpectedJson(value_in, value_out, error);
 }
 
 bool TypedValueFromJson(const base::Value* value_in,
-                        const ObjectSchema* object_schema,
-                        double* value_out, chromeos::ErrorPtr* error) {
+                        const PropType* type,
+                        double* value_out,
+                        chromeos::ErrorPtr* error) {
   return value_in->GetAsDouble(value_out) ||
          ReportUnexpectedJson(value_in, value_out, error);
 }
 
 bool TypedValueFromJson(const base::Value* value_in,
-                        const ObjectSchema* object_schema,
-                        std::string* value_out, chromeos::ErrorPtr* error) {
+                        const PropType* type,
+                        std::string* value_out,
+                        chromeos::ErrorPtr* error) {
   return value_in->GetAsString(value_out) ||
          ReportUnexpectedJson(value_in, value_out, error);
 }
 
 bool TypedValueFromJson(const base::Value* value_in,
-                        const ObjectSchema* object_schema,
+                        const PropType* type,
                         native_types::Object* value_out,
                         chromeos::ErrorPtr* error) {
   const base::DictionaryValue* dict = nullptr;
   if (!value_in->GetAsDictionary(&dict))
     return ReportUnexpectedJson(value_in, value_out, error);
 
-  CHECK(object_schema) << "Object schema must be provided";
+  CHECK(type) << "Object definition must be provided";
+  CHECK(ValueType::Object == type->GetType()) << "Type must be Object";
 
+  const ObjectSchema* object_schema = type->GetObject()->GetObjectSchemaPtr();
   std::set<std::string> keys_processed;
   for (const auto& pair : object_schema->GetProps()) {
     const PropValue* def_value = pair.second->GetDefaultValue();
@@ -231,10 +237,10 @@ std::shared_ptr<const PropValue> PropValueFromDBusVariant(
       type->GenerateErrorValueTypeMismatch(error);
       return {};
     }
-    CHECK(nullptr != type->GetObjectSchemaPtr())
+    CHECK(nullptr != type->GetObject()->GetObjectSchemaPtr())
         << "An object type must have a schema defined for it";
     native_types::Object obj;
-    if (!ObjectFromDBusVariant(type->GetObjectSchemaPtr(),
+    if (!ObjectFromDBusVariant(type->GetObject()->GetObjectSchemaPtr(),
                                value.Get<chromeos::VariantDictionary>(),
                                &obj,
                                error))
