@@ -4,6 +4,7 @@
       'deps': [
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'libprotobinder',
       ],
     },
   },
@@ -23,7 +24,15 @@
       'dependencies': [
         'libgerm',
       ],
-      'sources': ['main.cc'],
+      'sources': ['germ_main.cc'],
+    },
+    {
+      'target_name': 'germd',
+      'type': 'executable',
+      'dependencies': [
+        'libgerm',
+      ],
+      'sources': ['germd.cc'],
     },
   ],
   'conditions': [
