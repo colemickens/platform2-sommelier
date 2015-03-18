@@ -375,8 +375,8 @@ int Transport::MultiSocketCallback(CURL* easy,
   // READ and WRITE. This is not what we want here, so stop watching the
   // file descriptor on previous controller before starting with a different
   // mode.
-  LOG_IF(WARNING, !poll_data->GetWatcher()->StopWatchingFileDescriptor())
-      << "Failed to stop watching the previous socket descriptor";
+  if (!poll_data->GetWatcher()->StopWatchingFileDescriptor())
+    LOG(WARNING) << "Failed to stop watching the previous socket descriptor";
   CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
       s, true, watch_mode, poll_data->GetWatcher(), poll_data))
       << "Failed to watch the CURL socket.";
