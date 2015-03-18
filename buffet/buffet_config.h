@@ -30,6 +30,7 @@ class BuffetConfig {
   std::string default_description() const { return default_description_; }
   std::string default_location() const { return default_location_; }
   std::string model_id() const { return model_id_; }
+  uint64_t polling_period_ms() const { return polling_period_ms_; }
 
  private:
   std::string client_id_{"58855907228.apps.googleusercontent.com"};
@@ -43,6 +44,7 @@ class BuffetConfig {
   std::string default_description_{"A development device"};
   std::string default_location_{"my desk"};
   std::string model_id_{"AAA"};
+  uint64_t polling_period_ms_{7000};
 
   DISALLOW_COPY_AND_ASSIGN(BuffetConfig);
 };

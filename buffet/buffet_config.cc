@@ -4,6 +4,9 @@
 
 #include "buffet/buffet_config.h"
 
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+
 namespace buffet {
 namespace config_keys {
 
@@ -18,6 +21,7 @@ const char kDefaultDisplayName[]   = "default_display_name";
 const char kDefaultDescription[]   = "default_description";
 const char kDefaultLocation[]      = "default_location";
 const char kModelId[]              = "model_id";
+const char kPollingPeriodMs[]      = "polling_period_ms";
 
 }  // namespace config_keys
 
@@ -40,6 +44,13 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
   store.GetString(config_keys::kDefaultDescription, &default_description_);
   store.GetString(config_keys::kDefaultLocation, &default_location_);
   store.GetString(config_keys::kModelId, &model_id_);
+  std::string polling_period_str;
+  if (store.GetString(config_keys::kPollingPeriodMs, &polling_period_str)) {
+    CHECK(base::StringToUint64(polling_period_str, &polling_period_ms_))
+        << "Failed to parse polling period in configuration file.";
+    VLOG(1) << "Using a polling period of " << polling_period_ms_
+            << " milliseconds.";
+  }
 }
 
 }  // namespace buffet

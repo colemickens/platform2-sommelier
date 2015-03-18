@@ -569,14 +569,6 @@ void PostToCallback(base::Callback<void(const T&)> callback,
       FROM_HERE, base::Bind(cb, base::Owned(value.release())));
 }
 
-void PostRepeatingTask(const tracked_objects::Location& from_here,
-                       base::Closure task,
-                       base::TimeDelta delay) {
-  task.Run();
-  base::MessageLoop::current()->PostDelayedTask(
-      from_here, base::Bind(&PostRepeatingTask, from_here, task, delay), delay);
-}
-
 using ResponsePtr = scoped_ptr<chromeos::http::Response>;
 
 void SendRequestWithRetries(
@@ -840,23 +832,22 @@ void DeviceRegistrationInfo::AbortLimboCommands(
 
 void DeviceRegistrationInfo::PeriodicallyPollCommands() {
   VLOG(1) << "Poll commands";
-  PostRepeatingTask(
+  command_poll_timer_.Start(
       FROM_HERE,
-      base::Bind(
-          &DeviceRegistrationInfo::FetchCommands,
-          base::Unretained(this),
-          base::Bind(&DeviceRegistrationInfo::PublishCommands,
-                     base::Unretained(this)),
-          base::Bind(&IgnoreCloudError)),
-      base::TimeDelta::FromSeconds(7));
+      base::TimeDelta::FromMilliseconds(config_->polling_period_ms()),
+      base::Bind(&DeviceRegistrationInfo::FetchCommands,
+                 base::Unretained(this),
+                 base::Bind(&DeviceRegistrationInfo::PublishCommands,
+                            base::Unretained(this)),
+                            base::Bind(&IgnoreCloudError)));
   // TODO(antonm): Use better trigger: when StateManager registers new updates,
   // it should call closure which will post a task, probably with some
   // throttling, to publish state updates.
-  PostRepeatingTask(
+  state_push_timer_.Start(
       FROM_HERE,
+      base::TimeDelta::FromMilliseconds(config_->polling_period_ms()),
       base::Bind(&DeviceRegistrationInfo::PublishStateUpdates,
-                 base::Unretained(this)),
-      base::TimeDelta::FromSeconds(7));
+                 base::Unretained(this)));
 }
 
 void DeviceRegistrationInfo::PublishCommands(const base::ListValue& commands) {

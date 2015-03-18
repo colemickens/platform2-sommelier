@@ -15,6 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
+#include <base/timer/timer.h>
 #include <chromeos/data_encoding.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/http/http_transport.h>
@@ -239,6 +240,9 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   // Tracks our current registration status.
   RegistrationStatus registration_status_{RegistrationStatus::kUnconfigured};
   base::Closure on_status_changed_;
+
+  base::RepeatingTimer<DeviceRegistrationInfo> command_poll_timer_;
+  base::RepeatingTimer<DeviceRegistrationInfo> state_push_timer_;
 
   friend class TestHelper;
   base::WeakPtrFactory<DeviceRegistrationInfo> weak_factory_{this};
