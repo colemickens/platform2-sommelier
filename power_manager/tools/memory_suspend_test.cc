@@ -22,6 +22,7 @@
 #include <chromeos/flag_helper.h>
 
 #define PATTERN(i) ((i % 1) ? 0x55555555 : 0xAAAAAAAA)
+#define SIZE_2_9_GB (2900LL * 1024LL * 1024LL)
 
 using base::FilePath;
 using std::set;
@@ -49,11 +50,7 @@ int Suspend(uint64_t wakeup_count) {
 }
 
 uint32_t* Allocate(size_t size) {
-  uint32_t *ptr;
-
-  ptr = static_cast<uint32_t *>(malloc(size));
-  CHECK(ptr);
-  return ptr;
+  return static_cast<uint32_t *>(malloc(size));
 }
 
 void Fill(uint32_t *ptr, size_t size) {
@@ -123,11 +120,23 @@ int main(int argc, char* argv[]) {
       "  suspend operation fails, and 2 when memory errors were detected.");
 
   int64_t size = FLAGS_size;
+  bool autosize = false;
   if (size == 0) {
+    autosize = true;
     size = GetUsableMemorySize();
   }
 
   uint32_t *ptr = Allocate(size);
+
+  /* Retry allocate at 2.9GiB on 32 bit userland machine */
+  /* NOLINTNEXTLINE(runtime/int) - suppress using long instead of int32 */
+  if (!ptr && autosize && sizeof(long) == 4 && size > SIZE_2_9_GB) {
+    size = SIZE_2_9_GB;
+    ptr = Allocate(size);
+  }
+
+  CHECK(ptr);
+
   Fill(ptr, size);
   if (Suspend(FLAGS_wakeup_count)) {
     printf("Error suspending\n");
