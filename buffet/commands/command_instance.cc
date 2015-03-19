@@ -27,14 +27,13 @@ const char CommandInstance::kStatusCancelled[] = "cancelled";
 const char CommandInstance::kStatusAborted[] = "aborted";
 const char CommandInstance::kStatusExpired[] = "expired";
 
-CommandInstance::CommandInstance(
-    const std::string& name,
-    const std::shared_ptr<const CommandDefinition>& command_definition,
-    const native_types::Object& parameters)
-    : name_(name),
-      command_definition_(command_definition),
-      parameters_(parameters) {
-  CHECK(command_definition_.get());
+CommandInstance::CommandInstance(const std::string& name,
+                                 const CommandDefinition* command_definition,
+                                 const native_types::Object& parameters)
+    : name_{name},
+      command_definition_{command_definition},
+      parameters_{parameters} {
+  CHECK(command_definition_);
 }
 
 CommandInstance::~CommandInstance() = default;
@@ -43,13 +42,9 @@ const std::string& CommandInstance::GetCategory() const {
   return command_definition_->GetCategory();
 }
 
-std::shared_ptr<const PropValue> CommandInstance::FindParameter(
-    const std::string& name) const {
-  std::shared_ptr<const PropValue> value;
+const PropValue* CommandInstance::FindParameter(const std::string& name) const {
   auto p = parameters_.find(name);
-  if (p != parameters_.end())
-    value = p->second;
-  return value;
+  return (p != parameters_.end()) ? p->second.get() : nullptr;
 }
 
 namespace {
@@ -87,7 +82,7 @@ bool GetCommandParameters(const base::DictionaryValue* json,
   // Now read in the parameters and validate their values against the command
   // definition schema.
   ObjectPropType obj_prop_type;
-  obj_prop_type.SetObjectSchema(command_def->GetParameters());
+  obj_prop_type.SetObjectSchema(command_def->GetParameters()->Clone());
   if (!TypedValueFromJson(params, &obj_prop_type, parameters, error)) {
     return false;
   }
@@ -130,7 +125,7 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
   }
 
   native_types::Object parameters;
-  if (!GetCommandParameters(json, command_def.get(), &parameters, error)) {
+  if (!GetCommandParameters(json, command_def, &parameters, error)) {
     chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kCommandFailed,
                                  "Failed to validate command '%s'",

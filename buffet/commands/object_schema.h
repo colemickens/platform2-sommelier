@@ -27,21 +27,25 @@ class PropType;
 // these type of object description is the same.
 class ObjectSchema final {
  public:
+  // Do not inline the constructor/destructor to allow forward-declared type
+  // PropType to be part of |properties_| member.
+  ObjectSchema();
+  ~ObjectSchema();
+
   // Properties is a string-to-PropType map representing a list of
   // properties defined for a command/object. The key is the parameter
   // name and the value is the parameter type definition object.
-  using Properties = std::map<std::string, std::shared_ptr<PropType>>;
+  using Properties = std::map<std::string, std::unique_ptr<PropType>>;
 
-  // Declaring default and copy constructors to document the copyable
-  // nature of this class. Using the default implementation for them though.
-  ObjectSchema() = default;
-  ObjectSchema(const ObjectSchema& rhs) = default;
-  ObjectSchema& operator=(const ObjectSchema& rhs) = default;
+  // Makes a full copy of this object.
+  virtual std::unique_ptr<ObjectSchema> Clone() const;
 
   // Add a new parameter definition.
-  void AddProp(const std::string& name, std::shared_ptr<PropType> prop);
+  void AddProp(const std::string& name, std::unique_ptr<PropType> prop);
+
   // Finds parameter type definition by name. Returns nullptr if not found.
   const PropType* GetProp(const std::string& name) const;
+
   // Gets the list of all the properties defined.
   const Properties& GetProps() const { return properties_; }
 
@@ -60,11 +64,15 @@ class ObjectSchema final {
   // the overridden (not inherited) ones are saved.
   std::unique_ptr<base::DictionaryValue> ToJson(
       bool full_schema, chromeos::ErrorPtr* error) const;
+
   // Loads the object schema from JSON. If |object_schema| is not nullptr, it is
   // used as a base schema to inherit omitted properties and constraints from.
   bool FromJson(const base::DictionaryValue* value,
                 const ObjectSchema* object_schema,
                 chromeos::ErrorPtr* error);
+
+  // Helper factory method to create a new instance of ObjectSchema object.
+  static std::unique_ptr<ObjectSchema> Create();
 
   // Helper method to load property type definitions from JSON.
   static std::unique_ptr<PropType> PropFromJson(const base::Value& value,

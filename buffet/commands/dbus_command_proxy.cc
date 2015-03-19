@@ -81,7 +81,7 @@ bool DBusCommandProxy::SetResults(chromeos::ErrorPtr* error,
 
   auto results_schema = command_instance_->GetCommandDefinition()->GetResults();
   native_types::Object obj;
-  if (!ObjectFromDBusVariant(results_schema.get(), results, &obj, error))
+  if (!ObjectFromDBusVariant(results_schema, results, &obj, error))
     return false;
 
   command_instance_->SetResults(obj);

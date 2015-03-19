@@ -26,7 +26,7 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
                                      const std::string& category,
                                      const CommandDictionary* base_commands,
                                      chromeos::ErrorPtr* error) {
-  std::map<std::string, std::shared_ptr<const CommandDefinition>> new_defs;
+  CommandMap new_defs;
 
   // |json| contains a list of nested objects with the following structure:
   // {"<pkg_name>": {"<cmd_name>": {"parameters": {object_schema}}, ...}, ...}
@@ -72,8 +72,8 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       if (base_commands) {
         auto cmd = base_commands->FindCommand(full_command_name);
         if (cmd) {
-          base_parameters_def = cmd->GetParameters().get();
-          base_results_def = cmd->GetResults().get();
+          base_parameters_def = cmd->GetParameters();
+          base_results_def = cmd->GetResults();
         }
 
         // If the base command dictionary was provided but the command was not
@@ -111,10 +111,11 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       if (!results_schema)
         return false;
 
-      auto command_def = std::make_shared<CommandDefinition>(category,
-                                                             parameters_schema,
-                                                             results_schema);
-      new_defs.insert(std::make_pair(full_command_name, command_def));
+      std::unique_ptr<CommandDefinition> command_def{
+        new CommandDefinition{category, std::move(parameters_schema),
+                              std::move(results_schema)}
+      };
+      new_defs.emplace(full_command_name, std::move(command_def));
 
       command_iter.Advance();
     }
@@ -140,17 +141,18 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
     definitions_.erase(name);
 
   // Insert new definitions into the global map.
-  definitions_.insert(new_defs.begin(), new_defs.end());
+  for (auto& pair : new_defs)
+    definitions_.emplace(pair.first, std::move(pair.second));
   return true;
 }
 
-std::shared_ptr<ObjectSchema> CommandDictionary::BuildObjectSchema(
+std::unique_ptr<ObjectSchema> CommandDictionary::BuildObjectSchema(
     const base::DictionaryValue* command_def_json,
     const char* property_name,
     const ObjectSchema* base_def,
     const std::string& command_name,
     chromeos::ErrorPtr* error) {
-  auto object_schema = std::make_shared<ObjectSchema>();
+  auto object_schema = ObjectSchema::Create();
 
   const base::DictionaryValue* schema_def = nullptr;
   if (!command_def_json->GetDictionaryWithoutPathExpansion(property_name,
@@ -204,11 +206,10 @@ std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
   return dict;
 }
 
-std::shared_ptr<const CommandDefinition> CommandDictionary::FindCommand(
+const CommandDefinition* CommandDictionary::FindCommand(
     const std::string& command_name) const {
   auto pair = definitions_.find(command_name);
-  return (pair != definitions_.end()) ? pair->second :
-      std::shared_ptr<const CommandDefinition>();
+  return (pair != definitions_.end()) ? pair->second.get() : nullptr;
 }
 
 void CommandDictionary::Clear() {

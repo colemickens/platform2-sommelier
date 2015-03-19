@@ -99,9 +99,15 @@ bool ConstraintStringLengthMin::Validate(const PropValue& value,
   return true;
 }
 
-std::shared_ptr<Constraint>
-    ConstraintStringLengthMin::CloneAsInherited() const {
-  return std::make_shared<ConstraintStringLengthMin>(limit_.value);
+std::unique_ptr<Constraint>
+ConstraintStringLengthMin::Clone() const {
+  return std::unique_ptr<Constraint>{new ConstraintStringLengthMin{limit_}};
+}
+
+std::unique_ptr<Constraint>
+ConstraintStringLengthMin::CloneAsInherited() const {
+  return std::unique_ptr<Constraint>{
+      new ConstraintStringLengthMin{limit_.value}};
 }
 
 // ConstraintStringLengthMax --------------------------------------------------
@@ -126,9 +132,15 @@ bool ConstraintStringLengthMax::Validate(const PropValue& value,
   return true;
 }
 
-std::shared_ptr<Constraint>
-    ConstraintStringLengthMax::CloneAsInherited() const {
-  return std::make_shared<ConstraintStringLengthMax>(limit_.value);
+std::unique_ptr<Constraint>
+ConstraintStringLengthMax::Clone() const {
+  return std::unique_ptr<Constraint>{new ConstraintStringLengthMax{limit_}};
+}
+
+std::unique_ptr<Constraint>
+ConstraintStringLengthMax::CloneAsInherited() const {
+  return std::unique_ptr<Constraint>{
+      new ConstraintStringLengthMax{limit_.value}};
 }
 
 }  // namespace buffet

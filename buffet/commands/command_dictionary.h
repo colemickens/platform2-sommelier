@@ -13,6 +13,8 @@
 #include <base/macros.h>
 #include <chromeos/errors/error.h>
 
+#include "buffet/commands/command_definition.h"
+
 namespace base {
 class Value;
 class DictionaryValue;
@@ -20,7 +22,6 @@ class DictionaryValue;
 
 namespace buffet {
 
-class CommandDefinition;
 class ObjectSchema;
 
 // CommandDictionary is a wrapper around a map of command name and the
@@ -69,19 +70,18 @@ class CommandDictionary {
   // Remove all the command definitions from the dictionary.
   void Clear();
   // Finds a definition for the given command.
-  std::shared_ptr<const CommandDefinition> FindCommand(
-      const std::string& command_name) const;
+  const CommandDefinition* FindCommand(const std::string& command_name) const;
 
  private:
-  std::shared_ptr<ObjectSchema> BuildObjectSchema(
+  using CommandMap =
+      std::map<std::string, std::unique_ptr<const CommandDefinition>>;
+
+  std::unique_ptr<ObjectSchema> BuildObjectSchema(
       const base::DictionaryValue* command_def_json,
       const char* property_name,
       const ObjectSchema* base_def,
       const std::string& command_name,
       chromeos::ErrorPtr* error);
-
-  using CommandMap = std::map<std::string,
-                              std::shared_ptr<const CommandDefinition>>;
 
   CommandMap definitions_;  // List of all available command definitions.
   DISALLOW_COPY_AND_ASSIGN(CommandDictionary);

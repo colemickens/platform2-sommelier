@@ -17,17 +17,20 @@
 
 namespace {
 
-std::unique_ptr<buffet::CommandInstance> CreateDummyCommandInstance(
-    const std::string& name, const std::string& id) {
-  auto command_definition = std::make_shared<const buffet::CommandDefinition>(
-      "powerd",
-      std::make_shared<const buffet::ObjectSchema>(),
-      std::make_shared<const buffet::ObjectSchema>());
-  auto cmd = std::unique_ptr<buffet::CommandInstance>(
-      new buffet::CommandInstance(name, command_definition, {}));
-  cmd->SetID(id);
-  return cmd;
-}
+class CommandQueueTest : public testing::Test {
+ public:
+  std::unique_ptr<buffet::CommandInstance> CreateDummyCommandInstance(
+      const std::string& name, const std::string& id) {
+    std::unique_ptr<buffet::CommandInstance> cmd{
+      new buffet::CommandInstance{name, &command_definition_, {}}};
+    cmd->SetID(id);
+    return cmd;
+  }
+
+ private:
+  buffet::CommandDefinition command_definition_{
+      "powerd", buffet::ObjectSchema::Create(), buffet::ObjectSchema::Create()};
+};
 
 // Fake implementation of CommandDispachInterface.
 // Just keeps track of commands being added to and removed from the queue.
@@ -62,13 +65,13 @@ class FakeDispatchInterface : public buffet::CommandDispachInterface {
 
 }  // anonymous namespace
 
-TEST(CommandQueue, Empty) {
+TEST_F(CommandQueueTest, Empty) {
   buffet::CommandQueue queue;
   EXPECT_TRUE(queue.IsEmpty());
   EXPECT_EQ(0, queue.GetCount());
 }
 
-TEST(CommandQueue, Add) {
+TEST_F(CommandQueueTest, Add) {
   buffet::CommandQueue queue;
   queue.Add(CreateDummyCommandInstance("base.reboot", "id1"));
   queue.Add(CreateDummyCommandInstance("base.reboot", "id2"));
@@ -77,7 +80,7 @@ TEST(CommandQueue, Add) {
   EXPECT_FALSE(queue.IsEmpty());
 }
 
-TEST(CommandQueue, Remove) {
+TEST_F(CommandQueueTest, Remove) {
   buffet::CommandQueue queue;
   const std::string id1 = "id1";
   const std::string id2 = "id2";
@@ -97,7 +100,7 @@ TEST(CommandQueue, Remove) {
   EXPECT_TRUE(queue.IsEmpty());
 }
 
-TEST(CommandQueue, Dispatch) {
+TEST_F(CommandQueueTest, Dispatch) {
   FakeDispatchInterface dispatch;
   buffet::CommandQueue queue;
   queue.SetCommandDispachInterface(&dispatch);
@@ -115,7 +118,7 @@ TEST(CommandQueue, Dispatch) {
   EXPECT_EQ("", dispatch.GetIDs());
 }
 
-TEST(CommandQueue, Find) {
+TEST_F(CommandQueueTest, Find) {
   buffet::CommandQueue queue;
   const std::string id1 = "id1";
   const std::string id2 = "id2";

@@ -129,7 +129,7 @@ bool TypedValueFromJson(const base::Value* value_in,
   for (const auto& pair : object_schema->GetProps()) {
     const PropValue* def_value = pair.second->GetDefaultValue();
     if (dict->HasKey(pair.first)) {
-      std::shared_ptr<PropValue> value = pair.second->CreateValue();
+      auto value = pair.second->CreateValue();
       const base::Value* param_value = nullptr;
       CHECK(dict->GetWithoutPathExpansion(pair.first, &param_value))
           << "Unable to get parameter";
@@ -143,8 +143,7 @@ bool TypedValueFromJson(const base::Value* value_in,
       }
       value_out->insert(std::make_pair(pair.first, std::move(value)));
     } else if (def_value) {
-      std::shared_ptr<PropValue> value = def_value->Clone();
-      value_out->insert(std::make_pair(pair.first, std::move(value)));
+      value_out->insert(std::make_pair(pair.first, def_value->Clone()));
     } else {
       return ErrorMissingProperty(error, pair.first.c_str());
     }
@@ -224,11 +223,11 @@ ObjectToDBusVariant(const native_types::Object& object) {
   return dict;
 }
 
-std::shared_ptr<const PropValue> PropValueFromDBusVariant(
+std::unique_ptr<const PropValue> PropValueFromDBusVariant(
     const PropType* type,
     const chromeos::Any& value,
     chromeos::ErrorPtr* error) {
-  std::shared_ptr<const PropValue> result;
+  std::unique_ptr<const PropValue> result;
   if (type->GetType() == ValueType::Object) {
     // Special case for object types.
     // We expect the |value| to contain chromeos::VariantDictionary, while
@@ -280,8 +279,7 @@ bool ObjectFromDBusVariant(const ObjectSchema* object_schema,
       }
       obj->emplace_hint(obj->end(), pair.first, std::move(prop_value));
     } else if (def_value) {
-      std::shared_ptr<const PropValue> prop_value = def_value->Clone();
-      obj->emplace_hint(obj->end(), pair.first, std::move(prop_value));
+      obj->emplace_hint(obj->end(), pair.first, def_value->Clone());
     } else {
       ErrorMissingProperty(error, pair.first.c_str());
       return false;

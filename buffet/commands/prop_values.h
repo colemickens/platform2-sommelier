@@ -69,9 +69,13 @@ inline ValueType GetValueType<native_types::Object>() {
 //     This is used to validate the values against "enum"/"one of" constraints.
 class PropValue {
  public:
-  explicit PropValue(const PropType* type)
-      : type_(type) {}
-  virtual ~PropValue() = default;
+  explicit PropValue(std::unique_ptr<const PropType> type);
+  // Special out-of-line constructor to help implement PropValue::Clone().
+  // That method needs to clone the underlying type but can't do this in this
+  // header file since PropType is just forward-declared (it needs PropValue
+  // fully defined in its own inner workings).
+  explicit PropValue(const PropType* type_ptr);
+  virtual ~PropValue();
 
   // Gets the type of the value.
   virtual ValueType GetType() const = 0;
@@ -89,7 +93,7 @@ class PropValue {
   virtual ObjectValue const* GetObject() const { return nullptr; }
 
   // Makes a full copy of this value class.
-  virtual std::shared_ptr<PropValue> Clone() const = 0;
+  virtual std::unique_ptr<PropValue> Clone() const = 0;
 
   // Saves the value as a JSON object.
   // If it fails, returns nullptr value and fills in the details for the
@@ -106,12 +110,12 @@ class PropValue {
   virtual chromeos::Any GetValueAsAny() const = 0;
 
   // Return the type definition of this value.
-  const PropType* GetPropType() const { return type_; }
+  const PropType* GetPropType() const { return type_.get(); }
   // Compares two values and returns true if they are equal.
   virtual bool IsEqual(const PropValue* value) const = 0;
 
  protected:
-  const PropType* type_;  // weak pointer
+  std::unique_ptr<const PropType> type_;
 };
 
 // A helper template base class for implementing simple (non-Object) value
@@ -127,8 +131,11 @@ class TypedValueBase : public PropValue {
 
   // Overrides from PropValue base class.
   ValueType GetType() const override { return GetValueType<T>(); }
-  std::shared_ptr<PropValue> Clone() const override {
-    return std::make_shared<Derived>(*static_cast<const Derived*>(this));
+
+  std::unique_ptr<PropValue> Clone() const override {
+    std::unique_ptr<Derived> derived{new Derived{type_.get()}};
+    derived->value_ = value_;
+    return std::move(derived);
   }
 
   std::unique_ptr<base::Value> ToJson(

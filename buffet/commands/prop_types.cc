@@ -96,8 +96,12 @@ std::unique_ptr<base::Value> PropType::ToJson(bool full_schema,
 std::unique_ptr<PropType> PropType::Clone() const {
   auto cloned = PropType::Create(GetType());
   cloned->based_on_schema_ = based_on_schema_;
-  cloned->constraints_ = constraints_;
-  cloned->default_ = default_;
+  for (const auto& pair : constraints_) {
+    cloned->constraints_.emplace(pair.first, pair.second->Clone());
+  }
+  cloned->default_.is_inherited = default_.is_inherited;
+  if (default_.value)
+    cloned->default_.value = default_.value->Clone();
   return cloned;
 }
 
@@ -126,8 +130,7 @@ bool PropType::FromJson(const base::DictionaryValue* value,
     return false;
   if (base_schema) {
     for (const auto& pair : base_schema->GetConstraints()) {
-      std::shared_ptr<Constraint> inherited(pair.second->CloneAsInherited());
-      constraints_.insert(std::make_pair(pair.first, inherited));
+      constraints_.emplace(pair.first, pair.second->CloneAsInherited());
     }
   }
   if (!ConstraintsFromJson(value, &processed_keys, error))
@@ -152,7 +155,7 @@ bool PropType::FromJson(const base::DictionaryValue* value,
   // so we can parse and validate the value of the default.
   const base::Value* defval = nullptr;  // Owned by value
   if (value->GetWithoutPathExpansion(commands::attributes::kDefault, &defval)) {
-    std::shared_ptr<PropValue> prop_value = CreateValue();
+    std::unique_ptr<PropValue> prop_value = CreateValue();
     if (!prop_value->FromJson(defval, error) ||
         !ValidateValue(prop_value->GetValueAsAny(), error)) {
       chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
@@ -161,22 +164,23 @@ bool PropType::FromJson(const base::DictionaryValue* value,
                                    commands::attributes::kDefault);
       return false;
     }
-    default_.value = prop_value;
+    default_.value = std::move(prop_value);
     default_.is_inherited = false;
   } else if (base_schema) {
     // If we have the base schema, inherit the type's default value from it.
     // It doesn't matter if the base schema actually has a default value
     // specified or not. If it doesn't, then the current type definition will
-    // have no default value set either (|default_.value| is a shared_ptr to
+    // have no default value set either (|default_.value| is a unique_ptr to
     // PropValue, which can be set to nullptr).
-    default_.value = base_schema->default_.value;
+    if (base_schema->default_.value)
+      default_.value = base_schema->default_.value->Clone();
     default_.is_inherited = true;
   }
   return true;
 }
 
-void PropType::AddConstraint(const std::shared_ptr<Constraint>& constraint) {
-  constraints_[constraint->GetType()] = constraint;
+void PropType::AddConstraint(std::unique_ptr<Constraint> constraint) {
+  constraints_[constraint->GetType()] = std::move(constraint);
 }
 
 void PropType::RemoveConstraint(ConstraintType constraint_type) {
@@ -200,14 +204,14 @@ Constraint* PropType::GetConstraint(ConstraintType constraint_type) {
 
 bool PropType::ValidateValue(const base::Value* value,
                              chromeos::ErrorPtr* error) const {
-  std::shared_ptr<PropValue> val = CreateValue();
+  std::unique_ptr<PropValue> val = CreateValue();
   CHECK(val) << "Failed to create value object";
   return val->FromJson(value, error) && ValidateConstraints(*val, error);
 }
 
 bool PropType::ValidateValue(const chromeos::Any& value,
                              chromeos::ErrorPtr* error) const {
-  std::shared_ptr<PropValue> val = CreateValue(value, error);
+  std::unique_ptr<PropValue> val = CreateValue(value, error);
   return val && ValidateConstraints(*val, error);
 }
 
@@ -281,44 +285,48 @@ bool PropType::GenerateErrorValueTypeMismatch(chromeos::ErrorPtr* error) const {
 }
 
 template<typename T>
-static std::shared_ptr<Constraint> LoadOneOfConstraint(
+static std::unique_ptr<Constraint> LoadOneOfConstraint(
     const base::DictionaryValue* value,
-    const std::shared_ptr<const PropType>& prop_type,
+    const PropType* prop_type,
     chromeos::ErrorPtr* error) {
+  std::unique_ptr<Constraint> constraint;
   const base::ListValue* list = nullptr;
   if (!value->GetListWithoutPathExpansion(commands::attributes::kOneOf_Enum,
                                           &list)) {
     chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
                            errors::commands::kTypeMismatch,
                            "Expecting an array");
-    return std::shared_ptr<Constraint>();
+    return constraint;
   }
   std::vector<T> set;
   set.reserve(list->GetSize());
   for (const base::Value* item : *list) {
     T val{};
-    if (!TypedValueFromJson(item, prop_type.get(), &val, error))
-      return std::shared_ptr<Constraint>();
+    if (!TypedValueFromJson(item, prop_type, &val, error))
+      return constraint;
     set.push_back(val);
   }
   InheritableAttribute<std::vector<T>> val(set, false);
-  return std::make_shared<ConstraintOneOf<T>>(val);
+  constraint.reset(new ConstraintOneOf<T>{val});
+  return constraint;
 }
 
 template<class ConstraintClass, typename T>
-static std::shared_ptr<Constraint> LoadMinMaxConstraint(
+static std::unique_ptr<Constraint> LoadMinMaxConstraint(
     const char* dict_key,
     const base::DictionaryValue* value,
     chromeos::ErrorPtr* error) {
+  std::unique_ptr<Constraint> constraint;
   InheritableAttribute<T> limit;
 
   const base::Value* src_val = nullptr;
   CHECK(value->Get(dict_key, &src_val)) << "Unable to get min/max constraints";
   if (!TypedValueFromJson(src_val, nullptr, &limit.value, error))
-    return std::shared_ptr<Constraint>();
+    return constraint;
   limit.is_inherited = false;
 
-  return std::make_shared<ConstraintClass>(limit);
+  constraint.reset(new ConstraintClass{limit});
+  return constraint;
 }
 
 // PropTypeBase ----------------------------------------------------------------
@@ -334,10 +342,10 @@ bool PropTypeBase<Derived, Value, T>::ConstraintsFromJson(
   if (value->HasKey(commands::attributes::kOneOf_Enum)) {
     auto type = Clone();
     type->RemoveAllConstraints();
-    auto constraint = LoadOneOfConstraint<T>(value, std::move(type), error);
+    auto constraint = LoadOneOfConstraint<T>(value, type.get(), error);
     if (!constraint)
       return false;
-    this->AddConstraint(constraint);
+    this->AddConstraint(std::move(constraint));
     this->RemoveConstraint(ConstraintType::Min);
     this->RemoveConstraint(ConstraintType::Max);
     processed_keys->insert(commands::attributes::kOneOf_Enum);
@@ -365,7 +373,7 @@ bool NumericPropTypeBase<Derived, Value, T>::ConstraintsFromJson(
           commands::attributes::kNumeric_Min, value, error);
       if (!constraint)
         return false;
-      this->AddConstraint(constraint);
+      this->AddConstraint(std::move(constraint));
       this->RemoveConstraint(ConstraintType::OneOf);
       processed_keys->insert(commands::attributes::kNumeric_Min);
     }
@@ -374,7 +382,7 @@ bool NumericPropTypeBase<Derived, Value, T>::ConstraintsFromJson(
           commands::attributes::kNumeric_Max, value, error);
       if (!constraint)
         return false;
-      this->AddConstraint(constraint);
+      this->AddConstraint(std::move(constraint));
       this->RemoveConstraint(ConstraintType::OneOf);
       processed_keys->insert(commands::attributes::kNumeric_Max);
     }
@@ -401,7 +409,7 @@ bool StringPropType::ConstraintsFromJson(
           commands::attributes::kString_MinLength, value, error);
       if (!constraint)
         return false;
-      AddConstraint(constraint);
+      AddConstraint(std::move(constraint));
       RemoveConstraint(ConstraintType::OneOf);
       processed_keys->insert(commands::attributes::kString_MinLength);
     }
@@ -410,7 +418,7 @@ bool StringPropType::ConstraintsFromJson(
           commands::attributes::kString_MaxLength, value, error);
       if (!constraint)
         return false;
-      AddConstraint(constraint);
+      AddConstraint(std::move(constraint));
       RemoveConstraint(ConstraintType::OneOf);
       processed_keys->insert(commands::attributes::kString_MaxLength);
     }
@@ -421,8 +429,10 @@ bool StringPropType::ConstraintsFromJson(
 void StringPropType::AddLengthConstraint(int min_len, int max_len) {
   InheritableAttribute<int> min_attr(min_len, false);
   InheritableAttribute<int> max_attr(max_len, false);
-  AddConstraint(std::make_shared<ConstraintStringLengthMin>(min_attr));
-  AddConstraint(std::make_shared<ConstraintStringLengthMax>(max_attr));
+  AddConstraint(std::unique_ptr<ConstraintStringLengthMin>{
+      new ConstraintStringLengthMin{min_attr}});
+  AddConstraint(std::unique_ptr<ConstraintStringLengthMax>{
+      new ConstraintStringLengthMax{max_attr}});
 }
 
 int StringPropType::GetMinLength() const {
@@ -440,7 +450,7 @@ int StringPropType::GetMaxLength() const {
 // ObjectPropType -------------------------------------------------------------
 
 ObjectPropType::ObjectPropType()
-    : object_schema_(std::make_shared<ObjectSchema>(), false) {}
+    : object_schema_{ObjectSchema::Create(), false} {}
 
 bool ObjectPropType::HasOverriddenAttributes() const {
   return PropType::HasOverriddenAttributes() ||
@@ -449,7 +459,10 @@ bool ObjectPropType::HasOverriddenAttributes() const {
 
 std::unique_ptr<PropType> ObjectPropType::Clone() const {
   auto cloned = _Base::Clone();
-  cloned->GetObject()->object_schema_ = object_schema_;
+
+  cloned->GetObject()->object_schema_.is_inherited =
+      object_schema_.is_inherited;
+  cloned->GetObject()->object_schema_.value = object_schema_.value->Clone();
   return cloned;
 }
 
@@ -481,24 +494,24 @@ bool ObjectPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
 
   using commands::attributes::kObject_Properties;
 
-  std::shared_ptr<const ObjectSchema> base_object_schema;
+  const ObjectSchema* base_object_schema = nullptr;
   if (base_schema)
-    base_object_schema = base_schema->GetObject()->GetObjectSchema();
+    base_object_schema = base_schema->GetObject()->GetObjectSchemaPtr();
 
   const base::DictionaryValue* props = nullptr;
   if (value->GetDictionaryWithoutPathExpansion(kObject_Properties, &props)) {
     processed_keys->insert(kObject_Properties);
-    auto object_schema = std::make_shared<ObjectSchema>();
-    if (!object_schema->FromJson(props, base_object_schema.get(), error)) {
+    std::unique_ptr<ObjectSchema> object_schema{new ObjectSchema};
+    if (!object_schema->FromJson(props, base_object_schema, error)) {
       chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
                              errors::commands::kInvalidObjectSchema,
                              "Error parsing object property schema");
       return false;
     }
-    object_schema_.value = object_schema;
+    object_schema_.value = std::move(object_schema);
     object_schema_.is_inherited = false;
   } else if (base_object_schema) {
-    object_schema_.value = base_object_schema;
+    object_schema_.value = base_object_schema->Clone();
     object_schema_.is_inherited = true;
   } else {
     chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
@@ -510,6 +523,12 @@ bool ObjectPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
   }
 
   return true;
+}
+
+void ObjectPropType::SetObjectSchema(
+    std::unique_ptr<const ObjectSchema> schema) {
+  object_schema_.value = std::move(schema);
+  object_schema_.is_inherited = false;
 }
 
 }  // namespace buffet

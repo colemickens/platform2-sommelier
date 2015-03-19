@@ -38,7 +38,7 @@ class PropType {
   // of each type (e.g. it makes no sense to impose two "minimum" constraints
   // onto a numeric parameter).
   using ConstraintMap = std::map<ConstraintType,
-                                 std::shared_ptr<Constraint>>;
+                                 std::unique_ptr<Constraint>>;
 
   PropType();
   virtual ~PropType();
@@ -82,8 +82,8 @@ class PropType {
 
   // Creates an instance of associated value object, using the parameter
   // type as a factory class.
-  virtual std::shared_ptr<PropValue> CreateValue() const = 0;
-  virtual std::shared_ptr<PropValue> CreateValue(
+  virtual std::unique_ptr<PropValue> CreateValue() const = 0;
+  virtual std::unique_ptr<PropValue> CreateValue(
       const chromeos::Any& val, chromeos::ErrorPtr* error) const = 0;
 
   // Saves the parameter type definition as a JSON object.
@@ -144,7 +144,7 @@ class PropType {
   static std::unique_ptr<PropType> Create(ValueType type);
 
   // Adds a constraint to the type definition.
-  void AddConstraint(const std::shared_ptr<Constraint>& constraint);
+  void AddConstraint(std::unique_ptr<Constraint> constraint);
   // Removes a constraint of given type, if it exists.
   void RemoveConstraint(ConstraintType constraint_type);
   // Removes all constraints.
@@ -173,7 +173,7 @@ class PropType {
   // value is used if the parameter value is omitted when sending a command.
   // Otherwise the parameter is treated as required and, if it is omitted,
   // this is treated as an error.
-  InheritableAttribute<std::shared_ptr<PropValue>> default_;
+  InheritableAttribute<std::unique_ptr<PropValue>> default_;
 };
 
 // Base class for all the derived concrete implementations of property
@@ -182,14 +182,14 @@ template<class Derived, class Value, typename T>
 class PropTypeBase : public PropType {
  public:
   ValueType GetType() const override { return GetValueType<T>(); }
-  std::shared_ptr<PropValue> CreateValue() const override {
-    return std::make_shared<Value>(this);
+  std::unique_ptr<PropValue> CreateValue() const override {
+    return std::unique_ptr<PropValue>{new Value{Clone()}};
   }
-  std::shared_ptr<PropValue> CreateValue(
+  std::unique_ptr<PropValue> CreateValue(
       const chromeos::Any& v, chromeos::ErrorPtr* error) const override {
-    std::shared_ptr<PropValue> prop_value;
+    std::unique_ptr<PropValue> prop_value;
     if (v.IsTypeCompatible<T>()) {
-      auto value = std::make_shared<Value>(this);
+      std::unique_ptr<Value> value{new Value{Clone()}};
       value->SetValue(v.Get<T>());
       prop_value = std::move(value);
     } else {
@@ -223,8 +223,10 @@ class NumericPropTypeBase : public PropTypeBase<Derived, Value, T> {
   void AddMinMaxConstraint(T min_value, T max_value) {
     InheritableAttribute<T> min_attr(min_value, false);
     InheritableAttribute<T> max_attr(max_value, false);
-    this->AddConstraint(std::make_shared<ConstraintMin<T>>(min_attr));
-    this->AddConstraint(std::make_shared<ConstraintMax<T>>(max_attr));
+    this->AddConstraint(std::unique_ptr<ConstraintMin<T>>{
+        new ConstraintMin<T>{min_attr}});
+    this->AddConstraint(std::unique_ptr<ConstraintMax<T>>{
+        new ConstraintMax<T>{max_attr}});
   }
   T GetMinValue() const {
     auto mmc = static_cast<const ConstraintMin<T>*>(
@@ -308,18 +310,12 @@ class ObjectPropType
 
   // Returns a schema for Object-type parameter.
   inline const ObjectSchema* GetObjectSchemaPtr() const {
-    return GetObjectSchema().get();
+    return object_schema_.value.get();
   }
-  std::shared_ptr<const ObjectSchema> GetObjectSchema() const {
-    return object_schema_.value;
-  }
-  void SetObjectSchema(const std::shared_ptr<const ObjectSchema>& schema) {
-    object_schema_.value = schema;
-    object_schema_.is_inherited = false;
-  }
+  void SetObjectSchema(std::unique_ptr<const ObjectSchema> schema);
 
  private:
-  InheritableAttribute<std::shared_ptr<const ObjectSchema>> object_schema_;
+  InheritableAttribute<std::unique_ptr<const ObjectSchema>> object_schema_;
 };
 }  // namespace buffet
 

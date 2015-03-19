@@ -2,11 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// TODO(avakulenko) Remove this file by Aug 1, 2014 if nothing ends up here...
-
 #include "buffet/commands/prop_values.h"
+
+#include "buffet/commands/prop_types.h"
 
 namespace buffet {
 
+PropValue::PropValue(std::unique_ptr<const PropType> type)
+    : type_{std::move(type)} {}
+
+PropValue::PropValue(const PropType* type_ptr)
+    : type_{type_ptr->Clone()} {}
+
+PropValue::~PropValue() {}
 
 }  // namespace buffet

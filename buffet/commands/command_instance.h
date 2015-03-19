@@ -32,10 +32,9 @@ class CommandInstance final {
   // Construct a command instance given the full command |name| which must
   // be in format "<package_name>.<command_name>", a command |category| and
   // a list of parameters and their values specified in |parameters|.
-  CommandInstance(
-      const std::string& name,
-      const std::shared_ptr<const CommandDefinition>& command_definition,
-      const native_types::Object& parameters);
+  CommandInstance(const std::string& name,
+                  const CommandDefinition* command_definition,
+                  const native_types::Object& parameters);
   ~CommandInstance();
 
   // Returns the full command ID.
@@ -49,11 +48,11 @@ class CommandInstance final {
   // Returns the command results and their values.
   const native_types::Object& GetResults() const { return results_; }
   // Finds a command parameter value by parameter |name|. If the parameter
-  // with given name does not exist, returns null shared_ptr.
-  std::shared_ptr<const PropValue> FindParameter(const std::string& name) const;
+  // with given name does not exist, returns nullptr.
+  const PropValue* FindParameter(const std::string& name) const;
 
   // Returns command definition.
-  std::shared_ptr<const CommandDefinition> GetCommandDefinition() const {
+  const CommandDefinition* GetCommandDefinition() const {
     return command_definition_;
   }
 
@@ -117,7 +116,7 @@ class CommandInstance final {
   // Full command name as "<package_name>.<command_name>".
   std::string name_;
   // Command definition.
-  std::shared_ptr<const CommandDefinition> command_definition_;
+  const CommandDefinition* command_definition_;
   // Command parameters and their values.
   native_types::Object parameters_;
   // Command results.

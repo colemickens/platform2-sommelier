@@ -39,24 +39,32 @@ class Constraint {
 
   // Gets the constraint type.
   virtual ConstraintType GetType() const = 0;
+
   // Checks if any of the constraint properties/attributes are overridden
   // from their base schema definition. If the constraint is inherited, then
   // it will not be written to JSON when saving partial schema.
   virtual bool HasOverriddenAttributes() const = 0;
+
   // Validates a parameter against the constraint. Returns true if parameter
   // value satisfies the constraint, otherwise fills the optional |error| with
   // the details for the failure.
   virtual bool Validate(const PropValue& value,
                         chromeos::ErrorPtr* error) const = 0;
+
+  // Makes a full copy of this Constraint instance.
+  virtual std::unique_ptr<Constraint> Clone() const = 0;
+
   // Makes a copy of the constraint object, marking all the attributes
   // as inherited from the original definition.
-  virtual std::shared_ptr<Constraint> CloneAsInherited() const = 0;
+  virtual std::unique_ptr<Constraint> CloneAsInherited() const = 0;
+
   // Saves the constraint into the specified JSON |dict| object, representing
   // the object schema. If |overridden_only| is set to true, then the
   // inherited constraints will not be added to the schema object.
   virtual bool AddToJsonDict(base::DictionaryValue* dict,
                              bool overridden_only,
                              chromeos::ErrorPtr* error) const;
+
   // Saves the value of constraint to JSON value. E.g., if the numeric
   // constraint was defined as {"minimum":20} this will create a JSON value
   // of 20. The current design implies that each constraint has one value
@@ -64,6 +72,7 @@ class Constraint {
   // accordingly.
   virtual std::unique_ptr<base::Value> ToJson(
       chromeos::ErrorPtr* error) const = 0;
+
   // Overloaded by the concrete class implementation, it should return the
   // JSON object property name to store the constraint's value as.
   // E.g., if the numeric constraint was defined as {"minimum":20} this
@@ -144,9 +153,14 @@ class ConstraintMin : public ConstraintMinMaxBase<T> {
     return true;
   }
 
+  // Implementation of Constraint::Clone().
+  std::unique_ptr<Constraint> Clone() const override {
+    return std::unique_ptr<Constraint>{new ConstraintMin{this->limit_}};
+  }
+
   // Implementation of Constraint::CloneAsInherited().
-  std::shared_ptr<Constraint> CloneAsInherited() const override {
-    return std::make_shared<ConstraintMin>(this->limit_.value);
+  std::unique_ptr<Constraint> CloneAsInherited() const override {
+    return std::unique_ptr<Constraint>{new ConstraintMin{this->limit_.value}};
   }
 
   // Implementation of Constraint::GetDictKey().
@@ -181,9 +195,14 @@ class ConstraintMax : public ConstraintMinMaxBase<T> {
     return true;
   }
 
+  // Implementation of Constraint::Clone().
+  std::unique_ptr<Constraint> Clone() const override {
+    return std::unique_ptr<Constraint>{new ConstraintMax{this->limit_}};
+  }
+
   // Implementation of Constraint::CloneAsInherited().
-  std::shared_ptr<Constraint> CloneAsInherited() const override {
-    return std::make_shared<ConstraintMax>(this->limit_.value);
+  std::unique_ptr<Constraint> CloneAsInherited() const override {
+    return std::unique_ptr<Constraint>{new ConstraintMax{this->limit_.value}};
   }
 
   // Implementation of Constraint::GetDictKey().
@@ -221,19 +240,26 @@ class ConstraintStringLengthMin : public ConstraintStringLength {
  public:
   explicit ConstraintStringLengthMin(const InheritableAttribute<int>& limit);
   explicit ConstraintStringLengthMin(int limit);
+
   // Implementation of Constraint::GetType().
   ConstraintType GetType() const override {
     return ConstraintType::StringLengthMin;
   }
+
   // Implementation of Constraint::Validate().
   bool Validate(const PropValue& value,
                 chromeos::ErrorPtr* error) const override;
+
+  // Implementation of Constraint::Clone().
+  std::unique_ptr<Constraint> Clone() const override;
+
   // Implementation of Constraint::CloneAsInherited().
-  std::shared_ptr<Constraint> CloneAsInherited() const override;
+  std::unique_ptr<Constraint> CloneAsInherited() const override;
   // Implementation of Constraint::GetDictKey().
   const char* GetDictKey() const override {
     return commands::attributes::kString_MinLength;
   }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(ConstraintStringLengthMin);
 };
@@ -243,15 +269,22 @@ class ConstraintStringLengthMax : public ConstraintStringLength {
  public:
   explicit ConstraintStringLengthMax(const InheritableAttribute<int>& limit);
   explicit ConstraintStringLengthMax(int limit);
+
   // Implementation of Constraint::GetType().
   ConstraintType GetType() const override {
     return ConstraintType::StringLengthMax;
   }
+
   // Implementation of Constraint::Validate().
   bool Validate(const PropValue& value,
                 chromeos::ErrorPtr* error) const override;
+
+  // Implementation of Constraint::Clone().
+  std::unique_ptr<Constraint> Clone() const override;
+
   // Implementation of Constraint::CloneAsInherited().
-  std::shared_ptr<Constraint> CloneAsInherited() const override;
+  std::unique_ptr<Constraint> CloneAsInherited() const override;
+
   // Implementation of Constraint::GetDictKey().
   const char* GetDictKey() const override {
     return commands::attributes::kString_MaxLength;
@@ -297,9 +330,14 @@ class ConstraintOneOf : public Constraint {
     return ReportErrorNotOneOf(error, ToString(v), values);
   }
 
+  // Implementation of Constraint::Clone().
+  std::unique_ptr<Constraint> Clone() const override {
+    return std::unique_ptr<Constraint>{new ConstraintOneOf{set_}};
+  }
+
   // Implementation of Constraint::CloneAsInherited().
-  std::shared_ptr<Constraint> CloneAsInherited() const override {
-    return std::make_shared<ConstraintOneOf>(set_.value);
+  std::unique_ptr<Constraint> CloneAsInherited() const override {
+    return std::unique_ptr<Constraint>{new ConstraintOneOf{set_.value}};
   }
 
   // Implementation of Constraint::ToJson().

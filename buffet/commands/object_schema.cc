@@ -221,9 +221,22 @@ std::unique_ptr<PropType> PropFromJsonObject(
 
 }  // anonymous namespace
 
+ObjectSchema::ObjectSchema() {}
+ObjectSchema::~ObjectSchema() {}
+
+std::unique_ptr<ObjectSchema> ObjectSchema::Clone() const {
+  std::unique_ptr<ObjectSchema> cloned{new ObjectSchema};
+  for (const auto& pair : properties_) {
+    cloned->properties_.emplace(pair.first, pair.second->Clone());
+  }
+  cloned->extra_properties_allowed_ = extra_properties_allowed_;
+  return cloned;
+}
+
 void ObjectSchema::AddProp(const std::string& name,
-                           std::shared_ptr<PropType> prop) {
-  properties_[name] = prop;
+                           std::unique_ptr<PropType> prop) {
+  // Not using emplace() here to make sure we override existing properties.
+  properties_[name] = std::move(prop);
 }
 
 const PropType* ObjectSchema::GetProp(const std::string& name) const {
@@ -254,7 +267,7 @@ bool ObjectSchema::FromJson(const base::DictionaryValue* value,
         object_schema ? object_schema->GetProp(iter.key()) : nullptr;
     auto prop_type = PropFromJson(iter.value(), base_schema, error);
     if (prop_type) {
-      properties.insert(std::make_pair(iter.key(), std::move(prop_type)));
+      properties.emplace(iter.key(), std::move(prop_type));
     } else {
       chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                    errors::commands::kInvalidPropDef,
@@ -299,6 +312,10 @@ std::unique_ptr<PropType> ObjectSchema::PropFromJson(
                                errors::commands::kUnknownType,
                                "Unexpected JSON value type: %s", type_name);
   return {};
+}
+
+std::unique_ptr<ObjectSchema> ObjectSchema::Create() {
+  return std::unique_ptr<ObjectSchema>{new ObjectSchema};
 }
 
 }  // namespace buffet

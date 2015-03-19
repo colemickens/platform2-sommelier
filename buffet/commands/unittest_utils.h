@@ -28,32 +28,29 @@ std::unique_ptr<base::DictionaryValue> CreateDictionaryValue(const char* json);
 // apostrophes for easy comparisons in C++ source code.
 std::string ValueToString(const base::Value* value);
 
-template <typename PV, typename T> std::shared_ptr<const PV>
-make_prop_value(const PropType* type, const T& value) {
-  auto result = std::make_shared<PV>(type);
+template <typename PropVal, typename T>
+std::unique_ptr<const PropVal> make_prop_value(const T& value) {
+  std::unique_ptr<PropVal> result{
+      new PropVal{PropType::Create(GetValueType<T>())}};
   result->SetValue(value);
-  return result;
+  return std::move(result);
 }
 
-inline std::shared_ptr<const IntValue> make_int_prop_value(int value) {
-  static const PropType* int_prop_type = new IntPropType();
-  return make_prop_value<IntValue, int>(int_prop_type, value);
+inline std::unique_ptr<const IntValue> make_int_prop_value(int value) {
+  return make_prop_value<IntValue, int>(value);
 }
 
-inline std::shared_ptr<const DoubleValue> make_double_prop_value(double value) {
-  static const PropType* double_prop_type = new DoublePropType();
-  return make_prop_value<DoubleValue, double>(double_prop_type, value);
+inline std::unique_ptr<const DoubleValue> make_double_prop_value(double value) {
+  return make_prop_value<DoubleValue, double>(value);
 }
 
-inline std::shared_ptr<const BooleanValue> make_bool_prop_value(bool value) {
-  static const PropType* boolean_prop_type = new BooleanPropType();
-  return make_prop_value<BooleanValue, bool>(boolean_prop_type, value);
+inline std::unique_ptr<const BooleanValue> make_bool_prop_value(bool value) {
+  return make_prop_value<BooleanValue, bool>(value);
 }
 
-inline std::shared_ptr<const StringValue>
+inline std::unique_ptr<const StringValue>
 make_string_prop_value(const std::string& value) {
-  static const PropType* string_prop_type = new StringPropType();
-  return make_prop_value<StringValue, std::string>(string_prop_type, value);
+  return make_prop_value<StringValue, std::string>(value);
 }
 
 }  // namespace unittests

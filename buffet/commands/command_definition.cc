@@ -8,9 +8,10 @@ namespace buffet {
 
 CommandDefinition::CommandDefinition(
     const std::string& category,
-    const std::shared_ptr<const ObjectSchema>& parameters,
-    const std::shared_ptr<const ObjectSchema>& results)
-        : category_(category), parameters_(parameters), results_(results) {
-}
+    std::unique_ptr<const ObjectSchema> parameters,
+    std::unique_ptr<const ObjectSchema> results)
+        : category_{category},
+          parameters_{std::move(parameters)},
+          results_{std::move(results)} {}
 
 }  // namespace buffet

@@ -135,7 +135,7 @@ ObjectToDBusVariant(const native_types::Object& object);
 // Converts D-Bus variant to PropValue.
 // Has special handling for Object types where chromeos::VariantDictionary
 // is converted to native_types::Object.
-std::shared_ptr<const PropValue> PropValueFromDBusVariant(
+std::unique_ptr<const PropValue> PropValueFromDBusVariant(
     const PropType* type,
     const chromeos::Any& value,
     chromeos::ErrorPtr* error);

@@ -14,6 +14,7 @@
 #include <base/values.h>
 #include <gtest/gtest.h>
 
+#include "buffet/commands/prop_constraints.h"
 #include "buffet/commands/prop_types.h"
 #include "buffet/commands/schema_constants.h"
 #include "buffet/commands/unittest_utils.h"
@@ -516,12 +517,12 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
   EXPECT_EQ("{}", ValueToString(prop2.ToJson(false, nullptr).get()));
   EXPECT_TRUE(prop2.IsBasedOnSchema());
 
-  auto schema = std::make_shared<buffet::ObjectSchema>();
-  schema->AddProp("expires", std::make_shared<buffet::IntPropType>());
-  auto pw = std::make_shared<buffet::StringPropType>();
-  pw->AddLengthConstraint(6, 100);
-  schema->AddProp("password", pw);
-  prop2.SetObjectSchema(schema);
+  auto schema = buffet::ObjectSchema::Create();
+  schema->AddProp("expires", buffet::PropType::Create(buffet::ValueType::Int));
+  auto pw = buffet::PropType::Create(buffet::ValueType::String);
+  pw->GetString()->AddLengthConstraint(6, 100);
+  schema->AddProp("password", std::move(pw));
+  prop2.SetObjectSchema(std::move(schema));
   EXPECT_EQ("{'properties':{'expires':'integer',"
             "'password':{'maxLength':100,'minLength':6}}}",
             ValueToString(prop2.ToJson(false, nullptr).get()));

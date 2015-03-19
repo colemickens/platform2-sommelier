@@ -19,9 +19,8 @@ namespace buffet {
 // |changed_properties| contains a property set with the new property values
 // which were updated at the time the event was recorded.
 struct StateChange {
-  StateChange(base::Time time,
-              native_types::Object properties)
-    : timestamp(time), changed_properties(std::move(properties)) {}
+  StateChange(base::Time time, native_types::Object properties)
+      : timestamp{time}, changed_properties{std::move(properties)} {}
   base::Time timestamp;
   native_types::Object changed_properties;
 };

@@ -88,7 +88,7 @@ TEST_F(CommandInstanceTest, Test) {
   EXPECT_EQ("iPityDaFool",
             instance.FindParameter("phrase")->GetString()->GetValue());
   EXPECT_EQ(5, instance.FindParameter("volume")->GetInt()->GetValue());
-  EXPECT_EQ(nullptr, instance.FindParameter("blah").get());
+  EXPECT_EQ(nullptr, instance.FindParameter("blah"));
   EXPECT_EQ(results, instance.GetResults());
 }
 

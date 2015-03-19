@@ -22,24 +22,20 @@ namespace buffet {
 class CommandDefinition {
  public:
   CommandDefinition(const std::string& category,
-                    const std::shared_ptr<const ObjectSchema>& parameters,
-                    const std::shared_ptr<const ObjectSchema>& results);
+                    std::unique_ptr<const ObjectSchema> parameters,
+                    std::unique_ptr<const ObjectSchema> results);
 
   // Gets the category this command belongs to.
   const std::string& GetCategory() const { return category_; }
   // Gets the object schema for command parameters.
-  const std::shared_ptr<const ObjectSchema>& GetParameters() const {
-    return parameters_;
-  }
+  const ObjectSchema* GetParameters() const { return parameters_.get(); }
   // Gets the object schema for command results.
-  const std::shared_ptr<const ObjectSchema>& GetResults() const {
-    return results_;
-  }
+  const ObjectSchema* GetResults() const { return results_.get(); }
 
  private:
   std::string category_;  // Cmd category. Could be "powerd" for "base.reboot".
-  std::shared_ptr<const ObjectSchema> parameters_;  // Command parameters def.
-  std::shared_ptr<const ObjectSchema> results_;  // Command results def.
+  std::unique_ptr<const ObjectSchema> parameters_;  // Command parameters def.
+  std::unique_ptr<const ObjectSchema> results_;  // Command results def.
   DISALLOW_COPY_AND_ASSIGN(CommandDefinition);
 };
 

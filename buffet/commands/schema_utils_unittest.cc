@@ -159,25 +159,25 @@ TEST(CommandSchemaUtils, TypedValueFromJson_String) {
 
 TEST(CommandSchemaUtils, TypedValueFromJson_Object) {
   buffet::native_types::Object value;
-  auto schema = std::make_shared<buffet::ObjectSchema>();
+  std::unique_ptr<buffet::ObjectSchema> schema{new buffet::ObjectSchema};
 
-  auto age_prop = std::make_shared<buffet::IntPropType>();
-  age_prop->AddMinMaxConstraint(0, 150);
-  schema->AddProp("age", age_prop);
+  buffet::IntPropType age_prop;
+  age_prop.AddMinMaxConstraint(0, 150);
+  schema->AddProp("age", age_prop.Clone());
 
-  auto name_prop = std::make_shared<buffet::StringPropType>();
-  name_prop->AddLengthConstraint(1, 30);
-  schema->AddProp("name", name_prop);
+  buffet::StringPropType name_prop;
+  name_prop.AddLengthConstraint(1, 30);
+  schema->AddProp("name", name_prop.Clone());
 
   buffet::ObjectPropType type;
-  type.SetObjectSchema(schema);
+  type.SetObjectSchema(std::move(schema));
   EXPECT_TRUE(buffet::TypedValueFromJson(
       CreateValue("{'age':20,'name':'Bob'}").get(), &type, &value, nullptr));
   buffet::native_types::Object value2;
-  value2.insert(std::make_pair("age", age_prop->CreateValue(20, nullptr)));
+  value2.insert(std::make_pair("age", age_prop.CreateValue(20, nullptr)));
   value2.insert(std::make_pair("name",
-                               name_prop->CreateValue(std::string("Bob"),
-                                                      nullptr)));
+                               name_prop.CreateValue(std::string("Bob"),
+                                                     nullptr)));
   EXPECT_EQ(value2, value);
 
   chromeos::ErrorPtr error;
