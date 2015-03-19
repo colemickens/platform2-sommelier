@@ -956,6 +956,19 @@ DeviceRefPtr Manager::GetEnabledDeviceWithTechnology(
   return nullptr;
 }
 
+DeviceRefPtr Manager::GetEnabledDeviceByLinkName(
+    const string &link_name) const {
+  for (const auto& device : devices_) {
+    if (device->link_name() == link_name) {
+      if (!device->enabled()) {
+        return nullptr;
+      }
+      return device;
+    }
+  }
+  return nullptr;
+}
+
 const ProfileRefPtr &Manager::ActiveProfile() const {
   DCHECK_NE(profiles_.size(), 0U);
   return profiles_.back();

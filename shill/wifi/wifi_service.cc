@@ -57,6 +57,8 @@ const char WiFiService::kStoragePassphrase[] = "Passphrase";
 const char WiFiService::kStorageSecurity[] = "WiFi.Security";
 const char WiFiService::kStorageSecurityClass[] = "WiFi.SecurityClass";
 const char WiFiService::kStorageSSID[] = "SSID";
+const char WiFiService::kStoragePreferredDevice[] = "WiFi.PreferredDevice";
+
 bool WiFiService::logged_signal_warning = false;
 
 WiFiService::WiFiService(ControlInterface *control_interface,
@@ -110,6 +112,9 @@ WiFiService::WiFiService(ControlInterface *control_interface,
 
   hex_ssid_ = base::HexEncode(ssid_.data(), ssid_.size());
   store->RegisterConstString(kWifiHexSsid, &hex_ssid_);
+  HelpRegisterDerivedString(kWifiPreferredDeviceProperty,
+                            &WiFiService::GetPreferredDevice,
+                            &WiFiService::SetPreferredDevice);
 
   string ssid_string(
       reinterpret_cast<const char *>(ssid_.data()), ssid_.size());
@@ -274,6 +279,20 @@ void WiFiService::ClearPassphrase(Error */*error*/) {
   UpdateConnectable();
 }
 
+string WiFiService::GetPreferredDevice(Error */*error*/) {
+  return preferred_device_;
+}
+
+bool WiFiService::SetPreferredDevice(const string &device_name,
+                                     Error */*error*/) {
+  // Reset device if it is not the preferred device.
+  if (!device_name.empty() && wifi_ && wifi_->link_name() != device_name) {
+    ResetWiFi();
+  }
+  preferred_device_ = device_name;
+  return true;
+}
+
 string WiFiService::GetTethering(Error */*error*/) const {
   if (IsConnected() && wifi_ && wifi_->IsConnectedViaTether()) {
     return kTetheringConfirmedState;
@@ -344,6 +363,10 @@ bool WiFiService::Load(StoreInterface *storage) {
     }
   }
 
+  string preferred_device;
+  storage->GetString(id, kStoragePreferredDevice, &preferred_device);
+  SetPreferredDevice(preferred_device, nullptr);
+
   expecting_disconnect_ = false;
   return true;
 }
@@ -363,6 +386,8 @@ bool WiFiService::Save(StoreInterface *storage) {
   storage->SetString(id, kStorageSecurityClass,
                      ComputeSecurityClass(security_));
   storage->SetString(id, kStorageSSID, hex_ssid_);
+  Service::SaveString(storage, id, kStoragePreferredDevice, preferred_device_,
+                      false, false);
 
   return true;
 }
@@ -383,6 +408,7 @@ bool WiFiService::Unload() {
   ResetSuspectedCredentialFailures();
   Error unused_error;
   ClearPassphrase(&unused_error);
+  preferred_device_.clear();
   return provider_->OnServiceUnloaded(this);
 }
 
@@ -691,7 +717,23 @@ void WiFiService::UpdateFromEndpoints() {
     representative_endpoint = current_endpoint_.get();
   } else {
     int16_t best_signal = std::numeric_limits<int16_t>::min();
+    bool preferred_device_found = false;
+    // This will set the representative_endpoint to the best endpoint associated
+    // with the preferred_device_ if it exist, otherwise the best overall
+    // endpoint.
     for (const auto &endpoint : endpoints_) {
+      if (preferred_device_found) {
+        // Skip endpoints associated with non-preferred device.
+        if (endpoint->device()->link_name() != preferred_device_) {
+          continue;
+        }
+      } else if (endpoint->device() &&
+          endpoint->device()->link_name() == preferred_device_) {
+        // Found first endpoint associated with preferred device.
+        preferred_device_found = true;
+        best_signal = std::numeric_limits<int16_t>::min();
+      }
+
       if (endpoint->signal_strength() >= best_signal) {
         best_signal = endpoint->signal_strength();
         representative_endpoint = endpoint.get();
@@ -1160,8 +1202,17 @@ bool WiFiService::Is8021x() const {
 
 WiFiRefPtr WiFiService::ChooseDevice() {
   // TODO(pstew): Style frowns on dynamic_cast.  crbug.com/220387
-  DeviceRefPtr device =
+  DeviceRefPtr device = nullptr;
+  if (!preferred_device_.empty()) {
+    device = manager()->GetEnabledDeviceByLinkName(preferred_device_);
+    if (device->technology() != Technology::kWifi) {
+      device = nullptr;
+    }
+  }
+  if (!device) {
+    device =
       manager()->GetEnabledDeviceWithTechnology(Technology::kWifi);
+  }
   return dynamic_cast<WiFi *>(device.get());
 }
 

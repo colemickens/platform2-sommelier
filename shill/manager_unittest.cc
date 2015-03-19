@@ -5044,4 +5044,31 @@ TEST_F(ManagerTest, GetEnabledDeviceWithTechnology) {
             manager()->GetEnabledDeviceWithTechnology(Technology::kCellular));
 }
 
+TEST_F(ManagerTest, GetEnabledDeviceByLinkName) {
+  auto ethernet_device = mock_devices_[0];
+  auto wifi_device = mock_devices_[1];
+  auto disabled_wifi_device = mock_devices_[2];
+  ON_CALL(*ethernet_device.get(), technology())
+      .WillByDefault(Return(Technology::kEthernet));
+  ON_CALL(*wifi_device.get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+  ON_CALL(*disabled_wifi_device.get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+  ethernet_device->enabled_ = true;
+  wifi_device->enabled_ = true;
+  disabled_wifi_device->enabled_ = false;
+
+  manager()->RegisterDevice(ethernet_device);
+  manager()->RegisterDevice(wifi_device);
+
+  EXPECT_EQ(ethernet_device,
+            manager()->GetEnabledDeviceByLinkName(
+                ethernet_device->link_name()));
+  EXPECT_EQ(wifi_device,
+            manager()->GetEnabledDeviceByLinkName(wifi_device->link_name()));
+  EXPECT_EQ(nullptr,
+            manager()->GetEnabledDeviceByLinkName(
+                disabled_wifi_device->link_name()));
+}
+
 }  // namespace shill

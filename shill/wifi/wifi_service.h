@@ -37,6 +37,7 @@ class WiFiService : public Service {
   static const char kStorageSecurity[];
   static const char kStorageSecurityClass[];
   static const char kStorageSSID[];
+  static const char kStoragePreferredDevice[];
 
   WiFiService(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
@@ -207,6 +208,12 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, SignalToStrength);  // SignalToStrength
   FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
   FRIEND_TEST(WiFiServiceTest, UpdateSecurity);  // SetEAPKeyManagement
+  FRIEND_TEST(WiFiServiceTest, ConnectWithPreferredDevice);
+  FRIEND_TEST(WiFiServiceTest, ConfigurePreferredDevice);
+  FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPreferredDevice);
+  FRIEND_TEST(WiFiServiceTest, ChooseDevice);
+  FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest,
+              AddEndpointWithPreferredDevice);
 
   static const char kAutoConnNoEndpoint[];
   static const char kAnyDeviceAddress[];
@@ -297,6 +304,11 @@ class WiFiService : public Service {
   // endpoints).
   WiFiRefPtr ChooseDevice();
 
+  std::string GetPreferredDevice(Error *error);
+  // Called from DBus and during load to apply the preferred device for this
+  // service.
+  bool SetPreferredDevice(const std::string &device_name, Error *error);
+
   void SetWiFi(const WiFiRefPtr &new_wifi);
 
   // Properties
@@ -311,6 +323,8 @@ class WiFiService : public Service {
   uint16_t frequency_;
   std::vector<uint16_t> frequency_list_;
   uint16_t physical_mode_;
+  // Preferred device to use for connecting to this service.
+  std::string preferred_device_;
   // The raw dBm signal strength from the associated endpoint.
   int16_t raw_signal_strength_;
   std::string hex_ssid_;

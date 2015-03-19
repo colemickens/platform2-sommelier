@@ -282,8 +282,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void OnProfileStorageInitialized(Profile *storage);
 
   // Return a Device with technology |technology| in the enabled state.
-  DeviceRefPtr GetEnabledDeviceWithTechnology(
+  virtual DeviceRefPtr GetEnabledDeviceWithTechnology(
       Technology::Identifier technology) const;
+
+  // Return a Device with link_name |link_name| in the enabled state.
+  virtual DeviceRefPtr GetEnabledDeviceByLinkName(
+      const std::string &link_name) const;
 
   // Returns true if at least one connection exists, and false if there's no
   // connected service.
