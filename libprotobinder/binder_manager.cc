@@ -6,8 +6,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <stdint.h>
-#include <stdio.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -15,6 +13,9 @@
 #include <unistd.h>
 // Out of order due to this bad header requiring sys/types.h
 #include <linux/android/binder.h>
+
+#include <base/logging.h>
+#include <base/strings/stringprintf.h>
 
 #include "libprotobinder/binder_host.h"
 #include "libprotobinder/protobinder.h"
@@ -41,7 +42,7 @@ void BinderManager::ReleaseBinderBuffer(Parcel* parcel,
                                         const binder_size_t* objects,
                                         size_t objects_size,
                                         void* cookie) {
-  printf("Binder Free\n");
+  LOG(INFO) << "Binder free";
   // TODO(leecam): Close FDs in Parcel
   GetBinderManager()->in_commands_.WriteInt32(BC_FREE_BUFFER);
   GetBinderManager()->in_commands_.WritePointer((uintptr_t)data);
@@ -79,36 +80,36 @@ int BinderManager::ProcessCommand(uint32_t cmd) {
     case BR_NOOP:
       break;
     case BR_INCREFS:
-      printf("BR_INCREFS\n");
+      VLOG(1) << "BR_INCREFS";
       in_commands_.ReadPointer(&ptr);
       in_commands_.ReadPointer(&ptr);
       break;
     case BR_DECREFS:
-      printf("BR_DECREFS\n");
+      VLOG(1) << "BR_DECREFS";
       in_commands_.ReadPointer(&ptr);
       in_commands_.ReadPointer(&ptr);
       break;
     case BR_ACQUIRE:
-      printf("BR_ACQUIRE\n");
+      VLOG(1) << "BR_ACQUIRE";
       in_commands_.ReadPointer(&ptr);
       in_commands_.ReadPointer(&ptr);
       break;
     case BR_RELEASE:
-      printf("BR_RELEASE\n");
+      VLOG(1) << "BR_RELEASE";
       in_commands_.ReadPointer(&ptr);
       in_commands_.ReadPointer(&ptr);
       break;
     case BR_OK:
-      printf("BR_OK\n");
+      VLOG(1) << "BR_OK";
       break;
     case BR_ERROR: {
-      printf("BR_ERROR\n");
+      VLOG(1) << "BR_ERROR";
       uint32_t error_code = 0;
       in_commands_.ReadUInt32(&error_code);
       return false;
     } break;
     case BR_TRANSACTION: {
-      printf("BR_TRANSACTION\n");
+      VLOG(1) << "BR_TRANSACTION";
       binder_transaction_data tr;
       if (!in_commands_.Read(&tr, sizeof(tr)))
         return false;
@@ -130,7 +131,7 @@ int BinderManager::ProcessCommand(uint32_t cmd) {
         SendReply(reply, err);
     } break;
     default:
-      printf("Unknown Command\n");
+      LOG(INFO) << "Unknown command";
   }
   return true;
 }
@@ -143,37 +144,37 @@ int BinderManager::WaitAndActionReply(Parcel* reply) {
     if (!in_commands_.ReadUInt32(&cmd)) {
       return ERROR_CMD_PARCEL;
     }
-    printf("Got reply command %x\n", cmd);
+    LOG(INFO) << "Got reply command " << cmd;
     switch (cmd) {
       case BR_TRANSACTION_COMPLETE:
-        printf("Cmd BR_TRANSACTION_COMPLETE\n");
+        LOG(INFO) << "Cmd BR_TRANSACTION_COMPLETE";
         if (!reply)
           return SUCCESS;
         break;
       case BR_DEAD_REPLY:
-        printf("Cmd BR_DEAD_REPLY\n");
+        LOG(INFO) << "Cmd BR_DEAD_REPLY";
         return ERROR_DEAD_ENDPOINT;
       case BR_FAILED_REPLY:
-        printf("Cmd BR_FAILED_REPLY\n");
+        LOG(INFO) << "Cmd BR_FAILED_REPLY";
         return ERROR_FAILED_TRANSACTION;
       case BR_REPLY: {
-        printf("Cmd BR_REPLY\n");
+        LOG(INFO) << "Cmd BR_REPLY";
         binder_transaction_data tr;
         if (!in_commands_.Read(&tr, sizeof(tr)))
           return ERROR_REPLY_PARCEL;
         int err = SUCCESS;
         if (reply) {
           if ((tr.flags & TF_STATUS_CODE) == 0) {
-            printf("Status code4\n");
+            LOG(INFO) << "Status code 4";
             if (!reply->InitFromBinderTransaction(
                     reinterpret_cast<void*>(tr.data.ptr.buffer), tr.data_size,
                     reinterpret_cast<binder_size_t*>(tr.data.ptr.offsets),
                     tr.offsets_size, ReleaseBinderBuffer))
               err = ERROR_REPLY_PARCEL;
           } else {
-            printf("Status code1\n");
+            LOG(INFO) << "Status code 1";
             err = *reinterpret_cast<const int*>(tr.data.ptr.buffer);
-            printf("Status code2\n");
+            LOG(INFO) << "Status code 2";
             ReleaseBinderBuffer(
                 NULL, reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer),
                 tr.data_size,
@@ -288,21 +289,22 @@ bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
   if ((bwr.write_size == 0) && (bwr.read_size == 0)) {
     return true;
   }
-  printf("Doing ioctl\n");
+  LOG(INFO) << "Doing ioctl";
   if (ioctl(binder_fd_, BINDER_WRITE_READ, &bwr) < 0) {
-    printf("Binder Failed\n");
+    LOG(ERROR) << "Binder failed";
     return false;
   }
-  printf("Binder Data R:%lld/%lld W:%lld/%lld\n", bwr.read_consumed,
-         bwr.read_size, bwr.write_consumed, bwr.write_size);
+  LOG(INFO) << base::StringPrintf("Binder data R:%lld/%lld W:%lld/%lld",
+                                  bwr.read_consumed, bwr.read_size,
+                                  bwr.write_consumed, bwr.write_size);
   if (bwr.read_consumed > 0) {
     in_commands_.SetLen(bwr.read_consumed);
     in_commands_.SetPos(0);
   }
   if (bwr.write_consumed > 0) {
     if (bwr.write_consumed < out_commands_.Len()) {
-      // Didnt take all of our data
-      printf("BAD BAD BAD!\n");
+      // Didn't take all of our data
+      LOG(ERROR) << "Binder did not consume all data";
       exit(0);
     } else {
       out_commands_.SetLen(0);
@@ -341,7 +343,7 @@ bool BinderManager::HandleEvent() {
 }
 
 void BinderManager::EnterLoop() {
-  printf("Entering loop\n");
+  LOG(INFO) << "Entering loop";
   struct binder_write_read bwr;
   uint32_t readbuf[32];
 
@@ -357,44 +359,37 @@ void BinderManager::EnterLoop() {
     bwr.read_consumed = 0;
     bwr.read_buffer = reinterpret_cast<uintptr_t>(readbuf);
 
-    // wait or a reply
-    printf("Waiting for message\n");
+    // Wait for a reply
+    LOG(INFO) << "Waiting for message";
     const int ret = ioctl(binder_fd_, BINDER_WRITE_READ, &bwr);
     if (ret < 0) {
-      printf("Loop ioctl failed %d\n", ret);
+      LOG(ERROR) << "Loop ioctl failed with " << ret;
       break;
     }
-    printf("Got a reply!\n");
+    LOG(INFO) << "Got a reply";
   }
 }
 
 BinderManager::BinderManager() {
-  printf("Binder Manager Created\n");
+  LOG(INFO) << "BinderManager created";
 
   binder_fd_ = open("/dev/binder", O_RDWR);
   if (binder_fd_ < 0) {
-    printf("Failed to open binder\n");
-    // TODO(leecam): Could die here?
-    return;
+    PLOG(FATAL) << "Failed to open binder";
   }
+
   // Check the version
   struct binder_version vers;
   if ((ioctl(binder_fd_, BINDER_VERSION, &vers) == -1) ||
       (vers.protocol_version != BINDER_CURRENT_PROTOCOL_VERSION)) {
-    printf("binder driver miss match\n");
-    close(binder_fd_);
-    binder_fd_ = -1;
-    return;
+    LOG(FATAL) << "Binder driver mismatch";
   }
 
   // mmap the user buffer
   binder_mapped_address_ = mmap(NULL, kBinderMappedSize, PROT_READ,
                                 MAP_PRIVATE | MAP_NORESERVE, binder_fd_, 0);
   if (binder_mapped_address_ == MAP_FAILED) {
-    printf("Failed to mmap binder\n");
-    close(binder_fd_);
-    binder_fd_ = -1;
-    return;
+    LOG(FATAL) << "Failed to mmap binder";
   }
 
   // TODO(leecam): Check these and set binder_fd_

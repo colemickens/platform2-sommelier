@@ -4,12 +4,7 @@
 
 #include "libprotobinder/parcel.h"
 
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-
-#include <string>
 
 #include "libprotobinder/binder_host.h"
 #include "libprotobinder/binder_proxy.h"

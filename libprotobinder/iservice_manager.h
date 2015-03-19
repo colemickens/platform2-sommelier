@@ -5,8 +5,6 @@
 #ifndef LIBPROTOBINDER_ISERVICE_MANAGER_H_
 #define LIBPROTOBINDER_ISERVICE_MANAGER_H_
 
-#include <stdint.h>
-
 #include "libprotobinder/binder_export.h"
 #include "libprotobinder/ibinder.h"
 #include "libprotobinder/iinterface.h"

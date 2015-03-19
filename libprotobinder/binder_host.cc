@@ -4,8 +4,7 @@
 
 #include "libprotobinder/binder_host.h"
 
-#include <stdint.h>
-#include <stdio.h>
+#include <base/logging.h>
 
 #include "libprotobinder/parcel.h"
 #include "libprotobinder/protobinder.h"
@@ -34,7 +33,7 @@ int BinderHost::OnTransact(uint32_t code,
                            Parcel* data,
                            Parcel* reply,
                            uint32_t flags) {
-  printf("OnTransact: Unknown code%d\n", code);
+  LOG(WARNING) << "OnTransact: Unknown code " << code;
   return ERROR_UNKNOWN_CODE;
 }
 

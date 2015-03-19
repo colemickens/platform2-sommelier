@@ -4,9 +4,6 @@
 
 #include "libprotobinder/iservice_manager.h"
 
-#include <stdint.h>
-#include <stdio.h>
-
 #include "libprotobinder/binder_proxy.h"
 #include "libprotobinder/parcel.h"
 #include "libprotobinder/protobinder.h"

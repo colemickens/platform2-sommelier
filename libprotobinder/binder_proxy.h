@@ -14,7 +14,7 @@ namespace protobinder {
 
 class Parcel;
 
-// Maintanins the client side of a binder.
+// Maintains the client side of a binder.
 class BINDER_EXPORT BinderProxy : public IBinder {
  public:
   explicit BinderProxy(uint32_t handle);

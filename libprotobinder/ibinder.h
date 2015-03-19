@@ -14,11 +14,11 @@
 
 namespace protobinder {
 
-class Parcel;
 class BinderHost;
 class BinderProxy;
+class Parcel;
 
-// Wraps are 'binder' endpoint.
+// Wraps a binder endpoint.
 // Can be the local or remote side.
 class BINDER_EXPORT IBinder {
  public:

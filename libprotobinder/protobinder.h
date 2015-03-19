@@ -5,9 +5,10 @@
 #ifndef LIBPROTOBINDER_PROTOBINDER_H_
 #define LIBPROTOBINDER_PROTOBINDER_H_
 
-// TODO(leecam): Make an enum and put somewhere better
+// TODO(leecam): Make an enum and put somewhere better.
 #define SUCCESS 0
-#define ERROR -1
+// We comment out ERROR temporarily because it conflicts with LOG(ERROR).
+// #define ERROR -1
 #define ERROR_CMD_PARCEL -2
 #define ERROR_REPLY_PARCEL -3
 #define ERROR_FAILED_TRANSACTION -4
