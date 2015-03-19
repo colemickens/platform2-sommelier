@@ -12,12 +12,21 @@
 #include <cstdlib>
 
 #include <base/command_line.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <chromeos/flag_helper.h>
 
 #define PATTERN(i) ((i % 1) ? 0x55555555 : 0xAAAAAAAA)
+
+using base::FilePath;
+using std::set;
+using std::string;
+using std::vector;
 
 void PrintAddrMap(void *vaddr) {
   int fd;
@@ -67,10 +76,44 @@ bool Check(uint32_t *ptr, size_t size) {
   return success;
 }
 
-int main(int argc, char* argv[]) {
-  uint32_t *ptr;
+int64_t GetUsableMemorySize() {
+  int64_t size = 0;
 
-  DEFINE_int64(size, 1024*1024*1024, "Amount of memory to allocate");
+  /* Read /proc/meminfo */
+  string meminfo_raw;
+  const FilePath meminfo_path("/proc/meminfo");
+  CHECK(base::ReadFileToString(meminfo_path, &meminfo_raw));
+
+  /* Parse /proc/meminfo for MemFree and Inactive size */
+  set<string> field_name = {"MemFree", "Inactive"};
+  vector<string> lines;
+
+  Tokenize(meminfo_raw, "\n", &lines);
+  for (auto line : lines) {
+    vector<string> tokens;
+    Tokenize(line, ": ", &tokens);
+    auto it = field_name.find(tokens[0]);
+    if (it != field_name.end()) {
+      uint64_t field_value;
+      CHECK(base::StringToUint64(tokens[1], &field_value));
+      size += field_value;
+      field_name.erase(it);
+    }
+  }
+  CHECK(field_name.empty());
+
+  /* Size should be Free + Inactive - 192 MiB */
+  size -= 192 * 1024;
+
+  /* Size is in KB right now */
+  size *= 1024;
+
+  CHECK_GT(size, 0);
+  return size;
+}
+
+int main(int argc, char* argv[]) {
+  DEFINE_int64(size, 0, "Amount of memory to allocate");
   DEFINE_uint64(wakeup_count, 0, "Value read from /sys/power/wakeup_count");
 
   chromeos::FlagHelper::Init(argc, argv,
@@ -79,13 +122,18 @@ int main(int argc, char* argv[]) {
       "  those patterns after resume. Will return 0 on success, 1 when the\n"
       "  suspend operation fails, and 2 when memory errors were detected.");
 
-  ptr = Allocate(FLAGS_size);
-  Fill(ptr, FLAGS_size);
+  int64_t size = FLAGS_size;
+  if (size == 0) {
+    size = GetUsableMemorySize();
+  }
+
+  uint32_t *ptr = Allocate(size);
+  Fill(ptr, size);
   if (Suspend(FLAGS_wakeup_count)) {
     printf("Error suspending\n");
     return 1;
   }
-  if (Check(ptr, FLAGS_size))
+  if (Check(ptr, size))
     return 0;
   // The power_MemorySuspend Autotest depends on this value.
   return 2;
