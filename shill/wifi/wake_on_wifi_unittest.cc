@@ -930,10 +930,13 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void OnNoAutoConnectableServicesAfterScan(
       const vector<ByteString> &ssid_whitelist) {
-    const Closure remove_supplicant_networks_callback(Bind(
+    Closure remove_supplicant_networks_callback(Bind(
         &WakeOnWiFiTest::RemoveSupplicantNetworksCallback, Unretained(this)));
+    WakeOnWiFi::InitiateScanCallback initiate_scan_callback(
+        Bind(&WakeOnWiFiTest::InitiateScanCallback, Unretained(this)));
     wake_on_wifi_->OnNoAutoConnectableServicesAfterScan(
-        ssid_whitelist, remove_supplicant_networks_callback);
+        ssid_whitelist, remove_supplicant_networks_callback,
+        initiate_scan_callback);
   }
 
   EventHistory *GetDarkResumeHistory() {
@@ -988,6 +991,19 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void AddResultToLastSSIDResults() {
     wake_on_wifi_->last_ssid_match_freqs_.insert(1);
+  }
+
+  void InitiateScanInDarkResume(const WiFi::FreqSet &freqs) {
+    wake_on_wifi_->InitiateScanInDarkResume(
+        Bind(&WakeOnWiFiTest::InitiateScanCallback, Unretained(this)), freqs);
+  }
+
+  int GetDarkResumeScanRetriesLeft() {
+    return wake_on_wifi_->dark_resume_scan_retries_left_;
+  }
+
+  void SetDarkResumeScanRetriesLeft(int retries) {
+    wake_on_wifi_->dark_resume_scan_retries_left_ = retries;
   }
 
   MOCK_METHOD1(DoneCallback, void(const Error &));
@@ -2049,6 +2065,26 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnScanStarted_LogMetrics) {
   OnScanStarted(true);
 }
 
+TEST_F(WakeOnWiFiTestWithDispatcher, InitiateScanInDarkResume) {
+  WiFi::FreqSet freqs;
+
+  // If we are not scanning on specific frequencies, do not enable the retry
+  // mechanism.
+  EXPECT_EQ(0, GetDarkResumeScanRetriesLeft());
+  EXPECT_CALL(*this, InitiateScanCallback(freqs));
+  InitiateScanInDarkResume(freqs);
+  EXPECT_EQ(0, GetDarkResumeScanRetriesLeft());
+
+  // Otherwise, start channel specific passive scan with retries.
+  freqs.insert(1);
+  EXPECT_LE(freqs.size(), WakeOnWiFi::kMaxFreqsForDarkResumeScanRetries);
+  EXPECT_EQ(0, GetDarkResumeScanRetriesLeft());
+  EXPECT_CALL(*this, InitiateScanCallback(freqs));
+  InitiateScanInDarkResume(freqs);
+  EXPECT_EQ(WakeOnWiFi::kMaxDarkResumeScanRetries,
+            GetDarkResumeScanRetriesLeft());
+}
+
 #if !defined(DISABLE_WAKE_ON_WIFI)
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, AddRemoveWakeOnPacketConnection) {
@@ -2240,6 +2276,15 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
   EXPECT_CALL(mock_dispatcher_, PostTask(_)).Times(1);
   OnBeforeSuspend(is_connected, whitelist, have_dhcp_lease,
                   kTimeToNextLeaseRenewalLong);
+}
+
+TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_ResetsDarkResumeScanRetries) {
+  const bool is_connected = true;
+  vector<ByteString> whitelist;
+  SetDarkResumeScanRetriesLeft(3);
+  EXPECT_EQ(3, GetDarkResumeScanRetriesLeft());
+  OnDarkResume(is_connected, whitelist);
+  EXPECT_EQ(0, GetDarkResumeScanRetriesLeft());
 }
 
 TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_SetsWakeOnSSIDWhitelist) {
@@ -2850,13 +2895,14 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   ReportConnectedToServiceAfterWake(is_connected);
 }
 
-TEST_F(WakeOnWiFiTestWithMockDispatcher, OnNoAutoConnectableServicesAfterScan) {
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       OnNoAutoConnectableServicesAfterScan_InDarkResume) {
   vector<ByteString> whitelist;
   AddSSIDToWhitelist(kSSIDBytes1, sizeof(kSSIDBytes1), &whitelist);
+  EnableWakeOnWiFiFeaturesSSID();
+  SetInDarkResume(true);
 
   // Perform disconnect before suspend actions if we are in dark resume.
-  SetInDarkResume(true);
-  EnableWakeOnWiFiFeaturesSSID();
   GetWakeOnWiFiTriggers()->clear();
   StartDHCPLeaseRenewalTimer();
   StopWakeToScanTimer();
@@ -2866,15 +2912,50 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnNoAutoConnectableServicesAfterScan) {
   EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 1);
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kWakeTriggerSSID) !=
               GetWakeOnWiFiTriggers()->end());
+}
 
-  // Otherwise, do not call WakeOnWiFi::BeforeSuspendActions and do nothing.
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       OnNoAutoConnectableServicesAfterScan_NotInDarkResume) {
+  vector<ByteString> whitelist;
+  AddSSIDToWhitelist(kSSIDBytes1, sizeof(kSSIDBytes1), &whitelist);
+  EnableWakeOnWiFiFeaturesSSID();
   SetInDarkResume(false);
+
+  // If we are not in dark resume, do nothing.
   GetWakeOnWiFiTriggers()->clear();
   StartDHCPLeaseRenewalTimer();
   StopWakeToScanTimer();
   OnNoAutoConnectableServicesAfterScan(whitelist);
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 0);
+}
+
+TEST_F(WakeOnWiFiTestWithMockDispatcher,
+       OnNoAutoConnectableServicesAfterScan_Retry) {
+  vector<ByteString> whitelist;
+  AddSSIDToWhitelist(kSSIDBytes1, sizeof(kSSIDBytes1), &whitelist);
+  EnableWakeOnWiFiFeaturesSSID();
+  SetInDarkResume(true);
+  SetDarkResumeScanRetriesLeft(1);
+
+  // Perform a retry.
+  EXPECT_EQ(1, GetDarkResumeScanRetriesLeft());
+  EXPECT_CALL(*this, InitiateScanCallback(GetLastSSIDMatchFreqs()));
+  OnNoAutoConnectableServicesAfterScan(whitelist);
+  EXPECT_EQ(0, GetDarkResumeScanRetriesLeft());
+
+  // Still no auto-connectable services after retry. No more retries, so perform
+  // disconnect before suspend actions.
+  GetWakeOnWiFiTriggers()->clear();
+  StartDHCPLeaseRenewalTimer();
+  StopWakeToScanTimer();
+  EXPECT_CALL(*this, InitiateScanCallback(GetLastSSIDMatchFreqs())).Times(0);
+  OnNoAutoConnectableServicesAfterScan(whitelist);
+  EXPECT_FALSE(DHCPLeaseRenewalTimerIsRunning());
+  EXPECT_FALSE(WakeToScanTimerIsRunning());
+  EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 1);
+  EXPECT_TRUE(GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kWakeTriggerSSID) !=
+              GetWakeOnWiFiTriggers()->end());
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Unsupported) {

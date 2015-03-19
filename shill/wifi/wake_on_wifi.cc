@@ -65,6 +65,10 @@ const int WakeOnWiFi::kMaxDarkResumesPerPeriodLong = 10;
 // Manager::kTerminationActionsTimeoutMilliseconds rather than hard-coding
 // this value.
 int64_t WakeOnWiFi::DarkResumeActionsTimeoutMilliseconds = 18500;
+// Scanning 1 frequency takes ~100ms, so retrying 5 times on 8 frequencies will
+// take about 4 seconds, which is how long a full scan typically takes.
+const int WakeOnWiFi::kMaxFreqsForDarkResumeScanRetries = 8;
+const int WakeOnWiFi::kMaxDarkResumeScanRetries = 5;
 
 WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
                        EventDispatcher *dispatcher, Metrics *metrics)
@@ -93,6 +97,7 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager *netlink_manager,
       net_detect_scan_period_seconds_(kDefaultNetDetectScanPeriodSeconds),
       last_wake_reason_(kWakeTriggerUnsupported),
       force_wake_to_scan_timer_(false),
+      dark_resume_scan_retries_left_(0),
       weak_ptr_factory_(this) {
   netlink_manager_->AddBroadcastHandler(Bind(
       &WakeOnWiFi::OnWakeupReasonReceived, weak_ptr_factory_.GetWeakPtr()));
@@ -1207,8 +1212,7 @@ void WakeOnWiFi::OnBeforeSuspend(
     const Closure &renew_dhcp_lease_callback,
     const Closure &remove_supplicant_networks_callback, bool have_dhcp_lease,
     uint32_t time_to_next_lease_renewal) {
-  SLOG(this, 1) << __func__ << ": "
-                << (is_connected ? "connected" : "not connected");
+  SLOG(this, 1) << __func__;
 #if defined(DISABLE_WAKE_ON_WIFI)
   // Wake on WiFi not supported, so immediately report success.
   done_callback.Run(Error(Error::kSuccess));
@@ -1255,12 +1259,12 @@ void WakeOnWiFi::OnDarkResume(
     const InitiateScanCallback &initiate_scan_callback,
     const Closure &remove_supplicant_networks_callback) {
   SLOG(this, 1) << __func__ << ": "
-                << (is_connected ? "connected" : "not connected")
-                << ", Wake reason " << last_wake_reason_;
+                << "Wake reason " << last_wake_reason_;
 #if defined(DISABLE_WAKE_ON_WIFI)
   done_callback.Run(Error(Error::kSuccess));
 #else
   metrics_->NotifyWakeOnWiFiOnDarkResume(last_wake_reason_);
+  dark_resume_scan_retries_left_ = 0;
   suspend_actions_done_callback_ = done_callback;
   wake_on_ssid_whitelist_ = ssid_whitelist;
 
@@ -1310,9 +1314,10 @@ void WakeOnWiFi::OnDarkResume(
     case kWakeTriggerDisconnect: {
       remove_supplicant_networks_callback.Run();
       metrics_->NotifyDarkResumeInitiateScan();
-      initiate_scan_callback.Run(last_wake_reason_ == kWakeTriggerSSID
-                                     ? last_ssid_match_freqs_
-                                     : WiFi::FreqSet());
+      InitiateScanInDarkResume(initiate_scan_callback,
+                               last_wake_reason_ == kWakeTriggerSSID
+                                   ? last_ssid_match_freqs_
+                                   : WiFi::FreqSet());
       break;
     }
     case kWakeTriggerUnsupported:
@@ -1322,7 +1327,7 @@ void WakeOnWiFi::OnDarkResume(
       } else {
         remove_supplicant_networks_callback.Run();
         metrics_->NotifyDarkResumeInitiateScan();
-        initiate_scan_callback.Run(WiFi::FreqSet());
+        InitiateScanInDarkResume(initiate_scan_callback, WiFi::FreqSet());
       }
     }
   }
@@ -1481,6 +1486,20 @@ WiFi::FreqSet WakeOnWiFi::ParseWakeOnWakeOnSSIDResults(
   return freqs;
 }
 
+void WakeOnWiFi::InitiateScanInDarkResume(
+    const InitiateScanCallback &initiate_scan_callback,
+    const WiFi::FreqSet &freqs) {
+  SLOG(this, 3) << __func__;
+  if (!freqs.empty() && freqs.size() <= kMaxFreqsForDarkResumeScanRetries) {
+    SLOG(this, 3) << __func__ << ": "
+                  << "Allowing up to " << kMaxDarkResumeScanRetries
+                  << " retries for passive scan on " << freqs.size()
+                  << " frequencies";
+    dark_resume_scan_retries_left_ = kMaxDarkResumeScanRetries;
+  }
+  initiate_scan_callback.Run(freqs);
+}
+
 void WakeOnWiFi::OnDHCPLeaseObtained(bool start_lease_renewal_timer,
                                      uint32_t time_to_next_lease_renewal) {
   SLOG(this, 3) << __func__;
@@ -1527,11 +1546,23 @@ void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected) {
 
 void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(
     const vector<ByteString> &ssid_whitelist,
-    const Closure &remove_supplicant_networks_callback) {
+    const Closure &remove_supplicant_networks_callback,
+    const InitiateScanCallback &initiate_scan_callback) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
   SLOG(this, 3) << __func__ << ": "
                 << (in_dark_resume_ ? "In dark resume" : "Not in dark resume");
-  if (in_dark_resume_) {
+  if (!in_dark_resume_) {
+    return;
+  }
+  if (dark_resume_scan_retries_left_) {
+    --dark_resume_scan_retries_left_;
+    SLOG(this, 3) << __func__ << ": "
+                  << "Retrying dark resume scan ("
+                  << dark_resume_scan_retries_left_ << " tries left)";
+    // Note: a scan triggered by supplicant in dark resume might cause a
+    // retry, but we consider this acceptable.
+    initiate_scan_callback.Run(last_ssid_match_freqs_);
+  } else {
     wake_on_ssid_whitelist_ = ssid_whitelist;
     // Assume that if there are no services available for auto-connect, then we
     // cannot be connected. Therefore, no need for lease renewal parameters.

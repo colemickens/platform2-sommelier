@@ -232,10 +232,12 @@ class WakeOnWiFi {
   // a service after waking from suspend.
   virtual void ReportConnectedToServiceAfterWake(bool is_connected);
   // Called in WiFi::ScanDoneTask when there are no WiFi services available
-  // for auto-connect after a scan.
+  // for auto-connect after a scan. |initiate_scan_callback| is used for dark
+  // resume scan retries.
   virtual void OnNoAutoConnectableServicesAfterScan(
       const std::vector<ByteString> &ssid_whitelist,
-      const base::Closure &remove_supplicant_networks_callback);
+      const base::Closure &remove_supplicant_networks_callback,
+      const InitiateScanCallback &initiate_scan_callback);
   // Called by WiFi when it is notified by the kernel that a scan has started.
   // If |is_active_scan| is true, the scan is an active scan. Otherwise, the
   // scan is a passive scan.
@@ -274,6 +276,8 @@ class WakeOnWiFi {
   // Tests that need WakeOnWiFi::kMaxDarkResumesPerPeriodLong
   FRIEND_TEST(WakeOnWiFiTestWithDispatcher,
               OnDarkResume_NotConnected_MaxDarkResumes_LongPeriod);
+  // kMaxFreqsForDarkResumeScanRetries, kMaxDarkResumeScanRetries
+  FRIEND_TEST(WakeOnWiFiTestWithDispatcher, InitiateScanInDarkResume);
 
   static const char kWakeOnIPAddressPatternsNotSupported[];
   static const char kWakeOnWiFiNotSupported[];
@@ -288,6 +292,8 @@ class WakeOnWiFi {
   static const int kMaxDarkResumesPerPeriodShort;
   static const int kMaxDarkResumesPerPeriodLong;
   static int64_t DarkResumeActionsTimeoutMilliseconds;  // non-const for testing
+  static const int kMaxFreqsForDarkResumeScanRetries;
+  static const int kMaxDarkResumeScanRetries;
 
   std::string GetWakeOnWiFiFeaturesEnabled(Error *error);
   bool SetWakeOnWiFiFeaturesEnabled(const std::string &enabled, Error *error);
@@ -442,6 +448,12 @@ class WakeOnWiFi {
   static WiFi::FreqSet ParseWakeOnWakeOnSSIDResults(
       AttributeListConstRefPtr results_list);
 
+  // Sets the |dark_resume_scan_retries_left_| counter if necessary, then runs
+  // |initiate_scan_callback| with |freqs|.
+  void InitiateScanInDarkResume(
+      const InitiateScanCallback &initiate_scan_callback,
+      const WiFi::FreqSet &freqs);
+
   // Pointers to objects owned by the WiFi object that created this object.
   EventDispatcher *dispatcher_;
   NetlinkManager *netlink_manager_;
@@ -505,6 +517,9 @@ class WakeOnWiFi {
   // Frequencies that the last wake on SSID matches reported by the kernel
   // occurred in.
   WiFi::FreqSet last_ssid_match_freqs_;
+  // How many more times to retry the last dark resume scan that shill launched
+  // if no auto-connectable services were found.
+  int dark_resume_scan_retries_left_;
 
   base::WeakPtrFactory<WakeOnWiFi> weak_ptr_factory_;
 

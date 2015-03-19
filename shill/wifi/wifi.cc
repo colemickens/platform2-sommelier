@@ -1485,8 +1485,8 @@ void WiFi::ScanDoneTask() {
       // when we query the WiFiProvider this time).
       wake_on_wifi_->OnNoAutoConnectableServicesAfterScan(
           provider_->GetSsidsConfiguredForAutoConnect(),
-          Bind(&WiFi::RemoveSupplicantNetworks,
-               weak_ptr_factory_.GetWeakPtr()));
+          Bind(&WiFi::RemoveSupplicantNetworks, weak_ptr_factory_.GetWeakPtr()),
+          Bind(&WiFi::TriggerPassiveScan, weak_ptr_factory_.GetWeakPtr()));
     }
   }
   if (need_bss_flush_) {
@@ -1908,7 +1908,8 @@ void WiFi::HelpRegisterConstDerivedBool(
 }
 
 void WiFi::OnBeforeSuspend(const ResultCallback &callback) {
-  LOG(INFO) << __func__;
+  LOG(INFO) << __func__ << ": "
+            << (IsConnectedToCurrentService() ? "connected" : "not connected");
   StopScanTimer();
   uint32_t time_to_next_lease_renewal;
   bool have_dhcp_lease =
@@ -1924,7 +1925,8 @@ void WiFi::OnBeforeSuspend(const ResultCallback &callback) {
 }
 
 void WiFi::OnDarkResume(const ResultCallback &callback) {
-  LOG(INFO) << __func__;
+  LOG(INFO) << __func__ << ": "
+            << (IsConnectedToCurrentService() ? "connected" : "not connected");
   StopScanTimer();
   wake_on_wifi_->OnDarkResume(
       IsConnectedToCurrentService(),
@@ -1936,7 +1938,8 @@ void WiFi::OnDarkResume(const ResultCallback &callback) {
 }
 
 void WiFi::OnAfterResume() {
-  LOG(INFO) << __func__;
+  LOG(INFO) << __func__ << ": "
+            << (IsConnectedToCurrentService() ? "connected" : "not connected");
   Device::OnAfterResume();  // May refresh ipconfig_
   dispatcher()->PostDelayedTask(Bind(&WiFi::ReportConnectedToServiceAfterWake,
                                      weak_ptr_factory_.GetWeakPtr()),

@@ -341,6 +341,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, ResetScanStateWhenScanFailed);
   // kPostScanFailedDelayMilliseconds
   FRIEND_TEST(WiFiTimerTest, ScanDoneDispatchesTasks);
+  // kMaxPassiveScanRetries, kMaxFreqsForPassiveScanRetries
+  FRIEND_TEST(WiFiMainTest, InitiateScanInDarkResume_Idle);
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<const WiFiService *, std::string> ReverseServiceMap;

@@ -3059,12 +3059,12 @@ TEST_F(WiFiMainTest, FlushBSSOnResume) {
 TEST_F(WiFiMainTest, CallWakeOnWiFi_OnScanDone) {
   StartWiFi();
 
-  // Call WakeOnWiFi::OnNoAutoConnetableServicesAfterScan if we 0
-  // auto-connectable services.
+  // Call WakeOnWiFi::OnNoAutoConnetableServicesAfterScan if we find 0 auto-
+  // connectable services.
   EXPECT_CALL(*wifi_provider(), NumAutoConnectableServices())
       .WillOnce(Return(0));
   EXPECT_TRUE(wifi()->IsIdle());
-  EXPECT_CALL(*wake_on_wifi_, OnNoAutoConnectableServicesAfterScan(_, _));
+  EXPECT_CALL(*wake_on_wifi_, OnNoAutoConnectableServicesAfterScan(_, _, _));
   ReportScanDone();
 
   // If we have 1 or more auto-connectable services, do not call
@@ -3072,7 +3072,7 @@ TEST_F(WiFiMainTest, CallWakeOnWiFi_OnScanDone) {
   EXPECT_CALL(*wifi_provider(), NumAutoConnectableServices())
       .WillOnce(Return(1));
   EXPECT_TRUE(wifi()->IsIdle());
-  EXPECT_CALL(*wake_on_wifi_, OnNoAutoConnectableServicesAfterScan(_, _))
+  EXPECT_CALL(*wake_on_wifi_, OnNoAutoConnectableServicesAfterScan(_, _, _))
       .Times(0);
   ReportScanDone();
 
@@ -3082,7 +3082,7 @@ TEST_F(WiFiMainTest, CallWakeOnWiFi_OnScanDone) {
   EXPECT_FALSE(wifi()->IsIdle());
   EXPECT_CALL(*wifi_provider(), NumAutoConnectableServices())
       .WillOnce(Return(0));
-  EXPECT_CALL(*wake_on_wifi_, OnNoAutoConnectableServicesAfterScan(_, _))
+  EXPECT_CALL(*wake_on_wifi_, OnNoAutoConnectableServicesAfterScan(_, _, _))
       .Times(0);
   ReportScanDone();
 }
@@ -4596,13 +4596,10 @@ TEST_F(WiFiMainTest, InitiateScan_NotIdle) {
 }
 
 TEST_F(WiFiMainTest, InitiateScanInDarkResume_Idle) {
-  StartWiFi();
   const WiFi::FreqSet freqs;
-  ScopedMockLog log;
+  StartWiFi();
   manager()->set_suppress_autoconnect(false);
   ASSERT_TRUE(wifi()->IsIdle());
-  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(_, _, HasSubstr("TriggerPassiveScan")));
   EXPECT_CALL(netlink_manager_,
               SendNl80211Message(IsNl80211Command(kNl80211FamilyId,
                                                   TriggerScanMessage::kCommand),
