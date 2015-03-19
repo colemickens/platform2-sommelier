@@ -71,14 +71,15 @@ const char kSetuidHelperPath[] = "/usr/bin/powerd_setuid_helper";
 // File that's created once the out-of-box experience has been completed.
 const char kOobeCompletedPath[] = "/home/chronos/.oobe_completed";
 
-// File where flashrom's PID is stored while flashrom is performing a
+// Files where flashrom or battery_tool store their PIDs while performing a
 // potentially-destructive action that powerd shouldn't interrupt by suspending
 // or shutting down the system.
 const char kFlashromLockPath[] = "/var/lock/flashrom_powerd.lock";
+const char kBatteryToolLockPath[] = "/var/lock/battery_tool_powerd.lock";
 
 // Interval between attempts to retry shutting the system down while
-// kFlashromLockPath exists, in seconds.
-const int kRetryShutdownForFlashromSec = 5;
+// kFlashromLockPath or kBatteryToolLockPath exist, in seconds.
+const int kRetryShutdownForFirmwareUpdateSec = 5;
 
 // Maximum amount of time to wait for responses to D-Bus method calls to other
 // processes.
@@ -188,20 +189,33 @@ int RunSetuidHelper(const std::string& action,
   }
 }
 
-// Returns true if flashrom's PID file exists and contains a valid PID.
-bool FlashromIsRunning() {
+// Returns true if |path| exists and contains the PID of an active process.
+bool PidLockFileExists(const base::FilePath& path) {
   std::string pid;
-  if (!base::ReadFileToString(base::FilePath(kFlashromLockPath), &pid))
+  if (!base::ReadFileToString(path, &pid))
     return false;
 
   base::TrimWhitespaceASCII(pid, base::TRIM_TRAILING, &pid);
   if (!base::DirectoryExists(base::FilePath("/proc").Append(pid))) {
-    LOG(WARNING) << kFlashromLockPath << " contains stale/invalid PID "
-                 << "\"" << pid << "\"";
+    LOG(WARNING) << path.value() << " contains stale/invalid PID \""
+                 << pid << "\"";
     return false;
   }
 
   return true;
+}
+
+// Returns true if a process that updates firmware is running. |details_out|
+// is updated to contain information about the process(es).
+bool FirmwareIsBeingUpdated(std::string* details_out) {
+  std::vector<std::string> paths;
+  if (PidLockFileExists(base::FilePath(kFlashromLockPath)))
+    paths.push_back(kFlashromLockPath);
+  if (PidLockFileExists(base::FilePath(kBatteryToolLockPath)))
+    paths.push_back(kBatteryToolLockPath);
+
+  *details_out = JoinString(paths, ", ");
+  return !paths.empty();
 }
 
 }  // namespace
@@ -339,8 +353,8 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       suspender_(new policy::Suspender),
       metrics_collector_(new MetricsCollector),
       shutting_down_(false),
-      retry_shutdown_for_flashrom_timer_(false /* retain_user_task */,
-                                         true /* is_repeating */),
+      retry_shutdown_for_firmware_update_timer_(false /* retain_user_task */,
+                                                true /* is_repeating */),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
       session_state_(SESSION_STOPPED),
       created_suspended_state_file_(false),
@@ -638,8 +652,9 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     uint64_t wakeup_count,
     bool wakeup_count_valid,
     base::TimeDelta duration) {
-  if (FlashromIsRunning()) {
-    LOG(INFO) << "Aborting suspend attempt for flashrom";
+  std::string details;
+  if (FirmwareIsBeingUpdated(&details)) {
+    LOG(INFO) << "Aborting suspend attempt for firmware update: " << details;
     return SUSPEND_FAILED;
   }
 
@@ -1452,11 +1467,13 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
     return;
   }
 
-  if (FlashromIsRunning()) {
-    LOG(INFO) << "Postponing shutdown for flashrom";
-    if (!retry_shutdown_for_flashrom_timer_.IsRunning()) {
-      retry_shutdown_for_flashrom_timer_.Start(
-          FROM_HERE, base::TimeDelta::FromSeconds(kRetryShutdownForFlashromSec),
+  std::string details;
+  if (FirmwareIsBeingUpdated(&details)) {
+    LOG(INFO) << "Postponing shutdown for firmware update: " << details;
+    if (!retry_shutdown_for_firmware_update_timer_.IsRunning()) {
+      retry_shutdown_for_firmware_update_timer_.Start(
+          FROM_HERE,
+          base::TimeDelta::FromSeconds(kRetryShutdownForFirmwareUpdateSec),
           base::Bind(&Daemon::ShutDown, weak_ptr_factory_.GetWeakPtr(), mode,
                      reason));
     }
@@ -1464,7 +1481,7 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   }
 
   shutting_down_ = true;
-  retry_shutdown_for_flashrom_timer_.Stop();
+  retry_shutdown_for_firmware_update_timer_.Stop();
   suspender_->HandleShutdown();
   metrics_collector_->HandleShutdown(reason);
 

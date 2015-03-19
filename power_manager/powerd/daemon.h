@@ -284,9 +284,9 @@ class Daemon : public policy::BacklightControllerObserver,
   bool shutting_down_;
 
   // Recurring timer that's started if a shutdown request is deferred due to a
-  // running flashrom process. ShutDown() is called repeatedly so the system
-  // will eventually be shut down after flashrom exits.
-  base::Timer retry_shutdown_for_flashrom_timer_;
+  // firmware update. ShutDown() is called repeatedly so the system will
+  // eventually be shut down after the firmware-updating process exits.
+  base::Timer retry_shutdown_for_firmware_update_timer_;
 
   // Timer that periodically calls RequestTpmStatus() if
   // |cryptohome_dbus_proxy_| is non-null.
