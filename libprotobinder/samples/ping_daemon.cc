@@ -6,6 +6,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <base/memory/scoped_ptr.h>
 
 #include "libprotobinder/binder_daemon.h"
 #include "libprotobinder/binder_host.h"
@@ -40,7 +41,7 @@ class PingHost : public BinderHost {
 }  // namespace protobinder
 
 int main() {
-  protobinder::BinderDaemon daemon("ping");
-  daemon.Init(new protobinder::PingHost());
+  scoped_ptr<protobinder::IBinder> ping_host(new protobinder::PingHost());
+  protobinder::BinderDaemon daemon("ping", ping_host.Pass());
   return daemon.Run();
 }

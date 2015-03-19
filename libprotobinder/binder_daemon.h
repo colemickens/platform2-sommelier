@@ -7,12 +7,10 @@
 
 #include <string>
 
-#include <base/at_exit.h>
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop.h>
-#include <base/run_loop.h>
+#include <chromeos/daemons/daemon.h>
 
 #include "libprotobinder/binder_export.h"
 #include "libprotobinder/binder_manager.h"
@@ -22,29 +20,23 @@ namespace protobinder {
 
 class BinderHost;
 
-class BINDER_EXPORT BinderDaemon : base::MessageLoopForIO::Watcher {
+class BINDER_EXPORT BinderDaemon : public chromeos::Daemon,
+                                   public base::MessageLoopForIO::Watcher {
  public:
-  explicit BinderDaemon(const std::string& service_name)
-      : manager_(BinderManager::GetBinderManager()),
-        service_name_(service_name) {}
-  virtual ~BinderDaemon() {}
-
-  int Init(IBinder* binder);
-  int Run();
+  BinderDaemon(const std::string& service_name, scoped_ptr<IBinder> binder);
+  virtual ~BinderDaemon();
 
  private:
   BinderManager* manager_;
   std::string service_name_;
   scoped_ptr<IBinder> binder_;
 
+  // Implement chromeos::Daemon.
+  int OnInit() override;
+
   // Implement MessageLoopForIO::Watcher.
   void OnFileCanReadWithoutBlocking(int file_descriptor) override;
-
-  // Implement MessageLoopForIO::Watcher.
   void OnFileCanWriteWithoutBlocking(int file_descriptor) override;
-
-  base::AtExitManager at_exit_manager;
-  base::MessageLoopForIO message_loop;
 
   base::MessageLoopForIO::FileDescriptorWatcher file_descriptor_watcher_;
 

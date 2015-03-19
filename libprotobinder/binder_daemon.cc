@@ -4,38 +4,47 @@
 
 #include "libprotobinder/binder_daemon.h"
 
+#include <sysexits.h>
+
+#include <base/message_loop/message_loop.h>
+
 namespace protobinder {
 
-void BinderDaemon::OnFileCanReadWithoutBlocking(int file_descriptor) {
-  LOG(INFO) << "FileCanReadWithoutBlocking";
-  manager_->HandleEvent();
-}
+BinderDaemon::BinderDaemon(const std::string& service_name,
+                           scoped_ptr<IBinder> binder)
+    : manager_(BinderManager::GetBinderManager()),
+      service_name_(service_name),
+      binder_(binder.Pass()) {}
 
-void BinderDaemon::OnFileCanWriteWithoutBlocking(int file_descriptor) {
-  NOTREACHED() << "Not watching write events";
-}
+BinderDaemon::~BinderDaemon() {}
 
-int BinderDaemon::Init(IBinder* binder) {
-  binder_.reset(binder);
-  return 0;
-}
+int BinderDaemon::OnInit() {
+  int return_code = Daemon::OnInit();
+  if (return_code != EX_OK)
+    return return_code;
 
-int BinderDaemon::Run() {
   int ret =
       GetServiceManager()->AddService(service_name_.c_str(), binder_.get());
-  LOG(INFO) << "service ret " << ret;
+  VLOG(1) << "GetServiceManager()->AddService() returned " << ret;
 
   int binder_fd = 0;
   manager_->GetFdForPolling(&binder_fd);
 
   base::MessageLoopForIO::Mode mode = base::MessageLoopForIO::WATCH_READ;
-  const bool success = base::MessageLoopForIO::current()->WatchFileDescriptor(
+  bool success = base::MessageLoopForIO::current()->WatchFileDescriptor(
       binder_fd, true /* persistent */, mode, &file_descriptor_watcher_, this);
-  CHECK(success) << "Unable to watch file descriptor";
+  CHECK(success) << "Unable to watch binder file descriptor";
 
-  base::RunLoop run_loop;
-  run_loop.Run();
-  return 0;
+  return return_code;
+}
+
+void BinderDaemon::OnFileCanReadWithoutBlocking(int file_descriptor) {
+  VLOG(1) << "FileCanReadWithoutBlocking";
+  manager_->HandleEvent();
+}
+
+void BinderDaemon::OnFileCanWriteWithoutBlocking(int file_descriptor) {
+  NOTREACHED() << "Not watching write events";
 }
 
 }  // namespace protobinder
