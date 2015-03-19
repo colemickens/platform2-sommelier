@@ -30,9 +30,11 @@ class WebServerClientTest : public testing::Test,
 
   void SetWebServerPort(uint16_t port) override {}
 
-  bool ChallengeLeader(const std::string& in_uuid, const std::string& in_guid,
-                       int32_t in_score, std::string* out_leader,
-                       std::string* out_my_uuid) override {
+  bool HandleLeaderChallenge(const std::string& in_uuid,
+                             const std::string& in_guid,
+                             int32_t in_score,
+                             std::string* out_leader,
+                             std::string* out_my_uuid) override {
     if (in_guid != kGroupGUID) return false;
     *out_leader = in_uuid;
     *out_my_uuid = kMyUUID;

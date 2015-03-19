@@ -123,14 +123,14 @@ TEST_F(ManagerTest, JoinGroup_HandlesMultipleJoins) {
   EXPECT_EQ(group_path, group_path_second);
 }
 
-TEST_F(ManagerTest, JoinGroup_ChallengeLeaderUnknownGroup) {
+TEST_F(ManagerTest, JoinGroup_LeaderChallengeUnknownGroup) {
   std::string out_leader;
   std::string out_uuid;
-  EXPECT_FALSE(manager_->ChallengeLeader(kUUIDLessThanMyUUID, kGroupName,
-                                         kScore, &out_leader, &out_uuid));
+  EXPECT_FALSE(manager_->HandleLeaderChallenge(kUUIDLessThanMyUUID, kGroupName,
+                                               kScore, &out_leader, &out_uuid));
 }
 
-TEST_F(ManagerTest, JoinGroup_ChallengeLeaderKnownGroupDefaultScore) {
+TEST_F(ManagerTest, JoinGroup_LeaderChallengeKnownGroupDefaultScore) {
   chromeos::ErrorPtr error;
   dbus::ObjectPath group_path;
   EXPECT_TRUE(JoinGroup(&error, kDbusSource, kGroupName, {}, &group_path));
@@ -139,13 +139,13 @@ TEST_F(ManagerTest, JoinGroup_ChallengeLeaderKnownGroupDefaultScore) {
   std::string out_leader;
   std::string out_uuid;
   // Default score is 0.
-  EXPECT_TRUE(manager_->ChallengeLeader(kUUIDLessThanMyUUID, kGroupName, kScore,
-                                        &out_leader, &out_uuid));
+  EXPECT_TRUE(manager_->HandleLeaderChallenge(
+        kUUIDLessThanMyUUID, kGroupName, kScore, &out_leader, &out_uuid));
   EXPECT_EQ(kUUIDLessThanMyUUID, out_leader);
   EXPECT_FALSE(out_uuid.empty());
 }
 
-TEST_F(ManagerTest, JoinGroup_ChallengeLeaderKnownGroupDefaultScoreUUIDLess) {
+TEST_F(ManagerTest, JoinGroup_LeaderChallengeKnownGroupDefaultScoreUUIDLess) {
   chromeos::ErrorPtr error;
   dbus::ObjectPath group_path;
   EXPECT_TRUE(JoinGroup(&error, kDbusSource, kGroupName, {}, &group_path));
@@ -154,14 +154,14 @@ TEST_F(ManagerTest, JoinGroup_ChallengeLeaderKnownGroupDefaultScoreUUIDLess) {
   std::string out_leader;
   std::string out_uuid;
   // Default score is 0.
-  EXPECT_TRUE(manager_->ChallengeLeader(kUUIDLessThanMyUUID, kGroupName, 0,
-                                        &out_leader, &out_uuid));
+  EXPECT_TRUE(manager_->HandleLeaderChallenge(
+        kUUIDLessThanMyUUID, kGroupName, 0, &out_leader, &out_uuid));
   EXPECT_EQ(kMyUUID, out_leader);
   EXPECT_FALSE(out_uuid.empty());
 }
 
 TEST_F(ManagerTest,
-       JoinGroup_ChallengeLeaderKnownGroupDefaultScoreUUIDGreater) {
+       JoinGroup_LeaderChallengeKnownGroupDefaultScoreUUIDGreater) {
   chromeos::ErrorPtr error;
   dbus::ObjectPath group_path;
   EXPECT_TRUE(JoinGroup(&error, kDbusSource, kGroupName, {}, &group_path));
@@ -170,8 +170,8 @@ TEST_F(ManagerTest,
   std::string out_leader;
   std::string out_uuid;
   // Default score is 0.
-  EXPECT_TRUE(manager_->ChallengeLeader(kUUIDGreaterThanMyUUID, kGroupName, 0,
-                                        &out_leader, &out_uuid));
+  EXPECT_TRUE(manager_->HandleLeaderChallenge(
+        kUUIDGreaterThanMyUUID, kGroupName, 0, &out_leader, &out_uuid));
   EXPECT_EQ(kUUIDGreaterThanMyUUID, out_leader);
   EXPECT_FALSE(out_uuid.empty());
 }

@@ -26,10 +26,11 @@ class WebServerClient {
    public:
     virtual ~Delegate() = default;
     virtual void SetWebServerPort(uint16_t port) = 0;
-    virtual bool ChallengeLeader(const std::string& in_uuid,
-                                 const std::string& in_guid, int32_t in_score,
-                                 std::string* out_leader,
-                                 std::string* out_my_uuid) = 0;
+    virtual bool HandleLeaderChallenge(const std::string& in_uuid,
+                                       const std::string& in_guid,
+                                       int32_t in_score,
+                                       std::string* out_leader,
+                                       std::string* out_my_uuid) = 0;
   };
 
   WebServerClient(Delegate* delegate,

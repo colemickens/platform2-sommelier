@@ -55,9 +55,13 @@ class Group : public org::chromium::leaderd::GroupInterface {
   bool SetScore(chromeos::ErrorPtr* error, int32_t in_score) override;
   bool PokeLeader(chromeos::ErrorPtr* error) override;
 
-  void ChallengeLeader(const std::string& uuid, int score, std::string* leader,
-                       std::string* my_uuid);
+  // The manager informs us when we need to respond to a challenge from a peer.
+  void HandleLeaderChallenge(const std::string& uuid,
+                             int score,
+                             std::string* leader,
+                             std::string* my_uuid);
 
+  // The manager informs us of changes in group membership.
   void AddPeer(const std::string& uuid);
   void RemovePeer(const std::string& uuid);
   void ClearPeers();
@@ -72,12 +76,14 @@ class Group : public org::chromium::leaderd::GroupInterface {
   void OnWandererTimeout();
   void AskPeerForLeaderInfo(const std::string& peer_uuid);
 
-  void GetChallengeLeaderText(std::string* text, std::string* mime_type) const;
-  void SendChallengeLeader(
+  // These methods revolve around sending and handling responses to our
+  // own leader challenges.
+  void GetLeaderChallengeText(std::string* text, std::string* mime_type) const;
+  void SendLeaderChallenge(
       const std::string& peer_uuid,
       const chromeos::http::SuccessCallback& success_callback);
-  void HandleChallengeLeaderError(int request_id, const chromeos::Error* error);
-  void HandleChallengeLeaderResponse(
+  void HandleLeaderChallengeError(int request_id, const chromeos::Error* error);
+  void HandleLeaderChallengeResponse(
       int request_id, scoped_ptr<chromeos::http::Response> response);
 
   const std::string guid_;

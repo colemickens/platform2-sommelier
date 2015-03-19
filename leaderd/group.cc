@@ -105,8 +105,8 @@ bool Group::PokeLeader(chromeos::ErrorPtr* error) {
   return true;
 }
 
-void Group::ChallengeLeader(const std::string& uuid, int score,
-                            std::string* leader, std::string* my_uuid) {
+void Group::HandleLeaderChallenge(const std::string& uuid, int score,
+                                  std::string* leader, std::string* my_uuid) {
   VLOG(1) << "Challenge leader " << state_ << ", '" << guid_ << "' , uuid '"
           << uuid << "', score " << score;
 
@@ -189,13 +189,13 @@ void Group::AskPeerForLeaderInfo(const std::string& peer_uuid) {
   }
 
   if (state_ == State::WANDERER || state_ == State::FOLLOWER) {
-    SendChallengeLeader(peer_uuid,
-                        base::Bind(&Group::HandleChallengeLeaderResponse,
+    SendLeaderChallenge(peer_uuid,
+                        base::Bind(&Group::HandleLeaderChallengeResponse,
                                    weak_ptr_factory_.GetWeakPtr()));
   }
 }
 
-void Group::GetChallengeLeaderText(std::string* text,
+void Group::GetLeaderChallengeText(std::string* text,
                                    std::string* mime_type) const {
   std::unique_ptr<base::DictionaryValue> output(new base::DictionaryValue);
   output->SetInteger(kLeadershipScoreKey, score_);
@@ -209,7 +209,7 @@ void Group::GetChallengeLeaderText(std::string* text,
       "utf-8");
 }
 
-void Group::SendChallengeLeader(
+void Group::SendLeaderChallenge(
     const std::string& peer_uuid,
     const chromeos::http::SuccessCallback& success_callback) {
   const std::vector<std::tuple<std::vector<uint8_t>, uint16_t>>& ips =
@@ -220,7 +220,7 @@ void Group::SendChallengeLeader(
   }
 
   std::string text, mime_type;
-  GetChallengeLeaderText(&text, &mime_type);
+  GetLeaderChallengeText(&text, &mime_type);
 
   for (const auto& ip_port_pair : ips) {
     char address[INET6_ADDRSTRLEN];
@@ -236,20 +236,20 @@ void Group::SendChallengeLeader(
     chromeos::http::SendRequest(
         chromeos::http::request_type::kPost, url, text.c_str(), text.size(),
         mime_type, {}, transport_,
-        base::Bind(&Group::HandleChallengeLeaderResponse,
+        base::Bind(&Group::HandleLeaderChallengeResponse,
                    weak_ptr_factory_.GetWeakPtr()),
-        base::Bind(&Group::HandleChallengeLeaderError,
+        base::Bind(&Group::HandleLeaderChallengeError,
                    weak_ptr_factory_.GetWeakPtr()));
   }
 }
 
-void Group::HandleChallengeLeaderError(int request_id,
+void Group::HandleLeaderChallengeError(int request_id,
                                        const chromeos::Error* error) {
   VLOG(1) << "Got error callback " << error->GetDomain() << ", "
           << error->GetCode() << ", " << error->GetMessage();
 }
 
-void Group::HandleChallengeLeaderResponse(
+void Group::HandleLeaderChallengeResponse(
     int request_id, scoped_ptr<chromeos::http::Response> response) {
   chromeos::ErrorPtr error;
   std::unique_ptr<base::DictionaryValue> json_resp =
@@ -276,7 +276,7 @@ void Group::HandleChallengeLeaderResponse(
       if (id != leader) {
         // We can follow the redirect but we need to ensure we
         // don't get into a cycle.
-        // SendChallengeLeader(leader_service_proxy);
+        // SendLeaderChallenge(leader_service_proxy);
       } else {
         SetRole(State::FOLLOWER, leader);
       }

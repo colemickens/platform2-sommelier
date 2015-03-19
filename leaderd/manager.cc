@@ -68,10 +68,11 @@ void Manager::SetWebServerPort(uint16_t port) {
   PublishService();
 }
 
-bool Manager::ChallengeLeader(const std::string& in_uuid,
-                              const std::string& in_guid, int32_t in_score,
-                              std::string* out_leader,
-                              std::string* out_my_uuid) {
+bool Manager::HandleLeaderChallenge(const std::string& in_uuid,
+                                    const std::string& in_guid,
+                                    int32_t in_score,
+                                    std::string* out_leader,
+                                    std::string* out_my_uuid) {
   VLOG(1) << "Challenge Leader group='" << in_guid << "', uuid='" << in_uuid
           << "', score=" << in_score;
   auto it = groups_.find(in_guid);
@@ -80,7 +81,7 @@ bool Manager::ChallengeLeader(const std::string& in_uuid,
     return false;
   }
 
-  it->second->ChallengeLeader(in_uuid, in_score, out_leader, out_my_uuid);
+  it->second->HandleLeaderChallenge(in_uuid, in_score, out_leader, out_my_uuid);
   return true;
 }
 

@@ -90,7 +90,8 @@ std::unique_ptr<base::DictionaryValue> WebServerClient::ProcessChallenge(
       input_dictionary->GetInteger(kLeadershipScoreKey, &score) &&
       input_dictionary->GetString(kLeadershipGroupKey, &group) &&
       input_dictionary->GetString(kLeadershipIdKey, &uuid) &&
-      delegate_->ChallengeLeader(uuid, group, score, &leader_uuid, &my_uuid)) {
+      delegate_->HandleLeaderChallenge(
+          uuid, group, score, &leader_uuid, &my_uuid)) {
     output.reset(new base::DictionaryValue());
     output->SetString(kLeadershipLeaderKey, leader_uuid);
     output->SetString(kLeadershipIdKey, my_uuid);
