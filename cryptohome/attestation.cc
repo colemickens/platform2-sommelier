@@ -1601,8 +1601,8 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
     return false;
   }
   SecureBlob encrypted_asym_content;
-  if (!tpm_->TpmCompatibleOAEPEncrypt(rsa.get(), asym_content,
-                                      &encrypted_asym_content)) {
+  if (TpmCompatibleOAEPEncrypt(rsa.get(), asym_content,
+                               &encrypted_asym_content)) {
     LOG(ERROR) << "Failed to encrypt with EK public key.";
     return false;
   }
@@ -2032,6 +2032,34 @@ bool Attestation::AesDecrypt(const chromeos::SecureBlob& ciphertext,
                                                CryptoLib::kPaddingStandard,
                                                CryptoLib::kCbc,
                                                plaintext);
+}
+
+bool Attestation::TpmCompatibleOAEPEncrypt(RSA* key,
+                                           const chromeos::SecureBlob& input,
+                                           chromeos::SecureBlob* output) {
+  CHECK(output);
+  // The custom OAEP parameter as specified in TPM Main Part 1, Section 31.1.1.
+  unsigned char oaep_param[4] = {'T', 'C', 'P', 'A'};
+  chromeos::SecureBlob padded_input(RSA_size(key));
+  unsigned char* padded_buffer = vector_as_array(&padded_input);
+  unsigned char* input_buffer =
+      const_cast<unsigned char*>(vector_as_array(&input));
+  int result = RSA_padding_add_PKCS1_OAEP(padded_buffer, padded_input.size(),
+                                          input_buffer, input.size(),
+                                          oaep_param, arraysize(oaep_param));
+  if (!result) {
+    LOG(ERROR) << "Failed to add OAEP padding.";
+    return false;
+  }
+  output->resize(padded_input.size());
+  unsigned char* output_buffer = vector_as_array(output);
+  result = RSA_public_encrypt(padded_input.size(), padded_buffer,
+                              output_buffer, key, RSA_NO_PADDING);
+  if (result == -1) {
+    LOG(ERROR) << "Failed to encrypt OAEP padded input.";
+    return false;
+  }
+  return true;
 }
 
 int Attestation::ChooseTemporalIndex(const std::string& user,

@@ -338,16 +338,6 @@ class Tpm {
                                     const chromeos::SecureBlob& input,
                                     chromeos::SecureBlob* output) = 0;
 
-  // Encrypts data using the TPM_ES_RSAESOAEP_SHA1_MGF1 scheme.
-  //
-  // Parameters
-  //   key - The RSA public key.
-  //   input - The data to be encrypted.
-  //   output - The encrypted data.
-  virtual bool TpmCompatibleOAEPEncrypt(RSA* key,
-                                        const chromeos::SecureBlob& input,
-                                        chromeos::SecureBlob* output) = 0;
-
   // Signs data using the TPM_SS_RSASSAPKCS1v15_DER scheme.  This method will
   // work with any signing key that has been assigned this scheme.  This
   // includes all keys created using CreateCertifiedKey.
@@ -384,9 +374,6 @@ class Tpm {
 
   // Reads the current |pcr_value| of the PCR given by |pcr_index|.
   virtual bool ReadPCR(int pcr_index, chromeos::SecureBlob* pcr_value) = 0;
-
-  virtual bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle,
-                                 TSS_RESULT* result) = 0;
 
   // Tries to connect to the TPM
   virtual TSS_HCONTEXT ConnectContext() = 0;
@@ -467,16 +454,7 @@ class Tpm {
   //   owner_password - The owner password for the TPM
   virtual void SetOwnerPassword(const chromeos::SecureBlob& owner_password) = 0;
 
-  // Gets a handle to the SRK
-  virtual bool LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
-                       TSS_RESULT* result) const = 0;
-
   virtual bool IsTransient(TSS_RESULT result) = 0;
-
-  virtual bool GetPublicKeyBlob(TSS_HCONTEXT context_handle,
-                                TSS_HKEY key_handle,
-                                chromeos::SecureBlob* data_out,
-                                TSS_RESULT* result) const = 0;
 
   virtual bool GetKeyBlob(TSS_HCONTEXT context_handle,
                           TSS_HKEY key_handle,

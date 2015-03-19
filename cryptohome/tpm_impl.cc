@@ -16,7 +16,6 @@
 #include <base/time/time.h>
 #include <base/values.h>
 #include <crypto/scoped_openssl_types.h>
-#include <openssl/rsa.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <trousers/scoped_tss_type.h>
@@ -2328,34 +2327,6 @@ bool TpmImpl::TssCompatibleEncrypt(const SecureBlob& key,
     return false;
   }
   output->resize(out_length);
-  return true;
-}
-
-bool TpmImpl::TpmCompatibleOAEPEncrypt(RSA* key,
-                                       const SecureBlob& input,
-                                       SecureBlob* output) {
-  CHECK(output);
-  // The custom OAEP parameter as specified in TPM Main Part 1, Section 31.1.1.
-  unsigned char oaep_param[4] = {'T', 'C', 'P', 'A'};
-  SecureBlob padded_input(RSA_size(key));
-  unsigned char* padded_buffer = vector_as_array(&padded_input);
-  unsigned char* input_buffer =
-      const_cast<unsigned char*>(vector_as_array(&input));
-  int result = RSA_padding_add_PKCS1_OAEP(padded_buffer, padded_input.size(),
-                                          input_buffer, input.size(),
-                                          oaep_param, arraysize(oaep_param));
-  if (!result) {
-    LOG(ERROR) << "Failed to add OAEP padding.";
-    return false;
-  }
-  output->resize(padded_input.size());
-  unsigned char* output_buffer = vector_as_array(output);
-  result = RSA_public_encrypt(padded_input.size(), padded_buffer,
-                              output_buffer, key, RSA_NO_PADDING);
-  if (result == -1) {
-    LOG(ERROR) << "Failed to encrypt OAEP padded input.";
-    return false;
-  }
   return true;
 }
 

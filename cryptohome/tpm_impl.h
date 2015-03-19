@@ -88,9 +88,6 @@ class TpmImpl : public Tpm {
   bool TssCompatibleEncrypt(const chromeos::SecureBlob& key,
                             const chromeos::SecureBlob& input,
                             chromeos::SecureBlob* output) override;
-  bool TpmCompatibleOAEPEncrypt(RSA* key,
-                                const chromeos::SecureBlob& input,
-                                chromeos::SecureBlob* output) override;
   bool Sign(const chromeos::SecureBlob& key_blob,
             const chromeos::SecureBlob& der_encoded_input,
             chromeos::SecureBlob* signature) override;
@@ -103,8 +100,6 @@ class TpmImpl : public Tpm {
                          const chromeos::SecureBlob& key_blob) override;
   bool ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension) override;
   bool ReadPCR(int pcr_index, chromeos::SecureBlob* pcr_value) override;
-  bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle,
-                         TSS_RESULT* result) override;
   TSS_HCONTEXT ConnectContext() override;
   void CloseContext(TSS_HCONTEXT context_handle) const override;
   bool IsEndorsementKeyAvailable(TSS_HCONTEXT context_handle) override;
@@ -123,13 +118,7 @@ class TpmImpl : public Tpm {
                       TSS_HTPM* tpm_handle) override;
   bool TestTpmAuth(TSS_HTPM tpm_handle) override;
   void SetOwnerPassword(const chromeos::SecureBlob& owner_password) override;
-  bool LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
-               TSS_RESULT* result) const override;
   bool IsTransient(TSS_RESULT result) override;
-  bool GetPublicKeyBlob(TSS_HCONTEXT context_handle,
-                        TSS_HKEY key_handle,
-                        chromeos::SecureBlob* data_out,
-                        TSS_RESULT* result) const override;
   bool GetKeyBlob(TSS_HCONTEXT context_handle,
                   TSS_HKEY key_handle,
                   chromeos::SecureBlob* data_out,
@@ -158,6 +147,20 @@ class TpmImpl : public Tpm {
       const chromeos::SecureBlob& delegate_secret) override;
 
  private:
+  // Connects to the TPM and return its context at |context_handle|.
+  bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle,
+                         TSS_RESULT* result);
+
+  // Gets the Public Key blob associated with |key_handle|.
+  bool GetPublicKeyBlob(TSS_HCONTEXT context_handle,
+                        TSS_HKEY key_handle,
+                        chromeos::SecureBlob* data_out,
+                        TSS_RESULT* result) const;
+
+  // Gets a handle to the SRK.
+  bool LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
+               TSS_RESULT* result) const;
+
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
   // its matching TPM object iff the owner password is available and
   // authorization is successfully acquired.
