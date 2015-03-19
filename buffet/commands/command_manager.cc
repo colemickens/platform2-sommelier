@@ -47,7 +47,11 @@ bool CommandManager::LoadBaseCommands(const base::FilePath& json_file_path,
 bool CommandManager::LoadCommands(const base::DictionaryValue& json,
                                   const std::string& category,
                                   chromeos::ErrorPtr* error) {
-  return dictionary_.LoadCommands(json, category, &base_dictionary_, error);
+  bool result =
+      dictionary_.LoadCommands(json, category, &base_dictionary_, error);
+  if (!on_command_defs_changed_.is_null())
+    on_command_defs_changed_.Run();
+  return result;
 }
 
 bool CommandManager::LoadCommands(const base::FilePath& json_file_path,

@@ -37,7 +37,12 @@ class CommandManager final {
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
           object_manager);
 
-  // Get the command definitions for the device.
+  // Sets callback which is called when command definitions is changed.
+  void SetOnCommandDefChanged(const base::Closure& on_command_defs_changed) {
+    on_command_defs_changed_ = on_command_defs_changed;
+  }
+
+  // Returns the command definitions for the device.
   const CommandDictionary& GetCommandDictionary() const;
 
   // Loads base/standard GCD command definitions.
@@ -91,6 +96,7 @@ class CommandManager final {
   CommandDictionary dictionary_;  // Command definitions/schemas.
   CommandQueue command_queue_;
   DBusCommandDispacher command_dispatcher_;
+  base::Closure on_command_defs_changed_;
 
   DISALLOW_COPY_AND_ASSIGN(CommandManager);
 };

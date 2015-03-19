@@ -51,6 +51,8 @@ void Manager::RegisterAsync(const base::FilePath& config_path,
                             const AsyncEventSequencer::CompletionAction& cb) {
   command_manager_ =
       std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
+  command_manager_->SetOnCommandDefChanged(
+      base::Bind(&Manager::OnCommandDefsChanged, base::Unretained(this)));
   command_manager_->Startup(base::FilePath{"/etc/buffet"},
                             test_definitions_path);
   state_change_queue_ = std::unique_ptr<StateChangeQueue>(
@@ -197,6 +199,16 @@ void Manager::OnRegistrationStatusChanged() {
   dbus_adaptor_.SetStatus(
       StatusToString(device_info_->GetRegistrationStatus()));
   dbus_adaptor_.SetDeviceId(device_info_->GetDeviceId());
+}
+
+void Manager::OnCommandDefsChanged() {
+  chromeos::ErrorPtr error;
+  std::unique_ptr<base::DictionaryValue> commands =
+      command_manager_->GetCommandDictionary().GetCommandsAsJson(true, &error);
+  CHECK(commands);
+  std::string json;
+  base::JSONWriter::Write(commands.get(), &json);
+  dbus_adaptor_.SetCommandDefs(json);
 }
 
 }  // namespace buffet

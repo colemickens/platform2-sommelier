@@ -200,6 +200,7 @@ TEST_F(PrivetHandlerTest, InfoMinimal) {
     'api': [
       '/privet/info',
       '/privet/v3/auth',
+      '/privet/v3/commandDefs',
       '/privet/v3/pairing/cancel',
       '/privet/v3/pairing/confirm',
       '/privet/v3/pairing/start',
@@ -272,6 +273,7 @@ TEST_F(PrivetHandlerTest, Info) {
     'api': [
       '/privet/info',
       '/privet/v3/auth',
+      '/privet/v3/commandDefs',
       '/privet/v3/pairing/cancel',
       '/privet/v3/pairing/confirm',
       '/privet/v3/pairing/start',
@@ -566,6 +568,16 @@ TEST_F(PrivetHandlerSetupTest, GcdSetup) {
       .WillOnce(Return(true));
   EXPECT_PRED2(IsEqualJson, kExpected,
                HandleRequest("/privet/v3/setup/start", kInput));
+}
+
+TEST_F(PrivetHandlerSetupTest, CommandsDefs) {
+  EXPECT_PRED2(IsEqualJson, "{'commands': {'test':{}}, 'fingerprint': '0'}",
+               HandleRequest("/privet/v3/commandDefs", "{}"));
+
+  cloud_.NotifyOnCommandDefsChanged();
+
+  EXPECT_PRED2(IsEqualJson, "{'commands': {'test':{}}, 'fingerprint': '1'}",
+               HandleRequest("/privet/v3/commandDefs", "{}"));
 }
 
 }  // namespace privetd

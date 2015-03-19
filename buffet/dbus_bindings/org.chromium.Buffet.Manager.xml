@@ -61,5 +61,10 @@
         GCD ID if the device is registered or empty otherwise.
       </tp:docstring>
     </property>
+    <property name="CommandDefs" type="s" access="read">
+      <tp:docstring>
+        JSON with command definitions of the devices.
+      </tp:docstring>
+    </property>
   </interface>
 </node>

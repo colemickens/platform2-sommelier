@@ -10,8 +10,13 @@
 
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
+#include <base/observer_list.h>
 
 #include "privetd/privet_types.h"
+
+namespace base {
+class DictionaryValue;
+}  // namespace base
 
 namespace dbus {
 class Bus;
@@ -22,10 +27,20 @@ namespace privetd {
 class DeviceDelegate;
 
 // Interface to provide GCD functionality for PrivetHandler.
+// TODO(vitalybuka): Rename to BuffetDelegate.
 class CloudDelegate {
  public:
   CloudDelegate();
   virtual ~CloudDelegate();
+
+  class Observer {
+   public:
+    virtual ~Observer() = default;
+
+    virtual void OnRegistrationChanged() {}
+    virtual void OnCommandDefsChanged() {}
+    virtual void OnStateChanged() {}
+  };
 
   // Returns status of the GCD connection.
   virtual const ConnectionState& GetConnectionState() const = 0;
@@ -41,13 +56,25 @@ class CloudDelegate {
   // Returns cloud id if the registered device or empty string if unregistered.
   virtual std::string GetCloudId() const = 0;
 
+  // Returns dictionary with commands definitions.
+  virtual const base::DictionaryValue& GetCommandDef() const = 0;
+
+  void AddObserver(Observer* observer) { observer_list_.AddObserver(observer); }
+  void RemoveObserver(Observer* observer) {
+    observer_list_.RemoveObserver(observer);
+  }
+
+  void NotifyOnRegistrationChanged();
+  void NotifyOnCommandDefsChanged();
+  void NotifyOnStateChanged();
+
   // Create default instance.
   static std::unique_ptr<CloudDelegate> CreateDefault(
       const scoped_refptr<dbus::Bus>& bus,
-      DeviceDelegate* device,
-      // Allows owner to know that state of the object was changed. Used to
-      // notify PeerdClient.
-      const base::Closure& on_changed);
+      DeviceDelegate* device);
+
+ private:
+  ObserverList<Observer> observer_list_;
 };
 
 }  // namespace privetd

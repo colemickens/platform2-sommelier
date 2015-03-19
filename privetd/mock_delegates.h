@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -154,16 +155,21 @@ class MockCloudDelegate : public CloudDelegate {
                     const std::string&,
                     chromeos::ErrorPtr*));
   MOCK_CONST_METHOD0(GetCloudId, std::string());
+  MOCK_CONST_METHOD0(GetCommandDef, const base::DictionaryValue&());
 
   MockCloudDelegate() {
+    commands_definitions_.Set("test", new base::DictionaryValue);
     EXPECT_CALL(*this, GetConnectionState())
         .WillRepeatedly(ReturnRef(connection_state_));
     EXPECT_CALL(*this, GetSetupState()).WillRepeatedly(ReturnRef(setup_state_));
     EXPECT_CALL(*this, GetCloudId()).WillRepeatedly(Return("TestCloudId"));
+    EXPECT_CALL(*this, GetCommandDef())
+        .WillRepeatedly(ReturnRef(commands_definitions_));
   }
 
   ConnectionState connection_state_{ConnectionState::kOnline};
   SetupState setup_state_{SetupState::kNone};
+  base::DictionaryValue commands_definitions_;
 };
 
 class MockIdentityDelegate : public IdentityDelegate {

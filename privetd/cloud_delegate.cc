@@ -5,9 +5,11 @@
 #include "privetd/cloud_delegate.h"
 
 #include <base/bind.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
+#include <base/values.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -23,16 +25,16 @@ namespace {
 
 using chromeos::ErrorPtr;
 using chromeos::VariantDictionary;
+using org::chromium::Buffet::ManagerProxy;
+using org::chromium::Buffet::ObjectManagerProxy;
 
 const int kMaxSetupRetries = 5;
 const int kFirstRetryTimeoutSec = 1;
 
 class CloudDelegateImpl : public CloudDelegate {
  public:
-  CloudDelegateImpl(const scoped_refptr<dbus::Bus>& bus,
-                    DeviceDelegate* device,
-                    const base::Closure& on_changed)
-      : object_manager_{bus}, device_{device}, on_changed_{on_changed} {
+  CloudDelegateImpl(const scoped_refptr<dbus::Bus>& bus, DeviceDelegate* device)
+      : object_manager_{bus}, device_{device} {
     object_manager_.SetManagerAddedCallback(
         base::Bind(&CloudDelegateImpl::OnManagerAdded,
                    weak_factory_.GetWeakPtr()));
@@ -74,49 +76,76 @@ class CloudDelegateImpl : public CloudDelegate {
 
   std::string GetCloudId() const override { return cloud_id_; }
 
+  const base::DictionaryValue& GetCommandDef() const override {
+    return command_defs_;
+  }
+
  private:
-  void OnManagerAdded(org::chromium::Buffet::ManagerProxy* manager) {
+  void OnManagerAdded(ManagerProxy* manager) {
     manager->SetPropertyChangedCallback(
         base::Bind(&CloudDelegateImpl::OnManagerPropertyChanged,
                    weak_factory_.GetWeakPtr()));
-
-    // Read initial values.
-    OnManagerPropertyChanged(manager,
-                             org::chromium::Buffet::ManagerProxy::StatusName());
-    OnManagerPropertyChanged(
-        manager, org::chromium::Buffet::ManagerProxy::DeviceIdName());
+    // Read all initial values.
+    OnManagerPropertyChanged(manager, std::string{});
   }
 
-  void OnManagerPropertyChanged(org::chromium::Buffet::ManagerProxy* manager,
+  void OnManagerPropertyChanged(ManagerProxy* manager,
                                 const std::string& property_name) {
-    if (property_name == org::chromium::Buffet::ManagerProxy::StatusName()) {
-      const std::string& status = manager->status();
-      if (status == "unconfigured") {
-        state_ = ConnectionState{ConnectionState::kUnconfigured};
-      } else if (status == "connecting") {
-        // TODO(vitalybuka): Find conditions for kOffline.
-        state_ = ConnectionState{ConnectionState::kConnecting};
-      } else if (status == "connected") {
-        state_ = ConnectionState{ConnectionState::kOnline};
-      } else {
-        chromeos::ErrorPtr error;
-        chromeos::Error::AddToPrintf(
-            &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
-            "Unexpected buffet status: %s", status.c_str());
-        state_ = ConnectionState{std::move(error)};
-      }
-      on_changed_.Run();
-    } else if (property_name ==
-               org::chromium::Buffet::ManagerProxy::DeviceIdName()) {
-      cloud_id_ = manager->device_id();
-      on_changed_.Run();
+    if (property_name.empty() || property_name == ManagerProxy::StatusName()) {
+      OnStatusPropertyChanged(manager);
     }
+
+    if (property_name.empty() ||
+        property_name == ManagerProxy::DeviceIdName()) {
+      OnDeviceIdPropertyChanged(manager);
+    }
+
+    if (property_name.empty() ||
+        property_name == ManagerProxy::CommandDefsName()) {
+      OnCommandDefsPropertyChanged(manager);
+    }
+  }
+
+  void OnStatusPropertyChanged(ManagerProxy* manager) {
+    const std::string& status = manager->status();
+    if (status == "unconfigured") {
+      state_ = ConnectionState{ConnectionState::kUnconfigured};
+    } else if (status == "connecting") {
+      // TODO(vitalybuka): Find conditions for kOffline.
+      state_ = ConnectionState{ConnectionState::kConnecting};
+    } else if (status == "connected") {
+      state_ = ConnectionState{ConnectionState::kOnline};
+    } else {
+      chromeos::ErrorPtr error;
+      chromeos::Error::AddToPrintf(
+          &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
+          "Unexpected buffet status: %s", status.c_str());
+      state_ = ConnectionState{std::move(error)};
+    }
+    NotifyOnRegistrationChanged();
+  }
+
+  void OnDeviceIdPropertyChanged(ManagerProxy* manager) {
+    cloud_id_ = manager->device_id();
+    NotifyOnRegistrationChanged();
+  }
+
+  void OnCommandDefsPropertyChanged(ManagerProxy* manager) {
+    command_defs_.Clear();
+    std::unique_ptr<base::Value> value{
+        base::JSONReader::Read(manager->command_defs())};
+    base::DictionaryValue* defs{nullptr};
+    if (value && value->GetAsDictionary(&defs))
+      command_defs_.MergeDictionary(defs);
+    NotifyOnCommandDefsChanged();
   }
 
   void OnManagerRemoved(const dbus::ObjectPath& path) {
     state_ = ConnectionState(ConnectionState::kDisabled);
     cloud_id_.clear();
-    on_changed_.Run();
+    command_defs_.Clear();
+    NotifyOnRegistrationChanged();
+    NotifyOnCommandDefsChanged();
   }
 
   void RetryRegister(const std::string& ticket_id,
@@ -171,11 +200,9 @@ class CloudDelegateImpl : public CloudDelegate {
                    retries));
   }
 
-  org::chromium::Buffet::ObjectManagerProxy object_manager_;
+  ObjectManagerProxy object_manager_;
 
   DeviceDelegate* device_;
-
-  base::Closure on_changed_;
 
   // Primary state of GCD.
   ConnectionState state_{ConnectionState::kDisabled};
@@ -185,6 +212,9 @@ class CloudDelegateImpl : public CloudDelegate {
 
   // Cloud ID if device is registered.
   std::string cloud_id_;
+
+  // Current commands definitions.
+  base::DictionaryValue command_defs_;
 
   // |setup_weak_factory_| tracks the lifetime of callbacks used in connection
   // with a particular invocation of Setup().
@@ -204,10 +234,20 @@ CloudDelegate::~CloudDelegate() {
 // static
 std::unique_ptr<CloudDelegate> CloudDelegate::CreateDefault(
     const scoped_refptr<dbus::Bus>& bus,
-    DeviceDelegate* device,
-    const base::Closure& on_changed) {
-  return std::unique_ptr<CloudDelegateImpl>(
-      new CloudDelegateImpl(bus, device, on_changed));
+    DeviceDelegate* device) {
+  return std::unique_ptr<CloudDelegateImpl>{new CloudDelegateImpl{bus, device}};
+}
+
+void CloudDelegate::NotifyOnRegistrationChanged() {
+  FOR_EACH_OBSERVER(Observer, observer_list_, OnRegistrationChanged());
+}
+
+void CloudDelegate::NotifyOnCommandDefsChanged() {
+  FOR_EACH_OBSERVER(Observer, observer_list_, OnCommandDefsChanged());
+}
+
+void CloudDelegate::NotifyOnStateChanged() {
+  FOR_EACH_OBSERVER(Observer, observer_list_, OnStateChanged());
 }
 
 }  // namespace privetd

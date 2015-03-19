@@ -12,6 +12,9 @@
 
 #include <base/callback_forward.h>
 #include <base/macros.h>
+#include <base/scoped_observer.h>
+
+#include "privetd/cloud_delegate.h"
 
 namespace base {
 class Value;
@@ -20,7 +23,6 @@ class DictionaryValue;
 
 namespace privetd {
 
-class CloudDelegate;
 class DeviceDelegate;
 class IdentityDelegate;
 class SecurityDelegate;
@@ -30,7 +32,7 @@ enum class AuthScope;
 
 // Privet V3 HTTP/HTTPS requests handler.
 // API details at https://developers.google.com/cloud-devices/
-class PrivetHandler {
+class PrivetHandler : public CloudDelegate::Observer {
  public:
   // Callback to handle requests asynchronously.
   // |status| is HTTP status code.
@@ -45,6 +47,8 @@ class PrivetHandler {
                 WifiDelegate* wifi,
                 IdentityDelegate* identity);
   ~PrivetHandler();
+
+  void OnCommandDefsChanged() override;
 
   // Handles HTTP/HTTPS Privet request.
   // |api| is the path from the HTTP request, e.g /privet/info.
@@ -76,6 +80,8 @@ class PrivetHandler {
                         const RequestCallback& callback);
   void HandleSetupStatus(const base::DictionaryValue& input,
                          const RequestCallback& callback);
+  void HandleCommandDefs(const base::DictionaryValue& input,
+                         const RequestCallback& callback);
 
   std::unique_ptr<base::DictionaryValue> CreateEndpointsSection() const;
   std::unique_ptr<base::DictionaryValue> CreateInfoAuthSection() const;
@@ -89,6 +95,9 @@ class PrivetHandler {
   IdentityDelegate* identity_ = nullptr;
 
   std::map<std::string, std::pair<AuthScope, ApiHandler>> handlers_;
+
+  int command_defs_fingerprint_{0};
+  ScopedObserver<CloudDelegate, CloudDelegate::Observer> cloud_observer_{this};
 
   DISALLOW_COPY_AND_ASSIGN(PrivetHandler);
 };

@@ -11,6 +11,7 @@
 #include <base/command_line.h>
 #include <base/json/json_reader.h>
 #include <base/memory/weak_ptr.h>
+#include <base/scoped_observer.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <chromeos/daemons/dbus_daemon.h>
@@ -58,7 +59,8 @@ std::string GetFirstHeader(const Request& request, const std::string& name) {
 const char kServiceName[] = "org.chromium.privetd";
 const char kRootPath[] = "/org/chromium/privetd";
 
-class Daemon : public chromeos::DBusServiceDaemon {
+class Daemon : public chromeos::DBusServiceDaemon,
+               public CloudDelegate::Observer {
  public:
   Daemon(bool disable_security,
          bool enable_ping,
@@ -97,9 +99,8 @@ class Daemon : public chromeos::DBusServiceDaemon {
         &parser_, state_store_.get(),
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
     if (parser_.gcd_bootstrap_mode() != GcdBootstrapMode::kDisabled) {
-      cloud_ = CloudDelegate::CreateDefault(
-          bus_, device_.get(),
-          base::Bind(&Daemon::OnChanged, base::Unretained(this)));
+      cloud_ = CloudDelegate::CreateDefault(bus_, device_.get());
+      cloud_observer_.Add(cloud_.get());
     }
     security_.reset(new SecurityManager(parser_.pairing_modes(),
                                         parser_.embedded_code_path(),
@@ -170,6 +171,8 @@ class Daemon : public chromeos::DBusServiceDaemon {
     web_server_.Disconnect();
     DBusDaemon::OnShutdown(return_code);
   }
+
+  void OnRegistrationChanged() override { OnChanged(); };
 
  private:
   void PrivetRequestHandler(scoped_ptr<Request> request,
@@ -266,6 +269,7 @@ class Daemon : public chromeos::DBusServiceDaemon {
   std::unique_ptr<WifiBootstrapManager> wifi_bootstrap_manager_;
   std::unique_ptr<PeerdClient> peerd_client_;
   std::unique_ptr<PrivetHandler> privet_handler_;
+  ScopedObserver<CloudDelegate, CloudDelegate::Observer> cloud_observer_{this};
   std::unique_ptr<DBusManager> dbus_manager_;
   libwebserv::Server web_server_;
 

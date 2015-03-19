@@ -12,6 +12,7 @@
 #include <base/bind.h>
 #include <base/location.h>
 #include <base/stl_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <chromeos/http/http_request.h>
@@ -35,6 +36,7 @@ const char kPairingCancelApiPath[] = "/privet/v3/pairing/cancel";
 const char kAuthApiPath[] = "/privet/v3/auth";
 const char kSetupStartApiPath[] = "/privet/v3/setup/start";
 const char kSetupStatusApiPath[] = "/privet/v3/setup/status";
+const char kCommandDefApiPath[] = "/privet/v3/commandDefs";
 
 const char kInfoVersionKey[] = "version";
 const char kInfoVersionValue[] = "3.0";
@@ -99,6 +101,9 @@ const char kSetupStartSsidKey[] = "ssid";
 const char kSetupStartPassKey[] = "passphrase";
 const char kSetupStartTicketIdKey[] = "ticketId";
 const char kSetupStartUserKey[] = "user";
+
+const char kFingerprintKey[] = "fingerprint";
+const char kCommandsKey[] = "commands";
 
 const char kInvalidParamValueFormat[] = "Invalid parameter: '%s'='%s'";
 
@@ -265,6 +270,8 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
       security_(security),
       wifi_(wifi),
       identity_(identity) {
+  if (cloud_)
+    cloud_observer_.Add(cloud_);
   handlers_[kInfoApiPath] = std::make_pair(
       AuthScope::kGuest,
       base::Bind(&PrivetHandler::HandleInfo, base::Unretained(this)));
@@ -286,9 +293,16 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
   handlers_[kSetupStatusApiPath] = std::make_pair(
       AuthScope::kOwner,
       base::Bind(&PrivetHandler::HandleSetupStatus, base::Unretained(this)));
+  handlers_[kCommandDefApiPath] = std::make_pair(
+      AuthScope::kUser,
+      base::Bind(&PrivetHandler::HandleCommandDefs, base::Unretained(this)));
 }
 
 PrivetHandler::~PrivetHandler() {
+}
+
+void PrivetHandler::OnCommandDefsChanged() {
+  ++command_defs_fingerprint_;
 }
 
 void PrivetHandler::HandleRequest(const std::string& api,
@@ -608,6 +622,18 @@ void PrivetHandler::HandleSetupStatus(const base::DictionaryValue& input,
         wifi->SetString(kInfoWifiSsidKey, wifi_->GetCurrentlyConnectedSsid());
     }
   }
+
+  callback.Run(chromeos::http::status_code::Ok, output);
+}
+
+void PrivetHandler::HandleCommandDefs(const base::DictionaryValue& input,
+                                      const RequestCallback& callback) {
+  base::DictionaryValue output;
+  base::DictionaryValue* defs =
+      cloud_ ? cloud_->GetCommandDef().DeepCopy() : new base::DictionaryValue;
+  output.Set(kCommandsKey, defs);
+  output.SetString(kFingerprintKey,
+                   base::IntToString(command_defs_fingerprint_));
 
   callback.Run(chromeos::http::status_code::Ok, output);
 }
