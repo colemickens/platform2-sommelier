@@ -31,6 +31,7 @@ namespace attributes {
 const char kType[] = "type";
 const char kDisplayName[] = "displayName";
 const char kDefault[] = "default";
+const char kItems[] = "items";
 
 const char kNumeric_Min[] = "minimum";
 const char kNumeric_Max[] = "maximum";
@@ -40,7 +41,6 @@ const char kString_MaxLength[] = "maxLength";
 
 const char kOneOf_Enum[] = "enum";
 const char kOneOf_Metadata[] = "metadata";
-const char kOneOf_MetaSchema[] = "schema";
 
 const char kObject_Properties[] = "properties";
 

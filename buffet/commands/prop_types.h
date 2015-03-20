@@ -26,6 +26,7 @@ class DoublePropType;
 class StringPropType;
 class BooleanPropType;
 class ObjectPropType;
+class ArrayPropType;
 
 // PropType is a base class for all parameter type definition objects.
 // Property definitions of a particular type will derive from this class and
@@ -76,6 +77,8 @@ class PropType {
   virtual BooleanPropType const* GetBoolean() const { return nullptr; }
   virtual ObjectPropType* GetObject() { return nullptr; }
   virtual ObjectPropType const* GetObject() const { return nullptr; }
+  virtual ArrayPropType* GetArray() { return nullptr; }
+  virtual ArrayPropType const* GetArray() const { return nullptr; }
 
   // Makes a full copy of this type definition.
   virtual std::unique_ptr<PropType> Clone() const;
@@ -206,7 +209,7 @@ class PropTypeBase : public PropType {
 template<class Derived, class Value, typename T>
 class NumericPropTypeBase : public PropTypeBase<Derived, Value, T> {
  public:
-  using _Base = PropTypeBase<Derived, Value, T>;
+  using Base = PropTypeBase<Derived, Value, T>;
   bool ConstraintsFromJson(const base::DictionaryValue* value,
                            std::set<std::string>* processed_keys,
                            chromeos::ErrorPtr* error) override;
@@ -254,7 +257,7 @@ class DoublePropType
 class StringPropType
     : public PropTypeBase<StringPropType, StringValue, std::string> {
  public:
-  using _Base = PropTypeBase<StringPropType, StringValue, std::string>;
+  using Base = PropTypeBase<StringPropType, StringValue, std::string>;
   // Overrides from the PropType base class.
   StringPropType* GetString() override { return this; }
   StringPropType const* GetString() const override { return this; }
@@ -283,7 +286,7 @@ class BooleanPropType
 class ObjectPropType
     : public PropTypeBase<ObjectPropType, ObjectValue, native_types::Object> {
  public:
-  using _Base = PropTypeBase<ObjectPropType, ObjectValue, native_types::Object>;
+  using Base = PropTypeBase<ObjectPropType, ObjectValue, native_types::Object>;
   ObjectPropType();
 
   // Overrides from the ParamType base class.
@@ -310,6 +313,40 @@ class ObjectPropType
  private:
   InheritableAttribute<std::unique_ptr<const ObjectSchema>> object_schema_;
 };
+
+// Parameter definition of Array type.
+class ArrayPropType
+    : public PropTypeBase<ArrayPropType, ArrayValue, native_types::Array> {
+ public:
+  using Base = PropTypeBase<ArrayPropType, ArrayValue, native_types::Array>;
+  ArrayPropType();
+
+  // Overrides from the ParamType base class.
+  bool HasOverriddenAttributes() const override;
+
+  ArrayPropType* GetArray() override { return this; }
+  ArrayPropType const* GetArray() const override { return this; }
+
+  std::unique_ptr<PropType> Clone() const override;
+
+  std::unique_ptr<base::Value> ToJson(bool full_schema,
+                                      chromeos::ErrorPtr* error) const override;
+
+  bool ObjectSchemaFromJson(const base::DictionaryValue* value,
+                            const PropType* base_schema,
+                            std::set<std::string>* processed_keys,
+                            chromeos::ErrorPtr* error) override;
+
+  // Returns a type for Array elements.
+  inline const PropType* GetItemTypePtr() const {
+    return item_type_.value.get();
+  }
+  void SetItemType(std::unique_ptr<const PropType> item_type);
+
+ private:
+  InheritableAttribute<std::unique_ptr<const PropType>> item_type_;
+};
+
 }  // namespace buffet
 
 #endif  // BUFFET_COMMANDS_PROP_TYPES_H_

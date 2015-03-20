@@ -35,6 +35,7 @@ namespace attributes {
 extern const char kType[];
 extern const char kDisplayName[];
 extern const char kDefault[];
+extern const char kItems[];
 
 extern const char kNumeric_Min[];
 extern const char kNumeric_Max[];
@@ -44,7 +45,6 @@ extern const char kString_MaxLength[];
 
 extern const char kOneOf_Enum[];
 extern const char kOneOf_Metadata[];
-extern const char kOneOf_MetaSchema[];
 
 extern const char kObject_Properties[];
 

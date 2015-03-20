@@ -27,7 +27,8 @@ enum class ValueType {
   Double,
   String,
   Boolean,
-  Object
+  Object,
+  Array,
 };
 
 class PropValue;
@@ -36,6 +37,7 @@ class DoubleValue;
 class StringValue;
 class BooleanValue;
 class ObjectValue;
+class ArrayValue;
 
 class PropType;
 
@@ -55,6 +57,10 @@ inline ValueType GetValueType<bool>() { return ValueType::Boolean; }
 template<>
 inline ValueType GetValueType<native_types::Object>() {
   return ValueType::Object;
+}
+template<>
+inline ValueType GetValueType<native_types::Array>() {
+  return ValueType::Array;
 }
 
 // The base class for property values.
@@ -91,6 +97,8 @@ class PropValue {
   virtual BooleanValue const* GetBoolean() const { return nullptr; }
   virtual ObjectValue* GetObject() { return nullptr; }
   virtual ObjectValue const* GetObject() const { return nullptr; }
+  virtual ArrayValue* GetArray() { return nullptr; }
+  virtual ArrayValue const* GetArray() const { return nullptr; }
 
   // Makes a full copy of this value class.
   virtual std::unique_ptr<PropValue> Clone() const = 0;
@@ -118,14 +126,13 @@ class PropValue {
   std::unique_ptr<const PropType> type_;
 };
 
-// A helper template base class for implementing simple (non-Object) value
-// classes.
+// A helper template base class for implementing value classes.
 template<typename Derived, typename T>
 class TypedValueBase : public PropValue {
  public:
-  // To help refer to this base class from derived classes, define _Base to
+  // To help refer to this base class from derived classes, define Base to
   // be this class.
-  using _Base = TypedValueBase<Derived, T>;
+  using Base = TypedValueBase<Derived, T>;
   // Expose the non-default constructor of the base class.
   using PropValue::PropValue;
 
@@ -150,7 +157,7 @@ class TypedValueBase : public PropValue {
   bool IsEqual(const PropValue* value) const override {
     if (GetType() != value->GetType())
       return false;
-    const _Base* value_base = static_cast<const _Base*>(value);
+    const Base* value_base = static_cast<const Base*>(value);
     return CompareValue(GetValue(), value_base->GetValue());
   }
 
@@ -166,7 +173,7 @@ class TypedValueBase : public PropValue {
 // Value of type Integer.
 class IntValue final : public TypedValueBase<IntValue, int> {
  public:
-  using _Base::_Base;  // Expose the custom constructor of the base class.
+  using Base::Base;  // Expose the custom constructor of the base class.
   IntValue* GetInt() override { return this; }
   IntValue const* GetInt() const override { return this; }
 };
@@ -174,7 +181,7 @@ class IntValue final : public TypedValueBase<IntValue, int> {
 // Value of type Number.
 class DoubleValue final : public TypedValueBase<DoubleValue, double> {
  public:
-  using _Base::_Base;  // Expose the custom constructor of the base class.
+  using Base::Base;  // Expose the custom constructor of the base class.
   DoubleValue* GetDouble() override { return this; }
   DoubleValue const* GetDouble() const override { return this; }
 };
@@ -182,7 +189,7 @@ class DoubleValue final : public TypedValueBase<DoubleValue, double> {
 // Value of type String.
 class StringValue final : public TypedValueBase<StringValue, std::string> {
  public:
-  using _Base::_Base;  // Expose the custom constructor of the base class.
+  using Base::Base;  // Expose the custom constructor of the base class.
   StringValue* GetString() override { return this; }
   StringValue const* GetString() const override { return this; }
 };
@@ -190,7 +197,7 @@ class StringValue final : public TypedValueBase<StringValue, std::string> {
 // Value of type Boolean.
 class BooleanValue final : public TypedValueBase<BooleanValue, bool> {
  public:
-  using _Base::_Base;  // Expose the custom constructor of the base class.
+  using Base::Base;  // Expose the custom constructor of the base class.
   BooleanValue* GetBoolean() override { return this; }
   BooleanValue const* GetBoolean() const override { return this; }
 };
@@ -199,10 +206,20 @@ class BooleanValue final : public TypedValueBase<BooleanValue, bool> {
 class ObjectValue final
     : public TypedValueBase<ObjectValue, native_types::Object> {
  public:
-  using _Base::_Base;  // Expose the custom constructor of the base class.
+  using Base::Base;  // Expose the custom constructor of the base class.
   ObjectValue* GetObject() override { return this; }
   ObjectValue const* GetObject() const override { return this; }
 };
+
+// Value of type Array.
+class ArrayValue final
+    : public TypedValueBase<ArrayValue, native_types::Array> {
+ public:
+  using Base::Base;  // Expose the custom constructor of the base class.
+  ArrayValue* GetArray() override { return this; }
+  ArrayValue const* GetArray() const override { return this; }
+};
+
 }  // namespace buffet
 
 #endif  // BUFFET_COMMANDS_PROP_VALUES_H_

@@ -160,9 +160,9 @@ ConstraintStringLengthMax::CloneAsInherited() const {
 }
 
 // ConstraintOneOf --------------------------------------------------
-ConstraintOneOf::ConstraintOneOf(InheritableAttribute<ChoiceList> set)
+ConstraintOneOf::ConstraintOneOf(InheritableAttribute<native_types::Array> set)
     : set_(std::move(set)) {}
-ConstraintOneOf::ConstraintOneOf(ChoiceList set)
+ConstraintOneOf::ConstraintOneOf(native_types::Array set)
     : set_(std::move(set)) {}
 
 bool ConstraintOneOf::Validate(const PropValue& value,
@@ -180,7 +180,7 @@ bool ConstraintOneOf::Validate(const PropValue& value,
 }
 
 std::unique_ptr<Constraint> ConstraintOneOf::Clone() const {
-  InheritableAttribute<ChoiceList> attr;
+  InheritableAttribute<native_types::Array> attr;
   attr.is_inherited = set_.is_inherited;
   attr.value.reserve(set_.value.size());
   for (const auto& prop_value : set_.value) {
@@ -190,7 +190,7 @@ std::unique_ptr<Constraint> ConstraintOneOf::Clone() const {
 }
 
 std::unique_ptr<Constraint> ConstraintOneOf::CloneAsInherited() const {
-  ChoiceList cloned;
+  native_types::Array cloned;
   cloned.reserve(set_.value.size());
   for (const auto& prop_value : set_.value) {
     cloned.push_back(prop_value->Clone());
@@ -200,14 +200,7 @@ std::unique_ptr<Constraint> ConstraintOneOf::CloneAsInherited() const {
 
 std::unique_ptr<base::Value> ConstraintOneOf::ToJson(
     chromeos::ErrorPtr* error) const {
-  std::unique_ptr<base::ListValue> list(new base::ListValue);
-  for (const auto& prop_value : set_.value) {
-    auto json = prop_value->ToJson(error);
-    if (!json)
-      return std::unique_ptr<base::Value>();
-    list->Append(json.release());
-  }
-  return std::move(list);
+  return TypedValueToJson(set_.value, error);
 }
 
 const char* ConstraintOneOf::GetDictKey() const {

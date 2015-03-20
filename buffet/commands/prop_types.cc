@@ -231,6 +231,7 @@ const PropType::TypeMap& PropType::GetTypeMap() {
     {ValueType::String,      "string"},
     {ValueType::Boolean,     "boolean"},
     {ValueType::Object,      "object"},
+    {ValueType::Array,       "array"},
   };
   return map;
 }
@@ -272,6 +273,9 @@ std::unique_ptr<PropType> PropType::Create(ValueType type) {
   case buffet::ValueType::Object:
     prop = new ObjectPropType;
     break;
+  case buffet::ValueType::Array:
+    prop = new ArrayPropType;
+    break;
   }
   return std::unique_ptr<PropType>(prop);
 }
@@ -290,24 +294,15 @@ static std::unique_ptr<Constraint> LoadOneOfConstraint(
     const PropType* prop_type,
     chromeos::ErrorPtr* error) {
   std::unique_ptr<Constraint> constraint;
-  const base::ListValue* list = nullptr;
-  if (!value->GetListWithoutPathExpansion(commands::attributes::kOneOf_Enum,
-                                          &list)) {
-    chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
-                           errors::commands::kTypeMismatch,
-                           "Expecting an array");
+  const base::Value* list = nullptr;  // Owned by |value|
+  CHECK(value->Get(commands::attributes::kOneOf_Enum, &list))
+      << "'enum' property missing in JSON dictionary";
+  native_types::Array choice_list;
+  ArrayPropType array_type;
+  array_type.SetItemType(prop_type->Clone());
+  if (!TypedValueFromJson(list, &array_type, &choice_list, error))
     return constraint;
-  }
-  ConstraintOneOf::ChoiceList choice_list;
-  choice_list.reserve(list->GetSize());
-  for (const base::Value* item : *list) {
-    std::unique_ptr<PropValue> prop_value = prop_type->CreateValue();
-    if (!prop_value->FromJson(item, error))
-      return constraint;
-    choice_list.push_back(std::move(prop_value));
-  }
-  InheritableAttribute<ConstraintOneOf::ChoiceList> val(std::move(choice_list),
-                                                        false);
+  InheritableAttribute<native_types::Array> val(std::move(choice_list), false);
   constraint.reset(new ConstraintOneOf{std::move(val)});
   return constraint;
 }
@@ -362,7 +357,7 @@ bool NumericPropTypeBase<Derived, Value, T>::ConstraintsFromJson(
     const base::DictionaryValue* value,
     std::set<std::string>* processed_keys,
     chromeos::ErrorPtr* error) {
-  if (!_Base::ConstraintsFromJson(value, processed_keys, error))
+  if (!Base::ConstraintsFromJson(value, processed_keys, error))
     return false;
 
   if (processed_keys->find(commands::attributes::kOneOf_Enum) ==
@@ -398,7 +393,7 @@ bool StringPropType::ConstraintsFromJson(
     const base::DictionaryValue* value,
     std::set<std::string>* processed_keys,
     chromeos::ErrorPtr* error) {
-  if (!_Base::ConstraintsFromJson(value, processed_keys, error))
+  if (!Base::ConstraintsFromJson(value, processed_keys, error))
     return false;
 
   if (processed_keys->find(commands::attributes::kOneOf_Enum) ==
@@ -459,7 +454,7 @@ bool ObjectPropType::HasOverriddenAttributes() const {
 }
 
 std::unique_ptr<PropType> ObjectPropType::Clone() const {
-  auto cloned = _Base::Clone();
+  auto cloned = Base::Clone();
 
   cloned->GetObject()->object_schema_.is_inherited =
       object_schema_.is_inherited;
@@ -490,7 +485,7 @@ bool ObjectPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
                                           const PropType* base_schema,
                                           std::set<std::string>* processed_keys,
                                           chromeos::ErrorPtr* error) {
-  if (!_Base::ObjectSchemaFromJson(value, base_schema, processed_keys, error))
+  if (!Base::ObjectSchemaFromJson(value, base_schema, processed_keys, error))
     return false;
 
   using commands::attributes::kObject_Properties;
@@ -530,6 +525,89 @@ void ObjectPropType::SetObjectSchema(
     std::unique_ptr<const ObjectSchema> schema) {
   object_schema_.value = std::move(schema);
   object_schema_.is_inherited = false;
+}
+
+// ArrayPropType -------------------------------------------------------------
+
+ArrayPropType::ArrayPropType() {}
+
+bool ArrayPropType::HasOverriddenAttributes() const {
+  return PropType::HasOverriddenAttributes() ||
+         !item_type_.is_inherited;
+}
+
+std::unique_ptr<PropType> ArrayPropType::Clone() const {
+  auto cloned = Base::Clone();
+
+  cloned->GetArray()->item_type_.is_inherited = item_type_.is_inherited;
+  cloned->GetArray()->item_type_.value = item_type_.value->Clone();
+  return cloned;
+}
+
+std::unique_ptr<base::Value> ArrayPropType::ToJson(
+    bool full_schema, chromeos::ErrorPtr* error) const {
+  std::unique_ptr<base::Value> value = PropType::ToJson(full_schema, error);
+  if (value) {
+    base::DictionaryValue* dict = nullptr;
+    CHECK(value->GetAsDictionary(&dict)) << "Expecting a JSON object";
+    if (!item_type_.is_inherited || full_schema) {
+      auto type = item_type_.value->ToJson(full_schema, error);
+      if (!type) {
+        value.reset();
+        return value;
+      }
+      dict->SetWithoutPathExpansion(commands::attributes::kItems,
+                                    type.release());
+    }
+  }
+  return value;
+}
+
+bool ArrayPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
+                                         const PropType* base_schema,
+                                         std::set<std::string>* processed_keys,
+                                         chromeos::ErrorPtr* error) {
+  if (!Base::ObjectSchemaFromJson(value, base_schema, processed_keys, error))
+    return false;
+
+  using commands::attributes::kItems;
+
+  const PropType* base_type = nullptr;
+  if (base_schema)
+    base_type = base_schema->GetArray()->GetItemTypePtr();
+
+  const base::Value* type_value = nullptr;
+  if (value->GetWithoutPathExpansion(kItems, &type_value)) {
+    processed_keys->insert(kItems);
+    auto item_type = ObjectSchema::PropFromJson(*type_value, base_type, error);
+    if (!item_type)
+      return false;
+    if (item_type->GetType() == ValueType::Array) {
+      chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
+                             errors::commands::kInvalidObjectSchema,
+                             "Arrays of arrays are not supported");
+      return false;
+    }
+    SetItemType(std::move(item_type));
+  } else if (!item_type_.value) {
+    if (base_type) {
+      item_type_.value = base_type->Clone();
+      item_type_.is_inherited = true;
+    } else {
+      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                                   errors::commands::kInvalidObjectSchema,
+                                   "Array type definition must include the "
+                                   "array item type ('%s' field not found)",
+                                   kItems);
+      return false;
+    }
+  }
+  return true;
+}
+
+void ArrayPropType::SetItemType(std::unique_ptr<const PropType> item_type) {
+  item_type_.value = std::move(item_type);
+  item_type_.is_inherited = false;
 }
 
 }  // namespace buffet

@@ -67,6 +67,16 @@ TEST(CommandSchemaUtils, TypedValueToJson_Object) {
             ValueToString(buffet::TypedValueToJson(object, nullptr).get()));
 }
 
+TEST(CommandSchemaUtils, TypedValueToJson_Array) {
+  buffet::IntPropType int_type;
+  buffet::native_types::Array arr;
+
+  arr.push_back(int_type.CreateValue(640, nullptr));
+  arr.push_back(int_type.CreateValue(480, nullptr));
+  EXPECT_EQ("[640,480]",
+            ValueToString(buffet::TypedValueToJson(arr, nullptr).get()));
+}
+
 TEST(CommandSchemaUtils, TypedValueFromJson_Bool) {
   bool value;
 
@@ -184,6 +194,27 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Object) {
   EXPECT_FALSE(buffet::TypedValueFromJson(CreateValue("'abc'").get(), nullptr,
                                           &value, &error));
   EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
+  error.reset();
+}
+
+TEST(CommandSchemaUtils, TypedValueFromJson_Array) {
+  buffet::native_types::Array arr;
+  buffet::StringPropType str_type;
+  str_type.AddLengthConstraint(3, 100);
+  buffet::ArrayPropType type;
+  type.SetItemType(str_type.Clone());
+
+  EXPECT_TRUE(buffet::TypedValueFromJson(
+      CreateValue("['foo', 'bar']").get(), &type, &arr, nullptr));
+  buffet::native_types::Array arr2;
+  arr2.push_back(str_type.CreateValue(std::string{"foo"}, nullptr));
+  arr2.push_back(str_type.CreateValue(std::string{"bar"}, nullptr));
+  EXPECT_EQ(arr2, arr);
+
+  chromeos::ErrorPtr error;
+  EXPECT_FALSE(buffet::TypedValueFromJson(
+      CreateValue("['baz', 'ab']").get(), &type, &arr, &error));
+  EXPECT_EQ(buffet::errors::commands::kOutOfRange, error->GetCode());
   error.reset();
 }
 

@@ -81,6 +81,18 @@ std::unique_ptr<base::Value> TypedValueToJson(const native_types::Object& value,
   return std::move(dict);
 }
 
+std::unique_ptr<base::Value> TypedValueToJson(const native_types::Array& value,
+                                              chromeos::ErrorPtr* error) {
+  std::unique_ptr<base::ListValue> list(new base::ListValue);
+  for (const auto& item : value) {
+    auto json = item->ToJson(error);
+    if (!json)
+      return std::unique_ptr<base::Value>();
+    list->Append(json.release());
+  }
+  return std::move(list);
+}
+
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         bool* value_out,
@@ -133,7 +145,8 @@ bool TypedValueFromJson(const base::Value* value_in,
       const base::Value* param_value = nullptr;
       CHECK(dict->GetWithoutPathExpansion(pair.first, &param_value))
           << "Unable to get parameter";
-      if (!value->FromJson(param_value, error)) {
+      if (!value->FromJson(param_value, error) ||
+          !pair.second->ValidateValue(value->GetValueAsAny(), error)) {
         chromeos::Error::AddToPrintf(error, FROM_HERE,
                                      errors::commands::kDomain,
                                      errors::commands::kInvalidPropValue,
@@ -181,6 +194,31 @@ bool TypedValueFromJson(const base::Value* value_in,
   return true;
 }
 
+bool TypedValueFromJson(const base::Value* value_in,
+                        const PropType* type,
+                        native_types::Array* value_out,
+                        chromeos::ErrorPtr* error) {
+  const base::ListValue* list = nullptr;
+  if (!value_in->GetAsList(&list))
+    return ReportUnexpectedJson(value_in, value_out, error);
+
+  CHECK(type) << "Array type definition must be provided";
+  CHECK(ValueType::Array == type->GetType()) << "Type must be Array";
+  const PropType* item_type = type->GetArray()->GetItemTypePtr();
+  CHECK(item_type) << "Incomplete array type definition";
+
+  value_out->reserve(list->GetSize());
+  for (const base::Value* item : *list) {
+    std::unique_ptr<PropValue> prop_value = item_type->CreateValue();
+    if (!prop_value->FromJson(item, error) ||
+        !item_type->ValidateValue(prop_value->GetValueAsAny(), error)) {
+      return false;
+    }
+    value_out->push_back(std::move(prop_value));
+  }
+  return true;
+}
+
 // Compares two sets of key-value pairs from two Objects.
 static bool obj_cmp(const native_types::Object::value_type& v1,
                     const native_types::Object::value_type& v2) {
@@ -196,8 +234,29 @@ bool operator==(const native_types::Object& obj1,
   return pair == std::make_pair(obj1.end(), obj2.end());
 }
 
+bool operator==(const native_types::Array& arr1,
+                const native_types::Array& arr2) {
+  if (arr1.size() != arr2.size())
+    return false;
+
+  using Type = const native_types::Array::value_type;
+  // Compare two array items.
+  auto arr_cmp = [](const Type& v1, const Type& v2) {
+    return v1->IsEqual(v2.get());
+  };
+  auto pair = std::mismatch(arr1.begin(), arr1.end(), arr2.begin(), arr_cmp);
+  return pair == std::make_pair(arr1.end(), arr2.end());
+}
+
 std::string ToString(const native_types::Object& obj) {
   auto val = TypedValueToJson(obj, nullptr);
+  std::string str;
+  base::JSONWriter::Write(val.get(), &str);
+  return str;
+}
+
+std::string ToString(const native_types::Array& arr) {
+  auto val = TypedValueToJson(arr, nullptr);
   std::string str;
   base::JSONWriter::Write(val.get(), &str);
   return str;

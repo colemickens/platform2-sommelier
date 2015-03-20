@@ -27,9 +27,15 @@ class ObjectValue;
 namespace native_types {
 // C++ representation of object values.
 using Object = std::map<std::string, std::shared_ptr<const PropValue>>;
+// C++ representation of array of values.
+using Array = std::vector<std::shared_ptr<const PropValue>>;
 }  // namespace native_types
+
 // Converts an object to string.
 std::string ToString(const native_types::Object& obj);
+
+// Converts an array to string.
+std::string ToString(const native_types::Array& arr);
 
 // InheritableAttribute class is used for specifying various command parameter
 // attributes that can be inherited from a base (parent) schema.
@@ -60,6 +66,8 @@ std::unique_ptr<base::Value> TypedValueToJson(double value,
 std::unique_ptr<base::Value> TypedValueToJson(const std::string& value,
                                               chromeos::ErrorPtr* error);
 std::unique_ptr<base::Value> TypedValueToJson(const native_types::Object& value,
+                                              chromeos::ErrorPtr* error);
+std::unique_ptr<base::Value> TypedValueToJson(const native_types::Array& value,
                                               chromeos::ErrorPtr* error);
 template<typename T>
 std::unique_ptr<base::Value> TypedValueToJson(const std::vector<T>& values,
@@ -97,9 +105,15 @@ bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         native_types::Object* value_out,
                         chromeos::ErrorPtr* error);
+bool TypedValueFromJson(const base::Value* value_in,
+                        const PropType* type,
+                        native_types::Array* value_out,
+                        chromeos::ErrorPtr* error);
 
 bool operator==(const native_types::Object& obj1,
                 const native_types::Object& obj2);
+bool operator==(const native_types::Array& arr1,
+                const native_types::Array& arr2);
 
 // CompareValue is a helper function to help with implementing EqualsTo operator
 // for various data types. For most scalar types it is using operator==(),

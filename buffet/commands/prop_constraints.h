@@ -297,10 +297,8 @@ class ConstraintStringLengthMax : public ConstraintStringLength {
 // Implementation of OneOf constraint for different data types.
 class ConstraintOneOf : public Constraint {
  public:
-  using ChoiceList = std::vector<std::unique_ptr<const PropValue>>;
-
-  explicit ConstraintOneOf(InheritableAttribute<ChoiceList> set);
-  explicit ConstraintOneOf(ChoiceList set);
+  explicit ConstraintOneOf(InheritableAttribute<native_types::Array> set);
+  explicit ConstraintOneOf(native_types::Array set);
 
   // Implementation of Constraint::GetType().
   ConstraintType GetType() const override {
@@ -331,7 +329,7 @@ class ConstraintOneOf : public Constraint {
   // Stores the list of acceptable values for the parameter.
   // |set_.is_inherited| indicates whether the constraint is inherited
   // from base schema or overridden.
-  InheritableAttribute<ChoiceList> set_;
+  InheritableAttribute<native_types::Array> set_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ConstraintOneOf);

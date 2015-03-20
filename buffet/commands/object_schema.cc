@@ -23,10 +23,24 @@ namespace {
 // Generates an error if the string identifies an unknown type.
 std::unique_ptr<PropType> CreatePropType(const std::string& type_name,
                                          chromeos::ErrorPtr* error) {
+  std::string primary_type;
+  std::string array_type;
+  chromeos::string_utils::SplitAtFirst(type_name, ".", &primary_type,
+                                       &array_type, false);
   std::unique_ptr<PropType> prop;
   ValueType type;
-  if (PropType::GetTypeFromTypeString(type_name, &type))
+  if (PropType::GetTypeFromTypeString(primary_type, &type)) {
     prop = PropType::Create(type);
+    if (prop && type == ValueType::Array && !array_type.empty()) {
+      auto items_type = CreatePropType(array_type, error);
+      if (items_type) {
+        prop->GetArray()->SetItemType(std::move(items_type));
+      } else {
+        prop.reset();
+        return prop;
+      }
+    }
+  }
   if (!prop) {
     chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kUnknownType,
@@ -63,7 +77,8 @@ std::unique_ptr<PropType> PropFromJsonString(
 // to deduce the PropType from. Returns the string name of the type detected
 // or empty string is type detection failed.
 std::string DetectArrayType(const base::ListValue* list,
-                            const PropType* base_schema) {
+                            const PropType* base_schema,
+                            bool allow_arrays) {
   std::string type_name;
   if (base_schema) {
     type_name = base_schema->GetTypeAsString();
@@ -86,6 +101,23 @@ std::string DetectArrayType(const base::ListValue* list,
       case base::Value::TYPE_DICTIONARY:
         type_name = PropType::GetTypeStringFromType(ValueType::Object);
         break;
+      case base::Value::TYPE_LIST: {
+        if (allow_arrays) {
+          type_name = PropType::GetTypeStringFromType(ValueType::Array);
+          const base::ListValue* first_element_list = nullptr;
+          if (first_element->GetAsList(&first_element_list)) {
+            // We do not allow arrays of arrays.
+            auto child_type = DetectArrayType(first_element_list, nullptr,
+                                              false);
+            if (child_type.empty()) {
+              type_name.clear();
+            } else {
+              type_name += '.' + child_type;
+            }
+          }
+        }
+        break;
+      }
       default:
         // The rest are unsupported.
         break;
@@ -105,7 +137,7 @@ std::unique_ptr<PropType> PropFromJsonArray(
   std::unique_ptr<PropType> prop;
   const base::ListValue* list = nullptr;
   CHECK(value.GetAsList(&list)) << "Unable to get array value";
-  std::string type_name = DetectArrayType(list, base_schema);
+  std::string type_name = DetectArrayType(list, base_schema, true);
   if (type_name.empty()) {
     ErrorInvalidTypeInfo(error);
     return prop;
@@ -165,11 +197,15 @@ std::string DetectObjectType(const base::DictionaryValue* dict,
   if (dict->HasKey(commands::attributes::kObject_Properties))
     return PropType::GetTypeStringFromType(ValueType::Object);
 
+  // If we have "items", it's an array.
+  if (dict->HasKey(commands::attributes::kItems))
+    return PropType::GetTypeStringFromType(ValueType::Array);
+
   // If we have "enum", it's an array. Detect type from array elements.
   const base::ListValue* list = nullptr;
   if (dict->GetListWithoutPathExpansion(
       commands::attributes::kOneOf_Enum, &list))
-    return DetectArrayType(list, base_schema);
+    return DetectArrayType(list, base_schema, true);
 
   // If we have "default", try to use it for type detection.
   if (dict->Get(commands::attributes::kDefault, &value)) {
@@ -181,9 +217,17 @@ std::string DetectObjectType(const base::DictionaryValue* dict,
       return PropType::GetTypeStringFromType(ValueType::Boolean);
     if (value->IsType(base::Value::TYPE_STRING))
       return PropType::GetTypeStringFromType(ValueType::String);
+    if (value->IsType(base::Value::TYPE_LIST)) {
+      CHECK(value->GetAsList(&list)) << "List value expected";
+      std::string child_type = DetectArrayType(list, base_schema, false);
+      if (!child_type.empty()) {
+        return PropType::GetTypeStringFromType(ValueType::Array) + '.' +
+               child_type;
+      }
+    }
   }
 
-  return std::string();
+  return std::string{};
 }
 
 // Helper function for PropFromJson to handle the case of parameter being
