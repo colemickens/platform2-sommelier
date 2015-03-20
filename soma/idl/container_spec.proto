@@ -7,10 +7,7 @@ option optimize_for = LITE_RUNTIME;
 package soma;
 
 message ContainerSpec {
-  optional string service_bundle_path = 1;
-  optional uint32 uid = 2;
-  optional uint32 gid = 3;
-
+  // ------------- Submessage types ----------------------------------------- //
   // NB: When adding a value here, add it to namespace.h as well.
   enum Namespace {
     NEWIPC = 0;
@@ -21,23 +18,48 @@ message ContainerSpec {
     NEWUTS = 5;
   }
 
-  repeated Namespace namespaces = 4;  // Namespaces to unshare for the service.
-
   message PortSpec {
     optional bool allow_all = 1 [default = false];
     repeated uint32 ports = 2;
   }
-  optional PortSpec listen_ports = 5;  // Ports allowed for listening.
 
   message DevicePathFilter {
     optional string filter = 1;
   }
 
   message DeviceNodeFilter {
-    optional int32 major = 1;
-    optional int32 minor = 2;
+    optional int32 major = 1;  // May be set to -1 to indicate wildcard.
+    optional int32 minor = 2;  // May be set to -1 to indicate wildcard.
   }
 
-  repeated DevicePathFilter device_path_filters = 6;
-  repeated DeviceNodeFilter device_node_filters = 7;
+  // ------------- (Mostly) Required fields --------------------------------- //
+  // Absolute path to the service's service bundle filesystem overlay.
+  optional string service_bundle_path = 1;
+
+  // UID as which to run the service.
+  optional uint32 uid = 2;
+
+  // GID as which to run the service.
+  optional uint32 gid = 3;
+
+  // Command line to run: /path/to/executable [ARGS...]
+  repeated string command_line = 4;
+
+  // ------------- Optional fields ------------------------------------------ //
+  optional string working_directory = 5;
+
+  // Namespaces to unshare for the service.
+  repeated Namespace namespaces = 6;
+
+  // TCP ports allowed for listening.
+  optional PortSpec tcp_listen_ports = 7;
+
+  // UDP ports allowed for listening.
+  optional PortSpec udp_listen_ports = 8;
+
+  // Path-based filters indicating which device nodes should be visible.
+  repeated DevicePathFilter device_path_filters = 9;
+
+  // mknod-number-based filters indicating which device nodes should be visible.
+  repeated DeviceNodeFilter device_node_filters = 10;
 }

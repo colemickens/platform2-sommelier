@@ -6,6 +6,7 @@
 
 #include <limits>
 #include <set>
+#include <string>
 
 #include <base/logging.h>
 #include <base/values.h>
@@ -13,7 +14,11 @@
 namespace soma {
 namespace parser {
 namespace port {
-const char kListKey[] = "listen ports";
+const char kListKey[] = "ports";
+const char kPortKey[] = "port";
+const char kProtocolKey[] = "protocol";
+const char kTcpProtocol[] = "tcp";
+const char kUdpProtocol[] = "udp";
 const Number kWildcard = -1;
 
 namespace {
@@ -21,24 +26,46 @@ bool IsValid(Number port) {
   return port == kWildcard ||
       (port >= 0 && port <= std::numeric_limits<uint16_t>::max());
 }
+
+
 }  // namespace
 
-std::set<Number> ParseList(base::ListValue* listen_ports) {
-  std::set<Number> to_return;
-  for (base::Value* port_value : *listen_ports) {
+void ParseList(const base::ListValue* listen_ports,
+               std::set<Number>* tcp_ports, std::set<Number>* udp_ports) {
+  DCHECK(tcp_ports);
+  DCHECK(udp_ports);
+  for (const base::Value* port_value : *listen_ports) {
+    const base::DictionaryValue* port_spec = nullptr;
+    if (!port_value->GetAsDictionary(&port_spec)) {
+      LOG(ERROR) << "Ports must be specified in a dictionary.";
+      continue;
+    }
+    std::string protocol;
+    if (!port_spec->GetString(kProtocolKey, &protocol)) {
+      LOG(ERROR) << "Port protocol must be a string.";
+      continue;
+    }
+    std::set<Number>* to_update = nullptr;
+    if (protocol == kTcpProtocol) {
+      to_update = tcp_ports;
+    } else if (protocol == kUdpProtocol) {
+      to_update = udp_ports;
+    } else {
+      LOG(ERROR) << "Port protocol must be 'tcp' or 'udp'.";
+      continue;
+    }
     Number port = 0;
-    if (!port_value->GetAsInteger(&port) || !IsValid(port)) {
+    if (!port_spec->GetInteger(kPortKey, &port) || !IsValid(port)) {
       LOG(ERROR) << "Listen ports must be uint16 or -1.";
       continue;
     }
     // If kWildcard gets added, anything else is redundant.
     if (port == kWildcard) {
-      to_return = {kWildcard};
+      *to_update = {kWildcard};
       break;
     }
-    to_return.insert(port);
+    to_update->insert(port);
   }
-  return to_return;
 }
 }  // namespace port
 }  // namespace parser

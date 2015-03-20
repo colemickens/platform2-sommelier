@@ -37,7 +37,7 @@ DevicePathFilterSet::DevicePathFilterSet()
 }
 
 // static
-DevicePathFilterSet DevicePathFilterSet::Parse(base::ListValue* filters) {
+DevicePathFilterSet DevicePathFilterSet::Parse(const base::ListValue* filters) {
   DevicePathFilterSet to_return;
   std::string temp_filter_string;
   for (base::Value* filter : *filters) {
@@ -72,7 +72,8 @@ DeviceNodeFilterSet::DeviceNodeFilterSet()
 
 namespace {
 // Helper function that parses a list of integer pairs.
-std::vector<std::pair<int, int>> ParseIntegerPairs(base::ListValue* filters) {
+std::vector<std::pair<int, int>> ParseIntegerPairs(
+    const base::ListValue* filters) {
   std::vector<std::pair<int, int>> to_return;
   for (base::Value* filter : *filters) {
     base::ListValue* nested = nullptr;
@@ -92,7 +93,7 @@ std::vector<std::pair<int, int>> ParseIntegerPairs(base::ListValue* filters) {
 }  // anonymous namespace
 
 // static
-DeviceNodeFilterSet DeviceNodeFilterSet::Parse(base::ListValue* filters) {
+DeviceNodeFilterSet DeviceNodeFilterSet::Parse(const base::ListValue* filters) {
   DeviceNodeFilterSet to_return;
   for (const auto& num_pair : ParseIntegerPairs(filters)) {
     to_return.insert(DeviceNodeFilter(num_pair.first, num_pair.second));

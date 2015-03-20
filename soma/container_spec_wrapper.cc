@@ -25,6 +25,29 @@ using google::protobuf::RepeatedField;
 using google::protobuf::RepeatedPtrField;
 
 namespace soma {
+namespace {
+void SetListenPorts(ContainerSpec::PortSpec* port_spec,
+                    const std::set<parser::port::Number>& ports) {
+  // If the wildcard port is in the set, just allow all and bail early.
+  if (ports.find(parser::port::kWildcard) != ports.end()) {
+    port_spec->set_allow_all(true);
+    return;
+  }
+  for (const parser::port::Number& port : ports) {
+    // The parsing code should have ensured this, so just DCHECK()
+    DCHECK(port <= std::numeric_limits<uint16_t>::max());
+    port_spec->add_ports(static_cast<uint16_t>(port));
+  }
+}
+
+bool ListenPortIsAllowed(const ContainerSpec::PortSpec& port_spec,
+                         parser::port::Number port) {
+  if (port_spec.allow_all())
+    return true;
+  const RepeatedField<uint32>& ports = port_spec.ports();
+  return std::find(ports.begin(), ports.end(), port) != ports.end();
+}
+}  // namespace
 
 ContainerSpecWrapper::ContainerSpecWrapper(
     const base::FilePath& service_bundle_path,
@@ -44,20 +67,16 @@ void ContainerSpecWrapper::SetNamespaces(
     internal_.add_namespaces(ns);
 }
 
-void ContainerSpecWrapper::SetListenPorts(
-    const std::set<parser::port::Number> ports) {
-  internal_.clear_listen_ports();
-  // If the wildcard port is in the set, just allow all and bail early.
-  if (ports.find(parser::port::kWildcard) != ports.end()) {
-    internal_.mutable_listen_ports()->set_allow_all(true);
-    return;
-  }
-  ContainerSpec::PortSpec* port_spec = internal_.mutable_listen_ports();
-  for (const parser::port::Number& port : ports) {
-    // The parsing code should have ensured this, so just DCHECK()
-    DCHECK(port <= std::numeric_limits<uint16_t>::max());
-    port_spec->add_ports(static_cast<uint16_t>(port));
-  }
+void ContainerSpecWrapper::SetTcpListenPorts(
+    const std::set<parser::port::Number>& ports) {
+  internal_.clear_tcp_listen_ports();
+  SetListenPorts(internal_.mutable_tcp_listen_ports(), ports);
+}
+
+void ContainerSpecWrapper::SetUdpListenPorts(
+    const std::set<parser::port::Number>& ports) {
+  internal_.clear_udp_listen_ports();
+  SetListenPorts(internal_.mutable_udp_listen_ports(), ports);
 }
 
 void ContainerSpecWrapper::SetDevicePathFilters(
@@ -93,12 +112,14 @@ bool ContainerSpecWrapper::ShouldApplyNamespace(
       namespaces.end();
 }
 
-bool ContainerSpecWrapper::ListenPortIsAllowed(
+bool ContainerSpecWrapper::TcpListenPortIsAllowed(
     parser::port::Number port) const {
-  if (internal_.listen_ports().allow_all())
-    return true;
-  const RepeatedField<uint32>& ports = internal_.listen_ports().ports();
-  return std::find(ports.begin(), ports.end(), port) != ports.end();
+  return ListenPortIsAllowed(internal_.tcp_listen_ports(), port);
+}
+
+bool ContainerSpecWrapper::UdpListenPortIsAllowed(
+    parser::port::Number port) const {
+  return ListenPortIsAllowed(internal_.udp_listen_ports(), port);
 }
 
 bool ContainerSpecWrapper::DevicePathIsAllowed(

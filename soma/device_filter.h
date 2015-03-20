@@ -45,7 +45,7 @@ class DevicePathFilterSet
   DevicePathFilterSet();
   virtual ~DevicePathFilterSet() = default;
 
-  static DevicePathFilterSet Parse(base::ListValue* filters);
+  static DevicePathFilterSet Parse(const base::ListValue* filters);
 };
 
 // NB: These are copyable and assignable!
@@ -79,7 +79,7 @@ class DeviceNodeFilterSet
   DeviceNodeFilterSet();
   virtual ~DeviceNodeFilterSet() = default;
 
-  static DeviceNodeFilterSet Parse(base::ListValue* filters);
+  static DeviceNodeFilterSet Parse(const base::ListValue* filters);
 };
 
 }  // namespace parser

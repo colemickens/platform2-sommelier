@@ -4,6 +4,7 @@
 
 #include "soma/spec_reader.h"
 
+#include <set>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -77,7 +78,10 @@ scoped_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
 
   base::ListValue* listen_ports = nullptr;
   if (spec_dict->GetList(parser::port::kListKey, &listen_ports)) {
-    spec->SetListenPorts(parser::port::ParseList(listen_ports));
+    std::set<parser::port::Number> tcp_ports, udp_ports;
+    parser::port::ParseList(listen_ports, &tcp_ports, &udp_ports);
+    spec->SetTcpListenPorts(tcp_ports);
+    spec->SetUdpListenPorts(udp_ports);
   }
 
   base::ListValue* device_path_filters = nullptr;

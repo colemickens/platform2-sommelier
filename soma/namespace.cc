@@ -42,7 +42,7 @@ bool Resolve(const std::string& namespace_string, Kind* out) {
 }
 }  // anonymous namespace
 
-std::set<Kind> ParseList(base::ListValue* namespaces) {
+std::set<Kind> ParseList(const base::ListValue* namespaces) {
   std::set<Kind> to_return;
   std::string namespace_string;
   for (base::Value* namespace_value : *namespaces) {

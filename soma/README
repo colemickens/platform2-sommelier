@@ -16,69 +16,67 @@ be contained.
 
 
 
-Methods
+Talking to Soma
 --------------------------------------------------------------------------------
+Soma uses proto2 RPC. The interface is defined in idl/soma.proto, while the
+protobuf that describes a container is in idl/container_spec.proto.
 
-ContainerSpec GetContainerSpec(String service-id)
-
-  Given a fully-qualified service identifier (e.g. org.chromium.Bluez), return
-  a ContainerSpec that describes how the service should be contained.
-
+See .proto files in idl/ for descriptions of the API and message format.
 
 
-Structs
+
+Container specifications
 --------------------------------------------------------------------------------
+Soma container specifications are JSON files that comply with a subset of
+the 'appc' specification used by Rocket and others
+(https://github.com/appc/spec/blob/master/SPEC.md).
 
-ContainerSpec - Structured data containing all the info needed to contain a
-                service at runtime
+TODO(cmasone): Once this settles down, explain all the fields in this example.
 
-  struct ContainerSpec {
-    String ServiceBundlePath;
-    Int DesiredUserID;
-    Int DesiredGroupID;
+Example:
+{
+    "acVersion": "0.4.1",
+    "acKind": "ContainerRuntimeManifest",
+    "uuid": "6733C088-A507-4694-AABF-EDBE4FC5266F",
+    "apps": [
+        {
+            "name": "myservice",
+            "image": {
+                "name": "com.android.embedded.mypod",
+                "id": "sha512-...",
+                "labels": [
+                    {
+                        "name":  "version",
+                        "value": "1.0.0"
+                    }
+                ]
+            },
+            "app": {
+                "exec": [
+                    "/usr/bin/porpoise",
+                    "--quiet"
+                ],
+                "user": "100",
+                "group": "300",
+                "workingDirectory": "/opt/work",
+                "isolators": [
+                    {
+                        "name": "os/brillo/namespaces-remove-set",
+                        "value": {
+                            "set": [ "CLONE_NEWNS " ],
+                        },
+                    },
+                ],
+                "ports": [
+                    {
+                        "name": "health",  # Ignored
+                        "port": 4000,
+                        "protocol": "tcp",
+                        "socketActivated": true  # Ignored
+                    }
+                ],
+            },
+        },
+    ],
+}
 
-    List<Int> Namespaces;
-    List<Int> ListeningPorts;
-    List<DeviceNodeFilter> DeviceNodeFilters;
-    List<DevicePathFilter> DevicePathFilters;
-    List<SysfsPathFilter> SysfsPathFilters;
-    List<UsbDeviceFilter> UsbDeviceFilters;
-  };
-
- Required fields:
-  ServiceBundlePath: The abs path to the service's service bundle FS overlay.
-  DesiredUser: UID as which to run the service.
-  DesiredGroup: GID as which to run the service.
-
- Optional fields:
-  Namespaces: List of the namespaces to be unshared with the service.
-  ListeningPorts: List of network ports on which the service can listen.
-  DeviceNodeFilters: Filters indicating which device nodes should be visible.
-  DevicePathFilters: Filters indicating which device paths should be visible.
-  SysfsPathFilters: Filters indicating which sysfs paths should be visible.
-  UsbDeviceFilters; Filters indicating which USB devices should be visible.
-
-
-Filter types - Several kinds of filters used to control access to pieces of
-               hardware at runtime.
-
-  struct DeviceNodeFilter {
-    Int major;		May be a wildcard
-    Int minor;		May be a wildcard
-  };
-
-  struct DevicePathFilter {
-    String filter;	May contain globs (language TBD)
-  };
-
-  struct SysfsPathFilter {
-    String filter;	May contain globs (language TBD)
-  };
-
-  struct UsbDeviceFilter {
-    Int vid;		May be a wildcard
-    Int pid;		May be a wildcard
-  };
-
-  All fields are required. We haven't decided what language to use to provide
-  path-based filtering for /dev and /sys that allows globs.

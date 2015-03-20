@@ -18,9 +18,14 @@ namespace port {
 using Number = int;
 
 extern const char kListKey[];
+extern const char kPortKey[];
+extern const char kProtocolKey[];
+extern const char kTcpProtocol[];
+extern const char kUdpProtocol[];
 extern const Number kWildcard;
 
-std::set<Number> ParseList(base::ListValue* listen_ports);
+void ParseList(const base::ListValue* listen_ports,
+               std::set<Number>* tcp_ports, std::set<Number>* udp_ports);
 
 }  // namespace port
 }  // namespace parser

@@ -81,6 +81,16 @@ TEST_F(ContainerSpecReaderTest, BaselineSpec) {
   CheckSpecBaseline(spec.get());
 }
 
+namespace {
+scoped_ptr<base::DictionaryValue> CreatePort(const std::string& protocol,
+                                             const parser::port::Number port) {
+  scoped_ptr<base::DictionaryValue> port_dict(new base::DictionaryValue);
+  port_dict->SetString(parser::port::kProtocolKey, protocol);
+  port_dict->SetInteger(parser::port::kPortKey, port);
+  return port_dict.Pass();
+}
+}  // namespace
+
 TEST_F(ContainerSpecReaderTest, SpecWithListenPorts) {
   scoped_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
 
@@ -88,34 +98,39 @@ TEST_F(ContainerSpecReaderTest, SpecWithListenPorts) {
   const parser::port::Number port2 = 9222;
   const parser::port::Number invalid_port = -8;
   scoped_ptr<base::ListValue> listen_ports(new base::ListValue);
-  listen_ports->AppendInteger(port1);
-  listen_ports->AppendInteger(port2);
-  listen_ports->AppendInteger(invalid_port);
+  listen_ports->Append(CreatePort(parser::port::kTcpProtocol, port1).release());
+  listen_ports->Append(CreatePort(parser::port::kTcpProtocol, port2).release());
+  listen_ports->Append(CreatePort(parser::port::kUdpProtocol, port1).release());
+  listen_ports->Append(
+      CreatePort(parser::port::kUdpProtocol, invalid_port).release());
   baseline->Set(parser::port::kListKey, listen_ports.release());
 
   WriteValue(baseline.get(), scratch_);
 
   scoped_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   CheckSpecBaseline(spec.get());
-  EXPECT_TRUE(spec->ListenPortIsAllowed(port2));
-  EXPECT_TRUE(spec->ListenPortIsAllowed(port1));
-  EXPECT_FALSE(spec->ListenPortIsAllowed(81));
-  EXPECT_FALSE(spec->ListenPortIsAllowed(invalid_port));
+  EXPECT_TRUE(spec->TcpListenPortIsAllowed(port1));
+  EXPECT_TRUE(spec->TcpListenPortIsAllowed(port2));
+  EXPECT_TRUE(spec->UdpListenPortIsAllowed(port1));
+  EXPECT_FALSE(spec->UdpListenPortIsAllowed(81));
+  EXPECT_FALSE(spec->UdpListenPortIsAllowed(invalid_port));
 }
 
 TEST_F(ContainerSpecReaderTest, SpecWithWildcardPort) {
   scoped_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
 
   scoped_ptr<base::ListValue> listen_ports(new base::ListValue);
-  listen_ports->AppendInteger(parser::port::kWildcard);
+  listen_ports->Append(CreatePort(parser::port::kTcpProtocol,
+                                  parser::port::kWildcard).release());
   baseline->Set(parser::port::kListKey, listen_ports.release());
 
   WriteValue(baseline.get(), scratch_);
 
   scoped_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   CheckSpecBaseline(spec.get());
-  EXPECT_TRUE(spec->ListenPortIsAllowed(80));
-  EXPECT_TRUE(spec->ListenPortIsAllowed(90));
+  EXPECT_TRUE(spec->TcpListenPortIsAllowed(80));
+  EXPECT_TRUE(spec->TcpListenPortIsAllowed(90));
+  EXPECT_FALSE(spec->UdpListenPortIsAllowed(90));
 }
 
 namespace {

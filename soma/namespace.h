@@ -28,7 +28,7 @@ extern const char kNewUts[];
 
 using Kind = ContainerSpec::Namespace;
 
-std::set<Kind> ParseList(base::ListValue* namepaces);
+std::set<Kind> ParseList(const base::ListValue* namepaces);
 
 }  // namespace ns
 }  // namespace parser

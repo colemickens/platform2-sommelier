@@ -38,7 +38,8 @@ class ContainerSpecWrapper {
   virtual ~ContainerSpecWrapper();
 
   void SetNamespaces(const std::set<parser::ns::Kind> namespaces);
-  void SetListenPorts(const std::set<parser::port::Number> ports);
+  void SetTcpListenPorts(const std::set<parser::port::Number>& ports);
+  void SetUdpListenPorts(const std::set<parser::port::Number>& ports);
   void SetDevicePathFilters(const parser::DevicePathFilterSet& filters);
   void SetDeviceNodeFilters(const parser::DeviceNodeFilterSet& filters);
 
@@ -56,7 +57,8 @@ class ContainerSpecWrapper {
   bool ShouldApplyNamespace(parser::ns::Kind candidate) const;
 
   // Returns true if port is explicitly or implicitly allowed (by wildcarding).
-  bool ListenPortIsAllowed(parser::port::Number port) const;
+  bool TcpListenPortIsAllowed(parser::port::Number port) const;
+  bool UdpListenPortIsAllowed(parser::port::Number port) const;
 
   // Returns true if there's a DevicePathFilter that matches query.
   bool DevicePathIsAllowed(const base::FilePath& query) const;
