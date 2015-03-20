@@ -4,10 +4,26 @@
 
 #include "buffet/commands/prop_constraints.h"
 
+#include <base/json/json_writer.h>
+
 #include "buffet/commands/prop_values.h"
 #include "buffet/commands/schema_constants.h"
 
 namespace buffet {
+
+namespace {
+
+// Helper function to convert a property value to string, which is used for
+// error reporting.
+std::string PropValueToString(const PropValue& value) {
+  std::string result;
+  auto json = value.ToJson(nullptr);
+  if (json)
+    base::JSONWriter::Write(json.get(), &result);
+  return result;
+}
+
+}  // anonymous namespace
 
 // Constraint ----------------------------------------------------------------
 Constraint::~Constraint() {}
@@ -141,6 +157,61 @@ std::unique_ptr<Constraint>
 ConstraintStringLengthMax::CloneAsInherited() const {
   return std::unique_ptr<Constraint>{
       new ConstraintStringLengthMax{limit_.value}};
+}
+
+// ConstraintOneOf --------------------------------------------------
+ConstraintOneOf::ConstraintOneOf(InheritableAttribute<ChoiceList> set)
+    : set_(std::move(set)) {}
+ConstraintOneOf::ConstraintOneOf(ChoiceList set)
+    : set_(std::move(set)) {}
+
+bool ConstraintOneOf::Validate(const PropValue& value,
+                               chromeos::ErrorPtr* error) const {
+  for (const auto& item : set_.value) {
+    if (value.IsEqual(item.get()))
+      return true;
+  }
+  std::vector<std::string> choice_list;
+  choice_list.reserve(set_.value.size());
+  for (const auto& item : set_.value) {
+    choice_list.push_back(PropValueToString(*item));
+  }
+  return ReportErrorNotOneOf(error, PropValueToString(value), choice_list);
+}
+
+std::unique_ptr<Constraint> ConstraintOneOf::Clone() const {
+  InheritableAttribute<ChoiceList> attr;
+  attr.is_inherited = set_.is_inherited;
+  attr.value.reserve(set_.value.size());
+  for (const auto& prop_value : set_.value) {
+    attr.value.push_back(prop_value->Clone());
+  }
+  return std::unique_ptr<Constraint>{new ConstraintOneOf{std::move(attr)}};
+}
+
+std::unique_ptr<Constraint> ConstraintOneOf::CloneAsInherited() const {
+  ChoiceList cloned;
+  cloned.reserve(set_.value.size());
+  for (const auto& prop_value : set_.value) {
+    cloned.push_back(prop_value->Clone());
+  }
+  return std::unique_ptr<Constraint>{new ConstraintOneOf{std::move(cloned)}};
+}
+
+std::unique_ptr<base::Value> ConstraintOneOf::ToJson(
+    chromeos::ErrorPtr* error) const {
+  std::unique_ptr<base::ListValue> list(new base::ListValue);
+  for (const auto& prop_value : set_.value) {
+    auto json = prop_value->ToJson(error);
+    if (!json)
+      return std::unique_ptr<base::Value>();
+    list->Append(json.release());
+  }
+  return std::move(list);
+}
+
+const char* ConstraintOneOf::GetDictKey() const {
+  return commands::attributes::kOneOf_Enum;
 }
 
 }  // namespace buffet

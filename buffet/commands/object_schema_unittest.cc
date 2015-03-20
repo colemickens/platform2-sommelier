@@ -23,6 +23,25 @@ using buffet::unittests::CreateValue;
 using buffet::unittests::CreateDictionaryValue;
 using buffet::unittests::ValueToString;
 
+namespace {
+
+template<typename T>
+std::vector<T> GetOneOfValues(const buffet::PropType* prop_type) {
+  std::vector<T> values;
+  auto one_of = static_cast<const buffet::ConstraintOneOf*>(
+      prop_type->GetConstraint(buffet::ConstraintType::OneOf));
+  if (!one_of)
+    return values;
+
+  values.reserve(one_of->set_.value.size());
+  for (const auto& prop_value : one_of->set_.value) {
+    values.push_back(prop_value->GetValueAsAny().Get<T>());
+  }
+  return values;
+}
+
+}  // anonymous namespace
+
 TEST(CommandSchema, IntPropType_Empty) {
   buffet::IntPropType prop;
   EXPECT_TRUE(prop.GetConstraints().empty());
@@ -192,7 +211,7 @@ TEST(CommandSchema, BoolPropType_FromJson) {
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_FALSE(param2.HasOverriddenAttributes());
   EXPECT_TRUE(param2.IsBasedOnSchema());
-  EXPECT_EQ(std::vector<bool>{true}, prop.GetOneOfValues());
+  EXPECT_EQ(std::vector<bool>{true}, GetOneOfValues<bool>(&prop));
 
   buffet::BooleanPropType prop_base;
   buffet::BooleanPropType param3;
@@ -814,34 +833,25 @@ TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeDeduction_Array) {
   EXPECT_EQ("number", schema.GetProp("param9")->GetTypeAsString());
   EXPECT_EQ("integer", schema.GetProp("param10")->GetTypeAsString());
 
-  EXPECT_EQ(4, schema.GetProp("param1")->GetInt()->GetOneOfValues().size());
-  EXPECT_EQ(3, schema.GetProp("param2")->GetDouble()->GetOneOfValues().size());
-  EXPECT_EQ(2, schema.GetProp("param3")->GetString()->GetOneOfValues().size());
-  EXPECT_EQ(3, schema.GetProp("param4")->GetInt()->GetOneOfValues().size());
-  EXPECT_EQ(3, schema.GetProp("param5")->GetDouble()->GetOneOfValues().size());
-  EXPECT_EQ(2, schema.GetProp("param6")->GetString()->GetOneOfValues().size());
-  EXPECT_EQ(3, schema.GetProp("param7")->GetInt()->GetOneOfValues().size());
-  EXPECT_EQ(3, schema.GetProp("param8")->GetDouble()->GetOneOfValues().size());
-  EXPECT_EQ(0, schema.GetProp("param9")->GetDouble()->GetOneOfValues().size());
-  EXPECT_EQ(0, schema.GetProp("param10")->GetInt()->GetOneOfValues().size());
+  EXPECT_EQ((std::vector<int>{0, 1, 2, 3}),
+            GetOneOfValues<int>(schema.GetProp("param1")));
+  EXPECT_EQ((std::vector<double>{0.0, 1.1, 2.2}),
+            GetOneOfValues<double>(schema.GetProp("param2")));
+  EXPECT_EQ((std::vector<std::string>{"id1", "id2"}),
+            GetOneOfValues<std::string>(schema.GetProp("param3")));
 
-  EXPECT_EQ(std::vector<int>({0, 1, 2, 3}),
-            schema.GetProp("param1")->GetInt()->GetOneOfValues());
-  EXPECT_EQ(std::vector<double>({0.0, 1.1, 2.2}),
-            schema.GetProp("param2")->GetDouble()->GetOneOfValues());
-  EXPECT_EQ(std::vector<std::string>({"id1", "id2"}),
-            schema.GetProp("param3")->GetString()->GetOneOfValues());
-
-  EXPECT_EQ(std::vector<int>({1, 2, 3}),
-            schema.GetProp("param4")->GetInt()->GetOneOfValues());
-  EXPECT_EQ(std::vector<double>({-1.1, 2.2, 3.0}),
-            schema.GetProp("param5")->GetDouble()->GetOneOfValues());
-  EXPECT_EQ(std::vector<std::string>({"id0", "id1"}),
-            schema.GetProp("param6")->GetString()->GetOneOfValues());
-  EXPECT_EQ(std::vector<int>({1, 2, 3}),
-            schema.GetProp("param7")->GetInt()->GetOneOfValues());
-  EXPECT_EQ(std::vector<double>({1.0, 2.0, 3.0}),
-            schema.GetProp("param8")->GetDouble()->GetOneOfValues());
+  EXPECT_EQ((std::vector<int>{1, 2, 3}),
+            GetOneOfValues<int>(schema.GetProp("param4")));
+  EXPECT_EQ((std::vector<double>{-1.1, 2.2, 3.0}),
+            GetOneOfValues<double>(schema.GetProp("param5")));
+  EXPECT_EQ((std::vector<std::string>{"id0", "id1"}),
+            GetOneOfValues<std::string>(schema.GetProp("param6")));
+  EXPECT_EQ((std::vector<int>{1, 2, 3}),
+            GetOneOfValues<int>(schema.GetProp("param7")));
+  EXPECT_EQ((std::vector<double>{1.0, 2.0, 3.0}),
+            GetOneOfValues<double>(schema.GetProp("param8")));
+  EXPECT_TRUE(GetOneOfValues<double>(schema.GetProp("param9")).empty());
+  EXPECT_TRUE(GetOneOfValues<int>(schema.GetProp("param10")).empty());
 }
 
 TEST(CommandSchema, ObjectSchema_FromJson_Inheritance) {
@@ -939,23 +949,23 @@ TEST(CommandSchema, ObjectSchema_FromJson_Inheritance) {
   EXPECT_EQ(3, schema.GetProp("param12")->GetString()->GetMinLength());
   EXPECT_EQ(8, schema.GetProp("param12")->GetString()->GetMaxLength());
   EXPECT_EQ("integer", schema.GetProp("param13")->GetTypeAsString());
-  EXPECT_EQ(std::vector<int>({1, 2, 3}),
-            schema.GetProp("param13")->GetInt()->GetOneOfValues());
+  EXPECT_EQ((std::vector<int>{1, 2, 3}),
+            GetOneOfValues<int>(schema.GetProp("param13")));
   EXPECT_EQ("integer", schema.GetProp("param14")->GetTypeAsString());
-  EXPECT_EQ(std::vector<int>({1, 2, 3, 4}),
-            schema.GetProp("param14")->GetInt()->GetOneOfValues());
+  EXPECT_EQ((std::vector<int>{1, 2, 3, 4}),
+            GetOneOfValues<int>(schema.GetProp("param14")));
   EXPECT_EQ("number", schema.GetProp("param15")->GetTypeAsString());
-  EXPECT_EQ(std::vector<double>({1.1, 2.2, 3.3}),
-            schema.GetProp("param15")->GetDouble()->GetOneOfValues());
+  EXPECT_EQ((std::vector<double>{1.1, 2.2, 3.3}),
+            GetOneOfValues<double>(schema.GetProp("param15")));
   EXPECT_EQ("number", schema.GetProp("param16")->GetTypeAsString());
-  EXPECT_EQ(std::vector<double>({1.1, 2.2, 3.3, 4.4}),
-            schema.GetProp("param16")->GetDouble()->GetOneOfValues());
+  EXPECT_EQ((std::vector<double>{1.1, 2.2, 3.3, 4.4}),
+            GetOneOfValues<double>(schema.GetProp("param16")));
   EXPECT_EQ("string", schema.GetProp("param17")->GetTypeAsString());
-  EXPECT_EQ(std::vector<std::string>({"id1", "id2"}),
-            schema.GetProp("param17")->GetString()->GetOneOfValues());
+  EXPECT_EQ((std::vector<std::string>{"id1", "id2"}),
+            GetOneOfValues<std::string>(schema.GetProp("param17")));
   EXPECT_EQ("string", schema.GetProp("param18")->GetTypeAsString());
-  EXPECT_EQ(std::vector<std::string>({"id1", "id3"}),
-            schema.GetProp("param18")->GetString()->GetOneOfValues());
+  EXPECT_EQ((std::vector<std::string>{"id1", "id3"}),
+            GetOneOfValues<std::string>(schema.GetProp("param18")));
   EXPECT_EQ("integer", schema.GetProp("param19")->GetTypeAsString());
   EXPECT_EQ(1, schema.GetProp("param19")->GetInt()->GetMinValue());
   EXPECT_EQ(5, schema.GetProp("param19")->GetInt()->GetMaxValue());

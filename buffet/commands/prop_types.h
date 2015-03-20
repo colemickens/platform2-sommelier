@@ -200,13 +200,6 @@ class PropTypeBase : public PropType {
   bool ConstraintsFromJson(const base::DictionaryValue* value,
                            std::set<std::string>* processed_keys,
                            chromeos::ErrorPtr* error) override;
-
-  // Helper method to obtain a vector of OneOf constraint values.
-  std::vector<T> GetOneOfValues() const {
-    auto ofc = static_cast<const ConstraintOneOf<T>*>(
-        this->GetConstraint(ConstraintType::OneOf));
-    return ofc ? ofc->set_.value : std::vector<T>();
-  }
 };
 
 // Helper base class for Int and Double parameter types.

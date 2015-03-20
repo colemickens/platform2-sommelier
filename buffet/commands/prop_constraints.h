@@ -295,13 +295,12 @@ class ConstraintStringLengthMax : public ConstraintStringLength {
 };
 
 // Implementation of OneOf constraint for different data types.
-template<typename T>
 class ConstraintOneOf : public Constraint {
  public:
-  explicit ConstraintOneOf(const InheritableAttribute<std::vector<T>>& set)
-      : set_(set) {}
-  explicit ConstraintOneOf(const std::vector<T>& set)
-      : set_(set) {}
+  using ChoiceList = std::vector<std::unique_ptr<const PropValue>>;
+
+  explicit ConstraintOneOf(InheritableAttribute<ChoiceList> set);
+  explicit ConstraintOneOf(ChoiceList set);
 
   // Implementation of Constraint::GetType().
   ConstraintType GetType() const override {
@@ -315,46 +314,24 @@ class ConstraintOneOf : public Constraint {
 
   // Implementation of Constraint::Validate().
   bool Validate(const PropValue& value,
-                chromeos::ErrorPtr* error) const override {
-    using chromeos::string_utils::ToString;
-    T v = value.GetValueAsAny().Get<T>();
-    for (const auto& item : set_.value) {
-      if (CompareValue(v, item))
-        return true;
-    }
-    std::vector<std::string> values;
-    values.reserve(set_.value.size());
-    for (const auto& item : set_.value) {
-      values.push_back(ToString(item));
-    }
-    return ReportErrorNotOneOf(error, ToString(v), values);
-  }
+                chromeos::ErrorPtr* error) const override;
 
   // Implementation of Constraint::Clone().
-  std::unique_ptr<Constraint> Clone() const override {
-    return std::unique_ptr<Constraint>{new ConstraintOneOf{set_}};
-  }
+  std::unique_ptr<Constraint> Clone() const override;
 
   // Implementation of Constraint::CloneAsInherited().
-  std::unique_ptr<Constraint> CloneAsInherited() const override {
-    return std::unique_ptr<Constraint>{new ConstraintOneOf{set_.value}};
-  }
+  std::unique_ptr<Constraint> CloneAsInherited() const override;
 
   // Implementation of Constraint::ToJson().
-  std::unique_ptr<base::Value> ToJson(
-      chromeos::ErrorPtr* error) const override {
-    return TypedValueToJson(set_.value, error);
-  }
+  std::unique_ptr<base::Value> ToJson(chromeos::ErrorPtr* error) const override;
 
   // Implementation of Constraint::GetDictKey().
-  const char* GetDictKey() const override {
-    return commands::attributes::kOneOf_Enum;
-  }
+  const char* GetDictKey() const override;
 
   // Stores the list of acceptable values for the parameter.
   // |set_.is_inherited| indicates whether the constraint is inherited
   // from base schema or overridden.
-  InheritableAttribute<std::vector<T>> set_;
+  InheritableAttribute<ChoiceList> set_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ConstraintOneOf);

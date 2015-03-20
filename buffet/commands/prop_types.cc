@@ -298,16 +298,17 @@ static std::unique_ptr<Constraint> LoadOneOfConstraint(
                            "Expecting an array");
     return constraint;
   }
-  std::vector<T> set;
-  set.reserve(list->GetSize());
+  ConstraintOneOf::ChoiceList choice_list;
+  choice_list.reserve(list->GetSize());
   for (const base::Value* item : *list) {
-    T val{};
-    if (!TypedValueFromJson(item, prop_type, &val, error))
+    std::unique_ptr<PropValue> prop_value = prop_type->CreateValue();
+    if (!prop_value->FromJson(item, error))
       return constraint;
-    set.push_back(val);
+    choice_list.push_back(std::move(prop_value));
   }
-  InheritableAttribute<std::vector<T>> val(set, false);
-  constraint.reset(new ConstraintOneOf<T>{val});
+  InheritableAttribute<ConstraintOneOf::ChoiceList> val(std::move(choice_list),
+                                                        false);
+  constraint.reset(new ConstraintOneOf{std::move(val)});
   return constraint;
 }
 
