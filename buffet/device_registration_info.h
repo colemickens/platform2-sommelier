@@ -45,7 +45,6 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
  public:
   // This is a helper class for unit testing.
   class TestHelper;
-  using StatusHandler = base::Closure;
 
   DeviceRegistrationInfo(
       const std::shared_ptr<CommandManager>& command_manager,
@@ -53,7 +52,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
       std::unique_ptr<chromeos::KeyValueStore> config_store,
       const std::shared_ptr<chromeos::http::Transport>& transport,
       const std::shared_ptr<StorageInterface>& state_store,
-      const StatusHandler& status_handler);
+      const base::Closure& on_status_changed);
 
   ~DeviceRegistrationInfo() override;
 
@@ -256,7 +255,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
 
   // Tracks our current registration status.
   RegistrationStatus registration_status_{RegistrationStatus::kUnconfigured};
-  StatusHandler registration_status_handler_;
+  base::Closure on_status_changed_;
 
   friend class TestHelper;
   base::WeakPtrFactory<DeviceRegistrationInfo> weak_factory_{this};

@@ -136,13 +136,13 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
     std::unique_ptr<chromeos::KeyValueStore> config_store,
     const std::shared_ptr<chromeos::http::Transport>& transport,
     const std::shared_ptr<StorageInterface>& state_store,
-    const StatusHandler& status_handler)
+    const base::Closure& on_status_changed)
     : transport_{transport},
       storage_{state_store},
       command_manager_{command_manager},
       state_manager_{state_manager},
       config_store_{std::move(config_store)},
-      registration_status_handler_{status_handler} {
+      on_status_changed_{on_status_changed} {
 }
 
 DeviceRegistrationInfo::~DeviceRegistrationInfo() = default;
@@ -176,7 +176,10 @@ const std::string& DeviceRegistrationInfo::GetDeviceId() const {
 }
 
 bool DeviceRegistrationInfo::Load() {
+  // Set kInvalidCredentials to trigger on_status_changed_ callback.
+  registration_status_ = RegistrationStatus::kInvalidCredentials;
   SetRegistrationStatus(RegistrationStatus::kUnconfigured);
+
   auto value = storage_->Load();
   const base::DictionaryValue* dict = nullptr;
   if (!value || !value->GetAsDictionary(&dict))
@@ -996,16 +999,16 @@ void DeviceRegistrationInfo::SetRegistrationStatus(
     return;
   VLOG(1) << "Changing registration status to " << StatusToString(new_status);
   registration_status_ = new_status;
-  if (!registration_status_handler_.is_null())
-    registration_status_handler_.Run();
+  if (!on_status_changed_.is_null())
+    on_status_changed_.Run();
 }
 
 void DeviceRegistrationInfo::SetDeviceId(const std::string& device_id) {
   if (device_id == device_id_)
     return;
   device_id_ = device_id;
-  if (!registration_status_handler_.is_null())
-    registration_status_handler_.Run();
+  if (!on_status_changed_.is_null())
+    on_status_changed_.Run();
 }
 
 }  // namespace buffet

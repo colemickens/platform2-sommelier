@@ -39,15 +39,16 @@ const size_t kMaxStateChangeQueueSize = 100;
 Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
     : dbus_object_(object_manager.get(),
                    object_manager->GetBus(),
-                   org::chromium::Buffet::ManagerAdaptor::GetObjectPath()) {}
+                   org::chromium::Buffet::ManagerAdaptor::GetObjectPath()) {
+}
 
-Manager::~Manager() {}
+Manager::~Manager() {
+}
 
-void Manager::RegisterAsync(
-    const base::FilePath& config_path,
-    const base::FilePath& state_path,
-    const base::FilePath& test_definitions_path,
-    const AsyncEventSequencer::CompletionAction& cb) {
+void Manager::RegisterAsync(const base::FilePath& config_path,
+                            const base::FilePath& state_path,
+                            const base::FilePath& test_definitions_path,
+                            const AsyncEventSequencer::CompletionAction& cb) {
   command_manager_ =
       std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
   command_manager_->Startup(base::FilePath{"/etc/buffet"},
@@ -69,10 +70,8 @@ void Manager::RegisterAsync(
           std::move(config_store),
           chromeos::http::Transport::CreateDefault(),
           std::move(state_store),
-          base::Bind(&Manager::OnRegistrationStatusChange,
+          base::Bind(&Manager::OnRegistrationStatusChanged,
                      base::Unretained(this))));
-  // Reset D-Bus properties.
-  OnRegistrationStatusChange();
   device_info_->Load();
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(cb);
@@ -121,8 +120,8 @@ void Manager::RegisterDevice(DBusMethodResponse<std::string> response,
                                "String value expected");
       return;
     }
-    str_params.emplace_hint(str_params.end(),
-                            pair.first, pair.second.Get<std::string>());
+    str_params.emplace_hint(str_params.end(), pair.first,
+                            pair.second.Get<std::string>());
   }
   std::string device_id = device_info_->RegisterDevice(str_params, &error);
   if (!device_id.empty()) {
@@ -132,8 +131,7 @@ void Manager::RegisterDevice(DBusMethodResponse<std::string> response,
   if (!error) {
     // TODO(zeuthen): This can be changed to CHECK(error) once
     // RegisterDevice() has been fixed to set |error| when failing.
-    chromeos::Error::AddTo(&error, FROM_HERE, kErrorDomainGCD,
-                           "internal_error",
+    chromeos::Error::AddTo(&error, FROM_HERE, kErrorDomainGCD, "internal_error",
                            "device_id empty but error not set");
   }
   response->ReplyWithError(error.get());
@@ -145,8 +143,8 @@ void Manager::UpdateState(DBusMethodResponse<> response,
   base::Time timestamp = base::Time::Now();
   bool all_success = true;
   for (const auto& pair : property_set) {
-    if (!state_manager_->SetPropertyValue(pair.first, pair.second,
-                                          timestamp, &error)) {
+    if (!state_manager_->SetPropertyValue(pair.first, pair.second, timestamp,
+                                          &error)) {
       // Remember that an error occurred but keep going and update the rest of
       // the properties if possible.
       all_success = false;
@@ -195,7 +193,7 @@ std::string Manager::TestMethod(const std::string& message) {
   return message;
 }
 
-void Manager::OnRegistrationStatusChange() {
+void Manager::OnRegistrationStatusChanged() {
   dbus_adaptor_.SetStatus(
       StatusToString(device_info_->GetRegistrationStatus()));
   dbus_adaptor_.SetDeviceId(device_info_->GetDeviceId());
