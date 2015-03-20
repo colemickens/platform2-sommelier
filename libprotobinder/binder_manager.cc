@@ -18,6 +18,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "libprotobinder/binder_host.h"
+#include "libprotobinder/binder_proxy.h"
 #include "libprotobinder/protobinder.h"
 
 namespace protobinder {
@@ -56,6 +57,22 @@ void BinderManager::IncWeakHandle(uint32_t handle) {
 void BinderManager::DecWeakHandle(uint32_t handle) {
   in_commands_.WriteInt32(BC_DECREFS);
   in_commands_.WriteInt32(handle);
+}
+
+void BinderManager::RequestDeathNotification(BinderProxy* proxy) {
+  DCHECK(proxy);
+  out_commands_.WriteInt32(BC_REQUEST_DEATH_NOTIFICATION);
+  out_commands_.WriteInt32(proxy->handle());
+  out_commands_.WritePointer(reinterpret_cast<uintptr_t>(proxy));
+  DoBinderReadWriteIoctl(false);
+}
+
+void BinderManager::ClearDeathNotification(BinderProxy* proxy) {
+  DCHECK(proxy);
+  out_commands_.WriteInt32(BC_CLEAR_DEATH_NOTIFICATION);
+  out_commands_.WriteInt32(proxy->handle());
+  out_commands_.WritePointer(reinterpret_cast<uintptr_t>(proxy));
+  DoBinderReadWriteIoctl(false);
 }
 
 int BinderManager::SendReply(const Parcel& reply, int error_code) {
@@ -97,6 +114,16 @@ int BinderManager::ProcessCommand(uint32_t cmd) {
     case BR_RELEASE:
       VLOG(1) << "BR_RELEASE";
       in_commands_.ReadPointer(&ptr);
+      in_commands_.ReadPointer(&ptr);
+      break;
+    case BR_DEAD_BINDER:
+      VLOG(1) << "BR_DEAD_BINDER";
+      in_commands_.ReadPointer(&ptr);
+      if (ptr)
+        reinterpret_cast<BinderProxy*>(ptr)->HandleDeathNotification();
+      break;
+    case BR_CLEAR_DEATH_NOTIFICATION_DONE:
+      VLOG(1) << "BR_CLEAR_DEATH_NOTIFICATION_DONE";
       in_commands_.ReadPointer(&ptr);
       break;
     case BR_OK:

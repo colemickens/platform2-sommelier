@@ -17,6 +17,8 @@
 
 namespace protobinder {
 
+class BinderProxy;
+
 class BINDER_EXPORT BinderManager {
  public:
   static BinderManager* GetBinderManager();
@@ -34,6 +36,12 @@ class BINDER_EXPORT BinderManager {
   void EnterLoop();
   bool GetFdForPolling(int* fd);
   bool HandleEvent();
+
+  // Creates or clears a request for binder death notifications.
+  // End-users should use BinderProxy::SetDeathCallback() instead of calling
+  // these methods directly.
+  void RequestDeathNotification(BinderProxy* proxy);
+  void ClearDeathNotification(BinderProxy* proxy);
 
  private:
   bool WriteCmd(void* data, size_t len);

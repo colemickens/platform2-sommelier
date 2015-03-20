@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+#include <base/callback.h>
+
 #include "libprotobinder/binder_export.h"
 #include "libprotobinder/ibinder.h"
 
@@ -27,11 +29,22 @@ class BINDER_EXPORT BinderProxy : public IBinder {
                Parcel* reply,
                uint32_t flags);
 
+  // Set a callback to be invoked when the remote (host/server) side of the
+  // connection is closed.
+  void SetDeathCallback(const base::Closure& closure);
+
+  // Called by BinderManager() in response to notification that the remote side
+  // of the connection has been closed.
+  void HandleDeathNotification();
+
   virtual const BinderProxy* GetBinderProxy() const;
 
  private:
-  // Binder handle
+  // Binder handle.
   const uint32_t handle_;
+
+  // Called when the remote side of the connection is closed.
+  base::Closure death_callback_;
 };
 
 }  // namespace protobinder
