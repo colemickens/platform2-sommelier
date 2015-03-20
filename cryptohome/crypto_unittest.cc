@@ -34,7 +34,7 @@ using ::testing::AtLeast;
 using ::testing::DoAll;
 using ::testing::Return;
 using ::testing::SaveArg;
-using ::testing::SetArgumentPointee;
+using ::testing::SetArgPointee;
 using ::testing::NiceMock;
 
 namespace cryptohome {
@@ -264,7 +264,7 @@ TEST_F(CryptoTest, SaltCreateTest) {
       .WillOnce(Return(true));
   int64_t salt_size = 32;
   EXPECT_CALL(platform, GetFileSize(salt_path.value(), _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(salt_size), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(salt_size), Return(true)));
   EXPECT_CALL(platform, WriteFileAtomicDurable(salt_path.value(), _, _))
       .WillOnce(DoAll(SaveArg<1>(salt_ptr), Return(true)));
   crypto.GetOrCreateSalt(salt_path, 32, true, &new_salt);
@@ -310,13 +310,18 @@ TEST_F(CryptoTest, TpmStepTest) {
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
 
-  EXPECT_CALL(tpm, EncryptBlob(_, _, _, _, _, _));
-  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _, _));
+  EXPECT_CALL(tpm, EncryptBlob(_, _, _, _, _));
+  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _));
   EXPECT_CALL(tpm_init, HasCryptohomeKey())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_init, SetupTpm(true))
       .Times(AtLeast(2));  // One by crypto.Init(), one by crypto.EnsureTpm()
+  SecureBlob blob("public key hash");
+  EXPECT_CALL(tpm, GetPublicKeyHash(_, _, _))
+      .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
+      .WillRepeatedly(DoAll(SetArgPointee<2>(blob),
+                            Return(Tpm::kTpmRetryNone)));
 
   crypto.Init(&tpm_init);
 
@@ -410,8 +415,13 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
 
-  EXPECT_CALL(tpm, EncryptBlob(_, _, _, _, _, _));
-  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _, _));
+  EXPECT_CALL(tpm, EncryptBlob(_, _, _, _, _));
+  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _));
+  SecureBlob blob("public key hash");
+  EXPECT_CALL(tpm, GetPublicKeyHash(_, _, _))
+      .Times(2)  // Once on Encrypt and once on Decrypt of Vault.
+      .WillRepeatedly(DoAll(SetArgPointee<2>(blob),
+                            Return(Tpm::kTpmRetryNone)));
 
   crypto.Init(&tpm_init);
 
@@ -531,18 +541,18 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpm) {
 
   // Setup the data from the above blobs.
   EXPECT_CALL(tpm, GetRandomData(32, _)).WillOnce(DoAll(
-      SetArgumentPointee<1>(aes_key), Return(true)));
+      SetArgPointee<1>(aes_key), Return(true)));
   EXPECT_CALL(tpm, SealToPCR0(_, _)).WillOnce(DoAll(
-        SetArgumentPointee<1>(sealed_key), Return(true)));
+      SetArgPointee<1>(sealed_key), Return(true)));
   EXPECT_CALL(tpm, GetRandomData(16, _)).WillOnce(DoAll(
-        SetArgumentPointee<1>(iv), Return(true)));
+      SetArgPointee<1>(iv), Return(true)));
 
   // Matching calls of encrypt/decrypt should give me back the same data.
   EXPECT_TRUE(crypto.EncryptWithTpm(data_blob, &encrypted_data));
 
   // Unseal for the tpm.
   EXPECT_CALL(tpm, Unseal(sealed_key, _)).WillOnce(DoAll(
-        SetArgumentPointee<1>(aes_key), Return(true)));
+        SetArgPointee<1>(aes_key), Return(true)));
 
   EXPECT_TRUE(crypto.DecryptWithTpm(encrypted_data, &output_blob));
   EXPECT_EQ(data_blob, output_blob);
@@ -574,7 +584,7 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpmWithRandomlyFailingTpm) {
 
   // Setup the data from the above blobs and fail to seal the key with the tpm.
   EXPECT_CALL(tpm, GetRandomData(32, _)).WillOnce(DoAll(
-      SetArgumentPointee<1>(aes_key), Return(true)));
+      SetArgPointee<1>(aes_key), Return(true)));
   EXPECT_CALL(tpm, SealToPCR0(_, _)).WillOnce(Return(false));
   EXPECT_FALSE(crypto.EncryptWithTpm(data_blob, &encrypted_data));
 
@@ -585,11 +595,11 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpmWithRandomlyFailingTpm) {
   // Now setup successful encrypt data but fail to unseal.
   // Setup the data from the above blobs.
   EXPECT_CALL(tpm, GetRandomData(32, _)).WillOnce(DoAll(
-      SetArgumentPointee<1>(aes_key), Return(true)));
+      SetArgPointee<1>(aes_key), Return(true)));
   EXPECT_CALL(tpm, SealToPCR0(_, _)).WillOnce(DoAll(
-        SetArgumentPointee<1>(sealed_key), Return(true)));
+      SetArgPointee<1>(sealed_key), Return(true)));
   EXPECT_CALL(tpm, GetRandomData(16, _)).WillOnce(DoAll(
-        SetArgumentPointee<1>(iv), Return(true)));
+      SetArgPointee<1>(iv), Return(true)));
 
   // Matching calls of encrypt/decrypt should give me back the same data.
   EXPECT_TRUE(crypto.EncryptWithTpm(data_blob, &encrypted_data));

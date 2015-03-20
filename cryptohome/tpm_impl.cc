@@ -39,6 +39,45 @@ namespace {
 
 typedef scoped_ptr<BYTE, base::FreeDeleter> ScopedByteArray;
 
+cryptohome::Tpm::TpmRetryAction ResultToRetryAction(TSS_RESULT result) {
+  cryptohome::Tpm::TpmRetryAction status = cryptohome::Tpm::kTpmRetryFatal;
+  switch (ERROR_CODE(result)) {
+    case ERROR_CODE(TSS_SUCCESS):
+      status = cryptohome::Tpm::kTpmRetryNone;
+      break;
+    case ERROR_CODE(TSS_E_COMM_FAILURE):
+      LOG(ERROR) << "Communications failure with the TPM.";
+      status = cryptohome::Tpm::kTpmRetryCommFailure;
+      break;
+    case ERROR_CODE(TSS_E_INVALID_HANDLE):
+      LOG(ERROR) << "Invalid handle to the TPM.";
+      status = cryptohome::Tpm::kTpmRetryInvalidHandle;
+      break;
+    // TODO(fes): We're considering this a communication failure for now.
+    case ERROR_CODE(TCS_E_KM_LOADFAILED):
+      LOG(ERROR) << "Key load failed; problem with parent key authorization.";
+      ReportCryptohomeError(cryptohome::kTcsKeyLoadFailed);
+      status = cryptohome::Tpm::kTpmRetryLoadFail;
+      break;
+    case ERROR_CODE(TPM_E_DEFEND_LOCK_RUNNING):
+      LOG(ERROR) << "The TPM is defending itself against possible dictionary "
+                 << "attacks.";
+      ReportCryptohomeError(cryptohome::kTpmDefendLockRunning);
+      status = cryptohome::Tpm::kTpmRetryDefendLock;
+      break;
+    // This error code occurs when the TPM is in an error state.
+    case ERROR_CODE(TPM_E_FAIL):
+      status = cryptohome::Tpm::kTpmRetryReboot;
+      ReportCryptohomeError(cryptohome::kTpmFail);
+      LOG(ERROR) << "The TPM returned TPM_E_FAIL.  A reboot is required.";
+      break;
+    default:
+      status = cryptohome::Tpm::kTpmRetryFatal;
+      break;
+  }
+  return status;
+}
+
 }  // namespace
 
 namespace cryptohome {
@@ -204,15 +243,16 @@ void TpmImpl::GetStatus(TSS_HCONTEXT context,
     memset(data_out.data(), 'D', data_out.size());
     SecureBlob key;
     CryptoLib::PasskeyToAesKey(password, salt, 13, &key, NULL);
-    TSS_RESULT result;
-    if (!EncryptBlob(context, key_handle, data, key, &data_out, &result)) {
+    if (EncryptBlob(context, key_handle, data, key, &data_out) !=
+        kTpmRetryNone) {
       return;
     }
     status->can_encrypt = true;
 
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
-    if (!DecryptBlob(context, key_handle, data_out, key, &data, &result)) {
+    if (DecryptBlob(context, key_handle, data_out, key, &data) !=
+        kTpmRetryNone) {
       return;
     }
     status->can_decrypt = true;
@@ -324,60 +364,21 @@ bool TpmImpl::ResetDictionaryAttackMitigation(
   return true;
 }
 
-bool TpmImpl::IsTransient(TSS_RESULT result) {
+bool TpmImpl::IsTransient(TpmRetryAction retry_action) {
   bool transient = false;
-  switch (ERROR_CODE(result)) {
-    case ERROR_CODE(TSS_E_COMM_FAILURE):
-    case ERROR_CODE(TSS_E_INVALID_HANDLE):
-    case ERROR_CODE(TPM_E_DEFEND_LOCK_RUNNING):
+  switch (retry_action) {
+    case kTpmRetryCommFailure:
+    case kTpmRetryInvalidHandle:
+    case kTpmRetryDefendLock:
     // TODO(fes): We're considering this a transient failure for now
-    case ERROR_CODE(TCS_E_KM_LOADFAILED):
-    case ERROR_CODE(TPM_E_FAIL):
+    case kTpmRetryLoadFail:
+    case kTpmRetryFatal:
       transient = true;
       break;
     default:
       break;
   }
   return transient;
-}
-
-Tpm::TpmRetryAction TpmImpl::HandleError(TSS_RESULT result) {
-  Tpm::TpmRetryAction status = Tpm::kTpmRetryNone;
-  switch (ERROR_CODE(result)) {
-    case ERROR_CODE(TSS_E_COMM_FAILURE):
-      LOG(ERROR) << "Communications failure with the TPM.";
-      status = Tpm::kTpmRetryCommFailure;
-      break;
-    case ERROR_CODE(TSS_E_INVALID_HANDLE):
-      LOG(ERROR) << "Invalid handle to the TPM.";
-      status = Tpm::kTpmRetryCommFailure;
-      break;
-    // TODO(fes): We're considering this a communication failure for now.
-    case ERROR_CODE(TCS_E_KM_LOADFAILED):
-      LOG(ERROR) << "Key load failed; problem with parent key authorization.";
-      ReportCryptohomeError(kTcsKeyLoadFailed);
-      status = Tpm::kTpmRetryCommFailure;
-      break;
-    case ERROR_CODE(TPM_E_DEFEND_LOCK_RUNNING):
-      LOG(ERROR) << "The TPM is defending itself against possible dictionary "
-                 << "attacks.";
-      ReportCryptohomeError(kTpmDefendLockRunning);
-      status = Tpm::kTpmRetryDefendLock;
-      break;
-    // This error occurs on bad password.
-    case ERROR_CODE(TPM_E_DECRYPT_ERROR):
-      status = Tpm::kTpmRetryNone;
-      break;
-    // This error code occurs when the TPM is in an error state.
-    case ERROR_CODE(TPM_E_FAIL):
-      status = Tpm::kTpmRetryReboot;
-      ReportCryptohomeError(kTpmFail);
-      LOG(ERROR) << "The TPM returned TPM_E_FAIL.  A reboot is required.";
-      break;
-    default:
-      break;
-  }
-  return status;
 }
 
 bool TpmImpl::OpenAndConnectTpm(TSS_HCONTEXT* context_handle,
@@ -429,40 +430,37 @@ Tpm::TpmRetryAction TpmImpl::GetPublicKeyHash(TSS_HCONTEXT context_handle,
   TSS_RESULT result = TSS_SUCCESS;
   SecureBlob pubkey;
   if (!GetPublicKeyBlob(context_handle, key_handle, &pubkey, &result)) {
-    return HandleError(result);
+    return ResultToRetryAction(result);
   }
-
   *hash = CryptoLib::Sha1(pubkey);
-  return Tpm::kTpmRetryNone;
+  return kTpmRetryNone;
 }
 
-bool TpmImpl::EncryptBlob(TSS_HCONTEXT context_handle,
-                          TSS_HKEY key_handle,
-                          const SecureBlob& plaintext,
-                          const SecureBlob& key,
-                          SecureBlob* ciphertext,
-                          TSS_RESULT* result) {
-  *result = TSS_SUCCESS;
-
+Tpm::TpmRetryAction TpmImpl::EncryptBlob(TSS_HCONTEXT context_handle,
+                                         TSS_HKEY key_handle,
+                                         const SecureBlob& plaintext,
+                                         const SecureBlob& key,
+                                         SecureBlob* ciphertext) {
+  TSS_RESULT result = TSS_SUCCESS;
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
   ScopedTssKey enc_handle(context_handle);
-  if (TPM_ERROR(*result = Tspi_Context_CreateObject(context_handle,
-                                                    TSS_OBJECT_TYPE_ENCDATA,
-                                                    init_flags,
-                                                    enc_handle.ptr()))) {
-    TPM_LOG(ERROR, *result) << "Error calling Tspi_Context_CreateObject";
-    return false;
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(context_handle,
+                                                   TSS_OBJECT_TYPE_ENCDATA,
+                                                   init_flags,
+                                                   enc_handle.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Context_CreateObject";
+    return ResultToRetryAction(result);
   }
 
   // TODO(fes): Check RSA key modulus size, return an error or block input
 
-  if (TPM_ERROR(*result = Tspi_Data_Bind(
+  if (TPM_ERROR(result = Tspi_Data_Bind(
       enc_handle,
       key_handle,
       plaintext.size(),
       const_cast<BYTE*>(vector_as_array(&plaintext))))) {
-    TPM_LOG(ERROR, *result) << "Error calling Tspi_Data_Bind";
-    return false;
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Data_Bind";
+    return ResultToRetryAction(result);
   }
 
   SecureBlob enc_data_blob;
@@ -472,54 +470,56 @@ bool TpmImpl::EncryptBlob(TSS_HCONTEXT context_handle,
                         TSS_TSPATTRIB_ENCDATABLOB_BLOB,
                         &enc_data_blob)) {
     LOG(ERROR) << __func__ << ": Failed to read encrypted blob.";
-    return false;
+    return kTpmRetryFatal;
   }
-  return ObscureRSAMessage(enc_data_blob, key, ciphertext);
+  if (ObscureRSAMessage(enc_data_blob, key, ciphertext)) {
+    LOG(ERROR) << "Error obscuring message.";
+    return kTpmRetryFatal;
+  }
+  return kTpmRetryNone;
 }
 
-bool TpmImpl::DecryptBlob(TSS_HCONTEXT context_handle,
-                          TSS_HKEY key_handle,
-                          const SecureBlob& ciphertext,
-                          const SecureBlob& key,
-                          SecureBlob* plaintext,
-                          TSS_RESULT* result) {
-  *result = TSS_SUCCESS;
-
+Tpm::TpmRetryAction TpmImpl::DecryptBlob(TSS_HCONTEXT context_handle,
+                                         TSS_HKEY key_handle,
+                                         const SecureBlob& ciphertext,
+                                         const SecureBlob& key,
+                                         SecureBlob* plaintext) {
+  TSS_RESULT result = TSS_SUCCESS;
   SecureBlob local_data;
   UnobscureRSAMessage(ciphertext, key, &local_data);
 
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
   ScopedTssKey enc_handle(context_handle);
-  if (TPM_ERROR(*result = Tspi_Context_CreateObject(context_handle,
-                                                    TSS_OBJECT_TYPE_ENCDATA,
-                                                    init_flags,
-                                                    enc_handle.ptr()))) {
-    TPM_LOG(ERROR, *result) << "Error calling Tspi_Context_CreateObject";
-    return false;
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(context_handle,
+                                                   TSS_OBJECT_TYPE_ENCDATA,
+                                                   init_flags,
+                                                   enc_handle.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Context_CreateObject";
+    return ResultToRetryAction(result);
   }
 
-  if (TPM_ERROR(*result = Tspi_SetAttribData(enc_handle,
-                                             TSS_TSPATTRIB_ENCDATA_BLOB,
-                                             TSS_TSPATTRIB_ENCDATABLOB_BLOB,
-                                             local_data.size(),
-                                             vector_as_array(&local_data)))) {
-    TPM_LOG(ERROR, *result) << "Error calling Tspi_SetAttribData";
-    return false;
+  if (TPM_ERROR(result = Tspi_SetAttribData(enc_handle,
+                                            TSS_TSPATTRIB_ENCDATA_BLOB,
+                                            TSS_TSPATTRIB_ENCDATABLOB_BLOB,
+                                            local_data.size(),
+                                            vector_as_array(&local_data)))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_SetAttribData";
+    return ResultToRetryAction(result);
   }
 
   ScopedTssMemory dec_data(context_handle);
   UINT32 dec_data_length = 0;
-  if (TPM_ERROR(*result = Tspi_Data_Unbind(enc_handle, key_handle,
-                                           &dec_data_length, dec_data.ptr()))) {
-    TPM_LOG(ERROR, *result) << "Error calling Tspi_Data_Unbind";
-    return false;
+  if (TPM_ERROR(result = Tspi_Data_Unbind(enc_handle, key_handle,
+                                          &dec_data_length, dec_data.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Data_Unbind";
+    return ResultToRetryAction(result);
   }
 
   plaintext->resize(dec_data_length);
   memcpy(plaintext->data(), dec_data.value(), dec_data_length);
   chromeos::SecureMemset(dec_data.value(), 0, dec_data_length);
 
-  return true;
+  return kTpmRetryNone;
 }
 
 // Obscure (and deobscure) RSA messages.
@@ -2815,72 +2815,73 @@ bool TpmImpl::GetKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   return true;
 }
 
-bool TpmImpl::LoadWrappedKey(TSS_HCONTEXT context_handle,
-                             const chromeos::SecureBlob& wrapped_key,
-                             TSS_HKEY* key_handle,
-                             TSS_RESULT* result) const {
+Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
+    TSS_HCONTEXT context_handle,
+    const chromeos::SecureBlob& wrapped_key,
+    TSS_HKEY* key_handle) const {
+  TSS_RESULT result = TSS_SUCCESS;
   // Load the Storage Root Key
   trousers::ScopedTssKey srk_handle(context_handle);
-  if (!LoadSrk(context_handle, srk_handle.ptr(), result)) {
-    if (*result != kKeyNotFoundError) {
-      TPM_LOG(INFO, *result) << "LoadWrappedKey: Cannot load SRK";
+  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
+    if (result != kKeyNotFoundError) {
+      TPM_LOG(INFO, result) << "LoadWrappedKey: Cannot load SRK";
       ReportCryptohomeError(kCannotLoadTpmSrk);
     }
-    return false;
+    return ResultToRetryAction(result);
   }
 
   // Make sure we can get the public key for the SRK.  If not, then the TPM
   // is not available.
   {
     SecureBlob pubkey;
-    if (!GetPublicKeyBlob(context_handle, srk_handle, &pubkey, result)) {
-      TPM_LOG(INFO, *result) << "LoadWrappedKey: Cannot load SRK public key";
+    if (!GetPublicKeyBlob(context_handle, srk_handle, &pubkey, &result)) {
+      TPM_LOG(INFO, result) << "LoadWrappedKey: Cannot load SRK public key";
       ReportCryptohomeError(kCannotReadTpmSrkPublic);
-      return false;
+      return ResultToRetryAction(result);
     }
   }
 
-  if (TPM_ERROR(*result = Tspi_Context_LoadKeyByBlob(
-                                  context_handle,
-                                  srk_handle,
-                                  wrapped_key.size(),
-                                  const_cast<BYTE*>(static_cast<const BYTE*>(
-                                    wrapped_key.const_data())),
-                                  key_handle))) {
-    TPM_LOG(INFO, *result) << "LoadWrappedKey: Cannot load key " \
+  if (TPM_ERROR(result = Tspi_Context_LoadKeyByBlob(
+                                 context_handle,
+                                 srk_handle,
+                                 wrapped_key.size(),
+                                 const_cast<BYTE*>(static_cast<const BYTE*>(
+                                   wrapped_key.const_data())),
+                                 key_handle))) {
+    TPM_LOG(INFO, result) << "LoadWrappedKey: Cannot load key " \
                            << "from blob";
     ReportCryptohomeError(kCannotLoadTpmKey);
-    if (*result == TPM_E_BAD_KEY_PROPERTY) {
+    if (result == TPM_E_BAD_KEY_PROPERTY) {
       ReportCryptohomeError(kTpmBadKeyProperty);
     }
-    return false;
+    return ResultToRetryAction(result);
   }
 
   SecureBlob pub_key;
   // Make sure that we can get the public key
-  if (!GetPublicKeyBlob(context_handle, *key_handle, &pub_key, result)) {
+  if (!GetPublicKeyBlob(context_handle, *key_handle, &pub_key, &result)) {
     ReportCryptohomeError(kCannotReadTpmPublicKey);
     Tspi_Context_CloseObject(context_handle, *key_handle);
-    return false;
+    return ResultToRetryAction(result);
   }
 
-  return true;
+  return kTpmRetryNone;
 }
 
 bool TpmImpl::LoadKeyByUuid(TSS_HCONTEXT context_handle,
                             TSS_UUID key_uuid,
                             TSS_HKEY* key_handle,
-                            chromeos::SecureBlob* key_blob,
-                            TSS_RESULT* result) const {
-  if (TPM_ERROR(*result = Tspi_Context_LoadKeyByUUID(context_handle,
-                                                     TSS_PS_TYPE_SYSTEM,
-                                                     key_uuid,
-                                                     key_handle))) {
-    TPM_LOG(INFO, *result) << "LoadKeyByUuid: failed LoadKeyByUUID";
+                            chromeos::SecureBlob* key_blob) const {
+  TSS_RESULT result = TSS_SUCCESS;
+  if (TPM_ERROR(result = Tspi_Context_LoadKeyByUUID(context_handle,
+                                                    TSS_PS_TYPE_SYSTEM,
+                                                    key_uuid,
+                                                    key_handle))) {
+    TPM_LOG(INFO, result) << "LoadKeyByUuid: failed LoadKeyByUUID";
     return false;
   }
 
-  if (key_blob && !GetKeyBlob(context_handle, *key_handle, key_blob, result)) {
+  if (key_blob && !GetKeyBlob(context_handle, *key_handle, key_blob, &result)) {
     Tspi_Context_CloseObject(context_handle, *key_handle);
     return false;
   }

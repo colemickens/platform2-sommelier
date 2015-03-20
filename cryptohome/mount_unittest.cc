@@ -84,20 +84,22 @@ ACTION_P(SetEphemeralUsersEnabled, ephemeral_users_enabled) {
 }
 
 // Straight pass through.
-bool TpmPassthroughEncrypt(TSS_HCONTEXT _context, TSS_HKEY _key,
-                           const chromeos::SecureBlob &plaintext, Unused,
-                           chromeos::SecureBlob *ciphertext, Unused) {
+Tpm::TpmRetryAction TpmPassthroughEncrypt(
+    TSS_HCONTEXT _context, TSS_HKEY _key,
+    const chromeos::SecureBlob &plaintext, Unused,
+    chromeos::SecureBlob *ciphertext) {
   ciphertext->resize(plaintext.size());
   memcpy(ciphertext->data(), plaintext.const_data(), plaintext.size());
-  return true;
+  return Tpm::kTpmRetryNone;
 }
 
-bool TpmPassthroughDecrypt(TSS_HCONTEXT _context, TSS_HKEY _key,
-                           const chromeos::SecureBlob &ciphertext, Unused,
-                           chromeos::SecureBlob *plaintext, Unused) {
+Tpm::TpmRetryAction TpmPassthroughDecrypt(
+    TSS_HCONTEXT _context, TSS_HKEY _key,
+    const chromeos::SecureBlob &ciphertext, Unused,
+    chromeos::SecureBlob *plaintext) {
   plaintext->resize(ciphertext.size());
   memcpy(plaintext->data(), ciphertext.const_data(), ciphertext.size());
-  return true;
+  return Tpm::kTpmRetryNone;
 }
 
 class MountTest : public ::testing::Test {
@@ -755,7 +757,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
     .WillOnce(Return(true));
 
   // Create the "TPM-wrapped" value by letting it save the plaintext.
-  EXPECT_CALL(tpm_, EncryptBlob(_, _, _, _, _, _))
+  EXPECT_CALL(tpm_, EncryptBlob(_, _, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughEncrypt));
   chromeos::SecureBlob fake_pub_key("A", 1);
   EXPECT_CALL(tpm_, GetPublicKeyHash(_, _, _))
@@ -798,7 +800,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   EXPECT_CALL(platform_, ReadFile(user->salt_path, _))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(user->user_salt),
                           Return(true)));
-  EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _, _, _))
+  EXPECT_CALL(tpm_, DecryptBlob(_, _, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughDecrypt));
 
     MockFileEnumerator* files = new MockFileEnumerator();

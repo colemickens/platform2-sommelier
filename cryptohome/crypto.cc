@@ -228,6 +228,8 @@ Crypto::CryptoError Crypto::TpmErrorToCrypto(
     case Tpm::kTpmRetryFatal:
       return Crypto::CE_TPM_FATAL;
     case Tpm::kTpmRetryCommFailure:
+    case Tpm::kTpmRetryInvalidHandle:
+    case Tpm::kTpmRetryLoadFail:
       return Crypto::CE_TPM_COMM_ERROR;
     case Tpm::kTpmRetryDefendLock:
       return Crypto::CE_TPM_DEFEND_LOCK;
@@ -273,13 +275,14 @@ void Crypto::PasswordToPasskey(const char* password,
 bool Crypto::IsTPMPubkeyHash(const string& hash,
                              CryptoError* error) const {
   SecureBlob pub_key_hash;
-  Tpm::TpmRetryAction retry_action;
-  retry_action = tpm_->GetPublicKeyHash(tpm_init_->GetCryptohomeContext(),
-                                        tpm_init_->GetCryptohomeKey(),
-                                        &pub_key_hash);
-  if (retry_action == Tpm::kTpmRetryCommFailure) {
+  Tpm::TpmRetryAction retry_action = tpm_->GetPublicKeyHash(
+      tpm_init_->GetCryptohomeContext(),
+      tpm_init_->GetCryptohomeKey(),
+      &pub_key_hash);
+  if (retry_action == Tpm::kTpmRetryLoadFail) {
     if (!tpm_init_->ReloadCryptohomeKey()) {
-      LOG(ERROR) << "Unable to reload key";
+      LOG(ERROR) << "Unable to reload key.";
+      retry_action = Tpm::kTpmRetryFatal;
     } else {
       retry_action = tpm_->GetPublicKeyHash(tpm_init_->GetCryptohomeContext(),
                                             tpm_init_->GetCryptohomeKey(),
@@ -289,9 +292,9 @@ bool Crypto::IsTPMPubkeyHash(const string& hash,
   if (retry_action != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Unable to get the cryptohome public key from the TPM.";
     ReportCryptohomeError(kCannotReadTpmPublicKey);
-    if (error)
-      // This is a fatal error only if we don't get a transient error code.
+    if (error) {
       *error = TpmErrorToCrypto(retry_action);
+    }
     return false;
   }
   if ((hash.size() != pub_key_hash.size()) ||
@@ -302,7 +305,6 @@ bool Crypto::IsTPMPubkeyHash(const string& hash,
       *error = CE_TPM_FATAL;
     return false;
   }
-
   return true;
 }
 
@@ -372,46 +374,37 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
     }
   }
 
-  TSS_RESULT result;
   SecureBlob tpm_key(serialized.tpm_key().length());
   serialized.tpm_key().copy(static_cast<char*>(tpm_key.data()),
                             serialized.tpm_key().length(), 0);
   SecureBlob key;
   CryptoLib::PasskeyToAesKey(vault_key, salt, rounds, &key, NULL);
-  Tpm::TpmRetryAction retry_action;
-  bool tpm_unwrap_success = true;
-  if (!tpm_->DecryptBlob(tpm_init_->GetCryptohomeContext(),
-                         tpm_init_->GetCryptohomeKey(),
-                         tpm_key,
-                         key,
-                         &local_vault_key,
-                         &result)) {
-    retry_action = tpm_->HandleError(result);
-    if (retry_action == Tpm::kTpmRetryCommFailure) {
-      if (!tpm_init_->ReloadCryptohomeKey()) {
-        LOG(ERROR) << "Unable to reload Cryptohome key.";
-        tpm_unwrap_success = false;
-      } else {
-        if (!tpm_->DecryptBlob(tpm_init_->GetCryptohomeContext(),
-                               tpm_init_->GetCryptohomeKey(),
-                               tpm_key,
-                               key,
-                               &local_vault_key,
-                               &result)) {
-          retry_action = tpm_->HandleError(result);
-          tpm_unwrap_success = false;
-        }
-      }
+  Tpm::TpmRetryAction retry_action = tpm_->DecryptBlob(
+      tpm_init_->GetCryptohomeContext(),
+      tpm_init_->GetCryptohomeKey(),
+      tpm_key,
+      key,
+      &local_vault_key);
+  if (retry_action == Tpm::kTpmRetryLoadFail) {
+    if (!tpm_init_->ReloadCryptohomeKey()) {
+      LOG(ERROR) << "Unable to reload Cryptohome key.";
+      retry_action = Tpm::kTpmRetryFatal;
+    } else {
+      retry_action = tpm_->DecryptBlob(tpm_init_->GetCryptohomeContext(),
+                                       tpm_init_->GetCryptohomeKey(),
+                                       tpm_key,
+                                       key,
+                                       &local_vault_key);
     }
-    if (!tpm_unwrap_success) {
-      LOG(ERROR) << "The TPM failed to unwrap the intermediate key with the "
-                 << "supplied credentials";
-      ReportCryptohomeError(kDecryptAttemptWithTpmKeyFailed);
-      if (error)
-        // This is a fatal error only if we don't get a transient error code.
-        *error = TpmErrorToCrypto(retry_action);
-      return false;
+  }
+  if (retry_action != Tpm::kTpmRetryNone) {
+    LOG(ERROR) << "The TPM failed to unwrap the intermediate key with the "
+               << "supplied credentials";
+    ReportCryptohomeError(kDecryptAttemptWithTpmKeyFailed);
+    if (error) {
+      *error = TpmErrorToCrypto(retry_action);
     }
+    return false;
   }
 
   SecureBlob aes_key;
@@ -610,7 +603,6 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
   SecureBlob local_blob(kDefaultAesKeySize);
   CryptoLib::GetSecureRandom(static_cast<unsigned char*>(local_blob.data()),
                              local_blob.size());
-  TSS_RESULT result;
   SecureBlob tpm_key;
   SecureBlob derived_key;
   unsigned int rounds = kDefaultPasswordRounds;
@@ -618,12 +610,11 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
   // Encrypt the VKK using the TPM and the user's passkey.  The output is an
   // encrypted blob in tpm_key, which is stored in the serialized vault
   // keyset.
-  if (!tpm_->EncryptBlob(tpm_init_->GetCryptohomeContext(),
-                         tpm_init_->GetCryptohomeKey(),
-                         local_blob,
-                         derived_key,
-                         &tpm_key,
-                         &result)) {
+  if (tpm_->EncryptBlob(tpm_init_->GetCryptohomeContext(),
+                        tpm_init_->GetCryptohomeKey(),
+                        local_blob,
+                        derived_key,
+                        &tpm_key) != Tpm::kTpmRetryNone) {
     LOG(ERROR) << "Failed to wrap vkk with creds.";
     return false;
   }
@@ -913,5 +904,4 @@ bool Crypto::is_cryptohome_key_loaded() const {
   }
   return tpm_init_->HasCryptohomeKey();
 }
-
 }  // namespace cryptohome

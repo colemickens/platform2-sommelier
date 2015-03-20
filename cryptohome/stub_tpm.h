@@ -19,22 +19,22 @@ class StubTpm : public Tpm {
   ~StubTpm() override { }
 
   // See tpm.h for comments
-  bool EncryptBlob(TSS_HCONTEXT context_handle,
-                   TSS_HKEY key_handle,
-                   const SecureBlob& plaintext,
-                   const SecureBlob& key,
-                   SecureBlob* ciphertext,
-                   TSS_RESULT* result) override { return false; }
-  bool DecryptBlob(TSS_HCONTEXT context_handle,
-                   TSS_HKEY key_handle,
-                   const SecureBlob& ciphertext,
-                   const SecureBlob& key,
-                   SecureBlob* plaintext,
-                   TSS_RESULT* result) override { return false; }
+  TpmRetryAction EncryptBlob(TSS_HCONTEXT context_handle,
+                             TSS_HKEY key_handle,
+                             const SecureBlob& plaintext,
+                             const SecureBlob& key,
+                             SecureBlob* ciphertext) override
+    { return kTpmRetryFatal; }
+  TpmRetryAction DecryptBlob(TSS_HCONTEXT context_handle,
+                             TSS_HKEY key_handle,
+                             const SecureBlob& ciphertext,
+                             const SecureBlob& key,
+                             SecureBlob* plaintext) override
+    { return kTpmRetryFatal; }
   TpmRetryAction GetPublicKeyHash(TSS_HCONTEXT context_handle,
                                   TSS_HKEY key_handle,
                                   SecureBlob* hash) override
-    { return Tpm::kTpmRetryNone; }
+    { return kTpmRetryNone; }
   bool IsEnabled() const override { return false; }
   void SetIsEnabled(bool enabled) override {}
   bool IsOwned() const override { return false; }
@@ -138,24 +138,17 @@ class StubTpm : public Tpm {
   bool TestTpmAuth(TSS_HCONTEXT context_handle,
                    const SecureBlob& owner_password) override { return false; }
   void SetOwnerPassword(const SecureBlob& owner_password) override {}
-  bool IsTransient(TSS_RESULT result) override { return false; }
-  bool GetKeyBlob(TSS_HCONTEXT context_handle,
-                  TSS_HKEY key_handle,
-                  SecureBlob* data_out,
-                  TSS_RESULT* result) const override { return false; }
+  bool IsTransient(TpmRetryAction retry_action) override { return false; }
   bool CreateWrappedRsaKey(TSS_HCONTEXT context_handle,
                            SecureBlob* wrapped_key) override { return false; }
-  bool LoadWrappedKey(TSS_HCONTEXT context_handle,
-                      const SecureBlob& wrapped_key,
-                      TSS_HKEY* key_handle,
-                      TSS_RESULT* result) const override { return false; }
+  TpmRetryAction LoadWrappedKey(TSS_HCONTEXT context_handle,
+                                const SecureBlob& wrapped_key,
+                                TSS_HKEY* key_handle) const override
+    { return kTpmRetryFatal; }
   bool LoadKeyByUuid(TSS_HCONTEXT context_handle,
                      TSS_UUID key_uuid,
                      TSS_HKEY* key_handle,
-                     SecureBlob* key_blob,
-                     TSS_RESULT* result) const override { return false; }
-  TpmRetryAction HandleError(TSS_RESULT result) override
-    { return Tpm::kTpmRetryNone; }
+                     SecureBlob* key_blob) const override { return false; }
   void GetStatus(
       TSS_HCONTEXT context, TSS_HKEY key, TpmStatusInfo* status) override {}
   bool GetDictionaryAttackInfo(int* counter,

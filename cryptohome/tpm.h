@@ -29,7 +29,9 @@ class Tpm {
     kTpmRetryCommFailure,
     kTpmRetryDefendLock,
     kTpmRetryFatal,
-    kTpmRetryReboot
+    kTpmRetryInvalidHandle,
+    kTpmRetryLoadFail,
+    kTpmRetryReboot,
   };
 
   struct TpmStatusInfo {
@@ -48,7 +50,8 @@ class Tpm {
 
   virtual ~Tpm() {}
 
-  // Encrypts a data blob using the provided RSA key
+  // Encrypts a data blob using the provided RSA key. Returns a TpmRetryAction
+  // struct
   //
   // Parameters
   //   context_handle - The TPM context
@@ -56,15 +59,14 @@ class Tpm {
   //   plaintext - One RSA message to encrypt
   //   key - AES key to encrypt with
   //   ciphertext (OUT) - Encrypted blob
-  //   result (OUT) - TPM error code
-  virtual bool EncryptBlob(TSS_HCONTEXT context_handle,
-                           TSS_HKEY key_handle,
-                           const chromeos::SecureBlob& plaintext,
-                           const chromeos::SecureBlob& key,
-                           chromeos::SecureBlob* ciphertext,
-                           TSS_RESULT* result) = 0;
+  virtual TpmRetryAction EncryptBlob(TSS_HCONTEXT context_handle,
+                                     TSS_HKEY key_handle,
+                                     const chromeos::SecureBlob& plaintext,
+                                     const chromeos::SecureBlob& key,
+                                     chromeos::SecureBlob* ciphertext) = 0;
 
-  // Decrypts a data blob using the provided RSA key
+  // Decrypts a data blob using the provided RSA key. Returns a TpmRetryAction
+  // struct
   //
   // Parameters
   //   context_handle - The TPM context
@@ -72,13 +74,11 @@ class Tpm {
   //   ciphertext - One RSA message to encrypt
   //   key - AES key to encrypt with
   //   plaintext (OUT) - Decrypted blob
-  //   result (OUT) - TPM error code
-  virtual bool DecryptBlob(TSS_HCONTEXT context_handle,
-                           TSS_HKEY key_handle,
-                           const chromeos::SecureBlob& ciphertext,
-                           const chromeos::SecureBlob& key,
-                           chromeos::SecureBlob* plaintext,
-                           TSS_RESULT* result) = 0;
+  virtual TpmRetryAction DecryptBlob(TSS_HCONTEXT context_handle,
+                                     TSS_HKEY key_handle,
+                                     const chromeos::SecureBlob& ciphertext,
+                                     const chromeos::SecureBlob& key,
+                                     chromeos::SecureBlob* plaintext) = 0;
 
   // Retrieves the sha1sum of the public key component of the RSA key
   virtual TpmRetryAction GetPublicKeyHash(TSS_HCONTEXT context_handle,
@@ -435,12 +435,7 @@ class Tpm {
   //   owner_password - The owner password for the TPM
   virtual void SetOwnerPassword(const chromeos::SecureBlob& owner_password) = 0;
 
-  virtual bool IsTransient(TSS_RESULT result) = 0;
-
-  virtual bool GetKeyBlob(TSS_HCONTEXT context_handle,
-                          TSS_HKEY key_handle,
-                          chromeos::SecureBlob* data_out,
-                          TSS_RESULT* result) const = 0;
+  virtual bool IsTransient(TpmRetryAction retry_action) = 0;
 
   // Creates an RSA key wrapped by the TPM's Storage Root Key. The key is
   // created by OpenSSL, and not by the TPM.
@@ -457,10 +452,9 @@ class Tpm {
   //   context_handle - The context handle for the TPM session.
   //   wrapped_key - The blob (as produced by CreateWrappedRsaKey).
   //   key_handle (OUT) - A handle to the key loaded into the TPM.
-  virtual bool LoadWrappedKey(TSS_HCONTEXT context_handle,
-                              const chromeos::SecureBlob& wrapped_key,
-                              TSS_HKEY* key_handle,
-                              TSS_RESULT* result) const = 0;
+  virtual TpmRetryAction LoadWrappedKey(TSS_HCONTEXT context_handle,
+                                        const chromeos::SecureBlob& wrapped_key,
+                                        TSS_HKEY* key_handle) const = 0;
 
   // Loads a key by well-known UUID.
   //
@@ -472,10 +466,7 @@ class Tpm {
   virtual bool LoadKeyByUuid(TSS_HCONTEXT context_handle,
                              TSS_UUID key_uuid,
                              TSS_HKEY* key_handle,
-                             chromeos::SecureBlob* key_blob,
-                             TSS_RESULT* result) const = 0;
-
-  virtual TpmRetryAction HandleError(TSS_RESULT result) = 0;
+                             chromeos::SecureBlob* key_blob) const = 0;
 
   // Gets the TPM status information. If there |context| and |key| are supplied,
   // they will be used in encryption/decryption test. They can be 0 to bypass

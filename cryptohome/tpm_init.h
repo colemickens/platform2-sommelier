@@ -162,14 +162,12 @@ class TpmInit {
 
   bool SaveCryptohomeKey(const chromeos::SecureBlob& wrapped_key);
 
-  bool LoadCryptohomeKey(TSS_HCONTEXT context_handle, TSS_HKEY* key_handle,
-                         TSS_RESULT* result);
+  bool LoadCryptohomeKey(TSS_HCONTEXT context_handle, TSS_HKEY* key_handle);
 
   bool CreateCryptohomeKey(TSS_HCONTEXT context_handle);
 
   bool LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
-                                 TSS_HKEY* key_handle,
-                                 TSS_RESULT* result);
+                                 TSS_HKEY* key_handle);
 
   // Returns true if the first byte of the file |file_name| is "1"
   bool CheckSysfsForOne(const char* file_name) const;

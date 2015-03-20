@@ -33,12 +33,9 @@ class LockboxCacheTpm : public StubTpm {
     return true;
   }
 
-  // Pretend to have a valid TPM connection.
-  virtual bool Connect(TpmRetryAction* retry_action) { return true; }
-  // Pretend to have a valid TPM connection.
-  virtual bool IsConnected() { return true; }
   // Pretend the TPM is enabled.
   virtual bool IsEnabled() const { return true; }
+
   // Indicate if the TPM is owned based on if there is an NVRAM area or not.
   // If there is no NVRAM data, we assume an unowned TPM, not a failure to
   // verify.

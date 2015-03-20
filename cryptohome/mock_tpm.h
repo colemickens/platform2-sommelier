@@ -24,15 +24,14 @@ class MockTpm : public Tpm {
  public:
   MockTpm();
   ~MockTpm();
-  MOCK_METHOD6(EncryptBlob, bool(TSS_HCONTEXT, TSS_HKEY,
-                                 const chromeos::SecureBlob&,
-                                 const chromeos::SecureBlob&,
-                                 chromeos::SecureBlob*, TSS_RESULT*));
-  MOCK_METHOD6(DecryptBlob, bool(TSS_HCONTEXT, TSS_HKEY,
-                                 const chromeos::SecureBlob&,
-                                 const chromeos::SecureBlob&,
-                                 chromeos::SecureBlob*, TSS_RESULT*));
-  MOCK_METHOD2(GetPublicKey, bool(chromeos::SecureBlob*, TpmRetryAction*));
+  MOCK_METHOD5(EncryptBlob, TpmRetryAction(TSS_HCONTEXT, TSS_HKEY,
+                                           const chromeos::SecureBlob&,
+                                           const chromeos::SecureBlob&,
+                                           chromeos::SecureBlob*));
+  MOCK_METHOD5(DecryptBlob, TpmRetryAction(TSS_HCONTEXT, TSS_HKEY,
+                                           const chromeos::SecureBlob&,
+                                           const chromeos::SecureBlob&,
+                                           chromeos::SecureBlob*));
   MOCK_METHOD3(GetPublicKeyHash, TpmRetryAction(TSS_HCONTEXT,
                                                 TSS_HKEY,
                                                 chromeos::SecureBlob*));
@@ -54,7 +53,6 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(IsNvramDefined, bool(uint32_t));
   MOCK_METHOD1(IsNvramLocked, bool(uint32_t));
   MOCK_METHOD1(GetNvramSize, unsigned int(uint32_t));
-  MOCK_METHOD1(set_srk_auth, void(const chromeos::SecureBlob&));
   MOCK_METHOD1(GetEndorsementPublicKey, bool(chromeos::SecureBlob*));
   MOCK_METHOD1(GetEndorsementCredential, bool(chromeos::SecureBlob*));
   MOCK_METHOD9(MakeIdentity, bool(chromeos::SecureBlob*,
@@ -116,45 +114,31 @@ class MockTpm : public Tpm {
                                          const chromeos::SecureBlob&));
   MOCK_METHOD2(TestTpmAuth, bool(TSS_HCONTEXT, const chromeos::SecureBlob&));
   MOCK_METHOD1(SetOwnerPassword, void(const chromeos::SecureBlob&));
-  MOCK_CONST_METHOD3(LoadSrk, bool(TSS_HCONTEXT, TSS_HKEY*, TSS_RESULT*));
-  MOCK_METHOD1(IsTransient, bool(TSS_RESULT));
-  MOCK_CONST_METHOD4(GetPublicKeyBlob, bool(TSS_HCONTEXT, TSS_HKEY,
-                                            chromeos::SecureBlob*,
-                                            TSS_RESULT*));
-  MOCK_CONST_METHOD4(GetKeyBlob, bool(TSS_HCONTEXT, TSS_HKEY,
-                                      chromeos::SecureBlob*, TSS_RESULT*));
+  MOCK_METHOD1(IsTransient, bool(TpmRetryAction));
   MOCK_METHOD2(CreateWrappedRsaKey, bool(TSS_HCONTEXT,
                                          chromeos::SecureBlob*));
-  MOCK_CONST_METHOD4(LoadWrappedKey, bool(TSS_HCONTEXT,
-                                          const chromeos::SecureBlob&,
-                                          TSS_HKEY*, TSS_RESULT*));
-  MOCK_CONST_METHOD5(LoadKeyByUuid, bool(TSS_HCONTEXT, TSS_UUID, TSS_HKEY*,
-                                         chromeos::SecureBlob*, TSS_RESULT*));
-  MOCK_METHOD1(HandleError, TpmRetryAction(TSS_RESULT));
+  MOCK_CONST_METHOD3(LoadWrappedKey, TpmRetryAction(TSS_HCONTEXT,
+                                                    const chromeos::SecureBlob&,
+                                                    TSS_HKEY*));
+  MOCK_CONST_METHOD4(LoadKeyByUuid, bool(TSS_HCONTEXT, TSS_UUID, TSS_HKEY*,
+                                         chromeos::SecureBlob*));
   MOCK_METHOD3(GetStatus, void(TSS_HCONTEXT, TSS_HKEY, TpmStatusInfo*));
   MOCK_METHOD4(GetDictionaryAttackInfo, bool(int*, int*, bool*, int*));
   MOCK_METHOD2(ResetDictionaryAttackMitigation,
                bool(const chromeos::SecureBlob&, const chromeos::SecureBlob&));
 
  private:
-  bool Xor(TSS_HCONTEXT _context,
-           TSS_HKEY _key,
-           const chromeos::SecureBlob& plaintext,
-           const chromeos::SecureBlob& key,
-           chromeos::SecureBlob* ciphertext,
-           TSS_RESULT* result) {
+  TpmRetryAction Xor(TSS_HCONTEXT _context,
+                     TSS_HKEY _key,
+                     const chromeos::SecureBlob& plaintext,
+                     const chromeos::SecureBlob& key,
+                     chromeos::SecureBlob* ciphertext) {
     chromeos::SecureBlob local_data_out(plaintext.size());
     for (unsigned int i = 0; i < local_data_out.size(); i++) {
       local_data_out[i] = plaintext[i] ^ 0x1e;
     }
     ciphertext->swap(local_data_out);
-    return true;
-  }
-
-  bool GetBlankPublicKey(chromeos::SecureBlob* blob,
-                         TpmRetryAction* retry_action) {
-    blob->resize(0);
-    return true;
+    return kTpmRetryNone;
   }
 
   bool FakeGetRandomData(size_t num_bytes, chromeos::Blob* blob) {

@@ -258,9 +258,8 @@ bool TpmInit::SetupTpm(bool load_key) {
     TSS_HCONTEXT context_handle = get_tpm()->ConnectContext();
     if (context_handle) {
       TSS_HKEY key_handle;
-      TSS_RESULT result;
       if (LoadOrCreateCryptohomeKey(
-          context_handle, &key_handle, &result)) {
+          context_handle, &key_handle)) {
         cryptohome_context_.reset(0, context_handle);
         cryptohome_key_.reset(context_handle, key_handle);
       } else {
@@ -549,19 +548,17 @@ bool TpmInit::SaveCryptohomeKey(const chromeos::SecureBlob& raw_key) {
 }
 
 bool TpmInit::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
-                                TSS_HKEY* key_handle,
-                                TSS_RESULT* result) {
+                                TSS_HKEY* key_handle) {
   // First, try loading the key from the key file
   {
     SecureBlob raw_key;
     if (platform_->ReadFile(kDefaultCryptohomeKeyFile, &raw_key)) {
-      if (get_tpm()->LoadWrappedKey(context_handle,
-                                    raw_key,
-                                    key_handle,
-                                    result)) {
+      Tpm::TpmRetryAction retry_action = get_tpm()->LoadWrappedKey(
+          context_handle, raw_key, key_handle);
+      if (retry_action == Tpm::kTpmRetryNone) {
         return true;
       }
-      if (get_tpm()->IsTransient(*result)) {
+      if (get_tpm()->IsTransient(retry_action)) {
         return false;
       }
     }
@@ -573,8 +570,7 @@ bool TpmInit::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
   if (!get_tpm()->LoadKeyByUuid(context_handle,
                                kCryptohomeWellKnownUuid,
                                local_key_handle.ptr(),
-                               &raw_key,
-                               result)) {
+                               &raw_key)) {
     return false;
   }
 
@@ -585,30 +581,20 @@ bool TpmInit::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
   }
 
   *key_handle = local_key_handle.release();
-
   return true;
 }
 
 bool TpmInit::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
-                                        TSS_HKEY* key_handle,
-                                        TSS_RESULT* result) {
-  *result = TSS_SUCCESS;
-
+                                        TSS_HKEY* key_handle) {
   // Try to load the cryptohome key.
-  if (LoadCryptohomeKey(context_handle, key_handle, result)) {
+  if (LoadCryptohomeKey(context_handle, key_handle)) {
     return true;
-  }
-
-  // If the error is expected to be transient, return now.
-  if (get_tpm()->IsTransient(*result)) {
-    LOG(INFO) << "Transient failure loading cryptohome key";
-    return false;
   }
 
   // Otherwise, the key couldn't be loaded, and it wasn't due to a transient
   // error, so we must create the key.
   if (CreateCryptohomeKey(context_handle)) {
-    if (LoadCryptohomeKey(context_handle, key_handle, result)) {
+    if (LoadCryptohomeKey(context_handle, key_handle)) {
       return true;
     }
   }
@@ -630,8 +616,7 @@ TSS_HKEY TpmInit::GetCryptohomeKey() {
 bool TpmInit::ReloadCryptohomeKey() {
   CHECK(HasCryptohomeKey());
   TSS_HKEY new_key;
-  TSS_RESULT result;
-  if (!LoadCryptohomeKey(GetCryptohomeContext(), &new_key, &result)) {
+  if (!LoadCryptohomeKey(GetCryptohomeContext(), &new_key)) {
     LOG(ERROR) << "Error reloading Cryptohome key.";
     return false;
   }

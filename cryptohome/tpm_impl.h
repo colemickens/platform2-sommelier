@@ -14,18 +14,16 @@ class TpmImpl : public Tpm {
   TpmImpl();
   virtual ~TpmImpl();
   // Tpm methods
-  bool EncryptBlob(TSS_HCONTEXT context_handle,
-                   TSS_HKEY key_handle,
-                   const chromeos::SecureBlob& plaintext,
-                   const chromeos::SecureBlob& key,
-                   chromeos::SecureBlob* ciphertext,
-                   TSS_RESULT* result) override;
-  bool DecryptBlob(TSS_HCONTEXT context_handle,
-                   TSS_HKEY key_handle,
-                   const chromeos::SecureBlob& ciphertext,
-                   const chromeos::SecureBlob& key,
-                   chromeos::SecureBlob* plaintext,
-                   TSS_RESULT* result) override;
+  TpmRetryAction EncryptBlob(TSS_HCONTEXT context_handle,
+                             TSS_HKEY key_handle,
+                             const chromeos::SecureBlob& plaintext,
+                             const chromeos::SecureBlob& key,
+                             chromeos::SecureBlob* ciphertext) override;
+  TpmRetryAction DecryptBlob(TSS_HCONTEXT context_handle,
+                             TSS_HKEY key_handle,
+                             const chromeos::SecureBlob& ciphertext,
+                             const chromeos::SecureBlob& key,
+                             chromeos::SecureBlob* plaintext) override;
   TpmRetryAction GetPublicKeyHash(TSS_HCONTEXT context_handle,
                                   TSS_HKEY key_handle,
                                   chromeos::SecureBlob* hash) override;
@@ -113,23 +111,16 @@ class TpmImpl : public Tpm {
   bool TestTpmAuth(TSS_HCONTEXT context_handle,
                    const chromeos::SecureBlob& owner_password) override;
   void SetOwnerPassword(const chromeos::SecureBlob& owner_password) override;
-  bool IsTransient(TSS_RESULT result) override;
-  bool GetKeyBlob(TSS_HCONTEXT context_handle,
-                  TSS_HKEY key_handle,
-                  chromeos::SecureBlob* data_out,
-                  TSS_RESULT* result) const override;
+  bool IsTransient(TpmRetryAction retry_action) override;
   bool CreateWrappedRsaKey(TSS_HCONTEXT context_handle,
                            chromeos::SecureBlob* wrapped_key) override;
-  bool LoadWrappedKey(TSS_HCONTEXT context_handle,
-                      const chromeos::SecureBlob& wrapped_key,
-                      TSS_HKEY* key_handle,
-                      TSS_RESULT* result) const override;
+  TpmRetryAction LoadWrappedKey(TSS_HCONTEXT context_handle,
+                                const chromeos::SecureBlob& wrapped_key,
+                                TSS_HKEY* key_handle) const override;
   bool LoadKeyByUuid(TSS_HCONTEXT context_handle,
                      TSS_UUID key_uuid,
                      TSS_HKEY* key_handle,
-                     chromeos::SecureBlob* key_blob,
-                     TSS_RESULT* result) const override;
-  TpmRetryAction HandleError(TSS_RESULT result) override;
+                     chromeos::SecureBlob* key_blob) const override;
   void GetStatus(TSS_HCONTEXT context,
                  TSS_HKEY key,
                  TpmStatusInfo* status) override;
@@ -151,6 +142,12 @@ class TpmImpl : public Tpm {
                         TSS_HKEY key_handle,
                         chromeos::SecureBlob* data_out,
                         TSS_RESULT* result) const;
+
+  // Gets the key blob associated with |key_handle|.
+  bool GetKeyBlob(TSS_HCONTEXT context_handle,
+                  TSS_HKEY key_handle,
+                  chromeos::SecureBlob* data_out,
+                  TSS_RESULT* result) const;
 
   // Gets a handle to the SRK.
   bool LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
