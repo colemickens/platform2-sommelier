@@ -16,19 +16,21 @@
         '<(cc_dir)/<(RULE_INPUT_ROOT).pb.cc',
         '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
       ],
-      'variables': {
-        'conditions': [
-          ['gen_bidl==1', {
+      'conditions': [
+        ['gen_bidl==1', {
+          'variables': {
             'out_args': ['--bidl_out', '<(cc_dir)'],
-            'outputs': [
-              '<(cc_dir)/<(RULE_INPUT_ROOT).pb.rpc.cc',
-              '<(cc_dir)/<(RULE_INPUT_ROOT).pb.rpc.h',
-            ],
-          }, {
+          },
+          'outputs': [
+            '<(cc_dir)/<(RULE_INPUT_ROOT).pb.rpc.cc',
+            '<(cc_dir)/<(RULE_INPUT_ROOT).pb.rpc.h',
+          ],
+        }, {
+          'variables': {
             'out_args': ['--cpp_out', '<(cc_dir)'],
-          }],
-        ],
-      },
+          }
+        }],
+      ],
       'action': [
         '<(protoc)',
         '--proto_path','<(proto_in_dir)',
