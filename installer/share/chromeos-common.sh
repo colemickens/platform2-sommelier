@@ -265,22 +265,18 @@ EOF
 install_hybrid_mbr() {
   # Creates a hybrid MBR which points the MBR partition 1 to GPT
   # partition 12 (ESP). This is useful on ARM boards that boot
-  # from MBR formatted disks only
+  # from MBR formatted disks only.
   #
   # Currently, this code path is used principally to install to
   # SD cards using chromeos-install run from inside the chroot.
-  # In that environment, the kernel sometime gives `sfdisk` EBUSY
-  # when it calls BLKRRPART for the target disk.  The busy state
-  # clears up after a few seconds.  (This behavior is seen at
-  # least on the version of Ubuntu Trusty in use at Google).
-  #
-  # We work around this sfdisk/kernel misbehavior by the simple
-  # expedient of retrying the call once after waiting a decent
-  # interval.
+  # In that environment, `sfdisk` can be racing with udev, leading
+  # to EBUSY when it calls BLKRRPART for the target disk.  We avoid
+  # the conflict by using `udevadm settle`, so that udev goes first.
+  # cf. crbug.com/343681.
 
   echo "Creating hybrid MBR"
   if ! edit_mbr "${1}"; then
-    sleep 10
+    udevadm settle
     blockdev --rereadpt "${1}"
   fi
 }

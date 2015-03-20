@@ -790,6 +790,12 @@ legacy_offset_size_export "${DST}"
 if [ ${FLAGS_mtd_layout} -eq ${FLAGS_FALSE} ]; then
   # Reload the partition table on block devices only.
   # On MTD, the ChromeOS kernel loads the partition table at boot time.
+  #
+  # In some cases, we may be racing with udev for access to the
+  # device leading to EBUSY when we reread the partition table.  We
+  # avoid the conflict by using `udevadm settle`, so that udev goes
+  # first.  cf. crbug.com/343681.
+  udevadm settle
   /sbin/blockdev --rereadpt ${DST}
 else
   # On NAND, we need to recreate the partition table.
