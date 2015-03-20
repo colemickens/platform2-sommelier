@@ -113,12 +113,7 @@ class UnsecureKeyExchanger : public SecurityManager::KeyExchanger {
 
   bool ProcessMessage(const std::string& message,
                       chromeos::ErrorPtr* error) override {
-    if (password_ == message)
-      return true;
-    chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
-                           errors::kInvalidClientCommitment,
-                           "Commitment does not match the pairing code.");
-    return false;
+    return true;
   }
 
   const std::string& GetKey() const override { return password_; }
