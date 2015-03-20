@@ -164,8 +164,6 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   int32_t QueryDevFeatures(DBus::Error& error) override;  // NOLINT
 
  private:
-  void CheckAndRunCallbacks();
-
   DBus::Connection* dbus_;
   DBus::BusDispatcher* dispatcher_;
 

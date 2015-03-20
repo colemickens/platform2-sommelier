@@ -8,25 +8,13 @@
 
 namespace debugd {
 
-namespace session_manager_internal {
-
-void DBusProxy::NameOwnerChanged(const std::string& name,
-                                 const std::string& /*new_owner*/,
-                                 const std::string& /*old_owner*/) {
-  // Try to enable Chrome remote debugging again on SessionManagerServiceName
-  // being owned.
+void SessionManagerProxy::LoginPromptVisible() {
+  // Try to enable Chrome remote debugging again on Login prompt.
   // Theoretically it should already be enabled during debugd Init().  But
   // There might be a timing issue if debugd started too fast.  We try again
   // here if the first attempt in Init() failed.
-  if (name == login_manager::kSessionManagerServiceName) {
-    VLOG(1) << "NameOwnerChanged: retry enable remote debugging.";
-    // We need to run this async because running DBus methods inside a signal
-    // handler might cause deadlock.
-    session_manager_->is_session_manager_ready_ = true;
-  }
+  EnableChromeRemoteDebuggingInternal();
 }
-
-}  // namespace session_manager_internal
 
 void SessionManagerProxy::EnableChromeRemoteDebugging() {
   VLOG(1) << "Enable Chrome remote debugging: "
@@ -34,14 +22,14 @@ void SessionManagerProxy::EnableChromeRemoteDebugging() {
           << " "
           << is_chrome_remote_debugging_enabled_;
   should_enable_chrome_remote_debugging_ = true;
-
-  if (!dbus_proxy_) {
-    dbus_proxy_.reset(new session_manager_internal::DBusProxy(&conn(), this));
-  }
   EnableChromeRemoteDebuggingInternal();
 }
 
 void SessionManagerProxy::EnableChromeRemoteDebuggingInternal() {
+  VLOG(1) << "Enable Chrome remote debugging internal: "
+          << should_enable_chrome_remote_debugging_
+          << " "
+          << is_chrome_remote_debugging_enabled_;
   if (!should_enable_chrome_remote_debugging_ ||
       is_chrome_remote_debugging_enabled_) {
     return;
@@ -52,16 +40,6 @@ void SessionManagerProxy::EnableChromeRemoteDebuggingInternal() {
     is_chrome_remote_debugging_enabled_ = true;
   } catch (DBus::Error &err) {
     LOG(ERROR) << "Failed to enable Chrome remote debugging: " << err;
-  }
-}
-
-void SessionManagerProxy::MaybeRunCallback() {
-  if (is_session_manager_ready_ &&
-      should_enable_chrome_remote_debugging_ &&
-      !is_chrome_remote_debugging_enabled_ &&
-      enable_chrome_remote_debugging_try_counter_ > 0) {
-    --enable_chrome_remote_debugging_try_counter_;
-    EnableChromeRemoteDebuggingInternal();
   }
 }
 

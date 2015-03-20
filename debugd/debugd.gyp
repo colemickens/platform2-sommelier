@@ -47,25 +47,12 @@
       'includes': ['../common-mk/xml2cpp.gypi'],
     },
     {
-      'target_name': 'dbus_proxies',
-      'type': 'none',
-      'variables': {
-        'xml2cpp_type': 'proxy',
-        'xml2cpp_out_dir': 'include/dbus/dbus_proxies',
-      },
-      'sources': [
-        '../../third_party/dbus-c++/data/org.freedesktop.DBus.xml',
-      ],
-      'includes': ['../common-mk/xml2cpp.gypi'],
-    },
-    {
       'target_name': 'debugd-proxies',
       'type': 'none',
       'dependencies': [
         '../common-mk/external_dependencies.gyp:dbus-proxies',
         '../login_manager/login_manager.gyp:session_manager_proxies',
         '../shill/shill.gypi:shill-proxies',
-        'dbus_proxies',
       ],
       'conditions': [
         ['USE_cellular == 1', {

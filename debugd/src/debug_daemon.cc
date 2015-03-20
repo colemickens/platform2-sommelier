@@ -59,7 +59,6 @@ void DebugDaemon::Run() {
   dispatcher_->enter();
   while (1) {
     dispatcher_->do_iteration();
-    CheckAndRunCallbacks();
   }
   // Unreachable.
   dispatcher_->leave();
@@ -298,8 +297,5 @@ int32_t DebugDaemon::QueryDevFeatures(DBus::Error& error) {  // NOLINT
   return features;
 }
 
-void DebugDaemon::CheckAndRunCallbacks() {
-  session_manager_proxy_->MaybeRunCallback();
-}
 
 }  // namespace debugd
