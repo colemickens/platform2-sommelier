@@ -38,7 +38,8 @@ const char kLeadershipIdKey[] = "uuid";
 const char kLeadershipLeaderKey[] = "leader";
 const char kLeadershipChallengeUri[] =
     "http://%s:%d/privet/v3/leadership/challenge";
-const unsigned kWandererTimeSec = 10u;
+const uint64_t kWandererTimeoutSec = 10u;
+const uint64_t kWandererRequeryTimeSec = 5u;
 const unsigned kHttpConnectionTimeoutMs = 10 * 1000;
 
 const char* GroupStateToString(Group::State state) {
@@ -80,7 +81,7 @@ void Group::RegisterAsync(const CompletionAction& completion_callback) {
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(
-      sequencer->GetHandler("Failed exporting DBusManager.", true));
+      sequencer->GetHandler("Failed exporting Group.", true));
   sequencer->OnAllTasksCompletedCall({completion_callback});
   transport_ = chromeos::http::Transport::CreateDefault();
   transport_->SetDefaultTimeout(
@@ -145,12 +146,6 @@ void Group::ClearPeers() {
 
 void Group::Reelect() {
   SetRole(State::WANDERER, "");
-  wanderer_timer_.Start(FROM_HERE,
-                        base::TimeDelta::FromSeconds(kWandererTimeSec), this,
-                        &Group::OnWandererTimeout);
-  for (const auto& peer : peers_) {
-    AskPeerForLeaderInfo(peer);
-  }
 }
 
 void Group::OnDBusServiceDeath() {
@@ -170,16 +165,50 @@ bool Group::IsScoreGreater(int score, const std::string& guid) const {
 }
 
 void Group::SetRole(State state, const std::string& leader) {
-  leader_ = leader;
   state_ = state;
-  wanderer_timer_.Stop();
+  leader_ = leader;
   dbus_adaptor_.SetLeaderUUID(leader_);
   LOG(INFO) << "Leader is now " << leader_ << " state " << state_;
+  wanderer_timer_->Stop();
+  heartbeat_timer_->Stop();
+  base::Closure heartbeat_task;
+  switch (state) {
+    case State::WANDERER:
+      CHECK(leader.empty());
+      heartbeat_task = base::Bind(
+          &Group::AskPeersForLeaderInfo, weak_ptr_factory_.GetWeakPtr());
+      wanderer_timer_->Start(
+          FROM_HERE,
+          base::TimeDelta::FromSeconds(kWandererTimeoutSec),
+          base::Bind(&Group::OnWandererTimeout,
+                     weak_ptr_factory_.GetWeakPtr()));
+      heartbeat_timer_->Start(
+          FROM_HERE,
+          base::TimeDelta::FromSeconds(kWandererRequeryTimeSec),
+          heartbeat_task);
+      // No reason to wait, let's ask our peers who the leader is right away.
+      heartbeat_task.Run();
+      break;
+    case State::FOLLOWER:
+      // TODO(wiley) Schedule periodic challenges of the leader.
+      //             we should skip the challenge if we've heard from the
+      //             leader recently enough.
+      break;
+    case State::LEADER:
+      // TODO(wiley) Schedule periodic advertisements of leadership.
+      break;
+  }
 }
 
 void Group::OnWandererTimeout() {
   LOG(INFO) << "Assuming leadership role after timeout ";
   SetRole(State::LEADER, delegate_->GetUUID());
+}
+
+void Group::AskPeersForLeaderInfo() {
+  for (const auto& peer : peers_) {
+    AskPeerForLeaderInfo(peer);
+  }
 }
 
 void Group::AskPeerForLeaderInfo(const std::string& peer_uuid) {
@@ -282,6 +311,13 @@ void Group::HandleLeaderChallengeResponse(
       }
     }
   }
+}
+
+void Group::ReplaceTimersWithMocksForTest(
+    std::unique_ptr<base::Timer> wanderer_timer,
+    std::unique_ptr<base::Timer> heartbeat_timer) {
+  wanderer_timer_ = std::move(wanderer_timer);
+  heartbeat_timer_ = std::move(heartbeat_timer);
 }
 
 }  // namespace leaderd

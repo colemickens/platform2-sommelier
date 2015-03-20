@@ -6,6 +6,7 @@
 
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
+#include <base/timer/mock_timer.h>
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -15,10 +16,12 @@
 #include "leaderd/group.h"
 #include "leaderd/manager.h"
 
+using base::MockTimer;
+using base::Timer;
+using chromeos::dbus_utils::ExportedObjectManager;
 using dbus::MockBus;
 using dbus::MockExportedObject;
 using dbus::ObjectPath;
-using chromeos::dbus_utils::ExportedObjectManager;
 using testing::AnyNumber;
 using testing::ReturnRef;
 using testing::_;
@@ -29,9 +32,9 @@ namespace {
 const char kObjectManagerPath[] = "/objman";
 const char kGroupPath[] = "/objman/group";
 const char kGroupName[] = "ABC";
-const std::string kMyUUID = "012";
 const char kScore = 25;
 const char kTestDBusSource[] = "TestDBusSource";
+const char kSelfUUID[] = "this is my own uuid";
 
 // Chrome doesn't bother mocking out their objects completely.
 class EspeciallyMockedBus : public dbus::MockBus {
@@ -55,11 +58,18 @@ class EspeciallyMockedBus : public dbus::MockBus {
 
 class MockGroupDelegate : public Group::Delegate {
  public:
+  MockGroupDelegate() {
+    EXPECT_CALL(*this, GetUUID()).WillRepeatedly(ReturnRef(uuid_));
+  }
+
   MOCK_CONST_METHOD0(GetUUID, const std::string&());
   MOCK_METHOD1(RemoveGroup, void(const std::string&));
   MOCK_CONST_METHOD1(GetIPInfo,
                      std::vector<std::tuple<std::vector<uint8_t>, uint16_t>>(
                          const std::string&));
+
+  // The delegate makes us return a reference, not a value.
+  const std::string uuid_{kSelfUUID};
 };
 
 }  // namespace
@@ -73,9 +83,6 @@ class GroupTest : public testing::Test {
     EXPECT_CALL(*bus_, ListenForServiceOwnerChange(kTestDBusSource, _));
     EXPECT_CALL(*bus_, GetServiceOwner(kTestDBusSource, _));
 
-    EXPECT_CALL(group_delegate_, GetUUID())
-        .WillRepeatedly(ReturnRef(self_uuid_));
-
     group_.reset(new Group{kGroupName,
                            bus_,
                            object_manager_.get(),
@@ -83,10 +90,21 @@ class GroupTest : public testing::Test {
                            kTestDBusSource,
                            {},
                            &group_delegate_});
+    wanderer_timer_ = new MockTimer{false, false};
+    heartbeat_timer_ = new MockTimer{true, true};
+    group_->ReplaceTimersWithMocksForTest(
+        std::unique_ptr<Timer>{wanderer_timer_},
+        std::unique_ptr<Timer>{heartbeat_timer_});
   }
 
-  // The delegate makes us return a reference, not a value.
-  const std::string self_uuid_{"this-is-my-own-uuid"};
+  void AssertState(Group::State state, const std::string& leader_id) {
+    EXPECT_EQ(group_->state_, state);
+    EXPECT_EQ(group_->leader_, leader_id);
+  }
+
+  void SetRole(Group::State state, const std::string& leader_id) {
+    group_->SetRole(state, leader_id);
+  }
 
   base::MessageLoop message_loop_;
   scoped_refptr<EspeciallyMockedBus> bus_{
@@ -96,6 +114,9 @@ class GroupTest : public testing::Test {
                                 dbus::ObjectPath(kObjectManagerPath))};
   MockGroupDelegate group_delegate_;
   std::unique_ptr<Group> group_;
+  // We'll fill these in at SetUp time, but the timers are owned by the Group.
+  MockTimer* wanderer_timer_{nullptr};
+  MockTimer* heartbeat_timer_{nullptr};
 };
 
 TEST_F(GroupTest, LeaveGroup) {
@@ -109,6 +130,20 @@ TEST_F(GroupTest, SetScore) {
   LOG(INFO) << "Set score";
   EXPECT_TRUE(group_->SetScore(&error, kScore));
   EXPECT_EQ(nullptr, error.get());
+}
+
+TEST_F(GroupTest, ShouldBecomeLeaderWithoutPeers) {
+  SetRole(Group::State::WANDERER, "");
+  // A couple heartbearts in wanderer state should change
+  // nothing if we don't have any peers.
+  heartbeat_timer_->Fire();
+  AssertState(Group::State::WANDERER, "");
+  heartbeat_timer_->Fire();
+  AssertState(Group::State::WANDERER, "");
+  // And if nothing happens for long enough, we should promote
+  // ourselves to leader.
+  wanderer_timer_->Fire();
+  AssertState(Group::State::LEADER, kSelfUUID);
 }
 
 }  // namespace leaderd

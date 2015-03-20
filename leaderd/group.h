@@ -67,6 +67,8 @@ class Group : public org::chromium::leaderd::GroupInterface {
   void ClearPeers();
 
  private:
+  friend class GroupTest;
+
   void Reelect();
   void OnDBusServiceDeath();
   void RemoveSoon();
@@ -74,6 +76,7 @@ class Group : public org::chromium::leaderd::GroupInterface {
   bool IsScoreGreater(int score, const std::string& guid) const;
   void SetRole(State state, const std::string& leader);
   void OnWandererTimeout();
+  void AskPeersForLeaderInfo();
   void AskPeerForLeaderInfo(const std::string& peer_uuid);
 
   // These methods revolve around sending and handling responses to our
@@ -86,8 +89,17 @@ class Group : public org::chromium::leaderd::GroupInterface {
   void HandleLeaderChallengeResponse(
       int request_id, scoped_ptr<chromeos::http::Response> response);
 
+  // Used in tests.
+  void ReplaceTimersWithMocksForTest(
+      std::unique_ptr<base::Timer> wanderer_timer,
+      std::unique_ptr<base::Timer> heartbeat_timer);
+
   const std::string guid_;
   const dbus::ObjectPath object_path_;
+  std::unique_ptr<base::Timer> wanderer_timer_{
+      new base::OneShotTimer<Group>()};
+  std::unique_ptr<base::Timer> heartbeat_timer_{
+      new base::RepeatingTimer<Group>()};
 
   // A set of UUIDs of the peers advertising this group.
   std::set<std::string> peers_;
@@ -96,7 +108,6 @@ class Group : public org::chromium::leaderd::GroupInterface {
   int score_{0};
   std::string leader_;
   std::shared_ptr<chromeos::http::Transport> transport_;
-  base::OneShotTimer<Group> wanderer_timer_;
 
   org::chromium::leaderd::GroupAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
