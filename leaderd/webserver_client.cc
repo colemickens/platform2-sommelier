@@ -11,6 +11,7 @@
 #include <chromeos/http/http_request.h>
 #include <chromeos/mime_utils.h>
 
+using base::Value;
 using chromeos::dbus_utils::AsyncEventSequencer;
 using libwebserv::ProtocolHandler;
 using libwebserv::Request;
@@ -20,10 +21,15 @@ namespace leaderd {
 
 namespace {
 
-const char kLeadershipScoreKey[] = "score";
-const char kLeadershipGroupKey[] = "group";
-const char kLeadershipIdKey[] = "uuid";
-const char kLeadershipLeaderKey[] = "leader";
+const char kChallengeScoreKey[] = "score";
+const char kChallengeGroupKey[] = "group";
+const char kChallengeIdKey[] = "uuid";
+const char kChallengeLeaderKey[] = "leader";
+
+const char kAnnounceGroupKey[] = "group";
+const char kAnnounceLeaderIdKey[] = "my_uuid";
+const char kAnnounceScoreKey[] = "score";
+
 
 }  // namespace
 
@@ -51,30 +57,56 @@ void WebServerClient::RegisterAsync(const scoped_refptr<dbus::Bus>& bus,
       "/privet/v3/leadership/challenge", chromeos::http::request_type::kPost,
       base::Bind(&WebServerClient::ChallengeRequestHandler,
                  weak_ptr_factory_.GetWeakPtr()));
+  web_server_.GetDefaultHttpHandler()->AddHandlerCallback(
+      "/privet/v3/leadership/announce", chromeos::http::request_type::kPost,
+      base::Bind(&WebServerClient::AnnouncementRequestHandler,
+                 weak_ptr_factory_.GetWeakPtr()));
 }
 
-void WebServerClient::ChallengeRequestHandler(scoped_ptr<Request> request,
-                                              scoped_ptr<Response> response) {
+std::unique_ptr<Value> WebServerClient::GetBody(scoped_ptr<Request> request) {
   std::string data(request->GetData().begin(), request->GetData().end());
   VLOG(3) << "Input: " << data;
 
-  std::unique_ptr<base::Value> value;
-  const base::DictionaryValue* dictionary = nullptr;
+  std::unique_ptr<Value> value;
 
   if (!data.empty()) {
     std::string content_type = chromeos::mime::RemoveParameters(
         request->GetFirstHeader(chromeos::http::request_header::kContentType));
     if (content_type == chromeos::mime::application::kJson) {
       value.reset(base::JSONReader::Read(data));
-      if (value) value->GetAsDictionary(&dictionary);
     }
   }
+  return value;
+}
 
+void WebServerClient::ChallengeRequestHandler(scoped_ptr<Request> request,
+                                              scoped_ptr<Response> response) {
+  std::unique_ptr<Value> value{GetBody(request.Pass())};
+  const base::DictionaryValue* dictionary = nullptr;
+  if (value) value->GetAsDictionary(&dictionary);
   std::unique_ptr<base::DictionaryValue> output = ProcessChallenge(dictionary);
   if (output) {
     response->ReplyWithJson(chromeos::http::status_code::Ok, output.get());
   } else {
-    response->ReplyWithError(chromeos::http::status_code::BadRequest, "");
+    response->ReplyWithError(chromeos::http::status_code::BadRequest,
+                             std::string{});
+  }
+}
+
+void WebServerClient::AnnouncementRequestHandler(
+    scoped_ptr<Request> request,
+    scoped_ptr<Response> response) {
+  std::unique_ptr<Value> value{GetBody(request.Pass())};
+  const base::DictionaryValue* dictionary = nullptr;
+  if (value) value->GetAsDictionary(&dictionary);
+  if (ProcessAnnouncement(dictionary)) {
+    // Send back an empty response, just for the sake of acting like this is
+    // HTTP.
+    response->ReplyWithText(chromeos::http::status_code::Ok, std::string{},
+                            chromeos::mime::application::kOctet_stream);
+  } else {
+    response->ReplyWithError(chromeos::http::status_code::BadRequest,
+                             std::string{});
   }
 }
 
@@ -87,16 +119,34 @@ std::unique_ptr<base::DictionaryValue> WebServerClient::ProcessChallenge(
   std::string my_uuid;
   std::string leader_uuid;
   if (input_dictionary &&
-      input_dictionary->GetInteger(kLeadershipScoreKey, &score) &&
-      input_dictionary->GetString(kLeadershipGroupKey, &group) &&
-      input_dictionary->GetString(kLeadershipIdKey, &uuid) &&
+      input_dictionary->GetInteger(kChallengeScoreKey, &score) &&
+      input_dictionary->GetString(kChallengeGroupKey, &group) &&
+      input_dictionary->GetString(kChallengeIdKey, &uuid) &&
+      input_dictionary->size() == 3 &&
       delegate_->HandleLeaderChallenge(
-          uuid, group, score, &leader_uuid, &my_uuid)) {
+          group, uuid, score, &leader_uuid, &my_uuid)) {
     output.reset(new base::DictionaryValue());
-    output->SetString(kLeadershipLeaderKey, leader_uuid);
-    output->SetString(kLeadershipIdKey, my_uuid);
+    output->SetString(kChallengeLeaderKey, leader_uuid);
+    output->SetString(kChallengeIdKey, my_uuid);
   }
   return output;
+}
+
+bool WebServerClient::ProcessAnnouncement(
+    const base::DictionaryValue* input_dictionary) {
+  std::string group_id;
+  std::string leader_id;
+  int32_t score;
+  if (input_dictionary &&
+      input_dictionary->GetString(kAnnounceGroupKey, &group_id) &&
+      input_dictionary->GetString(kAnnounceLeaderIdKey, &leader_id) &&
+      input_dictionary->GetInteger(kAnnounceScoreKey, &score) &&
+      input_dictionary->size() == 3 &&
+      delegate_->HandleLeaderAnnouncement(
+          group_id, leader_id, score)) {
+    return true;
+  }
+  return false;
 }
 
 void WebServerClient::OnProtocolHandlerConnected(

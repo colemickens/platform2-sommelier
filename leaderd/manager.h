@@ -48,11 +48,14 @@ class Manager : public org::chromium::leaderd::ManagerInterface,
 
   // WebServerClient::Delegate overrides.
   void SetWebServerPort(uint16_t port) override;
-  bool HandleLeaderChallenge(const std::string& in_uuid,
-                             const std::string& in_guid,
-                             int32_t in_score,
-                             std::string* out_leader,
-                             std::string* out_my_uuid) override;
+  bool HandleLeaderChallenge(const std::string& group_id,
+                             const std::string& challenger_id,
+                             int32_t challenger_score,
+                             std::string* leader_id,
+                             std::string* responder_id) override;
+  bool HandleLeaderAnnouncement(const std::string& group_id,
+                                const std::string& leader_id,
+                                int32_t leader_score) override;
 
   // DBus handlers.
   bool JoinGroup(chromeos::ErrorPtr* error, dbus::Message* message,

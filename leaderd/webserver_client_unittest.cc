@@ -9,13 +9,16 @@
 namespace leaderd {
 
 namespace {
-const char kLeadershipScoreKey[] = "score";
-const char kLeadershipGroupKey[] = "group";
-const char kLeadershipIdKey[] = "uuid";
-const char kLeadershipLeaderKey[] = "leader";
-const char kGroupGUID[] = "ABC";
-const char kChallengeUUID[] = "DEF";
-const char kMyUUID[] = "GHI";
+
+const char kChallengeGroupKey[] = "group";
+const char kChallengeIdKey[] = "uuid";
+const char kChallengeScoreKey[] = "score";
+
+const char kAnnounceGroupKey[] = "group";
+const char kAnnounceLeaderIdKey[] = "my_uuid";
+const char kAnnounceScoreKey[] = "score";
+
+const char kGroupId[] = "ABC";
 }  // namespace
 
 class WebServerClientTest : public testing::Test,
@@ -23,89 +26,138 @@ class WebServerClientTest : public testing::Test,
  public:
   WebServerClientTest() : webserver_(this, "protocol_handler_name") {}
 
-  std::unique_ptr<base::DictionaryValue> ChallengeRequestHandler(
+  std::unique_ptr<base::DictionaryValue> ProcessChallenge(
       const base::DictionaryValue* input) {
     return webserver_.ProcessChallenge(input);
   }
 
+  bool ProcessAnnouncement(const base::DictionaryValue* input) {
+    return webserver_.ProcessAnnouncement(input);
+  }
+
   void SetWebServerPort(uint16_t port) override {}
 
-  bool HandleLeaderChallenge(const std::string& in_uuid,
-                             const std::string& in_guid,
+  bool HandleLeaderChallenge(const std::string& in_guid,
+                             const std::string& in_uuid,
                              int32_t in_score,
                              std::string* out_leader,
                              std::string* out_my_uuid) override {
-    if (in_guid != kGroupGUID) return false;
+    if (in_guid != kGroupId) return false;
     *out_leader = in_uuid;
-    *out_my_uuid = kMyUUID;
+    *out_my_uuid = "This is my own ID.";
     return true;
+  }
+
+  bool HandleLeaderAnnouncement(const std::string& group_id,
+                                const std::string& leader_id,
+                                int32_t leader_score) override {
+    if (group_id != kGroupId) return false;
+    return true;
+  }
+
+  std::unique_ptr<base::DictionaryValue> GetValidChallengeInput() {
+    std::unique_ptr<base::DictionaryValue> input{new base::DictionaryValue()};
+    input->SetInteger(kChallengeScoreKey, 23);
+    input->SetString(kChallengeGroupKey, kGroupId);
+    input->SetString(kChallengeIdKey, "this is the challenger's ID");
+    return input;
+  }
+
+  std::unique_ptr<base::DictionaryValue> GetValidAnnouncementInput() {
+    std::unique_ptr<base::DictionaryValue> input{new base::DictionaryValue()};
+    input->SetInteger(kAnnounceScoreKey, 23);
+    input->SetString(kAnnounceGroupKey, kGroupId);
+    input->SetString(kAnnounceLeaderIdKey, "This is the leader's ID");
+    return input;
   }
 
  private:
   WebServerClient webserver_;
 };
 
-TEST_F(WebServerClientTest, BadData) {
-  EXPECT_EQ(nullptr, ChallengeRequestHandler(nullptr));
+TEST_F(WebServerClientTest, ChallengeBadData) {
+  EXPECT_EQ(nullptr, ProcessChallenge(nullptr));
 }
 
-TEST_F(WebServerClientTest, UnknownFields) {
-  base::DictionaryValue input;
-  input.SetString("BogusField", kGroupGUID);
-  EXPECT_EQ(nullptr, ChallengeRequestHandler(&input));
+TEST_F(WebServerClientTest, ChallengeRejectsExtraFields) {
+  auto input = GetValidChallengeInput();
+  input->SetString("BogusField", kGroupId);
+  EXPECT_EQ(nullptr, ProcessChallenge(input.get()));
 }
 
-TEST_F(WebServerClientTest, GroupMissing) {
-  base::DictionaryValue input;
-  input.SetInteger(kLeadershipScoreKey, 23);
-  input.SetString(kLeadershipIdKey, kChallengeUUID);
-  EXPECT_EQ(nullptr, ChallengeRequestHandler(&input));
+TEST_F(WebServerClientTest, ChallengeRejectsMissingFields) {
+  // We need group to exist.
+  auto input = GetValidChallengeInput();
+  input->Remove(kChallengeGroupKey, nullptr);
+  EXPECT_EQ(nullptr, ProcessChallenge(input.get()));
+  // Similarly, the challenger id
+  input = GetValidChallengeInput();
+  input->Remove(kChallengeIdKey, nullptr);
+  EXPECT_EQ(nullptr, ProcessChallenge(input.get()));
+  // Similarly, the score.
+  input = GetValidChallengeInput();
+  input->Remove(kChallengeScoreKey, nullptr);
+  EXPECT_EQ(nullptr, ProcessChallenge(input.get()));
 }
 
-TEST_F(WebServerClientTest, UUIDMissing) {
-  base::DictionaryValue input;
-  input.SetInteger(kLeadershipScoreKey, 23);
-  input.SetString(kLeadershipGroupKey, kGroupGUID);
-  EXPECT_EQ(nullptr, ChallengeRequestHandler(&input));
+TEST_F(WebServerClientTest, ChallengeScoreAsTextFail) {
+  auto input = GetValidChallengeInput();
+  input->SetString(kChallengeScoreKey, "23");
+  EXPECT_EQ(nullptr, ProcessChallenge(input.get()));
 }
 
-TEST_F(WebServerClientTest, ScoreMissing) {
-  base::DictionaryValue input;
-  input.SetString(kLeadershipGroupKey, kGroupGUID);
-  input.SetString(kLeadershipIdKey, kChallengeUUID);
-  EXPECT_EQ(nullptr, ChallengeRequestHandler(&input));
+TEST_F(WebServerClientTest, ChallengeDelegateFails) {
+  auto input = GetValidChallengeInput();
+  input->SetString(kChallengeGroupKey, "not-the-expected-value");
+  EXPECT_EQ(nullptr, ProcessChallenge(input.get()));
 }
 
-TEST_F(WebServerClientTest, ScoreAsTextFail) {
-  base::DictionaryValue input;
-  input.SetString(kLeadershipScoreKey, "23");
-  input.SetString(kLeadershipGroupKey, kGroupGUID);
-  input.SetString(kLeadershipIdKey, kChallengeUUID);
-  EXPECT_EQ(nullptr, ChallengeRequestHandler(&input));
-}
-
-TEST_F(WebServerClientTest, UnknownGroup) {
-  base::DictionaryValue input;
-  input.SetInteger(kLeadershipScoreKey, 23);
-  input.SetString(kLeadershipGroupKey, "1235");
-  input.SetString(kLeadershipIdKey, kChallengeUUID);
-  EXPECT_EQ(nullptr, ChallengeRequestHandler(&input));
-}
-
-TEST_F(WebServerClientTest, Success) {
-  base::DictionaryValue input;
-  input.SetInteger(kLeadershipScoreKey, 23);
-  input.SetString(kLeadershipGroupKey, kGroupGUID);
-  input.SetString(kLeadershipIdKey, kChallengeUUID);
-  std::unique_ptr<base::DictionaryValue> output =
-      ChallengeRequestHandler(&input);
+TEST_F(WebServerClientTest, ChallengeDelegateSuccess) {
+  auto input = GetValidChallengeInput();
+  std::unique_ptr<base::DictionaryValue> output = ProcessChallenge(input.get());
   EXPECT_NE(nullptr, output);
-  std::string leader;
-  EXPECT_TRUE(output->GetString(kLeadershipLeaderKey, &leader));
-  EXPECT_EQ(kChallengeUUID, leader);
-  std::string my_uuid;
-  EXPECT_TRUE(output->GetString(kLeadershipIdKey, &my_uuid));
-  EXPECT_EQ(kMyUUID, my_uuid);
+}
+
+TEST_F(WebServerClientTest, AnnouncementBadData) {
+  EXPECT_FALSE(ProcessAnnouncement(nullptr));
+}
+
+TEST_F(WebServerClientTest, AnnouncementRejectsExtraFields) {
+  auto input = GetValidAnnouncementInput();
+  input->SetString("BogusField", kGroupId);
+  EXPECT_FALSE(ProcessAnnouncement(input.get()));
+}
+
+TEST_F(WebServerClientTest, AnnouncementRejectsMissingFields) {
+  // We need group to exist.
+  auto input = GetValidAnnouncementInput();
+  input->Remove(kAnnounceGroupKey, nullptr);
+  EXPECT_FALSE(ProcessAnnouncement(input.get()));
+  // Similarly, the leader id
+  input = GetValidAnnouncementInput();
+  input->Remove(kAnnounceLeaderIdKey, nullptr);
+  EXPECT_FALSE(ProcessAnnouncement(input.get()));
+  // Similarly, the score.
+  input = GetValidAnnouncementInput();
+  input->Remove(kAnnounceScoreKey, nullptr);
+  EXPECT_FALSE(ProcessAnnouncement(input.get()));
+}
+
+TEST_F(WebServerClientTest, AnnouncementScoreAsTextFail) {
+  auto input = GetValidAnnouncementInput();
+  input->SetString(kAnnounceScoreKey, "23");
+  EXPECT_FALSE(ProcessAnnouncement(input.get()));
+}
+
+TEST_F(WebServerClientTest, AnnouncementDelegateFails) {
+  auto input = GetValidAnnouncementInput();
+  input->SetString(kAnnounceGroupKey, "not-the-expected-value");
+  EXPECT_FALSE(ProcessAnnouncement(input.get()));
+}
+
+TEST_F(WebServerClientTest, AnnouncementDelegateSuccess) {
+  auto input = GetValidAnnouncementInput();
+  EXPECT_TRUE(ProcessAnnouncement(input.get()));
 }
 
 }  // namespace leaderd

@@ -126,7 +126,7 @@ TEST_F(ManagerTest, JoinGroup_HandlesMultipleJoins) {
 TEST_F(ManagerTest, JoinGroup_LeaderChallengeUnknownGroup) {
   std::string out_leader;
   std::string out_uuid;
-  EXPECT_FALSE(manager_->HandleLeaderChallenge(kUUIDLessThanMyUUID, kGroupName,
+  EXPECT_FALSE(manager_->HandleLeaderChallenge(kGroupName, kUUIDLessThanMyUUID,
                                                kScore, &out_leader, &out_uuid));
 }
 
@@ -140,7 +140,7 @@ TEST_F(ManagerTest, JoinGroup_LeaderChallengeKnownGroupDefaultScore) {
   std::string out_uuid;
   // Default score is 0.
   EXPECT_TRUE(manager_->HandleLeaderChallenge(
-        kUUIDLessThanMyUUID, kGroupName, kScore, &out_leader, &out_uuid));
+      kGroupName, kUUIDLessThanMyUUID, kScore, &out_leader, &out_uuid));
   EXPECT_EQ(kUUIDLessThanMyUUID, out_leader);
   EXPECT_FALSE(out_uuid.empty());
 }
@@ -155,7 +155,7 @@ TEST_F(ManagerTest, JoinGroup_LeaderChallengeKnownGroupDefaultScoreUUIDLess) {
   std::string out_uuid;
   // Default score is 0.
   EXPECT_TRUE(manager_->HandleLeaderChallenge(
-        kUUIDLessThanMyUUID, kGroupName, 0, &out_leader, &out_uuid));
+      kGroupName, kUUIDLessThanMyUUID, 0, &out_leader, &out_uuid));
   EXPECT_EQ(kMyUUID, out_leader);
   EXPECT_FALSE(out_uuid.empty());
 }
@@ -171,7 +171,7 @@ TEST_F(ManagerTest,
   std::string out_uuid;
   // Default score is 0.
   EXPECT_TRUE(manager_->HandleLeaderChallenge(
-        kUUIDGreaterThanMyUUID, kGroupName, 0, &out_leader, &out_uuid));
+      kGroupName, kUUIDGreaterThanMyUUID, 0, &out_leader, &out_uuid));
   EXPECT_EQ(kUUIDGreaterThanMyUUID, out_leader);
   EXPECT_FALSE(out_uuid.empty());
 }

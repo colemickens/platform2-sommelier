@@ -68,20 +68,25 @@ void Manager::SetWebServerPort(uint16_t port) {
   PublishService();
 }
 
-bool Manager::HandleLeaderChallenge(const std::string& in_uuid,
-                                    const std::string& in_guid,
-                                    int32_t in_score,
-                                    std::string* out_leader,
-                                    std::string* out_my_uuid) {
-  VLOG(1) << "Challenge Leader group='" << in_guid << "', uuid='" << in_uuid
-          << "', score=" << in_score;
-  auto it = groups_.find(in_guid);
+bool Manager::HandleLeaderChallenge(const std::string& group_id,
+                                    const std::string& challenger_id,
+                                    int32_t challenger_score,
+                                    std::string* leader_id,
+                                    std::string* responder_id) {
+  auto it = groups_.find(group_id);
   if (it == groups_.end()) {
-    VLOG(1) << "Group not found";
+    VLOG(1) << "Received challenge for an unknown group.";
     return false;
   }
 
-  it->second->HandleLeaderChallenge(in_uuid, in_score, out_leader, out_my_uuid);
+  it->second->HandleLeaderChallenge(challenger_id, challenger_score,
+                                    leader_id, responder_id);
+  return true;
+}
+
+bool Manager::HandleLeaderAnnouncement(const std::string& group_id,
+                                       const std::string& leader_id,
+                                       int32_t leader_score) {
   return true;
 }
 

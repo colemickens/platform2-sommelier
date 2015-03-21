@@ -26,11 +26,14 @@ class WebServerClient {
    public:
     virtual ~Delegate() = default;
     virtual void SetWebServerPort(uint16_t port) = 0;
-    virtual bool HandleLeaderChallenge(const std::string& in_uuid,
-                                       const std::string& in_guid,
-                                       int32_t in_score,
-                                       std::string* out_leader,
-                                       std::string* out_my_uuid) = 0;
+    virtual bool HandleLeaderChallenge(const std::string& group_id,
+                                       const std::string& challenger_id,
+                                       int32_t challenger_score,
+                                       std::string* leader_id,
+                                       std::string* responder_id) = 0;
+    virtual bool HandleLeaderAnnouncement(const std::string& group_id,
+                                          const std::string& leader_id,
+                                          int32_t leader_score) = 0;
   };
 
   WebServerClient(Delegate* delegate,
@@ -43,10 +46,14 @@ class WebServerClient {
 
  private:
   friend class WebServerClientTest;
+  std::unique_ptr<base::Value> GetBody(scoped_ptr<libwebserv::Request> request);
   void ChallengeRequestHandler(scoped_ptr<libwebserv::Request> request,
                                scoped_ptr<libwebserv::Response> response);
+  void AnnouncementRequestHandler(scoped_ptr<libwebserv::Request> request,
+                                  scoped_ptr<libwebserv::Response> response);
   std::unique_ptr<base::DictionaryValue> ProcessChallenge(
       const base::DictionaryValue* input);
+  bool ProcessAnnouncement(const base::DictionaryValue* input);
   void OnProtocolHandlerConnected(
       libwebserv::ProtocolHandler* protocol_handler);
   void OnProtocolHandlerDisconnected(
