@@ -10,7 +10,7 @@
 # opens the chrome://system page.
 . /usr/share/misc/chromeos-common.sh
 
-STORAGE_INFO_FILE="/var/log/storage_info.txt"
+: ${STORAGE_INFO_FILE:="/var/log/storage_info.txt"}
 
 SSD_CMD_0="hdparm -I"
 SSD_CMD_1_NORMAL="smartctl -x"
