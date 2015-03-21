@@ -20,6 +20,19 @@ namespace leaderd {
 
 class Manager;
 
+namespace http_api {
+
+extern const char kChallengeScoreKey[];
+extern const char kChallengeGroupKey[];
+extern const char kChallengeIdKey[];
+extern const char kChallengeLeaderKey[];
+
+extern const char kAnnounceGroupKey[];
+extern const char kAnnounceLeaderIdKey[];
+extern const char kAnnounceScoreKey[];
+
+}  // namespace http_api
+
 class WebServerClient {
  public:
   class Delegate {

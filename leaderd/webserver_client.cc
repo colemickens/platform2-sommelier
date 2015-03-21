@@ -18,8 +18,7 @@ using libwebserv::Request;
 using libwebserv::Response;
 
 namespace leaderd {
-
-namespace {
+namespace http_api {
 
 const char kChallengeScoreKey[] = "score";
 const char kChallengeGroupKey[] = "group";
@@ -30,8 +29,7 @@ const char kAnnounceGroupKey[] = "group";
 const char kAnnounceLeaderIdKey[] = "my_uuid";
 const char kAnnounceScoreKey[] = "score";
 
-
-}  // namespace
+}  // namespace http_api
 
 WebServerClient::WebServerClient(Delegate* delegate,
                                  const std::string& web_handler_name)
@@ -119,15 +117,15 @@ std::unique_ptr<base::DictionaryValue> WebServerClient::ProcessChallenge(
   std::string my_uuid;
   std::string leader_uuid;
   if (input_dictionary &&
-      input_dictionary->GetInteger(kChallengeScoreKey, &score) &&
-      input_dictionary->GetString(kChallengeGroupKey, &group) &&
-      input_dictionary->GetString(kChallengeIdKey, &uuid) &&
+      input_dictionary->GetInteger(http_api::kChallengeScoreKey, &score) &&
+      input_dictionary->GetString(http_api::kChallengeGroupKey, &group) &&
+      input_dictionary->GetString(http_api::kChallengeIdKey, &uuid) &&
       input_dictionary->size() == 3 &&
       delegate_->HandleLeaderChallenge(
           group, uuid, score, &leader_uuid, &my_uuid)) {
     output.reset(new base::DictionaryValue());
-    output->SetString(kChallengeLeaderKey, leader_uuid);
-    output->SetString(kChallengeIdKey, my_uuid);
+    output->SetString(http_api::kChallengeLeaderKey, leader_uuid);
+    output->SetString(http_api::kChallengeIdKey, my_uuid);
   }
   return output;
 }
@@ -138,9 +136,9 @@ bool WebServerClient::ProcessAnnouncement(
   std::string leader_id;
   int32_t score;
   if (input_dictionary &&
-      input_dictionary->GetString(kAnnounceGroupKey, &group_id) &&
-      input_dictionary->GetString(kAnnounceLeaderIdKey, &leader_id) &&
-      input_dictionary->GetInteger(kAnnounceScoreKey, &score) &&
+      input_dictionary->GetString(http_api::kAnnounceGroupKey, &group_id) &&
+      input_dictionary->GetString(http_api::kAnnounceLeaderIdKey, &leader_id) &&
+      input_dictionary->GetInteger(http_api::kAnnounceScoreKey, &score) &&
       input_dictionary->size() == 3 &&
       delegate_->HandleLeaderAnnouncement(
           group_id, leader_id, score)) {

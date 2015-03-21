@@ -29,18 +29,19 @@ namespace leaderd {
 // Represents a single group advertisement.
 class Group : public org::chromium::leaderd::GroupInterface {
  public:
+  using IpInfo = std::vector<std::tuple<std::vector<uint8_t>, uint16_t>>;
+  using CompletionAction =
+      chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
+
   class Delegate {
    public:
     virtual ~Delegate() = default;
 
     virtual void RemoveGroup(const std::string& group) = 0;
     virtual const std::string& GetUUID() const = 0;
-    virtual std::vector<std::tuple<std::vector<uint8_t>, uint16_t>> GetIPInfo(
-        const std::string& peer_uuid) const = 0;
+    virtual IpInfo GetIPInfo(const std::string& peer_id) const = 0;
   };
 
-  using CompletionAction =
-      chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
   enum class State { WANDERER, FOLLOWER, LEADER };
 
   Group(const std::string& guid, const scoped_refptr<dbus::Bus>& bus,
@@ -56,10 +57,13 @@ class Group : public org::chromium::leaderd::GroupInterface {
   bool PokeLeader(chromeos::ErrorPtr* error) override;
 
   // The manager informs us when we need to respond to a challenge from a peer.
-  void HandleLeaderChallenge(const std::string& uuid,
-                             int score,
-                             std::string* leader,
-                             std::string* my_uuid);
+  void HandleLeaderChallenge(const std::string& challenger_id,
+                             int32_t challenger_score,
+                             std::string* leader_id,
+                             std::string* my_id);
+  // The manager informs us of leadership announcements from our peers.
+  bool HandleLeaderAnnouncement(const std::string& leader_id,
+                                int32_t leader_score);
 
   // The manager informs us of changes in group membership.
   void AddPeer(const std::string& uuid);
@@ -68,6 +72,8 @@ class Group : public org::chromium::leaderd::GroupInterface {
 
  private:
   friend class GroupTest;
+  FRIEND_TEST(GroupTest, LeaderChallengeIsWellFormed);
+  FRIEND_TEST(GroupTest, LeaderAnnouncementIsWellFormed);
 
   void Reelect();
   void OnDBusServiceDeath();
@@ -76,23 +82,28 @@ class Group : public org::chromium::leaderd::GroupInterface {
   bool IsScoreGreater(int score, const std::string& guid) const;
   void SetRole(State state, const std::string& leader);
   void OnWandererTimeout();
-  void AskPeersForLeaderInfo();
-  void AskPeerForLeaderInfo(const std::string& peer_uuid);
+  bool BuildApiUrls(const std::string& api_verb,
+                    const std::string& peer_id,
+                    std::vector<std::string>* urls) const;
 
   // These methods revolve around sending and handling responses to our
   // own leader challenges.
-  void GetLeaderChallengeText(std::string* text, std::string* mime_type) const;
-  void SendLeaderChallenge(
-      const std::string& peer_uuid,
-      const chromeos::http::SuccessCallback& success_callback);
-  void HandleLeaderChallengeError(int request_id, const chromeos::Error* error);
+  void AskPeersForLeaderInfo();
+  void SendLeaderChallenge(const std::string& peer_id);
   void HandleLeaderChallengeResponse(
       int request_id, scoped_ptr<chromeos::http::Response> response);
+  // These methods let us announce our leadership.  We ignore results.
+  void AnnounceLeadership();
+  void SendLeaderAnnouncement(const std::string& peer_id);
 
   // Used in tests.
   void ReplaceTimersWithMocksForTest(
       std::unique_ptr<base::Timer> wanderer_timer,
       std::unique_ptr<base::Timer> heartbeat_timer);
+  void ReplaceHTTPTransportForTest(
+      std::shared_ptr<chromeos::http::Transport> transport) {
+    transport_ = transport;
+  }
 
   const std::string guid_;
   const dbus::ObjectPath object_path_;
@@ -113,7 +124,8 @@ class Group : public org::chromium::leaderd::GroupInterface {
   chromeos::dbus_utils::DBusObject dbus_object_;
   std::unique_ptr<chromeos::dbus_utils::DBusServiceWatcher> service_watcher_;
 
-  base::WeakPtrFactory<Group> weak_ptr_factory_{this};
+  base::WeakPtrFactory<Group> lifetime_factory_{this};
+  base::WeakPtrFactory<Group> per_state_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Group);
 };
 

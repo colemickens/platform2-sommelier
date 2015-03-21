@@ -87,6 +87,13 @@ bool Manager::HandleLeaderChallenge(const std::string& group_id,
 bool Manager::HandleLeaderAnnouncement(const std::string& group_id,
                                        const std::string& leader_id,
                                        int32_t leader_score) {
+  auto it = groups_.find(group_id);
+  if (it == groups_.end()) {
+    VLOG(1) << "Received announcement for an unknown group.";
+    return false;
+  }
+
+  it->second->HandleLeaderAnnouncement(leader_id, leader_score);
   return true;
 }
 

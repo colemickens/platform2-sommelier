@@ -27,19 +27,18 @@ using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::DBusObject;
 using chromeos::dbus_utils::DBusServiceWatcher;
 using chromeos::dbus_utils::ExportedObjectManager;
+using chromeos::http::Response;
 
 namespace leaderd {
 
 namespace {
 
-const char kLeadershipScoreKey[] = "score";
-const char kLeadershipGroupKey[] = "group";
-const char kLeadershipIdKey[] = "uuid";
-const char kLeadershipLeaderKey[] = "leader";
-const char kLeadershipChallengeUri[] =
-    "http://%s:%d/privet/v3/leadership/challenge";
+const char kApiVerbAnnounce[] = "announce";
+const char kApiVerbChallenge[] = "challenge";
+
 const uint64_t kWandererTimeoutSec = 10u;
 const uint64_t kWandererRequeryTimeSec = 5u;
+const uint64_t kLeadershipAnnouncementPeriodSec = 10u;
 const unsigned kHttpConnectionTimeoutMs = 10 * 1000;
 
 const char* GroupStateToString(Group::State state) {
@@ -59,6 +58,16 @@ std::ostream& operator<<(std::ostream& stream, Group::State state) {
   return stream;
 }
 
+void IgnoreHttpSuccess(chromeos::http::RequestID request_id,
+                       scoped_ptr<Response> response) {
+}
+
+void IgnoreHttpFailure(chromeos::http::RequestID request_id,
+                       const chromeos::Error* error) {
+  VLOG(1) << "HTTP request failed: " << error->GetDomain() << ", "
+          << error->GetCode() << ", " << error->GetMessage();
+}
+
 }  // namespace
 
 Group::Group(const std::string& guid, const scoped_refptr<dbus::Bus>& bus,
@@ -73,7 +82,7 @@ Group::Group(const std::string& guid, const scoped_refptr<dbus::Bus>& bus,
       dbus_object_(object_manager, bus, path) {
   service_watcher_.reset(new DBusServiceWatcher(
       bus, dbus_connection_id,
-      base::Bind(&Group::OnDBusServiceDeath, weak_ptr_factory_.GetWeakPtr())));
+      base::Bind(&Group::OnDBusServiceDeath, lifetime_factory_.GetWeakPtr())));
   AddPeer(delegate_->GetUUID());
 }
 
@@ -106,27 +115,58 @@ bool Group::PokeLeader(chromeos::ErrorPtr* error) {
   return true;
 }
 
-void Group::HandleLeaderChallenge(const std::string& uuid, int score,
-                                  std::string* leader, std::string* my_uuid) {
-  VLOG(1) << "Challenge leader " << state_ << ", '" << guid_ << "' , uuid '"
-          << uuid << "', score " << score;
+void Group::HandleLeaderChallenge(const std::string& challenger_id,
+                                  int32_t challenger_score,
+                                  std::string* leader_id,
+                                  std::string* my_id) {
+  VLOG(1) << "Received challenge for group='" << guid_
+          << "' in state=" << state_
+          << " from peer='" << challenger_id
+          << "' with score=" << challenger_score;
 
   if (state_ == State::WANDERER || state_ == State::LEADER) {
-    if (IsScoreGreater(score, uuid)) {
-      SetRole(State::FOLLOWER, uuid);
+    if (IsScoreGreater(challenger_score, challenger_id)) {
+      SetRole(State::FOLLOWER, challenger_id);
     } else {
       SetRole(State::LEADER, delegate_->GetUUID());
     }
   }
 
-  *leader = leader_;
-  *my_uuid = delegate_->GetUUID();
+  *leader_id = leader_;
+  *my_id = delegate_->GetUUID();
+}
+
+bool Group::HandleLeaderAnnouncement(const std::string& leader_id,
+                                     int32_t leader_score) {
+  VLOG(1) << "Received announcement for group='" << guid_
+          << "' in state=" << state_
+          << " from peer='" << leader_id
+          << "' with score=" << leader_score;
+  if (peers_.find(leader_id) == peers_.end()) {
+    VLOG(1) << "Ignoring announcement from unknown group member.";
+    return false;
+  }
+  switch (state_) {
+    case State::WANDERER:
+      SetRole(State::FOLLOWER, leader_id);
+      break;
+    case State::FOLLOWER:
+      // TODO(wiley) Skip follower challenges when we get a timely
+      //             announcement from the leader.
+      break;
+    case State::LEADER:
+      // If we're a leader, and we hear from another leader, there is
+      // a conflict.  Resolve this by unilaterally becoming a wanderer
+      // and searching for an appropriate leader.
+      SetRole(State::WANDERER, std::string{});
+      break;
+  }
+  return true;
 }
 
 void Group::AddPeer(const std::string& uuid) {
   peers_.insert(uuid);
   dbus_adaptor_.SetMemberUUIDs({peers_.begin(), peers_.end()});
-  AskPeerForLeaderInfo(uuid);
 }
 
 void Group::RemovePeer(const std::string& uuid) {
@@ -145,7 +185,7 @@ void Group::ClearPeers() {
 }
 
 void Group::Reelect() {
-  SetRole(State::WANDERER, "");
+  SetRole(State::WANDERER, std::string{});
 }
 
 void Group::OnDBusServiceDeath() {
@@ -155,12 +195,12 @@ void Group::OnDBusServiceDeath() {
 
 void Group::RemoveSoon() {
   base::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(&Group::RemoveNow, weak_ptr_factory_.GetWeakPtr()));
+      FROM_HERE, base::Bind(&Group::RemoveNow, lifetime_factory_.GetWeakPtr()));
 }
 
 void Group::RemoveNow() { delegate_->RemoveGroup(guid_); }
 
-bool Group::IsScoreGreater(int score, const std::string& guid) const {
+bool Group::IsScoreGreater(int32_t score, const std::string& guid) const {
   return score > score_ || guid > delegate_->GetUUID();
 }
 
@@ -176,12 +216,12 @@ void Group::SetRole(State state, const std::string& leader) {
     case State::WANDERER:
       CHECK(leader.empty());
       heartbeat_task = base::Bind(
-          &Group::AskPeersForLeaderInfo, weak_ptr_factory_.GetWeakPtr());
+          &Group::AskPeersForLeaderInfo, per_state_factory_.GetWeakPtr());
       wanderer_timer_->Start(
           FROM_HERE,
           base::TimeDelta::FromSeconds(kWandererTimeoutSec),
           base::Bind(&Group::OnWandererTimeout,
-                     weak_ptr_factory_.GetWeakPtr()));
+                     per_state_factory_.GetWeakPtr()));
       heartbeat_timer_->Start(
           FROM_HERE,
           base::TimeDelta::FromSeconds(kWandererRequeryTimeSec),
@@ -195,7 +235,14 @@ void Group::SetRole(State state, const std::string& leader) {
       //             leader recently enough.
       break;
     case State::LEADER:
-      // TODO(wiley) Schedule periodic advertisements of leadership.
+      heartbeat_task = base::Bind(
+          &Group::AnnounceLeadership, per_state_factory_.GetWeakPtr());
+      heartbeat_timer_->Start(
+          FROM_HERE,
+          base::TimeDelta::FromSeconds(kLeadershipAnnouncementPeriodSec),
+          heartbeat_task);
+      // Immediately announce our leadership.
+      heartbeat_task.Run();
       break;
   }
 }
@@ -205,81 +252,57 @@ void Group::OnWandererTimeout() {
   SetRole(State::LEADER, delegate_->GetUUID());
 }
 
-void Group::AskPeersForLeaderInfo() {
-  for (const auto& peer : peers_) {
-    AskPeerForLeaderInfo(peer);
+bool Group::BuildApiUrls(const std::string& api_verb,
+                         const std::string& peer_id,
+                         std::vector<std::string>* urls) const {
+  if (peer_id == delegate_->GetUUID()) {
+    return false;  // Refuse to send requests to ourselves.
   }
-}
-
-void Group::AskPeerForLeaderInfo(const std::string& peer_uuid) {
-  if (peer_uuid == delegate_->GetUUID()) {
-    // Don't look at our own peer uuids.
-    return;
-  }
-
-  if (state_ == State::WANDERER || state_ == State::FOLLOWER) {
-    SendLeaderChallenge(peer_uuid,
-                        base::Bind(&Group::HandleLeaderChallengeResponse,
-                                   weak_ptr_factory_.GetWeakPtr()));
-  }
-}
-
-void Group::GetLeaderChallengeText(std::string* text,
-                                   std::string* mime_type) const {
-  std::unique_ptr<base::DictionaryValue> output(new base::DictionaryValue);
-  output->SetInteger(kLeadershipScoreKey, score_);
-  output->SetString(kLeadershipGroupKey, guid_);
-  output->SetString(kLeadershipIdKey, delegate_->GetUUID());
-
-  base::JSONWriter::Write(output.get(), text);
-
-  *mime_type = chromeos::mime::AppendParameter(
-      chromeos::mime::application::kJson, chromeos::mime::parameters::kCharset,
-      "utf-8");
-}
-
-void Group::SendLeaderChallenge(
-    const std::string& peer_uuid,
-    const chromeos::http::SuccessCallback& success_callback) {
-  const std::vector<std::tuple<std::vector<uint8_t>, uint16_t>>& ips =
-      delegate_->GetIPInfo(peer_uuid);
+  const IpInfo ips = delegate_->GetIPInfo(peer_id);
   if (ips.empty()) {
-    VLOG(1) << "Didn't find any hosts for peer=" << peer_uuid;
-    return;
+    VLOG(1) << "Didn't find any hosts for peer=" << peer_id;
+    return false;
   }
-
-  std::string text, mime_type;
-  GetLeaderChallengeText(&text, &mime_type);
-
   for (const auto& ip_port_pair : ips) {
     char address[INET6_ADDRSTRLEN];
     if (inet_ntop(std::get<0>(ip_port_pair).size() == 4 ? AF_INET : AF_INET6,
                   std::get<0>(ip_port_pair).data(), address,
                   INET6_ADDRSTRLEN) == nullptr)
       continue;
+    urls->push_back(base::StringPrintf(
+        "http://%s:%d/privet/v3/leadership/%s",
+        address, std::get<1>(ip_port_pair), api_verb.c_str()));
+  }
+  return true;
+}
 
-    std::string url = base::StringPrintf(kLeadershipChallengeUri, address,
-                                         std::get<1>(ip_port_pair));
-    VLOG(1) << "Connecting to " << url;
-
-    chromeos::http::SendRequest(
-        chromeos::http::request_type::kPost, url, text.c_str(), text.size(),
-        mime_type, {}, transport_,
-        base::Bind(&Group::HandleLeaderChallengeResponse,
-                   weak_ptr_factory_.GetWeakPtr()),
-        base::Bind(&Group::HandleLeaderChallengeError,
-                   weak_ptr_factory_.GetWeakPtr()));
+void Group::AskPeersForLeaderInfo() {
+  for (const auto& peer_id : peers_) {
+    SendLeaderChallenge(peer_id);
   }
 }
 
-void Group::HandleLeaderChallengeError(int request_id,
-                                       const chromeos::Error* error) {
-  VLOG(1) << "Got error callback " << error->GetDomain() << ", "
-          << error->GetCode() << ", " << error->GetMessage();
+void Group::SendLeaderChallenge(const std::string& peer_id) {
+  std::vector<std::string> urls;
+  if (!BuildApiUrls(kApiVerbChallenge, peer_id, &urls)) {
+    return;
+  }
+  base::DictionaryValue challenge_content;
+  challenge_content.SetInteger(http_api::kChallengeScoreKey, score_);
+  challenge_content.SetString(http_api::kChallengeGroupKey, guid_);
+  challenge_content.SetString(http_api::kChallengeIdKey, delegate_->GetUUID());
+  for (const auto& url : urls) {
+    VLOG(1) << "Connecting to " << url;
+    std::unique_ptr<base::Value> text{challenge_content.DeepCopy()};
+    chromeos::http::PostJson(url, std::move(text), {}, transport_,
+                             base::Bind(&Group::HandleLeaderChallengeResponse,
+                                        per_state_factory_.GetWeakPtr()),
+                             base::Bind(&IgnoreHttpFailure));
+  }
 }
 
-void Group::HandleLeaderChallengeResponse(
-    int request_id, scoped_ptr<chromeos::http::Response> response) {
+void Group::HandleLeaderChallengeResponse(chromeos::http::RequestID request_id,
+                                          scoped_ptr<Response> response) {
   chromeos::ErrorPtr error;
   std::unique_ptr<base::DictionaryValue> json_resp =
       chromeos::http::ParseJsonResponse(response.get(), nullptr, &error);
@@ -291,8 +314,8 @@ void Group::HandleLeaderChallengeResponse(
 
   std::string leader;
   std::string id;
-  if (!json_resp->GetString(kLeadershipLeaderKey, &leader) ||
-      !json_resp->GetString(kLeadershipIdKey, &id)) {
+  if (!json_resp->GetString(http_api::kChallengeLeaderKey, &leader) ||
+      !json_resp->GetString(http_api::kChallengeIdKey, &id)) {
     return;
   }
 
@@ -310,6 +333,31 @@ void Group::HandleLeaderChallengeResponse(
         SetRole(State::FOLLOWER, leader);
       }
     }
+  }
+}
+
+void Group::AnnounceLeadership() {
+  for (const auto& peer_id : peers_) {
+    SendLeaderAnnouncement(peer_id);
+  }
+}
+
+void Group::SendLeaderAnnouncement(const std::string& peer_id) {
+  std::vector<std::string> urls;
+  if (!BuildApiUrls(kApiVerbAnnounce, peer_id, &urls)) {
+    return;
+  }
+  base::DictionaryValue announcement_content;
+  announcement_content.SetString(http_api::kAnnounceGroupKey, guid_);
+  announcement_content.SetString(http_api::kAnnounceLeaderIdKey,
+                                 delegate_->GetUUID());
+  announcement_content.SetInteger(http_api::kAnnounceScoreKey, score_);
+  for (const auto& url : urls) {
+    VLOG(1) << "Connecting to " << url;
+    std::unique_ptr<base::Value> text{announcement_content.DeepCopy()};
+    chromeos::http::PostJson(url, std::move(text), {}, transport_,
+                             base::Bind(&IgnoreHttpSuccess),
+                             base::Bind(&IgnoreHttpFailure));
   }
 }
 

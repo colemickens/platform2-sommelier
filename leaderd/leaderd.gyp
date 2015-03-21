@@ -65,6 +65,7 @@
           'variables': {
             'deps': [
               'libchrome-test-<(libbase_ver)',
+              'libchromeos-test-<(libbase_ver)',
             ],
           },
           'includes': ['../common-mk/common_test.gypi'],

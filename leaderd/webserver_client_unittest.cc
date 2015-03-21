@@ -9,15 +9,6 @@
 namespace leaderd {
 
 namespace {
-
-const char kChallengeGroupKey[] = "group";
-const char kChallengeIdKey[] = "uuid";
-const char kChallengeScoreKey[] = "score";
-
-const char kAnnounceGroupKey[] = "group";
-const char kAnnounceLeaderIdKey[] = "my_uuid";
-const char kAnnounceScoreKey[] = "score";
-
 const char kGroupId[] = "ABC";
 }  // namespace
 
@@ -57,17 +48,17 @@ class WebServerClientTest : public testing::Test,
 
   std::unique_ptr<base::DictionaryValue> GetValidChallengeInput() {
     std::unique_ptr<base::DictionaryValue> input{new base::DictionaryValue()};
-    input->SetInteger(kChallengeScoreKey, 23);
-    input->SetString(kChallengeGroupKey, kGroupId);
-    input->SetString(kChallengeIdKey, "this is the challenger's ID");
+    input->SetInteger(http_api::kChallengeScoreKey, 23);
+    input->SetString(http_api::kChallengeGroupKey, kGroupId);
+    input->SetString(http_api::kChallengeIdKey, "this is the challenger's ID");
     return input;
   }
 
   std::unique_ptr<base::DictionaryValue> GetValidAnnouncementInput() {
     std::unique_ptr<base::DictionaryValue> input{new base::DictionaryValue()};
-    input->SetInteger(kAnnounceScoreKey, 23);
-    input->SetString(kAnnounceGroupKey, kGroupId);
-    input->SetString(kAnnounceLeaderIdKey, "This is the leader's ID");
+    input->SetInteger(http_api::kAnnounceScoreKey, 23);
+    input->SetString(http_api::kAnnounceGroupKey, kGroupId);
+    input->SetString(http_api::kAnnounceLeaderIdKey, "This is the leader's ID");
     return input;
   }
 
@@ -88,27 +79,27 @@ TEST_F(WebServerClientTest, ChallengeRejectsExtraFields) {
 TEST_F(WebServerClientTest, ChallengeRejectsMissingFields) {
   // We need group to exist.
   auto input = GetValidChallengeInput();
-  input->Remove(kChallengeGroupKey, nullptr);
+  input->Remove(http_api::kChallengeGroupKey, nullptr);
   EXPECT_EQ(nullptr, ProcessChallenge(input.get()));
   // Similarly, the challenger id
   input = GetValidChallengeInput();
-  input->Remove(kChallengeIdKey, nullptr);
+  input->Remove(http_api::kChallengeIdKey, nullptr);
   EXPECT_EQ(nullptr, ProcessChallenge(input.get()));
   // Similarly, the score.
   input = GetValidChallengeInput();
-  input->Remove(kChallengeScoreKey, nullptr);
+  input->Remove(http_api::kChallengeScoreKey, nullptr);
   EXPECT_EQ(nullptr, ProcessChallenge(input.get()));
 }
 
 TEST_F(WebServerClientTest, ChallengeScoreAsTextFail) {
   auto input = GetValidChallengeInput();
-  input->SetString(kChallengeScoreKey, "23");
+  input->SetString(http_api::kChallengeScoreKey, "23");
   EXPECT_EQ(nullptr, ProcessChallenge(input.get()));
 }
 
 TEST_F(WebServerClientTest, ChallengeDelegateFails) {
   auto input = GetValidChallengeInput();
-  input->SetString(kChallengeGroupKey, "not-the-expected-value");
+  input->SetString(http_api::kChallengeGroupKey, "not-the-expected-value");
   EXPECT_EQ(nullptr, ProcessChallenge(input.get()));
 }
 
@@ -131,27 +122,27 @@ TEST_F(WebServerClientTest, AnnouncementRejectsExtraFields) {
 TEST_F(WebServerClientTest, AnnouncementRejectsMissingFields) {
   // We need group to exist.
   auto input = GetValidAnnouncementInput();
-  input->Remove(kAnnounceGroupKey, nullptr);
+  input->Remove(http_api::kAnnounceGroupKey, nullptr);
   EXPECT_FALSE(ProcessAnnouncement(input.get()));
   // Similarly, the leader id
   input = GetValidAnnouncementInput();
-  input->Remove(kAnnounceLeaderIdKey, nullptr);
+  input->Remove(http_api::kAnnounceLeaderIdKey, nullptr);
   EXPECT_FALSE(ProcessAnnouncement(input.get()));
   // Similarly, the score.
   input = GetValidAnnouncementInput();
-  input->Remove(kAnnounceScoreKey, nullptr);
+  input->Remove(http_api::kAnnounceScoreKey, nullptr);
   EXPECT_FALSE(ProcessAnnouncement(input.get()));
 }
 
 TEST_F(WebServerClientTest, AnnouncementScoreAsTextFail) {
   auto input = GetValidAnnouncementInput();
-  input->SetString(kAnnounceScoreKey, "23");
+  input->SetString(http_api::kAnnounceScoreKey, "23");
   EXPECT_FALSE(ProcessAnnouncement(input.get()));
 }
 
 TEST_F(WebServerClientTest, AnnouncementDelegateFails) {
   auto input = GetValidAnnouncementInput();
-  input->SetString(kAnnounceGroupKey, "not-the-expected-value");
+  input->SetString(http_api::kAnnounceGroupKey, "not-the-expected-value");
   EXPECT_FALSE(ProcessAnnouncement(input.get()));
 }
 
