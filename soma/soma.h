@@ -11,16 +11,18 @@
 #include <base/macros.h>
 
 #include "soma/proto_bindings/soma.pb.h"
+#include "soma/proto_bindings/soma.pb.rpc.h"
 #include "soma/spec_reader.h"
 
 namespace soma {
-class Soma {
+class Soma : public ISomaHostInterface {
  public:
   explicit Soma(const base::FilePath& bundle_root);
   virtual ~Soma() = default;
 
-  int GetContainerSpec(const GetContainerSpecRequest& request,
-                       GetContainerSpecResponse* response);
+  // Implementation of ISomaHostInterface.
+  int GetContainerSpec(GetContainerSpecRequest* request,
+                       GetContainerSpecResponse* response) override;
 
  private:
   // TODO(cmasone): make this do the real thing once we grok that.

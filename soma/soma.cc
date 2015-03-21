@@ -18,15 +18,16 @@ namespace soma {
 
 Soma::Soma(const base::FilePath& bundle_root) : root_(bundle_root) {}
 
-int Soma::GetContainerSpec(const GetContainerSpecRequest& request,
+int Soma::GetContainerSpec(GetContainerSpecRequest* request,
                            GetContainerSpecResponse* response) {
-  if (!request.has_service_name() || request.service_name().empty()) {
+  if (request->service_name().empty()) {
     LOG(WARNING) << "Request must contain a valid name.";
     return 1;
   }
   scoped_ptr<ContainerSpecWrapper> spec =
-      reader_.Read(NameToPath(request.service_name()));
-  response->mutable_container_spec()->CheckTypeAndMergeFrom(spec->AsProtoBuf());
+      reader_.Read(NameToPath(request->service_name()));
+  if (spec)
+    response->mutable_container_spec()->CheckTypeAndMergeFrom(spec->AsProto());
   return 0;
 }
 

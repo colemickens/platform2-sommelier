@@ -66,7 +66,7 @@ class ContainerSpecWrapper {
   // Returns true if there's a DeviceNodeFilter that matches major and minor.
   bool DeviceNodeIsAllowed(int major, int minor) const;
 
-  const ContainerSpec& AsProtoBuf() const { return internal_; }
+  const ContainerSpec& AsProto() const { return internal_; }
 
  private:
   // TODO(cmasone): As we gain more experience with these, investigate whether
