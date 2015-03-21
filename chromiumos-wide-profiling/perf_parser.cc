@@ -222,7 +222,8 @@ void PerfParser::MaybeSortParsedEvents() {
     event_and_time->event = &parsed_events_[i];
 
     struct perf_sample sample_info;
-    CHECK(ReadPerfSampleInfo(*parsed_events_[i].raw_event, &sample_info));
+    CHECK(reader_.ReadPerfSampleInfo(*parsed_events_[i].raw_event,
+                                     &sample_info));
     event_and_time->time = sample_info.time;
 
     events_and_times[i] = std::move(event_and_time);
@@ -246,7 +247,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
         reader_.sample_type() & PERF_SAMPLE_TID))
     return false;
   perf_sample sample_info;
-  if (!ReadPerfSampleInfo(*parsed_event->raw_event, &sample_info))
+  if (!reader_.ReadPerfSampleInfo(*parsed_event->raw_event, &sample_info))
     return false;
   PidTid pidtid = std::make_pair(sample_info.pid, sample_info.tid);
   const auto comm_iter = pidtid_to_comm_map_.find(pidtid);
@@ -283,7 +284,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   // Write the remapped data back to the raw event regardless of whether it was
   // entirely successfully remapped.  A single failed remap should not
   // invalidate all the other remapped entries.
-  if (!WritePerfSampleInfo(sample_info, parsed_event->raw_event)) {
+  if (!reader_.WritePerfSampleInfo(sample_info, parsed_event->raw_event)) {
     LOG(ERROR) << "Failed to write back remapped sample info.";
     return false;
   }
