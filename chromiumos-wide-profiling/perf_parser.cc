@@ -206,7 +206,7 @@ bool PerfParser::ProcessEvents() {
 }
 
 void PerfParser::MaybeSortParsedEvents() {
-  if (!(sample_type_ & PERF_SAMPLE_TIME)) {
+  if (!(reader_.sample_type() & PERF_SAMPLE_TIME)) {
     parsed_events_sorted_by_time_.resize(parsed_events_.size());
     for (size_t i = 0; i < parsed_events_.size(); ++i) {
       parsed_events_sorted_by_time_[i] = &parsed_events_[i];
@@ -242,7 +242,8 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   bool mapping_failed = false;
 
   // Find the associated command.
-  if (!(sample_type_ & PERF_SAMPLE_IP && sample_type_ & PERF_SAMPLE_TID))
+  if (!(reader_.sample_type() & PERF_SAMPLE_IP &&
+        reader_.sample_type() & PERF_SAMPLE_TID))
     return false;
   perf_sample sample_info;
   if (!ReadPerfSampleInfo(*parsed_event->raw_event, &sample_info))

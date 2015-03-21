@@ -158,6 +158,10 @@ class PerfReader {
     return attrs_;
   }
 
+  uint64_t sample_type() const {
+    return sample_type_;
+  }
+
   bool HaveEventNames() const {
     for (const auto& attr : attrs_) {
       if (attr.name.empty()) {
