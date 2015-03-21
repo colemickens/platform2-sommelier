@@ -241,6 +241,10 @@ class PerfParser : public PerfReader {
 
   std::map<uint32_t, std::unique_ptr<AddressMapper>> process_mappers_;
 
+  // Transitional: Start referring to base-class fields using this reference.
+  // Then replace inheritance with composition.
+  PerfReader& reader_ = *this;
+
   DISALLOW_COPY_AND_ASSIGN(PerfParser);
 };
 

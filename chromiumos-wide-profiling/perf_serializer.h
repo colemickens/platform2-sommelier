@@ -279,6 +279,10 @@ class PerfSerializer : public PerfParser {
       DeserializeNUMATopologyMetadata = {
         this, &PerfSerializer::DeserializeNodeTopologyMetadata};
 
+  // Transitional: Start referring to base-class fields using this reference.
+  // Then replace inheritance with composition.
+  PerfParser& parser_ = *this;
+
   // Set this flag to serialize perf events in chronological order, rather than
   // the order in which they appear in the raw data.
   bool serialize_sorted_events_;
