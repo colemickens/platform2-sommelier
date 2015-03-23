@@ -2,15 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Singleton class to manage the connection to /dev/binder.
-// All interactions with the binder driver are implemented
-// by this class.
-
 #ifndef LIBPROTOBINDER_BINDER_MANAGER_H_
 #define LIBPROTOBINDER_BINDER_MANAGER_H_
 
-#include <stdint.h>
-#include <stdlib.h>
+#include <cstdint>
+
+#include <base/macros.h>
+#include <base/memory/scoped_ptr.h>
 
 #include "libprotobinder/binder_export.h"
 #include "libprotobinder/parcel.h"
@@ -18,30 +16,64 @@
 namespace protobinder {
 
 class BinderProxy;
+class IInterface;
 
-class BINDER_EXPORT BinderManager {
+// Interface for a singleton class for communicating using the binder protocol.
+class BINDER_EXPORT BinderManagerInterface {
  public:
-  static BinderManager* GetBinderManager();
+  // Returns the singleton instance of BinderManagerInterface, creating it if
+  // necessary.
+  static BinderManagerInterface* Get();
 
-  BinderManager();
-  ~BinderManager();
+  // Overrides the automatically-created instance returned by Get(). Can be
+  // called by tests to install their own BinderManagerStub.
+  static void SetForTesting(scoped_ptr<BinderManagerInterface> manager);
 
-  int Transact(uint32_t handle,
-               uint32_t code,
-               const Parcel& data,
-               Parcel* reply,
-               uint32_t flags);
-  void IncWeakHandle(uint32_t handle);
-  void DecWeakHandle(uint32_t handle);
-  void EnterLoop();
-  bool GetFdForPolling(int* fd);
-  bool HandleEvent();
+  virtual ~BinderManagerInterface() = default;
+
+  virtual int Transact(uint32_t handle,
+                       uint32_t code,
+                       const Parcel& data,
+                       Parcel* reply,
+                       uint32_t flags) = 0;
+  virtual void IncWeakHandle(uint32_t handle) = 0;
+  virtual void DecWeakHandle(uint32_t handle) = 0;
+  virtual void EnterLoop() = 0;
+  virtual bool GetFdForPolling(int* fd) = 0;
+  virtual bool HandleEvent() = 0;
 
   // Creates or clears a request for binder death notifications.
   // End-users should use BinderProxy::SetDeathCallback() instead of calling
   // these methods directly.
-  void RequestDeathNotification(BinderProxy* proxy);
-  void ClearDeathNotification(BinderProxy* proxy);
+  virtual void RequestDeathNotification(BinderProxy* proxy) = 0;
+  virtual void ClearDeathNotification(BinderProxy* proxy) = 0;
+
+  // If a test IInterface has been registered for |binder|, returns it.
+  // Otherwise, returns nullptr.
+  virtual IInterface* CreateTestInterface(const IBinder* binder) = 0;
+};
+
+// Real implementation of BinderManagerInterface that communicates with the
+// kernel via /dev/binder.
+class BINDER_EXPORT BinderManager : public BinderManagerInterface {
+ public:
+  BinderManager();
+  ~BinderManager() override;
+
+  // BinderManagerInterface:
+  int Transact(uint32_t handle,
+               uint32_t code,
+               const Parcel& data,
+               Parcel* reply,
+               uint32_t flags) override;
+  void IncWeakHandle(uint32_t handle) override;
+  void DecWeakHandle(uint32_t handle) override;
+  void EnterLoop() override;
+  bool GetFdForPolling(int* fd) override;
+  bool HandleEvent() override;
+  void RequestDeathNotification(BinderProxy* proxy) override;
+  void ClearDeathNotification(BinderProxy* proxy) override;
+  IInterface* CreateTestInterface(const IBinder* binder) override;
 
  private:
   bool WriteCmd(void* data, size_t len);
@@ -72,6 +104,8 @@ class BINDER_EXPORT BinderManager {
   // used in Transactions which carry user data.
   Parcel out_commands_;
   Parcel in_commands_;
+
+  DISALLOW_COPY_AND_ASSIGN(BinderManager);
 };
 
 }  // namespace protobinder

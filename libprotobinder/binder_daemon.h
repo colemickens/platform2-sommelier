@@ -27,7 +27,7 @@ class BINDER_EXPORT BinderDaemon : public chromeos::Daemon,
   virtual ~BinderDaemon();
 
  private:
-  BinderManager* manager_;
+  BinderManagerInterface* manager_;
   std::string service_name_;
   scoped_ptr<IBinder> binder_;
 

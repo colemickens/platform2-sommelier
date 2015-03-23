@@ -12,7 +12,7 @@ namespace protobinder {
 
 BinderDaemon::BinderDaemon(const std::string& service_name,
                            scoped_ptr<IBinder> binder)
-    : manager_(BinderManager::GetBinderManager()),
+    : manager_(BinderManagerInterface::Get()),
       service_name_(service_name),
       binder_(binder.Pass()) {}
 

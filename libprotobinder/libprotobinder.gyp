@@ -14,6 +14,9 @@
       'sources': [
         'binder_daemon.cc',
         'binder_manager.cc',
+        # TODO(derat): If the amount of testing-specific code ever becomes
+        # substantial, move it to a separate shared library.
+        'binder_manager_stub.cc',
         'parcel.cc',
         'binder_proxy.cc',
         'binder_host.cc',

@@ -19,7 +19,7 @@
 #include "psyche_demo/proto_bindings/psyche_demo.pb.h"
 #include "psyche_demo/proto_bindings/psyche_demo.pb.rpc.h"
 
-using protobinder::BinderManager;
+using protobinder::BinderManagerInterface;
 using protobinder::BinderProxy;
 
 namespace {
@@ -73,7 +73,7 @@ class Daemon : public chromeos::Daemon,
       return return_code;
 
     int binder_fd = 0;
-    CHECK(BinderManager::GetBinderManager()->GetFdForPolling(&binder_fd));
+    CHECK(BinderManagerInterface::Get()->GetFdForPolling(&binder_fd));
     CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
         binder_fd, true /* persistent */, base::MessageLoopForIO::WATCH_READ,
         &fd_watcher_, this));
@@ -85,7 +85,7 @@ class Daemon : public chromeos::Daemon,
 
   // MessageLoopForIO::Watcher:
   void OnFileCanReadWithoutBlocking(int file_descriptor) override {
-    BinderManager::GetBinderManager()->HandleEvent();
+    BinderManagerInterface::Get()->HandleEvent();
   }
   void OnFileCanWriteWithoutBlocking(int file_descriptor) override {
     NOTREACHED();

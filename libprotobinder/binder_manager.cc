@@ -19,6 +19,7 @@
 
 #include "libprotobinder/binder_host.h"
 #include "libprotobinder/binder_proxy.h"
+#include "libprotobinder/iinterface.h"
 #include "libprotobinder/protobinder.h"
 
 namespace protobinder {
@@ -27,14 +28,23 @@ namespace {
 
 const size_t kBinderMappedSize = (1 * 1024 * 1024) - (4096 * 2);
 
-BinderManager* g_binder_manager = NULL;
+BinderManagerInterface* g_binder_manager = nullptr;
 
 }  // namespace
 
-BinderManager* BinderManager::GetBinderManager() {
+// static
+BinderManagerInterface* BinderManagerInterface::Get() {
   if (!g_binder_manager)
     g_binder_manager = new BinderManager();
   return g_binder_manager;
+}
+
+// static
+void BinderManagerInterface::SetForTesting(
+    scoped_ptr<BinderManagerInterface> manager) {
+  if (g_binder_manager)
+    delete g_binder_manager;
+  g_binder_manager = manager.release();
 }
 
 void BinderManager::ReleaseBinderBuffer(Parcel* parcel,
@@ -45,8 +55,10 @@ void BinderManager::ReleaseBinderBuffer(Parcel* parcel,
                                         void* cookie) {
   LOG(INFO) << "Binder free";
   // TODO(leecam): Close FDs in Parcel
-  GetBinderManager()->in_commands_.WriteInt32(BC_FREE_BUFFER);
-  GetBinderManager()->in_commands_.WritePointer((uintptr_t)data);
+  BinderManager* manager = static_cast<BinderManager*>(
+      BinderManagerInterface::Get());
+  manager->in_commands_.WriteInt32(BC_FREE_BUFFER);
+  manager->in_commands_.WritePointer((uintptr_t)data);
 }
 
 void BinderManager::IncWeakHandle(uint32_t handle) {
@@ -73,6 +85,10 @@ void BinderManager::ClearDeathNotification(BinderProxy* proxy) {
   out_commands_.WriteInt32(proxy->handle());
   out_commands_.WritePointer(reinterpret_cast<uintptr_t>(proxy));
   DoBinderReadWriteIoctl(false);
+}
+
+IInterface* BinderManager::CreateTestInterface(const IBinder* binder) {
+  return nullptr;
 }
 
 int BinderManager::SendReply(const Parcel& reply, int error_code) {
@@ -424,5 +440,7 @@ BinderManager::BinderManager() {
   in_commands_.SetCapacity(256);
   out_commands_.SetCapacity(256);
 }
+
+BinderManager::~BinderManager() {}
 
 }  // namespace protobinder
