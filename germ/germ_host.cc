@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "germ/daemon.h"
+#include "germ/germ_host.h"
 
 namespace germ {
 
-int Daemon::Run() {
+int GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
+  int status = launcher_.RunService(request->name(), request->command_line());
+  response->set_status(status);
   return 0;
 }
 

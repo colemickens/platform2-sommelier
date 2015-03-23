@@ -1,0 +1,21 @@
+// Copyright 2015 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+syntax = "proto2";
+option optimize_for = LITE_RUNTIME;
+
+package germ;
+
+service Germ {
+  rpc Launch (LaunchRequest) returns (LaunchResponse);
+}
+
+message LaunchRequest {
+  optional string name = 1;
+  // TODO(jorgelo): add ContainerSpec, remove |command_line|.
+  optional string command_line = 2;
+}
+
+message LaunchResponse {
+  optional int32 status = 1;
+}
