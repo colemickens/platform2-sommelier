@@ -42,7 +42,7 @@ bool PerfSerializer::Serialize(PerfDataProto* perf_data_proto) {
     return false;
   }
 
-  if (!ParseRawEvents()) {
+  if (!parser_.ParseRawEvents()) {
     return false;
   }
 
@@ -108,7 +108,7 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
     return false;
   }
 
-  if (!ParseRawEvents())
+  if (!parser_.ParseRawEvents())
     return false;
 
   if (perf_data_proto.metadata_mask_size())
