@@ -79,7 +79,8 @@ class Group : public org::chromium::leaderd::GroupInterface {
   void OnDBusServiceDeath();
   void RemoveSoon();
   void RemoveNow();
-  bool IsScoreGreater(int score, const std::string& guid) const;
+  bool IsTheirScoreGreater(int32_t other_score,
+                           const std::string& other_id) const;
   void SetRole(State state, const std::string& leader);
   void OnWandererTimeout();
   bool BuildApiUrls(const std::string& api_verb,
@@ -116,7 +117,7 @@ class Group : public org::chromium::leaderd::GroupInterface {
   std::set<std::string> peers_;
   Delegate* delegate_;
   State state_{State::WANDERER};
-  int score_{0};
+  int32_t score_{0};
   std::string leader_;
   std::shared_ptr<chromeos::http::Transport> transport_;
 

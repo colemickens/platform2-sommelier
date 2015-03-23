@@ -36,6 +36,9 @@ namespace {
 const char kApiVerbAnnounce[] = "announce";
 const char kApiVerbChallenge[] = "challenge";
 
+const uint64_t kLeaderChallengePeriodSec = 20u;
+// TODO(wiley) Devices should pick their wanderer timeouts randomly inside a
+//             fixed range.
 const uint64_t kWandererTimeoutSec = 10u;
 const uint64_t kWandererRequeryTimeSec = 5u;
 const uint64_t kLeadershipAnnouncementPeriodSec = 10u;
@@ -119,19 +122,15 @@ void Group::HandleLeaderChallenge(const std::string& challenger_id,
                                   int32_t challenger_score,
                                   std::string* leader_id,
                                   std::string* my_id) {
-  VLOG(1) << "Received challenge for group='" << guid_
+  LOG(INFO) << "Received challenge for group='" << guid_
           << "' in state=" << state_
           << " from peer='" << challenger_id
           << "' with score=" << challenger_score;
 
-  if (state_ == State::WANDERER || state_ == State::LEADER) {
-    if (IsScoreGreater(challenger_score, challenger_id)) {
-      SetRole(State::FOLLOWER, challenger_id);
-    } else {
-      SetRole(State::LEADER, delegate_->GetUUID());
-    }
+  if (state_ == State::LEADER &&
+      IsTheirScoreGreater(challenger_score, challenger_id)) {
+    SetRole(State::FOLLOWER, challenger_id);
   }
-
   *leader_id = leader_;
   *my_id = delegate_->GetUUID();
 }
@@ -151,8 +150,11 @@ bool Group::HandleLeaderAnnouncement(const std::string& leader_id,
       SetRole(State::FOLLOWER, leader_id);
       break;
     case State::FOLLOWER:
-      // TODO(wiley) Skip follower challenges when we get a timely
-      //             announcement from the leader.
+      if (IsTheirScoreGreater(leader_score, leader_id)) {
+        // The leader has just claimed a higher score than ours.  Skip
+        // challenging the leader for now.
+        heartbeat_timer_->Reset();
+      }
       break;
     case State::LEADER:
       // If we're a leader, and we hear from another leader, there is
@@ -200,8 +202,10 @@ void Group::RemoveSoon() {
 
 void Group::RemoveNow() { delegate_->RemoveGroup(guid_); }
 
-bool Group::IsScoreGreater(int32_t score, const std::string& guid) const {
-  return score > score_ || guid > delegate_->GetUUID();
+bool Group::IsTheirScoreGreater(int32_t other_score,
+                                const std::string& other_id) const {
+  return other_score > score_ ||
+         (other_score == score_ && other_id > delegate_->GetUUID());
 }
 
 void Group::SetRole(State state, const std::string& leader) {
@@ -230,9 +234,14 @@ void Group::SetRole(State state, const std::string& leader) {
       heartbeat_task.Run();
       break;
     case State::FOLLOWER:
-      // TODO(wiley) Schedule periodic challenges of the leader.
-      //             we should skip the challenge if we've heard from the
-      //             leader recently enough.
+      // Periodically challenge the leader.
+      heartbeat_task = base::Bind(&Group::SendLeaderChallenge,
+                                  per_state_factory_.GetWeakPtr(),
+                                  leader_);
+      heartbeat_timer_->Start(
+          FROM_HERE,
+          base::TimeDelta::FromSeconds(kLeaderChallengePeriodSec),
+          heartbeat_task);
       break;
     case State::LEADER:
       heartbeat_task = base::Bind(

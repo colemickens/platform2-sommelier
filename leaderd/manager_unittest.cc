@@ -30,10 +30,7 @@ namespace leaderd {
 
 namespace {
 const char kGroupName[] = "ABC";
-const char kUUIDLessThanMyUUID[] = "123";
 const char kMyUUID[] = "456";
-const char kUUIDGreaterThanMyUUID[] = "567";
-const char kScore = 25;
 const char kDbusSource[] = "a.dbus.connection.id";
 
 }  // namespace
@@ -126,54 +123,8 @@ TEST_F(ManagerTest, JoinGroup_HandlesMultipleJoins) {
 TEST_F(ManagerTest, JoinGroup_LeaderChallengeUnknownGroup) {
   std::string out_leader;
   std::string out_uuid;
-  EXPECT_FALSE(manager_->HandleLeaderChallenge(kGroupName, kUUIDLessThanMyUUID,
-                                               kScore, &out_leader, &out_uuid));
-}
-
-TEST_F(ManagerTest, JoinGroup_LeaderChallengeKnownGroupDefaultScore) {
-  chromeos::ErrorPtr error;
-  dbus::ObjectPath group_path;
-  EXPECT_TRUE(JoinGroup(&error, kDbusSource, kGroupName, {}, &group_path));
-  EXPECT_TRUE(group_path.IsValid());
-  EXPECT_EQ(nullptr, error.get());
-  std::string out_leader;
-  std::string out_uuid;
-  // Default score is 0.
-  EXPECT_TRUE(manager_->HandleLeaderChallenge(
-      kGroupName, kUUIDLessThanMyUUID, kScore, &out_leader, &out_uuid));
-  EXPECT_EQ(kUUIDLessThanMyUUID, out_leader);
-  EXPECT_FALSE(out_uuid.empty());
-}
-
-TEST_F(ManagerTest, JoinGroup_LeaderChallengeKnownGroupDefaultScoreUUIDLess) {
-  chromeos::ErrorPtr error;
-  dbus::ObjectPath group_path;
-  EXPECT_TRUE(JoinGroup(&error, kDbusSource, kGroupName, {}, &group_path));
-  EXPECT_TRUE(group_path.IsValid());
-  EXPECT_EQ(nullptr, error.get());
-  std::string out_leader;
-  std::string out_uuid;
-  // Default score is 0.
-  EXPECT_TRUE(manager_->HandleLeaderChallenge(
-      kGroupName, kUUIDLessThanMyUUID, 0, &out_leader, &out_uuid));
-  EXPECT_EQ(kMyUUID, out_leader);
-  EXPECT_FALSE(out_uuid.empty());
-}
-
-TEST_F(ManagerTest,
-       JoinGroup_LeaderChallengeKnownGroupDefaultScoreUUIDGreater) {
-  chromeos::ErrorPtr error;
-  dbus::ObjectPath group_path;
-  EXPECT_TRUE(JoinGroup(&error, kDbusSource, kGroupName, {}, &group_path));
-  EXPECT_TRUE(group_path.IsValid());
-  EXPECT_EQ(nullptr, error.get());
-  std::string out_leader;
-  std::string out_uuid;
-  // Default score is 0.
-  EXPECT_TRUE(manager_->HandleLeaderChallenge(
-      kGroupName, kUUIDGreaterThanMyUUID, 0, &out_leader, &out_uuid));
-  EXPECT_EQ(kUUIDGreaterThanMyUUID, out_leader);
-  EXPECT_FALSE(out_uuid.empty());
+  EXPECT_FALSE(manager_->HandleLeaderChallenge(kGroupName, "a peer id",
+                                               100, &out_leader, &out_uuid));
 }
 
 }  // namespace leaderd

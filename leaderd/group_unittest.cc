@@ -31,12 +31,16 @@ using testing::_;
 namespace leaderd {
 
 namespace {
+
 const char kObjectManagerPath[] = "/objman";
 const char kGroupPath[] = "/objman/group";
 const char kGroupName[] = "ABC";
 const char kScore = 25;
 const char kTestDBusSource[] = "TestDBusSource";
 const char kSelfUUID[] = "this is my own uuid";
+const int32_t kSelfScore = 100;
+const char kPeerIdLessThanSelf[] = "a peer id that is less than self";
+const char kPeerIdGreaterThanSelf[] = "wow, an id that is greater than self";
 
 const char kTestGroupMember[] = "a peer that could be in our group";
 const uint16_t kTestGroupMemberPort{8080};
@@ -105,6 +109,10 @@ class FakePeerHttpHandler {
         kTestGroupMemberAnnounceUrl, chromeos::http::request_type::kPost,
         base::Bind(&FakePeerHttpHandler::HandleAnnouncement,
                    weak_ptr_factory_.GetWeakPtr()));
+
+    // By default, let everything go.
+    EXPECT_CALL(*this, HandleAnnouncement(_, _)).Times(AnyNumber());
+    EXPECT_CALL(*this, HandleChallenge(_, _)).Times(AnyNumber());
   }
 
   MOCK_METHOD2(HandleAnnouncement,
@@ -176,8 +184,8 @@ class GroupTest : public testing::Test {
   }
 
   void AssertState(Group::State state, const std::string& leader_id) {
-    EXPECT_EQ(group_->state_, state);
-    EXPECT_EQ(group_->leader_, leader_id);
+    EXPECT_EQ(state, group_->state_);
+    EXPECT_EQ(leader_id, group_->leader_);
   }
 
   void SetRole(Group::State state, const std::string& leader_id) {
@@ -197,6 +205,8 @@ class GroupTest : public testing::Test {
   MockTimer* heartbeat_timer_{nullptr};
   std::shared_ptr<chromeos::http::fake::Transport> transport_{
       new chromeos::http::fake::Transport()};
+  std::unique_ptr<FakePeerHttpHandler> fake_handler_{
+      new FakePeerHttpHandler{transport_}};
 };
 
 TEST_F(GroupTest, LeaveGroup) {
@@ -267,15 +277,85 @@ TEST_F(GroupTest, LeaderAnnouncementIsWellFormed) {
 }
 
 TEST_F(GroupTest, SendsAnnouncementsPeriodicallyWhenLeader) {
-  FakePeerHttpHandler fake_handler(transport_);
+  testing::Mock::VerifyAndClearExpectations(fake_handler_.get());
   group_->AddPeer(kTestGroupMember);
   // We'll announce our leadership immediately on assuming the role.
-  EXPECT_CALL(fake_handler, HandleAnnouncement(_, _));
+  EXPECT_CALL(*fake_handler_, HandleAnnouncement(_, _));
   SetRole(Group::State::LEADER, kSelfUUID);
-  testing::Mock::VerifyAndClearExpectations(&fake_handler);
+  testing::Mock::VerifyAndClearExpectations(fake_handler_.get());
   // We'll also announce periodically, on the heartbeat timer.
-  EXPECT_CALL(fake_handler, HandleAnnouncement(_, _));
+  EXPECT_CALL(*fake_handler_, HandleAnnouncement(_, _));
   heartbeat_timer_->Fire();
+}
+
+TEST_F(GroupTest, SendsChallengesPeriodicallyWhenFollower) {
+  testing::Mock::VerifyAndClearExpectations(fake_handler_.get());
+  group_->AddPeer(kTestGroupMember);
+  SetRole(Group::State::FOLLOWER, kTestGroupMember);
+  // On every heartbeat, we should challenge the leader.
+  EXPECT_CALL(*fake_handler_, HandleChallenge(_, _)).Times(2);
+  heartbeat_timer_->Fire();
+  heartbeat_timer_->Fire();
+}
+
+TEST_F(GroupTest, IgnoresChallengesWhileNotLeader) {
+  std::string leader_id, self_id;
+  group_->AddPeer(kTestGroupMember);
+  // When we're following, we basically ignores scores, and just return what we
+  // know about the leader.
+  SetRole(Group::State::FOLLOWER, kTestGroupMember);
+  group_->HandleLeaderChallenge(kPeerIdGreaterThanSelf,
+                                kSelfScore + 1,
+                                &leader_id, &self_id);
+  ASSERT_EQ(kTestGroupMember, leader_id);
+  AssertState(Group::State::FOLLOWER, kTestGroupMember);
+  // In wanderer, the same applies.
+  SetRole(Group::State::WANDERER, std::string{});
+  group_->HandleLeaderChallenge(kPeerIdGreaterThanSelf,
+                                kSelfScore + 1,
+                                &leader_id, &self_id);
+  ASSERT_EQ(std::string{}, leader_id);
+  AssertState(Group::State::WANDERER, std::string{});
+}
+
+TEST_F(GroupTest, ShouldRetainLeadershipWhenMoreFit) {
+  std::string leader_id, self_id;
+  SetRole(Group::State::LEADER, kSelfUUID);
+  group_->SetScore(nullptr, kSelfScore);
+  // If the challenger score is less, we should ignore the peer ID.
+  group_->HandleLeaderChallenge(kPeerIdGreaterThanSelf,
+                                kSelfScore - 1,
+                                &leader_id, &self_id);
+  AssertState(Group::State::LEADER, kSelfUUID);
+  ASSERT_EQ(kSelfUUID, leader_id);
+  // If the challenger score is equal, we check the peer ID.
+  group_->HandleLeaderChallenge(kPeerIdLessThanSelf,
+                                kSelfScore,
+                                &leader_id, &self_id);
+  AssertState(Group::State::LEADER, kSelfUUID);
+  ASSERT_EQ(kSelfUUID, leader_id);
+}
+
+TEST_F(GroupTest, ShouldAbdicateToPeerWithHigherScore) {
+  std::string leader_id, self_id;
+  SetRole(Group::State::LEADER, kSelfUUID);
+  group_->SetScore(nullptr, kSelfScore);
+  group_->HandleLeaderChallenge(kPeerIdLessThanSelf,
+                                kSelfScore + 1,
+                                &leader_id, &self_id);
+  AssertState(Group::State::FOLLOWER, kPeerIdLessThanSelf);
+  ASSERT_EQ(kPeerIdLessThanSelf, leader_id);
+}
+
+TEST_F(GroupTest, ShouldAbdicateToPeerWithHigherID) {
+  std::string leader_id, self_id;
+  SetRole(Group::State::LEADER, kSelfUUID);
+  group_->SetScore(nullptr, kSelfScore);
+  group_->HandleLeaderChallenge(kPeerIdGreaterThanSelf,
+                                kSelfScore,
+                                &leader_id, &self_id);
+  AssertState(Group::State::FOLLOWER, kPeerIdGreaterThanSelf);
+  ASSERT_EQ(kPeerIdGreaterThanSelf, leader_id);
 }
 
 }  // namespace leaderd
