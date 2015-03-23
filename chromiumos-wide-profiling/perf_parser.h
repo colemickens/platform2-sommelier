@@ -147,7 +147,6 @@ class PerfParser : public PerfReader {
   }
 
   // Returns an array of pointers to |parsed_events_| sorted by sample time.
-  // The first time this is called, it will create the sorted array.
   const std::vector<ParsedEvent*>& GetEventsSortedByTime() const {
     return parsed_events_sorted_by_time_;
   }
