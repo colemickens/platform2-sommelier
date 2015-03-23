@@ -20,35 +20,39 @@ Client::Client(scoped_ptr<protobinder::BinderProxy> client_proxy)
 
 Client::~Client() = default;
 
-void Client::AddService(Service* service) {
+const ClientInterface::ServiceSet& Client::GetServices() const {
+  return services_;
+}
+
+void Client::AddService(ServiceInterface* service) {
   DCHECK(services_.find(service) == services_.end())
-      << "Service \"" << service->name() << "\" already registered for client "
-      << " with handle " << proxy_->handle();
+      << "Service \"" << service->GetName() << "\" already registered for "
+      << "client with handle " << proxy_->handle();
   services_.insert(service);
-  if (service->state() == Service::STATE_STARTED)
+  if (service->GetState() == ServiceInterface::STATE_STARTED)
     SendServiceHandle(service);
 }
 
-void Client::RemoveService(Service* service) {
+void Client::RemoveService(ServiceInterface* service) {
   services_.erase(service);
 }
 
-void Client::HandleServiceStateChange(Service* service) {
+void Client::HandleServiceStateChange(ServiceInterface* service) {
   DCHECK(services_.count(service))
-      << "Service \"" << service->name() << "\" not registered for client with "
-      << "handle " << proxy_->handle();
-  if (service->state() == Service::STATE_STARTED)
+      << "Service \"" << service->GetName() << "\" not registered for client "
+      << "with handle " << proxy_->handle();
+  if (service->GetState() == ServiceInterface::STATE_STARTED)
     SendServiceHandle(service);
 }
 
-void Client::SendServiceHandle(Service* service) {
+void Client::SendServiceHandle(ServiceInterface* service) {
   ReceiveServiceRequest request;
-  request.set_name(service->name());
-  util::CopyBinderToProto(*(service->proxy()), request.mutable_binder());
+  request.set_name(service->GetName());
+  util::CopyBinderToProto(*(service->GetProxy()), request.mutable_binder());
   ReceiveServiceResponse response;
   int result = interface_->ReceiveService(&request, &response);
   if (result != 0) {
-    LOG(WARNING) << "Failed to pass service \"" << service->name()
+    LOG(WARNING) << "Failed to pass service \"" << service->GetName()
                  << "\" to client with handle " << proxy_->handle();
   }
 }

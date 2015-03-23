@@ -18,28 +18,40 @@ class BinderProxy;
 namespace psyche {
 
 class IPsycheClient;
-class Service;
+class ServiceInterface;
 
 // A client that has requested one or more services from psyched.
-class Client {
+class ClientInterface {
  public:
-  explicit Client(scoped_ptr<protobinder::BinderProxy> client_proxy);
-  ~Client();
+  using ServiceSet = std::set<ServiceInterface*>;
+  virtual const ServiceSet& GetServices() const = 0;
 
-  using ServiceSet = std::set<Service*>;
-  const ServiceSet& services() const { return services_; }
+  virtual ~ClientInterface() = default;
 
   // Adds or removes a service that this client has requested to |services_|.
-  // Ownership of |client| remains with the caller.
-  void AddService(Service* service);
-  void RemoveService(Service* service);
+  // Ownership of |service| remains with the caller.
+  virtual void AddService(ServiceInterface* service) = 0;
+  virtual void RemoveService(ServiceInterface* service) = 0;
 
   // Handle notification that a service's state has changed.
-  void HandleServiceStateChange(Service* service);
+  virtual void HandleServiceStateChange(ServiceInterface* service) = 0;
+};
+
+// The real implementation of ClientInterface.
+class Client : public ClientInterface {
+ public:
+  explicit Client(scoped_ptr<protobinder::BinderProxy> client_proxy);
+  ~Client() override;
+
+  // ClientInterface:
+  const ServiceSet& GetServices() const override;
+  void AddService(ServiceInterface* service) override;
+  void RemoveService(ServiceInterface* service) override;
+  void HandleServiceStateChange(ServiceInterface* service) override;
 
  private:
   // Passes |service|'s handle to the client.
-  void SendServiceHandle(Service* service);
+  void SendServiceHandle(ServiceInterface* service);
 
   scoped_ptr<protobinder::BinderProxy> proxy_;
   scoped_ptr<IPsycheClient> interface_;

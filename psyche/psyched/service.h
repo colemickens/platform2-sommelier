@@ -18,33 +18,46 @@ class BinderProxy;
 
 namespace psyche {
 
-class Client;
+class ClientInterface;
 
 // A service that is registered with psyched.
-class Service {
+class ServiceInterface {
  public:
   enum State {
     STATE_STOPPED = 0,
     STATE_STARTED,
   };
 
-  explicit Service(const std::string& name);
-  ~Service();
+  virtual ~ServiceInterface() = default;
 
-  const std::string& name() const { return name_; }
-  State state() const { return state_; }
-  protobinder::BinderProxy* proxy() { return proxy_.get(); }
-
-  using ClientSet = std::set<Client*>;
-  const ClientSet& clients() const { return clients_; }
+  virtual const std::string& GetName() const = 0;
+  virtual State GetState() const = 0;
+  virtual protobinder::BinderProxy* GetProxy() const = 0;
 
   // Updates the proxy used by clients to communicate with the service.
-  void SetProxy(scoped_ptr<protobinder::BinderProxy> proxy);
+  virtual void SetProxy(scoped_ptr<protobinder::BinderProxy> proxy) = 0;
 
   // Registers or unregisters a client as a user of this service. Ownership of
   // |client| remains with the caller.
-  void AddClient(Client* client);
-  void RemoveClient(Client* client);
+  virtual void AddClient(ClientInterface* client) = 0;
+  virtual void RemoveClient(ClientInterface* client) = 0;
+  virtual bool HasClient(ClientInterface* client) const = 0;
+};
+
+// Real implementation of ServiceInterface.
+class Service : public ServiceInterface {
+ public:
+  explicit Service(const std::string& name);
+  ~Service() override;
+
+  // ServiceInterface:
+  const std::string& GetName() const override;
+  State GetState() const override;
+  protobinder::BinderProxy* GetProxy() const override;
+  void SetProxy(scoped_ptr<protobinder::BinderProxy> proxy) override;
+  void AddClient(ClientInterface* client) override;
+  void RemoveClient(ClientInterface* client) override;
+  bool HasClient(ClientInterface* client) const override;
 
  private:
   // Lets |clients_| know that |state_| has changed.
@@ -64,6 +77,7 @@ class Service {
   scoped_ptr<protobinder::BinderProxy> proxy_;
 
   // Clients that are holding connections to this service.
+  using ClientSet = std::set<ClientInterface*>;
   ClientSet clients_;
 
   // Keep this member last.

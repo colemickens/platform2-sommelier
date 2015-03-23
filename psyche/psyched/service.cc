@@ -7,7 +7,6 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/message_loop/message_loop.h>
 #include <protobinder/binder_proxy.h>
 
 #include "psyche/proto_bindings/psyche.pb.h"
@@ -27,6 +26,12 @@ Service::Service(const std::string& name)
 
 Service::~Service() = default;
 
+const std::string& Service::GetName() const { return name_; }
+
+ServiceInterface::State Service::GetState() const { return state_; }
+
+protobinder::BinderProxy* Service::GetProxy() const { return proxy_.get(); }
+
 void Service::SetProxy(scoped_ptr<BinderProxy> proxy) {
   proxy_ = proxy.Pass();
   proxy_->SetDeathCallback(base::Bind(&Service::HandleBinderDeath,
@@ -35,12 +40,16 @@ void Service::SetProxy(scoped_ptr<BinderProxy> proxy) {
   NotifyClientsAboutStateChange();
 }
 
-void Service::AddClient(Client* client) {
+void Service::AddClient(ClientInterface* client) {
   clients_.insert(client);
 }
 
-void Service::RemoveClient(Client* client) {
+void Service::RemoveClient(ClientInterface* client) {
   clients_.erase(client);
+}
+
+bool Service::HasClient(ClientInterface* client) const {
+  return clients_.count(client);
 }
 
 void Service::NotifyClientsAboutStateChange() {

@@ -98,15 +98,29 @@
       'targets': [
         # Tests.
         {
+          'target_name': 'libpsyched_test',
+          'type': 'static_library',
+          'sources': [
+            'psyched/client_stub.cc',
+            'psyched/service_stub.cc',
+          ],
+          'dependencies': [
+            'libpsyched',
+          ],
+        },
+        {
           'target_name': 'psyched_test',
           'type': 'executable',
           'includes': [ '../common-mk/common_test.gypi' ],
-          'dependencies': [ 'libpsyched' ],
+          'dependencies': [
+            'libpsyched',
+            'libpsyched_test',
+          ],
           'sources': [
             'common/testrunner.cc',
-            # TODO(derat): All of this code is impossible to test right now
-            # because it calls protobinder::BinderToInterface. Write a bunch of
-            # tests once libprotobinder is stubbable: http://brbug.com/650
+            'psyched/client_unittest.cc',
+            'psyched/registrar_unittest.cc',
+            'psyched/service_unittest.cc',
           ],
         },
       ],

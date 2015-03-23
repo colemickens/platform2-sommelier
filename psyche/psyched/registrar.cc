@@ -24,9 +24,37 @@ using protobinder::BinderProxy;
 
 namespace psyche {
 
+class Registrar::RealDelegate : public Delegate {
+ public:
+  RealDelegate() = default;
+  ~RealDelegate() override = default;
+
+  // Delegate:
+  scoped_ptr<ServiceInterface> CreateService(const std::string& name) override {
+    return scoped_ptr<ServiceInterface>(new Service(name));
+  }
+  scoped_ptr<ClientInterface> CreateClient(
+      scoped_ptr<BinderProxy> client_proxy) override {
+    return scoped_ptr<ClientInterface>(new Client(client_proxy.Pass()));
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(RealDelegate);
+};
+
 Registrar::Registrar() : weak_ptr_factory_(this) {}
 
 Registrar::~Registrar() = default;
+
+void Registrar::SetDelegateForTesting(scoped_ptr<Delegate> delegate) {
+  CHECK(!delegate_);
+  delegate_ = delegate.Pass();
+}
+
+void Registrar::Init() {
+  if (!delegate_)
+    delegate_.reset(new RealDelegate());
+}
 
 int Registrar::RegisterService(RegisterServiceRequest* in,
                                RegisterServiceResponse* out) {
@@ -45,17 +73,18 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
   auto it = services_.find(service_name);
   if (it == services_.end()) {
     it = services_.insert(std::make_pair(service_name,
-        make_linked_ptr(new Service(service_name)))).first;
+        make_linked_ptr(
+            delegate_->CreateService(service_name).release()))).first;
   } else {
     // The service is already registered (but maybe it's dead).
-    if (it->second->state() == Service::STATE_STARTED) {
+    if (it->second->GetState() == Service::STATE_STARTED) {
       LOG(ERROR) << "Ignoring request to register already-running service \""
                  << service_name << "\"";
       out->set_success(false);
       return 0;
     }
   }
-  Service* service = it->second.get();
+  ServiceInterface* service = it->second.get();
   service->SetProxy(proxy.Pass());
 
   out->set_success(true);
@@ -85,13 +114,14 @@ int Registrar::RequestService(RequestServiceRequest* in,
         &Registrar::HandleClientBinderDeath,
         weak_ptr_factory_.GetWeakPtr(), client_handle));
     client_it = clients_.insert(std::make_pair(client_handle,
-        make_linked_ptr(new Client(client_proxy.Pass())))).first;
+        make_linked_ptr(
+            delegate_->CreateClient(client_proxy.Pass()).release()))).first;
   }
-  Client* client = client_it->second.get();
-  Service* service = service_it->second.get();
+  ClientInterface* client = client_it->second.get();
+  ServiceInterface* service = service_it->second.get();
 
   // Check that the client didn't previously request this service.
-  if (service->clients().count(client) == 0) {
+  if (!service->HasClient(client)) {
     service->AddClient(client);
     client->AddService(service);
   }
@@ -111,8 +141,8 @@ void Registrar::HandleClientBinderDeath(int32_t handle) {
     return;
   }
 
-  Client* client = it->second.get();
-  for (auto service : client->services())
+  ClientInterface* client = it->second.get();
+  for (auto service : client->GetServices())
     service->RemoveClient(client);
 
   // TODO(derat): Stop unused services?
