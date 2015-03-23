@@ -160,14 +160,6 @@ class PerfParser : public PerfReader {
   // Defines a type for a pid:tid pair.
   typedef std::pair<uint32_t, uint32_t> PidTid;
 
-  // Sort |parsed_events_| by time, storing the results in
-  // |parsed_events_sorted_by_time_|.
-  // Events can not be sorted by time if PERF_SAMPLE_TIME is not set in
-  // attr.sample_type (PerfReader.sample_type_). In that case,
-  // |parsed_events_sorted_by_time_| is not actually sorted, but has the same
-  // order as |parsed_events_|.
-  void MaybeSortParsedEvents();
-
   // Used for processing events.  e.g. remapping with synthetic addresses.
   bool ProcessEvents();
   template <typename MMapEventT>
@@ -208,6 +200,14 @@ class PerfParser : public PerfReader {
   std::set<DSOInfo> dso_set_;
 
  private:
+  // Sort |parsed_events_| by time, storing the results in
+  // |parsed_events_sorted_by_time_|.
+  // Events can not be sorted by time if PERF_SAMPLE_TIME is not set in
+  // attr.sample_type (PerfReader.sample_type_). In that case,
+  // |parsed_events_sorted_by_time_| is not actually sorted, but has the same
+  // order as |parsed_events_|.
+  void MaybeSortParsedEvents();
+
   // Calls MapIPAndPidAndGetNameAndOffset() on the callchain of a sample event.
   bool MapCallchain(const uint64_t ip,
                     const uint32_t pid,

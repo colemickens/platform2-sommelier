@@ -63,7 +63,6 @@ bool PerfParser::ParseRawEvents() {
     ParsedEvent& parsed_event = parsed_events_[i];
     parsed_event.raw_event = events_[i].get();
   }
-  MaybeSortParsedEvents();
   ProcessEvents();
 
   if (!options_.discard_unused_events)
@@ -95,40 +94,8 @@ bool PerfParser::ParseRawEvents() {
   return true;
 }
 
-void PerfParser::MaybeSortParsedEvents() {
-  if (!(sample_type_ & PERF_SAMPLE_TIME)) {
-    parsed_events_sorted_by_time_.resize(parsed_events_.size());
-    for (size_t i = 0; i < parsed_events_.size(); ++i) {
-      parsed_events_sorted_by_time_[i] = &parsed_events_[i];
-    }
-    return;
-  }
-  std::vector<std::unique_ptr<EventAndTime>> events_and_times;
-  events_and_times.resize(parsed_events_.size());
-  for (size_t i = 0; i < parsed_events_.size(); ++i) {
-    std::unique_ptr<EventAndTime> event_and_time(new EventAndTime);
-
-    // Store the timestamp and event pointer in an array.
-    event_and_time->event = &parsed_events_[i];
-
-    struct perf_sample sample_info;
-    CHECK(ReadPerfSampleInfo(*parsed_events_[i].raw_event, &sample_info));
-    event_and_time->time = sample_info.time;
-
-    events_and_times[i] = std::move(event_and_time);
-  }
-  // Sort the events based on timestamp, and then populate the sorted event
-  // vector in sorted order.
-  std::stable_sort(events_and_times.begin(), events_and_times.end(),
-                   CompareParsedEventTimes);
-
-  parsed_events_sorted_by_time_.resize(events_and_times.size());
-  for (unsigned int i = 0; i < events_and_times.size(); ++i) {
-    parsed_events_sorted_by_time_[i] = events_and_times[i]->event;
-  }
-}
-
 bool PerfParser::ProcessEvents() {
+  MaybeSortParsedEvents();
   memset(&stats_, 0, sizeof(stats_));
 
   stats_.did_remap = false;   // Explicitly clear the remap flag.
@@ -236,6 +203,39 @@ bool PerfParser::ProcessEvents() {
   }
   stats_.did_remap = options_.do_remap;
   return true;
+}
+
+void PerfParser::MaybeSortParsedEvents() {
+  if (!(sample_type_ & PERF_SAMPLE_TIME)) {
+    parsed_events_sorted_by_time_.resize(parsed_events_.size());
+    for (size_t i = 0; i < parsed_events_.size(); ++i) {
+      parsed_events_sorted_by_time_[i] = &parsed_events_[i];
+    }
+    return;
+  }
+  std::vector<std::unique_ptr<EventAndTime>> events_and_times;
+  events_and_times.resize(parsed_events_.size());
+  for (size_t i = 0; i < parsed_events_.size(); ++i) {
+    std::unique_ptr<EventAndTime> event_and_time(new EventAndTime);
+
+    // Store the timestamp and event pointer in an array.
+    event_and_time->event = &parsed_events_[i];
+
+    struct perf_sample sample_info;
+    CHECK(ReadPerfSampleInfo(*parsed_events_[i].raw_event, &sample_info));
+    event_and_time->time = sample_info.time;
+
+    events_and_times[i] = std::move(event_and_time);
+  }
+  // Sort the events based on timestamp, and then populate the sorted event
+  // vector in sorted order.
+  std::stable_sort(events_and_times.begin(), events_and_times.end(),
+                   CompareParsedEventTimes);
+
+  parsed_events_sorted_by_time_.resize(events_and_times.size());
+  for (unsigned int i = 0; i < events_and_times.size(); ++i) {
+    parsed_events_sorted_by_time_[i] = events_and_times[i]->event;
+  }
 }
 
 bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {

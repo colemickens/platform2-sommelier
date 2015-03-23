@@ -121,7 +121,6 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
     return false;
   }
 
-  MaybeSortParsedEvents();
   if (!ProcessEvents())
     return false;
 
