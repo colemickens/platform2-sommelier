@@ -612,6 +612,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE) {
     Nl80211Frame frame(rawdata);
     Nl80211Frame expected_frame(ByteString(kAuthenticateFrame,
                                            sizeof(kAuthenticateFrame)));
+    EXPECT_EQ(Nl80211Frame::kAuthFrameType, frame.frame_type());
     EXPECT_TRUE(frame.IsEqual(expected_frame));
   }
 }
@@ -651,6 +652,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE) {
     Nl80211Frame frame(rawdata);
     Nl80211Frame expected_frame(ByteString(kAssociateFrame,
                                            sizeof(kAssociateFrame)));
+    EXPECT_EQ(Nl80211Frame::kAssocResponseFrameType, frame.frame_type());
     EXPECT_TRUE(frame.IsEqual(expected_frame));
   }
 }
@@ -787,6 +789,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DEAUTHENTICATE) {
     Nl80211Frame frame(rawdata);
     Nl80211Frame expected_frame(ByteString(kDeauthenticateFrame,
                                            sizeof(kDeauthenticateFrame)));
+    EXPECT_EQ(Nl80211Frame::kDeauthFrameType, frame.frame_type());
     EXPECT_TRUE(frame.IsEqual(expected_frame));
   }
 }
@@ -913,6 +916,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
     Nl80211Frame frame(rawdata);
     Nl80211Frame expected_frame(ByteString(kDisassociateFrame,
                                            sizeof(kDisassociateFrame)));
+    EXPECT_EQ(Nl80211Frame::kDisassocFrameType, frame.frame_type());
     EXPECT_TRUE(frame.IsEqual(expected_frame));
   }
 }

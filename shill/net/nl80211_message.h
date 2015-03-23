@@ -78,6 +78,7 @@ class SHILL_EXPORT Nl80211Frame {
   bool IsEqual(const Nl80211Frame &other) const;
   uint16_t reason() const { return reason_; }
   uint16_t status() const { return status_; }
+  uint8_t frame_type() const { return frame_type_; }
 
  private:
   static const uint8_t kMinimumFrameByteCount;
