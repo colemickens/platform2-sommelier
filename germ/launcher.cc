@@ -48,6 +48,9 @@ int Launcher::RunInteractive(const std::string& name,
 
   std::vector<char*> cmdline;
   cmdline.push_back(const_cast<char*>(executable.c_str()));
+  // Minijail will use the underlying char* array as 'argv',
+  // so null-terminate it.
+  cmdline.push_back(nullptr);
 
   chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
 
