@@ -77,7 +77,7 @@ void SerializeAndDeserialize(const string& input,
                              bool do_remap,
                              bool discard_unused_events) {
   PerfDataProto perf_data_proto;
-  PerfSerializer::Options options;
+  PerfParser::Options options;
   options.do_remap = do_remap;
   options.discard_unused_events = discard_unused_events;
   options.sample_mapping_percentage_threshold = 100.0f;
@@ -410,7 +410,7 @@ TEST(PerfSerializerTest, SerializesAndDeserializesTraceMetadata) {
 
   PerfSerializer perf_serializer;
   // Disable mapping threshold--we have no mappable events.
-  PerfSerializer::Options options;
+  PerfParser::Options options;
   options.sample_mapping_percentage_threshold = 0.0;
   perf_serializer.set_options(options);
   PerfDataProto perf_data_proto;
@@ -462,7 +462,7 @@ TEST(PerfSerializerTest, SerializesAndDeserializesMmapEvents) {
 
   PerfSerializer perf_serializer;
   // Disable mapping threshold--we have no mappable events.
-  PerfSerializer::Options options;
+  PerfParser::Options options;
   options.sample_mapping_percentage_threshold = 0.0;
   perf_serializer.set_options(options);
   PerfDataProto perf_data_proto;

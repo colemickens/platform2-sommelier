@@ -52,7 +52,7 @@ string ParseFormatOptions(string format, PerfParser::Options* options) {
 bool ReadInput(const FormatAndFile& input, PerfSerializer* perf_serializer) {
   LOG(INFO) << "Reading input.";
 
-  PerfSerializer::Options options;
+  PerfParser::Options options;
   string format = ParseFormatOptions(input.format, &options);
   perf_serializer->set_options(options);
 

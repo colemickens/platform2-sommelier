@@ -50,7 +50,7 @@ bool PerfRecorder::RecordAndConvertToProtobuf(
 
   // Now convert it into a protobuf.
   PerfSerializer perf_serializer;
-  PerfSerializer::Options options;
+  PerfParser::Options options;
   // Make sure to remap address for security reasons.
   options.do_remap = true;
   // Discard unused perf events to reduce the protobuf size.
