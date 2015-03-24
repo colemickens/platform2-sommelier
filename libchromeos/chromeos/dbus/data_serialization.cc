@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 #include <chromeos/any.h>
+#include <chromeos/variant_dictionary.h>
 
 namespace chromeos {
 namespace dbus_utils {
@@ -209,13 +210,15 @@ bool PopArrayValueFromReader(dbus::MessageReader* reader,
   else if (signature == "a{ss}")
     return PopTypedMapFromReader<std::string, std::string>(reader, value);
   else if (signature == "a{sv}")
-    return PopTypedMapFromReader<std::string, chromeos::Any>(reader, value);
+    return PopTypedValueFromReader<chromeos::VariantDictionary>(reader, value);
+  else if (signature == "aa{sv}")
+    return PopTypedArrayFromReader<chromeos::VariantDictionary>(reader, value);
   else if (signature == "a{sa{ss}}")
     return PopTypedMapFromReader<
         std::string, std::map<std::string, std::string>>(reader, value);
   else if (signature == "a{sa{sv}}")
     return PopTypedMapFromReader<
-        std::string, std::map<std::string, chromeos::Any>>(reader, value);
+        std::string, chromeos::VariantDictionary>(reader, value);
 
   // When a use case for particular array signature is found, feel free
   // to add handing for it here.
