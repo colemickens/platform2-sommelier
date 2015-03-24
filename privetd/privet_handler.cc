@@ -293,9 +293,11 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
   handlers_[kSetupStatusApiPath] = std::make_pair(
       AuthScope::kOwner,
       base::Bind(&PrivetHandler::HandleSetupStatus, base::Unretained(this)));
-  handlers_[kCommandDefApiPath] = std::make_pair(
-      AuthScope::kUser,
-      base::Bind(&PrivetHandler::HandleCommandDefs, base::Unretained(this)));
+  if (cloud_) {
+    handlers_[kCommandDefApiPath] = std::make_pair(
+        AuthScope::kUser,
+        base::Bind(&PrivetHandler::HandleCommandDefs, base::Unretained(this)));
+  }
 }
 
 PrivetHandler::~PrivetHandler() {
@@ -629,8 +631,7 @@ void PrivetHandler::HandleSetupStatus(const base::DictionaryValue& input,
 void PrivetHandler::HandleCommandDefs(const base::DictionaryValue& input,
                                       const RequestCallback& callback) {
   base::DictionaryValue output;
-  base::DictionaryValue* defs =
-      cloud_ ? cloud_->GetCommandDef().DeepCopy() : new base::DictionaryValue;
+  base::DictionaryValue* defs = cloud_->GetCommandDef().DeepCopy();
   output.Set(kCommandsKey, defs);
   output.SetString(kFingerprintKey,
                    base::IntToString(command_defs_fingerprint_));

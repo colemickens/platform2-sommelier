@@ -200,7 +200,6 @@ TEST_F(PrivetHandlerTest, InfoMinimal) {
     'api': [
       '/privet/info',
       '/privet/v3/auth',
-      '/privet/v3/commandDefs',
       '/privet/v3/pairing/cancel',
       '/privet/v3/pairing/confirm',
       '/privet/v3/pairing/start',
