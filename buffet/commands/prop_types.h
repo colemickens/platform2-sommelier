@@ -186,6 +186,8 @@ class PropTypeBase : public PropType {
  public:
   ValueType GetType() const override { return GetValueType<T>(); }
   std::unique_ptr<PropValue> CreateValue() const override {
+    if (GetDefaultValue())
+      return GetDefaultValue()->Clone();
     return std::unique_ptr<PropValue>{new Value{Clone()}};
   }
   std::unique_ptr<PropValue> CreateValue(
@@ -194,7 +196,8 @@ class PropTypeBase : public PropType {
     if (v.IsTypeCompatible<T>()) {
       std::unique_ptr<Value> value{new Value{Clone()}};
       value->SetValue(v.Get<T>());
-      prop_value = std::move(value);
+      if (ValidateConstraints(*value, error))
+        prop_value = std::move(value);
     } else {
       GenerateErrorValueTypeMismatch(error);
     }

@@ -211,8 +211,7 @@ bool PropType::ValidateValue(const base::Value* value,
 
 bool PropType::ValidateValue(const chromeos::Any& value,
                              chromeos::ErrorPtr* error) const {
-  std::unique_ptr<PropValue> val = CreateValue(value, error);
-  return val && ValidateConstraints(*val, error);
+  return !!CreateValue(value, error);
 }
 
 bool PropType::ValidateConstraints(const PropValue& value,

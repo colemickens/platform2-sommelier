@@ -39,11 +39,7 @@ bool StatePackage::AddSchemaFromJson(const base::DictionaryValue* json,
   for (const auto& pair : schema.GetProps()) {
     types_.AddProp(pair.first, pair.second->Clone());
     // Create default value for this state property.
-    if (pair.second->GetDefaultValue()) {
-      values_.emplace(pair.first, pair.second->GetDefaultValue()->Clone());
-    } else {
-      values_.emplace(pair.first, pair.second->CreateValue());
-    }
+    values_.emplace(pair.first, pair.second->CreateValue());
   }
 
   return true;

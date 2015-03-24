@@ -138,6 +138,7 @@ bool TypedValueFromJson(const base::Value* value_in,
 
   const ObjectSchema* object_schema = type->GetObject()->GetObjectSchemaPtr();
   std::set<std::string> keys_processed;
+  value_out->clear();  // Clear possible default values already in |value_out|.
   for (const auto& pair : object_schema->GetProps()) {
     const PropValue* def_value = pair.second->GetDefaultValue();
     if (dict->HasKey(pair.first)) {
@@ -154,9 +155,9 @@ bool TypedValueFromJson(const base::Value* value_in,
                                      pair.first.c_str());
         return false;
       }
-      value_out->insert(std::make_pair(pair.first, std::move(value)));
+      value_out->emplace_hint(value_out->end(), pair.first, std::move(value));
     } else if (def_value) {
-      value_out->insert(std::make_pair(pair.first, def_value->Clone()));
+      value_out->emplace_hint(value_out->end(), pair.first, def_value->Clone());
     } else {
       return ErrorMissingProperty(error, pair.first.c_str());
     }
@@ -207,6 +208,9 @@ bool TypedValueFromJson(const base::Value* value_in,
   const PropType* item_type = type->GetArray()->GetItemTypePtr();
   CHECK(item_type) << "Incomplete array type definition";
 
+  // This value might already contain values from the type defaults.
+  // Clear them first before proceeding.
+  value_out->clear();
   value_out->reserve(list->GetSize());
   for (const base::Value* item : *list) {
     std::unique_ptr<PropValue> prop_value = item_type->CreateValue();
@@ -309,8 +313,6 @@ std::unique_ptr<const PropValue> PropValueFromDBusVariant(
     result = type->CreateValue(value, error);
   }
 
-  if (result && !type->ValidateConstraints(*result, error))
-    result.reset();
   return result;
 }
 
@@ -319,6 +321,7 @@ bool ObjectFromDBusVariant(const ObjectSchema* object_schema,
                            native_types::Object* obj,
                            chromeos::ErrorPtr* error) {
   std::set<std::string> keys_processed;
+  obj->clear();
   // First go over all object parameters defined by type's object schema and
   // extract the corresponding parameters from the source dictionary.
   for (const auto& pair : object_schema->GetProps()) {
