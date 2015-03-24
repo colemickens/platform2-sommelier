@@ -708,18 +708,22 @@ bool BidlCodeGenerator::Generate(const FileDescriptor* file,
                                  const string& parameter,
                                  GeneratorContext* generator_context,
                                  string* error) const {
-  // Only generate RPC files if there are services
+  string basename = StripProto(file->name());
+  basename.append(".pb");
   if (file->service_count() > 0) {
-    string basename = StripProto(file->name());
-    basename.append(".pb");
-
     GenerateHeader(basename, file, generator_context);
     GenerateSource(basename, file, generator_context);
+  } else {
+    // Generate an empty placeholder file for proto files
+    // with no service definitions. This makes consumer build
+    // logic much simpler.
+    google::protobuf::scoped_ptr<ZeroCopyOutputStream> output(
+        generator_context->Open(basename + ".rpc.cc"));
+    Printer printer(output.get(), '$');
+    PrintStandardHeaders(&printer);
+
+    printer.Print("// Auto generated empty placeholder\n");
   }
-
-  // Create rpc header file
-
-  // GenerateHeader()
 
   // Handoff to the c++ generator to produce the message definitions.
   return CppGenerator::Generate(file, parameter, generator_context, error);
