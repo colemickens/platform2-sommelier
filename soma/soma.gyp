@@ -7,8 +7,6 @@
       'deps': [
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
-        'libprotobinder',
-        'protobuf-lite',
       ],
     },
   },
@@ -17,9 +15,20 @@
       'target_name': 'soma-proto-lib',
       'type': 'static_library',
       'variables': {
+        'exported_deps': [
+          'libprotobinder',
+          'protobuf-lite',
+        ],
         'proto_in_dir': 'idl',
         'proto_out_dir': 'include/soma/proto_bindings',
         'gen_bidl': 1,
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
       },
       'sources': [
         '<(proto_in_dir)/container_spec.proto',
@@ -40,8 +49,17 @@
         'port.cc',
         'spec_reader.cc',
         'sysfs_filter.cc',
-        'soma.cc',
         'usb_device_filter.cc',
+      ],
+    },
+    {
+      'target_name': 'libsoma',
+      'type': 'shared_library',
+      'dependencies': [
+        'soma-proto-lib',
+      ],
+      'sources': [
+        'libsoma/read_only_container_spec.cc',
       ],
     },
     {
@@ -50,13 +68,17 @@
       'dependencies': [
         'libsomad',
       ],
-      'sources': ['main.cc'],
+      'sources': [
+        'main.cc',
+        'soma.cc',
+      ],
     },
     {
       'target_name': 'soma_client',
       'type': 'executable',
       'dependencies': [
-        'libsomad',
+        'libsoma',
+        'soma-proto-lib',
       ],
       'sources': ['soma_client.cc'],
     },
@@ -65,7 +87,7 @@
     ['USE_test == 1', {
       'targets': [
         {
-          'target_name': 'soma_test',
+          'target_name': 'somad_test',
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'defines': ['UNIT_TEST'],

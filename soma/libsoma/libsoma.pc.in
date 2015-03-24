@@ -1,0 +1,4 @@
+Name: libsoma
+Description: Service container specification lookup client library
+Version: @PV@
+Libs: -lsoma

@@ -6,7 +6,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <protobinder/binder_daemon.h>
 
-#include "soma/common/constants.h"
+#include "soma/libsoma/constants.h"
 #include "soma/soma.h"
 
 int main() {

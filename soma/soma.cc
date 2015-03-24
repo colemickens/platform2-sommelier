@@ -32,7 +32,7 @@ int Soma::GetContainerSpec(GetContainerSpecRequest* request,
 }
 
 base::FilePath Soma::NameToPath(const std::string& service_name) const {
-  return root_.AppendASCII(service_name);
+  return root_.AppendASCII(service_name + ".json");
 }
 
 }  // namespace soma
