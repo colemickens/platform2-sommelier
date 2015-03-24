@@ -11,22 +11,12 @@
 namespace buffet {
 namespace storage_keys {
 
-// Persistent keys
-extern const char kClientId[];
-extern const char kClientSecret[];
-extern const char kApiKey[];
 extern const char kRefreshToken[];
 extern const char kDeviceId[];
-extern const char kOAuthURL[];
-extern const char kServiceURL[];
 extern const char kRobotAccount[];
-// Transient keys
-extern const char kDeviceKind[];
-extern const char kName[];
 extern const char kDisplayName[];
 extern const char kDescription[];
 extern const char kLocation[];
-extern const char kModelId[];
 
 }  // namespace storage_keys
 }  // namespace buffet

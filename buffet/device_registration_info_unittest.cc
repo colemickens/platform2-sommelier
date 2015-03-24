@@ -59,20 +59,12 @@ const char kUserRefreshToken[]     = "1/zQLKjlKJlkLkLKjLkjLKjLkjLjLkjl0ftc6"
 
 // Fill in the storage with default environment information (URLs, etc).
 void InitDefaultStorage(base::DictionaryValue* data) {
-  data->SetString(storage_keys::kClientId, test_data::kClientId);
-  data->SetString(storage_keys::kClientSecret, test_data::kClientSecret);
-  data->SetString(storage_keys::kApiKey, test_data::kApiKey);
   data->SetString(storage_keys::kRefreshToken, "");
   data->SetString(storage_keys::kDeviceId, "");
-  data->SetString(storage_keys::kOAuthURL, test_data::kOAuthURL);
-  data->SetString(storage_keys::kServiceURL, test_data::kServiceURL);
   data->SetString(storage_keys::kRobotAccount, "");
-  data->SetString(storage_keys::kDeviceKind, "");
-  data->SetString(storage_keys::kName, "");
   data->SetString(storage_keys::kDisplayName, "");
   data->SetString(storage_keys::kDescription, "");
   data->SetString(storage_keys::kLocation, "");
-  data->SetString(storage_keys::kModelId, "");
 }
 
 // Add the test device registration information.
@@ -198,25 +190,26 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     transport_ = std::make_shared<chromeos::http::fake::Transport>();
     command_manager_ = std::make_shared<CommandManager>();
     state_manager_ = std::make_shared<StateManager>(&mock_state_change_queue_);
-    std::unique_ptr<chromeos::KeyValueStore> config_store{
-      new chromeos::KeyValueStore};
-    config_store->SetString("client_id", test_data::kClientId);
-    config_store->SetString("client_secret", test_data::kClientSecret);
-    config_store->SetString("api_key", test_data::kApiKey);
-    config_store->SetString("device_kind",  "vendor");
-    config_store->SetString("name",  "coffee_pot");
-    config_store->SetString("display_name",  "Coffee Pot");
-    config_store->SetString("description",  "Easy to clean");
-    config_store->SetString("location",  "Kitchen");
-    config_store->SetString("model_id", "AAA");
-    config_store->SetString("oauth_url", test_data::kOAuthURL);
-    config_store->SetString("service_url", test_data::kServiceURL);
+    chromeos::KeyValueStore config_store;
+    config_store.SetString("client_id", test_data::kClientId);
+    config_store.SetString("client_secret", test_data::kClientSecret);
+    config_store.SetString("api_key", test_data::kApiKey);
+    config_store.SetString("device_kind",  "vendor");
+    config_store.SetString("name",  "coffee_pot");
+    config_store.SetString("default_display_name",  "Coffee Pot");
+    config_store.SetString("default_description",  "Easy to clean");
+    config_store.SetString("default_location",  "Kitchen");
+    config_store.SetString("model_id", "AAA");
+    config_store.SetString("oauth_url", test_data::kOAuthURL);
+    config_store.SetString("service_url", test_data::kServiceURL);
+    std::unique_ptr<BuffetConfig> config{new BuffetConfig};
+    config->Load(config_store);
     auto mock_callback = base::Bind(
         &DeviceRegistrationInfoTest::OnRegistrationStatusChange,
         base::Unretained(this));
     dev_reg_ = std::unique_ptr<DeviceRegistrationInfo>(
         new DeviceRegistrationInfo(command_manager_, state_manager_,
-                                   std::move(config_store),
+                                   std::move(config),
                                    transport_, storage_,
                                    mock_callback));
   }
@@ -253,20 +246,12 @@ TEST_F(DeviceRegistrationInfoTest, GetServiceURL) {
 
 TEST_F(DeviceRegistrationInfoTest, VerifySave) {
   base::DictionaryValue data;
-  data.SetString(storage_keys::kClientId, "a");
-  data.SetString(storage_keys::kClientSecret, "b");
-  data.SetString(storage_keys::kApiKey, "c");
   data.SetString(storage_keys::kRefreshToken, "d");
   data.SetString(storage_keys::kDeviceId, "e");
-  data.SetString(storage_keys::kOAuthURL, "f");
-  data.SetString(storage_keys::kServiceURL, "g");
   data.SetString(storage_keys::kRobotAccount, "h");
-  data.SetString(storage_keys::kDeviceKind, "i");
-  data.SetString(storage_keys::kName, "j");
   data.SetString(storage_keys::kDisplayName, "k");
   data.SetString(storage_keys::kDescription, "l");
   data.SetString(storage_keys::kLocation, "m");
-  data.SetString(storage_keys::kModelId, "n");
 
   storage_->Save(&data);
 
@@ -496,22 +481,12 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
   base::DictionaryValue* dict = nullptr;
   EXPECT_TRUE(storage_data->GetAsDictionary(&dict));
   std::string value;
-  EXPECT_TRUE(dict->GetString(storage_keys::kApiKey, &value));
-  EXPECT_EQ(test_data::kApiKey, value);
-  EXPECT_TRUE(dict->GetString(storage_keys::kClientId, &value));
-  EXPECT_EQ(test_data::kClientId, value);
-  EXPECT_TRUE(dict->GetString(storage_keys::kClientSecret, &value));
-  EXPECT_EQ(test_data::kClientSecret, value);
   EXPECT_TRUE(dict->GetString(storage_keys::kDeviceId, &value));
   EXPECT_EQ(test_data::kDeviceId, value);
-  EXPECT_TRUE(dict->GetString(storage_keys::kOAuthURL, &value));
-  EXPECT_EQ(test_data::kOAuthURL, value);
   EXPECT_TRUE(dict->GetString(storage_keys::kRefreshToken, &value));
   EXPECT_EQ(test_data::kRefreshToken, value);
   EXPECT_TRUE(dict->GetString(storage_keys::kRobotAccount, &value));
   EXPECT_EQ(test_data::kRobotAccountEmail, value);
-  EXPECT_TRUE(dict->GetString(storage_keys::kServiceURL, &value));
-  EXPECT_EQ(test_data::kServiceURL, value);
 }
 
 TEST_F(DeviceRegistrationInfoTest, OOBRegistrationStatus) {

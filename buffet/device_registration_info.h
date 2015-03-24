@@ -19,6 +19,7 @@
 #include <chromeos/errors/error.h>
 #include <chromeos/http/http_transport.h>
 
+#include "buffet/buffet_config.h"
 #include "buffet/registration_status.h"
 #include "buffet/storage_interface.h"
 #include "buffet/xmpp/xmpp_client.h"
@@ -49,7 +50,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   DeviceRegistrationInfo(
       const std::shared_ptr<CommandManager>& command_manager,
       const std::shared_ptr<StateManager>& state_manager,
-      std::unique_ptr<chromeos::KeyValueStore> config_store,
+      std::unique_ptr<const BuffetConfig> config,
       const std::shared_ptr<chromeos::http::Transport>& transport,
       const std::shared_ptr<StorageInterface>& state_store,
       const base::Closure& on_status_changed);
@@ -198,18 +199,6 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
 
   void PublishStateUpdates();
 
-  // Looks up the value for parameter with name |param_name| in
-  // |params|, supplying a default value if one is available and
-  // |params| doesn't have a value for |param_name|. The value will be
-  // returned in |param_value|. Returns |true| if a value was set
-  // (either from |params| or a default), |false| otherwise and
-  // |error| will be set.
-  bool GetParamValue(
-    const std::map<std::string, std::string>& params,
-    const std::string& param_name,
-    std::string* param_value,
-    chromeos::ErrorPtr* error);
-
   // Builds Cloud API devices collection REST resouce which matches
   // current state of the device including command definitions
   // for all supported commands and current device state.
@@ -222,20 +211,15 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<XmppClient> xmpp_client_;
   base::MessageLoopForIO::FileDescriptorWatcher fd_watcher_;
 
-  std::string client_id_;
-  std::string client_secret_;
-  std::string api_key_;
+  // Data that is cached here, persisted in the state store.
   std::string refresh_token_;
   std::string device_id_;
   std::string device_robot_account_;
-  std::string oauth_url_;
-  std::string service_url_;
-  std::string device_kind_;
-  std::string name_;
+
+  // These fields are user settable and stored in the state store.
   std::string display_name_;
   std::string description_;
   std::string location_;
-  std::string model_id_;
 
   // Transient data
   std::string access_token_;
@@ -250,8 +234,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   // Device state manager.
   std::shared_ptr<StateManager> state_manager_;
 
-  // Buffet configuration.
-  std::unique_ptr<chromeos::KeyValueStore> config_store_;
+  std::unique_ptr<const BuffetConfig> config_;
 
   // Tracks our current registration status.
   RegistrationStatus registration_status_{RegistrationStatus::kUnconfigured};

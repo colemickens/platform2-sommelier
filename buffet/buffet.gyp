@@ -18,6 +18,7 @@
         'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
       },
       'sources': [
+        'buffet_config.cc',
         'commands/command_definition.cc',
         'commands/command_dictionary.cc',
         'commands/command_instance.cc',

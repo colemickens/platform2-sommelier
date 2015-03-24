@@ -36,22 +36,12 @@ namespace buffet {
 namespace storage_keys {
 
 // Persistent keys
-const char kClientId[]      = "client_id";
-const char kClientSecret[]  = "client_secret";
-const char kApiKey[]        = "api_key";
 const char kRefreshToken[]  = "refresh_token";
 const char kDeviceId[]      = "device_id";
-const char kOAuthURL[]      = "oauth_url";
-const char kServiceURL[]    = "service_url";
 const char kRobotAccount[]  = "robot_account";
-// Transient keys
-const char kDeviceKind[]    = "device_kind";
-const char kName[]          = "name";
 const char kDisplayName[]   = "display_name";
 const char kDescription[]   = "description";
 const char kLocation[]      = "location";
-const char kModelId[]       = "model_id";
-
 
 }  // namespace storage_keys
 }  // namespace buffet
@@ -133,7 +123,7 @@ namespace buffet {
 DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager,
     const std::shared_ptr<StateManager>& state_manager,
-    std::unique_ptr<chromeos::KeyValueStore> config_store,
+    std::unique_ptr<const BuffetConfig> config,
     const std::shared_ptr<chromeos::http::Transport>& transport,
     const std::shared_ptr<StorageInterface>& state_store,
     const base::Closure& on_status_changed)
@@ -141,7 +131,7 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
       storage_{state_store},
       command_manager_{command_manager},
       state_manager_{state_manager},
-      config_store_{std::move(config_store)},
+      config_{std::move(config)},
       on_status_changed_{on_status_changed} {
 }
 
@@ -155,20 +145,21 @@ std::pair<std::string, std::string>
 std::string DeviceRegistrationInfo::GetServiceURL(
     const std::string& subpath,
     const chromeos::data_encoding::WebParamList& params) const {
-  return BuildURL(service_url_, {subpath}, params);
+  return BuildURL(config_->service_url(), {subpath}, params);
 }
 
 std::string DeviceRegistrationInfo::GetDeviceURL(
     const std::string& subpath,
     const chromeos::data_encoding::WebParamList& params) const {
   CHECK(!device_id_.empty()) << "Must have a valid device ID";
-  return BuildURL(service_url_, {"devices", device_id_, subpath}, params);
+  return BuildURL(config_->service_url(),
+                  {"devices", device_id_, subpath}, params);
 }
 
 std::string DeviceRegistrationInfo::GetOAuthURL(
     const std::string& subpath,
     const chromeos::data_encoding::WebParamList& params) const {
-  return BuildURL(oauth_url_, {subpath}, params);
+  return BuildURL(config_->oauth_url(), {subpath}, params);
 }
 
 const std::string& DeviceRegistrationInfo::GetDeviceId() const {
@@ -187,60 +178,22 @@ bool DeviceRegistrationInfo::Load() {
 
   // Get the values into temp variables first to make sure we can get
   // all the data correctly before changing the state of this object.
-  std::string client_id;
-  if (!dict->GetString(storage_keys::kClientId, &client_id))
-    return false;
-  std::string client_secret;
-  if (!dict->GetString(storage_keys::kClientSecret, &client_secret))
-    return false;
-  std::string api_key;
-  if (!dict->GetString(storage_keys::kApiKey, &api_key))
-    return false;
   std::string refresh_token;
-  if (!dict->GetString(storage_keys::kRefreshToken, &refresh_token))
-    return false;
   std::string device_id;
-  if (!dict->GetString(storage_keys::kDeviceId, &device_id))
-    return false;
-  std::string oauth_url;
-  if (!dict->GetString(storage_keys::kOAuthURL, &oauth_url))
-    return false;
-  std::string service_url;
-  if (!dict->GetString(storage_keys::kServiceURL, &service_url))
-    return false;
   std::string device_robot_account;
-  if (!dict->GetString(storage_keys::kRobotAccount, &device_robot_account))
-    return false;
-  std::string device_kind;
-  if (!dict->GetString(storage_keys::kDeviceKind, &device_kind))
-    return false;
-  std::string name;
-  if (!dict->GetString(storage_keys::kName, &name))
-    return false;
   std::string display_name;
-  if (!dict->GetString(storage_keys::kDisplayName, &display_name))
-    return false;
   std::string description;
-  if (!dict->GetString(storage_keys::kDescription, &description))
-    return false;
   std::string location;
-  if (!dict->GetString(storage_keys::kLocation, &location))
+  if (!dict->GetString(storage_keys::kRefreshToken, &refresh_token) ||
+      !dict->GetString(storage_keys::kDeviceId, &device_id) ||
+      !dict->GetString(storage_keys::kRobotAccount, &device_robot_account) ||
+      !dict->GetString(storage_keys::kDisplayName, &display_name) ||
+      !dict->GetString(storage_keys::kDescription, &description) ||
+      !dict->GetString(storage_keys::kLocation, &location)) {
     return false;
-
-  // Temporarily tolerate missing modelId. Older registrations will not have a
-  // modelId in their state files.
-  // TODO(vitalybuka): Add result check back. Should be safe starting Mar 2015.
-  dict->GetString(storage_keys::kModelId, &model_id_);
-
-  client_id_            = client_id;
-  client_secret_        = client_secret;
-  api_key_              = api_key;
+  }
   refresh_token_        = refresh_token;
-  oauth_url_            = oauth_url;
-  service_url_          = service_url;
   device_robot_account_ = device_robot_account;
-  device_kind_          = device_kind;
-  name_                 = name;
   display_name_         = display_name;
   description_          = description;
   location_             = location;
@@ -262,20 +215,12 @@ bool DeviceRegistrationInfo::Load() {
 
 bool DeviceRegistrationInfo::Save() const {
   base::DictionaryValue dict;
-  dict.SetString(storage_keys::kClientId,     client_id_);
-  dict.SetString(storage_keys::kClientSecret, client_secret_);
-  dict.SetString(storage_keys::kApiKey,       api_key_);
   dict.SetString(storage_keys::kRefreshToken, refresh_token_);
   dict.SetString(storage_keys::kDeviceId,     device_id_);
-  dict.SetString(storage_keys::kOAuthURL,     oauth_url_);
-  dict.SetString(storage_keys::kServiceURL,   service_url_);
   dict.SetString(storage_keys::kRobotAccount, device_robot_account_);
-  dict.SetString(storage_keys::kDeviceKind,   device_kind_);
-  dict.SetString(storage_keys::kName,         name_);
   dict.SetString(storage_keys::kDisplayName,  display_name_);
   dict.SetString(storage_keys::kDescription,  description_);
   dict.SetString(storage_keys::kLocation,     location_);
-  dict.SetString(storage_keys::kModelId,      model_id_);
 
   return storage_->Save(&dict);
 }
@@ -362,8 +307,8 @@ bool DeviceRegistrationInfo::RefreshAccessToken(
   LOG(INFO) << "Refreshing access token.";
   auto response = chromeos::http::PostFormDataAndBlock(GetOAuthURL("token"), {
     {"refresh_token", refresh_token_},
-    {"client_id", client_id_},
-    {"client_secret", client_secret_},
+    {"client_id", config_->client_id()},
+    {"client_secret", config_->client_secret()},
     {"grant_type", "refresh_token"},
   }, {}, transport_, error);
   if (!response)
@@ -449,16 +394,16 @@ DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
   std::unique_ptr<base::DictionaryValue> resource{new base::DictionaryValue};
   if (!device_id_.empty())
     resource->SetString("id", device_id_);
-  resource->SetString("deviceKind", device_kind_);
-  resource->SetString("name", name_);
+  resource->SetString("deviceKind", config_->device_kind());
+  resource->SetString("name", config_->name());
   if (!display_name_.empty())
     resource->SetString("displayName", display_name_);
   if (!description_.empty())
     resource->SetString("description", description_);
   if (!location_.empty())
     resource->SetString("location", location_);
-  if (!model_id_.empty())
-    resource->SetString("modelManifestId", model_id_);
+  if (!config_->model_id().empty())
+    resource->SetString("modelManifestId", config_->model_id());
   resource->SetString("channel.supportedType", "xmpp");
   resource->Set("commandDefs", commands.release());
   resource->Set("state", state.release());
@@ -488,27 +433,41 @@ std::unique_ptr<base::DictionaryValue> DeviceRegistrationInfo::GetDeviceInfo(
   return json;
 }
 
+namespace {
+
+bool GetWithDefault(const std::map<std::string, std::string>& source,
+                    const std::string& key,
+                    const std::string& default_value,
+                    std::string* output) {
+  auto it = source.find(key);
+  if (it == source.end()) {
+    *output = default_value;
+    return false;
+  }
+  *output = it->second;
+  return true;
+}
+
+}  // namespace
+
 std::string DeviceRegistrationInfo::RegisterDevice(
     const std::map<std::string, std::string>& params,
     chromeos::ErrorPtr* error) {
   std::string ticket_id;
-  if (!GetParamValue(params, "ticket_id", &ticket_id, error) ||
-      !GetParamValue(params, storage_keys::kClientId, &client_id_, error) ||
-      !GetParamValue(params, storage_keys::kClientSecret, &client_secret_,
-                     error) ||
-      !GetParamValue(params, storage_keys::kApiKey, &api_key_, error) ||
-      !GetParamValue(params, storage_keys::kDeviceKind, &device_kind_, error) ||
-      !GetParamValue(params, storage_keys::kName, &name_, error) ||
-      !GetParamValue(params, storage_keys::kDisplayName, &display_name_,
-                     error) ||
-      !GetParamValue(params, storage_keys::kDescription, &description_,
-                     error) ||
-      !GetParamValue(params, storage_keys::kLocation, &location_, error) ||
-      !GetParamValue(params, storage_keys::kModelId, &model_id_, error) ||
-      !GetParamValue(params, storage_keys::kOAuthURL, &oauth_url_, error) ||
-      !GetParamValue(params, storage_keys::kServiceURL, &service_url_, error)) {
+  if (!GetWithDefault(params, "ticket_id", "", &ticket_id)) {
+    chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainBuffet,
+                           "missing_parameter",
+                           "Need ticket_id parameter for RegisterDevice().");
     return std::string();
   }
+  // These fields are optional, and will default to values from the manufacturer
+  // supplied config.
+  GetWithDefault(params, storage_keys::kDisplayName,
+                 config_->default_display_name(), &display_name_);
+  GetWithDefault(params, storage_keys::kDescription,
+                 config_->default_description(), &description_);
+  GetWithDefault(params, storage_keys::kLocation,
+                 config_->default_location(), &location_);
 
   std::unique_ptr<base::DictionaryValue> device_draft =
       BuildDeviceResource(error);
@@ -517,11 +476,11 @@ std::string DeviceRegistrationInfo::RegisterDevice(
 
   base::DictionaryValue req_json;
   req_json.SetString("id", ticket_id);
-  req_json.SetString("oauthClientId", client_id_);
+  req_json.SetString("oauthClientId", config_->client_id());
   req_json.Set("deviceDraft", device_draft.release());
 
   auto url = GetServiceURL("registrationTickets/" + ticket_id,
-                           {{"key", api_key_}});
+                           {{"key", config_->api_key()}});
   std::unique_ptr<chromeos::http::Response> response =
       chromeos::http::PatchJsonAndBlock(url, &req_json, {}, transport_, error);
   auto json_resp = chromeos::http::ParseJsonResponse(response.get(), nullptr,
@@ -534,7 +493,7 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   }
 
   url = GetServiceURL("registrationTickets/" + ticket_id +
-                      "/finalize?key=" + api_key_);
+                      "/finalize?key=" + config_->api_key());
   response = chromeos::http::SendRequestWithNoDataAndBlock(
       chromeos::http::request_type::kPost, url, {}, transport_, error);
   if (!response)
@@ -562,8 +521,8 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   // Now get access_token and refresh_token
   response = chromeos::http::PostFormDataAndBlock(GetOAuthURL("token"), {
     {"code", auth_code},
-    {"client_id", client_id_},
-    {"client_secret", client_secret_},
+    {"client_id", config_->client_id()},
+    {"client_secret", config_->client_secret()},
     {"redirect_uri", "oob"},
     {"scope", "https://www.googleapis.com/auth/clouddevices"},
     {"grant_type", "authorization_code"}
@@ -969,28 +928,6 @@ void DeviceRegistrationInfo::PublishStateUpdates() {
       GetDeviceURL("patchState"),
       &body,
       base::Bind(&IgnoreCloudResult), base::Bind(&IgnoreCloudError));
-}
-
-bool DeviceRegistrationInfo::GetParamValue(
-    const std::map<std::string, std::string>& params,
-    const std::string& param_name,
-    std::string* param_value,
-    chromeos::ErrorPtr* error) {
-  auto p = params.find(param_name);
-  if (p != params.end()) {
-    *param_value = p->second;
-    return true;
-  }
-
-  bool default_was_set = config_store_->GetString(param_name, param_value);
-  if (default_was_set)
-    return true;
-
-  chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
-                               "missing_parameter",
-                               "Parameter %s not specified",
-                               param_name.c_str());
-  return false;
 }
 
 void DeviceRegistrationInfo::SetRegistrationStatus(

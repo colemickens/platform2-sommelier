@@ -59,17 +59,16 @@ void Manager::RegisterAsync(const base::FilePath& config_path,
       new StateChangeQueue(kMaxStateChangeQueueSize));
   state_manager_ = std::make_shared<StateManager>(state_change_queue_.get());
   state_manager_->Startup();
-  std::unique_ptr<chromeos::KeyValueStore> config_store{
-      new chromeos::KeyValueStore};
+  std::unique_ptr<BuffetConfig> config{new BuffetConfig};
+  config->Load(config_path);
   std::unique_ptr<FileStorage> state_store{new FileStorage{state_path}};
-  config_store->Load(config_path);
   // TODO(avakulenko): Figure out security implications of storing
   // device info state data unencrypted.
   device_info_ = std::unique_ptr<DeviceRegistrationInfo>(
       new DeviceRegistrationInfo(
           command_manager_,
           state_manager_,
-          std::move(config_store),
+          std::move(config),
           chromeos::http::Transport::CreateDefault(),
           std::move(state_store),
           base::Bind(&Manager::OnRegistrationStatusChanged,
