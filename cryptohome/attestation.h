@@ -622,6 +622,16 @@ class Attestation : public base::PlatformThread::Delegate,
                   const chromeos::SecureBlob& iv,
                   chromeos::SecureBlob* plaintext);
 
+  // Encrypts data in a TSS compatible way using AES-256-CBC.
+  //
+  // Parameters
+  //   key - The AES key.
+  //   input - The data to be encrypted.
+  //   output - The encrypted data.
+  bool TssCompatibleEncrypt(const chromeos::SecureBlob& key,
+                            const chromeos::SecureBlob& input,
+                            chromeos::SecureBlob* output);
+
   // Encrypts data using the TPM_ES_RSAESOAEP_SHA1_MGF1 scheme.
   //
   // Parameters

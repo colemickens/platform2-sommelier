@@ -90,12 +90,6 @@ class MockTpm : public Tpm {
                                       const chromeos::SecureBlob&,
                                       const chromeos::SecureBlob&,
                                       chromeos::SecureBlob*));
-  MOCK_METHOD3(TssCompatibleEncrypt, bool(const chromeos::SecureBlob&,
-                                          const chromeos::SecureBlob&,
-                                          chromeos::SecureBlob*));
-  MOCK_METHOD3(TpmCompatibleOAEPEncrypt, bool(RSA* key,
-                                              const chromeos::SecureBlob&,
-                                              chromeos::SecureBlob*));
   MOCK_METHOD3(Sign, bool(const chromeos::SecureBlob&,
                           const chromeos::SecureBlob&,
                           chromeos::SecureBlob*));
@@ -108,7 +102,6 @@ class MockTpm : public Tpm {
                                        const chromeos::SecureBlob&));
   MOCK_METHOD2(ExtendPCR, bool(int, const chromeos::SecureBlob&));
   MOCK_METHOD2(ReadPCR, bool(int, chromeos::SecureBlob*));
-  MOCK_METHOD2(OpenAndConnectTpm, bool(TSS_HCONTEXT*, TSS_RESULT*));
   MOCK_METHOD0(ConnectContext, TSS_HCONTEXT());
   MOCK_CONST_METHOD1(CloseContext, void(TSS_HCONTEXT));
   MOCK_METHOD1(IsEndorsementKeyAvailable, bool(TSS_HCONTEXT));

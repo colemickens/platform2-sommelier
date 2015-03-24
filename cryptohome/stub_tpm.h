@@ -101,9 +101,6 @@ class StubTpm : public Tpm {
                         const SecureBlob& encrypted_sym_ca,
                         SecureBlob* identity_credential) override
     { return false; }
-  bool TssCompatibleEncrypt(const SecureBlob& key,
-                            const SecureBlob& input,
-                            SecureBlob* output) override { return false; }
   bool Sign(const SecureBlob& key_blob,
             const SecureBlob& der_encoded_input,
             SecureBlob* signature) override { return false; }

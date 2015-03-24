@@ -85,9 +85,6 @@ class TpmImpl : public Tpm {
                         const chromeos::SecureBlob& encrypted_asym_ca,
                         const chromeos::SecureBlob& encrypted_sym_ca,
                         chromeos::SecureBlob* identity_credential) override;
-  bool TssCompatibleEncrypt(const chromeos::SecureBlob& key,
-                            const chromeos::SecureBlob& input,
-                            chromeos::SecureBlob* output) override;
   bool Sign(const chromeos::SecureBlob& key_blob,
             const chromeos::SecureBlob& der_encoded_input,
             chromeos::SecureBlob* signature) override;

@@ -18,6 +18,7 @@
 #include <chromeos/mime_utils.h>
 #include <chromeos/secure_blob.h>
 #include <google/protobuf/repeated_field.h>
+#include <openssl/aes.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rsa.h>
@@ -578,16 +579,25 @@ bool Attestation::Verify(bool is_cros_core) {
   LOG(INFO) << "Attestation: Verifying data.";
   base::AutoLock lock(lock_);
   const TPMCredentials& credentials = database_pb_.credentials();
-  if (!credentials.has_endorsement_credential() ||
-      !credentials.has_endorsement_public_key()) {
-    LOG(INFO) << "Attestation: Endorsement data is not available.";
-    return false;
+  SecureBlob ek_public_key;
+  SecureBlob ek_cert;
+  if (credentials.has_endorsement_credential()) {
+    ek_cert = SecureBlob(credentials.endorsement_credential());
+  } else {
+    if (!tpm_->GetEndorsementCredential(&ek_cert)) {
+      LOG(ERROR) << "Attestation: Endorsement cert not available.";
+      return false;
+    }
   }
-  SecureBlob ek_public_key(credentials.endorsement_public_key());
-  if (!VerifyEndorsementCredential(
-          SecureBlob(credentials.endorsement_credential()),
-          ek_public_key,
-          is_cros_core)) {
+  if (credentials.has_endorsement_public_key()) {
+    ek_public_key = SecureBlob(credentials.endorsement_public_key());
+  } else {
+    if (!tpm_->GetEndorsementPublicKey(&ek_public_key)) {
+      LOG(ERROR) << "Attestation: Endorsement key not available.";
+      return false;
+    }
+  }
+  if (!VerifyEndorsementCredential(ek_cert, ek_public_key, is_cros_core)) {
     LOG(ERROR) << "Attestation: Bad endorsement credential.";
     return false;
   }
@@ -1580,7 +1590,7 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
   CryptoLib::GetSecureRandom(vector_as_array(&aes_key), aes_key.size());
   SecureBlob credential(kTestCredential, strlen(kTestCredential));
   SecureBlob encrypted_credential;
-  if (!tpm_->TssCompatibleEncrypt(aes_key, credential, &encrypted_credential)) {
+  if (!TssCompatibleEncrypt(aes_key, credential, &encrypted_credential)) {
     LOG(ERROR) << "Failed to encrypt credential.";
     return false;
   }
@@ -1601,8 +1611,8 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
     return false;
   }
   SecureBlob encrypted_asym_content;
-  if (TpmCompatibleOAEPEncrypt(rsa.get(), asym_content,
-                               &encrypted_asym_content)) {
+  if (!TpmCompatibleOAEPEncrypt(rsa.get(), asym_content,
+                                &encrypted_asym_content)) {
     LOG(ERROR) << "Failed to encrypt with EK public key.";
     return false;
   }
@@ -2034,6 +2044,26 @@ bool Attestation::AesDecrypt(const chromeos::SecureBlob& ciphertext,
                                                CryptoLib::kPaddingStandard,
                                                CryptoLib::kCbc,
                                                plaintext);
+}
+
+bool Attestation::TssCompatibleEncrypt(const SecureBlob& key,
+                                       const SecureBlob& input,
+                                       SecureBlob* output) {
+  CHECK(output);
+  if (key.size() != kCipherKeySize) {
+    LOG(ERROR) << "Wrong key size!";
+    return false;
+  }
+  SecureBlob iv(AES_BLOCK_SIZE);
+  CryptoLib::GetSecureRandom(reinterpret_cast<unsigned char*>(iv.data()),
+                             AES_BLOCK_SIZE);
+  SecureBlob encrypted_input;
+  if (!AesEncrypt(input, key, iv, &encrypted_input)) {
+    LOG(ERROR) << "Error encrypting input.";
+    return false;
+  }
+  *output = SecureBlob::Combine(iv, encrypted_input);
+  return true;
 }
 
 bool Attestation::TpmCompatibleOAEPEncrypt(RSA* key,

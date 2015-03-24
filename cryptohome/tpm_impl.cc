@@ -2315,28 +2315,6 @@ bool TpmImpl::ActivateIdentity(const SecureBlob& delegate_blob,
   return true;
 }
 
-bool TpmImpl::TssCompatibleEncrypt(const SecureBlob& key,
-                                   const SecureBlob& input,
-                                   SecureBlob* output) {
-  CHECK(output);
-  BYTE* key_buffer = const_cast<BYTE*>(vector_as_array(&key));
-  BYTE* in_buffer = const_cast<BYTE*>(vector_as_array(&input));
-  // Save room for padding and a prepended iv.
-  output->resize(input.size() + 48);
-  BYTE* out_buffer = vector_as_array(output);
-  UINT32 out_length = output->size();
-  TSS_RESULT result = Trspi_SymEncrypt(TPM_ALG_AES256, TPM_ES_SYM_CBC_PKCS5PAD,
-                                       key_buffer, NULL,
-                                       in_buffer, input.size(),
-                                       out_buffer, &out_length);
-  if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << "Trspi_SymEncrypt failed.";
-    return false;
-  }
-  output->resize(out_length);
-  return true;
-}
-
 bool TpmImpl::Sign(const SecureBlob& key_blob,
                    const SecureBlob& der_encoded_input,
                    SecureBlob* signature) {

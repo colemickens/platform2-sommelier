@@ -328,16 +328,6 @@ class Tpm {
                                 const chromeos::SecureBlob& encrypted_sym_ca,
                                 chromeos::SecureBlob* identity_credential) = 0;
 
-  // Encrypts data in a TSS compatible way using AES-256-CBC.
-  //
-  // Parameters
-  //   key - The AES key.
-  //   input - The data to be encrypted.
-  //   output - The encrypted data.
-  virtual bool TssCompatibleEncrypt(const chromeos::SecureBlob& key,
-                                    const chromeos::SecureBlob& input,
-                                    chromeos::SecureBlob* output) = 0;
-
   // Signs data using the TPM_SS_RSASSAPKCS1v15_DER scheme.  This method will
   // work with any signing key that has been assigned this scheme.  This
   // includes all keys created using CreateCertifiedKey.
