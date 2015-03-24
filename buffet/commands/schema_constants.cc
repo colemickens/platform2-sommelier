@@ -48,6 +48,8 @@ const char kCommand_Id[] = "id";
 const char kCommand_Name[] = "name";
 const char kCommand_Parameters[] = "parameters";
 const char kCommand_Results[] = "results";
+const char kCommand_State[] = "state";
+const char kCommand_Progress[] = "progress";
 }  // namespace attributes
 }  // namespace commands
 

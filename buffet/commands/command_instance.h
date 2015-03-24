@@ -65,6 +65,9 @@ class CommandInstance final {
       const CommandDictionary& dictionary,
       chromeos::ErrorPtr* error);
 
+  // Returns JSON representation of the command.
+  std::unique_ptr<base::DictionaryValue> ToJson() const;
+
   // Sets the command ID (normally done by CommandQueue when the command
   // instance is added to it).
   void SetID(const std::string& id) { id_ = id; }

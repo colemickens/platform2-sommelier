@@ -134,7 +134,6 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
   }
 
   instance.reset(new CommandInstance(command_name, command_def, parameters));
-  // TODO(antonm): Move command_id to ctor and remove setter.
   std::string command_id;
   if (json->GetStringWithoutPathExpansion(commands::attributes::kCommand_Id,
                                           &command_id)) {
@@ -142,6 +141,21 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
   }
 
   return instance;
+}
+
+std::unique_ptr<base::DictionaryValue> CommandInstance::ToJson() const {
+  std::unique_ptr<base::DictionaryValue> json{new base::DictionaryValue};
+
+  json->SetString(commands::attributes::kCommand_Id, id_);
+  json->SetString(commands::attributes::kCommand_Name, name_);
+  json->Set(commands::attributes::kCommand_Parameters,
+            TypedValueToJson(parameters_, nullptr).release());
+  json->Set(commands::attributes::kCommand_Results,
+            TypedValueToJson(results_, nullptr).release());
+  json->SetInteger(commands::attributes::kCommand_Progress, progress_);
+  json->SetString(commands::attributes::kCommand_State, status_);
+
+  return json;
 }
 
 void CommandInstance::AddProxy(std::unique_ptr<CommandProxyInterface> proxy) {

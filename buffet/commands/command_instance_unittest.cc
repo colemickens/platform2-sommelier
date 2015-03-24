@@ -189,3 +189,33 @@ TEST_F(CommandInstanceTest, FromJson_ParamError) {
   EXPECT_EQ("command_failed", error->GetCode());
   EXPECT_EQ("Failed to validate command 'robot.speak'", error->GetMessage());
 }
+
+TEST_F(CommandInstanceTest, ToJson) {
+  auto json = CreateDictionaryValue(R"({
+    'name': 'robot.jump',
+    'parameters': {
+      'height': 53,
+      '_jumpType': '_withKick'
+    },
+    'results': {}
+  })");
+  auto instance = buffet::CommandInstance::FromJson(json.get(), dict_, nullptr);
+  instance->SetProgress(15);
+  instance->SetID("testId");
+  buffet::native_types::Object results;
+  buffet::IntPropType int_prop;
+  results["testResult"] = int_prop.CreateValue(17, nullptr);
+  instance->SetResults(results);
+
+  json->MergeDictionary(CreateDictionaryValue(R"({
+    'id': 'testId',
+    'progress': 15,
+    'state': 'inProgress',
+    'results': {'testResult': 17}
+  })").get());
+
+  auto converted = instance->ToJson();
+  EXPECT_PRED2([](const base::Value& val1, const base::Value& val2) {
+    return val1.Equals(&val2);
+  }, *json, *converted);
+}
