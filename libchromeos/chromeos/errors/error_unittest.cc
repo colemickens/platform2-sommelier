@@ -19,14 +19,14 @@ chromeos::ErrorPtr GenerateNetworkError() {
 }
 
 chromeos::ErrorPtr GenerateHttpError() {
-  auto inner = GenerateNetworkError();
+  chromeos::ErrorPtr inner = GenerateNetworkError();
   return Error::Create(FROM_HERE, "HTTP", "404", "Not found", std::move(inner));
 }
 
 }  // namespace
 
 TEST(Error, Single) {
-  auto err = GenerateNetworkError();
+  chromeos::ErrorPtr err = GenerateNetworkError();
   EXPECT_EQ("network", err->GetDomain());
   EXPECT_EQ("not_found", err->GetCode());
   EXPECT_EQ("Resource not found", err->GetMessage());
@@ -45,7 +45,7 @@ TEST(Error, Single) {
 }
 
 TEST(Error, Nested) {
-  auto err = GenerateHttpError();
+  chromeos::ErrorPtr err = GenerateHttpError();
   EXPECT_EQ("HTTP", err->GetDomain());
   EXPECT_EQ("404", err->GetCode());
   EXPECT_EQ("Not found", err->GetMessage());
@@ -59,4 +59,25 @@ TEST(Error, Nested) {
   EXPECT_TRUE(err->HasError("HTTP", "404"));
   EXPECT_FALSE(err->HasError("HTTP", "not_found"));
   EXPECT_FALSE(err->HasError("foo", "bar"));
+}
+
+TEST(Error, Clone) {
+  chromeos::ErrorPtr err = GenerateHttpError();
+  chromeos::ErrorPtr clone = err->Clone();
+  const chromeos::Error* error1 = err.get();
+  const chromeos::Error* error2 = clone.get();
+  while (error1 && error2) {
+    EXPECT_NE(error1, error2);
+    EXPECT_EQ(error1->GetDomain(), error2->GetDomain());
+    EXPECT_EQ(error1->GetCode(), error2->GetCode());
+    EXPECT_EQ(error1->GetMessage(), error2->GetMessage());
+    EXPECT_EQ(error1->GetLocation().function_name,
+              error2->GetLocation().function_name);
+    EXPECT_EQ(error1->GetLocation().file_name, error2->GetLocation().file_name);
+    EXPECT_EQ(error1->GetLocation().line_number,
+              error2->GetLocation().line_number);
+    error1 = error1->GetInnerError();
+    error2 = error2->GetInnerError();
+  }
+  EXPECT_EQ(error1, error2);
 }

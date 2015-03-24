@@ -49,6 +49,9 @@ class CHROMEOS_EXPORT Error {
                           const char* format,
                           ...) PRINTF_FORMAT(5, 6);
 
+  // Clones error with all inner errors.
+  ErrorPtr Clone() const;
+
   // Returns the error domain, code and message
   const std::string& GetDomain() const { return domain_; }
   const std::string& GetCode() const { return code_; }
@@ -94,6 +97,12 @@ class CHROMEOS_EXPORT Error {
   // Constructor is protected since this object is supposed to be
   // created via the Create factory methods.
   Error(const tracked_objects::Location& location,
+        const std::string& domain,
+        const std::string& code,
+        const std::string& message,
+        ErrorPtr inner_error);
+
+  Error(const tracked_objects::LocationSnapshot& location,
         const std::string& domain,
         const std::string& code,
         const std::string& message,

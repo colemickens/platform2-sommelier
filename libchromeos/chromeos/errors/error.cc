@@ -70,6 +70,12 @@ void Error::AddToPrintf(ErrorPtr* error,
   AddTo(error, location, domain, code, message);
 }
 
+ErrorPtr Error::Clone() const {
+  ErrorPtr inner_error = inner_error_ ? inner_error_->Clone() : nullptr;
+  return ErrorPtr(
+      new Error(location_, domain_, code_, message_, std::move(inner_error)));
+}
+
 bool Error::HasDomain(const std::string& domain) const {
   return FindErrorOfDomain(this, domain) != nullptr;
 }
@@ -86,6 +92,18 @@ const Error* Error::GetFirstError() const {
 }
 
 Error::Error(const tracked_objects::Location& location,
+             const std::string& domain,
+             const std::string& code,
+             const std::string& message,
+             ErrorPtr inner_error)
+    : Error{tracked_objects::LocationSnapshot{location},
+            domain,
+            code,
+            message,
+            std::move(inner_error)} {
+}
+
+Error::Error(const tracked_objects::LocationSnapshot& location,
              const std::string& domain,
              const std::string& code,
              const std::string& message,
