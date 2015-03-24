@@ -1670,6 +1670,21 @@ TEST_F(CellularTest, OnPPPDied) {
   VerifyDisconnect();
 }
 
+TEST_F(CellularTest, OnPPPDiedCleanupDevice) {
+  // Test that OnPPPDied causes the ppp_device_ reference to be dropped.
+  const int kPID = 123;
+  const int kExitStatus = 5;
+  StartPPP(kPID);
+  FakeUpConnectedPPP();
+  ExpectDisconnectCapabilityUniversal();
+  device_->OnPPPDied(kPID, kExitStatus);
+  VerifyPPPStopped();
+
+  // |Cellular::ppp_task_| is destroyed on the task loop. Must dispatch once to
+  // cleanup.
+  dispatcher_.DispatchPendingEvents();
+}
+
 TEST_F(CellularTest, DropConnection) {
   device_->set_ipconfig(dhcp_config_);
   EXPECT_CALL(*dhcp_config_, ReleaseIP(_));
