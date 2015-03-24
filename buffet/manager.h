@@ -70,6 +70,9 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   // Handles calls to org.chromium.Buffet.Manager.AddCommand().
   void AddCommand(DBusMethodResponse<> response,
                   const std::string& json_command) override;
+  // Handles calls to org.chromium.Buffet.Manager.GetCommand().
+  void GetCommand(DBusMethodResponse<std::string> response,
+                  const std::string& id) override;
   // Handles calls to org.chromium.Buffet.Manager.Test()
   std::string TestMethod(const std::string& message) override;
 

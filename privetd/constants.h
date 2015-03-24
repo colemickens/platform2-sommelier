@@ -30,6 +30,7 @@ extern const char kInvalidTicket[];
 extern const char kServerError[];
 extern const char kInvalidSsid[];
 extern const char kInvalidPassphrase[];
+extern const char kUnknownCommand[];
 
 }  // namespace errors
 

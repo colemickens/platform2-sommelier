@@ -37,6 +37,7 @@ const char kAuthApiPath[] = "/privet/v3/auth";
 const char kSetupStartApiPath[] = "/privet/v3/setup/start";
 const char kSetupStatusApiPath[] = "/privet/v3/setup/status";
 const char kCommandDefApiPath[] = "/privet/v3/commandDefs";
+const char kCommandsStatusApiPath[] = "/privet/v3/commands/status";
 
 const char kInfoVersionKey[] = "version";
 const char kInfoVersionValue[] = "3.0";
@@ -104,6 +105,7 @@ const char kSetupStartUserKey[] = "user";
 
 const char kFingerprintKey[] = "fingerprint";
 const char kCommandsKey[] = "commands";
+const char kCommandsIdKey[] = "id";
 
 const char kInvalidParamValueFormat[] = "Invalid parameter: '%s'='%s'";
 
@@ -258,6 +260,22 @@ void ReturnNotFound(const PrivetHandler::RequestCallback& callback) {
   callback.Run(chromeos::http::status_code::NotFound, base::DictionaryValue());
 }
 
+void OnCommandRequestSucceeded(const PrivetHandler::RequestCallback& callback,
+                               const base::DictionaryValue& output) {
+  callback.Run(chromeos::http::status_code::Ok, output);
+}
+
+void OnCommandRequestFailed(const PrivetHandler::RequestCallback& callback,
+                            chromeos::Error* error) {
+  if (error->HasError("gcd", "unknown_command")) {
+    chromeos::ErrorPtr new_error = error->Clone();
+    chromeos::Error::AddTo(&new_error, FROM_HERE, errors::kDomain,
+                           errors::kUnknownCommand, "Unknown command ID.");
+    return ReturnError(*new_error, callback);
+  }
+  return ReturnError(*error, callback);
+}
+
 }  // namespace
 
 PrivetHandler::PrivetHandler(CloudDelegate* cloud,
@@ -297,6 +315,9 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
     handlers_[kCommandDefApiPath] = std::make_pair(
         AuthScope::kUser,
         base::Bind(&PrivetHandler::HandleCommandDefs, base::Unretained(this)));
+    handlers_[kCommandsStatusApiPath] = std::make_pair(
+        AuthScope::kUser, base::Bind(&PrivetHandler::HandleCommandsStatus,
+                                     base::Unretained(this)));
   }
 }
 
@@ -637,6 +658,20 @@ void PrivetHandler::HandleCommandDefs(const base::DictionaryValue& input,
                    base::IntToString(command_defs_fingerprint_));
 
   callback.Run(chromeos::http::status_code::Ok, output);
+}
+
+void PrivetHandler::HandleCommandsStatus(const base::DictionaryValue& input,
+                                         const RequestCallback& callback) {
+  std::string id;
+  if (!input.GetString(kCommandsIdKey, &id)) {
+    chromeos::ErrorPtr error;
+    chromeos::Error::AddToPrintf(
+        &error, FROM_HERE, errors::kDomain, errors::kInvalidParams,
+        kInvalidParamValueFormat, kCommandsIdKey, id.c_str());
+    return ReturnError(*error, callback);
+  }
+  cloud_->GetCommand(id, base::Bind(&OnCommandRequestSucceeded, callback),
+                     base::Bind(&OnCommandRequestFailed, callback));
 }
 
 std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateEndpointsSection()

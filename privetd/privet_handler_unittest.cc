@@ -29,6 +29,12 @@ namespace privetd {
 
 namespace {
 
+ACTION_TEMPLATE(RunCallback,
+                HAS_1_TEMPLATE_PARAMS(int, k),
+                AND_1_VALUE_PARAMS(p0)) {
+  return std::get<k>(args).Run(p0);
+}
+
 void LoadTestJson(const std::string& test_json,
                   base::DictionaryValue* dictionary) {
   std::string json = test_json;
@@ -273,6 +279,7 @@ TEST_F(PrivetHandlerTest, Info) {
       '/privet/info',
       '/privet/v3/auth',
       '/privet/v3/commandDefs',
+      '/privet/v3/commands/status',
       '/privet/v3/pairing/cancel',
       '/privet/v3/pairing/confirm',
       '/privet/v3/pairing/start',
@@ -577,6 +584,18 @@ TEST_F(PrivetHandlerSetupTest, CommandsDefs) {
 
   EXPECT_PRED2(IsEqualJson, "{'commands': {'test':{}}, 'fingerprint': '1'}",
                HandleRequest("/privet/v3/commandDefs", "{}"));
+}
+
+TEST_F(PrivetHandlerSetupTest, CommandsStatus) {
+  const char kInput[] = "{'id': '5'}";
+  base::DictionaryValue command;
+  LoadTestJson(kInput, &command);
+  LoadTestJson("{'name':'test'}", &command);
+  EXPECT_CALL(cloud_, GetCommand(_, _, _))
+      .WillOnce(RunCallback<1, const base::DictionaryValue&>(command));
+
+  EXPECT_PRED2(IsEqualJson, "{'name':'test', 'id':'5'}",
+               HandleRequest("/privet/v3/commands/status", kInput));
 }
 
 }  // namespace privetd

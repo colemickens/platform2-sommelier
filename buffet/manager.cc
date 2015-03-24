@@ -189,6 +189,19 @@ void Manager::AddCommand(DBusMethodResponse<> response,
   response->Return();
 }
 
+void Manager::GetCommand(DBusMethodResponse<std::string> response,
+                         const std::string& id) {
+  const CommandInstance* command = command_manager_->FindCommand(id);
+  if (!command) {
+    response->ReplyWithError(FROM_HERE, kErrorDomainGCD, "unknown_command",
+                             "Can't find command with id: " + id);
+    return;
+  }
+  std::string command_str;
+  base::JSONWriter::Write(command->ToJson().get(), &command_str);
+  response->Return(command_str);
+}
+
 std::string Manager::TestMethod(const std::string& message) {
   LOG(INFO) << "Received call to test method: " << message;
   return message;

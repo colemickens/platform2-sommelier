@@ -29,6 +29,7 @@ const char kInvalidTicket[] = "invalidTicket";
 const char kServerError[] = "serverError";
 const char kInvalidSsid[] = "invalidSsid";
 const char kInvalidPassphrase[] = "invalidPassphrase";
+const char kUnknownCommand[] = "unknownCommand";
 
 }  // namespace errors
 

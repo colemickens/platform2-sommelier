@@ -82,6 +82,8 @@ class PrivetHandler : public CloudDelegate::Observer {
                          const RequestCallback& callback);
   void HandleCommandDefs(const base::DictionaryValue& input,
                          const RequestCallback& callback);
+  void HandleCommandsStatus(const base::DictionaryValue& input,
+                            const RequestCallback& callback);
 
   std::unique_ptr<base::DictionaryValue> CreateEndpointsSection() const;
   std::unique_ptr<base::DictionaryValue> CreateInfoAuthSection() const;

@@ -80,6 +80,20 @@ class CloudDelegateImpl : public CloudDelegate {
     return command_defs_;
   }
 
+  void GetCommand(const std::string& id,
+                  const SuccessCallback& success_callback,
+                  const ErrorCallback& error_callback) override {
+    chromeos::ErrorPtr error;
+    ManagerProxy* manager = GetManagerProxy(&error);
+    if (!manager)
+      return error_callback.Run(error.get());
+    manager->GetCommandAsync(
+        id, base::Bind(&CloudDelegateImpl::OnGetCommandSucceeded,
+                       weak_factory_.GetWeakPtr(), success_callback,
+                       error_callback),
+        error_callback);
+  }
+
  private:
   void OnManagerAdded(ManagerProxy* manager) {
     manager->SetPropertyChangedCallback(
@@ -198,6 +212,30 @@ class CloudDelegateImpl : public CloudDelegate {
                    setup_weak_factory_.GetWeakPtr(),
                    ticket_id,
                    retries));
+  }
+
+  void OnGetCommandSucceeded(const SuccessCallback& success_callback,
+                             const ErrorCallback& error_callback,
+                             const std::string& json_command) {
+    std::unique_ptr<base::Value> value{base::JSONReader::Read(json_command)};
+    base::DictionaryValue* command{nullptr};
+    if (!value || !value->GetAsDictionary(&command)) {
+      chromeos::ErrorPtr error;
+      chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
+                             errors::kInvalidFormat,
+                             "Buffet returned invalid JSON.");
+      return error_callback.Run(error.get());
+    }
+    success_callback.Run(*command);
+  }
+
+  ManagerProxy* GetManagerProxy(chromeos::ErrorPtr* error) {
+    ManagerProxy* manager = object_manager_.GetManagerProxy();
+    if (!manager) {
+      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                             errors::kDeviceBusy, "Buffet is not ready.");
+    }
+    return manager;
   }
 
   ObjectManagerProxy object_manager_;

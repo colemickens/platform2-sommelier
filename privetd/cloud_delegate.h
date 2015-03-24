@@ -33,6 +33,9 @@ class CloudDelegate {
   CloudDelegate();
   virtual ~CloudDelegate();
 
+  using SuccessCallback = base::Callback<void(const base::DictionaryValue&)>;
+  using ErrorCallback = base::Callback<void(chromeos::Error*)>;
+
   class Observer {
    public:
     virtual ~Observer() = default;
@@ -58,6 +61,11 @@ class CloudDelegate {
 
   // Returns dictionary with commands definitions.
   virtual const base::DictionaryValue& GetCommandDef() const = 0;
+
+  // Returns command with the given ID.
+  virtual void GetCommand(const std::string& id,
+                          const SuccessCallback& success_callback,
+                          const ErrorCallback& error_callback) = 0;
 
   void AddObserver(Observer* observer) { observer_list_.AddObserver(observer); }
   void RemoveObserver(Observer* observer) {
