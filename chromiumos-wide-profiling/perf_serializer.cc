@@ -102,16 +102,11 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
   CHECK_GT(attrs_.size(), 0U);
   sample_type_ = attrs_[0].attr.sample_type;
 
-  // DeserializeEvent lets the parsed_event.raw_event own the event_t
-  // temporarily.
-  const bool deserialize_events_successful =
-      DeserializeEvents(perf_data_proto.events(), &parsed_events_);
-  // Have events_ take ownership of the raw_event pointers. We do this even if
-  // DeserializeEvents was unsuccessful to avoid leaking the successfully
-  // deserialized events.
-  for (const ParsedEvent& event : parsed_events_)
-    events_.emplace_back(event.raw_event);
-  if (!deserialize_events_successful)
+  if (!DeserializeEvents(perf_data_proto.events(), &events_)) {
+    return false;
+  }
+
+  if (!ParseRawEvents())
     return false;
 
   if (perf_data_proto.metadata_mask_size())
@@ -120,9 +115,6 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
   if (!DeserializeMetadata(perf_data_proto)) {
     return false;
   }
-
-  if (!ProcessEvents())
-    return false;
 
   memset(&stats_, 0, sizeof(stats_));
   const PerfDataProto_PerfEventStats& stats = perf_data_proto.stats();
@@ -348,21 +340,20 @@ bool PerfSerializer::SerializeEvent(
 
 bool PerfSerializer::DeserializeEvent(
     const PerfDataProto_PerfEvent& event_proto,
-    ParsedEvent* event) const {
-  // Here, event->raw_event points to a location in |events_|
-  // However, the location doesn't contain a pointer to an event yet.
+    malloced_unique_ptr<event_t>* event) const {
+  // The deserialized header.size should not be completely trusted, because the
+  // event content may have been changed (eg, md5 string replacement).
   // Since we don't know how much memory to allocate, use an oversized event_t
-  // for now.
+  // until the final size is known.
   // TODO(dhsharp): Come up with a better size prediction. We don't want to
   // overrun the allocated space. sizeof(event_t) is almost meaningless wrt the
   // space necessary for the event--it is the size of the largest member of the
   // union. For better or worse, this is dominated by the PATH_MAX-sized array
-  // in struct mmap2_event. However, events now often have a "sample id" placed
-  // immediately after it. Previously to this, an on-stack event_t was used,
-  // which is dangerous because the stack could have been overrun. Since no
-  // issues were reported, we can presume that amount of space was sufficient.
-  // The deserialized header.size should not be completely trusted, because the
-  // event content may have been changed (eg, md5 string replacement).
+  // in struct mmap2_event. However, events also have a "sample id" placed
+  // immediately after the struct. Previously to this, an on-stack event_t was
+  // used, which is dangerous because the stack could have been overrun. Since
+  // no issues were reported, we can presume that amount of space was
+  // sufficient.
   perf_event_header header = {};
   if (!DeserializeEventHeader(event_proto.header(), &header))
     return false;
@@ -414,7 +405,7 @@ bool PerfSerializer::DeserializeEvent(
       break;
   }
   if (!event_deserialized) {
-    event->raw_event = NULL;
+    event->reset();
     return false;
   }
   // Reallocate the event down to its final size.
@@ -424,8 +415,7 @@ bool PerfSerializer::DeserializeEvent(
   temp_event.reset(ReallocMemoryForEvent(temp_event.release(),
                                          final_event_size));
 
-  // raw_event temporarily owns the event.
-  event->raw_event = temp_event.release();
+  *event = std::move(temp_event);
   return true;
 }
 

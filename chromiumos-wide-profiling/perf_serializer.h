@@ -112,7 +112,7 @@ class PerfSerializer : public PerfParser {
       quipper::PerfDataProto_PerfEvent* event_proto) const;
   bool DeserializeEvent(
       const quipper::PerfDataProto_PerfEvent& event_proto,
-      ParsedEvent* event) const;
+      malloced_unique_ptr<event_t>* event) const;
 
   bool SerializeEventHeader(
       const perf_event_header& header,
@@ -244,7 +244,9 @@ class PerfSerializer : public PerfParser {
   const VectorSerializer<PerfDataProto_PerfEvent,
                          ParsedEvent*, const ParsedEvent*>
       SerializeEventPointers = {this, &PerfSerializer::SerializeEventPointer};
-  const VectorDeserializer<PerfDataProto_PerfEvent, ParsedEvent>
+
+  const VectorDeserializer<PerfDataProto_PerfEvent,
+                           malloced_unique_ptr<event_t>>
       DeserializeEvents = {this, &PerfSerializer::DeserializeEvent};
 
   const VectorSerializer<PerfDataProto_PerfBuildID,

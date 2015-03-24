@@ -160,8 +160,6 @@ class PerfParser : public PerfReader {
   // Defines a type for a pid:tid pair.
   typedef std::pair<uint32_t, uint32_t> PidTid;
 
-  // Used for processing events.  e.g. remapping with synthetic addresses.
-  bool ProcessEvents();
   template <typename MMapEventT>
   bool MapMmapEvent(MMapEventT* event, uint64_t id) {
     return MapMmapEvent(id,
@@ -200,6 +198,9 @@ class PerfParser : public PerfReader {
   std::set<DSOInfo> dso_set_;
 
  private:
+  // Used for processing events.  e.g. remapping with synthetic addresses.
+  bool ProcessEvents();
+
   // Sort |parsed_events_| by time, storing the results in
   // |parsed_events_sorted_by_time_|.
   // Events can not be sorted by time if PERF_SAMPLE_TIME is not set in
