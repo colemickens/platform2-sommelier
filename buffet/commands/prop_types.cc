@@ -520,6 +520,36 @@ bool ObjectPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
   return true;
 }
 
+chromeos::Any ObjectPropType::ConvertArrayToDBusVariant(
+    const native_types::Array& source) const {
+  std::vector<chromeos::VariantDictionary> result;
+  result.reserve(source.size());
+  for (const auto& prop_value : source) {
+    chromeos::Any dict = PropValueToDBusVariant(prop_value.get());
+    result.push_back(std::move(*dict.GetPtr<chromeos::VariantDictionary>()));
+  }
+  return result;
+}
+
+bool ObjectPropType::ConvertDBusVariantToArray(
+    const chromeos::Any& source,
+    native_types::Array* result,
+    chromeos::ErrorPtr* error) const {
+  if (!source.IsTypeCompatible<std::vector<chromeos::VariantDictionary>>())
+    return GenerateErrorValueTypeMismatch(error);
+
+  const auto& source_array =
+      source.Get<std::vector<chromeos::VariantDictionary>>();
+  result->reserve(source_array.size());
+  for (const auto& value : source_array) {
+    auto prop_value = PropValueFromDBusVariant(this, value, error);
+    if (!prop_value)
+      return false;
+    result->push_back(std::move(prop_value));
+  }
+  return true;
+}
+
 void ObjectPropType::SetObjectSchema(
     std::unique_ptr<const ObjectSchema> schema) {
   object_schema_.value = std::move(schema);

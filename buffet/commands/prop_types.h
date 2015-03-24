@@ -89,6 +89,21 @@ class PropType {
   virtual std::unique_ptr<PropValue> CreateValue(
       const chromeos::Any& val, chromeos::ErrorPtr* error) const = 0;
 
+  // Converts an array of PropValue containing the values of the types described
+  // by this instance of PropType into an Any containing std::vector<T>, where
+  // T corresponds to the native representation of this PropType.
+  virtual chromeos::Any ConvertArrayToDBusVariant(
+      const native_types::Array& source) const = 0;
+
+  // ConvertAnyToArray is the opposite of ConvertArrayToAny().
+  // Given an Any containing std::vector<T>, converts each value into the
+  // corresponding PropValue of type of this PropType and adds them to
+  // |result| array. If type conversion fails, this function returns false
+  // and specifies the error details in |error|.
+  virtual bool ConvertDBusVariantToArray(const chromeos::Any& source,
+                                         native_types::Array* result,
+                                         chromeos::ErrorPtr* error) const = 0;
+
   // Saves the parameter type definition as a JSON object.
   // If |full_schema| is set to true, the full type definition is saved,
   // otherwise only the overridden properties and attributes from the base
@@ -184,12 +199,15 @@ class PropType {
 template<class Derived, class Value, typename T>
 class PropTypeBase : public PropType {
  public:
+  // Overrides from PropType.
   ValueType GetType() const override { return GetValueType<T>(); }
+
   std::unique_ptr<PropValue> CreateValue() const override {
     if (GetDefaultValue())
       return GetDefaultValue()->Clone();
     return std::unique_ptr<PropValue>{new Value{Clone()}};
   }
+
   std::unique_ptr<PropValue> CreateValue(
       const chromeos::Any& v, chromeos::ErrorPtr* error) const override {
     std::unique_ptr<PropValue> prop_value;
@@ -203,6 +221,34 @@ class PropTypeBase : public PropType {
     }
     return prop_value;
   }
+
+  chromeos::Any ConvertArrayToDBusVariant(
+      const native_types::Array& source) const override {
+    std::vector<T> result;
+    result.reserve(source.size());
+    for (const auto& prop_value : source) {
+      result.push_back(PropValueToDBusVariant(prop_value.get()).Get<T>());
+    }
+    return result;
+  }
+
+  bool ConvertDBusVariantToArray(const chromeos::Any& source,
+                                 native_types::Array* result,
+                                 chromeos::ErrorPtr* error) const override {
+    if (!source.IsTypeCompatible<std::vector<T>>())
+      return GenerateErrorValueTypeMismatch(error);
+
+    const auto& source_array = source.Get<std::vector<T>>();
+    result->reserve(source_array.size());
+    for (const auto& value : source_array) {
+      auto prop_value = PropValueFromDBusVariant(this, value, error);
+      if (!prop_value)
+        return false;
+      result->push_back(std::move(prop_value));
+    }
+    return true;
+  }
+
   bool ConstraintsFromJson(const base::DictionaryValue* value,
                            std::set<std::string>* processed_keys,
                            chromeos::ErrorPtr* error) override;
@@ -306,6 +352,13 @@ class ObjectPropType
                             const PropType* base_schema,
                             std::set<std::string>* processed_keys,
                             chromeos::ErrorPtr* error) override;
+
+  chromeos::Any ConvertArrayToDBusVariant(
+    const native_types::Array& source) const override;
+
+  bool ConvertDBusVariantToArray(const chromeos::Any& source,
+                                 native_types::Array* result,
+                                 chromeos::ErrorPtr* error) const override;
 
   // Returns a schema for Object-type parameter.
   inline const ObjectSchema* GetObjectSchemaPtr() const {

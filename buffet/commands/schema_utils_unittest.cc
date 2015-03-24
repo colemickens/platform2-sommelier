@@ -249,6 +249,18 @@ TEST(CommandSchemaUtils, PropValueToDBusVariant) {
       PropValueToDBusVariant(prop_value.get()).Get<VariantDictionary>();
   EXPECT_EQ(20, dict["height"].Get<int>());
   EXPECT_EQ(10, dict["width"].Get<int>());
+
+  buffet::ArrayPropType arr_type;
+  arr_type.SetItemType(str_type.Clone());
+  buffet::native_types::Array arr;
+  arr.push_back(str_type.CreateValue(std::string{"foo"}, nullptr));
+  arr.push_back(str_type.CreateValue(std::string{"bar"}, nullptr));
+  arr.push_back(str_type.CreateValue(std::string{"baz"}, nullptr));
+  prop_value = arr_type.CreateValue(arr, nullptr);
+  chromeos::Any any = PropValueToDBusVariant(prop_value.get());
+  ASSERT_TRUE(any.IsTypeCompatible<std::vector<std::string>>());
+  EXPECT_EQ((std::vector<std::string>{"foo", "bar", "baz"}),
+            any.Get<std::vector<std::string>>());
 }
 
 TEST(CommandSchemaUtils, PropValueFromDBusVariant_Int) {
@@ -336,6 +348,29 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_Object) {
   chromeos::ErrorPtr error;
   obj["height"] = 20;
   prop_value = PropValueFromDBusVariant(&obj_type, obj, &error);
+  EXPECT_EQ(nullptr, prop_value.get());
+  ASSERT_NE(nullptr, error.get());
+  EXPECT_EQ(buffet::errors::commands::kOutOfRange, error->GetCode());
+}
+
+TEST(CommandSchemaUtils, PropValueFromDBusVariant_Array) {
+  buffet::ArrayPropType arr_type;
+  buffet::IntPropType int_type;
+  int_type.AddMinMaxConstraint(0, 100);
+  arr_type.SetItemType(int_type.Clone());
+  std::vector<int> data{0, 1, 1, 100};
+  auto prop_value = PropValueFromDBusVariant(&arr_type, data, nullptr);
+  ASSERT_NE(nullptr, prop_value.get());
+  auto arr = prop_value->GetValueAsAny().Get<buffet::native_types::Array>();
+  ASSERT_EQ(4u, arr.size());
+  EXPECT_EQ(0, arr[0]->GetInt()->GetValue());
+  EXPECT_EQ(1, arr[1]->GetInt()->GetValue());
+  EXPECT_EQ(1, arr[2]->GetInt()->GetValue());
+  EXPECT_EQ(100, arr[3]->GetInt()->GetValue());
+
+  chromeos::ErrorPtr error;
+  data.push_back(-1);  // This value is out of bounds for |int_type|.
+  prop_value = PropValueFromDBusVariant(&arr_type, data, &error);
   EXPECT_EQ(nullptr, prop_value.get());
   ASSERT_NE(nullptr, error.get());
   EXPECT_EQ(buffet::errors::commands::kOutOfRange, error->GetCode());

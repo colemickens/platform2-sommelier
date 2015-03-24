@@ -267,9 +267,15 @@ std::string ToString(const native_types::Array& arr) {
 }
 
 chromeos::Any PropValueToDBusVariant(const PropValue* value) {
-  if (value->GetType() != ValueType::Object)
-    return value->GetValueAsAny();
-  return ObjectToDBusVariant(value->GetObject()->GetValue());
+  if (value->GetType() == ValueType::Object)
+    return ObjectToDBusVariant(value->GetObject()->GetValue());
+
+  if (value->GetType() == ValueType::Array) {
+    const PropType* item_type =
+        value->GetPropType()->GetArray()->GetItemTypePtr();
+    return item_type->ConvertArrayToDBusVariant(value->GetArray()->GetValue());
+  }
+  return value->GetValueAsAny();
 }
 
 chromeos::VariantDictionary
@@ -291,13 +297,21 @@ std::unique_ptr<const PropValue> PropValueFromDBusVariant(
     const chromeos::Any& value,
     chromeos::ErrorPtr* error) {
   std::unique_ptr<const PropValue> result;
-  if (type->GetType() == ValueType::Object) {
+  if (type->GetType() == ValueType::Array) {
+    // Special case for array types.
+    // We expect the |value| to contain std::vector<T>, while PropValue must use
+    // native_types::Array instead. Do the conversion.
+    native_types::Array arr;
+    const PropType* item_type = type->GetArray()->GetItemTypePtr();
+    if (item_type->ConvertDBusVariantToArray(value, &arr, error))
+      result = type->CreateValue(arr, error);
+  } else if (type->GetType() == ValueType::Object) {
     // Special case for object types.
     // We expect the |value| to contain chromeos::VariantDictionary, while
     // PropValue must use native_types::Object instead. Do the conversion.
     if (!value.IsTypeCompatible<chromeos::VariantDictionary>()) {
       type->GenerateErrorValueTypeMismatch(error);
-      return {};
+      return result;
     }
     CHECK(nullptr != type->GetObject()->GetObjectSchemaPtr())
         << "An object type must have a schema defined for it";
@@ -305,8 +319,9 @@ std::unique_ptr<const PropValue> PropValueFromDBusVariant(
     if (!ObjectFromDBusVariant(type->GetObject()->GetObjectSchemaPtr(),
                                value.Get<chromeos::VariantDictionary>(),
                                &obj,
-                               error))
-      return {};
+                               error)) {
+      return result;
+    }
 
     result = type->CreateValue(std::move(obj), error);
   } else {
