@@ -6,10 +6,9 @@
 
 #include <sys/types.h>
 
-#include <vector>
-
 #include <base/logging.h>
 #include <base/rand_util.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/minijail/minijail.h>
 #include <chromeos/process.h>
@@ -43,30 +42,29 @@ Launcher::Launcher() {
 Launcher::~Launcher() {}
 
 int Launcher::RunInteractive(const std::string& name,
-                             const std::string& executable) {
-  uid_t uid = uid_service_->GetUid();
-
-  std::vector<char*> cmdline;
-  cmdline.push_back(const_cast<char*>(executable.c_str()));
+                             const std::vector<std::string>& argv) {
+  std::vector<char*> command_line;
+  for (const auto& t : argv) {
+    command_line.push_back(const_cast<char*>(t.c_str()));
+  }
   // Minijail will use the underlying char* array as 'argv',
   // so null-terminate it.
-  cmdline.push_back(nullptr);
+  command_line.push_back(nullptr);
 
   chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
 
+  uid_t uid = uid_service_->GetUid();
   Environment env(uid, uid);
 
   int status;
-  minijail->RunSyncAndDestroy(env.GetForInteractive(), cmdline,
-                              &status);
+  minijail->RunSyncAndDestroy(env.GetForInteractive(), command_line, &status);
   return status;
 }
 
 int Launcher::RunService(const std::string& name,
-                         const std::string& executable) {
-  // initctl start germ_template NAME=yes ENVIRONMENT= EXECUTABLE=/bin/yes
+                         const std::vector<std::string>& argv) {
+  // initctl start germ_template NAME=yes ENVIRONMENT= COMMANDLINE=/usr/bin/yes
   uid_t uid = uid_service_->GetUid();
-
   Environment env(uid, uid);
 
   chromeos::ProcessImpl initctl;
@@ -75,7 +73,8 @@ int Launcher::RunService(const std::string& name,
   initctl.AddArg(kSandboxedServiceTemplate);
   initctl.AddArg(base::StringPrintf("NAME=%s", name.c_str()));
   initctl.AddArg(env.GetForService());
-  initctl.AddArg(base::StringPrintf("EXECUTABLE=%s", executable.c_str()));
+  std::string command_line = JoinString(argv, ' ');
+  initctl.AddArg(base::StringPrintf("COMMANDLINE=%s", command_line.c_str()));
 
   // Since we're running 'initctl', and not the executable itself,
   // we wait for it to exit.

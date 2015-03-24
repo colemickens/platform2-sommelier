@@ -13,7 +13,7 @@ service Germ {
 message LaunchRequest {
   optional string name = 1;
   // TODO(jorgelo): add ContainerSpec, remove |command_line|.
-  optional string command_line = 2;
+  repeated string command_line = 2;
 }
 
 message LaunchResponse {

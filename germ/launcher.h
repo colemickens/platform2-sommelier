@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 
@@ -20,9 +21,9 @@ class Launcher {
   ~Launcher();
 
   int RunInteractive(const std::string& name,
-                     const std::string& executable);
+                     const std::vector<std::string>& argv);
   int RunService(const std::string& name,
-                 const std::string& executable);
+                 const std::vector<std::string>& argv);
 
  private:
   std::unique_ptr<UidService> uid_service_;

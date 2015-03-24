@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <vector>
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
@@ -23,7 +24,8 @@ namespace germ {
 
 namespace {
 
-int Launch(const std::string& name, const std::string& command_line) {
+int Launch(const std::string& name,
+           const std::vector<std::string>& command_line) {
   scoped_ptr<IBinder> proxy(GetServiceManager()->GetService("germ"));
   scoped_ptr<IGerm> germ(protobinder::BinderToInterface<IGerm>(proxy.get()));
   if (!germ) {
@@ -32,7 +34,9 @@ int Launch(const std::string& name, const std::string& command_line) {
   LaunchRequest request;
   LaunchResponse response;
   request.set_name(name);
-  request.set_command_line(command_line);
+  for (const auto& cmdline_token : command_line) {
+    request.add_command_line(cmdline_token);
+  }
   germ->Launch(&request, &response);
   return response.status();
 }
@@ -44,27 +48,41 @@ int Launch(const std::string& name, const std::string& command_line) {
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
 
-  DEFINE_string(name, "",
-                "Name of the service, cannot be empty.");
-  DEFINE_string(executable, "",
-                "Full path of the executable, cannot be empty.");
-  DEFINE_bool(interactive, false, "Run in the foreground.");
+  DEFINE_string(name, "", "Name of the service, cannot be empty");
+  DEFINE_bool(interactive, false, "Run in the foreground");
   DEFINE_bool(shell, false,
-              "Don't actually run the service, just launch a shell. "
-              "Implies --interactive.");
+              "Don't actually run the service, just launch a shell");
 
-  chromeos::FlagHelper::Init(argc, argv, "germ");
-  chromeos::InitLog(chromeos::kLogToSyslog);
+  chromeos::FlagHelper::Init(argc, argv,
+                             "germ [OPTIONS] -- <EXECUTABLE> [ARGUMENTS...]");
+  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+
+  std::vector<std::string> args =
+      base::CommandLine::ForCurrentProcess()->GetArgs();
+  // It would be great if we could print the "Usage" message here,
+  // but chromeos::FlagHelper does not seem to support that.
+  // Instead, we LOG(ERROR) and exit. We don't LOG(FATAL) because we don't need
+  // a backtrace or core dump.
+  if (args.empty()) {
+    LOG(ERROR) << "No executable file provided";
+    return 1;
+  }
+  if (FLAGS_name.empty()) {
+    LOG(ERROR) << "Empty service name";
+    return 1;
+  }
 
   int ret = 0;
   // FLAGS_shell implies FLAGS_interactive.
   if (FLAGS_interactive || FLAGS_shell) {
     germ::Launcher launcher;
-    std::string executable =
-        FLAGS_shell ? std::string(kShellExecutablePath) : FLAGS_executable;
-    ret = launcher.RunInteractive(FLAGS_name, executable);
+    if (FLAGS_shell) {
+      args.clear();
+      args.push_back(kShellExecutablePath);
+    }
+    ret = launcher.RunInteractive(FLAGS_name, args);
   } else {
-    ret = germ::Launch(FLAGS_name, FLAGS_executable);
+    ret = germ::Launch(FLAGS_name, args);
   }
   return ret;
 }

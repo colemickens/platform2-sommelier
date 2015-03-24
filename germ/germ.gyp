@@ -12,7 +12,7 @@
   'targets': [
     {
       'target_name': 'germ-protos',
-      'type': 'none',
+      'type': 'static_library',
       'variables': {
         'proto_in_dir': 'idl',
         'proto_out_dir': 'include/germ/proto_bindings',
@@ -33,8 +33,6 @@
         'environment.cc',
         'germ_host.cc',
         'launcher.cc',
-        '<(SHARED_INTERMEDIATE_DIR)/include/germ/proto_bindings/germ.pb.cc',
-        '<(SHARED_INTERMEDIATE_DIR)/include/germ/proto_bindings/germ.pb.rpc.cc',
       ],
     },
     {

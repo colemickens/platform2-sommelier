@@ -4,10 +4,17 @@
 
 #include "germ/germ_host.h"
 
+#include <string>
+#include <vector>
+
 namespace germ {
 
 int GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
-  int status = launcher_.RunService(request->name(), request->command_line());
+  std::vector<std::string> argv;
+  for (const auto& cmdline_token : request->command_line()) {
+    argv.push_back(cmdline_token);
+  }
+  int status = launcher_.RunService(request->name(), argv);
   response->set_status(status);
   return 0;
 }
