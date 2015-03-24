@@ -82,6 +82,8 @@ class PrivetHandler : public CloudDelegate::Observer {
                          const RequestCallback& callback);
   void HandleCommandDefs(const base::DictionaryValue& input,
                          const RequestCallback& callback);
+  void HandleCommandsExecute(const base::DictionaryValue& input,
+                             const RequestCallback& callback);
   void HandleCommandsStatus(const base::DictionaryValue& input,
                             const RequestCallback& callback);
 

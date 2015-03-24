@@ -279,6 +279,7 @@ TEST_F(PrivetHandlerTest, Info) {
       '/privet/info',
       '/privet/v3/auth',
       '/privet/v3/commandDefs',
+      '/privet/v3/commands/execute',
       '/privet/v3/commands/status',
       '/privet/v3/pairing/cancel',
       '/privet/v3/pairing/confirm',
@@ -584,6 +585,18 @@ TEST_F(PrivetHandlerSetupTest, CommandsDefs) {
 
   EXPECT_PRED2(IsEqualJson, "{'commands': {'test':{}}, 'fingerprint': '1'}",
                HandleRequest("/privet/v3/commandDefs", "{}"));
+}
+
+TEST_F(PrivetHandlerSetupTest, CommandsExecute) {
+  const char kInput[] = "{'name': 'test'}";
+  base::DictionaryValue command;
+  LoadTestJson(kInput, &command);
+  LoadTestJson("{'id':'5'}", &command);
+  EXPECT_CALL(cloud_, AddCommand(_, _, _))
+      .WillOnce(RunCallback<1, const base::DictionaryValue&>(command));
+
+  EXPECT_PRED2(IsEqualJson, "{'name':'test', 'id':'5'}",
+               HandleRequest("/privet/v3/commands/execute", kInput));
 }
 
 TEST_F(PrivetHandlerSetupTest, CommandsStatus) {

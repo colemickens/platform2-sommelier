@@ -31,6 +31,7 @@
     </method>
     <method name="AddCommand">
       <arg name="json_command" type="s" direction="in"/>
+      <arg name="id" type="s" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
     <method name="GetCommand">

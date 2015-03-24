@@ -356,7 +356,8 @@ class Daemon : public chromeos::DBusDaemon {
 
   void CallAddCommand(const std::string& command, ManagerProxy* manager_proxy) {
     ErrorPtr error;
-    if (!manager_proxy->AddCommand(command, &error)) {
+    std::string id;
+    if (!manager_proxy->AddCommand(command, &id, &error)) {
       return ReportError(error.get());
     }
     OnJobComplete();

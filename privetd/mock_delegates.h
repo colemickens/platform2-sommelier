@@ -156,6 +156,10 @@ class MockCloudDelegate : public CloudDelegate {
                     chromeos::ErrorPtr*));
   MOCK_CONST_METHOD0(GetCloudId, std::string());
   MOCK_CONST_METHOD0(GetCommandDef, const base::DictionaryValue&());
+  MOCK_METHOD3(AddCommand,
+               void(const base::DictionaryValue&,
+                    const SuccessCallback&,
+                    const ErrorCallback&));
   MOCK_METHOD3(GetCommand,
                void(const std::string&,
                     const SuccessCallback&,

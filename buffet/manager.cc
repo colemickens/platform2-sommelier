@@ -165,7 +165,7 @@ bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
   return true;
 }
 
-void Manager::AddCommand(DBusMethodResponse<> response,
+void Manager::AddCommand(DBusMethodResponse<std::string> response,
                          const std::string& json_command) {
   static int next_id = 0;
   std::string error_message;
@@ -184,9 +184,10 @@ void Manager::AddCommand(DBusMethodResponse<> response,
     response->ReplyWithError(error.get());
     return;
   }
-  command_instance->SetID(std::to_string(++next_id));
+  std::string id = std::to_string(++next_id);
+  command_instance->SetID(id);
   command_manager_->AddCommand(std::move(command_instance));
-  response->Return();
+  response->Return(id);
 }
 
 void Manager::GetCommand(DBusMethodResponse<std::string> response,

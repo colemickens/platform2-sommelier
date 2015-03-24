@@ -6,6 +6,7 @@
 
 #include <base/bind.h>
 #include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
@@ -78,6 +79,23 @@ class CloudDelegateImpl : public CloudDelegate {
 
   const base::DictionaryValue& GetCommandDef() const override {
     return command_defs_;
+  }
+
+  void AddCommand(const base::DictionaryValue& command,
+                  const SuccessCallback& success_callback,
+                  const ErrorCallback& error_callback) override {
+    chromeos::ErrorPtr error;
+    ManagerProxy* manager = GetManagerProxy(&error);
+    if (!manager)
+      return error_callback.Run(error.get());
+
+    std::string command_str;
+    base::JSONWriter::Write(&command, &command_str);
+    manager->AddCommandAsync(
+        command_str, base::Bind(&CloudDelegateImpl::OnAddCommandSucceeded,
+                                weak_factory_.GetWeakPtr(), success_callback,
+                                error_callback),
+        error_callback);
   }
 
   void GetCommand(const std::string& id,
@@ -212,6 +230,12 @@ class CloudDelegateImpl : public CloudDelegate {
                    setup_weak_factory_.GetWeakPtr(),
                    ticket_id,
                    retries));
+  }
+
+  void OnAddCommandSucceeded(const SuccessCallback& success_callback,
+                             const ErrorCallback& error_callback,
+                             const std::string& id) {
+    GetCommand(id, success_callback, error_callback);
   }
 
   void OnGetCommandSucceeded(const SuccessCallback& success_callback,

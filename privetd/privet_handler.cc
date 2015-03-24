@@ -37,6 +37,7 @@ const char kAuthApiPath[] = "/privet/v3/auth";
 const char kSetupStartApiPath[] = "/privet/v3/setup/start";
 const char kSetupStatusApiPath[] = "/privet/v3/setup/status";
 const char kCommandDefApiPath[] = "/privet/v3/commandDefs";
+const char kCommandsExecuteApiPath[] = "/privet/v3/commands/execute";
 const char kCommandsStatusApiPath[] = "/privet/v3/commands/status";
 
 const char kInfoVersionKey[] = "version";
@@ -315,6 +316,9 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
     handlers_[kCommandDefApiPath] = std::make_pair(
         AuthScope::kUser,
         base::Bind(&PrivetHandler::HandleCommandDefs, base::Unretained(this)));
+    handlers_[kCommandsExecuteApiPath] = std::make_pair(
+        AuthScope::kUser, base::Bind(&PrivetHandler::HandleCommandsExecute,
+                                     base::Unretained(this)));
     handlers_[kCommandsStatusApiPath] = std::make_pair(
         AuthScope::kUser, base::Bind(&PrivetHandler::HandleCommandsStatus,
                                      base::Unretained(this)));
@@ -658,6 +662,12 @@ void PrivetHandler::HandleCommandDefs(const base::DictionaryValue& input,
                    base::IntToString(command_defs_fingerprint_));
 
   callback.Run(chromeos::http::status_code::Ok, output);
+}
+
+void PrivetHandler::HandleCommandsExecute(const base::DictionaryValue& input,
+                                          const RequestCallback& callback) {
+  cloud_->AddCommand(input, base::Bind(&OnCommandRequestSucceeded, callback),
+                     base::Bind(&OnCommandRequestFailed, callback));
 }
 
 void PrivetHandler::HandleCommandsStatus(const base::DictionaryValue& input,
