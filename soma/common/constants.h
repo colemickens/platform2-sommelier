@@ -7,7 +7,7 @@
 
 namespace soma {
 
-extern const char kSomaServiceName[];
+const char kSomaServiceName[] = "com.android.embedded.soma";
 
 }  // namespace soma
 

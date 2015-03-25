@@ -14,19 +14,7 @@
   },
   'targets': [
     {
-      'target_name': 'container-spec-proto',
-      'type': 'static_library',
-      'variables': {
-        'proto_in_dir': 'idl',
-        'proto_out_dir': 'include/soma/proto_bindings',
-      },
-      'sources': [
-        '<(proto_in_dir)/container_spec.proto',
-      ],
-      'includes': ['../common-mk/protoc.gypi'],
-    },
-    {
-      'target_name': 'soma-proto',
+      'target_name': 'soma-proto-lib',
       'type': 'static_library',
       'variables': {
         'proto_in_dir': 'idl',
@@ -34,19 +22,18 @@
         'gen_bidl': 1,
       },
       'sources': [
+        '<(proto_in_dir)/container_spec.proto',
         '<(proto_in_dir)/soma.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },
     {
-      'target_name': 'libsoma',
+      'target_name': 'libsomad',
       'type': 'static_library',
       'dependencies': [
-        'container-spec-proto',
-        'soma-proto',
+        'soma-proto-lib',
       ],
       'sources': [
-        'common/constants.cc',
         'container_spec_wrapper.cc',
         'device_filter.cc',
         'namespace.cc',
@@ -61,7 +48,7 @@
       'target_name': 'somad',
       'type': 'executable',
       'dependencies': [
-        'libsoma',
+        'libsomad',
       ],
       'sources': ['main.cc'],
     },
@@ -69,7 +56,7 @@
       'target_name': 'soma_client',
       'type': 'executable',
       'dependencies': [
-        'libsoma',
+        'libsomad',
       ],
       'sources': ['soma_client.cc'],
     },
@@ -83,7 +70,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'defines': ['UNIT_TEST'],
           'dependencies': [
-            'libsoma',
+            'libsomad',
           ],
           'sources': [
             'container_spec_unittest.cc',
