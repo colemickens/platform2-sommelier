@@ -583,7 +583,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     } else {
       chromeos::glib::ScopedArray tmp_array(g_array_new(FALSE, FALSE, 1));
       g_array_append_vals(tmp_array.get(),
-                          result->return_data()->const_data(),
+                          result->return_data()->data(),
                           result->return_data()->size());
       g_signal_emit(cryptohome_,
                     async_data_complete_signal_,
@@ -690,7 +690,7 @@ gboolean Service::CheckKey(gchar *userid,
                            gchar *key,
                            gboolean *OUT_result,
                            GError **error) {
-  UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
+  UsernamePasskey credentials(userid, SecureBlob(key, key + strlen(key)));
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
     if (it->second->AreSameUser(credentials)) {
       *OUT_result = it->second->AreValid(credentials);
@@ -715,7 +715,7 @@ gboolean Service::AsyncCheckKey(gchar *userid,
                                 gchar *key,
                                 gint *OUT_async_id,
                                 GError **error) {
-  UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
+  UsernamePasskey credentials(userid, SecureBlob(key, key + strlen(key)));
   // Freed by the message loop
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(NULL, &event_source_);
@@ -761,8 +761,8 @@ void Service::DoCheckKeyEx(AccountIdentifier* identifier,
   }
 
   UsernamePasskey credentials(identifier->email().c_str(),
-                            SecureBlob(authorization->key().secret().c_str(),
-                                       authorization->key().secret().length()));
+                            SecureBlob(authorization->key().secret().begin(),
+                                       authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
   BaseReply reply;
@@ -842,8 +842,8 @@ void Service::DoRemoveKeyEx(AccountIdentifier* identifier,
   BaseReply reply;
   UsernamePasskey credentials(
       identifier->email().c_str(),
-      SecureBlob(authorization->key().secret().c_str(),
-                 authorization->key().secret().length()));
+      SecureBlob(authorization->key().secret().begin(),
+                 authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
   if (!homedirs_->Exists(credentials)) {
@@ -1036,7 +1036,8 @@ gboolean Service::MigrateKey(gchar *userid,
                              gchar *to_key,
                              gboolean *OUT_result,
                              GError **error) {
-  UsernamePasskey credentials(userid, SecureBlob(to_key, strlen(to_key)));
+  UsernamePasskey credentials(userid,
+                              SecureBlob(to_key, to_key + strlen(to_key)));
 
   MountTaskResult result;
   base::WaitableEvent event(true, false);
@@ -1056,7 +1057,8 @@ gboolean Service::AsyncMigrateKey(gchar *userid,
                                   gchar *to_key,
                                   gint *OUT_async_id,
                                   GError **error) {
-  UsernamePasskey credentials(userid, SecureBlob(to_key, strlen(to_key)));
+  UsernamePasskey credentials(userid,
+                              SecureBlob(to_key, to_key + strlen(to_key)));
 
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(NULL, &event_source_);
@@ -1074,7 +1076,7 @@ gboolean Service::AddKey(gchar *userid,
                          gint *OUT_key_id,
                          gboolean *OUT_result,
                          GError **error) {
-  UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
+  UsernamePasskey credentials(userid, SecureBlob(key, key + strlen(key)));
 
   MountTaskResult result;
   base::WaitableEvent event(true, false);
@@ -1095,7 +1097,7 @@ gboolean Service::AsyncAddKey(gchar *userid,
                               gchar *new_key,
                               gint *OUT_async_id,
                               GError **error) {
-  UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
+  UsernamePasskey credentials(userid, SecureBlob(key, key + strlen(key)));
 
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(NULL, &event_source_);
@@ -1159,8 +1161,8 @@ void Service::DoAddKeyEx(AccountIdentifier* identifier,
 
   UsernamePasskey credentials(
       identifier->email().c_str(),
-      SecureBlob(authorization->key().secret().c_str(),
-                 authorization->key().secret().length()));
+      SecureBlob(authorization->key().secret().begin(),
+                 authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
   if (!homedirs_->Exists(credentials)) {
@@ -1170,8 +1172,8 @@ void Service::DoAddKeyEx(AccountIdentifier* identifier,
   }
 
   int index = -1;
-  SecureBlob new_secret(add_key_request->key().secret().c_str(),
-                        add_key_request->key().secret().length());
+  SecureBlob new_secret(add_key_request->key().secret().begin(),
+                        add_key_request->key().secret().end());
   reply.set_error(homedirs_->AddKeyset(credentials,
                                        new_secret,
                                        &add_key_request->key().data(),
@@ -1257,8 +1259,8 @@ void Service::DoUpdateKeyEx(AccountIdentifier* identifier,
   }
 
   UsernamePasskey credentials(identifier->email().c_str(),
-                            SecureBlob(authorization->key().secret().c_str(),
-                                       authorization->key().secret().length()));
+                            SecureBlob(authorization->key().secret().begin(),
+                                       authorization->key().secret().end()));
   credentials.set_key_data(authorization->key().data());
 
   if (!homedirs_->Exists(credentials)) {
@@ -1358,7 +1360,7 @@ gboolean Service::GetSystemSalt(GArray **OUT_salt, GError **error) {
   if (!CreateSystemSaltIfNeeded())
     return FALSE;
   *OUT_salt = g_array_new(false, false, 1);
-  g_array_append_vals(*OUT_salt, &system_salt_.front(), system_salt_.size());
+  g_array_append_vals(*OUT_salt, system_salt_.data(), system_salt_.size());
   return TRUE;
 }
 
@@ -1430,7 +1432,7 @@ gboolean Service::Mount(const gchar *userid,
     // This could run on every interaction to catch any unused mounts.
     CleanUpStaleMounts(false);
 
-  UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
+  UsernamePasskey credentials(userid, SecureBlob(key, key + strlen(key)));
 
   scoped_refptr<cryptohome::Mount> guest_mount = GetMountForUser(guest_user_);
   bool guest_mounted = guest_mount.get() && guest_mount->IsMounted();
@@ -1617,8 +1619,8 @@ void Service::DoMountEx(AccountIdentifier* identifier,
   }
 
   UsernamePasskey credentials(identifier->email().c_str(),
-                            SecureBlob(authorization->key().secret().c_str(),
-                                       authorization->key().secret().length()));
+                            SecureBlob(authorization->key().secret().begin(),
+                                       authorization->key().secret().end()));
   // Everything else can be the default.
   credentials.set_key_data(authorization->key().data());
 
@@ -1866,7 +1868,7 @@ gboolean Service::AsyncMount(const gchar *userid,
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
   mount_args.ensure_ephemeral = ensure_ephemeral;
-  scoped_ptr<SecureBlob> key_blob(new SecureBlob(key, strlen(key)));
+  scoped_ptr<SecureBlob> key_blob(new SecureBlob(key, key + strlen(key)));
   UsernamePasskey credentials(userid, *key_blob);
   scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(
                                                             NULL,
@@ -2089,8 +2091,7 @@ gboolean Service::TpmGetPassword(gchar** OUT_password, GError** error) {
     *OUT_password = NULL;
     return TRUE;
   }
-  *OUT_password = g_strndup(static_cast<char*>(password.data()),
-                            password.size());
+  *OUT_password = g_strndup(password.char_data(), password.size());
   return TRUE;
 }
 
@@ -2143,7 +2144,7 @@ gboolean Service::TpmAttestationCreateEnrollRequest(gint pca_type,
   *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
   chromeos::SecureBlob blob;
   if (attestation_->CreateEnrollRequest(GetPCAType(pca_type), &blob))
-    g_array_append_vals(*OUT_pca_request, &blob.front(), blob.size());
+    g_array_append_vals(*OUT_pca_request, blob.data(), blob.size());
   return TRUE;
 }
 
@@ -2166,7 +2167,8 @@ gboolean Service::TpmAttestationEnroll(gint pca_type,
                                        GArray* pca_response,
                                        gboolean* OUT_success,
                                        GError** error) {
-  chromeos::SecureBlob blob(pca_response->data, pca_response->len);
+  chromeos::SecureBlob blob(pca_response->data,
+                            pca_response->data + pca_response->len);
   *OUT_success = attestation_->Enroll(GetPCAType(pca_type), blob);
   return TRUE;
 }
@@ -2175,7 +2177,8 @@ gboolean Service::AsyncTpmAttestationEnroll(gint pca_type,
                                             GArray* pca_response,
                                             gint* OUT_async_id,
                                             GError** error) {
-  chromeos::SecureBlob blob(pca_response->data, pca_response->len);
+  chromeos::SecureBlob blob(pca_response->data,
+                            pca_response->data + pca_response->len);
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<EnrollTask> task =
@@ -2200,7 +2203,7 @@ gboolean Service::TpmAttestationCreateCertRequest(gint pca_type,
                                       username,
                                       request_origin,
                                       &blob))
-    g_array_append_vals(*OUT_pca_request, &blob.front(), blob.size());
+    g_array_append_vals(*OUT_pca_request, blob.data(), blob.size());
   return TRUE;
 }
 
@@ -2235,7 +2238,8 @@ gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
                                                   gboolean* OUT_success,
                                                   GError** error) {
   *OUT_cert = g_array_new(false, false, sizeof(SecureBlob::value_type));
-  chromeos::SecureBlob response_blob(pca_response->data, pca_response->len);
+  chromeos::SecureBlob response_blob(pca_response->data,
+                                     pca_response->data + pca_response->len);
   chromeos::SecureBlob cert_blob;
   *OUT_success = attestation_->FinishCertRequest(response_blob,
                                                  is_user_specific,
@@ -2243,7 +2247,7 @@ gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
                                                  key_name,
                                                  &cert_blob);
   if (*OUT_success)
-    g_array_append_vals(*OUT_cert, &cert_blob.front(), cert_blob.size());
+    g_array_append_vals(*OUT_cert, cert_blob.data(), cert_blob.size());
   return TRUE;
 }
 
@@ -2254,7 +2258,8 @@ gboolean Service::AsyncTpmAttestationFinishCertRequest(
     gchar* key_name,
     gint* OUT_async_id,
     GError** error) {
-  chromeos::SecureBlob blob(pca_response->data, pca_response->len);
+  chromeos::SecureBlob blob(pca_response->data,
+                            pca_response->data + pca_response->len);
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<FinishCertRequestTask> task =
@@ -2301,7 +2306,7 @@ gboolean Service::TpmAttestationGetCertificate(gboolean is_user_specific,
                                                    key_name,
                                                    &blob);
   if (*OUT_success)
-    g_array_append_vals(*OUT_certificate, &blob.front(), blob.size());
+    g_array_append_vals(*OUT_certificate, blob.data(), blob.size());
   return TRUE;
 }
 
@@ -2318,7 +2323,7 @@ gboolean Service::TpmAttestationGetPublicKey(gboolean is_user_specific,
                                             key_name,
                                             &blob);
   if (*OUT_success)
-    g_array_append_vals(*OUT_public_key, &blob.front(), blob.size());
+    g_array_append_vals(*OUT_public_key, blob.data(), blob.size());
   return TRUE;
 }
 
@@ -2352,8 +2357,10 @@ gboolean Service::TpmAttestationSignEnterpriseChallenge(
       GArray* challenge,
       gint *OUT_async_id,
       GError** error) {
-  chromeos::SecureBlob device_id_blob(device_id->data, device_id->len);
-  chromeos::SecureBlob challenge_blob(challenge->data, challenge->len);
+  chromeos::SecureBlob device_id_blob(device_id->data,
+                                      device_id->data + device_id->len);
+  chromeos::SecureBlob challenge_blob(challenge->data,
+                                      challenge->data + challenge->len);
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<SignChallengeTask> task =
@@ -2380,7 +2387,8 @@ gboolean Service::TpmAttestationSignSimpleChallenge(
       GArray* challenge,
       gint *OUT_async_id,
       GError** error) {
-  chromeos::SecureBlob challenge_blob(challenge->data, challenge->len);
+  chromeos::SecureBlob challenge_blob(challenge->data,
+                                      challenge->data + challenge->len);
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<SignChallengeTask> task =
@@ -2410,7 +2418,7 @@ gboolean Service::TpmAttestationGetKeyPayload(gboolean is_user_specific,
                                              key_name,
                                              &blob);
   if (*OUT_success)
-    g_array_append_vals(*OUT_payload, &blob.front(), blob.size());
+    g_array_append_vals(*OUT_payload, blob.data(), blob.size());
   return TRUE;
 }
 
@@ -2420,7 +2428,7 @@ gboolean Service::TpmAttestationSetKeyPayload(gboolean is_user_specific,
                                               GArray* payload,
                                               gboolean* OUT_success,
                                               GError** error) {
-  chromeos::SecureBlob blob(payload->data, payload->len);
+  chromeos::SecureBlob blob(payload->data, payload->data + payload->len);
   *OUT_success = attestation_->SetKeyPayload(is_user_specific,
                                              username,
                                              key_name,
@@ -2460,7 +2468,7 @@ gboolean Service::TpmAttestationResetIdentity(gchar* reset_token,
       &reset_request);
   if (*OUT_success)
     g_array_append_vals(*OUT_reset_request,
-                        &reset_request.front(),
+                        reset_request.data(),
                         reset_request.size());
   return TRUE;
 }
@@ -2527,7 +2535,7 @@ gboolean Service::InstallAttributesGet(gchar* name,
     return FALSE;
   }
   if (*OUT_successful) {
-    g_array_append_vals(*OUT_value, &value.front(), value.size());
+    g_array_append_vals(*OUT_value, value.data(), value.size());
   }
   return TRUE;
 }
@@ -2594,7 +2602,8 @@ gboolean Service::StoreEnrollmentState(GArray* enrollment_state,
     LOG(ERROR) << "Not preserving enrollment state as we are not enrolled.";
     return TRUE;
   }
-  SecureBlob data_blob(enrollment_state->data, enrollment_state->len);
+  SecureBlob data_blob(enrollment_state->data,
+                       enrollment_state->data + enrollment_state->len);
   std::string encrypted_data;
   if (!crypto_->EncryptWithTpm(data_blob, &encrypted_data)) {
     return TRUE;
@@ -2632,8 +2641,7 @@ gboolean Service::LoadEnrollmentState(GArray** OUT_enrollment_state,
   }
   *OUT_enrollment_state = g_array_new(false, false, 1);
   g_array_append_vals(*OUT_enrollment_state,
-                      reinterpret_cast<const char*>(&secure_data[0]),
-                      secure_data.size());
+                      secure_data.char_data(), secure_data.size());
   *OUT_success = true;
   return TRUE;
 }
@@ -2641,7 +2649,7 @@ gboolean Service::LoadEnrollmentState(GArray** OUT_enrollment_state,
 void Service::DoSignBootLockbox(const chromeos::SecureBlob& request,
                                 DBusGMethodInvocation* context) {
   SignBootLockboxRequest request_pb;
-  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size()) ||
+  if (!request_pb.ParseFromArray(request.data(), request.size()) ||
       !request_pb.has_data()) {
     SendInvalidArgsReply(context, "Bad SignBootLockboxRequest");
     return;
@@ -2652,8 +2660,7 @@ void Service::DoSignBootLockbox(const chromeos::SecureBlob& request,
     reply.set_error(CRYPTOHOME_ERROR_LOCKBOX_CANNOT_SIGN);
   } else {
     reply.MutableExtension(SignBootLockboxReply::reply)->set_signature(
-        std::string(reinterpret_cast<const char*>(vector_as_array(&signature)),
-                    signature.size()));
+        signature.to_string());
   }
   SendReply(context, reply);
 }
@@ -2662,7 +2669,7 @@ gboolean Service::SignBootLockbox(const GArray* request,
                                   DBusGMethodInvocation* context) {
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoSignBootLockbox, base::Unretained(this),
-                 SecureBlob(request->data, request->len),
+                 SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
@@ -2670,7 +2677,7 @@ gboolean Service::SignBootLockbox(const GArray* request,
 void Service::DoVerifyBootLockbox(const chromeos::SecureBlob& request,
                                   DBusGMethodInvocation* context) {
   VerifyBootLockboxRequest request_pb;
-  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size()) ||
+  if (!request_pb.ParseFromArray(request.data(), request.size()) ||
       !request_pb.has_data() ||
       !request_pb.has_signature()) {
     SendInvalidArgsReply(context, "Bad VerifyBootLockboxRequest");
@@ -2688,7 +2695,7 @@ gboolean Service::VerifyBootLockbox(const GArray* request,
                                     DBusGMethodInvocation* context) {
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoVerifyBootLockbox, base::Unretained(this),
-                 SecureBlob(request->data, request->len),
+                 SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
@@ -2696,7 +2703,7 @@ gboolean Service::VerifyBootLockbox(const GArray* request,
 void Service::DoFinalizeBootLockbox(const chromeos::SecureBlob& request,
                                     DBusGMethodInvocation* context) {
   FinalizeBootLockboxRequest request_pb;
-  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+  if (!request_pb.ParseFromArray(request.data(), request.size())) {
     SendInvalidArgsReply(context, "Bad FinalizeBootLockboxRequest");
     return;
   }
@@ -2711,7 +2718,7 @@ gboolean Service::FinalizeBootLockbox(const GArray* request,
                                       DBusGMethodInvocation* context) {
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoFinalizeBootLockbox, base::Unretained(this),
-                 SecureBlob(request->data, request->len),
+                 SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
@@ -2719,7 +2726,7 @@ gboolean Service::FinalizeBootLockbox(const GArray* request,
 void Service::DoGetBootAttribute(const chromeos::SecureBlob& request,
                                  DBusGMethodInvocation* context) {
   GetBootAttributeRequest request_pb;
-  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+  if (!request_pb.ParseFromArray(request.data(), request.size())) {
     SendInvalidArgsReply(context, "Bad GetBootAttributeRequest");
     return;
   }
@@ -2737,7 +2744,7 @@ gboolean Service::GetBootAttribute(const GArray* request,
                                    DBusGMethodInvocation* context) {
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoGetBootAttribute, base::Unretained(this),
-                 SecureBlob(request->data, request->len),
+                 SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
@@ -2745,7 +2752,7 @@ gboolean Service::GetBootAttribute(const GArray* request,
 void Service::DoSetBootAttribute(const chromeos::SecureBlob& request,
                                  DBusGMethodInvocation* context) {
   SetBootAttributeRequest request_pb;
-  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+  if (!request_pb.ParseFromArray(request.data(), request.size())) {
     SendInvalidArgsReply(context, "Bad SetBootAttributeRequest");
     return;
   }
@@ -2758,7 +2765,7 @@ gboolean Service::SetBootAttribute(const GArray* request,
                                    DBusGMethodInvocation* context) {
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoSetBootAttribute, base::Unretained(this),
-                 SecureBlob(request->data, request->len),
+                 SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
@@ -2766,7 +2773,7 @@ gboolean Service::SetBootAttribute(const GArray* request,
 void Service::DoFlushAndSignBootAttributes(const chromeos::SecureBlob& request,
                                            DBusGMethodInvocation* context) {
   FlushAndSignBootAttributesRequest request_pb;
-  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+  if (!request_pb.ParseFromArray(request.data(), request.size())) {
     SendInvalidArgsReply(context, "Bad FlushAndSignBootAttributesRequest");
     return;
   }
@@ -2781,7 +2788,7 @@ gboolean Service::FlushAndSignBootAttributes(const GArray* request,
                                              DBusGMethodInvocation* context) {
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoFlushAndSignBootAttributes, base::Unretained(this),
-                 SecureBlob(request->data, request->len),
+                 SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
@@ -2789,7 +2796,7 @@ gboolean Service::FlushAndSignBootAttributes(const GArray* request,
 void Service::DoGetLoginStatus(const chromeos::SecureBlob& request,
                                DBusGMethodInvocation* context) {
   GetLoginStatusRequest request_pb;
-  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+  if (!request_pb.ParseFromArray(request.data(), request.size())) {
     SendInvalidArgsReply(context, "Bad GetLoginStatusRequest");
     return;
   }
@@ -2808,7 +2815,7 @@ gboolean Service::GetLoginStatus(const GArray* request,
                                  DBusGMethodInvocation* context) {
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoGetLoginStatus, base::Unretained(this),
-                 SecureBlob(request->data, request->len),
+                 SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
@@ -2816,7 +2823,7 @@ gboolean Service::GetLoginStatus(const GArray* request,
 void Service::DoGetTpmStatus(const chromeos::SecureBlob& request,
                              DBusGMethodInvocation* context) {
   GetTpmStatusRequest request_pb;
-  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+  if (!request_pb.ParseFromArray(request.data(), request.size())) {
     SendInvalidArgsReply(context, "Bad GetTpmStatusRequest");
     return;
   }
@@ -2862,7 +2869,7 @@ gboolean Service::GetTpmStatus(const GArray* request,
                                DBusGMethodInvocation* context) {
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoGetTpmStatus, base::Unretained(this),
-                 SecureBlob(request->data, request->len),
+                 SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
@@ -2870,7 +2877,7 @@ gboolean Service::GetTpmStatus(const GArray* request,
 void Service::DoGetEndorsementInfo(const chromeos::SecureBlob& request,
                                    DBusGMethodInvocation* context) {
   GetEndorsementInfoRequest request_pb;
-  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+  if (!request_pb.ParseFromArray(request.data(), request.size())) {
     SendInvalidArgsReply(context, "Bad GetEndorsementInfoRequest");
     return;
   }
@@ -2896,7 +2903,7 @@ gboolean Service::GetEndorsementInfo(const GArray* request,
                                      DBusGMethodInvocation* context) {
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoGetEndorsementInfo, base::Unretained(this),
-                 SecureBlob(request->data, request->len),
+                 SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
@@ -2908,7 +2915,7 @@ void Service::DoInitializeCastKey(const chromeos::SecureBlob& request,
 
   LOG(INFO) << "Initializing Cast Key";
   InitializeCastKeyRequest request_pb;
-  if (!request_pb.ParseFromArray(vector_as_array(&request), request.size())) {
+  if (!request_pb.ParseFromArray(request.data(), request.size())) {
     SendInvalidArgsReply(context, "Bad InitializeCastKeyRequest");
     return;
   }
@@ -2990,7 +2997,7 @@ gboolean Service::InitializeCastKey(const GArray* request,
                                     DBusGMethodInvocation* context) {
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&Service::DoInitializeCastKey, base::Unretained(this),
-                 SecureBlob(request->data, request->len),
+                 SecureBlob(request->data, request->data + request->len),
                  base::Unretained(context)));
   return TRUE;
 }
@@ -3220,8 +3227,7 @@ bool Service::GetPublicMountPassKey(const std::string& public_mount_id,
   Crypto::PasswordToPasskey(public_mount_id.c_str(),
                             public_mount_salt_,
                             &passkey);
-  public_mount_passkey->assign(static_cast<char*>(passkey.data()),
-                               passkey.size());
+  *public_mount_passkey = passkey.to_string();
   return true;
 }
 

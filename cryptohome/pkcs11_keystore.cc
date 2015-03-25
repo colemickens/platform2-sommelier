@@ -216,7 +216,7 @@ bool Pkcs11KeyStore::Register(bool is_user_specific,
     return false;
 
   // Extract the modulus from the public key.
-  const unsigned char* asn1_ptr = vector_as_array(&public_key_der);
+  const unsigned char* asn1_ptr = public_key_der.data();
   crypto::ScopedRSA public_key(d2i_RSAPublicKey(NULL,
                                                 &asn1_ptr,
                                                 public_key_der.size()));
@@ -225,7 +225,7 @@ bool Pkcs11KeyStore::Register(bool is_user_specific,
     return false;
   }
   SecureBlob modulus(BN_num_bytes(public_key.get()->n));
-  int length = BN_bn2bin(public_key.get()->n, vector_as_array(&modulus));
+  int length = BN_bn2bin(public_key.get()->n, modulus.data());
   if (length <= 0) {
     LOG(ERROR) << "Pkcs11KeyStore: Failed to extract public key modulus.";
     return false;
@@ -286,7 +286,7 @@ bool Pkcs11KeyStore::Register(bool is_user_specific,
     {CKA_MODULUS, modulus.data(), modulus.size()},
     {
       kKeyBlobAttribute,
-      const_cast<CK_VOID_PTR>(private_key_blob.const_data()),
+      const_cast<uint8_t*>(private_key_blob.data()),
       private_key_blob.size()
     }
   };
@@ -305,7 +305,7 @@ bool Pkcs11KeyStore::Register(bool is_user_specific,
       LOG(WARNING) << "Pkcs11KeyStore: Failed to find certificate subject.";
     }
     // Construct a PKCS #11 template for a certificate object.
-    SecureBlob mutable_certificate(certificate.begin(), certificate.end());
+    SecureBlob mutable_certificate = certificate;
     CK_OBJECT_CLASS certificate_class = CKO_CERTIFICATE;
     CK_CERTIFICATE_TYPE certificate_type = CKC_X_509;
     CK_ATTRIBUTE certificate_attributes[] = {
@@ -355,7 +355,7 @@ bool Pkcs11KeyStore::RegisterCertificate(
     LOG(WARNING) << "Pkcs11KeyStore: Failed to find certificate subject.";
   }
   // Construct a PKCS #11 template for a certificate object.
-  SecureBlob mutable_certificate(certificate.begin(), certificate.end());
+  SecureBlob mutable_certificate = certificate;
   CK_OBJECT_CLASS certificate_class = CKO_CERTIFICATE;
   CK_CERTIFICATE_TYPE certificate_type = CKC_X_509;
   CK_BBOOL true_value = CK_TRUE;
@@ -511,7 +511,7 @@ bool Pkcs11KeyStore::DeleteIfMatchesPrefix(CK_SESSION_HANDLE session_handle,
 bool Pkcs11KeyStore::GetCertificateSubject(
     const chromeos::SecureBlob& certificate,
     chromeos::SecureBlob* subject) {
-  const unsigned char* asn1_ptr = vector_as_array(&certificate);
+  const unsigned char* asn1_ptr = certificate.data();
   ScopedX509 x509(d2i_X509(NULL, &asn1_ptr, certificate.size()));
   if (!x509.get() || !x509->cert_info || !x509->cert_info->subject) {
     LOG(WARNING) << "Pkcs11KeyStore: Failed to decode certificate.";
@@ -524,7 +524,7 @@ bool Pkcs11KeyStore::GetCertificateSubject(
     LOG(WARNING) << "Pkcs11KeyStore: Failed to encode certificate subject.";
     return false;
   }
-  SecureBlob tmp(buffer, length);
+  SecureBlob tmp(buffer, buffer + length);
   subject->swap(tmp);
   return true;
 }
@@ -535,7 +535,7 @@ bool Pkcs11KeyStore::DoesCertificateExist(
   CK_OBJECT_CLASS object_class = CKO_CERTIFICATE;
   CK_BBOOL true_value = CK_TRUE;
   CK_BBOOL false_value = CK_FALSE;
-  SecureBlob mutable_certificate(certificate.begin(), certificate.end());
+  SecureBlob mutable_certificate = certificate;
   CK_ATTRIBUTE attributes[] = {
     {CKA_CLASS, &object_class, sizeof(object_class)},
     {CKA_TOKEN, &true_value, sizeof(true_value)},

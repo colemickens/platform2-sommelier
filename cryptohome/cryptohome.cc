@@ -222,7 +222,7 @@ chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
   chromeos::Blob system_salt;
   system_salt.resize(salt->len);
   if (system_salt.size() == salt->len) {
-    memcpy(&system_salt[0], static_cast<const void*>(salt->data), salt->len);
+    memcpy(system_salt.data(), static_cast<const void*>(salt->data), salt->len);
   } else {
     system_salt.clear();
   }
@@ -287,8 +287,7 @@ bool GetPassword(const chromeos::dbus::Proxy& proxy,
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(trimmed_password.c_str(),
                                         GetSystemSalt(proxy), &passkey);
-  *password_out = std::string(static_cast<char*>(passkey.data()),
-                              passkey.size());
+  *password_out = passkey.to_string();
 
   return true;
 }
@@ -1298,12 +1297,9 @@ int main(int argc, char **argv) {
       }
       chromeos::SecureBlob hmac_key(
           cl->GetSwitchValueASCII(switches::kHmacSigningKeySwitch));
-      chromeos::SecureBlob hmac_data(changes_str.c_str(), changes_str.size());
+      chromeos::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
       SecureBlob hmac = cryptohome::CryptoLib::HmacSha256(hmac_key, hmac_data);
-      std::string hmac_str(
-          reinterpret_cast<const char*>(vector_as_array(&hmac)),
-          hmac.size());
-      key_req.set_authorization_signature(hmac_str);
+      key_req.set_authorization_signature(hmac.to_string());
     }
 
     chromeos::glib::ScopedArray account_ary(GArrayFromProtoBuf(id));
@@ -1428,8 +1424,7 @@ int main(int argc, char **argv) {
       return 1;
     }
     cryptohome::SerializedVaultKeyset serialized;
-    if (!serialized.ParseFromArray(
-        static_cast<const unsigned char*>(&contents[0]), contents.size())) {
+    if (!serialized.ParseFromArray(contents.data(), contents.size())) {
       printf("Couldn't parse keyset contents: %s.\n", vault_path.c_str());
       return 1;
     }
@@ -1444,25 +1439,24 @@ int main(int argc, char **argv) {
       printf("    SCRYPT_WRAPPED\n");
     }
     SecureBlob blob(serialized.salt().length());
-    serialized.salt().copy(static_cast<char*>(blob.data()),
-                           serialized.salt().length(), 0);
+    serialized.salt().copy(blob.char_data(), serialized.salt().length(), 0);
     printf("  Salt:\n");
     printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
     blob.resize(serialized.wrapped_keyset().length());
-    serialized.wrapped_keyset().copy(static_cast<char*>(blob.data()),
+    serialized.wrapped_keyset().copy(blob.char_data(),
                                      serialized.wrapped_keyset().length(), 0);
     printf("  Wrapped (Encrypted) Keyset:\n");
     printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
     if (serialized.has_tpm_key()) {
       blob.resize(serialized.tpm_key().length());
-      serialized.tpm_key().copy(static_cast<char*>(blob.data()),
+      serialized.tpm_key().copy(blob.char_data(),
                                 serialized.tpm_key().length(), 0);
       printf("  TPM-Bound (Encrypted) Vault Encryption Key:\n");
       printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
     }
     if (serialized.has_tpm_public_key_hash()) {
       blob.resize(serialized.tpm_public_key_hash().length());
-      serialized.tpm_public_key_hash().copy(static_cast<char*>(blob.data()),
+      serialized.tpm_public_key_hash().copy(blob.char_data(),
                                             serialized.tpm_key().length(), 0);
       printf("  TPM Public Key Hash:\n");
       printf("    %s\n", cryptohome::CryptoLib::BlobToHex(blob).c_str());
@@ -1509,8 +1503,7 @@ int main(int argc, char **argv) {
           continue;
         }
         cryptohome::SerializedVaultKeyset keyset;
-        if (!keyset.ParseFromArray(
-            static_cast<const unsigned char*>(&contents[0]), contents.size())) {
+        if (!keyset.ParseFromArray(contents.data(), contents.size())) {
           LOG(ERROR) << "Couldn't parse keyset contents: " << next_path;
           continue;
         }

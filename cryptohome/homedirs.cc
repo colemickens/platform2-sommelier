@@ -389,15 +389,13 @@ bool HomeDirs::CheckAuthorizationSignature(const KeyData& existing_key_data,
   }
   // Compute the HMAC
   chromeos::SecureBlob hmac_key(secret->symmetric_key());
-  chromeos::SecureBlob data(changes_str.c_str(), changes_str.size());
+  chromeos::SecureBlob data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, data);
-  std::string hmac_str(reinterpret_cast<const char*>(vector_as_array(&hmac)),
-                                                     hmac.size());
 
   // Check the HMAC
-  if (signature.length() != hmac_str.length() ||
-      chromeos::SecureMemcmp(signature.data(), hmac_str.data(),
-                             std::min(signature.size(), hmac_str.size()))) {
+  if (signature.length() != hmac.size() ||
+      chromeos::SecureMemcmp(signature.data(), hmac.data(),
+                             std::min(signature.size(), hmac.size()))) {
     LOG(ERROR) << "Supplied authorization signature was invalid.";
     return false;
   }
@@ -466,8 +464,8 @@ CryptohomeErrorCode HomeDirs::UpdateKeyset(
   SecureBlob passkey;
   credentials.GetPasskey(&passkey);
   if (key_changes->has_secret()) {
-    SecureBlob new_passkey(key_changes->secret().c_str(),
-                           key_changes->secret().length());
+    SecureBlob new_passkey(key_changes->secret().begin(),
+                           key_changes->secret().end());
     passkey.swap(new_passkey);
   }
 
@@ -560,7 +558,7 @@ CryptohomeErrorCode HomeDirs::AddKeyset(
   // an existing labeled credential.
   if (new_data) {
     UsernamePasskey search_cred(existing_credentials.username().c_str(),
-                                SecureBlob("", 0));
+                                SecureBlob());
     search_cred.set_key_data(*new_data);
     scoped_ptr<VaultKeyset> match(GetVaultKeyset(search_cred));
     if (match.get()) {
@@ -890,7 +888,7 @@ bool HomeDirs::GetSystemSalt(SecureBlob* blob) {
 }
 
 bool HomeDirs::Remove(const std::string& username) {
-  UsernamePasskey passkey(username.c_str(), SecureBlob("", 0));
+  UsernamePasskey passkey(username.c_str(), SecureBlob());
   std::string obfuscated = passkey.GetObfuscatedUsername(system_salt_);
   FilePath user_dir = FilePath(shadow_root_).Append(obfuscated);
   FilePath user_path = chromeos::cryptohome::home::GetUserPath(username);

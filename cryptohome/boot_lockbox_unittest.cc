@@ -64,9 +64,9 @@ class BootLockboxTest : public testing::Test {
     unsigned char buffer[256];
     int length = RSA_private_encrypt(
           der_encoded_input.size(),
-          const_cast<unsigned char*>(vector_as_array(&der_encoded_input)),
+          der_encoded_input.data(),
           buffer, rsa(), RSA_PKCS1_PADDING);
-    chromeos::SecureBlob tmp(buffer, length);
+    chromeos::SecureBlob tmp(buffer, buffer + length);
     signature->swap(tmp);
     return true;
   }
@@ -82,7 +82,7 @@ class BootLockboxTest : public testing::Test {
     int length = i2d_RSAPublicKey(rsa(), &buffer);
     if (length <= 0)
       return false;
-    chromeos::SecureBlob tmp(buffer, length);
+    chromeos::SecureBlob tmp(buffer, buffer + length);
     public_key->swap(tmp);
     OPENSSL_free(buffer);
     return true;
@@ -111,8 +111,7 @@ class BootLockboxTest : public testing::Test {
   }
 
   bool FakeEncrypt(const chromeos::SecureBlob& in, std::string* out) {
-    *out = std::string(reinterpret_cast<const char*>(vector_as_array(&in)),
-                       in.size());
+    *out = in.to_string();
     return true;
   }
 

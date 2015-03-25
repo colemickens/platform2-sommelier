@@ -34,11 +34,9 @@ bool UserSession::SetUser(const Credentials& credentials) {
   key_index_ = -1;  // Invalid key index.
 
   key_salt_.resize(PKCS5_SALT_LEN);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(key_salt_.data()),
-                             key_salt_.size());
+  CryptoLib::GetSecureRandom(key_salt_.data(), key_salt_.size());
   SecureBlob plaintext(kUserSessionIdLength);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(plaintext.data()),
-                             plaintext.size());
+  CryptoLib::GetSecureRandom(plaintext.data(), plaintext.size());
 
   SecureBlob passkey;
   credentials.GetPasskey(&passkey);

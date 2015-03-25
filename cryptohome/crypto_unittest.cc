@@ -137,7 +137,7 @@ class CryptoTest : public ::testing::Test {
     }
     for (unsigned int start = 0; start <= (haystack.size() - needle.size());
          start++) {
-      if (chromeos::SecureMemcmp(&haystack[start], &needle[0],
+      if (chromeos::SecureMemcmp(&haystack[start], needle.data(),
                                  needle.size()) == 0) {
         return true;
       }
@@ -155,9 +155,7 @@ class CryptoTest : public ::testing::Test {
 
   static bool FromSerializedBlob(const SecureBlob& blob,
                                  SerializedVaultKeyset* serialized) {
-    return serialized->ParseFromArray(
-        static_cast<const unsigned char*>(blob.const_data()),
-        blob.size());
+    return serialized->ParseFromArray(blob.data(), blob.size());
   }
 
  protected:
@@ -176,11 +174,9 @@ TEST_F(CryptoTest, EncryptionTest) {
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(key.data()),
-                             key.size());
+  CryptoLib::GetSecureRandom(key.data(), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(salt.data()),
-                             salt.size());
+  CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
   SerializedVaultKeyset serialized;
   ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
@@ -204,11 +200,9 @@ TEST_F(CryptoTest, DecryptionTest) {
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(key.data()),
-                             key.size());
+  CryptoLib::GetSecureRandom(key.data(), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(salt.data()),
-                             salt.size());
+  CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
   SerializedVaultKeyset serialized;
   ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
@@ -251,10 +245,7 @@ TEST_F(CryptoTest, SaltCreateTest) {
   crypto.GetOrCreateSalt(salt_path, 32, false, &salt);
 
   ASSERT_EQ(32, salt.size());
-  EXPECT_EQ(std::string(static_cast<const char*>(salt.const_data()),
-                        salt.size()),
-            std::string(reinterpret_cast<char*>(&salt_ptr->at(0)),
-                        salt_ptr->size()));
+  EXPECT_EQ(salt.to_string(), std::string(salt_ptr->begin(), salt_ptr->end()));
 
   // Case 2: Salt exists, but forced
   SecureBlob new_salt;
@@ -269,10 +260,8 @@ TEST_F(CryptoTest, SaltCreateTest) {
       .WillOnce(DoAll(SaveArg<1>(salt_ptr), Return(true)));
   crypto.GetOrCreateSalt(salt_path, 32, true, &new_salt);
   ASSERT_EQ(32, new_salt.size());
-  EXPECT_EQ(std::string(static_cast<const char*>(new_salt.const_data()),
-                        new_salt.size()),
-            std::string(reinterpret_cast<char*>(&salt_ptr->at(0)),
-                        salt_ptr->size()));
+  EXPECT_EQ(new_salt.to_string(),
+            std::string(salt_ptr->begin(), salt_ptr->end()));
 
   EXPECT_EQ(salt.size(), new_salt.size());
   EXPECT_FALSE(CryptoTest::FindBlobInBlob(salt, new_salt));
@@ -330,11 +319,9 @@ TEST_F(CryptoTest, TpmStepTest) {
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(key.data()),
-                             key.size());
+  CryptoLib::GetSecureRandom(key.data(), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(salt.data()),
-                             salt.size());
+  CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
   SerializedVaultKeyset serialized;
   ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
@@ -373,11 +360,9 @@ TEST_F(CryptoTest, ScryptStepTest) {
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(key.data()),
-                             key.size());
+  CryptoLib::GetSecureRandom(key.data(), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(salt.data()),
-                             salt.size());
+  CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
   SerializedVaultKeyset serialized;
   ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
@@ -430,11 +415,9 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(key.data()),
-                             key.size());
+  CryptoLib::GetSecureRandom(key.data(), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(salt.data()),
-                             salt.size());
+  CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
   SerializedVaultKeyset serialized;
   ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
@@ -469,9 +452,7 @@ TEST_F(CryptoTest, GetSha1FipsTest) {
     SecureBlob digest = CryptoLib::Sha1(*vectors.input(i));
     std::string computed(reinterpret_cast<const char*>(digest.data()),
                          digest.size());
-    std::string expected(
-      reinterpret_cast<const char*>(vectors.output(i)->const_data()),
-                                    vectors.output(i)->size());
+    std::string expected = vectors.output(i)->to_string();
     EXPECT_EQ(expected, computed);
   }
 }
@@ -484,9 +465,7 @@ TEST_F(CryptoTest, GetSha256FipsTest) {
     SecureBlob digest = CryptoLib::Sha256(*vectors.input(i));
     std::string computed(reinterpret_cast<const char*>(digest.data()),
                          digest.size());
-    std::string expected(
-      reinterpret_cast<const char*>(vectors.output(i)->const_data()),
-                                    vectors.output(i)->size());
+    std::string expected = vectors.output(i)->to_string();
     EXPECT_EQ(expected, computed);
   }
 }
@@ -502,8 +481,7 @@ TEST_F(CryptoTest, ComputeEncryptedDataHMAC) {
 
   // Create hash key.
   SecureBlob hmac_key(32);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(hmac_key.data()),
-                             hmac_key.size());
+  CryptoLib::GetSecureRandom(hmac_key.data(), hmac_key.size());
 
   // Perturb iv and data slightly. Verify hashes are all different.
   string hmac1 = CryptoLib::ComputeEncryptedDataHMAC(pb, hmac_key);
@@ -530,7 +508,7 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpm) {
   crypto.Init(&tpm_init);
 
   string data = "iamsomestufftoencrypt";
-  SecureBlob data_blob(data.data(), data.size());
+  SecureBlob data_blob(data);
 
   string encrypted_data;
   SecureBlob output_blob;
@@ -573,7 +551,7 @@ TEST_F(CryptoTest, EncryptAndDecryptWithTpmWithRandomlyFailingTpm) {
   crypto.Init(&tpm_init);
 
   string data = "iamsomestufftoencrypt";
-  SecureBlob data_blob(data.data(), data.size());
+  SecureBlob data_blob(data);
 
   string encrypted_data;
   SecureBlob output_blob;

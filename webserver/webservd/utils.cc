@@ -64,7 +64,7 @@ chromeos::SecureBlob StoreRSAPrivateKey(RSA* rsa_key_pair) {
   size_t size = BIO_get_mem_data(bio.get(), &buffer);
   CHECK_GT(size, 0u);
   CHECK(buffer);
-  chromeos::SecureBlob key_blob(buffer, size);
+  chromeos::SecureBlob key_blob(buffer, buffer + size);
   chromeos::SecureMemset(buffer, 0, size);
   return key_blob;
 }

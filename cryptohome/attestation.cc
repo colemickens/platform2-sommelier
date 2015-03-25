@@ -713,8 +713,7 @@ bool Attestation::Enroll(PCAType pca_type,
   if (!IsTPMReady())
     return false;
   AttestationEnrollmentResponse response_pb;
-  if (!response_pb.ParseFromArray(pca_response.const_data(),
-                                  pca_response.size())) {
+  if (!response_pb.ParseFromArray(pca_response.data(), pca_response.size())) {
     LOG(ERROR) << __func__ << ": Failed to parse response from Privacy CA.";
     return false;
   }
@@ -768,11 +767,9 @@ bool Attestation::CreateCertRequest(PCAType pca_type,
   bool use_alternate_pca = (pca_type == kAlternatePCA);
   base::AutoLock lock(lock_);
   AttestationCertificateRequest request_pb;
-  string message_id(kNonceSize, 0);
-  CryptoLib::GetSecureRandom(
-      reinterpret_cast<unsigned char*>(string_as_array(&message_id)),
-      kNonceSize);
-  request_pb.set_message_id(message_id);
+  SecureBlob message_id(kNonceSize);
+  CryptoLib::GetSecureRandom(message_id.data(), message_id.size());
+  request_pb.set_message_id(message_id.to_string());
   request_pb.set_identity_credential(use_alternate_pca ?
       database_pb_.alternate_identity_key().identity_credential() :
       database_pb_.identity_key().identity_credential());
@@ -820,7 +817,7 @@ bool Attestation::CreateCertRequest(PCAType pca_type,
     LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
     return false;
   }
-  pending_cert_requests_[message_id] = SecureBlob(tmp);
+  pending_cert_requests_[message_id.to_string()] = SecureBlob(tmp);
   ClearString(&tmp);
   return true;
 }
@@ -833,8 +830,7 @@ bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
   if (!IsTPMReady())
     return false;
   AttestationCertificateResponse response_pb;
-  if (!response_pb.ParseFromArray(pca_response.const_data(),
-                                  pca_response.size())) {
+  if (!response_pb.ParseFromArray(pca_response.data(), pca_response.size())) {
     LOG(ERROR) << __func__ << ": Failed to parse response from Privacy CA.";
     return false;
   }
@@ -852,7 +848,7 @@ bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
     return false;
   }
   CertifiedKey certified_key_pb;
-  if (!certified_key_pb.ParseFromArray(iter->second.const_data(),
+  if (!certified_key_pb.ParseFromArray(iter->second.data(),
                                        iter->second.size())) {
     LOG(ERROR) << __func__ << ": Failed to parse pending request.";
     pending_cert_requests_.erase(iter);
@@ -900,7 +896,7 @@ bool Attestation::GetPublicKey(bool is_user_specific,
   SecureBlob public_key_der(key.public_key());
 
   // Convert from PKCS #1 RSAPublicKey to X.509 SubjectPublicKeyInfo.
-  const unsigned char* asn1_ptr = &public_key_der.front();
+  const unsigned char* asn1_ptr = public_key_der.data();
   scoped_ptr<RSA, RSADeleter> rsa(
       d2i_RSAPublicKey(NULL, &asn1_ptr, public_key_der.size()));
   if (!rsa.get()) {
@@ -913,7 +909,7 @@ bool Attestation::GetPublicKey(bool is_user_specific,
     LOG(ERROR) << __func__ << ": Failed to encode public key.";
     return false;
   }
-  SecureBlob tmp(buffer, length);
+  SecureBlob tmp(buffer, buffer + length);
   chromeos::SecureMemset(buffer, 0, length);
   OPENSSL_free(buffer);
   public_key->swap(tmp);
@@ -948,7 +944,7 @@ bool Attestation::SignEnterpriseChallenge(
 
   // Validate that the challenge is coming from the expected source.
   SignedData signed_challenge;
-  if (!signed_challenge.ParseFromArray(challenge.const_data(),
+  if (!signed_challenge.ParseFromArray(challenge.data(),
                                        challenge.size())) {
     LOG(ERROR) << __func__ << ": Failed to parse signed challenge.";
     return false;
@@ -1205,7 +1201,7 @@ bool Attestation::EncryptDatabase(const AttestationDatabase& db,
     LOG(ERROR) << "Failed to serialize db.";
     return false;
   }
-  SecureBlob serial_data(serial_string.data(), serial_string.size());
+  SecureBlob serial_data(serial_string.begin(), serial_string.end());
   if (database_key_.empty() || sealed_database_key_.empty()) {
     if (!crypto_->CreateSealedKey(&database_key_, &sealed_database_key_)) {
       LOG(ERROR) << "Failed to generate database key.";
@@ -1288,7 +1284,7 @@ void Attestation::CheckDatabasePermissions() {
 bool Attestation::VerifyEndorsementCredential(const SecureBlob& credential,
                                               const SecureBlob& public_key,
                                               bool is_cros_core) {
-  const unsigned char* asn1_ptr = &credential.front();
+  const unsigned char* asn1_ptr = credential.data();
   scoped_ptr<X509, X509Deleter> x509(
       d2i_X509(NULL, &asn1_ptr, credential.size()));
   if (!x509.get()) {
@@ -1314,12 +1310,13 @@ bool Attestation::VerifyEndorsementCredential(const SecureBlob& credential,
   // Verify that the given public key matches the public key in the credential.
   // Note: Do not use any openssl functions that attempt to decode the public
   // key. These will fail because openssl does not recognize the OAEP key type.
+  auto public_key_data = x509.get()->cert_info->key->public_key->data;
   SecureBlob credential_public_key(
-      x509.get()->cert_info->key->public_key->data,
-      x509.get()->cert_info->key->public_key->length);
+      public_key_data,
+      public_key_data + x509.get()->cert_info->key->public_key->length);
   if (credential_public_key.size() != public_key.size() ||
-      memcmp(&credential_public_key.front(),
-             &public_key.front(),
+      memcmp(credential_public_key.data(),
+             public_key.data(),
              public_key.size()) != 0) {
     LOG(ERROR) << "Bad endorsement credential public key.";
     return false;
@@ -1336,7 +1333,7 @@ bool Attestation::VerifyIdentityBinding(const IdentityBinding& binding) {
   ClearString(&label_ca);
   // The signed data is header + digest + pubkey.
   SecureBlob contents = SecureBlob::Combine(SecureBlob::Combine(
-      SecureBlob(header, arraysize(header)),
+      SecureBlob(std::begin(header), std::end(header)),
       label_ca_digest),
       SecureBlob(binding.identity_public_key()));
   // Now verify the signature.
@@ -1426,7 +1423,7 @@ bool Attestation::VerifyQuoteSignature(const SecureBlob& aik_public_key,
     uint8_t(0), uint8_t(0), uint8_t(0),
     uint8_t(quote.quoted_pcr_value().size())};
   SecureBlob pcr_composite = SecureBlob::Combine(
-      SecureBlob(header, arraysize(header)),
+      SecureBlob(std::begin(header), std::end(header)),
       SecureBlob(quote.quoted_pcr_value()));
   SecureBlob pcr_digest = CryptoLib::Sha1(pcr_composite);
   SecureBlob quoted_data(quote.quoted_data());
@@ -1467,7 +1464,7 @@ bool Attestation::VerifyCertifiedKey(
     LOG(ERROR) << "Failed to verify certified key proof signature.";
     return false;
   }
-  const unsigned char* asn1_ptr = &certified_public_key.front();
+  const unsigned char* asn1_ptr = certified_public_key.data();
   scoped_ptr<RSA, RSADeleter> rsa(
       d2i_RSAPublicKey(NULL, &asn1_ptr, certified_public_key.size()));
   if (!rsa.get()) {
@@ -1475,7 +1472,7 @@ bool Attestation::VerifyCertifiedKey(
     return false;
   }
   SecureBlob modulus(BN_num_bytes(rsa.get()->n));
-  BN_bn2bin(rsa.get()->n, vector_as_array(&modulus));
+  BN_bn2bin(rsa.get()->n, modulus.data());
   SecureBlob key_digest = CryptoLib::Sha1(modulus);
   if (std::search(certified_key_info.begin(),
                   certified_key_info.end(),
@@ -1513,7 +1510,7 @@ scoped_ptr<EVP_PKEY, Attestation::EVP_PKEYDeleter>
 bool Attestation::VerifySignature(const SecureBlob& public_key,
                                   const SecureBlob& signed_data,
                                   const SecureBlob& signature) {
-  const unsigned char* asn1_ptr = &public_key.front();
+  const unsigned char* asn1_ptr = public_key.data();
   scoped_ptr<RSA, RSADeleter> rsa(
       d2i_RSAPublicKey(NULL, &asn1_ptr, public_key.size()));
   if (!rsa.get()) {
@@ -1521,9 +1518,8 @@ bool Attestation::VerifySignature(const SecureBlob& public_key,
     return false;
   }
   SecureBlob digest = CryptoLib::Sha1(signed_data);
-  if (!RSA_verify(NID_sha1, &digest.front(), digest.size(),
-                  const_cast<unsigned char*>(&signature.front()),
-                  signature.size(), rsa.get())) {
+  if (!RSA_verify(NID_sha1, digest.data(), digest.size(),
+                  signature.data(), signature.size(), rsa.get())) {
     LOG(ERROR) << "Failed to verify signature.";
     return false;
   }
@@ -1587,8 +1583,9 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
 
   // Generate an AES key and encrypt the credential.
   SecureBlob aes_key(kCipherKeySize);
-  CryptoLib::GetSecureRandom(vector_as_array(&aes_key), aes_key.size());
-  SecureBlob credential(kTestCredential, strlen(kTestCredential));
+  CryptoLib::GetSecureRandom(aes_key.data(), aes_key.size());
+  SecureBlob credential(kTestCredential,
+                        kTestCredential + strlen(kTestCredential));
   SecureBlob encrypted_credential;
   if (!TssCompatibleEncrypt(aes_key, credential, &encrypted_credential)) {
     LOG(ERROR) << "Failed to encrypt credential.";
@@ -1598,12 +1595,12 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
   // Construct a TPM_ASYM_CA_CONTENTS structure.
   SecureBlob public_key_digest = CryptoLib::Sha1(identity_public_key);
   SecureBlob asym_content = SecureBlob::Combine(SecureBlob::Combine(
-      SecureBlob(kAsymContentHeader, arraysize(kAsymContentHeader)),
+      SecureBlob(std::begin(kAsymContentHeader), std::end(kAsymContentHeader)),
       aes_key),
       public_key_digest);
 
   // Encrypt the TPM_ASYM_CA_CONTENTS with the EK public key.
-  const unsigned char* asn1_ptr = &ek_public_key[0];
+  const unsigned char* asn1_ptr = ek_public_key.data();
   scoped_ptr<RSA, RSADeleter> rsa(
       d2i_RSAPublicKey(NULL, &asn1_ptr, ek_public_key.size()));
   if (!rsa.get()) {
@@ -1623,7 +1620,7 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
   memcpy(length_blob.data(), &length, sizeof(uint32_t));
   SecureBlob sym_content = SecureBlob::Combine(SecureBlob::Combine(
       length_blob,
-      SecureBlob(kSymContentHeader, arraysize(kSymContentHeader))),
+      SecureBlob(std::begin(kSymContentHeader), std::end(kSymContentHeader))),
       encrypted_credential);
 
   // Attempt to activate the identity.
@@ -1663,7 +1660,7 @@ bool Attestation::EncryptEndorsementCredential(
           LOG(ERROR) << __func__ << "Alternate PCA key does not exist.";
           return false;
         }
-        const unsigned char* asn1_ptr = &pca_key.front();
+        const unsigned char* asn1_ptr = pca_key.data();
         rsa.reset(d2i_RSA_PUBKEY(NULL, &asn1_ptr, pca_key.size()));
         chromeos::SecureBlob key_id_blob;
         // Ignore result, an empty ID is ok.
@@ -1727,7 +1724,7 @@ bool Attestation::FindKeyByName(bool is_user_specific,
       LOG(INFO) << "Key not found: " << key_name;
       return false;
     }
-    if (!key->ParseFromArray(key_data.const_data(), key_data.size())) {
+    if (!key->ParseFromArray(key_data.data(), key_data.size())) {
       LOG(ERROR) << "Failed to parse key: " << key_name;
       return false;
     }
@@ -1811,7 +1808,8 @@ string Attestation::CreatePEMCertificate(const string& certificate) {
 bool Attestation::SignChallengeData(const CertifiedKey& key,
                                     const SecureBlob& data_to_sign,
                                     SecureBlob* response) {
-  SecureBlob der_header(kSha256DigestInfo, arraysize(kSha256DigestInfo));
+  SecureBlob der_header(std::begin(kSha256DigestInfo),
+                        std::end(kSha256DigestInfo));
   SecureBlob der_encoded_input = SecureBlob::Combine(
       der_header,
       CryptoLib::Sha256(data_to_sign));
@@ -1848,9 +1846,8 @@ bool Attestation::ValidateEnterpriseChallenge(
   SecureBlob digest = CryptoLib::Sha256(SecureBlob(signed_challenge.data()));
   SecureBlob signature(signed_challenge.signature());
   RSA* enterprise_key = enterprise_test_key_ ? enterprise_test_key_ : rsa.get();
-  if (!RSA_verify(NID_sha256, &digest.front(), digest.size(),
-                  const_cast<unsigned char*>(&signature.front()),
-                  signature.size(), enterprise_key)) {
+  if (!RSA_verify(NID_sha256, digest.data(), digest.size(),
+                  signature.data(), signature.size(), enterprise_key)) {
     LOG(ERROR) << "Failed to verify challenge signature.";
     return false;
   }
@@ -1916,19 +1913,17 @@ bool Attestation::EncryptData(const SecureBlob& input,
   output->set_mac(CryptoLib::ComputeEncryptedDataHMAC(*output, aes_key));
 
   // Wrap the AES key with the given public key.
-  string encrypted_key;
-  encrypted_key.resize(RSA_size(wrapping_key));
-  unsigned char* buffer = reinterpret_cast<unsigned char*>(
-      string_as_array(&encrypted_key));
+  SecureBlob encrypted_key(RSA_size(wrapping_key));
   int length = RSA_public_encrypt(aes_key.size(),
-                                  vector_as_array(&aes_key),
-                                  buffer, wrapping_key, RSA_PKCS1_OAEP_PADDING);
+                                  aes_key.data(),
+                                  encrypted_key.data(),
+                                  wrapping_key, RSA_PKCS1_OAEP_PADDING);
   if (length == -1) {
     LOG(ERROR) << "RSA_public_encrypt failed.";
     return false;
   }
   encrypted_key.resize(length);
-  output->set_wrapped_key(encrypted_key);
+  output->set_wrapped_key(encrypted_key.to_string());
   return true;
 }
 
@@ -1954,7 +1949,7 @@ bool Attestation::CreateSignedPublicKey(
     chromeos::SecureBlob* signed_public_key) {
   // Get the certified public key as an EVP_PKEY.
   const unsigned char* asn1_ptr =
-      reinterpret_cast<const unsigned char*>(key.public_key().data());
+    reinterpret_cast<const unsigned char*>(key.public_key().data());
   scoped_ptr<RSA, RSADeleter> rsa(
       d2i_RSAPublicKey(NULL, &asn1_ptr, key.public_key().size()));
   if (!rsa.get())
@@ -1986,9 +1981,10 @@ bool Attestation::CreateSignedPublicKey(
   int length = i2d_NETSCAPE_SPKAC(spki.get()->spkac, &buffer);
   if (length <= 0)
     return false;
-  SecureBlob data_to_sign(buffer, length);
+  SecureBlob data_to_sign(buffer, buffer + length);
   OPENSSL_free(buffer);
-  SecureBlob der_header(kSha256DigestInfo, arraysize(kSha256DigestInfo));
+  SecureBlob der_header(std::begin(kSha256DigestInfo),
+                        std::end(kSha256DigestInfo));
   SecureBlob der_encoded_input = SecureBlob::Combine(
       der_header,
       CryptoLib::Sha256(data_to_sign));
@@ -2017,7 +2013,7 @@ bool Attestation::CreateSignedPublicKey(
   length = i2d_NETSCAPE_SPKI(spki.get(), &buffer);
   if (length <= 0)
     return false;
-  SecureBlob tmp(buffer, length);
+  SecureBlob tmp(buffer, buffer + length);
   OPENSSL_free(buffer);
   signed_public_key->swap(tmp);
 
@@ -2071,11 +2067,10 @@ bool Attestation::TpmCompatibleOAEPEncrypt(RSA* key,
                                            chromeos::SecureBlob* output) {
   CHECK(output);
   // The custom OAEP parameter as specified in TPM Main Part 1, Section 31.1.1.
-  unsigned char oaep_param[4] = {'T', 'C', 'P', 'A'};
+  const unsigned char oaep_param[4] = {'T', 'C', 'P', 'A'};
   chromeos::SecureBlob padded_input(RSA_size(key));
-  unsigned char* padded_buffer = vector_as_array(&padded_input);
-  unsigned char* input_buffer =
-      const_cast<unsigned char*>(vector_as_array(&input));
+  unsigned char* padded_buffer = padded_input.data();
+  const unsigned char* input_buffer = input.data();
   int result = RSA_padding_add_PKCS1_OAEP(padded_buffer, padded_input.size(),
                                           input_buffer, input.size(),
                                           oaep_param, arraysize(oaep_param));
@@ -2084,7 +2079,7 @@ bool Attestation::TpmCompatibleOAEPEncrypt(RSA* key,
     return false;
   }
   output->resize(padded_input.size());
-  unsigned char* output_buffer = vector_as_array(output);
+  unsigned char* output_buffer = output->data();
   result = RSA_public_encrypt(padded_input.size(), padded_buffer,
                               output_buffer, key, RSA_NO_PADDING);
   if (result == -1) {
@@ -2276,7 +2271,7 @@ bool Attestation::SendPCARequestAndBlock(PCAType pca_type,
   }
   std::unique_ptr<chromeos::http::Response> response = PostBinaryAndBlock(
       GetPCAURL(pca_type, request_type),
-      request.const_data(),
+      request.data(),
       request.size(),
       chromeos::mime::application::kOctet_stream,
       {},  // headers

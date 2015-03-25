@@ -107,7 +107,7 @@ const TSS_RESULT kKeyNotFoundError = (TSS_E_PS_KEY_NOTFOUND | TSS_LAYER_TCS);
 
 TpmImpl::TpmImpl()
     : initialized_(false),
-      srk_auth_(kDefaultSrkAuth, sizeof(kDefaultSrkAuth)),
+      srk_auth_(kDefaultSrkAuth, kDefaultSrkAuth + sizeof(kDefaultSrkAuth)),
       owner_password_(),
       password_sync_lock_(),
       is_disabled_(true),
@@ -458,7 +458,7 @@ Tpm::TpmRetryAction TpmImpl::EncryptBlob(TSS_HCONTEXT context_handle,
       enc_handle,
       key_handle,
       plaintext.size(),
-      const_cast<BYTE*>(vector_as_array(&plaintext))))) {
+      const_cast<BYTE*>(plaintext.data())))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Data_Bind";
     return ResultToRetryAction(result);
   }
@@ -502,7 +502,7 @@ Tpm::TpmRetryAction TpmImpl::DecryptBlob(TSS_HCONTEXT context_handle,
                                             TSS_TSPATTRIB_ENCDATA_BLOB,
                                             TSS_TSPATTRIB_ENCDATABLOB_BLOB,
                                             local_data.size(),
-                                            vector_as_array(&local_data)))) {
+                                            local_data.data()))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_SetAttribData";
     return ResultToRetryAction(result);
   }
@@ -564,8 +564,8 @@ bool TpmImpl::ObscureRSAMessage(const SecureBlob& plaintext,
   }
   ciphertext->resize(plaintext.size());
   char *data = reinterpret_cast<char*>(ciphertext->data());
-  memcpy(data, plaintext.const_data(), plaintext.size());
-  memcpy(data + offset, obscured_chunk.const_data(), obscured_chunk.size());
+  memcpy(data, plaintext.data(), plaintext.size());
+  memcpy(data + offset, obscured_chunk.data(), obscured_chunk.size());
   return true;
 }
 
@@ -590,8 +590,8 @@ bool TpmImpl::UnobscureRSAMessage(const SecureBlob& ciphertext,
   }
   plaintext->resize(ciphertext.size());
   char *data = reinterpret_cast<char*>(plaintext->data());
-  memcpy(data, ciphertext.const_data(), ciphertext.size());
-  memcpy(data + offset, unobscured_chunk.const_data(),
+  memcpy(data, ciphertext.data(), ciphertext.size());
+  memcpy(data + offset, unobscured_chunk.data(),
          unobscured_chunk.size());
   return true;
 }
@@ -649,7 +649,8 @@ bool TpmImpl::LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
     }
 
     *result = Tspi_Policy_SetSecret(srk_usage_policy, TSS_SECRET_MODE_PLAIN,
-        srk_auth_.size(), const_cast<BYTE*>(vector_as_array(&srk_auth_)));
+                                    srk_auth_.size(),
+                                    const_cast<BYTE*>(srk_auth_.data()));
     if (TPM_ERROR(*result)) {
       return false;
     }
@@ -863,7 +864,7 @@ bool TpmImpl::ChangeOwnerPassword(TSS_HCONTEXT context_handle,
   if (TPM_ERROR(result = Tspi_Policy_SetSecret(policy_handle,
       TSS_SECRET_MODE_PLAIN,
       owner_password.size(),
-      const_cast<BYTE *>(vector_as_array(&owner_password))))) {
+      const_cast<BYTE *>(owner_password.data())))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
     return false;
   }
@@ -910,7 +911,7 @@ bool TpmImpl::GetTpmWithAuth(TSS_HCONTEXT context_handle,
       tpm_usage_policy,
       TSS_SECRET_MODE_PLAIN,
       owner_password.size(),
-      const_cast<BYTE*>(vector_as_array(&owner_password))))) {
+      const_cast<BYTE*>(owner_password.data())))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
     return false;
   }
@@ -937,7 +938,7 @@ bool TpmImpl::GetTpmWithDelegation(TSS_HCONTEXT context_handle,
     return false;
   }
 
-  BYTE* secret_buffer = const_cast<BYTE*>(vector_as_array(&delegate_secret));
+  BYTE* secret_buffer = const_cast<BYTE*>(delegate_secret.data());
   if (TPM_ERROR(result = Tspi_Policy_SetSecret(tpm_usage_policy,
                                                TSS_SECRET_MODE_PLAIN,
                                                delegate_secret.size(),
@@ -951,7 +952,7 @@ bool TpmImpl::GetTpmWithDelegation(TSS_HCONTEXT context_handle,
       TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
       TSS_TSPATTRIB_POLDEL_OWNERBLOB,
       delegate_blob.size(),
-      const_cast<BYTE*>(vector_as_array(&delegate_blob))))) {
+      const_cast<BYTE*>(delegate_blob.data())))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_SetAttribData";
     return false;
   }
@@ -1374,7 +1375,7 @@ bool TpmImpl::WriteNvram(uint32_t index, const SecureBlob& blob) {
   }
 
   scoped_ptr<BYTE[]> nv_data(new BYTE[blob.size()]);
-  memcpy(nv_data.get(), blob.const_data(), blob.size());
+  memcpy(nv_data.get(), blob.data(), blob.size());
   result = Tspi_NV_WriteValue(nv_handle, 0, blob.size(), nv_data.get());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Could not write to NVRAM space: " << index;
@@ -1545,7 +1546,7 @@ bool TpmImpl::DecryptIdentityRequest(RSA* pca_key,
                                      SecureBlob* conformance_credential) {
   // Parse the serialized TPM_IDENTITY_REQ structure.
   UINT64 offset = 0;
-  BYTE* buffer = const_cast<BYTE*>(vector_as_array(&request));
+  BYTE* buffer = const_cast<BYTE*>(request.data());
   TPM_IDENTITY_REQ request_parsed;
   TSS_RESULT result = Trspi_UnloadBlob_IDENTITY_REQ(&offset, buffer,
                                                     &request_parsed);
@@ -1581,7 +1582,7 @@ bool TpmImpl::DecryptIdentityRequest(RSA* pca_key,
   result = Trspi_SymDecrypt(symmetric_key.algId, TPM_ES_SYM_CBC_PKCS5PAD,
                             symmetric_key.data, NULL,
                             request_parsed.symBlob, request_parsed.symSize,
-                            &proof_serial.front(), &proof_serial_length);
+                            proof_serial.data(), &proof_serial_length);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Failed to decrypt identity request.";
     return false;
@@ -1590,7 +1591,7 @@ bool TpmImpl::DecryptIdentityRequest(RSA* pca_key,
   // Parse the serialized TPM_IDENTITY_PROOF structure.
   TPM_IDENTITY_PROOF proof;
   offset = 0;
-  result = Trspi_UnloadBlob_IDENTITY_PROOF(&offset, &proof_serial.front(),
+  result = Trspi_UnloadBlob_IDENTITY_PROOF(&offset, proof_serial.data(),
                                            &proof);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Failed to parse identity proof.";
@@ -1625,7 +1626,7 @@ bool TpmImpl::ConvertPublicKeyToDER(const SecureBlob& public_key,
                                     SecureBlob* public_key_der) {
   // Parse the serialized TPM_PUBKEY.
   UINT64 offset = 0;
-  BYTE* buffer = const_cast<BYTE*>(vector_as_array(&public_key));
+  BYTE* buffer = const_cast<BYTE*>(public_key.data());
   TPM_PUBKEY parsed;
   TSS_RESULT result = Trspi_UnloadBlob_PUBKEY(&offset, buffer, &parsed);
   if (TPM_ERROR(result)) {
@@ -1658,7 +1659,7 @@ bool TpmImpl::ConvertPublicKeyToDER(const SecureBlob& public_key,
     return false;
   }
   public_key_der->resize(der_length);
-  unsigned char* der_buffer = &public_key_der->front();
+  unsigned char* der_buffer = public_key_der->data();
   der_length = i2d_RSAPublicKey(rsa.get(), &der_buffer);
   if (der_length < 0) {
     LOG(ERROR) << "Failed to DER-encode public key.";
@@ -1787,7 +1788,7 @@ bool TpmImpl::MakeIdentity(SecureBlob* identity_public_key_der,
   }
 
   // Decrypt and parse the identity request.
-  SecureBlob request_blob(request.value(), request_length);
+  SecureBlob request_blob(request.value(), request.value() + request_length);
   if (!DecryptIdentityRequest(fake_pca_key.get(), request_blob,
                               identity_binding, endorsement_credential,
                               platform_credential, conformance_credential)) {
@@ -1855,7 +1856,7 @@ bool TpmImpl::QuotePCR(int pcr_index,
       context_handle,
       srk_handle,
       identity_key_blob.size(),
-      const_cast<BYTE*>(vector_as_array(&identity_key_blob)),
+      const_cast<BYTE*>(identity_key_blob.data()),
       identity_key.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "QuotePCR: Failed to load AIK.";
@@ -1879,8 +1880,7 @@ bool TpmImpl::QuotePCR(int pcr_index,
   TSS_VALIDATION validation;
   memset(&validation, 0, sizeof(validation));
   validation.ulExternalDataLength = external_data.size();
-  validation.rgbExternalData =
-      const_cast<BYTE*>(vector_as_array(&external_data));
+  validation.rgbExternalData = const_cast<BYTE*>(external_data.data());
   result = Tspi_TPM_Quote(tpm_handle, identity_key, pcrs, &validation);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "QuotePCR: Failed to generate quote.";
@@ -1968,7 +1968,7 @@ bool TpmImpl::SealToPCR0(const chromeos::Blob& value,
       enc_handle,
       srk_handle,
       value.size(),
-      const_cast<BYTE*>(vector_as_array(&value)),
+      const_cast<BYTE*>(value.data()),
       pcrs_handle))) {
     TPM_LOG(ERROR, result) << "SealToPCR0: Error calling Tspi_Data_Seal";
     return false;
@@ -2021,7 +2021,7 @@ bool TpmImpl::Unseal(const chromeos::Blob& sealed_value,
       TSS_TSPATTRIB_ENCDATA_BLOB,
       TSS_TSPATTRIB_ENCDATABLOB_BLOB,
       sealed_value.size(),
-      const_cast<BYTE*>(vector_as_array(&sealed_value))))) {
+      const_cast<BYTE*>(sealed_value.data())))) {
     TPM_LOG(ERROR, result) << "Unseal: Error calling Tspi_SetAttribData";
     return false;
   }
@@ -2071,7 +2071,7 @@ bool TpmImpl::CreateCertifiedKey(const SecureBlob& identity_key_blob,
       context_handle,
       srk_handle,
       identity_key_blob.size(),
-      const_cast<BYTE*>(vector_as_array(&identity_key_blob)),
+      const_cast<BYTE*>(identity_key_blob.data()),
       identity_key.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "CreateCertifiedKey: Failed to load AIK.";
@@ -2115,7 +2115,7 @@ bool TpmImpl::CreateCertifiedKey(const SecureBlob& identity_key_blob,
   memset(&validation, 0, sizeof(validation));
   validation.ulExternalDataLength = external_data.size();
   validation.rgbExternalData =
-      const_cast<BYTE*>(vector_as_array(&external_data));
+      const_cast<BYTE*>(external_data.data());
   result = Tspi_Key_CertifyKey(signing_key, identity_key, &validation);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "CreateCertifiedKey: Failed to certify key.";
@@ -2185,7 +2185,7 @@ bool TpmImpl::CreateDelegate(const SecureBlob& identity_key_blob,
       context_handle,
       srk_handle,
       identity_key_blob.size(),
-      const_cast<BYTE*>(vector_as_array(&identity_key_blob)),
+      const_cast<BYTE*>(identity_key_blob.data()),
       identity_key.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "CreateDelegate: Failed to load AIK.";
@@ -2207,7 +2207,7 @@ bool TpmImpl::CreateDelegate(const SecureBlob& identity_key_blob,
   }
   result = Tspi_Policy_SetSecret(policy, TSS_SECRET_MODE_PLAIN,
                                  delegate_secret->size(),
-                                 &delegate_secret->front());
+                                 delegate_secret->data());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "CreateDelegate: Failed to set policy secret.";
     return false;
@@ -2305,17 +2305,15 @@ bool TpmImpl::ActivateIdentity(const SecureBlob& delegate_blob,
       context_handle,
       srk_handle,
       identity_key_blob.size(),
-      const_cast<BYTE*>(vector_as_array(&identity_key_blob)),
+      const_cast<BYTE*>(identity_key_blob.data()),
       identity_key.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "ActivateIdentity: Failed to load AIK.";
     return false;
   }
 
-  BYTE* encrypted_asym_ca_buffer =
-      const_cast<BYTE*>(vector_as_array(&encrypted_asym_ca));
-  BYTE* encrypted_sym_ca_buffer =
-      const_cast<BYTE*>(vector_as_array(&encrypted_sym_ca));
+  BYTE* encrypted_asym_ca_buffer = const_cast<BYTE*>(encrypted_asym_ca.data());
+  BYTE* encrypted_sym_ca_buffer = const_cast<BYTE*>(encrypted_sym_ca.data());
   UINT32 credential_length = 0;
   ScopedTssMemory credential_buffer(context_handle);
   result = Tspi_TPM_ActivateIdentity(tpm_handle, identity_key,
@@ -2360,7 +2358,7 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
       context_handle,
       srk_handle,
       key_blob.size(),
-      const_cast<BYTE*>(vector_as_array(&key_blob)),
+      const_cast<BYTE*>(key_blob.data()),
       key_handle.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Sign: Failed to load key.";
@@ -2382,7 +2380,7 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
   result = Tspi_Hash_SetHashValue(
       hash_handle,
       der_encoded_input.size(),
-      const_cast<BYTE*>(vector_as_array(&der_encoded_input)));
+      const_cast<BYTE*>(der_encoded_input.data()));
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Sign: Failed to set hash data.";
     return false;
@@ -2395,7 +2393,7 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
     TPM_LOG(ERROR, result) << "Sign: Failed to generate signature.";
     return false;
   }
-  SecureBlob tmp(buffer.value(), length);
+  SecureBlob tmp(buffer.value(), buffer.value() + length);
   chromeos::SecureMemset(buffer.value(), 0, length);
   signature->swap(tmp);
   return true;
@@ -2428,7 +2426,7 @@ bool TpmImpl::CreatePCRBoundKey(int pcr_index,
     TPM_LOG(ERROR, result) << __func__ << ": Failed to create PCRS object.";
     return false;
   }
-  BYTE* pcr_value_buffer = const_cast<BYTE*>(vector_as_array(&pcr_value));
+  BYTE* pcr_value_buffer = const_cast<BYTE*>(pcr_value.data());
   result = Tspi_PcrComposite_SetPcrValue(pcrs, pcr_index, pcr_value.size(),
                                          pcr_value_buffer);
 
@@ -2511,7 +2509,7 @@ bool TpmImpl::VerifyPCRBoundKey(int pcr_index,
       context_handle,
       srk_handle,
       key_blob.size(),
-      const_cast<BYTE*>(vector_as_array(&key_blob)),
+      const_cast<BYTE*>(key_blob.data()),
       key.ptr());
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << __func__ << ": Failed to load key.";
@@ -2530,13 +2528,14 @@ bool TpmImpl::VerifyPCRBoundKey(int pcr_index,
   UINT64 trspi_offset = 0;
   TPM_PCR_SELECTION pcr_selection;
   Trspi_UnloadBlob_PCR_SELECTION(&trspi_offset,
-                                 vector_as_array(&pcr_selection_blob),
+                                 pcr_selection_blob.data(),
                                  &pcr_selection);
   if (!pcr_selection.pcrSelect) {
     LOG(ERROR) << __func__ << ": No PCR selected.";
     return false;
   }
-  SecureBlob pcr_bitmap(pcr_selection.pcrSelect, pcr_selection.sizeOfSelect);
+  SecureBlob pcr_bitmap(pcr_selection.pcrSelect,
+                        pcr_selection.pcrSelect + pcr_selection.sizeOfSelect);
   free(pcr_selection.pcrSelect);
   size_t offset = pcr_index / 8;
   unsigned char mask = 1 << (pcr_index % 8);
@@ -2552,7 +2551,7 @@ bool TpmImpl::VerifyPCRBoundKey(int pcr_index,
   SecureBlob pcr_value_length_blob(sizeof(UINT32));
   Trspi_LoadBlob_UINT32(&trspi_offset,
                         pcr_value_length,
-                        vector_as_array(&pcr_value_length_blob));
+                        pcr_value_length_blob.data());
   SecureBlob pcr_hash = CryptoLib::Sha1(SecureBlob::Combine(
       SecureBlob::Combine(
       pcr_selection_blob,
@@ -2598,13 +2597,13 @@ bool TpmImpl::ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension) {
     return false;
   }
   CHECK_EQ(extension.size(), kPCRExtensionSize);
-  SecureBlob mutable_extension(extension.begin(), extension.end());
+  SecureBlob mutable_extension = extension;
   UINT32 new_pcr_value_length = 0;
   ScopedTssMemory new_pcr_value(context_handle);
   TSS_RESULT result = Tspi_TPM_PcrExtend(tpm_handle,
                                          pcr_index,
                                          extension.size(),
-                                         vector_as_array(&mutable_extension),
+                                         mutable_extension.data(),
                                          NULL,
                                          &new_pcr_value_length,
                                          new_pcr_value.ptr());
@@ -2631,7 +2630,7 @@ bool TpmImpl::ReadPCR(int pcr_index, chromeos::SecureBlob* pcr_value) {
     TPM_LOG(ERROR, result) << "Could not read PCR0 value";
     return false;
   }
-  SecureBlob tmp(pcr_value_buffer.value(), pcr_len);
+  SecureBlob tmp(pcr_value_buffer.value(), pcr_value_buffer.value() + pcr_len);
   pcr_value->swap(tmp);
   return true;
 }
@@ -2649,7 +2648,7 @@ bool TpmImpl::GetDataAttribute(TSS_HCONTEXT context,
     TPM_LOG(ERROR, result) << __func__ << "Failed to read object attribute.";
     return false;
   }
-  SecureBlob tmp(buf.value(), length);
+  SecureBlob tmp(buf.value(), buf.value() + length);
   chromeos::SecureMemset(buf.value(), 0, length);
   data->swap(tmp);
   return true;
@@ -2759,13 +2758,12 @@ bool TpmImpl::CreateWrappedRsaKey(TSS_HCONTEXT context_handle,
   // be migrated, but to create the key outside of the TPM, we have to do it
   // this way.
   SecureBlob migration_password(kDefaultDiscardableWrapPasswordLength);
-  CryptoLib::GetSecureRandom(
-      static_cast<unsigned char*>(migration_password.data()),
-      migration_password.size());
+  CryptoLib::GetSecureRandom(migration_password.data(),
+                             migration_password.size());
   if (TPM_ERROR(result = Tspi_Policy_SetSecret(policy_handle,
                          TSS_SECRET_MODE_PLAIN,
                          migration_password.size(),
-                         static_cast<BYTE*>(migration_password.data())))) {
+                         migration_password.data()))) {
     TPM_LOG(ERROR, result) << "Error setting migration policy password";
     return false;
   }
@@ -2858,11 +2856,9 @@ Tpm::TpmRetryAction TpmImpl::LoadWrappedKey(
                                  context_handle,
                                  srk_handle,
                                  wrapped_key.size(),
-                                 const_cast<BYTE*>(static_cast<const BYTE*>(
-                                   wrapped_key.const_data())),
+                                 const_cast<BYTE*>(wrapped_key.data()),
                                  key_handle))) {
-    TPM_LOG(INFO, result) << "LoadWrappedKey: Cannot load key " \
-                           << "from blob";
+    TPM_LOG(INFO, result) << "LoadWrappedKey: Cannot load key from blob";
     ReportCryptohomeError(kCannotLoadTpmKey);
     if (result == TPM_E_BAD_KEY_PROPERTY) {
       ReportCryptohomeError(kTpmBadKeyProperty);

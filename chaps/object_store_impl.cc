@@ -76,7 +76,7 @@ const char ObjectStoreImpl::kObfuscationKey[] = {
     '\x6f', '\xaa', '\x0a', '\xb6', '\x10', '\xc0', '\xa6', '\xe4', '\x07',
     '\x8b', '\x05', '\x1c', '\xd2', '\x8b', '\xac', '\x2d', '\xba', '\x5e',
     '\x14', '\x9c', '\xae', '\x57', '\xfb', '\x04', '\x13', '\x92', '\xc0',
-    '\x84', '\x2a', '\xea', '\xf6', '\xfb', '\0'};
+    '\x84', '\x2a', '\xea', '\xf6', '\xfb'};
 const int ObjectStoreImpl::kBlobVersion = 1;
 
 ObjectStoreImpl::ObjectStoreImpl() {}
@@ -285,7 +285,8 @@ bool ObjectStoreImpl::Encrypt(const ObjectBlob& plain_text,
     return false;
   }
   cipher_text->is_private = plain_text.is_private;
-  SecureBlob obfuscation_key(kObfuscationKey, 32);
+  SecureBlob obfuscation_key(std::begin(kObfuscationKey),
+                             std::end(kObfuscationKey));
   SecureBlob& key = plain_text.is_private ? key_ : obfuscation_key;
   string cipher_text_no_hmac;
   if (!RunCipher(true, key, string(), plain_text.blob, &cipher_text_no_hmac))
@@ -303,7 +304,8 @@ bool ObjectStoreImpl::Decrypt(const ObjectBlob& cipher_text,
     return false;
   }
   plain_text->is_private = cipher_text.is_private;
-  SecureBlob obfuscation_key(kObfuscationKey, 32);
+  SecureBlob obfuscation_key(std::begin(kObfuscationKey),
+                             std::end(kObfuscationKey));
   SecureBlob& key = cipher_text.is_private ? key_ : obfuscation_key;
   string cipher_text_no_hmac;
   if (!VerifyAndStripHMAC(cipher_text.blob,

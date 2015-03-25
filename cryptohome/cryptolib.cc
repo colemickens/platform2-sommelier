@@ -70,15 +70,13 @@ bool CryptoLib::CreateRsaKey(size_t key_bits,
   }
 
   SecureBlob local_n(BN_num_bytes(rsa.get()->n));
-  if (BN_bn2bin(rsa.get()->n, static_cast<unsigned char*>(local_n.data()))
-      <= 0) {
+  if (BN_bn2bin(rsa.get()->n, local_n.data()) <= 0) {
     LOG(ERROR) << "Unable to get modulus from RSA key.";
     return false;
   }
 
   SecureBlob local_p(BN_num_bytes(rsa.get()->p));
-  if (BN_bn2bin(rsa.get()->p, static_cast<unsigned char*>(local_p.data()))
-      <= 0) {
+  if (BN_bn2bin(rsa.get()->p, local_p.data()) <= 0) {
     LOG(ERROR) << "Unable to get private key from RSA key.";
     return false;
   }
@@ -94,7 +92,7 @@ SecureBlob CryptoLib::Sha1(const chromeos::Blob& data) {
   SecureBlob hash;
 
   SHA1_Init(&sha_context);
-  SHA1_Update(&sha_context, &data[0], data.size());
+  SHA1_Update(&sha_context, data.data(), data.size());
   SHA1_Final(md_value, &sha_context);
   hash.resize(sizeof(md_value));
   memcpy(hash.data(), md_value, sizeof(md_value));
@@ -109,7 +107,7 @@ SecureBlob CryptoLib::Sha256(const chromeos::Blob& data) {
   SecureBlob hash;
 
   SHA256_Init(&sha_context);
-  SHA256_Update(&sha_context, &data[0], data.size());
+  SHA256_Update(&sha_context, data.data(), data.size());
   SHA256_Final(md_value, &sha_context);
   hash.resize(sizeof(md_value));
   memcpy(hash.data(), md_value, sizeof(md_value));
@@ -123,10 +121,10 @@ chromeos::SecureBlob CryptoLib::HmacSha512(const chromeos::SecureBlob& key,
   const int kSha512OutputSize = 64;
   unsigned char mac[kSha512OutputSize];
   HMAC(EVP_sha512(),
-       vector_as_array(&key), key.size(),
-       vector_as_array(&data), data.size(),
+       key.data(), key.size(),
+       data.data(), data.size(),
        mac, NULL);
-  return chromeos::SecureBlob(mac, kSha512OutputSize);
+  return chromeos::SecureBlob(std::begin(mac), std::end(mac));
 }
 
 chromeos::SecureBlob CryptoLib::HmacSha256(const chromeos::SecureBlob& key,
@@ -134,10 +132,10 @@ chromeos::SecureBlob CryptoLib::HmacSha256(const chromeos::SecureBlob& key,
   const int kSha256OutputSize = 32;
   unsigned char mac[kSha256OutputSize];
   HMAC(EVP_sha256(),
-       vector_as_array(&key), key.size(),
-       vector_as_array(&data), data.size(),
+       key.data(), key.size(),
+       data.data(), data.size(),
        mac, NULL);
-  return chromeos::SecureBlob(mac, kSha256OutputSize);
+  return chromeos::SecureBlob(std::begin(mac), std::end(mac));
 }
 
 size_t CryptoLib::GetAesBlockSize() {
@@ -159,12 +157,12 @@ bool CryptoLib::PasskeyToAesKey(const chromeos::Blob& passkey,
   // Convert the passkey to a key
   if (!EVP_BytesToKey(cipher,
                       EVP_sha1(),
-                      &salt[0],
-                      &passkey[0],
+                      salt.data(),
+                      passkey.data(),
                       passkey.size(),
                       rounds,
-                      static_cast<unsigned char*>(aes_key.data()),
-                      static_cast<unsigned char*>(local_iv.data()))) {
+                      aes_key.data(),
+                      local_iv.data())) {
     LOG(ERROR) << "Failure converting bytes to key";
     return false;
   }
@@ -255,9 +253,7 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const chromeos::Blob& encrypted,
 
   EVP_CIPHER_CTX decryption_context;
   EVP_CIPHER_CTX_init(&decryption_context);
-  EVP_DecryptInit_ex(&decryption_context, cipher, NULL,
-                     static_cast<const unsigned char*>(key.const_data()),
-                     static_cast<const unsigned char*>(iv.const_data()));
+  EVP_DecryptInit_ex(&decryption_context, cipher, NULL, key.data(), iv.data());
   if (padding == kPaddingNone) {
     EVP_CIPHER_CTX_set_padding(&decryption_context, 0);
   }
@@ -267,7 +263,7 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const chromeos::Blob& encrypted,
   if (start < encrypted.size())
     encrypted_buf = &encrypted[start];
 
-  if (!EVP_DecryptUpdate(&decryption_context, &local_plain_text[0],
+  if (!EVP_DecryptUpdate(&decryption_context, local_plain_text.data(),
                          &decrypt_size, encrypted_buf, count)) {
     LOG(ERROR) << "DecryptUpdate failed";
     EVP_CIPHER_CTX_cleanup(&decryption_context);
@@ -308,11 +304,10 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const chromeos::Blob& encrypted,
     unsigned char md_value[SHA_DIGEST_LENGTH];
 
     SHA1_Init(&sha_context);
-    SHA1_Update(&sha_context, &local_plain_text[0], final_size);
+    SHA1_Update(&sha_context, local_plain_text.data(), final_size);
     SHA1_Final(md_value, &sha_context);
 
-    const unsigned char* md_ptr =
-        static_cast<const unsigned char*>(local_plain_text.const_data());
+    const unsigned char* md_ptr = local_plain_text.data();
     md_ptr += final_size;
     if (chromeos::SecureMemcmp(md_ptr, md_value, SHA_DIGEST_LENGTH)) {
       LOG(ERROR) << "Digest verification failed.";
@@ -438,9 +433,7 @@ bool CryptoLib::AesEncryptSpecifyBlockMode(const chromeos::Blob& plain_text,
   // Initialize the OpenSSL crypto context
   EVP_CIPHER_CTX encryption_context;
   EVP_CIPHER_CTX_init(&encryption_context);
-  EVP_EncryptInit_ex(&encryption_context, cipher, NULL,
-                     static_cast<const unsigned char*>(key.const_data()),
-                     static_cast<const unsigned char*>(iv.const_data()));
+  EVP_EncryptInit_ex(&encryption_context, cipher, NULL, key.data(), iv.data());
   if (padding == kPaddingNone) {
     EVP_CIPHER_CTX_set_padding(&encryption_context, 0);
   }
@@ -528,14 +521,10 @@ void CryptoLib::BlobToHexToBuffer(const chromeos::Blob& blob,
 
 string CryptoLib::ComputeEncryptedDataHMAC(const EncryptedData& encrypted_data,
                                            const SecureBlob& hmac_key) {
-  SecureBlob blob1(encrypted_data.iv().data(), encrypted_data.iv().length());
-  SecureBlob blob2(encrypted_data.encrypted_data().data(),
-                   encrypted_data.encrypted_data().length());
-  SecureBlob result(blob1.size() + blob2.size());
-  unsigned char* buffer = vector_as_array(&result);
-  memcpy(buffer, blob1.const_data(), blob1.size());
-  memcpy(buffer + blob1.size(), blob2.const_data(), blob2.size());
-
+  SecureBlob blob1(encrypted_data.iv().begin(), encrypted_data.iv().end());
+  SecureBlob blob2(encrypted_data.encrypted_data().begin(),
+                   encrypted_data.encrypted_data().end());
+  SecureBlob result = SecureBlob::Combine(blob1, blob2);
   SecureBlob hmac = HmacSha512(hmac_key, result);
   return hmac.to_string();
 }

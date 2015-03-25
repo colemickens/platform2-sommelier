@@ -987,9 +987,7 @@ bool Mount::LoadVaultKeysetForUser(const string& obfuscated_username,
     LOG(ERROR) << "Failed to read keyset file for user " << obfuscated_username;
     return false;
   }
-  if (!serialized->ParseFromArray(
-           static_cast<const unsigned char*>(cipher_text.data()),
-           cipher_text.size())) {
+  if (!serialized->ParseFromArray(cipher_text.data(), cipher_text.size())) {
     LOG(ERROR) << "Failed to parse keyset for user " << obfuscated_username;
     return false;
   }
@@ -1172,8 +1170,7 @@ bool Mount::AddVaultKeyset(const Credentials& credentials,
 
   // Encrypt the vault keyset
   SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(salt.data()),
-                             salt.size());
+  CryptoLib::GetSecureRandom(salt.data(), salt.size());
 
   if (!crypto_->EncryptVaultKeyset(vault_keyset, passkey, salt, serialized)) {
     LOG(ERROR) << "Encrypting vault keyset failed";
@@ -1439,7 +1436,7 @@ bool Mount::InsertPkcs11Token() {
         old_auth_data,
         pkcs11_token_auth_data_);
     is_pkcs11_passkey_migration_required_ = false;
-    legacy_pkcs11_passkey_.clear_contents();
+    legacy_pkcs11_passkey_.clear();
   }
 
   Pkcs11Init pkcs11init;
@@ -1453,7 +1450,7 @@ bool Mount::InsertPkcs11Token() {
     LOG(ERROR) << "Failed to load PKCS #11 token.";
     ReportCryptohomeError(kLoadPkcs11TokenFailed);
   }
-  pkcs11_token_auth_data_.clear_contents();
+  pkcs11_token_auth_data_.clear();
   return true;
 }
 

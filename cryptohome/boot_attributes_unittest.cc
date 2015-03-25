@@ -59,7 +59,7 @@ class BootAttributesTest : public testing::Test {
     attr->set_value("1234");
 
     chromeos::Blob blob(message.ByteSize());
-    message.SerializeWithCachedSizesToArray(&blob[0]);
+    message.SerializeWithCachedSizesToArray(blob.data());
     files_[BootAttributes::kAttributeFile] = blob;
 
     blob.clear();
@@ -117,7 +117,7 @@ TEST_F(BootAttributesTest, BasicOperations) {
   chromeos::Blob blob = files_[BootAttributes::kAttributeFile];
   SerializedInstallAttributes message;
   message.ParseFromString(
-      std::string(reinterpret_cast<char*>(&blob[0]), blob.size()));
+      std::string(reinterpret_cast<char*>(blob.data()), blob.size()));
   EXPECT_EQ(BootAttributes::kAttributeFileVersion, message.version());
 
   EXPECT_EQ(2, message.attributes_size());
@@ -141,7 +141,7 @@ TEST_F(BootAttributesTest, BasicOperations) {
   // Verify the signature file content.
   blob = files_[BootAttributes::kSignatureFile];
   EXPECT_EQ("fake signature", std::string(
-      reinterpret_cast<char*>(&blob[0]), blob.size()));
+      reinterpret_cast<char*>(blob.data()), blob.size()));
 }
 
 TEST_F(BootAttributesTest, SignFailed) {

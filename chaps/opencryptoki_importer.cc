@@ -302,7 +302,8 @@ bool OpencryptokiImporter::LoadKeyHierarchy(bool load_private) {
   if (!tpm_->LoadKey(slot_, root_blob, SecureBlob(), &root_key))
     return false;
   // Load the leaf key.
-  SecureBlob leaf_auth_data = Sha1(SecureBlob(kDefaultAuthData, 6));
+  SecureBlob leaf_auth_data = Sha1(SecureBlob(std::begin(kDefaultAuthData),
+                                              std::end(kDefaultAuthData)));
   if (!tpm_->LoadKeyWithParent(slot_,
                                leaf_blob,
                                leaf_auth_data,
@@ -326,7 +327,7 @@ bool OpencryptokiImporter::DecryptMasterKey(const string& encrypted_master_key,
     LOG(ERROR) << "Failed to decrypt master key.";
     return false;
   }
-  *master_key = SecureBlob(master_key_str.data(), master_key_str.length());
+  *master_key = SecureBlob(master_key_str.begin(), master_key_str.end());
   ClearString(&master_key_str);
   return true;
 }
@@ -350,7 +351,7 @@ bool OpencryptokiImporter::DecryptObject(const SecureBlob& key,
   // * SHA-1 of object data - 20 bytes.
   if (decrypted.length() < 24)
     return false;
-  size_t length = ExtractUint32(&decrypted[0]);
+  size_t length = ExtractUint32(decrypted.data());
   if (decrypted.size() != 4 + length + kSha1OutputBytes)
     return false;
   *object_data = decrypted.substr(4, length);

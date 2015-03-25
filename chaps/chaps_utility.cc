@@ -389,7 +389,7 @@ static CK_ULONG ExtractCK_ULONG(const vector<uint8_t>& value) {
   if (value.size() == 1) {
     return static_cast<CK_ULONG>(value[0]);
   } else if (value.size() == 4) {
-    CK_ULONG ulong_value = *reinterpret_cast<const uint32_t*>(&value[0]);
+    CK_ULONG ulong_value = *reinterpret_cast<const uint32_t*>(value.data());
     // If a value should be 64-bits and is only 32-bits, this will make sure the
     // log reflects the potentially invalid value. Some clients may handle this
     // case robustly but NSS has been noted to keep the 32 most significant bits
@@ -398,7 +398,7 @@ static CK_ULONG ExtractCK_ULONG(const vector<uint8_t>& value) {
       ulong_value |= 0xFFFFFFFF00000000;
     return ulong_value;
   } else if (value.size() == 8) {
-    return *reinterpret_cast<const uint64_t*>(&value[0]);
+    return *reinterpret_cast<const uint64_t*>(value.data());
   }
   return -1;
 }
@@ -537,24 +537,24 @@ string Sha1(const string& input) {
 
 SecureBlob Sha1(const SecureBlob& input) {
   unsigned char digest[SHA_DIGEST_LENGTH];
-  SHA1(const_cast<uint8_t*>(&input[0]), input.size(), digest);
-  SecureBlob hash(digest, SHA_DIGEST_LENGTH);
+  SHA1(input.data(), input.size(), digest);
+  SecureBlob hash(std::begin(digest), std::end(digest));
   chromeos::SecureMemset(digest, 0, SHA_DIGEST_LENGTH);
   return hash;
 }
 
 SecureBlob Sha256(const SecureBlob& input) {
   unsigned char digest[SHA256_DIGEST_LENGTH];
-  SHA256(const_cast<uint8_t*>(&input[0]), input.size(), digest);
-  SecureBlob hash(digest, SHA256_DIGEST_LENGTH);
+  SHA256(input.data(), input.size(), digest);
+  SecureBlob hash(std::begin(digest), std::end(digest));
   chromeos::SecureMemset(digest, 0, SHA256_DIGEST_LENGTH);
   return hash;
 }
 
 SecureBlob Sha512(const SecureBlob& input) {
   unsigned char digest[SHA512_DIGEST_LENGTH];
-  SHA512(const_cast<uint8_t*>(&input[0]), input.size(), digest);
-  SecureBlob hash(digest, SHA512_DIGEST_LENGTH);
+  SHA512(input.data(), input.size(), digest);
+  SecureBlob hash(std::begin(digest), std::end(digest));
   chromeos::SecureMemset(digest, 0, SHA512_DIGEST_LENGTH);
   return hash;
 }
@@ -584,7 +584,7 @@ std::string HmacSha512(const std::string& input,
   const int kSha512OutputSize = 64;
   unsigned char mac[kSha512OutputSize];
   HMAC(EVP_sha512(),
-       const_cast<uint8_t*>(&key.front()), key.size(),
+       key.data(), key.size(),
        ConvertStringToByteBuffer(input.data()), input.length(),
        mac, NULL);
   return ConvertByteBufferToString(mac, kSha512OutputSize);
@@ -670,7 +670,7 @@ bool RunCipherInternal(bool is_encrypt,
   if (!EVP_CipherInit_ex(&cipher_context,
                          EVP_aes_256_cbc(),
                          NULL,
-                         const_cast<uint8_t*>(&key.front()),
+                         key.data(),
                          ConvertStringToByteBuffer(iv.data()),
                          is_encrypt)) {
     LOG(ERROR) << "EVP_CipherInit_ex failed: " << GetOpenSSLError();

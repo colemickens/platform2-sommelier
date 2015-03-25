@@ -63,8 +63,8 @@ bool BootLockbox::Sign(const chromeos::SecureBlob& data,
   if (!GetKeyBlob(&key_blob)) {
     return false;
   }
-  chromeos::SecureBlob der_header(kSha256DigestInfo,
-                                  arraysize(kSha256DigestInfo));
+  chromeos::SecureBlob der_header(std::begin(kSha256DigestInfo),
+                                  std::end(kSha256DigestInfo));
   chromeos::SecureBlob der_encoded_input = SecureBlob::Combine(
       der_header,
       CryptoLib::Sha256(data));
@@ -84,7 +84,7 @@ bool BootLockbox::Verify(const chromeos::SecureBlob& data,
   if (!GetKeyBlob(&key_blob)) {
     return false;
   }
-  chromeos::SecureBlob pcr_value(kPCRValue, arraysize(kPCRValue));
+  chromeos::SecureBlob pcr_value(std::begin(kPCRValue), std::end(kPCRValue));
   if (!tpm_->VerifyPCRBoundKey(kPCRIndex, pcr_value, key_blob)) {
     return false;
   }
@@ -97,7 +97,8 @@ bool BootLockbox::FinalizeBoot() {
       return true;
   }
   return tpm_->ExtendPCR(kPCRIndex, CryptoLib::Sha1(
-      chromeos::SecureBlob(kPCRExtension, arraysize(kPCRExtension))));
+      chromeos::SecureBlob(std::begin(kPCRExtension),
+                           std::end(kPCRExtension))));
 }
 
 bool BootLockbox::IsFinalized() {
@@ -141,7 +142,7 @@ bool BootLockbox::LoadKey(BootLockboxKey* key) {
     LOG(WARNING) << "Failed to decrypt boot-lockbox key.";
     return false;
   }
-  if (!key->ParseFromArray(protobuf.const_data(), protobuf.size())) {
+  if (!key->ParseFromArray(protobuf.data(), protobuf.size())) {
     LOG(ERROR) << "Invalid boot-lockbox key.";
     return false;
   }
@@ -172,7 +173,7 @@ bool BootLockbox::CreateKey(BootLockboxKey* key) {
   LOG(INFO) <<  "Creating new boot-lockbox key.";
   chromeos::SecureBlob key_blob;
   chromeos::SecureBlob public_key;
-  chromeos::SecureBlob pcr_value(kPCRValue, arraysize(kPCRValue));
+  chromeos::SecureBlob pcr_value(std::begin(kPCRValue), std::end(kPCRValue));
   if (!tpm_->CreatePCRBoundKey(kPCRIndex, pcr_value, &key_blob, &public_key)) {
     LOG(ERROR) << "Failed to create boot-lockbox key.";
     return false;
@@ -185,7 +186,7 @@ bool BootLockbox::CreateKey(BootLockboxKey* key) {
 bool BootLockbox::VerifySignature(const chromeos::SecureBlob& public_key,
                                   const chromeos::SecureBlob& signed_data,
                                   const chromeos::SecureBlob& signature) {
-  const unsigned char* asn1_ptr = &public_key.front();
+  const unsigned char* asn1_ptr = public_key.data();
   scoped_ptr<RSA, RSADeleter> rsa(
       d2i_RSAPublicKey(NULL, &asn1_ptr, public_key.size()));
   if (!rsa.get()) {
@@ -193,9 +194,8 @@ bool BootLockbox::VerifySignature(const chromeos::SecureBlob& public_key,
     return false;
   }
   chromeos::SecureBlob digest = CryptoLib::Sha256(signed_data);
-  if (!RSA_verify(NID_sha256, &digest.front(), digest.size(),
-                  const_cast<unsigned char*>(&signature.front()),
-                  signature.size(), rsa.get())) {
+  if (!RSA_verify(NID_sha256, digest.data(), digest.size(),
+                  signature.data(), signature.size(), rsa.get())) {
     LOG(ERROR) << "Failed to verify signature.";
     return false;
   }

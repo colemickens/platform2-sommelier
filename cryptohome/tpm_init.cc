@@ -390,9 +390,7 @@ bool TpmInit::LoadTpmStatus(TpmStatus* serialized) {
   if (!platform_->ReadFile(kTpmStatusFile, &file_data)) {
     return false;
   }
-  if (!serialized->ParseFromArray(
-           static_cast<const unsigned char*>(file_data.data()),
-           file_data.size())) {
+  if (!serialized->ParseFromArray(file_data.data(), file_data.size())) {
     return false;
   }
   return true;
@@ -427,8 +425,7 @@ void TpmInit::CreateOwnerPassword(SecureBlob* password) {
   // Generate a random owner password.  The default is a 12-character,
   // hex-encoded password created from 6 bytes of random data.
   SecureBlob random(kOwnerPasswordLength / 2);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(random.data()),
-                             random.size());
+  CryptoLib::GetSecureRandom(random.data(), random.size());
   SecureBlob tpm_password(kOwnerPasswordLength);
   CryptoLib::BlobToHexToBuffer(random,
                                tpm_password.data(),
@@ -455,7 +452,7 @@ bool TpmInit::LoadOwnerPassword(const TpmStatus& tpm_status,
 
   SecureBlob local_owner_password(tpm_status.owner_password().length());
   tpm_status.owner_password().copy(
-      static_cast<char*>(local_owner_password.data()),
+      local_owner_password.char_data(),
       tpm_status.owner_password().length(), 0);
   if (!get_tpm()->Unseal(local_owner_password, owner_password)) {
     LOG(ERROR) << "Failed to unseal the owner password.";

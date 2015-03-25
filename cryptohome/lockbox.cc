@@ -201,14 +201,14 @@ bool Lockbox::Load(ErrorId* error) {
   // Grab the salt.
   DCHECK(sizeof(contents_->salt) == kReservedSaltBytesV2);
   DCHECK(sizeof(contents_->salt) >= contents_->salt_size);
-  memcpy(contents_->salt, &nvram_data[0], contents_->salt_size);
+  memcpy(contents_->salt, nvram_data.data(), contents_->salt_size);
   nvram_data.erase(nvram_data.begin(),
                    nvram_data.begin() + contents_->salt_size);
 
   // Grab the hash.
   DCHECK(nvram_data.size() == kReservedDigestBytes);
   DCHECK(sizeof(contents_->hash) == kReservedDigestBytes);
-  memcpy(contents_->hash, &nvram_data[0], sizeof(contents_->hash));
+  memcpy(contents_->hash, nvram_data.data(), sizeof(contents_->hash));
 
   DLOG(INFO) << "Load() successfully loaded NVRAM data.";
   contents_->loaded = true;
@@ -302,7 +302,7 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
   // Keep the data locally too.
   DCHECK(sizeof(contents_->salt) == kReservedSaltBytesV2);
   DCHECK(sizeof(contents_->salt) >= contents_->salt_size);
-  memcpy(contents_->salt, &salt[0], contents_->salt_size);
+  memcpy(contents_->salt, salt.data(), contents_->salt_size);
 
   // Get the size of the data blob
   chromeos::Blob size_blob;
@@ -320,7 +320,7 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
   // Insert the hash into the NVRAM.
   SecureBlob nvram_blob = CryptoLib::Sha256(salty_blob);
   DCHECK(kReservedDigestBytes == nvram_blob.size());
-  memcpy(contents_->hash, &nvram_blob[0], sizeof(contents_->hash));
+  memcpy(contents_->hash, nvram_blob.data(), sizeof(contents_->hash));
 
   // Insert the salt into the NVRAM.
   nvram_blob.insert(nvram_blob.begin(), salt.begin(), salt.end());

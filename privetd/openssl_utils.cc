@@ -17,7 +17,7 @@ chromeos::Blob HmacSha256(const chromeos::SecureBlob& key,
                           const chromeos::Blob& data) {
   chromeos::Blob mac(kSha256OutputSize);
   uint32_t len = 0;
-  CHECK(HMAC(EVP_sha256(), key.const_data(), key.size(), data.data(),
+  CHECK(HMAC(EVP_sha256(), key.data(), key.size(), data.data(),
              data.size(), mac.data(), &len));
   CHECK_EQ(len, kSha256OutputSize);
   return mac;

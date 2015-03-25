@@ -61,7 +61,7 @@ class InstallAttributesTest : public ::testing::Test {
       install_attrs = &install_attrs_;
     chromeos::Blob data;
     EXPECT_TRUE(install_attrs->Get(kTestName, &data));
-    std::string data_str(reinterpret_cast<const char*>(&data[0]),
+    std::string data_str(reinterpret_cast<const char*>(data.data()),
                          data.size());
     EXPECT_STREQ(data_str.c_str(), kTestData);
   }

@@ -74,7 +74,7 @@ static CK_RV HandlePKCS11Output(CK_RV result,
     if (output.size() > *out_buffer_length)
       return CKR_GENERAL_ERROR;
     *out_buffer_length = output.size();
-    memcpy(out_buffer, &output.front(), output.size());
+    memcpy(out_buffer, output.data(), output.size());
   } else {
     *out_buffer_length = static_cast<CK_ULONG>(output_length);
     if (result == CKR_BUFFER_TOO_SMALL && !out_buffer)
@@ -480,7 +480,7 @@ CK_RV C_GetOperationState(CK_SESSION_HANDLE hSession,
     return CKR_OK;
   LOG_CK_RV_AND_RETURN_IF(operation_state.size() > max_copy,
                           CKR_BUFFER_TOO_SMALL);
-  memcpy(pOperationState, &operation_state.front(), operation_state.size());
+  memcpy(pOperationState, operation_state.data(), operation_state.size());
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
@@ -1598,7 +1598,7 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,
                                             ulRandomLen, &data_out);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   LOG_CK_RV_AND_RETURN_IF(data_out.size() != ulRandomLen, CKR_GENERAL_ERROR);
-  memcpy(RandomData, &data_out.front(), ulRandomLen);
+  memcpy(RandomData, data_out.data(), ulRandomLen);
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }

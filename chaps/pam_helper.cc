@@ -39,7 +39,7 @@ static void FreePassword(pam_handle_t *pam_handle, void *data,
                          int error_status) {
   if (data != NULL) {
     SecureBlob* password = reinterpret_cast<SecureBlob*>(data);
-    password->clear_contents();
+    password->clear();
     delete password;
   }
 }

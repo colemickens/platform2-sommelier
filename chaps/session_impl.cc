@@ -591,8 +591,8 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
     if (!tpm_utility_->GenerateKey(slot_id_,
                                    modulus_bits,
                                    public_exponent,
-                                   SecureBlob(auth_data.data(),
-                                              auth_data.length()),
+                                   SecureBlob(auth_data.begin(),
+                                              auth_data.end()),
                                    &key_blob,
                                    &tpm_key_handle))
       return CKR_FUNCTION_FAILED;
@@ -1008,7 +1008,7 @@ bool SessionImpl::GetTPMKeyHandle(const Object* key, int* key_handle) {
         if (!tpm_utility_->LoadKeyWithParent(
             slot_id_,
             key->GetAttributeString(kKeyBlobAttribute),
-            SecureBlob(auth_data.data(), auth_data.length()),
+            SecureBlob(auth_data.begin(), auth_data.end()),
             root_key_handle,
             key_handle))
           return false;
@@ -1016,7 +1016,7 @@ bool SessionImpl::GetTPMKeyHandle(const Object* key, int* key_handle) {
         if (!tpm_utility_->LoadKey(
             slot_id_,
             key->GetAttributeString(kKeyBlobAttribute),
-            SecureBlob(auth_data.data(), auth_data.length()),
+            SecureBlob(auth_data.begin(), auth_data.end()),
             key_handle))
           return false;
       }
@@ -1348,7 +1348,7 @@ CK_RV SessionImpl::WrapPrivateKey(Object* object) {
                              object->GetAttributeString(CKA_PUBLIC_EXPONENT),
                              object->GetAttributeString(CKA_MODULUS),
                              prime,
-                             SecureBlob(auth_data.data(), auth_data.length()),
+                             SecureBlob(auth_data.begin(), auth_data.end()),
                              &key_blob,
                              &tpm_key_handle))
     return CKR_FUNCTION_FAILED;

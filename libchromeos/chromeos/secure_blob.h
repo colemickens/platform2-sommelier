@@ -16,29 +16,26 @@ using Blob = std::vector<uint8_t>;
 
 // SecureBlob erases the contents on destruction.  It does not guarantee erasure
 // on resize, assign, etc.
-class CHROMEOS_EXPORT SecureBlob : public chromeos::Blob {
+class CHROMEOS_EXPORT SecureBlob : public Blob {
  public:
-  SecureBlob();
-  SecureBlob(const_iterator begin, const_iterator end);
-  explicit SecureBlob(size_t size);
-  explicit SecureBlob(const std::string& str);
-  SecureBlob(const uint8_t* from, size_t from_length);
-  SecureBlob(const char* from, size_t from_length);
-  virtual ~SecureBlob();
+  SecureBlob() = default;
+  using Blob::vector;  // Inherit standard constructors from vector.
+  explicit SecureBlob(const std::string& data);
+  ~SecureBlob();
 
-  void resize(size_type sz);
-  void resize(size_type sz, const value_type& x);
-
-  void clear_contents();
-
-  void* data();
-  const void* const_data() const;
+  void resize(size_type count);
+  void resize(size_type count, const value_type& value);
+  void clear();
 
   std::string to_string() const;
+  char* char_data() { return reinterpret_cast<char*>(data()); }
+  const char* char_data() const {
+    return reinterpret_cast<const char*>(data());
+  }
   static SecureBlob Combine(const SecureBlob& blob1, const SecureBlob& blob2);
 };
 
-// Secure memset(). This function is guaranteed to fill int the whole buffer
+// Secure memset(). This function is guaranteed to fill in the whole buffer
 // and is not subject to compiler optimization as allowed by Sub-clause 5.1.2.3
 // of C Standard [ISO/IEC 9899:2011] which states:
 // In the abstract machine, all expressions are evaluated as specified by the

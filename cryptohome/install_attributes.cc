@@ -237,7 +237,7 @@ bool InstallAttributes::Set(const std::string& name,
   if (index != -1) {
     SerializedInstallAttributes::Attribute* attr =
       attributes_->mutable_attributes(index);
-    attr->set_value(std::string(reinterpret_cast<const char*>(&value[0]),
+    attr->set_value(std::string(reinterpret_cast<const char*>(value.data()),
                                 value.size()));
     return true;
   }
@@ -248,7 +248,7 @@ bool InstallAttributes::Set(const std::string& name,
     return false;
   }
   attr->set_name(name);
-  attr->set_value(std::string(reinterpret_cast<const char*>(&value[0]),
+  attr->set_value(std::string(reinterpret_cast<const char*>(value.data()),
                               value.size()));
   return true;
 }
@@ -328,7 +328,7 @@ base::Value* InstallAttributes::GetStatus() {
     chromeos::Blob value;
     for (int i = 0; i < Count(); i++) {
       GetByIndex(i, &key, &value);
-      std::string value_str(reinterpret_cast<const char*>(&value[0]));
+      std::string value_str(reinterpret_cast<const char*>(value.data()));
       attrs->SetString(key, value_str);
     }
     dv->Set("attrs", attrs);

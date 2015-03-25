@@ -37,40 +37,39 @@ void VaultKeyset::Initialize(Platform* platform, Crypto* crypto) {
 
 void VaultKeyset::FromVaultKeyset(const VaultKeyset& vault_keyset) {
   fek_.resize(vault_keyset.fek_.size());
-  memcpy(fek_.data(), vault_keyset.fek_.const_data(), fek_.size());
+  memcpy(fek_.data(), vault_keyset.fek_.data(), fek_.size());
 
   fek_sig_.resize(vault_keyset.fek_sig_.size());
-  memcpy(fek_sig_.data(), vault_keyset.fek_sig_.const_data(), fek_sig_.size());
+  memcpy(fek_sig_.data(), vault_keyset.fek_sig_.data(), fek_sig_.size());
 
   fek_salt_.resize(vault_keyset.fek_salt_.size());
-  memcpy(fek_salt_.data(), vault_keyset.fek_salt_.const_data(),
+  memcpy(fek_salt_.data(), vault_keyset.fek_salt_.data(),
          fek_salt_.size());
 
   fnek_.resize(vault_keyset.fnek_.size());
-  memcpy(fnek_.data(), vault_keyset.fnek_.const_data(), fnek_.size());
+  memcpy(fnek_.data(), vault_keyset.fnek_.data(), fnek_.size());
 
   fnek_sig_.resize(vault_keyset.fnek_sig_.size());
-  memcpy(fnek_sig_.data(), vault_keyset.fnek_sig_.const_data(),
+  memcpy(fnek_sig_.data(), vault_keyset.fnek_sig_.data(),
          fnek_sig_.size());
 
   fnek_salt_.resize(vault_keyset.fnek_salt_.size());
-  memcpy(fnek_salt_.data(), vault_keyset.fnek_salt_.const_data(),
-         fnek_salt_.size());
+  memcpy(fnek_salt_.data(), vault_keyset.fnek_salt_.data(), fnek_salt_.size());
 }
 
 void VaultKeyset::FromKeys(const VaultKeysetKeys& keys) {
   fek_.resize(sizeof(keys.fek));
-  memcpy(&fek_[0], keys.fek, fek_.size());
+  memcpy(fek_.data(), keys.fek, fek_.size());
   fek_sig_.resize(sizeof(keys.fek_sig));
-  memcpy(&fek_sig_[0], keys.fek_sig, fek_sig_.size());
+  memcpy(fek_sig_.data(), keys.fek_sig, fek_sig_.size());
   fek_salt_.resize(sizeof(keys.fek_salt));
-  memcpy(&fek_salt_[0], keys.fek_salt, fek_salt_.size());
+  memcpy(fek_salt_.data(), keys.fek_salt, fek_salt_.size());
   fnek_.resize(sizeof(keys.fnek));
-  memcpy(&fnek_[0], keys.fnek, fnek_.size());
+  memcpy(fnek_.data(), keys.fnek, fnek_.size());
   fnek_sig_.resize(sizeof(keys.fnek_sig));
-  memcpy(&fnek_sig_[0], keys.fnek_sig, fnek_sig_.size());
+  memcpy(fnek_sig_.data(), keys.fnek_sig, fnek_sig_.size());
   fnek_salt_.resize(sizeof(keys.fnek_salt));
-  memcpy(&fnek_salt_[0], keys.fnek_salt, fnek_salt_.size());
+  memcpy(fnek_salt_.data(), keys.fnek_salt, fnek_salt_.size());
 }
 
 bool VaultKeyset::FromKeysBlob(const SecureBlob& keys_blob) {
@@ -78,7 +77,7 @@ bool VaultKeyset::FromKeysBlob(const SecureBlob& keys_blob) {
     return false;
   }
   VaultKeysetKeys keys;
-  memcpy(&keys, keys_blob.const_data(), sizeof(keys));
+  memcpy(&keys, keys_blob.data(), sizeof(keys));
 
   FromKeys(keys);
 
@@ -91,27 +90,27 @@ bool VaultKeyset::ToKeys(VaultKeysetKeys* keys) const {
   if (fek_.size() != sizeof(keys->fek)) {
     return false;
   }
-  memcpy(keys->fek, fek_.const_data(), sizeof(keys->fek));
+  memcpy(keys->fek, fek_.data(), sizeof(keys->fek));
   if (fek_sig_.size() != sizeof(keys->fek_sig)) {
     return false;
   }
-  memcpy(keys->fek_sig, fek_sig_.const_data(), sizeof(keys->fek_sig));
+  memcpy(keys->fek_sig, fek_sig_.data(), sizeof(keys->fek_sig));
   if (fek_salt_.size() != sizeof(keys->fek_salt)) {
     return false;
   }
-  memcpy(keys->fek_salt, fek_salt_.const_data(), sizeof(keys->fek_salt));
+  memcpy(keys->fek_salt, fek_salt_.data(), sizeof(keys->fek_salt));
   if (fnek_.size() != sizeof(keys->fnek)) {
     return false;
   }
-  memcpy(keys->fnek, fnek_.const_data(), sizeof(keys->fnek));
+  memcpy(keys->fnek, fnek_.data(), sizeof(keys->fnek));
   if (fnek_sig_.size() != sizeof(keys->fnek_sig)) {
     return false;
   }
-  memcpy(keys->fnek_sig, fnek_sig_.const_data(), sizeof(keys->fnek_sig));
+  memcpy(keys->fnek_sig, fnek_sig_.data(), sizeof(keys->fnek_sig));
   if (fnek_salt_.size() != sizeof(keys->fnek_salt)) {
     return false;
   }
-  memcpy(keys->fnek_salt, fnek_salt_.const_data(), sizeof(keys->fnek_salt));
+  memcpy(keys->fnek_salt, fnek_salt_.data(), sizeof(keys->fnek_salt));
 
   return true;
 }
@@ -123,37 +122,36 @@ bool VaultKeyset::ToKeysBlob(SecureBlob* keys_blob) const {
   }
 
   SecureBlob local_buffer(sizeof(keys));
-  memcpy(static_cast<unsigned char*>(local_buffer.data()), &keys,
-         sizeof(keys));
+  memcpy(local_buffer.data(), &keys, sizeof(keys));
   keys_blob->swap(local_buffer);
   return true;
 }
 
 void VaultKeyset::CreateRandomChapsKey() {
-  chaps_key_.clear_contents();
+  chaps_key_.clear();
   chaps_key_.resize(CRYPTOHOME_CHAPS_KEY_LENGTH);
-  CryptoLib::GetSecureRandom(&chaps_key_[0], chaps_key_.size());
+  CryptoLib::GetSecureRandom(chaps_key_.data(), chaps_key_.size());
 }
 
 void VaultKeyset::CreateRandom() {
   CHECK(crypto_);
   fek_.resize(CRYPTOHOME_DEFAULT_KEY_SIZE);
-  CryptoLib::GetSecureRandom(&fek_[0], fek_.size());
+  CryptoLib::GetSecureRandom(fek_.data(), fek_.size());
 
   fek_sig_.resize(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
-  CryptoLib::GetSecureRandom(&fek_sig_[0], fek_sig_.size());
+  CryptoLib::GetSecureRandom(fek_sig_.data(), fek_sig_.size());
 
   fek_salt_.resize(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  CryptoLib::GetSecureRandom(&fek_salt_[0], fek_salt_.size());
+  CryptoLib::GetSecureRandom(fek_salt_.data(), fek_salt_.size());
 
   fnek_.resize(CRYPTOHOME_DEFAULT_KEY_SIZE);
-  CryptoLib::GetSecureRandom(&fnek_[0], fnek_.size());
+  CryptoLib::GetSecureRandom(fnek_.data(), fnek_.size());
 
   fnek_sig_.resize(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
-  CryptoLib::GetSecureRandom(&fnek_sig_[0], fnek_sig_.size());
+  CryptoLib::GetSecureRandom(fnek_sig_.data(), fnek_sig_.size());
 
   fnek_salt_.resize(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  CryptoLib::GetSecureRandom(&fnek_salt_[0], fnek_salt_.size());
+  CryptoLib::GetSecureRandom(fnek_salt_.data(), fnek_salt_.size());
 
   CreateRandomChapsKey();
 }
@@ -190,7 +188,7 @@ void VaultKeyset::set_chaps_key(const SecureBlob& chaps_key) {
 
 void VaultKeyset::clear_chaps_key() {
   CHECK(chaps_key_.size() == CRYPTOHOME_CHAPS_KEY_LENGTH);
-  chaps_key_.clear_contents();
+  chaps_key_.clear();
   chaps_key_.resize(0);
 }
 
@@ -200,9 +198,8 @@ bool VaultKeyset::Load(const std::string& filename) {
   if (!platform_->ReadFile(filename, &contents))
     return false;
 
-  unsigned char* data = static_cast<unsigned char*>(contents.data());
   serialized_.Clear();  // Ensure a fresh start.
-  loaded_ = serialized_.ParseFromArray(data, contents.size());
+  loaded_ = serialized_.ParseFromArray(contents.data(), contents.size());
   // If it was parsed from file, consider it save-able too.
   source_file_.clear();
   if (loaded_) {
@@ -227,8 +224,7 @@ bool VaultKeyset::Decrypt(const SecureBlob& key) {
 bool VaultKeyset::Encrypt(const SecureBlob& key) {
   CHECK(crypto_);
   SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  unsigned char* salt_buf = static_cast<unsigned char*>(salt.data());
-  CryptoLib::GetSecureRandom(salt_buf, salt.size());
+  CryptoLib::GetSecureRandom(salt.data(), salt.size());
   encrypted_ = crypto_->EncryptVaultKeyset(*this, key, salt, &serialized_);
   return encrypted_;
 }

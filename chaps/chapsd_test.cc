@@ -58,7 +58,7 @@ static bool ParseAndFillAttributes(const vector<uint8_t>& serialized,
 static vector<uint8_t> SubVector(const vector<uint8_t>& v,
                                  int offset,
                                  int size) {
-  const uint8_t* front = &v.front() + offset;
+  const uint8_t* front = v.data() + offset;
   return vector<uint8_t>(front, front + size);
 }
 
@@ -716,7 +716,7 @@ TEST_F(TestP11PublicSession, Digest) {
   CK_OBJECT_CLASS key_class = CKO_SECRET_KEY;
   CK_KEY_TYPE key_type = CKK_GENERIC_SECRET;
   CK_BYTE key_value[100] = {0};
-  memcpy(key_value, &data.front(), 100);
+  memcpy(key_value, data.data(), 100);
   CK_BBOOL false_value = CK_FALSE;
   CK_BBOOL true_value = CK_TRUE;
   CK_ATTRIBUTE key_desc[] = {

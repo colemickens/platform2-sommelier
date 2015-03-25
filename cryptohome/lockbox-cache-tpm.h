@@ -46,7 +46,7 @@ class LockboxCacheTpm : public StubTpm {
   // success, it returns true.
   virtual bool ReadNvram(uint32_t index, chromeos::SecureBlob* blob) {
     if (index == index_) {
-      blob->clear_contents();
+      blob->clear();
       blob->resize(nvram_data_.size());
       memcpy(blob->data(), nvram_data_.data(), nvram_data_.size());
       return true;

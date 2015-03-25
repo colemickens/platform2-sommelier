@@ -316,8 +316,7 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(user->password,
                                         test_helper_.system_salt, &passkey);
-  std::string passkey_string(static_cast<const char*>(passkey.const_data()),
-                             passkey.size());
+  std::string passkey_string = passkey.to_string();
 
   gboolean out = FALSE;
   GError *error = NULL;

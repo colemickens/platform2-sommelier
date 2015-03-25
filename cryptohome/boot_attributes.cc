@@ -44,7 +44,7 @@ bool BootAttributes::Load() {
   }
 
   SerializedInstallAttributes message;
-  if (!message.ParseFromArray(&data[0], data.size())) {
+  if (!message.ParseFromArray(data.data(), data.size())) {
     LOG(ERROR) << "Cannot parse the content of the boot lockbox.";
     return false;
   }
@@ -88,7 +88,7 @@ bool BootAttributes::FlushAndSign() {
 
   chromeos::SecureBlob content;
   content.resize(message.ByteSize());
-  message.SerializeWithCachedSizesToArray(&content[0]);
+  message.SerializeWithCachedSizesToArray(content.data());
 
   chromeos::SecureBlob signature;
   if (!boot_lockbox_->Sign(content, &signature)) {

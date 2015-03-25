@@ -39,7 +39,7 @@ inline void CopyVectorToCharBuffer(const std::vector<uint8_t>& source,
     copy_size = buffer_size;
   memset(buffer, ' ', buffer_size);
   if (copy_size > 0)
-    memcpy(buffer, &source.front(), copy_size);
+    memcpy(buffer, source.data(), copy_size);
 }
 
 // RVToString stringifies a PKCS #11 return value.  E.g. CKR_OK --> "CKR_OK".
@@ -135,7 +135,7 @@ inline std::vector<uint8_t> ConvertByteStringToVector(const std::string& s) {
 // This function changes the container class for an array of bytes from vector
 // to string.
 inline std::string ConvertByteVectorToString(const std::vector<uint8_t>& v) {
-  const char* front = reinterpret_cast<const char*>(&v.front());
+  const char* front = reinterpret_cast<const char*>(v.data());
   return std::string(front, v.size());
 }
 
@@ -245,7 +245,7 @@ inline void ClearString(std::string* str) {
 }
 
 inline void ClearVector(std::vector<uint8_t>* vector) {
-  chromeos::SecureMemset(vector_as_array(vector), 0, vector->size());
+  chromeos::SecureMemset(vector->data(), 0, vector->size());
 }
 
 }  // namespace chaps

@@ -140,14 +140,14 @@ bool Crypto::PasskeyToTokenAuthData(const chromeos::Blob& passkey,
   }
   SecureBlob local_auth_data;
   local_auth_data.resize(kAuthDataSizeBytes);
-  if (0 != crypto_scrypt(&passkey[0],
+  if (0 != crypto_scrypt(passkey.data(),
                          passkey.size(),
-                         &salt[0],
+                         salt.data(),
                          salt.size(),
                          kScryptParameterN,
                          kScryptParameterR,
                          kScryptParameterP,
-                         &local_auth_data[0],
+                         local_auth_data.data(),
                          kAuthDataSizeBytes)) {
     LOG(ERROR) << "Scrypt key derivation failed.";
     return false;
@@ -171,8 +171,7 @@ bool Crypto::GetOrCreateSalt(const base::FilePath& path, unsigned int length,
                << " (" << force << ", " << file_len << ")";
     // If this salt doesn't exist, automatically create it
     local_salt.resize(length);
-    CryptoLib::GetSecureRandom(static_cast<unsigned char*>(local_salt.data()),
-                               local_salt.size());
+    CryptoLib::GetSecureRandom(local_salt.data(), local_salt.size());
     if (!platform_->WriteFileAtomicDurable(path.value(), local_salt,
                                            kSaltFilePermissions)) {
       LOG(ERROR) << "Could not write user salt";
@@ -258,11 +257,9 @@ void Crypto::PasswordToPasskey(const char* password,
   SecureBlob md_value(SHA256_DIGEST_LENGTH);
 
   SHA256_Init(&sha_context);
-  SHA256_Update(&sha_context,
-                reinterpret_cast<const unsigned char*>(ascii_salt.data()),
-                static_cast<unsigned int>(ascii_salt.length()));
+  SHA256_Update(&sha_context, ascii_salt.data(), ascii_salt.length());
   SHA256_Update(&sha_context, password, strlen(password));
-  SHA256_Final(static_cast<unsigned char*>(md_value.data()), &sha_context);
+  SHA256_Final(md_value.data(), &sha_context);
 
   md_value.resize(SHA256_DIGEST_LENGTH / 2);
   SecureBlob local_passkey(SHA256_DIGEST_LENGTH);
@@ -316,11 +313,10 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   CHECK(serialized.flags() & SerializedVaultKeyset::TPM_WRAPPED);
   SecureBlob local_encrypted_keyset(serialized.wrapped_keyset().length());
   serialized.wrapped_keyset().copy(
-      static_cast<char*>(local_encrypted_keyset.data()),
+      local_encrypted_keyset.char_data(),
       serialized.wrapped_keyset().length(), 0);
   SecureBlob salt(serialized.salt().length());
-  serialized.salt().copy(static_cast<char*>(salt.data()),
-                         serialized.salt().length(), 0);
+  serialized.salt().copy(salt.char_data(), serialized.salt().length(), 0);
   SecureBlob local_vault_key(vault_key.begin(), vault_key.end());
   bool chaps_key_present = serialized.has_wrapped_chaps_key();
   SecureBlob local_wrapped_chaps_key;
@@ -375,7 +371,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   }
 
   SecureBlob tpm_key(serialized.tpm_key().length());
-  serialized.tpm_key().copy(static_cast<char*>(tpm_key.data()),
+  serialized.tpm_key().copy(tpm_key.char_data(),
                             serialized.tpm_key().length(), 0);
   SecureBlob key;
   CryptoLib::PasskeyToAesKey(vault_key, salt, rounds, &key, NULL);
@@ -485,16 +481,15 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
   size_t out_len = 0;
   SecureBlob decrypted(blob.size());
   // Perform a Scrypt operation on wrapped vault keyset.
-  if ((scrypt_rc = scryptdec_buf(
-      static_cast<const uint8_t*>(blob.const_data()),
-      blob.size(),
-      static_cast<uint8_t*>(decrypted.data()),
-      &out_len,
-      static_cast<const uint8_t*>(key.const_data()),
-      key.size(),
-      kScryptMaxMem,
-      100.0,
-      kScryptMaxDecryptTime))) {
+  if ((scrypt_rc = scryptdec_buf(blob.data(),
+                                 blob.size(),
+                                 decrypted.data(),
+                                 &out_len,
+                                 key.data(),
+                                 key.size(),
+                                 kScryptMaxMem,
+                                 100.0,
+                                 kScryptMaxDecryptTime))) {
     LOG(ERROR) << "Vault Keyset Scrypt decryption returned error code: "
                << scrypt_rc;
     if (error)
@@ -521,16 +516,15 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
   }
   // Perform a Scrypt operation on wrapped chaps key.
   if (chaps_key_present) {
-    scrypt_rc = scryptdec_buf(
-        static_cast<const uint8_t*>(wrapped_chaps_key.const_data()),
-        wrapped_chaps_key.size(),
-        static_cast<uint8_t*>(chaps_key.data()),
-        &out_len,
-        static_cast<const uint8_t*>(key.const_data()),
-        key.size(),
-        kScryptMaxMem,
-        100.0,
-        kScryptMaxDecryptTime);
+    scrypt_rc = scryptdec_buf(wrapped_chaps_key.data(),
+                              wrapped_chaps_key.size(),
+                              chaps_key.data(),
+                              &out_len,
+                              key.data(),
+                              key.size(),
+                              kScryptMaxMem,
+                              100.0,
+                              kScryptMaxDecryptTime);
     if (scrypt_rc) {
       LOG(ERROR) << "Chaps keyset Scrypt decryption returned error code: "
                  << scrypt_rc;
@@ -557,11 +551,11 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
     LOG(ERROR) << "Message length underflow: " << decrypted.size() << " bytes?";
     return false;
   }
-  memcpy(&included_hash[0], &decrypted[decrypted.size() - SHA_DIGEST_LENGTH],
+  memcpy(included_hash.data(), &decrypted[decrypted.size() - SHA_DIGEST_LENGTH],
          SHA_DIGEST_LENGTH);
   decrypted.resize(decrypted.size() - SHA_DIGEST_LENGTH);
   chromeos::Blob hash = CryptoLib::Sha1(decrypted);
-  if (chromeos::SecureMemcmp(hash.data(), &included_hash[0], hash.size())) {
+  if (chromeos::SecureMemcmp(hash.data(), included_hash.data(), hash.size())) {
     LOG(ERROR) << "Scrypt hash verification failed";
     if (error) {
       *error = CE_SCRYPT_CRYPTO;
@@ -601,8 +595,7 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
   if (!is_cryptohome_key_loaded())
     return false;
   SecureBlob local_blob(kDefaultAesKeySize);
-  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(local_blob.data()),
-                             local_blob.size());
+  CryptoLib::GetSecureRandom(local_blob.data(), local_blob.size());
   SecureBlob tpm_key;
   SecureBlob derived_key;
   unsigned int rounds = kDefaultPasswordRounds;
@@ -647,16 +640,16 @@ bool Crypto::EncryptTPM(const VaultKeyset& vault_keyset,
   if (tpm_->GetPublicKeyHash(tpm_init_->GetCryptohomeContext(),
                              tpm_init_->GetCryptohomeKey(),
                              &pub_key_hash) == Tpm::kTpmRetryNone)
-    serialized->set_tpm_public_key_hash(pub_key_hash.const_data(),
+    serialized->set_tpm_public_key_hash(pub_key_hash.data(),
                                         pub_key_hash.size());
 
   unsigned int flags = serialized->flags();
   serialized->set_password_rounds(rounds);
   serialized->set_flags(flags | SerializedVaultKeyset::TPM_WRAPPED);
-  serialized->set_tpm_key(tpm_key.const_data(), tpm_key.size());
-  serialized->set_wrapped_keyset(cipher_text.const_data(), cipher_text.size());
+  serialized->set_tpm_key(tpm_key.data(), tpm_key.size());
+  serialized->set_wrapped_keyset(cipher_text.data(), cipher_text.size());
   if (vault_keyset.chaps_key().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
-    serialized->set_wrapped_chaps_key(wrapped_chaps_key.const_data(),
+    serialized->set_wrapped_chaps_key(wrapped_chaps_key.data(),
                                       wrapped_chaps_key.size());
   } else {
     serialized->clear_wrapped_chaps_key();
@@ -706,21 +699,18 @@ bool Crypto::EncryptScrypt(const VaultKeyset& vault_keyset,
   }
   // Append the SHA1 hash of the keyset blob
   SecureBlob hash = CryptoLib::Sha1(blob);
-  SecureBlob local_blob(blob.size() + hash.size());
-  memcpy(&local_blob[0], blob.const_data(), blob.size());
-  memcpy(&local_blob[blob.size()], hash.data(), hash.size());
+  SecureBlob local_blob = SecureBlob::Combine(blob, hash);
   SecureBlob cipher_text(local_blob.size() + kScryptHeaderLength);
 
   int scrypt_rc;
-  if ((scrypt_rc = scryptenc_buf(
-          static_cast<const uint8_t*>(local_blob.const_data()),
-          local_blob.size(),
-          static_cast<uint8_t*>(cipher_text.data()),
-          static_cast<const uint8_t*>(&key[0]),
-          key.size(),
-          kScryptMaxMem,
-          100.0,
-          kScryptMaxEncryptTime))) {
+  if ((scrypt_rc = scryptenc_buf(local_blob.data(),
+                                 local_blob.size(),
+                                 cipher_text.data(),
+                                 key.data(),
+                                 key.size(),
+                                 kScryptMaxMem,
+                                 100.0,
+                                 kScryptMaxEncryptTime))) {
     LOG(ERROR) << "Vault Keyset Scrypt encryption returned error code: "
                << scrypt_rc;
     return false;
@@ -729,15 +719,14 @@ bool Crypto::EncryptScrypt(const VaultKeyset& vault_keyset,
   SecureBlob chaps_key = vault_keyset.chaps_key();
   SecureBlob wrapped_chaps_key;
   wrapped_chaps_key.resize(chaps_key.size() + kScryptHeaderLength);
-  scrypt_rc = scryptenc_buf(
-      static_cast<const uint8_t*>(chaps_key.const_data()),
-      chaps_key.size(),
-      static_cast<uint8_t*>(wrapped_chaps_key.data()),
-      static_cast<const uint8_t*>(&key[0]),
-      key.size(),
-      kScryptMaxMem,
-      100.0,
-      kScryptMaxEncryptTime);
+  scrypt_rc = scryptenc_buf(chaps_key.data(),
+                            chaps_key.size(),
+                            wrapped_chaps_key.data(),
+                            key.data(),
+                            key.size(),
+                            kScryptMaxMem,
+                            100.0,
+                            kScryptMaxEncryptTime);
   if (scrypt_rc) {
     LOG(ERROR) << "Chaps Key Scrypt encryption returned error code: "
                << scrypt_rc;
@@ -745,9 +734,9 @@ bool Crypto::EncryptScrypt(const VaultKeyset& vault_keyset,
   }
   unsigned int flags = serialized->flags();
   serialized->set_flags(flags | SerializedVaultKeyset::SCRYPT_WRAPPED);
-  serialized->set_wrapped_keyset(cipher_text.const_data(), cipher_text.size());
+  serialized->set_wrapped_keyset(cipher_text.data(), cipher_text.size());
   if (vault_keyset.chaps_key().size() == CRYPTOHOME_CHAPS_KEY_LENGTH) {
-    serialized->set_wrapped_chaps_key(wrapped_chaps_key.const_data(),
+    serialized->set_wrapped_chaps_key(wrapped_chaps_key.data(),
                                       wrapped_chaps_key.size());
   } else {
     serialized->clear_wrapped_chaps_key();
@@ -769,7 +758,7 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
     }
   }
 
-  serialized->set_salt(vault_key_salt.const_data(),
+  serialized->set_salt(vault_key_salt.data(),
                        vault_key_salt.size());
   return true;
 }
@@ -828,7 +817,7 @@ bool Crypto::EncryptData(const SecureBlob& data,
     return false;
   }
   EncryptedData encrypted_pb;
-  encrypted_pb.set_wrapped_key(sealed_key.const_data(), sealed_key.size());
+  encrypted_pb.set_wrapped_key(sealed_key.data(), sealed_key.size());
   encrypted_pb.set_iv(iv.data(), iv.size());
   encrypted_pb.set_encrypted_data(encrypted_data_blob.data(),
                                   encrypted_data_blob.size());
@@ -852,8 +841,8 @@ bool Crypto::UnsealKey(const string& encrypted_data,
                << "protobuf";
     return false;
   }
-  SecureBlob tmp(encrypted_pb.wrapped_key().data(),
-                 encrypted_pb.wrapped_key().length());
+  SecureBlob tmp(encrypted_pb.wrapped_key().begin(),
+                 encrypted_pb.wrapped_key().end());
   sealed_key->swap(tmp);
   if (!tpm_->Unseal(*sealed_key, aes_key)) {
     LOG(ERROR) << "Cannot unseal aes key.";
@@ -881,9 +870,9 @@ bool Crypto::DecryptData(const string& encrypted_data,
     LOG(ERROR) << "Corrupted data in encrypted pb.";
     return false;
   }
-  SecureBlob iv(encrypted_pb.iv().data(), encrypted_pb.iv().length());
-  SecureBlob encrypted_data_blob(encrypted_pb.encrypted_data().data(),
-                                 encrypted_pb.encrypted_data().length());
+  SecureBlob iv(encrypted_pb.iv().begin(), encrypted_pb.iv().end());
+  SecureBlob encrypted_data_blob(encrypted_pb.encrypted_data().begin(),
+                                 encrypted_pb.encrypted_data().end());
   if (!CryptoLib::AesDecryptSpecifyBlockMode(encrypted_data_blob,
                                              0,
                                              encrypted_data_blob.size(),

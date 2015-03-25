@@ -52,11 +52,9 @@ TEST_F(SecureBlobTest, AllocationSizeTest) {
 TEST_F(SecureBlobTest, AllocationCopyTest) {
   // Check that allocating a SecureBlob with an iterator works
   unsigned char from_data[32];
-  for (unsigned int i = 0; i < sizeof(from_data); i++) {
-    from_data[i] = i;
-  }
+  std::iota(std::begin(from_data), std::end(from_data), 0);
 
-  SecureBlob blob(from_data, sizeof(from_data));
+  SecureBlob blob(std::begin(from_data), std::end(from_data));
 
   EXPECT_EQ(sizeof(from_data), blob.size());
 
@@ -82,10 +80,10 @@ TEST_F(SecureBlobTest, ResizeTest) {
   // Check that resizing a SecureBlob wipes the excess memory.  The test assumes
   // that resize() down by one will not re-allocate the memory, so the last byte
   // will still be part of the SecureBlob's allocation
-  unsigned int length = 1024;
+  size_t length = 1024;
   SecureBlob blob(length);
   void* original_data = blob.data();
-  for (unsigned int i = 0; i < length; i++) {
+  for (size_t i = 0; i < length; i++) {
     blob[i] = i;
   }
 
@@ -93,7 +91,7 @@ TEST_F(SecureBlobTest, ResizeTest) {
 
   EXPECT_EQ(original_data, blob.data());
   EXPECT_EQ(length - 1, blob.size());
-  EXPECT_EQ(0, static_cast<unsigned char*>(blob.data())[length - 1]);
+  EXPECT_EQ(0, blob.data()[length - 1]);
 }
 
 TEST_F(SecureBlobTest, CombineTest) {
@@ -113,7 +111,7 @@ TEST_F(SecureBlobTest, CombineTest) {
 
 TEST_F(SecureBlobTest, BlobToStringTest) {
   std::string test_string("Test String");
-  SecureBlob blob = SecureBlob(test_string);
+  SecureBlob blob = SecureBlob(test_string.begin(), test_string.end());
   EXPECT_EQ(blob.size(), test_string.length());
   std::string result_string = blob.to_string();
   EXPECT_EQ(test_string.compare(result_string), 0);

@@ -259,7 +259,7 @@ uint32_t ChapsServiceRedirect::InitToken(const SecureBlob& isolate_credential,
       so_pin ? ConvertStringToCharBuffer(so_pin->data()) : NULL;
   CK_ULONG pin_length = so_pin ? static_cast<CK_ULONG>(so_pin->length()) : 0;
   CK_UTF8CHAR label_buffer[chaps::kTokenLabelSize];
-  memcpy(label_buffer, &label.front(), chaps::kTokenLabelSize);
+  memcpy(label_buffer, label.data(), chaps::kTokenLabelSize);
   CK_RV result = functions_->C_InitToken(slot_id,
                                          pin_buffer,
                                          pin_length,
@@ -378,7 +378,7 @@ uint32_t ChapsServiceRedirect::SetOperationState(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   uint32_t result = functions_->C_SetOperationState(
       session_id,
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&operation_state.front())),
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(operation_state.data())),
       static_cast<CK_ULONG>(operation_state.size()),
       static_cast<CK_OBJECT_HANDLE>(encryption_key_handle),
       static_cast<CK_OBJECT_HANDLE>(authentication_key_handle));
@@ -565,7 +565,7 @@ uint32_t ChapsServiceRedirect::EncryptInit(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
-  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.pParameter = const_cast<uint8_t*>(mechanism_parameter.data());
   mechanism.ulParameterLen = mechanism_parameter.size();
   uint32_t result = functions_->C_EncryptInit(
       session_id,
@@ -584,7 +584,7 @@ uint32_t ChapsServiceRedirect::Encrypt(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data_in.data()));
   scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
@@ -614,7 +614,7 @@ uint32_t ChapsServiceRedirect::EncryptUpdate(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data_in.data()));
   scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
@@ -674,7 +674,7 @@ uint32_t ChapsServiceRedirect::DecryptInit(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
-  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.pParameter = const_cast<uint8_t*>(mechanism_parameter.data());
   mechanism.ulParameterLen = mechanism_parameter.size();
   uint32_t result = functions_->C_DecryptInit(
       session_id,
@@ -693,7 +693,7 @@ uint32_t ChapsServiceRedirect::Decrypt(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data_in.data()));
   scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
@@ -724,7 +724,7 @@ uint32_t ChapsServiceRedirect::DecryptUpdate(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data_in.data()));
   scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
@@ -783,7 +783,7 @@ uint32_t ChapsServiceRedirect::DigestInit(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
-  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.pParameter = const_cast<uint8_t*>(mechanism_parameter.data());
   mechanism.ulParameterLen = mechanism_parameter.size();
   uint32_t result = functions_->C_DigestInit(session_id, &mechanism);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -799,7 +799,7 @@ uint32_t ChapsServiceRedirect::Digest(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !digest, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data_in.data()));
   scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
@@ -825,7 +825,7 @@ uint32_t ChapsServiceRedirect::DigestUpdate(
       const vector<uint8_t>& data_in) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data_in.data()));
   uint32_t result = functions_->C_DigestUpdate(session_id,
                                                in_bytes,
                                                data_in.size());
@@ -881,7 +881,7 @@ uint32_t ChapsServiceRedirect::SignInit(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
-  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.pParameter = const_cast<uint8_t*>(mechanism_parameter.data());
   mechanism.ulParameterLen = mechanism_parameter.size();
   uint32_t result = functions_->C_SignInit(session_id, &mechanism, key_handle);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -897,7 +897,7 @@ uint32_t ChapsServiceRedirect::Sign(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data.data()));
   scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
@@ -922,7 +922,7 @@ uint32_t ChapsServiceRedirect::SignUpdate(const SecureBlob& isolate_credential,
                                           const vector<uint8_t>& data_part) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_part.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data_part.data()));
   uint32_t result = functions_->C_SignUpdate(session_id,
                                              in_bytes,
                                              data_part.size());
@@ -969,7 +969,7 @@ uint32_t ChapsServiceRedirect::SignRecoverInit(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
-  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.pParameter = const_cast<uint8_t*>(mechanism_parameter.data());
   mechanism.ulParameterLen = mechanism_parameter.size();
   uint32_t result = functions_->C_SignRecoverInit(session_id,
                                                   &mechanism,
@@ -987,7 +987,7 @@ uint32_t ChapsServiceRedirect::SignRecover(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data.data()));
   scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
@@ -1016,7 +1016,7 @@ uint32_t ChapsServiceRedirect::VerifyInit(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
-  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.pParameter = const_cast<uint8_t*>(mechanism_parameter.data());
   mechanism.ulParameterLen = mechanism_parameter.size();
   uint32_t result = functions_->C_VerifyInit(session_id,
                                              &mechanism,
@@ -1031,9 +1031,9 @@ uint32_t ChapsServiceRedirect::Verify(const SecureBlob& isolate_credential,
                                       const vector<uint8_t>& signature) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_BYTE_PTR data_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data.data()));
   CK_BYTE_PTR sig_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&signature.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(signature.data()));
   uint32_t result = functions_->C_Verify(session_id,
                                          data_bytes,
                                          data.size(),
@@ -1049,7 +1049,7 @@ uint32_t ChapsServiceRedirect::VerifyUpdate(
       const vector<uint8_t>& data_part) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_part.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data_part.data()));
   uint32_t result = functions_->C_VerifyUpdate(session_id,
                                                in_bytes,
                                                data_part.size());
@@ -1062,7 +1062,7 @@ uint32_t ChapsServiceRedirect::VerifyFinal(const SecureBlob& isolate_credential,
                                            const vector<uint8_t>& signature) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&signature.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(signature.data()));
   uint32_t result = functions_->C_VerifyFinal(session_id,
                                               in_bytes,
                                               signature.size());
@@ -1085,7 +1085,7 @@ uint32_t ChapsServiceRedirect::VerifyRecoverInit(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
-  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.pParameter = const_cast<uint8_t*>(mechanism_parameter.data());
   mechanism.ulParameterLen = mechanism_parameter.size();
   uint32_t result = functions_->C_VerifyRecoverInit(session_id,
                                                     &mechanism,
@@ -1104,7 +1104,7 @@ uint32_t ChapsServiceRedirect::VerifyRecover(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&signature.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(signature.data()));
   scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
@@ -1134,7 +1134,7 @@ uint32_t ChapsServiceRedirect::DigestEncryptUpdate(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data_in.data()));
   scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
@@ -1164,7 +1164,7 @@ uint32_t ChapsServiceRedirect::DecryptDigestUpdate(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data_in.data()));
   scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
@@ -1194,7 +1194,7 @@ uint32_t ChapsServiceRedirect::SignEncryptUpdate(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data_in.data()));
   scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
@@ -1224,7 +1224,7 @@ uint32_t ChapsServiceRedirect::DecryptVerifyUpdate(
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(data_in.data()));
   scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
     out_bytes.reset(new CK_BYTE[max_out_length]);
@@ -1255,7 +1255,7 @@ uint32_t ChapsServiceRedirect::GenerateKey(
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
-  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.pParameter = const_cast<uint8_t*>(mechanism_parameter.data());
   mechanism.ulParameterLen = mechanism_parameter.size();
   Attributes parsed_attributes;
   if (!parsed_attributes.Parse(attributes))
@@ -1284,7 +1284,7 @@ uint32_t ChapsServiceRedirect::GenerateKeyPair(
                           CKR_ARGUMENTS_BAD);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
-  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.pParameter = const_cast<uint8_t*>(mechanism_parameter.data());
   mechanism.ulParameterLen = mechanism_parameter.size();
   Attributes public_parsed_attributes;
   if (!public_parsed_attributes.Parse(public_attributes))
@@ -1320,7 +1320,7 @@ uint32_t ChapsServiceRedirect::WrapKey(
                           CKR_ARGUMENTS_BAD);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
-  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.pParameter = const_cast<uint8_t*>(mechanism_parameter.data());
   mechanism.ulParameterLen = mechanism_parameter.size();
   scoped_ptr<CK_BYTE[]> out_bytes;
   if (max_out_length) {
@@ -1355,13 +1355,13 @@ uint32_t ChapsServiceRedirect::UnwrapKey(
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
-  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.pParameter = const_cast<uint8_t*>(mechanism_parameter.data());
   mechanism.ulParameterLen = mechanism_parameter.size();
   Attributes parsed_attributes;
   if (!parsed_attributes.Parse(attributes))
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&wrapped_key.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(wrapped_key.data()));
   uint32_t result = functions_->C_UnwrapKey(session_id,
                                             &mechanism,
                                             wrapping_key_handle,
@@ -1386,7 +1386,7 @@ uint32_t ChapsServiceRedirect::DeriveKey(
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
-  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.pParameter = const_cast<uint8_t*>(mechanism_parameter.data());
   mechanism.ulParameterLen = mechanism_parameter.size();
   Attributes parsed_attributes;
   if (!parsed_attributes.Parse(attributes))
@@ -1407,7 +1407,7 @@ uint32_t ChapsServiceRedirect::SeedRandom(const SecureBlob& isolate_credential,
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(seed.size() == 0, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
-      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&seed.front()));
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(seed.data()));
   uint32_t result = functions_->C_SeedRandom(session_id, in_bytes, seed.size());
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;

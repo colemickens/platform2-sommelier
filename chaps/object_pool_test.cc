@@ -105,7 +105,7 @@ TEST_F(TestObjectPool, Init) {
   persistent_objects[2].blob = "not_valid_protobuf";
   persistent_objects[2].is_private = false;
   string tmp(32, 'A');
-  SecureBlob key(tmp.data(), tmp.length());
+  SecureBlob key(tmp.begin(), tmp.end());
   EXPECT_CALL(*store_, GetInternalBlob(_, _)).WillRepeatedly(Return(false));
   EXPECT_CALL(*store_, SetInternalBlob(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, SetEncryptionKey(key))
@@ -147,7 +147,7 @@ TEST_F(TestObjectPool, Init) {
 // Test the methods that should just pass through to the object store.
 TEST_F(TestObjectPool, StorePassThrough) {
   string s("test");
-  SecureBlob blob("test", 4);
+  SecureBlob blob("test");
   EXPECT_CALL(*store_, GetInternalBlob(1, _))
       .WillOnce(Return(false))
       .WillOnce(Return(true));

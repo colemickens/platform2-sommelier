@@ -236,9 +236,7 @@ class KeyStoreTest : public testing::Test {
   NiceMock<MockPkcs11Init> pkcs11_init_;
 
   bool CompareBlob(const chromeos::SecureBlob& blob, const string& str) {
-    string blob_str(reinterpret_cast<const char*>(blob.const_data()),
-                    blob.size());
-    return (blob_str == str);
+    return (blob.to_string() == str);
   }
 
  private:

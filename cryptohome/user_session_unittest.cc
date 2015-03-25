@@ -26,8 +26,7 @@ class UserSessionTest : public ::testing::Test {
 
   void SetUp() {
     salt.resize(16);
-    CryptoLib::GetSecureRandom(static_cast<unsigned char*>(salt.data()),
-                               salt.size());
+    CryptoLib::GetSecureRandom(salt.data(), salt.size());
   }
 
  protected:
@@ -38,14 +37,14 @@ class UserSessionTest : public ::testing::Test {
 };
 
 TEST_F(UserSessionTest, InitTest) {
-  UsernamePasskey up("username", SecureBlob("password", 8));
+  UsernamePasskey up("username", SecureBlob("password"));
   UserSession session;
   session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));
 }
 
 TEST_F(UserSessionTest, CheckUserTest) {
-  UsernamePasskey up("username", SecureBlob("password", 8));
+  UsernamePasskey up("username", SecureBlob("password"));
   UserSession session;
   session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));
@@ -53,8 +52,8 @@ TEST_F(UserSessionTest, CheckUserTest) {
 }
 
 TEST_F(UserSessionTest, ReInitTest) {
-  UsernamePasskey up("username", SecureBlob("password", 8));
-  UsernamePasskey up_new("username2", SecureBlob("password2", 9));
+  UsernamePasskey up("username", SecureBlob("password"));
+  UsernamePasskey up_new("username2", SecureBlob("password2"));
   UserSession session;
   session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));
@@ -64,7 +63,7 @@ TEST_F(UserSessionTest, ReInitTest) {
 }
 
 TEST_F(UserSessionTest, ResetTest) {
-  UsernamePasskey up("username", SecureBlob("password", 8));
+  UsernamePasskey up("username", SecureBlob("password"));
   UserSession session;
   session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));
@@ -73,7 +72,7 @@ TEST_F(UserSessionTest, ResetTest) {
 }
 
 TEST_F(UserSessionTest, VerifyTest) {
-  UsernamePasskey up("username", SecureBlob("password", 8));
+  UsernamePasskey up("username", SecureBlob("password"));
   UserSession session;
   session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));

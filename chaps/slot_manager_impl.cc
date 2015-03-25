@@ -231,7 +231,7 @@ bool TokenInitThread::InitializeKeyHierarchy(SecureBlob* master_key) {
     LOG(ERROR) << "Failed to generate user encryption key.";
     return false;
   }
-  *master_key = SecureBlob(master_key_str.data(), master_key_str.length());
+  *master_key = SecureBlob(master_key_str.begin(), master_key_str.end());
   string auth_key_blob;
   int auth_key_handle;
   const int key_size = 2048;
@@ -653,10 +653,8 @@ bool SlotManagerImpl::LoadSoftwareToken(const SecureBlob& auth_data,
 bool SlotManagerImpl::InitializeSoftwareToken(const SecureBlob& auth_data,
                                               ObjectPool* object_pool) {
   // Generate a new random master key and encrypt it with the auth data.
-  SecureBlob master_key;
-  master_key.resize(kUserKeySize);
-  if (1 != RAND_bytes(static_cast<unsigned char*>(master_key.data()),
-                      kUserKeySize)) {
+  SecureBlob master_key(kUserKeySize);
+  if (1 != RAND_bytes(master_key.data(), kUserKeySize)) {
     LOG(ERROR) << "RAND_bytes failed: " << GetOpenSSLError();
     return false;
   }
@@ -666,7 +664,7 @@ bool SlotManagerImpl::InitializeSoftwareToken(const SecureBlob& auth_data,
   if (!RunCipher(true,  // Encrypt.
                  auth_key_encrypt,
                  std::string(),  // Use a random IV.
-                 ConvertByteVectorToString(master_key),
+                 master_key.to_string(),
                  &encrypted_master_key)) {
     LOG(ERROR) << "Failed to encrypt new master key.";
     return false;

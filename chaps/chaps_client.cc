@@ -67,8 +67,7 @@ void LoadToken(const string& path, const string& auth, const string& label) {
   int slot_id = -1;
   client.LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
                    FilePath(path),
-                   SecureBlob(chaps::ConvertStringToByteBuffer(auth.data()),
-                                                               auth.length()),
+                   SecureBlob(auth.begin(), auth.end()),
                    label,
                    &slot_id);
   LOG(INFO) << "LoadToken: " << path << " - slot = " << slot_id;
@@ -89,10 +88,8 @@ void ChangeAuthData(const string& path,
   chaps::TokenManagerClient client;
   client.ChangeTokenAuthData(
       FilePath(path),
-      SecureBlob(chaps::ConvertStringToByteBuffer(auth_old.data()),
-                 auth_old.length()),
-      SecureBlob(chaps::ConvertStringToByteBuffer(auth_new.data()),
-                 auth_new.length()));
+      SecureBlob(auth_old.begin(), auth_old.end()),
+      SecureBlob(auth_new.begin(), auth_new.end()));
   LOG(INFO) << "Sent Event: Change Authorization Data: " << path;
 }
 

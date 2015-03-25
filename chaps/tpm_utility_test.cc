@@ -48,7 +48,7 @@ class TestTPMUtility: public ::testing::Test {
     e_ = string("\x1\x0\x1", 3);
     unsigned char random[20];
     RAND_bytes(random, 20);
-    auth_ = chromeos::SecureBlob(reinterpret_cast<char*>(random), 20);
+    auth_ = chromeos::SecureBlob(std::begin(random), std::end(random));
     ASSERT_TRUE(tpm_.Init());
   }
 
@@ -101,7 +101,7 @@ TEST_F(TestTPMUtility, Authenticate) {
   // Change password.
   unsigned char random[20];
   RAND_bytes(random, 20);
-  chromeos::SecureBlob auth2(reinterpret_cast<char*>(random), 20);
+  chromeos::SecureBlob auth2(std::begin(random), std::end(random));
   string blob2;
   ASSERT_TRUE(tpm_.ChangeAuthData(0, auth_, auth2, blob_, &blob2));
   tpm_.UnloadKeysForSlot(0);

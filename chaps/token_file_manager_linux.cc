@@ -92,7 +92,7 @@ bool TokenFileManager::CreateUserTokenDirectory(const FilePath& token_path) {
 
   FilePath salt_file = token_path.Append(kSaltFileName);
   int bytes_written = base::WriteFile(
-      salt_file, reinterpret_cast<const char*>(salt.const_data()), kSaltBytes);
+      salt_file, reinterpret_cast<const char*>(salt.data()), kSaltBytes);
   if (bytes_written != static_cast<int>(kSaltBytes)) {
     LOG(ERROR) << "Failed to write salt file in token directory "
                << token_path.value();
@@ -143,15 +143,14 @@ bool TokenFileManager::SaltAuthData(const FilePath& token_path,
   }
 
   SecureBlob out_key(kSaltedKeyBytes);
-  if (1 != PKCS5_PBKDF2_HMAC(
-               reinterpret_cast<const char *>(auth_data.const_data()),
-               auth_data.size(),
-               reinterpret_cast<const unsigned char *>(salt.const_data()),
-               kSaltBytes,
-               kSaltIterations,
-               EVP_sha512(),
-               kSaltedKeyBytes,
-               reinterpret_cast<unsigned char *>(out_key.data()))) {
+  if (1 != PKCS5_PBKDF2_HMAC(static_cast<const char *>(auth_data.data()),
+                             auth_data.size(),
+                             salt.data(),
+                             kSaltBytes,
+                             kSaltIterations,
+                             EVP_sha512(),
+                             kSaltedKeyBytes,
+                             out_key.data()) {
     LOG(ERROR) << "Could not salt authorization data.";
     return false;
   }

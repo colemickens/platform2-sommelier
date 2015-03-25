@@ -122,13 +122,12 @@ class AttestationTest : public testing::Test {
     pb.mutable_encrypted_identity_credential()->set_sym_ca_attestation("5678");
     string tmp;
     pb.SerializeToString(&tmp);
-    return SecureBlob(tmp.data(), tmp.length());
+    return SecureBlob(tmp.begin(), tmp.end());
   }
 
   SecureBlob GetCertRequestBlob(const SecureBlob& request) {
     AttestationCertificateRequest request_pb;
-    CHECK(request_pb.ParseFromArray(request.const_data(),
-                                    request.size()));
+    CHECK(request_pb.ParseFromArray(request.data(), request.size()));
     AttestationCertificateResponse pb;
     pb.set_message_id(request_pb.message_id());
     pb.set_status(OK);
@@ -137,7 +136,7 @@ class AttestationTest : public testing::Test {
     pb.set_intermediate_ca_cert("response_ca_cert");
     string tmp;
     pb.SerializeToString(&tmp);
-    return SecureBlob(tmp.data(), tmp.length());
+    return SecureBlob(tmp.begin(), tmp.end());
   }
 
   SecureBlob GetCertifiedKeyBlob(const string& payload, bool include_ca_cert) {
@@ -149,13 +148,11 @@ class AttestationTest : public testing::Test {
     pb.set_payload(payload);
     string tmp;
     pb.SerializeToString(&tmp);
-    return SecureBlob(tmp.data(), tmp.length());
+    return SecureBlob(tmp.begin(), tmp.end());
   }
 
   bool CompareBlob(const SecureBlob& blob, const string& str) {
-    string blob_str(reinterpret_cast<const char*>(blob.const_data()),
-                         blob.size());
-    return (blob_str == str);
+    return (blob.to_string() == str);
   }
 
   string EncodeCertChain(const string& cert1, const string& cert2) {
@@ -175,7 +172,7 @@ class AttestationTest : public testing::Test {
     int length = i2d_RSAPublicKey(rsa(), &buffer);
     if (length <= 0)
       return SecureBlob();
-    SecureBlob tmp(buffer, length);
+    SecureBlob tmp(buffer, buffer + length);
     OPENSSL_free(buffer);
     return tmp;
   }
@@ -185,7 +182,7 @@ class AttestationTest : public testing::Test {
     int length = i2d_RSA_PUBKEY(rsa(), &buffer);
     if (length <= 0)
       return SecureBlob();
-    SecureBlob tmp(buffer, length);
+    SecureBlob tmp(buffer, buffer + length);
     OPENSSL_free(buffer);
     return tmp;
   }
@@ -194,7 +191,7 @@ class AttestationTest : public testing::Test {
                              const string& challenge,
                              const string& signature) {
     SignedData signed_data;
-    if (!signed_data.ParseFromArray(response.const_data(), response.size()))
+    if (!signed_data.ParseFromArray(response.data(), response.size()))
       return false;
     if (signed_data.data().find(challenge) != 0 ||
         signed_data.data() == challenge)
@@ -211,7 +208,7 @@ class AttestationTest : public testing::Test {
                                  const string& cert_chain,
                                  const string& signature) {
     SignedData signed_data;
-    if (!signed_data.ParseFromArray(response.const_data(), response.size()))
+    if (!signed_data.ParseFromArray(response.data(), response.size()))
       return false;
     ChallengeResponse response_pb;
     if (!response_pb.ParseFromString(signed_data.data()))
@@ -248,7 +245,7 @@ class AttestationTest : public testing::Test {
       unsigned int length = 0;
       SecureBlob digest = CryptoLib::Sha256(SecureBlob(serialized));
       RSA_sign(NID_sha256,
-               &digest.front(), digest.size(),
+               digest.data(), digest.size(),
                buffer, &length,
                rsa());
       SignedData signed_challenge;
@@ -271,7 +268,7 @@ class AttestationTest : public testing::Test {
                                      RSA_PKCS1_OAEP_PADDING);
     if (length != 32)
       return false;
-    SecureBlob aes_key(buffer, length);
+    SecureBlob aes_key(buffer, buffer + length);
     // Decrypt the blob.
     SecureBlob decrypted;
     SecureBlob encrypted = SecureBlob(input.encrypted_data());

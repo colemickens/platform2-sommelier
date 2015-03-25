@@ -296,7 +296,7 @@ bool TPMUtilityImpl::Authenticate(int slot_id,
   string master_key_str;
   if (!Unbind(key_handle, encrypted_master_key, &master_key_str))
     return false;
-  *master_key = SecureBlob(master_key_str.data(), master_key_str.length());
+  *master_key = SecureBlob(master_key_str.begin(), master_key_str.end());
   ClearString(&master_key_str);
   VLOG(1) << "TPMUtilityImpl::Authenticate success";
   return true;
@@ -332,7 +332,7 @@ bool TPMUtilityImpl::ChangeAuthData(int slot_id,
   result = Tspi_Policy_SetSecret(policy,
                                  TSS_SECRET_MODE_SHA1,
                                  new_auth_data.size(),
-                                 const_cast<BYTE*>(&new_auth_data.front()));
+                                 const_cast<BYTE*>(new_auth_data.data()));
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
     return false;
@@ -747,7 +747,7 @@ bool TPMUtilityImpl::CreateKeyPolicy(TSS_HKEY key,
     result = Tspi_Policy_SetSecret(policy,
                                    TSS_SECRET_MODE_SHA1,
                                    auth_data.size(),
-                                   const_cast<BYTE*>(&auth_data.front()));
+                                   const_cast<BYTE*>(auth_data.data()));
   }
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
@@ -935,7 +935,7 @@ bool TPMUtilityImpl::LoadKeyInternal(TSS_HKEY parent,
     result = Tspi_Policy_SetSecret(policy,
                                    TSS_SECRET_MODE_SHA1,
                                    auth_data.size(),
-                                   const_cast<BYTE*>(&auth_data.front()));
+                                   const_cast<BYTE*>(auth_data.data()));
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
       return false;

@@ -37,7 +37,7 @@ class VaultKeysetTest : public ::testing::Test {
     }
     for (unsigned int start = 0; start <= (haystack.size() - needle.size());
          start++) {
-      if (chromeos::SecureMemcmp(&haystack[start], &needle[0],
+      if (chromeos::SecureMemcmp(&haystack[start], needle.data(),
                                  needle.size()) == 0) {
         return true;
       }
@@ -149,7 +149,7 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
   EXPECT_CALL(platform, ReadFile("foo", _))
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
 
-  SecureBlob key("key", 3);
+  SecureBlob key("key");
   EXPECT_TRUE(keyset.Encrypt(key));
   EXPECT_TRUE(keyset.Save("foo"));
 
@@ -171,7 +171,7 @@ TEST_F(VaultKeysetTest, WriteError) {
   EXPECT_CALL(platform, WriteFileAtomicDurable("foo", _, _))
       .WillOnce(Return(false));
 
-  SecureBlob key("key", 3);
+  SecureBlob key("key");
   EXPECT_TRUE(keyset.Encrypt(key));
   EXPECT_FALSE(keyset.Save("foo"));
 }

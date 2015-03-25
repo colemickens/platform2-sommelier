@@ -821,8 +821,7 @@ class KeysetManagementTest : public HomeDirsTest {
   }
 
   virtual bool VkDecrypt0(const chromeos::SecureBlob& key) {
-    return memcmp(key.const_data(), keys_[0].const_data(),
-                  key.size()) == 0;
+    return memcmp(key.data(), keys_[0].data(), key.size()) == 0;
   }
 
   virtual const SerializedVaultKeyset& FakeSerialized() const {
@@ -992,7 +991,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetSuccess) {
 
   // No need to do PasswordToPasskey as that is the
   // external callers job.
-  SecureBlob new_secret("why not", strlen("why not"));
+  SecureBlob new_secret("why not");
   Key new_key;
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
@@ -1047,7 +1046,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
 
   // No need to do PasswordToPasskey as that is the
   // external callers job.
-  SecureBlob new_pass("why not", strlen("why not"));
+  SecureBlob new_pass("why not");
   Key new_key;
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
@@ -1080,14 +1079,12 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedSuccess) {
   ASSERT_TRUE(new_secret.SerializeToString(&changes_str));
 
   chromeos::SecureBlob hmac_key(auth_secret->symmetric_key());
-  chromeos::SecureBlob hmac_data(changes_str.c_str(), changes_str.size());
+  chromeos::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
-  std::string hmac_str(reinterpret_cast<const char*>(vector_as_array(&hmac)),
-                                                     hmac.size());
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
             homedirs_.UpdateKeyset(*up_,
                                    const_cast<const Key *>(&new_key),
-                                   hmac_str));
+                                   hmac.to_string()));
   EXPECT_EQ(serialized_.key_data().revision(), new_key.data().revision());
 }
 
@@ -1107,7 +1104,7 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedCompatVector) {
 
   // No need to do PasswordToPasskey as that is the
   // external callers job.
-  SecureBlob new_pass(kPassword, sizeof(kPassword)-1);
+  SecureBlob new_pass(kPassword);
   Key new_key;
   new_key.set_secret(std::string(kPassword, sizeof(kPassword)-1));
   new_key.mutable_data()->set_label("new label");
@@ -1181,14 +1178,12 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoEqualReplay) {
   new_secret.set_secret(new_key.secret());
   ASSERT_TRUE(new_secret.SerializeToString(&changes_str));
   chromeos::SecureBlob hmac_key(auth_secret->symmetric_key());
-  chromeos::SecureBlob hmac_data(changes_str.c_str(), changes_str.size());
+  chromeos::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
-  std::string hmac_str(reinterpret_cast<const char*>(vector_as_array(&hmac)),
-                                                     hmac.size());
   EXPECT_EQ(CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID,
             homedirs_.UpdateKeyset(*up_,
                                    const_cast<const Key *>(&new_key),
-                                   hmac_str));
+                                   hmac.to_string()));
   EXPECT_NE(serialized_.key_data().label(), new_key.data().label());
 }
 
@@ -1222,14 +1217,12 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedNoLessReplay) {
   ASSERT_TRUE(new_secret.SerializeToString(&changes_str));
 
   chromeos::SecureBlob hmac_key(auth_secret->symmetric_key());
-  chromeos::SecureBlob hmac_data(changes_str.c_str(), changes_str.size());
+  chromeos::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
-  std::string hmac_str(reinterpret_cast<const char*>(vector_as_array(&hmac)),
-                                                     hmac.size());
   EXPECT_EQ(CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID,
             homedirs_.UpdateKeyset(*up_,
                                    const_cast<const Key *>(&new_key),
-                                   hmac_str));
+                                   hmac.to_string()));
   EXPECT_NE(serialized_.key_data().label(), new_key.data().label());
 }
 
@@ -1261,14 +1254,12 @@ TEST_F(KeysetManagementTest, UpdateKeysetAuthorizedBadSignature) {
   ASSERT_TRUE(bad_secret.SerializeToString(&changes_str));
 
   chromeos::SecureBlob hmac_key(auth_secret->symmetric_key());
-  chromeos::SecureBlob hmac_data(changes_str.c_str(), changes_str.size());
+  chromeos::SecureBlob hmac_data(changes_str.begin(), changes_str.end());
   SecureBlob hmac = CryptoLib::HmacSha256(hmac_key, hmac_data);
-  std::string hmac_str(reinterpret_cast<const char*>(vector_as_array(&hmac)),
-                                                     hmac.size());
   EXPECT_EQ(CRYPTOHOME_ERROR_UPDATE_SIGNATURE_INVALID,
             homedirs_.UpdateKeyset(*up_,
                                    const_cast<const Key *>(&new_key),
-                                   hmac_str));
+                                   hmac.to_string()));
   EXPECT_NE(serialized_.key_data().label(), new_key.data().label());
 }
 
@@ -1277,14 +1268,14 @@ TEST_F(KeysetManagementTest, UpdateKeysetBadSecret) {
 
   // No need to do PasswordToPasskey as that is the
   // external callers job.
-  SecureBlob new_secret("why not", strlen("why not"));
+  SecureBlob new_secret("why not");
   Key new_key;
   new_key.set_secret("why not");
   new_key.mutable_data()->set_label("new label");
   // The injected keyset in the fixture handles the up_ validation.
   serialized_.mutable_key_data()->set_label("current label");
 
-  SecureBlob bad_pass("not it", strlen("not it"));
+  SecureBlob bad_pass("not it");
   up_.reset(new UsernamePasskey(test_helper_.users[1].username, bad_pass));
   EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED,
             homedirs_.UpdateKeyset(*up_,

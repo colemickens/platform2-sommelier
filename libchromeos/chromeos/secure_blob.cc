@@ -10,64 +10,34 @@
 
 namespace chromeos {
 
-SecureBlob::SecureBlob() : chromeos::Blob() {
-}
-
-SecureBlob::SecureBlob(const_iterator begin, const_iterator end)
-    : chromeos::Blob(begin, end) {
-}
-
-SecureBlob::SecureBlob(size_t size) : chromeos::Blob(size) {
-}
-
-SecureBlob::SecureBlob(const std::string& from)
-    : chromeos::Blob(from.length()) {
-  memcpy(data(), from.c_str(), from.length());
-}
-
-SecureBlob::SecureBlob(const uint8_t* from, size_t from_length)
-    : chromeos::Blob(from_length) {
-  memcpy(data(), from, from_length);
-}
-
-SecureBlob::SecureBlob(const char* from, size_t from_length)
-    : chromeos::Blob(from_length) {
-  memcpy(data(), from, from_length);
-}
+SecureBlob::SecureBlob(const std::string& data)
+    : SecureBlob(data.begin(), data.end()) {}
 
 SecureBlob::~SecureBlob() {
-  chromeos::SecureMemset(&this->front(), 0, this->capacity());
+  clear();
 }
 
-void SecureBlob::resize(size_type sz) {
-  if (sz < size()) {
-    chromeos::SecureMemset(&this->at(sz), 0, size() - sz);
+void SecureBlob::resize(size_type count) {
+  if (count < size()) {
+    SecureMemset(data() + count, 0, capacity() - count);
   }
-  chromeos::Blob::resize(sz);
+  Blob::resize(count);
 }
 
-void SecureBlob::resize(size_type sz, const value_type& x) {
-  if (sz < size()) {
-    chromeos::SecureMemset(&this->at(sz), 0, size() - sz);
+void SecureBlob::resize(size_type count, const value_type& value) {
+  if (count < size()) {
+    SecureMemset(data() + count, 0, capacity() - count);
   }
-  chromeos::Blob::resize(sz, x);
+  Blob::resize(count, value);
 }
 
-void SecureBlob::clear_contents() {
-  chromeos::SecureMemset(this->data(), 0, size());
-}
-
-void* SecureBlob::data() {
-  return chromeos::Blob::data();
-}
-
-const void* SecureBlob::const_data() const {
-  return chromeos::Blob::data();
+void SecureBlob::clear() {
+  SecureMemset(data(), 0, capacity());
+  Blob::clear();
 }
 
 std::string SecureBlob::to_string() const {
-  auto data_ptr = reinterpret_cast<const char*>(const_data());
-  return std::string(data_ptr, data_ptr + size());
+  return std::string(data(), data() + size());
 }
 
 SecureBlob SecureBlob::Combine(const SecureBlob& blob1,

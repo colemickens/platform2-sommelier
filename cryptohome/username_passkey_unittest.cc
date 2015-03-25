@@ -35,13 +35,13 @@ class UsernamePasskeyTest : public ::testing::Test {
 TEST(UsernamePasskeyTest, UsernameTest) {
   char username[80];
   snprintf(username, sizeof(username), "%s%s", kFakeUser, "@gmail.com");
-  UsernamePasskey up(username, SecureBlob(kFakePasskey, strlen(kFakePasskey)));
+  UsernamePasskey up(username, SecureBlob(kFakePasskey));
   std::string full_username = up.username();
   EXPECT_EQ(0, strcmp(username, full_username.c_str()));
 }
 
 TEST(UsernamePasskeyTest, GetObfuscatedUsernameTest) {
-  UsernamePasskey up(kFakeUser, SecureBlob(kFakePasskey, strlen(kFakePasskey)));
+  UsernamePasskey up(kFakeUser, SecureBlob(kFakePasskey));
 
   chromeos::Blob fake_salt;
   EXPECT_TRUE(base::HexStringToBytes(kFakeSystemSalt, &fake_salt));
@@ -51,12 +51,12 @@ TEST(UsernamePasskeyTest, GetObfuscatedUsernameTest) {
 }
 
 TEST(UsernamePasskeyTest, GetPasskeyTest) {
-  UsernamePasskey up(kFakeUser, SecureBlob(kFakePasskey, strlen(kFakePasskey)));
+  UsernamePasskey up(kFakeUser, SecureBlob(kFakePasskey));
   SecureBlob passkey;
   up.GetPasskey(&passkey);
   EXPECT_EQ(strlen(kFakePasskey), passkey.size());
   EXPECT_EQ(0, chromeos::SecureMemcmp(kFakePasskey,
-                                      &passkey[0], passkey.size()));
+                                      passkey.data(), passkey.size()));
 }
 
 }  // namespace cryptohome

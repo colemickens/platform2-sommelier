@@ -45,7 +45,7 @@ const int kDefaultPubExpSize = 3;
 const char kTokenLabel[] = "test_label";
 
 SecureBlob MakeBlob(const char* auth_data_str) {
-  return Sha1(SecureBlob(auth_data_str, strlen(auth_data_str)));
+  return Sha1(SecureBlob(auth_data_str));
 }
 
 // Creates and sets default expectations on a ObjectPoolMock instance. Returns

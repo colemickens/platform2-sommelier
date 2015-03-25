@@ -45,7 +45,7 @@ static bool EnsureSystemSaltIsLoaded() {
   }
   std::vector<char> buf;
   buf.resize(file_size);
-  unsigned int data_read = base::ReadFile(salt_path, &buf.front(), file_size);
+  unsigned int data_read = base::ReadFile(salt_path, buf.data(), file_size);
   if (data_read != file_size) {
     PLOG(ERROR) << "Could not read entire file: " << data_read
                 << " != " << file_size;
@@ -54,7 +54,7 @@ static bool EnsureSystemSaltIsLoaded() {
 
   if (!salt)
     salt = new std::string();
-  salt->assign(&buf.front(), file_size);
+  salt->assign(buf.data(), file_size);
   return true;
 }
 

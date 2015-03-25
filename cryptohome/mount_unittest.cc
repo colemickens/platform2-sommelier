@@ -89,7 +89,7 @@ Tpm::TpmRetryAction TpmPassthroughEncrypt(
     const chromeos::SecureBlob &plaintext, Unused,
     chromeos::SecureBlob *ciphertext) {
   ciphertext->resize(plaintext.size());
-  memcpy(ciphertext->data(), plaintext.const_data(), plaintext.size());
+  memcpy(ciphertext->data(), plaintext.data(), plaintext.size());
   return Tpm::kTpmRetryNone;
 }
 
@@ -98,7 +98,7 @@ Tpm::TpmRetryAction TpmPassthroughDecrypt(
     const chromeos::SecureBlob &ciphertext, Unused,
     chromeos::SecureBlob *plaintext) {
   plaintext->resize(ciphertext.size());
-  memcpy(plaintext->data(), ciphertext.const_data(), ciphertext.size());
+  memcpy(plaintext->data(), ciphertext.data(), ciphertext.size());
   return Tpm::kTpmRetryNone;
 }
 
@@ -163,15 +163,14 @@ class MountTest : public ::testing::Test {
   bool LoadSerializedKeyset(const chromeos::Blob& contents,
                             cryptohome::SerializedVaultKeyset* serialized) {
     CHECK_NE(contents.size(), 0U);
-    return serialized->ParseFromArray(
-        static_cast<const unsigned char*>(&contents[0]), contents.size());
+    return serialized->ParseFromArray(contents.data(), contents.size());
   }
 
   void GetKeysetBlob(const SerializedVaultKeyset& serialized,
                      SecureBlob* blob) {
     SecureBlob local_wrapped_keyset(serialized.wrapped_keyset().length());
     serialized.wrapped_keyset().copy(
-        static_cast<char*>(local_wrapped_keyset.data()),
+        local_wrapped_keyset.char_data(),
         serialized.wrapped_keyset().length(), 0);
     blob->swap(local_wrapped_keyset);
   }
@@ -714,9 +713,8 @@ TEST_F(MountTest, GoodReDecryptTest) {
       up.GetObfuscatedUsername(helper_.system_salt), 0);
   EXPECT_GT(key_path.size(), 0u);
   cryptohome::SerializedVaultKeyset serialized;
-  EXPECT_TRUE(serialized.ParseFromArray(
-                  static_cast<const unsigned char*>(&user->credentials[0]),
-                  user->credentials.size()));
+  EXPECT_TRUE(serialized.ParseFromArray(user->credentials.data(),
+                                        user->credentials.size()));
   // Ensure we're starting from scrypt so we can test migrate to a mock-TPM.
   EXPECT_EQ((serialized.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED),
             SerializedVaultKeyset::SCRYPT_WRAPPED);
@@ -759,7 +757,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   // Create the "TPM-wrapped" value by letting it save the plaintext.
   EXPECT_CALL(tpm_, EncryptBlob(_, _, _, _, _))
     .WillRepeatedly(Invoke(TpmPassthroughEncrypt));
-  chromeos::SecureBlob fake_pub_key("A", 1);
+  chromeos::SecureBlob fake_pub_key("A");
   EXPECT_CALL(tpm_, GetPublicKeyHash(_, _, _))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(fake_pub_key),
                           Return(Tpm::kTpmRetryNone)));
@@ -781,9 +779,8 @@ TEST_F(MountTest, GoodReDecryptTest) {
   ASSERT_NE(migrated_keyset.size(), 0);
 
   cryptohome::SerializedVaultKeyset serialized_tpm;
-  EXPECT_TRUE(serialized_tpm.ParseFromArray(
-                  static_cast<const unsigned char*>(&migrated_keyset[0]),
-                  migrated_keyset.size()));
+  EXPECT_TRUE(serialized_tpm.ParseFromArray(migrated_keyset.data(),
+                                            migrated_keyset.size()));
   // Did it migrate?
   EXPECT_EQ((serialized_tpm.flags() & SerializedVaultKeyset::TPM_WRAPPED),
             SerializedVaultKeyset::TPM_WRAPPED);
@@ -918,8 +915,8 @@ TEST_F(MountTest, MountCryptohomeChapsKey) {
 
   // Compare the pre mount chaps key to the post mount key.
   ASSERT_EQ(local_chaps.size(), vault_keyset.chaps_key().size());
-  ASSERT_EQ(0, chromeos::SecureMemcmp(local_chaps.const_data(),
-    vault_keyset.chaps_key().const_data(), local_chaps.size()));
+  ASSERT_EQ(0, chromeos::SecureMemcmp(local_chaps.data(),
+    vault_keyset.chaps_key().data(), local_chaps.size()));
 }
 
 TEST_F(MountTest, MountCryptohomeNoChapsKey) {
@@ -1167,9 +1164,8 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
       .WillOnce(Return(base::Time::FromInternalValue(kMagicTimestamp)));
   mount_->UpdateCurrentUserActivityTimestamp(0);
   SerializedVaultKeyset serialized1;
-  ASSERT_TRUE(serialized1.ParseFromArray(
-      static_cast<const unsigned char*>(&updated_keyset[0]),
-      updated_keyset.size()));
+  ASSERT_TRUE(serialized1.ParseFromArray(updated_keyset.data(),
+                                         updated_keyset.size()));
 
   // Check that last activity timestamp is updated.
   ASSERT_TRUE(serialized1.has_last_activity_timestamp());
@@ -1184,9 +1180,8 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
       .WillRepeatedly(Return(true));
   mount_->UnmountCryptohome();
   SerializedVaultKeyset serialized2;
-  ASSERT_TRUE(serialized2.ParseFromArray(
-      static_cast<const unsigned char*>(&updated_keyset[0]),
-      updated_keyset.size()));
+  ASSERT_TRUE(serialized2.ParseFromArray(updated_keyset.data(),
+                                         updated_keyset.size()));
   ASSERT_TRUE(serialized2.has_last_activity_timestamp());
   EXPECT_EQ(kMagicTimestamp2, serialized2.last_activity_timestamp());
 
@@ -1194,9 +1189,8 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   // timestamp must not change this.
   mount_->UpdateCurrentUserActivityTimestamp(0);
   SerializedVaultKeyset serialized3;
-  ASSERT_TRUE(serialized3.ParseFromArray(
-      static_cast<const unsigned char*>(&updated_keyset[0]),
-      updated_keyset.size()));
+  ASSERT_TRUE(serialized3.ParseFromArray(updated_keyset.data(),
+                                         updated_keyset.size()));
   ASSERT_TRUE(serialized3.has_last_activity_timestamp());
   EXPECT_EQ(serialized3.has_last_activity_timestamp(),
             serialized2.has_last_activity_timestamp());
@@ -1212,7 +1206,7 @@ TEST_F(MountTest, MountForUserOrderingTest) {
   SecureBlob salt;
   salt.assign('A', 16);
   session.Init(salt);
-  UsernamePasskey up("username", SecureBlob("password", 8));
+  UsernamePasskey up("username", SecureBlob("password"));
   EXPECT_TRUE(session.SetUser(up));
 
   std::string src = "/src";
@@ -1247,7 +1241,7 @@ TEST_F(MountTest, LockboxGetsFinalized) {
   mount_->set_boot_lockbox(&lockbox);
   ASSERT_TRUE(DoMountInit());
   EXPECT_CALL(lockbox, FinalizeBoot()).Times(2).WillRepeatedly(Return(true));
-  UsernamePasskey up("username", SecureBlob("password", 8));
+  UsernamePasskey up("username", SecureBlob("password"));
   Mount::MountArgs args;
   MountError error = MOUNT_ERROR_NONE;
   mount_->MountCryptohome(up, args, &error);

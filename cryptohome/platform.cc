@@ -306,10 +306,10 @@ void Platform::LookForOpenFiles(const std::string& path_in,
 
     FilePath cwd_path = pid_path.Append("cwd");
     ssize_t link_length = readlink(cwd_path.value().c_str(),
-                                   &linkbuf[0],
+                                   linkbuf.data(),
                                    linkbuf.size());
     if (link_length > 0) {
-      std::string open_file(&linkbuf[0], link_length);
+      std::string open_file(linkbuf.data(), link_length);
       if (IsPathChild(path, open_file)) {
         pids->push_back(pid);
         continue;
@@ -326,10 +326,10 @@ void Platform::LookForOpenFiles(const std::string& path_in,
     for (FilePath fd_path = fd_dir_enum.Next();
          !fd_path.empty();
          fd_path = fd_dir_enum.Next()) {
-      link_length = readlink(fd_path.value().c_str(), &linkbuf[0],
+      link_length = readlink(fd_path.value().c_str(), linkbuf.data(),
                                      linkbuf.size());
       if (link_length > 0) {
-        std::string open_file(&linkbuf[0], link_length);
+        std::string open_file(linkbuf.data(), link_length);
         if (IsPathChild(path, open_file)) {
           pids->push_back(pid);
           break;
@@ -427,7 +427,7 @@ bool Platform::GetUserId(const std::string& user, uid_t* user_id,
   }
   struct passwd user_info, *user_infop;
   std::vector<char> user_name_buf(user_name_length);
-  if (getpwnam_r(user.c_str(), &user_info, &user_name_buf[0],
+  if (getpwnam_r(user.c_str(), &user_info, user_name_buf.data(),
                 user_name_length, &user_infop)) {
     return false;
   }
@@ -444,7 +444,7 @@ bool Platform::GetGroupId(const std::string& group, gid_t* group_id) const {
   }
   struct group group_info, *group_infop;
   std::vector<char> group_name_buf(group_name_length);
-  if (getgrnam_r(group.c_str(), &group_info, &group_name_buf[0],
+  if (getgrnam_r(group.c_str(), &group_info, group_name_buf.data(),
                 group_name_length, &group_infop)) {
     return false;
   }
@@ -493,7 +493,7 @@ bool Platform::WriteOpenFile(FILE* fp, const chromeos::Blob& blob) {
 bool Platform::WriteFile(const std::string& path,
                          const chromeos::Blob& blob) {
   return WriteArrayToFile(path,
-                          reinterpret_cast<const char*>(&blob[0]),
+                          reinterpret_cast<const char*>(blob.data()),
                           blob.size());
 }
 
@@ -545,7 +545,8 @@ std::string Platform::GetRandomSuffix() {
 bool Platform::WriteFileAtomic(const std::string& path,
                                const chromeos::Blob& blob,
                                mode_t mode) {
-  const std::string data(reinterpret_cast<const char*>(&blob[0]), blob.size());
+  const std::string data(reinterpret_cast<const char*>(blob.data()),
+                         blob.size());
   return WriteStringToFileAtomic(path, data, mode);
 }
 
@@ -614,7 +615,8 @@ bool Platform::WriteStringToFileAtomic(const std::string& path,
 bool Platform::WriteFileAtomicDurable(const std::string& path,
                                       const chromeos::Blob& blob,
                                       mode_t mode) {
-  const std::string data(reinterpret_cast<const char*>(&blob[0]), blob.size());
+  const std::string data(reinterpret_cast<const char*>(blob.data()),
+                         blob.size());
   return WriteStringToFileAtomicDurable(path, data, mode);
 }
 
@@ -651,7 +653,7 @@ bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
   }
   chromeos::Blob buf(file_size);
   int data_read = base::ReadFile(file_path,
-                                 reinterpret_cast<char*>(&buf[0]),
+                                 reinterpret_cast<char*>(buf.data()),
                                  file_size);
   // Cast is okay because of comparison to INT_MAX above.
   if (data_read != static_cast<int>(file_size)) {
@@ -961,8 +963,8 @@ long AddEcryptfsAuthToken(  // NOLINT(runtime/int)
   struct ecryptfs_auth_tok auth_token;
 
   generate_payload(&auth_token, const_cast<char*>(key_sig.c_str()),
-                   const_cast<char*>(reinterpret_cast<const char*>(&salt[0])),
-                   const_cast<char*>(reinterpret_cast<const char*>(&key[0])));
+                   const_cast<char*>(salt.char_data()),
+                   const_cast<char*>(key.char_data()));
 
   return ecryptfs_add_auth_tok_to_keyring(&auth_token,
                                           const_cast<char*>(key_sig.c_str()));
