@@ -25,26 +25,6 @@
         'binder_proxy_interface_base.cc',
       ],
     },
-    {
-      'target_name': 'ping-daemon',
-      'type': 'executable',
-      'sources': [
-        'samples/ping_daemon.cc',
-      ],
-      'dependencies': [
-        'libprotobinder',
-      ],
-    },
-    {
-      'target_name': 'ping-client',
-      'type': 'executable',
-      'sources': [
-        'samples/ping_client.cc',
-      ],
-      'dependencies': [
-        'libprotobinder',
-      ],
-    },
   ],
   'conditions': [
     ['USE_test == 1', {

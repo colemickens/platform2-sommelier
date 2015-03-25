@@ -109,7 +109,7 @@ bool Parcel::Write(const void* data, size_t len) {
 
 bool Parcel::WriteString16(const uint16_t* str, size_t len) {
   // Only 32bit lengths are supported.
-  if (len >= 0x100000000)
+  if (static_cast<uint64_t>(len) >= 0x100000000)
     return false;
   size_t alloc_len = len * sizeof(uint16_t);
   if (alloc_len < len)
@@ -122,7 +122,7 @@ bool Parcel::WriteString16(const uint16_t* str, size_t len) {
 bool Parcel::WriteString16(const std::string& str) {
   size_t len = str.size();
   // Only 32bit lengths are supported.
-  if (len >= 0x100000000)
+  if (static_cast<uint64_t>(len) >= 0x100000000)
     return false;
   // Android String16 Parcel code expects a NULL byte
   size_t alloc_len = (len + 1) * sizeof(uint16_t);
@@ -142,7 +142,7 @@ bool Parcel::WriteString16(const std::string& str) {
 bool Parcel::WriteString(const std::string& str) {
   size_t len = str.size();
   // Only 32bit lengths are supported.
-  if (len >= 0x100000000)
+  if (static_cast<uint64_t>(len) >= 0x100000000)
     return false;
   if (!WriteUInt32(len))
     return false;

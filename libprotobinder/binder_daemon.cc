@@ -10,11 +10,8 @@
 
 namespace protobinder {
 
-BinderDaemon::BinderDaemon(const std::string& service_name,
-                           scoped_ptr<IBinder> binder)
-    : manager_(BinderManagerInterface::Get()),
-      service_name_(service_name),
-      binder_(binder.Pass()) {}
+BinderDaemon::BinderDaemon()
+    : manager_(BinderManagerInterface::Get()) {}
 
 BinderDaemon::~BinderDaemon() {}
 
@@ -22,10 +19,6 @@ int BinderDaemon::OnInit() {
   int return_code = Daemon::OnInit();
   if (return_code != EX_OK)
     return return_code;
-
-  int ret =
-      GetServiceManager()->AddService(service_name_.c_str(), binder_.get());
-  VLOG(1) << "GetServiceManager()->AddService() returned " << ret;
 
   int binder_fd = 0;
   manager_->GetFdForPolling(&binder_fd);

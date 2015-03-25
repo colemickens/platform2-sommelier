@@ -9,12 +9,10 @@
 
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <chromeos/daemons/daemon.h>
 
 #include "binder_export.h"  // NOLINT(build/include)
 #include "binder_manager.h"  // NOLINT(build/include)
-#include "iservice_manager.h"  // NOLINT(build/include)
 
 namespace protobinder {
 
@@ -23,16 +21,15 @@ class BinderHost;
 class BINDER_EXPORT BinderDaemon : public chromeos::Daemon,
                                    public base::MessageLoopForIO::Watcher {
  public:
-  BinderDaemon(const std::string& service_name, scoped_ptr<IBinder> binder);
+  BinderDaemon();
   virtual ~BinderDaemon();
+
+ protected:
+  // Implement chromeos::Daemon.
+  int OnInit() override;
 
  private:
   BinderManagerInterface* manager_;
-  std::string service_name_;
-  scoped_ptr<IBinder> binder_;
-
-  // Implement chromeos::Daemon.
-  int OnInit() override;
 
   // Implement MessageLoopForIO::Watcher.
   void OnFileCanReadWithoutBlocking(int file_descriptor) override;

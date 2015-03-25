@@ -69,6 +69,11 @@
         'main.cc',
         'soma.cc',
       ],
+      'variables': {
+        'deps': [
+          'libpsyche',
+        ],
+      },
     },
     {
       'target_name': 'soma_client',

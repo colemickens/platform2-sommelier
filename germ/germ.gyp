@@ -64,7 +64,14 @@
       'dependencies': [
         'libgerm',
       ],
-      'sources': ['germd.cc'],
+      'sources': [
+        'germd.cc'
+      ],
+      'variables': {
+        'deps': [
+          'libpsyche',
+        ],
+      },
     },
   ],
   'conditions': [
