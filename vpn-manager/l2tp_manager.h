@@ -38,6 +38,7 @@ class L2tpManager : public ServiceManager {
               bool require_authentication,
               const std::string& password,
               bool ppp_debug,
+              bool ppp_lcp_echo,
               int ppp_setup_timeout,
               const std::string& pppd_plugin,
               bool use_peer_dns,
@@ -52,6 +53,7 @@ class L2tpManager : public ServiceManager {
   void SetDefaultRouteForTesting(bool default_route);
   void SetPasswordForTesting(const std::string& password);
   void SetPppdPluginForTesting(const std::string& pppd_plugin);
+  void SetPppLcpEchoForTesting(bool ppp_lcp_echo);
   void SetUsePeerDnsForTesting(bool use_peer_dns);
   void SetUserForTesting(const std::string& user);
   void SetSystemConfigForTesting(bool system_config);
@@ -104,6 +106,7 @@ class L2tpManager : public ServiceManager {
   bool require_authentication_;
   std::string password_;
   bool ppp_debug_;
+  bool ppp_lcp_echo_;
   int ppp_setup_timeout_;
   std::string pppd_plugin_;
   bool use_peer_dns_;

@@ -41,6 +41,7 @@ L2tpManager::L2tpManager(bool default_route,
                          bool require_authentication,
                          const std::string& password,
                          bool ppp_debug,
+                         bool ppp_lcp_echo,
                          int ppp_setup_timeout,
                          const std::string& pppd_plugin,
                          bool use_peer_dns,
@@ -54,6 +55,7 @@ L2tpManager::L2tpManager(bool default_route,
       require_authentication_(require_authentication),
       password_(password),
       ppp_debug_(ppp_debug),
+      ppp_lcp_echo_(ppp_lcp_echo),
       ppp_setup_timeout_(ppp_setup_timeout),
       pppd_plugin_(pppd_plugin),
       use_peer_dns_(use_peer_dns),
@@ -80,6 +82,10 @@ void L2tpManager::SetPasswordForTesting(const std::string& password) {
 
 void L2tpManager::SetPppdPluginForTesting(const std::string& pppd_plugin) {
   pppd_plugin_ = pppd_plugin;
+}
+
+void L2tpManager::SetPppLcpEchoForTesting(bool ppp_lcp_echo) {
+  ppp_lcp_echo_ = ppp_lcp_echo;
 }
 
 void L2tpManager::SetUsePeerDnsForTesting(bool use_peer_dns) {
@@ -164,14 +170,17 @@ std::string L2tpManager::FormatPppdConfiguration() {
       "noccp\n"
       "noauth\n"
       "crtscts\n"
-      "lcp-echo-failure 4\n"
-      "lcp-echo-interval 30\n"
       "mtu 1410\n"
       "mru 1410\n"
       "lock\n"
       "connect-delay 5000\n");
   pppd_config.append(StringPrintf("%sdefaultroute\n",
                                   default_route_ ? "" : "no"));
+  if (ppp_lcp_echo_) {
+      pppd_config.append(
+          "lcp-echo-failure 4\n"
+          "lcp-echo-interval 30\n");
+  }
   if (ppp_output_fd_ != -1) {
     pppd_config.append(StringPrintf("logfile %s\n",
                                     ppp_output_path_.value().c_str()));

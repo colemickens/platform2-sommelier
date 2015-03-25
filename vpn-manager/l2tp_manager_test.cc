@@ -42,6 +42,7 @@ class L2tpManagerTest : public ::testing::Test {
                                 true,  // require_authentication
                                 "",  // password
                                 true,  // ppp_debug
+                                true,  // ppp_lcp_echo
                                 10,  // ppp_setup_timeout
                                 "",  // pppd_plugin
                                 true,  // usepeerdns
@@ -103,13 +104,13 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
       "noccp\n"
       "noauth\n"
       "crtscts\n"
-      "lcp-echo-failure 4\n"
-      "lcp-echo-interval 30\n"
       "mtu 1410\n"
       "mru 1410\n"
       "lock\n"
       "connect-delay 5000\n";
 
+
+  l2tp_->SetPppLcpEchoForTesting(false);
   l2tp_->SetDefaultRouteForTesting(false);
   l2tp_->SetUsePeerDnsForTesting(false);
   std::string expected(kBaseExpected);
@@ -118,6 +119,11 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
   expected = kBaseExpected;
   l2tp_->SetDefaultRouteForTesting(true);
   expected.append("defaultroute\n");
+  EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
+  l2tp_->SetPppLcpEchoForTesting(true);
+  expected.append("lcp-echo-failure 4\n"
+                  "lcp-echo-interval 30\n");
+  EXPECT_EQ(expected, l2tp_->FormatPppdConfiguration());
   l2tp_->ppp_output_fd_ = 4;
   l2tp_->ppp_output_path_ = FilePath("/tmp/pppd.log");
   expected.append("logfile /tmp/pppd.log\n");
