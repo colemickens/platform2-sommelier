@@ -46,6 +46,11 @@ class Daemon : public DBusServiceDaemon {
     LOG(INFO) << "peerd starting";
   }
 
+  void OnShutdown(int* return_code) override {
+    DBusServiceDaemon::OnShutdown(return_code);
+    manager_.reset();
+  }
+
  private:
   const std::string initial_mdns_prefix_;
   std::unique_ptr<Manager> manager_;
