@@ -99,6 +99,7 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
   { kL2tpIpsecXauthUserProperty, Property::kCredential | Property::kWriteOnly },
   { kL2tpIpsecXauthPasswordProperty,
     Property::kCredential | Property::kWriteOnly },
+  { kL2tpIpsecLcpEchoDisabledProperty, 0 },
 };
 
 L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
@@ -273,6 +274,8 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
              "--require_authentication", "--norequire_authentication", options);
   AppendFlag(kL2TPIPSecLengthBitProperty,
              "--length_bit", "--nolength_bit", options);
+  AppendFlag(kL2tpIpsecLcpEchoDisabledProperty,
+             "--noppp_lcp_echo", "--ppp_lcp_echo", options);
   AppendValueOption(kL2tpIpsecTunnelGroupProperty, "--tunnel_group", options);
   if (SLOG_IS_ON(VPN, 0)) {
     options->push_back("--debug");
