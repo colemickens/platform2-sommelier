@@ -68,6 +68,12 @@ class Daemon : public DBusServiceDaemon {
     LOG(INFO) << "leaderd starting";
   }
 
+  void OnShutdown(int* return_code) override {
+    DBusServiceDaemon::OnShutdown(return_code);
+    webserver_.reset();
+    manager_.reset();
+  }
+
  private:
   const std::string peerd_service_name_;
   const std::string web_handler_name_;
