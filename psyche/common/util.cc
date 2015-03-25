@@ -4,8 +4,8 @@
 
 #include "psyche/common/util.h"
 
-#include <libprotobinder/binder_proxy.h>
-#include <libprotobinder/ibinder.h>
+#include <protobinder/binder_proxy.h>
+#include <protobinder/ibinder.h>
 
 #include "psyche/proto_bindings/psyche.pb.h"
 

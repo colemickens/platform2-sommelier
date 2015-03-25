@@ -8,7 +8,7 @@
 
 #include <base/bind.h>
 #include <base/message_loop/message_loop.h>
-#include <libprotobinder/binder_proxy.h>
+#include <protobinder/binder_proxy.h>
 
 #include "psyche/proto_bindings/psyche.pb.h"
 #include "psyche/proto_bindings/psyche.pb.rpc.h"

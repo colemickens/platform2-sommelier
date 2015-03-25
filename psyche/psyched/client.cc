@@ -4,7 +4,7 @@
 
 #include "psyche/psyched/client.h"
 
-#include <libprotobinder/binder_proxy.h>
+#include <protobinder/binder_proxy.h>
 
 #include "psyche/common/util.h"
 #include "psyche/proto_bindings/psyche.pb.h"

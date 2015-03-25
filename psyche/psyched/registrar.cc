@@ -10,9 +10,9 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>
-#include <libprotobinder/binder_manager.h>
-#include <libprotobinder/binder_proxy.h>
-#include <libprotobinder/iservice_manager.h>
+#include <protobinder/binder_manager.h>
+#include <protobinder/binder_proxy.h>
+#include <protobinder/iservice_manager.h>
 
 #include "psyche/common/constants.h"
 #include "psyche/common/util.h"
