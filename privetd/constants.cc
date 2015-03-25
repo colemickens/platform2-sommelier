@@ -25,11 +25,10 @@ const char kInvalidParams[] = "invalidParams";
 const char kSetupUnavailable[] = "setupUnavailable";
 const char kDeviceBusy[] = "deviceBusy";
 const char kInvalidState[] = "invalidState";
-const char kInvalidTicket[] = "invalidTicket";
-const char kServerError[] = "serverError";
 const char kInvalidSsid[] = "invalidSsid";
 const char kInvalidPassphrase[] = "invalidPassphrase";
-const char kUnknownCommand[] = "unknownCommand";
+const char kNotFound[] = "notFound";
+const char kNotImplemented[] = "notImplemented";
 
 }  // namespace errors
 

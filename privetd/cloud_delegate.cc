@@ -184,15 +184,10 @@ class CloudDelegateImpl : public CloudDelegate {
                      int retries,
                      chromeos::Error* error) {
     if (retries >= kMaxSetupRetries) {
-      chromeos::ErrorPtr new_error;
-      if (error) {
-        chromeos::Error::AddTo(&new_error, FROM_HERE, error->GetDomain(),
-                               error->GetCode(), error->GetMessage());
-      } else {
-        chromeos::Error::AddTo(&new_error, FROM_HERE, errors::kDomain,
-                               errors::kInvalidState,
-                               "Failed to register device");
-      }
+      chromeos::ErrorPtr new_error{error ? error->Clone() : nullptr};
+      chromeos::Error::AddTo(&new_error, FROM_HERE, errors::kDomain,
+                             errors::kInvalidState,
+                             "Failed to register device");
       setup_state_ = SetupState{std::move(new_error)};
       return;
     }
@@ -247,7 +242,7 @@ class CloudDelegateImpl : public CloudDelegate {
       chromeos::ErrorPtr error;
       chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
                              errors::kInvalidFormat,
-                             "Buffet returned invalid JSON.");
+                             "Buffet returned invalid JSON");
       return error_callback.Run(error.get());
     }
     success_callback.Run(*command);
@@ -257,7 +252,7 @@ class CloudDelegateImpl : public CloudDelegate {
     ManagerProxy* manager = object_manager_.GetManagerProxy();
     if (!manager) {
       chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
-                             errors::kDeviceBusy, "Buffet is not ready.");
+                             errors::kDeviceBusy, "Buffet is not ready");
     }
     return manager;
   }

@@ -211,10 +211,7 @@ class Daemon : public chromeos::DBusServiceDaemon,
                              int status,
                              const base::DictionaryValue& output) {
     VLOG(3) << "status: " << status << ", Output: " << output;
-    if (status == chromeos::http::status_code::NotFound)
-      response->ReplyWithErrorNotFound();
-    else
-      response->ReplyWithJson(status, &output);
+    response->ReplyWithJson(status, &output);
   }
 
   void HelloWorldHandler(scoped_ptr<Request> request,

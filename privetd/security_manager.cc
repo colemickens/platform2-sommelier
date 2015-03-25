@@ -319,7 +319,8 @@ bool SecurityManager::ConfirmPairing(const std::string& session_id,
           std::string(commitment.begin(), commitment.end()), error)) {
     ClosePendingSession(session_id);
     chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
-                           errors::kCommitmentMismatch, (*error)->GetMessage());
+                           errors::kCommitmentMismatch,
+                           "Pairing code or crypto implementation mismatch");
     return false;
   }
 
@@ -373,7 +374,7 @@ bool SecurityManager::CheckIfPairingAllowed(chromeos::ErrorPtr* error) {
 
   if (block_pairing_until_ > base::Time::Now()) {
     chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
-                           errors::kDeviceBusy, "Temporarily blocked");
+                           errors::kDeviceBusy, "Too many pairing attempts");
     return false;
   }
 

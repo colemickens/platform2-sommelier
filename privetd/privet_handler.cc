@@ -96,8 +96,13 @@ const char kAuthExpiresInKey[] = "expiresIn";
 const char kAuthScopeKey[] = "scope";
 
 const char kAuthorizationHeaderPrefix[] = "Privet";
-const char kErrorReasonKey[] = "reason";
+
+const char kErrorCodeKey[] = "code";
+const char kErrorDomainKey[] = "domain";
+const char kErrorErrorsKey[] = "errors";
 const char kErrorMessageKey[] = "message";
+const char kErrorReasonKey[] = "reason";
+const char kErrorDebugInfoKey[] = "debugInfo";
 
 const char kSetupStartSsidKey[] = "ssid";
 const char kSetupStartPassKey[] = "passphrase";
@@ -204,6 +209,30 @@ const EnumToStringMap<AuthScope>::Map EnumToStringMap<AuthScope>::kMap[] = {
     {AuthScope::kOwner, "owner"},
 };
 
+struct {
+  const char* const reason;
+  int code;
+} kReasonToCode[] = {
+    {errors::kInvalidClientCommitment, chromeos::http::status_code::Forbidden},
+    {errors::kInvalidFormat, chromeos::http::status_code::BadRequest},
+    {errors::kMissingAuthorization, chromeos::http::status_code::Denied},
+    {errors::kInvalidAuthorization, chromeos::http::status_code::Denied},
+    {errors::kInvalidAuthorizationScope,
+     chromeos::http::status_code::Forbidden},
+    {errors::kCommitmentMismatch, chromeos::http::status_code::Forbidden},
+    {errors::kUnknownSession, chromeos::http::status_code::NotFound},
+    {errors::kInvalidAuthCode, chromeos::http::status_code::Forbidden},
+    {errors::kInvalidAuthMode, chromeos::http::status_code::BadRequest},
+    {errors::kInvalidRequestedScope, chromeos::http::status_code::BadRequest},
+    {errors::kAccessDenied, chromeos::http::status_code::Forbidden},
+    {errors::kInvalidParams, chromeos::http::status_code::BadRequest},
+    {errors::kSetupUnavailable, chromeos::http::status_code::BadRequest},
+    {errors::kDeviceBusy, chromeos::http::status_code::ServiceUnavailable},
+    {errors::kInvalidState, chromeos::http::status_code::InternalServerError},
+    {errors::kNotFound, chromeos::http::status_code::NotFound},
+    {errors::kNotImplemented, chromeos::http::status_code::NotSupported},
+};
+
 template <typename T>
 std::string EnumToString(T id) {
   return EnumToStringMap<T>::FindNameById(id);
@@ -229,15 +258,40 @@ std::string GetAuthTokenFromAuthHeader(const std::string& auth_header) {
   return value;
 }
 
-std::unique_ptr<base::DictionaryValue> CreateError(
+std::unique_ptr<base::DictionaryValue> ErrorInfoToJson(
     const chromeos::Error& error) {
-  std::unique_ptr<base::DictionaryValue> output(new base::DictionaryValue);
-  output->SetString(kErrorReasonKey, error.GetCode());
-  tracked_objects::Location location(error.GetLocation().function_name.c_str(),
+  std::unique_ptr<base::DictionaryValue> output{new base::DictionaryValue};
+  output->SetString(kErrorMessageKey, error.GetMessage());
+  tracked_objects::Location location{error.GetLocation().function_name.c_str(),
                                      error.GetLocation().file_name.c_str(),
-                                     error.GetLocation().line_number, nullptr);
-  output->SetString(kErrorMessageKey,
-                    location.ToString() + ": " + error.GetMessage());
+                                     error.GetLocation().line_number,
+                                     nullptr};
+  output->SetString(kErrorDebugInfoKey, location.ToString());
+  return output;
+}
+
+// Creates JSON similar to GCD server error format.
+std::unique_ptr<base::DictionaryValue> ErrorToJson(
+    int http_code,
+    const chromeos::Error& error) {
+  std::unique_ptr<base::DictionaryValue> output{new base::DictionaryValue};
+  std::unique_ptr<base::ListValue> errors{new base::ListValue};
+  for (const chromeos::Error* it = &error; it; it = it->GetInnerError()) {
+    std::unique_ptr<base::DictionaryValue> inner{ErrorInfoToJson(error)};
+    inner->SetString(kErrorDomainKey, error.GetDomain());
+    inner->SetString(kErrorReasonKey, error.GetCode());
+    errors->Append(inner.release());
+  }
+  output->Set(kErrorErrorsKey, errors.release());
+  output->SetString(kErrorMessageKey, error.GetMessage());
+  output->SetInteger(kErrorCodeKey, http_code);
+  return output;
+}
+
+std::unique_ptr<base::DictionaryValue> StateErrorToJson(
+    const chromeos::Error& error) {
+  std::unique_ptr<base::DictionaryValue> output{ErrorInfoToJson(error)};
+  output->SetString(kErrorCodeKey, error.GetCode());
   return output;
 }
 
@@ -248,17 +302,21 @@ void SetState(const T& state, base::DictionaryValue* parent) {
     return;
   }
   parent->SetString(kStatusKey, kStatusErrorValue);
-  parent->Set(kErrorKey, CreateError(*state.error()).release());
+  parent->Set(kErrorKey, StateErrorToJson(*state.error()).release());
 }
 
 void ReturnError(const chromeos::Error& error,
                  const PrivetHandler::RequestCallback& callback) {
-  std::unique_ptr<base::DictionaryValue> output = CreateError(error);
-  callback.Run(chromeos::http::status_code::BadRequest, *output);
-}
-
-void ReturnNotFound(const PrivetHandler::RequestCallback& callback) {
-  callback.Run(chromeos::http::status_code::NotFound, base::DictionaryValue());
+  int code = chromeos::http::status_code::InternalServerError;
+  for (const auto& it : kReasonToCode) {
+    if (error.HasError(errors::kDomain, it.reason)) {
+      code = it.code;
+      break;
+    }
+  }
+  std::unique_ptr<base::DictionaryValue> output{new base::DictionaryValue};
+  output->Set(kErrorKey, ErrorToJson(code, error).release());
+  callback.Run(code, *output);
 }
 
 void OnCommandRequestSucceeded(const PrivetHandler::RequestCallback& callback,
@@ -271,7 +329,7 @@ void OnCommandRequestFailed(const PrivetHandler::RequestCallback& callback,
   if (error->HasError("gcd", "unknown_command")) {
     chromeos::ErrorPtr new_error = error->Clone();
     chromeos::Error::AddTo(&new_error, FROM_HERE, errors::kDomain,
-                           errors::kUnknownCommand, "Unknown command ID.");
+                           errors::kNotFound, "Unknown command ID");
     return ReturnError(*new_error, callback);
   }
   return ReturnError(*error, callback);
@@ -339,12 +397,15 @@ void PrivetHandler::HandleRequest(const std::string& api,
   chromeos::ErrorPtr error;
   if (!input) {
     chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
-                           errors::kInvalidFormat, "Invalid JSON format");
+                           errors::kInvalidFormat, "Malformed JSON");
     return ReturnError(*error, callback);
   }
   auto handler = handlers_.find(api);
-  if (handler == handlers_.end())
-    return ReturnNotFound(callback);
+  if (handler == handlers_.end()) {
+    chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
+                           errors::kNotFound, "Path not found");
+    return ReturnError(*error, callback);
+  }
   if (auth_header.empty()) {
     chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
                            errors::kMissingAuthorization,

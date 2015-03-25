@@ -26,12 +26,10 @@ extern const char kInvalidParams[];
 extern const char kSetupUnavailable[];
 extern const char kDeviceBusy[];
 extern const char kInvalidState[];
-extern const char kInvalidTicket[];
-extern const char kServerError[];
 extern const char kInvalidSsid[];
 extern const char kInvalidPassphrase[];
-extern const char kUnknownCommand[];
-
+extern const char kNotFound[];
+extern const char kNotImplemented[];
 }  // namespace errors
 
 // Time to reply on privet HTTP.

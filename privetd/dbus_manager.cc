@@ -7,6 +7,7 @@
 #include <base/memory/ref_counted.h>
 #include <chromeos/any.h>
 
+#include "privetd/constants.h"
 #include "privetd/security_delegate.h"
 #include "privetd/security_manager.h"
 
@@ -17,17 +18,8 @@ using chromeos::dbus_utils::ExportedObjectManager;
 using org::chromium::privetd::ManagerAdaptor;
 
 namespace privetd {
+
 namespace {
-namespace errors {
-namespace manager {
-
-const char kNotImplemented[] = "not_implemented";
-
-}  // namespace manager
-
-const char kDomain[] = "privetd";
-
-}  // namespace errors
 
 const char kPingResponse[] = "Hello world!";
 const char kPairingSessionIdKey[] = "sessionId";
@@ -70,20 +62,16 @@ bool DBusManager::EnableWiFiBootstrapping(
     chromeos::ErrorPtr* error,
     const dbus::ObjectPath& in_listener_path,
     const chromeos::VariantDictionary& in_options) {
-  chromeos::Error::AddTo(error,
-                         FROM_HERE,
-                         errors::kDomain,
-                         errors::manager::kNotImplemented,
-                         "Manual WiFi bootstrapping is not implemented.");
+  chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                         errors::kNotImplemented,
+                         "Manual WiFi bootstrapping is not implemented");
   return false;
 }
 
 bool DBusManager::DisableWiFiBootstrapping(chromeos::ErrorPtr* error) {
-  chromeos::Error::AddTo(error,
-                         FROM_HERE,
-                         errors::kDomain,
-                         errors::manager::kNotImplemented,
-                         "Manual WiFi bootstrapping is not implemented.");
+  chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                         errors::kNotImplemented,
+                         "Manual WiFi bootstrapping is not implemented");
   return false;
 }
 
@@ -91,20 +79,16 @@ bool DBusManager::EnableGCDBootstrapping(
     chromeos::ErrorPtr* error,
     const dbus::ObjectPath& in_listener_path,
     const chromeos::VariantDictionary& in_options) {
-  chromeos::Error::AddTo(error,
-                         FROM_HERE,
-                         errors::kDomain,
-                         errors::manager::kNotImplemented,
-                         "Manual GCD bootstrapping is not implemented.");
+  chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                         errors::kNotImplemented,
+                         "Manual GCD bootstrapping is not implemented");
   return false;
 }
 
 bool DBusManager::DisableGCDBootstrapping(chromeos::ErrorPtr* error) {
-  chromeos::Error::AddTo(error,
-                         FROM_HERE,
-                         errors::kDomain,
-                         errors::manager::kNotImplemented,
-                         "Manual GCD bootstrapping is not implemented.");
+  chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                         errors::kNotImplemented,
+                         "Manual GCD bootstrapping is not implemented");
   return false;
 }
 

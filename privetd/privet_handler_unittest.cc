@@ -14,9 +14,11 @@
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
+#include <chromeos/http/http_request.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "privetd/constants.h"
 #include "privetd/mock_delegates.h"
 
 using testing::_;
@@ -53,23 +55,66 @@ bool IsEqualValue(const base::Value& val1, const base::Value& val2) {
   return val1.Equals(&val2);
 }
 
-bool IsEqualJson(const std::string& test_json,
-                 const base::DictionaryValue& dictionary) {
-  base::DictionaryValue dictionary2;
-  LoadTestJson(test_json, &dictionary2);
+struct CodeWithReason {
+  CodeWithReason(int code_in, const std::string& reason_in)
+      : code(code_in), reason(reason_in) {}
+  int code;
+  std::string reason;
+};
 
-  base::DictionaryValue::Iterator it1(dictionary);
+std::ostream& operator<<(std::ostream& stream, const CodeWithReason& error) {
+  return stream << "{" << error.code << ", " << error.reason << "}";
+}
+
+bool IsEqualError(const CodeWithReason& expected,
+                  const base::DictionaryValue& dictionary) {
+  const base::ListValue* errors{nullptr};
+  const base::DictionaryValue* first_error{nullptr};
+  std::string reason;
+  int code = 0;
+  return dictionary.GetInteger("error.code", &code) && code == expected.code &&
+         dictionary.GetList("error.errors", &errors) &&
+         errors->GetDictionary(0, &first_error) &&
+         first_error->GetString("reason", &reason) && reason == expected.reason;
+}
+
+bool IsEqualDictionary(const base::DictionaryValue& dictionary1,
+                       const base::DictionaryValue& dictionary2) {
+  base::DictionaryValue::Iterator it1(dictionary1);
   base::DictionaryValue::Iterator it2(dictionary2);
   for (; !it1.IsAtEnd() && !it2.IsAtEnd(); it1.Advance(), it2.Advance()) {
     // Output mismatched keys.
-    EXPECT_EQ(it2.key(), it1.key());
+    EXPECT_EQ(it1.key(), it2.key());
+    if (it1.key() != it2.key())
+      return false;
+
+    if (it1.key() == "error") {
+      std::string code1;
+      std::string code2;
+      const char kCodeKey[] = "error.code";
+      return dictionary1.GetString(kCodeKey, &code1) &&
+             dictionary2.GetString(kCodeKey, &code2) && code1 == code2;
+    }
+
+    const base::DictionaryValue* d1{nullptr};
+    const base::DictionaryValue* d2{nullptr};
+    if (it1.value().GetAsDictionary(&d1) && it2.value().GetAsDictionary(&d2))
+      return IsEqualDictionary(*d1, *d2);
+
     // Output mismatched values.
-    EXPECT_PRED2(IsEqualValue, it2.value(), it1.value());
-    if (it1.key() != it2.key() || !it1.value().Equals(&it2.value()))
+    EXPECT_PRED2(IsEqualValue, it1.value(), it2.value());
+    if (!IsEqualValue(it1.value(), it2.value()))
       return false;
   }
 
   return it1.IsAtEnd() && it2.IsAtEnd();
+}
+
+bool IsEqualJson(const std::string& test_json,
+                 const base::DictionaryValue& dictionary) {
+  base::DictionaryValue dictionary2;
+  LoadTestJson(test_json, &dictionary2);
+  return IsEqualDictionary(dictionary2, dictionary);
 }
 
 }  // namespace
@@ -125,12 +170,12 @@ class PrivetHandlerTest : public testing::Test {
 
  private:
   void HandlerCallback(int status, const base::DictionaryValue& output) {
-    EXPECT_NE(output.HasKey("reason"), status == 200);
+    int code = 0;
+    if (output.GetInteger("error.code", &code))
+      EXPECT_EQ(code, status);
+    else
+      EXPECT_EQ(chromeos::http::status_code::Ok, status);
     output_.MergeDictionary(&output);
-    // Don't test messages, error code is only important.
-    output_.Remove("message", nullptr);
-    output_.Remove("wifi.error.message", nullptr);
-    output_.Remove("gcd.error.message", nullptr);
   }
 
   static void HandlerNoFound(int status, const base::DictionaryValue&) {
@@ -148,27 +193,24 @@ TEST_F(PrivetHandlerTest, UnknownApi) {
 
 TEST_F(PrivetHandlerTest, InvalidFormat) {
   auth_header_ = "";
-  EXPECT_PRED2(IsEqualJson, "{'reason': 'invalidFormat'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(400, "invalidFormat"),
                HandleRequest("/privet/info", nullptr));
 }
 
 TEST_F(PrivetHandlerTest, MissingAuth) {
   auth_header_ = "";
-  EXPECT_PRED2(IsEqualJson,
-               "{'reason': 'missingAuthorization'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(401, "missingAuthorization"),
                HandleRequest("/privet/info", "{}"));
 }
 
 TEST_F(PrivetHandlerTest, InvalidAuth) {
   auth_header_ = "foo";
-  EXPECT_PRED2(IsEqualJson,
-               "{'reason': 'invalidAuthorization'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(401, "invalidAuthorization"),
                HandleRequest("/privet/info", "{}"));
 }
 
 TEST_F(PrivetHandlerTest, InvalidAuthScope) {
-  EXPECT_PRED2(IsEqualJson,
-               "{'reason': 'invalidAuthorizationScope'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(403, "invalidAuthorizationScope"),
                HandleRequest("/privet/v3/setup/start", "{}"));
 }
 
@@ -292,11 +334,11 @@ TEST_F(PrivetHandlerTest, Info) {
 }
 
 TEST_F(PrivetHandlerTest, PairingStartInvalidParams) {
-  EXPECT_PRED2(IsEqualJson, "{'reason': 'invalidParams'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(400, "invalidParams"),
                HandleRequest("/privet/v3/pairing/start",
                              "{'pairing':'embeddedCode','crypto':'crypto'}"));
 
-  EXPECT_PRED2(IsEqualJson, "{'reason': 'invalidParams'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(400, "invalidParams"),
                HandleRequest("/privet/v3/pairing/start",
                              "{'pairing':'code','crypto':'p256_spake2'}"));
 }
@@ -325,29 +367,29 @@ TEST_F(PrivetHandlerTest, PairingCancel) {
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorNoType) {
-  EXPECT_PRED2(IsEqualJson, "{'reason': 'invalidAuthMode'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(400, "invalidAuthMode"),
                HandleRequest("/privet/v3/auth", "{}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorInvalidType) {
-  EXPECT_PRED2(IsEqualJson, "{'reason':'invalidAuthMode'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(400, "invalidAuthMode"),
                HandleRequest("/privet/v3/auth", "{'mode':'unknown'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorNoScope) {
-  EXPECT_PRED2(IsEqualJson, "{'reason':'invalidRequestedScope'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(400, "invalidRequestedScope"),
                HandleRequest("/privet/v3/auth", "{'mode':'anonymous'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorInvalidScope) {
   EXPECT_PRED2(
-      IsEqualJson, "{'reason':'invalidRequestedScope'}",
+      IsEqualError, CodeWithReason(400, "invalidRequestedScope"),
       HandleRequest("/privet/v3/auth",
                     "{'mode':'anonymous','requestedScope':'unknown'}"));
 }
 
 TEST_F(PrivetHandlerTest, AuthErrorAccessDenied) {
-  EXPECT_PRED2(IsEqualJson, "{'reason':'accessDenied'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(403, "accessDenied"),
                HandleRequest("/privet/v3/auth",
                              "{'mode':'anonymous','requestedScope':'owner'}"));
 }
@@ -360,8 +402,7 @@ TEST_F(PrivetHandlerTest, AuthErrorInvalidAuthCode) {
     'requestedScope': 'user',
     'authCode': 'testToken'
   })";
-  EXPECT_PRED2(IsEqualJson,
-               "{'reason':'invalidAuthCode'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(403, "invalidAuthCode"),
                HandleRequest("/privet/v3/auth", kInput));
 }
 
@@ -436,7 +477,7 @@ TEST_F(PrivetHandlerSetupTest, StatusWifiError) {
     'wifi': {
         'status': 'error',
         'error': {
-          'reason': 'invalidPassphrase'
+          'code': 'invalidPassphrase'
         }
      }
   })";
@@ -466,7 +507,7 @@ TEST_F(PrivetHandlerSetupTest, StatusGcdError) {
     'gcd': {
         'status': 'error',
         'error': {
-          'reason': 'invalidTicket'
+          'code': 'invalidTicket'
         }
      }
   })";
@@ -493,8 +534,7 @@ TEST_F(PrivetHandlerSetupTest, InvalidParams) {
       'ssid': ''
     }
   })";
-  EXPECT_PRED2(IsEqualJson,
-               "{'reason':'invalidParams'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(400, "invalidParams"),
                HandleRequest("/privet/v3/setup/start", kInputWifi));
 
   const char kInputRegistration[] = R"({
@@ -502,14 +542,13 @@ TEST_F(PrivetHandlerSetupTest, InvalidParams) {
       'ticketId': ''
     }
   })";
-  EXPECT_PRED2(IsEqualJson,
-               "{'reason':'invalidParams'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(400, "invalidParams"),
                HandleRequest("/privet/v3/setup/start", kInputRegistration));
 }
 
 TEST_F(PrivetHandlerSetupTest, WifiSetupUnavailable) {
   SetNoWifiAndGcd();
-  EXPECT_PRED2(IsEqualJson, "{'reason':'setupUnavailable'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(400, "setupUnavailable"),
                HandleRequest("/privet/v3/setup/start", "{'wifi': {}}"));
 }
 
@@ -520,13 +559,13 @@ TEST_F(PrivetHandlerSetupTest, WifiSetup) {
       'passphrase': 'testPass'
     }
   })";
-  auto set_error =
-      [](const std::string&, const std::string&, chromeos::ErrorPtr* error) {
-        chromeos::Error::AddTo(error, FROM_HERE, "test", "deviceBusy", "");
-      };
+  auto set_error = [](const std::string&, const std::string&,
+                      chromeos::ErrorPtr* error) {
+    chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain, "deviceBusy", "");
+  };
   EXPECT_CALL(wifi_, ConfigureCredentials(_, _, _))
       .WillOnce(DoAll(Invoke(set_error), Return(false)));
-  EXPECT_PRED2(IsEqualJson, "{'reason':'deviceBusy'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(503, "deviceBusy"),
                HandleRequest("/privet/v3/setup/start", kInput));
 
   const char kExpected[] = R"({
@@ -543,7 +582,7 @@ TEST_F(PrivetHandlerSetupTest, WifiSetup) {
 
 TEST_F(PrivetHandlerSetupTest, GcdSetupUnavailable) {
   SetNoWifiAndGcd();
-  EXPECT_PRED2(IsEqualJson, "{'reason':'setupUnavailable'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(400, "setupUnavailable"),
                HandleRequest("/privet/v3/setup/start", "{'gcd': {}}"));
 }
 
@@ -555,14 +594,13 @@ TEST_F(PrivetHandlerSetupTest, GcdSetup) {
     }
   })";
 
-  auto set_error =
-      [](const std::string&, const std::string&, chromeos::ErrorPtr* error) {
-        chromeos::Error::AddTo(error, FROM_HERE, "test", "deviceBusy", "");
-      };
+  auto set_error = [](const std::string&, const std::string&,
+                      chromeos::ErrorPtr* error) {
+    chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain, "deviceBusy", "");
+  };
   EXPECT_CALL(cloud_, Setup(_, _, _))
       .WillOnce(DoAll(Invoke(set_error), Return(false)));
-  EXPECT_PRED2(IsEqualJson,
-               "{'reason':'deviceBusy'}",
+  EXPECT_PRED2(IsEqualError, CodeWithReason(503, "deviceBusy"),
                HandleRequest("/privet/v3/setup/start", kInput));
 
   const char kExpected[] = R"({
