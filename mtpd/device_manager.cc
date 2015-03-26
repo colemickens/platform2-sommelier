@@ -662,13 +662,32 @@ LIBMTP_mtpdevice_t* DeviceManager::AddOrUpdateDevices(
     if (duplicated_string.get())
       fallback_product = duplicated_string.get();
 
-    // Iterate through storages on the device and add any that are missing.
     MtpStorageMap new_storage_map;
     MtpStorageMap* storage_map_ptr;
     if (add_update)
       storage_map_ptr = &new_storage_map;
     else
       storage_map_ptr = &device_map_[usb_bus_str].second;
+
+    // Compute the set of storage ids that are contained in the mtpd's
+    // storage_map but not in the latest device info. They are removed storages.
+    std::set<uint32_t> removed_storage_ids;
+    for (const auto& it : *storage_map_ptr) {
+      removed_storage_ids.insert(it.first);
+    }
+    for (LIBMTP_devicestorage_t* storage = mtp_device->storage;
+         storage != NULL;
+         storage = storage->next) {
+      removed_storage_ids.erase(storage->id);
+    }
+    // Iterate through storages on the device and remove storages that are no
+    // longer on the device.
+    for (const auto& storage_id : removed_storage_ids) {
+      storage_map_ptr->erase(storage_id);
+      delegate_->StorageDetached(StorageToString(usb_bus_str, storage_id));
+    }
+
+    // Iterate through storages on the device and add any that are missing.
     for (LIBMTP_devicestorage_t* storage = mtp_device->storage;
          storage != NULL;
          storage = storage->next) {
