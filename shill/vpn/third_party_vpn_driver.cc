@@ -496,6 +496,8 @@ void ThirdPartyVpnDriver::OnConnectionDisconnected() {
 void ThirdPartyVpnDriver::OnConnectTimeout() {
   SLOG(this, 2) << __func__;
   VPNDriver::OnConnectTimeout();
+  adaptor_interface_->EmitPlatformMessage(
+      static_cast<uint32_t>(PlatformMessage::kError));
   Cleanup(Service::kStateFailure, Service::kFailureConnect,
           "Connection timed out");
 }
