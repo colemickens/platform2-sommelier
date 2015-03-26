@@ -6,8 +6,11 @@
 
 #include <sys/types.h>
 
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/minijail/minijail.h>
@@ -17,6 +20,23 @@
 
 namespace {
 const char* kSandboxedServiceTemplate = "germ_template";
+const size_t kStdoutBufSize = 1024;
+
+pid_t GetPidFromStdout(int stdout) {
+  // germ_template (test) start/running, process 8117
+  char buf[kStdoutBufSize] = {0};
+  base::ReadFromFD(stdout, buf, kStdoutBufSize - 1);
+  std::string output(buf);
+  std::vector<std::string> tokens;
+  base::SplitString(output, ' ', &tokens);
+  pid_t pid = -1;
+  if (!base::StringToInt(tokens[4], &pid)) {
+    LOG(ERROR) << "Could not extract pid from '" << output << "'";
+    return -1;
+  }
+  return pid;
+}
+
 }  // namespace
 
 namespace germ {
@@ -75,10 +95,16 @@ int Launcher::RunService(const std::string& name,
   initctl.AddArg(env.GetForService());
   std::string command_line = JoinString(argv, ' ');
   initctl.AddArg(base::StringPrintf("COMMANDLINE=%s", command_line.c_str()));
+  initctl.RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);
 
   // Since we're running 'initctl', and not the executable itself,
   // we wait for it to exit.
-  return initctl.Run();
+  initctl.Start();
+  int stdout_fd = initctl.GetPipe(STDOUT_FILENO);
+  pid_t pid = GetPidFromStdout(stdout_fd);
+  VLOG(1) << "service name " << name << " pid " << pid;
+  initctl.Wait();
+  return pid;
 }
 
 }  // namespace germ

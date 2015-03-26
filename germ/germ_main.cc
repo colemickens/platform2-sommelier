@@ -37,8 +37,9 @@ int Launch(const std::string& name,
   for (const auto& cmdline_token : command_line) {
     request.add_command_line(cmdline_token);
   }
-  germ->Launch(&request, &response);
-  return response.status();
+  int ret = germ->Launch(&request, &response);
+  LOG(INFO) << "Launched service " << name << " with pid " << response.status();
+  return ret;
 }
 
 }  // namespace
