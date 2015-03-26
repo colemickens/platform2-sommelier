@@ -653,6 +653,39 @@ Nl80211AttributeStaInfo::Nl80211AttributeStaInfo()
                    NestedData(NLA_U32, "NL80211_STA_INFO_BEACON_LOSS", false)));
 }
 
+const int Nl80211AttributeSurveyInfo::kName = NL80211_ATTR_SURVEY_INFO;
+const char Nl80211AttributeSurveyInfo::kNameString[] =
+                                 "NL80211_ATTR_SURVEY_INFO";
+
+Nl80211AttributeSurveyInfo::Nl80211AttributeSurveyInfo()
+    : NetlinkNestedAttribute(kName, kNameString) {
+  nested_template_.insert(
+      AttrDataPair(NL80211_SURVEY_INFO_FREQUENCY,
+         NestedData(NLA_U32, "NL80211_SURVEY_INFO_FREQUENCY", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_SURVEY_INFO_NOISE,
+         NestedData(NLA_U8, "NL80211_SURVEY_INFO_NOISE", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_SURVEY_INFO_IN_USE,
+         NestedData(NLA_FLAG, "NL80211_SURVEY_INFO_IN_USE", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_SURVEY_INFO_CHANNEL_TIME,
+         NestedData(NLA_U64, "NL80211_SURVEY_INFO_CHANNEL_TIME", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_SURVEY_INFO_CHANNEL_TIME_BUSY,
+         NestedData(NLA_U64, "NL80211_SURVEY_INFO_CHANNEL_TIME_BUSY", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_SURVEY_INFO_CHANNEL_TIME_EXT_BUSY,
+         NestedData(NLA_U64,
+             "NL80211_SURVEY_INFO_CHANNEL_TIME_EXT_BUSY", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_SURVEY_INFO_CHANNEL_TIME_RX,
+         NestedData(NLA_U64, "NL80211_SURVEY_INFO_CHANNEL_TIME_RX", false)));
+  nested_template_.insert(
+      AttrDataPair(NL80211_SURVEY_INFO_CHANNEL_TIME_TX,
+         NestedData(NLA_U64, "NL80211_SURVEY_INFO_CHANNEL_TIME_TX", false)));
+}
+
 const int Nl80211AttributeSupportedIftypes::kName =
     NL80211_ATTR_SUPPORTED_IFTYPES;
 const char Nl80211AttributeSupportedIftypes::kNameString[] =

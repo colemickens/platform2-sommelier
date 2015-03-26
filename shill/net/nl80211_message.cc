@@ -591,6 +591,21 @@ const char GetInterfaceMessage::kCommandString[] = "NL80211_CMD_GET_INTERFACE";
 const uint8_t NewInterfaceMessage::kCommand = NL80211_CMD_NEW_INTERFACE;
 const char NewInterfaceMessage::kCommandString[] = "NL80211_CMD_NEW_INTERFACE";
 
+const uint8_t GetSurveyMessage::kCommand = NL80211_CMD_GET_SURVEY;
+const char GetSurveyMessage::kCommandString[] = "NL80211_CMD_GET_SURVEY";
+
+GetSurveyMessage::GetSurveyMessage()
+    : Nl80211Message(kCommand, kCommandString) {
+  attributes()->CreateAttribute(
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId,
+                                 NetlinkMessage::MessageContext()));
+  AddFlag(NLM_F_DUMP);
+}
+
+const uint8_t SurveyResultsMessage::kCommand = NL80211_CMD_NEW_SURVEY_RESULTS;
+const char SurveyResultsMessage::kCommandString[] =
+    "NL80211_CMD_NEW_SURVEY_RESULTS";
+
 // static
 NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
   if (!const_msg) {
@@ -667,6 +682,10 @@ NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
       return new UnprotDeauthenticateMessage();
     case UnprotDisassociateMessage::kCommand:
       return new UnprotDisassociateMessage();
+    case GetSurveyMessage::kCommand:
+      return new GetSurveyMessage();
+    case SurveyResultsMessage::kCommand:
+      return new SurveyResultsMessage();
     default:
       LOG(WARNING) << base::StringPrintf(
           "Unknown/unhandled netlink nl80211 message 0x%02x", gnlh->cmd);

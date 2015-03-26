@@ -670,6 +670,16 @@ class Nl80211AttributeRespIe : public NetlinkRawAttribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeRespIe);
 };
 
+class Nl80211AttributeSurveyInfo : public NetlinkNestedAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeSurveyInfo();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeSurveyInfo);
+};
+
 }  // namespace shill
 
 #endif  // SHILL_NET_NL80211_ATTRIBUTE_H_

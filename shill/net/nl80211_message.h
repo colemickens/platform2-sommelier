@@ -489,6 +489,28 @@ class SHILL_EXPORT NewInterfaceMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(NewInterfaceMessage);
 };
 
+class SHILL_EXPORT GetSurveyMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  GetSurveyMessage();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GetSurveyMessage);
+};
+
+class SHILL_EXPORT SurveyResultsMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  SurveyResultsMessage(): Nl80211Message(kCommand, kCommandString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SurveyResultsMessage);
+};
+
 // Nl80211MessageDataCollector - this class is used to collect data to be
 // used for unit tests.  It is only invoked in this case.
 
