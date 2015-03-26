@@ -30,17 +30,12 @@ class MockRule : public Rule {
 
 class MockRuleEngine : public RuleEngine {
  public:
-  MockRuleEngine() : RuleEngine(0) {}
+  MockRuleEngine() : RuleEngine() {}
   ~MockRuleEngine() override = default;
 
-  MOCK_METHOD1(MockGrantAccess, bool(const string &path));
   MOCK_METHOD0(WaitForEmptyUdevQueue, void(void));
 
  private:
-  bool GrantAccess(const string &path) override {
-    return MockGrantAccess(path);
-  }
-
   DISALLOW_COPY_AND_ASSIGN(MockRuleEngine);
 };
 
@@ -68,28 +63,20 @@ class RuleEngineTest : public testing::Test {
 };
 
 TEST_F(RuleEngineTest, EmptyRuleChain) {
-  EXPECT_CALL(engine_, MockGrantAccess(_))
-      .Times(0);
   ASSERT_FALSE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
 }
 
 TEST_F(RuleEngineTest, AllowAccess) {
-  EXPECT_CALL(engine_, MockGrantAccess("/dev/foo"))
-      .WillOnce(Return(true));
   engine_.AddRule(CreateMockRule(Rule::ALLOW));
   ASSERT_TRUE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
 }
 
 TEST_F(RuleEngineTest, DenyAccess) {
-  EXPECT_CALL(engine_, MockGrantAccess(_))
-      .Times(0);
   engine_.AddRule(CreateMockRule(Rule::DENY));
   ASSERT_FALSE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
 }
 
 TEST_F(RuleEngineTest, DenyPrecedence) {
-  EXPECT_CALL(engine_, MockGrantAccess(_))
-      .Times(0);
   engine_.AddRule(CreateMockRule(Rule::ALLOW));
   engine_.AddRule(CreateMockRule(Rule::IGNORE));
   engine_.AddRule(CreateMockRule(Rule::DENY));
@@ -97,8 +84,6 @@ TEST_F(RuleEngineTest, DenyPrecedence) {
 }
 
 TEST_F(RuleEngineTest, AllowPrecedence) {
-  EXPECT_CALL(engine_, MockGrantAccess(_))
-      .WillOnce(Return(true));
   engine_.AddRule(CreateMockRule(Rule::IGNORE));
   engine_.AddRule(CreateMockRule(Rule::ALLOW));
   engine_.AddRule(CreateMockRule(Rule::IGNORE));

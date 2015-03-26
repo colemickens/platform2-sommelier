@@ -20,9 +20,7 @@ class Rule;
 
 class RuleEngine {
  public:
-  RuleEngine(const std::string& access_group,
-             const std::string& udev_run_path,
-             int poll_interval_msecs);
+  RuleEngine(const std::string& udev_run_path, int poll_interval_msecs);
   virtual ~RuleEngine();
 
   // Adds |rule| to the end of the existing rule chain. Takes ownership of
@@ -38,7 +36,7 @@ class RuleEngine {
 
  protected:
   // This constructor is for use by test code only.
-  explicit RuleEngine(const gid_t access_group);
+  RuleEngine();
 
  private:
   friend class RuleEngineTest;
@@ -48,12 +46,7 @@ class RuleEngine {
   // dependency and overhead.
   virtual void WaitForEmptyUdevQueue();
 
-  // Grants access to |path|, which is accomplished by changing the owning group
-  // on the path to the one specified numerically by the 'access_group' flag.
-  virtual bool GrantAccess(const std::string& path);
-
   struct udev* udev_;
-  gid_t access_group_;
   std::vector<Rule*> rules_;
 
   int poll_interval_msecs_;

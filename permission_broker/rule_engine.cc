@@ -4,7 +4,6 @@
 
 #include "permission_broker/rule_engine.h"
 
-#include <grp.h>
 #include <libudev.h>
 #include <poll.h>
 #include <sys/inotify.h>
@@ -15,29 +14,17 @@
 
 namespace permission_broker {
 
-RuleEngine::RuleEngine(const gid_t access_group)
-    : udev_(udev_new()), access_group_(access_group) {}
+RuleEngine::RuleEngine()
+    : udev_(udev_new()) {}
 
 RuleEngine::RuleEngine(
-    const std::string& access_group_name,
     const std::string& udev_run_path,
     int poll_interval_msecs)
     : udev_(udev_new()) {
   CHECK(udev_) << "Could not create udev context, is sysfs mounted?";
-  CHECK(!access_group_name.empty()) << "You must specify a group name via the "
-                                    << "--access_group flag.";
 
   poll_interval_msecs_ = poll_interval_msecs;
   udev_run_path_ = udev_run_path;
-
-  struct group group_buffer;
-  struct group* access_group = NULL;
-  char buffer[256];
-  getgrnam_r(access_group_name.c_str(), &group_buffer, buffer, sizeof(buffer),
-             &access_group);
-  CHECK(access_group) << "Could not resolve \"" << access_group_name << "\" "
-                      << "to a named group.";
-  access_group_ = access_group->gr_gid;
 }
 
 RuleEngine::~RuleEngine() {
@@ -67,18 +54,7 @@ bool RuleEngine::ProcessPath(const std::string& path, int interface_id) {
     }
   }
   LOG(INFO) << "Verdict for " << path << ": " << Rule::ResultToString(result);
-
-  if (result == Rule::ALLOW)
-    return GrantAccess(path);
-  return false;
-}
-
-bool RuleEngine::GrantAccess(const std::string& path) {
-  if (chown(path.c_str(), -1, access_group_)) {
-    LOG(INFO) << "Could not grant access to " << path;
-    return false;
-  }
-  return true;
+  return result == Rule::ALLOW;
 }
 
 void RuleEngine::WaitForEmptyUdevQueue() {

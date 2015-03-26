@@ -4,6 +4,7 @@
 
 #include "permission_broker/permission_broker.h"
 
+#include <grp.h>
 #include <linux/usb/ch9.h>
 #include <sys/epoll.h>
 #include <unistd.h>
@@ -54,7 +55,7 @@ PermissionBroker::PermissionBroker(
     const std::string& udev_run_path,
     int poll_interval_msecs)
     : org::chromium::PermissionBrokerAdaptor(this),
-      rule_engine_(access_group_name, udev_run_path, poll_interval_msecs),
+      rule_engine_(udev_run_path, poll_interval_msecs),
       dbus_object_(object_manager,
                    object_manager->GetBus(),
                    dbus::ObjectPath(kPermissionBrokerServicePath)),
@@ -64,6 +65,17 @@ PermissionBroker::PermissionBroker(
       // |firewalld_| is owned by PermissionBroker, the PortTracker object
       // will only call D-Bus methods.
       port_tracker_(&firewalld_) {
+  CHECK(!access_group_name.empty()) << "You must specify a group name via the "
+                                    << "--access_group flag.";
+  struct group group_buffer;
+  struct group* access_group = NULL;
+  char buffer[256];
+  getgrnam_r(access_group_name.c_str(), &group_buffer, buffer, sizeof(buffer),
+             &access_group);
+  CHECK(access_group) << "Could not resolve \"" << access_group_name << "\" "
+                      << "to a named group.";
+  access_group_ = access_group->gr_gid;
+
   rule_engine_.AddRule(new AllowUsbDeviceRule());
   rule_engine_.AddRule(new AllowTtyDeviceRule());
   rule_engine_.AddRule(new DenyClaimedUsbDeviceRule());
@@ -88,9 +100,16 @@ void PermissionBroker::RegisterAsync(
   dbus_object_.RegisterAsync(cb);
 }
 
+bool PermissionBroker::CheckPathAccess(const std::string& in_path) {
+  return rule_engine_.ProcessPath(in_path, -1 /* all interfaces */);
+}
+
 bool PermissionBroker::RequestPathAccess(const std::string& in_path,
                                          int32_t in_interface_id) {
-  return rule_engine_.ProcessPath(in_path, in_interface_id);
+  if (rule_engine_.ProcessPath(in_path, in_interface_id)) {
+    return GrantAccess(in_path);
+  }
+  return false;
 }
 
 bool PermissionBroker::RequestTcpPortAccess(
@@ -130,6 +149,14 @@ bool PermissionBroker::RequestVpnSetup(
 
 bool PermissionBroker::RemoveVpnSetup() {
   return port_tracker_.RemoveVpnSetup();
+}
+
+bool PermissionBroker::GrantAccess(const std::string& path) {
+  if (chown(path.c_str(), -1, access_group_)) {
+    LOG(INFO) << "Could not grant access to " << path;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace permission_broker

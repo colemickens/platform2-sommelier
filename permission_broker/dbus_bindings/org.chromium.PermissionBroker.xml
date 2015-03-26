@@ -3,6 +3,11 @@
 <node name="/org/chromium/PermissionBroker"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.PermissionBroker">
+    <method name="CheckPathAccess">
+      <arg name="path" type="s" direction="in"/>
+      <arg name="allowed" type="b" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
     <method name="RequestPathAccess">
       <arg name="path" type="s" direction="in"/>
       <arg name="interface_id" type="i" direction="in"/>

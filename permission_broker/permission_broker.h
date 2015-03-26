@@ -40,6 +40,7 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
 
  private:
   // D-Bus methods.
+  bool CheckPathAccess(const std::string& in_path) override;
   bool RequestPathAccess(const std::string& in_path,
                          int32_t in_interface_id) override;
   bool RequestTcpPortAccess(uint16_t in_port,
@@ -57,8 +58,13 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                        const dbus::FileDescriptor& dbus_fd) override;
   bool RemoveVpnSetup() override;
 
+  // Grants access to |path|, which is accomplished by changing the owning group
+  // on the path to the one specified numerically by the 'access_group' flag.
+  virtual bool GrantAccess(const std::string& path);
+
   RuleEngine rule_engine_;
   chromeos::dbus_utils::DBusObject dbus_object_;
+  gid_t access_group_;
   org::chromium::FirewalldProxy firewalld_;
   PortTracker port_tracker_;
 
