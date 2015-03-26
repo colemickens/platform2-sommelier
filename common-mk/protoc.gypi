@@ -34,6 +34,7 @@
       'action': [
         '<(protoc)',
         '--proto_path','<(proto_in_dir)',
+        '--proto_path','<(sysroot)/usr/share/proto',
         '<(proto_in_dir)/<(RULE_INPUT_ROOT)<(RULE_INPUT_EXT)',
         '>@(out_args)',
       ],
