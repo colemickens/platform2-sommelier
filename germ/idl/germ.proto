@@ -4,6 +4,8 @@
 syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
 
+import "soma_container_spec.proto";
+
 package germ;
 
 service Germ {
@@ -12,8 +14,7 @@ service Germ {
 
 message LaunchRequest {
   optional string name = 1;
-  // TODO(jorgelo): add ContainerSpec, remove |command_line|.
-  repeated string command_line = 2;
+  optional soma.ContainerSpec spec = 2;
 }
 
 message LaunchResponse {

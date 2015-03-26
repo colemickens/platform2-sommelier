@@ -11,7 +11,7 @@ namespace germ {
 
 int GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
   std::vector<std::string> argv;
-  for (const auto& cmdline_token : request->command_line()) {
+  for (const auto& cmdline_token : request->spec().command_line()) {
     argv.push_back(cmdline_token);
   }
   int status = launcher_.RunService(request->name(), argv);

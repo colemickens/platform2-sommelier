@@ -24,10 +24,25 @@
       'includes': ['../common-mk/protoc.gypi'],
     },
     {
+      'target_name': 'soma-protos',
+      'type': 'static_library',
+      'variables': {
+        # TODO(jorgelo): Use installed protos (brbug.com/684).
+        'proto_in_dir': '../soma/idl',
+        'proto_out_dir': 'include/germ/proto_bindings',
+        'gen_bidl': 1,
+      },
+      'sources': [
+        '<(proto_in_dir)/soma_container_spec.proto',
+      ],
+      'includes': ['../common-mk/protoc.gypi'],
+    },
+    {
       'target_name': 'libgerm',
       'type': 'static_library',
       'dependencies': [
         'germ-protos',
+        'soma-protos',
       ],
       'sources': [
         'environment.cc',

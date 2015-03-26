@@ -34,8 +34,9 @@ int Launch(const std::string& name,
   LaunchRequest request;
   LaunchResponse response;
   request.set_name(name);
+  soma::ContainerSpec* spec = request.mutable_spec();
   for (const auto& cmdline_token : command_line) {
-    request.add_command_line(cmdline_token);
+    spec->add_command_line(cmdline_token);
   }
   int ret = germ->Launch(&request, &response);
   LOG(INFO) << "Launched service " << name << " with pid " << response.status();
