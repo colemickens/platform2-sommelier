@@ -31,7 +31,7 @@
         },
       },
       'sources': [
-        '<(proto_in_dir)/container_spec.proto',
+        '<(proto_in_dir)/soma_container_spec.proto',
         '<(proto_in_dir)/soma.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],

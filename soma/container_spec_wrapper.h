@@ -17,7 +17,7 @@
 #include "soma/device_filter.h"
 #include "soma/namespace.h"
 #include "soma/port.h"
-#include "soma/proto_bindings/container_spec.pb.h"
+#include "soma/proto_bindings/soma_container_spec.pb.h"
 #include "soma/sysfs_filter.h"
 #include "soma/usb_device_filter.h"
 

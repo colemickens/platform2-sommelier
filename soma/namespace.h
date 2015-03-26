@@ -9,7 +9,7 @@
 
 #include <set>
 
-#include "soma/proto_bindings/container_spec.pb.h"
+#include "soma/proto_bindings/soma_container_spec.pb.h"
 
 namespace base {
 class ListValue;

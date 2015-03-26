@@ -13,9 +13,9 @@
 
 #include "soma/libsoma/constants.h"
 #include "soma/libsoma/read_only_container_spec.h"
-#include "soma/proto_bindings/container_spec.pb.h"
 #include "soma/proto_bindings/soma.pb.h"
 #include "soma/proto_bindings/soma.pb.rpc.h"
+#include "soma/proto_bindings/soma_container_spec.pb.h"
 
 namespace soma {
 scoped_ptr<ContainerSpec> GetContainerSpec(const std::string& service_name) {

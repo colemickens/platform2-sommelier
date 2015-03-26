@@ -6,7 +6,7 @@ option optimize_for = LITE_RUNTIME;
 
 package soma;
 
-import "container_spec.proto";
+import "soma_container_spec.proto";
 
 service Soma {
   // Given a fully-specified service name, returns a container specification.
