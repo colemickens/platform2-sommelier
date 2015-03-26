@@ -1024,14 +1024,20 @@ Properties	boolean AutoConnect [readwrite]
 
 		int PPPoE.LCPEchoFailure
 
-			(PPPoE only) If non-zero, the number of LCP echo
-			responses that this service will tolerate missing from
-			the PPP peer before terminating the connection.
+			(PPPoE only) If set, the number of LCP echo responses
+			that this service will tolerate missing from the PPP
+			peer before terminating the connection.
 
 		int PPPoE.LCPEchoInterval
 
-			(PPPoE only) If non-zero, used as the number of seconds
+			(PPPoE only) If set, used as the number of seconds
 			between sending LCP echo requests to the PPP peer.
+
+		int PPPoE.MaxAuthFailure
+
+			(PPPoE only) The maximum number of authentication
+			failures to allow before terminating the connection.  A
+			value of 0 means no limit.  The default is 3.
 
 		string PPPoE.Password
 

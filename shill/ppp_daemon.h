@@ -40,8 +40,9 @@ class PPPDaemon {
           use_peer_dns(false),
           use_shim_plugin(true),
           use_pppoe_plugin(false),
-          lcp_echo_interval(0),
-          lcp_echo_failure(0) {}
+          lcp_echo_interval(kUnspecifiedValue),
+          lcp_echo_failure(kUnspecifiedValue),
+          max_fail(kUnspecifiedValue) {}
 
     // Causes pppd to emit log messages useful for debugging connectivity.
     bool debug;
@@ -66,10 +67,14 @@ class PPPDaemon {
     bool use_pppoe_plugin;
 
     // The number of seconds between sending LCP echo requests.
-    unsigned int lcp_echo_interval;
+    uint32_t lcp_echo_interval;
 
     // The number of missed LCP echo responses tolerated before disconnecting.
-    unsigned int lcp_echo_failure;
+    uint32_t lcp_echo_failure;
+
+    // The number of allowed failed consecutive connection attempts before
+    // giving up.  A value of 0 means there is no limit.
+    uint32_t max_fail;
   };
 
   // The path to the pppd plugin provided by shill.
@@ -94,6 +99,7 @@ class PPPDaemon {
 
   static const char kDaemonPath[];
   static const char kPPPoEPluginPath[];
+  static const uint32_t kUnspecifiedValue;
 
   PPPDaemon();
   ~PPPDaemon();

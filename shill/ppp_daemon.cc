@@ -4,6 +4,8 @@
 
 #include "shill/ppp_daemon.h"
 
+#include <stdint.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -23,6 +25,7 @@ namespace shill {
 const char PPPDaemon::kDaemonPath[] = "/usr/sbin/pppd";
 const char PPPDaemon::kShimPluginPath[] = SHIMDIR "/shill-pppd-plugin.so";
 const char PPPDaemon::kPPPoEPluginPath[] = "rp-pppoe.so";
+const uint32_t PPPDaemon::kUnspecifiedValue = UINT32_MAX;
 
 std::unique_ptr<ExternalTask> PPPDaemon::Start(
     ControlInterface *control_interface,
@@ -53,13 +56,17 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
     arguments.push_back("plugin");
     arguments.push_back(kPPPoEPluginPath);
   }
-  if (options.lcp_echo_interval) {
+  if (options.lcp_echo_interval != kUnspecifiedValue) {
     arguments.push_back("lcp-echo-interval");
     arguments.push_back(base::UintToString(options.lcp_echo_interval));
   }
-  if (options.lcp_echo_failure) {
+  if (options.lcp_echo_failure != kUnspecifiedValue) {
     arguments.push_back("lcp-echo-failure");
     arguments.push_back(base::UintToString(options.lcp_echo_failure));
+  }
+  if (options.max_fail != kUnspecifiedValue) {
+    arguments.push_back("maxfail");
+    arguments.push_back(base::UintToString(options.max_fail));
   }
 
   arguments.push_back(device);

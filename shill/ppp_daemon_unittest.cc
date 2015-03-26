@@ -92,13 +92,14 @@ TEST_F(PPPDaemonTest, OptionsConverted) {
   options.use_peer_dns = true;
   options.lcp_echo_interval = 1;
   options.lcp_echo_failure = 1;
+  options.max_fail = 1;
 
   Error error;
   std::unique_ptr<ExternalTask> task(Start(options, "eth0", &error));
 
   std::set<std::string> expected_arguments = {
     "nodetach", "nodefaultroute", "usepeerdns", "lcp-echo-interval",
-    "lcp-echo-failure",
+    "lcp-echo-failure", "maxfail",
   };
   for (const auto &argument : argv_) {
     expected_arguments.erase(argument);

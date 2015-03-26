@@ -56,6 +56,7 @@ class PPPoEService : public EthernetService, public RPCTaskDelegate {
 
   static const int kDefaultLCPEchoInterval;
   static const int kDefaultLCPEchoFailure;
+  static const int kDefaultMaxAuthFailure;
 
   void OnPPPAuthenticating();
   void OnPPPAuthenticated();
@@ -69,6 +70,7 @@ class PPPoEService : public EthernetService, public RPCTaskDelegate {
   std::string password_;
   int lcp_echo_interval_;
   int lcp_echo_failure_;
+  int max_auth_failure_;
 
   bool authenticating_;
   std::unique_ptr<ExternalTask> pppd_;
