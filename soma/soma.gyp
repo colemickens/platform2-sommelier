@@ -102,6 +102,20 @@
             'spec_reader_unittest.cc',
           ],
         },
+        {
+          'target_name': 'libsoma_test',
+          'type': 'executable',
+          'includes': ['../common-mk/common_test.gypi'],
+          'defines': ['UNIT_TEST'],
+          'dependencies': [
+            'libsoma',
+            'soma-proto-lib',
+          ],
+          'sources': [
+            'libsoma/libsoma_testrunner.cc',
+            'libsoma/read_only_container_spec_unittest.cc',
+          ],
+        },
       ],
     }],
   ],
