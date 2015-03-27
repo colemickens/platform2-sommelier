@@ -133,7 +133,7 @@ bool Peer::AddService(chromeos::ErrorPtr* error,
   unique_ptr<Service> new_service{new Service{
       bus_, dbus_object_->GetObjectManager().get(), service_path}};
   const bool success = new_service->RegisterAsync(
-      error, service_id, addresses, service_info, options,
+      error, GetUUID(), service_id, addresses, service_info, options,
       sequencer->GetHandler("Failed exporting service.", true));
   if (success) {
     services_.emplace(service_id, std::move(new_service));

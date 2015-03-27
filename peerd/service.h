@@ -58,6 +58,7 @@ class Service : public org::chromium::peerd::ServiceInterface {
           const dbus::ObjectPath& path);
   bool RegisterAsync(
       chromeos::ErrorPtr* error,
+      const std::string& peer_id,
       const std::string& service_id,
       const IpAddresses& addresses,
       const ServiceInfo& service_info,

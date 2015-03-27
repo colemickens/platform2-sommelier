@@ -9,6 +9,7 @@
       a list of IP addresses that a given service from a particular peer
       was discovered over.
     </tp:docstring>
+    <property name="PeerId" type="s" access="read"/>
     <property name="ServiceId" type="s" access="read"/>
     <property name="ServiceInfo" type="a{ss}" access="read"/>
     <property name="IpInfos" type="a(ayq)" access="read">

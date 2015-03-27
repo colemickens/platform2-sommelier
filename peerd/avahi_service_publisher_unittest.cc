@@ -48,10 +48,11 @@ using testing::_;
 
 namespace {
 
-const char kHost[] = "this_is_a_hostname";
 const char kGroupPath[] = "/this/is/a/group/path";
+const char kHost[] = "this_is_a_hostname";
 const char kServiceId[] = "service-id";
 const char kServicePath[] = "/a/peerd/service/path";
+const char kTestPeerId[] = "This is a uuid for ourselves.";
 
 Response* ReturnsGroupPath(dbus::MethodCall* method_call, Unused, Unused) {
   method_call->SetSerial(87);
@@ -74,7 +75,7 @@ class AvahiServicePublisherTest : public ::testing::Test {
     group_proxy_ = new dbus::MockObjectProxy(
         mock_bus_.get(), kServiceName, ObjectPath(kGroupPath));
     publisher_.reset(new AvahiServicePublisher(
-          kHost, "uuid", mock_bus_, avahi_proxy_.get(),
+          kHost, kTestPeerId, mock_bus_, avahi_proxy_.get(),
           base::Bind(&AvahiServicePublisherTest::OnGroupFailure,
                      base::Unretained(this))));
     // Ignore threading concerns.
@@ -106,7 +107,7 @@ class AvahiServicePublisherTest : public ::testing::Test {
                                                 ObjectPath{kServicePath}}};
     chromeos::ErrorPtr error;
     EXPECT_TRUE(new_service->RegisterAsync(
-        &error, service_id, {}, info, {},
+        &error, kTestPeerId, service_id, {}, info, {},
         MakeMockCompletionAction()));
     EXPECT_EQ(nullptr, error.get());
     return new_service;

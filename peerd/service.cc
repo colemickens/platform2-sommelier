@@ -55,6 +55,7 @@ Service::Service(const scoped_refptr<dbus::Bus>& bus,
 }
 
 bool Service::RegisterAsync(chromeos::ErrorPtr* error,
+                            const string& peer_id,
                             const string& service_id,
                             const IpAddresses& addresses,
                             const ServiceInfo& service_info,
@@ -62,6 +63,7 @@ bool Service::RegisterAsync(chromeos::ErrorPtr* error,
                             const CompletionAction& completion_callback) {
   if (!IsValidServiceId(error, service_id)) { return false; }
   if (!Update(error, addresses, service_info, options)) { return false;}
+  dbus_adaptor_.SetPeerId(peer_id);
   dbus_adaptor_.SetServiceId(service_id);
   dbus_adaptor_.RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(completion_callback);

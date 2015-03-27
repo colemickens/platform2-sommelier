@@ -44,6 +44,7 @@ IpAddresses MakeValidIpAddresses() {
 }
 
 const char kServicePath[] = "/a/path";
+const char kTestPeerId[] = "This is a uuid for ourselves.";
 const char kValidServiceId[] = "valid-id";
 
 }  // namespace
@@ -73,7 +74,7 @@ class ServiceTest : public ::testing::Test {
                               const string& error_code) {
     chromeos::ErrorPtr error;
     EXPECT_FALSE(service_.RegisterAsync(
-          &error, service_id, addresses, service_info, options,
+          &error, kTestPeerId, service_id, addresses, service_info, options,
           MakeMockCompletionAction()));
     ASSERT_NE(nullptr, error.get());
     EXPECT_TRUE(error->HasError(kPeerdErrorDomain, error_code));
@@ -88,7 +89,7 @@ class ServiceTest : public ::testing::Test {
     EXPECT_CALL(*bus_, GetExportedObject(_))
         .WillOnce(Return(service_object_.get()));
     EXPECT_TRUE(service_.RegisterAsync(
-          &error, service_id, addresses, service_info, options,
+          &error, kTestPeerId, service_id, addresses, service_info, options,
           MakeMockCompletionAction()));
     EXPECT_EQ(nullptr, error.get());
   }
