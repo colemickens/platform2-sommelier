@@ -449,6 +449,12 @@ class Metrics {
     kDarkResumeScanTypeMax
   };
 
+  enum DarkResumeScanRetryResult {
+    kDarkResumeScanRetryResultNotConnected = 0,
+    kDarkResumeScanRetryResultConnected = 1,
+    kDarkResumeScanRetryResultMax
+  };
+
   static const char kMetricDisconnectSuffix[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -612,6 +618,10 @@ class Metrics {
   static const char kMetricWakeReasonReceivedBeforeOnDarkResume[];
   static const char kMetricDarkResumeWakeReason[];
   static const char kMetricDarkResumeScanType[];
+  static const char kMetricDarkResumeScanRetryResult[];
+  static const char kMetricDarkResumeScanNumRetries[];
+  static const int kMetricDarkResumeScanNumRetriesMax;
+  static const int kMetricDarkResumeScanNumRetriesMin;
 
   // WiFiService Entry Fixup.
   static const char kMetricServiceFixupEntriesSuffix[];
@@ -1009,6 +1019,17 @@ class Metrics {
   // has actually started.
   virtual void NotifyScanStartedInDarkResume(bool is_active_scan);
 
+  // Notifies this object that a dark resume scan retry was launched.
+  virtual void NotifyDarkResumeScanRetry();
+
+  // Notifies this object that shill is about to suspend and is executing
+  // WakeOnWiFi::BeforeSuspendActions. |is_connected| indicates whether shill
+  // was connected before suspending, and |in_dark_resume| indicates whether
+  // shill is current in dark resume.
+  // Note: this will only be called if wake on WiFi is supported and enabled.
+  virtual void NotifyBeforeSuspendActions(bool is_connected,
+                                          bool in_dark_resume);
+
  private:
   friend class MetricsTest;
   FRIEND_TEST(MetricsTest, CellularDropsPerHour);
@@ -1032,6 +1053,9 @@ class Metrics {
   FRIEND_TEST(MetricsTest, NotifyDarkResumeActionsStarted);
   FRIEND_TEST(MetricsTest, NotifyDarkResumeInitiateScan);
   FRIEND_TEST(MetricsTest, NotifyDarkResumeScanResultsReceived);
+  FRIEND_TEST(MetricsTest, NotifyDarkResumeScanRetry);
+  FRIEND_TEST(MetricsTest, NotifyBeforeSuspendActions_InDarkResume);
+  FRIEND_TEST(MetricsTest, NotifyBeforeSuspendActions_NotInDarkResume);
   FRIEND_TEST(WiFiMainTest, GetGeolocationObjects);
 
   typedef ScopedVector<chromeos_metrics::TimerReporter> TimerReporters;
@@ -1150,6 +1174,7 @@ class Metrics {
   int num_scan_results_expected_in_dark_resume_;
   bool wake_on_wifi_throttled_;
   bool wake_reason_received_;
+  int dark_resume_scan_retries_;
 
   DISALLOW_COPY_AND_ASSIGN(Metrics);
 };

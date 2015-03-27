@@ -1356,6 +1356,7 @@ void WakeOnWiFi::BeforeSuspendActions(
   // Note: No conditional compilation because all entry points to this functions
   // are already conditionally compiled based on DISABLE_WAKE_ON_WIFI.
 
+  metrics_->NotifyBeforeSuspendActions(is_connected, in_dark_resume_);
   last_ssid_match_freqs_.clear();
   last_wake_reason_ = kWakeTriggerUnsupported;
   // Add relevant triggers to be programmed into the NIC.
@@ -1559,6 +1560,7 @@ void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(
     SLOG(this, 3) << __func__ << ": "
                   << "Retrying dark resume scan ("
                   << dark_resume_scan_retries_left_ << " tries left)";
+    metrics_->NotifyDarkResumeScanRetry();
     // Note: a scan triggered by supplicant in dark resume might cause a
     // retry, but we consider this acceptable.
     initiate_scan_callback.Run(last_ssid_match_freqs_);

@@ -796,6 +796,8 @@ class WakeOnWiFiTest : public ::testing::Test {
                             uint32_t time_to_next_lease_renewal) {
     SetDarkResumeActionsTimeOutCallback();
     EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
+    EXPECT_CALL(metrics_,
+                NotifyBeforeSuspendActions(is_connected, GetInDarkResume()));
     Closure remove_supplicant_networks_callback(Bind(
         &WakeOnWiFiTest::RemoveSupplicantNetworksCallback, Unretained(this)));
     wake_on_wifi_->BeforeSuspendActions(is_connected, start_lease_renewal_timer,
@@ -2940,6 +2942,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 
   // Perform a retry.
   EXPECT_EQ(1, GetDarkResumeScanRetriesLeft());
+  EXPECT_CALL(metrics_, NotifyDarkResumeScanRetry());
   EXPECT_CALL(*this, InitiateScanCallback(GetLastSSIDMatchFreqs()));
   OnNoAutoConnectableServicesAfterScan(whitelist);
   EXPECT_EQ(0, GetDarkResumeScanRetriesLeft());

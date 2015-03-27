@@ -192,6 +192,12 @@ const char Metrics::kMetricDarkResumeWakeReason[] =
     "Network.Shill.WiFi.DarkResumeWakeReason";
 const char Metrics::kMetricDarkResumeScanType[] =
     "Network.Shill.WiFi.DarkResumeScanType";
+const char Metrics::kMetricDarkResumeScanRetryResult[] =
+    "Network.Shill.WiFi.DarkResumeScanRetryResult";
+const char Metrics::kMetricDarkResumeScanNumRetries[] =
+    "Network.Shill.WiFi.DarkResumeScanNumRetries";
+const int Metrics::kMetricDarkResumeScanNumRetriesMax = 20;
+const int Metrics::kMetricDarkResumeScanNumRetriesMin = 0;
 
 // static
 const char Metrics::kMetricServiceFixupEntriesSuffix[] = "ServiceFixupEntries";
@@ -407,7 +413,8 @@ Metrics::Metrics(EventDispatcher *dispatcher)
       collect_bootstats_(true),
       num_scan_results_expected_in_dark_resume_(0),
       wake_on_wifi_throttled_(false),
-      wake_reason_received_(false) {
+      wake_reason_received_(false),
+      dark_resume_scan_retries_(0) {
   metrics_library_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
 }
@@ -844,6 +851,7 @@ void Metrics::NotifyDarkResumeActionsStarted() {
     return;
   time_dark_resume_actions_timer->Start();
   num_scan_results_expected_in_dark_resume_ = 0;
+  dark_resume_scan_retries_ = 0;
 }
 
 void Metrics::NotifyDarkResumeActionsCompleted(bool success) {
@@ -859,17 +867,14 @@ void Metrics::NotifyDarkResumeActionsCompleted(bool success) {
   base::TimeDelta elapsed_time;
   time_dark_resume_actions_timer->GetElapsedTime(&elapsed_time);
   time_dark_resume_actions_timer->Reset();
-  string time_metric, result_metric;
-  time_metric = kMetricDarkResumeActionTimeTaken;
-  result_metric = kMetricDarkResumeActionResult;
 
-  SendToUMA(time_metric,
+  SendToUMA(kMetricDarkResumeActionTimeTaken,
             elapsed_time.InMilliseconds(),
             kMetricDarkResumeActionTimeTakenMillisecondsMin,
             kMetricDarkResumeActionTimeTakenMillisecondsMax,
             kTimerHistogramNumBuckets);
 
-  SendEnumToUMA(result_metric,
+  SendEnumToUMA(kMetricDarkResumeActionResult,
                 result,
                 kDarkResumeActionResultMax);
 
@@ -880,6 +885,10 @@ void Metrics::NotifyDarkResumeActionsCompleted(bool success) {
   SendEnumToUMA(kMetricDarkResumeUnmatchedScanResultReceived,
                 unmatched_scan_results_received,
                 kDarkResumeUnmatchedScanResultsReceivedMax);
+
+  SendToUMA(kMetricDarkResumeScanNumRetries, dark_resume_scan_retries_,
+            kMetricDarkResumeScanNumRetriesMin,
+            kMetricDarkResumeScanNumRetriesMax, kTimerHistogramNumBuckets);
 }
 
 void Metrics::NotifyDarkResumeInitiateScan() {
@@ -1481,6 +1490,21 @@ void Metrics::NotifyScanStartedInDarkResume(bool is_active_scan) {
   DarkResumeScanType scan_type =
       is_active_scan ? kDarkResumeScanTypeActive : kDarkResumeScanTypePassive;
   SendEnumToUMA(kMetricDarkResumeScanType, scan_type, kDarkResumeScanTypeMax);
+}
+
+void Metrics::NotifyDarkResumeScanRetry() {
+  ++dark_resume_scan_retries_;
+}
+
+void Metrics::NotifyBeforeSuspendActions(bool is_connected,
+                                         bool in_dark_resume) {
+  if (in_dark_resume && dark_resume_scan_retries_) {
+    DarkResumeScanRetryResult connect_result =
+        is_connected ? kDarkResumeScanRetryResultConnected
+                     : kDarkResumeScanRetryResultNotConnected;
+    SendEnumToUMA(kMetricDarkResumeScanRetryResult, connect_result,
+                  kDarkResumeScanRetryResultMax);
+  }
 }
 
 void Metrics::InitializeCommonServiceMetrics(const Service &service) {

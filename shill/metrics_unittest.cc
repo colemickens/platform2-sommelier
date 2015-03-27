@@ -912,6 +912,8 @@ TEST_F(MetricsTest, NotifyDarkResumeActionsCompleted_Success) {
   metrics_.set_time_dark_resume_actions_timer(
       mock_time_dark_resume_actions_timer);
   metrics_.wake_reason_received_ = true;
+  const int non_zero_num_retries = 3;
+  metrics_.dark_resume_scan_retries_ = non_zero_num_retries;
   EXPECT_CALL(*mock_time_dark_resume_actions_timer, GetElapsedTime(_))
       .WillOnce(
           DoAll(SetArgumentPointee<0>(non_zero_time_delta), Return(true)));
@@ -932,6 +934,11 @@ TEST_F(MetricsTest, NotifyDarkResumeActionsCompleted_Success) {
       SendEnumToUMA(Metrics::kMetricDarkResumeUnmatchedScanResultReceived,
                     Metrics::kDarkResumeUnmatchedScanResultsReceivedFalse,
                     Metrics::kDarkResumeUnmatchedScanResultsReceivedMax));
+  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricDarkResumeScanNumRetries,
+                                  non_zero_num_retries,
+                                  Metrics::kMetricDarkResumeScanNumRetriesMin,
+                                  Metrics::kMetricDarkResumeScanNumRetriesMax,
+                                  Metrics::kTimerHistogramNumBuckets));
   metrics_.NotifyDarkResumeActionsCompleted(true);
   EXPECT_FALSE(metrics_.wake_reason_received_);
 }
@@ -944,6 +951,8 @@ TEST_F(MetricsTest, NotifyDarkResumeActionsCompleted_Failure) {
   metrics_.set_time_dark_resume_actions_timer(
       mock_time_dark_resume_actions_timer);
   metrics_.wake_reason_received_ = true;
+  const int non_zero_num_retries = 3;
+  metrics_.dark_resume_scan_retries_ = non_zero_num_retries;
   EXPECT_CALL(*mock_time_dark_resume_actions_timer, GetElapsedTime(_))
       .WillOnce(
           DoAll(SetArgumentPointee<0>(non_zero_time_delta), Return(true)));
@@ -964,6 +973,11 @@ TEST_F(MetricsTest, NotifyDarkResumeActionsCompleted_Failure) {
       SendEnumToUMA(Metrics::kMetricDarkResumeUnmatchedScanResultReceived,
                     Metrics::kDarkResumeUnmatchedScanResultsReceivedFalse,
                     Metrics::kDarkResumeUnmatchedScanResultsReceivedMax));
+  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricDarkResumeScanNumRetries,
+                                  non_zero_num_retries,
+                                  Metrics::kMetricDarkResumeScanNumRetriesMin,
+                                  Metrics::kMetricDarkResumeScanNumRetriesMax,
+                                  Metrics::kTimerHistogramNumBuckets));
   metrics_.NotifyDarkResumeActionsCompleted(false);
   EXPECT_FALSE(metrics_.wake_reason_received_);
 }
@@ -979,9 +993,11 @@ TEST_F(MetricsTest, NotifySuspendActionsStarted) {
 TEST_F(MetricsTest, NotifyDarkResumeActionsStarted) {
   metrics_.time_dark_resume_actions_timer->Stop();
   metrics_.num_scan_results_expected_in_dark_resume_ = 2;
+  metrics_.dark_resume_scan_retries_ = 3;
   metrics_.NotifyDarkResumeActionsStarted();
   EXPECT_TRUE(metrics_.time_dark_resume_actions_timer->HasStarted());
   EXPECT_EQ(0, metrics_.num_scan_results_expected_in_dark_resume_);
+  EXPECT_EQ(0, metrics_.dark_resume_scan_retries_);
 }
 
 TEST_F(MetricsTest, NotifyDarkResumeInitiateScan) {
@@ -994,6 +1010,47 @@ TEST_F(MetricsTest, NotifyDarkResumeScanResultsReceived) {
   metrics_.num_scan_results_expected_in_dark_resume_ = 1;
   metrics_.NotifyDarkResumeScanResultsReceived();
   EXPECT_EQ(0, metrics_.num_scan_results_expected_in_dark_resume_);
+}
+
+TEST_F(MetricsTest, NotifyDarkResumeScanRetry) {
+  const int initial_num_retries = 2;
+  metrics_.dark_resume_scan_retries_ = initial_num_retries;
+  metrics_.NotifyDarkResumeScanRetry();
+  EXPECT_EQ(initial_num_retries + 1, metrics_.dark_resume_scan_retries_);
+}
+
+TEST_F(MetricsTest, NotifyBeforeSuspendActions_InDarkResume) {
+  const bool in_dark_resume = true;
+  bool is_connected;
+  metrics_.dark_resume_scan_retries_ = 1;
+
+  is_connected = true;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricDarkResumeScanRetryResult,
+                            Metrics::kDarkResumeScanRetryResultConnected,
+                            Metrics::kDarkResumeScanRetryResultMax));
+  metrics_.NotifyBeforeSuspendActions(is_connected, in_dark_resume);
+
+  is_connected = false;
+  EXPECT_CALL(library_,
+              SendEnumToUMA(Metrics::kMetricDarkResumeScanRetryResult,
+                            Metrics::kDarkResumeScanRetryResultNotConnected,
+                            Metrics::kDarkResumeScanRetryResultMax));
+  metrics_.NotifyBeforeSuspendActions(is_connected, in_dark_resume);
+}
+
+TEST_F(MetricsTest, NotifyBeforeSuspendActions_NotInDarkResume) {
+  const bool in_dark_resume = false;
+  bool is_connected;
+  metrics_.dark_resume_scan_retries_ = 1;
+
+  is_connected = true;
+  EXPECT_CALL(library_, SendEnumToUMA(_, _, _)).Times(0);
+  metrics_.NotifyBeforeSuspendActions(is_connected, in_dark_resume);
+
+  is_connected = false;
+  EXPECT_CALL(library_, SendEnumToUMA(_, _, _)).Times(0);
+  metrics_.NotifyBeforeSuspendActions(is_connected, in_dark_resume);
 }
 
 #ifndef NDEBUG
