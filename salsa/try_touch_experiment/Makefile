@@ -2,74 +2,34 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-OBJDIR = obj
+include common.mk
 
-OBJECTS=\
-	$(OBJDIR)/try_touch_experiment.o \
-	$(OBJDIR)/salsa_experiment_runner.o \
-	$(OBJDIR)/treatment.o \
-	$(OBJDIR)/property.o \
-	$(OBJDIR)/experiment.o
+CXXFLAGS += \
+	-std=gnu++11
 
-DESTDIR = .
-
-CXXFLAGS+=\
-	-g \
-	-fno-exceptions \
-	-fno-strict-aliasing \
-	-std=gnu++11 \
-	-Wall \
-	-Wclobbered \
-	-Wempty-body \
-	-Werror \
-	-Wignored-qualifiers \
-	-Wmissing-field-initializers \
-	-Wsign-compare \
-	-Wtype-limits \
-	-Wuninitialized
-CPPFLAGS+=\
-	-D_LARGEFILE_SOURCE \
-	-D_FILE_OFFSET_BITS=64 \
+CPPFLAGS += \
 	-DGESTURES_INTERNAL=1 \
 	-I../..
 
-PKG_CONFIG ?= pkg-config
 BASE_VER ?= 307740
-PC_DEPS = libchrome-$(BASE_VER)
+PC_DEPS = libchrome-$(BASE_VER) ncurses x11 xi
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += $(PC_CFLAGS)
+LDLIBS += $(PC_LIBS)
 
-LDLIBS=\
-	$(PC_LIBS) \
-	-lcurses \
-	-lX11 \
-	-lXi
+all: CXX_BINARY(try_touch_experiment)
 
-define auto_mkdir
-  $(if $(wildcard $(dir $1)),$2,$(QUIET)mkdir -p "$(dir $1)")
-endef
+CXX_BINARY(try_touch_experiment): \
+	try_touch_experiment.o \
+	salsa_experiment_runner.o \
+	treatment.o \
+	property.o \
+	experiment.o
 
-EXE=try_touch_experiment
+clean: CLEAN(CXX_BINARY(try_touch_experiment))
 
-all: $(EXE)
-
-$(EXE): $(OBJECTS)
-	$(CXX) -o $@ $(CXXFLAGS) $(LDFLAGS) $(OBJECTS) $(LDLIBS)
-
-$(OBJDIR)/%.o : %.cc
-	$(call auto_mkdir,$@)
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-$(OBJDIR)/%.o : %.c
-	$(call auto_mkdir,$@)
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-install: $(EXE)
-	install -D -m 0755 $(EXE) $(DESTDIR)/usr/sbin/$(EXE)
-
-clean:
-	rm -rf $(OBJDIR) $(EXE)
-
-.PHONY : clean all
+EXE = try_touch_experiment
+install:
+	install -D -m 0755 $(OUT)/$(EXE) $(DESTDIR)/usr/sbin/$(EXE)
