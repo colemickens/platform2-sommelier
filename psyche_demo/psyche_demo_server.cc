@@ -2,24 +2,37 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sysexits.h>
+
 #include <base/logging.h>
 #include <base/macros.h>
 #include <chromeos/flag_helper.h>
-#include <protobinder/binder_daemon.h>
 #include <psyche/psyche_connection.h>
+#include <psyche/psyche_daemon.h>
 
 #include "psyche_demo/proto_bindings/psyche_demo.pb.h"
 #include "psyche_demo/proto_bindings/psyche_demo.pb.rpc.h"
 
-using psyche::PsycheConnection;
-
 namespace psyche {
 namespace {
 
-class DemoServer : public IPsycheDemoServerHostInterface {
+class DemoServer : public PsycheDaemon,
+                   public IPsycheDemoServerHostInterface {
  public:
-  DemoServer() = default;
+  explicit DemoServer(const std::string& service_name)
+      : service_name_(service_name) {}
   ~DemoServer() override = default;
+
+  // PsycheDaemon:
+  int OnInit() override {
+    int return_code = PsycheDaemon::OnInit();
+    if (return_code != EX_OK)
+      return return_code;
+
+    if (!psyche_connection()->RegisterService(service_name_, this))
+      return -1;
+    return 0;
+  }
 
   // IPsychedDemoServerInterface:
   int Ping(PingRequest* in, PingResponse* out) override {
@@ -29,6 +42,9 @@ class DemoServer : public IPsycheDemoServerHostInterface {
   }
 
  private:
+  // Name of service to register with psyched.
+  std::string service_name_;
+
   DISALLOW_COPY_AND_ASSIGN(DemoServer);
 };
 
@@ -41,9 +57,5 @@ int main(int argc, char* argv[]) {
   chromeos::FlagHelper::Init(
       argc, argv, "Example server that registers with psyched.");
 
-  PsycheConnection connection;
-  CHECK(connection.Init());
-  scoped_ptr<psyche::DemoServer> server(new psyche::DemoServer);
-  CHECK(connection.RegisterService(FLAGS_service_name, server.get()));
-  return protobinder::BinderDaemon("foo", server.Pass()).Run();
+  return psyche::DemoServer(FLAGS_service_name).Run();
 }

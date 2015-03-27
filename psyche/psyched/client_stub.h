@@ -5,6 +5,7 @@
 #ifndef PSYCHE_PSYCHED_CLIENT_STUB_H_
 #define PSYCHE_PSYCHED_CLIENT_STUB_H_
 
+#include <memory>
 #include <vector>
 
 #include "psyche/psyched/client.h"
@@ -18,7 +19,7 @@ namespace psyche {
 // A stub implementation of ClientInterface used for testing.
 class ClientStub : public ClientInterface {
  public:
-  explicit ClientStub(scoped_ptr<protobinder::BinderProxy> client_proxy);
+  explicit ClientStub(std::unique_ptr<protobinder::BinderProxy> client_proxy);
   ~ClientStub() override;
 
   using ServiceVector = std::vector<ServiceInterface*>;
@@ -37,7 +38,7 @@ class ClientStub : public ClientInterface {
   void HandleServiceStateChange(ServiceInterface* service) override;
 
  private:
-  scoped_ptr<protobinder::BinderProxy> client_proxy_;
+  std::unique_ptr<protobinder::BinderProxy> client_proxy_;
   ServiceSet services_;
 
   // Services that have called HandleServiceStateChange().

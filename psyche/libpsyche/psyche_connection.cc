@@ -90,7 +90,7 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
   int ReceiveService(ReceiveServiceRequest* in,
                      ReceiveServiceResponse* out) override {
     const std::string service_name = in->name();
-    scoped_ptr<BinderProxy> proxy =
+    std::unique_ptr<BinderProxy> proxy =
         util::ExtractBinderProxyFromProto(in->mutable_binder());
 
     auto it = get_service_callbacks_.find(service_name);
@@ -99,13 +99,13 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
       return 0;
     }
 
-    it->second.Run(proxy.Pass());
+    it->second.Run(make_scoped_ptr(proxy.release()));
     return 0;
   }
 
  private:
-  scoped_ptr<IBinder> psyched_binder_;
-  scoped_ptr<IPsyched> psyched_interface_;
+  std::unique_ptr<IBinder> psyched_binder_;
+  std::unique_ptr<IPsyched> psyched_interface_;
 
   // Keyed by service name.
   std::map<std::string, GetServiceCallback> get_service_callbacks_;

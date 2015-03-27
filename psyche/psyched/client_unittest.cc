@@ -10,6 +10,7 @@
 
 #include <base/logging.h>
 #include <base/macros.h>
+#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 #include <libprotobinder/binder_manager.h>
 #include <libprotobinder/binder_manager_stub.h>
@@ -82,7 +83,7 @@ TEST_F(ClientTest, PassServiceHandles) {
   BinderProxy* client_proxy = new BinderProxy(next_proxy_handle++);
   binder_manager_->SetTestInterface(
       client_proxy, scoped_ptr<IInterface>(interface));
-  Client client(make_scoped_ptr(client_proxy));
+  Client client((std::unique_ptr<BinderProxy>(client_proxy)));
 
   // Adding a not-yet-started service shouldn't send anything.
   const std::string kServiceName("stub");
@@ -92,7 +93,7 @@ TEST_F(ClientTest, PassServiceHandles) {
 
   // Start the service and check that its handle is sent.
   BinderProxy* service_proxy = new BinderProxy(next_proxy_handle++);
-  service.SetProxy(make_scoped_ptr(service_proxy));
+  service.SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
   client.HandleServiceStateChange(&service);
   ASSERT_EQ(1U, interface->service_handles().size());
   EXPECT_EQ(kServiceName, interface->service_handles()[0].first);
@@ -105,7 +106,7 @@ TEST_F(ClientTest, PassServiceHandles) {
   client.HandleServiceStateChange(&service);
   ASSERT_EQ(0U, interface->service_handles().size());
   service_proxy = new BinderProxy(next_proxy_handle++);
-  service.SetProxy(make_scoped_ptr(service_proxy));
+  service.SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
   service.set_state(ServiceInterface::STATE_STARTED);
   client.HandleServiceStateChange(&service);
   ASSERT_EQ(1U, interface->service_handles().size());
@@ -118,7 +119,7 @@ TEST_F(ClientTest, PassServiceHandles) {
   const std::string kService2Name("stub2");
   ServiceStub service2(kService2Name);
   BinderProxy* service2_proxy = new BinderProxy(next_proxy_handle++);
-  service2.SetProxy(make_scoped_ptr(service2_proxy));
+  service2.SetProxy(std::unique_ptr<BinderProxy>(service2_proxy));
   client.AddService(&service2);
   ASSERT_EQ(1U, interface->service_handles().size());
   EXPECT_EQ(kService2Name, interface->service_handles()[0].first);

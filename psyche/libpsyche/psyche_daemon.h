@@ -5,10 +5,10 @@
 #ifndef PSYCHE_LIBPSYCHE_PSYCHE_DAEMON_H_
 #define PSYCHE_LIBPSYCHE_PSYCHE_DAEMON_H_
 
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <protobinder/binder_daemon.h>
 
 #include "psyche/libpsyche/psyche_connection.h"
@@ -29,7 +29,7 @@ class PSYCHE_EXPORT PsycheDaemon : public protobinder::BinderDaemon {
   int OnInit() override;
 
  private:
-  scoped_ptr<PsycheConnection> psyche_connection_;
+  std::unique_ptr<PsycheConnection> psyche_connection_;
 
   DISALLOW_COPY_AND_ASSIGN(PsycheDaemon);
 };

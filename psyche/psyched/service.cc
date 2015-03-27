@@ -4,6 +4,7 @@
 
 #include "psyche/psyched/service.h"
 
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -32,8 +33,8 @@ ServiceInterface::State Service::GetState() const { return state_; }
 
 protobinder::BinderProxy* Service::GetProxy() const { return proxy_.get(); }
 
-void Service::SetProxy(scoped_ptr<BinderProxy> proxy) {
-  proxy_ = proxy.Pass();
+void Service::SetProxy(std::unique_ptr<BinderProxy> proxy) {
+  proxy_ = std::move(proxy);
   proxy_->SetDeathCallback(base::Bind(&Service::HandleBinderDeath,
                                       weak_ptr_factory_.GetWeakPtr()));
   state_ = STATE_STARTED;

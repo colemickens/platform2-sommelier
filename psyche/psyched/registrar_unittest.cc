@@ -4,6 +4,9 @@
 
 #include "psyche/psyched/registrar.h"
 
+#include <memory>
+#include <utility>
+
 #include <base/logging.h>
 #include <base/macros.h>
 #include <gtest/gtest.h>
@@ -43,17 +46,18 @@ class TestDelegate : public Registrar::Delegate {
   }
 
   // Delegate:
-  scoped_ptr<ServiceInterface> CreateService(const std::string& name) override {
+  std::unique_ptr<ServiceInterface> CreateService(
+      const std::string& name) override {
     ServiceStub* service = new ServiceStub(name);
     services_[name] = service;
-    return scoped_ptr<ServiceInterface>(service);
+    return std::unique_ptr<ServiceInterface>(service);
   }
-  scoped_ptr<ClientInterface> CreateClient(
-      scoped_ptr<BinderProxy> client_proxy) override {
+  std::unique_ptr<ClientInterface> CreateClient(
+      std::unique_ptr<BinderProxy> client_proxy) override {
     const uint32_t handle = client_proxy->handle();
-    ClientStub* client = new ClientStub(client_proxy.Pass());
+    ClientStub* client = new ClientStub(std::move(client_proxy));
     clients_[handle] = client;
-    return scoped_ptr<ClientInterface>(client);
+    return std::unique_ptr<ClientInterface>(client);
   }
 
  private:
@@ -76,7 +80,7 @@ class RegistrarTest : public testing::Test {
     BinderManagerInterface::SetForTesting(
         scoped_ptr<BinderManagerInterface>(binder_manager_));
     registrar_->SetDelegateForTesting(
-        scoped_ptr<Registrar::Delegate>(delegate_));
+        std::unique_ptr<Registrar::Delegate>(delegate_));
     registrar_->Init();
   }
 
@@ -100,7 +104,7 @@ class RegistrarTest : public testing::Test {
   BinderManagerStub* binder_manager_;  // Not owned.
 
   TestDelegate* delegate_;  // Owned by |registrar_|.
-  scoped_ptr<Registrar> registrar_;
+  std::unique_ptr<Registrar> registrar_;
 
   // Next handle for CreateBinderProxy() to use.
   uint32_t next_proxy_handle_;

@@ -5,11 +5,11 @@
 #ifndef PSYCHE_PSYCHED_SERVICE_H_
 #define PSYCHE_PSYCHED_SERVICE_H_
 
+#include <memory>
 #include <set>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 
 namespace protobinder {
@@ -35,7 +35,7 @@ class ServiceInterface {
   virtual protobinder::BinderProxy* GetProxy() const = 0;
 
   // Updates the proxy used by clients to communicate with the service.
-  virtual void SetProxy(scoped_ptr<protobinder::BinderProxy> proxy) = 0;
+  virtual void SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy) = 0;
 
   // Registers or unregisters a client as a user of this service. Ownership of
   // |client| remains with the caller.
@@ -54,7 +54,7 @@ class Service : public ServiceInterface {
   const std::string& GetName() const override;
   State GetState() const override;
   protobinder::BinderProxy* GetProxy() const override;
-  void SetProxy(scoped_ptr<protobinder::BinderProxy> proxy) override;
+  void SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy) override;
   void AddClient(ClientInterface* client) override;
   void RemoveClient(ClientInterface* client) override;
   bool HasClient(ClientInterface* client) const override;
@@ -74,7 +74,7 @@ class Service : public ServiceInterface {
   State state_;
 
   // The connection to the service that will be passed to clients.
-  scoped_ptr<protobinder::BinderProxy> proxy_;
+  std::unique_ptr<protobinder::BinderProxy> proxy_;
 
   // Clients that are holding connections to this service.
   using ClientSet = std::set<ClientInterface*>;

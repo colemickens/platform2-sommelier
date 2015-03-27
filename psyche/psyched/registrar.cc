@@ -8,7 +8,6 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <protobinder/binder_manager.h>
 #include <protobinder/binder_proxy.h>
@@ -30,12 +29,14 @@ class Registrar::RealDelegate : public Delegate {
   ~RealDelegate() override = default;
 
   // Delegate:
-  scoped_ptr<ServiceInterface> CreateService(const std::string& name) override {
-    return scoped_ptr<ServiceInterface>(new Service(name));
+  std::unique_ptr<ServiceInterface> CreateService(
+      const std::string& name) override {
+    return std::unique_ptr<ServiceInterface>(new Service(name));
   }
-  scoped_ptr<ClientInterface> CreateClient(
-      scoped_ptr<BinderProxy> client_proxy) override {
-    return scoped_ptr<ClientInterface>(new Client(client_proxy.Pass()));
+  std::unique_ptr<ClientInterface> CreateClient(
+      std::unique_ptr<BinderProxy> client_proxy) override {
+    return std::unique_ptr<ClientInterface>(
+        new Client(std::move(client_proxy)));
   }
 
  private:
@@ -46,9 +47,9 @@ Registrar::Registrar() : weak_ptr_factory_(this) {}
 
 Registrar::~Registrar() = default;
 
-void Registrar::SetDelegateForTesting(scoped_ptr<Delegate> delegate) {
+void Registrar::SetDelegateForTesting(std::unique_ptr<Delegate> delegate) {
   CHECK(!delegate_);
-  delegate_ = delegate.Pass();
+  delegate_ = std::move(delegate);
 }
 
 void Registrar::Init() {
@@ -59,7 +60,7 @@ void Registrar::Init() {
 int Registrar::RegisterService(RegisterServiceRequest* in,
                                RegisterServiceResponse* out) {
   const std::string service_name = in->name();
-  scoped_ptr<BinderProxy> proxy =
+  std::unique_ptr<BinderProxy> proxy =
       util::ExtractBinderProxyFromProto(in->mutable_binder());
   LOG(INFO) << "Got request to register \"" << service_name << "\" with "
             << "handle " << proxy->handle();
@@ -72,9 +73,8 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
 
   auto it = services_.find(service_name);
   if (it == services_.end()) {
-    it = services_.insert(std::make_pair(service_name,
-        make_linked_ptr(
-            delegate_->CreateService(service_name).release()))).first;
+    it = services_.insert(std::make_pair(
+        service_name, delegate_->CreateService(service_name))).first;
   } else {
     // The service is already registered (but maybe it's dead).
     if (it->second->GetState() == Service::STATE_STARTED) {
@@ -85,7 +85,7 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
     }
   }
   ServiceInterface* service = it->second.get();
-  service->SetProxy(proxy.Pass());
+  service->SetProxy(std::move(proxy));
 
   out->set_success(true);
   return 0;
@@ -94,7 +94,7 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
 int Registrar::RequestService(RequestServiceRequest* in,
                               RequestServiceResponse* out) {
   const std::string service_name = in->name();
-  scoped_ptr<BinderProxy> client_proxy =
+  std::unique_ptr<BinderProxy> client_proxy =
       util::ExtractBinderProxyFromProto(in->mutable_client_binder());
   int32_t client_handle = client_proxy->handle();
   LOG(INFO) << "Got request to provide service \"" << service_name << "\""
@@ -114,8 +114,7 @@ int Registrar::RequestService(RequestServiceRequest* in,
         &Registrar::HandleClientBinderDeath,
         weak_ptr_factory_.GetWeakPtr(), client_handle));
     client_it = clients_.insert(std::make_pair(client_handle,
-        make_linked_ptr(
-            delegate_->CreateClient(client_proxy.Pass()).release()))).first;
+        delegate_->CreateClient(std::move(client_proxy)))).first;
   }
   ClientInterface* client = client_it->second.get();
   ServiceInterface* service = service_it->second.get();

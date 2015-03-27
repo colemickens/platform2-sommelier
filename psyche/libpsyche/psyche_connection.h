@@ -5,6 +5,7 @@
 #ifndef PSYCHE_LIBPSYCHE_PSYCHE_CONNECTION_H_
 #define PSYCHE_LIBPSYCHE_PSYCHE_CONNECTION_H_
 
+#include <memory>
 #include <string>
 
 #include <base/callback.h>
@@ -23,6 +24,7 @@ namespace psyche {
 // Interface encapsulating a client's communication to psyched.
 class PSYCHE_EXPORT PsycheConnectionInterface {
  public:
+  // TODO(derat): Switch this to std::unique_ptr once base::Bind() supports it.
   using GetServiceCallback =
       base::Callback<void(scoped_ptr<protobinder::BinderProxy>)>;
 
@@ -61,7 +63,7 @@ class PSYCHE_EXPORT PsycheConnection : public PsycheConnectionInterface {
   // Implements IPsycheClientHostInterface. Defined in .cc file so this header
   // doesn't need to include generated proto files.
   class Impl;
-  scoped_ptr<Impl> impl_;
+  std::unique_ptr<Impl> impl_;
 
   DISALLOW_COPY_AND_ASSIGN(PsycheConnection);
 };

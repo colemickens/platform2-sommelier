@@ -4,6 +4,8 @@
 
 #include "psyche/psyched/client.h"
 
+#include <utility>
+
 #include <protobinder/binder_proxy.h>
 
 #include "psyche/common/util.h"
@@ -13,8 +15,8 @@
 
 namespace psyche {
 
-Client::Client(scoped_ptr<protobinder::BinderProxy> client_proxy)
-    : proxy_(client_proxy.Pass()),
+Client::Client(std::unique_ptr<protobinder::BinderProxy> client_proxy)
+    : proxy_(std::move(client_proxy)),
       interface_(BinderToInterface<IPsycheClient>(proxy_.get())) {
 }
 

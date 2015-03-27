@@ -4,14 +4,16 @@
 
 #include "psyche/psyched/client_stub.h"
 
+#include <utility>
+
 #include <protobinder/binder_proxy.h>
 
 using protobinder::BinderProxy;
 
 namespace psyche {
 
-ClientStub::ClientStub(scoped_ptr<BinderProxy> client_proxy)
-    : client_proxy_(client_proxy.Pass()) {}
+ClientStub::ClientStub(std::unique_ptr<BinderProxy> client_proxy)
+    : client_proxy_(std::move(client_proxy)) {}
 
 ClientStub::~ClientStub() = default;
 

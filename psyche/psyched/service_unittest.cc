@@ -4,6 +4,7 @@
 
 #include "psyche/psyched/service.h"
 
+#include <memory>
 #include <string>
 
 #include <base/logging.h>
@@ -49,13 +50,13 @@ TEST_F(ServiceTest, NotifyClientsAboutStateChanges) {
 
   uint32_t next_proxy_handle = 1;
   BinderProxy* client_proxy = new BinderProxy(next_proxy_handle++);
-  ClientStub client(make_scoped_ptr(client_proxy));
+  ClientStub client((std::unique_ptr<BinderProxy>(client_proxy)));
   service.AddClient(&client);
 
   // Pass the service proxy and check that the service is marked started and
   // that the client is notified.
   BinderProxy* service_proxy = new BinderProxy(next_proxy_handle++);
-  service.SetProxy(make_scoped_ptr(service_proxy));
+  service.SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
   EXPECT_EQ(ServiceInterface::STATE_STARTED, service.GetState());
   ASSERT_EQ(1U, client.services_with_changed_states().size());
   EXPECT_EQ(&service, client.services_with_changed_states()[0]);

@@ -6,10 +6,10 @@
 #define PSYCHE_PSYCHED_REGISTRAR_H_
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/linked_ptr.h>
 #include <base/memory/weak_ptr.h>
 
 #include "psyche/proto_bindings/psyche.pb.h"
@@ -33,17 +33,17 @@ class Registrar : public IPsychedHostInterface {
    public:
     virtual ~Delegate() = default;
 
-    virtual scoped_ptr<ServiceInterface> CreateService(
+    virtual std::unique_ptr<ServiceInterface> CreateService(
         const std::string& name) = 0;
-    virtual scoped_ptr<ClientInterface> CreateClient(
-        scoped_ptr<BinderProxy> client_proxy) = 0;
+    virtual std::unique_ptr<ClientInterface> CreateClient(
+        std::unique_ptr<BinderProxy> client_proxy) = 0;
   };
 
   Registrar();
   ~Registrar() override;
 
   // Updates |delegate_|. Must be called before Init().
-  void SetDelegateForTesting(scoped_ptr<Delegate> delegate);
+  void SetDelegateForTesting(std::unique_ptr<Delegate> delegate);
 
   void Init();
 
@@ -60,14 +60,14 @@ class Registrar : public IPsychedHostInterface {
   void HandleClientBinderDeath(int32_t handle);
 
   // Initialized by Init() if not already set by SetDelegateForTesting().
-  scoped_ptr<Delegate> delegate_;
+  std::unique_ptr<Delegate> delegate_;
 
   // Keyed by service name.
-  using ServiceMap = std::map<std::string, linked_ptr<ServiceInterface>>;
+  using ServiceMap = std::map<std::string, std::unique_ptr<ServiceInterface>>;
   ServiceMap services_;
 
   // Keyed by BinderProxy handle.
-  using ClientMap = std::map<int32_t, linked_ptr<ClientInterface>>;
+  using ClientMap = std::map<int32_t, std::unique_ptr<ClientInterface>>;
   ClientMap clients_;
 
   // This member should appear last.

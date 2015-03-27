@@ -5,9 +5,8 @@
 #ifndef PSYCHE_PSYCHED_SERVICE_STUB_H_
 #define PSYCHE_PSYCHED_SERVICE_STUB_H_
 
+#include <memory>
 #include <string>
-
-#include <base/memory/scoped_ptr.h>
 
 #include "psyche/psyched/service.h"
 
@@ -29,7 +28,7 @@ class ServiceStub : public ServiceInterface {
   const std::string& GetName() const override;
   State GetState() const override;
   protobinder::BinderProxy* GetProxy() const override;
-  void SetProxy(scoped_ptr<protobinder::BinderProxy> proxy) override;
+  void SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy) override;
   void AddClient(ClientInterface* client) override;
   void RemoveClient(ClientInterface* client) override;
   bool HasClient(ClientInterface* client) const override;
@@ -42,7 +41,7 @@ class ServiceStub : public ServiceInterface {
   State state_;
 
   // The connection to the service that will be passed to clients.
-  scoped_ptr<protobinder::BinderProxy> proxy_;
+  std::unique_ptr<protobinder::BinderProxy> proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(ServiceStub);
 };

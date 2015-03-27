@@ -5,11 +5,11 @@
 #ifndef PSYCHE_PSYCHED_CLIENT_H_
 #define PSYCHE_PSYCHED_CLIENT_H_
 
+#include <memory>
 #include <set>
 #include <string>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 
 namespace protobinder {
 class BinderProxy;
@@ -40,7 +40,7 @@ class ClientInterface {
 // The real implementation of ClientInterface.
 class Client : public ClientInterface {
  public:
-  explicit Client(scoped_ptr<protobinder::BinderProxy> client_proxy);
+  explicit Client(std::unique_ptr<protobinder::BinderProxy> client_proxy);
   ~Client() override;
 
   // ClientInterface:
@@ -53,8 +53,8 @@ class Client : public ClientInterface {
   // Passes |service|'s handle to the client.
   void SendServiceHandle(ServiceInterface* service);
 
-  scoped_ptr<protobinder::BinderProxy> proxy_;
-  scoped_ptr<IPsycheClient> interface_;
+  std::unique_ptr<protobinder::BinderProxy> proxy_;
+  std::unique_ptr<IPsycheClient> interface_;
 
   // Services that this client is holding connections to.
   ServiceSet services_;

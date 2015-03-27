@@ -4,6 +4,8 @@
 
 #include "psyche/psyched/service_stub.h"
 
+#include <utility>
+
 #include <protobinder/binder_proxy.h>
 
 using protobinder::BinderProxy;
@@ -23,8 +25,8 @@ ServiceInterface::State ServiceStub::GetState() const { return state_; }
 
 protobinder::BinderProxy* ServiceStub::GetProxy() const { return proxy_.get(); }
 
-void ServiceStub::SetProxy(scoped_ptr<BinderProxy> proxy) {
-  proxy_ = proxy.Pass();
+void ServiceStub::SetProxy(std::unique_ptr<BinderProxy> proxy) {
+  proxy_ = std::move(proxy);
   state_ = proxy_ ? STATE_STARTED : STATE_STOPPED;
 }
 

@@ -5,7 +5,7 @@
 #ifndef PSYCHE_COMMON_UTIL_H_
 #define PSYCHE_COMMON_UTIL_H_
 
-#include <base/memory/scoped_ptr.h>
+#include <memory>
 
 namespace protobinder {
 class BinderProxy;
@@ -21,7 +21,7 @@ namespace util {
 
 // Extracts a remote binder stored within |proto|. The field is cleared to make
 // sure the proxy won't be accidentally extracted twice and double-freed.
-scoped_ptr<protobinder::BinderProxy> ExtractBinderProxyFromProto(
+std::unique_ptr<protobinder::BinderProxy> ExtractBinderProxyFromProto(
     protobinder::StrongBinder* proto);
 
 // Copies |binder| into |proto|.

@@ -4,6 +4,8 @@
 
 #include "psyche/common/util.h"
 
+#include <utility>
+
 #include <protobinder/binder_proxy.h>
 #include <protobinder/ibinder.h>
 
@@ -16,14 +18,14 @@ using protobinder::StrongBinder;
 namespace psyche {
 namespace util {
 
-scoped_ptr<BinderProxy> ExtractBinderProxyFromProto(StrongBinder* proto) {
+std::unique_ptr<BinderProxy> ExtractBinderProxyFromProto(StrongBinder* proto) {
   // Maybe the proxy already got pulled out of the message.
   if (!proto->ibinder())
     LOG(WARNING) << "ibinder field in proto message is empty";
-  scoped_ptr<BinderProxy> proxy(
+  std::unique_ptr<BinderProxy> proxy(
       reinterpret_cast<BinderProxy*>(proto->ibinder()));
   proto->set_ibinder(0);
-  return proxy.Pass();
+  return std::move(proxy);
 }
 
 void CopyBinderToProto(const IBinder& binder, StrongBinder* proto) {
