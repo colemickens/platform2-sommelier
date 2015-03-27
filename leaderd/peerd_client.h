@@ -48,13 +48,12 @@ class PeerdClient {
 
   void UpdatePeerService(
       org::chromium::peerd::ServiceProxyInterface* service_proxy,
-      const dbus::ObjectPath& object_path);
+      const dbus::ObjectPath& service_object_path);
   void RemovePeerService(const dbus::ObjectPath& object_path);
 
   Delegate* delegate_{nullptr};
   bool monitoring_{false};
   std::string monitor_token_;
-  std::map<dbus::ObjectPath, std::string> paths_to_uuids_;
   std::map<std::string, dbus::ObjectPath> uuids_to_paths_;
 
  private:
@@ -86,8 +85,8 @@ class PeerdClientImpl : public PeerdClient {
  private:
   scoped_refptr<dbus::Bus> bus_;
   org::chromium::peerd::ObjectManagerProxy peerd_object_manager_proxy_;
-  base::WeakPtrFactory<PeerdClientImpl> weak_ptr_factory_{this};
 
+  base::WeakPtrFactory<PeerdClientImpl> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(PeerdClientImpl);
 };
 

@@ -15,27 +15,29 @@ const char kGroupFieldFormat[] = "group_%" PRIuS;
 const char kGroupFieldPrefix[] = "group_";
 const char kPeerdPeerSelfPath[] = "/org/chromium/peerd/Self";
 const char kServiceName[] = "privet-ldrsp";
-const char kServicesSubPath[] = "/services/";
 }  // namespace
+
+using org::chromium::peerd::ServiceProxyInterface;
 
 void PeerdClient::SetDelegate(Delegate* delegate) { delegate_ = delegate; }
 
 std::set<std::string> PeerdClient::GetPeersMatchingGroup(
     const std::string& in_group_id) {
   std::set<std::string> peers;
-  for (const auto& path_uuid_pair : paths_to_uuids_) {
-    const org::chromium::peerd::ServiceProxyInterface* service_proxy =
-        GetServiceProxy(path_uuid_pair.first);
-    if (service_proxy) {
-      // Take all the group fields out of the text record.
-      std::map<std::string, std::string> service_info =
-          service_proxy->service_info();
-      for (const auto& field : service_info) {
-        if (StartsWithASCII(field.first, kGroupFieldPrefix, true) &&
-            field.second == in_group_id) {
-          peers.insert(path_uuid_pair.second);
-          break;
-        }
+  for (const auto& uuid_path_pair : uuids_to_paths_) {
+    const ServiceProxyInterface* service_proxy =
+        GetServiceProxy(uuid_path_pair.second);
+    if (!service_proxy) {
+      continue;
+    }
+    // Take all the group fields out of the text record.
+    std::map<std::string, std::string> service_info =
+        service_proxy->service_info();
+    for (const auto& field : service_info) {
+      if (StartsWithASCII(field.first, kGroupFieldPrefix, true) &&
+          field.second == in_group_id) {
+        peers.insert(uuid_path_pair.first);
+        break;
       }
     }
   }
@@ -85,20 +87,14 @@ std::vector<std::tuple<std::vector<uint8_t>, uint16_t>> PeerdClient::GetIPInfo(
 }
 
 void PeerdClient::UpdatePeerService(
-    org::chromium::peerd::ServiceProxyInterface* service_proxy,
-    const dbus::ObjectPath& object_path) {
-  if (service_proxy->service_id() != kServiceName) return;
-
-  const std::string& service_path = object_path.value();
-  std::string peer_path =
-      service_path.substr(0, service_path.find(kServicesSubPath));
-  const org::chromium::peerd::PeerProxyInterface* peer =
-      GetPeerProxy(dbus::ObjectPath(peer_path));
-
-  if (!peer) return;
-
-  paths_to_uuids_[object_path] = peer->uuid();
-  uuids_to_paths_[peer->uuid()] = object_path;
+    ServiceProxyInterface* service_proxy,
+    const dbus::ObjectPath& service_object_path) {
+  if (StartsWithASCII(service_object_path.value(), kPeerdPeerSelfPath, true)) {
+    VLOG(3) << "Ignoring service discovered on ourselves.";
+    return;
+  }
+  VLOG(1) << "Found peer with id=" << service_proxy->peer_id();
+  uuids_to_paths_[service_proxy->peer_id()] = service_object_path;
 
   // Take all the group fields out of the text record.
   std::map<std::string, std::string> service_info =
@@ -110,17 +106,18 @@ void PeerdClient::UpdatePeerService(
     }
   }
 
-  delegate_->OnPeerGroupsChanged(peer->uuid(), groups);
+  delegate_->OnPeerGroupsChanged(service_proxy->peer_id(), groups);
 }
 
 void PeerdClient::RemovePeerService(const dbus::ObjectPath& object_path) {
-  const auto& path_to_uuid = paths_to_uuids_.find(object_path);
-  if (path_to_uuid == paths_to_uuids_.end()) {
-    return;
+  ServiceProxyInterface* service = GetServiceProxy(object_path);
+  DCHECK(service) << "Failed to retrieve ServiceProxy instance.";
+  const auto it = uuids_to_paths_.find(service->peer_id());
+  if (it == uuids_to_paths_.end()) {
+    return;  // Must have been a service we don't care about.
   }
-  delegate_->OnPeerGroupsChanged(path_to_uuid->second, {});
-  uuids_to_paths_.erase(path_to_uuid->second);
-  paths_to_uuids_.erase(path_to_uuid);
+  delegate_->OnPeerGroupsChanged(service->peer_id(), {});
+  uuids_to_paths_.erase(service->peer_id());
 }
 
 void PeerdClient::PublishGroups(uint16_t port,
@@ -194,6 +191,7 @@ void PeerdClientImpl::OnPeerdPeerAdded(
 
 void PeerdClientImpl::OnPeerdServiceAdded(
     org::chromium::peerd::ServiceProxy* service_proxy) {
+  if (service_proxy->service_id() != kServiceName) return;
   UpdatePeerService(service_proxy, service_proxy->GetObjectPath());
   service_proxy->SetPropertyChangedCallback(base::Bind(
       &PeerdClientImpl::OnPeerdServiceChanged, weak_ptr_factory_.GetWeakPtr()));
