@@ -9,12 +9,18 @@
 #include "soma/libsoma/constants.h"
 #include "soma/soma.h"
 
+namespace {
+
+const char kContainerSpecDir[] = "/etc/container_specs";
+
+}  // namespace
+
 // TODO(usanghi): Find a better way to instantiate PsycheDaemon without
 // extending it in each service.
 namespace soma {
 class SomaDaemon : public psyche::PsycheDaemon {
  public:
-  SomaDaemon() : soma_host_(base::FilePath("/")) {}
+  SomaDaemon() : soma_host_(base::FilePath(kContainerSpecDir)) {}
   ~SomaDaemon() override {}
 
  private:

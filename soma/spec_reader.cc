@@ -20,7 +20,7 @@
 namespace soma {
 namespace parser {
 
-const char ContainerSpecReader::kServiceBundlePathKey[] = "service bundle path";
+const char ContainerSpecReader::kServiceBundlePathKey[] = "service_bundle_path";
 const char ContainerSpecReader::kUidKey[] = "uid";
 const char ContainerSpecReader::kGidKey[] = "gid";
 
