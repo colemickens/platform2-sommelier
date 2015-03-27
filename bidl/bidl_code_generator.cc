@@ -343,7 +343,9 @@ void BidlCodeGenerator::PrintStandardHeaders(Printer* printer) const {
       "be\n"
       "// found in the LICENSE file.\n"
       "\n");
+}
 
+void BidlCodeGenerator::PrintStandardIncludes(Printer* printer) const {
   printer->Print("#include <libprotobinder/iinterface.h>\n");
   printer->Print("#include <libprotobinder/parcel.h>\n");
   printer->Print("\n");
@@ -521,7 +523,7 @@ bool BidlCodeGenerator::GenerateHeader(
     const FileDescriptor* file,
     GeneratorContext* generator_context) const {
   google::protobuf::scoped_ptr<ZeroCopyOutputStream> output(
-      generator_context->Open(basename + ".rpc.h"));
+      generator_context->Open(basename + ".pb.rpc.h"));
   Printer printer(output.get(), '$');
 
   vector<string> package_parts;
@@ -529,7 +531,12 @@ bool BidlCodeGenerator::GenerateHeader(
 
   PrintStandardHeaders(&printer);
 
-  printer.Print("#include \"$name$.h\"\n", "name", basename);
+  printer.Print("#ifndef BIDL_$name$_RPC_H_\n", "name", basename);
+  printer.Print("#define BIDL_$name$_RPC_H_\n\n", "name", basename);
+
+  PrintStandardIncludes(&printer);
+
+  printer.Print("#include \"$name$.pb.h\"\n", "name", basename);
 
   printer.Print("using namespace protobinder;\n\n");
 
@@ -548,6 +555,8 @@ bool BidlCodeGenerator::GenerateHeader(
   for (int i = package_parts.size() - 1; i >= 0; i--) {
     printer.Print("}  // namespace $part$\n", "part", package_parts[i]);
   }
+
+  printer.Print("\n#endif  // BIDL_$name$_RPC_H_\n", "name", basename);
 
   return true;
 }
@@ -675,13 +684,15 @@ bool BidlCodeGenerator::GenerateSource(
     const FileDescriptor* file,
     GeneratorContext* generator_context) const {
   google::protobuf::scoped_ptr<ZeroCopyOutputStream> output(
-      generator_context->Open(basename + ".rpc.cc"));
+      generator_context->Open(basename + ".pb.rpc.cc"));
   Printer printer(output.get(), '$');
 
   vector<string> package_parts;
   SplitStringUsing(file->package(), ".", &package_parts);
 
-  printer.Print("#include \"$name$.rpc.h\"\n\n", "name", basename);
+  PrintStandardHeaders(&printer);
+
+  printer.Print("#include \"$name$.pb.rpc.h\"\n\n", "name", basename);
 
   for (size_t i = 0; i < package_parts.size(); i++) {
     printer.Print("namespace $part$ {\n", "part", package_parts[i]);
@@ -709,7 +720,6 @@ bool BidlCodeGenerator::Generate(const FileDescriptor* file,
                                  GeneratorContext* generator_context,
                                  string* error) const {
   string basename = StripProto(file->name());
-  basename.append(".pb");
   if (file->service_count() > 0) {
     GenerateHeader(basename, file, generator_context);
     GenerateSource(basename, file, generator_context);
@@ -718,7 +728,7 @@ bool BidlCodeGenerator::Generate(const FileDescriptor* file,
     // with no service definitions. This makes consumer build
     // logic much simpler.
     google::protobuf::scoped_ptr<ZeroCopyOutputStream> output(
-        generator_context->Open(basename + ".rpc.cc"));
+        generator_context->Open(basename + ".pb.rpc.cc"));
     Printer printer(output.get(), '$');
     PrintStandardHeaders(&printer);
 

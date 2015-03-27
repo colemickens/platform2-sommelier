@@ -49,6 +49,7 @@ class BidlCodeGenerator : public CppGenerator {
   bool AddServiceToHeader(Printer* printer,
                           const ServiceDescriptor* service) const;
   void PrintStandardHeaders(Printer* printer) const;
+  void PrintStandardIncludes(Printer* printer) const;
   bool GenerateSource(const string& basename,
                       const FileDescriptor* file,
                       GeneratorContext* generator_context) const;
