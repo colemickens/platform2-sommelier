@@ -1,8 +1,5 @@
 {
   'target_defaults': {
-    'defines': [
-      '__STDC_FORMAT_MACROS',
-    ],
     'variables': {
       'deps': [
         'libchrome-<(libbase_ver)',

@@ -19,8 +19,6 @@
       '-Wno-missing-field-initializers',  # for LAZY_INSTANCE_INITIALIZER
     ],
     'defines': [
-      '__STDC_FORMAT_MACROS',
-      '__STDC_LIMIT_MACROS',
       'RUNDIR="/var/run/shill"',
       'SHIMDIR="<(libdir)/shill/shims"',
     ],

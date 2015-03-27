@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// This macro must be defined before stdint.h is included explicitly or
-// implicitly.  It ensures UINT32_MAX is available.
-#define __STDC_LIMIT_MACROS
 #include "cryptohome/lockbox.h"
 
 #include <arpa/inet.h>

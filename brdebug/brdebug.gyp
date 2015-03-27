@@ -10,9 +10,6 @@
       '-fno-strict-aliasing',
       '-Woverloaded-virtual',
     ],
-    'defines': [
-      '__STDC_FORMAT_MACROS',
-    ],
   },
   'targets': [
     {

@@ -4,7 +4,6 @@
 //
 // Cryptohome client that uses the dbus client interface
 
-#define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>

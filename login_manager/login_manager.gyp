@@ -1,7 +1,6 @@
 {
   'target_defaults': {
     'defines': [
-      '__STDC_FORMAT_MACROS',
       'OS_CHROMEOS',
       'USE_NSS',
     ],

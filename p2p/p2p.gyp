@@ -19,9 +19,6 @@
     'ldflags': [
       '-Wl,--gc-sections',
     ],
-    'defines': [
-      '__STDC_FORMAT_MACROS=1',
-    ],
   },
   'targets': [
     # common utils.
