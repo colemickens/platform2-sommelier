@@ -56,6 +56,8 @@ class Group : public org::chromium::leaderd::GroupInterface {
   bool SetScore(chromeos::ErrorPtr* error, int32_t in_score) override;
   bool PokeLeader(chromeos::ErrorPtr* error) override;
 
+  // The manager informs us when a peer is interested in who the leader is.
+  void HandleLeaderDiscover(std::string* leader_id);
   // The manager informs us when we need to respond to a challenge from a peer.
   void HandleLeaderChallenge(const std::string& challenger_id,
                              int32_t challenger_score,

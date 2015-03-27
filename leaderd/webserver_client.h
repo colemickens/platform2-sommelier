@@ -22,6 +22,9 @@ class Manager;
 
 namespace http_api {
 
+extern const char kDiscoverGroupKey[];
+extern const char kDiscoverLeaderKey[];
+
 extern const char kChallengeScoreKey[];
 extern const char kChallengeGroupKey[];
 extern const char kChallengeIdKey[];
@@ -47,6 +50,8 @@ class WebServerClient {
     virtual bool HandleLeaderAnnouncement(const std::string& group_id,
                                           const std::string& leader_id,
                                           int32_t leader_score) = 0;
+    virtual bool HandleLeaderDiscover(const std::string& group_id,
+                                      std::string* leader_id) = 0;
   };
 
   WebServerClient(Delegate* delegate,
@@ -59,14 +64,20 @@ class WebServerClient {
 
  private:
   friend class WebServerClientTest;
-  std::unique_ptr<base::Value> GetBody(scoped_ptr<libwebserv::Request> request);
+  enum class QueryType { DISCOVER, CHALLENGE, ANNOUNCE };
+  void RequestHandler(QueryType query_type,
+                      scoped_ptr<libwebserv::Request> request,
+                      scoped_ptr<libwebserv::Response> response);
   void ChallengeRequestHandler(scoped_ptr<libwebserv::Request> request,
                                scoped_ptr<libwebserv::Response> response);
   void AnnouncementRequestHandler(scoped_ptr<libwebserv::Request> request,
                                   scoped_ptr<libwebserv::Response> response);
+  std::unique_ptr<base::DictionaryValue> ProcessDiscover(
+      const base::DictionaryValue* input);
   std::unique_ptr<base::DictionaryValue> ProcessChallenge(
       const base::DictionaryValue* input);
-  bool ProcessAnnouncement(const base::DictionaryValue* input);
+  std::unique_ptr<base::DictionaryValue> ProcessAnnouncement(
+      const base::DictionaryValue* input);
   void OnProtocolHandlerConnected(
       libwebserv::ProtocolHandler* protocol_handler);
   void OnProtocolHandlerDisconnected(

@@ -118,6 +118,22 @@ bool Group::PokeLeader(chromeos::ErrorPtr* error) {
   return true;
 }
 
+void Group::HandleLeaderDiscover(std::string* leader_id) {
+  if (leader_ == delegate_->GetUUID()) {
+    // We could consider an optimization where we gossip about the identity of
+    // the leader.  However, consider the following:
+    // A, B are following a leader C.
+    // C vanishes.
+    // A notices C is gone, becomes a wanderer, looks for the leader.
+    // B gossips that C is a fine leader
+    // A believes B, becomes a follower again, schedules a challenge for later
+    // B notices C is gone, and we settle into a semi-stable failure.
+    //
+    // We can't gossip without applying some heuristics to fix this situation.
+    *leader_id = leader_;
+  }
+}
+
 void Group::HandleLeaderChallenge(const std::string& challenger_id,
                                   int32_t challenger_score,
                                   std::string* leader_id,
@@ -315,33 +331,26 @@ void Group::HandleLeaderChallengeResponse(chromeos::http::RequestID request_id,
   chromeos::ErrorPtr error;
   std::unique_ptr<base::DictionaryValue> json_resp =
       chromeos::http::ParseJsonResponse(response.get(), nullptr, &error);
-  if (!json_resp) {
-    return;
-  }
-
-  VLOG(1) << "Got leadership response";
-
   std::string leader;
-  std::string id;
-  if (!json_resp->GetString(http_api::kChallengeLeaderKey, &leader) ||
-      !json_resp->GetString(http_api::kChallengeIdKey, &id)) {
+  std::string responder;
+  if (!json_resp ||
+      !json_resp->GetString(http_api::kChallengeLeaderKey, &leader) ||
+      !json_resp->GetString(http_api::kChallengeIdKey, &responder)) {
+    VLOG(1) << "Received malformed challenge response.";
     return;
   }
+  VLOG(1) << "Got leadership response from '" << responder
+          << "'. Leader is '" << leader << "'.";
+  if (leader.empty()) {
+    return;  // This peer doesn't know who the leader is either.
+  }
 
-  if (!leader.empty()) {
-    if (leader == delegate_->GetUUID()) {
-      SetRole(State::LEADER, leader);
-    } else {
-      // Is this an authoritative answer or a gossip? If it
-      // is a gossip we need to connect to the leader to verify.
-      if (id != leader) {
-        // We can follow the redirect but we need to ensure we
-        // don't get into a cycle.
-        // SendLeaderChallenge(leader_service_proxy);
-      } else {
-        SetRole(State::FOLLOWER, leader);
-      }
-    }
+  if (leader == delegate_->GetUUID()) {
+    // We just challenged the leader and won.
+    SetRole(State::LEADER, leader);
+  } else if (responder == leader) {
+    // This peer has authoritatively claimed to be the leader.
+    SetRole(State::FOLLOWER, leader);
   }
 }
 

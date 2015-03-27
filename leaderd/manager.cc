@@ -68,6 +68,18 @@ void Manager::SetWebServerPort(uint16_t port) {
   PublishService();
 }
 
+bool Manager::HandleLeaderDiscover(const std::string& group_id,
+                                   std::string* leader_id) {
+  auto it = groups_.find(group_id);
+  if (it == groups_.end()) {
+    VLOG(1) << "Received discover for an unknown group.";
+    return false;
+  }
+
+  it->second->HandleLeaderDiscover(leader_id);
+  return true;
+}
+
 bool Manager::HandleLeaderChallenge(const std::string& group_id,
                                     const std::string& challenger_id,
                                     int32_t challenger_score,

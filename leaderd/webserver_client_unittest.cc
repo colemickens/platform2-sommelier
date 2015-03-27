@@ -17,16 +17,29 @@ class WebServerClientTest : public testing::Test,
  public:
   WebServerClientTest() : webserver_(this, "protocol_handler_name") {}
 
+  std::unique_ptr<base::DictionaryValue> ProcessDiscover(
+      const base::DictionaryValue* input) {
+    return webserver_.ProcessDiscover(input);
+  }
+
   std::unique_ptr<base::DictionaryValue> ProcessChallenge(
       const base::DictionaryValue* input) {
     return webserver_.ProcessChallenge(input);
   }
 
-  bool ProcessAnnouncement(const base::DictionaryValue* input) {
+  std::unique_ptr<base::DictionaryValue> ProcessAnnouncement(
+      const base::DictionaryValue* input) {
     return webserver_.ProcessAnnouncement(input);
   }
 
   void SetWebServerPort(uint16_t port) override {}
+
+  bool HandleLeaderDiscover(const std::string& in_guid,
+                            std::string* out_leader) override {
+    if (in_guid != kGroupId) return false;
+    *out_leader = "This is my own ID.";
+    return true;
+  }
 
   bool HandleLeaderChallenge(const std::string& in_guid,
                              const std::string& in_uuid,
@@ -44,6 +57,12 @@ class WebServerClientTest : public testing::Test,
                                 int32_t leader_score) override {
     if (group_id != kGroupId) return false;
     return true;
+  }
+
+  std::unique_ptr<base::DictionaryValue> GetValidDiscoverInput() {
+    std::unique_ptr<base::DictionaryValue> input{new base::DictionaryValue()};
+    input->SetString(http_api::kDiscoverGroupKey, kGroupId);
+    return input;
   }
 
   std::unique_ptr<base::DictionaryValue> GetValidChallengeInput() {
@@ -110,45 +129,95 @@ TEST_F(WebServerClientTest, ChallengeDelegateSuccess) {
 }
 
 TEST_F(WebServerClientTest, AnnouncementBadData) {
-  EXPECT_FALSE(ProcessAnnouncement(nullptr));
+  std::unique_ptr<base::DictionaryValue> output = ProcessAnnouncement(nullptr);
+  EXPECT_EQ(nullptr, output);
 }
 
 TEST_F(WebServerClientTest, AnnouncementRejectsExtraFields) {
   auto input = GetValidAnnouncementInput();
   input->SetString("BogusField", kGroupId);
-  EXPECT_FALSE(ProcessAnnouncement(input.get()));
+  std::unique_ptr<base::DictionaryValue> output =
+      ProcessAnnouncement(input.get());
+  EXPECT_EQ(nullptr, output);
 }
 
 TEST_F(WebServerClientTest, AnnouncementRejectsMissingFields) {
   // We need group to exist.
   auto input = GetValidAnnouncementInput();
   input->Remove(http_api::kAnnounceGroupKey, nullptr);
-  EXPECT_FALSE(ProcessAnnouncement(input.get()));
+  std::unique_ptr<base::DictionaryValue> output =
+      ProcessAnnouncement(input.get());
+  EXPECT_EQ(nullptr, output);
   // Similarly, the leader id
   input = GetValidAnnouncementInput();
   input->Remove(http_api::kAnnounceLeaderIdKey, nullptr);
-  EXPECT_FALSE(ProcessAnnouncement(input.get()));
+  output = ProcessAnnouncement(input.get());
+  EXPECT_EQ(nullptr, output);
   // Similarly, the score.
   input = GetValidAnnouncementInput();
   input->Remove(http_api::kAnnounceScoreKey, nullptr);
-  EXPECT_FALSE(ProcessAnnouncement(input.get()));
+  output = ProcessAnnouncement(input.get());
+  EXPECT_EQ(nullptr, output);
 }
 
 TEST_F(WebServerClientTest, AnnouncementScoreAsTextFail) {
   auto input = GetValidAnnouncementInput();
   input->SetString(http_api::kAnnounceScoreKey, "23");
-  EXPECT_FALSE(ProcessAnnouncement(input.get()));
+  std::unique_ptr<base::DictionaryValue> output =
+      ProcessAnnouncement(input.get());
+  EXPECT_EQ(nullptr, output);
 }
 
 TEST_F(WebServerClientTest, AnnouncementDelegateFails) {
   auto input = GetValidAnnouncementInput();
   input->SetString(http_api::kAnnounceGroupKey, "not-the-expected-value");
-  EXPECT_FALSE(ProcessAnnouncement(input.get()));
+  std::unique_ptr<base::DictionaryValue> output =
+      ProcessAnnouncement(input.get());
+  EXPECT_EQ(nullptr, output);
 }
 
 TEST_F(WebServerClientTest, AnnouncementDelegateSuccess) {
   auto input = GetValidAnnouncementInput();
-  EXPECT_TRUE(ProcessAnnouncement(input.get()));
+  std::unique_ptr<base::DictionaryValue> output =
+      ProcessAnnouncement(input.get());
+  EXPECT_NE(nullptr, output);
+}
+
+TEST_F(WebServerClientTest, DiscoverBadData) {
+  std::unique_ptr<base::DictionaryValue> output = ProcessDiscover(nullptr);
+  EXPECT_EQ(nullptr, output);
+}
+
+TEST_F(WebServerClientTest, DiscoverRejectsExtraFields) {
+  auto input = GetValidDiscoverInput();
+  input->SetString("BogusField", kGroupId);
+  std::unique_ptr<base::DictionaryValue> output =
+      ProcessDiscover(input.get());
+  EXPECT_EQ(nullptr, output);
+}
+
+TEST_F(WebServerClientTest, DiscoverRejectsMissingFields) {
+  // We need group to exist.
+  auto input = GetValidDiscoverInput();
+  input->Remove(http_api::kDiscoverGroupKey, nullptr);
+  std::unique_ptr<base::DictionaryValue> output =
+      ProcessDiscover(input.get());
+  EXPECT_EQ(nullptr, output);
+}
+
+TEST_F(WebServerClientTest, DiscoverDelegateFails) {
+  auto input = GetValidDiscoverInput();
+  input->SetString(http_api::kAnnounceGroupKey, "not-the-expected-value");
+  std::unique_ptr<base::DictionaryValue> output =
+      ProcessDiscover(input.get());
+  EXPECT_EQ(nullptr, output);
+}
+
+TEST_F(WebServerClientTest, DiscoverDelegateSuccess) {
+  auto input = GetValidDiscoverInput();
+  std::unique_ptr<base::DictionaryValue> output =
+      ProcessDiscover(input.get());
+  EXPECT_NE(nullptr, output);
 }
 
 }  // namespace leaderd

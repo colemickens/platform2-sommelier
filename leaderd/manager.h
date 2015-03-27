@@ -48,6 +48,8 @@ class Manager : public org::chromium::leaderd::ManagerInterface,
 
   // WebServerClient::Delegate overrides.
   void SetWebServerPort(uint16_t port) override;
+  bool HandleLeaderDiscover(const std::string& group_id,
+                            std::string* leader_id) override;
   bool HandleLeaderChallenge(const std::string& group_id,
                              const std::string& challenger_id,
                              int32_t challenger_score,
