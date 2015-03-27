@@ -12,6 +12,7 @@ extern const char kDomain[];
 
 extern const char kBadGroupName[];
 extern const char kBadOptions[];
+extern const char kCannotPokeNow[];
 
 }  // namespace errors
 }  // namespace leaderd

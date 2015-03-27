@@ -359,4 +359,25 @@ TEST_F(GroupTest, ShouldAbdicateToPeerWithHigherID) {
   ASSERT_EQ(kPeerIdGreaterThanSelf, leader_id);
 }
 
+TEST_F(GroupTest, MayOnlyPokeLeaderWhenFollowing) {
+  group_->AddPeer(kTestGroupMember);
+  chromeos::ErrorPtr error;
+  // We only allow ourselves to poke the leader if we're actually following
+  // a leader.
+  SetRole(Group::State::LEADER, kSelfUUID);
+  EXPECT_FALSE(group_->PokeLeader(&error));
+  EXPECT_NE(nullptr, error.get());
+  error.reset();
+  SetRole(Group::State::WANDERER, std::string{});
+  EXPECT_FALSE(group_->PokeLeader(&error));
+  EXPECT_NE(nullptr, error.get());
+  error.reset();
+  // Check that we do actually challenge the leader when poked.
+  testing::Mock::VerifyAndClearExpectations(fake_handler_.get());
+  EXPECT_CALL(*fake_handler_, HandleChallenge(_, _));
+  SetRole(Group::State::FOLLOWER, kTestGroupMember);
+  EXPECT_TRUE(group_->PokeLeader(&error));
+  EXPECT_EQ(nullptr, error.get());
+}
+
 }  // namespace leaderd

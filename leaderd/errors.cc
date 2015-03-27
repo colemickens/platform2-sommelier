@@ -11,6 +11,7 @@ const char kDomain[] = "leaderd";
 
 const char kBadGroupName[] = "bad_group_name";
 const char kBadOptions[] = "bad_options";
+const char kCannotPokeNow[] = "cannot_poke_leader";
 
 }  // namespace errors
 }  // namespace leaderd

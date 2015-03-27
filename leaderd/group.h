@@ -82,7 +82,6 @@ class Group : public org::chromium::leaderd::GroupInterface {
   FRIEND_TEST(GroupTest, LeaderChallengeIsWellFormed);
   FRIEND_TEST(GroupTest, LeaderAnnouncementIsWellFormed);
 
-  void Reelect();
   void OnDBusServiceDeath();
   void RemoveSoon();
   void RemoveNow();
@@ -94,12 +93,17 @@ class Group : public org::chromium::leaderd::GroupInterface {
                     const std::string& peer_id,
                     std::vector<std::string>* urls) const;
 
-  // These methods revolve around sending and handling responses to our
-  // own leader challenges.
+  // These methods let us discover leaders.
   void AskPeersForLeaderInfo();
+  void SendLeaderDiscover(const std::string& peer_id);
+  void HandleLeaderDiscoverResponse(
+      chromeos::http::RequestID request_id,
+      scoped_ptr<chromeos::http::Response> response);
+  // These methods let us periodically challenge the leader to confirm fitness.
   void SendLeaderChallenge(const std::string& peer_id);
   void HandleLeaderChallengeResponse(
-      int request_id, scoped_ptr<chromeos::http::Response> response);
+      chromeos::http::RequestID request_id,
+      scoped_ptr<chromeos::http::Response> response);
   // These methods let us announce our leadership.  We ignore results.
   void AnnounceLeadership();
   void SendLeaderAnnouncement(const std::string& peer_id);

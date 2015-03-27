@@ -21,6 +21,7 @@
 #include <chromeos/mime_utils.h>
 #include <dbus/bus.h>
 
+#include "leaderd/errors.h"
 #include "leaderd/manager.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
@@ -33,6 +34,7 @@ namespace leaderd {
 
 namespace {
 
+const char kApiVerbDiscover[] = "discover";
 const char kApiVerbAnnounce[] = "announce";
 const char kApiVerbChallenge[] = "challenge";
 
@@ -101,7 +103,7 @@ void Group::RegisterAsync(const CompletionAction& completion_callback) {
   transport_ = chromeos::http::Transport::CreateDefault();
   transport_->SetDefaultTimeout(
       base::TimeDelta::FromMilliseconds(kHttpConnectionTimeoutMs));
-  Reelect();
+  SetRole(State::WANDERER, std::string{});
 }
 
 const dbus::ObjectPath& Group::GetObjectPath() const { return object_path_; }
@@ -117,7 +119,13 @@ bool Group::SetScore(chromeos::ErrorPtr* error, int32_t in_score) {
 }
 
 bool Group::PokeLeader(chromeos::ErrorPtr* error) {
-  Reelect();
+  if (state_ != State::FOLLOWER) {
+    chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                           errors::kCannotPokeNow,
+                           "Could not poke the leader.");
+    return false;  // We're either the leader, or don't know who the leader is.
+  }
+  SendLeaderChallenge(leader_);
   return true;
 }
 
@@ -194,7 +202,7 @@ void Group::RemovePeer(const std::string& uuid) {
   peers_.erase(uuid);
   dbus_adaptor_.SetMemberUUIDs({peers_.begin(), peers_.end()});
   if (uuid == leader_) {
-    Reelect();
+    SetRole(State::WANDERER, std::string{});
   }
 }
 
@@ -202,10 +210,6 @@ void Group::ClearPeers() {
   // This occurs when peerd crashes.
   peers_.clear();
   dbus_adaptor_.SetMemberUUIDs({peers_.begin(), peers_.end()});
-  Reelect();
-}
-
-void Group::Reelect() {
   SetRole(State::WANDERER, std::string{});
 }
 
@@ -306,7 +310,42 @@ bool Group::BuildApiUrls(const std::string& api_verb,
 
 void Group::AskPeersForLeaderInfo() {
   for (const auto& peer_id : peers_) {
-    SendLeaderChallenge(peer_id);
+    SendLeaderDiscover(peer_id);
+  }
+}
+
+void Group::SendLeaderDiscover(const std::string& peer_id) {
+  std::vector<std::string> urls;
+  if (!BuildApiUrls(kApiVerbDiscover, peer_id, &urls)) {
+    return;
+  }
+  base::DictionaryValue challenge_content;
+  challenge_content.SetString(http_api::kChallengeGroupKey, guid_);
+  for (const auto& url : urls) {
+    VLOG(1) << "Connecting to " << url;
+    std::unique_ptr<base::Value> body_json{challenge_content.DeepCopy()};
+    chromeos::http::PostJson(url, std::move(body_json), {}, transport_,
+                             base::Bind(&Group::HandleLeaderDiscoverResponse,
+                                        per_state_factory_.GetWeakPtr()),
+                             base::Bind(&IgnoreHttpFailure));
+  }
+}
+
+void Group::HandleLeaderDiscoverResponse(chromeos::http::RequestID request_id,
+                                         scoped_ptr<Response> response) {
+  chromeos::ErrorPtr error;
+  std::unique_ptr<base::DictionaryValue> json_resp =
+      chromeos::http::ParseJsonResponse(response.get(), nullptr, &error);
+  std::string leader;
+  if (!json_resp ||
+      !json_resp->GetString(http_api::kDiscoverLeaderKey, &leader)) {
+    VLOG(1) << "Received malformed discover response.";
+    return;
+  }
+  VLOG(1) << "Got leadership discovery response. Leader is '" << leader << "'.";
+  if (!leader.empty()) {
+    // This peer has authoritatively told us who the leader is.
+    SetRole(State::FOLLOWER, leader);
   }
 }
 
@@ -344,16 +383,9 @@ void Group::HandleLeaderChallengeResponse(chromeos::http::RequestID request_id,
   }
   VLOG(1) << "Got leadership response from '" << responder
           << "'. Leader is '" << leader << "'.";
-  if (leader.empty()) {
-    return;  // This peer doesn't know who the leader is either.
-  }
-
   if (leader == delegate_->GetUUID()) {
     // We just challenged the leader and won.
     SetRole(State::LEADER, leader);
-  } else if (responder == leader) {
-    // This peer has authoritatively claimed to be the leader.
-    SetRole(State::FOLLOWER, leader);
   }
 }
 
