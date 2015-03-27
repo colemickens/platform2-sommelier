@@ -15,6 +15,9 @@
     # Set this to 1 if your C++ code throws or catches exceptions.
     'enable_exceptions%': 0,
 
+    # Set this to 0 if you want to disable Large File Support (LFS).
+    'enable_lfs%': 1,
+
     # DON'T EDIT BELOW THIS LINE.
     # You can declare new variables, but you shouldn't be changing their
     # default settings.  The platform python build helpers set them up.
@@ -100,6 +103,16 @@
       ['USE_cros_host == 1', {
         'defines': [
           'NDEBUG',
+        ],
+      }],
+      ['enable_lfs == 1', {
+        'defines': [
+          # Enable support for new LFS funcs (ftello/etc...).
+          '_LARGEFILE_SOURCE',
+          # Enable support for 64bit variants (off64_t/fseeko64/etc...).
+          '_LARGEFILE64_SOURCE',
+          # Default to 64bit variants (off_t is defined as off64_t).
+          '_FILE_OFFSET_BITS=64',
         ],
       }],
       ['USE_cros_host == 0 and clang_syntax == 1', {
