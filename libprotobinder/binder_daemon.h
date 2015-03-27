@@ -12,9 +12,9 @@
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/daemons/daemon.h>
 
-#include "libprotobinder/binder_export.h"
-#include "libprotobinder/binder_manager.h"
-#include "libprotobinder/iservice_manager.h"
+#include "binder_export.h"  // NOLINT(build/include)
+#include "binder_manager.h"  // NOLINT(build/include)
+#include "iservice_manager.h"  // NOLINT(build/include)
 
 namespace protobinder {
 

@@ -12,7 +12,7 @@
 
 #include <string>
 
-#include "libprotobinder/binder_export.h"
+#include "binder_export.h"  // NOLINT(build/include)
 
 namespace protobinder {
 

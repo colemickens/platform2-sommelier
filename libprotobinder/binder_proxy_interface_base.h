@@ -5,8 +5,8 @@
 #ifndef LIBPROTOBINDER_BINDER_PROXY_INTERFACE_BASE_H_
 #define LIBPROTOBINDER_BINDER_PROXY_INTERFACE_BASE_H_
 
-#include "libprotobinder/binder_export.h"
-#include "libprotobinder/ibinder.h"
+#include "binder_export.h"  // NOLINT(build/include)
+#include "ibinder.h"  // NOLINT(build/include)
 
 namespace protobinder {
 

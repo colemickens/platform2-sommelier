@@ -5,11 +5,11 @@
 #ifndef LIBPROTOBINDER_IINTERFACE_H_
 #define LIBPROTOBINDER_IINTERFACE_H_
 
-#include "libprotobinder/binder_export.h"
-#include "libprotobinder/binder_host.h"
-#include "libprotobinder/binder_manager.h"
-#include "libprotobinder/binder_proxy_interface_base.h"
-#include "libprotobinder/ibinder.h"
+#include "binder_export.h"  // NOLINT(build/include)
+#include "binder_host.h"  // NOLINT(build/include)
+#include "binder_manager.h"  // NOLINT(build/include)
+#include "binder_proxy_interface_base.h"  // NOLINT(build/include)
+#include "ibinder.h"  // NOLINT(build/include)
 
 namespace protobinder {
 

@@ -10,8 +10,8 @@
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 
-#include "libprotobinder/binder_export.h"
-#include "libprotobinder/parcel.h"
+#include "binder_export.h"  // NOLINT(build/include)
+#include "parcel.h"  // NOLINT(build/include)
 
 namespace protobinder {
 

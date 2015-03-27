@@ -12,7 +12,7 @@
 #include <base/macros.h>
 #include <base/memory/linked_ptr.h>
 
-#include "libprotobinder/binder_manager.h"
+#include "binder_manager.h"  // NOLINT(build/include)
 
 namespace protobinder {
 

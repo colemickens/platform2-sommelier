@@ -5,9 +5,9 @@
 #ifndef LIBPROTOBINDER_ISERVICE_MANAGER_H_
 #define LIBPROTOBINDER_ISERVICE_MANAGER_H_
 
-#include "libprotobinder/binder_export.h"
-#include "libprotobinder/ibinder.h"
-#include "libprotobinder/iinterface.h"
+#include "binder_export.h"  // NOLINT(build/include)
+#include "ibinder.h"  // NOLINT(build/include)
+#include "iinterface.h"  // NOLINT(build/include)
 
 namespace protobinder {
 

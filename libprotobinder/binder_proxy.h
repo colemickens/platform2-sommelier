@@ -9,8 +9,8 @@
 
 #include <base/callback.h>
 
-#include "libprotobinder/binder_export.h"
-#include "libprotobinder/ibinder.h"
+#include "binder_export.h"  // NOLINT(build/include)
+#include "ibinder.h"  // NOLINT(build/include)
 
 namespace protobinder {
 
