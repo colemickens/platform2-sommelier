@@ -44,6 +44,7 @@ const uint64_t kLeaderChallengePeriodSec = 20u;
 const uint64_t kWandererRequeryTimeSec = 5u;
 const uint64_t kLeadershipAnnouncementPeriodSec = 10u;
 const unsigned kHttpConnectionTimeoutMs = 10 * 1000;
+const uint64_t kMaxFailedLeaderChallenges = 2;
 
 const char* GroupStateToString(Group::State state) {
   switch (state) {
@@ -238,6 +239,7 @@ void Group::SetRole(State state, const std::string& leader) {
   LOG(INFO) << "Leader is now " << leader_ << " state " << state_;
   wanderer_timer_->Stop();
   heartbeat_timer_->Stop();
+  failed_challenges_ = 0;
   base::Closure heartbeat_task;
   switch (state) {
     case State::WANDERER:
@@ -364,7 +366,8 @@ void Group::SendLeaderChallenge(const std::string& peer_id) {
     chromeos::http::PostJson(url, std::move(text), {}, transport_,
                              base::Bind(&Group::HandleLeaderChallengeResponse,
                                         per_state_factory_.GetWeakPtr()),
-                             base::Bind(&IgnoreHttpFailure));
+                             base::Bind(&Group::HandleLeaderChallengeFailure,
+                                        per_state_factory_.GetWeakPtr()));
   }
 }
 
@@ -379,6 +382,7 @@ void Group::HandleLeaderChallengeResponse(chromeos::http::RequestID request_id,
       !json_resp->GetString(http_api::kChallengeLeaderKey, &leader) ||
       !json_resp->GetString(http_api::kChallengeIdKey, &responder)) {
     VLOG(1) << "Received malformed challenge response.";
+    HandleLeaderChallengeFailure(request_id, nullptr);
     return;
   }
   VLOG(1) << "Got leadership response from '" << responder
@@ -386,6 +390,14 @@ void Group::HandleLeaderChallengeResponse(chromeos::http::RequestID request_id,
   if (leader == delegate_->GetUUID()) {
     // We just challenged the leader and won.
     SetRole(State::LEADER, leader);
+  }
+}
+
+void Group::HandleLeaderChallengeFailure(chromeos::http::RequestID request_id,
+                                         const chromeos::Error*) {
+  ++failed_challenges_;
+  if (failed_challenges_ >= kMaxFailedLeaderChallenges) {
+    SetRole(State::WANDERER, std::string{});
   }
 }
 

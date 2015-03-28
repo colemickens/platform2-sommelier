@@ -104,6 +104,8 @@ class Group : public org::chromium::leaderd::GroupInterface {
   void HandleLeaderChallengeResponse(
       chromeos::http::RequestID request_id,
       scoped_ptr<chromeos::http::Response> response);
+  void HandleLeaderChallengeFailure(chromeos::http::RequestID request_id,
+                                    const chromeos::Error*);
   // These methods let us announce our leadership.  We ignore results.
   void AnnounceLeadership();
   void SendLeaderAnnouncement(const std::string& peer_id);
@@ -130,6 +132,7 @@ class Group : public org::chromium::leaderd::GroupInterface {
   Delegate* delegate_;
   State state_{State::WANDERER};
   int32_t score_{0};
+  uint64_t failed_challenges_{0};
   std::string leader_;
   std::shared_ptr<chromeos::http::Transport> transport_;
 

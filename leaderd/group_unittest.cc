@@ -7,6 +7,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <base/timer/mock_timer.h>
+#include <chromeos/mime_utils.h>
 #include <chromeos/http/http_transport_fake.h>
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
@@ -96,6 +97,11 @@ class MockGroupDelegate : public Group::Delegate {
   // The delegate makes us return a reference, not a value.
   const std::string uuid_{kSelfUUID};
 };
+
+void HandlerNotFound(const chromeos::http::fake::ServerRequest&,
+                     chromeos::http::fake::ServerResponse* response) {
+  response->ReplyText(404, std::string{}, chromeos::mime::text::kPlain);
+}
 
 class FakePeerHttpHandler {
  public:
@@ -378,6 +384,18 @@ TEST_F(GroupTest, MayOnlyPokeLeaderWhenFollowing) {
   SetRole(Group::State::FOLLOWER, kTestGroupMember);
   EXPECT_TRUE(group_->PokeLeader(&error));
   EXPECT_EQ(nullptr, error.get());
+}
+
+TEST_F(GroupTest, BecomesWandererOnLeaderFailure) {
+  testing::Mock::VerifyAndClearExpectations(fake_handler_.get());
+  group_->AddPeer(kTestGroupMember);
+  SetRole(Group::State::FOLLOWER, kTestGroupMember);
+  // On every heartbeat, we should challenge the leader.
+  EXPECT_CALL(*fake_handler_, HandleChallenge(_, _)).Times(2)
+      .WillRepeatedly(Invoke(&HandlerNotFound));
+  heartbeat_timer_->Fire();
+  heartbeat_timer_->Fire();
+  AssertState(Group::State::WANDERER, std::string{});
 }
 
 }  // namespace leaderd
