@@ -39,7 +39,6 @@ const char kApiVerbChallenge[] = "challenge";
 const uint64_t kLeaderChallengePeriodSec = 20u;
 // TODO(wiley) Devices should pick their wanderer timeouts randomly inside a
 //             fixed range.
-const uint64_t kWandererTimeoutSec = 10u;
 const uint64_t kWandererRequeryTimeSec = 5u;
 const uint64_t kLeadershipAnnouncementPeriodSec = 10u;
 const unsigned kHttpConnectionTimeoutMs = 10 * 1000;
@@ -73,12 +72,16 @@ void IgnoreHttpFailure(chromeos::http::RequestID request_id,
 
 }  // namespace
 
-Group::Group(const std::string& guid, const scoped_refptr<dbus::Bus>& bus,
+Group::Group(const std::string& guid,
+             std::unique_ptr<GroupConfig> config,
+             const scoped_refptr<dbus::Bus>& bus,
              ExportedObjectManager* object_manager,
              const dbus::ObjectPath& path,
              const std::string& dbus_connection_id,
-             const std::set<std::string>& peers, Delegate* delegate)
+             const std::set<std::string>& peers,
+             Delegate* delegate)
     : guid_(guid),
+      config_(std::move(config)),
       object_path_(path),
       peers_(peers),
       delegate_(delegate),
@@ -239,7 +242,7 @@ void Group::SetRole(State state, const std::string& leader) {
           &Group::AskPeersForLeaderInfo, per_state_factory_.GetWeakPtr());
       wanderer_timer_->Start(
           FROM_HERE,
-          base::TimeDelta::FromSeconds(kWandererTimeoutSec),
+          base::TimeDelta::FromMilliseconds(config_->PickWandererTimeoutMs()),
           base::Bind(&Group::OnWandererTimeout,
                      per_state_factory_.GetWeakPtr()));
       heartbeat_timer_->Start(

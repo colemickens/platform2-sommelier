@@ -169,6 +169,7 @@ class GroupTest : public testing::Test {
     EXPECT_CALL(*bus_, GetServiceOwner(kTestDBusSource, _));
 
     group_.reset(new Group{kGroupName,
+                           std::unique_ptr<GroupConfig>{new GroupConfig()},
                            bus_,
                            object_manager_.get(),
                            dbus::ObjectPath(kGroupPath),

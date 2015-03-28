@@ -9,7 +9,9 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
+#include "leaderd/errors.h"
 #include "leaderd/group.h"
+#include "leaderd/group_config.h"
 
 using chromeos::ErrorPtr;
 using chromeos::dbus_utils::AsyncEventSequencer;
@@ -22,8 +24,6 @@ namespace leaderd {
 namespace {
 
 const char kGroupObjectPathFormat[] = "/org/chromium/leaderd/groups/%" PRIuS;
-const char kEmptyGroupId[] = "manager.empty_group";
-const char kLeaderdErrorDomain[] = "leaderd";
 const char kPingResponse[] = "Hello world!";
 
 void DoneCallback(bool success) { VLOG(1) << "Done register " << success; }
@@ -116,12 +116,18 @@ bool Manager::JoinGroup(chromeos::ErrorPtr* error, dbus::Message* message,
   const std::string& dbus_client = message->GetSender();
   LOG(INFO) << "Join group=" << in_group_id << " from " << dbus_client;
   if (in_group_id.empty()) {
-    chromeos::Error::AddTo(error, FROM_HERE, kLeaderdErrorDomain, kEmptyGroupId,
+    chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                           errors::kBadGroupName,
                            "Expected non-empty group id.");
+    return false;
+  }
+  std::unique_ptr<GroupConfig> config{new GroupConfig()};
+  if (!config->Load(options, error)) {
     return false;
   }
   auto it = groups_.find(in_group_id);
   if (it != groups_.end()) {
+    // TODO(wiley) confirm these parsed options match the ones on the group.
     *out_group_path = it->second->GetObjectPath();
     return true;
   }
@@ -131,7 +137,8 @@ bool Manager::JoinGroup(chromeos::ErrorPtr* error, dbus::Message* message,
   dbus::ObjectPath path{
       base::StringPrintf(kGroupObjectPathFormat, ++last_group_dbus_id_)};
   std::unique_ptr<Group> group{new Group{
-      in_group_id, bus_, dbus_object_.GetObjectManager().get(), path,
+      in_group_id, std::move(config), bus_,
+      dbus_object_.GetObjectManager().get(), path,
       dbus_client, peerd_client_->GetPeersMatchingGroup(in_group_id), this}};
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   group->RegisterAsync(sequencer->GetHandler("Failed to expose Group.", true));

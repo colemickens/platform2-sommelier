@@ -19,7 +19,9 @@
       'sources': [
         'dbus_bindings/org.chromium.leaderd.Group.xml',
         'dbus_bindings/org.chromium.leaderd.Manager.xml',
+        'errors.cc',
         'group.cc',
+        'group_config.cc',
         'manager.cc',
         'peerd_client.cc',
         'webserver_client.cc',
@@ -71,6 +73,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'group_unittest.cc',
+            'group_config_unittest.cc',
             'leaderd_testrunner.cc',
             'manager_unittest.cc',
             'webserver_client_unittest.cc',

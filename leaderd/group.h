@@ -16,6 +16,7 @@
 #include <chromeos/dbus/dbus_service_watcher.h>
 #include <chromeos/http/http_transport.h>
 
+#include "leaderd/group_config.h"
 #include "leaderd/org.chromium.leaderd.Group.h"
 
 namespace chromeos {
@@ -44,10 +45,14 @@ class Group : public org::chromium::leaderd::GroupInterface {
 
   enum class State { WANDERER, FOLLOWER, LEADER };
 
-  Group(const std::string& guid, const scoped_refptr<dbus::Bus>& bus,
+  Group(const std::string& guid,
+        std::unique_ptr<GroupConfig> config,
+        const scoped_refptr<dbus::Bus>& bus,
         chromeos::dbus_utils::ExportedObjectManager* object_manager,
-        const dbus::ObjectPath& path, const std::string& dbus_connection_id,
-        const std::set<std::string>& peer_list, Delegate* delegate);
+        const dbus::ObjectPath& path,
+        const std::string& dbus_connection_id,
+        const std::set<std::string>& peer_list,
+        Delegate* delegate);
   void RegisterAsync(const CompletionAction& completion_callback);
   const dbus::ObjectPath& GetObjectPath() const;
 
@@ -109,6 +114,7 @@ class Group : public org::chromium::leaderd::GroupInterface {
   }
 
   const std::string guid_;
+  const std::unique_ptr<GroupConfig> config_;
   const dbus::ObjectPath object_path_;
   std::unique_ptr<base::Timer> wanderer_timer_{
       new base::OneShotTimer<Group>()};
