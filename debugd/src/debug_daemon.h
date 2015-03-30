@@ -162,6 +162,8 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   void EnableChromeDevFeatures(const std::string& root_password,
                                DBus::Error& error) override;  // NOLINT
   int32_t QueryDevFeatures(DBus::Error& error) override;  // NOLINT
+  void EnableDevCoredumpUpload(DBus::Error& error) override;  // NOLINT
+  void DisableDevCoredumpUpload(DBus::Error& error) override;  // NOLINT
 
  private:
   DBus::Connection* dbus_;

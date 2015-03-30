@@ -14,6 +14,13 @@
 
 namespace debugd {
 
+namespace {
+
+const char kDevCoredumpDBusErrorString[] =
+    "org.chromium.debugd.error.DevCoreDump";
+
+}  // namespace
+
 DebugDaemon::DebugDaemon(DBus::Connection* connection,
                          DBus::BusDispatcher* dispatcher)
     : DBus::ObjectAdaptor(*connection, kDebugdServicePath),
@@ -297,5 +304,32 @@ int32_t DebugDaemon::QueryDevFeatures(DBus::Error& error) {  // NOLINT
   return features;
 }
 
+void DebugDaemon::EnableDevCoredumpUpload(DBus::Error& error) {  // NOLINT
+  if (base::PathExists(
+      base::FilePath(debugd::kDeviceCoredumpUploadFlagPath))) {
+    VLOG(1) << "Device coredump upload already enabled";
+    return;
+  }
+  if (base::WriteFile(
+      base::FilePath(debugd::kDeviceCoredumpUploadFlagPath), "", 0) < 0) {
+    error.set(kDevCoredumpDBusErrorString, "Failed to write flag file.");
+    PLOG(ERROR) << "Failed to write flag file.";
+    return;
+  }
+}
+
+void DebugDaemon::DisableDevCoredumpUpload(DBus::Error& error) {  // NOLINT
+  if (!base::PathExists(
+      base::FilePath(debugd::kDeviceCoredumpUploadFlagPath))) {
+    VLOG(1) << "Device coredump upload already disabled";
+    return;
+  }
+  if (!base::DeleteFile(
+      base::FilePath(debugd::kDeviceCoredumpUploadFlagPath), false)) {
+    error.set(kDevCoredumpDBusErrorString, "Failed to delete flag file.");
+    PLOG(ERROR) << "Failed to delete flag file.";
+    return;
+  }
+}
 
 }  // namespace debugd

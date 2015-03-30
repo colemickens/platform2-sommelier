@@ -11,6 +11,9 @@ namespace debugd {
 // should be on.
 extern const char kDevFeaturesChromeRemoteDebuggingFlagPath[];
 
+// The file path used to indicate the device coredump uploads are allowed.
+extern const char kDeviceCoredumpUploadFlagPath[];
+
 }  // namespace debugd
 
 #endif  // DEBUGD_SRC_CONSTANTS_H_

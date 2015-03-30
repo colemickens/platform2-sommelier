@@ -12,4 +12,7 @@ namespace debugd {
 const char kDevFeaturesChromeRemoteDebuggingFlagPath[] =
     "/etc/chrome_remote_debugging_on";
 
+const char kDeviceCoredumpUploadFlagPath[] =
+    "/var/lib/crash_reporter/device_coredump_upload_allowed";
+
 }  // namespace debugd

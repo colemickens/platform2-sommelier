@@ -565,5 +565,15 @@
         </tp:docstring>
       </tp:enumvalue>
     </tp:enum>
+    <method name="EnableDevCoredumpUpload">
+      <tp:docstring>
+        Allow uploading of device coredump files.
+      </tp:docstring>
+    </method>
+    <method name="DisableDevCoredumpUpload">
+      <tp:docstring>
+        Disallow uploading of device coredump files.
+      </tp:docstring>
+    </method>
   </interface>
 </node>
