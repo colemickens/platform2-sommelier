@@ -110,10 +110,8 @@ class TpmImpl : public Tpm {
   bool ChangeOwnerPassword(TSS_HCONTEXT context_handle,
                            const chromeos::SecureBlob& previous_owner_password,
                            const chromeos::SecureBlob& owner_password) override;
-  bool GetTpmWithAuth(TSS_HCONTEXT context_handle,
-                      const chromeos::SecureBlob& owner_password,
-                      TSS_HTPM* tpm_handle) override;
-  bool TestTpmAuth(TSS_HTPM tpm_handle) override;
+  bool TestTpmAuth(TSS_HCONTEXT context_handle,
+                   const chromeos::SecureBlob& owner_password) override;
   void SetOwnerPassword(const chromeos::SecureBlob& owner_password) override;
   bool IsTransient(TSS_RESULT result) override;
   bool GetKeyBlob(TSS_HCONTEXT context_handle,
@@ -210,6 +208,17 @@ class TpmImpl : public Tpm {
   //   context_handle - The context handle for the TPM session
   //   tpm_handle (OUT) - The handle for the TPM on success
   bool GetTpm(TSS_HCONTEXT context_handle, TSS_HTPM* tpm_handle);
+
+  // Gets a handle to the TPM from the specified context with the given owner
+  // password
+  //
+  // Parameters
+  //   context_handle - The context handle for the TPM session
+  //   owner_password - The owner password to use when getting the handle
+  //   tpm_handle (OUT) - The handle for the TPM on success
+  bool GetTpmWithAuth(TSS_HCONTEXT context_handle,
+                      const chromeos::SecureBlob& owner_password,
+                      TSS_HTPM* tpm_handle);
 
   // Gets a handle to the TPM from the specified context with the given
   // delegation.

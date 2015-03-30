@@ -947,7 +947,14 @@ bool TpmImpl::GetTpmWithDelegation(TSS_HCONTEXT context_handle,
   return true;
 }
 
-bool TpmImpl::TestTpmAuth(TSS_HTPM tpm_handle) {
+bool TpmImpl::TestTpmAuth(TSS_HCONTEXT context_handle,
+                          const chromeos::SecureBlob& owner_password) {
+  TSS_HTPM tpm_handle;
+  if (!GetTpmWithAuth(context_handle, owner_password, &tpm_handle)) {
+    LOG(ERROR) << "Error getting Tpm with supplied owner password.";
+    return false;
+  }
+
   // Call Tspi_TPM_GetStatus to test the authentication
   TSS_RESULT result;
   TSS_BOOL current_status = false;

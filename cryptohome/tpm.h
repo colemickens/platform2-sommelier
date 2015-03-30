@@ -421,22 +421,13 @@ class Tpm {
       const chromeos::SecureBlob& previous_owner_password,
       const chromeos::SecureBlob& owner_password) = 0;
 
-  // Gets a handle to the TPM from the specified context with the given owner
-  // password
+  // Test the TPM auth by calling Tspi_TPM_GetStatus
   //
   // Parameters
   //   context_handle - The context handle for the TPM session
   //   owner_password - The owner password to use when getting the handle
-  //   tpm_handle (OUT) - The handle for the TPM on success
-  virtual bool GetTpmWithAuth(TSS_HCONTEXT context_handle,
-                              const chromeos::SecureBlob& owner_password,
-                              TSS_HTPM* tpm_handle) = 0;
-
-  // Test the TPM auth by calling Tspi_TPM_GetStatus
-  //
-  // Parameters
-  //   tpm_handle = The TPM handle
-  virtual bool TestTpmAuth(TSS_HTPM tpm_handle) = 0;
+  virtual bool TestTpmAuth(TSS_HCONTEXT context_handle,
+                           const chromeos::SecureBlob& owner_password) = 0;
 
   // Sets the TPM owner password to be used in subsequent commands
   //

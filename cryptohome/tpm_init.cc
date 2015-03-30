@@ -343,12 +343,8 @@ bool TpmInit::InitializeTpm(bool* OUT_took_ownership) {
 
   // If we can open the TPM with the default password, then we still need to
   // zero the SRK password and unrestrict it, then change the owner password.
-  TSS_HTPM tpm_handle;
   if (!platform_->FileExists(kTpmOwnedFile) &&
-      get_tpm()->GetTpmWithAuth(context_handle,
-                                default_owner_password,
-                                &tpm_handle) &&
-      get_tpm()->TestTpmAuth(tpm_handle)) {
+      get_tpm()->TestTpmAuth(context_handle, default_owner_password)) {
     if (!get_tpm()->ZeroSrkPassword(context_handle, default_owner_password)) {
       LOG(ERROR) << "Couldn't zero SRK password";
       SetTpmBeingOwned(false);

@@ -135,10 +135,8 @@ class StubTpm : public Tpm {
                            const SecureBlob& previous_owner_password,
                            const SecureBlob& owner_password) override
     { return false; }
-  bool GetTpmWithAuth(TSS_HCONTEXT context_handle,
-                      const SecureBlob& owner_password,
-                      TSS_HTPM* tpm_handle) override { return false; }
-  bool TestTpmAuth(TSS_HTPM tpm_handle) override { return false; }
+  bool TestTpmAuth(TSS_HCONTEXT context_handle,
+                   const SecureBlob& owner_password) override { return false; }
   void SetOwnerPassword(const SecureBlob& owner_password) override {}
   bool IsTransient(TSS_RESULT result) override { return false; }
   bool GetKeyBlob(TSS_HCONTEXT context_handle,

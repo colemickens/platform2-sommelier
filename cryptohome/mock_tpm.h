@@ -114,10 +114,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD3(ChangeOwnerPassword, bool(TSS_HCONTEXT,
                                          const chromeos::SecureBlob&,
                                          const chromeos::SecureBlob&));
-  MOCK_METHOD3(GetTpmWithAuth, bool(TSS_HCONTEXT,
-                                    const chromeos::SecureBlob&,
-                                    TSS_HTPM*));
-  MOCK_METHOD1(TestTpmAuth, bool(TSS_HTPM));
+  MOCK_METHOD2(TestTpmAuth, bool(TSS_HCONTEXT, const chromeos::SecureBlob&));
   MOCK_METHOD1(SetOwnerPassword, void(const chromeos::SecureBlob&));
   MOCK_CONST_METHOD3(LoadSrk, bool(TSS_HCONTEXT, TSS_HKEY*, TSS_RESULT*));
   MOCK_METHOD1(IsTransient, bool(TSS_RESULT));
