@@ -21,6 +21,12 @@ DEFINE_boolean memory_check ${FLAGS_FALSE} "Use memory_suspend_test to suspend"
 # Minimum value for --suspend_min when --memory_check is true.
 MEMORY_TEST_SUSPEND_MIN_DELAY=10
 
+# Location of disable_dark_resume preference file.
+DISABLE_DARK_RESUME=/var/lib/power_manager/disable_dark_resume
+
+# Location of the temporary preference file. Set by disable_dark_resume.
+MUTABLE_PREF_FILE=
+
 get_success_count() {
   awk '$1 == "success:" { print $2 }' /sys/kernel/debug/suspend_stats
 }
@@ -48,15 +54,24 @@ restart_powerd() {
 }
 
 disable_dark_resume() {
-  temp_file=$(mktemp /tmp/powerd_disable_dark_resume.XXXXXXXXXXXX)
-  echo 1 > ${temp_file}
-  mount --bind ${temp_file} /var/lib/power_manager/disable_dark_resume
+  # We can only bind-mount over the DISABLE_DARK_RESUME file if it
+  # already exists. If it doesn't, we can just use it directly and clean
+  # it up later the same way.
+  if [ ! -e ${DISABLE_DARK_RESUME} ]; then
+    MUTABLE_PREF_FILE=${DISABLE_DARK_RESUME}
+  else
+    MUTABLE_PREF_FILE=$(mktemp /tmp/powerd_disable_dark_resume.XXXXXXXXXXXX)
+    mount --bind ${MUTABLE_PREF_FILE} ${DISABLE_DARK_RESUME}
+  fi
+  echo 1 > ${MUTABLE_PREF_FILE}
   restart_powerd
 }
 
 restore_dark_resume_state() {
-  umount /var/lib/power_manager/disable_dark_resume
-  rm -f ${temp_file}
+  if [ ${MUTABLE_PREF_FILE} != ${DISABLE_DARK_RESUME} ]; then
+    umount ${DISABLE_DARK_RESUME}
+  fi
+  rm -f ${MUTABLE_PREF_FILE}
   restart_powerd
 }
 
