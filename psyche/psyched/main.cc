@@ -23,6 +23,7 @@ int main(int argc, char* argv[]) {
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
 
   Registrar registrar;
+  registrar.Init();
   int ret = protobinder::GetServiceManager()->AddService(
       psyche::kPsychedServiceManagerName, &registrar);
   VLOG(1) << "GetServiceManager()->AddService() returned " << ret;
