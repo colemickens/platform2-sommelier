@@ -134,51 +134,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
     new_policy_proto_.CopyFrom(policy);
   }
 
-  // Checks that the recorded |new_policy_| has been modified accordingly from
-  // |policy_proto_| while logging in |owner_| as a device owner.
-  void CheckNewOwnerSettings(
-      const em::ChromeDeviceSettingsProto& old_settings) {
-    // Check PolicyFetchResponse wrapper.
-    ASSERT_EQ(new_fake_sig_, new_policy_proto_.policy_data_signature());
-    ASSERT_EQ(fake_key_, new_policy_proto_.new_public_key());
-    ASSERT_EQ(std::string(), new_policy_proto_.new_public_key_signature());
-    ASSERT_TRUE(new_policy_proto_.has_policy_data());
-
-    // Check signed policy data.
-    em::PolicyData policy_data;
-    ASSERT_TRUE(policy_data.ParseFromString(new_policy_proto_.policy_data()));
-    ASSERT_EQ(DevicePolicyService::kDevicePolicyType,
-              policy_data.policy_type());
-    ASSERT_FALSE(policy_data.has_request_token());
-    ASSERT_TRUE(policy_data.has_policy_value());
-    ASSERT_EQ(policy_data.username(), owner_);
-
-    // Check the device settings.
-    em::ChromeDeviceSettingsProto settings;
-    ASSERT_TRUE(settings.ParseFromString(policy_data.policy_value()));
-    ASSERT_TRUE(settings.has_user_whitelist());
-    const RepeatedPtrField<std::string>& old_whitelist(
-        old_settings.user_whitelist().user_whitelist());
-    const RepeatedPtrField<std::string>& whitelist(
-        settings.user_whitelist().user_whitelist());
-    ASSERT_LE(old_whitelist.size(), whitelist.size());
-    ASSERT_GE(old_whitelist.size() + 1, whitelist.size());
-    std::set<std::string> old_whitelist_set(old_whitelist.begin(),
-                                            old_whitelist.end());
-    old_whitelist_set.insert(owner_);
-    std::set<std::string> whitelist_set(whitelist.begin(), whitelist.end());
-    ASSERT_EQ(old_whitelist_set.size(), whitelist_set.size());
-    ASSERT_TRUE(std::equal(
-        whitelist_set.begin(), whitelist_set.end(), old_whitelist_set.begin()));
-    ASSERT_TRUE(settings.has_allow_new_users());
-
-    // Make sure no other fields have been touched.
-    settings.clear_user_whitelist();
-    settings.clear_allow_new_users();
-    em::ChromeDeviceSettingsProto blank_settings;
-    ASSERT_EQ(settings.SerializeAsString(), blank_settings.SerializeAsString());
-  }
-
   void ExpectMitigating(bool mitigating) {
     EXPECT_CALL(*mitigator_.get(), Mitigating())
         .WillRepeatedly(Return(mitigating));
@@ -325,8 +280,6 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  ExpectInstallNewOwnerPolicy(s, &nss);
-  ExpectGetPolicy(s, new_policy_proto_);
   EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
@@ -336,57 +289,6 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
       owner_, nss.GetSlot(), &is_owner, &error));
   EXPECT_TRUE(is_owner);
-  EXPECT_NO_FATAL_FAILURE(CheckNewOwnerSettings(settings));
-}
-
-TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessAddOwner) {
-  KeyCheckUtil nss;
-  InitService(&nss);
-  em::ChromeDeviceSettingsProto settings;
-  settings.mutable_user_whitelist()->add_user_whitelist("a@b");
-  settings.mutable_user_whitelist()->add_user_whitelist("c@d");
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  ExpectInstallNewOwnerPolicy(s, &nss);
-  ExpectGetPolicy(s, new_policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
-  ExpectKeyPopulated(true);
-  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
-
-  PolicyService::Error error;
-  bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
-      owner_, nss.GetSlot(), &is_owner, &error));
-  EXPECT_TRUE(is_owner);
-  EXPECT_NO_FATAL_FAILURE(CheckNewOwnerSettings(settings));
-}
-
-TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessOwnerPresent) {
-  KeyCheckUtil nss;
-  InitService(&nss);
-  em::ChromeDeviceSettingsProto settings;
-  settings.mutable_user_whitelist()->add_user_whitelist("a@b");
-  settings.mutable_user_whitelist()->add_user_whitelist("c@d");
-  settings.mutable_user_whitelist()->add_user_whitelist(owner_);
-  settings.mutable_allow_new_users()->set_allow_new_users(true);
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  ExpectInstallNewOwnerPolicy(s, &nss);
-  ExpectGetPolicy(s, new_policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
-  ExpectKeyPopulated(true);
-  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
-
-  PolicyService::Error error;
-  bool is_owner = false;
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(
-      owner_, nss.GetSlot(), &is_owner, &error));
-  EXPECT_TRUE(is_owner);
-  EXPECT_NO_FATAL_FAILURE(CheckNewOwnerSettings(settings));
 }
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
@@ -494,33 +396,6 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
       Return(false));
   ExpectKeyPopulated(true);
   EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
-
-  PolicyService::Error error;
-  bool is_owner = false;
-  EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(
-      owner_, nss.GetSlot(), &is_owner, &error));
-}
-
-TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
-  KeyCheckUtil nss;
-  InitService(&nss);
-  em::ChromeDeviceSettingsProto settings;
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-
-  EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
-  Expectation compare_keys =
-      EXPECT_CALL(key_, Equals(_)).WillRepeatedly(Return(false));
-  Expectation sign = EXPECT_CALL(nss, Sign(_, _, _, _))
-                         .After(compare_keys)
-                         .WillOnce(Return(false));
-
-  ExpectGetPolicy(s, new_policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_)).Times(0);
-  ExpectKeyPopulated(true);
-  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(0);
 
   PolicyService::Error error;
   bool is_owner = false;

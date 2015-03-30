@@ -97,10 +97,6 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
   // in the settings blob, then do so.
   scoped_ptr<RSAPrivateKey> signing_key(
       GetOwnerKeyForGivenUser(key()->public_key_der(), slot, error));
-  if (signing_key.get()) {
-    if (!StoreOwnerProperties(current_user, signing_key.get(), error))
-      return false;
-  }
 
   // Now, the flip side...if we believe the current user to be the owner based
   // on the user field in policy, and she DOESN'T have the private half of the
@@ -141,6 +137,8 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
     store()->Set(em::PolicyFetchResponse());
   }
 
+  // TODO(cmasone): Remove this as well once the browser can tolerate it:
+  // http://crbug.com/472132
   if (StoreOwnerProperties(current_user, signing_key.get(), &error)) {
     PersistKey();
     PersistPolicy();
