@@ -53,7 +53,7 @@ void BinderManager::ReleaseBinderBuffer(Parcel* parcel,
                                         const binder_size_t* objects,
                                         size_t objects_size,
                                         void* cookie) {
-  LOG(INFO) << "Binder free";
+  VLOG(1) << "Binder free";
   // TODO(leecam): Close FDs in Parcel
   BinderManager* manager = static_cast<BinderManager*>(
       BinderManagerInterface::Get());
@@ -174,7 +174,7 @@ int BinderManager::ProcessCommand(uint32_t cmd) {
         SendReply(reply, err);
     } break;
     default:
-      LOG(INFO) << "Unknown command";
+      LOG(ERROR) << "Unknown command";
   }
   return true;
 }
@@ -187,37 +187,37 @@ int BinderManager::WaitAndActionReply(Parcel* reply) {
     if (!in_commands_.ReadUInt32(&cmd)) {
       return ERROR_CMD_PARCEL;
     }
-    LOG(INFO) << "Got reply command " << cmd;
+    VLOG(1) << "Got reply command " << cmd;
     switch (cmd) {
       case BR_TRANSACTION_COMPLETE:
-        LOG(INFO) << "Cmd BR_TRANSACTION_COMPLETE";
+        VLOG(1) << "Cmd BR_TRANSACTION_COMPLETE";
         if (!reply)
           return SUCCESS;
         break;
       case BR_DEAD_REPLY:
-        LOG(INFO) << "Cmd BR_DEAD_REPLY";
+        VLOG(1) << "Cmd BR_DEAD_REPLY";
         return ERROR_DEAD_ENDPOINT;
       case BR_FAILED_REPLY:
-        LOG(INFO) << "Cmd BR_FAILED_REPLY";
+        VLOG(1) << "Cmd BR_FAILED_REPLY";
         return ERROR_FAILED_TRANSACTION;
       case BR_REPLY: {
-        LOG(INFO) << "Cmd BR_REPLY";
+        VLOG(1) << "Cmd BR_REPLY";
         binder_transaction_data tr;
         if (!in_commands_.Read(&tr, sizeof(tr)))
           return ERROR_REPLY_PARCEL;
         int err = SUCCESS;
         if (reply) {
           if ((tr.flags & TF_STATUS_CODE) == 0) {
-            LOG(INFO) << "Status code 4";
+            VLOG(1) << "Status code 4";
             if (!reply->InitFromBinderTransaction(
                     reinterpret_cast<void*>(tr.data.ptr.buffer), tr.data_size,
                     reinterpret_cast<binder_size_t*>(tr.data.ptr.offsets),
                     tr.offsets_size, ReleaseBinderBuffer))
               err = ERROR_REPLY_PARCEL;
           } else {
-            LOG(INFO) << "Status code 1";
+            VLOG(1) << "Status code 1";
             err = *reinterpret_cast<const int*>(tr.data.ptr.buffer);
-            LOG(INFO) << "Status code 2";
+            VLOG(1) << "Status code 2";
             ReleaseBinderBuffer(
                 NULL, reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer),
                 tr.data_size,
@@ -332,14 +332,14 @@ bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
   if ((bwr.write_size == 0) && (bwr.read_size == 0)) {
     return true;
   }
-  LOG(INFO) << "Doing ioctl";
+  VLOG(1) << "Doing ioctl";
   if (ioctl(binder_fd_, BINDER_WRITE_READ, &bwr) < 0) {
-    LOG(ERROR) << "Binder failed";
+    PLOG(ERROR) << "ioctl(binder_fd, BINDER_WRITE_READ) failed";
     return false;
   }
-  LOG(INFO) << base::StringPrintf("Binder data R:%lld/%lld W:%lld/%lld",
-                                  bwr.read_consumed, bwr.read_size,
-                                  bwr.write_consumed, bwr.write_size);
+  VLOG(1) << base::StringPrintf("Binder data R:%lld/%lld W:%lld/%lld",
+                                bwr.read_consumed, bwr.read_size,
+                                bwr.write_consumed, bwr.write_size);
   if (bwr.read_consumed > 0) {
     in_commands_.SetLen(bwr.read_consumed);
     in_commands_.SetPos(0);
@@ -386,7 +386,7 @@ bool BinderManager::HandleEvent() {
 }
 
 void BinderManager::EnterLoop() {
-  LOG(INFO) << "Entering loop";
+  VLOG(1) << "Entering loop";
   struct binder_write_read bwr;
   uint32_t readbuf[32];
 
@@ -403,18 +403,18 @@ void BinderManager::EnterLoop() {
     bwr.read_buffer = reinterpret_cast<uintptr_t>(readbuf);
 
     // Wait for a reply
-    LOG(INFO) << "Waiting for message";
+    VLOG(1) << "Waiting for message";
     const int ret = ioctl(binder_fd_, BINDER_WRITE_READ, &bwr);
     if (ret < 0) {
       LOG(ERROR) << "Loop ioctl failed with " << ret;
       break;
     }
-    LOG(INFO) << "Got a reply";
+    VLOG(1) << "Got a reply";
   }
 }
 
 BinderManager::BinderManager() {
-  LOG(INFO) << "BinderManager created";
+  VLOG(1) << "BinderManager created";
 
   binder_fd_ = open("/dev/binder", O_RDWR);
   if (binder_fd_ < 0) {
