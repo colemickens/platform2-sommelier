@@ -39,49 +39,5 @@ TODO(cmasone): Once this settles down, explain all the fields in this example.
                app.user: Int
                app.group: Int
 
-Example:
-{
-    "acVersion": "0.4.1",
-    "acKind": "ContainerRuntimeManifest",
-    "apps": [
-        {
-            "name": "ping_service",
-            "image": {
-                "name": "com.android.embedded.ping_brick",
-                "id": "sha512-...",
-                "labels": [
-                    {
-                        "name":  "version",
-                        "value": "1.0.0"
-                    }
-                ]
-            },
-            "app": {
-                "exec": [
-                    "/usr/bin/ping_servce",
-                    "--quiet"
-                ],
-                "user": "100",
-                "group": "300",
-                "workingDirectory": "/opt/work",
-                "isolators": [
-                    {
-                        "name": "os/brillo/namespaces-remove-set",
-                        "value": {
-                            "set": [ "CLONE_NEWNS " ],
-                        }
-                    },
-                ],
-                "ports": [
-                    {
-                        "name": "health",  # Ignored
-                        "port": 4000,
-                        "protocol": "tcp",
-                        "socketActivated": true  # Ignored
-                    }
-                ]
-            },
-        },
-    ],
-}
+Example in com.android.embedded.ping_brick.ping_service.json
 

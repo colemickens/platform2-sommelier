@@ -37,8 +37,8 @@ class ContainerSpecWrapper {
                        gid_t gid);
   virtual ~ContainerSpecWrapper();
 
-  void SetCommandLine(const std::vector<std::string> command_line);
-  void SetNamespaces(const std::set<parser::ns::Kind> namespaces);
+  void SetCommandLine(const std::vector<std::string>& command_line);
+  void SetNamespaces(const std::set<parser::ns::Kind>& namespaces);
   void SetTcpListenPorts(const std::set<parser::port::Number>& ports);
   void SetUdpListenPorts(const std::set<parser::port::Number>& ports);
   void SetDevicePathFilters(const parser::DevicePathFilterSet& filters);
