@@ -47,6 +47,7 @@ extern const char kOneOf_Enum[];
 extern const char kOneOf_Metadata[];
 
 extern const char kObject_Properties[];
+extern const char kObject_AdditionalProperties[];
 
 extern const char kCommand_Id[];
 extern const char kCommand_Name[];

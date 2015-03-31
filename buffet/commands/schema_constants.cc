@@ -43,6 +43,7 @@ const char kOneOf_Enum[] = "enum";
 const char kOneOf_Metadata[] = "metadata";
 
 const char kObject_Properties[] = "properties";
+const char kObject_AdditionalProperties[] = "additionalProperties";
 
 const char kCommand_Id[] = "id";
 const char kCommand_Name[] = "name";

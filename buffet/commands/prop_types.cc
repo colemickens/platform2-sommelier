@@ -475,6 +475,9 @@ std::unique_ptr<base::Value> ObjectPropType::ToJson(
       }
       dict->SetWithoutPathExpansion(commands::attributes::kObject_Properties,
                                     object_schema.release());
+      dict->SetBooleanWithoutPathExpansion(
+          commands::attributes::kObject_AdditionalProperties,
+          object_schema_.value->GetExtraPropertiesAllowed());
     }
   }
   return value;
@@ -488,6 +491,7 @@ bool ObjectPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
     return false;
 
   using commands::attributes::kObject_Properties;
+  using commands::attributes::kObject_AdditionalProperties;
 
   const ObjectSchema* base_object_schema = nullptr;
   if (base_schema)
@@ -503,11 +507,26 @@ bool ObjectPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
                              "Error parsing object property schema");
       return false;
     }
+    bool extra_properties_allowed = false;
+    if (value->GetBooleanWithoutPathExpansion(kObject_AdditionalProperties,
+                                              &extra_properties_allowed)) {
+      processed_keys->insert(kObject_AdditionalProperties);
+      object_schema->SetExtraPropertiesAllowed(extra_properties_allowed);
+    }
     object_schema_.value = std::move(object_schema);
     object_schema_.is_inherited = false;
   } else if (base_object_schema) {
-    object_schema_.value = base_object_schema->Clone();
-    object_schema_.is_inherited = true;
+    auto cloned_object_schema = base_object_schema->Clone();
+    bool extra_properties_allowed = false;
+    if (value->GetBooleanWithoutPathExpansion(kObject_AdditionalProperties,
+                                              &extra_properties_allowed)) {
+      processed_keys->insert(kObject_AdditionalProperties);
+      cloned_object_schema->SetExtraPropertiesAllowed(extra_properties_allowed);
+      object_schema_.is_inherited = false;
+    } else {
+      object_schema_.is_inherited = true;
+    }
+    object_schema_.value = std::move(cloned_object_schema);
   } else {
     chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kInvalidObjectSchema,

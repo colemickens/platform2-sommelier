@@ -536,9 +536,9 @@ TEST(CommandSchema, ObjectPropType_Types) {
 
 TEST(CommandSchema, ObjectPropType_ToJson) {
   buffet::ObjectPropType prop;
-  EXPECT_EQ("{'properties':{}}",
+  EXPECT_EQ("{'additionalProperties':false,'properties':{}}",
             ValueToString(prop.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'properties':{},'type':'object'}",
+  EXPECT_EQ("{'additionalProperties':false,'properties':{},'type':'object'}",
             ValueToString(prop.ToJson(true, nullptr).get()));
   EXPECT_FALSE(prop.IsBasedOnSchema());
   buffet::ObjectPropType prop2;
@@ -552,10 +552,11 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
   pw->GetString()->AddLengthConstraint(6, 100);
   schema->AddProp("password", std::move(pw));
   prop2.SetObjectSchema(std::move(schema));
-  EXPECT_EQ("{'properties':{'expires':'integer',"
+  EXPECT_EQ("{'additionalProperties':false,'properties':{'expires':'integer',"
             "'password':{'maxLength':100,'minLength':6}}}",
             ValueToString(prop2.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'properties':{'expires':{'type':'integer'},"
+  EXPECT_EQ("{'additionalProperties':false,'properties':{"
+            "'expires':{'type':'integer'},"
             "'password':{'maxLength':100,'minLength':6,'type':'string'}},"
             "'type':'object'}",
             ValueToString(prop2.ToJson(true, nullptr).get()));
@@ -566,11 +567,29 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
       nullptr));
   EXPECT_EQ("{'default':{'expires':3,'password':'abracadabra'}}",
             ValueToString(prop3.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'default':{'expires':3,'password':'abracadabra'},"
+  EXPECT_EQ("{'additionalProperties':false,"
+            "'default':{'expires':3,'password':'abracadabra'},"
             "'properties':{'expires':{'type':'integer'},"
             "'password':{'maxLength':100,'minLength':6,'type':'string'}},"
             "'type':'object'}",
             ValueToString(prop3.ToJson(true, nullptr).get()));
+
+  buffet::ObjectPropType prop4;
+  ASSERT_TRUE(prop4.FromJson(CreateDictionaryValue(
+      "{'additionalProperties':true,"
+      "'default':{'expires':3,'password':'abracadabra'}}").get(), &prop2,
+      nullptr));
+  EXPECT_EQ("{'additionalProperties':true,"
+            "'default':{'expires':3,'password':'abracadabra'},"
+            "'properties':{'expires':'integer',"
+            "'password':{'maxLength':100,'minLength':6}}}",
+            ValueToString(prop4.ToJson(false, nullptr).get()));
+  EXPECT_EQ("{'additionalProperties':true,"
+            "'default':{'expires':3,'password':'abracadabra'},"
+            "'properties':{'expires':{'type':'integer'},"
+            "'password':{'maxLength':100,'minLength':6,'type':'string'}},"
+            "'type':'object'}",
+            ValueToString(prop4.ToJson(true, nullptr).get()));
 }
 
 TEST(CommandSchema, ObjectPropType_FromJson) {

@@ -87,7 +87,7 @@ TEST(StatePackage, AddSchemaFromJson_OnEmpty) {
   EXPECT_EQ(4, GetTypes(package).GetProps().size());
   EXPECT_EQ(4, GetValues(package).size());
   EXPECT_EQ("{'color':{'type':'string'},"
-            "'direction':{'properties':{"
+            "'direction':{'additionalProperties':false,'properties':{"
               "'altitude':{'maximum':90.0,'type':'number'},"
               "'azimuth':{'type':'number'}},"
               "'type':'object'},"
@@ -117,7 +117,7 @@ TEST_F(StatePackageTest, AddSchemaFromJson_AddMore) {
   EXPECT_EQ(5, GetValues(*package_).size());
   EXPECT_EQ("{'brightness':{'enum':['low','medium','high'],'type':'string'},"
             "'color':{'type':'string'},"
-            "'direction':{'properties':{"
+            "'direction':{'additionalProperties':false,'properties':{"
               "'altitude':{'maximum':90.0,'type':'number'},"
               "'azimuth':{'type':'number'}},"
               "'type':'object'},"
