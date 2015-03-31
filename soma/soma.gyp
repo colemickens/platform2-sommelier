@@ -83,6 +83,11 @@
         'soma-proto-lib',
       ],
       'sources': ['soma_client.cc'],
+      'variables': {
+        'deps': [
+          'libpsyche',
+        ],
+      },
     },
   ],
   'conditions': [
