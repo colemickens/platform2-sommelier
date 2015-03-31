@@ -2,15 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sysexits.h>
+
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/at_exit.h>
+#include <base/bind.h>
 #include <base/command_line.h>
+#include <base/logging.h>
+#include <base/macros.h>
+#include <base/memory/weak_ptr.h>
+#include <base/message_loop/message_loop.h>
 #include <chromeos/flag_helper.h>
 #include <chromeos/syslog_logging.h>
 #include <protobinder/binder_proxy.h>
-#include <protobinder/iservice_manager.h>
+#include <psyche/psyche_connection.h>
+#include <psyche/psyche_daemon.h>
 
 #include "germ/launcher.h"
 #include "germ/proto_bindings/germ.pb.h"
@@ -24,32 +33,75 @@ namespace germ {
 
 namespace {
 
-int Launch(const std::string& name,
-           const std::vector<std::string>& command_line) {
-  scoped_ptr<IBinder> proxy(GetServiceManager()->GetService("germ"));
-  scoped_ptr<IGerm> germ(protobinder::BinderToInterface<IGerm>(proxy.get()));
-  if (!germ) {
-    LOG(FATAL) << "GetService(germ) failed";
+class LaunchClient : public psyche::PsycheDaemon {
+ public:
+  LaunchClient(const std::string& name,
+               const std::vector<std::string>& command_line)
+      : name_(name), command_line_(command_line), weak_ptr_factory_(this) {}
+  ~LaunchClient() override = default;
+
+ private:
+  void RequestService() {
+    LOG(INFO) << "Requesting service germ";
+    psyche_connection()->GetService("germ",
+                                    base::Bind(&LaunchClient::ReceiveService,
+                                               weak_ptr_factory_.GetWeakPtr()));
   }
-  LaunchRequest request;
-  LaunchResponse response;
-  request.set_name(name);
-  soma::ContainerSpec* spec = request.mutable_spec();
-  for (const auto& cmdline_token : command_line) {
-    spec->add_command_line(cmdline_token);
+
+  void ReceiveService(scoped_ptr<BinderProxy> proxy) {
+    LOG(INFO) << "Received service with handle " << proxy->handle();
+    proxy_.reset(proxy.release());
+    germ_.reset(protobinder::BinderToInterface<IGerm>(proxy_.get()));
+    Launch();
   }
-  int ret = germ->Launch(&request, &response);
-  LOG(INFO) << "Launched service " << name << " with pid " << response.status();
-  return ret;
-}
+
+  void Launch() {
+    DCHECK(germ_);
+    LaunchRequest request;
+    LaunchResponse response;
+    request.set_name(name_);
+    soma::ContainerSpec* spec = request.mutable_spec();
+    for (const auto& cmdline_token : command_line_) {
+      spec->add_command_line(cmdline_token);
+    }
+    int binder_ret = germ_->Launch(&request, &response);
+    if (binder_ret != 0) {
+      LOG(ERROR) << "Failed to launch service '" << name_ << "'";
+      exit(binder_ret);
+    }
+    LOG(INFO) << "Launched service '" << name_ << "' with pid "
+              << response.status();
+    // TODO(jorgelo): Use chromeos::Daemon::Quit(), see brbug.com/715.
+    exit(0);
+  }
+
+  // PsycheDaemon:
+  int OnInit() override {
+    int return_code = PsycheDaemon::OnInit();
+    if (return_code != EX_OK)
+      return return_code;
+
+    RequestService();
+    return EX_OK;
+  }
+
+  std::unique_ptr<BinderProxy> proxy_;
+  std::unique_ptr<IGerm> germ_;
+
+  std::string name_;
+  std::vector<std::string> command_line_;
+
+  // Keep this member last.
+  base::WeakPtrFactory<LaunchClient> weak_ptr_factory_;
+
+  DISALLOW_COPY_AND_ASSIGN(LaunchClient);
+};
 
 }  // namespace
 
 }  // namespace germ
 
 int main(int argc, char** argv) {
-  base::AtExitManager exit_manager;
-
   DEFINE_string(name, "", "Name of the service, cannot be empty");
   DEFINE_bool(interactive, false, "Run in the foreground");
   DEFINE_bool(shell, false,
@@ -77,6 +129,7 @@ int main(int argc, char** argv) {
   int ret = 0;
   // FLAGS_shell implies FLAGS_interactive.
   if (FLAGS_interactive || FLAGS_shell) {
+    base::AtExitManager exit_manager;
     germ::Launcher launcher;
     if (FLAGS_shell) {
       args.clear();
@@ -84,7 +137,8 @@ int main(int argc, char** argv) {
     }
     ret = launcher.RunInteractive(FLAGS_name, args);
   } else {
-    ret = germ::Launch(FLAGS_name, args);
+    germ::LaunchClient client(FLAGS_name, args);
+    ret = client.Run();
   }
   return ret;
 }

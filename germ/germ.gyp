@@ -57,6 +57,11 @@
         'libgerm',
       ],
       'sources': ['germ_main.cc'],
+      'variables': {
+        'deps': [
+          'libpsyche',
+        ],
+      },
     },
     {
       'target_name': 'germd',
