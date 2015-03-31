@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/logging.h>
 #include <protobinder/binder_proxy.h>
 #include <protobinder/ibinder.h>
 
