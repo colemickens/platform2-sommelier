@@ -5,7 +5,6 @@
 #include <stdint.h>
 
 #include <base/command_line.h>
-#include <base/memory/scoped_ptr.h>
 #include <chromeos/syslog_logging.h>
 #include <psyche/libpsyche/psyche_daemon.h>
 
@@ -25,11 +24,11 @@ class GermDaemon : public psyche::PsycheDaemon {
   int OnInit() override {
     int return_code = PsycheDaemon::OnInit();
     if (return_code != 0) {
-      LOG(ERROR) << "Error initializing Daemon.";
+      LOG(ERROR) << "Could not initialize daemon.";
       return return_code;
     }
     if (!psyche_connection()->RegisterService("germ", &host_)) {
-      LOG(ERROR) << "Error registering self with psyche.";
+      LOG(ERROR) << "Could not register with psyche.";
       return -1;
     }
     return 0;
