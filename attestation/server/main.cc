@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <string>
 
 #include <base/command_line.h>
@@ -9,24 +10,31 @@
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/syslog_logging.h>
 
+#include "attestation/common/dbus_interface.h"
 #include "attestation/server/attestation_service.h"
+#include "attestation/server/dbus_service.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 
 class AttestationDaemon : public chromeos::DBusServiceDaemon {
  public:
   AttestationDaemon()
-      : chromeos::DBusServiceDaemon(attestation::kAttestationServiceName) {}
+      : chromeos::DBusServiceDaemon(attestation::kAttestationServiceName) {
+    attestation_service_.reset(new attestation::AttestationService);
+    CHECK(attestation_service_->Initialize());
+  }
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
-    service_.reset(new attestation::AttestationService(bus_));
-    service_->RegisterAsync(
-        sequencer->GetHandler("Service.RegisterAsync() failed.", true));
+    dbus_service_.reset(new attestation::DBusService(
+        bus_,
+        attestation_service_.get()));
+    dbus_service_->Register(sequencer->GetHandler("Register() failed.", true));
   }
 
  private:
-  std::unique_ptr<attestation::AttestationService> service_;
+  std::unique_ptr<attestation::AttestationInterface> attestation_service_;
+  std::unique_ptr<attestation::DBusService> dbus_service_;
 
   DISALLOW_COPY_AND_ASSIGN(AttestationDaemon);
 };

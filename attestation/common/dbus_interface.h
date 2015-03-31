@@ -13,7 +13,7 @@ constexpr char kAttestationServicePath[] = "/org/chromium/Attestation";
 constexpr char kAttestationServiceName[] = "org.chromium.Attestation";
 
 // Methods exported by attestation.
-constexpr char kStatsMethod[] = "GetStats";
+constexpr char kCreateGoogleAttestedKey[] = "CreateGoogleAttestedKey";
 
 }  // namespace attestation
 

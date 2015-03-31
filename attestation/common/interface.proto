@@ -1,0 +1,49 @@
+// Copyright 2015 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+option optimize_for = LITE_RUNTIME;
+
+package attestation;
+
+import "attestation_ca.proto";
+
+enum AttestationStatus {
+  SUCCESS = 0;
+  UNEXPECTED_DEVICE_ERROR = 1;
+  NOT_AVAILABLE = 2;
+  NOT_READY = 3;
+  NOT_ALLOWED = 4;
+  INVALID_PARAMETER = 5;
+  REQUEST_DENIED_BY_CA = 6;
+}
+
+// Describes key type.
+enum KeyType {
+  KEY_TYPE_RSA = 1;
+  KEY_TYPE_ECC = 2;
+}
+
+// Describes allowed key usage.
+enum KeyUsage {
+  KEY_USAGE_SIGN = 1;
+  KEY_USAGE_DECRYPT = 2;
+}
+
+message CreateGoogleAttestedKeyRequest {
+  // An arbitrary label which can be used to reference the key later.
+  optional string key_label = 1;
+  optional KeyType key_type = 2;
+  optional KeyUsage key_usage = 3;
+  // Describes the certificate to be requested of the CA.
+  optional CertificateProfile certificate_profile = 4;
+}
+
+message CreateGoogleAttestedKeyReply {
+  optional AttestationStatus status = 1;
+  // More information about a server-side error. This only exists
+  // if status=REQUEST_DENIED_BY_CA.
+  optional string server_error = 2;
+  // The X.509/DER certificate issued by the Google Attestation CA.
+  optional bytes certificate = 3;
+}

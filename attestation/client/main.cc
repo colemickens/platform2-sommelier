@@ -3,43 +3,34 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <string>
 
-#include <base/memory/ref_counted.h>
-#include <chromeos/dbus/dbus_method_invoker.h>
-#include <chromeos/errors/error.h>
-#include <dbus/bus.h>
-#include <dbus/message.h>
-#include <dbus/object_proxy.h>
-
-#include "attestation/common/dbus_data_serialization.h"
-#include "attestation/common/dbus_interface.h"
+#include "attestation/client/dbus_proxy.h"
+#include "attestation/common/attestation_ca.pb.h"
+#include "attestation/common/interface.pb.h"
 
 int main(int argc, char* argv[]) {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
-  dbus::ObjectProxy* object = bus->GetObjectProxy(
-      attestation::kAttestationServiceName,
-      dbus::ObjectPath(attestation::kAttestationServicePath));
-
-  chromeos::ErrorPtr error;
-  auto response = chromeos::dbus_utils::CallMethodAndBlock(
-      object,
-      attestation::kAttestationInterface,
-      attestation::kStatsMethod,
-      &error);
-
-  attestation::StatsResponse stats;
-  if (response &&
-      chromeos::dbus_utils::ExtractMethodCallResults(response.get(),
-                                                     &error,
-                                                     &stats)) {
-    printf("Attestation has been up for %u seconds.\n", stats.uptime());
-  } else {
-    printf("Error occurred: %s.\n", error->GetMessage().c_str());
+  std::unique_ptr<attestation::AttestationInterface> attestation(
+      new attestation::DBusProxy());
+  if (!attestation->Initialize()) {
+    printf("Failed to initialize.\n");
   }
-
-  bus->ShutdownAndBlock();
-
-  return 0;
+  std::string certificate;
+  std::string server_error_details;
+  attestation::AttestationStatus status = attestation->CreateGoogleAttestedKey(
+    "test_key",
+    attestation::KEY_TYPE_RSA,
+    attestation::KEY_USAGE_SIGN,
+    attestation::ENTERPRISE_MACHINE_CERTIFICATE,
+    &certificate,
+    &server_error_details);
+  if (status == attestation::SUCCESS) {
+    printf("Success!\n");
+  } else {
+    printf("Error occurred: %d.\n", status);
+    if (!server_error_details.empty()) {
+      printf("Server error details: %s\n", server_error_details.c_str());
+    }
+  }
+  return status;
 }
