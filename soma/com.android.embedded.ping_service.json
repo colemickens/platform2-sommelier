@@ -1,6 +1,0 @@
-# Trivial example of a container spec.
-{
-    "service_bundle_path": "/bricks/com.android.embedded.ping_service",
-    "uid": 1000,
-    "gid": 1000,
-}

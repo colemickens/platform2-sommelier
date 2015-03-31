@@ -60,6 +60,13 @@ ContainerSpecWrapper::ContainerSpecWrapper(
 
 ContainerSpecWrapper::~ContainerSpecWrapper() {}
 
+void ContainerSpecWrapper::SetCommandLine(
+    const std::vector<std::string> command_line) {
+  internal_.clear_command_line();
+  for (const std::string& arg : command_line)
+    internal_.add_command_line(arg);
+}
+
 void ContainerSpecWrapper::SetNamespaces(
     const std::set<parser::ns::Kind> namespaces) {
   internal_.clear_namespaces();

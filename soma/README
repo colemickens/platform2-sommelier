@@ -32,17 +32,22 @@ the 'appc' specification used by Rocket and others
 (https://github.com/appc/spec/blob/master/SPEC.md).
 
 TODO(cmasone): Once this settles down, explain all the fields in this example.
+               Currently only single-entry 'apps' list is supported.
+               The only fields supported inside an 'apps' entry are:
+               name: String
+               app.exec: List
+               app.user: Int
+               app.group: Int
 
 Example:
 {
     "acVersion": "0.4.1",
     "acKind": "ContainerRuntimeManifest",
-    "uuid": "6733C088-A507-4694-AABF-EDBE4FC5266F",
     "apps": [
         {
-            "name": "myservice",
+            "name": "ping_service",
             "image": {
-                "name": "com.android.embedded.mypod",
+                "name": "com.android.embedded.ping_brick",
                 "id": "sha512-...",
                 "labels": [
                     {
@@ -53,7 +58,7 @@ Example:
             },
             "app": {
                 "exec": [
-                    "/usr/bin/porpoise",
+                    "/usr/bin/ping_servce",
                     "--quiet"
                 ],
                 "user": "100",
@@ -64,7 +69,7 @@ Example:
                         "name": "os/brillo/namespaces-remove-set",
                         "value": {
                             "set": [ "CLONE_NEWNS " ],
-                        },
+                        }
                     },
                 ],
                 "ports": [
@@ -74,7 +79,7 @@ Example:
                         "protocol": "tcp",
                         "socketActivated": true  # Ignored
                     }
-                ],
+                ]
             },
         },
     ],

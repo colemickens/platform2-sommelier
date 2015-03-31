@@ -4,11 +4,11 @@
 
 #include "soma/soma.h"
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "soma/container_spec_wrapper.h"
 #include "soma/proto_bindings/soma.pb.h"
@@ -24,7 +24,7 @@ int Soma::GetContainerSpec(GetContainerSpecRequest* request,
     LOG(WARNING) << "Request must contain a valid name.";
     return 1;
   }
-  scoped_ptr<ContainerSpecWrapper> spec =
+  std::unique_ptr<ContainerSpecWrapper> spec =
       reader_.Read(NameToPath(request->service_name()));
   if (spec)
     response->mutable_container_spec()->CheckTypeAndMergeFrom(spec->AsProto());
