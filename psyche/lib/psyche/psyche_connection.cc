@@ -50,7 +50,8 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
     return true;
   }
 
-  bool RegisterService(const std::string& service_name, BinderHost* service) {
+  bool RegisterService(const std::string& service_name,
+                       const BinderHost* service) {
     DCHECK(psyched_interface_);
 
     RegisterServiceRequest request;
@@ -89,7 +90,7 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
     // This is safe to do since we're making a one-way call, i.e. psyched's
     // asynchronous ReceiveService call won't be handled until control returns
     // to the message loop.
-    get_service_callbacks_.insert(make_pair(service_name, callback));
+    get_service_callbacks_.insert(std::make_pair(service_name, callback));
     return true;
   }
 
@@ -140,7 +141,7 @@ bool PsycheConnection::Init() {
 }
 
 bool PsycheConnection::RegisterService(const std::string& service_name,
-                                       BinderHost* service) {
+                                       const BinderHost* service) {
   return impl_->RegisterService(service_name, service);
 }
 

@@ -28,11 +28,12 @@ class PSYCHE_EXPORT PsycheConnectionInterface {
       base::Callback<void(scoped_ptr<protobinder::BinderProxy>)>;
 
   // Registers |service|, identified by |service_name|, with psyched. Ownership
-  // of |service| remains with the caller. Blocks until registration is
-  // complete, returning true on success.
+  // of |service| remains with the caller (but note that test implementations
+  // may retain the pointer). Blocks until registration is complete, returning
+  // true on success.
   virtual bool RegisterService(
       const std::string& service_name,
-      protobinder::BinderHost* service) WARN_UNUSED_RESULT = 0;
+      const protobinder::BinderHost* service) WARN_UNUSED_RESULT = 0;
 
   // Fetches the service identified by |service_name| from psyched.
   // |callback| will be invoked asynchronously when the service is available or
@@ -66,7 +67,7 @@ class PSYCHE_EXPORT PsycheConnection : public PsycheConnectionInterface {
   // PsycheConnectionInterface:
   bool RegisterService(
       const std::string& service_name,
-      protobinder::BinderHost* service) override WARN_UNUSED_RESULT;
+      const protobinder::BinderHost* service) override WARN_UNUSED_RESULT;
   bool GetService(
       const std::string& service_name,
       const GetServiceCallback& callback) override WARN_UNUSED_RESULT;
