@@ -344,14 +344,8 @@ bool TpmInit::InitializeTpm(bool* OUT_took_ownership) {
   // zero the SRK password and unrestrict it, then change the owner password.
   if (!platform_->FileExists(kTpmOwnedFile) &&
       get_tpm()->TestTpmAuth(context_handle, default_owner_password)) {
-    if (!get_tpm()->ZeroSrkPassword(context_handle, default_owner_password)) {
-      LOG(ERROR) << "Couldn't zero SRK password";
-      SetTpmBeingOwned(false);
-      return false;
-    }
-
-    if (!get_tpm()->UnrestrictSrk(context_handle, default_owner_password)) {
-      LOG(ERROR) << "Couldn't unrestrict the SRK";
+    if (!get_tpm()->InitializeSrk(context_handle, default_owner_password)) {
+      LOG(ERROR) << "Couldn't initialize the SRK";
       SetTpmBeingOwned(false);
       return false;
     }

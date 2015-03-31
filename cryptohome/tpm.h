@@ -394,20 +394,12 @@ class Tpm {
   virtual bool TakeOwnership(TSS_HCONTEXT context_handle, int max_timeout_tries,
                              const chromeos::SecureBlob& owner_password) = 0;
 
-  // Zeros the SRK password (sets it to an empty string)
+  // Initializes the SRK by Zero-ing its password and unrestricting it.
   //
   // Parameters
   //   context_handle - The context handle for the TPM session
   //   owner_password - The owner password for the TPM
-  virtual bool ZeroSrkPassword(TSS_HCONTEXT context_handle,
-                               const chromeos::SecureBlob& owner_password) = 0;
-
-  // Removes usage restrictions on the SRK
-  //
-  // Parameters
-  //   context_handle - The context handle for the TPM session
-  //   owner_password - The owner password for the TPM
-  virtual bool UnrestrictSrk(TSS_HCONTEXT context_handle,
+  virtual bool InitializeSrk(TSS_HCONTEXT context_handle,
                              const chromeos::SecureBlob& owner_password) = 0;
 
   // Changes the owner password

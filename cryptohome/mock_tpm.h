@@ -106,9 +106,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(CreateEndorsementKey, bool(TSS_HCONTEXT));
   MOCK_METHOD3(TakeOwnership, bool(TSS_HCONTEXT, int,
                                    const chromeos::SecureBlob&));
-  MOCK_METHOD2(ZeroSrkPassword, bool(TSS_HCONTEXT,
-                                     const chromeos::SecureBlob&));
-  MOCK_METHOD2(UnrestrictSrk, bool(TSS_HCONTEXT, const chromeos::SecureBlob&));
+  MOCK_METHOD2(InitializeSrk, bool(TSS_HCONTEXT, const chromeos::SecureBlob&));
   MOCK_METHOD3(ChangeOwnerPassword, bool(TSS_HCONTEXT,
                                          const chromeos::SecureBlob&,
                                          const chromeos::SecureBlob&));

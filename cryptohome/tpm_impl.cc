@@ -753,6 +753,19 @@ bool TpmImpl::TakeOwnership(TSS_HCONTEXT context_handle, int max_timeout_tries,
   return true;
 }
 
+bool TpmImpl::InitializeSrk(TSS_HCONTEXT context_handle,
+                            const SecureBlob& owner_password) {
+  if (!ZeroSrkPassword(context_handle, owner_password)) {
+    LOG(ERROR) << "Error Zero-ing SRK password.";
+    return false;
+  }
+  if (UnrestrictSrk(context_handle, owner_password)) {
+    LOG(ERROR) << "Error unrestricting SRK.";
+    return false;
+  }
+  return true;
+}
+
 bool TpmImpl::ZeroSrkPassword(TSS_HCONTEXT context_handle,
                               const SecureBlob& owner_password) {
   TSS_RESULT result;

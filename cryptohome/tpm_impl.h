@@ -101,9 +101,7 @@ class TpmImpl : public Tpm {
   bool CreateEndorsementKey(TSS_HCONTEXT context_handle) override;
   bool TakeOwnership(TSS_HCONTEXT context_handle, int max_timeout_tries,
                      const chromeos::SecureBlob& owner_password) override;
-  bool ZeroSrkPassword(TSS_HCONTEXT context_handle,
-                       const chromeos::SecureBlob& owner_password) override;
-  bool UnrestrictSrk(TSS_HCONTEXT context_handle,
+  bool InitializeSrk(TSS_HCONTEXT context_handle,
                      const chromeos::SecureBlob& owner_password) override;
   bool ChangeOwnerPassword(TSS_HCONTEXT context_handle,
                            const chromeos::SecureBlob& previous_owner_password,
@@ -152,6 +150,22 @@ class TpmImpl : public Tpm {
   // Gets a handle to the SRK.
   bool LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
                TSS_RESULT* result) const;
+
+  // Zeros the SRK password (sets it to an empty string)
+  //
+  // Parameters
+  //   context_handle - The context handle for the TPM session
+  //   owner_password - The owner password for the TPM
+  bool ZeroSrkPassword(TSS_HCONTEXT context_handle,
+                       const chromeos::SecureBlob& owner_password);
+
+  // Removes usage restrictions on the SRK
+  //
+  // Parameters
+  //   context_handle - The context handle for the TPM session
+  //   owner_password - The owner password for the TPM
+  bool UnrestrictSrk(TSS_HCONTEXT context_handle,
+                     const chromeos::SecureBlob& owner_password);
 
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
   // its matching TPM object iff the owner password is available and

@@ -125,10 +125,7 @@ class StubTpm : public Tpm {
                      int max_timeout_tries,
                      const SecureBlob& owner_password) override
     { return false; }
-  bool ZeroSrkPassword(TSS_HCONTEXT context_handle,
-                       const SecureBlob& owner_password) override
-    { return false; }
-  bool UnrestrictSrk(TSS_HCONTEXT context_handle,
+  bool InitializeSrk(TSS_HCONTEXT context_handle,
                      const SecureBlob& owner_password) override
     { return false; }
   bool ChangeOwnerPassword(TSS_HCONTEXT context_handle,
