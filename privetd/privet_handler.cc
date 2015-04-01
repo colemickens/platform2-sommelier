@@ -347,6 +347,8 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
                &PrivetHandler::HandleCommandsExecute, AuthScope::kUser);
     AddHandler("/privet/v3/commands/status",
                &PrivetHandler::HandleCommandsStatus, AuthScope::kUser);
+    AddHandler("/privet/v3/commands/cancel",
+               &PrivetHandler::HandleCommandsCancel, AuthScope::kUser);
   }
 }
 
@@ -716,6 +718,20 @@ void PrivetHandler::HandleCommandsStatus(const base::DictionaryValue& input,
   }
   cloud_->GetCommand(id, base::Bind(&OnCommandRequestSucceeded, callback),
                      base::Bind(&OnCommandRequestFailed, callback));
+}
+
+void PrivetHandler::HandleCommandsCancel(const base::DictionaryValue& input,
+                                         const RequestCallback& callback) {
+  std::string id;
+  if (!input.GetString(kCommandsIdKey, &id)) {
+    chromeos::ErrorPtr error;
+    chromeos::Error::AddToPrintf(
+        &error, FROM_HERE, errors::kDomain, errors::kInvalidParams,
+        kInvalidParamValueFormat, kCommandsIdKey, id.c_str());
+    return ReturnError(*error, callback);
+  }
+  cloud_->CancelCommand(id, base::Bind(&OnCommandRequestSucceeded, callback),
+                        base::Bind(&OnCommandRequestFailed, callback));
 }
 
 std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateEndpointsSection()

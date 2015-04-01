@@ -112,6 +112,25 @@ class CloudDelegateImpl : public CloudDelegate {
         error_callback);
   }
 
+  void CancelCommand(const std::string& id,
+                     const SuccessCallback& success_callback,
+                     const ErrorCallback& error_callback) override {
+    for (auto command : object_manager_.GetCommandInstances()) {
+      if (command->id() == id) {
+        return command->CancelAsync(
+            base::Bind(&CloudDelegateImpl::GetCommand,
+                       weak_factory_.GetWeakPtr(), id, success_callback,
+                       error_callback),
+            error_callback);
+      }
+    }
+    chromeos::ErrorPtr error;
+    chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                                 errors::kNotFound,
+                                 "Command not found, ID='%s'", id.c_str());
+    error_callback.Run(error.get());
+  }
+
  private:
   void OnManagerAdded(ManagerProxy* manager) {
     manager->SetPropertyChangedCallback(

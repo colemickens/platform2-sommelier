@@ -319,6 +319,7 @@ TEST_F(PrivetHandlerTest, Info) {
       '/privet/info',
       '/privet/v3/auth',
       '/privet/v3/commandDefs',
+      '/privet/v3/commands/cancel',
       '/privet/v3/commands/execute',
       '/privet/v3/commands/status',
       '/privet/v3/pairing/cancel',
@@ -645,6 +646,33 @@ TEST_F(PrivetHandlerSetupTest, CommandsStatus) {
 
   EXPECT_PRED2(IsEqualJson, "{'name':'test', 'id':'5'}",
                HandleRequest("/privet/v3/commands/status", kInput));
+
+  chromeos::ErrorPtr error;
+  chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain, "notFound", "");
+  EXPECT_CALL(cloud_, GetCommand(_, _, _))
+      .WillOnce(RunCallback<2>(error.get()));
+
+  EXPECT_PRED2(IsEqualError, CodeWithReason(404, "notFound"),
+               HandleRequest("/privet/v3/commands/status", "{'id': '15'}"));
+}
+
+TEST_F(PrivetHandlerSetupTest, CommandsCancel) {
+  const char kExpected[] = "{'id': '5', 'name':'test', 'state':'cancelled'}";
+  base::DictionaryValue command;
+  LoadTestJson(kExpected, &command);
+  EXPECT_CALL(cloud_, CancelCommand(_, _, _))
+      .WillOnce(RunCallback<1, const base::DictionaryValue&>(command));
+
+  EXPECT_PRED2(IsEqualJson, kExpected,
+               HandleRequest("/privet/v3/commands/cancel", "{'id': '8'}"));
+
+  chromeos::ErrorPtr error;
+  chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain, "notFound", "");
+  EXPECT_CALL(cloud_, CancelCommand(_, _, _))
+      .WillOnce(RunCallback<2>(error.get()));
+
+  EXPECT_PRED2(IsEqualError, CodeWithReason(404, "notFound"),
+               HandleRequest("/privet/v3/commands/cancel", "{'id': '11'}"));
 }
 
 }  // namespace privetd
