@@ -4,6 +4,8 @@
 
 #include "soma/spec_reader.h"
 
+#include <sys/types.h>
+
 #include <memory>
 #include <set>
 #include <string>
@@ -12,7 +14,9 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/values.h>
+#include <chromeos/userdb_utils.h>
 
 #include "soma/container_spec_wrapper.h"
 #include "soma/namespace.h"
@@ -20,15 +24,33 @@
 
 namespace soma {
 namespace parser {
+
 #define APPKEY "app."
 
 const char ContainerSpecReader::kServiceBundleRoot[] = "/bricks";
-
 const char ContainerSpecReader::kServiceBundleNameKey[] = "image.name";
 const char ContainerSpecReader::kAppsKey[] = "apps";
 const char ContainerSpecReader::kCommandLineKey[] = APPKEY "exec";
 const char ContainerSpecReader::kGidKey[] = APPKEY "group";
 const char ContainerSpecReader::kUidKey[] = APPKEY "user";
+
+namespace {
+
+bool ResolveUser(const std::string& user, uid_t* uid) {
+  DCHECK(uid);
+  if (base::StringToUint(user, uid))
+    return true;
+  return chromeos::userdb::GetUserInfo(user, uid, nullptr);
+}
+
+bool ResolveGroup(const std::string& group, gid_t* gid) {
+  DCHECK(gid);
+  if (base::StringToUint(group, gid))
+    return true;
+  return chromeos::userdb::GetGroupInfo(group, gid);
+}
+
+}  // namespace
 
 ContainerSpecReader::ContainerSpecReader()
     : reader_(base::JSONParserOptions::JSON_ALLOW_TRAILING_COMMAS) {
@@ -74,10 +96,16 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
     return nullptr;
   }
 
-  int uid, gid;
-  if (!app_dict->GetInteger(kUidKey, &uid) ||
-      !app_dict->GetInteger(kGidKey, &gid)) {
-    LOG(ERROR) << "uid and gid are required.";
+  std::string user, group;
+  if (!app_dict->GetString(kUidKey, &user) ||
+      !app_dict->GetString(kGidKey, &group)) {
+    LOG(ERROR) << "User and group are required.";
+    return nullptr;
+  }
+  uid_t uid;
+  gid_t gid;
+  if (!ResolveUser(user, &uid) || !ResolveGroup(group, &gid)) {
+    LOG(ERROR) << "User or group could not be resolved to an ID.";
     return nullptr;
   }
 

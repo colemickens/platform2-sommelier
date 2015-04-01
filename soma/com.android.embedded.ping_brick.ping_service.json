@@ -1,4 +1,3 @@
-# Trivial example of a container spec.
 {
     "acVersion": "0.5.1",
     "acKind": "PodManifest",
@@ -33,10 +32,10 @@
                 ],
                 "ports": [
                     {
-                        "name": "health",  # Ignored
+                        "name": "health",
                         "port": 4000,
                         "protocol": "tcp",
-                        "socketActivated": true  # Ignored
+                        "socketActivated": true
                     }
                 ]
             },

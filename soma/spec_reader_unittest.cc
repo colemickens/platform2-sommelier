@@ -15,6 +15,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
 
@@ -54,8 +55,8 @@ class ContainerSpecReaderTest : public ::testing::Test {
 
   void CheckSpecBaseline(ContainerSpecWrapper* spec) {
     ASSERT_TRUE(spec);
-    ASSERT_EQ(spec->uid(), kUid);
-    ASSERT_EQ(spec->gid(), kGid);
+    ASSERT_EQ(base::UintToString(spec->uid()), kUid);
+    ASSERT_EQ(base::UintToString(spec->gid()), kGid);
 
     ASSERT_PRED2(
         [](const std::string& a, const std::string& b) {
@@ -70,15 +71,15 @@ class ContainerSpecReaderTest : public ::testing::Test {
 
  private:
   static const char kServiceBundleName[];
-  static const uid_t kUid;
-  static const gid_t kGid;
+  static const char kUid[];
+  static const char kGid[];
 
   std::unique_ptr<base::DictionaryValue> BuildBaselineWithCL(bool with_cl) {
     std::unique_ptr<base::DictionaryValue> app_dict(new base::DictionaryValue);
     app_dict->SetString(ContainerSpecReader::kServiceBundleNameKey,
                         kServiceBundleName);
-    app_dict->SetInteger(ContainerSpecReader::kUidKey, kUid);
-    app_dict->SetInteger(ContainerSpecReader::kGidKey, kGid);
+    app_dict->SetString(ContainerSpecReader::kUidKey, kUid);
+    app_dict->SetString(ContainerSpecReader::kGidKey, kGid);
     if (with_cl) {
       std::unique_ptr<base::ListValue> cl(new base::ListValue);
       cl->AppendString("foo");
@@ -94,8 +95,8 @@ class ContainerSpecReaderTest : public ::testing::Test {
 };
 
 const char ContainerSpecReaderTest::kServiceBundleName[] = "bundle";
-const uid_t ContainerSpecReaderTest::kUid = 1;
-const gid_t ContainerSpecReaderTest::kGid = 2;
+const char ContainerSpecReaderTest::kUid[] = "1";
+const char ContainerSpecReaderTest::kGid[] = "2";
 
 TEST_F(ContainerSpecReaderTest, BaselineSpec) {
   std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
