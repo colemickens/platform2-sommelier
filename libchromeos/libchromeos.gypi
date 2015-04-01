@@ -86,6 +86,7 @@
         'chromeos/syslog_logging.cc',
         'chromeos/type_name_undecorate.cc',
         'chromeos/url_utils.cc',
+        'chromeos/userdb_utils.cc',
       ],
     },
     {

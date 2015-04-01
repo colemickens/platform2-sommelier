@@ -35,9 +35,6 @@ bool EnsureDirectoryExists(const base::FilePath& path,
                            gid_t gid,
                            mode_t mode);
 
-// Looks up the UID and GID corresponding to |user|. Returns true on success.
-bool GetUserInfo(const std::string& user, uid_t* uid, gid_t* gid);
-
 // Runs the passed-in command and arguments synchronously, returning true on
 // success. On failure, the command's output is logged. The path will be
 // searched for |command|.

@@ -24,8 +24,9 @@
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/userdb_utils.h>
+#include <chromeos/bootstat/bootstat.h>
 
-#include "chromeos/bootstat/bootstat.h"
 #include "chromeos/ui/util.h"
 
 namespace chromeos {
@@ -238,7 +239,7 @@ bool XServerRunner::StartServer(const std::string& user,
                                 const base::FilePath& xauth_file) {
   uid_t uid = 0;
   gid_t gid = 0;
-  if (!util::GetUserInfo(user, &uid, &gid))
+  if (!userdb::GetUserInfo(user, &uid, &gid))
     return false;
 
   if (!CreateXauthFile(xauth_file, uid, gid))
