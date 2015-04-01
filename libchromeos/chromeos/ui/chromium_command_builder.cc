@@ -455,13 +455,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("neon"))
     AddEnvVar("VPX_SIMD_CAPS", "0xf");
 
-  if (UseFlagIsSet("highdpi")) {
-    AddArg("--enable-webkit-text-subpixel-positioning");
-    AddArg("--enable-accelerated-overflow-scroll");
-    AddArg("--default-tile-width=512");
-    AddArg("--default-tile-height=512");
-  }
-
   if (IsBoard("link") || IsBoard("link_freon"))
     AddArg("--touch-calibration=0,0,0,50");
 
