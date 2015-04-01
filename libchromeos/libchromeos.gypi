@@ -253,8 +253,13 @@
             'deps': [
               'libchrome-test-<(libbase_ver)',
             ],
+            'proto_in_dir': 'chromeos/dbus',
+            'proto_out_dir': 'include/unittests',
           },
-          'includes': ['../common-mk/common_test.gypi'],
+          'includes': [
+            '../common-mk/common_test.gypi',
+            '../common-mk/protoc.gypi',
+          ],
           'cflags': [
             '-Wno-format-zero-length',
           ],
@@ -313,6 +318,7 @@
             'chromeos/url_utils_unittest.cc',
             'chromeos/variant_dictionary_unittest.cc',
             'testrunner.cc',
+            '<(proto_in_dir)/test.proto',
           ]
         },
         {

@@ -9,6 +9,8 @@
 #include <chromeos/variant_dictionary.h>
 #include <gtest/gtest.h>
 
+#include "unittests/test.pb.h"
+
 using dbus::FileDescriptor;
 using dbus::Message;
 using dbus::MessageReader;
@@ -33,6 +35,8 @@ TEST(DBusUtils, Supported_BasicTypes) {
   EXPECT_TRUE(IsTypeSupported<ObjectPath>::value);
   EXPECT_TRUE(IsTypeSupported<FileDescriptor>::value);
   EXPECT_TRUE(IsTypeSupported<Any>::value);
+  EXPECT_TRUE(IsTypeSupported<google::protobuf::MessageLite>::value);
+  EXPECT_TRUE(IsTypeSupported<dbus_utils_test::TestMessage>::value);
 }
 
 TEST(DBusUtils, Unsupported_BasicTypes) {
@@ -47,6 +51,8 @@ TEST(DBusUtils, Supported_ComplexTypes) {
   EXPECT_TRUE(
       (IsTypeSupported<std::map<uint16_t, std::vector<int64_t>>>::value));
   EXPECT_TRUE((IsTypeSupported<std::tuple<bool, double, int32_t>>::value));
+  EXPECT_TRUE(
+      IsTypeSupported<std::vector<dbus_utils_test::TestMessage>>::value);
 }
 
 TEST(DBusUtils, Unsupported_ComplexTypes) {
@@ -128,6 +134,11 @@ TEST(DBusUtils, Signatures_Tuples) {
   EXPECT_EQ("(id(si))",
             (GetDBusSignature<
                 std::tuple<int, double, std::tuple<std::string, int>>>()));
+}
+
+TEST(DBusUtils, Signatures_Protobufs) {
+  EXPECT_EQ("ay", (GetDBusSignature<google::protobuf::MessageLite>()));
+  EXPECT_EQ("ay", (GetDBusSignature<dbus_utils_test::TestMessage>()));
 }
 
 // Test that a byte can be properly written and read. We only have this
@@ -742,6 +753,28 @@ TEST(DBusUtils, IncompatibleVariant) {
   MessageWriter writer(message.get());
   EXPECT_DEATH(AppendValueToWriter(&writer, Any{2.2f}),
                "Type 'float' is not supported by D-Bus");
+}
+
+TEST(DBusUtils, Protobuf) {
+  std::unique_ptr<Response> message(Response::CreateEmpty().release());
+  MessageWriter writer(message.get());
+
+  dbus_utils_test::TestMessage test_message;
+  test_message.set_foo(123);
+  test_message.set_bar("abcd");
+
+  AppendValueToWriter(&writer, test_message);
+
+  EXPECT_EQ("ay", message->GetSignature());
+
+  dbus_utils_test::TestMessage test_message_out;
+
+  MessageReader reader(message.get());
+  EXPECT_TRUE(PopValueFromReader(&reader, &test_message_out));
+  EXPECT_FALSE(reader.HasMoreData());
+
+  EXPECT_EQ(123, test_message_out.foo());
+  EXPECT_EQ("abcd", test_message_out.bar());
 }
 
 }  // namespace dbus_utils

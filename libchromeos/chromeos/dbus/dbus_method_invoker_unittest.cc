@@ -13,6 +13,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "unittests/test.pb.h"
+
 using testing::AnyNumber;
 using testing::InSequence;
 using testing::Invoke;
@@ -31,6 +33,7 @@ const char kTestServiceName[] = "org.test.Object";
 const char kTestInterface[] = "org.test.Object.TestInterface";
 const char kTestMethod1[] = "TestMethod1";
 const char kTestMethod2[] = "TestMethod2";
+const char kTestMethod3[] = "TestMethod3";
 
 class DBusMethodInvokerTest : public testing::Test {
  public:
@@ -74,6 +77,15 @@ class DBusMethodInvokerTest : public testing::Test {
         method_call->SetSerial(123);
         dbus_set_error(dbus_error->get(), "org.MyError", "My error message");
         return nullptr;
+      } else if (method_call->GetMember() == kTestMethod3) {
+        MessageReader reader(method_call);
+        dbus_utils_test::TestMessage msg;
+        if (PopValueFromReader(&reader, &msg)) {
+          auto response = Response::CreateEmpty();
+          MessageWriter writer(response.get());
+          AppendValueToWriter(&writer, msg);
+          return response.release();
+        }
       }
     }
 
@@ -90,6 +102,21 @@ class DBusMethodInvokerTest : public testing::Test {
                                                  v1, v2);
     EXPECT_NE(nullptr, response.get());
     std::string result;
+    using chromeos::dbus_utils::ExtractMethodCallResults;
+    EXPECT_TRUE(ExtractMethodCallResults(response.get(), nullptr, &result));
+    return result;
+  }
+
+  dbus_utils_test::TestMessage CallProtobufTestMethod(
+      const dbus_utils_test::TestMessage& message) {
+    std::unique_ptr<dbus::Response> response =
+        chromeos::dbus_utils::CallMethodAndBlock(mock_object_proxy_.get(),
+                                                 kTestInterface,
+                                                 kTestMethod3,
+                                                 nullptr,
+                                                 message);
+    EXPECT_NE(nullptr, response.get());
+    dbus_utils_test::TestMessage result;
     using chromeos::dbus_utils::ExtractMethodCallResults;
     EXPECT_TRUE(ExtractMethodCallResults(response.get(), nullptr, &result));
     return result;
@@ -114,6 +141,17 @@ TEST_F(DBusMethodInvokerTest, TestFailure) {
   EXPECT_EQ(chromeos::errors::dbus::kDomain, error->GetDomain());
   EXPECT_EQ("org.MyError", error->GetCode());
   EXPECT_EQ("My error message", error->GetMessage());
+}
+
+TEST_F(DBusMethodInvokerTest, TestProtobuf) {
+  dbus_utils_test::TestMessage test_message;
+  test_message.set_foo(123);
+  test_message.set_bar("bar");
+
+  dbus_utils_test::TestMessage resp = CallProtobufTestMethod(test_message);
+
+  EXPECT_EQ(123, resp.foo());
+  EXPECT_EQ("bar", resp.bar());
 }
 
 //////////////////////////////////////////////////////////////////////////////

@@ -82,7 +82,12 @@ struct Unsupported {};
 
 // Generic definition of DBusType<T> which will be specialized for particular
 // types later.
-template<typename T>
+// The second template parameter is used only in SFINAE situations to resolve
+// class hierarchy chains for protobuf-derived classes. This type is defaulted
+// to be 'void' in all other cases and simply ignored.
+// See DBusType specialization for google::protobuf::MessageLite below for more
+// detailed information.
+template<typename T, typename = void>
 struct DBusType : public Unsupported {};
 
 // A helper type trait to determine if all of the types listed in Types... are
@@ -114,31 +119,18 @@ struct IsTypeSupported<> : public std::false_type {};
 //----------------------------------------------------------------------------
 // AppendValueToWriter<T>(dbus::MessageWriter* writer, const T& value)
 // Write the |value| of type T to D-Bus message.
-// The default implementation is marked as "deleted". This method must be
-// overloaded for specific types to allow serialization over D-Bus.
-// If this function causes compile-time error, this means that either
-// the type T is not supported by D-Bus or you haven't provided an overload
-// for custom types you want to serialize over D-Bus. See the comment at the
-// top of this file for explanation of how to add custom data serialization
-// code.
-template<typename T>
-void AppendValueToWriter(dbus::MessageWriter* writer, const T& value) = delete;
+// Explicitly delete the overloads for scalar types that are not supported by
+// D-Bus.
+void AppendValueToWriter(dbus::MessageWriter* writer, char value) = delete;
+void AppendValueToWriter(dbus::MessageWriter* writer, float value) = delete;
 
 //----------------------------------------------------------------------------
 // PopValueFromReader<T>(dbus::MessageWriter* writer, T* value)
-// Reads the |value| of type T from D-Bus message. These methods can read both
-// actual data of type T and data of type T sent over D-Bus as a Variant.
-// This allows it, for example, to read a generic dictionary ("a{sv}") as
-// a specific map type (e.g. "a{ss}", if a map of string-to-string is expected).
-// The default implementation is marked as "deleted". This method must be
-// overloaded for specific types to allow serialization over D-Bus.
-// If this function causes compile-time error, this means that either
-// the type T is not supported by D-Bus or you haven't provided an overload
-// for custom types you want to serialize over D-Bus. See the comment at the
-// top of this file for explanation of how to add custom data serialization
-// code.
-template<typename T>
-void PopValueFromReader(dbus::MessageReader* reader, T* value) = delete;
+// Reads the |value| of type T from D-Bus message.
+// Explicitly delete the overloads for scalar types that are not supported by
+// D-Bus.
+void PopValueFromReader(dbus::MessageReader* reader, char* value) = delete;
+void PopValueFromReader(dbus::MessageReader* reader, float* value) = delete;
 
 //----------------------------------------------------------------------------
 // Get D-Bus data signature from C++ data types.
@@ -812,17 +804,28 @@ inline bool PopValueFromReader(dbus::MessageReader* reader,
   return reader->PopArrayOfBytesAsProto(value);
 }
 
-template<>
-struct DBusType<google::protobuf::MessageLite> {
+// is_protobuf_t<T> is a helper type trait to determine if type T derives from
+// google::protobuf::MessageLite.
+template<typename T>
+using is_protobuf = std::is_base_of<google::protobuf::MessageLite, T>;
+
+// Specialize DBusType<T> for classes that derive from protobuf::MessageLite.
+// Here we perform a partial specialization of DBusType<T> only for types
+// that derive from google::protobuf::MessageLite. This is done by employing
+// the second template parameter in DBusType and this basically relies on C++
+// SFINAE rules. "typename std::enable_if<is_protobuf<T>::value>::type" will
+// evaluate to "void" for classes T that descend from MessageLite and will be
+// an invalid construct for other types/classes which will automatically
+// remove this particular specialization from name resolution context.
+template<typename T>
+struct DBusType<T, typename std::enable_if<is_protobuf<T>::value>::type> {
   inline static std::string GetSignature() {
     return GetDBusSignature<std::vector<uint8_t>>();
   }
-  inline static void Write(dbus::MessageWriter* writer,
-                           const google::protobuf::MessageLite& value) {
+  inline static void Write(dbus::MessageWriter* writer, const T& value) {
     AppendValueToWriter(writer, value);
   }
-  inline static bool Read(dbus::MessageReader* reader,
-                          google::protobuf::MessageLite* value) {
+  inline static bool Read(dbus::MessageReader* reader, T* value) {
     return PopValueFromReader(reader, value);
   }
 };
