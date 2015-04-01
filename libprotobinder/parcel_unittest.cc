@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+#include <base/macros.h>
+
 #include "libprotobinder/binder_host.h"
 
 namespace protobinder {
@@ -157,8 +159,8 @@ TEST(ParcelTest, StringTypes) {
   ASSERT_TRUE(data.WriteString16(test_string));
 
   uint16_t test_string_16[5] = {0x10, 0x20, 0x30, 0x40, 0x50};
-  ASSERT_TRUE(data.WriteString16(test_string_16, sizeof(test_string_16)));
-  ASSERT_TRUE(data.WriteString16(test_string_16, sizeof(test_string_16)));
+  ASSERT_TRUE(data.WriteString16(test_string_16, arraysize(test_string_16)));
+  ASSERT_TRUE(data.WriteString16(test_string_16, arraysize(test_string_16)));
 
   ASSERT_TRUE(data.SetPos(0));
 
@@ -189,11 +191,11 @@ TEST(ParcelTest, StringTypes) {
 
   uint16_t readback_string_16[5];
   size_t len;
-  len = sizeof(readback_string_16);
+  len = arraysize(readback_string_16);
   ASSERT_TRUE(data.ReadString16(readback_string_16, &len));
   ASSERT_EQ(0, memcmp(readback_string_16, test_string_16, len));
 
-  len = sizeof(readback_string_16);
+  len = arraysize(readback_string_16);
   ASSERT_TRUE(data.ReadString16(readback_string_16, &len));
   ASSERT_EQ(0, memcmp(readback_string_16, test_string_16, len));
 
