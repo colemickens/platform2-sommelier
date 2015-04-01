@@ -30,7 +30,7 @@ pid_t GetPidFromStdout(int stdout) {
   std::vector<std::string> tokens;
   base::SplitString(output, ' ', &tokens);
   pid_t pid = -1;
-  if (!base::StringToInt(tokens[4], &pid)) {
+  if (tokens.size() < 5 || !base::StringToInt(tokens[4], &pid)) {
     LOG(ERROR) << "Could not extract pid from '" << output << "'";
     return -1;
   }
@@ -61,8 +61,9 @@ Launcher::Launcher() {
 
 Launcher::~Launcher() {}
 
-int Launcher::RunInteractive(const std::string& name,
-                             const std::vector<std::string>& argv) {
+bool Launcher::RunInteractive(const std::string& name,
+                              const std::vector<std::string>& argv,
+                              int* status) {
   std::vector<char*> command_line;
   for (const auto& t : argv) {
     command_line.push_back(const_cast<char*>(t.c_str()));
@@ -76,13 +77,13 @@ int Launcher::RunInteractive(const std::string& name,
   uid_t uid = uid_service_->GetUid();
   Environment env(uid, uid);
 
-  int status;
-  minijail->RunSyncAndDestroy(env.GetForInteractive(), command_line, &status);
-  return status;
+  return minijail->RunSyncAndDestroy(env.GetForInteractive(), command_line,
+                                     status);
 }
 
-int Launcher::RunService(const std::string& name,
-                         const std::vector<std::string>& argv) {
+bool Launcher::RunService(const std::string& name,
+                          const std::vector<std::string>& argv,
+                          pid_t* pid) {
   // initctl start germ_template NAME=yes ENVIRONMENT= COMMANDLINE=/usr/bin/yes
   uid_t uid = uid_service_->GetUid();
   Environment env(uid, uid);
@@ -101,10 +102,15 @@ int Launcher::RunService(const std::string& name,
   // we wait for it to exit.
   initctl.Start();
   int stdout_fd = initctl.GetPipe(STDOUT_FILENO);
-  pid_t pid = GetPidFromStdout(stdout_fd);
+  *pid = GetPidFromStdout(stdout_fd);
+  int exit_status = initctl.Wait();
+  if (exit_status != 0) {
+    LOG(ERROR) << "'initctl' failed with exit status " << exit_status;
+    *pid = -1;
+    return false;
+  }
   VLOG(1) << "service name " << name << " pid " << pid;
-  initctl.Wait();
-  return pid;
+  return true;
 }
 
 }  // namespace germ

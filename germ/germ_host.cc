@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include <base/logging.h>
+
 namespace germ {
 
 int GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
@@ -14,8 +16,14 @@ int GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
   for (const auto& cmdline_token : request->spec().command_line()) {
     argv.push_back(cmdline_token);
   }
-  int status = launcher_.RunService(request->name(), argv);
-  response->set_status(status);
+  pid_t pid = -1;
+  bool success = launcher_.RunService(request->name(), argv, &pid);
+  if (!success) {
+    LOG(ERROR) << "RunService(" << request->name() << ") failed";
+    response->set_status(-1);
+    return -1;
+  }
+  response->set_status(pid);
   return 0;
 }
 

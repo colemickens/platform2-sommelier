@@ -20,10 +20,12 @@ class Launcher {
   Launcher();
   ~Launcher();
 
-  int RunInteractive(const std::string& name,
-                     const std::vector<std::string>& argv);
-  int RunService(const std::string& name,
-                 const std::vector<std::string>& argv);
+  bool RunInteractive(const std::string& name,
+                      const std::vector<std::string>& argv,
+                      int* status);
+  bool RunService(const std::string& name,
+                  const std::vector<std::string>& argv,
+                  pid_t* pid);
 
  private:
   std::unique_ptr<UidService> uid_service_;

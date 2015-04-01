@@ -64,8 +64,7 @@ class LaunchClient : public psyche::PsycheDaemon {
     for (const auto& cmdline_token : command_line_) {
       spec->add_command_line(cmdline_token);
     }
-    int binder_ret = germ_->Launch(&request, &response);
-    if (binder_ret != 0) {
+    if (germ_->Launch(&request, &response) != 0) {
       LOG(ERROR) << "Failed to launch service '" << name_ << "'";
       // Trigger shut-down of the message loop.
       Quit();
@@ -139,7 +138,13 @@ int main(int argc, char** argv) {
       args.clear();
       args.push_back(kShellExecutablePath);
     }
-    ret = launcher.RunInteractive(FLAGS_name, args);
+    int status = 0;
+    bool success = launcher.RunInteractive(FLAGS_name, args, &status);
+    if (!success) {
+      LOG(ERROR) << "Failed to launch '" << FLAGS_name << "'";
+      return 1;
+    }
+    ret = status;
   } else {
     germ::LaunchClient client(FLAGS_name, args);
     ret = client.Run();

@@ -29,7 +29,7 @@ class GermDaemon : public psyche::PsycheDaemon {
     }
     if (!psyche_connection()->RegisterService("germ", &host_)) {
       LOG(ERROR) << "Could not register with psyche.";
-      return -1;
+      return 1;
     }
     return 0;
   }
