@@ -184,6 +184,9 @@ HELP_ADVANCED='
  upload_crashes
   Uploads available crash reports to the crash server.
 
+ upload_devcoredumps [enable|disable]
+  Enable or disable the upload of devcoredump reports.
+
  wpa_debug [<debug_level>] [--help] [--list_valid_level] [--reset]
   Set wpa_supplicant debugging level.
 '
@@ -760,6 +763,24 @@ cmd_update_over_cellular() (
 cmd_upload_crashes() (
   debugd UploadCrashes
   echo "Check chrome://crashes for status updates"
+)
+
+cmd_upload_devcoredumps() (
+  case "$1" in
+    "enable")
+      debugd EnableDevCoredumpUpload
+      ;;
+
+    "disable")
+      debugd DisableDevCoredumpUpload
+      ;;
+
+    *)
+      echo "Usage: upload_devcoredumps [enable|disable]
+  Enable or disable the upload of devcoredump reports."
+      return 1
+      ;;
+  esac
 )
 
 cmd_tpcontrol() (
