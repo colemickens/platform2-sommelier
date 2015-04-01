@@ -10,7 +10,6 @@
 #include <string>
 #include <utility>
 
-#include <base/callback_forward.h>
 #include <base/macros.h>
 #include <base/scoped_observer.h>
 
@@ -63,8 +62,10 @@ class PrivetHandler : public CloudDelegate::Observer {
                      const RequestCallback& callback);
 
  private:
-  using ApiHandler = base::Callback<void(const base::DictionaryValue&,
-                                         const RequestCallback&)>;
+  using ApiHandler = void (PrivetHandler::*)(const base::DictionaryValue&,
+                                             const RequestCallback&);
+
+  void AddHandler(const std::string& path, ApiHandler handler, AuthScope scope);
 
   void HandleInfo(const base::DictionaryValue&,
                   const RequestCallback& callback);

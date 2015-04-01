@@ -29,17 +29,6 @@ namespace privetd {
 
 namespace {
 
-const char kInfoApiPath[] = "/privet/info";
-const char kPairingStartApiPath[] = "/privet/v3/pairing/start";
-const char kPairingConfirmApiPath[] = "/privet/v3/pairing/confirm";
-const char kPairingCancelApiPath[] = "/privet/v3/pairing/cancel";
-const char kAuthApiPath[] = "/privet/v3/auth";
-const char kSetupStartApiPath[] = "/privet/v3/setup/start";
-const char kSetupStatusApiPath[] = "/privet/v3/setup/status";
-const char kCommandDefApiPath[] = "/privet/v3/commandDefs";
-const char kCommandsExecuteApiPath[] = "/privet/v3/commands/execute";
-const char kCommandsStatusApiPath[] = "/privet/v3/commands/status";
-
 const char kInfoVersionKey[] = "version";
 const char kInfoVersionValue[] = "3.0";
 
@@ -349,37 +338,26 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
       identity_(identity) {
   if (cloud_)
     cloud_observer_.Add(cloud_);
-  handlers_[kInfoApiPath] = std::make_pair(
-      AuthScope::kGuest,
-      base::Bind(&PrivetHandler::HandleInfo, base::Unretained(this)));
-  handlers_[kPairingStartApiPath] = std::make_pair(
-      AuthScope::kGuest,
-      base::Bind(&PrivetHandler::HandlePairingStart, base::Unretained(this)));
-  handlers_[kPairingConfirmApiPath] = std::make_pair(
-      AuthScope::kGuest,
-      base::Bind(&PrivetHandler::HandlePairingConfirm, base::Unretained(this)));
-  handlers_[kPairingCancelApiPath] = std::make_pair(
-      AuthScope::kGuest,
-      base::Bind(&PrivetHandler::HandlePairingCancel, base::Unretained(this)));
-  handlers_[kAuthApiPath] = std::make_pair(
-      AuthScope::kGuest,
-      base::Bind(&PrivetHandler::HandleAuth, base::Unretained(this)));
-  handlers_[kSetupStartApiPath] = std::make_pair(
-      AuthScope::kOwner,
-      base::Bind(&PrivetHandler::HandleSetupStart, base::Unretained(this)));
-  handlers_[kSetupStatusApiPath] = std::make_pair(
-      AuthScope::kOwner,
-      base::Bind(&PrivetHandler::HandleSetupStatus, base::Unretained(this)));
+
+  AddHandler("/privet/info", &PrivetHandler::HandleInfo, AuthScope::kGuest);
+  AddHandler("/privet/v3/pairing/start", &PrivetHandler::HandlePairingStart,
+             AuthScope::kGuest);
+  AddHandler("/privet/v3/pairing/confirm", &PrivetHandler::HandlePairingConfirm,
+             AuthScope::kGuest);
+  AddHandler("/privet/v3/pairing/cancel", &PrivetHandler::HandlePairingCancel,
+             AuthScope::kGuest);
+  AddHandler("/privet/v3/auth", &PrivetHandler::HandleAuth, AuthScope::kGuest);
+  AddHandler("/privet/v3/setup/start", &PrivetHandler::HandleSetupStart,
+             AuthScope::kOwner);
+  AddHandler("/privet/v3/setup/status", &PrivetHandler::HandleSetupStatus,
+             AuthScope::kOwner);
   if (cloud_) {
-    handlers_[kCommandDefApiPath] = std::make_pair(
-        AuthScope::kUser,
-        base::Bind(&PrivetHandler::HandleCommandDefs, base::Unretained(this)));
-    handlers_[kCommandsExecuteApiPath] = std::make_pair(
-        AuthScope::kUser, base::Bind(&PrivetHandler::HandleCommandsExecute,
-                                     base::Unretained(this)));
-    handlers_[kCommandsStatusApiPath] = std::make_pair(
-        AuthScope::kUser, base::Bind(&PrivetHandler::HandleCommandsStatus,
-                                     base::Unretained(this)));
+    AddHandler("/privet/v3/commandDefs", &PrivetHandler::HandleCommandDefs,
+               AuthScope::kUser);
+    AddHandler("/privet/v3/commands/execute",
+               &PrivetHandler::HandleCommandsExecute, AuthScope::kUser);
+    AddHandler("/privet/v3/commands/status",
+               &PrivetHandler::HandleCommandsStatus, AuthScope::kUser);
   }
 }
 
@@ -444,7 +422,13 @@ void PrivetHandler::HandleRequest(const std::string& api,
                                  EnumToString(scope).c_str(), api.c_str());
     return ReturnError(*error, callback);
   }
-  handler->second.second.Run(*input, callback);
+  (this->*handler->second.second)(*input, callback);
+}
+
+void PrivetHandler::AddHandler(const std::string& path,
+                               ApiHandler handler,
+                               AuthScope scope) {
+  CHECK(handlers_.emplace(path, std::make_pair(scope, handler)).second);
 }
 
 void PrivetHandler::HandleInfo(const base::DictionaryValue&,
