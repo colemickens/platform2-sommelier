@@ -77,6 +77,10 @@ class CloudDelegate {
                              const SuccessCallback& success_callback,
                              const ErrorCallback& error_callback) = 0;
 
+  // Lists commands.
+  virtual void ListCommands(const SuccessCallback& success_callback,
+                            const ErrorCallback& error_callback) = 0;
+
   void AddObserver(Observer* observer) { observer_list_.AddObserver(observer); }
   void RemoveObserver(Observer* observer) {
     observer_list_.RemoveObserver(observer);

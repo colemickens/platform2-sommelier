@@ -4,6 +4,8 @@
 
 #include "privetd/cloud_delegate.h"
 
+#include <vector>
+
 #include <base/bind.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
@@ -129,6 +131,19 @@ class CloudDelegateImpl : public CloudDelegate {
                                  errors::kNotFound,
                                  "Command not found, ID='%s'", id.c_str());
     error_callback.Run(error.get());
+  }
+
+  void ListCommands(const SuccessCallback& success_callback,
+                    const ErrorCallback& error_callback) override {
+    std::vector<org::chromium::Buffet::CommandProxy*> commands{
+        object_manager_.GetCommandInstances()};
+
+    auto ids = std::make_shared<std::vector<std::string>>();
+    for (auto command : commands)
+      ids->push_back(command->id());
+
+    GetNextCommand(ids, std::make_shared<base::ListValue>(), success_callback,
+                   error_callback, base::DictionaryValue{});
   }
 
  private:
@@ -265,6 +280,45 @@ class CloudDelegateImpl : public CloudDelegate {
       return error_callback.Run(error.get());
     }
     success_callback.Run(*command);
+  }
+
+  void GetNextCommandSkipError(
+      const std::shared_ptr<std::vector<std::string>>& ids,
+      const std::shared_ptr<base::ListValue>& commands,
+      const SuccessCallback& success_callback,
+      const ErrorCallback& error_callback,
+      chromeos::Error*) {
+    // Ignore if we can't get some commands. Maybe they were removed.
+    GetNextCommand(ids, commands, success_callback, error_callback,
+                   base::DictionaryValue{});
+  }
+
+  void GetNextCommand(const std::shared_ptr<std::vector<std::string>>& ids,
+                      const std::shared_ptr<base::ListValue>& commands,
+                      const SuccessCallback& success_callback,
+                      const ErrorCallback& error_callback,
+                      const base::DictionaryValue& json) {
+    if (!json.empty())
+      commands->Append(json.DeepCopy());
+
+    if (ids->empty()) {
+      base::DictionaryValue commands_json;
+      commands_json.Set("commands", commands->DeepCopy());
+      return success_callback.Run(commands_json);
+    }
+
+    std::string next_id = ids->back();
+    ids->pop_back();
+
+    auto on_success = base::Bind(&CloudDelegateImpl::GetNextCommand,
+                                 weak_factory_.GetWeakPtr(), ids, commands,
+                                 success_callback, error_callback);
+
+    auto on_error = base::Bind(&CloudDelegateImpl::GetNextCommandSkipError,
+                               weak_factory_.GetWeakPtr(), ids, commands,
+                               success_callback, error_callback);
+
+    GetCommand(next_id, on_success, on_error);
   }
 
   ManagerProxy* GetManagerProxy(chromeos::ErrorPtr* error) {

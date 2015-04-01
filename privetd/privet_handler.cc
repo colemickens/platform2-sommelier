@@ -349,6 +349,8 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
                &PrivetHandler::HandleCommandsStatus, AuthScope::kUser);
     AddHandler("/privet/v3/commands/cancel",
                &PrivetHandler::HandleCommandsCancel, AuthScope::kUser);
+    AddHandler("/privet/v3/commands/list", &PrivetHandler::HandleCommandsList,
+               AuthScope::kUser);
   }
 }
 
@@ -718,6 +720,12 @@ void PrivetHandler::HandleCommandsStatus(const base::DictionaryValue& input,
   }
   cloud_->GetCommand(id, base::Bind(&OnCommandRequestSucceeded, callback),
                      base::Bind(&OnCommandRequestFailed, callback));
+}
+
+void PrivetHandler::HandleCommandsList(const base::DictionaryValue& input,
+                                       const RequestCallback& callback) {
+  cloud_->ListCommands(base::Bind(&OnCommandRequestSucceeded, callback),
+                       base::Bind(&OnCommandRequestFailed, callback));
 }
 
 void PrivetHandler::HandleCommandsCancel(const base::DictionaryValue& input,

@@ -168,6 +168,8 @@ class MockCloudDelegate : public CloudDelegate {
                void(const std::string&,
                     const SuccessCallback&,
                     const ErrorCallback&));
+  MOCK_METHOD2(ListCommands,
+               void(const SuccessCallback&, const ErrorCallback&));
 
   MockCloudDelegate() {
     commands_definitions_.Set("test", new base::DictionaryValue);

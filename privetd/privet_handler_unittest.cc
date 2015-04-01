@@ -321,6 +321,7 @@ TEST_F(PrivetHandlerTest, Info) {
       '/privet/v3/commandDefs',
       '/privet/v3/commands/cancel',
       '/privet/v3/commands/execute',
+      '/privet/v3/commands/list',
       '/privet/v3/commands/status',
       '/privet/v3/pairing/cancel',
       '/privet/v3/pairing/confirm',
@@ -673,6 +674,23 @@ TEST_F(PrivetHandlerSetupTest, CommandsCancel) {
 
   EXPECT_PRED2(IsEqualError, CodeWithReason(404, "notFound"),
                HandleRequest("/privet/v3/commands/cancel", "{'id': '11'}"));
+}
+
+TEST_F(PrivetHandlerSetupTest, CommandsList) {
+  const char kExpected[] = R"({
+    'commands' : [
+        {'id':'5', 'state':'cancelled'},
+        {'id':'15', 'state':'inProgress'}
+     ]})";
+
+  base::DictionaryValue commands;
+  LoadTestJson(kExpected, &commands);
+
+  EXPECT_CALL(cloud_, ListCommands(_, _))
+      .WillOnce(RunCallback<0, const base::DictionaryValue&>(commands));
+
+  EXPECT_PRED2(IsEqualJson, kExpected,
+               HandleRequest("/privet/v3/commands/list", "{}"));
 }
 
 }  // namespace privetd
