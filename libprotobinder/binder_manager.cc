@@ -363,7 +363,7 @@ bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
 bool BinderManager::GetFdForPolling(int* fd) {
   if (binder_fd_ < 0)
     return false;
-  in_commands_.WriteInt32(BC_ENTER_LOOPER);
+  out_commands_.WriteInt32(BC_ENTER_LOOPER);
   *fd = binder_fd_;
   return true;
 }
