@@ -67,12 +67,14 @@ class LaunchClient : public psyche::PsycheDaemon {
     int binder_ret = germ_->Launch(&request, &response);
     if (binder_ret != 0) {
       LOG(ERROR) << "Failed to launch service '" << name_ << "'";
-      exit(binder_ret);
+      // Trigger shut-down of the message loop.
+      Quit();
+      return;
     }
     LOG(INFO) << "Launched service '" << name_ << "' with pid "
               << response.status();
-    // TODO(jorgelo): Use chromeos::Daemon::Quit(), see brbug.com/715.
-    exit(0);
+    // Trigger shut-down of the message loop.
+    Quit();
   }
 
   // PsycheDaemon:
@@ -81,7 +83,9 @@ class LaunchClient : public psyche::PsycheDaemon {
     if (return_code != EX_OK)
       return return_code;
 
-    RequestService();
+    base::MessageLoopForIO::current()->PostTask(
+        FROM_HERE, base::Bind(&LaunchClient::RequestService,
+                              weak_ptr_factory_.GetWeakPtr()));
     return EX_OK;
   }
 
