@@ -30,7 +30,6 @@ using testing::_;
 namespace buffet {
 
 namespace {
-
 const char kCommandCategory[] = "test_category";
 
 }  // anonymous namespace
@@ -38,6 +37,8 @@ const char kCommandCategory[] = "test_category";
 class DBusCommandDispacherTest : public testing::Test {
  public:
   void SetUp() override {
+    command_queue_.SetNowForTest(base::Time::Max());
+
     const dbus::ObjectPath kExportedObjectManagerPath("/test/om_path");
     std::string cmd_path = dbus_constants::kCommandServicePathPrefix;
     cmd_path += "1";

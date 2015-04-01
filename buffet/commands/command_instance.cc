@@ -215,12 +215,8 @@ void CommandInstance::SetStatus(const std::string& status) {
 }
 
 void CommandInstance::RemoveFromQueue() {
-  if (queue_) {
-    // Store this instance in unique_ptr until the end of this method,
-    // otherwise it will be destroyed as soon as CommandQueue::Remove() returns.
-    std::unique_ptr<CommandInstance> this_instance = queue_->Remove(GetID());
-    // The command instance will survive till the end of this scope.
-  }
+  if (queue_)
+    queue_->DelayedRemove(GetID());
 }
 
 

@@ -4,9 +4,15 @@
 
 #include "buffet/commands/command_queue.h"
 
+#include <base/time/time.h>
+
 #include "buffet/commands/command_dispatch_interface.h"
 
 namespace buffet {
+
+namespace {
+const int kRemoveCommandDelayMin = 5;
+}
 
 void CommandQueue::Add(std::unique_ptr<CommandInstance> instance) {
   std::string id = instance->GetID();
@@ -17,20 +23,44 @@ void CommandQueue::Add(std::unique_ptr<CommandInstance> instance) {
                               << "' is already in the queue";
   if (dispatch_interface_)
     dispatch_interface_->OnCommandAdded(pair.first->second.get());
+  Cleanup();
 }
 
-std::unique_ptr<CommandInstance> CommandQueue::Remove(
-    const std::string& id) {
-  std::unique_ptr<CommandInstance> instance;
+void CommandQueue::DelayedRemove(const std::string& id) {
   auto p = map_.find(id);
-  if (p != map_.end()) {
-    instance = std::move(p->second);
-    instance->SetCommandQueue(nullptr);
-    map_.erase(p);
-    if (dispatch_interface_)
-      dispatch_interface_->OnCommandRemoved(instance.get());
+  if (p == map_.end())
+    return;
+  remove_queue_.push(std::make_pair(
+      base::Time::Now() + base::TimeDelta::FromMinutes(kRemoveCommandDelayMin),
+      id));
+  Cleanup();
+}
+
+bool CommandQueue::Remove(const std::string& id) {
+  auto p = map_.find(id);
+  if (p == map_.end())
+    return false;
+  std::unique_ptr<CommandInstance> instance{std::move(p->second)};
+  instance->SetCommandQueue(nullptr);
+  map_.erase(p);
+  if (dispatch_interface_)
+    dispatch_interface_->OnCommandRemoved(instance.get());
+  return true;
+}
+
+void CommandQueue::Cleanup() {
+  while (!remove_queue_.empty() && remove_queue_.front().first < Now()) {
+    Remove(remove_queue_.front().second);
+    remove_queue_.pop();
   }
-  return instance;
+}
+
+void CommandQueue::SetNowForTest(base::Time now) {
+  test_now_ = now;
+}
+
+base::Time CommandQueue::Now() const {
+  return test_now_.is_null() ? base::Time::Now() : test_now_;
 }
 
 CommandInstance* CommandQueue::Find(const std::string& id) const {

@@ -7,7 +7,9 @@
 
 #include <map>
 #include <memory>
+#include <queue>
 #include <string>
+#include <utility>
 
 #include <base/macros.h>
 
@@ -39,10 +41,9 @@ class CommandQueue final {
   // One shouldn't attempt to add a command with the same ID.
   void Add(std::unique_ptr<CommandInstance> instance);
 
-  // Removes a command identified by |id| from the queue. Returns a unique
-  // pointer to the command instance if removed successfully, or an empty
-  // unique_ptr if the command with the given ID doesn't exist in the queue.
-  std::unique_ptr<CommandInstance> Remove(const std::string& id);
+  // Selects command identified by |id| ready for removal. Command will actually
+  // be removed after some time.
+  void DelayedRemove(const std::string& id);
 
   // Finds a command instance in the queue by the instance |id|. Returns
   // nullptr if the command with the given |id| is not found. The returned
@@ -50,8 +51,30 @@ class CommandQueue final {
   CommandInstance* Find(const std::string& id) const;
 
  private:
+  friend class CommandQueueTest;
+  friend class DBusCommandDispacherTest;
+
+  // Removes a command identified by |id| from the queue.
+  bool Remove(const std::string& id);
+
+  // Removes old commands selected with DelayedRemove.
+  void Cleanup();
+
+  // Overrides CommandQueue::Now() for tests.
+  void SetNowForTest(base::Time now);
+
+  // Returns current time.
+  base::Time Now() const;
+
+  // Overrided value to be returned from Now().
+  base::Time test_now_;
+
   // ID-to-CommandInstance map.
   std::map<std::string, std::unique_ptr<CommandInstance>> map_;
+
+  // Queue of commands to be removed.
+  std::queue<std::pair<base::Time, std::string>> remove_queue_;
+
   // Callback interface for command dispatch, if provided.
   CommandDispachInterface* dispatch_interface_ = nullptr;
 

@@ -15,36 +15,47 @@
 #include "buffet/commands/command_dispatch_interface.h"
 #include "buffet/commands/object_schema.h"
 
-namespace {
+namespace buffet {
 
 class CommandQueueTest : public testing::Test {
  public:
-  std::unique_ptr<buffet::CommandInstance> CreateDummyCommandInstance(
-      const std::string& name, const std::string& id) {
-    std::unique_ptr<buffet::CommandInstance> cmd{
-      new buffet::CommandInstance{name, &command_definition_, {}}};
+  std::unique_ptr<CommandInstance> CreateDummyCommandInstance(
+      const std::string& name,
+      const std::string& id) {
+    std::unique_ptr<CommandInstance> cmd{
+        new CommandInstance{name, &command_definition_, {}}};
     cmd->SetID(id);
     return cmd;
   }
 
+  bool Remove(const std::string& id) { return queue_.Remove(id); }
+
+  void Cleanup(const base::TimeDelta& interval) {
+    queue_.SetNowForTest(base::Time::Now() + interval);
+    return queue_.Cleanup();
+  }
+
+  CommandQueue queue_;
+
  private:
-  buffet::CommandDefinition command_definition_{
-      "powerd", buffet::ObjectSchema::Create(), buffet::ObjectSchema::Create()};
+  CommandDefinition command_definition_{"powerd",
+                                        ObjectSchema::Create(),
+                                        ObjectSchema::Create()};
 };
 
 // Fake implementation of CommandDispachInterface.
-// Just keeps track of commands being added to and removed from the queue.
+// Just keeps track of commands being added to and removed from the queue_.
 // Aborts if duplicate commands are added or non-existent commands are removed.
-class FakeDispatchInterface : public buffet::CommandDispachInterface {
+class FakeDispatchInterface : public CommandDispachInterface {
  public:
-  void OnCommandAdded(buffet::CommandInstance* command_instance) override {
+  void OnCommandAdded(CommandInstance* command_instance) override {
     CHECK(ids_.insert(command_instance->GetID()).second)
         << "Command ID already exists: " << command_instance->GetID();
     CHECK(commands_.insert(command_instance).second)
         << "Command instance already exists";
   }
 
-  void OnCommandRemoved(buffet::CommandInstance* command_instance) override {
+  void OnCommandRemoved(CommandInstance* command_instance) override {
     CHECK_EQ(1, ids_.erase(command_instance->GetID()))
         << "Command ID not found: " << command_instance->GetID();
     CHECK_EQ(1, commands_.erase(command_instance))
@@ -52,7 +63,7 @@ class FakeDispatchInterface : public buffet::CommandDispachInterface {
   }
 
   // Get the comma-separated list of command IDs currently accumulated in the
-  // command queue.
+  // command queue_.
   std::string GetIDs() const {
     using chromeos::string_utils::Join;
     return Join(",", std::vector<std::string>(ids_.begin(), ids_.end()));
@@ -60,77 +71,88 @@ class FakeDispatchInterface : public buffet::CommandDispachInterface {
 
  private:
   std::set<std::string> ids_;
-  std::set<buffet::CommandInstance*> commands_;
+  std::set<CommandInstance*> commands_;
 };
 
-}  // anonymous namespace
-
 TEST_F(CommandQueueTest, Empty) {
-  buffet::CommandQueue queue;
-  EXPECT_TRUE(queue.IsEmpty());
-  EXPECT_EQ(0, queue.GetCount());
+  EXPECT_TRUE(queue_.IsEmpty());
+  EXPECT_EQ(0, queue_.GetCount());
 }
 
 TEST_F(CommandQueueTest, Add) {
-  buffet::CommandQueue queue;
-  queue.Add(CreateDummyCommandInstance("base.reboot", "id1"));
-  queue.Add(CreateDummyCommandInstance("base.reboot", "id2"));
-  queue.Add(CreateDummyCommandInstance("base.reboot", "id3"));
-  EXPECT_EQ(3, queue.GetCount());
-  EXPECT_FALSE(queue.IsEmpty());
+  queue_.Add(CreateDummyCommandInstance("base.reboot", "id1"));
+  queue_.Add(CreateDummyCommandInstance("base.reboot", "id2"));
+  queue_.Add(CreateDummyCommandInstance("base.reboot", "id3"));
+  EXPECT_EQ(3, queue_.GetCount());
+  EXPECT_FALSE(queue_.IsEmpty());
 }
 
 TEST_F(CommandQueueTest, Remove) {
-  buffet::CommandQueue queue;
   const std::string id1 = "id1";
   const std::string id2 = "id2";
-  queue.Add(CreateDummyCommandInstance("base.reboot", id1));
-  queue.Add(CreateDummyCommandInstance("base.reboot", id2));
-  EXPECT_FALSE(queue.IsEmpty());
-  EXPECT_EQ(nullptr, queue.Remove("dummy").get());
-  EXPECT_EQ(2, queue.GetCount());
-  EXPECT_NE(nullptr, queue.Remove(id1).get());
-  EXPECT_EQ(1, queue.GetCount());
-  EXPECT_EQ(nullptr, queue.Remove(id1).get());
-  EXPECT_EQ(1, queue.GetCount());
-  EXPECT_NE(nullptr, queue.Remove(id2).get());
-  EXPECT_EQ(0, queue.GetCount());
-  EXPECT_EQ(nullptr, queue.Remove(id2).get());
-  EXPECT_EQ(0, queue.GetCount());
-  EXPECT_TRUE(queue.IsEmpty());
+  queue_.Add(CreateDummyCommandInstance("base.reboot", id1));
+  queue_.Add(CreateDummyCommandInstance("base.reboot", id2));
+  EXPECT_FALSE(queue_.IsEmpty());
+  EXPECT_FALSE(Remove("dummy"));
+  EXPECT_EQ(2, queue_.GetCount());
+  EXPECT_TRUE(Remove(id1));
+  EXPECT_EQ(1, queue_.GetCount());
+  EXPECT_FALSE(Remove(id1));
+  EXPECT_EQ(1, queue_.GetCount());
+  EXPECT_TRUE(Remove(id2));
+  EXPECT_EQ(0, queue_.GetCount());
+  EXPECT_FALSE(Remove(id2));
+  EXPECT_EQ(0, queue_.GetCount());
+  EXPECT_TRUE(queue_.IsEmpty());
+}
+
+TEST_F(CommandQueueTest, DelayedRemove) {
+  const std::string id1 = "id1";
+  queue_.Add(CreateDummyCommandInstance("base.reboot", id1));
+  EXPECT_EQ(1, queue_.GetCount());
+
+  queue_.DelayedRemove(id1);
+  EXPECT_EQ(1, queue_.GetCount());
+
+  Cleanup(base::TimeDelta::FromMinutes(1));
+  EXPECT_EQ(1, queue_.GetCount());
+
+  Cleanup(base::TimeDelta::FromMinutes(15));
+  EXPECT_EQ(0, queue_.GetCount());
 }
 
 TEST_F(CommandQueueTest, Dispatch) {
   FakeDispatchInterface dispatch;
-  buffet::CommandQueue queue;
-  queue.SetCommandDispachInterface(&dispatch);
+  queue_.SetCommandDispachInterface(&dispatch);
   const std::string id1 = "id1";
   const std::string id2 = "id2";
-  queue.Add(CreateDummyCommandInstance("base.reboot", id1));
-  queue.Add(CreateDummyCommandInstance("base.reboot", id2));
+  queue_.Add(CreateDummyCommandInstance("base.reboot", id1));
+  queue_.Add(CreateDummyCommandInstance("base.reboot", id2));
   std::set<std::string> ids{id1, id2};  // Make sure they are sorted properly.
   std::string expected_set = chromeos::string_utils::Join(
       ",", std::vector<std::string>(ids.begin(), ids.end()));
   EXPECT_EQ(expected_set, dispatch.GetIDs());
-  queue.Remove(id1);
+  Remove(id1);
   EXPECT_EQ(id2, dispatch.GetIDs());
-  queue.Remove(id2);
+  Remove(id2);
   EXPECT_EQ("", dispatch.GetIDs());
+  queue_.SetCommandDispachInterface(nullptr);
 }
 
 TEST_F(CommandQueueTest, Find) {
-  buffet::CommandQueue queue;
   const std::string id1 = "id1";
   const std::string id2 = "id2";
-  queue.Add(CreateDummyCommandInstance("base.reboot", id1));
-  queue.Add(CreateDummyCommandInstance("base.shutdown", id2));
-  EXPECT_EQ(nullptr, queue.Find("dummy"));
-  auto cmd1 = queue.Find(id1);
+  queue_.Add(CreateDummyCommandInstance("base.reboot", id1));
+  queue_.Add(CreateDummyCommandInstance("base.shutdown", id2));
+  EXPECT_EQ(nullptr, queue_.Find("dummy"));
+  auto cmd1 = queue_.Find(id1);
   EXPECT_NE(nullptr, cmd1);
   EXPECT_EQ("base.reboot", cmd1->GetName());
   EXPECT_EQ(id1, cmd1->GetID());
-  auto cmd2 = queue.Find(id2);
+  auto cmd2 = queue_.Find(id2);
   EXPECT_NE(nullptr, cmd2);
   EXPECT_EQ("base.shutdown", cmd2->GetName());
   EXPECT_EQ(id2, cmd2->GetID());
 }
+
+}  // namespace buffet
