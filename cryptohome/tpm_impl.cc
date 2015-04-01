@@ -472,7 +472,7 @@ Tpm::TpmRetryAction TpmImpl::EncryptBlob(TSS_HCONTEXT context_handle,
     LOG(ERROR) << __func__ << ": Failed to read encrypted blob.";
     return kTpmRetryFatal;
   }
-  if (ObscureRSAMessage(enc_data_blob, key, ciphertext)) {
+  if (!ObscureRSAMessage(enc_data_blob, key, ciphertext)) {
     LOG(ERROR) << "Error obscuring message.";
     return kTpmRetryFatal;
   }
