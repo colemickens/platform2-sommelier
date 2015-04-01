@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SOMA_LIBSOMA_CONSTANTS_H_
-#define SOMA_LIBSOMA_CONSTANTS_H_
+#ifndef SOMA_LIB_SOMA_CONSTANTS_H_
+#define SOMA_LIB_SOMA_CONSTANTS_H_
 
 namespace soma {
 
@@ -11,4 +11,4 @@ const char kSomaServiceName[] = "com.android.embedded.soma";
 
 }  // namespace soma
 
-#endif  // SOMA_LIBSOMA_CONSTANTS_H_
+#endif  // SOMA_LIB_SOMA_CONSTANTS_H_

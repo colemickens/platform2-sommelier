@@ -6,6 +6,9 @@
         'libchromeos-<(libbase_ver)',
       ],
     },
+    'include_dirs': [
+      'lib',
+    ],
   },
   'targets': [
     {
@@ -56,7 +59,7 @@
         'soma-proto-lib',
       ],
       'sources': [
-        'libsoma/read_only_container_spec.cc',
+        'lib/soma/read_only_container_spec.cc',
       ],
     },
     {
@@ -117,8 +120,8 @@
             'soma-proto-lib',
           ],
           'sources': [
-            'libsoma/libsoma_testrunner.cc',
-            'libsoma/read_only_container_spec_unittest.cc',
+            'lib/soma/libsoma_testrunner.cc',
+            'lib/soma/read_only_container_spec_unittest.cc',
           ],
         },
       ],

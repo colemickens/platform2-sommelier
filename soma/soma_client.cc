@@ -17,8 +17,8 @@
 #include <psyche/psyche_connection.h>
 #include <psyche/psyche_daemon.h>
 
-#include "soma/libsoma/constants.h"
-#include "soma/libsoma/read_only_container_spec.h"
+#include "soma/lib/soma/constants.h"
+#include "soma/lib/soma/read_only_container_spec.h"
 #include "soma/proto_bindings/soma.pb.h"
 #include "soma/proto_bindings/soma.pb.rpc.h"
 #include "soma/proto_bindings/soma_container_spec.pb.h"

@@ -9,4 +9,4 @@ OUT=$1
 
 sed \
   -e "s/@PV@/${PV}/g" \
-  "libsoma/libsoma.pc.in" >"${OUT}/libsoma.pc"
+  "lib/soma/libsoma.pc.in" >"${OUT}/libsoma.pc"

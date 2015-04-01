@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "read_only_container_spec.h"  // NOLINT(build/include)
+#include "soma/lib/soma/read_only_container_spec.h"
 
 #include <algorithm>
 #include <string>

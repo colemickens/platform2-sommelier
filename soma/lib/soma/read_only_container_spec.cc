@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "soma/libsoma/read_only_container_spec.h"
+#include "soma/lib/soma/read_only_container_spec.h"
 
 #include <string>
 #include <utility>

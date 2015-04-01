@@ -6,7 +6,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <psyche/libpsyche/psyche_daemon.h>
 
-#include "soma/libsoma/constants.h"
+#include "soma/lib/soma/constants.h"
 #include "soma/soma.h"
 
 namespace {
