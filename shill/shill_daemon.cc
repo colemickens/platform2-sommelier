@@ -76,6 +76,10 @@ void Daemon::SetPrependDNSServers(const string &prepend_dns_servers) {
   manager_->SetPrependDNSServers(prepend_dns_servers);
 }
 
+void Daemon::SetMinimumMTU(const int mtu) {
+  manager_->SetMinimumMTU(mtu);
+}
+
 void Daemon::Run() {
   Start();
   SLOG(this, 1) << "Running main loop.";

@@ -330,6 +330,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, AvailableIPConfigs);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
+  FRIEND_TEST(DeviceTest, ConfigWithMinimumMTU);
   FRIEND_TEST(DeviceTest, EnableIPv6);
   FRIEND_TEST(DeviceTest, GetProperties);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithIPv6Config);

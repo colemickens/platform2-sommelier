@@ -70,6 +70,11 @@ class DHCPConfig : public IPConfig {
   // Processes an Status Change signal from dhcpcd.
   void ProcessStatusChangeSignal(const std::string &status);
 
+  // Set the minimum MTU that this configuration will respect.
+  virtual void set_minimum_mtu(const int minimum_mtu) {
+    minimum_mtu_ = minimum_mtu;
+  }
+
  protected:
   // Overrides base clase implementation.
   void UpdateProperties(const Properties &properties,
@@ -91,6 +96,7 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPConfigTest, InitProxy);
   FRIEND_TEST(DHCPConfigTest, ParseClasslessStaticRoutes);
   FRIEND_TEST(DHCPConfigTest, ParseConfiguration);
+  FRIEND_TEST(DHCPConfigTest, ParseConfigurationWithMinimumMTU);
   FRIEND_TEST(DHCPConfigTest, ProcessStatusChangeSingal);
   FRIEND_TEST(DHCPConfigTest, ReleaseIP);
   FRIEND_TEST(DHCPConfigTest, ReleaseIPArpGW);
@@ -177,8 +183,8 @@ class DHCPConfig : public IPConfig {
 
   // Parses |configuration| into |properties|. Returns true on success, and
   // false otherwise.
-  static bool ParseConfiguration(const Configuration &configuration,
-                                 IPConfig::Properties *properties);
+  bool ParseConfiguration(const Configuration &configuration,
+                          IPConfig::Properties *properties);
 
   // Returns the string representation of the IP address |address|, or an
   // empty string on failure.
@@ -256,6 +262,9 @@ class DHCPConfig : public IPConfig {
 
   // Called if a DHCP lease expires.
   base::CancelableClosure lease_expiration_callback_;
+
+  // The minimum MTU value this configuration will respect.
+  int minimum_mtu_;
 
   // Root file path, used for testing.
   base::FilePath root_;

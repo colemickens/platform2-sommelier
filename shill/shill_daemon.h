@@ -38,6 +38,7 @@ class Daemon {
   void SetStartupPortalList(const std::string &portal_list);
   void SetPassiveMode();
   void SetPrependDNSServers(const std::string &prepend_dns_servers);
+  void SetMinimumMTU(const int mtu);
 
   // Main for connection manager.  Starts main process and holds event loop.
   void Run();

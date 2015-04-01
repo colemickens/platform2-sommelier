@@ -23,6 +23,7 @@ class MockDHCPConfig : public DHCPConfig {
   MOCK_METHOD0(RequestIP, bool());
   MOCK_METHOD1(ReleaseIP, bool(ReleaseReason));
   MOCK_METHOD0(RenewIP, bool());
+  MOCK_METHOD1(set_minimum_mtu, void(int));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDHCPConfig);

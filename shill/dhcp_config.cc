@@ -109,6 +109,7 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       is_lease_active_(false),
       is_gateway_arp_active_(false),
       lease_acquisition_timeout_seconds_(kAcquisitionTimeoutSeconds),
+      minimum_mtu_(kMinIPv4MTU),
       root_("/"),
       weak_ptr_factory_(this),
       dispatcher_(dispatcher),
@@ -513,7 +514,7 @@ bool DHCPConfig::ParseConfiguration(const Configuration &configuration,
       properties->domain_search = value.operator vector<string>();
     } else if (key == kConfigurationKeyMTU) {
       int mtu = value.reader().get_uint16();
-      if (mtu >= kMinIPv4MTU) {
+      if (mtu >= minimum_mtu_) {
         properties->mtu = mtu;
       }
     } else if (key == kConfigurationKeyClasslessStaticRoutes) {

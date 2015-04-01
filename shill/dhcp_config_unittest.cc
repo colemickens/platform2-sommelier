@@ -305,6 +305,17 @@ TEST_F(DHCPConfigTest, ParseConfiguration) {
   EXPECT_EQ(600, properties.mtu);
 }
 
+TEST_F(DHCPConfigTest, ParseConfigurationWithMinimumMTU) {
+  config_->set_minimum_mtu(1500);
+
+  DHCPConfig::Configuration conf;
+  conf[DHCPConfig::kConfigurationKeyMTU].writer().append_uint16(576);
+
+  IPConfig::Properties properties;
+  ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
+  EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
+}
+
 TEST_F(DHCPConfigTest, StartFail) {
   EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(false));
   EXPECT_CALL(*glib(), ChildWatchAdd(_, _, _)).Times(0);

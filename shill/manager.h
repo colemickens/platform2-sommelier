@@ -61,7 +61,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
         : offline_mode(false),
           portal_check_interval_seconds(0),
           arp_gateway(true),
-          connection_id_salt(0) {}
+          connection_id_salt(0),
+          minimum_mtu(IPConfig::kUndefinedMTU) {}
     bool offline_mode;
     std::string check_portal_list;
     std::string country;
@@ -84,6 +85,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     std::string prepend_dns_servers;
     // Salt value use for calculating network connection ID.
     int connection_id_salt;
+    // The minimum MTU value that will be respected in DHCP responses.
+    int minimum_mtu;
   };
 
   Manager(ControlInterface *control_interface,
@@ -333,6 +336,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   bool GetArpGateway() const { return props_.arp_gateway; }
   const std::string &GetHostName() const { return props_.host_name; }
+
+  virtual int GetMinimumMTU() const { return props_.minimum_mtu; }
+  void SetMinimumMTU(const int mtu) { props_.minimum_mtu = mtu; }
 
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();

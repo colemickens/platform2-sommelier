@@ -347,6 +347,31 @@ TEST_F(DeviceTest, AcquireIPConfig) {
   device_->dhcp_provider_ = nullptr;
 }
 
+TEST_F(DeviceTest, ConfigWithMinimumMTU) {
+  const int minimum_mtu = 1500;
+
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+
+  EXPECT_CALL(manager, GetMinimumMTU()).WillOnce(Return(minimum_mtu));
+
+  device_->ipconfig_ = new IPConfig(control_interface(), "anothername");
+  std::unique_ptr<MockDHCPProvider> dhcp_provider(new MockDHCPProvider());
+  device_->dhcp_provider_ = dhcp_provider.get();
+
+  scoped_refptr<MockDHCPConfig> dhcp_config(
+      new MockDHCPConfig(control_interface(), kDeviceName));
+  EXPECT_CALL(*dhcp_provider, CreateConfig(_, _, _, _))
+      .WillOnce(Return(dhcp_config));
+  EXPECT_CALL(*dhcp_config, set_minimum_mtu(minimum_mtu));
+
+  device_->AcquireIPConfig();
+}
+
 TEST_F(DeviceTest, EnableIPv6) {
   EXPECT_CALL(*device_, SetIPFlag(IPAddress::kFamilyIPv6,
                                   StrEq(Device::kIPFlagDisableIPv6),

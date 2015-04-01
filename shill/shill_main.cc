@@ -14,6 +14,7 @@
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <chromeos/minijail/minijail.h>
 #include <chromeos/syslog_logging.h>
@@ -49,6 +50,8 @@ static const char kPassiveMode[] = "passive-mode";
 static const char kDefaultTechnologyOrder[] = "default-technology-order";
 // Comma-separated list of DNS servers to prepend to the resolver list.
 static const char kPrependDNSServers[] = "prepend-dns-servers";
+// The minimum MTU value that will be respected in DHCP responses.
+static const char kMinimumMTU[] = "minimum-mtu";
 // Flag that causes shill to show the help message and exit.
 static const char kHelp[] = "help";
 
@@ -74,7 +77,9 @@ static const char kHelpMessage[] = "\n"
     "  --default-technology-order=technology1,technology2\n"
     "    Specify the default priority order of the technologies.\n"
     "  --prepend-dns-servers=server1,server2,...\n"
-    "    Prepend the provided DNS servers to the resolver list.\n";
+    "    Prepend the provided DNS servers to the resolver list.\n"
+    "  --minimum-mtu=mtu\n"
+    "    Set the minimum value to respect as the MTU from DHCP responses.\n";
 }  // namespace switches
 
 namespace {
@@ -216,6 +221,15 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch(switches::kPrependDNSServers)) {
     daemon.SetPrependDNSServers(cl->GetSwitchValueASCII(
         switches::kPrependDNSServers));
+  }
+
+  if (cl->HasSwitch(switches::kMinimumMTU)) {
+    int mtu;
+    std::string value = cl->GetSwitchValueASCII(switches::kMinimumMTU);
+    if (!base::StringToInt(value, &mtu)) {
+      LOG(FATAL) << "Could not convert '" << value << "' to integer.";
+    }
+    daemon.SetMinimumMTU(mtu);
   }
 
   g_unix_signal_add(SIGINT, ExitSigHandler, &daemon);

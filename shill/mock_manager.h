@@ -76,6 +76,7 @@ class MockManager : public Manager {
                DeviceRefPtr(Technology::Identifier technology));
   MOCK_CONST_METHOD1(GetEnabledDeviceByLinkName,
                DeviceRefPtr(const std::string &link_name));
+  MOCK_CONST_METHOD0(GetMinimumMTU, int());
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo *mock_device_info() { return mock_device_info_; }
