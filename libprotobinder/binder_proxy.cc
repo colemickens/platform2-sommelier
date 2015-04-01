@@ -11,12 +11,16 @@ namespace protobinder {
 BinderProxy::BinderProxy(uint32_t handle) : handle_(handle) {
   BinderManagerInterface* manager = BinderManagerInterface::Get();
   manager->IncWeakHandle(handle);
-  manager->RequestDeathNotification(this);
+  if (handle != 0) {
+    manager->RequestDeathNotification(this);
+  }
 }
 
 BinderProxy::~BinderProxy() {
   BinderManagerInterface* manager = BinderManagerInterface::Get();
-  manager->ClearDeathNotification(this);
+  if (handle_ != 0) {
+    manager->ClearDeathNotification(this);
+  }
   manager->DecWeakHandle(handle_);
 }
 
@@ -29,10 +33,16 @@ int BinderProxy::Transact(uint32_t code,
 }
 
 void BinderProxy::SetDeathCallback(const base::Closure& closure) {
+  if (handle_ == 0) {
+    LOG(DFATAL) << "Cannot get death notifications for context manager.";
+  }
   death_callback_ = closure;
 }
 
 void BinderProxy::HandleDeathNotification() {
+  if (handle_ == 0) {
+    NOTREACHED();
+  }
   if (!death_callback_.is_null())
     death_callback_.Run();
 }
