@@ -4,6 +4,7 @@
 
 #include <base/logging.h>
 #include <chromeos/flag_helper.h>
+#include <chromeos/process.h>
 #include <chromeos/syslog_logging.h>
 #include <protobinder/binder_daemon.h>
 #include <protobinder/iservice_manager.h>
@@ -27,5 +28,16 @@ int main(int argc, char* argv[]) {
   int ret = protobinder::GetServiceManager()->AddService(
       psyche::kPsychedServiceManagerName, &registrar);
   VLOG(1) << "GetServiceManager()->AddService() returned " << ret;
+
+  chromeos::ProcessImpl initctl_process;
+  initctl_process.AddArg("/sbin/initctl");
+  initctl_process.AddArg("emit");
+  initctl_process.AddArg("psyche-ready");
+  CHECK(initctl_process.Start()) << "Failed to run initctl";
+  int exit_code = initctl_process.Wait();
+  if (exit_code != 0) {
+    LOG(FATAL) << "initctl exited with " << exit_code;
+  }
+
   return protobinder::BinderDaemon().Run();
 }
