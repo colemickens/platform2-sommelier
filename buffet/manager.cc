@@ -104,7 +104,8 @@ void Manager::GetDeviceInfo(DBusMethodResponse<std::string> response) {
   }
 
   std::string device_info_str;
-  base::JSONWriter::Write(device_info.get(), &device_info_str);
+  base::JSONWriter::WriteWithOptions(device_info.get(),
+      base::JSONWriter::OPTIONS_PRETTY_PRINT, &device_info_str);
   response->Return(device_info_str);
 }
 
@@ -161,7 +162,8 @@ bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
   auto json = state_manager_->GetStateValuesAsJson(error);
   if (!json)
     return false;
-  base::JSONWriter::Write(json.get(), state);
+  base::JSONWriter::WriteWithOptions(
+      json.get(), base::JSONWriter::OPTIONS_PRETTY_PRINT, state);
   return true;
 }
 
@@ -199,7 +201,8 @@ void Manager::GetCommand(DBusMethodResponse<std::string> response,
     return;
   }
   std::string command_str;
-  base::JSONWriter::Write(command->ToJson().get(), &command_str);
+  base::JSONWriter::WriteWithOptions(command->ToJson().get(),
+      base::JSONWriter::OPTIONS_PRETTY_PRINT, &command_str);
   response->Return(command_str);
 }
 
@@ -220,7 +223,8 @@ void Manager::OnCommandDefsChanged() {
       command_manager_->GetCommandDictionary().GetCommandsAsJson(true, &error);
   CHECK(commands);
   std::string json;
-  base::JSONWriter::Write(commands.get(), &json);
+  base::JSONWriter::WriteWithOptions(commands.get(),
+      base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
   dbus_adaptor_.SetCommandDefs(json);
 }
 

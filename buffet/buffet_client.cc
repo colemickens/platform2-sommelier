@@ -299,8 +299,7 @@ class Daemon : public chromeos::DBusDaemon {
       return ReportError(error.get());
     }
 
-    printf("Device Info: %s\n",
-           device_info.empty() ? "<unregistered>" : device_info.c_str());
+    printf("%s\n", device_info.c_str());
     OnJobComplete();
   }
 
@@ -350,7 +349,7 @@ class Daemon : public chromeos::DBusDaemon {
     if (!manager_proxy->GetState(&json, &error)) {
       return ReportError(error.get());
     }
-    printf("Device State: %s\n", json.c_str());
+    printf("%s\n", json.c_str());
     OnJobComplete();
   }
 
