@@ -23,6 +23,7 @@ namespace psyche {
 
 class ClientInterface;
 class ServiceInterface;
+class SomaConnection;
 
 // Holds Service and Client objects and manages communication with them.
 class Registrar : public IPsychedHostInterface {
@@ -56,6 +57,10 @@ class Registrar : public IPsychedHostInterface {
  private:
   class RealDelegate;
 
+  // Returns the object representing |service_name|, fetching its ContainerSpec
+  // from soma and starting it if the container isn't already started.
+  ServiceInterface* GetOrStartService(const std::string& service_name);
+
   // Callback invoked when the remote side of a client's binder is closed.
   void HandleClientBinderDeath(int32_t handle);
 
@@ -69,6 +74,9 @@ class Registrar : public IPsychedHostInterface {
   // Keyed by BinderProxy handle.
   using ClientMap = std::map<int32_t, std::unique_ptr<ClientInterface>>;
   ClientMap clients_;
+
+  // Connection to somad used to look up ContainerSpecs.
+  std::unique_ptr<SomaConnection> soma_;
 
   // This member should appear last.
   base::WeakPtrFactory<Registrar> weak_ptr_factory_;

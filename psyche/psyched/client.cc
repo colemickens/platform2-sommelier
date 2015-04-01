@@ -13,9 +13,12 @@
 #include "psyche/proto_bindings/psyche.pb.rpc.h"
 #include "psyche/psyched/service.h"
 
+using protobinder::BinderProxy;
+using protobinder::BinderToInterface;
+
 namespace psyche {
 
-Client::Client(std::unique_ptr<protobinder::BinderProxy> client_proxy)
+Client::Client(std::unique_ptr<BinderProxy> client_proxy)
     : proxy_(std::move(client_proxy)),
       interface_(BinderToInterface<IPsycheClient>(proxy_.get())) {
 }

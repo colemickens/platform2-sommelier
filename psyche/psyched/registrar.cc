@@ -12,11 +12,14 @@
 #include <protobinder/binder_manager.h>
 #include <protobinder/binder_proxy.h>
 #include <protobinder/iservice_manager.h>
+#include <soma/constants.h>
 
 #include "psyche/common/constants.h"
 #include "psyche/common/util.h"
+#include "psyche/proto_bindings/soma_container_spec.pb.h"
 #include "psyche/psyched/client.h"
 #include "psyche/psyched/service.h"
+#include "psyche/psyched/soma_connection.h"
 
 using protobinder::BinderManager;
 using protobinder::BinderProxy;
@@ -71,6 +74,17 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
     return 0;
   }
 
+  if (service_name == soma::kSomaServiceName) {
+    if (soma_) {
+      LOG(WARNING) << "Updating existing soma connection to use handle "
+                   << proxy->handle();
+    }
+    soma_.reset(new SomaConnection(std::move(proxy)));
+    // TODO(derat): Fetch and start persistent containers.
+    out->set_success(true);
+    return 0;
+  }
+
   auto it = services_.find(service_name);
   if (it == services_.end()) {
     it = services_.insert(std::make_pair(
@@ -100,9 +114,8 @@ int Registrar::RequestService(RequestServiceRequest* in,
   LOG(INFO) << "Got request to provide service \"" << service_name << "\""
             << " to client with handle " << client_handle;
 
-  auto service_it = services_.find(service_name);
-  if (service_it == services_.end()) {
-    LOG(WARNING) << "Service is not registered";
+  ServiceInterface* service = GetOrStartService(service_name);
+  if (!service) {
     out->set_success(false);
     return 0;
   }
@@ -117,7 +130,6 @@ int Registrar::RequestService(RequestServiceRequest* in,
         delegate_->CreateClient(std::move(client_proxy)))).first;
   }
   ClientInterface* client = client_it->second.get();
-  ServiceInterface* service = service_it->second.get();
 
   // Check that the client didn't previously request this service.
   if (!service->HasClient(client)) {
@@ -127,6 +139,38 @@ int Registrar::RequestService(RequestServiceRequest* in,
 
   out->set_success(true);
   return 0;
+}
+
+ServiceInterface* Registrar::GetOrStartService(
+    const std::string& service_name) {
+  const auto& it = services_.find(service_name);
+  if (it != services_.end())
+    return it->second.get();
+
+  if (!soma_) {
+    LOG(ERROR) << "Service \"" << service_name << "\" isn't running and "
+               << "don't have a connection to soma to look it up";
+    return nullptr;
+  }
+
+  soma::ContainerSpec spec;
+  const SomaConnection::Result result =
+      soma_->GetContainerSpecForService(service_name, &spec);
+  if (result != SomaConnection::RESULT_SUCCESS) {
+    // TODO(derat): Pass back the error code so the client can be notified if
+    // the service is unknown vs. this being a possibly-transient error.
+    LOG(WARNING) << "Failed to get ContainerSpec for service \""
+                 << service_name << "\" from soma: "
+                 << SomaConnection::ResultToString(result);
+    return nullptr;
+  }
+
+  LOG(INFO) << "Got ContainerSpec for service \"" << service_name << "\"";
+
+  // TODO(derat): Create local objects representing the container and all of its
+  // services, ask germd to start the container, and pass back the
+  // ServiceInterface object.
+  return nullptr;
 }
 
 void Registrar::HandleClientBinderDeath(int32_t handle) {
