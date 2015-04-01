@@ -13,17 +13,17 @@
 
 namespace chromeos {
 
-Daemon::Daemon() {
+Daemon::Daemon() : exit_code_{EX_OK} {
 }
 
 Daemon::~Daemon() {
 }
 
 int Daemon::Run() {
-  int return_code = OnInit();
-  if (return_code != EX_OK) {
+  int exit_code = OnInit();
+  if (exit_code != EX_OK) {
     quit_closure_.Reset();
-    return return_code;
+    return exit_code;
   }
 
   // Scope.
@@ -35,7 +35,7 @@ int Daemon::Run() {
     quit_closure_.Reset();
   }
 
-  OnShutdown(&return_code);
+  OnShutdown(&exit_code_);
 
   // Scope.
   {
@@ -45,13 +45,18 @@ int Daemon::Run() {
     // This becomes important when working with D-Bus since dbus::Bus does
     // a bunch of clean-up tasks asynchronously when shutting down.
     base::RunLoop run_loop;
+    quit_closure_ = run_loop.QuitClosure();
     run_loop.RunUntilIdle();
+    quit_closure_.Reset();
   }
 
-  return return_code;
+  return exit_code_;
 }
 
-void Daemon::Quit() {
+void Daemon::Quit() { QuitWithExitCode(EX_OK); }
+
+void Daemon::QuitWithExitCode(int exit_code) {
+  exit_code_ = exit_code;
   message_loop_.PostTask(FROM_HERE, quit_closure_);
 }
 
@@ -66,7 +71,7 @@ int Daemon::OnInit() {
   return EX_OK;
 }
 
-void Daemon::OnShutdown(int* return_code) {
+void Daemon::OnShutdown(int* exit_code) {
   // Do nothing.
 }
 

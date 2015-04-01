@@ -36,7 +36,17 @@ class CHROMEOS_EXPORT Daemon {
   virtual int Run();
 
   // Can be used by call-backs to trigger shut-down of a running message loop.
+  // Calls QuiteWithExitCode(EX_OK);
+  // WARNING: This method (as well as QuitWithExitCode) can only be called when
+  // the message loop is running (that is, during Daemon::Run() call). Calling
+  // these methods before (e.g. during OnInit()) or after (e.g in OnShutdown())
+  // will lead to abnormal process termination.
   void Quit();
+
+  // |exit_code| is the status code to be returned when the daemon process
+  // quits. See the warning for Quit() above regarding the allowed scope for
+  // this method.
+  void QuitWithExitCode(int exit_code);
 
  protected:
   // Overload to provide your own initialization code that should happen just
@@ -51,7 +61,7 @@ class CHROMEOS_EXPORT Daemon {
   // Run(). You can override this value with your own error code if needed.
   // When overloading, make sure you call the base implementation of
   // OnShutdown().
-  virtual void OnShutdown(int* return_code);
+  virtual void OnShutdown(int* exit_code);
   // Called when the SIGHUP signal is received. In response to this call, your
   // daemon could reset/reload the configuration and re-initialize its state
   // as if the process has been reloaded.
@@ -82,6 +92,8 @@ class CHROMEOS_EXPORT Daemon {
   base::MessageLoopForIO message_loop_;
   // Message loop's Quit closure.
   base::Closure quit_closure_;
+  // Process exit code specified in QuitWithExitCode() method call.
+  int exit_code_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };

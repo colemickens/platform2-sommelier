@@ -24,9 +24,9 @@ DBusDaemon::~DBusDaemon() {
 }
 
 int DBusDaemon::OnInit() {
-  int return_code = Daemon::OnInit();
-  if (return_code != EX_OK)
-    return return_code;
+  int exit_code = Daemon::OnInit();
+  if (exit_code != EX_OK)
+    return exit_code;
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
@@ -34,7 +34,7 @@ int DBusDaemon::OnInit() {
   bus_ = new dbus::Bus(options);
   CHECK(bus_->Connect());
 
-  return return_code;
+  return exit_code;
 }
 
 DBusServiceDaemon::DBusServiceDaemon(const std::string& service_name)
@@ -54,9 +54,9 @@ DBusServiceDaemon::DBusServiceDaemon(const std::string& service_name,
 }
 
 int DBusServiceDaemon::OnInit() {
-  int return_code = DBusDaemon::OnInit();
-  if (return_code != EX_OK)
-    return return_code;
+  int exit_code = DBusDaemon::OnInit();
+  if (exit_code != EX_OK)
+    return exit_code;
 
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
   if (object_manager_path_.IsValid()) {
