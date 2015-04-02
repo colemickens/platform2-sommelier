@@ -48,6 +48,7 @@
         'environment.cc',
         'germ_host.cc',
         'launcher.cc',
+        'process_reaper.cc',
       ],
     },
     {
@@ -88,6 +89,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': ['libgerm'],
           'sources': [
+            'process_reaper_unittest.cc',
             'run_all_tests.cc',
           ],
         },
