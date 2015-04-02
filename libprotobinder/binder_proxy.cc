@@ -4,6 +4,8 @@
 
 #include "libprotobinder/binder_proxy.h"
 
+#include <base/logging.h>
+
 #include "libprotobinder/binder_manager.h"
 
 namespace protobinder {
