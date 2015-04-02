@@ -7,6 +7,9 @@
         'libchromeos-<(libbase_ver)',
       ],
     },
+    'include_dirs': [
+      'lib',
+    ],
   },
   'targets': [
     {

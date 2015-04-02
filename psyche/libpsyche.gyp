@@ -16,8 +16,8 @@
         },
       },
       'sources': [
-        'libpsyche/psyche_connection.cc',
-        'libpsyche/psyche_daemon.cc',
+        'lib/psyche/psyche_connection.cc',
+        'lib/psyche/psyche_daemon.cc',
       ],
       'dependencies': [
         'libcommon',

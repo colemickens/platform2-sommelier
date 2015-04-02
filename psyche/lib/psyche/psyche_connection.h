@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PSYCHE_LIBPSYCHE_PSYCHE_CONNECTION_H_
-#define PSYCHE_LIBPSYCHE_PSYCHE_CONNECTION_H_
+#ifndef PSYCHE_LIB_PSYCHE_PSYCHE_CONNECTION_H_
+#define PSYCHE_LIB_PSYCHE_PSYCHE_CONNECTION_H_
 
 #include <memory>
 #include <string>
@@ -70,4 +70,4 @@ class PSYCHE_EXPORT PsycheConnection : public PsycheConnectionInterface {
 
 }  // namespace psyche
 
-#endif  // PSYCHE_LIBPSYCHE_PSYCHE_CONNECTION_H_
+#endif  // PSYCHE_LIB_PSYCHE_PSYCHE_CONNECTION_H_

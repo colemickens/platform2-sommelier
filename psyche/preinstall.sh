@@ -9,4 +9,4 @@ OUT=$1
 
 sed \
   -e "s/@PV@/${PV}/g" \
-  "libpsyche/libpsyche.pc.in" >"${OUT}/libpsyche.pc"
+  "lib/psyche/libpsyche.pc.in" >"${OUT}/libpsyche.pc"

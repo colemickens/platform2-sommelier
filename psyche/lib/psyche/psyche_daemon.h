@@ -2,16 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PSYCHE_LIBPSYCHE_PSYCHE_DAEMON_H_
-#define PSYCHE_LIBPSYCHE_PSYCHE_DAEMON_H_
+#ifndef PSYCHE_LIB_PSYCHE_PSYCHE_DAEMON_H_
+#define PSYCHE_LIB_PSYCHE_PSYCHE_DAEMON_H_
 
 #include <memory>
 #include <string>
 
 #include <base/macros.h>
 #include <protobinder/binder_daemon.h>
-
-#include "psyche/libpsyche/psyche_connection.h"
+#include <psyche/psyche_connection.h>
 
 namespace psyche {
 
@@ -25,7 +24,7 @@ class PSYCHE_EXPORT PsycheDaemon : public protobinder::BinderDaemon {
   }
 
  protected:
-  // Implement BinderDaemon
+  // BinderDaemon:
   int OnInit() override;
 
  private:
@@ -36,4 +35,4 @@ class PSYCHE_EXPORT PsycheDaemon : public protobinder::BinderDaemon {
 
 }  // namespace psyche
 
-#endif  // PSYCHE_LIBPSYCHE_PSYCHE_DAEMON_H_
+#endif  // PSYCHE_LIB_PSYCHE_PSYCHE_DAEMON_H_

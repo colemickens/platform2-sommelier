@@ -4,7 +4,7 @@
 
 #include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
-#include <psyche/libpsyche/psyche_daemon.h>
+#include <psyche/psyche_daemon.h>
 
 #include "soma/lib/soma/constants.h"
 #include "soma/soma.h"

@@ -8,7 +8,7 @@
 #include <base/command_line.h>
 #include <base/message_loop/message_loop.h>
 #include <chromeos/syslog_logging.h>
-#include <psyche/libpsyche/psyche_daemon.h>
+#include <psyche/psyche_daemon.h>
 
 #include "germ/germ_host.h"
 #include "germ/process_reaper.h"

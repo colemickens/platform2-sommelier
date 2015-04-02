@@ -1,0 +1,8 @@
+This repository consists of the following directories:
+
+common:     Code and protocol buffers shared between libpsyche and psyched.
+lib/psyche: libpsyche, a shared library used to communicate with psyched.
+            Packaged as brillo-base/libpsyche, with headers installed to
+            /usr/include/psyche.
+psyched:    psyched, a daemon that manages service registration. Packaged as
+            brillo-base/psyche.
