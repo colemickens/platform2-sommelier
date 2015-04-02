@@ -37,6 +37,7 @@ class ContainerSpecWrapper {
                        gid_t gid);
   virtual ~ContainerSpecWrapper();
 
+  void SetServiceNames(const std::vector<std::string>& service_names);
   void SetCommandLine(const std::vector<std::string>& command_line);
   void SetNamespaces(const std::set<parser::ns::Kind>& namespaces);
   void SetTcpListenPorts(const std::set<parser::port::Number>& ports);
@@ -53,6 +54,9 @@ class ContainerSpecWrapper {
   }
   uid_t uid() { return internal_.uid(); }
   gid_t gid() { return internal_.gid(); }
+
+  // Returns true if name is listed in the spec.
+  bool ProvidesServiceNamed(const std::string& name) const;
 
   // Returns true if candidate is explicitly allowed.
   bool ShouldApplyNamespace(parser::ns::Kind candidate) const;

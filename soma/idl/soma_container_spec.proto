@@ -45,6 +45,10 @@ message ContainerSpec {
   // Command line to run: /path/to/executable [ARGS...]
   repeated string command_line = 4;
 
+  // List of fully-qualified names of services that should be registered
+  // from inside this container.
+  repeated string service_names = 11;
+
   // ------------- Optional fields ------------------------------------------ //
   optional string working_directory = 5;
 

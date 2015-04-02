@@ -48,6 +48,10 @@ class SOMA_EXPORT ReadOnlyContainerSpec {
     return command_line_;
   }
 
+  const std::vector<std::string>& service_names() const {
+    return service_names_;
+  }
+
   const base::FilePath& working_directory() const { return working_dir_; }
 
   const std::vector<Namespace>& namespaces() const { return namespaces_; }
@@ -75,6 +79,7 @@ class SOMA_EXPORT ReadOnlyContainerSpec {
   // references without having to vend handles to the underlying protobuf.
   const base::FilePath service_bundle_path_;
   const std::vector<std::string> command_line_;
+  const std::vector<std::string> service_names_;
   const base::FilePath working_dir_;
   const std::vector<uint32_t> tcp_listen_ports_;
   const std::vector<uint32_t> udp_listen_ports_;

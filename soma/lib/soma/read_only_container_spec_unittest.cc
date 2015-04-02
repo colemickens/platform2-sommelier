@@ -43,9 +43,7 @@ TEST_F(ReadOnlyContainerSpecTest, RequiredFieldsTest) {
   EXPECT_EQ(ro_spec.uid(), uid);
   EXPECT_EQ(ro_spec.gid(), gid);
   const std::vector<std::string> cl(ro_spec.command_line());
-  ASSERT_EQ(cl.size(), arraysize(command_line));
-  for (size_t i = 0; i < arraysize(command_line); ++i)
-    EXPECT_EQ(cl[i], command_line[i]);
+  EXPECT_TRUE(std::equal(cl.begin(), cl.end(), std::begin(command_line)));
 }
 
 TEST_F(ReadOnlyContainerSpecTest, WorkingDirectoryTest) {
@@ -53,6 +51,17 @@ TEST_F(ReadOnlyContainerSpecTest, WorkingDirectoryTest) {
   spec_.set_working_directory(working_directory);
   ReadOnlyContainerSpec ro_spec(&spec_);
   EXPECT_EQ(ro_spec.working_directory().value(), working_directory);
+}
+
+TEST_F(ReadOnlyContainerSpecTest, ServiceNamesTest) {
+  const char* service_names[2] = { "name1", "name2" };
+  spec_.add_service_names(service_names[0]);
+  spec_.add_service_names(service_names[1]);
+  ReadOnlyContainerSpec ro_spec(&spec_);
+
+  const std::vector<std::string> names(ro_spec.service_names());
+  EXPECT_TRUE(std::equal(names.begin(), names.end(),
+                         std::begin(service_names)));
 }
 
 TEST_F(ReadOnlyContainerSpecTest, NamespacesTest) {

@@ -47,6 +47,7 @@
         'device_filter.cc',
         'namespace.cc',
         'port.cc',
+        'service_name.cc',
         'spec_reader.cc',
         'sysfs_filter.cc',
         'usb_device_filter.cc',

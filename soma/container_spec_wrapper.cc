@@ -60,6 +60,13 @@ ContainerSpecWrapper::ContainerSpecWrapper(
 
 ContainerSpecWrapper::~ContainerSpecWrapper() {}
 
+void ContainerSpecWrapper::SetServiceNames(
+    const std::vector<std::string>& service_names) {
+  internal_.clear_service_names();
+  for (const std::string& name : service_names)
+    internal_.add_service_names(name);
+}
+
 void ContainerSpecWrapper::SetCommandLine(
     const std::vector<std::string>& command_line) {
   internal_.clear_command_line();
@@ -110,6 +117,11 @@ void ContainerSpecWrapper::AddSysfsFilter(const std::string& filter) {
 
 void ContainerSpecWrapper::AddUSBDeviceFilter(int vid, int pid) {
   usb_device_filters_.push_back(new USBDeviceFilter(vid, pid));
+}
+
+bool ContainerSpecWrapper::ProvidesServiceNamed(const std::string& name) const {
+  const RepeatedPtrField<std::string>& names = internal_.service_names();
+  return std::find(names.begin(), names.end(), name) != names.end();
 }
 
 bool ContainerSpecWrapper::ShouldApplyNamespace(

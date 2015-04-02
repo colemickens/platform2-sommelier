@@ -22,6 +22,7 @@
 #include "soma/container_spec_wrapper.h"
 #include "soma/namespace.h"
 #include "soma/port.h"
+#include "soma/service_name.h"
 
 namespace soma {
 namespace parser {
@@ -112,6 +113,46 @@ TEST_F(ContainerSpecReaderTest, EmptyCommandLine) {
 
   std::unique_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   EXPECT_EQ(spec.get(), nullptr);
+}
+
+namespace {
+std::unique_ptr<base::DictionaryValue> CreateAnnotation(
+    const std::string& name, const std::string& value) {
+  std::unique_ptr<base::DictionaryValue> annotation(new base::DictionaryValue);
+  annotation->SetString("name", name);
+  annotation->SetString("value", value);
+  return std::move(annotation);
+}
+}  // namespace
+
+TEST_F(ContainerSpecReaderTest, OneServiceName) {
+  std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
+
+  std::unique_ptr<base::ListValue> annotations(new base::ListValue);
+  annotations->Append(CreateAnnotation("service-0", "foo").release());
+  baseline->Set(parser::service_name::kListKey, annotations.release());
+
+  WriteValue(baseline.get(), scratch_);
+
+  std::unique_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
+  EXPECT_TRUE(spec->ProvidesServiceNamed("foo"));
+}
+
+TEST_F(ContainerSpecReaderTest, SkipBogusServiceName) {
+  std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
+
+  std::unique_ptr<base::ListValue> annotations(new base::ListValue);
+  annotations->Append(CreateAnnotation("service-0", "foo").release());
+  annotations->Append(CreateAnnotation("bugagoo", "bar").release());
+  annotations->Append(CreateAnnotation("service-1", "baz").release());
+  baseline->Set(parser::service_name::kListKey, annotations.release());
+
+  WriteValue(baseline.get(), scratch_);
+
+  std::unique_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
+  EXPECT_TRUE(spec->ProvidesServiceNamed("foo"));
+  EXPECT_TRUE(spec->ProvidesServiceNamed("baz"));
+  EXPECT_FALSE(spec->ProvidesServiceNamed("bar"));
 }
 
 namespace {

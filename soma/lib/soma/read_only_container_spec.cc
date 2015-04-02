@@ -45,6 +45,8 @@ ReadOnlyContainerSpec::ReadOnlyContainerSpec(const ContainerSpec* spec)
       service_bundle_path_(internal_->service_bundle_path()),
       command_line_(internal_->command_line().begin(),
                     internal_->command_line().end()),
+      service_names_(internal_->service_names().begin(),
+                     internal_->service_names().end()),
       working_dir_(internal_->working_directory()),
       tcp_listen_ports_(internal_->tcp_listen_ports().ports().begin(),
                         internal_->tcp_listen_ports().ports().end()),

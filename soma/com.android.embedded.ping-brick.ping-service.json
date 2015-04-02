@@ -3,9 +3,9 @@
     "acKind": "PodManifest",
     "apps": [
         {
-            "name": "ping_service",
+            "name": "ping-service",
             "image": {
-                "name": "com.android.embedded.ping_brick",
+                "name": "com.android.embedded.ping-brick",
                 "id": "sha512-...",
                 "labels": [
                     {
@@ -41,5 +41,14 @@
             },
         },
     ],
-
+    "annotations": [
+        {
+	    "name": "service-0",
+	    "value": "com.android.embedded.ping-brick.ping-service",
+	},
+        {
+	    "name": "service-1",
+	    "value": "com.android.embedded.ping-brick.echo-service",
+	},
+    ],
 }

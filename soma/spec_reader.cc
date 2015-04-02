@@ -21,6 +21,7 @@
 #include "soma/container_spec_wrapper.h"
 #include "soma/namespace.h"
 #include "soma/port.h"
+#include "soma/service_name.h"
 
 namespace soma {
 namespace parser {
@@ -72,18 +73,18 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Read(
 
 std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
     const std::string& json) {
-  std::unique_ptr<base::Value> root(reader_.ReadToValue(json));
+  std::unique_ptr<const base::Value> root(reader_.ReadToValue(json));
   if (!root) {
     LOG(ERROR) << "Failed to parse: " << reader_.GetErrorMessage();
     return nullptr;
   }
-  base::DictionaryValue* spec_dict = nullptr;
+  const base::DictionaryValue* spec_dict = nullptr;
   if (!root->GetAsDictionary(&spec_dict)) {
     LOG(ERROR) << "Spec should have been a dictionary.";
     return nullptr;
   }
-  base::ListValue* apps_list = nullptr;
-  base::DictionaryValue* app_dict = nullptr;
+  const base::ListValue* apps_list = nullptr;
+  const base::DictionaryValue* app_dict = nullptr;
   if (!spec_dict->GetList(kAppsKey, &apps_list) || apps_list->GetSize() != 1 ||
       !apps_list->GetDictionary(0, &app_dict)) {
     LOG(ERROR) << "'apps' must be a list of a single dict.";
@@ -109,7 +110,7 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
     return nullptr;
   }
 
-  base::ListValue* command_line = nullptr;
+  const base::ListValue* command_line = nullptr;
   if (!app_dict->GetList(kCommandLineKey, &command_line) ||
       command_line->GetSize() < 1) {
     LOG(ERROR) << "'app.exec' must be a list of strings.";
@@ -131,12 +132,15 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
     spec->SetCommandLine(cl);
   }
 
-  base::ListValue* namespaces = nullptr;
-  if (spec_dict->GetList(ns::kListKey, &namespaces)) {
-    spec->SetNamespaces(ns::ParseList(namespaces));
-  }
+  const base::ListValue* annotations = nullptr;
+  if (spec_dict->GetList(service_name::kListKey, &annotations))
+    spec->SetServiceNames(service_name::ParseList(annotations));
 
-  base::ListValue* listen_ports = nullptr;
+  const base::ListValue* namespaces = nullptr;
+  if (spec_dict->GetList(ns::kListKey, &namespaces))
+    spec->SetNamespaces(ns::ParseList(namespaces));
+
+  const base::ListValue* listen_ports = nullptr;
   if (spec_dict->GetList(parser::port::kListKey, &listen_ports)) {
     std::set<parser::port::Number> tcp_ports, udp_ports;
     parser::port::ParseList(listen_ports, &tcp_ports, &udp_ports);
@@ -144,15 +148,13 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
     spec->SetUdpListenPorts(udp_ports);
   }
 
-  base::ListValue* device_path_filters = nullptr;
-  if (spec_dict->GetList(DevicePathFilter::kListKey, &device_path_filters)) {
+  const base::ListValue* device_path_filters = nullptr;
+  if (spec_dict->GetList(DevicePathFilter::kListKey, &device_path_filters))
     spec->SetDevicePathFilters(DevicePathFilterSet::Parse(device_path_filters));
-  }
 
-  base::ListValue* device_node_filters = nullptr;
-  if (spec_dict->GetList(DeviceNodeFilter::kListKey, &device_node_filters)) {
+  const base::ListValue* device_node_filters = nullptr;
+  if (spec_dict->GetList(DeviceNodeFilter::kListKey, &device_node_filters))
     spec->SetDeviceNodeFilters(DeviceNodeFilterSet::Parse(device_node_filters));
-  }
 
   return std::move(spec);
 }
