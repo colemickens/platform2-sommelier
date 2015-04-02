@@ -143,14 +143,14 @@ bool TokenFileManager::SaltAuthData(const FilePath& token_path,
   }
 
   SecureBlob out_key(kSaltedKeyBytes);
-  if (1 != PKCS5_PBKDF2_HMAC(static_cast<const char *>(auth_data.data()),
+  if (1 != PKCS5_PBKDF2_HMAC(auth_data.char_data(),
                              auth_data.size(),
                              salt.data(),
                              kSaltBytes,
                              kSaltIterations,
                              EVP_sha512(),
                              kSaltedKeyBytes,
-                             out_key.data()) {
+                             out_key.data())) {
     LOG(ERROR) << "Could not salt authorization data.";
     return false;
   }

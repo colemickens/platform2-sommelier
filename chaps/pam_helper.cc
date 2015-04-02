@@ -82,7 +82,8 @@ bool PamHelper::GetPamPassword(pam_handle_t* pam_handle,
     return false;
   }
 
-  SecureBlob tmp(data_raw, strlen(data_raw));
+  string data_string(data_raw, strlen(data_raw));
+  SecureBlob tmp(data_string);
   data->swap(tmp);
 
   // Note: data_raw is the actual data, so should not be overwritten or freed.
