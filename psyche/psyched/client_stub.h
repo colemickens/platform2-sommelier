@@ -6,7 +6,6 @@
 #define PSYCHE_PSYCHED_CLIENT_STUB_H_
 
 #include <memory>
-#include <vector>
 
 #include "psyche/psyched/client.h"
 
@@ -22,27 +21,14 @@ class ClientStub : public ClientInterface {
   explicit ClientStub(std::unique_ptr<protobinder::BinderProxy> client_proxy);
   ~ClientStub() override;
 
-  using ServiceVector = std::vector<ServiceInterface*>;
-
-  const ServiceVector& services_with_changed_states() const {
-    return services_with_changed_states_;
-  }
-  void clear_services_with_changed_states() {
-    services_with_changed_states_.clear();
-  }
-
   // ClientInterface:
   const ServiceSet& GetServices() const override;
   void AddService(ServiceInterface* service) override;
   void RemoveService(ServiceInterface* service) override;
-  void HandleServiceStateChange(ServiceInterface* service) override;
 
  private:
   std::unique_ptr<protobinder::BinderProxy> client_proxy_;
   ServiceSet services_;
-
-  // Services that have called HandleServiceStateChange().
-  ServiceVector services_with_changed_states_;
 
   DISALLOW_COPY_AND_ASSIGN(ClientStub);
 };

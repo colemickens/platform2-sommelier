@@ -13,6 +13,7 @@
 #include "psyche/proto_bindings/psyche.pb.h"
 #include "psyche/proto_bindings/psyche.pb.rpc.h"
 #include "psyche/psyched/client.h"
+#include "psyche/psyched/service_observer.h"
 
 using protobinder::BinderProxy;
 using protobinder::BinderToInterface;
@@ -38,7 +39,7 @@ void Service::SetProxy(std::unique_ptr<BinderProxy> proxy) {
   proxy_->SetDeathCallback(base::Bind(&Service::HandleBinderDeath,
                                       weak_ptr_factory_.GetWeakPtr()));
   state_ = STATE_STARTED;
-  NotifyClientsAboutStateChange();
+  FOR_EACH_OBSERVER(ServiceObserver, observers_, OnServiceStateChange(this));
 }
 
 void Service::AddClient(ClientInterface* client) {
@@ -53,9 +54,14 @@ bool Service::HasClient(ClientInterface* client) const {
   return clients_.count(client);
 }
 
-void Service::NotifyClientsAboutStateChange() {
-  for (auto client : clients_)
-    client->HandleServiceStateChange(this);
+void Service::AddObserver(ServiceObserver* observer) {
+  DCHECK(observer);
+  observers_.AddObserver(observer);
+}
+
+void Service::RemoveObserver(ServiceObserver* observer) {
+  DCHECK(observer);
+  observers_.RemoveObserver(observer);
 }
 
 void Service::HandleBinderDeath() {
@@ -63,7 +69,7 @@ void Service::HandleBinderDeath() {
 
   // TODO(derat): Automatically restart the service.
   state_ = STATE_STOPPED;
-  NotifyClientsAboutStateChange();
+  FOR_EACH_OBSERVER(ServiceObserver, observers_, OnServiceStateChange(this));
 }
 
 }  // namespace psyche

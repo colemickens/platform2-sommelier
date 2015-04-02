@@ -19,32 +19,26 @@ namespace protobinder {
 class BinderProxy;
 }  // namespace protobinder
 
+namespace soma {
+class ContainerSpec;
+}  // namespace soma
+
 namespace psyche {
 
 class ClientInterface;
+class ContainerInterface;
+class FactoryInterface;
 class ServiceInterface;
 class SomaConnection;
 
-// Holds Service and Client objects and manages communication with them.
+// Owns Container and Client objects and manages communication with them.
 class Registrar : public IPsychedHostInterface {
  public:
-  // Creates objects on behalf of registrar. Defined as an interface so unit
-  // tests can return stub objects.
-  class Delegate {
-   public:
-    virtual ~Delegate() = default;
-
-    virtual std::unique_ptr<ServiceInterface> CreateService(
-        const std::string& name) = 0;
-    virtual std::unique_ptr<ClientInterface> CreateClient(
-        std::unique_ptr<BinderProxy> client_proxy) = 0;
-  };
-
   Registrar();
   ~Registrar() override;
 
-  // Updates |delegate_|. Must be called before Init().
-  void SetDelegateForTesting(std::unique_ptr<Delegate> delegate);
+  // Updates |factory_|. Must be called before Init().
+  void SetFactoryForTesting(std::unique_ptr<FactoryInterface> factory);
 
   void Init();
 
@@ -55,23 +49,37 @@ class Registrar : public IPsychedHostInterface {
                      RequestServiceResponse* out) override;
 
  private:
-  class RealDelegate;
-
-  // Returns the object representing |service_name|, fetching its ContainerSpec
-  // from soma and starting it if the container isn't already started.
-  ServiceInterface* GetOrStartService(const std::string& service_name);
+  // Returns the object representing |service_name|. If the service isn't
+  // present in |services_| and |create_container| is true, fetches its
+  // ContainerSpec from soma, launches it, and adds the service to |services_|.
+  ServiceInterface* GetService(const std::string& service_name,
+                               bool create_container);
 
   // Callback invoked when the remote side of a client's binder is closed.
   void HandleClientBinderDeath(int32_t handle);
 
-  // Initialized by Init() if not already set by SetDelegateForTesting().
-  std::unique_ptr<Delegate> delegate_;
+  // Initialized by Init() if not already set by SetFactoryForTesting().
+  std::unique_ptr<FactoryInterface> factory_;
 
-  // Keyed by service name.
+  // Containers that have been created by psyche, keyed by container name.
+  using ContainerMap =
+      std::map<std::string, std::unique_ptr<ContainerInterface>>;
+  ContainerMap containers_;
+
+  // Services that were registered via RegisterService() but that aren't listed
+  // by a container that was previously started, keyed by service name.
+  // TODO(derat): Remove this once everything is running in containers.
   using ServiceMap = std::map<std::string, std::unique_ptr<ServiceInterface>>;
-  ServiceMap services_;
+  ServiceMap non_container_services_;
 
-  // Keyed by BinderProxy handle.
+  // Bare pointers to known (but possibly not-yet-registered) services, keyed by
+  // service name. The underlying ServiceInterface objects are owned either by
+  // ContainerInterface objects in |containers_| or by
+  // |non_container_services_|.
+  using ServicePtrMap = std::map<std::string, ServiceInterface*>;
+  ServicePtrMap services_;
+
+  // Clients that have requested services, keyed by BinderProxy handle.
   using ClientMap = std::map<int32_t, std::unique_ptr<ClientInterface>>;
   ClientMap clients_;
 

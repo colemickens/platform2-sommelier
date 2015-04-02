@@ -29,8 +29,4 @@ void ClientStub::RemoveService(ServiceInterface* service) {
   services_.erase(service);
 }
 
-void ClientStub::HandleServiceStateChange(ServiceInterface* service) {
-  services_with_changed_states_.push_back(service);
-}
-
 }  // namespace psyche

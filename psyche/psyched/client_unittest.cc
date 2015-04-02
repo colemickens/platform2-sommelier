@@ -57,7 +57,6 @@ class PsycheClientInterfaceStub : public IPsycheClient {
   DISALLOW_COPY_AND_ASSIGN(PsycheClientInterfaceStub);
 };
 
-
 class ClientTest : public testing::Test {
  public:
   ClientTest() {
@@ -94,7 +93,7 @@ TEST_F(ClientTest, PassServiceHandles) {
   // Start the service and check that its handle is sent.
   BinderProxy* service_proxy = new BinderProxy(next_proxy_handle++);
   service.SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
-  client.HandleServiceStateChange(&service);
+  client.OnServiceStateChange(&service);
   ASSERT_EQ(1U, interface->service_handles().size());
   EXPECT_EQ(kServiceName, interface->service_handles()[0].first);
   EXPECT_EQ(reinterpret_cast<uint64_t>(service_proxy),
@@ -103,12 +102,12 @@ TEST_F(ClientTest, PassServiceHandles) {
 
   // Stop the service. Nothing should be sent until it's started again.
   service.set_state(ServiceInterface::STATE_STOPPED);
-  client.HandleServiceStateChange(&service);
+  client.OnServiceStateChange(&service);
   ASSERT_EQ(0U, interface->service_handles().size());
   service_proxy = new BinderProxy(next_proxy_handle++);
   service.SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
   service.set_state(ServiceInterface::STATE_STARTED);
-  client.HandleServiceStateChange(&service);
+  client.OnServiceStateChange(&service);
   ASSERT_EQ(1U, interface->service_handles().size());
   EXPECT_EQ(kServiceName, interface->service_handles()[0].first);
   EXPECT_EQ(reinterpret_cast<uint64_t>(service_proxy),

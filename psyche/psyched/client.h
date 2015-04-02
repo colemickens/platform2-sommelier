@@ -11,6 +11,8 @@
 
 #include <base/macros.h>
 
+#include "psyche/psyched/service_observer.h"
+
 namespace protobinder {
 class BinderProxy;
 }  // namespace protobinder
@@ -32,13 +34,10 @@ class ClientInterface {
   // Ownership of |service| remains with the caller.
   virtual void AddService(ServiceInterface* service) = 0;
   virtual void RemoveService(ServiceInterface* service) = 0;
-
-  // Handle notification that a service's state has changed.
-  virtual void HandleServiceStateChange(ServiceInterface* service) = 0;
 };
 
 // The real implementation of ClientInterface.
-class Client : public ClientInterface {
+class Client : public ClientInterface, public ServiceObserver {
  public:
   explicit Client(std::unique_ptr<protobinder::BinderProxy> client_proxy);
   ~Client() override;
@@ -47,7 +46,9 @@ class Client : public ClientInterface {
   const ServiceSet& GetServices() const override;
   void AddService(ServiceInterface* service) override;
   void RemoveService(ServiceInterface* service) override;
-  void HandleServiceStateChange(ServiceInterface* service) override;
+
+  // ServiceObserver:
+  void OnServiceStateChange(ServiceInterface* service) override;
 
  private:
   // Passes |service|'s handle to the client.

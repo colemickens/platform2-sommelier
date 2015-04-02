@@ -30,10 +30,25 @@ void ServiceStub::SetProxy(std::unique_ptr<BinderProxy> proxy) {
   state_ = proxy_ ? STATE_STARTED : STATE_STOPPED;
 }
 
-void ServiceStub::AddClient(ClientInterface* client) {}
+void ServiceStub::AddClient(ClientInterface* client) {
+  CHECK(client);
+  CHECK(clients_.insert(client).second)
+      << "Client " << client << " already added to \"" << name_ << "\"";
+}
 
-void ServiceStub::RemoveClient(ClientInterface* client) {}
+void ServiceStub::RemoveClient(ClientInterface* client) {
+  CHECK(client);
+  CHECK_EQ(clients_.erase(client), 1U)
+      << "Client " << client << " not present in \"" << name_ << "\"";
+}
 
-bool ServiceStub::HasClient(ClientInterface* client) const { return false; }
+bool ServiceStub::HasClient(ClientInterface* client) const {
+  CHECK(client);
+  return clients_.count(client);
+}
+
+void ServiceStub::AddObserver(ServiceObserver* observer) {}
+
+void ServiceStub::RemoveObserver(ServiceObserver* observer) {}
 
 }  // namespace psyche

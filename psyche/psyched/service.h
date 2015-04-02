@@ -11,6 +11,7 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
+#include <base/observer_list.h>
 
 namespace protobinder {
 class BinderProxy;
@@ -19,8 +20,17 @@ class BinderProxy;
 namespace psyche {
 
 class ClientInterface;
+class ServiceObserver;
 
-// A service that is registered with psyched.
+// A service that can be returned by psyched.
+//
+// ServiceInterface objects' lifetimes differ from those of the binder proxies
+// that are actually returned to clients. The object is created when the service
+// is first known to psyched (i.e. when the container that will provide it is
+// created). Later, the process actually providing the service registers itself
+// with psyched, at which point its proxy can be passed to clients. If the proxy
+// dies and the service's container must be restarted, this object will be
+// retained and reused once the service has been registered again.
 class ServiceInterface {
  public:
   enum State {
@@ -42,6 +52,10 @@ class ServiceInterface {
   virtual void AddClient(ClientInterface* client) = 0;
   virtual void RemoveClient(ClientInterface* client) = 0;
   virtual bool HasClient(ClientInterface* client) const = 0;
+
+  // Adds or removes observers of changes to this object.
+  virtual void AddObserver(ServiceObserver* observer) = 0;
+  virtual void RemoveObserver(ServiceObserver* observer) = 0;
 };
 
 // Real implementation of ServiceInterface.
@@ -58,11 +72,10 @@ class Service : public ServiceInterface {
   void AddClient(ClientInterface* client) override;
   void RemoveClient(ClientInterface* client) override;
   bool HasClient(ClientInterface* client) const override;
+  void AddObserver(ServiceObserver* observer) override;
+  void RemoveObserver(ServiceObserver* observer) override;
 
  private:
-  // Lets |clients_| know that |state_| has changed.
-  void NotifyClientsAboutStateChange();
-
   // Invoked when |proxy_| has been closed, likely indicating that the process
   // providing the service has exited.
   void HandleBinderDeath();
@@ -75,6 +88,8 @@ class Service : public ServiceInterface {
 
   // The connection to the service that will be passed to clients.
   std::unique_ptr<protobinder::BinderProxy> proxy_;
+
+  ObserverList<ServiceObserver> observers_;
 
   // Clients that are holding connections to this service.
   using ClientSet = std::set<ClientInterface*>;

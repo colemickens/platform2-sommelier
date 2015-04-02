@@ -23,7 +23,10 @@ Client::Client(std::unique_ptr<BinderProxy> client_proxy)
       interface_(BinderToInterface<IPsycheClient>(proxy_.get())) {
 }
 
-Client::~Client() = default;
+Client::~Client() {
+  while (!services_.empty())
+    RemoveService(*(services_.begin()));
+}
 
 const ClientInterface::ServiceSet& Client::GetServices() const {
   return services_;
@@ -33,17 +36,19 @@ void Client::AddService(ServiceInterface* service) {
   DCHECK(services_.find(service) == services_.end())
       << "Service \"" << service->GetName() << "\" already registered for "
       << "client with handle " << proxy_->handle();
+  service->AddObserver(this);
   services_.insert(service);
   if (service->GetState() == ServiceInterface::STATE_STARTED)
     SendServiceHandle(service);
 }
 
 void Client::RemoveService(ServiceInterface* service) {
+  service->RemoveObserver(this);
   services_.erase(service);
 }
 
-void Client::HandleServiceStateChange(ServiceInterface* service) {
-  DCHECK(services_.count(service))
+void Client::OnServiceStateChange(ServiceInterface* service) {
+  CHECK(services_.count(service))
       << "Service \"" << service->GetName() << "\" not registered for client "
       << "with handle " << proxy_->handle();
   if (service->GetState() == ServiceInterface::STATE_STARTED)

@@ -42,6 +42,7 @@ class SomaConnection {
                                     soma::ContainerSpec* spec_out);
 
  private:
+  // TODO(derat): Instantiate a Service object for this instead.
   std::unique_ptr<protobinder::BinderProxy> proxy_;
   std::unique_ptr<soma::ISoma> interface_;
 

@@ -18,6 +18,8 @@
 #include "psyche/common/util.h"
 #include "psyche/proto_bindings/soma_container_spec.pb.h"
 #include "psyche/psyched/client.h"
+#include "psyche/psyched/container.h"
+#include "psyche/psyched/factory_interface.h"
 #include "psyche/psyched/service.h"
 #include "psyche/psyched/soma_connection.h"
 
@@ -25,13 +27,19 @@ using protobinder::BinderManager;
 using protobinder::BinderProxy;
 
 namespace psyche {
+namespace {
 
-class Registrar::RealDelegate : public Delegate {
+// Implementation of FactoryInterface that returns real objects.
+class RealFactory : public FactoryInterface {
  public:
-  RealDelegate() = default;
-  ~RealDelegate() override = default;
+  RealFactory() = default;
+  ~RealFactory() override = default;
 
-  // Delegate:
+  // FactoryInterface:
+  std::unique_ptr<ContainerInterface> CreateContainer(
+      const soma::ContainerSpec& spec) override {
+    return std::unique_ptr<ContainerInterface>(new Container(spec, this));
+  }
   std::unique_ptr<ServiceInterface> CreateService(
       const std::string& name) override {
     return std::unique_ptr<ServiceInterface>(new Service(name));
@@ -43,21 +51,24 @@ class Registrar::RealDelegate : public Delegate {
   }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(RealDelegate);
+  DISALLOW_COPY_AND_ASSIGN(RealFactory);
 };
+
+}  // namespace
 
 Registrar::Registrar() : weak_ptr_factory_(this) {}
 
 Registrar::~Registrar() = default;
 
-void Registrar::SetDelegateForTesting(std::unique_ptr<Delegate> delegate) {
-  CHECK(!delegate_);
-  delegate_ = std::move(delegate);
+void Registrar::SetFactoryForTesting(
+    std::unique_ptr<FactoryInterface> factory) {
+  CHECK(!factory_);
+  factory_ = std::move(factory);
 }
 
 void Registrar::Init() {
-  if (!delegate_)
-    delegate_.reset(new RealDelegate());
+  if (!factory_)
+    factory_.reset(new RealFactory());
 }
 
 int Registrar::RegisterService(RegisterServiceRequest* in,
@@ -69,7 +80,7 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
             << "handle " << proxy->handle();
 
   if (service_name.empty()) {
-    LOG(ERROR) << "Ignoring request to register service with invalid name";
+    LOG(WARNING) << "Ignoring request to register service with invalid name";
     out->set_success(false);
     return 0;
   }
@@ -79,26 +90,36 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
       LOG(WARNING) << "Updating existing soma connection to use handle "
                    << proxy->handle();
     }
+    // TODO(derat): Keep a SomaConnection object around and just pass it the
+    // proxy here.
     soma_.reset(new SomaConnection(std::move(proxy)));
     // TODO(derat): Fetch and start persistent containers.
     out->set_success(true);
     return 0;
   }
 
-  auto it = services_.find(service_name);
-  if (it == services_.end()) {
-    it = services_.insert(std::make_pair(
-        service_name, delegate_->CreateService(service_name))).first;
-  } else {
-    // The service is already registered (but maybe it's dead).
-    if (it->second->GetState() == Service::STATE_STARTED) {
-      LOG(ERROR) << "Ignoring request to register already-running service \""
-                 << service_name << "\"";
+  ServiceInterface* service =
+      GetService(service_name, false /* create_container */);
+  if (service) {
+    // The service is already known, but maybe its proxy wasn't registered or
+    // has died.
+    if (service->GetState() == Service::STATE_STARTED) {
+      LOG(WARNING) << "Ignoring request to register already-running service \""
+                   << service_name << "\"";
       out->set_success(false);
       return 0;
     }
+  } else {
+    // This service wasn't already registered or claimed by a container that we
+    // launched. Go ahead and create a new object to track it.
+    // TODO(derat): Don't allow non-container services after everything is
+    // running within containers.
+    const auto& it = non_container_services_.emplace(
+        service_name, factory_->CreateService(service_name)).first;
+    service = it->second.get();
+    services_.emplace(service_name, service);
   }
-  ServiceInterface* service = it->second.get();
+  DCHECK(service);
   service->SetProxy(std::move(proxy));
 
   out->set_success(true);
@@ -114,7 +135,8 @@ int Registrar::RequestService(RequestServiceRequest* in,
   LOG(INFO) << "Got request to provide service \"" << service_name << "\""
             << " to client with handle " << client_handle;
 
-  ServiceInterface* service = GetOrStartService(service_name);
+  ServiceInterface* service =
+      GetService(service_name, true /* create_container */);
   if (!service) {
     out->set_success(false);
     return 0;
@@ -126,8 +148,8 @@ int Registrar::RequestService(RequestServiceRequest* in,
     client_proxy->SetDeathCallback(base::Bind(
         &Registrar::HandleClientBinderDeath,
         weak_ptr_factory_.GetWeakPtr(), client_handle));
-    client_it = clients_.insert(std::make_pair(client_handle,
-        delegate_->CreateClient(std::move(client_proxy)))).first;
+    client_it = clients_.emplace(
+        client_handle, factory_->CreateClient(std::move(client_proxy))).first;
   }
   ClientInterface* client = client_it->second.get();
 
@@ -141,14 +163,17 @@ int Registrar::RequestService(RequestServiceRequest* in,
   return 0;
 }
 
-ServiceInterface* Registrar::GetOrStartService(
-    const std::string& service_name) {
-  const auto& it = services_.find(service_name);
+ServiceInterface* Registrar::GetService(const std::string& service_name,
+                                        bool create_container) {
+  auto it = services_.find(service_name);
   if (it != services_.end())
-    return it->second.get();
+    return it->second;
+
+  if (!create_container)
+    return nullptr;
 
   if (!soma_) {
-    LOG(ERROR) << "Service \"" << service_name << "\" isn't running and "
+    LOG(ERROR) << "Service \"" << service_name << "\" isn't running and we "
                << "don't have a connection to soma to look it up";
     return nullptr;
   }
@@ -157,20 +182,55 @@ ServiceInterface* Registrar::GetOrStartService(
   const SomaConnection::Result result =
       soma_->GetContainerSpecForService(service_name, &spec);
   if (result != SomaConnection::RESULT_SUCCESS) {
-    // TODO(derat): Pass back the error code so the client can be notified if
-    // the service is unknown vs. this being a possibly-transient error.
+    // TODO(derat): Pass back an error code so the client can be notified if the
+    // service is unknown vs. this being a possibly-transient error.
     LOG(WARNING) << "Failed to get ContainerSpec for service \""
                  << service_name << "\" from soma: "
                  << SomaConnection::ResultToString(result);
     return nullptr;
   }
 
-  LOG(INFO) << "Got ContainerSpec for service \"" << service_name << "\"";
+  std::unique_ptr<ContainerInterface> container =
+      factory_->CreateContainer(spec);
+  const std::string container_name = container->GetName();
 
-  // TODO(derat): Create local objects representing the container and all of its
-  // services, ask germd to start the container, and pass back the
-  // ServiceInterface object.
-  return nullptr;
+  if (!container->GetServices().count(service_name)) {
+    // This happens if we get a request for a service that doesn't exist that's
+    // in a service namespace that _does_ exist.
+    LOG(WARNING) << "Container \"" << container_name << "\" doesn't provide "
+                 << "service \"" << service_name << "\"";
+    return nullptr;
+  }
+  if (containers_.count(container_name)) {
+    // This means that somad for some reason returned this ContainerSpec
+    // earlier, but it didn't previously list the service that we're looking for
+    // now.
+    LOG(WARNING) << "Container \"" << container_name << "\" already exists";
+    return nullptr;
+  }
+  for (const auto& service_it : container->GetServices()) {
+    if (services_.count(service_it.first)) {
+      // This means that somad didn't validate that a ContainerSpec doesn't list
+      // any services outside of its service namespace, or that this service was
+      // already registered in |non_container_services_|.
+      LOG(WARNING) << "Container \"" << container_name << "\" provides already-"
+                   << "known service \"" << service_it.first << "\"";
+      return nullptr;
+    }
+  }
+
+  LOG(INFO) << "Created container \"" << container_name << "\"";
+
+  for (const auto& service_it : container->GetServices())
+    services_[service_it.first] = service_it.second.get();
+  it = services_.find(service_name);
+  CHECK(it != services_.end());
+  ServiceInterface* service = it->second;
+
+  container->Launch();
+  containers_.emplace(container_name, std::move(container));
+
+  return service;
 }
 
 void Registrar::HandleClientBinderDeath(int32_t handle) {
