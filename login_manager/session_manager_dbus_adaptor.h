@@ -73,6 +73,7 @@ class SessionManagerDBusAdaptor {
   scoped_ptr<dbus::Response> HandleLockScreenDismissed(dbus::MethodCall* call);
 
   scoped_ptr<dbus::Response> RestartJob(dbus::MethodCall* call);
+  scoped_ptr<dbus::Response> RestartJobWithAuth(dbus::MethodCall* call);
   scoped_ptr<dbus::Response> StartDeviceWipe(dbus::MethodCall* call);
   scoped_ptr<dbus::Response> SetFlagsForUser(dbus::MethodCall* call);
 

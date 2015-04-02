@@ -4,8 +4,10 @@
 
 #include "login_manager/session_manager_impl.h"
 
+#include <errno.h>
 #include <glib.h>
 #include <stdint.h>
+#include <sys/socket.h>
 
 #include <algorithm>
 #include <locale>
@@ -525,6 +527,20 @@ bool SessionManagerImpl::RestartJob(pid_t pid,
     return false;
   manager_->RestartBrowserWithArgs(new_command_line.argv(), false);
   return true;
+}
+
+bool SessionManagerImpl::RestartJobWithAuth(int fd,
+                                            const std::string& arguments,
+                                            Error* error) {
+  struct ucred ucred = {0};
+  socklen_t len = sizeof(struct ucred);
+  if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
+    PLOG(ERROR) << "Can't get peer creds";
+    error->Set("GetPeerCredsFailed", strerror(errno));
+    return false;
+  }
+
+  return RestartJob(ucred.pid, arguments, error);
 }
 
 void SessionManagerImpl::StartDeviceWipe(const std::string& reason,

@@ -5,6 +5,7 @@
 #include "login_manager/session_manager_impl.h"
 
 #include <stdint.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -607,6 +608,19 @@ TEST_F(SessionManagerImplTest, RestartJob) {
   ExpectGuestSession();
 
   EXPECT_EQ(TRUE, impl_.RestartJob(kDummyPid, arguments, NULL));
+}
+
+TEST_F(SessionManagerImplTest, RestartJobWithAuth_PidAuth) {
+  const char arguments[] = "dummy";
+  int sockets[2] = {-1, -1};
+  ASSERT_GE(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
+
+  EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(true));
+  EXPECT_CALL(manager_, RestartBrowserWithArgs(ElementsAre(arguments), false))
+      .Times(1);
+  ExpectGuestSession();
+
+  EXPECT_EQ(TRUE, impl_.RestartJobWithAuth(sockets[1], arguments, NULL));
 }
 
 TEST_F(SessionManagerImplTest, SupervisedUserCreation) {

@@ -17,6 +17,7 @@
 #include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/exported_object.h>
+#include <dbus/file_descriptor.h>
 #include <dbus/message.h>
 
 #include "login_manager/dbus_error_types.h"
@@ -260,6 +261,9 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
                        kSessionManagerRestartJob,
                        &SessionManagerDBusAdaptor::RestartJob);
   ExportSyncDBusMethod(object,
+                       kSessionManagerRestartJobWithAuth,
+                       &SessionManagerDBusAdaptor::RestartJobWithAuth);
+  ExportSyncDBusMethod(object,
                        kSessionManagerStartDeviceWipe,
                        &SessionManagerDBusAdaptor::StartDeviceWipe);
   ExportSyncDBusMethod(object,
@@ -498,6 +502,23 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RestartJob(
   SessionManagerImpl::Error error;
   bool success = impl_->RestartJob(static_cast<pid_t>(pid), arguments, &error);
   return CraftAppropriateResponseWithBool(call, error, success);
+}
+
+scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RestartJobWithAuth(
+    dbus::MethodCall* call) {
+  dbus::FileDescriptor fd;
+  std::string arguments;
+  dbus::MessageReader reader(call);
+  if (!reader.PopFileDescriptor(&fd) || !reader.PopString(&arguments))
+    return CreateInvalidArgsError(call, call->GetSignature());
+
+  fd.CheckValidity();
+  CHECK(fd.is_valid());
+
+  SessionManagerImpl::Error error;
+  if (impl_->RestartJobWithAuth(fd.value(), arguments, &error))
+    return dbus::Response::FromMethodCall(call);
+  return CreateError(call, error.name(), error.message());
 }
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::StartDeviceWipe(
