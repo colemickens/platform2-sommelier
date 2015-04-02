@@ -87,10 +87,7 @@ const char kAuthScopeKey[] = "scope";
 const char kAuthorizationHeaderPrefix[] = "Privet";
 
 const char kErrorCodeKey[] = "code";
-const char kErrorDomainKey[] = "domain";
-const char kErrorErrorsKey[] = "errors";
 const char kErrorMessageKey[] = "message";
-const char kErrorReasonKey[] = "reason";
 const char kErrorDebugInfoKey[] = "debugInfo";
 
 const char kSetupStartSsidKey[] = "ssid";
@@ -251,36 +248,28 @@ std::unique_ptr<base::DictionaryValue> ErrorInfoToJson(
     const chromeos::Error& error) {
   std::unique_ptr<base::DictionaryValue> output{new base::DictionaryValue};
   output->SetString(kErrorMessageKey, error.GetMessage());
-  tracked_objects::Location location{error.GetLocation().function_name.c_str(),
-                                     error.GetLocation().file_name.c_str(),
-                                     error.GetLocation().line_number,
-                                     nullptr};
-  output->SetString(kErrorDebugInfoKey, location.ToString());
+  output->SetString(kErrorCodeKey, error.GetCode());
   return output;
 }
 
 // Creates JSON similar to GCD server error format.
 std::unique_ptr<base::DictionaryValue> ErrorToJson(
-    int http_code,
     const chromeos::Error& error) {
-  std::unique_ptr<base::DictionaryValue> output{new base::DictionaryValue};
+  std::unique_ptr<base::DictionaryValue> output{ErrorInfoToJson(error)};
+
+  // Optional debug information.
   std::unique_ptr<base::ListValue> errors{new base::ListValue};
   for (const chromeos::Error* it = &error; it; it = it->GetInnerError()) {
     std::unique_ptr<base::DictionaryValue> inner{ErrorInfoToJson(error)};
-    inner->SetString(kErrorDomainKey, error.GetDomain());
-    inner->SetString(kErrorReasonKey, error.GetCode());
+    tracked_objects::Location location{
+        error.GetLocation().function_name.c_str(),
+        error.GetLocation().file_name.c_str(),
+        error.GetLocation().line_number,
+        nullptr};
+    inner->SetString(kErrorDebugInfoKey, location.ToString());
     errors->Append(inner.release());
   }
-  output->Set(kErrorErrorsKey, errors.release());
-  output->SetString(kErrorMessageKey, error.GetMessage());
-  output->SetInteger(kErrorCodeKey, http_code);
-  return output;
-}
-
-std::unique_ptr<base::DictionaryValue> StateErrorToJson(
-    const chromeos::Error& error) {
-  std::unique_ptr<base::DictionaryValue> output{ErrorInfoToJson(error)};
-  output->SetString(kErrorCodeKey, error.GetCode());
+  output->Set(kErrorDebugInfoKey, errors.release());
   return output;
 }
 
@@ -291,7 +280,7 @@ void SetState(const T& state, base::DictionaryValue* parent) {
     return;
   }
   parent->SetString(kStatusKey, kStatusErrorValue);
-  parent->Set(kErrorKey, StateErrorToJson(*state.error()).release());
+  parent->Set(kErrorKey, ErrorToJson(*state.error()).release());
 }
 
 void ReturnError(const chromeos::Error& error,
@@ -304,7 +293,7 @@ void ReturnError(const chromeos::Error& error,
     }
   }
   std::unique_ptr<base::DictionaryValue> output{new base::DictionaryValue};
-  output->Set(kErrorKey, ErrorToJson(code, error).release());
+  output->Set(kErrorKey, ErrorToJson(error).release());
   callback.Run(code, *output);
 }
 

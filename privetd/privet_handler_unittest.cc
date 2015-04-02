@@ -68,14 +68,11 @@ std::ostream& operator<<(std::ostream& stream, const CodeWithReason& error) {
 
 bool IsEqualError(const CodeWithReason& expected,
                   const base::DictionaryValue& dictionary) {
-  const base::ListValue* errors{nullptr};
-  const base::DictionaryValue* first_error{nullptr};
   std::string reason;
   int code = 0;
-  return dictionary.GetInteger("error.code", &code) && code == expected.code &&
-         dictionary.GetList("error.errors", &errors) &&
-         errors->GetDictionary(0, &first_error) &&
-         first_error->GetString("reason", &reason) && reason == expected.reason;
+  return dictionary.GetInteger("error.http_status", &code) &&
+         code == expected.code && dictionary.GetString("error.code", &reason) &&
+         reason == expected.reason;
 }
 
 bool IsEqualDictionary(const base::DictionaryValue& dictionary1,
@@ -170,12 +167,13 @@ class PrivetHandlerTest : public testing::Test {
 
  private:
   void HandlerCallback(int status, const base::DictionaryValue& output) {
-    int code = 0;
-    if (output.GetInteger("error.code", &code))
-      EXPECT_EQ(code, status);
-    else
-      EXPECT_EQ(chromeos::http::status_code::Ok, status);
     output_.MergeDictionary(&output);
+    if (!output_.HasKey("error")) {
+      EXPECT_EQ(chromeos::http::status_code::Ok, status);
+      return;
+    }
+    EXPECT_NE(chromeos::http::status_code::Ok, status);
+    output_.SetInteger("error.http_status", status);
   }
 
   static void HandlerNoFound(int status, const base::DictionaryValue&) {
