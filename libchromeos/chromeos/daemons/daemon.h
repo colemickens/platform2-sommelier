@@ -48,6 +48,14 @@ class CHROMEOS_EXPORT Daemon {
   // this method.
   void QuitWithExitCode(int exit_code);
 
+  // Register/unregister custom signal handlers for the daemon. The semantics
+  // are identical to AsynchronousSignalHandler::RegisterHandler and
+  // AsynchronousSignalHandler::UnregisterHandler, except that handlers for
+  // SIGTERM, SIGINT, and SIGHUP cannot be modified.
+  void RegisterHandler(
+      int signal, const AsynchronousSignalHandler::SignalHandler& callback);
+  void UnregisterHandler(int signal);
+
  protected:
   // Overload to provide your own initialization code that should happen just
   // before running the message loop. Return EX_OK (0) on success or any other
