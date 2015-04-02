@@ -366,7 +366,9 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
   }
   rpcid_by_service_.clear();
   // Remove interface from supplicant.
-  if (supplicant_process_proxy_ && supplicant_interface_proxy_) {
+  if (supplicant_present_ &&
+      supplicant_process_proxy_ &&
+      supplicant_interface_proxy_) {
     try {
       supplicant_process_proxy_->RemoveInterface(supplicant_interface_path_);
     } catch (const DBus::Error &e) {  // NOLINT
@@ -377,6 +379,7 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
   supplicant_interface_path_ = ::DBus::Path();
   supplicant_interface_proxy_.reset();  // breaks a reference cycle
   supplicant_process_proxy_.reset();
+  pending_scan_results_.reset();
   current_service_ = nullptr;            // breaks a reference cycle
   pending_service_ = nullptr;            // breaks a reference cycle
   is_debugging_connection_ = false;
