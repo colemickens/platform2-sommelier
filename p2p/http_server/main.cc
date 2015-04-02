@@ -35,8 +35,8 @@ static void Usage(FILE* output) {
 int main(int argc, char* argv[]) {
   int ret = 1;
 
-  CommandLine::Init(argc, argv);
-  CommandLine* cl = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
   logging::LoggingSettings logging_settings;
   logging_settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;

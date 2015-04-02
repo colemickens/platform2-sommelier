@@ -49,7 +49,7 @@ class GermDaemon : public psyche::PsycheDaemon {
 }  // namespace germ
 
 int main(int argc, char *argv[]) {
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog);
   germ::GermDaemon daemon;
   return daemon.Run();

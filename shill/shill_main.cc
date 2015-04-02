@@ -142,8 +142,8 @@ gboolean ExitSigHandler(gpointer data) {
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
-  CommandLine::Init(argc, argv);
-  CommandLine* cl = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;

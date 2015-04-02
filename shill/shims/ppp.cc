@@ -47,7 +47,7 @@ void PPP::Init() {
     return;
   }
   running_ = true;
-  CommandLine::Init(0, NULL);
+  base::CommandLine::Init(0, NULL);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
   LOG(INFO) << "PPP started.";
 }

@@ -71,8 +71,8 @@ void Daemon::Run() {
 }  // namespace feedback
 
 int main(int argc, char** argv) {
-  CommandLine::Init(argc, argv);
-  CommandLine *args = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine *args = base::CommandLine::ForCurrentProcess();
 
   // Some libchrome calls need this.
   base::AtExitManager at_exit_manager;

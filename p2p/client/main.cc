@@ -83,7 +83,7 @@ int main(int argc, char* argv[]) {
   std::unique_ptr<p2p::client::ServiceFinder> finder;
 
   g_type_init();
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
   logging::LoggingSettings logging_settings;
   logging_settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
   logging_settings.lock_log = logging::LOCK_LOG_FILE;
@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
   logging::InitLogging(logging_settings);
   p2p::util::SetupSyslog("p2p-client", true /* include_pid */);
 
-  CommandLine* cl = CommandLine::ForCurrentProcess();
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
   // If help is requested, show usage and exit immediately
   if (cl->HasSwitch("help")) {

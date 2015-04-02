@@ -448,9 +448,9 @@ int DumpStatus() {
 
 
 int main(int argc, char **argv) {
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
-  CommandLine *cl = CommandLine::ForCurrentProcess();
+  base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
   if (cl->HasSwitch("status")) {
     return DumpStatus();
   }

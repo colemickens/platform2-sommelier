@@ -229,7 +229,7 @@ chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
   return system_salt;
 }
 
-bool GetAttrName(const CommandLine* cl, std::string* name_out) {
+bool GetAttrName(const base::CommandLine* cl, std::string* name_out) {
   *name_out = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
 
   if (name_out->length() == 0) {
@@ -239,7 +239,7 @@ bool GetAttrName(const CommandLine* cl, std::string* name_out) {
   return true;
 }
 
-bool GetAttrValue(const CommandLine* cl, std::string* value_out) {
+bool GetAttrValue(const base::CommandLine* cl, std::string* value_out) {
   *value_out = cl->GetSwitchValueASCII(switches::kAttrValueSwitch);
 
   if (value_out->length() == 0) {
@@ -249,7 +249,7 @@ bool GetAttrValue(const CommandLine* cl, std::string* value_out) {
   return true;
 }
 
-bool GetUsername(const CommandLine* cl, std::string* user_out) {
+bool GetUsername(const base::CommandLine* cl, std::string* user_out) {
   *user_out = cl->GetSwitchValueASCII(switches::kUserSwitch);
 
   if (user_out->length() == 0) {
@@ -260,7 +260,7 @@ bool GetUsername(const CommandLine* cl, std::string* user_out) {
 }
 
 bool GetPassword(const chromeos::dbus::Proxy& proxy,
-                 const CommandLine* cl,
+                 const base::CommandLine* cl,
                  const std::string& cl_switch,
                  const std::string& prompt,
                  std::string* password_out) {
@@ -292,7 +292,7 @@ bool GetPassword(const chromeos::dbus::Proxy& proxy,
   return true;
 }
 
-FilePath GetFile(const CommandLine* cl) {
+FilePath GetFile(const base::CommandLine* cl) {
   const char kDefaultFilePath[] = "/tmp/__cryptohome";
   FilePath file_path(cl->GetSwitchValueASCII(switches::kFileSwitch));
   if (file_path.empty()) {
@@ -335,7 +335,7 @@ GArray* GArrayFromProtoBuf(const google::protobuf::MessageLite& pb) {
   return ary;
 }
 
-bool BuildAccountId(CommandLine* cl, cryptohome::AccountIdentifier *id) {
+bool BuildAccountId(base::CommandLine* cl, cryptohome::AccountIdentifier *id) {
   std::string user;
   if (!GetUsername(cl, &user)) {
     printf("No username specified.\n");
@@ -345,7 +345,7 @@ bool BuildAccountId(CommandLine* cl, cryptohome::AccountIdentifier *id) {
   return true;
 }
 
-bool BuildAuthorization(CommandLine* cl,
+bool BuildAuthorization(base::CommandLine* cl,
                         const chromeos::dbus::Proxy& proxy,
                         cryptohome::AuthorizationRequest* auth) {
   std::string password;
@@ -565,7 +565,7 @@ bool WaitForTPMOwnership(chromeos::dbus::Proxy* proxy) {
 bool MakeProtoDBusCall(const std::string& name,
                        ProtoDBusMethod method,
                        ProtoDBusAsyncMethod async_method,
-                       CommandLine* cl,
+                       base::CommandLine* cl,
                        chromeos::dbus::Proxy* proxy,
                        const google::protobuf::MessageLite& request,
                        cryptohome::BaseReply* reply) {
@@ -604,8 +604,8 @@ bool MakeProtoDBusCall(const std::string& name,
 }
 
 int main(int argc, char **argv) {
-  CommandLine::Init(argc, argv);
-  CommandLine *cl = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
   if (cl->HasSwitch(switches::kSyslogSwitch))
     chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
   else

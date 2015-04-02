@@ -96,8 +96,8 @@ void RunDispatcher(Lock* lock,
 }  // namespace chaps
 
 int main(int argc, char** argv) {
-  CommandLine::Init(argc, argv);
-  CommandLine* cl = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
   chaps::ScopedOpenSSL openssl;
   chaps::g_dispatcher.reset(new DBus::BusDispatcher());

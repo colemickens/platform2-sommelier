@@ -40,7 +40,7 @@ TEST_F(FlagHelperTest, Defaults) {
   DEFINE_string(string_2, "value", "Test string flag");
 
   const char* argv[] = {"test_program"};
-  CommandLine command_line(arraysize(argv), argv);
+  base::CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
@@ -102,7 +102,7 @@ TEST_F(FlagHelperTest, SetValueDoubleDash) {
                         "--double_3=100.5",
                         "--string_1=",
                         "--string_2=value"};
-  CommandLine command_line(arraysize(argv), argv);
+  base::CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
@@ -162,7 +162,7 @@ TEST_F(FlagHelperTest, SetValueSingleDash) {
                         "-double_3=100.5",
                         "-string_1=",
                         "-string_2=value"};
-  CommandLine command_line(arraysize(argv), argv);
+  base::CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
@@ -191,7 +191,7 @@ TEST_F(FlagHelperTest, DuplicateSetValue) {
   DEFINE_int32(int32_1, 0, "Test in32 flag");
 
   const char* argv[] = {"test_program", "--int32_1=5", "--int32_1=10"};
-  CommandLine command_line(arraysize(argv), argv);
+  base::CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
@@ -205,7 +205,7 @@ TEST_F(FlagHelperTest, FlagTerminator) {
   DEFINE_int32(int32_1, 0, "Test int32 flag");
 
   const char* argv[] = {"test_program", "--int32_1=5", "--", "--int32_1=10"};
-  CommandLine command_line(arraysize(argv), argv);
+  base::CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
@@ -225,7 +225,7 @@ TEST_F(FlagHelperTest, HelpMessage) {
   DEFINE_string(string_1, "", "Test string flag");
 
   const char* argv[] = {"test_program", "--int_1=value", "--help"};
-  CommandLine command_line(arraysize(argv), argv);
+  base::CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
@@ -252,7 +252,7 @@ TEST_F(FlagHelperTest, HelpMessage) {
 // to exit with EX_USAGE error code and corresponding error message.
 TEST_F(FlagHelperTest, UnknownFlag) {
   const char* argv[] = {"test_program", "--flag=value"};
-  CommandLine command_line(arraysize(argv), argv);
+  base::CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
@@ -273,7 +273,7 @@ TEST_F(FlagHelperTest, BoolParseError) {
   DEFINE_bool(bool_1, 0, "Test bool flag");
 
   const char* argv[] = {"test_program", "--bool_1=value"};
-  CommandLine command_line(arraysize(argv), argv);
+  base::CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
@@ -295,7 +295,7 @@ TEST_F(FlagHelperTest, Int32ParseError) {
   DEFINE_int32(int_1, 0, "Test int flag");
 
   const char* argv[] = {"test_program", "--int_1=value"};
-  CommandLine command_line(arraysize(argv), argv);
+  base::CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
@@ -318,7 +318,7 @@ TEST_F(FlagHelperTest, Int64ParseError) {
   DEFINE_int64(int64_1, 0, "Test int64 flag");
 
   const char* argv[] = {"test_program", "--int64_1=value" };
-  CommandLine command_line(arraysize(argv), argv);
+  base::CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
@@ -341,7 +341,7 @@ TEST_F(FlagHelperTest, UInt64ParseError) {
   DEFINE_uint64(uint64_1, 0, "Test uint64 flag");
 
   const char* argv[] = {"test_program", "--uint64_1=value"};
-  CommandLine command_line(arraysize(argv), argv);
+  base::CommandLine command_line(arraysize(argv), argv);
 
   chromeos::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);

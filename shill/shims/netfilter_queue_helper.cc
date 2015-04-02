@@ -57,7 +57,7 @@ static const char kHelpMessage[] = "\n"
 
 }  // namespace switches
 
-bool GetIntegerOption(CommandLine *cl, const string &option, int *value) {
+bool GetIntegerOption(base::CommandLine *cl, const string &option, int *value) {
   if (!cl->HasSwitch(option)) {
     LOG(ERROR) << "Option " << option << " was not given.";
     return false;
@@ -78,8 +78,8 @@ bool GetIntegerOption(CommandLine *cl, const string &option, int *value) {
 }
 
 int main(int argc, char **argv) {
-  CommandLine::Init(argc, argv);
-  CommandLine *cl = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;

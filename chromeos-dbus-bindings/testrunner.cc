@@ -9,7 +9,7 @@
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToStderr);
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

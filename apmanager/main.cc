@@ -97,7 +97,7 @@ void DropPrivileges(chromeos::Minijail* minijail) {
   minijail->Destroy(jail);
 }
 
-void OnStartup(const char* daemon_name, CommandLine* cl) {
+void OnStartup(const char* daemon_name, base::CommandLine* cl) {
   chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
   SetupLogging(minijail, cl->HasSwitch(switches::kForeground), daemon_name);
 
@@ -109,8 +109,8 @@ void OnStartup(const char* daemon_name, CommandLine* cl) {
 }
 
 int main(int argc, char* argv[]) {
-  CommandLine::Init(argc, argv);
-  CommandLine* cl = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;

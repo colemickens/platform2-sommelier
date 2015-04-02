@@ -33,12 +33,12 @@ static const char *kNoLegacyMount = "nolegacymount";
 int main(int argc, char **argv) {
   ::g_type_init();
   base::AtExitManager exit_manager;
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
 
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
 
   // Allow the commands to be configurable.
-  CommandLine *cl = CommandLine::ForCurrentProcess();
+  base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
   int noclose = cl->HasSwitch(switches::kNoCloseOnDaemonize);
   bool nolegacymount = cl->HasSwitch(switches::kNoLegacyMount);
   PLOG_IF(FATAL, daemon(0, noclose) == -1) << "Failed to daemonize";

@@ -13,7 +13,7 @@
 int main(int argc, char** argv) {
   ::g_type_init();
 
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
 
   logging::LoggingSettings logging_settings;
   logging_settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;

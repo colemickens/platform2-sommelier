@@ -13,7 +13,7 @@
 #include "image-burner/image_burner_utils.h"
 
 int main(int argc, char* argv[]) {
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
 
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_ALL;

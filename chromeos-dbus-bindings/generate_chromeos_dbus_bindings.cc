@@ -122,8 +122,8 @@ bool LoadConfig(const base::FilePath& path, ServiceConfig *config) {
 }   // anonymous namespace
 
 int main(int argc, char** argv) {
-  CommandLine::Init(argc, argv);
-  CommandLine* cl = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
   // Setup logging to stderr. This also parses some implicit flags using the
   // CommandLine singleton.

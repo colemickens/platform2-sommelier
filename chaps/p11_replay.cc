@@ -581,8 +581,8 @@ void PrintTokens() {
 }  // namespace
 
 int main(int argc, char** argv) {
-  CommandLine::Init(argc, argv);
-  CommandLine* cl = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   if (cl->HasSwitch("h") || cl->HasSwitch("help")) {
     PrintHelp();
     return 0;

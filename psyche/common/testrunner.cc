@@ -10,7 +10,7 @@
 #include <gtest/gtest.h>
 
 int main(int argc, char* argv[]) {
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToStderr);
   logging::SetMinLogLevel(logging::LOG_WARNING);
   base::AtExitManager at_exit_manager;

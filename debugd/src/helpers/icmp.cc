@@ -44,7 +44,7 @@ static void Die(const string& why) {
   exit(1);
 }
 
-static int GetIntSwitch(const CommandLine* cl, const string& name,
+static int GetIntSwitch(const base::CommandLine* cl, const string& name,
                         int default_value) {
   int val = default_value;
   if (cl->HasSwitch(name)) {
@@ -65,15 +65,15 @@ int main(int argc, char *argv[]) {
   float min = 0.0, avg = 0.0, max = 0.0, mdev = 0.0;
 
   // Parse commandline switches.
-  CommandLine::Init(argc, argv);
-  CommandLine* cl = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   int count = GetIntSwitch(cl, "count", 4);
   int size = GetIntSwitch(cl, "size", 0);
   int ttl = GetIntSwitch(cl, "ttl", 0);
   int timeout = GetIntSwitch(cl, "timeout", 0);
 
   // Parse out the IP address.
-  CommandLine::StringVector args = cl->GetArgs();
+  base::CommandLine::StringVector args = cl->GetArgs();
   if (args.size() != 1)
     Die(kHelpMessage);
   string ip_addr = args[0];

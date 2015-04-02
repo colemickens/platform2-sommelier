@@ -38,7 +38,7 @@ void CommandlineReportStatus(base::WaitableEvent* event, bool* status,
 }
 
 bool FillReportFromCommandline(FeedbackCommon* report) {
-  CommandLine* args = CommandLine::ForCurrentProcess();
+  base::CommandLine* args = base::CommandLine::ForCurrentProcess();
   if (!args->HasSwitch(kSwitchProductId)) {
     LOG(ERROR) << "No product id provided";
     return false;
@@ -101,7 +101,7 @@ bool SendReport(FeedbackServiceInterface* interface, FeedbackCommon* report) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
 
   // Some libchrome calls need this.
   base::AtExitManager at_exit_manager;

@@ -23,7 +23,7 @@ inline void ExpectFileEquals(const char* golden, const char* file_path) {
 }
 
 inline void SetUpTests(int* argc, char** argv, bool log_to_stderr) {
-  CommandLine::Init(*argc, argv);
+  base::CommandLine::Init(*argc, argv);
   ::chromeos::InitLog(log_to_stderr ? chromeos::kLogToStderr : 0);
   ::chromeos::LogToString(true);
   ::testing::InitGoogleTest(argc, argv);

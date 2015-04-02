@@ -162,7 +162,7 @@ class Daemon : public chromeos::DBusDaemon {
 
  private:
   int ScheduleActions() {
-    auto args = CommandLine::ForCurrentProcess()->GetArgs();
+    auto args = base::CommandLine::ForCurrentProcess()->GetArgs();
 
     // Pop the command off of the args list.
     std::string command = args.front();
@@ -385,9 +385,9 @@ class Daemon : public chromeos::DBusDaemon {
 }  // anonymous namespace
 
 int main(int argc, char** argv) {
-  CommandLine::Init(argc, argv);
-  CommandLine* cl = CommandLine::ForCurrentProcess();
-  CommandLine::StringVector args = cl->GetArgs();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  base::CommandLine::StringVector args = cl->GetArgs();
   if (args.empty()) {
     usage();
     return EX_USAGE;

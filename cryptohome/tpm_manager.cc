@@ -27,7 +27,7 @@ namespace {
 
 void PrintUsage() {
   std::string program =
-      CommandLine::ForCurrentProcess()->GetProgram().BaseName().value();
+      base::CommandLine::ForCurrentProcess()->GetProgram().BaseName().value();
   printf("Usage: %s [command] [options]\n", program.c_str());
   printf("  Commands:\n");
   printf("    initialize: Takes ownership of an unowned TPM and initializes it "
@@ -174,12 +174,12 @@ int DumpStatus() {
 }  // namespace
 
 int main(int argc, char **argv) {
-  CommandLine::Init(argc, argv);
-  CommandLine *command_line = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine *command_line = base::CommandLine::ForCurrentProcess();
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
   OpenSSL_add_all_algorithms();
   cryptohome::ScopedMetricsInitializer metrics_initializer;
-  CommandLine::StringVector arguments = command_line->GetArgs();
+  base::CommandLine::StringVector arguments = command_line->GetArgs();
   std::string command;
   if (arguments.size() > 0) {
     command = arguments[0];

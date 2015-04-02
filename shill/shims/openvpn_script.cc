@@ -21,7 +21,7 @@ using std::string;
 
 int main(int argc, char **argv) {
   base::AtExitManager exit_manager;
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
 
   Environment *environment = Environment::GetInstance();

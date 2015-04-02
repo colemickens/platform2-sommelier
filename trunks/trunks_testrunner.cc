@@ -9,7 +9,7 @@
 #include <gtest/gtest.h>
 
 int main(int argc, char **argv) {
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToStderr);
   // Enable verbose logging while running unit tests.
   logging::SetMinLogLevel(logging::LOG_VERBOSE);

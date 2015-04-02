@@ -109,7 +109,7 @@ void Daemon::OnBuffetCommandRemoved(const dbus::ObjectPath& object_path) {
 }
 
 int main(int argc, char* argv[]) {
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog |
                     chromeos::kLogToStderr |
                     chromeos::kLogHeader);

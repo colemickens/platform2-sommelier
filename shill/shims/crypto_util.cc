@@ -396,7 +396,7 @@ bool ParseAndExecuteCommand(const string &command) {
 }  // namespace
 
 int main(int argc, char **argv) {
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToStderr | chromeos::kLogHeader);
   LOG(INFO) << "crypto-util in action";
 

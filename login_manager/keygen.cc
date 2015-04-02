@@ -28,8 +28,8 @@ static const char kDefaultLogFile[] = "/var/log/session_manager";
 
 int main(int argc, char* argv[]) {
   base::AtExitManager exit_manager;
-  CommandLine::Init(argc, argv);
-  CommandLine* cl = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   std::string log_file = cl->GetSwitchValueASCII(switches::kLogFile);
   if (log_file.empty())
     log_file.assign(switches::kDefaultLogFile);

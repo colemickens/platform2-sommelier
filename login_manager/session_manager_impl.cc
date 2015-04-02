@@ -517,7 +517,7 @@ bool SessionManagerImpl::RestartJob(pid_t pid,
     error->Set(DBUS_ERROR_INVALID_ARGS, parse_error->message);
     return false;
   }
-  CommandLine new_command_line(argc, argv);
+  base::CommandLine new_command_line(argc, argv);
   g_strfreev(argv);
 
   // To set "logged-in" state for BWSI mode.

@@ -378,7 +378,7 @@ bool Service::Initialize() {
   // needing to always get the Attestation object to set them
   // during testing.
   attestation_->Initialize(tpm_, tpm_init_, platform_, crypto_, install_attrs_,
-                           CommandLine::ForCurrentProcess()->HasSwitch(
+                           base::CommandLine::ForCurrentProcess()->HasSwitch(
                                kRetainEndorsementDataSwitch));
 
   // TODO(wad) Determine if this should only be called if
@@ -393,7 +393,8 @@ bool Service::Initialize() {
     if (tpm_init_->IsTpmReady() && tpm_init_->GetTpmPassword(&password)) {
       attestation_->PrepareForEnrollmentAsync();
     }
-    if (CommandLine::ForCurrentProcess()->HasSwitch(kAutoInitializeTpmSwitch)) {
+    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          kAutoInitializeTpmSwitch)) {
       tpm_init_->AsyncInitializeTpm();
     }
   }

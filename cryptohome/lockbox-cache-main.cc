@@ -39,12 +39,12 @@ bool CacheLockbox(cryptohome::Platform* platform,
 
 
 int main(int argc, char **argv) {
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
 
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
 
   // Allow the commands to be configurable.
-  CommandLine *cl = CommandLine::ForCurrentProcess();
+  base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
   std::string nvram_path = cl->GetSwitchValueASCII(switches::kNvramPath);
   std::string lockbox_path = cl->GetSwitchValueASCII(switches::kLockboxPath);
   std::string cache_path = cl->GetSwitchValueASCII(switches::kCachePath);

@@ -129,8 +129,8 @@ int main(int argc, char* argv[]) {
   // post-plugin load -- or we can just do the whole thing post-plugin load.
   Sandbox::Enter();
 
-  CommandLine::Init(argc, argv);
-  CommandLine* cl = CommandLine::ForCurrentProcess();
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;

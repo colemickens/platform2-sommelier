@@ -32,7 +32,7 @@ class AttestationDaemon : public chromeos::DBusServiceDaemon {
 };
 
 int main(int argc, char* argv[]) {
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
   AttestationDaemon daemon;
   return daemon.Run();

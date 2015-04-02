@@ -71,7 +71,7 @@ void start() {
 };  // namespace
 
 int __attribute__((visibility("default"))) main(int argc, char* argv[]) {
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
   enter_vfs_namespace();
   make_tmpfs();

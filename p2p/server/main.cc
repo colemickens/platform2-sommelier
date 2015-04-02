@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
 
   g_type_init();
 
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
 
   logging::LoggingSettings logging_settings;
   logging_settings.logging_dest = logging::LOG_TO_SYSTEM_DEBUG_LOG;
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
 
   LOG(INFO) << p2p::constants::kServerBinaryName << " starting";
 
-  CommandLine* cl = CommandLine::ForCurrentProcess();
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
   if (cl->HasSwitch("help")) {
     Usage(stdout);
