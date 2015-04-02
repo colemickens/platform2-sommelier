@@ -119,6 +119,17 @@ class CHROMEOS_EXPORT Any final {
     return data_buffer_.GetData<T>();
   }
 
+  // Returns a copy of data in Any and returns true when that data is
+  // compatible with T.  Returns false if contained data is incompatible.
+  template<typename T>
+  bool GetValue(T* value) const {
+    if (!IsTypeCompatible<T>()) {
+      return false;
+    }
+    *value = Get<T>();
+    return true;
+  }
+
   // Returns a pointer to mutable value of type T contained within Any.
   // No data copying is made, the data pointed to is still owned by Any.
   // If Any doesn't contain a value of type T, or trivially

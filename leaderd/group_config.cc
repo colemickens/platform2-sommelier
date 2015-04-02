@@ -19,19 +19,6 @@ const char kIsPersistent[] = "persistent";
 
 }  // namespace group_options
 
-namespace {
-
-template<typename T>
-bool GetValue(const chromeos::Any& any, T* value) {
-  if (!any.IsTypeCompatible<T>()) {
-    return false;
-  }
-  *value = any.Get<T>();
-  return true;
-}
-
-}  // namespace
-
 
 bool GroupConfig::Load(const std::map<std::string, chromeos::Any>& options,
                        chromeos::ErrorPtr* error) {
@@ -39,8 +26,7 @@ bool GroupConfig::Load(const std::map<std::string, chromeos::Any>& options,
   auto it = options.find(group_options::kMinWandererTimeoutSeconds);
   int32_t timeout_value;  // This decides the parsed type of our DBus interface.
   if (it != options.end()) {
-    if (!GetValue(it->second, &timeout_value) ||
-        timeout_value < 0) {
+    if (!it->second.GetValue(&timeout_value) || timeout_value < 0) {
       chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
                              errors::kBadOptions, "Bad min wanderer time");
       return false;
@@ -50,8 +36,7 @@ bool GroupConfig::Load(const std::map<std::string, chromeos::Any>& options,
   }
   it = options.find(group_options::kMaxWandererTimeoutSeconds);
   if (it != options.end()) {
-    if (!GetValue(it->second, &timeout_value) ||
-        timeout_value < 0) {
+    if (!it->second.GetValue(&timeout_value) || timeout_value < 0) {
       chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
                              errors::kBadOptions, "Bad max wanderer time");
       return false;
@@ -67,8 +52,7 @@ bool GroupConfig::Load(const std::map<std::string, chromeos::Any>& options,
   }
   it = options.find(group_options::kLeaderSteadyStateTimeoutSeconds);
   if (it != options.end()) {
-    if (!GetValue(it->second, &timeout_value) ||
-        timeout_value < 0) {
+    if (!it->second.GetValue(&timeout_value) || timeout_value < 0) {
       chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
                              errors::kBadOptions,
                              "Bad leader steady state timeout");
@@ -79,7 +63,7 @@ bool GroupConfig::Load(const std::map<std::string, chromeos::Any>& options,
   }
   it = options.find(group_options::kIsPersistent);
   if (it != options.end()) {
-    if (!GetValue(it->second, &is_persistent_)) {
+    if (!it->second.GetValue(&is_persistent_)) {
       chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
                              errors::kBadOptions, "Bad persistent value.");
       return false;
