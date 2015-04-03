@@ -89,8 +89,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': ['libgerm'],
           'sources': [
-# TODO(rickyz): Re-enable these tests. See crbug.com/473489.
-#            'process_reaper_unittest.cc',
+            'process_reaper_unittest.cc',
             'run_all_tests.cc',
           ],
         },

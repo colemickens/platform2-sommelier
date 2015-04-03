@@ -85,7 +85,7 @@ void ForkAndRaise(int num_to_fork) {
     pid_t pid = fork();
     PCHECK(pid != -1);
     if (pid == 0) {
-      raise(SIGABRT);
+      raise(SIGKILL);
     }
   }
 }
@@ -105,8 +105,8 @@ TEST(ProcessReaper, ReapSignaledChild) {
   ScopedAlarm time_out(kTestTimeout);
   TestProcessReaper test_process_reaper;
   test_process_reaper.set_num_to_reap(kNumToFork);
-  test_process_reaper.set_expected_code(CLD_DUMPED);
-  test_process_reaper.set_expected_status(SIGABRT);
+  test_process_reaper.set_expected_code(CLD_KILLED);
+  test_process_reaper.set_expected_status(SIGKILL);
   ASSERT_TRUE(test_process_reaper.PostTask(
       FROM_HERE, base::Bind(&ForkAndRaise, kNumToFork)));
   test_process_reaper.Run();
