@@ -133,14 +133,20 @@ class Region(object):
   """An integer for mapping into Chrome OS HWID.
   Please never change this once it is assigned."""
 
+  regulatory_domain = None
+  """An ISO 3166-1 alpha 2 upper-cased two-letter region code for setting
+  Wireless regulatory. See crosbug.com/p/38745 for more details.
+
+  When omitted, this will derive from region_code."""
+
   FIELDS = ['region_code', 'keyboards', 'time_zones', 'locales', 'description',
-            'keyboard_mechanical_layout', 'numeric_id']
+            'keyboard_mechanical_layout', 'numeric_id', 'regulatory_domain']
   """Names of fields that define the region."""
 
 
   def __init__(self, region_code, keyboards, time_zones, locales,
                keyboard_mechanical_layout, description=None, notes=None,
-               numeric_id=None):
+               numeric_id=None, regdomain=None):
     """Constructor.
 
     Args:
@@ -155,7 +161,16 @@ class Region(object):
       notes: See :py:attr:`notes`.
       numeric_id: See :py:attr:`numeric_id`.  This must be None or a
         non-negative integer.
+      regdomain: See :py:attr:`regulatory_domain`.
     """
+
+    def regdomain_from_region(region):
+      if region.find('.') >= 0:
+        region = region[:region.index('.')]
+      if len(region) == 2:
+        return region.upper()
+      return None
+
     # Quick check: should be 'gb', not 'uk'
     if region_code == 'uk':
       raise RegionException("'uk' is not a valid region code (use 'gb')")
@@ -168,6 +183,7 @@ class Region(object):
     self.description = description or region_code
     self.notes = notes
     self.numeric_id = numeric_id
+    self.regulatory_domain = (regdomain or regdomain_from_region(region_code))
 
     if self.numeric_id is not None:
       if not isinstance(self.numeric_id, int):
@@ -188,6 +204,10 @@ class Region(object):
       assert LOCALE_PATTERN.match(f), (
           'Locale %r does not match %r' % (
               f, LOCALE_PATTERN.pattern))
+    assert (self.regulatory_domain and
+            len(self.regulatory_domain) == 2 and
+            self.regulatory_domain.upper() == self.regulatory_domain), (
+                "Regulatory domain settings error for region %s" % region_code)
 
   def __repr__(self):
     return 'Region(%s)' % (', '.join([getattr(self, x) for x in self.FIELDS]))
@@ -275,7 +295,7 @@ REGIONS_LIST = [
             'American layout (xkb:latam::spa) has not been approved; before '
             'using that you must seek review through http://goto/vpdsettings. '
             'See also http://goo.gl/Iffuqh. Note that 419 is the UN M.49 '
-            'region code for Latin America'), 20),
+            'region code for Latin America'), 20, 'MX'),
     Region('my', 'xkb:us::eng', 'Asia/Kuala_Lumpur', 'ms', _KML.ANSI,
            'Malaysia', None, 21),
     Region('nl', 'xkb:us:intl:eng', 'Europe/Amsterdam', 'nl', _KML.ANSI,
@@ -285,7 +305,7 @@ REGIONS_LIST = [
            ('Unified SKU for Sweden, Norway, and Denmark.  This defaults '
             'to Swedish keyboard layout, but starts with US English language '
             'for neutrality.  Use if there is a single combined SKU for Nordic '
-            'countries.'), 23),
+            'countries.'), 23, 'SE'),
     Region('nz', 'xkb:us::eng', 'Pacific/Auckland', 'en-NZ', _KML.ANSI,
            'New Zealand', None, 24),
     Region('ph', 'xkb:us::eng', 'Asia/Manila', 'en-US', _KML.ANSI,
