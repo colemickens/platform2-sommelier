@@ -42,19 +42,23 @@ bool Resolve(const std::string& namespace_string, Kind* out) {
 }
 }  // anonymous namespace
 
-std::set<Kind> ParseList(const base::ListValue* namespaces) {
-  std::set<Kind> to_return;
+bool ParseList(const base::ListValue* namespaces, std::set<Kind>* out) {
+  DCHECK(out);
   std::string namespace_string;
   for (base::Value* namespace_value : *namespaces) {
     if (!namespace_value->GetAsString(&namespace_string)) {
-      LOG(ERROR) << "Namespace specifiers must be strings";
-      continue;
+      LOG(ERROR) << "Namespace specifiers must be strings, not "
+                 << namespace_value;
+      return false;
     }
     Kind ns;
-    if (Resolve(namespace_string, &ns))
-      to_return.insert(ns);
+    if (!Resolve(namespace_string, &ns)) {
+      LOG(ERROR) << "Unknown namespace identifier: " << namespace_string;
+      return false;
+    }
+    out->insert(ns);
   }
-  return to_return;
+  return true;
 }
 
 }  // namespace ns

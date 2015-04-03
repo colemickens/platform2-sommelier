@@ -18,7 +18,10 @@ namespace service_name {
 
 extern const char kListKey[];
 
-std::vector<std::string> ParseList(const base::ListValue* annotations);
+// Returns true if annotations can be successfully parsed into service_names
+// Returns false on failure, and service_names may be in an inconsistent state.
+bool ParseList(const base::ListValue* annotations,
+               std::vector<std::string>* service_names);
 
 }  // namespace service_name
 }  // namespace parser

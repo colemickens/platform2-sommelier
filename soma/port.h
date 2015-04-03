@@ -24,7 +24,10 @@ extern const char kTcpProtocol[];
 extern const char kUdpProtocol[];
 extern const Number kWildcard;
 
-void ParseList(const base::ListValue* listen_ports,
+// Returns true if listen_ports can be successfully parsed into
+// udp_ports and tcp_ports.
+// False is returned on failure, and out params may be in an inconsistent state.
+bool ParseList(const base::ListValue* listen_ports,
                std::set<Number>* tcp_ports, std::set<Number>* udp_ports);
 
 }  // namespace port

@@ -16,28 +16,34 @@ const char kListKey[] = "annotations";
 const char kNameKey[] = "name";
 const char kValueKey[] = "value";
 
-std::vector<std::string> ParseList(const base::ListValue* annotations) {
+bool ParseList(const base::ListValue* annotations,
+               std::vector<std::string>* service_names) {
   DCHECK(annotations);
-  std::vector<std::string> to_return(annotations->GetSize());
+  service_names->resize(annotations->GetSize());
   // TODO(cmasone): Enforce formatting rules on name and value elements.
   for (const base::Value* annotation_value : *annotations) {
     const base::DictionaryValue* annotation = nullptr;
     if (!annotation_value->GetAsDictionary(&annotation)) {
-      LOG(ERROR) << "'annotations' must be a list of dicts.";
-      return std::vector<std::string>();
+      LOG(ERROR) << "'annotations' must be a list of dicts, not "
+                 << annotation_value;
+      return false;
     }
 
     std::string name, value;
     if (!annotation->GetString(kNameKey, &name) ||
         !annotation->GetString(kValueKey, &value)) {
-      LOG(ERROR) << "Each annotation must have 'name' and 'value' fields.";
-      return std::vector<std::string>();
+      LOG(ERROR) << "Each annotation must have 'name' and 'value' fields, not "
+                 << annotation;
+      return false;
     }
 
     if (StartsWithASCII(name, "service-", false))
-      to_return.push_back(value);
+      service_names->push_back(value);
+    else
+      LOG(WARNING) << "Ignore annotation named " << name;
   }
-  return to_return;
+  service_names->shrink_to_fit();
+  return true;
 }
 
 }  // namespace service_name

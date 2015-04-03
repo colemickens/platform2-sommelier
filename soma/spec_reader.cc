@@ -83,6 +83,7 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
     LOG(ERROR) << "Spec should have been a dictionary.";
     return nullptr;
   }
+
   const base::ListValue* apps_list = nullptr;
   const base::DictionaryValue* app_dict = nullptr;
   if (!spec_dict->GetList(kAppsKey, &apps_list) || apps_list->GetSize() != 1 ||
@@ -91,8 +92,55 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
     return nullptr;
   }
 
+  std::unique_ptr<ContainerSpecWrapper> spec = ParseRequiredFields(app_dict);
+  if (!spec.get())
+    return nullptr;
+
+  const base::ListValue* to_parse = nullptr;
+  std::vector<std::string> service_names;
+  if (spec_dict->GetList(service_name::kListKey, &to_parse)) {
+    if (!service_name::ParseList(to_parse, &service_names))
+      return nullptr;
+    spec->SetServiceNames(service_names);
+  }
+
+  std::set<parser::ns::Kind> namespaces;
+  if (spec_dict->GetList(ns::kListKey, &to_parse)) {
+    if (!ns::ParseList(to_parse, &namespaces))
+      return nullptr;
+    spec->SetNamespaces(namespaces);
+  }
+
+  std::set<parser::port::Number> tcp_ports, udp_ports;
+  if (spec_dict->GetList(parser::port::kListKey, &to_parse)) {
+    if (!parser::port::ParseList(to_parse, &tcp_ports, &udp_ports))
+      return nullptr;
+    spec->SetTcpListenPorts(tcp_ports);
+    spec->SetUdpListenPorts(udp_ports);
+  }
+
+  DevicePathFilterSet device_path_filters;
+  if (spec_dict->GetList(DevicePathFilter::kListKey, &to_parse)) {
+    if (!DevicePathFilterSet::Parse(to_parse, &device_path_filters))
+      return nullptr;
+    spec->SetDevicePathFilters(device_path_filters);
+  }
+  DeviceNodeFilterSet device_node_filters;
+  if (spec_dict->GetList(DeviceNodeFilter::kListKey, &to_parse)) {
+    if (!DeviceNodeFilterSet::Parse(to_parse, &device_node_filters))
+      return nullptr;
+    spec->SetDeviceNodeFilters(device_node_filters);
+  }
+
+  return std::move(spec);
+}
+
+std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::ParseRequiredFields(
+    const base::DictionaryValue* app_dict) {
+  DCHECK(app_dict);
+
   std::string service_bundle_name;
-  if (!app_dict->GetString("image.name", &service_bundle_name)) {
+  if (!app_dict->GetString(kServiceBundleNameKey, &service_bundle_name)) {
     LOG(ERROR) << "Service bundle name (image.name) is required.";
     return nullptr;
   }
@@ -121,42 +169,17 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
       new ContainerSpecWrapper(
           base::FilePath(kServiceBundleRoot).Append(service_bundle_name),
           uid, gid));
-  {
-    std::vector<std::string> cl(command_line->GetSize());
-    for (size_t i = 0; i < cl.size(); ++i) {
-      if (!command_line->GetString(i, &cl[i])) {
-        LOG(ERROR) << "'app.exec' must be a list of strings.";
-        return nullptr;
-      }
+
+  std::vector<std::string> cl(command_line->GetSize());
+  for (size_t i = 0; i < cl.size(); ++i) {
+    if (!command_line->GetString(i, &cl[i])) {
+      LOG(ERROR) << "'app.exec' must be a list of strings.";
+      return nullptr;
     }
-    spec->SetCommandLine(cl);
   }
-
-  const base::ListValue* annotations = nullptr;
-  if (spec_dict->GetList(service_name::kListKey, &annotations))
-    spec->SetServiceNames(service_name::ParseList(annotations));
-
-  const base::ListValue* namespaces = nullptr;
-  if (spec_dict->GetList(ns::kListKey, &namespaces))
-    spec->SetNamespaces(ns::ParseList(namespaces));
-
-  const base::ListValue* listen_ports = nullptr;
-  if (spec_dict->GetList(parser::port::kListKey, &listen_ports)) {
-    std::set<parser::port::Number> tcp_ports, udp_ports;
-    parser::port::ParseList(listen_ports, &tcp_ports, &udp_ports);
-    spec->SetTcpListenPorts(tcp_ports);
-    spec->SetUdpListenPorts(udp_ports);
-  }
-
-  const base::ListValue* device_path_filters = nullptr;
-  if (spec_dict->GetList(DevicePathFilter::kListKey, &device_path_filters))
-    spec->SetDevicePathFilters(DevicePathFilterSet::Parse(device_path_filters));
-
-  const base::ListValue* device_node_filters = nullptr;
-  if (spec_dict->GetList(DeviceNodeFilter::kListKey, &device_node_filters))
-    spec->SetDeviceNodeFilters(DeviceNodeFilterSet::Parse(device_node_filters));
-
+  spec->SetCommandLine(cl);
   return std::move(spec);
 }
+
 }  // namespace parser
 }  // namespace soma

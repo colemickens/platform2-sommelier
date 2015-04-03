@@ -37,17 +37,18 @@ DevicePathFilterSet::DevicePathFilterSet()
 }
 
 // static
-DevicePathFilterSet DevicePathFilterSet::Parse(const base::ListValue* filters) {
-  DevicePathFilterSet to_return;
+bool DevicePathFilterSet::Parse(const base::ListValue* filters,
+                                DevicePathFilterSet* out) {
+  DCHECK(out);
   std::string temp_filter_string;
   for (base::Value* filter : *filters) {
     if (!filter->GetAsString(&temp_filter_string)) {
-      LOG(ERROR) << "Device path filters must be strings.";
-      continue;
+      LOG(ERROR) << "Device path filters must be strings, not " << filter;
+      return false;
     }
-    to_return.insert(DevicePathFilter(base::FilePath(temp_filter_string)));
+    out->insert(DevicePathFilter(base::FilePath(temp_filter_string)));
   }
-  return to_return;
+  return true;
 }
 
 DeviceNodeFilter::DeviceNodeFilter(int major, int minor)
@@ -93,12 +94,16 @@ std::vector<std::pair<int, int>> ParseIntegerPairs(
 }  // anonymous namespace
 
 // static
-DeviceNodeFilterSet DeviceNodeFilterSet::Parse(const base::ListValue* filters) {
-  DeviceNodeFilterSet to_return;
+bool DeviceNodeFilterSet::Parse(const base::ListValue* filters,
+                                DeviceNodeFilterSet* out) {
+  DCHECK(out);
+  out->clear();
+  if (filters->GetSize() == 0)
+    return true;
   for (const auto& num_pair : ParseIntegerPairs(filters)) {
-    to_return.insert(DeviceNodeFilter(num_pair.first, num_pair.second));
+    out->insert(DeviceNodeFilter(num_pair.first, num_pair.second));
   }
-  return to_return;
+  return !out->empty();
 }
 
 }  // namespace parser

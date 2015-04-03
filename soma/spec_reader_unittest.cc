@@ -175,8 +175,6 @@ TEST_F(ContainerSpecReaderTest, SpecWithListenPorts) {
   listen_ports->Append(CreatePort(parser::port::kTcpProtocol, port1).release());
   listen_ports->Append(CreatePort(parser::port::kTcpProtocol, port2).release());
   listen_ports->Append(CreatePort(parser::port::kUdpProtocol, port1).release());
-  listen_ports->Append(
-      CreatePort(parser::port::kUdpProtocol, invalid_port).release());
   baseline->Set(parser::port::kListKey, listen_ports.release());
 
   WriteValue(baseline.get(), scratch_);
@@ -187,7 +185,15 @@ TEST_F(ContainerSpecReaderTest, SpecWithListenPorts) {
   EXPECT_TRUE(spec->TcpListenPortIsAllowed(port2));
   EXPECT_TRUE(spec->UdpListenPortIsAllowed(port1));
   EXPECT_FALSE(spec->UdpListenPortIsAllowed(81));
-  EXPECT_FALSE(spec->UdpListenPortIsAllowed(invalid_port));
+
+  std::unique_ptr<base::ListValue> listen_ports_invalid(new base::ListValue);
+  listen_ports_invalid->Append(
+      CreatePort(parser::port::kUdpProtocol, invalid_port).release());
+  baseline->Set(parser::port::kListKey, listen_ports_invalid.release());
+
+  WriteValue(baseline.get(), scratch_);
+  spec = reader_.Read(scratch_);
+  EXPECT_EQ(spec.get(), nullptr);
 }
 
 TEST_F(ContainerSpecReaderTest, SpecWithWildcardPort) {

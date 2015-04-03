@@ -12,7 +12,7 @@
 #include <base/json/json_reader.h>
 
 namespace base {
-class ListValue;
+class DictionaryValue;
 }
 
 namespace soma {
@@ -43,6 +43,9 @@ class ContainerSpecReader {
  private:
   // Workhorse for doing the parsing of specific fields in the spec.
   std::unique_ptr<ContainerSpecWrapper> Parse(const std::string& json);
+
+  std::unique_ptr<ContainerSpecWrapper> ParseRequiredFields(
+      const base::DictionaryValue* app_dict);
 
   base::JSONReader reader_;
 

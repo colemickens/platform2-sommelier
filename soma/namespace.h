@@ -28,7 +28,9 @@ extern const char kNewUts[];
 
 using Kind = ContainerSpec::Namespace;
 
-std::set<Kind> ParseList(const base::ListValue* namepaces);
+// Returns true if |namespaces| can be successfully parsed into |out|.
+// False is returned on failure and |out| may be in an inconsistent state.
+bool ParseList(const base::ListValue* namespaces, std::set<Kind>* out);
 
 }  // namespace ns
 }  // namespace parser
