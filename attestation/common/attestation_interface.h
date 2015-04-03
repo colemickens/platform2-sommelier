@@ -35,17 +35,22 @@ class ATTESTATION_EXPORT AttestationInterface {
   // The Google Attestation CA root certificate is well-known and not included.
   // If the CA refuses to issue a certificate, |status| will be
   // REQUEST_DENIED_BY_CA and |server_error_details| will contain an error
-  // message from the CA.
+  // message from the CA. On success both the key and certificate are associated
+  // with |username|, which must be a canonical email address or the empty
+  // string (in which case it will be associated to the device). The |origin|
+  // parameter is passed to the CA; it is required by some certificate profiles.
   using CreateGoogleAttestedKeyCallback =
-      void(AttestationStatus status,
-           const std::string& certificate_chain,
-           const std::string& server_error_details);
+      base::Callback<void(const std::string& certificate_chain,
+                          const std::string& server_error_details,
+                          AttestationStatus status)>;
   virtual void CreateGoogleAttestedKey(
       const std::string& key_label,
       KeyType key_type,
       KeyUsage key_usage,
       CertificateProfile certificate_profile,
-      const base::Callback<CreateGoogleAttestedKeyCallback>& callback) = 0;
+      const std::string& username,
+      const std::string& origin,
+      const CreateGoogleAttestedKeyCallback& callback) = 0;
 };
 
 }  // namespace attestation

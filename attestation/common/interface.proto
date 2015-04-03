@@ -9,13 +9,14 @@ package attestation;
 import "common.proto";
 
 enum AttestationStatus {
-  SUCCESS = 0;
-  UNEXPECTED_DEVICE_ERROR = 1;
-  NOT_AVAILABLE = 2;
-  NOT_READY = 3;
-  NOT_ALLOWED = 4;
-  INVALID_PARAMETER = 5;
-  REQUEST_DENIED_BY_CA = 6;
+  STATUS_SUCCESS = 0;
+  STATUS_UNEXPECTED_DEVICE_ERROR = 1;
+  STATUS_NOT_AVAILABLE = 2;
+  STATUS_NOT_READY = 3;
+  STATUS_NOT_ALLOWED = 4;
+  STATUS_INVALID_PARAMETER = 5;
+  STATUS_REQUEST_DENIED_BY_CA = 6;
+  STATUS_CA_NOT_AVAILABLE = 7;
 }
 
 // Describes key type.
@@ -37,6 +38,13 @@ message CreateGoogleAttestedKeyRequest {
   optional KeyUsage key_usage = 3;
   // Describes the certificate to be requested of the CA.
   optional CertificateProfile certificate_profile = 4;
+  // Provided if the new key should be accessible only by a particular user. If
+  // this field is not set or is the empty string, the key will be accessible
+  // system-wide.
+  optional string username = 5;
+  // If the |certificate_profile| is intended to be bound to a particular origin
+  // this field specifies the origin. For most profiles this is not required.
+  optional string origin = 6;
 }
 
 message CreateGoogleAttestedKeyReply {

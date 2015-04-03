@@ -21,12 +21,6 @@ namespace {
 
 const char kFakeCredential[] = "1234";
 
-// For faking encrypt / decrypt operations.
-bool CopyString(const std::string& s1, std::string* s2) {
-  *s2 = s1;
-  return true;
-}
-
 }  // namespace
 
 namespace attestation {
@@ -39,14 +33,6 @@ class DatabaseImplTest : public testing::Test,
     database_.reset(new DatabaseImpl(&mock_crypto_utility_));
     database_->set_io(this);
     InitializeFakeData();
-    ON_CALL(mock_crypto_utility_, CreateSealedKey(_, _))
-        .WillByDefault(Return(true));
-    ON_CALL(mock_crypto_utility_, EncryptData(_, _, _, _))
-        .WillByDefault(WithArgs<0, 3>(Invoke(CopyString)));
-    ON_CALL(mock_crypto_utility_, UnsealKey(_, _, _))
-        .WillByDefault(Return(true));
-    ON_CALL(mock_crypto_utility_, DecryptData(_, _, _))
-        .WillByDefault(WithArgs<0, 2>(Invoke(CopyString)));
   }
 
   // Fake DatabaseIO::Read.

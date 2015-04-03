@@ -46,14 +46,14 @@ void DBusService::HandleCreateGoogleAttestedKey(
       DBusMethodResponse<const CreateGoogleAttestedKeyReply&>>;
   // A callback that fills the reply protobuf and sends it.
   auto callback = [](const SharedResponsePointer& response,
-                     AttestationStatus status,
                      const std::string& certificate_chain,
-                     const std::string& server_error_details) {
+                     const std::string& server_error_details,
+                     AttestationStatus status) {
     CreateGoogleAttestedKeyReply reply;
     reply.set_status(status);
-    if (status == SUCCESS) {
+    if (status == STATUS_SUCCESS) {
       reply.set_certificate_chain(certificate_chain);
-    } else if (status == REQUEST_DENIED_BY_CA) {
+    } else if (status == STATUS_REQUEST_DENIED_BY_CA) {
       reply.set_server_error(server_error_details);
     }
     response->Return(reply);
@@ -63,6 +63,8 @@ void DBusService::HandleCreateGoogleAttestedKey(
       request.key_type(),
       request.key_usage(),
       request.certificate_profile(),
+      request.username(),
+      request.origin(),
       base::Bind(callback, SharedResponsePointer(response.release())));
 }
 

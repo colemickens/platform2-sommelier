@@ -14,6 +14,9 @@ class CryptoUtility {
  public:
   virtual ~CryptoUtility() = default;
 
+  // Generates |num_bytes| of |random_data|. Returns true on success.
+  virtual bool GetRandom(size_t num_bytes, std::string* random_data) const = 0;
+
   // Creates a random |aes_key| and seals it to the TPM's PCR0, producing a
   // |sealed_key|. Returns true on success.
   virtual bool CreateSealedKey(std::string* aes_key,

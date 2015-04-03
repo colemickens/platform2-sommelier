@@ -101,13 +101,19 @@
           'variables': {
             'deps': [
               'libchrome-test-<(libbase_ver)',
+              'libchromeos-test-<(libbase_ver)',
             ],
           },
           'sources': [
             'attestation_testrunner.cc',
             'client/dbus_proxy_test.cc',
+            'server/attestation_service_test.cc',
             'server/database_impl_test.cc',
             'server/dbus_service_test.cc',
+            'server/mock_crypto_utility.cc',
+            'server/mock_database.cc',
+            'server/mock_key_store.cc',
+            'server/mock_tpm_utility.cc',
           ],
           'dependencies': [
             'client_library',

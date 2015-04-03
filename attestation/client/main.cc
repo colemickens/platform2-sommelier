@@ -73,10 +73,10 @@ class ClientLoop : public ClientLoopBase {
   }
 
   void HandleCreateGoogleAttestedKeyReply(
-      attestation::AttestationStatus status,
       const std::string& certificate,
-      const std::string& server_error_details) {
-    if (status == attestation::SUCCESS) {
+      const std::string& server_error_details,
+      attestation::AttestationStatus status) {
+    if (status == attestation::STATUS_SUCCESS) {
       printf("Success!\n");
     } else {
       printf("Error occurred: %d.\n", status);
@@ -93,6 +93,8 @@ class ClientLoop : public ClientLoopBase {
         attestation::KEY_TYPE_RSA,
         attestation::KEY_USAGE_SIGN,
         attestation::ENTERPRISE_MACHINE_CERTIFICATE,
+        "",  // username
+        "",  // origin
         base::Bind(&ClientLoop::HandleCreateGoogleAttestedKeyReply,
                    weak_factory_.GetWeakPtr()));
   }

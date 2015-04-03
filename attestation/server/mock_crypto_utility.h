@@ -15,8 +15,10 @@ namespace attestation {
 
 class MockCryptoUtility : public CryptoUtility {
  public:
-  MockCryptoUtility() = default;
-  ~MockCryptoUtility() override = default;
+  MockCryptoUtility();
+  ~MockCryptoUtility() override;
+
+  MOCK_CONST_METHOD2(GetRandom, bool(size_t, std::string*));
 
   MOCK_CONST_METHOD2(CreateSealedKey, bool(std::string* aes_key,
                                            std::string* sealed_key));

@@ -41,7 +41,9 @@ void DBusProxy::CreateGoogleAttestedKey(
     KeyType key_type,
     KeyUsage key_usage,
     CertificateProfile certificate_profile,
-    const base::Callback<CreateGoogleAttestedKeyCallback>& callback) {
+    const std::string& username,
+    const std::string& origin,
+    const CreateGoogleAttestedKeyCallback& callback) {
   attestation::CreateGoogleAttestedKeyRequest request;
   request.set_key_label(key_label);
   request.set_key_type(key_type);
@@ -49,12 +51,12 @@ void DBusProxy::CreateGoogleAttestedKey(
   request.set_certificate_profile(certificate_profile);
   auto on_success = [callback](
       const attestation::CreateGoogleAttestedKeyReply& reply) {
-    callback.Run(reply.status(),
-                 reply.certificate_chain(),
-                 reply.server_error());
+    callback.Run(reply.certificate_chain(),
+                 reply.server_error(),
+                 reply.status());
   };
   auto on_error = [callback](chromeos::Error* error) {
-    callback.Run(NOT_AVAILABLE, std::string(), std::string());
+    callback.Run(std::string(), std::string(), STATUS_NOT_AVAILABLE);
   };
   chromeos::dbus_utils::CallMethodWithTimeout(
       kDBusTimeoutMS,

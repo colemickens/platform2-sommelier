@@ -49,7 +49,7 @@ TEST_F(DBusProxyTest, CreateGoogleAttestedKeySuccess) {
         dbus::Response::CreateEmpty();
     dbus::MessageWriter writer(response.get());
     CreateGoogleAttestedKeyReply reply_proto;
-    reply_proto.set_status(SUCCESS);
+    reply_proto.set_status(STATUS_SUCCESS);
     reply_proto.set_certificate_chain("certificate");
     reply_proto.set_server_error("server_error");
     writer.AppendProtoAsArrayOfBytes(reply_proto);
@@ -60,16 +60,19 @@ TEST_F(DBusProxyTest, CreateGoogleAttestedKeySuccess) {
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
-  auto callback = [](AttestationStatus status,
-                     const std::string& certificate,
-                     const std::string& server_error) {
-    EXPECT_EQ(SUCCESS, status);
+  int callback_count = 0;
+  auto callback = [&callback_count](const std::string& certificate,
+                                    const std::string& server_error,
+                                    AttestationStatus status) {
+    callback_count++;
+    EXPECT_EQ(STATUS_SUCCESS, status);
     EXPECT_EQ("certificate", certificate);
     EXPECT_EQ("server_error", server_error);
   };
   proxy_.CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                 ENTERPRISE_MACHINE_CERTIFICATE,
+                                 ENTERPRISE_MACHINE_CERTIFICATE, "", "",
                                  base::Bind(callback));
+  EXPECT_EQ(1, callback_count);
 }
 
 }  // namespace attestation
