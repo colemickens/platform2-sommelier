@@ -363,6 +363,11 @@ bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
 bool BinderManager::GetFdForPolling(int* fd) {
   if (binder_fd_ < 0)
     return false;
+  int num_threads = 0;
+  if (ioctl(binder_fd_, BINDER_SET_MAX_THREADS, &num_threads) < 0) {
+    PLOG(ERROR) << "ioctl(binder_fd, BINDER_SET_MAX_THREADS, 0) failed";
+    return false;
+  }
   out_commands_.WriteInt32(BC_ENTER_LOOPER);
   *fd = binder_fd_;
   return true;
