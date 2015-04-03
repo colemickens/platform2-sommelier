@@ -174,7 +174,7 @@ int BinderManager::ProcessCommand(uint32_t cmd) {
         SendReply(reply, err);
     } break;
     default:
-      LOG(ERROR) << "Unknown command";
+      LOG(ERROR) << "Unknown command " << cmd;
   }
   return true;
 }

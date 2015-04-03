@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
+#include <base/message_loop/message_loop.h>
 #include <base/timer/timer.h>
 #include <chromeos/flag_helper.h>
 #include <protobinder/binder_proxy.h>
@@ -74,7 +75,9 @@ class DemoClient : public PsycheDaemon {
     if (return_code != EX_OK)
       return return_code;
 
-    RequestService();
+    base::MessageLoopForIO::current()->PostTask(
+        FROM_HERE, base::Bind(&DemoClient::RequestService,
+                              weak_ptr_factory_.GetWeakPtr()));
     return EX_OK;
   }
 
