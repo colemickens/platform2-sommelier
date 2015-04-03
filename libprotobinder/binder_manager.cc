@@ -293,9 +293,11 @@ bool BinderManager::WriteCmd(void* data, size_t len) {
   bwr.read_consumed = 0;
   bwr.read_buffer = 0;
 
-  if (ioctl(binder_fd_, BINDER_WRITE_READ, &bwr) == 0)
-    return true;
-  return false;
+  if (ioctl(binder_fd_, BINDER_WRITE_READ, &bwr) < 0) {
+    PLOG(ERROR) << "ioctl(binder_fd, BINDER_WRITE_READ) failed";
+    return false;
+  }
+  return true;
 }
 
 bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
@@ -407,11 +409,10 @@ void BinderManager::EnterLoop() {
     bwr.read_consumed = 0;
     bwr.read_buffer = reinterpret_cast<uintptr_t>(readbuf);
 
-    // Wait for a reply
+    // Wait for a reply.
     VLOG(1) << "Waiting for message";
-    const int ret = ioctl(binder_fd_, BINDER_WRITE_READ, &bwr);
-    if (ret < 0) {
-      LOG(ERROR) << "Loop ioctl failed with " << ret;
+    if (ioctl(binder_fd_, BINDER_WRITE_READ, &bwr) < 0) {
+      PLOG(ERROR) << "ioctl(binder_fd, BINDER_WRITE_READ) failed";
       break;
     }
     VLOG(1) << "Got a reply";
@@ -426,22 +427,21 @@ BinderManager::BinderManager() {
     PLOG(FATAL) << "Failed to open binder";
   }
 
-  // Check the version
+  // Check the version.
   struct binder_version vers;
-  if ((ioctl(binder_fd_, BINDER_VERSION, &vers) == -1) ||
+  if ((ioctl(binder_fd_, BINDER_VERSION, &vers) < 0) ||
       (vers.protocol_version != BINDER_CURRENT_PROTOCOL_VERSION)) {
     LOG(FATAL) << "Binder driver mismatch";
   }
 
-  // mmap the user buffer
+  // mmap the user buffer.
   binder_mapped_address_ = mmap(NULL, kBinderMappedSize, PROT_READ,
                                 MAP_PRIVATE | MAP_NORESERVE, binder_fd_, 0);
   if (binder_mapped_address_ == MAP_FAILED) {
     LOG(FATAL) << "Failed to mmap binder";
   }
 
-  // TODO(leecam): Check these and set binder_fd_
-  // to -1 on failure.
+  // TODO(leecam): Check these and set binder_fd_ to -1 on failure.
   in_commands_.SetCapacity(256);
   out_commands_.SetCapacity(256);
 }
