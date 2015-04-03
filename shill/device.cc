@@ -109,7 +109,7 @@ const char* Device::kFallbackDnsServers[] = {
 
 // static
 const int Device::kDNSTimeoutMilliseconds = 5000;
-const int Device::kLinkMonitorFailureUnreliableThresholdSeconds = 5 * 60;
+const int Device::kLinkUnreliableThresholdSeconds = 60 * 60;
 
 Device::Device(ControlInterface *control_interface,
                EventDispatcher *dispatcher,
@@ -467,6 +467,10 @@ void Device::OnAfterResume() {
   }
   // Resume from sleep, could be in different location now.
   // Ignore previous link monitor failures.
+  if (selected_service_) {
+    selected_service_->set_unreliable(false);
+    reliable_link_callback_.Cancel();
+  }
   last_link_monitor_failed_time_ = 0;
 }
 
@@ -961,7 +965,17 @@ void Device::OnIPConfigExpired(const IPConfigRefPtr &ipconfig) {
       Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets);
 }
 
-void Device::OnConnected() {}
+void Device::OnConnected() {
+  if (selected_service_->unreliable()) {
+    // Post a delayed task to reset link back to reliable if no link
+    // failure is detected in the next 5 minutes.
+    reliable_link_callback_.Reset(
+        base::Bind(&Device::OnReliableLink, base::Unretained(this)));
+    dispatcher_->PostDelayedTask(
+        reliable_link_callback_.callback(),
+        kLinkUnreliableThresholdSeconds * 1000);
+  }
+}
 
 void Device::OnConnectionUpdated() {
   if (selected_service_) {
@@ -1008,6 +1022,9 @@ void Device::SelectService(const ServiceRefPtr &service) {
     // Just in case the Device subclass has not already done so, make
     // sure the previously selected service has its connection removed.
     selected_service_->SetConnection(nullptr);
+    // Reset link status for the previously selected service.
+    selected_service_->set_unreliable(false);
+    reliable_link_callback_.Cancel();
     StopAllActivities();
   }
 
@@ -1220,8 +1237,19 @@ void Device::StopLinkMonitor() {
 }
 
 void Device::OnUnreliableLink() {
+  SLOG(this, 2) << "Device " << FriendlyName()
+                << ": Link is unreliable.";
+  selected_service_->set_unreliable(true);
+  reliable_link_callback_.Cancel();
   metrics_->NotifyUnreliableLinkSignalStrength(
       technology_, selected_service_->strength());
+}
+
+void Device::OnReliableLink() {
+  SLOG(this, 2) << "Device " << FriendlyName()
+                << ": Link is reliable.";
+  selected_service_->set_unreliable(false);
+  // TODO(zqiu): report signal strength to UMA.
 }
 
 void Device::OnLinkMonitorFailure() {
@@ -1234,8 +1262,8 @@ void Device::OnLinkMonitorFailure() {
   time_t now;
   time_->GetSecondsBoottime(&now);
 
-  if (now - last_link_monitor_failed_time_ <
-          kLinkMonitorFailureUnreliableThresholdSeconds) {
+  if (last_link_monitor_failed_time_ != 0 &&
+      now - last_link_monitor_failed_time_ < kLinkUnreliableThresholdSeconds) {
     OnUnreliableLink();
   }
   last_link_monitor_failed_time_ = now;

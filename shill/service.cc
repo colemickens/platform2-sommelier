@@ -170,7 +170,8 @@ Service::Service(ControlInterface *control_interface,
       connection_id_(0),
       is_dns_auto_fallback_allowed_(false),
       link_monitor_disabled_(false),
-      managed_credentials_(false) {
+      managed_credentials_(false),
+      unreliable_(false) {
   HelpRegisterDerivedBool(kAutoConnectProperty,
                           &Service::GetAutoConnect,
                           &Service::SetAutoConnectFull,

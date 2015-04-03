@@ -298,6 +298,10 @@ class Device : public base::RefCounted<Device> {
   // detected in short period of time).
   virtual void OnUnreliableLink();
 
+  // Called when link becomes reliable (no link failures in a predefined period
+  // of time).
+  virtual void OnReliableLink();
+
   // Program a rule into the NIC to wake the system from suspend upon receiving
   // packets from |ip_endpoint|. |error| indicates the result of the
   // operation.
@@ -626,7 +630,7 @@ class Device : public base::RefCounted<Device> {
 
   // Maximum seconds between two link monitor failures to declare this link
   // (network) as unreliable.
-  static const int kLinkMonitorFailureUnreliableThresholdSeconds;
+  static const int kLinkUnreliableThresholdSeconds;
 
   // Configure static IP address parameters if the service provides them.
   void ConfigureStaticIPTask();
@@ -789,6 +793,9 @@ class Device : public base::RefCounted<Device> {
   // Time when link monitor last failed.
   Time *time_;
   time_t last_link_monitor_failed_time_;
+  // Callback to invoke when link becomes reliable again after it was previously
+  // unreliable.
+  base::CancelableClosure reliable_link_callback_;
 
   std::unique_ptr<ConnectionTester> connection_tester_;
   base::Callback<void()> connection_tester_callback_;

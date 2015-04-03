@@ -245,6 +245,16 @@ class DeviceTest : public PropertyStoreTest {
     device_->manager_ = manager;
   }
 
+  MOCK_METHOD0(ReliableLinkCallback, void());
+  void SetReliableLinkCallback() {
+    device_->reliable_link_callback_.Reset(
+        base::Bind(&DeviceTest::ReliableLinkCallback, base::Unretained(this)));
+  }
+
+  bool ReliableLinkCallbackIsCancelled() {
+    return device_->reliable_link_callback_.IsCancelled();
+  }
+
   void SetupIPv6Config() {
     const char kAddress[] = "2001:db8::1";
     const char kDnsServer1[] = "2001:db8::2";
@@ -501,25 +511,65 @@ TEST_F(DeviceTest, LinkMonitorFailure) {
   SelectService(service);
   EXPECT_TRUE(device_->selected_service().get() == service.get());
 
-  const time_t kNow = 1000;
+  time_t current_time = 1000;
 
   // Initial link monitor failure.
   EXPECT_CALL(time_, GetSecondsBoottime(_)).WillOnce(
-      DoAll(SetArgPointee<0>(kNow), Return(true)));
+      DoAll(SetArgPointee<0>(current_time), Return(true)));
   EXPECT_CALL(metrics_, NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
   device_->OnLinkMonitorFailure();
+  EXPECT_FALSE(service->unreliable());
 
   // Another link monitor failure after 3 minutes, report signal strength.
+  current_time += 180;
   EXPECT_CALL(time_, GetSecondsBoottime(_)).WillOnce(
-      DoAll(SetArgPointee<0>(kNow + 180), Return(true)));
+      DoAll(SetArgPointee<0>(current_time), Return(true)));
   EXPECT_CALL(metrics_, NotifyUnreliableLinkSignalStrength(_, _)).Times(1);
   device_->OnLinkMonitorFailure();
+  EXPECT_TRUE(service->unreliable());
 
-  // Another link monitor failure after 5 minutes, don't report signal strength.
+  // Device is connected with the reliable link callback setup, then
+  // another link monitor failure after 3 minutes, which implies link is
+  // still unreliable, reliable link callback should be cancelled.
+  current_time += 180;
+  SetReliableLinkCallback();
   EXPECT_CALL(time_, GetSecondsBoottime(_)).WillOnce(
-      DoAll(SetArgPointee<0>(kNow + 180 + 360), Return(true)));
+      DoAll(SetArgPointee<0>(current_time), Return(true)));
+  EXPECT_CALL(metrics_, NotifyUnreliableLinkSignalStrength(_, _)).Times(1);
+  device_->OnLinkMonitorFailure();
+  EXPECT_TRUE(service->unreliable());
+  EXPECT_TRUE(ReliableLinkCallbackIsCancelled());
+
+  // Another link monitor failure after an hour, link is still reliable, signal
+  // strength not reported.
+  current_time += 3600;
+  service->set_unreliable(false);
+  EXPECT_CALL(time_, GetSecondsBoottime(_)).WillOnce(
+      DoAll(SetArgPointee<0>(current_time), Return(true)));
   EXPECT_CALL(metrics_, NotifyUnreliableLinkSignalStrength(_, _)).Times(0);
   device_->OnLinkMonitorFailure();
+  EXPECT_FALSE(service->unreliable());
+}
+
+TEST_F(DeviceTest, LinkStatusResetOnSelectService) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  SelectService(service);
+  service->set_unreliable(true);
+  SetReliableLinkCallback();
+  EXPECT_FALSE(ReliableLinkCallbackIsCancelled());
+
+  // Service is deselected, link status of the service should be resetted.
+  EXPECT_CALL(*service, state())
+      .WillOnce(Return(Service::kStateIdle));
+  EXPECT_CALL(*service, SetState(_));
+  EXPECT_CALL(*service, SetConnection(_));
+  SelectService(nullptr);
+  EXPECT_FALSE(service->unreliable());
+  EXPECT_TRUE(ReliableLinkCallbackIsCancelled());
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedFailure) {
@@ -850,6 +900,41 @@ TEST_F(DeviceTest, ResumeWithoutLinkMonitor) {
   // Just test that we don't crash in this case.
   EXPECT_FALSE(HasLinkMonitor());
   device_->OnAfterResume();
+}
+
+TEST_F(DeviceTest, ResumeWithUnreliableLink) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  SelectService(service);
+  service->set_unreliable(true);
+  SetReliableLinkCallback();
+
+  // Link status should be resetted upon resume.
+  device_->OnAfterResume();
+  EXPECT_FALSE(service->unreliable());
+  EXPECT_TRUE(ReliableLinkCallbackIsCancelled());
+}
+
+TEST_F(DeviceTest, OnConnected) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  SelectService(service);
+
+  // Link is reliable, no need to post delayed task to reset link status.
+  device_->OnConnected();
+  EXPECT_TRUE(ReliableLinkCallbackIsCancelled());
+
+  // Link is unreliable when connected, delayed task is posted to reset the
+  // link state.
+  service->set_unreliable(true);
+  device_->OnConnected();
+  EXPECT_FALSE(ReliableLinkCallbackIsCancelled());
 }
 
 TEST_F(DeviceTest, LinkMonitor) {

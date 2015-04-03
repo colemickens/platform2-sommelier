@@ -1811,6 +1811,10 @@ string WiFi::LogSSID(const string &ssid) {
 }
 
 void WiFi::OnLinkMonitorFailure() {
+  // Invoke base class call first to allow it to determine the reliability of
+  // the link.
+  Device::OnLinkMonitorFailure();
+
   // If we have never found the gateway, let's be conservative and not
   // do anything, in case this network topology does not have a gateway.
   if (!link_monitor()->IsGatewayFound()) {
@@ -1822,6 +1826,13 @@ void WiFi::OnLinkMonitorFailure() {
   if (!supplicant_present_) {
     LOG(ERROR) << "In " << __func__ << "(): "
                << "wpa_supplicant is not present.  Cannot reassociate.";
+    return;
+  }
+
+  // Skip reassociate attempt if service is not reliable, meaning multiple link
+  // failures in short period of time.
+  if (current_service_->unreliable()) {
+    LOG(INFO) << "Current service is unreliable, skipping reassociate attempt.";
     return;
   }
 
@@ -1837,15 +1848,13 @@ void WiFi::OnLinkMonitorFailure() {
     LOG(ERROR) << "In " << __func__ << "(): failed to call Reattach().";
     return;
   }
-
-  Device::OnLinkMonitorFailure();
 }
 
 void WiFi::OnUnreliableLink() {
+  Device::OnUnreliableLink();
+
   // Disable HT40 for the current network.
   SetHT40EnableForService(current_service_.get(), false);
-
-  Device::OnUnreliableLink();
 }
 
 bool WiFi::ShouldUseArpGateway() const {

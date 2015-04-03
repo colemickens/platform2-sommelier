@@ -3263,10 +3263,20 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 
   // Normal case: call Reattach.
+  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  SetCurrentService(service);
   OnSupplicantAppear();
   EXPECT_CALL(log, Log(logging::LOG_INFO, _,
                        EndsWith("Called Reattach()."))).Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(1);
+  OnLinkMonitorFailure();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  // Service is unreliable, skip reassociate attempt.
+  service->set_unreliable(true);
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
+                       EndsWith("skipping reassociate attempt."))).Times(1);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
   OnLinkMonitorFailure();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }

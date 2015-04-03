@@ -509,6 +509,9 @@ class Service : public base::RefCounted<Service> {
   void set_connection_id(int connection_id) { connection_id_ = connection_id; }
   int connection_id() const { return connection_id_; }
 
+  void set_unreliable(bool unreliable) { unreliable_ = unreliable; }
+  bool unreliable() const { return unreliable_; }
+
  protected:
   friend class base::RefCounted<Service>;
 
@@ -870,6 +873,9 @@ class Service : public base::RefCounted<Service> {
   // valid, and will not require an initial connection to rank it highly for
   // auto-connect.
   bool managed_credentials_;
+  // Flag indicating if this service is unreliable (experiencing multiple
+  // link monitor failures in a short period of time).
+  bool unreliable_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
