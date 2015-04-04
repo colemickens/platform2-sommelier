@@ -57,18 +57,18 @@ void BinderManager::ReleaseBinderBuffer(Parcel* parcel,
   // TODO(leecam): Close FDs in Parcel
   BinderManager* manager = static_cast<BinderManager*>(
       BinderManagerInterface::Get());
-  manager->in_commands_.WriteInt32(BC_FREE_BUFFER);
-  manager->in_commands_.WritePointer((uintptr_t)data);
+  manager->out_commands_.WriteInt32(BC_FREE_BUFFER);
+  manager->out_commands_.WritePointer((uintptr_t)data);
 }
 
 void BinderManager::IncWeakHandle(uint32_t handle) {
-  in_commands_.WriteInt32(BC_INCREFS);
-  in_commands_.WriteInt32(handle);
+  out_commands_.WriteInt32(BC_INCREFS);
+  out_commands_.WriteInt32(handle);
 }
 
 void BinderManager::DecWeakHandle(uint32_t handle) {
-  in_commands_.WriteInt32(BC_DECREFS);
-  in_commands_.WriteInt32(handle);
+  out_commands_.WriteInt32(BC_DECREFS);
+  out_commands_.WriteInt32(handle);
 }
 
 void BinderManager::RequestDeathNotification(BinderProxy* proxy) {
