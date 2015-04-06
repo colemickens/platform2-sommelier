@@ -25,6 +25,7 @@
 #include <chromeos/syslog_logging.h>
 #endif
 
+using base::CommandLine;
 using mtpd::Daemon;
 
 // Messages logged at a level lower than this don't get logged anywhere.
