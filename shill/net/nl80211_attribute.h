@@ -332,6 +332,46 @@ class Nl80211AttributeWiphyFreq : public NetlinkU32Attribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyFreq);
 };
 
+class Nl80211AttributeChannelType : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeChannelType() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeChannelType);
+};
+
+class Nl80211AttributeChannelWidth : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeChannelWidth() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeChannelWidth);
+};
+
+class Nl80211AttributeCenterFreq1 : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeCenterFreq1() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeCenterFreq1);
+};
+
+class Nl80211AttributeCenterFreq2 : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeCenterFreq2() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeCenterFreq2);
+};
+
 class Nl80211AttributeWiphyRtsThreshold : public NetlinkU32Attribute {
  public:
   static const int kName;

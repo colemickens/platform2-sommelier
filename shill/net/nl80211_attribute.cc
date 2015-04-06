@@ -757,6 +757,22 @@ const char Nl80211AttributeWiphyFragThreshold::kNameString[] =
 const int Nl80211AttributeWiphyFreq::kName = NL80211_ATTR_WIPHY_FREQ;
 const char Nl80211AttributeWiphyFreq::kNameString[] = "NL80211_ATTR_WIPHY_FREQ";
 
+const int Nl80211AttributeChannelType::kName = NL80211_ATTR_WIPHY_CHANNEL_TYPE;
+const char Nl80211AttributeChannelType::kNameString[] =
+    "NL80211_ATTR_WIPHY_CHANNEL_TYPE";
+
+const int Nl80211AttributeChannelWidth::kName = NL80211_ATTR_CHANNEL_WIDTH;
+const char Nl80211AttributeChannelWidth::kNameString[] =
+    "NL80211_ATTR_CHANNEL_WIDTH";
+
+const int Nl80211AttributeCenterFreq1::kName = NL80211_ATTR_CENTER_FREQ1;
+const char Nl80211AttributeCenterFreq1::kNameString[] =
+    "NL80211_ATTR_CENTER_FREQ1";
+
+const int Nl80211AttributeCenterFreq2::kName = NL80211_ATTR_CENTER_FREQ2;
+const char Nl80211AttributeCenterFreq2::kNameString[] =
+    "NL80211_ATTR_CENTER_FREQ2";
+
 const int Nl80211AttributeWiphy::kName = NL80211_ATTR_WIPHY;
 const char Nl80211AttributeWiphy::kNameString[] = "NL80211_ATTR_WIPHY";
 

@@ -204,6 +204,18 @@ NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(
     case NL80211_ATTR_WIPHY_FREQ:
       attr.reset(new Nl80211AttributeWiphyFreq());
       break;
+    case NL80211_ATTR_WIPHY_CHANNEL_TYPE:
+      attr.reset(new Nl80211AttributeChannelType());
+      break;
+    case NL80211_ATTR_CHANNEL_WIDTH:
+      attr.reset(new Nl80211AttributeChannelWidth());
+      break;
+    case NL80211_ATTR_CENTER_FREQ1:
+      attr.reset(new Nl80211AttributeCenterFreq1());
+      break;
+    case NL80211_ATTR_CENTER_FREQ2:
+      attr.reset(new Nl80211AttributeCenterFreq2());
+      break;
     case NL80211_ATTR_WIPHY:
       attr.reset(new Nl80211AttributeWiphy());
       break;
