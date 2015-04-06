@@ -102,6 +102,7 @@ VERBOSE ?= 0
 MODE ?= opt
 CXXEXCEPTIONS ?= 0
 ARCH ?= $(shell uname -m)
+BASE_VER ?= 307740
 
 # Put objects in a separate tree based on makefile locations
 # This means you can build a tree without touching it:

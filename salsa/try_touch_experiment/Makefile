@@ -11,7 +11,6 @@ CPPFLAGS += \
 	-DGESTURES_INTERNAL=1 \
 	-I../..
 
-BASE_VER ?= 307740
 PC_DEPS = libchrome-$(BASE_VER) ncurses x11 xi
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
