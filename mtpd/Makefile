@@ -15,7 +15,11 @@ GEN_DBUSXX(%):
 		$(DBUSXX_XML2CPP) $< --adaptor=$(TARGET_OR_MEMBER))
 
 PROTOC ?= protoc
-BASE_VER ?= 307740
+
+ifeq ($(strip $(BASE_VER)),)
+$(error BASE_VER is not set. Make sure you set it to the correct revision number of libchrome)
+endif
+
 PC_DEPS = dbus-c++-1 glib-2.0 gthread-2.0 gobject-2.0 libmtp \
 	libchrome-$(BASE_VER) libchromeos-$(BASE_VER) protobuf
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
