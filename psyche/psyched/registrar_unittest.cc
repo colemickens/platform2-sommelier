@@ -39,8 +39,10 @@ namespace {
 // Stub implementation of the Soma interface that returns canned ContainerSpecs.
 class SomaInterfaceStub : public soma::ISoma {
  public:
-  SomaInterfaceStub() = default;
+  SomaInterfaceStub() : return_value_(0) {}
   ~SomaInterfaceStub() override = default;
+
+  void set_return_value(int value) { return_value_ = value; }
 
   // Sets the ContainerSpec to return in response to a request for
   // |service_name|.
@@ -55,11 +57,14 @@ class SomaInterfaceStub : public soma::ISoma {
     const auto& it = specs_.find(in->service_name());
     if (it != specs_.end())
       out->mutable_container_spec()->CopyFrom(it->second);
-    return 0;
+    return return_value_;
   }
 
  private:
   std::map<std::string, ContainerSpec> specs_;
+
+  // binder result returned by GetContainerSpec().
+  int return_value_;
 
   DISALLOW_COPY_AND_ASSIGN(SomaInterfaceStub);
 };
@@ -70,19 +75,15 @@ class RegistrarTest : public testing::Test {
       : binder_manager_(new BinderManagerStub),
         factory_(new StubFactory),
         registrar_(new Registrar),
-        soma_(new SomaInterfaceStub),
+        soma_proxy_(nullptr),
+        soma_(nullptr),
         next_proxy_handle_(1) {
     BinderManagerInterface::SetForTesting(
         scoped_ptr<BinderManagerInterface>(binder_manager_));
     registrar_->SetFactoryForTesting(
         std::unique_ptr<FactoryInterface>(factory_));
     registrar_->Init();
-
-    BinderProxy* soma_proxy = CreateBinderProxy();
-    binder_manager_->SetTestInterface(soma_proxy,
-                                      scoped_ptr<IInterface>(soma_));
-    CHECK(RegisterService(soma::kSomaServiceName,
-                          std::unique_ptr<BinderProxy>(soma_proxy)));
+    CHECK(InitSoma());
   }
 
   ~RegistrarTest() override {
@@ -100,6 +101,18 @@ class RegistrarTest : public testing::Test {
   // passing ownership of it to Registrar.
   BinderProxy* CreateBinderProxy() WARN_UNUSED_RESULT {
     return new BinderProxy(next_proxy_handle_++);
+  }
+
+  // Initializes |soma_proxy_| and |soma_| and registers them with |registrar_|
+  // and |binder_manager_|. May be called from within a test to simulate somad
+  // restarting and reregistering itself with psyched.
+  bool InitSoma() WARN_UNUSED_RESULT {
+    soma_proxy_ = CreateBinderProxy();
+    soma_ = new SomaInterfaceStub;
+    binder_manager_->SetTestInterface(soma_proxy_,
+                                      scoped_ptr<IInterface>(soma_));
+    return RegisterService(soma::kSomaServiceName,
+                           std::unique_ptr<BinderProxy>(soma_proxy_));
   }
 
   // Calls |registrar_|'s RegisterService method, returning true on success.
@@ -159,6 +172,7 @@ class RegistrarTest : public testing::Test {
   StubFactory* factory_;  // Owned by |registrar_|.
   std::unique_ptr<Registrar> registrar_;
 
+  BinderProxy* soma_proxy_;  // Owned by |registrar_|.
   SomaInterfaceStub* soma_;  // Owned by |binder_manager_|.
 
   // Next handle for CreateBinderProxy() to use.
@@ -198,7 +212,7 @@ TEST_F(RegistrarTest, ReregisterService) {
   // The service should be started and hold the correct proxy.
   ServiceStub* service = factory_->GetService(kServiceName);
   ASSERT_TRUE(service);
-  ASSERT_EQ(ServiceInterface::STATE_STARTED, service->GetState());
+  ASSERT_EQ(ServiceInterface::State::STARTED, service->GetState());
   EXPECT_EQ(service_proxy, service->GetProxy());
 
   // Trying to register the same service again while it's still running should
@@ -208,11 +222,11 @@ TEST_F(RegistrarTest, ReregisterService) {
                                std::unique_ptr<BinderProxy>(service_proxy)));
 
   // After stopping the service, it should be possible to register it again.
-  service->set_state(ServiceInterface::STATE_STOPPED);
+  service->set_state(ServiceInterface::State::STOPPED);
   service_proxy = CreateBinderProxy();
   EXPECT_TRUE(RegisterService(kServiceName,
                               std::unique_ptr<BinderProxy>(service_proxy)));
-  EXPECT_EQ(ServiceInterface::STATE_STARTED, service->GetState());
+  EXPECT_EQ(ServiceInterface::State::STARTED, service->GetState());
   EXPECT_EQ(service_proxy, service->GetProxy());
 }
 
@@ -322,6 +336,43 @@ TEST_F(RegistrarTest, ServiceListChanged) {
   container2->AddService(kService2Name);
   EXPECT_FALSE(
       RequestService(kService2Name,
+                     std::unique_ptr<BinderProxy>(CreateBinderProxy())));
+}
+
+// Tests that Registrar doesn't hand out its connection to somad.
+TEST_F(RegistrarTest, DontProvideSomaService) {
+  EXPECT_FALSE(
+      RequestService(soma::kSomaServiceName,
+                     std::unique_ptr<BinderProxy>(CreateBinderProxy())));
+}
+
+// Tests various failures when communicating with somad.
+TEST_F(RegistrarTest, SomaFailures) {
+  const std::string kContainerName("/foo/org.example.container.json");
+  const std::string kServiceName("org.example.container.service");
+  ContainerStub* container = AddContainer(kContainerName, kServiceName);
+  container->AddService(kServiceName);
+
+  // Failure should be reported for RPC errors.
+  soma_->set_return_value(-1);
+  EXPECT_FALSE(
+      RequestService(kServiceName,
+                     std::unique_ptr<BinderProxy>(CreateBinderProxy())));
+
+  // Now report that the somad binder proxy died.
+  soma_->set_return_value(0);
+  binder_manager_->ReportBinderDeath(soma_proxy_);
+  EXPECT_FALSE(
+      RequestService(kServiceName,
+                     std::unique_ptr<BinderProxy>(CreateBinderProxy())));
+
+  // Register a new proxy for somad and check that the next service request is
+  // successful.
+  EXPECT_TRUE(InitSoma());
+  container = AddContainer(kContainerName, kServiceName);
+  container->AddService(kServiceName);
+  EXPECT_TRUE(
+      RequestService(kServiceName,
                      std::unique_ptr<BinderProxy>(CreateBinderProxy())));
 }
 

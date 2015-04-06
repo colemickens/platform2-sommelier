@@ -14,7 +14,7 @@ namespace psyche {
 
 ServiceStub::ServiceStub(const std::string& name)
     : name_(name),
-      state_(STATE_STOPPED) {
+      state_(State::STOPPED) {
 }
 
 ServiceStub::~ServiceStub() = default;
@@ -27,7 +27,7 @@ protobinder::BinderProxy* ServiceStub::GetProxy() const { return proxy_.get(); }
 
 void ServiceStub::SetProxy(std::unique_ptr<BinderProxy> proxy) {
   proxy_ = std::move(proxy);
-  state_ = proxy_ ? STATE_STARTED : STATE_STOPPED;
+  state_ = proxy_ ? State::STARTED : State::STOPPED;
 }
 
 void ServiceStub::AddClient(ClientInterface* client) {

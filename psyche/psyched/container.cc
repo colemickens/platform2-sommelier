@@ -43,7 +43,7 @@ void Container::OnServiceStateChange(ServiceInterface* service) {
       << "Container \"" << GetName() << "\" received state change notification "
       << "for unexpected service \"" << service->GetName() << "\"";
 
-  if (service->GetState() == ServiceInterface::STATE_STOPPED) {
+  if (service->GetState() == ServiceInterface::State::STOPPED) {
     LOG(INFO) << "Service \"" << service->GetName() << "\" within container \""
               << GetName() << "\" stopped; relaunching container";
     Launch();

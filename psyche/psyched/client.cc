@@ -38,7 +38,7 @@ void Client::AddService(ServiceInterface* service) {
       << "client with handle " << proxy_->handle();
   service->AddObserver(this);
   services_.insert(service);
-  if (service->GetState() == ServiceInterface::STATE_STARTED)
+  if (service->GetState() == ServiceInterface::State::STARTED)
     SendServiceHandle(service);
 }
 
@@ -51,7 +51,7 @@ void Client::OnServiceStateChange(ServiceInterface* service) {
   CHECK(services_.count(service))
       << "Service \"" << service->GetName() << "\" not registered for client "
       << "with handle " << proxy_->handle();
-  if (service->GetState() == ServiceInterface::STATE_STARTED)
+  if (service->GetState() == ServiceInterface::State::STARTED)
     SendServiceHandle(service);
 }
 

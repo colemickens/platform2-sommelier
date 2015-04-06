@@ -22,7 +22,7 @@ namespace psyche {
 
 Service::Service(const std::string& name)
     : name_(name),
-      state_(STATE_STOPPED),
+      state_(State::STOPPED),
       weak_ptr_factory_(this) {
 }
 
@@ -38,7 +38,7 @@ void Service::SetProxy(std::unique_ptr<BinderProxy> proxy) {
   proxy_ = std::move(proxy);
   proxy_->SetDeathCallback(base::Bind(&Service::HandleBinderDeath,
                                       weak_ptr_factory_.GetWeakPtr()));
-  state_ = STATE_STARTED;
+  state_ = State::STARTED;
   FOR_EACH_OBSERVER(ServiceObserver, observers_, OnServiceStateChange(this));
 }
 
@@ -68,7 +68,7 @@ void Service::HandleBinderDeath() {
   LOG(INFO) << "Got binder death notification for \"" << name_ << "\"";
 
   // TODO(derat): Automatically restart the service.
-  state_ = STATE_STOPPED;
+  state_ = State::STOPPED;
   FOR_EACH_OBSERVER(ServiceObserver, observers_, OnServiceStateChange(this));
 }
 

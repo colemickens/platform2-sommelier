@@ -10,6 +10,9 @@
 
 #include <base/macros.h>
 
+#include "psyche/psyched/service.h"
+#include "psyche/psyched/service_observer.h"
+
 namespace protobinder {
 class BinderProxy;
 }  // namespace protobinder
@@ -22,28 +25,38 @@ class ISoma;
 namespace psyche {
 
 // Used to communicate with somad to look up ContainerSpecs.
-class SomaConnection {
+class SomaConnection : public ServiceObserver {
  public:
-  enum Result {
-    RESULT_SUCCESS,
-    RESULT_RPC_ERROR,
-    RESULT_UNKNOWN_SERVICE,
+  enum class Result {
+    // The request was successful.
+    SUCCESS,
+    // psyched doesn't have an active binder connection to somad.
+    NO_SOMA_CONNECTION,
+    // The request resulted in a binder-level error.
+    RPC_ERROR,
+    // somad doesn't know anything about the requested service.
+    UNKNOWN_SERVICE,
   };
 
   // Returns a human-readable translation of |result|.
   static const char* ResultToString(Result result);
 
-  explicit SomaConnection(std::unique_ptr<protobinder::BinderProxy> proxy);
-  ~SomaConnection();
+  SomaConnection();
+  ~SomaConnection() override;
+
+  // Sets the proxy that should be used for communication with somad.
+  void SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy);
 
   // Synchronously fetches the ContainerSpec supplying |service_name| and copies
   // it to |spec_out|.
   Result GetContainerSpecForService(const std::string& service_name,
                                     soma::ContainerSpec* spec_out);
 
+  // ServiceObserver:
+  void OnServiceStateChange(ServiceInterface* service) override;
+
  private:
-  // TODO(derat): Instantiate a Service object for this instead.
-  std::unique_ptr<protobinder::BinderProxy> proxy_;
+  Service service_;
   std::unique_ptr<soma::ISoma> interface_;
 
   DISALLOW_COPY_AND_ASSIGN(SomaConnection);

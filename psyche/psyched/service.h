@@ -33,9 +33,9 @@ class ServiceObserver;
 // retained and reused once the service has been registered again.
 class ServiceInterface {
  public:
-  enum State {
-    STATE_STOPPED = 0,
-    STATE_STARTED,
+  enum class State {
+    STOPPED,
+    STARTED,
   };
 
   virtual ~ServiceInterface() = default;

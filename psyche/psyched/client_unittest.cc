@@ -101,12 +101,12 @@ TEST_F(ClientTest, PassServiceHandles) {
   interface->clear_service_handles();
 
   // Stop the service. Nothing should be sent until it's started again.
-  service.set_state(ServiceInterface::STATE_STOPPED);
+  service.set_state(ServiceInterface::State::STOPPED);
   client.OnServiceStateChange(&service);
   ASSERT_EQ(0U, interface->service_handles().size());
   service_proxy = new BinderProxy(next_proxy_handle++);
   service.SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
-  service.set_state(ServiceInterface::STATE_STARTED);
+  service.set_state(ServiceInterface::State::STARTED);
   client.OnServiceStateChange(&service);
   ASSERT_EQ(1U, interface->service_handles().size());
   EXPECT_EQ(kServiceName, interface->service_handles()[0].first);

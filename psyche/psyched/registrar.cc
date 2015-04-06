@@ -56,7 +56,9 @@ class RealFactory : public FactoryInterface {
 
 }  // namespace
 
-Registrar::Registrar() : weak_ptr_factory_(this) {}
+Registrar::Registrar()
+    : soma_(new SomaConnection),
+      weak_ptr_factory_(this) {}
 
 Registrar::~Registrar() = default;
 
@@ -86,13 +88,7 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
   }
 
   if (service_name == soma::kSomaServiceName) {
-    if (soma_) {
-      LOG(WARNING) << "Updating existing soma connection to use handle "
-                   << proxy->handle();
-    }
-    // TODO(derat): Keep a SomaConnection object around and just pass it the
-    // proxy here.
-    soma_.reset(new SomaConnection(std::move(proxy)));
+    soma_->SetProxy(std::move(proxy));
     // TODO(derat): Fetch and start persistent containers.
     out->set_success(true);
     return 0;
@@ -103,7 +99,7 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
   if (service) {
     // The service is already known, but maybe its proxy wasn't registered or
     // has died.
-    if (service->GetState() == Service::STATE_STARTED) {
+    if (service->GetState() == ServiceInterface::State::STARTED) {
       LOG(WARNING) << "Ignoring request to register already-running service \""
                    << service_name << "\"";
       out->set_success(false);
@@ -172,16 +168,10 @@ ServiceInterface* Registrar::GetService(const std::string& service_name,
   if (!create_container)
     return nullptr;
 
-  if (!soma_) {
-    LOG(ERROR) << "Service \"" << service_name << "\" isn't running and we "
-               << "don't have a connection to soma to look it up";
-    return nullptr;
-  }
-
   soma::ContainerSpec spec;
   const SomaConnection::Result result =
       soma_->GetContainerSpecForService(service_name, &spec);
-  if (result != SomaConnection::RESULT_SUCCESS) {
+  if (result != SomaConnection::Result::SUCCESS) {
     // TODO(derat): Pass back an error code so the client can be notified if the
     // service is unknown vs. this being a possibly-transient error.
     LOG(WARNING) << "Failed to get ContainerSpec for service \""
