@@ -38,6 +38,8 @@ class SOMA_EXPORT ReadOnlyContainerSpec {
   explicit ReadOnlyContainerSpec(const ContainerSpec* spec);
   virtual ~ReadOnlyContainerSpec();
 
+  const std::string& name() const;
+
   const base::FilePath& service_bundle_path() const {
     return service_bundle_path_;
   }

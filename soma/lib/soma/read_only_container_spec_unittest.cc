@@ -27,11 +27,13 @@ class ReadOnlyContainerSpecTest : public ::testing::Test {
 };
 
 TEST_F(ReadOnlyContainerSpecTest, RequiredFieldsTest) {
-  const char service_bundle_path[] = "/path/to/bundle.json";
+  const char fully_qualified_spec_name[] = "/path/to/spec.json";
+  const char service_bundle_path[] = "/path/to/bundle";
   const uid_t uid = 1;
   const gid_t gid = 8;
   const char* command_line[2] = { "command", "arg1" };
 
+  spec_.set_name(fully_qualified_spec_name);
   spec_.set_service_bundle_path(service_bundle_path);
   spec_.set_uid(uid);
   spec_.set_gid(gid);
@@ -39,6 +41,7 @@ TEST_F(ReadOnlyContainerSpecTest, RequiredFieldsTest) {
   spec_.add_command_line(command_line[1]);
 
   ReadOnlyContainerSpec ro_spec(&spec_);
+  EXPECT_EQ(ro_spec.name(), fully_qualified_spec_name);
   EXPECT_EQ(ro_spec.service_bundle_path().value(), service_bundle_path);
   EXPECT_EQ(ro_spec.uid(), uid);
   EXPECT_EQ(ro_spec.gid(), gid);

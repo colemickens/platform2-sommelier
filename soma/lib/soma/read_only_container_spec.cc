@@ -67,6 +67,10 @@ ReadOnlyContainerSpec::ReadOnlyContainerSpec(const ContainerSpec* spec)
 
 ReadOnlyContainerSpec::~ReadOnlyContainerSpec() {}
 
+const std::string& ReadOnlyContainerSpec::name() const {
+  return internal_->name();
+}
+
 uid_t ReadOnlyContainerSpec::uid() const { return internal_->uid(); }
 
 gid_t ReadOnlyContainerSpec::gid() const { return internal_->gid(); }
