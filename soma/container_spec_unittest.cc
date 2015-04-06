@@ -21,9 +21,9 @@ class ContainerSpecWrapperTest : public ::testing::Test {
 };
 
 TEST_F(ContainerSpecWrapperTest, DevicePathFilterTest) {
-  ContainerSpecWrapper spec(base::FilePath("/foo/bar"), 0, 0);
+  ContainerSpecWrapper spec("/path", base::FilePath("/foo/bar"), 0, 0);
   std::string device_path("/dev/thing");
-  parser::DevicePathFilterSet filters;
+  parser::DevicePathFilter::Set filters;
   filters.insert(parser::DevicePathFilter(base::FilePath(device_path)));
   spec.SetDevicePathFilters(filters);
 
@@ -32,8 +32,8 @@ TEST_F(ContainerSpecWrapperTest, DevicePathFilterTest) {
 }
 
 TEST_F(ContainerSpecWrapperTest, DeviceNodeFilterTest) {
-  ContainerSpecWrapper spec(base::FilePath("/foo/bar"), 0, 0);
-  parser::DeviceNodeFilterSet filters;
+  ContainerSpecWrapper spec("/path", base::FilePath("/foo/bar"), 0, 0);
+  parser::DeviceNodeFilter::Set filters;
   filters.insert(parser::DeviceNodeFilter(1, 2));
   spec.SetDeviceNodeFilters(filters);
 

@@ -49,6 +49,9 @@ message ContainerSpec {
   // from inside this container.
   repeated string service_names = 11;
 
+  // Unique name identifying this ContainerSpec.
+  optional string name = 12;
+
   // ------------- Optional fields ------------------------------------------ //
   optional string working_directory = 5;
 

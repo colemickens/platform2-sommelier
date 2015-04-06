@@ -50,15 +50,17 @@ bool ListenPortIsAllowed(const ContainerSpec::PortSpec& port_spec,
 }  // namespace
 
 ContainerSpecWrapper::ContainerSpecWrapper(
+    const std::string& name,
     const base::FilePath& service_bundle_path,
     uid_t uid,
     gid_t gid) {
+  internal_.set_name(name);
   internal_.set_service_bundle_path(service_bundle_path.value());
   internal_.set_uid(uid);
   internal_.set_gid(gid);
 }
 
-ContainerSpecWrapper::~ContainerSpecWrapper() {}
+ContainerSpecWrapper::~ContainerSpecWrapper() = default;
 
 void ContainerSpecWrapper::SetServiceNames(
     const std::vector<std::string>& service_names) {
@@ -94,14 +96,14 @@ void ContainerSpecWrapper::SetUdpListenPorts(
 }
 
 void ContainerSpecWrapper::SetDevicePathFilters(
-    const parser::DevicePathFilterSet& filters) {
+    const parser::DevicePathFilter::Set& filters) {
   internal_.clear_device_path_filters();
   for (const parser::DevicePathFilter& filter : filters)
     internal_.add_device_path_filters()->set_filter(filter.filter().value());
 }
 
 void ContainerSpecWrapper::SetDeviceNodeFilters(
-    const parser::DeviceNodeFilterSet& filters) {
+    const parser::DeviceNodeFilter::Set& filters) {
   internal_.clear_device_node_filters();
   for (const parser::DeviceNodeFilter& parser_filter : filters) {
     ContainerSpec::DeviceNodeFilter* filter =

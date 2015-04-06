@@ -56,6 +56,7 @@ class ContainerSpecReaderTest : public ::testing::Test {
 
   void CheckSpecBaseline(ContainerSpecWrapper* spec) {
     ASSERT_TRUE(spec);
+    ASSERT_EQ(scratch_.value(), spec->name());
     ASSERT_EQ(base::UintToString(spec->uid()), kUid);
     ASSERT_EQ(base::UintToString(spec->gid()), kGid);
 

@@ -41,10 +41,8 @@ class ContainerSpecReader {
   std::unique_ptr<ContainerSpecWrapper> Read(const base::FilePath& spec_file);
 
  private:
-  // Workhorse for doing the parsing of specific fields in the spec.
-  std::unique_ptr<ContainerSpecWrapper> Parse(const std::string& json);
-
-  std::unique_ptr<ContainerSpecWrapper> ParseRequiredFields(
+  std::unique_ptr<ContainerSpecWrapper> PopulateRequiredFields(
+      const std::string& name,
       const base::DictionaryValue* app_dict);
 
   base::JSONReader reader_;

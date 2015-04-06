@@ -32,7 +32,8 @@ namespace soma {
 // pointer to a ContainerSpec instead.
 class ContainerSpecWrapper {
  public:
-  ContainerSpecWrapper(const base::FilePath& service_bundle_path,
+  ContainerSpecWrapper(const std::string& name,
+                       const base::FilePath& service_bundle_path,
                        uid_t uid,
                        gid_t gid);
   virtual ~ContainerSpecWrapper();
@@ -42,13 +43,14 @@ class ContainerSpecWrapper {
   void SetNamespaces(const std::set<parser::ns::Kind>& namespaces);
   void SetTcpListenPorts(const std::set<parser::port::Number>& ports);
   void SetUdpListenPorts(const std::set<parser::port::Number>& ports);
-  void SetDevicePathFilters(const parser::DevicePathFilterSet& filters);
-  void SetDeviceNodeFilters(const parser::DeviceNodeFilterSet& filters);
+  void SetDevicePathFilters(const parser::DevicePathFilter::Set& filters);
+  void SetDeviceNodeFilters(const parser::DeviceNodeFilter::Set& filters);
 
   // These don't really do anything yet.
   void AddSysfsFilter(const std::string& filter);
   void AddUSBDeviceFilter(int vid, int pid);
 
+  const std::string& name() { return internal_.name(); }
   base::FilePath service_bundle_path() {
     return base::FilePath(internal_.service_bundle_path());
   }

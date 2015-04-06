@@ -63,16 +63,12 @@ ContainerSpecReader::~ContainerSpecReader() {
 std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Read(
     const base::FilePath& spec_file) {
   VLOG(1) << "Reading container spec at " << spec_file.value();
-  std::string spec_string;
-  if (!base::ReadFileToString(spec_file, &spec_string)) {
+  std::string json;
+  if (!base::ReadFileToString(spec_file, &json)) {
     PLOG(ERROR) << "Can't read " << spec_file.value();
     return nullptr;
   }
-  return Parse(spec_string);
-}
 
-std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
-    const std::string& json) {
   std::unique_ptr<const base::Value> root(reader_.ReadToValue(json));
   if (!root) {
     LOG(ERROR) << "Failed to parse: " << reader_.GetErrorMessage();
@@ -92,7 +88,8 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
     return nullptr;
   }
 
-  std::unique_ptr<ContainerSpecWrapper> spec = ParseRequiredFields(app_dict);
+  std::unique_ptr<ContainerSpecWrapper> spec =
+      PopulateRequiredFields(spec_file.value(), app_dict);
   if (!spec.get())
     return nullptr;
 
@@ -119,15 +116,15 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
     spec->SetUdpListenPorts(udp_ports);
   }
 
-  DevicePathFilterSet device_path_filters;
+  DevicePathFilter::Set device_path_filters;
   if (spec_dict->GetList(DevicePathFilter::kListKey, &to_parse)) {
-    if (!DevicePathFilterSet::Parse(to_parse, &device_path_filters))
+    if (!DevicePathFilter::ParseList(*to_parse, &device_path_filters))
       return nullptr;
     spec->SetDevicePathFilters(device_path_filters);
   }
-  DeviceNodeFilterSet device_node_filters;
+  DeviceNodeFilter::Set device_node_filters;
   if (spec_dict->GetList(DeviceNodeFilter::kListKey, &to_parse)) {
-    if (!DeviceNodeFilterSet::Parse(to_parse, &device_node_filters))
+    if (!DeviceNodeFilter::ParseList(*to_parse, &device_node_filters))
       return nullptr;
     spec->SetDeviceNodeFilters(device_node_filters);
   }
@@ -135,7 +132,9 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Parse(
   return std::move(spec);
 }
 
-std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::ParseRequiredFields(
+std::unique_ptr<ContainerSpecWrapper>
+ContainerSpecReader::PopulateRequiredFields(
+    const std::string& name,
     const base::DictionaryValue* app_dict) {
   DCHECK(app_dict);
 
@@ -167,6 +166,7 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::ParseRequiredFields(
 
   std::unique_ptr<ContainerSpecWrapper> spec(
       new ContainerSpecWrapper(
+          name,
           base::FilePath(kServiceBundleRoot).Append(service_bundle_name),
           uid, gid));
 

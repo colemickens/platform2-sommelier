@@ -19,40 +19,38 @@ namespace parser {
 // NB: These are copyable and assignable!
 class DevicePathFilter {
  public:
+  struct Comparator {
+    bool operator()(const DevicePathFilter& a, const DevicePathFilter& b);
+  };
+  using Set = std::set<DevicePathFilter, Comparator>;
+
   static const char kListKey[];
 
   explicit DevicePathFilter(const base::FilePath& path);
-  DevicePathFilter(const DevicePathFilter& that) = default;
-  virtual ~DevicePathFilter() = default;
-  DevicePathFilter& operator=(const DevicePathFilter& that) = default;
+  DevicePathFilter(const DevicePathFilter& that);
+  virtual ~DevicePathFilter();
+  DevicePathFilter& operator=(const DevicePathFilter& that);
 
   bool Allows(const base::FilePath& rhs) const;
   const base::FilePath& filter() const { return filter_; }
 
- private:
-  friend class DevicePathFilterSet;
-  // Used to support DevicePathFilterSet.
-  using Comparator = bool(*)(const DevicePathFilter&, const DevicePathFilter&);
-  static bool Comp(const DevicePathFilter& a, const DevicePathFilter& b);
+  // Returns true if |filters| can be successfully parsed into |out|.
+  // False is returned on failure and |out| may be in an inconsistent state.
+  static bool ParseList(const base::ListValue& filters, Set* out);
 
-  const base::FilePath filter_;
+ private:
+  base::FilePath filter_;
   // Take care when adding more data members, as this class allows copy/assign.
 };
 
-class DevicePathFilterSet
-    : public std::set<DevicePathFilter, DevicePathFilter::Comparator> {
- public:
-  DevicePathFilterSet();
-  virtual ~DevicePathFilterSet() = default;
-
-  // Returns true if |filters| can be successfully parsed into |out|.
-  // False is returned on failure and |out| may be in an inconsistent state.
-  static bool Parse(const base::ListValue* filters, DevicePathFilterSet* out);
-};
-
 // NB: These are copyable and assignable!
-class DeviceNodeFilter{
+class DeviceNodeFilter {
  public:
+  struct Comparator {
+    bool operator()(const DeviceNodeFilter& a, const DeviceNodeFilter& b);
+  };
+  using Set = std::set<DeviceNodeFilter, Comparator>;
+
   static const char kListKey[];
 
   DeviceNodeFilter(int major, int minor);
@@ -64,26 +62,14 @@ class DeviceNodeFilter{
   int major() const { return major_; }
   int minor() const { return minor_; }
 
- private:
-  friend class DeviceNodeFilterSet;
-  // Used to support DeviceNodeFilterSet.
-  using Comparator = bool(*)(const DeviceNodeFilter&, const DeviceNodeFilter&);
-  static bool Comp(const DeviceNodeFilter& a, const DeviceNodeFilter& b);
+  // Returns true if |filters| can be successfully parsed into |out|.
+  // False is returned on failure and |out| may be in an inconsistent state.
+  static bool ParseList(const base::ListValue& filters, Set* out);
 
+ private:
   int major_;
   int minor_;
   // Take care when adding more data members, as this class allows copy/assign.
-};
-
-class DeviceNodeFilterSet
-    : public std::set<DeviceNodeFilter, DeviceNodeFilter::Comparator> {
- public:
-  DeviceNodeFilterSet();
-  virtual ~DeviceNodeFilterSet() = default;
-
-  // Returns true if |filters| can be successfully parsed into |out|.
-  // False is returned on failure and |out| may be in an inconsistent state.
-  static bool Parse(const base::ListValue* filters, DeviceNodeFilterSet* out);
 };
 
 }  // namespace parser
