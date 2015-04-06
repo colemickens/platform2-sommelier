@@ -10,6 +10,9 @@
         'libmetrics-<(libbase_ver)',
       ],
     },
+    'defines': [
+      'USE_TPM2=<(USE_tpm2)',
+    ],
   },
   'targets': [
     # Protobufs.
@@ -112,8 +115,29 @@
         'pkcs11_keystore.cc',
         'platform.cc',
         'tpm.cc',
-        'tpm_impl.cc',
         'tpm_init.cc',
+      ],
+      'conditions': [
+        ['USE_tpm2 == 1', {
+          'sources': [
+            'tpm2_impl.cc',
+          ],
+          'all_dependent_settings': {
+            'libraries': [
+              '-ltrunks',
+            ],
+          },
+        }],
+        ['USE_tpm2 == 0', {
+          'sources': [
+            'tpm_impl.cc',
+          ],
+          'all_dependent_settings': {
+            'libraries': [
+              '-ltspi',
+            ],
+          },
+        }],
       ],
     },
     {
@@ -170,7 +194,6 @@
           '-lpolicy-<(libbase_ver)',
           '-lpthread',
           '-lscrypt',
-          '-ltspi',
           '-lvboot_host',
         ],
       },
@@ -213,7 +236,6 @@
           '-lpolicy-<(libbase_ver)',
           '-lpthread',
           '-lscrypt',
-          '-ltspi',
           '-lvboot_host',
         ],
       },
@@ -241,7 +263,6 @@
       'link_settings': {
         'libraries': [
           '-lkeyutils',
-          '-ltspi',
           '-lvboot_host',
         ],
       },
@@ -264,7 +285,6 @@
       'type': 'executable',
       'link_settings': {
         'libraries': [
-          '-ltspi',
           '-lvboot_host',
         ],
       },
@@ -289,7 +309,6 @@
         'libraries': [
           '-lchaps',
           '-lscrypt',
-          '-ltspi',
           '-lvboot_host',
         ],
       },
@@ -324,7 +343,6 @@
               '-lpolicy-<(libbase_ver)',
               '-lpthread',
               '-lscrypt',
-              '-ltspi',
               '-lvboot_host',
             ],
           },

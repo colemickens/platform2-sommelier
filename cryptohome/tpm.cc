@@ -4,7 +4,11 @@
 
 #include "cryptohome/tpm.h"
 
+#if USE_TPM2
+#include "cryptohome/tpm2_impl.h"
+#else
 #include "cryptohome/tpm_impl.h"
+#endif
 
 namespace cryptohome {
 
@@ -40,7 +44,11 @@ Tpm* Tpm::GetSingleton() {
   // TODO(fes): Replace with a better atomic operation
   singleton_lock_.Acquire();
   if (!singleton_)
+#if USE_TPM2
+    singleton_ = new Tpm2Impl();
+#else
     singleton_ = new TpmImpl();
+#endif
   singleton_lock_.Release();
   return singleton_;
 }
