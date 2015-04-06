@@ -30,9 +30,6 @@
     {
       'target_name': 'trunks',
       'type': 'shared_library',
-      'libraries': [
-        '-lchrome_crypto',
-      ],
       'sources': [
         'authorization_session_impl.cc',
         'error_codes.cc',
@@ -93,9 +90,6 @@
         {
           'target_name': 'trunks_testrunner',
           'type': 'executable',
-          'libraries': [
-            '-lchrome_crypto',
-          ],
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'authorization_session_test.cc',

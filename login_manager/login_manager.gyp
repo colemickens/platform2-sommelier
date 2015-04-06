@@ -21,7 +21,6 @@
     },
     'link_settings': {
       'libraries': [
-        '-lchrome_crypto',
         '-lvboot_host',
       ],
     },

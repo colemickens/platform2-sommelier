@@ -9,11 +9,6 @@
         'system_api',
       ],
     },
-    'link_settings': {
-      'libraries': [
-        '-lchrome_crypto',
-      ],
-    },
   },
   'targets': [
     {
