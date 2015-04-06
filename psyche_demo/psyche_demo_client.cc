@@ -18,6 +18,7 @@
 #include <psyche/psyche_connection.h>
 #include <psyche/psyche_daemon.h>
 
+#include "psyche_demo/constants.h"
 #include "psyche_demo/proto_bindings/psyche_demo.pb.h"
 #include "psyche_demo/proto_bindings/psyche_demo.pb.rpc.h"
 
@@ -103,7 +104,7 @@ class DemoClient : public PsycheDaemon {
 }  // namespace psyche
 
 int main(int argc, char* argv[]) {
-  DEFINE_string(service_name, "psyche_demo_server",
+  DEFINE_string(service_name, psyche::kDefaultService,
                 "Name of service to communicate with");
   chromeos::FlagHelper::Init(
       argc, argv, "Example client that communicates with psyched.");
