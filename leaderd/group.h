@@ -58,7 +58,7 @@ class Group : public org::chromium::leaderd::GroupInterface {
 
   // DBus handlers
   bool LeaveGroup(chromeos::ErrorPtr* error) override;
-  bool SetScore(chromeos::ErrorPtr* error, int32_t in_score) override;
+  bool SetScore(chromeos::ErrorPtr* error, int32_t new_score) override;
   bool PokeLeader(chromeos::ErrorPtr* error) override;
 
   // The manager informs us when a peer is interested in who the leader is.

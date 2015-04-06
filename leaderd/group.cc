@@ -114,8 +114,12 @@ bool Group::LeaveGroup(chromeos::ErrorPtr* error) {
   return true;
 }
 
-bool Group::SetScore(chromeos::ErrorPtr* error, int32_t in_score) {
-  score_ = in_score;
+bool Group::SetScore(chromeos::ErrorPtr* error, int32_t new_score) {
+  const bool score_increased = new_score > score_;
+  score_ = new_score;
+  if (score_increased && state_ == State::FOLLOWER) {
+    SendLeaderChallenge(leader_);
+  }
   return true;
 }
 

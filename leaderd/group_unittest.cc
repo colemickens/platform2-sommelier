@@ -398,4 +398,17 @@ TEST_F(GroupTest, BecomesWandererOnLeaderFailure) {
   AssertState(Group::State::WANDERER, std::string{});
 }
 
+TEST_F(GroupTest, ShouldChallengeOnScoreIncreaseWhenFollower) {
+  testing::Mock::VerifyAndClearExpectations(fake_handler_.get());
+  group_->AddPeer(kTestGroupMember);
+  group_->SetScore(nullptr, 0);
+  SetRole(Group::State::FOLLOWER, kTestGroupMember);
+  EXPECT_CALL(*fake_handler_, HandleChallenge(_, _));
+  group_->SetScore(nullptr, 10);
+  testing::Mock::VerifyAndClearExpectations(fake_handler_.get());
+  // If we're not a follower, we should not attempt to challenge a leader.
+  SetRole(Group::State::WANDERER, std::string{});
+  group_->SetScore(nullptr, 20);
+}
+
 }  // namespace leaderd
