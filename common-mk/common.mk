@@ -102,7 +102,6 @@ VERBOSE ?= 0
 MODE ?= opt
 CXXEXCEPTIONS ?= 0
 ARCH ?= $(shell uname -m)
-BASE_VER ?= 307740
 
 # Put objects in a separate tree based on makefile locations
 # This means you can build a tree without touching it:
@@ -122,6 +121,13 @@ override OUT := $(realpath $(OUT))/
 # SRC is not meant to be set by the end user, but during make call relocation.
 # $(PWD) != $(CURDIR) all the time.
 export SRC ?= $(CURDIR)
+
+# If BASE_VER is not set, read the libchrome revision number from
+# common-mk/BASE_VER file.
+ifeq ($(strip $(BASE_VER)),)
+BASE_VER := $(shell cat $(SRC)/../common-mk/BASE_VER)
+endif
+$(info Using BASE_VER=$(BASE_VER))
 
 # Re-start in the $(OUT) directory if we're not there.
 # We may be invoked using -C or bare and we need to ensure behavior

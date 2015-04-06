@@ -17,14 +17,8 @@ import shutil
 import subprocess
 import sys
 
+from chromite.lib import osutils
 from chromite.lib.cros_build_lib import ShellUnquote
-
-
-# Define default the version of libchrome{,os} to build against.
-# Used only if the BASE_VER environment variable is not set.
-# This can also be overridden in a specific target GYP file if required.
-_BASE_VER = '307740'
-
 
 class Platform2(object):
   """Main builder logic for platform2"""
@@ -198,6 +192,14 @@ class Platform2(object):
       targets = args
 
     common_gyp = os.path.join(self.get_src_dir(), 'common.gypi')
+    libbase_ver = os.environ.get('BASE_VER', '')
+    if not libbase_ver:
+      # If BASE_VER variable not set, read the content of common_mk/BASE_VER
+      # file which contains the default libchrome revision number.
+      base_ver_file = os.path.join(self.get_src_dir(), 'BASE_VER')
+      libbase_ver = osutils.ReadFile(base_ver_file).strip()
+
+    assert libbase_ver
 
     # The common root folder of platform2/.
     # Used as (DEPTH) variable in specific project .gyp files.
@@ -217,7 +219,7 @@ class Platform2(object):
         '-Dlibdir=%s' % self.libdir,
         '-Dbuild_root=%s' % self.get_buildroot(),
         '-Dplatform2_root=%s' % self.get_platform2_root(),
-        '-Dlibbase_ver=%s' % os.environ.get('BASE_VER', _BASE_VER),
+        '-Dlibbase_ver=%s' % libbase_ver,
         '-Dclang_syntax=%s' % os.environ.get('CROS_WORKON_CLANG', ''),
         '-Denable_exceptions=%s' % os.environ.get('CXXEXCEPTIONS', '0'),
         '-Dexternal_cflags=%s' % os.environ.get('CFLAGS', ''),
