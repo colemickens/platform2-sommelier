@@ -12,27 +12,36 @@
 
 #include "soma/container_spec_wrapper.h"
 #include "soma/proto_bindings/soma.pb.h"
-#include "soma/spec_reader.h"
 
 namespace soma {
+namespace {
+bool IsInvalid(const std::string& service_name) {
+  return (service_name.empty() ||
+          service_name == base::FilePath::kCurrentDirectory ||
+          service_name == base::FilePath::kParentDirectory ||
+          service_name.find('/') != std::string::npos);
+}
+
+}  // namespace
 
 Soma::Soma(const base::FilePath& bundle_root) : root_(bundle_root) {}
 
 int Soma::GetContainerSpec(GetContainerSpecRequest* request,
                            GetContainerSpecResponse* response) {
-  if (request->service_name().empty()) {
-    LOG(WARNING) << "Request must contain a valid name.";
+  const std::string& service_name(request->service_name());
+  if (IsInvalid(service_name)) {
+    LOG(WARNING) << "Request must contain a valid name, not " << service_name;
     return 1;
   }
   std::unique_ptr<ContainerSpecWrapper> spec =
-      reader_.Read(NameToPath(request->service_name()));
+      reader_.Read(NameToPath(service_name));
   if (spec)
     response->mutable_container_spec()->CheckTypeAndMergeFrom(spec->AsProto());
   return 0;
 }
 
 base::FilePath Soma::NameToPath(const std::string& service_name) const {
-  return root_.AppendASCII(service_name + ".json");
+  return root_.Append(service_name).ReplaceExtension(".json");
 }
 
 }  // namespace soma

@@ -48,6 +48,7 @@
         'namespace.cc',
         'port.cc',
         'service_name.cc',
+        'soma.cc',
         'spec_reader.cc',
         'sysfs_filter.cc',
         'usb_device_filter.cc',
@@ -71,22 +72,7 @@
       ],
       'sources': [
         'main.cc',
-        'soma.cc',
       ],
-      'variables': {
-        'deps': [
-          'libpsyche',
-        ],
-      },
-    },
-    {
-      'target_name': 'soma_client',
-      'type': 'executable',
-      'dependencies': [
-        'libsoma',
-        'soma-proto-lib',
-      ],
-      'sources': ['soma_client.cc'],
       'variables': {
         'deps': [
           'libpsyche',
@@ -108,6 +94,7 @@
           'sources': [
             'container_spec_unittest.cc',
             'soma_testrunner.cc',
+            'soma_unittest.cc',
             'spec_reader_unittest.cc',
           ],
         },

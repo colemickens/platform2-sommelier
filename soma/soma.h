@@ -25,7 +25,6 @@ class Soma : public ISomaHostInterface {
                        GetContainerSpecResponse* response) override;
 
  private:
-  // TODO(cmasone): make this do the real thing once we grok that.
   base::FilePath NameToPath(const std::string& service_name) const;
 
   // Path under which to search for service bundles.

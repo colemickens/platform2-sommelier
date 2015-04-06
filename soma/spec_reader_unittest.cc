@@ -29,8 +29,8 @@ namespace parser {
 
 class ContainerSpecReaderTest : public ::testing::Test {
  public:
-  ContainerSpecReaderTest() {}
-  virtual ~ContainerSpecReaderTest() {}
+  ContainerSpecReaderTest() = default;
+  virtual ~ContainerSpecReaderTest() = default;
 
   void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
