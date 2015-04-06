@@ -632,21 +632,7 @@ TEST_F(FileStreamTest, WriteAllBlocking_Fail) {
 }
 
 TEST_F(FileStreamTest, FlushBlocking) {
-  EXPECT_CALL(fd_mock(), Flush()).WillOnce(Return(0));
   EXPECT_TRUE(stream_->FlushBlocking(nullptr));
-}
-
-TEST_F(FileStreamTest, FlushBlocking_Fail) {
-  chromeos::ErrorPtr error;
-  EXPECT_CALL(fd_mock(), Flush()).WillOnce(SetErrnoAndReturn(EFBIG, -1));
-  EXPECT_FALSE(stream_->FlushBlocking(&error));
-  EXPECT_EQ(errors::system::kDomain, error->GetDomain());
-  EXPECT_EQ("EFBIG", error->GetCode());
-
-  error.reset();
-  EXPECT_CALL(fd_mock(), IsOpen()).WillOnce(Return(false));
-  EXPECT_FALSE(stream_->FlushBlocking(&error));
-  ExpectStreamClosed(error);
 }
 
 TEST_F(FileStreamTest, CloseBlocking) {

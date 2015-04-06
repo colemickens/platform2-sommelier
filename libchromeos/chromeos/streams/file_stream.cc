@@ -64,10 +64,6 @@ class FileDescriptor : public base::MessageLoopForIO::Watcher,
     return HANDLE_EINTR(ftruncate(fd_, length));
   }
 
-  int Flush() override {
-    return HANDLE_EINTR(fsync(fd_));
-  }
-
   int Close() override {
     int fd = -1;
     // The stream may or may not own the file descriptor stored in |fd_|.
@@ -462,11 +458,7 @@ bool FileStream::FlushBlocking(ErrorPtr* error) {
   if (!IsOpen())
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
 
-  if (fd_interface_->Flush() < 0) {
-    errors::system::AddSystemError(error, FROM_HERE, errno);
-    return false;
-  }
-
+  // File descriptors don't have an internal buffer to flush.
   return true;
 }
 

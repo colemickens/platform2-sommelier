@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include <base/bind.h>
+#include <base/message_loop/message_loop.h>
 #include <chromeos/pointer_utils.h>
 #include <chromeos/streams/stream_errors.h>
 #include <chromeos/streams/stream_utils.h>
@@ -167,6 +168,18 @@ bool Stream::WriteAllBlocking(const void* buffer,
   return true;
 }
 
+bool Stream::FlushAsync(const base::Closure& success_callback,
+                        const ErrorCallback& error_callback,
+                        ErrorPtr* /* error */) {
+  auto callback = base::Bind(&Stream::FlushAsyncCallback,
+                             weak_ptr_factory_.GetWeakPtr(),
+                             success_callback, error_callback);
+  CHECK(base::MessageLoop::current())
+      << "Message loop is required for asynchronous operations";
+  base::MessageLoop::current()->PostTask(FROM_HERE, callback);
+  return true;
+}
+
 void Stream::OnDataAvailable(AccessMode mode) {
   ErrorPtr error;
   if ((mode == AccessMode::READ || mode == AccessMode::READ_WRITE) &&
@@ -259,6 +272,16 @@ void Stream::WriteAllAsyncCallback(const void* buffer,
       error_callback.Run(error.get());
   } else {
     success_callback.Run();
+  }
+}
+
+void Stream::FlushAsyncCallback(const base::Closure& success_callback,
+                                const ErrorCallback& error_callback) {
+  ErrorPtr error;
+  if (FlushBlocking(&error)) {
+    success_callback.Run();
+  } else {
+    error_callback.Run(error.get());
   }
 }
 

@@ -44,7 +44,6 @@ class CHROMEOS_EXPORT FileStream : public Stream {
     virtual mode_t GetFileMode() const = 0;
     virtual uint64_t GetSize() const = 0;
     virtual int Truncate(off64_t length) const = 0;
-    virtual int Flush() = 0;
     virtual int Close() = 0;
     virtual void WaitForData(AccessMode mode,
                              const DataCallback& data_callback) = 0;

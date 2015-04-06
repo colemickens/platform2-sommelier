@@ -339,12 +339,22 @@ class CHROMEOS_EXPORT Stream {
 
   // == Finalizing/closing streams  ===========================================
 
-  // Flushes the data from cache output buffers to storage medium.
-  // For read-only streams this is a no-op, however it is still valid to call
-  // this method on read-only streams.
+  // Flushes all the user-space data from cache output buffers to storage
+  // medium. For read-only streams this is a no-op, however it is still valid
+  // to call this method on read-only streams.
   // If an error occurs, the function returns false and specifies additional
   // error details in |error|.
   virtual bool FlushBlocking(ErrorPtr* error) = 0;
+
+  // Flushes all the user-space data from the cache output buffer
+  // asynchronously. When all the data is successfully flushed, the
+  // |success_callback| is invoked. If an error occurs while flushing, partial
+  // data might be flushed and |error_callback| is invoked. If there's an error
+  // scheduling the flush operation, it returns false and neither callback will
+  // be called.
+  virtual bool FlushAsync(const base::Closure& success_callback,
+                          const ErrorCallback& error_callback,
+                          ErrorPtr* error);
 
   // Closes the underlying stream. The stream is also automatically closed
   // when the stream object is destroyed, but since closing a stream is
@@ -394,6 +404,11 @@ class CHROMEOS_EXPORT Stream {
       const base::Closure& success_callback,
       const ErrorCallback& error_callback,
       size_t size_written);
+
+  // Helper callbacks to implement FlushAsync().
+  CHROMEOS_PRIVATE void FlushAsyncCallback(
+      const base::Closure& success_callback,
+      const ErrorCallback& error_callback);
 
   // Data members for asynchronous read operations.
   void* async_read_buffer_{nullptr};
