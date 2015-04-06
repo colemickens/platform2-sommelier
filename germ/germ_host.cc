@@ -20,10 +20,10 @@ int GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
   bool success = launcher_.RunService(request->name(), argv, &pid);
   if (!success) {
     LOG(ERROR) << "RunService(" << request->name() << ") failed";
-    response->set_status(-1);
+    response->set_pid(-1);
     return -1;
   }
-  response->set_status(pid);
+  response->set_pid(pid);
   return 0;
 }
 

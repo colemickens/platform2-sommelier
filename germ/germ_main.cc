@@ -71,7 +71,7 @@ class LaunchClient : public psyche::PsycheDaemon {
       return;
     }
     LOG(INFO) << "Launched service '" << name_ << "' with pid "
-              << response.status();
+              << response.pid();
     // Trigger shut-down of the message loop.
     Quit();
   }
