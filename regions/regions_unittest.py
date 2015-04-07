@@ -161,6 +161,7 @@ class RegionTest(unittest.TestCase):
          'region_code': 'us',
          'numeric_id': 29,
          'description': 'United States',
+         'regulatory_domain': 'US',
          'time_zones': ['America/Los_Angeles']},
         data['us'])
 
@@ -172,25 +173,26 @@ class RegionTest(unittest.TestCase):
          'description': 'description',
          'locales': ['d'],
          'numeric_id': 11,
-         'region_code': 'a',
+         'region_code': 'aa',
+         'regulatory_domain': 'AA',
          'time_zones': ['c']},
-        (regions.Region('a', 'xkb:b::b', 'c', 'd', 'e', 'description', 'notes',
+        (regions.Region('aa', 'xkb:b::b', 'c', 'd', 'e', 'description', 'notes',
                         11).GetFieldsDict()))
 
   def testConsolidateRegionsDups(self):
     """Test duplicate handling.  Two identical Regions are OK."""
     # Make two copies of the same region.
-    region_list = [regions.Region('a', 'xkb:b::b', 'c', 'd', 'e')
+    region_list = [regions.Region('aa', 'xkb:b::b', 'c', 'd', 'e')
                    for _ in range(2)]
     # It's OK.
     self.assertEquals(
-        {'a': region_list[0]}, regions.ConsolidateRegions(region_list))
+        {'aa': region_list[0]}, regions.ConsolidateRegions(region_list))
 
     # Modify the second copy.
     region_list[1].keyboards = ['f']
     # Not OK anymore!
     self.assertRaisesRegexp(
-        regions.RegionException, "Conflicting definitions for region 'a':",
+        regions.RegionException, "Conflicting definitions for region 'aa':",
         regions.ConsolidateRegions, region_list)
 
   def testNumericIds(self):

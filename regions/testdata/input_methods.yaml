@@ -1,4 +1,5 @@
-# Automatically generated from ToT Chromium sources.
+# Automatically generated from ToT Chromium sources
+# by update_testdata.py. Do not edit manually.
 
 - am-t-i0-und
 - ar-t-i0-und
@@ -15,6 +16,7 @@
 - he-t-i0-und
 - hi-t-i0-und
 - kn-t-i0-und
+- ko-t-i0-und
 - ml-t-i0-und
 - mr-t-i0-und
 - nacl_mozc_jp
@@ -44,6 +46,8 @@
 - vkd_my_myansan
 - vkd_ne_inscript
 - vkd_ne_phone
+- vkd_ru_phone_aatseel
+- vkd_ru_phone_yazhert
 - vkd_si
 - vkd_ta_inscript
 - vkd_ta_itrans
@@ -96,10 +100,12 @@
 - xkb:lt::lit
 - xkb:lv:apostrophe:lav
 - xkb:mn::mon
+- xkb:mt::mlt
 - xkb:no::nob
 - xkb:pl::pol
 - xkb:pt::por
 - xkb:ro::rum
+- xkb:ro:std:rum
 - xkb:rs::srp
 - xkb:ru::rus
 - xkb:ru:phonetic:rus

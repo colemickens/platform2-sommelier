@@ -1,4 +1,5 @@
-# Automatically generated from ToT Chromium sources.
+# Automatically generated from ToT Chromium sources
+# by update_testdata.py. Do not edit manually.
 
 - !!python/tuple
   - ime:jp:mozc_jp
