@@ -10,7 +10,6 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
-#include "soma/container_spec_wrapper.h"
 #include "soma/proto_bindings/soma.pb.h"
 
 namespace soma {
@@ -33,10 +32,9 @@ int Soma::GetContainerSpec(GetContainerSpecRequest* request,
     LOG(WARNING) << "Request must contain a valid name, not " << service_name;
     return 1;
   }
-  std::unique_ptr<ContainerSpecWrapper> spec =
-      reader_.Read(NameToPath(service_name));
+  std::unique_ptr<ContainerSpec> spec = reader_.Read(NameToPath(service_name));
   if (spec)
-    response->mutable_container_spec()->CheckTypeAndMergeFrom(spec->AsProto());
+    response->mutable_container_spec()->CheckTypeAndMergeFrom(*spec.get());
   return 0;
 }
 

@@ -43,24 +43,31 @@
         'soma-proto-lib',
       ],
       'sources': [
-        'container_spec_wrapper.cc',
-        'device_filter.cc',
-        'namespace.cc',
-        'port.cc',
-        'service_name.cc',
         'soma.cc',
-        'spec_reader.cc',
-        'sysfs_filter.cc',
-        'usb_device_filter.cc',
+      ],
+    },
+    {
+      'target_name': 'libsoma-static', # So symbols are visible to tests.
+      'type': 'static_library',
+      'dependencies': [
+        'soma-proto-lib',
+      ],
+      'sources': [
+        'lib/soma/container_spec_helpers.cc',
+        'lib/soma/device_filter.cc',
+        'lib/soma/namespace.cc',
+        'lib/soma/port.cc',
+        'lib/soma/service_name.cc',
       ],
     },
     {
       'target_name': 'libsoma',
       'type': 'shared_library',
       'dependencies': [
-        'soma-proto-lib',
+        'libsoma-static',
       ],
       'sources': [
+        'lib/soma/container_spec_reader.cc',
         'lib/soma/read_only_container_spec.cc',
       ],
     },
@@ -69,6 +76,7 @@
       'type': 'executable',
       'dependencies': [
         'libsomad',
+        'libsoma',
       ],
       'sources': [
         'main.cc',
@@ -90,12 +98,11 @@
           'defines': ['UNIT_TEST'],
           'dependencies': [
             'libsomad',
+            'libsoma',
           ],
           'sources': [
-            'container_spec_unittest.cc',
             'soma_testrunner.cc',
             'soma_unittest.cc',
-            'spec_reader_unittest.cc',
           ],
         },
         {
@@ -104,10 +111,11 @@
           'includes': ['../common-mk/common_test.gypi'],
           'defines': ['UNIT_TEST'],
           'dependencies': [
+            'libsoma-static',
             'libsoma',
-            'soma-proto-lib',
           ],
           'sources': [
+            'lib/soma/container_spec_reader_unittest.cc',
             'lib/soma/libsoma_testrunner.cc',
             'lib/soma/read_only_container_spec_unittest.cc',
           ],

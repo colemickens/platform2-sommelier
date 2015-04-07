@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SOMA_DEVICE_FILTER_H_
-#define SOMA_DEVICE_FILTER_H_
+#ifndef SOMA_LIB_SOMA_DEVICE_FILTER_H_
+#define SOMA_LIB_SOMA_DEVICE_FILTER_H_
 
 #include <set>
 
@@ -74,4 +74,4 @@ class DeviceNodeFilter {
 
 }  // namespace parser
 }  // namespace soma
-#endif  // SOMA_DEVICE_FILTER_H_
+#endif  // SOMA_LIB_SOMA_DEVICE_FILTER_H_

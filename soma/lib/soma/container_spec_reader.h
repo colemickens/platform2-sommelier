@@ -2,26 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SOMA_SPEC_READER_H_
-#define SOMA_SPEC_READER_H_
+#ifndef SOMA_LIB_SOMA_CONTAINER_SPEC_READER_H_
+#define SOMA_LIB_SOMA_CONTAINER_SPEC_READER_H_
 
 #include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/json/json_reader.h>
+#include <soma/soma_export.h>
 
 namespace base {
 class DictionaryValue;
 }
 
 namespace soma {
-class ContainerSpecWrapper;
+class ContainerSpec;
 
 namespace parser {
 // A class that handles reading a container specification written in JSON
 // from disk and parsing it into a ContainerSpecWrapper object.
-class ContainerSpecReader {
+class SOMA_EXPORT ContainerSpecReader {
  public:
   static const char kServiceBundleRoot[];
 
@@ -36,12 +37,12 @@ class ContainerSpecReader {
   virtual ~ContainerSpecReader();
 
   // Read a container specification at spec_file and return a
-  // ContainerSpecWrapper object. Returns nullptr on failures and logs
+  // ContainerSpec object. Returns nullptr on failures and logs
   // appropriate messages.
-  std::unique_ptr<ContainerSpecWrapper> Read(const base::FilePath& spec_file);
+  std::unique_ptr<ContainerSpec> Read(const base::FilePath& spec_file);
 
  private:
-  std::unique_ptr<ContainerSpecWrapper> PopulateRequiredFields(
+  std::unique_ptr<ContainerSpec> PopulateRequiredFields(
       const std::string& name,
       const base::DictionaryValue* app_dict);
 
@@ -52,4 +53,4 @@ class ContainerSpecReader {
 }  // namespace parser
 }  // namespace soma
 
-#endif  // SOMA_SPEC_READER_H_
+#endif  // SOMA_LIB_SOMA_CONTAINER_SPEC_READER_H_

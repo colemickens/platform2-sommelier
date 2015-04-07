@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SOMA_PORT_H_
-#define SOMA_PORT_H_
+#ifndef SOMA_LIB_SOMA_PORT_H_
+#define SOMA_LIB_SOMA_PORT_H_
 
 #include <set>
 
@@ -33,4 +33,4 @@ bool ParseList(const base::ListValue* listen_ports,
 }  // namespace port
 }  // namespace parser
 }  // namespace soma
-#endif  // SOMA_PORT_H_
+#endif  // SOMA_LIB_SOMA_PORT_H_

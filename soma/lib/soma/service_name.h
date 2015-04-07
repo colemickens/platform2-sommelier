@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SOMA_SERVICE_NAME_H_
-#define SOMA_SERVICE_NAME_H_
+#ifndef SOMA_LIB_SOMA_SERVICE_NAME_H_
+#define SOMA_LIB_SOMA_SERVICE_NAME_H_
 
 #include <string>
 #include <vector>
@@ -27,4 +27,4 @@ bool ParseList(const base::ListValue* annotations,
 }  // namespace parser
 }  // namespace soma
 
-#endif  // SOMA_SERVICE_NAME_H_
+#endif  // SOMA_LIB_SOMA_SERVICE_NAME_H_

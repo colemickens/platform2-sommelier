@@ -10,9 +10,9 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 
+#include "soma/lib/soma/container_spec_reader.h"
 #include "soma/proto_bindings/soma.pb.h"
 #include "soma/proto_bindings/soma.pb.rpc.h"
-#include "soma/spec_reader.h"
 
 namespace soma {
 class Soma : public ISomaHostInterface {

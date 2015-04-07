@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SOMA_NAMESPACE_H_
-#define SOMA_NAMESPACE_H_
+#ifndef SOMA_LIB_SOMA_NAMESPACE_H_
+#define SOMA_LIB_SOMA_NAMESPACE_H_
 
 #include <sched.h>
 
@@ -35,4 +35,4 @@ bool ParseList(const base::ListValue* namespaces, std::set<Kind>* out);
 }  // namespace ns
 }  // namespace parser
 }  // namespace soma
-#endif  // SOMA_NAMESPACE_H_
+#endif  // SOMA_LIB_SOMA_NAMESPACE_H_

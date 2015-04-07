@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "soma/spec_reader.h"
+#include "soma/lib/soma/container_spec_reader.h"
 
 #include <memory>
 #include <string>
@@ -19,13 +19,91 @@
 #include <base/values.h>
 #include <gtest/gtest.h>
 
-#include "soma/container_spec_wrapper.h"
-#include "soma/namespace.h"
-#include "soma/port.h"
-#include "soma/service_name.h"
+#include "soma/lib/soma/device_filter.h"
+#include "soma/lib/soma/namespace.h"
+#include "soma/lib/soma/port.h"
+#include "soma/lib/soma/service_name.h"
+#include "soma/proto_bindings/soma_container_spec.pb.h"
 
 namespace soma {
 namespace parser {
+
+using google::protobuf::RepeatedField;
+using google::protobuf::RepeatedPtrField;
+
+class ContainerSpecWrapper {
+ public:
+  explicit ContainerSpecWrapper(std::unique_ptr<ContainerSpec> to_wrap)
+      : internal_(std::move(to_wrap)) {
+  }
+  virtual ~ContainerSpecWrapper() = default;
+
+  const std::string& name() const { return internal_->name(); }
+  base::FilePath service_bundle_path() const {
+    return base::FilePath(internal_->service_bundle_path());
+  }
+  uid_t uid() const { return internal_->uid(); }
+  gid_t gid() const { return internal_->gid(); }
+
+  bool ProvidesServiceNamed(const std::string& name) const {
+    const RepeatedPtrField<std::string>& names = internal_->service_names();
+    return std::find(names.begin(), names.end(), name) != names.end();
+  }
+
+  bool ShouldApplyNamespace(ns::Kind candidate) const {
+    const RepeatedField<int>& namespaces = internal_->namespaces();
+    return std::find(namespaces.begin(), namespaces.end(), candidate) !=
+        namespaces.end();
+  }
+
+  bool TcpListenPortIsAllowed(port::Number port) const {
+    return ListenPortIsAllowed(internal_->tcp_listen_ports(), port);
+  }
+
+  bool UdpListenPortIsAllowed(port::Number port) const {
+    return ListenPortIsAllowed(internal_->udp_listen_ports(), port);
+  }
+
+  bool DevicePathIsAllowed(const base::FilePath& query) const {
+    const RepeatedPtrField<ContainerSpec::DevicePathFilter>& filters =
+        internal_->device_path_filters();
+    return
+        filters.end() !=
+        std::find_if(filters.begin(), filters.end(),
+                     [query](const ContainerSpec::DevicePathFilter& to_check) {
+                       DevicePathFilter parser_filter(
+                           base::FilePath(to_check.filter()));
+                       return parser_filter.Allows(query);
+                     });
+  }
+
+  bool DeviceNodeIsAllowed(int major, int minor) const {
+    const RepeatedPtrField<ContainerSpec::DeviceNodeFilter>& filters =
+        internal_->device_node_filters();
+    return
+        filters.end() !=
+        std::find_if(
+            filters.begin(), filters.end(),
+            [major, minor](const ContainerSpec::DeviceNodeFilter& to_check) {
+              DeviceNodeFilter parser_filter(to_check.major(),
+                                             to_check.minor());
+              return parser_filter.Allows(major, minor);
+            });
+  }
+
+ private:
+  bool ListenPortIsAllowed(const ContainerSpec::PortSpec& port_spec,
+                           port::Number port) const {
+    if (port_spec.allow_all())
+      return true;
+    const RepeatedField<uint32>& ports = port_spec.ports();
+    return std::find(ports.begin(), ports.end(), port) != ports.end();
+  }
+
+  std::unique_ptr<ContainerSpec> internal_;
+
+  DISALLOW_COPY_AND_ASSIGN(ContainerSpecWrapper);
+};
 
 class ContainerSpecReaderTest : public ::testing::Test {
  public:
@@ -46,14 +124,6 @@ class ContainerSpecReaderTest : public ::testing::Test {
     return BuildBaselineWithCL(false);
   }
 
-  void WriteValue(base::Value* to_write, const base::FilePath& file) {
-    std::string value_string;
-    ASSERT_TRUE(base::JSONWriter::Write(to_write, &value_string));
-    ASSERT_EQ(
-        base::WriteFile(file, value_string.c_str(), value_string.length()),
-        value_string.length());
-  }
-
   void CheckSpecBaseline(ContainerSpecWrapper* spec) {
     ASSERT_TRUE(spec);
     ASSERT_EQ(scratch_.value(), spec->name());
@@ -67,9 +137,18 @@ class ContainerSpecReaderTest : public ::testing::Test {
         spec->service_bundle_path().value(), kServiceBundleName);
   }
 
+  std::unique_ptr<ContainerSpecWrapper> ValueToSpec(base::Value* in) {
+    WriteValue(in, scratch_);
+    std::unique_ptr<ContainerSpec> spec = reader_.Read(scratch_);
+    if (spec) {
+      return std::unique_ptr<ContainerSpecWrapper>(
+          new ContainerSpecWrapper(std::move(spec)));
+    }
+    return nullptr;
+  }
+
   ContainerSpecReader reader_;
   base::ScopedTempDir tmpdir_;
-  base::FilePath scratch_;
 
  private:
   static const char kServiceBundleName[];
@@ -94,6 +173,18 @@ class ContainerSpecReaderTest : public ::testing::Test {
 
     return std::move(baseline);
   }
+
+  void WriteValue(base::Value* to_write, const base::FilePath& file) {
+    std::string value_string;
+    ASSERT_TRUE(base::JSONWriter::Write(to_write, &value_string));
+    ASSERT_EQ(
+        base::WriteFile(file, value_string.c_str(), value_string.length()),
+        value_string.length());
+  }
+
+  base::FilePath scratch_;
+
+  DISALLOW_COPY_AND_ASSIGN(ContainerSpecReaderTest);
 };
 
 const char ContainerSpecReaderTest::kServiceBundleName[] = "bundle";
@@ -102,17 +193,13 @@ const char ContainerSpecReaderTest::kGid[] = "2";
 
 TEST_F(ContainerSpecReaderTest, BaselineSpec) {
   std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
-  WriteValue(baseline.get(), scratch_);
-
-  std::unique_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
+  std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
   CheckSpecBaseline(spec.get());
 }
 
 TEST_F(ContainerSpecReaderTest, EmptyCommandLine) {
   std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValueNoCL();
-  WriteValue(baseline.get(), scratch_);
-
-  std::unique_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
+  std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
   EXPECT_EQ(spec.get(), nullptr);
 }
 
@@ -131,11 +218,10 @@ TEST_F(ContainerSpecReaderTest, OneServiceName) {
 
   std::unique_ptr<base::ListValue> annotations(new base::ListValue);
   annotations->Append(CreateAnnotation("service-0", "foo").release());
-  baseline->Set(parser::service_name::kListKey, annotations.release());
+  baseline->Set(service_name::kListKey, annotations.release());
 
-  WriteValue(baseline.get(), scratch_);
+  std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
-  std::unique_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   EXPECT_TRUE(spec->ProvidesServiceNamed("foo"));
 }
 
@@ -146,11 +232,10 @@ TEST_F(ContainerSpecReaderTest, SkipBogusServiceName) {
   annotations->Append(CreateAnnotation("service-0", "foo").release());
   annotations->Append(CreateAnnotation("bugagoo", "bar").release());
   annotations->Append(CreateAnnotation("service-1", "baz").release());
-  baseline->Set(parser::service_name::kListKey, annotations.release());
+  baseline->Set(service_name::kListKey, annotations.release());
 
-  WriteValue(baseline.get(), scratch_);
+  std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
-  std::unique_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   EXPECT_TRUE(spec->ProvidesServiceNamed("foo"));
   EXPECT_TRUE(spec->ProvidesServiceNamed("baz"));
   EXPECT_FALSE(spec->ProvidesServiceNamed("bar"));
@@ -158,10 +243,10 @@ TEST_F(ContainerSpecReaderTest, SkipBogusServiceName) {
 
 namespace {
 std::unique_ptr<base::DictionaryValue> CreatePort(const std::string& protocol,
-                                             const parser::port::Number port) {
+                                                  const port::Number port) {
   std::unique_ptr<base::DictionaryValue> port_dict(new base::DictionaryValue);
-  port_dict->SetString(parser::port::kProtocolKey, protocol);
-  port_dict->SetInteger(parser::port::kPortKey, port);
+  port_dict->SetString(port::kProtocolKey, protocol);
+  port_dict->SetInteger(port::kPortKey, port);
   return std::move(port_dict);
 }
 }  // namespace
@@ -169,18 +254,17 @@ std::unique_ptr<base::DictionaryValue> CreatePort(const std::string& protocol,
 TEST_F(ContainerSpecReaderTest, SpecWithListenPorts) {
   std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
 
-  const parser::port::Number port1 = 80;
-  const parser::port::Number port2 = 9222;
-  const parser::port::Number invalid_port = -8;
+  const port::Number port1 = 80;
+  const port::Number port2 = 9222;
+  const port::Number invalid_port = -8;
   std::unique_ptr<base::ListValue> listen_ports(new base::ListValue);
-  listen_ports->Append(CreatePort(parser::port::kTcpProtocol, port1).release());
-  listen_ports->Append(CreatePort(parser::port::kTcpProtocol, port2).release());
-  listen_ports->Append(CreatePort(parser::port::kUdpProtocol, port1).release());
-  baseline->Set(parser::port::kListKey, listen_ports.release());
+  listen_ports->Append(CreatePort(port::kTcpProtocol, port1).release());
+  listen_ports->Append(CreatePort(port::kTcpProtocol, port2).release());
+  listen_ports->Append(CreatePort(port::kUdpProtocol, port1).release());
+  baseline->Set(port::kListKey, listen_ports.release());
 
-  WriteValue(baseline.get(), scratch_);
+  std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
-  std::unique_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   CheckSpecBaseline(spec.get());
   EXPECT_TRUE(spec->TcpListenPortIsAllowed(port1));
   EXPECT_TRUE(spec->TcpListenPortIsAllowed(port2));
@@ -189,11 +273,11 @@ TEST_F(ContainerSpecReaderTest, SpecWithListenPorts) {
 
   std::unique_ptr<base::ListValue> listen_ports_invalid(new base::ListValue);
   listen_ports_invalid->Append(
-      CreatePort(parser::port::kUdpProtocol, invalid_port).release());
-  baseline->Set(parser::port::kListKey, listen_ports_invalid.release());
+      CreatePort(port::kUdpProtocol, invalid_port).release());
+  baseline->Set(port::kListKey, listen_ports_invalid.release());
 
-  WriteValue(baseline.get(), scratch_);
-  spec = reader_.Read(scratch_);
+  spec = ValueToSpec(baseline.get());
+
   EXPECT_EQ(spec.get(), nullptr);
 }
 
@@ -201,13 +285,12 @@ TEST_F(ContainerSpecReaderTest, SpecWithWildcardPort) {
   std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
 
   std::unique_ptr<base::ListValue> listen_ports(new base::ListValue);
-  listen_ports->Append(CreatePort(parser::port::kTcpProtocol,
-                                  parser::port::kWildcard).release());
-  baseline->Set(parser::port::kListKey, listen_ports.release());
+  listen_ports->Append(CreatePort(port::kTcpProtocol,
+                                  port::kWildcard).release());
+  baseline->Set(port::kListKey, listen_ports.release());
 
-  WriteValue(baseline.get(), scratch_);
+  std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
-  std::unique_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   CheckSpecBaseline(spec.get());
   EXPECT_TRUE(spec->TcpListenPortIsAllowed(80));
   EXPECT_TRUE(spec->TcpListenPortIsAllowed(90));
@@ -238,9 +321,8 @@ TEST_F(ContainerSpecReaderTest, SpecWithDeviceFilters) {
   device_node_filters->Append(ListFromPair({4, -1}).release());
   baseline->Set(DeviceNodeFilter::kListKey, device_node_filters.release());
 
-  WriteValue(baseline.get(), scratch_);
+  std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
-  std::unique_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   CheckSpecBaseline(spec.get());
   EXPECT_TRUE(spec->DevicePathIsAllowed(base::FilePath(kPathFilter1)));
   EXPECT_TRUE(spec->DevicePathIsAllowed(base::FilePath(kPathFilter2)));
@@ -256,9 +338,8 @@ TEST_F(ContainerSpecReaderTest, SpecWithNamespaces) {
   namespaces->AppendString(ns::kNewPid);
   baseline->Set(ns::kListKey, namespaces.release());
 
-  WriteValue(baseline.get(), scratch_);
+  std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
-  std::unique_ptr<ContainerSpecWrapper> spec = reader_.Read(scratch_);
   CheckSpecBaseline(spec.get());
   EXPECT_TRUE(spec->ShouldApplyNamespace(ContainerSpec::NEWIPC));
   EXPECT_TRUE(spec->ShouldApplyNamespace(ContainerSpec::NEWPID));

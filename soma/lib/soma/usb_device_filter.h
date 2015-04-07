@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SOMA_USB_DEVICE_FILTER_H_
-#define SOMA_USB_DEVICE_FILTER_H_
+#ifndef SOMA_LIB_SOMA_USB_DEVICE_FILTER_H_
+#define SOMA_LIB_SOMA_USB_DEVICE_FILTER_H_
 
 #include <base/basictypes.h>
 
@@ -26,4 +26,4 @@ class USBDeviceFilter {
 };
 
 }  // namespace soma
-#endif  // SOMA_USB_DEVICE_FILTER_H_
+#endif  // SOMA_LIB_SOMA_USB_DEVICE_FILTER_H_

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "soma/spec_reader.h"
+#include "soma/lib/soma/container_spec_reader.h"
 
 #include <sys/types.h>
 
@@ -18,10 +18,10 @@
 #include <base/values.h>
 #include <chromeos/userdb_utils.h>
 
-#include "soma/container_spec_wrapper.h"
-#include "soma/namespace.h"
-#include "soma/port.h"
-#include "soma/service_name.h"
+#include "soma/lib/soma/container_spec_helpers.h"
+#include "soma/lib/soma/namespace.h"
+#include "soma/lib/soma/port.h"
+#include "soma/lib/soma/service_name.h"
 
 namespace soma {
 namespace parser {
@@ -60,7 +60,7 @@ ContainerSpecReader::ContainerSpecReader()
 ContainerSpecReader::~ContainerSpecReader() {
 }
 
-std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Read(
+std::unique_ptr<ContainerSpec> ContainerSpecReader::Read(
     const base::FilePath& spec_file) {
   VLOG(1) << "Reading container spec at " << spec_file.value();
   std::string json;
@@ -88,7 +88,7 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Read(
     return nullptr;
   }
 
-  std::unique_ptr<ContainerSpecWrapper> spec =
+  std::unique_ptr<ContainerSpec> spec =
       PopulateRequiredFields(spec_file.value(), app_dict);
   if (!spec.get())
     return nullptr;
@@ -98,41 +98,43 @@ std::unique_ptr<ContainerSpecWrapper> ContainerSpecReader::Read(
   if (spec_dict->GetList(service_name::kListKey, &to_parse)) {
     if (!service_name::ParseList(to_parse, &service_names))
       return nullptr;
-    spec->SetServiceNames(service_names);
+    container_spec_helpers::SetServiceNames(service_names, spec.get());
   }
 
-  std::set<parser::ns::Kind> namespaces;
+  std::set<ns::Kind> namespaces;
   if (spec_dict->GetList(ns::kListKey, &to_parse)) {
     if (!ns::ParseList(to_parse, &namespaces))
       return nullptr;
-    spec->SetNamespaces(namespaces);
+    container_spec_helpers::SetNamespaces(namespaces, spec.get());
   }
 
-  std::set<parser::port::Number> tcp_ports, udp_ports;
-  if (spec_dict->GetList(parser::port::kListKey, &to_parse)) {
-    if (!parser::port::ParseList(to_parse, &tcp_ports, &udp_ports))
+  std::set<port::Number> tcp_ports, udp_ports;
+  if (spec_dict->GetList(port::kListKey, &to_parse)) {
+    if (!port::ParseList(to_parse, &tcp_ports, &udp_ports))
       return nullptr;
-    spec->SetTcpListenPorts(tcp_ports);
-    spec->SetUdpListenPorts(udp_ports);
+    container_spec_helpers::SetTcpListenPorts(tcp_ports, spec.get());
+    container_spec_helpers::SetUdpListenPorts(udp_ports, spec.get());
   }
 
   DevicePathFilter::Set device_path_filters;
   if (spec_dict->GetList(DevicePathFilter::kListKey, &to_parse)) {
     if (!DevicePathFilter::ParseList(*to_parse, &device_path_filters))
       return nullptr;
-    spec->SetDevicePathFilters(device_path_filters);
+    container_spec_helpers::SetDevicePathFilters(device_path_filters,
+                                                 spec.get());
   }
   DeviceNodeFilter::Set device_node_filters;
   if (spec_dict->GetList(DeviceNodeFilter::kListKey, &to_parse)) {
     if (!DeviceNodeFilter::ParseList(*to_parse, &device_node_filters))
       return nullptr;
-    spec->SetDeviceNodeFilters(device_node_filters);
+    container_spec_helpers::SetDeviceNodeFilters(device_node_filters,
+                                                 spec.get());
   }
 
   return std::move(spec);
 }
 
-std::unique_ptr<ContainerSpecWrapper>
+std::unique_ptr<ContainerSpec>
 ContainerSpecReader::PopulateRequiredFields(
     const std::string& name,
     const base::DictionaryValue* app_dict) {
@@ -164,8 +166,8 @@ ContainerSpecReader::PopulateRequiredFields(
     return nullptr;
   }
 
-  std::unique_ptr<ContainerSpecWrapper> spec(
-      new ContainerSpecWrapper(
+  std::unique_ptr<ContainerSpec> spec(
+      container_spec_helpers::CreateContainerSpec(
           name,
           base::FilePath(kServiceBundleRoot).Append(service_bundle_name),
           uid, gid));
@@ -177,7 +179,7 @@ ContainerSpecReader::PopulateRequiredFields(
       return nullptr;
     }
   }
-  spec->SetCommandLine(cl);
+  container_spec_helpers::SetCommandLine(cl, spec.get());
   return std::move(spec);
 }
 
