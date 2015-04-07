@@ -26,7 +26,7 @@ using std::string;
 
 namespace cryptohome {
 
-typedef crypto::ScopedOpenSSL<X509, X509_free>::Type ScopedX509;
+typedef crypto::ScopedOpenSSL<X509, X509_free> ScopedX509;
 
 // An arbitrary application ID to identify PKCS #11 objects.
 const char kApplicationID[] = "CrOS_d5bbc079d2497110feadfc97c40d718ae46f4658";

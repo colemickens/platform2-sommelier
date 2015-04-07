@@ -76,7 +76,7 @@ class Spakep224Exchanger : public SecurityManager::KeyExchanger {
   ~Spakep224Exchanger() override = default;
 
   // SecurityManager::KeyExchanger methods.
-  const std::string& GetMessage() override { return spake_.GetMessage(); }
+  const std::string& GetMessage() override { return spake_.GetNextMessage(); }
 
   bool ProcessMessage(const std::string& message,
                       chromeos::ErrorPtr* error) override {

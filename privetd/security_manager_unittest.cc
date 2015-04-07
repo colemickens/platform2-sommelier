@@ -92,7 +92,7 @@ class SecurityManagerTest : public testing::Test {
         crypto::P224EncryptedKeyExchange::kPeerTypeClient, "1234"};
 
     std::string client_commitment_base64{
-        chromeos::data_encoding::Base64Encode(spake.GetMessage())};
+        chromeos::data_encoding::Base64Encode(spake.GetNextMessage())};
 
     EXPECT_TRUE(security_.ConfirmPairing(session_id, client_commitment_base64,
                                          fingerprint, signature, nullptr));
@@ -206,7 +206,7 @@ TEST_F(SecurityManagerTest, NotifiesListenersOfSessionStartAndEnd) {
     crypto::P224EncryptedKeyExchange spake{
         crypto::P224EncryptedKeyExchange::kPeerTypeServer, "1234"};
     std::string client_commitment =
-        chromeos::data_encoding::Base64Encode(spake.GetMessage());
+        chromeos::data_encoding::Base64Encode(spake.GetNextMessage());
     std::string fingerprint, signature;
     // Regardless of whether the commitment is valid or not, we should get a
     // callback indicating that the pairing session is gone.
