@@ -211,6 +211,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
         new DeviceRegistrationInfo(command_manager_, state_manager_,
                                    std::move(config),
                                    transport_, storage_,
+                                   true,
                                    mock_callback));
   }
 

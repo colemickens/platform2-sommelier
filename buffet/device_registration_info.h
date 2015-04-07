@@ -54,6 +54,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
       std::unique_ptr<const BuffetConfig> config,
       const std::shared_ptr<chromeos::http::Transport>& transport,
       const std::shared_ptr<StorageInterface>& state_store,
+      bool xmpp_enabled,
       const base::Closure& on_status_changed);
 
   ~DeviceRegistrationInfo() override;
@@ -209,9 +210,6 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   void SetRegistrationStatus(RegistrationStatus new_status);
   void SetDeviceId(const std::string& device_id);
 
-  std::unique_ptr<XmppClient> xmpp_client_;
-  base::MessageLoopForIO::FileDescriptorWatcher fd_watcher_;
-
   // Data that is cached here, persisted in the state store.
   std::string refresh_token_;
   std::string device_id_;
@@ -236,6 +234,10 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   std::shared_ptr<StateManager> state_manager_;
 
   std::unique_ptr<const BuffetConfig> config_;
+
+  const bool xmpp_enabled_;
+  std::unique_ptr<XmppClient> xmpp_client_;
+  base::MessageLoopForIO::FileDescriptorWatcher fd_watcher_;
 
   // Tracks our current registration status.
   RegistrationStatus registration_status_{RegistrationStatus::kUnconfigured};

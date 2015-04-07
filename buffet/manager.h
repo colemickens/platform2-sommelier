@@ -51,6 +51,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
       const base::FilePath& config_path,
       const base::FilePath& state_path,
       const base::FilePath& test_definitions_path,
+      bool xmpp_enabled,
       const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
  private:

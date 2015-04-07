@@ -126,12 +126,14 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
     std::unique_ptr<const BuffetConfig> config,
     const std::shared_ptr<chromeos::http::Transport>& transport,
     const std::shared_ptr<StorageInterface>& state_store,
+    bool xmpp_enabled,
     const base::Closure& on_status_changed)
     : transport_{transport},
       storage_{state_store},
       command_manager_{command_manager},
       state_manager_{state_manager},
       config_{std::move(config)},
+      xmpp_enabled_{xmpp_enabled},
       on_status_changed_{on_status_changed} {
 }
 
@@ -340,6 +342,10 @@ bool DeviceRegistrationInfo::RefreshAccessToken(
 }
 
 void DeviceRegistrationInfo::StartXmpp() {
+  if (!xmpp_enabled_) {
+    LOG(WARNING) << "XMPP support disabled by flag.";
+    return;
+  }
   // If no MessageLoop assume we're in unittests.
   if (!base::MessageLoop::current()) {
     LOG(INFO) << "No MessageLoop, not starting XMPP";

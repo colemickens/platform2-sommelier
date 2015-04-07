@@ -25,11 +25,13 @@ class Daemon : public DBusServiceDaemon {
  public:
   Daemon(const base::FilePath& config_path,
          const base::FilePath& state_path,
-         const base::FilePath& test_definitions_path)
+         const base::FilePath& test_definitions_path,
+         bool enable_xmpp)
       : DBusServiceDaemon(kServiceName, kRootServicePath),
         config_path_{config_path},
         state_path_{state_path},
-        test_definitions_path_{test_definitions_path} {}
+        test_definitions_path_{test_definitions_path},
+        enable_xmpp_{enable_xmpp} {}
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
@@ -38,6 +40,7 @@ class Daemon : public DBusServiceDaemon {
         config_path_,
         state_path_,
         test_definitions_path_,
+        enable_xmpp_,
         sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
   }
 
@@ -47,6 +50,7 @@ class Daemon : public DBusServiceDaemon {
   const base::FilePath config_path_;
   const base::FilePath state_path_;
   const base::FilePath test_definitions_path_;
+  const bool enable_xmpp_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
@@ -69,6 +73,8 @@ int main(int argc, char* argv[]) {
   DEFINE_string(test_definitions_path, "",
                 "Path to directory containing additional command "
                 "and state definitions.  For use in test only.");
+  DEFINE_bool(enable_xmpp, true,
+              "Connect to GCD via a persistent XMPP connection.");
   chromeos::FlagHelper::Init(argc, argv, "Privet protocol handler daemon");
   if (FLAGS_config_path.empty())
     FLAGS_config_path = kDefaultConfigFilePath;
@@ -81,6 +87,7 @@ int main(int argc, char* argv[]) {
 
   buffet::Daemon daemon{base::FilePath{FLAGS_config_path},
                         base::FilePath{FLAGS_state_path},
-                        base::FilePath{FLAGS_test_definitions_path}};
+                        base::FilePath{FLAGS_test_definitions_path},
+                        FLAGS_enable_xmpp};
   return daemon.Run();
 }

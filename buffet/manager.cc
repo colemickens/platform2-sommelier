@@ -48,6 +48,7 @@ Manager::~Manager() {
 void Manager::RegisterAsync(const base::FilePath& config_path,
                             const base::FilePath& state_path,
                             const base::FilePath& test_definitions_path,
+                            bool xmpp_enabled,
                             const AsyncEventSequencer::CompletionAction& cb) {
   command_manager_ =
       std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
@@ -71,6 +72,7 @@ void Manager::RegisterAsync(const base::FilePath& config_path,
           std::move(config),
           chromeos::http::Transport::CreateDefault(),
           std::move(state_store),
+          xmpp_enabled,
           base::Bind(&Manager::OnRegistrationStatusChanged,
                      base::Unretained(this))));
   device_info_->Load();
