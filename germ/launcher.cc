@@ -81,9 +81,9 @@ bool Launcher::RunInteractive(const std::string& name,
                                      status);
 }
 
-bool Launcher::RunService(const std::string& name,
-                          const std::vector<std::string>& argv,
-                          pid_t* pid) {
+bool Launcher::RunDaemonized(const std::string& name,
+                             const std::vector<std::string>& argv,
+                             pid_t* pid) {
   // initctl start germ_template NAME=yes ENVIRONMENT= COMMANDLINE=/usr/bin/yes
   uid_t uid = uid_service_->GetUid();
   Environment env(uid, uid);

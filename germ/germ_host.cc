@@ -17,9 +17,9 @@ int GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
     argv.push_back(cmdline_token);
   }
   pid_t pid = -1;
-  bool success = launcher_.RunService(request->name(), argv, &pid);
+  bool success = launcher_.RunDaemonized(request->name(), argv, &pid);
   if (!success) {
-    LOG(ERROR) << "RunService(" << request->name() << ") failed";
+    LOG(ERROR) << "RunDaemonized(" << request->name() << ") failed";
     response->set_pid(-1);
     return -1;
   }
