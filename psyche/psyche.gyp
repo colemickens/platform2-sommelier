@@ -56,7 +56,6 @@
   'conditions': [
     ['USE_test == 1', {
       'targets': [
-        # Tests.
         {
           'target_name': 'psyched_test',
           'type': 'executable',

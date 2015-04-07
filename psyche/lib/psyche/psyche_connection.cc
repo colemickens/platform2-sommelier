@@ -17,26 +17,35 @@
 #include "psyche/proto_bindings/psyche.pb.h"
 #include "psyche/proto_bindings/psyche.pb.rpc.h"
 
-using protobinder::IBinder;
 using protobinder::BinderHost;
 using protobinder::BinderProxy;
 
 namespace psyche {
 
+// This class's methods mirror PsycheConnection's.
 class PsycheConnection::Impl : public IPsycheClientHostInterface {
  public:
   Impl() = default;
   ~Impl() override = default;
 
+  void SetProxyForTesting(std::unique_ptr<BinderProxy> psyched_proxy) {
+    CHECK(!psyched_proxy_);
+    psyched_proxy_ = std::move(psyched_proxy);
+  }
+
   bool Init() {
-    psyched_binder_.reset(protobinder::GetServiceManager()->GetService(
-        kPsychedServiceManagerName));
-    if (!psyched_binder_) {
-      LOG(ERROR) << "Failed to connect to psyched";
-      return false;
+    if (!psyched_proxy_) {
+      psyched_proxy_.reset(
+          static_cast<BinderProxy*>(
+              protobinder::GetServiceManager()->GetService(
+                  kPsychedServiceManagerName)));
+      if (!psyched_proxy_) {
+        LOG(ERROR) << "Failed to connect to psyched";
+        return false;
+      }
     }
     psyched_interface_.reset(
-        protobinder::BinderToInterface<IPsyched>(psyched_binder_.get()));
+        protobinder::BinderToInterface<IPsyched>(psyched_proxy_.get()));
     return true;
   }
 
@@ -86,8 +95,9 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
   // IPsycheClientHostInterface:
   int ReceiveService(ReceiveServiceRequest* in) override {
     const std::string service_name = in->name();
-    std::unique_ptr<BinderProxy> proxy =
-        util::ExtractBinderProxyFromProto(in->mutable_binder());
+    std::unique_ptr<BinderProxy> proxy;
+    if (in->has_binder())
+      proxy = util::ExtractBinderProxyFromProto(in->mutable_binder());
 
     auto it = get_service_callbacks_.find(service_name);
     if (it == get_service_callbacks_.end()) {
@@ -100,7 +110,7 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
   }
 
  private:
-  std::unique_ptr<IBinder> psyched_binder_;
+  std::unique_ptr<BinderProxy> psyched_proxy_;
   std::unique_ptr<IPsyched> psyched_interface_;
 
   // Keyed by service name.
@@ -109,12 +119,16 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
   DISALLOW_COPY_AND_ASSIGN(Impl);
 };
 
-PsycheConnection::PsycheConnection() = default;
+PsycheConnection::PsycheConnection() : impl_(new Impl) {}
 
 PsycheConnection::~PsycheConnection() = default;
 
+void PsycheConnection::SetProxyForTesting(
+    std::unique_ptr<BinderProxy> psyched_proxy) {
+  impl_->SetProxyForTesting(std::move(psyched_proxy));
+}
+
 bool PsycheConnection::Init() {
-  impl_.reset(new Impl);
   return impl_->Init();
 }
 

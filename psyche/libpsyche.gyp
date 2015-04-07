@@ -24,4 +24,23 @@
       ],
     },
   ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          'target_name': 'libpsyche_test',
+          'type': 'executable',
+          'includes': [ '../common-mk/common_test.gypi' ],
+          'dependencies': [
+            'libcommontest',
+            'libpsyche',
+          ],
+          'sources': [
+            'common/testrunner.cc',
+            'lib/psyche/psyche_connection_unittest.cc',
+          ],
+        },
+      ],
+    }],
+  ],
 }

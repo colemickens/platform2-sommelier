@@ -54,6 +54,13 @@ class PSYCHE_EXPORT PsycheConnection : public PsycheConnectionInterface {
   PsycheConnection();
   ~PsycheConnection() override;
 
+  // Allows tests to inject a stub proxy to be used for communication with
+  // psyched. Must be called before Init().
+  // TODO(derat): Consider creating a stub implementation of
+  // protobinder::IServiceManager instead.
+  void SetProxyForTesting(
+      std::unique_ptr<protobinder::BinderProxy> psyched_proxy);
+
   // Initializes the connection, returning true on success.
   bool Init();
 
