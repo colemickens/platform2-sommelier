@@ -21,6 +21,7 @@
 #include <psyche/psyche_connection.h>
 #include <psyche/psyche_daemon.h>
 
+#include "germ/constants.h"
 #include "germ/launcher.h"
 #include "germ/proto_bindings/germ.pb.h"
 #include "germ/proto_bindings/germ.pb.rpc.h"
@@ -43,7 +44,7 @@ class LaunchClient : public psyche::PsycheDaemon {
  private:
   void RequestService() {
     LOG(INFO) << "Requesting service germ";
-    psyche_connection()->GetService("germ",
+    psyche_connection()->GetService(kGermServiceName,
                                     base::Bind(&LaunchClient::ReceiveService,
                                                weak_ptr_factory_.GetWeakPtr()));
   }

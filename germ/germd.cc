@@ -10,6 +10,7 @@
 #include <chromeos/syslog_logging.h>
 #include <psyche/psyche_daemon.h>
 
+#include "germ/constants.h"
 #include "germ/germ_host.h"
 #include "germ/process_reaper.h"
 
@@ -32,7 +33,7 @@ class GermDaemon : public psyche::PsycheDaemon {
       LOG(ERROR) << "Could not initialize daemon.";
       return return_code;
     }
-    if (!psyche_connection()->RegisterService("germ", &host_)) {
+    if (!psyche_connection()->RegisterService(kGermServiceName, &host_)) {
       LOG(ERROR) << "Could not register with psyche.";
       return 1;
     }
