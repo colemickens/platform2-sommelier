@@ -11,12 +11,12 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <gtest/gtest.h>
-#include <libprotobinder/binder_manager.h>
-#include <libprotobinder/binder_manager_stub.h>
-#include <libprotobinder/binder_proxy.h>
-#include <libprotobinder/iinterface.h>
+#include <protobinder/binder_manager_stub.h>
+#include <protobinder/binder_proxy.h>
+#include <protobinder/iinterface.h>
 #include <soma/constants.h>
 
+#include "psyche/common/binder_test_base.h"
 #include "psyche/common/util.h"
 #include "psyche/proto_bindings/psyche.pb.h"
 #include "psyche/proto_bindings/psyche.pb.rpc.h"
@@ -28,8 +28,6 @@
 #include "psyche/psyched/service_stub.h"
 #include "psyche/psyched/stub_factory.h"
 
-using protobinder::BinderManagerInterface;
-using protobinder::BinderManagerStub;
 using protobinder::BinderProxy;
 using soma::ContainerSpec;
 
@@ -69,45 +67,26 @@ class SomaInterfaceStub : public soma::ISoma {
   DISALLOW_COPY_AND_ASSIGN(SomaInterfaceStub);
 };
 
-class RegistrarTest : public testing::Test {
+class RegistrarTest : public BinderTestBase {
  public:
   RegistrarTest()
-      : binder_manager_(new BinderManagerStub),
-        factory_(new StubFactory),
+      : factory_(new StubFactory),
         registrar_(new Registrar),
         soma_proxy_(nullptr),
-        soma_(nullptr),
-        next_proxy_handle_(1) {
-    BinderManagerInterface::SetForTesting(
-        scoped_ptr<BinderManagerInterface>(binder_manager_));
+        soma_(nullptr) {
     registrar_->SetFactoryForTesting(
         std::unique_ptr<FactoryInterface>(factory_));
     registrar_->Init();
     CHECK(InitSoma());
   }
-
-  ~RegistrarTest() override {
-    // Kill the registrar before uninstalling the BinderManagerStub to ensure
-    // that still-open BinderProxy objects don't try to use the now-real
-    // BinderManager.
-    registrar_.reset();
-    BinderManagerInterface::SetForTesting(
-        scoped_ptr<BinderManagerInterface>());
-  }
+  ~RegistrarTest() override = default;
 
  protected:
-  // Returns a new BinderProxy with a unique handle. Passes a bare pointer since
-  // tests will probably want to hang on to the proxy's address while also
-  // passing ownership of it to Registrar.
-  BinderProxy* CreateBinderProxy() WARN_UNUSED_RESULT {
-    return new BinderProxy(next_proxy_handle_++);
-  }
-
   // Initializes |soma_proxy_| and |soma_| and registers them with |registrar_|
   // and |binder_manager_|. May be called from within a test to simulate somad
   // restarting and reregistering itself with psyched.
   bool InitSoma() WARN_UNUSED_RESULT {
-    soma_proxy_ = CreateBinderProxy();
+    soma_proxy_ = CreateBinderProxy().release();
     soma_ = new SomaInterfaceStub;
     binder_manager_->SetTestInterface(soma_proxy_,
                                       scoped_ptr<IInterface>(soma_));
@@ -167,16 +146,11 @@ class RegistrarTest : public testing::Test {
     return container;
   }
 
-  BinderManagerStub* binder_manager_;  // Not owned.
-
   StubFactory* factory_;  // Owned by |registrar_|.
   std::unique_ptr<Registrar> registrar_;
 
   BinderProxy* soma_proxy_;  // Owned by |registrar_|.
   SomaInterfaceStub* soma_;  // Owned by |binder_manager_|.
-
-  // Next handle for CreateBinderProxy() to use.
-  uint32_t next_proxy_handle_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RegistrarTest);
@@ -185,12 +159,12 @@ class RegistrarTest : public testing::Test {
 TEST_F(RegistrarTest, RegisterAndRequestService) {
   // Register a service.
   const std::string kServiceName("service");
-  BinderProxy* service_proxy = CreateBinderProxy();
+  BinderProxy* service_proxy = CreateBinderProxy().release();
   EXPECT_TRUE(RegisterService(kServiceName,
                               std::unique_ptr<BinderProxy>(service_proxy)));
 
   // Request the service.
-  BinderProxy* client_proxy = CreateBinderProxy();
+  BinderProxy* client_proxy = CreateBinderProxy().release();
   EXPECT_TRUE(RequestService(kServiceName,
                              std::unique_ptr<BinderProxy>(client_proxy)));
 
@@ -205,7 +179,7 @@ TEST_F(RegistrarTest, RegisterAndRequestService) {
 TEST_F(RegistrarTest, ReregisterService) {
   // Register a service.
   const std::string kServiceName("service");
-  BinderProxy* service_proxy = CreateBinderProxy();
+  BinderProxy* service_proxy = CreateBinderProxy().release();
   EXPECT_TRUE(RegisterService(kServiceName,
                               std::unique_ptr<BinderProxy>(service_proxy)));
 
@@ -217,13 +191,13 @@ TEST_F(RegistrarTest, ReregisterService) {
 
   // Trying to register the same service again while it's still running should
   // fail.
-  service_proxy = CreateBinderProxy();
+  service_proxy = CreateBinderProxy().release();
   EXPECT_FALSE(RegisterService(kServiceName,
                                std::unique_ptr<BinderProxy>(service_proxy)));
 
   // After stopping the service, it should be possible to register it again.
   service->set_state(ServiceInterface::State::STOPPED);
-  service_proxy = CreateBinderProxy();
+  service_proxy = CreateBinderProxy().release();
   EXPECT_TRUE(RegisterService(kServiceName,
                               std::unique_ptr<BinderProxy>(service_proxy)));
   EXPECT_EQ(ServiceInterface::State::STARTED, service->GetState());
@@ -241,7 +215,7 @@ TEST_F(RegistrarTest, QuerySomaForServices) {
   // When a client requests the first service, check that the container is
   // launched and that the client is added to the service (so it can be notified
   // after the service is registered).
-  BinderProxy* client1_proxy = CreateBinderProxy();
+  BinderProxy* client1_proxy = CreateBinderProxy().release();
   EXPECT_TRUE(RequestService(kService1Name,
                              std::unique_ptr<BinderProxy>(client1_proxy)));
   EXPECT_EQ(1, container->launch_count());
@@ -251,7 +225,7 @@ TEST_F(RegistrarTest, QuerySomaForServices) {
   EXPECT_FALSE(service2->HasClient(client1));
 
   // Check that a second client is also added to the first service.
-  BinderProxy* client2_proxy = CreateBinderProxy();
+  BinderProxy* client2_proxy = CreateBinderProxy().release();
   EXPECT_TRUE(RequestService(kService1Name,
                              std::unique_ptr<BinderProxy>(client2_proxy)));
   EXPECT_EQ(1, container->launch_count());
@@ -261,7 +235,7 @@ TEST_F(RegistrarTest, QuerySomaForServices) {
   EXPECT_FALSE(service2->HasClient(client2));
 
   // Now make a third client request the second service.
-  BinderProxy* client3_proxy = CreateBinderProxy();
+  BinderProxy* client3_proxy = CreateBinderProxy().release();
   EXPECT_TRUE(RequestService(kService2Name,
                              std::unique_ptr<BinderProxy>(client3_proxy)));
   EXPECT_EQ(1, container->launch_count());
@@ -281,9 +255,7 @@ TEST_F(RegistrarTest, UnknownService) {
   AddContainer(kContainerName, kServiceName);
 
   // A request for the service should fail.
-  EXPECT_FALSE(
-      RequestService(kServiceName,
-                     std::unique_ptr<BinderProxy>(CreateBinderProxy())));
+  EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxy()));
   // TODO(derat): Once germd communication is present, check that no request was
   // made to launch the container. We can't check the ContainerStub since it
   // ought to have been deleted by this point.
@@ -308,12 +280,8 @@ TEST_F(RegistrarTest, DuplicateService) {
   // Requesting the first service should succeed, but requesting the second
   // service should fail due to the second container claiming that it also
   // provides the first service.
-  EXPECT_TRUE(
-      RequestService(kService1Name,
-                     std::unique_ptr<BinderProxy>(CreateBinderProxy())));
-  EXPECT_FALSE(
-      RequestService(kService2Name,
-                     std::unique_ptr<BinderProxy>(CreateBinderProxy())));
+  EXPECT_TRUE(RequestService(kService1Name, CreateBinderProxy()));
+  EXPECT_FALSE(RequestService(kService2Name, CreateBinderProxy()));
 }
 
 // Tests that a duplicate ContainerSpec (i.e. one that was previously received
@@ -324,9 +292,7 @@ TEST_F(RegistrarTest, ServiceListChanged) {
   const std::string kService1Name("org.example.container.service1");
   ContainerStub* container1 = AddContainer(kContainerName, kService1Name);
   container1->AddService(kService1Name);
-  EXPECT_TRUE(
-      RequestService(kService1Name,
-                     std::unique_ptr<BinderProxy>(CreateBinderProxy())));
+  EXPECT_TRUE(RequestService(kService1Name, CreateBinderProxy()));
 
   // A request for a second service that returns the already-created spec (which
   // didn't previously claim to provide the second service) should fail.
@@ -334,16 +300,12 @@ TEST_F(RegistrarTest, ServiceListChanged) {
   ContainerStub* container2 = AddContainer(kContainerName, kService2Name);
   container2->AddService(kService1Name);
   container2->AddService(kService2Name);
-  EXPECT_FALSE(
-      RequestService(kService2Name,
-                     std::unique_ptr<BinderProxy>(CreateBinderProxy())));
+  EXPECT_FALSE(RequestService(kService2Name, CreateBinderProxy()));
 }
 
 // Tests that Registrar doesn't hand out its connection to somad.
 TEST_F(RegistrarTest, DontProvideSomaService) {
-  EXPECT_FALSE(
-      RequestService(soma::kSomaServiceName,
-                     std::unique_ptr<BinderProxy>(CreateBinderProxy())));
+  EXPECT_FALSE(RequestService(soma::kSomaServiceName, CreateBinderProxy()));
 }
 
 // Tests various failures when communicating with somad.
@@ -355,25 +317,19 @@ TEST_F(RegistrarTest, SomaFailures) {
 
   // Failure should be reported for RPC errors.
   soma_->set_return_value(-1);
-  EXPECT_FALSE(
-      RequestService(kServiceName,
-                     std::unique_ptr<BinderProxy>(CreateBinderProxy())));
+  EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxy()));
 
   // Now report that the somad binder proxy died.
   soma_->set_return_value(0);
   binder_manager_->ReportBinderDeath(soma_proxy_);
-  EXPECT_FALSE(
-      RequestService(kServiceName,
-                     std::unique_ptr<BinderProxy>(CreateBinderProxy())));
+  EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxy()));
 
   // Register a new proxy for somad and check that the next service request is
   // successful.
   EXPECT_TRUE(InitSoma());
   container = AddContainer(kContainerName, kServiceName);
   container->AddService(kServiceName);
-  EXPECT_TRUE(
-      RequestService(kServiceName,
-                     std::unique_ptr<BinderProxy>(CreateBinderProxy())));
+  EXPECT_TRUE(RequestService(kServiceName, CreateBinderProxy()));
 }
 
 }  // namespace

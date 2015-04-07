@@ -62,6 +62,7 @@
           'type': 'executable',
           'includes': [ '../common-mk/common_test.gypi' ],
           'dependencies': [
+            'libcommontest',
             'libpsyched',
           ],
           'sources': [

@@ -40,4 +40,19 @@
       'includes': ['../../platform2/common-mk/protoc.gypi'],
     },
   ],
+  'conditions': [
+    ['USE_test == 1', {
+      'targets': [
+        {
+          # Shared code used by tests.
+          'target_name': 'libcommontest',
+          'type': 'static_library',
+          'dependencies': [ 'libcommon' ],
+          'sources': [
+            'common/binder_test_base.cc',
+          ],
+        },
+      ],
+    }],
+  ],
 }

@@ -11,19 +11,16 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-#include <gtest/gtest.h>
-#include <libprotobinder/binder_manager.h>
-#include <libprotobinder/binder_manager_stub.h>
-#include <libprotobinder/binder_proxy.h>
-#include <libprotobinder/iinterface.h>
+#include <protobinder/binder_manager_stub.h>
+#include <protobinder/binder_proxy.h>
+#include <protobinder/iinterface.h>
 
+#include "psyche/common/binder_test_base.h"
 #include "psyche/proto_bindings/psyche.pb.h"
 #include "psyche/proto_bindings/psyche.pb.rpc.h"
 #include "psyche/psyched/client_stub.h"
 #include "psyche/psyched/service_stub.h"
 
-using protobinder::BinderManagerInterface;
-using protobinder::BinderManagerStub;
 using protobinder::BinderProxy;
 
 namespace psyche {
@@ -43,7 +40,7 @@ class PsycheClientInterfaceStub : public IPsycheClient {
   const ServiceHandles& service_handles() const { return service_handles_; }
   void clear_service_handles() { service_handles_.clear(); }
 
-  // IPSycheClient:
+  // IPsycheClient:
   int ReceiveService(ReceiveServiceRequest* in,
                      ReceiveServiceResponse* out) override {
     service_handles_.push_back(
@@ -57,29 +54,11 @@ class PsycheClientInterfaceStub : public IPsycheClient {
   DISALLOW_COPY_AND_ASSIGN(PsycheClientInterfaceStub);
 };
 
-class ClientTest : public testing::Test {
- public:
-  ClientTest() {
-    binder_manager_ = new BinderManagerStub;
-    BinderManagerInterface::SetForTesting(
-        scoped_ptr<BinderManagerInterface>(binder_manager_));
-  }
-  ~ClientTest() override {
-    BinderManagerInterface::SetForTesting(
-        scoped_ptr<BinderManagerInterface>());
-  }
-
- protected:
-  BinderManagerStub* binder_manager_;  // Not owned.
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ClientTest);
-};
+using ClientTest = BinderTestBase;
 
 TEST_F(ClientTest, PassServiceHandles) {
-  uint32_t next_proxy_handle = 1;
   PsycheClientInterfaceStub* interface = new PsycheClientInterfaceStub;
-  BinderProxy* client_proxy = new BinderProxy(next_proxy_handle++);
+  BinderProxy* client_proxy = CreateBinderProxy().release();
   binder_manager_->SetTestInterface(
       client_proxy, scoped_ptr<IInterface>(interface));
   Client client((std::unique_ptr<BinderProxy>(client_proxy)));
@@ -91,7 +70,7 @@ TEST_F(ClientTest, PassServiceHandles) {
   ASSERT_EQ(0U, interface->service_handles().size());
 
   // Start the service and check that its handle is sent.
-  BinderProxy* service_proxy = new BinderProxy(next_proxy_handle++);
+  BinderProxy* service_proxy = CreateBinderProxy().release();
   service.SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
   client.OnServiceStateChange(&service);
   ASSERT_EQ(1U, interface->service_handles().size());
@@ -104,7 +83,7 @@ TEST_F(ClientTest, PassServiceHandles) {
   service.set_state(ServiceInterface::State::STOPPED);
   client.OnServiceStateChange(&service);
   ASSERT_EQ(0U, interface->service_handles().size());
-  service_proxy = new BinderProxy(next_proxy_handle++);
+  service_proxy = CreateBinderProxy().release();
   service.SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
   service.set_state(ServiceInterface::State::STARTED);
   client.OnServiceStateChange(&service);
@@ -117,7 +96,7 @@ TEST_F(ClientTest, PassServiceHandles) {
   // Add a second already-running service.
   const std::string kService2Name("stub2");
   ServiceStub service2(kService2Name);
-  BinderProxy* service2_proxy = new BinderProxy(next_proxy_handle++);
+  BinderProxy* service2_proxy = CreateBinderProxy().release();
   service2.SetProxy(std::unique_ptr<BinderProxy>(service2_proxy));
   client.AddService(&service2);
   ASSERT_EQ(1U, interface->service_handles().size());

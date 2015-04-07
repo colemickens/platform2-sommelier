@@ -11,20 +11,18 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-#include <gtest/gtest.h>
-#include <libprotobinder/binder_manager.h>
-#include <libprotobinder/binder_manager_stub.h>
-#include <libprotobinder/binder_proxy.h>
+#include <protobinder/binder_manager_stub.h>
+#include <protobinder/binder_proxy.h>
 
+#include "psyche/common/binder_test_base.h"
 #include "psyche/psyched/service_observer.h"
 
-using protobinder::BinderManagerInterface;
-using protobinder::BinderManagerStub;
 using protobinder::BinderProxy;
 
 namespace psyche {
 namespace {
 
+// Implementation of ServiceObserver that just records events.
 class TestObserver : public ServiceObserver {
  public:
   TestObserver() = default;
@@ -45,24 +43,7 @@ class TestObserver : public ServiceObserver {
   DISALLOW_COPY_AND_ASSIGN(TestObserver);
 };
 
-class ServiceTest : public testing::Test {
- public:
-  ServiceTest() {
-    binder_manager_ = new BinderManagerStub;
-    BinderManagerInterface::SetForTesting(
-        scoped_ptr<BinderManagerInterface>(binder_manager_));
-  }
-  ~ServiceTest() override {
-    BinderManagerInterface::SetForTesting(
-        scoped_ptr<BinderManagerInterface>());
-  }
-
- protected:
-  BinderManagerStub* binder_manager_;  // Not owned.
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ServiceTest);
-};
+using ServiceTest = BinderTestBase;
 
 TEST_F(ServiceTest, NotifyObserversAboutStateChanges) {
   const std::string kServiceName("service");
@@ -74,7 +55,7 @@ TEST_F(ServiceTest, NotifyObserversAboutStateChanges) {
 
   // Pass the service proxy and check that the service is marked started and
   // that the observer is notified.
-  BinderProxy* service_proxy = new BinderProxy(1);
+  BinderProxy* service_proxy = CreateBinderProxy().release();
   service.SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
   EXPECT_EQ(ServiceInterface::State::STARTED, service.GetState());
   ASSERT_EQ(1U, observer.changed_services().size());
