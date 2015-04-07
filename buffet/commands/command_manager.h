@@ -36,6 +36,8 @@ class CommandManager final {
   explicit CommandManager(
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
           object_manager);
+  // Special constructor to help mock out command dispatcher for testing.
+  explicit CommandManager(CommandDispachInterface* dispatch_interface);
 
   // Sets callback which is called when command definitions is changed.
   void SetOnCommandDefChanged(const base::Closure& on_command_defs_changed) {

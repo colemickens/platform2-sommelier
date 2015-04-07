@@ -6,6 +6,7 @@
 #define BUFFET_UTILS_H_
 
 #include <memory>
+#include <string>
 
 #include <base/values.h>
 #include <base/files/file_path.h>
@@ -31,6 +32,10 @@ const char kDefaultCategory[] = "";
 // in error details in |error|.
 std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
     const base::FilePath& json_file_path, chromeos::ErrorPtr* error);
+
+// Helper function to load a JSON dictionary from a string.
+std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
+    const std::string& json_string, chromeos::ErrorPtr* error);
 
 }  // namespace buffet
 

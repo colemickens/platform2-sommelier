@@ -26,6 +26,10 @@ CommandManager::CommandManager(
   command_queue_.SetCommandDispachInterface(&command_dispatcher_);
 }
 
+CommandManager::CommandManager(CommandDispachInterface* dispatch_interface) {
+  command_queue_.SetCommandDispachInterface(dispatch_interface);
+}
+
 const CommandDictionary& CommandManager::GetCommandDictionary() const {
   return dictionary_;
 }

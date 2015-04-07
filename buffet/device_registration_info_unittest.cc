@@ -5,6 +5,7 @@
 #include "buffet/device_registration_info.h"
 
 #include <base/json/json_reader.h>
+#include <base/json/json_writer.h>
 #include <base/values.h>
 #include <chromeos/bind_lambda.h>
 #include <chromeos/http/http_request.h>
@@ -179,6 +180,10 @@ class DeviceRegistrationInfo::TestHelper {
   static bool Save(DeviceRegistrationInfo* info) {
     return info->Save();
   }
+  static void PublishCommands(DeviceRegistrationInfo* info,
+                              const base::ListValue& commands) {
+    return info->PublishCommands(commands);
+  }
 };
 
 class DeviceRegistrationInfoTest : public ::testing::Test {
@@ -188,7 +193,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     storage_ = std::make_shared<MemStorage>();
     storage_->Save(&data_);
     transport_ = std::make_shared<chromeos::http::fake::Transport>();
-    command_manager_ = std::make_shared<CommandManager>();
+    command_manager_ = std::make_shared<CommandManager>(nullptr);
     state_manager_ = std::make_shared<StateManager>(&mock_state_change_queue_);
     chromeos::KeyValueStore config_store;
     config_store.SetString("client_id", test_data::kClientId);
@@ -213,6 +218,8 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
                                    transport_, storage_,
                                    true,
                                    mock_callback));
+    EXPECT_CALL(*this, OnRegistrationStatusChange())
+        .Times(testing::AnyNumber());
   }
 
   MOCK_METHOD0(OnRegistrationStatusChange, void());
@@ -502,5 +509,53 @@ TEST_F(DeviceRegistrationInfoTest, OOBRegistrationStatus) {
   EXPECT_TRUE(dev_reg_->Load());
   EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
 }
+
+TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
+  EXPECT_TRUE(dev_reg_->Load());
+  auto json_cmds = buffet::unittests::CreateDictionaryValue(R"({
+    'robot': {
+      '_jump': {
+        'parameters': {'_height': 'integer'},
+        'results': {'status': 'string'}
+      }
+    }
+  })");
+  EXPECT_TRUE(command_manager_->LoadCommands(*json_cmds, "", nullptr));
+
+  auto commands_json = buffet::unittests::CreateValue(R"([{
+    'name':'robot._jump',
+    'id':'1234',
+    'parameters': {'_height': 100}
+  }])");
+  ASSERT_NE(nullptr, commands_json.get());
+  const base::ListValue* command_list = nullptr;
+  ASSERT_TRUE(commands_json->GetAsList(&command_list));
+  DeviceRegistrationInfo::TestHelper::PublishCommands(dev_reg_.get(),
+                                                      *command_list);
+  auto command = command_manager_->FindCommand("1234");
+  ASSERT_NE(nullptr, command);
+  StringPropType string_type;
+  native_types::Object results{
+    {"status", string_type.CreateValue(std::string{"Ok"}, nullptr)}
+  };
+
+  auto update_command = [](const ServerRequest& request,
+                           ServerResponse* response) {
+    // Make sure we serialize the JSON back without any pretty print so
+    // the string comparison works correctly.
+    auto json = request.GetDataAsJson();
+    EXPECT_NE(nullptr, json.get());
+    std::string value;
+    ASSERT_TRUE(base::JSONWriter::Write(json.get(), &value));
+    EXPECT_EQ(R"({"results":{"status":"Ok"}})", value);
+  };
+
+  transport_->AddHandler(dev_reg_->GetServiceURL("commands/1234"),
+      chromeos::http::request_type::kPatch,
+      base::Bind(update_command));
+
+  command->SetResults(results);
+}
+
 
 }  // namespace buffet

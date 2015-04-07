@@ -20,7 +20,6 @@ const char kInvalidPackageError[] = "invalid_package";
 
 std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
     const base::FilePath& json_file_path, chromeos::ErrorPtr* error) {
-  std::unique_ptr<const base::DictionaryValue> result;
   std::string json_string;
   if (!base::ReadFileToString(json_file_path, &json_string)) {
     chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
@@ -28,8 +27,14 @@ std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
                                  kFileReadError,
                                  "Failed to read file '%s'",
                                  json_file_path.value().c_str());
-    return result;
+    return {};
   }
+  return LoadJsonDict(json_string, error);
+}
+
+std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
+    const std::string& json_string, chromeos::ErrorPtr* error) {
+  std::unique_ptr<const base::DictionaryValue> result;
   std::string error_message;
   base::Value* value = base::JSONReader::ReadAndReturnError(
       json_string, base::JSON_PARSE_RFC, nullptr, &error_message);
@@ -37,8 +42,8 @@ std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
     chromeos::Error::AddToPrintf(error, FROM_HERE,
                                  chromeos::errors::json::kDomain,
                                  chromeos::errors::json::kParseError,
-                                 "Error parsing content of JSON file '%s': %s",
-                                 json_file_path.value().c_str(),
+                                 "Error parsing JSON string '%s': %s",
+                                 json_string.c_str(),
                                  error_message.c_str());
     return result;
   }
@@ -48,8 +53,8 @@ std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
     chromeos::Error::AddToPrintf(error, FROM_HERE,
                                  chromeos::errors::json::kDomain,
                                  chromeos::errors::json::kObjectExpected,
-                                 "Content of file '%s' is not a JSON object",
-                                 json_file_path.value().c_str());
+                                 "JSON string '%s' is not a JSON object",
+                                 json_string.c_str());
     return result;
   }
   result.reset(dict_value);

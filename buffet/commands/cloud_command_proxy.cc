@@ -22,7 +22,7 @@ CloudCommandProxy::CloudCommandProxy(
 void CloudCommandProxy::OnResultsChanged(const native_types::Object& results) {
   base::DictionaryValue patch;
   patch.Set(commands::attributes::kCommand_Results,
-            TypedValueToJson(results, nullptr).get());
+            TypedValueToJson(results, nullptr).release());
   device_registration_info_->UpdateCommand(command_instance_->GetID(), patch);
 }
 
