@@ -91,6 +91,7 @@ class SupplicantInterfaceProxy
     void PropertiesChanged(const std::map<std::string, ::DBus::Variant>
                            &properties) override;
     void ScanDone(const bool &success) override;
+    void TDLSDiscoverResponse(const std::string &peer_address) override;
 
     // This pointer is owned by the object that created |this|.  That object
     // MUST destroy |this| before destroying itself.

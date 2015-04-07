@@ -1241,6 +1241,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_->SetBgscanSignalThreshold(threshold, error);
   }
 
+  void ReportTDLSDiscoverResponse(const string &peer) {
+    wifi_->TDLSDiscoverResponse(peer);
+  }
+
   bool TDLSDiscover(const string &peer) {
     return wifi_->TDLSDiscover(peer);
   }
@@ -1261,6 +1265,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                               const string &peer,
                               Error *error) {
     return wifi_->PerformTDLSOperation(operation, peer, error);
+  }
+
+  void TimeoutTDLSDiscoverCleanupTimer() {
+    wifi_->TDLSDiscoverPeerCleanup();
   }
 
   void TimeoutPendingConnection() {
@@ -4358,6 +4366,7 @@ TEST_F(WiFiMainTest, TDLSInterfaceFunctions) {
 TEST_F(WiFiMainTest, PerformTDLSOperation) {
   StartWiFi();
   const char kPeer[] = "00:11:22:33:44:55";
+  const char kPeerDummy[] = "66:77:88:99:aa:bb";
 
   {
     Error error;
@@ -4462,6 +4471,87 @@ TEST_F(WiFiMainTest, PerformTDLSOperation) {
     EXPECT_TRUE(error.IsSuccess());
     Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   }
+
+  // Status on a peer after discover response should return
+  // "Not Connected" till the cleanup timer expiry.
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeer)))
+      .WillOnce(Return());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
+      .WillOnce(Return(WPASupplicant::kTDLSStatePeerDoesNotExist));
+  {
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeer, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    ReportTDLSDiscoverResponse(kPeer);
+    EXPECT_EQ(kTDLSDisconnectedState,
+              PerformTDLSOperation(kTDLSStatusOperation, kPeer, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    TimeoutTDLSDiscoverCleanupTimer();
+  }
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  // Status on a peer after discover response should return
+  // "Not Existent" after the cleanup timer expires.
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeer)))
+      .WillOnce(Return());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeerDummy)))
+      .WillOnce(Return());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
+      .WillOnce(Return(WPASupplicant::kTDLSStatePeerDoesNotExist));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeerDummy)))
+      .WillOnce(Return(WPASupplicant::kTDLSStatePeerDoesNotExist));
+  {
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeer, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeerDummy,
+                                       &error));
+    EXPECT_TRUE(error.IsSuccess());
+    ReportTDLSDiscoverResponse(kPeer);
+    TimeoutTDLSDiscoverCleanupTimer();
+    EXPECT_EQ(kTDLSNonexistentState,
+              PerformTDLSOperation(kTDLSStatusOperation, kPeer, &error));
+    EXPECT_EQ(kTDLSNonexistentState,
+              PerformTDLSOperation(kTDLSStatusOperation, kPeerDummy, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  // Status on a peer without a discover response should return
+  // "Non Existent".
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeer)))
+      .WillOnce(Return());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
+      .WillOnce(Return(WPASupplicant::kTDLSStatePeerDoesNotExist));
+  {
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeer, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(kTDLSNonexistentState,
+              PerformTDLSOperation(kTDLSStatusOperation, kPeer, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    TimeoutTDLSDiscoverCleanupTimer();
+  }
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  // Status on a peer without a discover request, but an unexpected discover
+  // response should be "Non Existent".
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeerDummy)))
+      .WillOnce(Return());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
+      .WillOnce(Return(WPASupplicant::kTDLSStatePeerDoesNotExist));
+  {
+    Error error;
+    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeerDummy,
+                                       &error));
+    EXPECT_TRUE(error.IsSuccess());
+    ReportTDLSDiscoverResponse(kPeer);
+    EXPECT_EQ(kTDLSNonexistentState,
+              PerformTDLSOperation(kTDLSStatusOperation, kPeer, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    TimeoutTDLSDiscoverCleanupTimer();
+  }
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
       .WillOnce(Throw(

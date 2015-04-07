@@ -71,6 +71,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   void PropertiesChanged(
       const std::map<std::string, ::DBus::Variant> &properties) override;
   void ScanDone(const bool &/*success*/) override;
+  void TDLSDiscoverResponse(const std::string &peer_address) override;
 
   virtual bool link_up() const { return link_up_; }
 

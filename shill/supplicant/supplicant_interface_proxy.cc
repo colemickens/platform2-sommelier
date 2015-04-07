@@ -358,4 +358,10 @@ void SupplicantInterfaceProxy::Proxy::ScanDone(const bool &success) {
   delegate_->ScanDone(success);
 }
 
+void SupplicantInterfaceProxy::Proxy::TDLSDiscoverResponse(
+    const std::string &peer_address) {
+  SLOG(&path(), 2) << __func__ << ": " << peer_address;
+  delegate_->TDLSDiscoverResponse(peer_address);
+}
+
 }  // namespace shill

@@ -42,6 +42,9 @@ class SupplicantEventDelegateInterface {
 
   // A scan has completed on this interface.
   virtual void ScanDone(const bool &success) = 0;
+
+  // A TDLS discovery response received on this interface.
+  virtual void TDLSDiscoverResponse(const std::string &peer_address) = 0;
 };
 
 }  // namespace shill

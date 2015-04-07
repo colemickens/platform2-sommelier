@@ -121,6 +121,9 @@
     <signal name="PropertiesChanged">
       <arg name="properties" type="a{sv}"/>
     </signal>
+    <signal name="TDLSDiscoverResponse">
+      <arg name="peer_address" type="s"/>
+    </signal>
   </interface>
 </node>
 

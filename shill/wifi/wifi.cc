@@ -95,6 +95,7 @@ const int WiFi::kPendingTimeoutSeconds = 15;
 const int WiFi::kReconnectTimeoutSeconds = 10;
 const int WiFi::kRequestStationInfoPeriodSeconds = 20;
 const size_t WiFi::kMinumumFrequenciesToScan = 4;  // Arbitrary but > 0.
+const int WiFi::kTDLSDiscoverPeerCleanupTimeoutSeconds = 30;
 const float WiFi::kDefaultFractionPerScan = 0.34;
 const char WiFi::kProgressiveScanFieldTrialFlagFile[] =
     "/home/chronos/.progressive_scan_variation";
@@ -388,6 +389,7 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
   StopReconnectTimer();
   StopRequestingStationInfo();
   mac80211_monitor_->Stop();
+  TDLSDiscoverPeerCleanup();
 
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
@@ -2952,9 +2954,48 @@ void WiFi::StopRequestingStationInfo() {
   link_statistics_.Clear();
 }
 
+void WiFi::TDLSDiscoverResponse(const string &peer_address) {
+  LOG(INFO) << __func__ << " TDLS discover response from " << peer_address;
+
+  if (CheckTDLSDiscoverState(peer_address) == kTDLSDiscoverRequestSent) {
+    tdls_discover_peers_[peer_address] = kTDLSDiscoverResponseReceived;
+  }
+}
+
+void WiFi::StartTDLSDiscoverPeerCleanupTimer() {
+  if (!tdls_discover_peer_cleanup_callback_.IsCancelled()) {
+    LOG(INFO) << __func__ << " TDLS cleanup timer restarted.";
+  } else {
+    LOG(INFO) << __func__ << " TDLS cleanup timer started.";
+  }
+  tdls_discover_peer_cleanup_callback_.Reset(
+      Bind(&WiFi::TDLSDiscoverPeerCleanup,
+           weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostDelayedTask(tdls_discover_peer_cleanup_callback_.callback(),
+                                kTDLSDiscoverPeerCleanupTimeoutSeconds * 1000);
+}
+
+void WiFi::TDLSDiscoverPeerCleanup() {
+  LOG(INFO) << __func__ << " TDLS discover peer map cleared.";
+  tdls_discover_peer_cleanup_callback_.Cancel();
+  tdls_discover_peers_.clear();
+}
+
+WiFi::TDLSDiscoverState WiFi::CheckTDLSDiscoverState(
+    const string &peer_mac_address) {
+  auto iter = tdls_discover_peers_.find(peer_mac_address);
+  if (iter == tdls_discover_peers_.end()) {
+    return kTDLSDiscoverNone;
+  } else {
+    return iter->second;
+  }
+}
+
 bool WiFi::TDLSDiscover(const string &peer) {
   try {
     supplicant_interface_proxy_->TDLSDiscover(peer);
+    tdls_discover_peers_[peer] = kTDLSDiscoverRequestSent;
+    WiFi::StartTDLSDiscoverPeerCleanupTimer();
   } catch (const DBus::Error &e) {  // NOLINT
     LOG(ERROR) << "exception while performing TDLS discover: " << e.what();
     return false;
@@ -3018,7 +3059,12 @@ string WiFi::PerformTDLSOperation(const string &operation,
         return kTDLSDisabledState;
       } else if (supplicant_status ==
                  WPASupplicant::kTDLSStatePeerDoesNotExist) {
-        return kTDLSNonexistentState;
+        if (CheckTDLSDiscoverState(peer_mac_address) ==
+            kTDLSDiscoverResponseReceived) {
+          return kTDLSDisconnectedState;
+        } else {
+          return kTDLSNonexistentState;
+        }
       } else if (supplicant_status ==
                  WPASupplicant::kTDLSStatePeerNotConnected) {
         return kTDLSDisconnectedState;
