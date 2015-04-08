@@ -10,6 +10,7 @@ package germ;
 
 service Germ {
   rpc Launch (LaunchRequest) returns (LaunchResponse);
+  rpc Terminate (TerminateRequest) returns (TerminateResponse);
 }
 
 message LaunchRequest {
@@ -18,6 +19,15 @@ message LaunchRequest {
 }
 
 message LaunchResponse {
-  // |pid| will be negative on error.
+  optional bool success = 1;
+  // |pid| will be valid if |success| is true.
+  optional int32 pid = 2;
+}
+
+message TerminateRequest {
   optional int32 pid = 1;
+}
+
+message TerminateResponse {
+  optional bool success = 1;
 }

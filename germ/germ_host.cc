@@ -19,11 +19,27 @@ int GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
   pid_t pid = -1;
   bool success = launcher_.RunDaemonized(request->name(), argv, &pid);
   if (!success) {
+    // TODO(jorgelo): Unify error handling, either return value or |success|.
     LOG(ERROR) << "RunDaemonized(" << request->name() << ") failed";
+    response->set_success(false);
     response->set_pid(-1);
     return -1;
   }
+  response->set_success(success);
   response->set_pid(pid);
+  return 0;
+}
+
+int GermHost::Terminate(TerminateRequest* request,
+                        TerminateResponse* response) {
+  bool success = launcher_.Terminate(request->pid());
+  if (!success) {
+    // TODO(jorgelo): Unify error handling, either return value or |success|.
+    LOG(ERROR) << "Terminate(" << request->pid() << ") failed";
+    response->set_success(false);
+    return -1;
+  }
+  response->set_success(success);
   return 0;
 }
 

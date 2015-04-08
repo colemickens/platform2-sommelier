@@ -5,6 +5,8 @@
 #ifndef GERM_GERM_CLIENT_H_
 #define GERM_GERM_CLIENT_H_
 
+#include <sys/types.h>
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -28,6 +30,7 @@ class GermClient : public psyche::PsycheDaemon {
 
   int Launch(const std::string& name,
              const std::vector<std::string>& command_line);
+  int Terminate(pid_t pid);
 
  private:
   void RequestService();
@@ -35,6 +38,7 @@ class GermClient : public psyche::PsycheDaemon {
 
   void DoLaunch(const std::string& name,
                 const std::vector<std::string>& command_line);
+  void DoTerminate(pid_t pid);
 
   void RunCallback();
 

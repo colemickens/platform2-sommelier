@@ -105,11 +105,40 @@ bool Launcher::RunDaemonized(const std::string& name,
   *pid = GetPidFromStdout(stdout_fd);
   int exit_status = initctl.Wait();
   if (exit_status != 0) {
-    LOG(ERROR) << "'initctl' failed with exit status " << exit_status;
+    LOG(ERROR) << "'initctl start' failed with exit status " << exit_status;
     *pid = -1;
     return false;
   }
   VLOG(1) << "service name " << name << " pid " << pid;
+  names_[*pid] = name;
+  return true;
+}
+
+bool Launcher::Terminate(pid_t pid) {
+  if (pid < 0) {
+    LOG(ERROR) << "Invalid pid " << pid;
+    return false;
+  }
+
+  if (names_.find(pid) == names_.end()) {
+    LOG(ERROR) << "Unknown pid " << pid;
+    return false;
+  }
+
+  std::string name = names_[pid];
+
+  // initctl stop germ_template NAME=<name>
+  chromeos::ProcessImpl initctl;
+  initctl.AddArg("/sbin/initctl");
+  initctl.AddArg("stop");
+  initctl.AddArg(kSandboxedServiceTemplate);
+  initctl.AddArg(base::StringPrintf("NAME=%s", name.c_str()));
+  int exit_status = initctl.Run();
+  if (exit_status != 0) {
+    LOG(ERROR) << "'initctl stop' failed with exit status " << exit_status;
+    return false;
+  }
+  names_.erase(pid);
   return true;
 }
 

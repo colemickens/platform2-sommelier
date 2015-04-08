@@ -55,6 +55,22 @@ void GermClient::DoLaunch(const std::string& name,
   LOG(INFO) << "Launched service '" << name << "' with pid " << response.pid();
 }
 
+int GermClient::Terminate(pid_t pid) {
+  callback_ =
+      base::Bind(&GermClient::DoTerminate, weak_ptr_factory_.GetWeakPtr(), pid);
+  return Run();
+}
+
+void GermClient::DoTerminate(pid_t pid) {
+  DCHECK(germ_);
+  TerminateRequest request;
+  TerminateResponse response;
+  request.set_pid(pid);
+  if (germ_->Terminate(&request, &response) != 0) {
+    LOG(ERROR) << "Failed to terminate service with pid " << pid;
+  }
+}
+
 void GermClient::RunCallback() {
   callback_.Run();
   Quit();

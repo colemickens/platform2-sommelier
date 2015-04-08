@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <base/macros.h>
@@ -26,9 +27,11 @@ class Launcher {
   bool RunDaemonized(const std::string& name,
                      const std::vector<std::string>& argv,
                      pid_t* pid);
+  bool Terminate(pid_t pid);
 
  private:
   std::unique_ptr<UidService> uid_service_;
+  std::unordered_map<pid_t, std::string> names_;
 
   DISALLOW_COPY_AND_ASSIGN(Launcher);
 };
