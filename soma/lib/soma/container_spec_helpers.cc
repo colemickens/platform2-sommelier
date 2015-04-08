@@ -19,13 +19,13 @@ namespace container_spec_helpers {
 namespace {
 
 void SetListenPorts(ContainerSpec::PortSpec* port_spec,
-                    const std::set<parser::port::Number>& ports) {
+                    const std::set<port::Number>& listen_ports) {
   // If the wildcard port is in the set, just allow all and bail early.
-  if (ports.find(parser::port::kWildcard) != ports.end()) {
+  if (listen_ports.find(port::kWildcard) != listen_ports.end()) {
     port_spec->set_allow_all(true);
     return;
   }
-  for (const parser::port::Number& port : ports) {
+  for (const port::Number& port : listen_ports) {
     // The parsing code should have ensured this, so just DCHECK()
     DCHECK(port <= std::numeric_limits<uint16_t>::max());
     port_spec->add_ports(static_cast<uint16_t>(port));
@@ -37,6 +37,7 @@ void SetListenPorts(ContainerSpec::PortSpec* port_spec,
 std::unique_ptr<ContainerSpec> CreateContainerSpec(
     const std::string& name,
     const base::FilePath& service_bundle_path,
+    const std::vector<std::string>& command_line,
     uid_t uid,
     gid_t gid) {
   std::unique_ptr<ContainerSpec> spec(new ContainerSpec);
@@ -44,6 +45,8 @@ std::unique_ptr<ContainerSpec> CreateContainerSpec(
   spec->set_service_bundle_path(service_bundle_path.value());
   spec->set_uid(uid);
   spec->set_gid(gid);
+  for (const std::string& arg : command_line)
+    spec->add_command_line(arg);
   return std::move(spec);
 }
 
@@ -54,17 +57,10 @@ void SetServiceNames(const std::vector<std::string>& service_names,
     to_modify->add_service_names(name);
 }
 
-void SetCommandLine(const std::vector<std::string>& command_line,
-                    ContainerSpec* to_modify) {
-  to_modify->clear_command_line();
-  for (const std::string& arg : command_line)
-    to_modify->add_command_line(arg);
-}
-
 void SetNamespaces(const std::set<ns::Kind>& namespaces,
                    ContainerSpec* to_modify) {
   to_modify->clear_namespaces();
-  for (const parser::ns::Kind& ns : namespaces)
+  for (const ns::Kind& ns : namespaces)
     to_modify->add_namespaces(ns);
 }
 
@@ -83,14 +79,14 @@ void SetUdpListenPorts(const std::set<port::Number>& ports,
 void SetDevicePathFilters(const DevicePathFilter::Set& filters,
                           ContainerSpec* to_modify) {
   to_modify->clear_device_path_filters();
-  for (const parser::DevicePathFilter& filter : filters)
+  for (const DevicePathFilter& filter : filters)
     to_modify->add_device_path_filters()->set_filter(filter.filter().value());
 }
 
 void SetDeviceNodeFilters(const DeviceNodeFilter::Set& filters,
                           ContainerSpec* to_modify) {
   to_modify->clear_device_node_filters();
-  for (const parser::DeviceNodeFilter& parser_filter : filters) {
+  for (const DeviceNodeFilter& parser_filter : filters) {
     ContainerSpec::DeviceNodeFilter* filter =
         to_modify->add_device_node_filters();
     filter->set_major(parser_filter.major());

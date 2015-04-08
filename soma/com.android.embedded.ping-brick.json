@@ -35,7 +35,7 @@
                         "name": "health",
                         "port": 4000,
                         "protocol": "tcp",
-                        "socketActivated": true
+                        "socketActivated": false
                     }
                 ]
             },

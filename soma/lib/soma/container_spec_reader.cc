@@ -26,14 +26,14 @@
 namespace soma {
 namespace parser {
 
-#define APPKEY "app."
-
 const char ContainerSpecReader::kServiceBundleRoot[] = "/bricks";
 const char ContainerSpecReader::kServiceBundleNameKey[] = "image.name";
-const char ContainerSpecReader::kAppsKey[] = "apps";
-const char ContainerSpecReader::kCommandLineKey[] = APPKEY "exec";
-const char ContainerSpecReader::kGidKey[] = APPKEY "group";
-const char ContainerSpecReader::kUidKey[] = APPKEY "user";
+const char ContainerSpecReader::kAppsListKey[] = "apps";
+
+const char ContainerSpecReader::kSubAppKey[] = "app";
+const char ContainerSpecReader::kCommandLineKey[] = "exec";
+const char ContainerSpecReader::kGidKey[] = "group";
+const char ContainerSpecReader::kUidKey[] = "user";
 
 namespace {
 
@@ -49,6 +49,72 @@ bool ResolveGroup(const std::string& group, gid_t* gid) {
   if (base::StringToUint(group, gid))
     return true;
   return chromeos::userdb::GetGroupInfo(group, gid);
+}
+
+std::unique_ptr<ContainerSpec> BuildFromAppFields(
+    const std::string& name,
+    const base::DictionaryValue* app_dict) {
+  DCHECK(app_dict);
+
+  std::string service_bundle_name;
+  if (!app_dict->GetString(ContainerSpecReader::kServiceBundleNameKey,
+                           &service_bundle_name)) {
+    LOG(ERROR) << "Service bundle name (image.name) is required.";
+    return nullptr;
+  }
+
+  const base::DictionaryValue* subapp_dict = nullptr;
+  if (!app_dict->GetDictionary(ContainerSpecReader::kSubAppKey, &subapp_dict)) {
+    LOG(ERROR) << "Each dict in 'apps' must contain a dict named 'app'.";
+    return nullptr;
+  }
+
+  std::string user, group;
+  if (!subapp_dict->GetString(ContainerSpecReader::kUidKey, &user) ||
+      !subapp_dict->GetString(ContainerSpecReader::kGidKey, &group)) {
+    LOG(ERROR) << "User and group are required.";
+    return nullptr;
+  }
+  uid_t uid;
+  gid_t gid;
+  if (!ResolveUser(user, &uid) || !ResolveGroup(group, &gid)) {
+    LOG(ERROR) << "User or group could not be resolved to an ID.";
+    return nullptr;
+  }
+
+  const base::ListValue* to_parse = nullptr;
+  if (!subapp_dict->GetList(ContainerSpecReader::kCommandLineKey, &to_parse) ||
+      to_parse->GetSize() < 1) {
+    LOG(ERROR) << "'app.exec' must be a list of strings.";
+    return nullptr;
+  }
+
+  std::vector<std::string> command_line(to_parse->GetSize());
+  for (size_t i = 0; i < command_line.size(); ++i) {
+    if (!to_parse->GetString(i, &command_line[i])) {
+      LOG(ERROR) << "'app.exec' must be a list of strings.";
+      return nullptr;
+    }
+  }
+
+  std::unique_ptr<ContainerSpec> spec(
+      container_spec_helpers::CreateContainerSpec(
+          name,
+          base::FilePath(ContainerSpecReader::kServiceBundleRoot).Append(
+              service_bundle_name),
+          command_line,
+          uid,
+          gid));
+
+  std::set<port::Number> tcp_ports, udp_ports;
+  if (subapp_dict->GetList(port::kListKey, &to_parse)) {
+    if (!port::ParseList(to_parse, &tcp_ports, &udp_ports))
+      return nullptr;
+    container_spec_helpers::SetTcpListenPorts(tcp_ports, spec.get());
+    container_spec_helpers::SetUdpListenPorts(udp_ports, spec.get());
+  }
+
+  return std::move(spec);
 }
 
 }  // namespace
@@ -82,14 +148,15 @@ std::unique_ptr<ContainerSpec> ContainerSpecReader::Read(
 
   const base::ListValue* apps_list = nullptr;
   const base::DictionaryValue* app_dict = nullptr;
-  if (!spec_dict->GetList(kAppsKey, &apps_list) || apps_list->GetSize() != 1 ||
+  if (!spec_dict->GetList(kAppsListKey, &apps_list) ||
+      apps_list->GetSize() != 1 ||
       !apps_list->GetDictionary(0, &app_dict)) {
     LOG(ERROR) << "'apps' must be a list of a single dict.";
     return nullptr;
   }
 
   std::unique_ptr<ContainerSpec> spec =
-      PopulateRequiredFields(spec_file.value(), app_dict);
+      BuildFromAppFields(spec_file.value(), app_dict);
   if (!spec.get())
     return nullptr;
 
@@ -108,14 +175,6 @@ std::unique_ptr<ContainerSpec> ContainerSpecReader::Read(
     container_spec_helpers::SetNamespaces(namespaces, spec.get());
   }
 
-  std::set<port::Number> tcp_ports, udp_ports;
-  if (spec_dict->GetList(port::kListKey, &to_parse)) {
-    if (!port::ParseList(to_parse, &tcp_ports, &udp_ports))
-      return nullptr;
-    container_spec_helpers::SetTcpListenPorts(tcp_ports, spec.get());
-    container_spec_helpers::SetUdpListenPorts(udp_ports, spec.get());
-  }
-
   DevicePathFilter::Set device_path_filters;
   if (spec_dict->GetList(DevicePathFilter::kListKey, &to_parse)) {
     if (!DevicePathFilter::ParseList(*to_parse, &device_path_filters))
@@ -131,55 +190,6 @@ std::unique_ptr<ContainerSpec> ContainerSpecReader::Read(
                                                  spec.get());
   }
 
-  return std::move(spec);
-}
-
-std::unique_ptr<ContainerSpec>
-ContainerSpecReader::PopulateRequiredFields(
-    const std::string& name,
-    const base::DictionaryValue* app_dict) {
-  DCHECK(app_dict);
-
-  std::string service_bundle_name;
-  if (!app_dict->GetString(kServiceBundleNameKey, &service_bundle_name)) {
-    LOG(ERROR) << "Service bundle name (image.name) is required.";
-    return nullptr;
-  }
-
-  std::string user, group;
-  if (!app_dict->GetString(kUidKey, &user) ||
-      !app_dict->GetString(kGidKey, &group)) {
-    LOG(ERROR) << "User and group are required.";
-    return nullptr;
-  }
-  uid_t uid;
-  gid_t gid;
-  if (!ResolveUser(user, &uid) || !ResolveGroup(group, &gid)) {
-    LOG(ERROR) << "User or group could not be resolved to an ID.";
-    return nullptr;
-  }
-
-  const base::ListValue* command_line = nullptr;
-  if (!app_dict->GetList(kCommandLineKey, &command_line) ||
-      command_line->GetSize() < 1) {
-    LOG(ERROR) << "'app.exec' must be a list of strings.";
-    return nullptr;
-  }
-
-  std::unique_ptr<ContainerSpec> spec(
-      container_spec_helpers::CreateContainerSpec(
-          name,
-          base::FilePath(kServiceBundleRoot).Append(service_bundle_name),
-          uid, gid));
-
-  std::vector<std::string> cl(command_line->GetSize());
-  for (size_t i = 0; i < cl.size(); ++i) {
-    if (!command_line->GetString(i, &cl[i])) {
-      LOG(ERROR) << "'app.exec' must be a list of strings.";
-      return nullptr;
-    }
-  }
-  container_spec_helpers::SetCommandLine(cl, spec.get());
   return std::move(spec);
 }
 

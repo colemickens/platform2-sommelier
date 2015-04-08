@@ -147,6 +147,18 @@ class ContainerSpecReaderTest : public ::testing::Test {
     return nullptr;
   }
 
+  base::DictionaryValue* GetAppDict(base::DictionaryValue* pod_dict) {
+    base::ListValue* apps_list = nullptr;
+    base::DictionaryValue* app_dict = nullptr;
+    DCHECK(pod_dict->GetList(ContainerSpecReader::kAppsListKey, &apps_list));
+    DCHECK(apps_list->GetDictionary(0, &app_dict));
+    return app_dict;
+  }
+
+  std::string MakeSubAppKey(const std::string& element) {
+    return JoinString({ContainerSpecReader::kSubAppKey, element}, '.');
+  }
+
   ContainerSpecReader reader_;
   base::ScopedTempDir tmpdir_;
 
@@ -159,17 +171,21 @@ class ContainerSpecReaderTest : public ::testing::Test {
     std::unique_ptr<base::DictionaryValue> app_dict(new base::DictionaryValue);
     app_dict->SetString(ContainerSpecReader::kServiceBundleNameKey,
                         kServiceBundleName);
-    app_dict->SetString(ContainerSpecReader::kUidKey, kUid);
-    app_dict->SetString(ContainerSpecReader::kGidKey, kGid);
+
+    std::string uid_key = MakeSubAppKey(ContainerSpecReader::kUidKey);
+    std::string gid_key = MakeSubAppKey(ContainerSpecReader::kGidKey);
+    std::string cl_key = MakeSubAppKey(ContainerSpecReader::kCommandLineKey);
+    app_dict->SetString(uid_key, kUid);
+    app_dict->SetString(gid_key, kGid);
     if (with_cl) {
       std::unique_ptr<base::ListValue> cl(new base::ListValue);
       cl->AppendString("foo");
-      app_dict->Set(ContainerSpecReader::kCommandLineKey, cl.release());
+      app_dict->Set(cl_key, cl.release());
     }
     std::unique_ptr<base::ListValue> apps_list(new base::ListValue);
     apps_list->Append(app_dict.release());
     std::unique_ptr<base::DictionaryValue> baseline(new base::DictionaryValue);
-    baseline->Set(ContainerSpecReader::kAppsKey, apps_list.release());
+    baseline->Set(ContainerSpecReader::kAppsListKey, apps_list.release());
 
     return std::move(baseline);
   }
@@ -261,7 +277,8 @@ TEST_F(ContainerSpecReaderTest, SpecWithListenPorts) {
   listen_ports->Append(CreatePort(port::kTcpProtocol, port1).release());
   listen_ports->Append(CreatePort(port::kTcpProtocol, port2).release());
   listen_ports->Append(CreatePort(port::kUdpProtocol, port1).release());
-  baseline->Set(port::kListKey, listen_ports.release());
+  GetAppDict(baseline.get())->Set(MakeSubAppKey(port::kListKey),
+                                  listen_ports.release());
 
   std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
@@ -274,7 +291,8 @@ TEST_F(ContainerSpecReaderTest, SpecWithListenPorts) {
   std::unique_ptr<base::ListValue> listen_ports_invalid(new base::ListValue);
   listen_ports_invalid->Append(
       CreatePort(port::kUdpProtocol, invalid_port).release());
-  baseline->Set(port::kListKey, listen_ports_invalid.release());
+  GetAppDict(baseline.get())->Set(MakeSubAppKey(port::kListKey),
+                                  listen_ports_invalid.release());
 
   spec = ValueToSpec(baseline.get());
 
@@ -287,7 +305,8 @@ TEST_F(ContainerSpecReaderTest, SpecWithWildcardPort) {
   std::unique_ptr<base::ListValue> listen_ports(new base::ListValue);
   listen_ports->Append(CreatePort(port::kTcpProtocol,
                                   port::kWildcard).release());
-  baseline->Set(port::kListKey, listen_ports.release());
+  GetAppDict(baseline.get())->Set(MakeSubAppKey(port::kListKey),
+                                  listen_ports.release());
 
   std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 

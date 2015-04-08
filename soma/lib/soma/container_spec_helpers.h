@@ -30,13 +30,12 @@ namespace container_spec_helpers {
 std::unique_ptr<ContainerSpec> CreateContainerSpec(
     const std::string& name,
     const base::FilePath& service_bundle_path,
+    const std::vector<std::string>& command_line,
     uid_t uid,
     gid_t gid);
 
 void SetServiceNames(const std::vector<std::string>& service_names,
                      ContainerSpec* to_modify);
-void SetCommandLine(const std::vector<std::string>& command_line,
-                    ContainerSpec* to_modify);
 void SetNamespaces(const std::set<ns::Kind>& namespaces,
                    ContainerSpec* to_modify);
 void SetTcpListenPorts(const std::set<port::Number>& ports,

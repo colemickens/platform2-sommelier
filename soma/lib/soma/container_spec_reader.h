@@ -12,10 +12,6 @@
 #include <base/json/json_reader.h>
 #include <soma/soma_export.h>
 
-namespace base {
-class DictionaryValue;
-}
-
 namespace soma {
 class ContainerSpec;
 
@@ -28,7 +24,9 @@ class SOMA_EXPORT ContainerSpecReader {
 
   // Keys for required fields in a container specification.
   static const char kServiceBundleNameKey[];
-  static const char kAppsKey[];
+  static const char kAppsListKey[];
+  static const char kSubAppKey[];
+  // These keys are nested beneath kSubAppKey.
   static const char kCommandLineKey[];
   static const char kGidKey[];
   static const char kUidKey[];
@@ -42,10 +40,6 @@ class SOMA_EXPORT ContainerSpecReader {
   std::unique_ptr<ContainerSpec> Read(const base::FilePath& spec_file);
 
  private:
-  std::unique_ptr<ContainerSpec> PopulateRequiredFields(
-      const std::string& name,
-      const base::DictionaryValue* app_dict);
-
   base::JSONReader reader_;
 
   DISALLOW_COPY_AND_ASSIGN(ContainerSpecReader);
