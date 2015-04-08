@@ -183,10 +183,9 @@ TEST_F(RegistrarTest, ReregisterService) {
   EXPECT_TRUE(RegisterService(kServiceName,
                               std::unique_ptr<BinderProxy>(service_proxy)));
 
-  // The service should be started and hold the correct proxy.
+  // The service should hold the correct proxy.
   ServiceStub* service = factory_->GetService(kServiceName);
   ASSERT_TRUE(service);
-  ASSERT_EQ(ServiceInterface::State::STARTED, service->GetState());
   EXPECT_EQ(service_proxy, service->GetProxy());
 
   // Trying to register the same service again while it's still running should
@@ -195,12 +194,12 @@ TEST_F(RegistrarTest, ReregisterService) {
   EXPECT_FALSE(RegisterService(kServiceName,
                                std::unique_ptr<BinderProxy>(service_proxy)));
 
-  // After stopping the service, it should be possible to register it again.
-  service->set_state(ServiceInterface::State::STOPPED);
+  // After clearing the service's proxy, it should be possible to register the
+  // service again.
+  service->SetProxyForTesting(std::unique_ptr<BinderProxy>());
   service_proxy = CreateBinderProxy().release();
   EXPECT_TRUE(RegisterService(kServiceName,
                               std::unique_ptr<BinderProxy>(service_proxy)));
-  EXPECT_EQ(ServiceInterface::State::STARTED, service->GetState());
   EXPECT_EQ(service_proxy, service->GetProxy());
 }
 

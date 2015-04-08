@@ -38,14 +38,14 @@ void Container::Launch() {
   NOTIMPLEMENTED();
 }
 
-void Container::OnServiceStateChange(ServiceInterface* service) {
+void Container::OnServiceProxyChange(ServiceInterface* service) {
   CHECK(services_.count(service->GetName()))
-      << "Container \"" << GetName() << "\" received state change notification "
+      << "Container \"" << GetName() << "\" received proxy change notification "
       << "for unexpected service \"" << service->GetName() << "\"";
 
-  if (service->GetState() == ServiceInterface::State::STOPPED) {
-    LOG(INFO) << "Service \"" << service->GetName() << "\" within container \""
-              << GetName() << "\" stopped; relaunching container";
+  if (!service->GetProxy()) {
+    LOG(INFO) << "Proxy for service \"" << service->GetName() << "\" within "
+              << "\"" << GetName() << "\" died; relaunching container";
     Launch();
   }
 }

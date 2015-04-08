@@ -12,22 +12,21 @@ using protobinder::BinderProxy;
 
 namespace psyche {
 
-ServiceStub::ServiceStub(const std::string& name)
-    : name_(name),
-      state_(State::STOPPED) {
-}
+ServiceStub::ServiceStub(const std::string& name) : name_(name) {}
 
 ServiceStub::~ServiceStub() = default;
 
-const std::string& ServiceStub::GetName() const { return name_; }
+void ServiceStub::SetProxyForTesting(std::unique_ptr<BinderProxy> proxy) {
+  proxy_ = std::move(proxy);
+}
 
-ServiceInterface::State ServiceStub::GetState() const { return state_; }
+const std::string& ServiceStub::GetName() const { return name_; }
 
 protobinder::BinderProxy* ServiceStub::GetProxy() const { return proxy_.get(); }
 
 void ServiceStub::SetProxy(std::unique_ptr<BinderProxy> proxy) {
+  CHECK(proxy);
   proxy_ = std::move(proxy);
-  state_ = proxy_ ? State::STARTED : State::STOPPED;
 }
 
 void ServiceStub::AddClient(ClientInterface* client) {

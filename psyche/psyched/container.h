@@ -54,7 +54,7 @@ class Container : public ContainerInterface, public ServiceObserver {
   void Launch() override;
 
   // ServiceObserver:
-  void OnServiceStateChange(ServiceInterface* service) override;
+  void OnServiceProxyChange(ServiceInterface* service) override;
 
  private:
   // The specification describing this container.

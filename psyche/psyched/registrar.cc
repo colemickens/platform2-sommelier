@@ -99,9 +99,9 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
   if (service) {
     // The service is already known, but maybe its proxy wasn't registered or
     // has died.
-    if (service->GetState() == ServiceInterface::State::STARTED) {
-      LOG(WARNING) << "Ignoring request to register already-running service \""
-                   << service_name << "\"";
+    if (service->GetProxy()) {
+      LOG(WARNING) << "Ignoring request to register already-registered "
+                   << "service \"" << service_name << "\"";
       out->set_success(false);
       return 0;
     }

@@ -53,7 +53,7 @@ class SomaConnection : public ServiceObserver {
                                     soma::ContainerSpec* spec_out);
 
   // ServiceObserver:
-  void OnServiceStateChange(ServiceInterface* service) override;
+  void OnServiceProxyChange(ServiceInterface* service) override;
 
  private:
   Service service_;

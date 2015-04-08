@@ -33,18 +33,14 @@ class ServiceObserver;
 // retained and reused once the service has been registered again.
 class ServiceInterface {
  public:
-  enum class State {
-    STOPPED,
-    STARTED,
-  };
-
   virtual ~ServiceInterface() = default;
 
   virtual const std::string& GetName() const = 0;
-  virtual State GetState() const = 0;
   virtual protobinder::BinderProxy* GetProxy() const = 0;
 
-  // Updates the proxy used by clients to communicate with the service.
+  // Updates the proxy used by clients to communicate with the service. This
+  // should be non-null; this class takes care of dropping the proxy when the
+  // host end dies.
   virtual void SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy) = 0;
 
   // Registers or unregisters a client as a user of this service. Ownership of
@@ -66,7 +62,6 @@ class Service : public ServiceInterface {
 
   // ServiceInterface:
   const std::string& GetName() const override;
-  State GetState() const override;
   protobinder::BinderProxy* GetProxy() const override;
   void SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy) override;
   void AddClient(ClientInterface* client) override;
@@ -83,10 +78,8 @@ class Service : public ServiceInterface {
   // The name of the service.
   std::string name_;
 
-  // The service's current state.
-  State state_;
-
-  // The connection to the service that will be passed to clients.
+  // The connection to the service that will be passed to clients. Unset if the
+  // service is currently unregistered.
   std::unique_ptr<protobinder::BinderProxy> proxy_;
 
   ObserverList<ServiceObserver> observers_;

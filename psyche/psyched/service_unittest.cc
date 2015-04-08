@@ -33,7 +33,7 @@ class TestObserver : public ServiceObserver {
   void clear_changed_services() { changed_services_.clear(); }
 
   // ServiceObserver:
-  void OnServiceStateChange(ServiceInterface* service) override {
+  void OnServiceProxyChange(ServiceInterface* service) override {
     changed_services_.push_back(service);
   }
 
@@ -45,10 +45,10 @@ class TestObserver : public ServiceObserver {
 
 using ServiceTest = BinderTestBase;
 
-TEST_F(ServiceTest, NotifyObserversAboutStateChanges) {
+TEST_F(ServiceTest, NotifyObserversAboutProxyChanges) {
   const std::string kServiceName("service");
   Service service(kServiceName);
-  EXPECT_EQ(ServiceInterface::State::STOPPED, service.GetState());
+  EXPECT_FALSE(service.GetProxy());
 
   TestObserver observer;
   service.AddObserver(&observer);
@@ -57,7 +57,7 @@ TEST_F(ServiceTest, NotifyObserversAboutStateChanges) {
   // that the observer is notified.
   BinderProxy* service_proxy = CreateBinderProxy().release();
   service.SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
-  EXPECT_EQ(ServiceInterface::State::STARTED, service.GetState());
+  EXPECT_EQ(service_proxy, service.GetProxy());
   ASSERT_EQ(1U, observer.changed_services().size());
   EXPECT_EQ(&service, observer.changed_services()[0]);
   observer.clear_changed_services();
@@ -65,7 +65,7 @@ TEST_F(ServiceTest, NotifyObserversAboutStateChanges) {
   // Killing the proxy should result in the service stopping and the observer
   // being notified again.
   binder_manager_->ReportBinderDeath(service_proxy);
-  EXPECT_EQ(ServiceInterface::State::STOPPED, service.GetState());
+  EXPECT_FALSE(service.GetProxy());
   ASSERT_EQ(1U, observer.changed_services().size());
   EXPECT_EQ(&service, observer.changed_services()[0]);
 

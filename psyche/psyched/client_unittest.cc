@@ -71,8 +71,8 @@ TEST_F(ClientTest, PassServiceHandles) {
 
   // Start the service and check that its handle is sent.
   BinderProxy* service_proxy = CreateBinderProxy().release();
-  service.SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
-  client.OnServiceStateChange(&service);
+  service.SetProxyForTesting(std::unique_ptr<BinderProxy>(service_proxy));
+  client.OnServiceProxyChange(&service);
   ASSERT_EQ(1U, interface->service_handles().size());
   EXPECT_EQ(kServiceName, interface->service_handles()[0].first);
   EXPECT_EQ(reinterpret_cast<uint64_t>(service_proxy),
@@ -80,13 +80,12 @@ TEST_F(ClientTest, PassServiceHandles) {
   interface->clear_service_handles();
 
   // Stop the service. Nothing should be sent until it's started again.
-  service.set_state(ServiceInterface::State::STOPPED);
-  client.OnServiceStateChange(&service);
+  service.SetProxyForTesting(std::unique_ptr<BinderProxy>());
+  client.OnServiceProxyChange(&service);
   ASSERT_EQ(0U, interface->service_handles().size());
   service_proxy = CreateBinderProxy().release();
-  service.SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
-  service.set_state(ServiceInterface::State::STARTED);
-  client.OnServiceStateChange(&service);
+  service.SetProxyForTesting(std::unique_ptr<BinderProxy>(service_proxy));
+  client.OnServiceProxyChange(&service);
   ASSERT_EQ(1U, interface->service_handles().size());
   EXPECT_EQ(kServiceName, interface->service_handles()[0].first);
   EXPECT_EQ(reinterpret_cast<uint64_t>(service_proxy),
@@ -97,7 +96,7 @@ TEST_F(ClientTest, PassServiceHandles) {
   const std::string kService2Name("stub2");
   ServiceStub service2(kService2Name);
   BinderProxy* service2_proxy = CreateBinderProxy().release();
-  service2.SetProxy(std::unique_ptr<BinderProxy>(service2_proxy));
+  service2.SetProxyForTesting(std::unique_ptr<BinderProxy>(service2_proxy));
   client.AddService(&service2);
   ASSERT_EQ(1U, interface->service_handles().size());
   EXPECT_EQ(kService2Name, interface->service_handles()[0].first);

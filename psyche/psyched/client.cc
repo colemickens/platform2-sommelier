@@ -38,7 +38,7 @@ void Client::AddService(ServiceInterface* service) {
       << "client with handle " << proxy_->handle();
   service->AddObserver(this);
   services_.insert(service);
-  if (service->GetState() == ServiceInterface::State::STARTED)
+  if (service->GetProxy())
     SendServiceHandle(service);
 }
 
@@ -47,15 +47,16 @@ void Client::RemoveService(ServiceInterface* service) {
   services_.erase(service);
 }
 
-void Client::OnServiceStateChange(ServiceInterface* service) {
+void Client::OnServiceProxyChange(ServiceInterface* service) {
   CHECK(services_.count(service))
       << "Service \"" << service->GetName() << "\" not registered for client "
       << "with handle " << proxy_->handle();
-  if (service->GetState() == ServiceInterface::State::STARTED)
+  if (service->GetProxy())
     SendServiceHandle(service);
 }
 
 void Client::SendServiceHandle(ServiceInterface* service) {
+  DCHECK(service->GetProxy());
   ReceiveServiceRequest request;
   request.set_name(service->GetName());
   util::CopyBinderToProto(*(service->GetProxy()), request.mutable_binder());

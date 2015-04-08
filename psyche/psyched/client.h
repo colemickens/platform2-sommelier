@@ -48,7 +48,7 @@ class Client : public ClientInterface, public ServiceObserver {
   void RemoveService(ServiceInterface* service) override;
 
   // ServiceObserver:
-  void OnServiceStateChange(ServiceInterface* service) override;
+  void OnServiceProxyChange(ServiceInterface* service) override;
 
  private:
   // Passes |service|'s handle to the client.

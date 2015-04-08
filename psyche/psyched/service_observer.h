@@ -14,8 +14,10 @@ class ServiceObserver {
  public:
   virtual ~ServiceObserver() = default;
 
-  // Called when the observed service's state has changed.
-  virtual void OnServiceStateChange(ServiceInterface* service) = 0;
+  // Called when the observed service's proxy has been set (in response to the
+  // service being registered) or cleared (in response to a binder death
+  // notification).
+  virtual void OnServiceProxyChange(ServiceInterface* service) = 0;
 };
 
 }  // namespace psyche

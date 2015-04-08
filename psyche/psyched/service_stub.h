@@ -23,11 +23,12 @@ class ServiceStub : public ServiceInterface {
   explicit ServiceStub(const std::string& name);
   ~ServiceStub() override;
 
-  void set_state(State state) { state_ = state; }
+  // Similar to SetProxy() but allows its argument to be null. Used to simulate
+  // the service clearing its proxy in response to a binder death notification.
+  void SetProxyForTesting(std::unique_ptr<protobinder::BinderProxy> proxy);
 
   // ServiceInterface:
   const std::string& GetName() const override;
-  State GetState() const override;
   protobinder::BinderProxy* GetProxy() const override;
   void SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy) override;
   void AddClient(ClientInterface* client) override;
@@ -39,9 +40,6 @@ class ServiceStub : public ServiceInterface {
  private:
   // The name of the service.
   std::string name_;
-
-  // The service's current state.
-  State state_;
 
   // The connection to the service that will be passed to clients.
   std::unique_ptr<protobinder::BinderProxy> proxy_;

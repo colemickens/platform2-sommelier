@@ -76,17 +76,14 @@ SomaConnection::Result SomaConnection::GetContainerSpecForService(
   return Result::SUCCESS;
 }
 
-void SomaConnection::OnServiceStateChange(ServiceInterface* service) {
+void SomaConnection::OnServiceProxyChange(ServiceInterface* service) {
   DCHECK_EQ(service, &service_);
-  switch (service->GetState()) {
-    case ServiceInterface::State::STOPPED:
-      LOG(WARNING) << "Lost connection to somad";
-      interface_.reset();
-      break;
-    case ServiceInterface::State::STARTED:
-      LOG(INFO) << "Got connection to somad";
-      interface_.reset(BinderToInterface<ISoma>(service->GetProxy()));
-      break;
+  if (service->GetProxy()) {
+    LOG(INFO) << "Got connection to somad";
+    interface_.reset(BinderToInterface<ISoma>(service->GetProxy()));
+  } else {
+    LOG(WARNING) << "Lost connection to somad";
+    interface_.reset();
   }
 }
 
