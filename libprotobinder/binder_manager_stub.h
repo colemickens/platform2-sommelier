@@ -41,7 +41,6 @@ class BINDER_EXPORT BinderManagerStub : public BinderManagerInterface {
                uint32_t flags) override;
   void IncWeakHandle(uint32_t handle) override;
   void DecWeakHandle(uint32_t handle) override;
-  void EnterLoop() override;
   bool GetFdForPolling(int* fd) override;
   bool HandleEvent() override;
   void RequestDeathNotification(BinderProxy* proxy) override;

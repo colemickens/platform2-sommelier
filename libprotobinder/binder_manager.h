@@ -38,7 +38,6 @@ class BINDER_EXPORT BinderManagerInterface {
                        uint32_t flags) = 0;
   virtual void IncWeakHandle(uint32_t handle) = 0;
   virtual void DecWeakHandle(uint32_t handle) = 0;
-  virtual void EnterLoop() = 0;
   virtual bool GetFdForPolling(int* fd) = 0;
   virtual bool HandleEvent() = 0;
 
@@ -68,7 +67,6 @@ class BINDER_EXPORT BinderManager : public BinderManagerInterface {
                uint32_t flags) override;
   void IncWeakHandle(uint32_t handle) override;
   void DecWeakHandle(uint32_t handle) override;
-  void EnterLoop() override;
   bool GetFdForPolling(int* fd) override;
   bool HandleEvent() override;
   void RequestDeathNotification(BinderProxy* proxy) override;
@@ -76,7 +74,6 @@ class BINDER_EXPORT BinderManager : public BinderManagerInterface {
   IInterface* CreateTestInterface(const IBinder* binder) override;
 
  private:
-  bool WriteCmd(void* data, size_t len);
   int WaitAndActionReply(Parcel* reply);
 
   static void ReleaseBinderBuffer(Parcel* parcel,

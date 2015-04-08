@@ -283,23 +283,6 @@ int BinderManager::Transact(uint32_t handle,
   return WaitAndActionReply(reply);
 }
 
-bool BinderManager::WriteCmd(void* data, size_t len) {
-  struct binder_write_read bwr;
-
-  bwr.write_size = len;
-  bwr.write_consumed = 0;
-  bwr.write_buffer = reinterpret_cast<uintptr_t>(data);
-  bwr.read_size = 0;
-  bwr.read_consumed = 0;
-  bwr.read_buffer = 0;
-
-  if (ioctl(binder_fd_, BINDER_WRITE_READ, &bwr) < 0) {
-    PLOG(ERROR) << "ioctl(binder_fd, BINDER_WRITE_READ) failed";
-    return false;
-  }
-  return true;
-}
-
 bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
   if (binder_fd_ < 0)
     return false;
@@ -390,33 +373,6 @@ bool BinderManager::HandleEvent() {
   } while (!in_commands_.IsEmpty());
 
   return DoBinderReadWriteIoctl(false);
-}
-
-void BinderManager::EnterLoop() {
-  VLOG(1) << "Entering loop";
-  struct binder_write_read bwr;
-  uint32_t readbuf[32];
-
-  bwr.write_size = 0;
-  bwr.write_consumed = 0;
-  bwr.write_buffer = 0;
-
-  readbuf[0] = BC_ENTER_LOOPER;
-  WriteCmd(readbuf, sizeof(readbuf[0]));
-
-  while (true) {
-    bwr.read_size = sizeof(readbuf);
-    bwr.read_consumed = 0;
-    bwr.read_buffer = reinterpret_cast<uintptr_t>(readbuf);
-
-    // Wait for a reply.
-    VLOG(1) << "Waiting for message";
-    if (ioctl(binder_fd_, BINDER_WRITE_READ, &bwr) < 0) {
-      PLOG(ERROR) << "ioctl(binder_fd, BINDER_WRITE_READ) failed";
-      break;
-    }
-    VLOG(1) << "Got a reply";
-  }
 }
 
 BinderManager::BinderManager() {

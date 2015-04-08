@@ -38,8 +38,6 @@ void BinderManagerStub::IncWeakHandle(uint32_t handle) {}
 
 void BinderManagerStub::DecWeakHandle(uint32_t handle) {}
 
-void BinderManagerStub::EnterLoop() {}
-
 bool BinderManagerStub::GetFdForPolling(int* fd) {
   // TODO(derat): Return an FD that can actually be used here.
   return true;
