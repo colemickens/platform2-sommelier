@@ -54,6 +54,11 @@ TEST_F(ContainerTest, InitializeFromSpec) {
     ASSERT_TRUE(it != services.end());
     EXPECT_EQ(factory_.GetService(name), it->second.get());
   }
+
+  // Modify the spec that was passed in to verify that Container made its own
+  // copy of it.
+  spec.set_name("/some/other/name");
+  EXPECT_EQ(kContainerName, container.GetName());
 }
 
 }  // namespace

@@ -14,7 +14,7 @@ using soma::ContainerSpec;
 namespace psyche {
 
 Container::Container(const ContainerSpec& spec, FactoryInterface* factory)
-    : spec_(spec), spec_reader_(&spec) {
+    : spec_(spec), spec_reader_(&spec_) {
   DCHECK(factory);
   for (const auto& name : spec_reader_.service_names()) {
     std::unique_ptr<ServiceInterface> service(factory->CreateService(name));
