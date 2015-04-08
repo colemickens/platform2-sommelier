@@ -422,7 +422,7 @@ void BinderManager::EnterLoop() {
 BinderManager::BinderManager() {
   VLOG(1) << "BinderManager created";
 
-  binder_fd_ = open("/dev/binder", O_RDWR);
+  binder_fd_ = open("/dev/binder", O_RDWR | O_CLOEXEC);
   if (binder_fd_ < 0) {
     PLOG(FATAL) << "Failed to open binder";
   }
