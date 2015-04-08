@@ -116,9 +116,8 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   // Loads the device registration information from cache.
   bool Load();
 
-  // Checks for the valid device registration as well as refreshes
-  // the device access token, if available.
-  bool CheckRegistration(chromeos::ErrorPtr* error);
+  // Checks whether we have credentials generated during registration.
+  bool HaveRegistrationCredentials(chromeos::ErrorPtr* error);
 
   // Gets the full device description JSON object, or nullptr if
   // the device is not registered or communication failure.
@@ -162,10 +161,11 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   // Saves the device registration to cache.
   bool Save() const;
 
-  // Checks whether we have credentials generated during registration.
-  bool HaveRegistrationCredentials(chromeos::ErrorPtr* error);
+  // Checks for the valid device registration as well as refreshes
+  // the device access token, if available.
+  bool CheckRegistration(chromeos::ErrorPtr* error);
 
-  // If we currently have an access token and it doesn't like like it
+  // If we currently have an access token and it doesn't look like it
   // has expired yet, returns true immediately. Otherwise calls
   // RefreshAccessToken().
   bool MaybeRefreshAccessToken(chromeos::ErrorPtr* error);

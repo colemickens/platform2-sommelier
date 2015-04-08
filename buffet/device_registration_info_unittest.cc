@@ -170,9 +170,15 @@ class DeviceRegistrationInfo::TestHelper {
   static bool Save(DeviceRegistrationInfo* info) {
     return info->Save();
   }
+
   static void PublishCommands(DeviceRegistrationInfo* info,
                               const base::ListValue& commands) {
     return info->PublishCommands(commands);
+  }
+
+  static bool CheckRegistration(DeviceRegistrationInfo* info,
+                                chromeos::ErrorPtr* error) {
+    return info->CheckRegistration(error);
   }
 };
 
@@ -274,7 +280,8 @@ TEST_F(DeviceRegistrationInfoTest, GetOAuthURL) {
 
 TEST_F(DeviceRegistrationInfoTest, CheckRegistration) {
   EXPECT_TRUE(dev_reg_->Load());
-  EXPECT_FALSE(dev_reg_->CheckRegistration(nullptr));
+  EXPECT_FALSE(DeviceRegistrationInfo::TestHelper::CheckRegistration(
+      dev_reg_.get(), nullptr));
   EXPECT_EQ(0, transport_->GetRequestCount());
 
   SetDefaultDeviceRegistration(&data_);
@@ -285,7 +292,8 @@ TEST_F(DeviceRegistrationInfoTest, CheckRegistration) {
                          chromeos::http::request_type::kPost,
                          base::Bind(OAuth2Handler));
   transport_->ResetRequestCount();
-  EXPECT_TRUE(dev_reg_->CheckRegistration(nullptr));
+  EXPECT_TRUE(DeviceRegistrationInfo::TestHelper::CheckRegistration(
+      dev_reg_.get(), nullptr));
   EXPECT_EQ(1, transport_->GetRequestCount());
 }
 
@@ -300,7 +308,8 @@ TEST_F(DeviceRegistrationInfoTest, CheckAuthenticationFailure) {
                          base::Bind(OAuth2HandlerFail));
   transport_->ResetRequestCount();
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(dev_reg_->CheckRegistration(&error));
+  EXPECT_FALSE(DeviceRegistrationInfo::TestHelper::CheckRegistration(
+      dev_reg_.get(), &error));
   EXPECT_EQ(1, transport_->GetRequestCount());
   EXPECT_TRUE(error->HasError(buffet::kErrorDomainOAuth2,
                               "unable_to_authenticate"));
@@ -318,7 +327,8 @@ TEST_F(DeviceRegistrationInfoTest, CheckDeregistration) {
                          base::Bind(OAuth2HandlerDeregister));
   transport_->ResetRequestCount();
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(dev_reg_->CheckRegistration(&error));
+  EXPECT_FALSE(DeviceRegistrationInfo::TestHelper::CheckRegistration(
+      dev_reg_.get(), &error));
   EXPECT_EQ(1, transport_->GetRequestCount());
   EXPECT_TRUE(error->HasError(buffet::kErrorDomainOAuth2,
                               "invalid_grant"));

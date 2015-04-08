@@ -83,7 +83,7 @@ void Manager::Start(const base::FilePath& config_path,
 void Manager::CheckDeviceRegistered(DBusMethodResponse<std::string> response) {
   LOG(INFO) << "Received call to Manager.CheckDeviceRegistered()";
   chromeos::ErrorPtr error;
-  bool registered = device_info_->CheckRegistration(&error);
+  bool registered = device_info_->HaveRegistrationCredentials(&error);
   // If it fails due to any reason other than 'device not registered',
   // treat it as a real error and report it to the caller.
   if (!registered &&
