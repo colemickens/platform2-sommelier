@@ -4,20 +4,22 @@
 
 #include "attestation/server/attestation_service.h"
 
+#include <base/callback.h>
+
 namespace attestation {
 
 bool AttestationService::Initialize() {
+  LOG(INFO) << "Attestation service started.";
   return true;
 }
 
-AttestationStatus AttestationService::CreateGoogleAttestedKey(
+void AttestationService::CreateGoogleAttestedKey(
     const std::string& key_label,
     KeyType key_type,
     KeyUsage key_usage,
     CertificateProfile certificate_profile,
-    std::string* server_error_details,
-    std::string* certificate) {
-  return NOT_AVAILABLE;
+    const base::Callback<CreateGoogleAttestedKeyCallback>& callback) {
+  callback.Run(NOT_AVAILABLE, std::string(), std::string());
 }
 
 }  // namespace attestation

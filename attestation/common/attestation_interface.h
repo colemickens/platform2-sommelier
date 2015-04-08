@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/callback_forward.h>
+
 #include "attestation/common/attestation_ca.pb.h"
 #include "attestation/common/export.h"
 #include "attestation/common/interface.pb.h"
@@ -18,7 +20,7 @@ namespace attestation {
 //   [APP] -> AttestationInterface -> [IPC] -> AttestationInterface
 class ATTESTATION_EXPORT AttestationInterface {
  public:
-  virtual ~AttestationInterface() {}
+  virtual ~AttestationInterface() = default;
 
   // Performs initialization tasks that may take a long time. This method must
   // be successfully called before calling any other method. Returns true on
@@ -26,18 +28,25 @@ class ATTESTATION_EXPORT AttestationInterface {
   virtual bool Initialize() = 0;
 
   // Creates a key certified by the Google Attestation CA which corresponds to
-  // the give |key_label|, |key_type|, and |key_usage|. The certificate issued
-  // by the CA will correspond to |certificate_profile|. On success,
-  // |certificate| will contain the DER-encoded X.509 certificate issued by the
-  // CA. If the CA refuses to issue a certificate, REQUEST_DENIED_BY_CA is
-  // returned and |server_error_details| contains a message from the CA.
-  virtual AttestationStatus CreateGoogleAttestedKey(
+  // the given |key_label|, |key_type|, and |key_usage|. The certificate issued
+  // by the CA will correspond to |certificate_profile|. On success, |status|
+  // will be SUCCESS and |certificate_chain| will contain a PEM-encoded list of
+  // X.509 certificates starting with the requested certificate issued by the CA
+  // and followed by certificates for any intermediate authorities, in order.
+  // The Google Attestation CA root certificate is well-known and not included.
+  // If the CA refuses to issue a certificate, |status| will be
+  // REQUEST_DENIED_BY_CA and |server_error_details| will contain an error
+  // message from the CA.
+  using CreateGoogleAttestedKeyCallback =
+      void(AttestationStatus status,
+           const std::string& certificate_chain,
+           const std::string& server_error_details);
+  virtual void CreateGoogleAttestedKey(
       const std::string& key_label,
       KeyType key_type,
       KeyUsage key_usage,
       CertificateProfile certificate_profile,
-      std::string* certificate,
-      std::string* server_error_details) = 0;
+      const base::Callback<CreateGoogleAttestedKeyCallback>& callback) = 0;
 };
 
 }  // namespace attestation

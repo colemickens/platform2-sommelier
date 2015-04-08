@@ -4,6 +4,7 @@
 
 #include <string>
 
+#include <chromeos/bind_lambda.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -31,7 +32,9 @@ class DBusProxyTest : public testing::Test {
 };
 
 TEST_F(DBusProxyTest, CreateGoogleAttestedKeySuccess) {
-  auto fake_dbus_call = [](dbus::MethodCall* method_call) -> dbus::Response* {
+  auto fake_dbus_call = [](
+      dbus::MethodCall* method_call,
+      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
     // Verify request protobuf.
     dbus::MessageReader reader(method_call);
     CreateGoogleAttestedKeyRequest request_proto;
@@ -47,21 +50,26 @@ TEST_F(DBusProxyTest, CreateGoogleAttestedKeySuccess) {
     dbus::MessageWriter writer(response.get());
     CreateGoogleAttestedKeyReply reply_proto;
     reply_proto.set_status(SUCCESS);
-    reply_proto.set_certificate("certificate");
+    reply_proto.set_certificate_chain("certificate");
     reply_proto.set_server_error("server_error");
     writer.AppendProtoAsArrayOfBytes(reply_proto);
-    return response.release();
+    response_callback.Run(response.release());
   };
   EXPECT_CALL(*mock_object_proxy_,
-              MockCallMethodAndBlockWithErrorDetails(_, _, _))
-      .WillOnce(WithArgs<0>(Invoke(fake_dbus_call)));
-  std::string certificate;
-  std::string server_error;
-  EXPECT_EQ(SUCCESS, proxy_.CreateGoogleAttestedKey(
-      "label", KEY_TYPE_ECC, KEY_USAGE_SIGN, ENTERPRISE_MACHINE_CERTIFICATE,
-      &server_error, &certificate));
-  EXPECT_EQ("certificate", certificate);
-  EXPECT_EQ("server_error", server_error);
+              CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
+
+  // Set expectations on the outputs.
+  auto callback = [](AttestationStatus status,
+                     const std::string& certificate,
+                     const std::string& server_error) {
+    EXPECT_EQ(SUCCESS, status);
+    EXPECT_EQ("certificate", certificate);
+    EXPECT_EQ("server_error", server_error);
+  };
+  proxy_.CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
+                                 ENTERPRISE_MACHINE_CERTIFICATE,
+                                 base::Bind(callback));
 }
 
 }  // namespace attestation

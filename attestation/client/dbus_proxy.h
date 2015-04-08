@@ -28,13 +28,12 @@ class ATTESTATION_EXPORT DBusProxy : public AttestationInterface {
 
   // AttestationInterface methods.
   bool Initialize() override;
-  AttestationStatus CreateGoogleAttestedKey(
+  void CreateGoogleAttestedKey(
       const std::string& key_label,
       KeyType key_type,
       KeyUsage key_usage,
       CertificateProfile certificate_profile,
-      std::string* server_error_details,
-      std::string* certificate) override;
+      const base::Callback<CreateGoogleAttestedKeyCallback>& callback) override;
 
   // Useful for testing.
   void set_object_proxy(dbus::ObjectProxy* object_proxy) {

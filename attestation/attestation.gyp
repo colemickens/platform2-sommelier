@@ -103,6 +103,7 @@
           'sources': [
             'attestation_testrunner.cc',
             'client/dbus_proxy_test.cc',
+            'server/dbus_service_test.cc',
           ],
           'dependencies': [
             'client_library',

@@ -6,10 +6,13 @@
 
 #include <string>
 
+#include <chromeos/bind_lambda.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 
 #include "attestation/common/dbus_interface.h"
+
+using chromeos::dbus_utils::DBusMethodResponse;
 
 namespace attestation {
 
@@ -23,7 +26,7 @@ void DBusService::Register(const CompletionAction& callback) {
   chromeos::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_.AddOrGetInterface(kAttestationInterface);
 
-  dbus_interface->AddSimpleMethodHandler(
+  dbus_interface->AddMethodHandler(
       kCreateGoogleAttestedKey,
       base::Unretained(this),
       &DBusService::HandleCreateGoogleAttestedKey);
@@ -31,26 +34,34 @@ void DBusService::Register(const CompletionAction& callback) {
   dbus_object_.RegisterAsync(callback);
 }
 
-CreateGoogleAttestedKeyReply DBusService::HandleCreateGoogleAttestedKey(
-    CreateGoogleAttestedKeyRequest request) {
+void DBusService::HandleCreateGoogleAttestedKey(
+    scoped_ptr<DBusMethodResponse<const CreateGoogleAttestedKeyReply&>>
+        response,
+    const CreateGoogleAttestedKeyRequest& request) {
   VLOG(1) << __func__;
-  std::string certificate;
-  std::string server_error_details;
-  AttestationStatus status = service_->CreateGoogleAttestedKey(
-    request.key_label(),
-    request.key_type(),
-    request.key_usage(),
-    request.certificate_profile(),
-    &certificate,
-    &server_error_details);
-  CreateGoogleAttestedKeyReply reply;
-  reply.set_status(status);
-  if (status == SUCCESS) {
-    reply.set_certificate(certificate);
-  } else if (status == REQUEST_DENIED_BY_CA) {
-    reply.set_server_error(server_error_details);
-  }
-  return reply;
+  // A callback that fills the reply protobuf and sends it.
+  // CAUTION: This callback takes ownership of |response|.
+  auto callback = [](
+      scoped_ptr<DBusMethodResponse<const CreateGoogleAttestedKeyReply&>>
+          response,
+      AttestationStatus status,
+      const std::string& certificate_chain,
+      const std::string& server_error_details) {
+    CreateGoogleAttestedKeyReply reply;
+    reply.set_status(status);
+    if (status == SUCCESS) {
+      reply.set_certificate_chain(certificate_chain);
+    } else if (status == REQUEST_DENIED_BY_CA) {
+      reply.set_server_error(server_error_details);
+    }
+    response->Return(reply);
+  };
+  service_->CreateGoogleAttestedKey(request.key_label(),
+                                    request.key_type(),
+                                    request.key_usage(),
+                                    request.certificate_profile(),
+                                    base::Bind(callback,
+                                               base::Passed(&response)));
 }
 
 }  // namespace attestation

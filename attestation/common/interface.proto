@@ -44,6 +44,9 @@ message CreateGoogleAttestedKeyReply {
   // More information about a server-side error. This only exists
   // if status=REQUEST_DENIED_BY_CA.
   optional string server_error = 2;
-  // The X.509/DER certificate issued by the Google Attestation CA.
-  optional bytes certificate = 3;
+  // A PEM-encoded list of X.509 certificates starting with the requested
+  // certificate issued by the CA and followed by certificates for any
+  // intermediate authorities, in order. The Google Attestation CA root
+  // certificate is well-known and not included.
+  optional string certificate_chain = 3;
 }

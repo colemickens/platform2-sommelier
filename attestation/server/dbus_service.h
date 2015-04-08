@@ -6,6 +6,7 @@
 #define ATTESTATION_SERVER_DBUS_SERVICE_H_
 
 #include <base/memory/scoped_ptr.h>
+#include <chromeos/dbus/dbus_method_response.h>
 #include <chromeos/dbus/dbus_object.h>
 #include <dbus/bus.h>
 
@@ -16,7 +17,7 @@ namespace attestation {
 using CompletionAction =
     chromeos::dbus_utils::AsyncEventSequencer::CompletionAction;
 
-// Main class within the attestation daemon that ties other classes together.
+// Handles D-Bus calls to the attestation daemon.
 class DBusService {
  public:
   // DBusService does not take ownership of |service|; it must remain valid for
@@ -28,10 +29,19 @@ class DBusService {
   // Connects to D-Bus system bus and exports methods.
   void Register(const CompletionAction& callback);
 
+  // Useful for testing.
+  void set_service(AttestationInterface* service) {
+    service_ = service;
+  }
+
  private:
+  friend class DBusServiceTest;
+
   // Handles a CreateGoogleAttestedKey D-Bus call.
-  CreateGoogleAttestedKeyReply HandleCreateGoogleAttestedKey(
-      CreateGoogleAttestedKeyRequest request);
+  void HandleCreateGoogleAttestedKey(
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<
+          const CreateGoogleAttestedKeyReply&>> response,
+      const CreateGoogleAttestedKeyRequest& request);
 
   chromeos::dbus_utils::DBusObject dbus_object_;
   AttestationInterface* service_;

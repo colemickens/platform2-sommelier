@@ -4,9 +4,18 @@
 
 #include "attestation/client/dbus_proxy.h"
 
+#include <chromeos/bind_lambda.h>
 #include <chromeos/dbus/dbus_method_invoker.h>
 
 #include "attestation/common/dbus_interface.h"
+
+namespace {
+
+// Use a two minute timeout because TPM operations can take a long time and
+// there may be a few of them queued up.
+const int kDBusTimeoutMS = 120000;
+
+}  // namespace
 
 namespace attestation {
 
@@ -27,37 +36,34 @@ bool DBusProxy::Initialize() {
   return (object_proxy_ != nullptr);
 }
 
-AttestationStatus DBusProxy::CreateGoogleAttestedKey(
+void DBusProxy::CreateGoogleAttestedKey(
     const std::string& key_label,
     KeyType key_type,
     KeyUsage key_usage,
     CertificateProfile certificate_profile,
-    std::string* server_error_details,
-    std::string* certificate) {
+    const base::Callback<CreateGoogleAttestedKeyCallback>& callback) {
   attestation::CreateGoogleAttestedKeyRequest request;
   request.set_key_label(key_label);
   request.set_key_type(key_type);
   request.set_key_usage(key_usage);
   request.set_certificate_profile(certificate_profile);
-  auto response = chromeos::dbus_utils::CallMethodAndBlock(
+  auto on_success = [callback](
+      const attestation::CreateGoogleAttestedKeyReply& reply) {
+    callback.Run(reply.status(),
+                 reply.certificate_chain(),
+                 reply.server_error());
+  };
+  auto on_error = [callback](chromeos::Error* error) {
+    callback.Run(NOT_AVAILABLE, std::string(), std::string());
+  };
+  chromeos::dbus_utils::CallMethodWithTimeout(
+      kDBusTimeoutMS,
       object_proxy_,
       attestation::kAttestationInterface,
       attestation::kCreateGoogleAttestedKey,
-      nullptr /* error */,
+      base::Bind(on_success),
+      base::Bind(on_error),
       request);
-  if (!response) {
-    return NOT_AVAILABLE;
-  }
-  attestation::CreateGoogleAttestedKeyReply reply;
-  if (!chromeos::dbus_utils::ExtractMethodCallResults(
-      response.get(),
-      nullptr /* error */,
-      &reply)) {
-    return UNEXPECTED_DEVICE_ERROR;
-  }
-  *certificate = reply.certificate();
-  *server_error_details = reply.server_error();
-  return reply.status();
 }
 
 }  // namespace attestation
