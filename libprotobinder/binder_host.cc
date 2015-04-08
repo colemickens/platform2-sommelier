@@ -16,8 +16,8 @@ BinderHost::BinderHost() {}
 int BinderHost::Transact(uint32_t code,
                          Parcel* data,
                          Parcel* reply,
-                         uint32_t flags) {
-  const int ret = OnTransact(code, data, reply, flags);
+                         bool one_way) {
+  const int ret = OnTransact(code, data, reply, one_way);
   if (reply)
     reply->SetPos(0);
   return ret;
@@ -32,7 +32,7 @@ BinderHost::~BinderHost() {}
 int BinderHost::OnTransact(uint32_t code,
                            Parcel* data,
                            Parcel* reply,
-                           uint32_t flags) {
+                           bool one_way) {
   LOG(WARNING) << "OnTransact: Unknown code " << code;
   return ERROR_UNKNOWN_CODE;
 }

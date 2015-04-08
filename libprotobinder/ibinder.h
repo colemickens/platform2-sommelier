@@ -41,7 +41,7 @@ class BINDER_EXPORT IBinder {
   virtual int Transact(uint32_t code,
                        Parcel* data,
                        Parcel* reply,
-                       uint32_t flags) = 0;
+                       bool one_way) = 0;
 
   virtual const BinderHost* GetBinderHost() const;
   virtual const BinderProxy* GetBinderProxy() const;

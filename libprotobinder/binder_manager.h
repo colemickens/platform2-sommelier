@@ -35,7 +35,7 @@ class BINDER_EXPORT BinderManagerInterface {
                        uint32_t code,
                        const Parcel& data,
                        Parcel* reply,
-                       uint32_t flags) = 0;
+                       bool one_way) = 0;
   virtual void IncWeakHandle(uint32_t handle) = 0;
   virtual void DecWeakHandle(uint32_t handle) = 0;
   virtual bool GetFdForPolling(int* fd) = 0;
@@ -64,7 +64,7 @@ class BINDER_EXPORT BinderManager : public BinderManagerInterface {
                uint32_t code,
                const Parcel& data,
                Parcel* reply,
-               uint32_t flags) override;
+               bool one_way) override;
   void IncWeakHandle(uint32_t handle) override;
   void DecWeakHandle(uint32_t handle) override;
   bool GetFdForPolling(int* fd) override;

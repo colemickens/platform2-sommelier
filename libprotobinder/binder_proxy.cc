@@ -29,9 +29,9 @@ BinderProxy::~BinderProxy() {
 int BinderProxy::Transact(uint32_t code,
                           Parcel* data,
                           Parcel* reply,
-                          uint32_t flags) {
+                          bool one_way) {
   return BinderManagerInterface::Get()->Transact(
-      handle_, code, *data, reply, flags);
+      handle_, code, *data, reply, one_way);
 }
 
 void BinderProxy::SetDeathCallback(const base::Closure& closure) {

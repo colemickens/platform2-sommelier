@@ -30,7 +30,7 @@ int BinderManagerStub::Transact(uint32_t handle,
              uint32_t code,
              const Parcel& data,
              Parcel* reply,
-             uint32_t flags) {
+             bool one_way) {
   return 0;
 }
 

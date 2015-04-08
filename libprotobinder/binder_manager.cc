@@ -275,8 +275,12 @@ int BinderManager::Transact(uint32_t handle,
                             uint32_t code,
                             const Parcel& data,
                             Parcel* reply,
-                            uint32_t flags) {
-  flags |= TF_ACCEPT_FDS;
+                            bool one_way) {
+  int flags = TF_ACCEPT_FDS;
+  if (one_way) {
+    flags |= TF_ONE_WAY;
+    reply = nullptr;
+  }
   const int ret = SetUpTransaction(false, handle, code, data, flags);
   if (ret < 0)
     return ret;

@@ -336,6 +336,10 @@ bool FindObjects(MessageNode* node) {
   return node->contains_objects;
 }
 
+bool IsOneWay(const Descriptor* desc) {
+  return FullName(desc) == "::protobinder::NoResponse";
+}
+
 void BidlCodeGenerator::PrintStandardHeaders(Printer* printer) const {
   printer->Print(
       "// Copyright 2015 The Chromium OS Authors. All rights reserved.\n"
@@ -389,9 +393,13 @@ bool BidlCodeGenerator::AddServiceToHeader(
       printer->Print(method->name().c_str());
       printer->Print("(");
       printer->Print(FullName(method->input_type()).c_str());
-      printer->Print("* in, ");
-      printer->Print(FullName(method->output_type()).c_str());
-      printer->Print("* out) = 0;\n");
+      if (IsOneWay(method->output_type())) {
+        printer->Print("* in) = 0;\n");
+      } else {
+        printer->Print("* in, ");
+        printer->Print(FullName(method->output_type()).c_str());
+        printer->Print("* out) = 0;\n");
+      }
     }
   }
   printer->Print(vars, "DECLARE_META_INTERFACE($classname$)\n");
@@ -408,7 +416,7 @@ bool BidlCodeGenerator::AddServiceToHeader(
   printer->Print(vars, "virtual int OnTransact(uint32_t code,\n");
   printer->Print(vars, "                       Parcel* data,\n");
   printer->Print(vars, "                       Parcel* reply,\n");
-  printer->Print(vars, "                       uint32_t flags) {\n");
+  printer->Print(vars, "                       bool one_way) {\n");
 
   printer->Indent();
   printer->Print("switch (code) {\n");
@@ -449,53 +457,55 @@ bool BidlCodeGenerator::AddServiceToHeader(
       printer->Print(" = &in;\n");
       PrintUnmarshallCodeForBinderTree(printer, &in_message, 0, false);
     }
-
-    printer->Print(FullName(method->output_type()).c_str());
-    printer->Print(" out;\n");
-    printer->Print("int ret = $name$(&in, &out);\n", "name", method->name());
-    printer->Print("if (ret < 0)\n");
-    printer->Indent();
-    printer->Print("return ret;\n");
-    printer->Outdent();
-
-    MessageNode out_message;
-    out_message.name = "root";
-    out_message.parent = NULL;
-    out_message.is_nested = false;
-    out_message.desc = method->output_type();
-    FindObjects(&out_message);
-
-    // TODO(leecam): Case where root is a binder itself
-    if (out_message.contains_objects) {
-      printer->Print("\n");
-      printer->Print("size_t offset = 0;\n");
-      printer->Print("Parcel object_parcel;\n");
+    if (IsOneWay(method->output_type())) {
+      printer->Print("return $name$(&in);\n", "name", method->name());
+    } else {
       printer->Print(FullName(method->output_type()).c_str());
-      printer->Print("* message_");
-      printer->Print(FullNameVaribleName(method->output_type()).c_str());
-      printer->Print(" = &out;\n");
-      PrintMarshallCodeForBinderTree(printer, &out_message, 0);
-    }
+      printer->Print(" out;\n");
+      printer->Print("int ret = $name$(&in, &out);\n", "name", method->name());
+      printer->Print("if (ret < 0)\n");
+      printer->Indent();
+      printer->Print("return ret;\n");
+      printer->Outdent();
 
-    printer->Print("std::string reply_string;\n");
-    printer->Print("if (!out.SerializeToString(&reply_string))\n");
-    printer->Indent();
-    printer->Print("return -1;\n");
-    printer->Outdent();
+      MessageNode out_message;
+      out_message.name = "root";
+      out_message.parent = NULL;
+      out_message.is_nested = false;
+      out_message.desc = method->output_type();
+      FindObjects(&out_message);
 
-    printer->Print("if(!reply->WriteString(reply_string))\n");
-    printer->Indent();
-    printer->Print("return -1;\n");
-    printer->Outdent();
+      // TODO(leecam): Case where root is a binder itself
+      if (out_message.contains_objects) {
+        printer->Print("\n");
+        printer->Print("size_t offset = 0;\n");
+        printer->Print("Parcel object_parcel;\n");
+        printer->Print(FullName(method->output_type()).c_str());
+        printer->Print("* message_");
+        printer->Print(FullNameVaribleName(method->output_type()).c_str());
+        printer->Print(" = &out;\n");
+        PrintMarshallCodeForBinderTree(printer, &out_message, 0);
+      }
 
-    if (out_message.contains_objects) {
-      printer->Print("if(!reply->WriteParcel(&object_parcel))\n");
+      printer->Print("std::string reply_string;\n");
+      printer->Print("if (!out.SerializeToString(&reply_string))\n");
       printer->Indent();
       printer->Print("return -1;\n");
       printer->Outdent();
-    }
 
-    printer->Print("return ret;\n");
+      printer->Print("if (!reply->WriteString(reply_string))\n");
+      printer->Indent();
+      printer->Print("return -1;\n");
+      printer->Outdent();
+
+      if (out_message.contains_objects) {
+        printer->Print("if (!reply->WriteParcel(&object_parcel))\n");
+        printer->Indent();
+        printer->Print("return -1;\n");
+        printer->Outdent();
+      }
+      printer->Print("return ret;\n");
+    }
 
     printer->Outdent();
     printer->Print("}\n");
@@ -504,7 +514,7 @@ bool BidlCodeGenerator::AddServiceToHeader(
   printer->Print("default:\n");
   printer->Indent();
   printer->Print(
-      "return BinderHostInterface::OnTransact(code, data, reply, flags);\n");
+      "return BinderHostInterface::OnTransact(code, data, reply, one_way);\n");
   printer->Outdent();
 
   printer->Outdent();
@@ -585,9 +595,13 @@ bool BidlCodeGenerator::AddServiceToSource(
     printer->Print(method->name().c_str());
     printer->Print("(");
     printer->Print(FullName(method->input_type()).c_str());
-    printer->Print("* in, ");
-    printer->Print(FullName(method->output_type()).c_str());
-    printer->Print("* out) {\n");
+    if (IsOneWay(method->output_type())) {
+      printer->Print("* in) {\n");
+    } else {
+      printer->Print("* in, ");
+      printer->Print(FullName(method->output_type()).c_str());
+      printer->Print("* out) {\n");
+    }
     printer->Indent();
 
     MessageNode in_message;
@@ -622,49 +636,53 @@ bool BidlCodeGenerator::AddServiceToSource(
     printer->Outdent();
 
     if (in_message.contains_objects) {
-      printer->Print("if(!data.WriteParcel(&object_parcel))\n");
+      printer->Print("if (!data.WriteParcel(&object_parcel))\n");
       printer->Indent();
       printer->Print("return -1;\n");
       printer->Outdent();
     }
+    if (IsOneWay(method->output_type())) {
+      printer->Print(
+          "return Remote()->Transact(FUNC_$name$, &data, &reply, true);\n",
+          "name", method->name());
+    } else {
+      printer->Print(
+          "int ret = Remote()->Transact(FUNC_$name$, &data, &reply, false);\n",
+          "name", method->name());
+      printer->Print("if (ret < 0)\n");
+      printer->Indent();
+      printer->Print("return ret;\n");
+      printer->Outdent();
 
-    printer->Print(
-        "int ret = Remote()->Transact(FUNC_$name$, &data, &reply, 0);\n",
-        "name", method->name());
-    printer->Print("if (ret < 0)\n");
-    printer->Indent();
-    printer->Print("return ret;\n");
-    printer->Outdent();
+      printer->Print("std::string out_string;\n");
+      printer->Print("if (!reply.ReadString(&out_string))\n");
+      printer->Indent();
+      printer->Print("return -1;\n");
+      printer->Outdent();
 
-    printer->Print("std::string out_string;\n");
-    printer->Print("if (!reply.ReadString(&out_string))\n");
-    printer->Indent();
-    printer->Print("return -1;\n");
-    printer->Outdent();
+      printer->Print("if (!out->ParseFromString(out_string))\n");
+      printer->Indent();
+      printer->Print("return -1;\n");
+      printer->Outdent();
 
-    printer->Print("if (!out->ParseFromString(out_string))\n");
-    printer->Indent();
-    printer->Print("return -1;\n");
-    printer->Outdent();
+      // correct objects
+      MessageNode out_message;
+      out_message.name = "root";
+      out_message.parent = NULL;
+      out_message.is_nested = false;
+      out_message.desc = method->output_type();
+      FindObjects(&out_message);
 
-    // correct objects
-    MessageNode out_message;
-    out_message.name = "root";
-    out_message.parent = NULL;
-    out_message.is_nested = false;
-    out_message.desc = method->output_type();
-    FindObjects(&out_message);
-
-    if (out_message.contains_objects) {
-      printer->Print("\n");
-      printer->Print(FullName(method->output_type()).c_str());
-      printer->Print("* message_");
-      printer->Print(FullNameVaribleName(method->output_type()).c_str());
-      printer->Print(" = out;\n");
-      PrintUnmarshallCodeForBinderTree(printer, &out_message, 0, true);
+      if (out_message.contains_objects) {
+        printer->Print("\n");
+        printer->Print(FullName(method->output_type()).c_str());
+        printer->Print("* message_");
+        printer->Print(FullNameVaribleName(method->output_type()).c_str());
+        printer->Print(" = out;\n");
+        PrintUnmarshallCodeForBinderTree(printer, &out_message, 0, true);
+      }
+      printer->Print("return ret;\n");
     }
-
-    printer->Print("return ret;\n");
 
     printer->Outdent();
     printer->Print("}\n");

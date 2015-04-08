@@ -38,7 +38,7 @@ class BINDER_EXPORT BinderManagerStub : public BinderManagerInterface {
                uint32_t code,
                const Parcel& data,
                Parcel* reply,
-               uint32_t flags) override;
+               bool one_way) override;
   void IncWeakHandle(uint32_t handle) override;
   void DecWeakHandle(uint32_t handle) override;
   bool GetFdForPolling(int* fd) override;

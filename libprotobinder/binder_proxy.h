@@ -27,7 +27,7 @@ class BINDER_EXPORT BinderProxy : public IBinder {
   int Transact(uint32_t code,
                Parcel* data,
                Parcel* reply,
-               uint32_t flags);
+               bool one_way);
 
   // Set a callback to be invoked when the remote (host/server) side of the
   // connection is closed.

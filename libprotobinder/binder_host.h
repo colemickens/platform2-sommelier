@@ -25,7 +25,7 @@ class BINDER_EXPORT BinderHost : public IBinder {
   int Transact(uint32_t code,
                Parcel* data,
                Parcel* reply,
-               uint32_t flags) override;
+               bool one_way) override;
   const BinderHost* GetBinderHost() const override;
 
  protected:
@@ -35,7 +35,7 @@ class BINDER_EXPORT BinderHost : public IBinder {
   virtual int OnTransact(uint32_t code,
                          Parcel* data,
                          Parcel* reply,
-                         uint32_t flags);
+                         bool one_way);
 };
 
 }  // namespace protobinder
