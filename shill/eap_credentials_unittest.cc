@@ -84,6 +84,9 @@ class EapCredentialsTest : public testing::Test {
   void SetPin(const string &pin) {
     eap_.pin_ = pin;
   }
+  void SetUseProactiveKeyCaching(bool use_proactive_key_caching) {
+    eap_.use_proactive_key_caching_ = use_proactive_key_caching;
+  }
   void SetUseSystemCAs(bool use_system_cas) {
     eap_.use_system_cas_ = use_system_cas;
   }
@@ -105,7 +108,8 @@ class EapCredentialsTest : public testing::Test {
         eap_.eap_.empty() &&
         eap_.inner_eap_.empty() &&
         eap_.subject_match_.empty() &&
-        eap_.use_system_cas_;
+        eap_.use_system_cas_ == true &&
+        eap_.use_proactive_key_caching_ == false;
   }
 
   const string &GetKeyManagement() {
@@ -235,11 +239,13 @@ TEST_F(EapCredentialsTest, IsEapAuthenticationProperty) {
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
       kEapPhase2AuthProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
-      kEapUseSystemCasProperty));
-  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
       kEapRemoteCertificationProperty));
   EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
       kEapSubjectMatchProperty));
+  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
+      kEapUseProactiveKeyCachingProperty));
+  EXPECT_FALSE(EapCredentials::IsEapAuthenticationProperty(
+      kEapUseSystemCasProperty));
 }
 
 TEST_F(EapCredentialsTest, LoadAndSave) {
@@ -333,6 +339,53 @@ TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesNoSystemCAs) {
   PopulateSupplicantProperties();
   // Test that CA path is not set if use_system_cas is explicitly false.
   EXPECT_FALSE(ContainsKey(params_, WPASupplicant::kNetworkPropertyCaPath));
+}
+
+TEST_F(EapCredentialsTest,
+       PopulateSupplicantPropertiesProactiveKeyCachingDisabledByDefault) {
+  SetIdentity("testidentity");
+  PopulateSupplicantProperties();
+
+  ASSERT_TRUE(ContainsKey(params_,
+      WPASupplicant::kNetworkPropertyEapProactiveKeyCaching));
+
+  const uint32_t kProactiveKeyCachingDisabled(0);
+
+  EXPECT_EQ(kProactiveKeyCachingDisabled,
+            params_[WPASupplicant::kNetworkPropertyEapProactiveKeyCaching]
+            .reader().get_uint32());
+}
+
+TEST_F(EapCredentialsTest,
+       PopulateSupplicantPropertiesEnableProactiveKeyCaching) {
+  SetIdentity("testidentity");
+  SetUseProactiveKeyCaching(true);
+  PopulateSupplicantProperties();
+
+  ASSERT_TRUE(ContainsKey(params_,
+      WPASupplicant::kNetworkPropertyEapProactiveKeyCaching));
+
+  const uint32_t kProactiveKeyCachingEnabled(1);
+
+  EXPECT_EQ(kProactiveKeyCachingEnabled,
+            params_[WPASupplicant::kNetworkPropertyEapProactiveKeyCaching]
+            .reader().get_uint32());
+}
+
+TEST_F(EapCredentialsTest,
+       PopulateSupplicantPropertiesDisableProactiveKeyCaching) {
+  SetIdentity("testidentity");
+  SetUseProactiveKeyCaching(false);
+  PopulateSupplicantProperties();
+
+  ASSERT_TRUE(ContainsKey(params_,
+      WPASupplicant::kNetworkPropertyEapProactiveKeyCaching));
+
+  const uint32_t kProactiveKeyCachingDisabled(0);
+
+  EXPECT_EQ(kProactiveKeyCachingDisabled,
+            params_[WPASupplicant::kNetworkPropertyEapProactiveKeyCaching]
+            .reader().get_uint32());
 }
 
 TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesUsingHardwareAuth) {
@@ -446,6 +499,7 @@ TEST_F(EapCredentialsTest, Reset) {
   SetPrivateKey("foo");
   SetPin("foo");
   SetUseSystemCAs(false);
+  SetUseProactiveKeyCaching(true);
   eap_.SetKeyManagement("foo", nullptr);
   EXPECT_FALSE(IsReset());
   EXPECT_FALSE(GetKeyManagement().empty());

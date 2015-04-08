@@ -44,6 +44,7 @@ class EapCredentials {
   static const char kStorageEapPrivateKey[];
   static const char kStorageEapPrivateKeyPassword[];
   static const char kStorageEapSubjectMatch[];
+  static const char kStorageEapUseProactiveKeyCaching[];
   static const char kStorageEapUseSystemCAs[];
 
   EapCredentials();
@@ -195,6 +196,8 @@ class EapCredentials {
   std::string subject_match_;
   // If true, use the system-wide CA database to authenticate the remote.
   bool use_system_cas_;
+  // If true, use per network proactive key caching.
+  bool use_proactive_key_caching_;
 
   DISALLOW_COPY_AND_ASSIGN(EapCredentials);
 };

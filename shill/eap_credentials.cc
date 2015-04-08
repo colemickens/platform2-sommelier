@@ -55,9 +55,12 @@ const char EapCredentials::kStorageEapPrivateKeyPassword[] =
     "EAP.PrivateKeyPassword";
 const char EapCredentials::kStorageEapSubjectMatch[] =
     "EAP.SubjectMatch";
+const char EapCredentials::kStorageEapUseProactiveKeyCaching[] =
+    "EAP.UseProactiveKeyCaching";
 const char EapCredentials::kStorageEapUseSystemCAs[] = "EAP.UseSystemCAs";
 
-EapCredentials::EapCredentials() : use_system_cas_(true) {}
+EapCredentials::EapCredentials() : use_system_cas_(true),
+                                   use_proactive_key_caching_(false) {}
 
 EapCredentials::~EapCredentials() {}
 
@@ -134,6 +137,14 @@ void EapCredentials::PopulateSupplicantProperties(
         append_uint32(WPASupplicant::kDefaultEngine);
   }
 
+  if (use_proactive_key_caching_) {
+    (*params)[WPASupplicant::kNetworkPropertyEapProactiveKeyCaching].writer().
+        append_uint32(WPASupplicant::kProactiveKeyCachingEnabled);
+  } else {
+    (*params)[WPASupplicant::kNetworkPropertyEapProactiveKeyCaching].writer().
+        append_uint32(WPASupplicant::kProactiveKeyCachingDisabled);
+  }
+
   for (const auto &keyval : propertyvals) {
     if (strlen(keyval.second) > 0) {
       (*params)[keyval.first].writer().append_string(keyval.second);
@@ -187,6 +198,8 @@ void EapCredentials::InitPropertyStore(PropertyStore *store) {
   store->RegisterString(kEapMethodProperty, &eap_);
   store->RegisterString(kEapPhase2AuthProperty, &inner_eap_);
   store->RegisterString(kEapSubjectMatchProperty, &subject_match_);
+  store->RegisterBool(kEapUseProactiveKeyCachingProperty,
+                      &use_proactive_key_caching_);
   store->RegisterBool(kEapUseSystemCasProperty, &use_system_cas_);
 }
 
@@ -282,6 +295,8 @@ void EapCredentials::Load(StoreInterface *storage, const string &id) {
   storage->GetString(id, kStorageEapEap, &eap_);
   storage->GetString(id, kStorageEapInnerEap, &inner_eap_);
   storage->GetString(id, kStorageEapSubjectMatch, &subject_match_);
+  storage->GetBool(id, kStorageEapUseProactiveKeyCaching,
+                   &use_proactive_key_caching_);
   storage->GetBool(id, kStorageEapUseSystemCAs, &use_system_cas_);
 }
 
@@ -400,6 +415,8 @@ void EapCredentials::Save(StoreInterface *storage, const string &id,
                       subject_match_,
                       false,
                       true);
+  storage->SetBool(id, kStorageEapUseProactiveKeyCaching,
+                   use_proactive_key_caching_);
   storage->SetBool(id, kStorageEapUseSystemCAs, use_system_cas_);
 }
 
@@ -425,6 +442,7 @@ void EapCredentials::Reset() {
   inner_eap_ = "";
   subject_match_ = "";
   use_system_cas_ = true;
+  use_proactive_key_caching_ = false;
 }
 
 bool EapCredentials::SetEapPassword(const string &password, Error */*error*/) {

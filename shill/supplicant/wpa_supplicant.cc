@@ -93,8 +93,10 @@ const char WPASupplicant::kNetworkPropertyEapAnonymousIdentity[]
     = "anonymous_identity";
 const char WPASupplicant::kNetworkPropertyEapClientCert[] = "client_cert";
 const char WPASupplicant::kNetworkPropertyEapPrivateKey[] = "private_key";
-const char WPASupplicant::kNetworkPropertyEapPrivateKeyPassword[] =
-    "private_key_passwd";
+const char WPASupplicant::kNetworkPropertyEapPrivateKeyPassword[]
+    = "private_key_passwd";
+const char WPASupplicant::kNetworkPropertyEapProactiveKeyCaching[]
+    = "proactive_key_caching";
 const char WPASupplicant::kNetworkPropertyEapCaCert[] = "ca_cert";
 const char WPASupplicant::kNetworkPropertyEapCaPassword[] = "password";
 const char WPASupplicant::kNetworkPropertyEapCertId[] = "cert_id";
@@ -139,6 +141,9 @@ const uint32_t WPASupplicant::kNetworkModeInfrastructureInt = 0;
 const uint32_t WPASupplicant::kNetworkModeAdHocInt = 1;
 const uint32_t WPASupplicant::kNetworkModeAccessPointInt = 2;
 const uint32_t WPASupplicant::kScanMaxSSIDsPerScan = 4;
+
+const uint32_t WPASupplicant::kProactiveKeyCachingDisabled = 0;
+const uint32_t WPASupplicant::kProactiveKeyCachingEnabled = 1;
 
 const char WPASupplicant::kSupplicantConfPath[] =
     SHIMDIR "/wpa_supplicant.conf";

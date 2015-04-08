@@ -93,6 +93,7 @@ class WPASupplicant {
   static const char kNetworkPropertyEapKeyId[];
   static const char kNetworkPropertyEapCaCertId[];
   static const char kNetworkPropertyEapPin[];
+  static const char kNetworkPropertyEapProactiveKeyCaching[];
   static const char kNetworkPropertyEapSubjectMatch[];
   static const char kNetworkPropertyEapolFlags[];
   static const char kNetworkPropertyEngine[];
@@ -135,6 +136,9 @@ class WPASupplicant {
   static const uint32_t kNetworkModeAdHocInt;
   static const uint32_t kNetworkModeAccessPointInt;
   static const uint32_t kScanMaxSSIDsPerScan;
+
+  static const uint32_t kProactiveKeyCachingDisabled;
+  static const uint32_t kProactiveKeyCachingEnabled;
 
   static const char kSupplicantConfPath[];
 
