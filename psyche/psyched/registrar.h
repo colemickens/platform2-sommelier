@@ -28,6 +28,7 @@ namespace psyche {
 class ClientInterface;
 class ContainerInterface;
 class FactoryInterface;
+class GermConnection;
 class ServiceInterface;
 class SomaConnection;
 
@@ -84,6 +85,9 @@ class Registrar : public IPsychedHostInterface {
 
   // Connection to somad used to look up ContainerSpecs.
   std::unique_ptr<SomaConnection> soma_;
+
+  // Connection to germd used to launch containers.
+  std::unique_ptr<GermConnection> germ_;
 
   // This member should appear last.
   base::WeakPtrFactory<Registrar> weak_ptr_factory_;

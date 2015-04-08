@@ -10,6 +10,7 @@
 
 #include <base/logging.h>
 #include <base/macros.h>
+#include <germ/constants.h>
 #include <gtest/gtest.h>
 #include <protobinder/binder_manager_stub.h>
 #include <protobinder/binder_proxy.h>
@@ -18,6 +19,8 @@
 
 #include "psyche/common/binder_test_base.h"
 #include "psyche/common/util.h"
+#include "psyche/proto_bindings/germ.pb.h"
+#include "psyche/proto_bindings/germ.pb.rpc.h"
 #include "psyche/proto_bindings/psyche.pb.h"
 #include "psyche/proto_bindings/psyche.pb.rpc.h"
 #include "psyche/proto_bindings/soma.pb.h"
@@ -67,6 +70,37 @@ class SomaInterfaceStub : public soma::ISoma {
   DISALLOW_COPY_AND_ASSIGN(SomaInterfaceStub);
 };
 
+// Stub implementation of the Germ interface.
+class GermInterfaceStub : public germ::IGerm {
+ public:
+  GermInterfaceStub() : launch_return_value_(0), terminate_return_value_(0) {}
+  ~GermInterfaceStub() override = default;
+
+  void set_launch_return_value(int value) { launch_return_value_ = value; }
+  void set_terminate_return_value(int value) {
+    terminate_return_value_ = value;
+  }
+
+  // IGerm:
+  int Launch(germ::LaunchRequest* in, germ::LaunchResponse* out) override {
+    return launch_return_value_;
+  }
+
+  int Terminate(germ::TerminateRequest* in,
+                germ::TerminateResponse* out) override {
+    return terminate_return_value_;
+  }
+
+ private:
+  // binder result returned by Launch().
+  int launch_return_value_;
+
+  // binder result returned by Terminate().
+  int terminate_return_value_;
+
+  DISALLOW_COPY_AND_ASSIGN(GermInterfaceStub);
+};
+
 class RegistrarTest : public BinderTestBase {
  public:
   RegistrarTest()
@@ -78,6 +112,7 @@ class RegistrarTest : public BinderTestBase {
         std::unique_ptr<FactoryInterface>(factory_));
     registrar_->Init();
     CHECK(InitSoma());
+    CHECK(InitGerm());
   }
   ~RegistrarTest() override = default;
 
@@ -92,6 +127,18 @@ class RegistrarTest : public BinderTestBase {
                                       scoped_ptr<IInterface>(soma_));
     return RegisterService(soma::kSomaServiceName,
                            std::unique_ptr<BinderProxy>(soma_proxy_));
+  }
+
+  // Initializes |germ_proxy_| and |germ_| and registers them with |registrar_|
+  // and |binder_manager_|. May be called from within a test to simulate germd
+  // restarting and reregistering itself with psyched.
+  bool InitGerm() WARN_UNUSED_RESULT {
+    germ_proxy_ = CreateBinderProxy().release();
+    germ_ = new GermInterfaceStub;
+    binder_manager_->SetTestInterface(germ_proxy_,
+                                      scoped_ptr<IInterface>(germ_));
+    return RegisterService(germ::kGermServiceName,
+                           std::unique_ptr<BinderProxy>(germ_proxy_));
   }
 
   // Returns the client that |factory_| created for |client_proxy|, crashing if
@@ -179,6 +226,9 @@ class RegistrarTest : public BinderTestBase {
 
   BinderProxy* soma_proxy_;  // Owned by |registrar_|.
   SomaInterfaceStub* soma_;  // Owned by |binder_manager_|.
+
+  BinderProxy* germ_proxy_;  // Owned by |registrar_|.
+  GermInterfaceStub* germ_;  // Owned by |binder_manager_|.
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RegistrarTest);
@@ -352,6 +402,14 @@ TEST_F(RegistrarTest, SomaFailures) {
   container->AddService(kServiceName);
   EXPECT_TRUE(RequestService(kServiceName, CreateBinderProxy()));
 }
+
+// Tests that Registrar doesn't hand out its connection to germd.
+TEST_F(RegistrarTest, DontProvideGermService) {
+  EXPECT_FALSE(RequestService(germ::kGermServiceName, CreateBinderProxy()));
+}
+
+// TODO(mcolagrosso): Add tests for failures to communicate to germd, similar to
+// SomaFailures above.
 
 }  // namespace
 }  // namespace psyche

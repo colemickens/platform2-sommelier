@@ -3,6 +3,20 @@
   'includes': ['common.gypi'],
   'targets': [
     {
+      'target_name': 'libgermproto',
+      'type': 'static_library',
+      'variables': {
+        # TODO(mcolagrosso): Use installed protos: http://brbug.com/684
+        'proto_in_dir': '../germ/idl',
+        'proto_out_dir': 'include/psyche/proto_bindings',
+        'gen_bidl': 1,
+      },
+      'sources': [
+        '<(proto_in_dir)/germ.proto',
+      ],
+      'includes': ['../common-mk/protoc.gypi'],
+    },
+    {
       'target_name': 'libsomaproto',
       'type': 'static_library',
       'variables': {
@@ -35,12 +49,14 @@
       'sources': [
         'psyched/client.cc',
         'psyched/container.cc',
+        'psyched/germ_connection.cc',
         'psyched/registrar.cc',
         'psyched/service.cc',
         'psyched/soma_connection.cc',
       ],
       'dependencies': [
         'libcommon',
+        'libgermproto',
         'libsomaproto',
       ],
     },

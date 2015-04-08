@@ -9,6 +9,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <germ/constants.h>
 #include <protobinder/binder_manager.h>
 #include <protobinder/binder_proxy.h>
 #include <protobinder/iservice_manager.h>
@@ -20,6 +21,7 @@
 #include "psyche/psyched/client.h"
 #include "psyche/psyched/container.h"
 #include "psyche/psyched/factory_interface.h"
+#include "psyche/psyched/germ_connection.h"
 #include "psyche/psyched/service.h"
 #include "psyche/psyched/soma_connection.h"
 
@@ -58,6 +60,7 @@ class RealFactory : public FactoryInterface {
 
 Registrar::Registrar()
     : soma_(new SomaConnection),
+      germ_(new GermConnection),
       weak_ptr_factory_(this) {}
 
 Registrar::~Registrar() = default;
@@ -70,6 +73,8 @@ void Registrar::SetFactoryForTesting(
 
 void Registrar::Init() {
   if (!factory_)
+    // TODO(mcolagrosso): Add GermConnection ptr to RealFactory to use when
+    // constructing containers.
     factory_.reset(new RealFactory());
 }
 
@@ -90,6 +95,10 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
   if (service_name == soma::kSomaServiceName) {
     soma_->SetProxy(std::move(proxy));
     // TODO(derat): Fetch and start persistent containers.
+    out->set_success(true);
+    return 0;
+  } else if (service_name == germ::kGermServiceName) {
+    germ_->SetProxy(std::move(proxy));
     out->set_success(true);
     return 0;
   }
@@ -211,6 +220,8 @@ ServiceInterface* Registrar::GetService(const std::string& service_name,
     }
   }
 
+  // TODO(mcolagrosso): Add return value to Launch() and check it here.
+  container->Launch();
   LOG(INFO) << "Created container \"" << container_name << "\"";
 
   for (const auto& service_it : container->GetServices())
@@ -219,7 +230,6 @@ ServiceInterface* Registrar::GetService(const std::string& service_name,
   CHECK(it != services_.end());
   ServiceInterface* service = it->second;
 
-  container->Launch();
   containers_.emplace(container_name, std::move(container));
 
   return service;
