@@ -209,7 +209,7 @@ TEST_F(CommandInstanceTest, ToJson) {
 
   json->MergeDictionary(CreateDictionaryValue(R"({
     'id': 'testId',
-    'progress': 15,
+    'progress': {'progress': 15},
     'state': 'inProgress',
     'results': {'testResult': 17}
   })").get());

@@ -91,7 +91,8 @@ static inline std::string GetHandlerMapKey(const std::string& url,
 void Transport::AddHandler(const std::string& url,
                            const std::string& method,
                            const HandlerCallback& handler) {
-  handlers_.insert(std::make_pair(GetHandlerMapKey(url, method), handler));
+  // Make sure we can override/replace existing handlers.
+  handlers_[GetHandlerMapKey(url, method)] = handler;
 }
 
 void Transport::AddSimpleReplyHandler(const std::string& url,
@@ -163,6 +164,16 @@ ServerRequestResponseBase::GetDataAsJson() const {
     }
   }
   return std::unique_ptr<base::DictionaryValue>();
+}
+
+std::string ServerRequestResponseBase::GetDataAsNormalizedJsonString() const {
+  std::string value;
+  // Make sure we serialize the JSON back without any pretty print so
+  // the string comparison works correctly.
+  auto json = GetDataAsJson();
+  if (json)
+    base::JSONWriter::Write(json.get(), &value);
+  return value;
 }
 
 void ServerRequestResponseBase::AddHeaders(const HeaderList& headers) {

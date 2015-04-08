@@ -35,7 +35,8 @@ void CloudCommandProxy::OnStatusChanged(const std::string& status) {
 
 void CloudCommandProxy::OnProgressChanged(int progress) {
   base::DictionaryValue patch;
-  patch.SetInteger(commands::attributes::kCommand_Progress, progress);
+  patch.Set(commands::attributes::kCommand_Progress,
+            command_instance_->GetProgressJson().release());
   // TODO(antonm): Consider batching progress change updates.
   device_registration_info_->UpdateCommand(command_instance_->GetID(), patch);
 }

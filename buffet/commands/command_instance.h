@@ -95,6 +95,9 @@ class CommandInstance final {
   int GetProgress() const { return progress_; }
   const std::string& GetStatus() const { return status_; }
 
+  // Returns the "progress" portion of JSON command resource.
+  std::unique_ptr<base::Value> GetProgressJson() const;
+
   // Values for command execution status.
   static const char kStatusQueued[];
   static const char kStatusInProgress[];

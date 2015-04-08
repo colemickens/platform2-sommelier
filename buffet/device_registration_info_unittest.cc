@@ -521,6 +521,8 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   })");
   EXPECT_TRUE(command_manager_->LoadCommands(*json_cmds, "", nullptr));
 
+  const std::string command_url = dev_reg_->GetServiceURL("commands/1234");
+
   auto commands_json = buffet::unittests::CreateValue(R"([{
     'name':'robot._jump',
     'id':'1234',
@@ -538,22 +540,50 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
     {"status", string_type.CreateValue(std::string{"Ok"}, nullptr)}
   };
 
-  auto update_command = [](const ServerRequest& request,
-                           ServerResponse* response) {
-    // Make sure we serialize the JSON back without any pretty print so
-    // the string comparison works correctly.
-    auto json = request.GetDataAsJson();
-    EXPECT_NE(nullptr, json.get());
-    std::string value;
-    ASSERT_TRUE(base::JSONWriter::Write(json.get(), &value));
-    EXPECT_EQ(R"({"results":{"status":"Ok"}})", value);
+  // UpdateCommand when setting command results.
+  auto update_command_results = [](const ServerRequest& request,
+                                   ServerResponse* response) {
+    EXPECT_EQ(R"({"results":{"status":"Ok"}})",
+              request.GetDataAsNormalizedJsonString());
   };
 
-  transport_->AddHandler(dev_reg_->GetServiceURL("commands/1234"),
-      chromeos::http::request_type::kPatch,
-      base::Bind(update_command));
+  transport_->AddHandler(command_url,
+                         chromeos::http::request_type::kPatch,
+                         base::Bind(update_command_results));
 
   command->SetResults(results);
+
+  // UpdateCommand when setting command progress.
+  int count = 0;  // This will be called twice...
+  auto update_command_progress = [&count](const ServerRequest& request,
+                                          ServerResponse* response) {
+    if (count++ == 0) {
+      EXPECT_EQ(R"({"state":"inProgress"})",
+                request.GetDataAsNormalizedJsonString());
+    } else {
+      EXPECT_EQ(R"({"progress":{"progress":18}})",
+                request.GetDataAsNormalizedJsonString());
+    }
+  };
+
+  transport_->AddHandler(command_url,
+                         chromeos::http::request_type::kPatch,
+                         base::Bind(update_command_progress));
+
+  command->SetProgress(18);
+
+  // UpdateCommand when changing command status.
+  auto update_command_state = [](const ServerRequest& request,
+                                 ServerResponse* response) {
+    EXPECT_EQ(R"({"state":"cancelled"})",
+              request.GetDataAsNormalizedJsonString());
+  };
+
+  transport_->AddHandler(command_url,
+                         chromeos::http::request_type::kPatch,
+                         base::Bind(update_command_state));
+
+  command->Cancel();
 }
 
 

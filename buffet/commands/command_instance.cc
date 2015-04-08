@@ -152,7 +152,8 @@ std::unique_ptr<base::DictionaryValue> CommandInstance::ToJson() const {
             TypedValueToJson(parameters_, nullptr).release());
   json->Set(commands::attributes::kCommand_Results,
             TypedValueToJson(results_, nullptr).release());
-  json->SetInteger(commands::attributes::kCommand_Progress, progress_);
+  json->Set(commands::attributes::kCommand_Progress,
+            GetProgressJson().release());
   json->SetString(commands::attributes::kCommand_State, status_);
 
   return json;
@@ -219,5 +220,15 @@ void CommandInstance::RemoveFromQueue() {
     queue_->DelayedRemove(GetID());
 }
 
+std::unique_ptr<base::Value> CommandInstance::GetProgressJson() const {
+  // GCD server requires "progress" to be a JSON object. We will just make
+  // an object with a single field, "progress", so the patch request will
+  // look like this: {"progress": {"progress":100}}.
+  std::unique_ptr<base::DictionaryValue> progress_object{
+      new base::DictionaryValue};
+  progress_object->SetInteger(commands::attributes::kCommand_Progress,
+                              progress_);
+  return std::move(progress_object);
+}
 
 }  // namespace buffet

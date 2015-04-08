@@ -92,7 +92,7 @@ class Transport : public http::Transport {
 
  private:
   // A list of user-supplied request handlers.
-  std::multimap<std::string, HandlerCallback> handlers_;
+  std::map<std::string, HandlerCallback> handlers_;
   // Counter incremented each time a request is made.
   int request_count_ = 0;
 
@@ -115,6 +115,9 @@ class ServerRequestResponseBase {
   const std::vector<uint8_t>& GetData() const { return data_; }
   std::string GetDataAsString() const;
   std::unique_ptr<base::DictionaryValue> GetDataAsJson() const;
+  // Parses the data into a JSON object and writes it back to JSON to normalize
+  // its string representation (no pretty print, extra spaces, etc).
+  std::string GetDataAsNormalizedJsonString() const;
 
   // Add/retrieve request/response HTTP headers.
   void AddHeaders(const HeaderList& headers);
