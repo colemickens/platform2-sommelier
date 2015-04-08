@@ -15,8 +15,8 @@
 namespace soma {
 namespace parser {
 
-const char DevicePathFilter::kListKey[] = "device path filters";
-const char DeviceNodeFilter::kListKey[] = "device node filters";
+const char DevicePathFilter::kListKey[] = "os/brillo/device-path-filter-set";
+const char DeviceNodeFilter::kListKey[] = "os/brillo/device-node-filter-set";
 
 DevicePathFilter::DevicePathFilter(const base::FilePath& path) : filter_(path) {
 }
@@ -72,13 +72,14 @@ std::vector<std::pair<int, int>> ParseIntegerPairs(
     const base::ListValue& filters) {
   std::vector<std::pair<int, int>> to_return;
   for (base::Value* filter : filters) {
-    base::ListValue* nested = nullptr;
-    if (!(filter->GetAsList(&nested) && nested->GetSize() == 2)) {
-      LOG(ERROR) << "Device node filter must be a list of 2 elements.";
+    base::DictionaryValue* nested = nullptr;
+    if (!(filter->GetAsDictionary(&nested))) {
+      LOG(ERROR) << "Device node filter must be a dictionary.";
       continue;
     }
     int major, minor;
-    if (!nested->GetInteger(0, &major) || !nested->GetInteger(1, &minor)) {
+    if (!nested->GetInteger("major", &major) ||
+        !nested->GetInteger("minor", &minor)) {
       LOG(ERROR) << "Device node filter must contain 2 ints.";
       continue;
     }

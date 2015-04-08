@@ -35,6 +35,10 @@ const char ContainerSpecReader::kCommandLineKey[] = "exec";
 const char ContainerSpecReader::kGidKey[] = "group";
 const char ContainerSpecReader::kUidKey[] = "user";
 
+const char ContainerSpecReader::kIsolatorsListKey[] = "isolators";
+const char ContainerSpecReader::kIsolatorNameKey[] = "name";
+const char ContainerSpecReader::kIsolatorSetKey[] = "value.set";
+
 namespace {
 
 bool ResolveUser(const std::string& user, uid_t* uid) {
@@ -108,13 +112,52 @@ std::unique_ptr<ContainerSpec> BuildFromAppFields(
 
   std::set<port::Number> tcp_ports, udp_ports;
   if (subapp_dict->GetList(port::kListKey, &to_parse)) {
-    if (!port::ParseList(to_parse, &tcp_ports, &udp_ports))
+    if (!port::ParseList(*to_parse, &tcp_ports, &udp_ports))
       return nullptr;
     container_spec_helpers::SetTcpListenPorts(tcp_ports, spec.get());
     container_spec_helpers::SetUdpListenPorts(udp_ports, spec.get());
   }
 
   return std::move(spec);
+}
+
+bool ParseIsolators(const base::ListValue& isolators, ContainerSpec* spec) {
+  for (const base::Value* value : isolators) {
+    const base::DictionaryValue* isolator = nullptr;
+    if (!value->GetAsDictionary(&isolator)) {
+      LOG(ERROR) << "Isolators must be dicts, not " << value;
+      return false;
+    }
+
+    std::string name;
+    const base::ListValue* set = nullptr;
+    if (!isolator->GetString(ContainerSpecReader::kIsolatorNameKey, &name) ||
+        !isolator->GetList(ContainerSpecReader::kIsolatorSetKey, &set)) {
+      LOG(ERROR) << "Isolators must be a dict with a name and a value, not "
+                 << isolator;
+      return false;
+    }
+
+    // Should we support more than a few more of these, this will need to get
+    // refactored to be more elegant.
+    if (name == DevicePathFilter::kListKey) {
+      DevicePathFilter::Set device_path_filters;
+      if (!DevicePathFilter::ParseList(*set, &device_path_filters))
+        return false;
+      container_spec_helpers::SetDevicePathFilters(device_path_filters, spec);
+    } else if (name == DeviceNodeFilter::kListKey) {
+      DeviceNodeFilter::Set device_node_filters;
+      if (!DeviceNodeFilter::ParseList(*set, &device_node_filters))
+        return false;
+      container_spec_helpers::SetDeviceNodeFilters(device_node_filters, spec);
+    } else if (name == ns::kListKey) {
+      std::set<ns::Kind> namespaces;
+      if (!ns::ParseList(*set, &namespaces))
+        return false;
+      container_spec_helpers::SetNamespaces(namespaces, spec);
+    }
+  }
+  return true;
 }
 
 }  // namespace
@@ -168,26 +211,9 @@ std::unique_ptr<ContainerSpec> ContainerSpecReader::Read(
     container_spec_helpers::SetServiceNames(service_names, spec.get());
   }
 
-  std::set<ns::Kind> namespaces;
-  if (spec_dict->GetList(ns::kListKey, &to_parse)) {
-    if (!ns::ParseList(to_parse, &namespaces))
-      return nullptr;
-    container_spec_helpers::SetNamespaces(namespaces, spec.get());
-  }
-
-  DevicePathFilter::Set device_path_filters;
-  if (spec_dict->GetList(DevicePathFilter::kListKey, &to_parse)) {
-    if (!DevicePathFilter::ParseList(*to_parse, &device_path_filters))
-      return nullptr;
-    container_spec_helpers::SetDevicePathFilters(device_path_filters,
-                                                 spec.get());
-  }
-  DeviceNodeFilter::Set device_node_filters;
-  if (spec_dict->GetList(DeviceNodeFilter::kListKey, &to_parse)) {
-    if (!DeviceNodeFilter::ParseList(*to_parse, &device_node_filters))
-      return nullptr;
-    container_spec_helpers::SetDeviceNodeFilters(device_node_filters,
-                                                 spec.get());
+  if (spec_dict->GetList(kIsolatorsListKey, &to_parse) &&
+      !ParseIsolators(*to_parse, spec.get())) {
+    return nullptr;
   }
 
   return std::move(spec);

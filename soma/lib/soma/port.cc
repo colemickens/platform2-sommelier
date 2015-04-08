@@ -30,11 +30,11 @@ bool IsValid(Number port) {
 
 }  // namespace
 
-bool ParseList(const base::ListValue* listen_ports,
+bool ParseList(const base::ListValue& listen_ports,
                std::set<Number>* tcp_ports, std::set<Number>* udp_ports) {
   DCHECK(tcp_ports);
   DCHECK(udp_ports);
-  for (const base::Value* port_value : *listen_ports) {
+  for (const base::Value* port_value : listen_ports) {
     const base::DictionaryValue* port_spec = nullptr;
     if (!port_value->GetAsDictionary(&port_spec)) {
       LOG(ERROR) << "Ports must be specified in a dictionary, not "

@@ -13,7 +13,7 @@
 namespace soma {
 namespace parser {
 namespace ns {
-const char kListKey[] = "namespaces";
+const char kListKey[] = "os/brillo/namespaces-share-set";
 const char kNewIpc[] = "CLONE_NEWIPC";
 const char kNewNet[] = "CLONE_NEWNET";
 const char kNewNs[] = "CLONE_NEWNS";
@@ -42,10 +42,14 @@ bool Resolve(const std::string& namespace_string, Kind* out) {
 }
 }  // anonymous namespace
 
-bool ParseList(const base::ListValue* namespaces, std::set<Kind>* out) {
+bool ParseList(const base::ListValue& to_share, std::set<Kind>* out) {
   DCHECK(out);
+  // It really feels like there should be a slicker way to initialize this set.
+  for (int i = 0; i < ContainerSpec::Namespace_ARRAYSIZE; ++i)
+    out->insert(static_cast<Kind>(ContainerSpec::Namespace_MIN + i));
+
   std::string namespace_string;
-  for (base::Value* namespace_value : *namespaces) {
+  for (base::Value* namespace_value : to_share) {
     if (!namespace_value->GetAsString(&namespace_string)) {
       LOG(ERROR) << "Namespace specifiers must be strings, not "
                  << namespace_value;
@@ -56,7 +60,7 @@ bool ParseList(const base::ListValue* namespaces, std::set<Kind>* out) {
       LOG(ERROR) << "Unknown namespace identifier: " << namespace_string;
       return false;
     }
-    out->insert(ns);
+    out->erase(ns);
   }
   return true;
 }

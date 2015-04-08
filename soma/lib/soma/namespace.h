@@ -28,9 +28,13 @@ extern const char kNewUts[];
 
 using Kind = ContainerSpec::Namespace;
 
-// Returns true if |namespaces| can be successfully parsed into |out|.
+// The provided set is treated as an exclusion list. We default to unsharing
+// all supported namespaces, and developers can provide a list of namespaces
+// they wish to remain shared.
+// Returns true if |to_share| can be successfully parsed. |out| will be
+// populated with { all namespaces } - { to_share }.
 // False is returned on failure and |out| may be in an inconsistent state.
-bool ParseList(const base::ListValue* namespaces, std::set<Kind>* out);
+bool ParseList(const base::ListValue& to_share, std::set<Kind>* out);
 
 }  // namespace ns
 }  // namespace parser

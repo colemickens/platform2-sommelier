@@ -315,28 +315,42 @@ TEST_F(ContainerSpecReaderTest, SpecWithWildcardPort) {
 }
 
 namespace {
-std::unique_ptr<base::ListValue> ListFromPair(const std::pair<int, int>& pair) {
-  std::unique_ptr<base::ListValue> list(new base::ListValue);
-  list->AppendInteger(pair.first);
-  list->AppendInteger(pair.second);
-  return std::move(list);
+std::unique_ptr<base::DictionaryValue> MakeIsolator(
+    const std::string& name,
+    std::unique_ptr<base::ListValue> set) {
+  std::unique_ptr<base::DictionaryValue> isolator(new base::DictionaryValue);
+  isolator->SetString(ContainerSpecReader::kIsolatorNameKey, name);
+  isolator->Set(ContainerSpecReader::kIsolatorSetKey, set.release());
+  return std::move(isolator);
+}
+
+std::unique_ptr<base::DictionaryValue> FilterFromPair(
+    const std::pair<int, int>& pair) {
+  std::unique_ptr<base::DictionaryValue> filter(new base::DictionaryValue);
+  filter->SetInteger("major", pair.first);
+  filter->SetInteger("minor", pair.second);
+  return std::move(filter);
 }
 }  // anonymous namespace
 
 TEST_F(ContainerSpecReaderTest, SpecWithDeviceFilters) {
   std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
+  std::unique_ptr<base::ListValue> isolators(new base::ListValue);
 
   const char kPathFilter1[] = "/dev/d1";
   const char kPathFilter2[] = "/dev/d2";
   std::unique_ptr<base::ListValue> device_path_filters(new base::ListValue);
   device_path_filters->AppendString(kPathFilter1);
   device_path_filters->AppendString(kPathFilter2);
-  baseline->Set(DevicePathFilter::kListKey, device_path_filters.release());
+  isolators->Append(MakeIsolator(DevicePathFilter::kListKey,
+                                 std::move(device_path_filters)).release());
 
   std::unique_ptr<base::ListValue> device_node_filters(new base::ListValue);
-  device_node_filters->Append(ListFromPair({8, 0}).release());
-  device_node_filters->Append(ListFromPair({4, -1}).release());
-  baseline->Set(DeviceNodeFilter::kListKey, device_node_filters.release());
+  device_node_filters->Append(FilterFromPair({8, 0}).release());
+  device_node_filters->Append(FilterFromPair({4, -1}).release());
+  isolators->Append(MakeIsolator(DeviceNodeFilter::kListKey,
+                                 std::move(device_node_filters)).release());
+  baseline->Set(ContainerSpecReader::kIsolatorsListKey, isolators.release());
 
   std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
@@ -349,18 +363,21 @@ TEST_F(ContainerSpecReaderTest, SpecWithDeviceFilters) {
 
 TEST_F(ContainerSpecReaderTest, SpecWithNamespaces) {
   std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
+  std::unique_ptr<base::ListValue> isolators(new base::ListValue);
 
   std::unique_ptr<base::ListValue> namespaces(new base::ListValue);
   namespaces->AppendString(ns::kNewIpc);
   namespaces->AppendString(ns::kNewPid);
-  baseline->Set(ns::kListKey, namespaces.release());
+  isolators->Append(
+      MakeIsolator(ns::kListKey, std::move(namespaces)).release());
+  baseline->Set(ContainerSpecReader::kIsolatorsListKey, isolators.release());
 
   std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
   CheckSpecBaseline(spec.get());
-  EXPECT_TRUE(spec->ShouldApplyNamespace(ContainerSpec::NEWIPC));
-  EXPECT_TRUE(spec->ShouldApplyNamespace(ContainerSpec::NEWPID));
-  EXPECT_FALSE(spec->ShouldApplyNamespace(ContainerSpec::NEWNS));
+  EXPECT_FALSE(spec->ShouldApplyNamespace(ContainerSpec::NEWIPC));
+  EXPECT_FALSE(spec->ShouldApplyNamespace(ContainerSpec::NEWPID));
+  EXPECT_TRUE(spec->ShouldApplyNamespace(ContainerSpec::NEWNS));
 }
 
 }  // namespace parser

@@ -31,6 +31,11 @@ class SOMA_EXPORT ContainerSpecReader {
   static const char kGidKey[];
   static const char kUidKey[];
 
+  // Keys for optional fields in a container specification.
+  static const char kIsolatorsListKey[];
+  static const char kIsolatorNameKey[];
+  static const char kIsolatorSetKey[];
+
   ContainerSpecReader();
   virtual ~ContainerSpecReader();
 

@@ -22,14 +22,6 @@
                 "user": "100",
                 "group": "300",
                 "workingDirectory": "/opt/work",
-                "isolators": [
-                    {
-                        "name": "os/brillo/namespaces-remove-set",
-                        "value": {
-                            "set": [ "CLONE_NEWNS " ],
-                        }
-                    },
-                ],
                 "ports": [
                     {
                         "name": "health",
@@ -38,17 +30,42 @@
                         "socketActivated": false
                     }
                 ]
-            },
+            }
+        }
+    ],
+    "isolators": [
+        {
+            "name": "os/brillo/namespaces-share-set",
+            "value": {
+                "set": [ "CLONE_NEWIPC" ],
+            }
         },
+        {
+            "name": "os/brillo/device-path-filter-set",
+            "value": {
+                "set": [
+                    "/dev/binder",
+                    "/dev/input/*"
+                ]
+            }
+        },
+        {
+            "name": "os/brillo/device-node-filter-set",
+            "value": {
+                "set": [
+                     { "major": 13, "minor": -1 }
+                ]
+            }
+        }
     ],
     "annotations": [
         {
-	    "name": "service-0",
-	    "value": "com.android.embedded.ping-brick.ping-service",
-	},
+            "name": "service-0",
+            "value": "com.android.embedded.ping-brick.ping-service",
+        },
         {
-	    "name": "service-1",
-	    "value": "com.android.embedded.ping-brick.echo-service",
-	},
-    ],
+            "name": "service-1",
+            "value": "com.android.embedded.ping-brick.echo-service",
+        }
+    ]
 }
