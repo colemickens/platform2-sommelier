@@ -40,8 +40,6 @@ message ReceiveServiceRequest {
   optional protobinder.StrongBinder binder = 2;
 }
 
-message ReceiveServiceResponse {}
-
 // Interface implemented by clients that communicate with psyched.
 service PsycheClient {
   // Invoked with the response to an earlier Psyched.RequestService call or when
@@ -49,5 +47,5 @@ service PsycheClient {
   // communicate with it.
   // TODO(derat): This needs to be a one-way call so psyched won't block on the
   // client.
-  rpc ReceiveService (ReceiveServiceRequest) returns (ReceiveServiceResponse);
+  rpc ReceiveService (ReceiveServiceRequest) returns (protobinder.NoResponse);
 }

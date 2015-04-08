@@ -8,3 +8,5 @@ message StrongBinder {
   required uint64 ibinder = 1;
   required uint64 offset = 2;
 }
+
+message NoResponse {}

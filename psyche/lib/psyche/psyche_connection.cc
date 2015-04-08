@@ -87,8 +87,7 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
   }
 
   // IPsycheClientHostInterface:
-  int ReceiveService(ReceiveServiceRequest* in,
-                     ReceiveServiceResponse* out) override {
+  int ReceiveService(ReceiveServiceRequest* in) override {
     const std::string service_name = in->name();
     std::unique_ptr<BinderProxy> proxy =
         util::ExtractBinderProxyFromProto(in->mutable_binder());

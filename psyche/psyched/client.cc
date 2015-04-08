@@ -60,8 +60,7 @@ void Client::SendServiceHandle(ServiceInterface* service) {
   ReceiveServiceRequest request;
   request.set_name(service->GetName());
   util::CopyBinderToProto(*(service->GetProxy()), request.mutable_binder());
-  ReceiveServiceResponse response;
-  int result = interface_->ReceiveService(&request, &response);
+  int result = interface_->ReceiveService(&request);
   if (result != 0) {
     LOG(WARNING) << "Failed to pass service \"" << service->GetName()
                  << "\" to client with handle " << proxy_->handle();
