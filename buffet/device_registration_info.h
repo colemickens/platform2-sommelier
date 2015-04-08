@@ -216,7 +216,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   std::string device_robot_account_;
 
   // These fields are user settable and stored in the state store.
-  std::string display_name_;
+  std::string name_;
   std::string description_;
   std::string location_;
 

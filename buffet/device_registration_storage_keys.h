@@ -14,7 +14,7 @@ namespace storage_keys {
 extern const char kRefreshToken[];
 extern const char kDeviceId[];
 extern const char kRobotAccount[];
-extern const char kDisplayName[];
+extern const char kName[];
 extern const char kDescription[];
 extern const char kLocation[];
 

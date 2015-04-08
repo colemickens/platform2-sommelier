@@ -26,7 +26,6 @@ class BuffetConfig {
   std::string service_url() const { return service_url_; }
   std::string device_kind() const { return device_kind_; }
   std::string name() const { return name_; }
-  std::string default_display_name() const { return default_display_name_; }
   std::string default_description() const { return default_description_; }
   std::string default_location() const { return default_location_; }
   std::string model_id() const { return model_id_; }
@@ -39,8 +38,7 @@ class BuffetConfig {
   std::string oauth_url_{"https://accounts.google.com/o/oauth2/"};
   std::string service_url_{"https://www.googleapis.com/clouddevices/v1/"};
   std::string device_kind_{"vendor"};
-  std::string name_{"developer_device"};
-  std::string default_display_name_{"Developer device"};
+  std::string name_{"Developer device"};
   std::string default_description_{"A development device"};
   std::string default_location_{"my desk"};
   std::string model_id_{"AAA"};

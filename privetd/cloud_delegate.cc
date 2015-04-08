@@ -246,7 +246,7 @@ class CloudDelegateImpl : public CloudDelegate {
     }
     VariantDictionary params{
         {"ticket_id", ticket_id},
-        {"display_name", device_->GetName()},
+        {"name", device_->GetName()},
         {"description", device_->GetDescription()},
         {"location", device_->GetLocation()},
         {"model_id", device_->GetModelId()},

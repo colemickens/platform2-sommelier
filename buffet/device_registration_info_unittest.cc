@@ -63,7 +63,7 @@ void InitDefaultStorage(base::DictionaryValue* data) {
   data->SetString(storage_keys::kRefreshToken, "");
   data->SetString(storage_keys::kDeviceId, "");
   data->SetString(storage_keys::kRobotAccount, "");
-  data->SetString(storage_keys::kDisplayName, "");
+  data->SetString(storage_keys::kName, "");
   data->SetString(storage_keys::kDescription, "");
   data->SetString(storage_keys::kLocation, "");
 }
@@ -200,8 +200,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     config_store.SetString("client_secret", test_data::kClientSecret);
     config_store.SetString("api_key", test_data::kApiKey);
     config_store.SetString("device_kind",  "vendor");
-    config_store.SetString("name",  "coffee_pot");
-    config_store.SetString("default_display_name",  "Coffee Pot");
+    config_store.SetString("name",  "Coffee Pot");
     config_store.SetString("default_description",  "Easy to clean");
     config_store.SetString("default_location",  "Kitchen");
     config_store.SetString("model_id", "AAA");
@@ -257,7 +256,7 @@ TEST_F(DeviceRegistrationInfoTest, VerifySave) {
   data.SetString(storage_keys::kRefreshToken, "d");
   data.SetString(storage_keys::kDeviceId, "e");
   data.SetString(storage_keys::kRobotAccount, "h");
-  data.SetString(storage_keys::kDisplayName, "k");
+  data.SetString(storage_keys::kName, "k");
   data.SetString(storage_keys::kDescription, "l");
   data.SetString(storage_keys::kLocation, "m");
 
@@ -404,7 +403,7 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
     EXPECT_EQ("Kitchen", value);
     EXPECT_TRUE(json->GetString("deviceDraft.modelManifestId", &value));
     EXPECT_EQ("AAA", value);
-    EXPECT_TRUE(json->GetString("deviceDraft.displayName", &value));
+    EXPECT_TRUE(json->GetString("deviceDraft.name", &value));
     EXPECT_EQ("Coffee Pot", value);
     base::DictionaryValue* commandDefs = nullptr;
     EXPECT_TRUE(json->GetDictionary("deviceDraft.commandDefs", &commandDefs));

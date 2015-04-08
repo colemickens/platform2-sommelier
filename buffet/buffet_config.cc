@@ -17,7 +17,6 @@ const char kOAuthURL[]             = "oauth_url";
 const char kServiceURL[]           = "service_url";
 const char kDeviceKind[]           = "device_kind";
 const char kName[]                 = "name";
-const char kDefaultDisplayName[]   = "default_display_name";
 const char kDefaultDescription[]   = "default_description";
 const char kDefaultLocation[]      = "default_location";
 const char kModelId[]              = "model_id";
@@ -40,7 +39,6 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
   store.GetString(config_keys::kServiceURL, &service_url_);
   store.GetString(config_keys::kDeviceKind, &device_kind_);
   store.GetString(config_keys::kName, &name_);
-  store.GetString(config_keys::kDefaultDisplayName, &default_display_name_);
   store.GetString(config_keys::kDefaultDescription, &default_description_);
   store.GetString(config_keys::kDefaultLocation, &default_location_);
   store.GetString(config_keys::kModelId, &model_id_);

@@ -39,7 +39,7 @@ namespace storage_keys {
 const char kRefreshToken[]  = "refresh_token";
 const char kDeviceId[]      = "device_id";
 const char kRobotAccount[]  = "robot_account";
-const char kDisplayName[]   = "display_name";
+const char kName[]          = "name";
 const char kDescription[]   = "description";
 const char kLocation[]      = "location";
 
@@ -183,20 +183,20 @@ bool DeviceRegistrationInfo::Load() {
   std::string refresh_token;
   std::string device_id;
   std::string device_robot_account;
-  std::string display_name;
+  std::string name;
   std::string description;
   std::string location;
   if (!dict->GetString(storage_keys::kRefreshToken, &refresh_token) ||
       !dict->GetString(storage_keys::kDeviceId, &device_id) ||
       !dict->GetString(storage_keys::kRobotAccount, &device_robot_account) ||
-      !dict->GetString(storage_keys::kDisplayName, &display_name) ||
+      !dict->GetString(storage_keys::kName, &name) ||
       !dict->GetString(storage_keys::kDescription, &description) ||
       !dict->GetString(storage_keys::kLocation, &location)) {
     return false;
   }
   refresh_token_        = refresh_token;
   device_robot_account_ = device_robot_account;
-  display_name_         = display_name;
+  name_                 = name;
   description_          = description;
   location_             = location;
 
@@ -220,7 +220,7 @@ bool DeviceRegistrationInfo::Save() const {
   dict.SetString(storage_keys::kRefreshToken, refresh_token_);
   dict.SetString(storage_keys::kDeviceId,     device_id_);
   dict.SetString(storage_keys::kRobotAccount, device_robot_account_);
-  dict.SetString(storage_keys::kDisplayName,  display_name_);
+  dict.SetString(storage_keys::kName,         name_);
   dict.SetString(storage_keys::kDescription,  description_);
   dict.SetString(storage_keys::kLocation,     location_);
 
@@ -401,9 +401,7 @@ DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
   if (!device_id_.empty())
     resource->SetString("id", device_id_);
   resource->SetString("deviceKind", config_->device_kind());
-  resource->SetString("name", config_->name());
-  if (!display_name_.empty())
-    resource->SetString("displayName", display_name_);
+  resource->SetString("name", name_.empty() ? config_->name() : name_);
   if (!description_.empty())
     resource->SetString("description", description_);
   if (!location_.empty())
@@ -468,8 +466,7 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   }
   // These fields are optional, and will default to values from the manufacturer
   // supplied config.
-  GetWithDefault(params, storage_keys::kDisplayName,
-                 config_->default_display_name(), &display_name_);
+  GetWithDefault(params, storage_keys::kName, config_->name(), &name_);
   GetWithDefault(params, storage_keys::kDescription,
                  config_->default_description(), &description_);
   GetWithDefault(params, storage_keys::kLocation,
