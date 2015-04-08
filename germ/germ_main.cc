@@ -2,108 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <sysexits.h>
-
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <base/at_exit.h>
-#include <base/bind.h>
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/macros.h>
-#include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop.h>
 #include <chromeos/flag_helper.h>
 #include <chromeos/syslog_logging.h>
-#include <protobinder/binder_proxy.h>
-#include <psyche/psyche_connection.h>
-#include <psyche/psyche_daemon.h>
 
-#include "germ/constants.h"
-#include "germ/launcher.h"
-#include "germ/proto_bindings/germ.pb.h"
-#include "germ/proto_bindings/germ.pb.rpc.h"
+#include "germ/germ_client.h"
 
 namespace {
 const char kShellExecutablePath[] = "/bin/sh";
-}
-
-namespace germ {
-
-namespace {
-
-class LaunchClient : public psyche::PsycheDaemon {
- public:
-  LaunchClient(const std::string& name,
-               const std::vector<std::string>& command_line)
-      : name_(name), command_line_(command_line), weak_ptr_factory_(this) {}
-  ~LaunchClient() override = default;
-
- private:
-  void RequestService() {
-    LOG(INFO) << "Requesting service germ";
-    psyche_connection()->GetService(kGermServiceName,
-                                    base::Bind(&LaunchClient::ReceiveService,
-                                               weak_ptr_factory_.GetWeakPtr()));
-  }
-
-  void ReceiveService(scoped_ptr<BinderProxy> proxy) {
-    LOG(INFO) << "Received service with handle " << proxy->handle();
-    proxy_.reset(proxy.release());
-    germ_.reset(protobinder::BinderToInterface<IGerm>(proxy_.get()));
-    Launch();
-  }
-
-  void Launch() {
-    DCHECK(germ_);
-    LaunchRequest request;
-    LaunchResponse response;
-    request.set_name(name_);
-    soma::ContainerSpec* spec = request.mutable_spec();
-    for (const auto& cmdline_token : command_line_) {
-      spec->add_command_line(cmdline_token);
-    }
-    if (germ_->Launch(&request, &response) != 0) {
-      LOG(ERROR) << "Failed to launch service '" << name_ << "'";
-      // Trigger shut-down of the message loop.
-      Quit();
-      return;
-    }
-    LOG(INFO) << "Launched service '" << name_ << "' with pid "
-              << response.pid();
-    // Trigger shut-down of the message loop.
-    Quit();
-  }
-
-  // PsycheDaemon:
-  int OnInit() override {
-    int return_code = PsycheDaemon::OnInit();
-    if (return_code != EX_OK)
-      return return_code;
-
-    base::MessageLoopForIO::current()->PostTask(
-        FROM_HERE, base::Bind(&LaunchClient::RequestService,
-                              weak_ptr_factory_.GetWeakPtr()));
-    return EX_OK;
-  }
-
-  std::unique_ptr<BinderProxy> proxy_;
-  std::unique_ptr<IGerm> germ_;
-
-  std::string name_;
-  std::vector<std::string> command_line_;
-
-  // Keep this member last.
-  base::WeakPtrFactory<LaunchClient> weak_ptr_factory_;
-
-  DISALLOW_COPY_AND_ASSIGN(LaunchClient);
-};
-
 }  // namespace
-
-}  // namespace germ
 
 int main(int argc, char** argv) {
   DEFINE_string(name, "", "Name of the service, cannot be empty");
@@ -147,8 +60,8 @@ int main(int argc, char** argv) {
     }
     ret = status;
   } else {
-    germ::LaunchClient client(FLAGS_name, args);
-    ret = client.Run();
+    germ::GermClient client;
+    ret = client.Launch(FLAGS_name, args);
   }
   return ret;
 }

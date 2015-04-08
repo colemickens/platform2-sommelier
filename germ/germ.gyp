@@ -46,6 +46,7 @@
       ],
       'sources': [
         'environment.cc',
+        'germ_client.cc',
         'germ_host.cc',
         'launcher.cc',
         'process_reaper.cc',
