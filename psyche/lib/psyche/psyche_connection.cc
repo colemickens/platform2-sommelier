@@ -62,28 +62,25 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
     return true;
   }
 
-  void GetService(const std::string& service_name,
+  bool GetService(const std::string& service_name,
                   const GetServiceCallback& callback) {
     DCHECK(psyched_interface_);
-
-    get_service_callbacks_[service_name] = callback;
 
     RequestServiceRequest request;
     request.set_name(service_name);
     util::CopyBinderToProto(*this, request.mutable_client_binder());
-
-    RequestServiceResponse response;
-    const int result = psyched_interface_->RequestService(&request, &response);
+    const int result = psyched_interface_->RequestService(&request);
     if (result != SUCCESS) {
       LOG(ERROR) << "RequestService binder call failed with " << result;
-      callback.Run(scoped_ptr<BinderProxy>());
-      return;
+      return false;
     }
-    if (!response.success()) {
-      LOG(ERROR) << "psyched reported failure when requesting " << service_name;
-      callback.Run(scoped_ptr<BinderProxy>());
-      return;
-    }
+
+    // Register the callback last so it doesn't stick around if the RPC failed.
+    // This is safe to do since we're making a one-way call, i.e. psyched's
+    // asynchronous ReceiveService call won't be handled until control returns
+    // to the message loop.
+    get_service_callbacks_[service_name] = callback;
+    return true;
   }
 
   // IPsycheClientHostInterface:
@@ -126,9 +123,9 @@ bool PsycheConnection::RegisterService(const std::string& service_name,
   return impl_->RegisterService(service_name, service);
 }
 
-void PsycheConnection::GetService(const std::string& service_name,
+bool PsycheConnection::GetService(const std::string& service_name,
                                   const GetServiceCallback& callback) {
-  impl_->GetService(service_name, callback);
+  return impl_->GetService(service_name, callback);
 }
 
 }  // namespace psyche

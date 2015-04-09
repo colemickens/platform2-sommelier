@@ -5,38 +5,40 @@ option optimize_for = LITE_RUNTIME;
 import "binder.proto";
 
 message RegisterServiceRequest {
+  // Service name.
   required string name = 1;
+  // Binder proxy for communicating with the service.
   required protobinder.StrongBinder binder = 2;
 }
 
 message RegisterServiceResponse {
+  // True if service registration was successful.
   required bool success = 1;
 }
 
 message RequestServiceRequest {
+  // Service name.
   required string name = 1;
+  // Binder proxy implementing PsycheClient that will receive the service.
   required protobinder.StrongBinder client_binder = 2;
-}
-
-message RequestServiceResponse {
-  // TODO(derat): Notify the client about immediate errors via ReceiveService.
-  required bool success = 1;
 }
 
 // Interface implemented by the psyched daemon.
 service Psyched {
-  // Called to register an already-running service with psyched.
+  // Synchronously register an already-running service with psyched.
   rpc RegisterService (RegisterServiceRequest)
       returns (RegisterServiceResponse);
 
-  // Called to asynchronously request a handle to an already-registered service.
-  // TODO(derat): This needs to be a one-way call so the client won't block on
-  // the service being started.
-  rpc RequestService (RequestServiceRequest) returns (RequestServiceResponse);
+  // Asynchronously request a handle to a service. If the service is known but
+  // not yet running, it will be started.
+  rpc RequestService (RequestServiceRequest) returns (protobinder.NoResponse);
 }
 
 message ReceiveServiceRequest {
+  // Service name.
   required string name = 1;
+  // Binder proxy for communicating with the service. Empty if the service is
+  // unavailable.
   optional protobinder.StrongBinder binder = 2;
 }
 
@@ -45,7 +47,5 @@ service PsycheClient {
   // Invoked with the response to an earlier Psyched.RequestService call or when
   // a service has been restarted and clients must begin using a new binder to
   // communicate with it.
-  // TODO(derat): This needs to be a one-way call so psyched won't block on the
-  // client.
   rpc ReceiveService (ReceiveServiceRequest) returns (protobinder.NoResponse);
 }

@@ -17,8 +17,19 @@ ClientStub::ClientStub(std::unique_ptr<BinderProxy> client_proxy)
 
 ClientStub::~ClientStub() = default;
 
+int ClientStub::GetServiceRequestFailures(
+    const std::string& service_name) const {
+  const auto it = service_request_failures_.find(service_name);
+  return it != service_request_failures_.end() ? it->second : 0;
+}
+
 const ClientInterface::ServiceSet& ClientStub::GetServices() const {
   return services_;
+}
+
+void ClientStub::ReportServiceRequestFailure(
+    const std::string& service_name) {
+  service_request_failures_[service_name]++;
 }
 
 void ClientStub::AddService(ServiceInterface* service) {

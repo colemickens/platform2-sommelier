@@ -94,6 +94,22 @@ class RegistrarTest : public BinderTestBase {
                            std::unique_ptr<BinderProxy>(soma_proxy_));
   }
 
+  // Returns the client that |factory_| created for |client_proxy|, crashing if
+  // it doesn't exist.
+  ClientStub* GetClientOrDie(const BinderProxy& client_proxy) {
+    ClientStub* client = factory_->GetClient(client_proxy);
+    CHECK(client) << "No client for proxy " << client_proxy.handle();
+    return client;
+  }
+
+  // Returns the service that |factory_| created for |service_name|, crashing if
+  // it doesn't exist.
+  ServiceStub* GetServiceOrDie(const std::string& service_name) {
+    ServiceStub* service = factory_->GetService(service_name);
+    CHECK(service) << "No service named \"" << service_name << "\"";
+    return service;
+  }
+
   // Calls |registrar_|'s RegisterService method, returning true on success.
   bool RegisterService(
       const std::string& service_name,
@@ -111,10 +127,16 @@ class RegistrarTest : public BinderTestBase {
     return response.success();
   }
 
-  // Calls |registrar_|'s RequestService method, returning true on success.
-  bool RequestService(
-      const std::string& service_name,
-      std::unique_ptr<BinderProxy> client_proxy) WARN_UNUSED_RESULT {
+  // Calls |registrar_|'s RequestService method, returning true if a failure
+  // wasn't immediately reported back to the client.
+  bool RequestService(const std::string& service_name,
+                      std::unique_ptr<BinderProxy> client_proxy) {
+    // Hang on to the proxy so we can use it to find the client later.
+    BinderProxy* client_proxy_ptr = client_proxy.get();
+    ClientStub* client = factory_->GetClient(*client_proxy_ptr);
+    const int initial_failures =
+        client ? client->GetServiceRequestFailures(service_name) : 0;
+
     RequestServiceRequest request;
     request.set_name(service_name);
     // |service_proxy| will be extracted from the protocol buffer into another
@@ -122,10 +144,16 @@ class RegistrarTest : public BinderTestBase {
     util::CopyBinderToProto(*(client_proxy.release()),
                             request.mutable_client_binder());
 
-    RequestServiceResponse response;
-    CHECK_EQ(registrar_->RequestService(&request, &response), 0)
+    CHECK_EQ(registrar_->RequestService(&request), 0)
         << "RequestService call for " << service_name << " failed";
-    return response.success();
+
+    const int new_failures = GetClientOrDie(*client_proxy_ptr)
+                                 ->GetServiceRequestFailures(service_name);
+    CHECK_GE(new_failures, initial_failures)
+        << "Client " << client_proxy_ptr->handle() << "'s request failures "
+        << "for \"" << service_name << " decreased from " << initial_failures
+        << " to " << new_failures;
+    return new_failures == initial_failures;
   }
 
   // Creates a ContainerStub object named |container_name| and registers it in
@@ -169,10 +197,8 @@ TEST_F(RegistrarTest, RegisterAndRequestService) {
                              std::unique_ptr<BinderProxy>(client_proxy)));
 
   // Check that the service was added to the client.
-  ClientStub* client = factory_->GetClient(*client_proxy);
-  ASSERT_TRUE(client);
-  ServiceStub* service = factory_->GetService(kServiceName);
-  ASSERT_TRUE(service);
+  ClientStub* client = GetClientOrDie(*client_proxy);
+  ServiceStub* service = GetServiceOrDie(kServiceName);
   ASSERT_EQ(1U, client->GetServices().count(service));
 }
 
@@ -184,8 +210,7 @@ TEST_F(RegistrarTest, ReregisterService) {
                               std::unique_ptr<BinderProxy>(service_proxy)));
 
   // The service should hold the correct proxy.
-  ServiceStub* service = factory_->GetService(kServiceName);
-  ASSERT_TRUE(service);
+  ServiceStub* service = GetServiceOrDie(kServiceName);
   EXPECT_EQ(service_proxy, service->GetProxy());
 
   // Trying to register the same service again while it's still running should
@@ -218,8 +243,7 @@ TEST_F(RegistrarTest, QuerySomaForServices) {
   EXPECT_TRUE(RequestService(kService1Name,
                              std::unique_ptr<BinderProxy>(client1_proxy)));
   EXPECT_EQ(1, container->launch_count());
-  ClientStub* client1 = factory_->GetClient(*client1_proxy);
-  ASSERT_TRUE(client1);
+  ClientStub* client1 = GetClientOrDie(*client1_proxy);
   EXPECT_TRUE(service1->HasClient(client1));
   EXPECT_FALSE(service2->HasClient(client1));
 
@@ -228,8 +252,7 @@ TEST_F(RegistrarTest, QuerySomaForServices) {
   EXPECT_TRUE(RequestService(kService1Name,
                              std::unique_ptr<BinderProxy>(client2_proxy)));
   EXPECT_EQ(1, container->launch_count());
-  ClientStub* client2 = factory_->GetClient(*client2_proxy);
-  ASSERT_TRUE(client2);
+  ClientStub* client2 = GetClientOrDie(*client2_proxy);
   EXPECT_TRUE(service1->HasClient(client2));
   EXPECT_FALSE(service2->HasClient(client2));
 
@@ -238,8 +261,7 @@ TEST_F(RegistrarTest, QuerySomaForServices) {
   EXPECT_TRUE(RequestService(kService2Name,
                              std::unique_ptr<BinderProxy>(client3_proxy)));
   EXPECT_EQ(1, container->launch_count());
-  ClientStub* client3 = factory_->GetClient(*client3_proxy);
-  ASSERT_TRUE(client3);
+  ClientStub* client3 = GetClientOrDie(*client3_proxy);
   EXPECT_FALSE(service1->HasClient(client3));
   EXPECT_TRUE(service2->HasClient(client3));
 }

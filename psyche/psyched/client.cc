@@ -32,6 +32,10 @@ const ClientInterface::ServiceSet& Client::GetServices() const {
   return services_;
 }
 
+void Client::ReportServiceRequestFailure(const std::string& service_name) {
+  SendServiceProxy(service_name, nullptr);
+}
+
 void Client::AddService(ServiceInterface* service) {
   DCHECK(services_.find(service) == services_.end())
       << "Service \"" << service->GetName() << "\" already registered for "
@@ -39,7 +43,7 @@ void Client::AddService(ServiceInterface* service) {
   service->AddObserver(this);
   services_.insert(service);
   if (service->GetProxy())
-    SendServiceHandle(service);
+    SendServiceProxy(service->GetName(), service->GetProxy());
 }
 
 void Client::RemoveService(ServiceInterface* service) {
@@ -48,22 +52,25 @@ void Client::RemoveService(ServiceInterface* service) {
 }
 
 void Client::OnServiceProxyChange(ServiceInterface* service) {
+  DCHECK(service);
   CHECK(services_.count(service))
       << "Service \"" << service->GetName() << "\" not registered for client "
       << "with handle " << proxy_->handle();
   if (service->GetProxy())
-    SendServiceHandle(service);
+    SendServiceProxy(service->GetName(), service->GetProxy());
 }
 
-void Client::SendServiceHandle(ServiceInterface* service) {
-  DCHECK(service->GetProxy());
+void Client::SendServiceProxy(const std::string& service_name,
+                              const protobinder::BinderProxy* service_proxy) {
   ReceiveServiceRequest request;
-  request.set_name(service->GetName());
-  util::CopyBinderToProto(*(service->GetProxy()), request.mutable_binder());
+  request.set_name(service_name);
+  if (service_proxy)
+    util::CopyBinderToProto(*service_proxy, request.mutable_binder());
   int result = interface_->ReceiveService(&request);
   if (result != 0) {
-    LOG(WARNING) << "Failed to pass service \"" << service->GetName()
-                 << "\" to client with handle " << proxy_->handle();
+    LOG(WARNING) << "Failed to pass service \"" << service_name
+                 << "\" to client with handle " << proxy_->handle()
+                 << "; got " << result;
   }
 }
 

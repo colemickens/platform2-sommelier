@@ -25,10 +25,13 @@ class ServiceInterface;
 // A client that has requested one or more services from psyched.
 class ClientInterface {
  public:
+  virtual ~ClientInterface() = default;
+
   using ServiceSet = std::set<ServiceInterface*>;
   virtual const ServiceSet& GetServices() const = 0;
 
-  virtual ~ClientInterface() = default;
+  // Notifies the client that its request for |service_name| failed.
+  virtual void ReportServiceRequestFailure(const std::string& service_name) = 0;
 
   // Adds or removes a service that this client has requested to |services_|.
   // Ownership of |service| remains with the caller.
@@ -44,6 +47,7 @@ class Client : public ClientInterface, public ServiceObserver {
 
   // ClientInterface:
   const ServiceSet& GetServices() const override;
+  void ReportServiceRequestFailure(const std::string& service_name) override;
   void AddService(ServiceInterface* service) override;
   void RemoveService(ServiceInterface* service) override;
 
@@ -51,8 +55,10 @@ class Client : public ClientInterface, public ServiceObserver {
   void OnServiceProxyChange(ServiceInterface* service) override;
 
  private:
-  // Passes |service|'s handle to the client.
-  void SendServiceHandle(ServiceInterface* service);
+  // Passes |service_proxy| to the client for |service_name|. |service_proxy|
+  // may be null to indicate a failed request.
+  void SendServiceProxy(const std::string& service_name,
+                        const protobinder::BinderProxy* service_proxy);
 
   std::unique_ptr<protobinder::BinderProxy> proxy_;
   std::unique_ptr<IPsycheClient> interface_;

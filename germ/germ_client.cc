@@ -15,20 +15,12 @@
 
 namespace germ {
 
-void GermClient::RequestService() {
-  LOG(INFO) << "Requesting service germ";
-  psyche_connection()->GetService(
-      kGermServiceName,
-      base::Bind(&GermClient::ReceiveService, weak_ptr_factory_.GetWeakPtr()));
-}
-
 void GermClient::ReceiveService(scoped_ptr<BinderProxy> proxy) {
   LOG(INFO) << "Received service with handle " << proxy->handle();
   proxy_.reset(proxy.release());
   germ_.reset(protobinder::BinderToInterface<IGerm>(proxy_.get()));
-  base::MessageLoopForIO::current()->PostTask(
-      FROM_HERE,
-      base::Bind(&GermClient::RunCallback, weak_ptr_factory_.GetWeakPtr()));
+  callback_.Run();
+  Quit();
 }
 
 int GermClient::Launch(const std::string& name,
@@ -71,19 +63,15 @@ void GermClient::DoTerminate(pid_t pid) {
   }
 }
 
-void GermClient::RunCallback() {
-  callback_.Run();
-  Quit();
-}
-
 int GermClient::OnInit() {
   int return_code = PsycheDaemon::OnInit();
   if (return_code != EX_OK)
     return return_code;
 
-  base::MessageLoopForIO::current()->PostTask(
-      FROM_HERE,
-      base::Bind(&GermClient::RequestService, weak_ptr_factory_.GetWeakPtr()));
+  LOG(INFO) << "Requesting service germ";
+  psyche_connection()->GetService(
+      kGermServiceName,
+      base::Bind(&GermClient::ReceiveService, weak_ptr_factory_.GetWeakPtr()));
   return EX_OK;
 }
 

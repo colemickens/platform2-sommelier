@@ -33,14 +33,11 @@ class GermClient : public psyche::PsycheDaemon {
   int Terminate(pid_t pid);
 
  private:
-  void RequestService();
   void ReceiveService(scoped_ptr<BinderProxy> proxy);
 
   void DoLaunch(const std::string& name,
                 const std::vector<std::string>& command_line);
   void DoTerminate(pid_t pid);
-
-  void RunCallback();
 
   // PsycheDaemon:
   int OnInit() override;

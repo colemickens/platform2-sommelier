@@ -39,13 +39,6 @@ class DemoClient : public PsycheDaemon {
   // Delay between calls to SendPing().
   const int kPingIntervalMs = 1000;
 
-  void RequestService() {
-    LOG(INFO) << "Requesting service " << service_name_;
-    psyche_connection()->GetService(service_name_,
-        base::Bind(&DemoClient::ReceiveService,
-                   weak_ptr_factory_.GetWeakPtr()));
-  }
-
   void ReceiveService(scoped_ptr<BinderProxy> proxy) {
     LOG(INFO) << "Received service with handle " << proxy->handle();
     proxy_.reset(proxy.release());
@@ -53,6 +46,7 @@ class DemoClient : public PsycheDaemon {
         proxy_.get()));
     timer_.Start(FROM_HERE, base::TimeDelta::FromMilliseconds(kPingIntervalMs),
                  this, &DemoClient::SendPing);
+    SendPing();
   }
 
   // Calls |server_|'s Ping method.
@@ -76,9 +70,10 @@ class DemoClient : public PsycheDaemon {
     if (return_code != EX_OK)
       return return_code;
 
-    base::MessageLoopForIO::current()->PostTask(
-        FROM_HERE, base::Bind(&DemoClient::RequestService,
-                              weak_ptr_factory_.GetWeakPtr()));
+    LOG(INFO) << "Requesting service " << service_name_;
+    CHECK(psyche_connection()->GetService(
+        service_name_, base::Bind(&DemoClient::ReceiveService,
+                                  weak_ptr_factory_.GetWeakPtr())));
     return EX_OK;
   }
 

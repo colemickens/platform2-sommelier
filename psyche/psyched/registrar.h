@@ -45,8 +45,7 @@ class Registrar : public IPsychedHostInterface {
   // IPsychedHostInterface:
   int RegisterService(RegisterServiceRequest* in,
                       RegisterServiceResponse* out) override;
-  int RequestService(RequestServiceRequest* in,
-                     RequestServiceResponse* out) override;
+  int RequestService(RequestServiceRequest* in) override;
 
  private:
   // Returns the object representing |service_name|. If the service isn't

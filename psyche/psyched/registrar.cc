@@ -122,21 +122,13 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
   return 0;
 }
 
-int Registrar::RequestService(RequestServiceRequest* in,
-                              RequestServiceResponse* out) {
+int Registrar::RequestService(RequestServiceRequest* in) {
   const std::string service_name = in->name();
   std::unique_ptr<BinderProxy> client_proxy =
       util::ExtractBinderProxyFromProto(in->mutable_client_binder());
   int32_t client_handle = client_proxy->handle();
   LOG(INFO) << "Got request to provide service \"" << service_name << "\""
             << " to client with handle " << client_handle;
-
-  ServiceInterface* service =
-      GetService(service_name, true /* create_container */);
-  if (!service) {
-    out->set_success(false);
-    return 0;
-  }
 
   auto client_it = clients_.find(client_handle);
   if (client_it == clients_.end()) {
@@ -149,13 +141,23 @@ int Registrar::RequestService(RequestServiceRequest* in,
   }
   ClientInterface* client = client_it->second.get();
 
+  ServiceInterface* service =
+      GetService(service_name, true /* create_container */);
+  if (!service) {
+    LOG(WARNING) << "Service \"" << service_name << "\" is unknown";
+    client->ReportServiceRequestFailure(service_name);
+    // TODO(derat): Drop the client immediately if it doesn't have any other
+    // services? This would require updating some tests which currently inspect
+    // the client after calling this method to check if failure was reported.
+    return 0;
+  }
+
   // Check that the client didn't previously request this service.
   if (!service->HasClient(client)) {
     service->AddClient(client);
     client->AddService(service);
   }
 
-  out->set_success(true);
   return 0;
 }
 
