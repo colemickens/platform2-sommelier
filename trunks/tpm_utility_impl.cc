@@ -242,28 +242,16 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
 }
 
 TPM_RC TpmUtilityImpl::StirRandom(const std::string& entropy_data,
-                                  AuthorizationSession* session) {
-  AuthorizationDelegate* delegate;
-  if (session) {
-    delegate = session->GetDelegate();
-  } else {
-    delegate = NULL;
-  }
+                                  AuthorizationDelegate* delegate) {
   std::string digest = crypto::SHA256HashString(entropy_data);
   TPM2B_SENSITIVE_DATA random_bytes = Make_TPM2B_SENSITIVE_DATA(digest);
   return factory_.GetTpm()->StirRandomSync(random_bytes, delegate);
 }
 
 TPM_RC TpmUtilityImpl::GenerateRandom(size_t num_bytes,
-                                      AuthorizationSession* session,
+                                      AuthorizationDelegate* delegate,
                                       std::string* random_data) {
   CHECK(random_data);
-  AuthorizationDelegate* delegate;
-  if (session) {
-    delegate = session->GetDelegate();
-  } else {
-    delegate = NULL;
-  }
   size_t bytes_left = num_bytes;
   random_data->clear();
   TPM_RC rc;
@@ -285,16 +273,10 @@ TPM_RC TpmUtilityImpl::GenerateRandom(size_t num_bytes,
 
 TPM_RC TpmUtilityImpl::ExtendPCR(int pcr_index,
                                  const std::string& extend_data,
-                                 AuthorizationSession* session) {
+                                 AuthorizationDelegate* delegate) {
   if (pcr_index < 0 || pcr_index >= IMPLEMENTATION_PCR) {
     LOG(ERROR) << "Using a PCR index that isnt implemented.";
     return TPM_RC_FAILURE;
-  }
-  AuthorizationDelegate* delegate;
-  if (session) {
-    delegate = session->GetDelegate();
-  } else {
-    delegate = NULL;
   }
   TPM_HANDLE pcr_handle = HR_PCR + pcr_index;
   std::string pcr_name = NameFromHandle(pcr_handle);
@@ -351,7 +333,7 @@ TPM_RC TpmUtilityImpl::AsymmetricEncrypt(TPM_HANDLE key_handle,
                                          TPM_ALG_ID scheme,
                                          TPM_ALG_ID hash_alg,
                                          const std::string& plaintext,
-                                         AuthorizationSession* session,
+                                         AuthorizationDelegate* delegate,
                                          std::string* ciphertext) {
   TPMT_RSA_DECRYPT in_scheme;
   if (hash_alg == TPM_ALG_NULL) {
@@ -389,12 +371,6 @@ TPM_RC TpmUtilityImpl::AsymmetricEncrypt(TPM_HANDLE key_handle,
     LOG(ERROR) << "Error computing key name for: " << key_handle;
     return result;
   }
-  AuthorizationDelegate* delegate;
-  if (session) {
-    delegate = session->GetDelegate();
-  } else {
-    delegate = NULL;
-  }
 
   TPM2B_DATA label;
   label.size = 0;
@@ -420,7 +396,7 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
                                          TPM_ALG_ID scheme,
                                          TPM_ALG_ID hash_alg,
                                          const std::string& ciphertext,
-                                         AuthorizationSession* session,
+                                         AuthorizationDelegate* delegate,
                                          std::string* plaintext) {
   TPMT_RSA_DECRYPT in_scheme;
   if (hash_alg == TPM_ALG_NULL) {
@@ -436,9 +412,9 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
     return SAPI_RC_BAD_PARAMETER;
   }
   TPM_RC result;
-  if (session == NULL) {
+  if (delegate == NULL) {
     result = SAPI_RC_INVALID_SESSIONS;
-    LOG(ERROR) << "This method needs a valid authorization session: "
+    LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
     return result;
   }
@@ -475,7 +451,7 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
                                               in_scheme,
                                               label,
                                               &out_message,
-                                              session->GetDelegate());
+                                              delegate);
   if (result) {
     LOG(ERROR) << "Error performing RSA decrypt: "
                << GetErrorString(result);
@@ -489,7 +465,7 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
                             TPM_ALG_ID scheme,
                             TPM_ALG_ID hash_alg,
                             const std::string& plaintext,
-                            AuthorizationSession* session,
+                            AuthorizationDelegate* delegate,
                             std::string* signature) {
   TPMT_SIG_SCHEME in_scheme;
   if (hash_alg == TPM_ALG_NULL) {
@@ -506,9 +482,9 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
     return SAPI_RC_BAD_PARAMETER;
   }
   TPM_RC result;
-  if (session == NULL) {
+  if (delegate == NULL) {
     result = SAPI_RC_INVALID_SESSIONS;
-    LOG(ERROR) << "This method needs a valid authorization session: "
+    LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
     return result;
   }
@@ -547,7 +523,7 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
                                        in_scheme,
                                        validation,
                                        &signature_out,
-                                       session->GetDelegate());
+                                       delegate);
   if (result) {
     LOG(ERROR) << "Error signing digest: " << GetErrorString(result);
     return result;
@@ -624,12 +600,12 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
 TPM_RC TpmUtilityImpl::ChangeKeyAuthorizationData(
     TPM_HANDLE key_handle,
     const std::string& new_password,
-    AuthorizationSession* session,
+    AuthorizationDelegate* delegate,
     std::string* key_blob) {
   TPM_RC result;
-  if (session == NULL) {
+  if (delegate == NULL) {
     result = SAPI_RC_INVALID_SESSIONS;
-    LOG(ERROR) << "This method needs a valid authorization session: "
+    LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
     return result;
   }
@@ -656,7 +632,7 @@ TPM_RC TpmUtilityImpl::ChangeKeyAuthorizationData(
                                                    parent_name,
                                                    new_auth,
                                                    &new_private_data,
-                                                   session->GetDelegate());
+                                                   delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error changing object authorization data: "
                << GetErrorString(result);
@@ -683,12 +659,12 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
                                     uint32_t public_exponent,
                                     const std::string& prime_factor,
                                     const std::string& password,
-                                    AuthorizationSession* session,
+                                    AuthorizationDelegate* delegate,
                                     std::string* key_blob) {
   TPM_RC result;
-  if (session == NULL) {
+  if (delegate == NULL) {
     result = SAPI_RC_INVALID_SESSIONS;
-    LOG(ERROR) << "This method needs a valid authorization session: "
+    LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
     return result;
   }
@@ -748,7 +724,7 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
                                          in_sym_seed,
                                          symmetric_alg,
                                          &tpm_private_data,
-                                         session->GetDelegate());
+                                         delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error importing key: " << GetErrorString(result);
     return result;
@@ -764,16 +740,16 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
 
 TPM_RC TpmUtilityImpl::CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
                                            const std::string& password,
-                                           AuthorizationSession* session,
+                                           AuthorizationDelegate* delegate,
                                            TPM_HANDLE* key_handle,
                                            std::string* key_blob) {
   std::string tmp_key_blob;
   TPM_RC result = CreateRSAKeyPair(key_type, 2048, 0x10001, password,
-                                   session, &tmp_key_blob);
+                                   delegate, &tmp_key_blob);
   if (result != TPM_RC_SUCCESS) {
     return result;
   }
-  result = LoadKey(tmp_key_blob, session, key_handle);
+  result = LoadKey(tmp_key_blob, delegate, key_handle);
   if (result != TPM_RC_SUCCESS) {
     return result;
   }
@@ -787,13 +763,13 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                                         int modulus_bits,
                                         uint32_t public_exponent,
                                         const std::string& password,
-                                        AuthorizationSession* session,
+                                        AuthorizationDelegate* delegate,
                                         std::string* key_blob) {
   CHECK(key_blob);
   TPM_RC result;
-  if (session == NULL) {
+  if (delegate == NULL) {
     result = SAPI_RC_INVALID_SESSIONS;
-    LOG(ERROR) << "This method needs a valid authorization session: "
+    LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
     return result;
   }
@@ -846,7 +822,7 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                                          &creation_data,
                                          &creation_hash,
                                          &creation_ticket,
-                                         session->GetDelegate());
+                                         delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating RSA key: " << GetErrorString(result);
     return result;
@@ -860,12 +836,12 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
 }
 
 TPM_RC TpmUtilityImpl::LoadKey(const std::string& key_blob,
-                               AuthorizationSession* session,
+                               AuthorizationDelegate* delegate,
                                TPM_HANDLE* key_handle) {
   TPM_RC result;
-  if (session == NULL) {
+  if (delegate == NULL) {
     result = SAPI_RC_INVALID_SESSIONS;
-    LOG(ERROR) << "This method needs a valid authorization session: "
+    LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
     return result;
   }
@@ -891,7 +867,7 @@ TPM_RC TpmUtilityImpl::LoadKey(const std::string& key_blob,
                                        in_public,
                                        key_handle,
                                        &key_name,
-                                       session->GetDelegate());
+                                       delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error loading key: " << GetErrorString(result);
     return result;
@@ -939,7 +915,7 @@ TPM_RC TpmUtilityImpl::GetKeyPublicArea(TPM_HANDLE handle,
 
 TPM_RC TpmUtilityImpl::DefineNVSpace(uint32_t index,
                                      size_t num_bytes,
-                                     AuthorizationSession* session) {
+                                     AuthorizationDelegate* delegate) {
   TPM_RC result;
   if (num_bytes > MAX_NV_INDEX_SIZE) {
     result = SAPI_RC_BAD_SIZE;
@@ -953,9 +929,9 @@ TPM_RC TpmUtilityImpl::DefineNVSpace(uint32_t index,
                << GetErrorString(result);
     return result;
   }
-  if (session == NULL) {
+  if (delegate == NULL) {
     result = SAPI_RC_INVALID_SESSIONS;
-    LOG(ERROR) << "This method needs a valid authorization session: "
+    LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
     return result;
   }
@@ -975,7 +951,7 @@ TPM_RC TpmUtilityImpl::DefineNVSpace(uint32_t index,
       NameFromHandle(TPM_RH_OWNER),
       authorization,
       public_area,
-      session->GetDelegate());
+      delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error defining non-volatile space: "
                << GetErrorString(result);
@@ -986,7 +962,7 @@ TPM_RC TpmUtilityImpl::DefineNVSpace(uint32_t index,
 }
 
 TPM_RC TpmUtilityImpl::DestroyNVSpace(uint32_t index,
-                                      AuthorizationSession* session) {
+                                      AuthorizationDelegate* delegate) {
   TPM_RC result;
   if (index > kMaxNVSpaceIndex) {
     result = SAPI_RC_BAD_PARAMETER;
@@ -994,9 +970,9 @@ TPM_RC TpmUtilityImpl::DestroyNVSpace(uint32_t index,
                << GetErrorString(result);
     return result;
   }
-  if (session == NULL) {
+  if (delegate == NULL) {
     result = SAPI_RC_INVALID_SESSIONS;
-    LOG(ERROR) << "This method needs a valid authorization session: "
+    LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
     return result;
   }
@@ -1011,7 +987,7 @@ TPM_RC TpmUtilityImpl::DestroyNVSpace(uint32_t index,
       NameFromHandle(TPM_RH_OWNER),
       nv_index,
       nv_name,
-      session->GetDelegate());
+      delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error undefining non-volatile space: "
                << GetErrorString(result);
@@ -1022,7 +998,7 @@ TPM_RC TpmUtilityImpl::DestroyNVSpace(uint32_t index,
 }
 
 TPM_RC TpmUtilityImpl::LockNVSpace(uint32_t index,
-                                   AuthorizationSession* session) {
+                                   AuthorizationDelegate* delegate) {
   TPM_RC result;
   if (index > kMaxNVSpaceIndex) {
     result = SAPI_RC_BAD_PARAMETER;
@@ -1030,9 +1006,9 @@ TPM_RC TpmUtilityImpl::LockNVSpace(uint32_t index,
                << GetErrorString(result);
     return result;
   }
-  if (session == NULL) {
+  if (delegate == NULL) {
     result = SAPI_RC_INVALID_SESSIONS;
-    LOG(ERROR) << "This method needs a valid authorization session: "
+    LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
     return result;
   }
@@ -1046,7 +1022,7 @@ TPM_RC TpmUtilityImpl::LockNVSpace(uint32_t index,
                                                nv_name,
                                                nv_index,
                                                nv_name,
-                                               session->GetDelegate());
+                                               delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error locking non-volatile spaces: "
                << GetErrorString(result);
@@ -1062,7 +1038,7 @@ TPM_RC TpmUtilityImpl::LockNVSpace(uint32_t index,
 TPM_RC TpmUtilityImpl::WriteNVSpace(uint32_t index,
                                     uint32_t offset,
                                     const std::string& nvram_data,
-                                    AuthorizationSession* session) {
+                                    AuthorizationDelegate* delegate) {
   TPM_RC result;
   if (nvram_data.size() > MAX_NV_BUFFER_SIZE) {
     result = SAPI_RC_BAD_SIZE;
@@ -1076,9 +1052,9 @@ TPM_RC TpmUtilityImpl::WriteNVSpace(uint32_t index,
                << GetErrorString(result);
     return result;
   }
-  if (session == NULL) {
+  if (delegate == NULL) {
     result = SAPI_RC_INVALID_SESSIONS;
-    LOG(ERROR) << "This method needs a valid authorization session: "
+    LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
     return result;
   }
@@ -1094,7 +1070,7 @@ TPM_RC TpmUtilityImpl::WriteNVSpace(uint32_t index,
                                            nv_name,
                                            Make_TPM2B_MAX_NV_BUFFER(nvram_data),
                                            offset,
-                                           session->GetDelegate());
+                                           delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error writing to non-volatile space: "
                << GetErrorString(result);
@@ -1111,7 +1087,7 @@ TPM_RC TpmUtilityImpl::ReadNVSpace(uint32_t index,
                                    uint32_t offset,
                                    size_t num_bytes,
                                    std::string* nvram_data,
-                                   AuthorizationSession* session) {
+                                   AuthorizationDelegate* delegate) {
   TPM_RC result;
   if (num_bytes > MAX_NV_BUFFER_SIZE) {
     result = SAPI_RC_BAD_SIZE;
@@ -1125,9 +1101,9 @@ TPM_RC TpmUtilityImpl::ReadNVSpace(uint32_t index,
                << GetErrorString(result);
     return result;
   }
-  if (session == NULL) {
+  if (delegate == NULL) {
     result = SAPI_RC_INVALID_SESSIONS;
-    LOG(ERROR) << "This method needs a valid authorization session: "
+    LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
     return result;
   }
@@ -1146,7 +1122,7 @@ TPM_RC TpmUtilityImpl::ReadNVSpace(uint32_t index,
                                           num_bytes,
                                           offset,
                                           &data_buffer,
-                                          session->GetDelegate());
+                                          delegate);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error reading from non-volatile space: "
                << GetErrorString(result);

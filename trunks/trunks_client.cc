@@ -84,14 +84,14 @@ int RNGTest() {
     return rc;
   }
   session->SetEntityAuthorizationValue("");
-  rc = utility->StirRandom(entropy_data, session.get());
+  rc = utility->StirRandom(entropy_data, session->GetDelegate());
   if (rc) {
     LOG(ERROR) << "Error stirring TPM random number generator: "
                << trunks::GetErrorString(rc);
     return rc;
   }
   session->SetEntityAuthorizationValue("");
-  rc = utility->GenerateRandom(num_bytes, session.get(), &random_data);
+  rc = utility->GenerateRandom(num_bytes, session->GetDelegate(), &random_data);
   if (rc) {
     LOG(ERROR) << "Error getting random bytes from TPM: "
                << trunks::GetErrorString(rc);
@@ -122,7 +122,7 @@ int SignTest() {
   rc = utility->CreateAndLoadRSAKey(
       trunks::TpmUtility::AsymmetricKeyUsage::kSignKey,
       "sign",
-      session.get(),
+      session->GetDelegate(),
       &signing_key,
       NULL);
   if (rc) {
@@ -136,7 +136,7 @@ int SignTest() {
                      trunks::TPM_ALG_NULL,
                      trunks::TPM_ALG_NULL,
                      std::string(32, 'a'),
-                     session.get(),
+                     session->GetDelegate(),
                      &signature);
   if (rc) {
     LOG(ERROR) << "Error signing: " << trunks::GetErrorString(rc);
@@ -172,7 +172,7 @@ int DecryptTest() {
   rc = utility->CreateAndLoadRSAKey(
       trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey,
       "decrypt",
-      session.get(),
+      session->GetDelegate(),
       &decrypt_key,
       NULL);
   if (rc) {
@@ -186,7 +186,7 @@ int DecryptTest() {
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
                                   "plaintext",
-                                  session.get(),
+                                  session->GetDelegate(),
                                   &ciphertext);
   if (rc) {
     LOG(ERROR) << "Error encrypting: " << trunks::GetErrorString(rc);
@@ -198,7 +198,7 @@ int DecryptTest() {
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
                                   ciphertext,
-                                  session.get(),
+                                  session->GetDelegate(),
                                   &plaintext);
   if (rc) {
     LOG(ERROR) << "Error decrypting: " << trunks::GetErrorString(rc);
@@ -237,14 +237,14 @@ int ImportTest() {
       0x10001,
       prime_factor,
       "import",
-      session.get(),
+      session->GetDelegate(),
       &key_blob);
   if (rc) {
     LOG(ERROR) << "Error importings: " << trunks::GetErrorString(rc);
     return rc;
   }
   trunks::TPM_HANDLE key_handle;
-  rc = utility->LoadKey(key_blob, session.get(), &key_handle);
+  rc = utility->LoadKey(key_blob, session->GetDelegate(), &key_handle);
   if (rc) {
     LOG(ERROR) << "Error loading: " << trunks::GetErrorString(rc);
     return rc;
@@ -256,7 +256,7 @@ int ImportTest() {
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
                                   "plaintext",
-                                  session.get(),
+                                  session->GetDelegate(),
                                   &ciphertext);
   if (rc) {
     LOG(ERROR) << "Error encrypting: " << trunks::GetErrorString(rc);
@@ -268,7 +268,7 @@ int ImportTest() {
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
                                   ciphertext,
-                                  session.get(),
+                                  session->GetDelegate(),
                                   &plaintext);
   if (rc) {
     LOG(ERROR) << "Error decrypting: " << trunks::GetErrorString(rc);
@@ -296,7 +296,7 @@ int AuthChangeTest() {
   rc = utility->CreateAndLoadRSAKey(
       trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
       "old_pass",
-      session.get(),
+      session->GetDelegate(),
       &key_handle,
       NULL);
   if (rc) {
@@ -308,7 +308,7 @@ int AuthChangeTest() {
   session->SetEntityAuthorizationValue("old_pass");
   rc = utility->ChangeKeyAuthorizationData(key_handle,
                                            "new_pass",
-                                           session.get(),
+                                           session->GetDelegate(),
                                            &key_blob);
   if (rc) {
     LOG(ERROR) << "Error changing auth data: "
@@ -321,7 +321,7 @@ int AuthChangeTest() {
     return rc;
   }
   session->SetEntityAuthorizationValue("");
-  rc = utility->LoadKey(key_blob, session.get(), &key_handle);
+  rc = utility->LoadKey(key_blob, session->GetDelegate(), &key_handle);
   if (rc) {
     LOG(ERROR) << "Error reloading key: " << trunks::GetErrorString(rc);
     return rc;
@@ -334,7 +334,7 @@ int AuthChangeTest() {
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
                                   "plaintext",
-                                  session.get(),
+                                  session->GetDelegate(),
                                   &ciphertext);
   if (rc) {
     LOG(ERROR) << "Error encrypting: " << trunks::GetErrorString(rc);
@@ -346,7 +346,7 @@ int AuthChangeTest() {
                                   trunks::TPM_ALG_NULL,
                                   trunks::TPM_ALG_NULL,
                                   ciphertext,
-                                  session.get(),
+                                  session->GetDelegate(),
                                   &plaintext);
   if (rc) {
     LOG(ERROR) << "Error decrypting: " << trunks::GetErrorString(rc);
@@ -372,13 +372,13 @@ int NvramTest(const std::string& owner_password) {
   uint32_t index = 1;
   session->SetEntityAuthorizationValue(owner_password);
   std::string nv_data("nv_data");
-  rc = utility->DefineNVSpace(index, nv_data.size(), session.get());
+  rc = utility->DefineNVSpace(index, nv_data.size(), session->GetDelegate());
   if (rc) {
     LOG(ERROR) << "Error defining nvram: " << trunks::GetErrorString(rc);
     return rc;
   }
   session->SetEntityAuthorizationValue(owner_password);
-  rc = utility->WriteNVSpace(index, 0, nv_data, session.get());
+  rc = utility->WriteNVSpace(index, 0, nv_data, session->GetDelegate());
   if (rc) {
     LOG(ERROR) << "Error writing nvram: " << trunks::GetErrorString(rc);
     return rc;
@@ -386,32 +386,32 @@ int NvramTest(const std::string& owner_password) {
   std::string new_nvdata;
   session->SetEntityAuthorizationValue("");
   rc = utility->ReadNVSpace(index, 0, nv_data.size(),
-                            &new_nvdata, session.get());
+                            &new_nvdata, session->GetDelegate());
   if (rc) {
     LOG(ERROR) << "Error reading nvram: " << trunks::GetErrorString(rc);
     return rc;
   }
   CHECK_EQ(0, nv_data.compare(new_nvdata));
-  rc = utility->LockNVSpace(index, session.get());
+  rc = utility->LockNVSpace(index, session->GetDelegate());
   if (rc) {
     LOG(ERROR) << "Error locking nvram: " << trunks::GetErrorString(rc);
     return rc;
   }
   rc = utility->ReadNVSpace(index, 0, nv_data.size(),
-                            &new_nvdata, session.get());
+                            &new_nvdata, session->GetDelegate());
   if (rc) {
     LOG(ERROR) << "Error reading nvram: " << trunks::GetErrorString(rc);
     return rc;
   }
   CHECK_EQ(0, nv_data.compare(new_nvdata));
   session->SetEntityAuthorizationValue(owner_password);
-  rc = utility->WriteNVSpace(index, 0, nv_data, session.get());
+  rc = utility->WriteNVSpace(index, 0, nv_data, session->GetDelegate());
   if (rc == trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "Wrote nvram after locking: " << trunks::GetErrorString(rc);
     return rc;
   }
   session->SetEntityAuthorizationValue(owner_password);
-  rc = utility->DestroyNVSpace(index, session.get());
+  rc = utility->DestroyNVSpace(index, session->GetDelegate());
   if (rc) {
     LOG(ERROR) << "Error destroying nvram: " << trunks::GetErrorString(rc);
     return rc;

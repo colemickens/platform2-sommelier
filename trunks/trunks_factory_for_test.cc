@@ -89,20 +89,20 @@ class TpmUtilityForwarder : public TpmUtility {
   }
 
   TPM_RC StirRandom(const std::string& entropy_data,
-                    AuthorizationSession* session) override {
-    return target_->StirRandom(entropy_data, session);
+                    AuthorizationDelegate* delegate) override {
+    return target_->StirRandom(entropy_data, delegate);
   }
 
   TPM_RC GenerateRandom(size_t num_bytes,
-                        AuthorizationSession* session,
+                        AuthorizationDelegate* delegate,
                         std::string* random_data) override {
-    return target_->GenerateRandom(num_bytes, session, random_data);
+    return target_->GenerateRandom(num_bytes, delegate, random_data);
   }
 
   TPM_RC ExtendPCR(int pcr_index,
                    const std::string& extend_data,
-                   AuthorizationSession* session) override {
-    return target_->ExtendPCR(pcr_index, extend_data, session);
+                   AuthorizationDelegate* delegate) override {
+    return target_->ExtendPCR(pcr_index, extend_data, delegate);
   }
 
   TPM_RC ReadPCR(int pcr_index, std::string* pcr_value) override {
@@ -113,13 +113,13 @@ class TpmUtilityForwarder : public TpmUtility {
                            TPM_ALG_ID scheme,
                            TPM_ALG_ID hash_alg,
                            const std::string& plaintext,
-                           AuthorizationSession* session,
+                           AuthorizationDelegate* delegate,
                            std::string* ciphertext) override {
     return target_->AsymmetricEncrypt(key_handle,
                                       scheme,
                                       hash_alg,
                                       plaintext,
-                                      session,
+                                      delegate,
                                       ciphertext);
   }
 
@@ -127,13 +127,13 @@ class TpmUtilityForwarder : public TpmUtility {
                            TPM_ALG_ID scheme,
                            TPM_ALG_ID hash_alg,
                            const std::string& ciphertext,
-                           AuthorizationSession* session,
+                           AuthorizationDelegate* delegate,
                            std::string* plaintext) override {
     return target_->AsymmetricDecrypt(key_handle,
                                       scheme,
                                       hash_alg,
                                       ciphertext,
-                                      session,
+                                      delegate,
                                       plaintext);
   }
 
@@ -141,13 +141,13 @@ class TpmUtilityForwarder : public TpmUtility {
               TPM_ALG_ID scheme,
               TPM_ALG_ID hash_alg,
               const std::string& plaintext,
-              AuthorizationSession* session,
+              AuthorizationDelegate* delegate,
               std::string* signature) override {
     return target_->Sign(key_handle,
                          scheme,
                          hash_alg,
                          plaintext,
-                         session,
+                         delegate,
                          signature);
   }
 
@@ -161,11 +161,11 @@ class TpmUtilityForwarder : public TpmUtility {
 
   TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,
                                     const std::string& new_password,
-                                    AuthorizationSession* session,
+                                    AuthorizationDelegate* delegate,
                                     std::string* key_blob) override {
     return target_->ChangeKeyAuthorizationData(key_handle,
                                                new_password,
-                                               session,
+                                               delegate,
                                                key_blob);
   }
 
@@ -174,18 +174,18 @@ class TpmUtilityForwarder : public TpmUtility {
                       uint32_t public_exponent,
                       const std::string& prime_factor,
                       const std::string& password,
-                      AuthorizationSession* session,
+                      AuthorizationDelegate* delegate,
                       std::string* key_blob) override {
     return target_->ImportRSAKey(key_type, modulus, public_exponent,
-                                 prime_factor, password, session, key_blob);
+                                 prime_factor, password, delegate, key_blob);
   }
 
   TPM_RC CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
                              const std::string& password,
-                             AuthorizationSession* session,
+                             AuthorizationDelegate* delegate,
                              TPM_HANDLE* key_handle,
                              std::string* key_blob) override {
-    return target_->CreateAndLoadRSAKey(key_type, password, session,
+    return target_->CreateAndLoadRSAKey(key_type, password, delegate,
                                         key_handle, key_blob);
   }
 
@@ -193,16 +193,16 @@ class TpmUtilityForwarder : public TpmUtility {
                           int modulus_bits,
                           uint32_t public_exponent,
                           const std::string& password,
-                          AuthorizationSession* session,
+                          AuthorizationDelegate* delegate,
                           std::string* key_blob) override {
     return target_->CreateRSAKeyPair(key_type, modulus_bits, public_exponent,
-                                     password, session, key_blob);
+                                     password, delegate, key_blob);
   }
 
   TPM_RC LoadKey(const std::string& key_blob,
-                 AuthorizationSession* session,
+                 AuthorizationDelegate* delegate,
                  TPM_HANDLE* key_handle) override {
-    return target_->LoadKey(key_blob, session, key_handle);
+    return target_->LoadKey(key_blob, delegate, key_handle);
   }
 
   TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name) override {
@@ -216,33 +216,33 @@ class TpmUtilityForwarder : public TpmUtility {
 
   TPM_RC DefineNVSpace(uint32_t index,
                        size_t num_bytes,
-                       AuthorizationSession* session) override {
-    return target_->DefineNVSpace(index, num_bytes, session);
+                       AuthorizationDelegate* delegate) override {
+    return target_->DefineNVSpace(index, num_bytes, delegate);
   }
 
   TPM_RC DestroyNVSpace(uint32_t index,
-                        AuthorizationSession* session) override {
-    return target_->DestroyNVSpace(index, session);
+                        AuthorizationDelegate* delegate) override {
+    return target_->DestroyNVSpace(index, delegate);
   }
 
   TPM_RC LockNVSpace(uint32_t index,
-                     AuthorizationSession* session) override {
-    return target_->LockNVSpace(index, session);
+                     AuthorizationDelegate* delegate) override {
+    return target_->LockNVSpace(index, delegate);
   }
 
   TPM_RC WriteNVSpace(uint32_t index,
                       uint32_t offset,
                       const std::string& nvram_data,
-                      AuthorizationSession* session) override {
-    return target_->WriteNVSpace(index, offset, nvram_data, session);
+                      AuthorizationDelegate* delegate) override {
+    return target_->WriteNVSpace(index, offset, nvram_data, delegate);
   }
 
   TPM_RC ReadNVSpace(uint32_t index,
                      uint32_t offset,
                      size_t num_bytes,
                      std::string* nvram_data,
-                     AuthorizationSession* session) override {
-    return target_->ReadNVSpace(index, offset, num_bytes, nvram_data, session);
+                     AuthorizationDelegate* delegate) override {
+    return target_->ReadNVSpace(index, offset, num_bytes, nvram_data, delegate);
   }
 
   TPM_RC GetNVSpaceName(uint32_t index, std::string* name) override {

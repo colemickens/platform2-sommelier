@@ -19,7 +19,6 @@
 namespace trunks {
 
 class AuthorizationDelegate;
-class AuthorizationSession;
 class TrunksFactory;
 
 // A default implementation of TpmUtility.
@@ -37,31 +36,31 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                        const std::string& endorsement_password,
                        const std::string& lockout_password) override;
   TPM_RC StirRandom(const std::string& entropy_data,
-                    AuthorizationSession* session) override;
+                    AuthorizationDelegate* delegate) override;
   TPM_RC GenerateRandom(size_t num_bytes,
-                        AuthorizationSession* session,
+                        AuthorizationDelegate* delegate,
                         std::string* random_data) override;
   TPM_RC ExtendPCR(int pcr_index,
                    const std::string& extend_data,
-                   AuthorizationSession* session) override;
+                   AuthorizationDelegate* delegate) override;
   TPM_RC ReadPCR(int pcr_index, std::string* pcr_value) override;
   TPM_RC AsymmetricEncrypt(TPM_HANDLE key_handle,
                            TPM_ALG_ID scheme,
                            TPM_ALG_ID hash_alg,
                            const std::string& plaintext,
-                           AuthorizationSession* session,
+                           AuthorizationDelegate* delegate,
                            std::string* ciphertext) override;
   TPM_RC AsymmetricDecrypt(TPM_HANDLE key_handle,
                            TPM_ALG_ID scheme,
                            TPM_ALG_ID hash_alg,
                            const std::string& ciphertext,
-                           AuthorizationSession* session,
+                           AuthorizationDelegate* delegate,
                            std::string* plaintext) override;
   TPM_RC Sign(TPM_HANDLE key_handle,
               TPM_ALG_ID scheme,
               TPM_ALG_ID hash_alg,
               const std::string& plaintext,
-              AuthorizationSession* session,
+              AuthorizationDelegate* delegate,
               std::string* signature) override;
   TPM_RC Verify(TPM_HANDLE key_handle,
                 TPM_ALG_ID scheme,
@@ -70,46 +69,47 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                 const std::string& signature) override;
   TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,
                                     const std::string& new_password,
-                                    AuthorizationSession* session,
+                                    AuthorizationDelegate* delegate,
                                     std::string* key_blob) override;
   TPM_RC ImportRSAKey(AsymmetricKeyUsage key_type,
                       const std::string& modulus,
                       uint32_t public_exponent,
                       const std::string& prime_factor,
                       const std::string& password,
-                      AuthorizationSession* session,
+                      AuthorizationDelegate* delegate,
                       std::string* key_blob) override;
   TPM_RC CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
                              const std::string& password,
-                             AuthorizationSession* session,
+                             AuthorizationDelegate* delegate,
                              TPM_HANDLE* key_handle,
                              std::string* key_blob) override;
   TPM_RC CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                           int modulus_bits,
                           uint32_t public_exponent,
                           const std::string& password,
-                          AuthorizationSession* session,
+                          AuthorizationDelegate* delegate,
                           std::string* key_blob) override;
   TPM_RC LoadKey(const std::string& key_blob,
-                 AuthorizationSession* session,
+                 AuthorizationDelegate* delegate,
                  TPM_HANDLE* key_handle) override;
   TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name) override;
   TPM_RC GetKeyPublicArea(TPM_HANDLE handle,
                           TPMT_PUBLIC* public_data) override;
   TPM_RC DefineNVSpace(uint32_t index,
                        size_t num_bytes,
-                       AuthorizationSession* session) override;
-  TPM_RC DestroyNVSpace(uint32_t index, AuthorizationSession* session) override;
-  TPM_RC LockNVSpace(uint32_t index, AuthorizationSession* session) override;
+                       AuthorizationDelegate* delegate) override;
+  TPM_RC DestroyNVSpace(uint32_t index,
+                        AuthorizationDelegate* delegate) override;
+  TPM_RC LockNVSpace(uint32_t index, AuthorizationDelegate* delegate) override;
   TPM_RC WriteNVSpace(uint32_t index,
                       uint32_t offset,
                       const std::string& nvram_data,
-                      AuthorizationSession* session) override;
+                      AuthorizationDelegate* delegate) override;
   TPM_RC ReadNVSpace(uint32_t index,
                      uint32_t offset,
                      size_t num_bytes,
                      std::string* nvram_data,
-                     AuthorizationSession* session) override;
+                     AuthorizationDelegate* delegate) override;
   TPM_RC GetNVSpaceName(uint32_t index, std::string* name) override;
   TPM_RC GetNVSpacePublicArea(uint32_t index,
                               TPMS_NV_PUBLIC* public_data) override;
