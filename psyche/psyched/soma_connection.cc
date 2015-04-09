@@ -8,6 +8,7 @@
 
 #include <base/logging.h>
 #include <protobinder/binder_proxy.h>
+#include <protobinder/iinterface.h>
 #include <soma/constants.h>
 
 #include "psyche/proto_bindings/soma.pb.h"
