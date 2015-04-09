@@ -372,21 +372,6 @@ bool BidlCodeGenerator::AddServiceToHeader(
   int method_count = service->method_count();
 
   if (method_count > 0) {
-    printer->Print("enum {\n");
-    printer->Indent();
-    for (int i = 0; i < method_count; i++) {
-      const MethodDescriptor* method = service->method(i);
-      printer->Print("FUNC_");
-      printer->Print(method->name().c_str());
-
-      if (i < (method_count - 1)) {
-        printer->Print(",");
-      }
-      printer->Print("\n");
-    }
-    printer->Outdent();
-    printer->Print("};\n");
-
     for (int i = 0; i < method_count; i++) {
       const MethodDescriptor* method = service->method(i);
       printer->Print("virtual int ");
@@ -419,21 +404,26 @@ bool BidlCodeGenerator::AddServiceToHeader(
   printer->Print(vars, "                       bool one_way) {\n");
 
   printer->Indent();
-  printer->Print("switch (code) {\n");
+
+  // Extract function name from parcel.
+  printer->Print("std::string function_name;\n");
+  printer->Print("if (!data->ReadString(&function_name))\n");
   printer->Indent();
+  printer->Print("return -1;\n");
+  printer->Outdent();
+
+  // Read the proto data.
+  printer->Print("std::string data_string;\n");
+  printer->Print("if (!data->ReadString(&data_string))\n");
+  printer->Indent();
+  printer->Print("return -1;\n");
+  printer->Outdent();
 
   for (int i = 0; i < method_count; i++) {
     const MethodDescriptor* method = service->method(i);
-    printer->Print("case FUNC_");
-    printer->Print(method->name().c_str());
-    printer->Print(": {\n");
+    printer->Print("if (function_name == \"$name$\") {\n", "name",
+                   method->name().c_str());
     printer->Indent();
-
-    printer->Print("std::string data_string;\n");
-    printer->Print("if (!data->ReadString(&data_string))\n");
-    printer->Indent();
-    printer->Print("return -1;\n");
-    printer->Outdent();
 
     printer->Print(FullName(method->input_type()).c_str());
     printer->Print(" in;\n");
@@ -510,15 +500,9 @@ bool BidlCodeGenerator::AddServiceToHeader(
     printer->Outdent();
     printer->Print("}\n");
   }
-
-  printer->Print("default:\n");
-  printer->Indent();
   printer->Print(
       "return BinderHostInterface::OnTransact(code, data, reply, one_way);\n");
-  printer->Outdent();
 
-  printer->Outdent();
-  printer->Print("}\n");
   printer->Outdent();
   printer->Print("}\n");
 
@@ -630,6 +614,15 @@ bool BidlCodeGenerator::AddServiceToSource(
     printer->Outdent();
 
     printer->Print("Parcel data, reply;\n");
+
+    // Write function name.
+    printer->Print("if (!data.WriteString(\"$name$\"))\n", "name",
+                   method->name());
+    printer->Indent();
+    printer->Print("return -1;\n");
+    printer->Outdent();
+
+    // Write proto data.
     printer->Print("if (!data.WriteString(in_string))\n");
     printer->Indent();
     printer->Print("return -1;\n");
@@ -642,13 +635,10 @@ bool BidlCodeGenerator::AddServiceToSource(
       printer->Outdent();
     }
     if (IsOneWay(method->output_type())) {
-      printer->Print(
-          "return Remote()->Transact(FUNC_$name$, &data, &reply, true);\n",
-          "name", method->name());
+      printer->Print("return Remote()->Transact(0, &data, &reply, true);\n");
     } else {
       printer->Print(
-          "int ret = Remote()->Transact(FUNC_$name$, &data, &reply, false);\n",
-          "name", method->name());
+          "int ret = Remote()->Transact(0, &data, &reply, false);\n");
       printer->Print("if (ret < 0)\n");
       printer->Indent();
       printer->Print("return ret;\n");
