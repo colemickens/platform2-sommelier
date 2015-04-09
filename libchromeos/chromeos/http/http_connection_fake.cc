@@ -8,6 +8,7 @@
 #include <base/logging.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/mime_utils.h>
+#include <chromeos/streams/memory_stream.h>
 #include <chromeos/strings/string_utils.h>
 
 namespace chromeos {
@@ -95,26 +96,14 @@ std::string Connection::GetResponseHeader(
   return response_.GetHeader(header_name);
 }
 
-uint64_t Connection::GetResponseDataSize() const {
+StreamPtr Connection::ExtractDataStream(chromeos::ErrorPtr* error) {
   // HEAD requests must not return body.
-  return (request_.GetMethod() != request_type::kHead)
-             ? response_.GetData().size()
-             : 0;
-}
-
-bool Connection::ReadResponseData(void* data,
-                                  size_t buffer_size,
-                                  size_t* size_read,
-                                  chromeos::ErrorPtr* error) {
-  size_t size_to_read = GetResponseDataSize() - response_data_ptr_;
-  if (size_to_read > buffer_size)
-    size_to_read = buffer_size;
-  if (size_to_read > 0)
-    memcpy(data, response_.GetData().data() + response_data_ptr_, size_to_read);
-  if (size_read)
-    *size_read = size_to_read;
-  response_data_ptr_ += size_to_read;
-  return true;
+  if (request_.GetMethod() != request_type::kHead) {
+    return MemoryStream::OpenRef(response_.GetData(), error);
+  } else {
+    // Return empty data stream for HEAD requests.
+    return MemoryStream::OpenCopyOf(nullptr, 0, error);
+  }
 }
 
 }  // namespace fake

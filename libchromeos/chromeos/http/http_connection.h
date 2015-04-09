@@ -83,20 +83,12 @@ class CHROMEOS_EXPORT Connection
   // headers wasn't received.
   virtual std::string GetResponseHeader(
       const std::string& header_name) const = 0;
-  // Returns the response data size, if known. For chunked (streaming)
-  // transmission this might not be known until all the data is sent.
-  // In this case GetResponseDataSize() will return 0.
-  virtual uint64_t GetResponseDataSize() const = 0;
-  // This function is called to read a block of response data.
-  // It needs to be called repeatedly until it returns false or |size_read| is
-  // set to 0. |data| is the destination buffer to read the data into.
-  // |buffer_size| is the size of the buffer (amount of data to read).
-  // |read_size| is the amount of data actually read, which could be less than
-  // the size requested or 0 if there is no more data available.
-  virtual bool ReadResponseData(void* data,
-                                size_t buffer_size,
-                                size_t* size_read,
-                                chromeos::ErrorPtr* error) = 0;
+  // Returns the response data stream. This function can be called only once
+  // as it transfers ownership of the data stream to the caller. Subsequent
+  // calls will fail with "Stream closed" error.
+  // Returns empty stream on failure and fills in the error information in
+  // |error| object.
+  virtual StreamPtr ExtractDataStream(chromeos::ErrorPtr* error) = 0;
 
  protected:
   // |transport_| is mainly used to keep the object alive as long as the

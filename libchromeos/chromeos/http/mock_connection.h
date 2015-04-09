@@ -28,12 +28,14 @@ class MockConnection : public Connection {
   MOCK_CONST_METHOD0(GetResponseStatusText, std::string());
   MOCK_CONST_METHOD0(GetProtocolVersion, std::string());
   MOCK_CONST_METHOD1(GetResponseHeader, std::string(const std::string&));
-  MOCK_CONST_METHOD0(GetResponseDataSize, uint64_t());
-  MOCK_METHOD4(ReadResponseData, bool(void*, size_t, size_t*, ErrorPtr*));
+  MOCK_CONST_METHOD1(MockExtractDataStream, Stream*(chromeos::ErrorPtr*));
 
  private:
   bool SetRequestData(StreamPtr stream, chromeos::ErrorPtr* error) override {
     return MockSetRequestData(stream.get(), error);
+  }
+  StreamPtr ExtractDataStream(chromeos::ErrorPtr* error) override {
+    return StreamPtr{MockExtractDataStream(error)};
   }
 
   DISALLOW_COPY_AND_ASSIGN(MockConnection);

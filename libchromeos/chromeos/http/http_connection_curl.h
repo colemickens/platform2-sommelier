@@ -42,11 +42,7 @@ class CHROMEOS_EXPORT Connection : public http::Connection {
   std::string GetResponseStatusText() const override;
   std::string GetProtocolVersion() const override;
   std::string GetResponseHeader(const std::string& header_name) const override;
-  uint64_t GetResponseDataSize() const override;
-  bool ReadResponseData(void* data,
-                        size_t buffer_size,
-                        size_t* size_read,
-                        chromeos::ErrorPtr* error) override;
+  StreamPtr ExtractDataStream(chromeos::ErrorPtr* error) override;
 
  protected:
   // Write data callback. Used by CURL when receiving response data.
@@ -76,8 +72,7 @@ class CHROMEOS_EXPORT Connection : public http::Connection {
   StreamPtr request_data_stream_;
 
   // Received response data.
-  std::vector<unsigned char> response_data_;
-  size_t response_data_ptr_{0};
+  StreamPtr response_data_;
 
   // List of optional request headers provided by the caller.
   // After request has been sent, contains the received response headers.

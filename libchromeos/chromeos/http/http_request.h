@@ -351,11 +351,15 @@ class CHROMEOS_EXPORT Response {
   // Returns the content type of the response data.
   std::string GetContentType() const;
 
-  // Returns response data as a byte array
-  const std::vector<uint8_t>& GetData() const;
+  // Returns response data stream by transferring ownership of the data stream
+  // from Response class to the caller.
+  StreamPtr ExtractDataStream(ErrorPtr* error);
 
-  // Returns response data as a string
-  std::string GetDataAsString() const;
+  // Extracts the data from the underlying response data stream as a byte array.
+  std::vector<uint8_t> ExtractData();
+
+  // Extracts the data from the underlying response data stream as a string.
+  std::string ExtractDataAsString();
 
   // Returns a value of a given response HTTP header.
   std::string GetHeader(const std::string& header_name) const;
@@ -364,7 +368,6 @@ class CHROMEOS_EXPORT Response {
   friend class HttpRequestTest;
 
   std::shared_ptr<Connection> connection_;
-  std::vector<uint8_t> response_data_;
 
   DISALLOW_COPY_AND_ASSIGN(Response);
 };

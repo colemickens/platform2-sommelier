@@ -7,6 +7,8 @@
 #include <base/logging.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/http/http_transport_curl.h>
+#include <chromeos/streams/memory_stream.h>
+#include <chromeos/streams/stream_utils.h>
 #include <chromeos/strings/string_utils.h>
 
 namespace chromeos {
@@ -118,6 +120,7 @@ void Connection::PrepareRequest() {
   headers_.clear();
 
   // Set up HTTP response data.
+  response_data_ = MemoryStream::Create(nullptr);
   if (method_ != request_type::kHead) {
     curl_interface_->EasySetOptCallback(
         curl_handle_, CURLOPT_WRITEFUNCTION, &Connection::write_callback);
@@ -136,11 +139,11 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
   if (ret != CURLE_OK) {
     Transport::AddEasyCurlError(error, FROM_HERE, ret, curl_interface_.get());
   } else {
+    // Rewind our data stream to the beginning so that it can be read back.
+    if (!response_data_->SetPosition(0, error))
+      return false;
     LOG(INFO) << "Response: " << GetResponseStatusCode() << " ("
               << GetResponseStatusText() << ")";
-    VLOG(2) << "Response data (" << response_data_.size() << "): "
-            << std::string(reinterpret_cast<const char*>(response_data_.data()),
-                           response_data_.size());
   }
   return (ret == CURLE_OK);
 }
@@ -173,22 +176,11 @@ std::string Connection::GetResponseHeader(
   return p != headers_.end() ? p->second : std::string();
 }
 
-uint64_t Connection::GetResponseDataSize() const {
-  return response_data_.size();
-}
-
-bool Connection::ReadResponseData(void* data,
-                                  size_t buffer_size,
-                                  size_t* size_read,
-                                  chromeos::ErrorPtr* error) {
-  size_t size_to_read = response_data_.size() - response_data_ptr_;
-  if (size_to_read > buffer_size)
-    size_to_read = buffer_size;
-  memcpy(data, response_data_.data() + response_data_ptr_, size_to_read);
-  if (size_read)
-    *size_read = size_to_read;
-  response_data_ptr_ += size_to_read;
-  return true;
+StreamPtr Connection::ExtractDataStream(chromeos::ErrorPtr* error) {
+  if (!response_data_) {
+    stream_utils::ErrorStreamClosed(FROM_HERE, error);
+  }
+  return std::move(response_data_);
 }
 
 size_t Connection::write_callback(char* ptr,
@@ -197,7 +189,12 @@ size_t Connection::write_callback(char* ptr,
                                   void* data) {
   Connection* me = reinterpret_cast<Connection*>(data);
   size_t data_len = size * num;
-  me->response_data_.insert(me->response_data_.end(), ptr, ptr + data_len);
+  VLOG(2) << "Response data (" << data_len << "): "
+          << std::string{ptr, data_len};
+  if (!me->response_data_->WriteAllBlocking(ptr, data_len, nullptr)) {
+    LOG(ERROR) << "Failed to write response data";
+    data_len = 0;
+  }
   return data_len;
 }
 

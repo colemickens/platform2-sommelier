@@ -304,7 +304,7 @@ CHROMEOS_EXPORT RequestID PatchJson(
 // Returns null if failed. Optional |error| can be passed in to
 // get the extended error information as to why the parse failed.
 CHROMEOS_EXPORT std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
-    const Response* response, int* status_code, chromeos::ErrorPtr* error);
+    Response* response, int* status_code, chromeos::ErrorPtr* error);
 
 // Converts a request header name to canonical form (lowercase with uppercase
 // first letter and each letter after a hyphen ('-')).

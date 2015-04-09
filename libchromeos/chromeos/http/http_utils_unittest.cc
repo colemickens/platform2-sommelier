@@ -57,8 +57,7 @@ TEST(HttpUtils, SendRequest_BinaryData) {
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::application::kOctet_stream,
             response->GetContentType());
-  EXPECT_EQ(custom_data.size(), response->GetData().size());
-  EXPECT_EQ(custom_data, response->GetData());
+  EXPECT_EQ(custom_data, response->ExtractData());
 }
 
 TEST(HttpUtils, SendRequestAsync_BinaryData) {
@@ -73,8 +72,7 @@ TEST(HttpUtils, SendRequestAsync_BinaryData) {
     EXPECT_TRUE(response->IsSuccessful());
     EXPECT_EQ(chromeos::mime::application::kOctet_stream,
               response->GetContentType());
-    EXPECT_EQ(custom_data.size(), response->GetData().size());
-    EXPECT_EQ(custom_data, response->GetData());
+    EXPECT_EQ(custom_data, response->ExtractData());
   };
   auto error_callback = [](RequestID id, const Error* error) {
     FAIL() << "This callback shouldn't have been called";
@@ -109,7 +107,7 @@ TEST(HttpUtils, SendRequest_Post) {
                                 nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
-  EXPECT_EQ(request_type::kPost, response->GetDataAsString());
+  EXPECT_EQ(request_type::kPost, response->ExtractDataAsString());
 }
 
 TEST(HttpUtils, SendRequest_Get) {
@@ -126,7 +124,7 @@ TEST(HttpUtils, SendRequest_Get) {
                                             nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
-  EXPECT_EQ(request_type::kGet, response->GetDataAsString());
+  EXPECT_EQ(request_type::kGet, response->ExtractDataAsString());
 }
 
 TEST(HttpUtils, SendRequest_Put) {
@@ -143,7 +141,7 @@ TEST(HttpUtils, SendRequest_Put) {
                                             nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
-  EXPECT_EQ(request_type::kPut, response->GetDataAsString());
+  EXPECT_EQ(request_type::kPut, response->ExtractDataAsString());
 }
 
 TEST(HttpUtils, SendRequest_NotFound) {
@@ -236,12 +234,12 @@ TEST(HttpUtils, Get) {
   auto response = http::GetAndBlock(kMethodEchoUrl, {}, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
-  EXPECT_EQ(request_type::kGet, response->GetDataAsString());
+  EXPECT_EQ(request_type::kGet, response->ExtractDataAsString());
 
   for (std::string data : {"blah", "some data", ""}) {
     std::string url = chromeos::url::AppendQueryParam(kFakeUrl, "test", data);
     response = http::GetAndBlock(url, {}, transport, nullptr);
-    EXPECT_EQ(data, response->GetDataAsString());
+    EXPECT_EQ(data, response->ExtractDataAsString());
   }
 }
 
@@ -260,7 +258,7 @@ TEST(HttpUtils, Head) {
   auto response = http::HeadAndBlock(kFakeUrl, transport, nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
-  EXPECT_EQ("", response->GetDataAsString());  // Must not have actual body.
+  EXPECT_EQ("", response->ExtractDataAsString());  // Must not have actual body.
   EXPECT_EQ("4", response->GetHeader(request_header::kContentLength));
 }
 
@@ -322,7 +320,7 @@ TEST(HttpUtils, PostText) {
                                          nullptr);
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::text::kPlain, response->GetContentType());
-  EXPECT_EQ(fake_data, response->GetDataAsString());
+  EXPECT_EQ(fake_data, response->ExtractDataAsString());
 }
 
 TEST(HttpUtils, PostFormData) {
@@ -338,7 +336,7 @@ TEST(HttpUtils, PostFormData) {
   EXPECT_TRUE(response->IsSuccessful());
   EXPECT_EQ(chromeos::mime::application::kWwwFormUrlEncoded,
             response->GetContentType());
-  EXPECT_EQ("key=value&field=field+value", response->GetDataAsString());
+  EXPECT_EQ("key=value&field=field+value", response->ExtractDataAsString());
 }
 
 TEST(HttpUtils, PostMultipartFormData) {
@@ -364,7 +362,7 @@ TEST(HttpUtils, PostMultipartFormData) {
       "\r\n"
       "value2\r\n"
       "--boundary123--";
-  EXPECT_EQ(expected_value, response->GetDataAsString());
+  EXPECT_EQ(expected_value, response->ExtractDataAsString());
 }
 
 TEST(HttpUtils, PostPatchJson) {
@@ -376,7 +374,7 @@ TEST(HttpUtils, PostPatchJson) {
     response->ReplyJson(
         status_code::Ok,
         {
-         {"method", request.GetMethod()}, {"data", request.GetDataAsString()},
+          {"method", request.GetMethod()}, {"data", request.GetDataAsString()},
         });
   };
   std::shared_ptr<fake::Transport> transport(new fake::Transport);

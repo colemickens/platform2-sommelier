@@ -452,11 +452,22 @@ void Transport::OnTransferComplete(Connection* connection, CURLcode code) {
                                 p->second->request_id,
                                 base::Owned(error.release())));
   } else {
-    scoped_ptr<Response> response{new Response{request_data->connection}};
-    RunCallbackAsync(FROM_HERE,
-                     base::Bind(request_data->success_callback,
-                                p->second->request_id,
-                                base::Passed(&response)));
+    chromeos::ErrorPtr error;
+    // Rewind the response data stream to the beginning so the clients can
+    // read the data back.
+    if (request_data->connection->response_data_ &&
+        !request_data->connection->response_data_->SetPosition(0, &error)) {
+      RunCallbackAsync(FROM_HERE,
+                       base::Bind(request_data->error_callback,
+                                  p->second->request_id,
+                                  base::Owned(error.release())));
+    } else {
+      scoped_ptr<Response> response{new Response{request_data->connection}};
+      RunCallbackAsync(FROM_HERE,
+                       base::Bind(request_data->success_callback,
+                                  p->second->request_id,
+                                  base::Passed(&response)));
+    }
   }
   // In case of an error on CURL side, we would have dispatched the error
   // callback and we need to clean up the current connection, however the

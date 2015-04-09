@@ -286,19 +286,6 @@ bool Request::SendRequestIfNeeded(chromeos::ErrorPtr* error) {
 Response::Response(const std::shared_ptr<Connection>& connection)
     : connection_{connection} {
   VLOG(1) << "http::Response created";
-  // Response object doesn't have streaming interface for response data (yet),
-  // so read the data into a buffer and cache it.
-  if (connection_) {
-    size_t size = static_cast<size_t>(connection_->GetResponseDataSize());
-    response_data_.reserve(size);
-    uint8_t buffer[1024];
-    size_t read = 0;
-    while (
-        connection_->ReadResponseData(buffer, sizeof(buffer), &read, nullptr) &&
-        read > 0) {
-      response_data_.insert(response_data_.end(), buffer, buffer + read);
-    }
-  }
 }
 
 Response::~Response() {
@@ -328,16 +315,28 @@ std::string Response::GetContentType() const {
   return GetHeader(response_header::kContentType);
 }
 
-const std::vector<uint8_t>& Response::GetData() const {
-  return response_data_;
+StreamPtr Response::ExtractDataStream(ErrorPtr* error) {
+  return connection_->ExtractDataStream(error);
 }
 
-std::string Response::GetDataAsString() const {
-  if (response_data_.empty())
-    return std::string();
+std::vector<uint8_t> Response::ExtractData() {
+  std::vector<uint8_t> data;
+  StreamPtr src_stream = connection_->ExtractDataStream(nullptr);
+  StreamPtr dest_stream = MemoryStream::CreateRef(&data, nullptr);
+  if (src_stream && dest_stream) {
+    char buffer[1024];
+    size_t read = 0;
+    while (src_stream->ReadBlocking(buffer, sizeof(buffer), &read, nullptr) &&
+           read > 0) {
+      CHECK(dest_stream->WriteAllBlocking(buffer, read, nullptr));
+    }
+  }
+  return data;
+}
 
-  const char* data_buf = reinterpret_cast<const char*>(response_data_.data());
-  return std::string(data_buf, data_buf + response_data_.size());
+std::string Response::ExtractDataAsString() {
+  std::vector<uint8_t> data = ExtractData();
+  return std::string{data.begin(), data.end()};
 }
 
 std::string Response::GetHeader(const std::string& header_name) const {

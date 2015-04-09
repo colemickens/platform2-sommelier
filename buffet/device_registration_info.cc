@@ -268,8 +268,8 @@ bool DeviceRegistrationInfo::HaveRegistrationCredentials(
 }
 
 std::unique_ptr<base::DictionaryValue>
-DeviceRegistrationInfo::ParseOAuthResponse(
-    const chromeos::http::Response* response, chromeos::ErrorPtr* error) {
+DeviceRegistrationInfo::ParseOAuthResponse(chromeos::http::Response* response,
+                                           chromeos::ErrorPtr* error) {
   int code = 0;
   auto resp = chromeos::http::ParseJsonResponse(response, &code, error);
   if (resp && code >= chromeos::http::status_code::BadRequest) {

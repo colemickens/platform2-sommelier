@@ -162,7 +162,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   // Parse the OAuth response, and sets registration status to
   // kInvalidCredentials if our registration is no longer valid.
   std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
-      const chromeos::http::Response* response, chromeos::ErrorPtr* error);
+      chromeos::http::Response* response, chromeos::ErrorPtr* error);
 
   // This attempts to open the XMPP channel. The XMPP channel needs to be
   // restarted anytime the access_token is refreshed.

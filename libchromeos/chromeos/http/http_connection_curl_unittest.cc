@@ -304,11 +304,12 @@ TEST_F(HttpCurlConnectionTest, FinishRequest) {
   EXPECT_EQ(mime::text::kHtml,
             connection_->GetResponseHeader(response_header::kContentType));
   EXPECT_EQ("baz", connection_->GetResponseHeader("X-Foo"));
-  EXPECT_EQ(response_data.size(), connection_->GetResponseDataSize());
+  auto data_stream = connection_->ExtractDataStream(nullptr);
+  ASSERT_NE(nullptr, data_stream.get());
   char buffer[100];
   size_t size_read = 0;
-  EXPECT_TRUE(connection_->ReadResponseData(
-      buffer, sizeof(buffer), &size_read, nullptr));
+  EXPECT_TRUE(data_stream->ReadBlocking(buffer, sizeof(buffer), &size_read,
+                                        nullptr));
   EXPECT_EQ(response_data, (std::string{buffer, size_read}));
 }
 

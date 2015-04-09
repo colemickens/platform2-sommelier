@@ -11,6 +11,7 @@
 #include <chromeos/http/mock_connection.h>
 #include <chromeos/http/mock_transport.h>
 #include <chromeos/mime_utils.h>
+#include <chromeos/streams/mock_stream.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -140,9 +141,6 @@ TEST_F(HttpRequestTest, GetResponseAndBlock) {
       request.AddRequestBody(req_body.data(), req_body.size(), nullptr));
 
   EXPECT_CALL(*connection_, FinishRequest(_)).WillOnce(Return(true));
-  EXPECT_CALL(*connection_, GetResponseDataSize()).WillOnce(Return(0));
-  EXPECT_CALL(*connection_, ReadResponseData(_, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(0), Return(true)));
   auto resp = request.GetResponseAndBlock(nullptr);
   EXPECT_NE(nullptr, resp.get());
 }
@@ -173,16 +171,18 @@ TEST_F(HttpRequestTest, GetResponse) {
         .WillOnce(Return(mime::text::kHtml));
     EXPECT_EQ(mime::text::kHtml, resp->GetContentType());
 
-    EXPECT_EQ(resp_data, resp->GetDataAsString());
+    EXPECT_EQ(resp_data, resp->ExtractDataAsString());
   };
 
   auto finish_request_async =
       [this, &read_data, &resp_data](const SuccessCallback& success_callback) {
-    EXPECT_CALL(*connection_, GetResponseDataSize())
-        .WillOnce(Return(resp_data.size()));
-    EXPECT_CALL(*connection_, ReadResponseData(_, _, _, _))
+    std::unique_ptr<MockStream> mock_stream{new MockStream};
+    EXPECT_CALL(*mock_stream, ReadBlocking(_, _, _, _))
         .WillOnce(Invoke(read_data))
         .WillOnce(DoAll(SetArgPointee<2>(0), Return(true)));
+
+    EXPECT_CALL(*connection_, MockExtractDataStream(_))
+      .WillOnce(Return(mock_stream.release()));
     scoped_ptr<Response> resp{new Response{connection_}};
     success_callback.Run(23, resp.Pass());
   };

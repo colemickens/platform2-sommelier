@@ -2286,7 +2286,7 @@ bool Attestation::SendPCARequestAndBlock(PCAType pca_type,
     LOG(ERROR) << "HTTP request to PCA failed.";
     return false;
   }
-  const std::vector<uint8_t>& response_data = response->GetData();
+  std::vector<uint8_t> response_data = response->ExtractData();
   SecureBlob tmp(response_data.begin(), response_data.end());
   reply->swap(tmp);
   return true;

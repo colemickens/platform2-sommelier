@@ -379,7 +379,7 @@ RequestID PatchJson(const std::string& url,
 }
 
 std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
-    const Response* response,
+    Response* response,
     int* status_code,
     chromeos::ErrorPtr* error) {
   if (!response)
@@ -401,26 +401,28 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
     return std::unique_ptr<base::DictionaryValue>();
   }
 
-  std::string json = response->GetDataAsString();
+  std::string json = response->ExtractDataAsString();
   std::string error_message;
   base::Value* value = base::JSONReader::ReadAndReturnError(
       json, base::JSON_PARSE_RFC, nullptr, &error_message);
   if (!value) {
-    chromeos::Error::AddTo(error,
-                           FROM_HERE,
-                           chromeos::errors::json::kDomain,
-                           chromeos::errors::json::kParseError,
-                           error_message);
+    chromeos::Error::AddToPrintf(error,
+                                 FROM_HERE,
+                                 chromeos::errors::json::kDomain,
+                                 chromeos::errors::json::kParseError,
+                                 "Error '%s' occurred parsing JSON string '%s'",
+                                 error_message.c_str(), json.c_str());
     return std::unique_ptr<base::DictionaryValue>();
   }
   base::DictionaryValue* dict_value = nullptr;
   if (!value->GetAsDictionary(&dict_value)) {
     delete value;
-    chromeos::Error::AddTo(error,
-                           FROM_HERE,
-                           chromeos::errors::json::kDomain,
-                           chromeos::errors::json::kObjectExpected,
-                           "Response is not a valid JSON object");
+    chromeos::Error::AddToPrintf(error,
+                                 FROM_HERE,
+                                 chromeos::errors::json::kDomain,
+                                 chromeos::errors::json::kObjectExpected,
+                                 "Response is not a valid JSON object: '%s'",
+                                 json.c_str());
     return std::unique_ptr<base::DictionaryValue>();
   }
   return std::unique_ptr<base::DictionaryValue>(dict_value);

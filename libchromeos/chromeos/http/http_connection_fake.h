@@ -38,11 +38,7 @@ class Connection : public http::Connection {
   std::string GetResponseStatusText() const override;
   std::string GetProtocolVersion() const override;
   std::string GetResponseHeader(const std::string& header_name) const override;
-  uint64_t GetResponseDataSize() const override;
-  bool ReadResponseData(void* data,
-                        size_t buffer_size,
-                        size_t* size_read,
-                        chromeos::ErrorPtr* error) override;
+  StreamPtr ExtractDataStream(chromeos::ErrorPtr* error) override;
 
  private:
   // A helper method for FinishRequestAsync() implementation.
@@ -55,9 +51,6 @@ class Connection : public http::Connection {
   // the handler in response to the request.
   ServerRequest request_;
   ServerResponse response_;
-
-  // Internal read data pointer needed for ReadResponseData() implementation.
-  size_t response_data_ptr_ = 0;
 
   DISALLOW_COPY_AND_ASSIGN(Connection);
 };
