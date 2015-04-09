@@ -89,7 +89,7 @@ bool ConnectionDelegate::ReadLine(string* str) {
 
     num_recv = recv(fd_, buf, sizeof buf, MSG_PEEK);
     if (num_recv == -1) {
-      LOG(ERROR) << "Error reading: " << strerror(errno);
+      PLOG(ERROR) << "Error reading";
       return false;
     }
     CHECK_GE(num_recv, 0);
@@ -226,10 +226,10 @@ void ConnectionDelegate::Run() {
   server_->ReportServerMessage(p2p::util::kP2PServerRequestResult, req_res);
 
   if (shutdown(fd_, SHUT_RDWR) != 0) {
-    LOG(ERROR) << "Error shutting down socket: " << strerror(errno);
+    PLOG(ERROR) << "Error shutting down socket";
   }
   if (close(fd_) != 0) {
-    LOG(ERROR) << "Error closing socket: " << strerror(errno);
+    PLOG(ERROR) << "Error closing socket";
   }
   fd_ = -1;
 
@@ -284,7 +284,7 @@ bool ConnectionDelegate::SendResponse(
   while (num_to_send > 0) {
     ssize_t num_sent = send(fd_, buf + num_total_sent, num_to_send, 0);
     if (num_sent == -1) {
-      LOG(ERROR) << "Error sending: " << strerror(errno);
+      PLOG(ERROR) << "Error sending";
       return false;
     }
     CHECK_GT(num_sent, 0);
@@ -372,7 +372,7 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
       // guarantees that we never get EAGAIN. In other words, we never
       // get partial reads e.g. either we get everything we ask for or
       // none of it.
-      LOG(ERROR) << "Error reading: " << strerror(errno);
+      PLOG(ERROR) << "Error reading";
       return false;
     }
 
@@ -382,7 +382,7 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
       ssize_t num_sent =
           send(fd_, buf + num_sent_from_buf, num_to_send_from_buf, 0);
       if (num_sent == -1) {
-        LOG(ERROR) << "Error sending: " << strerror(errno);
+        PLOG(ERROR) << "Error sending";
         return false;
       }
       CHECK_GT(num_sent, 0);
@@ -589,7 +589,7 @@ P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
 
   if (range_first > 0) {
     if (lseek(file_fd, (off_t) range_first, SEEK_SET) != (off_t) range_first) {
-      LOG(ERROR) << "Error seeking: " << strerror(errno);
+      PLOG(ERROR) << "Error seeking";
       req_res = p2p::util::kP2PRequestResultNotFound;
       goto out;
     }

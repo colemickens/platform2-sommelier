@@ -120,13 +120,13 @@ void HostapdMonitor::AttachToHostapd() {
   if (sockets_->Bind(hostapd_socket_,
                      reinterpret_cast<struct sockaddr*>(&local),
                      sizeof(local)) < 0) {
-    LOG(ERROR) << "Failed to bind to local socket: " << strerror(errno);
+    PLOG(ERROR) << "Failed to bind to local socket";
     return;
   }
   if (sockets_->Connect(hostapd_socket_,
                         reinterpret_cast<struct sockaddr*>(&dest),
                         sizeof(dest)) < 0) {
-    LOG(ERROR) << "Failed to connect: " << strerror(errno);
+    PLOG(ERROR) << "Failed to connect";
     return;
   }
 
@@ -157,7 +157,7 @@ void HostapdMonitor::AttachTimeoutHandler() {
 // Method for sending message to hostapd control interface.
 bool HostapdMonitor::SendMessage(const char* message, size_t length) {
   if (sockets_->Send(hostapd_socket_, message, length, 0) < 0) {
-    LOG(ERROR) << "Send to hostapd failed: " << strerror(errno);
+    PLOG(ERROR) << "Send to hostapd failed";
     return false;
   }
 

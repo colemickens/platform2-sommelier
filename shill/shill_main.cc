@@ -124,8 +124,7 @@ void SetupLogging(bool foreground, char *daemon_name) {
     // Note that we don't set O_CLOEXEC here. This means that stderr
     // from any child processes will, by default, be logged to syslog.
     if (dup2(logger_stdin_fd, fileno(stderr)) != fileno(stderr)) {
-      LOG(ERROR) << "Failed to redirect stderr to syslog: "
-                 << strerror(errno);
+      PLOG(ERROR) << "Failed to redirect stderr to syslog";
     }
     close(logger_stdin_fd);
   }

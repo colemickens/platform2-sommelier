@@ -192,12 +192,12 @@ static BYTE* GetFileContents(const char* filename, ULONG* num_bytes) {
 
   fd = open(filename, O_RDONLY);
   if (fd == -1) {
-    LOG(WARNING) << "Can't open '" << filename << "': " << strerror(errno);
+    PLOG(WARNING) << "Can't open '" << filename << "'";
     return nullptr;
   }
 
   if (fstat(fd, &st) == -1) {
-    LOG(WARNING) << "Can't fstat '" << filename << "': " << strerror(errno);
+    PLOG(WARNING) << "Can't fstat '" << filename << "'";
     close(fd);
     return nullptr;
   }
@@ -207,8 +207,7 @@ static BYTE* GetFileContents(const char* filename, ULONG* num_bytes) {
   bytes_read = read(fd, reinterpret_cast<char*>(buffer), *num_bytes);
 
   if (bytes_read < 0) {
-    LOG(WARNING) << "Cannot read contents of PRL file \"" << filename
-                 << "\": " << strerror(errno);
+    PLOG(WARNING) << "Cannot read contents of PRL file \"" << filename << "\"";
     delete [] buffer;
     close(fd);
     return nullptr;

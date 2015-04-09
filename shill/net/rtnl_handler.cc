@@ -161,7 +161,7 @@ void RTNLHandler::SetInterfaceFlags(int interface_index, unsigned int flags,
   req.msg.ifi_change = change;
 
   if (sockets_->Send(rtnl_socket_, &req, sizeof(req), 0) < 0) {
-    LOG(ERROR) << "RTNL sendto failed: " << strerror(errno);
+    PLOG(ERROR) << "RTNL sendto failed";
   }
 }
 
@@ -432,7 +432,7 @@ bool RTNLHandler::SendMessage(RTNLMessage *message) {
                      msgdata.GetConstData(),
                      msgdata.GetLength(),
                      0) < 0) {
-    PLOG(ERROR) << "RTNL send failed: " << strerror(errno);
+    PLOG(ERROR) << "RTNL send failed";
     return false;
   }
 

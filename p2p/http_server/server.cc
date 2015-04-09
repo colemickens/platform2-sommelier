@@ -72,14 +72,14 @@ void Server::Stop() {
 
   if (dirfd_ != -1) {
     if (close(dirfd_) != 0) {
-      LOG(ERROR) << "Error closing directory: " << strerror(errno);
+      PLOG(ERROR) << "Error closing directory";
     }
   }
   dirfd_ = -1;
 
   if (listen_fd_ != -1) {
     if (close(listen_fd_) != 0) {
-      LOG(ERROR) << "Error closing listening socket: " << strerror(errno);
+      PLOG(ERROR) << "Error closing listening socket";
     }
     listen_fd_ = -1;
   }
@@ -110,7 +110,7 @@ bool Server::Start() {
 
   dirfd_ = open(directory_.value().c_str(), O_DIRECTORY);
   if (dirfd_ == -1) {
-    LOG(ERROR) << "Error opening directory: " << strerror(errno);
+    PLOG(ERROR) << "Error opening directory";
     Stop();
     return false;
   }
@@ -118,7 +118,7 @@ bool Server::Start() {
   listen_fd_ =
       socket(AF_INET6, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_TCP);
   if (listen_fd_ == -1) {
-    LOG(ERROR) << "Cannot create socket: " << strerror(errno);
+    PLOG(ERROR) << "Cannot create socket";
     Stop();
     return false;
   }
@@ -132,7 +132,7 @@ bool Server::Start() {
   if (setsockopt(
           listen_fd_, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval) ==
       -1) {
-    LOG(ERROR) << "setsockopt failed: " << strerror(errno);
+    PLOG(ERROR) << "setsockopt failed";
     Stop();
     return false;
   }
@@ -141,13 +141,13 @@ bool Server::Start() {
            reinterpret_cast<const struct ::sockaddr*>(&sock_addr),
            sizeof sock_addr) ==
       -1) {
-    LOG(ERROR) << "bind failed: " << strerror(errno);
+    PLOG(ERROR) << "bind failed";
     Stop();
     return false;
   }
 
   if (listen(listen_fd_, 10) == -1) {
-    LOG(ERROR) << "listen failed: " << strerror(errno);
+    PLOG(ERROR) << "listen failed";
     Stop();
     return false;
   }
@@ -160,7 +160,7 @@ bool Server::Start() {
                     reinterpret_cast<struct ::sockaddr*>(&bound_addr),
                     &bound_addr_len) !=
         0) {
-      LOG(ERROR) << "getsockname failed: " << strerror(errno);
+      PLOG(ERROR) << "getsockname failed";
       Stop();
       return false;
     }
@@ -209,7 +209,7 @@ static string PrintAddress(struct ::sockaddr* addr, socklen_t addr_len) {
       struct ::sockaddr_in* addr_in =
           reinterpret_cast<struct ::sockaddr_in*>(addr);
       if (inet_ntop(AF_INET, &addr_in->sin_addr, buf, sizeof buf) == NULL) {
-        LOG(ERROR) << "Error printing address: " << strerror(errno);
+        PLOG(ERROR) << "Error printing address";
       } else {
         ret = string(buf);
       }
@@ -243,7 +243,7 @@ static string PrintAddress(struct ::sockaddr* addr, socklen_t addr_len) {
       } else {
         if (inet_ntop(AF_INET6, &addr_in6->sin6_addr, buf, sizeof buf) ==
             NULL) {
-          LOG(ERROR) << "Error printing address: " << strerror(errno);
+          PLOG(ERROR) << "Error printing address";
         } else {
           ret = string(buf);
         }
@@ -295,7 +295,7 @@ gboolean Server::OnIOChannelActivity(GIOChannel* source,
 
   fd = accept(server->listen_fd_, addr, &addr_len);
   if (fd == -1) {
-    LOG(ERROR) << "accept failed: " << strerror(errno);
+    PLOG(ERROR) << "accept failed";
   } else {
     ConnectionDelegateInterface* delegate = server->delegate_factory_(
         server->dirfd_,

@@ -148,8 +148,7 @@ void Mac80211Monitor::WakeQueuesIfNeeded() {
 
   LOG(WARNING) << "Queues appear stuck; waking.";
   if (base::WriteFile(wake_queues_file_path_, "", sizeof("")) < 0) {
-    LOG(ERROR) << "Failed to write to " << wake_queues_file_path_.value()
-               << ": " << strerror(errno);
+    PLOG(ERROR) << "Failed to write to " << wake_queues_file_path_.value();
     return;
   }
 

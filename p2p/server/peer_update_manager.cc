@@ -24,8 +24,7 @@ namespace server {
 static size_t GetFileSize(const FilePath& file_path) {
   struct stat statbuf;
   if (stat(file_path.value().c_str(), &statbuf) != 0) {
-    LOG(ERROR) << "Error getting file size for " << file_path.value() << ": "
-               << strerror(errno);
+    PLOG(ERROR) << "Error getting file size for " << file_path.value();
     return 0;
   }
   return statbuf.st_size;
