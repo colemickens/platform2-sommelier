@@ -350,8 +350,8 @@ void BidlCodeGenerator::PrintStandardHeaders(Printer* printer) const {
 }
 
 void BidlCodeGenerator::PrintStandardIncludes(Printer* printer) const {
-  printer->Print("#include <libprotobinder/iinterface.h>\n");
-  printer->Print("#include <libprotobinder/parcel.h>\n");
+  printer->Print("#include <protobinder/iinterface.h>\n");
+  printer->Print("#include <protobinder/parcel.h>\n");
   printer->Print("\n");
   printer->Print("#include <string.h>\n");
   printer->Print("\n");
