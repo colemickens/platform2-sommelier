@@ -13,6 +13,20 @@
 
 namespace buffet {
 
+namespace {
+
+// Truncates a string if it is too long. Used for error reporting with really
+// long JSON strings.
+std::string LimitString(const std::string& text, size_t max_len) {
+  if (text.size() <= max_len)
+    return text;
+  return text.substr(0, max_len - 3) + "...";
+}
+
+const size_t kMaxStrLen = 1700;  // Log messages are limited to 2000 chars.
+
+}  // anonymous namespace
+
 const char kErrorDomainBuffet[] = "buffet";
 const char kFileReadError[] = "file_read_error";
 const char kInvalidCategoryError[] = "invalid_category";
@@ -43,7 +57,7 @@ std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
                                  chromeos::errors::json::kDomain,
                                  chromeos::errors::json::kParseError,
                                  "Error parsing JSON string '%s': %s",
-                                 json_string.c_str(),
+                                 LimitString(json_string, kMaxStrLen).c_str(),
                                  error_message.c_str());
     return result;
   }
@@ -54,7 +68,7 @@ std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
                                  chromeos::errors::json::kDomain,
                                  chromeos::errors::json::kObjectExpected,
                                  "JSON string '%s' is not a JSON object",
-                                 json_string.c_str());
+                                 LimitString(json_string, kMaxStrLen).c_str());
     return result;
   }
   result.reset(dict_value);
