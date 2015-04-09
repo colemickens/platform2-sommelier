@@ -150,8 +150,8 @@ class ContainerSpecReaderTest : public ::testing::Test {
   base::DictionaryValue* GetAppDict(base::DictionaryValue* pod_dict) {
     base::ListValue* apps_list = nullptr;
     base::DictionaryValue* app_dict = nullptr;
-    DCHECK(pod_dict->GetList(ContainerSpecReader::kAppsListKey, &apps_list));
-    DCHECK(apps_list->GetDictionary(0, &app_dict));
+    CHECK(pod_dict->GetList(ContainerSpecReader::kAppsListKey, &apps_list));
+    CHECK(apps_list->GetDictionary(0, &app_dict));
     return app_dict;
   }
 
@@ -272,14 +272,14 @@ TEST_F(ContainerSpecReaderTest, SpecWithListenPorts) {
 
   const port::Number port1 = 80;
   const port::Number port2 = 9222;
-  const port::Number invalid_port = -8;
-  std::unique_ptr<base::ListValue> listen_ports(new base::ListValue);
-  listen_ports->Append(CreatePort(port::kTcpProtocol, port1).release());
-  listen_ports->Append(CreatePort(port::kTcpProtocol, port2).release());
-  listen_ports->Append(CreatePort(port::kUdpProtocol, port1).release());
-  GetAppDict(baseline.get())->Set(MakeSubAppKey(port::kListKey),
-                                  listen_ports.release());
-
+  {
+    std::unique_ptr<base::ListValue> listen_ports(new base::ListValue);
+    listen_ports->Append(CreatePort(port::kTcpProtocol, port1).release());
+    listen_ports->Append(CreatePort(port::kTcpProtocol, port2).release());
+    listen_ports->Append(CreatePort(port::kUdpProtocol, port1).release());
+    GetAppDict(baseline.get())->Set(MakeSubAppKey(port::kListKey),
+                                    listen_ports.release());
+  }
   std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
   CheckSpecBaseline(spec.get());
@@ -287,15 +287,13 @@ TEST_F(ContainerSpecReaderTest, SpecWithListenPorts) {
   EXPECT_TRUE(spec->TcpListenPortIsAllowed(port2));
   EXPECT_TRUE(spec->UdpListenPortIsAllowed(port1));
   EXPECT_FALSE(spec->UdpListenPortIsAllowed(81));
-
-  std::unique_ptr<base::ListValue> listen_ports_invalid(new base::ListValue);
-  listen_ports_invalid->Append(
-      CreatePort(port::kUdpProtocol, invalid_port).release());
-  GetAppDict(baseline.get())->Set(MakeSubAppKey(port::kListKey),
-                                  listen_ports_invalid.release());
-
+  {
+    std::unique_ptr<base::ListValue> listen_ports_invalid(new base::ListValue);
+    listen_ports_invalid->Append(CreatePort(port::kUdpProtocol, -8).release());
+    GetAppDict(baseline.get())->Set(MakeSubAppKey(port::kListKey),
+                                    listen_ports_invalid.release());
+  }
   spec = ValueToSpec(baseline.get());
-
   EXPECT_EQ(spec.get(), nullptr);
 }
 
