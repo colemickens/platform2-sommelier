@@ -38,6 +38,8 @@ class WiFiService : public Service {
   static const char kStorageSecurityClass[];
   static const char kStorageSSID[];
   static const char kStoragePreferredDevice[];
+  static const char kStorageRoamThreshold[];
+  static const char kStorageRoamThresholdSet[];
 
   WiFiService(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
@@ -173,6 +175,9 @@ class WiFiService : public Service {
   void set_expecting_disconnect(bool val) { expecting_disconnect_ = val; }
   bool expecting_disconnect() const { return expecting_disconnect_; }
 
+  uint16_t roam_threshold_db() { return roam_threshold_db_; }
+  bool roam_threshold_db_set() { return roam_threshold_db_set_; }
+
  protected:
   void SetEAPKeyManagement(const std::string &key_management) override;
   std::string GetTethering(Error *error) const override;
@@ -185,6 +190,7 @@ class WiFiService : public Service {
   FRIEND_TEST(MetricsTest, WiFiServicePostReadyAdHoc);
   FRIEND_TEST(MetricsTest, WiFiServicePostReadyEAP);
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
+  FRIEND_TEST(WiFiMainTest, RoamThresholdProperty);
   FRIEND_TEST(WiFiProviderTest, OnEndpointAddedWithSecurity);  // security_
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
   FRIEND_TEST(WiFiServiceTest, ClearWriteOnlyDerivedProperty);  // passphrase_
@@ -214,6 +220,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, ChooseDevice);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest,
               AddEndpointWithPreferredDevice);
+  FRIEND_TEST(WiFiServiceTest, SaveLoadRoamThreshold);
 
   static const char kAutoConnNoEndpoint[];
   static const char kAnyDeviceAddress[];
@@ -233,6 +240,11 @@ class WiFiService : public Service {
       bool(WiFiService::*set)(const std::string &value, Error *error),
       void(WiFiService::*clear)(Error *error),
       const std::string *default_value);
+  void HelpRegisterDerivedUint16(
+      const std::string &name,
+      uint16_t(WiFiService::*get)(Error *error),
+      bool(WiFiService::*set)(const uint16_t &value, Error *error),
+      void(WiFiService::*clear)(Error *error));
 
   std::string GetDeviceRpcId(Error *error) const override;
 
@@ -311,6 +323,12 @@ class WiFiService : public Service {
 
   void SetWiFi(const WiFiRefPtr &new_wifi);
 
+  // This method can't be 'const' because it is passed to
+  // HelpRegisterDerivedUint16, which doesn't take const methods.
+  uint16_t GetRoamThreshold(Error *error) /*const*/;
+  bool SetRoamThreshold(const uint16_t &threshold, Error *error);
+  void ClearRoamThreshold(Error *error);
+
   // Properties
   std::string passphrase_;
   bool need_passphrase_;
@@ -356,6 +374,8 @@ class WiFiService : public Service {
   // connecting to other service.
   bool expecting_disconnect_;
   std::unique_ptr<CertificateFile> certificate_file_;
+  uint16_t roam_threshold_db_;
+  bool roam_threshold_db_set_;
   // Bare pointer is safe because WiFi service instances are owned by
   // the WiFiProvider and are guaranteed to be deallocated by the time
   // the WiFiProvider is.

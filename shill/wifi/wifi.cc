@@ -874,7 +874,9 @@ bool WiFi::SetBgscanSignalThreshold(const int32_t &dbm, Error */*error*/) {
 
 bool WiFi::SetRoamThreshold(const uint16_t &threshold, Error */*error*/) {
   roam_threshold_db_ = threshold;
-  supplicant_interface_proxy_->SetRoamThreshold(threshold);
+  if (!current_service_ || !current_service_->roam_threshold_db_set()) {
+    supplicant_interface_proxy_->SetRoamThreshold(threshold);
+  }
   return true;
 }
 
@@ -1143,6 +1145,14 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
     current_service_ = service;
     SetScanState(kScanConnected, scan_method_, __func__);
     SetPendingService(nullptr);
+    // Use WiFi service-specific roam threshold if it is set, otherwise use WiFi
+    // device-wide roam threshold.
+    if (current_service_->roam_threshold_db_set()) {
+      supplicant_interface_proxy_->SetRoamThreshold(
+          current_service_->roam_threshold_db());
+    } else {
+      supplicant_interface_proxy_->SetRoamThreshold(roam_threshold_db_);
+    }
     return;
   }
 

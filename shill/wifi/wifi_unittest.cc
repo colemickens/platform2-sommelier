@@ -1573,6 +1573,15 @@ TEST_F(WiFiMainTest, RoamThresholdProperty) {
               SetRoamThreshold(kRoamThreshold32));
   EXPECT_TRUE(SetRoamThreshold(kRoamThreshold32));
   EXPECT_EQ(GetRoamThreshold(), kRoamThreshold32);
+
+  // Do not set supplicant's roam threshold property immediately if the
+  // current WiFi service has its own roam threshold property set.
+  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  service->roam_threshold_db_set_ = true;
+  SetCurrentService(service);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), SetRoamThreshold(_)).Times(0);
+  EXPECT_TRUE(SetRoamThreshold(kRoamThreshold16));
+  EXPECT_EQ(kRoamThreshold16, GetRoamThreshold());
 }
 
 TEST_F(WiFiMainTest, OnSupplicantAppearStarted) {
