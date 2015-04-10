@@ -72,7 +72,7 @@ int RNGTest() {
   trunks::TrunksFactoryImpl factory;
   scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
   scoped_ptr<trunks::AuthorizationSession> session =
-      factory.GetAuthorizationSession();
+      factory.GetHmacAuthorizationSession();
   std::string entropy_data("entropy_data");
   std::string random_data;
   size_t num_bytes = 70;
@@ -111,7 +111,7 @@ int SignTest() {
   trunks::TPM_RC rc;
   scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
   scoped_ptr<trunks::AuthorizationSession> session(
-      factory.GetAuthorizationSession());
+      factory.GetHmacAuthorizationSession());
   rc = session->StartUnboundSession(true /* enable encryption */);
   if (rc) {
     LOG(ERROR) << "Error starting authorization session: "
@@ -160,7 +160,7 @@ int DecryptTest() {
   trunks::TPM_HANDLE decrypt_key;
   trunks::TPM_RC rc;
   scoped_ptr<trunks::AuthorizationSession> session(
-      factory.GetAuthorizationSession());
+      factory.GetHmacAuthorizationSession());
   rc = session->StartUnboundSession(true /* enable encryption */);
   if (rc) {
     LOG(ERROR) << "Error starting authorization session: "
@@ -215,7 +215,7 @@ int ImportTest() {
   trunks::TPM_RC rc;
   std::string key_blob;
   scoped_ptr<trunks::AuthorizationSession> session(
-      factory.GetAuthorizationSession());
+      factory.GetHmacAuthorizationSession());
   rc = session->StartUnboundSession(true /* enable encryption */);
   if (rc) {
     LOG(ERROR) << "Error starting authorization session: "
@@ -284,7 +284,7 @@ int AuthChangeTest() {
   scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
   trunks::TPM_RC rc;
   scoped_ptr<trunks::AuthorizationSession> session(
-      factory.GetAuthorizationSession());
+      factory.GetHmacAuthorizationSession());
   rc = session->StartUnboundSession(true /* enable encryption */);
   if (rc) {
     LOG(ERROR) << "Error starting authorization session: "
@@ -362,7 +362,7 @@ int NvramTest(const std::string& owner_password) {
   scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
   trunks::TPM_RC rc;
   scoped_ptr<trunks::AuthorizationSession> session(
-      factory.GetAuthorizationSession());
+      factory.GetHmacAuthorizationSession());
   rc = session->StartUnboundSession(true /* enable encryption */);
   if (rc) {
     LOG(ERROR) << "Error starting authorization session: "

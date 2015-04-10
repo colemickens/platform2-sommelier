@@ -194,7 +194,8 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
   }
   // At this point we have a session with parameter encryption securely
   // enabled. We can now send actual passwords.
-  scoped_ptr<AuthorizationSession> session(factory_.GetAuthorizationSession());
+  scoped_ptr<AuthorizationSession> session(
+      factory_.GetHmacAuthorizationSession());
   result = session->StartUnboundSession(true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error initializing AuthorizationSession: "

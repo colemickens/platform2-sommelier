@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "trunks/authorization_session_impl.h"
+#include "trunks/hmac_authorization_session.h"
+
+#include <vector>
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -23,17 +25,17 @@ using testing::SetArgPointee;
 
 namespace trunks {
 
-class AuthorizationSessionTest : public testing::Test {
+class HmacAuthorizationSessionTest : public testing::Test {
  public:
-  AuthorizationSessionTest() {}
-  ~AuthorizationSessionTest() override {}
+  HmacAuthorizationSessionTest() : session_(factory_) {}
+  ~HmacAuthorizationSessionTest() override {}
 
   void SetUp() override {
     factory_.set_tpm(&mock_tpm_);
   }
 
   HmacAuthorizationDelegate* GetHmacDelegate(
-        AuthorizationSessionImpl* session) {
+        HmacAuthorizationSession* session) {
     return &(session->hmac_delegate_);
   }
 
@@ -59,10 +61,10 @@ class AuthorizationSessionTest : public testing::Test {
  protected:
   TrunksFactoryForTest factory_;
   NiceMock<MockTpm> mock_tpm_;
+  HmacAuthorizationSession session_;
 };
 
-TEST_F(AuthorizationSessionTest, StartUnboundSuccess) {
-  AuthorizationSessionImpl session(factory_);
+TEST_F(HmacAuthorizationSessionTest, StartUnboundSuccess) {
   TPM2B_PUBLIC public_data;
   public_data.public_area.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, NULL))
@@ -77,24 +79,22 @@ TEST_F(AuthorizationSessionTest, StartUnboundSuccess) {
       .WillOnce(DoAll(SetArgPointee<7>(session_handle),
                       SetArgPointee<8>(nonce),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(TPM_RC_SUCCESS, session.StartUnboundSession(false));
-  EXPECT_EQ(session_handle, GetHmacDelegate(&session)->session_handle());
+  EXPECT_EQ(TPM_RC_SUCCESS, session_.StartUnboundSession(false));
+  EXPECT_EQ(session_handle, GetHmacDelegate(&session_)->session_handle());
   EXPECT_CALL(mock_tpm_, FlushContextSync(session_handle, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
 }
 
-TEST_F(AuthorizationSessionTest, StartUnboundWithBadSaltingKey) {
-  AuthorizationSessionImpl session(factory_);
+TEST_F(HmacAuthorizationSessionTest, StartUnboundWithBadSaltingKey) {
   TPM2B_PUBLIC public_data;
   public_data.public_area.unique.rsa.size = 32;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, NULL))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(TPM_RC_FAILURE, session.StartUnboundSession(false));
+  EXPECT_EQ(TPM_RC_FAILURE, session_.StartUnboundSession(false));
 }
 
-TEST_F(AuthorizationSessionTest, StartUnboundFail) {
-  AuthorizationSessionImpl session(factory_);
+TEST_F(HmacAuthorizationSessionTest, StartUnboundFail) {
   TPM2B_PUBLIC public_data;
   public_data.public_area.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, NULL))
@@ -104,11 +104,10 @@ TEST_F(AuthorizationSessionTest, StartUnboundFail) {
                                                    TPM_RH_NULL,
                                                    _, _, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, session.StartUnboundSession(false));
+  EXPECT_EQ(TPM_RC_FAILURE, session_.StartUnboundSession(false));
 }
 
-TEST_F(AuthorizationSessionTest, StartUnboundWithBadNonce) {
-  AuthorizationSessionImpl session(factory_);
+TEST_F(HmacAuthorizationSessionTest, StartUnboundWithBadNonce) {
   TPM2B_PUBLIC public_data;
   public_data.public_area.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, NULL))
@@ -121,11 +120,10 @@ TEST_F(AuthorizationSessionTest, StartUnboundWithBadNonce) {
                                                    _, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<8>(nonce),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(TPM_RC_FAILURE, session.StartUnboundSession(false));
+  EXPECT_EQ(TPM_RC_FAILURE, session_.StartUnboundSession(false));
 }
 
-TEST_F(AuthorizationSessionTest, StartBoundSuccess) {
-  AuthorizationSessionImpl session(factory_);
+TEST_F(HmacAuthorizationSessionTest, StartBoundSuccess) {
   TPM2B_PUBLIC public_data;
   public_data.public_area.unique.rsa = GetValidRSAPublicKey();
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, NULL))
@@ -141,24 +139,22 @@ TEST_F(AuthorizationSessionTest, StartBoundSuccess) {
       .WillOnce(DoAll(SetArgPointee<7>(session_handle),
                       SetArgPointee<8>(nonce),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_EQ(TPM_RC_SUCCESS, session.StartBoundSession(bind_handle, "", false));
-  EXPECT_EQ(session_handle, GetHmacDelegate(&session)->session_handle());
+  EXPECT_EQ(TPM_RC_SUCCESS, session_.StartBoundSession(bind_handle, "", false));
+  EXPECT_EQ(session_handle, GetHmacDelegate(&session_)->session_handle());
 }
 
-TEST_F(AuthorizationSessionTest, EntityAuthorizationForwardingTest) {
-  AuthorizationSessionImpl session(factory_);
+TEST_F(HmacAuthorizationSessionTest, EntityAuthorizationForwardingTest) {
   std::string test_auth("test_auth");
-  session.SetEntityAuthorizationValue(test_auth);
-  HmacAuthorizationDelegate* hmac_delegate = GetHmacDelegate(&session);
+  session_.SetEntityAuthorizationValue(test_auth);
+  HmacAuthorizationDelegate* hmac_delegate = GetHmacDelegate(&session_);
   std::string entity_auth = hmac_delegate->entity_auth_value();
   EXPECT_EQ(0, test_auth.compare(entity_auth));
 }
 
-TEST_F(AuthorizationSessionTest, FutureAuthorizationForwardingTest) {
-    AuthorizationSessionImpl session(factory_);
+TEST_F(HmacAuthorizationSessionTest, FutureAuthorizationForwardingTest) {
   std::string test_auth("test_auth");
-  session.SetFutureAuthorizationValue(test_auth);
-  HmacAuthorizationDelegate* hmac_delegate = GetHmacDelegate(&session);
+  session_.SetFutureAuthorizationValue(test_auth);
+  HmacAuthorizationDelegate* hmac_delegate = GetHmacDelegate(&session_);
   std::string entity_auth = hmac_delegate->future_authorization_value();
   EXPECT_EQ(0, test_auth.compare(entity_auth));
 }

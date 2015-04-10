@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef TRUNKS_AUTHORIZATION_SESSION_IMPL_H_
-#define TRUNKS_AUTHORIZATION_SESSION_IMPL_H_
+#ifndef TRUNKS_HMAC_AUTHORIZATION_SESSION_H_
+#define TRUNKS_HMAC_AUTHORIZATION_SESSION_H_
 
 #include "trunks/authorization_session.h"
 
@@ -25,7 +25,7 @@ namespace trunks {
  * TpmUtilityImpl. If we need to use this class outside of TpmUtility, we
  * can use it as below:
  * TrunksFactoryImpl factory;
- * AuthorizationSessionImpl session(factory);
+ * HmacAuthorizationSession session(factory);
  * session.StartBoundSession(bind_entity, bind_authorization, true);
  * session.SetEntityAuthorizationValue(entity_authorization);
  * factory.GetTpm()->RSA_EncrpytSync(_,_,_,_, session.GetDelegate());
@@ -34,13 +34,13 @@ namespace trunks {
  * TPM Ownership is taken. This is because starting a session uses the
  * SaltingKey, which is only created after ownership is taken.
  */
-class TRUNKS_EXPORT AuthorizationSessionImpl: public AuthorizationSession {
+class TRUNKS_EXPORT HmacAuthorizationSession: public AuthorizationSession {
  public:
-  // The constructor for AuthroizationSessionImpl needs a factory. In
+  // The constructor for HmacAuthroizationSession needs a factory. In
   // producation code, this factory is used to access the TPM class to forward
   // commands to the TPM. In test code, this is used to mock out the TPM calls.
-  explicit AuthorizationSessionImpl(const TrunksFactory& factory);
-  ~AuthorizationSessionImpl() override;
+  explicit HmacAuthorizationSession(const TrunksFactory& factory);
+  ~HmacAuthorizationSession() override;
 
   // AuthorizationSession methods.
   AuthorizationDelegate* GetDelegate() override;
@@ -75,10 +75,10 @@ class TRUNKS_EXPORT AuthorizationSessionImpl: public AuthorizationSession {
   // destroyed.
   TPM_HANDLE hmac_handle_;
 
-  friend class AuthorizationSessionTest;
-  DISALLOW_COPY_AND_ASSIGN(AuthorizationSessionImpl);
+  friend class HmacAuthorizationSessionTest;
+  DISALLOW_COPY_AND_ASSIGN(HmacAuthorizationSession);
 };
 
 }  // namespace trunks
 
-#endif  // TRUNKS_AUTHORIZATION_SESSION_IMPL_H_
+#endif  // TRUNKS_HMAC_AUTHORIZATION_SESSION_H_

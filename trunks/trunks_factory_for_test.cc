@@ -373,7 +373,7 @@ scoped_ptr<AuthorizationDelegate>
 }
 
 scoped_ptr<AuthorizationSession>
-    TrunksFactoryForTest::GetAuthorizationSession() const {
+    TrunksFactoryForTest::GetHmacAuthorizationSession() const {
   return scoped_ptr<AuthorizationSession>(
       new AuthorizationSessionForwarder(authorization_session_));
 }

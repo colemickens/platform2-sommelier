@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "trunks/authorization_session_impl.h"
+#include "trunks/hmac_authorization_session.h"
 
 #include <string>
 
@@ -27,23 +27,23 @@ const trunks::TPM_HANDLE kUninitializedHandle = 0;
 
 namespace trunks {
 
-AuthorizationSessionImpl::AuthorizationSessionImpl(
+HmacAuthorizationSession::HmacAuthorizationSession(
     const TrunksFactory& factory)
     : factory_(factory),
       hmac_handle_(kUninitializedHandle) {}
 
-AuthorizationSessionImpl::~AuthorizationSessionImpl() {
+HmacAuthorizationSession::~HmacAuthorizationSession() {
   CloseSession();
 }
 
-AuthorizationDelegate* AuthorizationSessionImpl::GetDelegate() {
+AuthorizationDelegate* HmacAuthorizationSession::GetDelegate() {
   if (hmac_handle_ == kUninitializedHandle) {
     return NULL;
   }
   return &hmac_delegate_;
 }
 
-TPM_RC AuthorizationSessionImpl::StartBoundSession(
+TPM_RC HmacAuthorizationSession::StartBoundSession(
     TPMI_DH_ENTITY bind_entity,
     const std::string& bind_authorization_value,
     bool enable_encryption) {
@@ -119,7 +119,7 @@ TPM_RC AuthorizationSessionImpl::StartBoundSession(
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC AuthorizationSessionImpl::StartUnboundSession(bool enable_encryption) {
+TPM_RC HmacAuthorizationSession::StartUnboundSession(bool enable_encryption) {
   // Starting an unbound session is the same as starting a session bound to
   // TPM_RH_NULL. In this case, the authorization is the zero length buffer.
   // We can therefore simply call StartBoundSession with TPM_RH_NULL as the
@@ -127,17 +127,17 @@ TPM_RC AuthorizationSessionImpl::StartUnboundSession(bool enable_encryption) {
   return StartBoundSession(TPM_RH_NULL, "", enable_encryption);
 }
 
-void AuthorizationSessionImpl::SetEntityAuthorizationValue(
+void HmacAuthorizationSession::SetEntityAuthorizationValue(
     const std::string& value) {
   hmac_delegate_.set_entity_auth_value(value);
 }
 
-void AuthorizationSessionImpl::SetFutureAuthorizationValue(
+void HmacAuthorizationSession::SetFutureAuthorizationValue(
     const std::string& value) {
   hmac_delegate_.set_future_authorization_value(value);
 }
 
-TPM_RC AuthorizationSessionImpl::EncryptSalt(const std::string& salt,
+TPM_RC HmacAuthorizationSession::EncryptSalt(const std::string& salt,
                                              std::string* encrypted_salt) {
   TPM2B_NAME out_name;
   TPM2B_NAME qualified_name;
@@ -211,7 +211,7 @@ TPM_RC AuthorizationSessionImpl::EncryptSalt(const std::string& salt,
   return TPM_RC_SUCCESS;
 }
 
-void AuthorizationSessionImpl::CloseSession() {
+void HmacAuthorizationSession::CloseSession() {
   if (hmac_handle_ == kUninitializedHandle) {
     return;
   }

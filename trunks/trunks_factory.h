@@ -43,7 +43,8 @@ class TRUNKS_EXPORT TrunksFactory {
       const std::string& password) const = 0;
 
   // Returns an AuthorizationSession instance. The caller takes ownership.
-  virtual scoped_ptr<AuthorizationSession> GetAuthorizationSession() const = 0;
+  virtual scoped_ptr<AuthorizationSession>
+      GetHmacAuthorizationSession() const = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TrunksFactory);

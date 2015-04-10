@@ -31,7 +31,7 @@
       'target_name': 'trunks',
       'type': 'shared_library',
       'sources': [
-        'authorization_session_impl.cc',
+        'hmac_authorization_session.cc',
         'error_codes.cc',
         'hmac_authorization_delegate.cc',
         'password_authorization_delegate.cc',
@@ -92,9 +92,9 @@
           'type': 'executable',
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
-            'authorization_session_test.cc',
             'background_command_transceiver_test.cc',
             'hmac_authorization_delegate_unittest.cc',
+            'hmac_authorization_session_test.cc',
             'mock_authorization_delegate.cc',
             'mock_authorization_session.cc',
             'mock_command_transceiver.cc',

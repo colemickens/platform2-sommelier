@@ -5,7 +5,7 @@
 #include "trunks/trunks_factory_impl.h"
 
 #include "trunks/authorization_session.h"
-#include "trunks/authorization_session_impl.h"
+#include "trunks/hmac_authorization_session.h"
 #include "trunks/password_authorization_delegate.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/tpm_state_impl.h"
@@ -46,8 +46,8 @@ scoped_ptr<AuthorizationDelegate> TrunksFactoryImpl::GetPasswordAuthorization(
 }
 
 scoped_ptr<AuthorizationSession>
-    TrunksFactoryImpl::GetAuthorizationSession() const {
-  return scoped_ptr<AuthorizationSession>(new AuthorizationSessionImpl(*this));
+    TrunksFactoryImpl::GetHmacAuthorizationSession() const {
+  return scoped_ptr<AuthorizationSession>(new HmacAuthorizationSession(*this));
 }
 
 }  // namespace trunks
