@@ -16,7 +16,7 @@
             },
             "app": {
                 "exec": [
-                    "/usr/bin/ping_service",
+                    "/bin/true",
                     "--quiet"
                 ],
                 "user": "100",

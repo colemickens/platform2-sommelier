@@ -13,7 +13,10 @@ namespace germ {
 
 int GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
   std::vector<std::string> argv;
-  for (const auto& cmdline_token : request->spec().command_line()) {
+  // TODO(jorgelo): support running more than one executable.
+  const ::google::protobuf::RepeatedPtrField<std::string>& command_line =
+      request->spec().executables(0).command_line();
+  for (const auto& cmdline_token : command_line) {
     argv.push_back(cmdline_token);
   }
   pid_t pid = -1;

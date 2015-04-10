@@ -36,9 +36,10 @@ void GermClient::DoLaunch(const std::string& name,
   germ::LaunchRequest request;
   germ::LaunchResponse response;
   request.set_name(name);
-  soma::ContainerSpec* spec = request.mutable_spec();
+  soma::ContainerSpec::Executable* executable =
+      request.mutable_spec()->add_executables();
   for (const auto& cmdline_token : command_line) {
-    spec->add_command_line(cmdline_token);
+    executable->add_command_line(cmdline_token);
   }
   if (germ_->Launch(&request, &response) != 0) {
     LOG(ERROR) << "Failed to launch service '" << name << "'";

@@ -42,8 +42,12 @@ class ContainerSpecWrapper {
   base::FilePath service_bundle_path() const {
     return base::FilePath(internal_->service_bundle_path());
   }
-  uid_t uid() const { return internal_->uid(); }
-  gid_t gid() const { return internal_->gid(); }
+  uid_t uid_of_executable(int index) const {
+    return internal_->executables(index).uid();
+  }
+  gid_t gid_of_executable(int index) const {
+    return internal_->executables(index).gid();
+  }
 
   bool ProvidesServiceNamed(const std::string& name) const {
     const RepeatedPtrField<std::string>& names = internal_->service_names();
@@ -56,12 +60,14 @@ class ContainerSpecWrapper {
         namespaces.end();
   }
 
-  bool TcpListenPortIsAllowed(port::Number port) const {
-    return ListenPortIsAllowed(internal_->tcp_listen_ports(), port);
+  bool TcpListenPortIsAllowedForExecutable(port::Number port, int index) const {
+    return ListenPortIsAllowed(internal_->executables(index).tcp_listen_ports(),
+                               port);
   }
 
-  bool UdpListenPortIsAllowed(port::Number port) const {
-    return ListenPortIsAllowed(internal_->udp_listen_ports(), port);
+  bool UdpListenPortIsAllowedForExecutable(port::Number port, int index) const {
+    return ListenPortIsAllowed(internal_->executables(index).udp_listen_ports(),
+                               port);
   }
 
   bool DevicePathIsAllowed(const base::FilePath& query) const {
@@ -117,18 +123,38 @@ class ContainerSpecReaderTest : public ::testing::Test {
 
  protected:
   std::unique_ptr<base::DictionaryValue> BuildBaselineValue() {
-    return BuildBaselineWithCL(true);
+    return BuildBaselineWithCommandLine(true);
   }
 
   std::unique_ptr<base::DictionaryValue> BuildBaselineValueNoCL() {
-    return BuildBaselineWithCL(false);
+    return BuildBaselineWithCommandLine(false);
+  }
+
+  std::unique_ptr<base::DictionaryValue> BuildAppDict(const std::string& uid,
+                                                      const std::string& gid,
+                                                      const std::string& cmd) {
+    std::unique_ptr<base::DictionaryValue> app_dict(new base::DictionaryValue);
+    app_dict->SetString(ContainerSpecReader::kServiceBundleNameKey,
+                        kServiceBundleName);
+
+    std::string uid_key = MakeSubAppKey(ContainerSpecReader::kUidKey);
+    std::string gid_key = MakeSubAppKey(ContainerSpecReader::kGidKey);
+    std::string cl_key = MakeSubAppKey(ContainerSpecReader::kCommandLineKey);
+    app_dict->SetString(uid_key, uid);
+    app_dict->SetString(gid_key, gid);
+    if (!cmd.empty()) {
+      std::unique_ptr<base::ListValue> cl(new base::ListValue);
+      cl->AppendString(cmd);
+      app_dict->Set(cl_key, cl.release());
+    }
+    return std::move(app_dict);
   }
 
   void CheckSpecBaseline(ContainerSpecWrapper* spec) {
     ASSERT_TRUE(spec);
     ASSERT_EQ(scratch_.value(), spec->name());
-    ASSERT_EQ(base::UintToString(spec->uid()), kUid);
-    ASSERT_EQ(base::UintToString(spec->gid()), kGid);
+    ASSERT_EQ(base::UintToString(spec->uid_of_executable(0)), kUid);
+    ASSERT_EQ(base::UintToString(spec->gid_of_executable(0)), kGid);
 
     ASSERT_PRED2(
         [](const std::string& a, const std::string& b) {
@@ -147,11 +173,12 @@ class ContainerSpecReaderTest : public ::testing::Test {
     return nullptr;
   }
 
-  base::DictionaryValue* GetAppDict(base::DictionaryValue* pod_dict) {
+  base::DictionaryValue* GetAppDict(base::DictionaryValue* pod_dict,
+                                    int index) {
     base::ListValue* apps_list = nullptr;
     base::DictionaryValue* app_dict = nullptr;
     CHECK(pod_dict->GetList(ContainerSpecReader::kAppsListKey, &apps_list));
-    CHECK(apps_list->GetDictionary(0, &app_dict));
+    CHECK(apps_list->GetDictionary(index, &app_dict));
     return app_dict;
   }
 
@@ -167,23 +194,14 @@ class ContainerSpecReaderTest : public ::testing::Test {
   static const char kUid[];
   static const char kGid[];
 
-  std::unique_ptr<base::DictionaryValue> BuildBaselineWithCL(bool with_cl) {
-    std::unique_ptr<base::DictionaryValue> app_dict(new base::DictionaryValue);
-    app_dict->SetString(ContainerSpecReader::kServiceBundleNameKey,
-                        kServiceBundleName);
-
-    std::string uid_key = MakeSubAppKey(ContainerSpecReader::kUidKey);
-    std::string gid_key = MakeSubAppKey(ContainerSpecReader::kGidKey);
-    std::string cl_key = MakeSubAppKey(ContainerSpecReader::kCommandLineKey);
-    app_dict->SetString(uid_key, kUid);
-    app_dict->SetString(gid_key, kGid);
-    if (with_cl) {
-      std::unique_ptr<base::ListValue> cl(new base::ListValue);
-      cl->AppendString("foo");
-      app_dict->Set(cl_key, cl.release());
+  std::unique_ptr<base::DictionaryValue> BuildBaselineWithCommandLine(
+      bool with_command_line) {
+    std::string command;
+    if (with_command_line) {
+      command = "/bin/true";
     }
     std::unique_ptr<base::ListValue> apps_list(new base::ListValue);
-    apps_list->Append(app_dict.release());
+    apps_list->Append(BuildAppDict(kUid, kGid, command).release());
     std::unique_ptr<base::DictionaryValue> baseline(new base::DictionaryValue);
     baseline->Set(ContainerSpecReader::kAppsListKey, apps_list.release());
 
@@ -271,26 +289,41 @@ TEST_F(ContainerSpecReaderTest, SpecWithListenPorts) {
   std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
 
   const port::Number port1 = 80;
-  const port::Number port2 = 9222;
+  const port::Number port2 = 4000;
+  const port::Number port3 = 9222;
   {
     std::unique_ptr<base::ListValue> listen_ports(new base::ListValue);
     listen_ports->Append(CreatePort(port::kTcpProtocol, port1).release());
     listen_ports->Append(CreatePort(port::kTcpProtocol, port2).release());
     listen_ports->Append(CreatePort(port::kUdpProtocol, port1).release());
-    GetAppDict(baseline.get())->Set(MakeSubAppKey(port::kListKey),
-                                    listen_ports.release());
+    GetAppDict(baseline.get(), 0)->Set(MakeSubAppKey(port::kListKey),
+                                       listen_ports.release());
+  }
+  {
+    std::unique_ptr<base::DictionaryValue> app2 =
+        BuildAppDict("0", "0", "/bin/false");
+    std::unique_ptr<base::ListValue> listen_ports(new base::ListValue);
+    listen_ports->Append(CreatePort(port::kUdpProtocol, port3).release());
+    app2->Set(MakeSubAppKey(port::kListKey), listen_ports.release());
+
+    base::ListValue* apps = nullptr;
+    ASSERT_TRUE(baseline->GetList(ContainerSpecReader::kAppsListKey, &apps));
+    apps->Append(app2.release());
   }
   std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
   CheckSpecBaseline(spec.get());
-  EXPECT_TRUE(spec->TcpListenPortIsAllowed(port1));
-  EXPECT_TRUE(spec->TcpListenPortIsAllowed(port2));
-  EXPECT_TRUE(spec->UdpListenPortIsAllowed(port1));
-  EXPECT_FALSE(spec->UdpListenPortIsAllowed(81));
+  EXPECT_TRUE(spec->TcpListenPortIsAllowedForExecutable(port1, 0));
+  EXPECT_TRUE(spec->TcpListenPortIsAllowedForExecutable(port2, 0));
+  EXPECT_TRUE(spec->UdpListenPortIsAllowedForExecutable(port1, 0));
+  EXPECT_FALSE(spec->UdpListenPortIsAllowedForExecutable(port3, 0));
+  EXPECT_TRUE(spec->UdpListenPortIsAllowedForExecutable(port3, 1));
+  EXPECT_FALSE(spec->UdpListenPortIsAllowedForExecutable(port1, 1));
+  EXPECT_FALSE(spec->TcpListenPortIsAllowedForExecutable(port1, 1));
   {
     std::unique_ptr<base::ListValue> listen_ports_invalid(new base::ListValue);
     listen_ports_invalid->Append(CreatePort(port::kUdpProtocol, -8).release());
-    GetAppDict(baseline.get())->Set(MakeSubAppKey(port::kListKey),
+    GetAppDict(baseline.get(), 0)->Set(MakeSubAppKey(port::kListKey),
                                     listen_ports_invalid.release());
   }
   spec = ValueToSpec(baseline.get());
@@ -303,15 +336,15 @@ TEST_F(ContainerSpecReaderTest, SpecWithWildcardPort) {
   std::unique_ptr<base::ListValue> listen_ports(new base::ListValue);
   listen_ports->Append(CreatePort(port::kTcpProtocol,
                                   port::kWildcard).release());
-  GetAppDict(baseline.get())->Set(MakeSubAppKey(port::kListKey),
-                                  listen_ports.release());
+  GetAppDict(baseline.get(), 0)->Set(MakeSubAppKey(port::kListKey),
+                                     listen_ports.release());
 
   std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
   CheckSpecBaseline(spec.get());
-  EXPECT_TRUE(spec->TcpListenPortIsAllowed(80));
-  EXPECT_TRUE(spec->TcpListenPortIsAllowed(90));
-  EXPECT_FALSE(spec->UdpListenPortIsAllowed(90));
+  EXPECT_TRUE(spec->TcpListenPortIsAllowedForExecutable(80, 0));
+  EXPECT_TRUE(spec->TcpListenPortIsAllowedForExecutable(90, 0));
+  EXPECT_FALSE(spec->UdpListenPortIsAllowedForExecutable(90, 0));
 }
 
 namespace {

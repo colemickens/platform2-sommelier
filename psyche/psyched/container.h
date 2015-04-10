@@ -10,7 +10,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <soma/read_only_container_spec.h>
 
 #include "psyche/proto_bindings/soma_container_spec.pb.h"
 #include "psyche/psyched/service_observer.h"
@@ -59,9 +58,6 @@ class Container : public ContainerInterface, public ServiceObserver {
  private:
   // The specification describing this container.
   soma::ContainerSpec spec_;
-
-  // Wrapper around |spec_|.
-  soma::ReadOnlyContainerSpec spec_reader_;
 
   // Services that are provided by this container. These are created when the
   // service is created; the binder proxies that are given to clients are set

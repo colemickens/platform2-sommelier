@@ -14,38 +14,38 @@
 
 #include <base/files/file_path.h>
 
-#include "soma/device_filter.h"
-#include "soma/namespace.h"
-#include "soma/port.h"
+#include "soma/lib/soma/device_filter.h"
+#include "soma/lib/soma/namespace.h"
+#include "soma/lib/soma/port.h"
+#include "soma/proto_bindings/soma_container_spec.pb.h"
 
 namespace soma {
-class ContainerSpec;
-
 namespace parser {
 namespace container_spec_helpers {
 
 // Setter helpers for the ContainerSpec protobuf. A lot of these force the
 // caller to provide a std::set so stuff's all de-duped on the way in.
 
-std::unique_ptr<ContainerSpec> CreateContainerSpec(
-    const std::string& name,
-    const base::FilePath& service_bundle_path,
-    const std::vector<std::string>& command_line,
-    uid_t uid,
-    gid_t gid);
+std::unique_ptr<ContainerSpec> CreateContainerSpec(const std::string& name);
 
+void SetServiceBundlePath(const base::FilePath& service_bundle_path,
+                          ContainerSpec* to_modify);
 void SetServiceNames(const std::vector<std::string>& service_names,
                      ContainerSpec* to_modify);
 void SetNamespaces(const std::set<ns::Kind>& namespaces,
                    ContainerSpec* to_modify);
-void SetTcpListenPorts(const std::set<port::Number>& ports,
-                       ContainerSpec* to_modify);
-void SetUdpListenPorts(const std::set<port::Number>& ports,
-                       ContainerSpec* to_modify);
 void SetDevicePathFilters(const DevicePathFilter::Set& filters,
                           ContainerSpec* to_modify);
 void SetDeviceNodeFilters(const DeviceNodeFilter::Set& filters,
                           ContainerSpec* to_modify);
+
+void SetUidAndGid(uid_t uid, gid_t gid, ContainerSpec::Executable* to_modify);
+void SetCommandLine(const std::vector<std::string>& command_line,
+                    ContainerSpec::Executable* to_modify);
+void SetTcpListenPorts(const std::set<port::Number>& ports,
+                       ContainerSpec::Executable* to_modify);
+void SetUdpListenPorts(const std::set<port::Number>& ports,
+                       ContainerSpec::Executable* to_modify);
 
 }  // namespace container_spec_helpers
 }  // namespace parser

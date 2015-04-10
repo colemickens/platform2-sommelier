@@ -8,6 +8,7 @@
 #include <sched.h>
 #include <sys/types.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,9 +21,8 @@ namespace soma {
 
 class ContainerSpec;
 
-// More friendly read-only wrapper around the ContainerSpec protobuf.
-// This class owns an instance of the protobuf and will hand out data from it
-// on request.
+// Extracts values from a ContainerSpec protobuf and exposes
+// them in a friendlier format.
 class SOMA_EXPORT ReadOnlyContainerSpec {
  public:
   enum class Namespace {
@@ -35,38 +35,57 @@ class SOMA_EXPORT ReadOnlyContainerSpec {
     INVALID,
   };
 
-  explicit ReadOnlyContainerSpec(const ContainerSpec* spec);
+  struct Executable {
+   public:
+    Executable(std::vector<std::string> command_line_in,
+        uid_t uid_in,
+        gid_t gid_in,
+        base::FilePath working_directory_in,
+        bool all_tcp_ports_allowed_in,
+        bool all_udp_ports_allowed_in,
+        std::vector<uint32_t> tcp_listen_ports_in,
+        std::vector<uint32_t> udp_listen_ports_in);
+    ~Executable();
+
+    const std::vector<std::string> command_line;
+    const uid_t uid;
+    const gid_t gid;
+    const base::FilePath working_directory;
+    const bool all_tcp_ports_allowed;
+    const bool all_udp_ports_allowed;
+    const std::vector<uint32_t> tcp_listen_ports;
+    const std::vector<uint32_t> udp_listen_ports;
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(Executable);
+  };
+  using ExecutableVector = std::vector<std::unique_ptr<Executable>>;
+
+  ReadOnlyContainerSpec();
   virtual ~ReadOnlyContainerSpec();
 
-  const std::string& name() const;
+  // Returns true if |spec| is well-formed. It is safe to free |spec| as soon
+  // as Init() returns.
+  // If this method returns false, the caller should refuse to consume
+  // the provided ContainerSpec.
+  bool Init(const ContainerSpec& spec);
+
+  void Clear();
+
+  const std::string& name() const { return name_; }
 
   const base::FilePath& service_bundle_path() const {
     return service_bundle_path_;
-  }
-  uid_t uid() const;
-  gid_t gid() const;
-
-  const std::vector<std::string>& command_line() const {
-    return command_line_;
   }
 
   const std::vector<std::string>& service_names() const {
     return service_names_;
   }
 
-  const base::FilePath& working_directory() const { return working_dir_; }
+  const ExecutableVector& executables() const { return executables_; }
 
   const std::vector<Namespace>& namespaces() const { return namespaces_; }
 
-  bool all_tcp_ports_allowed() const;
-  bool all_udp_ports_allowed() const;
-
-  const std::vector<uint32_t>& tcp_listen_ports() const {
-    return tcp_listen_ports_;
-  }
-  const std::vector<uint32_t>& udp_listen_ports() const {
-    return udp_listen_ports_;
-  }
   const std::vector<std::pair<int, int>>& device_node_filters() const {
     return device_node_filters_;
   }
@@ -75,22 +94,13 @@ class SOMA_EXPORT ReadOnlyContainerSpec {
   }
 
  private:
-  const ContainerSpec* const internal_;
-
-  // Caching for values in internal_, so this class can hand out const
-  // references without having to vend handles to the underlying protobuf.
-  const base::FilePath service_bundle_path_;
-  const std::vector<std::string> command_line_;
-  const std::vector<std::string> service_names_;
-  const base::FilePath working_dir_;
-  const std::vector<uint32_t> tcp_listen_ports_;
-  const std::vector<uint32_t> udp_listen_ports_;
-
-  // Non-const because these need to be translated from the proto
-  // representation to something more generic.
+  std::string name_;
+  base::FilePath service_bundle_path_;
+  std::vector<std::string> service_names_;
   std::vector<Namespace> namespaces_;
   std::vector<base::FilePath> device_path_filters_;
   std::vector<std::pair<int, int>> device_node_filters_;  // major, minor
+  ExecutableVector executables_;
 
   DISALLOW_COPY_AND_ASSIGN(ReadOnlyContainerSpec);
 };

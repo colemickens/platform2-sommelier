@@ -14,9 +14,9 @@ using soma::ContainerSpec;
 namespace psyche {
 
 Container::Container(const ContainerSpec& spec, FactoryInterface* factory)
-    : spec_(spec), spec_reader_(&spec_) {
+    : spec_(spec) {
   DCHECK(factory);
-  for (const auto& name : spec_reader_.service_names()) {
+  for (const auto& name : spec_.service_names()) {
     std::unique_ptr<ServiceInterface> service(factory->CreateService(name));
     service->AddObserver(this);
     services_[name] = std::move(service);
@@ -26,7 +26,7 @@ Container::Container(const ContainerSpec& spec, FactoryInterface* factory)
 Container::~Container() = default;
 
 std::string Container::GetName() const {
-  return spec_reader_.name();
+  return spec_.name();
 }
 
 const ContainerInterface::ServiceMap& Container::GetServices() const {

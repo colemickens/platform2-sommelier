@@ -34,20 +34,15 @@ void SetListenPorts(ContainerSpec::PortSpec* port_spec,
 
 }  // namespace
 
-std::unique_ptr<ContainerSpec> CreateContainerSpec(
-    const std::string& name,
-    const base::FilePath& service_bundle_path,
-    const std::vector<std::string>& command_line,
-    uid_t uid,
-    gid_t gid) {
+std::unique_ptr<ContainerSpec> CreateContainerSpec(const std::string& name) {
   std::unique_ptr<ContainerSpec> spec(new ContainerSpec);
   spec->set_name(name);
-  spec->set_service_bundle_path(service_bundle_path.value());
-  spec->set_uid(uid);
-  spec->set_gid(gid);
-  for (const std::string& arg : command_line)
-    spec->add_command_line(arg);
   return std::move(spec);
+}
+
+void SetServiceBundlePath(const base::FilePath& service_bundle_path,
+                          ContainerSpec* to_modify) {
+  to_modify->set_service_bundle_path(service_bundle_path.value());
 }
 
 void SetServiceNames(const std::vector<std::string>& service_names,
@@ -62,18 +57,6 @@ void SetNamespaces(const std::set<ns::Kind>& namespaces,
   to_modify->clear_namespaces();
   for (const ns::Kind& ns : namespaces)
     to_modify->add_namespaces(ns);
-}
-
-void SetTcpListenPorts(const std::set<port::Number>& ports,
-                       ContainerSpec* to_modify) {
-  to_modify->clear_tcp_listen_ports();
-  SetListenPorts(to_modify->mutable_tcp_listen_ports(), ports);
-}
-
-void SetUdpListenPorts(const std::set<port::Number>& ports,
-                       ContainerSpec* to_modify) {
-  to_modify->clear_udp_listen_ports();
-  SetListenPorts(to_modify->mutable_udp_listen_ports(), ports);
 }
 
 void SetDevicePathFilters(const DevicePathFilter::Set& filters,
@@ -92,6 +75,30 @@ void SetDeviceNodeFilters(const DeviceNodeFilter::Set& filters,
     filter->set_major(parser_filter.major());
     filter->set_minor(parser_filter.minor());
   }
+}
+
+void SetUidAndGid(uid_t uid, gid_t gid, ContainerSpec::Executable* to_modify) {
+  to_modify->set_uid(uid);
+  to_modify->set_gid(gid);
+}
+
+void SetCommandLine(const std::vector<std::string>& command_line,
+                    ContainerSpec::Executable* to_modify) {
+  to_modify->clear_command_line();
+  for (const std::string& arg : command_line)
+    to_modify->add_command_line(arg);
+}
+
+void SetTcpListenPorts(const std::set<port::Number>& ports,
+                       ContainerSpec::Executable* to_modify) {
+  to_modify->clear_tcp_listen_ports();
+  SetListenPorts(to_modify->mutable_tcp_listen_ports(), ports);
+}
+
+void SetUdpListenPorts(const std::set<port::Number>& ports,
+                       ContainerSpec::Executable* to_modify) {
+  to_modify->clear_udp_listen_ports();
+  SetListenPorts(to_modify->mutable_udp_listen_ports(), ports);
 }
 
 }  // namespace container_spec_helpers

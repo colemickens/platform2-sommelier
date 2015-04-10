@@ -7,7 +7,6 @@
 #include <utility>
 
 #include <protobinder/binder_proxy.h>
-#include <soma/read_only_container_spec.h>
 
 #include "psyche/proto_bindings/soma_container_spec.pb.h"
 #include "psyche/psyched/client_stub.h"
@@ -44,8 +43,7 @@ void StubFactory::SetContainer(const std::string& container_name,
 
 std::unique_ptr<ContainerInterface> StubFactory::CreateContainer(
     const soma::ContainerSpec& spec) {
-  soma::ReadOnlyContainerSpec spec_reader(&spec);
-  const std::string container_name = spec_reader.name();
+  const std::string& container_name = spec.name();
   std::unique_ptr<ContainerStub> container;
   auto it = new_containers_.find(container_name);
   if (it != new_containers_.end()) {
@@ -53,8 +51,7 @@ std::unique_ptr<ContainerInterface> StubFactory::CreateContainer(
     new_containers_.erase(it);
   } else {
     container.reset(new ContainerStub(container_name));
-    soma::ReadOnlyContainerSpec spec_reader(&spec);
-    for (const auto& service_name : spec_reader.service_names())
+    for (const auto& service_name : spec.service_names())
       container->AddService(service_name);
   }
 
