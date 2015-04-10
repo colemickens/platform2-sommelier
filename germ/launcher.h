@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <chromeos/process.h>
 
 namespace germ {
 
@@ -19,7 +20,7 @@ class UidService;
 class Launcher {
  public:
   Launcher();
-  ~Launcher();
+  virtual ~Launcher();
 
   bool RunInteractive(const std::string& name,
                       const std::vector<std::string>& argv,
@@ -28,6 +29,13 @@ class Launcher {
                      const std::vector<std::string>& argv,
                      pid_t* pid);
   bool Terminate(pid_t pid);
+
+ protected:
+  pid_t GetPidFromOutput(const std::string& output);
+
+  // Can be overridden in unit tests.
+  virtual std::string ReadFromStdout(chromeos::Process* process);
+  virtual std::unique_ptr<chromeos::Process> GetProcessInstance();
 
  private:
   std::unique_ptr<UidService> uid_service_;

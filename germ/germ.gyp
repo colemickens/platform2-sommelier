@@ -90,6 +90,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': ['libgerm'],
           'sources': [
+            'launcher_unittest.cc',
             'process_reaper_unittest.cc',
             'run_all_tests.cc',
           ],

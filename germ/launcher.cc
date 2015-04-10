@@ -14,29 +14,12 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/minijail/minijail.h>
-#include <chromeos/process.h>
 
 #include "germ/environment.h"
 
 namespace {
 const char* kSandboxedServiceTemplate = "germ_template";
 const size_t kStdoutBufSize = 1024;
-
-pid_t GetPidFromStdout(int stdout) {
-  // germ_template (test) start/running, process 8117
-  char buf[kStdoutBufSize] = {0};
-  base::ReadFromFD(stdout, buf, kStdoutBufSize - 1);
-  std::string output(buf);
-  std::vector<std::string> tokens;
-  base::SplitString(output, ' ', &tokens);
-  pid_t pid = -1;
-  if (tokens.size() < 5 || !base::StringToInt(tokens[4], &pid)) {
-    LOG(ERROR) << "Could not extract pid from '" << output << "'";
-    return -1;
-  }
-  return pid;
-}
-
 }  // namespace
 
 namespace germ {
@@ -88,22 +71,22 @@ bool Launcher::RunDaemonized(const std::string& name,
   uid_t uid = uid_service_->GetUid();
   Environment env(uid, uid);
 
-  chromeos::ProcessImpl initctl;
-  initctl.AddArg("/sbin/initctl");
-  initctl.AddArg("start");
-  initctl.AddArg(kSandboxedServiceTemplate);
-  initctl.AddArg(base::StringPrintf("NAME=%s", name.c_str()));
-  initctl.AddArg(env.GetForService());
+  std::unique_ptr<chromeos::Process> initctl = GetProcessInstance();
+  initctl->AddArg("/sbin/initctl");
+  initctl->AddArg("start");
+  initctl->AddArg(kSandboxedServiceTemplate);
+  initctl->AddArg(base::StringPrintf("NAME=%s", name.c_str()));
+  initctl->AddArg(env.GetForService());
   std::string command_line = JoinString(argv, ' ');
-  initctl.AddArg(base::StringPrintf("COMMANDLINE=%s", command_line.c_str()));
-  initctl.RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);
+  initctl->AddArg(base::StringPrintf("COMMANDLINE=%s", command_line.c_str()));
+  initctl->RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);
 
   // Since we're running 'initctl', and not the executable itself,
   // we wait for it to exit.
-  initctl.Start();
-  int stdout_fd = initctl.GetPipe(STDOUT_FILENO);
-  *pid = GetPidFromStdout(stdout_fd);
-  int exit_status = initctl.Wait();
+  initctl->Start();
+  std::string output = ReadFromStdout(initctl.get());
+  *pid = GetPidFromOutput(output);
+  int exit_status = initctl->Wait();
   if (exit_status != 0) {
     LOG(ERROR) << "'initctl start' failed with exit status " << exit_status;
     *pid = -1;
@@ -128,18 +111,43 @@ bool Launcher::Terminate(pid_t pid) {
   std::string name = names_[pid];
 
   // initctl stop germ_template NAME=<name>
-  chromeos::ProcessImpl initctl;
-  initctl.AddArg("/sbin/initctl");
-  initctl.AddArg("stop");
-  initctl.AddArg(kSandboxedServiceTemplate);
-  initctl.AddArg(base::StringPrintf("NAME=%s", name.c_str()));
-  int exit_status = initctl.Run();
+  std::unique_ptr<chromeos::Process> initctl = GetProcessInstance();
+  initctl->AddArg("/sbin/initctl");
+  initctl->AddArg("stop");
+  initctl->AddArg(kSandboxedServiceTemplate);
+  initctl->AddArg(base::StringPrintf("NAME=%s", name.c_str()));
+  int exit_status = initctl->Run();
   if (exit_status != 0) {
     LOG(ERROR) << "'initctl stop' failed with exit status " << exit_status;
     return false;
   }
   names_.erase(pid);
   return true;
+}
+
+pid_t Launcher::GetPidFromOutput(const std::string& output) {
+  // germ_template (test) start/running, process 8117
+  std::vector<std::string> tokens;
+  base::SplitString(output, ' ', &tokens);
+  pid_t pid = -1;
+  if (tokens.size() < 5 || !base::StringToInt(tokens[4], &pid)) {
+    LOG(ERROR) << "Could not extract pid from '" << output << "'";
+    return -1;
+  }
+  return pid;
+}
+
+std::string Launcher::ReadFromStdout(chromeos::Process* process) {
+  int stdout_fd = process->GetPipe(STDOUT_FILENO);
+  char buf[kStdoutBufSize] = {0};
+  base::ReadFromFD(stdout_fd, buf, kStdoutBufSize - 1);
+  std::string output(buf);
+  return output;
+}
+
+std::unique_ptr<chromeos::Process> Launcher::GetProcessInstance() {
+  std::unique_ptr<chromeos::Process> process(new chromeos::ProcessImpl());
+  return process;
 }
 
 }  // namespace germ
