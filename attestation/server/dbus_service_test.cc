@@ -105,4 +105,23 @@ TEST_F(DBusServiceTest, CreateGoogleAttestedKeyServerError) {
   EXPECT_EQ("server_error", reply_proto.server_error());
 }
 
+TEST_F(DBusServiceTest, CopyableCallback) {
+  EXPECT_CALL(mock_service_, CreateGoogleAttestedKey(_, _, _, _, _))
+      .WillOnce(WithArgs<4>(Invoke([](const base::Callback<
+          AttestationInterface::CreateGoogleAttestedKeyCallback>& callback) {
+        // Copy the callback, then call the original.
+        base::Closure copy = base::Bind(callback, SUCCESS, "", "");
+        callback.Run(SUCCESS, "", "");
+      })));
+  std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(
+      kCreateGoogleAttestedKey);
+  CreateGoogleAttestedKeyRequest request_proto;
+  dbus::MessageWriter writer(call.get());
+  writer.AppendProtoAsArrayOfBytes(request_proto);
+  auto response = CallMethod(call.get());
+  dbus::MessageReader reader(response.get());
+  CreateGoogleAttestedKeyReply reply_proto;
+  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply_proto));
+}
+
 }  // namespace attestation

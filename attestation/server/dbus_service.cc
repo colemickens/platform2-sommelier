@@ -4,6 +4,7 @@
 
 #include "attestation/server/dbus_service.h"
 
+#include <memory>
 #include <string>
 
 #include <chromeos/bind_lambda.h>
@@ -39,14 +40,15 @@ void DBusService::HandleCreateGoogleAttestedKey(
         response,
     const CreateGoogleAttestedKeyRequest& request) {
   VLOG(1) << __func__;
+  // Convert |response| to a shared_ptr so |service_| can safely copy the
+  // callback.
+  using SharedResponsePointer = std::shared_ptr<
+      DBusMethodResponse<const CreateGoogleAttestedKeyReply&>>;
   // A callback that fills the reply protobuf and sends it.
-  // CAUTION: This callback takes ownership of |response|.
-  auto callback = [](
-      scoped_ptr<DBusMethodResponse<const CreateGoogleAttestedKeyReply&>>
-          response,
-      AttestationStatus status,
-      const std::string& certificate_chain,
-      const std::string& server_error_details) {
+  auto callback = [](const SharedResponsePointer& response,
+                     AttestationStatus status,
+                     const std::string& certificate_chain,
+                     const std::string& server_error_details) {
     CreateGoogleAttestedKeyReply reply;
     reply.set_status(status);
     if (status == SUCCESS) {
@@ -56,12 +58,12 @@ void DBusService::HandleCreateGoogleAttestedKey(
     }
     response->Return(reply);
   };
-  service_->CreateGoogleAttestedKey(request.key_label(),
-                                    request.key_type(),
-                                    request.key_usage(),
-                                    request.certificate_profile(),
-                                    base::Bind(callback,
-                                               base::Passed(&response)));
+  service_->CreateGoogleAttestedKey(
+      request.key_label(),
+      request.key_type(),
+      request.key_usage(),
+      request.certificate_profile(),
+      base::Bind(callback, SharedResponsePointer(response.release())));
 }
 
 }  // namespace attestation
