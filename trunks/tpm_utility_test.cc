@@ -36,14 +36,6 @@ class TpmUtilityTest : public testing::Test {
     factory_.set_tpm(&mock_tpm_);
   }
 
-  TPM_RC CreateStorageRootKeys(const std::string& password) {
-    return utility_.CreateStorageRootKeys(password);
-  }
-
-  TPM_RC CreateSaltingKey(const std::string& password) {
-    return utility_.CreateSaltingKey(password);
-  }
-
   TPM_RC ComputeKeyName(const TPMT_PUBLIC& public_area,
                         std::string* object_name) {
     return utility_.ComputeKeyName(public_area, object_name);
@@ -243,6 +235,64 @@ TEST_F(TpmUtilityTest, TakeOwnershipLockoutFailure) {
   EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_LOCKOUT, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.TakeOwnership("a", "b", "c"));
+}
+
+TEST_F(TpmUtilityTest, RootKeysSuccess) {
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateStorageRootKeys("password"));
+}
+
+TEST_F(TpmUtilityTest, RootKeysHandleConsistency) {
+  TPM_HANDLE test_handle = 42;
+  EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<3>(test_handle),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, test_handle, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateStorageRootKeys("password"));
+}
+
+TEST_F(TpmUtilityTest, RootKeysCreateFailure) {
+  EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateStorageRootKeys("password"));
+}
+
+TEST_F(TpmUtilityTest, RootKeysPersistFailure) {
+  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateStorageRootKeys("password"));
+}
+
+TEST_F(TpmUtilityTest, SaltingKeySuccess) {
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateSaltingKey("password"));
+}
+
+TEST_F(TpmUtilityTest, SaltingKeyConsistency) {
+  TPM_HANDLE test_handle = 42;
+  EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<4>(test_handle),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, test_handle, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateSaltingKey("password"));
+}
+
+TEST_F(TpmUtilityTest, SaltingKeyCreateFailure) {
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateSaltingKey("password"));
+}
+
+TEST_F(TpmUtilityTest, SaltingKeyLoadFailure) {
+  EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateSaltingKey("password"));
+}
+
+TEST_F(TpmUtilityTest, SaltingKeyPersistFailure) {
+  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateSaltingKey("password"));
 }
 
 TEST_F(TpmUtilityTest, StirRandomSuccess) {
@@ -1483,64 +1533,6 @@ TEST_F(TpmUtilityTest, GetNVSpacePublicAreaFailure) {
   EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(_, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.GetNVSpacePublicArea(index, &public_area));
-}
-
-TEST_F(TpmUtilityTest, RootKeysSuccess) {
-  EXPECT_EQ(TPM_RC_SUCCESS, CreateStorageRootKeys("password"));
-}
-
-TEST_F(TpmUtilityTest, RootKeysHandleConsistency) {
-  TPM_HANDLE test_handle = 42;
-  EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<3>(test_handle),
-                            Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, test_handle, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, CreateStorageRootKeys("password"));
-}
-
-TEST_F(TpmUtilityTest, RootKeysCreateFailure) {
-  EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, CreateStorageRootKeys("password"));
-}
-
-TEST_F(TpmUtilityTest, RootKeysPersistFailure) {
-  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, CreateStorageRootKeys("password"));
-}
-
-TEST_F(TpmUtilityTest, SaltingKeySuccess) {
-  EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey("password"));
-}
-
-TEST_F(TpmUtilityTest, SaltingKeyConsistency) {
-  TPM_HANDLE test_handle = 42;
-  EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<4>(test_handle),
-                            Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, test_handle, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey("password"));
-}
-
-TEST_F(TpmUtilityTest, SaltingKeyCreateFailure) {
-  EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey("password"));
-}
-
-TEST_F(TpmUtilityTest, SaltingKeyLoadFailure) {
-  EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey("password"));
-}
-
-TEST_F(TpmUtilityTest, SaltingKeyPersistFailure) {
-  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey("password"));
 }
 
 }  // namespace trunks

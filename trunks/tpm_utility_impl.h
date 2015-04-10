@@ -35,6 +35,8 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC TakeOwnership(const std::string& owner_password,
                        const std::string& endorsement_password,
                        const std::string& lockout_password) override;
+  TPM_RC CreateStorageRootKeys(const std::string& owner_password) override;
+  TPM_RC CreateSaltingKey(const std::string& owner_password) override;
   TPM_RC StirRandom(const std::string& entropy_data,
                     AuthorizationDelegate* delegate) override;
   TPM_RC GenerateRandom(size_t num_bytes,
@@ -119,17 +121,6 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   const TrunksFactory& factory_;
   std::map<uint32_t, TPMS_NV_PUBLIC> nvram_public_area_map_;
-
-  // Synchronously derives storage root keys for RSA and ECC and persists the
-  // keys in the TPM. This operation must be authorized by the |owner_password|
-  // and, on success, KRSAStorageRootKey and kECCStorageRootKey can be used
-  // with an empty authorization value until the TPM is cleared.
-  TPM_RC CreateStorageRootKeys(const std::string& owner_password);
-
-  // This method creates an RSA decryption key to be used for salting sessions.
-  // This method also makes the salting key permanent under the storage
-  // hierarchy.
-  TPM_RC CreateSaltingKey(const std::string& owner_password);
 
   // This method returns a partially filled TPMT_PUBLIC strucutre,
   // which can then be modified by other methods to create the public

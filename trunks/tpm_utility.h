@@ -57,6 +57,17 @@ class TRUNKS_EXPORT TpmUtility {
                                const std::string& endorsement_password,
                                const std::string& lockout_password) = 0;
 
+  // Synchronously derives storage root keys for RSA and ECC and persists the
+  // keys in the TPM. This operation must be authorized by the |owner_password|
+  // and, on success, KRSAStorageRootKey and kECCStorageRootKey can be used
+  // with an empty authorization value until the TPM is cleared.
+  virtual TPM_RC CreateStorageRootKeys(const std::string& owner_password) = 0;
+
+  // This method creates an RSA decryption key to be used for salting sessions.
+  // This method also makes the salting key permanent under the storage
+  // hierarchy.
+  virtual TPM_RC CreateSaltingKey(const std::string& owner_password) = 0;
+
   // Stir the tpm random generation module with some random entropy data.
   // |delegate| specifies an optional authorization delegate to be used.
   virtual TPM_RC StirRandom(const std::string& entropy_data,

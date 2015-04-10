@@ -88,6 +88,14 @@ class TpmUtilityForwarder : public TpmUtility {
                                   lockout_password);
   }
 
+  TPM_RC CreateStorageRootKeys(const std::string& owner_password) override {
+    return target_->CreateStorageRootKeys(owner_password);
+  }
+
+  TPM_RC CreateSaltingKey(const std::string& owner_password) override {
+    return target_->CreateSaltingKey(owner_password);
+  }
+
   TPM_RC StirRandom(const std::string& entropy_data,
                     AuthorizationDelegate* delegate) override {
     return target_->StirRandom(entropy_data, delegate);
