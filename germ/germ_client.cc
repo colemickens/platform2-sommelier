@@ -68,10 +68,14 @@ int GermClient::OnInit() {
   if (return_code != EX_OK)
     return return_code;
 
-  LOG(INFO) << "Requesting service germ";
-  CHECK(psyche_connection()->GetService(
-      kGermServiceName,
-      base::Bind(&GermClient::ReceiveService, weak_ptr_factory_.GetWeakPtr())));
+  LOG(INFO) << "Requesting service " << kGermServiceName;
+  if (!psyche_connection()->GetService(
+          kGermServiceName, base::Bind(&GermClient::ReceiveService,
+                                       weak_ptr_factory_.GetWeakPtr()))) {
+    LOG(ERROR) << "Failed to request service " << kGermServiceName
+               << " from psyche";
+    return EX_UNAVAILABLE;
+  }
   return EX_OK;
 }
 
