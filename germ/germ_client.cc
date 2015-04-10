@@ -69,9 +69,9 @@ int GermClient::OnInit() {
     return return_code;
 
   LOG(INFO) << "Requesting service germ";
-  psyche_connection()->GetService(
+  CHECK(psyche_connection()->GetService(
       kGermServiceName,
-      base::Bind(&GermClient::ReceiveService, weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&GermClient::ReceiveService, weak_ptr_factory_.GetWeakPtr())));
   return EX_OK;
 }
 
