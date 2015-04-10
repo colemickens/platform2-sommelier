@@ -1,4 +1,5 @@
 #!/usr/bin/python2
+# -*- coding: utf-8 -*-
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -443,9 +444,15 @@ def main(args=sys.argv[1:], out=None):
                       help='Include unconfirmed and incomplete regions')
   parser.add_argument('--output', default=None,
                       help='Specify output file')
+  parser.add_argument('--overlay', default=None,
+                      help='Specify a Python file to overlay extra data')
   args = parser.parse_args(args)
 
+  if args.overlay is not None:
+    execfile(args.overlay)
+
   regions_dict = BuildRegionsDict(args.all)
+
   if out is None:
     if args.output is None:
       out = sys.stdout

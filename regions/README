@@ -1,0 +1,18 @@
+This folder contains ChromeOS region database.
+
+The database is created in JSON format and availalbe in
+ /usr/share/misc/cros-regions.json.
+
+Every ChromeOS device should have a "region" VPD entry that can be directly
+used as a key in JSON database.
+
+-------------------------------------------------------------------------------
+
+For projects that need to use unpublished regions, please:
+
+1. Create a virtual/chromeos-regions package in board private overlay.
+2. In the package, set RDEPEND="chromeos-base/regions-private"
+3. Build system and try. You can use tool 'cros_region_data' to verify:
+    cros_region_data <FIELD> <REGION_TO_TEST>
+   For example, "cros_region_data description us" gives you "United States".
+
