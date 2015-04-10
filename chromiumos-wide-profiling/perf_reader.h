@@ -68,8 +68,8 @@ struct PerfNodeTopologyMetadata {
   CStringWithLength cpu_list;
 };
 
-struct BufferWithSize;
-struct ConstBufferWithSize;
+class BufferWithSize;
+class ConstBufferWithSize;
 
 class PerfReader {
  public:
@@ -247,7 +247,10 @@ class PerfReader {
   // For reading event blocks within piped perf data.
   bool ReadAttrEventBlock(const ConstBufferWithSize& data, size_t offset,
                           size_t size);
-  bool ReadPerfEventBlock(const event_t& event);
+
+  // Swaps byte order for non-header fields of the data structure pointed to by
+  // |event|, if |is_cross_endian_| is true. Otherwise leaves the data the same.
+  void MaybeSwapEventFields(event_t* event);
 
   // Returns the number of types of metadata stored.
   size_t GetNumMetadata() const;

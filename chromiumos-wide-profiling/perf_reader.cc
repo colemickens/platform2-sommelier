@@ -23,17 +23,97 @@
 
 namespace quipper {
 
-struct BufferWithSize {
-  char* ptr;
-  size_t size;
+class BufferWithSize {
+ public:
+  BufferWithSize(void* buffer, size_t size)
+      : buffer_(reinterpret_cast<char*>(buffer)),
+        size_(size) {}
+
+  // Writes raw data to buffer. Returns true if it managed to write |size|
+  // bytes, and false if not.
+  bool WriteData(const void* src, size_t offset, const size_t size) const {
+    size_t write_size = size;
+    if (offset + size >= size_)
+      write_size = size_ - offset;
+    memcpy(buffer_ + offset, src, write_size);
+
+    if (write_size != size) {
+      LOG(ERROR) << __func__ << ": offset=" << offset << ", size=" << size
+                 << ", total_size=" << size_ << ", write_size=" << write_size;
+    }
+    return (write_size == size);
+  }
+
+  // Writes a string to the buffer. If the string length is smaller than |size|,
+  // it will fill in the remainder of of the destination memory with zeroes.
+  // If the string is longer than |size|, it will truncate the string, and will
+  // not add a null terminator.
+  // Returns true iff the expected number of bytes were written.
+  bool WriteString(const string& str, size_t offset, const size_t size) const {
+    // Make sure there is enough space left in the buffer.
+    size_t available_size = std::min(size, size_ - offset);
+    size_t string_write_size = std::min(str.size(), available_size);
+    if (!WriteData(str.c_str(), offset, string_write_size))
+      return false;
+
+    // Add the padding, if any.
+    available_size -= string_write_size;
+    memset(buffer_ + offset + string_write_size, 0, available_size);
+    return true;
+  }
+
+  size_t size() const {
+    return size_;
+  }
+
+ private:
+  char* buffer_;
+  size_t size_;
 };
 
 // If the buffer is read-only, it is not sufficient to mark the previous struct
 // as const, as this only means that the pointer cannot be changed, and says
 // nothing about the contents of the buffer.  So, we need another struct.
-struct ConstBufferWithSize {
-  const char* ptr;
-  size_t size;
+class ConstBufferWithSize {
+ public:
+  ConstBufferWithSize(const void* data, size_t size)
+      : data_(reinterpret_cast<const char*>(data)),
+        size_(size) {}
+
+  // Read raw data from the buffer. Returns true if it managed to read |size|
+  // bytes, and false if not. Will not perform a partial copy.
+  bool ReadData(void* dest, size_t offset, const size_t size) const {
+    size_t read_size = size;
+    if (offset + size > size_)
+      return false;
+
+    memcpy(dest, data_ + offset, read_size);
+    return true;
+  }
+
+  // Read a string from the buffer. Returns true if it managed to read |size|
+  // bytes (excluding null terminator), and false if not. The actual string
+  // may be shorter than the number of bytes requested.
+  bool ReadString(size_t offset, size_t size, string* str) const {
+    if (offset + size > size_)
+      return false;
+
+    // The actual length of the string is allowed to be no more than |size|.
+    // The raw string data doesn't require a null terminator. However, there
+    // should be a null terminator if the string length is less than |size|, or
+    // there would be no way to find the actual end of the string.
+    size_t actual_length = strnlen(data_ + offset, size);
+    *str = string(data_ + offset, actual_length);
+    return true;
+  }
+
+  size_t size() const {
+    return size_;
+  }
+
+ private:
+  const char* data_;
+  size_t size_;
 };
 
 namespace {
@@ -219,14 +299,12 @@ bool ReadDataFromBuffer(const ConstBufferWithSize& buffer,
                         const string& value_name,
                         size_t* src_offset,
                         void* dest) {
-  size_t end_offset = *src_offset + size / sizeof(*buffer.ptr);
-  if (buffer.size < end_offset) {
+  if (!buffer.ReadData(dest, *src_offset, size)) {
     LOG(ERROR) << "Not enough bytes to read " << value_name
                << ". Requested " << size << " bytes";
     return false;
   }
-  memcpy(dest, buffer.ptr + *src_offset, size);
-  *src_offset = end_offset;
+  *src_offset += size;
   return true;
 }
 
@@ -236,13 +314,13 @@ bool WriteDataToBuffer(const void* data,
                        const string& value_name,
                        size_t* buffer_offset,
                        const BufferWithSize& buffer) {
-  size_t end_offset = *buffer_offset + size / sizeof(*buffer.ptr);
-  if (buffer.size < end_offset) {
-    LOG(ERROR) << "No space in buffer to write " << value_name;
+  if (!buffer.WriteData(data, *buffer_offset, size)) {
+    LOG(ERROR) << "No space in buffer to write " << value_name << ". "
+               << "Requested " << size << " bytes, but only "
+               << buffer.size() - *buffer_offset << " bytes remaining.";
     return false;
   }
-  memcpy(buffer.ptr + *buffer_offset, data, size);
-  *buffer_offset = end_offset;
+  *buffer_offset += size;
   return true;
 }
 
@@ -258,12 +336,11 @@ bool ReadStringFromBuffer(const ConstBufferWithSize& buffer,
   if (is_cross_endian)
     ByteSwap(&dest->len);
 
-  if (buffer.size < *offset + dest->len) {
+  if (!buffer.ReadString(*offset, dest->len, &dest->str)) {
     LOG(ERROR) << "Not enough bytes to read string";
     return false;
   }
-  dest->str = string(buffer.ptr + *offset);
-  *offset += dest->len / sizeof(*buffer.ptr);
+  *offset += dest->len;
   return true;
 }
 
@@ -271,20 +348,18 @@ bool ReadStringFromBuffer(const ConstBufferWithSize& buffer,
 bool WriteStringToBuffer(const CStringWithLength& src,
                          const BufferWithSize& buffer,
                          size_t* offset) {
-  const size_t kDestUnitSize = sizeof(*buffer.ptr);
-  size_t final_offset = *offset + src.len + sizeof(src.len) / kDestUnitSize;
-  if (buffer.size < final_offset) {
+  size_t final_offset = *offset + src.len + sizeof(src.len);
+  if (buffer.size() < final_offset) {
     LOG(ERROR) << "Not enough space to write string";
     return false;
   }
 
   if (!WriteDataToBuffer(&src.len, sizeof(src.len),
-                         "length of string metadata", offset, buffer)) {
+                         "length of string metadata", offset, buffer) ||
+      !buffer.WriteString(src.str, *offset, src.len)) {
+    LOG(ERROR) << "Failed to write string to buffer.";
     return false;
   }
-
-  memset(buffer.ptr + *offset, 0, src.len * kDestUnitSize);
-  snprintf(buffer.ptr + *offset, src.len, "%s", src.str.c_str());
   *offset += src.len;
   return true;
 }
@@ -704,9 +779,9 @@ bool PerfReader::ReadFromString(const string& str) {
 }
 
 bool PerfReader::ReadFromPointer(const char* perf_data, size_t size) {
-  const ConstBufferWithSize data = { perf_data, size };
+  const ConstBufferWithSize data(perf_data, size);
 
-  if (data.size == 0)
+  if (data.size() == 0)
     return false;
   if (!ReadHeader(data))
     return false;
@@ -768,9 +843,8 @@ bool PerfReader::WriteToPointer(char* buffer, size_t size) {
   return WriteToPointerWithoutCheckingSize(buffer, size);
 }
 
-
 bool PerfReader::WriteToPointerWithoutCheckingSize(char* buffer, size_t size) {
-  BufferWithSize data = { buffer, size };
+  BufferWithSize data(buffer, size);
   if (!WriteHeader(data) ||
       !WriteAttrs(data) ||
       !WriteEventTypes(data) ||
@@ -1265,7 +1339,6 @@ bool PerfReader::ReadEventType(const ConstBufferWithSize& data,
                           offset, &event_id)) {
     return false;
   }
-  const char* event_name = reinterpret_cast<const char*>(data.ptr + *offset);
   size_t event_name_len;
   if (event_size == 0) {  // Not in an event.
     event_name_len = sizeof(perf_trace_event_type::name);
@@ -1273,8 +1346,12 @@ bool PerfReader::ReadEventType(const ConstBufferWithSize& data,
     event_name_len =
         event_size - sizeof(perf_event_header) - sizeof(event_id);
   }
+  string event_name;
+  if (!data.ReadString(*offset, event_name_len, &event_name)) {
+    LOG(ERROR) << "Not enough data left in data to read event name.";
+    return false;
+  }
   *offset += event_name_len;
-  event_name_len = strnlen(event_name, event_name_len);
 
   if (attr_idx >= attrs_.size()) {
     LOG(ERROR) << "Too many event types, or attrs not read yet!";
@@ -1285,7 +1362,7 @@ bool PerfReader::ReadEventType(const ConstBufferWithSize& data,
                   "attr.config";
     return false;
   }
-  attrs_[attr_idx].name = string(event_name, event_name_len);
+  attrs_[attr_idx].name = event_name;
 
   return true;
 }
@@ -1294,16 +1371,34 @@ bool PerfReader::ReadData(const ConstBufferWithSize& data) {
   u64 data_remaining_bytes = header_.data.size;
   size_t offset = header_.data.offset;
   while (data_remaining_bytes != 0) {
-    if (data.size < offset) {
+    if (data.size() < offset) {
       LOG(ERROR) << "Not enough data to read a perf event.";
       return false;
     }
 
-    const event_t* event = reinterpret_cast<const event_t*>(data.ptr + offset);
-    if (!ReadPerfEventBlock(*event))
+    perf_event_header header;
+    if (!data.ReadData(&header, offset, sizeof(header))) {
+      LOG(ERROR) << "Not enough data to read perf event header.";
       return false;
-    data_remaining_bytes -= event->header.size;
-    offset += event->header.size;
+    }
+    if (is_cross_endian_) {
+      ByteSwap(&header.type);
+      ByteSwap(&header.misc);
+      ByteSwap(&header.size);
+    }
+
+    // Allocate memory for event and copy over the header.
+    malloced_unique_ptr<event_t> event(CallocMemoryForEvent(header.size));
+    event->header = header;
+
+    // Read the rest of the event data.
+    data.ReadData(&event->header + 1, offset + sizeof(header),
+                  header.size - sizeof(header));
+    MaybeSwapEventFields(event.get());
+    events_.push_back(std::move(event));
+
+    data_remaining_bytes -= header.size;
+    offset += header.size;
   }
 
   DLOG(INFO) << "Number of events stored: "<< events_.size();
@@ -1317,7 +1412,7 @@ bool PerfReader::ReadMetadata(const ConstBufferWithSize& data) {
     if ((metadata_mask_ & (1 << type)) == 0)
       continue;
 
-    if (data.size < offset) {
+    if (data.size() < offset) {
       LOG(ERROR) << "Not enough data to read offset and size of metadata.";
       return false;
     }
@@ -1330,7 +1425,7 @@ bool PerfReader::ReadMetadata(const ConstBufferWithSize& data) {
       return false;
     }
 
-    if (data.size < metadata_offset + metadata_size) {
+    if (data.size() < metadata_offset + metadata_size) {
       LOG(ERROR) << "Not enough data to read metadata.";
       return false;
     }
@@ -1390,27 +1485,23 @@ bool PerfReader::ReadBuildIDMetadata(const ConstBufferWithSize& data, u32 type,
   CheckNoBuildIDEventPadding();
   while (size > 0) {
     // Make sure there is enough data for everything but the filename.
-    if (data.size < offset + sizeof(build_id_event) / sizeof(*data.ptr)) {
-      LOG(ERROR) << "Not enough bytes to read build id event";
+    perf_event_header build_id_header;
+    if (!data.ReadData(&build_id_header, offset, sizeof(build_id_header))) {
+      LOG(ERROR) << "Not enough bytes to read build ID header";
       return false;
     }
-
-    const build_id_event* temp_ptr =
-        reinterpret_cast<const build_id_event*>(data.ptr + offset);
-    u16 event_size = temp_ptr->header.size;
+    u16 event_size = build_id_header.size;
     if (is_cross_endian_)
       ByteSwap(&event_size);
 
-    // Make sure there is enough data for the rest of the event.
-    if (data.size < offset + event_size / sizeof(*data.ptr)) {
-      LOG(ERROR) << "Not enough bytes to read build id event";
-      return false;
-    }
+    // Allocate memory for the event.
+    malloced_unique_ptr<build_id_event> event(
+        CallocMemoryForBuildID(event_size));
 
-    // Allocate memory for the event and copy over the bytes.
-    build_id_event* event = CallocMemoryForBuildID(event_size);
+    // Make sure there is enough data for the rest of the event.
     if (!ReadDataFromBuffer(data, event_size, "build id event",
-                            &offset, event)) {
+                            &offset, event.get())) {
+      LOG(ERROR) << "Not enough bytes to read build id event";
       return false;
     }
     if (is_cross_endian_) {
@@ -1424,7 +1515,9 @@ bool PerfReader::ReadBuildIDMetadata(const ConstBufferWithSize& data, u32 type,
     // Perf tends to use more space than necessary, so fix the size.
     event->header.size =
         sizeof(*event) + GetUint64AlignedStringLength(event->filename);
-    build_id_events_.push_back(event);
+    // TODO(sque): Convert |build_id_events_| to a vector of
+    // malloced_unique_ptrs, so this can be done using std::move().
+    build_id_events_.push_back(event.release());
   }
 
   return true;
@@ -1438,7 +1531,7 @@ bool PerfReader::ReadStringMetadata(const ConstBufferWithSize& data, u32 type,
   size_t start_offset = offset;
   // Skip the number of string data if it is present.
   if (NeedsNumberOfStringData(type))
-    offset += sizeof(num_string_data_type) / sizeof(*data.ptr);
+    offset += sizeof(num_string_data_type);
 
   while ((offset - start_offset) < size) {
     CStringWithLength single_string;
@@ -1641,8 +1734,11 @@ bool PerfReader::ReadTracingMetadataEvent(
   // immediately by the tracing header data.
 
   // Make a copy of the event (but not the tracing data)
-  tracing_data_event tracing_event =
-      *reinterpret_cast<const tracing_data_event*>(data.ptr + offset);
+  tracing_data_event tracing_event;
+  if (!data.ReadData(&tracing_event, offset, sizeof(tracing_event))) {
+    LOG(ERROR) << "Not enough bytes left in data to read tracing event.";
+    return false;
+  }
 
   if (is_cross_endian_) {
     ByteSwap(&tracing_event.header.type);
@@ -1663,17 +1759,16 @@ bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
   metadata_mask_ = 0;
   CheckNoEventHeaderPadding();
 
-  while (offset < data.size && result) {
+  while (offset < data.size() && result) {
     perf_event_header header;
-    if (offset + sizeof(header) > data.size) {
+    // Read the header and swap bytes if necessary.
+    if (!data.ReadData(&header, offset, sizeof(header))) {
       LOG(ERROR) << "Not enough bytes left in data to read header.  Required: "
                  << sizeof(header) << " bytes.  Available: "
-                 << data.size - offset << " bytes.";
+                 << data.size() - offset << " bytes.";
       return true;
     }
 
-    // Copy the header and swap bytes if necessary.
-    header = *reinterpret_cast<const perf_event_header*>(data.ptr + offset);
     if (is_cross_endian_) {
       ByteSwap(&header.type);
       ByteSwap(&header.misc);
@@ -1686,21 +1781,30 @@ bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
       return false;
     }
 
-    if (data.size < offset + header.size) {
-      LOG(ERROR) << "Not enough bytes to read piped event.  Required: "
-                 << header.size << " bytes.  Available: "
-                 << data.size - offset << " bytes.";
-      return true;
-    }
+    // Allocate space for an event struct based on the size in the header. Don't
+    // blindly allocate the entire event_t because it is a variable-sized type
+    // that may include data beyond what's nominally declared in its definition.
+    malloced_unique_ptr<event_t> event(CallocMemoryForEvent(header.size));
+    event->header = header;
 
+    // Compute the offset and size of the post-header part of the event data.
     size_t new_offset = offset + sizeof(header);
     size_t size_without_header = header.size - sizeof(header);
 
+    if (data.size() < offset + header.size) {
+      LOG(ERROR) << "Not enough bytes to read piped event.  Required: "
+                 << header.size << " bytes.  Available: "
+                 << data.size() - offset << " bytes.";
+      return true;
+    }
 
     if (header.type < PERF_RECORD_MAX) {
-      const event_t* event =
-          reinterpret_cast<const event_t*>(data.ptr + offset);
-      result = ReadPerfEventBlock(*event);
+      // Read the rest of the event data.
+      if (!data.ReadData(&event->header + 1, new_offset, size_without_header))
+        return false;
+      MaybeSwapEventFields(event.get());
+      events_.push_back(std::move(event));
+
       offset += header.size;
       continue;
     }
@@ -1858,10 +1962,6 @@ bool PerfReader::WriteMetadata(const BufferWithSize& data) const {
   size_t metadata_offset =
       header_offset + (GetNumMetadata() + 1) * 2 * sizeof(u64);
 
-  // Zero out the memory used by the headers
-  memset(data.ptr + header_offset, 0,
-         (metadata_offset - header_offset) * sizeof(*data.ptr));
-
   for (u32 type = HEADER_FIRST_FEATURE; type != HEADER_LAST_FEATURE; ++type) {
     if ((out_header_.adds_features[0] & (1 << type)) == 0)
       continue;
@@ -1915,7 +2015,8 @@ bool PerfReader::WriteMetadata(const BufferWithSize& data) const {
       return false;
     }
 
-    // Write metadata offset and size to address header_offset.
+    // Write metadata offset and size to address |header_offset|. This is the
+    // metadata header that points to the metadata.
     u64 metadata_size = metadata_offset - start_offset;
     if (!WriteDataToBuffer(&start_offset, sizeof(start_offset),
                            "metadata offset", &header_offset, data) ||
@@ -2153,95 +2254,65 @@ bool PerfReader::ReadAttrEventBlock(const ConstBufferWithSize& data,
   return true;
 }
 
-// When this method is called, |event| is a reference to the bytes in the data
-// vector that contains the entire perf.data file.  As a result, we need to be
-// careful to only copy event.header.size bytes.
-// In particular, something like
-// event_t event_copy = event;
-// would be bad, because it would read past the end of the event, and possibly
-// pass the end of the data vector as well.
-bool PerfReader::ReadPerfEventBlock(const event_t& event) {
-  u16 size = event.header.size;
-  if (is_cross_endian_)
-    ByteSwap(&size);
-
-  if (size > sizeof(event_t)) {
-    LOG(INFO) << "Data size: " << size << " sizeof(event_t): "
-              << sizeof(event_t);
-    return false;
-  }
-
-  // Copy only the part of the event that is needed.
-  malloced_unique_ptr<event_t> event_copy(CallocMemoryForEvent(size));
-  memcpy(event_copy.get(), &event, size);
-  if (is_cross_endian_) {
-    ByteSwap(&event_copy->header.type);
-    ByteSwap(&event_copy->header.misc);
-    ByteSwap(&event_copy->header.size);
-  }
-
-  uint32_t type = event_copy->header.type;
+void PerfReader::MaybeSwapEventFields(event_t* event) {
+  uint32_t type = event->header.type;
   if (is_cross_endian_) {
     switch (type) {
     case PERF_RECORD_SAMPLE:
       break;
     case PERF_RECORD_MMAP:
-      ByteSwap(&event_copy->mmap.pid);
-      ByteSwap(&event_copy->mmap.tid);
-      ByteSwap(&event_copy->mmap.start);
-      ByteSwap(&event_copy->mmap.len);
-      ByteSwap(&event_copy->mmap.pgoff);
+      ByteSwap(&event->mmap.pid);
+      ByteSwap(&event->mmap.tid);
+      ByteSwap(&event->mmap.start);
+      ByteSwap(&event->mmap.len);
+      ByteSwap(&event->mmap.pgoff);
       break;
     case PERF_RECORD_MMAP2:
-      ByteSwap(&event_copy->mmap2.pid);
-      ByteSwap(&event_copy->mmap2.tid);
-      ByteSwap(&event_copy->mmap2.start);
-      ByteSwap(&event_copy->mmap2.len);
-      ByteSwap(&event_copy->mmap2.pgoff);
-      ByteSwap(&event_copy->mmap2.maj);
-      ByteSwap(&event_copy->mmap2.min);
-      ByteSwap(&event_copy->mmap2.ino);
-      ByteSwap(&event_copy->mmap2.ino_generation);
-      ByteSwap(&event_copy->mmap2.prot);
-      ByteSwap(&event_copy->mmap2.flags);
+      ByteSwap(&event->mmap2.pid);
+      ByteSwap(&event->mmap2.tid);
+      ByteSwap(&event->mmap2.start);
+      ByteSwap(&event->mmap2.len);
+      ByteSwap(&event->mmap2.pgoff);
+      ByteSwap(&event->mmap2.maj);
+      ByteSwap(&event->mmap2.min);
+      ByteSwap(&event->mmap2.ino);
+      ByteSwap(&event->mmap2.ino_generation);
+      ByteSwap(&event->mmap2.prot);
+      ByteSwap(&event->mmap2.flags);
       break;
     case PERF_RECORD_FORK:
     case PERF_RECORD_EXIT:
-      ByteSwap(&event_copy->fork.pid);
-      ByteSwap(&event_copy->fork.tid);
-      ByteSwap(&event_copy->fork.ppid);
-      ByteSwap(&event_copy->fork.ptid);
+      ByteSwap(&event->fork.pid);
+      ByteSwap(&event->fork.tid);
+      ByteSwap(&event->fork.ppid);
+      ByteSwap(&event->fork.ptid);
       break;
     case PERF_RECORD_COMM:
-      ByteSwap(&event_copy->comm.pid);
-      ByteSwap(&event_copy->comm.tid);
+      ByteSwap(&event->comm.pid);
+      ByteSwap(&event->comm.tid);
       break;
     case PERF_RECORD_LOST:
-      ByteSwap(&event_copy->lost.id);
-      ByteSwap(&event_copy->lost.lost);
+      ByteSwap(&event->lost.id);
+      ByteSwap(&event->lost.lost);
       break;
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
-      ByteSwap(&event_copy->throttle.time);
-      ByteSwap(&event_copy->throttle.id);
-      ByteSwap(&event_copy->throttle.stream_id);
+      ByteSwap(&event->throttle.time);
+      ByteSwap(&event->throttle.id);
+      ByteSwap(&event->throttle.stream_id);
       break;
     case PERF_RECORD_READ:
-      ByteSwap(&event_copy->read.pid);
-      ByteSwap(&event_copy->read.tid);
-      ByteSwap(&event_copy->read.value);
-      ByteSwap(&event_copy->read.time_enabled);
-      ByteSwap(&event_copy->read.time_running);
-      ByteSwap(&event_copy->read.id);
+      ByteSwap(&event->read.pid);
+      ByteSwap(&event->read.tid);
+      ByteSwap(&event->read.value);
+      ByteSwap(&event->read.time_enabled);
+      ByteSwap(&event->read.time_running);
+      ByteSwap(&event->read.id);
       break;
     default:
       LOG(FATAL) << "Unknown event type: " << type;
     }
   }
-
-  events_.push_back(std::move(event_copy));
-
-  return true;
 }
 
 size_t PerfReader::GetNumMetadata() const {
