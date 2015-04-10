@@ -13,8 +13,10 @@ using soma::ContainerSpec;
 
 namespace psyche {
 
-Container::Container(const ContainerSpec& spec, FactoryInterface* factory)
-    : spec_(spec) {
+Container::Container(const ContainerSpec& spec,
+                     FactoryInterface* factory,
+                     GermConnection* germ)
+    : spec_(spec), germ_connection_(germ) {
   DCHECK(factory);
   for (const auto& name : spec_.service_names()) {
     std::unique_ptr<ServiceInterface> service(factory->CreateService(name));

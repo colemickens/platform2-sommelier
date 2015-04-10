@@ -52,10 +52,10 @@ void GermConnection::SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy) {
 void GermConnection::OnServiceProxyChange(ServiceInterface* service) {
   DCHECK_EQ(service, &service_);
   if (service->GetProxy()) {
-    LOG(INFO) << "Got connection to germd";
+    LOG(INFO) << "Got connection to " << germ::kGermServiceName;
     interface_.reset(BinderToInterface<IGerm>(service->GetProxy()));
   } else {
-    LOG(WARNING) << "Lost connection to germd";
+    LOG(WARNING) << "Lost connection to " << germ::kGermServiceName;
     interface_.reset();
   }
 }

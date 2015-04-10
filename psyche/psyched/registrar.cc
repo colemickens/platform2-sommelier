@@ -34,13 +34,14 @@ namespace {
 // Implementation of FactoryInterface that returns real objects.
 class RealFactory : public FactoryInterface {
  public:
-  RealFactory() = default;
+  explicit RealFactory(GermConnection* germ) : germ_connection_(germ) {}
   ~RealFactory() override = default;
 
   // FactoryInterface:
   std::unique_ptr<ContainerInterface> CreateContainer(
       const soma::ContainerSpec& spec) override {
-    return std::unique_ptr<ContainerInterface>(new Container(spec, this));
+    return std::unique_ptr<ContainerInterface>(
+        new Container(spec, this, germ_connection_));
   }
   std::unique_ptr<ServiceInterface> CreateService(
       const std::string& name) override {
@@ -53,6 +54,7 @@ class RealFactory : public FactoryInterface {
   }
 
  private:
+  GermConnection* germ_connection_;
   DISALLOW_COPY_AND_ASSIGN(RealFactory);
 };
 
@@ -73,9 +75,7 @@ void Registrar::SetFactoryForTesting(
 
 void Registrar::Init() {
   if (!factory_)
-    // TODO(mcolagrosso): Add GermConnection ptr to RealFactory to use when
-    // constructing containers.
-    factory_.reset(new RealFactory());
+    factory_.reset(new RealFactory(germ_.get()));
 }
 
 int Registrar::RegisterService(RegisterServiceRequest* in,

@@ -17,6 +17,7 @@
 namespace psyche {
 
 class FactoryInterface;
+class GermConnection;
 class ServiceInterface;
 
 // Corresponds to a ContainerSpec returned by soma and launched one or more
@@ -43,8 +44,11 @@ class ContainerInterface {
 class Container : public ContainerInterface, public ServiceObserver {
  public:
   // |factory| is used to construct ServiceInterface objects, permitting tests
-  // to create stub services instead.
-  Container(const soma::ContainerSpec& spec, FactoryInterface* factory);
+  // to create stub services instead. Note: Ownership of |germ| remains with
+  // the caller.
+  Container(const soma::ContainerSpec& spec,
+            FactoryInterface* factory,
+            GermConnection* germ);
   ~Container() override;
 
   // ContainerInterface:
@@ -63,6 +67,10 @@ class Container : public ContainerInterface, public ServiceObserver {
   // service is created; the binder proxies that are given to clients are set
   // later when the services are registered.
   ServiceMap services_;
+
+  // Connection to germd to launch the container. Note: This class doesn't own
+  // the GermConnection object.
+  GermConnection* germ_connection_;
 
   DISALLOW_COPY_AND_ASSIGN(Container);
 };
