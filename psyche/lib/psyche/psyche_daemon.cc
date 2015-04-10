@@ -4,26 +4,32 @@
 
 #include "psyche/lib/psyche/psyche_daemon.h"
 
+#include <sysexits.h>
+
 #include <base/logging.h>
-#include <protobinder/iservice_manager.h>
+#include <protobinder/binder_watcher.h>
+
+#include "psyche/lib/psyche/psyche_connection.h"
 
 namespace psyche {
 
-PsycheDaemon::PsycheDaemon() : psyche_connection_(new PsycheConnection()) {}
+PsycheDaemon::PsycheDaemon() = default;
 
-PsycheDaemon::~PsycheDaemon() {}
+PsycheDaemon::~PsycheDaemon() = default;
 
 int PsycheDaemon::OnInit() {
-  int return_code = BinderDaemon::OnInit();
+  int return_code = chromeos::Daemon::OnInit();
   if (return_code != 0) {
-    LOG(ERROR) << "Error initializing Daemon.";
+    LOG(ERROR) << "Error initializing Daemon";
     return return_code;
   }
+  binder_watcher_.reset(new protobinder::BinderWatcher);
+  psyche_connection_.reset(new PsycheConnection);
   if (!psyche_connection_->Init()) {
-    LOG(ERROR) << "Error connecting to psyche.";
-    return -1;
+    LOG(ERROR) << "Error connecting to psyche";
+    return EX_UNAVAILABLE;
   }
-  return 0;
+  return EX_OK;
 }
 
 }  // namespace psyche

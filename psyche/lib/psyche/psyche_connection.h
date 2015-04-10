@@ -11,8 +11,7 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-
-#define PSYCHE_EXPORT __attribute__((visibility("default")))
+#include <psyche/psyche_export.h>
 
 namespace protobinder {
 class BinderHost;

@@ -6,15 +6,21 @@
 #define PSYCHE_LIB_PSYCHE_PSYCHE_DAEMON_H_
 
 #include <memory>
-#include <string>
 
 #include <base/macros.h>
-#include <protobinder/binder_daemon.h>
-#include <psyche/psyche_connection.h>
+#include <chromeos/daemons/daemon.h>
+#include <psyche/psyche_export.h>
+
+namespace protobinder {
+class BinderWatcher;
+}  // namespace protobinder
 
 namespace psyche {
 
-class PSYCHE_EXPORT PsycheDaemon : public protobinder::BinderDaemon {
+class PsycheConnection;
+
+// Base class for daemons that communicate with psyched.
+class PSYCHE_EXPORT PsycheDaemon : public chromeos::Daemon {
  public:
   PsycheDaemon();
   ~PsycheDaemon() override;
@@ -24,10 +30,11 @@ class PSYCHE_EXPORT PsycheDaemon : public protobinder::BinderDaemon {
   }
 
  protected:
-  // BinderDaemon:
+  // chromeos::Daemon:
   int OnInit() override;
 
  private:
+  std::unique_ptr<protobinder::BinderWatcher> binder_watcher_;
   std::unique_ptr<PsycheConnection> psyche_connection_;
 
   DISALLOW_COPY_AND_ASSIGN(PsycheDaemon);

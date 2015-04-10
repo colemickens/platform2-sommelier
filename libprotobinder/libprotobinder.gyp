@@ -20,15 +20,15 @@
         ],
       },
       'sources': [
+        # TODO(derat): If the amount of testing-specific code, e.g. stubs, ever
+        # becomes substantial, move it to a separate shared library.
         '<(proto_in_dir)/binder.proto',
-        'binder_daemon.cc',
         'binder_host.cc',
         'binder_manager.cc',
-        # TODO(derat): If the amount of testing-specific code ever becomes
-        # substantial, move it to a separate shared library.
         'binder_manager_stub.cc',
         'binder_proxy.cc',
         'binder_proxy_interface_base.cc',
+        'binder_watcher.cc',
         'ibinder.cc',
         'iservice_manager.cc',
         'parcel.cc',
