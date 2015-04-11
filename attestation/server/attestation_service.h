@@ -7,7 +7,13 @@
 
 #include "attestation/common/attestation_interface.h"
 
+#include <memory>
 #include <string>
+
+#include <base/macros.h>
+
+#include "attestation/server/crypto_utility.h"
+#include "attestation/server/database.h"
 
 namespace attestation {
 
@@ -30,6 +36,18 @@ class AttestationService : public AttestationInterface {
       KeyUsage key_usage,
       CertificateProfile certificate_profile,
       const base::Callback<CreateGoogleAttestedKeyCallback>& callback) override;
+
+  // Useful for testing.
+  void set_database(Database* database) {
+    database_ = database;
+  }
+
+ private:
+  CryptoUtility* crypto_;
+  Database* database_;
+  std::unique_ptr<Database> default_database_;
+
+  DISALLOW_COPY_AND_ASSIGN(AttestationService);
 };
 
 }  // namespace attestation

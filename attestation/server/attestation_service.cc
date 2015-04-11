@@ -6,9 +6,15 @@
 
 #include <base/callback.h>
 
+#include "attestation/server/database_impl.h"
+
 namespace attestation {
 
 bool AttestationService::Initialize() {
+  if (!database_) {
+    default_database_.reset(new DatabaseImpl(crypto_));
+    database_ = default_database_.get();
+  }
   LOG(INFO) << "Attestation service started.";
   return true;
 }

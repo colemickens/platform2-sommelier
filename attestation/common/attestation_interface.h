@@ -9,7 +9,6 @@
 
 #include <base/callback_forward.h>
 
-#include "attestation/common/attestation_ca.pb.h"
 #include "attestation/common/export.h"
 #include "attestation/common/interface.pb.h"
 

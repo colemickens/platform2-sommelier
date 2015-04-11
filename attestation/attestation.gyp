@@ -22,8 +22,10 @@
         'proto_out_dir': 'include/attestation/common',
       },
       'sources': [
-        '<(proto_in_dir)/interface.proto',
         '<(proto_in_dir)/attestation_ca.proto',
+        '<(proto_in_dir)/common.proto',
+        '<(proto_in_dir)/database.proto',
+        '<(proto_in_dir)/interface.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },
@@ -70,6 +72,7 @@
       'sources': [
         'server/attestation_service.cc',
         'server/dbus_service.cc',
+        'server/database_impl.cc',
       ],
       'dependencies': [
         'proto_library',
@@ -103,6 +106,7 @@
           'sources': [
             'attestation_testrunner.cc',
             'client/dbus_proxy_test.cc',
+            'server/database_impl_test.cc',
             'server/dbus_service_test.cc',
           ],
           'dependencies': [

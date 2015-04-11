@@ -6,7 +6,7 @@ option optimize_for = LITE_RUNTIME;
 
 package attestation;
 
-import "attestation_ca.proto";
+import "common.proto";
 
 enum AttestationStatus {
   SUCCESS = 0;
