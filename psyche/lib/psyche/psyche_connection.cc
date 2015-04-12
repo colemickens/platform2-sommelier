@@ -10,10 +10,10 @@
 #include <protobinder/binder_proxy.h>
 #include <protobinder/ibinder.h>
 #include <protobinder/iservice_manager.h>
+#include <protobinder/proto_util.h>
 #include <protobinder/protobinder.h>
 
 #include "psyche/common/constants.h"
-#include "psyche/common/util.h"
 #include "psyche/proto_bindings/psyche.pb.h"
 #include "psyche/proto_bindings/psyche.pb.rpc.h"
 
@@ -54,7 +54,7 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
 
     RegisterServiceRequest request;
     request.set_name(service_name);
-    util::CopyBinderToProto(*service, request.mutable_binder());
+    protobinder::StoreBinderInProto(*service, request.mutable_binder());
 
     RegisterServiceResponse response;
 
@@ -77,7 +77,7 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
 
     RequestServiceRequest request;
     request.set_name(service_name);
-    util::CopyBinderToProto(*this, request.mutable_client_binder());
+    protobinder::StoreBinderInProto(*this, request.mutable_client_binder());
     const int result = psyched_interface_->RequestService(&request);
     if (result != SUCCESS) {
       LOG(ERROR) << "RequestService binder call failed with " << result;
@@ -97,7 +97,7 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
     const std::string service_name = in->name();
     std::unique_ptr<BinderProxy> proxy;
     if (in->has_binder())
-      proxy = util::ExtractBinderProxyFromProto(in->mutable_binder());
+      proxy = protobinder::ExtractBinderFromProto(in->mutable_binder());
 
     auto it = get_service_callbacks_.find(service_name);
     if (it == get_service_callbacks_.end()) {

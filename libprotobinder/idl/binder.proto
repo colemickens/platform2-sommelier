@@ -2,8 +2,11 @@ syntax = "proto2";
 package protobinder;
 option optimize_for = LITE_RUNTIME;
 
-// TODO(derat): Once this message is provided by libprotobinder, switch to that
-// version instead.
+message BinderFd {
+  required int32 fd = 1;
+  required uint64 offset = 2;
+}
+
 message StrongBinder {
   required uint64 ibinder = 1;
   required uint64 offset = 2;

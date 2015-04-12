@@ -13,10 +13,10 @@
 #include <protobinder/binder_manager.h>
 #include <protobinder/binder_proxy.h>
 #include <protobinder/iservice_manager.h>
+#include <protobinder/proto_util.h>
 #include <soma/constants.h>
 
 #include "psyche/common/constants.h"
-#include "psyche/common/util.h"
 #include "psyche/proto_bindings/soma_container_spec.pb.h"
 #include "psyche/psyched/client.h"
 #include "psyche/psyched/container.h"
@@ -82,7 +82,7 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
                                RegisterServiceResponse* out) {
   const std::string service_name = in->name();
   std::unique_ptr<BinderProxy> proxy =
-      util::ExtractBinderProxyFromProto(in->mutable_binder());
+      protobinder::ExtractBinderFromProto(in->mutable_binder());
   LOG(INFO) << "Got request to register \"" << service_name << "\" with "
             << "handle " << proxy->handle();
 
@@ -134,7 +134,7 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
 int Registrar::RequestService(RequestServiceRequest* in) {
   const std::string service_name = in->name();
   std::unique_ptr<BinderProxy> client_proxy =
-      util::ExtractBinderProxyFromProto(in->mutable_client_binder());
+      protobinder::ExtractBinderFromProto(in->mutable_client_binder());
   int32_t client_handle = client_proxy->handle();
   LOG(INFO) << "Got request to provide service \"" << service_name << "\""
             << " to client with handle " << client_handle;

@@ -13,6 +13,21 @@
   },
   'targets': [
     {
+      'target_name': 'libprotobinderproto',
+      'type': 'static_library',
+      'variables': {
+        # TODO(leecam): Fix '//'' hack due to http://brbug.com/684
+        # duping issues.
+        'proto_in_dir': '<(sysroot)//usr/share/proto',
+        'proto_out_dir': 'include/psyche/proto_bindings',
+        'gen_bidl': 1,
+      },
+      'sources': [
+        '<(proto_in_dir)/binder.proto',
+      ],
+      'includes': ['../common-mk/protoc.gypi'],
+    },
+    {
       'target_name': 'libcommon',
       'type': 'static_library',
       'variables': {
@@ -32,10 +47,11 @@
         },
       },
       'sources': [
-        '<(proto_in_dir)/binder.proto',
         '<(proto_in_dir)/psyche.proto',
         'common/constants.cc',
-        'common/util.cc',
+      ],
+      'dependencies': [
+        'libprotobinderproto',
       ],
       'includes': ['../../platform2/common-mk/protoc.gypi'],
     },

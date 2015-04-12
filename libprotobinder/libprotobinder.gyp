@@ -11,19 +11,30 @@
     {
       'target_name': 'libprotobinder',
       'type': 'shared_library',
+      'variables': {
+        'proto_in_dir': 'idl',
+        'proto_out_dir': 'include/libprotobinder',
+        'gen_bidl': 1,
+        'deps': [
+          'protobuf-lite',
+        ],
+      },
       'sources': [
+        '<(proto_in_dir)/binder.proto',
         'binder_daemon.cc',
+        'binder_host.cc',
         'binder_manager.cc',
         # TODO(derat): If the amount of testing-specific code ever becomes
         # substantial, move it to a separate shared library.
         'binder_manager_stub.cc',
-        'parcel.cc',
         'binder_proxy.cc',
-        'binder_host.cc',
+        'binder_proxy_interface_base.cc',
         'ibinder.cc',
         'iservice_manager.cc',
-        'binder_proxy_interface_base.cc',
+        'parcel.cc',
+        'proto_util.cc',
       ],
+      'includes': ['../../platform2/common-mk/protoc.gypi'],
     },
   ],
   'conditions': [

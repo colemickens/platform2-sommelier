@@ -7,8 +7,8 @@
 #include <utility>
 
 #include <protobinder/binder_proxy.h>
+#include <protobinder/proto_util.h>
 
-#include "psyche/common/util.h"
 #include "psyche/proto_bindings/psyche.pb.h"
 #include "psyche/proto_bindings/psyche.pb.rpc.h"
 #include "psyche/psyched/service.h"
@@ -53,9 +53,9 @@ void Client::RemoveService(ServiceInterface* service) {
 
 void Client::OnServiceProxyChange(ServiceInterface* service) {
   DCHECK(service);
-  CHECK(services_.count(service))
-      << "Service \"" << service->GetName() << "\" not registered for client "
-      << "with handle " << proxy_->handle();
+  CHECK(services_.count(service)) << "Service \"" << service->GetName()
+                                  << "\" not registered for client "
+                                  << "with handle " << proxy_->handle();
   if (service->GetProxy())
     SendServiceProxy(service->GetName(), service->GetProxy());
 }
@@ -65,7 +65,7 @@ void Client::SendServiceProxy(const std::string& service_name,
   ReceiveServiceRequest request;
   request.set_name(service_name);
   if (service_proxy)
-    util::CopyBinderToProto(*service_proxy, request.mutable_binder());
+    protobinder::StoreBinderInProto(*service_proxy, request.mutable_binder());
   int result = interface_->ReceiveService(&request);
   if (result != 0) {
     LOG(WARNING) << "Failed to pass service \"" << service_name

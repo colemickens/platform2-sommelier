@@ -15,10 +15,10 @@
 #include <protobinder/binder_manager_stub.h>
 #include <protobinder/binder_proxy.h>
 #include <protobinder/iinterface.h>
+#include <protobinder/proto_util.h>
 #include <soma/constants.h>
 
 #include "psyche/common/binder_test_base.h"
-#include "psyche/common/util.h"
 #include "psyche/proto_bindings/germ.pb.h"
 #include "psyche/proto_bindings/germ.pb.rpc.h"
 #include "psyche/proto_bindings/psyche.pb.h"
@@ -165,8 +165,8 @@ class RegistrarTest : public BinderTestBase {
     request.set_name(service_name);
     // |service_proxy| will be extracted from the protocol buffer into another
     // std::unique_ptr, so release it from the original one here.
-    util::CopyBinderToProto(*(service_proxy.release()),
-                            request.mutable_binder());
+    protobinder::StoreBinderInProto(*(service_proxy.release()),
+                                    request.mutable_binder());
 
     RegisterServiceResponse response;
     CHECK_EQ(registrar_->RegisterService(&request, &response), 0)
@@ -188,8 +188,8 @@ class RegistrarTest : public BinderTestBase {
     request.set_name(service_name);
     // |service_proxy| will be extracted from the protocol buffer into another
     // std::unique_ptr, so release it from the original one here.
-    util::CopyBinderToProto(*(client_proxy.release()),
-                            request.mutable_client_binder());
+    protobinder::StoreBinderInProto(*(client_proxy.release()),
+                                    request.mutable_client_binder());
 
     CHECK_EQ(registrar_->RequestService(&request), 0)
         << "RequestService call for " << service_name << " failed";
