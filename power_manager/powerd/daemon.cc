@@ -23,6 +23,9 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
+#if USE_BUFFET
+#include "power_manager/powerd/buffet/command_handlers.h"
+#endif
 #include "power_manager/powerd/metrics_collector.h"
 #include "power_manager/powerd/policy/external_backlight_controller.h"
 #include "power_manager/powerd/policy/internal_backlight_controller.h"
@@ -966,6 +969,14 @@ void Daemon::InitDBus() {
                  weak_ptr_factory_.GetWeakPtr()));
 
   dbus_sender_->Init(powerd_dbus_object_, kPowerManagerInterface);
+
+#if USE_BUFFET
+  buffet::InitCommandHandlers(bus_,
+                              base::Bind(&Daemon::ShutDown,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         SHUTDOWN_MODE_REBOOT,
+                                         SHUTDOWN_REASON_USER_REQUEST));
+#endif  // USE_BUFFET
 }
 
 void Daemon::HandleChromeAvailableOrRestarted(bool available) {

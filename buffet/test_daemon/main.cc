@@ -19,6 +19,10 @@
 
 #include "buffet/dbus-proxies.h"
 
+namespace {
+const char kTestCommandCategory[] = "test";
+}  // anonymous namespace
+
 class Daemon : public chromeos::DBusDaemon {
  public:
   Daemon() = default;
@@ -68,6 +72,10 @@ void Daemon::OnPropertyChange(org::chromium::Buffet::CommandProxy* command,
 }
 
 void Daemon::OnBuffetCommand(org::chromium::Buffet::CommandProxy* command) {
+  // "Handle" only commands that belong to this daemon's category.
+  if (command->category() != kTestCommandCategory)
+    return;
+
   command->SetPropertyChangedCallback(base::Bind(&Daemon::OnPropertyChange,
                                                  base::Unretained(this)));
   printf("++++++++++++++++++++++++++++++++++++++++++++++++\n");

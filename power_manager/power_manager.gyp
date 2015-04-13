@@ -12,6 +12,9 @@
         'protobuf-lite',
       ],
     },
+    'defines': [
+      'USE_BUFFET=<(USE_buffet)',
+    ],
   },
   'targets': [
     {
@@ -141,6 +144,11 @@
         'powerd/daemon.cc',
         'powerd/metrics_collector.cc',
       ],
+      'conditions': [
+        ['USE_buffet == 1', {
+          'dependencies': ['buffet_command_handlers'],
+        }],
+      ],
     },
     {
       'target_name': 'powerd',
@@ -225,6 +233,30 @@
     },
   ],
   'conditions': [
+    ['USE_buffet == 1', {
+      'targets': [
+        {
+          'target_name': 'buffet_command_handlers',
+          'type': 'static_library',
+          'sources': [
+            'powerd/buffet/command_handlers.cc',
+          ],
+          'actions': [
+            {
+              'action_name': 'generate-buffet-proxies',
+              'variables': {
+                'dbus_service_config': '../buffet/dbus_bindings/dbus-service-config.json',
+                'proxy_output_file': 'include/buffet/dbus-proxies.h'
+              },
+              'sources': [
+                '../buffet/dbus_bindings/org.chromium.Buffet.Command.xml',
+              ],
+              'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+            },
+          ],
+        },
+      ]},
+    ],
     ['USE_test == 1', {
       'targets': [
         {
