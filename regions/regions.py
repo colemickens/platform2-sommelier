@@ -140,8 +140,12 @@ class Region(object):
 
   When omitted, this will derive from region_code."""
 
-  FIELDS = ['region_code', 'keyboards', 'time_zones', 'locales', 'description',
-            'keyboard_mechanical_layout', 'numeric_id', 'regulatory_domain']
+  confirmed = None
+  """An optional boolean flag to indicate if the region data is confirmed."""
+
+  FIELDS = ['numeric_id', 'region_code', 'description', 'keyboards',
+            'time_zones', 'locales', 'keyboard_mechanical_layout',
+            'regulatory_domain']
   """Names of fields that define the region."""
 
   def __init__(self, region_code, keyboards, time_zones, locales,
@@ -184,6 +188,7 @@ class Region(object):
     self.notes = notes
     self.numeric_id = numeric_id
     self.regulatory_domain = (regdomain or regdomain_from_region(region_code))
+    self.confirmed = None
 
     if self.numeric_id is not None:
       if not isinstance(self.numeric_id, int):
@@ -1202,6 +1207,15 @@ def main(args=sys.argv[1:], out=None):
   if args.overlay is not None:
     execfile(args.overlay)
 
+  if args.all:
+    # Add an additional 'confirmed' property to help identifying region status,
+    # for autotests, unit tests and factory module.
+    Region.FIELDS.insert(1, 'confirmed')
+    for r in REGIONS_LIST:
+      r.confirmed = True
+    for r in UNCONFIRMED_REGIONS_LIST:
+      r.confirmed = False
+
   regions_dict = BuildRegionsDict(args.all)
 
   if out is None:
@@ -1225,6 +1239,10 @@ def main(args=sys.argv[1:], out=None):
     return
 
   # Handle CSV or plain-text output: build a list of lines to print.
+  # The CSV format is for publishing discussion spreadsheet so 'notes' should be
+  # added.
+  if args.format == 'csv':
+    Region.FIELDS += ['notes']
   lines = [Region.FIELDS]
 
   def CoerceToString(value):
@@ -1237,14 +1255,16 @@ def main(args=sys.argv[1:], out=None):
       return ','.join(value)
     else:
       return str(value)
+
   for region in sorted(regions_dict.values(), key=lambda v: v.region_code):
     lines.append([CoerceToString(getattr(region, field))
                   for field in Region.FIELDS])
 
   if args.format == 'csv':
-    # Just print the lines in CSV format.
+    # Just print the lines in CSV format. Note the values may include ',' so the
+    # separator must be tab.
     for l in lines:
-      print(','.join(l))
+      print('\t'.join(l))
   elif args.format == 'human-readable':
     num_columns = len(lines[0])
 
