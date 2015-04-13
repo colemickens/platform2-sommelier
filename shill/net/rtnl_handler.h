@@ -51,7 +51,7 @@ class SHILL_EXPORT RTNLHandler {
   // This starts the event-monitoring function of the RTNL handler. This
   // function will create an IOHandler and add it to the current message
   // loop.
-  virtual void Start();
+  virtual void Start(uint32_t netlink_groups_mask);
 
   // Add an RTNL event listener to the list of entities that will
   // be notified of RTNL events.

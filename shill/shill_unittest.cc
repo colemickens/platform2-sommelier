@@ -25,6 +25,7 @@
 #include "shill/net/io_handler.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
+#include "shill/net/ndisc.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/shill_daemon.h"
 #include "shill/shill_test_config.h"
@@ -255,7 +256,9 @@ TEST_F(ShillDaemonTest, StartStop) {
   // completes, we request the dump of the links.  For each link found, we
   // create and start the device.
   EXPECT_CALL(*metrics_, Start());
-  EXPECT_CALL(rtnl_handler_, Start());
+  EXPECT_CALL(rtnl_handler_, Start(
+      RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
+      RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT));
   Expectation routing_table_started = EXPECT_CALL(routing_table_, Start());
   EXPECT_CALL(dhcp_provider_, Init(_, _, _, _));
   EXPECT_CALL(*manager_, Start()).After(routing_table_started);
@@ -309,7 +312,9 @@ ACTION_P2(CompleteAction, manager, name) {
 
 TEST_F(ShillDaemonTest, Quit) {
   // The following expectations are to satisfy calls in Daemon::Start().
-  EXPECT_CALL(rtnl_handler_, Start());
+  EXPECT_CALL(rtnl_handler_, Start(
+      RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
+      RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT));
   EXPECT_CALL(routing_table_, Start());
   EXPECT_CALL(dhcp_provider_, Init(_, _, _, _));
   EXPECT_CALL(*manager_, Start());

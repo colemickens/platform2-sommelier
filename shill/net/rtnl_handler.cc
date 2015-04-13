@@ -64,7 +64,7 @@ RTNLHandler* RTNLHandler::GetInstance() {
   return g_rtnl_handler.Pointer();
 }
 
-void RTNLHandler::Start() {
+void RTNLHandler::Start(uint32_t netlink_groups_mask) {
   struct sockaddr_nl addr;
 
   if (rtnl_socket_ != kInvalidSocket) {
@@ -83,8 +83,7 @@ void RTNLHandler::Start() {
 
   memset(&addr, 0, sizeof(addr));
   addr.nl_family = AF_NETLINK;
-  addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
-      RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT;
+  addr.nl_groups = netlink_groups_mask;
 
   if (sockets_->Bind(rtnl_socket_,
                     reinterpret_cast<struct sockaddr *>(&addr),

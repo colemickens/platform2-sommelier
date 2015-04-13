@@ -92,7 +92,7 @@ void RTNLHandlerTest::StartRTNLHandler() {
       .WillOnce(Return(0));
   EXPECT_CALL(*sockets_, SetReceiveBuffer(kTestSocket, _)).WillOnce(Return(0));
   EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(kTestSocket, _, _));
-  RTNLHandler::GetInstance()->Start();
+  RTNLHandler::GetInstance()->Start(0);
 }
 
 void RTNLHandlerTest::StopRTNLHandler() {

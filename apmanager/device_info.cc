@@ -11,6 +11,7 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <shill/net/ndisc.h>
 #include <shill/net/netlink_attribute.h>
 #include <shill/net/netlink_manager.h>
 #include <shill/net/nl80211_message.h>
@@ -63,7 +64,9 @@ void DeviceInfo::Start() {
   EnumerateDevices();
 
   // Start RTNL for monitoring network interfaces.
-  rtnl_handler_->Start();
+  rtnl_handler_->Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
+                       RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE |
+                       RTMGRP_ND_USEROPT);
   link_listener_.reset(
       new RTNLListener(RTNLHandler::kRequestLink, link_callback_));
   // Request link infos.

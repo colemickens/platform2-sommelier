@@ -12,6 +12,7 @@
 #include "shill/diagnostics_reporter.h"
 #include "shill/error.h"
 #include "shill/logging.h"
+#include "shill/net/ndisc.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_handler.h"
@@ -132,7 +133,9 @@ void Daemon::StopAndReturnToMain() {
 void Daemon::Start() {
   glib_.TypeInit();
   metrics_->Start();
-  rtnl_handler_->Start();
+  rtnl_handler_->Start(
+      RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
+      RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT);
   routing_table_->Start();
   dhcp_provider_->Init(control_.get(), &dispatcher_, &glib_, metrics_.get());
 
