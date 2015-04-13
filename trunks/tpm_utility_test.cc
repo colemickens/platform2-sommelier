@@ -11,7 +11,7 @@
 #include "trunks/error_codes.h"
 #include "trunks/hmac_authorization_delegate.h"
 #include "trunks/mock_authorization_delegate.h"
-#include "trunks/mock_authorization_session.h"
+#include "trunks/mock_hmac_session.h"
 #include "trunks/mock_tpm.h"
 #include "trunks/mock_tpm_state.h"
 #include "trunks/tpm_constants.h"
@@ -35,7 +35,7 @@ class TpmUtilityTest : public testing::Test {
   void SetUp() override {
     factory_.set_tpm_state(&mock_tpm_state_);
     factory_.set_tpm(&mock_tpm_);
-    factory_.set_authorization_session(&mock_authorization_session_);
+    factory_.set_hmac_session(&mock_hmac_session_);
   }
 
   TPM_RC ComputeKeyName(const TPMT_PUBLIC& public_area,
@@ -75,7 +75,7 @@ class TpmUtilityTest : public testing::Test {
   NiceMock<MockTpmState> mock_tpm_state_;
   NiceMock<MockTpm> mock_tpm_;
   NiceMock<MockAuthorizationDelegate> mock_authorization_delegate_;
-  NiceMock<MockAuthorizationSession> mock_authorization_session_;
+  NiceMock<MockHmacSession> mock_hmac_session_;
   TpmUtilityImpl utility_;
 };
 
@@ -182,7 +182,7 @@ TEST_F(TpmUtilityTest, TakeOwnershipOwnershipDone) {
 }
 
 TEST_F(TpmUtilityTest, TakeOwnershipBadSession) {
-  EXPECT_CALL(mock_authorization_session_, StartUnboundSession(true))
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.TakeOwnership("owner",
                                                    "endorsement",

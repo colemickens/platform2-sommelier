@@ -21,32 +21,31 @@ const uint8_t kContinueSession = 1;
 const size_t kAesKeySize = 16;      // 128 bits is minimum AES key size.
 const size_t kHashDigestSize = 32;  // 256 bits is SHA256 digest size.
 
-/* HmacAuthorizationDelegate is an implementation of the AuthorizationDelegate
- * interface. It provides the necessary Auth data for HMAC sessions.
- * This delegate also does parameter encryption on sessions that support it.
- *
- * Usage:
- * 1) After running the StartAuthSession command on the TPM2.0, we declare this
- * delegate using the constructor. We can specify if we want parameter
- * obfuscation enabled or not.
- * 2) We initialize the session using |InitSession|. We feed in the handle and
- * tpm_nonce returned by StartAuthSession. Additionally we inject the
- * caller_nonce, salt and auth_value of the bound entity we fed into
- * StartAuthSession.
- * 3) Pass a pointer to this delegate to any TPM command that needs
- * authorization using this delegate.
- *
- * Sample control flow:
- *  TrunksProxy proxy;
- *  proxy.Init();
- *  Tpm tpm(&proxy);
- *  tpm.StartAuthSession(...);
- *  HmacAuthorizationDelegate hmac();
- *  hmac.InitSession(...);
- *  tpm.Create(..., &hmac);
- *  hmac.set_entity_auth_value(...);
- *  tpm.Load(..., &hmac);
- */
+// HmacAuthorizationDelegate is an implementation of the AuthorizationDelegate
+// interface. It provides the necessary Auth data for HMAC sessions.
+// This delegate also does parameter encryption on sessions that support it.
+
+// Usage:
+// 1) After running the StartAuthSession command on the TPM2.0, we declare this
+// delegate using the constructor. We can specify if we want parameter
+// obfuscation enabled or not.
+// 2) We initialize the session using |InitSession|. We feed in the handle and
+// tpm_nonce returned by StartAuthSession. Additionally we inject the
+// caller_nonce, salt and auth_value of the bound entity we fed into
+// StartAuthSession.
+// 3) Pass a pointer to this delegate to any TPM command that needs
+// authorization using this delegate.
+
+// Sample control flow:
+//  TrunksProxy proxy;
+//  proxy.Init();
+//  Tpm tpm(&proxy);
+//  tpm.StartAuthSession(...);
+//  HmacAuthorizationDelegate hmac();
+//  hmac.InitSession(...);
+//  tpm.Create(..., &hmac);
+//  hmac.set_entity_auth_value(...);
+//  tpm.Load(..., &hmac);
 class TRUNKS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
  public:
   HmacAuthorizationDelegate();

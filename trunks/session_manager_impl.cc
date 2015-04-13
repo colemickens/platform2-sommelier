@@ -1,13 +1,12 @@
-// Copyright 2014 The Chromium OS Authors. All rights reserved.
+// Copyright 2015 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "trunks/hmac_authorization_session.h"
+#include "trunks/session_manager_impl.h"
 
 #include <string>
 
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/stl_util.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/err.h>
@@ -19,69 +18,74 @@
 #include "trunks/tpm_utility.h"
 
 namespace {
-
 const size_t kWellKnownExponent = 0x10001;
-const trunks::TPM_HANDLE kUninitializedHandle = 0;
-
 }  // namespace
 
 namespace trunks {
 
-HmacAuthorizationSession::HmacAuthorizationSession(
-    const TrunksFactory& factory)
+SessionManagerImpl::SessionManagerImpl(const TrunksFactory& factory)
     : factory_(factory),
-      hmac_handle_(kUninitializedHandle) {}
+      session_handle_(kUninitializedHandle) {}
 
-HmacAuthorizationSession::~HmacAuthorizationSession() {
+SessionManagerImpl::~SessionManagerImpl() {
   CloseSession();
 }
 
-AuthorizationDelegate* HmacAuthorizationSession::GetDelegate() {
-  if (hmac_handle_ == kUninitializedHandle) {
-    return NULL;
+void SessionManagerImpl::CloseSession() {
+  if (session_handle_ == kUninitializedHandle) {
+    return;
   }
-  return &hmac_delegate_;
+  TPM_RC result = factory_.GetTpm()->FlushContextSync(session_handle_, NULL);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(WARNING) << "Error closing tpm session: " << GetErrorString(result);
+  }
+  session_handle_ = kUninitializedHandle;
 }
 
-TPM_RC HmacAuthorizationSession::StartBoundSession(
+TPM_RC SessionManagerImpl::StartSession(
+    TPM_SE session_type,
     TPMI_DH_ENTITY bind_entity,
     const std::string& bind_authorization_value,
-    bool enable_encryption) {
+    bool enable_encryption,
+    HmacAuthorizationDelegate* delegate) {
+  CHECK(delegate);
   // If we already have an active session, close it.
   CloseSession();
-  // First we generate a cryptographically secure salt and encrypt it using
-  // PKCS1_OAEP padded RSA public key encryption. This is specified in TPM2.0
-  // Part1 Architecture, Appendix B.10.2.
+
   std::string salt(SHA1_DIGEST_SIZE, 0);
   unsigned char* salt_buffer =
       reinterpret_cast<unsigned char*>(string_as_array(&salt));
   CHECK_EQ(RAND_bytes(salt_buffer, salt.size()), 1)
       << "Error generating a cryptographically random salt.";
+  // First we enccrypt the cryptographically secure salt using PKCS1_OAEP
+  // padded RSA public key encryption. This is specified in TPM2.0
+  // Part1 Architecture, Appendix B.10.2.
   std::string encrypted_salt;
   TPM_RC salt_result = EncryptSalt(salt, &encrypted_salt);
   if (salt_result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error encrypting salt.";
     return salt_result;
   }
+
   TPM2B_ENCRYPTED_SECRET encrypted_secret =
       Make_TPM2B_ENCRYPTED_SECRET(encrypted_salt);
   // Then we use TPM2_StartAuthSession to start a HMAC session with the TPM.
   // The tpm returns the tpm_nonce and the session_handle referencing the
   // created session.
-  TPM_HANDLE session_handle;
-  TPM2B_NONCE nonce_tpm;
-  TPM_SE session_type = TPM_SE_HMAC;
   TPMI_ALG_HASH hash_algorithm = TPM_ALG_SHA256;
   TPMT_SYM_DEF symmetric_algorithm;
   symmetric_algorithm.algorithm = TPM_ALG_AES;
   symmetric_algorithm.key_bits.aes = 128;
   symmetric_algorithm.mode.aes = TPM_ALG_CFB;
+
   TPM2B_NONCE nonce_caller;
+  TPM2B_NONCE nonce_tpm;
   // We use sha1_digest_size here because that is the minimum length
   // needed for the nonce.
   nonce_caller.size = SHA1_DIGEST_SIZE;
   CHECK_EQ(RAND_bytes(nonce_caller.buffer, nonce_caller.size), 1)
       << "Error generating a cryptographically random nonce.";
+
   Tpm* tpm = factory_.GetTpm();
   // The TPM2 command below needs no authorization. This is why we can use
   // the empty string "", when referring to the handle names for the salting
@@ -95,7 +99,7 @@ TPM_RC HmacAuthorizationSession::StartBoundSession(
                                                 session_type,
                                                 symmetric_algorithm,
                                                 hash_algorithm,
-                                                &session_handle,
+                                                &session_handle_,
                                                 &nonce_tpm,
                                                 NULL);  // No Authorization.
   if (tpm_result) {
@@ -103,42 +107,22 @@ TPM_RC HmacAuthorizationSession::StartBoundSession(
                << GetErrorString(tpm_result);
     return tpm_result;
   }
-  // Using the salt we generated and encrypted, and the data we got from the
-  // TPM, we can initialize a HmacAuthorizationDelegate class.
-  bool hmac_result = hmac_delegate_.InitSession(session_handle,
-                                                nonce_tpm,
-                                                nonce_caller,
-                                                salt,
-                                                bind_authorization_value,
-                                                enable_encryption);
+  bool hmac_result = delegate->InitSession(
+    session_handle_,
+    nonce_tpm,
+    nonce_caller,
+    salt,
+    bind_authorization_value,
+    enable_encryption);
   if (!hmac_result) {
     LOG(ERROR) << "Failed to initialize an authorization session delegate.";
     return TPM_RC_FAILURE;
   }
-  hmac_handle_ = session_handle;
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC HmacAuthorizationSession::StartUnboundSession(bool enable_encryption) {
-  // Starting an unbound session is the same as starting a session bound to
-  // TPM_RH_NULL. In this case, the authorization is the zero length buffer.
-  // We can therefore simply call StartBoundSession with TPM_RH_NULL as the
-  // binding entity, and the empty string as the authorization.
-  return StartBoundSession(TPM_RH_NULL, "", enable_encryption);
-}
-
-void HmacAuthorizationSession::SetEntityAuthorizationValue(
-    const std::string& value) {
-  hmac_delegate_.set_entity_auth_value(value);
-}
-
-void HmacAuthorizationSession::SetFutureAuthorizationValue(
-    const std::string& value) {
-  hmac_delegate_.set_future_authorization_value(value);
-}
-
-TPM_RC HmacAuthorizationSession::EncryptSalt(const std::string& salt,
-                                             std::string* encrypted_salt) {
+TPM_RC SessionManagerImpl::EncryptSalt(const std::string& salt,
+                                       std::string* encrypted_salt) {
   TPM2B_NAME out_name;
   TPM2B_NAME qualified_name;
   TPM2B_PUBLIC public_data;
@@ -209,18 +193,6 @@ TPM_RC HmacAuthorizationSession::EncryptSalt(const std::string& salt,
     return TPM_RC_FAILURE;
   }
   return TPM_RC_SUCCESS;
-}
-
-void HmacAuthorizationSession::CloseSession() {
-  if (hmac_handle_ == kUninitializedHandle) {
-    return;
-  }
-  TPM_RC result = factory_.GetTpm()->FlushContextSync(hmac_handle_, NULL);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(WARNING) << "Error closing authorization session: "
-                 << GetErrorString(result);
-  }
-  hmac_handle_ = kUninitializedHandle;
 }
 
 }  // namespace trunks

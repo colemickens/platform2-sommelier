@@ -14,9 +14,9 @@
 #include <openssl/rand.h>
 
 #include "trunks/authorization_delegate.h"
-#include "trunks/authorization_session.h"
 #include "trunks/error_codes.h"
 #include "trunks/hmac_authorization_delegate.h"
+#include "trunks/hmac_session.h"
 #include "trunks/scoped_key_handle.h"
 #include "trunks/tpm_constants.h"
 #include "trunks/tpm_state.h"
@@ -182,8 +182,7 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
     return result;
   }
 
-  scoped_ptr<AuthorizationSession> session(
-      factory_.GetHmacAuthorizationSession());
+  scoped_ptr<HmacSession> session = factory_.GetHmacSession();
   result = session->StartUnboundSession(true);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error initializing AuthorizationSession: "

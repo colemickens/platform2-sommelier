@@ -36,7 +36,9 @@ class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
   scoped_ptr<TpmUtility> GetTpmUtility() const override;
   scoped_ptr<AuthorizationDelegate> GetPasswordAuthorization(
       const std::string& password) const override;
-  scoped_ptr<AuthorizationSession> GetHmacAuthorizationSession() const override;
+  scoped_ptr<SessionManager> GetSessionManager() const override;
+  scoped_ptr<HmacSession> GetHmacSession() const override;
+  scoped_ptr<PolicySession> GetPolicySession() const override;
 
  private:
   scoped_ptr<TrunksProxy> proxy_;

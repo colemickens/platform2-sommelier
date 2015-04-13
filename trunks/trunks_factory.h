@@ -15,7 +15,9 @@
 namespace trunks {
 
 class AuthorizationDelegate;
-class AuthorizationSession;
+class HmacSession;
+class PolicySession;
+class SessionManager;
 class Tpm;
 class TpmState;
 class TpmUtility;
@@ -42,9 +44,14 @@ class TRUNKS_EXPORT TrunksFactory {
   virtual scoped_ptr<AuthorizationDelegate> GetPasswordAuthorization(
       const std::string& password) const = 0;
 
-  // Returns an AuthorizationSession instance. The caller takes ownership.
-  virtual scoped_ptr<AuthorizationSession>
-      GetHmacAuthorizationSession() const = 0;
+  // Returns a SessionManager instance. The caller takes ownership.
+  virtual scoped_ptr<SessionManager> GetSessionManager() const = 0;
+
+  // Returns a HmacSession instance. The caller takes ownership.
+  virtual scoped_ptr<HmacSession> GetHmacSession() const = 0;
+
+  // Returns a PolicySession instance. The caller takes ownership.
+  virtual scoped_ptr<PolicySession> GetPolicySession() const = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TrunksFactory);

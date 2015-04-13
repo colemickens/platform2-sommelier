@@ -7,11 +7,15 @@
 #include <gmock/gmock.h>
 
 #include "trunks/authorization_delegate.h"
-#include "trunks/authorization_session.h"
-#include "trunks/mock_authorization_session.h"
+#include "trunks/hmac_session.h"
+#include "trunks/mock_hmac_session.h"
+#include "trunks/mock_policy_session.h"
+#include "trunks/mock_session_manager.h"
 #include "trunks/mock_tpm.h"
 #include "trunks/mock_tpm_state.h"
 #include "trunks/mock_tpm_utility.h"
+#include "trunks/policy_session.h"
+#include "trunks/session_manager.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/tpm_state.h"
 #include "trunks/tpm_utility.h"
@@ -302,20 +306,45 @@ class AuthorizationDelegateForwarder : public AuthorizationDelegate {
 };
 
 // Forwards all calls to a target instance.
-class AuthorizationSessionForwarder : public AuthorizationSession {
+class SessionManagerForwarder : public SessionManager {
  public:
-  explicit AuthorizationSessionForwarder(AuthorizationSession* target)
-      : target_(target) {}
-  ~AuthorizationSessionForwarder() override {}
+  explicit SessionManagerForwarder(SessionManager* target) : target_(target) {}
+  ~SessionManagerForwarder() override {}
+
+  TPM_HANDLE GetSessionHandle() const override {
+    return target_->GetSessionHandle();
+  }
+
+  void CloseSession() override {
+    return target_->CloseSession();
+  }
+
+  TPM_RC StartSession(TPM_SE session_type, TPMI_DH_ENTITY bind_entity,
+                      const std::string& bind_authorization_value,
+                      bool enable_encryption,
+                      HmacAuthorizationDelegate* delegate) override {
+    return target_->StartSession(session_type, bind_entity,
+                                 bind_authorization_value,
+                                 enable_encryption, delegate);
+  }
+
+ private:
+  SessionManager* target_;
+};
+
+// Forwards all calls to a target instance.
+class HmacSessionForwarder : public HmacSession {
+ public:
+  explicit HmacSessionForwarder(HmacSession* target): target_(target) {}
+  ~HmacSessionForwarder() override {}
 
   AuthorizationDelegate* GetDelegate() override {
     return target_->GetDelegate();
   }
 
-  TPM_RC StartBoundSession(
-      TPMI_DH_ENTITY bind_entity,
-      const std::string& bind_authorization_value,
-      bool enable_encryption) override {
+  TPM_RC StartBoundSession(TPMI_DH_ENTITY bind_entity,
+                           const std::string& bind_authorization_value,
+                           bool enable_encryption) override {
     return target_->StartBoundSession(bind_entity,
                                       bind_authorization_value,
                                       enable_encryption);
@@ -334,7 +363,34 @@ class AuthorizationSessionForwarder : public AuthorizationSession {
   }
 
  private:
-  AuthorizationSession* target_;
+  HmacSession* target_;
+};
+
+
+// Forwards all calls to a target instance.
+class PolicySessionForwarder : public PolicySession {
+ public:
+  explicit PolicySessionForwarder(PolicySession* target): target_(target) {}
+  ~PolicySessionForwarder() override {}
+
+  AuthorizationDelegate* GetDelegate() override {
+    return target_->GetDelegate();
+  }
+
+  TPM_RC StartBoundSession(TPMI_DH_ENTITY bind_entity,
+                           const std::string& bind_authorization_value,
+                           bool enable_encryption) override {
+    return target_->StartBoundSession(bind_entity,
+                                      bind_authorization_value,
+                                      enable_encryption);
+  }
+
+  TPM_RC StartUnboundSession(bool enable_encryption) override {
+    return target_->StartUnboundSession(enable_encryption);
+  }
+
+ private:
+  PolicySession* target_;
 };
 
 TrunksFactoryForTest::TrunksFactoryForTest()
@@ -346,12 +402,15 @@ TrunksFactoryForTest::TrunksFactoryForTest()
       tpm_utility_(default_tpm_utility_.get()),
       default_authorization_delegate_(new PasswordAuthorizationDelegate("")),
       password_authorization_delegate_(default_authorization_delegate_.get()),
-      default_authorization_session_(new NiceMock<MockAuthorizationSession>()),
-      authorization_session_(default_authorization_session_.get()) {
+      default_session_manager_(new NiceMock<MockSessionManager>()),
+      session_manager_(default_session_manager_.get()),
+      default_hmac_session_(new NiceMock<MockHmacSession>()),
+      hmac_session_(default_hmac_session_.get()),
+      default_policy_session_(new NiceMock<MockPolicySession>()),
+      policy_session_(default_policy_session_.get()) {
 }
 
-TrunksFactoryForTest::~TrunksFactoryForTest() {
-}
+TrunksFactoryForTest::~TrunksFactoryForTest() {}
 
 Tpm* TrunksFactoryForTest::GetTpm() const {
   return tpm_;
@@ -372,10 +431,17 @@ scoped_ptr<AuthorizationDelegate>
       new AuthorizationDelegateForwarder(password_authorization_delegate_));
 }
 
-scoped_ptr<AuthorizationSession>
-    TrunksFactoryForTest::GetHmacAuthorizationSession() const {
-  return scoped_ptr<AuthorizationSession>(
-      new AuthorizationSessionForwarder(authorization_session_));
+scoped_ptr<SessionManager> TrunksFactoryForTest::GetSessionManager() const {
+  return scoped_ptr<SessionManager>(
+      new SessionManagerForwarder(session_manager_));
+}
+
+scoped_ptr<HmacSession> TrunksFactoryForTest::GetHmacSession() const {
+  return scoped_ptr<HmacSession>(new HmacSessionForwarder(hmac_session_));
+}
+
+scoped_ptr<PolicySession> TrunksFactoryForTest::GetPolicySession() const {
+  return scoped_ptr<PolicySession>(new PolicySessionForwarder(policy_session_));
 }
 
 }  // namespace trunks

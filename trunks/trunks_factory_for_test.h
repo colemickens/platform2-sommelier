@@ -18,12 +18,16 @@
 namespace trunks {
 
 class AuthorizationDelegate;
-class AuthorizationSession;
-class MockAuthorizationSession;
+class MockHmacSession;
+class MockPolicySession;
+class MockSessionManager;
 class MockTpm;
 class MockTpmState;
 class MockTpmUtility;
+class HmacSession;
 class PasswordAuthorizationDelegate;
+class PolicySession;
+class SessionManager;
 class Tpm;
 class TpmState;
 class TpmUtility;
@@ -49,7 +53,9 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   scoped_ptr<TpmUtility> GetTpmUtility() const override;
   scoped_ptr<AuthorizationDelegate> GetPasswordAuthorization(
       const std::string& password) const override;
-  scoped_ptr<AuthorizationSession> GetHmacAuthorizationSession() const override;
+  scoped_ptr<SessionManager> GetSessionManager() const override;
+  scoped_ptr<HmacSession> GetHmacSession() const override;
+  scoped_ptr<PolicySession> GetPolicySession() const override;
 
   // Mutators to inject custom mocks.
   void set_tpm(Tpm* tpm) {
@@ -68,8 +74,16 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
     password_authorization_delegate_ = delegate;
   }
 
-  void set_authorization_session(AuthorizationSession* session) {
-    authorization_session_ = session;
+  void set_session_manager(SessionManager* session_manager) {
+    session_manager_ = session_manager;
+  }
+
+  void set_hmac_session(HmacSession* hmac_session) {
+    hmac_session_ = hmac_session;
+  }
+
+  void set_policy_session(PolicySession* policy_session) {
+    policy_session_ = policy_session;
   }
 
  private:
@@ -81,8 +95,12 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   TpmUtility* tpm_utility_;
   scoped_ptr<PasswordAuthorizationDelegate> default_authorization_delegate_;
   AuthorizationDelegate* password_authorization_delegate_;
-  scoped_ptr<MockAuthorizationSession> default_authorization_session_;
-  AuthorizationSession* authorization_session_;
+  scoped_ptr<MockSessionManager> default_session_manager_;
+  SessionManager* session_manager_;
+  scoped_ptr<MockHmacSession> default_hmac_session_;
+  HmacSession* hmac_session_;
+  scoped_ptr<MockPolicySession> default_policy_session_;
+  PolicySession* policy_session_;
 
   DISALLOW_COPY_AND_ASSIGN(TrunksFactoryForTest);
 };

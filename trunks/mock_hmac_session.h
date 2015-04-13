@@ -1,11 +1,11 @@
-// Copyright 2014 The Chromium OS Authors. All rights reserved.
+// Copyright 2015 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef TRUNKS_MOCK_AUTHORIZATION_SESSION_H_
-#define TRUNKS_MOCK_AUTHORIZATION_SESSION_H_
+#ifndef TRUNKS_MOCK_HMAC_SESSION_H_
+#define TRUNKS_MOCK_HMAC_SESSION_H_
 
-#include "trunks/authorization_session.h"
+#include "trunks/hmac_session.h"
 
 #include <string>
 
@@ -13,10 +13,10 @@
 
 namespace trunks {
 
-class MockAuthorizationSession : public AuthorizationSession {
+class MockHmacSession : public HmacSession {
  public:
-  MockAuthorizationSession();
-  ~MockAuthorizationSession() override;
+  MockHmacSession();
+  ~MockHmacSession() override;
 
   MOCK_METHOD0(GetDelegate, AuthorizationDelegate*());
   MOCK_METHOD3(StartBoundSession, TPM_RC(
@@ -28,9 +28,9 @@ class MockAuthorizationSession : public AuthorizationSession {
   MOCK_METHOD1(SetFutureAuthorizationValue, void(const std::string& value));
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(MockAuthorizationSession);
+  DISALLOW_COPY_AND_ASSIGN(MockHmacSession);
 };
 
 }  // namespace trunks
 
-#endif  // TRUNKS_MOCK_AUTHORIZATION_SESSION_H_
+#endif  // TRUNKS_MOCK_HMAC_SESSION_H_

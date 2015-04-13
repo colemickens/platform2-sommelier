@@ -11,11 +11,9 @@
 
 namespace trunks {
 
-/*
- * This class is used to wrap a Key or NV ram handle given by the TPM.
- * It provides a destructor that cleans up TPM resources associated with
- * that handle.
- */
+// This class is used to wrap a Key or NV ram handle given by the TPM.
+// It provides a destructor that cleans up TPM resources associated with
+// that handle.
 class TRUNKS_EXPORT ScopedKeyHandle {
  public:
   // We provide a factory to the constructor so that we can later free

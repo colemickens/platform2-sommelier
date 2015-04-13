@@ -9,7 +9,6 @@
 
 #include <base/macros.h>
 
-#include "trunks/authorization_session.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_export.h"
 
