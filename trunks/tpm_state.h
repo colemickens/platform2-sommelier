@@ -41,6 +41,12 @@ class TRUNKS_EXPORT TpmState {
   // Returns true iff TPMA_STARTUP_CLEAR:orderly is set.
   virtual bool WasShutdownOrderly() = 0;
 
+  // Returns true iff the TPM supports RSA-2048 keys.
+  virtual bool IsRSASupported() = 0;
+
+  // Returns true iff the TPM supports the ECC NIST P-256 curve.
+  virtual bool IsECCSupported() = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(TpmState);
 };

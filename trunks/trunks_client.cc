@@ -441,6 +441,10 @@ int DumpStatus() {
          state->IsOwnerPasswordSet() ? "true" : "false");
   printf("Was shutdown orderly: %s\n",
          state->IsOwnerPasswordSet() ? "true" : "false");
+  printf("Is RSA supported: %s\n",
+         state->IsRSASupported() ? "true" : "false");
+  printf("Is ECC supported: %s\n",
+         state->IsECCSupported() ? "true" : "false");
   return 0;
 }
 

@@ -30,6 +30,8 @@ class TpmStateTest : public testing::Test {
     factory_.set_tpm(&mock_tpm_);
     permanent_data_ = GetValidCapabilityData(TPM_PT_PERMANENT, 0);
     startup_clear_data_ = GetValidCapabilityData(TPM_PT_STARTUP_CLEAR, 0);
+    rsa_data_ = GetValidAlgorithmData(TPM_ALG_RSA, 0);
+    ecc_data_ = GetValidAlgorithmData(TPM_ALG_ECC, 0);
     EXPECT_CALL(mock_tpm_, GetCapabilitySync(TPM_CAP_TPM_PROPERTIES,
                                              TPM_PT_PERMANENT, 1, _, _, _))
         .WillRepeatedly(WithArgs<4>(
@@ -38,6 +40,14 @@ class TpmStateTest : public testing::Test {
                                              TPM_PT_STARTUP_CLEAR, 1, _, _, _))
         .WillRepeatedly(WithArgs<4>(
             Invoke(this, &TpmStateTest::GetLiveStartupClear)));
+    EXPECT_CALL(mock_tpm_, GetCapabilitySync(TPM_CAP_ALGS,
+                                             TPM_ALG_RSA, 1, _, _, _))
+        .WillRepeatedly(WithArgs<4>(
+            Invoke(this, &TpmStateTest::GetLiveRSA)));
+    EXPECT_CALL(mock_tpm_, GetCapabilitySync(TPM_CAP_ALGS,
+                                             TPM_ALG_ECC, 1, _, _, _))
+        .WillRepeatedly(WithArgs<4>(
+            Invoke(this, &TpmStateTest::GetLiveECC)));
   }
 
   TPM_RC GetLivePermanent(TPMS_CAPABILITY_DATA* capability_data) {
@@ -47,6 +57,16 @@ class TpmStateTest : public testing::Test {
 
   TPM_RC GetLiveStartupClear(TPMS_CAPABILITY_DATA* capability_data) {
     *capability_data = startup_clear_data_;
+    return TPM_RC_SUCCESS;
+  }
+
+  TPM_RC GetLiveRSA(TPMS_CAPABILITY_DATA* capability_data) {
+    *capability_data = rsa_data_;
+    return TPM_RC_SUCCESS;
+  }
+
+  TPM_RC GetLiveECC(TPMS_CAPABILITY_DATA* capability_data) {
+    *capability_data = ecc_data_;
     return TPM_RC_SUCCESS;
   }
 
@@ -61,10 +81,22 @@ class TpmStateTest : public testing::Test {
     return data;
   }
 
+  TPMS_CAPABILITY_DATA GetValidAlgorithmData(TPM_ALG_ID alg_id, UINT32 value) {
+    TPMS_CAPABILITY_DATA data;
+    memset(&data, 0, sizeof(TPMS_CAPABILITY_DATA));
+    data.capability = TPM_CAP_ALGS;
+    data.data.tpm_properties.count = 1;
+    data.data.algorithms.alg_properties[0].alg = alg_id;
+    data.data.algorithms.alg_properties[0].alg_properties = value;
+    return data;
+  }
+
   TrunksFactoryForTest factory_;
   NiceMock<MockTpm> mock_tpm_;
   TPMS_CAPABILITY_DATA permanent_data_;
   TPMS_CAPABILITY_DATA startup_clear_data_;
+  TPMS_CAPABILITY_DATA rsa_data_;
+  TPMS_CAPABILITY_DATA ecc_data_;
 };
 
 TEST(TpmState_DeathTest, NotInitialized) {
@@ -78,6 +110,8 @@ TEST(TpmState_DeathTest, NotInitialized) {
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsPlatformHierarchyEnabled(),
                             "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.WasShutdownOrderly(), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsRSASupported(), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsECCSupported(), "Check failed");
 }
 
 TEST_F(TpmStateTest, FlagsClear) {
@@ -89,11 +123,15 @@ TEST_F(TpmStateTest, FlagsClear) {
   EXPECT_FALSE(tpm_state.IsInLockout());
   EXPECT_FALSE(tpm_state.IsPlatformHierarchyEnabled());
   EXPECT_FALSE(tpm_state.WasShutdownOrderly());
+  EXPECT_FALSE(tpm_state.IsRSASupported());
+  EXPECT_FALSE(tpm_state.IsECCSupported());
 }
 
 TEST_F(TpmStateTest, FlagsSet) {
   permanent_data_.data.tpm_properties.tpm_property[0].value = ~0U;
   startup_clear_data_.data.tpm_properties.tpm_property[0].value = ~0U;
+  rsa_data_.data.algorithms.alg_properties[0].alg_properties = ~0U;
+  ecc_data_.data.algorithms.alg_properties[0].alg_properties = ~0U;
   TpmStateImpl tpm_state(factory_);
   EXPECT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
   EXPECT_TRUE(tpm_state.IsOwnerPasswordSet());
@@ -102,6 +140,8 @@ TEST_F(TpmStateTest, FlagsSet) {
   EXPECT_TRUE(tpm_state.IsInLockout());
   EXPECT_TRUE(tpm_state.IsPlatformHierarchyEnabled());
   EXPECT_TRUE(tpm_state.WasShutdownOrderly());
+  EXPECT_TRUE(tpm_state.IsRSASupported());
+  EXPECT_TRUE(tpm_state.IsECCSupported());
 }
 
 TEST_F(TpmStateTest, BadResponsePermanentCapabilityType) {
@@ -116,6 +156,18 @@ TEST_F(TpmStateTest, BadResponseStartupClearCapabilityType) {
   EXPECT_NE(TPM_RC_SUCCESS, tpm_state.Initialize());
 }
 
+TEST_F(TpmStateTest, BadResponseRSAAlgCapabilityType) {
+  rsa_data_.capability = 0xFFFFF;
+  TpmStateImpl tpm_state(factory_);
+  EXPECT_NE(TPM_RC_SUCCESS, tpm_state.Initialize());
+}
+
+TEST_F(TpmStateTest, BadResponseECCAlgCapabilityType) {
+  ecc_data_.capability = 0xFFFFF;
+  TpmStateImpl tpm_state(factory_);
+  EXPECT_NE(TPM_RC_SUCCESS, tpm_state.Initialize());
+}
+
 TEST_F(TpmStateTest, BadResponsePermanentPropertyCount) {
   permanent_data_.data.tpm_properties.count = 0;
   TpmStateImpl tpm_state(factory_);
@@ -124,6 +176,18 @@ TEST_F(TpmStateTest, BadResponsePermanentPropertyCount) {
 
 TEST_F(TpmStateTest, BadResponseStartupClearPropertyCount) {
   startup_clear_data_.data.tpm_properties.count = 0;
+  TpmStateImpl tpm_state(factory_);
+  EXPECT_NE(TPM_RC_SUCCESS, tpm_state.Initialize());
+}
+
+TEST_F(TpmStateTest, BadResponseRSAAlgPropertyCount) {
+  rsa_data_.data.algorithms.count = 0;
+  TpmStateImpl tpm_state(factory_);
+  EXPECT_NE(TPM_RC_SUCCESS, tpm_state.Initialize());
+}
+
+TEST_F(TpmStateTest, BadResponseECCAlgPropertyCount) {
+  ecc_data_.data.algorithms.count = 0;
   TpmStateImpl tpm_state(factory_);
   EXPECT_NE(TPM_RC_SUCCESS, tpm_state.Initialize());
 }

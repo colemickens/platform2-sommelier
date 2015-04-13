@@ -54,6 +54,14 @@ class TpmStateForwarder : public TpmState {
     return target_->WasShutdownOrderly();
   }
 
+  bool IsRSASupported() override {
+    return target_->IsRSASupported();
+  }
+
+  bool IsECCSupported() override {
+    return target_->IsECCSupported();
+  }
+
  private:
   TpmState* target_;
 };
@@ -86,14 +94,6 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->TakeOwnership(owner_password,
                                   endorsement_password,
                                   lockout_password);
-  }
-
-  TPM_RC CreateStorageRootKeys(const std::string& owner_password) override {
-    return target_->CreateStorageRootKeys(owner_password);
-  }
-
-  TPM_RC CreateSaltingKey(const std::string& owner_password) override {
-    return target_->CreateSaltingKey(owner_password);
   }
 
   TPM_RC StirRandom(const std::string& entropy_data,

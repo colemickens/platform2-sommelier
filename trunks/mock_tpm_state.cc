@@ -14,6 +14,8 @@ MockTpmState::MockTpmState() {
       .WillByDefault(testing::Return(true));
   ON_CALL(*this, IsLockoutPasswordSet()).WillByDefault(testing::Return(true));
   ON_CALL(*this, WasShutdownOrderly()).WillByDefault(testing::Return(true));
+  ON_CALL(*this, IsRSASupported()).WillByDefault(testing::Return(true));
+  ON_CALL(*this, IsECCSupported()).WillByDefault(testing::Return(true));
 }
 MockTpmState::~MockTpmState() {}
 

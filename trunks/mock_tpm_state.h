@@ -23,6 +23,8 @@ class MockTpmState : public TpmState {
   MOCK_METHOD0(IsInLockout, bool());
   MOCK_METHOD0(IsPlatformHierarchyEnabled, bool());
   MOCK_METHOD0(WasShutdownOrderly, bool());
+  MOCK_METHOD0(IsRSASupported, bool());
+  MOCK_METHOD0(IsECCSupported, bool());
 };
 
 }  // namespace trunks

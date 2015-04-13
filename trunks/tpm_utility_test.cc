@@ -11,6 +11,7 @@
 #include "trunks/error_codes.h"
 #include "trunks/hmac_authorization_delegate.h"
 #include "trunks/mock_authorization_delegate.h"
+#include "trunks/mock_authorization_session.h"
 #include "trunks/mock_tpm.h"
 #include "trunks/mock_tpm_state.h"
 #include "trunks/tpm_constants.h"
@@ -34,6 +35,7 @@ class TpmUtilityTest : public testing::Test {
   void SetUp() override {
     factory_.set_tpm_state(&mock_tpm_state_);
     factory_.set_tpm(&mock_tpm_);
+    factory_.set_authorization_session(&mock_authorization_session_);
   }
 
   TPM_RC ComputeKeyName(const TPMT_PUBLIC& public_area,
@@ -56,11 +58,24 @@ class TpmUtilityTest : public testing::Test {
     return TPM_RC_SUCCESS;
   }
 
+  TPM_RC SetKnownOwnerPassword(const std::string& owner_password) {
+    return utility_.SetKnownOwnerPassword(owner_password);
+  }
+
+  TPM_RC CreateStorageRootKeys(const std::string& owner_password) {
+    return utility_.CreateStorageRootKeys(owner_password);
+  }
+
+  TPM_RC CreateSaltingKey(const std::string& owner_password) {
+    return utility_.CreateSaltingKey(owner_password);
+  }
+
  protected:
   TrunksFactoryForTest factory_;
   NiceMock<MockTpmState> mock_tpm_state_;
   NiceMock<MockTpm> mock_tpm_;
   NiceMock<MockAuthorizationDelegate> mock_authorization_delegate_;
+  NiceMock<MockAuthorizationSession> mock_authorization_session_;
   TpmUtilityImpl utility_;
 };
 
@@ -149,150 +164,103 @@ TEST_F(TpmUtilityTest, TakeOwnershipSuccess) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_OWNER, _, _, _))
-      .Times(2);
-  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_ENDORSEMENT, _, _, _))
-      .Times(1);
-  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_LOCKOUT, _, _, _))
-      .Times(1);
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.TakeOwnership("a", "b", "c"));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.TakeOwnership("owner",
+                                                   "endorsement",
+                                                   "lockout"));
 }
 
-TEST_F(TpmUtilityTest, TakeOwnershipAlreadyDone) {
+TEST_F(TpmUtilityTest, TakeOwnershipOwnershipDone) {
   EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet())
       .WillRepeatedly(Return(true));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.TakeOwnership("owner",
+                                                   "endorsement",
+                                                   "lockout"));
+}
+
+TEST_F(TpmUtilityTest, TakeOwnershipBadSession) {
+  EXPECT_CALL(mock_authorization_session_, StartUnboundSession(true))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.TakeOwnership("owner",
+                                                   "endorsement",
+                                                   "lockout"));
+}
+
+TEST_F(TpmUtilityTest, TakeOwnershipFailure) {
+  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_OWNER, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.TakeOwnership("owner",
+                                                   "endorsement",
+                                                   "lockout"));
+}
+
+TEST_F(TpmUtilityTest, ChangeOwnerPasswordEndorsementDone) {
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet())
+      .WillRepeatedly(Return(false));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.TakeOwnership("owner",
+                                                   "endorsement",
+                                                   "lockout"));
+}
+
+TEST_F(TpmUtilityTest, ChangeOwnerPasswordLockoutDone) {
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet())
+      .WillRepeatedly(Return(true));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.TakeOwnership("owner",
+                                                   "endorsement",
+                                                   "lockout"));
+}
+
+TEST_F(TpmUtilityTest, ChangeOwnerPasswordEndorsementLockoutDone) {
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet())
+      .WillRepeatedly(Return(true));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.TakeOwnership("owner",
+                                                   "endorsement",
+                                                   "lockout"));
+}
+
+TEST_F(TpmUtilityTest, ChangeOwnerPasswordEndoresmentFail) {
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(_, _, _, _))
-      .Times(1);
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.TakeOwnership("a", "b", "c"));
-}
-
-TEST_F(TpmUtilityTest, TakeOwnershipPartial) {
-  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
-      .WillOnce(Return(false));
-  EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_OWNER, _, _, _))
-      .Times(1);
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_ENDORSEMENT, _, _, _))
-      .Times(1);
-  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_LOCKOUT, _, _, _))
-      .Times(0);
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.TakeOwnership("a", "b", "c"));
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.TakeOwnership("owner",
+                                                   "endorsement",
+                                                   "lockout"));
 }
 
-TEST_F(TpmUtilityTest, TakeOwnershipOwnerFailure) {
+TEST_F(TpmUtilityTest, ChangeOwnerPasswordLockoutFailure) {
   EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet())
       .WillRepeatedly(Return(false));
-  // Reject attempts to set owner auth.
-  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_OWNER, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_ENDORSEMENT, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_LOCKOUT, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_FAILURE, utility_.TakeOwnership("a", "b", "c"));
-}
-
-TEST_F(TpmUtilityTest, TakeOwnershipEndorsementFailure) {
-  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet())
-      .WillRepeatedly(Return(false));
-  // Reject attempts to set endorsement auth.
-  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_OWNER, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_ENDORSEMENT, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_LOCKOUT, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_FAILURE, utility_.TakeOwnership("a", "b", "c"));
-}
-
-TEST_F(TpmUtilityTest, TakeOwnershipLockoutFailure) {
-  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet())
-      .WillRepeatedly(Return(false));
-  // Reject attempts to set lockout auth.
-  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_OWNER, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_ENDORSEMENT, _, _, _))
+  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(_, _, _, _))
       .WillRepeatedly(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_LOCKOUT, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility_.TakeOwnership("a", "b", "c"));
-}
-
-TEST_F(TpmUtilityTest, RootKeysSuccess) {
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateStorageRootKeys("password"));
-}
-
-TEST_F(TpmUtilityTest, RootKeysHandleConsistency) {
-  TPM_HANDLE test_handle = 42;
-  EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<3>(test_handle),
-                            Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, test_handle, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateStorageRootKeys("password"));
-}
-
-TEST_F(TpmUtilityTest, RootKeysCreateFailure) {
-  EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateStorageRootKeys("password"));
-}
-
-TEST_F(TpmUtilityTest, RootKeysPersistFailure) {
-  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateStorageRootKeys("password"));
-}
-
-TEST_F(TpmUtilityTest, SaltingKeySuccess) {
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateSaltingKey("password"));
-}
-
-TEST_F(TpmUtilityTest, SaltingKeyConsistency) {
-  TPM_HANDLE test_handle = 42;
-  EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<4>(test_handle),
-                            Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, test_handle, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateSaltingKey("password"));
-}
-
-TEST_F(TpmUtilityTest, SaltingKeyCreateFailure) {
-  EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateSaltingKey("password"));
-}
-
-TEST_F(TpmUtilityTest, SaltingKeyLoadFailure) {
-  EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateSaltingKey("password"));
-}
-
-TEST_F(TpmUtilityTest, SaltingKeyPersistFailure) {
-  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.TakeOwnership("owner",
+                                                   "endorsement",
+                                                   "lockout"));
 }
 
 TEST_F(TpmUtilityTest, StirRandomSuccess) {
@@ -1533,6 +1501,129 @@ TEST_F(TpmUtilityTest, GetNVSpacePublicAreaFailure) {
   EXPECT_CALL(mock_tpm_, NV_ReadPublicSync(_, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.GetNVSpacePublicArea(index, &public_area));
+}
+
+TEST_F(TpmUtilityTest, SetKnownPasswordSuccess) {
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_OWNER, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, SetKnownOwnerPassword("password"));
+}
+
+TEST_F(TpmUtilityTest, SetKnownPasswordOwnershipDone) {
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillOnce(Return(true));
+  EXPECT_EQ(TPM_RC_SUCCESS, SetKnownOwnerPassword("password"));
+}
+
+TEST_F(TpmUtilityTest, SetKnownPasswordFailure) {
+  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_OWNER, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, SetKnownOwnerPassword("password"));
+}
+
+TEST_F(TpmUtilityTest, RootKeysSuccess) {
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .Times(2)
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreateStorageRootKeys("password"));
+}
+
+TEST_F(TpmUtilityTest, RootKeysHandleConsistency) {
+  TPM_HANDLE test_handle = 42;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .Times(2)
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<3>(test_handle),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, test_handle, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreateStorageRootKeys("password"));
+}
+
+TEST_F(TpmUtilityTest, RootKeysCreateFailure) {
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, CreateStorageRootKeys("password"));
+}
+
+TEST_F(TpmUtilityTest, RootKeysPersistFailure) {
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, CreateStorageRootKeys("password"));
+}
+
+TEST_F(TpmUtilityTest, RootKeysAlreadyExist) {
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .Times(2)
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreateStorageRootKeys("password"));
+}
+
+TEST_F(TpmUtilityTest, SaltingKeySuccess) {
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey("password"));
+}
+
+TEST_F(TpmUtilityTest, SaltingKeyConsistency) {
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  TPM_HANDLE test_handle = 42;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<4>(test_handle),
+                            Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, test_handle, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey("password"));
+}
+
+TEST_F(TpmUtilityTest, SaltingKeyCreateFailure) {
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey("password"));
+}
+
+TEST_F(TpmUtilityTest, SaltingKeyLoadFailure) {
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey("password"));
+}
+
+TEST_F(TpmUtilityTest, SaltingKeyPersistFailure) {
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_CALL(mock_tpm_, EvictControlSync(_, _, _, _, _, _))
+      .WillRepeatedly(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, CreateSaltingKey("password"));
+}
+
+TEST_F(TpmUtilityTest, SaltingKeyAlreadyExists) {
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey("password"));
 }
 
 }  // namespace trunks

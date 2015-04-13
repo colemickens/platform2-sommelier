@@ -30,12 +30,16 @@ class TRUNKS_EXPORT TpmStateImpl : public TpmState {
   bool IsInLockout() override;
   bool IsPlatformHierarchyEnabled() override;
   bool WasShutdownOrderly() override;
+  bool IsRSASupported() override;
+  bool IsECCSupported() override;
 
  private:
   const TrunksFactory& factory_;
   bool initialized_;
   TPMA_PERMANENT permanent_flags_;
   TPMA_STARTUP_CLEAR startup_clear_flags_;
+  TPMA_ALGORITHM rsa_flags_;
+  TPMA_ALGORITHM ecc_flags_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmStateImpl);
 };
