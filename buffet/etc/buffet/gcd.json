@@ -1,10 +1,22 @@
 {
   "base": {
     "reboot": {
+      "parameters": {},
+      "results": {}
+    },
+
+    "updateBaseConfiguration": {
       "parameters": {
+        "localDiscoveryEnabled": "boolean",
+        "localAnonymousAccessMaxRole": [ "none", "viewer", "user" ],
+        "localPairingEnabled": "boolean"
       },
-      "results": {
-      }
+      "results": {}
+    },
+
+    "identify": {
+      "parameters": {},
+      "results": {}
     }
   }
 }
