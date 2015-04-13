@@ -14,6 +14,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/threading/platform_thread.h>
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/metrics_library.h>
 
@@ -79,6 +80,14 @@ const char kOobeCompletedPath[] = "/home/chronos/.oobe_completed";
 // or shutting down the system.
 const char kFlashromLockPath[] = "/var/lock/flashrom_powerd.lock";
 const char kBatteryToolLockPath[] = "/var/lock/battery_tool_powerd.lock";
+
+// When noticing that the firmware is being updated while suspending, wait up to
+// this long for the update to finish before reporting a suspend failure. The
+// event loop is blocked during this period.
+const int kFirmwareUpdateTimeoutMs = 500;
+
+// Interval between successive polls during kFirmwareUpdateTimeoutMs.
+const int kFirmwareUpdatePollMs = 100;
 
 // Interval between attempts to retry shutting the system down while
 // kFlashromLockPath or kBatteryToolLockPath exist, in seconds.
@@ -655,10 +664,21 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     uint64_t wakeup_count,
     bool wakeup_count_valid,
     base::TimeDelta duration) {
+  // If a firmware update is ongoing, spin for a bit to wait for it to finish:
+  // http://crosbug.com/p/38947
+  const base::TimeDelta firmware_poll_interval =
+      base::TimeDelta::FromMilliseconds(kFirmwareUpdatePollMs);
+  const base::TimeDelta firmware_timeout =
+      base::TimeDelta::FromMilliseconds(kFirmwareUpdateTimeoutMs);
+  base::TimeDelta firmware_duration;
   std::string details;
-  if (FirmwareIsBeingUpdated(&details)) {
-    LOG(INFO) << "Aborting suspend attempt for firmware update: " << details;
-    return SUSPEND_FAILED;
+  while (FirmwareIsBeingUpdated(&details)) {
+    if (firmware_duration >= firmware_timeout) {
+      LOG(INFO) << "Aborting suspend attempt for firmware update: " << details;
+      return SUSPEND_FAILED;
+    }
+    firmware_duration += firmware_poll_interval;
+    base::PlatformThread::Sleep(firmware_poll_interval);
   }
 
   // Touch a file that crash-reporter can inspect later to determine
@@ -676,8 +696,6 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 
   // This command is run synchronously to ensure that it finishes before the
   // system is suspended.
-  // TODO(derat): Remove this once it's logged by the kernel:
-  // http://crosbug.com/p/16132
   if (log_suspend_with_mosys_eventlog_)
     RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
 
@@ -696,8 +714,6 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   const int exit_code = RunSetuidHelper("suspend", args, true);
   LOG(INFO) << "powerd_suspend returned " << exit_code;
 
-  // TODO(derat): Remove this once it's logged by the kernel:
-  // http://crosbug.com/p/16132
   if (log_suspend_with_mosys_eventlog_)
     RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
 
