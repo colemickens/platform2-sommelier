@@ -21,6 +21,11 @@ import regions
 import yaml
 
 
+_WARN_UNKNOWN_DATA_IN_UNCONFIRMED_REGION = (
+    'Missing %s %r; does this new data need to be added to CrOS, or '
+    'does testdata need to be updated? (just a warning, since region '
+    '%r is not a confirmed region)')
+
 class RegionTest(unittest.TestCase):
   """Tests for the Region class."""
 
@@ -96,25 +101,26 @@ class RegionTest(unittest.TestCase):
         if tz not in self.time_zones:
           if r.region_code in regions.REGIONS:
             self.fail(
-                'Missing time zone %r; does a new time zone need to be added '
+                'Missing time zones: %r; does a new time zone need to be added '
                 'to CrOS, or does testdata need to be updated?' % tz)
           else:
             # This is an unconfirmed region; just print a warning.
-            logging.warn('Missing time zone %r; does a new time zone need to '
-                         'be added to CrOS, or does testdata need to '
-                         'be updated? (just a warning, since region '
-                         '%r is not a confirmed region)', tz, r.region_code)
+            logging.warn(_WARN_UNKNOWN_DATA_IN_UNCONFIRMED_REGION, 'time zone',
+                         tz, r.region_code)
 
   def testLocales(self):
     missing = []
     for r in regions.BuildRegionsDict(include_all=True).values():
       for l in r.locales:
         if l not in self.locales:
-          missing.append(l)
-    self.assertFalse(
-        missing,
-        ('Missing locale; does testdata need to be updated?: %r' %
-         missing))
+          if r.region_code in regions.REGIONS:
+            missing.append(l)
+          else:
+            logging.warn(_WARN_UNKNOWN_DATA_IN_UNCONFIRMED_REGION, 'locale', l,
+                         r.region_code)
+    self.assertFalse(missing,
+                     ('Missing locale; does testdata need to be updated?: %r' %
+                      missing))
 
   def testInputMethods(self):
     # Verify that every region is present in the dict.
@@ -122,10 +128,14 @@ class RegionTest(unittest.TestCase):
       for k in r.keyboards:
         resolved_method = self._ResolveInputMethod(k)
         # Make sure the keyboard method is present.
-        self.assertIn(
-            resolved_method, self.input_methods,
-            'Missing keyboard layout %r (resolved from %r)' % (
+        if resolved_method not in self.input_methods:
+          if r.region_code in regions.REGIONS:
+            self.fail('Missing keyboard layout %r (resolved from %r)' % (
                 resolved_method, k))
+          else:
+            # This is an unconfirmed region; just print a warning.
+            logging.warn(_WARN_UNKNOWN_DATA_IN_UNCONFIRMED_REGION, 'keyboard',
+                         k, r.region_code)
 
   def testFirmwareLocales(self):
     bmpblk_dir = os.path.join(

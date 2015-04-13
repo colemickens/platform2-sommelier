@@ -10,9 +10,15 @@ used as a key in JSON database.
 
 For projects that need to use unpublished regions, please:
 
-1. Create a virtual/chromeos-regions package in board private overlay.
-2. In the package, set RDEPEND="chromeos-base/regions-private"
-3. Build system and try. You can use tool 'cros_region_data' to verify:
+1. Browser go/cros-keyboard-request and find table
+   "Consolidated VPD & region data", and check if your region is confirmed.
+   (If not, contact OOBE / L10N team to confirm and sign-off).
+2. cd ~/trunk/src/private-overlays/chromeos-partner-overlay/chromeos-base
+3. cd regions-private/files
+4. Edit regions_overlay.py to add correct region data into REGIONS_LIST.
+5. Build system and try. You can use tool 'cros_region_data' to verify:
     cros_region_data <FIELD> <REGION_TO_TEST>
    For example, "cros_region_data description us" gives you "United States".
+6. Create the change list and cherry-pick into both factory branches and
+   release image (including FSI) branches.
 
