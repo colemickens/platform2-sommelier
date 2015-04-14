@@ -35,13 +35,13 @@
     ],
     "isolators": [
         {
-            "name": "os/brillo/namespaces-share-set",
+            "name": "os/bruteus/namespaces-share-set",
             "value": {
                 "set": [ "CLONE_NEWIPC" ],
             }
         },
         {
-            "name": "os/brillo/device-path-filter-set",
+            "name": "os/bruteus/device-path-filter-set",
             "value": {
                 "set": [
                     "/dev/binder",
@@ -50,7 +50,7 @@
             }
         },
         {
-            "name": "os/brillo/device-node-filter-set",
+            "name": "os/bruteus/device-node-filter-set",
             "value": {
                 "set": [
                      { "major": 13, "minor": -1 }
@@ -60,11 +60,11 @@
     ],
     "annotations": [
         {
-            "name": "service-0",
+            "name": "bruteus-service-0",
             "value": "com.android.embedded.ping-brick.ping-service",
         },
         {
-            "name": "service-1",
+            "name": "bruteus-service-1",
             "value": "com.android.embedded.ping-brick.echo-service",
         }
     ]

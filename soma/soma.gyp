@@ -57,7 +57,7 @@
         'lib/soma/device_filter.cc',
         'lib/soma/namespace.cc',
         'lib/soma/port.cc',
-        'lib/soma/service_name.cc',
+        'lib/soma/annotations.cc',
       ],
     },
     {

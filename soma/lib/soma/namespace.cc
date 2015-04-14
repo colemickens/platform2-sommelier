@@ -13,7 +13,7 @@
 namespace soma {
 namespace parser {
 namespace ns {
-const char kListKey[] = "os/brillo/namespaces-share-set";
+const char kListKey[] = "os/bruteus/namespaces-share-set";
 const char kNewIpc[] = "CLONE_NEWIPC";
 const char kNewNet[] = "CLONE_NEWNET";
 const char kNewNs[] = "CLONE_NEWNS";

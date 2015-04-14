@@ -19,7 +19,7 @@ message ContainerSpec {
   }
 
   message PortSpec {
-    optional bool allow_all = 1 [default = false];
+    optional bool allow_all = 1;
     repeated uint32 ports = 2;
   }
 
@@ -74,4 +74,7 @@ message ContainerSpec {
 
   // mknod-number-based filters indicating which device nodes should be visible.
   repeated DeviceNodeFilter device_node_filters = 7;
+
+  // Whether this container should be running at all times or started on-demand.
+  optional bool is_persistent = 8;
 }

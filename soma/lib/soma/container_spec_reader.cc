@@ -18,10 +18,10 @@
 #include <base/values.h>
 #include <chromeos/userdb_utils.h>
 
+#include "soma/lib/soma/annotations.h"
 #include "soma/lib/soma/container_spec_helpers.h"
 #include "soma/lib/soma/namespace.h"
 #include "soma/lib/soma/port.h"
-#include "soma/lib/soma/service_name.h"
 
 namespace soma {
 namespace parser {
@@ -223,10 +223,11 @@ std::unique_ptr<ContainerSpec> ContainerSpecReader::Read(
 
   const base::ListValue* to_parse = nullptr;
   std::vector<std::string> service_names;
-  if (spec_dict->GetList(service_name::kListKey, &to_parse)) {
-    if (!service_name::ParseList(to_parse, &service_names))
+  if (spec_dict->GetList(annotations::kListKey, &to_parse)) {
+    if (!annotations::ParseServiceNameList(*to_parse, &service_names))
       return nullptr;
     container_spec_helpers::SetServiceNames(service_names, spec.get());
+    spec->set_is_persistent(annotations::IsPersistent(*to_parse));
   }
 
   if (spec_dict->GetList(kIsolatorsListKey, &to_parse) &&

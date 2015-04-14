@@ -19,10 +19,10 @@
 #include <base/values.h>
 #include <gtest/gtest.h>
 
+#include "soma/lib/soma/annotations.h"
 #include "soma/lib/soma/device_filter.h"
 #include "soma/lib/soma/namespace.h"
 #include "soma/lib/soma/port.h"
-#include "soma/lib/soma/service_name.h"
 #include "soma/proto_bindings/soma_container_spec.pb.h"
 
 namespace soma {
@@ -48,6 +48,8 @@ class ContainerSpecWrapper {
   gid_t gid_of_executable(int index) const {
     return internal_->executables(index).gid();
   }
+
+  bool is_persistent() const { return internal_->is_persistent(); }
 
   bool ProvidesServiceNamed(const std::string& name) const {
     const RepeatedPtrField<std::string>& names = internal_->service_names();
@@ -155,6 +157,7 @@ class ContainerSpecReaderTest : public ::testing::Test {
     ASSERT_EQ(scratch_.value(), spec->name());
     ASSERT_EQ(base::UintToString(spec->uid_of_executable(0)), kUid);
     ASSERT_EQ(base::UintToString(spec->gid_of_executable(0)), kGid);
+    ASSERT_FALSE(spec->is_persistent());
 
     ASSERT_PRED2(
         [](const std::string& a, const std::string& b) {
@@ -245,28 +248,58 @@ std::unique_ptr<base::DictionaryValue> CreateAnnotation(
   annotation->SetString("value", value);
   return std::move(annotation);
 }
+
+std::unique_ptr<base::ListValue> CreateAnnotationList(
+    const std::string& name, const std::string& value) {
+  std::unique_ptr<base::ListValue> annotations(new base::ListValue);
+  annotations->Append(CreateAnnotation(name, value).release());
+  return std::move(annotations);
+}
 }  // namespace
 
-TEST_F(ContainerSpecReaderTest, OneServiceName) {
+TEST_F(ContainerSpecReaderTest, Persistent) {
   std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
-
-  std::unique_ptr<base::ListValue> annotations(new base::ListValue);
-  annotations->Append(CreateAnnotation("service-0", "foo").release());
-  baseline->Set(service_name::kListKey, annotations.release());
+  baseline->Set(
+      annotations::kListKey,
+      CreateAnnotationList(annotations::kPersistentKey, "true").release());
 
   std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
-  EXPECT_TRUE(spec->ProvidesServiceNamed("foo"));
+  EXPECT_TRUE(spec->is_persistent());
+}
+
+TEST_F(ContainerSpecReaderTest, NotPersistent) {
+  std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
+  baseline->Set(
+      annotations::kListKey,
+      CreateAnnotationList(annotations::kPersistentKey, "not").release());
+
+  std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
+
+  EXPECT_FALSE(spec->is_persistent());
+}
+
+TEST_F(ContainerSpecReaderTest, OneServiceName) {
+  std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
+  baseline->Set(
+      annotations::kListKey,
+      CreateAnnotationList(annotations::MakeServiceNameKey(0), "z").release());
+
+  std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
+
+  EXPECT_TRUE(spec->ProvidesServiceNamed("z"));
 }
 
 TEST_F(ContainerSpecReaderTest, SkipBogusServiceName) {
   std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
 
   std::unique_ptr<base::ListValue> annotations(new base::ListValue);
-  annotations->Append(CreateAnnotation("service-0", "foo").release());
+  annotations->Append(
+      CreateAnnotation(annotations::MakeServiceNameKey(0), "foo").release());
   annotations->Append(CreateAnnotation("bugagoo", "bar").release());
-  annotations->Append(CreateAnnotation("service-1", "baz").release());
-  baseline->Set(service_name::kListKey, annotations.release());
+  annotations->Append(
+      CreateAnnotation(annotations::MakeServiceNameKey(1), "baz").release());
+  baseline->Set(annotations::kListKey, annotations.release());
 
   std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
 
