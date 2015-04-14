@@ -522,6 +522,11 @@ Properties 	object ActiveProfile [readwrite]
 			checking is enabled.  This is a comma-separated
 			string; e.g. "wifi,wimax,vpn".
 
+		array{string} ClaimedDevices [readonly]
+
+			The list of devices that have been claimed by
+			the current DeviceClaimer (if it exists).
+
 		array{string} ConnectedTechnologies [readonly]
 
 			The list of connected technologies. The strings

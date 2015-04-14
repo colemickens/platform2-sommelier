@@ -52,6 +52,10 @@ class DeviceClaimer {
 
   virtual bool default_claimer() const { return default_claimer_; }
 
+  const std::set<std::string> &claimed_device_names() const {
+    return claimed_device_names_;
+  }
+
  private:
   // DBus name watcher for monitoring the DBus service of the claimer.
   std::unique_ptr<DBusNameWatcher> dbus_name_watcher_;

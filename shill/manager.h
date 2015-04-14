@@ -688,6 +688,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   void DeregisterDeviceByLinkName(const std::string &link_name);
 
+  // Returns the names of all of the devices that have been claimed by the
+  // current DeviceClaimer.  Returns an empty vector if no DeviceClaimer is set.
+  std::vector<std::string> ClaimedDevices(Error *error);
+
   EventDispatcher *dispatcher_;
   const base::FilePath run_path_;
   const base::FilePath storage_path_;

@@ -196,6 +196,8 @@ Manager::Manager(ControlInterface *control_interface,
   HelpRegisterConstDerivedStrings(kUninitializedTechnologiesProperty,
                                   &Manager::UninitializedTechnologies);
   store_.RegisterBool(kWakeOnLanEnabledProperty, &is_wake_on_lan_enabled_);
+  HelpRegisterConstDerivedStrings(kClaimedDevicesProperty,
+                                  &Manager::ClaimedDevices);
 
   // Do not invoke SetTechnologyOrder here because of its side effects.
   technology_order_ = default_technology_order;
@@ -1184,6 +1186,18 @@ void Manager::DeregisterDeviceByLinkName(const string &link_name) {
       break;
     }
   }
+}
+
+vector<string> Manager::ClaimedDevices(Error *error) {
+  vector<string> results;
+  if (!device_claimer_) {
+    return results;
+  }
+
+  const auto &devices = device_claimer_->claimed_device_names();
+  results.resize(devices.size());
+  std::copy(devices.begin(), devices.end(), results.begin());
+  return results;
 }
 
 void Manager::LoadDeviceFromProfiles(const DeviceRefPtr &device) {
