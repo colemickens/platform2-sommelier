@@ -4,6 +4,8 @@
 
 #include "soma/annotations.h"
 
+#include <memory>
+
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -71,6 +73,26 @@ bool IsPersistent(const base::ListValue& annotations) {
       return LowerCaseEqualsASCII(value, "true");
   }
   return false;
+}
+
+namespace {
+std::unique_ptr<base::DictionaryValue> CreateAnnotation(
+    const std::string& name,
+    const std::string& value) {
+  std::unique_ptr<base::DictionaryValue> annotation(new base::DictionaryValue);
+  annotation->SetString(kNameKey, name);
+  annotation->SetString(kValueKey, value);
+  return std::move(annotation);
+}
+}  // namespace
+
+bool AddPersistentAnnotationForTest(base::DictionaryValue* to_modify) {
+  DCHECK(to_modify);
+  base::ListValue* annotations = nullptr;
+  if (!to_modify->GetList(kListKey, &annotations))
+    return false;
+  annotations->Append(CreateAnnotation(kPersistentKey, "true").release());
+  return true;
 }
 
 }  // namespace annotations

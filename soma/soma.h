@@ -23,6 +23,9 @@ class Soma : public ISomaHostInterface {
   // Implementation of ISomaHostInterface.
   int GetContainerSpec(GetContainerSpecRequest* request,
                        GetContainerSpecResponse* response) override;
+  int GetPersistentContainerSpecs(
+      GetPersistentContainerSpecsRequest* ignored,
+      GetPersistentContainerSpecsResponse* response) override;
 
  private:
   base::FilePath NameToPath(const std::string& service_name) const;

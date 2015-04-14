@@ -16,7 +16,12 @@ service Soma {
   //   soma.GetContainerSpecResponse response;
   //   request.set_service_name("com.android.embedded.MyService");
   //   soma_proxy->GetContainerSpec(&request, &response);
-  rpc GetContainerSpec (GetContainerSpecRequest) returns (GetContainerSpecResponse);
+  rpc GetContainerSpec (GetContainerSpecRequest)
+      returns (GetContainerSpecResponse);
+
+  // Returns all ContainerSpecs marked with a 'persistent' annotation.
+  rpc GetPersistentContainerSpecs (GetPersistentContainerSpecsRequest)
+      returns (GetPersistentContainerSpecsResponse);
 }
 
 message GetContainerSpecRequest {
@@ -24,6 +29,13 @@ message GetContainerSpecRequest {
 }
 
 message GetContainerSpecResponse {
-  // Defined in container_spec.proto.
+  // Defined in soma_container_spec.proto.
   optional ContainerSpec container_spec = 1;
+}
+
+message GetPersistentContainerSpecsRequest {}
+
+message GetPersistentContainerSpecsResponse {
+  // Defined in soma_container_spec.proto.
+  repeated ContainerSpec container_specs = 1;
 }

@@ -61,6 +61,12 @@ class SomaInterfaceStub : public soma::ISoma {
     return return_value_;
   }
 
+  int GetPersistentContainerSpecs(
+      soma::GetPersistentContainerSpecsRequest* in,
+      soma::GetPersistentContainerSpecsResponse* out) override {
+    return 0;
+  }
+
  private:
   std::map<std::string, ContainerSpec> specs_;
 

@@ -53,11 +53,11 @@
         'soma-proto-lib',
       ],
       'sources': [
+        'lib/soma/annotations.cc',
         'lib/soma/container_spec_helpers.cc',
         'lib/soma/device_filter.cc',
         'lib/soma/namespace.cc',
         'lib/soma/port.cc',
-        'lib/soma/annotations.cc',
       ],
     },
     {

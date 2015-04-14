@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 
@@ -35,6 +36,23 @@ int Soma::GetContainerSpec(GetContainerSpecRequest* request,
   std::unique_ptr<ContainerSpec> spec = reader_.Read(NameToPath(service_name));
   if (spec)
     response->mutable_container_spec()->CheckTypeAndMergeFrom(*spec.get());
+  return 0;
+}
+
+// Running over all JSON files in the directory on every call might be
+// way too slow. If so, we could do it once at startup and then cache them,
+// possibly providing an RPC to make us refresh the cache.
+int Soma::GetPersistentContainerSpecs(
+    GetPersistentContainerSpecsRequest* ignored,
+    GetPersistentContainerSpecsResponse* response) {
+  base::FileEnumerator files(root_, false, base::FileEnumerator::FILES,
+                             "*.json");
+  for (base::FilePath spec_path = files.Next(); !spec_path.empty();
+       spec_path = files.Next()) {
+    std::unique_ptr<ContainerSpec> spec = reader_.Read(spec_path);
+    if (spec && spec->is_persistent())
+      response->add_container_specs()->CheckTypeAndMergeFrom(*spec.get());
+  }
   return 0;
 }
 
