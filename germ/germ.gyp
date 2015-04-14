@@ -50,6 +50,7 @@
         'germ_host.cc',
         'launcher.cc',
         'process_reaper.cc',
+        'switches.cc',
       ],
     },
     {
@@ -72,7 +73,7 @@
         'libgerm',
       ],
       'sources': [
-        'germd.cc'
+        'germd.cc',
       ],
       'variables': {
         'deps': [

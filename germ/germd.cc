@@ -13,6 +13,7 @@
 #include "germ/constants.h"
 #include "germ/germ_host.h"
 #include "germ/process_reaper.h"
+#include "germ/switches.h"
 
 // TODO(usanghi): Find a better way to instantiate PsycheDaemon without
 // extending it in each service.
@@ -51,7 +52,17 @@ class GermDaemon : public psyche::PsycheDaemon {
 
 int main(int argc, char *argv[]) {
   base::CommandLine::Init(argc, argv);
-  chromeos::InitLog(chromeos::kLogToSyslog);
+  base::CommandLine* cmdline = base::CommandLine::ForCurrentProcess();
+
+  int log_flags = chromeos::kLogToSyslog;
+  if (cmdline->HasSwitch(germ::kLogToStderr)) {
+    log_flags |= chromeos::kLogToStderr;
+  }
+  chromeos::InitLog(log_flags);
+  if (cmdline->HasSwitch(germ::kNewLauncher)) {
+    LOG(INFO) << "Using new launcher";
+  }
+
   germ::GermDaemon daemon;
   return daemon.Run();
 }
