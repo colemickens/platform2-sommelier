@@ -36,10 +36,15 @@ class ProfileDBusPropertyExporter {
                              Error *error);
 
  private:
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   bool LoadEapServiceProperties(PropertyList *properties,
                                 Error *error);
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+
+#if !defined(DISABLE_WIFI)
   bool LoadWiFiServiceProperties(PropertyList *properties,
                                  Error *error);
+#endif  // DISABLE_WIFI
 
   bool LoadBool(PropertyList *properties,
                 const std::string &storage_name,

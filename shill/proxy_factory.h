@@ -31,15 +31,21 @@ class ModemSimpleProxyInterface;
 class PermissionBrokerProxyInterface;
 class PowerManagerProxyDelegate;
 class PowerManagerProxyInterface;
-class SupplicantBSSProxyInterface;
-class SupplicantEventDelegateInterface;
-class SupplicantInterfaceProxyInterface;
-class SupplicantNetworkProxyInterface;
-class SupplicantProcessProxyInterface;
 class UpstartProxyInterface;
 class WiMaxDeviceProxyInterface;
 class WiMaxManagerProxyInterface;
 class WiMaxNetworkProxyInterface;
+
+#if !defined(DISABLE_WIFI)
+class SupplicantBSSProxyInterface;
+#endif  // DISABLE_WIFI
+
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+class SupplicantEventDelegateInterface;
+class SupplicantInterfaceProxyInterface;
+class SupplicantNetworkProxyInterface;
+class SupplicantProcessProxyInterface;
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 namespace mm1 {
 
@@ -73,6 +79,7 @@ class ProxyFactory {
   virtual PowerManagerProxyInterface *CreatePowerManagerProxy(
       PowerManagerProxyDelegate *delegate);
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
       const char *dbus_path,
       const char *dbus_addr);
@@ -85,12 +92,15 @@ class ProxyFactory {
   virtual SupplicantNetworkProxyInterface *CreateSupplicantNetworkProxy(
       const DBus::Path &object_path,
       const char *dbus_addr);
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
+#if !defined(DISABLE_WIFI)
   // See comment in supplicant_bss_proxy.h, about bare pointer.
   virtual SupplicantBSSProxyInterface *CreateSupplicantBSSProxy(
       WiFiEndpoint *wifi_endpoint,
       const DBus::Path &object_path,
       const char *dbus_addr);
+#endif  // DISABLE_WIFI
 
   virtual UpstartProxyInterface *CreateUpstartProxy();
 

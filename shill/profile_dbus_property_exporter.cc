@@ -15,7 +15,9 @@
 #include "shill/service.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
+#if !defined(DISABLE_WIFI)
 #include "shill/wifi/wifi_service.h"
+#endif  // DISABLE_WIFI
 
 using std::string;
 
@@ -46,9 +48,11 @@ bool ProfileDBusPropertyExporter::LoadServiceProperties(
     return false;
   }
 
+#if !defined(DISABLE_WIFI)
   if (technology == Technology::kWifi) {
     LoadWiFiServiceProperties(properties, error);
   }
+#endif  // DISABLE_WIFI
 
   LoadBool(properties, Service::kStorageAutoConnect, kAutoConnectProperty);
   LoadString(properties, Service::kStorageError, kErrorProperty);
@@ -62,6 +66,7 @@ bool ProfileDBusPropertyExporter::LoadServiceProperties(
   return true;
 }
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 bool ProfileDBusPropertyExporter::LoadEapServiceProperties(
     PropertyList *properties,
     Error */*error*/) {
@@ -71,7 +76,9 @@ bool ProfileDBusPropertyExporter::LoadEapServiceProperties(
   LoadString(properties, EapCredentials::kStorageEapKeyID, kEapKeyIdProperty);
   return true;
 }
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
+#if !defined(DISABLE_WIFI)
 bool ProfileDBusPropertyExporter::LoadWiFiServiceProperties(
     PropertyList *properties,
     Error */*error*/) {
@@ -99,6 +106,7 @@ bool ProfileDBusPropertyExporter::LoadWiFiServiceProperties(
 
   return true;
 }
+#endif  // DISABLE_WIFI
 
 bool ProfileDBusPropertyExporter::LoadBool(PropertyList *properties,
                                            const string &storage_name,

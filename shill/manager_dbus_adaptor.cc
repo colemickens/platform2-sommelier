@@ -17,7 +17,6 @@
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/wifi/wifi_service.h"
 
 using std::map;
 using std::string;
@@ -390,12 +389,16 @@ bool ManagerDBusAdaptor::VerifyDestination(const string &certificate,
                                            const string &hotspot_bssid,
                                            DBus::Error &error) {  // NOLINT
   SLOG(this, 2) << __func__;
-  Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
+#if !defined(DISABLE_WIFI)
+  Error e(Error::kOperationInitiated);
   manager_->VerifyDestination(certificate, public_key, nonce,
                               signed_data, destination_udn,
                               hotspot_ssid, hotspot_bssid,
                               GetBoolMethodReplyCallback(tag), &e);
+#else
+  Error e(Error::kNotImplemented);
+#endif  // DISABLE_WIFI
   ReturnResultOrDefer(tag, e, &error);
   CHECK(e.IsFailure()) << __func__ << " should only return directly on error.";
   return false;
@@ -412,14 +415,18 @@ string ManagerDBusAdaptor::VerifyAndEncryptCredentials(
     const DBus::Path &network,
     DBus::Error &error) {  // NOLINT
   SLOG(this, 2) << __func__;
-  Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
+#if !defined(DISABLE_WIFI)
+  Error e(Error::kOperationInitiated);
   manager_->VerifyAndEncryptCredentials(certificate, public_key, nonce,
                                         signed_data, destination_udn,
                                         hotspot_ssid, hotspot_bssid,
                                         network,
                                         GetStringMethodReplyCallback(tag),
                                         &e);
+#else
+  Error e(Error::kNotImplemented);
+#endif  // DISABLE_WIFI
   ReturnResultOrDefer(tag, e, &error);
   CHECK(e.IsFailure()) << __func__ << " should only return directly on error.";
   return "";
@@ -436,14 +443,18 @@ string ManagerDBusAdaptor::VerifyAndEncryptData(
     const string &data,
     DBus::Error &error) {  // NOLINT
   SLOG(this, 2) << __func__;
-  Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
+#if !defined(DISABLE_WIFI)
+  Error e(Error::kOperationInitiated);
   manager_->VerifyAndEncryptData(certificate, public_key, nonce,
                                  signed_data, destination_udn,
                                  hotspot_ssid, hotspot_bssid,
                                  data, GetStringMethodReplyCallback(tag),
                                  &e);
-    ReturnResultOrDefer(tag, e, &error);
+#else
+  Error e(Error::kNotImplemented);
+#endif  // DISABLE_WIFI
+  ReturnResultOrDefer(tag, e, &error);
   CHECK(e.IsFailure()) << __func__ << " should only return directly on error.";
   return "";
 }

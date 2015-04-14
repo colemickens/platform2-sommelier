@@ -21,7 +21,9 @@
 namespace shill {
 
 class ControlInterface;
+#if !defined(DISABLE_WIFI)
 class WiFiProvider;
+#endif  // DISABLE_WIFI
 
 class DefaultProfile : public Profile {
  public:
@@ -51,8 +53,10 @@ class DefaultProfile : public Profile {
   // Inherited from Profile.
   bool UpdateDevice(const DeviceRefPtr &device) override;
 
+#if !defined(DISABLE_WIFI)
   // Inherited from Profile.
   bool UpdateWiFiProvider(const WiFiProvider &wifi_provider) override;
+#endif  // DISABLE_WIFI
 
   bool IsDefault() const override { return true; }
 

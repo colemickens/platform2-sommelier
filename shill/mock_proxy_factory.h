@@ -25,6 +25,7 @@ class MockProxyFactory : public ProxyFactory {
   MOCK_METHOD1(
       CreatePowerManagerProxy,
       PowerManagerProxyInterface *(PowerManagerProxyDelegate *delegate));
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_METHOD2(CreateSupplicantProcessProxy,
                SupplicantProcessProxyInterface *(const char *dbus_path,
                                                  const char *dbus_addr));
@@ -36,10 +37,13 @@ class MockProxyFactory : public ProxyFactory {
   MOCK_METHOD2(CreateSupplicantNetworkProxy,
                SupplicantNetworkProxyInterface *(const DBus::Path &object_path,
                                                  const char *dbus_addr));
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+#if !defined(DISABLE_WIFI)
   MOCK_METHOD3(CreateSupplicantBSSProxy,
                SupplicantBSSProxyInterface *(WiFiEndpoint *wifi_endpoint,
                                              const DBus::Path &object_path,
                                              const char *dbus_addr));
+#endif  // DISABLE_WIFI
   MOCK_METHOD1(CreateDHCPProxy,
                DHCPProxyInterface *(const std::string &service));
 

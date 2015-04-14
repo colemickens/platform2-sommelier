@@ -21,7 +21,6 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
-#include "shill/ethernet/mock_ethernet_eap_provider.h"
 #include "shill/geolocation_info.h"
 #include "shill/glib.h"
 #include "shill/key_file_store.h"
@@ -51,10 +50,17 @@
 #include "shill/service_under_test.h"
 #include "shill/testing.h"
 #include "shill/upstart/mock_upstart.h"
+#include "shill/wimax/wimax_service.h"
+
+#if !defined(DISABLE_WIFI)
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/mock_wifi_service.h"
 #include "shill/wifi/wifi_service.h"
-#include "shill/wimax/wimax_service.h"
+#endif  // DISABLE_WIFI
+
+#if !defined(DISABLE_WIRED_8021X)
+#include "shill/ethernet/mock_ethernet_eap_provider.h"
+#endif  // DISABLE_WIRED_8021X
 
 using base::Bind;
 using base::FilePath;
@@ -98,8 +104,12 @@ class ManagerTest : public PropertyStoreTest {
                                                   nullptr,
                                                   nullptr)),
         manager_adaptor_(new NiceMock<ManagerMockAdaptor>()),
+#if !defined(DISABLE_WIRED_8021X)
         ethernet_eap_provider_(new NiceMock<MockEthernetEapProvider>()),
+#endif  // DISABLE_WIRED_8021X
+#if !defined(DISABLE_WIFI)
         wifi_provider_(new NiceMock<MockWiFiProvider>()),
+#endif  // DISABLE_WIFI
         crypto_util_proxy_(
             new NiceMock<MockCryptoUtilProxy>(dispatcher(), glib())),
         upstart_(new NiceMock<MockUpstart>(&proxy_factory_)) {
@@ -141,13 +151,17 @@ class ManagerTest : public PropertyStoreTest {
     // we can do EXPECT*() against.  Passes ownership.
     manager()->adaptor_.reset(manager_adaptor_);
 
+#if !defined(DISABLE_WIRED_8021X)
     // Replace the manager's Ethernet EAP provider with our mock.
     // Passes ownership.
     manager()->ethernet_eap_provider_.reset(ethernet_eap_provider_);
+#endif  // DISABLE_WIRED_8021X
 
+#if !defined(DISABLE_WIFI)
     // Replace the manager's WiFi provider with our mock.  Passes
     // ownership.
     manager()->wifi_provider_.reset(wifi_provider_);
+#endif  // DISABLE_WIFI
 
     // Update the manager's map from technology to provider.
     manager()->UpdateProviderMapping();
@@ -310,12 +324,14 @@ class ManagerTest : public PropertyStoreTest {
     return manager()->props_.ignored_dns_search_paths;
   }
 
+#if !defined(DISABLE_WIFI)
   WiFiServiceRefPtr ReleaseTempMockService() {
     // Take a reference to hold during this function.
     WiFiServiceRefPtr temp_service = temp_mock_service_;
     temp_mock_service_ = nullptr;
     return temp_service;
   }
+#endif  // DISABLE_WIFI
 
   void SetDBusManager(DBusManager *dbus_manager) {
     manager()->dbus_manager_.reset(dbus_manager);
@@ -456,9 +472,11 @@ class ManagerTest : public PropertyStoreTest {
     return service;
   }
 
+#if !defined(DISABLE_WIRED_8021X)
   void SetEapProviderService(const ServiceRefPtr &service) {
     ethernet_eap_provider_->set_service(service);
   }
+#endif  // DISABLE_WIRED_8021X
 
   const std::vector<Technology::Identifier> &GetTechnologyOrder() {
     return manager()->technology_order_;
@@ -469,16 +487,22 @@ class ManagerTest : public PropertyStoreTest {
   vector<scoped_refptr<MockDevice>> mock_devices_;
   std::unique_ptr<MockDeviceInfo> device_info_;
 
+#if !defined(DISABLE_WIFI)
   // This service is held for the manager, and given ownership in a mock
   // function.  This ensures that when the Manager takes ownership, there
   // is only one reference left.
   scoped_refptr<MockWiFiService> temp_mock_service_;
+#endif  // DISABLE_WIFI
 
   // These pointers are owned by the manager, and only tracked here for
   // EXPECT*()
   ManagerMockAdaptor *manager_adaptor_;
+#if !defined(DISABLE_WIRED_8021X)
   MockEthernetEapProvider *ethernet_eap_provider_;
+#endif  // DISABLE_WIRED_8021X
+#if !defined(DISABLE_WIFI)
   MockWiFiProvider *wifi_provider_;
+#endif  // DISABLE_WIFI
   MockCryptoUtilProxy *crypto_util_proxy_;
   MockUpstart *upstart_;
 };
@@ -1686,6 +1710,7 @@ TEST_F(ManagerTest, GetServiceUnknownType) {
   EXPECT_EQ("service type is unsupported", e.message());
 }
 
+#if !defined(DISABLE_WIRED_8021X)
 TEST_F(ManagerTest, GetServiceEthernetEap) {
   KeyValueStore args;
   Error e;
@@ -1698,7 +1723,9 @@ TEST_F(ManagerTest, GetServiceEthernetEap) {
   EXPECT_EQ(service, manager()->GetService(args, &e));
   EXPECT_TRUE(e.IsSuccess());
 }
+#endif  // DISABLE_WIRED_8021X
 
+#if !defined(DISABLE_WIFI)
 TEST_F(ManagerTest, GetServiceWifi) {
   KeyValueStore args;
   Error e;
@@ -1709,6 +1736,7 @@ TEST_F(ManagerTest, GetServiceWifi) {
   manager()->GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
 }
+#endif  // DISABLE_WIFI
 
 TEST_F(ManagerTest, GetServiceVPNUnknownType) {
   KeyValueStore args;
@@ -1814,6 +1842,11 @@ TEST_F(ManagerTest, ConfigureServiceWithGetServiceFailure) {
   EXPECT_EQ("must specify service type", error.message());
 }
 
+#if !defined(DISABLE_WIFI)
+// TODO(zqiu): Consider creating a TestProvider to provide generic services,
+// (MockService) instead of using technology specific (wifi) services. This
+// will remove the dependency for wifi from ConfigureXXX tests.
+//
 // A registered service in the ephemeral profile should be moved to the
 // active profile as a part of configuration if no profile was explicitly
 // specified.
@@ -2343,6 +2376,7 @@ TEST_F(ManagerTest,
   EXPECT_EQ(nullptr, service.get());
   EXPECT_EQ(profile1.get(), matching_service->profile().get());
 }
+#endif  // DISABLE_WIFI
 
 TEST_F(ManagerTest, FindMatchingService) {
   KeyValueStore args;
@@ -2853,7 +2887,9 @@ TEST_F(ManagerTest, Stop) {
               UpdateDevice(DeviceRefPtr(mock_devices_[0].get())))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_devices_[0].get(), SetEnabled(false));
+#if !defined(DISABLE_WIFI)
   EXPECT_CALL(*profile.get(), UpdateWiFiProvider(_)).WillOnce(Return(true));
+#endif  // DISABLE_WIFI
   EXPECT_CALL(*profile.get(), Save()).WillOnce(Return(true));
   EXPECT_CALL(*service.get(), Disconnect(_, StrEq("Stop"))).Times(1);
   manager()->Stop();
@@ -4012,6 +4048,7 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
   dispatcher()->DispatchPendingEvents();
 }
 
+#if !defined(DISABLE_WIFI)
 TEST_F(ManagerTest, VerifyWhenNotConnected) {
   const string kFakeCertificate("fake cert");
   const string kFakePublicKey("fake public key");
@@ -4228,6 +4265,7 @@ TEST_F(ManagerTest, VerifyDestination) {
     Mock::VerifyAndClearExpectations(&dv_test);
   }
 }
+#endif  // DISABLE_WIFI
 
 TEST_F(ManagerTest, IsProfileBefore) {
   scoped_refptr<MockProfile> profile0(
@@ -4307,6 +4345,7 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
   EXPECT_EQ(kEntry2, entries[kProfileRpc2]);
 }
 
+#if !defined(DISABLE_WIFI)
 TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   // We need a real glib here, so that profiles are persisted.
   GLib glib;
@@ -4355,6 +4394,7 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   manager.InitializeProfiles();
   Mock::VerifyAndClearExpectations(wifi_provider);
 }
+#endif  // DISABLE_WIFI
 
 TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
   // We need a real glib here, so that profiles are persisted.

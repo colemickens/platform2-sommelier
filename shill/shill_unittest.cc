@@ -23,12 +23,15 @@
 #include "shill/mock_proxy_factory.h"
 #include "shill/mock_routing_table.h"
 #include "shill/net/io_handler.h"
-#include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/ndisc.h"
-#include "shill/net/nl80211_message.h"
 #include "shill/shill_daemon.h"
 #include "shill/shill_test_config.h"
+
+#if !defined(DISABLE_WIFI)
+#include "shill/net/mock_netlink_manager.h"
+#include "shill/net/nl80211_message.h"
+#endif  // DISABLE_WIFI
 
 using base::Bind;
 using base::Callback;
@@ -209,12 +212,14 @@ class ShillDaemonTest : public Test {
     daemon_.dhcp_provider_ = &dhcp_provider_;
     daemon_.metrics_.reset(metrics_);  // Passes ownership
     daemon_.manager_.reset(manager_);  // Passes ownership
-    daemon_.netlink_manager_ = &netlink_manager_;
     dispatcher_test_.ScheduleFailSafe();
 
+#if !defined(DISABLE_WIFI)
+    daemon_.netlink_manager_ = &netlink_manager_;
     const uint16_t kNl80211MessageType = 42;  // Arbitrary.
     ON_CALL(netlink_manager_, GetFamily(Nl80211Message::kMessageTypeString, _)).
             WillByDefault(Return(kNl80211MessageType));
+#endif  // DISABLE_WIFI
   }
   void StartDaemon() {
     daemon_.Start();
@@ -224,9 +229,11 @@ class ShillDaemonTest : public Test {
     daemon_.Stop();
   }
 
+#if !defined(DISABLE_WIFI)
   void ResetNetlinkManager() {
     daemon_.netlink_manager_->Reset(true);
   }
+#endif  // DISABLE_WIFI
 
   MOCK_METHOD0(TerminationAction, void());
 
@@ -239,7 +246,9 @@ class ShillDaemonTest : public Test {
   MockDHCPProvider dhcp_provider_;
   MockMetrics *metrics_;
   MockManager *manager_;
+#if !defined(DISABLE_WIFI)
   MockNetlinkManager netlink_manager_;
+#endif  // DISABLE_WIFI
   EventDispatcher *dispatcher_;
   DeviceInfo device_info_;
   StrictMock<MockEventDispatchTester> dispatcher_test_;
@@ -331,7 +340,9 @@ TEST_F(ShillDaemonTest, Quit) {
   dispatcher_->PostTask(Bind(&Daemon::Quit, Unretained(&daemon_)));
 
   daemon_.Run();
+#if !defined(DISABLE_WIFI)
   ResetNetlinkManager();
+#endif  // DISABLE_WIFI
 }
 
 }  // namespace shill

@@ -11,8 +11,6 @@
 
 #include <gmock/gmock.h>
 
-#include "shill/wifi/wake_on_wifi.h"
-
 namespace shill {
 
 class MockMetrics : public Metrics {
@@ -37,8 +35,10 @@ class MockMetrics : public Metrics {
   MOCK_METHOD1(NotifyDefaultServiceChanged, void(const Service *service));
   MOCK_METHOD2(NotifyServiceStateChanged,
                void(const Service &service, Service::ConnectState new_state));
+#if !defined(DISABLE_WIFI)
   MOCK_METHOD2(Notify80211Disconnect, void(WiFiDisconnectByWhom by_whom,
                                            IEEE_80211::WiFiReasonCode reason));
+#endif  // DISABLE_WIFI
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropPosted, void());
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropCanceled, void());
   MOCK_METHOD0(NotifyCorruptedProfile, void());
@@ -80,8 +80,10 @@ class MockMetrics : public Metrics {
   MOCK_METHOD0(NotifySuspendWithWakeOnWiFiEnabledDone, void());
   MOCK_METHOD0(NotifyDarkResumeInitiateScan, void());
   MOCK_METHOD0(NotifyWakeupReasonReceived, void());
+#if !defined(DISABLE_WIFI)
   MOCK_METHOD1(NotifyWakeOnWiFiOnDarkResume,
                void(WakeOnWiFi::WakeOnWiFiTrigger reason));
+#endif  // DISABLE_WIFI
   MOCK_METHOD1(NotifyScanStartedInDarkResume, void(bool is_active_scan));
   MOCK_METHOD0(NotifyDarkResumeScanRetry, void());
   MOCK_METHOD2(NotifyBeforeSuspendActions,

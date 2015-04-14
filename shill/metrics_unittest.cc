@@ -12,13 +12,16 @@
 #include <metrics/timer_mock.h>
 
 #include "shill/mock_control.h"
-#include "shill/mock_eap_credentials.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_service.h"
+
+#if !defined(DISABLE_WIFI)
+#include "shill/mock_eap_credentials.h"
 #include "shill/wifi/mock_wifi_service.h"
+#endif  // DISABLE_WIFI
 
 using std::string;
 
@@ -40,10 +43,7 @@ class MetricsTest : public Test {
                  &metrics_,
                  &glib_),
         metrics_(&dispatcher_),
-        service_(new MockService(&control_interface_,
-                                 &dispatcher_,
-                                 &metrics_,
-                                 &manager_)),
+#if !defined(DISABLE_WIFI)
         open_wifi_service_(new MockWiFiService(&control_interface_,
                                                &dispatcher_,
                                                &metrics_,
@@ -71,13 +71,20 @@ class MetricsTest : public Test {
                                               kModeManaged,
                                               kSecurity8021x,
                                               false)),
-        eap_(new MockEapCredentials()) {}
+        eap_(new MockEapCredentials()),
+#endif  // DISABLE_WIFI
+        service_(new MockService(&control_interface_,
+                                 &dispatcher_,
+                                 &metrics_,
+                                 &manager_)) {}
 
   virtual ~MetricsTest() {}
 
   virtual void SetUp() {
     metrics_.set_library(&library_);
+#if !defined(DISABLE_WIFI)
     eap_wifi_service_->eap_.reset(eap_);  // Passes ownership.
+#endif  // DISABLE_WIFI
     metrics_.collect_bootstats_ = false;
   }
 
@@ -113,12 +120,14 @@ class MetricsTest : public Test {
   MockManager manager_;
   Metrics metrics_;  // This must be destroyed after all |service_|s.
   MetricsLibraryMock library_;
-  scoped_refptr<MockService> service_;
+#if !defined(DISABLE_WIFI)
   const std::vector<uint8_t> ssid_;
   scoped_refptr<MockWiFiService> open_wifi_service_;
   scoped_refptr<MockWiFiService> wep_wifi_service_;
   scoped_refptr<MockWiFiService> eap_wifi_service_;
   MockEapCredentials *eap_;  // Owned by |eap_wifi_service_|.
+#endif  // DISABLE_WIFI
+  scoped_refptr<MockService> service_;
 };
 
 TEST_F(MetricsTest, TimeToConfig) {
@@ -161,6 +170,7 @@ TEST_F(MetricsTest, ServiceFailure) {
   metrics_.NotifyServiceStateChanged(*service_, Service::kStateFailure);
 }
 
+#if !defined(DISABLE_WIFI)
 TEST_F(MetricsTest, WiFiServiceTimeToJoin) {
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeToJoin",
                                   Ge(0),
@@ -267,6 +277,7 @@ TEST_F(MetricsTest, WiFiServicePostReadyAdHoc) {
   metrics_.NotifyServiceStateChanged(*adhoc_wifi_service,
                                      Service::kStateConnected);
 }
+#endif  // DISABLE_WIFI
 
 TEST_F(MetricsTest, FrequencyToChannel) {
   EXPECT_EQ(Metrics::kWiFiChannelUndef, metrics_.WiFiFrequencyToChannel(2411));
@@ -305,8 +316,12 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
   chromeos_metrics::TimerMock *mock_time_to_drop_timer =
       new chromeos_metrics::TimerMock;
   metrics_.set_time_to_drop_timer(mock_time_to_drop_timer);
+  scoped_refptr<MockService> wifi_service =
+      new MockService(&control_interface_, &dispatcher_, &metrics_, &manager_);
   EXPECT_CALL(*service_, technology()).
       WillOnce(Return(Technology::kEthernet));
+  EXPECT_CALL(*wifi_service, technology()).
+      WillOnce(Return(Technology::kWifi));
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Ethernet.TimeOnline",
                                   Ge(0),
                                   Metrics::kMetricTimeOnlineSecondsMin,
@@ -320,7 +335,7 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
   EXPECT_CALL(*mock_time_online_timer, Start()).Times(2);
   EXPECT_CALL(*mock_time_to_drop_timer, Start());
   metrics_.NotifyDefaultServiceChanged(service_.get());
-  metrics_.NotifyDefaultServiceChanged(open_wifi_service_.get());
+  metrics_.NotifyDefaultServiceChanged(wifi_service.get());
 
   EXPECT_CALL(*mock_time_online_timer, Start());
   EXPECT_CALL(*mock_time_to_drop_timer, Start()).Times(0);

@@ -13,10 +13,6 @@
         '<(xml2cpp_in_dir)/dbus-service.xml',
         '<(xml2cpp_in_dir)/dhcpcd.xml',
         '<(xml2cpp_in_dir)/power_manager.xml',
-        '<(xml2cpp_in_dir)/supplicant-bss.xml',
-        '<(xml2cpp_in_dir)/supplicant-interface.xml',
-        '<(xml2cpp_in_dir)/supplicant-network.xml',
-        '<(xml2cpp_in_dir)/supplicant-process.xml',
         '<(xml2cpp_in_dir)/upstart.xml',
         '<(xml2cpp_in_dir)/org.chromium.flimflam.Device.xml',
         '<(xml2cpp_in_dir)/org.chromium.flimflam.IPConfig.xml',
@@ -31,6 +27,18 @@
           'sources': [
             '<(xml2cpp_in_dir)/dbus-objectmanager.xml',
             '<(xml2cpp_in_dir)/modem-gobi.xml',
+          ],
+        }],
+        ['USE_wifi == 1', {
+          'sources': [
+            '<(xml2cpp_in_dir)/supplicant-bss.xml',
+          ],
+        }],
+        ['USE_wifi == 1 or USE_wired_8021x == 1', {
+          'sources': [
+            '<(xml2cpp_in_dir)/supplicant-interface.xml',
+            '<(xml2cpp_in_dir)/supplicant-network.xml',
+            '<(xml2cpp_in_dir)/supplicant-process.xml',
           ],
         }],
       ],

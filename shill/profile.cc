@@ -377,9 +377,11 @@ bool Profile::UpdateDevice(const DeviceRefPtr &device) {
   return false;
 }
 
+#if !defined(DISABLE_WIFI)
 bool Profile::UpdateWiFiProvider(const WiFiProvider &wifi_provider) {
   return false;
 }
+#endif  // DISABLE_WIFI
 
 void Profile::HelpRegisterConstDerivedStrings(
     const string &name,

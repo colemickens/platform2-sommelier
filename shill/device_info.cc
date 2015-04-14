@@ -37,9 +37,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/ndisc.h"
-#include "shill/net/netlink_attribute.h"
-#include "shill/net/netlink_manager.h"
-#include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
 #include "shill/net/rtnl_message.h"
@@ -48,7 +45,13 @@
 #include "shill/routing_table.h"
 #include "shill/service.h"
 #include "shill/vpn/vpn_provider.h"
+
+#if !defined(DISABLE_WIFI)
+#include "shill/net/netlink_attribute.h"
+#include "shill/net/netlink_manager.h"
+#include "shill/net/nl80211_message.h"
 #include "shill/wifi/wifi.h"
+#endif  // DISABLE_WIFI
 
 using base::Bind;
 using base::FileEnumerator;
@@ -107,7 +110,9 @@ DeviceInfo::DeviceInfo(ControlInterface *control_interface,
       device_info_root_(kDeviceInfoRoot),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
+#if !defined(DISABLE_WIFI)
       netlink_manager_(NetlinkManager::GetInstance()),
+#endif  // DISABLE_WIFI
       sockets_(new Sockets()),
       time_(Time::GetInstance()) {
 }
@@ -480,10 +485,16 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       device->EnableIPv6Privacy();
       break;
     case Technology::kWifi:
+#if defined(DISABLE_WIFI)
+      LOG(WARNING) << "WiFi support is not implemented. Ignore WiFi link "
+                   << link_name << " at index " << interface_index << ".";
+      return nullptr;
+#else
       // Defer creating this device until we get information about the
       // type of WiFi interface.
       GetWiFiInterfaceInfo(interface_index);
       break;
+#endif  // DISABLE_WIFI
     case Technology::kWiMax:
 #if defined(DISABLE_WIMAX)
       LOG(WARNING) << "WiMax support is not implemented. Ignore WiMax link "
@@ -1120,6 +1131,7 @@ void DeviceInfo::RequestLinkStatistics() {
                                kRequestLinkStatisticsIntervalMilliseconds);
 }
 
+#if !defined(DISABLE_WIFI)
 void DeviceInfo::GetWiFiInterfaceInfo(int interface_index) {
   GetInterfaceMessage msg;
   if (!msg.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
@@ -1184,5 +1196,6 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message &msg) {
   device->EnableIPv6Privacy();
   RegisterDevice(device);
 }
+#endif  // DISABLE_WIFI
 
 }  // namespace shill

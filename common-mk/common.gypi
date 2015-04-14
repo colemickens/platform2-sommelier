@@ -37,7 +37,9 @@
     'USE_tpm2%': 0,
     'USE_vpn%': 0,
     'USE_wake_on_wifi%': 0,
+    'USE_wifi%': 0,
     'USE_wimax%': 0,
+    'USE_wired_8021x%': 0,
 
     'external_cflags%': '',
     'external_cxxflags%': '',

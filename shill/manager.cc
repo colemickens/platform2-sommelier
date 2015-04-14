@@ -32,8 +32,6 @@
 #include "shill/device_info.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
-#include "shill/ethernet/ethernet_eap_provider.h"
-#include "shill/ethernet/ethernet_eap_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
@@ -49,10 +47,18 @@
 #include "shill/service_sorter.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
+#include "shill/wimax/wimax_service.h"
+
+#if !defined(DISABLE_WIFI)
 #include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_service.h"
-#include "shill/wimax/wimax_service.h"
+#endif  // DISABLE_WIFI
+
+#if !defined(DISABLE_WIRED_8021X)
+#include "shill/ethernet/ethernet_eap_provider.h"
+#include "shill/ethernet/ethernet_eap_service.h"
+#endif  // DISABLE_WIRED_8021X
 
 using base::Bind;
 using base::FilePath;
@@ -112,13 +118,17 @@ Manager::Manager(ControlInterface *control_interface,
 #if !defined(DISABLE_CELLULAR)
       modem_info_(control_interface, dispatcher, metrics, this, glib),
 #endif  // DISABLE_CELLULAR
+#if !defined(DISABLE_WIRED_8021X)
       ethernet_eap_provider_(
           new EthernetEapProvider(
               control_interface, dispatcher, metrics, this)),
+#endif  // DISABLE_WIRED_8021X
       vpn_provider_(
           new VPNProvider(control_interface, dispatcher, metrics, this)),
+#if !defined(DISABLE_WIFI)
       wifi_provider_(
           new WiFiProvider(control_interface, dispatcher, metrics, this)),
+#endif  // DISABLE_WIFI
 #if !defined(DISABLE_WIMAX)
       wimax_provider_(
           new WiMaxProvider(control_interface, dispatcher, metrics, this)),
@@ -162,9 +172,11 @@ Manager::Manager(ControlInterface *control_interface,
       kDefaultServiceProperty, &Manager::GetDefaultServiceRpcIdentifier);
   HelpRegisterConstDerivedRpcIdentifiers(kDevicesProperty,
                                          &Manager::EnumerateDevices);
+#if !defined(DISABLE_WIFI)
   HelpRegisterDerivedBool(kDisableWiFiVHTProperty,
                           &Manager::GetDisableWiFiVHT,
                           &Manager::SetDisableWiFiVHT);
+#endif  // DISABLE_WIFI
   HelpRegisterConstDerivedStrings(kEnabledTechnologiesProperty,
                                   &Manager::EnabledTechnologies);
   HelpRegisterDerivedString(kIgnoredDNSSearchPathsProperty,
@@ -255,7 +267,9 @@ void Manager::Stop() {
     UpdateDevice(device);
   }
 
+#if !defined(DISABLE_WIFI)
   UpdateWiFiProvider();
+#endif  // DISABLE_WIFI
 
   // Persist profile, service information to disk.
   for (const auto &profile : profiles_) {
@@ -945,7 +959,9 @@ bool Manager::IsTechnologyProhibited(
 }
 
 void Manager::OnProfileStorageInitialized(Profile *profile) {
+#if !defined(DISABLE_WIFI)
   wifi_provider_->LoadAndFixupServiceEntries(profile);
+#endif  // DISABLE_WIFI
 }
 
 DeviceRefPtr Manager::GetEnabledDeviceWithTechnology(
@@ -1225,6 +1241,7 @@ void Manager::EmitDeviceProperties() {
                                UninitializedTechnologies(&error));
 }
 
+#if !defined(DISABLE_WIFI)
 bool Manager::SetDisableWiFiVHT(const bool &disable_wifi_vht, Error *error) {
   if (disable_wifi_vht == wifi_provider_->disable_vht()) {
     return false;
@@ -1236,6 +1253,7 @@ bool Manager::SetDisableWiFiVHT(const bool &disable_wifi_vht, Error *error) {
 bool Manager::GetDisableWiFiVHT(Error *error) {
   return wifi_provider_->disable_vht();
 }
+#endif  // DISABLE_WIFI
 
 bool Manager::SetProhibitedTechnologies(const string &prohibited_technologies,
                                         Error *error) {
@@ -1362,6 +1380,7 @@ void Manager::UpdateDevice(const DeviceRefPtr &to_update) {
   }
 }
 
+#if !defined(DISABLE_WIFI)
 void Manager::UpdateWiFiProvider() {
   // Saves |wifi_provider_| to the topmost profile that accepts it (ordinary
   // profiles don't update but default profiles do). Normally, the topmost
@@ -1374,6 +1393,7 @@ void Manager::UpdateWiFiProvider() {
     }
   }
 }
+#endif  // DISABLE_WIFI
 
 void Manager::SaveServiceToProfile(const ServiceRefPtr &to_update) {
   if (IsServiceEphemeral(to_update)) {
@@ -1432,6 +1452,7 @@ void Manager::DeregisterDefaultServiceCallback(int tag) {
   default_service_callbacks_.erase(tag);
 }
 
+#if !defined(DISABLE_WIFI)
 void Manager::VerifyDestination(const string &certificate,
                                 const string &public_key,
                                 const string &nonce,
@@ -1528,6 +1549,7 @@ void Manager::VerifyAndEncryptCredentials(const string &certificate,
   // This is intentionally left unimplemented until we have a security review.
   error->Populate(Error::kNotImplemented, "Not implemented");
 }
+#endif  // DISABLE_WIFI
 
 int Manager::CalcConnectionId(std::string gateway_ip,
                               std::string gateway_mac) {
@@ -1851,12 +1873,14 @@ void Manager::AutoConnect() {
     }
   }
 
+#if !defined(DISABLE_WIFI)
   // Report the number of auto-connectable wifi services available when wifi is
   // idle (no active or pending connection), which will trigger auto connect
   // for wifi services.
   if (IsWifiIdle()) {
     wifi_provider_->ReportAutoConnectableServices();
   }
+#endif  // DISABLE_WIFI
 
   // Perform auto-connect.
   for (const auto &service : services_) {
@@ -2474,9 +2498,13 @@ bool Manager::IsWifiIdle() {
 }
 
 void Manager::UpdateProviderMapping() {
+#if !defined(DISABLE_WIRED_8021X)
   providers_[Technology::kEthernetEap] = ethernet_eap_provider_.get();
+#endif  // DISABLE_WIRED_8021X
   providers_[Technology::kVPN] = vpn_provider_.get();
+#if !defined(DISABLE_WIFI)
   providers_[Technology::kWifi] = wifi_provider_.get();
+#endif  // DISABLE_WIFI
 #if !defined(DISABLE_WIMAX)
   providers_[Technology::kWiMax] = wimax_provider_.get();
 #endif  // DISABLE_WIMAX

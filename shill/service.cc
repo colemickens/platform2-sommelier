@@ -20,7 +20,6 @@
 #include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/diagnostics_reporter.h"
-#include "shill/eap_credentials.h"
 #include "shill/error.h"
 #include "shill/http_proxy.h"
 #include "shill/logging.h"
@@ -34,6 +33,10 @@
 #include "shill/service_dbus_adaptor.h"
 #include "shill/service_property_change_notifier.h"
 #include "shill/store_interface.h"
+
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+#include "shill/eap_credentials.h"
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 using base::Bind;
 using std::map;
@@ -57,7 +60,9 @@ const char Service::kAutoConnTechnologyNotConnectable[] =
     "technology not connectable";
 const char Service::kAutoConnThrottled[] = "throttled";
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 const size_t Service::kEAPMaxCertificationElements = 10;
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 const char Service::kCheckPortalAuto[] = "auto";
 const char Service::kCheckPortalFalse[] = "false";
@@ -198,8 +203,10 @@ Service::Service(ControlInterface *control_interface,
   store_.RegisterConstBool(kConnectableProperty, &connectable_);
   HelpRegisterConstDerivedRpcIdentifier(kDeviceProperty,
                                         &Service::GetDeviceRpcId);
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   store_.RegisterConstStrings(kEapRemoteCertificationProperty,
                               &remote_certification_);
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   HelpRegisterDerivedString(kGuidProperty,
                             &Service::GetGuid,
                             &Service::SetGuid);
@@ -527,12 +534,14 @@ bool Service::Load(StoreInterface *storage) {
 
   static_ip_parameters_.Load(storage, id);
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   // Call OnEapCredentialsChanged with kReasonCredentialsLoaded to avoid
   // resetting the has_ever_connected value.
   if (mutable_eap()) {
     mutable_eap()->Load(storage, id);
     OnEapCredentialsChanged(kReasonCredentialsLoaded);
   }
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   ClearExplicitlyDisconnected();
 
@@ -559,11 +568,12 @@ bool Service::Unload() {
   is_dns_auto_fallback_allowed_ = false;
   link_monitor_disabled_ = false;
   managed_credentials_ = false;
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   if (mutable_eap()) {
     mutable_eap()->Reset();
   }
   ClearEAPCertification();
-
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   Error error;  // Ignored.
   Disconnect(&error, __func__);
   return false;
@@ -618,9 +628,11 @@ bool Service::Save(StoreInterface *storage) {
   storage->SetBool(id, kStorageManagedCredentials, managed_credentials_);
 
   static_ip_parameters_.Save(storage, id);
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   if (eap()) {
     eap()->Save(storage, id, save_credentials_);
   }
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   return true;
 }
 
@@ -809,6 +821,7 @@ void Service::NotifyIPConfigChanges() {
   }
 }
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 bool Service::Is8021xConnectable() const {
   return eap() && eap()->IsConnectable();
 }
@@ -840,6 +853,15 @@ void Service::ClearEAPCertification() {
   remote_certification_.clear();
 }
 
+void Service::SetEapCredentials(EapCredentials *eap) {
+  // This operation must be done at most once for the lifetime of the service.
+  CHECK(eap && !eap_);
+
+  eap_.reset(eap);
+  eap_->InitPropertyStore(mutable_store());
+}
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+
 bool Service::HasStaticIPAddress() const {
   return static_ip_parameters().ContainsAddress();
 }
@@ -854,14 +876,6 @@ void Service::SetAutoConnect(bool connect) {
   }
   auto_connect_ = connect;
   adaptor_->EmitBoolChanged(kAutoConnectProperty, auto_connect());
-}
-
-void Service::SetEapCredentials(EapCredentials *eap) {
-  // This operation must be done at most once for the lifetime of the service.
-  CHECK(eap && !eap_);
-
-  eap_.reset(eap);
-  eap_->InitPropertyStore(mutable_store());
 }
 
 // static
@@ -1178,9 +1192,11 @@ void Service::SetProfile(const ProfileRefPtr &p) {
 
 void Service::OnPropertyChanged(const string &property) {
   SLOG(this, 1) << __func__ << " " << property;
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   if (Is8021x() && EapCredentials::IsEapAuthenticationProperty(property)) {
     OnEapCredentialsChanged(kReasonPropertyUpdate);
   }
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   SaveToProfile();
   if ((property == kCheckPortalProperty ||
        property == kProxyConfigProperty) &&
@@ -1420,6 +1436,7 @@ void Service::IgnoreParameterForConfigure(const string &parameter) {
   parameters_ignored_for_configure_.insert(parameter);
 }
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 const string &Service::GetEAPKeyManagement() const {
   CHECK(eap());
   return eap()->key_management();
@@ -1429,6 +1446,7 @@ void Service::SetEAPKeyManagement(const string &key_management) {
   CHECK(mutable_eap());
   mutable_eap()->SetKeyManagement(key_management, nullptr);
 }
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 bool Service::GetAutoConnect(Error */*error*/) {
   return auto_connect();

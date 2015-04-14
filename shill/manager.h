@@ -32,7 +32,6 @@
 #include "shill/property_store.h"
 #include "shill/service.h"
 #include "shill/upstart/upstart.h"
-#include "shill/wifi/wifi.h"
 #include "shill/wimax/wimax_provider.h"
 
 namespace shill {
@@ -42,14 +41,20 @@ class DBusManager;
 class DeviceClaimer;
 class DefaultProfile;
 class Error;
-class EthernetEapProvider;
 class EventDispatcher;
 class IPAddressStore;
 class ManagerAdaptorInterface;
 class Resolver;
 class StoreInterface;
 class VPNProvider;
+
+#if !defined(DISABLE_WIFI)
 class WiFiProvider;
+#endif  // DISABLE_WIFI
+
+#if !defined(DISABLE_WIRED_8021X)
+class EthernetEapProvider;
+#endif  // DISABLE_WIRED_8021X
 
 class Manager : public base::SupportsWeakPtr<Manager> {
  public:
@@ -131,7 +136,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Persists |to_update| into an appropriate profile.
   virtual void UpdateDevice(const DeviceRefPtr &to_update);
 
+#if !defined(DISABLE_WIFI)
   virtual void UpdateWiFiProvider();
+#endif  // DISABLE_WIFI
 
   std::vector<DeviceRefPtr>
       FilterByTechnology(Technology::Identifier tech) const;
@@ -317,11 +324,15 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual ModemInfo *modem_info() { return &modem_info_; }
 #endif  // DISABLE_CELLULAR
   PowerManager *power_manager() const { return power_manager_.get(); }
+#if !defined(DISABLE_WIRED_8021X)
   virtual EthernetEapProvider *ethernet_eap_provider() const {
     return ethernet_eap_provider_.get();
   }
+#endif  // DISABLE_WIRED_8021X
   VPNProvider *vpn_provider() const { return vpn_provider_.get(); }
+#if !defined(DISABLE_WIFI)
   WiFiProvider *wifi_provider() const { return wifi_provider_.get(); }
+#endif  // DISABLE_WIFI
 #if !defined(DISABLE_WIMAX)
   virtual WiMaxProvider *wimax_provider() { return wimax_provider_.get(); }
 #endif  // DISABLE_WIMAX
@@ -379,6 +390,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual int RegisterDefaultServiceCallback(const ServiceCallback &callback);
   virtual void DeregisterDefaultServiceCallback(int tag);
 
+#if !defined(DISABLE_WIFI)
   // Verifies that the destination described by certificate is valid, and that
   // we're currently connected to that destination.  A full description of the
   // rules being enforced is in doc/manager-api.txt.  Returns true iff all
@@ -429,6 +441,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                                    const std::string &network_path,
                                    const ResultStringCallback &cb,
                                    Error *error);
+#endif  // DISABLE_WIFI
 
   // Calculate connection identifier, which is hash of salt value, gateway IP
   // address, and gateway MAC address.
@@ -565,8 +578,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool IsTechnologyInList(const std::string &technology_list,
                           Technology::Identifier tech) const;
   void EmitDeviceProperties();
+#if !defined(DISABLE_WIFI)
   bool SetDisableWiFiVHT(const bool &disable_wifi_vht, Error *error);
   bool GetDisableWiFiVHT(Error *error);
+#endif  // DISABLE_WIFI
   bool SetProhibitedTechnologies(const std::string &prohibited_technologies,
                                  Error *error);
   std::string GetProhibitedTechnologies(Error *error);
@@ -658,9 +673,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   void OnSuspendActionsComplete(const Error &error);
   void OnDarkResumeActionsComplete(const Error &error);
+
+#if !defined(DISABLE_WIFI)
   void VerifyToEncryptLink(std::string public_key, std::string data,
                            ResultStringCallback cb, const Error &error,
                            bool success);
+#endif  // DISABLE_WIFI
 
   // Return true if wifi device is enabled with no existing connection (pending
   // or connected).
@@ -703,9 +721,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 #if !defined(DISABLE_CELLULAR)
   ModemInfo modem_info_;
 #endif  // DISABLE_CELLULAR
+#if !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<EthernetEapProvider> ethernet_eap_provider_;
+#endif  // DISABLE_WIRED_8021X
   std::unique_ptr<VPNProvider> vpn_provider_;
+#if !defined(DISABLE_WIFI)
   std::unique_ptr<WiFiProvider> wifi_provider_;
+#endif  // DISABLE_WIFI
 #if !defined(DISABLE_WIMAX)
   std::unique_ptr<WiMaxProvider> wimax_provider_;
 #endif  // DISABLE_WIMAX

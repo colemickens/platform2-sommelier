@@ -25,7 +25,6 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_diagnostics_reporter.h"
-#include "shill/mock_eap_credentials.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
@@ -40,6 +39,10 @@
 #include "shill/service_sorter.h"
 #include "shill/service_under_test.h"
 #include "shill/testing.h"
+
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+#include "shill/mock_eap_credentials.h"
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 using base::Bind;
 using base::Unretained;
@@ -78,8 +81,10 @@ class ServiceTest : public PropertyStoreTest {
                                        metrics(),
                                        &mock_manager_)),
         storage_id_(ServiceUnderTest::kStorageId),
-        power_manager_(new MockPowerManager(nullptr, &proxy_factory_)),
-        eap_(new MockEapCredentials()) {
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+        eap_(new MockEapCredentials()),
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+        power_manager_(new MockPowerManager(nullptr, &proxy_factory_)) {
     ON_CALL(proxy_factory_, CreatePowerManagerProxy(_))
         .WillByDefault(ReturnNull());
 
@@ -88,7 +93,9 @@ class ServiceTest : public PropertyStoreTest {
     service_->misconnects_.time_ = &time_;
     DefaultValue<Timestamp>::Set(Timestamp());
     service_->diagnostics_reporter_ = &diagnostics_reporter_;
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
     service_->eap_.reset(eap_);  // Passes ownership.
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
     mock_manager_.running_ = true;
     mock_manager_.set_power_manager(power_manager_);  // Passes ownership.
   }
@@ -215,8 +222,10 @@ class ServiceTest : public PropertyStoreTest {
   scoped_refptr<ServiceUnderTest> service2_;
   string storage_id_;
   NiceMock<MockProxyFactory> proxy_factory_;
-  MockPowerManager *power_manager_;  // Owned by |mock_manager_|.
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MockEapCredentials *eap_;  // Owned by |service_|.
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+  MockPowerManager *power_manager_;  // Owned by |mock_manager_|.
   vector<Technology::Identifier> technology_order_for_sorting_;
 };
 
@@ -340,6 +349,7 @@ TEST_F(ServiceTest, SetProperty) {
                                          guid,
                                          &error));
   }
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   // Ensure that EAP properties cannot be set on services with no EAP
   // credentials.  Use service2_ here since we're have some code in
   // ServiceTest::SetUp() that fiddles with service_->eap_.
@@ -360,6 +370,7 @@ TEST_F(ServiceTest, SetProperty) {
                                          eap,
                                          &error));
   }
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   {
     ::DBus::Error error;
@@ -420,6 +431,7 @@ TEST_F(ServiceTest, IsLoadableFrom) {
   EXPECT_TRUE(service_->IsLoadableFrom(storage));
 }
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 class ServiceWithOnEapCredentialsChangedOverride : public ServiceUnderTest {
  public:
   ServiceWithOnEapCredentialsChangedOverride(
@@ -435,8 +447,10 @@ class ServiceWithOnEapCredentialsChangedOverride : public ServiceUnderTest {
     SetHasEverConnected(false);
   }
 };
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 TEST_F(ServiceTest, Load) {
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MockEapCredentials *eap = new MockEapCredentials();  // Owned by |service|.
   scoped_refptr<ServiceWithOnEapCredentialsChangedOverride> service(
       new ServiceWithOnEapCredentialsChangedOverride(control_interface(),
@@ -444,6 +458,13 @@ TEST_F(ServiceTest, Load) {
                                                      metrics(),
                                                      &mock_manager_,
                                                      eap));
+#else
+  scoped_refptr<ServiceUnderTest> service(
+      new ServiceUnderTest(control_interface(),
+                           dispatcher(),
+                           metrics(),
+                           &mock_manager_));
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   NiceMock<MockStore> storage;
   EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillOnce(Return(true));
@@ -472,7 +493,9 @@ TEST_F(ServiceTest, Load) {
               GetBool(storage_id_, Service::kStorageHasEverConnected, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<2>(kHasEverConnected),
                             Return(true)));
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap, Load(&storage, storage_id_));
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   EXPECT_TRUE(service->Load(&storage));
 
   EXPECT_EQ(kCheckPortal, service->check_portal_);
@@ -482,7 +505,9 @@ TEST_F(ServiceTest, Load) {
   EXPECT_EQ(kUIData, service->ui_data_);
 
   Mock::VerifyAndClearExpectations(&storage);
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   Mock::VerifyAndClearExpectations(eap_);
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   // Assure that parameters are set to default if not available in the profile.
   EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillOnce(Return(true));
@@ -492,14 +517,22 @@ TEST_F(ServiceTest, Load) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(storage, GetInt(storage_id_, _, _))
       .WillRepeatedly(Return(false));
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap, Load(&storage, storage_id_));
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   EXPECT_TRUE(service->Load(&storage));
 
   EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
   EXPECT_EQ("", service->guid_);
   EXPECT_EQ("", service->proxy_config_);
   EXPECT_EQ("", service->ui_data_);
+
+  // has_ever_connected_ flag will reset when EAP credential changes.
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_FALSE(service->has_ever_connected_);
+#else
+  EXPECT_TRUE(service->has_ever_connected_);
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 }
 
 TEST_F(ServiceTest, LoadFail) {
@@ -518,7 +551,9 @@ TEST_F(ServiceTest, LoadAutoConnect) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(storage, GetInt(storage_id_, _, _))
       .WillRepeatedly(Return(false));
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_, Load(&storage, storage_id_)).Times(AnyNumber());
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   // Three of each expectation so we can test Favorite == unset, false, true.
   EXPECT_CALL(storage, GetBool(storage_id_, Service::kStorageAutoConnect, _))
@@ -639,7 +674,9 @@ TEST_F(ServiceTest, Save) {
               SetBool(storage_id_,
                       Service::kStorageSaveCredentials,
                       service_->save_credentials()));
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_, Save(&storage, storage_id_, true));
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   EXPECT_TRUE(service_->Save(&storage));
 }
 
@@ -656,7 +693,9 @@ TEST_F(ServiceTest, RetainAutoConnect) {
   EXPECT_CALL(storage, DeleteKey(storage_id_, Service::kStorageAutoConnect))
       .Times(0);
   EXPECT_CALL(storage, SetBool(storage_id_, _, _)).Times(AnyNumber());
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_, Save(&storage, storage_id_, true)).Times(2);
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   // AutoConnect flag set true.
   service_->EnableAndRetainAutoConnect();
@@ -683,7 +722,9 @@ TEST_F(ServiceTest, HasEverConnectedSavedToProfile) {
               DeleteKey(storage_id_, Service::kStorageHasEverConnected))
       .Times(0);
   EXPECT_CALL(storage, SetBool(storage_id_, _, _)).Times(AnyNumber());
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_, Save(&storage, storage_id_, true)).Times(2);
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   // HasEverConnected flag set true.
   service_->SetHasEverConnected(true);
@@ -711,7 +752,9 @@ TEST_F(ServiceTest, Unload) {
   EXPECT_FALSE(service_->explicitly_disconnected_);
   service_->explicitly_disconnected_ = true;
   EXPECT_FALSE(service_->has_ever_connected_);
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_, Load(&storage, storage_id_));
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   ASSERT_TRUE(service_->Load(&storage));
   // TODO(pstew): Only two string properties in the service are tested as
   // a sentinel that properties are being set and reset at the right times.
@@ -724,7 +767,9 @@ TEST_F(ServiceTest, Unload) {
   EXPECT_FALSE(service_->explicitly_disconnected_);
   EXPECT_TRUE(service_->has_ever_connected_);
   service_->explicitly_disconnected_ = true;
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_, Reset());
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   service_->Unload();
   EXPECT_EQ(string(""), service_->ui_data_);
   EXPECT_EQ(string(""), service_->guid_);
@@ -971,7 +1016,9 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   // again.
   NiceMock<MockStore> storage;
   EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillOnce(Return(true));
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EXPECT_CALL(*eap_, Load(&storage, storage_id_));
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   EXPECT_TRUE(service_->Load(&storage));
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
@@ -1155,6 +1202,7 @@ TEST_F(ServiceTest, ConfigureStringsProperty) {
   EXPECT_EQ(kStrings1, service_->strings());
 }
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 TEST_F(ServiceTest, ConfigureEapStringProperty) {
   MockEapCredentials *eap = new MockEapCredentials();
   service2_->SetEapCredentials(eap);  // Passes ownership.
@@ -1173,6 +1221,7 @@ TEST_F(ServiceTest, ConfigureEapStringProperty) {
   service2_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
 }
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 TEST_F(ServiceTest, ConfigureIntProperty) {
   const int kPriority0 = 100;
@@ -1484,6 +1533,7 @@ TEST_F(ServiceTest, SetConnectableFull) {
   EXPECT_TRUE(service_->connectable());
 }
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 class WriteOnlyServicePropertyTest : public ServiceTest {};
 TEST_P(WriteOnlyServicePropertyTest, PropertyWriteOnly) {
   // Use a real EapCredentials instance since the base Service class
@@ -1503,7 +1553,7 @@ INSTANTIATE_TEST_CASE_P(
     Values(
         DBusAdaptor::StringToVariant(kEapPrivateKeyPasswordProperty),
         DBusAdaptor::StringToVariant(kEapPasswordProperty)));
-
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
   {
@@ -1544,6 +1594,7 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
   mock_device_info.reset();
 }
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 class ServiceWithMockOnEapCredentialsChanged : public ServiceUnderTest {
  public:
   ServiceWithMockOnEapCredentialsChanged(ControlInterface *control_interface,
@@ -1661,6 +1712,7 @@ TEST_F(ServiceTest, Certification) {
   service_->ClearEAPCertification();
   EXPECT_TRUE(service_->remote_certification_.empty());
 }
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 TEST_F(ServiceTest, NoteDisconnectEventIdle) {
   Timestamp timestamp;

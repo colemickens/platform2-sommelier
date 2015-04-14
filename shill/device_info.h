@@ -29,12 +29,15 @@ namespace shill {
 
 class Manager;
 class Metrics;
-class NetlinkManager;
-class Nl80211Message;
 class RoutingTable;
 class RTNLHandler;
 class RTNLMessage;
 class Sockets;
+
+#if !defined(DISABLE_WIFI)
+class NetlinkManager;
+class Nl80211Message;
+#endif  // DISABLE_WIFI
 
 class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
  public:
@@ -264,9 +267,11 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   void RetrieveLinkStatistics(int interface_index, const RTNLMessage &msg);
   void RequestLinkStatistics();
 
+#if !defined(DISABLE_WIFI)
   // Use nl80211 to get information on |interface_index|.
   void GetWiFiInterfaceInfo(int interface_index);
   void OnWiFiInterfaceInfoReceived(const Nl80211Message &message);
+#endif  // DISABLE_WIFI
 
   void set_sockets(Sockets* sockets) { sockets_.reset(sockets); }
 
@@ -297,7 +302,9 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Cache copy of singleton pointers.
   RoutingTable *routing_table_;
   RTNLHandler *rtnl_handler_;
+#if !defined(DISABLE_WIFI)
   NetlinkManager *netlink_manager_;
+#endif  // DISABLE_WIFI
 
   // A member of the class so that a mock can be injected for testing.
   std::unique_ptr<Sockets> sockets_;

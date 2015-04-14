@@ -26,8 +26,11 @@
 #include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
 #include "shill/resolver.h"
+
+#if !defined(DISABLE_WIFI)
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/wifi_service.h"
+#endif  // DISABLE_WIFI
 
 using base::FilePath;
 using std::map;
@@ -365,6 +368,7 @@ TEST_F(DefaultProfileTest, UpdateDevice) {
   EXPECT_FALSE(profile_->UpdateDevice(device_));
 }
 
+#if !defined(DISABLE_WIFI)
 TEST_F(DefaultProfileTest, UpdateWiFiProvider) {
   MockWiFiProvider wifi_provider;
 
@@ -392,5 +396,6 @@ TEST_F(DefaultProfileTest, UpdateWiFiProvider) {
     EXPECT_TRUE(profile_->UpdateWiFiProvider(wifi_provider));
   }
 }
+#endif  // DISABLE_WIFI
 
 }  // namespace shill

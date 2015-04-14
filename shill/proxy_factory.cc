@@ -11,10 +11,6 @@
 #include "shill/permission_broker_proxy.h"
 #include "shill/power_manager_proxy.h"
 #include "shill/shared_dbus_connection.h"
-#include "shill/supplicant/supplicant_bss_proxy.h"
-#include "shill/supplicant/supplicant_interface_proxy.h"
-#include "shill/supplicant/supplicant_network_proxy.h"
-#include "shill/supplicant/supplicant_process_proxy.h"
 #include "shill/upstart/upstart_proxy.h"
 
 #if !defined(DISABLE_CELLULAR)
@@ -35,6 +31,16 @@
 #include "shill/cellular/modem_proxy.h"
 #include "shill/cellular/modem_simple_proxy.h"
 #endif
+
+#if !defined(DISABLE_WIFI)
+#include "shill/supplicant/supplicant_bss_proxy.h"
+#endif  // DISABLE_WIFI
+
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+#include "shill/supplicant/supplicant_interface_proxy.h"
+#include "shill/supplicant/supplicant_network_proxy.h"
+#include "shill/supplicant/supplicant_process_proxy.h"
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 #if !defined(DISABLE_WIMAX)
 #include "shill/wimax/wimax_device_proxy.h"
@@ -77,6 +83,7 @@ PowerManagerProxyInterface *ProxyFactory::CreatePowerManagerProxy(
   return new PowerManagerProxy(delegate, GetConnection());
 }
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 SupplicantProcessProxyInterface *ProxyFactory::CreateSupplicantProcessProxy(
     const char *dbus_path,
     const char *dbus_addr) {
@@ -100,7 +107,9 @@ SupplicantNetworkProxyInterface *ProxyFactory::CreateSupplicantNetworkProxy(
                                     object_path,
                                     dbus_addr);
 }
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
+#if !defined(DISABLE_WIFI)
 SupplicantBSSProxyInterface *ProxyFactory::CreateSupplicantBSSProxy(
     WiFiEndpoint *wifi_endpoint,
     const DBus::Path &object_path,
@@ -108,6 +117,7 @@ SupplicantBSSProxyInterface *ProxyFactory::CreateSupplicantBSSProxy(
   return new SupplicantBSSProxy(
       wifi_endpoint, GetConnection(), object_path, dbus_addr);
 }
+#endif  // DISABLE_WIFI
 
 DHCPProxyInterface *ProxyFactory::CreateDHCPProxy(const string &service) {
   return new DHCPCDProxy(GetConnection(), service);

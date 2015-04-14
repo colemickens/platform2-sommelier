@@ -11,8 +11,6 @@
 
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
-#include "shill/net/ieee80211.h"
-#include "shill/wifi/wifi_service.h"
 
 using std::string;
 using std::shared_ptr;
@@ -949,6 +947,9 @@ void Metrics::NotifyLinkMonitorResponseTimeSampleAdded(
             kMetricLinkMonitorResponseTimeSampleNumBuckets);
 }
 
+#if !defined(DISABLE_WIFI)
+// TODO(zqiu): Change argument type from IEEE_80211::WiFiReasonCode to
+// Metrics::WiFiStatusType, to remove dependency for IEEE_80211.
 void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                                     IEEE_80211::WiFiReasonCode reason) {
   string metric_disconnect_reason;
@@ -981,6 +982,7 @@ void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                 IEEE_80211::kStatusCodeMax);
   SendEnumToUMA(metric_disconnect_type, type, kStatusCodeTypeMax);
 }
+#endif  // DISABLE_WIFI
 
 void Metrics::RegisterDevice(int interface_index,
                              Technology::Identifier technology) {
@@ -1457,6 +1459,10 @@ void Metrics::NotifySuspendWithWakeOnWiFiEnabledDone() {
 
 void Metrics::NotifyWakeupReasonReceived() { wake_reason_received_ = true; }
 
+#if !defined(DISABLE_WIFI)
+// TODO(zqiu): Change argument type from WakeOnWiFi::WakeOnWiFiTrigger to
+// Metrics::DarkResumeWakeReason, to remove the dependency for WakeOnWiFi.
+// to remove the dependency for WakeOnWiFi.
 void Metrics::NotifyWakeOnWiFiOnDarkResume(
     WakeOnWiFi::WakeOnWiFiTrigger reason) {
   WakeReasonReceivedBeforeOnDarkResume result =
@@ -1485,6 +1491,7 @@ void Metrics::NotifyWakeOnWiFiOnDarkResume(
   SendEnumToUMA(kMetricDarkResumeWakeReason, wake_reason,
                 kDarkResumeWakeReasonMax);
 }
+#endif  // DISABLE_WIFI
 
 void Metrics::NotifyScanStartedInDarkResume(bool is_active_scan) {
   DarkResumeScanType scan_type =

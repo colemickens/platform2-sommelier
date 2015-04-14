@@ -13,13 +13,15 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/net/ndisc.h"
-#include "shill/net/netlink_manager.h"
-#include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/proxy_factory.h"
 #include "shill/routing_table.h"
 #include "shill/shill_config.h"
-#include "shill/wifi/callback80211_metrics.h"
+
+#if !defined(DISABLE_WIFI)
+#include "shill/net/netlink_manager.h"
+#include "shill/net/nl80211_message.h"
+#endif  // DISABLE_WIFI
 
 using base::Bind;
 using base::Unretained;
@@ -43,7 +45,10 @@ Daemon::Daemon(Config *config, ControlInterface *control,
       rtnl_handler_(RTNLHandler::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       dhcp_provider_(DHCPProvider::GetInstance()),
+#if !defined(DISABLE_WIFI)
       netlink_manager_(NetlinkManager::GetInstance()),
+      callback80211_metrics_(metrics_.get()),
+#endif  // DISABLE_WIFI
       manager_(new Manager(control_.get(),
                            &dispatcher_,
                            metrics_.get(),
@@ -51,8 +56,7 @@ Daemon::Daemon(Config *config, ControlInterface *control,
                            config->GetRunDirectory(),
                            config->GetStorageDirectory(),
                            config->GetUserStorageDirectory(),
-                           default_technology_order)),
-      callback80211_metrics_(metrics_.get()) {
+                           default_technology_order)) {
 }
 
 Daemon::~Daemon() {}
@@ -139,6 +143,7 @@ void Daemon::Start() {
   routing_table_->Start();
   dhcp_provider_->Init(control_.get(), &dispatcher_, &glib_, metrics_.get());
 
+#if !defined(DISABLE_WIFI)
   if (netlink_manager_) {
     netlink_manager_->Init();
     uint16_t nl80211_family_id = netlink_manager_->GetFamily(
@@ -156,6 +161,7 @@ void Daemon::Start() {
         &Callback80211Metrics::CollectDisconnectStatistics,
         callback80211_metrics_.AsWeakPtr()));
   }
+#endif  // DISABLE_WIFI
 
   manager_->Start();
 }

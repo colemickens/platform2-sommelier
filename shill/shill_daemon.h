@@ -13,7 +13,10 @@
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/manager.h"
+
+#if !defined(DISABLE_WIFI)
 #include "shill/wifi/callback80211_metrics.h"
+#endif  // DISABLE_WIFI
 
 namespace shill {
 
@@ -22,10 +25,13 @@ class DHCPProvider;
 class Error;
 class GLib;
 class Metrics;
-class NetlinkManager;
 class ProxyFactory;
 class RoutingTable;
 class RTNLHandler;
+
+#if !defined(DISABLE_WIFI)
+class NetlinkManager;
+#endif  // DISABLE_WIFI
 
 class Daemon {
  public:
@@ -68,9 +74,11 @@ class Daemon {
   RTNLHandler *rtnl_handler_;
   RoutingTable *routing_table_;
   DHCPProvider *dhcp_provider_;
+#if !defined(DISABLE_WIFI)
   NetlinkManager *netlink_manager_;
-  std::unique_ptr<Manager> manager_;
   Callback80211Metrics callback80211_metrics_;
+#endif  // DISABLE_WIFI
+  std::unique_ptr<Manager> manager_;
 };
 
 }  // namespace shill

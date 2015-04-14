@@ -66,7 +66,9 @@ class MockService : public Service {
   MOCK_METHOD1(SetConnection, void(const ConnectionRefPtr &connection));
   MOCK_CONST_METHOD0(connection, const ConnectionRefPtr &());
   MOCK_CONST_METHOD0(explicitly_disconnected, bool());
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_CONST_METHOD0(eap, const EapCredentials *());
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   MOCK_CONST_METHOD0(technology, Technology::Identifier());
   MOCK_METHOD1(OnPropertyChanged, void(const std::string &property));
   MOCK_METHOD0(ClearExplicitlyDisconnected, void());

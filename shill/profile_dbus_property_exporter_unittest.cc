@@ -10,11 +10,14 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "shill/eap_credentials.h"
 #include "shill/error.h"
 #include "shill/mock_store.h"
 #include "shill/service.h"
+
+#if !defined(DISABLE_WIFI)
+#include "shill/eap_credentials.h"
 #include "shill/wifi/wifi_service.h"
+#endif  // DISABLE_WIFI
 
 using std::string;
 using testing::_;
@@ -143,6 +146,7 @@ TEST_F(ProfileDBusPropertyExporterTest, AllServiceProperties) {
   EXPECT_EQ(uidata, GetStringProperty(&props, kUIDataProperty));
 }
 
+#if !defined(DISABLE_WIFI)
 TEST_F(ProfileDBusPropertyExporterTest, MinimalWiFiServiceProperties) {
   SetUpWithEntryName("wifi_address_ssid_superfly_unbreakable_crypto");
   ExpectUnknownProperties();
@@ -180,5 +184,6 @@ TEST_F(ProfileDBusPropertyExporterTest, AllWiFiServiceProperties) {
   EXPECT_EQ(cert_id, GetStringProperty(&props, kEapCertIdProperty));
   EXPECT_EQ(key_id, GetStringProperty(&props, kEapKeyIdProperty));
 }
+#endif  // DISABLE_WIFI
 
 }  // namespace shill

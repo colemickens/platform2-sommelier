@@ -16,22 +16,33 @@
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
 #include "shill/refptr_types.h"
+
+#if !defined(DISABLE_WIRED_8021X)
 #include "shill/supplicant/supplicant_eap_state_handler.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
+#endif  // DISABLE_WIRED_8021X
 
 namespace shill {
 
-class CertificateFile;
-class EapListener;
-class EthernetEapProvider;
 class ProxyFactory;
 class Sockets;
 class StoreInterface;
+
+#if !defined(DISABLE_WIRED_8021X)
+class CertificateFile;
+class EapListener;
+class EthernetEapProvider;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
+#endif  // DISABLE_WIRED_8021X
 
-class Ethernet : public Device, public SupplicantEventDelegateInterface {
+class Ethernet
+#if !defined(DISABLE_WIRED_8021X)
+    : public Device, public SupplicantEventDelegateInterface {
+#else
+    : public Device {
+#endif  // DISABLE_WIRED_8021X
  public:
   Ethernet(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
@@ -52,6 +63,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   virtual void ConnectTo(EthernetService *service);
   virtual void DisconnectFrom(EthernetService *service);
 
+#if !defined(DISABLE_WIRED_8021X)
   // Test to see if conditions are correct for EAP authentication (both
   // credentials and a remote EAP authenticator is present) and initiate
   // an authentication if possible.
@@ -72,6 +84,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
       const std::map<std::string, ::DBus::Variant> &properties) override;
   void ScanDone(const bool &/*success*/) override;
   void TDLSDiscoverResponse(const std::string &peer_address) override;
+#endif  // DISABLE_WIRED_8021X
 
   virtual bool link_up() const { return link_up_; }
 
@@ -80,6 +93,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   friend class EthernetServiceTest;  // For weak_ptr_factory_.
   friend class PPPoEServiceTest;     // For weak_ptr_factory_.
 
+#if !defined(DISABLE_WIRED_8021X)
   // Return a pointer to the EAP provider for Ethernet devices.
   EthernetEapProvider *GetEapProvider();
 
@@ -107,6 +121,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
 
   // Callback task run as a result of TryEapAuthentication().
   void TryEapAuthenticationTask();
+#endif  // DISABLE_WIRED_8021X
 
   // Accessors for the PPoE property.
   bool GetPPPoEMode(Error *error);
@@ -124,6 +139,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   EthernetServiceRefPtr service_;
   bool link_up_;
 
+#if !defined(DISABLE_WIRED_8021X)
   // Track whether we have completed EAP authentication successfully.
   bool is_eap_authenticated_;
 
@@ -148,6 +164,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // Make sure TryEapAuthenticationTask is only queued for execution once
   // at a time.
   base::CancelableClosure try_eap_authentication_callback_;
+#endif  // DISABLE_WIRED_8021X
 
   // Store cached copy of proxy factory singleton for speed/ease of testing.
   ProxyFactory *proxy_factory_;

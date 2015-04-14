@@ -16,17 +16,17 @@
 
 #include "shill/connectivity_trial.h"
 #include "shill/event_dispatcher.h"
-#include "shill/net/ieee80211.h"
 #include "shill/portal_detector.h"
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
+
+#if !defined(DISABLE_WIFI)
+#include "shill/net/ieee80211.h"
 #include "shill/wifi/wake_on_wifi.h"
+#endif  // DISABLE_WIFI
 
 namespace shill {
-
-class WiFiMainTest;
-class WiFiService;
 
 class Metrics {
  public:
@@ -856,9 +856,11 @@ class Metrics {
       Technology::Identifier technology,
       int response_time_milliseconds);
 
+#if !defined(DISABLE_WIFI)
   // Notifies this object of WiFi disconnect.
   virtual void Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                                      IEEE_80211::WiFiReasonCode reason);
+#endif  // DISABLE_WIFI
 
   // Registers a device with this object so the device can use the timers to
   // track state transition metrics.
@@ -1005,10 +1007,12 @@ class Metrics {
   // Notifies this object that a wakeup reason has been received.
   virtual void NotifyWakeupReasonReceived();
 
+#if !defined(DISABLE_WIFI)
   // Notifies this object that WakeOnWiFi::OnDarkResume has begun executing,
   // and that the dark resume was caused by |reason|.
   virtual void NotifyWakeOnWiFiOnDarkResume(
       WakeOnWiFi::WakeOnWiFiTrigger reason);
+#endif  // DISABLE_WIFI
 
   // Notifies this object that a scan was started in dark resume. If
   // |is_active_scan| is true, the scan started was an active scan. Otherwise

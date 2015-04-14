@@ -36,7 +36,6 @@ namespace shill {
 
 class ControlInterface;
 class DiagnosticsReporter;
-class EapCredentials;
 class Endpoint;
 class Error;
 class EventDispatcher;
@@ -50,6 +49,10 @@ class ServiceMockAdaptor;
 class ServicePropertyChangeNotifier;
 class Sockets;
 class StoreInterface;
+
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+class EapCredentials;
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
 // A Service is a uniquely named entity, which the system can
 // connect in order to begin sending and receiving network traffic.
@@ -324,6 +327,7 @@ class Service : public base::RefCounted<Service> {
   // Emit service's IP config change event to chrome.
   virtual void NotifyIPConfigChanges();
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   // Examines the EAP credentials for the service and returns true if a
   // connection attempt can be made.
   virtual bool Is8021xConnectable() const;
@@ -333,6 +337,7 @@ class Service : public base::RefCounted<Service> {
   virtual bool AddEAPCertification(const std::string &name, size_t depth);
   // Clear all EAP certification elements.
   virtual void ClearEAPCertification();
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   // Returns true if this service contains a IP address in its static IP
   // parameters, false otherwise.
@@ -403,8 +408,10 @@ class Service : public base::RefCounted<Service> {
   virtual Technology::Identifier technology() const { return technology_; }
   std::string GetTechnologyString() const;
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   virtual const EapCredentials *eap() const { return eap_.get(); }
   void SetEapCredentials(EapCredentials *eap);
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   bool save_credentials() const { return save_credentials_; }
   void set_save_credentials(bool save) { save_credentials_ = save; }
@@ -472,7 +479,9 @@ class Service : public base::RefCounted<Service> {
   // disconnected.
   virtual void ClearExplicitlyDisconnected();
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   EapCredentials *mutable_eap() { return eap_.get(); }
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
@@ -578,7 +587,9 @@ class Service : public base::RefCounted<Service> {
       void(Service::*clear)(Error *error));
   ServiceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   void UnloadEapCredentials();
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   // Ignore |parameter| when performing a Configure() operation.
   void IgnoreParameterForConfigure(const std::string &parameter);
@@ -598,8 +609,11 @@ class Service : public base::RefCounted<Service> {
 
   // Property accessors reserved for subclasses
   EventDispatcher *dispatcher() const { return dispatcher_; }
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   const std::string &GetEAPKeyManagement() const;
   virtual void SetEAPKeyManagement(const std::string &key_management);
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+
   Manager *manager() const { return manager_; }
   Metrics *metrics() const { return metrics_; }
 
@@ -692,7 +706,9 @@ class Service : public base::RefCounted<Service> {
   static const char kAutoConnTechnologyNotConnectable[];
   static const char kAutoConnThrottled[];
 
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   static const size_t kEAPMaxCertificationElements;
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   static const char kServiceSortAutoConnect[];
   static const char kServiceSortConnectable[];
@@ -814,7 +830,9 @@ class Service : public base::RefCounted<Service> {
   std::string ui_data_;
   std::string guid_;
   bool save_credentials_;
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<EapCredentials> eap_;
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   Technology::Identifier technology_;
   // The time of the most recent failure. Value is 0 if the service is
   // not currently failed.

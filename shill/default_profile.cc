@@ -20,7 +20,10 @@
 #include "shill/portal_detector.h"
 #include "shill/resolver.h"
 #include "shill/store_interface.h"
+
+#if !defined(DISABLE_WIFI)
 #include "shill/wifi/wifi_provider.h"
+#endif  // DISABLE_WIFI
 
 using base::FilePath;
 using std::string;
@@ -195,9 +198,11 @@ bool DefaultProfile::UpdateDevice(const DeviceRefPtr &device) {
   return device->Save(storage()) && storage()->Flush();
 }
 
+#if !defined(DISABLE_WIFI)
 bool DefaultProfile::UpdateWiFiProvider(const WiFiProvider &wifi_provider) {
   return wifi_provider.Save(storage()) && storage()->Flush();
 }
+#endif  // DISABLE_WIFI
 
 bool DefaultProfile::GetStoragePath(FilePath *path) {
   *path = storage_path_.Append(base::StringPrintf("%s.profile",

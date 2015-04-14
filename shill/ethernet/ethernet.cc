@@ -23,9 +23,6 @@
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
-#include "shill/eap_credentials.h"
-#include "shill/eap_listener.h"
-#include "shill/ethernet/ethernet_eap_provider.h"
 #include "shill/ethernet/ethernet_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
@@ -37,9 +34,15 @@
 #include "shill/proxy_factory.h"
 #include "shill/refptr_types.h"
 #include "shill/store_interface.h"
+
+#if !defined(DISABLE_WIRED_8021X)
+#include "shill/eap_credentials.h"
+#include "shill/eap_listener.h"
+#include "shill/ethernet/ethernet_eap_provider.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
+#endif  // DISABLE_WIRED_8021X
 
 using std::map;
 using std::string;
@@ -69,17 +72,21 @@ Ethernet::Ethernet(ControlInterface *control_interface,
              Technology::kEthernet),
       control_interface_(control_interface),
       link_up_(false),
+#if !defined(DISABLE_WIRED_8021X)
       is_eap_authenticated_(false),
       is_eap_detected_(false),
       eap_listener_(new EapListener(dispatcher, interface_index)),
+#endif  // DISABLE_WIRED_8021X
       proxy_factory_(ProxyFactory::GetInstance()),
       sockets_(new Sockets()),
       weak_ptr_factory_(this) {
   PropertyStore *store = this->mutable_store();
+#if !defined(DISABLE_WIRED_8021X)
   store->RegisterConstBool(kEapAuthenticationCompletedProperty,
                            &is_eap_authenticated_);
   store->RegisterConstBool(kEapAuthenticatorDetectedProperty,
                            &is_eap_detected_);
+#endif  // DISABLE_WIRED_8021X
   store->RegisterConstBool(kLinkUpProperty, &link_up_);
   store->RegisterDerivedBool(kPPPoEProperty, BoolAccessor(
       new CustomAccessor<Ethernet, bool>(this,
@@ -87,8 +94,10 @@ Ethernet::Ethernet(ControlInterface *control_interface,
                                          &Ethernet::ConfigurePPPoEMode,
                                          &Ethernet::ClearPPPoEMode)));
 
+#if !defined(DISABLE_WIRED_8021X)
   eap_listener_->set_request_received_callback(
       base::Bind(&Ethernet::OnEapDetected, weak_ptr_factory_.GetWeakPtr()));
+#endif  // DISABLE_WIRED_8021X
   service_ = CreateEthernetService();
   SLOG(this, 2) << "Ethernet device " << link_name << " initialized.";
 }
@@ -111,7 +120,9 @@ void Ethernet::Start(Error *error,
 void Ethernet::Stop(Error *error,
                     const EnabledStateChangedCallback &/*callback*/) {
   manager()->DeregisterService(service_);
+#if !defined(DISABLE_WIRED_8021X)
   StopSupplicant();
+#endif  // DISABLE_WIRED_8021X
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
     error->Reset();       // indicate immediate completion
@@ -128,19 +139,23 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
     manager()->UpdateService(service_);
     service_->OnVisibilityChanged();
     SetupWakeOnLan();
+#if !defined(DISABLE_WIRED_8021X)
     eap_listener_->Start();
+#endif  // DISABLE_WIRED_8021X
   } else if ((flags & IFF_LOWER_UP) == 0 && link_up_) {
     link_up_ = false;
     adaptor()->EmitBoolChanged(kLinkUpProperty, link_up_);
-    is_eap_detected_ = false;
     DestroyIPConfig();
     SelectService(nullptr);
     manager()->UpdateService(service_);
     service_->OnVisibilityChanged();
+#if !defined(DISABLE_WIRED_8021X)
+    is_eap_detected_ = false;
     GetEapProvider()->ClearCredentialChangeCallback(this);
     SetIsEapAuthenticated(false);
     StopSupplicant();
     eap_listener_->Stop();
+#endif  // DISABLE_WIRED_8021X
   }
 }
 
@@ -192,6 +207,7 @@ void Ethernet::DisconnectFrom(EthernetService *service) {
   DropConnection();
 }
 
+#if !defined(DISABLE_WIRED_8021X)
 void Ethernet::TryEapAuthentication() {
   try_eap_authentication_callback_.Reset(
       Bind(&Ethernet::TryEapAuthenticationTask,
@@ -412,6 +428,7 @@ void Ethernet::TryEapAuthenticationTask() {
   }
   StartEapAuthentication();
 }
+#endif  // DISABLE_WIRED_8021X
 
 void Ethernet::SetupWakeOnLan() {
   int sock;
