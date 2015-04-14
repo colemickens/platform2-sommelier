@@ -30,7 +30,7 @@ usage_help() {
              Arg: none
 
   wipe:      Message when starting to erase stateful partition.
-             Arg #1: (optional) Image file to show.
+             Arg #1: Text message file to show.
 
   power_wash: Message when users wants to wipe the stateful partition.
               Arg: none
@@ -199,15 +199,12 @@ mode_update_firmware() {
 }
 
 # Prints message before starting to erase stateful partition (wipe).
-# Argument: (optional) file for splash image to show
+# Argument: Text file for message to show.
 mode_wipe() {
-  local splash_file="$1"
+  local message_file="$1"
 
-  if [ -s "$splash_file" ] && type ply-image >/dev/null 2>&1; then
-    # Do not use background execution because this file is going to be wiped.
-    ply-image "$splash_file"
-  else
-    echo "    Erasing stateful partition..." >"$STDOUT"
+  if ! display_boot_message "show_spinner" "${message_file}"; then
+    echo "Wiping" >>"${STDOUT}"
   fi
 }
 

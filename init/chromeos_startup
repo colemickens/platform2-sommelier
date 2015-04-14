@@ -187,11 +187,10 @@ FIRMWARE_TYPE=$(crossystem mainfw_type)
 #
 if [ -O ${RESET_FILE} ]; then
   # Wipe requested on previous boot.  In the case of a factory wipe,
-  # there can be a special splash screen with a message localized for
-  # the factory personnel.
-  ALTERNATE_WIPE_SCREEN=/mnt/stateful_partition/wipe_splash.png
-  if [ -O "${ALTERNATE_WIPE_SCREEN}" ]; then
-    chromeos-boot-alert wipe "${ALTERNATE_WIPE_SCREEN}"
+  # there can be a special message localized for the factory personnel.
+  WIPE_MESSAGE_FILE=/mnt/stateful_partition/wipe_message.txt
+  if [ -O "${WIPE_MESSAGE_FILE}" ]; then
+    chromeos-boot-alert wipe "${WIPE_MESSAGE_FILE}"
   else
     chromeos-boot-alert power_wash
   fi
