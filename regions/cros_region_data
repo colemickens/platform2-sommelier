@@ -6,9 +6,9 @@
 # This script provides easy access to data contained in cros-regions.json (the
 # region database for Chromium OS).
 
-# The VPD_CACHE is defined in dump_vpd_log.
-: ${VPD_CACHE:=/mnt/stateful_partition/unencrypted/cache/vpd/filtered.txt}
-: ${CROS_REGION_DB=/usr/share/misc/cros-regions.json}
+# The CROS_VPD_CACHE is defined in dump_vpd_log "filtered_file".
+: ${CROS_VPD_CACHE:=/mnt/stateful_partition/unencrypted/cache/vpd/filtered.txt}
+: ${CROS_REGIONS_DATABASE=/usr/share/misc/cros-regions.json}
 
 load_vpd_cache() {
   # There are multiple ways to read from VPD. The best approach is probably
@@ -17,16 +17,16 @@ load_vpd_cache() {
   # so we cannot use that. Instead we have to try the cache and then read via
   # command 'vpd'.
 
-  if [ ! -f "${VPD_CACHE}" ]; then
-    VPD_CACHE="$(mktemp)"
-    trap "rm ${VPD_CACHE}" EXIT
-    vpd -i RO_VPD -l >"${VPD_CACHE}"
+  if [ ! -f "${CROS_VPD_CACHE}" ]; then
+    CROS_VPD_CACHE="$(mktemp)"
+    trap "rm ${CROS_VPD_CACHE}" EXIT
+    vpd -i RO_VPD -l >"${CROS_VPD_CACHE}"
   fi
 }
 
 get_data_from_vpd() {
   local name="$1"
-  sed -nr 's/^"'"${name}"'"="(.*)"$/\1/p' "${VPD_CACHE}"
+  sed -nr 's/^"'"${name}"'"="(.*)"$/\1/p' "${CROS_VPD_CACHE}"
 }
 
 get_legacy_value_from_vpd() {
@@ -71,7 +71,7 @@ lookup_data() {
 
   # Check value type and modify pattern for array.
   output="$(jq -c -r --arg region "${region}" --arg name "${name}" \
-            "${pattern}|arrays" "${CROS_REGION_DB}")"
+            "${pattern}|arrays" "${CROS_REGIONS_DATABASE}")"
   if [ -n "${output}" ]; then
     if ${select_first}; then
       pattern="${pattern}[0]"
@@ -81,26 +81,26 @@ lookup_data() {
   fi
 
   output="$(jq -c -r --arg region "${region}" --arg name "${name}" \
-            "${pattern}" "${CROS_REGION_DB}")"
+            "${pattern}" "${CROS_REGIONS_DATABASE}")"
   if [ "${output}" != "null" ]; then
     echo "${output}"
   fi
 }
 
 report_available_fields() {
-  if [ ! -f "${CROS_REGION_DB}" ]; then
+  if [ ! -f "${CROS_REGIONS_DATABASE}" ]; then
     return
   fi
   echo "Availalbe fields in current system:"
   # Region 'us' should be always available.
-  jq -c -r ".us|keys[]" "${CROS_REGION_DB}" | sed 's/^/\t/'
+  jq -c -r ".us|keys[]" "${CROS_REGIONS_DATABASE}" | sed 's/^/\t/'
 }
 
 usage() {
   echo "Usage: $1 [-s] data_name [region]
 
         -s:        Selects only the first element (if value is list).
-        data_name: Name of field inside ${CROS_REGION_DB}.
+        data_name: Name of field inside ${CROS_REGIONS_DATABASE}.
         region:    Region code to query. Read from VPD if omitted.
         " >&2
   report_available_fields >&2
