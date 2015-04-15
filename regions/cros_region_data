@@ -18,7 +18,7 @@ load_vpd_cache() {
   # command 'vpd'.
 
   if [ ! -f "${VPD_CACHE}" ]; then
-    VPD_CACHE="$(mktemp --tmp)"
+    VPD_CACHE="$(mktemp)"
     trap "rm ${VPD_CACHE}" EXIT
     vpd -i RO_VPD -l >"${VPD_CACHE}"
   fi
