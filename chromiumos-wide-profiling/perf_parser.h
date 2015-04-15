@@ -155,6 +155,11 @@ class PerfParser : public PerfReader {
     return stats_;
   }
 
+  // Use with caution. Deserialization uses this to restore stats from proto.
+  PerfEventStats& mutable_stats() {
+    return stats_;
+  }
+
  protected:
   // Defines a type for a pid:tid pair.
   typedef std::pair<uint32_t, uint32_t> PidTid;

@@ -69,13 +69,14 @@ bool PerfSerializer::Serialize(PerfDataProto* perf_data_proto) {
   if (!gettimeofday(&timestamp_sec, NULL))
     perf_data_proto->set_timestamp_sec(timestamp_sec.tv_sec);
 
-  PerfDataProto_PerfEventStats* stats = perf_data_proto->mutable_stats();
-  stats->set_num_sample_events(stats_.num_sample_events);
-  stats->set_num_mmap_events(stats_.num_mmap_events);
-  stats->set_num_fork_events(stats_.num_fork_events);
-  stats->set_num_exit_events(stats_.num_exit_events);
-  stats->set_did_remap(stats_.did_remap);
-  stats->set_num_sample_events_mapped(stats_.num_sample_events_mapped);
+  const PerfEventStats& stats = parser_.stats();
+  PerfDataProto_PerfEventStats* stats_pb = perf_data_proto->mutable_stats();
+  stats_pb->set_num_sample_events(stats.num_sample_events);
+  stats_pb->set_num_mmap_events(stats.num_mmap_events);
+  stats_pb->set_num_fork_events(stats.num_fork_events);
+  stats_pb->set_num_exit_events(stats.num_exit_events);
+  stats_pb->set_did_remap(stats.did_remap);
+  stats_pb->set_num_sample_events_mapped(stats.num_sample_events_mapped);
   return true;
 }
 
@@ -118,14 +119,15 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
     return false;
   }
 
-  memset(&stats_, 0, sizeof(stats_));
-  const PerfDataProto_PerfEventStats& stats = perf_data_proto.stats();
-  stats_.num_sample_events = stats.num_sample_events();
-  stats_.num_mmap_events = stats.num_mmap_events();
-  stats_.num_fork_events = stats.num_fork_events();
-  stats_.num_exit_events = stats.num_exit_events();
-  stats_.did_remap = stats.did_remap();
-  stats_.num_sample_events_mapped = stats.num_sample_events_mapped();
+  const PerfDataProto_PerfEventStats& stats_pb = perf_data_proto.stats();
+  PerfEventStats stats = {0};
+  stats.num_sample_events = stats_pb.num_sample_events();
+  stats.num_mmap_events = stats_pb.num_mmap_events();
+  stats.num_fork_events = stats_pb.num_fork_events();
+  stats.num_exit_events = stats_pb.num_exit_events();
+  stats.did_remap = stats_pb.did_remap();
+  stats.num_sample_events_mapped = stats_pb.num_sample_events_mapped();
+  parser_.mutable_stats() = stats;
 
   return true;
 }
