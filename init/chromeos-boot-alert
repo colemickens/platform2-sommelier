@@ -63,7 +63,7 @@ find_current_locale() {
 
 # Shows boot messages in assets folder on screen center if available.
 # Arguments: message in /usr/share/chromeos-assets/text/boot_messages/$locale
-show_assets_message_image() {
+show_assets_message() {
   local message="$1"
   local locale locale_list
 
@@ -79,7 +79,10 @@ show_assets_message_image() {
   done
   locale_list="$locale_list en-US en"
 
-  display_boot_message "$message" "$locale_list" || return "$?"
+  if ! display_boot_message "${message}" "${locale_list}"; then
+    # Display the message code itself as fallback.
+    echo "${message}" >>"${STDOUT}"
+  fi
 }
 
 # Prints the two byte hex code of the matched char or
@@ -189,32 +192,10 @@ mode_warn_dev() {
 mode_enter_dev() {
   local delay_secs="${1:-30}"
 
-  # The text below is only fallback of localized assets message.
-  # Please sync with text there if you want to change the message.
-  local enter_dev1_text="
-    Local data will be cleared.
-
-    Modifications you make to the system are not supported by Google, may cause
-    hardware issues and may void warranty.
-
-    To cancel, turn your computer off now and toggle the Developer Switch back
-    to Verified Mode.
-  "
-  local enter_dev1_virtual_text="
-    Your system is transitioning to Developer Mode.
-    Local data has been cleared.
-
-    Modifications you make to the system are not supported by Google, may cause
-    hardware issues and may void warranty.
-
-    To cancel, turn your computer off now.
-  "
   if has_virtual_dev_switch; then
-    show_assets_message_image "enter_dev1_virtual" ||
-      echo "$enter_dev1_virtual_text" >"$STDOUT"
+    show_assets_message "enter_dev1_virtual"
   else
-    show_assets_message_image "enter_dev1" ||
-      echo "$enter_dev1_text" >"$STDOUT"
+    show_assets_message "enter_dev1"
   fi
 
   local format='\r  %-30s'
@@ -227,41 +208,20 @@ mode_enter_dev() {
   done
 
   # Count-down
-  tput clear >"$STDOUT" &&
-  show_assets_message_image "enter_dev2" ||
-  # The text by echo below is only fallback of localized assets message.
-  # Please sync with text there if you want to change the message.
-  echo "
-    Preparing system for Developer Mode (may take 5 - 10 minutes).
-    Do not turn your computer off until it has restarted.
-
-    On reboot, press Ctrl+Alt+[->] (F2) for information about Developer Mode.
-  " >"$STDOUT"
+  tput clear >"$STDOUT"
+  show_assets_message "enter_dev2"
   # TODO(wad,wfrichar) Request a root password here.
   # TODO(wad,reinauer) Inform the user of chromeos-firmwareupdate --mode=todev
 }
 
 # Prints message when leaving developer mode
 mode_leave_dev() {
-  show_assets_message_image "leave_dev" ||
-  # The text by echo below is only fallback of localized assets message.
-  # Please sync with text there if you want to change the message.
-  echo "
-    Your system last booted in Developer Mode.
-    Returning to Normal (Verified) Mode...
-    Upon completion, the system will reboot.
-  " >"$STDOUT"
+  show_assets_message "leave_dev"
 }
 
 # Prints messages before starting firmware update
 mode_update_firmware() {
-  show_assets_message_image "update_firmware" ||
-  # The text by echo below is only fallback of localized assets message.
-  # Please sync with text there if you want to change the message.
-  echo "
-    Your system is applying a critical update.
-    Please do not turn it off.
-  " >"$STDOUT"
+  show_assets_message "update_firmware"
 }
 
 # Prints message before starting to erase stateful partition (wipe).
@@ -279,27 +239,13 @@ mode_wipe() {
 
 # Prints messages before starting user-initiated wipe.
 mode_power_wash() {
-  show_assets_message_image "power_wash" ||
-  # The text by echo below is only fallback of localized assets message.
-  # Please sync with text there if you want to change the message.
-  echo "
-    Powerwash in progress. Do not switch off your device.
-
-    Powerwashes happen when critical errors are detected, or when you choose
-    to reset your device. This will reset Chrome OS to be just like new, and
-    you'll be back in operation in just a minute.
-  " >"$STDOUT"
+  show_assets_message "power_wash"
 }
 
 
 # Prints message before starting to rebuild a corrupted stateful partition.
 mode_self_repair() {
-  show_assets_message_image "self_repair" ||
-  # The text by echo below is only fallback of localized assets message.
-  # Please sync with text there if you want to change the message.
-  echo "
-    Your system is repairing itself.  Please wait.
-  " >"$STDOUT"
+  show_assets_message "self_repair"
 }
 
 # Prints message when starting with developer firmware, to check if there's
@@ -368,31 +314,12 @@ mode_block_devmode() {
   local delay_secs=30
 
   if has_virtual_dev_switch; then
-    show_assets_message_image "block_devmode_virtual" ||
-    # The text by echo below is only fallback of localized assets message.
-    # Please sync with text there if you want to change the message.
-    echo "
-      The device owner has disabled Developer Mode for this device. Please ask
-      the device owner to remove the restriction if you want to use Developer
-      Mode.
-
-      The system will reboot in Verified Mode.
-    " >"$STDOUT"
+    show_assets_message "block_devmode_virtual"
   else
     # Leave the notification on the screen for 5 minutes to increase chances
     # the user actually sees it before shutting down the device.
     delay_secs=300
-    show_assets_message_image "block_devmode" ||
-    # The text by echo below is only fallback of localized assets message.
-    # Please sync with text there if you want to change the message.
-    echo "
-      The device owner has disabled Developer Mode for this device. Please ask
-      the device owner to remove the restriction if you want to use Developer
-      Mode.
-
-      Please toggle the Developer Switch and reboot the device to return to
-      Verified Mode.
-    " >"$STDOUT"
+    show_assets_message "block_devmode"
   fi
 
   # Read a space bar or timeout.
