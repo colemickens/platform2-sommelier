@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/macros.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/syslog_logging.h>
 
@@ -45,6 +46,8 @@ void PrintUsage() {
          "      is verified. Requires the TPM to be initialized but not "
          "finalized.\n");
   printf("    dump_status: Prints TPM status information.\n");
+  printf("    get_random <N>: Gets N random bytes from the TPM and prints them "
+         "as a hex-encoded string.\n");
 }
 
 int TakeOwnership(bool finalize) {
@@ -171,6 +174,19 @@ int DumpStatus() {
   return 0;
 }
 
+int GetRandom(unsigned int random_bytes_count) {
+  cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
+  chromeos::SecureBlob random_bytes;
+  tpm->GetRandomData(random_bytes_count, &random_bytes);
+  if (random_bytes_count != random_bytes.size())
+    return -1;
+
+  std::string hex_bytes =
+      base::HexEncode(random_bytes.data(), random_bytes.size());
+  printf("%s\n", hex_bytes.c_str());
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
@@ -196,6 +212,12 @@ int main(int argc, char **argv) {
   }
   if (command == "dump_status") {
     return DumpStatus();
+  }
+  unsigned int random_bytes_count = 0;
+  if (command == "get_random" && arguments.size() == 2 &&
+      base::StringToUint(arguments[1], &random_bytes_count) &&
+      random_bytes_count > 0) {
+    return GetRandom(random_bytes_count);
   }
   PrintUsage();
   return -1;
