@@ -48,7 +48,7 @@ using libwebserv::ProtocolHandler;
 using libwebserv::Request;
 using libwebserv::Response;
 
-const char kDefaultConfigFilePath[] = "/etc/privetd/config";
+const char kDefaultConfigFilePath[] = "/etc/privetd/privetd.conf";
 const char kDefaultStateFilePath[] = "/var/lib/privetd/privetd.state";
 
 std::string GetFirstHeader(const Request& request, const std::string& name) {
