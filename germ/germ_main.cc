@@ -11,6 +11,8 @@
 #include <base/logging.h>
 #include <chromeos/flag_helper.h>
 #include <chromeos/syslog_logging.h>
+#include <soma/container_spec_reader.h>
+#include <soma/read_only_container_spec.h>
 
 #include "germ/germ_client.h"
 
@@ -19,30 +21,42 @@ const char kShellExecutablePath[] = "/bin/sh";
 }  // namespace
 
 int main(int argc, char** argv) {
-  DEFINE_string(name, "", "Name of the service, cannot be empty");
-  DEFINE_bool(launch, false, "Start a service");
-  DEFINE_bool(terminate, false, "Terminate a service");
-  DEFINE_bool(interactive, false, "Run in the foreground");
+  DEFINE_string(name, "", "Name of service");
+  DEFINE_string(spec, "", "Path to ContainerSpec");
   DEFINE_bool(shell, false,
               "Don't actually run the service, just launch a shell");
-  DEFINE_int32(pid, 0, "Pid of the service to terminate");
 
   chromeos::FlagHelper::Init(argc, argv,
-                             "germ [OPTIONS] -- <EXECUTABLE> [ARGUMENTS...]");
+                             "germ [OPTIONS] [-- EXECUTABLE [ARGUMENTS...]]");
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
 
-  if (FLAGS_launch && FLAGS_terminate) {
-    LOG(ERROR) << "--launch and --terminate are mutually exclusive";
-    return 1;
-  }
+  base::AtExitManager exit_manager;
+  germ::Launcher launcher;
+  int status = 0;
 
-  // Default to Launch.
-  if (!FLAGS_launch && !FLAGS_terminate) {
-    FLAGS_launch = true;
-  }
-
-  int ret = 0;
-  if (FLAGS_launch) {
+  // Should we launch a ContainerSpec?
+  if (!FLAGS_spec.empty()) {
+    // Read and launch a ContainerSpec.
+    // TODO(jorgelo): Allow launching a shell.
+    soma::parser::ContainerSpecReader csr;
+    base::FilePath path(FLAGS_spec);
+    std::unique_ptr<soma::ContainerSpec> cspec = csr.Read(path);
+    if (!cspec) {
+      // ContainerSpecReader::Path() will print an appropriate error.
+      return 1;
+    }
+    LOG(INFO) << "Read ContainerSpec '" << FLAGS_spec << "'";
+    soma::ReadOnlyContainerSpec spec;
+    if (!spec.Init(*cspec)) {
+      LOG(ERROR) << "Failed to initialize read-only ContainerSpec";
+      return 1;
+    }
+    if (!launcher.RunInteractiveSpec(spec, &status)) {
+      LOG(ERROR) << "Failed to launch '" << spec.name() << "'";
+      return 1;
+    }
+  } else {
+    // Launch an executable.
     std::vector<std::string> args =
         base::CommandLine::ForCurrentProcess()->GetArgs();
     // It would be great if we could print the "Usage" message here,
@@ -58,32 +72,15 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    // FLAGS_shell implies FLAGS_interactive.
-    if (FLAGS_interactive || FLAGS_shell) {
-      base::AtExitManager exit_manager;
-      germ::Launcher launcher;
-      if (FLAGS_shell) {
-        args.clear();
-        args.push_back(kShellExecutablePath);
-      }
-      int status = 0;
-      bool success = launcher.RunInteractive(FLAGS_name, args, &status);
-      if (!success) {
-        LOG(ERROR) << "Failed to launch '" << FLAGS_name << "'";
-        return 1;
-      }
-      ret = status;
-    } else {
-      germ::GermClient client;
-      ret = client.Launch(FLAGS_name, args);
+    if (FLAGS_shell) {
+      args.clear();
+      args.push_back(kShellExecutablePath);
     }
-  } else if (FLAGS_terminate) {
-    if (FLAGS_pid <= 0) {
-      LOG(ERROR) << "No/invalid pid provided";
+    bool success = launcher.RunInteractiveCommand(FLAGS_name, args, &status);
+    if (!success) {
+      LOG(ERROR) << "Failed to launch '" << FLAGS_name << "'";
       return 1;
     }
-    germ::GermClient client;
-    ret = client.Terminate(FLAGS_pid);
   }
-  return ret;
+  return status;
 }

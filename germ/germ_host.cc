@@ -8,27 +8,28 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <soma/read_only_container_spec.h>
 
 namespace germ {
 
 int GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
-  std::vector<std::string> argv;
-  // TODO(jorgelo): support running more than one executable.
-  const ::google::protobuf::RepeatedPtrField<std::string>& command_line =
-      request->spec().executables(0).command_line();
-  for (const auto& cmdline_token : command_line) {
-    argv.push_back(cmdline_token);
-  }
   pid_t pid = -1;
-  bool success = launcher_.RunDaemonized(request->name(), argv, &pid);
-  if (!success) {
+  soma::ReadOnlyContainerSpec ro_spec;
+  if (!ro_spec.Init(request->spec())) {
+    // TODO(jorgelo): Unify error handling, either return value or |success|.
+    LOG(ERROR) << "Could not initialize read-only ContainerSpec";
+    response->set_success(false);
+    response->set_pid(-1);
+    return -1;
+  }
+  if (!launcher_.RunDaemonized(ro_spec, &pid)) {
     // TODO(jorgelo): Unify error handling, either return value or |success|.
     LOG(ERROR) << "RunDaemonized(" << request->name() << ") failed";
     response->set_success(false);
     response->set_pid(-1);
     return -1;
   }
-  response->set_success(success);
+  response->set_success(true);
   response->set_pid(pid);
   return 0;
 }

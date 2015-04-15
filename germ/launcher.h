@@ -12,6 +12,7 @@
 
 #include <base/macros.h>
 #include <chromeos/process.h>
+#include <soma/read_only_container_spec.h>
 
 namespace germ {
 
@@ -22,11 +23,11 @@ class Launcher {
   Launcher();
   virtual ~Launcher();
 
-  bool RunInteractive(const std::string& name,
-                      const std::vector<std::string>& argv,
-                      int* status);
-  bool RunDaemonized(const std::string& name,
-                     const std::vector<std::string>& argv,
+  bool RunInteractiveCommand(const std::string& name,
+                             const std::vector<std::string>& argv,
+                             int* status);
+  bool RunInteractiveSpec(const soma::ReadOnlyContainerSpec& spec, int* status);
+  bool RunDaemonized(const soma::ReadOnlyContainerSpec& spec,
                      pid_t* pid);
   bool Terminate(pid_t pid);
 
@@ -38,6 +39,8 @@ class Launcher {
   virtual std::unique_ptr<chromeos::Process> GetProcessInstance();
 
  private:
+  bool RunWithMinijail(const std::vector<char*>& cmdline, int* status);
+
   std::unique_ptr<UidService> uid_service_;
   std::unordered_map<pid_t, std::string> names_;
 

@@ -52,6 +52,18 @@
         'process_reaper.cc',
         'switches.cc',
       ],
+      'variables': {
+        'exported_deps': [
+          'libsoma',
+        ],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
     },
     {
       'target_name': 'germ',
@@ -60,11 +72,6 @@
         'libgerm',
       ],
       'sources': ['germ_main.cc'],
-      'variables': {
-        'deps': [
-          'libpsyche',
-        ],
-      },
     },
     {
       'target_name': 'germd',

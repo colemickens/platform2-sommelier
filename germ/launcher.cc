@@ -44,30 +44,51 @@ Launcher::Launcher() {
 
 Launcher::~Launcher() {}
 
-bool Launcher::RunInteractive(const std::string& name,
-                              const std::vector<std::string>& argv,
-                              int* status) {
-  std::vector<char*> command_line;
+bool Launcher::RunInteractiveCommand(const std::string& name,
+                                     const std::vector<std::string>& argv,
+                                     int* status) {
+  std::vector<char*> cmdline;
   for (const auto& t : argv) {
-    command_line.push_back(const_cast<char*>(t.c_str()));
+    cmdline.push_back(const_cast<char*>(t.c_str()));
   }
   // Minijail will use the underlying char* array as 'argv',
   // so null-terminate it.
-  command_line.push_back(nullptr);
+  cmdline.push_back(nullptr);
+  return RunWithMinijail(cmdline, status);
+}
 
+bool Launcher::RunInteractiveSpec(const soma::ReadOnlyContainerSpec& spec,
+                                  int* status) {
+  std::vector<char*> cmdline;
+  // TODO(jorgelo): support running more than one executable.
+  for (const auto& t : spec.executables()[0]->command_line) {
+    cmdline.push_back(const_cast<char*>(t.c_str()));
+  }
+  // Minijail will use the underlying char* array as 'argv',
+  // so null-terminate it.
+  cmdline.push_back(nullptr);
+  return RunWithMinijail(cmdline, status);
+}
+
+bool Launcher::RunWithMinijail(const std::vector<char*>& cmdline, int* status) {
   chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
 
   uid_t uid = uid_service_->GetUid();
   Environment env(uid, uid);
 
-  return minijail->RunSyncAndDestroy(env.GetForInteractive(), command_line,
+  return minijail->RunSyncAndDestroy(env.GetForInteractive(), cmdline,
                                      status);
 }
 
-bool Launcher::RunDaemonized(const std::string& name,
-                             const std::vector<std::string>& argv,
+bool Launcher::RunDaemonized(const soma::ReadOnlyContainerSpec& spec,
                              pid_t* pid) {
   // initctl start germ_template NAME=yes ENVIRONMENT= COMMANDLINE=/usr/bin/yes
+  std::vector<std::string> argv;
+  // TODO(jorgelo): support running more than one executable.
+  for (const auto& cmdline_token : spec.executables()[0]->command_line) {
+    argv.push_back(cmdline_token);
+  }
+
   uid_t uid = uid_service_->GetUid();
   Environment env(uid, uid);
 
@@ -75,7 +96,7 @@ bool Launcher::RunDaemonized(const std::string& name,
   initctl->AddArg("/sbin/initctl");
   initctl->AddArg("start");
   initctl->AddArg(kSandboxedServiceTemplate);
-  initctl->AddArg(base::StringPrintf("NAME=%s", name.c_str()));
+  initctl->AddArg(base::StringPrintf("NAME=%s", spec.name().c_str()));
   initctl->AddArg(env.GetForService());
   std::string command_line = JoinString(argv, ' ');
   initctl->AddArg(base::StringPrintf("COMMANDLINE=%s", command_line.c_str()));
@@ -92,8 +113,8 @@ bool Launcher::RunDaemonized(const std::string& name,
     *pid = -1;
     return false;
   }
-  VLOG(1) << "service name " << name << " pid " << pid;
-  names_[*pid] = name;
+  VLOG(1) << "service name " << spec.name() << " pid " << pid;
+  names_[*pid] = spec.name();
   return true;
 }
 
