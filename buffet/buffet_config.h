@@ -19,17 +19,26 @@ class BuffetConfig {
   void Load(const base::FilePath& config_path);
   void Load(const chromeos::KeyValueStore& store);
 
-  std::string client_id() const { return client_id_; }
-  std::string client_secret() const { return client_secret_; }
-  std::string api_key() const { return api_key_; }
-  std::string oauth_url() const { return oauth_url_; }
-  std::string service_url() const { return service_url_; }
-  std::string device_kind() const { return device_kind_; }
-  std::string name() const { return name_; }
-  std::string default_description() const { return default_description_; }
-  std::string default_location() const { return default_location_; }
-  std::string model_id() const { return model_id_; }
+  const std::string& client_id() const { return client_id_; }
+  const std::string& client_secret() const { return client_secret_; }
+  const std::string& api_key() const { return api_key_; }
+  const std::string& oauth_url() const { return oauth_url_; }
+  const std::string& service_url() const { return service_url_; }
+  const std::string& oem_name() const { return oem_name_; }
+  const std::string& model_name() const { return model_name_; }
+  const std::string& model_id() const { return model_id_; }
+  const std::string& device_kind() const { return device_kind_; }
   uint64_t polling_period_ms() const { return polling_period_ms_; }
+
+  const std::string& name() const { return name_; }
+  const std::string& description() const { return description_; }
+  const std::string& location() const { return location_; }
+
+  void set_name(const std::string& name);
+  void set_description(const std::string& description) {
+    description_ = description;
+  }
+  void set_location(const std::string& location) { location_ = location; }
 
  private:
   std::string client_id_{"58855907228.apps.googleusercontent.com"};
@@ -37,11 +46,13 @@ class BuffetConfig {
   std::string api_key_{"AIzaSyDSq46gG-AxUnC3zoqD9COIPrjolFsMfMA"};
   std::string oauth_url_{"https://accounts.google.com/o/oauth2/"};
   std::string service_url_{"https://www.googleapis.com/clouddevices/v1/"};
-  std::string device_kind_{"vendor"};
   std::string name_{"Developer device"};
-  std::string default_description_{"A development device"};
-  std::string default_location_{"my desk"};
-  std::string model_id_{"AAA"};
+  std::string description_;
+  std::string location_;
+  std::string oem_name_{"Chromium"};
+  std::string model_name_{"Brillo"};
+  std::string model_id_{"AAAAA"};
+  std::string device_kind_{"AA"};
   uint64_t polling_period_ms_{7000};
 
   DISALLOW_COPY_AND_ASSIGN(BuffetConfig);

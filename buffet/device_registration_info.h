@@ -51,7 +51,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   DeviceRegistrationInfo(
       const std::shared_ptr<CommandManager>& command_manager,
       const std::shared_ptr<StateManager>& state_manager,
-      std::unique_ptr<const BuffetConfig> config,
+      std::unique_ptr<BuffetConfig> config,
       const std::shared_ptr<chromeos::http::Transport>& transport,
       const std::shared_ptr<StorageInterface>& state_store,
       bool xmpp_enabled,
@@ -215,11 +215,6 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   std::string device_id_;
   std::string device_robot_account_;
 
-  // These fields are user settable and stored in the state store.
-  std::string name_;
-  std::string description_;
-  std::string location_;
-
   // Transient data
   std::string access_token_;
   base::Time access_token_expiration_;
@@ -233,7 +228,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   // Device state manager.
   std::shared_ptr<StateManager> state_manager_;
 
-  std::unique_ptr<const BuffetConfig> config_;
+  std::unique_ptr<BuffetConfig> config_;
 
   const bool xmpp_enabled_;
   std::unique_ptr<XmppClient> xmpp_client_;

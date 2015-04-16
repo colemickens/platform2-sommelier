@@ -123,7 +123,7 @@ namespace buffet {
 DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager,
     const std::shared_ptr<StateManager>& state_manager,
-    std::unique_ptr<const BuffetConfig> config,
+    std::unique_ptr<BuffetConfig> config,
     const std::shared_ptr<chromeos::http::Transport>& transport,
     const std::shared_ptr<StorageInterface>& state_store,
     bool xmpp_enabled,
@@ -178,29 +178,25 @@ bool DeviceRegistrationInfo::Load() {
   if (!value || !value->GetAsDictionary(&dict))
     return false;
 
-  // Get the values into temp variables first to make sure we can get
-  // all the data correctly before changing the state of this object.
-  std::string refresh_token;
-  std::string device_id;
-  std::string device_robot_account;
+  // Read all available data before failing.
   std::string name;
-  std::string description;
-  std::string location;
-  if (!dict->GetString(storage_keys::kRefreshToken, &refresh_token) ||
-      !dict->GetString(storage_keys::kDeviceId, &device_id) ||
-      !dict->GetString(storage_keys::kRobotAccount, &device_robot_account) ||
-      !dict->GetString(storage_keys::kName, &name) ||
-      !dict->GetString(storage_keys::kDescription, &description) ||
-      !dict->GetString(storage_keys::kLocation, &location)) {
-    return false;
-  }
-  refresh_token_        = refresh_token;
-  device_robot_account_ = device_robot_account;
-  name_                 = name;
-  description_          = description;
-  location_             = location;
+  if (dict->GetString(storage_keys::kName, &name) && !name.empty())
+    config_->set_name(name);
 
-  SetDeviceId(device_id);
+  std::string description;
+  if (dict->GetString(storage_keys::kDescription, &description))
+    config_->set_description(description);
+
+  std::string location;
+  if (dict->GetString(storage_keys::kLocation, &location))
+    config_->set_location(location);
+
+  dict->GetString(storage_keys::kRefreshToken, &refresh_token_);
+  dict->GetString(storage_keys::kRobotAccount, &device_robot_account_);
+
+  std::string device_id;
+  if (dict->GetString(storage_keys::kDeviceId, &device_id))
+    SetDeviceId(device_id);
 
   if (HaveRegistrationCredentials(nullptr)) {
     // Wait a significant amount of time for local daemons to publish their
@@ -211,7 +207,6 @@ bool DeviceRegistrationInfo::Load() {
     //             we need not wait for them.
     ScheduleStartDevice(base::TimeDelta::FromSeconds(5));
   }
-
   return true;
 }
 
@@ -220,9 +215,9 @@ bool DeviceRegistrationInfo::Save() const {
   dict.SetString(storage_keys::kRefreshToken, refresh_token_);
   dict.SetString(storage_keys::kDeviceId,     device_id_);
   dict.SetString(storage_keys::kRobotAccount, device_robot_account_);
-  dict.SetString(storage_keys::kName,         name_);
-  dict.SetString(storage_keys::kDescription,  description_);
-  dict.SetString(storage_keys::kLocation,     location_);
+  dict.SetString(storage_keys::kName, config_->name());
+  dict.SetString(storage_keys::kDescription, config_->description());
+  dict.SetString(storage_keys::kLocation, config_->location());
 
   return storage_->Save(&dict);
 }
@@ -400,14 +395,13 @@ DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
   std::unique_ptr<base::DictionaryValue> resource{new base::DictionaryValue};
   if (!device_id_.empty())
     resource->SetString("id", device_id_);
+  resource->SetString("name", config_->name());
+  if (!config_->description().empty())
+    resource->SetString("description", config_->description());
+  if (!config_->location().empty())
+    resource->SetString("location", config_->location());
+  resource->SetString("modelManifestId", config_->model_id());
   resource->SetString("deviceKind", config_->device_kind());
-  resource->SetString("name", name_.empty() ? config_->name() : name_);
-  if (!description_.empty())
-    resource->SetString("description", description_);
-  if (!location_.empty())
-    resource->SetString("location", location_);
-  if (!config_->model_id().empty())
-    resource->SetString("modelManifestId", config_->model_id());
   resource->SetString("channel.supportedType", "xmpp");
   resource->Set("commandDefs", commands.release());
   resource->Set("state", state.release());
@@ -466,11 +460,20 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   }
   // These fields are optional, and will default to values from the manufacturer
   // supplied config.
-  GetWithDefault(params, storage_keys::kName, config_->name(), &name_);
-  GetWithDefault(params, storage_keys::kDescription,
-                 config_->default_description(), &description_);
-  GetWithDefault(params, storage_keys::kLocation,
-                 config_->default_location(), &location_);
+  std::string name;
+  GetWithDefault(params, storage_keys::kName, config_->name(), &name);
+  if (!name.empty())
+    config_->set_name(name);
+
+  std::string description;
+  GetWithDefault(params, storage_keys::kDescription, config_->description(),
+                 &description);
+  config_->set_description(description);
+
+  std::string location;
+  GetWithDefault(params, storage_keys::kLocation, config_->location(),
+                 &location);
+  config_->set_location(location);
 
   std::unique_ptr<base::DictionaryValue> device_draft =
       BuildDeviceResource(error);

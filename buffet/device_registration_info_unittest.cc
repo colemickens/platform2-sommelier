@@ -58,16 +58,6 @@ const char kUserRefreshToken[]     = "1/zQLKjlKJlkLkLKjLkjLKjLkjLjLkjl0ftc6"
 
 }  // namespace test_data
 
-// Fill in the storage with default environment information (URLs, etc).
-void InitDefaultStorage(base::DictionaryValue* data) {
-  data->SetString(storage_keys::kRefreshToken, "");
-  data->SetString(storage_keys::kDeviceId, "");
-  data->SetString(storage_keys::kRobotAccount, "");
-  data->SetString(storage_keys::kName, "");
-  data->SetString(storage_keys::kDescription, "");
-  data->SetString(storage_keys::kLocation, "");
-}
-
 // Add the test device registration information.
 void SetDefaultDeviceRegistration(base::DictionaryValue* data) {
   data->SetString(storage_keys::kRefreshToken, test_data::kRefreshToken);
@@ -189,7 +179,6 @@ class DeviceRegistrationInfo::TestHelper {
 class DeviceRegistrationInfoTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    InitDefaultStorage(&data_);
     storage_ = std::make_shared<MemStorage>();
     storage_->Save(&data_);
     transport_ = std::make_shared<chromeos::http::fake::Transport>();
@@ -201,9 +190,9 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     config_store.SetString("api_key", test_data::kApiKey);
     config_store.SetString("device_kind",  "vendor");
     config_store.SetString("name",  "Coffee Pot");
-    config_store.SetString("default_description",  "Easy to clean");
-    config_store.SetString("default_location",  "Kitchen");
-    config_store.SetString("model_id", "AAA");
+    config_store.SetString("description", "Easy to clean");
+    config_store.SetString("location", "Kitchen");
+    config_store.SetString("model_id", "AAAAA");
     config_store.SetString("oauth_url", test_data::kOAuthURL);
     config_store.SetString("service_url", test_data::kServiceURL);
     std::unique_ptr<BuffetConfig> config{new BuffetConfig};
@@ -402,7 +391,7 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
     EXPECT_TRUE(json->GetString("deviceDraft.location", &value));
     EXPECT_EQ("Kitchen", value);
     EXPECT_TRUE(json->GetString("deviceDraft.modelManifestId", &value));
-    EXPECT_EQ("AAA", value);
+    EXPECT_EQ("AAAAA", value);
     EXPECT_TRUE(json->GetString("deviceDraft.name", &value));
     EXPECT_EQ("Coffee Pot", value);
     base::DictionaryValue* commandDefs = nullptr;
