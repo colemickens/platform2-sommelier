@@ -24,7 +24,9 @@ bool IsInvalid(const std::string& service_name) {
 
 }  // namespace
 
-Soma::Soma(const base::FilePath& bundle_root) : root_(bundle_root) {}
+Soma::Soma(const base::FilePath& bundle_root)
+    : root_(bundle_root), reader_(new parser::ContainerSpecReader) {
+}
 
 int Soma::GetContainerSpec(GetContainerSpecRequest* request,
                            GetContainerSpecResponse* response) {
@@ -33,7 +35,7 @@ int Soma::GetContainerSpec(GetContainerSpecRequest* request,
     LOG(WARNING) << "Request must contain a valid name, not " << service_name;
     return 1;
   }
-  std::unique_ptr<ContainerSpec> spec = reader_.Read(NameToPath(service_name));
+  std::unique_ptr<ContainerSpec> spec = reader_->Read(NameToPath(service_name));
   if (spec)
     response->mutable_container_spec()->CheckTypeAndMergeFrom(*spec.get());
   return 0;
@@ -49,7 +51,7 @@ int Soma::GetPersistentContainerSpecs(
                              "*.json");
   for (base::FilePath spec_path = files.Next(); !spec_path.empty();
        spec_path = files.Next()) {
-    std::unique_ptr<ContainerSpec> spec = reader_.Read(spec_path);
+    std::unique_ptr<ContainerSpec> spec = reader_->Read(spec_path);
     if (spec && spec->is_persistent())
       response->add_container_specs()->CheckTypeAndMergeFrom(*spec.get());
   }

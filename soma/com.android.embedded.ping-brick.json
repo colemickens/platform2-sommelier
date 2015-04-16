@@ -56,6 +56,28 @@
                      { "major": 13, "minor": -1 }
                 ]
             }
+        },
+        {
+            "name": "os/bruteus/service-user-whitelist",
+            "value": {
+                "service": "com.android.embedded.ping-brick.ping-service",
+                "whitelist": [ "com.android.embedded.ping-brick.ping-user" ]
+            }
+        },
+        {
+            "name": "os/bruteus/service-group-whitelist",
+            "value": {
+                "service": "com.android.embedded.ping-brick.ping-service",
+                "whitelist": [ "com.android.embedded.ping-brick.pingers",
+			       "com.android.embedded.ping-brick.echoers" ]
+            }
+        },
+        {
+            "name": "os/bruteus/service-group-whitelist",
+            "value": {
+                "service": "com.android.embedded.ping-brick.echo-service",
+                "whitelist": [ "com.android.embedded.ping-brick.echoers" ]
+            }
         }
     ],
     "annotations": [

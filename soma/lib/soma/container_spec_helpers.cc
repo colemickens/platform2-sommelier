@@ -77,6 +77,28 @@ void SetDeviceNodeFilters(const DeviceNodeFilter::Set& filters,
   }
 }
 
+void SetUserACL(const std::string& service_name,
+                const std::set<uid_t>& whitelist,
+                ContainerSpec* to_modify) {
+  if (service_name.empty() || whitelist.empty())
+    return;
+  ContainerSpec::UserACL* acl = to_modify->add_user_acls();
+  acl->set_service_name(service_name);
+  for (uid_t uid : whitelist)
+    acl->add_uids(uid);
+}
+
+void SetGroupACL(const std::string& service_name,
+                 const std::set<gid_t>& whitelist,
+                 ContainerSpec* to_modify) {
+  if (service_name.empty() || whitelist.empty())
+    return;
+  ContainerSpec::GroupACL* acl = to_modify->add_group_acls();
+  acl->set_service_name(service_name);
+  for (gid_t gid : whitelist)
+    acl->add_gids(gid);
+}
+
 void SetUidAndGid(uid_t uid, gid_t gid, ContainerSpec::Executable* to_modify) {
   to_modify->set_uid(uid);
   to_modify->set_gid(gid);

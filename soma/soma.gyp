@@ -70,6 +70,7 @@
       'sources': [
         'lib/soma/container_spec_reader.cc',
         'lib/soma/read_only_container_spec.cc',
+        'lib/soma/userdb.cc',
       ],
     },
     {
@@ -102,6 +103,7 @@
             'libsoma',
           ],
           'sources': [
+            'lib/soma/fake_userdb.cc',
             'soma_testrunner.cc',
             'soma_unittest.cc',
           ],
@@ -117,6 +119,7 @@
           ],
           'sources': [
             'lib/soma/container_spec_reader_unittest.cc',
+            'lib/soma/fake_userdb.cc',
             'lib/soma/libsoma_testrunner.cc',
             'lib/soma/read_only_container_spec_unittest.cc',
           ],

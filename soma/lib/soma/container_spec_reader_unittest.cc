@@ -4,9 +4,12 @@
 
 #include "soma/lib/soma/container_spec_reader.h"
 
+#include <sys/types.h>
+
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -22,6 +25,8 @@
 
 #include "soma/lib/soma/annotations.h"
 #include "soma/lib/soma/device_filter.h"
+#include "soma/lib/soma/fake_userdb.h"
+#include "soma/lib/soma/isolator_parser.h"
 #include "soma/lib/soma/namespace.h"
 #include "soma/lib/soma/port.h"
 #include "soma/proto_bindings/soma_container_spec.pb.h"
@@ -35,8 +40,7 @@ using google::protobuf::RepeatedPtrField;
 class ContainerSpecWrapper {
  public:
   explicit ContainerSpecWrapper(std::unique_ptr<ContainerSpec> to_wrap)
-      : internal_(std::move(to_wrap)) {
-  }
+      : internal_(std::move(to_wrap)) {}
   virtual ~ContainerSpecWrapper() = default;
 
   const std::string& name() const { return internal_->name(); }
@@ -98,6 +102,32 @@ class ContainerSpecWrapper {
                                              to_check.minor());
               return parser_filter.Allows(major, minor);
             });
+  }
+
+  bool UserCanAccessService(uid_t uid, const std::string& service) {
+    const RepeatedPtrField<ContainerSpec::UserACL>& acls =
+        internal_->user_acls();
+    auto acl = std::find_if(acls.begin(), acls.end(),
+                            [service](const ContainerSpec::UserACL& to_check) {
+                              return to_check.service_name() == service;
+                            });
+    if (acl == acls.end())
+      return false;
+    return acl->uids().end() !=
+           std::find(acl->uids().begin(), acl->uids().end(), uid);
+  }
+
+  bool GroupCanAccessService(gid_t gid, const std::string& service) {
+    const RepeatedPtrField<ContainerSpec::GroupACL>& acls =
+        internal_->group_acls();
+    auto acl = std::find_if(acls.begin(), acls.end(),
+                            [service](const ContainerSpec::GroupACL& to_check) {
+                              return to_check.service_name() == service;
+                            });
+    if (acl == acls.end())
+      return false;
+    return acl->gids().end() !=
+           std::find(acl->gids().begin(), acl->gids().end(), gid);
   }
 
  private:
@@ -167,9 +197,15 @@ class ContainerSpecReaderTest : public ::testing::Test {
         spec->service_bundle_path().value(), kServiceBundleName);
   }
 
+  void set_reader(std::unique_ptr<ContainerSpecReader> reader) {
+    reader_ = std::move(reader);
+  }
+
   std::unique_ptr<ContainerSpecWrapper> ValueToSpec(base::Value* in) {
     WriteValue(in, scratch_);
-    std::unique_ptr<ContainerSpec> spec = reader_.Read(scratch_);
+    if (!reader_)
+      reader_.reset(new ContainerSpecReader);
+    std::unique_ptr<ContainerSpec> spec = reader_->Read(scratch_);
     if (spec) {
       return std::unique_ptr<ContainerSpecWrapper>(
           new ContainerSpecWrapper(std::move(spec)));
@@ -189,9 +225,6 @@ class ContainerSpecReaderTest : public ::testing::Test {
   std::string MakeSubAppKey(const std::string& element) {
     return JoinString({ContainerSpecReader::kSubAppKey, element}, '.');
   }
-
-  ContainerSpecReader reader_;
-  base::ScopedTempDir tmpdir_;
 
  private:
   static const char kServiceBundleName[];
@@ -220,7 +253,9 @@ class ContainerSpecReaderTest : public ::testing::Test {
         value_string.length());
   }
 
+  std::unique_ptr<ContainerSpecReader> reader_;
   base::FilePath scratch_;
+  base::ScopedTempDir tmpdir_;
 
   DISALLOW_COPY_AND_ASSIGN(ContainerSpecReaderTest);
 };
@@ -450,6 +485,65 @@ TEST_F(ContainerSpecReaderTest, SpecWithNamespaces) {
   EXPECT_FALSE(spec->ShouldApplyNamespace(ContainerSpec::NEWIPC));
   EXPECT_FALSE(spec->ShouldApplyNamespace(ContainerSpec::NEWPID));
   EXPECT_TRUE(spec->ShouldApplyNamespace(ContainerSpec::NEWNS));
+}
+
+namespace {
+std::unique_ptr<base::DictionaryValue> MakeIsolatorObject(
+    const std::string& name,
+    std::unique_ptr<base::DictionaryValue> object) {
+  std::unique_ptr<base::DictionaryValue> isolator(new base::DictionaryValue);
+  isolator->SetString(IsolatorParserInterface::kNameKey, name);
+  isolator->Set(IsolatorParserInterface::kValueKey, object.release());
+  return std::move(isolator);
+}
+
+std::unique_ptr<base::DictionaryValue> MakeACL(
+    const std::string& service_name,
+    const std::vector<std::string>& whitelist) {
+  std::unique_ptr<base::ListValue> whitelist_value(new base::ListValue);
+  for (const std::string& entry : whitelist)
+    whitelist_value->AppendString(entry);
+
+  std::unique_ptr<base::DictionaryValue> acl(new base::DictionaryValue);
+  acl->SetString(ACLParser::kServiceKey, service_name);
+  acl->Set(ACLParser::kWhitelistKey, whitelist_value.release());
+  return std::move(acl);
+}
+}  // namespace
+
+TEST_F(ContainerSpecReaderTest, SpecWithACLs) {
+  std::unique_ptr<base::DictionaryValue> baseline = BuildBaselineValue();
+  std::unique_ptr<base::ListValue> isolators(new base::ListValue);
+
+  const char kService1[] = "com.spotifoo.player";
+  const char kService2[] = "com.google.music.player";
+  const char kUser1[] = "100";
+  const char kUser2[] = "frank";
+  const char kGroup[] = "audio";
+  {
+    std::unique_ptr<FakeUserdb> userdb(new FakeUserdb);
+    userdb->set_user_mapping(kUser2, 7);
+    userdb->set_group_mapping(kGroup, 8);
+    set_reader(std::unique_ptr<ContainerSpecReader>(
+        new ContainerSpecReader(std::move(userdb))));
+  }
+
+  isolators->Append(
+      MakeIsolatorObject(UserACLParser::kName,
+                         MakeACL(kService1, {kUser1, kUser2})).release());
+  isolators->Append(MakeIsolatorObject(GroupACLParser::kName,
+                                       MakeACL(kService2, {kGroup})).release());
+  baseline->Set(ContainerSpecReader::kIsolatorsListKey, isolators.release());
+
+  std::unique_ptr<ContainerSpecWrapper> spec = ValueToSpec(baseline.get());
+
+  CheckSpecBaseline(spec.get());
+  EXPECT_TRUE(spec->UserCanAccessService(100, kService1));
+  EXPECT_TRUE(spec->UserCanAccessService(7, kService1));
+  EXPECT_FALSE(spec->GroupCanAccessService(8, kService1));
+
+  EXPECT_TRUE(spec->GroupCanAccessService(8, kService2));
+  EXPECT_FALSE(spec->UserCanAccessService(7, kService2));
 }
 
 }  // namespace parser

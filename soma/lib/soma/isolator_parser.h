@@ -20,6 +20,8 @@ class ContainerSpec;
 
 namespace parser {
 
+class UserdbInterface;
+
 // ContainerSpecReader will need to parse many different kinds of "isolators",
 // each of which is a dictionary that has a 'name' field and a custom 'value'
 // field. I need custom logic for a lot of these to parse the 'value' field,
@@ -99,6 +101,45 @@ class NamespacesParser : public IsolatorSetParser {
 
  protected:
   bool ParseInternal(const base::ListValue& value,
+                     ContainerSpec* spec) override;
+};
+
+class ACLParser : public IsolatorObjectParser {
+ public:
+  static const char kServiceKey[];
+  static const char kWhitelistKey[];
+
+  explicit ACLParser(UserdbInterface* userdb);
+  ~ACLParser() override = default;
+
+ protected:
+  bool ParseInternal(const base::DictionaryValue& value,
+                     ContainerSpec* spec) override = 0;
+
+  UserdbInterface* const userdb_;
+};
+
+class UserACLParser : public ACLParser {
+ public:
+  static const char kName[];
+
+  explicit UserACLParser(UserdbInterface* userdb);
+  ~UserACLParser() override = default;
+
+ protected:
+  bool ParseInternal(const base::DictionaryValue& value,
+                     ContainerSpec* spec) override;
+};
+
+class GroupACLParser : public ACLParser {
+ public:
+  static const char kName[];
+
+  explicit GroupACLParser(UserdbInterface* userdb);
+  ~GroupACLParser() override = default;
+
+ protected:
+  bool ParseInternal(const base::DictionaryValue& value,
                      ContainerSpec* spec) override;
 };
 

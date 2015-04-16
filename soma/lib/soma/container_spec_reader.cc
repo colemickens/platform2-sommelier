@@ -14,15 +14,14 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/values.h>
-#include <chromeos/userdb_utils.h>
 
 #include "soma/lib/soma/annotations.h"
 #include "soma/lib/soma/container_spec_helpers.h"
 #include "soma/lib/soma/isolator_parser.h"
 #include "soma/lib/soma/namespace.h"
 #include "soma/lib/soma/port.h"
+#include "soma/lib/soma/userdb.h"
 
 namespace soma {
 namespace parser {
@@ -40,23 +39,11 @@ const char ContainerSpecReader::kIsolatorsListKey[] = "isolators";
 
 namespace {
 
-bool ResolveUser(const std::string& user, uid_t* uid) {
-  DCHECK(uid);
-  if (base::StringToUint(user, uid))
-    return true;
-  return chromeos::userdb::GetUserInfo(user, uid, nullptr);
-}
-
-bool ResolveGroup(const std::string& group, gid_t* gid) {
-  DCHECK(gid);
-  if (base::StringToUint(group, gid))
-    return true;
-  return chromeos::userdb::GetGroupInfo(group, gid);
-}
-
 bool BuildFromAppFields(const base::DictionaryValue* app_dict,
+                        UserdbInterface* userdb,
                         ContainerSpec::Executable* executable) {
   DCHECK(app_dict);
+  DCHECK(userdb);
   DCHECK(executable);
 
   const base::DictionaryValue* subapp_dict = nullptr;
@@ -73,7 +60,7 @@ bool BuildFromAppFields(const base::DictionaryValue* app_dict,
   }
   uid_t uid;
   gid_t gid;
-  if (!ResolveUser(user, &uid) || !ResolveGroup(group, &gid)) {
+  if (!userdb->ResolveUser(user, &uid) || !userdb->ResolveGroup(group, &gid)) {
     LOG(ERROR) << "User or group could not be resolved to an ID.";
     return false;
   }
@@ -148,7 +135,13 @@ bool ContainerSpecReader::ParseIsolators(const base::ListValue& isolators,
 }
 
 ContainerSpecReader::ContainerSpecReader()
-    : reader_(base::JSONParserOptions::JSON_ALLOW_TRAILING_COMMAS) {
+    : ContainerSpecReader(std::unique_ptr<UserdbInterface>(new Userdb)) {
+}
+
+ContainerSpecReader::ContainerSpecReader(
+    std::unique_ptr<UserdbInterface> userdb)
+    : reader_(base::JSONParserOptions::JSON_ALLOW_TRAILING_COMMAS),
+      userdb_(std::move(userdb)) {
   isolator_parsers_.emplace(
       DevicePathFilterParser::kName,
       std::unique_ptr<IsolatorParserInterface>(new DevicePathFilterParser));
@@ -158,6 +151,12 @@ ContainerSpecReader::ContainerSpecReader()
   isolator_parsers_.emplace(
       NamespacesParser::kName,
       std::unique_ptr<IsolatorParserInterface>(new NamespacesParser));
+  isolator_parsers_.emplace(UserACLParser::kName,
+                            std::unique_ptr<IsolatorParserInterface>(
+                                new UserACLParser(userdb_.get())));
+  isolator_parsers_.emplace(GroupACLParser::kName,
+                            std::unique_ptr<IsolatorParserInterface>(
+                                new GroupACLParser(userdb_.get())));
 }
 
 ContainerSpecReader::~ContainerSpecReader() {
@@ -210,7 +209,7 @@ std::unique_ptr<ContainerSpec> ContainerSpecReader::Read(
       return nullptr;
     }
     service_bundle_name = image_name;
-    if (!BuildFromAppFields(app_dict, spec->add_executables()))
+    if (!BuildFromAppFields(app_dict, userdb_.get(), spec->add_executables()))
       return nullptr;
   }
 

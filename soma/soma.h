@@ -5,6 +5,7 @@
 #ifndef SOMA_SOMA_H_
 #define SOMA_SOMA_H_
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -15,6 +16,7 @@
 #include "soma/proto_bindings/soma.pb.rpc.h"
 
 namespace soma {
+
 class Soma : public ISomaHostInterface {
  public:
   explicit Soma(const base::FilePath& bundle_root);
@@ -28,12 +30,16 @@ class Soma : public ISomaHostInterface {
       GetPersistentContainerSpecsResponse* response) override;
 
  private:
+  friend class SomaTest;
+  void InjectReader(std::unique_ptr<parser::ContainerSpecReader> reader) {
+    reader_ = std::move(reader);
+  }
+
   base::FilePath NameToPath(const std::string& service_name) const;
 
   // Path under which to search for service bundles.
   const base::FilePath root_;
-
-  parser::ContainerSpecReader reader_;
+  std::unique_ptr<parser::ContainerSpecReader> reader_;
 
   DISALLOW_COPY_AND_ASSIGN(Soma);
 };

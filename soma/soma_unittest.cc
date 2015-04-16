@@ -4,6 +4,7 @@
 
 #include "soma/soma.h"
 
+#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -16,9 +17,12 @@
 #include <gtest/gtest.h>
 
 #include "soma/lib/soma/annotations.h"
+#include "soma/lib/soma/container_spec_reader.h"
+#include "soma/lib/soma/fake_userdb.h"
 #include "soma/proto_bindings/soma.pb.h"
 
 namespace soma {
+using soma::parser::ContainerSpecReader;
 
 class SomaTest : public ::testing::Test {
  public:
@@ -33,6 +37,21 @@ class SomaTest : public ::testing::Test {
   static const char kServiceNamespace[];
   static const char kServiceName[];
 
+  // Creates a ContainerSpecReader that uses a Userdb that has uid and gid
+  // mappings for every user and group in the given namespace.
+  std::unique_ptr<ContainerSpecReader> CreateReaderWithWhitelistedNamespace(
+      const std::string& whitelisted_namespace) {
+    std::unique_ptr<ContainerSpecReader> reader;
+    std::unique_ptr<parser::FakeUserdb> fakedb(new parser::FakeUserdb);
+    fakedb->set_whitelisted_namespace(whitelisted_namespace);
+    reader.reset(new ContainerSpecReader(std::move(fakedb)));
+    return std::move(reader);
+  }
+
+  void InjectReader(Soma* soma, std::unique_ptr<ContainerSpecReader> reader) {
+    soma->InjectReader(std::move(reader));
+  }
+
   base::ScopedTempDir tmpdir_;
 };
 
@@ -46,6 +65,7 @@ TEST_F(SomaTest, FindSpecFile) {
   ASSERT_TRUE(base::CopyFile(service_json, scratch_json));
 
   Soma soma(base::FilePath(tmpdir_.path()));
+  InjectReader(&soma, CreateReaderWithWhitelistedNamespace(kServiceNamespace));
   GetContainerSpecRequest request;
   GetContainerSpecResponse response;
   request.set_service_name(JoinString({kServiceNamespace, kServiceName}, '.'));
@@ -87,6 +107,7 @@ TEST_F(SomaTest, GetContainerSpecs) {
   ASSERT_TRUE(base::CopyFile(service_json, scratch_json));
 
   Soma soma(base::FilePath(tmpdir_.path()));
+  InjectReader(&soma, CreateReaderWithWhitelistedNamespace(kServiceNamespace));
   GetPersistentContainerSpecsRequest request;
   GetPersistentContainerSpecsResponse response;
   EXPECT_EQ(soma.GetPersistentContainerSpecs(&request, &response), 0);

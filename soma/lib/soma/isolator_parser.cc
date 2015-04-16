@@ -12,6 +12,7 @@
 #include "soma/lib/soma/container_spec_helpers.h"
 #include "soma/lib/soma/device_filter.h"
 #include "soma/lib/soma/namespace.h"
+#include "soma/lib/soma/userdb.h"
 #include "soma/proto_bindings/soma_container_spec.pb.h"
 
 namespace soma {
@@ -70,6 +71,72 @@ bool NamespacesParser::ParseInternal(const base::ListValue& value,
   if (!ns::ParseList(value, &namespaces))
     return false;
   container_spec_helpers::SetNamespaces(namespaces, spec);
+  return true;
+}
+
+const char ACLParser::kServiceKey[] = "service";
+const char ACLParser::kWhitelistKey[] = "whitelist";
+
+ACLParser::ACLParser(UserdbInterface* userdb) : userdb_(userdb) {
+}
+
+const char UserACLParser::kName[] = "os/bruteus/service-user-whitelist";
+
+UserACLParser::UserACLParser(UserdbInterface* userdb) : ACLParser(userdb) {
+}
+
+bool UserACLParser::ParseInternal(const base::DictionaryValue& value,
+                                  ContainerSpec* spec) {
+  std::string service_name;
+  const base::ListValue* whitelist = nullptr;
+  if (!value.GetString(kServiceKey, &service_name) ||
+      !value.GetList(kWhitelistKey, &whitelist)) {
+    LOG(ERROR) << "ACL isolator must consist of a name and a whitelist, not"
+               << std::endl
+               << value;
+    return false;
+  }
+  std::set<uid_t> acl;
+  for (const base::Value* value : *whitelist) {
+    std::string user;
+    uid_t uid = -1;
+    if (!value->GetAsString(&user) || !userdb_->ResolveUser(user, &uid)) {
+      LOG(ERROR) << "ACL must be list of usernames, not " << *value;
+      return false;
+    }
+    acl.insert(uid);
+  }
+  container_spec_helpers::SetUserACL(service_name, acl, spec);
+  return true;
+}
+
+const char GroupACLParser::kName[] = "os/bruteus/service-group-whitelist";
+
+GroupACLParser::GroupACLParser(UserdbInterface* userdb) : ACLParser(userdb) {
+}
+
+bool GroupACLParser::ParseInternal(const base::DictionaryValue& value,
+                                   ContainerSpec* spec) {
+  std::string service_name;
+  const base::ListValue* whitelist = nullptr;
+  if (!value.GetString(kServiceKey, &service_name) ||
+      !value.GetList(kWhitelistKey, &whitelist)) {
+    LOG(ERROR) << "ACL isolator must consist of a name and a whitelist, not"
+               << std::endl
+               << value;
+    return false;
+  }
+  std::set<uid_t> acl;
+  for (const base::Value* value : *whitelist) {
+    std::string group;
+    uid_t uid = -1;
+    if (!value->GetAsString(&group) || !userdb_->ResolveGroup(group, &uid)) {
+      LOG(ERROR) << "ACL must be list of groupnames, not " << *value;
+      return false;
+    }
+    acl.insert(uid);
+  }
+  container_spec_helpers::SetGroupACL(service_name, acl, spec);
   return true;
 }
 

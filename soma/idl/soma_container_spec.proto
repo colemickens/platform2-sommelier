@@ -50,6 +50,16 @@ message ContainerSpec {
     optional int32 minor = 2;  // May be set to -1 to indicate wildcard.
   }
 
+  message UserACL {
+    optional string service_name = 1;
+    repeated uint32 uids = 2;
+  }
+
+  message GroupACL {
+    optional string service_name = 1;
+    repeated uint32 gids = 2;
+  }
+
   // ------------- Required fields ------------------------------------------ //
   // Absolute path to the service's service bundle filesystem overlay.
   optional string service_bundle_path = 1;
@@ -77,4 +87,7 @@ message ContainerSpec {
 
   // Whether this container should be running at all times or started on-demand.
   optional bool is_persistent = 8;
+
+  repeated UserACL user_acls = 9;
+  repeated GroupACL group_acls = 10;
 }

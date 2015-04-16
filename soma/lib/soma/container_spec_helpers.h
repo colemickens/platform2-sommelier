@@ -23,11 +23,10 @@ namespace soma {
 namespace parser {
 namespace container_spec_helpers {
 
-// Setter helpers for the ContainerSpec protobuf. A lot of these force the
-// caller to provide a std::set so stuff's all de-duped on the way in.
-
 std::unique_ptr<ContainerSpec> CreateContainerSpec(const std::string& name);
 
+// Setter helpers for the ContainerSpec protobuf. A lot of these force the
+// caller to provide a std::set so stuff's all de-duped on the way in.
 void SetServiceBundlePath(const base::FilePath& service_bundle_path,
                           ContainerSpec* to_modify);
 void SetServiceNames(const std::vector<std::string>& service_names,
@@ -38,6 +37,12 @@ void SetDevicePathFilters(const DevicePathFilter::Set& filters,
                           ContainerSpec* to_modify);
 void SetDeviceNodeFilters(const DeviceNodeFilter::Set& filters,
                           ContainerSpec* to_modify);
+void SetUserACL(const std::string& service_name,
+                const std::set<uid_t>& whitelist,
+                ContainerSpec* to_modify);
+void SetGroupACL(const std::string& service_name,
+                 const std::set<gid_t>& whitelist,
+                 ContainerSpec* to_modify);
 
 void SetUidAndGid(uid_t uid, gid_t gid, ContainerSpec::Executable* to_modify);
 void SetCommandLine(const std::vector<std::string>& command_line,
