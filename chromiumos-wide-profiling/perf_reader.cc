@@ -367,9 +367,9 @@ bool WriteStringToBuffer(const CStringWithLength& src,
 // Read read info from perf data.  Corresponds to sample format type
 // PERF_SAMPLE_READ.
 const uint64_t* ReadReadInfo(const uint64_t* array,
-                           bool swap_bytes,
-                           uint64_t read_format,
-                           struct perf_sample* sample) {
+                             bool swap_bytes,
+                             uint64_t read_format,
+                             struct perf_sample* sample) {
   if (read_format & PERF_FORMAT_TOTAL_TIME_ENABLED)
     sample->read.time_enabled = *array++;
   if (read_format & PERF_FORMAT_TOTAL_TIME_RUNNING)
@@ -389,8 +389,8 @@ const uint64_t* ReadReadInfo(const uint64_t* array,
 // Read call chain info from perf data.  Corresponds to sample format type
 // PERF_SAMPLE_CALLCHAIN.
 const uint64_t* ReadCallchain(const uint64_t* array,
-                            bool swap_bytes,
-                            struct perf_sample* sample) {
+                              bool swap_bytes,
+                              struct perf_sample* sample) {
   // Make sure there is no existing allocated memory in |sample->callchain|.
   CHECK_EQ(static_cast<void*>(NULL), sample->callchain);
 
@@ -415,8 +415,8 @@ const uint64_t* ReadCallchain(const uint64_t* array,
 // Read raw info from perf data.  Corresponds to sample format type
 // PERF_SAMPLE_RAW.
 const uint64_t* ReadRawData(const uint64_t* array,
-                          bool swap_bytes,
-                          struct perf_sample* sample) {
+                            bool swap_bytes,
+                            struct perf_sample* sample) {
   // First read the size.
   const uint32_t* ptr = reinterpret_cast<const uint32_t*>(array);
   sample->raw_size = *ptr++;
@@ -438,8 +438,8 @@ const uint64_t* ReadRawData(const uint64_t* array,
 // Read call chain info from perf data.  Corresponds to sample format type
 // PERF_SAMPLE_CALLCHAIN.
 const uint64_t* ReadBranchStack(const uint64_t* array,
-                              bool swap_bytes,
-                              struct perf_sample* sample) {
+                                bool swap_bytes,
+                                struct perf_sample* sample) {
   // Make sure there is no existing allocated memory in
   // |sample->branch_stack|.
   CHECK_EQ(static_cast<void*>(NULL), sample->branch_stack);
@@ -452,7 +452,7 @@ const uint64_t* ReadBranchStack(const uint64_t* array,
   struct branch_stack* branch_stack =
       reinterpret_cast<struct branch_stack*>(
           new uint8_t[sizeof(uint64_t) +
-                    branch_stack_size * sizeof(struct branch_entry)]);
+                      branch_stack_size * sizeof(struct branch_entry)]);
   branch_stack->nr = branch_stack_size;
   for (size_t i = 0; i < branch_stack_size; ++i) {
     memcpy(&branch_stack->entries[i], array, sizeof(struct branch_entry));

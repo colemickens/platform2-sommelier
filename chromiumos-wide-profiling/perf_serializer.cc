@@ -527,7 +527,7 @@ bool PerfSerializer::DeserializeRecordSample(
     sample_info.branch_stack =
         reinterpret_cast<struct branch_stack*>(
             new uint8_t[sizeof(uint64_t) +
-                      branch_stack_size * sizeof(struct branch_entry)]);
+                        branch_stack_size * sizeof(struct branch_entry)]);
     sample_info.branch_stack->nr = branch_stack_size;
     for (size_t i = 0; i < branch_stack_size; ++i) {
       struct branch_entry& entry = sample_info.branch_stack->entries[i];
