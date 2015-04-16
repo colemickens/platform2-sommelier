@@ -45,11 +45,11 @@ Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
 Manager::~Manager() {
 }
 
-void Manager::RegisterAsync(const base::FilePath& config_path,
-                            const base::FilePath& state_path,
-                            const base::FilePath& test_definitions_path,
-                            bool xmpp_enabled,
-                            const AsyncEventSequencer::CompletionAction& cb) {
+void Manager::Start(const base::FilePath& config_path,
+                    const base::FilePath& state_path,
+                    const base::FilePath& test_definitions_path,
+                    bool xmpp_enabled,
+                    const AsyncEventSequencer::CompletionAction& cb) {
   command_manager_ =
       std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
   command_manager_->SetOnCommandDefChanged(

@@ -36,11 +36,8 @@ class Daemon : public DBusServiceDaemon {
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
     manager_.reset(new buffet::Manager(object_manager_->AsWeakPtr()));
-    manager_->RegisterAsync(
-        config_path_,
-        state_path_,
-        test_definitions_path_,
-        enable_xmpp_,
+    manager_->Start(
+        config_path_, state_path_, test_definitions_path_, enable_xmpp_,
         sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
   }
 

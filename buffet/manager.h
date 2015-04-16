@@ -47,7 +47,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
           object_manager);
   ~Manager();
 
-  void RegisterAsync(
+  void Start(
       const base::FilePath& config_path,
       const base::FilePath& state_path,
       const base::FilePath& test_definitions_path,
