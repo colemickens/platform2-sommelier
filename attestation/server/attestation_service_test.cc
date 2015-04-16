@@ -451,48 +451,8 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmActivateFailure) {
   Run();
 }
 
-TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmGenerateFailure) {
-  // Return false once to simulate that a key does not initially exist.
-  EXPECT_CALL(mock_key_store_, Read(_, _, _))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_tpm_utility_, GenerateKey(_, _, _, _))
-      .WillRepeatedly(Return(false));
-  // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_NE(STATUS_SUCCESS, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
-  Run();
-}
-
-TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmGenerateFailure2) {
-  EXPECT_CALL(mock_tpm_utility_, GenerateKey(_, _, _, _))
-      .WillRepeatedly(Return(false));
-  // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_NE(STATUS_SUCCESS, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "",
-                                    "origin", base::Bind(callback));
-  Run();
-}
-
-TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmCertifyFailure) {
-  EXPECT_CALL(mock_tpm_utility_, CertifyKey(_, _, _, _, _, _))
+TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmCreateFailure) {
+  EXPECT_CALL(mock_tpm_utility_, CreateCertifiedKey(_, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
   auto callback = [this](const std::string& certificate_chain,

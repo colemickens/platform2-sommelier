@@ -73,6 +73,7 @@
         'server/attestation_service.cc',
         'server/dbus_service.cc',
         'server/database_impl.cc',
+        'server/tpm_utility_v1.cc',
       ],
       'dependencies': [
         'proto_library',

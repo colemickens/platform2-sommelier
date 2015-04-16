@@ -74,6 +74,12 @@ message CertifiedKey {
   // CA. See |AttestationCertificateResponse.additional_intermediate_ca_cert|
   // for more detail.
   repeated bytes additional_intermediate_ca_cert = 7;
+  // The public key in TPM_PUBKEY form.
+  optional bytes public_key_tpm_format = 8;
+  // The serialized TPM_CERTIFY_INFO for the certified key.
+  optional bytes certified_key_info = 9;
+  // The signature of the TPM_CERTIFY_INFO by the AIK.
+  optional bytes certified_key_proof = 10;
 }
 
 // Holds all information that a client stores locally.

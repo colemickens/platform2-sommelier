@@ -13,8 +13,8 @@ MockTpmUtility::MockTpmUtility() {
   ON_CALL(*this, IsTpmReady()).WillByDefault(Return(true));
   ON_CALL(*this, ActivateIdentity(_, _, _, _, _, _))
       .WillByDefault(Return(true));
-  ON_CALL(*this, GenerateKey(_, _, _, _)).WillByDefault(Return(true));
-  ON_CALL(*this, CertifyKey(_, _, _, _, _, _)).WillByDefault(Return(true));
+  ON_CALL(*this, CreateCertifiedKey(_, _, _, _, _, _, _, _, _))
+      .WillByDefault(Return(true));
 }
 
 MockTpmUtility::~MockTpmUtility() {}

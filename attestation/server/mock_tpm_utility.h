@@ -25,14 +25,15 @@ class MockTpmUtility : public TpmUtility {
                                       const std::string&,
                                       const std::string&,
                                       std::string*));
-  MOCK_METHOD4(GenerateKey, bool(KeyType, KeyUsage, std::string*,
-                                 std::string*));
-  MOCK_METHOD6(CertifyKey, bool(const std::string&,
-                                const std::string&,
-                                const std::string&,
-                                std::string*,
-                                std::string*,
-                                std::string*));
+  MOCK_METHOD9(CreateCertifiedKey, bool(KeyType,
+                                        KeyUsage,
+                                        const std::string&,
+                                        const std::string&,
+                                        std::string*,
+                                        std::string*,
+                                        std::string*,
+                                        std::string*,
+                                        std::string*));
 };
 
 }  // namespace attestation

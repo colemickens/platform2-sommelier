@@ -109,11 +109,9 @@ void AttestationService::CreateGoogleAttestedKeyTask(
       return;
     }
   }
-  if (!FindKeyByLabel(username, key_label, nullptr)) {
-    if (!CreateKey(username, key_label, key_type, key_usage)) {
-      result->status = STATUS_UNEXPECTED_DEVICE_ERROR;
-      return;
-    }
+  if (!CreateKey(username, key_label, key_type, key_usage)) {
+    result->status = STATUS_UNEXPECTED_DEVICE_ERROR;
+    return;
   }
   std::string certificate_request;
   std::string message_id;
@@ -261,15 +259,14 @@ bool AttestationService::CreateCertificateRequest(
     request_pb.set_origin(origin);
     request_pb.set_temporal_index(ChooseTemporalIndex(username, origin));
   }
-  std::string public_key;
-  std::string key_info;
-  std::string proof;
-  if (!CertifyKey(username, key_label, &public_key, &key_info, &proof)) {
+  CertifiedKey key;
+  if (!FindKeyByLabel(username, key_label, &key)) {
+    LOG(ERROR) << __func__ << ": Key not found.";
     return false;
   }
-  request_pb.set_certified_public_key(public_key);
-  request_pb.set_certified_key_info(key_info);
-  request_pb.set_certified_key_proof(proof);
+  request_pb.set_certified_public_key(key.public_key_tpm_format());
+  request_pb.set_certified_key_info(key.certified_key_info());
+  request_pb.set_certified_key_proof(key.certified_key_proof());
   if (!request_pb.SerializeToString(certificate_request)) {
     LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
     return false;
@@ -375,15 +372,36 @@ bool AttestationService::CreateKey(const std::string& username,
                                    const std::string& key_label,
                                    KeyType key_type,
                                    KeyUsage key_usage) {
+  std::string nonce;
+  if (!crypto_utility_->GetRandom(kNonceSize, &nonce)) {
+    LOG(ERROR) << __func__ << ": GetRandom(nonce) failed.";
+    return false;
+  }
   std::string key_blob;
   std::string public_key;
-  if (!tpm_utility_->GenerateKey(key_type, key_usage, &key_blob, &public_key)) {
+  std::string public_key_tpm_format;
+  std::string key_info;
+  std::string proof;
+  auto database_pb = database_->GetProtobuf();
+  if (!tpm_utility_->CreateCertifiedKey(
+      key_type,
+      key_usage,
+      database_pb.identity_key().identity_key_blob(),
+      nonce,
+      &key_blob,
+      &public_key,
+      &public_key_tpm_format,
+      &key_info,
+      &proof)) {
     return false;
   }
   CertifiedKey key;
   key.set_key_blob(key_blob);
   key.set_public_key(public_key);
   key.set_key_name(key_label);
+  key.set_public_key_tpm_format(public_key_tpm_format);
+  key.set_certified_key_info(key_info);
+  key.set_certified_key_proof(proof);
   return SaveKey(username, key_label, key);
 }
 
@@ -454,32 +472,6 @@ void AttestationService::RemoveDeviceKey(const std::string& key_label) {
       LOG(WARNING) << __func__ << ": Failed to persist key deletion.";
     }
   }
-}
-
-bool AttestationService::CertifyKey(const std::string& username,
-                                    const std::string& key_label,
-                                    std::string* public_key_tpm_format,
-                                    std::string* key_info,
-                                    std::string* proof) {
-  CertifiedKey key;
-  if (!FindKeyByLabel(username, key_label, &key)) {
-    LOG(ERROR) << __func__ << ": Failed to certify key - key not found.";
-    return false;
-  }
-
-  std::string nonce;
-  if (!crypto_utility_->GetRandom(kNonceSize, &nonce)) {
-    LOG(ERROR) << __func__ << ": GetRandom(nonce) failed.";
-    return false;
-  }
-  auto database_pb = database_->GetProtobuf();
-  return tpm_utility_->CertifyKey(
-      key.key_blob(),
-      database_pb.identity_key().identity_key_blob(),
-      nonce,
-      public_key_tpm_format,
-      key_info,
-      proof);
 }
 
 std::string AttestationService::CreatePEMCertificateChain(

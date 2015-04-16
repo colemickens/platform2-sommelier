@@ -165,8 +165,8 @@ class AttestationService : public AttestationInterface {
                               const std::string& request,
                               std::string* reply);
 
-  // Creates a new certifiable key for |username| with the given |key_label|,
-  // |key_type|, and |key_usage|.
+  // Creates, certifies, and saves a new key for |username| with the given
+  // |key_label|, |key_type|, and |key_usage|.
   bool CreateKey(const std::string& username,
                  const std::string& key_label,
                  KeyType key_type,
@@ -193,15 +193,6 @@ class AttestationService : public AttestationInterface {
 
   // Removes a device-wide key from the attestation database.
   void RemoveDeviceKey(const std::string& key_label);
-
-  // Certifies the key associated with |username| and |key_label| with the
-  // Attestation Identity Key (AIK). On success returns true and populates
-  // outputs as required by the CA (see AttestationCertificateRequest).
-  bool CertifyKey(const std::string& username,
-                  const std::string& key_label,
-                  std::string* public_key_tpm_format,
-                  std::string* key_info,
-                  std::string* proof);
 
   // Creates a PEM certificate chain from the credential fields of a |key|.
   std::string CreatePEMCertificateChain(const CertifiedKey& key);

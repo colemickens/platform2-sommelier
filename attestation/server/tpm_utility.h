@@ -34,26 +34,23 @@ class TpmUtility {
                                 const std::string& sym_ca_attestation,
                                 std::string* credential) = 0;
 
-  // Generates a non-migratable key in the TPM corresponding to |key_type| and
-  // |key_usage|. The parent key will be the storage root key. The new key will
-  // always be certifiable.
-  virtual bool GenerateKey(KeyType key_type,
-                           KeyUsage key_usage,
-                           std::string* key_blob,
-                           std::string* public_key) = 0;
-
-  // Certifies the key represented by |key_blob| with the attestation identity
-  // key represented by |identity_key_blob|. The |external_data| will be
-  // included in the |key_info|. On success, returns true and populates
+  // Generates and certifies a non-migratable key in the TPM. The new key will
+  // correspond to |key_type| and |key_usage|. The parent key will be the
+  // storage root key. The new key will be certified with the attestation
+  // identity key represented by |identity_key_blob|. The |external_data| will
+  // be included in the |key_info|. On success, returns true and populates
   // |public_key_tpm_format| with the public key of |key_blob| in TPM_PUBKEY
   // format, |key_info| with the TPM_CERTIFY_INFO that was signed, and |proof|
   // with the signature of |key_info| by the identity key.
-  virtual bool CertifyKey(const std::string& key_blob,
-                          const std::string& identity_key_blob,
-                          const std::string& external_data,
-                          std::string* public_key_tpm_format,
-                          std::string* key_info,
-                          std::string* proof) = 0;
+  virtual bool CreateCertifiedKey(KeyType key_type,
+                                  KeyUsage key_usage,
+                                  const std::string& identity_key_blob,
+                                  const std::string& external_data,
+                                  std::string* key_blob,
+                                  std::string* public_key,
+                                  std::string* public_key_tpm_format,
+                                  std::string* key_info,
+                                  std::string* proof) = 0;
 };
 
 }  // namespace attestation
