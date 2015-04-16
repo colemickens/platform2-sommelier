@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 
@@ -44,6 +45,9 @@ class SomaConnection : public ServiceObserver {
   SomaConnection();
   ~SomaConnection() override;
 
+  // Returns true if a proxy has already been registered via SetProxy().
+  bool HasProxy() const;
+
   // Sets the proxy that should be used for communication with somad.
   void SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy);
 
@@ -51,6 +55,11 @@ class SomaConnection : public ServiceObserver {
   // it to |spec_out|.
   Result GetContainerSpecForService(const std::string& service_name,
                                     soma::ContainerSpec* spec_out);
+
+  // Synchronously fetches all persistent ContainerSpecs and copies them to
+  // |specs_out| (after clearing it).
+  Result GetPersistentContainerSpecs(
+      std::vector<soma::ContainerSpec>* specs_out);
 
   // ServiceObserver:
   void OnServiceProxyChange(ServiceInterface* service) override;

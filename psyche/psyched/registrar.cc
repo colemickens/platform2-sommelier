@@ -5,6 +5,7 @@
 #include "psyche/psyched/registrar.h"
 
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/logging.h>
@@ -93,8 +94,12 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
   }
 
   if (service_name == soma::kSomaServiceName) {
+    const bool was_registered = soma_->HasProxy();
     soma_->SetProxy(std::move(proxy));
-    // TODO(derat): Fetch and start persistent containers.
+    // Only create persistent containers the first time somad is registered --
+    // assume that the specs are the same if it crashes and gets restarted.
+    if (!was_registered)
+      CreatePersistentContainers();
     out->set_success(true);
     return 0;
   } else if (service_name == germ::kGermServiceName) {
@@ -170,6 +175,37 @@ int Registrar::RequestService(RequestServiceRequest* in) {
   return 0;
 }
 
+bool Registrar::AddContainer(std::unique_ptr<ContainerInterface> container) {
+  const std::string container_name = container->GetName();
+
+  if (containers_.count(container_name)) {
+    // This means that somad for some reason returned this ContainerSpec
+    // earlier, but it didn't previously list the service that we're looking for
+    // now.
+    LOG(WARNING) << "Container \"" << container_name << "\" already exists";
+    return false;
+  }
+
+  for (const auto& service_it : container->GetServices()) {
+    if (services_.count(service_it.first)) {
+      // This means that somad didn't validate that a ContainerSpec doesn't list
+      // any services outside of its service namespace, or that this service was
+      // already registered in |non_container_services_|.
+      LOG(WARNING) << "Container \"" << container_name << "\" provides already-"
+                   << "known service \"" << service_it.first << "\"";
+      return false;
+    }
+  }
+
+  // TODO(mcolagrosso): Add return value to Launch() and check it here.
+  container->Launch();
+
+  for (const auto& service_it : container->GetServices())
+    services_[service_it.first] = service_it.second.get();
+  containers_.emplace(container_name, std::move(container));
+  return true;
+}
+
 ServiceInterface* Registrar::GetService(const std::string& service_name,
                                         bool create_container) {
   auto it = services_.find(service_name);
@@ -193,46 +229,40 @@ ServiceInterface* Registrar::GetService(const std::string& service_name,
 
   std::unique_ptr<ContainerInterface> container =
       factory_->CreateContainer(spec);
-  const std::string container_name = container->GetName();
+  LOG(INFO) << "Created ephemeral container \"" << container->GetName() << "\"";
 
   if (!container->GetServices().count(service_name)) {
     // This happens if we get a request for a service that doesn't exist that's
     // in a service namespace that _does_ exist.
-    LOG(WARNING) << "Container \"" << container_name << "\" doesn't provide "
-                 << "service \"" << service_name << "\"";
+    LOG(WARNING) << "Container \"" << container->GetName() << "\" doesn't "
+                 << "provide service \"" << service_name << "\"";
     return nullptr;
   }
-  if (containers_.count(container_name)) {
-    // This means that somad for some reason returned this ContainerSpec
-    // earlier, but it didn't previously list the service that we're looking for
-    // now.
-    LOG(WARNING) << "Container \"" << container_name << "\" already exists";
+
+  if (!AddContainer(std::move(container)))
     return nullptr;
-  }
-  for (const auto& service_it : container->GetServices()) {
-    if (services_.count(service_it.first)) {
-      // This means that somad didn't validate that a ContainerSpec doesn't list
-      // any services outside of its service namespace, or that this service was
-      // already registered in |non_container_services_|.
-      LOG(WARNING) << "Container \"" << container_name << "\" provides already-"
-                   << "known service \"" << service_it.first << "\"";
-      return nullptr;
-    }
-  }
 
-  // TODO(mcolagrosso): Add return value to Launch() and check it here.
-  container->Launch();
-  LOG(INFO) << "Created container \"" << container_name << "\"";
-
-  for (const auto& service_it : container->GetServices())
-    services_[service_it.first] = service_it.second.get();
   it = services_.find(service_name);
   CHECK(it != services_.end());
-  ServiceInterface* service = it->second;
+  return it->second;
+}
 
-  containers_.emplace(container_name, std::move(container));
+void Registrar::CreatePersistentContainers() {
+  std::vector<soma::ContainerSpec> specs;
+  SomaConnection::Result result = soma_->GetPersistentContainerSpecs(&specs);
+  if (result != SomaConnection::Result::SUCCESS) {
+    LOG(ERROR) << "Failed to get persistent container specs: "
+               << SomaConnection::ResultToString(result);
+    return;
+  }
 
-  return service;
+  for (const auto& spec : specs) {
+    std::unique_ptr<ContainerInterface> container =
+        factory_->CreateContainer(spec);
+    LOG(INFO) << "Created persistent container \""
+              << container->GetName() << "\"";
+    AddContainer(std::move(container));
+  }
 }
 
 void Registrar::HandleClientBinderDeath(int32_t handle) {

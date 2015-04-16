@@ -49,11 +49,20 @@ class Registrar : public IPsychedHostInterface {
   int RequestService(RequestServiceRequest* in) override;
 
  private:
+  // Performs some validation of |container|, registers it in |containers_| and
+  // its services in |services_|, and launches it. Discards the container and
+  // returns false if validation or launching fails.
+  bool AddContainer(std::unique_ptr<ContainerInterface> container);
+
   // Returns the object representing |service_name|. If the service isn't
   // present in |services_| and |create_container| is true, fetches its
   // ContainerSpec from soma, launches it, and adds the service to |services_|.
   ServiceInterface* GetService(const std::string& service_name,
                                bool create_container);
+
+  // Requests persistent ContainerSpecs from soma and creates corresponding
+  // container objects.
+  void CreatePersistentContainers();
 
   // Callback invoked when the remote side of a client's binder is closed.
   void HandleClientBinderDeath(int32_t handle);

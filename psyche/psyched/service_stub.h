@@ -23,6 +23,8 @@ class ServiceStub : public ServiceInterface {
   explicit ServiceStub(const std::string& name);
   ~ServiceStub() override;
 
+  size_t num_clients() const { return clients_.size(); }
+
   // Similar to SetProxy() but allows its argument to be null. Used to simulate
   // the service clearing its proxy in response to a binder death notification.
   void SetProxyForTesting(std::unique_ptr<protobinder::BinderProxy> proxy);

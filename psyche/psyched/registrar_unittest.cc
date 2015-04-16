@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/macros.h>
@@ -45,16 +46,21 @@ class SomaInterfaceStub : public soma::ISoma {
 
   // Sets the ContainerSpec to return in response to a request for
   // |service_name|.
-  void SetContainerSpec(const std::string& service_name,
-                        const ContainerSpec& spec) {
-    specs_[service_name] = spec;
+  void AddEphemeralContainerSpec(const ContainerSpec& spec,
+                                 const std::string& service_name) {
+    service_specs_[service_name] = spec;
+  }
+
+  // Adds a ContainerSpec to be returned by GetPersistentContainerSpecs().
+  void AddPersistentContainerSpec(const ContainerSpec& spec) {
+    persistent_specs_.push_back(spec);
   }
 
   // ISoma:
   int GetContainerSpec(soma::GetContainerSpecRequest* in,
                        soma::GetContainerSpecResponse* out) override {
-    const auto& it = specs_.find(in->service_name());
-    if (it != specs_.end())
+    const auto& it = service_specs_.find(in->service_name());
+    if (it != service_specs_.end())
       out->mutable_container_spec()->CopyFrom(it->second);
     return return_value_;
   }
@@ -62,13 +68,18 @@ class SomaInterfaceStub : public soma::ISoma {
   int GetPersistentContainerSpecs(
       soma::GetPersistentContainerSpecsRequest* in,
       soma::GetPersistentContainerSpecsResponse* out) override {
-    return 0;
+    for (const auto& spec : persistent_specs_)
+      out->add_container_specs()->CopyFrom(spec);
+    return return_value_;
   }
 
  private:
-  std::map<std::string, ContainerSpec> specs_;
+  // Keyed by service name for which the spec should be returned.
+  std::map<std::string, ContainerSpec> service_specs_;
 
-  // binder result returned by GetContainerSpec().
+  std::vector<ContainerSpec> persistent_specs_;
+
+  // binder result returned by handlers.
   int return_value_;
 
   DISALLOW_COPY_AND_ASSIGN(SomaInterfaceStub);
@@ -80,23 +91,39 @@ class RegistrarTest : public BinderTestBase {
       : factory_(new StubFactory),
         registrar_(new Registrar),
         soma_proxy_(nullptr),
-        soma_(nullptr) {
+        // Create an interface immediately so that tests can add persistent
+        // containers to it before calling Init().
+        soma_(new SomaInterfaceStub) {
     registrar_->SetFactoryForTesting(
         std::unique_ptr<FactoryInterface>(factory_));
-    registrar_->Init();
-    CHECK(InitSoma());
   }
-  ~RegistrarTest() override = default;
+  ~RegistrarTest() override {
+    // Disgusting hack: manually delete the interface if Init() never got called
+    // to transfer ownership to |binder_manager_|.
+    // TODO(derat): Remove this after http://brbug.com/648 is fixed.
+    if (soma_ && !soma_proxy_)
+      delete soma_;
+  }
 
  protected:
+  // Performs initialization. Should be called at the beginning of each test;
+  // separated from the c'tor so that persistent services can be created first.
+  void Init() {
+    registrar_->Init();
+    // Pass ownership of |soma_| to InitSoma(), which will pass it to
+    // |binder_manager_|.
+    CHECK(InitSoma(std::unique_ptr<SomaInterfaceStub>(soma_)));
+  }
+
   // Initializes |soma_proxy_| and |soma_| and registers them with |registrar_|
   // and |binder_manager_|. May be called from within a test to simulate somad
   // restarting and reregistering itself with psyched.
-  bool InitSoma() WARN_UNUSED_RESULT {
+  bool InitSoma(
+      std::unique_ptr<SomaInterfaceStub> interface) WARN_UNUSED_RESULT {
     soma_proxy_ = CreateBinderProxy().release();
-    soma_ = new SomaInterfaceStub;
-    binder_manager_->SetTestInterface(soma_proxy_,
-                                      scoped_ptr<IInterface>(soma_));
+    soma_ = interface.get();
+    binder_manager_->SetTestInterface(
+        soma_proxy_, scoped_ptr<IInterface>(interface.release()));
     return RegisterService(soma::kSomaServiceName,
                            std::unique_ptr<BinderProxy>(soma_proxy_));
   }
@@ -170,11 +197,27 @@ class RegistrarTest : public BinderTestBase {
   //
   // The returned object is owned by |registrar_| (and may not
   // persist beyond the request if |registrar_| decides not to keep it).
-  ContainerStub* AddContainer(const std::string& container_name,
-                              const std::string& service_name) {
+  ContainerStub* AddEphemeralContainer(const std::string& container_name,
+                                       const std::string& service_name) {
     ContainerSpec spec;
     spec.set_name(container_name);
-    soma_->SetContainerSpec(service_name, spec);
+    soma_->AddEphemeralContainerSpec(spec, service_name);
+    ContainerStub* container = new ContainerStub(container_name);
+    factory_->SetContainer(container_name,
+                           std::unique_ptr<ContainerStub>(container));
+    return container;
+  }
+
+  // Creates a ContainerStub object named |container_name| and registers it in
+  // |soma_| and |factory_| so it'll be returned as a persistent container.
+  //
+  // The returned object is owned by |registrar_| (and may not
+  // persist beyond the request if |registrar_| decides not to keep it).
+  ContainerStub* AddPersistentContainer(const std::string& container_name) {
+    ContainerSpec spec;
+    spec.set_name(container_name);
+    spec.set_is_persistent(true);
+    soma_->AddPersistentContainerSpec(spec);
     ContainerStub* container = new ContainerStub(container_name);
     factory_->SetContainer(container_name,
                            std::unique_ptr<ContainerStub>(container));
@@ -192,6 +235,8 @@ class RegistrarTest : public BinderTestBase {
 };
 
 TEST_F(RegistrarTest, RegisterAndRequestService) {
+  Init();
+
   // Register a service.
   const std::string kServiceName("service");
   BinderProxy* service_proxy = CreateBinderProxy().release();
@@ -210,6 +255,8 @@ TEST_F(RegistrarTest, RegisterAndRequestService) {
 }
 
 TEST_F(RegistrarTest, ReregisterService) {
+  Init();
+
   // Register a service.
   const std::string kServiceName("service");
   BinderProxy* service_proxy = CreateBinderProxy().release();
@@ -236,10 +283,12 @@ TEST_F(RegistrarTest, ReregisterService) {
 }
 
 TEST_F(RegistrarTest, QuerySomaForServices) {
+  Init();
   const std::string kContainerName("/foo/org.example.container.json");
   const std::string kService1Name("org.example.container.service1");
   const std::string kService2Name("org.example.container.service2");
-  ContainerStub* container = AddContainer(kContainerName, kService1Name);
+  ContainerStub* container =
+      AddEphemeralContainer(kContainerName, kService1Name);
   ServiceStub* service1 = container->AddService(kService1Name);
   ServiceStub* service2 = container->AddService(kService2Name);
 
@@ -276,11 +325,13 @@ TEST_F(RegistrarTest, QuerySomaForServices) {
 // Tests that failure is reported when a ContainerSpec is returned in response
 // to a request for a service that it doesn't actually provide.
 TEST_F(RegistrarTest, UnknownService) {
+  Init();
+
   // Create a ContainerSpec that'll get returned for a given service, but don't
   // make it claim to provide that service.
   const std::string kContainerName("/foo/org.example.container.json");
   const std::string kServiceName("org.example.container.service");
-  AddContainer(kContainerName, kServiceName);
+  AddEphemeralContainer(kContainerName, kServiceName);
 
   // A request for the service should fail.
   EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxy()));
@@ -292,16 +343,19 @@ TEST_F(RegistrarTest, UnknownService) {
 // Tests that a second ContainerSpec claiming to provide a service that's
 // already provided by an earlier ContainerSpec is ignored.
 TEST_F(RegistrarTest, DuplicateService) {
+  Init();
   const std::string kContainer1Name("/foo/org.example.container1.json");
   const std::string kService1Name("org.example.container1.service");
-  ContainerStub* container1 = AddContainer(kContainer1Name, kService1Name);
+  ContainerStub* container1 =
+      AddEphemeralContainer(kContainer1Name, kService1Name);
   container1->AddService(kService1Name);
 
   // Create a second spec, returned for a second service, that also claims
   // ownership of the first container's service.
   const std::string kContainer2Name("/foo/org.example.container2.json");
   const std::string kService2Name("org.example.container2.service");
-  ContainerStub* container2 = AddContainer(kContainer2Name, kService2Name);
+  ContainerStub* container2 =
+      AddEphemeralContainer(kContainer2Name, kService2Name);
   container2->AddService(kService1Name);
   container2->AddService(kService2Name);
 
@@ -316,31 +370,63 @@ TEST_F(RegistrarTest, DuplicateService) {
 // from somad, but that now claims to provide a service that it didn't provide
 // earlier) gets ignored.
 TEST_F(RegistrarTest, ServiceListChanged) {
+  Init();
   const std::string kContainerName("/foo/org.example.container.json");
   const std::string kService1Name("org.example.container.service1");
-  ContainerStub* container1 = AddContainer(kContainerName, kService1Name);
+  ContainerStub* container1 =
+      AddEphemeralContainer(kContainerName, kService1Name);
   container1->AddService(kService1Name);
   EXPECT_TRUE(RequestService(kService1Name, CreateBinderProxy()));
 
   // A request for a second service that returns the already-created spec (which
   // didn't previously claim to provide the second service) should fail.
   const std::string kService2Name("org.example.container.service2");
-  ContainerStub* container2 = AddContainer(kContainerName, kService2Name);
+  ContainerStub* container2 =
+      AddEphemeralContainer(kContainerName, kService2Name);
   container2->AddService(kService1Name);
   container2->AddService(kService2Name);
   EXPECT_FALSE(RequestService(kService2Name, CreateBinderProxy()));
 }
 
+// Tests that persistent ContainerSpecs are fetched from soma during
+// initialization and launched.
+TEST_F(RegistrarTest, PersistentContainers) {
+  // Create two persistent containers with one service each.
+  const std::string kContainer1Name("/foo/org.example.container1.json");
+  const std::string kService1Name("org.example.container1.service");
+  ContainerStub* container1 = AddPersistentContainer(kContainer1Name);
+  ServiceStub* service1 = container1->AddService(kService1Name);
+
+  const std::string kContainer2Name("/foo/org.example.container2.json");
+  const std::string kService2Name("org.example.container2.service");
+  ContainerStub* container2 = AddPersistentContainer(kContainer2Name);
+  ServiceStub* service2 = container2->AddService(kService2Name);
+
+  // After initialization, both containers should be launched.
+  Init();
+  EXPECT_EQ(1, container1->launch_count());
+  EXPECT_EQ(1, container2->launch_count());
+
+  // Their services should also be available to clients.
+  EXPECT_TRUE(RequestService(kService1Name, CreateBinderProxy()));
+  EXPECT_EQ(1U, service1->num_clients());
+  EXPECT_TRUE(RequestService(kService2Name, CreateBinderProxy()));
+  EXPECT_EQ(1U, service2->num_clients());
+}
+
 // Tests that Registrar doesn't hand out its connection to somad.
 TEST_F(RegistrarTest, DontProvideSomaService) {
+  Init();
   EXPECT_FALSE(RequestService(soma::kSomaServiceName, CreateBinderProxy()));
 }
 
 // Tests various failures when communicating with somad.
 TEST_F(RegistrarTest, SomaFailures) {
+  Init();
   const std::string kContainerName("/foo/org.example.container.json");
   const std::string kServiceName("org.example.container.service");
-  ContainerStub* container = AddContainer(kContainerName, kServiceName);
+  ContainerStub* container =
+      AddEphemeralContainer(kContainerName, kServiceName);
   container->AddService(kServiceName);
 
   // Failure should be reported for RPC errors.
@@ -354,14 +440,16 @@ TEST_F(RegistrarTest, SomaFailures) {
 
   // Register a new proxy for somad and check that the next service request is
   // successful.
-  EXPECT_TRUE(InitSoma());
-  container = AddContainer(kContainerName, kServiceName);
+  EXPECT_TRUE(
+      InitSoma(std::unique_ptr<SomaInterfaceStub>(new SomaInterfaceStub)));
+  container = AddEphemeralContainer(kContainerName, kServiceName);
   container->AddService(kServiceName);
   EXPECT_TRUE(RequestService(kServiceName, CreateBinderProxy()));
 }
 
 // Tests that Registrar doesn't hand out its connection to germd.
 TEST_F(RegistrarTest, DontProvideGermService) {
+  Init();
   EXPECT_FALSE(RequestService(germ::kGermServiceName, CreateBinderProxy()));
 }
 

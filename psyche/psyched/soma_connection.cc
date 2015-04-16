@@ -47,6 +47,10 @@ SomaConnection::~SomaConnection() {
   service_.RemoveObserver(this);
 }
 
+bool SomaConnection::HasProxy() const {
+  return service_.GetProxy();
+}
+
 void SomaConnection::SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy) {
   // TODO(derat): Verify that the transaction is coming from the proper UID and
   // report failure if not.
@@ -66,7 +70,7 @@ SomaConnection::Result SomaConnection::GetContainerSpecForService(
   soma::GetContainerSpecResponse response;
   int result = interface_->GetContainerSpec(&request, &response);
   if (result != 0) {
-    LOG(ERROR) << "RPC to somad returned " << result;
+    LOG(ERROR) << "GetContainerSpec RPC to somad returned " << result;
     return Result::RPC_ERROR;
   }
 
@@ -74,6 +78,29 @@ SomaConnection::Result SomaConnection::GetContainerSpecForService(
     return Result::UNKNOWN_SERVICE;
 
   *spec_out = response.container_spec();
+  return Result::SUCCESS;
+}
+
+SomaConnection::Result SomaConnection::GetPersistentContainerSpecs(
+    std::vector<soma::ContainerSpec>* specs_out) {
+  DCHECK(specs_out);
+  specs_out->clear();
+
+  if (!interface_)
+    return Result::NO_SOMA_CONNECTION;
+
+  soma::GetPersistentContainerSpecsRequest request;
+  soma::GetPersistentContainerSpecsResponse response;
+  int result = interface_->GetPersistentContainerSpecs(&request, &response);
+  if (result != 0) {
+    LOG(ERROR) << "GetPersistentContainerSpecs RPC to somad returned "
+               << result;
+    return Result::RPC_ERROR;
+  }
+
+  specs_out->reserve(response.container_specs_size());
+  for (const auto& spec : response.container_specs())
+    specs_out->push_back(spec);
   return Result::SUCCESS;
 }
 
