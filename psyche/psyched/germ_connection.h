@@ -7,6 +7,7 @@
 
 #include <base/macros.h>
 
+#include "psyche/proto_bindings/soma_container_spec.pb.h"
 #include "psyche/psyched/service.h"
 #include "psyche/psyched/service_observer.h"
 
@@ -38,6 +39,10 @@ class GermConnection : public ServiceObserver {
 
   // Sets the proxy that should be used for communication with germd.
   void SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy);
+
+  // Make a request to germ to launch a service. Sets |pid| to the PID of the
+  // germ-provided init process in the launched container.
+  Result Launch(const soma::ContainerSpec& spec, int* pid);
 
   // ServiceObserver:
   void OnServiceProxyChange(ServiceInterface* service) override;

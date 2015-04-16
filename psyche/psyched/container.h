@@ -36,8 +36,9 @@ class ContainerInterface {
   // services have not necessarily been registered yet.
   virtual const ServiceMap& GetServices() const = 0;
 
-  // Launches the container.
-  virtual void Launch() = 0;
+  // Launches the container. Returns whether the container was launched
+  // successfully.
+  virtual bool Launch() = 0;
 };
 
 // The real implementation of ContainerInterface.
@@ -54,7 +55,7 @@ class Container : public ContainerInterface, public ServiceObserver {
   // ContainerInterface:
   std::string GetName() const override;
   const ServiceMap& GetServices() const override;
-  void Launch() override;
+  bool Launch() override;
 
   // ServiceObserver:
   void OnServiceProxyChange(ServiceInterface* service) override;
@@ -71,6 +72,10 @@ class Container : public ContainerInterface, public ServiceObserver {
   // Connection to germd to launch the container. Note: This class doesn't own
   // the GermConnection object.
   GermConnection* germ_connection_;
+
+  // PID of the germ-provided init process inside the container, which can be
+  // used to terminate all the processes in the container.
+  int init_pid_;
 
   DISALLOW_COPY_AND_ASSIGN(Container);
 };

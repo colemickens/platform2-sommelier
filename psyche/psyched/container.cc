@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "psyche/psyched/factory_interface.h"
+#include "psyche/psyched/germ_connection.h"
 #include "psyche/psyched/service.h"
 
 using soma::ContainerSpec;
@@ -16,7 +17,7 @@ namespace psyche {
 Container::Container(const ContainerSpec& spec,
                      FactoryInterface* factory,
                      GermConnection* germ)
-    : spec_(spec), germ_connection_(germ) {
+    : spec_(spec), germ_connection_(germ), init_pid_(-1) {
   DCHECK(factory);
   for (const auto& name : spec_.service_names()) {
     std::unique_ptr<ServiceInterface> service(factory->CreateService(name));
@@ -35,9 +36,9 @@ const ContainerInterface::ServiceMap& Container::GetServices() const {
   return services_;
 }
 
-void Container::Launch() {
-  // TODO(derat): Ask germ to launch |spec_|.
-  NOTIMPLEMENTED();
+bool Container::Launch() {
+  return germ_connection_->Launch(spec_, &init_pid_) ==
+      GermConnection::Result::SUCCESS;
 }
 
 void Container::OnServiceProxyChange(ServiceInterface* service) {

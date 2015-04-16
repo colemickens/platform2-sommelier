@@ -453,8 +453,19 @@ TEST_F(RegistrarTest, DontProvideGermService) {
   EXPECT_FALSE(RequestService(germ::kGermServiceName, CreateBinderProxy()));
 }
 
-// TODO(mcolagrosso): Add tests for failures to communicate to germd, similar to
-// SomaFailures above.
+// Tests that Registrar reports container launch failures to clients.
+TEST_F(RegistrarTest, ContainerLaunchFailure) {
+  Init();
+
+  const std::string kContainerName("/foo/org.example.container.json");
+  const std::string kServiceName("org.example.container.service");
+  ContainerStub* container =
+      AddEphemeralContainer(kContainerName, kServiceName);
+  container->AddService(kServiceName);
+  container->set_launch_return_value(false);
+
+  EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxy()));
+}
 
 }  // namespace
 }  // namespace psyche

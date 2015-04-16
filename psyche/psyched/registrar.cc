@@ -197,8 +197,10 @@ bool Registrar::AddContainer(std::unique_ptr<ContainerInterface> container) {
     }
   }
 
-  // TODO(mcolagrosso): Add return value to Launch() and check it here.
-  container->Launch();
+  if (!container->Launch()) {
+    LOG(WARNING) << "Container \"" << container_name << "\" failed to launch";
+    return false;
+  }
 
   for (const auto& service_it : container->GetServices())
     services_[service_it.first] = service_it.second.get();

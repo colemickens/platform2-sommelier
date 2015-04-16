@@ -30,21 +30,31 @@ namespace {
 // Stub implementation of the Germ interface.
 class GermInterfaceStub : public germ::IGerm {
  public:
-  GermInterfaceStub() : launch_return_value_(0), terminate_return_value_(0) {}
+  GermInterfaceStub()
+      : launch_return_value_(0),
+        terminate_return_value_(0),
+        launch_success_(true),
+        terminate_success_(true) {}
   ~GermInterfaceStub() override = default;
 
   void set_launch_return_value(int value) { launch_return_value_ = value; }
   void set_terminate_return_value(int value) {
     terminate_return_value_ = value;
   }
+  std::vector<std::string> launched_container_names() {
+    return launched_container_names_;
+  }
 
   // IGerm:
   int Launch(germ::LaunchRequest* in, germ::LaunchResponse* out) override {
+    out->set_success(launch_success_);
+    launched_container_names_.push_back(in->spec().name());
     return launch_return_value_;
   }
 
   int Terminate(germ::TerminateRequest* in,
                 germ::TerminateResponse* out) override {
+    out->set_success(terminate_success_);
     return terminate_return_value_;
   }
 
@@ -54,6 +64,15 @@ class GermInterfaceStub : public germ::IGerm {
 
   // binder result returned by Terminate().
   int terminate_return_value_;
+
+  // germ success field returned by LaunchResponse.
+  bool launch_success_;
+
+  // germ success field returned by TerminateResponse.
+  bool terminate_success_;
+
+  // A list of the ContainerSpec names passed to Launch().
+  std::vector<std::string> launched_container_names_;
 
   DISALLOW_COPY_AND_ASSIGN(GermInterfaceStub);
 };
@@ -114,6 +133,31 @@ TEST_F(ContainerTest, InitializeFromSpec) {
   // copy of it.
   spec.set_name("/some/other/name");
   EXPECT_EQ(kContainerName, container.GetName());
+}
+
+// Tests various failures when communicating with germd.
+TEST_F(ContainerTest, GermFailures) {
+  ContainerSpec spec;
+  const std::string kContainerName("/tmp/org.example.container");
+  spec.set_name(kContainerName);
+
+  Container container(spec, &factory_, &germ_connection_);
+
+  // Failure should be reported for RPC errors.
+  germ_->set_launch_return_value(-1);
+  EXPECT_FALSE(container.Launch());
+
+  // Now report that the germd binder proxy died.
+  germ_->set_launch_return_value(0);
+  binder_manager_->ReportBinderDeath(germ_proxy_);
+  EXPECT_FALSE(container.Launch());
+
+  // Register a new proxy for germd and check that the next service request is
+  // successful.
+  InitGerm();
+  EXPECT_TRUE(container.Launch());
+  ASSERT_EQ(1, germ_->launched_container_names().size());
+  EXPECT_EQ(kContainerName, germ_->launched_container_names()[0]);
 }
 
 }  // namespace

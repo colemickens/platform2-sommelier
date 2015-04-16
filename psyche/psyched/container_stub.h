@@ -23,6 +23,9 @@ class ContainerStub : public ContainerInterface {
   ~ContainerStub() override;
 
   int launch_count() const { return launch_count_; }
+  void set_launch_return_value(bool value) {
+    launch_return_value_ = value;
+  }
 
   // Adds a ServiceStub named |service_name| to |services_| and returns a
   // pointer to it. Ownership of the stub remains with this class.
@@ -31,7 +34,7 @@ class ContainerStub : public ContainerInterface {
   // ContainerInterface:
   std::string GetName() const override;
   const ServiceMap& GetServices() const override;
-  void Launch() override;
+  bool Launch() override;
 
  private:
   std::string name_;
@@ -39,6 +42,9 @@ class ContainerStub : public ContainerInterface {
 
   // Number of times that Launch() has been called.
   int launch_count_;
+
+  // The return value of Launch().
+  bool launch_return_value_;
 
   DISALLOW_COPY_AND_ASSIGN(ContainerStub);
 };

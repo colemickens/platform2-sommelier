@@ -13,7 +13,7 @@ using soma::ContainerSpec;
 namespace psyche {
 
 ContainerStub::ContainerStub(const std::string& container_name)
-    : name_(container_name), launch_count_(0) {}
+    : name_(container_name), launch_count_(0), launch_return_value_(true) {}
 
 ContainerStub::~ContainerStub() = default;
 
@@ -31,8 +31,9 @@ const ContainerInterface::ServiceMap& ContainerStub::GetServices() const {
   return services_;
 }
 
-void ContainerStub::Launch() {
+bool ContainerStub::Launch() {
   launch_count_++;
+  return launch_return_value_;
 }
 
 }  // namespace psyche

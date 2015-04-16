@@ -49,6 +49,38 @@ void GermConnection::SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy) {
   service_.SetProxy(std::move(proxy));
 }
 
+GermConnection::Result GermConnection::Launch(const soma::ContainerSpec& spec,
+                                              int* pid) {
+  CHECK(pid);
+  if (!interface_)
+    return Result::NO_CONNECTION;
+
+  germ::LaunchRequest request;
+  germ::LaunchResponse response;
+  request.set_name(spec.name());
+  request.mutable_spec()->CopyFrom(spec);
+
+  int result = interface_->Launch(&request, &response);
+  if (result != 0) {
+    LOG(ERROR) << "Failed to launch container spec \"" << spec.name()
+               << "\". RPC to germd returned " << result;
+    return Result::RPC_ERROR;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "Germ didn't return success when launching container spec \""
+               << spec.name() << "\"";
+    return Result::LAUNCH_ERROR;
+  }
+
+  LOG(INFO) << "Launched container spec \"" << spec.name()
+            << "\". pid: " << response.pid();
+
+  *pid = response.pid();
+
+  return Result::SUCCESS;
+}
+
 void GermConnection::OnServiceProxyChange(ServiceInterface* service) {
   DCHECK_EQ(service, &service_);
   if (service->GetProxy()) {
