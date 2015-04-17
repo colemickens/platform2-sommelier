@@ -238,17 +238,120 @@ TEST(CommandDictionary, GetCommandsAsJson) {
   buffet::CommandDictionary dict;
   dict.LoadCommands(*json, "device", &base_dict, nullptr);
 
-  json = dict.GetCommandsAsJson(false, nullptr);
+  using buffet::CommandDefinition;
+  json = dict.GetCommandsAsJson(
+      [](const CommandDefinition* def) { return true; }, false, nullptr);
   EXPECT_NE(nullptr, json.get());
   EXPECT_EQ("{'base':{'reboot':{'parameters':{'delay':{'minimum':10}}}},"
             "'robot':{'_jump':{'parameters':{'_height':'integer'}}}}",
             buffet::unittests::ValueToString(json.get()));
 
-  json = dict.GetCommandsAsJson(true, nullptr);
+  json = dict.GetCommandsAsJson(
+      [](const CommandDefinition* def) { return true; }, true, nullptr);
   EXPECT_NE(nullptr, json.get());
   EXPECT_EQ("{'base':{'reboot':{'parameters':{'delay':{"
             "'maximum':100,'minimum':10,'type':'integer'}}}},"
             "'robot':{'_jump':{'parameters':{'_height':{'type':'integer'}}}}}",
+            buffet::unittests::ValueToString(json.get()));
+}
+
+TEST(CommandDictionary, GetCommandsAsJsonWithVisibility) {
+  auto json = buffet::unittests::CreateDictionaryValue(R"({
+    'test': {
+      'command1': {
+        'parameters': {},
+        'results': {},
+        'visibility': 'none'
+      },
+      'command2': {
+        'parameters': {},
+        'results': {},
+        'visibility': 'local'
+      },
+      'command3': {
+        'parameters': {},
+        'results': {},
+        'visibility': 'cloud'
+      },
+      'command4': {
+        'parameters': {},
+        'results': {},
+        'visibility': 'all'
+      },
+      'command5': {
+        'parameters': {},
+        'results': {},
+        'visibility': 'none'
+      },
+      'command6': {
+        'parameters': {},
+        'results': {},
+        'visibility': 'local'
+      },
+      'command7': {
+        'parameters': {},
+        'results': {},
+        'visibility': 'cloud'
+      },
+      'command8': {
+        'parameters': {},
+        'results': {},
+        'visibility': 'all'
+      }
+    }
+  })");
+  buffet::CommandDictionary dict;
+  ASSERT_TRUE(dict.LoadCommands(*json, "test", nullptr, nullptr));
+
+  using buffet::CommandDefinition;
+  json = dict.GetCommandsAsJson(
+      [](const CommandDefinition* def) { return true; }, false, nullptr);
+  ASSERT_NE(nullptr, json.get());
+  EXPECT_EQ("{'test':{"
+            "'command1':{'parameters':{}},"
+            "'command2':{'parameters':{}},"
+            "'command3':{'parameters':{}},"
+            "'command4':{'parameters':{}},"
+            "'command5':{'parameters':{}},"
+            "'command6':{'parameters':{}},"
+            "'command7':{'parameters':{}},"
+            "'command8':{'parameters':{}}"
+            "}}",
+            buffet::unittests::ValueToString(json.get()));
+
+  json = dict.GetCommandsAsJson(
+      [](const CommandDefinition* def) { return def->GetVisibility().local; },
+      false, nullptr);
+  ASSERT_NE(nullptr, json.get());
+  EXPECT_EQ("{'test':{"
+            "'command2':{'parameters':{}},"
+            "'command4':{'parameters':{}},"
+            "'command6':{'parameters':{}},"
+            "'command8':{'parameters':{}}"
+            "}}",
+            buffet::unittests::ValueToString(json.get()));
+
+  json = dict.GetCommandsAsJson(
+      [](const CommandDefinition* def) { return def->GetVisibility().cloud; },
+      false, nullptr);
+  ASSERT_NE(nullptr, json.get());
+  EXPECT_EQ("{'test':{"
+            "'command3':{'parameters':{}},"
+            "'command4':{'parameters':{}},"
+            "'command7':{'parameters':{}},"
+            "'command8':{'parameters':{}}"
+            "}}",
+            buffet::unittests::ValueToString(json.get()));
+
+  json = dict.GetCommandsAsJson(
+    [](const CommandDefinition* def) {
+      return def->GetVisibility().local && def->GetVisibility().cloud;
+    }, false, nullptr);
+  ASSERT_NE(nullptr, json.get());
+  EXPECT_EQ("{'test':{"
+            "'command4':{'parameters':{}},"
+            "'command8':{'parameters':{}}"
+            "}}",
             buffet::unittests::ValueToString(json.get()));
 }
 
@@ -259,7 +362,7 @@ TEST(CommandDictionary, LoadCommandsWithVisibility) {
       'command1': {
         'parameters': {},
         'results': {},
-        'visibility':''
+        'visibility':'none'
       },
       'command2': {
         'parameters': {},
@@ -312,7 +415,7 @@ TEST(CommandDictionary, LoadCommandsWithVisibility_Inheritance) {
       'command1': {
         'parameters': {},
         'results': {},
-        'visibility':''
+        'visibility':'none'
       },
       'command2': {
         'parameters': {},

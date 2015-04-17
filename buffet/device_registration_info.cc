@@ -5,6 +5,7 @@
 #include "buffet/device_registration_info.h"
 
 #include <memory>
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -137,6 +138,9 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
       xmpp_enabled_{xmpp_enabled},
       manager_{manager} {
   OnConfigChanged();
+  command_changed_callback_token_ = command_manager_->AddOnCommandDefChanged(
+      base::Bind(&DeviceRegistrationInfo::OnCommandDefsChanged,
+                 weak_factory_.GetWeakPtr()));
 }
 
 DeviceRegistrationInfo::~DeviceRegistrationInfo() = default;
@@ -386,8 +390,10 @@ void DeviceRegistrationInfo::OnFileCanReadWithoutBlocking(int fd) {
 
 std::unique_ptr<base::DictionaryValue>
 DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
-  std::unique_ptr<base::DictionaryValue> commands =
-      command_manager_->GetCommandDictionary().GetCommandsAsJson(true, error);
+  // Limit only to commands that are visible to the cloud.
+  auto commands = command_manager_->GetCommandDictionary().GetCommandsAsJson(
+      [](const CommandDefinition* def) { return def->GetVisibility().cloud; },
+      true, error);
   if (!commands)
     return nullptr;
 
@@ -782,6 +788,7 @@ void DeviceRegistrationInfo::UpdateCommand(
 void DeviceRegistrationInfo::UpdateDeviceResource(
     const base::Closure& on_success,
     const CloudRequestErrorCallback& on_failure) {
+  VLOG(1) << "Updating GCD server with CDD...";
   std::unique_ptr<base::DictionaryValue> device_resource =
       BuildDeviceResource(nullptr);
   if (!device_resource)
@@ -975,6 +982,15 @@ void DeviceRegistrationInfo::OnConfigChanged() {
   manager_->SetName(config_->name());
   manager_->SetDescription(config_->description());
   manager_->SetLocation(config_->location());
+}
+
+void DeviceRegistrationInfo::OnCommandDefsChanged() {
+  VLOG(1) << "CommandDefinitionChanged notification received";
+  if (!HaveRegistrationCredentials(nullptr))
+    return;
+
+  UpdateDeviceResource(base::Bind(&base::DoNothing),
+                       base::Bind(&IgnoreCloudError));
 }
 
 }  // namespace buffet

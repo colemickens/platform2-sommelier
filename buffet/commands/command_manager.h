@@ -8,6 +8,8 @@
 #include <memory>
 #include <string>
 
+#include <base/callback.h>
+#include <base/callback_list.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
@@ -32,6 +34,13 @@ class CommandInstance;
 // dispatched to the device.
 class CommandManager final {
  public:
+  // A token given by CommandManager in response to AddOnCommandDefChanged().
+  // When the CallbackToken is destroyed, the registered notification
+  // callback associated with it will automatically be removed from the command
+  // manager's callback list.
+  using CallbackToken =
+      std::unique_ptr<base::CallbackList<void()>::Subscription>;
+
   CommandManager();
   explicit CommandManager(
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
@@ -40,8 +49,8 @@ class CommandManager final {
   explicit CommandManager(CommandDispachInterface* dispatch_interface);
 
   // Sets callback which is called when command definitions is changed.
-  void SetOnCommandDefChanged(const base::Closure& on_command_defs_changed) {
-    on_command_defs_changed_ = on_command_defs_changed;
+  CallbackToken AddOnCommandDefChanged(const base::Closure& callback) {
+    return CallbackToken{on_command_changed_.Add(callback).release()};
   }
 
   // Returns the command definitions for the device.
@@ -98,7 +107,7 @@ class CommandManager final {
   CommandDictionary dictionary_;  // Command definitions/schemas.
   CommandQueue command_queue_;
   DBusCommandDispacher command_dispatcher_;
-  base::Closure on_command_defs_changed_;
+  base::CallbackList<void()> on_command_changed_;
 
   DISALLOW_COPY_AND_ASSIGN(CommandManager);
 };

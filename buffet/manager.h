@@ -18,6 +18,7 @@
 #include <chromeos/dbus/exported_property_set.h>
 #include <chromeos/errors/error.h>
 
+#include "buffet/commands/command_manager.h"
 #include "buffet/device_registration_info.h"
 #include "buffet/org.chromium.Buffet.Manager.h"
 
@@ -29,7 +30,6 @@ class ExportedObjectManager;
 
 namespace buffet {
 
-class CommandManager;
 class StateChangeQueue;
 class StateManager;
 class BuffetConfig;
@@ -83,6 +83,10 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   std::unique_ptr<StateChangeQueue> state_change_queue_;
   std::shared_ptr<StateManager> state_manager_;
   std::unique_ptr<DeviceRegistrationInfo> device_info_;
+
+  // Token given by Command Manager to track the registered Command Definition
+  // change callback.
+  CommandManager::CallbackToken command_changed_callback_token_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

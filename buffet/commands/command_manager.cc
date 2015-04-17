@@ -53,8 +53,7 @@ bool CommandManager::LoadCommands(const base::DictionaryValue& json,
                                   chromeos::ErrorPtr* error) {
   bool result =
       dictionary_.LoadCommands(json, category, &base_dictionary_, error);
-  if (!on_command_defs_changed_.is_null())
-    on_command_defs_changed_.Run();
+  on_command_changed_.Notify();
   return result;
 }
 

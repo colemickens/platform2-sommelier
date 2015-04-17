@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -57,12 +58,18 @@ class CommandDictionary {
                     const CommandDictionary* base_commands,
                     chromeos::ErrorPtr* error);
   // Converts all the command definitions to a JSON object for CDD/Device
-  // draft. |full_schema| specifies whether full command definitions must
-  // be generated (true) for CDD or only overrides from the base schema (false).
+  // draft.
+  // |filter| is a predicate used to filter out the command definitions to
+  // be returned by this method. Only command definitions for which the
+  // predicate returns true will be included in the resulting JSON.
+  // |full_schema| specifies whether full command definitions must be generated
+  // (true) for CDD or only overrides from the base schema (false).
   // Returns empty unique_ptr in case of an error and fills in the additional
   // error details in |error|.
   std::unique_ptr<base::DictionaryValue> GetCommandsAsJson(
-      bool full_schema, chromeos::ErrorPtr* error) const;
+      const std::function<bool(const CommandDefinition*)>& filter,
+      bool full_schema,
+      chromeos::ErrorPtr* error) const;
   // Returns the number of command definitions in the dictionary.
   size_t GetSize() const { return definitions_.size(); }
   // Checks if the dictionary has no command definitions.

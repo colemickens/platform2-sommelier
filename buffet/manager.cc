@@ -5,6 +5,7 @@
 #include "buffet/manager.h"
 
 #include <map>
+#include <set>
 #include <string>
 
 #include <base/bind.h>
@@ -21,7 +22,6 @@
 #include <dbus/values_util.h>
 
 #include "buffet/commands/command_instance.h"
-#include "buffet/commands/command_manager.h"
 #include "buffet/states/state_change_queue.h"
 #include "buffet/states/state_manager.h"
 #include "buffet/storage_impls.h"
@@ -52,7 +52,7 @@ void Manager::Start(const base::FilePath& config_path,
                     const AsyncEventSequencer::CompletionAction& cb) {
   command_manager_ =
       std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
-  command_manager_->SetOnCommandDefChanged(
+  command_changed_callback_token_ = command_manager_->AddOnCommandDefChanged(
       base::Bind(&Manager::OnCommandDefsChanged, base::Unretained(this)));
   command_manager_->Startup(base::FilePath{"/etc/buffet"},
                             test_definitions_path);
@@ -222,8 +222,11 @@ bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* error,
 
 void Manager::OnCommandDefsChanged() {
   chromeos::ErrorPtr error;
-  std::unique_ptr<base::DictionaryValue> commands =
-      command_manager_->GetCommandDictionary().GetCommandsAsJson(true, &error);
+  // Limit only to commands that are visible to the local clients.
+  auto commands = command_manager_->GetCommandDictionary().GetCommandsAsJson(
+      [](const buffet::CommandDefinition* def) {
+        return def->GetVisibility().local;
+      }, true, &error);
   CHECK(commands);
   std::string json;
   base::JSONWriter::WriteWithOptions(commands.get(),

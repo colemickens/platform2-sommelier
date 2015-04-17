@@ -195,9 +195,16 @@ std::unique_ptr<ObjectSchema> CommandDictionary::BuildObjectSchema(
 }
 
 std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
-    bool full_schema, chromeos::ErrorPtr* error) const {
+    const std::function<bool(const CommandDefinition*)>& filter,
+    bool full_schema,
+    chromeos::ErrorPtr* error) const {
   std::unique_ptr<base::DictionaryValue> dict(new base::DictionaryValue);
   for (const auto& pair : definitions_) {
+    // Check if the command definition has the desired visibility.
+    // If not, then skip it.
+    if (!filter(pair.second.get()))
+      continue;
+
     std::unique_ptr<base::DictionaryValue> definition =
         pair.second->GetParameters()->ToJson(full_schema, error);
     if (!definition) {

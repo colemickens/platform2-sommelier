@@ -21,6 +21,7 @@
 #include <chromeos/http/http_transport.h>
 
 #include "buffet/buffet_config.h"
+#include "buffet/commands/command_manager.h"
 #include "buffet/registration_status.h"
 #include "buffet/storage_interface.h"
 #include "buffet/xmpp/xmpp_client.h"
@@ -43,7 +44,6 @@ class KeyValueStore;
 
 namespace buffet {
 
-class CommandManager;
 class StateManager;
 
 extern const char kErrorDomainOAuth2[];
@@ -215,7 +215,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
 
   void PublishStateUpdates();
 
-  // Builds Cloud API devices collection REST resouce which matches
+  // Builds Cloud API devices collection REST resource which matches
   // current state of the device including command definitions
   // for all supported commands and current device state.
   std::unique_ptr<base::DictionaryValue> BuildDeviceResource(
@@ -224,6 +224,9 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   void SetRegistrationStatus(RegistrationStatus new_status);
   void SetDeviceId(const std::string& device_id);
   void OnConfigChanged();
+
+  // Callback called when command definitions are changed to re-publish new CDD.
+  void OnCommandDefsChanged();
 
   // Data that is cached here, persisted in the state store.
   std::string refresh_token_;
@@ -242,6 +245,10 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   std::shared_ptr<CommandManager> command_manager_;
   // Device state manager.
   std::shared_ptr<StateManager> state_manager_;
+
+  // Token given by Command Manager to track the registered Command Definition
+  // change callback.
+  CommandManager::CallbackToken command_changed_callback_token_;
 
   std::unique_ptr<BuffetConfig> config_;
 
