@@ -69,11 +69,14 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
 
       const ObjectSchema* base_parameters_def = nullptr;
       const ObjectSchema* base_results_def = nullptr;
+      // By default make it available to all clients.
+      auto visibility = CommandDefinition::Visibility::GetAll();
       if (base_commands) {
         auto cmd = base_commands->FindCommand(full_command_name);
         if (cmd) {
           base_parameters_def = cmd->GetParameters();
           base_results_def = cmd->GetResults();
+          visibility = cmd->GetVisibility();
         }
 
         // If the base command dictionary was provided but the command was not
@@ -111,10 +114,23 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       if (!results_schema)
         return false;
 
+      std::string value;
+      using commands::attributes::kCommand_Visibility;
+      if (command_def_json->GetString(kCommand_Visibility, &value)) {
+        if (!visibility.FromString(value, error)) {
+          chromeos::Error::AddToPrintf(
+              error, FROM_HERE, errors::commands::kDomain,
+              errors::commands::kInvalidCommandVisibility,
+              "Error parsing command '%s'", full_command_name.c_str());
+          return false;
+        }
+      }
+
       std::unique_ptr<CommandDefinition> command_def{
         new CommandDefinition{category, std::move(parameters_schema),
                               std::move(results_schema)}
       };
+      command_def->SetVisibility(visibility);
       new_defs.emplace(full_command_name, std::move(command_def));
 
       command_iter.Advance();
@@ -199,8 +215,8 @@ std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
       dict->SetWithoutPathExpansion(package_name, package);
     }
     base::DictionaryValue* command_def = new base::DictionaryValue;
-    command_def->SetWithoutPathExpansion(
-        commands::attributes::kCommand_Parameters, definition.release());
+    command_def->Set(commands::attributes::kCommand_Parameters,
+                     definition.release());
     package->SetWithoutPathExpansion(command_name, command_def);
   }
   return dict;

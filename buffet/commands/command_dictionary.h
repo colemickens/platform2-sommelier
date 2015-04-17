@@ -73,8 +73,7 @@ class CommandDictionary {
   const CommandDefinition* FindCommand(const std::string& command_name) const;
 
  private:
-  using CommandMap =
-      std::map<std::string, std::unique_ptr<const CommandDefinition>>;
+  using CommandMap = std::map<std::string, std::unique_ptr<CommandDefinition>>;
 
   std::unique_ptr<ObjectSchema> BuildObjectSchema(
       const base::DictionaryValue* command_def_json,

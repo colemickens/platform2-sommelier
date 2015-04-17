@@ -251,3 +251,167 @@ TEST(CommandDictionary, GetCommandsAsJson) {
             "'robot':{'_jump':{'parameters':{'_height':{'type':'integer'}}}}}",
             buffet::unittests::ValueToString(json.get()));
 }
+
+TEST(CommandDictionary, LoadCommandsWithVisibility) {
+  buffet::CommandDictionary dict;
+  auto json = CreateDictionaryValue(R"({
+    'base': {
+      'command1': {
+        'parameters': {},
+        'results': {},
+        'visibility':''
+      },
+      'command2': {
+        'parameters': {},
+        'results': {},
+        'visibility':'local'
+      },
+      'command3': {
+        'parameters': {},
+        'results': {},
+        'visibility':'cloud'
+      },
+      'command4': {
+        'parameters': {},
+        'results': {},
+        'visibility':'all'
+      },
+      'command5': {
+        'parameters': {},
+        'results': {},
+        'visibility':'cloud,local'
+      }
+    }
+  })");
+  EXPECT_TRUE(dict.LoadCommands(*json, "testd", nullptr, nullptr));
+  auto cmd = dict.FindCommand("base.command1");
+  ASSERT_NE(nullptr, cmd);
+  EXPECT_EQ("none", cmd->GetVisibility().ToString());
+
+  cmd = dict.FindCommand("base.command2");
+  ASSERT_NE(nullptr, cmd);
+  EXPECT_EQ("local", cmd->GetVisibility().ToString());
+
+  cmd = dict.FindCommand("base.command3");
+  ASSERT_NE(nullptr, cmd);
+  EXPECT_EQ("cloud", cmd->GetVisibility().ToString());
+
+  cmd = dict.FindCommand("base.command4");
+  ASSERT_NE(nullptr, cmd);
+  EXPECT_EQ("all", cmd->GetVisibility().ToString());
+
+  cmd = dict.FindCommand("base.command5");
+  ASSERT_NE(nullptr, cmd);
+  EXPECT_EQ("all", cmd->GetVisibility().ToString());
+}
+
+TEST(CommandDictionary, LoadCommandsWithVisibility_Inheritance) {
+  buffet::CommandDictionary base_dict;
+  auto json = CreateDictionaryValue(R"({
+    'base': {
+      'command1': {
+        'parameters': {},
+        'results': {},
+        'visibility':''
+      },
+      'command2': {
+        'parameters': {},
+        'results': {},
+        'visibility':'local'
+      },
+      'command3': {
+        'parameters': {},
+        'results': {},
+        'visibility':'cloud'
+      },
+      'command4': {
+        'parameters': {},
+        'results': {},
+        'visibility':'all'
+      },
+      'command5': {
+        'parameters': {},
+        'results': {},
+        'visibility':'local,cloud'
+      }
+    }
+  })");
+  EXPECT_TRUE(base_dict.LoadCommands(*json, "testd", nullptr, nullptr));
+
+  buffet::CommandDictionary dict;
+  json = CreateDictionaryValue(R"({
+    'base': {
+      'command1': {
+        'parameters': {},
+        'results': {}
+      },
+      'command2': {
+        'parameters': {},
+        'results': {}
+      },
+      'command3': {
+        'parameters': {},
+        'results': {}
+      },
+      'command4': {
+        'parameters': {},
+        'results': {}
+      },
+      'command5': {
+        'parameters': {},
+        'results': {}
+      },
+      '_command6': {
+        'parameters': {},
+        'results': {}
+      }
+    }
+  })");
+  EXPECT_TRUE(dict.LoadCommands(*json, "testd", &base_dict, nullptr));
+
+  auto cmd = dict.FindCommand("base.command1");
+  ASSERT_NE(nullptr, cmd);
+  EXPECT_EQ("none", cmd->GetVisibility().ToString());
+
+  cmd = dict.FindCommand("base.command2");
+  ASSERT_NE(nullptr, cmd);
+  EXPECT_EQ("local", cmd->GetVisibility().ToString());
+
+  cmd = dict.FindCommand("base.command3");
+  ASSERT_NE(nullptr, cmd);
+  EXPECT_EQ("cloud", cmd->GetVisibility().ToString());
+
+  cmd = dict.FindCommand("base.command4");
+  ASSERT_NE(nullptr, cmd);
+  EXPECT_EQ("all", cmd->GetVisibility().ToString());
+
+  cmd = dict.FindCommand("base.command5");
+  ASSERT_NE(nullptr, cmd);
+  EXPECT_EQ("all", cmd->GetVisibility().ToString());
+
+  cmd = dict.FindCommand("base._command6");
+  ASSERT_NE(nullptr, cmd);
+  EXPECT_EQ("all", cmd->GetVisibility().ToString());
+}
+
+TEST(CommandDictionary, LoadCommandsWithVisibility_Failures) {
+  buffet::CommandDictionary dict;
+  chromeos::ErrorPtr error;
+
+  auto json = CreateDictionaryValue(R"({
+    'base': {
+      'jump': {
+        'parameters': {},
+        'results': {},
+        'visibility':'foo'
+      }
+    }
+  })");
+  EXPECT_FALSE(dict.LoadCommands(*json, "testd", nullptr, &error));
+  EXPECT_EQ("invalid_command_visibility", error->GetCode());
+  EXPECT_EQ("Error parsing command 'base.jump'", error->GetMessage());
+  EXPECT_EQ("invalid_parameter_value", error->GetInnerError()->GetCode());
+  EXPECT_EQ("Invalid command visibility value 'foo'",
+            error->GetInnerError()->GetMessage());
+  error.reset();
+}

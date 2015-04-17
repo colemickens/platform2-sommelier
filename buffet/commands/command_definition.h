@@ -21,6 +21,29 @@ namespace buffet {
 // for.
 class CommandDefinition {
  public:
+  struct Visibility {
+    Visibility() = default;
+    Visibility(bool is_local, bool is_cloud)
+        : local{is_local}, cloud{is_cloud} {}
+
+    // Converts a comma-separated string of visibility identifiers into the
+    // Visibility bitset (|str| is a string like "local,cloud").
+    // Special string value "all" is treated as a list of every possible
+    // visibility values and "none" to have all the bits cleared.
+    bool FromString(const std::string& str, chromeos::ErrorPtr* error);
+
+    // Converts the visibility bitset to a string.
+    std::string ToString() const;
+
+    static Visibility GetAll() { return Visibility{true, true}; }
+    static Visibility GetLocal() { return Visibility{true, false}; }
+    static Visibility GetCloud() { return Visibility{false, true}; }
+    static Visibility GetNone() { return Visibility{false, false}; }
+
+    bool local{false};  // Command is available to local clients.
+    bool cloud{false};  // Command is available to cloud clients.
+  };
+
   CommandDefinition(const std::string& category,
                     std::unique_ptr<const ObjectSchema> parameters,
                     std::unique_ptr<const ObjectSchema> results);
@@ -31,11 +54,17 @@ class CommandDefinition {
   const ObjectSchema* GetParameters() const { return parameters_.get(); }
   // Gets the object schema for command results.
   const ObjectSchema* GetResults() const { return results_.get(); }
+  // Returns the command visibility.
+  const Visibility& GetVisibility() const { return visibility_; }
+  // Changes the command visibility.
+  void SetVisibility(const Visibility& visibility);
 
  private:
   std::string category_;  // Cmd category. Could be "powerd" for "base.reboot".
   std::unique_ptr<const ObjectSchema> parameters_;  // Command parameters def.
   std::unique_ptr<const ObjectSchema> results_;  // Command results def.
+  Visibility visibility_;  // Available to all by default.
+
   DISALLOW_COPY_AND_ASSIGN(CommandDefinition);
 };
 

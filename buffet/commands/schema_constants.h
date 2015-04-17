@@ -26,6 +26,7 @@ extern const char kInvalidObjectSchema[];
 extern const char kDuplicateCommandDef[];
 extern const char kInvalidCommandName[];
 extern const char kCommandFailed[];
+extern const char kInvalidCommandVisibility[];
 }  // namespace commands
 }  // namespace errors
 
@@ -55,6 +56,12 @@ extern const char kCommand_Parameters[];
 extern const char kCommand_Results[];
 extern const char kCommand_State[];
 extern const char kCommand_Progress[];
+
+extern const char kCommand_Visibility[];
+extern const char kCommand_Visibility_None[];
+extern const char kCommand_Visibility_Local[];
+extern const char kCommand_Visibility_Cloud[];
+extern const char kCommand_Visibility_All[];
 }  // namespace attributes
 }  // namespace commands
 

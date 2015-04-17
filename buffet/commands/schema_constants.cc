@@ -23,6 +23,7 @@ const char kInvalidObjectSchema[] = "invalid_object_schema";
 const char kDuplicateCommandDef[] = "duplicate_command_definition";
 const char kInvalidCommandName[] = "invalid_command_name";
 const char kCommandFailed[] = "command_failed";
+const char kInvalidCommandVisibility[] = "invalid_command_visibility";
 }  // namespace commands
 }  // namespace errors
 
@@ -51,6 +52,12 @@ const char kCommand_Parameters[] = "parameters";
 const char kCommand_Results[] = "results";
 const char kCommand_State[] = "state";
 const char kCommand_Progress[] = "progress";
+
+const char kCommand_Visibility[] = "visibility";
+const char kCommand_Visibility_None[] = "none";
+const char kCommand_Visibility_Local[] = "local";
+const char kCommand_Visibility_Cloud[] = "cloud";
+const char kCommand_Visibility_All[] = "all";
 }  // namespace attributes
 }  // namespace commands
 
