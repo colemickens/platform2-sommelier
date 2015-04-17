@@ -11,9 +11,12 @@
 
 #include <list>
 #include <map>
+#include <queue>
 
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
+#include <base/message_loop/message_loop_proxy.h>
 #include <base/stl_util.h>
 
 #include "shill/net/attribute_list.h"
@@ -26,6 +29,7 @@
 
 using base::Bind;
 using base::LazyInstance;
+using base::MessageLoopProxy;
 using std::list;
 using std::map;
 using std::string;
@@ -44,6 +48,7 @@ const long NetlinkManager::kMaximumNewFamilyWaitSeconds = 1;  // NOLINT
 const long NetlinkManager::kMaximumNewFamilyWaitMicroSeconds = 0;  // NOLINT
 const long NetlinkManager::kResponseTimeoutSeconds = 5;  // NOLINT
 const long NetlinkManager::kResponseTimeoutMicroSeconds = 0;  // NOLINT
+const long NetlinkManager::kPendingDumpTimeoutMilliseconds = 500;  // NOLINT
 
 NetlinkManager::NetlinkResponseHandler::NetlinkResponseHandler(
     const NetlinkManager::NetlinkAckHandler &ack_handler,
@@ -436,10 +441,10 @@ bool NetlinkManager::SendControlMessage(
     const ControlNetlinkMessageHandler &message_handler,
     const NetlinkAckHandler &ack_handler,
     const NetlinkAuxilliaryMessageHandler &error_handler) {
-  return SendMessageInternal(message,
-                             new ControlResponseHandler(ack_handler,
-                                                        error_handler,
-                                                        message_handler));
+  return SendOrPostMessage(message,
+                           new ControlResponseHandler(ack_handler,
+                                                      error_handler,
+                                                      message_handler));
 }
 
 bool NetlinkManager::SendNl80211Message(
@@ -447,13 +452,13 @@ bool NetlinkManager::SendNl80211Message(
     const Nl80211MessageHandler &message_handler,
     const NetlinkAckHandler &ack_handler,
     const NetlinkAuxilliaryMessageHandler &error_handler) {
-  return SendMessageInternal(message,
-                             new Nl80211ResponseHandler(ack_handler,
-                                                        error_handler,
-                                                        message_handler));
+  return SendOrPostMessage(message,
+                           new Nl80211ResponseHandler(ack_handler,
+                                                      error_handler,
+                                                      message_handler));
 }
 
-bool NetlinkManager::SendMessageInternal(
+bool NetlinkManager::SendOrPostMessage(
     NetlinkMessage *message,
     NetlinkManager::NetlinkResponseHandler *response_handler) {
   if (!message) {
@@ -461,6 +466,33 @@ bool NetlinkManager::SendMessageInternal(
     return false;
   }
 
+  const uint32_t sequence_number = this->GetSequenceNumber();
+  const bool is_dump_msg = message->flags() & NLM_F_DUMP;
+  NetlinkPendingMessage pending_message(
+      sequence_number, is_dump_msg, message->Encode(sequence_number),
+      NetlinkResponseHandlerRefPtr(response_handler));
+
+  // TODO(samueltan): print this debug message above the actual call to
+  // NetlinkSocket::SendMessage in NetlinkManager::SendMessageInternal.
+  VLOG(5) << "NL Message " << pending_message.sequence_number << " to send ("
+          << pending_message.message_string.GetLength() << " bytes) ===>";
+  message->Print(6, 7);
+  NetlinkMessage::PrintBytes(8, pending_message.message_string.GetConstData(),
+                             pending_message.message_string.GetLength());
+
+  if (is_dump_msg) {
+    pending_messages_.push(pending_message);
+    if (IsDumpPending()) {
+      VLOG(5) << "Dump pending -- will send message after dump is complete";
+      return true;
+    }
+  }
+
+  return SendMessageInternal(pending_message);
+}
+
+bool NetlinkManager::SendMessageInternal(
+    const NetlinkPendingMessage &pending_message) {
   // Clean out timed-out message handlers.  The list of outstanding messages
   // should be small so the time wasted by looking through all of them should
   // be small.
@@ -481,35 +513,37 @@ bool NetlinkManager::SendMessageInternal(
   }
 
   // On to the business at hand...
-  ByteString message_string = message->Encode(this->GetSequenceNumber());
-
-  if (!response_handler) {
+  if (!pending_message.handler) {
     VLOG(3) << "Handler for message was null.";
-  } else if (ContainsKey(message_handlers_, message->sequence_number())) {
+  } else if (ContainsKey(message_handlers_, pending_message.sequence_number)) {
     LOG(ERROR) << "A handler already existed for sequence: "
-               << message->sequence_number();
+               << pending_message.sequence_number;
     return false;
   } else {
     struct timeval response_timeout = {kResponseTimeoutSeconds,
                                        kResponseTimeoutMicroSeconds};
     struct timeval delete_after;
     timeradd(&now, &response_timeout, &delete_after);
-    response_handler->set_delete_after(delete_after);
+    pending_message.handler->set_delete_after(delete_after);
 
-    message_handlers_[message->sequence_number()] =
-        NetlinkResponseHandlerRefPtr(response_handler);
+    message_handlers_[pending_message.sequence_number] =
+        pending_message.handler;
   }
 
-  VLOG(5) << "NL Message " << message->sequence_number()
-          << " Sending (" << message_string.GetLength()
-          << " bytes) ===>";
-  message->Print(6, 7);
-  NetlinkMessage::PrintBytes(8, message_string.GetConstData(),
-                             message_string.GetLength());
+  VLOG(5) << "Sending NL message " << pending_message.sequence_number;
 
-  if (!sock_->SendMessage(message_string)) {
+  if (!sock_->SendMessage(pending_message.message_string)) {
     LOG(ERROR) << "Failed to send Netlink message.";
     return false;
+  }
+  if (pending_message.is_dump_request) {
+    VLOG(5) << "Waiting for replies to NL dump message "
+            << pending_message.sequence_number;
+    pending_dump_timeout_callback_.Reset(Bind(
+        &NetlinkManager::OnPendingDumpTimeout, weak_ptr_factory_.GetWeakPtr()));
+    MessageLoopProxy::current()->PostDelayedTask(
+        FROM_HERE, pending_dump_timeout_callback_.callback(),
+        base::TimeDelta::FromMilliseconds(kPendingDumpTimeoutMilliseconds));
   }
   return true;
 }
@@ -530,6 +564,42 @@ NetlinkMessage::MessageContext NetlinkManager::InferMessageContext(
   }
 
   return context;
+}
+
+void NetlinkManager::OnPendingDumpTimeout() {
+  VLOG(3) << "Timed out waiting for replies to NL dump message "
+          << PendingDumpSequenceNumber();
+  if (ContainsKey(message_handlers_, PendingDumpSequenceNumber())) {
+    VLOG(6) << "Found error handler for NL dump message";
+    message_handlers_[PendingDumpSequenceNumber()]->HandleError(
+        kTimeoutWaitingForResponse, nullptr);
+    message_handlers_.erase(PendingDumpSequenceNumber());
+  }
+  OnPendingDumpComplete();
+}
+
+void NetlinkManager::OnPendingDumpComplete() {
+  VLOG(3) << __func__;
+  pending_dump_timeout_callback_.Cancel();
+  pending_messages_.pop();
+  if (!pending_messages_.empty()) {
+    VLOG(3) << "Sending next pending message";
+    NetlinkPendingMessage to_send = pending_messages_.front();
+    SendMessageInternal(to_send);
+  }
+}
+
+bool NetlinkManager::IsDumpPending() {
+  return !pending_dump_timeout_callback_.IsCancelled() &&
+         !pending_messages_.empty();
+}
+
+uint16_t NetlinkManager::PendingDumpSequenceNumber() {
+  if (!IsDumpPending()) {
+    LOG(ERROR) << __func__ << ": no pending dump";
+    return 0;
+  }
+  return pending_messages_.front().sequence_number;
 }
 
 bool NetlinkManager::RemoveMessageHandler(const NetlinkMessage &message) {
@@ -603,6 +673,25 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
   message->Print(6, 7);
   NetlinkMessage::PrintBytes(8, reinterpret_cast<const unsigned char *>(msg),
                              msg->nlmsg_len);
+
+  // Note: assumes we only receive one reply to a dump request: an error
+  // message, an ack, or a single multi-part reply. If we two replies, then we
+  // will stop waiting for replies after the first reply is processed here. This
+  // assumption should hold unless the NLM_F_ACK or NLM_F_ECHO flags are
+  // explicitly added to the dump request.
+  if (IsDumpPending() &&
+      (message->sequence_number() == PendingDumpSequenceNumber()) &&
+      !((message->flags() & NLM_F_MULTI) &&
+        (message->message_type() != NLMSG_DONE))) {
+    // Dump currently in progress, this message's sequence number matches that
+    // of the pending dump request, and we are not in the middle of receiving a
+    // multi-part reply.
+    VLOG(3) << "All replies for NL dump message " << PendingDumpSequenceNumber()
+            << " received";
+    MessageLoopProxy::current()->PostTask(
+        FROM_HERE, Bind(&NetlinkManager::OnPendingDumpComplete,
+                        weak_ptr_factory_.GetWeakPtr()));
+  }
 
   if (message->message_type() == ErrorAckMessage::GetMessageType()) {
     VLOG(3) << "Error/ACK response to message " << sequence_number;

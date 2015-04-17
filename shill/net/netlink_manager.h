@@ -58,10 +58,12 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <queue>
 #include <set>
 #include <string>
 
 #include <base/bind.h>
+#include <base/cancelable_callback.h>
 #include <base/lazy_instance.h>
 #include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -274,6 +276,8 @@ class SHILL_EXPORT NetlinkManager {
   FRIEND_TEST(NetlinkManagerTest, MultipartMessageHandler);
   FRIEND_TEST(NetlinkManagerTest, OnInvalidRawNlMessageReceived);
   FRIEND_TEST(NetlinkManagerTest, TimeoutResponseHandlers);
+  FRIEND_TEST(NetlinkManagerTest, PendingDump);
+  FRIEND_TEST(NetlinkManagerTest, PendingDump_Timeout);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_CONNECT);
@@ -287,12 +291,31 @@ class SHILL_EXPORT NetlinkManager {
 
   typedef scoped_refptr<NetlinkResponseHandler> NetlinkResponseHandlerRefPtr;
 
+  // Container for information we need to send a netlink message out on a
+  // netlink socket.
+  struct NetlinkPendingMessage {
+    NetlinkPendingMessage(uint32_t sequence_number_arg,
+                          bool is_dump_request_arg,
+                          ByteString message_string_arg,
+                          NetlinkResponseHandlerRefPtr handler_arg)
+        : sequence_number(sequence_number_arg),
+          is_dump_request(is_dump_request_arg),
+          message_string(message_string_arg),
+          handler(handler_arg) {}
+
+    uint32_t sequence_number;
+    bool is_dump_request;
+    ByteString message_string;
+    NetlinkResponseHandlerRefPtr handler;
+  };
+
   // These need to be member variables, even though they're only used once in
   // the code, since they're needed for unittests.
   static const long kMaximumNewFamilyWaitSeconds;  // NOLINT
   static const long kMaximumNewFamilyWaitMicroSeconds;  // NOLINT
   static const long kResponseTimeoutSeconds;  // NOLINT
   static const long kResponseTimeoutMicroSeconds;  // NOLINT
+  static const long kPendingDumpTimeoutMilliseconds;  // NOLINT
 
   // Returns the file descriptor of socket used to read wifi data.
   int file_descriptor() const;
@@ -319,17 +342,41 @@ class SHILL_EXPORT NetlinkManager {
   // Handles a CTRL_CMD_NEWFAMILY message from the kernel.
   void OnNewFamilyMessage(const ControlNetlinkMessage &message);
 
-  // Sends a netlink message to the kernel using the NetlinkManager socket after
-  // installing a handler to deal with the kernel's response to the message.
-  // Adds a serial number to |message| before it is sent.
-  bool SendMessageInternal(
+  // Sends a netlink message if |pending_dump_| is false. Otherwise, post
+  // a message to |pending_messages_| to be sent later.
+  bool SendOrPostMessage(
       NetlinkMessage *message,
       NetlinkResponseHandler *message_wrapper);  // Passes ownership.
+
+  // Sends the netlink message whose bytes are contained in |pending_message|
+  // to the kernel using the NetlinkManager socket after installing a handler
+  // to deal with the kernel's response to the message. Adds a serial number to
+  // |message| before it is sent.
+  bool SendMessageInternal(const NetlinkPendingMessage &pending_message);
 
   // Given a netlink message |msg|, infers the context of this netlink message
   // (for message parsing purposes) and returns a MessageContext describing this
   // context.
   NetlinkMessage::MessageContext InferMessageContext(const nlmsghdr *msg);
+
+  // Called when we time out waiting for a response to a netlink dump message.
+  // Invokes the error handler with kTimeoutWaitingForResponse, deletes the
+  // error handler, then calls NetlinkManager::OnPendingDumpComplete.
+  void OnPendingDumpTimeout();
+
+  // Cancels |pending_dump_timeout_callback_|, deletes the currently pending
+  // dump request message from the front of |pending_messages_| since we have
+  // finished waiting for replies, then sends the next message in
+  // |pending_messages_| (if any).
+  void OnPendingDumpComplete();
+
+  // Returns true iff there we are waiting for replies to a netlink dump
+  // message, false otherwise.
+  bool IsDumpPending();
+
+  // Returns the sequence number of the pending netlink dump request message iff
+  // there is a pending dump. Otherwise, returns 0.
+  uint16_t PendingDumpSequenceNumber();
 
   // NetlinkManager Handlers, OnRawNlMessageReceived invokes each of these
   // User-supplied callback object when _it_ gets called to read libnl data.
@@ -338,7 +385,13 @@ class SHILL_EXPORT NetlinkManager {
   // Message-specific callbacks, mapped by message ID.
   std::map<uint32_t, NetlinkResponseHandlerRefPtr> message_handlers_;
 
+  // Netlink messages due to be sent to the kernel. If a dump is pending,
+  // the first element in this queue will contain the netlink dump request
+  // message that we are waiting on replies for.
+  std::queue<NetlinkPendingMessage> pending_messages_;
+
   base::WeakPtrFactory<NetlinkManager> weak_ptr_factory_;
+  base::CancelableClosure pending_dump_timeout_callback_;
   base::Callback<void(InputData *)> dispatcher_callback_;
   std::unique_ptr<IOHandler> dispatcher_handler_;
 

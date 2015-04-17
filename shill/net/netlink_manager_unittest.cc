@@ -15,6 +15,8 @@
 #include <vector>
 
 #include <base/strings/stringprintf.h>
+#include <base/message_loop/message_loop.h>
+#include <base/run_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -249,6 +251,7 @@ class NetlinkManagerTest : public Test {
   StrictMock<MockIOHandlerFactory> io_handler_factory_;
   ByteString saved_message_;
   uint32_t saved_sequence_number_;
+  base::MessageLoop message_loop_;
 };
 
 namespace {
@@ -720,6 +723,169 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
 
   // Put the state of the singleton back where it was.
   netlink_manager_->time_ = old_time;
+}
+
+TEST_F(NetlinkManagerTest, PendingDump) {
+  // Set up the responses to the two get station messages  we're going to send.
+  // The response to then first message is a 2-message multi-part response,
+  // while the response to the second is a single response.
+  NewStationMessage new_station_message_1_pt1;
+  NewStationMessage new_station_message_1_pt2;
+  NewStationMessage new_station_message_2;
+  const uint32_t kRandomSequenceNumber = 3;
+  new_station_message_1_pt1.AddFlag(NLM_F_MULTI);
+  new_station_message_1_pt2.AddFlag(NLM_F_MULTI);
+  ByteString new_station_message_1_pt1_bytes =
+      new_station_message_1_pt1.Encode(kRandomSequenceNumber);
+  ByteString new_station_message_1_pt2_bytes =
+      new_station_message_1_pt2.Encode(kRandomSequenceNumber);
+  ByteString new_station_message_2_bytes =
+      new_station_message_2.Encode(kRandomSequenceNumber);
+  nlmsghdr *received_message_1_pt1 =
+      reinterpret_cast<nlmsghdr *>(new_station_message_1_pt1_bytes.GetData());
+  nlmsghdr *received_message_1_pt2 =
+      reinterpret_cast<nlmsghdr *>(new_station_message_1_pt2_bytes.GetData());
+  received_message_1_pt2->nlmsg_type = NLMSG_DONE;
+  nlmsghdr *received_message_2 =
+      reinterpret_cast<nlmsghdr *>(new_station_message_2_bytes.GetData());
+
+  // The two get station messages (with the dump flag set) will be sent one
+  // after another. The second message can only be sent once all replies to the
+  // first have been received. The get wiphy message will be sent while waiting
+  // for replies from the first get station message.
+  GetStationMessage get_station_message_1;
+  get_station_message_1.AddFlag(NLM_F_DUMP);
+  GetStationMessage get_station_message_2;
+  get_station_message_2.AddFlag(NLM_F_DUMP);
+  GetWiphyMessage get_wiphy_message;
+  MockHandler80211 response_handler;
+  MockHandlerNetlinkAuxilliary auxilliary_handler;
+  MockHandlerNetlinkAck ack_handler;
+
+  // Send the first get station message, which should be sent immediately and
+  // trigger a pending dump.
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &get_station_message_1, response_handler.on_netlink_message(),
+      ack_handler.on_netlink_message(),
+      auxilliary_handler.on_netlink_message()));
+  uint16_t get_station_message_1_seq_num =
+      netlink_socket_->GetLastSequenceNumber();
+  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_EQ(1, netlink_manager_->pending_messages_.size());
+  EXPECT_EQ(get_station_message_1_seq_num,
+            netlink_manager_->PendingDumpSequenceNumber());
+
+  // Send the second get station message before the replies to the first
+  // get station message have been received. This should cause the message
+  // to be enqueued for later sending.
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).Times(0);
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &get_station_message_2, response_handler.on_netlink_message(),
+      ack_handler.on_netlink_message(),
+      auxilliary_handler.on_netlink_message()));
+  uint16_t get_station_message_2_seq_num =
+      netlink_socket_->GetLastSequenceNumber();
+  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_EQ(2, netlink_manager_->pending_messages_.size());
+  EXPECT_EQ(get_station_message_1_seq_num,
+            netlink_manager_->PendingDumpSequenceNumber());
+
+  // Send the get wiphy message before the replies to the first
+  // get station message have been received. Since this message does not have
+  // the NLM_F_DUMP flag set, it will not be enqueued and sent immediately.
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &get_wiphy_message, response_handler.on_netlink_message(),
+      ack_handler.on_netlink_message(),
+      auxilliary_handler.on_netlink_message()));
+  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_EQ(2, netlink_manager_->pending_messages_.size());
+  EXPECT_EQ(get_station_message_1_seq_num,
+            netlink_manager_->PendingDumpSequenceNumber());
+
+  // Now we receive the two-part response to the first message.
+  // On receiving the first part, keep waiting for second part.
+  received_message_1_pt1->nlmsg_seq = get_station_message_1_seq_num;
+  EXPECT_CALL(response_handler, OnNetlinkMessage(_));
+  netlink_manager_->OnNlMessageReceived(received_message_1_pt1);
+  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_EQ(2, netlink_manager_->pending_messages_.size());
+  EXPECT_EQ(get_station_message_1_seq_num,
+            netlink_manager_->PendingDumpSequenceNumber());
+
+  // On receiving second part of the message, report done to the error handler,
+  // and dispatch the next message in the queue.
+  received_message_1_pt2->nlmsg_seq = get_station_message_1_seq_num;
+  EXPECT_CALL(auxilliary_handler, OnErrorHandler(NetlinkManager::kDone, _));
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
+  netlink_manager_->OnNlMessageReceived(received_message_1_pt2);
+  base::RunLoop().RunUntilIdle();
+  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_EQ(1, netlink_manager_->pending_messages_.size());
+  EXPECT_EQ(get_station_message_2_seq_num,
+            netlink_manager_->PendingDumpSequenceNumber());
+
+  // Receive response to second dump message, and stop waiting for dump replies.
+  received_message_2->nlmsg_seq = get_station_message_2_seq_num;
+  EXPECT_CALL(response_handler, OnNetlinkMessage(_));
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).Times(0);
+  netlink_manager_->OnNlMessageReceived(received_message_2);
+  base::RunLoop().RunUntilIdle();
+  EXPECT_TRUE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(netlink_manager_->pending_messages_.empty());
+  EXPECT_EQ(0, netlink_manager_->PendingDumpSequenceNumber());
+}
+
+TEST_F(NetlinkManagerTest, PendingDump_Timeout) {
+  // These two messages will be sent one after another.
+  GetStationMessage get_station_message_1;
+  get_station_message_1.AddFlag(NLM_F_DUMP);
+  GetStationMessage get_station_message_2;
+  get_station_message_2.AddFlag(NLM_F_DUMP);
+  MockHandler80211 response_handler;
+  MockHandlerNetlinkAuxilliary auxilliary_handler;
+  MockHandlerNetlinkAck ack_handler;
+
+  // Send the first get station message, which should be sent immediately and
+  // trigger a pending dump.
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &get_station_message_1, response_handler.on_netlink_message(),
+      ack_handler.on_netlink_message(),
+      auxilliary_handler.on_netlink_message()));
+  uint16_t get_station_message_1_seq_num =
+      netlink_socket_->GetLastSequenceNumber();
+  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_EQ(1, netlink_manager_->pending_messages_.size());
+  EXPECT_EQ(get_station_message_1_seq_num,
+            netlink_manager_->PendingDumpSequenceNumber());
+
+  // Send the second get station message before the replies to the first
+  // get station message have been received. This should cause the message
+  // to be enqueued for later sending.
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).Times(0);
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &get_station_message_2, response_handler.on_netlink_message(),
+      ack_handler.on_netlink_message(),
+      auxilliary_handler.on_netlink_message()));
+  uint16_t get_station_message_2_seq_num =
+      netlink_socket_->GetLastSequenceNumber();
+  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_EQ(2, netlink_manager_->pending_messages_.size());
+  EXPECT_EQ(get_station_message_1_seq_num,
+            netlink_manager_->PendingDumpSequenceNumber());
+
+  // Timeout waiting for responses to the first get station message. This
+  // should cause the second get station message to be sent.
+  EXPECT_CALL(auxilliary_handler,
+              OnErrorHandler(NetlinkManager::kTimeoutWaitingForResponse, _));
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
+  netlink_manager_->OnPendingDumpTimeout();
+  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_EQ(1, netlink_manager_->pending_messages_.size());
+  EXPECT_EQ(get_station_message_2_seq_num,
+            netlink_manager_->PendingDumpSequenceNumber());
 }
 
 // Not strictly part of the "public" interface, but part of the
