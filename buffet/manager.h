@@ -32,6 +32,7 @@ namespace buffet {
 class CommandManager;
 class StateChangeQueue;
 class StateManager;
+class BuffetConfig;
 
 template<typename... Types>
 using DBusMethodResponse =
@@ -56,28 +57,23 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
 
  private:
   // DBus methods:
-  // Handles calls to org.chromium.Buffet.Manager.CheckDeviceRegistered().
   void CheckDeviceRegistered(DBusMethodResponse<std::string> response) override;
-  // Handles calls to org.chromium.Buffet.Manager.GetDeviceInfo().
   void GetDeviceInfo(DBusMethodResponse<std::string> response) override;
-  // Handles calls to org.chromium.Buffet.Manager.RegisterDevice().
   void RegisterDevice(DBusMethodResponse<std::string> response,
                       const chromeos::VariantDictionary& params) override;
-  // Handles calls to org.chromium.Buffet.Manager.UpdateState().
+  bool UpdateDeviceInfo(chromeos::ErrorPtr* error,
+                        const std::string& in_name,
+                        const std::string& in_description,
+                        const std::string& in_location) override;
   void UpdateState(DBusMethodResponse<> response,
                    const chromeos::VariantDictionary& property_set) override;
-  // Handles calls to org.chromium.Buffet.Manager.GetState().
   bool GetState(chromeos::ErrorPtr* error, std::string* state) override;
-  // Handles calls to org.chromium.Buffet.Manager.AddCommand().
   void AddCommand(DBusMethodResponse<std::string> response,
                   const std::string& json_command) override;
-  // Handles calls to org.chromium.Buffet.Manager.GetCommand().
   void GetCommand(DBusMethodResponse<std::string> response,
                   const std::string& id) override;
-  // Handles calls to org.chromium.Buffet.Manager.Test()
   std::string TestMethod(const std::string& message) override;
 
-  void OnRegistrationStatusChanged();
   void OnCommandDefsChanged();
 
   org::chromium::Buffet::ManagerAdaptor dbus_adaptor_{this};

@@ -21,6 +21,12 @@
       <arg name="device_id" type="s" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
+    <method name="UpdateDeviceInfo">
+      <arg name="name" type="s" direction="in"/>
+      <arg name="description" type="s" direction="in"/>
+      <arg name="location" type="s" direction="in"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
     <method name="UpdateState">
       <arg name="property_set" type="a{sv}" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
@@ -70,6 +76,36 @@
     <property name="CommandDefs" type="s" access="read">
       <tp:docstring>
         JSON with command definitions of the devices.
+      </tp:docstring>
+    </property>
+    <property name="OemName" type="s" access="read">
+      <tp:docstring>
+        Name of the device maker.
+      </tp:docstring>
+    </property>
+    <property name="ModelName" type="s" access="read">
+      <tp:docstring>
+        Name of the device model.
+      </tp:docstring>
+    </property>
+    <property name="ModelId" type="s" access="read">
+      <tp:docstring>
+        Five character code assigned by the cloud registry of device models.
+      </tp:docstring>
+    </property>
+    <property name="Name" type="s" access="read">
+      <tp:docstring>
+        Human readable name of the device. Must not be empty.
+      </tp:docstring>
+    </property>
+    <property name="Description" type="s" access="read">
+      <tp:docstring>
+        Human readable description of the device.
+      </tp:docstring>
+    </property>
+    <property name="Location" type="s" access="read">
+      <tp:docstring>
+        Location of the device.
       </tp:docstring>
     </property>
   </interface>

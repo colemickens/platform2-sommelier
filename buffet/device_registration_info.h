@@ -25,6 +25,14 @@
 #include "buffet/storage_interface.h"
 #include "buffet/xmpp/xmpp_client.h"
 
+namespace org {
+namespace chromium {
+namespace Buffet {
+class ManagerAdaptor;
+}
+}
+}
+
 namespace base {
 class DictionaryValue;
 }  // namespace base
@@ -55,7 +63,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
       const std::shared_ptr<chromeos::http::Transport>& transport,
       const std::shared_ptr<StorageInterface>& state_store,
       bool xmpp_enabled,
-      const base::Closure& on_status_changed);
+      org::chromium::Buffet::ManagerAdaptor* manager);
 
   ~DeviceRegistrationInfo() override;
 
@@ -134,6 +142,12 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   void UpdateCommand(const std::string& command_id,
                      const base::DictionaryValue& command_patch);
 
+  // Updates basic device information.
+  bool UpdateDeviceInfo(const std::string& name,
+                        const std::string& description,
+                        const std::string& location,
+                        chromeos::ErrorPtr* error);
+
  private:
   // Cause DeviceRegistrationInfo to attempt to StartDevice on its own later.
   void ScheduleStartDevice(const base::TimeDelta& later);
@@ -209,6 +223,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
 
   void SetRegistrationStatus(RegistrationStatus new_status);
   void SetDeviceId(const std::string& device_id);
+  void OnConfigChanged();
 
   // Data that is cached here, persisted in the state store.
   std::string refresh_token_;
@@ -236,7 +251,7 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
 
   // Tracks our current registration status.
   RegistrationStatus registration_status_{RegistrationStatus::kUnconfigured};
-  base::Closure on_status_changed_;
+  org::chromium::Buffet::ManagerAdaptor* manager_;
 
   base::RepeatingTimer<DeviceRegistrationInfo> command_poll_timer_;
   base::RepeatingTimer<DeviceRegistrationInfo> state_push_timer_;

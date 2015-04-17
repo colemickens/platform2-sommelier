@@ -25,6 +25,7 @@
 #include "buffet/commands/command_definition.h"
 #include "buffet/commands/command_manager.h"
 #include "buffet/device_registration_storage_keys.h"
+#include "buffet/org.chromium.Buffet.Manager.h"
 #include "buffet/states/state_manager.h"
 #include "buffet/utils.h"
 
@@ -127,14 +128,15 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<chromeos::http::Transport>& transport,
     const std::shared_ptr<StorageInterface>& state_store,
     bool xmpp_enabled,
-    const base::Closure& on_status_changed)
+    org::chromium::Buffet::ManagerAdaptor* manager)
     : transport_{transport},
       storage_{state_store},
       command_manager_{command_manager},
       state_manager_{state_manager},
       config_{std::move(config)},
       xmpp_enabled_{xmpp_enabled},
-      on_status_changed_{on_status_changed} {
+      manager_{manager} {
+  OnConfigChanged();
 }
 
 DeviceRegistrationInfo::~DeviceRegistrationInfo() = default;
@@ -197,6 +199,8 @@ bool DeviceRegistrationInfo::Load() {
   std::string device_id;
   if (dict->GetString(storage_keys::kDeviceId, &device_id))
     SetDeviceId(device_id);
+
+  OnConfigChanged();
 
   if (HaveRegistrationCredentials(nullptr)) {
     // Wait a significant amount of time for local daemons to publish their
@@ -455,25 +459,22 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   if (!GetWithDefault(params, "ticket_id", "", &ticket_id)) {
     chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainBuffet,
                            "missing_parameter",
-                           "Need ticket_id parameter for RegisterDevice().");
+                           "Need ticket_id parameter for RegisterDevice()");
     return std::string();
   }
+
   // These fields are optional, and will default to values from the manufacturer
   // supplied config.
   std::string name;
   GetWithDefault(params, storage_keys::kName, config_->name(), &name);
-  if (!name.empty())
-    config_->set_name(name);
-
   std::string description;
   GetWithDefault(params, storage_keys::kDescription, config_->description(),
                  &description);
-  config_->set_description(description);
-
   std::string location;
   GetWithDefault(params, storage_keys::kLocation, config_->location(),
                  &location);
-  config_->set_location(location);
+  if (!UpdateDeviceInfo(name, description, location, error))
+    return std::string();
 
   std::unique_ptr<base::DictionaryValue> device_draft =
       BuildDeviceResource(error);
@@ -745,6 +746,29 @@ void DeviceRegistrationInfo::StartDevice(
   UpdateDeviceResource(fetch_commands_cb, handle_start_device_failure_cb);
 }
 
+bool DeviceRegistrationInfo::UpdateDeviceInfo(const std::string& name,
+                                              const std::string& description,
+                                              const std::string& location,
+                                              chromeos::ErrorPtr* error) {
+  if (name.empty()) {
+    chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainBuffet,
+                           "invalid_parameter", "Empty device name");
+    return false;
+  }
+  config_->set_name(name);
+  config_->set_description(description);
+  config_->set_location(location);
+
+  OnConfigChanged();
+
+  if (HaveRegistrationCredentials(nullptr)) {
+    UpdateDeviceResource(base::Bind(&base::DoNothing),
+                         base::Bind(&IgnoreCloudError));
+  }
+
+  return true;
+}
+
 void DeviceRegistrationInfo::UpdateCommand(
     const std::string& command_id,
     const base::DictionaryValue& command_patch) {
@@ -929,20 +953,28 @@ void DeviceRegistrationInfo::PublishStateUpdates() {
 
 void DeviceRegistrationInfo::SetRegistrationStatus(
     RegistrationStatus new_status) {
-  if (new_status == registration_status_)
-    return;
-  VLOG(1) << "Changing registration status to " << StatusToString(new_status);
   registration_status_ = new_status;
-  if (!on_status_changed_.is_null())
-    on_status_changed_.Run();
+  if (manager_)
+    manager_->SetStatus(StatusToString(registration_status_));
+  VLOG_IF(1, new_status != registration_status_)
+      << "Changing registration status to " << StatusToString(new_status);
 }
 
 void DeviceRegistrationInfo::SetDeviceId(const std::string& device_id) {
-  if (device_id == device_id_)
-    return;
   device_id_ = device_id;
-  if (!on_status_changed_.is_null())
-    on_status_changed_.Run();
+  if (manager_)
+    manager_->SetDeviceId(device_id_);
+}
+
+void DeviceRegistrationInfo::OnConfigChanged() {
+  if (!manager_)
+    return;
+  manager_->SetOemName(config_->oem_name());
+  manager_->SetModelName(config_->model_name());
+  manager_->SetModelId(config_->model_id());
+  manager_->SetName(config_->name());
+  manager_->SetDescription(config_->description());
+  manager_->SetLocation(config_->location());
 }
 
 }  // namespace buffet

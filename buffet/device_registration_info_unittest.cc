@@ -197,20 +197,13 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     config_store.SetString("service_url", test_data::kServiceURL);
     std::unique_ptr<BuffetConfig> config{new BuffetConfig};
     config->Load(config_store);
-    auto mock_callback = base::Bind(
-        &DeviceRegistrationInfoTest::OnRegistrationStatusChange,
-        base::Unretained(this));
     dev_reg_ = std::unique_ptr<DeviceRegistrationInfo>(
         new DeviceRegistrationInfo(command_manager_, state_manager_,
                                    std::move(config),
                                    transport_, storage_,
                                    true,
-                                   mock_callback));
-    EXPECT_CALL(*this, OnRegistrationStatusChange())
-        .Times(testing::AnyNumber());
+                                   nullptr));
   }
-
-  MOCK_METHOD0(OnRegistrationStatusChange, void());
 
   base::DictionaryValue data_;
   std::shared_ptr<MemStorage> storage_;

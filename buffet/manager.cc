@@ -73,8 +73,7 @@ void Manager::Start(const base::FilePath& config_path,
           chromeos::http::Transport::CreateDefault(),
           std::move(state_store),
           xmpp_enabled,
-          base::Bind(&Manager::OnRegistrationStatusChanged,
-                     base::Unretained(this))));
+          &dbus_adaptor_));
   device_info_->Load();
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(cb);
@@ -213,10 +212,12 @@ std::string Manager::TestMethod(const std::string& message) {
   return message;
 }
 
-void Manager::OnRegistrationStatusChanged() {
-  dbus_adaptor_.SetStatus(
-      StatusToString(device_info_->GetRegistrationStatus()));
-  dbus_adaptor_.SetDeviceId(device_info_->GetDeviceId());
+bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* error,
+                               const std::string& in_name,
+                               const std::string& in_description,
+                               const std::string& in_location) {
+  return device_info_->UpdateDeviceInfo(in_name, in_description, in_location,
+                                        error);
 }
 
 void Manager::OnCommandDefsChanged() {
