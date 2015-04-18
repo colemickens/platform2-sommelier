@@ -79,8 +79,14 @@ bool DatabaseImpl::Write(const std::string& data) {
     LOG(ERROR) << "Cannot create directory: " << file_path.DirName().value();
     return false;
   }
-  base::ImportantFileWriter::WriteFileAtomically(file_path, data);
-  base::SetPosixFilePermissions(file_path, kDatabasePermissions);
+  if (!base::ImportantFileWriter::WriteFileAtomically(file_path, data)) {
+    LOG(ERROR) << "Failed to write file: " << file_path.value();
+    return false;
+  }
+  if (!base::SetPosixFilePermissions(file_path, kDatabasePermissions)) {
+    LOG(ERROR) << "Failed to set permissions for file: " << file_path.value();
+    return false;
+  }
   // Sync the parent directory.
   std::string dir_name = file_path.DirName().value();
   int dir_fd = HANDLE_EINTR(open(dir_name.c_str(), O_RDONLY|O_DIRECTORY));
