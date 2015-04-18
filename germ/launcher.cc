@@ -15,8 +15,6 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/minijail/minijail.h>
 
-#include "germ/environment.h"
-
 namespace {
 const char* kSandboxedServiceTemplate = "germ_template";
 const size_t kStdoutBufSize = 1024;
@@ -54,7 +52,11 @@ bool Launcher::RunInteractiveCommand(const std::string& name,
   // Minijail will use the underlying char* array as 'argv',
   // so null-terminate it.
   cmdline.push_back(nullptr);
-  return RunWithMinijail(cmdline, status);
+
+  uid_t uid = uid_service_->GetUid();
+  Environment env(uid, uid);
+
+  return RunWithMinijail(env, cmdline, status);
 }
 
 bool Launcher::RunInteractiveSpec(const soma::ReadOnlyContainerSpec& spec,
@@ -67,15 +69,15 @@ bool Launcher::RunInteractiveSpec(const soma::ReadOnlyContainerSpec& spec,
   // Minijail will use the underlying char* array as 'argv',
   // so null-terminate it.
   cmdline.push_back(nullptr);
-  return RunWithMinijail(cmdline, status);
+
+  Environment env(spec.executables()[0]->uid, spec.executables()[0]->gid);
+  return RunWithMinijail(env, cmdline, status);
 }
 
-bool Launcher::RunWithMinijail(const std::vector<char*>& cmdline, int* status) {
+bool Launcher::RunWithMinijail(const Environment& env,
+                               const std::vector<char*>& cmdline,
+                               int* status) {
   chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
-
-  uid_t uid = uid_service_->GetUid();
-  Environment env(uid, uid);
-
   return minijail->RunSyncAndDestroy(env.GetForInteractive(), cmdline,
                                      status);
 }
@@ -89,15 +91,14 @@ bool Launcher::RunDaemonized(const soma::ReadOnlyContainerSpec& spec,
     argv.push_back(cmdline_token);
   }
 
-  uid_t uid = uid_service_->GetUid();
-  Environment env(uid, uid);
+  Environment env(spec.executables()[0]->uid, spec.executables()[0]->gid);
 
   std::unique_ptr<chromeos::Process> initctl = GetProcessInstance();
   initctl->AddArg("/sbin/initctl");
   initctl->AddArg("start");
   initctl->AddArg(kSandboxedServiceTemplate);
   initctl->AddArg(base::StringPrintf("NAME=%s", spec.name().c_str()));
-  initctl->AddArg(env.GetForService());
+  initctl->AddArg(env.GetForDaemonized());
   std::string command_line = JoinString(argv, ' ');
   initctl->AddArg(base::StringPrintf("COMMANDLINE=%s", command_line.c_str()));
   initctl->RedirectUsingPipe(STDOUT_FILENO, false /* is_input */);

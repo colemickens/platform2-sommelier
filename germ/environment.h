@@ -22,8 +22,8 @@ class Environment {
   void SetEnterNewPidNamespace(bool enabled);
   void SetMountTmp(bool enabled);
 
-  std::string GetForService();
-  struct minijail* GetForInteractive();
+  std::string GetForDaemonized() const;
+  struct minijail* GetForInteractive() const;
 
  private:
   uid_t uid_;

@@ -14,6 +14,8 @@
 #include <chromeos/process.h>
 #include <soma/read_only_container_spec.h>
 
+#include "germ/environment.h"
+
 namespace germ {
 
 class UidService;
@@ -39,7 +41,9 @@ class Launcher {
   virtual std::unique_ptr<chromeos::Process> GetProcessInstance();
 
  private:
-  bool RunWithMinijail(const std::vector<char*>& cmdline, int* status);
+  bool RunWithMinijail(const Environment& env,
+                       const std::vector<char*>& cmdline,
+                       int* status);
 
   std::unique_ptr<UidService> uid_service_;
   std::unordered_map<pid_t, std::string> names_;

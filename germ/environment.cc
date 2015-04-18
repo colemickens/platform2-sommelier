@@ -24,13 +24,13 @@ void Environment::SetMountTmp(bool enabled) {
   do_mount_tmp_ = enabled;
 }
 
-std::string Environment::GetForService() {
+std::string Environment::GetForDaemonized() const {
   return base::StringPrintf("ENVIRONMENT=-u %d -g %d %s %s", uid_, gid_,
                             do_pid_namespace_ ? "-p" : "",
                             do_mount_tmp_ ? "-t" : "");
 }
 
-struct minijail* Environment::GetForInteractive() {
+struct minijail* Environment::GetForInteractive() const {
   struct minijail* env_description = env_manager_->New();
   env_manager_->DropRoot(env_description, uid_, gid_);
   if (do_pid_namespace_) {
