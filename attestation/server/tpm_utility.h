@@ -51,6 +51,15 @@ class TpmUtility {
                                   std::string* public_key_tpm_format,
                                   std::string* key_info,
                                   std::string* proof) = 0;
+
+  // Seals |data| to the current value of PCR0 with the SRK and produces the
+  // |sealed_data|. Returns true on success.
+  virtual bool SealToPCR0(const std::string& data,
+                          std::string* sealed_data) = 0;
+
+  // Unseals |sealed_data| previously sealed with the SRK and produces the
+  // unsealed |data|. Returns true on success.
+  virtual bool Unseal(const std::string& sealed_data, std::string* data) = 0;
 };
 
 }  // namespace attestation

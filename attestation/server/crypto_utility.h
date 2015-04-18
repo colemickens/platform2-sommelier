@@ -20,7 +20,7 @@ class CryptoUtility {
   // Creates a random |aes_key| and seals it to the TPM's PCR0, producing a
   // |sealed_key|. Returns true on success.
   virtual bool CreateSealedKey(std::string* aes_key,
-                               std::string* sealed_key) const = 0;
+                               std::string* sealed_key) = 0;
 
   // Encrypts the given |data| using the |aes_key|. The |sealed_key| will be
   // embedded in the |encrypted_data| to assist with decryption. It can be
@@ -29,7 +29,7 @@ class CryptoUtility {
   virtual bool EncryptData(const std::string& data,
                            const std::string& aes_key,
                            const std::string& sealed_key,
-                           std::string* encrypted_data) const = 0;
+                           std::string* encrypted_data) = 0;
 
   // Extracts and unseals the |aes_key| from the |sealed_key| embedded in
   // the given |encrypted_data|. The |sealed_key| is also provided as an output
@@ -37,13 +37,13 @@ class CryptoUtility {
   // Returns true on success.
   virtual bool UnsealKey(const std::string& encrypted_data,
                          std::string* aes_key,
-                         std::string* sealed_key) const = 0;
+                         std::string* sealed_key) = 0;
 
   // Decrypts |encrypted_data| using |aes_key|, producing the decrypted |data|.
   // Returns true on success.
   virtual bool DecryptData(const std::string& encrypted_data,
                            const std::string& aes_key,
-                           std::string* data) const = 0;
+                           std::string* data) = 0;
 };
 
 }  // namespace attestation

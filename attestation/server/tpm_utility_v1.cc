@@ -22,6 +22,7 @@
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
+using trousers::ScopedTssPcrs;
 
 namespace {
 
@@ -38,6 +39,14 @@ std::string GetFirstByte(const char* file_name) {
     content.resize(1);
   }
   return content;
+}
+
+BYTE* StringAsTSSBuffer(std::string* s) {
+  return reinterpret_cast<BYTE*>(string_as_array(s));
+}
+
+std::string TSSBufferAsString(const BYTE* buffer, size_t length) {
+  return std::string(reinterpret_cast<const char*>(buffer), length);
 }
 
 }  // namespace
@@ -103,8 +112,8 @@ bool TpmUtilityV1::ActivateIdentity(const std::string& delegate_blob,
   }
   // Load the AIK (which is wrapped by the SRK).
   std::string mutable_identity_key_blob(identity_key_blob);
-  BYTE* identity_key_blob_buffer = reinterpret_cast<BYTE*>(string_as_array(
-      &mutable_identity_key_blob));
+  BYTE* identity_key_blob_buffer = StringAsTSSBuffer(
+      &mutable_identity_key_blob);
   ScopedTssKey identity_key(context_handle_);
   result = Tspi_Context_LoadKeyByBlob(
       context_handle_,
@@ -117,11 +126,10 @@ bool TpmUtilityV1::ActivateIdentity(const std::string& delegate_blob,
     return false;
   }
   std::string mutable_asym_ca_contents(asym_ca_contents);
-  BYTE* asym_ca_contents_buffer = reinterpret_cast<BYTE*>(string_as_array(
-      &mutable_asym_ca_contents));
+  BYTE* asym_ca_contents_buffer = StringAsTSSBuffer(&mutable_asym_ca_contents);
   std::string mutable_sym_ca_attestation(sym_ca_attestation);
-  BYTE* sym_ca_attestation_buffer = reinterpret_cast<BYTE*>(string_as_array(
-      &mutable_sym_ca_attestation));
+  BYTE* sym_ca_attestation_buffer = StringAsTSSBuffer(
+      &mutable_sym_ca_attestation);
   UINT32 credential_length = 0;
   ScopedTssMemory credential_buffer(context_handle_);
   result = Tspi_TPM_ActivateIdentity(tpm_handle, identity_key,
@@ -135,8 +143,8 @@ bool TpmUtilityV1::ActivateIdentity(const std::string& delegate_blob,
     TPM_LOG(ERROR, result) << __func__ << ": Failed to activate identity.";
     return false;
   }
-  credential->assign(reinterpret_cast<const char*>(credential_buffer.value()),
-                     credential_length);
+  credential->assign(TSSBufferAsString(credential_buffer.value(),
+                                       credential_length));
   return true;
 }
 
@@ -202,8 +210,7 @@ bool TpmUtilityV1::CreateCertifiedKey(KeyType key_type,
   memset(&validation, 0, sizeof(validation));
   validation.ulExternalDataLength = external_data.size();
   std::string mutable_external_data(external_data);
-  validation.rgbExternalData = reinterpret_cast<BYTE*>(string_as_array(
-      &mutable_external_data));
+  validation.rgbExternalData = StringAsTSSBuffer(&mutable_external_data);
   result = Tspi_Key_CertifyKey(key, identity_key, &validation);
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << __func__ << ": Failed to certify key.";
@@ -236,12 +243,115 @@ bool TpmUtilityV1::CreateCertifiedKey(KeyType key_type,
   }
 
   // Get the data that was certified.
-  key_info->assign(reinterpret_cast<const char*>(validation.rgbData),
-                   validation.ulDataLength);
+  key_info->assign(TSSBufferAsString(validation.rgbData,
+                                     validation.ulDataLength));
 
   // Get the certification proof.
-  proof->assign(reinterpret_cast<const char*>(validation.rgbValidationData),
-                validation.ulValidationDataLength);
+  proof->assign(TSSBufferAsString(validation.rgbValidationData,
+                                  validation.ulValidationDataLength));
+  return true;
+}
+
+bool TpmUtilityV1::SealToPCR0(const std::string& data,
+                              std::string* sealed_data) {
+  CHECK(sealed_data);
+
+  // Create a PCRS object which holds the value of PCR0.
+  ScopedTssPcrs pcrs_handle(context_handle_);
+  TSS_RESULT result;
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(context_handle_,
+                                                   TSS_OBJECT_TYPE_PCRS,
+                                                   TSS_PCRS_STRUCT_INFO,
+                                                   pcrs_handle.ptr()))) {
+    TPM_LOG(ERROR, result)
+        << __func__ << ": Error calling Tspi_Context_CreateObject";
+    return false;
+  }
+  UINT32 pcr_length = 0;
+  ScopedTssMemory pcr_value(context_handle_);
+  Tspi_TPM_PcrRead(tpm_handle_, 0, &pcr_length, pcr_value.ptr());
+  Tspi_PcrComposite_SetPcrValue(pcrs_handle, 0, pcr_length, pcr_value.value());
+
+  // Create a ENCDATA object to receive the sealed data.
+  ScopedTssKey encrypted_data_handle(context_handle_);
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(
+      context_handle_,
+      TSS_OBJECT_TYPE_ENCDATA,
+      TSS_ENCDATA_SEAL,
+      encrypted_data_handle.ptr()))) {
+    TPM_LOG(ERROR, result)
+        << __func__ << ": Error calling Tspi_Context_CreateObject";
+    return false;
+  }
+
+  // Seal the given value with the SRK.
+  std::string mutable_data(data);
+  BYTE* data_buffer = StringAsTSSBuffer(&mutable_data);
+  if (TPM_ERROR(result = Tspi_Data_Seal(
+      encrypted_data_handle,
+      srk_handle_,
+      data.size(),
+      data_buffer,
+      pcrs_handle))) {
+    TPM_LOG(ERROR, result) << __func__ << ": Error calling Tspi_Data_Seal";
+    return false;
+  }
+
+  // Extract the sealed value.
+  ScopedTssMemory encrypted_data(context_handle_);
+  UINT32 encrypted_data_length = 0;
+  if (TPM_ERROR(result = Tspi_GetAttribData(encrypted_data_handle,
+                                            TSS_TSPATTRIB_ENCDATA_BLOB,
+                                            TSS_TSPATTRIB_ENCDATABLOB_BLOB,
+                                            &encrypted_data_length,
+                                            encrypted_data.ptr()))) {
+    TPM_LOG(ERROR, result) << __func__ << ": Error calling Tspi_GetAttribData";
+    return false;
+  }
+  sealed_data->assign(TSSBufferAsString(encrypted_data.value(),
+                                        encrypted_data_length));
+  return true;
+}
+
+bool TpmUtilityV1::Unseal(const std::string& sealed_data, std::string* data) {
+  CHECK(data);
+
+  // Create an ENCDATA object with the sealed value.
+  ScopedTssKey encrypted_data_handle(context_handle_);
+  TSS_RESULT result;
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(
+      context_handle_,
+      TSS_OBJECT_TYPE_ENCDATA,
+      TSS_ENCDATA_SEAL,
+      encrypted_data_handle.ptr()))) {
+    TPM_LOG(ERROR, result)
+        << __func__ << ": Error calling Tspi_Context_CreateObject";
+    return false;
+  }
+
+  std::string mutable_sealed_data(sealed_data);
+  BYTE* sealed_data_buffer = StringAsTSSBuffer(&mutable_sealed_data);
+  if (TPM_ERROR(result = Tspi_SetAttribData(encrypted_data_handle,
+      TSS_TSPATTRIB_ENCDATA_BLOB,
+      TSS_TSPATTRIB_ENCDATABLOB_BLOB,
+      sealed_data.size(),
+      sealed_data_buffer))) {
+    TPM_LOG(ERROR, result) << __func__ << ": Error calling Tspi_SetAttribData";
+    return false;
+  }
+
+  // Unseal using the SRK.
+  ScopedTssMemory decrypted_data(context_handle_);
+  UINT32 decrypted_data_length = 0;
+  if (TPM_ERROR(result = Tspi_Data_Unseal(encrypted_data_handle,
+                                          srk_handle_,
+                                          &decrypted_data_length,
+                                          decrypted_data.ptr()))) {
+    TPM_LOG(ERROR, result) << __func__ << ": Error calling Tspi_Data_Unseal";
+    return false;
+  }
+  data->assign(TSSBufferAsString(decrypted_data.value(),
+                                 decrypted_data_length));
   return true;
 }
 
@@ -283,8 +393,7 @@ bool TpmUtilityV1::ConnectContextAsDelegate(const std::string& delegate_blob,
     return false;
   }
   std::string mutable_delegate_secret(delegate_secret);
-  BYTE* secret_buffer = reinterpret_cast<BYTE*>(string_as_array(
-      &mutable_delegate_secret));
+  BYTE* secret_buffer = StringAsTSSBuffer(&mutable_delegate_secret);
   if (TPM_ERROR(result = Tspi_Policy_SetSecret(tpm_usage_policy,
                                                TSS_SECRET_MODE_PLAIN,
                                                delegate_secret.size(),
@@ -294,8 +403,7 @@ bool TpmUtilityV1::ConnectContextAsDelegate(const std::string& delegate_blob,
     return false;
   }
   std::string mutable_delegate_blob(delegate_blob);
-  BYTE* blob_buffer = reinterpret_cast<BYTE*>(string_as_array(
-      &mutable_delegate_blob));
+  BYTE* blob_buffer = StringAsTSSBuffer(&mutable_delegate_blob);
   if (TPM_ERROR(result = Tspi_SetAttribData(
       tpm_usage_policy,
       TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
@@ -358,8 +466,7 @@ bool TpmUtilityV1::LoadKeyFromBlob(const std::string& key_blob,
                                    TSS_HKEY parent_key_handle,
                                    ScopedTssKey* key_handle) {
   std::string mutable_key_blob(key_blob);
-  BYTE* key_blob_buffer = reinterpret_cast<BYTE*>(string_as_array(
-      &mutable_key_blob));
+  BYTE* key_blob_buffer = StringAsTSSBuffer(&mutable_key_blob);
   TSS_RESULT result = Tspi_Context_LoadKeyByBlob(
       context_handle_,
       parent_key_handle,
@@ -386,7 +493,7 @@ bool TpmUtilityV1::GetDataAttribute(TSS_HCONTEXT context,
     TPM_LOG(ERROR, result) << __func__ << "Failed to read object attribute.";
     return false;
   }
-  data->assign(reinterpret_cast<const char*>(buffer.value()), length);
+  data->assign(TSSBufferAsString(buffer.value(), length));
   return true;
 }
 
@@ -395,7 +502,7 @@ bool TpmUtilityV1::ConvertPublicKeyToDER(const std::string& public_key,
   // Parse the serialized TPM_PUBKEY.
   UINT64 offset = 0;
   std::string mutable_public_key(public_key);
-  BYTE* buffer = reinterpret_cast<BYTE*>(string_as_array(&mutable_public_key));
+  BYTE* buffer = StringAsTSSBuffer(&mutable_public_key);
   TPM_PUBKEY parsed;
   TSS_RESULT result = Trspi_UnloadBlob_PUBKEY(&offset, buffer, &parsed);
   if (TPM_ERROR(result)) {

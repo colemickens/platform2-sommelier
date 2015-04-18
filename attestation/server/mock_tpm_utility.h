@@ -34,6 +34,8 @@ class MockTpmUtility : public TpmUtility {
                                         std::string*,
                                         std::string*,
                                         std::string*));
+  MOCK_METHOD2(SealToPCR0, bool(const std::string&, std::string*));
+  MOCK_METHOD2(Unseal, bool(const std::string&, std::string*));
 };
 
 }  // namespace attestation

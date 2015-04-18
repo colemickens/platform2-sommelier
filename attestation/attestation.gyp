@@ -71,10 +71,21 @@
       'type': 'static_library',
       'sources': [
         'server/attestation_service.cc',
+        'server/crypto_utility_impl.cc',
         'server/dbus_service.cc',
         'server/database_impl.cc',
         'server/tpm_utility_v1.cc',
       ],
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            'openssl',
+          ],
+        },
+        'libraries': [
+          '-ltspi',
+        ],
+      },
       'dependencies': [
         'proto_library',
       ]
@@ -109,6 +120,7 @@
             'attestation_testrunner.cc',
             'client/dbus_proxy_test.cc',
             'server/attestation_service_test.cc',
+            'server/crypto_utility_impl_test.cc',
             'server/database_impl_test.cc',
             'server/dbus_service_test.cc',
             'server/mock_crypto_utility.cc',

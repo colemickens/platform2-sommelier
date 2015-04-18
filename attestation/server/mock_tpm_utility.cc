@@ -5,7 +5,17 @@
 #include "attestation/server/mock_tpm_utility.h"
 
 using ::testing::_;
+using ::testing::Invoke;
 using ::testing::Return;
+
+namespace {
+
+bool CopyString(const std::string& in, std::string* out) {
+  *out = in;
+  return true;
+}
+
+}  // namespace
 
 namespace attestation {
 
@@ -15,6 +25,10 @@ MockTpmUtility::MockTpmUtility() {
       .WillByDefault(Return(true));
   ON_CALL(*this, CreateCertifiedKey(_, _, _, _, _, _, _, _, _))
       .WillByDefault(Return(true));
+  ON_CALL(*this, SealToPCR0(_, _))
+      .WillByDefault(Invoke(CopyString));
+  ON_CALL(*this, Unseal(_, _))
+      .WillByDefault(Invoke(CopyString));
 }
 
 MockTpmUtility::~MockTpmUtility() {}

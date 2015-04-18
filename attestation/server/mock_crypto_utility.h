@@ -20,21 +20,21 @@ class MockCryptoUtility : public CryptoUtility {
 
   MOCK_CONST_METHOD2(GetRandom, bool(size_t, std::string*));
 
-  MOCK_CONST_METHOD2(CreateSealedKey, bool(std::string* aes_key,
-                                           std::string* sealed_key));
-
-  MOCK_CONST_METHOD4(EncryptData, bool(const std::string& data,
-                                       const std::string& aes_key,
-                                       const std::string& sealed_key,
-                                       std::string* encrypted_data));
-
-  MOCK_CONST_METHOD3(UnsealKey, bool(const std::string& encrypted_data,
-                                     std::string* aes_key,
+  MOCK_METHOD2(CreateSealedKey, bool(std::string* aes_key,
                                      std::string* sealed_key));
 
-  MOCK_CONST_METHOD3(DecryptData, bool(const std::string& encrypted_data,
-                                       const std::string& aes_key,
-                                       std::string* data));
+  MOCK_METHOD4(EncryptData, bool(const std::string& data,
+                                 const std::string& aes_key,
+                                 const std::string& sealed_key,
+                                 std::string* encrypted_data));
+
+  MOCK_METHOD3(UnsealKey, bool(const std::string& encrypted_data,
+                               std::string* aes_key,
+                               std::string* sealed_key));
+
+  MOCK_METHOD3(DecryptData, bool(const std::string& encrypted_data,
+                                 const std::string& aes_key,
+                                 std::string* data));
 };
 
 }  // namespace attestation
