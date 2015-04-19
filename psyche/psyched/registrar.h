@@ -44,9 +44,9 @@ class Registrar : public IPsychedHostInterface {
   void Init();
 
   // IPsychedHostInterface:
-  int RegisterService(RegisterServiceRequest* in,
-                      RegisterServiceResponse* out) override;
-  int RequestService(RequestServiceRequest* in) override;
+  Status RegisterService(RegisterServiceRequest* in,
+                         RegisterServiceResponse* out) override;
+  Status RequestService(RequestServiceRequest* in) override;
 
  private:
   // Performs some validation of |cell|, registers it in |cells_| and its

@@ -57,8 +57,8 @@ class DemoClient : public PsycheDaemon {
     psyche::PingRequest request;
     request.set_token(token_);
     psyche::PingResponse response;
-    const int result = server_->Ping(&request, &response);
-    if (result != 0)
+    Status result = server_->Ping(&request, &response);
+    if (!result)
       LOG(ERROR) << "Request yielded result of " << result;
     else
       LOG(INFO) << "Got " << response.token() << " from server";

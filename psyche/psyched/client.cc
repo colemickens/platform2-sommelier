@@ -66,11 +66,11 @@ void Client::SendServiceProxy(const std::string& service_name,
   request.set_name(service_name);
   if (service_proxy)
     protobinder::StoreBinderInProto(*service_proxy, request.mutable_binder());
-  int result = interface_->ReceiveService(&request);
-  if (result != 0) {
+  Status status = interface_->ReceiveService(&request);
+  if (!status) {
     LOG(WARNING) << "Failed to pass service \"" << service_name
                  << "\" to client with handle " << proxy_->handle()
-                 << "; got " << result;
+                 << "; got " << status;
   }
 }
 

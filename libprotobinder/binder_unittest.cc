@@ -15,7 +15,7 @@
 #include "libprotobinder/binder_driver_stub.h"
 #include "libprotobinder/binder_host.h"
 #include "libprotobinder/binder_proxy.h"
-#include "libprotobinder/protobinder.h"
+#include "libprotobinder/status.h"
 
 namespace protobinder {
 
@@ -71,17 +71,30 @@ class HostTest : public BinderHost {
   explicit HostTest(const base::Closure& closure)
       : transact_callback_(closure) {}
   ~HostTest() override {}
-  int OnTransact(uint32_t code,
-                 Parcel* data,
-                 Parcel* reply,
-                 bool one_way) override {
-    EXPECT_EQ(10, code);
-    int val = -1;
-    EXPECT_TRUE(data->ReadInt32(&val));
-    EXPECT_EQ(0xDEAD, val);
-    reply->WriteInt32(0xC0DE);
+
+  enum CommandCodes { GOOD_TRANSACTION = 1, BAD_TRANSACTION = 2 };
+
+  Status OnTransact(uint32_t code,
+                    Parcel* data,
+                    Parcel* reply,
+                    bool one_way) override {
     transact_callback_.Run();
-    return SUCCESS;
+    switch (code) {
+      case GOOD_TRANSACTION: {
+        int val = -1;
+        EXPECT_TRUE(data->ReadInt32(&val));
+        EXPECT_EQ(0xDEAD, val);
+        reply->WriteInt32(0xC0DE);
+        return STATUS_OK();
+      }
+      case BAD_TRANSACTION: {
+        return STATUS_APP_ERROR(0xDEAD, "Oh No..");
+      }
+      default:
+        NOTREACHED();
+    }
+    // Should never get here.
+    return STATUS_OK();
   }
 
  private:
@@ -94,25 +107,24 @@ TEST_F(BinderTest, BasicTransaction) {
   uint32_t handle = 0x1111;
   uint32_t code = 0x2222;
   bool one_way = true;
-  int ret;
 
-  ret = BinderManagerInterface::Get()->Transact(handle, code, data, nullptr,
-                                                one_way);
-  EXPECT_EQ(SUCCESS, ret);
+  Status status = BinderManagerInterface::Get()->Transact(handle, code, data,
+                                                          nullptr, one_way);
+  EXPECT_TRUE(status);
   CheckTransaction(driver_->LastTransactionData(), handle, code, one_way);
 
   handle = 0x3333;
   code = 0x4444;
-  ret = BinderManagerInterface::Get()->Transact(handle, code, data, nullptr,
-                                                one_way);
-  EXPECT_EQ(SUCCESS, ret);
+  status = BinderManagerInterface::Get()->Transact(handle, code, data, nullptr,
+                                                   one_way);
+  EXPECT_TRUE(status);
   CheckTransaction(driver_->LastTransactionData(), handle, code, one_way);
 
   handle = 0x5555;
   code = 0x6666;
-  ret = BinderManagerInterface::Get()->Transact(handle, code, data, nullptr,
-                                                one_way);
-  EXPECT_EQ(SUCCESS, ret);
+  status = BinderManagerInterface::Get()->Transact(handle, code, data, nullptr,
+                                                   one_way);
+  EXPECT_TRUE(status);
   CheckTransaction(driver_->LastTransactionData(), handle, code, one_way);
 
   EXPECT_EQ(0, driver_->LastTransactionData()->data_size);
@@ -124,11 +136,10 @@ TEST_F(BinderTest, DeadEndpointTransaction) {
   uint32_t handle = BinderDriverStub::BAD_ENDPOINT;
   uint32_t code = 0;
   bool one_way = true;
-  int ret;
 
-  ret = BinderManagerInterface::Get()->Transact(handle, code, data, nullptr,
-                                                one_way);
-  EXPECT_EQ(ERROR_DEAD_ENDPOINT, ret);
+  Status status = BinderManagerInterface::Get()->Transact(handle, code, data,
+                                                          nullptr, one_way);
+  EXPECT_FALSE(status);
   CheckTransaction(driver_->LastTransactionData(), handle, code, one_way);
 }
 
@@ -137,13 +148,12 @@ TEST_F(BinderTest, OneWayDataTransaction) {
   uint32_t handle = 0x1111;
   uint32_t code = 0x2222;
   bool one_way = true;
-  int ret;
 
   data.WriteInt32(100);
   data.WriteString("Yet Another IPC...");
-  ret = BinderManagerInterface::Get()->Transact(handle, code, data, nullptr,
-                                                one_way);
-  EXPECT_EQ(SUCCESS, ret);
+  Status status = BinderManagerInterface::Get()->Transact(handle, code, data,
+                                                          nullptr, one_way);
+  EXPECT_TRUE(status);
   CheckTransaction(driver_->LastTransactionData(), handle, code, one_way);
 
   // Check the data sent to the driver is correct.
@@ -161,15 +171,14 @@ TEST_F(BinderTest, OneWayDataAndObjectsTransaction) {
   uint32_t handle = 0x1111;
   uint32_t code = 0x2222;
   bool one_way = true;
-  int ret;
 
   data.WriteInt32(100);
   data.WriteString("Yet Another IPC...");
   data.WriteFd(10);
   data.WriteFd(20);
-  ret = BinderManagerInterface::Get()->Transact(handle, code, data, nullptr,
-                                                one_way);
-  EXPECT_EQ(SUCCESS, ret);
+  Status status = BinderManagerInterface::Get()->Transact(handle, code, data,
+                                                          nullptr, one_way);
+  EXPECT_TRUE(status);
   CheckTransaction(driver_->LastTransactionData(), handle, code, one_way);
 
   // Check that the data and offset buffers sent to the driver are correct.
@@ -194,11 +203,10 @@ TEST_F(BinderTest, TwoWayTransaction) {
   uint32_t handle = BinderDriverStub::GOOD_ENDPOINT;
   uint32_t code = 0;
   bool one_way = false;
-  int ret;
 
-  ret = BinderManagerInterface::Get()->Transact(handle, code, data, &reply,
-                                                one_way);
-  EXPECT_EQ(SUCCESS, ret);
+  Status status = BinderManagerInterface::Get()->Transact(handle, code, data,
+                                                          &reply, one_way);
+  EXPECT_TRUE(status);
   CheckTransaction(driver_->LastTransactionData(), handle, code, one_way);
 
   int val;
@@ -212,9 +220,25 @@ TEST_F(BinderTest, TwoWayTransaction) {
   EXPECT_TRUE(reply.IsEmpty());
 
   // Check one-way works on a call that replies with data.
-  ret = BinderManagerInterface::Get()->Transact(handle, code, data, nullptr,
-                                                true);
-  EXPECT_EQ(SUCCESS, ret);
+  status = BinderManagerInterface::Get()->Transact(handle, code, data, nullptr,
+                                                   true);
+  EXPECT_TRUE(status);
+}
+
+TEST_F(BinderTest, TwoWayTransactionStatus) {
+  Parcel data;
+  Parcel reply;
+  uint32_t handle = BinderDriverStub::STATUS_ENDPOINT;
+  uint32_t code = 0;
+  bool one_way = false;
+
+  Status status = BinderManagerInterface::Get()->Transact(handle, code, data,
+                                                          &reply, one_way);
+  ASSERT_FALSE(status);
+  ASSERT_TRUE(status.IsAppError());
+  EXPECT_EQ(BinderDriverStub::kReplyVal, status.application_status());
+
+  CheckTransaction(driver_->LastTransactionData(), handle, code, one_way);
 }
 
 TEST_F(BinderTest, Proxy) {
@@ -240,8 +264,8 @@ TEST_F(BinderTest, ProxyTransaction) {
   Parcel data;
   uint32_t code = 0x10;
 
-  int ret = proxy.Transact(code, &data, nullptr, true);
-  EXPECT_EQ(SUCCESS, ret);
+  Status status = proxy.Transact(code, &data, nullptr, true);
+  EXPECT_TRUE(status);
   CheckTransaction(driver_->LastTransactionData(),
                    BinderDriverStub::GOOD_ENDPOINT, code, true);
 }
@@ -267,7 +291,8 @@ TEST_F(BinderTest, HostOneWay) {
                            weak_ptr_factory_.GetWeakPtr()));
   Parcel data;
   data.WriteInt32(0xDEAD);
-  driver_->InjectTransaction((uintptr_t)&host, 10, data, true);
+  driver_->InjectTransaction(reinterpret_cast<uintptr_t>(&host),
+                             HostTest::GOOD_TRANSACTION, data, true);
   BinderManagerInterface::Get()->HandleEvent();
   EXPECT_TRUE(got_transact_callback_);
 }
@@ -279,13 +304,32 @@ TEST_F(BinderTest, HostTwoWay) {
                            weak_ptr_factory_.GetWeakPtr()));
   Parcel data;
   data.WriteInt32(0xDEAD);
-  driver_->InjectTransaction((uintptr_t)&host, 10, data, false);
+  driver_->InjectTransaction(reinterpret_cast<uintptr_t>(&host),
+                             HostTest::GOOD_TRANSACTION, data, false);
   BinderManagerInterface::Get()->HandleEvent();
   EXPECT_TRUE(got_transact_callback_);
 
   // Unfortunately the reply data has now gone out of scope,
   // but the size can still be validated.
   EXPECT_EQ(sizeof(uint32_t), driver_->LastTransactionData()->data_size);
+}
+
+TEST_F(BinderTest, HostTwoWayBadStatus) {
+  EXPECT_FALSE(got_transact_callback_);
+
+  HostTest host(
+      base::Bind(&BinderTest_HostTwoWayBadStatus_Test::HandleTransaction,
+                 weak_ptr_factory_.GetWeakPtr()));
+  Parcel data;
+  data.WriteInt32(0xDEAD);
+  driver_->InjectTransaction(reinterpret_cast<uintptr_t>(&host),
+                             HostTest::BAD_TRANSACTION, data, false);
+  BinderManagerInterface::Get()->HandleEvent();
+  EXPECT_TRUE(got_transact_callback_);
+
+  // Check to see if status code is set.
+  EXPECT_EQ(TF_STATUS_CODE,
+            driver_->LastTransactionData()->flags & TF_STATUS_CODE);
 }
 
 }  // namespace protobinder

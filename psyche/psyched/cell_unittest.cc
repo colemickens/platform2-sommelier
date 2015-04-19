@@ -32,9 +32,7 @@ class GermInterfaceStub : public germ::IGerm {
  public:
   GermInterfaceStub()
       : launch_return_value_(0),
-        terminate_return_value_(0),
-        launch_success_(true),
-        terminate_success_(true) {}
+        terminate_return_value_(0) {}
   ~GermInterfaceStub() override = default;
 
   void set_launch_return_value(int value) { launch_return_value_ = value; }
@@ -52,18 +50,20 @@ class GermInterfaceStub : public germ::IGerm {
   }
 
   // IGerm:
-  int Launch(germ::LaunchRequest* in, germ::LaunchResponse* out) override {
-    out->set_success(launch_success_);
+  Status Launch(germ::LaunchRequest* in, germ::LaunchResponse* out) override {
     out->set_pid(launch_pid_);
     launched_cell_names_.push_back(in->spec().name());
-    return launch_return_value_;
+    return launch_return_value_
+               ? STATUS_APP_ERROR(launch_return_value_, "Launch Error")
+               : STATUS_OK();
   }
 
-  int Terminate(germ::TerminateRequest* in,
-                germ::TerminateResponse* out) override {
-    out->set_success(terminate_success_);
+  Status Terminate(germ::TerminateRequest* in,
+                   germ::TerminateResponse* out) override {
     terminated_cell_pids_.push_back(in->pid());
-    return terminate_return_value_;
+    return terminate_return_value_
+               ? STATUS_APP_ERROR(terminate_return_value_, "Terminate Error")
+               : STATUS_OK();
   }
 
  private:
@@ -73,14 +73,8 @@ class GermInterfaceStub : public germ::IGerm {
   // binder result returned by Terminate().
   int terminate_return_value_;
 
-  // germ success field returned by LaunchResponse.
-  bool launch_success_;
-
   // germ pid field returned by LaunchResponse.
   int launch_pid_;
-
-  // germ success field returned by TerminateResponse.
-  bool terminate_success_;
 
   // Cell names passed to Launch().
   std::vector<std::string> launched_cell_names_;

@@ -35,15 +35,15 @@ class BINDER_EXPORT BinderManagerStub : public BinderManagerInterface {
                         std::unique_ptr<IInterface> interface);
 
   // BinderManagerInterface:
-  int Transact(uint32_t handle,
-               uint32_t code,
-               const Parcel& data,
-               Parcel* reply,
-               bool one_way) override;
+  Status Transact(uint32_t handle,
+                  uint32_t code,
+                  const Parcel& data,
+                  Parcel* reply,
+                  bool one_way) override;
   void IncWeakHandle(uint32_t handle) override;
   void DecWeakHandle(uint32_t handle) override;
   bool GetFdForPolling(int* fd) override;
-  bool HandleEvent() override;
+  void HandleEvent() override;
   void RequestDeathNotification(BinderProxy* proxy) override;
   void ClearDeathNotification(BinderProxy* proxy) override;
   IInterface* CreateTestInterface(const IBinder* binder) override;

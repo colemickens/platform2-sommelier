@@ -203,7 +203,7 @@ void PrintUnmarshallCodeForBinderTree(Printer* printer,
             "message", FullNameVaribleName(node->parent->desc), "field",
             node->name, "index", node->is_repeated ? "i" : "");
         printer->Indent();
-        printer->Print("return -1;\n");
+        printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
         printer->Outdent();
 
         printer->Print(
@@ -219,7 +219,7 @@ void PrintUnmarshallCodeForBinderTree(Printer* printer,
             "message", FullNameVaribleName(node->parent->desc), "field",
             node->name, "index", node->is_repeated ? "i" : "");
         printer->Indent();
-        printer->Print("return -1;\n");
+        printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
         printer->Outdent();
 
         printer->Print(
@@ -242,7 +242,7 @@ void PrintUnmarshallCodeForBinderTree(Printer* printer,
         printer->Print("message_$message$->offset()))\n", "message",
                        FullNameVaribleName(node->desc));
         printer->Indent();
-        printer->Print("return -1;\n");
+        printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
         printer->Outdent();
         printer->Print("message_$message$->set_fd(fd);\n", "message",
                        FullNameVaribleName(node->desc));
@@ -253,7 +253,7 @@ void PrintUnmarshallCodeForBinderTree(Printer* printer,
         printer->Print("message_$message$->offset()))\n", "message",
                        FullNameVaribleName(node->desc));
         printer->Indent();
-        printer->Print("return -1;\n");
+        printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
         printer->Outdent();
 
         printer->Print(
@@ -352,6 +352,7 @@ void BidlCodeGenerator::PrintStandardHeaders(Printer* printer) const {
 void BidlCodeGenerator::PrintStandardIncludes(Printer* printer) const {
   printer->Print("#include <protobinder/iinterface.h>\n");
   printer->Print("#include <protobinder/parcel.h>\n");
+  printer->Print("#include <protobinder/status.h>\n");
   printer->Print("\n");
   printer->Print("#include <string.h>\n");
   printer->Print("\n");
@@ -374,7 +375,7 @@ bool BidlCodeGenerator::AddServiceToHeader(
   if (method_count > 0) {
     for (int i = 0; i < method_count; i++) {
       const MethodDescriptor* method = service->method(i);
-      printer->Print("virtual int ");
+      printer->Print("virtual Status ");
       printer->Print(method->name().c_str());
       printer->Print("(");
       printer->Print(FullName(method->input_type()).c_str());
@@ -398,10 +399,10 @@ bool BidlCodeGenerator::AddServiceToHeader(
                  " public:\n");
   printer->Indent();
 
-  printer->Print(vars, "virtual int OnTransact(uint32_t code,\n");
-  printer->Print(vars, "                       Parcel* data,\n");
-  printer->Print(vars, "                       Parcel* reply,\n");
-  printer->Print(vars, "                       bool one_way) {\n");
+  printer->Print(vars, "virtual Status OnTransact(uint32_t code,\n");
+  printer->Print(vars, "                          Parcel* data,\n");
+  printer->Print(vars, "                          Parcel* reply,\n");
+  printer->Print(vars, "                          bool one_way) {\n");
 
   printer->Indent();
 
@@ -409,14 +410,14 @@ bool BidlCodeGenerator::AddServiceToHeader(
   printer->Print("std::string function_name;\n");
   printer->Print("if (!data->ReadString(&function_name))\n");
   printer->Indent();
-  printer->Print("return -1;\n");
+  printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
   printer->Outdent();
 
   // Read the proto data.
   printer->Print("std::string data_string;\n");
   printer->Print("if (!data->ReadString(&data_string))\n");
   printer->Indent();
-  printer->Print("return -1;\n");
+  printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
   printer->Outdent();
 
   for (int i = 0; i < method_count; i++) {
@@ -429,7 +430,7 @@ bool BidlCodeGenerator::AddServiceToHeader(
     printer->Print(" in;\n");
     printer->Print("if (!in.ParseFromString(data_string))\n");
     printer->Indent();
-    printer->Print("return -1;\n");
+    printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PROTO);;\n");
     printer->Outdent();
 
     MessageNode in_message;
@@ -452,10 +453,11 @@ bool BidlCodeGenerator::AddServiceToHeader(
     } else {
       printer->Print(FullName(method->output_type()).c_str());
       printer->Print(" out;\n");
-      printer->Print("int ret = $name$(&in, &out);\n", "name", method->name());
-      printer->Print("if (ret < 0)\n");
+      printer->Print("Status status = $name$(&in, &out);\n", "name",
+                     method->name());
+      printer->Print("if (!status.IsOk())\n");
       printer->Indent();
-      printer->Print("return ret;\n");
+      printer->Print("return status;\n");
       printer->Outdent();
 
       MessageNode out_message;
@@ -480,21 +482,21 @@ bool BidlCodeGenerator::AddServiceToHeader(
       printer->Print("std::string reply_string;\n");
       printer->Print("if (!out.SerializeToString(&reply_string))\n");
       printer->Indent();
-      printer->Print("return -1;\n");
+      printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PROTO);\n");
       printer->Outdent();
 
       printer->Print("if (!reply->WriteString(reply_string))\n");
       printer->Indent();
-      printer->Print("return -1;\n");
+      printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
       printer->Outdent();
 
       if (out_message.contains_objects) {
         printer->Print("if (!reply->WriteParcel(&object_parcel))\n");
         printer->Indent();
-        printer->Print("return -1;\n");
+        printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
         printer->Outdent();
       }
-      printer->Print("return ret;\n");
+      printer->Print("return status;\n");
     }
 
     printer->Outdent();
@@ -575,7 +577,7 @@ bool BidlCodeGenerator::AddServiceToSource(
 
   for (int i = 0; i < method_count; i++) {
     const MethodDescriptor* method = service->method(i);
-    printer->Print("virtual int ");
+    printer->Print("virtual Status ");
     printer->Print(method->name().c_str());
     printer->Print("(");
     printer->Print(FullName(method->input_type()).c_str());
@@ -609,7 +611,7 @@ bool BidlCodeGenerator::AddServiceToSource(
     printer->Print("std::string in_string;\n");
     printer->Print("if (!in->SerializeToString(&in_string))\n");
     printer->Indent();
-    printer->Print("return -1;\n");
+    printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PROTO);\n");
     printer->Outdent();
 
     printer->Print("Parcel data, reply;\n");
@@ -618,46 +620,46 @@ bool BidlCodeGenerator::AddServiceToSource(
     printer->Print("if (!data.WriteString(\"$name$\"))\n", "name",
                    method->name());
     printer->Indent();
-    printer->Print("return -1;\n");
+    printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
     printer->Outdent();
 
     // Write proto data.
     printer->Print("if (!data.WriteString(in_string))\n");
     printer->Indent();
-    printer->Print("return -1;\n");
+    printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
     printer->Outdent();
 
     if (in_message.contains_objects) {
       printer->Print("if (!data.WriteParcel(&object_parcel))\n");
       printer->Indent();
-      printer->Print("return -1;\n");
+      printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
       printer->Outdent();
     }
 
     printer->Print("if (!Remote())\n");
     printer->Indent();
-    printer->Print("return -7;\n");
+    printer->Print("return STATUS_BINDER_ERROR(Status::ENDPOINT_NOT_SET);\n");
     printer->Outdent();
 
     if (IsOneWay(method->output_type())) {
       printer->Print("return Remote()->Transact(0, &data, &reply, true);\n");
     } else {
       printer->Print(
-          "int ret = Remote()->Transact(0, &data, &reply, false);\n");
-      printer->Print("if (ret < 0)\n");
+          "Status status = Remote()->Transact(0, &data, &reply, false);\n");
+      printer->Print("if (!status.IsOk())\n");
       printer->Indent();
-      printer->Print("return ret;\n");
+      printer->Print("return status;\n");
       printer->Outdent();
 
       printer->Print("std::string out_string;\n");
       printer->Print("if (!reply.ReadString(&out_string))\n");
       printer->Indent();
-      printer->Print("return -1;\n");
+      printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
       printer->Outdent();
 
       printer->Print("if (!out->ParseFromString(out_string))\n");
       printer->Indent();
-      printer->Print("return -1;\n");
+      printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PROTO);\n");
       printer->Outdent();
 
       // correct objects
@@ -676,7 +678,7 @@ bool BidlCodeGenerator::AddServiceToSource(
         printer->Print(" = out;\n");
         PrintUnmarshallCodeForBinderTree(printer, &out_message, 0, true);
       }
-      printer->Print("return ret;\n");
+      printer->Print("return status;\n");
     }
 
     printer->Outdent();

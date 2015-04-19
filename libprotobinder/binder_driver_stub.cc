@@ -13,6 +13,8 @@
 
 #include <base/logging.h>
 
+#include "libprotobinder/status.h"
+
 namespace protobinder {
 
 const int BinderDriverStub::kReplyVal = 0xDEAD;
@@ -218,14 +220,22 @@ void BinderDriverStub::ProcessTransaction(struct binder_transaction_data* tr) {
 
   return_cmds_.WriteInt32(BR_TRANSACTION_COMPLETE);
 
-  if (tr->target.handle == GOOD_ENDPOINT && ((tr->flags & TF_ONE_WAY) == 0)) {
+  if ((tr->target.handle == GOOD_ENDPOINT ||
+       tr->target.handle == STATUS_ENDPOINT) &&
+      ((tr->flags & TF_ONE_WAY) == 0)) {
     std::unique_ptr<Parcel> reply_parcel(new Parcel);
-    reply_parcel->WriteInt32(kReplyVal);
-    reply_parcel->WriteString(kReplyString);
-
     struct binder_transaction_data reply_data;
-
     memset(&reply_data, 0, sizeof(reply_data));
+
+    if (tr->target.handle == GOOD_ENDPOINT) {
+      reply_parcel->WriteInt32(kReplyVal);
+      reply_parcel->WriteString(kReplyString);
+    } else {
+      reply_data.flags |= TF_STATUS_CODE;
+      Status status = STATUS_APP_ERROR(kReplyVal, kReplyString);
+      status.AddToParcel(reply_parcel.get());
+    }
+
     reply_data.data.ptr.buffer = (binder_uintptr_t)reply_parcel->Data();
     reply_data.data_size = reply_parcel->Len();
 

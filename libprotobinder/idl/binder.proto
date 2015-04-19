@@ -10,6 +10,15 @@ message BinderFd {
 message StrongBinder {
   required uint64 ibinder = 1;
   required uint64 offset = 2;
+
 }
 
 message NoResponse {}
+
+message StatusMessage {
+  optional int32 binder_status = 1;
+  optional int32 app_status = 2;
+  optional string error_message = 3;
+  optional int32 line = 4;
+  optional string file = 5;
+}

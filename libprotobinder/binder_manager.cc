@@ -12,7 +12,9 @@
 #include "libprotobinder/binder_host.h"
 #include "libprotobinder/binder_proxy.h"
 #include "libprotobinder/iinterface.h"
-#include "libprotobinder/protobinder.h"
+
+// Generated IDL
+#include "libprotobinder/binder.pb.h"
 
 namespace protobinder {
 
@@ -85,23 +87,20 @@ IInterface* BinderManager::CreateTestInterface(const IBinder* binder) {
   return nullptr;
 }
 
-int BinderManager::SendReply(const Parcel& reply, int error_code) {
-  Parcel err_reply;
-  int ret = -1;
-  if (error_code < 0) {
-    err_reply.WriteInt32(error_code);
-    ret = SetUpTransaction(true, -1, 0, err_reply, TF_STATUS_CODE);
+Status BinderManager::SendReply(const Parcel& reply, const Status& status) {
+  if (!status) {
+    Parcel status_reply;
+    status.AddToParcel(&status_reply);
+    SetUpTransaction(true, -1, 0, status_reply, TF_STATUS_CODE);
   } else {
-    ret = SetUpTransaction(true, -1, 0, reply, 0);
+    SetUpTransaction(true, -1, 0, reply, 0);
   }
-  if (ret < 0)
-    return ret;
 
   return WaitAndActionReply(NULL);
 }
 
 // Process a single command from binder.
-int BinderManager::ProcessCommand(uint32_t cmd) {
+void BinderManager::ProcessCommand(uint32_t cmd) {
   uintptr_t ptr = 0;
   switch (cmd) {
     case BR_NOOP:
@@ -143,101 +142,118 @@ int BinderManager::ProcessCommand(uint32_t cmd) {
       VLOG(1) << "BR_ERROR";
       uint32_t error_code = 0;
       in_commands_.ReadUInt32(&error_code);
-      return false;
+      LOG(ERROR) << "Received BR_ERROR code " << error_code;
     } break;
     case BR_TRANSACTION: {
       VLOG(1) << "BR_TRANSACTION";
       binder_transaction_data tr;
       if (!in_commands_.Read(&tr, sizeof(tr)))
-        return false;
+        LOG(FATAL) << "Binder Transaction contains no data";
 
       Parcel data;
       if (!data.InitFromBinderTransaction(
               reinterpret_cast<void*>(tr.data.ptr.buffer), tr.data_size,
               reinterpret_cast<binder_size_t*>(tr.data.ptr.offsets),
               tr.offsets_size, base::Bind(&BinderManager::ReleaseParcel,
-                                          weak_ptr_factory_.GetWeakPtr())))
-        return false;
+                                          weak_ptr_factory_.GetWeakPtr()))) {
+        LOG(ERROR) << "Failed to create parcel from Transaction";
+        break;
+      }
 
       Parcel reply;
-      int err = SUCCESS;
+      // TODO(leecam): This code get refactored in memory CL,
+      // so leave the mess until then.
+      Status status = STATUS_OK();
       if (tr.target.ptr) {
         BinderHost* binder(reinterpret_cast<BinderHost*>(tr.cookie));
-        err = binder->Transact(tr.code, &data, &reply, tr.flags);
+        status = binder->Transact(tr.code, &data, &reply, tr.flags);
       }
       if ((tr.flags & TF_ONE_WAY) == 0)
-        SendReply(reply, err);
+        SendReply(reply, status);
     } break;
     default:
-      LOG(ERROR) << "Unknown command " << cmd;
+      LOG(FATAL) << "Unknown binder command " << cmd;
   }
-  return true;
 }
 
-int BinderManager::WaitAndActionReply(Parcel* reply) {
+Status BinderManager::HandleReply(const binder_transaction_data& tr,
+                                  Parcel* reply) {
+  DCHECK(reply);
+
+  if ((tr.flags & TF_STATUS_CODE) == 0) {
+    // This is a successful reply.
+    if (!reply->InitFromBinderTransaction(
+            reinterpret_cast<void*>(tr.data.ptr.buffer), tr.data_size,
+            reinterpret_cast<binder_size_t*>(tr.data.ptr.offsets),
+            tr.offsets_size, base::Bind(&BinderManager::ReleaseParcel,
+                                        weak_ptr_factory_.GetWeakPtr())))
+      return STATUS_BINDER_ERROR(Status::BAD_PARCEL);
+    return STATUS_OK();
+  }
+  // Else this reply contains a Status.
+  Parcel status_parcel;
+  if (!status_parcel.InitFromBinderTransaction(
+          reinterpret_cast<void*>(tr.data.ptr.buffer), tr.data_size,
+          reinterpret_cast<binder_size_t*>(tr.data.ptr.offsets),
+          tr.offsets_size, base::Bind(&BinderManager::ReleaseParcel,
+                                      weak_ptr_factory_.GetWeakPtr())))
+    return STATUS_BINDER_ERROR(Status::BAD_PARCEL);
+
+  return Status(&status_parcel);
+}
+
+Status BinderManager::WaitAndActionReply(Parcel* reply) {
+  // Loop until:
+  // * On error and bail.
+  // * On Transaction Complete if we don't require a reply.
+  // * On reply.
   while (1) {
-    if (!DoBinderReadWriteIoctl(true))
-      break;
+    DoBinderReadWriteIoctl(true);
     uint32_t cmd = 0;
     if (!in_commands_.ReadUInt32(&cmd)) {
-      return ERROR_CMD_PARCEL;
+      LOG(FATAL) << "Binder Cmd contains no data";
     }
-    VLOG(1) << "Got reply command " << cmd;
     switch (cmd) {
       case BR_TRANSACTION_COMPLETE:
         VLOG(1) << "Cmd BR_TRANSACTION_COMPLETE";
         if (!reply)
-          return SUCCESS;
+          return STATUS_OK();
         break;
       case BR_DEAD_REPLY:
         VLOG(1) << "Cmd BR_DEAD_REPLY";
-        return ERROR_DEAD_ENDPOINT;
+        return STATUS_BINDER_ERROR(Status::DEAD_ENDPOINT);
       case BR_FAILED_REPLY:
         VLOG(1) << "Cmd BR_FAILED_REPLY";
-        return ERROR_FAILED_TRANSACTION;
+        return STATUS_BINDER_ERROR(Status::FAILED_TRANSACTION);
       case BR_REPLY: {
         VLOG(1) << "Cmd BR_REPLY";
         binder_transaction_data tr;
         if (!in_commands_.Read(&tr, sizeof(tr)))
-          return ERROR_REPLY_PARCEL;
-        int err = SUCCESS;
-        if (reply) {
-          if ((tr.flags & TF_STATUS_CODE) == 0) {
-            VLOG(1) << "Status code 4";
-            if (!reply->InitFromBinderTransaction(
-                    reinterpret_cast<void*>(tr.data.ptr.buffer), tr.data_size,
-                    reinterpret_cast<binder_size_t*>(tr.data.ptr.offsets),
-                    tr.offsets_size,
-                    base::Bind(&BinderManager::ReleaseParcel,
-                               weak_ptr_factory_.GetWeakPtr())))
-              err = ERROR_REPLY_PARCEL;
-          } else {
-            VLOG(1) << "Status code 1";
-            err = *reinterpret_cast<const int*>(tr.data.ptr.buffer);
-            VLOG(1) << "Status code 2";
-            ReleaseBinderBuffer(
-                reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer));
-          }
-        } else {
+          LOG(FATAL) << "Binder Reply cmd contains no data";
+        if (!reply) {
+          // We received an unexpected reply. This could be a reply
+          // left over from one-way call, where a reply was actually
+          // returned. Need to free it and continue to loop looking
+          // for a Transaction Complete.
           ReleaseBinderBuffer(
               reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer));
-          continue;
+          LOG(WARNING) << "Received unexpected reply";
+          break;
         }
-        return err;
-      } break;
+        return HandleReply(tr, reply);
+      }
       default:
         ProcessCommand(cmd);
-        break;
     }
   }
-  return true;
+  NOTREACHED();
 }
 
-int BinderManager::SetUpTransaction(bool is_reply,
-                                    uint32_t handle,
-                                    uint32_t code,
-                                    const Parcel& data,
-                                    uint32_t flags) {
+void BinderManager::SetUpTransaction(bool is_reply,
+                                     uint32_t handle,
+                                     uint32_t code,
+                                     const Parcel& data,
+                                     uint32_t flags) {
   binder_transaction_data tr;
 
   tr.target.ptr = 0;
@@ -256,29 +272,26 @@ int BinderManager::SetUpTransaction(bool is_reply,
 
   const uint32_t command = is_reply ? BC_REPLY : BC_TRANSACTION;
   if (!out_commands_.WriteInt32(command))
-    return ERROR_CMD_PARCEL;
+    LOG(FATAL) << "binder cmd parcel failure";
   if (!out_commands_.Write(&tr, sizeof(tr)))
-    return ERROR_CMD_PARCEL;
-  return SUCCESS;
+    LOG(FATAL) << "binder cmd parcel failure";
 }
 
-int BinderManager::Transact(uint32_t handle,
-                            uint32_t code,
-                            const Parcel& data,
-                            Parcel* reply,
-                            bool one_way) {
+Status BinderManager::Transact(uint32_t handle,
+                               uint32_t code,
+                               const Parcel& data,
+                               Parcel* reply,
+                               bool one_way) {
   int flags = TF_ACCEPT_FDS;
   if (one_way) {
     flags |= TF_ONE_WAY;
     reply = nullptr;
   }
-  const int ret = SetUpTransaction(false, handle, code, data, flags);
-  if (ret < 0)
-    return ret;
+  SetUpTransaction(false, handle, code, data, flags);
   return WaitAndActionReply(reply);
 }
 
-bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
+void BinderManager::DoBinderReadWriteIoctl(bool do_read) {
   // Create a binder_write_read command and send it to binder
   struct binder_write_read bwr;
 
@@ -308,12 +321,11 @@ bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
   bwr.read_consumed = 0;
 
   if ((bwr.write_size == 0) && (bwr.read_size == 0)) {
-    return true;
+    // Nothing to do.
+    return;
   }
-  VLOG(1) << "Doing ioctl";
   if (driver_->ReadWrite(&bwr) < 0) {
-    LOG(ERROR) << "driver ReadWrite failed";
-    return false;
+    LOG(FATAL) << "Driver ReadWrite failed";
   }
   VLOG(1) << base::StringPrintf("Binder data R:%lld/%lld W:%lld/%lld",
                                 bwr.read_consumed, bwr.read_size,
@@ -325,8 +337,7 @@ bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
   if (bwr.write_consumed > 0) {
     if (bwr.write_consumed < out_commands_.Len()) {
       // Didn't take all of our data
-      LOG(ERROR) << "Binder did not consume all data";
-      exit(0);
+      LOG(FATAL) << "Binder did not consume all data";
     } else {
       out_commands_.SetLen(0);
       out_commands_.SetPos(0);
@@ -334,8 +345,6 @@ bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
     in_commands_.SetLen(bwr.read_consumed);
     in_commands_.SetPos(0);
   }
-
-  return true;
 }
 
 bool BinderManager::GetFdForPolling(int* fd) {
@@ -345,26 +354,25 @@ bool BinderManager::GetFdForPolling(int* fd) {
   return true;
 }
 
-bool BinderManager::GetNextCommandAndProcess() {
+void BinderManager::GetNextCommandAndProcess() {
   DoBinderReadWriteIoctl(true);
   uint32_t cmd = 0;
   if (!in_commands_.ReadUInt32(&cmd))
-    return false;
-  return ProcessCommand(cmd);
+    LOG(FATAL) << "Binder driver failed to provide a cmd code";
+  ProcessCommand(cmd);
 }
 
-bool BinderManager::HandleEvent() {
+void BinderManager::HandleEvent() {
   // Process all the commands
   do {
     GetNextCommandAndProcess();
   } while (!in_commands_.IsEmpty());
 
-  return DoBinderReadWriteIoctl(false);
+  DoBinderReadWriteIoctl(false);
 }
 
 BinderManager::BinderManager(std::unique_ptr<BinderDriverInterface> driver)
-    : driver_(std::move(driver)),
-      weak_ptr_factory_(this) {
+    : driver_(std::move(driver)), weak_ptr_factory_(this) {
   VLOG(1) << "BinderManager created";
   in_commands_.SetCapacity(256);
   out_commands_.SetCapacity(256);

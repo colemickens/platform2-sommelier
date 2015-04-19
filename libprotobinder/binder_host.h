@@ -8,7 +8,8 @@
 #include <stdint.h>
 
 #include "binder_export.h"  // NOLINT(build/include)
-#include "ibinder.h"  // NOLINT(build/include)
+#include "ibinder.h"        // NOLINT(build/include)
+#include "status.h"         // NOLINT(build/include)
 
 namespace protobinder {
 
@@ -22,20 +23,20 @@ class BINDER_EXPORT BinderHost : public IBinder {
   BinderHost();
 
   // IBinder overrides:
-  int Transact(uint32_t code,
-               Parcel* data,
-               Parcel* reply,
-               bool one_way) override;
+  Status Transact(uint32_t code,
+                  Parcel* data,
+                  Parcel* reply,
+                  bool one_way) override;
   const BinderHost* GetBinderHost() const override;
 
  protected:
   ~BinderHost() override;
 
   // Implemented by generated code and called by Transact().
-  virtual int OnTransact(uint32_t code,
-                         Parcel* data,
-                         Parcel* reply,
-                         bool one_way);
+  virtual Status OnTransact(uint32_t code,
+                            Parcel* data,
+                            Parcel* reply,
+                            bool one_way);
 };
 
 }  // namespace protobinder

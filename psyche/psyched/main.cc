@@ -46,11 +46,11 @@ class Daemon : public chromeos::Daemon {
     binder_watcher_.reset(new protobinder::BinderWatcher);
 
     registrar_.Init();
-    result = protobinder::GetServiceManager()->AddService(
+    Status status = protobinder::GetServiceManager()->AddService(
         psyche::kPsychedServiceManagerName, &registrar_);
-    if (result != 0) {
+    if (!status) {
       LOG(ERROR) << "Unable to register with service manager; RPC returned "
-                 << result;
+                 << status;
       return EX_UNAVAILABLE;
     }
 

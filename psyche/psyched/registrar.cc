@@ -79,8 +79,8 @@ void Registrar::Init() {
     factory_.reset(new RealFactory(germ_.get()));
 }
 
-int Registrar::RegisterService(RegisterServiceRequest* in,
-                               RegisterServiceResponse* out) {
+Status Registrar::RegisterService(RegisterServiceRequest* in,
+                                  RegisterServiceResponse* out) {
   const std::string service_name = in->name();
   std::unique_ptr<BinderProxy> proxy =
       protobinder::ExtractBinderFromProto(in->mutable_binder());
@@ -88,9 +88,9 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
             << "handle " << proxy->handle();
 
   if (service_name.empty()) {
-    LOG(WARNING) << "Ignoring request to register service with invalid name";
-    out->set_success(false);
-    return 0;
+    return STATUS_APP_ERROR_LOG(
+        logging::LOG_WARNING, RegisterServiceResponse::INVALID_NAME,
+        "Ignoring request to register service with invalid name");
   }
 
   if (service_name == soma::kSomaServiceName) {
@@ -100,12 +100,10 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
     // that the specs are the same if it crashes and gets restarted.
     if (!was_registered)
       CreatePersistentCells();
-    out->set_success(true);
-    return 0;
+    return STATUS_OK();
   } else if (service_name == germ::kGermServiceName) {
     germ_->SetProxy(std::move(proxy));
-    out->set_success(true);
-    return 0;
+    return STATUS_OK();
   }
 
   ServiceInterface* service =
@@ -114,10 +112,10 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
     // The service is already known, but maybe its proxy wasn't registered or
     // has died.
     if (service->GetProxy()) {
-      LOG(WARNING) << "Ignoring request to register already-registered "
-                   << "service \"" << service_name << "\"";
-      out->set_success(false);
-      return 0;
+      return STATUS_APP_ERROR_LOG(
+          logging::LOG_WARNING, RegisterServiceResponse::ALREADY_REGISTERED,
+          "Ignoring request to register already-registered service " +
+              service_name);
     }
   } else {
     // This service wasn't already registered or claimed by a cell that we
@@ -132,11 +130,10 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
   DCHECK(service);
   service->SetProxy(std::move(proxy));
 
-  out->set_success(true);
-  return 0;
+  return STATUS_OK();
 }
 
-int Registrar::RequestService(RequestServiceRequest* in) {
+Status Registrar::RequestService(RequestServiceRequest* in) {
   const std::string service_name = in->name();
   std::unique_ptr<BinderProxy> client_proxy =
       protobinder::ExtractBinderFromProto(in->mutable_client_binder());
@@ -163,7 +160,7 @@ int Registrar::RequestService(RequestServiceRequest* in) {
     // TODO(derat): Drop the client immediately if it doesn't have any other
     // services? This would require updating some tests which currently inspect
     // the client after calling this method to check if failure was reported.
-    return 0;
+    return STATUS_OK();
   }
 
   // Check that the client didn't previously request this service.
@@ -172,7 +169,7 @@ int Registrar::RequestService(RequestServiceRequest* in) {
     client->AddService(service);
   }
 
-  return 0;
+  return STATUS_OK();
 }
 
 bool Registrar::AddCell(std::unique_ptr<CellInterface> cell) {

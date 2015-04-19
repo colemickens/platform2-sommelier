@@ -29,6 +29,9 @@ message GetContainerSpecRequest {
 }
 
 message GetContainerSpecResponse {
+  enum Error {
+    INVALID_NAME = 1;
+  }
   // Defined in soma_container_spec.proto.
   optional ContainerSpec container_spec = 1;
 }

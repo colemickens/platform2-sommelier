@@ -28,23 +28,24 @@ Soma::Soma(const base::FilePath& bundle_root)
     : root_(bundle_root), reader_(new parser::ContainerSpecReader) {
 }
 
-int Soma::GetContainerSpec(GetContainerSpecRequest* request,
-                           GetContainerSpecResponse* response) {
+Status Soma::GetContainerSpec(GetContainerSpecRequest* request,
+                              GetContainerSpecResponse* response) {
   const std::string& service_name(request->service_name());
   if (IsInvalid(service_name)) {
-    LOG(WARNING) << "Request must contain a valid name, not " << service_name;
-    return 1;
+    return STATUS_APP_ERROR_LOG(
+        logging::LOG_WARNING, GetContainerSpecResponse::INVALID_NAME,
+        "Request must contain a valid name, not " + service_name);
   }
   std::unique_ptr<ContainerSpec> spec = reader_->Read(NameToPath(service_name));
   if (spec)
     response->mutable_container_spec()->CheckTypeAndMergeFrom(*spec.get());
-  return 0;
+  return STATUS_OK();
 }
 
 // Running over all JSON files in the directory on every call might be
 // way too slow. If so, we could do it once at startup and then cache them,
 // possibly providing an RPC to make us refresh the cache.
-int Soma::GetPersistentContainerSpecs(
+Status Soma::GetPersistentContainerSpecs(
     GetPersistentContainerSpecsRequest* ignored,
     GetPersistentContainerSpecsResponse* response) {
   base::FileEnumerator files(root_, false, base::FileEnumerator::FILES,
@@ -55,7 +56,7 @@ int Soma::GetPersistentContainerSpecs(
     if (spec && spec->is_persistent())
       response->add_container_specs()->CheckTypeAndMergeFrom(*spec.get());
   }
-  return 0;
+  return STATUS_OK();
 }
 
 base::FilePath Soma::NameToPath(const std::string& service_name) const {

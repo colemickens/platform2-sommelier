@@ -12,8 +12,10 @@ message RegisterServiceRequest {
 }
 
 message RegisterServiceResponse {
-  // True if service registration was successful.
-  required bool success = 1;
+  enum Error {
+    INVALID_NAME = 1;
+    ALREADY_REGISTERED = 2;
+  }
 }
 
 message RequestServiceRequest {

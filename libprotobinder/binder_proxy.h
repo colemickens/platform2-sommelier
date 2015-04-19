@@ -10,7 +10,8 @@
 #include <base/callback.h>
 
 #include "binder_export.h"  // NOLINT(build/include)
-#include "ibinder.h"  // NOLINT(build/include)
+#include "ibinder.h"        // NOLINT(build/include)
+#include "status.h"         // NOLINT(build/include)
 
 namespace protobinder {
 
@@ -33,10 +34,10 @@ class BINDER_EXPORT BinderProxy : public IBinder {
   void HandleDeathNotification();
 
   // IBinder overides:
-  int Transact(uint32_t code,
-               Parcel* data,
-               Parcel* reply,
-               bool one_way) override;
+  Status Transact(uint32_t code,
+                  Parcel* data,
+                  Parcel* reply,
+                  bool one_way) override;
   const BinderProxy* GetBinderProxy() const override;
 
  private:

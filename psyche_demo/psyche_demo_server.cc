@@ -36,10 +36,10 @@ class DemoServer : public PsycheDaemon,
   }
 
   // IPsychedDemoServerInterface:
-  int Ping(PingRequest* in, PingResponse* out) override {
+  Status Ping(PingRequest* in, PingResponse* out) override {
     LOG(INFO) << "Received ping request with token " << in->token() << "";
     out->set_token(in->token());
-    return 0;
+    return STATUS_OK();
   }
 
  private:

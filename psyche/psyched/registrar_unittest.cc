@@ -57,20 +57,24 @@ class SomaInterfaceStub : public soma::ISoma {
   }
 
   // ISoma:
-  int GetContainerSpec(soma::GetContainerSpecRequest* in,
-                       soma::GetContainerSpecResponse* out) override {
+  Status GetContainerSpec(soma::GetContainerSpecRequest* in,
+                          soma::GetContainerSpecResponse* out) override {
     const auto& it = service_specs_.find(in->service_name());
     if (it != service_specs_.end())
       out->mutable_container_spec()->CopyFrom(it->second);
-    return return_value_;
+    return return_value_
+               ? STATUS_APP_ERROR(return_value_, "GetContainerSpec Error")
+               : STATUS_OK();
   }
 
-  int GetPersistentContainerSpecs(
+  Status GetPersistentContainerSpecs(
       soma::GetPersistentContainerSpecsRequest* in,
       soma::GetPersistentContainerSpecsResponse* out) override {
     for (const auto& spec : persistent_specs_)
       out->add_container_specs()->CopyFrom(spec);
-    return return_value_;
+    return return_value_ ? STATUS_APP_ERROR(return_value_,
+                                            "GetPersistentContainerSpecs Error")
+                         : STATUS_OK();
   }
 
  private:
@@ -156,9 +160,8 @@ class RegistrarTest : public BinderTestBase {
                                     request.mutable_binder());
 
     RegisterServiceResponse response;
-    CHECK_EQ(registrar_->RegisterService(&request, &response), 0)
-        << "RegisterService call for " << service_name << " failed";
-    return response.success();
+    Status status = registrar_->RegisterService(&request, &response);
+    return status.IsOk();
   }
 
   // Calls |registrar_|'s RequestService method, returning true if a failure
@@ -178,8 +181,9 @@ class RegistrarTest : public BinderTestBase {
     protobinder::StoreBinderInProto(*(client_proxy.release()),
                                     request.mutable_client_binder());
 
-    CHECK_EQ(registrar_->RequestService(&request), 0)
-        << "RequestService call for " << service_name << " failed";
+    Status status = registrar_->RequestService(&request);
+    CHECK(status.IsOk()) << "RequestService call for " << service_name
+                         << " failed";
 
     const int new_failures = GetClientOrDie(*client_proxy_ptr)
                                  ->GetServiceRequestFailures(service_name);

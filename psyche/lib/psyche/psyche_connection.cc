@@ -13,7 +13,7 @@
 #include <protobinder/ibinder.h>
 #include <protobinder/iservice_manager.h>
 #include <protobinder/proto_util.h>
-#include <protobinder/protobinder.h>
+#include <protobinder/status.h>
 
 #include "psyche/common/constants.h"
 #include "psyche/proto_bindings/psyche.pb.h"
@@ -62,14 +62,9 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
 
     RegisterServiceResponse response;
 
-    const int result = psyched_interface_->RegisterService(&request, &response);
-    if (result != SUCCESS) {
-      LOG(ERROR) << "RegisterService binder call failed with " << result;
-      return false;
-    }
-    if (!response.success()) {
-      LOG(ERROR) << "psyched reported failure when registering "
-                 << service_name;
+    Status status = psyched_interface_->RegisterService(&request, &response);
+    if (!status) {
+      LOG(ERROR) << "RegisterService binder call failed with " << status;
       return false;
     }
     return true;
@@ -82,9 +77,9 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
     RequestServiceRequest request;
     request.set_name(service_name);
     protobinder::StoreBinderInProto(*this, request.mutable_client_binder());
-    const int result = psyched_interface_->RequestService(&request);
-    if (result != SUCCESS) {
-      LOG(ERROR) << "RequestService binder call failed with " << result;
+    Status status = psyched_interface_->RequestService(&request);
+    if (!status) {
+      LOG(ERROR) << "RequestService binder call failed with " << status;
       return false;
     }
 
@@ -97,7 +92,7 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
   }
 
   // IPsycheClientHostInterface:
-  int ReceiveService(ReceiveServiceRequest* in) override {
+  Status ReceiveService(ReceiveServiceRequest* in) override {
     const std::string service_name = in->name();
     std::unique_ptr<BinderProxy> proxy;
     if (in->has_binder())
@@ -106,7 +101,7 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
     auto range = get_service_callbacks_.equal_range(service_name);
     if (range.first == get_service_callbacks_.end()) {
       LOG(WARNING) << "Received unknown service \"" << service_name << "\"";
-      return 0;
+      return STATUS_OK();
     }
 
     for (auto it = range.first; it != range.second; ++it) {
@@ -116,7 +111,7 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
       it->second.Run(
           make_unique_ptr(proxy ? new BinderProxy(proxy->handle()) : nullptr));
     }
-    return 0;
+    return STATUS_OK();
   }
 
  private:

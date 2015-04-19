@@ -68,9 +68,9 @@ SomaConnection::Result SomaConnection::GetContainerSpecForService(
   soma::GetContainerSpecRequest request;
   request.set_service_name(service_name);
   soma::GetContainerSpecResponse response;
-  int result = interface_->GetContainerSpec(&request, &response);
-  if (result != 0) {
-    LOG(ERROR) << "GetContainerSpec RPC to somad returned " << result;
+  Status status = interface_->GetContainerSpec(&request, &response);
+  if (!status) {
+    LOG(ERROR) << "GetContainerSpec RPC to somad returned " << status;
     return Result::RPC_ERROR;
   }
 
@@ -91,10 +91,10 @@ SomaConnection::Result SomaConnection::GetPersistentContainerSpecs(
 
   soma::GetPersistentContainerSpecsRequest request;
   soma::GetPersistentContainerSpecsResponse response;
-  int result = interface_->GetPersistentContainerSpecs(&request, &response);
-  if (result != 0) {
+  Status status = interface_->GetPersistentContainerSpecs(&request, &response);
+  if (!status) {
     LOG(ERROR) << "GetPersistentContainerSpecs RPC to somad returned "
-               << result;
+               << status;
     return Result::RPC_ERROR;
   }
 

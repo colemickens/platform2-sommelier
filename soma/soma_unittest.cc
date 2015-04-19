@@ -70,7 +70,7 @@ TEST_F(SomaTest, FindSpecFile) {
   GetContainerSpecResponse response;
   request.set_service_name(JoinString({kServiceNamespace, kServiceName}, '.'));
 
-  EXPECT_EQ(soma.GetContainerSpec(&request, &response), 0);
+  EXPECT_TRUE(soma.GetContainerSpec(&request, &response));
   EXPECT_TRUE(response.has_container_spec());
 }
 
@@ -80,7 +80,7 @@ TEST_F(SomaTest, SpecFileNotFound) {
   GetContainerSpecResponse response;
   request.set_service_name(JoinString({kServiceNamespace, kServiceName}, '.'));
 
-  EXPECT_EQ(soma.GetContainerSpec(&request, &response), 0);
+  EXPECT_TRUE(soma.GetContainerSpec(&request, &response));
   EXPECT_FALSE(response.has_container_spec());
 }
 
@@ -88,16 +88,16 @@ TEST_F(SomaTest, MalformedRequest) {
   Soma soma(base::FilePath("."));
   GetContainerSpecRequest request;
   GetContainerSpecResponse response;
-  EXPECT_NE(soma.GetContainerSpec(&request, &response), 0);
+  EXPECT_FALSE(soma.GetContainerSpec(&request, &response));
 
   request.set_service_name(".");
-  EXPECT_NE(soma.GetContainerSpec(&request, &response), 0);
+  EXPECT_FALSE(soma.GetContainerSpec(&request, &response));
   request.set_service_name("..");
-  EXPECT_NE(soma.GetContainerSpec(&request, &response), 0);
+  EXPECT_FALSE(soma.GetContainerSpec(&request, &response));
   request.set_service_name("../../etc/passwd");
-  EXPECT_NE(soma.GetContainerSpec(&request, &response), 0);
+  EXPECT_FALSE(soma.GetContainerSpec(&request, &response));
   request.set_service_name("subdir/thing.json");
-  EXPECT_NE(soma.GetContainerSpec(&request, &response), 0);
+  EXPECT_FALSE(soma.GetContainerSpec(&request, &response));
 }
 
 TEST_F(SomaTest, GetContainerSpecs) {
@@ -110,7 +110,7 @@ TEST_F(SomaTest, GetContainerSpecs) {
   InjectReader(&soma, CreateReaderWithWhitelistedNamespace(kServiceNamespace));
   GetPersistentContainerSpecsRequest request;
   GetPersistentContainerSpecsResponse response;
-  EXPECT_EQ(soma.GetPersistentContainerSpecs(&request, &response), 0);
+  EXPECT_TRUE(soma.GetPersistentContainerSpecs(&request, &response));
   EXPECT_EQ(response.container_specs_size(), 0);
 
   // Read in the scratch spec and add the "persistent" annotation.
@@ -132,7 +132,7 @@ TEST_F(SomaTest, GetContainerSpecs) {
             value_string.length());
 
   response.Clear();
-  EXPECT_EQ(soma.GetPersistentContainerSpecs(&request, &response), 0);
+  EXPECT_TRUE(soma.GetPersistentContainerSpecs(&request, &response));
   ASSERT_EQ(response.container_specs_size(), 1);
   EXPECT_EQ(response.container_specs(0).name(), json2.value());
 }

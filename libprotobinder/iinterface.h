@@ -5,17 +5,15 @@
 #ifndef LIBPROTOBINDER_IINTERFACE_H_
 #define LIBPROTOBINDER_IINTERFACE_H_
 
-#include "binder_export.h"  // NOLINT(build/include)
-#include "binder_host.h"  // NOLINT(build/include)
-#include "binder_manager.h"  // NOLINT(build/include)
+#include "binder_export.h"                // NOLINT(build/include)
+#include "binder_host.h"                  // NOLINT(build/include)
+#include "binder_manager.h"               // NOLINT(build/include)
 #include "binder_proxy_interface_base.h"  // NOLINT(build/include)
-#include "ibinder.h"  // NOLINT(build/include)
+#include "ibinder.h"                      // NOLINT(build/include)
 
 namespace protobinder {
 
-// AIDL class inherits from this.
-// Just need some basic stuff to return a binder.
-// Mainly interface holder to force both sides to implement the methods.
+// Abstract interface which BIDL services inherit from.
 class BINDER_EXPORT IInterface {
  public:
   IInterface() {}
@@ -49,9 +47,9 @@ inline INTERFACE* BinderToInterface(IBinder* obj) {
   return INTERFACE::CreateInterface(obj);
 }
 
-#define DECLARE_META_INTERFACE(INTERFACE)                                      \
-  static I##INTERFACE* CreateInterface(IBinder* obj);                          \
-  I##INTERFACE();                                                              \
+#define DECLARE_META_INTERFACE(INTERFACE)             \
+  static I##INTERFACE* CreateInterface(IBinder* obj); \
+  I##INTERFACE();                                     \
   virtual ~I##INTERFACE();
 
 #define IMPLEMENT_META_INTERFACE(INTERFACE, NAME)                              \
@@ -60,7 +58,6 @@ inline INTERFACE* BinderToInterface(IBinder* obj) {
   }                                                                            \
   I##INTERFACE::I##INTERFACE() {}                                              \
   I##INTERFACE::~I##INTERFACE() {}
-
 }  // namespace protobinder
 
 #endif  // LIBPROTOBINDER_IINTERFACE_H_

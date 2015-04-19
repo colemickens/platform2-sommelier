@@ -18,9 +18,9 @@ class GermHost : public IGermHostInterface {
   virtual ~GermHost() = default;
 
   // Implement IGermHostInterface.
-  int Launch(LaunchRequest* request, LaunchResponse* response) override;
-  int Terminate(TerminateRequest* request,
-                TerminateResponse* response) override;
+  Status Launch(LaunchRequest* request, LaunchResponse* response) override;
+  Status Terminate(TerminateRequest* request,
+                   TerminateResponse* response) override;
 
  private:
   Launcher launcher_;

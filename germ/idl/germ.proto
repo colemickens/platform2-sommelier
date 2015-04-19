@@ -19,7 +19,10 @@ message LaunchRequest {
 }
 
 message LaunchResponse {
-  optional bool success = 1;
+  enum Error {
+    INIT_SPEC_FAILED = 1;
+    RUN_DAEMONIZED_FAILED = 2;
+  }
   // |pid| will be valid if |success| is true.
   optional int32 pid = 2;
 }
@@ -29,5 +32,7 @@ message TerminateRequest {
 }
 
 message TerminateResponse {
-  optional bool success = 1;
+  enum Error {
+    TERMINATE_FAILED = 1;
+  }
 }

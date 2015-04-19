@@ -10,16 +10,17 @@
 #include "iinterface.h"  // NOLINT(build/include)
 
 namespace protobinder {
+class Status;
 
 class BINDER_EXPORT IServiceManager : public IInterface {
  public:
   DECLARE_META_INTERFACE(ServiceManager)
 
-  virtual int AddService(const char* name, IBinder* binder) = 0;
+  virtual Status AddService(const char* name, IBinder* binder) = 0;
   virtual IBinder* GetService(const char* name) = 0;
 
   enum {
-    GET_SERVICE_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION,
+    GET_SERVICE_TRANSACTION = 1,
     CHECK_SERVICE_TRANSACTION,
     ADD_SERVICE_TRANSACTION,
     LIST_SERVICES_TRANSACTION,

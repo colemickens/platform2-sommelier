@@ -40,10 +40,10 @@ class PsycheClientInterfaceStub : public IPsycheClient {
   void clear_service_handles() { service_handles_.clear(); }
 
   // IPsycheClient:
-  int ReceiveService(ReceiveServiceRequest* in) override {
+  Status ReceiveService(ReceiveServiceRequest* in) override {
     service_handles_.push_back(
         std::make_pair(in->name(), in->binder().ibinder()));
-    return 0;
+    return STATUS_OK();
   }
 
  private:

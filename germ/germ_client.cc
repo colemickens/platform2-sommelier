@@ -43,8 +43,9 @@ void GermClient::DoLaunch(const std::string& name,
   for (const auto& cmdline_token : command_line) {
     executable->add_command_line(cmdline_token);
   }
-  if (germ_->Launch(&request, &response) != 0) {
-    LOG(ERROR) << "Failed to launch service '" << name << "'";
+  Status status = germ_->Launch(&request, &response);
+  if (!status) {
+    LOG(ERROR) << "Failed to launch service '" << name << "': " << status;
     return;
   }
   LOG(INFO) << "Launched service '" << name << "' with pid " << response.pid();
@@ -61,8 +62,10 @@ void GermClient::DoTerminate(pid_t pid) {
   TerminateRequest request;
   TerminateResponse response;
   request.set_pid(pid);
-  if (germ_->Terminate(&request, &response) != 0) {
-    LOG(ERROR) << "Failed to terminate service with pid " << pid;
+  Status status = germ_->Terminate(&request, &response);
+  if (!status) {
+    LOG(ERROR) << "Failed to terminate service with pid " << pid << ": "
+               << status;
   }
 }
 

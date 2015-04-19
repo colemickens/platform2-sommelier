@@ -6,7 +6,6 @@
 
 #include "libprotobinder/binder_proxy.h"
 #include "libprotobinder/parcel.h"
-#include "libprotobinder/protobinder.h"
 
 namespace protobinder {
 
@@ -26,7 +25,7 @@ class IServiceManagerProxy : public BinderProxyInterface<IServiceManager> {
   explicit IServiceManagerProxy(IBinder* impl)
       : BinderProxyInterface<IServiceManager>(impl) {}
 
-  virtual int AddService(const char* name, IBinder* binder) {
+  virtual Status AddService(const char* name, IBinder* binder) {
     Parcel data, reply;
     data.WriteInt32(0);
     data.WriteString16("android.os.IServiceManager");
@@ -40,8 +39,7 @@ class IServiceManagerProxy : public BinderProxyInterface<IServiceManager> {
     data.WriteInt32(0);
     data.WriteString16("android.os.IServiceManager");
     data.WriteString16(name);
-    if (Remote()->Transact(CHECK_SERVICE_TRANSACTION, &data, &reply, 0) !=
-        SUCCESS)
+    if (!Remote()->Transact(CHECK_SERVICE_TRANSACTION, &data, &reply, 0))
       return nullptr;
 
     IBinder* binder = nullptr;

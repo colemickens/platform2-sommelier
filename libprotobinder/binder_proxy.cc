@@ -26,12 +26,12 @@ BinderProxy::~BinderProxy() {
   manager->DecWeakHandle(handle_);
 }
 
-int BinderProxy::Transact(uint32_t code,
-                          Parcel* data,
-                          Parcel* reply,
-                          bool one_way) {
-  return BinderManagerInterface::Get()->Transact(
-      handle_, code, *data, reply, one_way);
+Status BinderProxy::Transact(uint32_t code,
+                             Parcel* data,
+                             Parcel* reply,
+                             bool one_way) {
+  return BinderManagerInterface::Get()->Transact(handle_, code, *data, reply,
+                                                 one_way);
 }
 
 void BinderProxy::SetDeathCallback(const base::Closure& closure) {

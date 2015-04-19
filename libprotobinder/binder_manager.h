@@ -15,6 +15,7 @@
 #include "binder_driver.h"  // NOLINT(build/include)
 #include "binder_export.h"  // NOLINT(build/include)
 #include "parcel.h"         // NOLINT(build/include)
+#include "status.h"         // NOLINT(build/include)
 
 namespace protobinder {
 
@@ -34,15 +35,15 @@ class BINDER_EXPORT BinderManagerInterface {
 
   virtual ~BinderManagerInterface() = default;
 
-  virtual int Transact(uint32_t handle,
-                       uint32_t code,
-                       const Parcel& data,
-                       Parcel* reply,
-                       bool one_way) = 0;
+  virtual Status Transact(uint32_t handle,
+                          uint32_t code,
+                          const Parcel& data,
+                          Parcel* reply,
+                          bool one_way) = 0;
   virtual void IncWeakHandle(uint32_t handle) = 0;
   virtual void DecWeakHandle(uint32_t handle) = 0;
   virtual bool GetFdForPolling(int* fd) = 0;
-  virtual bool HandleEvent() = 0;
+  virtual void HandleEvent() = 0;
 
   // Creates or clears a request for binder death notifications.
   // End-users should use BinderProxy::SetDeathCallback() instead of calling
@@ -63,21 +64,21 @@ class BINDER_EXPORT BinderManager : public BinderManagerInterface {
   ~BinderManager() override;
 
   // BinderManagerInterface:
-  int Transact(uint32_t handle,
-               uint32_t code,
-               const Parcel& data,
-               Parcel* reply,
-               bool one_way) override;
+  Status Transact(uint32_t handle,
+                  uint32_t code,
+                  const Parcel& data,
+                  Parcel* reply,
+                  bool one_way) override;
   void IncWeakHandle(uint32_t handle) override;
   void DecWeakHandle(uint32_t handle) override;
   bool GetFdForPolling(int* fd) override;
-  bool HandleEvent() override;
+  void HandleEvent() override;
   void RequestDeathNotification(BinderProxy* proxy) override;
   void ClearDeathNotification(BinderProxy* proxy) override;
   IInterface* CreateTestInterface(const IBinder* binder) override;
 
  private:
-  int WaitAndActionReply(Parcel* reply);
+  Status WaitAndActionReply(Parcel* reply);
 
   // Writes a command freeing |data|.
   void ReleaseBinderBuffer(const uint8_t* data);
@@ -85,16 +86,17 @@ class BINDER_EXPORT BinderManager : public BinderManagerInterface {
   // Passes |parcel|'s data to ReleaseBinderBuffer().
   void ReleaseParcel(Parcel* parcel);
 
-  bool DoBinderReadWriteIoctl(bool do_read);
-  int SetUpTransaction(bool is_reply,
-                       uint32_t handle,
-                       uint32_t code,
-                       const Parcel& data,
-                       uint32_t flags);
+  void DoBinderReadWriteIoctl(bool do_read);
+  void SetUpTransaction(bool is_reply,
+                        uint32_t handle,
+                        uint32_t code,
+                        const Parcel& data,
+                        uint32_t flags);
   // Process a single command from binder.
-  int ProcessCommand(uint32_t cmd);
-  bool GetNextCommandAndProcess();
-  int SendReply(const Parcel& reply, int error_code);
+  void ProcessCommand(uint32_t cmd);
+  void GetNextCommandAndProcess();
+  Status SendReply(const Parcel& reply, const Status& status);
+  Status HandleReply(const binder_transaction_data& tr, Parcel* reply);
 
   // These parcels are used to pass binder ioctl commands to binder.
   // They carry binder command buffers, not to be confused with Parcels

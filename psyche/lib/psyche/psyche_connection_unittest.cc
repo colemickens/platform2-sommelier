@@ -32,13 +32,13 @@ namespace {
 class PsychedInterfaceStub : public IPsyched {
  public:
   PsychedInterfaceStub()
-      : return_value_(0),
-        report_success_(true),
+      : app_success_(true),
+        ipc_success_(true),
         weak_ptr_factory_(this) {}
   ~PsychedInterfaceStub() override = default;
 
-  void set_return_value(int value) { return_value_ = value; }
-  void set_report_success(bool success) { report_success_ = success; }
+  void set_app_success(bool success) { app_success_ = success; }
+  void set_ipc_success(bool success) { ipc_success_ = success; }
 
   // Keyed by service name.
   using HostMap = std::map<std::string, BinderHost*>;
@@ -52,8 +52,8 @@ class PsychedInterfaceStub : public IPsyched {
   }
 
   // IPsyched:
-  int RegisterService(RegisterServiceRequest* in,
-                      RegisterServiceResponse* out) override {
+  Status RegisterService(RegisterServiceRequest* in,
+                         RegisterServiceResponse* out) override {
     // So gross. Usually libprotobinder creates a BinderProxy object
     // automatically in response to an incoming call and copies its address into
     // the protobuf. We're not crossing a process boundary (or even going
@@ -61,13 +61,17 @@ class PsychedInterfaceStub : public IPsyched {
     // is just what we put into it: the address of the original BinderHost.
     BinderHost* host = reinterpret_cast<BinderHost*>(in->binder().ibinder());
     registered_services_[in->name()] = host;
-    out->set_success(report_success_);
-    return return_value_;
+    if (!ipc_success_)
+      return STATUS_BINDER_ERROR(Status::DEAD_ENDPOINT);
+    return app_success_
+               ? STATUS_OK()
+               : STATUS_APP_ERROR(RegisterServiceResponse::INVALID_NAME,
+                                  "RegisterService Error");
   }
 
-  int RequestService(RequestServiceRequest* in) override {
-    if (return_value_ != 0)
-      return return_value_;
+  Status RequestService(RequestServiceRequest* in) override {
+    if (!ipc_success_)
+      return STATUS_BINDER_ERROR(Status::DEAD_ENDPOINT);
 
     const std::string service_name(in->name());
     std::unique_ptr<BinderProxy> service_proxy;
@@ -92,7 +96,7 @@ class PsychedInterfaceStub : public IPsyched {
                    weak_ptr_factory_.GetWeakPtr(),
                    static_cast<IPsycheClientHostInterface*>(client_binder),
                    service_name, base::Passed(&service_proxy)));
-    return 0;
+    return STATUS_OK();
   }
 
  private:
@@ -110,14 +114,14 @@ class PsychedInterfaceStub : public IPsyched {
       request.mutable_binder()->set_ibinder(
           reinterpret_cast<uint64_t>(service_proxy.release()));
     }
-    CHECK_EQ(client_interface->ReceiveService(&request), 0);
+    CHECK(client_interface->ReceiveService(&request));
   }
 
-  // Value to return for RPCs.
-  int return_value_;
+  // If set returns an Application Error.
+  bool app_success_;
 
-  // Value to write to |success| fields in responses.
-  bool report_success_;
+  // Retuns IPC an error if false.
+  bool ipc_success_;
 
   // Services that have been passed to RegisterService().
   HostMap registered_services_;
@@ -214,16 +218,16 @@ TEST_F(PsycheConnectionTest, RegisterService) {
   FakeHost host;
 
   // Simulate an RPC error.
-  psyched_->set_return_value(-1);
+  psyched_->set_ipc_success(false);
   EXPECT_FALSE(connection_.RegisterService(kServiceName, &host));
 
   // Simulate psyched reporting failure.
-  psyched_->set_return_value(0);
-  psyched_->set_report_success(false);
+  psyched_->set_ipc_success(true);
+  psyched_->set_app_success(false);
   EXPECT_FALSE(connection_.RegisterService(kServiceName, &host));
 
   // Simulate success. Verify that the host was passed to psyched.
-  psyched_->set_report_success(true);
+  psyched_->set_app_success(true);
   EXPECT_TRUE(connection_.RegisterService(kServiceName, &host));
   auto it = psyched_->registered_services().find(kServiceName);
   ASSERT_TRUE(it != psyched_->registered_services().end());
@@ -234,7 +238,7 @@ TEST_F(PsycheConnectionTest, GetService) {
   const std::string kServiceName("org.example.cell.service");
 
   // Check that GetService() returns false when an RPC error is encountered.
-  psyched_->set_return_value(-1);
+  psyched_->set_ipc_success(false);
   ServiceReceiver rpc_error_receiver;
   EXPECT_FALSE(connection_.GetService(
       kServiceName, base::Bind(&ServiceReceiver::ReceiveService,
@@ -244,7 +248,7 @@ TEST_F(PsycheConnectionTest, GetService) {
 
   // Now request in an unknown service, which should result in a null proxy
   // being returned.
-  psyched_->set_return_value(0);
+  psyched_->set_ipc_success(true);
   ServiceReceiver unknown_service_receiver;
   EXPECT_TRUE(connection_.GetService(
       kServiceName, base::Bind(&ServiceReceiver::ReceiveService,

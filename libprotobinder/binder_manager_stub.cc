@@ -31,12 +31,12 @@ void BinderManagerStub::SetTestInterface(
     test_interface_for_null_proxy_ = std::move(interface);
 }
 
-int BinderManagerStub::Transact(uint32_t handle,
+Status BinderManagerStub::Transact(uint32_t handle,
              uint32_t code,
              const Parcel& data,
              Parcel* reply,
              bool one_way) {
-  return 0;
+  return STATUS_OK();
 }
 
 void BinderManagerStub::IncWeakHandle(uint32_t handle) {}
@@ -48,8 +48,7 @@ bool BinderManagerStub::GetFdForPolling(int* fd) {
   return true;
 }
 
-bool BinderManagerStub::HandleEvent() {
-  return true;
+void BinderManagerStub::HandleEvent() {
 }
 
 void BinderManagerStub::RequestDeathNotification(BinderProxy* proxy) {

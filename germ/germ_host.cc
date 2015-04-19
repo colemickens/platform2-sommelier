@@ -12,39 +12,32 @@
 
 namespace germ {
 
-int GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
+Status GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
   pid_t pid = -1;
   soma::ReadOnlyContainerSpec ro_spec;
   if (!ro_spec.Init(request->spec())) {
-    // TODO(jorgelo): Unify error handling, either return value or |success|.
-    LOG(ERROR) << "Could not initialize read-only ContainerSpec";
-    response->set_success(false);
-    response->set_pid(-1);
-    return -1;
+    return STATUS_APP_ERROR_LOG(logging::LOG_ERROR,
+                                LaunchResponse::INIT_SPEC_FAILED,
+                                "Could not initialize read-only ContainerSpec");
   }
   if (!launcher_.RunDaemonized(ro_spec, &pid)) {
-    // TODO(jorgelo): Unify error handling, either return value or |success|.
-    LOG(ERROR) << "RunDaemonized(" << request->name() << ") failed";
-    response->set_success(false);
-    response->set_pid(-1);
-    return -1;
+    return STATUS_APP_ERROR_LOG(
+        logging::LOG_ERROR, LaunchResponse::RUN_DAEMONIZED_FAILED,
+        "RunDaemonized(" + request->name() + ") failed");
   }
-  response->set_success(true);
   response->set_pid(pid);
-  return 0;
+  return STATUS_OK();
 }
 
-int GermHost::Terminate(TerminateRequest* request,
-                        TerminateResponse* response) {
+Status GermHost::Terminate(TerminateRequest* request,
+                           TerminateResponse* response) {
   bool success = launcher_.Terminate(request->pid());
   if (!success) {
-    // TODO(jorgelo): Unify error handling, either return value or |success|.
-    LOG(ERROR) << "Terminate(" << request->pid() << ") failed";
-    response->set_success(false);
-    return -1;
+    return STATUS_APP_ERROR_LOG(
+        logging::LOG_ERROR, TerminateResponse::TERMINATE_FAILED,
+        "Terminate(" + std::to_string(request->pid()) + ") failed");
   }
-  response->set_success(success);
-  return 0;
+  return STATUS_OK();
 }
 
 }  // namespace germ

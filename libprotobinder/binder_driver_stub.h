@@ -27,7 +27,9 @@ class BINDER_EXPORT BinderDriverStub : public BinderDriverInterface {
     // Provide a valid reply.
     GOOD_ENDPOINT = 1,
     // Provides a dead end point.
-    BAD_ENDPOINT = 2
+    BAD_ENDPOINT = 2,
+    // Returns a Status reply.
+    STATUS_ENDPOINT = 3
   };
   BinderDriverStub();
   ~BinderDriverStub() override;

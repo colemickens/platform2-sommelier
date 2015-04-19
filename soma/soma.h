@@ -23,9 +23,9 @@ class Soma : public ISomaHostInterface {
   virtual ~Soma() = default;
 
   // Implementation of ISomaHostInterface.
-  int GetContainerSpec(GetContainerSpecRequest* request,
-                       GetContainerSpecResponse* response) override;
-  int GetPersistentContainerSpecs(
+  Status GetContainerSpec(GetContainerSpecRequest* request,
+                          GetContainerSpecResponse* response) override;
+  Status GetPersistentContainerSpecs(
       GetPersistentContainerSpecsRequest* ignored,
       GetPersistentContainerSpecsResponse* response) override;
 

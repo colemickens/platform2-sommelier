@@ -7,17 +7,16 @@
 #include <base/logging.h>
 
 #include "libprotobinder/parcel.h"
-#include "libprotobinder/protobinder.h"
 
 namespace protobinder {
 
 BinderHost::BinderHost() {}
 
-int BinderHost::Transact(uint32_t code,
+Status BinderHost::Transact(uint32_t code,
                          Parcel* data,
                          Parcel* reply,
                          bool one_way) {
-  const int ret = OnTransact(code, data, reply, one_way);
+  const Status ret = OnTransact(code, data, reply, one_way);
   if (reply)
     reply->SetPos(0);
   return ret;
@@ -29,12 +28,12 @@ const BinderHost* BinderHost::GetBinderHost() const {
 
 BinderHost::~BinderHost() {}
 
-int BinderHost::OnTransact(uint32_t code,
+Status BinderHost::OnTransact(uint32_t code,
                            Parcel* data,
                            Parcel* reply,
                            bool one_way) {
   NOTIMPLEMENTED();
-  return ERROR_UNKNOWN_CODE;
+  return STATUS_BINDER_ERROR(Status::UNKNOWN_CODE);
 }
 
 }  // namespace protobinder

@@ -60,17 +60,11 @@ GermConnection::Result GermConnection::Launch(const soma::ContainerSpec& spec,
   request.set_name(spec.name());
   request.mutable_spec()->CopyFrom(spec);
 
-  int result = interface_->Launch(&request, &response);
-  if (result != 0) {
-    LOG(ERROR) << "Failed to launch cell \"" << spec.name() << "; RPC to germd "
-               << "returned " << result;
-    return Result::RPC_ERROR;
-  }
-
-  if (!response.success()) {
-    LOG(ERROR) << "Germ didn't return success when launching cell \""
-               << spec.name() << "\"";
-    return Result::FAILED_REQUEST;
+  Status status = interface_->Launch(&request, &response);
+  if (!status) {
+    LOG(ERROR) << "Failed to launch cell \"" << spec.name()
+               << "\". RPC to germd returned " << status;
+    return status.IsAppError() ? Result::FAILED_REQUEST : Result::RPC_ERROR;
   }
 
   LOG(INFO) << "Launched cell \"" << spec.name() << " with init PID "
@@ -89,17 +83,11 @@ GermConnection::Result GermConnection::Terminate(int pid) {
   germ::TerminateResponse response;
   request.set_pid(pid);
 
-  int result = interface_->Terminate(&request, &response);
-  if (result != 0) {
+  Status status = interface_->Terminate(&request, &response);
+  if (!status) {
     LOG(ERROR) << "Failed to terminate cell with init PID " << pid
-               << "; RPC to germd returned " << result;
-    return Result::RPC_ERROR;
-  }
-
-  if (!response.success()) {
-    LOG(ERROR) << "Germ didn't return success when terminating cell with "
-                  "init PID " << pid;
-    return Result::FAILED_REQUEST;
+               << "; RPC to germd returned " << status;
+    return status.IsAppError() ? Result::FAILED_REQUEST : Result::RPC_ERROR;
   }
 
   LOG(INFO) << "Terminated cell with init PID " << pid;
