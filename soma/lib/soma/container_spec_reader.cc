@@ -20,6 +20,7 @@
 
 #include "soma/lib/soma/annotations.h"
 #include "soma/lib/soma/container_spec_helpers.h"
+#include "soma/lib/soma/isolator_parser.h"
 #include "soma/lib/soma/namespace.h"
 #include "soma/lib/soma/port.h"
 
@@ -36,8 +37,6 @@ const char ContainerSpecReader::kGidKey[] = "group";
 const char ContainerSpecReader::kUidKey[] = "user";
 
 const char ContainerSpecReader::kIsolatorsListKey[] = "isolators";
-const char ContainerSpecReader::kIsolatorNameKey[] = "name";
-const char ContainerSpecReader::kIsolatorSetKey[] = "value.set";
 
 namespace {
 
@@ -118,7 +117,10 @@ bool BuildFromAppFields(const base::DictionaryValue* app_dict,
   return true;
 }
 
-bool ParseIsolators(const base::ListValue& isolators, ContainerSpec* spec) {
+}  // namespace
+
+bool ContainerSpecReader::ParseIsolators(const base::ListValue& isolators,
+                                         ContainerSpec* spec) {
   for (const base::Value* value : isolators) {
     const base::DictionaryValue* isolator = nullptr;
     if (!value->GetAsDictionary(&isolator)) {
@@ -127,40 +129,35 @@ bool ParseIsolators(const base::ListValue& isolators, ContainerSpec* spec) {
     }
 
     std::string name;
-    const base::ListValue* set = nullptr;
-    if (!isolator->GetString(ContainerSpecReader::kIsolatorNameKey, &name) ||
-        !isolator->GetList(ContainerSpecReader::kIsolatorSetKey, &set)) {
-      LOG(ERROR) << "Isolators must be a dict with a name and a value, not "
-                 << isolator;
+    const base::DictionaryValue* object = nullptr;
+    if (!isolator->GetString(IsolatorParserInterface::kNameKey, &name) ||
+        !isolator->GetDictionary(IsolatorParserInterface::kValueKey, &object)) {
+      LOG(ERROR) << "Isolators must be a dict with a name and a value, not\n"
+                 << *isolator;
       return false;
     }
 
-    // Should we support more than a few more of these, this will need to get
-    // refactored to be more elegant.
-    if (name == DevicePathFilter::kListKey) {
-      DevicePathFilter::Set device_path_filters;
-      if (!DevicePathFilter::ParseList(*set, &device_path_filters))
+    if (isolator_parsers_.find(name) != isolator_parsers_.end()) {
+      if (!isolator_parsers_[name]->Parse(*object, spec))
         return false;
-      container_spec_helpers::SetDevicePathFilters(device_path_filters, spec);
-    } else if (name == DeviceNodeFilter::kListKey) {
-      DeviceNodeFilter::Set device_node_filters;
-      if (!DeviceNodeFilter::ParseList(*set, &device_node_filters))
-        return false;
-      container_spec_helpers::SetDeviceNodeFilters(device_node_filters, spec);
-    } else if (name == ns::kListKey) {
-      std::set<ns::Kind> namespaces;
-      if (!ns::ParseList(*set, &namespaces))
-        return false;
-      container_spec_helpers::SetNamespaces(namespaces, spec);
+    } else {
+      LOG(WARNING) << "Ignoring isolator: " << name;
     }
   }
   return true;
 }
 
-}  // namespace
-
 ContainerSpecReader::ContainerSpecReader()
     : reader_(base::JSONParserOptions::JSON_ALLOW_TRAILING_COMMAS) {
+  isolator_parsers_.emplace(
+      DevicePathFilterParser::kName,
+      std::unique_ptr<IsolatorParserInterface>(new DevicePathFilterParser));
+  isolator_parsers_.emplace(
+      DeviceNodeFilterParser::kName,
+      std::unique_ptr<IsolatorParserInterface>(new DeviceNodeFilterParser));
+  isolator_parsers_.emplace(
+      NamespacesParser::kName,
+      std::unique_ptr<IsolatorParserInterface>(new NamespacesParser));
 }
 
 ContainerSpecReader::~ContainerSpecReader() {

@@ -10,12 +10,19 @@
 
 #include <base/files/file_path.h>
 #include <base/json/json_reader.h>
+#include <soma/isolator_parser.h>
 #include <soma/soma_export.h>
 
+namespace base {
+class ListValue;
+}
+
 namespace soma {
+
 class ContainerSpec;
 
 namespace parser {
+
 // A class that handles reading a container specification written in JSON
 // from disk and parsing it into a ContainerSpecWrapper object.
 class SOMA_EXPORT ContainerSpecReader {
@@ -33,8 +40,6 @@ class SOMA_EXPORT ContainerSpecReader {
 
   // Keys for optional fields in a container specification.
   static const char kIsolatorsListKey[];
-  static const char kIsolatorNameKey[];
-  static const char kIsolatorSetKey[];
 
   ContainerSpecReader();
   virtual ~ContainerSpecReader();
@@ -45,6 +50,9 @@ class SOMA_EXPORT ContainerSpecReader {
   std::unique_ptr<ContainerSpec> Read(const base::FilePath& spec_file);
 
  private:
+  bool ParseIsolators(const base::ListValue& isolators, ContainerSpec* spec);
+
+  IsolatorParserMap isolator_parsers_;
   base::JSONReader reader_;
 
   DISALLOW_COPY_AND_ASSIGN(ContainerSpecReader);

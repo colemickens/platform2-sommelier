@@ -15,9 +15,6 @@
 namespace soma {
 namespace parser {
 
-const char DevicePathFilter::kListKey[] = "os/bruteus/device-path-filter-set";
-const char DeviceNodeFilter::kListKey[] = "os/bruteus/device-node-filter-set";
-
 DevicePathFilter::DevicePathFilter(const base::FilePath& path) : filter_(path) {
 }
 

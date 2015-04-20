@@ -18,7 +18,6 @@ class ListValue;
 namespace soma {
 namespace parser {
 namespace ns {
-extern const char kListKey[];
 extern const char kNewIpc[];
 extern const char kNewNet[];
 extern const char kNewNs[];

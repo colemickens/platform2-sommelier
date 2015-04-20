@@ -24,8 +24,6 @@ class DevicePathFilter {
   };
   using Set = std::set<DevicePathFilter, Comparator>;
 
-  static const char kListKey[];
-
   explicit DevicePathFilter(const base::FilePath& path);
   DevicePathFilter(const DevicePathFilter& that);
   virtual ~DevicePathFilter();
@@ -50,8 +48,6 @@ class DeviceNodeFilter {
     bool operator()(const DeviceNodeFilter& a, const DeviceNodeFilter& b);
   };
   using Set = std::set<DeviceNodeFilter, Comparator>;
-
-  static const char kListKey[];
 
   DeviceNodeFilter(int major, int minor);
   DeviceNodeFilter(const DeviceNodeFilter& that) = default;
