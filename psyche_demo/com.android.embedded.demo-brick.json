@@ -25,7 +25,7 @@
     ],
     "annotations": [
         {
-            "name": "service-0",
+            "name": "bruteus-service-0",
             "value": "com.android.embedded.demo-brick.psyche-demo-server"
         }
     ]
