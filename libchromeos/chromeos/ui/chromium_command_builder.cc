@@ -473,11 +473,9 @@ void ChromiumCommandBuilder::AddUiFlags() {
 
   // Ozone platform configuration.
   if (UseFlagIsSet("ozone_platform_gbm")) {
-    // TODO(spang): Use freon/chromeos platform, not GBM example platform.
     AddArg("--ozone-platform=gbm");
     AddArg("--ozone-use-surfaceless");
   } else if (UseFlagIsSet("ozone_platform_dri")) {
-    // TODO(spang): Use freon/chromeos platform, not DRI example platform.
     AddArg("--ozone-platform=dri");
 
     // TODO(spang): Fix hardware acceleration.
