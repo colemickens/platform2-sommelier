@@ -52,7 +52,7 @@ class BuffetConfig {
   std::string oem_name_{"Chromium"};
   std::string model_name_{"Brillo"};
   std::string model_id_{"AAAAA"};
-  std::string device_kind_{"AA"};
+  std::string device_kind_{"vendor"};
   uint64_t polling_period_ms_{7000};
 
   DISALLOW_COPY_AND_ASSIGN(BuffetConfig);
