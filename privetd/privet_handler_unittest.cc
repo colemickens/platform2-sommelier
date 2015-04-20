@@ -89,14 +89,20 @@ bool IsEqualDictionary(const base::DictionaryValue& dictionary1,
       std::string code1;
       std::string code2;
       const char kCodeKey[] = "error.code";
-      return dictionary1.GetString(kCodeKey, &code1) &&
-             dictionary2.GetString(kCodeKey, &code2) && code1 == code2;
+      if (!dictionary1.GetString(kCodeKey, &code1) ||
+          !dictionary2.GetString(kCodeKey, &code2) || code1 != code2) {
+        return false;
+      }
+      continue;
     }
 
     const base::DictionaryValue* d1{nullptr};
     const base::DictionaryValue* d2{nullptr};
-    if (it1.value().GetAsDictionary(&d1) && it2.value().GetAsDictionary(&d2))
-      return IsEqualDictionary(*d1, *d2);
+    if (it1.value().GetAsDictionary(&d1) && it2.value().GetAsDictionary(&d2)) {
+      if (!IsEqualDictionary(*d1, *d2))
+        return false;
+      continue;
+    }
 
     // Output mismatched values.
     EXPECT_PRED2(IsEqualValue, it1.value(), it2.value());
