@@ -5,6 +5,7 @@
 #include "psyche/lib/psyche/psyche_connection.h"
 
 #include <map>
+#include <utility>
 
 #include <base/logging.h>
 #include <protobinder/binder_proxy.h>
@@ -88,7 +89,7 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
     // This is safe to do since we're making a one-way call, i.e. psyched's
     // asynchronous ReceiveService call won't be handled until control returns
     // to the message loop.
-    get_service_callbacks_[service_name] = callback;
+    get_service_callbacks_.insert(make_pair(service_name, callback));
     return true;
   }
 
@@ -99,13 +100,19 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
     if (in->has_binder())
       proxy = protobinder::ExtractBinderFromProto(in->mutable_binder());
 
-    auto it = get_service_callbacks_.find(service_name);
-    if (it == get_service_callbacks_.end()) {
+    auto range = get_service_callbacks_.equal_range(service_name);
+    if (range.first == get_service_callbacks_.end()) {
       LOG(WARNING) << "Received unknown service \"" << service_name << "\"";
       return 0;
     }
 
-    it->second.Run(make_scoped_ptr(proxy.release()));
+    for (auto it = range.first; it != range.second; ++it) {
+      // Create a new BinderProxy for each callback based on the original
+      // proxy's handle. The handle's references are incremented and decremented
+      // in BinderProxy's c'tor and d'tor, so this is safe to do.
+      it->second.Run(
+          make_scoped_ptr(proxy ? new BinderProxy(proxy->handle()) : nullptr));
+    }
     return 0;
   }
 
@@ -114,7 +121,7 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
   std::unique_ptr<IPsyched> psyched_interface_;
 
   // Keyed by service name.
-  std::map<std::string, GetServiceCallback> get_service_callbacks_;
+  std::multimap<std::string, GetServiceCallback> get_service_callbacks_;
 
   DISALLOW_COPY_AND_ASSIGN(Impl);
 };

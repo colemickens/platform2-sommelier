@@ -38,7 +38,7 @@ class PSYCHE_EXPORT PsycheConnectionInterface {
   // |callback| will be invoked asynchronously when the service is available or
   // with an empty handle if the request failed. A false return value indicates
   // that the request was not received by psyched (i.e. |callback| will never be
-  // invoked).
+  // invoked). Multiple callbacks may be registered for a single service.
   virtual bool GetService(
       const std::string& service_name,
       const GetServiceCallback& callback) WARN_UNUSED_RESULT = 0;

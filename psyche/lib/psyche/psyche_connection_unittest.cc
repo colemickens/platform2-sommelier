@@ -158,14 +158,15 @@ class ServiceReceiver {
     proxy_.reset();
   }
 
-  // Saves |proxy| to |proxy_| and stops the message loop. Intended to be passed
-  // as a callback to PsycheConnection::GetService().
+  // Saves |proxy| to |proxy_| and stops the message loop if |quit_closure_| is
+  // set. Intended to be passed as a callback to PsycheConnection::GetService().
   void ReceiveService(scoped_ptr<BinderProxy> proxy) {
     num_calls_++;
     proxy_.reset(proxy.release());
-    CHECK(!quit_closure_.is_null());
-    quit_closure_.Run();
-    quit_closure_.Reset();
+    if (!quit_closure_.is_null()) {
+      quit_closure_.Run();
+      quit_closure_.Reset();
+    }
   }
 
   // Runs the message loop until ReceiveService() is called or the loop is idle.
@@ -234,36 +235,46 @@ TEST_F(PsycheConnectionTest, GetService) {
 
   // Check that GetService() returns false when an RPC error is encountered.
   psyched_->set_return_value(-1);
-  ServiceReceiver receiver;
+  ServiceReceiver rpc_error_receiver;
   EXPECT_FALSE(connection_.GetService(
       kServiceName, base::Bind(&ServiceReceiver::ReceiveService,
-                               base::Unretained(&receiver))));
-  receiver.RunMessageLoop();
-  EXPECT_EQ(0, receiver.num_calls());
-  receiver.Reset();
+                               base::Unretained(&rpc_error_receiver))));
+  rpc_error_receiver.RunMessageLoop();
+  EXPECT_EQ(0, rpc_error_receiver.num_calls());
 
   // Now request in an unknown service, which should result in a null proxy
   // being returned.
   psyched_->set_return_value(0);
+  ServiceReceiver unknown_service_receiver;
   EXPECT_TRUE(connection_.GetService(
       kServiceName, base::Bind(&ServiceReceiver::ReceiveService,
-                               base::Unretained(&receiver))));
-  receiver.RunMessageLoop();
-  EXPECT_EQ(1, receiver.num_calls());
-  EXPECT_FALSE(receiver.proxy());
-  receiver.Reset();
+                               base::Unretained(&unknown_service_receiver))));
+  unknown_service_receiver.RunMessageLoop();
+  EXPECT_EQ(1, unknown_service_receiver.num_calls());
+  EXPECT_FALSE(unknown_service_receiver.proxy());
+  unknown_service_receiver.Reset();
 
-  // Let the request succeed this time.
+  // Create the service so a second request will succeed. Both the old and new
+  // callbacks should be invoked.
   BinderProxy* service_proxy = CreateBinderProxy().release();
   psyched_->SetService(kServiceName,
                        std::unique_ptr<BinderProxy>(service_proxy));
+  ServiceReceiver successful_receiver;
   EXPECT_TRUE(connection_.GetService(
       kServiceName, base::Bind(&ServiceReceiver::ReceiveService,
-                               base::Unretained(&receiver))));
-  receiver.RunMessageLoop();
-  EXPECT_EQ(1, receiver.num_calls());
-  EXPECT_EQ(service_proxy, receiver.proxy());
-  receiver.Reset();
+                               base::Unretained(&successful_receiver))));
+  successful_receiver.RunMessageLoop();
+
+  // We won't receive the original proxy (new ones are created so they can be
+  // passed to each callback), but the underlying binder handle should match.
+  EXPECT_EQ(1, successful_receiver.num_calls());
+  ASSERT_TRUE(successful_receiver.proxy());
+  EXPECT_EQ(service_proxy->handle(), successful_receiver.proxy()->handle());
+
+  EXPECT_EQ(1, unknown_service_receiver.num_calls());
+  ASSERT_TRUE(unknown_service_receiver.proxy());
+  EXPECT_EQ(service_proxy->handle(),
+            unknown_service_receiver.proxy()->handle());
 }
 
 }  // namespace
