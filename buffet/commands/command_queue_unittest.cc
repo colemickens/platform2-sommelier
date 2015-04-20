@@ -23,7 +23,7 @@ class CommandQueueTest : public testing::Test {
       const std::string& name,
       const std::string& id) {
     std::unique_ptr<CommandInstance> cmd{
-        new CommandInstance{name, &command_definition_, {}}};
+        new CommandInstance{name, "local", &command_definition_, {}}};
     cmd->SetID(id);
     return cmd;
   }

@@ -85,7 +85,8 @@ class DBusCommandProxyTest : public ::testing::Test {
         '_jumpType': '_withKick'
       }
     })");
-    command_instance_ = CommandInstance::FromJson(json.get(), dict_, nullptr);
+    command_instance_ =
+        CommandInstance::FromJson(json.get(), "local", dict_, nullptr);
     command_instance_->SetID(kTestCommandId);
 
     // Set up a mock ExportedObject to be used with the DBus command proxy.

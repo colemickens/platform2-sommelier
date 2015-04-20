@@ -33,6 +33,7 @@ class CommandInstance final {
   // be in format "<package_name>.<command_name>", a command |category| and
   // a list of parameters and their values specified in |parameters|.
   CommandInstance(const std::string& name,
+                  const std::string& origin,
                   const CommandDefinition* command_definition,
                   const native_types::Object& parameters);
   ~CommandInstance();
@@ -50,6 +51,8 @@ class CommandInstance final {
   // Finds a command parameter value by parameter |name|. If the parameter
   // with given name does not exist, returns nullptr.
   const PropValue* FindParameter(const std::string& name) const;
+  // Returns the full name of the command.
+  const std::string& GetOrigin() const { return origin_; }
 
   // Returns command definition.
   const CommandDefinition* GetCommandDefinition() const {
@@ -62,6 +65,7 @@ class CommandInstance final {
   // fills in error details in |error|.
   static std::unique_ptr<CommandInstance> FromJson(
       const base::Value* value,
+      const std::string& origin,
       const CommandDictionary& dictionary,
       chromeos::ErrorPtr* error);
 
@@ -121,6 +125,8 @@ class CommandInstance final {
   std::string id_;
   // Full command name as "<package_name>.<command_name>".
   std::string name_;
+  // The origin of the command, either "local" or "cloud".
+  std::string origin_;
   // Command definition.
   const CommandDefinition* command_definition_;
   // Command parameters and their values.

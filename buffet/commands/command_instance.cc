@@ -28,9 +28,11 @@ const char CommandInstance::kStatusAborted[] = "aborted";
 const char CommandInstance::kStatusExpired[] = "expired";
 
 CommandInstance::CommandInstance(const std::string& name,
+                                 const std::string& origin,
                                  const CommandDefinition* command_definition,
                                  const native_types::Object& parameters)
     : name_{name},
+      origin_{origin},
       command_definition_{command_definition},
       parameters_{parameters} {
   CHECK(command_definition_);
@@ -63,8 +65,7 @@ bool GetCommandParameters(const base::DictionaryValue* json,
   base::DictionaryValue no_params;  // Placeholder when no params are specified.
   const base::DictionaryValue* params = nullptr;
   const base::Value* params_value = nullptr;
-  if (json->GetWithoutPathExpansion(commands::attributes::kCommand_Parameters,
-                                    &params_value)) {
+  if (json->Get(commands::attributes::kCommand_Parameters, &params_value)) {
     // Make sure the "parameters" property is actually an object.
     if (!params_value->GetAsDictionary(&params)) {
       chromeos::Error::AddToPrintf(error, FROM_HERE,
@@ -93,6 +94,7 @@ bool GetCommandParameters(const base::DictionaryValue* json,
 
 std::unique_ptr<CommandInstance> CommandInstance::FromJson(
     const base::Value* value,
+    const std::string& origin,
     const CommandDictionary& dictionary,
     chromeos::ErrorPtr* error) {
   std::unique_ptr<CommandInstance> instance;
@@ -107,8 +109,7 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
 
   // Get the command name from 'name' property.
   std::string command_name;
-  if (!json->GetStringWithoutPathExpansion(commands::attributes::kCommand_Name,
-                                           &command_name)) {
+  if (!json->GetString(commands::attributes::kCommand_Name, &command_name)) {
     chromeos::Error::AddTo(error, FROM_HERE, errors::commands::kDomain,
                            errors::commands::kPropertyMissing,
                            "Command name is missing");
@@ -133,10 +134,10 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
     return instance;
   }
 
-  instance.reset(new CommandInstance(command_name, command_def, parameters));
+  instance.reset(
+      new CommandInstance{command_name, origin, command_def, parameters});
   std::string command_id;
-  if (json->GetStringWithoutPathExpansion(commands::attributes::kCommand_Id,
-                                          &command_id)) {
+  if (json->GetString(commands::attributes::kCommand_Id, &command_id)) {
     instance->SetID(command_id);
   }
 

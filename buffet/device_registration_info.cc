@@ -25,6 +25,7 @@
 #include "buffet/commands/cloud_command_proxy.h"
 #include "buffet/commands/command_definition.h"
 #include "buffet/commands/command_manager.h"
+#include "buffet/commands/schema_constants.h"
 #include "buffet/device_registration_storage_keys.h"
 #include "buffet/org.chromium.Buffet.Manager.h"
 #include "buffet/states/state_manager.h"
@@ -899,8 +900,9 @@ void DeviceRegistrationInfo::PublishCommands(const base::ListValue& commands) {
       continue;
     }
 
-    std::unique_ptr<CommandInstance> command_instance =
-        CommandInstance::FromJson(command, command_dictionary, nullptr);
+    auto command_instance = CommandInstance::FromJson(
+        command, commands::attributes::kCommand_Visibility_Cloud,
+        command_dictionary, nullptr);
     if (!command_instance) {
       LOG(WARNING) << "Failed to parse a command";
       continue;

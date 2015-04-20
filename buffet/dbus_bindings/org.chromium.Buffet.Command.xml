@@ -37,5 +37,11 @@
     <property name="Progress" type="i" access="read"/>
     <property name="Parameters" type="a{sv}" access="read"/>
     <property name="Results" type="a{sv}" access="read"/>
+    <property name="Origin" type="s" access="read">
+      <tp:docstring>
+        Specifies the origin of the command. This is a string containing
+        "cloud" or "local" indicating the method of delivery of the command.
+      </tp:docstring>
+    </property>
   </interface>
 </node>

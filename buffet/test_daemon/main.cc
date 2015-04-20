@@ -73,8 +73,10 @@ void Daemon::OnPropertyChange(org::chromium::Buffet::CommandProxy* command,
 
 void Daemon::OnBuffetCommand(org::chromium::Buffet::CommandProxy* command) {
   // "Handle" only commands that belong to this daemon's category.
-  if (command->category() != kTestCommandCategory)
+  if (command->category() != kTestCommandCategory ||
+      command->status() == "done") {
     return;
+  }
 
   command->SetPropertyChangedCallback(base::Bind(&Daemon::OnPropertyChange,
                                                  base::Unretained(this)));
@@ -84,6 +86,7 @@ void Daemon::OnBuffetCommand(org::chromium::Buffet::CommandProxy* command) {
   printf("        category: %s\n", command->category().c_str());
   printf("              ID: %s\n", command->id().c_str());
   printf("          status: %s\n", command->status().c_str());
+  printf("          origin: %s\n", command->origin().c_str());
   printf(" # of parameters: %" PRIuS "\n", command->parameters().size());
   auto keys = chromeos::GetMapKeysAsVector(command->parameters());
   std::string param_names = chromeos::string_utils::Join(", ", keys);
