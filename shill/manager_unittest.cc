@@ -5111,4 +5111,35 @@ TEST_F(ManagerTest, GetEnabledDeviceByLinkName) {
                 disabled_wifi_device->link_name()));
 }
 
+TEST_F(ManagerTest, AcceptHostnameFrom) {
+  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth0"));
+  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth1"));
+  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("wlan0"));
+
+  manager()->SetAcceptHostnameFrom("eth0");
+  EXPECT_TRUE(manager()->ShouldAcceptHostnameFrom("eth0"));
+  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth1"));
+  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("wlan0"));
+
+  manager()->SetAcceptHostnameFrom("eth1");
+  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth0"));
+  EXPECT_TRUE(manager()->ShouldAcceptHostnameFrom("eth1"));
+  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("wlan0"));
+
+  manager()->SetAcceptHostnameFrom("eth*");
+  EXPECT_TRUE(manager()->ShouldAcceptHostnameFrom("eth0"));
+  EXPECT_TRUE(manager()->ShouldAcceptHostnameFrom("eth1"));
+  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("wlan0"));
+
+  manager()->SetAcceptHostnameFrom("wlan*");
+  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth0"));
+  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth1"));
+  EXPECT_TRUE(manager()->ShouldAcceptHostnameFrom("wlan0"));
+
+  manager()->SetAcceptHostnameFrom("ether*");
+  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth0"));
+  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("eth1"));
+  EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("wlan0"));
+}
+
 }  // namespace shill

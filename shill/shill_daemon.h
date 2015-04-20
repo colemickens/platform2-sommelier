@@ -45,6 +45,7 @@ class Daemon {
   void SetPassiveMode();
   void SetPrependDNSServers(const std::string &prepend_dns_servers);
   void SetMinimumMTU(const int mtu);
+  void SetAcceptHostnameFrom(const std::string &hostname_from);
 
   // Main for connection manager.  Starts main process and holds event loop.
   void Run();

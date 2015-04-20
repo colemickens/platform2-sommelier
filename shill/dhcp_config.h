@@ -122,6 +122,7 @@ class DHCPConfig : public IPConfig {
   static const char kConfigurationKeyDNS[];
   static const char kConfigurationKeyDomainName[];
   static const char kConfigurationKeyDomainSearch[];
+  static const char kConfigurationKeyHostname[];
   static const char kConfigurationKeyIPAddress[];
   static const char kConfigurationKeyLeaseTime[];
   static const char kConfigurationKeyMTU[];

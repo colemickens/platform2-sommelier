@@ -52,6 +52,9 @@ static const char kDefaultTechnologyOrder[] = "default-technology-order";
 static const char kPrependDNSServers[] = "prepend-dns-servers";
 // The minimum MTU value that will be respected in DHCP responses.
 static const char kMinimumMTU[] = "minimum-mtu";
+// Accept hostname from the DHCP server for the specified devices.
+// eg. eth0 or eth*
+static const char kAcceptHostnameFrom[] = "accept-hostname-from";
 // Flag that causes shill to show the help message and exit.
 static const char kHelp[] = "help";
 
@@ -78,6 +81,8 @@ static const char kHelpMessage[] = "\n"
     "    Specify the default priority order of the technologies.\n"
     "  --prepend-dns-servers=server1,server2,...\n"
     "    Prepend the provided DNS servers to the resolver list.\n"
+    "  --accept-hostname-from=eth0 or --accept-hostname-from=eth*\n"
+    "    Accept a hostname from the DHCP server for the matching devices.\n"
     "  --minimum-mtu=mtu\n"
     "    Set the minimum value to respect as the MTU from DHCP responses.\n";
 }  // namespace switches
@@ -229,6 +234,11 @@ int main(int argc, char** argv) {
       LOG(FATAL) << "Could not convert '" << value << "' to integer.";
     }
     daemon.SetMinimumMTU(mtu);
+  }
+
+  if (cl->HasSwitch(switches::kAcceptHostnameFrom)) {
+    daemon.SetAcceptHostnameFrom(
+        cl->GetSwitchValueASCII(switches::kAcceptHostnameFrom));
   }
 
   g_unix_signal_add(SIGINT, ExitSigHandler, &daemon);

@@ -85,6 +85,10 @@ void Daemon::SetMinimumMTU(const int mtu) {
   manager_->SetMinimumMTU(mtu);
 }
 
+void Daemon::SetAcceptHostnameFrom(const string &hostname_from) {
+  manager_->SetAcceptHostnameFrom(hostname_from);
+}
+
 void Daemon::Run() {
   Start();
   SLOG(this, 1) << "Running main loop.";

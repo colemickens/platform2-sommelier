@@ -4,10 +4,12 @@
 
 #include "shill/device.h"
 
+#include <errno.h>
 #include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 #include <stdio.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <set>
@@ -831,6 +833,20 @@ void Device::SetupConnection(const IPConfigRefPtr &ipconfig) {
     // to the Online state.
     StartPortalDetection();
   }
+
+  // Accept hostname if configured to do so.
+  string accepted_hostname = ipconfig->properties().accepted_hostname;
+  if (manager()->ShouldAcceptHostnameFrom(link_name_)
+      && !accepted_hostname.empty()) {
+    const char* hostname = accepted_hostname.c_str();
+    int len = accepted_hostname.length();
+    if (sethostname(hostname, len) != 0) {
+          LOG(ERROR) << "Device " << FriendlyName()
+             << ": Failed to set hostname to: " << accepted_hostname
+             << "Error: " << strerror(errno);
+    }
+  }
+
 
   StartLinkMonitor();
   StartTrafficMonitor();

@@ -472,6 +472,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Set the list of prepended DNS servers to |prepend_dns_servers|.
   void SetPrependDNSServers(const std::string &prepend_dns_servers);
 
+  // Accept hostname from DHCP server for devices matching |hostname_from|.
+  void SetAcceptHostnameFrom(const std::string &hostname_from);
+  bool ShouldAcceptHostnameFrom(const std::string &device_name);
+
   // Filter the list of prepended DNS servers, copying only those that match
   // |family| into |dns_servers|.  |dns_servers| is cleared, regardless of
   // whether or not there are any addresses that match |family|.
@@ -778,6 +782,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Properties to be get/set via PropertyStore calls.
   Properties props_;
   PropertyStore store_;
+
+  // Accept hostname supplied by the DHCP server from the specified devices.
+  // eg. eth0 or eth*
+  std::string accept_hostname_from_;
 
   base::CancelableClosure sort_services_task_;
 

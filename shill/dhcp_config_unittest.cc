@@ -287,6 +287,8 @@ TEST_F(DHCPConfigTest, ParseConfiguration) {
     writer << search;
   }
   conf[DHCPConfig::kConfigurationKeyMTU].writer().append_uint16(600);
+  conf[DHCPConfig::kConfigurationKeyHostname].writer().append_string(
+      "hostname");
   conf["UnknownKey"] = DBus::Variant();
 
   IPConfig::Properties properties;
@@ -303,6 +305,7 @@ TEST_F(DHCPConfigTest, ParseConfiguration) {
   EXPECT_EQ("foo.com", properties.domain_search[0]);
   EXPECT_EQ("bar.com", properties.domain_search[1]);
   EXPECT_EQ(600, properties.mtu);
+  EXPECT_EQ("hostname", properties.accepted_hostname);
 }
 
 TEST_F(DHCPConfigTest, ParseConfigurationWithMinimumMTU) {

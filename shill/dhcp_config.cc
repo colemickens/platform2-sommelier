@@ -48,6 +48,7 @@ const char DHCPConfig::kConfigurationKeyClasslessStaticRoutes[] =
 const char DHCPConfig::kConfigurationKeyDNS[] = "DomainNameServers";
 const char DHCPConfig::kConfigurationKeyDomainName[] = "DomainName";
 const char DHCPConfig::kConfigurationKeyDomainSearch[] = "DomainSearch";
+const char DHCPConfig::kConfigurationKeyHostname[] = "Hostname";
 const char DHCPConfig::kConfigurationKeyIPAddress[] = "IPAddress";
 const char DHCPConfig::kConfigurationKeyLeaseTime[] = "DHCPLeaseTime";
 const char DHCPConfig::kConfigurationKeyMTU[] = "InterfaceMTU";
@@ -510,6 +511,8 @@ bool DHCPConfig::ParseConfiguration(const Configuration &configuration,
       }
     } else if (key == kConfigurationKeyDomainName) {
       properties->domain_name = value.reader().get_string();
+    } else if (key == kConfigurationKeyHostname) {
+      properties->accepted_hostname = value.reader().get_string();
     } else if (key == kConfigurationKeyDomainSearch) {
       properties->domain_search = value.operator vector<string>();
     } else if (key == kConfigurationKeyMTU) {

@@ -1142,6 +1142,14 @@ void Manager::SetPrependDNSServers(const std::string &prepend_dns_servers) {
   props_.prepend_dns_servers = prepend_dns_servers;
 }
 
+void Manager::SetAcceptHostnameFrom(const string &hostname_from) {
+  accept_hostname_from_ = hostname_from;
+}
+
+bool Manager::ShouldAcceptHostnameFrom(const string &device_name) {
+  return MatchPattern(device_name, accept_hostname_from_);
+}
+
 void Manager::FilterPrependDNSServersByFamily(const IPAddress::Family family,
                                               vector<string> *dns_servers) {
   dns_servers->clear();
