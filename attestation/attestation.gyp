@@ -74,6 +74,7 @@
         'server/crypto_utility_impl.cc',
         'server/dbus_service.cc',
         'server/database_impl.cc',
+        'server/pkcs11_key_store.cc',
         'server/tpm_utility_v1.cc',
       ],
       'all_dependent_settings': {
@@ -83,6 +84,7 @@
           ],
         },
         'libraries': [
+          '-lchaps',
           '-ltspi',
         ],
       },
@@ -127,6 +129,7 @@
             'server/mock_database.cc',
             'server/mock_key_store.cc',
             'server/mock_tpm_utility.cc',
+            'server/pkcs11_key_store_test.cc',
           ],
           'dependencies': [
             'client_library',
