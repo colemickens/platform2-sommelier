@@ -22,6 +22,7 @@
 #include <dbus/values_util.h>
 
 #include "buffet/commands/command_instance.h"
+#include "buffet/commands/schema_constants.h"
 #include "buffet/states/state_change_queue.h"
 #include "buffet/states/state_manager.h"
 #include "buffet/storage_impls.h"
@@ -205,6 +206,23 @@ void Manager::GetCommand(DBusMethodResponse<std::string> response,
   base::JSONWriter::WriteWithOptions(command->ToJson().get(),
       base::JSONWriter::OPTIONS_PRETTY_PRINT, &command_str);
   response->Return(command_str);
+}
+
+void Manager::SetCommandVisibility(
+    scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<>> response,
+    const std::vector<std::string>& in_names,
+    const std::string& in_visibility) {
+  CommandDefinition::Visibility visibility;
+  chromeos::ErrorPtr error;
+  if (!visibility.FromString(in_visibility, &error)) {
+    response->ReplyWithError(error.get());
+    return;
+  }
+  if (!command_manager_->SetCommandVisibility(in_names, visibility, &error)) {
+    response->ReplyWithError(error.get());
+    return;
+  }
+  response->Return();
 }
 
 std::string Manager::TestMethod(const std::string& message) {

@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
@@ -72,6 +73,10 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
                   const std::string& json_command) override;
   void GetCommand(DBusMethodResponse<std::string> response,
                   const std::string& id) override;
+  void SetCommandVisibility(
+      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<>> response,
+      const std::vector<std::string>& in_names,
+      const std::string& in_visibility) override;
   std::string TestMethod(const std::string& message) override;
 
   void OnCommandDefsChanged();

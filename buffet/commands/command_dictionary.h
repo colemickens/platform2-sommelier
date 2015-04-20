@@ -78,6 +78,7 @@ class CommandDictionary {
   void Clear();
   // Finds a definition for the given command.
   const CommandDefinition* FindCommand(const std::string& command_name) const;
+  CommandDefinition* FindCommand(const std::string& command_name);
 
  private:
   using CommandMap = std::map<std::string, std::unique_ptr<CommandDefinition>>;

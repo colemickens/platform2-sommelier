@@ -235,6 +235,12 @@ const CommandDefinition* CommandDictionary::FindCommand(
   return (pair != definitions_.end()) ? pair->second.get() : nullptr;
 }
 
+CommandDefinition* CommandDictionary::FindCommand(
+    const std::string& command_name) {
+  auto pair = definitions_.find(command_name);
+  return (pair != definitions_.end()) ? pair->second.get() : nullptr;
+}
+
 void CommandDictionary::Clear() {
   definitions_.clear();
 }

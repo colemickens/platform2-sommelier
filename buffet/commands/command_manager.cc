@@ -104,4 +104,35 @@ CommandInstance* CommandManager::FindCommand(const std::string& id) const {
   return command_queue_.Find(id);
 }
 
+bool CommandManager::SetCommandVisibility(
+    const std::vector<std::string>& command_names,
+    CommandDefinition::Visibility visibility,
+    chromeos::ErrorPtr* error) {
+  if (command_names.empty())
+    return true;
+
+  std::vector<CommandDefinition*> definitions;
+  definitions.reserve(command_names.size());
+
+  // Find/validate command definitions first.
+  for (const std::string& name : command_names) {
+    CommandDefinition* def = dictionary_.FindCommand(name);
+    if (!def) {
+      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                                   errors::commands::kInvalidCommandName,
+                                   "Command '%s' is unknown", name.c_str());
+      return false;
+    }
+    definitions.push_back(def);
+  }
+
+  // Now that we know that all the command names were valid,
+  // update the respective commands' visibility.
+  for (CommandDefinition* def : definitions) {
+    def->SetVisibility(visibility);
+  }
+  on_command_changed_.Notify();
+  return true;
+}
+
 }  // namespace buffet

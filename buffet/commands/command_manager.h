@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <base/callback_list.h>
@@ -49,7 +50,8 @@ class CommandManager final {
   explicit CommandManager(CommandDispachInterface* dispatch_interface);
 
   // Sets callback which is called when command definitions is changed.
-  CallbackToken AddOnCommandDefChanged(const base::Closure& callback) {
+  CallbackToken AddOnCommandDefChanged(
+      const base::Closure& callback) WARN_UNUSED_RESULT {
     return CallbackToken{on_command_changed_.Add(callback).release()};
   }
 
@@ -101,6 +103,11 @@ class CommandManager final {
   // the given |id| is not found. The returned pointer should not be persisted
   // for a long period of time.
   CommandInstance* FindCommand(const std::string& id) const;
+
+  // Changes the visibility of commands.
+  bool SetCommandVisibility(const std::vector<std::string>& command_names,
+                            CommandDefinition::Visibility visibility,
+                            chromeos::ErrorPtr* error);
 
  private:
   CommandDictionary base_dictionary_;  // Base/std command definitions/schemas.

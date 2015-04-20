@@ -20,6 +20,7 @@
 #include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/dbus_method_invoker.h>
 #include <chromeos/errors/error.h>
+#include <chromeos/strings/string_utils.h>
 #include <chromeos/variant_dictionary.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -45,6 +46,7 @@ void usage() {
   - UpdateState prop_name prop_value
   - GetState
   - PendingCommands
+  - SetCommandVisibility pkg1.cmd1[,pkg2.cm2,...] [all|cloud|local|none]
 )");
 }
 
@@ -227,6 +229,12 @@ class Daemon : public chromeos::DBusDaemon {
           base::Bind(&Daemon::CallGetPendingCommands,
                      weak_factory_.GetWeakPtr()),
           base::TimeDelta::FromMilliseconds(100));
+    } else if (command.compare("SetCommandVisibility") == 0 ||
+               command.compare("cv") == 0) {
+      if (!CheckArgs(command, args, 2))
+        return EX_USAGE;
+      job = base::Bind(&Daemon::CallSetCommandVisibility,
+                       weak_factory_.GetWeakPtr(), args.front(), args.back());
     } else {
       fprintf(stderr, "Unknown command: '%s'\n", command.c_str());
       return EX_USAGE;
@@ -370,6 +378,18 @@ class Daemon : public chromeos::DBusDaemon {
              cmd->progress(),
              cmd->name().c_str(),
              cmd->id().c_str());
+    }
+    OnJobComplete();
+  }
+
+  void CallSetCommandVisibility(const std::string& command_list,
+                                    const std::string& visibility,
+                                    ManagerProxy* manager_proxy) {
+    ErrorPtr error;
+    std::vector<std::string> commands =
+        chromeos::string_utils::Split(command_list, ",", true, true);
+    if (!manager_proxy->SetCommandVisibility(commands, visibility, &error)) {
+      return ReportError(error.get());
     }
     OnJobComplete();
   }
