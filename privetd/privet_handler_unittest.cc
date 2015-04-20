@@ -294,8 +294,7 @@ TEST_F(PrivetHandlerTest, Info) {
     'authentication': {
       'mode': [
         'anonymous',
-        'pairing',
-        'cloud'
+        'pairing'
       ],
       'pairing': [
         'pinCode',

@@ -72,7 +72,6 @@ const char kPairingSignatureKey[] = "certSignature";
 
 const char kAuthTypeAnonymousValue[] = "anonymous";
 const char kAuthTypePairingValue[] = "pairing";
-const char kAuthTypeCloudValue[] = "cloud";
 
 const char kAuthModeKey[] = "mode";
 const char kAuthCodeKey[] = "authCode";
@@ -769,10 +768,10 @@ std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateInfoAuthSection()
   std::unique_ptr<base::ListValue> auth_types(new base::ListValue());
   auth_types->AppendString(kAuthTypeAnonymousValue);
   auth_types->AppendString(kAuthTypePairingValue);
-  if (cloud_ &&
-      cloud_->GetConnectionState().IsStatusEqual(ConnectionState::kOnline)) {
-    auth_types->AppendString(kAuthTypeCloudValue);
-  }
+  // TODO(vitalybuka): Implement cloud auth.
+  // if (cloud.GetConnectionState().IsStatusEqual(ConnectionState::kOnline)) {
+  //   auth_types->AppendString(kAuthTypeCloudValue);
+  // }
   auth->Set(kAuthModeKey, auth_types.release());
 
   std::unique_ptr<base::ListValue> crypto_types(new base::ListValue());
