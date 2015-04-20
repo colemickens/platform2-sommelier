@@ -23,6 +23,7 @@
         # TODO(derat): If the amount of testing-specific code, e.g. stubs, ever
         # becomes substantial, move it to a separate shared library.
         '<(proto_in_dir)/binder.proto',
+        'binder_driver.cc',
         'binder_host.cc',
         'binder_manager.cc',
         'binder_manager_stub.cc',
@@ -46,6 +47,8 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': ['libprotobinder'],
           'sources': [
+            'binder_driver_stub.cc',
+            'binder_unittest.cc',
             'libprotobinder_testrunner.cc',
             'parcel_unittest.cc',
           ],

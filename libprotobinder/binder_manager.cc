@@ -4,19 +4,10 @@
 
 #include "libprotobinder/binder_manager.h"
 
-#include <errno.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
-// Out of order due to this bad header requiring sys/types.h
-#include <linux/android/binder.h>
-
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
+#include "libprotobinder/binder_driver.h"
 #include "libprotobinder/binder_host.h"
 #include "libprotobinder/binder_proxy.h"
 #include "libprotobinder/iinterface.h"
@@ -26,16 +17,17 @@ namespace protobinder {
 
 namespace {
 
-const size_t kBinderMappedSize = (1 * 1024 * 1024) - (4096 * 2);
-
 BinderManagerInterface* g_binder_manager = nullptr;
 
 }  // namespace
 
 // static
 BinderManagerInterface* BinderManagerInterface::Get() {
-  if (!g_binder_manager)
-    g_binder_manager = new BinderManager();
+  if (!g_binder_manager) {
+    std::unique_ptr<BinderDriver> driver(new BinderDriver());
+    driver->Init();
+    g_binder_manager = new BinderManager(std::move(driver));
+  }
   return g_binder_manager;
 }
 
@@ -55,20 +47,24 @@ void BinderManager::ReleaseBinderBuffer(Parcel* parcel,
                                         void* cookie) {
   VLOG(1) << "Binder free";
   // TODO(leecam): Close FDs in Parcel
-  BinderManager* manager = static_cast<BinderManager*>(
-      BinderManagerInterface::Get());
+  BinderManager* manager =
+      static_cast<BinderManager*>(BinderManagerInterface::Get());
   manager->out_commands_.WriteInt32(BC_FREE_BUFFER);
   manager->out_commands_.WritePointer((uintptr_t)data);
 }
 
+// TODO(leecam): Remove the DoBinderReadWriteIoctl
+// to reduce number of calls to driver
 void BinderManager::IncWeakHandle(uint32_t handle) {
   out_commands_.WriteInt32(BC_INCREFS);
   out_commands_.WriteInt32(handle);
+  DoBinderReadWriteIoctl(false);
 }
 
 void BinderManager::DecWeakHandle(uint32_t handle) {
   out_commands_.WriteInt32(BC_DECREFS);
   out_commands_.WriteInt32(handle);
+  DoBinderReadWriteIoctl(false);
 }
 
 void BinderManager::RequestDeathNotification(BinderProxy* proxy) {
@@ -288,8 +284,6 @@ int BinderManager::Transact(uint32_t handle,
 }
 
 bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
-  if (binder_fd_ < 0)
-    return false;
   // Create a binder_write_read command and send it to binder
   struct binder_write_read bwr;
 
@@ -322,8 +316,8 @@ bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
     return true;
   }
   VLOG(1) << "Doing ioctl";
-  if (ioctl(binder_fd_, BINDER_WRITE_READ, &bwr) < 0) {
-    PLOG(ERROR) << "ioctl(binder_fd, BINDER_WRITE_READ) failed";
+  if (driver_->ReadWrite(&bwr) < 0) {
+    LOG(ERROR) << "driver ReadWrite failed";
     return false;
   }
   VLOG(1) << base::StringPrintf("Binder data R:%lld/%lld W:%lld/%lld",
@@ -350,15 +344,9 @@ bool BinderManager::DoBinderReadWriteIoctl(bool do_read) {
 }
 
 bool BinderManager::GetFdForPolling(int* fd) {
-  if (binder_fd_ < 0)
-    return false;
-  int num_threads = 0;
-  if (ioctl(binder_fd_, BINDER_SET_MAX_THREADS, &num_threads) < 0) {
-    PLOG(ERROR) << "ioctl(binder_fd, BINDER_SET_MAX_THREADS, 0) failed";
-    return false;
-  }
+  driver_->SetMaxThreads(0);
   out_commands_.WriteInt32(BC_ENTER_LOOPER);
-  *fd = binder_fd_;
+  *fd = driver_->GetFdForPolling();
   return true;
 }
 
@@ -379,33 +367,17 @@ bool BinderManager::HandleEvent() {
   return DoBinderReadWriteIoctl(false);
 }
 
-BinderManager::BinderManager() {
+BinderManager::BinderManager(std::unique_ptr<BinderDriverInterface> driver) {
   VLOG(1) << "BinderManager created";
 
-  binder_fd_ = open("/dev/binder", O_RDWR | O_CLOEXEC);
-  if (binder_fd_ < 0) {
-    PLOG(FATAL) << "Failed to open binder";
-  }
+  driver_ = std::move(driver);
 
-  // Check the version.
-  struct binder_version vers;
-  if ((ioctl(binder_fd_, BINDER_VERSION, &vers) < 0) ||
-      (vers.protocol_version != BINDER_CURRENT_PROTOCOL_VERSION)) {
-    LOG(FATAL) << "Binder driver mismatch";
-  }
-
-  // mmap the user buffer.
-  binder_mapped_address_ = mmap(NULL, kBinderMappedSize, PROT_READ,
-                                MAP_PRIVATE | MAP_NORESERVE, binder_fd_, 0);
-  if (binder_mapped_address_ == MAP_FAILED) {
-    LOG(FATAL) << "Failed to mmap binder";
-  }
-
-  // TODO(leecam): Check these and set binder_fd_ to -1 on failure.
   in_commands_.SetCapacity(256);
   out_commands_.SetCapacity(256);
 }
 
-BinderManager::~BinderManager() {}
+BinderManager::~BinderManager() {
+  DoBinderReadWriteIoctl(false);
+}
 
 }  // namespace protobinder

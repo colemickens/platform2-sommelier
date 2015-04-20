@@ -6,12 +6,14 @@
 #define LIBPROTOBINDER_BINDER_MANAGER_H_
 
 #include <cstdint>
+#include <memory>
 
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 
+#include "binder_driver.h"  // NOLINT(build/include)
 #include "binder_export.h"  // NOLINT(build/include)
-#include "parcel.h"  // NOLINT(build/include)
+#include "parcel.h"         // NOLINT(build/include)
 
 namespace protobinder {
 
@@ -56,7 +58,7 @@ class BINDER_EXPORT BinderManagerInterface {
 // kernel via /dev/binder.
 class BINDER_EXPORT BinderManager : public BinderManagerInterface {
  public:
-  BinderManager();
+  explicit BinderManager(std::unique_ptr<BinderDriverInterface> driver);
   ~BinderManager() override;
 
   // BinderManagerInterface:
@@ -93,14 +95,13 @@ class BINDER_EXPORT BinderManager : public BinderManagerInterface {
   bool GetNextCommandAndProcess();
   int SendReply(const Parcel& reply, int error_code);
 
-  int binder_fd_;
-  void* binder_mapped_address_;
-
   // These parcels are used to pass binder ioctl commands to binder.
   // They carry binder command buffers, not to be confused with Parcels
   // used in Transactions which carry user data.
   Parcel out_commands_;
   Parcel in_commands_;
+
+  std::unique_ptr<BinderDriverInterface> driver_;
 
   DISALLOW_COPY_AND_ASSIGN(BinderManager);
 };
