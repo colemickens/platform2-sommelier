@@ -21,11 +21,12 @@ class MockAttestation : public Attestation {
   MockAttestation(): Attestation() { }
   virtual ~MockAttestation() {}
 
-  MOCK_METHOD5(Initialize, void(Tpm*,
+  MOCK_METHOD6(Initialize, void(Tpm*,
                                 TpmInit*,
                                 Platform*,
                                 Crypto*,
-                                InstallAttributes*));
+                                InstallAttributes*,
+                                bool));
   MOCK_METHOD0(IsPreparedForEnrollment, bool());
   MOCK_METHOD0(IsEnrolled, bool());
   MOCK_METHOD0(PrepareForEnrollment, void());

@@ -712,8 +712,8 @@ TEST(Standalone, LoadEnrollmentState) {
   // Convert to blob -- this is what we're reading from the file.
   std::string data = "123456";
   const chromeos::Blob data_blob(data.c_str(), data.c_str() + data.length());
-  std::string decrypted_data = "decrypted";
-  SecureBlob decrypted_blob(decrypted_data.data(), decrypted_data.size());
+
+  SecureBlob decrypted_blob("decrypted");
 
   // Assume the data is there, we should return the value and success.
   EXPECT_CALL(platform, ReadFile(
@@ -728,7 +728,7 @@ TEST(Standalone, LoadEnrollmentState) {
   EXPECT_TRUE(success);
 
   // Convert output array to a blob for comparison.
-  SecureBlob output_blob(output->data, output->len);
+  SecureBlob output_blob(output->data, output->data + output->len);
   EXPECT_EQ(decrypted_blob, output_blob);
 
   // Assume we fail to read the data, we should not return success.
