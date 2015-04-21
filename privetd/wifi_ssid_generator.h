@@ -12,18 +12,16 @@
 namespace privetd {
 
 class CloudDelegate;
-class DeviceDelegate;
 class WifiDelegate;
 
 class WifiSsidGenerator {
  public:
-  WifiSsidGenerator(const DeviceDelegate* device,
-                    const CloudDelegate* gcd,
-                    const WifiDelegate* wifi);
+  WifiSsidGenerator(const CloudDelegate* gcd, const WifiDelegate* wifi);
   ~WifiSsidGenerator() = default;
 
   std::string GenerateFlags() const;
 
+  // Can return empty string if CloudDelegate is not ready.
   std::string GenerateSsid() const;
 
  private:
@@ -32,7 +30,6 @@ class WifiSsidGenerator {
   // Sets object to use |n| instead of random number for SSID generation.
   void SetRandomForTests(int n);
 
-  const DeviceDelegate* device_{nullptr};
   const CloudDelegate* gcd_{nullptr};
   const WifiDelegate* wifi_{nullptr};
 

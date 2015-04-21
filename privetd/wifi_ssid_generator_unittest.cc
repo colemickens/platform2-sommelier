@@ -17,10 +17,9 @@ class WifiSsidGeneratorTest : public testing::Test {
   void SetRandomForTests(int n) { ssid_generator_.SetRandomForTests(n); }
 
   testing::StrictMock<MockCloudDelegate> gcd_;
-  testing::StrictMock<MockDeviceDelegate> device_;
   testing::StrictMock<MockWifiDelegate> wifi_;
 
-  WifiSsidGenerator ssid_generator_{&device_, &gcd_, &wifi_};
+  WifiSsidGenerator ssid_generator_{&gcd_, &wifi_};
 };
 
 TEST_F(WifiSsidGeneratorTest, GenerateFlags) {
@@ -54,15 +53,16 @@ TEST_F(WifiSsidGeneratorTest, GenerateSsidValue) {
 
 TEST_F(WifiSsidGeneratorTest, GenerateSsidLongName) {
   SetRandomForTests(99);
-  EXPECT_CALL(device_, GetName())
-      .WillRepeatedly(Return("Very Long Device Name"));
+  EXPECT_CALL(gcd_, GetName(_, _))
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>("Very Long Device Name"), Return(true)));
   EXPECT_EQ("Very Long Device  99.ABMIDABprv", ssid_generator_.GenerateSsid());
 }
 
 TEST_F(WifiSsidGeneratorTest, GenerateSsidNoName) {
   SetRandomForTests(99);
-  EXPECT_CALL(device_, GetName()).WillRepeatedly(Return(""));
-  EXPECT_EQ(" 99.ABMIDABprv", ssid_generator_.GenerateSsid());
+  EXPECT_CALL(gcd_, GetName(_, _)).WillRepeatedly(Return(false));
+  EXPECT_EQ("", ssid_generator_.GenerateSsid());
 }
 
 }  // namespace privetd

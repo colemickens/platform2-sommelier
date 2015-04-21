@@ -112,37 +112,42 @@ void PeerdClient::ExposeService() {
   if (peerd_manager_proxy_ == nullptr)
     return;
 
+  std::string name;
+  std::string model_id;
+  if (!cloud_->GetName(&name, nullptr) ||
+      !cloud_->GetModelId(&model_id, nullptr)) {
+    return;
+  }
+  DCHECK(!name.empty());
+  DCHECK_EQ(model_id.size(), 5U);
+
   VLOG(1) << "Starting peerd advertising.";
   const uint16_t port = device_->GetHttpEnpoint().first;
   std::map<std::string, chromeos::Any> mdns_options{
       {"port", chromeos::Any{port}},
   };
-
   DCHECK_NE(port, 0);
-  DCHECK(!device_->GetName().empty());
-  DCHECK_EQ(device_->GetClass().size(), 2U);
-  DCHECK_EQ(device_->GetModelId().size(), 3U);
 
   std::string services;
-  if (!device_->GetServices().empty())
+  if (!cloud_->GetServices().empty())
     services += "_";
-  services += Join(",_", device_->GetServices());
+  services += Join(",_", cloud_->GetServices());
 
   std::map<std::string, std::string> txt_record{
       {"txtvers", "3"},
-      {"ty", device_->GetName()},
+      {"ty", name},
       {"services", services},
       {"id", GetId()},
-      {"class", device_->GetClass()},
-      {"model_id", device_->GetModelId()},
-      {"flags", WifiSsidGenerator{device_, cloud_, wifi_}.GenerateFlags()},
+      {"class", model_id.substr(0, 2)},
+      {"model_id", model_id.substr(2)},
+      {"flags", WifiSsidGenerator{cloud_, wifi_}.GenerateFlags()},
   };
 
   if (!cloud_->GetCloudId().empty())
     txt_record.emplace("gcd_id", cloud_->GetCloudId());
 
-  if (!device_->GetDescription().empty())
-    txt_record.emplace("note", device_->GetDescription());
+  if (!cloud_->GetDescription().empty())
+    txt_record.emplace("note", cloud_->GetDescription());
 
   peerd_manager_proxy_->ExposeServiceAsync(
       kPrivetServiceId, txt_record, {{"mdns", mdns_options}}, base::Closure(),

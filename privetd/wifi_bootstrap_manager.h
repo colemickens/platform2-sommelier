@@ -13,7 +13,9 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
+#include <base/scoped_observer.h>
 
+#include "privetd/cloud_delegate.h"
 #include "privetd/daemon_state.h"
 #include "privetd/privet_types.h"
 #include "privetd/wifi_delegate.h"
@@ -26,7 +28,8 @@ class CloudDelegate;
 class DeviceDelegate;
 class ShillClient;
 
-class WifiBootstrapManager : public WifiDelegate {
+class WifiBootstrapManager : public WifiDelegate,
+                             public CloudDelegate::Observer {
  public:
   enum State {
     kDisabled,
@@ -40,8 +43,7 @@ class WifiBootstrapManager : public WifiDelegate {
   WifiBootstrapManager(DaemonState* state_store,
                        ShillClient* shill_client,
                        ApManagerClient* ap_manager_client,
-                       const DeviceDelegate* device,
-                       const CloudDelegate* gcd,
+                       CloudDelegate* gcd,
                        uint32_t connect_timeout_seconds,
                        uint32_t bootstrap_timeout_seconds,
                        uint32_t monitor_timeout_seconds);
@@ -58,6 +60,9 @@ class WifiBootstrapManager : public WifiDelegate {
   std::string GetCurrentlyConnectedSsid() const override;
   std::string GetHostedSsid() const override;
   std::set<WifiType> GetTypes() const override;
+
+  // Overrides from CloudDelegate::Observer.
+  void OnDeviceInfoChanged() override;
 
  private:
   // These Start* tasks:
@@ -90,6 +95,8 @@ class WifiBootstrapManager : public WifiDelegate {
   void OnMonitorTimeout();
   void UpdateConnectionState();
 
+  // Initialization could be delayed if ssid_generator_ is not ready.
+  bool is_initialized_{false};
   State state_{kDisabled};
   // Setup state is the temporal state of the most recent bootstrapping attempt.
   // It is not persisted to disk.
@@ -107,6 +114,8 @@ class WifiBootstrapManager : public WifiDelegate {
   bool have_ever_been_bootstrapped_{false};
   bool currently_online_{false};
   std::string last_configured_ssid_;
+
+  ScopedObserver<CloudDelegate, CloudDelegate::Observer> cloud_observer_{this};
 
   // Helps to reset irrelevant tasks switching state.
   base::WeakPtrFactory<WifiBootstrapManager> tasks_weak_factory_{this};

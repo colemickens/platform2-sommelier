@@ -25,8 +25,6 @@ class Bus;
 
 namespace privetd {
 
-class DeviceDelegate;
-
 // Interface to provide GCD functionality for PrivetHandler.
 // TODO(vitalybuka): Rename to BuffetDelegate.
 class CloudDelegate {
@@ -123,7 +121,6 @@ class CloudDelegate {
   // Create default instance.
   static std::unique_ptr<CloudDelegate> CreateDefault(
       const scoped_refptr<dbus::Bus>& bus,
-      DeviceDelegate* device,
       bool is_gcd_setup_enabled);
 
  private:

@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/macros.h>
+#include <base/memory/weak_ptr.h>
 #include <base/scoped_observer.h>
 
 #include "privetd/cloud_delegate.h"
@@ -78,7 +79,7 @@ class PrivetHandler : public CloudDelegate::Observer {
                   const RequestCallback& callback);
   void HandleSetupStart(const base::DictionaryValue& input,
                         const RequestCallback& callback);
-  void HandleSetupStatus(const base::DictionaryValue& input,
+  void HandleSetupStatus(const base::DictionaryValue&,
                          const RequestCallback& callback);
   void HandleCommandDefs(const base::DictionaryValue& input,
                          const RequestCallback& callback);
@@ -91,6 +92,13 @@ class PrivetHandler : public CloudDelegate::Observer {
   void HandleCommandsCancel(const base::DictionaryValue& input,
                             const RequestCallback& callback);
 
+  void OnUpdateDeviceInfoDone(const std::string& ssid,
+                              const std::string& passphrase,
+                              const std::string& ticket,
+                              const std::string& user,
+                              const RequestCallback& callback) const;
+  void ReplyWithSetupStatus(const RequestCallback& callback) const;
+
   CloudDelegate* cloud_ = nullptr;
   DeviceDelegate* device_ = nullptr;
   SecurityDelegate* security_ = nullptr;
@@ -101,6 +109,8 @@ class PrivetHandler : public CloudDelegate::Observer {
 
   int command_defs_fingerprint_{0};
   ScopedObserver<CloudDelegate, CloudDelegate::Observer> cloud_observer_{this};
+
+  base::WeakPtrFactory<PrivetHandler> weak_ptr_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(PrivetHandler);
 };

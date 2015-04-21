@@ -20,21 +20,25 @@ namespace privetd {
 WifiBootstrapManager::WifiBootstrapManager(DaemonState* state_store,
                                            ShillClient* shill_client,
                                            ApManagerClient* ap_manager_client,
-                                           const DeviceDelegate* device,
-                                           const CloudDelegate* gcd,
+                                           CloudDelegate* gcd,
                                            uint32_t connect_timeout_seconds,
                                            uint32_t bootstrap_timeout_seconds,
                                            uint32_t monitor_timeout_seconds)
     : state_store_(state_store),
       shill_client_(shill_client),
       ap_manager_client_(ap_manager_client),
-      ssid_generator_(device, gcd, this),
+      ssid_generator_(gcd, this),
       connect_timeout_seconds_(connect_timeout_seconds),
       bootstrap_timeout_seconds_(bootstrap_timeout_seconds),
       monitor_timeout_seconds_(monitor_timeout_seconds) {
+  cloud_observer_.Add(gcd);
 }
 
 void WifiBootstrapManager::Init() {
+  CHECK(!is_initialized_);
+  std::string ssid = ssid_generator_.GenerateSsid();
+  if (ssid.empty())
+    return;  // Delay initialization until ssid_generator_ is ready.
   chromeos::KeyValueStore state_store;
   if (!state_store_->GetBoolean(state_key::kWifiHasBeenBootstrapped,
                                 &have_ever_been_bootstrapped_) ||
@@ -51,6 +55,7 @@ void WifiBootstrapManager::Init() {
   } else {
     StartMonitoring();
   }
+  is_initialized_ = true;
 }
 
 void WifiBootstrapManager::RegisterStateListener(
@@ -68,6 +73,7 @@ void WifiBootstrapManager::StartBootstrapping() {
     StartMonitoring();
     return;
   }
+
   UpdateState(kBootstrapping);
   if (have_ever_been_bootstrapped_) {
     // If we have been configured before, we'd like to periodically take down
@@ -79,7 +85,9 @@ void WifiBootstrapManager::StartBootstrapping() {
         base::TimeDelta::FromSeconds(bootstrap_timeout_seconds_));
   }
   // TODO(vitalybuka): Add SSID probing.
-  ap_manager_client_->Start(ssid_generator_.GenerateSsid());
+  std::string ssid = ssid_generator_.GenerateSsid();
+  CHECK(!ssid.empty());
+  ap_manager_client_->Start(ssid);
 }
 
 void WifiBootstrapManager::EndBootstrapping() {
@@ -183,6 +191,12 @@ std::string WifiBootstrapManager::GetHostedSsid() const {
 std::set<WifiType> WifiBootstrapManager::GetTypes() const {
   // TODO(wiley) This should do some system work to figure this out.
   return {WifiType::kWifi24};
+}
+
+void WifiBootstrapManager::OnDeviceInfoChanged() {
+  // Initialization was delayed until buffet is ready.
+  if (!is_initialized_)
+    Init();
 }
 
 void WifiBootstrapManager::OnConnectSuccess(const std::string& ssid) {

@@ -501,25 +501,32 @@ void PrivetHandler::AddHandler(const std::string& path,
 void PrivetHandler::HandleInfo(const base::DictionaryValue&,
                                const RequestCallback& callback) {
   base::DictionaryValue output;
+
+  chromeos::ErrorPtr error;
+
+  std::string name;
+  std::string model_id;
+  if (!cloud_->GetName(&name, &error) ||
+      !cloud_->GetModelId(&model_id, &error)) {
+    return ReturnError(*error, callback);
+  }
+
   output.SetString(kInfoVersionKey, kInfoVersionValue);
   output.SetString(kInfoIdKey, identity_->GetId());
-  output.SetString(kNameKey, device_->GetName());
+  output.SetString(kNameKey, name);
 
-  std::string description{device_->GetDescription()};
+  std::string description{cloud_->GetDescription()};
   if (!description.empty())
     output.SetString(kDescrptionKey, description);
 
-  std::string location{device_->GetLocation()};
+  std::string location{cloud_->GetLocation()};
   if (!location.empty())
     output.SetString(kLocationKey, location);
 
-  std::string dev_class{device_->GetClass()};
-  CHECK_EQ(2u, dev_class.size());
-  output.SetString(kInfoClassKey, dev_class);
-  std::string model_id{device_->GetModelId()};
-  CHECK_EQ(3u, model_id.size());
-  output.SetString(kInfoModelIdKey, model_id);
-  output.Set(kInfoServicesKey, ToValue(device_->GetServices()).release());
+  CHECK_EQ(5u, model_id.size());
+  output.SetString(kInfoClassKey, model_id.substr(0, 2));
+  output.SetString(kInfoModelIdKey, model_id.substr(2));
+  output.Set(kInfoServicesKey, ToValue(cloud_->GetServices()).release());
 
   output.Set(kInfoAuthenticationKey,
              CreateInfoAuthSection(*security_).release());
@@ -676,20 +683,22 @@ void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
 
 void PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
                                      const RequestCallback& callback) {
-  std::string param;
-  if (input.GetString(kNameKey, &param))
-    device_->SetName(param);
-  if (input.GetString(kDescrptionKey, &param))
-    device_->SetDescription(param);
-  if (input.GetString(kLocationKey, &param))
-    device_->SetLocation(param);
+  std::string name;
+  chromeos::ErrorPtr error;
+  if (!cloud_->GetName(&name, &error))
+    return ReturnError(*error, callback);
+  input.GetString(kNameKey, &name);
+
+  std::string description{cloud_->GetDescription()};
+  input.GetString(kDescrptionKey, &description);
+
+  std::string location{cloud_->GetLocation()};
+  input.GetString(kLocationKey, &location);
 
   std::string ssid;
   std::string passphrase;
   std::string ticket;
   std::string user;
-
-  chromeos::ErrorPtr error;
 
   const base::DictionaryValue* wifi = nullptr;
   if (input.GetDictionary(kWifiKey, &wifi)) {
@@ -701,9 +710,9 @@ void PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
     }
     wifi->GetString(kSetupStartSsidKey, &ssid);
     if (ssid.empty()) {
-      chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
-                                   errors::kInvalidParams,
-                                   kInvalidParamValueFormat, kWifiKey, "");
+      chromeos::Error::AddToPrintf(
+          &error, FROM_HERE, errors::kDomain, errors::kInvalidParams,
+          kInvalidParamValueFormat, kSetupStartSsidKey, "");
       return ReturnError(*error, callback);
     }
     wifi->GetString(kSetupStartPassKey, &passphrase);
@@ -713,13 +722,28 @@ void PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
   if (input.GetDictionary(kGcdKey, &registration)) {
     registration->GetString(kSetupStartTicketIdKey, &ticket);
     if (ticket.empty()) {
-      chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
-                                   errors::kInvalidParams,
-                                   kInvalidParamValueFormat, kGcdKey, "");
+      chromeos::Error::AddToPrintf(
+          &error, FROM_HERE, errors::kDomain, errors::kInvalidParams,
+          kInvalidParamValueFormat, kSetupStartTicketIdKey, "");
       return ReturnError(*error, callback);
     }
     registration->GetString(kSetupStartUserKey, &user);
   }
+
+  cloud_->UpdateDeviceInfo(name, description, location,
+                           base::Bind(&PrivetHandler::OnUpdateDeviceInfoDone,
+                                      weak_ptr_factory_.GetWeakPtr(), ssid,
+                                      passphrase, ticket, user, callback),
+                           base::Bind(&OnCommandRequestFailed, callback));
+}
+
+void PrivetHandler::OnUpdateDeviceInfoDone(
+    const std::string& ssid,
+    const std::string& passphrase,
+    const std::string& ticket,
+    const std::string& user,
+    const RequestCallback& callback) const {
+  chromeos::ErrorPtr error;
 
   if (!ssid.empty() && !wifi_->ConfigureCredentials(ssid, passphrase, &error))
     return ReturnError(*error, callback);
@@ -727,11 +751,16 @@ void PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
   if (!ticket.empty() && !cloud_->Setup(ticket, user, &error))
     return ReturnError(*error, callback);
 
-  return HandleSetupStatus(input, callback);
+  ReplyWithSetupStatus(callback);
 }
 
-void PrivetHandler::HandleSetupStatus(const base::DictionaryValue& input,
+void PrivetHandler::HandleSetupStatus(const base::DictionaryValue&,
                                       const RequestCallback& callback) {
+  ReplyWithSetupStatus(callback);
+}
+
+void PrivetHandler::ReplyWithSetupStatus(
+    const RequestCallback& callback) const {
   base::DictionaryValue output;
 
   const SetupState& state = cloud_->GetSetupState();

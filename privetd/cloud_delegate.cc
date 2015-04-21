@@ -19,8 +19,6 @@
 
 #include "buffet/dbus-proxies.h"
 #include "privetd/constants.h"
-#include "privetd/device_delegate.h"
-#include "privetd/peerd_client.h"
 
 namespace privetd {
 
@@ -37,11 +35,8 @@ const int kFirstRetryTimeoutSec = 1;
 class CloudDelegateImpl : public CloudDelegate {
  public:
   CloudDelegateImpl(const scoped_refptr<dbus::Bus>& bus,
-                    DeviceDelegate* device,
                     bool is_gcd_setup_enabled)
-      : object_manager_{bus},
-        device_{device},
-        is_gcd_setup_enabled_(is_gcd_setup_enabled) {
+      : object_manager_{bus}, is_gcd_setup_enabled_(is_gcd_setup_enabled) {
     object_manager_.SetManagerAddedCallback(
         base::Bind(&CloudDelegateImpl::OnManagerAdded,
                    weak_factory_.GetWeakPtr()));
@@ -335,10 +330,6 @@ class CloudDelegateImpl : public CloudDelegate {
     }
     VariantDictionary params{
         {"ticket_id", ticket_id},
-        {"name", device_->GetName()},
-        {"description", device_->GetDescription()},
-        {"location", device_->GetLocation()},
-        {"model_id", device_->GetModelId()},
     };
     manager_proxy->RegisterDeviceAsync(
         params,
@@ -421,8 +412,6 @@ class CloudDelegateImpl : public CloudDelegate {
 
   ObjectManagerProxy object_manager_;
 
-  DeviceDelegate* device_;
-
   bool is_gcd_setup_enabled_{false};
 
   ManagerProxy* manager_{nullptr};
@@ -454,10 +443,9 @@ CloudDelegate::~CloudDelegate() {
 // static
 std::unique_ptr<CloudDelegate> CloudDelegate::CreateDefault(
     const scoped_refptr<dbus::Bus>& bus,
-    DeviceDelegate* device,
     bool is_gcd_setup_enabled) {
   return std::unique_ptr<CloudDelegateImpl>{
-      new CloudDelegateImpl{bus, device, is_gcd_setup_enabled}};
+      new CloudDelegateImpl{bus, is_gcd_setup_enabled}};
 }
 
 void CloudDelegate::NotifyOnDeviceInfoChanged() {

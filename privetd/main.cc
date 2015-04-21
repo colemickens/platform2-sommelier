@@ -99,8 +99,7 @@ class Daemon : public chromeos::DBusServiceDaemon,
         &parser_, state_store_.get(),
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
     cloud_ = CloudDelegate::CreateDefault(
-        bus_, device_.get(),
-        parser_.gcd_bootstrap_mode() != GcdBootstrapMode::kDisabled);
+        bus_, parser_.gcd_bootstrap_mode() != GcdBootstrapMode::kDisabled);
     cloud_observer_.Add(cloud_.get());
     security_.reset(new SecurityManager(parser_.pairing_modes(),
                                         parser_.embedded_code_path(),
@@ -116,7 +115,7 @@ class Daemon : public chromeos::DBusServiceDaemon,
       VLOG(1) << "Enabling WiFi bootstrapping.";
       wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
           state_store_.get(), shill_client_.get(), ap_manager_client_.get(),
-          device_.get(), cloud_.get(), parser_.connect_timeout_seconds(),
+          cloud_.get(), parser_.connect_timeout_seconds(),
           parser_.bootstrap_timeout_seconds(),
           parser_.monitor_timeout_seconds()));
       wifi_bootstrap_manager_->Init();

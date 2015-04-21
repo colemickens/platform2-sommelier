@@ -277,10 +277,10 @@ TEST_F(PrivetHandlerTest, InfoMinimal) {
 }
 
 TEST_F(PrivetHandlerTest, Info) {
-  EXPECT_CALL(device_, GetDescription())
+  EXPECT_CALL(cloud_, GetDescription())
       .WillRepeatedly(Return("TestDescription"));
-  EXPECT_CALL(device_, GetLocation()).WillRepeatedly(Return("TestLocation"));
-  EXPECT_CALL(device_, GetServices())
+  EXPECT_CALL(cloud_, GetLocation()).WillRepeatedly(Return("TestLocation"));
+  EXPECT_CALL(cloud_, GetServices())
       .WillRepeatedly(Return(std::set<std::string>{"service1", "service2"}));
   EXPECT_CALL(device_, GetHttpEnpoint())
       .WillRepeatedly(Return(std::make_pair(80, 10080)));
@@ -535,9 +535,8 @@ TEST_F(PrivetHandlerSetupTest, StatusGcdError) {
 }
 
 TEST_F(PrivetHandlerSetupTest, SetupNameDescriptionLocation) {
-  EXPECT_CALL(device_, SetName("testName")).Times(1);
-  EXPECT_CALL(device_, SetDescription("testDescription")).Times(1);
-  EXPECT_CALL(device_, SetLocation("testLocation")).Times(1);
+  EXPECT_CALL(cloud_, UpdateDeviceInfo("testName", "testDescription",
+                                       "testLocation", _, _)).Times(1);
   const char kInput[] = R"({
     'name': 'testName',
     'description': 'testDescription',
