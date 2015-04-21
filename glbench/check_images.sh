@@ -14,6 +14,10 @@ export LC_COLLATE=C
 main() {
   local result=0
   local db
+  if [[ ! -d "${GLBENCH_ROOT}/images" ]]; then
+    echo "glbench-images is not synced. Skipping check." >&2
+    return 0
+  fi
   for db in glbench_reference_images glbench_knownbad_images; do
     find "${GLBENCH_ROOT}/images/${db}" -name '*png' -type f -printf "%f\n" |
       sort |
