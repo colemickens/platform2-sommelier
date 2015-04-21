@@ -221,7 +221,23 @@ void Profile::DeleteEntry(const std::string &entry_name, Error *error) {
 
 ServiceRefPtr Profile::GetServiceFromEntry(const std::string &entry_name,
                                            Error *error) {
-  return manager_->GetServiceWithStorageIdentifier(this, entry_name, error);
+  if (!storage_->ContainsGroup(entry_name)) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kNotFound,
+        base::StringPrintf("Entry %s does not exist in profile",
+                           entry_name.c_str()));
+    return nullptr;
+  }
+
+  // Lookup the service entry from the registered services.
+  ServiceRefPtr service =
+      manager_->GetServiceWithStorageIdentifier(this, entry_name, error);
+  if (service) {
+    return service;
+  }
+
+  // Load the service entry to a temporary service.
+  return manager_->CreateTemporaryServiceFromProfile(this, entry_name, error);
 }
 
 bool Profile::IsValidIdentifierToken(const string &token) {

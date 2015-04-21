@@ -26,6 +26,7 @@ class KeyValueStore;
 class Manager;
 class Metrics;
 class ProxyFactory;
+class StoreInterface;
 class WiMaxManagerProxyInterface;
 
 class WiMaxProvider : public ProviderInterface {
@@ -45,6 +46,10 @@ class WiMaxProvider : public ProviderInterface {
   ServiceRefPtr GetService(const KeyValueStore &args, Error *error) override;
   ServiceRefPtr CreateTemporaryService(
       const KeyValueStore &args, Error *error) override;
+  ServiceRefPtr CreateTemporaryServiceFromProfile(
+      const ProfileRefPtr &profile,
+      const std::string &entry_name,
+      Error *error) override;
   void Start() override;
   void Stop() override;
 
@@ -123,6 +128,12 @@ class WiMaxProvider : public ProviderInterface {
                                            WiMaxNetworkId *id_ptr,
                                            std::string *name_ptr,
                                            Error *error);
+
+  static bool GetServiceParametersFromStorage(const StoreInterface *storage,
+                                              const std::string &entry_name,
+                                              WiMaxNetworkId *id_ptr,
+                                              std::string *name_ptr,
+                                              Error *error);
 
   // Starts all services with network ids in the current set of live
   // networks. This method also creates, registers and starts the default

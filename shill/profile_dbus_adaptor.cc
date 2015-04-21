@@ -13,7 +13,6 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/profile.h"
-#include "shill/profile_dbus_property_exporter.h"
 #include "shill/service.h"
 
 using std::map;
@@ -91,11 +90,7 @@ map<string, DBus::Variant> ProfileDBusAdaptor::GetEntry(
   map<string, DBus::Variant> properties;
   if (e.IsSuccess()) {
     DBusAdaptor::GetProperties(service->store(), &properties, &error);
-    return properties;
-  }
-
-  ProfileDBusPropertyExporter loader(profile_->GetConstStorage(), name);
-  if (!loader.LoadServiceProperties(&properties, &e)) {
+  } else {
     e.ToDBusError(&error);
   }
   return properties;

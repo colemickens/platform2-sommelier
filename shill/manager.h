@@ -246,6 +246,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
       const ProfileRefPtr &profile,
       const std::string &entry_name,
       Error *error);
+  // Create a temporary service for an entry |entry_name| within |profile|.
+  // Callers must not register this service with the Manager or connect it
+  // since it was never added to the provider's service list.
+  virtual ServiceRefPtr CreateTemporaryServiceFromProfile(
+      const ProfileRefPtr &profile,
+      const std::string &entry_name,
+      Error *error);
   // Return a reference to the Service associated with the default connection.
   // If there is no such connection, this function returns a reference to NULL.
   virtual ServiceRefPtr GetDefaultService() const;

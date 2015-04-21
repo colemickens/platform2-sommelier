@@ -74,6 +74,41 @@ bool VPNProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
   return true;
 }
 
+// static
+bool VPNProvider::GetServiceParametersFromStorage(const StoreInterface *storage,
+                                                  const string &entry_name,
+                                                  string *vpn_type_ptr,
+                                                  string *name_ptr,
+                                                  string *host_ptr,
+                                                  Error *error) {
+  string service_type;
+  if (!storage->GetString(entry_name, kTypeProperty, &service_type) ||
+      service_type != kTypeVPN) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Unspecified or invalid network type");
+    return false;
+  }
+  if (!storage->GetString(entry_name, kProviderTypeProperty, vpn_type_ptr) ||
+      vpn_type_ptr->empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "VPN type not specified");
+    return false;
+  }
+  if (!storage->GetString(entry_name, kNameProperty, name_ptr) ||
+      name_ptr->empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Network name not specified");
+    return false;
+  }
+  if (!storage->GetString(entry_name, kProviderHostProperty, host_ptr) ||
+      host_ptr->empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Host not specified");
+    return false;
+  }
+  return true;
+}
+
 ServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
                                       Error *error) {
   SLOG(this, 2) << __func__;
@@ -139,29 +174,18 @@ void VPNProvider::RemoveService(VPNServiceRefPtr service) {
 void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   SLOG(this, 2) << __func__;
   const StoreInterface *storage = profile->GetConstStorage();
-  for (const auto &group : storage->GetGroupsWithKey(kProviderTypeProperty)) {
-    if (!StartsWithASCII(group, "vpn_", false)) {
-      continue;
-    }
-
+  KeyValueStore args;
+  args.SetString(kTypeProperty, kTypeVPN);
+  for (const auto &group : storage->GetGroupsWithProperties(args)) {
     string type;
-    if (!storage->GetString(group, kProviderTypeProperty, &type)) {
-      LOG(ERROR) << "Group " << group << " is missing the "
-                 << kProviderTypeProperty << " property.";
-      continue;
-    }
-
     string name;
-    if (!storage->GetString(group, kNameProperty, &name)) {
-      LOG(ERROR) << "Group " << group << " is missing the "
-                 << kNameProperty << " property.";
-      continue;
-    }
-
     string host;
-    if (!storage->GetString(group, kProviderHostProperty, &host)) {
-      LOG(ERROR) << "Group " << group << " is missing the "
-                 << kProviderHostProperty << " property.";
+    if (!GetServiceParametersFromStorage(storage,
+                                         group,
+                                         &type,
+                                         &name,
+                                         &host,
+                                         nullptr)) {
       continue;
     }
 
@@ -277,6 +301,23 @@ ServiceRefPtr VPNProvider::CreateTemporaryService(
   }
 
   return CreateServiceInner(type, name, storage_id, error);
+}
+
+ServiceRefPtr VPNProvider::CreateTemporaryServiceFromProfile(
+    const ProfileRefPtr &profile, const std::string &entry_name, Error *error) {
+  string type;
+  string name;
+  string host;
+  if (!GetServiceParametersFromStorage(profile->GetConstStorage(),
+                                       entry_name,
+                                       &type,
+                                       &name,
+                                       &host,
+                                       error)) {
+    return nullptr;
+  }
+
+  return CreateServiceInner(type, name, entry_name, error);
 }
 
 bool VPNProvider::HasActiveService() const {

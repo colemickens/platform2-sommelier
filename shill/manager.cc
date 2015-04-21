@@ -859,14 +859,36 @@ ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
     }
   }
 
-  string error_string(
-      StringPrintf("Entry %s is not registered in the manager",
-                   entry_name.c_str()));
-  if (error) {
-    error->Populate(Error::kNotFound, error_string);
-  }
-  SLOG(this, 2) << error_string;
+  SLOG(this, 2) << "Entry " << entry_name
+                << " is not registered in the manager";
   return nullptr;
+}
+
+ServiceRefPtr Manager::CreateTemporaryServiceFromProfile(
+    const ProfileRefPtr &profile, const std::string &entry_name, Error *error) {
+  Technology::Identifier technology =
+      Technology::IdentifierFromStorageGroup(entry_name);
+  if (technology == Technology::kUnknown) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInternalError,
+        "Could not determine technology for entry: " + entry_name);
+    return nullptr;
+  }
+
+  if (!ContainsKey(providers_, technology)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
+                          kErrorUnsupportedServiceType);
+    return nullptr;
+  }
+
+  ServiceRefPtr service =
+      providers_[technology]->CreateTemporaryServiceFromProfile(
+          profile, entry_name, error);
+  if (service) {
+    profile->LoadService(service);
+  }
+
+  return service;
 }
 
 ServiceRefPtr Manager::GetServiceWithGUID(

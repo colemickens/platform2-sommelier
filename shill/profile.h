@@ -128,6 +128,8 @@ class Profile : public base::RefCounted<Profile> {
   virtual void DeleteEntry(const std::string &entry_name, Error *error);
 
   // Return a service configured from the given profile entry.
+  // Callers must not register the returned service with the Manager or connect
+  // it since it might not be in the provider's service list.
   virtual ServiceRefPtr GetServiceFromEntry(const std::string &entry_name,
                                             Error *error);
 
@@ -217,6 +219,7 @@ class Profile : public base::RefCounted<Profile> {
   FRIEND_TEST(ProfileTest, DeleteEntry);
   FRIEND_TEST(ProfileTest, GetStoragePath);
   FRIEND_TEST(ProfileTest, IsValidIdentifierToken);
+  FRIEND_TEST(ProfileTest, GetServiceFromEntry);
 
   static bool IsValidIdentifierToken(const std::string &token);
 

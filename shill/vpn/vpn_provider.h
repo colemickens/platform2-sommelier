@@ -22,6 +22,7 @@ class EventDispatcher;
 class KeyValueStore;
 class Manager;
 class Metrics;
+class StoreInterface;
 
 class VPNProvider : public ProviderInterface {
  public:
@@ -40,6 +41,10 @@ class VPNProvider : public ProviderInterface {
   ServiceRefPtr GetService(const KeyValueStore &args, Error *error) override;
   ServiceRefPtr CreateTemporaryService(
       const KeyValueStore &args, Error *error) override;
+  ServiceRefPtr CreateTemporaryServiceFromProfile(
+      const ProfileRefPtr &profile,
+      const std::string &entry_name,
+      Error *error) override;
   void Start() override;
   void Stop() override;
 
@@ -94,6 +99,16 @@ class VPNProvider : public ProviderInterface {
                                            std::string *name_ptr,
                                            std::string *host_ptr,
                                            Error *error);
+  // Populates |vpn_type_ptr|, |name_ptr| and |host_ptr| with the appropriate
+  // values from profile storgae.  Returns True on success, otherwise if any of
+  // these arguments are not available, |error| is populated and False is
+  // returned.
+  static bool GetServiceParametersFromStorage(const StoreInterface *storage,
+                                              const std::string &entry_name,
+                                              std::string *vpn_type_ptr,
+                                              std::string *name_ptr,
+                                              std::string *host_ptr,
+                                              Error *error);
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;

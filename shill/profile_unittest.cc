@@ -465,4 +465,59 @@ TEST_F(ProfileTest, UpdateDevice) {
   EXPECT_FALSE(profile_->UpdateDevice(nullptr));
 }
 
+TEST_F(ProfileTest, GetServiceFromEntry) {
+  std::unique_ptr<MockManager> manager(new StrictMock<MockManager>(
+      control_interface(), dispatcher(), metrics(), glib()));
+  profile_->manager_ = manager.get();
+
+  MockStore *storage(new StrictMock<MockStore>());
+  profile_->storage_.reset(storage);  // Passes ownership
+  const string kEntryName("entry_name");
+
+  // If entry does not appear in storage, GetServiceFromEntry() should return
+  // an error.
+  EXPECT_CALL(*storage, ContainsGroup(kEntryName))
+      .WillOnce(Return(false));
+  {
+    Error error;
+    profile_->GetServiceFromEntry(kEntryName, &error);
+    EXPECT_EQ(Error::kNotFound, error.type());
+  }
+  Mock::VerifyAndClearExpectations(storage);
+
+  EXPECT_CALL(*storage, ContainsGroup(kEntryName))
+      .WillRepeatedly(Return(true));
+
+  // Service entry already registered with the manager, the registered service
+  // is returned.
+  scoped_refptr<MockService> registered_service(CreateMockService());
+  EXPECT_CALL(*manager.get(),
+              GetServiceWithStorageIdentifier(profile_, kEntryName, _))
+      .WillOnce(Return(registered_service));
+  {
+    Error error;
+    EXPECT_EQ(registered_service,
+              profile_->GetServiceFromEntry(kEntryName, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  Mock::VerifyAndClearExpectations(manager.get());
+
+  // Service entry not registered with the manager, a temporary service is
+  // created/returned.
+  scoped_refptr<MockService> temporary_service(CreateMockService());
+  EXPECT_CALL(*manager.get(),
+              GetServiceWithStorageIdentifier(profile_, kEntryName, _))
+      .WillOnce(Return(nullptr));
+  EXPECT_CALL(*manager.get(),
+              CreateTemporaryServiceFromProfile(profile_, kEntryName, _))
+      .WillOnce(Return(temporary_service));
+  {
+    Error error;
+    EXPECT_EQ(temporary_service,
+              profile_->GetServiceFromEntry(kEntryName, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  Mock::VerifyAndClearExpectations(manager.get());
+}
+
 }  // namespace shill

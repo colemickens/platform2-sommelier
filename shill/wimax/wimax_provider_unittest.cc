@@ -35,6 +35,7 @@ using std::vector;
 using testing::Return;
 using testing::ReturnNull;
 using testing::SaveArg;
+using testing::StartsWith;
 using testing::_;
 
 namespace shill {
@@ -489,6 +490,70 @@ TEST_F(WiMaxProviderTest, CreateServicesFromProfile) {
   provider_.CreateServicesFromProfile(profile);
   ASSERT_EQ(1, provider_.services_.size());
   EXPECT_EQ(service.get(), provider_.services_.begin()->second);
+}
+
+TEST_F(WiMaxProviderTest, CreateTemporaryServiceFromProfile) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  FilePath test_profile = temp_dir.path().Append("test-profile");
+  GLib glib;
+  KeyFileStore store(&glib);
+  store.set_path(test_profile);
+  static const char contents[] =
+      "[no_type]\n"
+      "Name=No Type Entry\n"
+      "\n"
+      "[no_wimax]\n"
+      "Type=vpn\n"
+      "\n"
+      "[wimax_network_01234567]\n"
+      "Name=network\n"
+      "Type=wimax\n"
+      "NetworkId=01234567\n"
+      "\n"
+      "[no_network_id]\n"
+      "Type=wimax\n"
+      "\n"
+      "[no_name]\n"
+      "Type=wimax\n"
+      "NetworkId=76543210\n";
+  EXPECT_EQ(strlen(contents),
+            base::WriteFile(test_profile, contents, strlen(contents)));
+  ASSERT_TRUE(store.Open());
+  scoped_refptr<MockProfile> profile(
+      new MockProfile(&control_, &metrics_, &manager_));
+  EXPECT_CALL(*profile, GetConstStorage())
+      .WillRepeatedly(Return(&store));
+  Error error;
+
+  // Network type not specified.
+  EXPECT_EQ(nullptr,
+            provider_.CreateTemporaryServiceFromProfile(profile,
+                                                        "no_type",
+                                                        &error));
+  EXPECT_FALSE(error.IsSuccess());
+  EXPECT_THAT(error.message(),
+              StartsWith("Unspecified or invalid network type"));
+
+  // Network ID not specified.
+  error.Reset();
+  EXPECT_EQ(nullptr,
+            provider_.CreateTemporaryServiceFromProfile(profile,
+                                                        "no_network_id",
+                                                        &error));
+  EXPECT_FALSE(error.IsSuccess());
+  EXPECT_THAT(error.message(),
+              StartsWith("Network ID not specified"));
+
+  // Network name not specified.
+  error.Reset();
+  EXPECT_EQ(nullptr,
+            provider_.CreateTemporaryServiceFromProfile(profile,
+                                                        "no_name",
+                                                        &error));
+  EXPECT_FALSE(error.IsSuccess());
+  EXPECT_THAT(error.message(),
+              StartsWith("Network name not specified"));
 }
 
 TEST_F(WiMaxProviderTest, GetService) {

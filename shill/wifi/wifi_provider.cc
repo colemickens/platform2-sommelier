@@ -110,32 +110,17 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   args.SetString(kTypeProperty, kTypeWifi);
   bool created_hidden_service = false;
   for (const auto &group : storage->GetGroupsWithProperties(args)) {
-    string ssid_hex;
     vector<uint8_t> ssid_bytes;
-    if (!storage->GetString(group, WiFiService::kStorageSSID, &ssid_hex) ||
-        !base::HexStringToBytes(ssid_hex, &ssid_bytes)) {
-      SLOG(this, 2) << "Storage group " << group << " is missing valid \""
-                    << WiFiService::kStorageSSID << "\" property";
-      continue;
-    }
     string network_mode;
-    if (!storage->GetString(group, WiFiService::kStorageMode, &network_mode) ||
-        network_mode.empty()) {
-      SLOG(this, 2) << "Storage group " << group << " is missing \""
-                    <<  WiFiService::kStorageMode << "\" property";
-      continue;
-    }
     string security;
-    if (!storage->GetString(group, WiFiService::kStorageSecurity, &security) ||
-        !WiFiService::IsValidSecurityMethod(security)) {
-      SLOG(this, 2) << "Storage group " << group << " has missing or invalid \""
-                    <<  WiFiService::kStorageSecurity << "\" property";
-      continue;
-    }
     bool is_hidden = false;
-    if (!storage->GetBool(group, WiFiService::kStorageHiddenSSID, &is_hidden)) {
-      SLOG(this, 2) << "Storage group " << group << " is missing \""
-                    << WiFiService::kStorageHiddenSSID << "\" property";
+    if (!GetServiceParametersFromStorage(storage,
+                                         group,
+                                         &ssid_bytes,
+                                         &network_mode,
+                                         &security,
+                                         &is_hidden,
+                                         nullptr)) {
       continue;
     }
 
@@ -209,6 +194,32 @@ ServiceRefPtr WiFiProvider::CreateTemporaryService(
     return nullptr;
   }
 
+  return new WiFiService(control_interface_,
+                         dispatcher_,
+                         metrics_,
+                         manager_,
+                         this,
+                         ssid,
+                         mode,
+                         security,
+                         hidden_ssid);
+}
+
+ServiceRefPtr WiFiProvider::CreateTemporaryServiceFromProfile(
+    const ProfileRefPtr &profile, const std::string &entry_name, Error *error) {
+  vector<uint8_t> ssid;
+  string mode;
+  string security;
+  bool hidden_ssid;
+  if (!GetServiceParametersFromStorage(profile->GetConstStorage(),
+                                       entry_name,
+                                       &ssid,
+                                       &mode,
+                                       &security,
+                                       &hidden_ssid,
+                                       error)) {
+    return nullptr;
+  }
   return new WiFiService(control_interface_,
                          dispatcher_,
                          metrics_,
@@ -608,6 +619,51 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
   // If the caller hasn't specified otherwise, we assume it is a hidden service.
   *hidden_ssid = args.LookupBool(kWifiHiddenSsid, true);
 
+  return true;
+}
+
+// static
+bool WiFiProvider::GetServiceParametersFromStorage(
+    const StoreInterface *storage,
+    const std::string &entry_name,
+    std::vector<uint8_t> *ssid_bytes,
+    std::string *mode,
+    std::string *security,
+    bool *hidden_ssid,
+    Error *error) {
+  // Verify service type.
+  string type;
+  if (!storage->GetString(entry_name, WiFiService::kStorageType, &type) ||
+      type != kTypeWifi) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Unspecified or invalid network type");
+    return false;
+  }
+  string ssid_hex;
+  if (!storage->GetString(entry_name, WiFiService::kStorageSSID, &ssid_hex) ||
+      !base::HexStringToBytes(ssid_hex, ssid_bytes)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Unspecified or invalid SSID");
+    return false;
+  }
+  if (!storage->GetString(entry_name, WiFiService::kStorageMode, mode) ||
+      mode->empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Network mode not specified");
+    return false;
+  }
+  if (!storage->GetString(entry_name, WiFiService::kStorageSecurity, security)
+      || !WiFiService::IsValidSecurityMethod(*security)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Unspecified or invalid security mode");
+    return false;
+  }
+  if (!storage->GetBool(
+      entry_name, WiFiService::kStorageHiddenSSID, hidden_ssid)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Hidden SSID not specified");
+    return false;
+  }
   return true;
 }
 

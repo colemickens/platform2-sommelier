@@ -5,6 +5,8 @@
 #ifndef SHILL_PROVIDER_INTERFACE_H_
 #define SHILL_PROVIDER_INTERFACE_H_
 
+#include <string>
+
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -39,6 +41,15 @@ class ProviderInterface {
   // to the provider's service list.
   virtual ServiceRefPtr CreateTemporaryService(
       const KeyValueStore &args, Error *error) = 0;
+
+  // Create a temporary service for an entry |entry_name| within |profile|.
+  // Callers outside of the Provider must never register this service with the
+  // Manager or connect it since it was never added to the provider's service
+  // list.
+  virtual ServiceRefPtr CreateTemporaryServiceFromProfile(
+      const ProfileRefPtr &profile,
+      const std::string &entry_name,
+      Error *error) = 0;
 
   // Starts the provider.
   virtual void Start() = 0;

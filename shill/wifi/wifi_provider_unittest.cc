@@ -219,6 +219,8 @@ class WiFiProviderTest : public testing::Test {
     auto profile_storage = dynamic_cast<MockStore *>(profile->GetStorage());
     EXPECT_CALL(*profile_storage, GetString(id, _, _))
         .WillRepeatedly(Return(false));
+    AddStringParameterToStorage(
+        profile_storage, id, WiFiService::kStorageType, kTypeWifi);
     if (ssid) {
       const string ssid_string(ssid);
       const string hex_ssid(
@@ -711,6 +713,83 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenNotConnected) {
   EXPECT_CALL(manager_, RequestScan(_, _, _)).Times(0);
   EXPECT_CALL(manager_, IsServiceEphemeral(_)).WillRepeatedly(Return(false));
   CreateServicesFromProfile(default_profile_.get());
+}
+
+TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileNonWiFi) {
+  const string kEntryName("name");
+  auto profile_storage =
+      dynamic_cast<MockStore *>(default_profile_->GetStorage());
+  EXPECT_CALL(*profile_storage,
+              GetString(kEntryName, WiFiService::kStorageType, _))
+      .WillOnce(Return(false));
+  Error error;
+  EXPECT_EQ(nullptr,
+            provider_.CreateTemporaryServiceFromProfile(
+                default_profile_, kEntryName, &error));
+  EXPECT_FALSE(error.IsSuccess());
+  EXPECT_THAT(error.message(),
+              StartsWith("Unspecified or invalid network type"));
+}
+
+TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileMissingSSID) {
+  string entry_name = AddServiceToProfileStorage(
+          default_profile_.get(), nullptr, kModeManaged, kSecurityNone, false,
+          true);
+  Error error;
+  EXPECT_EQ(nullptr,
+            provider_.CreateTemporaryServiceFromProfile(
+                default_profile_, entry_name, &error));
+  EXPECT_FALSE(error.IsSuccess());
+  EXPECT_THAT(error.message(), StartsWith("Unspecified or invalid SSID"));
+}
+
+TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileMissingMode) {
+  string entry_name = AddServiceToProfileStorage(
+      default_profile_.get(), "foo", "", kSecurityNone, false, true);
+
+  Error error;
+  EXPECT_EQ(nullptr,
+            provider_.CreateTemporaryServiceFromProfile(
+                default_profile_, entry_name, &error));
+  EXPECT_FALSE(error.IsSuccess());
+  EXPECT_THAT(error.message(), StartsWith("Network mode not specified"));
+}
+
+TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileMissingSecurity) {
+  string entry_name = AddServiceToProfileStorage(
+      default_profile_.get(), "foo", kModeManaged, "", false, true);
+
+  Error error;
+  EXPECT_EQ(nullptr,
+            provider_.CreateTemporaryServiceFromProfile(
+                default_profile_, entry_name, &error));
+  EXPECT_FALSE(error.IsSuccess());
+  EXPECT_THAT(error.message(),
+              StartsWith("Unspecified or invalid security mode"));
+}
+
+TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileMissingHidden) {
+  string entry_name = AddServiceToProfileStorage(
+      default_profile_.get(), "foo", kModeManaged, kSecurityNone, false, false);
+
+  Error error;
+  EXPECT_EQ(nullptr,
+            provider_.CreateTemporaryServiceFromProfile(
+                default_profile_, entry_name, &error));
+  EXPECT_FALSE(error.IsSuccess());
+  EXPECT_THAT(error.message(),
+              StartsWith("Hidden SSID not specified"));
+}
+
+TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfile) {
+  string entry_name = AddServiceToProfileStorage(
+      default_profile_.get(), "foo", kModeManaged, kSecurityNone, false, true);
+
+  Error error;
+  EXPECT_NE(nullptr,
+            provider_.CreateTemporaryServiceFromProfile(
+                default_profile_, entry_name, &error));
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(WiFiProviderTest, CreateTwoServices) {

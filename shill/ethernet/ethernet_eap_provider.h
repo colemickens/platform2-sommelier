@@ -6,6 +6,7 @@
 #define SHILL_ETHERNET_ETHERNET_EAP_PROVIDER_H_
 
 #include <map>
+#include <string>
 
 #include <base/callback.h>
 
@@ -39,6 +40,10 @@ class EthernetEapProvider : public ProviderInterface {
       const KeyValueStore &args, Error *error) const override;
   ServiceRefPtr CreateTemporaryService(
       const KeyValueStore &args, Error *error) override;
+  ServiceRefPtr CreateTemporaryServiceFromProfile(
+      const ProfileRefPtr &profile,
+      const std::string &entry_name,
+      Error *error) override;
   void Start() override;
   void Stop() override;
 

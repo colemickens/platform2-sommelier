@@ -174,6 +174,35 @@ bool WiMaxProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
   return true;
 }
 
+// static
+bool WiMaxProvider::GetServiceParametersFromStorage(
+    const StoreInterface *storage,
+    const std::string &entry_name,
+    WiMaxNetworkId *id_ptr,
+    std::string *name_ptr,
+    Error *error) {
+  string type;
+  if (!storage->GetString(entry_name, Service::kStorageType, &type) ||
+      type != kTypeWimax) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Unspecified or invalid network type");
+    return false;
+  }
+  if (!storage->GetString(entry_name, WiMaxService::kStorageNetworkId, id_ptr)
+      || id_ptr->empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Network ID not specified");
+    return false;
+  }
+  if (!storage->GetString(entry_name, Service::kStorageName, name_ptr) ||
+      name_ptr->empty()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Network name not specified");
+    return false;
+  }
+  return true;
+}
+
 ServiceRefPtr WiMaxProvider::GetService(const KeyValueStore &args,
                                         Error *error) {
   SLOG(this, 2) << __func__;
@@ -219,30 +248,37 @@ ServiceRefPtr WiMaxProvider::CreateTemporaryService(const KeyValueStore &args,
   return CreateService(id, name);
 }
 
+ServiceRefPtr WiMaxProvider::CreateTemporaryServiceFromProfile(
+    const ProfileRefPtr &profile, const std::string &entry_name, Error *error) {
+  WiMaxNetworkId id;
+  string name;
+  if (!GetServiceParametersFromStorage(profile->GetConstStorage(),
+                                       entry_name,
+                                       &id,
+                                       &name,
+                                       error)) {
+    return nullptr;
+  }
+  return CreateService(id, name);
+}
+
 void WiMaxProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   SLOG(this, 2) << __func__;
   bool created = false;
   const StoreInterface *storage = profile->GetConstStorage();
-  set<string> groups = storage->GetGroupsWithKey(Service::kStorageType);
-  for (const auto &storage_id : groups) {
-    string type;
-    if (!storage->GetString(storage_id, Service::kStorageType, &type) ||
-        type != Technology::NameFromIdentifier(Technology::kWiMax)) {
+  KeyValueStore args;
+  args.SetString(kTypeProperty, kTypeWimax);
+  for (const auto &storage_id : storage->GetGroupsWithProperties(args)) {
+    WiMaxNetworkId id;
+    string name;
+    if (!GetServiceParametersFromStorage(storage,
+                                         storage_id,
+                                         &id,
+                                         &name,
+                                         nullptr)) {
       continue;
     }
     if (FindService(storage_id)) {
-      continue;
-    }
-    WiMaxNetworkId id;
-    if (!storage->GetString(storage_id, WiMaxService::kStorageNetworkId, &id) ||
-        id.empty()) {
-      LOG(ERROR) << "Unable to load network id: " << storage_id;
-      continue;
-    }
-    string name;
-    if (!storage->GetString(storage_id, Service::kStorageName, &name) ||
-        name.empty()) {
-      LOG(ERROR) << "Unable to load service name: " << storage_id;
       continue;
     }
     WiMaxServiceRefPtr service = GetUniqueService(id, name);

@@ -68,6 +68,10 @@ class WiFiProvider : public ProviderInterface {
   ServiceRefPtr GetService(const KeyValueStore &args, Error *error) override;
   ServiceRefPtr CreateTemporaryService(
       const KeyValueStore &args, Error *error) override;
+  ServiceRefPtr CreateTemporaryServiceFromProfile(
+      const ProfileRefPtr &profile,
+      const std::string &entry_name,
+      Error *error) override;
   void Start() override;
   void Stop() override;
 
@@ -189,6 +193,17 @@ class WiFiProvider : public ProviderInterface {
                                            std::string *security_method,
                                            bool *hidden_ssid,
                                            Error *error);
+  // Retrieve a WiFi service's identifying properties from passed-in |storage|.
+  // Return true if storage contain valid parameter values and populates |ssid|,
+  // |mode|, |security| and |hidden_ssid|. Otherwise, this function returns
+  // false and populates |error| with the reason for failure.
+  static bool GetServiceParametersFromStorage(const StoreInterface *storage,
+                                              const std::string &entry_name,
+                                              std::vector<uint8_t> *ssid_bytes,
+                                              std::string *mode,
+                                              std::string *security_method,
+                                              bool *hidden_ssid,
+                                              Error *error);
 
   // Converts frequency profile information from a list of strings of the form
   // "frequency:connection_count" to a form consistent with
