@@ -38,7 +38,6 @@ class BINDER_EXPORT BinderProxyInterface : public INTERFACE,
 
  protected:
   virtual ~BinderProxyInterface() {}
-  virtual IBinder* onAsBinder() { return Remote(); }
 };
 
 template <typename INTERFACE>
