@@ -90,6 +90,39 @@ void ExamplePerfFileAttr_Tracepoint::WriteTo(std::ostream* out) const {
   out->write(reinterpret_cast<const char*>(&file_attr), sizeof(file_attr));
 }
 
+void ExampleMmapEvent::WriteTo(std::ostream* out) const {
+  const size_t filename_aligned_length =
+      GetUint64AlignedStringLength(filename_);
+  const size_t event_size =
+      offsetof(struct mmap_event, filename) +
+      filename_aligned_length +
+      sample_id_.size();  // sample_id_all
+
+  struct mmap_event event = {
+    .header = {
+      .type = PERF_RECORD_MMAP,
+      .misc = 0,
+      .size = static_cast<u16>(event_size),
+    },
+    .pid = pid_, .tid = pid_,
+    .start = start_,
+    .len = len_,
+    .pgoff = pgoff_,
+    // .filename = ..., // written separately
+  };
+
+  const size_t pre_mmap_offset = out->tellp();
+  out->write(reinterpret_cast<const char*>(&event),
+             offsetof(struct mmap_event, filename));
+  *out << filename_
+       << string(filename_aligned_length - filename_.size(), '\0');
+  out->write(sample_id_.data(), sample_id_.size());
+  const size_t written_event_size =
+      static_cast<size_t>(out->tellp()) - pre_mmap_offset;
+  CHECK_EQ(event.header.size,
+           static_cast<u64>(written_event_size));
+}
+
 void ExampleMmapEvent_Tid::WriteTo(std::ostream* out) const {
   const size_t filename_aligned_length =
       GetUint64AlignedStringLength(filename_);
@@ -166,6 +199,21 @@ void ExampleMmap2Event_Tid::WriteTo(std::ostream* out) const {
       static_cast<size_t>(out->tellp()) - pre_mmap_offset;
   CHECK_EQ(event.header.size,
            static_cast<u64>(written_event_size));
+}
+
+void ExamplePerfSampleEvent::WriteTo(std::ostream* out) const {
+  const size_t event_size =
+      sizeof(struct sample_event) +
+      sample_info_.size();
+  const sample_event event = {
+    .header = {
+      .type = PERF_RECORD_SAMPLE,
+      .misc = PERF_RECORD_MISC_USER,
+      .size = static_cast<u16>(event_size),
+    }
+  };
+  out->write(reinterpret_cast<const char*>(&event), sizeof(event));
+  out->write(sample_info_.data(), sample_info_.size());
 }
 
 void ExamplePerfSampleEvent_IpTid::WriteTo(std::ostream* out) const {

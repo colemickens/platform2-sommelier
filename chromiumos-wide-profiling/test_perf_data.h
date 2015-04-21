@@ -74,6 +74,60 @@ class ExamplePerfFileAttr_Tracepoint : public StreamWriteable {
   const u64 tracepoint_event_id_;
 };
 
+// Produces a sample field array that can be used with either SAMPLE events
+// or as the sample_id of another event.
+// NB: This class simply places the fields in the order called. It does not
+// enforce that they are in the correct order, or match the sample type.
+// See enum perf_event_type in perf_event.h.
+class SampleInfo {
+ public:
+  SampleInfo& Ip(u64 ip) { return AddField(ip); }
+  SampleInfo& Tid(u32 pid, u32 tid) {
+    return AddField(PunU32U64{.v32={pid, tid}}.v64);
+  }
+  SampleInfo& Tid(u32 pid) {
+    return AddField(PunU32U64{.v32={pid, pid}}.v64);
+  }
+  SampleInfo& Time(u64 time) { return AddField(time); }
+
+  const char* data() const {
+    return reinterpret_cast<const char *>(fields_.data());
+  }
+  const size_t size() const {
+    return fields_.size() * sizeof(decltype(fields_)::value_type);
+  }
+
+ private:
+  SampleInfo& AddField(u64 value) {
+    fields_.push_back(value);
+    return *this;
+  }
+
+  std::vector<u64> fields_;
+};
+
+// Produces a PERF_RECORD_MMAP event with the given file and mapping.
+class ExampleMmapEvent : public StreamWriteable {
+ public:
+  ExampleMmapEvent(u32 pid, u64 start, u64 len, u64 pgoff, string filename,
+                   const SampleInfo& sample_id)
+      : pid_(pid),
+        start_(start),
+        len_(len),
+        pgoff_(pgoff),
+        filename_(filename),
+        sample_id_(sample_id) {
+  }
+  void WriteTo(std::ostream* out) const override;
+ private:
+  const u32 pid_;
+  const u64 start_;
+  const u64 len_;
+  const u64 pgoff_;
+  const string filename_;
+  const SampleInfo sample_id_;
+};
+
 // Produces a PERF_RECORD_MMAP event with the given file and mapping.
 // Assumes attr.sample_id_all and PERF_SAMPLE_TID
 class ExampleMmapEvent_Tid : public StreamWriteable {
@@ -114,6 +168,18 @@ class ExampleMmap2Event_Tid : public StreamWriteable {
   const u64 len_;
   const u64 pgoff_;
   const string filename_;
+};
+
+// Produces a simple PERF_RECORD_SAMPLE event with the given sample info.
+// NB: The sample_info must match the sample_type of the relevant attr.
+class ExamplePerfSampleEvent : public StreamWriteable {
+ public:
+  explicit ExamplePerfSampleEvent(const SampleInfo& sample_info)
+      : sample_info_(sample_info) {
+  }
+  void WriteTo(std::ostream* out) const override;
+ private:
+  const SampleInfo sample_info_;
 };
 
 // Produces a simple PERF_RECORD_SAMPLE event for a sample_type of
