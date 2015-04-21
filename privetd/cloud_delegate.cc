@@ -52,6 +52,80 @@ class CloudDelegateImpl : public CloudDelegate {
 
   ~CloudDelegateImpl() override = default;
 
+  bool GetModelId(std::string* id, chromeos::ErrorPtr* error) const override {
+    if (!IsManagerReady(error))
+      return false;
+    if (manager_->model_id().size() != 5) {
+      chromeos::Error::AddToPrintf(
+          error, FROM_HERE, errors::kDomain, errors::kInvalidState,
+          "Model ID is invalid: %s", manager_->model_id().c_str());
+      return false;
+    }
+    *id = manager_->model_id();
+    return true;
+  }
+
+  bool GetName(std::string* name, chromeos::ErrorPtr* error) const override {
+    if (!IsManagerReady(error))
+      return false;
+    if (manager_->name().empty()) {
+      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                             errors::kInvalidState, "Device name is empty");
+      return false;
+    }
+    *name = manager_->name();
+    return true;
+  }
+
+  std::string GetDescription() const override {
+    return manager_ ? manager_->description() : std::string{};
+  }
+
+  std::string GetLocation() const override {
+    return manager_ ? manager_->location() : std::string{};
+  }
+
+  void UpdateDeviceInfo(const std::string& name,
+                        const std::string& description,
+                        const std::string& location,
+                        const base::Closure& success_callback,
+                        const ErrorCallback& error_callback) override {
+    chromeos::ErrorPtr error;
+    if (!IsManagerReady(&error))
+      return error_callback.Run(error.get());
+
+    if (name.empty()) {
+      chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
+                             errors::kInvalidParams, "Empty device name");
+      return error_callback.Run(error.get());
+    }
+
+    if (name == manager_->name() && description == manager_->description() &&
+        location == manager_->location()) {
+      return success_callback.Run();
+    }
+
+    manager_->UpdateDeviceInfoAsync(name, description, location,
+                                    success_callback, error_callback);
+  }
+
+  std::string GetOemName() const override {
+    return manager_ ? manager_->oem_name() : std::string{};
+  }
+
+  std::string GetModelName() const override {
+    return manager_ ? manager_->model_name() : std::string{};
+  }
+
+  std::set<std::string> GetServices() const override {
+    std::set<std::string> result;
+    for (base::DictionaryValue::Iterator it{command_defs_}; !it.IsAtEnd();
+         it.Advance()) {
+      result.emplace(it.key());
+    }
+    return result;
+  }
+
   const ConnectionState& GetConnectionState() const override { return state_; }
 
   const SetupState& GetSetupState() const override { return setup_state_; }
@@ -175,7 +249,13 @@ class CloudDelegateImpl : public CloudDelegate {
     }
 
     if (property_name.empty() ||
-        property_name == ManagerProxy::DeviceIdName()) {
+        property_name == ManagerProxy::DeviceIdName() ||
+        property_name == ManagerProxy::OemNameName() ||
+        property_name == ManagerProxy::ModelNameName() ||
+        property_name == ManagerProxy::ModelIdName() ||
+        property_name == ManagerProxy::NameName() ||
+        property_name == ManagerProxy::DescriptionName() ||
+        property_name == ManagerProxy::LocationName()) {
       NotifyOnDeviceInfoChanged();
     }
 

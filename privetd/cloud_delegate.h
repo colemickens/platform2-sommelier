@@ -6,6 +6,7 @@
 #define PRIVETD_CLOUD_DELEGATE_H_
 
 #include <memory>
+#include <set>
 #include <string>
 
 #include <base/callback.h>
@@ -44,6 +45,35 @@ class CloudDelegate {
     virtual void OnCommandDefsChanged() {}
     virtual void OnStateChanged() {}
   };
+
+  // Returns the model ID of the device.
+  virtual bool GetModelId(std::string* id, chromeos::ErrorPtr* error) const = 0;
+
+  // Returns the name of device.
+  virtual bool GetName(std::string* name, chromeos::ErrorPtr* error) const = 0;
+
+  // Returns the description of the device.
+  virtual std::string GetDescription() const = 0;
+
+  // Returns the location of the device.
+  virtual std::string GetLocation() const = 0;
+
+  // Update basic device information.
+  virtual void UpdateDeviceInfo(const std::string& name,
+                                const std::string& description,
+                                const std::string& location,
+                                const base::Closure& success_callback,
+                                const ErrorCallback& error_callback) = 0;
+
+  // Returns the name of the maker.
+  virtual std::string GetOemName() const = 0;
+
+  // Returns the model name of the device.
+  virtual std::string GetModelName() const = 0;
+
+  // Returns the list of services supported by device.
+  // E.g. printer, scanner etc. Should match services published on mDNS.
+  virtual std::set<std::string> GetServices() const = 0;
 
   // Returns status of the GCD connection.
   virtual const ConnectionState& GetConnectionState() const = 0;

@@ -26,6 +26,18 @@ using testing::SetArgPointee;
 
 namespace privetd {
 
+ACTION_TEMPLATE(RunCallback,
+                HAS_1_TEMPLATE_PARAMS(int, k),
+                AND_0_VALUE_PARAMS()) {
+  return std::get<k>(args).Run();
+}
+
+ACTION_TEMPLATE(RunCallback,
+                HAS_1_TEMPLATE_PARAMS(int, k),
+                AND_1_VALUE_PARAMS(p0)) {
+  return std::get<k>(args).Run(p0);
+}
+
 class MockDeviceDelegate : public DeviceDelegate {
   using IntPair = std::pair<uint16_t, uint16_t>;
 
@@ -148,6 +160,19 @@ class MockWifiDelegate : public WifiDelegate {
 
 class MockCloudDelegate : public CloudDelegate {
  public:
+  MOCK_CONST_METHOD2(GetModelId, bool(std::string*, chromeos::ErrorPtr*));
+  MOCK_CONST_METHOD2(GetName, bool(std::string*, chromeos::ErrorPtr*));
+  MOCK_CONST_METHOD0(GetDescription, std::string());
+  MOCK_CONST_METHOD0(GetLocation, std::string());
+  MOCK_METHOD5(UpdateDeviceInfo,
+               void(const std::string&,
+                    const std::string&,
+                    const std::string&,
+                    const base::Closure&,
+                    const ErrorCallback&));
+  MOCK_CONST_METHOD0(GetOemName, std::string());
+  MOCK_CONST_METHOD0(GetModelName, std::string());
+  MOCK_CONST_METHOD0(GetServices, std::set<std::string>());
   MOCK_CONST_METHOD0(GetConnectionState, const ConnectionState&());
   MOCK_CONST_METHOD0(GetSetupState, const SetupState&());
   MOCK_METHOD3(Setup,
@@ -172,6 +197,18 @@ class MockCloudDelegate : public CloudDelegate {
                void(const SuccessCallback&, const ErrorCallback&));
 
   MockCloudDelegate() {
+    EXPECT_CALL(*this, GetModelId(_, _))
+        .WillRepeatedly(DoAll(SetArgPointee<0>("ABMID"), Return(true)));
+    EXPECT_CALL(*this, GetName(_, _))
+        .WillRepeatedly(DoAll(SetArgPointee<0>("TestDevice"), Return(true)));
+    EXPECT_CALL(*this, GetDescription()).WillRepeatedly(Return(""));
+    EXPECT_CALL(*this, GetLocation()).WillRepeatedly(Return(""));
+    EXPECT_CALL(*this, UpdateDeviceInfo(_, _, _, _, _))
+        .WillRepeatedly(RunCallback<3>());
+    EXPECT_CALL(*this, GetOemName()).WillRepeatedly(Return("Chromium"));
+    EXPECT_CALL(*this, GetModelName()).WillRepeatedly(Return("Brillo"));
+    EXPECT_CALL(*this, GetServices())
+        .WillRepeatedly(Return(std::set<std::string>{}));
     commands_definitions_.Set("test", new base::DictionaryValue);
     EXPECT_CALL(*this, GetConnectionState())
         .WillRepeatedly(ReturnRef(connection_state_));

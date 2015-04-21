@@ -31,12 +31,6 @@ namespace privetd {
 
 namespace {
 
-ACTION_TEMPLATE(RunCallback,
-                HAS_1_TEMPLATE_PARAMS(int, k),
-                AND_1_VALUE_PARAMS(p0)) {
-  return std::get<k>(args).Run(p0);
-}
-
 void LoadTestJson(const std::string& test_json,
                   base::DictionaryValue* dictionary) {
   std::string json = test_json;
