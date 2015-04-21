@@ -176,7 +176,7 @@ class CloudDelegateImpl : public CloudDelegate {
 
     if (property_name.empty() ||
         property_name == ManagerProxy::DeviceIdName()) {
-      NotifyOnRegistrationChanged();
+      NotifyOnDeviceInfoChanged();
     }
 
     if (property_name.empty() ||
@@ -201,7 +201,7 @@ class CloudDelegateImpl : public CloudDelegate {
           "Unexpected buffet status: %s", status.c_str());
       state_ = ConnectionState{std::move(error)};
     }
-    NotifyOnRegistrationChanged();
+    NotifyOnDeviceInfoChanged();
   }
 
   void OnCommandDefsPropertyChanged() {
@@ -218,7 +218,7 @@ class CloudDelegateImpl : public CloudDelegate {
     manager_ = nullptr;
     state_ = ConnectionState(ConnectionState::kDisabled);
     command_defs_.Clear();
-    NotifyOnRegistrationChanged();
+    NotifyOnDeviceInfoChanged();
     NotifyOnCommandDefsChanged();
     NotifyOnStateChanged();
   }
@@ -380,8 +380,8 @@ std::unique_ptr<CloudDelegate> CloudDelegate::CreateDefault(
       new CloudDelegateImpl{bus, device, is_gcd_setup_enabled}};
 }
 
-void CloudDelegate::NotifyOnRegistrationChanged() {
-  FOR_EACH_OBSERVER(Observer, observer_list_, OnRegistrationChanged());
+void CloudDelegate::NotifyOnDeviceInfoChanged() {
+  FOR_EACH_OBSERVER(Observer, observer_list_, OnDeviceInfoChanged());
 }
 
 void CloudDelegate::NotifyOnCommandDefsChanged() {

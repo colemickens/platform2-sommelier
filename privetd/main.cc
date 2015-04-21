@@ -172,7 +172,7 @@ class Daemon : public chromeos::DBusServiceDaemon,
     DBusDaemon::OnShutdown(return_code);
   }
 
-  void OnRegistrationChanged() override { OnChanged(); };
+  void OnDeviceInfoChanged() override { OnChanged(); };
 
  private:
   void PrivetRequestHandler(scoped_ptr<Request> request,

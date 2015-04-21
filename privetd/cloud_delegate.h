@@ -40,7 +40,7 @@ class CloudDelegate {
    public:
     virtual ~Observer() = default;
 
-    virtual void OnRegistrationChanged() {}
+    virtual void OnDeviceInfoChanged() {}
     virtual void OnCommandDefsChanged() {}
     virtual void OnStateChanged() {}
   };
@@ -86,7 +86,7 @@ class CloudDelegate {
     observer_list_.RemoveObserver(observer);
   }
 
-  void NotifyOnRegistrationChanged();
+  void NotifyOnDeviceInfoChanged();
   void NotifyOnCommandDefsChanged();
   void NotifyOnStateChanged();
 
