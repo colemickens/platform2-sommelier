@@ -435,7 +435,7 @@ TEST_F(PrivetHandlerTest, AuthAnonymous) {
   const char kExpected[] = R"({
     'accessToken': 'GuestAccessToken',
     'expiresIn': 3600,
-    'scope': 'guest',
+    'scope': 'user',
     'tokenType': 'Privet'
   })";
   EXPECT_PRED2(IsEqualJson, kExpected,

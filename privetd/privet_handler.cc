@@ -106,6 +106,9 @@ const int kAccesssTokenExpirationSeconds = 3600;
 // between device and client. Value is just a guess.
 const int kAccesssTokenExpirationThresholdSeconds = 300;
 
+// Max scope to be given to anonymous user.
+const AuthScope kAnonymousUserScope = AuthScope::kUser;
+
 template <class Container>
 std::unique_ptr<base::ListValue> ToValue(const Container& list) {
   std::unique_ptr<base::ListValue> value_list(new base::ListValue());
@@ -463,7 +466,7 @@ void PrivetHandler::HandleRequest(const std::string& api,
   }
   AuthScope scope = AuthScope::kNone;
   if (token == kAuthTypeAnonymousValue) {
-    scope = AuthScope::kGuest;
+    scope = kAnonymousUserScope;
   } else {
     base::Time time;
     scope = security_->ParseAccessToken(token, &time);
@@ -624,7 +627,7 @@ void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
 
   AuthScope max_auth_scope = AuthScope::kNone;
   if (auth_code_type == kAuthTypeAnonymousValue) {
-    max_auth_scope = AuthScope::kGuest;
+    max_auth_scope = kAnonymousUserScope;
   } else if (auth_code_type == kAuthTypePairingValue) {
     if (!security_->IsValidPairingCode(auth_code)) {
       chromeos::Error::AddToPrintf(
