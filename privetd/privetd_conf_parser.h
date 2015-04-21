@@ -44,15 +44,6 @@ class PrivetdConfigParser {
     return bootstrap_timeout_seconds_;
   }
   uint32_t monitor_timeout_seconds() const { return monitor_timeout_seconds_; }
-  const std::set<std::string>& device_services() const {
-    return device_services_;
-  }
-  const std::string& device_class() const { return device_class_; }
-  const std::string& device_make() const { return device_make_; }
-  const std::string& device_model() const { return device_model_; }
-  const std::string& device_model_id() const { return device_model_id_; }
-  const std::string& device_name() const { return device_name_; }
-  const std::string& device_description() const { return device_description_; }
   const std::set<PairingType>& pairing_modes() { return pairing_modes_; }
   const base::FilePath& embedded_code_path() const {
     return embedded_code_path_;
@@ -65,13 +56,6 @@ class PrivetdConfigParser {
   uint32_t connect_timeout_seconds_;
   uint32_t bootstrap_timeout_seconds_;
   uint32_t monitor_timeout_seconds_;
-  std::set<std::string> device_services_;
-  std::string device_class_;
-  std::string device_make_;
-  std::string device_model_;
-  std::string device_model_id_;
-  std::string device_name_;
-  std::string device_description_;
   std::set<PairingType> pairing_modes_;
   base::FilePath embedded_code_path_;
 };

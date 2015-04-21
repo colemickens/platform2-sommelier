@@ -19,24 +19,12 @@ const char kGcdBootstrapMode[] = "gcd_bootstrapping_mode";
 const char kConnectTimeout[] = "connect_timeout_seconds";
 const char kBootstrapTimeout[] = "bootstrap_timeout_seconds";
 const char kMonitorTimeout[] = "monitor_timeout_seconds";
-const char kDeviceServices[] = "device_services";
-const char kDeviceClass[] = "device_class";
-const char kDeviceMake[] = "device_make";
-const char kDeviceModel[] = "device_model";
-const char kDeviceModelId[] = "device_model_id";
-const char kDeviceName[] = "device_name";
-const char kDeviceDescription[] = "device_description";
 const char kPairingModes[] = "pairing_modes";
 const char kEmbeddedCodePath[] = "embedded_code_path";
 
 const char kBootstrapModeOff[] = "off";
 const char kBootstrapModeAutomatic[] = "automatic";
 const char kBootstrapModeManual[] = "manual";
-
-const char kDefaultDeviceClass[] = "AA";  // Generic device.
-const char kDefaultDeviceMake[] = "Chromium";
-const char kDefaultDeviceModel[] = "Brillo";
-const char kDefaultDeviceModelId[] = "AAA";  // Model is not registered.
 
 }  // namespace
 
@@ -48,11 +36,6 @@ PrivetdConfigParser::PrivetdConfigParser()
       connect_timeout_seconds_{60u},
       bootstrap_timeout_seconds_{600u},
       monitor_timeout_seconds_{120u},
-      device_class_{kDefaultDeviceClass},
-      device_make_{kDefaultDeviceMake},
-      device_model_{kDefaultDeviceModel},
-      device_model_id_{kDefaultDeviceModelId},
-      device_name_{device_make_ + " " + device_model_},
       pairing_modes_{PairingType::kPinCode} {
 }
 
@@ -132,43 +115,6 @@ bool PrivetdConfigParser::Parse(const chromeos::KeyValueStore& config_store) {
                << monitor_timeout_seconds_str;
     return false;
   }
-
-  std::string device_services_str;
-  if (config_store.GetString(kDeviceServices, &device_services_str)) {
-    auto services =
-        chromeos::string_utils::Split(device_services_str, ",", true, true);
-    device_services_.insert(services.begin(), services.end());
-    for (const std::string& service : device_services_) {
-      if (service.front() == '_') {
-        LOG(ERROR) << "Invalid service name: " << service;
-        return false;
-      }
-    }
-  }
-
-  config_store.GetString(kDeviceClass, &device_class_);
-  if (device_class_.size() != 2) {
-    LOG(ERROR) << "Invalid device class: " << device_class_;
-    return false;
-  }
-
-  config_store.GetString(kDeviceMake, &device_make_);
-
-  config_store.GetString(kDeviceModel, &device_model_);
-
-  config_store.GetString(kDeviceModelId, &device_model_id_);
-  if (device_model_id_.size() != 3) {
-    LOG(ERROR) << "Invalid model id: " << device_model_id_;
-    return false;
-  }
-
-  config_store.GetString(kDeviceName, &device_name_);
-  if (device_name_.empty()) {
-    LOG(ERROR) << "Empty device name";
-    return false;
-  }
-
-  config_store.GetString(kDeviceDescription, &device_description_);
 
   std::set<PairingType> pairing_modes;
   std::string embedded_code_path;

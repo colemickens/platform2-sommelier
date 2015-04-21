@@ -95,9 +95,7 @@ class Daemon : public chromeos::DBusServiceDaemon,
           chromeos::string_utils::Split(test_device_whitelist, ",", true, true);
       device_whitelist_.insert(interfaces.begin(), interfaces.end());
     }
-    device_ = DeviceDelegate::CreateDefault(
-        &parser_, state_store_.get(),
-        base::Bind(&Daemon::OnChanged, base::Unretained(this)));
+    device_ = DeviceDelegate::CreateDefault();
     cloud_ = CloudDelegate::CreateDefault(
         bus_, parser_.gcd_bootstrap_mode() != GcdBootstrapMode::kDisabled);
     cloud_observer_.Add(cloud_.get());

@@ -6,42 +6,17 @@
 #define PRIVETD_DEVICE_DELEGATE_H_
 
 #include <memory>
-#include <set>
-#include <string>
 #include <utility>
 
-#include <base/callback.h>
 #include <base/time/time.h>
 
 namespace privetd {
-
-class DaemonState;
-class PrivetdConfigParser;
 
 // Interface to provide access to general information about device.
 class DeviceDelegate {
  public:
   DeviceDelegate();
   virtual ~DeviceDelegate();
-
-  // Returns the name of device. Could be default of set by user.
-  virtual std::string GetName() const = 0;
-
-  // Returns the description of the device.
-  virtual std::string GetDescription() const = 0;
-
-  // Returns the location of the device.
-  virtual std::string GetLocation() const = 0;
-
-  // Returns the class of the device.
-  virtual std::string GetClass() const = 0;
-
-  // Returns the model ID of the device.
-  virtual std::string GetModelId() const = 0;
-
-  // Returns the list of services supported by device.
-  // E.g. printer, scanner etc. Should match services published on mDNS.
-  virtual std::set<std::string> GetServices() const = 0;
 
   // Returns HTTP ports for Privet. The first one is the primary port,
   // the second is the port for a pooling updates requests. The second value
@@ -55,15 +30,6 @@ class DeviceDelegate {
   // Returns device update.
   virtual base::TimeDelta GetUptime() const = 0;
 
-  // Sets the name of the device.
-  virtual void SetName(const std::string& name) = 0;
-
-  // Sets the name for the device.
-  virtual void SetDescription(const std::string& description) = 0;
-
-  // Sets the location of the device.
-  virtual void SetLocation(const std::string& location) = 0;
-
   // Updates the HTTP port value.
   virtual void SetHttpPort(uint16_t port) = 0;
 
@@ -71,12 +37,7 @@ class DeviceDelegate {
   virtual void SetHttpsPort(uint16_t port) = 0;
 
   // Create default instance.
-  static std::unique_ptr<DeviceDelegate> CreateDefault(
-      PrivetdConfigParser* config,
-      DaemonState* state_store,
-      // Allows owner to know that state of the object was changed. Used to
-      // notify PeerdClient.
-      const base::Closure& on_changed);
+  static std::unique_ptr<DeviceDelegate> CreateDefault();
 };
 
 }  // namespace privetd

@@ -8,8 +8,6 @@
 #include <base/guid.h>
 
 #include "privetd/constants.h"
-#include "privetd/daemon_state.h"
-#include "privetd/privetd_conf_parser.h"
 
 namespace privetd {
 
@@ -17,37 +15,9 @@ namespace {
 
 class DeviceDelegateImpl : public DeviceDelegate {
  public:
-  DeviceDelegateImpl(const PrivetdConfigParser* config,
-                     DaemonState* state_store,
-                     const base::Closure& on_changed)
-      : config_(config),
-        state_store_(state_store),
-        on_changed_(on_changed) {
-  }
-  ~DeviceDelegateImpl() override {}
+  DeviceDelegateImpl() = default;
+  ~DeviceDelegateImpl() override = default;
 
-  // DeviceDelegate methods.
-  std::string GetName() const override {
-    std::string name;
-    state_store_->GetString(state_key::kDeviceName, &name);
-    return name.empty() ? config_->device_name() : name;
-  }
-  std::string GetDescription() const override {
-    std::string description;
-    if (!state_store_->GetString(state_key::kDeviceDescription, &description))
-      return config_->device_description();
-    return description;
-  }
-  std::string GetLocation() const override {
-    std::string location;
-    state_store_->GetString(state_key::kDeviceLocation, &location);
-    return location;
-  }
-  std::string GetClass() const override { return config_->device_class(); }
-  std::string GetModelId() const override { return config_->device_model_id(); }
-  std::set<std::string> GetServices() const override {
-    return config_->device_services();
-  }
   std::pair<uint16_t, uint16_t> GetHttpEnpoint() const override {
     return std::make_pair(http_port_, http_port_);
   }
@@ -56,21 +26,6 @@ class DeviceDelegateImpl : public DeviceDelegate {
   }
   base::TimeDelta GetUptime() const override {
     return base::Time::Now() - start_time_;
-  }
-  void SetName(const std::string& name) override {
-    state_store_->SetString(state_key::kDeviceName, name);
-    state_store_->Save();
-    on_changed_.Run();
-  }
-  void SetDescription(const std::string& description) override {
-    state_store_->SetString(state_key::kDeviceDescription, description);
-    state_store_->Save();
-    on_changed_.Run();
-  }
-  void SetLocation(const std::string& location) override {
-    state_store_->SetString(state_key::kDeviceLocation, location);
-    state_store_->Save();
-    on_changed_.Run();
   }
 
   void SetHttpPort(uint16_t port) override {
@@ -84,9 +39,6 @@ class DeviceDelegateImpl : public DeviceDelegate {
  private:
   uint16_t http_port_{0};
   uint16_t https_port_{0};
-  const PrivetdConfigParser* config_{nullptr};
-  DaemonState* state_store_{nullptr};
-  base::Closure on_changed_;
   base::Time start_time_{base::Time::Now()};
 };
 
@@ -99,12 +51,8 @@ DeviceDelegate::~DeviceDelegate() {
 }
 
 // static
-std::unique_ptr<DeviceDelegate> DeviceDelegate::CreateDefault(
-    PrivetdConfigParser* config,
-    DaemonState* state_store,
-    const base::Closure& on_changed) {
-  return std::unique_ptr<DeviceDelegate>(
-      new DeviceDelegateImpl(config, state_store, on_changed));
+std::unique_ptr<DeviceDelegate> DeviceDelegate::CreateDefault() {
+  return std::unique_ptr<DeviceDelegate>(new DeviceDelegateImpl());
 }
 
 }  // namespace privetd

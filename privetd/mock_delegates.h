@@ -42,29 +42,13 @@ class MockDeviceDelegate : public DeviceDelegate {
   using IntPair = std::pair<uint16_t, uint16_t>;
 
  public:
-  MOCK_CONST_METHOD0(GetName, std::string());
-  MOCK_CONST_METHOD0(GetDescription, std::string());
-  MOCK_CONST_METHOD0(GetLocation, std::string());
-  MOCK_CONST_METHOD0(GetClass, std::string());
-  MOCK_CONST_METHOD0(GetModelId, std::string());
-  MOCK_CONST_METHOD0(GetServices, std::set<std::string>());
   MOCK_CONST_METHOD0(GetHttpEnpoint, IntPair());
   MOCK_CONST_METHOD0(GetHttpsEnpoint, IntPair());
   MOCK_CONST_METHOD0(GetUptime, base::TimeDelta());
-  MOCK_METHOD1(SetName, void(const std::string&));
-  MOCK_METHOD1(SetDescription, void(const std::string&));
-  MOCK_METHOD1(SetLocation, void(const std::string&));
   MOCK_METHOD1(SetHttpPort, void(uint16_t));
   MOCK_METHOD1(SetHttpsPort, void(uint16_t));
 
   MockDeviceDelegate() {
-    EXPECT_CALL(*this, GetName()).WillRepeatedly(Return("TestDevice"));
-    EXPECT_CALL(*this, GetDescription()).WillRepeatedly(Return(""));
-    EXPECT_CALL(*this, GetLocation()).WillRepeatedly(Return(""));
-    EXPECT_CALL(*this, GetClass()).WillRepeatedly(Return("AB"));
-    EXPECT_CALL(*this, GetModelId()).WillRepeatedly(Return("MID"));
-    EXPECT_CALL(*this, GetServices())
-        .WillRepeatedly(Return(std::set<std::string>{}));
     EXPECT_CALL(*this, GetHttpEnpoint())
         .WillRepeatedly(Return(std::make_pair(0, 0)));
     EXPECT_CALL(*this, GetHttpsEnpoint())
