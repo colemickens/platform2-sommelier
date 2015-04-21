@@ -44,6 +44,8 @@ TEST_F(DBusProxyTest, CreateGoogleAttestedKeySuccess) {
     EXPECT_EQ(KEY_USAGE_SIGN, request_proto.key_usage());
     EXPECT_EQ(ENTERPRISE_MACHINE_CERTIFICATE,
               request_proto.certificate_profile());
+    EXPECT_EQ("user", request_proto.username());
+    EXPECT_EQ("origin", request_proto.origin());
     // Create reply protobuf.
     scoped_ptr<dbus::Response> response =
         dbus::Response::CreateEmpty();
@@ -70,8 +72,8 @@ TEST_F(DBusProxyTest, CreateGoogleAttestedKeySuccess) {
     EXPECT_EQ("server_error", server_error);
   };
   proxy_.CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                 ENTERPRISE_MACHINE_CERTIFICATE, "", "",
-                                 base::Bind(callback));
+                                 ENTERPRISE_MACHINE_CERTIFICATE, "user",
+                                 "origin", base::Bind(callback));
   EXPECT_EQ(1, callback_count);
 }
 

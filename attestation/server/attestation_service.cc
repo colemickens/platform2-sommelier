@@ -39,12 +39,28 @@ bool AttestationService::Initialize() {
   LOG(INFO) << "Attestation service started.";
   worker_thread_.reset(new base::Thread("Attestation Service Worker"));
   worker_thread_->Start();
+  if (!tpm_utility_) {
+    default_tpm_utility_.reset(new TpmUtilityV1());
+    if (!default_tpm_utility_->Initialize()) {
+      return false;
+    }
+    tpm_utility_ = default_tpm_utility_.get();
+  }
+  if (!crypto_utility_) {
+    default_crypto_utility_.reset(new CryptoUtilityImpl(tpm_utility_));
+    crypto_utility_ = default_crypto_utility_.get();
+  }
   if (!database_) {
     default_database_.reset(new DatabaseImpl(crypto_utility_));
     if (!default_database_->Initialize()) {
       LOG(WARNING) << "Creating new attestation database.";
     }
     database_ = default_database_.get();
+  }
+  if (!key_store_) {
+    pkcs11_token_manager_.reset(new chaps::TokenManagerClient());
+    default_key_store_.reset(new Pkcs11KeyStore(pkcs11_token_manager_.get()));
+    key_store_ = default_key_store_.get();
   }
   return true;
 }

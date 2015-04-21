@@ -49,6 +49,8 @@ void DBusProxy::CreateGoogleAttestedKey(
   request.set_key_type(key_type);
   request.set_key_usage(key_usage);
   request.set_certificate_profile(certificate_profile);
+  request.set_username(username);
+  request.set_origin(origin);
   auto on_success = [callback](
       const attestation::CreateGoogleAttestedKeyReply& reply) {
     callback.Run(reply.certificate_chain(),

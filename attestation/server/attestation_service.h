@@ -18,10 +18,13 @@
 #include <chromeos/http/http_transport.h>
 
 #include "attestation/server/crypto_utility.h"
+#include "attestation/server/crypto_utility_impl.h"
 #include "attestation/server/database.h"
 #include "attestation/server/database_impl.h"
 #include "attestation/server/key_store.h"
+#include "attestation/server/pkcs11_key_store.h"
 #include "attestation/server/tpm_utility.h"
+#include "attestation/server/tpm_utility_v1.h"
 
 namespace attestation {
 
@@ -216,12 +219,20 @@ class AttestationService : public AttestationInterface {
 
   // Other than initialization and destruction, these are used only by the
   // worker thread.
-  CryptoUtility* crypto_utility_;
-  Database* database_;
-  std::unique_ptr<DatabaseImpl> default_database_;
+  CryptoUtility* crypto_utility_{nullptr};
+  Database* database_{nullptr};
   std::shared_ptr<chromeos::http::Transport> http_transport_;
-  KeyStore* key_store_;
-  TpmUtility* tpm_utility_;
+  KeyStore* key_store_{nullptr};
+  TpmUtility* tpm_utility_{nullptr};
+
+  // Default implementations for the above interfaces. These will be setup
+  // during Initialize() if the corresponding interface has not been set with a
+  // mutator.
+  std::unique_ptr<CryptoUtilityImpl> default_crypto_utility_;
+  std::unique_ptr<DatabaseImpl> default_database_;
+  std::unique_ptr<Pkcs11KeyStore> default_key_store_;
+  std::unique_ptr<chaps::TokenManagerClient> pkcs11_token_manager_;
+  std::unique_ptr<TpmUtilityV1> default_tpm_utility_;
 
   // All work is done in the background. This serves to serialize requests and
   // allow synchronous implementation of complex methods. This is intentionally

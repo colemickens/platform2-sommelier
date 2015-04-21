@@ -24,7 +24,8 @@ const char kCreateCommand[] = "create";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
-  create - Creates a Google-attested key (this is the default command).
+  create [--user=<email>] [--label=<keylabel>] - Creates a Google-attested key.
+      (This is the default command).
 )";
 
 // The Daemon class works well as a client loop as well.
@@ -61,10 +62,13 @@ class ClientLoop : public ClientLoopBase {
   // Posts tasks according to the command line options.
   int ScheduleCommand() {
     base::Closure task;
-    auto args = base::CommandLine::ForCurrentProcess()->GetArgs();
+    base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+    const auto& args = command_line->GetArgs();
     if (args.empty() || args.front() == kCreateCommand) {
       task = base::Bind(&ClientLoop::CallCreateGoogleAttestedKey,
-                        weak_factory_.GetWeakPtr());
+                        weak_factory_.GetWeakPtr(),
+                        command_line->GetSwitchValueASCII("label"),
+                        command_line->GetSwitchValueASCII("user"));
     } else {
       return EX_USAGE;
     }
@@ -87,13 +91,14 @@ class ClientLoop : public ClientLoopBase {
     Quit();
   }
 
-  void CallCreateGoogleAttestedKey() {
+  void CallCreateGoogleAttestedKey(const std::string& label,
+                                   const std::string& username) {
     attestation_->CreateGoogleAttestedKey(
-        "test_key",
+        label,
         attestation::KEY_TYPE_RSA,
         attestation::KEY_USAGE_SIGN,
         attestation::ENTERPRISE_MACHINE_CERTIFICATE,
-        "",  // username
+        username,
         "",  // origin
         base::Bind(&ClientLoop::HandleCreateGoogleAttestedKeyReply,
                    weak_factory_.GetWeakPtr()));
