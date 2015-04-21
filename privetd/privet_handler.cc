@@ -45,14 +45,18 @@ const char kStatusErrorValue[] = "error";
 
 const char kInfoIdKey[] = "id";
 const char kInfoServicesKey[] = "services";
-const char kInfoClassKey[] = "class";
-const char kInfoModelIdKey[] = "modelId";
 
 const char kInfoEndpointsKey[] = "endpoints";
 const char kInfoEndpointsHttpPortKey[] = "httpPort";
 const char kInfoEndpointsHttpUpdatePortKey[] = "httpUpdatesPort";
 const char kInfoEndpointsHttpsPortKey[] = "httpsPort";
 const char kInfoEndpointsHttpsUpdatePortKey[] = "httpsUpdatesPort";
+
+const char kInfoModelIdKey[] = "modelManifestId";
+const char kInfoModelManifestKey[] = "basicModelManifest";
+const char kInfoManifestUiDeviceKind[] = "uiDeviceKind";
+const char kInfoManifestOemName[] = "oemName";
+const char kInfoManifestModelName[] = "modelName";
 
 const char kInfoAuthenticationKey[] = "authentication";
 
@@ -315,6 +319,45 @@ void OnCommandRequestFailed(const PrivetHandler::RequestCallback& callback,
   return ReturnError(*error, callback);
 }
 
+std::string GetDeviceKind(const std::string& manifest_id) {
+  CHECK_EQ(5u, manifest_id.size());
+  std::string kind = manifest_id.substr(0, 2);
+  if (kind == "AC")
+    return "accessPoint";
+  if (kind == "AK")
+    return "aggregator";
+  if (kind == "AM")
+    return "camera";
+  if (kind == "AB")
+    return "developmentBoard";
+  if (kind == "AE")
+    return "printer";
+  if (kind == "AF")
+    return "scanner";
+  if (kind == "AD")
+    return "speaker";
+  if (kind == "AL")
+    return "storage";
+  if (kind == "AJ")
+    return "toy";
+  if (kind == "AA")
+    return "vendor";
+  if (kind == "AN")
+    return "video";
+  LOG(FATAL) << "Invalid model id: " << manifest_id;
+  return std::string();
+}
+
+std::unique_ptr<base::DictionaryValue> CreateManifestSection(
+    const std::string& model_id,
+    const CloudDelegate& cloud) {
+  std::unique_ptr<base::DictionaryValue> manifest(new base::DictionaryValue());
+  manifest->SetString(kInfoManifestUiDeviceKind, GetDeviceKind(model_id));
+  manifest->SetString(kInfoManifestOemName, cloud.GetOemName());
+  manifest->SetString(kInfoManifestModelName, cloud.GetModelName());
+  return manifest;
+}
+
 std::unique_ptr<base::DictionaryValue> CreateEndpointsSection(
     const DeviceDelegate& device) {
   std::unique_ptr<base::DictionaryValue> endpoints(new base::DictionaryValue());
@@ -523,9 +566,9 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
   if (!location.empty())
     output.SetString(kLocationKey, location);
 
-  CHECK_EQ(5u, model_id.size());
-  output.SetString(kInfoClassKey, model_id.substr(0, 2));
-  output.SetString(kInfoModelIdKey, model_id.substr(2));
+  output.SetString(kInfoModelIdKey, model_id);
+  output.Set(kInfoModelManifestKey,
+             CreateManifestSection(model_id, *cloud_).release());
   output.Set(kInfoServicesKey, ToValue(cloud_->GetServices()).release());
 
   output.Set(kInfoAuthenticationKey,

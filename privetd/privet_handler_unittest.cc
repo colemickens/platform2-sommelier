@@ -234,9 +234,14 @@ TEST_F(PrivetHandlerTest, InfoMinimal) {
     'version': '3.0',
     'id': 'TestId',
     'name': 'TestDevice',
-    'class': "AB",
-    'modelId': "MID",
+    'modelManifestId': "ABMID",
     'services': [],
+    'modelManifestId': "ABMID",
+    'basicModelManifest': {
+      'uiDeviceKind': 'developmentBoard',
+      'oemName': 'Chromium',
+      'modelName': 'Brillo'
+    },
     'endpoints': {
       'httpPort': 0,
       'httpUpdatesPort': 0,
@@ -293,12 +298,16 @@ TEST_F(PrivetHandlerTest, Info) {
     'name': 'TestDevice',
     'description': 'TestDescription',
     'location': 'TestLocation',
-    'class': "AB",
-    'modelId': "MID",
     'services': [
       "service1",
       "service2"
     ],
+    'modelManifestId': "ABMID",
+    'basicModelManifest': {
+      'uiDeviceKind': 'developmentBoard',
+      'oemName': 'Chromium',
+      'modelName': 'Brillo'
+    },
     'endpoints': {
       'httpPort': 80,
       'httpUpdatesPort': 10080,

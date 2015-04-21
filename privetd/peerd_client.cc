@@ -138,8 +138,7 @@ void PeerdClient::ExposeService() {
       {"ty", name},
       {"services", services},
       {"id", GetId()},
-      {"class", model_id.substr(0, 2)},
-      {"model_id", model_id.substr(2)},
+      {"mmid", model_id},
       {"flags", WifiSsidGenerator{cloud_, wifi_}.GenerateFlags()},
   };
 
