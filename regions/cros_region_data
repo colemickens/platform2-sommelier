@@ -87,6 +87,17 @@ lookup_data() {
   fi
 }
 
+# Use legacy VPD data to look up region code.
+reverse_lookup_region_by_timezone() {
+  local value="$1"
+  local region="$(jq -c -r --arg "timezone" "${value}" \
+    'map(select(.time_zones == [$timezone]).region_code)[0]' \
+    "${CROS_REGIONS_DATABASE}")"
+  if [ "${region}" != "null" ]; then
+    echo "${region}"
+  fi
+}
+
 report_available_fields() {
   if [ ! -f "${CROS_REGIONS_DATABASE}" ]; then
     return
@@ -137,6 +148,10 @@ main() {
     if get_legacy_value_from_vpd "${data_name}" ${select_first} ; then
       # Already printed.
       exit 0
+    fi
+    if [ -z "${region}" ]; then
+      region="$(reverse_lookup_region_by_timezone \
+        "$(get_data_from_vpd initial_timezone)")"
     fi
   fi
 
