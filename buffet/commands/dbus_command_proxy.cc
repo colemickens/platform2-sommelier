@@ -47,16 +47,17 @@ void DBusCommandProxy::RegisterAsync(
   dbus_object_.RegisterAsync(completion_callback);
 }
 
-void DBusCommandProxy::OnResultsChanged(const native_types::Object& results) {
-  dbus_adaptor_.SetResults(ObjectToDBusVariant(results));
+void DBusCommandProxy::OnResultsChanged() {
+  dbus_adaptor_.SetResults(
+      ObjectToDBusVariant(command_instance_->GetResults()));
 }
 
-void DBusCommandProxy::OnStatusChanged(const std::string& status) {
-  dbus_adaptor_.SetStatus(status);
+void DBusCommandProxy::OnStatusChanged() {
+  dbus_adaptor_.SetStatus(command_instance_->GetStatus());
 }
 
-void DBusCommandProxy::OnProgressChanged(int progress) {
-  dbus_adaptor_.SetProgress(progress);
+void DBusCommandProxy::OnProgressChanged() {
+  dbus_adaptor_.SetProgress(command_instance_->GetProgress());
 }
 
 bool DBusCommandProxy::SetProgress(chromeos::ErrorPtr* error,

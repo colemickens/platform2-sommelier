@@ -136,10 +136,10 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
     chromeos::ErrorPtr* error);
 
   // Updates a command.
-  // TODO(antonm): Should solve the issues with async vs. sync.
-  // TODO(antonm): Consider moving some other class.
   void UpdateCommand(const std::string& command_id,
-                     const base::DictionaryValue& command_patch);
+                     const base::DictionaryValue& command_patch,
+                     const base::Closure& on_success,
+                     const base::Closure& on_error);
 
   // Updates basic device information.
   bool UpdateDeviceInfo(const std::string& name,

@@ -778,12 +778,15 @@ bool DeviceRegistrationInfo::UpdateDeviceInfo(const std::string& name,
 
 void DeviceRegistrationInfo::UpdateCommand(
     const std::string& command_id,
-    const base::DictionaryValue& command_patch) {
+    const base::DictionaryValue& command_patch,
+    const base::Closure& on_success,
+    const base::Closure& on_error) {
   DoCloudRequest(
       chromeos::http::request_type::kPatch,
       GetServiceURL("commands/" + command_id),
       &command_patch,
-      base::Bind(&IgnoreCloudResult), base::Bind(&IgnoreCloudError));
+      base::Bind(&IgnoreCloudResultWithCallback, on_success),
+      base::Bind(&IgnoreCloudErrorWithCallback, on_error));
 }
 
 void DeviceRegistrationInfo::UpdateDeviceResource(

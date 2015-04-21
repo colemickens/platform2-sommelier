@@ -537,6 +537,8 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
                                    ServerResponse* response) {
     EXPECT_EQ(R"({"results":{"status":"Ok"}})",
               request.GetDataAsNormalizedJsonString());
+    response->ReplyJson(chromeos::http::status_code::Ok,
+                        chromeos::http::FormFieldList{});
   };
 
   transport_->AddHandler(command_url,
@@ -556,6 +558,8 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
       EXPECT_EQ(R"({"progress":{"progress":18}})",
                 request.GetDataAsNormalizedJsonString());
     }
+    response->ReplyJson(chromeos::http::status_code::Ok,
+                        chromeos::http::FormFieldList{});
   };
 
   transport_->AddHandler(command_url,
@@ -569,6 +573,8 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
                                  ServerResponse* response) {
     EXPECT_EQ(R"({"state":"cancelled"})",
               request.GetDataAsNormalizedJsonString());
+    response->ReplyJson(chromeos::http::status_code::Ok,
+                        chromeos::http::FormFieldList{});
   };
 
   transport_->AddHandler(command_url,

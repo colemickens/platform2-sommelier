@@ -18,9 +18,9 @@ class CommandProxyInterface {
  public:
   virtual ~CommandProxyInterface() = default;
 
-  virtual void OnResultsChanged(const native_types::Object& results) = 0;
-  virtual void OnStatusChanged(const std::string& status) = 0;
-  virtual void OnProgressChanged(int progress) = 0;
+  virtual void OnResultsChanged() = 0;
+  virtual void OnStatusChanged() = 0;
+  virtual void OnProgressChanged() = 0;
 };
 
 }  // namespace buffet

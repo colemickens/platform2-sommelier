@@ -169,7 +169,7 @@ bool CommandInstance::SetResults(const native_types::Object& results) {
   if (results != results_) {
     results_ = results;
     for (auto& proxy : proxies_) {
-      proxy->OnResultsChanged(results_);
+      proxy->OnResultsChanged();
     }
   }
   return true;
@@ -182,7 +182,7 @@ bool CommandInstance::SetProgress(int progress) {
     progress_ = progress;
     SetStatus(kStatusInProgress);
     for (auto& proxy : proxies_) {
-      proxy->OnProgressChanged(progress_);
+      proxy->OnProgressChanged();
     }
   }
   return true;
@@ -211,7 +211,7 @@ void CommandInstance::SetStatus(const std::string& status) {
   if (status != status_) {
     status_ = status;
     for (auto& proxy : proxies_) {
-      proxy->OnStatusChanged(status_);
+      proxy->OnStatusChanged();
     }
   }
 }

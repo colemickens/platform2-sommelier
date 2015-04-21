@@ -38,9 +38,9 @@ class DBusCommandProxy : public CommandProxyInterface,
           completion_callback);
 
   // CommandProxyInterface implementation/overloads.
-  void OnResultsChanged(const native_types::Object& results) override;
-  void OnStatusChanged(const std::string& status) override;
-  void OnProgressChanged(int progress) override;
+  void OnResultsChanged() override;
+  void OnStatusChanged() override;
+  void OnProgressChanged() override;
 
  private:
   // Handles calls to org.chromium.Buffet.Command.SetProgress(progress).
