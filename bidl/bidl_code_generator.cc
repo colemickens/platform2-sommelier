@@ -597,7 +597,6 @@ bool BidlCodeGenerator::AddServiceToSource(
 
     // TODO(leecam): Case where root is a binder itself
     if (in_message.contains_objects) {
-      printer->Print("\n");
       printer->Print("size_t offset = 0;\n");
       printer->Print("Parcel object_parcel;\n");
       printer->Print(FullName(method->input_type()).c_str());
@@ -634,6 +633,12 @@ bool BidlCodeGenerator::AddServiceToSource(
       printer->Print("return -1;\n");
       printer->Outdent();
     }
+
+    printer->Print("if (!Remote())\n");
+    printer->Indent();
+    printer->Print("return -7;\n");
+    printer->Outdent();
+
     if (IsOneWay(method->output_type())) {
       printer->Print("return Remote()->Transact(0, &data, &reply, true);\n");
     } else {
