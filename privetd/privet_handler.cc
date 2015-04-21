@@ -396,8 +396,10 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
       security_(security),
       wifi_(wifi),
       identity_(identity) {
-  if (cloud_)
-    cloud_observer_.Add(cloud_);
+  CHECK(cloud_);
+  CHECK(device_);
+  CHECK(security_);
+  cloud_observer_.Add(cloud_);
 
   AddHandler("/privet/info", &PrivetHandler::HandleInfo, AuthScope::kGuest);
   AddHandler("/privet/v3/pairing/start", &PrivetHandler::HandlePairingStart,
@@ -411,18 +413,16 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
              AuthScope::kOwner);
   AddHandler("/privet/v3/setup/status", &PrivetHandler::HandleSetupStatus,
              AuthScope::kOwner);
-  if (cloud_) {
-    AddHandler("/privet/v3/commandDefs", &PrivetHandler::HandleCommandDefs,
-               AuthScope::kUser);
-    AddHandler("/privet/v3/commands/execute",
-               &PrivetHandler::HandleCommandsExecute, AuthScope::kUser);
-    AddHandler("/privet/v3/commands/status",
-               &PrivetHandler::HandleCommandsStatus, AuthScope::kUser);
-    AddHandler("/privet/v3/commands/cancel",
-               &PrivetHandler::HandleCommandsCancel, AuthScope::kUser);
-    AddHandler("/privet/v3/commands/list", &PrivetHandler::HandleCommandsList,
-               AuthScope::kUser);
-  }
+  AddHandler("/privet/v3/commandDefs", &PrivetHandler::HandleCommandDefs,
+             AuthScope::kUser);
+  AddHandler("/privet/v3/commands/execute",
+             &PrivetHandler::HandleCommandsExecute, AuthScope::kUser);
+  AddHandler("/privet/v3/commands/status", &PrivetHandler::HandleCommandsStatus,
+             AuthScope::kUser);
+  AddHandler("/privet/v3/commands/cancel", &PrivetHandler::HandleCommandsCancel,
+             AuthScope::kUser);
+  AddHandler("/privet/v3/commands/list", &PrivetHandler::HandleCommandsList,
+             AuthScope::kUser);
 }
 
 PrivetHandler::~PrivetHandler() {
@@ -526,8 +526,7 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
   if (wifi_)
     output.Set(kWifiKey, CreateWifiSection(*wifi_).release());
 
-  if (cloud_)
-    output.Set(kGcdKey, CreateGcdSection(*cloud_).release());
+  output.Set(kGcdKey, CreateGcdSection(*cloud_).release());
 
   output.SetInteger(kInfoUptimeKey, device_->GetUptime().InSeconds());
 
@@ -709,12 +708,6 @@ void PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
 
   const base::DictionaryValue* registration = nullptr;
   if (input.GetDictionary(kGcdKey, &registration)) {
-    if (!cloud_) {
-      chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
-                             errors::kSetupUnavailable,
-                             "GCD setup unavailible");
-      return ReturnError(*error, callback);
-    }
     registration->GetString(kSetupStartTicketIdKey, &ticket);
     if (ticket.empty()) {
       chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
@@ -738,15 +731,13 @@ void PrivetHandler::HandleSetupStatus(const base::DictionaryValue& input,
                                       const RequestCallback& callback) {
   base::DictionaryValue output;
 
-  if (cloud_) {
-    const SetupState& state = cloud_->GetSetupState();
-    if (!state.IsStatusEqual(SetupState::kNone)) {
-      base::DictionaryValue* gcd = new base::DictionaryValue;
-      output.Set(kGcdKey, gcd);
-      SetState(state, gcd);
-      if (state.IsStatusEqual(SetupState::kSuccess))
-        gcd->SetString(kInfoIdKey, cloud_->GetCloudId());
-    }
+  const SetupState& state = cloud_->GetSetupState();
+  if (!state.IsStatusEqual(SetupState::kNone)) {
+    base::DictionaryValue* gcd = new base::DictionaryValue;
+    output.Set(kGcdKey, gcd);
+    SetState(state, gcd);
+    if (state.IsStatusEqual(SetupState::kSuccess))
+      gcd->SetString(kInfoIdKey, cloud_->GetCloudId());
   }
 
   if (wifi_) {

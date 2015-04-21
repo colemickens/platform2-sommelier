@@ -93,7 +93,8 @@ class CloudDelegate {
   // Create default instance.
   static std::unique_ptr<CloudDelegate> CreateDefault(
       const scoped_refptr<dbus::Bus>& bus,
-      DeviceDelegate* device);
+      DeviceDelegate* device,
+      bool is_gcd_setup_enabled);
 
  private:
   ObserverList<Observer> observer_list_;

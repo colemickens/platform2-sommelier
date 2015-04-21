@@ -36,8 +36,12 @@ const int kFirstRetryTimeoutSec = 1;
 
 class CloudDelegateImpl : public CloudDelegate {
  public:
-  CloudDelegateImpl(const scoped_refptr<dbus::Bus>& bus, DeviceDelegate* device)
-      : object_manager_{bus}, device_{device} {
+  CloudDelegateImpl(const scoped_refptr<dbus::Bus>& bus,
+                    DeviceDelegate* device,
+                    bool is_gcd_setup_enabled)
+      : object_manager_{bus},
+        device_{device},
+        is_gcd_setup_enabled_(is_gcd_setup_enabled) {
     object_manager_.SetManagerAddedCallback(
         base::Bind(&CloudDelegateImpl::OnManagerAdded,
                    weak_factory_.GetWeakPtr()));
@@ -55,6 +59,12 @@ class CloudDelegateImpl : public CloudDelegate {
   bool Setup(const std::string& ticket_id,
              const std::string& user,
              chromeos::ErrorPtr* error) override {
+    if (!is_gcd_setup_enabled_) {
+      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                             errors::kSetupUnavailable,
+                             "GCD setup unavailible");
+      return false;
+    }
     if (!object_manager_.GetManagerProxy()) {
       chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
                              errors::kDeviceBusy, "Buffet is not ready");
@@ -334,6 +344,8 @@ class CloudDelegateImpl : public CloudDelegate {
 
   DeviceDelegate* device_;
 
+  bool is_gcd_setup_enabled_{false};
+
   // Primary state of GCD.
   ConnectionState state_{ConnectionState::kDisabled};
 
@@ -364,8 +376,10 @@ CloudDelegate::~CloudDelegate() {
 // static
 std::unique_ptr<CloudDelegate> CloudDelegate::CreateDefault(
     const scoped_refptr<dbus::Bus>& bus,
-    DeviceDelegate* device) {
-  return std::unique_ptr<CloudDelegateImpl>{new CloudDelegateImpl{bus, device}};
+    DeviceDelegate* device,
+    bool is_gcd_setup_enabled) {
+  return std::unique_ptr<CloudDelegateImpl>{
+      new CloudDelegateImpl{bus, device, is_gcd_setup_enabled}};
 }
 
 void CloudDelegate::NotifyOnRegistrationChanged() {

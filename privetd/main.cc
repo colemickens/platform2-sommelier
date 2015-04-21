@@ -98,10 +98,10 @@ class Daemon : public chromeos::DBusServiceDaemon,
     device_ = DeviceDelegate::CreateDefault(
         &parser_, state_store_.get(),
         base::Bind(&Daemon::OnChanged, base::Unretained(this)));
-    if (parser_.gcd_bootstrap_mode() != GcdBootstrapMode::kDisabled) {
-      cloud_ = CloudDelegate::CreateDefault(bus_, device_.get());
-      cloud_observer_.Add(cloud_.get());
-    }
+    cloud_ = CloudDelegate::CreateDefault(
+        bus_, device_.get(),
+        parser_.gcd_bootstrap_mode() != GcdBootstrapMode::kDisabled);
+    cloud_observer_.Add(cloud_.get());
     security_.reset(new SecurityManager(parser_.pairing_modes(),
                                         parser_.embedded_code_path(),
                                         disable_security_));

@@ -46,6 +46,7 @@ PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus,
       cloud_{cloud},
       wifi_{wifi} {
   CHECK(device_);
+  CHECK(cloud_);
   peerd_object_manager_proxy_.SetManagerAddedCallback(
       base::Bind(&PeerdClient::OnPeerdOnline, weak_ptr_factory_.GetWeakPtr()));
   peerd_object_manager_proxy_.SetManagerRemovedCallback(
@@ -137,7 +138,7 @@ void PeerdClient::ExposeService() {
       {"flags", WifiSsidGenerator{device_, cloud_, wifi_}.GenerateFlags()},
   };
 
-  if (cloud_ && !cloud_->GetCloudId().empty())
+  if (!cloud_->GetCloudId().empty())
     txt_record.emplace("gcd_id", cloud_->GetCloudId());
 
   if (!device_->GetDescription().empty())

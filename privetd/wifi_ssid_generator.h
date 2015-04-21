@@ -32,9 +32,9 @@ class WifiSsidGenerator {
   // Sets object to use |n| instead of random number for SSID generation.
   void SetRandomForTests(int n);
 
-  const DeviceDelegate* device_{nullptr};  // Can't be nullptr.
-  const CloudDelegate* gcd_{nullptr};      // Can be nullptr.
-  const WifiDelegate* wifi_{nullptr};      // Can be nullptr.
+  const DeviceDelegate* device_{nullptr};
+  const CloudDelegate* gcd_{nullptr};
+  const WifiDelegate* wifi_{nullptr};
 
   base::Callback<int(void)> get_random_;
 

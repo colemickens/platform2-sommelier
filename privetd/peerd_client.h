@@ -56,9 +56,9 @@ class PeerdClient : public IdentityDelegate {
   // |peerd_manager_proxy_| is owned by |peerd_object_manager_proxy_|.
   org::chromium::peerd::ManagerProxy* peerd_manager_proxy_{nullptr};
 
-  const DeviceDelegate* device_{nullptr};  // Can't be nullptr.
-  const CloudDelegate* cloud_{nullptr};  // Can be nullptr.
-  const WifiDelegate* wifi_{nullptr};      // Can be nullptr.
+  const DeviceDelegate* device_{nullptr};
+  const CloudDelegate* cloud_{nullptr};
+  const WifiDelegate* wifi_{nullptr};
 
   // Cached value of the device ID that we got from peerd.
   std::string device_id_;

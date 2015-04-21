@@ -51,6 +51,8 @@ WifiSsidGenerator::WifiSsidGenerator(const DeviceDelegate* device,
       gcd_(cloud),
       wifi_(wifi),
       get_random_(base::Bind(&base::RandInt, 0, 99)) {
+  CHECK(device_);
+  CHECK(gcd_);
 }
 
 std::string WifiSsidGenerator::GenerateFlags() const {
@@ -58,7 +60,7 @@ std::string WifiSsidGenerator::GenerateFlags() const {
   // Device needs WiFi configuration.
   flags1[0] = wifi_ && IsSetupNeeded(wifi_->GetConnectionState());
   // Device needs GCD registration.
-  flags1[1] = gcd_ && IsSetupNeeded(gcd_->GetConnectionState());
+  flags1[1] = IsSetupNeeded(gcd_->GetConnectionState());
 
   std::bitset<6> flags2;
   // Device is discoverable over WiFi.

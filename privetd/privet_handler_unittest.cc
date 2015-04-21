@@ -161,7 +161,17 @@ class PrivetHandlerTest : public testing::Test {
 
   void SetNoWifiAndGcd() {
     handler_.reset(
-        new PrivetHandler(nullptr, &device_, &security_, nullptr, &identity_));
+        new PrivetHandler(&cloud_, &device_, &security_, nullptr, &identity_));
+    EXPECT_CALL(cloud_, GetCloudId()).WillRepeatedly(Return(""));
+    EXPECT_CALL(cloud_, GetConnectionState())
+        .WillRepeatedly(ReturnRef(gcd_disabled_state_));
+    auto set_error =
+        [](const std::string&, const std::string&, chromeos::ErrorPtr* error) {
+          chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                                 "setupUnavailable", "");
+        };
+    EXPECT_CALL(cloud_, Setup(_, _, _))
+        .WillRepeatedly(DoAll(Invoke(set_error), Return(false)));
   }
 
   testing::StrictMock<MockCloudDelegate> cloud_;
@@ -189,6 +199,7 @@ class PrivetHandlerTest : public testing::Test {
   base::MessageLoop message_loop_;
   std::unique_ptr<PrivetHandler> handler_;
   base::DictionaryValue output_;
+  ConnectionState gcd_disabled_state_{ConnectionState::kDisabled};
 };
 
 TEST_F(PrivetHandlerTest, UnknownApi) {
@@ -248,10 +259,19 @@ TEST_F(PrivetHandlerTest, InfoMinimal) {
       'crypto': [
       ]
     },
+    'gcd': {
+      'id': '',
+      'status': 'disabled'
+    },
     'uptime': 3600,
     'api': [
       '/privet/info',
       '/privet/v3/auth',
+      '/privet/v3/commandDefs',
+      '/privet/v3/commands/cancel',
+      '/privet/v3/commands/execute',
+      '/privet/v3/commands/list',
+      '/privet/v3/commands/status',
       '/privet/v3/pairing/cancel',
       '/privet/v3/pairing/confirm',
       '/privet/v3/pairing/start',
@@ -587,8 +607,15 @@ TEST_F(PrivetHandlerSetupTest, WifiSetup) {
 
 TEST_F(PrivetHandlerSetupTest, GcdSetupUnavailable) {
   SetNoWifiAndGcd();
+  const char kInput[] = R"({
+    'gcd': {
+      'ticketId': 'testTicket',
+      'user': 'testUser'
+    }
+  })";
+
   EXPECT_PRED2(IsEqualError, CodeWithReason(400, "setupUnavailable"),
-               HandleRequest("/privet/v3/setup/start", "{'gcd': {}}"));
+               HandleRequest("/privet/v3/setup/start", kInput));
 }
 
 TEST_F(PrivetHandlerSetupTest, GcdSetup) {
