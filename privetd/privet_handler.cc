@@ -312,6 +312,78 @@ void OnCommandRequestFailed(const PrivetHandler::RequestCallback& callback,
   return ReturnError(*error, callback);
 }
 
+std::unique_ptr<base::DictionaryValue> CreateEndpointsSection(
+    const DeviceDelegate& device) {
+  std::unique_ptr<base::DictionaryValue> endpoints(new base::DictionaryValue());
+  auto http_endpoint = device.GetHttpEnpoint();
+  endpoints->SetInteger(kInfoEndpointsHttpPortKey, http_endpoint.first);
+  endpoints->SetInteger(kInfoEndpointsHttpUpdatePortKey, http_endpoint.second);
+
+  auto https_endpoint = device.GetHttpsEnpoint();
+  endpoints->SetInteger(kInfoEndpointsHttpsPortKey, https_endpoint.first);
+  endpoints->SetInteger(kInfoEndpointsHttpsUpdatePortKey,
+                        https_endpoint.second);
+
+  return std::move(endpoints);
+}
+
+std::unique_ptr<base::DictionaryValue> CreateInfoAuthSection(
+    const SecurityDelegate& security) {
+  std::unique_ptr<base::DictionaryValue> auth(new base::DictionaryValue());
+
+  std::unique_ptr<base::ListValue> pairing_types(new base::ListValue());
+  for (PairingType type : security.GetPairingTypes())
+    pairing_types->AppendString(EnumToString(type));
+  auth->Set(kPairingKey, pairing_types.release());
+
+  std::unique_ptr<base::ListValue> auth_types(new base::ListValue());
+  auth_types->AppendString(kAuthTypeAnonymousValue);
+  auth_types->AppendString(kAuthTypePairingValue);
+
+  // TODO(vitalybuka): Implement cloud auth.
+  // if (cloud.GetConnectionState().IsStatusEqual(ConnectionState::kOnline)) {
+  //   auth_types->AppendString(kAuthTypeCloudValue);
+  // }
+  auth->Set(kAuthModeKey, auth_types.release());
+
+  std::unique_ptr<base::ListValue> crypto_types(new base::ListValue());
+  for (CryptoType type : security.GetCryptoTypes())
+    crypto_types->AppendString(EnumToString(type));
+  auth->Set(kCryptoKey, crypto_types.release());
+
+  return std::move(auth);
+}
+
+std::unique_ptr<base::DictionaryValue> CreateWifiSection(
+    const WifiDelegate& wifi) {
+  std::unique_ptr<base::DictionaryValue> result(new base::DictionaryValue());
+
+  std::unique_ptr<base::ListValue> capabilities(new base::ListValue());
+  for (WifiType type : wifi.GetTypes())
+    capabilities->AppendString(EnumToString(type));
+  result->Set(kInfoWifiCapabilitiesKey, capabilities.release());
+
+  result->SetString(kInfoWifiSsidKey, wifi.GetCurrentlyConnectedSsid());
+
+  std::string hosted_ssid = wifi.GetHostedSsid();
+  const ConnectionState& state = wifi.GetConnectionState();
+  if (!hosted_ssid.empty()) {
+    DCHECK(!state.IsStatusEqual(ConnectionState::kDisabled));
+    DCHECK(!state.IsStatusEqual(ConnectionState::kOnline));
+    result->SetString(kInfoWifiHostedSsidKey, hosted_ssid);
+  }
+  SetState(state, result.get());
+  return std::move(result);
+}
+
+std::unique_ptr<base::DictionaryValue> CreateGcdSection(
+    const CloudDelegate& cloud) {
+  std::unique_ptr<base::DictionaryValue> gcd(new base::DictionaryValue());
+  gcd->SetString(kInfoIdKey, cloud.GetCloudId());
+  SetState(cloud.GetConnectionState(), gcd.get());
+  return std::move(gcd);
+}
+
 }  // namespace
 
 PrivetHandler::PrivetHandler(CloudDelegate* cloud,
@@ -446,15 +518,16 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
   output.SetString(kInfoModelIdKey, model_id);
   output.Set(kInfoServicesKey, ToValue(device_->GetServices()).release());
 
-  output.Set(kInfoAuthenticationKey, CreateInfoAuthSection().release());
+  output.Set(kInfoAuthenticationKey,
+             CreateInfoAuthSection(*security_).release());
 
-  output.Set(kInfoEndpointsKey, CreateEndpointsSection().release());
+  output.Set(kInfoEndpointsKey, CreateEndpointsSection(*device_).release());
 
   if (wifi_)
-    output.Set(kWifiKey, CreateWifiSection().release());
+    output.Set(kWifiKey, CreateWifiSection(*wifi_).release());
 
   if (cloud_)
-    output.Set(kGcdKey, CreateGcdSection().release());
+    output.Set(kGcdKey, CreateGcdSection(*cloud_).release());
 
   output.SetInteger(kInfoUptimeKey, device_->GetUptime().InSeconds());
 
@@ -739,76 +812,6 @@ void PrivetHandler::HandleCommandsCancel(const base::DictionaryValue& input,
   }
   cloud_->CancelCommand(id, base::Bind(&OnCommandRequestSucceeded, callback),
                         base::Bind(&OnCommandRequestFailed, callback));
-}
-
-std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateEndpointsSection()
-    const {
-  std::unique_ptr<base::DictionaryValue> endpoints(new base::DictionaryValue());
-  auto http_endpoint = device_->GetHttpEnpoint();
-  endpoints->SetInteger(kInfoEndpointsHttpPortKey, http_endpoint.first);
-  endpoints->SetInteger(kInfoEndpointsHttpUpdatePortKey, http_endpoint.second);
-
-  auto https_endpoint = device_->GetHttpsEnpoint();
-  endpoints->SetInteger(kInfoEndpointsHttpsPortKey, https_endpoint.first);
-  endpoints->SetInteger(kInfoEndpointsHttpsUpdatePortKey,
-                        https_endpoint.second);
-
-  return std::move(endpoints);
-}
-
-std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateInfoAuthSection()
-    const {
-  std::unique_ptr<base::DictionaryValue> auth(new base::DictionaryValue());
-
-  std::unique_ptr<base::ListValue> pairing_types(new base::ListValue());
-  for (PairingType type : security_->GetPairingTypes())
-    pairing_types->AppendString(EnumToString(type));
-  auth->Set(kPairingKey, pairing_types.release());
-
-  std::unique_ptr<base::ListValue> auth_types(new base::ListValue());
-  auth_types->AppendString(kAuthTypeAnonymousValue);
-  auth_types->AppendString(kAuthTypePairingValue);
-  // TODO(vitalybuka): Implement cloud auth.
-  // if (cloud.GetConnectionState().IsStatusEqual(ConnectionState::kOnline)) {
-  //   auth_types->AppendString(kAuthTypeCloudValue);
-  // }
-  auth->Set(kAuthModeKey, auth_types.release());
-
-  std::unique_ptr<base::ListValue> crypto_types(new base::ListValue());
-  for (CryptoType type : security_->GetCryptoTypes())
-    crypto_types->AppendString(EnumToString(type));
-  auth->Set(kCryptoKey, crypto_types.release());
-
-  return std::move(auth);
-}
-
-std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateWifiSection()
-    const {
-  std::unique_ptr<base::DictionaryValue> wifi(new base::DictionaryValue());
-
-  std::unique_ptr<base::ListValue> capabilities(new base::ListValue());
-  for (WifiType type : wifi_->GetTypes())
-    capabilities->AppendString(EnumToString(type));
-  wifi->Set(kInfoWifiCapabilitiesKey, capabilities.release());
-
-  wifi->SetString(kInfoWifiSsidKey, wifi_->GetCurrentlyConnectedSsid());
-
-  std::string hosted_ssid = wifi_->GetHostedSsid();
-  const ConnectionState& state = wifi_->GetConnectionState();
-  if (!hosted_ssid.empty()) {
-    DCHECK(!state.IsStatusEqual(ConnectionState::kDisabled));
-    DCHECK(!state.IsStatusEqual(ConnectionState::kOnline));
-    wifi->SetString(kInfoWifiHostedSsidKey, hosted_ssid);
-  }
-  SetState(state, wifi.get());
-  return std::move(wifi);
-}
-
-std::unique_ptr<base::DictionaryValue> PrivetHandler::CreateGcdSection() const {
-  std::unique_ptr<base::DictionaryValue> gcd(new base::DictionaryValue());
-  gcd->SetString(kInfoIdKey, cloud_->GetCloudId());
-  SetState(cloud_->GetConnectionState(), gcd.get());
-  return std::move(gcd);
 }
 
 bool StringToPairingType(const std::string& mode, PairingType* id) {

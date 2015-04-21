@@ -6,7 +6,6 @@
 #define PRIVETD_PRIVET_HANDLER_H_
 
 #include <map>
-#include <memory>
 #include <string>
 #include <utility>
 
@@ -91,11 +90,6 @@ class PrivetHandler : public CloudDelegate::Observer {
                           const RequestCallback& callback);
   void HandleCommandsCancel(const base::DictionaryValue& input,
                             const RequestCallback& callback);
-
-  std::unique_ptr<base::DictionaryValue> CreateEndpointsSection() const;
-  std::unique_ptr<base::DictionaryValue> CreateInfoAuthSection() const;
-  std::unique_ptr<base::DictionaryValue> CreateWifiSection() const;
-  std::unique_ptr<base::DictionaryValue> CreateGcdSection() const;
 
   CloudDelegate* cloud_ = nullptr;
   DeviceDelegate* device_ = nullptr;
