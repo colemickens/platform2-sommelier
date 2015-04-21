@@ -114,7 +114,7 @@ std::unique_ptr<base::ListValue> ToValue(const Container& list) {
   std::unique_ptr<base::ListValue> value_list(new base::ListValue());
   for (const std::string& val : list)
     value_list->AppendString(val);
-  return std::move(value_list);
+  return value_list;
 }
 
 template <typename T>
@@ -327,7 +327,7 @@ std::unique_ptr<base::DictionaryValue> CreateEndpointsSection(
   endpoints->SetInteger(kInfoEndpointsHttpsUpdatePortKey,
                         https_endpoint.second);
 
-  return std::move(endpoints);
+  return endpoints;
 }
 
 std::unique_ptr<base::DictionaryValue> CreateInfoAuthSection(
@@ -354,7 +354,7 @@ std::unique_ptr<base::DictionaryValue> CreateInfoAuthSection(
     crypto_types->AppendString(EnumToString(type));
   auth->Set(kCryptoKey, crypto_types.release());
 
-  return std::move(auth);
+  return auth;
 }
 
 std::unique_ptr<base::DictionaryValue> CreateWifiSection(
@@ -376,7 +376,7 @@ std::unique_ptr<base::DictionaryValue> CreateWifiSection(
     result->SetString(kInfoWifiHostedSsidKey, hosted_ssid);
   }
   SetState(state, result.get());
-  return std::move(result);
+  return result;
 }
 
 std::unique_ptr<base::DictionaryValue> CreateGcdSection(
@@ -384,7 +384,7 @@ std::unique_ptr<base::DictionaryValue> CreateGcdSection(
   std::unique_ptr<base::DictionaryValue> gcd(new base::DictionaryValue());
   gcd->SetString(kInfoIdKey, cloud.GetCloudId());
   SetState(cloud.GetConnectionState(), gcd.get());
-  return std::move(gcd);
+  return gcd;
 }
 
 }  // namespace
