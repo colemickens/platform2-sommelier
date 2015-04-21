@@ -170,6 +170,12 @@ class ExampleMmap2Event_Tid : public StreamWriteable {
   const string filename_;
 };
 
+// Produces the PERF_RECORD_FINISHED_ROUND event. This event is just a header.
+class FinishedRoundEvent : public StreamWriteable {
+ public:
+  void WriteTo(std::ostream* out) const override;
+};
+
 // Produces a simple PERF_RECORD_SAMPLE event with the given sample info.
 // NB: The sample_info must match the sample_type of the relevant attr.
 class ExamplePerfSampleEvent : public StreamWriteable {

@@ -290,6 +290,102 @@ TEST(PerfParserTest, MapsSampleEventIp) {
   EXPECT_EQ(0x300b, events[13].raw_event->sample.array[0]);
 }
 
+TEST(PerfParserTest, HandlesFinishedRoundEventsAndSortsByTime) {
+  // For now at least, we are ignoring PERF_RECORD_FINISHED_ROUND events.
+
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP |
+                                              PERF_SAMPLE_TID |
+                                              PERF_SAMPLE_TIME,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_MMAP
+  testing::ExampleMmapEvent(
+      1001, 0x1c1000, 0x1000, 0, "/usr/lib/foo.so",
+      testing::SampleInfo().Tid(1001).Time(12300010)).WriteTo(&input);
+  // becomes: 0x0000, 0x1000, 0
+
+
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent(                                // 1
+      testing::SampleInfo().Ip(0x00000000001c1000).Tid(1001).Time(12300020))
+      .WriteTo(&input);
+  testing::ExamplePerfSampleEvent(                                // 2
+      testing::SampleInfo().Ip(0x00000000001c1000).Tid(1001).Time(12300030))
+      .WriteTo(&input);
+  // PERF_RECORD_FINISHED_ROUND
+  testing::FinishedRoundEvent().WriteTo(&input);                  // N/A
+
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent(                                // 3
+      testing::SampleInfo().Ip(0x00000000001c1000).Tid(1001).Time(12300050))
+      .WriteTo(&input);
+  testing::ExamplePerfSampleEvent(                                // 4
+      testing::SampleInfo().Ip(0x00000000001c1000).Tid(1001).Time(12300040))
+      .WriteTo(&input);
+  // PERF_RECORD_FINISHED_ROUND
+  testing::FinishedRoundEvent().WriteTo(&input);                  // N/A
+
+  //
+  // Parse input.
+  //
+
+  PerfParser::Options options;
+  options.sample_mapping_percentage_threshold = 0;
+  options.do_remap = true;
+  PerfParser parser(options);
+  EXPECT_TRUE(parser.ReadFromString(input.str()));
+  EXPECT_TRUE(parser.ParseRawEvents());
+  EXPECT_EQ(1, parser.stats().num_mmap_events);
+  EXPECT_EQ(4, parser.stats().num_sample_events);
+  EXPECT_EQ(4, parser.stats().num_sample_events_mapped);
+
+  const std::vector<ParsedEvent>& events = parser.parsed_events();
+  ASSERT_EQ(5, events.size());
+
+  struct perf_sample sample;
+
+  EXPECT_EQ(PERF_RECORD_MMAP, events[0].raw_event->header.type);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[1].raw_event->header.type);
+  parser.ReadPerfSampleInfo(*events[1].raw_event, &sample);
+  EXPECT_EQ(12300020, sample.time);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[2].raw_event->header.type);
+  parser.ReadPerfSampleInfo(*events[2].raw_event, &sample);
+  EXPECT_EQ(12300030, sample.time);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[3].raw_event->header.type);
+  parser.ReadPerfSampleInfo(*events[3].raw_event, &sample);
+  EXPECT_EQ(12300050, sample.time);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, events[4].raw_event->header.type);
+  parser.ReadPerfSampleInfo(*events[4].raw_event, &sample);
+  EXPECT_EQ(12300040, sample.time);
+
+  const std::vector<ParsedEvent*>& sorted_events =
+      parser.GetEventsSortedByTime();
+  ASSERT_EQ(5, sorted_events.size());
+
+  EXPECT_EQ(PERF_RECORD_MMAP, sorted_events[0]->raw_event->header.type);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, sorted_events[1]->raw_event->header.type);
+  parser.ReadPerfSampleInfo(*sorted_events[1]->raw_event, &sample);
+  EXPECT_EQ(12300020, sample.time);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, sorted_events[2]->raw_event->header.type);
+  parser.ReadPerfSampleInfo(*sorted_events[2]->raw_event, &sample);
+  EXPECT_EQ(12300030, sample.time);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, sorted_events[3]->raw_event->header.type);
+  parser.ReadPerfSampleInfo(*sorted_events[3]->raw_event, &sample);
+  EXPECT_EQ(12300040, sample.time);
+  EXPECT_EQ(PERF_RECORD_SAMPLE, sorted_events[4]->raw_event->header.type);
+  parser.ReadPerfSampleInfo(*sorted_events[4]->raw_event, &sample);
+  EXPECT_EQ(12300050, sample.time);
+}
+
 }  // namespace quipper
 
 int main(int argc, char* argv[]) {

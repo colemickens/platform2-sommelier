@@ -214,19 +214,24 @@ void PerfParser::MaybeSortParsedEvents() {
     return;
   }
   std::vector<std::unique_ptr<EventAndTime>> events_and_times;
-  events_and_times.resize(parsed_events_.size());
-  for (size_t i = 0; i < parsed_events_.size(); ++i) {
+  for (ParsedEvent& parsed_event : parsed_events_) {
+    if (parsed_event.raw_event->header.type == PERF_RECORD_FINISHED_ROUND) {
+      // This event doesn't have a timestamp, and is not needed.
+      // TODO(dhsharp): Follow the pattern of perf's util/ordered_events to
+      // use the partial-sorting of events between rounds to sort faster.
+      continue;
+    }
+
     std::unique_ptr<EventAndTime> event_and_time(new EventAndTime);
 
     // Store the timestamp and event pointer in an array.
-    event_and_time->event = &parsed_events_[i];
+    event_and_time->event = &parsed_event;
 
     struct perf_sample sample_info;
-    CHECK(reader_.ReadPerfSampleInfo(*parsed_events_[i].raw_event,
-                                     &sample_info));
+    CHECK(reader_.ReadPerfSampleInfo(*parsed_event.raw_event, &sample_info));
     event_and_time->time = sample_info.time;
 
-    events_and_times[i] = std::move(event_and_time);
+    events_and_times.emplace_back(std::move(event_and_time));
   }
   // Sort the events based on timestamp, and then populate the sorted event
   // vector in sorted order.
