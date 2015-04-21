@@ -375,10 +375,11 @@ bool WiFiService::Load(StoreInterface *storage) {
   storage->GetString(id, kStoragePreferredDevice, &preferred_device);
   SetPreferredDevice(preferred_device, nullptr);
 
+  uint64_t stored_roam_threshold_temp;
+  storage->GetUint64(id, kStorageRoamThreshold, &stored_roam_threshold_temp);
   // Storing a uint64_t in a uint16_t is safe here since we know that we only
   // set this storage value to a uint16_t value in WiFiService::Save.
-  storage->GetUint64(id, kStorageRoamThreshold,
-                     reinterpret_cast<uint64_t *>(&roam_threshold_db_));
+  roam_threshold_db_ = static_cast<uint16_t>(stored_roam_threshold_temp);
   storage->GetBool(id, kStorageRoamThresholdSet, &roam_threshold_db_set_);
 
   expecting_disconnect_ = false;
