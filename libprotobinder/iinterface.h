@@ -56,7 +56,7 @@ inline INTERFACE* BinderToInterface(IBinder* obj) {
 
 #define IMPLEMENT_META_INTERFACE(INTERFACE, NAME)                              \
   I##INTERFACE* I##INTERFACE::CreateInterface(IBinder* obj) {                  \
-    return obj ? new I##INTERFACE##Proxy(obj) : nullptr;                       \
+    return new I##INTERFACE##Proxy(obj);                                       \
   }                                                                            \
   I##INTERFACE::I##INTERFACE() {}                                              \
   I##INTERFACE::~I##INTERFACE() {}
