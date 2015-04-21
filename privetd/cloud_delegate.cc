@@ -87,7 +87,9 @@ class CloudDelegateImpl : public CloudDelegate {
     return true;
   }
 
-  std::string GetCloudId() const override { return cloud_id_; }
+  std::string GetCloudId() const override {
+    return manager_ ? manager_->device_id() : std::string{};
+  }
 
   const base::DictionaryValue& GetCommandDef() const override {
     return command_defs_;
@@ -97,13 +99,12 @@ class CloudDelegateImpl : public CloudDelegate {
                   const SuccessCallback& success_callback,
                   const ErrorCallback& error_callback) override {
     chromeos::ErrorPtr error;
-    ManagerProxy* manager = GetManagerProxy(&error);
-    if (!manager)
+    if (!IsManagerReady(&error))
       return error_callback.Run(error.get());
 
     std::string command_str;
     base::JSONWriter::Write(&command, &command_str);
-    manager->AddCommandAsync(
+    manager_->AddCommandAsync(
         command_str, base::Bind(&CloudDelegateImpl::OnAddCommandSucceeded,
                                 weak_factory_.GetWeakPtr(), success_callback,
                                 error_callback),
@@ -114,10 +115,9 @@ class CloudDelegateImpl : public CloudDelegate {
                   const SuccessCallback& success_callback,
                   const ErrorCallback& error_callback) override {
     chromeos::ErrorPtr error;
-    ManagerProxy* manager = GetManagerProxy(&error);
-    if (!manager)
+    if (!IsManagerReady(&error))
       return error_callback.Run(error.get());
-    manager->GetCommandAsync(
+    manager_->GetCommandAsync(
         id, base::Bind(&CloudDelegateImpl::OnGetCommandSucceeded,
                        weak_factory_.GetWeakPtr(), success_callback,
                        error_callback),
@@ -158,7 +158,8 @@ class CloudDelegateImpl : public CloudDelegate {
 
  private:
   void OnManagerAdded(ManagerProxy* manager) {
-    manager->SetPropertyChangedCallback(
+    manager_ = manager;
+    manager_->SetPropertyChangedCallback(
         base::Bind(&CloudDelegateImpl::OnManagerPropertyChanged,
                    weak_factory_.GetWeakPtr()));
     // Read all initial values.
@@ -167,23 +168,25 @@ class CloudDelegateImpl : public CloudDelegate {
 
   void OnManagerPropertyChanged(ManagerProxy* manager,
                                 const std::string& property_name) {
+    CHECK_EQ(manager_, manager);
+
     if (property_name.empty() || property_name == ManagerProxy::StatusName()) {
-      OnStatusPropertyChanged(manager);
+      OnStatusPropertyChanged();
     }
 
     if (property_name.empty() ||
         property_name == ManagerProxy::DeviceIdName()) {
-      OnDeviceIdPropertyChanged(manager);
+      NotifyOnRegistrationChanged();
     }
 
     if (property_name.empty() ||
         property_name == ManagerProxy::CommandDefsName()) {
-      OnCommandDefsPropertyChanged(manager);
+      OnCommandDefsPropertyChanged();
     }
   }
 
-  void OnStatusPropertyChanged(ManagerProxy* manager) {
-    const std::string& status = manager->status();
+  void OnStatusPropertyChanged() {
+    const std::string& status = manager_->status();
     if (status == "unconfigured") {
       state_ = ConnectionState{ConnectionState::kUnconfigured};
     } else if (status == "connecting") {
@@ -201,15 +204,10 @@ class CloudDelegateImpl : public CloudDelegate {
     NotifyOnRegistrationChanged();
   }
 
-  void OnDeviceIdPropertyChanged(ManagerProxy* manager) {
-    cloud_id_ = manager->device_id();
-    NotifyOnRegistrationChanged();
-  }
-
-  void OnCommandDefsPropertyChanged(ManagerProxy* manager) {
+  void OnCommandDefsPropertyChanged() {
     command_defs_.Clear();
     std::unique_ptr<base::Value> value{
-        base::JSONReader::Read(manager->command_defs())};
+        base::JSONReader::Read(manager_->command_defs())};
     base::DictionaryValue* defs{nullptr};
     if (value && value->GetAsDictionary(&defs))
       command_defs_.MergeDictionary(defs);
@@ -217,11 +215,12 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
   void OnManagerRemoved(const dbus::ObjectPath& path) {
+    manager_ = nullptr;
     state_ = ConnectionState(ConnectionState::kDisabled);
-    cloud_id_.clear();
     command_defs_.Clear();
     NotifyOnRegistrationChanged();
     NotifyOnCommandDefsChanged();
+    NotifyOnStateChanged();
   }
 
   void RetryRegister(const std::string& ticket_id,
@@ -331,13 +330,13 @@ class CloudDelegateImpl : public CloudDelegate {
     GetCommand(next_id, on_success, on_error);
   }
 
-  ManagerProxy* GetManagerProxy(chromeos::ErrorPtr* error) {
-    ManagerProxy* manager = object_manager_.GetManagerProxy();
-    if (!manager) {
+  bool IsManagerReady(chromeos::ErrorPtr* error) const {
+    if (!manager_) {
       chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
                              errors::kDeviceBusy, "Buffet is not ready");
+      return false;
     }
-    return manager;
+    return true;
   }
 
   ObjectManagerProxy object_manager_;
@@ -346,14 +345,13 @@ class CloudDelegateImpl : public CloudDelegate {
 
   bool is_gcd_setup_enabled_{false};
 
+  ManagerProxy* manager_{nullptr};
+
   // Primary state of GCD.
   ConnectionState state_{ConnectionState::kDisabled};
 
   // State of the current or last setup.
   SetupState setup_state_{SetupState::kNone};
-
-  // Cloud ID if device is registered.
-  std::string cloud_id_;
 
   // Current commands definitions.
   base::DictionaryValue command_defs_;
