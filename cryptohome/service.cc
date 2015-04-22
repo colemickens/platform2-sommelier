@@ -2142,6 +2142,8 @@ gboolean Service::TpmVerifyEK(gboolean is_cros_core,
 gboolean Service::TpmAttestationCreateEnrollRequest(gint pca_type,
                                                     GArray** OUT_pca_request,
                                                     GError** error) {
+  // We must set the GArray now because if we return without setting it,
+  // dbus-glib loops forever.
   *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
   chromeos::SecureBlob blob;
   if (attestation_->CreateEnrollRequest(GetPCAType(pca_type), &blob))
@@ -2197,6 +2199,8 @@ gboolean Service::TpmAttestationCreateCertRequest(gint pca_type,
                                                   gchar* request_origin,
                                                   GArray** OUT_pca_request,
                                                   GError** error) {
+  // We must set the GArray now because if we return without setting it,
+  // dbus-glib loops forever.
   *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
   chromeos::SecureBlob blob;
   if (attestation_->CreateCertRequest(GetPCAType(pca_type),
@@ -2238,6 +2242,8 @@ gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
                                                   GArray** OUT_cert,
                                                   gboolean* OUT_success,
                                                   GError** error) {
+  // We must set the GArray now because if we return without setting it,
+  // dbus-glib loops forever.
   *OUT_cert = g_array_new(false, false, sizeof(SecureBlob::value_type));
   chromeos::SecureBlob response_blob(pca_response->data,
                                      pca_response->data + pca_response->len);
@@ -2412,6 +2418,8 @@ gboolean Service::TpmAttestationGetKeyPayload(gboolean is_user_specific,
                                               GArray** OUT_payload,
                                               gboolean* OUT_success,
                                               GError** error) {
+  // We must set the GArray now because if we return without setting it,
+  // dbus-glib loops forever.
   *OUT_payload = g_array_new(false, false, sizeof(SecureBlob::value_type));
   chromeos::SecureBlob blob;
   *OUT_success = attestation_->GetKeyPayload(is_user_specific,
@@ -2461,6 +2469,8 @@ gboolean Service::TpmAttestationResetIdentity(gchar* reset_token,
                                               GArray** OUT_reset_request,
                                               gboolean* OUT_success,
                                               GError** error) {
+  // We must set the GArray now because if we return without setting it,
+  // dbus-glib loops forever.
   *OUT_reset_request = g_array_new(false, false,
                                    sizeof(SecureBlob::value_type));
   chromeos::SecureBlob reset_request;
@@ -2531,6 +2541,8 @@ gboolean Service::InstallAttributesGet(gchar* name,
                                        GError** error) {
   chromeos::Blob value;
   *OUT_successful = install_attrs_->Get(name, &value);
+  // We must set the GArray now because if we return without setting it,
+  // dbus-glib loops forever.
   *OUT_value = g_array_new(false, false, sizeof(value.front()));
   if (!(*OUT_value)) {
     return FALSE;
@@ -2624,6 +2636,9 @@ gboolean Service::StoreEnrollmentState(GArray* enrollment_state,
 gboolean Service::LoadEnrollmentState(GArray** OUT_enrollment_state,
                                       gboolean* OUT_success,
                                       GError** error) {
+  // We must set the GArray now because if we return without setting it,
+  // dbus-glib loops forever.
+  *OUT_enrollment_state = g_array_new(false, false, 1);
   *OUT_success = false;
   chromeos::Blob enrollment_blob;
   if (!platform_->ReadFile(kPreservedEnrollmentStatePath,
@@ -2640,7 +2655,6 @@ gboolean Service::LoadEnrollmentState(GArray** OUT_enrollment_state,
                                &secure_data)) {
     return TRUE;
   }
-  *OUT_enrollment_state = g_array_new(false, false, 1);
   g_array_append_vals(*OUT_enrollment_state,
                       secure_data.char_data(), secure_data.size());
   *OUT_success = true;
