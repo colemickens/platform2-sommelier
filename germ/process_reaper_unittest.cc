@@ -6,6 +6,7 @@
 
 #include <sys/wait.h>
 
+#include <base/at_exit.h>
 #include <base/bind.h>
 #include <base/location.h>
 #include <base/message_loop/message_loop.h>
@@ -13,18 +14,14 @@
 #include <gtest/gtest.h>
 #include <libchromeos/chromeos/asynchronous_signal_handler.h>
 
+#include "germ/test_util.h"
+
 namespace germ {
 namespace {
 
 const int kExitCode = 0x80;
 const int kNumToFork = 10;
 const int kTestTimeout = 10;
-
-class ScopedAlarm {
- public:
-  explicit ScopedAlarm(unsigned int seconds) { alarm(seconds); }
-  ~ScopedAlarm() { alarm(0); }
-};
 
 class TestProcessReaper : public ProcessReaper {
  public:
@@ -62,6 +59,7 @@ class TestProcessReaper : public ProcessReaper {
     }
   }
 
+  base::AtExitManager exit_manager_;
   int num_to_reap_;
   int expected_code_;
   int expected_status_;

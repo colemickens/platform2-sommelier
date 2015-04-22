@@ -8,6 +8,7 @@
 
 #include <memory>
 
+#include <base/at_exit.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -76,6 +77,7 @@ class LauncherTest : public ::testing::Test {
   }
 
  protected:
+  base::AtExitManager exit_manager_;
   soma::ContainerSpec spec_;
   soma::ReadOnlyContainerSpec ro_spec_;
   MockLauncher launcher_;
