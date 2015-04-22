@@ -158,44 +158,58 @@ TEST(PerfParserTest, MapsSampleEventIp) {
       .WriteTo(&input);
 
   // PERF_RECORD_MMAP
-  testing::ExampleMmapEvent_Tid(
-      1001, 0x1c1000, 0x1000, 0, "/usr/lib/foo.so").WriteTo(&input);       // 0
+  testing::ExampleMmapEvent(
+      1001, 0x1c1000, 0x1000, 0, "/usr/lib/foo.so",
+      testing::SampleInfo().Tid(1001)).WriteTo(&input);        // 0
   // becomes: 0x0000, 0x1000, 0
-  testing::ExampleMmapEvent_Tid(
-      1001, 0x1c3000, 0x2000, 0x2000, "/usr/lib/bar.so").WriteTo(&input);  // 1
+  testing::ExampleMmapEvent(
+      1001, 0x1c3000, 0x2000, 0x2000, "/usr/lib/bar.so",
+      testing::SampleInfo().Tid(1001)).WriteTo(&input);        // 1
   // becomes: 0x1000, 0x2000, 0
 
   // PERF_RECORD_MMAP2
-  testing::ExampleMmap2Event_Tid(
-      1002, 0x2c1000, 0x2000, 0, "/usr/lib/baz.so").WriteTo(&input);       // 2
+  testing::ExampleMmap2Event(
+      1002, 0x2c1000, 0x2000, 0, "/usr/lib/baz.so",
+      testing::SampleInfo().Tid(1002)).WriteTo(&input);        // 2
   // becomes: 0x0000, 0x2000, 0
-  testing::ExampleMmap2Event_Tid(
-      1002, 0x2c3000, 0x1000, 0x3000, "/usr/lib/xyz.so").WriteTo(&input);  // 3
+  testing::ExampleMmap2Event(
+      1002, 0x2c3000, 0x1000, 0x3000, "/usr/lib/xyz.so",
+      testing::SampleInfo().Tid(1002)).WriteTo(&input);        // 3
   // becomes: 0x1000, 0x1000, 0
 
   // PERF_RECORD_SAMPLE
-  testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000001c1000, 1001, 1001).WriteTo(&input);  // 4
-  testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000001c100a, 1001, 1001).WriteTo(&input);  // 5
-  testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000001c3fff, 1001, 1001).WriteTo(&input);  // 6
-  testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000001c2bad, 1001, 1001).WriteTo(&input);  // 7 (not mapped)
-  testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000002c100a, 1002, 1002).WriteTo(&input);  // 8
-  testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000002c5bad, 1002, 1002).WriteTo(&input);  // 9 (not mapped)
-  testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000002c300b, 1002, 1002).WriteTo(&input);  // 10
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c1000).Tid(1001))  // 4
+      .WriteTo(&input);
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c100a).Tid(1001))  // 5
+      .WriteTo(&input);
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c3fff).Tid(1001))  // 6
+      .WriteTo(&input);
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c2bad).Tid(1001))  // 7 (not mapped)
+      .WriteTo(&input);
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000002c100a).Tid(1002))  // 8
+      .WriteTo(&input);
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000002c5bad).Tid(1002))  // 9 (not mapped)
+      .WriteTo(&input);
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000002c300b).Tid(1002))  // 10
+      .WriteTo(&input);
 
   // not mapped yet:
-  testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000002c400b, 1002, 1002).WriteTo(&input);  // 11
-  testing::ExampleMmap2Event_Tid(
-      1002, 0x2c4000, 0x1000, 0, "/usr/lib/new.so").WriteTo(&input);  // 12
-  testing::ExamplePerfSampleEvent_IpTid(
-      0x00000000002c400b, 1002, 1002).WriteTo(&input);  // 13
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000002c400b).Tid(1002))  // 11
+      .WriteTo(&input);
+  testing::ExampleMmap2Event(
+      1002, 0x2c4000, 0x1000, 0, "/usr/lib/new.so",
+      testing::SampleInfo().Tid(1002)).WriteTo(&input);        // 12
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000002c400b).Tid(1002))  // 13
+      .WriteTo(&input);
 
   //
   // Parse input.

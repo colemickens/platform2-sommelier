@@ -128,38 +128,18 @@ class ExampleMmapEvent : public StreamWriteable {
   const SampleInfo sample_id_;
 };
 
-// Produces a PERF_RECORD_MMAP event with the given file and mapping.
-// Assumes attr.sample_id_all and PERF_SAMPLE_TID
-class ExampleMmapEvent_Tid : public StreamWriteable {
- public:
-  // pid is used as both pid and tid.
-  ExampleMmapEvent_Tid(u32 pid, u64 start, u64 len, u64 pgoff, string filename)
-      : pid_(pid),
-        start_(start),
-        len_(len),
-        pgoff_(pgoff),
-        filename_(filename) {
-  }
-  void WriteTo(std::ostream* out) const override;
- private:
-  const u32 pid_;
-  const u64 start_;
-  const u64 len_;
-  const u64 pgoff_;
-  const string filename_;
-};
-
 // Produces a PERF_RECORD_MMAP2 event with the given file and mapping.
-// Assumes attr.sample_id_all and PERF_SAMPLE_TID
-class ExampleMmap2Event_Tid : public StreamWriteable {
+class ExampleMmap2Event : public StreamWriteable {
  public:
   // pid is used as both pid and tid.
-  ExampleMmap2Event_Tid(u32 pid, u64 start, u64 len, u64 pgoff, string filename)
+  ExampleMmap2Event(u32 pid, u64 start, u64 len, u64 pgoff, string filename,
+                    const SampleInfo& sample_id)
       : pid_(pid),
         start_(start),
         len_(len),
         pgoff_(pgoff),
-        filename_(filename) {
+        filename_(filename),
+        sample_id_(sample_id) {
   }
   void WriteTo(std::ostream* out) const override;
  private:
@@ -168,6 +148,7 @@ class ExampleMmap2Event_Tid : public StreamWriteable {
   const u64 len_;
   const u64 pgoff_;
   const string filename_;
+  const SampleInfo sample_id_;
 };
 
 // Produces the PERF_RECORD_FINISHED_ROUND event. This event is just a header.
@@ -186,19 +167,6 @@ class ExamplePerfSampleEvent : public StreamWriteable {
   void WriteTo(std::ostream* out) const override;
  private:
   const SampleInfo sample_info_;
-};
-
-// Produces a simple PERF_RECORD_SAMPLE event for a sample_type of
-// PERF_SAMPLE_IP | PERF_SAMPLE_TID
-class ExamplePerfSampleEvent_IpTid : public StreamWriteable {
- public:
-  ExamplePerfSampleEvent_IpTid(u64 ip, u32 pid, u32 tid)
-      : ip_(ip), pid_(pid), tid_(tid) {}
-  void WriteTo(std::ostream* out) const override;
- private:
-  const u64 ip_;
-  const u32 pid_;
-  const u32 tid_;
 };
 
 // Produces a struct sample_event matching ExamplePerfFileAttr_Tracepoint.

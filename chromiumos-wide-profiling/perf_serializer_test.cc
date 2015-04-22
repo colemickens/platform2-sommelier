@@ -451,12 +451,14 @@ TEST(PerfSerializerTest, SerializesAndDeserializesMmapEvents) {
       .WriteTo(&input);
 
   // PERF_RECORD_MMAP
-  testing::ExampleMmapEvent_Tid(
-      1001, 0x1c1000, 0x1000, 0, "/usr/lib/foo.so").WriteTo(&input);
+  testing::ExampleMmapEvent(
+      1001, 0x1c1000, 0x1000, 0, "/usr/lib/foo.so",
+      testing::SampleInfo().Tid(1001)).WriteTo(&input);
 
   // PERF_RECORD_MMAP2
-  testing::ExampleMmap2Event_Tid(
-      1002, 0x2c1000, 0x2000, 0x3000, "/usr/lib/bar.so").WriteTo(&input);
+  testing::ExampleMmap2Event(
+      1002, 0x2c1000, 0x2000, 0x3000, "/usr/lib/bar.so",
+      testing::SampleInfo().Tid(1002)).WriteTo(&input);
 
   // Parse and Serialize
 
@@ -495,7 +497,7 @@ TEST(PerfSerializerTest, SerializesAndDeserializesMmapEvents) {
     EXPECT_EQ(0x2000, mmap.len());
     EXPECT_EQ(0x3000, mmap.pgoff());
     EXPECT_EQ("/usr/lib/bar.so", mmap.filename());
-    // These values are hard-coded in ExampleMmap2Event_Tid:
+    // These values are hard-coded in ExampleMmap2Event:
     EXPECT_EQ(6, mmap.maj());
     EXPECT_EQ(7, mmap.min());
     EXPECT_EQ(8, mmap.ino());
