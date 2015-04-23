@@ -21,6 +21,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
+#include <chromeos/make_unique_ptr.h>
 #include <gtest/gtest.h>
 
 #include "soma/lib/soma/annotations.h"
@@ -34,6 +35,7 @@
 namespace soma {
 namespace parser {
 
+using chromeos::make_unique_ptr;
 using google::protobuf::RepeatedField;
 using google::protobuf::RepeatedPtrField;
 
@@ -207,8 +209,7 @@ class ContainerSpecReaderTest : public ::testing::Test {
       reader_.reset(new ContainerSpecReader);
     std::unique_ptr<ContainerSpec> spec = reader_->Read(scratch_);
     if (spec) {
-      return std::unique_ptr<ContainerSpecWrapper>(
-          new ContainerSpecWrapper(std::move(spec)));
+      return make_unique_ptr(new ContainerSpecWrapper(std::move(spec)));
     }
     return nullptr;
   }
@@ -524,8 +525,7 @@ TEST_F(ContainerSpecReaderTest, SpecWithACLs) {
     std::unique_ptr<FakeUserdb> userdb(new FakeUserdb);
     userdb->set_user_mapping(kUser2, 7);
     userdb->set_group_mapping(kGroup, 8);
-    set_reader(std::unique_ptr<ContainerSpecReader>(
-        new ContainerSpecReader(std::move(userdb))));
+    set_reader(make_unique_ptr(new ContainerSpecReader(std::move(userdb))));
   }
 
   isolators->Append(

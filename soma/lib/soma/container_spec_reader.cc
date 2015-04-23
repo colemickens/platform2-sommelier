@@ -104,6 +104,13 @@ bool BuildFromAppFields(const base::DictionaryValue* app_dict,
   return true;
 }
 
+// Takes a pointer to any implementation of IsolatorParserInterface,
+// returns a std::unique_ptr<IsolatorParserInterface> that owns |interface|.
+std::unique_ptr<IsolatorParserInterface> make_interface_unique_ptr(
+    IsolatorParserInterface* interface) {
+  return std::unique_ptr<IsolatorParserInterface>(interface);
+}
+
 }  // namespace
 
 bool ContainerSpecReader::ParseIsolators(const base::ListValue& isolators,
@@ -144,19 +151,18 @@ ContainerSpecReader::ContainerSpecReader(
       userdb_(std::move(userdb)) {
   isolator_parsers_.emplace(
       DevicePathFilterParser::kName,
-      std::unique_ptr<IsolatorParserInterface>(new DevicePathFilterParser));
+      make_interface_unique_ptr(new DevicePathFilterParser));
   isolator_parsers_.emplace(
       DeviceNodeFilterParser::kName,
-      std::unique_ptr<IsolatorParserInterface>(new DeviceNodeFilterParser));
+      make_interface_unique_ptr(new DeviceNodeFilterParser));
+  isolator_parsers_.emplace(NamespacesParser::kName,
+                            make_interface_unique_ptr(new NamespacesParser));
   isolator_parsers_.emplace(
-      NamespacesParser::kName,
-      std::unique_ptr<IsolatorParserInterface>(new NamespacesParser));
-  isolator_parsers_.emplace(UserACLParser::kName,
-                            std::unique_ptr<IsolatorParserInterface>(
-                                new UserACLParser(userdb_.get())));
-  isolator_parsers_.emplace(GroupACLParser::kName,
-                            std::unique_ptr<IsolatorParserInterface>(
-                                new GroupACLParser(userdb_.get())));
+      UserACLParser::kName,
+      make_interface_unique_ptr(new UserACLParser(userdb_.get())));
+  isolator_parsers_.emplace(
+      GroupACLParser::kName,
+      make_interface_unique_ptr(new GroupACLParser(userdb_.get())));
 }
 
 ContainerSpecReader::~ContainerSpecReader() {
