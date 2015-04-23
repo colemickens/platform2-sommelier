@@ -31,6 +31,10 @@ void DBusService::Register(const CompletionAction& callback) {
       kCreateGoogleAttestedKey,
       base::Unretained(this),
       &DBusService::HandleCreateGoogleAttestedKey);
+  dbus_interface->AddMethodHandler(
+      kGetKeyInfo,
+      base::Unretained(this),
+      &DBusService::HandleGetKeyInfo);
 
   dbus_object_.RegisterAsync(callback);
 }
@@ -51,7 +55,25 @@ void DBusService::HandleCreateGoogleAttestedKey(
   };
   service_->CreateGoogleAttestedKey(
       request,
-      base::Bind(callback, SharedResponsePointer(response.release())));
+      base::Bind(callback, SharedResponsePointer(std::move(response))));
+}
+
+void DBusService::HandleGetKeyInfo(
+    std::unique_ptr<DBusMethodResponse<const GetKeyInfoReply&>> response,
+    const GetKeyInfoRequest& request) {
+  VLOG(1) << __func__;
+  // Convert |response| to a shared_ptr so |service_| can safely copy the
+  // callback.
+  using SharedResponsePointer = std::shared_ptr<
+      DBusMethodResponse<const GetKeyInfoReply&>>;
+  // A callback that fills the reply protobuf and sends it.
+  auto callback = [](const SharedResponsePointer& response,
+                     const GetKeyInfoReply& reply) {
+    response->Return(reply);
+  };
+  service_->GetKeyInfo(
+      request,
+      base::Bind(callback, SharedResponsePointer(std::move(response))));
 }
 
 }  // namespace attestation

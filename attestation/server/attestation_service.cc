@@ -155,6 +155,55 @@ void AttestationService::CreateGoogleAttestedKeyTaskCallback(
   callback.Run(*result);
 }
 
+void AttestationService::GetKeyInfo(const GetKeyInfoRequest& request,
+                                    const GetKeyInfoCallback& callback) {
+  auto result = std::make_shared<GetKeyInfoReply>();
+  base::Closure task = base::Bind(
+      &AttestationService::GetKeyInfoTask,
+      base::Unretained(this),
+      request,
+      result);
+  base::Closure reply = base::Bind(
+      &AttestationService::GetKeyInfoTaskCallback,
+      GetWeakPtr(),
+      callback,
+      result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::GetKeyInfoTask(
+    const GetKeyInfoRequest& request,
+    const std::shared_ptr<GetKeyInfoReply>& result) {
+  CertifiedKey key;
+  if (!FindKeyByLabel(request.username(), request.key_label(), &key)) {
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
+  }
+  std::string public_key_info;
+  if (!GetSubjectPublicKeyInfo(key.key_type(), key.public_key(),
+                               &public_key_info)) {
+    LOG(ERROR) << __func__ << ": Bad public key.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  result->set_key_type(key.key_type());
+  result->set_key_usage(key.key_usage());
+  result->set_public_key(public_key_info);
+  result->set_certify_info(key.certified_key_info());
+  result->set_certify_info_signature(key.certified_key_proof());
+  if (key.has_intermediate_ca_cert()) {
+    result->set_certificate(CreatePEMCertificateChain(key));
+  } else {
+    result->set_certificate(key.certified_key_credential());
+  }
+}
+
+void AttestationService::GetKeyInfoTaskCallback(
+    const GetKeyInfoCallback& callback,
+    const std::shared_ptr<GetKeyInfoReply>& result) {
+  callback.Run(*result);
+}
+
 bool AttestationService::IsPreparedForEnrollment() {
   if (!tpm_utility_->IsTpmReady()) {
     return false;
@@ -561,6 +610,18 @@ std::string AttestationService::GetACAURL(ACARequestType request_type) const {
       NOTREACHED();
   }
   return url;
+}
+
+bool AttestationService::GetSubjectPublicKeyInfo(
+    KeyType key_type,
+    const std::string& public_key,
+    std::string* public_key_info) const {
+  // Only RSA is supported currently.
+  if (key_type != KEY_TYPE_RSA) {
+    return false;
+  }
+  return crypto_utility_->GetRSASubjectPublicKeyInfo(public_key,
+                                                     public_key_info);
 }
 
 base::WeakPtr<AttestationService> AttestationService::GetWeakPtr() {

@@ -59,6 +59,8 @@ class AttestationService : public AttestationInterface {
   void CreateGoogleAttestedKey(
       const CreateGoogleAttestedKeyRequest& request,
       const CreateGoogleAttestedKeyCallback& callback) override;
+  void GetKeyInfo(const GetKeyInfoRequest& request,
+                  const GetKeyInfoCallback& callback) override;
 
   // Mutators useful for testing.
   void set_crypto_utility(CryptoUtility* crypto_utility) {
@@ -105,6 +107,17 @@ class AttestationService : public AttestationInterface {
   void CreateGoogleAttestedKeyTaskCallback(
       const CreateGoogleAttestedKeyCallback& callback,
       const std::shared_ptr<CreateGoogleAttestedKeyReply>& result);
+
+  // A synchronous implementation of GetKeyInfo.
+  void GetKeyInfoTask(
+      const GetKeyInfoRequest& request,
+      const std::shared_ptr<GetKeyInfoReply>& result);
+
+  // A callback for GetKeyInfoTaskTask that invokes the original |callback| with
+  // the given |result|.
+  void GetKeyInfoTaskCallback(
+      const GetKeyInfoCallback& callback,
+      const std::shared_ptr<GetKeyInfoReply>& result);
 
   // Returns true iff all information required for enrollment with the Google
   // Attestation CA is available.
@@ -195,6 +208,12 @@ class AttestationService : public AttestationInterface {
 
   // Creates a Google Attestation CA URL for the given |request_type|.
   std::string GetACAURL(ACARequestType request_type) const;
+
+  // Creates a X.509/DER SubjectPublicKeyInfo for the given |key_type| and
+  // |public_key|. On success returns true and provides |public_key_info|.
+  bool GetSubjectPublicKeyInfo(KeyType key_type,
+                               const std::string& public_key,
+                               std::string* public_key_info) const;
 
   base::WeakPtr<AttestationService> GetWeakPtr();
 

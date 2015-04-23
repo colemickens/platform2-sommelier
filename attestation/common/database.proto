@@ -80,6 +80,10 @@ message CertifiedKey {
   optional bytes certified_key_info = 9;
   // The signature of the TPM_CERTIFY_INFO by the AIK.
   optional bytes certified_key_proof = 10;
+  // The original key type specified when the key was created.
+  optional KeyType key_type = 11;
+  // The original key usage specified when the key was created.
+  optional KeyUsage key_usage = 12;
 }
 
 // Holds all information that a client stores locally.

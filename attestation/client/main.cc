@@ -21,11 +21,13 @@
 namespace attestation {
 
 const char kCreateCommand[] = "create";
+const char kInfoCommand[] = "info";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
   create [--user=<email>] [--label=<keylabel>] - Creates a Google-attested key.
       (This is the default command).
+  info [--user=<email>] [--label=<keylabel>] - Prints info about a key.
 )";
 
 // The Daemon class works well as a client loop as well.
@@ -69,6 +71,11 @@ class ClientLoop : public ClientLoopBase {
                         weak_factory_.GetWeakPtr(),
                         command_line->GetSwitchValueASCII("label"),
                         command_line->GetSwitchValueASCII("user"));
+    } else if (args.front() == kInfoCommand) {
+      task = base::Bind(&ClientLoop::CallGetKeyInfo,
+                        weak_factory_.GetWeakPtr(),
+                        command_line->GetSwitchValueASCII("label"),
+                        command_line->GetSwitchValueASCII("user"));
     } else {
       return EX_USAGE;
     }
@@ -76,8 +83,8 @@ class ClientLoop : public ClientLoopBase {
     return EX_OK;
   }
 
-  void HandleCreateGoogleAttestedKeyReply(
-      const CreateGoogleAttestedKeyReply& reply) {
+  template <typename ProtobufType>
+  void PrintReplyAndQuit(const ProtobufType& reply) {
     reply.PrintDebugString();
     Quit();
   }
@@ -92,7 +99,17 @@ class ClientLoop : public ClientLoopBase {
     request.set_username(username);
     attestation_->CreateGoogleAttestedKey(
         request,
-        base::Bind(&ClientLoop::HandleCreateGoogleAttestedKeyReply,
+        base::Bind(&ClientLoop::PrintReplyAndQuit<CreateGoogleAttestedKeyReply>,
+                   weak_factory_.GetWeakPtr()));
+  }
+
+  void CallGetKeyInfo(const std::string& label, const std::string& username) {
+    GetKeyInfoRequest request;
+    request.set_key_label(label);
+    request.set_username(username);
+    attestation_->GetKeyInfo(
+        request,
+        base::Bind(&ClientLoop::PrintReplyAndQuit<GetKeyInfoReply>,
                    weak_factory_.GetWeakPtr()));
   }
 

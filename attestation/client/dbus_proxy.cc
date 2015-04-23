@@ -54,4 +54,21 @@ void DBusProxy::CreateGoogleAttestedKey(
       request);
 }
 
+void DBusProxy::GetKeyInfo(const GetKeyInfoRequest& request,
+                           const GetKeyInfoCallback& callback) {
+  auto on_error = [callback](chromeos::Error* error) {
+    GetKeyInfoReply reply;
+    reply.set_status(STATUS_NOT_AVAILABLE);
+    callback.Run(reply);
+  };
+  chromeos::dbus_utils::CallMethodWithTimeout(
+      kDBusTimeoutMS,
+      object_proxy_,
+      attestation::kAttestationInterface,
+      attestation::kGetKeyInfo,
+      callback,
+      base::Bind(on_error),
+      request);
+}
+
 }  // namespace attestation

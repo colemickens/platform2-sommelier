@@ -70,9 +70,9 @@ TEST_F(DBusServiceTest, CreateGoogleAttestedKey) {
   request.set_origin("origin");
   EXPECT_CALL(mock_service_, CreateGoogleAttestedKey(_, _))
       .WillOnce(Invoke([](
-            const CreateGoogleAttestedKeyRequest& request,
-            const AttestationInterface::
-                CreateGoogleAttestedKeyCallback& callback) {
+          const CreateGoogleAttestedKeyRequest& request,
+          const AttestationInterface::
+              CreateGoogleAttestedKeyCallback& callback) {
         EXPECT_EQ("label", request.key_label());
         EXPECT_EQ(KEY_TYPE_ECC, request.key_type());
         EXPECT_EQ(KEY_USAGE_SIGN, request.key_usage());
@@ -117,6 +117,42 @@ TEST_F(DBusServiceTest, CopyableCallback) {
   dbus::MessageReader reader(response.get());
   CreateGoogleAttestedKeyReply reply;
   EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
+}
+
+TEST_F(DBusServiceTest, GetKeyInfo) {
+  GetKeyInfoRequest request;
+  request.set_key_label("label");
+  request.set_username("username");
+  EXPECT_CALL(mock_service_, GetKeyInfo(_, _))
+      .WillOnce(Invoke([](
+          const GetKeyInfoRequest& request,
+          const AttestationInterface::GetKeyInfoCallback& callback) {
+        EXPECT_EQ("label", request.key_label());
+        EXPECT_EQ("username", request.username());
+        GetKeyInfoReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        reply.set_key_type(KEY_TYPE_ECC);
+        reply.set_key_usage(KEY_USAGE_SIGN);
+        reply.set_public_key("public_key");
+        reply.set_certify_info("certify");
+        reply.set_certify_info_signature("signature");
+        reply.set_certificate("certificate");
+        callback.Run(reply);
+      }));
+  std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(kGetKeyInfo);
+  dbus::MessageWriter writer(call.get());
+  writer.AppendProtoAsArrayOfBytes(request);
+  auto response = CallMethod(call.get());
+  dbus::MessageReader reader(response.get());
+  GetKeyInfoReply reply;
+  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  EXPECT_EQ(KEY_TYPE_ECC, reply.key_type());
+  EXPECT_EQ(KEY_USAGE_SIGN, reply.key_usage());
+  EXPECT_EQ("public_key", reply.public_key());
+  EXPECT_EQ("certify", reply.certify_info());
+  EXPECT_EQ("signature", reply.certify_info_signature());
+  EXPECT_EQ("certificate", reply.certificate());
 }
 
 }  // namespace attestation

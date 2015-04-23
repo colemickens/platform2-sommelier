@@ -33,6 +33,8 @@ MockCryptoUtility::MockCryptoUtility() {
       .WillByDefault(WithArgs<0, 3>(Invoke(CopyString)));
   ON_CALL(*this, DecryptData(_, _, _))
       .WillByDefault(WithArgs<0, 2>(Invoke(CopyString)));
+  ON_CALL(*this, GetRSASubjectPublicKeyInfo(_, _))
+      .WillByDefault(Invoke(CopyString));
 }
 
 MockCryptoUtility::~MockCryptoUtility() {}

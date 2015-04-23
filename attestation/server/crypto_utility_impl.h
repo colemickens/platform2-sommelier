@@ -33,6 +33,8 @@ class CryptoUtilityImpl : public CryptoUtility {
   bool DecryptData(const std::string& encrypted_data,
                    const std::string& aes_key,
                    std::string* data) override;
+  bool GetRSASubjectPublicKeyInfo(const std::string& public_key,
+                                  std::string* spki) override;
 
  private:
   // Encrypts |data| using |key| and |iv| for AES in CBC mode with PKCS #5

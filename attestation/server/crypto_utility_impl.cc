@@ -8,13 +8,16 @@
 #include <string>
 
 #include <base/stl_util.h>
+#include <crypto/scoped_openssl_types.h>
 #include <crypto/secure_util.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
+#include <openssl/rsa.h>
 #include <openssl/sha.h>
+#include <openssl/x509.h>
 
 namespace {
 
@@ -141,6 +144,27 @@ bool CryptoUtilityImpl::DecryptData(const std::string& encrypted_data,
     LOG(ERROR) << __func__ << ": AES decryption failed.";
     return false;
   }
+  return true;
+}
+
+bool CryptoUtilityImpl::GetRSASubjectPublicKeyInfo(
+    const std::string& public_key,
+    std::string* spki) {
+  const unsigned char* asn1_ptr = reinterpret_cast<const unsigned char*>(
+      public_key.data());
+  crypto::ScopedRSA rsa(d2i_RSAPublicKey(NULL, &asn1_ptr, public_key.size()));
+  if (!rsa.get()) {
+    LOG(ERROR) << __func__ << ": Failed to decode public key.";
+    return false;
+  }
+  unsigned char* buffer = NULL;
+  int length = i2d_RSA_PUBKEY(rsa.get(), &buffer);
+  if (length <= 0) {
+    LOG(ERROR) << __func__ << ": Failed to encode public key.";
+    return false;
+  }
+  crypto::ScopedOpenSSLBytes scoped_buffer(buffer);
+  spki->assign(reinterpret_cast<char*>(buffer), length);
   return true;
 }
 

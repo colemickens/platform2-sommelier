@@ -33,6 +33,11 @@ class ATTESTATION_EXPORT AttestationInterface {
   virtual void CreateGoogleAttestedKey(
       const CreateGoogleAttestedKeyRequest& request,
       const CreateGoogleAttestedKeyCallback& callback) = 0;
+
+  // Processes a GetKeyInfoRequest and responds with a GetKeyInfoReply.
+  using GetKeyInfoCallback = base::Callback<void(const GetKeyInfoReply&)>;
+  virtual void GetKeyInfo(const GetKeyInfoRequest& request,
+                          const GetKeyInfoCallback& callback) = 0;
 };
 
 }  // namespace attestation

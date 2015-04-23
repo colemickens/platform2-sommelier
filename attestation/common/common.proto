@@ -4,6 +4,18 @@
 
 package attestation;
 
+// Describes key type.
+enum KeyType {
+  KEY_TYPE_RSA = 1;
+  KEY_TYPE_ECC = 2;
+}
+
+// Describes allowed key usage.
+enum KeyUsage {
+  KEY_USAGE_SIGN = 1;
+  KEY_USAGE_DECRYPT = 2;
+}
+
 // Enumerates various certificate profiles supported by the Attestation CA.
 enum CertificateProfile {
   // A certificate intended for enterprise-owned devices.  It has the following

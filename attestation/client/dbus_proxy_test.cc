@@ -31,7 +31,7 @@ class DBusProxyTest : public testing::Test {
   DBusProxy proxy_;
 };
 
-TEST_F(DBusProxyTest, CreateGoogleAttestedKeySuccess) {
+TEST_F(DBusProxyTest, CreateGoogleAttestedKey) {
   auto fake_dbus_call = [](
       dbus::MethodCall* method_call,
       const dbus::MockObjectProxy::ResponseCallback& response_callback) {
@@ -47,8 +47,7 @@ TEST_F(DBusProxyTest, CreateGoogleAttestedKeySuccess) {
     EXPECT_EQ("user", request_proto.username());
     EXPECT_EQ("origin", request_proto.origin());
     // Create reply protobuf.
-    scoped_ptr<dbus::Response> response =
-        dbus::Response::CreateEmpty();
+    scoped_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
     dbus::MessageWriter writer(response.get());
     CreateGoogleAttestedKeyReply reply_proto;
     reply_proto.set_status(STATUS_SUCCESS);
@@ -57,8 +56,7 @@ TEST_F(DBusProxyTest, CreateGoogleAttestedKeySuccess) {
     writer.AppendProtoAsArrayOfBytes(reply_proto);
     response_callback.Run(response.release());
   };
-  EXPECT_CALL(*mock_object_proxy_,
-              CallMethodWithErrorCallback(_, _, _, _))
+  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
 
   // Set expectations on the outputs.
@@ -77,6 +75,52 @@ TEST_F(DBusProxyTest, CreateGoogleAttestedKeySuccess) {
   request.set_username("user");
   request.set_origin("origin");
   proxy_.CreateGoogleAttestedKey(request, base::Bind(callback));
+  EXPECT_EQ(1, callback_count);
+}
+
+TEST_F(DBusProxyTest, GetKeyInfo) {
+  auto fake_dbus_call = [](
+      dbus::MethodCall* method_call,
+      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+    // Verify request protobuf.
+    dbus::MessageReader reader(method_call);
+    GetKeyInfoRequest request_proto;
+    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
+    EXPECT_EQ("label", request_proto.key_label());
+    EXPECT_EQ("username", request_proto.username());
+    // Create reply protobuf.
+    scoped_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+    dbus::MessageWriter writer(response.get());
+    GetKeyInfoReply reply_proto;
+    reply_proto.set_status(STATUS_SUCCESS);
+    reply_proto.set_key_type(KEY_TYPE_ECC);
+    reply_proto.set_key_usage(KEY_USAGE_SIGN);
+    reply_proto.set_public_key("public_key");
+    reply_proto.set_certify_info("certify_info");
+    reply_proto.set_certify_info_signature("signature");
+    reply_proto.set_certificate("certificate");
+    writer.AppendProtoAsArrayOfBytes(reply_proto);
+    response_callback.Run(response.release());
+  };
+  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
+
+  // Set expectations on the outputs.
+  int callback_count = 0;
+  auto callback = [&callback_count](const GetKeyInfoReply& reply) {
+    callback_count++;
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ(KEY_TYPE_ECC, reply.key_type());
+    EXPECT_EQ(KEY_USAGE_SIGN, reply.key_usage());
+    EXPECT_EQ("public_key", reply.public_key());
+    EXPECT_EQ("certify_info", reply.certify_info());
+    EXPECT_EQ("signature", reply.certify_info_signature());
+    EXPECT_EQ("certificate", reply.certificate());
+  };
+  GetKeyInfoRequest request;
+  request.set_key_label("label");
+  request.set_username("username");
+  proxy_.GetKeyInfo(request, base::Bind(callback));
   EXPECT_EQ(1, callback_count);
 }
 

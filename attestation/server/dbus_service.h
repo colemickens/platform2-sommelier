@@ -44,6 +44,12 @@ class DBusService {
           const CreateGoogleAttestedKeyReply&>> response,
       const CreateGoogleAttestedKeyRequest& request);
 
+  // Handles a GetKeyInfo D-Bus call.
+  void HandleGetKeyInfo(
+      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+          const GetKeyInfoReply&>> response,
+      const GetKeyInfoRequest& request);
+
   chromeos::dbus_utils::DBusObject dbus_object_;
   AttestationInterface* service_;
 

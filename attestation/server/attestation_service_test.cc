@@ -25,8 +25,11 @@
 using chromeos::http::fake::ServerRequest;
 using chromeos::http::fake::ServerResponse;
 using testing::_;
+using testing::DoAll;
 using testing::NiceMock;
 using testing::Return;
+using testing::ReturnRef;
+using testing::SetArgumentPointee;
 
 namespace attestation {
 
@@ -83,6 +86,8 @@ class AttestationServiceTest : public testing::Test {
     pem += chromeos::data_encoding::Base64EncodeWrapLines("fake_cert");
     pem += kEndCertificate + "\n" + kBeginCertificate;
     pem += chromeos::data_encoding::Base64EncodeWrapLines("fake_ca_cert");
+    pem += kEndCertificate + "\n" + kBeginCertificate;
+    pem += chromeos::data_encoding::Base64EncodeWrapLines("fake_ca_cert2");
     pem += kEndCertificate;
     return pem;
   }
@@ -170,6 +175,7 @@ class AttestationServiceTest : public testing::Test {
       }
       response_pb.set_certified_key_credential("fake_cert");
       response_pb.set_intermediate_ca_cert("fake_ca_cert");
+      *response_pb.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
     }
     std::string tmp;
     response_pb.SerializeToString(&tmp);
@@ -442,6 +448,106 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyAndCancel2) {
   // Pump the loop to make sure no callbacks were posted.
   RunUntilIdle();
   EXPECT_EQ(0, callback_count);
+}
+
+TEST_F(AttestationServiceTest, GetKeyInfoSuccess) {
+  // Setup a certified key in the key store.
+  CertifiedKey key;
+  key.set_public_key("public_key");
+  key.set_certified_key_credential("fake_cert");
+  key.set_intermediate_ca_cert("fake_ca_cert");
+  *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+  key.set_key_name("label");
+  key.set_certified_key_info("certify_info");
+  key.set_certified_key_proof("signature");
+  key.set_key_type(KEY_TYPE_RSA);
+  key.set_key_usage(KEY_USAGE_SIGN);
+  std::string key_bytes;
+  key.SerializeToString(&key_bytes);
+  EXPECT_CALL(mock_key_store_, Read("user", "label", _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(key_bytes), Return(true)));
+
+  // Set expectations on the outputs.
+  auto callback = [this](const GetKeyInfoReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ(KEY_TYPE_RSA, reply.key_type());
+    EXPECT_EQ(KEY_USAGE_SIGN, reply.key_usage());
+    EXPECT_EQ("public_key", reply.public_key());
+    EXPECT_EQ("certify_info", reply.certify_info());
+    EXPECT_EQ("signature", reply.certify_info_signature());
+    EXPECT_EQ(GetFakeCertificateChain(), reply.certificate());
+    Quit();
+  };
+  GetKeyInfoRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  service_->GetKeyInfo(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, GetKeyInfoSuccessNoUser) {
+  // Setup a certified key in the device key store.
+  AttestationDatabase database;
+  CertifiedKey& key = *database.add_device_keys();
+  key.set_public_key("public_key");
+  key.set_certified_key_credential("fake_cert");
+  key.set_intermediate_ca_cert("fake_ca_cert");
+  *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+  key.set_key_name("label");
+  key.set_certified_key_info("certify_info");
+  key.set_certified_key_proof("signature");
+  key.set_key_type(KEY_TYPE_RSA);
+  key.set_key_usage(KEY_USAGE_SIGN);
+  EXPECT_CALL(mock_database_, GetProtobuf())
+      .WillRepeatedly(ReturnRef(database));
+
+  // Set expectations on the outputs.
+  auto callback = [this](const GetKeyInfoReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ(KEY_TYPE_RSA, reply.key_type());
+    EXPECT_EQ(KEY_USAGE_SIGN, reply.key_usage());
+    EXPECT_EQ("public_key", reply.public_key());
+    EXPECT_EQ("certify_info", reply.certify_info());
+    EXPECT_EQ("signature", reply.certify_info_signature());
+    EXPECT_EQ(GetFakeCertificateChain(), reply.certificate());
+    Quit();
+  };
+  GetKeyInfoRequest request;
+  request.set_key_label("label");
+  service_->GetKeyInfo(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, GetKeyInfoNoKey) {
+  EXPECT_CALL(mock_key_store_, Read("user", "label", _))
+      .WillRepeatedly(Return(false));
+
+  // Set expectations on the outputs.
+  auto callback = [this](const GetKeyInfoReply& reply) {
+    EXPECT_EQ(STATUS_INVALID_PARAMETER, reply.status());
+    Quit();
+  };
+  GetKeyInfoRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  service_->GetKeyInfo(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, GetKeyInfoBadPublicKey) {
+  EXPECT_CALL(mock_crypto_utility_, GetRSASubjectPublicKeyInfo(_, _))
+      .WillRepeatedly(Return(false));
+
+  // Set expectations on the outputs.
+  auto callback = [this](const GetKeyInfoReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    Quit();
+  };
+  GetKeyInfoRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  service_->GetKeyInfo(request, base::Bind(callback));
+  Run();
 }
 
 }  // namespace attestation

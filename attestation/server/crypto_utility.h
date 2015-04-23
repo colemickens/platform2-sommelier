@@ -44,6 +44,11 @@ class CryptoUtility {
   virtual bool DecryptData(const std::string& encrypted_data,
                            const std::string& aes_key,
                            std::string* data) = 0;
+
+  // Convert |public_key| from PKCS #1 RSAPublicKey to X.509
+  // SubjectPublicKeyInfo. On success returns true and provides the |spki|.
+  virtual bool GetRSASubjectPublicKeyInfo(const std::string& public_key,
+                                          std::string* spki) = 0;
 };
 
 }  // namespace attestation
