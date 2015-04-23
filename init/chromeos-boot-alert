@@ -133,38 +133,12 @@ has_virtual_dev_switch() {
 # Argument: time to countdown (in seconds)
 mode_warn_dev() {
   local delay_secs="${1:-30}"
-  # Don't show a broken/partial background image.
-  tput clear > "$STDOUT"
-  echo '
-
-
-
-
-
-
-                        __________________________
-                       |.------------------------.|
-                       ||                        ||
-                       ||    (_)          (_)    ||
-                       ||                        ||
-                       ||       __________       ||
-                       ||     /            \     ||
-                       ||________________________||
-                      / __/___/_____________\__\__ \
-                     /               _              \
-                    /        /_______\ \_____\       \
-                   /__________________\ \_____________\
-                   \___________________\ \____________/
-                                        \ \_-_-_-.
-                                      /|         |
-                                     |  |        |
-                                       \         |
-                                        \_______/
-
-                   Chrome OS verification is turned off.
-                     Press space to begin recovery.
-  ' >"$STDOUT"
-  # TODO(wad) Use the developer mode firmware image
+  # In bash and dash, the "NAME=VAL program" will set a temporary environment
+  # variable. However if the "program" is a shell function and then calls a
+  # standalone shell script, only bash can pass the variable properly.
+  # To work around that, here we have to explicitly set the variable with
+  # "export" and use a sub shell.
+  (export IMAGE_FONT_NAME="monospace"; show_assets_message "warn_dev")
 
   # Read a space bar or Ctrl+D or timeout.
   local input=$(match_char_timeout "$delay_secs" 04 20 < "$STDOUT")
