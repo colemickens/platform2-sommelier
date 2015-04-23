@@ -15,7 +15,7 @@ set +e
 
 # Prints usage help for commands supports
 usage_help() {
-  echo "Usage: $0 mode terminal [arg ...]
+  echo "Usage: $0 mode [arg ...]
 
   warn_dev: Message for warning about developer mode on normal firmware.
             Arg #1: (optional, default=30) Countdown in seconds before continue
@@ -342,14 +342,11 @@ mode_block_devmode() {
 # Main initialization and dispatcher
 main() {
   # process args
-  if [ $# -lt 2 ]; then
+  if [ $# -lt 1 ]; then
     usage_help
     exit 1
   fi
   local mode="$1"
-  # global
-  STDOUT="$2"
-  shift
   shift
 
   # For headless devices, we want to provide some messages so people can know
@@ -359,9 +356,17 @@ main() {
     (echo "chromeos-boot-alert: ${mode}" >>"${output}") 2>/dev/null || true
   done
 
+  # Determine the right console. On Frecon, the default STDOUT (/dev/tty1) may
+  # not exist and would cause problems when we try to write then read (for
+  # example, warn_dev).  To prevent that, fall back to /dev/null if not
+  # available.
+  # TODO(hungte) Request console when Frecon supports no-dbus mode.
+  STDOUT=/dev/tty1
+  [ -e "${STDOUT}" ] || STDOUT=/dev/null
+
   if [ -x /usr/sbin/board_boot_alert ]; then
     # Allow overriding boot-alert behavior (usually for headless devices).
-    /usr/sbin/board_boot_alert "${mode}" "${STDOUT}" "$@" && exit
+    /usr/sbin/board_boot_alert "${mode}" "$@" && exit
   fi
 
   # Wait until the boot-alert-ready abstract job has started, indicating that

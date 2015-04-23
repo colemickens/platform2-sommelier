@@ -12,7 +12,7 @@ cleanup_mounts()
     umount -n ${mount_point}
   done
   # Leave /mnt/stateful_partition mounted for clobber-state to handle.
-  chromeos-boot-alert self_repair /dev/tty1
+  chromeos-boot-alert self_repair
   clobber-log -- \
     "Self-repair incoherent stateful partition: $*. History: ${UNDO_MOUNTS}"
   exec clobber-state "fast keepimg"
@@ -100,7 +100,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
          "$STATE_DEV" /mnt/stateful_partition; then
     # Try to rebuild the stateful partition by clobber-state
     # (for security concern, we don't use fast mode)
-    chromeos-boot-alert self_repair /dev/tty1
+    chromeos-boot-alert self_repair
     clobber-log --repair "$STATE_DEV" "Self-repair corrupted stateful partition"
     exec clobber-state "keepimg"
   fi
@@ -138,7 +138,7 @@ if [ $CROS_DEBUG -eq 1 ]; then
     # Put a flag file into place that will trigger a stateful partition wipe
     # after reboot in verified mode.
     touch ${BLOCKED_DEV_MODE_FILE}
-    chromeos-boot-alert block_devmode /dev/tty1
+    chromeos-boot-alert block_devmode
   fi
 fi
 
@@ -190,10 +190,10 @@ if [ -O ${RESET_FILE} ]; then
   # there can be a special splash screen with a message localized for
   # the factory personnel.
   ALTERNATE_WIPE_SCREEN=/mnt/stateful_partition/wipe_splash.png
-  if [ -O "$ALTERNATE_WIPE_SCREEN" ]; then
-    chromeos-boot-alert wipe /dev/tty1 "$ALTERNATE_WIPE_SCREEN"
+  if [ -O "${ALTERNATE_WIPE_SCREEN}" ]; then
+    chromeos-boot-alert wipe "${ALTERNATE_WIPE_SCREEN}"
   else
-    chromeos-boot-alert power_wash /dev/tty1
+    chromeos-boot-alert power_wash
   fi
 elif [ -z "$FACTORY_MODE" -a "$FIRMWARE_TYPE" != "recovery" ]; then
   if crossystem "devsw_boot?1" ; then
@@ -203,13 +203,13 @@ elif [ -z "$FACTORY_MODE" -a "$FIRMWARE_TYPE" != "recovery" ]; then
     # Note that we want this message and the delay regardless of
     # whether we plan to wipe.
     if [ "$FIRMWARE_TYPE" != "developer" ]; then
-      chromeos-boot-alert warn_dev /dev/tty1
+      chromeos-boot-alert warn_dev
     fi
 
     if [ ! -O ${DEV_MODE_FILE} ] && crossystem "debug_build?0"; then
       # We're transitioning from verified boot to dev mode.
       # TODO(wad,wfrichar) Have user provide sudo/vt2 password here.
-      chromeos-boot-alert enter_dev /dev/tty1
+      chromeos-boot-alert enter_dev
       echo "keepimg" > ${RESET_FILE}
       clobber-log -- "Enter developer mode"
     fi
@@ -219,7 +219,7 @@ elif [ -z "$FACTORY_MODE" -a "$FIRMWARE_TYPE" != "recovery" ]; then
     # We're transitioning from dev mode to verified boot.
     # When coming back from developer mode, we don't need to
     # clobber as aggressively.  Fast will do the trick.
-    chromeos-boot-alert leave_dev /dev/tty1
+    chromeos-boot-alert leave_dev
     echo "fast keepimg" > ${RESET_FILE}
     clobber-log -- "Leave developer mode"
   fi
