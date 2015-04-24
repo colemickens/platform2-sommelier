@@ -83,6 +83,15 @@ bool ReadOnlyContainerSpec::Init(const ContainerSpec& spec) {
     device_node_filters_.push_back(std::make_pair(filter.major(),
                                                   filter.minor()));
   }
+  for (const auto& user_acl : spec.user_acls()) {
+    user_acls_[user_acl.service_name()] =
+        std::vector<uid_t>(user_acl.uids().begin(), user_acl.uids().end());
+  }
+  for (const auto& group_acl : spec.group_acls()) {
+    group_acls_[group_acl.service_name()] =
+        std::vector<gid_t>(group_acl.gids().begin(), group_acl.gids().end());
+  }
+
   executables_.reserve(spec.executables_size());
   for (const auto& executable : spec.executables()) {
     if (!executable.has_uid() || !executable.has_gid()) {
@@ -126,5 +135,10 @@ void ReadOnlyContainerSpec::Clear() {
   device_node_filters_.clear();
   executables_.clear();
 }
+
+// static
+const std::vector<uid_t> ReadOnlyContainerSpec::empty_user_acl_;
+// static
+const std::vector<gid_t> ReadOnlyContainerSpec::empty_group_acl_;
 
 }  // namespace soma

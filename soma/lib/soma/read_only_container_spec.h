@@ -8,6 +8,7 @@
 #include <sched.h>
 #include <sys/types.h>
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -93,6 +94,15 @@ class SOMA_EXPORT ReadOnlyContainerSpec {
     return device_path_filters_;
   }
 
+  const std::vector<uid_t>& user_acl_for(const std::string& service_name) {
+    return (user_acls_.count(service_name) ? user_acls_[service_name]
+                                           : empty_user_acl_);
+  }
+  const std::vector<gid_t>& group_acl_for(const std::string& service_name) {
+    return (group_acls_.count(service_name) ? group_acls_[service_name]
+                                            : empty_group_acl_);
+  }
+
  private:
   std::string name_;
   base::FilePath service_bundle_path_;
@@ -100,7 +110,12 @@ class SOMA_EXPORT ReadOnlyContainerSpec {
   std::vector<Namespace> namespaces_;
   std::vector<base::FilePath> device_path_filters_;
   std::vector<std::pair<int, int>> device_node_filters_;  // major, minor
+  std::map<std::string, std::vector<uid_t>> user_acls_;
+  std::map<std::string, std::vector<gid_t>> group_acls_;
   ExecutableVector executables_;
+
+  static const std::vector<uid_t> empty_user_acl_;
+  static const std::vector<gid_t> empty_group_acl_;
 
   DISALLOW_COPY_AND_ASSIGN(ReadOnlyContainerSpec);
 };

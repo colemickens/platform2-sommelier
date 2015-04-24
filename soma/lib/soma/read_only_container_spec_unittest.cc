@@ -5,6 +5,7 @@
 #include "soma/lib/soma/read_only_container_spec.h"
 
 #include <algorithm>
+#include <map>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -162,6 +163,35 @@ TEST_F(ReadOnlyContainerSpecTest, DeviceFilterTest) {
                         base::FilePath(path_filters[i])),
               paths.end());
   }
+}
+
+TEST_F(ReadOnlyContainerSpecTest, ACLTest) {
+  std::map<std::string, std::vector<uid_t>> user_acls;
+  user_acls["com.foo.bar"] = {7, 18, 32};
+  user_acls["com.foo.quux"] = {8};
+
+  for (const auto& user_acl : user_acls) {
+    ContainerSpec::UserACL* user_acl_proto = spec_.add_user_acls();
+    user_acl_proto->set_service_name(user_acl.first);
+    for (uid_t uid : user_acl.second)
+      user_acl_proto->add_uids(uid);
+  }
+
+  std::map<std::string, std::vector<gid_t>> group_acls;
+  group_acls["com.foo.bazgroup"] = {98};
+
+  for (const auto& group_acl : group_acls) {
+    ContainerSpec::GroupACL* group_acl_proto = spec_.add_group_acls();
+    group_acl_proto->set_service_name(group_acl.first);
+    for (gid_t gid : group_acl.second)
+      group_acl_proto->add_gids(gid);
+  }
+
+  ASSERT_TRUE(ro_spec_.Init(spec_));
+  for (const auto& user_acl : user_acls)
+    EXPECT_EQ(user_acl.second, ro_spec_.user_acl_for(user_acl.first));
+  for (const auto& group_acl : group_acls)
+    EXPECT_EQ(group_acl.second, ro_spec_.group_acl_for(group_acl.first));
 }
 
 }  // namespace soma
