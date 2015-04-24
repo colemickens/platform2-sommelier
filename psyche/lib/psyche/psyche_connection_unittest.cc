@@ -194,8 +194,8 @@ class PsycheConnectionTest : public BinderTestBase {
   PsycheConnectionTest() : psyched_(nullptr) {
     std::unique_ptr<BinderProxy> proxy = CreateBinderProxy();
     psyched_ = new PsychedInterfaceStub;
-    binder_manager_->SetTestInterface(
-        proxy.get(), scoped_ptr<IInterface>(psyched_));
+    binder_manager_->SetTestInterface(proxy.get(),
+                                      std::unique_ptr<IInterface>(psyched_));
     connection_.SetProxyForTesting(std::move(proxy));
     CHECK(connection_.Init());
   }

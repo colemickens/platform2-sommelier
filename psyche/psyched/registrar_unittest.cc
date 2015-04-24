@@ -123,7 +123,7 @@ class RegistrarTest : public BinderTestBase {
     soma_proxy_ = CreateBinderProxy().release();
     soma_ = interface.get();
     binder_manager_->SetTestInterface(
-        soma_proxy_, scoped_ptr<IInterface>(interface.release()));
+        soma_proxy_, std::unique_ptr<IInterface>(interface.release()));
     return RegisterService(soma::kSomaServiceName,
                            std::unique_ptr<BinderProxy>(soma_proxy_));
   }

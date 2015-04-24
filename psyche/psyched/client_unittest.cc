@@ -58,8 +58,8 @@ using ClientTest = BinderTestBase;
 TEST_F(ClientTest, PassServiceHandles) {
   PsycheClientInterfaceStub* interface = new PsycheClientInterfaceStub;
   BinderProxy* client_proxy = CreateBinderProxy().release();
-  binder_manager_->SetTestInterface(
-      client_proxy, scoped_ptr<IInterface>(interface));
+  binder_manager_->SetTestInterface(client_proxy,
+                                    std::unique_ptr<IInterface>(interface));
   Client client((std::unique_ptr<BinderProxy>(client_proxy)));
 
   // Adding a not-yet-started service shouldn't send anything.

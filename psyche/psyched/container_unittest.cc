@@ -107,7 +107,7 @@ class ContainerTest : public BinderTestBase {
     germ_proxy_ = CreateBinderProxy().release();
     germ_ = new GermInterfaceStub;
     binder_manager_->SetTestInterface(germ_proxy_,
-                                      scoped_ptr<IInterface>(germ_));
+                                      std::unique_ptr<IInterface>(germ_));
     germ_connection_.SetProxy(std::unique_ptr<BinderProxy>(germ_proxy_));
   }
 
