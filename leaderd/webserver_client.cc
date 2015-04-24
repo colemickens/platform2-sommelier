@@ -76,7 +76,7 @@ void WebServerClient::RegisterAsync(const scoped_refptr<dbus::Bus>& bus,
 
 namespace {
 
-std::unique_ptr<Value> GetBody(scoped_ptr<Request> request) {
+std::unique_ptr<Value> GetBody(std::unique_ptr<Request> request) {
   std::string data(request->GetData().begin(), request->GetData().end());
   VLOG(3) << "Input: " << data;
 
@@ -95,9 +95,9 @@ std::unique_ptr<Value> GetBody(scoped_ptr<Request> request) {
 }  // namespace
 
 void WebServerClient::RequestHandler(QueryType query_type,
-                                     scoped_ptr<Request> request,
-                                     scoped_ptr<Response> response) {
-  std::unique_ptr<Value> value{GetBody(request.Pass())};
+                                     std::unique_ptr<Request> request,
+                                     std::unique_ptr<Response> response) {
+  std::unique_ptr<Value> value{GetBody(std::move(request))};
   const base::DictionaryValue* dictionary = nullptr;
   if (value) value->GetAsDictionary(&dictionary);
   std::unique_ptr<base::DictionaryValue> output;

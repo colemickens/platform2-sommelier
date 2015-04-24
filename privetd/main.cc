@@ -172,8 +172,8 @@ class Daemon : public chromeos::DBusServiceDaemon,
   void OnDeviceInfoChanged() override { OnChanged(); };
 
  private:
-  void PrivetRequestHandler(scoped_ptr<Request> request,
-                            scoped_ptr<Response> response) {
+  void PrivetRequestHandler(std::unique_ptr<Request> request,
+                            std::unique_ptr<Response> response) {
     std::string auth_header = GetFirstHeader(
         *request, chromeos::http::request_header::kAuthorization);
     if (auth_header.empty() && disable_security_)
@@ -204,15 +204,15 @@ class Daemon : public chromeos::DBusServiceDaemon,
                    base::Passed(&response)));
   }
 
-  void PrivetResponseHandler(scoped_ptr<Response> response,
+  void PrivetResponseHandler(std::unique_ptr<Response> response,
                              int status,
                              const base::DictionaryValue& output) {
     VLOG(3) << "status: " << status << ", Output: " << output;
     response->ReplyWithJson(status, &output);
   }
 
-  void HelloWorldHandler(scoped_ptr<Request> request,
-                         scoped_ptr<Response> response) {
+  void HelloWorldHandler(std::unique_ptr<Request> request,
+                         std::unique_ptr<Response> response) {
     response->ReplyWithText(chromeos::http::status_code::Ok, "Hello, world!",
                             chromeos::mime::text::kPlain);
   }

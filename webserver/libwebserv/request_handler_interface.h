@@ -5,7 +5,8 @@
 #ifndef WEBSERVER_LIBWEBSERV_REQUEST_HANDLER_INTERFACE_H_
 #define WEBSERVER_LIBWEBSERV_REQUEST_HANDLER_INTERFACE_H_
 
-#include <base/memory/scoped_ptr.h>
+#include <memory>
+
 #include <libwebserv/request.h>
 #include <libwebserv/response.h>
 
@@ -17,10 +18,11 @@ namespace libwebserv {
 // send response.
 class RequestHandlerInterface {
  public:
-  using HandlerSignature = void(scoped_ptr<Request>, scoped_ptr<Response>);
+  using HandlerSignature =
+      void(std::unique_ptr<Request>, std::unique_ptr<Response>);
 
-  virtual void HandleRequest(scoped_ptr<Request> request,
-                             scoped_ptr<Response> response) = 0;
+  virtual void HandleRequest(std::unique_ptr<Request> request,
+                             std::unique_ptr<Response> response) = 0;
 };
 
 }  // namespace libwebserv

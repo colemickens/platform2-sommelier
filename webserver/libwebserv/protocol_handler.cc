@@ -189,8 +189,8 @@ bool ProtocolHandler::ProcessRequest(const std::string& protocol_handler_id,
     return false;
   }
   handler_iter->second.handler->HandleRequest(
-      scoped_ptr<Request>(request.release()),
-      scoped_ptr<Response>(new Response{this, request_id}));
+      std::move(request),
+      std::unique_ptr<Response>{new Response{this, request_id}});
   return true;
 }
 

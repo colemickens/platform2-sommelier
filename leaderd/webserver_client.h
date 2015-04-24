@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <base/callback.h>
 #include <base/values.h>
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <dbus/bus.h>
@@ -66,12 +65,13 @@ class WebServerClient {
   friend class WebServerClientTest;
   enum class QueryType { DISCOVER, CHALLENGE, ANNOUNCE };
   void RequestHandler(QueryType query_type,
-                      scoped_ptr<libwebserv::Request> request,
-                      scoped_ptr<libwebserv::Response> response);
-  void ChallengeRequestHandler(scoped_ptr<libwebserv::Request> request,
-                               scoped_ptr<libwebserv::Response> response);
-  void AnnouncementRequestHandler(scoped_ptr<libwebserv::Request> request,
-                                  scoped_ptr<libwebserv::Response> response);
+                      std::unique_ptr<libwebserv::Request> request,
+                      std::unique_ptr<libwebserv::Response> response);
+  void ChallengeRequestHandler(std::unique_ptr<libwebserv::Request> request,
+                               std::unique_ptr<libwebserv::Response> response);
+  void AnnouncementRequestHandler(
+      std::unique_ptr<libwebserv::Request> request,
+      std::unique_ptr<libwebserv::Response> response);
   std::unique_ptr<base::DictionaryValue> ProcessDiscover(
       const base::DictionaryValue* input);
   std::unique_ptr<base::DictionaryValue> ProcessChallenge(
