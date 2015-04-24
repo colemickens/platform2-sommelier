@@ -7,10 +7,10 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <set>
 
 #include <base/macros.h>
-#include <base/memory/linked_ptr.h>
 
 #include "binder_manager.h"  // NOLINT(build/include)
 
@@ -31,7 +31,8 @@ class BINDER_EXPORT BinderManagerStub : public BinderManagerInterface {
   // Ensures that the next CreateTestInterface() call for |proxy| will return
   // |interface|, allowing tests to set their own interfaces for proxies that
   // they've created.
-  void SetTestInterface(BinderProxy* proxy, scoped_ptr<IInterface> interface);
+  void SetTestInterface(BinderProxy* proxy,
+                        std::unique_ptr<IInterface> interface);
 
   // BinderManagerInterface:
   int Transact(uint32_t handle,
@@ -53,7 +54,11 @@ class BINDER_EXPORT BinderManagerStub : public BinderManagerInterface {
 
   // Maps from BinderProxy handles to test interface objects that should be
   // released and returned in response to CreateTestInterface() calls.
-  std::map<uint32_t, linked_ptr<IInterface>> test_interfaces_;
+  std::map<uint32_t, std::unique_ptr<IInterface>> test_interfaces_;
+
+  // Test interface object that will be released and returned in response to a
+  // CreateTestInterface() call with a null IBinder argument.
+  std::unique_ptr<IInterface> test_interface_for_null_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(BinderManagerStub);
 };

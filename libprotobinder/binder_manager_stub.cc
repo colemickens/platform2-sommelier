@@ -20,10 +20,13 @@ void BinderManagerStub::ReportBinderDeath(BinderProxy* proxy) {
     proxy->HandleDeathNotification();
 }
 
-void BinderManagerStub::SetTestInterface(BinderProxy* proxy,
-                                         scoped_ptr<IInterface> interface) {
-  CHECK(proxy);
-  test_interfaces_[proxy->handle()] = make_linked_ptr(interface.release());
+void BinderManagerStub::SetTestInterface(
+    BinderProxy* proxy,
+    std::unique_ptr<IInterface> interface) {
+  if (proxy)
+    test_interfaces_[proxy->handle()] = std::move(interface);
+  else
+    test_interface_for_null_proxy_ = std::move(interface);
 }
 
 int BinderManagerStub::Transact(uint32_t handle,
@@ -58,6 +61,9 @@ void BinderManagerStub::ClearDeathNotification(BinderProxy* proxy) {
 }
 
 IInterface* BinderManagerStub::CreateTestInterface(const IBinder* binder) {
+  if (!binder)
+    return test_interface_for_null_proxy_.release();
+
   const BinderProxy* proxy = binder->GetBinderProxy();
   if (!proxy)
     return nullptr;
@@ -66,7 +72,7 @@ IInterface* BinderManagerStub::CreateTestInterface(const IBinder* binder) {
   if (it == test_interfaces_.end())
     return nullptr;
 
-  linked_ptr<IInterface> interface = it->second;
+  std::unique_ptr<IInterface> interface = std::move(it->second);
   test_interfaces_.erase(it);
   return interface.release();
 }
