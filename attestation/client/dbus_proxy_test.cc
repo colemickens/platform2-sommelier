@@ -63,17 +63,20 @@ TEST_F(DBusProxyTest, CreateGoogleAttestedKeySuccess) {
 
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const std::string& certificate,
-                                    const std::string& server_error,
-                                    AttestationStatus status) {
+  auto callback = [&callback_count](const CreateGoogleAttestedKeyReply& reply) {
     callback_count++;
-    EXPECT_EQ(STATUS_SUCCESS, status);
-    EXPECT_EQ("certificate", certificate);
-    EXPECT_EQ("server_error", server_error);
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ("certificate", reply.certificate_chain());
+    EXPECT_EQ("server_error", reply.server_error());
   };
-  proxy_.CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                 ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                 "origin", base::Bind(callback));
+  CreateGoogleAttestedKeyRequest request;
+  request.set_key_label("label");
+  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_usage(KEY_USAGE_SIGN);
+  request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
+  request.set_username("user");
+  request.set_origin("origin");
+  proxy_.CreateGoogleAttestedKey(request, base::Bind(callback));
   EXPECT_EQ(1, callback_count);
 }
 

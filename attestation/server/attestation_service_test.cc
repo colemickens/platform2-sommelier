@@ -57,6 +57,7 @@ class AttestationServiceTest : public testing::Test {
     CHECK(service_->Initialize());
   }
 
+ protected:
   void SetupFakeCAEnroll(FakeCAState state) {
     fake_http_transport_->AddHandler(
         service_->attestation_ca_origin() + "/enroll",
@@ -86,6 +87,17 @@ class AttestationServiceTest : public testing::Test {
     return pem;
   }
 
+  CreateGoogleAttestedKeyRequest GetCreateRequest() {
+    CreateGoogleAttestedKeyRequest request;
+    request.set_key_label("label");
+    request.set_key_type(KEY_TYPE_ECC);
+    request.set_key_usage(KEY_USAGE_SIGN);
+    request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
+    request.set_username("user");
+    request.set_origin("origin");
+    return request;
+  }
+
   void Run() {
     run_loop_.Run();
   }
@@ -98,7 +110,6 @@ class AttestationServiceTest : public testing::Test {
     run_loop_.Quit();
   }
 
- protected:
   std::shared_ptr<chromeos::http::fake::Transport> fake_http_transport_;
   NiceMock<MockCryptoUtility> mock_crypto_utility_;
   NiceMock<MockDatabase> mock_database_;
@@ -172,118 +183,92 @@ class AttestationServiceTest : public testing::Test {
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeySuccess) {
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_EQ(STATUS_SUCCESS, status);
-    EXPECT_EQ(GetFakeCertificateChain(), certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ(GetFakeCertificateChain(), reply.certificate_chain());
+    EXPECT_FALSE(reply.has_server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeySuccessNoUser) {
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_EQ(STATUS_SUCCESS, status);
-    EXPECT_EQ(GetFakeCertificateChain(), certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ(GetFakeCertificateChain(), reply.certificate_chain());
+    EXPECT_FALSE(reply.has_server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "",
-                                    "origin", base::Bind(callback));
+  CreateGoogleAttestedKeyRequest request = GetCreateRequest();
+  request.clear_username();
+  service_->CreateGoogleAttestedKey(request, base::Bind(callback));
   Run();
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithEnrollHttpError) {
   SetupFakeCAEnroll(kHttpFailure);
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_EQ(STATUS_CA_NOT_AVAILABLE, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_EQ(STATUS_CA_NOT_AVAILABLE, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithSignHttpError) {
   SetupFakeCASign(kHttpFailure);
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_EQ(STATUS_CA_NOT_AVAILABLE, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_EQ(STATUS_CA_NOT_AVAILABLE, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithCAEnrollFailure) {
   SetupFakeCAEnroll(kCommandFailure);
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_EQ(STATUS_REQUEST_DENIED_BY_CA, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("fake_enroll_error", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_EQ(STATUS_REQUEST_DENIED_BY_CA, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("fake_enroll_error", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithCASignFailure) {
   SetupFakeCASign(kCommandFailure);
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_EQ(STATUS_REQUEST_DENIED_BY_CA, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("fake_sign_error", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_EQ(STATUS_REQUEST_DENIED_BY_CA, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("fake_sign_error", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithBadCAMessageID) {
   SetupFakeCASign(kBadMessageID);
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_EQ(STATUS_REQUEST_DENIED_BY_CA, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_EQ(STATUS_REQUEST_DENIED_BY_CA, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
@@ -292,17 +277,13 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithNoEKCertificate) {
   mock_database_.GetMutableProtobuf()->mutable_credentials()->
       clear_endorsement_credential();
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_NE(STATUS_SUCCESS, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
@@ -310,17 +291,13 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithRNGFailure) {
   EXPECT_CALL(mock_crypto_utility_, GetRandom(_, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_NE(STATUS_SUCCESS, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
@@ -329,17 +306,13 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithRNGFailure2) {
       .WillOnce(Return(true))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_NE(STATUS_SUCCESS, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
@@ -347,17 +320,13 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithDBFailure) {
   EXPECT_CALL(mock_database_, SaveChanges())
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_NE(STATUS_SUCCESS, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
@@ -365,17 +334,15 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithDBFailureNoUser) {
   EXPECT_CALL(mock_database_, SaveChanges())
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_NE(STATUS_SUCCESS, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "",
-                                    "origin", base::Bind(callback));
+  CreateGoogleAttestedKeyRequest request = GetCreateRequest();
+  request.clear_username();
+  service_->CreateGoogleAttestedKey(request, base::Bind(callback));
   Run();
 }
 
@@ -383,17 +350,13 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithKeyReadFailure) {
   EXPECT_CALL(mock_key_store_, Read(_, _, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_NE(STATUS_SUCCESS, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
@@ -401,17 +364,13 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithKeyWriteFailure) {
   EXPECT_CALL(mock_key_store_, Write(_, _, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_NE(STATUS_SUCCESS, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
@@ -419,17 +378,13 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmNotReady) {
   EXPECT_CALL(mock_tpm_utility_, IsTpmReady())
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_NE(STATUS_SUCCESS, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
@@ -437,17 +392,13 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmActivateFailure) {
   EXPECT_CALL(mock_tpm_utility_, ActivateIdentity(_, _, _, _, _, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_NE(STATUS_SUCCESS, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
@@ -455,31 +406,23 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithTpmCreateFailure) {
   EXPECT_CALL(mock_tpm_utility_, CreateCertifiedKey(_, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
-  auto callback = [this](const std::string& certificate_chain,
-                         const std::string& server_error,
-                         AttestationStatus status) {
-    EXPECT_NE(STATUS_SUCCESS, status);
-    EXPECT_EQ("", certificate_chain);
-    EXPECT_EQ("", server_error);
+  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_certificate_chain());
+    EXPECT_EQ("", reply.server_error());
     Quit();
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyAndCancel) {
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const std::string& certificate_chain,
-                                    const std::string& server_error,
-                                    AttestationStatus status) {
+  auto callback = [&callback_count](const CreateGoogleAttestedKeyReply& reply) {
     callback_count++;
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   // Bring down the service, which should cancel any callbacks.
   service_.reset();
   EXPECT_EQ(0, callback_count);
@@ -488,14 +431,10 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyAndCancel) {
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyAndCancel2) {
   // Set expectations on the outputs.
   int callback_count = 0;
-  auto callback = [&callback_count](const std::string& certificate_chain,
-                                    const std::string& server_error,
-                                    AttestationStatus status) {
+  auto callback = [&callback_count](const CreateGoogleAttestedKeyReply& reply) {
     callback_count++;
   };
-  service_->CreateGoogleAttestedKey("label", KEY_TYPE_ECC, KEY_USAGE_SIGN,
-                                    ENTERPRISE_MACHINE_CERTIFICATE, "user",
-                                    "origin", base::Bind(callback));
+  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   // Give threads a chance to run.
   base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
   // Bring down the service, which should cancel any callbacks.

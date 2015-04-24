@@ -29,12 +29,7 @@ class ATTESTATION_EXPORT DBusProxy : public AttestationInterface {
   // AttestationInterface methods.
   bool Initialize() override;
   void CreateGoogleAttestedKey(
-      const std::string& key_label,
-      KeyType key_type,
-      KeyUsage key_usage,
-      CertificateProfile certificate_profile,
-      const std::string& username,
-      const std::string& origin,
+      const CreateGoogleAttestedKeyRequest& request,
       const CreateGoogleAttestedKeyCallback& callback) override;
 
   // Useful for testing.

@@ -66,23 +66,13 @@ bool AttestationService::Initialize() {
 }
 
 void AttestationService::CreateGoogleAttestedKey(
-    const std::string& key_label,
-    KeyType key_type,
-    KeyUsage key_usage,
-    CertificateProfile certificate_profile,
-    const std::string& username,
-    const std::string& origin,
+    const CreateGoogleAttestedKeyRequest& request,
     const CreateGoogleAttestedKeyCallback& callback) {
-  auto result = std::make_shared<CreateGoogleAttestedKeyTaskResult>();
+  auto result = std::make_shared<CreateGoogleAttestedKeyReply>();
   base::Closure task = base::Bind(
       &AttestationService::CreateGoogleAttestedKeyTask,
       base::Unretained(this),
-      key_label,
-      key_type,
-      key_usage,
-      certificate_profile,
-      username,
-      origin,
+      request,
       result);
   base::Closure reply = base::Bind(
       &AttestationService::CreateGoogleAttestedKeyTaskCallback,
@@ -93,79 +83,76 @@ void AttestationService::CreateGoogleAttestedKey(
 }
 
 void AttestationService::CreateGoogleAttestedKeyTask(
-    const std::string& key_label,
-    KeyType key_type,
-    KeyUsage key_usage,
-    CertificateProfile certificate_profile,
-    const std::string& username,
-    const std::string& origin,
-    const std::shared_ptr<CreateGoogleAttestedKeyTaskResult>& result) {
-  LOG(INFO) << "Creating attested key: " << key_label;
+    const CreateGoogleAttestedKeyRequest& request,
+    const std::shared_ptr<CreateGoogleAttestedKeyReply>& result) {
+  LOG(INFO) << "Creating attested key: " << request.key_label();
   if (!IsPreparedForEnrollment()) {
     LOG(ERROR) << "Attestation: TPM is not ready.";
-    result->status = STATUS_NOT_READY;
+    result->set_status(STATUS_NOT_READY);
     return;
   }
   if (!IsEnrolled()) {
     std::string enroll_request;
     if (!CreateEnrollRequest(&enroll_request)) {
-      result->status = STATUS_UNEXPECTED_DEVICE_ERROR;
+      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
       return;
     }
     std::string enroll_reply;
     if (!SendACARequestAndBlock(kEnroll,
                                 enroll_request,
                                 &enroll_reply)) {
-      result->status = STATUS_CA_NOT_AVAILABLE;
+      result->set_status(STATUS_CA_NOT_AVAILABLE);
       return;
     }
     std::string server_error;
-    if (!FinishEnroll(enroll_reply, &result->server_error_details)) {
-      result->status = STATUS_REQUEST_DENIED_BY_CA;
+    if (!FinishEnroll(enroll_reply, &server_error)) {
+      result->set_status(STATUS_REQUEST_DENIED_BY_CA);
+      result->set_server_error(server_error);
       return;
     }
   }
-  if (!CreateKey(username, key_label, key_type, key_usage)) {
-    result->status = STATUS_UNEXPECTED_DEVICE_ERROR;
+  if (!CreateKey(request.username(), request.key_label(), request.key_type(),
+                 request.key_usage())) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
   std::string certificate_request;
   std::string message_id;
-  if (!CreateCertificateRequest(username,
-                                key_label,
-                                certificate_profile,
-                                origin,
+  if (!CreateCertificateRequest(request.username(),
+                                request.key_label(),
+                                request.certificate_profile(),
+                                request.origin(),
                                 &certificate_request,
                                 &message_id)) {
-    result->status = STATUS_UNEXPECTED_DEVICE_ERROR;
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
   std::string certificate_reply;
   if (!SendACARequestAndBlock(kGetCertificate,
                               certificate_request,
                               &certificate_reply)) {
-    result->status = STATUS_CA_NOT_AVAILABLE;
+    result->set_status(STATUS_CA_NOT_AVAILABLE);
     return;
   }
   std::string certificate_chain;
   std::string server_error;
   if (!FinishCertificateRequest(certificate_reply,
-                                username,
-                                key_label,
+                                request.username(),
+                                request.key_label(),
                                 message_id,
-                                &result->certificate_chain,
-                                &result->server_error_details)) {
-    result->status = STATUS_REQUEST_DENIED_BY_CA;
+                                &certificate_chain,
+                                &server_error)) {
+    result->set_status(STATUS_REQUEST_DENIED_BY_CA);
+    result->set_server_error(server_error);
     return;
   }
+  result->set_certificate_chain(certificate_chain);
 }
 
 void AttestationService::CreateGoogleAttestedKeyTaskCallback(
     const CreateGoogleAttestedKeyCallback& callback,
-    const std::shared_ptr<CreateGoogleAttestedKeyTaskResult>& result) {
-  callback.Run(result->certificate_chain,
-               result->server_error_details,
-               result->status);
+    const std::shared_ptr<CreateGoogleAttestedKeyReply>& result) {
+  callback.Run(*result);
 }
 
 bool AttestationService::IsPreparedForEnrollment() {

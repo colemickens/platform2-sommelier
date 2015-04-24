@@ -57,12 +57,7 @@ class AttestationService : public AttestationInterface {
   // AttestationInterface methods.
   bool Initialize() override;
   void CreateGoogleAttestedKey(
-      const std::string& key_label,
-      KeyType key_type,
-      KeyUsage key_usage,
-      CertificateProfile certificate_profile,
-      const std::string& username,
-      const std::string& origin,
+      const CreateGoogleAttestedKeyRequest& request,
       const CreateGoogleAttestedKeyCallback& callback) override;
 
   // Mutators useful for testing.
@@ -98,29 +93,18 @@ class AttestationService : public AttestationInterface {
     kGetCertificate,  // Issues a certificate for a TPM-backed key.
   };
 
-  struct CreateGoogleAttestedKeyTaskResult {
-      AttestationStatus status{STATUS_SUCCESS};
-      std::string certificate_chain;
-      std::string server_error_details;
-  };
-
   // A synchronous implementation of CreateGoogleAttestedKey appropriate to run
   // on the worker thread.
   void CreateGoogleAttestedKeyTask(
-      const std::string& key_label,
-      KeyType key_type,
-      KeyUsage key_usage,
-      CertificateProfile certificate_profile,
-      const std::string& username,
-      const std::string& origin,
-      const std::shared_ptr<CreateGoogleAttestedKeyTaskResult>& result);
+      const CreateGoogleAttestedKeyRequest& request,
+      const std::shared_ptr<CreateGoogleAttestedKeyReply>& result);
 
   // A callback for CreateGoogleAttestedKeyTask that invokes the original
   // |callback| with the given |result|. Having this relay allows us to use weak
   // pointer semantics to cancel callbacks.
   void CreateGoogleAttestedKeyTaskCallback(
       const CreateGoogleAttestedKeyCallback& callback,
-      const std::shared_ptr<CreateGoogleAttestedKeyTaskResult>& result);
+      const std::shared_ptr<CreateGoogleAttestedKeyReply>& result);
 
   // Returns true iff all information required for enrollment with the Google
   // Attestation CA is available.

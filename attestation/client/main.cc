@@ -77,29 +77,21 @@ class ClientLoop : public ClientLoopBase {
   }
 
   void HandleCreateGoogleAttestedKeyReply(
-      const std::string& certificate,
-      const std::string& server_error_details,
-      attestation::AttestationStatus status) {
-    if (status == attestation::STATUS_SUCCESS) {
-      printf("Success!\n");
-    } else {
-      printf("Error occurred: %d.\n", status);
-      if (!server_error_details.empty()) {
-        printf("Server error details: %s\n", server_error_details.c_str());
-      }
-    }
+      const CreateGoogleAttestedKeyReply& reply) {
+    reply.PrintDebugString();
     Quit();
   }
 
   void CallCreateGoogleAttestedKey(const std::string& label,
                                    const std::string& username) {
+    CreateGoogleAttestedKeyRequest request;
+    request.set_key_label(label);
+    request.set_key_type(KEY_TYPE_RSA);
+    request.set_key_usage(KEY_USAGE_SIGN);
+    request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
+    request.set_username(username);
     attestation_->CreateGoogleAttestedKey(
-        label,
-        attestation::KEY_TYPE_RSA,
-        attestation::KEY_USAGE_SIGN,
-        attestation::ENTERPRISE_MACHINE_CERTIFICATE,
-        username,
-        "",  // origin
+        request,
         base::Bind(&ClientLoop::HandleCreateGoogleAttestedKeyReply,
                    weak_factory_.GetWeakPtr()));
   }

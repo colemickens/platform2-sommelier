@@ -97,6 +97,19 @@ class ScopedFakeSalt {
   std::string salt_;
 };
 
+class ScopedDisableLogging {
+ public:
+  ScopedDisableLogging() : original_severity_(logging::GetMinLogLevel()) {
+    logging::SetMinLogLevel(logging::LOG_FATAL);
+  }
+  ~ScopedDisableLogging() {
+    logging::SetMinLogLevel(original_severity_);
+  }
+
+ private:
+  logging::LogSeverity original_severity_;
+};
+
 }  // namespace
 
 namespace attestation {
@@ -507,6 +520,7 @@ TEST_F(KeyStoreTest, RegisterCertificateSystemToken) {
 // Tests that the DeleteByPrefix() method removes the correct objects and only
 // the correct objects.
 TEST_F(KeyStoreTest, DeleteByPrefix) {
+  ScopedDisableLogging disable_logging;
   Pkcs11KeyStore key_store(&token_manager_);
 
   // Test with no keys.

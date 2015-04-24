@@ -60,72 +60,63 @@ class DBusServiceTest : public testing::Test {
   std::unique_ptr<DBusService> dbus_service_;
 };
 
-TEST_F(DBusServiceTest, CreateGoogleAttestedKeySuccess) {
-  EXPECT_CALL(mock_service_, CreateGoogleAttestedKey(
-      "label", KEY_TYPE_ECC, KEY_USAGE_SIGN, ENTERPRISE_MACHINE_CERTIFICATE,
-      "username", "origin", _))
-      .WillOnce(WithArgs<6>(Invoke([](const AttestationInterface::
-            CreateGoogleAttestedKeyCallback& callback) {
-        callback.Run("certificate", "server_error", STATUS_SUCCESS);
-      })));
+TEST_F(DBusServiceTest, CreateGoogleAttestedKey) {
+  CreateGoogleAttestedKeyRequest request;
+  request.set_key_label("label");
+  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_usage(KEY_USAGE_SIGN);
+  request.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
+  request.set_username("username");
+  request.set_origin("origin");
+  EXPECT_CALL(mock_service_, CreateGoogleAttestedKey(_, _))
+      .WillOnce(Invoke([](
+            const CreateGoogleAttestedKeyRequest& request,
+            const AttestationInterface::
+                CreateGoogleAttestedKeyCallback& callback) {
+        EXPECT_EQ("label", request.key_label());
+        EXPECT_EQ(KEY_TYPE_ECC, request.key_type());
+        EXPECT_EQ(KEY_USAGE_SIGN, request.key_usage());
+        EXPECT_EQ(ENTERPRISE_MACHINE_CERTIFICATE,
+                  request.certificate_profile());
+        EXPECT_EQ("username", request.username());
+        EXPECT_EQ("origin", request.origin());
+        CreateGoogleAttestedKeyReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        reply.set_certificate_chain("certificate");
+        reply.set_server_error("server_error");
+        callback.Run(reply);
+      }));
   std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(
       kCreateGoogleAttestedKey);
-  CreateGoogleAttestedKeyRequest request_proto;
-  request_proto.set_key_label("label");
-  request_proto.set_key_type(KEY_TYPE_ECC);
-  request_proto.set_key_usage(KEY_USAGE_SIGN);
-  request_proto.set_certificate_profile(ENTERPRISE_MACHINE_CERTIFICATE);
-  request_proto.set_username("username");
-  request_proto.set_origin("origin");
   dbus::MessageWriter writer(call.get());
-  writer.AppendProtoAsArrayOfBytes(request_proto);
+  writer.AppendProtoAsArrayOfBytes(request);
   auto response = CallMethod(call.get());
   dbus::MessageReader reader(response.get());
-  CreateGoogleAttestedKeyReply reply_proto;
-  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply_proto));
-  EXPECT_EQ(STATUS_SUCCESS, reply_proto.status());
-  EXPECT_EQ("certificate", reply_proto.certificate_chain());
-  EXPECT_EQ("", reply_proto.server_error());
-}
-
-TEST_F(DBusServiceTest, CreateGoogleAttestedKeyServerError) {
-  EXPECT_CALL(mock_service_, CreateGoogleAttestedKey(_, _, _, _, _, _, _))
-      .WillOnce(WithArgs<6>(Invoke([](const AttestationInterface::
-          CreateGoogleAttestedKeyCallback& callback) {
-        callback.Run("certificate", "server_error",
-                     STATUS_REQUEST_DENIED_BY_CA);
-      })));
-  std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(
-      kCreateGoogleAttestedKey);
-  CreateGoogleAttestedKeyRequest request_proto;
-  dbus::MessageWriter writer(call.get());
-  writer.AppendProtoAsArrayOfBytes(request_proto);
-  auto response = CallMethod(call.get());
-  dbus::MessageReader reader(response.get());
-  CreateGoogleAttestedKeyReply reply_proto;
-  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply_proto));
-  EXPECT_EQ(STATUS_REQUEST_DENIED_BY_CA, reply_proto.status());
-  EXPECT_EQ("", reply_proto.certificate_chain());
-  EXPECT_EQ("server_error", reply_proto.server_error());
+  CreateGoogleAttestedKeyReply reply;
+  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  EXPECT_EQ("certificate", reply.certificate_chain());
+  EXPECT_EQ("server_error", reply.server_error());
 }
 
 TEST_F(DBusServiceTest, CopyableCallback) {
-  EXPECT_CALL(mock_service_, CreateGoogleAttestedKey(_, _, _, _, _, _, _))
-      .WillOnce(WithArgs<6>(Invoke([](const AttestationInterface::
+  EXPECT_CALL(mock_service_, CreateGoogleAttestedKey(_, _))
+      .WillOnce(WithArgs<1>(Invoke([](const AttestationInterface::
           CreateGoogleAttestedKeyCallback& callback) {
         // Copy the callback, then call the original.
-        base::Closure copy = base::Bind(callback, "", "", STATUS_SUCCESS);
-        callback.Run("", "", STATUS_SUCCESS);
+        CreateGoogleAttestedKeyReply reply;
+        base::Closure copy = base::Bind(callback, reply);
+        callback.Run(reply);
       })));
   std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(
       kCreateGoogleAttestedKey);
-  CreateGoogleAttestedKeyRequest request_proto;
+  CreateGoogleAttestedKeyRequest request;
   dbus::MessageWriter writer(call.get());
-  writer.AppendProtoAsArrayOfBytes(request_proto);
+  writer.AppendProtoAsArrayOfBytes(request);
   auto response = CallMethod(call.get());
   dbus::MessageReader reader(response.get());
-  CreateGoogleAttestedKeyReply reply_proto;
-  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply_proto));
+  CreateGoogleAttestedKeyReply reply;
+  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
 }
 
 }  // namespace attestation

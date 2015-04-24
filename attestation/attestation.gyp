@@ -62,7 +62,8 @@
         'client/main.cc',
       ],
       'dependencies': [
-        'libattestation',
+        'client_library',
+        'proto_library',
       ]
     },
     # A library for server code.
