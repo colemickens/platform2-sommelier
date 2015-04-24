@@ -28,8 +28,8 @@ const char* GermConnection::ResultToString(Result result) {
       return "NO_CONNECTION";
     case Result::RPC_ERROR:
       return "RPC_ERROR";
-    case Result::LAUNCH_ERROR:
-      return "LAUNCH_ERROR";
+    case Result::FAILED_REQUEST:
+      return "FAILED_REQUEST";
   }
   NOTREACHED() << "Invalid result " << static_cast<int>(result);
   return "INVALID";
@@ -70,13 +70,39 @@ GermConnection::Result GermConnection::Launch(const soma::ContainerSpec& spec,
   if (!response.success()) {
     LOG(ERROR) << "Germ didn't return success when launching container spec \""
                << spec.name() << "\"";
-    return Result::LAUNCH_ERROR;
+    return Result::FAILED_REQUEST;
   }
 
   LOG(INFO) << "Launched container spec \"" << spec.name()
             << "\". pid: " << response.pid();
 
   *pid = response.pid();
+
+  return Result::SUCCESS;
+}
+
+GermConnection::Result GermConnection::Terminate(int pid) {
+  if (!interface_)
+    return Result::NO_CONNECTION;
+
+  germ::TerminateRequest request;
+  germ::TerminateResponse response;
+  request.set_pid(pid);
+
+  int result = interface_->Terminate(&request, &response);
+  if (result != 0) {
+    LOG(ERROR) << "Failed to terminate container with init PID " << pid
+               << ". RPC to germd returned " << result;
+    return Result::RPC_ERROR;
+  }
+
+  if (!response.success()) {
+    LOG(ERROR) << "Germ didn't return success when terminating container with "
+                  "init PID " << pid;
+    return Result::FAILED_REQUEST;
+  }
+
+  LOG(INFO) << "Terminated container with init PID " << pid;
 
   return Result::SUCCESS;
 }

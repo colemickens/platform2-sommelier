@@ -35,6 +35,7 @@ class ContainerStub : public ContainerInterface {
   std::string GetName() const override;
   const ServiceMap& GetServices() const override;
   bool Launch() override;
+  bool Terminate() override;
 
  private:
   std::string name_;
@@ -45,6 +46,12 @@ class ContainerStub : public ContainerInterface {
 
   // The return value of Launch().
   bool launch_return_value_;
+
+  // Number of times that Terminate() has been called.
+  int terminate_count_;
+
+  // The return value of Terminate().
+  bool terminate_return_value_;
 
   DISALLOW_COPY_AND_ASSIGN(ContainerStub);
 };

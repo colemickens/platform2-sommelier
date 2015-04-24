@@ -41,6 +41,11 @@ bool Container::Launch() {
       GermConnection::Result::SUCCESS;
 }
 
+bool Container::Terminate() {
+  return germ_connection_->Terminate(init_pid_) ==
+      GermConnection::Result::SUCCESS;
+}
+
 void Container::OnServiceProxyChange(ServiceInterface* service) {
   CHECK(services_.count(service->GetName()))
       << "Container \"" << GetName() << "\" received proxy change notification "

@@ -39,6 +39,10 @@ class ContainerInterface {
   // Launches the container. Returns whether the container was launched
   // successfully.
   virtual bool Launch() = 0;
+
+  // Terminates the container. Returns whether the container was terminated
+  // successfully.
+  virtual bool Terminate() = 0;
 };
 
 // The real implementation of ContainerInterface.
@@ -56,6 +60,7 @@ class Container : public ContainerInterface, public ServiceObserver {
   std::string GetName() const override;
   const ServiceMap& GetServices() const override;
   bool Launch() override;
+  bool Terminate() override;
 
   // ServiceObserver:
   void OnServiceProxyChange(ServiceInterface* service) override;

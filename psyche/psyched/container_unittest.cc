@@ -38,16 +38,23 @@ class GermInterfaceStub : public germ::IGerm {
   ~GermInterfaceStub() override = default;
 
   void set_launch_return_value(int value) { launch_return_value_ = value; }
+  void set_launch_pid(int pid) {
+    launch_pid_ = pid;
+  }
   void set_terminate_return_value(int value) {
     terminate_return_value_ = value;
   }
-  std::vector<std::string> launched_container_names() {
+  const std::vector<std::string>& launched_container_names() const {
     return launched_container_names_;
+  }
+  const std::vector<int>& terminated_container_pids() const {
+    return terminated_container_pids_;
   }
 
   // IGerm:
   int Launch(germ::LaunchRequest* in, germ::LaunchResponse* out) override {
     out->set_success(launch_success_);
+    out->set_pid(launch_pid_);
     launched_container_names_.push_back(in->spec().name());
     return launch_return_value_;
   }
@@ -55,6 +62,7 @@ class GermInterfaceStub : public germ::IGerm {
   int Terminate(germ::TerminateRequest* in,
                 germ::TerminateResponse* out) override {
     out->set_success(terminate_success_);
+    terminated_container_pids_.push_back(in->pid());
     return terminate_return_value_;
   }
 
@@ -68,11 +76,17 @@ class GermInterfaceStub : public germ::IGerm {
   // germ success field returned by LaunchResponse.
   bool launch_success_;
 
+  // germ pid field returned by LaunchResponse.
+  int launch_pid_;
+
   // germ success field returned by TerminateResponse.
   bool terminate_success_;
 
   // A list of the ContainerSpec names passed to Launch().
   std::vector<std::string> launched_container_names_;
+
+  // A list of the ContainerSpec init PIDs passed to Terminate().
+  std::vector<int> terminated_container_pids_;
 
   DISALLOW_COPY_AND_ASSIGN(GermInterfaceStub);
 };
@@ -136,10 +150,12 @@ TEST_F(ContainerTest, InitializeFromSpec) {
 }
 
 // Tests various failures when communicating with germd.
-TEST_F(ContainerTest, GermFailures) {
+TEST_F(ContainerTest, GermCommunication) {
   ContainerSpec spec;
   const std::string kContainerName("/tmp/org.example.container");
+  const int kContainerPid(123);
   spec.set_name(kContainerName);
+  germ_->set_launch_pid(kContainerPid);
 
   Container container(spec, &factory_, &germ_connection_);
 
@@ -158,6 +174,20 @@ TEST_F(ContainerTest, GermFailures) {
   EXPECT_TRUE(container.Launch());
   ASSERT_EQ(1, germ_->launched_container_names().size());
   EXPECT_EQ(kContainerName, germ_->launched_container_names()[0]);
+
+  // Make similar calls to Terminate() as Launch(), showing failures for RPC,
+  // binder death, and restart and success.
+  germ_->set_terminate_return_value(-1);
+  EXPECT_FALSE(container.Terminate());
+
+  germ_->set_terminate_return_value(0);
+  binder_manager_->ReportBinderDeath(germ_proxy_);
+  EXPECT_FALSE(container.Terminate());
+
+  InitGerm();
+  EXPECT_TRUE(container.Terminate());
+  ASSERT_EQ(1, germ_->terminated_container_pids().size());
+  EXPECT_EQ(kContainerPid, germ_->terminated_container_pids()[0]);
 }
 
 }  // namespace

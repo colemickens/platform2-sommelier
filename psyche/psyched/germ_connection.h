@@ -17,7 +17,7 @@ class IGerm;
 
 namespace psyche {
 
-// Used to communicate with germd to launch containers.
+// Used to communicate with germd to launch and terminate containers.
 class GermConnection : public ServiceObserver {
  public:
   enum class Result {
@@ -27,8 +27,8 @@ class GermConnection : public ServiceObserver {
     NO_CONNECTION,
     // The request resulted in a binder-level error.
     RPC_ERROR,
-    // germd returned an error when launching.
-    LAUNCH_ERROR,
+    // germd responded with a failure status.
+    FAILED_REQUEST,
   };
 
   // Returns a human-readable translation of |result|.
@@ -40,9 +40,13 @@ class GermConnection : public ServiceObserver {
   // Sets the proxy that should be used for communication with germd.
   void SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy);
 
-  // Make a request to germ to launch a service. Sets |pid| to the PID of the
+  // Makes a request to germ to launch a container. Sets |pid| to the PID of the
   // germ-provided init process in the launched container.
   Result Launch(const soma::ContainerSpec& spec, int* pid);
+
+  // Makes a request to germ to terminate a container. |pid| is the
+  // germ-provided init process in the container.
+  Result Terminate(int pid);
 
   // ServiceObserver:
   void OnServiceProxyChange(ServiceInterface* service) override;
