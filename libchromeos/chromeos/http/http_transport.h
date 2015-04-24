@@ -13,7 +13,6 @@
 #include <base/callback_forward.h>
 #include <base/location.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/time/time.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
@@ -30,7 +29,8 @@ class Connection;
 using RequestID = int;
 
 using HeaderList = std::vector<std::pair<std::string, std::string>>;
-using SuccessCallback = base::Callback<void(RequestID, scoped_ptr<Response>)>;
+using SuccessCallback =
+    base::Callback<void(RequestID, std::unique_ptr<Response>)>;
 using ErrorCallback = base::Callback<void(RequestID, const chromeos::Error*)>;
 
 ///////////////////////////////////////////////////////////////////////////////

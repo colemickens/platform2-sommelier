@@ -64,7 +64,7 @@ std::ostream& operator<<(std::ostream& stream, Group::State state) {
 }
 
 void IgnoreHttpSuccess(chromeos::http::RequestID request_id,
-                       scoped_ptr<Response> response) {
+                       std::unique_ptr<Response> response) {
 }
 
 void IgnoreHttpFailure(chromeos::http::RequestID request_id,
@@ -338,7 +338,7 @@ void Group::SendLeaderDiscover(const std::string& peer_id) {
 }
 
 void Group::HandleLeaderDiscoverResponse(chromeos::http::RequestID request_id,
-                                         scoped_ptr<Response> response) {
+                                         std::unique_ptr<Response> response) {
   chromeos::ErrorPtr error;
   std::unique_ptr<base::DictionaryValue> json_resp =
       chromeos::http::ParseJsonResponse(response.get(), nullptr, &error);
@@ -376,7 +376,7 @@ void Group::SendLeaderChallenge(const std::string& peer_id) {
 }
 
 void Group::HandleLeaderChallengeResponse(chromeos::http::RequestID request_id,
-                                          scoped_ptr<Response> response) {
+                                          std::unique_ptr<Response> response) {
   chromeos::ErrorPtr error;
   std::unique_ptr<base::DictionaryValue> json_resp =
       chromeos::http::ParseJsonResponse(response.get(), nullptr, &error);

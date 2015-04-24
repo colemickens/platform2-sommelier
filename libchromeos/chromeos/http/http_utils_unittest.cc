@@ -68,7 +68,7 @@ TEST(HttpUtils, SendRequestAsync_BinaryData) {
   // Test binary data round-tripping.
   std::vector<uint8_t> custom_data{0xFF, 0x00, 0x80, 0x40, 0xC0, 0x7F};
   auto success_callback =
-      [&custom_data](RequestID id, scoped_ptr<http::Response> response) {
+      [&custom_data](RequestID id, std::unique_ptr<http::Response> response) {
     EXPECT_TRUE(response->IsSuccessful());
     EXPECT_EQ(chromeos::mime::application::kOctet_stream,
               response->GetContentType());
@@ -157,7 +157,7 @@ TEST(HttpUtils, SendRequestAsync_NotFound) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   // Test failed response (URL not found).
   auto success_callback =
-      [](RequestID request_id, scoped_ptr<http::Response> response) {
+      [](RequestID request_id, std::unique_ptr<http::Response> response) {
     EXPECT_FALSE(response->IsSuccessful());
     EXPECT_EQ(status_code::NotFound, response->GetStatusCode());
   };
@@ -463,7 +463,7 @@ TEST(HttpUtils, SendRequestAsync_Failure) {
   Error::AddTo(&error, FROM_HERE, "test_domain", "test_code", "Test message");
   transport->SetCreateConnectionError(std::move(error));
   auto success_callback =
-      [](RequestID request_id, scoped_ptr<http::Response> response) {
+      [](RequestID request_id, std::unique_ptr<http::Response> response) {
     FAIL() << "This callback shouldn't have been called";
   };
   auto error_callback = [](RequestID request_id, const Error* error) {

@@ -157,7 +157,7 @@ TEST_F(HttpRequestTest, GetResponse) {
   };
 
   auto success_callback =
-      [this, &resp_data](RequestID request_id, scoped_ptr<Response> resp) {
+      [this, &resp_data](RequestID request_id, std::unique_ptr<Response> resp) {
     EXPECT_EQ(23, request_id);
     EXPECT_CALL(*connection_, GetResponseStatusCode())
         .WillOnce(Return(status_code::Partial));
@@ -183,8 +183,8 @@ TEST_F(HttpRequestTest, GetResponse) {
 
     EXPECT_CALL(*connection_, MockExtractDataStream(_))
       .WillOnce(Return(mock_stream.release()));
-    scoped_ptr<Response> resp{new Response{connection_}};
-    success_callback.Run(23, resp.Pass());
+    std::unique_ptr<Response> resp{new Response{connection_}};
+    success_callback.Run(23, std::move(resp));
   };
 
   EXPECT_CALL(

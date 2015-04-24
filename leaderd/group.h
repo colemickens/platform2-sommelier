@@ -98,12 +98,12 @@ class Group : public org::chromium::leaderd::GroupInterface {
   void SendLeaderDiscover(const std::string& peer_id);
   void HandleLeaderDiscoverResponse(
       chromeos::http::RequestID request_id,
-      scoped_ptr<chromeos::http::Response> response);
+      std::unique_ptr<chromeos::http::Response> response);
   // These methods let us periodically challenge the leader to confirm fitness.
   void SendLeaderChallenge(const std::string& peer_id);
   void HandleLeaderChallengeResponse(
       chromeos::http::RequestID request_id,
-      scoped_ptr<chromeos::http::Response> response);
+      std::unique_ptr<chromeos::http::Response> response);
   void HandleLeaderChallengeFailure(chromeos::http::RequestID request_id,
                                     const chromeos::Error*);
   // These methods let us announce our leadership.  We ignore results.

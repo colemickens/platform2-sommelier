@@ -583,7 +583,7 @@ void PostToCallback(base::Callback<void(const T&)> callback,
       FROM_HERE, base::Bind(cb, base::Owned(value.release())));
 }
 
-using ResponsePtr = scoped_ptr<chromeos::http::Response>;
+using ResponsePtr = std::unique_ptr<chromeos::http::Response>;
 
 void SendRequestWithRetries(
     const std::string& method,
@@ -614,7 +614,7 @@ void SendRequestWithRetries(
     int status_code = response->GetStatusCode();
     if (status_code >= chromeos::http::status_code::Continue &&
         status_code < chromeos::http::status_code::BadRequest) {
-      success_callback.Run(request_id, response.Pass());
+      success_callback.Run(request_id, std::move(response));
       return;
     }
 

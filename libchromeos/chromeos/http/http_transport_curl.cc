@@ -462,11 +462,11 @@ void Transport::OnTransferComplete(Connection* connection, CURLcode code) {
                                   p->second->request_id,
                                   base::Owned(error.release())));
     } else {
-      scoped_ptr<Response> response{new Response{request_data->connection}};
+      std::unique_ptr<Response> resp{new Response{request_data->connection}};
       RunCallbackAsync(FROM_HERE,
                        base::Bind(request_data->success_callback,
                                   p->second->request_id,
-                                  base::Passed(&response)));
+                                  base::Passed(&resp)));
     }
   }
   // In case of an error on CURL side, we would have dispatched the error

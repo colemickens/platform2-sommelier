@@ -74,8 +74,8 @@ void Connection::FinishRequestAsyncHelper(
   if (!FinishRequest(&error)) {
     error_callback.Run(1, error.get());
   } else {
-    scoped_ptr<Response> response{new Response{shared_from_this()}};
-    success_callback.Run(1, response.Pass());
+    std::unique_ptr<Response> response{new Response{shared_from_this()}};
+    success_callback.Run(1, std::move(response));
   }
 }
 
