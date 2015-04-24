@@ -58,6 +58,8 @@ ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="fff1", GOTO="mist_mark_device"
 ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="fffe", GOTO="mist_mark_device"
 ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="ffff", GOTO="mist_mark_device"
 ATTRS{idVendor}=="1c9e", ATTRS{idProduct}=="9605", GOTO="mist_mark_device"
+ATTRS{idVendor}=="2001", ATTRS{idProduct}=="7d01", GOTO="mist_mark_device"
+ATTRS{idVendor}=="2001", ATTRS{idProduct}=="7d0c", GOTO="mist_mark_device"
 ATTRS{idVendor}=="2020", ATTRS{idProduct}=="4010", GOTO="mist_mark_device"
 
 #-------------------------------------------------------------------------------
@@ -88,6 +90,8 @@ ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1588", GOTO="mist_switch_device"
 ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="2000", GOTO="mist_switch_device"
 ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="fff5", GOTO="mist_switch_device"
 ATTRS{idVendor}=="1c9e", ATTRS{idProduct}=="f000", GOTO="mist_switch_device"
+ATTRS{idVendor}=="2001", ATTRS{idProduct}=="a403", GOTO="mist_switch_device"
+ATTRS{idVendor}=="2001", ATTRS{idProduct}=="a706", GOTO="mist_switch_device"
 ATTRS{idVendor}=="2020", ATTRS{idProduct}=="0002", GOTO="mist_switch_device"
 
 GOTO="mist_end"
