@@ -10,6 +10,9 @@
 // This file tests the public interface to NetlinkManager.
 #include "shill/net/netlink_manager.h"
 
+#include <errno.h>
+#include <netlink/netlink.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -771,7 +774,7 @@ TEST_F(NetlinkManagerTest, PendingDump) {
       auxilliary_handler.on_netlink_message()));
   uint16_t get_station_message_1_seq_num =
       netlink_socket_->GetLastSequenceNumber();
-  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(netlink_manager_->IsDumpPending());
   EXPECT_EQ(1, netlink_manager_->pending_messages_.size());
   EXPECT_EQ(get_station_message_1_seq_num,
             netlink_manager_->PendingDumpSequenceNumber());
@@ -786,7 +789,7 @@ TEST_F(NetlinkManagerTest, PendingDump) {
       auxilliary_handler.on_netlink_message()));
   uint16_t get_station_message_2_seq_num =
       netlink_socket_->GetLastSequenceNumber();
-  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(netlink_manager_->IsDumpPending());
   EXPECT_EQ(2, netlink_manager_->pending_messages_.size());
   EXPECT_EQ(get_station_message_1_seq_num,
             netlink_manager_->PendingDumpSequenceNumber());
@@ -799,7 +802,7 @@ TEST_F(NetlinkManagerTest, PendingDump) {
       &get_wiphy_message, response_handler.on_netlink_message(),
       ack_handler.on_netlink_message(),
       auxilliary_handler.on_netlink_message()));
-  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(netlink_manager_->IsDumpPending());
   EXPECT_EQ(2, netlink_manager_->pending_messages_.size());
   EXPECT_EQ(get_station_message_1_seq_num,
             netlink_manager_->PendingDumpSequenceNumber());
@@ -809,7 +812,7 @@ TEST_F(NetlinkManagerTest, PendingDump) {
   received_message_1_pt1->nlmsg_seq = get_station_message_1_seq_num;
   EXPECT_CALL(response_handler, OnNetlinkMessage(_));
   netlink_manager_->OnNlMessageReceived(received_message_1_pt1);
-  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(netlink_manager_->IsDumpPending());
   EXPECT_EQ(2, netlink_manager_->pending_messages_.size());
   EXPECT_EQ(get_station_message_1_seq_num,
             netlink_manager_->PendingDumpSequenceNumber());
@@ -821,7 +824,7 @@ TEST_F(NetlinkManagerTest, PendingDump) {
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   netlink_manager_->OnNlMessageReceived(received_message_1_pt2);
   base::RunLoop().RunUntilIdle();
-  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(netlink_manager_->IsDumpPending());
   EXPECT_EQ(1, netlink_manager_->pending_messages_.size());
   EXPECT_EQ(get_station_message_2_seq_num,
             netlink_manager_->PendingDumpSequenceNumber());
@@ -832,9 +835,12 @@ TEST_F(NetlinkManagerTest, PendingDump) {
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).Times(0);
   netlink_manager_->OnNlMessageReceived(received_message_2);
   base::RunLoop().RunUntilIdle();
-  EXPECT_TRUE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_FALSE(netlink_manager_->IsDumpPending());
   EXPECT_TRUE(netlink_manager_->pending_messages_.empty());
   EXPECT_EQ(0, netlink_manager_->PendingDumpSequenceNumber());
+
+  // Put the state of the singleton back where it was.
+  Reset();
 }
 
 TEST_F(NetlinkManagerTest, PendingDump_Timeout) {
@@ -856,7 +862,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Timeout) {
       auxilliary_handler.on_netlink_message()));
   uint16_t get_station_message_1_seq_num =
       netlink_socket_->GetLastSequenceNumber();
-  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(netlink_manager_->IsDumpPending());
   EXPECT_EQ(1, netlink_manager_->pending_messages_.size());
   EXPECT_EQ(get_station_message_1_seq_num,
             netlink_manager_->PendingDumpSequenceNumber());
@@ -871,7 +877,7 @@ TEST_F(NetlinkManagerTest, PendingDump_Timeout) {
       auxilliary_handler.on_netlink_message()));
   uint16_t get_station_message_2_seq_num =
       netlink_socket_->GetLastSequenceNumber();
-  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(netlink_manager_->IsDumpPending());
   EXPECT_EQ(2, netlink_manager_->pending_messages_.size());
   EXPECT_EQ(get_station_message_1_seq_num,
             netlink_manager_->PendingDumpSequenceNumber());
@@ -882,10 +888,125 @@ TEST_F(NetlinkManagerTest, PendingDump_Timeout) {
               OnErrorHandler(NetlinkManager::kTimeoutWaitingForResponse, _));
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   netlink_manager_->OnPendingDumpTimeout();
-  EXPECT_FALSE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(netlink_manager_->IsDumpPending());
   EXPECT_EQ(1, netlink_manager_->pending_messages_.size());
   EXPECT_EQ(get_station_message_2_seq_num,
             netlink_manager_->PendingDumpSequenceNumber());
+
+  // Put the state of the singleton back where it was.
+  Reset();
+}
+
+TEST_F(NetlinkManagerTest, PendingDump_Retry) {
+  const int kNumRetries = 1;
+  // Create EBUSY netlink error response. Do this manually because
+  // ErrorAckMessage does not implement NetlinkMessage::Encode.
+  unsigned char message_memory[sizeof(kNLMSG_ACK)];
+  memcpy(message_memory, kNLMSG_ACK, sizeof(kNLMSG_ACK));
+  nlmsghdr *received_ebusy_message =
+      reinterpret_cast<nlmsghdr *>(message_memory);
+  uint32_t *error_field =
+      reinterpret_cast<uint32_t *>(NLMSG_DATA(received_ebusy_message));
+  *error_field = EBUSY;
+
+  // The two get station messages (with the dump flag set) will be sent one
+  // after another. The second message can only be sent once all replies to the
+  // first have been received.
+  GetStationMessage get_station_message_1;
+  get_station_message_1.AddFlag(NLM_F_DUMP);
+  GetStationMessage get_station_message_2;
+  get_station_message_2.AddFlag(NLM_F_DUMP);
+  MockHandler80211 response_handler;
+  MockHandlerNetlinkAuxilliary auxilliary_handler;
+  MockHandlerNetlinkAck ack_handler;
+
+  // Send the first get station message, which should be sent immediately and
+  // trigger a pending dump.
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &get_station_message_1, response_handler.on_netlink_message(),
+      ack_handler.on_netlink_message(),
+      auxilliary_handler.on_netlink_message()));
+  uint16_t get_station_message_1_seq_num =
+      netlink_socket_->GetLastSequenceNumber();
+  EXPECT_TRUE(netlink_manager_->IsDumpPending());
+  EXPECT_EQ(1, netlink_manager_->pending_messages_.size());
+  EXPECT_EQ(get_station_message_1_seq_num,
+            netlink_manager_->PendingDumpSequenceNumber());
+
+  // Send the second get station message before the replies to the first
+  // get station message have been received. This should cause the message
+  // to be enqueued for later sending.
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).Times(0);
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &get_station_message_2, response_handler.on_netlink_message(),
+      ack_handler.on_netlink_message(),
+      auxilliary_handler.on_netlink_message()));
+  uint16_t get_station_message_2_seq_num =
+      netlink_socket_->GetLastSequenceNumber();
+  EXPECT_TRUE(netlink_manager_->IsDumpPending());
+  EXPECT_EQ(2, netlink_manager_->pending_messages_.size());
+  EXPECT_EQ(get_station_message_1_seq_num,
+            netlink_manager_->PendingDumpSequenceNumber());
+
+  // Now we receive an EBUSY error response, which should trigger a retry and
+  // not invoke the error handler.
+  netlink_manager_->pending_messages_.front().retries_left = kNumRetries;
+  received_ebusy_message->nlmsg_seq = get_station_message_1_seq_num;
+  EXPECT_EQ(kNumRetries,
+            netlink_manager_->pending_messages_.front().retries_left);
+  EXPECT_CALL(auxilliary_handler, OnErrorHandler(_, _)).Times(0);
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
+  netlink_manager_->OnNlMessageReceived(received_ebusy_message);
+  // Cancel timeout callback before attempting resend.
+  EXPECT_TRUE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  // Trigger this manually instead of via message loop since it is posted as a
+  // delayed task, which base::RunLoop().RunUntilIdle() will not dispatch.
+  netlink_manager_->ResendPendingDumpMessage();
+  EXPECT_EQ(kNumRetries - 1,
+            netlink_manager_->pending_messages_.front().retries_left);
+  EXPECT_TRUE(netlink_manager_->IsDumpPending());
+  EXPECT_EQ(2, netlink_manager_->pending_messages_.size());
+  EXPECT_EQ(get_station_message_1_seq_num,
+            netlink_manager_->PendingDumpSequenceNumber());
+
+  // We receive an EBUSY error response again. Since we have no retries left for
+  // this message, the error handler should be invoked, and the next pending
+  // message sent.
+  received_ebusy_message->nlmsg_seq = get_station_message_1_seq_num;
+  EXPECT_EQ(0, netlink_manager_->pending_messages_.front().retries_left);
+  EXPECT_CALL(auxilliary_handler,
+              OnErrorHandler(NetlinkManager::kErrorFromKernel, _));
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
+  netlink_manager_->OnNlMessageReceived(received_ebusy_message);
+  base::RunLoop().RunUntilIdle();
+  EXPECT_TRUE(netlink_manager_->IsDumpPending());
+  EXPECT_EQ(1, netlink_manager_->pending_messages_.size());
+  EXPECT_EQ(get_station_message_2_seq_num,
+            netlink_manager_->PendingDumpSequenceNumber());
+
+  // Now we receive an EBUSY error response to the second get station message,
+  // which should trigger a retry. However, we fail on sending this second retry
+  // out on the netlink socket. Since we expended our one retry on this attempt,
+  // we should invoke the error handler and declare the dump complete.
+  received_ebusy_message->nlmsg_seq = get_station_message_2_seq_num;
+  EXPECT_EQ(1, netlink_manager_->pending_messages_.front().retries_left);
+  EXPECT_CALL(auxilliary_handler,
+              OnErrorHandler(NetlinkManager::kErrorFromKernel, _));
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(false));
+  netlink_manager_->OnNlMessageReceived(received_ebusy_message);
+  // Cancel timeout callback before attempting resend.
+  EXPECT_TRUE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  // Trigger this manually instead of via message loop since it is posted as a
+  // delayed task, which base::RunLoop().RunUntilIdle() will not dispatch.
+  netlink_manager_->ResendPendingDumpMessage();
+  base::RunLoop().RunUntilIdle();
+  EXPECT_FALSE(netlink_manager_->IsDumpPending());
+  EXPECT_TRUE(netlink_manager_->pending_dump_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(netlink_manager_->pending_messages_.empty());
+
+  // Put the state of the singleton back where it was.
+  Reset();
 }
 
 // Not strictly part of the "public" interface, but part of the

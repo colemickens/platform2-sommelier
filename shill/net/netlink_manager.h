@@ -278,6 +278,7 @@ class SHILL_EXPORT NetlinkManager {
   FRIEND_TEST(NetlinkManagerTest, TimeoutResponseHandlers);
   FRIEND_TEST(NetlinkManagerTest, PendingDump);
   FRIEND_TEST(NetlinkManagerTest, PendingDump_Timeout);
+  FRIEND_TEST(NetlinkManagerTest, PendingDump_Retry);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_CONNECT);
@@ -298,15 +299,18 @@ class SHILL_EXPORT NetlinkManager {
                           bool is_dump_request_arg,
                           ByteString message_string_arg,
                           NetlinkResponseHandlerRefPtr handler_arg)
-        : sequence_number(sequence_number_arg),
+        : retries_left(kMaxNlMessageRetries),
+          sequence_number(sequence_number_arg),
           is_dump_request(is_dump_request_arg),
           message_string(message_string_arg),
           handler(handler_arg) {}
 
+    int retries_left;
     uint32_t sequence_number;
     bool is_dump_request;
     ByteString message_string;
     NetlinkResponseHandlerRefPtr handler;
+    uint32_t last_received_error;
   };
 
   // These need to be member variables, even though they're only used once in
@@ -316,6 +320,8 @@ class SHILL_EXPORT NetlinkManager {
   static const long kResponseTimeoutSeconds;  // NOLINT
   static const long kResponseTimeoutMicroSeconds;  // NOLINT
   static const long kPendingDumpTimeoutMilliseconds;  // NOLINT
+  static const long kNlMessageRetryDelayMilliseconds;  // NOLINT
+  static const int kMaxNlMessageRetries;  // NOLINT
 
   // Returns the file descriptor of socket used to read wifi data.
   int file_descriptor() const;
@@ -331,6 +337,17 @@ class SHILL_EXPORT NetlinkManager {
   // number of the message or, if there isn't one, to all of the default
   // NetlinkManager callbacks in |broadcast_handlers_|.
   void OnNlMessageReceived(nlmsghdr *msg);
+
+  // Sends the pending dump message, and decrement the message's retry count if
+  // it was resent successfully.
+  void ResendPendingDumpMessage();
+
+  // If a NetlinkResponseHandler registered for the message identified by
+  // |sequence_number| exists, calls the error handler with the arguments |type|
+  // and |netlink_message|, then erases the NetlinkResponseHandler from
+  // |message_handlers_|.
+  void CallErrorHandler(uint32_t sequence_number, AuxilliaryMessageType type,
+                        const NetlinkMessage *netlink_message);
 
   // Called by InputHandler on exceptional events.
   void OnReadError(const std::string &error_msg);
@@ -348,10 +365,17 @@ class SHILL_EXPORT NetlinkManager {
       NetlinkMessage *message,
       NetlinkResponseHandler *message_wrapper);  // Passes ownership.
 
-  // Sends the netlink message whose bytes are contained in |pending_message|
-  // to the kernel using the NetlinkManager socket after installing a handler
-  // to deal with the kernel's response to the message. Adds a serial number to
-  // |message| before it is sent.
+  // Install a handler to deal with kernel's response to the message contained
+  // in |pending_message|, then sends the message by calling
+  // NetlinkManager::SendMessageInternal.
+  bool RegisterHandlersAndSendMessage(
+      const NetlinkPendingMessage &pending_message);
+
+  // Sends the netlink message whose bytes are contained in |pending_message| to
+  // the kernel using the NetlinkManager socket. If |pending_message| is a dump
+  // request and the message is sent successfully, a timeout timer is started to
+  // limit the amount of time we wait for responses to that message. Adds a
+  // serial number to |message| before it is sent.
   bool SendMessageInternal(const NetlinkPendingMessage &pending_message);
 
   // Given a netlink message |msg|, infers the context of this netlink message
@@ -400,6 +424,7 @@ class SHILL_EXPORT NetlinkManager {
   NetlinkMessageFactory message_factory_;
   Time *time_;
   IOHandlerFactory *io_handler_factory_;
+  bool dump_pending_;
 
   DISALLOW_COPY_AND_ASSIGN(NetlinkManager);
 };
