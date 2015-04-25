@@ -51,6 +51,7 @@
         'germ_host.cc',
         'germ_init.cc',
         'germ_zygote.cc',
+        'init_process_reaper.cc',
         'launcher.cc',
         'process_reaper.cc',
         'switches.cc',

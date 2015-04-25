@@ -51,6 +51,8 @@ bool ProcessReaper::HandleSIGCHLD(const struct signalfd_siginfo& sigfd_info) {
 
     HandleReapedChild(info);
   }
+
+  // Return false to indicate that our handler should not be uninstalled.
   return false;
 }
 

@@ -4,21 +4,88 @@
 
 #include "germ/germ_init.h"
 
+#include <grp.h>
+#include <signal.h>
+#include <sys/types.h>
 #include <sysexits.h>
+#include <unistd.h>
 
+#include <string>
+#include <vector>
+
+#include <base/bind.h>
+#include <base/bind_helpers.h>
+#include <base/location.h>
+#include <base/logging.h>
+#include <base/message_loop/message_loop.h>
 #include <chromeos/daemons/daemon.h>
 
-#include "germ/process_reaper.h"
+#include "germ/init_process_reaper.h"
 #include "germ/proto_bindings/soma_container_spec.pb.h"
 
 namespace germ {
 
-GermInit::GermInit(const soma::ContainerSpec& spec) : spec_(spec) {}
+GermInit::GermInit(const soma::ContainerSpec& spec)
+    : init_process_reaper_(base::Bind(&GermInit::Quit, base::Unretained(this))),
+      spec_(spec) {}
 GermInit::~GermInit() {}
 
 int GermInit::OnInit() {
-  process_reaper_.RegisterWithDaemon(this);
+  init_process_reaper_.RegisterWithDaemon(this);
+
+  int return_code = chromeos::Daemon::OnInit();
+  if (return_code != 0) {
+    LOG(ERROR) << "Error initializing chromeos::Daemon";
+    return return_code;
+  }
+
+  // It is important that we start all processes in a single task, since
+  // otherwise |init_process_reaper_| might cause us to exit after only some of
+  // the processes have exited. This is because InitProcessReaper's behavior is:
+  // after reaping a child, if we have no more children, then exit. Thus, we
+  // need to ensure that it never reaps a process while we're still in the
+  // middle of starting them.
+  CHECK(base::MessageLoop::current()->task_runner()->PostTask(
+      FROM_HERE,
+      base::Bind(&GermInit::StartProcesses, base::Unretained(this))));
   return EX_OK;
+}
+
+void GermInit::StartProcesses() {
+  size_t i = 0;
+  for (const auto& executable : spec_.executables()) {
+    std::vector<char*> argv;
+    argv.reserve(executable.command_line_size() + 1);
+    for (const std::string& command_line : executable.command_line()) {
+      argv.push_back(const_cast<char*>(command_line.c_str()));
+    }
+    argv.push_back(nullptr);
+
+    const pid_t pid = fork();
+    PCHECK(pid != -1) << "fork() failed: " << spec_.name() << "executable "
+                      << i;
+
+    if (pid == 0) {
+      sigset_t mask;
+      PCHECK(sigemptyset(&mask) == 0);
+      PCHECK(sigprocmask(SIG_SETMASK, &mask, nullptr) == 0);
+
+      const gid_t gid = static_cast<gid_t>(executable.gid());
+      const uid_t uid = static_cast<uid_t>(executable.uid());
+
+      // TODO(rickyz): setgroups requires CAP_SETGID. Reenable this once we have
+      // an overridable Launcher class for tests.
+      // PCHECK(setgroups(0, nullptr) == 0);
+      PCHECK(setresgid(gid, gid, gid) == 0);
+      PCHECK(setresuid(uid, uid, uid) == 0);
+
+      // TODO(rickyz): Environment?
+      execve(argv[0], argv.data(), nullptr);
+      PLOG(FATAL) << "execve() failed: " << spec_.name() << " executable " << i;
+    }
+
+    ++i;
+  }
 }
 
 }  // namespace germ

@@ -5,12 +5,19 @@
 #ifndef GERM_TEST_UTIL_H_
 #define GERM_TEST_UTIL_H_
 
+#include <signal.h>
+
 namespace germ {
 
+// Sends SIGTERM to all processes in the current process's process group if this
+// object is alive for |seconds|.
 class ScopedAlarm {
  public:
   explicit ScopedAlarm(unsigned int seconds);
   ~ScopedAlarm();
+
+ private:
+  struct sigaction oldact_;
 };
 
 }  // namespace germ

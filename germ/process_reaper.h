@@ -16,7 +16,7 @@ namespace germ {
 class ProcessReaper {
  public:
   ProcessReaper();
-  ~ProcessReaper();
+  virtual ~ProcessReaper();
 
   void RegisterWithAsyncHandler(
       chromeos::AsynchronousSignalHandler* async_signal_handler);

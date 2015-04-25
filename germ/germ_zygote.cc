@@ -189,6 +189,7 @@ pid_t GermZygote::ForkContainer(const soma::ContainerSpec& spec) {
     flags |= CLONE_NEWPID;
   }
 
+  PCHECK(setsid() != -1);
   return base::ForkWithFlags(flags, nullptr, nullptr);
 }
 
@@ -201,7 +202,6 @@ void GermZygote::SpawnContainer(const soma::ContainerSpec& spec,
   // container init process.
   if (pid == 0) {
     server_fd_.reset();
-    PCHECK(setsid() != -1);
 
     const pid_t init_pid = ForkContainer(spec);
     PCHECK(init_pid != -1);

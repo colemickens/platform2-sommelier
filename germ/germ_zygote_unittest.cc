@@ -9,6 +9,7 @@
 #include <sys/signalfd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sysexits.h>
 #include <unistd.h>
 
 #include <base/logging.h>
@@ -42,13 +43,17 @@ soma::ContainerSpec ContainerSpecForTest() {
   spec.set_name("test_container");
   spec.set_service_bundle_path("/path/to/bundle");
   spec.add_namespaces(soma::ContainerSpec::NEWPID);
-  soma::ContainerSpec::Executable* executable = spec.add_executables();
-  executable->add_command_line("/bin/true");
-  executable->set_uid(getuid());
-  executable->set_gid(getgid());
+  soma::ContainerSpec::Executable* executable;
+  for (int i = 0; i < 3; ++i) {
+    executable = spec.add_executables();
+    executable->add_command_line("/bin/true");
+    executable->set_uid(getuid());
+    executable->set_gid(getgid());
+  }
   return spec;
 }
 
+// TODO(rickyz): This test does not catch bugs in init process launching.
 TEST(GermZygote, BasicUsage) {
   ScopedAlarm time_out(kTestTimeoutSeconds);
   PCHECK(prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) == 0);
@@ -71,9 +76,6 @@ TEST(GermZygote, BasicUsage) {
   int sigfd = signalfd(-1, &mask, SFD_CLOEXEC);
   PCHECK(sigfd != -1);
 
-  // Kill the init process. We should receive notification of its death on the
-  // signalfd.
-  PCHECK(kill(init_pid, SIGTERM) == 0);
   struct signalfd_siginfo siginfo;
   PCHECK(HANDLE_EINTR(read(sigfd, &siginfo, sizeof(siginfo))) ==
          sizeof(siginfo));
@@ -81,14 +83,14 @@ TEST(GermZygote, BasicUsage) {
   // Check that we got notified for the right process.
   EXPECT_EQ(SIGCHLD, siginfo.ssi_signo);
   EXPECT_EQ(init_pid, siginfo.ssi_pid);
-  EXPECT_EQ(CLD_KILLED, siginfo.ssi_code);
-  EXPECT_EQ(SIGTERM, siginfo.ssi_status);
+  EXPECT_EQ(CLD_EXITED, siginfo.ssi_code);
+  EXPECT_EQ(EX_OK, siginfo.ssi_status);
 
   // Reap the init process.
   int status;
   PCHECK(HANDLE_EINTR(waitpid(init_pid, &status, 0)) == init_pid);
-  EXPECT_TRUE(WIFSIGNALED(status));
-  EXPECT_EQ(SIGTERM, WTERMSIG(status));
+  EXPECT_TRUE(WIFEXITED(status));
+  EXPECT_EQ(EX_OK, WEXITSTATUS(status));
 
   // Normally, the zygote would run forever - kill it now.
   ASSERT_NE(-1, zygote.pid());

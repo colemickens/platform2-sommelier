@@ -8,7 +8,7 @@
 #include <base/macros.h>
 #include <chromeos/daemons/daemon.h>
 
-#include "germ/process_reaper.h"
+#include "germ/init_process_reaper.h"
 #include "germ/proto_bindings/soma_container_spec.pb.h"
 
 namespace germ {
@@ -22,8 +22,9 @@ class GermInit : public chromeos::Daemon {
 
  private:
   int OnInit() override;
+  void StartProcesses();
 
-  ProcessReaper process_reaper_;
+  InitProcessReaper init_process_reaper_;
   const soma::ContainerSpec& spec_;
 
   DISALLOW_COPY_AND_ASSIGN(GermInit);
