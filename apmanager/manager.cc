@@ -54,11 +54,11 @@ void Manager::Stop() {
 }
 
 void Manager::CreateService(
-    scoped_ptr<DBusMethodResponse<dbus::ObjectPath>> response,
+    std::unique_ptr<DBusMethodResponse<dbus::ObjectPath>> response,
     dbus::Message* message) {
   LOG(INFO) << "Manager::CreateService";
   scoped_refptr<AsyncEventSequencer> sequencer(new AsyncEventSequencer());
-  scoped_ptr<Service> service(new Service(this, service_identifier_));
+  std::unique_ptr<Service> service(new Service(this, service_identifier_));
 
   service->RegisterAsync(
       dbus_object_->GetObjectManager().get(), bus_, sequencer.get());
@@ -160,8 +160,8 @@ void Manager::ReleaseDHCPPortAccess(const string& interface) {
 }
 
 void Manager::OnServiceRegistered(
-    scoped_ptr<DBusMethodResponse<dbus::ObjectPath>> response,
-    scoped_ptr<Service> service,
+    std::unique_ptr<DBusMethodResponse<dbus::ObjectPath>> response,
+    std::unique_ptr<Service> service,
     bool success) {
   LOG(INFO) << "ServiceRegistered";
   // Success should always be true since we've said that failures are fatal.
@@ -181,7 +181,7 @@ void Manager::OnServiceRegistered(
   // Add service to the service list and return the service dbus path for the
   // CreateService call.
   dbus::ObjectPath service_path = service->dbus_path();
-  services_.push_back(std::unique_ptr<Service>(service.release()));
+  services_.push_back(std::move(service));
   response->Return(service_path);
 }
 

@@ -10,7 +10,6 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/dbus_service_watcher.h>
 
 #include "apmanager/dbus_adaptors/org.chromium.apmanager.Manager.h"
@@ -25,6 +24,9 @@ namespace apmanager {
 class Manager : public org::chromium::apmanager::ManagerAdaptor,
                 public org::chromium::apmanager::ManagerInterface {
  public:
+  template<typename T>
+  using DBusMethodResponse = chromeos::dbus_utils::DBusMethodResponse<T>;
+
   Manager();
   virtual ~Manager();
 
@@ -33,8 +35,7 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   // This is an asynchronous call, response is invoked when Service and Config
   // dbus objects complete the DBus service registration.
   virtual void CreateService(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<dbus::ObjectPath>>
-          response,
+      std::unique_ptr<DBusMethodResponse<dbus::ObjectPath>> response,
       dbus::Message* message);
   // Handles calls to org.chromium.apmanager.Manager.RemoveService().
   virtual bool RemoveService(chromeos::ErrorPtr* error,
@@ -75,9 +76,8 @@ class Manager : public org::chromium::apmanager::ManagerAdaptor,
   // A callback that will be called when the Service/Config D-Bus
   // objects/interfaces are exported successfully and ready to be used.
   void OnServiceRegistered(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<dbus::ObjectPath>>
-          response,
-      scoped_ptr<Service> service,
+      std::unique_ptr<DBusMethodResponse<dbus::ObjectPath>> response,
+      std::unique_ptr<Service> service,
       bool success);
 
   // A callback that will be called when a Device D-Bus object/interface is

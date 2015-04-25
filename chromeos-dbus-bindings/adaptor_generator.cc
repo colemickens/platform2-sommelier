@@ -271,7 +271,8 @@ void AdaptorGenerator::AddInterfaceMethods(const Interface& interface,
           out_types.push_back(param_type);
         }
         method_params.push_back(base::StringPrintf(
-            "scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<%s>> response",
+            "std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<%s>> "
+            "response",
              chromeos::string_utils::Join(", ", out_types).c_str()));
         if (method.include_dbus_message)
           method_params.push_back("dbus::Message* message");

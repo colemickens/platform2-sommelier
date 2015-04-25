@@ -46,10 +46,10 @@ class CHROMEOS_EXPORT DBusMethodResponseBase {
                       const std::string& error_message);
 
   // Sends a raw D-Bus response message.
-  void SendRawResponse(scoped_ptr<dbus::Response> response);
+  void SendRawResponse(std::unique_ptr<dbus::Response> response);
 
   // Creates a custom response object for the current method call.
-  scoped_ptr<dbus::Response> CreateCustomResponse() const;
+  std::unique_ptr<dbus::Response> CreateCustomResponse() const;
 
   // Checks if the response has been sent already.
   bool IsResponseSent() const;
@@ -63,7 +63,7 @@ class CHROMEOS_EXPORT DBusMethodResponseBase {
  private:
   // A callback to be called to send the method call response message.
   ResponseSender sender_;
-  // |method_call_| is actually owned by |sender_| (it is embedded as scoped_ptr
+  // |method_call_| is actually owned by |sender_| (it is embedded as unique_ptr
   // in the bound parameter list in the Callback). We set it to nullptr after
   // the method call response has been sent to ensure we can't possibly try
   // to send a response again somehow.
@@ -88,7 +88,7 @@ class DBusMethodResponse : public DBusMethodResponseBase {
     auto response = CreateCustomResponse();
     dbus::MessageWriter writer(response.get());
     DBusParamWriter::Append(&writer, return_values...);
-    SendRawResponse(response.Pass());
+    SendRawResponse(std::move(response));
   }
 };
 

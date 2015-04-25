@@ -5,7 +5,8 @@
 #ifndef ATTESTATION_SERVER_DBUS_SERVICE_H_
 #define ATTESTATION_SERVER_DBUS_SERVICE_H_
 
-#include <base/memory/scoped_ptr.h>
+#include <memory>
+
 #include <chromeos/dbus/dbus_method_response.h>
 #include <chromeos/dbus/dbus_object.h>
 #include <dbus/bus.h>
@@ -39,7 +40,7 @@ class DBusService {
 
   // Handles a CreateGoogleAttestedKey D-Bus call.
   void HandleCreateGoogleAttestedKey(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<
+      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
           const CreateGoogleAttestedKeyReply&>> response,
       const CreateGoogleAttestedKeyRequest& request);
 

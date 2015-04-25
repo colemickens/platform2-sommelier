@@ -9,7 +9,7 @@
 #include <string>
 
 #include <base/strings/string_piece.h>
-#include <base/memory/scoped_ptr.h>
+#include <base/memory/ref_counted.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/daemons/daemon.h>
 #include <chromeos/dbus/exported_object_manager.h>

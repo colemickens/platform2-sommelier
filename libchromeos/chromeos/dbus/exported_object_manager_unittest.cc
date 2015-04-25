@@ -131,9 +131,8 @@ class ExportedObjectManagerTest : public ::testing::Test {
 
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
-  scoped_ptr<ExportedObjectManager> om_;
+  std::unique_ptr<ExportedObjectManager> om_;
   ExportedPropertySet::PropertyWriter property_writer_;
-  scoped_ptr<dbus::Response> last_response_;
 };
 
 TEST_F(ExportedObjectManagerTest, ClaimInterfaceSendsSignals) {

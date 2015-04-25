@@ -46,7 +46,8 @@ const char kTestMethod_WithMessageAsync[] = "TestWithMessageAsync";
 struct Calc {
   int Add(int x, int y) { return x + y; }
   int Negate(int x) { return -x; }
-  void Positive(scoped_ptr<DBusMethodResponse<double>> response, double x) {
+  void Positive(std::unique_ptr<DBusMethodResponse<double>> response,
+                double x) {
     if (x >= 0.0) {
       response->Return(x);
       return;
@@ -82,8 +83,9 @@ bool TestWithMessage(ErrorPtr* error,
   return true;
 }
 
-void TestWithMessageAsync(scoped_ptr<DBusMethodResponse<std::string>> response,
-                         dbus::Message* message) {
+void TestWithMessageAsync(
+    std::unique_ptr<DBusMethodResponse<std::string>> response,
+    dbus::Message* message) {
   response->Return(message->GetSender());
 }
 

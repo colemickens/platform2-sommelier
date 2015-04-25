@@ -5,7 +5,7 @@
 #ifndef APMANAGER_DAEMON_H_
 #define APMANAGER_DAEMON_H_
 
-#include <base/cancelable_callback.h>
+#include <base/callback_forward.h>
 #include <chromeos/daemons/dbus_daemon.h>
 
 #include "apmanager/manager.h"

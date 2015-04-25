@@ -179,10 +179,10 @@ class Test2Interface {
   virtual std::string Kaneda2(
       const std::string& in_iwata) const = 0;
   virtual void Tetsuo2(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<int64_t>> response,
+      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<int64_t>> response,
       int32_t in_1) = 0;
   virtual void Kei2(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<bool>> response,
+      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<bool>> response,
       dbus::Message* message) = 0;
 };
 

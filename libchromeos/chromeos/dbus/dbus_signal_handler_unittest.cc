@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include <base/memory/scoped_ptr.h>
 #include <chromeos/bind_lambda.h>
 #include <chromeos/dbus/dbus_param_writer.h>
 #include <dbus/mock_bus.h>

@@ -162,10 +162,10 @@ class ExportedPropertySetTest : public ::testing::Test {
     return testing::CallMethod(p_->dbus_object_, &method_call);
   }
 
-  scoped_ptr<dbus::Response> last_response_;
+  std::unique_ptr<dbus::Response> last_response_;
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
-  scoped_ptr<Properties> p_;
+  std::unique_ptr<Properties> p_;
 };
 
 template<typename T>

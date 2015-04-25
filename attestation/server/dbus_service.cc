@@ -36,7 +36,7 @@ void DBusService::Register(const CompletionAction& callback) {
 }
 
 void DBusService::HandleCreateGoogleAttestedKey(
-    scoped_ptr<DBusMethodResponse<const CreateGoogleAttestedKeyReply&>>
+    std::unique_ptr<DBusMethodResponse<const CreateGoogleAttestedKeyReply&>>
         response,
     const CreateGoogleAttestedKeyRequest& request) {
   VLOG(1) << __func__;

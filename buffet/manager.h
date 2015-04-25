@@ -37,7 +37,7 @@ class BuffetConfig;
 
 template<typename... Types>
 using DBusMethodResponse =
-    scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<Types...>>;
+    std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<Types...>>;
 
 // The Manager is responsible for global state of Buffet.  It exposes
 // interfaces which affect the entire device such as device registration and
@@ -74,7 +74,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   void GetCommand(DBusMethodResponse<std::string> response,
                   const std::string& id) override;
   void SetCommandVisibility(
-      scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<>> response,
+      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<>> response,
       const std::vector<std::string>& in_names,
       const std::string& in_visibility) override;
   std::string TestMethod(const std::string& message) override;

@@ -24,7 +24,7 @@ DBusMethodResponseBase::~DBusMethodResponseBase() {
 void DBusMethodResponseBase::ReplyWithError(const chromeos::Error* error) {
   CheckCanSendResponse();
   auto response = GetDBusError(method_call_, error);
-  SendRawResponse(scoped_ptr<dbus::Response>(response.release()));
+  SendRawResponse(std::move(response));
 }
 
 void DBusMethodResponseBase::ReplyWithError(
@@ -38,19 +38,20 @@ void DBusMethodResponseBase::ReplyWithError(
 }
 
 void DBusMethodResponseBase::Abort() {
-  SendRawResponse(scoped_ptr<dbus::Response>());
+  SendRawResponse(std::unique_ptr<dbus::Response>());
 }
 
 void DBusMethodResponseBase::SendRawResponse(
-    scoped_ptr<dbus::Response> response) {
+    std::unique_ptr<dbus::Response> response) {
   CheckCanSendResponse();
   method_call_ = nullptr;  // Mark response as sent.
-  sender_.Run(response.Pass());
+  sender_.Run(scoped_ptr<dbus::Response>{response.release()});
 }
 
-scoped_ptr<dbus::Response>
+std::unique_ptr<dbus::Response>
 DBusMethodResponseBase::CreateCustomResponse() const {
-  return dbus::Response::FromMethodCall(method_call_);
+  return std::unique_ptr<dbus::Response>{
+      dbus::Response::FromMethodCall(method_call_).release()};
 }
 
 bool DBusMethodResponseBase::IsResponseSent() const {

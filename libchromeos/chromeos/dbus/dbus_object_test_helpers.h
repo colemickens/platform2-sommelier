@@ -91,17 +91,18 @@ struct MethodHandlerInvoker {
   static RetType Call(
       ErrorPtr* error,
       Class* instance,
-      void(Class::*method)(scoped_ptr<DBusMethodResponse<RetType>>, Params...),
+      void(Class::*method)(std::unique_ptr<DBusMethodResponse<RetType>>,
+                           Params...),
       Args... args) {
     ResponseHolder response_holder;
     dbus::MethodCall method_call("test.interface", "TestMethod");
     method_call.SetSerial(123);
-    scoped_ptr<DBusMethodResponse<RetType>> method_response{
+    std::unique_ptr<DBusMethodResponse<RetType>> method_response{
       new DBusMethodResponse<RetType>(
         &method_call, base::Bind(&ResponseHolder::ReceiveResponse,
                                  response_holder.AsWeakPtr()))
     };
-    (instance->*method)(method_response.Pass(), args...);
+    (instance->*method)(std::move(method_response), args...);
     CHECK(response_holder.response_.get())
         << "No response received. Asynchronous methods are not supported.";
     RetType ret_val;
@@ -118,17 +119,17 @@ struct MethodHandlerInvoker<void> {
   static void Call(
       ErrorPtr* error,
       Class* instance,
-      void(Class::*method)(scoped_ptr<DBusMethodResponse<>>, Params...),
+      void(Class::*method)(std::unique_ptr<DBusMethodResponse<>>, Params...),
       Args... args) {
     ResponseHolder response_holder;
     dbus::MethodCall method_call("test.interface", "TestMethod");
     method_call.SetSerial(123);
-    scoped_ptr<DBusMethodResponse<>> method_response{
+    std::unique_ptr<DBusMethodResponse<>> method_response{
       new DBusMethodResponse<>(&method_call,
                                base::Bind(&ResponseHolder::ReceiveResponse,
                                           response_holder.AsWeakPtr()))
     };
-    (instance->*method)(method_response.Pass(), args...);
+    (instance->*method)(std::move(method_response), args...);
     CHECK(response_holder.response_.get())
         << "No response received. Asynchronous methods are not supported.";
     ExtractMethodCallResults(response_holder.response_.get(), error);

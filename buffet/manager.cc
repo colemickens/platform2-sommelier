@@ -210,7 +210,7 @@ void Manager::GetCommand(DBusMethodResponse<std::string> response,
 }
 
 void Manager::SetCommandVisibility(
-    scoped_ptr<chromeos::dbus_utils::DBusMethodResponse<>> response,
+    std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<>> response,
     const std::vector<std::string>& in_names,
     const std::string& in_visibility) {
   CommandDefinition::Visibility visibility;
