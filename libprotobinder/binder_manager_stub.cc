@@ -4,6 +4,8 @@
 
 #include "libprotobinder/binder_manager_stub.h"
 
+#include <base/logging.h>
+
 #include "libprotobinder/binder_proxy.h"
 #include "libprotobinder/ibinder.h"
 #include "libprotobinder/iinterface.h"
