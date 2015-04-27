@@ -25,14 +25,14 @@ class ContainerSpec;
 
 namespace psyche {
 
+class CellInterface;
 class ClientInterface;
-class ContainerInterface;
 class FactoryInterface;
 class GermConnection;
 class ServiceInterface;
 class SomaConnection;
 
-// Owns Container and Client objects and manages communication with them.
+// Owns Cell and Client objects and manages communication with them.
 class Registrar : public IPsychedHostInterface {
  public:
   Registrar();
@@ -49,20 +49,20 @@ class Registrar : public IPsychedHostInterface {
   int RequestService(RequestServiceRequest* in) override;
 
  private:
-  // Performs some validation of |container|, registers it in |containers_| and
-  // its services in |services_|, and launches it. Discards the container and
-  // returns false if validation or launching fails.
-  bool AddContainer(std::unique_ptr<ContainerInterface> container);
+  // Performs some validation of |cell|, registers it in |cells_| and its
+  // services in |services_|, and launches it. Discards the cell and returns
+  // false if validation or launching fails.
+  bool AddCell(std::unique_ptr<CellInterface> cell);
 
   // Returns the object representing |service_name|. If the service isn't
-  // present in |services_| and |create_container| is true, fetches its
+  // present in |services_| and |create_cell| is true, fetches its
   // ContainerSpec from soma, launches it, and adds the service to |services_|.
   ServiceInterface* GetService(const std::string& service_name,
-                               bool create_container);
+                               bool create_cell);
 
   // Requests persistent ContainerSpecs from soma and creates corresponding
-  // container objects.
-  void CreatePersistentContainers();
+  // cell objects.
+  void CreatePersistentCells();
 
   // Callback invoked when the remote side of a client's binder is closed.
   void HandleClientBinderDeath(int32_t handle);
@@ -70,21 +70,19 @@ class Registrar : public IPsychedHostInterface {
   // Initialized by Init() if not already set by SetFactoryForTesting().
   std::unique_ptr<FactoryInterface> factory_;
 
-  // Containers that have been created by psyche, keyed by container name.
-  using ContainerMap =
-      std::map<std::string, std::unique_ptr<ContainerInterface>>;
-  ContainerMap containers_;
+  // Cells that have been created by psyche, keyed by cell name.
+  using CellMap = std::map<std::string, std::unique_ptr<CellInterface>>;
+  CellMap cells_;
 
   // Services that were registered via RegisterService() but that aren't listed
-  // by a container that was previously started, keyed by service name.
-  // TODO(derat): Remove this once everything is running in containers.
+  // by a cell that was previously started, keyed by service name.
+  // TODO(derat): Remove this once everything is running in cells.
   using ServiceMap = std::map<std::string, std::unique_ptr<ServiceInterface>>;
-  ServiceMap non_container_services_;
+  ServiceMap non_cell_services_;
 
   // Bare pointers to known (but possibly not-yet-registered) services, keyed by
   // service name. The underlying ServiceInterface objects are owned either by
-  // ContainerInterface objects in |containers_| or by
-  // |non_container_services_|.
+  // CellInterface objects in |cells_| or by |non_cell_services_|.
   using ServicePtrMap = std::map<std::string, ServiceInterface*>;
   ServicePtrMap services_;
 
@@ -95,7 +93,7 @@ class Registrar : public IPsychedHostInterface {
   // Connection to somad used to look up ContainerSpecs.
   std::unique_ptr<SomaConnection> soma_;
 
-  // Connection to germd used to launch containers.
+  // Connection to germd used to launch cells.
   std::unique_ptr<GermConnection> germ_;
 
   // This member should appear last.

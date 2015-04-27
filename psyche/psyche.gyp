@@ -47,8 +47,8 @@
         },
       },
       'sources': [
+        'psyched/cell.cc',
         'psyched/client.cc',
-        'psyched/container.cc',
         'psyched/germ_connection.cc',
         'psyched/registrar.cc',
         'psyched/service.cc',
@@ -82,10 +82,10 @@
           ],
           'sources': [
             'common/testrunner.cc',
+            'psyched/cell_stub.cc',
+            'psyched/cell_unittest.cc',
             'psyched/client_stub.cc',
             'psyched/client_unittest.cc',
-            'psyched/container_stub.cc',
-            'psyched/container_unittest.cc',
             'psyched/registrar_unittest.cc',
             'psyched/service_stub.cc',
             'psyched/service_unittest.cc',

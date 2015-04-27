@@ -15,8 +15,8 @@
 
 namespace psyche {
 
+class CellStub;
 class ClientStub;
-class ContainerStub;
 class ServiceStub;
 
 // Implementation of FactoryInterface that just returns stub objects. Used for
@@ -27,18 +27,17 @@ class StubFactory : public FactoryInterface {
   ~StubFactory() override;
 
   // Returns the last-created stub for the given identifier.
-  ContainerStub* GetContainer(const std::string& container_name);
+  CellStub* GetCell(const std::string& cell_name);
   ServiceStub* GetService(const std::string& service_name);
   ClientStub* GetClient(const protobinder::BinderProxy& client_proxy);
 
-  // Sets the container that will be returned for a CreateContainer() call for a
-  // ContainerSpec named |container_name|. If CreateContainer() is called for a
-  // container not present here, a new stub will be created automatically.
-  void SetContainer(const std::string& container_name,
-                    std::unique_ptr<ContainerStub> container);
+  // Sets the cell that will be returned for a CreateCell() call for a CellSpec
+  // named |cell_name|. If CreateCell() is called for a cell not present here, a
+  // new stub will be created automatically.
+  void SetCell(const std::string& cell_name, std::unique_ptr<CellStub> cell);
 
   // FactoryInterface:
-  std::unique_ptr<ContainerInterface> CreateContainer(
+  std::unique_ptr<CellInterface> CreateCell(
       const soma::ContainerSpec& spec) override;
   std::unique_ptr<ServiceInterface> CreateService(
       const std::string& name) override;
@@ -46,16 +45,16 @@ class StubFactory : public FactoryInterface {
       std::unique_ptr<protobinder::BinderProxy> client_proxy) override;
 
  private:
-  // Containers, services, and clients that have been returned by Create*().
-  // Keyed by container name, service name, and client proxy handle,
-  // respectively. Objects are owned by Registrar.
-  std::map<std::string, ContainerStub*> containers_;
+  // Cells, services, and clients that have been returned by Create*(). Keyed by
+  // cell name, service name, and client proxy handle, respectively. Objects are
+  // owned by Registrar.
+  std::map<std::string, CellStub*> cells_;
   std::map<std::string, ServiceStub*> services_;
   std::map<uint32_t, ClientStub*> clients_;
 
-  // Preset containers to return in response to CreateContainer() calls, keyed
-  // by container name.
-  std::map<std::string, std::unique_ptr<ContainerStub>> new_containers_;
+  // Preset cells to return in response to CreateCell() calls, keyed by cell
+  // name.
+  std::map<std::string, std::unique_ptr<CellStub>> new_cells_;
 
   DISALLOW_COPY_AND_ASSIGN(StubFactory);
 };

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PSYCHE_PSYCHED_CONTAINER_H_
-#define PSYCHE_PSYCHED_CONTAINER_H_
+#ifndef PSYCHE_PSYCHED_CELL_H_
+#define PSYCHE_PSYCHED_CELL_H_
 
 #include <map>
 #include <memory>
@@ -21,42 +21,40 @@ class GermConnection;
 class ServiceInterface;
 
 // Corresponds to a ContainerSpec returned by soma and launched one or more
-// times by germ. This class persists across multiple launches of the container.
-class ContainerInterface {
+// times by germ. This class persists across multiple launches of the cell.
+class CellInterface {
  public:
   // Keyed by service name.
   using ServiceMap = std::map<std::string, std::unique_ptr<ServiceInterface>>;
 
-  virtual ~ContainerInterface() = default;
+  virtual ~CellInterface() = default;
 
-  // Returns this container's name.
+  // Returns this cell's name.
   virtual std::string GetName() const = 0;
 
-  // Returns the services provided by this container. Binder proxies for these
+  // Returns the services provided by this cell. Binder proxies for these
   // services have not necessarily been registered yet.
   virtual const ServiceMap& GetServices() const = 0;
 
-  // Launches the container. Returns whether the container was launched
-  // successfully.
+  // Launches the cell. Returns whether the cell was launched successfully.
   virtual bool Launch() = 0;
 
-  // Terminates the container. Returns whether the container was terminated
-  // successfully.
+  // Terminates the cell. Returns whether the cell was terminated successfully.
   virtual bool Terminate() = 0;
 };
 
-// The real implementation of ContainerInterface.
-class Container : public ContainerInterface, public ServiceObserver {
+// The real implementation of CellInterface.
+class Cell : public CellInterface, public ServiceObserver {
  public:
   // |factory| is used to construct ServiceInterface objects, permitting tests
   // to create stub services instead. Note: Ownership of |germ| remains with
   // the caller.
-  Container(const soma::ContainerSpec& spec,
-            FactoryInterface* factory,
-            GermConnection* germ);
-  ~Container() override;
+  Cell(const soma::ContainerSpec& spec,
+       FactoryInterface* factory,
+       GermConnection* germ);
+  ~Cell() override;
 
-  // ContainerInterface:
+  // CellInterface:
   std::string GetName() const override;
   const ServiceMap& GetServices() const override;
   bool Launch() override;
@@ -66,25 +64,25 @@ class Container : public ContainerInterface, public ServiceObserver {
   void OnServiceProxyChange(ServiceInterface* service) override;
 
  private:
-  // The specification describing this container.
+  // The specification describing this cell.
   soma::ContainerSpec spec_;
 
-  // Services that are provided by this container. These are created when the
-  // service is created; the binder proxies that are given to clients are set
-  // later when the services are registered.
+  // Services that are provided by this cell. These are created when the service
+  // is created; the binder proxies that are given to clients are set later when
+  // the services are registered.
   ServiceMap services_;
 
-  // Connection to germd to launch the container. Note: This class doesn't own
-  // the GermConnection object.
+  // Connection to germd to launch the cell. Note: This class doesn't own the
+  // GermConnection object.
   GermConnection* germ_connection_;
 
-  // PID of the germ-provided init process inside the container, which can be
-  // used to terminate all the processes in the container.
+  // PID of the germ-provided init process inside the cell, which can be used to
+  // terminate all the processes in the cell.
   int init_pid_;
 
-  DISALLOW_COPY_AND_ASSIGN(Container);
+  DISALLOW_COPY_AND_ASSIGN(Cell);
 };
 
 }  // namespace psyche
 
-#endif  // PSYCHE_PSYCHED_CONTAINER_H_
+#endif  // PSYCHE_PSYCHED_CELL_H_

@@ -9,8 +9,8 @@
 #include <protobinder/binder_proxy.h>
 
 #include "psyche/proto_bindings/soma_container_spec.pb.h"
+#include "psyche/psyched/cell_stub.h"
 #include "psyche/psyched/client_stub.h"
-#include "psyche/psyched/container_stub.h"
 #include "psyche/psyched/service_stub.h"
 
 using protobinder::BinderProxy;
@@ -21,9 +21,9 @@ StubFactory::StubFactory() = default;
 
 StubFactory::~StubFactory() = default;
 
-ContainerStub* StubFactory::GetContainer(const std::string& container_name) {
-  auto const it = containers_.find(container_name);
-  return it != containers_.end() ? it->second : nullptr;
+CellStub* StubFactory::GetCell(const std::string& cell_name) {
+  auto const it = cells_.find(cell_name);
+  return it != cells_.end() ? it->second : nullptr;
 }
 
 ServiceStub* StubFactory::GetService(const std::string& service_name) {
@@ -36,27 +36,27 @@ ClientStub* StubFactory::GetClient(const BinderProxy& client_proxy) {
   return it != clients_.end() ? it->second : nullptr;
 }
 
-void StubFactory::SetContainer(const std::string& container_name,
-                               std::unique_ptr<ContainerStub> container) {
-  new_containers_[container_name] = std::move(container);
+void StubFactory::SetCell(const std::string& cell_name,
+                          std::unique_ptr<CellStub> cell) {
+  new_cells_[cell_name] = std::move(cell);
 }
 
-std::unique_ptr<ContainerInterface> StubFactory::CreateContainer(
+std::unique_ptr<CellInterface> StubFactory::CreateCell(
     const soma::ContainerSpec& spec) {
-  const std::string& container_name = spec.name();
-  std::unique_ptr<ContainerStub> container;
-  auto it = new_containers_.find(container_name);
-  if (it != new_containers_.end()) {
-    container = std::move(it->second);
-    new_containers_.erase(it);
+  const std::string& cell_name = spec.name();
+  std::unique_ptr<CellStub> cell;
+  auto it = new_cells_.find(cell_name);
+  if (it != new_cells_.end()) {
+    cell = std::move(it->second);
+    new_cells_.erase(it);
   } else {
-    container.reset(new ContainerStub(container_name));
+    cell.reset(new CellStub(cell_name));
     for (const auto& service_name : spec.service_names())
-      container->AddService(service_name);
+      cell->AddService(service_name);
   }
 
-  containers_[container->GetName()] = container.get();
-  return std::unique_ptr<ContainerInterface>(container.release());
+  cells_[cell->GetName()] = cell.get();
+  return std::unique_ptr<CellInterface>(cell.release());
 }
 
 std::unique_ptr<ServiceInterface> StubFactory::CreateService(

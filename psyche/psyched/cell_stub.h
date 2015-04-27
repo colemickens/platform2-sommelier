@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PSYCHE_PSYCHED_CONTAINER_STUB_H_
-#define PSYCHE_PSYCHED_CONTAINER_STUB_H_
+#ifndef PSYCHE_PSYCHED_CELL_STUB_H_
+#define PSYCHE_PSYCHED_CELL_STUB_H_
 
-#include "psyche/psyched/container.h"
+#include "psyche/psyched/cell.h"
 
 #include <memory>
 #include <string>
@@ -17,10 +17,10 @@ namespace psyche {
 class ServiceStub;
 
 // Stub implementation of ClientInterface used by tests.
-class ContainerStub : public ContainerInterface {
+class CellStub : public CellInterface {
  public:
-  explicit ContainerStub(const std::string& container_name);
-  ~ContainerStub() override;
+  explicit CellStub(const std::string& cell_name);
+  ~CellStub() override;
 
   int launch_count() const { return launch_count_; }
   void set_launch_return_value(bool value) {
@@ -31,7 +31,7 @@ class ContainerStub : public ContainerInterface {
   // pointer to it. Ownership of the stub remains with this class.
   ServiceStub* AddService(const std::string& service_name);
 
-  // ContainerInterface:
+  // CellInterface:
   std::string GetName() const override;
   const ServiceMap& GetServices() const override;
   bool Launch() override;
@@ -53,9 +53,9 @@ class ContainerStub : public ContainerInterface {
   // The return value of Terminate().
   bool terminate_return_value_;
 
-  DISALLOW_COPY_AND_ASSIGN(ContainerStub);
+  DISALLOW_COPY_AND_ASSIGN(CellStub);
 };
 
 }  // namespace psyche
 
-#endif  // PSYCHE_PSYCHED_CONTAINER_STUB_H_
+#endif  // PSYCHE_PSYCHED_CELL_STUB_H_

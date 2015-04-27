@@ -18,8 +18,8 @@ class ContainerSpec;
 
 namespace psyche {
 
+class CellInterface;
 class ClientInterface;
-class ContainerInterface;
 class ServiceInterface;
 
 // Interface to create various objects. Defined as an interface so unit tests
@@ -28,7 +28,7 @@ class FactoryInterface {
  public:
   virtual ~FactoryInterface() = default;
 
-  virtual std::unique_ptr<ContainerInterface> CreateContainer(
+  virtual std::unique_ptr<CellInterface> CreateCell(
       const soma::ContainerSpec& spec) = 0;
   virtual std::unique_ptr<ServiceInterface> CreateService(
       const std::string& name) = 0;

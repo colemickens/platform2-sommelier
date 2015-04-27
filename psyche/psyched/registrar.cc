@@ -19,8 +19,8 @@
 
 #include "psyche/common/constants.h"
 #include "psyche/proto_bindings/soma_container_spec.pb.h"
+#include "psyche/psyched/cell.h"
 #include "psyche/psyched/client.h"
-#include "psyche/psyched/container.h"
 #include "psyche/psyched/factory_interface.h"
 #include "psyche/psyched/germ_connection.h"
 #include "psyche/psyched/service.h"
@@ -39,10 +39,10 @@ class RealFactory : public FactoryInterface {
   ~RealFactory() override = default;
 
   // FactoryInterface:
-  std::unique_ptr<ContainerInterface> CreateContainer(
+  std::unique_ptr<CellInterface> CreateCell(
       const soma::ContainerSpec& spec) override {
-    return std::unique_ptr<ContainerInterface>(
-        new Container(spec, this, germ_connection_));
+    return std::unique_ptr<CellInterface>(
+        new Cell(spec, this, germ_connection_));
   }
   std::unique_ptr<ServiceInterface> CreateService(
       const std::string& name) override {
@@ -96,10 +96,10 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
   if (service_name == soma::kSomaServiceName) {
     const bool was_registered = soma_->HasProxy();
     soma_->SetProxy(std::move(proxy));
-    // Only create persistent containers the first time somad is registered --
-    // assume that the specs are the same if it crashes and gets restarted.
+    // Only create persistent cells the first time somad is registered -- assume
+    // that the specs are the same if it crashes and gets restarted.
     if (!was_registered)
-      CreatePersistentContainers();
+      CreatePersistentCells();
     out->set_success(true);
     return 0;
   } else if (service_name == germ::kGermServiceName) {
@@ -109,7 +109,7 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
   }
 
   ServiceInterface* service =
-      GetService(service_name, false /* create_container */);
+      GetService(service_name, false /* create_cell */);
   if (service) {
     // The service is already known, but maybe its proxy wasn't registered or
     // has died.
@@ -120,11 +120,11 @@ int Registrar::RegisterService(RegisterServiceRequest* in,
       return 0;
     }
   } else {
-    // This service wasn't already registered or claimed by a container that we
+    // This service wasn't already registered or claimed by a cell that we
     // launched. Go ahead and create a new object to track it.
-    // TODO(derat): Don't allow non-container services after everything is
-    // running within containers.
-    const auto& it = non_container_services_.emplace(
+    // TODO(derat): Don't allow non-cell services after everything is
+    // running within cells.
+    const auto& it = non_cell_services_.emplace(
         service_name, factory_->CreateService(service_name)).first;
     service = it->second.get();
     services_.emplace(service_name, service);
@@ -156,7 +156,7 @@ int Registrar::RequestService(RequestServiceRequest* in) {
   ClientInterface* client = client_it->second.get();
 
   ServiceInterface* service =
-      GetService(service_name, true /* create_container */);
+      GetService(service_name, true /* create_cell */);
   if (!service) {
     LOG(WARNING) << "Service \"" << service_name << "\" is unknown";
     client->ReportServiceRequestFailure(service_name);
@@ -175,46 +175,46 @@ int Registrar::RequestService(RequestServiceRequest* in) {
   return 0;
 }
 
-bool Registrar::AddContainer(std::unique_ptr<ContainerInterface> container) {
-  const std::string container_name = container->GetName();
+bool Registrar::AddCell(std::unique_ptr<CellInterface> cell) {
+  const std::string cell_name = cell->GetName();
 
-  if (containers_.count(container_name)) {
+  if (cells_.count(cell_name)) {
     // This means that somad for some reason returned this ContainerSpec
     // earlier, but it didn't previously list the service that we're looking for
     // now.
-    LOG(WARNING) << "Container \"" << container_name << "\" already exists";
+    LOG(WARNING) << "Cell \"" << cell_name << "\" already exists";
     return false;
   }
 
-  for (const auto& service_it : container->GetServices()) {
+  for (const auto& service_it : cell->GetServices()) {
     if (services_.count(service_it.first)) {
       // This means that somad didn't validate that a ContainerSpec doesn't list
       // any services outside of its service namespace, or that this service was
-      // already registered in |non_container_services_|.
-      LOG(WARNING) << "Container \"" << container_name << "\" provides already-"
-                   << "known service \"" << service_it.first << "\"";
+      // already registered in |non_cell_services_|.
+      LOG(WARNING) << "Cell \"" << cell_name << "\" provides already-known "
+                   << "service \"" << service_it.first << "\"";
       return false;
     }
   }
 
-  if (!container->Launch()) {
-    LOG(WARNING) << "Container \"" << container_name << "\" failed to launch";
+  if (!cell->Launch()) {
+    LOG(WARNING) << "Cell \"" << cell_name << "\" failed to launch";
     return false;
   }
 
-  for (const auto& service_it : container->GetServices())
+  for (const auto& service_it : cell->GetServices())
     services_[service_it.first] = service_it.second.get();
-  containers_.emplace(container_name, std::move(container));
+  cells_.emplace(cell_name, std::move(cell));
   return true;
 }
 
 ServiceInterface* Registrar::GetService(const std::string& service_name,
-                                        bool create_container) {
+                                        bool create_cell) {
   auto it = services_.find(service_name);
   if (it != services_.end())
     return it->second;
 
-  if (!create_container)
+  if (!create_cell)
     return nullptr;
 
   soma::ContainerSpec spec;
@@ -229,19 +229,18 @@ ServiceInterface* Registrar::GetService(const std::string& service_name,
     return nullptr;
   }
 
-  std::unique_ptr<ContainerInterface> container =
-      factory_->CreateContainer(spec);
-  LOG(INFO) << "Created ephemeral container \"" << container->GetName() << "\"";
+  std::unique_ptr<CellInterface> cell = factory_->CreateCell(spec);
+  LOG(INFO) << "Created ephemeral cell \"" << cell->GetName() << "\"";
 
-  if (!container->GetServices().count(service_name)) {
+  if (!cell->GetServices().count(service_name)) {
     // This happens if we get a request for a service that doesn't exist that's
     // in a service namespace that _does_ exist.
-    LOG(WARNING) << "Container \"" << container->GetName() << "\" doesn't "
+    LOG(WARNING) << "Cell \"" << cell->GetName() << "\" doesn't "
                  << "provide service \"" << service_name << "\"";
     return nullptr;
   }
 
-  if (!AddContainer(std::move(container)))
+  if (!AddCell(std::move(cell)))
     return nullptr;
 
   it = services_.find(service_name);
@@ -249,7 +248,7 @@ ServiceInterface* Registrar::GetService(const std::string& service_name,
   return it->second;
 }
 
-void Registrar::CreatePersistentContainers() {
+void Registrar::CreatePersistentCells() {
   std::vector<soma::ContainerSpec> specs;
   SomaConnection::Result result = soma_->GetPersistentContainerSpecs(&specs);
   if (result != SomaConnection::Result::SUCCESS) {
@@ -259,11 +258,9 @@ void Registrar::CreatePersistentContainers() {
   }
 
   for (const auto& spec : specs) {
-    std::unique_ptr<ContainerInterface> container =
-        factory_->CreateContainer(spec);
-    LOG(INFO) << "Created persistent container \""
-              << container->GetName() << "\"";
-    AddContainer(std::move(container));
+    std::unique_ptr<CellInterface> cell = factory_->CreateCell(spec);
+    LOG(INFO) << "Created persistent cell \"" << cell->GetName() << "\"";
+    AddCell(std::move(cell));
   }
 }
 

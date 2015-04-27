@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "psyche/psyched/container.h"
+#include "psyche/psyched/cell.h"
 
 #include <string>
 #include <vector>
@@ -44,25 +44,25 @@ class GermInterfaceStub : public germ::IGerm {
   void set_terminate_return_value(int value) {
     terminate_return_value_ = value;
   }
-  const std::vector<std::string>& launched_container_names() const {
-    return launched_container_names_;
+  const std::vector<std::string>& launched_cell_names() const {
+    return launched_cell_names_;
   }
-  const std::vector<int>& terminated_container_pids() const {
-    return terminated_container_pids_;
+  const std::vector<int>& terminated_cell_pids() const {
+    return terminated_cell_pids_;
   }
 
   // IGerm:
   int Launch(germ::LaunchRequest* in, germ::LaunchResponse* out) override {
     out->set_success(launch_success_);
     out->set_pid(launch_pid_);
-    launched_container_names_.push_back(in->spec().name());
+    launched_cell_names_.push_back(in->spec().name());
     return launch_return_value_;
   }
 
   int Terminate(germ::TerminateRequest* in,
                 germ::TerminateResponse* out) override {
     out->set_success(terminate_success_);
-    terminated_container_pids_.push_back(in->pid());
+    terminated_cell_pids_.push_back(in->pid());
     return terminate_return_value_;
   }
 
@@ -82,23 +82,23 @@ class GermInterfaceStub : public germ::IGerm {
   // germ success field returned by TerminateResponse.
   bool terminate_success_;
 
-  // A list of the ContainerSpec names passed to Launch().
-  std::vector<std::string> launched_container_names_;
+  // Cell names passed to Launch().
+  std::vector<std::string> launched_cell_names_;
 
-  // A list of the ContainerSpec init PIDs passed to Terminate().
-  std::vector<int> terminated_container_pids_;
+  // Cell init PIDs passed to Terminate().
+  std::vector<int> terminated_cell_pids_;
 
   DISALLOW_COPY_AND_ASSIGN(GermInterfaceStub);
 };
 
-class ContainerTest : public BinderTestBase {
+class CellTest : public BinderTestBase {
  public:
-  ContainerTest()
+  CellTest()
       : germ_proxy_(nullptr),
         germ_(nullptr) {
     InitGerm();
   }
-  ~ContainerTest() override = default;
+  ~CellTest() override = default;
 
  protected:
   // Initializes |germ_proxy_| and |germ_| and registers them with
@@ -117,13 +117,13 @@ class ContainerTest : public BinderTestBase {
   GermInterfaceStub* germ_;  // Owned by |binder_manager_|.
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(ContainerTest);
+  DISALLOW_COPY_AND_ASSIGN(CellTest);
 };
 
-TEST_F(ContainerTest, InitializeFromSpec) {
+TEST_F(CellTest, InitializeFromSpec) {
   ContainerSpec spec;
-  const std::string kContainerName("/tmp/org.example.container");
-  spec.set_name(kContainerName);
+  const std::string kCellName("/tmp/org.example.cell");
+  spec.set_name(kCellName);
   const std::vector<std::string> kServiceNames = {
     "org.example.search.query",
     "org.example.search.autocomplete",
@@ -131,11 +131,11 @@ TEST_F(ContainerTest, InitializeFromSpec) {
   for (const auto& name : kServiceNames)
     spec.add_service_names(name);
 
-  Container container(spec, &factory_, &germ_connection_);
-  EXPECT_EQ(kContainerName, container.GetName());
+  Cell cell(spec, &factory_, &germ_connection_);
+  EXPECT_EQ(kCellName, cell.GetName());
 
   // Check that all of the listed services were created.
-  const ContainerInterface::ServiceMap& services = container.GetServices();
+  const CellInterface::ServiceMap& services = cell.GetServices();
   for (const auto& name : kServiceNames) {
     SCOPED_TRACE(name);
     const auto it = services.find(name);
@@ -143,51 +143,51 @@ TEST_F(ContainerTest, InitializeFromSpec) {
     EXPECT_EQ(factory_.GetService(name), it->second.get());
   }
 
-  // Modify the spec that was passed in to verify that Container made its own
-  // copy of it.
+  // Modify the spec that was passed in to verify that Cell made its own copy of
+  // it.
   spec.set_name("/some/other/name");
-  EXPECT_EQ(kContainerName, container.GetName());
+  EXPECT_EQ(kCellName, cell.GetName());
 }
 
 // Tests various failures when communicating with germd.
-TEST_F(ContainerTest, GermCommunication) {
+TEST_F(CellTest, GermCommunication) {
   ContainerSpec spec;
-  const std::string kContainerName("/tmp/org.example.container");
-  const int kContainerPid(123);
-  spec.set_name(kContainerName);
-  germ_->set_launch_pid(kContainerPid);
+  const std::string kCellName("/tmp/org.example.cell");
+  const int kCellPid(123);
+  spec.set_name(kCellName);
+  germ_->set_launch_pid(kCellPid);
 
-  Container container(spec, &factory_, &germ_connection_);
+  Cell cell(spec, &factory_, &germ_connection_);
 
   // Failure should be reported for RPC errors.
   germ_->set_launch_return_value(-1);
-  EXPECT_FALSE(container.Launch());
+  EXPECT_FALSE(cell.Launch());
 
   // Now report that the germd binder proxy died.
   germ_->set_launch_return_value(0);
   binder_manager_->ReportBinderDeath(germ_proxy_);
-  EXPECT_FALSE(container.Launch());
+  EXPECT_FALSE(cell.Launch());
 
   // Register a new proxy for germd and check that the next service request is
   // successful.
   InitGerm();
-  EXPECT_TRUE(container.Launch());
-  ASSERT_EQ(1, germ_->launched_container_names().size());
-  EXPECT_EQ(kContainerName, germ_->launched_container_names()[0]);
+  EXPECT_TRUE(cell.Launch());
+  ASSERT_EQ(1, germ_->launched_cell_names().size());
+  EXPECT_EQ(kCellName, germ_->launched_cell_names()[0]);
 
   // Make similar calls to Terminate() as Launch(), showing failures for RPC,
   // binder death, and restart and success.
   germ_->set_terminate_return_value(-1);
-  EXPECT_FALSE(container.Terminate());
+  EXPECT_FALSE(cell.Terminate());
 
   germ_->set_terminate_return_value(0);
   binder_manager_->ReportBinderDeath(germ_proxy_);
-  EXPECT_FALSE(container.Terminate());
+  EXPECT_FALSE(cell.Terminate());
 
   InitGerm();
-  EXPECT_TRUE(container.Terminate());
-  ASSERT_EQ(1, germ_->terminated_container_pids().size());
-  EXPECT_EQ(kContainerPid, germ_->terminated_container_pids()[0]);
+  EXPECT_TRUE(cell.Terminate());
+  ASSERT_EQ(1, germ_->terminated_cell_pids().size());
+  EXPECT_EQ(kCellPid, germ_->terminated_cell_pids()[0]);
 }
 
 }  // namespace

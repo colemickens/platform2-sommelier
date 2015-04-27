@@ -25,8 +25,8 @@
 #include "psyche/proto_bindings/soma.pb.h"
 #include "psyche/proto_bindings/soma.pb.rpc.h"
 #include "psyche/proto_bindings/soma_container_spec.pb.h"
+#include "psyche/psyched/cell_stub.h"
 #include "psyche/psyched/client_stub.h"
-#include "psyche/psyched/container_stub.h"
 #include "psyche/psyched/service_stub.h"
 #include "psyche/psyched/stub_factory.h"
 
@@ -92,7 +92,7 @@ class RegistrarTest : public BinderTestBase {
         registrar_(new Registrar),
         soma_proxy_(nullptr),
         // Create an interface immediately so that tests can add persistent
-        // containers to it before calling Init().
+        // cells to it before calling Init().
         soma_(new SomaInterfaceStub) {
     registrar_->SetFactoryForTesting(
         std::unique_ptr<FactoryInterface>(factory_));
@@ -190,38 +190,36 @@ class RegistrarTest : public BinderTestBase {
     return new_failures == initial_failures;
   }
 
-  // Creates a ContainerStub object named |container_name| and registers it in
+  // Creates a CellStub object named |cell_name| and registers it in
   // |soma_| and |factory_| so it'll be returned for a request for
   // |service_name|. The caller is responsible for calling the stub's
   // AddService() method to make it claim to provide services.
   //
   // The returned object is owned by |registrar_| (and may not
   // persist beyond the request if |registrar_| decides not to keep it).
-  ContainerStub* AddEphemeralContainer(const std::string& container_name,
-                                       const std::string& service_name) {
+  CellStub* AddEphemeralCell(const std::string& cell_name,
+                             const std::string& service_name) {
     ContainerSpec spec;
-    spec.set_name(container_name);
+    spec.set_name(cell_name);
     soma_->AddEphemeralContainerSpec(spec, service_name);
-    ContainerStub* container = new ContainerStub(container_name);
-    factory_->SetContainer(container_name,
-                           std::unique_ptr<ContainerStub>(container));
-    return container;
+    CellStub* cell = new CellStub(cell_name);
+    factory_->SetCell(cell_name, std::unique_ptr<CellStub>(cell));
+    return cell;
   }
 
-  // Creates a ContainerStub object named |container_name| and registers it in
-  // |soma_| and |factory_| so it'll be returned as a persistent container.
+  // Creates a CellStub object named |cell_name| and registers it in |soma_| and
+  // |factory_| so it'll be returned as a persistent cell.
   //
   // The returned object is owned by |registrar_| (and may not
   // persist beyond the request if |registrar_| decides not to keep it).
-  ContainerStub* AddPersistentContainer(const std::string& container_name) {
+  CellStub* AddPersistentCell(const std::string& cell_name) {
     ContainerSpec spec;
-    spec.set_name(container_name);
+    spec.set_name(cell_name);
     spec.set_is_persistent(true);
     soma_->AddPersistentContainerSpec(spec);
-    ContainerStub* container = new ContainerStub(container_name);
-    factory_->SetContainer(container_name,
-                           std::unique_ptr<ContainerStub>(container));
-    return container;
+    CellStub* cell = new CellStub(cell_name);
+    factory_->SetCell(cell_name, std::unique_ptr<CellStub>(cell));
+    return cell;
   }
 
   StubFactory* factory_;  // Owned by |registrar_|.
@@ -284,21 +282,20 @@ TEST_F(RegistrarTest, ReregisterService) {
 
 TEST_F(RegistrarTest, QuerySomaForServices) {
   Init();
-  const std::string kContainerName("/foo/org.example.container.json");
-  const std::string kService1Name("org.example.container.service1");
-  const std::string kService2Name("org.example.container.service2");
-  ContainerStub* container =
-      AddEphemeralContainer(kContainerName, kService1Name);
-  ServiceStub* service1 = container->AddService(kService1Name);
-  ServiceStub* service2 = container->AddService(kService2Name);
+  const std::string kCellName("/foo/org.example.cell.json");
+  const std::string kService1Name("org.example.cell.service1");
+  const std::string kService2Name("org.example.cell.service2");
+  CellStub* cell = AddEphemeralCell(kCellName, kService1Name);
+  ServiceStub* service1 = cell->AddService(kService1Name);
+  ServiceStub* service2 = cell->AddService(kService2Name);
 
-  // When a client requests the first service, check that the container is
-  // launched and that the client is added to the service (so it can be notified
-  // after the service is registered).
+  // When a client requests the first service, check that the cell is launched
+  // and that the client is added to the service (so it can be notified after
+  // the service is registered).
   BinderProxy* client1_proxy = CreateBinderProxy().release();
   EXPECT_TRUE(RequestService(kService1Name,
                              std::unique_ptr<BinderProxy>(client1_proxy)));
-  EXPECT_EQ(1, container->launch_count());
+  EXPECT_EQ(1, cell->launch_count());
   ClientStub* client1 = GetClientOrDie(*client1_proxy);
   EXPECT_TRUE(service1->HasClient(client1));
   EXPECT_FALSE(service2->HasClient(client1));
@@ -307,7 +304,7 @@ TEST_F(RegistrarTest, QuerySomaForServices) {
   BinderProxy* client2_proxy = CreateBinderProxy().release();
   EXPECT_TRUE(RequestService(kService1Name,
                              std::unique_ptr<BinderProxy>(client2_proxy)));
-  EXPECT_EQ(1, container->launch_count());
+  EXPECT_EQ(1, cell->launch_count());
   ClientStub* client2 = GetClientOrDie(*client2_proxy);
   EXPECT_TRUE(service1->HasClient(client2));
   EXPECT_FALSE(service2->HasClient(client2));
@@ -316,7 +313,7 @@ TEST_F(RegistrarTest, QuerySomaForServices) {
   BinderProxy* client3_proxy = CreateBinderProxy().release();
   EXPECT_TRUE(RequestService(kService2Name,
                              std::unique_ptr<BinderProxy>(client3_proxy)));
-  EXPECT_EQ(1, container->launch_count());
+  EXPECT_EQ(1, cell->launch_count());
   ClientStub* client3 = GetClientOrDie(*client3_proxy);
   EXPECT_FALSE(service1->HasClient(client3));
   EXPECT_TRUE(service2->HasClient(client3));
@@ -329,39 +326,37 @@ TEST_F(RegistrarTest, UnknownService) {
 
   // Create a ContainerSpec that'll get returned for a given service, but don't
   // make it claim to provide that service.
-  const std::string kContainerName("/foo/org.example.container.json");
-  const std::string kServiceName("org.example.container.service");
-  AddEphemeralContainer(kContainerName, kServiceName);
+  const std::string kCellName("/foo/org.example.cell.json");
+  const std::string kServiceName("org.example.cell.service");
+  AddEphemeralCell(kCellName, kServiceName);
 
   // A request for the service should fail.
   EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxy()));
   // TODO(derat): Once germd communication is present, check that no request was
-  // made to launch the container. We can't check the ContainerStub since it
-  // ought to have been deleted by this point.
+  // made to launch the cell. We can't check the CellStub since it ought to have
+  // been deleted by this point.
 }
 
 // Tests that a second ContainerSpec claiming to provide a service that's
 // already provided by an earlier ContainerSpec is ignored.
 TEST_F(RegistrarTest, DuplicateService) {
   Init();
-  const std::string kContainer1Name("/foo/org.example.container1.json");
-  const std::string kService1Name("org.example.container1.service");
-  ContainerStub* container1 =
-      AddEphemeralContainer(kContainer1Name, kService1Name);
-  container1->AddService(kService1Name);
+  const std::string kCell1Name("/foo/org.example.cell1.json");
+  const std::string kService1Name("org.example.cell1.service");
+  CellStub* cell1 = AddEphemeralCell(kCell1Name, kService1Name);
+  cell1->AddService(kService1Name);
 
   // Create a second spec, returned for a second service, that also claims
-  // ownership of the first container's service.
-  const std::string kContainer2Name("/foo/org.example.container2.json");
-  const std::string kService2Name("org.example.container2.service");
-  ContainerStub* container2 =
-      AddEphemeralContainer(kContainer2Name, kService2Name);
-  container2->AddService(kService1Name);
-  container2->AddService(kService2Name);
+  // ownership of the first cell's service.
+  const std::string kCell2Name("/foo/org.example.cell2.json");
+  const std::string kService2Name("org.example.cell2.service");
+  CellStub* cell2 = AddEphemeralCell(kCell2Name, kService2Name);
+  cell2->AddService(kService1Name);
+  cell2->AddService(kService2Name);
 
   // Requesting the first service should succeed, but requesting the second
-  // service should fail due to the second container claiming that it also
-  // provides the first service.
+  // service should fail due to the second cell claiming that it also provides
+  // the first service.
   EXPECT_TRUE(RequestService(kService1Name, CreateBinderProxy()));
   EXPECT_FALSE(RequestService(kService2Name, CreateBinderProxy()));
 }
@@ -371,41 +366,39 @@ TEST_F(RegistrarTest, DuplicateService) {
 // earlier) gets ignored.
 TEST_F(RegistrarTest, ServiceListChanged) {
   Init();
-  const std::string kContainerName("/foo/org.example.container.json");
-  const std::string kService1Name("org.example.container.service1");
-  ContainerStub* container1 =
-      AddEphemeralContainer(kContainerName, kService1Name);
-  container1->AddService(kService1Name);
+  const std::string kCellName("/foo/org.example.cell.json");
+  const std::string kService1Name("org.example.cell.service1");
+  CellStub* cell1 = AddEphemeralCell(kCellName, kService1Name);
+  cell1->AddService(kService1Name);
   EXPECT_TRUE(RequestService(kService1Name, CreateBinderProxy()));
 
   // A request for a second service that returns the already-created spec (which
   // didn't previously claim to provide the second service) should fail.
-  const std::string kService2Name("org.example.container.service2");
-  ContainerStub* container2 =
-      AddEphemeralContainer(kContainerName, kService2Name);
-  container2->AddService(kService1Name);
-  container2->AddService(kService2Name);
+  const std::string kService2Name("org.example.cell.service2");
+  CellStub* cell2 = AddEphemeralCell(kCellName, kService2Name);
+  cell2->AddService(kService1Name);
+  cell2->AddService(kService2Name);
   EXPECT_FALSE(RequestService(kService2Name, CreateBinderProxy()));
 }
 
 // Tests that persistent ContainerSpecs are fetched from soma during
 // initialization and launched.
-TEST_F(RegistrarTest, PersistentContainers) {
-  // Create two persistent containers with one service each.
-  const std::string kContainer1Name("/foo/org.example.container1.json");
-  const std::string kService1Name("org.example.container1.service");
-  ContainerStub* container1 = AddPersistentContainer(kContainer1Name);
-  ServiceStub* service1 = container1->AddService(kService1Name);
+TEST_F(RegistrarTest, PersistentCells) {
+  // Create two persistent cells with one service each.
+  const std::string kCell1Name("/foo/org.example.cell1.json");
+  const std::string kService1Name("org.example.cell1.service");
+  CellStub* cell1 = AddPersistentCell(kCell1Name);
+  ServiceStub* service1 = cell1->AddService(kService1Name);
 
-  const std::string kContainer2Name("/foo/org.example.container2.json");
-  const std::string kService2Name("org.example.container2.service");
-  ContainerStub* container2 = AddPersistentContainer(kContainer2Name);
-  ServiceStub* service2 = container2->AddService(kService2Name);
+  const std::string kCell2Name("/foo/org.example.cell2.json");
+  const std::string kService2Name("org.example.cell2.service");
+  CellStub* cell2 = AddPersistentCell(kCell2Name);
+  ServiceStub* service2 = cell2->AddService(kService2Name);
 
-  // After initialization, both containers should be launched.
+  // After initialization, both cells should be launched.
   Init();
-  EXPECT_EQ(1, container1->launch_count());
-  EXPECT_EQ(1, container2->launch_count());
+  EXPECT_EQ(1, cell1->launch_count());
+  EXPECT_EQ(1, cell2->launch_count());
 
   // Their services should also be available to clients.
   EXPECT_TRUE(RequestService(kService1Name, CreateBinderProxy()));
@@ -423,11 +416,10 @@ TEST_F(RegistrarTest, DontProvideSomaService) {
 // Tests various failures when communicating with somad.
 TEST_F(RegistrarTest, SomaFailures) {
   Init();
-  const std::string kContainerName("/foo/org.example.container.json");
-  const std::string kServiceName("org.example.container.service");
-  ContainerStub* container =
-      AddEphemeralContainer(kContainerName, kServiceName);
-  container->AddService(kServiceName);
+  const std::string kCellName("/foo/org.example.cell.json");
+  const std::string kServiceName("org.example.cell.service");
+  CellStub* cell = AddEphemeralCell(kCellName, kServiceName);
+  cell->AddService(kServiceName);
 
   // Failure should be reported for RPC errors.
   soma_->set_return_value(-1);
@@ -442,8 +434,8 @@ TEST_F(RegistrarTest, SomaFailures) {
   // successful.
   EXPECT_TRUE(
       InitSoma(std::unique_ptr<SomaInterfaceStub>(new SomaInterfaceStub)));
-  container = AddEphemeralContainer(kContainerName, kServiceName);
-  container->AddService(kServiceName);
+  cell = AddEphemeralCell(kCellName, kServiceName);
+  cell->AddService(kServiceName);
   EXPECT_TRUE(RequestService(kServiceName, CreateBinderProxy()));
 }
 
@@ -453,16 +445,15 @@ TEST_F(RegistrarTest, DontProvideGermService) {
   EXPECT_FALSE(RequestService(germ::kGermServiceName, CreateBinderProxy()));
 }
 
-// Tests that Registrar reports container launch failures to clients.
-TEST_F(RegistrarTest, ContainerLaunchFailure) {
+// Tests that Registrar reports cell launch failures to clients.
+TEST_F(RegistrarTest, CellLaunchFailure) {
   Init();
 
-  const std::string kContainerName("/foo/org.example.container.json");
-  const std::string kServiceName("org.example.container.service");
-  ContainerStub* container =
-      AddEphemeralContainer(kContainerName, kServiceName);
-  container->AddService(kServiceName);
-  container->set_launch_return_value(false);
+  const std::string kCellName("/foo/org.example.cell.json");
+  const std::string kServiceName("org.example.cell.service");
+  CellStub* cell = AddEphemeralCell(kCellName, kServiceName);
+  cell->AddService(kServiceName);
+  cell->set_launch_return_value(false);
 
   EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxy()));
 }

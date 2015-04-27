@@ -26,11 +26,11 @@ class ServiceObserver;
 //
 // ServiceInterface objects' lifetimes differ from those of the binder proxies
 // that are actually returned to clients. The object is created when the service
-// is first known to psyched (i.e. when the container that will provide it is
+// is first known to psyched (i.e. when the cell that will provide it is
 // created). Later, the process actually providing the service registers itself
 // with psyched, at which point its proxy can be passed to clients. If the proxy
-// dies and the service's container must be restarted, this object will be
-// retained and reused once the service has been registered again.
+// dies and the service's cell must be restarted, this object will be retained
+// and reused once the service has been registered again.
 class ServiceInterface {
  public:
   virtual ~ServiceInterface() = default;

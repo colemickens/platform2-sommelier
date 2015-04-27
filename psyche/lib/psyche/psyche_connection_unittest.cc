@@ -210,7 +210,7 @@ class PsycheConnectionTest : public BinderTestBase {
 };
 
 TEST_F(PsycheConnectionTest, RegisterService) {
-  const std::string kServiceName("org.example.container.service");
+  const std::string kServiceName("org.example.cell.service");
   FakeHost host;
 
   // Simulate an RPC error.
@@ -231,7 +231,7 @@ TEST_F(PsycheConnectionTest, RegisterService) {
 }
 
 TEST_F(PsycheConnectionTest, GetService) {
-  const std::string kServiceName("org.example.container.service");
+  const std::string kServiceName("org.example.cell.service");
 
   // Check that GetService() returns false when an RPC error is encountered.
   psyched_->set_return_value(-1);

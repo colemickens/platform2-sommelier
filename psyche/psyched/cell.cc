@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "psyche/psyched/container.h"
+#include "psyche/psyched/cell.h"
 
 #include <utility>
 
@@ -14,9 +14,9 @@ using soma::ContainerSpec;
 
 namespace psyche {
 
-Container::Container(const ContainerSpec& spec,
-                     FactoryInterface* factory,
-                     GermConnection* germ)
+Cell::Cell(const ContainerSpec& spec,
+           FactoryInterface* factory,
+           GermConnection* germ)
     : spec_(spec), germ_connection_(germ), init_pid_(-1) {
   DCHECK(factory);
   for (const auto& name : spec_.service_names()) {
@@ -26,34 +26,34 @@ Container::Container(const ContainerSpec& spec,
   }
 }
 
-Container::~Container() = default;
+Cell::~Cell() = default;
 
-std::string Container::GetName() const {
+std::string Cell::GetName() const {
   return spec_.name();
 }
 
-const ContainerInterface::ServiceMap& Container::GetServices() const {
+const Cell::ServiceMap& Cell::GetServices() const {
   return services_;
 }
 
-bool Container::Launch() {
+bool Cell::Launch() {
   return germ_connection_->Launch(spec_, &init_pid_) ==
       GermConnection::Result::SUCCESS;
 }
 
-bool Container::Terminate() {
+bool Cell::Terminate() {
   return germ_connection_->Terminate(init_pid_) ==
       GermConnection::Result::SUCCESS;
 }
 
-void Container::OnServiceProxyChange(ServiceInterface* service) {
+void Cell::OnServiceProxyChange(ServiceInterface* service) {
   CHECK(services_.count(service->GetName()))
-      << "Container \"" << GetName() << "\" received proxy change notification "
+      << "Cell \"" << GetName() << "\" received proxy change notification "
       << "for unexpected service \"" << service->GetName() << "\"";
 
   if (!service->GetProxy()) {
     LOG(INFO) << "Proxy for service \"" << service->GetName() << "\" within "
-              << "\"" << GetName() << "\" died; relaunching container";
+              << "\"" << GetName() << "\" died; relaunching cell";
     Launch();
   }
 }
