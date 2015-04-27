@@ -493,8 +493,13 @@ cmd_network_diag() (
 )
 
 debugd() {
+  # Default timeout 30 seconds.
+  local timeout="--reply-timeout=30000"
+  case $1 in
+  --reply-timeout=*) timeout=$1; shift;;
+  esac
   local method="$1"; shift
-  dbus-send --system --print-reply --fixed --dest=org.chromium.debugd \
+  dbus-send ${timeout} --system --print-reply --fixed --dest=org.chromium.debugd \
       /org/chromium/debugd "org.chromium.debugd.$method" "$@"
 }
 
@@ -945,7 +950,15 @@ cmd_battery_firmware() (
   option="$1"
   case "${option}" in
     info|check|update)
-      debugd BatteryFirmware "string:${option}"
+      # Increased the reply-timeout to 10 min for Battery Firmware update process.
+      # Battery Firmware Update process time includes the following:
+      #   1  setup delay time before entery battery firmware update mode.
+      #   2  battery flash erase time.
+      #   3  data transfer time from AP to EC, and then to Batttery.
+      #   4  battery flash program/write time.
+      #   5  re-try time on errors.
+      # Note: take ~2 min on a success battery firmware update case.
+      debugd --reply-timeout=$(( 10 * 60 * 1000 )) BatteryFirmware "string:${option}"
       echo ""
       ;;
     *)
