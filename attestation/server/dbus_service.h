@@ -50,6 +50,12 @@ class DBusService {
           const GetKeyInfoReply&>> response,
       const GetKeyInfoRequest& request);
 
+  // Handles a GetEndorsementInfo D-Bus call.
+  void HandleGetEndorsementInfo(
+      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+          const GetEndorsementInfoReply&>> response,
+      const GetEndorsementInfoRequest& request);
+
   chromeos::dbus_utils::DBusObject dbus_object_;
   AttestationInterface* service_;
 

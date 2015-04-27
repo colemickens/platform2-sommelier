@@ -60,21 +60,9 @@ bool TpmUtilityV1::Initialize() {
     LOG(ERROR) << __func__ << ": Failed to connect to the TPM.";
     return false;
   }
-  srk_handle_.reset(context_handle_, 0);
-  if (!LoadSrk(context_handle_, &srk_handle_)) {
-    LOG(ERROR) << __func__ << ": Failed to load SRK.";
-    return false;
-  }
-  // In order to wrap a key with the SRK we need access to the SRK public key
-  // and we need to get it manually. Once it's in the key object, we don't need
-  // to do this again.
-  UINT32 length = 0;
-  ScopedTssMemory buffer(context_handle_);
-  TSS_RESULT result;
-  result = Tspi_Key_GetPubKey(srk_handle_, &length, buffer.ptr());
-  if (result != TSS_SUCCESS) {
-    TPM_LOG(INFO, result) << __func__ << ": Failed to read SRK public key.";
-    return false;
+  if (!IsTpmReady()) {
+    LOG(WARNING) << __func__ << ": TPM is not owned; attestation services will "
+                 << "not be available until ownership is taken.";
   }
   return true;
 }
@@ -94,6 +82,10 @@ bool TpmUtilityV1::ActivateIdentity(const std::string& delegate_blob,
                                     const std::string& sym_ca_attestation,
                                     std::string* credential) {
   CHECK(credential);
+  if (!SetupSrk()) {
+    LOG(ERROR) << "SRK is not ready.";
+    return false;
+  }
 
   // Connect to the TPM as the owner delegate.
   ScopedTssContext context_handle_;
@@ -158,6 +150,10 @@ bool TpmUtilityV1::CreateCertifiedKey(KeyType key_type,
                                       std::string* key_info,
                                       std::string* proof) {
   CHECK(key_blob && public_key && public_key_tpm_format && key_info && proof);
+  if (!SetupSrk()) {
+    LOG(ERROR) << "SRK is not ready.";
+    return false;
+  }
   if (key_type != KEY_TYPE_RSA) {
     LOG(ERROR) << "Only RSA supported on TPM v1.2.";
     return false;
@@ -255,6 +251,10 @@ bool TpmUtilityV1::CreateCertifiedKey(KeyType key_type,
 bool TpmUtilityV1::SealToPCR0(const std::string& data,
                               std::string* sealed_data) {
   CHECK(sealed_data);
+  if (!SetupSrk()) {
+    LOG(ERROR) << "SRK is not ready.";
+    return false;
+  }
 
   // Create a PCRS object which holds the value of PCR0.
   ScopedTssPcrs pcrs_handle(context_handle_);
@@ -315,6 +315,10 @@ bool TpmUtilityV1::SealToPCR0(const std::string& data,
 
 bool TpmUtilityV1::Unseal(const std::string& sealed_data, std::string* data) {
   CHECK(data);
+  if (!SetupSrk()) {
+    LOG(ERROR) << "SRK is not ready.";
+    return false;
+  }
 
   // Create an ENCDATA object with the sealed value.
   ScopedTssKey encrypted_data_handle(context_handle_);
@@ -352,6 +356,32 @@ bool TpmUtilityV1::Unseal(const std::string& sealed_data, std::string* data) {
   }
   data->assign(TSSBufferAsString(decrypted_data.value(),
                                  decrypted_data_length));
+  return true;
+}
+
+bool TpmUtilityV1::GetEndorsementPublicKey(std::string* public_key) {
+  // Get a handle to the EK public key.
+  ScopedTssKey ek_public_key_object(context_handle_);
+  TSS_RESULT result = Tspi_TPM_GetPubEndorsementKey(tpm_handle_, false, nullptr,
+                                                    ek_public_key_object.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << __func__ << ": Failed to get key.";
+    return false;
+  }
+  // Get the public key in TPM_PUBKEY form.
+  std::string ek_public_key_blob;
+  if (!GetDataAttribute(context_handle_,
+                        ek_public_key_object,
+                        TSS_TSPATTRIB_KEY_BLOB,
+                        TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
+                        &ek_public_key_blob)) {
+    LOG(ERROR) << __func__ << ": Failed to read public key.";
+    return false;
+  }
+  // Get the public key in DER encoded form.
+  if (!ConvertPublicKeyToDER(ek_public_key_blob, public_key)) {
+    return false;
+  }
   return true;
 }
 
@@ -411,6 +441,32 @@ bool TpmUtilityV1::ConnectContextAsDelegate(const std::string& delegate_blob,
       delegate_blob.size(),
       blob_buffer))) {
     TPM_LOG(ERROR, result) << __func__ << ": Error calling Tspi_SetAttribData";
+    return false;
+  }
+  return true;
+}
+
+bool TpmUtilityV1::SetupSrk() {
+  if (!IsTpmReady()) {
+    return false;
+  }
+  if (srk_handle_) {
+    return true;
+  }
+  srk_handle_.reset(context_handle_, 0);
+  if (!LoadSrk(context_handle_, &srk_handle_)) {
+    LOG(ERROR) << __func__ << ": Failed to load SRK.";
+    return false;
+  }
+  // In order to wrap a key with the SRK we need access to the SRK public key
+  // and we need to get it manually. Once it's in the key object, we don't need
+  // to do this again.
+  UINT32 length = 0;
+  ScopedTssMemory buffer(context_handle_);
+  TSS_RESULT result;
+  result = Tspi_Key_GetPubKey(srk_handle_, &length, buffer.ptr());
+  if (result != TSS_SUCCESS) {
+    TPM_LOG(INFO, result) << __func__ << ": Failed to read SRK public key.";
     return false;
   }
   return true;
@@ -521,15 +577,15 @@ bool TpmUtilityV1::ConvertPublicKeyToDER(const std::string& public_key,
     CHECK(rsa.get()->e);
     BN_set_word(rsa.get()->e, kWellKnownExponent);
   } else {
-    rsa.get()->e = BN_bin2bn(parms->exponent, parms->exponentSize, NULL);
+    rsa.get()->e = BN_bin2bn(parms->exponent, parms->exponentSize, nullptr);
     CHECK(rsa.get()->e);
   }
   // Get the modulus.
-  rsa.get()->n = BN_bin2bn(parsed.pubKey.key, parsed.pubKey.keyLength, NULL);
+  rsa.get()->n = BN_bin2bn(parsed.pubKey.key, parsed.pubKey.keyLength, nullptr);
   CHECK(rsa.get()->n);
 
   // DER encode.
-  int der_length = i2d_RSAPublicKey(rsa.get(), NULL);
+  int der_length = i2d_RSAPublicKey(rsa.get(), nullptr);
   if (der_length < 0) {
     LOG(ERROR) << "Failed to DER-encode public key.";
     return false;

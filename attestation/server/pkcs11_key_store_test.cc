@@ -97,12 +97,13 @@ class ScopedFakeSalt {
   std::string salt_;
 };
 
-class ScopedDisableLogging {
+class ScopedDisableVerboseLogging {
  public:
-  ScopedDisableLogging() : original_severity_(logging::GetMinLogLevel()) {
-    logging::SetMinLogLevel(logging::LOG_FATAL);
+  ScopedDisableVerboseLogging()
+      : original_severity_(logging::GetMinLogLevel()) {
+    logging::SetMinLogLevel(logging::LOG_INFO);
   }
-  ~ScopedDisableLogging() {
+  ~ScopedDisableVerboseLogging() {
     logging::SetMinLogLevel(original_severity_);
   }
 
@@ -287,6 +288,8 @@ class KeyStoreTest : public testing::Test {
   std::vector<uint64_t> found_objects_;        // The most recent search results
   uint64_t next_handle_;                       // Tracks handle assignment
   ScopedFakeSalt fake_system_salt_;
+  // We want to avoid all the Chaps verbose logging.
+  ScopedDisableVerboseLogging no_verbose_logging;
 
   DISALLOW_COPY_AND_ASSIGN(KeyStoreTest);
 };
@@ -520,7 +523,6 @@ TEST_F(KeyStoreTest, RegisterCertificateSystemToken) {
 // Tests that the DeleteByPrefix() method removes the correct objects and only
 // the correct objects.
 TEST_F(KeyStoreTest, DeleteByPrefix) {
-  ScopedDisableLogging disable_logging;
   Pkcs11KeyStore key_store(&token_manager_);
 
   // Test with no keys.

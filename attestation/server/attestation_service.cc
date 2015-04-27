@@ -75,7 +75,7 @@ void AttestationService::CreateGoogleAttestedKey(
       request,
       result);
   base::Closure reply = base::Bind(
-      &AttestationService::CreateGoogleAttestedKeyTaskCallback,
+      &AttestationService::TaskRelayCallback<CreateGoogleAttestedKeyReply>,
       GetWeakPtr(),
       callback,
       result);
@@ -149,12 +149,6 @@ void AttestationService::CreateGoogleAttestedKeyTask(
   result->set_certificate_chain(certificate_chain);
 }
 
-void AttestationService::CreateGoogleAttestedKeyTaskCallback(
-    const CreateGoogleAttestedKeyCallback& callback,
-    const std::shared_ptr<CreateGoogleAttestedKeyReply>& result) {
-  callback.Run(*result);
-}
-
 void AttestationService::GetKeyInfo(const GetKeyInfoRequest& request,
                                     const GetKeyInfoCallback& callback) {
   auto result = std::make_shared<GetKeyInfoReply>();
@@ -164,7 +158,7 @@ void AttestationService::GetKeyInfo(const GetKeyInfoRequest& request,
       request,
       result);
   base::Closure reply = base::Bind(
-      &AttestationService::GetKeyInfoTaskCallback,
+      &AttestationService::TaskRelayCallback<GetKeyInfoReply>,
       GetWeakPtr(),
       callback,
       result);
@@ -198,10 +192,46 @@ void AttestationService::GetKeyInfoTask(
   }
 }
 
-void AttestationService::GetKeyInfoTaskCallback(
-    const GetKeyInfoCallback& callback,
-    const std::shared_ptr<GetKeyInfoReply>& result) {
-  callback.Run(*result);
+void AttestationService::GetEndorsementInfo(
+    const GetEndorsementInfoRequest& request,
+    const GetEndorsementInfoCallback& callback) {
+  auto result = std::make_shared<GetEndorsementInfoReply>();
+  base::Closure task = base::Bind(
+      &AttestationService::GetEndorsementInfoTask,
+      base::Unretained(this),
+      request,
+      result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<GetEndorsementInfoReply>,
+      GetWeakPtr(),
+      callback,
+      result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::GetEndorsementInfoTask(
+    const GetEndorsementInfoRequest& request,
+    const std::shared_ptr<GetEndorsementInfoReply>& result) {
+  if (request.key_type() != KEY_TYPE_RSA) {
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
+  }
+  auto database_pb = database_->GetProtobuf();
+  if (!database_pb.has_credentials() ||
+      !database_pb.credentials().has_endorsement_public_key()) {
+    // Try to read the public key directly.
+    std::string public_key;
+    if (!tpm_utility_->GetEndorsementPublicKey(&public_key)) {
+      result->set_status(STATUS_NOT_AVAILABLE);
+      return;
+    }
+    database_pb.mutable_credentials()->set_endorsement_public_key(public_key);
+  }
+  result->set_ek_public_key(database_pb.credentials().endorsement_public_key());
+  if (database_pb.credentials().has_endorsement_credential()) {
+    result->set_ek_certificate(
+        database_pb.credentials().endorsement_credential());
+  }
 }
 
 bool AttestationService::IsPreparedForEnrollment() {

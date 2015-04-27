@@ -60,6 +60,9 @@ class TpmUtility {
   // Unseals |sealed_data| previously sealed with the SRK and produces the
   // unsealed |data|. Returns true on success.
   virtual bool Unseal(const std::string& sealed_data, std::string* data) = 0;
+
+  // Reads the endorsement public key from the TPM.
+  virtual bool GetEndorsementPublicKey(std::string* public_key) = 0;
 };
 
 }  // namespace attestation

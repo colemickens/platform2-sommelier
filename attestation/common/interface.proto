@@ -63,3 +63,15 @@ message GetKeyInfoReply {
   // The certificate data associated with the key (if any).
   optional bytes certificate = 7;
 }
+
+message GetEndorsementInfoRequest {
+  optional KeyType key_type = 1;
+}
+
+message GetEndorsementInfoReply {
+  optional AttestationStatus status = 1;
+  // The endorsement public key (X.509/DER SubjectPublicKeyInfo).
+  optional bytes ek_public_key = 2;
+  // The endorsement certificate (X.509/DER).
+  optional bytes ek_certificate = 3;
+}

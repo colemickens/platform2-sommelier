@@ -33,6 +33,8 @@ class ATTESTATION_EXPORT DBusProxy : public AttestationInterface {
       const CreateGoogleAttestedKeyCallback& callback) override;
   void GetKeyInfo(const GetKeyInfoRequest& request,
                   const GetKeyInfoCallback& callback) override;
+  void GetEndorsementInfo(const GetEndorsementInfoRequest& request,
+                          const GetEndorsementInfoCallback& callback) override;
 
   // Useful for testing.
   void set_object_proxy(dbus::ObjectProxy* object_proxy) {

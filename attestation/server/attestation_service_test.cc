@@ -550,4 +550,55 @@ TEST_F(AttestationServiceTest, GetKeyInfoBadPublicKey) {
   Run();
 }
 
+TEST_F(AttestationServiceTest, GetEndorsementInfoSuccess) {
+  AttestationDatabase database;
+  database.mutable_credentials()->set_endorsement_public_key("public_key");
+  database.mutable_credentials()->set_endorsement_credential("certificate");
+  EXPECT_CALL(mock_database_, GetProtobuf())
+      .WillRepeatedly(ReturnRef(database));
+  // Set expectations on the outputs.
+  auto callback = [this](const GetEndorsementInfoReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ("public_key", reply.ek_public_key());
+    EXPECT_EQ("certificate", reply.ek_certificate());
+    Quit();
+  };
+  GetEndorsementInfoRequest request;
+  request.set_key_type(KEY_TYPE_RSA);
+  service_->GetEndorsementInfo(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, GetEndorsementInfoNoInfo) {
+  // Set expectations on the outputs.
+  auto callback = [this](const GetEndorsementInfoReply& reply) {
+    EXPECT_EQ(STATUS_NOT_AVAILABLE, reply.status());
+    EXPECT_FALSE(reply.has_ek_public_key());
+    EXPECT_FALSE(reply.has_ek_certificate());
+    Quit();
+  };
+  GetEndorsementInfoRequest request;
+  request.set_key_type(KEY_TYPE_RSA);
+  service_->GetEndorsementInfo(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, GetEndorsementInfoNoCert) {
+  AttestationDatabase database;
+  database.mutable_credentials()->set_endorsement_public_key("public_key");
+  EXPECT_CALL(mock_database_, GetProtobuf())
+      .WillRepeatedly(ReturnRef(database));
+  // Set expectations on the outputs.
+  auto callback = [this](const GetEndorsementInfoReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ("public_key", reply.ek_public_key());
+    EXPECT_FALSE(reply.has_ek_certificate());
+    Quit();
+  };
+  GetEndorsementInfoRequest request;
+  request.set_key_type(KEY_TYPE_RSA);
+  service_->GetEndorsementInfo(request, base::Bind(callback));
+  Run();
+}
+
 }  // namespace attestation

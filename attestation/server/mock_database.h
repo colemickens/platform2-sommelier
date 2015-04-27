@@ -19,6 +19,7 @@ class MockDatabase : public Database {
   MOCK_CONST_METHOD0(GetProtobuf, const AttestationDatabase&());
   MOCK_METHOD0(GetMutableProtobuf, AttestationDatabase*());
   MOCK_METHOD0(SaveChanges, bool());
+  MOCK_METHOD0(Reload, bool());
 
  private:
   AttestationDatabase fake_;

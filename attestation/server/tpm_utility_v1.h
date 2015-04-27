@@ -44,6 +44,7 @@ class TpmUtilityV1 : public TpmUtility {
                           std::string* proof) override;
   bool SealToPCR0(const std::string& data, std::string* sealed_data) override;
   bool Unseal(const std::string& sealed_data, std::string* data) override;
+  bool GetEndorsementPublicKey(std::string* public_key) override;
 
  private:
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
@@ -59,6 +60,9 @@ class TpmUtilityV1 : public TpmUtility {
                                 const std::string& delegate_secret,
                                 trousers::ScopedTssContext* context,
                                 TSS_HTPM* tpm);
+
+  // Sets up srk_handle_ if necessary. Returns true iff the SRK is ready.
+  bool SetupSrk();
 
   // Loads the storage root key (SRK) and populates |srk_handle|. The
   // |context_handle| must be connected and valid. Returns true on success.

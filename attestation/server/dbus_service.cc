@@ -35,6 +35,10 @@ void DBusService::Register(const CompletionAction& callback) {
       kGetKeyInfo,
       base::Unretained(this),
       &DBusService::HandleGetKeyInfo);
+  dbus_interface->AddMethodHandler(
+      kGetEndorsementInfo,
+      base::Unretained(this),
+      &DBusService::HandleGetEndorsementInfo);
 
   dbus_object_.RegisterAsync(callback);
 }
@@ -72,6 +76,25 @@ void DBusService::HandleGetKeyInfo(
     response->Return(reply);
   };
   service_->GetKeyInfo(
+      request,
+      base::Bind(callback, SharedResponsePointer(std::move(response))));
+}
+
+void DBusService::HandleGetEndorsementInfo(
+    std::unique_ptr<DBusMethodResponse<const GetEndorsementInfoReply&>>
+        response,
+    const GetEndorsementInfoRequest& request) {
+  VLOG(1) << __func__;
+  // Convert |response| to a shared_ptr so |service_| can safely copy the
+  // callback.
+  using SharedResponsePointer = std::shared_ptr<
+      DBusMethodResponse<const GetEndorsementInfoReply&>>;
+  // A callback that fills the reply protobuf and sends it.
+  auto callback = [](const SharedResponsePointer& response,
+                     const GetEndorsementInfoReply& reply) {
+    response->Return(reply);
+  };
+  service_->GetEndorsementInfo(
       request,
       base::Bind(callback, SharedResponsePointer(std::move(response))));
 }

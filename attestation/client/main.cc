@@ -22,12 +22,14 @@ namespace attestation {
 
 const char kCreateCommand[] = "create";
 const char kInfoCommand[] = "info";
+const char kEndorsementCommand[] = "endorsement";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
   create [--user=<email>] [--label=<keylabel>] - Creates a Google-attested key.
       (This is the default command).
   info [--user=<email>] [--label=<keylabel>] - Prints info about a key.
+  endorsement - Prints info about the TPM endorsement key.
 )";
 
 // The Daemon class works well as a client loop as well.
@@ -76,6 +78,9 @@ class ClientLoop : public ClientLoopBase {
                         weak_factory_.GetWeakPtr(),
                         command_line->GetSwitchValueASCII("label"),
                         command_line->GetSwitchValueASCII("user"));
+    } else if (args.front() == kEndorsementCommand) {
+      task = base::Bind(&ClientLoop::CallGetEndorsementInfo,
+                        weak_factory_.GetWeakPtr());
     } else {
       return EX_USAGE;
     }
@@ -110,6 +115,15 @@ class ClientLoop : public ClientLoopBase {
     attestation_->GetKeyInfo(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<GetKeyInfoReply>,
+                   weak_factory_.GetWeakPtr()));
+  }
+
+  void CallGetEndorsementInfo() {
+    GetEndorsementInfoRequest request;
+    request.set_key_type(KEY_TYPE_RSA);
+    attestation_->GetEndorsementInfo(
+        request,
+        base::Bind(&ClientLoop::PrintReplyAndQuit<GetEndorsementInfoReply>,
                    weak_factory_.GetWeakPtr()));
   }
 

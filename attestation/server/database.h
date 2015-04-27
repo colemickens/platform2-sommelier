@@ -24,6 +24,9 @@ class Database {
 
   // Writes the current database protobuf to disk.
   virtual bool SaveChanges() = 0;
+
+  // Reloads the database protobuf from disk.
+  virtual bool Reload() = 0;
 };
 
 }  // namespace attestation

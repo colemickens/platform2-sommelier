@@ -15,6 +15,7 @@ constexpr char kAttestationServiceName[] = "org.chromium.Attestation";
 // Methods exported by attestation.
 constexpr char kCreateGoogleAttestedKey[] = "CreateGoogleAttestedKey";
 constexpr char kGetKeyInfo[] = "GetKeyInfo";
+constexpr char kGetEndorsementInfo[] = "GetEndorsementInfo";
 
 }  // namespace attestation
 

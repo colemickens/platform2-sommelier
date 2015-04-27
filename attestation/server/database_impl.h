@@ -9,6 +9,9 @@
 
 #include <string>
 
+#include <base/callback_forward.h>
+#include <base/files/file_path_watcher.h>
+
 #include "attestation/server/crypto_utility.h"
 
 namespace attestation {
@@ -20,6 +23,8 @@ class DatabaseIO {
   virtual bool Read(std::string* data) = 0;
   // Writes the persistent database blob.
   virtual bool Write(const std::string& data) = 0;
+  // Watch for external changes to the database.
+  virtual void Watch(const base::Closure& callback) = 0;
 };
 
 // An implementation of Database backed by an ordinary file.
@@ -38,10 +43,12 @@ class DatabaseImpl : public Database,
   const AttestationDatabase& GetProtobuf() const override;
   AttestationDatabase* GetMutableProtobuf() override;
   bool SaveChanges() override;
+  bool Reload() override;
 
   // DatabaseIO methods.
   bool Read(std::string* data) override;
   bool Write(const std::string& data) override;
+  void Watch(const base::Closure& callback) override;
 
   // Useful for testing.
   void set_io(DatabaseIO* io) {
@@ -61,6 +68,7 @@ class DatabaseImpl : public Database,
   CryptoUtility* crypto_;
   std::string database_key_;
   std::string sealed_database_key_;
+  std::unique_ptr<base::FilePathWatcher> file_watcher_;
 };
 
 }  // namespace attestation

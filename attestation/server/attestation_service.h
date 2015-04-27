@@ -61,6 +61,8 @@ class AttestationService : public AttestationInterface {
       const CreateGoogleAttestedKeyCallback& callback) override;
   void GetKeyInfo(const GetKeyInfoRequest& request,
                   const GetKeyInfoCallback& callback) override;
+  void GetEndorsementInfo(const GetEndorsementInfoRequest& request,
+                          const GetEndorsementInfoCallback& callback) override;
 
   // Mutators useful for testing.
   void set_crypto_utility(CryptoUtility* crypto_utility) {
@@ -95,17 +97,19 @@ class AttestationService : public AttestationInterface {
     kGetCertificate,  // Issues a certificate for a TPM-backed key.
   };
 
+  // A relay callback which allows the use of weak pointer semantics for a reply
+  // to TaskRunner::PostTaskAndReply.
+  template<typename ReplyProtobufType>
+  void TaskRelayCallback(
+      const base::Callback<void(const ReplyProtobufType&)> callback,
+      const std::shared_ptr<ReplyProtobufType>& reply) {
+    callback.Run(*reply);
+  }
+
   // A synchronous implementation of CreateGoogleAttestedKey appropriate to run
   // on the worker thread.
   void CreateGoogleAttestedKeyTask(
       const CreateGoogleAttestedKeyRequest& request,
-      const std::shared_ptr<CreateGoogleAttestedKeyReply>& result);
-
-  // A callback for CreateGoogleAttestedKeyTask that invokes the original
-  // |callback| with the given |result|. Having this relay allows us to use weak
-  // pointer semantics to cancel callbacks.
-  void CreateGoogleAttestedKeyTaskCallback(
-      const CreateGoogleAttestedKeyCallback& callback,
       const std::shared_ptr<CreateGoogleAttestedKeyReply>& result);
 
   // A synchronous implementation of GetKeyInfo.
@@ -113,11 +117,10 @@ class AttestationService : public AttestationInterface {
       const GetKeyInfoRequest& request,
       const std::shared_ptr<GetKeyInfoReply>& result);
 
-  // A callback for GetKeyInfoTaskTask that invokes the original |callback| with
-  // the given |result|.
-  void GetKeyInfoTaskCallback(
-      const GetKeyInfoCallback& callback,
-      const std::shared_ptr<GetKeyInfoReply>& result);
+  // A synchronous implementation of GetEndorsementInfo.
+  void GetEndorsementInfoTask(
+      const GetEndorsementInfoRequest& request,
+      const std::shared_ptr<GetEndorsementInfoReply>& result);
 
   // Returns true iff all information required for enrollment with the Google
   // Attestation CA is available.

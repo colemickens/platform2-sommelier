@@ -27,7 +27,7 @@ const size_t kAesBlockSize = 16;
 std::string GetOpenSSLError() {
   BIO* bio = BIO_new(BIO_s_mem());
   ERR_print_errors(bio);
-  char* data = NULL;
+  char* data = nullptr;
   int data_len = BIO_get_mem_data(bio, &data);
   std::string error_string(data, data_len);
   BIO_free(bio);
@@ -152,12 +152,13 @@ bool CryptoUtilityImpl::GetRSASubjectPublicKeyInfo(
     std::string* spki) {
   const unsigned char* asn1_ptr = reinterpret_cast<const unsigned char*>(
       public_key.data());
-  crypto::ScopedRSA rsa(d2i_RSAPublicKey(NULL, &asn1_ptr, public_key.size()));
+  crypto::ScopedRSA rsa(d2i_RSAPublicKey(nullptr, &asn1_ptr,
+                                         public_key.size()));
   if (!rsa.get()) {
     LOG(ERROR) << __func__ << ": Failed to decode public key.";
     return false;
   }
-  unsigned char* buffer = NULL;
+  unsigned char* buffer = nullptr;
   int length = i2d_RSA_PUBKEY(rsa.get(), &buffer);
   if (length <= 0) {
     LOG(ERROR) << __func__ << ": Failed to encode public key.";
@@ -193,7 +194,7 @@ bool CryptoUtilityImpl::AesEncrypt(const std::string& data,
   const EVP_CIPHER* cipher = EVP_aes_256_cbc();
   EVP_CIPHER_CTX encryption_context;
   EVP_CIPHER_CTX_init(&encryption_context);
-  if (!EVP_EncryptInit_ex(&encryption_context, cipher, NULL, key_buffer,
+  if (!EVP_EncryptInit_ex(&encryption_context, cipher, nullptr, key_buffer,
                           iv_buffer)) {
     LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
     return false;
@@ -243,7 +244,7 @@ bool CryptoUtilityImpl::AesDecrypt(const std::string& encrypted_data,
   const EVP_CIPHER* cipher = EVP_aes_256_cbc();
   EVP_CIPHER_CTX decryption_context;
   EVP_CIPHER_CTX_init(&decryption_context);
-  if (!EVP_DecryptInit_ex(&decryption_context, cipher, NULL, key_buffer,
+  if (!EVP_DecryptInit_ex(&decryption_context, cipher, nullptr, key_buffer,
                           iv_buffer)) {
     LOG(ERROR) << __func__ << ": " << GetOpenSSLError();
     return false;
@@ -275,7 +276,7 @@ std::string CryptoUtilityImpl::HmacSha512(const std::string& data,
   std::string mutable_data(data);
   unsigned char* data_buffer = StringAsOpenSSLBuffer(&mutable_data);
   HMAC(EVP_sha512(), key.data(), key.size(), data_buffer, data.size(), mac,
-       NULL);
+       nullptr);
   return std::string(std::begin(mac), std::end(mac));
 }
 

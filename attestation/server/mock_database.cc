@@ -13,6 +13,7 @@ MockDatabase::MockDatabase() {
   ON_CALL(*this, GetProtobuf()).WillByDefault(ReturnRef(fake_));
   ON_CALL(*this, GetMutableProtobuf()).WillByDefault(Return(&fake_));
   ON_CALL(*this, SaveChanges()).WillByDefault(Return(true));
+  ON_CALL(*this, Reload()).WillByDefault(Return(true));
 }
 
 MockDatabase::~MockDatabase() {}
