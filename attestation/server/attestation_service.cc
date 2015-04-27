@@ -38,7 +38,8 @@ AttestationService::AttestationService()
 bool AttestationService::Initialize() {
   LOG(INFO) << "Attestation service started.";
   worker_thread_.reset(new base::Thread("Attestation Service Worker"));
-  worker_thread_->Start();
+  worker_thread_->StartWithOptions(
+      base::Thread::Options(base::MessageLoop::TYPE_IO, 0));
   if (!tpm_utility_) {
     default_tpm_utility_.reset(new TpmUtilityV1());
     if (!default_tpm_utility_->Initialize()) {
@@ -52,9 +53,9 @@ bool AttestationService::Initialize() {
   }
   if (!database_) {
     default_database_.reset(new DatabaseImpl(crypto_utility_));
-    if (!default_database_->Initialize()) {
-      LOG(WARNING) << "Creating new attestation database.";
-    }
+    worker_thread_->task_runner()->PostTask(FROM_HERE, base::Bind(
+        &DatabaseImpl::Initialize,
+        base::Unretained(default_database_.get())));
     database_ = default_database_.get();
   }
   if (!key_store_) {

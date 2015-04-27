@@ -11,6 +11,7 @@
 
 #include <base/callback_forward.h>
 #include <base/files/file_path_watcher.h>
+#include <base/threading/thread_checker.h>
 
 #include "attestation/server/crypto_utility.h"
 
@@ -27,7 +28,8 @@ class DatabaseIO {
   virtual void Watch(const base::Closure& callback) = 0;
 };
 
-// An implementation of Database backed by an ordinary file.
+// An implementation of Database backed by an ordinary file. Not thread safe.
+// All methods must be called on the same thread as the Initialize() call.
 class DatabaseImpl : public Database,
                      public DatabaseIO {
  public:
@@ -36,8 +38,8 @@ class DatabaseImpl : public Database,
   ~DatabaseImpl() override;
 
   // Reads and decrypts any existing database on disk synchronously. Must be
-  // called successfully before calling other methods. Returns true on success.
-  bool Initialize();
+  // called before calling other methods.
+  void Initialize();
 
   // Database methods.
   const AttestationDatabase& GetProtobuf() const override;
@@ -69,6 +71,7 @@ class DatabaseImpl : public Database,
   std::string database_key_;
   std::string sealed_database_key_;
   std::unique_ptr<base::FilePathWatcher> file_watcher_;
+  base::ThreadChecker thread_checker_;
 };
 
 }  // namespace attestation

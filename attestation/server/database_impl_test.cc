@@ -33,6 +33,7 @@ class DatabaseImplTest : public testing::Test,
     database_.reset(new DatabaseImpl(&mock_crypto_utility_));
     database_->set_io(this);
     InitializeFakeData();
+    database_->Initialize();
   }
 
   // Fake DatabaseIO::Read.
@@ -73,26 +74,28 @@ class DatabaseImplTest : public testing::Test,
 };
 
 TEST_F(DatabaseImplTest, ReadSuccess) {
-  EXPECT_TRUE(database_->Initialize());
+  database_->GetMutableProtobuf()->Clear();
+  EXPECT_TRUE(database_->Reload());
   EXPECT_EQ(std::string(kFakeCredential),
             database_->GetProtobuf().credentials().conformance_credential());
 }
 
 TEST_F(DatabaseImplTest, ReadFailure) {
   fake_persistent_data_readable_ = false;
-  EXPECT_FALSE(database_->Initialize());
+  database_->GetMutableProtobuf()->Clear();
+  EXPECT_FALSE(database_->Reload());
   EXPECT_FALSE(database_->GetProtobuf().has_credentials());
 }
 
 TEST_F(DatabaseImplTest, DecryptFailure) {
   EXPECT_CALL(mock_crypto_utility_, DecryptData(_, _, _))
       .WillRepeatedly(Return(false));
-  EXPECT_FALSE(database_->Initialize());
+  database_->GetMutableProtobuf()->Clear();
+  EXPECT_FALSE(database_->Reload());
   EXPECT_FALSE(database_->GetProtobuf().has_credentials());
 }
 
 TEST_F(DatabaseImplTest, WriteSuccess) {
-  EXPECT_TRUE(database_->Initialize());
   database_->GetMutableProtobuf()->mutable_credentials()->
       set_platform_credential("test");
   std::string expected_data;
@@ -103,7 +106,6 @@ TEST_F(DatabaseImplTest, WriteSuccess) {
 
 TEST_F(DatabaseImplTest, WriteFailure) {
   fake_persistent_data_writable_ = false;
-  EXPECT_TRUE(database_->Initialize());
   database_->GetMutableProtobuf()->mutable_credentials()->
       set_platform_credential("test");
   EXPECT_FALSE(database_->SaveChanges());
@@ -112,7 +114,6 @@ TEST_F(DatabaseImplTest, WriteFailure) {
 TEST_F(DatabaseImplTest, EncryptFailure) {
   EXPECT_CALL(mock_crypto_utility_, EncryptData(_, _, _, _))
       .WillRepeatedly(Return(false));
-  EXPECT_TRUE(database_->Initialize());
   database_->GetMutableProtobuf()->mutable_credentials()->
       set_platform_credential("test");
   EXPECT_FALSE(database_->SaveChanges());
@@ -121,13 +122,11 @@ TEST_F(DatabaseImplTest, EncryptFailure) {
 TEST_F(DatabaseImplTest, IgnoreLegacyEncryptJunk) {
   // Legacy encryption scheme appended a SHA-1 hash before encrypting.
   fake_persistent_data_ += std::string(20, 'A');
-  EXPECT_TRUE(database_->Initialize());
   EXPECT_EQ(std::string(kFakeCredential),
             database_->GetProtobuf().credentials().conformance_credential());
 }
 
 TEST_F(DatabaseImplTest, Reload) {
-  EXPECT_TRUE(database_->Initialize());
   AttestationDatabase proto;
   proto.mutable_credentials()->set_platform_credential(kFakeCredential);
   proto.SerializeToString(&fake_persistent_data_);
@@ -139,7 +138,6 @@ TEST_F(DatabaseImplTest, Reload) {
 }
 
 TEST_F(DatabaseImplTest, AutoReload) {
-  EXPECT_TRUE(database_->Initialize());
   AttestationDatabase proto;
   proto.mutable_credentials()->set_platform_credential(kFakeCredential);
   proto.SerializeToString(&fake_persistent_data_);
