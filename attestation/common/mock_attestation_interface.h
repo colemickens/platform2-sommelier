@@ -26,6 +26,9 @@ class MockAttestationInterface : public AttestationInterface {
                                 const GetKeyInfoCallback&));
   MOCK_METHOD2(GetEndorsementInfo, void(const GetEndorsementInfoRequest&,
                                         const GetEndorsementInfoCallback&));
+  MOCK_METHOD2(GetAttestationKeyInfo,
+               void(const GetAttestationKeyInfoRequest&,
+                    const GetAttestationKeyInfoCallback&));
 };
 
 }  // namespace attestation

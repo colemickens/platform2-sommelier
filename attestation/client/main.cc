@@ -23,6 +23,7 @@ namespace attestation {
 const char kCreateCommand[] = "create";
 const char kInfoCommand[] = "info";
 const char kEndorsementCommand[] = "endorsement";
+const char kAttestationKeyCommand[] = "attestation_key";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
@@ -30,6 +31,7 @@ Commands:
       (This is the default command).
   info [--user=<email>] [--label=<keylabel>] - Prints info about a key.
   endorsement - Prints info about the TPM endorsement key.
+  attestation_key - Prints info about the TPM attestation key.
 )";
 
 // The Daemon class works well as a client loop as well.
@@ -68,6 +70,10 @@ class ClientLoop : public ClientLoopBase {
     base::Closure task;
     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
     const auto& args = command_line->GetArgs();
+    if (command_line->HasSwitch("help") || command_line->HasSwitch("h") ||
+        args.front() == "help") {
+      return EX_USAGE;
+    }
     if (args.empty() || args.front() == kCreateCommand) {
       task = base::Bind(&ClientLoop::CallCreateGoogleAttestedKey,
                         weak_factory_.GetWeakPtr(),
@@ -80,6 +86,9 @@ class ClientLoop : public ClientLoopBase {
                         command_line->GetSwitchValueASCII("user"));
     } else if (args.front() == kEndorsementCommand) {
       task = base::Bind(&ClientLoop::CallGetEndorsementInfo,
+                        weak_factory_.GetWeakPtr());
+    } else if (args.front() == kAttestationKeyCommand) {
+      task = base::Bind(&ClientLoop::CallGetAttestationKeyInfo,
                         weak_factory_.GetWeakPtr());
     } else {
       return EX_USAGE;
@@ -124,6 +133,15 @@ class ClientLoop : public ClientLoopBase {
     attestation_->GetEndorsementInfo(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<GetEndorsementInfoReply>,
+                   weak_factory_.GetWeakPtr()));
+  }
+
+  void CallGetAttestationKeyInfo() {
+    GetAttestationKeyInfoRequest request;
+    request.set_key_type(KEY_TYPE_RSA);
+    attestation_->GetAttestationKeyInfo(
+        request,
+        base::Bind(&ClientLoop::PrintReplyAndQuit<GetAttestationKeyInfoReply>,
                    weak_factory_.GetWeakPtr()));
   }
 

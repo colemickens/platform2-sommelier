@@ -63,6 +63,9 @@ class AttestationService : public AttestationInterface {
                   const GetKeyInfoCallback& callback) override;
   void GetEndorsementInfo(const GetEndorsementInfoRequest& request,
                           const GetEndorsementInfoCallback& callback) override;
+  void GetAttestationKeyInfo(
+      const GetAttestationKeyInfoRequest& request,
+      const GetAttestationKeyInfoCallback& callback) override;
 
   // Mutators useful for testing.
   void set_crypto_utility(CryptoUtility* crypto_utility) {
@@ -121,6 +124,11 @@ class AttestationService : public AttestationInterface {
   void GetEndorsementInfoTask(
       const GetEndorsementInfoRequest& request,
       const std::shared_ptr<GetEndorsementInfoReply>& result);
+
+  // A synchronous implementation of GetAttestationKeyInfo.
+  void GetAttestationKeyInfoTask(
+      const GetAttestationKeyInfoRequest& request,
+      const std::shared_ptr<GetAttestationKeyInfoReply>& result);
 
   // Returns true iff all information required for enrollment with the Google
   // Attestation CA is available.

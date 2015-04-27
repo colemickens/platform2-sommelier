@@ -88,4 +88,22 @@ void DBusProxy::GetEndorsementInfo(const GetEndorsementInfoRequest& request,
       request);
 }
 
+void DBusProxy::GetAttestationKeyInfo(
+    const GetAttestationKeyInfoRequest& request,
+    const GetAttestationKeyInfoCallback& callback) {
+  auto on_error = [callback](chromeos::Error* error) {
+    GetAttestationKeyInfoReply reply;
+    reply.set_status(STATUS_NOT_AVAILABLE);
+    callback.Run(reply);
+  };
+  chromeos::dbus_utils::CallMethodWithTimeout(
+      kDBusTimeoutMS,
+      object_proxy_,
+      attestation::kAttestationInterface,
+      attestation::kGetAttestationKeyInfo,
+      callback,
+      base::Bind(on_error),
+      request);
+}
+
 }  // namespace attestation

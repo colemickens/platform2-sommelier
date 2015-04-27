@@ -16,6 +16,7 @@ constexpr char kAttestationServiceName[] = "org.chromium.Attestation";
 constexpr char kCreateGoogleAttestedKey[] = "CreateGoogleAttestedKey";
 constexpr char kGetKeyInfo[] = "GetKeyInfo";
 constexpr char kGetEndorsementInfo[] = "GetEndorsementInfo";
+constexpr char kGetAttestationKeyInfo[] = "GetAttestationKeyInfo";
 
 }  // namespace attestation
 

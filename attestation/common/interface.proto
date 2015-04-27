@@ -75,3 +75,19 @@ message GetEndorsementInfoReply {
   // The endorsement certificate (X.509/DER).
   optional bytes ek_certificate = 3;
 }
+
+message GetAttestationKeyInfoRequest {
+  optional KeyType key_type = 1;
+}
+
+message GetAttestationKeyInfoReply {
+  optional AttestationStatus status = 1;
+  // The attestation public key (X.509/DER SubjectPublicKeyInfo).
+  optional bytes public_key = 2;
+  // The attestation key certificate.
+  optional bytes certificate = 3;
+  // A quote of PCR0 at the time of attestation key creation.
+  optional Quote pcr0_quote = 4;
+  // A quote of PCR1 at the time of attestation key creation.
+  optional Quote pcr1_quote = 5;
+}

@@ -51,9 +51,10 @@ class AttestationServiceTest : public testing::Test {
     service_->set_http_transport(fake_http_transport_);
     service_->set_key_store(&mock_key_store_);
     service_->set_tpm_utility(&mock_tpm_utility_);
-    // Setup a fake EK certificate by default.
+    // Setup a fake wrapped EK certificate by default.
     mock_database_.GetMutableProtobuf()->mutable_credentials()->
-        set_endorsement_credential("ek_cert");
+        mutable_default_encrypted_endorsement_credential()->
+            set_wrapping_key_id("default");
     // Setup a fake Attestation CA for success by default.
     SetupFakeCAEnroll(kSuccess);
     SetupFakeCASign(kSuccess);
@@ -279,9 +280,8 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithBadCAMessageID) {
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithNoEKCertificate) {
-  // Remove the fake EK certificate.
-  mock_database_.GetMutableProtobuf()->mutable_credentials()->
-      clear_endorsement_credential();
+  // Remove the default credential setup.
+  mock_database_.GetMutableProtobuf()->clear_credentials();
   // Set expectations on the outputs.
   auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
@@ -487,8 +487,7 @@ TEST_F(AttestationServiceTest, GetKeyInfoSuccess) {
 
 TEST_F(AttestationServiceTest, GetKeyInfoSuccessNoUser) {
   // Setup a certified key in the device key store.
-  AttestationDatabase database;
-  CertifiedKey& key = *database.add_device_keys();
+  CertifiedKey& key = *mock_database_.GetMutableProtobuf()->add_device_keys();
   key.set_public_key("public_key");
   key.set_certified_key_credential("fake_cert");
   key.set_intermediate_ca_cert("fake_ca_cert");
@@ -498,8 +497,6 @@ TEST_F(AttestationServiceTest, GetKeyInfoSuccessNoUser) {
   key.set_certified_key_proof("signature");
   key.set_key_type(KEY_TYPE_RSA);
   key.set_key_usage(KEY_USAGE_SIGN);
-  EXPECT_CALL(mock_database_, GetProtobuf())
-      .WillRepeatedly(ReturnRef(database));
 
   // Set expectations on the outputs.
   auto callback = [this](const GetKeyInfoReply& reply) {
@@ -551,11 +548,9 @@ TEST_F(AttestationServiceTest, GetKeyInfoBadPublicKey) {
 }
 
 TEST_F(AttestationServiceTest, GetEndorsementInfoSuccess) {
-  AttestationDatabase database;
-  database.mutable_credentials()->set_endorsement_public_key("public_key");
-  database.mutable_credentials()->set_endorsement_credential("certificate");
-  EXPECT_CALL(mock_database_, GetProtobuf())
-      .WillRepeatedly(ReturnRef(database));
+  AttestationDatabase* database = mock_database_.GetMutableProtobuf();
+  database->mutable_credentials()->set_endorsement_public_key("public_key");
+  database->mutable_credentials()->set_endorsement_credential("certificate");
   // Set expectations on the outputs.
   auto callback = [this](const GetEndorsementInfoReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
@@ -584,10 +579,8 @@ TEST_F(AttestationServiceTest, GetEndorsementInfoNoInfo) {
 }
 
 TEST_F(AttestationServiceTest, GetEndorsementInfoNoCert) {
-  AttestationDatabase database;
-  database.mutable_credentials()->set_endorsement_public_key("public_key");
-  EXPECT_CALL(mock_database_, GetProtobuf())
-      .WillRepeatedly(ReturnRef(database));
+  AttestationDatabase* database = mock_database_.GetMutableProtobuf();
+  database->mutable_credentials()->set_endorsement_public_key("public_key");
   // Set expectations on the outputs.
   auto callback = [this](const GetEndorsementInfoReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
@@ -598,6 +591,62 @@ TEST_F(AttestationServiceTest, GetEndorsementInfoNoCert) {
   GetEndorsementInfoRequest request;
   request.set_key_type(KEY_TYPE_RSA);
   service_->GetEndorsementInfo(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, GetAttestationKeyInfoSuccess) {
+  AttestationDatabase* database = mock_database_.GetMutableProtobuf();
+  database->mutable_identity_key()->set_identity_public_key("public_key");
+  database->mutable_identity_key()->set_identity_credential("certificate");
+  database->mutable_pcr0_quote()->set_quote("pcr0");
+  database->mutable_pcr1_quote()->set_quote("pcr1");
+  // Set expectations on the outputs.
+  auto callback = [this](const GetAttestationKeyInfoReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ("public_key", reply.public_key());
+    EXPECT_EQ("certificate", reply.certificate());
+    EXPECT_EQ("pcr0", reply.pcr0_quote().quote());
+    EXPECT_EQ("pcr1", reply.pcr1_quote().quote());
+    Quit();
+  };
+  GetAttestationKeyInfoRequest request;
+  request.set_key_type(KEY_TYPE_RSA);
+  service_->GetAttestationKeyInfo(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, GetAttestationKeyInfoNoInfo) {
+  // Set expectations on the outputs.
+  auto callback = [this](const GetAttestationKeyInfoReply& reply) {
+    EXPECT_EQ(STATUS_NOT_AVAILABLE, reply.status());
+    EXPECT_FALSE(reply.has_public_key());
+    EXPECT_FALSE(reply.has_certificate());
+    EXPECT_FALSE(reply.has_pcr0_quote());
+    EXPECT_FALSE(reply.has_pcr1_quote());
+    Quit();
+  };
+  GetAttestationKeyInfoRequest request;
+  request.set_key_type(KEY_TYPE_RSA);
+  service_->GetAttestationKeyInfo(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, GetAttestationKeyInfoSomeInfo) {
+  AttestationDatabase* database = mock_database_.GetMutableProtobuf();
+  database->mutable_identity_key()->set_identity_credential("certificate");
+  database->mutable_pcr1_quote()->set_quote("pcr1");
+  // Set expectations on the outputs.
+  auto callback = [this](const GetAttestationKeyInfoReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_public_key());
+    EXPECT_EQ("certificate", reply.certificate());
+    EXPECT_FALSE(reply.has_pcr0_quote());
+    EXPECT_EQ("pcr1", reply.pcr1_quote().quote());
+    Quit();
+  };
+  GetAttestationKeyInfoRequest request;
+  request.set_key_type(KEY_TYPE_RSA);
+  service_->GetAttestationKeyInfo(request, base::Bind(callback));
   Run();
 }
 

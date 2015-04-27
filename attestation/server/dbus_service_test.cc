@@ -182,4 +182,35 @@ TEST_F(DBusServiceTest, GetEndorsementInfo) {
   EXPECT_EQ("certificate", reply.ek_certificate());
 }
 
+TEST_F(DBusServiceTest, GetAttestationKeyInfo) {
+  GetAttestationKeyInfoRequest request;
+  request.set_key_type(KEY_TYPE_ECC);
+  EXPECT_CALL(mock_service_, GetAttestationKeyInfo(_, _))
+      .WillOnce(Invoke([](
+          const GetAttestationKeyInfoRequest& request,
+          const AttestationInterface::GetAttestationKeyInfoCallback& callback) {
+        EXPECT_EQ(KEY_TYPE_ECC, request.key_type());
+        GetAttestationKeyInfoReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        reply.set_public_key("public_key");
+        reply.set_certificate("certificate");
+        reply.mutable_pcr0_quote()->set_quote("pcr0");
+        reply.mutable_pcr1_quote()->set_quote("pcr1");
+        callback.Run(reply);
+      }));
+  std::unique_ptr<dbus::MethodCall> call =
+      CreateMethodCall(kGetAttestationKeyInfo);
+  dbus::MessageWriter writer(call.get());
+  writer.AppendProtoAsArrayOfBytes(request);
+  auto response = CallMethod(call.get());
+  dbus::MessageReader reader(response.get());
+  GetAttestationKeyInfoReply reply;
+  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  EXPECT_EQ("public_key", reply.public_key());
+  EXPECT_EQ("certificate", reply.certificate());
+  EXPECT_EQ("pcr0", reply.pcr0_quote().quote());
+  EXPECT_EQ("pcr1", reply.pcr1_quote().quote());
+}
+
 }  // namespace attestation

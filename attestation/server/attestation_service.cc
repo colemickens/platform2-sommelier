@@ -227,10 +227,71 @@ void AttestationService::GetEndorsementInfoTask(
     }
     database_pb.mutable_credentials()->set_endorsement_public_key(public_key);
   }
-  result->set_ek_public_key(database_pb.credentials().endorsement_public_key());
+  std::string public_key_info;
+  if (!GetSubjectPublicKeyInfo(
+      request.key_type(),
+      database_pb.credentials().endorsement_public_key(),
+      &public_key_info)) {
+    LOG(ERROR) << __func__ << ": Bad public key.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  result->set_ek_public_key(public_key_info);
   if (database_pb.credentials().has_endorsement_credential()) {
     result->set_ek_certificate(
         database_pb.credentials().endorsement_credential());
+  }
+}
+
+void AttestationService::GetAttestationKeyInfo(
+    const GetAttestationKeyInfoRequest& request,
+    const GetAttestationKeyInfoCallback& callback) {
+  auto result = std::make_shared<GetAttestationKeyInfoReply>();
+  base::Closure task = base::Bind(
+      &AttestationService::GetAttestationKeyInfoTask,
+      base::Unretained(this),
+      request,
+      result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<GetAttestationKeyInfoReply>,
+      GetWeakPtr(),
+      callback,
+      result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::GetAttestationKeyInfoTask(
+    const GetAttestationKeyInfoRequest& request,
+    const std::shared_ptr<GetAttestationKeyInfoReply>& result) {
+  if (request.key_type() != KEY_TYPE_RSA) {
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
+  }
+  auto database_pb = database_->GetProtobuf();
+  if (!IsPreparedForEnrollment() || !database_pb.has_identity_key()) {
+    result->set_status(STATUS_NOT_AVAILABLE);
+    return;
+  }
+  if (database_pb.identity_key().has_identity_public_key()) {
+    std::string public_key_info;
+    if (!GetSubjectPublicKeyInfo(
+        request.key_type(),
+        database_pb.identity_key().identity_public_key(),
+        &public_key_info)) {
+      LOG(ERROR) << __func__ << ": Bad public key.";
+      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+      return;
+    }
+    result->set_public_key(public_key_info);
+  }
+  if (database_pb.identity_key().has_identity_credential()) {
+    result->set_certificate(database_pb.identity_key().identity_credential());
+  }
+  if (database_pb.has_pcr0_quote()) {
+    *result->mutable_pcr0_quote() = database_pb.pcr0_quote();
+  }
+  if (database_pb.has_pcr1_quote()) {
+    *result->mutable_pcr1_quote() = database_pb.pcr1_quote();
   }
 }
 

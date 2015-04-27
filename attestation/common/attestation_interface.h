@@ -46,6 +46,14 @@ class ATTESTATION_EXPORT AttestationInterface {
   virtual void GetEndorsementInfo(
       const GetEndorsementInfoRequest& request,
       const GetEndorsementInfoCallback& callback) = 0;
+
+  // Processes a GetAttestationKeyInfoRequest and responds with a
+  // GetAttestationKeyInfoReply.
+  using GetAttestationKeyInfoCallback =
+      base::Callback<void(const GetAttestationKeyInfoReply&)>;
+  virtual void GetAttestationKeyInfo(
+      const GetAttestationKeyInfoRequest& request,
+      const GetAttestationKeyInfoCallback& callback) = 0;
 };
 
 }  // namespace attestation
