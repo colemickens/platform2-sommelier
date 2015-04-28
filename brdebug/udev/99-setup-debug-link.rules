@@ -1,0 +1,1 @@
+ACTION=="add|change", SUBSYSTEM=="usb", ATTRS{idVendor}=="0b95", ATTRS{idProduct}=="7e2b", RUN+="/usr/sbin/setup-debug-link"
