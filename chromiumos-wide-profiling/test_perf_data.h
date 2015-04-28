@@ -54,13 +54,19 @@ class ExamplePipedPerfDataFileHeader : public StreamWriteable {
 // bit are paramatized.
 class ExamplePerfEventAttrEvent_Hardware : public StreamWriteable {
  public:
+  typedef ExamplePerfEventAttrEvent_Hardware SelfT;
   explicit ExamplePerfEventAttrEvent_Hardware(u64 sample_type,
                                               bool sample_id_all)
-      : sample_type_(sample_type), sample_id_all_(sample_id_all) {}
+      : sample_type_(sample_type),
+        sample_id_all_(sample_id_all),
+        config_(0) {
+  }
+  SelfT& WithConfig(u64 config) { config_ = config; return *this; }
   void WriteTo(std::ostream* out) const override;
  private:
   const u64 sample_type_;
   const bool sample_id_all_;
+  u64 config_;
 };
 
 // Produces a struct perf_file_attr with a perf_event_attr describing a

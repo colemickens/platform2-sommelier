@@ -1754,7 +1754,7 @@ bool PerfReader::ReadTracingMetadataEvent(
 bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
   size_t offset = piped_header_.size;
   bool result = true;
-  size_t event_type_count = 0;
+  size_t num_event_types = 0;
 
   metadata_mask_ = 0;
   CheckNoEventHeaderPadding();
@@ -1766,7 +1766,7 @@ bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
       LOG(ERROR) << "Not enough bytes left in data to read header.  Required: "
                  << sizeof(header) << " bytes.  Available: "
                  << data.size() - offset << " bytes.";
-      return true;
+      break;
     }
 
     if (is_cross_endian_) {
@@ -1795,7 +1795,7 @@ bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
       LOG(ERROR) << "Not enough bytes to read piped event.  Required: "
                  << header.size << " bytes.  Available: "
                  << data.size() - offset << " bytes.";
-      return true;
+      break;
     }
 
     if (header.type < PERF_RECORD_MAX) {
@@ -1814,7 +1814,7 @@ bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
       result = ReadAttrEventBlock(data, new_offset, size_without_header);
       break;
     case PERF_RECORD_HEADER_EVENT_TYPE:
-      result = ReadEventType(data, event_type_count++, header.size,
+      result = ReadEventType(data, num_event_types++, header.size,
                              &new_offset);
       break;
     case PERF_RECORD_HEADER_EVENT_DESC:
@@ -1902,7 +1902,7 @@ bool PerfReader::ReadPipedData(const ConstBufferWithSize& data) {
   // and PERF_RECORD_HEADER_EVENT_DESC metadata events are not, we should use
   // them. Otherwise, we should use prefer the _EVENT_DESC data.
   if (!(metadata_mask_ & (1 << HEADER_EVENT_DESC)) &&
-      event_type_count == attrs_.size()) {
+      num_event_types == attrs_.size()) {
     // We can construct HEADER_EVENT_DESC:
     metadata_mask_ |= (1 << HEADER_EVENT_DESC);
   }

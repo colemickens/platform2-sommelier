@@ -183,6 +183,111 @@ void CheckFilenameAndBuildIDMethods(const string& input_perf_data,
 
 }  // namespace
 
+TEST(PerfReaderTest, PipedData_IncompleteEventHeader) {
+  std::stringstream input;
+
+  // pipe header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP,
+                                              true /*sample_id_all*/)
+      .WithConfig(123)
+      .WriteTo(&input);
+
+  // PERF_RECORD_HEADER_EVENT_TYPE
+  const struct event_type_event event_type = {
+    .header = {
+      .type = PERF_RECORD_HEADER_EVENT_TYPE,
+      .misc = 0,
+      .size = sizeof(struct event_type_event),
+    },
+    .event_type = {
+      /*event_id*/ 123,
+      /*name*/ "cycles",
+    },
+  };
+  input.write(reinterpret_cast<const char*>(&event_type), sizeof(event_type));
+
+  // Incomplete data at the end:
+  input << string(sizeof(struct perf_event_header) - 1, '\0');
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+
+  // Make sure the attr was recorded properly.
+  EXPECT_EQ(1, pr.attrs().size());
+  EXPECT_EQ(123, pr.attrs()[0].attr.config);
+  EXPECT_EQ("cycles", pr.attrs()[0].name);
+
+  // Make sure metadata mask was set to indicate EVENT_TYPE was upgraded
+  // to EVENT_DESC.
+  EXPECT_EQ((1 << HEADER_EVENT_DESC), pr.metadata_mask());
+}
+
+TEST(PerfReaderTest, PipedData_IncompleteEventData) {
+  std::stringstream input;
+
+  // pipe header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP,
+                                              true /*sample_id_all*/)
+      .WithConfig(456)
+      .WriteTo(&input);
+
+  // PERF_RECORD_HEADER_EVENT_TYPE
+  const struct event_type_event event_type = {
+    .header = {
+      .type = PERF_RECORD_HEADER_EVENT_TYPE,
+      .misc = 0,
+      .size = sizeof(struct event_type_event),
+    },
+    .event_type = {
+      /*event_id*/ 456,
+      /*name*/ "instructions",
+    },
+  };
+  input.write(reinterpret_cast<const char*>(&event_type), sizeof(event_type));
+
+  // Incomplete data at the end:
+  // Header:
+  const struct perf_event_header incomplete_event_header = {
+    .type = PERF_RECORD_SAMPLE,
+    .misc = 0,
+    .size = sizeof(perf_event_header) + 10,
+  };
+  input.write(reinterpret_cast<const char*>(&incomplete_event_header),
+              sizeof(incomplete_event_header));
+  // Incomplete event:
+  input << string(3, '\0');
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+
+  // Make sure the attr was recorded properly.
+  EXPECT_EQ(1, pr.attrs().size());
+  EXPECT_EQ(456, pr.attrs()[0].attr.config);
+  EXPECT_EQ("instructions", pr.attrs()[0].name);
+
+  // Make sure metadata mask was set to indicate EVENT_TYPE was upgraded
+  // to EVENT_DESC.
+  EXPECT_EQ((1 << HEADER_EVENT_DESC), pr.metadata_mask());
+}
+
 TEST(PerfReaderTest, NormalModePerfData) {
   ScopedTempDir output_dir;
   ASSERT_FALSE(output_dir.path().empty());
@@ -487,14 +592,14 @@ TEST(PerfReaderTest, ReadsAndWritesSampleAndSampleIdAll) {
     }
   };
   const u64 sample_event_array[] = {
-    0xffffffff01234567,                  // IP
-    PunU32U64{.v32={0x68d, 0x68e}}.v64,  // TID (u32 pid, tid)
-    1415837014*1000000000ULL,            // TIME
-    0x00007f999c38d15a,                  // ADDR
-    2,                                   // ID
-    1,                                   // STREAM_ID
-    8,                                   // CPU
-    10001,                               // PERIOD
+    0xffffffff01234567,                    // IP
+    PunU32U64{.v32 = {0x68d, 0x68e}}.v64,  // TID (u32 pid, tid)
+    1415837014*1000000000ULL,              // TIME
+    0x00007f999c38d15a,                    // ADDR
+    2,                                     // ID
+    1,                                     // STREAM_ID
+    8,                                     // CPU
+    10001,                                 // PERIOD
   };
   ASSERT_EQ(written_sample_event.header.size,
             sizeof(written_sample_event.header) + sizeof(sample_event_array));
@@ -524,11 +629,11 @@ TEST(PerfReaderTest, ReadsAndWritesSampleAndSampleIdAll) {
   };
   const char mmap_filename[10+6] = "/dev/zero";
   const u64 mmap_sample_id[] = {
-    PunU32U64{.v32={0x68d, 0x68e}}.v64,  // TID (u32 pid, tid)
-    1415911367*1000000000ULL,            // TIME
-    3,                                   // ID
-    2,                                   // STREAM_ID
-    9,                                   // CPU
+    PunU32U64{.v32 = {0x68d, 0x68e}}.v64,  // TID (u32 pid, tid)
+    1415911367*1000000000ULL,              // TIME
+    3,                                     // ID
+    2,                                     // STREAM_ID
+    9,                                     // CPU
   };
   const size_t pre_mmap_offset = input.tellp();
   input.write(reinterpret_cast<const char*>(&written_mmap_event),

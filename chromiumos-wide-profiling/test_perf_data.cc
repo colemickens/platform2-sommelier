@@ -50,7 +50,7 @@ void ExamplePerfEventAttrEvent_Hardware::WriteTo(std::ostream* out) const {
   perf_event_attr attr = {};
   attr.type = PERF_TYPE_HARDWARE;
   attr.size = sizeof(perf_event_attr);
-  attr.config = 0;
+  attr.config = config_;
   attr.sample_period = 100001;
   attr.sample_type = sample_type_;
   attr.sample_id_all = sample_id_all_;

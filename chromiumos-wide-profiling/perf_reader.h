@@ -183,6 +183,10 @@ class PerfReader {
     return tracing_data_;
   }
 
+  uint64_t metadata_mask() const {
+    return metadata_mask_;
+  }
+
  protected:
   bool ReadHeader(const ConstBufferWithSize& data);
 
