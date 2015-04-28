@@ -7,36 +7,57 @@
 #include <string>
 #include <vector>
 
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <soma/read_only_container_spec.h>
+
+#include "germ/proto_bindings/soma_container_spec.pb.h"
 
 namespace germ {
 
+GermHost::GermHost(GermZygote* zygote) : zygote_(zygote) {}
+
 Status GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
-  pid_t pid = -1;
   soma::ReadOnlyContainerSpec ro_spec;
   if (!ro_spec.Init(request->spec())) {
     return STATUS_APP_ERROR_LOG(logging::LOG_ERROR,
-                                LaunchResponse::INIT_SPEC_FAILED,
+                                LaunchResponse::INVALID_SPEC,
                                 "Could not initialize read-only ContainerSpec");
   }
-  if (!launcher_.RunDaemonized(ro_spec, &pid)) {
+
+  pid_t pid = -1;
+  if (!zygote_->StartContainer(request->spec(), &pid)) {
     return STATUS_APP_ERROR_LOG(
-        logging::LOG_ERROR, LaunchResponse::RUN_DAEMONIZED_FAILED,
-        "RunDaemonized(" + request->name() + ") failed");
+        logging::LOG_ERROR, LaunchResponse::START_CONTAINER_FAILED,
+        "StartContainer(" + request->name() + ") failed");
   }
+
   response->set_pid(pid);
   return STATUS_OK();
 }
 
 Status GermHost::Terminate(TerminateRequest* request,
                            TerminateResponse* response) {
-  bool success = launcher_.Terminate(request->pid());
-  if (!success) {
+  // TODO(rickyz): Make this take a container name instead.
+  const pid_t pid = request->pid();
+
+  if (kill(pid, SIGTERM) != 0) {
+    return STATUS_APP_ERROR_LOG(logging::LOG_ERROR,
+                                TerminateResponse::TERMINATE_FAILED,
+                                "kill(" + std::to_string(pid) + ") failed");
+  }
+
+  const pid_t rc = HANDLE_EINTR(waitpid(pid, nullptr, 0));
+  if (rc != pid) {
     return STATUS_APP_ERROR_LOG(
         logging::LOG_ERROR, TerminateResponse::TERMINATE_FAILED,
-        "Terminate(" + std::to_string(request->pid()) + ") failed");
+        "waitpid(" + std::to_string(pid) + ", ...) failed");
   }
+
   return STATUS_OK();
 }
 

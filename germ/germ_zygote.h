@@ -22,8 +22,8 @@ namespace germ {
 // process. StartContainer() can then be called from the parent to start up
 // containers. This class releases ownership of container processes by double
 // forking. In order to take responsibility for reaping these children, the
-// parent may call prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) before starting the
-// zygote to take ownership of these processes.
+// parent may call prctl(PR_SET_CHILD_SUBREAPER, 1) before starting the zygote
+// to take ownership of these processes.
 class GermZygote {
  public:
   GermZygote();

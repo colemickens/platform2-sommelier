@@ -56,7 +56,7 @@ soma::ContainerSpec ContainerSpecForTest() {
 // TODO(rickyz): This test does not catch bugs in init process launching.
 TEST(GermZygote, BasicUsage) {
   ScopedAlarm time_out(kTestTimeoutSeconds);
-  PCHECK(prctl(PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) == 0);
+  PCHECK(prctl(PR_SET_CHILD_SUBREAPER, 1) == 0);
 
   TestGermZygote zygote;
   zygote.Start();

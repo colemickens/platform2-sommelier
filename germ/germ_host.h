@@ -7,6 +7,7 @@
 
 #include "base/macros.h"
 
+#include "germ/germ_zygote.h"
 #include "germ/launcher.h"
 #include "germ/proto_bindings/germ.pb.rpc.h"
 
@@ -14,7 +15,7 @@ namespace germ {
 
 class GermHost : public IGermHostInterface {
  public:
-  GermHost() = default;
+  explicit GermHost(GermZygote* zygote);
   virtual ~GermHost() = default;
 
   // Implement IGermHostInterface.
@@ -23,7 +24,7 @@ class GermHost : public IGermHostInterface {
                    TerminateResponse* response) override;
 
  private:
-  Launcher launcher_;
+  GermZygote* zygote_;
 
   DISALLOW_COPY_AND_ASSIGN(GermHost);
 };

@@ -20,8 +20,8 @@ message LaunchRequest {
 
 message LaunchResponse {
   enum Error {
-    INIT_SPEC_FAILED = 1;
-    RUN_DAEMONIZED_FAILED = 2;
+    INVALID_SPEC = 1;
+    START_CONTAINER_FAILED = 2;
   }
   // |pid| will be valid if |success| is true.
   optional int32 pid = 2;
