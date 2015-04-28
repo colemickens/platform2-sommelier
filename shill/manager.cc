@@ -32,6 +32,7 @@
 #include "shill/device_info.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
+#include "shill/ethernet/ethernet_temporary_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
@@ -875,19 +876,29 @@ ServiceRefPtr Manager::CreateTemporaryServiceFromProfile(
     return nullptr;
   }
 
-  if (!ContainsKey(providers_, technology)) {
+  ServiceRefPtr service = nullptr;
+  // Since there is no provider for Ethernet services (Ethernet services are
+  // created/provided by the Ethernet device), we will explicitly create
+  // temporary Ethernet services for loading Ethernet entries.
+  if (technology == Technology::kEthernet) {
+    service = new EthernetTemporaryService(control_interface_,
+                                           dispatcher_,
+                                           metrics_,
+                                           this,
+                                           entry_name);
+  } else if (ContainsKey(providers_, technology)) {
+    service =
+        providers_[technology]->CreateTemporaryServiceFromProfile(
+            profile, entry_name, error);
+  }
+
+  if (!service) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                           kErrorUnsupportedServiceType);
     return nullptr;
   }
 
-  ServiceRefPtr service =
-      providers_[technology]->CreateTemporaryServiceFromProfile(
-          profile, entry_name, error);
-  if (service) {
-    profile->LoadService(service);
-  }
-
+  profile->LoadService(service);
   return service;
 }
 

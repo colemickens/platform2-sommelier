@@ -371,6 +371,7 @@
         'error.cc',
         'ethernet/ethernet.cc',
         'ethernet/ethernet_service.cc',
+        'ethernet/ethernet_temporary_service.cc',
         'ethernet/virtio_ethernet.cc',
         'event_dispatcher.cc',
         'external_task.cc',
