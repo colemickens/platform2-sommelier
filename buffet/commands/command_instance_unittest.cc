@@ -11,8 +11,10 @@
 #include "buffet/commands/schema_utils.h"
 #include "buffet/commands/unittest_utils.h"
 
-using buffet::unittests::CreateDictionaryValue;
-using buffet::unittests::CreateValue;
+namespace buffet {
+
+using unittests::CreateDictionaryValue;
+using unittests::CreateValue;
 
 namespace {
 
@@ -61,24 +63,22 @@ class CommandInstanceTest : public ::testing::Test {
     CHECK(dict_.LoadCommands(*json, "robotd", nullptr, nullptr))
         << "Failed to parse test command dictionary";
   }
-  buffet::CommandDictionary dict_;
+  CommandDictionary dict_;
 };
 
 }  // anonymous namespace
 
 TEST_F(CommandInstanceTest, Test) {
-  buffet::StringPropType str_prop;
-  buffet::IntPropType int_prop;
-  buffet::native_types::Object params;
+  StringPropType str_prop;
+  IntPropType int_prop;
+  native_types::Object params;
   params["phrase"] = str_prop.CreateValue(std::string("iPityDaFool"),
                                           nullptr);
   params["volume"] = int_prop.CreateValue(5, nullptr);
-  buffet::CommandInstance instance{"robot.speak",
-                                   "cloud",
-                                   dict_.FindCommand("robot.speak"),
-                                   params};
+  CommandInstance instance{
+      "robot.speak", "cloud", dict_.FindCommand("robot.speak"), params};
 
-  buffet::native_types::Object results;
+  native_types::Object results;
   results["foo"] = int_prop.CreateValue(239, nullptr);
   instance.SetResults(results);
 
@@ -93,18 +93,14 @@ TEST_F(CommandInstanceTest, Test) {
   EXPECT_EQ(nullptr, instance.FindParameter("blah"));
   EXPECT_EQ(results, instance.GetResults());
 
-  buffet::CommandInstance instance2{"base.reboot",
-                                   "local",
-                                   dict_.FindCommand("base.reboot"),
-                                   {}};
+  CommandInstance instance2{
+      "base.reboot", "local", dict_.FindCommand("base.reboot"), {}};
   EXPECT_EQ("local", instance2.GetOrigin());
 }
 
 TEST_F(CommandInstanceTest, SetID) {
-  buffet::CommandInstance instance{"base.reboot",
-                                   "local",
-                                   dict_.FindCommand("base.reboot"),
-                                   {}};
+  CommandInstance instance{
+      "base.reboot", "local", dict_.FindCommand("base.reboot"), {}};
   instance.SetID("command_id");
   EXPECT_EQ("command_id", instance.GetID());
 }
@@ -118,8 +114,8 @@ TEST_F(CommandInstanceTest, FromJson) {
     },
     'results': {}
   })");
-  auto instance = buffet::CommandInstance::FromJson(json.get(), "cloud", dict_,
-                                                    nullptr);
+  auto instance =
+      CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr);
   EXPECT_EQ("robot.jump", instance->GetName());
   EXPECT_EQ("robotd", instance->GetCategory());
   EXPECT_EQ(53, instance->FindParameter("height")->GetInt()->GetValue());
@@ -129,8 +125,8 @@ TEST_F(CommandInstanceTest, FromJson) {
 
 TEST_F(CommandInstanceTest, FromJson_ParamsOmitted) {
   auto json = CreateDictionaryValue("{'name': 'base.reboot'}");
-  auto instance = buffet::CommandInstance::FromJson(json.get(), "cloud", dict_,
-                                                    nullptr);
+  auto instance =
+      CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr);
   EXPECT_EQ("base.reboot", instance->GetName());
   EXPECT_EQ("robotd", instance->GetCategory());
   EXPECT_TRUE(instance->GetParameters().empty());
@@ -139,8 +135,7 @@ TEST_F(CommandInstanceTest, FromJson_ParamsOmitted) {
 TEST_F(CommandInstanceTest, FromJson_NotObject) {
   auto json = CreateValue("'string'");
   chromeos::ErrorPtr error;
-  auto instance = buffet::CommandInstance::FromJson(json.get(), "cloud", dict_,
-                                                    &error);
+  auto instance = CommandInstance::FromJson(json.get(), "cloud", dict_, &error);
   EXPECT_EQ(nullptr, instance.get());
   EXPECT_EQ("json_object_expected", error->GetCode());
   EXPECT_EQ("Command instance is not a JSON object", error->GetMessage());
@@ -149,8 +144,7 @@ TEST_F(CommandInstanceTest, FromJson_NotObject) {
 TEST_F(CommandInstanceTest, FromJson_NameMissing) {
   auto json = CreateDictionaryValue("{'param': 'value'}");
   chromeos::ErrorPtr error;
-  auto instance = buffet::CommandInstance::FromJson(json.get(), "cloud", dict_,
-                                                    &error);
+  auto instance = CommandInstance::FromJson(json.get(), "cloud", dict_, &error);
   EXPECT_EQ(nullptr, instance.get());
   EXPECT_EQ("parameter_missing", error->GetCode());
   EXPECT_EQ("Command name is missing", error->GetMessage());
@@ -159,8 +153,7 @@ TEST_F(CommandInstanceTest, FromJson_NameMissing) {
 TEST_F(CommandInstanceTest, FromJson_UnknownCommand) {
   auto json = CreateDictionaryValue("{'name': 'robot.scream'}");
   chromeos::ErrorPtr error;
-  auto instance = buffet::CommandInstance::FromJson(json.get(), "cloud", dict_,
-                                                    &error);
+  auto instance = CommandInstance::FromJson(json.get(), "cloud", dict_, &error);
   EXPECT_EQ(nullptr, instance.get());
   EXPECT_EQ("invalid_command_name", error->GetCode());
   EXPECT_EQ("Unknown command received: robot.scream", error->GetMessage());
@@ -172,8 +165,7 @@ TEST_F(CommandInstanceTest, FromJson_ParamsNotObject) {
     'parameters': 'hello'
   })");
   chromeos::ErrorPtr error;
-  auto instance = buffet::CommandInstance::FromJson(json.get(), "cloud", dict_,
-                                                    &error);
+  auto instance = CommandInstance::FromJson(json.get(), "cloud", dict_, &error);
   EXPECT_EQ(nullptr, instance.get());
   auto inner = error->GetInnerError();
   EXPECT_EQ("json_object_expected", inner->GetCode());
@@ -191,8 +183,7 @@ TEST_F(CommandInstanceTest, FromJson_ParamError) {
     }
   })");
   chromeos::ErrorPtr error;
-  auto instance = buffet::CommandInstance::FromJson(json.get(), "cloud", dict_,
-                                                    &error);
+  auto instance = CommandInstance::FromJson(json.get(), "cloud", dict_, &error);
   EXPECT_EQ(nullptr, instance.get());
   auto first = error->GetFirstError();
   EXPECT_EQ("out_of_range", first->GetCode());
@@ -215,12 +206,12 @@ TEST_F(CommandInstanceTest, ToJson) {
     },
     'results': {}
   })");
-  auto instance = buffet::CommandInstance::FromJson(json.get(), "cloud", dict_,
-                                                    nullptr);
+  auto instance =
+      CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr);
   instance->SetProgress(15);
   instance->SetID("testId");
-  buffet::native_types::Object results;
-  buffet::IntPropType int_prop;
+  native_types::Object results;
+  IntPropType int_prop;
   results["testResult"] = int_prop.CreateValue(17, nullptr);
   instance->SetResults(results);
 
@@ -236,3 +227,5 @@ TEST_F(CommandInstanceTest, ToJson) {
     return val1.Equals(&val2);
   }, *json, *converted);
 }
+
+}  // namespace buffet
