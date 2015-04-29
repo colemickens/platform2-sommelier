@@ -9,11 +9,15 @@
 DEVICE_IP="169.254.100.2"
 MAX_VETH_SUFFIX=99
 
+# VID/PID of the USB-Ethernet dongle used for the debug link.
+VENDOR_ID="0b95"
+PRODUCT_ID="7e2b"
+
 devdir=""
 for d in /sys/bus/usb/devices/*; do
-  idVendor=$(cat "${d}/idVendor")
-  idProduct=$(cat "${d}/idProduct")
-  if [ "${idVendor}" = "0b95" -a "${idProduct}" = "7e2b" ]; then
+  vid="$(cat ${d}/idVendor)"
+  pid="$(cat ${d}/idProduct)"
+  if [ "${vid}" = "${VENDOR_ID}" -a "${pid}" = "${PRODUCT_ID}" ]; then
     devdir="${d}"
   fi
 done
@@ -23,21 +27,22 @@ if [ -z "${devdir}" ]; then
   exit 1
 fi
 
-netdir=$(find "${devdir}/" -name "net")
-ifname=$(ls "${netdir}")
-address=$(cat "${netdir}/${ifname}/address")
+netdir="$(find ${devdir}/ -name net)"
+ifname="$(ls ${netdir})"
+address="$(cat ${netdir}/${ifname}/address)"
 
 ip link set dev "${ifname}" down
 
+trap "ip link set dev ${ifname} up" EXIT
+
 new_ifname=""
-for i in $(seq 0 $MAX_VETH_SUFFIX); do
+# Find and set an availabe veth* name for the debug link.
+for i in $(seq 0 ${MAX_VETH_SUFFIX}); do
   new_ifname="veth${i}"
-  nameif "${new_ifname}" "${address}"
-  if [ $? -eq 0 ]; then
+  if nameif "${new_ifname}" "${address}"; then
     break
-  elif [ ${i} -eq $MAX_VETH_SUFFIX ]; then
-    ip link set dev "${ifname}" up
-    logger "setup-debug-link: could not find a veth* interface name"
+  elif [ ${i} -eq ${MAX_VETH_SUFFIX} ]; then
+    logger "setup-debug-link: could not find an available veth* interface name"
     exit 1
   fi
 done
