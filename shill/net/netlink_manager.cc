@@ -800,8 +800,7 @@ void NetlinkManager::CallErrorHandler(uint32_t sequence_number,
                                       const NetlinkMessage *netlink_message) {
   if (ContainsKey(message_handlers_, sequence_number)) {
     VLOG(6) << "Found message-specific error handler";
-    message_handlers_[PendingDumpSequenceNumber()]->HandleError(
-        type, netlink_message);
+    message_handlers_[sequence_number]->HandleError(type, netlink_message);
     message_handlers_.erase(sequence_number);
   }
 }
