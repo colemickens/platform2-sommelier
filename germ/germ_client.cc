@@ -4,6 +4,8 @@
 
 #include "germ/germ_client.h"
 
+#include <utility>
+
 #include <sysexits.h>
 
 #include <base/bind.h>
@@ -15,9 +17,9 @@
 
 namespace germ {
 
-void GermClient::ReceiveService(scoped_ptr<BinderProxy> proxy) {
+void GermClient::ReceiveService(std::unique_ptr<BinderProxy> proxy) {
   LOG(INFO) << "Received service with handle " << proxy->handle();
-  proxy_.reset(proxy.release());
+  proxy_ = std::move(proxy);
   germ_.reset(protobinder::BinderToInterface<IGerm>(proxy_.get()));
   callback_.Run();
   Quit();
