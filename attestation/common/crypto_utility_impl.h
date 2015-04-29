@@ -9,6 +9,8 @@
 
 #include <string>
 
+#include <openssl/rsa.h>
+
 #include "attestation/common/tpm_utility.h"
 
 namespace attestation {
@@ -35,6 +37,13 @@ class CryptoUtilityImpl : public CryptoUtility {
                    std::string* data) override;
   bool GetRSASubjectPublicKeyInfo(const std::string& public_key,
                                   std::string* spki) override;
+  bool GetRSAPublicKey(const std::string& public_key_info,
+                       std::string* public_key) override;
+  bool EncryptIdentityCredential(
+      const std::string& credential,
+      const std::string& ek_public_key_info,
+      const std::string& aik_public_key,
+      EncryptedIdentityCredential* encrypted) override;
 
  private:
   // Encrypts |data| using |key| and |iv| for AES in CBC mode with PKCS #5
@@ -53,6 +62,20 @@ class CryptoUtilityImpl : public CryptoUtility {
 
   // Computes and returns an HMAC of |data| using |key| and SHA-512.
   std::string HmacSha512(const std::string& data, const std::string& key);
+
+  // Computes and returns the SHA-1 digest of |input|.
+  std::string Sha1(const std::string& input);
+
+  // Encrypt like trousers does. This is like AesEncrypt but a random IV is
+  // included in the output.
+  bool TssCompatibleEncrypt(const std::string& input,
+                            const std::string& key,
+                            std::string* output);
+
+  // Encrypts using RSA-OAEP and the TPM-specific OAEP parameter.
+  bool TpmCompatibleOAEPEncrypt(const std::string& input,
+                                RSA* key,
+                                std::string* output);
 
   TpmUtility* tpm_utility_;
 };

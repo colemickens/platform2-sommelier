@@ -193,6 +193,7 @@ TEST_F(DBusServiceTest, GetAttestationKeyInfo) {
         GetAttestationKeyInfoReply reply;
         reply.set_status(STATUS_SUCCESS);
         reply.set_public_key("public_key");
+        reply.set_public_key_tpm_format("public_key_tpm_format");
         reply.set_certificate("certificate");
         reply.mutable_pcr0_quote()->set_quote("pcr0");
         reply.mutable_pcr1_quote()->set_quote("pcr1");
@@ -208,9 +209,44 @@ TEST_F(DBusServiceTest, GetAttestationKeyInfo) {
   EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
   EXPECT_EQ(STATUS_SUCCESS, reply.status());
   EXPECT_EQ("public_key", reply.public_key());
+  EXPECT_EQ("public_key_tpm_format", reply.public_key_tpm_format());
   EXPECT_EQ("certificate", reply.certificate());
   EXPECT_EQ("pcr0", reply.pcr0_quote().quote());
   EXPECT_EQ("pcr1", reply.pcr1_quote().quote());
+}
+
+TEST_F(DBusServiceTest, ActivateAttestationKey) {
+  ActivateAttestationKeyRequest request;
+  request.set_key_type(KEY_TYPE_ECC);
+  request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
+  request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
+  request.set_save_certificate(true);
+  EXPECT_CALL(mock_service_, ActivateAttestationKey(_, _))
+      .WillOnce(Invoke([](
+          const ActivateAttestationKeyRequest& request,
+          const AttestationInterface::ActivateAttestationKeyCallback&
+              callback) {
+        EXPECT_EQ(KEY_TYPE_ECC, request.key_type());
+        EXPECT_EQ("encrypted1",
+                  request.encrypted_certificate().asym_ca_contents());
+        EXPECT_EQ("encrypted2",
+                  request.encrypted_certificate().sym_ca_attestation());
+        EXPECT_TRUE(request.save_certificate());
+        ActivateAttestationKeyReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        reply.set_certificate("certificate");
+        callback.Run(reply);
+      }));
+  std::unique_ptr<dbus::MethodCall> call =
+      CreateMethodCall(kActivateAttestationKey);
+  dbus::MessageWriter writer(call.get());
+  writer.AppendProtoAsArrayOfBytes(request);
+  auto response = CallMethod(call.get());
+  dbus::MessageReader reader(response.get());
+  ActivateAttestationKeyReply reply;
+  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  EXPECT_EQ("certificate", reply.certificate());
 }
 
 }  // namespace attestation

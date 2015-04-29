@@ -154,4 +154,35 @@ TEST_F(CryptoUtilityImplTest, GetRSASubjectPublicKeyInfoBadInput) {
                                                            &output));
 }
 
+TEST_F(CryptoUtilityImplTest, GetRSASubjectPublicKeyInfoPairWise) {
+  std::string public_key = HexDecode(kValidPublicKeyHex);
+  std::string output;
+  EXPECT_TRUE(crypto_utility_->GetRSASubjectPublicKeyInfo(public_key, &output));
+  std::string public_key2;
+  EXPECT_TRUE(crypto_utility_->GetRSAPublicKey(output, &public_key2));
+  EXPECT_EQ(public_key, public_key2);
+}
+
+TEST_F(CryptoUtilityImplTest, EncryptIdentityCredential) {
+  std::string public_key = HexDecode(kValidPublicKeyHex);
+  std::string public_key_info;
+  EXPECT_TRUE(crypto_utility_->GetRSASubjectPublicKeyInfo(public_key,
+                                                          &public_key_info));
+  EncryptedIdentityCredential output;
+  EXPECT_TRUE(crypto_utility_->EncryptIdentityCredential("credential",
+                                                         public_key_info,
+                                                         "aik",
+                                                         &output));
+  EXPECT_TRUE(output.has_asym_ca_contents());
+  EXPECT_TRUE(output.has_sym_ca_attestation());
+}
+
+TEST_F(CryptoUtilityImplTest, EncryptIdentityCredentialBadEK) {
+  EncryptedIdentityCredential output;
+  EXPECT_FALSE(crypto_utility_->EncryptIdentityCredential("credential",
+                                                          "bad_ek",
+                                                          "aik",
+                                                          &output));
+}
+
 }  // namespace attestation

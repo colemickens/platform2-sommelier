@@ -88,17 +88,17 @@ bool TpmUtilityV1::ActivateIdentity(const std::string& delegate_blob,
   }
 
   // Connect to the TPM as the owner delegate.
-  ScopedTssContext context_handle_;
+  ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsDelegate(delegate_blob, delegate_secret,
-                                &context_handle_, &tpm_handle)) {
+                                &context_handle, &tpm_handle)) {
     LOG(ERROR) << __func__ << ": Could not connect to the TPM.";
     return false;
   }
   // Load the Storage Root Key.
   TSS_RESULT result;
-  ScopedTssKey srk_handle(context_handle_);
-  if (!LoadSrk(context_handle_, &srk_handle)) {
+  ScopedTssKey srk_handle(context_handle);
+  if (!LoadSrk(context_handle, &srk_handle)) {
     LOG(ERROR) << __func__ << ": Failed to load SRK.";
     return false;
   }
@@ -106,9 +106,9 @@ bool TpmUtilityV1::ActivateIdentity(const std::string& delegate_blob,
   std::string mutable_identity_key_blob(identity_key_blob);
   BYTE* identity_key_blob_buffer = StringAsTSSBuffer(
       &mutable_identity_key_blob);
-  ScopedTssKey identity_key(context_handle_);
+  ScopedTssKey identity_key(context_handle);
   result = Tspi_Context_LoadKeyByBlob(
-      context_handle_,
+      context_handle,
       srk_handle,
       identity_key_blob.size(),
       identity_key_blob_buffer,
@@ -123,7 +123,7 @@ bool TpmUtilityV1::ActivateIdentity(const std::string& delegate_blob,
   BYTE* sym_ca_attestation_buffer = StringAsTSSBuffer(
       &mutable_sym_ca_attestation);
   UINT32 credential_length = 0;
-  ScopedTssMemory credential_buffer(context_handle_);
+  ScopedTssMemory credential_buffer(context_handle);
   result = Tspi_TPM_ActivateIdentity(tpm_handle, identity_key,
                                      asym_ca_contents.size(),
                                      asym_ca_contents_buffer,
@@ -476,7 +476,7 @@ bool TpmUtilityV1::LoadSrk(TSS_HCONTEXT context_handle,
                            ScopedTssKey* srk_handle) {
   TSS_RESULT result;
   TSS_UUID uuid = TSS_UUID_SRK;
-  if (TPM_ERROR(result = Tspi_Context_LoadKeyByUUID(context_handle_,
+  if (TPM_ERROR(result = Tspi_Context_LoadKeyByUUID(context_handle,
                                                     TSS_PS_TYPE_SYSTEM,
                                                     uuid,
                                                     srk_handle->ptr()))) {
@@ -518,13 +518,13 @@ bool TpmUtilityV1::LoadSrk(TSS_HCONTEXT context_handle,
 }
 
 bool TpmUtilityV1::LoadKeyFromBlob(const std::string& key_blob,
-                                   TSS_HCONTEXT context_handle_,
+                                   TSS_HCONTEXT context_handle,
                                    TSS_HKEY parent_key_handle,
                                    ScopedTssKey* key_handle) {
   std::string mutable_key_blob(key_blob);
   BYTE* key_blob_buffer = StringAsTSSBuffer(&mutable_key_blob);
   TSS_RESULT result = Tspi_Context_LoadKeyByBlob(
-      context_handle_,
+      context_handle,
       parent_key_handle,
       key_blob.size(),
       key_blob_buffer,

@@ -23,15 +23,6 @@ message AttestationEnrollmentRequest {
   optional Quote pcr1_quote = 4;
 }
 
-// These two fields are suitable for passing to Tspi_TPM_ActivateIdentity()
-// directly.
-message EncryptedIdentityCredential {
-  // TPM_ASYM_CA_CONTENTS, encrypted with EK public key.
-  optional bytes asym_ca_contents = 1;
-  // TPM_SYM_CA_ATTESTATION, encrypted with the key in aysm_ca_contents.
-  optional bytes sym_ca_attestation = 2;
-}
-
 enum ResponseStatus {
   OK = 0;
   // Internal server error.

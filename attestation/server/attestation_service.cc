@@ -107,6 +107,10 @@ void AttestationService::CreateGoogleAttestedKeyTask(
     }
     std::string server_error;
     if (!FinishEnroll(enroll_reply, &server_error)) {
+      if (server_error.empty()) {
+        result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+        return;
+      }
       result->set_status(STATUS_REQUEST_DENIED_BY_CA);
       result->set_server_error(server_error);
       return;
@@ -143,6 +147,10 @@ void AttestationService::CreateGoogleAttestedKeyTask(
                                 message_id,
                                 &certificate_chain,
                                 &server_error)) {
+    if (server_error.empty()) {
+      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+      return;
+    }
     result->set_status(STATUS_REQUEST_DENIED_BY_CA);
     result->set_server_error(server_error);
     return;
@@ -285,6 +293,11 @@ void AttestationService::GetAttestationKeyInfoTask(
     }
     result->set_public_key(public_key_info);
   }
+  if (database_pb.has_identity_binding() &&
+      database_pb.identity_binding().has_identity_public_key()) {
+    result->set_public_key_tpm_format(
+        database_pb.identity_binding().identity_public_key());
+  }
   if (database_pb.identity_key().has_identity_credential()) {
     result->set_certificate(database_pb.identity_key().identity_credential());
   }
@@ -294,6 +307,54 @@ void AttestationService::GetAttestationKeyInfoTask(
   if (database_pb.has_pcr1_quote()) {
     *result->mutable_pcr1_quote() = database_pb.pcr1_quote();
   }
+}
+
+void AttestationService::ActivateAttestationKey(
+    const ActivateAttestationKeyRequest& request,
+    const ActivateAttestationKeyCallback& callback) {
+  auto result = std::make_shared<ActivateAttestationKeyReply>();
+  base::Closure task = base::Bind(
+      &AttestationService::ActivateAttestationKeyTask,
+      base::Unretained(this),
+      request,
+      result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<ActivateAttestationKeyReply>,
+      GetWeakPtr(),
+      callback,
+      result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::ActivateAttestationKeyTask(
+    const ActivateAttestationKeyRequest& request,
+    const std::shared_ptr<ActivateAttestationKeyReply>& result) {
+  if (request.key_type() != KEY_TYPE_RSA) {
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
+  }
+  std::string certificate;
+  auto database_pb = database_->GetProtobuf();
+  if (!tpm_utility_->ActivateIdentity(
+      database_pb.delegate().blob(),
+      database_pb.delegate().secret(),
+      database_pb.identity_key().identity_key_blob(),
+      request.encrypted_certificate().asym_ca_contents(),
+      request.encrypted_certificate().sym_ca_attestation(),
+      &certificate)) {
+    LOG(ERROR) << __func__ << ": Failed to activate identity.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  if (request.save_certificate()) {
+    database_->GetMutableProtobuf()->mutable_identity_key()->
+        set_identity_credential(certificate);
+    if (!database_->SaveChanges()) {
+      LOG(ERROR) << __func__ << ": Failed to persist database changes.";
+      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    }
+  }
+  result->set_certificate(certificate);
 }
 
 bool AttestationService::IsPreparedForEnrollment() {

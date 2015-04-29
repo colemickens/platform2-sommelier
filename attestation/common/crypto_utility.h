@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include "attestation/common/common.pb.h"
+
 namespace attestation {
 
 // A class which provides helpers for cryptography-related tasks.
@@ -46,9 +48,25 @@ class CryptoUtility {
                            std::string* data) = 0;
 
   // Convert |public_key| from PKCS #1 RSAPublicKey to X.509
-  // SubjectPublicKeyInfo. On success returns true and provides the |spki|.
+  // SubjectPublicKeyInfo. On success returns true and provides the
+  // |public_key_info|.
   virtual bool GetRSASubjectPublicKeyInfo(const std::string& public_key,
-                                          std::string* spki) = 0;
+                                          std::string* public_key_info) = 0;
+
+  // Convert |public_key_info| from X.509 SubjectPublicKeyInfo to PKCS #1
+  // RSAPublicKey. On success returns true and provides the |public_key|.
+  virtual bool GetRSAPublicKey(const std::string& public_key_info,
+                               std::string* public_key) = 0;
+
+  // Encrypts a |credential| in a format compatible with TPM attestation key
+  // activation. The |ek_public_key_info| must be provided in X.509
+  // SubjectPublicKeyInfo format and the |aik_public_key| must be provided in
+  // TPM_PUBKEY format.
+  virtual bool EncryptIdentityCredential(
+      const std::string& credential,
+      const std::string& ek_public_key_info,
+      const std::string& aik_public_key,
+      EncryptedIdentityCredential* encrypted) = 0;
 };
 
 }  // namespace attestation

@@ -270,7 +270,7 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithBadCAMessageID) {
   SetupFakeCASign(kBadMessageID);
   // Set expectations on the outputs.
   auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_EQ(STATUS_REQUEST_DENIED_BY_CA, reply.status());
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_certificate_chain());
     EXPECT_EQ("", reply.server_error());
     Quit();
@@ -600,10 +600,12 @@ TEST_F(AttestationServiceTest, GetAttestationKeyInfoSuccess) {
   database->mutable_identity_key()->set_identity_credential("certificate");
   database->mutable_pcr0_quote()->set_quote("pcr0");
   database->mutable_pcr1_quote()->set_quote("pcr1");
+  database->mutable_identity_binding()->set_identity_public_key("public_key2");
   // Set expectations on the outputs.
   auto callback = [this](const GetAttestationKeyInfoReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_EQ("public_key", reply.public_key());
+    EXPECT_EQ("public_key2", reply.public_key_tpm_format());
     EXPECT_EQ("certificate", reply.certificate());
     EXPECT_EQ("pcr0", reply.pcr0_quote().quote());
     EXPECT_EQ("pcr1", reply.pcr1_quote().quote());
@@ -620,6 +622,7 @@ TEST_F(AttestationServiceTest, GetAttestationKeyInfoNoInfo) {
   auto callback = [this](const GetAttestationKeyInfoReply& reply) {
     EXPECT_EQ(STATUS_NOT_AVAILABLE, reply.status());
     EXPECT_FALSE(reply.has_public_key());
+    EXPECT_FALSE(reply.has_public_key_tpm_format());
     EXPECT_FALSE(reply.has_certificate());
     EXPECT_FALSE(reply.has_pcr0_quote());
     EXPECT_FALSE(reply.has_pcr1_quote());
@@ -639,6 +642,7 @@ TEST_F(AttestationServiceTest, GetAttestationKeyInfoSomeInfo) {
   auto callback = [this](const GetAttestationKeyInfoReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
     EXPECT_FALSE(reply.has_public_key());
+    EXPECT_FALSE(reply.has_public_key_tpm_format());
     EXPECT_EQ("certificate", reply.certificate());
     EXPECT_FALSE(reply.has_pcr0_quote());
     EXPECT_EQ("pcr1", reply.pcr1_quote().quote());
@@ -647,6 +651,83 @@ TEST_F(AttestationServiceTest, GetAttestationKeyInfoSomeInfo) {
   GetAttestationKeyInfoRequest request;
   request.set_key_type(KEY_TYPE_RSA);
   service_->GetAttestationKeyInfo(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, ActivateAttestationKeySuccess) {
+  EXPECT_CALL(mock_database_, SaveChanges()).Times(1);
+  EXPECT_CALL(mock_tpm_utility_, ActivateIdentity(_, _, _, "encrypted1",
+                                                  "encrypted2", _))
+      .WillOnce(DoAll(SetArgumentPointee<5>(std::string("certificate")),
+                      Return(true)));
+  // Set expectations on the outputs.
+  auto callback = [this](const ActivateAttestationKeyReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ("certificate", reply.certificate());
+    Quit();
+  };
+  ActivateAttestationKeyRequest request;
+  request.set_key_type(KEY_TYPE_RSA);
+  request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
+  request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
+  request.set_save_certificate(true);
+  service_->ActivateAttestationKey(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, ActivateAttestationKeySuccessNoSave) {
+  EXPECT_CALL(mock_database_, GetMutableProtobuf()).Times(0);
+  EXPECT_CALL(mock_database_, SaveChanges()).Times(0);
+  EXPECT_CALL(mock_tpm_utility_, ActivateIdentity(_, _, _, "encrypted1",
+                                                  "encrypted2", _))
+      .WillOnce(DoAll(SetArgumentPointee<5>(std::string("certificate")),
+                      Return(true)));
+  // Set expectations on the outputs.
+  auto callback = [this](const ActivateAttestationKeyReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ("certificate", reply.certificate());
+    Quit();
+  };
+  ActivateAttestationKeyRequest request;
+  request.set_key_type(KEY_TYPE_RSA);
+  request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
+  request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
+  request.set_save_certificate(false);
+  service_->ActivateAttestationKey(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, ActivateAttestationKeySaveFailure) {
+  EXPECT_CALL(mock_database_, SaveChanges()).WillRepeatedly(Return(false));
+  // Set expectations on the outputs.
+  auto callback = [this](const ActivateAttestationKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    Quit();
+  };
+  ActivateAttestationKeyRequest request;
+  request.set_key_type(KEY_TYPE_RSA);
+  request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
+  request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
+  request.set_save_certificate(true);
+  service_->ActivateAttestationKey(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
+  EXPECT_CALL(mock_tpm_utility_, ActivateIdentity(_, _, _, "encrypted1",
+                                                  "encrypted2", _))
+      .WillRepeatedly(Return(false));
+  // Set expectations on the outputs.
+  auto callback = [this](const ActivateAttestationKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    Quit();
+  };
+  ActivateAttestationKeyRequest request;
+  request.set_key_type(KEY_TYPE_RSA);
+  request.mutable_encrypted_certificate()->set_asym_ca_contents("encrypted1");
+  request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
+  request.set_save_certificate(true);
+  service_->ActivateAttestationKey(request, base::Bind(callback));
   Run();
 }
 

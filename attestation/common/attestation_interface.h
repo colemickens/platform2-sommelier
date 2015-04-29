@@ -53,6 +53,14 @@ class AttestationInterface {
   virtual void GetAttestationKeyInfo(
       const GetAttestationKeyInfoRequest& request,
       const GetAttestationKeyInfoCallback& callback) = 0;
+
+  // Processes a ActivateAttestationKeyRequest and responds with a
+  // ActivateAttestationKeyReply.
+  using ActivateAttestationKeyCallback =
+      base::Callback<void(const ActivateAttestationKeyReply&)>;
+  virtual void ActivateAttestationKey(
+      const ActivateAttestationKeyRequest& request,
+      const ActivateAttestationKeyCallback& callback) = 0;
 };
 
 }  // namespace attestation

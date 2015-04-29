@@ -36,6 +36,9 @@ class DBusProxy : public AttestationInterface {
   void GetAttestationKeyInfo(
       const GetAttestationKeyInfoRequest& request,
       const GetAttestationKeyInfoCallback& callback) override;
+  void ActivateAttestationKey(
+      const ActivateAttestationKeyRequest& request,
+      const ActivateAttestationKeyCallback& callback) override;
 
   // Useful for testing.
   void set_object_proxy(dbus::ObjectProxy* object_proxy) {
