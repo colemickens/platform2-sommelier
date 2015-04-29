@@ -39,9 +39,9 @@ class DemoClient : public PsycheDaemon {
   // Delay between calls to SendPing().
   const int kPingIntervalMs = 1000;
 
-  void ReceiveService(scoped_ptr<BinderProxy> proxy) {
+  void ReceiveService(std::unique_ptr<BinderProxy> proxy) {
     LOG(INFO) << "Received service with handle " << proxy->handle();
-    proxy_.reset(proxy.release());
+    proxy_ = std::move(proxy);
     server_.reset(protobinder::BinderToInterface<psyche::IPsycheDemoServer>(
         proxy_.get()));
     timer_.Start(FROM_HERE, base::TimeDelta::FromMilliseconds(kPingIntervalMs),
