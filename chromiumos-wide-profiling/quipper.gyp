@@ -18,6 +18,7 @@
         'buffer_writer.cc',
         'data_reader.cc',
         'data_writer.cc',
+        'file_reader.cc',
         'perf_parser.cc',
         'perf_protobuf_io.cc',
         'perf_reader.cc',
@@ -157,6 +158,18 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'conversion_utils_test.cc',
+          ]
+        },
+        {
+          'target_name': 'file_reader_test',
+          'type': 'executable',
+          'dependencies': [
+            'common',
+            'common_test',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'file_reader_test.cc',
           ]
         },
         {

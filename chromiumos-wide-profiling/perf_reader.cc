@@ -19,6 +19,7 @@
 #include "chromiumos-wide-profiling/buffer_reader.h"
 #include "chromiumos-wide-profiling/buffer_writer.h"
 #include "chromiumos-wide-profiling/compat/string.h"
+#include "chromiumos-wide-profiling/file_reader.h"
 #include "chromiumos-wide-profiling/limits.h"
 #include "chromiumos-wide-profiling/utils.h"
 
@@ -633,8 +634,12 @@ void PerfReader::TrimZeroesFromBuildIDString(string* build_id) {
 }
 
 bool PerfReader::ReadFile(const string& filename) {
-  std::vector<char> data;
-  return ReadFileToData(filename, &data) && ReadFromVector(data);
+  FileReader reader(filename);
+  if (!reader.IsOpen()) {
+    LOG(ERROR) << "Unable to open file " << filename;
+    return false;
+  }
+  return ReadFromData(&reader);
 }
 
 bool PerfReader::ReadFromVector(const std::vector<char>& data) {
