@@ -12,6 +12,8 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/format_macros.h>
+#include <base/json/json_writer.h>
+#include <base/values.h>
 #include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/map_utils.h>
 #include <chromeos/strings/string_utils.h>
@@ -21,6 +23,53 @@
 
 namespace {
 const char kTestCommandCategory[] = "test";
+
+std::unique_ptr<base::DictionaryValue> DictionaryToJson(
+    const chromeos::VariantDictionary& dictionary);
+
+std::unique_ptr<base::Value> AnyToJson(const chromeos::Any& value) {
+  if (value.IsTypeCompatible<chromeos::VariantDictionary>())
+    return DictionaryToJson(value.Get<chromeos::VariantDictionary>());
+
+  if (value.IsTypeCompatible<std::string>()) {
+    return std::unique_ptr<base::Value>{
+        new base::StringValue(value.Get<std::string>())};
+  }
+
+  if (value.IsTypeCompatible<double>()) {
+    return std::unique_ptr<base::Value>{
+        new base::FundamentalValue(value.Get<double>())};
+  }
+
+  if (value.IsTypeCompatible<bool>()) {
+    return std::unique_ptr<base::Value>{
+        new base::FundamentalValue(value.Get<bool>())};
+  }
+
+  if (value.IsTypeCompatible<int>()) {
+    return std::unique_ptr<base::Value>{
+        new base::FundamentalValue(value.Get<int>())};
+  }
+
+  LOG(FATAL) << "Unsupported type:" << value.GetType().name();
+  return {};
+}
+
+std::unique_ptr<base::DictionaryValue> DictionaryToJson(
+    const chromeos::VariantDictionary& dictionary) {
+  std::unique_ptr<base::DictionaryValue> result{new base::DictionaryValue};
+  for (const auto& it : dictionary)
+    result->Set(it.first, AnyToJson(it.second).release());
+  return result;
+}
+
+std::string DictionaryToString(const chromeos::VariantDictionary& dictionary) {
+  std::unique_ptr<base::DictionaryValue> json{DictionaryToJson(dictionary)};
+  std::string str;
+  base::JSONWriter::Write(json.get(), &str);
+  return str;
+}
+
 }  // anonymous namespace
 
 class Daemon : public chromeos::DBusDaemon {
@@ -67,8 +116,11 @@ void Daemon::OnPropertyChange(org::chromium::Buffet::CommandProxy* command,
                               const std::string& property_name) {
   printf("Notification: property '%s' on command '%s' changed.\n",
          property_name.c_str(), command->id().c_str());
-  printf("  Current command status: '%s' (%d)\n",
-         command->status().c_str(), command->progress());
+  printf("  Current command status: '%s'\n", command->status().c_str());
+  std::string progress = DictionaryToString(command->progress());
+  printf("  Current command progress: %s\n", progress.c_str());
+  std::string results = DictionaryToString(command->results());
+  printf("  Current command results: %s\n", results.c_str());
 }
 
 void Daemon::OnBuffetCommand(org::chromium::Buffet::CommandProxy* command) {
@@ -87,28 +139,25 @@ void Daemon::OnBuffetCommand(org::chromium::Buffet::CommandProxy* command) {
   printf("              ID: %s\n", command->id().c_str());
   printf("          status: %s\n", command->status().c_str());
   printf("          origin: %s\n", command->origin().c_str());
-  printf(" # of parameters: %" PRIuS "\n", command->parameters().size());
-  auto keys = chromeos::GetMapKeysAsVector(command->parameters());
-  std::string param_names = chromeos::string_utils::Join(", ", keys);
-  printf(" parameter names: %s\n", param_names.c_str());
+  std::string param_names = DictionaryToString(command->parameters());
+  printf(" parameters: %s\n", param_names.c_str());
   OnCommandProgress(command, 0);
 }
 
 void Daemon::OnCommandProgress(org::chromium::Buffet::CommandProxy* command,
                                int progress) {
+  printf("Updating command '%s' progress to %d%%\n", command->id().c_str(),
+         progress);
+  auto new_progress = command->progress();
+  new_progress["progress"] = progress;
+  command->SetProgress(new_progress, nullptr);
+
   if (progress >= 100) {
     command->Done(nullptr);
   } else {
-    printf("Updating command '%s' progress to %d%%\n",
-           command->id().c_str(), progress);
-    command->SetProgress(progress, nullptr);
-    progress += 10;
     base::MessageLoop::current()->PostDelayedTask(
-        FROM_HERE,
-        base::Bind(&Daemon::OnCommandProgress,
-                   base::Unretained(this),
-                   command,
-                   progress),
+        FROM_HERE, base::Bind(&Daemon::OnCommandProgress,
+                              base::Unretained(this), command, progress + 10),
         base::TimeDelta::FromSeconds(1));
   }
 }

@@ -44,7 +44,8 @@ class DBusCommandProxy : public CommandProxyInterface,
 
  private:
   // Handles calls to org.chromium.Buffet.Command.SetProgress(progress).
-  bool SetProgress(chromeos::ErrorPtr* error, int32_t progress) override;
+  bool SetProgress(chromeos::ErrorPtr* error,
+                   const chromeos::VariantDictionary& progress) override;
   // Handles calls to org.chromium.Buffet.Command.SetResults(results).
   bool SetResults(chromeos::ErrorPtr* error,
                   const chromeos::VariantDictionary& results) override;

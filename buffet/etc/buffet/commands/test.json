@@ -3,6 +3,13 @@
     "_jump": {
       "parameters": {
         "_height":"integer"
+      },
+      "progress": {
+        "progress": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
       }
     }
   }

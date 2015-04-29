@@ -79,7 +79,8 @@ class DBusCommandDispacherTest : public testing::Test {
         },
         'shutdown': {
           'parameters': {},
-          'results': {}
+          'results': {},
+          'progress': {'progress': 'integer'}
         }
       }
     })");
@@ -121,8 +122,9 @@ class DBusCommandDispacherTest : public testing::Test {
     proxy->Done();
   }
 
-  void SetProgress(DBusCommandProxy* proxy, int progress) {
-    proxy->SetProgress(nullptr, progress);
+  void SetProgress(DBusCommandProxy* proxy,
+                   const native_types::Object& progress) {
+    EXPECT_TRUE(proxy->SetProgress(nullptr, ObjectToDBusVariant(progress)));
   }
 
 
@@ -146,14 +148,16 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Shutdown) {
 
   // Two properties are set, Progress = 50%, Status = "inProgress"
   EXPECT_CALL(*mock_exported_command_proxy_, SendSignal(_)).Times(2);
-  SetProgress(command_proxy, 50);
+  native_types::Object progress{
+      {"progress", unittests::make_int_prop_value(50)}};
+  SetProgress(command_proxy, progress);
   EXPECT_EQ(CommandInstance::kStatusInProgress, command_instance->GetStatus());
-  EXPECT_EQ(50, command_instance->GetProgress());
+  EXPECT_EQ(progress, command_instance->GetProgress());
 
   // Command must be removed from the queue and proxy destroyed after calling
   // FinishCommand().
-  // Two properties are set, Progress = 100%, Status = "done"
-  EXPECT_CALL(*mock_exported_command_proxy_, SendSignal(_)).Times(2);
+  // One property is set, Status = "done"
+  EXPECT_CALL(*mock_exported_command_proxy_, SendSignal(_)).Times(1);
   // D-Bus command proxy is going away.
   EXPECT_CALL(*mock_exported_command_proxy_, Unregister()).Times(1);
   // Two interfaces are being removed on the D-Bus command object.
@@ -177,16 +181,17 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Reboot) {
   ASSERT_NE(nullptr, command_proxy);
   EXPECT_EQ(CommandInstance::kStatusQueued, command_instance->GetStatus());
 
-  // Two properties are set, Progress = 50%, Status = "inProgress"
-  EXPECT_CALL(*mock_exported_command_proxy_, SendSignal(_)).Times(2);
-  SetProgress(command_proxy, 50);
+  // One property is set, Status = "inProgress"
+  EXPECT_CALL(*mock_exported_command_proxy_, SendSignal(_)).Times(1);
+  native_types::Object progress{};
+  SetProgress(command_proxy, progress);
   EXPECT_EQ(CommandInstance::kStatusInProgress, command_instance->GetStatus());
-  EXPECT_EQ(50, command_instance->GetProgress());
+  EXPECT_EQ(progress, command_instance->GetProgress());
 
   // Command must be removed from the queue and proxy destroyed after calling
   // FinishCommand().
-  // Two properties are set, Progress = 100%, Status = "done"
-  EXPECT_CALL(*mock_exported_command_proxy_, SendSignal(_)).Times(2);
+  // One property is set, Status = "done"
+  EXPECT_CALL(*mock_exported_command_proxy_, SendSignal(_)).Times(1);
   // D-Bus command proxy is going away.
   EXPECT_CALL(*mock_exported_command_proxy_, Unregister()).Times(1);
   // Two interfaces are being removed on the D-Bus command object.

@@ -65,8 +65,8 @@ void CloudCommandProxy::SendCommandUpdate() {
   }
 
   if (new_pending_command_updates_.test(kFlagProgress)) {
-    patch.Set(commands::attributes::kCommand_Progress,
-              command_instance_->GetProgressJson().release());
+    auto json = TypedValueToJson(command_instance_->GetProgress(), nullptr);
+    patch.Set(commands::attributes::kCommand_Progress, json.release());
   }
   command_update_in_progress_ = true;
   in_progress_command_updates_ = new_pending_command_updates_;

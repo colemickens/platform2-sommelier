@@ -151,10 +151,10 @@ std::unique_ptr<base::DictionaryValue> CommandInstance::ToJson() const {
   json->SetString(commands::attributes::kCommand_Name, name_);
   json->Set(commands::attributes::kCommand_Parameters,
             TypedValueToJson(parameters_, nullptr).release());
+  json->Set(commands::attributes::kCommand_Progress,
+            TypedValueToJson(progress_, nullptr).release());
   json->Set(commands::attributes::kCommand_Results,
             TypedValueToJson(results_, nullptr).release());
-  json->Set(commands::attributes::kCommand_Progress,
-            GetProgressJson().release());
   json->SetString(commands::attributes::kCommand_State, status_);
 
   return json;
@@ -175,12 +175,11 @@ bool CommandInstance::SetResults(const native_types::Object& results) {
   return true;
 }
 
-bool CommandInstance::SetProgress(int progress) {
-  if (progress < 0 || progress > 100)
-    return false;
+bool CommandInstance::SetProgress(const native_types::Object& progress) {
+  // Change status even if progress unchanged, e.g. 0% -> 0%.
+  SetStatus(kStatusInProgress);
   if (progress != progress_) {
     progress_ = progress;
-    SetStatus(kStatusInProgress);
     for (auto& proxy : proxies_) {
       proxy->OnProgressChanged();
     }
@@ -201,7 +200,6 @@ void CommandInstance::Cancel() {
 }
 
 void CommandInstance::Done() {
-  SetProgress(100);
   SetStatus(kStatusDone);
   RemoveFromQueue();
   // The command will be destroyed after that, so do not access any members.
@@ -219,17 +217,6 @@ void CommandInstance::SetStatus(const std::string& status) {
 void CommandInstance::RemoveFromQueue() {
   if (queue_)
     queue_->DelayedRemove(GetID());
-}
-
-std::unique_ptr<base::Value> CommandInstance::GetProgressJson() const {
-  // GCD server requires "progress" to be a JSON object. We will just make
-  // an object with a single field, "progress", so the patch request will
-  // look like this: {"progress": {"progress":100}}.
-  std::unique_ptr<base::DictionaryValue> progress_object{
-      new base::DictionaryValue};
-  progress_object->SetInteger(commands::attributes::kCommand_Progress,
-                              progress_);
-  return std::move(progress_object);
 }
 
 }  // namespace buffet

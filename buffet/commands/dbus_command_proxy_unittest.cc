@@ -71,6 +71,13 @@ class DBusCommandProxyTest : public ::testing::Test {
             'bar': {
               'type': 'string'
             }
+          },
+          'progress': {
+            'progress': {
+              'type': 'integer',
+              'minimum': 0,
+              'maximum': 100
+            }
           }
         }
       }
@@ -141,31 +148,31 @@ TEST_F(DBusCommandProxyTest, Init) {
     {"height", int32_t{53}},
     {"_jumpType", std::string{"_withKick"}},
   };
-  VariantDictionary results;
-
   EXPECT_EQ(CommandInstance::kStatusQueued, GetCommandAdaptor()->GetStatus());
-  EXPECT_EQ(0, GetCommandAdaptor()->GetProgress());
   EXPECT_EQ(params, GetCommandAdaptor()->GetParameters());
-  EXPECT_EQ(results, GetCommandAdaptor()->GetResults());
+  EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetProgress());
+  EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetResults());
   EXPECT_EQ("robot.jump", GetCommandAdaptor()->GetName());
   EXPECT_EQ(kTestCommandCategoty, GetCommandAdaptor()->GetCategory());
   EXPECT_EQ(kTestCommandId, GetCommandAdaptor()->GetId());
-  EXPECT_EQ(params, GetCommandAdaptor()->GetParameters());
-  EXPECT_EQ(results, GetCommandAdaptor()->GetResults());
 }
 
 TEST_F(DBusCommandProxyTest, SetProgress) {
   EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(2);
-  EXPECT_TRUE(GetCommandInterface()->SetProgress(nullptr, 10));
+  EXPECT_TRUE(
+      GetCommandInterface()->SetProgress(nullptr, {{"progress", int32_t{10}}}));
   EXPECT_EQ(CommandInstance::kStatusInProgress,
             GetCommandAdaptor()->GetStatus());
-  EXPECT_EQ(10, GetCommandAdaptor()->GetProgress());
+
+  VariantDictionary progress{{"progress", int32_t{10}}};
+  EXPECT_EQ(progress, GetCommandAdaptor()->GetProgress());
 }
 
 TEST_F(DBusCommandProxyTest, SetProgress_OutOfRange) {
-  EXPECT_FALSE(GetCommandInterface()->SetProgress(nullptr, 110));
+  EXPECT_FALSE(GetCommandInterface()->SetProgress(
+      nullptr, {{"progress", int32_t{110}}}));
   EXPECT_EQ(CommandInstance::kStatusQueued, GetCommandAdaptor()->GetStatus());
-  EXPECT_EQ(0, GetCommandAdaptor()->GetProgress());
+  EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetProgress());
 }
 
 TEST_F(DBusCommandProxyTest, SetResults) {
@@ -201,14 +208,11 @@ TEST_F(DBusCommandProxyTest, Cancel) {
 }
 
 TEST_F(DBusCommandProxyTest, Done) {
-  // 3 property updates:
-  // status: queued -> inProgress
-  // progress: 0 -> 100
-  // status: inProgress -> done
-  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(3);
+  // 1 property update:
+  // status: queued -> done
+  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
   GetCommandInterface()->Done();
   EXPECT_EQ(CommandInstance::kStatusDone, GetCommandAdaptor()->GetStatus());
-  EXPECT_EQ(100, GetCommandAdaptor()->GetProgress());
 }
 
 }  // namespace buffet

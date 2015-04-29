@@ -40,6 +40,7 @@ class CommandQueueTest : public testing::Test {
  private:
   CommandDefinition command_definition_{"powerd",
                                         ObjectSchema::Create(),
+                                        ObjectSchema::Create(),
                                         ObjectSchema::Create()};
 };
 

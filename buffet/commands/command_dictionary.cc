@@ -68,6 +68,7 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
           chromeos::string_utils::Join(".", package_name, command_name);
 
       const ObjectSchema* base_parameters_def = nullptr;
+      const ObjectSchema* base_progress_def = nullptr;
       const ObjectSchema* base_results_def = nullptr;
       // By default make it available to all clients.
       auto visibility = CommandDefinition::Visibility::GetAll();
@@ -75,6 +76,7 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
         auto cmd = base_commands->FindCommand(full_command_name);
         if (cmd) {
           base_parameters_def = cmd->GetParameters();
+          base_progress_def = cmd->GetProgress();
           base_results_def = cmd->GetResults();
           visibility = cmd->GetVisibility();
         }
@@ -105,6 +107,12 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       if (!parameters_schema)
         return false;
 
+      auto progress_schema = BuildObjectSchema(
+          command_def_json, commands::attributes::kCommand_Progress,
+          base_progress_def, full_command_name, error);
+      if (!progress_schema)
+        return false;
+
       auto results_schema = BuildObjectSchema(
           command_def_json,
           commands::attributes::kCommand_Results,
@@ -127,9 +135,10 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       }
 
       std::unique_ptr<CommandDefinition> command_def{
-        new CommandDefinition{category, std::move(parameters_schema),
-                              std::move(results_schema)}
-      };
+          new CommandDefinition{category,
+                                std::move(parameters_schema),
+                                std::move(progress_schema),
+                                std::move(results_schema)}};
       command_def->SetVisibility(visibility);
       new_defs.emplace(full_command_name, std::move(command_def));
 

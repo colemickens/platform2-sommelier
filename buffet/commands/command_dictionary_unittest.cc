@@ -25,6 +25,9 @@ TEST(CommandDictionary, LoadCommands) {
           'height': 'integer',
           '_jumpType': ['_withAirFlip', '_withSpin', '_withKick']
         },
+        'progress': {
+          'progress': 'integer'
+        },
         'results': {}
       }
     }

@@ -46,12 +46,15 @@ class CommandDefinition {
 
   CommandDefinition(const std::string& category,
                     std::unique_ptr<const ObjectSchema> parameters,
+                    std::unique_ptr<const ObjectSchema> progress,
                     std::unique_ptr<const ObjectSchema> results);
 
   // Gets the category this command belongs to.
   const std::string& GetCategory() const { return category_; }
   // Gets the object schema for command parameters.
   const ObjectSchema* GetParameters() const { return parameters_.get(); }
+  // Gets the object schema for command progress.
+  const ObjectSchema* GetProgress() const { return progress_.get(); }
   // Gets the object schema for command results.
   const ObjectSchema* GetResults() const { return results_.get(); }
   // Returns the command visibility.
@@ -62,6 +65,7 @@ class CommandDefinition {
  private:
   std::string category_;  // Cmd category. Could be "powerd" for "base.reboot".
   std::unique_ptr<const ObjectSchema> parameters_;  // Command parameters def.
+  std::unique_ptr<const ObjectSchema> progress_;    // Command progress def.
   std::unique_ptr<const ObjectSchema> results_;  // Command results def.
   Visibility visibility_;  // Available to all by default.
 

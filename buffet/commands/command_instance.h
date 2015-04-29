@@ -81,13 +81,14 @@ class CommandInstance final {
   // Sets the pointer to queue this command is part of.
   void SetCommandQueue(CommandQueue* queue) { queue_ = queue; }
 
+  // Updates the command progress. The |progress| should match the schema.
+  // Returns false if |results| value is incorrect.
+  bool SetProgress(const native_types::Object& progress);
+
   // Updates the command results. The |results| should match the schema.
   // Returns false if |results| value is incorrect.
   bool SetResults(const native_types::Object& results);
 
-  // Updates the command execution progress. The |progress| must be between
-  // 0 and 100. Returns false if |progress| value is incorrect.
-  bool SetProgress(int progress);
   // Aborts command execution.
   void Abort();
   // Cancels command execution.
@@ -96,11 +97,8 @@ class CommandInstance final {
   void Done();
 
   // Command state getters.
-  int GetProgress() const { return progress_; }
+  const native_types::Object& GetProgress() const { return progress_; }
   const std::string& GetStatus() const { return status_; }
-
-  // Returns the "progress" portion of JSON command resource.
-  std::unique_ptr<base::Value> GetProgressJson() const;
 
   // Values for command execution status.
   static const char kStatusQueued[];
@@ -131,12 +129,12 @@ class CommandInstance final {
   const CommandDefinition* command_definition_;
   // Command parameters and their values.
   native_types::Object parameters_;
+  // Current command execution progress.
+  native_types::Object progress_;
   // Command results.
   native_types::Object results_;
   // Current command status.
   std::string status_ = kStatusQueued;
-  // Current command execution progress.
-  int progress_ = 0;
   // Command proxies for the command.
   std::vector<std::unique_ptr<CommandProxyInterface>> proxies_;
   // Pointer to the command queue this command instance is added to.

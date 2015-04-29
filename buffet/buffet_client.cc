@@ -373,11 +373,8 @@ class Daemon : public chromeos::DBusDaemon {
   void CallGetPendingCommands() {
     printf("Pending commands:\n");
     for (auto* cmd : object_manager_->GetCommandInstances()) {
-      printf("%10s (%-3d) - '%s' (id:%s)\n",
-             cmd->status().c_str(),
-             cmd->progress(),
-             cmd->name().c_str(),
-             cmd->id().c_str());
+      printf("%10s - '%s' (id:%s)\n", cmd->status().c_str(),
+             cmd->name().c_str(), cmd->id().c_str());
     }
     OnJobComplete();
   }

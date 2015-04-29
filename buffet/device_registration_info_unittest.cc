@@ -566,7 +566,9 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
                          chromeos::http::request_type::kPatch,
                          base::Bind(update_command_progress));
 
-  command->SetProgress(18);
+  native_types::Object progress{
+      {"progress", unittests::make_int_prop_value(18)}};
+  command->SetProgress(progress);
 
   // UpdateCommand when changing command status.
   auto update_command_state = [](const ServerRequest& request,

@@ -75,12 +75,16 @@ TEST(CommandVisibility, ToString) {
 
 TEST(CommandDefinition, Test) {
   std::unique_ptr<const ObjectSchema> params{ObjectSchema::Create()};
+  std::unique_ptr<const ObjectSchema> progress{ObjectSchema::Create()};
   std::unique_ptr<const ObjectSchema> results{ObjectSchema::Create()};
   const ObjectSchema* param_ptr = params.get();
+  const ObjectSchema* progress_ptr = progress.get();
   const ObjectSchema* results_ptr = results.get();
-  CommandDefinition def{"powerd", std::move(params), std::move(results)};
+  CommandDefinition def{
+      "powerd", std::move(params), std::move(progress), std::move(results)};
   EXPECT_EQ("powerd", def.GetCategory());
   EXPECT_EQ(param_ptr, def.GetParameters());
+  EXPECT_EQ(progress_ptr, def.GetProgress());
   EXPECT_EQ(results_ptr, def.GetResults());
   EXPECT_EQ("all", def.GetVisibility().ToString());
 

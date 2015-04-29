@@ -35,7 +35,8 @@ void DBusCommandProxy::RegisterAsync(
   dbus_adaptor_.SetCategory(command_instance_->GetCategory());
   dbus_adaptor_.SetId(command_instance_->GetID());
   dbus_adaptor_.SetStatus(command_instance_->GetStatus());
-  dbus_adaptor_.SetProgress(command_instance_->GetProgress());
+  dbus_adaptor_.SetProgress(
+      ObjectToDBusVariant(command_instance_->GetProgress()));
   dbus_adaptor_.SetOrigin(command_instance_->GetOrigin());
 
   dbus_adaptor_.SetParameters(ObjectToDBusVariant(
@@ -57,22 +58,23 @@ void DBusCommandProxy::OnStatusChanged() {
 }
 
 void DBusCommandProxy::OnProgressChanged() {
-  dbus_adaptor_.SetProgress(command_instance_->GetProgress());
+  dbus_adaptor_.SetProgress(
+      ObjectToDBusVariant(command_instance_->GetProgress()));
 }
 
-bool DBusCommandProxy::SetProgress(chromeos::ErrorPtr* error,
-                                   int32_t progress) {
-  LOG(INFO) << "Received call to Command<"
-            << command_instance_->GetName() << ">::SetProgress("
-            << progress << ")";
+bool DBusCommandProxy::SetProgress(
+    chromeos::ErrorPtr* error,
+    const chromeos::VariantDictionary& progress) {
+  LOG(INFO) << "Received call to Command<" << command_instance_->GetName()
+            << ">::SetProgress()";
 
-  // Validate |progress| parameter. Its value must be between 0 and 100.
-  IntPropType progress_type;
-  progress_type.AddMinMaxConstraint(0, 100);
-  if (!progress_type.ValidateValue(progress, error))
+  auto progress_schema =
+      command_instance_->GetCommandDefinition()->GetProgress();
+  native_types::Object obj;
+  if (!ObjectFromDBusVariant(progress_schema, progress, &obj, error))
     return false;
 
-  command_instance_->SetProgress(progress);
+  command_instance_->SetProgress(obj);
   return true;
 }
 

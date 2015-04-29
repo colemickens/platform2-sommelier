@@ -208,12 +208,14 @@ TEST_F(CommandInstanceTest, ToJson) {
   })");
   auto instance =
       CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr);
-  instance->SetProgress(15);
+  instance->SetProgress(
+      native_types::Object{{"progress", unittests::make_int_prop_value(15)}});
+  instance->SetProgress(
+      native_types::Object{{"progress", unittests::make_int_prop_value(15)}});
   instance->SetID("testId");
   native_types::Object results;
-  IntPropType int_prop;
-  results["testResult"] = int_prop.CreateValue(17, nullptr);
-  instance->SetResults(results);
+  instance->SetResults(
+      native_types::Object{{"testResult", unittests::make_int_prop_value(17)}});
 
   json->MergeDictionary(CreateDictionaryValue(R"({
     'id': 'testId',
