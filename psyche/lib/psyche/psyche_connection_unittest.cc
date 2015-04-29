@@ -5,12 +5,12 @@
 #include "psyche/lib/psyche/psyche_connection.h"
 
 #include <map>
+#include <memory>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
@@ -70,10 +70,10 @@ class PsychedInterfaceStub : public IPsyched {
       return return_value_;
 
     const std::string service_name(in->name());
-    scoped_ptr<BinderProxy> service_proxy;
+    std::unique_ptr<BinderProxy> service_proxy;
     const auto& it = services_to_return_.find(service_name);
     if (it != services_to_return_.end()) {
-      service_proxy.reset(it->second.release());
+      service_proxy = std::move(it->second);
       services_to_return_.erase(it);
     }
 
@@ -100,7 +100,7 @@ class PsychedInterfaceStub : public IPsyched {
   // ReceiveService method.
   void CallReceiveService(IPsycheClientHostInterface* client_interface,
                           std::string service_name,
-                          scoped_ptr<BinderProxy> service_proxy) {
+                          std::unique_ptr<BinderProxy> service_proxy) {
     ReceiveServiceRequest request;
     request.set_name(service_name);
     if (service_proxy) {
@@ -160,9 +160,9 @@ class ServiceReceiver {
 
   // Saves |proxy| to |proxy_| and stops the message loop if |quit_closure_| is
   // set. Intended to be passed as a callback to PsycheConnection::GetService().
-  void ReceiveService(scoped_ptr<BinderProxy> proxy) {
+  void ReceiveService(std::unique_ptr<BinderProxy> proxy) {
     num_calls_++;
-    proxy_.reset(proxy.release());
+    proxy_ = std::move(proxy);
     if (!quit_closure_.is_null()) {
       quit_closure_.Run();
       quit_closure_.Reset();

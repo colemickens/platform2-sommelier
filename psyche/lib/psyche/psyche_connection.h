@@ -10,7 +10,6 @@
 
 #include <base/callback.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <psyche/psyche_export.h>
 
 namespace protobinder {
@@ -23,9 +22,8 @@ namespace psyche {
 // Interface encapsulating a client's communication to psyched.
 class PSYCHE_EXPORT PsycheConnectionInterface {
  public:
-  // TODO(derat): Switch this to std::unique_ptr once base::Bind() supports it.
   using GetServiceCallback =
-      base::Callback<void(scoped_ptr<protobinder::BinderProxy>)>;
+      base::Callback<void(std::unique_ptr<protobinder::BinderProxy>)>;
 
   // Registers |service|, identified by |service_name|, with psyched. Ownership
   // of |service| remains with the caller (but note that test implementations

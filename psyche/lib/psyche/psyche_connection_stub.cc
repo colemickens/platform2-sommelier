@@ -8,8 +8,10 @@
 
 #include <base/bind.h>
 #include <base/message_loop/message_loop.h>
+#include <chromeos/make_unique_ptr.h>
 #include <protobinder/binder_proxy.h>
 
+using chromeos::make_unique_ptr;
 using protobinder::BinderHost;
 using protobinder::BinderProxy;
 
@@ -30,7 +32,7 @@ void PsycheConnectionStub::PostGetServiceTasks(const std::string& service_name,
     base::MessageLoopForIO::current()->PostTask(
         FROM_HERE,
         base::Bind(it->second,
-                   base::Passed(make_scoped_ptr(
+                   base::Passed(make_unique_ptr(
                        proxy ? new BinderProxy(proxy->handle()) : nullptr))));
   }
 }

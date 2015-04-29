@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <chromeos/make_unique_ptr.h>
 #include <protobinder/binder_proxy.h>
 #include <protobinder/ibinder.h>
 #include <protobinder/iservice_manager.h>
@@ -18,6 +19,7 @@
 #include "psyche/proto_bindings/psyche.pb.h"
 #include "psyche/proto_bindings/psyche.pb.rpc.h"
 
+using chromeos::make_unique_ptr;
 using protobinder::BinderHost;
 using protobinder::BinderProxy;
 
@@ -112,7 +114,7 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
       // proxy's handle. The handle's references are incremented and decremented
       // in BinderProxy's c'tor and d'tor, so this is safe to do.
       it->second.Run(
-          make_scoped_ptr(proxy ? new BinderProxy(proxy->handle()) : nullptr));
+          make_unique_ptr(proxy ? new BinderProxy(proxy->handle()) : nullptr));
     }
     return 0;
   }

@@ -10,7 +10,6 @@
 
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/memory/scoped_ptr.h>
 #include <protobinder/binder_manager_stub.h>
 #include <protobinder/binder_proxy.h>
 
