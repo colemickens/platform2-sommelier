@@ -173,13 +173,7 @@ std::unique_ptr<ObjectSchema> CommandDictionary::BuildObjectSchema(
   const base::DictionaryValue* schema_def = nullptr;
   if (!command_def_json->GetDictionaryWithoutPathExpansion(property_name,
                                                            &schema_def)) {
-    chromeos::Error::AddToPrintf(
-        error, FROM_HERE, errors::commands::kDomain,
-        errors::commands::kPropertyMissing,
-        "Command definition '%s' is missing property '%s'",
-        command_name.c_str(),
-        property_name);
-    return {};
+    return object_schema;
   }
 
   if (!object_schema->FromJson(schema_def, base_def, error)) {

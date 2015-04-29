@@ -36,12 +36,9 @@ TEST(CommandDictionary, LoadCommands) {
   json = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
-        'parameters': {'delay': 'integer'},
-        'results': {}
+        'parameters': {'delay': 'integer'}
       },
       'shutdown': {
-        'parameters': {},
-        'results': {}
       }
     }
   })");
@@ -59,24 +56,8 @@ TEST(CommandDictionary, LoadCommands_Failures) {
   buffet::CommandDictionary dict;
   chromeos::ErrorPtr error;
 
-  // Command definition missing 'parameters' property.
-  auto json = CreateDictionaryValue("{'robot':{'jump':{'results':{}}}}");
-  EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
-  EXPECT_EQ("parameter_missing", error->GetCode());
-  EXPECT_EQ("Command definition 'robot.jump' is missing property 'parameters'",
-            error->GetMessage());
-  error.reset();
-
-  // Command definition missing 'results' property.
-  json = CreateDictionaryValue("{'robot':{'jump':{'parameters':{}}}}");
-  EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
-  EXPECT_EQ("parameter_missing", error->GetCode());
-  EXPECT_EQ("Command definition 'robot.jump' is missing property 'results'",
-            error->GetMessage());
-  error.reset();
-
   // Command definition is not an object.
-  json = CreateDictionaryValue("{'robot':{'jump':0}}");
+  auto json = CreateDictionaryValue("{'robot':{'jump':0}}");
   EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
   EXPECT_EQ("Expecting an object for command 'jump'", error->GetMessage());
@@ -111,8 +92,7 @@ TEST(CommandDictionaryDeathTest, LoadCommands_RedefineInDifferentCategory) {
   // Redefine commands in different category.
   buffet::CommandDictionary dict;
   chromeos::ErrorPtr error;
-  auto json = CreateDictionaryValue(
-      "{'robot':{'jump':{'parameters':{},'results':{}}}}");
+  auto json = CreateDictionaryValue("{'robot':{'jump':{}}}");
   dict.LoadCommands(*json, "category1", nullptr, &error);
   ASSERT_DEATH(dict.LoadCommands(*json, "category2", nullptr, &error),
                ".*Definition for command 'robot.jump' overrides an "

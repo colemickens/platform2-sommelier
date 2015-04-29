@@ -3,8 +3,6 @@
     "_jump": {
       "parameters": {
         "_height":"integer"
-      },
-      "results": {
       }
     }
   }
