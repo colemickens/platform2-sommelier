@@ -40,23 +40,6 @@
     <method name="DisableGCDBootstrapping">
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
-    <method name="SetName">
-      <tp:docstring>
-        Sets the user friendly name exposed via mDNS advertisements and /info
-        API.  This will override defaults provided in configuration files.
-      </tp:docstring>
-      <arg name="name" type="s" direction="in"/>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
-    <method name="SetDescription">
-      <tp:docstring>
-        Sets the user friendly description exposed via mDNS advertisements and
-        /info API.  This will override defaults provided in configuration
-        files.
-      </tp:docstring>
-      <arg name="description" type="s" direction="in"/>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
     <method name="Ping">
       <tp:docstring>
         Test method.  Always returns “Hello world!”
@@ -113,22 +96,6 @@
           “code” - The pin code or embedded code as appropriate to the
                    “pairingMode” value.  See design document.
                    This value will be a string.
-      </tp:docstring>
-    </property>
-    <property name="Description" type="s" access="read">
-      <tp:docstring>
-        Concise note describing a peer.  Suitable for display to the user.  May
-        not be supplied by the device, contains fewer than 250 characters (e.g.
-        “Device belonging to Larry Page”).
-      </tp:docstring>
-    </property>
-    <property name="Name" type="s" access="read">
-      <tp:docstring>
-        Concise name describing a peer.  Suitable for display to the user;
-        contains only UTF-8 characters.  May not be supplied by the device,
-        contains fewer than 32 characters.
-
-        Example value: “Android Nexus 5”
       </tp:docstring>
     </property>
   </interface>

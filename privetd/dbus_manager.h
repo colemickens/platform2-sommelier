@@ -55,8 +55,6 @@ class DBusManager : public org::chromium::privetd::ManagerInterface {
       const dbus::ObjectPath& in_listener_path,
       const chromeos::VariantDictionary& in_options) override;
   bool DisableGCDBootstrapping(chromeos::ErrorPtr* error) override;
-  void SetName(const std::string& in_name) override;
-  void SetDescription(const std::string& in_description) override;
   std::string Ping() override;
 
  private:

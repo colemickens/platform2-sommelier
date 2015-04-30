@@ -92,14 +92,6 @@ bool DBusManager::DisableGCDBootstrapping(chromeos::ErrorPtr* error) {
   return false;
 }
 
-void DBusManager::SetName(const std::string& in_name) {
-  // TODO(wiley) Pass in appropriate objects and implement this.
-}
-
-void DBusManager::SetDescription(const std::string& in_description) {
-  // TODO(wiley) Pass in appropriate objects and implement this.
-}
-
 std::string DBusManager::Ping() {
   return kPingResponse;
 }
