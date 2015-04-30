@@ -65,7 +65,6 @@ const char kInfoWifiSsidKey[] = "ssid";
 const char kInfoWifiHostedSsidKey[] = "hostedSsid";
 
 const char kInfoUptimeKey[] = "uptime";
-const char kInfoApiKey[] = "api";
 
 const char kPairingKey[] = "pairing";
 const char kPairingSessionIdKey[] = "sessionId";
@@ -582,11 +581,6 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
   output.Set(kGcdKey, CreateGcdSection(*cloud_).release());
 
   output.SetInteger(kInfoUptimeKey, device_->GetUptime().InSeconds());
-
-  std::unique_ptr<base::ListValue> apis(new base::ListValue());
-  for (const auto& key_value : handlers_)
-    apis->AppendString(key_value.first);
-  output.Set(kInfoApiKey, apis.release());
 
   callback.Run(chromeos::http::status_code::Ok, output);
 }

@@ -262,21 +262,7 @@ TEST_F(PrivetHandlerTest, InfoMinimal) {
       'id': '',
       'status': 'disabled'
     },
-    'uptime': 3600,
-    'api': [
-      '/privet/info',
-      '/privet/v3/auth',
-      '/privet/v3/commandDefs',
-      '/privet/v3/commands/cancel',
-      '/privet/v3/commands/execute',
-      '/privet/v3/commands/list',
-      '/privet/v3/commands/status',
-      '/privet/v3/pairing/cancel',
-      '/privet/v3/pairing/confirm',
-      '/privet/v3/pairing/start',
-      '/privet/v3/setup/start',
-      '/privet/v3/setup/status'
-    ]
+    'uptime': 3600
   })";
   EXPECT_PRED2(IsEqualJson, kExpected, HandleRequest("/privet/info", "{}"));
 }
@@ -342,21 +328,7 @@ TEST_F(PrivetHandlerTest, Info) {
       'id': 'TestCloudId',
       'status': 'online'
     },
-    'uptime': 3600,
-    'api': [
-      '/privet/info',
-      '/privet/v3/auth',
-      '/privet/v3/commandDefs',
-      '/privet/v3/commands/cancel',
-      '/privet/v3/commands/execute',
-      '/privet/v3/commands/list',
-      '/privet/v3/commands/status',
-      '/privet/v3/pairing/cancel',
-      '/privet/v3/pairing/confirm',
-      '/privet/v3/pairing/start',
-      '/privet/v3/setup/start',
-      '/privet/v3/setup/status'
-    ]
+    'uptime': 3600
   })";
   EXPECT_PRED2(IsEqualJson, kExpected, HandleRequest("/privet/info", "{}"));
 }
