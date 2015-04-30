@@ -234,7 +234,6 @@ TEST_F(PrivetHandlerTest, InfoMinimal) {
     'version': '3.0',
     'id': 'TestId',
     'name': 'TestDevice',
-    'modelManifestId': "ABMID",
     'services': [],
     'modelManifestId': "ABMID",
     'basicModelManifest': {
@@ -249,6 +248,7 @@ TEST_F(PrivetHandlerTest, InfoMinimal) {
       'httpsUpdatesPort': 0
     },
     'authentication': {
+      'anonymousMaxScope': 'user',
       'mode': [
         'anonymous',
         'pairing'
@@ -277,6 +277,8 @@ TEST_F(PrivetHandlerTest, Info) {
       .WillRepeatedly(Return(std::make_pair(80, 10080)));
   EXPECT_CALL(device_, GetHttpsEnpoint())
       .WillRepeatedly(Return(std::make_pair(443, 10443)));
+  EXPECT_CALL(wifi_, GetHostedSsid())
+      .WillRepeatedly(Return("Test_device.BBABCLAprv"));
 
   const char kExpected[] = R"({
     'version': '3.0',
@@ -301,6 +303,7 @@ TEST_F(PrivetHandlerTest, Info) {
       'httpsUpdatesPort': 10443
     },
     'authentication': {
+      'anonymousMaxScope': 'guest',
       'mode': [
         'anonymous',
         'pairing'

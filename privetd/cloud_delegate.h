@@ -14,6 +14,7 @@
 #include <base/observer_list.h>
 
 #include "privetd/privet_types.h"
+#include "privetd/security_delegate.h"
 
 namespace base {
 class DictionaryValue;
@@ -72,6 +73,9 @@ class CloudDelegate {
   // Returns the list of services supported by device.
   // E.g. printer, scanner etc. Should match services published on mDNS.
   virtual std::set<std::string> GetServices() const = 0;
+
+  // Returns max scope available for anonymous user.
+  virtual AuthScope GetAnonymousMaxScope() const = 0;
 
   // Returns status of the GCD connection.
   virtual const ConnectionState& GetConnectionState() const = 0;

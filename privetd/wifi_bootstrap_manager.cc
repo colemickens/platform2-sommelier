@@ -59,6 +59,8 @@ void WifiBootstrapManager::Init() {
 
 void WifiBootstrapManager::RegisterStateListener(
     const StateListener& listener) {
+  // Notify about current state.
+  listener.Run(state_);
   state_listeners_.push_back(listener);
 }
 

@@ -60,6 +60,8 @@ const char kInfoManifestModelName[] = "modelName";
 
 const char kInfoAuthenticationKey[] = "authentication";
 
+const char kInfoAuthAnonymousMaxScopeKey[] = "anonymousMaxScope";
+
 const char kInfoWifiCapabilitiesKey[] = "capabilities";
 const char kInfoWifiSsidKey[] = "ssid";
 const char kInfoWifiHostedSsidKey[] = "hostedSsid";
@@ -108,9 +110,6 @@ const int kAccesssTokenExpirationSeconds = 3600;
 // Threshold to reduce probability of expiration because of clock difference
 // between device and client. Value is just a guess.
 const int kAccesssTokenExpirationThresholdSeconds = 300;
-
-// Max scope to be given to anonymous user.
-const AuthScope kAnonymousUserScope = AuthScope::kUser;
 
 template <class Container>
 std::unique_ptr<base::ListValue> ToValue(const Container& list) {
@@ -373,8 +372,12 @@ std::unique_ptr<base::DictionaryValue> CreateEndpointsSection(
 }
 
 std::unique_ptr<base::DictionaryValue> CreateInfoAuthSection(
-    const SecurityDelegate& security) {
+    const SecurityDelegate& security,
+    AuthScope anonymous_max_scope) {
   std::unique_ptr<base::DictionaryValue> auth(new base::DictionaryValue());
+
+  auth->SetString(kInfoAuthAnonymousMaxScopeKey,
+                  EnumToString(anonymous_max_scope));
 
   std::unique_ptr<base::ListValue> pairing_types(new base::ListValue());
   for (PairingType type : security.GetPairingTypes())
@@ -427,6 +430,13 @@ std::unique_ptr<base::DictionaryValue> CreateGcdSection(
   gcd->SetString(kInfoIdKey, cloud.GetCloudId());
   SetState(cloud.GetConnectionState(), gcd.get());
   return gcd;
+}
+
+AuthScope GetAnonymousMaxScope(const CloudDelegate& cloud,
+                               const WifiDelegate* wifi) {
+  if (wifi && !wifi->GetHostedSsid().empty())
+    return AuthScope::kGuest;
+  return cloud.GetAnonymousMaxScope();
 }
 
 }  // namespace
@@ -508,7 +518,7 @@ void PrivetHandler::HandleRequest(const std::string& api,
   }
   AuthScope scope = AuthScope::kNone;
   if (token == kAuthTypeAnonymousValue) {
-    scope = kAnonymousUserScope;
+    scope = GetAnonymousMaxScope(*cloud_, wifi_);
   } else {
     base::Time time;
     scope = security_->ParseAccessToken(token, &time);
@@ -571,7 +581,8 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
   output.Set(kInfoServicesKey, ToValue(cloud_->GetServices()).release());
 
   output.Set(kInfoAuthenticationKey,
-             CreateInfoAuthSection(*security_).release());
+             CreateInfoAuthSection(
+                 *security_, GetAnonymousMaxScope(*cloud_, wifi_)).release());
 
   output.Set(kInfoEndpointsKey, CreateEndpointsSection(*device_).release());
 
@@ -671,7 +682,7 @@ void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
 
   AuthScope max_auth_scope = AuthScope::kNone;
   if (auth_code_type == kAuthTypeAnonymousValue) {
-    max_auth_scope = kAnonymousUserScope;
+    max_auth_scope = GetAnonymousMaxScope(*cloud_, wifi_);
   } else if (auth_code_type == kAuthTypePairingValue) {
     if (!security_->IsValidPairingCode(auth_code)) {
       chromeos::Error::AddToPrintf(

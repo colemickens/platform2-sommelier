@@ -132,8 +132,7 @@ class MockWifiDelegate : public WifiDelegate {
     EXPECT_CALL(*this, GetSetupState()).WillRepeatedly(ReturnRef(setup_state_));
     EXPECT_CALL(*this, GetCurrentlyConnectedSsid())
         .WillRepeatedly(Return("TestSsid"));
-    EXPECT_CALL(*this, GetHostedSsid())
-        .WillRepeatedly(Return("Test_device.BBABCLAprv"));
+    EXPECT_CALL(*this, GetHostedSsid()).WillRepeatedly(Return(""));
     EXPECT_CALL(*this, GetTypes())
         .WillRepeatedly(Return(std::set<WifiType>{WifiType::kWifi24}));
   }
@@ -157,6 +156,7 @@ class MockCloudDelegate : public CloudDelegate {
   MOCK_CONST_METHOD0(GetOemName, std::string());
   MOCK_CONST_METHOD0(GetModelName, std::string());
   MOCK_CONST_METHOD0(GetServices, std::set<std::string>());
+  MOCK_CONST_METHOD0(GetAnonymousMaxScope, AuthScope());
   MOCK_CONST_METHOD0(GetConnectionState, const ConnectionState&());
   MOCK_CONST_METHOD0(GetSetupState, const SetupState&());
   MOCK_METHOD3(Setup,
@@ -193,6 +193,8 @@ class MockCloudDelegate : public CloudDelegate {
     EXPECT_CALL(*this, GetModelName()).WillRepeatedly(Return("Brillo"));
     EXPECT_CALL(*this, GetServices())
         .WillRepeatedly(Return(std::set<std::string>{}));
+    EXPECT_CALL(*this, GetAnonymousMaxScope())
+        .WillRepeatedly(Return(AuthScope::kUser));
     commands_definitions_.Set("test", new base::DictionaryValue);
     EXPECT_CALL(*this, GetConnectionState())
         .WillRepeatedly(ReturnRef(connection_state_));

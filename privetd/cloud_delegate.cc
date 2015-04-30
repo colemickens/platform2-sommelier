@@ -121,6 +121,11 @@ class CloudDelegateImpl : public CloudDelegate {
     return result;
   }
 
+  AuthScope GetAnonymousMaxScope() const override {
+    // TODO(vitalybuka): read from buffet.
+    return manager_ ? AuthScope::kUser : AuthScope::kGuest;
+  }
+
   const ConnectionState& GetConnectionState() const override { return state_; }
 
   const SetupState& GetSetupState() const override { return setup_state_; }
