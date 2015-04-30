@@ -96,16 +96,26 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
     const base::Value* value,
     const std::string& origin,
     const CommandDictionary& dictionary,
+    std::string* command_id,
     chromeos::ErrorPtr* error) {
   std::unique_ptr<CommandInstance> instance;
+  std::string command_id_buffer;  // used if |command_id| was nullptr.
+  if (!command_id)
+    command_id = &command_id_buffer;
+
   // Get the command JSON object from the value.
   const base::DictionaryValue* json = nullptr;
   if (!value->GetAsDictionary(&json)) {
     chromeos::Error::AddTo(error, FROM_HERE, chromeos::errors::json::kDomain,
                            chromeos::errors::json::kObjectExpected,
                            "Command instance is not a JSON object");
+    command_id->clear();
     return instance;
   }
+
+  // Get the command ID from 'id' property.
+  if (!json->GetString(commands::attributes::kCommand_Id, command_id))
+    command_id->clear();
 
   // Get the command name from 'name' property.
   std::string command_name;
@@ -136,10 +146,9 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
 
   instance.reset(
       new CommandInstance{command_name, origin, command_def, parameters});
-  std::string command_id;
-  if (json->GetString(commands::attributes::kCommand_Id, &command_id)) {
-    instance->SetID(command_id);
-  }
+
+  if (!command_id->empty())
+    instance->SetID(*command_id);
 
   return instance;
 }

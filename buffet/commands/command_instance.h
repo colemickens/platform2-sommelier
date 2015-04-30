@@ -63,10 +63,15 @@ class CommandInstance final {
   // object, checking the JSON |value| against the command definition schema
   // found in command |dictionary|. On error, returns null unique_ptr and
   // fills in error details in |error|.
+  // |command_id| is the ID of the command returned, as parsed from the |value|.
+  // The command ID extracted (if present in the JSON object) even if other
+  // parsing/validation error occurs and command instance is not constructed.
+  // This is used to report parse failures back to the server.
   static std::unique_ptr<CommandInstance> FromJson(
       const base::Value* value,
       const std::string& origin,
       const CommandDictionary& dictionary,
+      std::string* command_id,
       chromeos::ErrorPtr* error);
 
   // Returns JSON representation of the command.

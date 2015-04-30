@@ -52,6 +52,8 @@ const char kCommand_Parameters[] = "parameters";
 const char kCommand_Results[] = "results";
 const char kCommand_State[] = "state";
 const char kCommand_Progress[] = "progress";
+const char kCommand_ErrorCode[] = "error.code";
+const char kCommand_ErrorMessage[] = "error.message";
 
 const char kCommand_Visibility[] = "visibility";
 const char kCommand_Visibility_None[] = "none";

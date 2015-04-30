@@ -184,7 +184,7 @@ void Manager::AddCommand(DBusMethodResponse<std::string> response,
   chromeos::ErrorPtr error;
   auto command_instance = buffet::CommandInstance::FromJson(
       value.get(), commands::attributes::kCommand_Visibility_Local,
-      command_manager_->GetCommandDictionary(), &error);
+      command_manager_->GetCommandDictionary(), nullptr, &error);
   if (!command_instance) {
     response->ReplyWithError(error.get());
     return;

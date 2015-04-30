@@ -93,7 +93,7 @@ class DBusCommandProxyTest : public ::testing::Test {
       }
     })");
     command_instance_ =
-        CommandInstance::FromJson(json.get(), "local", dict_, nullptr);
+        CommandInstance::FromJson(json.get(), "local", dict_, nullptr, nullptr);
     command_instance_->SetID(kTestCommandId);
 
     // Set up a mock ExportedObject to be used with the DBus command proxy.

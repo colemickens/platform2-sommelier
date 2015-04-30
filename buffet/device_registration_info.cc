@@ -53,6 +53,7 @@ namespace {
 
 const int kMaxStartDeviceRetryDelayMinutes{1};
 const int64_t kMinStartDeviceRetryDelaySeconds{5};
+const int64_t kAbortCommandRetryDelaySeconds{5};
 
 std::pair<std::string, std::string> BuildAuthHeader(
     const std::string& access_token_type,
@@ -789,6 +790,45 @@ void DeviceRegistrationInfo::UpdateCommand(
       base::Bind(&IgnoreCloudErrorWithCallback, on_error));
 }
 
+void DeviceRegistrationInfo::NotifyCommandAborted(
+    const std::string& command_id,
+    chromeos::ErrorPtr error) {
+  base::DictionaryValue command_patch;
+  command_patch.SetString(commands::attributes::kCommand_State,
+                          CommandInstance::kStatusAborted);
+  if (error) {
+    command_patch.SetString(commands::attributes::kCommand_ErrorCode,
+                            chromeos::string_utils::Join(":",
+                                                         error->GetDomain(),
+                                                         error->GetCode()));
+    std::vector<std::string> messages;
+    const chromeos::Error* current_error = error.get();
+    while (current_error) {
+      messages.push_back(current_error->GetMessage());
+      current_error = current_error->GetInnerError();
+    }
+    command_patch.SetString(commands::attributes::kCommand_ErrorMessage,
+                            chromeos::string_utils::Join(";", messages));
+  }
+  UpdateCommand(command_id,
+                command_patch,
+                base::Bind(&base::DoNothing),
+                base::Bind(&DeviceRegistrationInfo::RetryNotifyCommandAborted,
+                           weak_factory_.GetWeakPtr(),
+                           command_id, base::Passed(std::move(error))));
+}
+
+void DeviceRegistrationInfo::RetryNotifyCommandAborted(
+    const std::string& command_id,
+    chromeos::ErrorPtr error) {
+  base::MessageLoop::current()->PostDelayedTask(
+      FROM_HERE,
+      base::Bind(&DeviceRegistrationInfo::NotifyCommandAborted,
+                 weak_factory_.GetWeakPtr(),
+                 command_id, base::Passed(std::move(error))),
+      base::TimeDelta::FromSeconds(kAbortCommandRetryDelaySeconds));
+}
+
 void DeviceRegistrationInfo::UpdateDeviceResource(
     const base::Closure& on_success,
     const CloudRequestErrorCallback& on_failure) {
@@ -903,11 +943,15 @@ void DeviceRegistrationInfo::PublishCommands(const base::ListValue& commands) {
       continue;
     }
 
+    std::string command_id;
+    chromeos::ErrorPtr error;
     auto command_instance = CommandInstance::FromJson(
         command, commands::attributes::kCommand_Visibility_Cloud,
-        command_dictionary, nullptr);
+        command_dictionary, &command_id, &error);
     if (!command_instance) {
-      LOG(WARNING) << "Failed to parse a command";
+      LOG(WARNING) << "Failed to parse a command with ID: " << command_id;
+      if (!command_id.empty())
+        NotifyCommandAborted(command_id, std::move(error));
       continue;
     }
 

@@ -56,6 +56,8 @@ extern const char kCommand_Parameters[];
 extern const char kCommand_Results[];
 extern const char kCommand_State[];
 extern const char kCommand_Progress[];
+extern const char kCommand_ErrorCode[];
+extern const char kCommand_ErrorMessage[];
 
 extern const char kCommand_Visibility[];
 extern const char kCommand_Visibility_None[];

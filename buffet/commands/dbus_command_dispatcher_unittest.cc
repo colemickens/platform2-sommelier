@@ -106,7 +106,7 @@ class DBusCommandDispacherTest : public testing::Test {
   void AddNewCommand(const std::string& json, const std::string& id) {
     auto command_instance = CommandInstance::FromJson(
         CreateDictionaryValue(json.c_str()).get(), "cloud", dictionary_,
-        nullptr);
+        nullptr, nullptr);
     command_instance->SetID(id);
     // Two interfaces are added - Command and Properties.
     EXPECT_CALL(*mock_exported_object_manager_, SendSignal(_)).Times(2);

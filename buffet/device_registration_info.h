@@ -214,6 +214,16 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
 
   void PublishStateUpdates();
 
+  // If unrecoverable error occurred (e.g. error parsing command instance),
+  // notify the server that the command is aborted by the device.
+  void NotifyCommandAborted(const std::string& command_id,
+                            chromeos::ErrorPtr error);
+
+  // When NotifyCommandAborted() fails, RetryNotifyCommandAborted() schedules
+  // a retry attempt.
+  void RetryNotifyCommandAborted(const std::string& command_id,
+                                 chromeos::ErrorPtr error);
+
   // Builds Cloud API devices collection REST resource which matches
   // current state of the device including command definitions
   // for all supported commands and current device state.
