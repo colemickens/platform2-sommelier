@@ -15,7 +15,6 @@
 #include <dbus-c++/dbus.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/endpoint.h"
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
 #include "shill/refptr_types.h"
@@ -25,7 +24,7 @@ namespace shill {
 class ProxyFactory;
 class SupplicantBSSProxyInterface;
 
-class WiFiEndpoint : public Endpoint {
+class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
  public:
   struct SecurityFlags {
     SecurityFlags()
@@ -51,7 +50,7 @@ class WiFiEndpoint : public Endpoint {
                const WiFiRefPtr &device,
                const std::string &rpc_id,
                const std::map<std::string, ::DBus::Variant> &properties);
-  ~WiFiEndpoint() override;
+  virtual ~WiFiEndpoint();
 
   // Set up RPC channel. Broken out from the ctor, so that WiFi can
   // look over the Endpoint details before commiting to setting up

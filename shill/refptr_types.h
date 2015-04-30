@@ -37,10 +37,6 @@ class WiMax;
 typedef scoped_refptr<const WiMax> WiMaxConstRefPtr;
 typedef scoped_refptr<WiMax> WiMaxRefPtr;
 
-class Endpoint;
-typedef scoped_refptr<const Endpoint> EndpointConstRefPtr;
-typedef scoped_refptr<Endpoint> EndpointRefPtr;
-
 class WiFiEndpoint;
 typedef scoped_refptr<const WiFiEndpoint> WiFiEndpointConstRefPtr;
 typedef scoped_refptr<WiFiEndpoint> WiFiEndpointRefPtr;

@@ -366,7 +366,6 @@
         'dns_client.cc',
         'dns_client_factory.cc',
         'dns_server_tester.cc',
-        'endpoint.cc',
         'ephemeral_profile.cc',
         'error.cc',
         'ethernet/ethernet.cc',
