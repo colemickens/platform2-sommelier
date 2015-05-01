@@ -61,6 +61,14 @@ class AttestationInterface {
   virtual void ActivateAttestationKey(
       const ActivateAttestationKeyRequest& request,
       const ActivateAttestationKeyCallback& callback) = 0;
+
+  // Processes a CreateCertifiableKeyRequest and responds with a
+  // CreateCertifiableKeyReply.
+  using CreateCertifiableKeyCallback =
+      base::Callback<void(const CreateCertifiableKeyReply&)>;
+  virtual void CreateCertifiableKey(
+      const CreateCertifiableKeyRequest& request,
+      const CreateCertifiableKeyCallback& callback) = 0;
 };
 
 }  // namespace attestation

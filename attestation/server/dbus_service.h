@@ -68,6 +68,12 @@ class DBusService {
           const ActivateAttestationKeyReply&>> response,
       const ActivateAttestationKeyRequest& request);
 
+  // Handles a CreateCertifiableKey D-Bus call.
+  void HandleCreateCertifiableKey(
+      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+          const CreateCertifiableKeyReply&>> response,
+      const CreateCertifiableKeyRequest& request);
+
   chromeos::dbus_utils::DBusObject dbus_object_;
   AttestationInterface* service_;
 

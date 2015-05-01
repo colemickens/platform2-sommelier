@@ -47,6 +47,10 @@ void DBusService::Register(const CompletionAction& callback) {
       kActivateAttestationKey,
       base::Unretained(this),
       &DBusService::HandleActivateAttestationKey);
+  dbus_interface->AddMethodHandler(
+      kCreateCertifiableKey,
+      base::Unretained(this),
+      &DBusService::HandleCreateCertifiableKey);
 
   dbus_object_.RegisterAsync(callback);
 }
@@ -141,6 +145,25 @@ void DBusService::HandleActivateAttestationKey(
     response->Return(reply);
   };
   service_->ActivateAttestationKey(
+      request,
+      base::Bind(callback, SharedResponsePointer(std::move(response))));
+}
+
+void DBusService::HandleCreateCertifiableKey(
+    std::unique_ptr<DBusMethodResponse<const CreateCertifiableKeyReply&>>
+        response,
+    const CreateCertifiableKeyRequest& request) {
+  VLOG(1) << __func__;
+  // Convert |response| to a shared_ptr so |service_| can safely copy the
+  // callback.
+  using SharedResponsePointer = std::shared_ptr<
+      DBusMethodResponse<const CreateCertifiableKeyReply&>>;
+  // A callback that fills the reply protobuf and sends it.
+  auto callback = [](const SharedResponsePointer& response,
+                     const CreateCertifiableKeyReply& reply) {
+    response->Return(reply);
+  };
+  service_->CreateCertifiableKey(
       request,
       base::Bind(callback, SharedResponsePointer(std::move(response))));
 }

@@ -18,6 +18,7 @@ constexpr char kGetKeyInfo[] = "GetKeyInfo";
 constexpr char kGetEndorsementInfo[] = "GetEndorsementInfo";
 constexpr char kGetAttestationKeyInfo[] = "GetAttestationKeyInfo";
 constexpr char kActivateAttestationKey[] = "ActivateAttestationKey";
+constexpr char kCreateCertifiableKey[] = "CreateCertifiableKey";
 
 }  // namespace attestation
 

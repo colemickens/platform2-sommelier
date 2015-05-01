@@ -32,6 +32,9 @@ class MockAttestationInterface : public AttestationInterface {
   MOCK_METHOD2(ActivateAttestationKey,
                void(const ActivateAttestationKeyRequest&,
                     const ActivateAttestationKeyCallback&));
+  MOCK_METHOD2(CreateCertifiableKey,
+               void(const CreateCertifiableKeyRequest&,
+                    const CreateCertifiableKeyCallback&));
 };
 
 }  // namespace attestation

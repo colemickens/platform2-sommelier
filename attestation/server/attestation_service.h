@@ -69,6 +69,9 @@ class AttestationService : public AttestationInterface {
   void ActivateAttestationKey(
       const ActivateAttestationKeyRequest& request,
       const ActivateAttestationKeyCallback& callback) override;
+  void CreateCertifiableKey(
+      const CreateCertifiableKeyRequest& request,
+      const CreateCertifiableKeyCallback& callback) override;
 
   // Mutators useful for testing.
   void set_crypto_utility(CryptoUtility* crypto_utility) {
@@ -138,6 +141,11 @@ class AttestationService : public AttestationInterface {
       const ActivateAttestationKeyRequest& request,
       const std::shared_ptr<ActivateAttestationKeyReply>& result);
 
+  // A synchronous implementation of CreateCertifiableKey.
+  void CreateCertifiableKeyTask(
+      const CreateCertifiableKeyRequest& request,
+      const std::shared_ptr<CreateCertifiableKeyReply>& result);
+
   // Returns true iff all information required for enrollment with the Google
   // Attestation CA is available.
   bool IsPreparedForEnrollment();
@@ -157,25 +165,26 @@ class AttestationService : public AttestationInterface {
                     std::string* server_error);
 
   // Creates a |certificate_request| compatible with the Google Attestation CA
-  // for the key identified by |username| and |key_label|, according to the
-  // given |profile| and |origin.
+  // for the given |key|, according to the given |profile|, |username| and
+  // |origin|.
   bool CreateCertificateRequest(const std::string& username,
-                                const std::string& key_label,
+                                const CertifiedKey& key,
                                 CertificateProfile profile,
                                 const std::string& origin,
                                 std::string* certificate_request,
                                 std::string* message_id);
 
   // Finishes a certificate request by decoding the |certificate_response| to
-  // recover the |certificate_chain| and storing it in association with the key
-  // identified by |username| and |key_label|. Returns true on success. On
+  // recover the |certificate_chain| and storing it in association with the
+  // |key| identified by |username| and |key_label|. Returns true on success. On
   // failure, returns false and sets |server_error| to the error string from the
   // CA.
   bool FinishCertificateRequest(const std::string& certificate_response,
                                 const std::string& username,
                                 const std::string& key_label,
                                 const std::string& message_id,
-                                std::string* certficate_chain,
+                                CertifiedKey* key,
+                                std::string* certificate_chain,
                                 std::string* server_error);
 
   // Sends a |request_type| |request| to the Google Attestation CA and waits for
@@ -184,12 +193,13 @@ class AttestationService : public AttestationInterface {
                               const std::string& request,
                               std::string* reply);
 
-  // Creates, certifies, and saves a new key for |username| with the given
-  // |key_label|, |key_type|, and |key_usage|.
+  // Creates, certifies, and saves a new |key| for |username| with the given
+  // |key_label|, |key_type|, and |key_usage|. Returns true on success.
   bool CreateKey(const std::string& username,
                  const std::string& key_label,
                  KeyType key_type,
-                 KeyUsage key_usage);
+                 KeyUsage key_usage,
+                 CertifiedKey* key);
 
   // Finds the |key| associated with |username| and |key_label|. Returns false
   // if such a key does not exist.

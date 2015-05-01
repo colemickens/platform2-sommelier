@@ -22,6 +22,7 @@
 
 namespace attestation {
 
+const char kCreateAndCertifyCommand[] = "create_and_certify";
 const char kCreateCommand[] = "create";
 const char kInfoCommand[] = "info";
 const char kEndorsementCommand[] = "endorsement";
@@ -31,18 +32,25 @@ const char kEncryptForActivateCommand[] = "encrypt_for_activate";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
-  create [--user=<email>] [--label=<keylabel>] - Creates a Google-attested key.
-      (This is the default command).
+  create_and_certify [--user=<email>] [--label=<keylabel>]
+      Creates a key and requests certification by the Google Attestation CA.
+      This is the default command.
+  create [--user=<email>] [--label=<keylabel]
+      Creates a certifiable key.
 
-  info [--user=<email>] [--label=<keylabel>] - Prints info about a key.
-  endorsement - Prints info about the TPM endorsement.
-  attestation_key - Prints info about the TPM attestation key.
+  info [--user=<email>] [--label=<keylabel>]
+      Prints info about a key.
+  endorsement
+      Prints info about the TPM endorsement.
+  attestation_key
+      Prints info about the TPM attestation key.
 
-  activate --input=<input_file> - Activates an attestation key using the
-      encrypted credential in |input_file|.
-  encrypt_for_activate --input=<input_file> --output=<output_file> - Encrypts
-      the content of |input_file| as required by the TPM for activating an
-      attestation key. The result is written to |output_file|.
+  activate --input=<input_file>
+      Activates an attestation key using the encrypted credential in
+      |input_file|.
+  encrypt_for_activate --input=<input_file> --output=<output_file>
+      Encrypts the content of |input_file| as required by the TPM for activating
+      an attestation key. The result is written to |output_file|.
 )";
 
 // The Daemon class works well as a client loop as well.
@@ -85,8 +93,13 @@ class ClientLoop : public ClientLoopBase {
         args.front() == "help") {
       return EX_USAGE;
     }
-    if (args.empty() || args.front() == kCreateCommand) {
+    if (args.empty() || args.front() == kCreateAndCertifyCommand) {
       task = base::Bind(&ClientLoop::CallCreateGoogleAttestedKey,
+                        weak_factory_.GetWeakPtr(),
+                        command_line->GetSwitchValueASCII("label"),
+                        command_line->GetSwitchValueASCII("user"));
+    } else if (args.front() == kCreateCommand) {
+      task = base::Bind(&ClientLoop::CallCreateCertifiableKey,
                         weak_factory_.GetWeakPtr(),
                         command_line->GetSwitchValueASCII("label"),
                         command_line->GetSwitchValueASCII("user"));
@@ -249,6 +262,17 @@ class ClientLoop : public ClientLoopBase {
     encrypted.SerializeToString(&output);
     WriteOutput(output);
     Quit();
+  }
+
+  void CallCreateCertifiableKey(const std::string& label,
+                                const std::string& username) {
+    CreateCertifiableKeyRequest request;
+    request.set_key_label(label);
+    request.set_username(username);
+    attestation_->CreateCertifiableKey(
+        request,
+        base::Bind(&ClientLoop::PrintReplyAndQuit<CreateCertifiableKeyReply>,
+                   weak_factory_.GetWeakPtr()));
   }
 
   std::unique_ptr<attestation::AttestationInterface> attestation_;

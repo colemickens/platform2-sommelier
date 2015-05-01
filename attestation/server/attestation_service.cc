@@ -116,15 +116,16 @@ void AttestationService::CreateGoogleAttestedKeyTask(
       return;
     }
   }
+  CertifiedKey key;
   if (!CreateKey(request.username(), request.key_label(), request.key_type(),
-                 request.key_usage())) {
+                 request.key_usage(), &key)) {
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
   std::string certificate_request;
   std::string message_id;
   if (!CreateCertificateRequest(request.username(),
-                                request.key_label(),
+                                key,
                                 request.certificate_profile(),
                                 request.origin(),
                                 &certificate_request,
@@ -145,6 +146,7 @@ void AttestationService::CreateGoogleAttestedKeyTask(
                                 request.username(),
                                 request.key_label(),
                                 message_id,
+                                &key,
                                 &certificate_chain,
                                 &server_error)) {
     if (server_error.empty()) {
@@ -357,6 +359,44 @@ void AttestationService::ActivateAttestationKeyTask(
   result->set_certificate(certificate);
 }
 
+void AttestationService::CreateCertifiableKey(
+    const CreateCertifiableKeyRequest& request,
+    const CreateCertifiableKeyCallback& callback) {
+  auto result = std::make_shared<CreateCertifiableKeyReply>();
+  base::Closure task = base::Bind(
+      &AttestationService::CreateCertifiableKeyTask,
+      base::Unretained(this),
+      request,
+      result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<CreateCertifiableKeyReply>,
+      GetWeakPtr(),
+      callback,
+      result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::CreateCertifiableKeyTask(
+    const CreateCertifiableKeyRequest& request,
+    const std::shared_ptr<CreateCertifiableKeyReply>& result) {
+  CertifiedKey key;
+  if (!CreateKey(request.username(), request.key_label(), request.key_type(),
+                 request.key_usage(), &key)) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  std::string public_key_info;
+  if (!GetSubjectPublicKeyInfo(key.key_type(), key.public_key(),
+                               &public_key_info)) {
+    LOG(ERROR) << __func__ << ": Bad public key.";
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  result->set_public_key(public_key_info);
+  result->set_certify_info(key.certified_key_info());
+  result->set_certify_info_signature(key.certified_key_proof());
+}
+
 bool AttestationService::IsPreparedForEnrollment() {
   if (!tpm_utility_->IsTpmReady()) {
     return false;
@@ -437,7 +477,7 @@ bool AttestationService::FinishEnroll(const std::string& enroll_response,
 
 bool AttestationService::CreateCertificateRequest(
     const std::string& username,
-    const std::string& key_label,
+    const CertifiedKey& key,
     CertificateProfile profile,
     const std::string& origin,
     std::string* certificate_request,
@@ -464,11 +504,6 @@ bool AttestationService::CreateCertificateRequest(
     request_pb.set_origin(origin);
     request_pb.set_temporal_index(ChooseTemporalIndex(username, origin));
   }
-  CertifiedKey key;
-  if (!FindKeyByLabel(username, key_label, &key)) {
-    LOG(ERROR) << __func__ << ": Key not found.";
-    return false;
-  }
   request_pb.set_certified_public_key(key.public_key_tpm_format());
   request_pb.set_certified_key_info(key.certified_key_info());
   request_pb.set_certified_key_proof(key.certified_key_proof());
@@ -484,6 +519,7 @@ bool AttestationService::FinishCertificateRequest(
     const std::string& username,
     const std::string& key_label,
     const std::string& message_id,
+    CertifiedKey* key,
     std::string* certificate_chain,
     std::string* server_error) {
   if (!tpm_utility_->IsTpmReady()) {
@@ -504,23 +540,17 @@ bool AttestationService::FinishCertificateRequest(
     LOG(ERROR) << __func__ << ": Message ID mismatch.";
     return false;
   }
-  CertifiedKey certified_key_pb;
-  if (!FindKeyByLabel(username, key_label, &certified_key_pb)) {
-    LOG(ERROR) << __func__ << ": Key not found.";
-    return false;
-  }
 
   // Finish populating the CertifiedKey protobuf and store it.
-  certified_key_pb.set_certified_key_credential(
-      response_pb.certified_key_credential());
-  certified_key_pb.set_intermediate_ca_cert(response_pb.intermediate_ca_cert());
-  certified_key_pb.mutable_additional_intermediate_ca_cert()->MergeFrom(
+  key->set_certified_key_credential(response_pb.certified_key_credential());
+  key->set_intermediate_ca_cert(response_pb.intermediate_ca_cert());
+  key->mutable_additional_intermediate_ca_cert()->MergeFrom(
       response_pb.additional_intermediate_ca_cert());
-  if (!SaveKey(username, key_label, certified_key_pb)) {
+  if (!SaveKey(username, key_label, *key)) {
     return false;
   }
   LOG(INFO) << "Attestation: Certified key credential received and stored.";
-  *certificate_chain = CreatePEMCertificateChain(certified_key_pb);
+  *certificate_chain = CreatePEMCertificateChain(*key);
   return true;
 }
 
@@ -576,7 +606,8 @@ bool AttestationService::FindKeyByLabel(const std::string& username,
 bool AttestationService::CreateKey(const std::string& username,
                                    const std::string& key_label,
                                    KeyType key_type,
-                                   KeyUsage key_usage) {
+                                   KeyUsage key_usage,
+                                   CertifiedKey* key) {
   std::string nonce;
   if (!crypto_utility_->GetRandom(kNonceSize, &nonce)) {
     LOG(ERROR) << __func__ << ": GetRandom(nonce) failed.";
@@ -600,14 +631,13 @@ bool AttestationService::CreateKey(const std::string& username,
       &proof)) {
     return false;
   }
-  CertifiedKey key;
-  key.set_key_blob(key_blob);
-  key.set_public_key(public_key);
-  key.set_key_name(key_label);
-  key.set_public_key_tpm_format(public_key_tpm_format);
-  key.set_certified_key_info(key_info);
-  key.set_certified_key_proof(proof);
-  return SaveKey(username, key_label, key);
+  key->set_key_blob(key_blob);
+  key->set_public_key(public_key);
+  key->set_key_name(key_label);
+  key->set_public_key_tpm_format(public_key_tpm_format);
+  key->set_certified_key_info(key_info);
+  key->set_certified_key_proof(proof);
+  return SaveKey(username, key_label, *key);
 }
 
 bool AttestationService::SaveKey(const std::string& username,

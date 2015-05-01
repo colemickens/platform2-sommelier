@@ -323,8 +323,7 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithRNGFailure2) {
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithDBFailure) {
-  EXPECT_CALL(mock_database_, SaveChanges())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_database_, SaveChanges()).WillRepeatedly(Return(false));
   // Set expectations on the outputs.
   auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
@@ -337,8 +336,7 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithDBFailure) {
 }
 
 TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithDBFailureNoUser) {
-  EXPECT_CALL(mock_database_, SaveChanges())
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_database_, SaveChanges()).WillRepeatedly(Return(false));
   // Set expectations on the outputs.
   auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
     EXPECT_NE(STATUS_SUCCESS, reply.status());
@@ -349,20 +347,6 @@ TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithDBFailureNoUser) {
   CreateGoogleAttestedKeyRequest request = GetCreateRequest();
   request.clear_username();
   service_->CreateGoogleAttestedKey(request, base::Bind(callback));
-  Run();
-}
-
-TEST_F(AttestationServiceTest, CreateGoogleAttestedKeyWithKeyReadFailure) {
-  EXPECT_CALL(mock_key_store_, Read(_, _, _))
-      .WillRepeatedly(Return(false));
-  // Set expectations on the outputs.
-  auto callback = [this](const CreateGoogleAttestedKeyReply& reply) {
-    EXPECT_NE(STATUS_SUCCESS, reply.status());
-    EXPECT_FALSE(reply.has_certificate_chain());
-    EXPECT_EQ("", reply.server_error());
-    Quit();
-  };
-  service_->CreateGoogleAttestedKey(GetCreateRequest(), base::Bind(callback));
   Run();
 }
 
@@ -728,6 +712,138 @@ TEST_F(AttestationServiceTest, ActivateAttestationKeyActivateFailure) {
   request.mutable_encrypted_certificate()->set_sym_ca_attestation("encrypted2");
   request.set_save_certificate(true);
   service_->ActivateAttestationKey(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, CreateCertifiableKeySuccess) {
+  // Configure a fake TPM response.
+  EXPECT_CALL(mock_tpm_utility_, CreateCertifiedKey(KEY_TYPE_ECC,
+                                                    KEY_USAGE_SIGN,
+                                                    _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<5>(std::string("public_key")),
+                      SetArgumentPointee<7>(std::string("certify_info")),
+                      SetArgumentPointee<8>(
+                          std::string("certify_info_signature")),
+                      Return(true)));
+  // Expect the key to be written exactly once.
+  EXPECT_CALL(mock_key_store_, Write("user", "label", _)).Times(1);
+  // Set expectations on the outputs.
+  auto callback = [this](const CreateCertifiableKeyReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ("public_key", reply.public_key());
+    EXPECT_EQ("certify_info", reply.certify_info());
+    EXPECT_EQ("certify_info_signature", reply.certify_info_signature());
+    Quit();
+  };
+  CreateCertifiableKeyRequest request;
+  request.set_key_label("label");
+  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_usage(KEY_USAGE_SIGN);
+  request.set_username("user");
+  service_->CreateCertifiableKey(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, CreateCertifiableKeySuccessNoUser) {
+  // Configure a fake TPM response.
+  EXPECT_CALL(mock_tpm_utility_, CreateCertifiedKey(KEY_TYPE_ECC,
+                                                    KEY_USAGE_SIGN,
+                                                    _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<5>(std::string("public_key")),
+                      SetArgumentPointee<7>(std::string("certify_info")),
+                      SetArgumentPointee<8>(
+                          std::string("certify_info_signature")),
+                      Return(true)));
+  // Expect the key to be written exactly once.
+  EXPECT_CALL(mock_database_, SaveChanges()).Times(1);
+  // Set expectations on the outputs.
+  auto callback = [this](const CreateCertifiableKeyReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ("public_key", reply.public_key());
+    EXPECT_EQ("certify_info", reply.certify_info());
+    EXPECT_EQ("certify_info_signature", reply.certify_info_signature());
+    Quit();
+  };
+  CreateCertifiableKeyRequest request;
+  request.set_key_label("label");
+  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_usage(KEY_USAGE_SIGN);
+  service_->CreateCertifiableKey(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, CreateCertifiableKeyRNGFailure) {
+  EXPECT_CALL(mock_crypto_utility_, GetRandom(_, _))
+      .WillRepeatedly(Return(false));
+  // Set expectations on the outputs.
+  auto callback = [this](const CreateCertifiableKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_public_key());
+    EXPECT_FALSE(reply.has_certify_info());
+    EXPECT_FALSE(reply.has_certify_info_signature());
+    Quit();
+  };
+  CreateCertifiableKeyRequest request;
+  request.set_key_label("label");
+  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_usage(KEY_USAGE_SIGN);
+  service_->CreateCertifiableKey(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, CreateCertifiableKeyTpmCreateFailure) {
+  EXPECT_CALL(mock_tpm_utility_, CreateCertifiedKey(_, _, _, _, _, _, _, _, _))
+      .WillRepeatedly(Return(false));
+  // Set expectations on the outputs.
+  auto callback = [this](const CreateCertifiableKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_public_key());
+    EXPECT_FALSE(reply.has_certify_info());
+    EXPECT_FALSE(reply.has_certify_info_signature());
+    Quit();
+  };
+  CreateCertifiableKeyRequest request;
+  request.set_key_label("label");
+  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_usage(KEY_USAGE_SIGN);
+  service_->CreateCertifiableKey(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, CreateCertifiableKeyDBFailure) {
+  EXPECT_CALL(mock_key_store_, Write(_, _, _)).WillRepeatedly(Return(false));
+  // Set expectations on the outputs.
+  auto callback = [this](const CreateCertifiableKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_public_key());
+    EXPECT_FALSE(reply.has_certify_info());
+    EXPECT_FALSE(reply.has_certify_info_signature());
+    Quit();
+  };
+  CreateCertifiableKeyRequest request;
+  request.set_key_label("label");
+  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_usage(KEY_USAGE_SIGN);
+  request.set_username("username");
+  service_->CreateCertifiableKey(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, CreateCertifiableKeyDBFailureNoUser) {
+  EXPECT_CALL(mock_database_, SaveChanges()).WillRepeatedly(Return(false));
+  // Set expectations on the outputs.
+  auto callback = [this](const CreateCertifiableKeyReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_public_key());
+    EXPECT_FALSE(reply.has_certify_info());
+    EXPECT_FALSE(reply.has_certify_info_signature());
+    Quit();
+  };
+  CreateCertifiableKeyRequest request;
+  request.set_key_label("label");
+  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_usage(KEY_USAGE_SIGN);
+  service_->CreateCertifiableKey(request, base::Bind(callback));
   Run();
 }
 
