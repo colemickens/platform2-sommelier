@@ -208,12 +208,12 @@ std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
     if (!filter(pair.second.get()))
       continue;
 
-    std::unique_ptr<base::DictionaryValue> definition =
+    std::unique_ptr<base::DictionaryValue> parameters =
         pair.second->GetParameters()->ToJson(full_schema, error);
-    if (!definition) {
-      dict.reset();
-      return dict;
-    }
+    if (!parameters)
+      return {};
+    // Progress and results are not part of public commandDefs.
+
     auto cmd_name_parts = chromeos::string_utils::SplitAtFirst(pair.first, ".");
     std::string package_name = cmd_name_parts.first;
     std::string command_name = cmd_name_parts.second;
@@ -226,7 +226,7 @@ std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
     }
     base::DictionaryValue* command_def = new base::DictionaryValue;
     command_def->Set(commands::attributes::kCommand_Parameters,
-                     definition.release());
+                     parameters.release());
     package->SetWithoutPathExpansion(command_name, command_def);
   }
   return dict;

@@ -53,9 +53,9 @@ extern const char kObject_AdditionalProperties[];
 extern const char kCommand_Id[];
 extern const char kCommand_Name[];
 extern const char kCommand_Parameters[];
+extern const char kCommand_Progress[];
 extern const char kCommand_Results[];
 extern const char kCommand_State[];
-extern const char kCommand_Progress[];
 extern const char kCommand_ErrorCode[];
 extern const char kCommand_ErrorMessage[];
 

@@ -294,7 +294,7 @@ std::unique_ptr<base::DictionaryValue> ObjectSchema::ToJson(
   for (const auto& pair : properties_) {
     auto PropDef = pair.second->ToJson(full_schema, error);
     if (!PropDef)
-      return std::unique_ptr<base::DictionaryValue>();
+      return {};
     value->SetWithoutPathExpansion(pair.first, PropDef.release());
   }
   return value;
