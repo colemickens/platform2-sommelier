@@ -767,6 +767,8 @@ bool DeviceRegistrationInfo::UpdateDeviceInfo(const std::string& name,
   config_->set_description(description);
   config_->set_location(location);
 
+  Save();
+
   OnConfigChanged();
 
   if (HaveRegistrationCredentials(nullptr)) {

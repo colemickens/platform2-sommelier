@@ -470,8 +470,7 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
   std::string device_id = dev_reg_->RegisterDevice(params, nullptr);
 
   EXPECT_EQ(test_data::kDeviceId, device_id);
-  EXPECT_EQ(1,
-            storage_->save_count());  // The device info must have been saved.
+  EXPECT_GT(storage_->save_count(), 1);  // The state must have been saved.
   EXPECT_EQ(3, transport_->GetRequestCount());
   EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
 
