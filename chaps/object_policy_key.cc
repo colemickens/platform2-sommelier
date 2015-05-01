@@ -44,8 +44,8 @@ void ObjectPolicyKey::SetDefaultAttributes() {
   if (!object_->IsAttributePresent(CKA_LOCAL))
     object_->SetAttributeBool(CKA_LOCAL, false);
   if (!object_->IsAttributePresent(CKA_KEY_GEN_MECHANISM))
-    object_->SetAttributeBool(CKA_KEY_GEN_MECHANISM,
-                              CK_UNAVAILABLE_INFORMATION);
+    object_->SetAttributeInt(CKA_KEY_GEN_MECHANISM,
+                             static_cast<int>(CK_UNAVAILABLE_INFORMATION));
 }
 
 }  // namespace chaps

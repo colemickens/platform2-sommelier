@@ -145,6 +145,45 @@ TEST_F(TestObjectPolicy, SetDefaultAttributes) {
   EXPECT_FALSE(object_.GetAttributeBool(CKA_DECRYPT, true));
 }
 
+TEST_F(TestObjectPolicy, LatchingAttributes) {
+  for (bool keygen_known : {false, true}) {
+    for (bool extractable : {false, true}) {
+      for (bool sensitive : {false, true}) {
+        ObjectPolicySecretKey policy;
+        policy.Init(&object_);
+        if (keygen_known) {
+          object_.SetAttributeInt(CKA_KEY_GEN_MECHANISM, CKM_DES3_KEY_GEN);
+        } else {
+          object_.RemoveAttribute(CKA_KEY_GEN_MECHANISM);
+        }
+        object_.SetAttributeBool(CKA_EXTRACTABLE, extractable);
+        object_.SetAttributeBool(CKA_SENSITIVE, sensitive);
+        policy.SetDefaultAttributes();
+
+        if (!keygen_known) {
+          // Can't claim the key was never extractable or always sensitive
+          // if we don't know how it was generated.
+          EXPECT_FALSE(object_.GetAttributeBool(CKA_ALWAYS_SENSITIVE, true));
+          EXPECT_FALSE(object_.GetAttributeBool(CKA_NEVER_EXTRACTABLE, true));
+          EXPECT_EQ(static_cast<int>(CK_UNAVAILABLE_INFORMATION),
+                    object_.GetAttributeInt(CKA_KEY_GEN_MECHANISM,
+                                            CKM_DES3_KEY_GEN));
+        } else {
+          EXPECT_EQ(sensitive,
+                    object_.GetAttributeBool(CKA_ALWAYS_SENSITIVE,
+                                             !sensitive));
+          EXPECT_EQ(!extractable,
+                    object_.GetAttributeBool(CKA_NEVER_EXTRACTABLE,
+                                             extractable));
+          EXPECT_EQ(CKM_DES3_KEY_GEN,
+                    object_.GetAttributeInt(CKA_KEY_GEN_MECHANISM,
+                                            CKM_AES_KEY_GEN));
+        }
+      }
+    }
+  }
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {

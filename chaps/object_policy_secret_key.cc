@@ -54,10 +54,17 @@ void ObjectPolicySecretKey::SetDefaultAttributes() {
   if (!object_->IsAttributePresent(CKA_WRAP_WITH_TRUSTED))
     object_->SetAttributeBool(CKA_WRAP_WITH_TRUSTED, false);
   if (object_->GetStage() == kCreate) {
-    if (object_->GetAttributeBool(CKA_SENSITIVE, false))
+    CK_ULONG keygen_mechanism = object_->GetAttributeInt(
+        CKA_KEY_GEN_MECHANISM, static_cast<int>(CK_UNAVAILABLE_INFORMATION));
+    bool keygen_known = (keygen_mechanism != CK_UNAVAILABLE_INFORMATION);
+    if (keygen_known && object_->GetAttributeBool(CKA_SENSITIVE, false))
       object_->SetAttributeBool(CKA_ALWAYS_SENSITIVE, true);
-    if (!object_->GetAttributeBool(CKA_EXTRACTABLE, true))
+    else
+      object_->SetAttributeBool(CKA_ALWAYS_SENSITIVE, false);
+    if (keygen_known && !object_->GetAttributeBool(CKA_EXTRACTABLE, true))
       object_->SetAttributeBool(CKA_NEVER_EXTRACTABLE, true);
+    else
+      object_->SetAttributeBool(CKA_NEVER_EXTRACTABLE, false);
   }
 }
 
