@@ -10,8 +10,8 @@ DEVICE_IP="169.254.100.2"
 MAX_VETH_SUFFIX=99
 
 # VID/PID of the USB-Ethernet dongle used for the debug link.
-VENDOR_ID="0b95"
-PRODUCT_ID="7e2b"
+VENDOR_ID="13b1"
+PRODUCT_ID="0041"
 
 devdir=""
 for d in /sys/bus/usb/devices/*; do
