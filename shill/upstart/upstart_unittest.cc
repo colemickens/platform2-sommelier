@@ -60,4 +60,9 @@ TEST_F(UpstartTest, NotifyDisconnected) {
   upstart_.NotifyDisconnected();
 }
 
+TEST_F(UpstartTest, NotifyConnected) {
+  EXPECT_CALL(*upstart_proxy_, EmitEvent("shill-connected", _, false));
+  upstart_.NotifyConnected();
+}
+
 }  // namespace shill

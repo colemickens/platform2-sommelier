@@ -24,10 +24,14 @@ class Upstart {
 
   // Report an event to upstart indicating that the system has disconnected.
   virtual void NotifyDisconnected();
+  // Report an event to upstart indicating that the system has connected.
+  virtual void NotifyConnected();
 
  private:
   // Event string to be provided to upstart to indicate we have disconnected.
   static const char kShillDisconnectEvent[];
+  // Event string to be provided to upstart to indicate we have connected.
+  static const char kShillConnectEvent[];
 
   // The upstart proxy created by this class.
   const std::unique_ptr<UpstartProxyInterface> upstart_proxy_;

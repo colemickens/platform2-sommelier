@@ -152,7 +152,8 @@ Manager::Manager(ControlInterface *control_interface,
       default_service_callback_tag_(0),
       crypto_util_proxy_(new CryptoUtilProxy(dispatcher, glib)),
       health_checker_remote_ips_(new IPAddressStore()),
-      suppress_autoconnect_(false) {
+      suppress_autoconnect_(false),
+      is_connected_state_(false) {
   HelpRegisterDerivedString(kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
                             nullptr);
@@ -2065,7 +2066,15 @@ void Manager::RefreshConnectionState() {
   }
   connection_state_ = connection_state;
   adaptor_->EmitStringChanged(kConnectionStateProperty, connection_state_);
-  if (connection_state_ == kStateIdle) {
+  // Send upstart notifications for the initial idle state
+  // and when we transition in/out of connected states.
+  if ((!is_connected_state_) && (IsConnected())) {
+      is_connected_state_ = true;
+      upstart_->NotifyConnected();
+  } else if ((is_connected_state_) && (!IsConnected())) {
+      is_connected_state_ = false;
+      upstart_->NotifyDisconnected();
+  } else if (connection_state_ == kStateIdle) {
       upstart_->NotifyDisconnected();
   }
 }

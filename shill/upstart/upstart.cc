@@ -11,6 +11,7 @@ namespace shill {
 
 // static
 const char Upstart::kShillDisconnectEvent[] = "shill-disconnected";
+const char Upstart::kShillConnectEvent[] = "shill-connected";
 
 Upstart::Upstart(ProxyFactory *proxy_factory)
     : upstart_proxy_(proxy_factory->CreateUpstartProxy()) {}
@@ -19,6 +20,10 @@ Upstart::~Upstart() {}
 
 void Upstart::NotifyDisconnected() {
   upstart_proxy_->EmitEvent(kShillDisconnectEvent, {}, false);
+}
+
+void Upstart::NotifyConnected() {
+  upstart_proxy_->EmitEvent(kShillConnectEvent, {}, false);
 }
 
 }  // namespace shill

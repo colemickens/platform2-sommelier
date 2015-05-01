@@ -22,6 +22,7 @@ class MockUpstart : public Upstart {
   ~MockUpstart() override;
 
   MOCK_METHOD0(NotifyDisconnected, void());
+  MOCK_METHOD0(NotifyConnected, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockUpstart);

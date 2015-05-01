@@ -836,6 +836,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // When true, suppresses autoconnects in Manager::AutoConnect.
   bool suppress_autoconnect_;
 
+  // Whether any of the services is in connected state or not.
+  bool is_connected_state_;
+
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };
 

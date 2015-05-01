@@ -3444,6 +3444,7 @@ TEST_F(ManagerTest, RefreshConnectionState) {
   EXPECT_CALL(*manager_adaptor_,
               EmitStringChanged(kConnectionStateProperty, kStateIdle));
   EXPECT_CALL(*upstart_, NotifyDisconnected());
+  EXPECT_CALL(*upstart_, NotifyConnected()).Times(0);
   RefreshConnectionState();
   Mock::VerifyAndClearExpectations(manager_adaptor_);
   Mock::VerifyAndClearExpectations(upstart_);
@@ -3456,6 +3457,7 @@ TEST_F(ManagerTest, RefreshConnectionState) {
   EXPECT_CALL(*manager_adaptor_,
               EmitStringChanged(kConnectionStateProperty, _)).Times(0);
   EXPECT_CALL(*upstart_, NotifyDisconnected()).Times(0);
+  EXPECT_CALL(*upstart_, NotifyConnected());
   manager()->RegisterService(mock_service);
   RefreshConnectionState();
 
@@ -3469,6 +3471,8 @@ TEST_F(ManagerTest, RefreshConnectionState) {
   Mock::VerifyAndClearExpectations(manager_adaptor_);
   EXPECT_CALL(*mock_service, state())
       .WillOnce(Return(Service::kStatePortal));
+  EXPECT_CALL(*mock_service, IsConnected())
+      .WillOnce(Return(true));
   EXPECT_CALL(*manager_adaptor_,
               EmitStringChanged(kConnectionStateProperty, kStatePortal));
   RefreshConnectionState();
@@ -3481,6 +3485,7 @@ TEST_F(ManagerTest, RefreshConnectionState) {
   EXPECT_CALL(*manager_adaptor_,
               EmitStringChanged(kConnectionStateProperty, kStateIdle));
   EXPECT_CALL(*upstart_, NotifyDisconnected());
+  EXPECT_CALL(*upstart_, NotifyConnected()).Times(0);
   RefreshConnectionState();
 }
 
