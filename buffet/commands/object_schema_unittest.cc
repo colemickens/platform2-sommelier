@@ -19,14 +19,16 @@
 #include "buffet/commands/schema_constants.h"
 #include "buffet/commands/unittest_utils.h"
 
-using buffet::unittests::CreateValue;
-using buffet::unittests::CreateDictionaryValue;
-using buffet::unittests::ValueToString;
+namespace buffet {
+
+using unittests::CreateValue;
+using unittests::CreateDictionaryValue;
+using unittests::ValueToString;
 
 namespace {
 
-template<typename T>
-std::vector<T> GetArrayValues(const buffet::native_types::Array& arr) {
+template <typename T>
+std::vector<T> GetArrayValues(const native_types::Array& arr) {
   std::vector<T> values;
   values.reserve(arr.size());
   for (const auto& prop_value : arr) {
@@ -35,10 +37,10 @@ std::vector<T> GetArrayValues(const buffet::native_types::Array& arr) {
   return values;
 }
 
-template<typename T>
-std::vector<T> GetOneOfValues(const buffet::PropType* prop_type) {
-  auto one_of = static_cast<const buffet::ConstraintOneOf*>(
-      prop_type->GetConstraint(buffet::ConstraintType::OneOf));
+template <typename T>
+std::vector<T> GetOneOfValues(const PropType* prop_type) {
+  auto one_of = static_cast<const ConstraintOneOf*>(
+      prop_type->GetConstraint(ConstraintType::OneOf));
   if (!one_of)
     return {};
 
@@ -48,7 +50,7 @@ std::vector<T> GetOneOfValues(const buffet::PropType* prop_type) {
 }  // anonymous namespace
 
 TEST(CommandSchema, IntPropType_Empty) {
-  buffet::IntPropType prop;
+  IntPropType prop;
   EXPECT_TRUE(prop.GetConstraints().empty());
   EXPECT_FALSE(prop.HasOverriddenAttributes());
   EXPECT_FALSE(prop.IsBasedOnSchema());
@@ -56,7 +58,7 @@ TEST(CommandSchema, IntPropType_Empty) {
 }
 
 TEST(CommandSchema, IntPropType_Types) {
-  buffet::IntPropType prop;
+  IntPropType prop;
   EXPECT_EQ(nullptr, prop.GetBoolean());
   EXPECT_EQ(&prop, prop.GetInt());
   EXPECT_EQ(nullptr, prop.GetDouble());
@@ -66,11 +68,11 @@ TEST(CommandSchema, IntPropType_Types) {
 }
 
 TEST(CommandSchema, IntPropType_ToJson) {
-  buffet::IntPropType prop;
+  IntPropType prop;
   EXPECT_EQ("'integer'", ValueToString(prop.ToJson(false, nullptr).get()));
   EXPECT_EQ("{'type':'integer'}",
             ValueToString(prop.ToJson(true, nullptr).get()));
-  buffet::IntPropType param2;
+  IntPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_EQ("{}", ValueToString(param2.ToJson(false, nullptr).get()));
   param2.FromJson(CreateDictionaryValue("{'minimum':3}").get(),
@@ -96,9 +98,9 @@ TEST(CommandSchema, IntPropType_ToJson) {
 }
 
 TEST(CommandSchema, IntPropType_FromJson) {
-  buffet::IntPropType prop;
+  IntPropType prop;
   prop.AddMinMaxConstraint(2, 8);
-  buffet::IntPropType param2;
+  IntPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_FALSE(param2.HasOverriddenAttributes());
   EXPECT_TRUE(param2.IsBasedOnSchema());
@@ -126,7 +128,7 @@ TEST(CommandSchema, IntPropType_FromJson) {
 }
 
 TEST(CommandSchema, IntPropType_Validate) {
-  buffet::IntPropType prop;
+  IntPropType prop;
   prop.AddMinMaxConstraint(2, 4);
   chromeos::ErrorPtr error;
   EXPECT_FALSE(prop.ValidateValue(CreateValue("-1").get(), &error));
@@ -158,7 +160,7 @@ TEST(CommandSchema, IntPropType_Validate) {
 }
 
 TEST(CommandSchema, IntPropType_CreateValue) {
-  buffet::IntPropType prop;
+  IntPropType prop;
   chromeos::ErrorPtr error;
   auto val = prop.CreateValue(2, &error);
   ASSERT_NE(nullptr, val.get());
@@ -168,13 +170,13 @@ TEST(CommandSchema, IntPropType_CreateValue) {
   val = prop.CreateValue("blah", &error);
   EXPECT_EQ(nullptr, val.get());
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
+  EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 TEST(CommandSchema, BoolPropType_Empty) {
-  buffet::BooleanPropType prop;
+  BooleanPropType prop;
   EXPECT_TRUE(prop.GetConstraints().empty());
   EXPECT_FALSE(prop.HasOverriddenAttributes());
   EXPECT_FALSE(prop.IsBasedOnSchema());
@@ -182,7 +184,7 @@ TEST(CommandSchema, BoolPropType_Empty) {
 }
 
 TEST(CommandSchema, BoolPropType_Types) {
-  buffet::BooleanPropType prop;
+  BooleanPropType prop;
   EXPECT_EQ(nullptr, prop.GetInt());
   EXPECT_EQ(&prop, prop.GetBoolean());
   EXPECT_EQ(nullptr, prop.GetDouble());
@@ -192,11 +194,11 @@ TEST(CommandSchema, BoolPropType_Types) {
 }
 
 TEST(CommandSchema, BoolPropType_ToJson) {
-  buffet::BooleanPropType prop;
+  BooleanPropType prop;
   EXPECT_EQ("'boolean'", ValueToString(prop.ToJson(false, nullptr).get()));
   EXPECT_EQ("{'type':'boolean'}",
             ValueToString(prop.ToJson(true, nullptr).get()));
-  buffet::BooleanPropType param2;
+  BooleanPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_EQ("{}", ValueToString(param2.ToJson(false, nullptr).get()));
   param2.FromJson(CreateDictionaryValue("{'enum':[true,false]}").get(), &prop,
@@ -211,17 +213,17 @@ TEST(CommandSchema, BoolPropType_ToJson) {
 }
 
 TEST(CommandSchema, BoolPropType_FromJson) {
-  buffet::BooleanPropType prop;
+  BooleanPropType prop;
   prop.FromJson(CreateDictionaryValue("{'enum':[true]}").get(), &prop,
                 nullptr);
-  buffet::BooleanPropType param2;
+  BooleanPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_FALSE(param2.HasOverriddenAttributes());
   EXPECT_TRUE(param2.IsBasedOnSchema());
   EXPECT_EQ(std::vector<bool>{true}, GetOneOfValues<bool>(&prop));
 
-  buffet::BooleanPropType prop_base;
-  buffet::BooleanPropType param3;
+  BooleanPropType prop_base;
+  BooleanPropType param3;
   ASSERT_TRUE(param3.FromJson(CreateDictionaryValue("{'default':false}").get(),
                               &prop_base, nullptr));
   EXPECT_TRUE(param3.HasOverriddenAttributes());
@@ -230,7 +232,7 @@ TEST(CommandSchema, BoolPropType_FromJson) {
 }
 
 TEST(CommandSchema, BoolPropType_Validate) {
-  buffet::BooleanPropType prop;
+  BooleanPropType prop;
   prop.FromJson(CreateDictionaryValue("{'enum':[true]}").get(), &prop,
                 nullptr);
   chromeos::ErrorPtr error;
@@ -250,7 +252,7 @@ TEST(CommandSchema, BoolPropType_Validate) {
 }
 
 TEST(CommandSchema, BoolPropType_CreateValue) {
-  buffet::BooleanPropType prop;
+  BooleanPropType prop;
   chromeos::ErrorPtr error;
   auto val = prop.CreateValue(true, &error);
   ASSERT_NE(nullptr, val.get());
@@ -260,13 +262,13 @@ TEST(CommandSchema, BoolPropType_CreateValue) {
   val = prop.CreateValue("blah", &error);
   EXPECT_EQ(nullptr, val.get());
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
+  EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 TEST(CommandSchema, DoublePropType_Empty) {
-  buffet::DoublePropType prop;
+  DoublePropType prop;
   EXPECT_DOUBLE_EQ(std::numeric_limits<double>::lowest(), prop.GetMinValue());
   EXPECT_DOUBLE_EQ((std::numeric_limits<double>::max)(), prop.GetMaxValue());
   EXPECT_FALSE(prop.HasOverriddenAttributes());
@@ -275,7 +277,7 @@ TEST(CommandSchema, DoublePropType_Empty) {
 }
 
 TEST(CommandSchema, DoublePropType_Types) {
-  buffet::DoublePropType prop;
+  DoublePropType prop;
   EXPECT_EQ(nullptr, prop.GetInt());
   EXPECT_EQ(nullptr, prop.GetBoolean());
   EXPECT_EQ(&prop, prop.GetDouble());
@@ -285,11 +287,11 @@ TEST(CommandSchema, DoublePropType_Types) {
 }
 
 TEST(CommandSchema, DoublePropType_ToJson) {
-  buffet::DoublePropType prop;
+  DoublePropType prop;
   EXPECT_EQ("'number'", ValueToString(prop.ToJson(false, nullptr).get()));
   EXPECT_EQ("{'type':'number'}",
             ValueToString(prop.ToJson(true, nullptr).get()));
-  buffet::DoublePropType param2;
+  DoublePropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_EQ("{}", ValueToString(param2.ToJson(false, nullptr).get()));
   param2.FromJson(CreateDictionaryValue("{'minimum':3}").get(), &prop,
@@ -311,9 +313,9 @@ TEST(CommandSchema, DoublePropType_ToJson) {
 }
 
 TEST(CommandSchema, DoublePropType_FromJson) {
-  buffet::DoublePropType prop;
+  DoublePropType prop;
   prop.AddMinMaxConstraint(2.5, 8.7);
-  buffet::DoublePropType param2;
+  DoublePropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_FALSE(param2.HasOverriddenAttributes());
   EXPECT_TRUE(param2.IsBasedOnSchema());
@@ -347,7 +349,7 @@ TEST(CommandSchema, DoublePropType_FromJson) {
 }
 
 TEST(CommandSchema, DoublePropType_Validate) {
-  buffet::DoublePropType prop;
+  DoublePropType prop;
   prop.AddMinMaxConstraint(-1.2, 1.3);
   chromeos::ErrorPtr error;
   EXPECT_FALSE(prop.ValidateValue(CreateValue("-2").get(), &error));
@@ -373,7 +375,7 @@ TEST(CommandSchema, DoublePropType_Validate) {
 }
 
 TEST(CommandSchema, DoublePropType_CreateValue) {
-  buffet::DoublePropType prop;
+  DoublePropType prop;
   chromeos::ErrorPtr error;
   auto val = prop.CreateValue(2.0, &error);
   ASSERT_NE(nullptr, val.get());
@@ -383,13 +385,13 @@ TEST(CommandSchema, DoublePropType_CreateValue) {
   val = prop.CreateValue("blah", &error);
   EXPECT_EQ(nullptr, val.get());
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
+  EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 TEST(CommandSchema, StringPropType_Empty) {
-  buffet::StringPropType prop;
+  StringPropType prop;
   EXPECT_EQ(0, prop.GetMinLength());
   EXPECT_EQ((std::numeric_limits<int>::max)(), prop.GetMaxLength());
   EXPECT_FALSE(prop.HasOverriddenAttributes());
@@ -398,7 +400,7 @@ TEST(CommandSchema, StringPropType_Empty) {
 }
 
 TEST(CommandSchema, StringPropType_Types) {
-  buffet::StringPropType prop;
+  StringPropType prop;
   EXPECT_EQ(nullptr, prop.GetInt());
   EXPECT_EQ(nullptr, prop.GetBoolean());
   EXPECT_EQ(nullptr, prop.GetDouble());
@@ -408,11 +410,11 @@ TEST(CommandSchema, StringPropType_Types) {
 }
 
 TEST(CommandSchema, StringPropType_ToJson) {
-  buffet::StringPropType prop;
+  StringPropType prop;
   EXPECT_EQ("'string'", ValueToString(prop.ToJson(false, nullptr).get()));
   EXPECT_EQ("{'type':'string'}",
             ValueToString(prop.ToJson(true, nullptr).get()));
-  buffet::StringPropType param2;
+  StringPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_EQ("{}", ValueToString(param2.ToJson(false, nullptr).get()));
   param2.FromJson(CreateDictionaryValue("{'minLength':3}").get(), &prop,
@@ -434,9 +436,9 @@ TEST(CommandSchema, StringPropType_ToJson) {
 }
 
 TEST(CommandSchema, StringPropType_FromJson) {
-  buffet::StringPropType prop;
+  StringPropType prop;
   prop.AddLengthConstraint(2, 8);
-  buffet::StringPropType param2;
+  StringPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_FALSE(param2.HasOverriddenAttributes());
   EXPECT_TRUE(param2.IsBasedOnSchema());
@@ -470,7 +472,7 @@ TEST(CommandSchema, StringPropType_FromJson) {
 }
 
 TEST(CommandSchema, StringPropType_Validate) {
-  buffet::StringPropType prop;
+  StringPropType prop;
   prop.AddLengthConstraint(1, 3);
   chromeos::ErrorPtr error;
   EXPECT_FALSE(prop.ValidateValue(CreateValue("''").get(), &error));
@@ -502,7 +504,7 @@ TEST(CommandSchema, StringPropType_Validate) {
 }
 
 TEST(CommandSchema, StringPropType_CreateValue) {
-  buffet::StringPropType prop;
+  StringPropType prop;
   chromeos::ErrorPtr error;
   auto val = prop.CreateValue(std::string{"blah"}, &error);
   ASSERT_NE(nullptr, val.get());
@@ -512,20 +514,20 @@ TEST(CommandSchema, StringPropType_CreateValue) {
   val = prop.CreateValue(4, &error);
   EXPECT_EQ(nullptr, val.get());
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
+  EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 TEST(CommandSchema, ObjectPropType_Empty) {
-  buffet::ObjectPropType prop;
+  ObjectPropType prop;
   EXPECT_TRUE(prop.HasOverriddenAttributes());
   EXPECT_FALSE(prop.IsBasedOnSchema());
   EXPECT_EQ(nullptr, prop.GetDefaultValue());
 }
 
 TEST(CommandSchema, ObjectPropType_Types) {
-  buffet::ObjectPropType prop;
+  ObjectPropType prop;
   EXPECT_EQ(nullptr, prop.GetInt());
   EXPECT_EQ(nullptr, prop.GetBoolean());
   EXPECT_EQ(nullptr, prop.GetDouble());
@@ -535,20 +537,20 @@ TEST(CommandSchema, ObjectPropType_Types) {
 }
 
 TEST(CommandSchema, ObjectPropType_ToJson) {
-  buffet::ObjectPropType prop;
+  ObjectPropType prop;
   EXPECT_EQ("{'additionalProperties':false,'properties':{}}",
             ValueToString(prop.ToJson(false, nullptr).get()));
   EXPECT_EQ("{'additionalProperties':false,'properties':{},'type':'object'}",
             ValueToString(prop.ToJson(true, nullptr).get()));
   EXPECT_FALSE(prop.IsBasedOnSchema());
-  buffet::ObjectPropType prop2;
+  ObjectPropType prop2;
   prop2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_EQ("{}", ValueToString(prop2.ToJson(false, nullptr).get()));
   EXPECT_TRUE(prop2.IsBasedOnSchema());
 
-  auto schema = buffet::ObjectSchema::Create();
-  schema->AddProp("expires", buffet::PropType::Create(buffet::ValueType::Int));
-  auto pw = buffet::PropType::Create(buffet::ValueType::String);
+  auto schema = ObjectSchema::Create();
+  schema->AddProp("expires", PropType::Create(ValueType::Int));
+  auto pw = PropType::Create(ValueType::String);
   pw->GetString()->AddLengthConstraint(6, 100);
   schema->AddProp("password", std::move(pw));
   prop2.SetObjectSchema(std::move(schema));
@@ -561,7 +563,7 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
             "'type':'object'}",
             ValueToString(prop2.ToJson(true, nullptr).get()));
 
-  buffet::ObjectPropType prop3;
+  ObjectPropType prop3;
   ASSERT_TRUE(prop3.FromJson(CreateDictionaryValue(
       "{'default':{'expires':3,'password':'abracadabra'}}").get(), &prop2,
       nullptr));
@@ -574,7 +576,7 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
             "'type':'object'}",
             ValueToString(prop3.ToJson(true, nullptr).get()));
 
-  buffet::ObjectPropType prop4;
+  ObjectPropType prop4;
   ASSERT_TRUE(prop4.FromJson(CreateDictionaryValue(
       "{'additionalProperties':true,"
       "'default':{'expires':3,'password':'abracadabra'}}").get(), &prop2,
@@ -593,30 +595,30 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
 }
 
 TEST(CommandSchema, ObjectPropType_FromJson) {
-  buffet::ObjectPropType base_prop;
+  ObjectPropType base_prop;
   EXPECT_TRUE(base_prop.FromJson(CreateDictionaryValue(
       "{'properties':{'name':'string','age':'integer'}}").get(), nullptr,
       nullptr));
   auto schema = base_prop.GetObject()->GetObjectSchemaPtr();
-  const buffet::PropType* prop = schema->GetProp("name");
-  EXPECT_EQ(buffet::ValueType::String, prop->GetType());
+  const PropType* prop = schema->GetProp("name");
+  EXPECT_EQ(ValueType::String, prop->GetType());
   prop = schema->GetProp("age");
-  EXPECT_EQ(buffet::ValueType::Int, prop->GetType());
+  EXPECT_EQ(ValueType::Int, prop->GetType());
 
-  buffet::ObjectPropType prop2;
+  ObjectPropType prop2;
   ASSERT_TRUE(prop2.FromJson(CreateDictionaryValue(
       "{'properties':{'name':'string','age':'integer'},"
       "'default':{'name':'Bob','age':33}}").get(), nullptr, nullptr));
   ASSERT_NE(nullptr, prop2.GetDefaultValue());
-  const buffet::ObjectValue* defval = prop2.GetDefaultValue()->GetObject();
+  const ObjectValue* defval = prop2.GetDefaultValue()->GetObject();
   ASSERT_NE(nullptr, defval);
-  buffet::native_types::Object objval = defval->GetValue();
+  native_types::Object objval = defval->GetValue();
   EXPECT_EQ("Bob", objval["name"]->GetString()->GetValue());
   EXPECT_EQ(33, objval["age"]->GetInt()->GetValue());
 }
 
 TEST(CommandSchema, ObjectPropType_Validate) {
-  buffet::ObjectPropType prop;
+  ObjectPropType prop;
   prop.FromJson(CreateDictionaryValue(
       "{'properties':{'expires':'integer',"
       "'password':{'maxLength':100,'minLength':6}}}").get(), nullptr,
@@ -652,7 +654,7 @@ TEST(CommandSchema, ObjectPropType_Validate) {
 }
 
 TEST(CommandSchema, ObjectPropType_Validate_Enum) {
-  buffet::ObjectPropType prop;
+  ObjectPropType prop;
   EXPECT_TRUE(prop.FromJson(CreateDictionaryValue(
       "{'properties':{'width':'integer','height':'integer'},"
       "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}").get(),
@@ -673,45 +675,45 @@ TEST(CommandSchema, ObjectPropType_Validate_Enum) {
 }
 
 TEST(CommandSchema, ObjectPropType_CreateValue) {
-  buffet::ObjectPropType prop;
-  buffet::IntPropType int_type;
+  ObjectPropType prop;
+  IntPropType int_type;
   ASSERT_TRUE(prop.FromJson(CreateDictionaryValue(
       "{'properties':{'width':'integer','height':'integer'},"
       "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}").get(),
       nullptr, nullptr));
-  buffet::native_types::Object obj{
-    {"width", int_type.CreateValue(10, nullptr)},
-    {"height", int_type.CreateValue(20, nullptr)},
+  native_types::Object obj{
+      {"width", int_type.CreateValue(10, nullptr)},
+      {"height", int_type.CreateValue(20, nullptr)},
   };
 
   chromeos::ErrorPtr error;
   auto val = prop.CreateValue(obj, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_EQ(obj, val->GetValueAsAny().Get<buffet::native_types::Object>());
+  EXPECT_EQ(obj, val->GetValueAsAny().Get<native_types::Object>());
 
   val = prop.CreateValue("blah", &error);
   EXPECT_EQ(nullptr, val.get());
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
+  EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 TEST(CommandSchema, ArrayPropType_Empty) {
-  buffet::ArrayPropType prop;
+  ArrayPropType prop;
   EXPECT_FALSE(prop.HasOverriddenAttributes());
   EXPECT_FALSE(prop.IsBasedOnSchema());
   EXPECT_EQ(nullptr, prop.GetDefaultValue());
   EXPECT_EQ(nullptr, prop.GetItemTypePtr());
-  prop.SetItemType(buffet::PropType::Create(buffet::ValueType::Int));
+  prop.SetItemType(PropType::Create(ValueType::Int));
   EXPECT_TRUE(prop.HasOverriddenAttributes());
   EXPECT_FALSE(prop.IsBasedOnSchema());
   EXPECT_NE(nullptr, prop.GetItemTypePtr());
 }
 
 TEST(CommandSchema, ArrayPropType_Types) {
-  buffet::ArrayPropType prop;
+  ArrayPropType prop;
   EXPECT_EQ(nullptr, prop.GetInt());
   EXPECT_EQ(nullptr, prop.GetBoolean());
   EXPECT_EQ(nullptr, prop.GetDouble());
@@ -721,14 +723,14 @@ TEST(CommandSchema, ArrayPropType_Types) {
 }
 
 TEST(CommandSchema, ArrayPropType_ToJson) {
-  buffet::ArrayPropType prop;
-  prop.SetItemType(buffet::PropType::Create(buffet::ValueType::Int));
+  ArrayPropType prop;
+  prop.SetItemType(PropType::Create(ValueType::Int));
   EXPECT_EQ("{'items':'integer'}",
             ValueToString(prop.ToJson(false, nullptr).get()));
   EXPECT_EQ("{'items':{'type':'integer'},'type':'array'}",
             ValueToString(prop.ToJson(true, nullptr).get()));
   EXPECT_FALSE(prop.IsBasedOnSchema());
-  buffet::ArrayPropType prop2;
+  ArrayPropType prop2;
   prop2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_EQ("{}", ValueToString(prop2.ToJson(false, nullptr).get()));
   EXPECT_TRUE(prop2.IsBasedOnSchema());
@@ -741,24 +743,24 @@ TEST(CommandSchema, ArrayPropType_ToJson) {
 }
 
 TEST(CommandSchema, ArrayPropType_FromJson) {
-  buffet::ArrayPropType prop;
+  ArrayPropType prop;
   EXPECT_TRUE(prop.FromJson(
       CreateDictionaryValue("{'items':'integer'}").get(), nullptr, nullptr));
-  EXPECT_EQ(buffet::ValueType::Int, prop.GetItemTypePtr()->GetType());
+  EXPECT_EQ(ValueType::Int, prop.GetItemTypePtr()->GetType());
 
-  buffet::ArrayPropType prop2;
+  ArrayPropType prop2;
   ASSERT_TRUE(prop2.FromJson(CreateDictionaryValue(
     "{'items':'string','default':['foo', 'bar', 'baz']}").get(), nullptr,
       nullptr));
   ASSERT_NE(nullptr, prop2.GetDefaultValue());
-  const buffet::ArrayValue* defval = prop2.GetDefaultValue()->GetArray();
+  const ArrayValue* defval = prop2.GetDefaultValue()->GetArray();
   ASSERT_NE(nullptr, defval);
   EXPECT_EQ((std::vector<std::string>{"foo", "bar", "baz"}),
             GetArrayValues<std::string>(defval->GetValue()));
 }
 
 TEST(CommandSchema, ArrayPropType_Validate) {
-  buffet::ArrayPropType prop;
+  ArrayPropType prop;
   prop.FromJson(CreateDictionaryValue(
       "{'items':{'minimum':2.3, 'maximum':10.5}}").get(), nullptr,
       nullptr);
@@ -781,7 +783,7 @@ TEST(CommandSchema, ArrayPropType_Validate) {
 }
 
 TEST(CommandSchema, ArrayPropType_Validate_Enum) {
-  buffet::ArrayPropType prop;
+  ArrayPropType prop;
   prop.FromJson(CreateDictionaryValue(
       "{'items':'integer', 'enum':[[1], [2,3], [4,5,6]]}").get(), nullptr,
       nullptr);
@@ -802,60 +804,64 @@ TEST(CommandSchema, ArrayPropType_Validate_Enum) {
 }
 
 TEST(CommandSchema, ArrayPropType_CreateValue) {
-  buffet::ArrayPropType prop;
+  ArrayPropType prop;
   ASSERT_TRUE(prop.FromJson(CreateDictionaryValue(
       "{'items':{'properties':{'width':'integer','height':'integer'}}}").get(),
       nullptr, nullptr));
 
   chromeos::ErrorPtr error;
-  buffet::native_types::Array arr;
+  native_types::Array arr;
 
   auto val = prop.CreateValue(arr, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_EQ(arr, val->GetValueAsAny().Get<buffet::native_types::Array>());
+  EXPECT_EQ(arr, val->GetValueAsAny().Get<native_types::Array>());
   EXPECT_EQ("[]", ValueToString(val->ToJson(nullptr).get()));
 
-  buffet::IntPropType int_type;
-  buffet::ObjectPropType obj_type;
+  IntPropType int_type;
+  ObjectPropType obj_type;
   ASSERT_TRUE(obj_type.FromJson(CreateDictionaryValue(
       "{'properties':{'width':'integer','height':'integer'}}").get(),
       nullptr, nullptr));
-  arr.push_back(obj_type.CreateValue(buffet::native_types::Object{
-    {"width", int_type.CreateValue(10, nullptr)},
-    {"height", int_type.CreateValue(20, nullptr)},
-  }, nullptr));
-  arr.push_back(obj_type.CreateValue(buffet::native_types::Object{
-    {"width", int_type.CreateValue(17, nullptr)},
-    {"height", int_type.CreateValue(18, nullptr)},
-  }, nullptr));
+  arr.push_back(obj_type.CreateValue(
+      native_types::Object{
+          {"width", int_type.CreateValue(10, nullptr)},
+          {"height", int_type.CreateValue(20, nullptr)},
+      },
+      nullptr));
+  arr.push_back(obj_type.CreateValue(
+      native_types::Object{
+          {"width", int_type.CreateValue(17, nullptr)},
+          {"height", int_type.CreateValue(18, nullptr)},
+      },
+      nullptr));
 
   val = prop.CreateValue(arr, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_EQ(arr, val->GetValueAsAny().Get<buffet::native_types::Array>());
+  EXPECT_EQ(arr, val->GetValueAsAny().Get<native_types::Array>());
   EXPECT_EQ("[{'height':20,'width':10},{'height':18,'width':17}]",
             ValueToString(val->ToJson(nullptr).get()));
 
   val = prop.CreateValue("blah", &error);
   EXPECT_EQ(nullptr, val.get());
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
+  EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
 }
 
 TEST(CommandSchema, ArrayPropType_NestedArrays_NotSupported) {
-  buffet::ArrayPropType prop;
+  ArrayPropType prop;
   chromeos::ErrorPtr error;
   EXPECT_FALSE(prop.FromJson(CreateDictionaryValue(
       "{'items':{'items':'integer'}}").get(), nullptr, &error));
-  EXPECT_EQ(buffet::errors::commands::kInvalidObjectSchema, error->GetCode());
+  EXPECT_EQ(errors::commands::kInvalidObjectSchema, error->GetCode());
   error.reset();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeName) {
-  buffet::ObjectSchema schema;
+  ObjectSchema schema;
   const char* schema_str = "{"
       "'param1':'integer',"
       "'param2':'number',"
@@ -863,9 +869,9 @@ TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeName) {
       "}";
   EXPECT_TRUE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
                               nullptr));
-  EXPECT_EQ(buffet::ValueType::Int, schema.GetProp("param1")->GetType());
-  EXPECT_EQ(buffet::ValueType::Double, schema.GetProp("param2")->GetType());
-  EXPECT_EQ(buffet::ValueType::String, schema.GetProp("param3")->GetType());
+  EXPECT_EQ(ValueType::Int, schema.GetProp("param1")->GetType());
+  EXPECT_EQ(ValueType::Double, schema.GetProp("param2")->GetType());
+  EXPECT_EQ(ValueType::String, schema.GetProp("param3")->GetType());
   EXPECT_EQ("integer", schema.GetProp("param1")->GetTypeAsString());
   EXPECT_EQ("number", schema.GetProp("param2")->GetTypeAsString());
   EXPECT_EQ("string", schema.GetProp("param3")->GetTypeAsString());
@@ -884,7 +890,7 @@ TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeName) {
 }
 
 TEST(CommandSchema, ObjectSchema_FromJson_Full_TypeName) {
-  buffet::ObjectSchema schema;
+  ObjectSchema schema;
   const char* schema_str = "{"
       "'param1':{'type':'integer'},"
       "'param2':{'type':'number'},"
@@ -894,11 +900,11 @@ TEST(CommandSchema, ObjectSchema_FromJson_Full_TypeName) {
       "}";
   EXPECT_TRUE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
                               nullptr));
-  EXPECT_EQ(buffet::ValueType::Int, schema.GetProp("param1")->GetType());
-  EXPECT_EQ(buffet::ValueType::Double, schema.GetProp("param2")->GetType());
-  EXPECT_EQ(buffet::ValueType::String, schema.GetProp("param3")->GetType());
-  EXPECT_EQ(buffet::ValueType::Array, schema.GetProp("param4")->GetType());
-  EXPECT_EQ(buffet::ValueType::Object, schema.GetProp("param5")->GetType());
+  EXPECT_EQ(ValueType::Int, schema.GetProp("param1")->GetType());
+  EXPECT_EQ(ValueType::Double, schema.GetProp("param2")->GetType());
+  EXPECT_EQ(ValueType::String, schema.GetProp("param3")->GetType());
+  EXPECT_EQ(ValueType::Array, schema.GetProp("param4")->GetType());
+  EXPECT_EQ(ValueType::Object, schema.GetProp("param5")->GetType());
   EXPECT_EQ("integer", schema.GetProp("param1")->GetTypeAsString());
   EXPECT_EQ("number", schema.GetProp("param2")->GetTypeAsString());
   EXPECT_EQ("string", schema.GetProp("param3")->GetTypeAsString());
@@ -919,7 +925,7 @@ TEST(CommandSchema, ObjectSchema_FromJson_Full_TypeName) {
 }
 
 TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeDeduction_Scalar) {
-  buffet::ObjectSchema schema;
+  ObjectSchema schema;
   const char* schema_str = "{"
       "'param1' :{'minimum':2},"
       "'param2' :{'maximum':10},"
@@ -995,7 +1001,7 @@ TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeDeduction_Scalar) {
   EXPECT_EQ(10, schema.GetProp("param10")->GetString()->GetMaxLength());
   EXPECT_EQ(3, schema.GetProp("param11")->GetString()->GetMinLength());
   EXPECT_EQ(8, schema.GetProp("param11")->GetString()->GetMaxLength());
-  const buffet::PropValue* val = schema.GetProp("param12")->GetDefaultValue();
+  const PropValue* val = schema.GetProp("param12")->GetDefaultValue();
   EXPECT_EQ(12, val->GetInt()->GetValue());
   val = schema.GetProp("param13")->GetDefaultValue();
   EXPECT_DOUBLE_EQ(13.5, val->GetDouble()->GetValue());
@@ -1013,7 +1019,7 @@ TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeDeduction_Scalar) {
 }
 
 TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeDeduction_Array) {
-  buffet::ObjectSchema schema;
+  ObjectSchema schema;
   const char* schema_str = "{"
       "'param1' :[0,1,2,3],"
       "'param2' :[0.0,1.1,2.2],"
@@ -1104,7 +1110,7 @@ TEST(CommandSchema, ObjectSchema_FromJson_Inheritance) {
       "'param21':{'default':49},"
       "'param22':'integer'"
       "}";
-  buffet::ObjectSchema base_schema;
+  ObjectSchema base_schema;
   EXPECT_TRUE(base_schema.FromJson(CreateDictionaryValue(base_schema_str).get(),
                                    nullptr, nullptr));
   const char* schema_str = "{"
@@ -1131,7 +1137,7 @@ TEST(CommandSchema, ObjectSchema_FromJson_Inheritance) {
       "'param21':{'default':8},"
       "'param22':{'default':123}"
       "}";
-  buffet::ObjectSchema schema;
+  ObjectSchema schema;
   EXPECT_TRUE(schema.FromJson(CreateDictionaryValue(schema_str).get(),
                               &base_schema, nullptr));
   EXPECT_EQ(nullptr, schema.GetProp("param0"));
@@ -1202,7 +1208,7 @@ TEST(CommandSchema, ObjectSchema_FromJson_Inheritance) {
 }
 
 TEST(CommandSchema, ObjectSchema_UseDefaults) {
-  buffet::ObjectPropType prop;
+  ObjectPropType prop;
   const char* schema_str = "{'properties':{"
       "'param1':{'default':true},"
       "'param2':{'default':2},"
@@ -1218,15 +1224,15 @@ TEST(CommandSchema, ObjectSchema_UseDefaults) {
   // Omit all.
   auto value = prop.CreateValue();
   ASSERT_TRUE(value->FromJson(CreateDictionaryValue("{}").get(), nullptr));
-  buffet::native_types::Object obj = value->GetObject()->GetValue();
+  native_types::Object obj = value->GetObject()->GetValue();
   EXPECT_TRUE(obj["param1"]->GetBoolean()->GetValue());
   EXPECT_EQ(2, obj["param2"]->GetInt()->GetValue());
   EXPECT_DOUBLE_EQ(3.3, obj["param3"]->GetDouble()->GetValue());
   EXPECT_EQ("four", obj["param4"]->GetString()->GetValue());
-  buffet::native_types::Object param5 = obj["param5"]->GetObject()->GetValue();
+  native_types::Object param5 = obj["param5"]->GetObject()->GetValue();
   EXPECT_EQ(5, param5["x"]->GetInt()->GetValue());
   EXPECT_EQ(6, param5["y"]->GetInt()->GetValue());
-  buffet::native_types::Array param6 = obj["param6"]->GetArray()->GetValue();
+  native_types::Array param6 = obj["param6"]->GetArray()->GetValue();
   EXPECT_EQ((std::vector<int>{1, 2, 3}), GetArrayValues<int>(param6));
 
   // Specify some.
@@ -1272,7 +1278,7 @@ TEST(CommandSchema, ObjectSchema_UseDefaults) {
 }
 
 TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
-  buffet::ObjectSchema schema;
+  ObjectSchema schema;
   chromeos::ErrorPtr error;
   const char* schema_str = "{"
       "'param1':{}"
@@ -1386,3 +1392,5 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("no_type_info", error->GetFirstError()->GetCode());
   error.reset();
 }
+
+}  // namespace buffet

@@ -19,16 +19,16 @@
 #include "buffet/commands/unittest_utils.h"
 #include "buffet/dbus_constants.h"
 
+namespace buffet {
+
 using ::testing::AnyNumber;
-using ::testing::Return;
 using ::testing::Invoke;
+using ::testing::Return;
 using ::testing::_;
 
-using buffet::unittests::CreateDictionaryValue;
-using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::VariantDictionary;
-
-namespace buffet {
+using chromeos::dbus_utils::AsyncEventSequencer;
+using unittests::CreateDictionaryValue;
 
 namespace {
 

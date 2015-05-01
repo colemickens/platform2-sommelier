@@ -8,10 +8,12 @@
 
 #include "buffet/commands/unittest_utils.h"
 
-using buffet::unittests::CreateDictionaryValue;
+namespace buffet {
+
+using unittests::CreateDictionaryValue;
 
 TEST(CommandDictionary, Empty) {
-  buffet::CommandDictionary dict;
+  CommandDictionary dict;
   EXPECT_TRUE(dict.IsEmpty());
   EXPECT_EQ(nullptr, dict.FindCommand("robot.jump"));
   EXPECT_TRUE(dict.GetCommandNamesByCategory("robotd").empty());
@@ -32,7 +34,7 @@ TEST(CommandDictionary, LoadCommands) {
       }
     }
   })");
-  buffet::CommandDictionary dict;
+  CommandDictionary dict;
   EXPECT_TRUE(dict.LoadCommands(*json, "robotd", nullptr, nullptr));
   EXPECT_EQ(1, dict.GetSize());
   EXPECT_NE(nullptr, dict.FindCommand("robot.jump"));
@@ -56,7 +58,7 @@ TEST(CommandDictionary, LoadCommands) {
 }
 
 TEST(CommandDictionary, LoadCommands_Failures) {
-  buffet::CommandDictionary dict;
+  CommandDictionary dict;
   chromeos::ErrorPtr error;
 
   // Command definition is not an object.
@@ -93,7 +95,7 @@ TEST(CommandDictionary, LoadCommands_Failures) {
 
 TEST(CommandDictionaryDeathTest, LoadCommands_RedefineInDifferentCategory) {
   // Redefine commands in different category.
-  buffet::CommandDictionary dict;
+  CommandDictionary dict;
   chromeos::ErrorPtr error;
   auto json = CreateDictionaryValue("{'robot':{'jump':{}}}");
   dict.LoadCommands(*json, "category1", nullptr, &error);
@@ -104,8 +106,8 @@ TEST(CommandDictionaryDeathTest, LoadCommands_RedefineInDifferentCategory) {
 
 TEST(CommandDictionary, LoadCommands_CustomCommandNaming) {
   // Custom command must start with '_'.
-  buffet::CommandDictionary base_dict;
-  buffet::CommandDictionary dict;
+  CommandDictionary base_dict;
+  CommandDictionary dict;
   chromeos::ErrorPtr error;
   auto json = CreateDictionaryValue(R"({
     'base': {
@@ -133,8 +135,8 @@ TEST(CommandDictionary, LoadCommands_CustomCommandNaming) {
 
 TEST(CommandDictionary, LoadCommands_RedefineStdCommand) {
   // Redefine commands parameter type.
-  buffet::CommandDictionary base_dict;
-  buffet::CommandDictionary dict;
+  CommandDictionary base_dict;
+  CommandDictionary dict;
   chromeos::ErrorPtr error;
   auto json = CreateDictionaryValue(R"({
     'base': {
@@ -201,10 +203,10 @@ TEST(CommandDictionary, GetCommandsAsJson) {
       }
     }
   })");
-  buffet::CommandDictionary base_dict;
+  CommandDictionary base_dict;
   base_dict.LoadCommands(*json_base, "base", nullptr, nullptr);
 
-  auto json = buffet::unittests::CreateDictionaryValue(R"({
+  auto json = unittests::CreateDictionaryValue(R"({
     'base': {
       'reboot': {
         'parameters': {'delay': {'minimum': 10}},
@@ -218,28 +220,29 @@ TEST(CommandDictionary, GetCommandsAsJson) {
       }
     }
   })");
-  buffet::CommandDictionary dict;
+  CommandDictionary dict;
   dict.LoadCommands(*json, "device", &base_dict, nullptr);
 
-  using buffet::CommandDefinition;
   json = dict.GetCommandsAsJson(
       [](const CommandDefinition* def) { return true; }, false, nullptr);
   EXPECT_NE(nullptr, json.get());
-  EXPECT_EQ("{'base':{'reboot':{'parameters':{'delay':{'minimum':10}}}},"
-            "'robot':{'_jump':{'parameters':{'_height':'integer'}}}}",
-            buffet::unittests::ValueToString(json.get()));
+  EXPECT_EQ(
+      "{'base':{'reboot':{'parameters':{'delay':{'minimum':10}}}},"
+      "'robot':{'_jump':{'parameters':{'_height':'integer'}}}}",
+      unittests::ValueToString(json.get()));
 
   json = dict.GetCommandsAsJson(
       [](const CommandDefinition* def) { return true; }, true, nullptr);
   EXPECT_NE(nullptr, json.get());
-  EXPECT_EQ("{'base':{'reboot':{'parameters':{'delay':{"
-            "'maximum':100,'minimum':10,'type':'integer'}}}},"
-            "'robot':{'_jump':{'parameters':{'_height':{'type':'integer'}}}}}",
-            buffet::unittests::ValueToString(json.get()));
+  EXPECT_EQ(
+      "{'base':{'reboot':{'parameters':{'delay':{"
+      "'maximum':100,'minimum':10,'type':'integer'}}}},"
+      "'robot':{'_jump':{'parameters':{'_height':{'type':'integer'}}}}}",
+      unittests::ValueToString(json.get()));
 }
 
 TEST(CommandDictionary, GetCommandsAsJsonWithVisibility) {
-  auto json = buffet::unittests::CreateDictionaryValue(R"({
+  auto json = unittests::CreateDictionaryValue(R"({
     'test': {
       'command1': {
         'parameters': {},
@@ -283,63 +286,66 @@ TEST(CommandDictionary, GetCommandsAsJsonWithVisibility) {
       }
     }
   })");
-  buffet::CommandDictionary dict;
+  CommandDictionary dict;
   ASSERT_TRUE(dict.LoadCommands(*json, "test", nullptr, nullptr));
 
-  using buffet::CommandDefinition;
   json = dict.GetCommandsAsJson(
       [](const CommandDefinition* def) { return true; }, false, nullptr);
   ASSERT_NE(nullptr, json.get());
-  EXPECT_EQ("{'test':{"
-            "'command1':{'parameters':{}},"
-            "'command2':{'parameters':{}},"
-            "'command3':{'parameters':{}},"
-            "'command4':{'parameters':{}},"
-            "'command5':{'parameters':{}},"
-            "'command6':{'parameters':{}},"
-            "'command7':{'parameters':{}},"
-            "'command8':{'parameters':{}}"
-            "}}",
-            buffet::unittests::ValueToString(json.get()));
+  EXPECT_EQ(
+      "{'test':{"
+      "'command1':{'parameters':{}},"
+      "'command2':{'parameters':{}},"
+      "'command3':{'parameters':{}},"
+      "'command4':{'parameters':{}},"
+      "'command5':{'parameters':{}},"
+      "'command6':{'parameters':{}},"
+      "'command7':{'parameters':{}},"
+      "'command8':{'parameters':{}}"
+      "}}",
+      unittests::ValueToString(json.get()));
 
   json = dict.GetCommandsAsJson(
       [](const CommandDefinition* def) { return def->GetVisibility().local; },
       false, nullptr);
   ASSERT_NE(nullptr, json.get());
-  EXPECT_EQ("{'test':{"
-            "'command2':{'parameters':{}},"
-            "'command4':{'parameters':{}},"
-            "'command6':{'parameters':{}},"
-            "'command8':{'parameters':{}}"
-            "}}",
-            buffet::unittests::ValueToString(json.get()));
+  EXPECT_EQ(
+      "{'test':{"
+      "'command2':{'parameters':{}},"
+      "'command4':{'parameters':{}},"
+      "'command6':{'parameters':{}},"
+      "'command8':{'parameters':{}}"
+      "}}",
+      unittests::ValueToString(json.get()));
 
   json = dict.GetCommandsAsJson(
       [](const CommandDefinition* def) { return def->GetVisibility().cloud; },
       false, nullptr);
   ASSERT_NE(nullptr, json.get());
-  EXPECT_EQ("{'test':{"
-            "'command3':{'parameters':{}},"
-            "'command4':{'parameters':{}},"
-            "'command7':{'parameters':{}},"
-            "'command8':{'parameters':{}}"
-            "}}",
-            buffet::unittests::ValueToString(json.get()));
+  EXPECT_EQ(
+      "{'test':{"
+      "'command3':{'parameters':{}},"
+      "'command4':{'parameters':{}},"
+      "'command7':{'parameters':{}},"
+      "'command8':{'parameters':{}}"
+      "}}",
+      unittests::ValueToString(json.get()));
 
   json = dict.GetCommandsAsJson(
     [](const CommandDefinition* def) {
       return def->GetVisibility().local && def->GetVisibility().cloud;
     }, false, nullptr);
   ASSERT_NE(nullptr, json.get());
-  EXPECT_EQ("{'test':{"
-            "'command4':{'parameters':{}},"
-            "'command8':{'parameters':{}}"
-            "}}",
-            buffet::unittests::ValueToString(json.get()));
+  EXPECT_EQ(
+      "{'test':{"
+      "'command4':{'parameters':{}},"
+      "'command8':{'parameters':{}}"
+      "}}",
+      unittests::ValueToString(json.get()));
 }
 
 TEST(CommandDictionary, LoadCommandsWithVisibility) {
-  buffet::CommandDictionary dict;
+  CommandDictionary dict;
   auto json = CreateDictionaryValue(R"({
     'base': {
       'command1': {
@@ -392,7 +398,7 @@ TEST(CommandDictionary, LoadCommandsWithVisibility) {
 }
 
 TEST(CommandDictionary, LoadCommandsWithVisibility_Inheritance) {
-  buffet::CommandDictionary base_dict;
+  CommandDictionary base_dict;
   auto json = CreateDictionaryValue(R"({
     'base': {
       'command1': {
@@ -424,7 +430,7 @@ TEST(CommandDictionary, LoadCommandsWithVisibility_Inheritance) {
   })");
   EXPECT_TRUE(base_dict.LoadCommands(*json, "testd", nullptr, nullptr));
 
-  buffet::CommandDictionary dict;
+  CommandDictionary dict;
   json = CreateDictionaryValue(R"({
     'base': {
       'command1': {
@@ -481,7 +487,7 @@ TEST(CommandDictionary, LoadCommandsWithVisibility_Inheritance) {
 }
 
 TEST(CommandDictionary, LoadCommandsWithVisibility_Failures) {
-  buffet::CommandDictionary dict;
+  CommandDictionary dict;
   chromeos::ErrorPtr error;
 
   auto json = CreateDictionaryValue(R"({
@@ -501,3 +507,5 @@ TEST(CommandDictionary, LoadCommandsWithVisibility_Failures) {
             error->GetInnerError()->GetMessage());
   error.reset();
 }
+
+}  // namespace buffet

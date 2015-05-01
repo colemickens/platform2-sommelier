@@ -12,7 +12,9 @@
 
 #include "buffet/commands/unittest_utils.h"
 
-using buffet::unittests::CreateDictionaryValue;
+namespace buffet {
+
+using unittests::CreateDictionaryValue;
 
 namespace {
 
@@ -69,18 +71,18 @@ static base::FilePath SaveJsonToTempFile(const base::DictionaryValue& dict) {
 }  // namespace
 
 TEST(CommandManager, Empty) {
-  buffet::CommandManager manager;
+  CommandManager manager;
   EXPECT_TRUE(manager.GetCommandDictionary().IsEmpty());
 }
 
 TEST(CommandManager, LoadBaseCommandsJSON) {
-  buffet::CommandManager manager;
+  CommandManager manager;
   auto json = CreateDictionaryValue(kTestBaseCommands);
   EXPECT_TRUE(manager.LoadBaseCommands(*json, nullptr));
 }
 
 TEST(CommandManager, LoadBaseCommandsFile) {
-  buffet::CommandManager manager;
+  CommandManager manager;
   auto json = CreateDictionaryValue(kTestBaseCommands);
   base::FilePath temp_file = SaveJsonToTempFile(*json);
   EXPECT_TRUE(manager.LoadBaseCommands(temp_file, nullptr));
@@ -88,13 +90,13 @@ TEST(CommandManager, LoadBaseCommandsFile) {
 }
 
 TEST(CommandManager, LoadCommandsJSON) {
-  buffet::CommandManager manager;
+  CommandManager manager;
   auto json = CreateDictionaryValue(kTestVendorCommands);
   EXPECT_TRUE(manager.LoadCommands(*json, "category", nullptr));
 }
 
 TEST(CommandManager, LoadCommandsFile) {
-  buffet::CommandManager manager;
+  CommandManager manager;
   // Load some standard command definitions first.
   auto json = CreateDictionaryValue(R"({
     'base': {
@@ -133,7 +135,7 @@ TEST(CommandManager, LoadCommandsFile) {
 }
 
 TEST(CommandManager, ShouldLoadStandardAndTestDefinitions) {
-  buffet::CommandManager manager;
+  CommandManager manager;
   base::ScopedTempDir temp;
   CHECK(temp.CreateUniqueTempDir());
   base::FilePath base_path{temp.path().Append("base_defs")};
@@ -159,7 +161,7 @@ TEST(CommandManager, ShouldLoadStandardAndTestDefinitions) {
 }
 
 TEST(CommandManager, UpdateCommandVisibility) {
-  buffet::CommandManager manager;
+  CommandManager manager;
   int update_count = 0;
   auto on_command_change = [&update_count]() { update_count++; };
   auto token = manager.AddOnCommandDefChanged(base::Bind(on_command_change));
@@ -185,10 +187,9 @@ TEST(CommandManager, UpdateCommandVisibility) {
   })");
   ASSERT_TRUE(manager.LoadCommands(*json, "test", nullptr));
   EXPECT_EQ(1, update_count);
-  const buffet::CommandDictionary& dict = manager.GetCommandDictionary();
+  const CommandDictionary& dict = manager.GetCommandDictionary();
   EXPECT_TRUE(manager.SetCommandVisibility(
-      {"foo._baz"},
-      buffet::CommandDefinition::Visibility::GetLocal(), nullptr));
+      {"foo._baz"}, CommandDefinition::Visibility::GetLocal(), nullptr));
   EXPECT_EQ(2, update_count);
   EXPECT_EQ("local", dict.FindCommand("foo._baz")->GetVisibility().ToString());
   EXPECT_EQ("all", dict.FindCommand("foo._bar")->GetVisibility().ToString());
@@ -197,8 +198,8 @@ TEST(CommandManager, UpdateCommandVisibility) {
   chromeos::ErrorPtr error;
   ASSERT_FALSE(manager.SetCommandVisibility(
       {"foo._baz", "foo._bar", "test.cmd"},
-      buffet::CommandDefinition::Visibility::GetLocal(), &error));
-  EXPECT_EQ(buffet::errors::commands::kInvalidCommandName, error->GetCode());
+      CommandDefinition::Visibility::GetLocal(), &error));
+  EXPECT_EQ(errors::commands::kInvalidCommandName, error->GetCode());
   EXPECT_EQ("Command 'test.cmd' is unknown", error->GetMessage());
   // The visibility state of commands shouldn't have changed.
   EXPECT_EQ(2, update_count);
@@ -207,11 +208,12 @@ TEST(CommandManager, UpdateCommandVisibility) {
   EXPECT_EQ("none", dict.FindCommand("bar._quux")->GetVisibility().ToString());
 
   EXPECT_TRUE(manager.SetCommandVisibility(
-      {"foo._baz", "bar._quux"},
-      buffet::CommandDefinition::Visibility::GetCloud(), nullptr));
+      {"foo._baz", "bar._quux"}, CommandDefinition::Visibility::GetCloud(),
+      nullptr));
   EXPECT_EQ(3, update_count);
   EXPECT_EQ("cloud", dict.FindCommand("foo._baz")->GetVisibility().ToString());
   EXPECT_EQ("all", dict.FindCommand("foo._bar")->GetVisibility().ToString());
   EXPECT_EQ("cloud", dict.FindCommand("bar._quux")->GetVisibility().ToString());
 }
 
+}  // namespace buffet

@@ -19,15 +19,15 @@
 #include "buffet/commands/unittest_utils.h"
 #include "buffet/dbus_constants.h"
 
-using buffet::unittests::CreateDictionaryValue;
+namespace buffet {
+
 using chromeos::dbus_utils::AsyncEventSequencer;
+using testing::_;
 using testing::AnyNumber;
 using testing::InSequence;
 using testing::Invoke;
 using testing::Return;
-using testing::_;
-
-namespace buffet {
+using unittests::CreateDictionaryValue;
 
 namespace {
 const char kCommandCategory[] = "test_category";

@@ -15,10 +15,10 @@
 #include "buffet/commands/unittest_utils.h"
 #include "buffet/states/error_codes.h"
 
-using buffet::unittests::CreateDictionaryValue;
-using buffet::unittests::ValueToString;
-
 namespace buffet {
+
+using unittests::CreateDictionaryValue;
+using unittests::ValueToString;
 
 class StatePackageTestHelper {
  public:

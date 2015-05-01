@@ -21,11 +21,11 @@
 #include "buffet/states/state_manager.h"
 #include "buffet/storage_impls.h"
 
+namespace buffet {
+
 using chromeos::http::request_header::kAuthorization;
 using chromeos::http::fake::ServerRequest;
 using chromeos::http::fake::ServerResponse;
-
-namespace buffet {
 
 namespace {
 
@@ -313,8 +313,7 @@ TEST_F(DeviceRegistrationInfoTest, CheckAuthenticationFailure) {
   EXPECT_FALSE(DeviceRegistrationInfo::TestHelper::CheckRegistration(
       dev_reg_.get(), &error));
   EXPECT_EQ(1, transport_->GetRequestCount());
-  EXPECT_TRUE(error->HasError(buffet::kErrorDomainOAuth2,
-                              "unable_to_authenticate"));
+  EXPECT_TRUE(error->HasError(kErrorDomainOAuth2, "unable_to_authenticate"));
   EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
 }
 
@@ -332,8 +331,7 @@ TEST_F(DeviceRegistrationInfoTest, CheckDeregistration) {
   EXPECT_FALSE(DeviceRegistrationInfo::TestHelper::CheckRegistration(
       dev_reg_.get(), &error));
   EXPECT_EQ(1, transport_->GetRequestCount());
-  EXPECT_TRUE(error->HasError(buffet::kErrorDomainOAuth2,
-                              "invalid_grant"));
+  EXPECT_TRUE(error->HasError(kErrorDomainOAuth2, "invalid_grant"));
   EXPECT_EQ(RegistrationStatus::kInvalidCredentials,
             dev_reg_->GetRegistrationStatus());
 }
@@ -402,11 +400,12 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
     base::DictionaryValue* commandDefs = nullptr;
     EXPECT_TRUE(json->GetDictionary("deviceDraft.commandDefs", &commandDefs));
     EXPECT_FALSE(commandDefs->empty());
-    EXPECT_EQ("{'base':{'reboot':{'parameters':{"
-              "'delay':{'minimum':10,'type':'integer'}}}},"
-              "'robot':{'_jump':{'parameters':{"
-              "'_height':{'type':'integer'}}}}}",
-              buffet::unittests::ValueToString(commandDefs));
+    EXPECT_EQ(
+        "{'base':{'reboot':{'parameters':{"
+        "'delay':{'minimum':10,'type':'integer'}}}},"
+        "'robot':{'_jump':{'parameters':{"
+        "'_height':{'type':'integer'}}}}}",
+        unittests::ValueToString(commandDefs));
 
     base::DictionaryValue json_resp;
     json_resp.SetString("id", test_data::kClaimTicketId);
@@ -422,7 +421,7 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
     response->ReplyJson(chromeos::http::status_code::Ok, &json_resp);
   };
 
-  auto json_base = buffet::unittests::CreateDictionaryValue(R"({
+  auto json_base = unittests::CreateDictionaryValue(R"({
     'base': {
       'reboot': {
         'parameters': {'delay': 'integer'},
@@ -435,7 +434,7 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
     }
   })");
   EXPECT_TRUE(command_manager_->LoadBaseCommands(*json_base, nullptr));
-  auto json_cmds = buffet::unittests::CreateDictionaryValue(R"({
+  auto json_cmds = unittests::CreateDictionaryValue(R"({
     'base': {
       'reboot': {
         'parameters': {'delay': {'minimum': 10}},
@@ -504,7 +503,7 @@ TEST_F(DeviceRegistrationInfoTest, OOBRegistrationStatus) {
 
 TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   EXPECT_TRUE(dev_reg_->Load());
-  auto json_cmds = buffet::unittests::CreateDictionaryValue(R"({
+  auto json_cmds = unittests::CreateDictionaryValue(R"({
     'robot': {
       '_jump': {
         'parameters': {'_height': 'integer'},
@@ -516,7 +515,7 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
 
   const std::string command_url = dev_reg_->GetServiceURL("commands/1234");
 
-  auto commands_json = buffet::unittests::CreateValue(R"([{
+  auto commands_json = unittests::CreateValue(R"([{
     'name':'robot._jump',
     'id':'1234',
     'parameters': {'_height': 100}

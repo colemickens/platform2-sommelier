@@ -16,12 +16,12 @@
 #include "buffet/states/error_codes.h"
 #include "buffet/states/mock_state_change_queue_interface.h"
 
-using buffet::unittests::CreateDictionaryValue;
-using buffet::unittests::ValueToString;
-using testing::Return;
-using testing::_;
-
 namespace buffet {
+
+using testing::_;
+using testing::Return;
+using unittests::CreateDictionaryValue;
+using unittests::ValueToString;
 
 namespace {
 std::unique_ptr<base::DictionaryValue> GetTestSchema() {

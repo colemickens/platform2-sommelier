@@ -18,172 +18,170 @@
 #include "buffet/commands/schema_constants.h"
 #include "buffet/commands/unittest_utils.h"
 
-using buffet::unittests::CreateDictionaryValue;
-using buffet::unittests::CreateValue;
-using buffet::unittests::ValueToString;
+namespace buffet {
+
+using unittests::CreateDictionaryValue;
+using unittests::CreateValue;
+using unittests::ValueToString;
 using chromeos::VariantDictionary;
 
 TEST(CommandSchemaUtils, TypedValueToJson_Scalar) {
-  EXPECT_EQ("true",
-            ValueToString(buffet::TypedValueToJson(true, nullptr).get()));
-  EXPECT_EQ("false",
-            ValueToString(buffet::TypedValueToJson(false, nullptr).get()));
+  EXPECT_EQ("true", ValueToString(TypedValueToJson(true, nullptr).get()));
+  EXPECT_EQ("false", ValueToString(TypedValueToJson(false, nullptr).get()));
 
-  EXPECT_EQ("0", ValueToString(buffet::TypedValueToJson(0, nullptr).get()));
-  EXPECT_EQ("-10", ValueToString(buffet::TypedValueToJson(-10, nullptr).get()));
-  EXPECT_EQ("20", ValueToString(buffet::TypedValueToJson(20, nullptr).get()));
+  EXPECT_EQ("0", ValueToString(TypedValueToJson(0, nullptr).get()));
+  EXPECT_EQ("-10", ValueToString(TypedValueToJson(-10, nullptr).get()));
+  EXPECT_EQ("20", ValueToString(TypedValueToJson(20, nullptr).get()));
 
-  EXPECT_EQ("0.0", ValueToString(buffet::TypedValueToJson(0.0, nullptr).get()));
-  EXPECT_EQ("1.2", ValueToString(buffet::TypedValueToJson(1.2, nullptr).get()));
+  EXPECT_EQ("0.0", ValueToString(TypedValueToJson(0.0, nullptr).get()));
+  EXPECT_EQ("1.2", ValueToString(TypedValueToJson(1.2, nullptr).get()));
 
   EXPECT_EQ("'abc'",
-            ValueToString(buffet::TypedValueToJson(std::string("abc"),
-                                                   nullptr).get()));
+            ValueToString(TypedValueToJson(std::string("abc"), nullptr).get()));
 
   std::vector<bool> bool_array{true, false};
   EXPECT_EQ("[true,false]",
-            ValueToString(buffet::TypedValueToJson(bool_array, nullptr).get()));
+            ValueToString(TypedValueToJson(bool_array, nullptr).get()));
 
   std::vector<int> int_array{1, 2, 5};
   EXPECT_EQ("[1,2,5]",
-            ValueToString(buffet::TypedValueToJson(int_array, nullptr).get()));
+            ValueToString(TypedValueToJson(int_array, nullptr).get()));
 
   std::vector<double> dbl_array{1.1, 2.2};
   EXPECT_EQ("[1.1,2.2]",
-            ValueToString(buffet::TypedValueToJson(dbl_array, nullptr).get()));
+            ValueToString(TypedValueToJson(dbl_array, nullptr).get()));
 
   std::vector<std::string> str_array{"a", "bc"};
   EXPECT_EQ("['a','bc']",
-            ValueToString(buffet::TypedValueToJson(str_array, nullptr).get()));
+            ValueToString(TypedValueToJson(str_array, nullptr).get()));
 }
 
 TEST(CommandSchemaUtils, TypedValueToJson_Object) {
-  buffet::IntPropType int_type;
-  buffet::native_types::Object object;
+  IntPropType int_type;
+  native_types::Object object;
 
   object.insert(std::make_pair("width", int_type.CreateValue(640, nullptr)));
   object.insert(std::make_pair("height", int_type.CreateValue(480, nullptr)));
   EXPECT_EQ("{'height':480,'width':640}",
-            ValueToString(buffet::TypedValueToJson(object, nullptr).get()));
+            ValueToString(TypedValueToJson(object, nullptr).get()));
 }
 
 TEST(CommandSchemaUtils, TypedValueToJson_Array) {
-  buffet::IntPropType int_type;
-  buffet::native_types::Array arr;
+  IntPropType int_type;
+  native_types::Array arr;
 
   arr.push_back(int_type.CreateValue(640, nullptr));
   arr.push_back(int_type.CreateValue(480, nullptr));
-  EXPECT_EQ("[640,480]",
-            ValueToString(buffet::TypedValueToJson(arr, nullptr).get()));
+  EXPECT_EQ("[640,480]", ValueToString(TypedValueToJson(arr, nullptr).get()));
 }
 
 TEST(CommandSchemaUtils, TypedValueFromJson_Bool) {
   bool value;
 
-  EXPECT_TRUE(buffet::TypedValueFromJson(CreateValue("true").get(), nullptr,
-                                         &value, nullptr));
+  EXPECT_TRUE(
+      TypedValueFromJson(CreateValue("true").get(), nullptr, &value, nullptr));
   EXPECT_TRUE(value);
 
-  EXPECT_TRUE(buffet::TypedValueFromJson(CreateValue("false").get(), nullptr,
-                                         &value, nullptr));
+  EXPECT_TRUE(
+      TypedValueFromJson(CreateValue("false").get(), nullptr, &value, nullptr));
   EXPECT_FALSE(value);
 
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(buffet::TypedValueFromJson(CreateValue("0").get(), nullptr,
-                                          &value, &error));
-  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
+  EXPECT_FALSE(
+      TypedValueFromJson(CreateValue("0").get(), nullptr, &value, &error));
+  EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
   error.reset();
 }
 
 TEST(CommandSchemaUtils, TypedValueFromJson_Int) {
   int value;
 
-  EXPECT_TRUE(buffet::TypedValueFromJson(CreateValue("0").get(), nullptr,
-                                         &value, nullptr));
+  EXPECT_TRUE(
+      TypedValueFromJson(CreateValue("0").get(), nullptr, &value, nullptr));
   EXPECT_EQ(0, value);
 
-  EXPECT_TRUE(buffet::TypedValueFromJson(CreateValue("23").get(), nullptr,
-                                         &value, nullptr));
+  EXPECT_TRUE(
+      TypedValueFromJson(CreateValue("23").get(), nullptr, &value, nullptr));
   EXPECT_EQ(23, value);
 
-  EXPECT_TRUE(buffet::TypedValueFromJson(CreateValue("-1234").get(), nullptr,
-                                         &value, nullptr));
+  EXPECT_TRUE(
+      TypedValueFromJson(CreateValue("-1234").get(), nullptr, &value, nullptr));
   EXPECT_EQ(-1234, value);
 
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(buffet::TypedValueFromJson(CreateValue("'abc'").get(), nullptr,
-                                          &value, &error));
-  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
+  EXPECT_FALSE(
+      TypedValueFromJson(CreateValue("'abc'").get(), nullptr, &value, &error));
+  EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
   error.reset();
 }
 
 TEST(CommandSchemaUtils, TypedValueFromJson_Double) {
   double value;
 
-  EXPECT_TRUE(buffet::TypedValueFromJson(CreateValue("0").get(), nullptr,
-                                         &value, nullptr));
+  EXPECT_TRUE(
+      TypedValueFromJson(CreateValue("0").get(), nullptr, &value, nullptr));
   EXPECT_DOUBLE_EQ(0.0, value);
-  EXPECT_TRUE(buffet::TypedValueFromJson(CreateValue("0.0").get(), nullptr,
-                                         &value, nullptr));
+  EXPECT_TRUE(
+      TypedValueFromJson(CreateValue("0.0").get(), nullptr, &value, nullptr));
   EXPECT_DOUBLE_EQ(0.0, value);
 
-  EXPECT_TRUE(buffet::TypedValueFromJson(CreateValue("23").get(), nullptr,
-                                         &value, nullptr));
+  EXPECT_TRUE(
+      TypedValueFromJson(CreateValue("23").get(), nullptr, &value, nullptr));
   EXPECT_EQ(23.0, value);
-  EXPECT_TRUE(buffet::TypedValueFromJson(CreateValue("23.1").get(), nullptr,
-                                         &value, nullptr));
+  EXPECT_TRUE(
+      TypedValueFromJson(CreateValue("23.1").get(), nullptr, &value, nullptr));
   EXPECT_EQ(23.1, value);
 
-  EXPECT_TRUE(buffet::TypedValueFromJson(CreateValue("-1.23E+02").get(),
-                                         nullptr, &value, nullptr));
+  EXPECT_TRUE(TypedValueFromJson(CreateValue("-1.23E+02").get(), nullptr,
+                                 &value, nullptr));
   EXPECT_EQ(-123.0, value);
 
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(buffet::TypedValueFromJson(CreateValue("'abc'").get(), nullptr,
-                                          &value, &error));
-  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
+  EXPECT_FALSE(
+      TypedValueFromJson(CreateValue("'abc'").get(), nullptr, &value, &error));
+  EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
   error.reset();
 }
 
 TEST(CommandSchemaUtils, TypedValueFromJson_String) {
   std::string value;
 
-  EXPECT_TRUE(buffet::TypedValueFromJson(CreateValue("''").get(), nullptr,
-                                         &value, nullptr));
+  EXPECT_TRUE(
+      TypedValueFromJson(CreateValue("''").get(), nullptr, &value, nullptr));
   EXPECT_EQ("", value);
 
-  EXPECT_TRUE(buffet::TypedValueFromJson(CreateValue("'23'").get(), nullptr,
-                                         &value, nullptr));
+  EXPECT_TRUE(
+      TypedValueFromJson(CreateValue("'23'").get(), nullptr, &value, nullptr));
   EXPECT_EQ("23", value);
 
-  EXPECT_TRUE(buffet::TypedValueFromJson(CreateValue("'abc'").get(), nullptr,
-                                         &value, nullptr));
+  EXPECT_TRUE(
+      TypedValueFromJson(CreateValue("'abc'").get(), nullptr, &value, nullptr));
   EXPECT_EQ("abc", value);
 
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(buffet::TypedValueFromJson(CreateValue("12").get(), nullptr,
-                                          &value, &error));
-  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
+  EXPECT_FALSE(
+      TypedValueFromJson(CreateValue("12").get(), nullptr, &value, &error));
+  EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
   error.reset();
 }
 
 TEST(CommandSchemaUtils, TypedValueFromJson_Object) {
-  buffet::native_types::Object value;
-  std::unique_ptr<buffet::ObjectSchema> schema{new buffet::ObjectSchema};
+  native_types::Object value;
+  std::unique_ptr<ObjectSchema> schema{new ObjectSchema};
 
-  buffet::IntPropType age_prop;
+  IntPropType age_prop;
   age_prop.AddMinMaxConstraint(0, 150);
   schema->AddProp("age", age_prop.Clone());
 
-  buffet::StringPropType name_prop;
+  StringPropType name_prop;
   name_prop.AddLengthConstraint(1, 30);
   schema->AddProp("name", name_prop.Clone());
 
-  buffet::ObjectPropType type;
+  ObjectPropType type;
   type.SetObjectSchema(std::move(schema));
-  EXPECT_TRUE(buffet::TypedValueFromJson(
-      CreateValue("{'age':20,'name':'Bob'}").get(), &type, &value, nullptr));
-  buffet::native_types::Object value2;
+  EXPECT_TRUE(TypedValueFromJson(CreateValue("{'age':20,'name':'Bob'}").get(),
+                                 &type, &value, nullptr));
+  native_types::Object value2;
   value2.insert(std::make_pair("age", age_prop.CreateValue(20, nullptr)));
   value2.insert(std::make_pair("name",
                                name_prop.CreateValue(std::string("Bob"),
@@ -191,58 +189,58 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Object) {
   EXPECT_EQ(value2, value);
 
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(buffet::TypedValueFromJson(CreateValue("'abc'").get(), nullptr,
-                                          &value, &error));
-  EXPECT_EQ(buffet::errors::commands::kTypeMismatch, error->GetCode());
+  EXPECT_FALSE(
+      TypedValueFromJson(CreateValue("'abc'").get(), nullptr, &value, &error));
+  EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
   error.reset();
 }
 
 TEST(CommandSchemaUtils, TypedValueFromJson_Array) {
-  buffet::native_types::Array arr;
-  buffet::StringPropType str_type;
+  native_types::Array arr;
+  StringPropType str_type;
   str_type.AddLengthConstraint(3, 100);
-  buffet::ArrayPropType type;
+  ArrayPropType type;
   type.SetItemType(str_type.Clone());
 
-  EXPECT_TRUE(buffet::TypedValueFromJson(
-      CreateValue("['foo', 'bar']").get(), &type, &arr, nullptr));
-  buffet::native_types::Array arr2;
+  EXPECT_TRUE(TypedValueFromJson(CreateValue("['foo', 'bar']").get(), &type,
+                                 &arr, nullptr));
+  native_types::Array arr2;
   arr2.push_back(str_type.CreateValue(std::string{"foo"}, nullptr));
   arr2.push_back(str_type.CreateValue(std::string{"bar"}, nullptr));
   EXPECT_EQ(arr2, arr);
 
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(buffet::TypedValueFromJson(
-      CreateValue("['baz', 'ab']").get(), &type, &arr, &error));
-  EXPECT_EQ(buffet::errors::commands::kOutOfRange, error->GetCode());
+  EXPECT_FALSE(TypedValueFromJson(CreateValue("['baz', 'ab']").get(), &type,
+                                  &arr, &error));
+  EXPECT_EQ(errors::commands::kOutOfRange, error->GetCode());
   error.reset();
 }
 
 TEST(CommandSchemaUtils, PropValueToDBusVariant) {
-  buffet::IntPropType int_type;
+  IntPropType int_type;
   auto prop_value = int_type.CreateValue(5, nullptr);
   EXPECT_EQ(5, PropValueToDBusVariant(prop_value.get()).Get<int>());
 
-  buffet::BooleanPropType bool_type;
+  BooleanPropType bool_type;
   prop_value = bool_type.CreateValue(true, nullptr);
   EXPECT_TRUE(PropValueToDBusVariant(prop_value.get()).Get<bool>());
 
-  buffet::DoublePropType dbl_type;
+  DoublePropType dbl_type;
   prop_value = dbl_type.CreateValue(5.5, nullptr);
   EXPECT_DOUBLE_EQ(5.5, PropValueToDBusVariant(prop_value.get()).Get<double>());
 
-  buffet::StringPropType str_type;
+  StringPropType str_type;
   prop_value = str_type.CreateValue(std::string{"foo"}, nullptr);
   EXPECT_EQ("foo", PropValueToDBusVariant(prop_value.get()).Get<std::string>());
 
-  buffet::ObjectPropType obj_type;
+  ObjectPropType obj_type;
   ASSERT_TRUE(obj_type.FromJson(CreateDictionaryValue(
       "{'properties':{'width':'integer','height':'integer'},"
       "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}").get(),
       nullptr, nullptr));
-  buffet::native_types::Object obj{
-    {"width", int_type.CreateValue(10, nullptr)},
-    {"height", int_type.CreateValue(20, nullptr)},
+  native_types::Object obj{
+      {"width", int_type.CreateValue(10, nullptr)},
+      {"height", int_type.CreateValue(20, nullptr)},
   };
   prop_value = obj_type.CreateValue(obj, nullptr);
   VariantDictionary dict =
@@ -250,9 +248,9 @@ TEST(CommandSchemaUtils, PropValueToDBusVariant) {
   EXPECT_EQ(20, dict["height"].Get<int>());
   EXPECT_EQ(10, dict["width"].Get<int>());
 
-  buffet::ArrayPropType arr_type;
+  ArrayPropType arr_type;
   arr_type.SetItemType(str_type.Clone());
-  buffet::native_types::Array arr;
+  native_types::Array arr;
   arr.push_back(str_type.CreateValue(std::string{"foo"}, nullptr));
   arr.push_back(str_type.CreateValue(std::string{"bar"}, nullptr));
   arr.push_back(str_type.CreateValue(std::string{"baz"}, nullptr));
@@ -264,7 +262,7 @@ TEST(CommandSchemaUtils, PropValueToDBusVariant) {
 }
 
 TEST(CommandSchemaUtils, PropValueFromDBusVariant_Int) {
-  buffet::IntPropType int_type;
+  IntPropType int_type;
   ASSERT_TRUE(int_type.FromJson(CreateDictionaryValue("{'enum':[1,2]}").get(),
                                 nullptr, nullptr));
 
@@ -276,11 +274,11 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_Int) {
   prop_value = PropValueFromDBusVariant(&int_type, 5, &error);
   EXPECT_EQ(nullptr, prop_value.get());
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(buffet::errors::commands::kOutOfRange, error->GetCode());
+  EXPECT_EQ(errors::commands::kOutOfRange, error->GetCode());
 }
 
 TEST(CommandSchemaUtils, PropValueFromDBusVariant_Bool) {
-  buffet::BooleanPropType bool_type;
+  BooleanPropType bool_type;
   ASSERT_TRUE(bool_type.FromJson(CreateDictionaryValue("{'enum':[true]}").get(),
                                  nullptr, nullptr));
 
@@ -292,11 +290,11 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_Bool) {
   prop_value = PropValueFromDBusVariant(&bool_type, false, &error);
   EXPECT_EQ(nullptr, prop_value.get());
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(buffet::errors::commands::kOutOfRange, error->GetCode());
+  EXPECT_EQ(errors::commands::kOutOfRange, error->GetCode());
 }
 
 TEST(CommandSchemaUtils, PropValueFromDBusVariant_Double) {
-  buffet::DoublePropType dbl_type;
+  DoublePropType dbl_type;
   ASSERT_TRUE(dbl_type.FromJson(CreateDictionaryValue("{'maximum':2.0}").get(),
                                  nullptr, nullptr));
 
@@ -308,11 +306,11 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_Double) {
   prop_value = PropValueFromDBusVariant(&dbl_type, 10.0, &error);
   EXPECT_EQ(nullptr, prop_value.get());
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(buffet::errors::commands::kOutOfRange, error->GetCode());
+  EXPECT_EQ(errors::commands::kOutOfRange, error->GetCode());
 }
 
 TEST(CommandSchemaUtils, PropValueFromDBusVariant_String) {
-  buffet::StringPropType str_type;
+  StringPropType str_type;
   ASSERT_TRUE(str_type.FromJson(CreateDictionaryValue("{'minLength': 4}").get(),
                                  nullptr, nullptr));
 
@@ -325,11 +323,11 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_String) {
   prop_value = PropValueFromDBusVariant(&str_type, std::string{"foo"}, &error);
   EXPECT_EQ(nullptr, prop_value.get());
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(buffet::errors::commands::kOutOfRange, error->GetCode());
+  EXPECT_EQ(errors::commands::kOutOfRange, error->GetCode());
 }
 
 TEST(CommandSchemaUtils, PropValueFromDBusVariant_Object) {
-  buffet::ObjectPropType obj_type;
+  ObjectPropType obj_type;
   ASSERT_TRUE(obj_type.FromJson(CreateDictionaryValue(
       "{'properties':{'width':'integer','height':'integer'},"
       "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}").get(),
@@ -341,7 +339,7 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_Object) {
   };
   auto prop_value = PropValueFromDBusVariant(&obj_type, obj, nullptr);
   ASSERT_NE(nullptr, prop_value.get());
-  auto value = prop_value->GetValueAsAny().Get<buffet::native_types::Object>();
+  auto value = prop_value->GetValueAsAny().Get<native_types::Object>();
   EXPECT_EQ(100, value["width"].get()->GetValueAsAny().Get<int>());
   EXPECT_EQ(200, value["height"].get()->GetValueAsAny().Get<int>());
 
@@ -350,18 +348,18 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_Object) {
   prop_value = PropValueFromDBusVariant(&obj_type, obj, &error);
   EXPECT_EQ(nullptr, prop_value.get());
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(buffet::errors::commands::kOutOfRange, error->GetCode());
+  EXPECT_EQ(errors::commands::kOutOfRange, error->GetCode());
 }
 
 TEST(CommandSchemaUtils, PropValueFromDBusVariant_Array) {
-  buffet::ArrayPropType arr_type;
-  buffet::IntPropType int_type;
+  ArrayPropType arr_type;
+  IntPropType int_type;
   int_type.AddMinMaxConstraint(0, 100);
   arr_type.SetItemType(int_type.Clone());
   std::vector<int> data{0, 1, 1, 100};
   auto prop_value = PropValueFromDBusVariant(&arr_type, data, nullptr);
   ASSERT_NE(nullptr, prop_value.get());
-  auto arr = prop_value->GetValueAsAny().Get<buffet::native_types::Array>();
+  auto arr = prop_value->GetValueAsAny().Get<native_types::Array>();
   ASSERT_EQ(4u, arr.size());
   EXPECT_EQ(0, arr[0]->GetInt()->GetValue());
   EXPECT_EQ(1, arr[1]->GetInt()->GetValue());
@@ -373,5 +371,7 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_Array) {
   prop_value = PropValueFromDBusVariant(&arr_type, data, &error);
   EXPECT_EQ(nullptr, prop_value.get());
   ASSERT_NE(nullptr, error.get());
-  EXPECT_EQ(buffet::errors::commands::kOutOfRange, error->GetCode());
+  EXPECT_EQ(errors::commands::kOutOfRange, error->GetCode());
 }
+
+}  // namespace buffet

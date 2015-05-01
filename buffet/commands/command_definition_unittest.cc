@@ -6,8 +6,7 @@
 
 #include <gtest/gtest.h>
 
-using buffet::ObjectSchema;
-using buffet::CommandDefinition;
+namespace buffet {
 
 TEST(CommandVisibility, DefaultConstructor) {
   CommandDefinition::Visibility visibility;
@@ -91,3 +90,5 @@ TEST(CommandDefinition, Test) {
   def.SetVisibility(CommandDefinition::Visibility::GetLocal());
   EXPECT_EQ("local", def.GetVisibility().ToString());
 }
+
+}  // namespace buffet

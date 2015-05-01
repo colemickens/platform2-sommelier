@@ -13,12 +13,12 @@
 #include "buffet/xmpp/xmpp_client.h"
 #include "buffet/xmpp/xmpp_connection.h"
 
+namespace buffet {
+
 using ::testing::DoAll;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::_;
-
-namespace buffet {
 
 namespace {
 
