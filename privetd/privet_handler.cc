@@ -469,15 +469,15 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
   AddHandler("/privet/v3/setup/status", &PrivetHandler::HandleSetupStatus,
              AuthScope::kOwner);
   AddHandler("/privet/v3/commandDefs", &PrivetHandler::HandleCommandDefs,
-             AuthScope::kUser);
+             AuthScope::kViewer);
   AddHandler("/privet/v3/commands/execute",
-             &PrivetHandler::HandleCommandsExecute, AuthScope::kUser);
+             &PrivetHandler::HandleCommandsExecute, AuthScope::kViewer);
   AddHandler("/privet/v3/commands/status", &PrivetHandler::HandleCommandsStatus,
-             AuthScope::kUser);
+             AuthScope::kViewer);
   AddHandler("/privet/v3/commands/cancel", &PrivetHandler::HandleCommandsCancel,
-             AuthScope::kUser);
+             AuthScope::kViewer);
   AddHandler("/privet/v3/commands/list", &PrivetHandler::HandleCommandsList,
-             AuthScope::kUser);
+             AuthScope::kViewer);
 }
 
 PrivetHandler::~PrivetHandler() {
