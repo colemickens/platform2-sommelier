@@ -17,8 +17,6 @@
 #include "base/logging.h"
 #include "base/macros.h"
 
-#include "chromiumos-wide-profiling/limits.h"
-
 namespace {
 
 // Number of hex digits in a byte.
@@ -146,73 +144,6 @@ uint64_t AlignSize(uint64_t size, uint32_t align_size) {
 // Returns the size of the 8-byte-aligned memory for storing |string|.
 size_t GetUint64AlignedStringLength(const string& str) {
   return AlignSize(str.size() + 1, sizeof(uint64_t));
-}
-
-uint64_t GetSampleFieldsForEventType(uint32_t event_type,
-                                     uint64_t sample_type) {
-  uint64_t mask = kUint64Max;
-  switch (event_type) {
-  case PERF_RECORD_MMAP:
-  case PERF_RECORD_LOST:
-  case PERF_RECORD_COMM:
-  case PERF_RECORD_EXIT:
-  case PERF_RECORD_THROTTLE:
-  case PERF_RECORD_UNTHROTTLE:
-  case PERF_RECORD_FORK:
-  case PERF_RECORD_READ:
-  case PERF_RECORD_MMAP2:
-    // See perf_event.h "struct" sample_id and sample_id_all.
-    mask = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_ID |
-           PERF_SAMPLE_STREAM_ID | PERF_SAMPLE_CPU | PERF_SAMPLE_IDENTIFIER;
-    break;
-  case PERF_RECORD_SAMPLE:
-    break;
-  default:
-    LOG(FATAL) << "Unknown event type " << event_type;
-  }
-  return sample_type & mask;
-}
-
-uint64_t GetPerfSampleDataOffset(const event_t& event) {
-  uint64_t offset = kUint64Max;
-  switch (event.header.type) {
-  case PERF_RECORD_SAMPLE:
-    offset = offsetof(event_t, sample.array);
-    break;
-  case PERF_RECORD_MMAP:
-    offset = sizeof(event.mmap) - sizeof(event.mmap.filename) +
-             GetUint64AlignedStringLength(event.mmap.filename);
-    break;
-  case PERF_RECORD_FORK:
-  case PERF_RECORD_EXIT:
-    offset = sizeof(event.fork);
-    break;
-  case PERF_RECORD_COMM:
-    offset = sizeof(event.comm) - sizeof(event.comm.comm) +
-             GetUint64AlignedStringLength(event.comm.comm);
-    break;
-  case PERF_RECORD_LOST:
-    offset = sizeof(event.lost);
-    break;
-  case PERF_RECORD_THROTTLE:
-  case PERF_RECORD_UNTHROTTLE:
-    offset = sizeof(event.throttle);
-    break;
-  case PERF_RECORD_READ:
-    offset = sizeof(event.read);
-    break;
-  case PERF_RECORD_MMAP2:
-    offset = sizeof(event.mmap2) - sizeof(event.mmap2.filename) +
-             GetUint64AlignedStringLength(event.mmap2.filename);
-    break;
-  default:
-    LOG(FATAL) << "Unknown event type " << event.header.type;
-    break;
-  }
-  // Make sure the offset was valid
-  CHECK_NE(offset, kUint64Max);
-  CHECK_EQ(offset % sizeof(uint64_t), 0U);
-  return offset;
 }
 
 bool ReadFileToData(const string& filename, std::vector<char>* data) {

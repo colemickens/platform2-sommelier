@@ -103,21 +103,6 @@ bool StringToHex(const string& str, u8* array, size_t length);
 // of |align_size| that can fit |size|.
 uint64_t AlignSize(uint64_t size, uint32_t align_size);
 
-// Given a general perf sample format |sample_type|, return the fields of that
-// format that are present in a sample for an event of type |event_type|.
-//
-// e.g. FORK and EXIT events have the fields {time, pid/tid, cpu, id}.
-// Given a sample type with fields {ip, time, pid/tid, and period}, return
-// the intersection of these two field sets: {time, pid/tid}.
-//
-// All field formats are bitfields, as defined by enum perf_event_sample_format
-// in kernel/perf_event.h.
-uint64_t GetSampleFieldsForEventType(uint32_t event_type, uint64_t sample_type);
-
-// Returns the offset in bytes within a perf event structure at which the raw
-// perf sample data is located.
-uint64_t GetPerfSampleDataOffset(const event_t& event);
-
 // Returns the size of the 8-byte-aligned memory for storing |string|.
 size_t GetUint64AlignedStringLength(const string& str);
 

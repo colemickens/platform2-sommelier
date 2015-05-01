@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -16,6 +17,7 @@
 
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/kernel/perf_internals.h"
+#include "chromiumos-wide-profiling/sample_info_reader.h"
 #include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
@@ -284,6 +286,8 @@ class PerfReader {
   uint64_t sample_type_;
   uint64_t read_format_;
   uint64_t metadata_mask_;
+
+  std::unique_ptr<SampleInfoReader> sample_info_reader_;
 
  private:
   // The file header is either a normal header or a piped header.

@@ -14,6 +14,7 @@
 #include "base/logging.h"
 
 #include "chromiumos-wide-profiling/compat/string.h"
+#include "chromiumos-wide-profiling/sample_info_reader.h"
 #include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
@@ -104,6 +105,10 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
   }
   CHECK_GT(attrs_.size(), 0U);
   sample_type_ = attrs_[0].attr.sample_type;
+  read_format_ = attrs_[0].attr.read_format;
+  sample_info_reader_.reset(
+      new SampleInfoReader(sample_type_, read_format_,
+                           false /* read_cross_endian */));
 
   if (!DeserializeEvents(perf_data_proto.events(), &events_)) {
     return false;
@@ -657,9 +662,10 @@ bool PerfSerializer::DeserializeCommSample(
   // |sizeof(uint64_t)|), then the size is no longer correct.  This section
   // checks for the size difference and updates the size in the header.
   uint64_t sample_fields =
-      GetSampleFieldsForEventType(comm.header.type, sample_type_);
+      SampleInfoReader::GetSampleFieldsForEventType(comm.header.type,
+                                                    sample_type_);
   std::bitset<sizeof(sample_fields) * CHAR_BIT> sample_type_bits(sample_fields);
-  comm.header.size = GetPerfSampleDataOffset(*event) +
+  comm.header.size = SampleInfoReader::GetPerfSampleDataOffset(*event) +
                      sample_type_bits.count() * sizeof(uint64_t);
 
   return DeserializeSampleInfo(sample.sample_info(), event);
@@ -806,7 +812,8 @@ bool PerfSerializer::DeserializeSampleInfo(
 
   // The event info may have changed (e.g. strings replaced with Md5sum), so
   // adjust the size accordingly.
-  event->header.size = GetPerfSampleDataOffset(*event) + sample_info_size;
+  event->header.size =
+      SampleInfoReader::GetPerfSampleDataOffset(*event) + sample_info_size;
 
   return WritePerfSampleInfo(sample_info, event);
 }

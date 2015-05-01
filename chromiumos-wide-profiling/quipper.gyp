@@ -27,6 +27,7 @@
         'perf_serializer.cc',
         'perf_stat_parser.cc',
         'run_command.cc',
+        'sample_info_reader.cc',
         'scoped_temp_path.cc',
         'utils.cc',
       ],
@@ -254,6 +255,18 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'run_command_test.cc',
+          ]
+        },
+        {
+          'target_name': 'sample_info_reader_test',
+          'type': 'executable',
+          'dependencies': [
+            'common',
+            'common_test',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'sample_info_reader_test.cc',
           ]
         },
         {

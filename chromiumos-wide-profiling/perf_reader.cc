@@ -4,7 +4,6 @@
 
 #include "chromiumos-wide-profiling/perf_reader.h"
 
-#include <byteswap.h>
 #include <limits.h>
 
 #include <algorithm>
@@ -21,6 +20,7 @@
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/file_reader.h"
 #include "chromiumos-wide-profiling/limits.h"
+#include "chromiumos-wide-profiling/sample_info_reader.h"
 #include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
@@ -203,401 +203,6 @@ bool WriteStringToBuffer(const CStringWithLength& src, DataWriter* data) {
     return false;
   }
   return true;
-}
-
-bool IsSupportedEventType(uint32_t type) {
-  switch (type) {
-  case PERF_RECORD_SAMPLE:
-  case PERF_RECORD_MMAP:
-  case PERF_RECORD_MMAP2:
-  case PERF_RECORD_FORK:
-  case PERF_RECORD_EXIT:
-  case PERF_RECORD_COMM:
-  case PERF_RECORD_LOST:
-  case PERF_RECORD_THROTTLE:
-  case PERF_RECORD_UNTHROTTLE:
-    return true;
-  case PERF_RECORD_READ:
-  case PERF_RECORD_MAX:
-    return false;
-  default:
-    LOG(FATAL) << "Unknown event type " << type;
-    return false;
-  }
-}
-
-// Read read info from perf data.  Corresponds to sample format type
-// PERF_SAMPLE_READ.
-const uint64_t* ReadReadInfo(const uint64_t* array,
-                             bool swap_bytes,
-                             uint64_t read_format,
-                             struct perf_sample* sample) {
-  if (read_format & PERF_FORMAT_TOTAL_TIME_ENABLED)
-    sample->read.time_enabled = *array++;
-  if (read_format & PERF_FORMAT_TOTAL_TIME_RUNNING)
-    sample->read.time_running = *array++;
-  if (read_format & PERF_FORMAT_ID)
-    sample->read.id = *array++;
-
-  if (swap_bytes) {
-    ByteSwap(&sample->read.time_enabled);
-    ByteSwap(&sample->read.time_running);
-    ByteSwap(&sample->read.id);
-  }
-
-  return array;
-}
-
-// Read call chain info from perf data.  Corresponds to sample format type
-// PERF_SAMPLE_CALLCHAIN.
-const uint64_t* ReadCallchain(const uint64_t* array,
-                              bool swap_bytes,
-                              struct perf_sample* sample) {
-  // Make sure there is no existing allocated memory in |sample->callchain|.
-  CHECK_EQ(static_cast<void*>(NULL), sample->callchain);
-
-  // The callgraph data consists of a uint64_t value |nr| followed by |nr|
-  // addresses.
-  uint64_t callchain_size = *array++;
-  if (swap_bytes)
-    ByteSwap(&callchain_size);
-  struct ip_callchain* callchain =
-      reinterpret_cast<struct ip_callchain*>(new uint64_t[callchain_size + 1]);
-  callchain->nr = callchain_size;
-  for (size_t i = 0; i < callchain_size; ++i) {
-    callchain->ips[i] = *array++;
-    if (swap_bytes)
-      ByteSwap(&callchain->ips[i]);
-  }
-  sample->callchain = callchain;
-
-  return array;
-}
-
-// Read raw info from perf data.  Corresponds to sample format type
-// PERF_SAMPLE_RAW.
-const uint64_t* ReadRawData(const uint64_t* array,
-                            bool swap_bytes,
-                            struct perf_sample* sample) {
-  // First read the size.
-  const uint32_t* ptr = reinterpret_cast<const uint32_t*>(array);
-  sample->raw_size = *ptr++;
-  if (swap_bytes)
-    ByteSwap(&sample->raw_size);
-
-  // Allocate space for and read the raw data bytes.
-  sample->raw_data = new uint8_t[sample->raw_size];
-  memcpy(sample->raw_data, ptr, sample->raw_size);
-
-  // Determine the bytes that were read, and align to the next 64 bits.
-  int bytes_read = AlignSize(sizeof(sample->raw_size) + sample->raw_size,
-                             sizeof(uint64_t));
-  array += bytes_read / sizeof(uint64_t);
-
-  return array;
-}
-
-// Read call chain info from perf data.  Corresponds to sample format type
-// PERF_SAMPLE_CALLCHAIN.
-const uint64_t* ReadBranchStack(const uint64_t* array,
-                                bool swap_bytes,
-                                struct perf_sample* sample) {
-  // Make sure there is no existing allocated memory in
-  // |sample->branch_stack|.
-  CHECK_EQ(static_cast<void*>(NULL), sample->branch_stack);
-
-  // The branch stack data consists of a uint64_t value |nr| followed by |nr|
-  // branch_entry structs.
-  uint64_t branch_stack_size = *array++;
-  if (swap_bytes)
-    ByteSwap(&branch_stack_size);
-  struct branch_stack* branch_stack =
-      reinterpret_cast<struct branch_stack*>(
-          new uint8_t[sizeof(uint64_t) +
-                      branch_stack_size * sizeof(struct branch_entry)]);
-  branch_stack->nr = branch_stack_size;
-  for (size_t i = 0; i < branch_stack_size; ++i) {
-    memcpy(&branch_stack->entries[i], array, sizeof(struct branch_entry));
-    array += sizeof(struct branch_entry) / sizeof(*array);
-    if (swap_bytes) {
-      ByteSwap(&branch_stack->entries[i].from);
-      ByteSwap(&branch_stack->entries[i].to);
-    }
-  }
-  sample->branch_stack = branch_stack;
-
-  return array;
-}
-
-size_t ReadPerfSampleFromData(const perf_event_type event_type,
-                              const uint64_t* array,
-                              const uint64_t sample_fields,
-                              const uint64_t read_format,
-                              const bool swap_bytes,
-                              struct perf_sample* sample) {
-  const uint64_t* initial_array_ptr = array;
-
-  union {
-    uint32_t val32[sizeof(uint64_t) / sizeof(uint32_t)];
-    uint64_t val64;
-  };
-
-  // See structure for PERF_RECORD_SAMPLE in kernel/perf_event.h
-  // and compare sample_id when sample_id_all is set.
-
-  // NB: For sample_id, sample_fields has already been masked to the set
-  // of fields in that struct by GetSampleFieldsForEventType. That set
-  // of fields is mostly in the same order as PERF_RECORD_SAMPLE, with
-  // the exception of PERF_SAMPLE_IDENTIFIER.
-
-  // PERF_SAMPLE_IDENTIFIER is in a different location depending on
-  // if this is a SAMPLE event or the sample_id of another event.
-  if (event_type == PERF_RECORD_SAMPLE) {
-    // { u64                   id;       } && PERF_SAMPLE_IDENTIFIER
-    if (sample_fields & PERF_SAMPLE_IDENTIFIER) {
-      sample->id = MaybeSwap(*array++, swap_bytes);
-    }
-  }
-
-  // { u64                   ip;       } && PERF_SAMPLE_IP
-  if (sample_fields & PERF_SAMPLE_IP) {
-    sample->ip = MaybeSwap(*array++, swap_bytes);
-  }
-
-  // { u32                   pid, tid; } && PERF_SAMPLE_TID
-  if (sample_fields & PERF_SAMPLE_TID) {
-    val64 = *array++;
-    sample->pid = MaybeSwap(val32[0], swap_bytes);
-    sample->tid = MaybeSwap(val32[1], swap_bytes);
-  }
-
-  // { u64                   time;     } && PERF_SAMPLE_TIME
-  if (sample_fields & PERF_SAMPLE_TIME) {
-    sample->time = MaybeSwap(*array++, swap_bytes);
-  }
-
-  // { u64                   addr;     } && PERF_SAMPLE_ADDR
-  if (sample_fields & PERF_SAMPLE_ADDR) {
-    sample->addr = MaybeSwap(*array++, swap_bytes);
-  }
-
-  // { u64                   id;       } && PERF_SAMPLE_ID
-  if (sample_fields & PERF_SAMPLE_ID) {
-    sample->id = MaybeSwap(*array++, swap_bytes);
-  }
-
-  // { u64                   stream_id;} && PERF_SAMPLE_STREAM_ID
-  if (sample_fields & PERF_SAMPLE_STREAM_ID) {
-    sample->stream_id = MaybeSwap(*array++, swap_bytes);
-  }
-
-  // { u32                   cpu, res; } && PERF_SAMPLE_CPU
-  if (sample_fields & PERF_SAMPLE_CPU) {
-    val64 = *array++;
-    sample->cpu = MaybeSwap(val32[0], swap_bytes);
-    // sample->res = MaybeSwap(*val32[1], swap_bytes);  // not implemented?
-  }
-
-  // This is the location of PERF_SAMPLE_IDENTIFIER in struct sample_id.
-  if (event_type != PERF_RECORD_SAMPLE) {
-    // { u64                   id;       } && PERF_SAMPLE_IDENTIFIER
-    if (sample_fields & PERF_SAMPLE_IDENTIFIER) {
-      sample->id = MaybeSwap(*array++, swap_bytes);
-    }
-  }
-
-  //
-  // The remaining fields are only in PERF_RECORD_SAMPLE
-  //
-
-  // { u64                   period;   } && PERF_SAMPLE_PERIOD
-  if (sample_fields & PERF_SAMPLE_PERIOD) {
-    sample->period = MaybeSwap(*array++, swap_bytes);
-  }
-
-  // { struct read_format    values;   } && PERF_SAMPLE_READ
-  if (sample_fields & PERF_SAMPLE_READ) {
-    // TODO(cwp-team): support grouped read info.
-    if (read_format & PERF_FORMAT_GROUP)
-      return 0;
-    array = ReadReadInfo(array, swap_bytes, read_format, sample);
-  }
-
-  // { u64                   nr,
-  //   u64                   ips[nr];  } && PERF_SAMPLE_CALLCHAIN
-  if (sample_fields & PERF_SAMPLE_CALLCHAIN) {
-    array = ReadCallchain(array, swap_bytes, sample);
-  }
-
-  // { u32                   size;
-  //   char                  data[size];}&& PERF_SAMPLE_RAW
-  if (sample_fields & PERF_SAMPLE_RAW) {
-    array = ReadRawData(array, swap_bytes, sample);
-  }
-
-  // { u64                   nr;
-  //   { u64 from, to, flags } lbr[nr];} && PERF_SAMPLE_BRANCH_STACK
-  if (sample_fields & PERF_SAMPLE_BRANCH_STACK) {
-    array = ReadBranchStack(array, swap_bytes, sample);
-  }
-
-  static const u64 kUnimplementedSampleFields =
-      PERF_SAMPLE_REGS_USER  |
-      PERF_SAMPLE_STACK_USER |
-      PERF_SAMPLE_WEIGHT     |
-      PERF_SAMPLE_DATA_SRC   |
-      PERF_SAMPLE_TRANSACTION;
-
-  if (sample_fields & kUnimplementedSampleFields) {
-    LOG(WARNING) << "Unimplemented sample fields 0x"
-                 << std::hex << (sample_fields & kUnimplementedSampleFields);
-  }
-
-  if (sample_fields & ~(PERF_SAMPLE_MAX-1)) {
-    LOG(WARNING) << "Unrecognized sample fields 0x"
-                 << std::hex << (sample_fields & ~(PERF_SAMPLE_MAX-1));
-  }
-
-  return (array - initial_array_ptr) * sizeof(uint64_t);
-}
-
-size_t WritePerfSampleToData(const perf_event_type event_type,
-                             const struct perf_sample& sample,
-                             const uint64_t sample_fields,
-                             const uint64_t read_format,
-                             uint64_t* array) {
-  const uint64_t* initial_array_ptr = array;
-
-  union {
-    uint32_t val32[sizeof(uint64_t) / sizeof(uint32_t)];
-    uint64_t val64;
-  };
-
-  // See notes at the top of ReadPerfSampleFromData regarding the structure
-  // of PERF_RECORD_SAMPLE, sample_id, and PERF_SAMPLE_IDENTIFIER, as they
-  // all apply here as well.
-
-  // PERF_SAMPLE_IDENTIFIER is in a different location depending on
-  // if this is a SAMPLE event or the sample_id of another event.
-  if (event_type == PERF_RECORD_SAMPLE) {
-    // { u64                   id;       } && PERF_SAMPLE_IDENTIFIER
-    if (sample_fields & PERF_SAMPLE_IDENTIFIER) {
-      *array++ = sample.id;
-    }
-  }
-
-  // { u64                   ip;       } && PERF_SAMPLE_IP
-  if (sample_fields & PERF_SAMPLE_IP) {
-    *array++ = sample.ip;
-  }
-
-  // { u32                   pid, tid; } && PERF_SAMPLE_TID
-  if (sample_fields & PERF_SAMPLE_TID) {
-    val32[0] = sample.pid;
-    val32[1] = sample.tid;
-    *array++ = val64;
-  }
-
-  // { u64                   time;     } && PERF_SAMPLE_TIME
-  if (sample_fields & PERF_SAMPLE_TIME) {
-    *array++ = sample.time;
-  }
-
-  // { u64                   addr;     } && PERF_SAMPLE_ADDR
-  if (sample_fields & PERF_SAMPLE_ADDR) {
-    *array++ = sample.addr;
-  }
-
-  // { u64                   id;       } && PERF_SAMPLE_ID
-  if (sample_fields & PERF_SAMPLE_ID) {
-    *array++ = sample.id;
-  }
-
-  // { u64                   stream_id;} && PERF_SAMPLE_STREAM_ID
-  if (sample_fields & PERF_SAMPLE_STREAM_ID) {
-    *array++ = sample.stream_id;
-  }
-
-  // { u32                   cpu, res; } && PERF_SAMPLE_CPU
-  if (sample_fields & PERF_SAMPLE_CPU) {
-    val32[0] = sample.cpu;
-    // val32[1] = sample.res;  // not implemented?
-    val32[1] = 0;
-    *array++ = val64;
-  }
-
-  // This is the location of PERF_SAMPLE_IDENTIFIER in struct sample_id.
-  if (event_type != PERF_RECORD_SAMPLE) {
-    // { u64                   id;       } && PERF_SAMPLE_IDENTIFIER
-    if (sample_fields & PERF_SAMPLE_IDENTIFIER) {
-      *array++ = sample.id;
-    }
-  }
-
-  //
-  // The remaining fields are only in PERF_RECORD_SAMPLE
-  //
-
-  // { u64                   period;   } && PERF_SAMPLE_PERIOD
-  if (sample_fields & PERF_SAMPLE_PERIOD) {
-    *array++ = sample.period;
-  }
-
-  // { struct read_format    values;   } && PERF_SAMPLE_READ
-  if (sample_fields & PERF_SAMPLE_READ) {
-    // TODO(cwp-team): support grouped read info.
-    if (read_format & PERF_FORMAT_GROUP)
-      return 0;
-    if (read_format & PERF_FORMAT_TOTAL_TIME_ENABLED)
-      *array++ = sample.read.time_enabled;
-    if (read_format & PERF_FORMAT_TOTAL_TIME_RUNNING)
-      *array++ = sample.read.time_running;
-    if (read_format & PERF_FORMAT_ID)
-      *array++ = sample.read.id;
-  }
-
-  // { u64                   nr,
-  //   u64                   ips[nr];  } && PERF_SAMPLE_CALLCHAIN
-  if (sample_fields & PERF_SAMPLE_CALLCHAIN) {
-    if (!sample.callchain) {
-      LOG(ERROR) << "Expecting callchain data, but none was found.";
-    } else {
-      *array++ = sample.callchain->nr;
-      for (size_t i = 0; i < sample.callchain->nr; ++i)
-        *array++ = sample.callchain->ips[i];
-    }
-  }
-
-  // { u32                   size;
-  //   char                  data[size];}&& PERF_SAMPLE_RAW
-  if (sample_fields & PERF_SAMPLE_RAW) {
-    uint32_t* ptr = reinterpret_cast<uint32_t*>(array);
-    *ptr++ = sample.raw_size;
-    memcpy(ptr, sample.raw_data, sample.raw_size);
-
-    // Update the data read pointer after aligning to the next 64 bytes.
-    int num_bytes = AlignSize(sizeof(sample.raw_size) + sample.raw_size,
-                              sizeof(uint64_t));
-    array += num_bytes / sizeof(uint64_t);
-  }
-
-  // { u64                   nr;
-  //   { u64 from, to, flags } lbr[nr];} && PERF_SAMPLE_BRANCH_STACK
-  if (sample_fields & PERF_SAMPLE_BRANCH_STACK) {
-    if (!sample.branch_stack) {
-      LOG(ERROR) << "Expecting branch stack data, but none was found.";
-    } else {
-      *array++ = sample.branch_stack->nr;
-      for (size_t i = 0; i < sample.branch_stack->nr; ++i) {
-        *array++ = sample.branch_stack->entries[i].from;
-        *array++ = sample.branch_stack->entries[i].to;
-        memcpy(array++, &sample.branch_stack->entries[i].flags,
-               sizeof(uint64_t));
-      }
-    }
-  }
-
-  return (array - initial_array_ptr) * sizeof(uint64_t);
 }
 
 // Reads a perf_event_header from |data| and performs byte swapping if
@@ -983,60 +588,16 @@ void PerfReader::GetFilenamesToBuildIDs(
 
 bool PerfReader::ReadPerfSampleInfo(const event_t& event,
                                     struct perf_sample* sample) const {
-  CHECK(sample);
-
-  if (!IsSupportedEventType(event.header.type)) {
-    LOG(ERROR) << "Unsupported event type " << event.header.type;
+  if (sample_info_reader_.get() == nullptr)
     return false;
-  }
-
-  uint64_t sample_format = GetSampleFieldsForEventType(event.header.type,
-                                                       sample_type_);
-  uint64_t offset = GetPerfSampleDataOffset(event);
-  size_t size_read = ReadPerfSampleFromData(
-      static_cast<perf_event_type>(event.header.type),
-      reinterpret_cast<const uint64_t*>(&event) + offset / sizeof(uint64_t),
-      sample_format,
-      read_format_,
-      false,  // MaybeSwapEventFields() has already endian-swapped the fields.
-      sample);
-
-  size_t expected_size = event.header.size - offset;
-  if (size_read != expected_size) {
-    LOG(ERROR) << "Read " << size_read << " bytes, expected " << expected_size
-               << " bytes.";
-  }
-
-  return (size_read == expected_size);
+  return sample_info_reader_->ReadPerfSampleInfo(event, sample);
 }
 
 bool PerfReader::WritePerfSampleInfo(const perf_sample& sample,
                                      event_t* event) const {
-  CHECK(event);
-
-  if (!IsSupportedEventType(event->header.type)) {
-    LOG(ERROR) << "Unsupported event type " << event->header.type;
+  if (sample_info_reader_.get() == nullptr)
     return false;
-  }
-
-  uint64_t sample_format = GetSampleFieldsForEventType(event->header.type,
-                                                       sample_type_);
-  uint64_t offset = GetPerfSampleDataOffset(*event);
-
-  size_t expected_size = event->header.size - offset;
-  memset(reinterpret_cast<uint8_t*>(event) + offset, 0, expected_size);
-  size_t size_written = WritePerfSampleToData(
-      static_cast<perf_event_type>(event->header.type),
-      sample,
-      sample_format,
-      read_format_,
-      reinterpret_cast<uint64_t*>(event) + offset / sizeof(uint64_t));
-  if (size_written != expected_size) {
-    LOG(ERROR) << "Wrote " << size_written << " bytes, expected "
-               << expected_size << " bytes.";
-  }
-
-  return (size_written == expected_size);
+  return sample_info_reader_->WritePerfSampleInfo(sample, event);
 }
 
 bool PerfReader::ReadHeader(DataReader* data) {
@@ -1234,6 +795,11 @@ bool PerfReader::ReadEventAttr(DataReader* data, perf_event_attr* attr) {
     CHECK_EQ(read_format_, attr->read_format)
         << "Event type read format does not match read format of other event "
         << "types.";
+  }
+  if (sample_info_reader_.get() == nullptr) {
+    sample_info_reader_.reset(
+        new SampleInfoReader(sample_type_, read_format_,
+                             false /* read_cross_endian */));
   }
 
   return true;
@@ -2177,29 +1743,15 @@ void PerfReader::MaybeSwapEventFields(event_t* event, bool is_cross_endian) {
     LOG(FATAL) << "Unknown event type: " << type;
   }
 
-  // ReadPerfSampleFromData() will swap the additional perf_sample fields. Write
-  // it back to |event| with WritePerfSampleInfo() so they are stored in native
-  // byte order.
-  if (!IsSupportedEventType(type)) {
-    LOG(ERROR) << "Unsupported event type " << type;
-    return;
-  }
+  // ReadSampleInfo() will swap the additional perf_sample fields. Write them
+  // back to |event| with WriteSampleInfo() so they are stored in native byte
+  // order.
+  SampleInfoReader reader(sample_type_, read_format_, is_cross_endian);
 
-  uint64_t offset = GetPerfSampleDataOffset(*event);
   struct perf_sample sample_info;
-  size_t size_read = ReadPerfSampleFromData(
-      static_cast<perf_event_type>(type),
-      reinterpret_cast<const uint64_t*>(event) + offset / sizeof(uint64_t),
-      GetSampleFieldsForEventType(type, sample_type_),
-      read_format_,
-      true,
-      &sample_info);
-
-  size_t expected_size = event->header.size - offset;
-  CHECK_EQ(size_read, expected_size) << "Read " << size_read
-                                     << " bytes, expected " << expected_size
-                                     << " bytes.";
-  CHECK(WritePerfSampleInfo(sample_info, event))
+  CHECK(reader.ReadPerfSampleInfo(*event, &sample_info))
+      << "Error reading sample info from event.";
+  CHECK(reader.WritePerfSampleInfo(sample_info, event))
       << "Error writing sample info back to event.";
 }
 
@@ -2321,7 +1873,7 @@ bool PerfReader::LocalizeMMapFilenames(
     const string& new_filename = it->second;
     size_t old_len = GetUint64AlignedStringLength(filename);
     size_t new_len = GetUint64AlignedStringLength(new_filename);
-    size_t old_offset = GetPerfSampleDataOffset(*event);
+    size_t old_offset = SampleInfoReader::GetPerfSampleDataOffset(*event);
     size_t sample_size = event->header.size - old_offset;
 
     int size_change = new_len - old_len;
