@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ATTESTATION_SERVER_TPM_UTILITY_V1_H_
-#define ATTESTATION_SERVER_TPM_UTILITY_V1_H_
+#ifndef ATTESTATION_COMMON_TPM_UTILITY_V1_H_
+#define ATTESTATION_COMMON_TPM_UTILITY_V1_H_
 
-#include "attestation/server/tpm_utility.h"
+#include "attestation/common/tpm_utility.h"
 
 #include <string>
 
@@ -99,4 +99,4 @@ class TpmUtilityV1 : public TpmUtility {
 
 }  // namespace attestation
 
-#endif  // ATTESTATION_SERVER_TPM_UTILITY_V1_H_
+#endif  // ATTESTATION_COMMON_TPM_UTILITY_V1_H_

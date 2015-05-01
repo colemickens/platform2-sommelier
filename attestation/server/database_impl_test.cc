@@ -8,8 +8,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "attestation/common/mock_crypto_utility.h"
 #include "attestation/server/database_impl.h"
-#include "attestation/server/mock_crypto_utility.h"
 
 using testing::_;
 using testing::Invoke;

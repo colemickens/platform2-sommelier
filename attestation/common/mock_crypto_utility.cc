@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "attestation/server/mock_crypto_utility.h"
+#include "attestation/common/mock_crypto_utility.h"
 
 using ::testing::_;
 using ::testing::Invoke;

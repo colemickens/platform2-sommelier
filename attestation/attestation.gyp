@@ -9,7 +9,7 @@
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
         'protobuf',
-      ]
+      ],
     },
   },
   'targets': [
@@ -29,6 +29,31 @@
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },
+    # A library for common code.
+    {
+      'target_name': 'common_library',
+      'type': 'static_library',
+      # Use -fPIC so this code can be linked into a shared library.
+      'cflags!': ['-fPIE'],
+      'cflags': ['-fPIC'],
+      'sources': [
+        'common/crypto_utility_impl.cc',
+        'common/tpm_utility_v1.cc',
+      ],
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            'openssl',
+          ],
+        },
+        'libraries': [
+          '-ltspi',
+        ],
+      },
+      'dependencies': [
+        'proto_library',
+      ],
+    },
     # A library for client code.
     {
       'target_name': 'client_library',
@@ -41,7 +66,7 @@
       ],
       'dependencies': [
         'proto_library',
-      ]
+      ],
     },
     # A shared library for clients.
     {
@@ -52,7 +77,7 @@
       'dependencies': [
         'client_library',
         'proto_library',
-      ]
+      ],
     },
     # A client command line utility.
     {
@@ -63,6 +88,7 @@
       ],
       'dependencies': [
         'client_library',
+        'common_library',
         'proto_library',
       ]
     },
@@ -72,26 +98,18 @@
       'type': 'static_library',
       'sources': [
         'server/attestation_service.cc',
-        'server/crypto_utility_impl.cc',
         'server/dbus_service.cc',
         'server/database_impl.cc',
         'server/pkcs11_key_store.cc',
-        'server/tpm_utility_v1.cc',
       ],
       'all_dependent_settings': {
-        'variables': {
-          'deps': [
-            'openssl',
-          ],
-        },
         'libraries': [
           '-lchaps',
-          '-ltspi',
         ],
       },
       'dependencies': [
         'proto_library',
-      ]
+      ],
     },
     # The attestation daemon.
     {
@@ -101,6 +119,7 @@
         'server/main.cc',
       ],
       'dependencies': [
+        'common_library',
         'proto_library',
         'server_library',
       ],
@@ -122,17 +141,18 @@
           'sources': [
             'attestation_testrunner.cc',
             'client/dbus_proxy_test.cc',
+            'common/crypto_utility_impl_test.cc',
+            'common/mock_crypto_utility.cc',
+            'common/mock_tpm_utility.cc',
             'server/attestation_service_test.cc',
-            'server/crypto_utility_impl_test.cc',
             'server/database_impl_test.cc',
             'server/dbus_service_test.cc',
-            'server/mock_crypto_utility.cc',
             'server/mock_database.cc',
             'server/mock_key_store.cc',
-            'server/mock_tpm_utility.cc',
             'server/pkcs11_key_store_test.cc',
           ],
           'dependencies': [
+            'common_library',
             'client_library',
             'proto_library',
             'server_library',

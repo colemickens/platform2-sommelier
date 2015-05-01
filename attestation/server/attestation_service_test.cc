@@ -16,11 +16,11 @@
 #include <gtest/gtest.h>
 
 #include "attestation/common/attestation_ca.pb.h"
+#include "attestation/common/mock_crypto_utility.h"
+#include "attestation/common/mock_tpm_utility.h"
 #include "attestation/server/attestation_service.h"
-#include "attestation/server/mock_crypto_utility.h"
 #include "attestation/server/mock_database.h"
 #include "attestation/server/mock_key_store.h"
-#include "attestation/server/mock_tpm_utility.h"
 
 using chromeos::http::fake::ServerRequest;
 using chromeos::http::fake::ServerResponse;

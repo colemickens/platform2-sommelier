@@ -11,8 +11,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "attestation/server/crypto_utility_impl.h"
-#include "attestation/server/mock_tpm_utility.h"
+#include "attestation/common/crypto_utility_impl.h"
+#include "attestation/common/mock_tpm_utility.h"
 
 using testing::_;
 using testing::NiceMock;

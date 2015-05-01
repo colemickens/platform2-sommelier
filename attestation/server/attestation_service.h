@@ -17,14 +17,14 @@
 #include <chromeos/bind_lambda.h>
 #include <chromeos/http/http_transport.h>
 
-#include "attestation/server/crypto_utility.h"
-#include "attestation/server/crypto_utility_impl.h"
+#include "attestation/common/crypto_utility.h"
+#include "attestation/common/crypto_utility_impl.h"
+#include "attestation/common/tpm_utility.h"
+#include "attestation/common/tpm_utility_v1.h"
 #include "attestation/server/database.h"
 #include "attestation/server/database_impl.h"
 #include "attestation/server/key_store.h"
 #include "attestation/server/pkcs11_key_store.h"
-#include "attestation/server/tpm_utility.h"
-#include "attestation/server/tpm_utility_v1.h"
 
 namespace attestation {
 

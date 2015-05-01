@@ -13,7 +13,7 @@
 #include <base/files/file_path_watcher.h>
 #include <base/threading/thread_checker.h>
 
-#include "attestation/server/crypto_utility.h"
+#include "attestation/common/crypto_utility.h"
 
 namespace attestation {
 

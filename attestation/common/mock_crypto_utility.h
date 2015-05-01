@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef ATTESTATION_SERVER_MOCK_CRYPTO_UTILITY_H_
-#define ATTESTATION_SERVER_MOCK_CRYPTO_UTILITY_H_
+#ifndef ATTESTATION_COMMON_MOCK_CRYPTO_UTILITY_H_
+#define ATTESTATION_COMMON_MOCK_CRYPTO_UTILITY_H_
 
-#include "attestation/server/crypto_utility.h"
+#include "attestation/common/crypto_utility.h"
 
 #include <string>
 
@@ -41,4 +41,4 @@ class MockCryptoUtility : public CryptoUtility {
 
 }  // namespace attestation
 
-#endif  // ATTESTATION_SERVER_MOCK_CRYPTO_UTILITY_H_
+#endif  // ATTESTATION_COMMON_MOCK_CRYPTO_UTILITY_H_
