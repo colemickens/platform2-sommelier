@@ -893,4 +893,8 @@ std::string PairingTypeToString(PairingType id) {
   return EnumToString(id);
 }
 
+bool StringToAuthScope(const std::string& scope, AuthScope* id) {
+  return StringToEnum(scope, id);
+}
+
 }  // namespace privetd

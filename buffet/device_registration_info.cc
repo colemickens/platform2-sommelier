@@ -39,12 +39,13 @@ namespace buffet {
 namespace storage_keys {
 
 // Persistent keys
-const char kRefreshToken[]  = "refresh_token";
-const char kDeviceId[]      = "device_id";
-const char kRobotAccount[]  = "robot_account";
-const char kName[]          = "name";
-const char kDescription[]   = "description";
-const char kLocation[]      = "location";
+const char kRefreshToken[] = "refresh_token";
+const char kDeviceId[] = "device_id";
+const char kRobotAccount[] = "robot_account";
+const char kName[] = "name";
+const char kDescription[] = "description";
+const char kLocation[] = "location";
+const char kAnonymousAccessRole[] = "anonymous_access_role";
 
 }  // namespace storage_keys
 }  // namespace buffet
@@ -199,6 +200,10 @@ bool DeviceRegistrationInfo::Load() {
   if (dict->GetString(storage_keys::kLocation, &location))
     config_->set_location(location);
 
+  std::string access_role;
+  if (dict->GetString(storage_keys::kAnonymousAccessRole, &access_role))
+    config_->set_anonymous_access_role(access_role);
+
   dict->GetString(storage_keys::kRefreshToken, &refresh_token_);
   dict->GetString(storage_keys::kRobotAccount, &device_robot_account_);
 
@@ -228,6 +233,8 @@ bool DeviceRegistrationInfo::Save() const {
   dict.SetString(storage_keys::kName, config_->name());
   dict.SetString(storage_keys::kDescription, config_->description());
   dict.SetString(storage_keys::kLocation, config_->location());
+  dict.SetString(storage_keys::kAnonymousAccessRole,
+                 config_->anonymous_access_role());
 
   return storage_->Save(&dict);
 }
@@ -1033,6 +1040,7 @@ void DeviceRegistrationInfo::OnConfigChanged() {
   manager_->SetName(config_->name());
   manager_->SetDescription(config_->description());
   manager_->SetLocation(config_->location());
+  manager_->SetAnonymousAccessRole(config_->anonymous_access_role());
 }
 
 void DeviceRegistrationInfo::OnCommandDefsChanged() {

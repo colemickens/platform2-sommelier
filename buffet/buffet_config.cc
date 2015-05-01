@@ -39,6 +39,11 @@ std::string GetDeviceKind(const std::string& manifest_id) {
   return std::string();
 }
 
+bool IsValidAccessRole(const std::string& role) {
+  return role == "none" || role == "viewer" || role == "user" ||
+         role == "owner";
+}
+
 }  // namespace
 
 namespace buffet {
@@ -53,11 +58,11 @@ const char kServiceURL[] = "service_url";
 const char kName[] = "name";
 const char kDescription[] = "description";
 const char kLocation[] = "location";
+const char kAnonymousAccessRole[] = "anonymous_access_role";
 const char kOemName[] = "oem_name";
 const char kModelName[] = "model_name";
 const char kModelId[] = "model_id";
-
-const char kPollingPeriodMs[]      = "polling_period_ms";
+const char kPollingPeriodMs[] = "polling_period_ms";
 
 }  // namespace config_keys
 
@@ -102,11 +107,23 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
 
   store.GetString(config_keys::kDescription, &description_);
   store.GetString(config_keys::kLocation, &location_);
+
+  store.GetString(config_keys::kAnonymousAccessRole, &anonymous_access_role_);
+  CHECK(IsValidAccessRole(anonymous_access_role_))
+      << "Invalid role: " << anonymous_access_role_;
 }
 
 void BuffetConfig::set_name(const std::string& name) {
   CHECK(!name.empty());
   name_ = name;
+}
+
+void BuffetConfig::set_anonymous_access_role(const std::string& role) {
+  if (IsValidAccessRole(role)) {
+    anonymous_access_role_ = role;
+  } else {
+    LOG(ERROR) << "Invalid role: " << role;
+  }
 }
 
 }  // namespace buffet

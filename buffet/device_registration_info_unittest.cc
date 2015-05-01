@@ -198,6 +198,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     config_store.SetString("name",  "Coffee Pot");
     config_store.SetString("description", "Easy to clean");
     config_store.SetString("location", "Kitchen");
+    config_store.SetString("anonymous_access_role", "viewer");
     config_store.SetString("model_id", "AAAAA");
     config_store.SetString("oauth_url", test_data::kOAuthURL);
     config_store.SetString("service_url", test_data::kServiceURL);
@@ -247,6 +248,7 @@ TEST_F(DeviceRegistrationInfoTest, VerifySave) {
   data.SetString(storage_keys::kName, "k");
   data.SetString(storage_keys::kDescription, "l");
   data.SetString(storage_keys::kLocation, "m");
+  data.SetString(storage_keys::kAnonymousAccessRole, "user");
 
   storage_->Save(&data);
 

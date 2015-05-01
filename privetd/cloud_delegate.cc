@@ -122,8 +122,12 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
   AuthScope GetAnonymousMaxScope() const override {
-    // TODO(vitalybuka): read from buffet.
-    return manager_ ? AuthScope::kUser : AuthScope::kGuest;
+    if (manager_) {
+      AuthScope scope;
+      if (StringToAuthScope(manager_->anonymous_access_role(), &scope))
+        return scope;
+    }
+    return AuthScope::kGuest;
   }
 
   const ConnectionState& GetConnectionState() const override { return state_; }
@@ -255,7 +259,8 @@ class CloudDelegateImpl : public CloudDelegate {
         property_name == ManagerProxy::ModelIdName() ||
         property_name == ManagerProxy::NameName() ||
         property_name == ManagerProxy::DescriptionName() ||
-        property_name == ManagerProxy::LocationName()) {
+        property_name == ManagerProxy::LocationName() ||
+        property_name == ManagerProxy::AnonymousAccessRoleName()) {
       NotifyOnDeviceInfoChanged();
     }
 

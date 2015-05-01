@@ -80,6 +80,8 @@ class SecurityDelegate {
 bool StringToPairingType(const std::string& mode, PairingType* id);
 std::string PairingTypeToString(PairingType id);
 
+bool StringToAuthScope(const std::string& scope, AuthScope* id);
+
 }  // namespace privetd
 
 #endif  // PRIVETD_SECURITY_DELEGATE_H_
