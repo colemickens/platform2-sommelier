@@ -273,6 +273,7 @@ class SHILL_EXPORT NetlinkManager {
   FRIEND_TEST(NetlinkManagerTest, GetFamilyTimeout);
   FRIEND_TEST(NetlinkManagerTest, MessageHandler);
   FRIEND_TEST(NetlinkManagerTest, AckHandler);
+  FRIEND_TEST(NetlinkManagerTest, ErrorHandler);
   FRIEND_TEST(NetlinkManagerTest, MultipartMessageHandler);
   FRIEND_TEST(NetlinkManagerTest, OnInvalidRawNlMessageReceived);
   FRIEND_TEST(NetlinkManagerTest, TimeoutResponseHandlers);

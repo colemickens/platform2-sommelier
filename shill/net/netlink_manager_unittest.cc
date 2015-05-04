@@ -81,18 +81,21 @@ const uint32_t kGroupGummoNumber = 25;
 // longer valid
 
 const unsigned char kNL80211_CMD_DISCONNECT[] = {
-  0x30, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x30, 0x01, 0x00, 0x00, 0x08, 0x00, 0x01, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x03, 0x00,
-  0x04, 0x00, 0x00, 0x00, 0x06, 0x00, 0x36, 0x00,
-  0x02, 0x00, 0x00, 0x00, 0x04, 0x00, 0x47, 0x00,
-};
+    0x30, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x30, 0x01, 0x00, 0x00, 0x08, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x03, 0x00, 0x04, 0x00, 0x00, 0x00,
+    0x06, 0x00, 0x36, 0x00, 0x02, 0x00, 0x00, 0x00, 0x04, 0x00, 0x47, 0x00};
 
 const unsigned char kNLMSG_ACK[] = {
-  0x14, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0x00,
-  0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00 };
+    0x14, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01,
+    0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+// Error code 1.
+const unsigned char kNLMSG_Error[] = {
+    0x14, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01,
+    0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
 
 const char kGetFamilyCommandString[] = "CTRL_CMD_GETFAMILY";
 
@@ -582,6 +585,47 @@ TEST_F(NetlinkManagerTest, AckHandler) {
   received_response_message->nlmsg_seq = received_ack_message->nlmsg_seq;
   EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(0);
   netlink_manager_->OnNlMessageReceived(received_response_message);
+}
+
+TEST_F(NetlinkManagerTest, ErrorHandler) {
+  Nl80211Message sent_message(CTRL_CMD_GETFAMILY, kGetFamilyCommandString);
+  MockHandler80211 handler_sent_1;
+  MockHandlerNetlinkAck handler_sent_2;
+  MockHandlerNetlinkAuxilliary handler_sent_3;
+
+  // Send the message and receive a netlink reply.
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillRepeatedly(Return(true));
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &sent_message, handler_sent_1.on_netlink_message(),
+      handler_sent_2.on_netlink_message(),
+      handler_sent_3.on_netlink_message()));
+  unsigned char message_memory_1[sizeof(kNL80211_CMD_DISCONNECT)];
+  memcpy(message_memory_1, kNL80211_CMD_DISCONNECT,
+         sizeof(kNL80211_CMD_DISCONNECT));
+  nlmsghdr *received_response_message =
+      reinterpret_cast<nlmsghdr *>(message_memory_1);
+  received_response_message->nlmsg_seq =
+      netlink_socket_->GetLastSequenceNumber();
+  EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
+  netlink_manager_->OnNlMessageReceived(received_response_message);
+
+  // Send the message again, but receive an error response.
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &sent_message, handler_sent_1.on_netlink_message(),
+      handler_sent_2.on_netlink_message(),
+      handler_sent_3.on_netlink_message()));
+  unsigned char message_memory_2[sizeof(kNLMSG_Error)];
+  memcpy(message_memory_2, kNLMSG_Error, sizeof(kNLMSG_Error));
+  nlmsghdr *received_error_message =
+      reinterpret_cast<nlmsghdr *>(message_memory_2);
+  received_error_message->nlmsg_seq = netlink_socket_->GetLastSequenceNumber();
+  EXPECT_CALL(handler_sent_3,
+              OnErrorHandler(NetlinkManager::kErrorFromKernel, _))
+      .Times(1);
+  netlink_manager_->OnNlMessageReceived(received_error_message);
+
+  // Put the state of the singleton back where it was.
+  Reset();
 }
 
 TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
