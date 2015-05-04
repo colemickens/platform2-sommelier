@@ -18,7 +18,6 @@
 namespace buffet {
 
 using unittests::CreateDictionaryValue;
-using unittests::ValueToString;
 
 class StatePackageTestHelper {
  public:
@@ -86,16 +85,41 @@ TEST(StatePackage, AddSchemaFromJson_OnEmpty) {
   ASSERT_TRUE(package.AddSchemaFromJson(GetTestSchema().get(), nullptr));
   EXPECT_EQ(4, GetTypes(package).GetProps().size());
   EXPECT_EQ(4, GetValues(package).size());
-  EXPECT_EQ("{'color':{'type':'string'},"
-            "'direction':{'additionalProperties':false,'properties':{"
-              "'altitude':{'maximum':90.0,'type':'number'},"
-              "'azimuth':{'type':'number'}},"
-              "'type':'object'},"
-            "'iso':{'enum':[50,100,200,400],'type':'integer'},"
-            "'light':{'type':'boolean'}}",
-            ValueToString(GetTypes(package).ToJson(true, nullptr).get()));
-  EXPECT_EQ("{'color':'','direction':{},'iso':0,'light':false}",
-            ValueToString(package.GetValuesAsJson(nullptr).get()));
+
+  auto expected = R"({
+    'color': {
+      'type': 'string'
+    },
+    'direction': {
+      'additionalProperties': false,
+      'properties': {
+        'altitude': {
+          'maximum': 90.0,
+          'type': 'number'
+        },
+        'azimuth': {
+          'type': 'number'
+        }
+      },
+      'type': 'object'
+    },
+    'iso': {
+      'enum': [50, 100, 200, 400],
+      'type': 'integer'
+    },
+    'light': {
+      'type': 'boolean'
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *GetTypes(package).ToJson(true, nullptr));
+
+  expected = R"({
+    'color': '',
+    'direction': {},
+    'iso': 0,
+    'light': false
+  })";
+  EXPECT_JSON_EQ(expected, *package.GetValuesAsJson(nullptr));
 }
 
 TEST(StatePackage, AddValuesFromJson_OnEmpty) {
@@ -103,11 +127,16 @@ TEST(StatePackage, AddValuesFromJson_OnEmpty) {
   ASSERT_TRUE(package.AddSchemaFromJson(GetTestSchema().get(), nullptr));
   ASSERT_TRUE(package.AddValuesFromJson(GetTestValues().get(), nullptr));
   EXPECT_EQ(4, GetValues(package).size());
-  EXPECT_EQ("{'color':'white',"
-            "'direction':{'altitude':89.9,'azimuth':57.2957795},"
-            "'iso':200,"
-            "'light':true}",
-            ValueToString(package.GetValuesAsJson(nullptr).get()));
+  auto expected = R"({
+    'color': 'white',
+    'direction': {
+      'altitude': 89.9,
+      'azimuth': 57.2957795
+    },
+    'iso': 200,
+    'light': true
+  })";
+  EXPECT_JSON_EQ(expected, *package.GetValuesAsJson(nullptr));
 }
 
 TEST_F(StatePackageTest, AddSchemaFromJson_AddMore) {
@@ -115,21 +144,48 @@ TEST_F(StatePackageTest, AddSchemaFromJson_AddMore) {
   ASSERT_TRUE(package_->AddSchemaFromJson(dict.get(), nullptr));
   EXPECT_EQ(5, GetTypes(*package_).GetProps().size());
   EXPECT_EQ(5, GetValues(*package_).size());
-  EXPECT_EQ("{'brightness':{'enum':['low','medium','high'],'type':'string'},"
-            "'color':{'type':'string'},"
-            "'direction':{'additionalProperties':false,'properties':{"
-              "'altitude':{'maximum':90.0,'type':'number'},"
-              "'azimuth':{'type':'number'}},"
-              "'type':'object'},"
-            "'iso':{'enum':[50,100,200,400],'type':'integer'},"
-            "'light':{'type':'boolean'}}",
-            ValueToString(GetTypes(*package_).ToJson(true, nullptr).get()));
-  EXPECT_EQ("{'brightness':'',"
-            "'color':'white',"
-            "'direction':{'altitude':89.9,'azimuth':57.2957795},"
-            "'iso':200,"
-            "'light':true}",
-            ValueToString(package_->GetValuesAsJson(nullptr).get()));
+  auto expected = R"({
+    'brightness': {
+      'enum': ['low', 'medium', 'high'],
+      'type': 'string'
+    },
+    'color': {
+      'type': 'string'
+    },
+    'direction': {
+      'additionalProperties': false,
+      'properties': {
+        'altitude': {
+          'maximum': 90.0,
+          'type': 'number'
+        },
+        'azimuth': {
+          'type': 'number'
+        }
+      },
+      'type': 'object'
+    },
+    'iso': {
+      'enum': [50, 100, 200, 400],
+      'type': 'integer'
+    },
+    'light': {
+      'type': 'boolean'
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *GetTypes(*package_).ToJson(true, nullptr));
+
+  expected = R"({
+    'brightness': '',
+    'color': 'white',
+    'direction': {
+      'altitude': 89.9,
+      'azimuth': 57.2957795
+    },
+    'iso': 200,
+    'light': true
+  })";
+  EXPECT_JSON_EQ(expected, *package_->GetValuesAsJson(nullptr));
 }
 
 TEST_F(StatePackageTest, AddValuesFromJson_AddMore) {
@@ -138,12 +194,17 @@ TEST_F(StatePackageTest, AddValuesFromJson_AddMore) {
   dict = CreateDictionaryValue("{'brightness':'medium'}");
   ASSERT_TRUE(package_->AddValuesFromJson(dict.get(), nullptr));
   EXPECT_EQ(5, GetValues(*package_).size());
-  EXPECT_EQ("{'brightness':'medium',"
-            "'color':'white',"
-            "'direction':{'altitude':89.9,'azimuth':57.2957795},"
-            "'iso':200,"
-            "'light':true}",
-            ValueToString(package_->GetValuesAsJson(nullptr).get()));
+  auto expected = R"({
+    'brightness': 'medium',
+    'color': 'white',
+    'direction': {
+      'altitude': 89.9,
+      'azimuth': 57.2957795
+    },
+    'iso': 200,
+    'light': true
+  })";
+  EXPECT_JSON_EQ(expected, *package_->GetValuesAsJson(nullptr));
 }
 
 TEST_F(StatePackageTest, AddSchemaFromJson_Error_Redefined) {
@@ -214,11 +275,17 @@ TEST_F(StatePackageTest, SetPropertyValue_Object) {
     {"azimuth", double{15.0}},
   };
   EXPECT_TRUE(package_->SetPropertyValue("direction", direction, nullptr));
-  EXPECT_EQ("{'color':'white',"
-            "'direction':{'altitude':45.0,'azimuth':15.0},"
-            "'iso':200,"
-            "'light':true}",
-            ValueToString(package_->GetValuesAsJson(nullptr).get()));
+
+  auto expected = R"({
+    'color': 'white',
+    'direction': {
+      'altitude': 45.0,
+      'azimuth': 15.0
+    },
+    'iso': 200,
+    'light': true
+  })";
+  EXPECT_JSON_EQ(expected, *package_->GetValuesAsJson(nullptr));
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_TypeMismatch) {

@@ -22,38 +22,32 @@ namespace buffet {
 
 using unittests::CreateDictionaryValue;
 using unittests::CreateValue;
-using unittests::ValueToString;
 using chromeos::VariantDictionary;
 
 TEST(CommandSchemaUtils, TypedValueToJson_Scalar) {
-  EXPECT_EQ("true", ValueToString(TypedValueToJson(true, nullptr).get()));
-  EXPECT_EQ("false", ValueToString(TypedValueToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("true", *TypedValueToJson(true, nullptr));
+  EXPECT_JSON_EQ("false", *TypedValueToJson(false, nullptr));
 
-  EXPECT_EQ("0", ValueToString(TypedValueToJson(0, nullptr).get()));
-  EXPECT_EQ("-10", ValueToString(TypedValueToJson(-10, nullptr).get()));
-  EXPECT_EQ("20", ValueToString(TypedValueToJson(20, nullptr).get()));
+  EXPECT_JSON_EQ("0", *TypedValueToJson(0, nullptr));
+  EXPECT_JSON_EQ("-10", *TypedValueToJson(-10, nullptr));
+  EXPECT_JSON_EQ("20", *TypedValueToJson(20, nullptr));
 
-  EXPECT_EQ("0.0", ValueToString(TypedValueToJson(0.0, nullptr).get()));
-  EXPECT_EQ("1.2", ValueToString(TypedValueToJson(1.2, nullptr).get()));
+  EXPECT_JSON_EQ("0.0", *TypedValueToJson(0.0, nullptr));
+  EXPECT_JSON_EQ("1.2", *TypedValueToJson(1.2, nullptr));
 
-  EXPECT_EQ("'abc'",
-            ValueToString(TypedValueToJson(std::string("abc"), nullptr).get()));
+  EXPECT_JSON_EQ("'abc'", *TypedValueToJson(std::string("abc"), nullptr));
 
   std::vector<bool> bool_array{true, false};
-  EXPECT_EQ("[true,false]",
-            ValueToString(TypedValueToJson(bool_array, nullptr).get()));
+  EXPECT_JSON_EQ("[true,false]", *TypedValueToJson(bool_array, nullptr));
 
   std::vector<int> int_array{1, 2, 5};
-  EXPECT_EQ("[1,2,5]",
-            ValueToString(TypedValueToJson(int_array, nullptr).get()));
+  EXPECT_JSON_EQ("[1,2,5]", *TypedValueToJson(int_array, nullptr));
 
   std::vector<double> dbl_array{1.1, 2.2};
-  EXPECT_EQ("[1.1,2.2]",
-            ValueToString(TypedValueToJson(dbl_array, nullptr).get()));
+  EXPECT_JSON_EQ("[1.1,2.2]", *TypedValueToJson(dbl_array, nullptr));
 
   std::vector<std::string> str_array{"a", "bc"};
-  EXPECT_EQ("['a','bc']",
-            ValueToString(TypedValueToJson(str_array, nullptr).get()));
+  EXPECT_JSON_EQ("['a','bc']", *TypedValueToJson(str_array, nullptr));
 }
 
 TEST(CommandSchemaUtils, TypedValueToJson_Object) {
@@ -62,8 +56,8 @@ TEST(CommandSchemaUtils, TypedValueToJson_Object) {
 
   object.insert(std::make_pair("width", int_type.CreateValue(640, nullptr)));
   object.insert(std::make_pair("height", int_type.CreateValue(480, nullptr)));
-  EXPECT_EQ("{'height':480,'width':640}",
-            ValueToString(TypedValueToJson(object, nullptr).get()));
+  EXPECT_JSON_EQ("{'height':480,'width':640}",
+                 *TypedValueToJson(object, nullptr));
 }
 
 TEST(CommandSchemaUtils, TypedValueToJson_Array) {
@@ -72,7 +66,7 @@ TEST(CommandSchemaUtils, TypedValueToJson_Array) {
 
   arr.push_back(int_type.CreateValue(640, nullptr));
   arr.push_back(int_type.CreateValue(480, nullptr));
-  EXPECT_EQ("[640,480]", ValueToString(TypedValueToJson(arr, nullptr).get()));
+  EXPECT_JSON_EQ("[640,480]", *TypedValueToJson(arr, nullptr));
 }
 
 TEST(CommandSchemaUtils, TypedValueFromJson_Bool) {

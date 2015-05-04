@@ -11,6 +11,7 @@
 namespace buffet {
 
 using unittests::CreateDictionaryValue;
+using unittests::IsEqualValue;
 
 TEST(CommandDictionary, Empty) {
   CommandDictionary dict;
@@ -206,7 +207,7 @@ TEST(CommandDictionary, GetCommandsAsJson) {
   CommandDictionary base_dict;
   base_dict.LoadCommands(*json_base, "base", nullptr, nullptr);
 
-  auto json = unittests::CreateDictionaryValue(R"({
+  auto json = CreateDictionaryValue(R"({
     'base': {
       'reboot': {
         'parameters': {'delay': {'minimum': 10}},
@@ -225,24 +226,51 @@ TEST(CommandDictionary, GetCommandsAsJson) {
 
   json = dict.GetCommandsAsJson(
       [](const CommandDefinition* def) { return true; }, false, nullptr);
-  EXPECT_NE(nullptr, json.get());
-  EXPECT_EQ(
-      "{'base':{'reboot':{'parameters':{'delay':{'minimum':10}}}},"
-      "'robot':{'_jump':{'parameters':{'_height':'integer'}}}}",
-      unittests::ValueToString(json.get()));
+  ASSERT_NE(nullptr, json.get());
+  auto expected = R"({
+    'base': {
+      'reboot': {
+        'parameters': {'delay': {'minimum': 10}}
+      }
+    },
+    'robot': {
+      '_jump': {
+        'parameters': {'_height': 'integer'}
+      }
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *json);
 
   json = dict.GetCommandsAsJson(
       [](const CommandDefinition* def) { return true; }, true, nullptr);
-  EXPECT_NE(nullptr, json.get());
-  EXPECT_EQ(
-      "{'base':{'reboot':{'parameters':{'delay':{"
-      "'maximum':100,'minimum':10,'type':'integer'}}}},"
-      "'robot':{'_jump':{'parameters':{'_height':{'type':'integer'}}}}}",
-      unittests::ValueToString(json.get()));
+  ASSERT_NE(nullptr, json.get());
+  expected = R"({
+    'base': {
+      'reboot': {
+        'parameters': {
+          'delay': {
+            'maximum': 100,
+            'minimum': 10,
+            'type': 'integer'
+          }
+        }
+      }
+    },
+    'robot': {
+      '_jump': {
+        'parameters': {
+          '_height': {
+           'type': 'integer'
+          }
+        }
+      }
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *json);
 }
 
 TEST(CommandDictionary, GetCommandsAsJsonWithVisibility) {
-  auto json = unittests::CreateDictionaryValue(R"({
+  auto json = CreateDictionaryValue(R"({
     'test': {
       'command1': {
         'parameters': {},
@@ -292,56 +320,60 @@ TEST(CommandDictionary, GetCommandsAsJsonWithVisibility) {
   json = dict.GetCommandsAsJson(
       [](const CommandDefinition* def) { return true; }, false, nullptr);
   ASSERT_NE(nullptr, json.get());
-  EXPECT_EQ(
-      "{'test':{"
-      "'command1':{'parameters':{}},"
-      "'command2':{'parameters':{}},"
-      "'command3':{'parameters':{}},"
-      "'command4':{'parameters':{}},"
-      "'command5':{'parameters':{}},"
-      "'command6':{'parameters':{}},"
-      "'command7':{'parameters':{}},"
-      "'command8':{'parameters':{}}"
-      "}}",
-      unittests::ValueToString(json.get()));
+  auto expected = R"({
+    'test': {
+      'command1': {'parameters': {}},
+      'command2': {'parameters': {}},
+      'command3': {'parameters': {}},
+      'command4': {'parameters': {}},
+      'command5': {'parameters': {}},
+      'command6': {'parameters': {}},
+      'command7': {'parameters': {}},
+      'command8': {'parameters': {}}
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *json);
 
   json = dict.GetCommandsAsJson(
       [](const CommandDefinition* def) { return def->GetVisibility().local; },
       false, nullptr);
   ASSERT_NE(nullptr, json.get());
-  EXPECT_EQ(
-      "{'test':{"
-      "'command2':{'parameters':{}},"
-      "'command4':{'parameters':{}},"
-      "'command6':{'parameters':{}},"
-      "'command8':{'parameters':{}}"
-      "}}",
-      unittests::ValueToString(json.get()));
+  expected = R"({
+    'test': {
+      'command2': {'parameters': {}},
+      'command4': {'parameters': {}},
+      'command6': {'parameters': {}},
+      'command8': {'parameters': {}}
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *json);
 
   json = dict.GetCommandsAsJson(
       [](const CommandDefinition* def) { return def->GetVisibility().cloud; },
       false, nullptr);
   ASSERT_NE(nullptr, json.get());
-  EXPECT_EQ(
-      "{'test':{"
-      "'command3':{'parameters':{}},"
-      "'command4':{'parameters':{}},"
-      "'command7':{'parameters':{}},"
-      "'command8':{'parameters':{}}"
-      "}}",
-      unittests::ValueToString(json.get()));
+  expected = R"({
+    'test': {
+      'command3': {'parameters': {}},
+      'command4': {'parameters': {}},
+      'command7': {'parameters': {}},
+      'command8': {'parameters': {}}
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *json);
 
   json = dict.GetCommandsAsJson(
     [](const CommandDefinition* def) {
       return def->GetVisibility().local && def->GetVisibility().cloud;
     }, false, nullptr);
   ASSERT_NE(nullptr, json.get());
-  EXPECT_EQ(
-      "{'test':{"
-      "'command4':{'parameters':{}},"
-      "'command8':{'parameters':{}}"
-      "}}",
-      unittests::ValueToString(json.get()));
+  expected = R"({
+    'test': {
+      'command4': {'parameters': {}},
+      'command8': {'parameters': {}}
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *json);
 }
 
 TEST(CommandDictionary, LoadCommandsWithVisibility) {

@@ -400,12 +400,29 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
     base::DictionaryValue* commandDefs = nullptr;
     EXPECT_TRUE(json->GetDictionary("deviceDraft.commandDefs", &commandDefs));
     EXPECT_FALSE(commandDefs->empty());
-    EXPECT_EQ(
-        "{'base':{'reboot':{'parameters':{"
-        "'delay':{'minimum':10,'type':'integer'}}}},"
-        "'robot':{'_jump':{'parameters':{"
-        "'_height':{'type':'integer'}}}}}",
-        unittests::ValueToString(commandDefs));
+
+    auto expected = R"({
+      'base': {
+        'reboot': {
+          'parameters': {
+            'delay': {
+              'minimum': 10,
+              'type': 'integer'
+            }
+          }
+        }
+      },
+      'robot': {
+        '_jump': {
+          'parameters': {
+            '_height': {
+              'type': 'integer'
+            }
+          }
+        }
+      }
+    })";
+    EXPECT_JSON_EQ(expected, *commandDefs);
 
     base::DictionaryValue json_resp;
     json_resp.SetString("id", test_data::kClaimTicketId);

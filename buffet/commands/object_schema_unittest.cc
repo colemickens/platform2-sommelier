@@ -23,7 +23,6 @@ namespace buffet {
 
 using unittests::CreateValue;
 using unittests::CreateDictionaryValue;
-using unittests::ValueToString;
 
 namespace {
 
@@ -69,32 +68,26 @@ TEST(CommandSchema, IntPropType_Types) {
 
 TEST(CommandSchema, IntPropType_ToJson) {
   IntPropType prop;
-  EXPECT_EQ("'integer'", ValueToString(prop.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'type':'integer'}",
-            ValueToString(prop.ToJson(true, nullptr).get()));
+  EXPECT_JSON_EQ("'integer'", *prop.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'type':'integer'}", *prop.ToJson(true, nullptr));
   IntPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
-  EXPECT_EQ("{}", ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{}", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'minimum':3}").get(),
                   &prop, nullptr);
-  EXPECT_EQ("{'minimum':3}",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{'minimum':3}", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'maximum':-7}").get(),
                   &prop, nullptr);
-  EXPECT_EQ("{'maximum':-7}",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{'maximum':-7}", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'minimum':0,'maximum':5}").get(),
                   &prop, nullptr);
-  EXPECT_EQ("{'maximum':5,'minimum':0}",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{'maximum':5,'minimum':0}", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'enum':[1,2,3]}").get(), &prop,
                   nullptr);
-  EXPECT_EQ("[1,2,3]",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("[1,2,3]", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'default':123}").get(),
                   &prop, nullptr);
-  EXPECT_EQ("{'default':123}",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{'default':123}", *param2.ToJson(false, nullptr));
 }
 
 TEST(CommandSchema, IntPropType_FromJson) {
@@ -195,21 +188,19 @@ TEST(CommandSchema, BoolPropType_Types) {
 
 TEST(CommandSchema, BoolPropType_ToJson) {
   BooleanPropType prop;
-  EXPECT_EQ("'boolean'", ValueToString(prop.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'type':'boolean'}",
-            ValueToString(prop.ToJson(true, nullptr).get()));
+  EXPECT_JSON_EQ("'boolean'", *prop.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'type':'boolean'}", *prop.ToJson(true, nullptr));
   BooleanPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
-  EXPECT_EQ("{}", ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{}", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'enum':[true,false]}").get(), &prop,
                   nullptr);
-  EXPECT_EQ("[true,false]", ValueToString(param2.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'enum':[true,false],'type':'boolean'}",
-            ValueToString(param2.ToJson(true, nullptr).get()));
+  EXPECT_JSON_EQ("[true,false]", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'enum':[true,false],'type':'boolean'}",
+                 *param2.ToJson(true, nullptr));
   param2.FromJson(CreateDictionaryValue("{'default':true}").get(),
                   &prop, nullptr);
-  EXPECT_EQ("{'default':true}",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{'default':true}", *param2.ToJson(false, nullptr));
 }
 
 TEST(CommandSchema, BoolPropType_FromJson) {
@@ -288,28 +279,24 @@ TEST(CommandSchema, DoublePropType_Types) {
 
 TEST(CommandSchema, DoublePropType_ToJson) {
   DoublePropType prop;
-  EXPECT_EQ("'number'", ValueToString(prop.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'type':'number'}",
-            ValueToString(prop.ToJson(true, nullptr).get()));
+  EXPECT_JSON_EQ("'number'", *prop.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'type':'number'}", *prop.ToJson(true, nullptr));
   DoublePropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
-  EXPECT_EQ("{}", ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{}", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'minimum':3}").get(), &prop,
                   nullptr);
-  EXPECT_EQ("{'minimum':3.0}",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{'minimum':3.0}", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'maximum':-7}").get(), &prop,
                   nullptr);
-  EXPECT_EQ("{'maximum':-7.0}",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{'maximum':-7.0}", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'minimum':0,'maximum':5}").get(),
                   &prop, nullptr);
-  EXPECT_EQ("{'maximum':5.0,'minimum':0.0}",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{'maximum':5.0,'minimum':0.0}",
+                 *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'default':12.3}").get(),
                   &prop, nullptr);
-  EXPECT_EQ("{'default':12.3}",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{'default':12.3}", *param2.ToJson(false, nullptr));
 }
 
 TEST(CommandSchema, DoublePropType_FromJson) {
@@ -411,28 +398,24 @@ TEST(CommandSchema, StringPropType_Types) {
 
 TEST(CommandSchema, StringPropType_ToJson) {
   StringPropType prop;
-  EXPECT_EQ("'string'", ValueToString(prop.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'type':'string'}",
-            ValueToString(prop.ToJson(true, nullptr).get()));
+  EXPECT_JSON_EQ("'string'", *prop.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'type':'string'}", *prop.ToJson(true, nullptr));
   StringPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
-  EXPECT_EQ("{}", ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{}", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'minLength':3}").get(), &prop,
                   nullptr);
-  EXPECT_EQ("{'minLength':3}",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{'minLength':3}", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'maxLength':7}").get(), &prop,
                   nullptr);
-  EXPECT_EQ("{'maxLength':7}",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{'maxLength':7}", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'minLength':0,'maxLength':5}").get(),
                   &prop, nullptr);
-  EXPECT_EQ("{'maxLength':5,'minLength':0}",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{'maxLength':5,'minLength':0}",
+                 *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'default':'abcd'}").get(),
                   &prop, nullptr);
-  EXPECT_EQ("{'default':'abcd'}",
-            ValueToString(param2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{'default':'abcd'}", *param2.ToJson(false, nullptr));
 }
 
 TEST(CommandSchema, StringPropType_FromJson) {
@@ -538,14 +521,15 @@ TEST(CommandSchema, ObjectPropType_Types) {
 
 TEST(CommandSchema, ObjectPropType_ToJson) {
   ObjectPropType prop;
-  EXPECT_EQ("{'additionalProperties':false,'properties':{}}",
-            ValueToString(prop.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'additionalProperties':false,'properties':{},'type':'object'}",
-            ValueToString(prop.ToJson(true, nullptr).get()));
+  EXPECT_JSON_EQ("{'additionalProperties':false,'properties':{}}",
+                 *prop.ToJson(false, nullptr));
+  EXPECT_JSON_EQ(
+      "{'additionalProperties':false,'properties':{},'type':'object'}",
+      *prop.ToJson(true, nullptr));
   EXPECT_FALSE(prop.IsBasedOnSchema());
   ObjectPropType prop2;
   prop2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
-  EXPECT_EQ("{}", ValueToString(prop2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{}", *prop2.ToJson(false, nullptr));
   EXPECT_TRUE(prop2.IsBasedOnSchema());
 
   auto schema = ObjectSchema::Create();
@@ -554,44 +538,106 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
   pw->GetString()->AddLengthConstraint(6, 100);
   schema->AddProp("password", std::move(pw));
   prop2.SetObjectSchema(std::move(schema));
-  EXPECT_EQ("{'additionalProperties':false,'properties':{'expires':'integer',"
-            "'password':{'maxLength':100,'minLength':6}}}",
-            ValueToString(prop2.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'additionalProperties':false,'properties':{"
-            "'expires':{'type':'integer'},"
-            "'password':{'maxLength':100,'minLength':6,'type':'string'}},"
-            "'type':'object'}",
-            ValueToString(prop2.ToJson(true, nullptr).get()));
+  auto expected = R"({
+    'additionalProperties': false,
+    'properties': {
+      'expires': 'integer',
+      'password': {
+        'maxLength': 100,
+        'minLength': 6
+      }
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *prop2.ToJson(false, nullptr));
+
+  expected = R"({
+    'additionalProperties': false,
+    'properties': {
+      'expires': {
+        'type': 'integer'
+      },
+      'password': {
+        'maxLength': 100,
+        'minLength': 6,
+        'type': 'string'
+      }
+    },
+    'type': 'object'
+  })";
+  EXPECT_JSON_EQ(expected, *prop2.ToJson(true, nullptr));
 
   ObjectPropType prop3;
   ASSERT_TRUE(prop3.FromJson(CreateDictionaryValue(
       "{'default':{'expires':3,'password':'abracadabra'}}").get(), &prop2,
       nullptr));
-  EXPECT_EQ("{'default':{'expires':3,'password':'abracadabra'}}",
-            ValueToString(prop3.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'additionalProperties':false,"
-            "'default':{'expires':3,'password':'abracadabra'},"
-            "'properties':{'expires':{'type':'integer'},"
-            "'password':{'maxLength':100,'minLength':6,'type':'string'}},"
-            "'type':'object'}",
-            ValueToString(prop3.ToJson(true, nullptr).get()));
+  expected = R"({
+    'default': {
+      'expires': 3,
+      'password': 'abracadabra'
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *prop3.ToJson(false, nullptr));
+
+  expected = R"({
+    'additionalProperties': false,
+    'default': {
+      'expires': 3,
+      'password': 'abracadabra'
+    },
+    'properties': {
+      'expires': {
+        'type': 'integer'
+      },
+      'password': {
+        'maxLength': 100,
+        'minLength': 6,
+        'type': 'string'
+      }
+    },
+    'type': 'object'
+  })";
+  EXPECT_JSON_EQ(expected, *prop3.ToJson(true, nullptr));
 
   ObjectPropType prop4;
   ASSERT_TRUE(prop4.FromJson(CreateDictionaryValue(
       "{'additionalProperties':true,"
       "'default':{'expires':3,'password':'abracadabra'}}").get(), &prop2,
       nullptr));
-  EXPECT_EQ("{'additionalProperties':true,"
-            "'default':{'expires':3,'password':'abracadabra'},"
-            "'properties':{'expires':'integer',"
-            "'password':{'maxLength':100,'minLength':6}}}",
-            ValueToString(prop4.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'additionalProperties':true,"
-            "'default':{'expires':3,'password':'abracadabra'},"
-            "'properties':{'expires':{'type':'integer'},"
-            "'password':{'maxLength':100,'minLength':6,'type':'string'}},"
-            "'type':'object'}",
-            ValueToString(prop4.ToJson(true, nullptr).get()));
+  expected = R"({
+    'additionalProperties': true,
+    'default': {
+      'expires': 3,
+      'password': 'abracadabra'
+    },
+    'properties': {
+      'expires': 'integer',
+      'password': {
+        'maxLength': 100,
+        'minLength': 6
+      }
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *prop4.ToJson(false, nullptr));
+
+  expected = R"({
+    'additionalProperties': true,
+    'default': {
+      'expires': 3,
+      'password': 'abracadabra'
+    },
+    'properties': {
+      'expires': {
+        'type': 'integer'
+      },
+      'password': {
+        'maxLength': 100,
+        'minLength': 6,
+        'type': 'string'
+      }
+    },
+    'type': 'object'
+  })";
+  EXPECT_JSON_EQ(expected, *prop4.ToJson(true, nullptr));
 }
 
 TEST(CommandSchema, ObjectPropType_FromJson) {
@@ -725,21 +771,20 @@ TEST(CommandSchema, ArrayPropType_Types) {
 TEST(CommandSchema, ArrayPropType_ToJson) {
   ArrayPropType prop;
   prop.SetItemType(PropType::Create(ValueType::Int));
-  EXPECT_EQ("{'items':'integer'}",
-            ValueToString(prop.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'items':{'type':'integer'},'type':'array'}",
-            ValueToString(prop.ToJson(true, nullptr).get()));
+  EXPECT_JSON_EQ("{'items':'integer'}", *prop.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'items':{'type':'integer'},'type':'array'}",
+                 *prop.ToJson(true, nullptr));
   EXPECT_FALSE(prop.IsBasedOnSchema());
   ArrayPropType prop2;
   prop2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
-  EXPECT_EQ("{}", ValueToString(prop2.ToJson(false, nullptr).get()));
+  EXPECT_JSON_EQ("{}", *prop2.ToJson(false, nullptr));
   EXPECT_TRUE(prop2.IsBasedOnSchema());
   prop2.FromJson(CreateDictionaryValue("{'default':[1,2,3]}").get(),
                  &prop, nullptr);
-  EXPECT_EQ("{'default':[1,2,3]}",
-            ValueToString(prop2.ToJson(false, nullptr).get()));
-  EXPECT_EQ("{'default':[1,2,3],'items':{'type':'integer'},'type':'array'}",
-            ValueToString(prop2.ToJson(true, nullptr).get()));
+  EXPECT_JSON_EQ("{'default':[1,2,3]}", *prop2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ(
+      "{'default':[1,2,3],'items':{'type':'integer'},'type':'array'}",
+      *prop2.ToJson(true, nullptr));
 }
 
 TEST(CommandSchema, ArrayPropType_FromJson) {
@@ -816,7 +861,7 @@ TEST(CommandSchema, ArrayPropType_CreateValue) {
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
   EXPECT_EQ(arr, val->GetValueAsAny().Get<native_types::Array>());
-  EXPECT_EQ("[]", ValueToString(val->ToJson(nullptr).get()));
+  EXPECT_JSON_EQ("[]", *val->ToJson(nullptr));
 
   IntPropType int_type;
   ObjectPropType obj_type;
@@ -840,8 +885,8 @@ TEST(CommandSchema, ArrayPropType_CreateValue) {
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
   EXPECT_EQ(arr, val->GetValueAsAny().Get<native_types::Array>());
-  EXPECT_EQ("[{'height':20,'width':10},{'height':18,'width':17}]",
-            ValueToString(val->ToJson(nullptr).get()));
+  EXPECT_JSON_EQ("[{'height':20,'width':10},{'height':18,'width':17}]",
+                 *val->ToJson(nullptr));
 
   val = prop.CreateValue("blah", &error);
   EXPECT_EQ(nullptr, val.get());

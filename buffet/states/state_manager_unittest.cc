@@ -21,7 +21,6 @@ namespace buffet {
 using testing::_;
 using testing::Return;
 using unittests::CreateDictionaryValue;
-using unittests::ValueToString;
 
 namespace {
 std::unique_ptr<base::DictionaryValue> GetTestSchema() {
@@ -53,16 +52,14 @@ class StateManagerTest : public ::testing::Test {
     // Initial expectations.
     EXPECT_CALL(mock_state_change_queue_, IsEmpty()).Times(0);
     EXPECT_CALL(mock_state_change_queue_, NotifyPropertiesUpdated(_, _))
-      .Times(0);
+        .Times(0);
     EXPECT_CALL(mock_state_change_queue_, GetAndClearRecordedStateChanges())
-      .Times(0);
+        .Times(0);
     mgr_.reset(new StateManager(&mock_state_change_queue_));
     LoadStateDefinition(GetTestSchema().get(), "default", nullptr);
     ASSERT_TRUE(mgr_->LoadStateDefaults(*GetTestValues().get(), nullptr));
   }
-  void TearDown() override {
-    mgr_.reset();
-  }
+  void TearDown() override { mgr_.reset(); }
 
   void LoadStateDefinition(const base::DictionaryValue* json,
                            const std::string& category,
@@ -82,9 +79,16 @@ TEST(StateManager, Empty) {
 
 TEST_F(StateManagerTest, Initialized) {
   EXPECT_EQ(std::set<std::string>{"default"}, mgr_->GetCategories());
-  EXPECT_EQ("{'base':{'manufacturer':'Skynet','serialNumber':'T1000'},"
-            "'terminator':{'target':''}}",
-            ValueToString(mgr_->GetStateValuesAsJson(nullptr).get()));
+  auto expected = R"({
+    'base': {
+      'manufacturer': 'Skynet',
+      'serialNumber': 'T1000'
+    },
+    'terminator': {
+      'target': ''
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson(nullptr));
 }
 
 TEST_F(StateManagerTest, LoadStateDefinition) {
@@ -96,27 +100,42 @@ TEST_F(StateManagerTest, LoadStateDefinition) {
   LoadStateDefinition(dict.get(), "powerd", nullptr);
   EXPECT_EQ((std::set<std::string>{"default", "powerd"}),
             mgr_->GetCategories());
-  EXPECT_EQ("{'base':{'manufacturer':'Skynet','serialNumber':'T1000'},"
-            "'power':{'battery_level':0},"
-            "'terminator':{'target':''}}",
-            ValueToString(mgr_->GetStateValuesAsJson(nullptr).get()));
+
+  auto expected = R"({
+    'base': {
+      'manufacturer': 'Skynet',
+      'serialNumber': 'T1000'
+    },
+    'power': {
+      'battery_level': 0
+    },
+    'terminator': {
+      'target': ''
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson(nullptr));
 }
 
 TEST_F(StateManagerTest, SetPropertyValue) {
   native_types::Object expected_prop_set{
-    {"terminator.target", unittests::make_string_prop_value("John Connor")},
+      {"terminator.target", unittests::make_string_prop_value("John Connor")},
   };
   base::Time timestamp = base::Time::Now();
   EXPECT_CALL(mock_state_change_queue_,
               NotifyPropertiesUpdated(timestamp, expected_prop_set))
       .WillOnce(Return(true));
-  ASSERT_TRUE(mgr_->SetPropertyValue("terminator.target",
-                                     std::string{"John Connor"},
-                                     timestamp,
-                                     nullptr));
-  EXPECT_EQ("{'base':{'manufacturer':'Skynet','serialNumber':'T1000'},"
-            "'terminator':{'target':'John Connor'}}",
-            ValueToString(mgr_->GetStateValuesAsJson(nullptr).get()));
+  ASSERT_TRUE(mgr_->SetPropertyValue(
+      "terminator.target", std::string{"John Connor"}, timestamp, nullptr));
+  auto expected = R"({
+    'base': {
+      'manufacturer': 'Skynet',
+      'serialNumber': 'T1000'
+    },
+    'terminator': {
+      'target': 'John Connor'
+    }
+  })";
+  EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson(nullptr));
 }
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_NoName) {
@@ -129,8 +148,8 @@ TEST_F(StateManagerTest, SetPropertyValue_Error_NoName) {
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_NoPackage) {
   chromeos::ErrorPtr error;
-  ASSERT_FALSE(mgr_->SetPropertyValue("target", int{0}, base::Time::Now(),
-                                      &error));
+  ASSERT_FALSE(
+      mgr_->SetPropertyValue("target", int{0}, base::Time::Now(), &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPackageNameMissing, error->GetCode());
   EXPECT_EQ("Package name is missing in the property name",
@@ -139,8 +158,8 @@ TEST_F(StateManagerTest, SetPropertyValue_Error_NoPackage) {
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownPackage) {
   chromeos::ErrorPtr error;
-  ASSERT_FALSE(mgr_->SetPropertyValue("power.level", int{0}, base::Time::Now(),
-                                      &error));
+  ASSERT_FALSE(
+      mgr_->SetPropertyValue("power.level", int{0}, base::Time::Now(), &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
   EXPECT_EQ("Unknown state property package 'power'", error->GetMessage());
@@ -148,8 +167,8 @@ TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownPackage) {
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownProperty) {
   chromeos::ErrorPtr error;
-  ASSERT_FALSE(mgr_->SetPropertyValue("base.level", int{0}, base::Time::Now(),
-                                      &error));
+  ASSERT_FALSE(
+      mgr_->SetPropertyValue("base.level", int{0}, base::Time::Now(), &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
   EXPECT_EQ("State property 'base.level' is not defined", error->GetMessage());
@@ -159,10 +178,8 @@ TEST_F(StateManagerTest, GetAndClearRecordedStateChanges) {
   base::Time timestamp = base::Time::Now();
   EXPECT_CALL(mock_state_change_queue_, NotifyPropertiesUpdated(timestamp, _))
       .WillOnce(Return(true));
-  ASSERT_TRUE(mgr_->SetPropertyValue("terminator.target",
-                                     std::string{"John Connor"},
-                                     timestamp,
-                                     nullptr));
+  ASSERT_TRUE(mgr_->SetPropertyValue(
+      "terminator.target", std::string{"John Connor"}, timestamp, nullptr));
   std::vector<StateChange> expected_val;
   expected_val.emplace_back(
       timestamp,

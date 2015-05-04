@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/values.h>
+#include <gtest/gtest.h>
 
 #include "buffet/commands/prop_types.h"
 #include "buffet/commands/prop_values.h"
@@ -24,9 +25,9 @@ std::unique_ptr<base::Value> CreateValue(const char* json);
 // Helper method to create a JSON dictionary object from a string.
 std::unique_ptr<base::DictionaryValue> CreateDictionaryValue(const char* json);
 
-// Converts a JSON value to a string. It also converts double-quotes to
-// apostrophes for easy comparisons in C++ source code.
-std::string ValueToString(const base::Value* value);
+inline bool IsEqualValue(const base::Value& val1, const base::Value& val2) {
+  return val1.Equals(&val2);
+}
 
 template <typename PropVal, typename T>
 std::unique_ptr<const PropVal> make_prop_value(const T& value) {
@@ -55,5 +56,9 @@ make_string_prop_value(const std::string& value) {
 
 }  // namespace unittests
 }  // namespace buffet
+
+#define EXPECT_JSON_EQ(expected, actual) \
+  EXPECT_PRED2(buffet::unittests::IsEqualValue, \
+               *buffet::unittests::CreateValue(expected), actual)
 
 #endif  // BUFFET_COMMANDS_UNITTEST_UTILS_H_
