@@ -10,6 +10,7 @@
 
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 
 #include "binder_driver.h"  // NOLINT(build/include)
 #include "binder_export.h"  // NOLINT(build/include)
@@ -78,12 +79,12 @@ class BINDER_EXPORT BinderManager : public BinderManagerInterface {
  private:
   int WaitAndActionReply(Parcel* reply);
 
-  static void ReleaseBinderBuffer(Parcel* parcel,
-                                  const uint8_t* data,
-                                  size_t data_size,
-                                  const binder_size_t* objects,
-                                  size_t objects_size,
-                                  void* cookie);
+  // Writes a command freeing |data|.
+  void ReleaseBinderBuffer(const uint8_t* data);
+
+  // Passes |parcel|'s data to ReleaseBinderBuffer().
+  void ReleaseParcel(Parcel* parcel);
+
   bool DoBinderReadWriteIoctl(bool do_read);
   int SetUpTransaction(bool is_reply,
                        uint32_t handle,
@@ -102,6 +103,9 @@ class BINDER_EXPORT BinderManager : public BinderManagerInterface {
   Parcel in_commands_;
 
   std::unique_ptr<BinderDriverInterface> driver_;
+
+  // Keep this member last.
+  base::WeakPtrFactory<BinderManager> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(BinderManager);
 };

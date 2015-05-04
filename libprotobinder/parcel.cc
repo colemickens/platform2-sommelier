@@ -20,14 +20,12 @@ Parcel::Parcel()
       data_pos_(0),
       objects_(nullptr),
       objects_count_(0),
-      objects_capacity_(0),
-      owners_release_function_(nullptr) {
+      objects_capacity_(0) {
 }
 
 Parcel::~Parcel() {
-  if (owners_release_function_) {
-    owners_release_function_(this, data_, data_len_, objects_, objects_count_,
-                             nullptr);
+  if (!release_callback_.is_null()) {
+    release_callback_.Run(this);
   } else {
     if (data_)
       free(data_);
@@ -381,12 +379,13 @@ bool Parcel::GetStrongBinderAtOffset(IBinder** binder, size_t offset) {
   return false;
 }
 
-bool Parcel::InitFromBinderTransaction(void* data,
-                                       size_t data_len,
-                                       binder_size_t* objects,
-                                       size_t objects_size,
-                                       Parcel::release_func func) {
-  if (data_ != nullptr) {
+bool Parcel::InitFromBinderTransaction(
+    void* data,
+    size_t data_len,
+    binder_size_t* objects,
+    size_t objects_size,
+    const ReleaseCallback& release_callback) {
+  if (data_) {
     // Already allocated.
     return false;
   }
@@ -394,7 +393,7 @@ bool Parcel::InitFromBinderTransaction(void* data,
   data_len_ = data_len;
   objects_ = objects;
   objects_count_ = objects_size / sizeof(binder_size_t);
-  owners_release_function_ = func;
+  release_callback_ = release_callback;
   return true;
 }
 

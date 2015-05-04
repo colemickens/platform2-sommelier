@@ -20,14 +20,9 @@ class Parcel;
 class BINDER_EXPORT BinderProxy : public IBinder {
  public:
   explicit BinderProxy(uint32_t handle);
-  ~BinderProxy();
+  ~BinderProxy() override;
 
   uint32_t handle() const { return handle_; }
-
-  int Transact(uint32_t code,
-               Parcel* data,
-               Parcel* reply,
-               bool one_way);
 
   // Set a callback to be invoked when the remote (host/server) side of the
   // connection is closed.
@@ -37,7 +32,12 @@ class BINDER_EXPORT BinderProxy : public IBinder {
   // of the connection has been closed.
   void HandleDeathNotification();
 
-  virtual const BinderProxy* GetBinderProxy() const;
+  // IBinder overides:
+  int Transact(uint32_t code,
+               Parcel* data,
+               Parcel* reply,
+               bool one_way) override;
+  const BinderProxy* GetBinderProxy() const override;
 
  private:
   // Binder handle.

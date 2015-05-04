@@ -33,7 +33,7 @@ int BinderHost::OnTransact(uint32_t code,
                            Parcel* data,
                            Parcel* reply,
                            bool one_way) {
-  LOG(WARNING) << "OnTransact: Unknown code " << code;
+  NOTIMPLEMENTED();
   return ERROR_UNKNOWN_CODE;
 }
 

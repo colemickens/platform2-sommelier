@@ -4,6 +4,7 @@
 
 #include "libprotobinder/binder_manager.h"
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
@@ -39,18 +40,15 @@ void BinderManagerInterface::SetForTesting(
   g_binder_manager = manager.release();
 }
 
-void BinderManager::ReleaseBinderBuffer(Parcel* parcel,
-                                        const uint8_t* data,
-                                        size_t data_size,
-                                        const binder_size_t* objects,
-                                        size_t objects_size,
-                                        void* cookie) {
+void BinderManager::ReleaseBinderBuffer(const uint8_t* data) {
   VLOG(1) << "Binder free";
-  // TODO(leecam): Close FDs in Parcel
-  BinderManager* manager =
-      static_cast<BinderManager*>(BinderManagerInterface::Get());
-  manager->out_commands_.WriteInt32(BC_FREE_BUFFER);
-  manager->out_commands_.WritePointer((uintptr_t)data);
+  out_commands_.WriteInt32(BC_FREE_BUFFER);
+  out_commands_.WritePointer(reinterpret_cast<uintptr_t>(data));
+}
+
+void BinderManager::ReleaseParcel(Parcel* parcel) {
+  // TODO(leecam): Close FDs in Parcel.
+  ReleaseBinderBuffer(reinterpret_cast<const uint8_t*>(parcel->Data()));
 }
 
 // TODO(leecam): Remove the DoBinderReadWriteIoctl
@@ -157,7 +155,8 @@ int BinderManager::ProcessCommand(uint32_t cmd) {
       if (!data.InitFromBinderTransaction(
               reinterpret_cast<void*>(tr.data.ptr.buffer), tr.data_size,
               reinterpret_cast<binder_size_t*>(tr.data.ptr.offsets),
-              tr.offsets_size, ReleaseBinderBuffer))
+              tr.offsets_size, base::Bind(&BinderManager::ReleaseParcel,
+                                          weak_ptr_factory_.GetWeakPtr())))
         return false;
 
       Parcel reply;
@@ -208,24 +207,20 @@ int BinderManager::WaitAndActionReply(Parcel* reply) {
             if (!reply->InitFromBinderTransaction(
                     reinterpret_cast<void*>(tr.data.ptr.buffer), tr.data_size,
                     reinterpret_cast<binder_size_t*>(tr.data.ptr.offsets),
-                    tr.offsets_size, ReleaseBinderBuffer))
+                    tr.offsets_size,
+                    base::Bind(&BinderManager::ReleaseParcel,
+                               weak_ptr_factory_.GetWeakPtr())))
               err = ERROR_REPLY_PARCEL;
           } else {
             VLOG(1) << "Status code 1";
             err = *reinterpret_cast<const int*>(tr.data.ptr.buffer);
             VLOG(1) << "Status code 2";
             ReleaseBinderBuffer(
-                NULL, reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer),
-                tr.data_size,
-                reinterpret_cast<const binder_size_t*>(tr.data.ptr.offsets),
-                tr.offsets_size / sizeof(binder_size_t), NULL);
+                reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer));
           }
         } else {
           ReleaseBinderBuffer(
-              NULL, reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer),
-              tr.data_size,
-              reinterpret_cast<const binder_size_t*>(tr.data.ptr.offsets),
-              tr.offsets_size / sizeof(binder_size_t), NULL);
+              reinterpret_cast<const uint8_t*>(tr.data.ptr.buffer));
           continue;
         }
         return err;
@@ -367,11 +362,10 @@ bool BinderManager::HandleEvent() {
   return DoBinderReadWriteIoctl(false);
 }
 
-BinderManager::BinderManager(std::unique_ptr<BinderDriverInterface> driver) {
+BinderManager::BinderManager(std::unique_ptr<BinderDriverInterface> driver)
+    : driver_(std::move(driver)),
+      weak_ptr_factory_(this) {
   VLOG(1) << "BinderManager created";
-
-  driver_ = std::move(driver);
-
   in_commands_.SetCapacity(256);
   out_commands_.SetCapacity(256);
 }

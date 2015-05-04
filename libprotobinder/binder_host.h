@@ -31,7 +31,7 @@ class BINDER_EXPORT BinderHost : public IBinder {
  protected:
   ~BinderHost() override;
 
-  // Called by BinderManager.
+  // Implemented by generated code and called by Transact().
   virtual int OnTransact(uint32_t code,
                          Parcel* data,
                          Parcel* reply,

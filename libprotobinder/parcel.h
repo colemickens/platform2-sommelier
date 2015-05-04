@@ -8,9 +8,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <linux/android/binder.h>
-
 #include <string>
+
+#include <base/callback.h>
+#include <base/macros.h>
+#include <linux/android/binder.h>
 
 #include "binder_export.h"  // NOLINT(build/include)
 
@@ -88,12 +90,7 @@ class BINDER_EXPORT Parcel {
 
   bool IsEmpty() { return data_pos_ >= data_len_; }
 
-  typedef void (*release_func)(Parcel* parcel,
-                               const uint8_t* data,
-                               size_t dataSize,
-                               const binder_size_t* objects,
-                               size_t objects_size,
-                               void* cookie);
+  using ReleaseCallback = base::Callback<void(Parcel*)>;
 
   // Can be used configure an empty parcel to use data
   // returned by the binder driver.
@@ -101,7 +98,7 @@ class BINDER_EXPORT Parcel {
                                  size_t data_len,
                                  binder_size_t* objects,
                                  size_t objects_size,
-                                 release_func func);
+                                 const ReleaseCallback& release_callback);
 
  private:
   template <class T>
@@ -133,7 +130,9 @@ class BINDER_EXPORT Parcel {
   size_t objects_count_;
   size_t objects_capacity_;
 
-  release_func owners_release_function_;
+  ReleaseCallback release_callback_;
+
+  DISALLOW_COPY_AND_ASSIGN(Parcel);
 };
 
 }  // namespace protobinder
