@@ -67,6 +67,7 @@
 #include "shill/testing.h"
 #include "shill/wifi/mock_mac80211_monitor.h"
 #include "shill/wifi/mock_scan_session.h"
+#include "shill/wifi/mock_tdls_manager.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/mock_wifi_service.h"
@@ -1241,34 +1242,22 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_->SetBgscanSignalThreshold(threshold, error);
   }
 
-  void ReportTDLSDiscoverResponse(const string &peer) {
-    wifi_->TDLSDiscoverResponse(peer);
+  bool ResolvePeerMacAddress(
+      const string &input, string *output, Error *error) {
+    return wifi_->ResolvePeerMacAddress(input, output, error);
   }
 
-  bool TDLSDiscover(const string &peer) {
-    return wifi_->TDLSDiscover(peer);
+  void SetTDLSManager(TDLSManager *tdls_manager) {
+    wifi_->tdls_manager_.reset(tdls_manager);
   }
 
-  bool TDLSSetup(const string &peer) {
-    return wifi_->TDLSSetup(peer);
+  void TDLSDiscoverResponse(const string &peer_address) {
+    wifi_->TDLSDiscoverResponse(peer_address);
   }
 
-  string TDLSStatus(const string &peer) {
-    return wifi_->TDLSStatus(peer);
-  }
-
-  bool TDLSTeardown(const string &peer) {
-    return wifi_->TDLSTeardown(peer);
-  }
-
-  string PerformTDLSOperation(const string &operation,
-                              const string &peer,
-                              Error *error) {
+  string PerformTDLSOperation(
+      const string &operation, const string &peer, Error *error) {
     return wifi_->PerformTDLSOperation(operation, peer, error);
-  }
-
-  void TimeoutTDLSDiscoverCleanupTimer() {
-    wifi_->TDLSDiscoverPeerCleanup();
   }
 
   void TimeoutPendingConnection() {
@@ -4326,270 +4315,62 @@ TEST_F(WiFiMainTest, FullScanDuringProgressive) {
   ExpectScanIdle();
 }
 
-TEST_F(WiFiMainTest, TDLSInterfaceFunctions) {
-  StartWiFi();
+TEST_F(WiFiMainTest, ResolvePeerMacAddress) {
+  Error error;
+  string result;
+
+  EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
+
+  // Invalid peer address (not a valid IP address nor MAC address).
+  const char kInvalidPeer[] = "peer";
+  EXPECT_FALSE(ResolvePeerMacAddress(kInvalidPeer, &result, &error));
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+
+  // IP address with no direct connectivity.
+  const char kPeerIp[] = "192.168.1.1";
+  error.Reset();
+  // No direct connectivity to the provided IP address.
+  EXPECT_CALL(*device_info(), HasDirectConnectivityTo(kInterfaceIndex, _))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(ResolvePeerMacAddress(kPeerIp, &result, &error));
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  Mock::VerifyAndClearExpectations(device_info());
+
+  // Provided IP address is in the ARP cache, return the resolved MAC address.
+  const char kResolvedMac[] = "00:11:22:33:44:55";
+  const ByteString kMacBytes(
+      WiFiEndpoint::MakeHardwareAddressFromString(kResolvedMac));
+  error.Reset();
+  EXPECT_CALL(*device_info(), HasDirectConnectivityTo(kInterfaceIndex, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*device_info(), GetMACAddressOfPeer(kInterfaceIndex, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(kMacBytes), Return(true)));
+  EXPECT_TRUE(ResolvePeerMacAddress(kPeerIp, &result, &error));
+  EXPECT_EQ(kResolvedMac, result);
+}
+
+TEST_F(WiFiMainTest, TDLSDiscoverResponse) {
   const char kPeer[] = "peer";
+  MockTDLSManager *tdls_manager = new StrictMock<MockTDLSManager>();
+  SetTDLSManager(tdls_manager);
 
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeer)))
-      .WillOnce(Return())
-      .WillOnce(Throw(
-          DBus::Error(
-              "fi.w1.wpa_supplicant1.UnknownError",
-              "test threw fi.w1.wpa_supplicant1.UnknownError")));
-  EXPECT_TRUE(TDLSDiscover(kPeer));
-  EXPECT_FALSE(TDLSDiscover(kPeer));
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSSetup(StrEq(kPeer)))
-      .WillOnce(Return())
-      .WillOnce(Throw(
-          DBus::Error(
-              "fi.w1.wpa_supplicant1.UnknownError",
-              "test threw fi.w1.wpa_supplicant1.UnknownError")));
-  EXPECT_TRUE(TDLSSetup(kPeer));
-  EXPECT_FALSE(TDLSSetup(kPeer));
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-
-  const char kStatus[] = "peachy keen";
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
-      .WillOnce(Return(kStatus))
-      .WillOnce(Throw(
-          DBus::Error(
-              "fi.w1.wpa_supplicant1.UnknownError",
-              "test threw fi.w1.wpa_supplicant1.UnknownError")));
-  EXPECT_EQ(kStatus, TDLSStatus(kPeer));
-  EXPECT_EQ("", TDLSStatus(kPeer));
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSTeardown(StrEq(kPeer)))
-      .WillOnce(Return())
-      .WillOnce(Throw(
-          DBus::Error(
-              "fi.w1.wpa_supplicant1.UnknownError",
-              "test threw fi.w1.wpa_supplicant1.UnknownError")));
-  EXPECT_TRUE(TDLSTeardown(kPeer));
-  EXPECT_FALSE(TDLSTeardown(kPeer));
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  EXPECT_CALL(*tdls_manager, OnDiscoverResponseReceived(kPeer));
+  TDLSDiscoverResponse(kPeer);
+  Mock::VerifyAndClearExpectations(tdls_manager);
 }
 
 TEST_F(WiFiMainTest, PerformTDLSOperation) {
-  StartWiFi();
-  const char kPeer[] = "00:11:22:33:44:55";
-  const char kPeerDummy[] = "66:77:88:99:aa:bb";
+  const char kPeerMac[] = "00:11:22:33:44:55";
+  MockTDLSManager *tdls_manager = new StrictMock<MockTDLSManager>();
+  SetTDLSManager(tdls_manager);
 
-  {
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation("Do the thing", kPeer, &error));
-    EXPECT_EQ(Error::kInvalidArguments, error.type());
-  }
-
-  {
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, "peer", &error));
-    // This is not a valid IP address nor is it a MAC address.
-    EXPECT_EQ(Error::kInvalidArguments, error.type());
-  }
-
-  const char kAddress[] = "192.168.1.1";
-  EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
-
-  {
-    // The provided IP address is not local.
-    EXPECT_CALL(*device_info(), HasDirectConnectivityTo(kInterfaceIndex, _))
-        .WillOnce(Return(false));
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation,
-                                       kAddress, &error));
-    EXPECT_EQ(Error::kInvalidArguments, error.type());
-    Mock::VerifyAndClearExpectations(device_info());
-  }
-
-  {
-    // If the MAC address of the peer is in the ARP cache, we should
-    // perform the TDLS operation on the resolved MAC.
-    const char kResolvedMac[] = "00:11:22:33:44:55";
-    const ByteString kMacBytes(
-        WiFiEndpoint::MakeHardwareAddressFromString(kResolvedMac));
-    EXPECT_CALL(*device_info(), HasDirectConnectivityTo(kInterfaceIndex, _))
-        .WillOnce(Return(true));
-    EXPECT_CALL(*device_info(), GetMACAddressOfPeer(kInterfaceIndex, _, _))
-        .WillOnce(DoAll(SetArgumentPointee<2>(kMacBytes), Return(true)));
-    EXPECT_CALL(*GetSupplicantInterfaceProxy(),
-                TDLSDiscover(StrEq(kResolvedMac)));
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation,
-                                       kAddress, &error));
-    EXPECT_TRUE(error.IsSuccess());
-    Mock::VerifyAndClearExpectations(device_info());
-    Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-  }
-
-  // This is the same test as TDLSInterfaceFunctions above, but using the
-  // method called by the RPC adapter.
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeer)))
-      .WillOnce(Return())
-      .WillOnce(Throw(
-          DBus::Error(
-              "fi.w1.wpa_supplicant1.UnknownError",
-              "test threw fi.w1.wpa_supplicant1.UnknownError")));
-  {
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeer, &error));
-    EXPECT_TRUE(error.IsSuccess());
-  }
-  {
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeer, &error));
-    EXPECT_EQ(Error::kOperationFailed, error.type());
-  }
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSSetup(StrEq(kPeer)))
-      .WillOnce(Return())
-      .WillOnce(Throw(
-          DBus::Error(
-              "fi.w1.wpa_supplicant1.UnknownError",
-              "test threw fi.w1.wpa_supplicant1.UnknownError")));
-  {
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSSetupOperation, kPeer, &error));
-    EXPECT_TRUE(error.IsSuccess());
-  }
-  {
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSSetupOperation, kPeer, &error));
-    EXPECT_EQ(Error::kOperationFailed, error.type());
-  }
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-
-
-  const map<string, string> kTDLSStatusMap {
-    { "Baby, I don't care", kTDLSUnknownState },
-    { WPASupplicant::kTDLSStateConnected, kTDLSConnectedState },
-    { WPASupplicant::kTDLSStateDisabled, kTDLSDisabledState },
-    { WPASupplicant::kTDLSStatePeerDoesNotExist, kTDLSNonexistentState },
-    { WPASupplicant::kTDLSStatePeerNotConnected, kTDLSDisconnectedState },
-  };
-
-  for (const auto &it : kTDLSStatusMap) {
-    EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
-        .WillOnce(Return(it.first));
-    Error error;
-    EXPECT_EQ(it.second,
-              PerformTDLSOperation(kTDLSStatusOperation, kPeer, &error));
-    EXPECT_TRUE(error.IsSuccess());
-    Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-  }
-
-  // Status on a peer after discover response should return
-  // "Not Connected" till the cleanup timer expiry.
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeer)))
-      .WillOnce(Return());
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
-      .WillOnce(Return(WPASupplicant::kTDLSStatePeerDoesNotExist));
-  {
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeer, &error));
-    EXPECT_TRUE(error.IsSuccess());
-    ReportTDLSDiscoverResponse(kPeer);
-    EXPECT_EQ(kTDLSDisconnectedState,
-              PerformTDLSOperation(kTDLSStatusOperation, kPeer, &error));
-    EXPECT_TRUE(error.IsSuccess());
-    TimeoutTDLSDiscoverCleanupTimer();
-  }
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-
-  // Status on a peer after discover response should return
-  // "Not Existent" after the cleanup timer expires.
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeer)))
-      .WillOnce(Return());
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeerDummy)))
-      .WillOnce(Return());
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
-      .WillOnce(Return(WPASupplicant::kTDLSStatePeerDoesNotExist));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeerDummy)))
-      .WillOnce(Return(WPASupplicant::kTDLSStatePeerDoesNotExist));
-  {
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeer, &error));
-    EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeerDummy,
-                                       &error));
-    EXPECT_TRUE(error.IsSuccess());
-    ReportTDLSDiscoverResponse(kPeer);
-    TimeoutTDLSDiscoverCleanupTimer();
-    EXPECT_EQ(kTDLSNonexistentState,
-              PerformTDLSOperation(kTDLSStatusOperation, kPeer, &error));
-    EXPECT_EQ(kTDLSNonexistentState,
-              PerformTDLSOperation(kTDLSStatusOperation, kPeerDummy, &error));
-    EXPECT_TRUE(error.IsSuccess());
-  }
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-
-  // Status on a peer without a discover response should return
-  // "Non Existent".
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeer)))
-      .WillOnce(Return());
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
-      .WillOnce(Return(WPASupplicant::kTDLSStatePeerDoesNotExist));
-  {
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeer, &error));
-    EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ(kTDLSNonexistentState,
-              PerformTDLSOperation(kTDLSStatusOperation, kPeer, &error));
-    EXPECT_TRUE(error.IsSuccess());
-    TimeoutTDLSDiscoverCleanupTimer();
-  }
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-
-  // Status on a peer without a discover request, but an unexpected discover
-  // response should be "Non Existent".
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSDiscover(StrEq(kPeerDummy)))
-      .WillOnce(Return());
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
-      .WillOnce(Return(WPASupplicant::kTDLSStatePeerDoesNotExist));
-  {
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSDiscoverOperation, kPeerDummy,
-                                       &error));
-    EXPECT_TRUE(error.IsSuccess());
-    ReportTDLSDiscoverResponse(kPeer);
-    EXPECT_EQ(kTDLSNonexistentState,
-              PerformTDLSOperation(kTDLSStatusOperation, kPeer, &error));
-    EXPECT_TRUE(error.IsSuccess());
-    TimeoutTDLSDiscoverCleanupTimer();
-  }
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSStatus(StrEq(kPeer)))
-      .WillOnce(Throw(
-          DBus::Error(
-              "fi.w1.wpa_supplicant1.UnknownError",
-              "test threw fi.w1.wpa_supplicant1.UnknownError")));
-  {
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSStatusOperation, kPeer, &error));
-    EXPECT_EQ(Error::kOperationFailed, error.type());
-  }
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), TDLSTeardown(StrEq(kPeer)))
-      .WillOnce(Return())
-      .WillOnce(Throw(
-          DBus::Error(
-              "fi.w1.wpa_supplicant1.UnknownError",
-              "test threw fi.w1.wpa_supplicant1.UnknownError")));
-  {
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSTeardownOperation, kPeer, &error));
-    EXPECT_TRUE(error.IsSuccess());
-  }
-  {
-    Error error;
-    EXPECT_EQ("", PerformTDLSOperation(kTDLSTeardownOperation, kPeer, &error));
-    EXPECT_EQ(Error::kOperationFailed, error.type());
-  }
+  Error error;
+  EXPECT_CALL(*tdls_manager,
+              PerformOperation(kPeerMac, kTDLSStatusOperation, &error))
+      .WillOnce(Return(kTDLSConnectedState));
+  EXPECT_EQ(kTDLSConnectedState,
+            PerformTDLSOperation(kTDLSStatusOperation, kPeerMac, &error));
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(WiFiMainTest, OnNewWiphy) {

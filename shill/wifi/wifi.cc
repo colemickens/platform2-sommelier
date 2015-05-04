@@ -54,6 +54,7 @@
 #include "shill/technology.h"
 #include "shill/wifi/mac80211_monitor.h"
 #include "shill/wifi/scan_session.h"
+#include "shill/wifi/tdls_manager.h"
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_provider.h"
@@ -95,7 +96,6 @@ const int WiFi::kPendingTimeoutSeconds = 15;
 const int WiFi::kReconnectTimeoutSeconds = 10;
 const int WiFi::kRequestStationInfoPeriodSeconds = 20;
 const size_t WiFi::kMinumumFrequenciesToScan = 4;  // Arbitrary but > 0.
-const int WiFi::kTDLSDiscoverPeerCleanupTimeoutSeconds = 30;
 const float WiFi::kDefaultFractionPerScan = 0.34;
 const char WiFi::kProgressiveScanFieldTrialFlagFile[] =
     "/home/chronos/.progressive_scan_variation";
@@ -378,9 +378,10 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
     }
   }
   supplicant_interface_path_ = ::DBus::Path();
-  supplicant_interface_proxy_.reset();  // breaks a reference cycle
+  SetSupplicantInterfaceProxy(nullptr);
   supplicant_process_proxy_.reset();
   pending_scan_results_.reset();
+  tdls_manager_.reset();
   current_service_ = nullptr;            // breaks a reference cycle
   pending_service_ = nullptr;            // breaks a reference cycle
   is_debugging_connection_ = false;
@@ -389,7 +390,6 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
   StopReconnectTimer();
   StopRequestingStationInfo();
   mac80211_monitor_->Stop();
-  TDLSDiscoverPeerCleanup();
 
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
@@ -2359,6 +2359,19 @@ void WiFi::SetConnectionDebugging(bool enabled) {
   is_debugging_connection_ = enabled;
 }
 
+void WiFi::SetSupplicantInterfaceProxy(
+    SupplicantInterfaceProxyInterface *supplicant_interface_proxy) {
+  if (supplicant_interface_proxy) {
+    supplicant_interface_proxy_.reset(supplicant_interface_proxy);
+    tdls_manager_.reset(new TDLSManager(dispatcher(),
+                                        supplicant_interface_proxy,
+                                        link_name()));
+  } else {
+    supplicant_interface_proxy_.reset();
+    tdls_manager_.reset();
+  }
+}
+
 void WiFi::ConnectToSupplicant() {
   LOG(INFO) << link_name() << ": " << (enabled() ? "enabled" : "disabled")
             << " supplicant: "
@@ -2395,7 +2408,7 @@ void WiFi::ConnectToSupplicant() {
     }
   }
 
-  supplicant_interface_proxy_.reset(
+  SetSupplicantInterfaceProxy(
       proxy_factory_->CreateSupplicantInterfaceProxy(
           this, supplicant_interface_path_, WPASupplicant::kDBusAddr));
 
@@ -2967,134 +2980,29 @@ void WiFi::StopRequestingStationInfo() {
 void WiFi::TDLSDiscoverResponse(const string &peer_address) {
   LOG(INFO) << __func__ << " TDLS discover response from " << peer_address;
 
-  if (CheckTDLSDiscoverState(peer_address) == kTDLSDiscoverRequestSent) {
-    tdls_discover_peers_[peer_address] = kTDLSDiscoverResponseReceived;
+  if (!tdls_manager_) {
+    LOG(ERROR) << "TDLS manager not setup - not connected to supplicant";
+    return;
   }
-}
-
-void WiFi::StartTDLSDiscoverPeerCleanupTimer() {
-  if (!tdls_discover_peer_cleanup_callback_.IsCancelled()) {
-    LOG(INFO) << __func__ << " TDLS cleanup timer restarted.";
-  } else {
-    LOG(INFO) << __func__ << " TDLS cleanup timer started.";
-  }
-  tdls_discover_peer_cleanup_callback_.Reset(
-      Bind(&WiFi::TDLSDiscoverPeerCleanup,
-           weak_ptr_factory_.GetWeakPtr()));
-  dispatcher()->PostDelayedTask(tdls_discover_peer_cleanup_callback_.callback(),
-                                kTDLSDiscoverPeerCleanupTimeoutSeconds * 1000);
-}
-
-void WiFi::TDLSDiscoverPeerCleanup() {
-  LOG(INFO) << __func__ << " TDLS discover peer map cleared.";
-  tdls_discover_peer_cleanup_callback_.Cancel();
-  tdls_discover_peers_.clear();
-}
-
-WiFi::TDLSDiscoverState WiFi::CheckTDLSDiscoverState(
-    const string &peer_mac_address) {
-  auto iter = tdls_discover_peers_.find(peer_mac_address);
-  if (iter == tdls_discover_peers_.end()) {
-    return kTDLSDiscoverNone;
-  } else {
-    return iter->second;
-  }
-}
-
-bool WiFi::TDLSDiscover(const string &peer) {
-  try {
-    supplicant_interface_proxy_->TDLSDiscover(peer);
-    tdls_discover_peers_[peer] = kTDLSDiscoverRequestSent;
-    WiFi::StartTDLSDiscoverPeerCleanupTimer();
-  } catch (const DBus::Error &e) {  // NOLINT
-    LOG(ERROR) << "exception while performing TDLS discover: " << e.what();
-    return false;
-  }
-  return true;
-}
-
-bool WiFi::TDLSSetup(const string &peer) {
-  try {
-    supplicant_interface_proxy_->TDLSSetup(peer);
-  } catch (const DBus::Error &e) {  // NOLINT
-    LOG(ERROR) << "exception while performing TDLS setup: " << e.what();
-    return false;
-  }
-  return true;
-}
-
-string WiFi::TDLSStatus(const string &peer) {
-  try {
-    return supplicant_interface_proxy_->TDLSStatus(peer);
-  } catch (const DBus::Error &e) {  // NOLINT
-    LOG(ERROR) << "exception while getting TDLS status: " << e.what();
-    return "";
-  }
-}
-
-bool WiFi::TDLSTeardown(const string &peer) {
-  try {
-    supplicant_interface_proxy_->TDLSTeardown(peer);
-  } catch (const DBus::Error &e) {  // NOLINT
-    LOG(ERROR) << "exception while performing TDLS teardown: " << e.what();
-    return false;
-  }
-  return true;
+  tdls_manager_->OnDiscoverResponseReceived(peer_address);
 }
 
 string WiFi::PerformTDLSOperation(const string &operation,
                                   const string &peer,
                                   Error *error) {
-  bool success = false;
-
   SLOG(this, 2) << "TDLS command received: " << operation
                 << " for peer " << peer;
+  if (!tdls_manager_) {
+    LOG(ERROR) << "TDLS manager not setup - not connected to supplicant";
+    return "";
+  }
 
   string peer_mac_address;
   if (!ResolvePeerMacAddress(peer, &peer_mac_address, error)) {
     return "";
   }
 
-  if (operation == kTDLSDiscoverOperation) {
-    success = TDLSDiscover(peer_mac_address);
-  } else if (operation == kTDLSSetupOperation) {
-    success = TDLSSetup(peer_mac_address);
-  } else if (operation == kTDLSStatusOperation) {
-    string supplicant_status = TDLSStatus(peer_mac_address);
-    SLOG(this, 2) << "TDLS status returned: " << supplicant_status;
-    if (!supplicant_status.empty()) {
-      if (supplicant_status == WPASupplicant::kTDLSStateConnected) {
-        return kTDLSConnectedState;
-      } else if (supplicant_status == WPASupplicant::kTDLSStateDisabled) {
-        return kTDLSDisabledState;
-      } else if (supplicant_status ==
-                 WPASupplicant::kTDLSStatePeerDoesNotExist) {
-        if (CheckTDLSDiscoverState(peer_mac_address) ==
-            kTDLSDiscoverResponseReceived) {
-          return kTDLSDisconnectedState;
-        } else {
-          return kTDLSNonexistentState;
-        }
-      } else if (supplicant_status ==
-                 WPASupplicant::kTDLSStatePeerNotConnected) {
-        return kTDLSDisconnectedState;
-      } else {
-        return kTDLSUnknownState;
-      }
-    }
-  } else if (operation == kTDLSTeardownOperation) {
-    success = TDLSTeardown(peer_mac_address);
-  } else {
-    error->Populate(Error::kInvalidArguments, "Unknown operation");
-    return "";
-  }
-
-  if (!success) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
-                          "TDLS operation failed");
-  }
-
-  return "";
+  return tdls_manager_->PerformOperation(peer_mac_address, operation, error);
 }
 
 // Traffic monitor is enabled for wifi.
@@ -3109,6 +3017,9 @@ void WiFi::RemoveSupplicantNetworks() {
   rpcid_by_service_.clear();
 }
 
+// TODO(zqiu): should make this a member function of DeviceInfo and move the
+// static function MakeHardwareAddressFromString from WiFiEndpoint to
+// DeviceInfo.
 bool WiFi::ResolvePeerMacAddress(const string &input, string *output,
                                  Error *error) {
   if (!WiFiEndpoint::MakeHardwareAddressFromString(input).empty()) {
@@ -3147,8 +3058,8 @@ bool WiFi::ResolvePeerMacAddress(const string &input, string *output,
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to send ICMP reqeust to peer to setup ARP");
   } else {
-    // ARP request was transmitted successfully, but overall the attempt
-    // to perform a TDLS operation has failed.
+    // ARP request was transmitted successfully, peer MAC address is pending
+    // resolution.
     error->Populate(Error::kInProgress,
                     "Peer MAC address was not found in the ARP cache, "
                     "but an ARP request was sent to find it.  "

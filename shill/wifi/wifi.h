@@ -113,6 +113,7 @@ class ScanSession;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
+class TDLSManager;
 class WakeOnWiFi;
 class WiFiProvider;
 class WiFiService;
@@ -225,21 +226,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Called by a WiFiService when it unloads to destroy its lease file.
   virtual void DestroyServiceLease(const WiFiService &service);
 
-  // Discover TDLS service on a remote |peer|.  Returns true if operation
-  // is initiated successfully.
-  bool TDLSDiscover(const std::string &peer);
-
-  // Setup a TDLS pairing with |peer|.  Returns true if operation is initiated
-  // successfully.
-  bool TDLSSetup(const std::string &peer);
-
-  // Return a string indicating the TDLS status with |peer|.
-  std::string TDLSStatus(const std::string &peer);
-
-  // Teardown the TDLS pairing with |peer|.  Returns true if operation is
-  // initiated successfully.
-  bool TDLSTeardown(const std::string &peer);
-
   // Perform TDLS |operation| on |peer|.
   std::string PerformTDLSOperation(const std::string &operation,
                                    const std::string &peer,
@@ -268,12 +254,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     kScanConnecting,
     kScanConnected,
     kScanFoundNothing
-  };
-
-  enum TDLSDiscoverState {
-    kTDLSDiscoverNone,
-    kTDLSDiscoverRequestSent,
-    kTDLSDiscoverResponseReceived
   };
 
   // Result from a BSSAdded or BSSRemoved event.
@@ -371,7 +351,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const int kReconnectTimeoutSeconds;
   static const int kRequestStationInfoPeriodSeconds;
   static const size_t kMinumumFrequenciesToScan;
-  static const int kTDLSDiscoverPeerCleanupTimeoutSeconds;
   static const float kDefaultFractionPerScan;
   // TODO(wdg): Remove after progressive scan field trial is over.
   static const char kProgressiveScanFieldTrialFlagFile[];
@@ -627,16 +606,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // started.
   virtual void OnScanStarted(const NetlinkMessage &netlink_message);
 
-  // Start the cleanup timer to delete any TDLS peer entries stored in our
-  // discover map.
-  void StartTDLSDiscoverPeerCleanupTimer();
-
-  // TDLS cleanup timeout handler to delete any peer entries from our
-  // discover map and stop the timer.
-  void TDLSDiscoverPeerCleanup();
-
-  // Returns the TDLS discover status for this peer
-  TDLSDiscoverState CheckTDLSDiscoverState(const std::string &peer_mac_address);
+  // Helper function for setting supplicant_interface_proxy_ pointer.
+  void SetSupplicantInterfaceProxy(
+      SupplicantInterfaceProxyInterface *supplicant_interface_proxy);
 
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider *provider_;
@@ -690,9 +662,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Executes when WPA supplicant reports that a scan has failed via a ScanDone
   // signal.
   base::CancelableClosure scan_failed_callback_;
-  // Executes when the TDLS discover peer cleanup timer expires. We use this to
-  // cleanup any stale peer entries from our internal list.
-  base::CancelableClosure tdls_discover_peer_cleanup_callback_;
   // Number of remaining fast scans to be done during startup and disconnect.
   int fast_scans_remaining_;
   // Indicates that the current BSS has reached the completed state according
@@ -750,9 +719,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   std::unique_ptr<WakeOnWiFi> wake_on_wifi_;
 
-  // Vector of all the active TDLS peers to whom we have sent a discover
-  // request/ received a response from.
-  std::map<std::string, TDLSDiscoverState> tdls_discover_peers_;
+  std::unique_ptr<TDLSManager> tdls_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };
