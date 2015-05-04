@@ -31,7 +31,8 @@ HmacAuthorizationDelegate::HmacAuthorizationDelegate()
     : session_handle_(0),
       is_parameter_encryption_enabled_(false),
       nonce_generated_(false),
-      future_authorization_value_set_(false) {
+      future_authorization_value_set_(false),
+      use_entity_authorization_for_encryption_only_(false) {
   tpm_nonce_.size = 0;
   caller_nonce_.size = 0;
 }
@@ -70,7 +71,12 @@ bool HmacAuthorizationDelegate::GetCommandAuthorization(
            TPM_RC_SUCCESS) << "Error serializing session attributes.";
 
   std::string hmac_data;
-  std::string hmac_key = session_key_ + entity_auth_value_;
+  std::string hmac_key;
+  if (!use_entity_authorization_for_encryption_only_) {
+    hmac_key = session_key_ + entity_authorization_value_;
+  } else {
+    hmac_key = session_key_;
+  }
   hmac_data.append(command_hash);
   hmac_data.append(reinterpret_cast<const char*>(caller_nonce_.buffer),
                    caller_nonce_.size);
@@ -119,13 +125,19 @@ bool HmacAuthorizationDelegate::CheckResponseAuthorization(
                                   &attributes_bytes),
            TPM_RC_SUCCESS) << "Error serializing session attributes.";
 
-  std::string hmac_key = session_key_ + entity_auth_value_;
   std::string hmac_data;
-  // In a special case with TPM2_HierarchyChangeAuth, we need to use the
-  // auth_value that was set.
-  if (future_authorization_value_set_) {
-    hmac_key = session_key_ + future_authorization_value_;
-    future_authorization_value_set_ = false;
+  std::string hmac_key;
+  if (!use_entity_authorization_for_encryption_only_) {
+    // In a special case with TPM2_HierarchyChangeAuth, we need to use the
+    // auth_value that was set.
+    if (future_authorization_value_set_) {
+      hmac_key = session_key_ + future_authorization_value_;
+      future_authorization_value_set_ = false;
+    } else {
+      hmac_key = session_key_ + entity_authorization_value_;
+    }
+  } else {
+    hmac_key = session_key_;
   }
   hmac_data.append(response_hash);
   hmac_data.append(reinterpret_cast<const char*>(tpm_nonce_.buffer),
@@ -267,10 +279,11 @@ void HmacAuthorizationDelegate::AesOperation(std::string* parameter,
                                              const TPM2B_NONCE& nonce_older,
                                              int operation_type) {
   std::string label("CFB", kLabelSize);
-  std::string compound_key = CreateKey(session_key_ + entity_auth_value_,
-                                       label,
-                                       nonce_newer,
-                                       nonce_older);
+  std::string compound_key = CreateKey(
+      session_key_ + entity_authorization_value_,
+      label,
+      nonce_newer,
+      nonce_older);
   CHECK_EQ(compound_key.size(), kAesKeySize + kAesIVSize);
   unsigned char aes_key[kAesKeySize];
   unsigned char aes_iv[kAesIVSize];

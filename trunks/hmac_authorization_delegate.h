@@ -44,7 +44,7 @@ const size_t kHashDigestSize = 32;  // 256 bits is SHA256 digest size.
 //  HmacAuthorizationDelegate hmac();
 //  hmac.InitSession(...);
 //  tpm.Create(..., &hmac);
-//  hmac.set_entity_auth_value(...);
+//  hmac.set_entity_authorization_value(...);
 //  tpm.Load(..., &hmac);
 class TRUNKS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
  public:
@@ -86,16 +86,20 @@ class TRUNKS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
   // This method is used to inject an auth_value associated with an entity.
   // This auth_value is then used when generating HMACs and encryption keys.
   // Note: This value will be used for all commands until explicitly reset.
-  void set_entity_auth_value(const std::string& auth_value) {
-    entity_auth_value_ = auth_value;
+  void set_entity_authorization_value(const std::string& auth_value) {
+    entity_authorization_value_ = auth_value;
   }
 
-  std::string entity_auth_value() const {
-    return entity_auth_value_;
+  std::string entity_authorization_value() const {
+    return entity_authorization_value_;
   }
 
   TPM_HANDLE session_handle() const {
     return session_handle_;
+  }
+
+  void set_use_entity_authorization_for_encryption_only(bool value) {
+    use_entity_authorization_for_encryption_only_ = value;
   }
 
  protected:
@@ -132,9 +136,13 @@ class TRUNKS_EXPORT HmacAuthorizationDelegate: public AuthorizationDelegate {
   bool is_parameter_encryption_enabled_;
   bool nonce_generated_;
   std::string session_key_;
-  std::string entity_auth_value_;
+  std::string entity_authorization_value_;
   bool future_authorization_value_set_;
   std::string future_authorization_value_;
+  // This boolean flag determines if the entity_authorization_value_ is needed
+  // when computing the hmac_key to create the authorization hmac. Defaults
+  // to false, but policy sessions may set this flag to true.
+  bool use_entity_authorization_for_encryption_only_;
 
   DISALLOW_COPY_AND_ASSIGN(HmacAuthorizationDelegate);
 };

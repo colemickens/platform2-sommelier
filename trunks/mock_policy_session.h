@@ -8,6 +8,7 @@
 #include "trunks/policy_session.h"
 
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -24,6 +25,12 @@ class MockPolicySession : public PolicySession {
       const std::string& bind_authorization_value,
       bool enable_encryption));
   MOCK_METHOD1(StartUnboundSession, TPM_RC(bool enable_encryption));
+  MOCK_METHOD1(GetDigest, TPM_RC(std::string*));
+  MOCK_METHOD1(PolicyOR, TPM_RC(const std::vector<std::string>&));
+  MOCK_METHOD2(PolicyPCR, TPM_RC(uint32_t, const std::string&));
+  MOCK_METHOD1(PolicyCommandCode, TPM_RC(TPM_CC));
+  MOCK_METHOD0(PolicyAuthValue, TPM_RC());
+  MOCK_METHOD1(SetEntityAuthorizationValue, void(const std::string&));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPolicySession);

@@ -19,6 +19,7 @@
 #include "trunks/error_codes.h"
 #include "trunks/hmac_session.h"
 #include "trunks/password_authorization_delegate.h"
+#include "trunks/policy_session.h"
 #include "trunks/scoped_key_handle.h"
 #include "trunks/tpm_state.h"
 #include "trunks/tpm_utility.h"
@@ -415,6 +416,143 @@ int NvramTest(const std::string& owner_password) {
   return 0;
 }
 
+int SimplePolicyTest() {
+  trunks::TrunksFactoryImpl factory;
+  scoped_ptr<trunks::TpmUtility> utility = factory.GetTpmUtility();
+  scoped_ptr<trunks::PolicySession> policy_session = factory.GetPolicySession();
+  trunks::TPM_RC result;
+  result = policy_session->StartUnboundSession(false);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  result = policy_session->PolicyAuthValue();
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to auth value knowledge: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  std::string policy_digest(32, 0);
+  result = policy_session->GetDigest(&policy_digest);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting policy digest: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  // Now that we have the digest, we can close the policy session and use hmac.
+  policy_session.reset();
+
+  scoped_ptr<trunks::HmacSession> hmac_session = factory.GetHmacSession();
+  result = hmac_session->StartUnboundSession(false);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+
+  std::string key_blob;
+  result = utility->CreateRSAKeyPair(
+      trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
+      2048, 0x10001, "password", policy_digest, hmac_session->GetDelegate(),
+      &key_blob);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating RSA key: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+
+  trunks::TPM_HANDLE key_handle;
+  result = utility->LoadKey(key_blob, hmac_session->GetDelegate(), &key_handle);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading RSA key: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  trunks::ScopedKeyHandle scoped_key(factory, key_handle);
+
+  // Now we can reset the hmac_session.
+  hmac_session.reset();
+
+  policy_session = factory.GetPolicySession();
+  result = policy_session->StartUnboundSession(true);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  result = policy_session->PolicyAuthValue();
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to auth value knowledge: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  std::string policy_digest1(32, 0);
+  result = policy_session->GetDigest(&policy_digest1);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting policy digest: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  CHECK_EQ(policy_digest.compare(policy_digest1), 0);
+  std::string signature;
+  policy_session->SetEntityAuthorizationValue("password");
+  result = utility->Sign(scoped_key.get(), trunks::TPM_ALG_NULL,
+                         trunks::TPM_ALG_NULL, std::string(32, 0),
+                         policy_session->GetDelegate(), &signature);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error signing using RSA key: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  result = utility->Verify(scoped_key.get(), trunks::TPM_ALG_NULL,
+                           trunks::TPM_ALG_NULL, std::string(32, 0),
+                           signature);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error verifying using RSA key: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  // TODO(usanghi): Investigate resetting of policy_digest. crbug.com/486185.
+  result = policy_session->PolicyAuthValue();
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to auth value knowledge: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  std::string ciphertext;
+  policy_session->SetEntityAuthorizationValue("");
+  result = utility->AsymmetricEncrypt(scoped_key.get(), trunks::TPM_ALG_NULL,
+                                      trunks::TPM_ALG_NULL, "plaintext",
+                                      policy_session->GetDelegate(),
+                                      &ciphertext);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error encrypting using RSA key: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  result = policy_session->PolicyAuthValue();
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to auth value knowledge: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  std::string plaintext;
+  policy_session->SetEntityAuthorizationValue("password");
+  result = utility->AsymmetricDecrypt(scoped_key.get(), trunks::TPM_ALG_NULL,
+                                      trunks::TPM_ALG_NULL, ciphertext,
+                                      policy_session->GetDelegate(),
+                                      &plaintext);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error encrypting using RSA key: "
+               << trunks::GetErrorString(result);
+    return result;
+  }
+  CHECK_EQ(plaintext.compare("plaintext"), 0);
+  LOG(INFO) << "Test completed successfully.";
+  return 0;
+}
+
 int DumpStatus() {
   trunks::TrunksFactoryImpl factory;
   scoped_ptr<trunks::TpmState> state = factory.GetTpmState();
@@ -482,6 +620,8 @@ int main(int argc, char **argv) {
     if ((rc = ImportTest())) { return rc; }
     LOG(INFO) << "Running AuthChangeTest.";
     if ((rc = AuthChangeTest())) { return rc; }
+    LOG(INFO) << "Running SimplePolicyTest.";
+    if ((rc = SimplePolicyTest())) { return rc; }
     std::string owner_password;
     if (cl->HasSwitch("owner_password")) {
       owner_password = cl->GetSwitchValueASCII("owner_password");
@@ -490,6 +630,9 @@ int main(int argc, char **argv) {
     }
     LOG(INFO) << "All tests were run successfully.";
     return 0;
+  }
+  if (cl->HasSwitch("policy_test")) {
+    return SimplePolicyTest();
   }
   puts("Invalid options!");
   PrintUsage();

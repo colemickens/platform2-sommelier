@@ -205,10 +205,11 @@ class TpmUtilityForwarder : public TpmUtility {
                           int modulus_bits,
                           uint32_t public_exponent,
                           const std::string& password,
+                          const std::string& auth_policy,
                           AuthorizationDelegate* delegate,
                           std::string* key_blob) override {
     return target_->CreateRSAKeyPair(key_type, modulus_bits, public_exponent,
-                                     password, delegate, key_blob);
+                                     password, auth_policy, delegate, key_blob);
   }
 
   TPM_RC LoadKey(const std::string& key_blob,
@@ -387,6 +388,30 @@ class PolicySessionForwarder : public PolicySession {
 
   TPM_RC StartUnboundSession(bool enable_encryption) override {
     return target_->StartUnboundSession(enable_encryption);
+  }
+
+  TPM_RC GetDigest(std::string* digest) override {
+    return target_->GetDigest(digest);
+  }
+
+  TPM_RC PolicyOR(const std::vector<std::string>& digests) override {
+    return target_->PolicyOR(digests);
+  }
+
+  TPM_RC PolicyPCR(uint32_t pcr_index, const std::string& pcr_value) override {
+    return target_->PolicyPCR(pcr_index, pcr_value);
+  }
+
+  TPM_RC PolicyCommandCode(TPM_CC command_code) override {
+    return target_->PolicyCommandCode(command_code);
+  }
+
+  TPM_RC PolicyAuthValue() override {
+    return target_->PolicyAuthValue();
+  }
+
+  void SetEntityAuthorizationValue(const std::string& value) override {
+    return target_->SetEntityAuthorizationValue(value);
   }
 
  private:

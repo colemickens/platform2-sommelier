@@ -48,7 +48,7 @@ TPM_RC HmacSessionImpl::StartUnboundSession(bool enable_encryption) {
 
 void HmacSessionImpl::SetEntityAuthorizationValue(
     const std::string& value) {
-  hmac_delegate_.set_entity_auth_value(value);
+  hmac_delegate_.set_entity_authorization_value(value);
 }
 
 void HmacSessionImpl::SetFutureAuthorizationValue(

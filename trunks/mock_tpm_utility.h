@@ -71,9 +71,10 @@ class MockTpmUtility : public TpmUtility {
                                            AuthorizationDelegate*,
                                            TPM_HANDLE*,
                                            std::string*));
-  MOCK_METHOD6(CreateRSAKeyPair, TPM_RC(AsymmetricKeyUsage,
+  MOCK_METHOD7(CreateRSAKeyPair, TPM_RC(AsymmetricKeyUsage,
                                         int,
                                         uint32_t,
+                                        const std::string&,
                                         const std::string&,
                                         AuthorizationDelegate*,
                                         std::string*));

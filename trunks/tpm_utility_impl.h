@@ -87,6 +87,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                           int modulus_bits,
                           uint32_t public_exponent,
                           const std::string& password,
+                          const std::string& policy_digest,
                           AuthorizationDelegate* delegate,
                           std::string* key_blob) override;
   TPM_RC LoadKey(const std::string& key_blob,

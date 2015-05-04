@@ -168,10 +168,12 @@ class TRUNKS_EXPORT TpmUtility {
   // |modulus_bits| is used to specify the size of the modulus, and
   // |public_exponent| specifies the exponent of the key. After this function
   // terminates, |key_blob| contains a key blob that can be loaded into the TPM.
+  // |policy_digest| specifies an optional policy to use to authorize this key.
   virtual TPM_RC CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                                   int modulus_bits,
                                   uint32_t public_exponent,
                                   const std::string& password,
+                                  const std::string& policy_digest,
                                   AuthorizationDelegate* delegate,
                                   std::string* key_blob) = 0;
 

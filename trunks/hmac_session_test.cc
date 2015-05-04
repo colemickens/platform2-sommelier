@@ -79,7 +79,7 @@ TEST_F(HmacSessionTest, EntityAuthorizationForwardingTest) {
   std::string test_auth("test_auth");
   session.SetEntityAuthorizationValue(test_auth);
   HmacAuthorizationDelegate* hmac_delegate = GetHmacDelegate(&session);
-  std::string entity_auth = hmac_delegate->entity_auth_value();
+  std::string entity_auth = hmac_delegate->entity_authorization_value();
   EXPECT_EQ(0, test_auth.compare(entity_auth));
 }
 

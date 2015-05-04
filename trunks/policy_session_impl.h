@@ -8,6 +8,7 @@
 #include "trunks/policy_session.h"
 
 #include <string>
+#include <vector>
 
 #include "trunks/hmac_authorization_delegate.h"
 #include "trunks/session_manager.h"
@@ -38,6 +39,12 @@ class TRUNKS_EXPORT PolicySessionImpl: public PolicySession {
                            const std::string& bind_authorization_value,
                            bool enable_encryption) override;
   TPM_RC StartUnboundSession(bool enable_encryption) override;
+  TPM_RC GetDigest(std::string* digest) override;
+  TPM_RC PolicyOR(const std::vector<std::string>& digests) override;
+  TPM_RC PolicyPCR(uint32_t pcr_index, const std::string& pcr_value) override;
+  TPM_RC PolicyCommandCode(TPM_CC command_code) override;
+  TPM_RC PolicyAuthValue() override;
+  void SetEntityAuthorizationValue(const std::string& value) override;
 
  private:
   // This factory is only set in the constructor and is used to instantiate

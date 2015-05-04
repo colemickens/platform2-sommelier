@@ -735,6 +735,7 @@ TPM_RC TpmUtilityImpl::CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
                                            std::string* key_blob) {
   std::string tmp_key_blob;
   TPM_RC result = CreateRSAKeyPair(key_type, 2048, 0x10001, password,
+                                   "",  // policy_digest
                                    delegate, &tmp_key_blob);
   if (result != TPM_RC_SUCCESS) {
     return result;
@@ -753,6 +754,7 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                                         int modulus_bits,
                                         uint32_t public_exponent,
                                         const std::string& password,
+                                        const std::string& policy_digest,
                                         AuthorizationDelegate* delegate,
                                         std::string* key_blob) {
   CHECK(key_blob);
@@ -771,6 +773,7 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
     return result;
   }
   TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_RSA);
+  public_area.auth_policy = Make_TPM2B_DIGEST(policy_digest);
   public_area.object_attributes |=
       (kSensitiveDataOrigin | kUserWithAuth | kNoDA);
   switch (key_type) {
