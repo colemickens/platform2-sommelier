@@ -4,6 +4,7 @@
       'deps': [
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'libmetrics-<(libbase_ver)',
       ],
     },
     'cflags': [

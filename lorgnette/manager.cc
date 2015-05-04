@@ -38,10 +38,15 @@ const char Manager::kScanImageFormattedDeviceListCmd[] =
     "--formatted-device-list=%d%%%v%%%m%%%t%n";
 const char Manager::kScanImagePath[] = "/usr/bin/scanimage";
 const int Manager::kTimeoutAfterKillSeconds = 1;
+const char Manager::kMetricScanResult[] = "DocumentScan.ScanResult";
+const char Manager::kMetricConverterResult[] = "DocumentScan.ConverterResult";
 
 Manager::Manager(base::Callback<void()> activity_callback)
     : org::chromium::lorgnette::ManagerAdaptor(this),
-      activity_callback_(activity_callback) {}
+      activity_callback_(activity_callback),
+      metrics_library_(new MetricsLibrary) {
+  metrics_library_->Init();
+}
 
 Manager::~Manager() {}
 
@@ -191,6 +196,10 @@ void Manager::RunScanImageProcess(
   scan_process->Start();
 
   int scan_result = scan_process->Wait();
+  metrics_library_->SendEnumToUMA(
+      kMetricScanResult,
+      scan_result == 0 ? kBooleanMetricSuccess : kBooleanMetricFailure,
+      kBooleanMetricMax);
   if (scan_result != 0) {
     chromeos::Error::AddToPrintf(error, FROM_HERE,
                                  chromeos::errors::dbus::kDomain,
@@ -204,6 +213,10 @@ void Manager::RunScanImageProcess(
   }
 
   int converter_result = convert_process->Wait();
+  metrics_library_->SendEnumToUMA(
+      kMetricConverterResult,
+      converter_result == 0 ?  kBooleanMetricSuccess : kBooleanMetricFailure,
+      kBooleanMetricMax);
   if (converter_result != 0) {
     chromeos::Error::AddToPrintf(
         error, FROM_HERE, chromeos::errors::dbus::kDomain, kManagerServiceError,

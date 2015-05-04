@@ -16,6 +16,7 @@
 #include <chromeos/variant_dictionary.h>
 #include <chromeos/process_mock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
 using base::ScopedFD;
 using chromeos::VariantDictionary;
@@ -32,7 +33,10 @@ class ManagerTest : public testing::Test {
   ManagerTest()
      : input_scoped_fd_(kInputPipeFd),
        output_scoped_fd_(kOutputPipeFd),
-       manager_(base::Callback<void()>()) {}
+       manager_(base::Callback<void()>()),
+       metrics_library_(new MetricsLibraryMock) {
+    manager_.metrics_library_.reset(metrics_library_);
+  }
 
   virtual void TearDown() {
     // The fds that we have handed to these ScopedFD are not real, so we
@@ -56,7 +60,7 @@ class ManagerTest : public testing::Test {
     Manager::RunListScannersProcess(fd, process);
   }
 
-  static void RunScanImageProcess(
+  void RunScanImageProcess(
       const string &device_name,
       int out_fd,
       base::ScopedFD *input_scoped_fd,
@@ -65,7 +69,7 @@ class ManagerTest : public testing::Test {
       chromeos::Process *scan_process,
       chromeos::Process *convert_process,
       chromeos::ErrorPtr *error) {
-    Manager::RunScanImageProcess(device_name,
+    manager_.RunScanImageProcess(device_name,
                                  out_fd,
                                  input_scoped_fd,
                                  output_scoped_fd,
@@ -116,6 +120,7 @@ class ManagerTest : public testing::Test {
   ScopedFD input_scoped_fd_;
   ScopedFD output_scoped_fd_;
   Manager manager_;
+  MetricsLibraryMock *metrics_library_;  // Owned by manager_.
 };
 
 // kInvalidFd must equal to base::internal::ScopedFDCloseTraits::InvalidValue().
@@ -158,7 +163,15 @@ TEST_F(ManagerTest, RunScanImageProcessSuccess) {
                   &scan_process,
                   &convert_process);
   EXPECT_CALL(scan_process, Wait()).WillOnce(Return(0));
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(Manager::kMetricScanResult,
+                            Manager::kBooleanMetricSuccess,
+                            Manager::kBooleanMetricMax));
   EXPECT_CALL(convert_process, Wait()).WillOnce(Return(0));
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(Manager::kMetricConverterResult,
+                            Manager::kBooleanMetricSuccess,
+                            Manager::kBooleanMetricMax));
   chromeos::ErrorPtr error;
   RunScanImageProcess(kDeviceName,
                       kOutputFd,
@@ -237,6 +250,10 @@ TEST_F(ManagerTest, RunScanImageProcessCaptureFailure) {
                   &convert_process);
   const int kErrorResult = 999;
   EXPECT_CALL(scan_process, Wait()).WillOnce(Return(kErrorResult));
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(Manager::kMetricScanResult,
+                            Manager::kBooleanMetricFailure,
+                            Manager::kBooleanMetricMax));
   EXPECT_CALL(convert_process, Kill(SIGKILL, 1));
   EXPECT_CALL(convert_process, Wait()).Times(0);
   chromeos::ErrorPtr error;
@@ -267,8 +284,16 @@ TEST_F(ManagerTest, RunScanImageProcessConvertFailure) {
                   &scan_process,
                   &convert_process);
   EXPECT_CALL(scan_process, Wait()).WillOnce(Return(0));
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(Manager::kMetricScanResult,
+                            Manager::kBooleanMetricSuccess,
+                            Manager::kBooleanMetricMax));
   const int kErrorResult = 111;
   EXPECT_CALL(convert_process, Wait()).WillOnce(Return(kErrorResult));
+  EXPECT_CALL(*metrics_library_,
+              SendEnumToUMA(Manager::kMetricConverterResult,
+                            Manager::kBooleanMetricFailure,
+                            Manager::kBooleanMetricMax));
   chromeos::ErrorPtr error;
   RunScanImageProcess(kDeviceName,
                       kOutputFd,
