@@ -43,6 +43,8 @@ class SomaTest : public ::testing::Test {
       const std::string& whitelisted_namespace) {
     std::unique_ptr<ContainerSpecReader> reader;
     std::unique_ptr<parser::FakeUserdb> fakedb(new parser::FakeUserdb);
+    fakedb->set_user_mapping("chronos", 1000);
+    fakedb->set_group_mapping("chronos", 1001);
     fakedb->set_whitelisted_namespace(whitelisted_namespace);
     reader.reset(new ContainerSpecReader(std::move(fakedb)));
     return std::move(reader);

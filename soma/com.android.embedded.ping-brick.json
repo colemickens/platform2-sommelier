@@ -19,8 +19,8 @@
                     "/bin/true",
                     "--quiet"
                 ],
-                "user": "100",
-                "group": "300",
+                "user": "chronos",
+                "group": "chronos",
                 "workingDirectory": "/opt/work",
                 "ports": [
                     {
@@ -37,7 +37,7 @@
         {
             "name": "os/bruteus/namespaces-share-set",
             "value": {
-                "set": [ "CLONE_NEWIPC" ],
+                "set": [ "CLONE_NEWIPC" ]
             }
         },
         {
@@ -83,11 +83,11 @@
     "annotations": [
         {
             "name": "bruteus-service-0",
-            "value": "com.android.embedded.ping-brick.ping-service",
+            "value": "com.android.embedded.ping-brick.ping-service"
         },
         {
             "name": "bruteus-service-1",
-            "value": "com.android.embedded.ping-brick.echo-service",
+            "value": "com.android.embedded.ping-brick.echo-service"
         }
     ]
 }
