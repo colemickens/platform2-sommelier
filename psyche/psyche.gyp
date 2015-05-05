@@ -14,6 +14,7 @@
       'sources': [
         '<(proto_in_dir)/germ.proto',
       ],
+      'dependencies': ['libsomaproto'],
       'includes': ['../common-mk/protoc.gypi'],
     },
     {

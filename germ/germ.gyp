@@ -13,6 +13,7 @@
     {
       'target_name': 'germ-protos',
       'type': 'static_library',
+      'dependencies': ['soma-protos'],
       'variables': {
         'proto_in_dir': 'idl',
         'proto_out_dir': 'include/germ/proto_bindings',
