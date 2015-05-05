@@ -9,7 +9,6 @@
 
 #include <base/callback_forward.h>
 
-#include "attestation/common/export.h"
 #include "attestation/common/interface.pb.h"
 
 namespace attestation {
@@ -17,7 +16,7 @@ namespace attestation {
 // The main attestation interface implemented by proxies and services. The
 // anticipated flow looks like this:
 //   [APP] -> AttestationInterface -> [IPC] -> AttestationInterface
-class ATTESTATION_EXPORT AttestationInterface {
+class AttestationInterface {
  public:
   virtual ~AttestationInterface() = default;
 

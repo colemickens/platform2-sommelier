@@ -17,6 +17,12 @@
     {
       'target_name': 'proto_library',
       'type': 'static_library',
+      # Use -fPIC so this code can be linked into a shared library.
+      'cflags!': ['-fPIE'],
+      'cflags': [
+        '-fPIC',
+        '-fvisibility=default',
+      ],
       'variables': {
         'proto_in_dir': 'common',
         'proto_out_dir': 'include/attestation/common',
@@ -33,9 +39,6 @@
     {
       'target_name': 'common_library',
       'type': 'static_library',
-      # Use -fPIC so this code can be linked into a shared library.
-      'cflags!': ['-fPIE'],
-      'cflags': ['-fPIC'],
       'sources': [
         'common/crypto_utility_impl.cc',
         'common/tpm_utility_v1.cc',
@@ -60,7 +63,10 @@
       'type': 'static_library',
       # Use -fPIC so this code can be linked into a shared library.
       'cflags!': ['-fPIE'],
-      'cflags': ['-fPIC'],
+      'cflags': [
+        '-fPIC',
+        '-fvisibility=default',
+      ],
       'sources': [
         'client/dbus_proxy.cc',
       ],
@@ -72,6 +78,7 @@
     {
       'target_name': 'libattestation',
       'type': 'shared_library',
+      'cflags': ['-fvisibility=default'],
       'sources': [
       ],
       'dependencies': [

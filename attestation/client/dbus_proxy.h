@@ -13,15 +13,13 @@
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
-#include "attestation/common/export.h"
-
 namespace attestation {
 
 // An implementation of AttestationInterface that forwards requests over D-Bus.
 // Usage:
 //   std::unique_ptr<AttestationInterface> attestation = new DBusProxy();
 //   attestation->CreateGoogleAttestedKey(...);
-class ATTESTATION_EXPORT DBusProxy : public AttestationInterface {
+class DBusProxy : public AttestationInterface {
  public:
   DBusProxy();
   virtual ~DBusProxy();
