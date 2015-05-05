@@ -63,6 +63,14 @@ class TpmUtility {
 
   // Reads the endorsement public key from the TPM.
   virtual bool GetEndorsementPublicKey(std::string* public_key) = 0;
+
+  // Unbinds |bound_data| with the key loaded from |key_blob| by decrypting
+  // using the TPM_ES_RSAESOAEP_SHA1_MGF1 scheme. The input must be in the
+  // format of a TPM_BOUND_DATA structure. On success returns true and provides
+  // the decrypted |data|.
+  virtual bool Unbind(const std::string& key_blob,
+                      const std::string& bound_data,
+                      std::string* data) = 0;
 };
 
 }  // namespace attestation

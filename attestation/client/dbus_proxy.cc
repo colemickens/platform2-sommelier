@@ -142,4 +142,21 @@ void DBusProxy::CreateCertifiableKey(
       request);
 }
 
+void DBusProxy::Decrypt(const DecryptRequest& request,
+                        const DecryptCallback& callback) {
+  auto on_error = [callback](chromeos::Error* error) {
+    DecryptReply reply;
+    reply.set_status(STATUS_NOT_AVAILABLE);
+    callback.Run(reply);
+  };
+  chromeos::dbus_utils::CallMethodWithTimeout(
+      kDBusTimeoutMS,
+      object_proxy_,
+      attestation::kAttestationInterface,
+      attestation::kDecrypt,
+      callback,
+      base::Bind(on_error),
+      request);
+}
+
 }  // namespace attestation

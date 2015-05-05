@@ -126,3 +126,14 @@ message CreateCertifiableKeyReply {
   // The signature of certify_info by the Attestation Key.
   optional bytes certify_info_signature = 4;
 }
+
+message DecryptRequest {
+  optional string key_label = 1;
+  optional string username = 2;
+  optional bytes encrypted_data = 3;
+}
+
+message DecryptReply {
+  optional AttestationStatus status = 1;
+  optional bytes decrypted_data = 2;
+}

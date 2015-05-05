@@ -185,4 +185,31 @@ TEST_F(CryptoUtilityImplTest, EncryptIdentityCredentialBadEK) {
                                                           &output));
 }
 
+TEST_F(CryptoUtilityImplTest, EncryptForUnbind) {
+  std::string public_key = HexDecode(kValidPublicKeyHex);
+  std::string public_key_info;
+  EXPECT_TRUE(crypto_utility_->GetRSASubjectPublicKeyInfo(public_key,
+                                                          &public_key_info));
+  std::string output;
+  EXPECT_TRUE(crypto_utility_->EncryptForUnbind(public_key_info, "input",
+                                                &output));
+  EXPECT_FALSE(output.empty());
+}
+
+TEST_F(CryptoUtilityImplTest, EncryptForUnbindBadKey) {
+  std::string output;
+  EXPECT_FALSE(crypto_utility_->EncryptForUnbind("bad_key", "input", &output));
+}
+
+TEST_F(CryptoUtilityImplTest, EncryptForUnbindLargeInput) {
+  std::string public_key = HexDecode(kValidPublicKeyHex);
+  std::string public_key_info;
+  EXPECT_TRUE(crypto_utility_->GetRSASubjectPublicKeyInfo(public_key,
+                                                          &public_key_info));
+  std::string input(1000, 'A');
+  std::string output;
+  EXPECT_FALSE(crypto_utility_->EncryptForUnbind(public_key_info, input,
+                                                 &output));
+}
+
 }  // namespace attestation

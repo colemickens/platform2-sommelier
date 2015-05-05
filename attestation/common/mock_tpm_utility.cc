@@ -7,6 +7,7 @@
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::Return;
+using ::testing::WithArgs;
 
 namespace {
 
@@ -29,6 +30,8 @@ MockTpmUtility::MockTpmUtility() {
       .WillByDefault(Invoke(CopyString));
   ON_CALL(*this, Unseal(_, _))
       .WillByDefault(Invoke(CopyString));
+  ON_CALL(*this, Unbind(_, _, _))
+      .WillByDefault(WithArgs<1, 2>(Invoke(CopyString)));
 }
 
 MockTpmUtility::~MockTpmUtility() {}

@@ -26,7 +26,8 @@ using trousers::ScopedTssPcrs;
 
 namespace {
 
-typedef scoped_ptr<BYTE, base::FreeDeleter> ScopedByteArray;
+using ScopedByteArray = scoped_ptr<BYTE, base::FreeDeleter>;
+using ScopedTssEncryptedData = trousers::ScopedTssObject<TSS_HENCDATA>;
 
 const char* kTpmEnabledFile = "/sys/class/misc/tpm0/device/enabled";
 const char* kTpmOwnedFile = "/sys/class/misc/tpm0/device/owned";
@@ -174,6 +175,7 @@ bool TpmUtilityV1::CreateCertifiedKey(KeyType key_type,
   UINT32 init_flags = tss_key_type |
                       TSS_KEY_NOT_MIGRATABLE |
                       TSS_KEY_VOLATILE |
+                      TSS_KEY_NO_AUTHORIZATION |
                       TSS_KEY_SIZE_2048;
   TSS_RESULT result = Tspi_Context_CreateObject(context_handle_,
                                                 TSS_OBJECT_TYPE_RSAKEY,
@@ -182,12 +184,19 @@ bool TpmUtilityV1::CreateCertifiedKey(KeyType key_type,
     TPM_LOG(ERROR, result) << __func__ << ": Failed to create object.";
     return false;
   }
-  result = Tspi_SetAttribUint32(key,
-                                TSS_TSPATTRIB_KEY_INFO,
-                                TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
-                                TSS_SS_RSASSAPKCS1V15_DER);
+  if (key_usage == KEY_USAGE_SIGN) {
+    result = Tspi_SetAttribUint32(key,
+                                  TSS_TSPATTRIB_KEY_INFO,
+                                  TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
+                                  TSS_SS_RSASSAPKCS1V15_DER);
+  } else {
+    result = Tspi_SetAttribUint32(key,
+                                  TSS_TSPATTRIB_KEY_INFO,
+                                  TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
+                                  TSS_ES_RSAESOAEP_SHA1_MGF1);
+  }
   if (TPM_ERROR(result)) {
-    TPM_LOG(ERROR, result) << __func__ << ": Failed to set signature scheme.";
+    TPM_LOG(ERROR, result) << __func__ << ": Failed to set scheme.";
     return false;
   }
   result = Tspi_Key_CreateKey(key, srk_handle_, 0);
@@ -382,6 +391,49 @@ bool TpmUtilityV1::GetEndorsementPublicKey(std::string* public_key) {
   if (!ConvertPublicKeyToDER(ek_public_key_blob, public_key)) {
     return false;
   }
+  return true;
+}
+
+bool TpmUtilityV1::Unbind(const std::string& key_blob,
+                          const std::string& bound_data,
+                          std::string* data) {
+  CHECK(data);
+  if (!SetupSrk()) {
+    LOG(ERROR) << "SRK is not ready.";
+    return false;
+  }
+  ScopedTssKey key_handle(context_handle_);
+  if (!LoadKeyFromBlob(key_blob, context_handle_, srk_handle_, &key_handle)) {
+    return false;
+  }
+  TSS_RESULT result;
+  ScopedTssEncryptedData data_handle(context_handle_);
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(context_handle_,
+                                                   TSS_OBJECT_TYPE_ENCDATA,
+                                                   TSS_ENCDATA_BIND,
+                                                   data_handle.ptr()))) {
+    TPM_LOG(ERROR, result) << __func__ << ": Tspi_Context_CreateObject failed.";
+    return false;
+  }
+  std::string mutable_bound_data(bound_data);
+  if (TPM_ERROR(result = Tspi_SetAttribData(
+      data_handle,
+      TSS_TSPATTRIB_ENCDATA_BLOB,
+      TSS_TSPATTRIB_ENCDATABLOB_BLOB,
+      bound_data.size(),
+      StringAsTSSBuffer(&mutable_bound_data)))) {
+    TPM_LOG(ERROR, result) << __func__ << ": Tspi_SetAttribData failed.";
+    return false;
+  }
+
+  ScopedTssMemory decrypted_data(context_handle_);
+  UINT32 length = 0;
+  if (TPM_ERROR(result = Tspi_Data_Unbind(data_handle, key_handle,
+                                          &length, decrypted_data.ptr()))) {
+    TPM_LOG(ERROR, result) << __func__ << ": Tspi_Data_Unbind failed.";
+    return false;
+  }
+  data->assign(TSSBufferAsString(decrypted_data.value(), length));
   return true;
 }
 

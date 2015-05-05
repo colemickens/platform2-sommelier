@@ -29,13 +29,15 @@ const char kEndorsementCommand[] = "endorsement";
 const char kAttestationKeyCommand[] = "attestation_key";
 const char kActivateCommand[] = "activate";
 const char kEncryptForActivateCommand[] = "encrypt_for_activate";
+const char kEncryptCommand[] = "encrypt";
+const char kDecryptCommand[] = "decrypt";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
   create_and_certify [--user=<email>] [--label=<keylabel>]
       Creates a key and requests certification by the Google Attestation CA.
       This is the default command.
-  create [--user=<email>] [--label=<keylabel]
+  create [--user=<email>] [--label=<keylabel] [--usage=sign|decrypt]
       Creates a certifiable key.
 
   info [--user=<email>] [--label=<keylabel>]
@@ -51,6 +53,13 @@ Commands:
   encrypt_for_activate --input=<input_file> --output=<output_file>
       Encrypts the content of |input_file| as required by the TPM for activating
       an attestation key. The result is written to |output_file|.
+
+  encrypt [--user=<email>] [--label=<keylabel>] --input=<input_file>
+          --output=<output_file>
+      Encrypts the content of |input_file| as required by the TPM for a decrypt
+      operation. The result is written to |output_file|.
+  decrypt [--user=<email>] [--label=<keylabel>] --input=<input_file>
+      Decrypts the content of |input_file|.
 )";
 
 // The Daemon class works well as a client loop as well.
@@ -90,7 +99,7 @@ class ClientLoop : public ClientLoopBase {
     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
     const auto& args = command_line->GetArgs();
     if (command_line->HasSwitch("help") || command_line->HasSwitch("h") ||
-        args.front() == "help") {
+        (!args.empty() && args.front() == "help")) {
       return EX_USAGE;
     }
     if (args.empty() || args.front() == kCreateAndCertifyCommand) {
@@ -99,10 +108,20 @@ class ClientLoop : public ClientLoopBase {
                         command_line->GetSwitchValueASCII("label"),
                         command_line->GetSwitchValueASCII("user"));
     } else if (args.front() == kCreateCommand) {
+      std::string usage_str = command_line->GetSwitchValueASCII("usage");
+      KeyUsage usage;
+      if (usage_str.empty() || usage_str == "sign") {
+        usage = KEY_USAGE_SIGN;
+      } else if (usage_str == "decrypt") {
+        usage = KEY_USAGE_DECRYPT;
+      } else {
+        return EX_USAGE;
+      }
       task = base::Bind(&ClientLoop::CallCreateCertifiableKey,
                         weak_factory_.GetWeakPtr(),
                         command_line->GetSwitchValueASCII("label"),
-                        command_line->GetSwitchValueASCII("user"));
+                        command_line->GetSwitchValueASCII("user"),
+                        usage);
     } else if (args.front() == kInfoCommand) {
       task = base::Bind(&ClientLoop::CallGetKeyInfo,
                         weak_factory_.GetWeakPtr(),
@@ -140,6 +159,37 @@ class ClientLoop : public ClientLoopBase {
       }
       task = base::Bind(&ClientLoop::EncryptForActivate,
                         weak_factory_.GetWeakPtr(),
+                        input);
+    } else if (args.front() == kEncryptCommand) {
+      if (!command_line->HasSwitch("input") ||
+          !command_line->HasSwitch("output")) {
+        return EX_USAGE;
+      }
+      std::string input;
+      base::FilePath filename(command_line->GetSwitchValueASCII("input"));
+      if (!base::ReadFileToString(filename, &input)) {
+        LOG(ERROR) << "Failed to read file: " << filename.value();
+        return EX_NOINPUT;
+      }
+      task = base::Bind(&ClientLoop::Encrypt,
+                        weak_factory_.GetWeakPtr(),
+                        command_line->GetSwitchValueASCII("label"),
+                        command_line->GetSwitchValueASCII("user"),
+                        input);
+    } else if (args.front() == kDecryptCommand) {
+      if (!command_line->HasSwitch("input")) {
+        return EX_USAGE;
+      }
+      std::string input;
+      base::FilePath filename(command_line->GetSwitchValueASCII("input"));
+      if (!base::ReadFileToString(filename, &input)) {
+        LOG(ERROR) << "Failed to read file: " << filename.value();
+        return EX_NOINPUT;
+      }
+      task = base::Bind(&ClientLoop::CallDecrypt,
+                        weak_factory_.GetWeakPtr(),
+                        command_line->GetSwitchValueASCII("label"),
+                        command_line->GetSwitchValueASCII("user"),
                         input);
     } else {
       return EX_USAGE;
@@ -265,13 +315,51 @@ class ClientLoop : public ClientLoopBase {
   }
 
   void CallCreateCertifiableKey(const std::string& label,
-                                const std::string& username) {
+                                const std::string& username,
+                                KeyUsage usage) {
     CreateCertifiableKeyRequest request;
     request.set_key_label(label);
     request.set_username(username);
+    request.set_key_type(KEY_TYPE_RSA);
+    request.set_key_usage(usage);
     attestation_->CreateCertifiableKey(
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<CreateCertifiableKeyReply>,
+                   weak_factory_.GetWeakPtr()));
+  }
+
+  void Encrypt(const std::string& label,
+               const std::string& username,
+               const std::string& input) {
+    GetKeyInfoRequest request;
+    request.set_key_label(label);
+    request.set_username(username);
+    attestation_->GetKeyInfo(request, base::Bind(&ClientLoop::Encrypt2,
+                                                 weak_factory_.GetWeakPtr(),
+                                                 input));
+  }
+
+  void Encrypt2(const std::string& input,
+                const GetKeyInfoReply& key_info) {
+    CryptoUtilityImpl crypto(nullptr);
+    std::string output;
+    if (!crypto.EncryptForUnbind(key_info.public_key(), input, &output)) {
+      QuitWithExitCode(EX_SOFTWARE);
+    }
+    WriteOutput(output);
+    Quit();
+  }
+
+  void CallDecrypt(const std::string& label,
+                   const std::string& username,
+                   const std::string& input) {
+    DecryptRequest request;
+    request.set_key_label(label);
+    request.set_username(username);
+    request.set_encrypted_data(input);
+    attestation_->Decrypt(
+        request,
+        base::Bind(&ClientLoop::PrintReplyAndQuit<DecryptReply>,
                    weak_factory_.GetWeakPtr()));
   }
 

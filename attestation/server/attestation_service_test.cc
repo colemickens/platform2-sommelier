@@ -847,4 +847,81 @@ TEST_F(AttestationServiceTest, CreateCertifiableKeyDBFailureNoUser) {
   Run();
 }
 
+TEST_F(AttestationServiceTest, DecryptSuccess) {
+  // Set expectations on the outputs.
+  auto callback = [this](const DecryptReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ("data", reply.decrypted_data());
+    Quit();
+  };
+  DecryptRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  request.set_encrypted_data("data");
+  service_->Decrypt(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, DecryptSuccessNoUser) {
+  mock_database_.GetMutableProtobuf()->add_device_keys()->set_key_name("label");
+  // Set expectations on the outputs.
+  auto callback = [this](const DecryptReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ("data", reply.decrypted_data());
+    Quit();
+  };
+  DecryptRequest request;
+  request.set_key_label("label");
+  request.set_encrypted_data("data");
+  service_->Decrypt(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, DecryptKeyNotFound) {
+  EXPECT_CALL(mock_key_store_, Read("user", "label", _))
+      .WillRepeatedly(Return(false));
+  // Set expectations on the outputs.
+  auto callback = [this](const DecryptReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_decrypted_data());
+    Quit();
+  };
+  DecryptRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  request.set_encrypted_data("data");
+  service_->Decrypt(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, DecryptKeyNotFoundNoUser) {
+  // Set expectations on the outputs.
+  auto callback = [this](const DecryptReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_decrypted_data());
+    Quit();
+  };
+  DecryptRequest request;
+  request.set_key_label("label");
+  request.set_encrypted_data("data");
+  service_->Decrypt(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, DecryptUnbindFailure) {
+  EXPECT_CALL(mock_tpm_utility_, Unbind(_, _, _)).WillRepeatedly(Return(false));
+  // Set expectations on the outputs.
+  auto callback = [this](const DecryptReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_decrypted_data());
+    Quit();
+  };
+  DecryptRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  request.set_encrypted_data("data");
+  service_->Decrypt(request, base::Bind(callback));
+  Run();
+}
+
 }  // namespace attestation

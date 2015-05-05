@@ -69,6 +69,12 @@ class AttestationInterface {
   virtual void CreateCertifiableKey(
       const CreateCertifiableKeyRequest& request,
       const CreateCertifiableKeyCallback& callback) = 0;
+
+  // Processes a DecryptRequest and responds with a
+  // DecryptReply.
+  using DecryptCallback = base::Callback<void(const DecryptReply&)>;
+  virtual void Decrypt(const DecryptRequest& request,
+                       const DecryptCallback& callback) = 0;
 };
 
 }  // namespace attestation

@@ -72,6 +72,8 @@ class AttestationService : public AttestationInterface {
   void CreateCertifiableKey(
       const CreateCertifiableKeyRequest& request,
       const CreateCertifiableKeyCallback& callback) override;
+  void Decrypt(const DecryptRequest& request,
+               const DecryptCallback& callback) override;
 
   // Mutators useful for testing.
   void set_crypto_utility(CryptoUtility* crypto_utility) {
@@ -145,6 +147,10 @@ class AttestationService : public AttestationInterface {
   void CreateCertifiableKeyTask(
       const CreateCertifiableKeyRequest& request,
       const std::shared_ptr<CreateCertifiableKeyReply>& result);
+
+  // A synchronous implementation of Decrypt.
+  void DecryptTask(const DecryptRequest& request,
+                   const std::shared_ptr<DecryptReply>& result);
 
   // Returns true iff all information required for enrollment with the Google
   // Attestation CA is available.

@@ -74,6 +74,12 @@ class DBusService {
           const CreateCertifiableKeyReply&>> response,
       const CreateCertifiableKeyRequest& request);
 
+  // Handles a Decrypt D-Bus call.
+  void HandleDecrypt(
+      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+          const DecryptReply&>> response,
+      const DecryptRequest& request);
+
   chromeos::dbus_utils::DBusObject dbus_object_;
   AttestationInterface* service_;
 

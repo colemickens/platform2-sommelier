@@ -258,8 +258,7 @@ TEST_F(DBusServiceTest, CreateCertifiableKey) {
   EXPECT_CALL(mock_service_, CreateCertifiableKey(_, _))
       .WillOnce(Invoke([](
           const CreateCertifiableKeyRequest& request,
-          const AttestationInterface::CreateCertifiableKeyCallback&
-              callback) {
+          const AttestationInterface::CreateCertifiableKeyCallback& callback) {
         EXPECT_EQ("label", request.key_label());
         EXPECT_EQ(KEY_TYPE_ECC, request.key_type());
         EXPECT_EQ(KEY_USAGE_SIGN, request.key_usage());
@@ -283,6 +282,35 @@ TEST_F(DBusServiceTest, CreateCertifiableKey) {
   EXPECT_EQ("public_key", reply.public_key());
   EXPECT_EQ("certify_info", reply.certify_info());
   EXPECT_EQ("signature", reply.certify_info_signature());
+}
+
+TEST_F(DBusServiceTest, Decrypt) {
+  DecryptRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  request.set_encrypted_data("data");
+  EXPECT_CALL(mock_service_, Decrypt(_, _))
+      .WillOnce(Invoke([](
+          const DecryptRequest& request,
+          const AttestationInterface::DecryptCallback& callback) {
+        EXPECT_EQ("label", request.key_label());
+        EXPECT_EQ("user", request.username());
+        EXPECT_EQ("data", request.encrypted_data());
+        DecryptReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        reply.set_decrypted_data("data");
+        callback.Run(reply);
+      }));
+  std::unique_ptr<dbus::MethodCall> call =
+      CreateMethodCall(kDecrypt);
+  dbus::MessageWriter writer(call.get());
+  writer.AppendProtoAsArrayOfBytes(request);
+  auto response = CallMethod(call.get());
+  dbus::MessageReader reader(response.get());
+  DecryptReply reply;
+  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  EXPECT_EQ("data", reply.decrypted_data());
 }
 
 }  // namespace attestation

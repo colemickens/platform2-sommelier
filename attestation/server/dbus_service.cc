@@ -27,30 +27,27 @@ void DBusService::Register(const CompletionAction& callback) {
   chromeos::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_.AddOrGetInterface(kAttestationInterface);
 
-  dbus_interface->AddMethodHandler(
-      kCreateGoogleAttestedKey,
-      base::Unretained(this),
-      &DBusService::HandleCreateGoogleAttestedKey);
-  dbus_interface->AddMethodHandler(
-      kGetKeyInfo,
-      base::Unretained(this),
-      &DBusService::HandleGetKeyInfo);
-  dbus_interface->AddMethodHandler(
-      kGetEndorsementInfo,
-      base::Unretained(this),
-      &DBusService::HandleGetEndorsementInfo);
-  dbus_interface->AddMethodHandler(
-      kGetAttestationKeyInfo,
-      base::Unretained(this),
-      &DBusService::HandleGetAttestationKeyInfo);
-  dbus_interface->AddMethodHandler(
-      kActivateAttestationKey,
-      base::Unretained(this),
-      &DBusService::HandleActivateAttestationKey);
-  dbus_interface->AddMethodHandler(
-      kCreateCertifiableKey,
-      base::Unretained(this),
-      &DBusService::HandleCreateCertifiableKey);
+  dbus_interface->AddMethodHandler(kCreateGoogleAttestedKey,
+                                   base::Unretained(this),
+                                   &DBusService::HandleCreateGoogleAttestedKey);
+  dbus_interface->AddMethodHandler(kGetKeyInfo,
+                                   base::Unretained(this),
+                                   &DBusService::HandleGetKeyInfo);
+  dbus_interface->AddMethodHandler(kGetEndorsementInfo,
+                                   base::Unretained(this),
+                                   &DBusService::HandleGetEndorsementInfo);
+  dbus_interface->AddMethodHandler(kGetAttestationKeyInfo,
+                                   base::Unretained(this),
+                                   &DBusService::HandleGetAttestationKeyInfo);
+  dbus_interface->AddMethodHandler(kActivateAttestationKey,
+                                   base::Unretained(this),
+                                   &DBusService::HandleActivateAttestationKey);
+  dbus_interface->AddMethodHandler(kCreateCertifiableKey,
+                                   base::Unretained(this),
+                                   &DBusService::HandleCreateCertifiableKey);
+  dbus_interface->AddMethodHandler(kDecrypt,
+                                   base::Unretained(this),
+                                   &DBusService::HandleDecrypt);
 
   dbus_object_.RegisterAsync(callback);
 }
@@ -164,6 +161,24 @@ void DBusService::HandleCreateCertifiableKey(
     response->Return(reply);
   };
   service_->CreateCertifiableKey(
+      request,
+      base::Bind(callback, SharedResponsePointer(std::move(response))));
+}
+
+void DBusService::HandleDecrypt(
+    std::unique_ptr<DBusMethodResponse<const DecryptReply&>> response,
+    const DecryptRequest& request) {
+  VLOG(1) << __func__;
+  // Convert |response| to a shared_ptr so |service_| can safely copy the
+  // callback.
+  using SharedResponsePointer = std::shared_ptr<
+      DBusMethodResponse<const DecryptReply&>>;
+  // A callback that fills the reply protobuf and sends it.
+  auto callback = [](const SharedResponsePointer& response,
+                     const DecryptReply& reply) {
+    response->Return(reply);
+  };
+  service_->Decrypt(
       request,
       base::Bind(callback, SharedResponsePointer(std::move(response))));
 }

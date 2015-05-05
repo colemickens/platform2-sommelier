@@ -397,6 +397,38 @@ void AttestationService::CreateCertifiableKeyTask(
   result->set_certify_info_signature(key.certified_key_proof());
 }
 
+void AttestationService::Decrypt(const DecryptRequest& request,
+                                 const DecryptCallback& callback) {
+  auto result = std::make_shared<DecryptReply>();
+  base::Closure task = base::Bind(
+      &AttestationService::DecryptTask,
+      base::Unretained(this),
+      request,
+      result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<DecryptReply>,
+      GetWeakPtr(),
+      callback,
+      result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::DecryptTask(
+    const DecryptRequest& request,
+    const std::shared_ptr<DecryptReply>& result) {
+  CertifiedKey key;
+  if (!FindKeyByLabel(request.username(), request.key_label(), &key)) {
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
+  }
+  std::string data;
+  if (!tpm_utility_->Unbind(key.key_blob(), request.encrypted_data(), &data)) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  result->set_decrypted_data(data);
+}
+
 bool AttestationService::IsPreparedForEnrollment() {
   if (!tpm_utility_->IsTpmReady()) {
     return false;

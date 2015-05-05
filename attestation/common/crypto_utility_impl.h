@@ -44,6 +44,9 @@ class CryptoUtilityImpl : public CryptoUtility {
       const std::string& ek_public_key_info,
       const std::string& aik_public_key,
       EncryptedIdentityCredential* encrypted) override;
+  bool EncryptForUnbind(const std::string& public_key,
+                        const std::string& data,
+                        std::string* encrypted_data) override;
 
  private:
   // Encrypts |data| using |key| and |iv| for AES in CBC mode with PKCS #5

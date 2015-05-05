@@ -45,6 +45,9 @@ class TpmUtilityV1 : public TpmUtility {
   bool SealToPCR0(const std::string& data, std::string* sealed_data) override;
   bool Unseal(const std::string& sealed_data, std::string* data) override;
   bool GetEndorsementPublicKey(std::string* public_key) override;
+  bool Unbind(const std::string& key_blob,
+              const std::string& bound_data,
+              std::string* data) override;
 
  private:
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with

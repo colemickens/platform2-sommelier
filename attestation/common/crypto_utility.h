@@ -67,6 +67,12 @@ class CryptoUtility {
       const std::string& ek_public_key_info,
       const std::string& aik_public_key,
       EncryptedIdentityCredential* encrypted) = 0;
+
+  // Encrypts |data| in a format compatible with the TPM unbind operation. The
+  // |public_key| must be provided in X.509 SubjectPublicKeyInfo format.
+  virtual bool EncryptForUnbind(const std::string& public_key,
+                                const std::string& data,
+                                std::string* encrypted_data) = 0;
 };
 
 }  // namespace attestation
