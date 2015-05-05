@@ -30,7 +30,6 @@
 #include "shill/error.h"
 #include "shill/file_reader.h"
 #include "shill/geolocation_info.h"
-#include "shill/icmp.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -3015,57 +3014,6 @@ void WiFi::RemoveSupplicantNetworks() {
     RemoveNetwork(map_entry.second);
   }
   rpcid_by_service_.clear();
-}
-
-// TODO(zqiu): should make this a member function of DeviceInfo and move the
-// static function MakeHardwareAddressFromString from WiFiEndpoint to
-// DeviceInfo.
-bool WiFi::ResolvePeerMacAddress(const string &input, string *output,
-                                 Error *error) {
-  if (!WiFiEndpoint::MakeHardwareAddressFromString(input).empty()) {
-    // Input is already a MAC address.
-    *output = input;
-    return true;
-  }
-
-  IPAddress ip_address(IPAddress::kFamilyIPv4);
-  if (!ip_address.SetAddressFromString(input)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Peer is neither an IP Address nor a MAC address");
-    return false;
-  }
-
-  // Peer address was specified as an IP address which we need to resolve.
-  const DeviceInfo *device_info = manager()->device_info();
-  if (!device_info->HasDirectConnectivityTo(interface_index(), ip_address)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "IP address is not local to this interface");
-    return false;
-  }
-
-  ByteString mac_address;
-  if (device_info->GetMACAddressOfPeer(
-          interface_index(), ip_address, &mac_address)) {
-    *output = WiFiEndpoint::MakeStringFromHardwareAddress(
-        vector<uint8_t>(mac_address.GetConstData(),
-                        mac_address.GetConstData() +
-                        mac_address.GetLength()));
-    SLOG(this, 2) << "ARP cache lookup returned peer: " << *output;
-    return true;
-  }
-
-  if (!Icmp().TransmitEchoRequest(ip_address)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
-                          "Failed to send ICMP reqeust to peer to setup ARP");
-  } else {
-    // ARP request was transmitted successfully, peer MAC address is pending
-    // resolution.
-    error->Populate(Error::kInProgress,
-                    "Peer MAC address was not found in the ARP cache, "
-                    "but an ARP request was sent to find it.  "
-                    "Please try again.");
-  }
-  return false;
 }
 
 void WiFi::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,

@@ -319,6 +319,23 @@ class Device : public base::RefCounted<Device> {
   // Initiate renewal of existing DHCP lease.
   void RenewDHCPLease();
 
+  // Resolve the |input| string into a MAC address for a peer local to this
+  // device. This could be a trivial operation if the |input| is already a MAC
+  // address, or could involve an ARP table lookup.  Returns true and populates
+  // |output| if the resolution completes, otherwise returns false and
+  // populates |error|.
+  virtual bool ResolvePeerMacAddress(const std::string &input,
+                                     std::string *output,
+                                     Error *error);
+
+  // Creates a byte vector from a colon-separated hardware address string.
+  static std::vector<uint8_t> MakeHardwareAddressFromString(
+      const std::string &address_string);
+
+  // Creates a colon-separated hardware address string from a byte vector.
+  static std::string MakeStringFromHardwareAddress(
+      const std::vector<uint8_t> &address_data);
+
  protected:
   friend class base::RefCounted<Device>;
   friend class DeviceHealthCheckerTest;
@@ -631,6 +648,8 @@ class Device : public base::RefCounted<Device> {
   // Maximum seconds between two link monitor failures to declare this link
   // (network) as unreliable.
   static const int kLinkUnreliableThresholdSeconds;
+
+  static const size_t kHardwareAddressLength;
 
   // Configure static IP address parameters if the service provides them.
   void ConfigureStaticIPTask();

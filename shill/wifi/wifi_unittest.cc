@@ -1242,11 +1242,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_->SetBgscanSignalThreshold(threshold, error);
   }
 
-  bool ResolvePeerMacAddress(
-      const string &input, string *output, Error *error) {
-    return wifi_->ResolvePeerMacAddress(input, output, error);
-  }
-
   void SetTDLSManager(TDLSManager *tdls_manager) {
     wifi_->tdls_manager_.reset(tdls_manager);
   }
@@ -4315,40 +4310,6 @@ TEST_F(WiFiMainTest, FullScanDuringProgressive) {
   ExpectScanIdle();
 }
 
-TEST_F(WiFiMainTest, ResolvePeerMacAddress) {
-  Error error;
-  string result;
-
-  EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
-
-  // Invalid peer address (not a valid IP address nor MAC address).
-  const char kInvalidPeer[] = "peer";
-  EXPECT_FALSE(ResolvePeerMacAddress(kInvalidPeer, &result, &error));
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
-
-  // IP address with no direct connectivity.
-  const char kPeerIp[] = "192.168.1.1";
-  error.Reset();
-  // No direct connectivity to the provided IP address.
-  EXPECT_CALL(*device_info(), HasDirectConnectivityTo(kInterfaceIndex, _))
-      .WillOnce(Return(false));
-  EXPECT_FALSE(ResolvePeerMacAddress(kPeerIp, &result, &error));
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
-  Mock::VerifyAndClearExpectations(device_info());
-
-  // Provided IP address is in the ARP cache, return the resolved MAC address.
-  const char kResolvedMac[] = "00:11:22:33:44:55";
-  const ByteString kMacBytes(
-      WiFiEndpoint::MakeHardwareAddressFromString(kResolvedMac));
-  error.Reset();
-  EXPECT_CALL(*device_info(), HasDirectConnectivityTo(kInterfaceIndex, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*device_info(), GetMACAddressOfPeer(kInterfaceIndex, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(kMacBytes), Return(true)));
-  EXPECT_TRUE(ResolvePeerMacAddress(kPeerIp, &result, &error));
-  EXPECT_EQ(kResolvedMac, result);
-}
-
 TEST_F(WiFiMainTest, TDLSDiscoverResponse) {
   const char kPeer[] = "peer";
   MockTDLSManager *tdls_manager = new StrictMock<MockTDLSManager>();
@@ -4365,6 +4326,7 @@ TEST_F(WiFiMainTest, PerformTDLSOperation) {
   SetTDLSManager(tdls_manager);
 
   Error error;
+  // No address resolution is performed since MAC address is provided.
   EXPECT_CALL(*tdls_manager,
               PerformOperation(kPeerMac, kTDLSStatusOperation, &error))
       .WillOnce(Return(kTDLSConnectedState));

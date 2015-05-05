@@ -20,6 +20,8 @@
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/async_connection.h"
@@ -33,6 +35,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/http_proxy.h"
+#include "shill/icmp.h"
 #include "shill/ip_address_store.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
@@ -112,6 +115,7 @@ const char* Device::kFallbackDnsServers[] = {
 // static
 const int Device::kDNSTimeoutMilliseconds = 5000;
 const int Device::kLinkUnreliableThresholdSeconds = 60 * 60;
+const size_t Device::kHardwareAddressLength = 6U;
 
 Device::Device(ControlInterface *control_interface,
                EventDispatcher *dispatcher,
@@ -1734,6 +1738,78 @@ void Device::SetEnabledUnchecked(bool enable, Error *error,
 void Device::UpdateIPConfigsProperty() {
   adaptor_->EmitRpcIdentifierArrayChanged(
       kIPConfigsProperty, AvailableIPConfigs(nullptr));
+}
+
+bool Device::ResolvePeerMacAddress(const string &input,
+                                   string *output,
+                                   Error *error) {
+  if (!MakeHardwareAddressFromString(input).empty()) {
+    // Input is already a MAC address.
+    *output = input;
+    return true;
+  }
+
+  IPAddress ip_address(IPAddress::kFamilyIPv4);
+  if (!ip_address.SetAddressFromString(input)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "Peer is neither an IP Address nor a MAC address");
+    return false;
+  }
+
+  // Peer address was specified as an IP address which we need to resolve.
+  const DeviceInfo *device_info = manager()->device_info();
+  if (!device_info->HasDirectConnectivityTo(interface_index_, ip_address)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          "IP address is not local to this interface");
+    return false;
+  }
+
+  ByteString mac_address;
+  if (device_info->GetMACAddressOfPeer(interface_index_,
+                                       ip_address,
+                                       &mac_address)) {
+    *output = MakeStringFromHardwareAddress(
+        vector<uint8_t>(mac_address.GetConstData(),
+                        mac_address.GetConstData() +
+                        mac_address.GetLength()));
+    SLOG(this, 2) << "ARP cache lookup returned peer: " << *output;
+    return true;
+  }
+
+  if (!Icmp().TransmitEchoRequest(ip_address)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Failed to send ICMP request to peer to setup ARP");
+  } else {
+    // ARP request was transmitted successfully, address resolution is still
+    // pending.
+    error->Populate(Error::kInProgress,
+                    "Peer MAC address was not found in the ARP cache, "
+                    "but an ARP request was sent to find it.  "
+                    "Please try again.");
+  }
+  return false;
+}
+
+// static
+vector<uint8_t> Device::MakeHardwareAddressFromString(
+    const string &address_string) {
+  string address_nosep;
+  base::RemoveChars(address_string, ":", &address_nosep);
+  vector<uint8_t> address_bytes;
+  base::HexStringToBytes(address_nosep, &address_bytes);
+  if (address_bytes.size() != kHardwareAddressLength) {
+    return vector<uint8_t>();
+  }
+  return address_bytes;
+}
+
+// static
+string Device::MakeStringFromHardwareAddress(
+    const vector<uint8_t> &address_bytes) {
+  CHECK_EQ(kHardwareAddressLength, address_bytes.size());
+  return StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
+                      address_bytes[0], address_bytes[1], address_bytes[2],
+                      address_bytes[3], address_bytes[4], address_bytes[5]);
 }
 
 }  // namespace shill

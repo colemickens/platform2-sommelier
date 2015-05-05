@@ -1581,6 +1581,46 @@ TEST_F(DeviceTest, PrependWithStaticConfiguration) {
   EXPECT_EQ(static_servers, device_->ipconfig()->properties().dns_servers);
 }
 
+TEST_F(DeviceTest, ResolvePeerMacAddress) {
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+
+  // Invalid peer address (not a valid IP address nor MAC address).
+  Error error;
+  string result;
+  const char kInvalidPeer[] = "peer";
+  EXPECT_FALSE(device_->ResolvePeerMacAddress(kInvalidPeer, &result, &error));
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+
+  // No direct connectivity to the peer.
+  const char kPeerIp[] = "192.168.1.1";
+  error.Reset();
+  EXPECT_CALL(device_info_,
+              HasDirectConnectivityTo(device_->interface_index(), _))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(device_->ResolvePeerMacAddress(kPeerIp, &result, &error));
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  Mock::VerifyAndClearExpectations(&device_info_);
+
+  // Provided IP address is in the ARP cache, return the resolved MAC address.
+  const char kResolvedMac[] = "00:11:22:33:44:55";
+  const ByteString kMacBytes(
+      Device::MakeHardwareAddressFromString(kResolvedMac));
+  error.Reset();
+  EXPECT_CALL(device_info_,
+              HasDirectConnectivityTo(device_->interface_index(), _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(device_info_,
+              GetMACAddressOfPeer(device_->interface_index(), _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kMacBytes), Return(true)));
+  EXPECT_TRUE(device_->ResolvePeerMacAddress(kPeerIp, &result, &error));
+  EXPECT_EQ(kResolvedMac, result);
+}
+
 class DevicePortalDetectionTest : public DeviceTest {
  public:
   DevicePortalDetectionTest()
