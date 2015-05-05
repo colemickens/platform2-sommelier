@@ -43,9 +43,6 @@ DEFINE_boolean yes ${FLAGS_FALSE} \
 DEFINE_boolean preserve_stateful ${FLAGS_FALSE} \
   "Don't create a new filesystem for the stateful partition. Be careful \
 using this option as this may make the stateful partition not mountable."
-DEFINE_string arch "" \
-  "Architecture for this image, must be one of 'ARM', 'MIPS', or 'INTEL'.  \
-If unset, auto-detect."
 DEFINE_string payload_image "" "Path to a Chromium OS image to install onto \
 the device's hard drive"
 DEFINE_string gpt_layout "" "Path to a script for pre-defined GPT partition \
@@ -71,35 +68,6 @@ eval set -- "${FLAGS_ARGV}"
 die() {
   echo "$*" >&2
   exit 1
-}
-
-# Determine our architecture
-get_architecture() {
-  if [ -n "${FLAGS_arch}" ]; then
-    case ${FLAGS_arch} in
-    INTEL|ARM|MIPS)
-      echo "${FLAGS_arch}"
-      return 0
-      ;;
-    *)
-      die "Error: Unknown architecture '${FLAGS_arch}'."
-    esac
-  fi
-
-  case $(uname -m) in
-  i?86|x86_64)
-    echo "INTEL"
-    ;;
-  arm*|aarch64)
-    echo "ARM"
-    ;;
-  mips*)
-    echo "MIPS"
-    ;;
-  *)
-    die "Error: Failed to auto detect architecture."
-  esac
-  return 0
 }
 
 fast_dd() {
@@ -715,12 +683,6 @@ get_pmbr_code() {
     # We don't use PMBR if this is on MTD.
     dd bs=512 count=1 if=/dev/zero of="${pmbr_code}" >/dev/null 2>&1
     echo "${pmbr_code}"
-  elif [ "${ARCH}" = "ARM" ]; then
-    # Store the existing PMBR from the destination in the temp pmbr file so we
-    # can restore it when we're installing the GPT. This ensures that we
-    # preserve settings set by crossystem (such as dev_boot_usb).
-    dd bs=512 count=1 if="${DST}" of="${pmbr_code}" >/dev/null 2>&1
-    echo "${pmbr_code}"
   else
     # Steal the PMBR code from the source MBR to put on the dest MBR, for
     # booting on legacy-BIOS devices.
@@ -791,8 +753,6 @@ main() {
   if [ "${FLAGS_debug}" = "${FLAGS_TRUE}" ]; then
     set -x
   fi
-
-  ARCH="$(get_architecture)" || exit $?
 
   check_payload_image
   mkdir -p "${TMPMNT}"
