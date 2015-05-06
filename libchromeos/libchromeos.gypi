@@ -126,11 +126,25 @@
       'dependencies': [
         'libchromeos-core-<(libbase_ver)',
       ],
+      'variables': {
+        'exported_deps': [
+          'openssl',
+        ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
       'sources': [
         'chromeos/streams/file_stream.cc',
         'chromeos/streams/input_stream_set.cc',
         'chromeos/streams/memory_containers.cc',
         'chromeos/streams/memory_stream.cc',
+        'chromeos/streams/openssl_stream_bio.cc',
         'chromeos/streams/stream.cc',
         'chromeos/streams/stream_errors.cc',
         'chromeos/streams/stream_utils.cc',
@@ -315,6 +329,7 @@
             'chromeos/streams/input_stream_set_unittest.cc',
             'chromeos/streams/memory_containers_unittest.cc',
             'chromeos/streams/memory_stream_unittest.cc',
+            'chromeos/streams/openssl_stream_bio_unittests.cc',
             'chromeos/streams/stream_unittest.cc',
             'chromeos/streams/stream_utils_unittest.cc',
             'chromeos/strings/string_utils_unittest.cc',
