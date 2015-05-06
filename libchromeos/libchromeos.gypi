@@ -148,6 +148,7 @@
         'chromeos/streams/stream.cc',
         'chromeos/streams/stream_errors.cc',
         'chromeos/streams/stream_utils.cc',
+        'chromeos/streams/tls_stream.cc',
       ],
     },
     {
