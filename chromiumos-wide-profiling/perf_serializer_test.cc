@@ -386,9 +386,11 @@ TEST(PerfSerializerTest, SerializesAndDeserializesTraceMetadata) {
   std::stringstream input;
 
   const size_t attr_count = 1;
+  const size_t data_size =
+      testing::ExamplePerfSampleEvent_Tracepoint::kEventSize;
 
   // header
-  testing::ExamplePerfDataFileHeader file_header(attr_count,
+  testing::ExamplePerfDataFileHeader file_header(attr_count, data_size,
                                                  1 << HEADER_TRACING_DATA);
   file_header.WriteTo(&input);
   const perf_file_header &header = file_header.header();

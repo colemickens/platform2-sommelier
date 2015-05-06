@@ -30,11 +30,16 @@ class StreamWriteable {
 class ExamplePerfDataFileHeader : public StreamWriteable {
  public:
   explicit ExamplePerfDataFileHeader(const size_t attr_count,
+                                     const u64 data_size,
                                      const unsigned long features);  // NOLINT
 
   const perf_file_header &header() const { return header_; }
-  const ssize_t data_end() const {
-    return static_cast<ssize_t>(header_.data.offset + header_.data.size); }
+  u64 data_end_offset() const {
+    return header_.data.offset + header_.data.size;
+  }
+  ssize_t data_end() const {
+    return static_cast<ssize_t>(data_end_offset());
+  }
 
   void WriteTo(std::ostream* out) const override;
 
@@ -70,6 +75,25 @@ class ExamplePerfEventAttrEvent_Hardware : public StreamWriteable {
 };
 
 // Produces a struct perf_file_attr with a perf_event_attr describing a
+// hardware event.
+class ExamplePerfFileAttr_Hardware : public StreamWriteable {
+ public:
+  typedef ExamplePerfFileAttr_Hardware SelfT;
+  explicit ExamplePerfFileAttr_Hardware(u64 sample_type,
+                                        bool sample_id_all)
+      : sample_type_(sample_type),
+        sample_id_all_(sample_id_all),
+        config_(0) {
+  }
+  SelfT& WithConfig(u64 config) { config_ = config; return *this; }
+  void WriteTo(std::ostream* out) const override;
+ private:
+  const u64 sample_type_;
+  const bool sample_id_all_;
+  u64 config_;
+};
+
+// Produces a struct perf_file_attr with a perf_event_attr describing a
 // tracepoint event.
 class ExamplePerfFileAttr_Tracepoint : public StreamWriteable {
  public:
@@ -89,12 +113,19 @@ class SampleInfo {
  public:
   SampleInfo& Ip(u64 ip) { return AddField(ip); }
   SampleInfo& Tid(u32 pid, u32 tid) {
-    return AddField(PunU32U64{.v32={pid, tid}}.v64);
+    return AddField(PunU32U64{.v32 = {pid, tid}}.v64);
   }
   SampleInfo& Tid(u32 pid) {
-    return AddField(PunU32U64{.v32={pid, pid}}.v64);
+    return AddField(PunU32U64{.v32 = {pid, pid}}.v64);
   }
   SampleInfo& Time(u64 time) { return AddField(time); }
+  SampleInfo& BranchStack_nr(u64 nr) { return AddField(nr); }
+  SampleInfo& BranchStack_lbr(u64 from, u64 to, u64 flags) {
+    AddField(from);
+    AddField(to);
+    AddField(flags);
+    return *this;
+  }
 
   const char* data() const {
     return reinterpret_cast<const char *>(fields_.data());
@@ -175,11 +206,18 @@ class ExamplePerfSampleEvent : public StreamWriteable {
   const SampleInfo sample_info_;
 };
 
+class ExamplePerfSampleEvent_BranchStack : public ExamplePerfSampleEvent {
+ public:
+  ExamplePerfSampleEvent_BranchStack();
+  static const size_t kEventSize;
+};
+
 // Produces a struct sample_event matching ExamplePerfFileAttr_Tracepoint.
 class ExamplePerfSampleEvent_Tracepoint : public StreamWriteable {
  public:
   ExamplePerfSampleEvent_Tracepoint() {}
   void WriteTo(std::ostream* out) const override;
+  static const size_t kEventSize;
 };
 
 // Produces a struct perf_file_section suitable for use in the metadata index.

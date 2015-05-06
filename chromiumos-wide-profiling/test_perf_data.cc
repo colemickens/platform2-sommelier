@@ -15,7 +15,9 @@ namespace quipper {
 namespace testing {
 
 ExamplePerfDataFileHeader::ExamplePerfDataFileHeader(
-    const size_t attr_count, const unsigned long features) {  // NOLINT
+    const size_t attr_count,
+    const u64 data_size,
+    const unsigned long features) {  // NOLINT
   CHECK_EQ(112U, sizeof(perf_file_attr)) << "perf_file_attr has changed size!";
   const size_t attrs_size = attr_count * sizeof(perf_file_attr);
   header_ = {
@@ -23,7 +25,7 @@ ExamplePerfDataFileHeader::ExamplePerfDataFileHeader(
     .size = 104,
     .attr_size = sizeof(perf_file_attr),
     .attrs = {.offset = 104, .size = attrs_size},
-    .data = {.offset = 104 + attrs_size, .size = (1+14)*sizeof(u64)},
+    .data = {.offset = 104 + attrs_size, .size = data_size},
     .event_types = {0},
     .adds_features = {features, 0, 0, 0},
   };
@@ -65,6 +67,24 @@ void ExamplePerfEventAttrEvent_Hardware::WriteTo(std::ostream* out) const {
   };
 
   out->write(reinterpret_cast<const char*>(&event), sizeof(event));
+}
+
+void ExamplePerfFileAttr_Hardware::WriteTo(std::ostream* out) const {
+  // Due to the unnamed union fields (eg, sample_period), this structure can't
+  // be initialized with designated initializers.
+  perf_event_attr attr = {};
+  attr.type = PERF_TYPE_HARDWARE;
+  attr.size = sizeof(perf_event_attr);
+  attr.config = config_;
+  attr.sample_period = 1;
+  attr.sample_type = sample_type_;
+  attr.sample_id_all = sample_id_all_;
+
+  const perf_file_attr file_attr = {
+    .attr = attr,
+    .ids = {.offset = 104, .size = 0},
+  };
+  out->write(reinterpret_cast<const char*>(&file_attr), sizeof(file_attr));
 }
 
 void ExamplePerfFileAttr_Tracepoint::WriteTo(std::ostream* out) const {
@@ -186,6 +206,32 @@ void ExamplePerfSampleEvent::WriteTo(std::ostream* out) const {
   out->write(sample_info_.data(), sample_info_.size());
 }
 
+ExamplePerfSampleEvent_BranchStack::ExamplePerfSampleEvent_BranchStack()
+  : ExamplePerfSampleEvent(
+      SampleInfo()
+      .BranchStack_nr(16)
+      .BranchStack_lbr(0x00007f4a313bb8cc, 0x00007f4a313bdb40, 0x02)
+      .BranchStack_lbr(0x00007f4a30ce4de2, 0x00007f4a313bb8b3, 0x02)
+      .BranchStack_lbr(0x00007f4a313bb8b0, 0x00007f4a30ce4de0, 0x01)
+      .BranchStack_lbr(0x00007f4a30ff45c1, 0x00007f4a313bb8a0, 0x02)
+      .BranchStack_lbr(0x00007f4a30ff49f2, 0x00007f4a30ff45bb, 0x02)
+      .BranchStack_lbr(0x00007f4a30ff4a98, 0x00007f4a30ff49ed, 0x02)
+      .BranchStack_lbr(0x00007f4a30ff4a7c, 0x00007f4a30ff4a91, 0x02)
+      .BranchStack_lbr(0x00007f4a30ff4a34, 0x00007f4a30ff4a46, 0x02)
+      .BranchStack_lbr(0x00007f4a30ff4c22, 0x00007f4a30ff4a0e, 0x02)
+      .BranchStack_lbr(0x00007f4a30ff4bb3, 0x00007f4a30ff4c1b, 0x01)
+      .BranchStack_lbr(0x00007f4a30ff4a09, 0x00007f4a30ff4b60, 0x02)
+      .BranchStack_lbr(0x00007f4a30ff49e8, 0x00007f4a30ff4a00, 0x02)
+      .BranchStack_lbr(0x00007f4a30ff42db, 0x00007f4a30ff49e0, 0x02)
+      .BranchStack_lbr(0x00007f4a30ff42bb, 0x00007f4a30ff42d4, 0x02)
+      .BranchStack_lbr(0x00007f4a333bf88b, 0x00007f4a30ff42ac, 0x02)
+      .BranchStack_lbr(0x00007f4a333bf853, 0x00007f4a333bf885, 0x02)) {
+}
+
+// Event size matching the event produced above
+const size_t ExamplePerfSampleEvent_BranchStack::kEventSize =
+    (1 /*perf_event_header*/ + 1 /*nr*/ + 16*3 /*lbr*/) * sizeof(u64);
+
 void ExamplePerfSampleEvent_Tracepoint::WriteTo(std::ostream* out) const {
   const sample_event event = {
     .header = {
@@ -216,6 +262,10 @@ void ExamplePerfSampleEvent_Tracepoint::WriteTo(std::ostream* out) const {
   out->write(reinterpret_cast<const char*>(sample_event_array),
              sizeof(sample_event_array));
 }
+
+// Event size matching the event produced above
+const size_t ExamplePerfSampleEvent_Tracepoint::kEventSize =
+    (1 /*perf_event_header*/ + 14 /*sample array*/) * sizeof(u64);
 
 static const char kTraceMetadataValue[] =
     "\x17\x08\x44tracing0.5BLAHBLAHBLAH....";

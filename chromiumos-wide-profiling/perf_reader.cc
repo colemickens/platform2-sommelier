@@ -870,7 +870,7 @@ size_t PerfReader::GetSize() {
     total_size += attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
 
   // Additional info about metadata.  See WriteMetadata for explanation.
-  total_size += (GetNumMetadata() + 1) * 2 * sizeof(u64);
+  total_size += GetNumMetadata() * sizeof(perf_file_section);
 
   // Add the sizes of the various metadata.
   total_size += tracing_data_.size();
@@ -927,8 +927,6 @@ bool PerfReader::RegenerateHeader() {
   // will also have to be updated if this CHECK starts to fail.
   CHECK_LE(static_cast<size_t>(HEADER_LAST_FEATURE),
            BytesToBits(sizeof(out_header_.adds_features[0])));
-  if (sample_type_ & PERF_SAMPLE_BRANCH_STACK)
-    out_header_.adds_features[0] |= (1 << HEADER_BRANCH_STACK);
   out_header_.adds_features[0] |= metadata_mask_ & kSupportedMetadataMask;
 
   return true;
@@ -1955,18 +1953,18 @@ bool PerfReader::WriteData(const BufferWithSize& data) const {
 
 bool PerfReader::WriteMetadata(const BufferWithSize& data) const {
   size_t header_offset = out_header_.data.offset + out_header_.data.size;
+  const size_t header_size = GetNumMetadata() * sizeof(perf_file_section);
 
-  // Before writing the metadata, there is one header for each piece
-  // of metadata, and one extra showing the end of the file.
-  // Each header contains two 64-bit numbers (offset and size).
-  size_t metadata_offset =
-      header_offset + (GetNumMetadata() + 1) * 2 * sizeof(u64);
+  // There is one header for each feature pointing to the metadata for that
+  // feature. If a feature has no metadata, the size field is zero.
+  size_t metadata_offset = header_offset + header_size;
 
   for (u32 type = HEADER_FIRST_FEATURE; type != HEADER_LAST_FEATURE; ++type) {
     if ((out_header_.adds_features[0] & (1 << type)) == 0)
       continue;
 
-    u64 start_offset = metadata_offset;
+    struct perf_file_section header_entry;
+    header_entry.offset = metadata_offset;
     // Write actual metadata to address metadata_offset
     switch (type) {
     case HEADER_TRACING_DATA:
@@ -2010,26 +2008,18 @@ bool PerfReader::WriteMetadata(const BufferWithSize& data) const {
         return false;
       break;
     case HEADER_BRANCH_STACK:
-      continue;
+      break;
     default: LOG(ERROR) << "Unsupported metadata type: " << type;
       return false;
     }
 
     // Write metadata offset and size to address |header_offset|. This is the
     // metadata header that points to the metadata.
-    u64 metadata_size = metadata_offset - start_offset;
-    if (!WriteDataToBuffer(&start_offset, sizeof(start_offset),
-                           "metadata offset", &header_offset, data) ||
-        !WriteDataToBuffer(&metadata_size, sizeof(metadata_size),
-                           "metadata size", &header_offset, data)) {
+    header_entry.size = metadata_offset - header_entry.offset;
+    if (!WriteDataToBuffer(&header_entry, sizeof(header_entry),
+                           "metadata index", &header_offset, data)) {
       return false;
     }
-  }
-
-  // Write the last entry - a pointer to the end of the file
-  if (!WriteDataToBuffer(&metadata_offset, sizeof(metadata_offset),
-                         "metadata offset", &header_offset, data)) {
-    return false;
   }
 
   return true;
@@ -2317,10 +2307,8 @@ void PerfReader::MaybeSwapEventFields(event_t* event) {
 
 size_t PerfReader::GetNumMetadata() const {
   // This is just the number of 1s in the binary representation of the metadata
-  // mask.  However, make sure to only use supported metadata, and don't include
-  // branch stack (since it doesn't have an entry in the metadata section).
-  uint64_t new_mask = metadata_mask_;
-  new_mask &= kSupportedMetadataMask & ~(1 << HEADER_BRANCH_STACK);
+  // mask.  However, make sure to only use supported metadata.
+  uint64_t new_mask = metadata_mask_ & kSupportedMetadataMask;
   std::bitset<sizeof(new_mask) * CHAR_BIT> bits(new_mask);
   return bits.count();
 }

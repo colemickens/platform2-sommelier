@@ -385,10 +385,12 @@ TEST(PerfReaderTest, ReadsAndWritesTraceMetadata) {
   std::stringstream input;
 
   const size_t attr_count = 1;
+  const size_t data_size =
+      testing::ExamplePerfSampleEvent_Tracepoint::kEventSize;
 
   // header
-  testing::ExamplePerfDataFileHeader file_header(
-      attr_count, 1 << HEADER_TRACING_DATA);
+  testing::ExamplePerfDataFileHeader file_header(attr_count, data_size,
+                                                 1 << HEADER_TRACING_DATA);
   file_header.WriteTo(&input);
   const perf_file_header &header = file_header.header();
 
@@ -465,6 +467,72 @@ TEST(PerfReaderTest, ReadsTracingMetadataEvent) {
   EXPECT_TRUE(pr.WriteToVector(&output_perf_data));
   EXPECT_TRUE(pr.ReadFromVector(output_perf_data));
   EXPECT_EQ(trace_metadata, pr.tracing_data());
+}
+
+// Regression test for http://crbug.com/484393
+TEST(PerfReaderTest, BranchStackMetadataIndexHasZeroSize) {
+  std::stringstream input;
+
+  const size_t attr_count = 1;
+  const size_t data_size =
+      testing::ExamplePerfSampleEvent_BranchStack::kEventSize;
+
+  // header
+  testing::ExamplePerfDataFileHeader file_header(attr_count, data_size,
+                                                 1 << HEADER_BRANCH_STACK);
+  file_header.WriteTo(&input);
+  const perf_file_header &header = file_header.header();
+
+  // attrs
+  testing::ExamplePerfFileAttr_Hardware(
+      PERF_SAMPLE_BRANCH_STACK, false /*sample_id_all*/).WriteTo(&input);
+
+  // data
+  ASSERT_EQ(static_cast<u64>(input.tellp()), header.data.offset);
+  testing::ExamplePerfSampleEvent_BranchStack().WriteTo(&input);
+  ASSERT_EQ(input.tellp(), file_header.data_end());
+
+  // metadata
+
+  // HEADER_BRANCH_STACK
+  const perf_file_section branch_stack_index = {
+    .offset = file_header.data_end_offset(),
+    .size = 0,
+  };
+  input.write(reinterpret_cast<const char*>(&branch_stack_index),
+              sizeof(branch_stack_index));
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+
+  // Write it out again.
+  // Initialize the buffer to a non-zero sentinel value so that the bytes
+  // we are checking were written with zero must have been written.
+  const size_t max_predicted_written_size = 1024;
+  std::vector<char> output_perf_data(max_predicted_written_size, '\xaa');
+  EXPECT_TRUE(pr.WriteToVector(&output_perf_data));
+  EXPECT_LE(output_perf_data.size(), max_predicted_written_size)
+      << "Bad prediction for written size";
+
+  // Specifically check that the metadata index has zero in the size.
+  const auto *output_header =
+      reinterpret_cast<struct perf_file_header*>(output_perf_data.data());
+  // HEADER_EVENT_DESC gets added.
+  const u64 output_features = 1 << HEADER_EVENT_DESC | 1 << HEADER_BRANCH_STACK;
+  EXPECT_EQ(output_features, output_header->adds_features[0])
+      << "Expected just a HEADER_BRANCH_STACK feature";
+  const size_t metadata_offset =
+      output_header->data.offset + output_header->data.size;
+  const auto *output_feature_index =
+      reinterpret_cast<struct perf_file_section*>(
+          output_perf_data.data() + metadata_offset);
+  EXPECT_EQ(0, output_feature_index[1].size)
+      << "Regression: Expected zero size for the HEADER_BRANCH_STACK feature "
+      << "metadata index";
 }
 
 // Regression test for http://crbug.com/427767
