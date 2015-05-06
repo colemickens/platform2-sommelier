@@ -81,28 +81,27 @@ show_assets_message() {
 
   if ! display_boot_message "${message}" "${locale_list}"; then
     # Display the message code itself as fallback.
-    echo "${message}" >>"${STDOUT}"
+    echo "${message}" >>"${TTY}"
   fi
 }
 
 # Prints the two byte hex code of the matched char or
-# exists non-zero on timeout.  It reads from the current tty.
-# To override, call it as follows,
-#   match_char_timeout args < "$STDOUT"
-#
-# Arguments: time_in_seconds two_byte_hex_match_1 two_byte_hex_match_2 ...
+# exists non-zero on timeout.  It reads from the tty in arguments.
+# Arguments: tty time_in_seconds two_byte_hex_match_1 two_byte_hex_match_2 ...
 match_char_timeout() {
-  local delay_secs="$1"
+  local tty="$1"
+  local delay_secs="$2"
+  shift
   shift
 
   local input=''
   local match=''
   local start_time=$(date +%s)
   local stop_time=$((start_time + delay_secs))
-  local tty_config=$(stty -g)
-  stty raw -echo
+  local tty_config=$(stty -g -F "${tty}")
+  stty raw -echo cread -F "${tty}"
   while [ $delay_secs -gt 0 ]; do
-    input=$(timeout -s KILL ${delay_secs}s head -c 1)
+    input=$(timeout -s KILL ${delay_secs}s head -c 1 "${tty}")
     [ $? -eq 137 ] && break  # Timed out.
     input=$(printf "%02x" "'$input")
     for char in "$@"; do
@@ -115,7 +114,7 @@ match_char_timeout() {
     delay_secs=$((stop_time - $(date +%s) ))
   done
   # Restores the tty's settings.
-  stty $tty_config
+  stty $tty_config -F "${tty}"
 
   [ -z "$match" ] && return 1
   printf "$match"
@@ -141,9 +140,9 @@ mode_warn_dev() {
   (export IMAGE_FONT_NAME="monospace"; show_assets_message "warn_dev")
 
   # Read a space bar or Ctrl+D or timeout.
-  local input=$(match_char_timeout "$delay_secs" 04 20 < "$STDOUT")
+  local input=$(match_char_timeout "${TTY}" "$delay_secs" 04 20)
   local exit_code=$?
-  tput clear > "$STDOUT"
+  tput clear >>"${TTY}"
   # If we timed out, we're done.
   [ $exit_code -ne 0 ] && return 0
   case "$input" in
@@ -177,12 +176,12 @@ mode_enter_dev() {
     # Trailing spaces must exist to clear previous message when the printed
     # counter width changed (ex, 100->99).
     # TODO(hungte) merge this with assets messages so it can be localized.
-    printf "$format" "Starting in $dev_count_down second(s)..." >"$STDOUT"
+    printf "$format" "Starting in $dev_count_down second(s)..." >>"${TTY}"
     sleep 1
   done
 
   # Count-down
-  tput clear >"$STDOUT"
+  tput clear >>"${TTY}"
   show_assets_message "enter_dev2"
   # TODO(wad,wfrichar) Request a root password here.
   # TODO(wad,reinauer) Inform the user of chromeos-firmwareupdate --mode=todev
@@ -204,7 +203,7 @@ mode_wipe() {
   local message_file="$1"
 
   if ! display_boot_message "show_spinner" "${message_file}"; then
-    echo "Wiping" >>"${STDOUT}"
+    echo "Wiping" >>"${TTY}"
   fi
 }
 
@@ -255,7 +254,7 @@ mode_dev_fwcheck() {
     echo "
       System firmware update available: [$TARGET_FWID]
       Currently installed system firmware: [$fwid]
-    " >"$STDOUT"
+    " >>"${TTY}"
   fi
   if [ "$TARGET_ECID" != "$ecid" ] &&
      [ "$TARGET_ECID" != "IGNORE" ]; then
@@ -263,7 +262,7 @@ mode_dev_fwcheck() {
     echo "
       EC firmware update available: [$TARGET_ECID]
       Currently installed EC firmware: [$ecid]
-    " >"$STDOUT"
+    " >>"${TTY}"
   fi
   if [ $notify_update -ne 0 ]; then
     echo "
@@ -272,7 +271,7 @@ mode_dev_fwcheck() {
       root shell:
 
       sudo chromeos-firmwareupdate --force --mode=recovery
-    " >"$STDOUT"
+    " >>"${TTY}"
   fi
 }
 
@@ -294,8 +293,8 @@ mode_block_devmode() {
   fi
 
   # Read a space bar or timeout.
-  local input=$(match_char_timeout "$delay_secs" 20 < "$STDOUT")
-  tput clear > "$STDOUT"
+  local input=$(match_char_timeout "${TTY}" "${delay_secs}" 20)
+  tput clear >>"${TTY}"
 
   if has_virtual_dev_switch; then
     # Return to verified mode.
@@ -327,13 +326,13 @@ main() {
     (echo "chromeos-boot-alert: ${mode}" >>"${output}") 2>/dev/null || true
   done
 
-  # Determine the right console. On Frecon, the default STDOUT (/dev/tty1) may
+  # Determine the right console. On Frecon, the default TTY (/dev/tty1) may
   # not exist and would cause problems when we try to write then read (for
   # example, warn_dev).  To prevent that, fall back to /dev/null if not
   # available.
   # TODO(hungte) Request console when Frecon supports no-dbus mode.
-  STDOUT=/dev/tty1
-  [ -e "${STDOUT}" ] || STDOUT=/dev/null
+  TTY=/dev/tty1
+  [ -e "${TTY}" ] || TTY=/dev/null
 
   if [ -x /usr/sbin/board_boot_alert ]; then
     # Allow overriding boot-alert behavior (usually for headless devices).
@@ -350,7 +349,7 @@ main() {
   backlight_tool --set_brightness_percent=100 || true
 
   # Hides cursor and prevents console from blanking after long inactivity.
-  setterm -cursor off -blank 0 -powersave off -powerdown 0 >"$STDOUT" || true
+  setterm -cursor off -blank 0 -powersave off -powerdown 0 >>"${TTY}" || true
 
   case "$mode" in
     "warn_dev" | "enter_dev" | "leave_dev" | "dev_fwcheck" | \
