@@ -19,6 +19,7 @@
 namespace protobinder {
 
 class IBinder;
+class StrongBinder;
 
 class BINDER_EXPORT Parcel {
  public:
@@ -57,12 +58,13 @@ class BINDER_EXPORT Parcel {
   bool ReadString(std::string* str);
 
   // Binder objects.
-  bool WriteStrongBinder(const IBinder* binder);
+  bool WriteStrongBinderFromProtocolBuffer(const StrongBinder& binder);
+  bool WriteStrongBinderFromIBinder(const IBinder& binder);
   bool WriteFd(int fd);
   bool WriteRawBinder(const void* binder);
   bool WriteRawHandle(uint32_t handle);
 
-  bool ReadStrongBinder(IBinder** binder);
+  bool ReadStrongBinderToIBinder(IBinder** binder);
   bool ReadFd(int* fd);
   bool ReadRawBinder(void** binder);
   bool ReadRawHandle(uint32_t* handle);
@@ -74,7 +76,8 @@ class BINDER_EXPORT Parcel {
   // the read postion.
   // |offset| is used to index from current read postion.
   bool GetFdAtOffset(int* fd, size_t offset);
-  bool GetStrongBinderAtOffset(IBinder** binder, size_t offset);
+  bool CopyStrongBinderAtOffsetToProtocolBuffer(size_t offset,
+                                                StrongBinder* proto);
 
   // getter/setters for the data buffer.
   void* Data() const { return reinterpret_cast<void*>(data_); }

@@ -6,24 +6,23 @@
 
 #include <base/logging.h>
 
+#include "libprotobinder/binder.pb.h"
 #include "libprotobinder/binder_manager.h"
 
 namespace protobinder {
 
 BinderProxy::BinderProxy(uint32_t handle) : handle_(handle) {
-  BinderManagerInterface* manager = BinderManagerInterface::Get();
-  manager->IncWeakHandle(handle);
-  if (handle != 0) {
-    manager->RequestDeathNotification(this);
-  }
+  BinderManagerInterface::Get()->RegisterBinderProxy(this);
 }
 
 BinderProxy::~BinderProxy() {
-  BinderManagerInterface* manager = BinderManagerInterface::Get();
-  if (handle_ != 0) {
-    manager->ClearDeathNotification(this);
-  }
-  manager->DecWeakHandle(handle_);
+  BinderManagerInterface::Get()->UnregisterBinderProxy(this);
+}
+
+void BinderProxy::CopyToProtocolBuffer(StrongBinder* proto) const {
+  DCHECK(proto);
+  proto->Clear();
+  proto->set_proxy_handle(handle_);
 }
 
 Status BinderProxy::Transact(uint32_t code,
@@ -35,21 +34,23 @@ Status BinderProxy::Transact(uint32_t code,
 }
 
 void BinderProxy::SetDeathCallback(const base::Closure& closure) {
-  if (handle_ == 0) {
-    LOG(DFATAL) << "Cannot get death notifications for context manager.";
-  }
+  if (handle_ == 0)
+    LOG(DFATAL) << "Cannot get death notifications for context manager";
   death_callback_ = closure;
 }
 
 void BinderProxy::HandleDeathNotification() {
-  if (handle_ == 0) {
-    NOTREACHED();
-  }
+  if (handle_ == 0)
+    LOG(DFATAL) << "Got death notification for context manager";
   if (!death_callback_.is_null())
     death_callback_.Run();
 }
 
 const BinderProxy* BinderProxy::GetBinderProxy() const {
+  return this;
+}
+
+BinderProxy* BinderProxy::GetBinderProxy() {
   return this;
 }
 

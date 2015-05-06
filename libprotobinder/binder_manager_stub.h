@@ -16,6 +16,7 @@
 
 namespace protobinder {
 
+class BinderHost;
 class IInterface;
 
 // Stub implementation of BinderManagerInterface for testing.
@@ -24,15 +25,20 @@ class BINDER_EXPORT BinderManagerStub : public BinderManagerInterface {
   BinderManagerStub();
   ~BinderManagerStub() override;
 
-  // If death notifications have been requested for |proxy|, sends a
+  // If death notifications have been requested for |proxy_handle|, sends a
   // notification.
-  void ReportBinderDeath(BinderProxy* proxy);
+  void ReportBinderDeath(uint32_t proxy_handle);
 
-  // Ensures that the next CreateTestInterface() call for |proxy| will return
-  // |interface|, allowing tests to set their own interfaces for proxies that
-  // they've created.
-  void SetTestInterface(BinderProxy* proxy,
+  // Ensures that the next CreateTestInterface() call for a BinderProxy
+  // identified by |proxy_handle| will return |interface|, allowing tests to set
+  // their own interfaces for handles that they've created. 0 may be passed to
+  // set the interface that will be returned if a null proxy is passed.
+  void SetTestInterface(uint32_t proxy_handle,
                         std::unique_ptr<IInterface> interface);
+
+  // Returns the BinderHost registered in |hosts_| for |cookie|, or null if a
+  // host wasn't registered.
+  BinderHost* GetHostForCookie(binder_uintptr_t cookie);
 
   // BinderManagerInterface:
   Status Transact(uint32_t handle,
@@ -40,25 +46,29 @@ class BINDER_EXPORT BinderManagerStub : public BinderManagerInterface {
                   const Parcel& data,
                   Parcel* reply,
                   bool one_way) override;
-  void IncWeakHandle(uint32_t handle) override;
-  void DecWeakHandle(uint32_t handle) override;
   bool GetFdForPolling(int* fd) override;
   void HandleEvent() override;
-  void RequestDeathNotification(BinderProxy* proxy) override;
-  void ClearDeathNotification(BinderProxy* proxy) override;
-  IInterface* CreateTestInterface(const IBinder* binder) override;
+  binder_uintptr_t GetNextBinderHostCookie() override;
+  void RegisterBinderHost(BinderHost* host) override;
+  void UnregisterBinderHost(BinderHost* host) override;
+  void RegisterBinderProxy(BinderProxy* proxy) override;
+  void UnregisterBinderProxy(BinderProxy* proxy) override;
+  IInterface* CreateTestInterface(const BinderProxy* binder) override;
 
  private:
-  // Handles of BinderProxy objects that have requested death notifications.
-  std::set<uint32_t> handles_requesting_death_notifications_;
+  std::map<uint64_t, BinderHost*> hosts_;
+  std::multimap<uint32_t, BinderProxy*> proxies_;
 
   // Maps from BinderProxy handles to test interface objects that should be
   // released and returned in response to CreateTestInterface() calls.
   std::map<uint32_t, std::unique_ptr<IInterface>> test_interfaces_;
 
   // Test interface object that will be released and returned in response to a
-  // CreateTestInterface() call with a null IBinder argument.
+  // CreateTestInterface() call with a null BinderProxy argument.
   std::unique_ptr<IInterface> test_interface_for_null_proxy_;
+
+  // Value to be returned for next call to GetNextBinderHostCookie().
+  binder_uintptr_t next_binder_host_cookie_;
 
   DISALLOW_COPY_AND_ASSIGN(BinderManagerStub);
 };

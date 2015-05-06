@@ -31,7 +31,7 @@ template <typename INTERFACE>
 class BINDER_EXPORT BinderProxyInterface : public INTERFACE,
                                            public BinderProxyInterfaceBase {
  public:
-  explicit BinderProxyInterface(IBinder* remote)
+  explicit BinderProxyInterface(BinderProxy* remote)
       : BinderProxyInterfaceBase(remote) {}
 
  protected:
@@ -39,24 +39,24 @@ class BINDER_EXPORT BinderProxyInterface : public INTERFACE,
 };
 
 template <typename INTERFACE>
-inline INTERFACE* BinderToInterface(IBinder* obj) {
+inline INTERFACE* BinderToInterface(BinderProxy* proxy) {
   IInterface* test_interface =
-      BinderManagerInterface::Get()->CreateTestInterface(obj);
+      BinderManagerInterface::Get()->CreateTestInterface(proxy);
   if (test_interface)
     return static_cast<INTERFACE*>(test_interface);
-  return INTERFACE::CreateInterface(obj);
+  return INTERFACE::CreateInterface(proxy);
 }
 
-#define DECLARE_META_INTERFACE(INTERFACE)             \
-  static I##INTERFACE* CreateInterface(IBinder* obj); \
-  I##INTERFACE();                                     \
+#define DECLARE_META_INTERFACE(INTERFACE)                   \
+  static I##INTERFACE* CreateInterface(BinderProxy* proxy); \
+  I##INTERFACE();                                           \
   virtual ~I##INTERFACE();
 
-#define IMPLEMENT_META_INTERFACE(INTERFACE, NAME)                              \
-  I##INTERFACE* I##INTERFACE::CreateInterface(IBinder* obj) {                  \
-    return new I##INTERFACE##Proxy(obj);                                       \
-  }                                                                            \
-  I##INTERFACE::I##INTERFACE() {}                                              \
+#define IMPLEMENT_META_INTERFACE(INTERFACE, NAME)                   \
+  I##INTERFACE* I##INTERFACE::CreateInterface(BinderProxy* proxy) { \
+    return new I##INTERFACE##Proxy(proxy);                          \
+  }                                                                 \
+  I##INTERFACE::I##INTERFACE() {}                                   \
   I##INTERFACE::~I##INTERFACE() {}
 }  // namespace protobinder
 

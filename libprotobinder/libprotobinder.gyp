@@ -33,7 +33,6 @@
         'ibinder.cc',
         'iservice_manager.cc',
         'parcel.cc',
-        'proto_util.cc',
         'status.cc',
       ],
       'includes': ['../../platform2/common-mk/protoc.gypi'],

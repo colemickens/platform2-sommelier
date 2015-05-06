@@ -6,11 +6,16 @@
 #define LIBPROTOBINDER_BINDER_MANAGER_H_
 
 #include <cstdint>
+#include <map>
 #include <memory>
 
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
+
+// binder.h requires types.h to be included first.
+#include <sys/types.h>
+#include <linux/android/binder.h>  // NOLINT(build/include_alpha)
 
 #include "binder_driver.h"  // NOLINT(build/include)
 #include "binder_export.h"  // NOLINT(build/include)
@@ -19,6 +24,7 @@
 
 namespace protobinder {
 
+class BinderHost;
 class BinderProxy;
 class IInterface;
 
@@ -40,20 +46,25 @@ class BINDER_EXPORT BinderManagerInterface {
                           const Parcel& data,
                           Parcel* reply,
                           bool one_way) = 0;
-  virtual void IncWeakHandle(uint32_t handle) = 0;
-  virtual void DecWeakHandle(uint32_t handle) = 0;
   virtual bool GetFdForPolling(int* fd) = 0;
   virtual void HandleEvent() = 0;
 
-  // Creates or clears a request for binder death notifications.
-  // End-users should use BinderProxy::SetDeathCallback() instead of calling
-  // these methods directly.
-  virtual void RequestDeathNotification(BinderProxy* proxy) = 0;
-  virtual void ClearDeathNotification(BinderProxy* proxy) = 0;
+  // Returns the cookie that should be used to identify a new BinderHost().
+  virtual binder_uintptr_t GetNextBinderHostCookie() = 0;
 
-  // If a test IInterface has been registered for |binder|, returns it.
+  // Registers or unregisters a mapping from a cookie to a host. Called by
+  // BinderHost's constructor and destructor, respectively.
+  virtual void RegisterBinderHost(BinderHost* host) = 0;
+  virtual void UnregisterBinderHost(BinderHost* host) = 0;
+
+  // Registers or unregisters a proxy. Called by BinderProxy's constructor and
+  // destructor, respectively.
+  virtual void RegisterBinderProxy(BinderProxy* proxy) = 0;
+  virtual void UnregisterBinderProxy(BinderProxy* proxy) = 0;
+
+  // If a test IInterface has been registered for |proxy|, returns it.
   // Otherwise, returns nullptr.
-  virtual IInterface* CreateTestInterface(const IBinder* binder) = 0;
+  virtual IInterface* CreateTestInterface(const BinderProxy* proxy) = 0;
 };
 
 // Real implementation of BinderManagerInterface that communicates with the
@@ -69,15 +80,25 @@ class BINDER_EXPORT BinderManager : public BinderManagerInterface {
                   const Parcel& data,
                   Parcel* reply,
                   bool one_way) override;
-  void IncWeakHandle(uint32_t handle) override;
-  void DecWeakHandle(uint32_t handle) override;
   bool GetFdForPolling(int* fd) override;
   void HandleEvent() override;
-  void RequestDeathNotification(BinderProxy* proxy) override;
-  void ClearDeathNotification(BinderProxy* proxy) override;
-  IInterface* CreateTestInterface(const IBinder* binder) override;
+  binder_uintptr_t GetNextBinderHostCookie() override;
+  void RegisterBinderHost(BinderHost* host) override;
+  void UnregisterBinderHost(BinderHost* host) override;
+  void RegisterBinderProxy(BinderProxy* proxy) override;
+  void UnregisterBinderProxy(BinderProxy* proxy) override;
+  IInterface* CreateTestInterface(const BinderProxy* binder) override;
 
  private:
+  struct HostInfo;
+
+  // Adds or removes a remote process's reference from the HostInfo struct
+  // identified by |cookie| in |hosts_|. If the reference count reaches zero and
+  // the underlying BinderHost object has already been destroyed,
+  // RemoveHostReference() removes the struct from |hosts_|.
+  void AddHostReference(binder_uintptr_t cookie);
+  void RemoveHostReference(binder_uintptr_t cookie);
+
   Status WaitAndActionReply(Parcel* reply);
 
   // Writes a command freeing |data|.
@@ -98,13 +119,37 @@ class BINDER_EXPORT BinderManager : public BinderManagerInterface {
   Status SendReply(const Parcel& reply, const Status& status);
   Status HandleReply(const binder_transaction_data& tr, Parcel* reply);
 
+  // Increments or decrements the kernel's reference count for the binder
+  // identified by |handle|.
+  void IncWeakHandle(uint32_t handle);
+  void DecWeakHandle(uint32_t handle);
+
+  // Registers or unregisters a request for death notifications for the binder
+  // identified by |handle|.
+  void RequestDeathNotification(uint32_t handle);
+  void ClearDeathNotification(uint32_t handle);
+
+  // Notifies all of the BinderProxy objects keyed by |handle| in |proxies_|
+  // that the host side of their binder has died.
+  void NotifyProxiesAboutBinderDeath(uint32_t handle);
+
+  std::unique_ptr<BinderDriverInterface> driver_;
+
   // These parcels are used to pass binder ioctl commands to binder.
   // They carry binder command buffers, not to be confused with Parcels
   // used in Transactions which carry user data.
   Parcel out_commands_;
   Parcel in_commands_;
 
-  std::unique_ptr<BinderDriverInterface> driver_;
+  // Value to be returned for next call to GetNextBinderHostCookie().
+  binder_uintptr_t next_host_cookie_;
+
+  // Associates cookies with hosts.
+  std::map<binder_uintptr_t, HostInfo> hosts_;
+
+  // Associates handles with BinderProxy objects. Note that multiple proxies may
+  // be created for a single binder handle.
+  std::multimap<uint32_t, BinderProxy*> proxies_;
 
   // Keep this member last.
   base::WeakPtrFactory<BinderManager> weak_ptr_factory_;

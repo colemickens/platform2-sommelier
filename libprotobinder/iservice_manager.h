@@ -6,18 +6,20 @@
 #define LIBPROTOBINDER_ISERVICE_MANAGER_H_
 
 #include "binder_export.h"  // NOLINT(build/include)
-#include "ibinder.h"  // NOLINT(build/include)
 #include "iinterface.h"  // NOLINT(build/include)
 
 namespace protobinder {
+
+class BinderHost;
+class BinderProxy;
 class Status;
 
 class BINDER_EXPORT IServiceManager : public IInterface {
  public:
   DECLARE_META_INTERFACE(ServiceManager)
 
-  virtual Status AddService(const char* name, IBinder* binder) = 0;
-  virtual IBinder* GetService(const char* name) = 0;
+  virtual Status AddService(const char* name, BinderHost* binder) = 0;
+  virtual BinderProxy* GetService(const char* name) = 0;
 
   enum {
     GET_SERVICE_TRANSACTION = 1,

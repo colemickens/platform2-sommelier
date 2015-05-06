@@ -6,6 +6,7 @@
 
 #include <string.h>
 
+#include "libprotobinder/binder.pb.h"
 #include "libprotobinder/binder_host.h"
 #include "libprotobinder/binder_proxy.h"
 
@@ -211,31 +212,46 @@ bool Parcel::ReadString(std::string* new_string) {
   return true;
 }
 
-bool Parcel::WriteStrongBinder(const IBinder* binder) {
+bool Parcel::WriteStrongBinderFromProtocolBuffer(const StrongBinder& binder) {
   flat_binder_object object;
   object.flags = 0x7f | FLAT_BINDER_FLAG_ACCEPTS_FDS;
-  if (binder != nullptr) {
-    const IBinder* host = binder->GetBinderHost();
-    if (host) {
-      object.type = BINDER_TYPE_BINDER;
-      object.binder = reinterpret_cast<uintptr_t>(host);
-      object.cookie = reinterpret_cast<uintptr_t>(host);
-    } else {
-      object.type = BINDER_TYPE_HANDLE;
-      object.binder = 0;
-      object.cookie = 0;
-      const BinderProxy* proxy = binder->GetBinderProxy();
-      if (proxy == nullptr) {
-        object.handle = 0;
-      } else {
-        object.handle = proxy->handle();
-      }
-    }
-  } else {
+  object.type = BINDER_TYPE_BINDER;
+  object.binder = 0;
+  object.handle = 0;
+  object.cookie = 0;
+
+  if (binder.has_host_cookie()) {
     object.type = BINDER_TYPE_BINDER;
-    object.binder = 0;
-    object.cookie = 0;
+    object.binder = static_cast<binder_uintptr_t>(binder.host_cookie());
+    object.cookie = object.binder;
+  } else if (binder.has_proxy_handle()) {
+    object.type = BINDER_TYPE_HANDLE;
+    object.handle = binder.proxy_handle();
   }
+
+  return WriteObject(object);
+}
+
+bool Parcel::WriteStrongBinderFromIBinder(const IBinder& binder) {
+  flat_binder_object object;
+  object.flags = 0x7f | FLAT_BINDER_FLAG_ACCEPTS_FDS;
+  object.type = BINDER_TYPE_BINDER;
+  object.binder = 0;
+  object.handle = 0;
+  object.cookie = 0;
+
+  if (binder.GetBinderHost()) {
+    object.type = BINDER_TYPE_BINDER;
+    object.binder =
+        static_cast<binder_uintptr_t>(binder.GetBinderHost()->cookie());
+    object.cookie = object.binder;
+  } else if (binder.GetBinderProxy()) {
+    object.type = BINDER_TYPE_HANDLE;
+    object.handle = binder.GetBinderProxy()->handle();
+  } else {
+    LOG(FATAL) << "IBinder is neither host nor proxy";
+  }
+
   return WriteObject(object);
 }
 
@@ -261,16 +277,16 @@ bool Parcel::WriteRawBinder(const void* binder) {
   struct flat_binder_object object;
   object.type = BINDER_TYPE_BINDER;
   object.flags = 0x7f | FLAT_BINDER_FLAG_ACCEPTS_FDS;
-  object.binder = (binder_uintptr_t)binder;
+  object.binder = reinterpret_cast<binder_uintptr_t>(binder);
   object.cookie = 0;
   return WriteObject(object);
 }
 
-bool Parcel::ReadStrongBinder(IBinder** binder) {
-  if (binder == nullptr)
+bool Parcel::ReadStrongBinderToIBinder(IBinder** binder) {
+  if (!binder)
     return false;
   const flat_binder_object* flat_object = ReadObject();
-  if (flat_object == nullptr)
+  if (!flat_object)
     return false;
 
   switch (flat_object->type) {
@@ -361,19 +377,21 @@ bool Parcel::GetFdAtOffset(int* fd, size_t offset) {
   return true;
 }
 
-bool Parcel::GetStrongBinderAtOffset(IBinder** binder, size_t offset) {
-  if (binder == NULL)
-    return false;
+bool Parcel::CopyStrongBinderAtOffsetToProtocolBuffer(size_t offset,
+                                                      StrongBinder* proto) {
+  CHECK(proto);
+  proto->Clear();
+
   const flat_binder_object* flat_object = GetObjectAtOffset(offset);
-  if (flat_object == NULL)
+  if (!flat_object)
     return false;
 
   switch (flat_object->type) {
     case BINDER_TYPE_BINDER:
-      // TODO(leecam): Support this and return flat->cookie
-      return false;
+      proto->set_host_cookie(flat_object->cookie);
+      return true;
     case BINDER_TYPE_HANDLE:
-      *binder = new BinderProxy(flat_object->handle);
+      proto->set_proxy_handle(flat_object->handle);
       return true;
   }
   return false;

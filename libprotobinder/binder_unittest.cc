@@ -37,6 +37,9 @@ class BinderTest : public testing::Test {
     BinderManagerInterface::SetForTesting(scoped_ptr<BinderManagerInterface>());
   }
 
+  void HandleBinderDeath() { got_death_callback_ = true; }
+  void HandleTransaction() { got_transact_callback_ = true; }
+
  protected:
   // Checks binder transaction data presented to the driver
   // matches what is provided in a transaction.
@@ -53,9 +56,6 @@ class BinderTest : public testing::Test {
     flags |= one_way ? TF_ONE_WAY : 0;
     EXPECT_EQ(flags, data->flags);
   }
-
-  void HandleBinderDeath() { got_death_callback_ = true; }
-  void HandleTransaction() { got_transact_callback_ = true; }
 
   BinderDriverStub* driver_;  // Not owned.
   bool got_death_callback_;
@@ -247,12 +247,12 @@ TEST_F(BinderTest, Proxy) {
     BinderProxy proxy(BinderDriverStub::GOOD_ENDPOINT);
     EXPECT_EQ(BinderDriverStub::GOOD_ENDPOINT, proxy.handle());
     EXPECT_EQ(1, driver_->GetRefCount(BinderDriverStub::GOOD_ENDPOINT));
-    EXPECT_TRUE(driver_->IsDeathRegistered(reinterpret_cast<uintptr_t>(&proxy),
+    EXPECT_TRUE(driver_->IsDeathRegistered(BinderDriverStub::GOOD_ENDPOINT,
                                            BinderDriverStub::GOOD_ENDPOINT));
 
     BinderProxy proxy2(BinderDriverStub::GOOD_ENDPOINT);
-    EXPECT_EQ(2, driver_->GetRefCount(BinderDriverStub::GOOD_ENDPOINT));
-    EXPECT_TRUE(driver_->IsDeathRegistered(reinterpret_cast<uintptr_t>(&proxy2),
+    EXPECT_EQ(1, driver_->GetRefCount(BinderDriverStub::GOOD_ENDPOINT));
+    EXPECT_TRUE(driver_->IsDeathRegistered(BinderDriverStub::GOOD_ENDPOINT,
                                            BinderDriverStub::GOOD_ENDPOINT));
   }
   EXPECT_EQ(0, driver_->GetRefCount(BinderDriverStub::GOOD_ENDPOINT));
@@ -270,15 +270,15 @@ TEST_F(BinderTest, ProxyTransaction) {
                    BinderDriverStub::GOOD_ENDPOINT, code, true);
 }
 
-TEST_F(BinderTest, ProxyDeathNotifcation) {
+TEST_F(BinderTest, ProxyDeathNotification) {
   BinderProxy proxy(BinderDriverStub::GOOD_ENDPOINT);
   EXPECT_FALSE(got_death_callback_);
 
   proxy.SetDeathCallback(
-      base::Bind(&BinderTest_ProxyDeathNotifcation_Test::HandleBinderDeath,
+      base::Bind(&BinderTest::HandleBinderDeath,
                  weak_ptr_factory_.GetWeakPtr()));
 
-  driver_->InjectDeathNotification((uintptr_t)&proxy);
+  driver_->InjectDeathNotification(BinderDriverStub::GOOD_ENDPOINT);
   BinderManagerInterface::Get()->HandleEvent();
 
   EXPECT_TRUE(got_death_callback_);
@@ -287,12 +287,12 @@ TEST_F(BinderTest, ProxyDeathNotifcation) {
 TEST_F(BinderTest, HostOneWay) {
   EXPECT_FALSE(got_transact_callback_);
 
-  HostTest host(base::Bind(&BinderTest_HostOneWay_Test::HandleTransaction,
+  HostTest host(base::Bind(&BinderTest::HandleTransaction,
                            weak_ptr_factory_.GetWeakPtr()));
   Parcel data;
   data.WriteInt32(0xDEAD);
-  driver_->InjectTransaction(reinterpret_cast<uintptr_t>(&host),
-                             HostTest::GOOD_TRANSACTION, data, true);
+  driver_->InjectTransaction(
+      host.cookie(), HostTest::GOOD_TRANSACTION, data, true);
   BinderManagerInterface::Get()->HandleEvent();
   EXPECT_TRUE(got_transact_callback_);
 }
@@ -300,12 +300,12 @@ TEST_F(BinderTest, HostOneWay) {
 TEST_F(BinderTest, HostTwoWay) {
   EXPECT_FALSE(got_transact_callback_);
 
-  HostTest host(base::Bind(&BinderTest_HostTwoWay_Test::HandleTransaction,
+  HostTest host(base::Bind(&BinderTest::HandleTransaction,
                            weak_ptr_factory_.GetWeakPtr()));
   Parcel data;
   data.WriteInt32(0xDEAD);
-  driver_->InjectTransaction(reinterpret_cast<uintptr_t>(&host),
-                             HostTest::GOOD_TRANSACTION, data, false);
+  driver_->InjectTransaction(
+      host.cookie(), HostTest::GOOD_TRANSACTION, data, false);
   BinderManagerInterface::Get()->HandleEvent();
   EXPECT_TRUE(got_transact_callback_);
 
@@ -317,13 +317,12 @@ TEST_F(BinderTest, HostTwoWay) {
 TEST_F(BinderTest, HostTwoWayBadStatus) {
   EXPECT_FALSE(got_transact_callback_);
 
-  HostTest host(
-      base::Bind(&BinderTest_HostTwoWayBadStatus_Test::HandleTransaction,
-                 weak_ptr_factory_.GetWeakPtr()));
+  HostTest host(base::Bind(&BinderTest::HandleTransaction,
+                           weak_ptr_factory_.GetWeakPtr()));
   Parcel data;
   data.WriteInt32(0xDEAD);
-  driver_->InjectTransaction(reinterpret_cast<uintptr_t>(&host),
-                             HostTest::BAD_TRANSACTION, data, false);
+  driver_->InjectTransaction(
+      host.cookie(), HostTest::BAD_TRANSACTION, data, false);
   BinderManagerInterface::Get()->HandleEvent();
   EXPECT_TRUE(got_transact_callback_);
 

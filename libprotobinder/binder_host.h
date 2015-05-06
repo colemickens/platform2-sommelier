@@ -7,6 +7,10 @@
 
 #include <stdint.h>
 
+// binder.h requires types.h to be included first.
+#include <sys/types.h>
+#include <linux/android/binder.h>  // NOLINT(build/include_alpha)
+
 #include "binder_export.h"  // NOLINT(build/include)
 #include "ibinder.h"        // NOLINT(build/include)
 #include "status.h"         // NOLINT(build/include)
@@ -22,12 +26,16 @@ class BINDER_EXPORT BinderHost : public IBinder {
  public:
   BinderHost();
 
+  binder_uintptr_t cookie() const { return cookie_; }
+
   // IBinder overrides:
+  void CopyToProtocolBuffer(StrongBinder* proto) const override;
   Status Transact(uint32_t code,
                   Parcel* data,
                   Parcel* reply,
                   bool one_way) override;
   const BinderHost* GetBinderHost() const override;
+  BinderHost* GetBinderHost() override;
 
  protected:
   ~BinderHost() override;
@@ -37,6 +45,10 @@ class BINDER_EXPORT BinderHost : public IBinder {
                             Parcel* data,
                             Parcel* reply,
                             bool one_way);
+
+ private:
+  // Cookie used to identify this host in transactions.
+  binder_uintptr_t cookie_;
 };
 
 }  // namespace protobinder

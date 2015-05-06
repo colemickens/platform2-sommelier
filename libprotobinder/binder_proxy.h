@@ -33,12 +33,14 @@ class BINDER_EXPORT BinderProxy : public IBinder {
   // of the connection has been closed.
   void HandleDeathNotification();
 
-  // IBinder overides:
+  // IBinder overrides:
+  void CopyToProtocolBuffer(StrongBinder* proto) const override;
   Status Transact(uint32_t code,
                   Parcel* data,
                   Parcel* reply,
                   bool one_way) override;
   const BinderProxy* GetBinderProxy() const override;
+  BinderProxy* GetBinderProxy() override;
 
  private:
   // Binder handle.

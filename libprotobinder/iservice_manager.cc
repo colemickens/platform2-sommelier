@@ -4,6 +4,7 @@
 
 #include "libprotobinder/iservice_manager.h"
 
+#include "libprotobinder/binder_host.h"
 #include "libprotobinder/binder_proxy.h"
 #include "libprotobinder/parcel.h"
 
@@ -22,19 +23,19 @@ IServiceManager* GetServiceManager() {
 
 class IServiceManagerProxy : public BinderProxyInterface<IServiceManager> {
  public:
-  explicit IServiceManagerProxy(IBinder* impl)
-      : BinderProxyInterface<IServiceManager>(impl) {}
+  explicit IServiceManagerProxy(BinderProxy* proxy)
+      : BinderProxyInterface<IServiceManager>(proxy) {}
 
-  virtual Status AddService(const char* name, IBinder* binder) {
+  virtual Status AddService(const char* name, BinderHost* binder) {
     Parcel data, reply;
     data.WriteInt32(0);
     data.WriteString16("android.os.IServiceManager");
     data.WriteString16(name);
-    data.WriteStrongBinder(binder);
+    data.WriteStrongBinderFromIBinder(*binder);
     return Remote()->Transact(ADD_SERVICE_TRANSACTION, &data, &reply, 0);
   }
 
-  virtual IBinder* GetService(const char* name) {
+  virtual BinderProxy* GetService(const char* name) {
     Parcel data, reply;
     data.WriteInt32(0);
     data.WriteString16("android.os.IServiceManager");
@@ -43,7 +44,8 @@ class IServiceManagerProxy : public BinderProxyInterface<IServiceManager> {
       return nullptr;
 
     IBinder* binder = nullptr;
-    return reply.ReadStrongBinder(&binder) ? binder : nullptr;
+    return reply.ReadStrongBinderToIBinder(&binder) ? binder->GetBinderProxy()
+                                                    : nullptr;
   }
 };
 

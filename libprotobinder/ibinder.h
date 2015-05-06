@@ -18,6 +18,7 @@ class BinderHost;
 class BinderProxy;
 class Parcel;
 class Status;
+class StrongBinder;
 
 // Wraps a binder endpoint.
 // Can be the local or remote side.
@@ -26,6 +27,10 @@ class BINDER_EXPORT IBinder {
   IBinder();
   virtual ~IBinder();
 
+  // Copies a reference to this binder object to |proto|, a submessage within a
+  // protocol buffer.
+  virtual void CopyToProtocolBuffer(StrongBinder* proto) const = 0;
+
   virtual Status Transact(uint32_t code,
                           Parcel* data,
                           Parcel* reply,
@@ -33,6 +38,9 @@ class BINDER_EXPORT IBinder {
 
   virtual const BinderHost* GetBinderHost() const;
   virtual const BinderProxy* GetBinderProxy() const;
+
+  virtual BinderHost* GetBinderHost();
+  virtual BinderProxy* GetBinderProxy();
 };
 
 }  // namespace protobinder

@@ -208,7 +208,7 @@ TEST(ParcelTest, ObjectTypes) {
   Parcel data;
   size_t total_size = 0;
 
-  // WriteStrongBinder is covered in intergration tests
+  // WriteStrongBinder* is covered in integration tests
   // as it requires plumbing with IBinder.
 
   void* raw_binder = reinterpret_cast<void*>(0xdeadbeef);

@@ -12,13 +12,13 @@ namespace protobinder {
 
 class BINDER_EXPORT BinderProxyInterfaceBase {
  public:
-  explicit BinderProxyInterfaceBase(IBinder* binder);
+  explicit BinderProxyInterfaceBase(BinderProxy* remote);
   ~BinderProxyInterfaceBase();
 
-  inline IBinder* Remote() { return remote_; }
+  inline BinderProxy* Remote() { return remote_; }
 
  private:
-  IBinder* remote_;
+  BinderProxy* remote_;
 };
 
 }  // namespace protobinder

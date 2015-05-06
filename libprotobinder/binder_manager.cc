@@ -4,6 +4,8 @@
 
 #include "libprotobinder/binder_manager.h"
 
+#include <utility>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
@@ -12,6 +14,7 @@
 #include "libprotobinder/binder_host.h"
 #include "libprotobinder/binder_proxy.h"
 #include "libprotobinder/iinterface.h"
+#include "libprotobinder/util.h"
 
 // Generated IDL
 #include "libprotobinder/binder.pb.h"
@@ -23,6 +26,22 @@ namespace {
 BinderManagerInterface* g_binder_manager = nullptr;
 
 }  // namespace
+
+// Information about a binder object that was created by this process.
+struct BinderManager::HostInfo {
+  explicit HostInfo(BinderHost* host) : host(host), remote_refs(0) {}
+  ~HostInfo() = default;
+
+  // Weak pointer to the object that handles transactions.
+  BinderHost* host;
+
+  // Number of references to this host held by remote processes, as reported by
+  // BR_ACQUIRE and BR_RELEASE messages.
+  int remote_refs;
+};
+
+// TODO(derat): Reorder these methods to match the header once the changes here
+// have settled down.
 
 // static
 BinderManagerInterface* BinderManagerInterface::Get() {
@@ -43,7 +62,7 @@ void BinderManagerInterface::SetForTesting(
 }
 
 void BinderManager::ReleaseBinderBuffer(const uint8_t* data) {
-  VLOG(1) << "Binder free";
+  VLOG(2) << "Binder free of " << data;
   out_commands_.WriteInt32(BC_FREE_BUFFER);
   out_commands_.WritePointer(reinterpret_cast<uintptr_t>(data));
 }
@@ -56,35 +75,129 @@ void BinderManager::ReleaseParcel(Parcel* parcel) {
 // TODO(leecam): Remove the DoBinderReadWriteIoctl
 // to reduce number of calls to driver
 void BinderManager::IncWeakHandle(uint32_t handle) {
+  VLOG(1) << "Incrementing reference count for handle " << handle;
   out_commands_.WriteInt32(BC_INCREFS);
   out_commands_.WriteInt32(handle);
   DoBinderReadWriteIoctl(false);
 }
 
 void BinderManager::DecWeakHandle(uint32_t handle) {
+  VLOG(1) << "Decrementing reference count for handle " << handle;
   out_commands_.WriteInt32(BC_DECREFS);
   out_commands_.WriteInt32(handle);
   DoBinderReadWriteIoctl(false);
 }
 
-void BinderManager::RequestDeathNotification(BinderProxy* proxy) {
-  DCHECK(proxy);
+void BinderManager::RequestDeathNotification(uint32_t handle) {
+  VLOG(1) << "Requesting death notifications for handle " << handle;
   out_commands_.WriteInt32(BC_REQUEST_DEATH_NOTIFICATION);
-  out_commands_.WriteInt32(proxy->handle());
-  out_commands_.WritePointer(reinterpret_cast<uintptr_t>(proxy));
+  out_commands_.WriteInt32(handle);
+  out_commands_.WritePointer(handle);
   DoBinderReadWriteIoctl(false);
 }
 
-void BinderManager::ClearDeathNotification(BinderProxy* proxy) {
-  DCHECK(proxy);
+void BinderManager::ClearDeathNotification(uint32_t handle) {
+  VLOG(1) << "Clearing death notifications for handle " << handle;
   out_commands_.WriteInt32(BC_CLEAR_DEATH_NOTIFICATION);
-  out_commands_.WriteInt32(proxy->handle());
-  out_commands_.WritePointer(reinterpret_cast<uintptr_t>(proxy));
+  out_commands_.WriteInt32(handle);
+  out_commands_.WritePointer(handle);
   DoBinderReadWriteIoctl(false);
 }
 
-IInterface* BinderManager::CreateTestInterface(const IBinder* binder) {
+binder_uintptr_t BinderManager::GetNextBinderHostCookie() {
+  const binder_uintptr_t cookie = next_host_cookie_++;
+  // Avoid handing out 0 -- that's the context manager.
+  CHECK(cookie) << "Host cookie counter wrapped";
+  CHECK(!hosts_.count(cookie)) << "Host cookie " << cookie << " already in use";
+  return cookie;
+}
+
+void BinderManager::RegisterBinderHost(BinderHost* host) {
+  DCHECK(host);
+  VLOG(1) << "Registering host " << host << " with cookie " << host->cookie();
+  CHECK(hosts_.emplace(host->cookie(), HostInfo(host)).second)
+      << "Got request to reregister host cookie " << host->cookie();
+}
+
+void BinderManager::UnregisterBinderHost(BinderHost* host) {
+  DCHECK(host);
+  VLOG(1) << "Unregistering host " << host << " with cookie " << host->cookie();
+
+  auto it = hosts_.find(host->cookie());
+  CHECK(it != hosts_.end())
+      << "Got request to unregister unknown host cookie " << host->cookie();
+  it->second.host = nullptr;
+  if (!it->second.remote_refs)
+    hosts_.erase(it);
+}
+
+void BinderManager::RegisterBinderProxy(BinderProxy* proxy) {
+  DCHECK(proxy);
+  VLOG(1) << "Registering proxy " << proxy << " with handle "
+          << proxy->handle();
+
+  if (!proxy->handle())
+    return;
+
+  DCHECK(!internal::EraseMultimapEntries(&proxies_, proxy->handle(), proxy))
+      << "Got request to reregister proxy " << proxy << " for handle "
+      << proxy->handle();
+  proxies_.insert(std::make_pair(proxy->handle(), proxy));
+
+  // If this is the first proxy for the handle, add a reference and start
+  // listening for death notifications.
+  if (proxies_.count(proxy->handle()) == 1) {
+    IncWeakHandle(proxy->handle());
+    RequestDeathNotification(proxy->handle());
+  }
+}
+
+void BinderManager::UnregisterBinderProxy(BinderProxy* proxy) {
+  DCHECK(proxy);
+  VLOG(1) << "Unregistering proxy " << proxy << " with handle "
+          << proxy->handle();
+
+  if (!proxy->handle())
+    return;
+
+  const size_t num_erased =
+      internal::EraseMultimapEntries(&proxies_, proxy->handle(), proxy);
+  CHECK_EQ(num_erased, 1U)
+      << "Expected exactly one copy of proxy " << proxy << " for handle "
+      << proxy->handle() << " when unregistering it";
+
+  // If this was the only proxy for the handle, drop the reference and stop
+  // listening for death notifications.
+  if (!proxies_.count(proxy->handle())) {
+    ClearDeathNotification(proxy->handle());
+    DecWeakHandle(proxy->handle());
+  }
+}
+
+IInterface* BinderManager::CreateTestInterface(const BinderProxy* binder) {
   return nullptr;
+}
+
+void BinderManager::AddHostReference(binder_uintptr_t cookie) {
+  auto it = hosts_.find(cookie);
+  if (it == hosts_.end()) {
+    LOG(ERROR) << "Not adding ref for unknown host cookie " << cookie;
+    return;
+  }
+  it->second.remote_refs++;
+}
+
+void BinderManager::RemoveHostReference(binder_uintptr_t cookie) {
+  auto it = hosts_.find(cookie);
+  if (it == hosts_.end()) {
+    LOG(ERROR) << "Not removing ref for unknown host cookie " << cookie;
+    return;
+  }
+  it->second.remote_refs--;
+  DCHECK_GE(it->second.remote_refs, 0)
+      << "Negative refcount for host cookie " << cookie;
+  if (!it->second.host && !it->second.remote_refs)
+    hosts_.erase(it);
 }
 
 Status BinderManager::SendReply(const Parcel& reply, const Status& status) {
@@ -102,38 +215,40 @@ Status BinderManager::SendReply(const Parcel& reply, const Status& status) {
 // Process a single command from binder.
 void BinderManager::ProcessCommand(uint32_t cmd) {
   uintptr_t ptr = 0;
+  uintptr_t cookie = 0;
   switch (cmd) {
     case BR_NOOP:
       break;
     case BR_INCREFS:
-      VLOG(1) << "BR_INCREFS";
       in_commands_.ReadPointer(&ptr);
-      in_commands_.ReadPointer(&ptr);
+      in_commands_.ReadPointer(&cookie);
+      VLOG(1) << "BR_INCREFS: ptr=" << ptr << " cookie=" << cookie;
       break;
     case BR_DECREFS:
-      VLOG(1) << "BR_DECREFS";
       in_commands_.ReadPointer(&ptr);
-      in_commands_.ReadPointer(&ptr);
+      in_commands_.ReadPointer(&cookie);
+      VLOG(1) << "BR_DECREFS: ptr=" << ptr << " cookie=" << cookie;
       break;
     case BR_ACQUIRE:
-      VLOG(1) << "BR_ACQUIRE";
       in_commands_.ReadPointer(&ptr);
-      in_commands_.ReadPointer(&ptr);
+      in_commands_.ReadPointer(&cookie);
+      VLOG(1) << "BR_ACQUIRE: ptr=" << ptr << " cookie=" << cookie;
+      AddHostReference(cookie);
       break;
     case BR_RELEASE:
-      VLOG(1) << "BR_RELEASE";
       in_commands_.ReadPointer(&ptr);
-      in_commands_.ReadPointer(&ptr);
+      in_commands_.ReadPointer(&cookie);
+      VLOG(1) << "BR_RELEASE: ptr=" << ptr << " cookie=" << cookie;
+      RemoveHostReference(cookie);
       break;
     case BR_DEAD_BINDER:
-      VLOG(1) << "BR_DEAD_BINDER";
       in_commands_.ReadPointer(&ptr);
-      if (ptr)
-        reinterpret_cast<BinderProxy*>(ptr)->HandleDeathNotification();
+      VLOG(1) << "BR_DEAD_BINDER: ptr=" << ptr;
+      NotifyProxiesAboutBinderDeath(static_cast<uint32_t>(ptr));
       break;
     case BR_CLEAR_DEATH_NOTIFICATION_DONE:
-      VLOG(1) << "BR_CLEAR_DEATH_NOTIFICATION_DONE";
       in_commands_.ReadPointer(&ptr);
+      VLOG(1) << "BR_CLEAR_DEATH_NOTIFICATION_DONE: ptr=" << ptr;
       break;
     case BR_OK:
       VLOG(1) << "BR_OK";
@@ -161,12 +276,13 @@ void BinderManager::ProcessCommand(uint32_t cmd) {
       }
 
       Parcel reply;
-      // TODO(leecam): This code get refactored in memory CL,
-      // so leave the mess until then.
       Status status = STATUS_OK();
       if (tr.target.ptr) {
-        BinderHost* binder(reinterpret_cast<BinderHost*>(tr.cookie));
-        status = binder->Transact(tr.code, &data, &reply, tr.flags);
+        auto it = hosts_.find(static_cast<binder_uintptr_t>(tr.cookie));
+        if (it != hosts_.end() && it->second.host)
+          status = it->second.host->Transact(tr.code, &data, &reply, tr.flags);
+        else
+          status = STATUS_BINDER_ERROR(Status::DRIVER_ERROR);
       }
       if ((tr.flags & TF_ONE_WAY) == 0)
         SendReply(reply, status);
@@ -202,6 +318,16 @@ Status BinderManager::HandleReply(const binder_transaction_data& tr,
   return Status(&status_parcel);
 }
 
+void BinderManager::NotifyProxiesAboutBinderDeath(uint32_t handle) {
+  if (!handle) {
+    LOG(ERROR) << "Ignoring notification about death of binder " << handle;
+    return;
+  }
+  const auto range = proxies_.equal_range(handle);
+  for (auto it = range.first; it != range.second; ++it)
+    it->second->HandleDeathNotification();
+}
+
 Status BinderManager::WaitAndActionReply(Parcel* reply) {
   // Loop until:
   // * On error and bail.
@@ -215,18 +341,18 @@ Status BinderManager::WaitAndActionReply(Parcel* reply) {
     }
     switch (cmd) {
       case BR_TRANSACTION_COMPLETE:
-        VLOG(1) << "Cmd BR_TRANSACTION_COMPLETE";
+        VLOG(1) << "BR_TRANSACTION_COMPLETE";
         if (!reply)
           return STATUS_OK();
         break;
       case BR_DEAD_REPLY:
-        VLOG(1) << "Cmd BR_DEAD_REPLY";
+        VLOG(1) << "BR_DEAD_REPLY";
         return STATUS_BINDER_ERROR(Status::DEAD_ENDPOINT);
       case BR_FAILED_REPLY:
-        VLOG(1) << "Cmd BR_FAILED_REPLY";
+        VLOG(1) << "BR_FAILED_REPLY";
         return STATUS_BINDER_ERROR(Status::FAILED_TRANSACTION);
       case BR_REPLY: {
-        VLOG(1) << "Cmd BR_REPLY";
+        VLOG(1) << "BR_REPLY";
         binder_transaction_data tr;
         if (!in_commands_.Read(&tr, sizeof(tr)))
           LOG(FATAL) << "Binder Reply cmd contains no data";
@@ -327,7 +453,7 @@ void BinderManager::DoBinderReadWriteIoctl(bool do_read) {
   if (driver_->ReadWrite(&bwr) < 0) {
     LOG(FATAL) << "Driver ReadWrite failed";
   }
-  VLOG(1) << base::StringPrintf("Binder data R:%lld/%lld W:%lld/%lld",
+  VLOG(2) << base::StringPrintf("Binder data R:%lld/%lld W:%lld/%lld",
                                 bwr.read_consumed, bwr.read_size,
                                 bwr.write_consumed, bwr.write_size);
   if (bwr.read_consumed > 0) {
@@ -372,7 +498,9 @@ void BinderManager::HandleEvent() {
 }
 
 BinderManager::BinderManager(std::unique_ptr<BinderDriverInterface> driver)
-    : driver_(std::move(driver)), weak_ptr_factory_(this) {
+    : driver_(std::move(driver)),
+      next_host_cookie_(1),
+      weak_ptr_factory_(this) {
   VLOG(1) << "BinderManager created";
   in_commands_.SetCapacity(256);
   out_commands_.SetCapacity(256);

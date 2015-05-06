@@ -21,4 +21,12 @@ const BinderProxy* IBinder::GetBinderProxy() const {
   return nullptr;
 }
 
+BinderHost* IBinder::GetBinderHost() {
+  return nullptr;
+}
+
+BinderProxy* IBinder::GetBinderProxy() {
+  return nullptr;
+}
+
 }  // namespace protobinder

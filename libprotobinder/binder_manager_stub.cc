@@ -9,26 +9,33 @@
 #include "libprotobinder/binder_proxy.h"
 #include "libprotobinder/ibinder.h"
 #include "libprotobinder/iinterface.h"
+#include "libprotobinder/util.h"
 
 namespace protobinder {
 
-BinderManagerStub::BinderManagerStub() {}
+BinderManagerStub::BinderManagerStub() : next_binder_host_cookie_(1) {}
 
 BinderManagerStub::~BinderManagerStub() {}
 
-void BinderManagerStub::ReportBinderDeath(BinderProxy* proxy) {
-  CHECK(proxy);
-  if (handles_requesting_death_notifications_.count(proxy->handle()))
-    proxy->HandleDeathNotification();
+void BinderManagerStub::ReportBinderDeath(uint32_t proxy_handle) {
+  CHECK(proxy_handle);
+  const auto range = proxies_.equal_range(proxy_handle);
+  for (auto it = range.first; it != range.second; ++it)
+    it->second->HandleDeathNotification();
 }
 
 void BinderManagerStub::SetTestInterface(
-    BinderProxy* proxy,
+    uint32_t proxy_handle,
     std::unique_ptr<IInterface> interface) {
-  if (proxy)
-    test_interfaces_[proxy->handle()] = std::move(interface);
+  if (proxy_handle)
+    test_interfaces_[proxy_handle] = std::move(interface);
   else
     test_interface_for_null_proxy_ = std::move(interface);
+}
+
+BinderHost* BinderManagerStub::GetHostForCookie(binder_uintptr_t cookie) {
+  const auto it = hosts_.find(cookie);
+  return it != hosts_.end() ? it->second : nullptr;
 }
 
 Status BinderManagerStub::Transact(uint32_t handle,
@@ -39,9 +46,9 @@ Status BinderManagerStub::Transact(uint32_t handle,
   return STATUS_OK();
 }
 
-void BinderManagerStub::IncWeakHandle(uint32_t handle) {}
-
-void BinderManagerStub::DecWeakHandle(uint32_t handle) {}
+binder_uintptr_t BinderManagerStub::GetNextBinderHostCookie() {
+  return next_binder_host_cookie_++;
+}
 
 bool BinderManagerStub::GetFdForPolling(int* fd) {
   // TODO(derat): Return an FD that can actually be used here.
@@ -51,17 +58,37 @@ bool BinderManagerStub::GetFdForPolling(int* fd) {
 void BinderManagerStub::HandleEvent() {
 }
 
-void BinderManagerStub::RequestDeathNotification(BinderProxy* proxy) {
-  CHECK(proxy);
-  handles_requesting_death_notifications_.insert(proxy->handle());
+void BinderManagerStub::RegisterBinderHost(BinderHost* host) {
+  CHECK(host);
+  CHECK(!hosts_.count(host->cookie()))
+      << "Host with cookie " << host->cookie() << " already registered";
+  hosts_[host->cookie()] = host;
 }
 
-void BinderManagerStub::ClearDeathNotification(BinderProxy* proxy) {
-  CHECK(proxy);
-  handles_requesting_death_notifications_.erase(proxy->handle());
+void BinderManagerStub::UnregisterBinderHost(BinderHost* host) {
+  CHECK(host);
+  CHECK(hosts_.count(host->cookie()))
+      << "Host with cookie " << host->cookie() << " not registered";
+  hosts_.erase(host->cookie());
 }
 
-IInterface* BinderManagerStub::CreateTestInterface(const IBinder* binder) {
+void BinderManagerStub::RegisterBinderProxy(BinderProxy* proxy) {
+  CHECK(proxy);
+  CHECK(!internal::EraseMultimapEntries(&proxies_, proxy->handle(), proxy))
+      << "Got request to reregister proxy " << proxy << " for handle "
+      << proxy->handle();
+  proxies_.insert(std::make_pair(proxy->handle(), proxy));
+}
+
+void BinderManagerStub::UnregisterBinderProxy(BinderProxy* proxy) {
+  CHECK(proxy);
+  CHECK_EQ(internal::EraseMultimapEntries(&proxies_, proxy->handle(), proxy),
+           1U)
+      << "Expected exactly one copy of proxy " << proxy << " for handle "
+      << proxy->handle() << " when unregistering it";
+}
+
+IInterface* BinderManagerStub::CreateTestInterface(const BinderProxy* binder) {
   if (!binder)
     return test_interface_for_null_proxy_.release();
 
