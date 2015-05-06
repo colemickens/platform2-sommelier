@@ -1,9 +1,11 @@
 {
   'variables': {
     'cc_dir': '<(SHARED_INTERMEDIATE_DIR)/<(proto_out_dir)',
+    'python_dir': '<(SHARED_INTERMEDIATE_DIR)/<(proto_out_dir)/py',
     'proto_in_dir%': '.',
     'protoc': '<!(which protoc)',
     'gen_bidl%': 0,
+    'gen_python%': 0,
   },
   'rules': [
     {
@@ -11,10 +13,6 @@
       'extension': 'proto',
       'inputs': [
         '<(protoc)',
-      ],
-      'outputs': [
-        '<(cc_dir)/<(RULE_INPUT_ROOT).pb.cc',
-        '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
       ],
       'conditions': [
         ['gen_bidl==1', {
@@ -24,11 +22,27 @@
           'outputs': [
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.rpc.cc',
             '<(cc_dir)/<(RULE_INPUT_ROOT).pb.rpc.h',
+            # gen_bidl generates bidl code in addition to normal protobuffers.
+            '<(cc_dir)/<(RULE_INPUT_ROOT).pb.cc',
+            '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
+           ],
+        }],
+        ['gen_python==1', {
+          'variables': {
+            'out_args': ['--python_out', '<(python_dir)'],
+          },
+          'outputs': [
+            '<(python_dir)/<(RULE_INPUT_ROOT)_pb.py',
           ],
-        }, {
+        }],
+        ['gen_bidl==0 and gen_python==0', {
+          'outputs': [
+            '<(cc_dir)/<(RULE_INPUT_ROOT).pb.cc',
+            '<(cc_dir)/<(RULE_INPUT_ROOT).pb.h',
+          ],
           'variables': {
             'out_args': ['--cpp_out', '<(cc_dir)'],
-          }
+          },
         }],
       ],
       'action': [
