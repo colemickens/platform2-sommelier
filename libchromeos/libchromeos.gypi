@@ -57,6 +57,7 @@
       'sources': [
         'chromeos/any.cc',
         'chromeos/asynchronous_signal_handler.cc',
+        'chromeos/backoff_entry.cc',
         'chromeos/daemons/dbus_daemon.cc',
         'chromeos/daemons/daemon.cc',
         'chromeos/data_encoding.cc',
@@ -283,6 +284,7 @@
             'chromeos/any_unittest.cc',
             'chromeos/any_internal_impl_unittest.cc',
             'chromeos/asynchronous_signal_handler_unittest.cc',
+            'chromeos/backoff_entry_unittest.cc',
             'chromeos/data_encoding_unittest.cc',
             'chromeos/dbus/async_event_sequencer_unittest.cc',
             'chromeos/dbus/data_serialization_unittest.cc',
