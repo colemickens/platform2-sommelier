@@ -6,6 +6,7 @@
 #define LIBCHROMEOS_CHROMEOS_HTTP_HTTP_TRANSPORT_FAKE_H_
 
 #include <map>
+#include <queue>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -70,6 +71,17 @@ class Transport : public http::Transport {
     create_connection_error_ = std::move(create_connection_error);
   }
 
+  // For tests that really need async operations with message loop, call this
+  // function with true.
+  void SetAsyncMode(bool async) { async_ = async; }
+
+  // Pops one callback from the top of |async_callback_queue_| and invokes it.
+  // Returns false if the queue is empty.
+  bool HandleOneAsyncRequest();
+
+  // Invokes all the callbacks currently queued in |async_callback_queue_|.
+  void HandleAllAsyncRequests();
+
   // Overrides from http::Transport.
   std::shared_ptr<http::Connection> CreateConnection(
       const std::string& url,
@@ -94,7 +106,11 @@ class Transport : public http::Transport {
   // A list of user-supplied request handlers.
   std::map<std::string, HandlerCallback> handlers_;
   // Counter incremented each time a request is made.
-  int request_count_ = 0;
+  int request_count_{0};
+  bool async_{false};
+  // A list of queued callbacks that need to be called at some point.
+  // Call HandleOneAsyncRequest() or HandleAllAsyncRequests() to invoke them.
+  std::queue<base::Closure> async_callback_queue_;
 
   // Fake error to be returned from CreateConnection method.
   chromeos::ErrorPtr create_connection_error_;

@@ -4,8 +4,8 @@
 
 #include <chromeos/http/http_connection_fake.h>
 
-#include <base/bind.h>
 #include <base/logging.h>
+#include <chromeos/bind_lambda.h>
 #include <chromeos/http/http_request.h>
 #include <chromeos/mime_utils.h>
 #include <chromeos/streams/memory_stream.h>
@@ -59,11 +59,13 @@ bool Connection::FinishRequest(chromeos::ErrorPtr* error) {
 RequestID Connection::FinishRequestAsync(
     const SuccessCallback& success_callback,
     const ErrorCallback& error_callback) {
-  transport_->RunCallbackAsync(FROM_HERE,
-                               base::Bind(&Connection::FinishRequestAsyncHelper,
-                                          base::Unretained(this),
-                                          success_callback,
-                                          error_callback));
+  // Make sure the produced Closure holds a reference to the instance of this
+  // connection.
+  auto connection = std::static_pointer_cast<Connection>(shared_from_this());
+  auto callback = [connection, success_callback, error_callback] {
+    connection->FinishRequestAsyncHelper(success_callback, error_callback);
+  };
+  transport_->RunCallbackAsync(FROM_HERE, base::Bind(callback));
   return 1;
 }
 

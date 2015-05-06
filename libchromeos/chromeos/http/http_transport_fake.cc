@@ -65,7 +65,26 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
 
 void Transport::RunCallbackAsync(const tracked_objects::Location& from_here,
                                  const base::Closure& callback) {
+  if (!async_) {
+    callback.Run();
+    return;
+  }
+  async_callback_queue_.push(callback);
+}
+
+bool Transport::HandleOneAsyncRequest() {
+  if (async_callback_queue_.empty())
+    return false;
+
+  base::Closure callback = async_callback_queue_.front();
+  async_callback_queue_.pop();
   callback.Run();
+  return true;
+}
+
+void Transport::HandleAllAsyncRequests() {
+  while (!async_callback_queue_.empty())
+    HandleOneAsyncRequest();
 }
 
 http::RequestID Transport::StartAsyncTransfer(
