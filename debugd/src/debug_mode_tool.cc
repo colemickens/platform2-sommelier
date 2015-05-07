@@ -18,6 +18,9 @@
 
 namespace debugd {
 
+const int kFlimflamLogLevelVerbose3 = -3;
+const int kFlimflamLogLevelInfo = 0;
+
 const char* const kSupplicantPath = "/fi/w1/wpa_supplicant1";
 const char* const kSupplicantService = "fi.w1.wpa_supplicant1";
 const char* const kSupplicantIface = "fi.w1.wpa_supplicant1";
@@ -82,23 +85,28 @@ void DebugModeTool::SetDebugMode(const std::string& subsystem,
                         shill::kFlimflamServicePath,
                         shill::kFlimflamServiceName);
   PropertiesProxy supplicant(connection_, kSupplicantPath, kSupplicantService);
-  std::string flimflam_value;
+  std::string flimflam_tags;
   DBus::Variant supplicant_value;
   std::string modemmanager_value = "info";
   std::string supplicant_level = "info";
   if (subsystem == "wifi") {
-    flimflam_value = "service+wifi+inet+device+manager";
+    flimflam_tags = "service+wifi+inet+device+manager";
     supplicant_level = "msgdump";
   } else if (subsystem == "wimax") {
-    flimflam_value = "service+wimax+device+manager";
+    flimflam_tags = "service+wimax+device+manager";
   } else if (subsystem == "cellular") {
-    flimflam_value = "service+cellular+modem+device+manager";
+    flimflam_tags = "service+cellular+modem+device+manager";
   } else if (subsystem == "ethernet") {
-    flimflam_value = "service+ethernet+device+manager";
+    flimflam_tags = "service+ethernet+device+manager";
   } else if (subsystem == "none") {
-    flimflam_value = "";
+    flimflam_tags = "";
   }
-  flimflam.SetDebugTags(flimflam_value);
+  flimflam.SetDebugTags(flimflam_tags);
+  if (flimflam_tags.length()) {
+    flimflam.SetDebugLevel(kFlimflamLogLevelVerbose3);
+  } else {
+    flimflam.SetDebugLevel(kFlimflamLogLevelInfo);
+  }
   supplicant_value.writer().append_string(supplicant_level.c_str());
   supplicant.Set(kSupplicantIface, "DebugLevel", supplicant_value);
   SetAllModemManagersLogging(modemmanager_value);
