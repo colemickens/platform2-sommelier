@@ -498,6 +498,45 @@ debugd() {
       /org/chromium/debugd "org.chromium.debugd.$method" "$@"
 }
 
+# Run a debugd command for a long time and poll its output.
+# This expects Start & Stop methods.
+debugd_poll() (
+  local methodbase="$1"; shift
+
+  local pid fifo
+
+  # Make sure we clean up the background process and temp files when the
+  # user kills us with CTRL+C.
+  cleanup() {
+    # Don't let the user kill us while cleaning up.
+    trap : INT
+
+    if [ -n "${pid}" ]; then
+      if ! debugd "${methodbase}Stop" "string:${pid}"; then
+        echo "warning: could not stop ${methodbase}"
+      fi
+      pid=''
+    fi
+
+    if [ -n "${fifo}" ]; then
+      dir=$(dirname "${fifo}")
+      rm -rf "${dir}"
+      fifo=''
+    fi
+  }
+  trap cleanup INT
+
+  if ! fifo="$(mk_fifo)"; then
+    # The mk_fifo command already showed a warning.
+    return 1
+  fi
+  debugd "${methodbase}Start" "$@" 2>&1 >"${fifo}" &
+
+  read pid < "${fifo}"
+  cat "${fifo}"
+  cleanup
+)
+
 cmd_ping() (
   local option="dict:string:variant:"
 
@@ -545,17 +584,7 @@ cmd_ping() (
 
   option=$(echo "$option" | sed 's/,$//')
 
-  fifo="$(mk_fifo)"
-  debugd PingStart "fd:1" "string:$dest" "$option" 2>&1 > "$fifo" &
-  read pid < "$fifo"
-  echo "pid: $pid"
-  (while read line; do echo "$line"; done) < "$fifo"
-  debugd PingStop "string:$pid"
-  if [ $? -ne 0 ]; then
-    echo "Can't stop ping"
-    return 1
-  fi
-  rm -rf "$(dirname ${fifo})"
+  debugd_poll Ping "fd:1" "string:${dest}" "${option}"
 )
 
 cmd_progressive_scan() (
@@ -651,17 +680,7 @@ cmd_tracepath() (
     return 1
   fi
 
-  fifo="$(mk_fifo)"
-  debugd TracePathStart "fd:1" "string:$1" "$option" 2>&1 > "$fifo" &
-  read pid < "$fifo"
-  echo "pid: $pid"
-  (while read line; do echo "$line"; done) < "$fifo"
-  debugd TracePathStop "string:$pid"
-  if [ $? -ne 0 ]; then
-    echo "Can't stop tracepath"
-    return 1
-  fi
-  rm -rf "$(dirname ${fifo})"
+  debugd_poll TracePath "fd:1" "string:$1" "${option}"
 )
 
 cmd_top() (
@@ -849,6 +868,8 @@ cmd_syslog() (
 )
 
 mk_fifo() {
+  local dir fifo
+
   # We want C-c to terminate the running test so that the UI stays the same.
   # Therefore, create a fifo to direct the output of the test to, and have a
   # subshell read from the fifo and emit to stdout. When the subshell ends (at a
@@ -860,12 +881,12 @@ mk_fifo() {
     return 1
   fi
   fifo="${dir}/fifo"
-  if ! mkfifo "$fifo"; then
-    echo "Can't create fifo at $fifo"
+  if ! mkfifo "${fifo}"; then
+    echo "Can't create fifo at ${fifo}"
     return 1
   fi
 
-  echo "$fifo"
+  echo "${fifo}"
 }
 
 cmd_storage_test_1() (
@@ -900,19 +921,7 @@ cmd_storage_test_1() (
 )
 
 cmd_storage_test_2() (
-  fifo="$(mk_fifo)"
-  pid_file="$(mktemp)"
-  debugd BadblocksStart "fd:1" 2>&1 > "$fifo" &
-  (while read line; do echo "$line" | tee -a "$pid_file"; done) < "$fifo"
-  read -r pid < "$pid_file"
-  rm -f "$pid_file"
-
-  debugd BadblocksStop "string:$pid"
-  if [ $? -ne 0 ]; then
-    echo "Can't stop badblocks"
-    return 1
-  fi
-  rm -rf "$(dirname ${fifo})"
+  debugd_poll Badblocks "fd:1"
 )
 
 cmd_storage_status() (
@@ -929,19 +938,7 @@ cmd_memory_test() (
   # Giving OS 200MB free memory before hogging the rest of it.
   mem=$(($mem - 200))
 
-  fifo="$(mk_fifo)"
-  pid_file="$(mktemp)"
-  debugd MemtesterStart "fd:1" "uint32:$mem" 2>&1 > "$fifo" &
-  (while read line; do echo "$line" | tee -a "$pid_file"; done) < "$fifo"
-  read -r pid < "$pid_file"
-  rm -f "$pid_file"
-
-  debugd MemtesterStop "string:$pid"
-  if [ $? -ne 0 ]; then
-    echo "Can't stop memtester"
-    return 1
-  fi
-  rm -rf "$(dirname ${fifo})"
+  debugd_poll Memtester "fd:1" "uint32:${mem}"
 )
 
 cmd_battery_firmware() (

@@ -65,18 +65,7 @@ cmd_packet_capture() (
     echo "Couldn't create capture file."
     return 1
   fi
-  local fifo="$(mk_fifo)"
-  debugd PacketCaptureStart "fd:1" "fd:3" "$option" \
-      2>&1 > "$fifo" 3>${capture_file} &
-  read pid < "$fifo"
-  echo "pid: $pid"
-  (while read line; do echo "$line"; done) < "$fifo"
-  debugd PacketCaptureStop "string:$pid"
-  if [ $? -ne 0 ]; then
-    echo "Can't stop packet capture"
-    return 1
-  fi
-  rm -rf "$(dirname ${fifo})"
+  debugd_poll PacketCapture "fd:1" "fd:3" "${option}" 3>"${capture_file}"
   if [ -s "${capture_file}" ]; then
     echo "Capture stored in ${capture_file}"
   else
