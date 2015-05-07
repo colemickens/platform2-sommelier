@@ -50,6 +50,7 @@ class CHROMEOS_EXPORT FormField {
             const std::string& content_disposition,
             const std::string& content_type,
             const std::string& transfer_encoding);
+  virtual ~FormField() = default;
 
   // Returns the full Content-Disposition header value. This might include the
   // disposition type itself as well as the field "name" and/or "filename"
