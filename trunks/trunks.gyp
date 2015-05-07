@@ -53,6 +53,7 @@
       'type': 'executable',
       'sources': [
         'trunks_client.cc',
+        'trunks_client_test.cc',
       ],
       'dependencies': [
         'trunks',
