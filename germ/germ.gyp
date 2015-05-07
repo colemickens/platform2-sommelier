@@ -49,7 +49,6 @@
         'container.cc',
         'container_manager.cc',
         'environment.cc',
-        'germ_client.cc',
         'germ_host.cc',
         'germ_init.cc',
         'germ_zygote.cc',

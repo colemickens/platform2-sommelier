@@ -14,8 +14,7 @@ service Germ {
 }
 
 message LaunchRequest {
-  optional string name = 1;
-  optional soma.ContainerSpec spec = 2;
+  optional soma.ContainerSpec spec = 1;
 }
 
 message LaunchResponse {
@@ -28,7 +27,7 @@ message LaunchResponse {
 }
 
 message TerminateRequest {
-  optional int32 pid = 1;
+  optional string name = 1;
 }
 
 message TerminateResponse {

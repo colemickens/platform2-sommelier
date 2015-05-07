@@ -76,10 +76,6 @@ class Cell : public CellInterface, public ServiceObserver {
   // GermConnection object.
   GermConnection* germ_connection_;
 
-  // PID of the germ-provided init process inside the cell, which can be used to
-  // terminate all the processes in the cell.
-  int init_pid_;
-
   DISALLOW_COPY_AND_ASSIGN(Cell);
 };
 

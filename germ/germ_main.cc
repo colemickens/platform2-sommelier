@@ -14,7 +14,8 @@
 #include <soma/container_spec_reader.h>
 #include <soma/read_only_container_spec.h>
 
-#include "germ/germ_client.h"
+#include "germ/launcher.h"
+#include "germ/proto_bindings/soma_container_spec.pb.h"
 
 namespace {
 const char kShellExecutablePath[] = "/bin/sh";

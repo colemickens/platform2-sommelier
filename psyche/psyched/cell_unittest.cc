@@ -38,22 +38,18 @@ class GermInterfaceStub : public germ::IGerm {
   ~GermInterfaceStub() override = default;
 
   void set_launch_return_value(int value) { launch_return_value_ = value; }
-  void set_launch_pid(int pid) {
-    launch_pid_ = pid;
-  }
   void set_terminate_return_value(int value) {
     terminate_return_value_ = value;
   }
   const std::vector<std::string>& launched_cell_names() const {
     return launched_cell_names_;
   }
-  const std::vector<int>& terminated_cell_pids() const {
-    return terminated_cell_pids_;
+  const std::vector<std::string>& terminated_cell_names() const {
+    return terminated_cell_names_;
   }
 
   // IGerm:
   Status Launch(germ::LaunchRequest* in, germ::LaunchResponse* out) override {
-    out->set_pid(launch_pid_);
     launched_cell_names_.push_back(in->spec().name());
     return launch_return_value_
                ? STATUS_APP_ERROR(launch_return_value_, "Launch Error")
@@ -62,7 +58,7 @@ class GermInterfaceStub : public germ::IGerm {
 
   Status Terminate(germ::TerminateRequest* in,
                    germ::TerminateResponse* out) override {
-    terminated_cell_pids_.push_back(in->pid());
+    terminated_cell_names_.push_back(in->name());
     return terminate_return_value_
                ? STATUS_APP_ERROR(terminate_return_value_, "Terminate Error")
                : STATUS_OK();
@@ -75,14 +71,11 @@ class GermInterfaceStub : public germ::IGerm {
   // binder result returned by Terminate().
   int terminate_return_value_;
 
-  // germ pid field returned by LaunchResponse.
-  int launch_pid_;
-
   // Cell names passed to Launch().
   std::vector<std::string> launched_cell_names_;
 
-  // Cell init PIDs passed to Terminate().
-  std::vector<int> terminated_cell_pids_;
+  // Cell names passed to Terminate().
+  std::vector<std::string> terminated_cell_names_;
 
   DISALLOW_COPY_AND_ASSIGN(GermInterfaceStub);
 };
@@ -147,9 +140,7 @@ TEST_F(CellTest, InitializeFromSpec) {
 TEST_F(CellTest, GermCommunication) {
   ContainerSpec spec;
   const std::string kCellName("/tmp/org.example.cell");
-  const int kCellPid(123);
   spec.set_name(kCellName);
-  germ_->set_launch_pid(kCellPid);
 
   Cell cell(spec, &factory_, &germ_connection_);
 
@@ -180,8 +171,8 @@ TEST_F(CellTest, GermCommunication) {
 
   InitGerm();
   EXPECT_TRUE(cell.Terminate());
-  ASSERT_EQ(1, germ_->terminated_cell_pids().size());
-  EXPECT_EQ(kCellPid, germ_->terminated_cell_pids()[0]);
+  ASSERT_EQ(1, germ_->terminated_cell_names().size());
+  EXPECT_EQ(kCellName, germ_->terminated_cell_names()[0]);
 }
 
 }  // namespace

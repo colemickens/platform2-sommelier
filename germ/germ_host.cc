@@ -45,10 +45,16 @@ Status GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
 
 Status GermHost::Terminate(TerminateRequest* request,
                            TerminateResponse* response) {
-  // Temporarily disabled, the implementation will be added in a subsequent CL.
-  return STATUS_APP_ERROR_LOG(logging::LOG_ERROR,
-                              TerminateResponse::TERMINATE_FAILED,
-                              "Not implemented");
+  const std::string& name = request->name();
+  if (!container_manager_.TerminateContainer(
+          name, base::TimeDelta::FromSeconds(10))) {
+    // TODO(rickyz): Return more detailed error messages.
+    return STATUS_APP_ERROR_LOG(logging::LOG_ERROR,
+                                TerminateResponse::TERMINATE_FAILED,
+                                "Failed to terminate container: " + name);
+  }
+
+  return STATUS_OK();
 }
 
 void GermHost::HandleReapedChild(const siginfo_t& info) {

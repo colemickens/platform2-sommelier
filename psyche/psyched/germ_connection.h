@@ -5,6 +5,8 @@
 #ifndef PSYCHE_PSYCHED_GERM_CONNECTION_H_
 #define PSYCHE_PSYCHED_GERM_CONNECTION_H_
 
+#include <string>
+
 #include <base/macros.h>
 
 #include "psyche/proto_bindings/soma_container_spec.pb.h"
@@ -40,13 +42,11 @@ class GermConnection : public ServiceObserver {
   // Sets the proxy that should be used for communication with germd.
   void SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy);
 
-  // Makes a request to germ to launch a cell. Sets |pid| to the PID of the
-  // germ-provided init process in the launched cell.
-  Result Launch(const soma::ContainerSpec& spec, int* pid);
+  // Makes a request to germ to launch a cell.
+  Result Launch(const soma::ContainerSpec& spec);
 
-  // Makes a request to germ to terminate a cell. |pid| is the germ-provided
-  // init process in the cell.
-  Result Terminate(int pid);
+  // Makes a request to germ to terminate a cell with the given name.
+  Result Terminate(const std::string& name);
 
   // ServiceObserver:
   void OnServiceProxyChange(ServiceInterface* service) override;

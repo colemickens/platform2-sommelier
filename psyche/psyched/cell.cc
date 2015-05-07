@@ -17,7 +17,7 @@ namespace psyche {
 Cell::Cell(const ContainerSpec& spec,
            FactoryInterface* factory,
            GermConnection* germ)
-    : spec_(spec), germ_connection_(germ), init_pid_(-1) {
+    : spec_(spec), germ_connection_(germ) {
   DCHECK(factory);
   for (const auto& name : spec_.service_names()) {
     std::unique_ptr<ServiceInterface> service(factory->CreateService(name));
@@ -37,13 +37,12 @@ const Cell::ServiceMap& Cell::GetServices() const {
 }
 
 bool Cell::Launch() {
-  return germ_connection_->Launch(spec_, &init_pid_) ==
-      GermConnection::Result::SUCCESS;
+  return germ_connection_->Launch(spec_) == GermConnection::Result::SUCCESS;
 }
 
 bool Cell::Terminate() {
-  return germ_connection_->Terminate(init_pid_) ==
-      GermConnection::Result::SUCCESS;
+  return germ_connection_->Terminate(GetName()) ==
+         GermConnection::Result::SUCCESS;
 }
 
 void Cell::OnServiceProxyChange(ServiceInterface* service) {

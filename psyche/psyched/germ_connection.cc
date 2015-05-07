@@ -47,15 +47,12 @@ void GermConnection::SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy) {
   service_.SetProxy(std::move(proxy));
 }
 
-GermConnection::Result GermConnection::Launch(const soma::ContainerSpec& spec,
-                                              int* pid) {
-  CHECK(pid);
+GermConnection::Result GermConnection::Launch(const soma::ContainerSpec& spec) {
   if (!interface_)
     return Result::NO_CONNECTION;
 
   germ::LaunchRequest request;
   germ::LaunchResponse response;
-  request.set_name(spec.name());
   request.mutable_spec()->CopyFrom(spec);
 
   Status status = interface_->Launch(&request, &response);
@@ -65,30 +62,27 @@ GermConnection::Result GermConnection::Launch(const soma::ContainerSpec& spec,
     return status.IsAppError() ? Result::FAILED_REQUEST : Result::RPC_ERROR;
   }
 
-  LOG(INFO) << "Launched cell \"" << spec.name() << " with init PID "
-            << response.pid();
-
-  *pid = response.pid();
+  LOG(INFO) << "Launched cell \"" << spec.name() << "\"";
 
   return Result::SUCCESS;
 }
 
-GermConnection::Result GermConnection::Terminate(int pid) {
+GermConnection::Result GermConnection::Terminate(const std::string& name) {
   if (!interface_)
     return Result::NO_CONNECTION;
 
   germ::TerminateRequest request;
   germ::TerminateResponse response;
-  request.set_pid(pid);
+  request.set_name(name);
 
   Status status = interface_->Terminate(&request, &response);
   if (!status) {
-    LOG(ERROR) << "Failed to terminate cell with init PID " << pid
-               << "; RPC to germd returned " << status;
+    LOG(ERROR) << "Failed to terminate cell \"" << name
+               << "\"; RPC to germd returned " << status;
     return status.IsAppError() ? Result::FAILED_REQUEST : Result::RPC_ERROR;
   }
 
-  LOG(INFO) << "Terminated cell with init PID " << pid;
+  LOG(INFO) << "Terminated cell \"" << name << "\"";
 
   return Result::SUCCESS;
 }
