@@ -212,4 +212,18 @@ TEST_F(CryptoUtilityImplTest, EncryptForUnbindLargeInput) {
                                                  &output));
 }
 
+TEST_F(CryptoUtilityImplTest, VerifySignatureBadSignature) {
+  std::string public_key = HexDecode(kValidPublicKeyHex);
+  std::string public_key_info;
+  EXPECT_TRUE(crypto_utility_->GetRSASubjectPublicKeyInfo(public_key,
+                                                          &public_key_info));
+  std::string output;
+  EXPECT_FALSE(crypto_utility_->VerifySignature(public_key_info, "input",
+                                                "signature"));
+}
+
+TEST_F(CryptoUtilityImplTest, VerifySignatureBadKey) {
+  EXPECT_FALSE(crypto_utility_->VerifySignature("bad_key", "input", ""));
+}
+
 }  // namespace attestation

@@ -326,4 +326,42 @@ TEST_F(DBusProxyTest, Decrypt) {
   EXPECT_EQ(1, callback_count);
 }
 
+TEST_F(DBusProxyTest, Sign) {
+  auto fake_dbus_call = [](
+      dbus::MethodCall* method_call,
+      const dbus::MockObjectProxy::ResponseCallback& response_callback) {
+    // Verify request protobuf.
+    dbus::MessageReader reader(method_call);
+    SignRequest request_proto;
+    EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&request_proto));
+    EXPECT_EQ("label", request_proto.key_label());
+    EXPECT_EQ("user", request_proto.username());
+    EXPECT_EQ("data", request_proto.data_to_sign());
+    // Create reply protobuf.
+    auto response = dbus::Response::CreateEmpty();
+    dbus::MessageWriter writer(response.get());
+    SignReply reply_proto;
+    reply_proto.set_status(STATUS_SUCCESS);
+    reply_proto.set_signature("signature");
+    writer.AppendProtoAsArrayOfBytes(reply_proto);
+    response_callback.Run(response.release());
+  };
+  EXPECT_CALL(*mock_object_proxy_, CallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(WithArgs<0, 2>(Invoke(fake_dbus_call)));
+
+  // Set expectations on the outputs.
+  int callback_count = 0;
+  auto callback = [&callback_count](const SignReply& reply) {
+    callback_count++;
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ("signature", reply.signature());
+  };
+  SignRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  request.set_data_to_sign("data");
+  proxy_.Sign(request, base::Bind(callback));
+  EXPECT_EQ(1, callback_count);
+}
+
 }  // namespace attestation

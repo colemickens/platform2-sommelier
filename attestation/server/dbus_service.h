@@ -80,6 +80,12 @@ class DBusService {
           const DecryptReply&>> response,
       const DecryptRequest& request);
 
+  // Handles a Sign D-Bus call.
+  void HandleSign(
+      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+          const SignReply&>> response,
+      const SignRequest& request);
+
   chromeos::dbus_utils::DBusObject dbus_object_;
   AttestationInterface* service_;
 

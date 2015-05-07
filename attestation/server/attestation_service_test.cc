@@ -851,7 +851,8 @@ TEST_F(AttestationServiceTest, DecryptSuccess) {
   // Set expectations on the outputs.
   auto callback = [this](const DecryptReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_EQ("data", reply.decrypted_data());
+    EXPECT_EQ(MockTpmUtility::Transform("Unbind", "data"),
+              reply.decrypted_data());
     Quit();
   };
   DecryptRequest request;
@@ -867,7 +868,8 @@ TEST_F(AttestationServiceTest, DecryptSuccessNoUser) {
   // Set expectations on the outputs.
   auto callback = [this](const DecryptReply& reply) {
     EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_EQ("data", reply.decrypted_data());
+    EXPECT_EQ(MockTpmUtility::Transform("Unbind", "data"),
+              reply.decrypted_data());
     Quit();
   };
   DecryptRequest request;
@@ -921,6 +923,83 @@ TEST_F(AttestationServiceTest, DecryptUnbindFailure) {
   request.set_username("user");
   request.set_encrypted_data("data");
   service_->Decrypt(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, SignSuccess) {
+  // Set expectations on the outputs.
+  auto callback = [this](const SignReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ(MockTpmUtility::Transform("Sign", "data"), reply.signature());
+    Quit();
+  };
+  SignRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  request.set_data_to_sign("data");
+  service_->Sign(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, SignSuccessNoUser) {
+  mock_database_.GetMutableProtobuf()->add_device_keys()->set_key_name("label");
+  // Set expectations on the outputs.
+  auto callback = [this](const SignReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ(MockTpmUtility::Transform("Sign", "data"), reply.signature());
+    Quit();
+  };
+  SignRequest request;
+  request.set_key_label("label");
+  request.set_data_to_sign("data");
+  service_->Sign(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, SignKeyNotFound) {
+  EXPECT_CALL(mock_key_store_, Read("user", "label", _))
+      .WillRepeatedly(Return(false));
+  // Set expectations on the outputs.
+  auto callback = [this](const SignReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_signature());
+    Quit();
+  };
+  SignRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  request.set_data_to_sign("data");
+  service_->Sign(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, SignKeyNotFoundNoUser) {
+  // Set expectations on the outputs.
+  auto callback = [this](const SignReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_signature());
+    Quit();
+  };
+  SignRequest request;
+  request.set_key_label("label");
+  request.set_data_to_sign("data");
+  service_->Sign(request, base::Bind(callback));
+  Run();
+}
+
+TEST_F(AttestationServiceTest, SignUnbindFailure) {
+  EXPECT_CALL(mock_tpm_utility_, Sign(_, _, _)).WillRepeatedly(Return(false));
+  // Set expectations on the outputs.
+  auto callback = [this](const SignReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    EXPECT_FALSE(reply.has_signature());
+    Quit();
+  };
+  SignRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  request.set_data_to_sign("data");
+  service_->Sign(request, base::Bind(callback));
   Run();
 }
 

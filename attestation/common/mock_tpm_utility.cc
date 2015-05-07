@@ -11,10 +11,34 @@ using ::testing::WithArgs;
 
 namespace {
 
-bool CopyString(const std::string& in, std::string* out) {
-  *out = in;
-  return true;
-}
+class TransformString {
+ public:
+  explicit TransformString(std::string method) : method_(method) {}
+  bool operator()(const std::string& in, std::string* out) {
+    *out = attestation::MockTpmUtility::Transform(method_, in);
+    return true;
+  }
+
+ private:
+  std::string method_;
+};
+
+class UntransformString {
+ public:
+  explicit UntransformString(std::string method) : method_(method) {}
+  bool operator()(const std::string& in, std::string* out) {
+    std::string suffix = "_fake_transform_" + method_;
+    auto position = in.find(suffix);
+    if (position == std::string::npos) {
+      return false;
+    }
+    *out = in.substr(0, position);
+    return true;
+  }
+
+ private:
+  std::string method_;
+};
 
 }  // namespace
 
@@ -27,13 +51,21 @@ MockTpmUtility::MockTpmUtility() {
   ON_CALL(*this, CreateCertifiedKey(_, _, _, _, _, _, _, _, _))
       .WillByDefault(Return(true));
   ON_CALL(*this, SealToPCR0(_, _))
-      .WillByDefault(Invoke(CopyString));
+      .WillByDefault(Invoke(TransformString("SealToPCR0")));
   ON_CALL(*this, Unseal(_, _))
-      .WillByDefault(Invoke(CopyString));
+      .WillByDefault(Invoke(UntransformString("SealToPCR0")));
   ON_CALL(*this, Unbind(_, _, _))
-      .WillByDefault(WithArgs<1, 2>(Invoke(CopyString)));
+      .WillByDefault(WithArgs<1, 2>(Invoke(TransformString("Unbind"))));
+  ON_CALL(*this, Sign(_, _, _))
+      .WillByDefault(WithArgs<1, 2>(Invoke(TransformString("Sign"))));
 }
 
 MockTpmUtility::~MockTpmUtility() {}
+
+// static
+std::string MockTpmUtility::Transform(const std::string& method,
+                                      const std::string& input) {
+  return input + "_fake_transform_" + method;
+}
 
 }  // namespace attestation

@@ -20,6 +20,7 @@ constexpr char kGetAttestationKeyInfo[] = "GetAttestationKeyInfo";
 constexpr char kActivateAttestationKey[] = "ActivateAttestationKey";
 constexpr char kCreateCertifiableKey[] = "CreateCertifiableKey";
 constexpr char kDecrypt[] = "Decrypt";
+constexpr char kSign[] = "Sign";
 
 }  // namespace attestation
 

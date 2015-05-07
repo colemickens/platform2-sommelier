@@ -45,6 +45,9 @@ class MockCryptoUtility : public CryptoUtility {
   MOCK_METHOD3(EncryptForUnbind, bool(const std::string&,
                                       const std::string&,
                                       std::string*));
+  MOCK_METHOD3(VerifySignature, bool(const std::string&,
+                                     const std::string&,
+                                     const std::string&));
 };
 
 }  // namespace attestation

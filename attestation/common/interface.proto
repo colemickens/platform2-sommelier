@@ -137,3 +137,14 @@ message DecryptReply {
   optional AttestationStatus status = 1;
   optional bytes decrypted_data = 2;
 }
+
+message SignRequest {
+  optional string key_label = 1;
+  optional string username = 2;
+  optional bytes data_to_sign = 3;
+}
+
+message SignReply {
+  optional AttestationStatus status = 1;
+  optional bytes signature = 2;
+}

@@ -301,8 +301,7 @@ TEST_F(DBusServiceTest, Decrypt) {
         reply.set_decrypted_data("data");
         callback.Run(reply);
       }));
-  std::unique_ptr<dbus::MethodCall> call =
-      CreateMethodCall(kDecrypt);
+  std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(kDecrypt);
   dbus::MessageWriter writer(call.get());
   writer.AppendProtoAsArrayOfBytes(request);
   auto response = CallMethod(call.get());
@@ -311,6 +310,34 @@ TEST_F(DBusServiceTest, Decrypt) {
   EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
   EXPECT_EQ(STATUS_SUCCESS, reply.status());
   EXPECT_EQ("data", reply.decrypted_data());
+}
+
+TEST_F(DBusServiceTest, Sign) {
+  SignRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  request.set_data_to_sign("data");
+  EXPECT_CALL(mock_service_, Sign(_, _))
+      .WillOnce(Invoke([](
+          const SignRequest& request,
+          const AttestationInterface::SignCallback& callback) {
+        EXPECT_EQ("label", request.key_label());
+        EXPECT_EQ("user", request.username());
+        EXPECT_EQ("data", request.data_to_sign());
+        SignReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        reply.set_signature("signature");
+        callback.Run(reply);
+      }));
+  std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(kSign);
+  dbus::MessageWriter writer(call.get());
+  writer.AppendProtoAsArrayOfBytes(request);
+  auto response = CallMethod(call.get());
+  dbus::MessageReader reader(response.get());
+  SignReply reply;
+  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+  EXPECT_EQ("signature", reply.signature());
 }
 
 }  // namespace attestation

@@ -10,7 +10,9 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <crypto/scoped_openssl_types.h>
+#include <crypto/sha2.h>
 #include <openssl/rsa.h>
+#include <openssl/sha.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/trousers.h>
 #include <trousers/tss.h>
@@ -28,10 +30,15 @@ namespace {
 
 using ScopedByteArray = scoped_ptr<BYTE, base::FreeDeleter>;
 using ScopedTssEncryptedData = trousers::ScopedTssObject<TSS_HENCDATA>;
+using ScopedTssHash = trousers::ScopedTssObject<TSS_HHASH>;
 
 const char* kTpmEnabledFile = "/sys/class/misc/tpm0/device/enabled";
 const char* kTpmOwnedFile = "/sys/class/misc/tpm0/device/owned";
 const unsigned int kWellKnownExponent = 65537;
+const unsigned char kSha256DigestInfo[] = {
+  0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04,
+  0x02, 0x01, 0x05, 0x00, 0x04, 0x20
+};
 
 std::string GetFirstByte(const char* file_name) {
   std::string content;
@@ -437,6 +444,50 @@ bool TpmUtilityV1::Unbind(const std::string& key_blob,
   return true;
 }
 
+bool TpmUtilityV1::Sign(const std::string& key_blob,
+                        const std::string& data_to_sign,
+                        std::string* signature) {
+  CHECK(signature);
+  if (!SetupSrk()) {
+    LOG(ERROR) << "SRK is not ready.";
+    return false;
+  }
+  ScopedTssKey key_handle(context_handle_);
+  if (!LoadKeyFromBlob(key_blob, context_handle_, srk_handle_, &key_handle)) {
+    return false;
+  }
+  // Construct an ASN.1 DER DigestInfo.
+  std::string digest_to_sign(std::begin(kSha256DigestInfo),
+                             std::end(kSha256DigestInfo));
+  digest_to_sign += crypto::SHA256HashString(data_to_sign);
+  // Create a hash object to hold the digest.
+  ScopedTssHash hash_handle(context_handle_);
+  TSS_RESULT result = Tspi_Context_CreateObject(context_handle_,
+                                                TSS_OBJECT_TYPE_HASH,
+                                                TSS_HASH_OTHER,
+                                                hash_handle.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << __func__ << ": Failed to create hash object.";
+    return false;
+  }
+  result = Tspi_Hash_SetHashValue(hash_handle,
+                                  digest_to_sign.size(),
+                                  StringAsTSSBuffer(&digest_to_sign));
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << __func__ << ": Failed to set hash data.";
+    return false;
+  }
+  UINT32 length = 0;
+  ScopedTssMemory buffer(context_handle_);
+  result = Tspi_Hash_Sign(hash_handle, key_handle, &length, buffer.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << __func__ << ": Failed to generate signature.";
+    return false;
+  }
+  signature->assign(TSSBufferAsString(buffer.value(), length));
+  return true;
+}
+
 bool TpmUtilityV1::ConnectContext(ScopedTssContext* context, TSS_HTPM* tpm) {
   *tpm = 0;
   TSS_RESULT result;
@@ -653,6 +704,5 @@ bool TpmUtilityV1::ConvertPublicKeyToDER(const std::string& public_key,
   public_key_der->resize(der_length);
   return true;
 }
-
 
 }  // namespace attestation

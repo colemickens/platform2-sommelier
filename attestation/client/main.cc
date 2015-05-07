@@ -31,6 +31,8 @@ const char kActivateCommand[] = "activate";
 const char kEncryptForActivateCommand[] = "encrypt_for_activate";
 const char kEncryptCommand[] = "encrypt";
 const char kDecryptCommand[] = "decrypt";
+const char kSignCommand[] = "sign";
+const char kVerifyCommand[] = "verify";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
@@ -56,10 +58,18 @@ Commands:
 
   encrypt [--user=<email>] [--label=<keylabel>] --input=<input_file>
           --output=<output_file>
-      Encrypts the content of |input_file| as required by the TPM for a decrypt
+      Encrypts the contents of |input_file| as required by the TPM for a decrypt
       operation. The result is written to |output_file|.
   decrypt [--user=<email>] [--label=<keylabel>] --input=<input_file>
-      Decrypts the content of |input_file|.
+      Decrypts the contents of |input_file|.
+
+  sign [--user=<email>] [--label=<keylabel>] --input=<input_file>
+          [--output=<output_file>]
+      Signs the contents of |input_file|.
+  verify [--user=<email>] [--label=<keylabel] --input=<signed_data_file>
+          --signature=<signature_file>
+      Verifies the signature in |signature_file| against the contents of
+      |input_file|.
 )";
 
 // The Daemon class works well as a client loop as well.
@@ -191,6 +201,44 @@ class ClientLoop : public ClientLoopBase {
                         command_line->GetSwitchValueASCII("label"),
                         command_line->GetSwitchValueASCII("user"),
                         input);
+    } else if (args.front() == kSignCommand) {
+      if (!command_line->HasSwitch("input")) {
+        return EX_USAGE;
+      }
+      std::string input;
+      base::FilePath filename(command_line->GetSwitchValueASCII("input"));
+      if (!base::ReadFileToString(filename, &input)) {
+        LOG(ERROR) << "Failed to read file: " << filename.value();
+        return EX_NOINPUT;
+      }
+      task = base::Bind(&ClientLoop::CallSign,
+                        weak_factory_.GetWeakPtr(),
+                        command_line->GetSwitchValueASCII("label"),
+                        command_line->GetSwitchValueASCII("user"),
+                        input);
+    } else if (args.front() == kVerifyCommand) {
+      if (!command_line->HasSwitch("input") ||
+          !command_line->HasSwitch("signature")) {
+        return EX_USAGE;
+      }
+      std::string input;
+      base::FilePath filename(command_line->GetSwitchValueASCII("input"));
+      if (!base::ReadFileToString(filename, &input)) {
+        LOG(ERROR) << "Failed to read file: " << filename.value();
+        return EX_NOINPUT;
+      }
+      std::string signature;
+      base::FilePath filename2(command_line->GetSwitchValueASCII("signature"));
+      if (!base::ReadFileToString(filename2, &signature)) {
+        LOG(ERROR) << "Failed to read file: " << filename2.value();
+        return EX_NOINPUT;
+      }
+      task = base::Bind(&ClientLoop::VerifySignature,
+                        weak_factory_.GetWeakPtr(),
+                        command_line->GetSwitchValueASCII("label"),
+                        command_line->GetSwitchValueASCII("user"),
+                        input,
+                        signature);
     } else {
       return EX_USAGE;
     }
@@ -361,6 +409,49 @@ class ClientLoop : public ClientLoopBase {
         request,
         base::Bind(&ClientLoop::PrintReplyAndQuit<DecryptReply>,
                    weak_factory_.GetWeakPtr()));
+  }
+
+  void CallSign(const std::string& label,
+                const std::string& username,
+                const std::string& input) {
+    SignRequest request;
+    request.set_key_label(label);
+    request.set_username(username);
+    request.set_data_to_sign(input);
+    attestation_->Sign(request, base::Bind(&ClientLoop::OnSignComplete,
+                                           weak_factory_.GetWeakPtr()));
+  }
+
+  void OnSignComplete(const SignReply& reply) {
+    if (reply.status() == STATUS_SUCCESS &&
+        base::CommandLine::ForCurrentProcess()->HasSwitch("output")) {
+      WriteOutput(reply.signature());
+    }
+    PrintReplyAndQuit<SignReply>(reply);
+  }
+
+  void VerifySignature(const std::string& label,
+                       const std::string& username,
+                       const std::string& input,
+                       const std::string& signature) {
+    GetKeyInfoRequest request;
+    request.set_key_label(label);
+    request.set_username(username);
+    attestation_->GetKeyInfo(request, base::Bind(&ClientLoop::VerifySignature2,
+                                                 weak_factory_.GetWeakPtr(),
+                                                 input, signature));
+  }
+
+  void VerifySignature2(const std::string& input,
+                        const std::string& signature,
+                        const GetKeyInfoReply& key_info) {
+    CryptoUtilityImpl crypto(nullptr);
+    if (crypto.VerifySignature(key_info.public_key(), input, signature)) {
+      printf("Signature is OK!\n");
+    } else {
+      printf("Signature is BAD!\n");
+    }
+    Quit();
   }
 
   std::unique_ptr<attestation::AttestationInterface> attestation_;

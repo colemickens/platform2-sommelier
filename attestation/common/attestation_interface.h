@@ -75,6 +75,12 @@ class AttestationInterface {
   using DecryptCallback = base::Callback<void(const DecryptReply&)>;
   virtual void Decrypt(const DecryptRequest& request,
                        const DecryptCallback& callback) = 0;
+
+  // Processes a SignRequest and responds with a
+  // SignReply.
+  using SignCallback = base::Callback<void(const SignReply&)>;
+  virtual void Sign(const SignRequest& request,
+                    const SignCallback& callback) = 0;
 };
 
 }  // namespace attestation

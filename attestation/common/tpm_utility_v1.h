@@ -48,6 +48,9 @@ class TpmUtilityV1 : public TpmUtility {
   bool Unbind(const std::string& key_blob,
               const std::string& bound_data,
               std::string* data) override;
+  bool Sign(const std::string& key_blob,
+            const std::string& data_to_sign,
+            std::string* signature) override;
 
  private:
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with

@@ -48,6 +48,9 @@ void DBusService::Register(const CompletionAction& callback) {
   dbus_interface->AddMethodHandler(kDecrypt,
                                    base::Unretained(this),
                                    &DBusService::HandleDecrypt);
+  dbus_interface->AddMethodHandler(kSign,
+                                   base::Unretained(this),
+                                   &DBusService::HandleSign);
 
   dbus_object_.RegisterAsync(callback);
 }
@@ -179,6 +182,24 @@ void DBusService::HandleDecrypt(
     response->Return(reply);
   };
   service_->Decrypt(
+      request,
+      base::Bind(callback, SharedResponsePointer(std::move(response))));
+}
+
+void DBusService::HandleSign(
+    std::unique_ptr<DBusMethodResponse<const SignReply&>> response,
+    const SignRequest& request) {
+  VLOG(1) << __func__;
+  // Convert |response| to a shared_ptr so |service_| can safely copy the
+  // callback.
+  using SharedResponsePointer = std::shared_ptr<
+      DBusMethodResponse<const SignReply&>>;
+  // A callback that fills the reply protobuf and sends it.
+  auto callback = [](const SharedResponsePointer& response,
+                     const SignReply& reply) {
+    response->Return(reply);
+  };
+  service_->Sign(
       request,
       base::Bind(callback, SharedResponsePointer(std::move(response))));
 }

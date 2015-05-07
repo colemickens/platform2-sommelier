@@ -73,6 +73,12 @@ class CryptoUtility {
   virtual bool EncryptForUnbind(const std::string& public_key,
                                 const std::string& data,
                                 std::string* encrypted_data) = 0;
+
+  // Verifies a PKCS #1 v1.5 SHA-256 |signature| over |data|. The |public_key|
+  // must be provided in X.509 SubjectPublicKeyInfo format.
+  virtual bool VerifySignature(const std::string& public_key,
+                               const std::string& data,
+                               const std::string& signature) = 0;
 };
 
 }  // namespace attestation

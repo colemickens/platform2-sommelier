@@ -44,6 +44,7 @@ class DBusProxy : public AttestationInterface {
       const CreateCertifiableKeyCallback& callback) override;
   void Decrypt(const DecryptRequest& request,
                const DecryptCallback& callback) override;
+  void Sign(const SignRequest& request, const SignCallback& callback) override;
 
   // Useful for testing.
   void set_object_proxy(dbus::ObjectProxy* object_proxy) {

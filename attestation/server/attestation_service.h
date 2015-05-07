@@ -74,6 +74,7 @@ class AttestationService : public AttestationInterface {
       const CreateCertifiableKeyCallback& callback) override;
   void Decrypt(const DecryptRequest& request,
                const DecryptCallback& callback) override;
+  void Sign(const SignRequest& request, const SignCallback& callback) override;
 
   // Mutators useful for testing.
   void set_crypto_utility(CryptoUtility* crypto_utility) {
@@ -117,40 +118,44 @@ class AttestationService : public AttestationInterface {
     callback.Run(*reply);
   }
 
-  // A synchronous implementation of CreateGoogleAttestedKey appropriate to run
-  // on the worker thread.
+  // A blocking implementation of CreateGoogleAttestedKey appropriate to run on
+  // the worker thread.
   void CreateGoogleAttestedKeyTask(
       const CreateGoogleAttestedKeyRequest& request,
       const std::shared_ptr<CreateGoogleAttestedKeyReply>& result);
 
-  // A synchronous implementation of GetKeyInfo.
+  // A blocking implementation of GetKeyInfo.
   void GetKeyInfoTask(
       const GetKeyInfoRequest& request,
       const std::shared_ptr<GetKeyInfoReply>& result);
 
-  // A synchronous implementation of GetEndorsementInfo.
+  // A blocking implementation of GetEndorsementInfo.
   void GetEndorsementInfoTask(
       const GetEndorsementInfoRequest& request,
       const std::shared_ptr<GetEndorsementInfoReply>& result);
 
-  // A synchronous implementation of GetAttestationKeyInfo.
+  // A blocking implementation of GetAttestationKeyInfo.
   void GetAttestationKeyInfoTask(
       const GetAttestationKeyInfoRequest& request,
       const std::shared_ptr<GetAttestationKeyInfoReply>& result);
 
-  // A synchronous implementation of ActivateAttestationKey.
+  // A blocking implementation of ActivateAttestationKey.
   void ActivateAttestationKeyTask(
       const ActivateAttestationKeyRequest& request,
       const std::shared_ptr<ActivateAttestationKeyReply>& result);
 
-  // A synchronous implementation of CreateCertifiableKey.
+  // A blocking implementation of CreateCertifiableKey.
   void CreateCertifiableKeyTask(
       const CreateCertifiableKeyRequest& request,
       const std::shared_ptr<CreateCertifiableKeyReply>& result);
 
-  // A synchronous implementation of Decrypt.
+  // A blocking implementation of Decrypt.
   void DecryptTask(const DecryptRequest& request,
                    const std::shared_ptr<DecryptReply>& result);
+
+  // A blocking implementation of Sign.
+  void SignTask(const SignRequest& request,
+                const std::shared_ptr<SignReply>& result);
 
   // Returns true iff all information required for enrollment with the Google
   // Attestation CA is available.

@@ -8,9 +8,11 @@
 #include <string>
 
 #include <arpa/inet.h>
+#include <base/sha1.h>
 #include <base/stl_util.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/secure_util.h>
+#include <crypto/sha2.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -220,7 +222,8 @@ bool CryptoUtilityImpl::EncryptIdentityCredential(
   // Construct a TPM_ASYM_CA_CONTENTS structure.
   std::string asym_header(std::begin(kAsymContentHeader),
                           std::end(kAsymContentHeader));
-  std::string asym_content = asym_header + aes_key + Sha1(aik_public_key);
+  std::string asym_content = asym_header + aes_key +
+                             base::SHA1HashString(aik_public_key);
 
   // Encrypt the TPM_ASYM_CA_CONTENTS with the EK public key.
   auto asn1_ptr = reinterpret_cast<const unsigned char*>(
@@ -261,8 +264,7 @@ bool CryptoUtilityImpl::EncryptForUnbind(const std::string& public_key,
   std::string bound_data = header + data;
 
   // Encrypt using the TPM_ES_RSAESOAEP_SHA1_MGF1 scheme.
-  const unsigned char* asn1_ptr = reinterpret_cast<const unsigned char*>(
-      public_key.data());
+  auto asn1_ptr = reinterpret_cast<const unsigned char*>(public_key.data());
   crypto::ScopedRSA rsa(d2i_RSA_PUBKEY(NULL, &asn1_ptr, public_key.size()));
   if (!rsa.get()) {
     LOG(ERROR) << __func__ << ": Failed to decode public key: "
@@ -274,6 +276,24 @@ bool CryptoUtilityImpl::EncryptForUnbind(const std::string& public_key,
     return false;
   }
   return true;
+}
+
+bool CryptoUtilityImpl::VerifySignature(const std::string& public_key,
+                                        const std::string& data,
+                                        const std::string& signature) {
+  auto asn1_ptr = reinterpret_cast<const unsigned char*>(public_key.data());
+  crypto::ScopedRSA rsa(d2i_RSA_PUBKEY(NULL, &asn1_ptr, public_key.size()));
+  if (!rsa.get()) {
+    LOG(ERROR) << __func__ << ": Failed to decode public key: "
+               << GetOpenSSLError();
+    return false;
+  }
+  std::string digest = crypto::SHA256HashString(data);
+  auto digest_buffer = reinterpret_cast<const unsigned char*>(digest.data());
+  std::string mutable_signature(signature);
+  unsigned char* signature_buffer = StringAsOpenSSLBuffer(&mutable_signature);
+  return (RSA_verify(NID_sha256, digest_buffer, digest.size(),
+                     signature_buffer, signature.size(), rsa.get()) == 1);
 }
 
 bool CryptoUtilityImpl::AesEncrypt(const std::string& data,
@@ -386,13 +406,6 @@ std::string CryptoUtilityImpl::HmacSha512(const std::string& data,
   return std::string(std::begin(mac), std::end(mac));
 }
 
-std::string CryptoUtilityImpl::Sha1(const std::string& input) {
-  unsigned char digest[SHA_DIGEST_LENGTH];
-  SHA1(reinterpret_cast<const unsigned char*>(input.data()), input.size(),
-       digest);
-  return std::string(reinterpret_cast<const char*>(digest), SHA_DIGEST_LENGTH);
-}
-
 bool CryptoUtilityImpl::TssCompatibleEncrypt(const std::string& input,
                                              const std::string& key,
                                              std::string* output) {
@@ -422,8 +435,7 @@ bool CryptoUtilityImpl::TpmCompatibleOAEPEncrypt(const std::string& input,
   padded_input.resize(RSA_size(key));
   auto padded_buffer = reinterpret_cast<unsigned char*>(
       string_as_array(&padded_input));
-  const unsigned char* input_buffer = reinterpret_cast<const unsigned char*>(
-      input.data());
+  auto input_buffer = reinterpret_cast<const unsigned char*>(input.data());
   int result = RSA_padding_add_PKCS1_OAEP(padded_buffer, padded_input.size(),
                                           input_buffer, input.size(),
                                           oaep_param, arraysize(oaep_param));

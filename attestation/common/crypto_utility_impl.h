@@ -47,6 +47,9 @@ class CryptoUtilityImpl : public CryptoUtility {
   bool EncryptForUnbind(const std::string& public_key,
                         const std::string& data,
                         std::string* encrypted_data) override;
+  bool VerifySignature(const std::string& public_key,
+                       const std::string& data,
+                       const std::string& signature) override;
 
  private:
   // Encrypts |data| using |key| and |iv| for AES in CBC mode with PKCS #5
@@ -65,9 +68,6 @@ class CryptoUtilityImpl : public CryptoUtility {
 
   // Computes and returns an HMAC of |data| using |key| and SHA-512.
   std::string HmacSha512(const std::string& data, const std::string& key);
-
-  // Computes and returns the SHA-1 digest of |input|.
-  std::string Sha1(const std::string& input);
 
   // Encrypt like trousers does. This is like AesEncrypt but a random IV is
   // included in the output.

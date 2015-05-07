@@ -71,6 +71,13 @@ class TpmUtility {
   virtual bool Unbind(const std::string& key_blob,
                       const std::string& bound_data,
                       std::string* data) = 0;
+
+  // Signs |data_to_sign| with the key loaded from |key_blob| using the
+  // TPM_SS_RSASSAPKCS1v15_DER scheme with SHA-256. On success returns true and
+  // provides the |signature|.
+  virtual bool Sign(const std::string& key_blob,
+                    const std::string& data_to_sign,
+                    std::string* signature) = 0;
 };
 
 }  // namespace attestation
