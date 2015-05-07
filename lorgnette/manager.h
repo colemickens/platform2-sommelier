@@ -46,13 +46,12 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
       chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   // Implementation of MethodInterface.
-  bool ListScanners(chromeos::ErrorPtr *error,
+  bool ListScanners(chromeos::ErrorPtr* error,
                     ScannerInfo* scanner_list) override;
-  bool ScanImage(
-      chromeos::ErrorPtr *error,
-      const std::string &device_name,
-      const dbus::FileDescriptor &outfd,
-      const chromeos::VariantDictionary &scan_properties) override;
+  bool ScanImage(chromeos::ErrorPtr* error,
+                 const std::string& device_name,
+                 const dbus::FileDescriptor& outfd,
+                 const chromeos::VariantDictionary& scan_properties) override;
 
  private:
   friend class ManagerTest;
@@ -76,7 +75,7 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
 
   // Sets arguments to scan listing |process|, and runs it, returning its
   // output to |fd|.
-  static void RunListScannersProcess(int fd, chromeos::Process *process);
+  static void RunListScannersProcess(int fd, chromeos::Process* process);
 
   // Starts a scan on |device_name|, outputting PNG image data to |out_fd|.
   // Uses the |pipe_fd_input| and |pipe_fd_output| to transport image data
@@ -84,21 +83,20 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
   // |scan_properties| to set the arguments to the |scan_process|.  Runs both
   // |scan_process| and |convert_process|.  Returns true if |pipe_fds| were
   // consumed, false otherwise.
-  void RunScanImageProcess(
-      const std::string &device_name,
-      int out_fd,
-      base::ScopedFD *pipe_fd_input,
-      base::ScopedFD *pipe_fd_output,
-      const chromeos::VariantDictionary &scan_properties,
-      chromeos::Process *scan_process,
-      chromeos::Process *convert_process,
-      chromeos::ErrorPtr *error);
+  void RunScanImageProcess(const std::string& device_name,
+                           int out_fd,
+                           base::ScopedFD* pipe_fd_input,
+                           base::ScopedFD* pipe_fd_output,
+                           const chromeos::VariantDictionary& scan_properties,
+                           chromeos::Process* scan_process,
+                           chromeos::Process* convert_process,
+                           chromeos::ErrorPtr* error);
 
   // Converts the formatted output of "scanimage" to a map of attribute-data
   // mappings suitable for returning to a caller to the ListScanners DBus
   // method.
   static ScannerInfo ScannerInfoFromString(
-      const std::string &scanner_info_string);
+      const std::string& scanner_info_string);
 
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   base::Callback<void()> activity_callback_;

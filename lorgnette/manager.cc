@@ -63,10 +63,10 @@ void Manager::RegisterAsync(
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
 }
 
-bool Manager::ListScanners(chromeos::ErrorPtr *error,
+bool Manager::ListScanners(chromeos::ErrorPtr* error,
                            Manager::ScannerInfo* scanner_list) {
   base::FilePath output_path;
-  FILE *output_file_handle;
+  FILE* output_file_handle;
   output_file_handle = base::CreateAndOpenTemporaryFile(&output_path);
   if (!output_file_handle) {
     chromeos::Error::AddTo(error, FROM_HERE,
@@ -96,11 +96,10 @@ bool Manager::ListScanners(chromeos::ErrorPtr *error,
   return true;
 }
 
-bool Manager::ScanImage(
-    chromeos::ErrorPtr *error,
-    const string &device_name,
-    const dbus::FileDescriptor &outfd,
-    const chromeos::VariantDictionary &scan_properties) {
+bool Manager::ScanImage(chromeos::ErrorPtr* error,
+                        const string& device_name,
+                        const dbus::FileDescriptor& outfd,
+                        const chromeos::VariantDictionary& scan_properties) {
   int pipe_fds[2];
   if (pipe(pipe_fds) != 0) {
     chromeos::Error::AddTo(error, FROM_HERE,
@@ -131,7 +130,7 @@ bool Manager::ScanImage(
 }
 
 // static
-void Manager::RunListScannersProcess(int fd, chromeos::Process *process) {
+void Manager::RunListScannersProcess(int fd, chromeos::Process* process) {
   process->AddArg(kScanImagePath);
   process->AddArg(kScanImageFormattedDeviceListCmd);
   process->BindFd(fd, STDOUT_FILENO);
@@ -140,19 +139,19 @@ void Manager::RunListScannersProcess(int fd, chromeos::Process *process) {
 
 // static
 void Manager::RunScanImageProcess(
-    const string &device_name,
+    const string& device_name,
     int out_fd,
-    ScopedFD *pipe_fd_input,
-    ScopedFD *pipe_fd_output,
-    const chromeos::VariantDictionary &scan_properties,
-    chromeos::Process *scan_process,
-    chromeos::Process *convert_process,
-    chromeos::ErrorPtr *error) {
+    ScopedFD* pipe_fd_input,
+    ScopedFD* pipe_fd_output,
+    const chromeos::VariantDictionary& scan_properties,
+    chromeos::Process* scan_process,
+    chromeos::Process* convert_process,
+    chromeos::ErrorPtr* error) {
   scan_process->AddArg(kScanImagePath);
   scan_process->AddArg("-d");
   scan_process->AddArg(device_name);
 
-  for (const auto &property : scan_properties) {
+  for (const auto& property : scan_properties) {
     const string &property_name = property.first;
     const auto &property_value = property.second;
     if (property_name == kScanPropertyMode &&

@@ -29,7 +29,8 @@ static const char kForeground[] = "foreground";
 static const char kHelp[] = "help";
 
 // The help message shown if help flag is passed to the program.
-static const char kHelpMessage[] = "\n"
+static const char kHelpMessage[] =
+    "\n"
     "Available Switches: \n"
     "  --foreground\n"
     "    Don\'t daemon()ize; run in foreground.\n";
@@ -37,16 +38,16 @@ static const char kHelpMessage[] = "\n"
 
 namespace {
 
-const char *kLoggerCommand = "/usr/bin/logger";
-const char *kLoggerUser = "syslog";
+const char* kLoggerCommand = "/usr/bin/logger";
+const char* kLoggerUser = "syslog";
 
 }  // namespace
 
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
-void SetupLogging(chromeos::Minijail *minijail,
+void SetupLogging(chromeos::Minijail* minijail,
                   bool foreground,
-                  const char *daemon_name) {
+                  const char* daemon_name) {
   int log_flags = 0;
   log_flags |= chromeos::kLogToSyslog;
   log_flags |= chromeos::kLogHeader;
@@ -56,20 +57,20 @@ void SetupLogging(chromeos::Minijail *minijail,
   chromeos::InitLog(log_flags);
 
   if (!foreground) {
-    vector<char *> logger_command_line;
+    vector<char*> logger_command_line;
     int logger_stdin_fd;
-    logger_command_line.push_back(const_cast<char *>(kLoggerCommand));
-    logger_command_line.push_back(const_cast<char *>("--priority"));
-    logger_command_line.push_back(const_cast<char *>("daemon.err"));
-    logger_command_line.push_back(const_cast<char *>("--tag"));
-    logger_command_line.push_back(const_cast<char *>(daemon_name));
+    logger_command_line.push_back(const_cast<char*>(kLoggerCommand));
+    logger_command_line.push_back(const_cast<char*>("--priority"));
+    logger_command_line.push_back(const_cast<char*>("daemon.err"));
+    logger_command_line.push_back(const_cast<char*>("--tag"));
+    logger_command_line.push_back(const_cast<char*>(daemon_name));
     logger_command_line.push_back(nullptr);
 
-    struct minijail *jail = minijail->New();
+    struct minijail* jail = minijail->New();
     minijail->DropRoot(jail, kLoggerUser, kLoggerUser);
 
-    if (!minijail->RunPipeAndDestroy(jail, logger_command_line,
-                                     nullptr, &logger_stdin_fd)) {
+    if (!minijail->RunPipeAndDestroy(jail, logger_command_line, nullptr,
+                                     &logger_stdin_fd)) {
       LOG(ERROR) << "Unable to spawn logger. "
                  << "Writes to stderr will be discarded.";
       return;
@@ -85,23 +86,23 @@ void SetupLogging(chromeos::Minijail *minijail,
 }
 
 // Enter a sanboxed vfs namespace.
-void EnterVFSNamespace(chromeos::Minijail *minijail) {
-  struct minijail *jail = minijail->New();
+void EnterVFSNamespace(chromeos::Minijail* minijail) {
+  struct minijail* jail = minijail->New();
   minijail_namespace_vfs(jail);
   minijail_enter(jail);
   minijail->Destroy(jail);
 }
 
-void DropPrivileges(chromeos::Minijail *minijail) {
-  struct minijail *jail = minijail->New();
+void DropPrivileges(chromeos::Minijail* minijail) {
+  struct minijail* jail = minijail->New();
   minijail->DropRoot(jail, lorgnette::Daemon::kScanUserName,
                      lorgnette::Daemon::kScanGroupName);
   minijail_enter(jail);
   minijail->Destroy(jail);
 }
 
-void OnStartup(const char *daemon_name, base::CommandLine *cl) {
-  chromeos::Minijail *minijail = chromeos::Minijail::GetInstance();
+void OnStartup(const char* daemon_name, base::CommandLine* cl) {
+  chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
   SetupLogging(minijail, cl->HasSwitch(switches::kForeground), daemon_name);
 
   LOG(INFO) << __func__ << ": Dropping privileges";
@@ -112,9 +113,9 @@ void OnStartup(const char *daemon_name, base::CommandLine *cl) {
   DropPrivileges(minijail);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
-  base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;

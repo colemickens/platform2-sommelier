@@ -56,19 +56,18 @@ class ManagerTest : public testing::Test {
   static const int kOutputPipeFd;
   static const int kResolution;
 
-  static void RunListScannersProcess(int fd, chromeos::Process *process) {
+  static void RunListScannersProcess(int fd, chromeos::Process* process) {
     Manager::RunListScannersProcess(fd, process);
   }
 
-  void RunScanImageProcess(
-      const string &device_name,
-      int out_fd,
-      base::ScopedFD *input_scoped_fd,
-      base::ScopedFD *output_scoped_fd,
-      const VariantDictionary &scan_properties,
-      chromeos::Process *scan_process,
-      chromeos::Process *convert_process,
-      chromeos::ErrorPtr *error) {
+  void RunScanImageProcess(const string& device_name,
+                           int out_fd,
+                           base::ScopedFD* input_scoped_fd,
+                           base::ScopedFD* output_scoped_fd,
+                           const VariantDictionary& scan_properties,
+                           chromeos::Process* scan_process,
+                           chromeos::Process* convert_process,
+                           chromeos::ErrorPtr* error) {
     manager_.RunScanImageProcess(device_name,
                                  out_fd,
                                  input_scoped_fd,
@@ -79,11 +78,10 @@ class ManagerTest : public testing::Test {
                                  error);
   }
 
-  static void ExpectStartScan(
-      const char *mode,
-      int resolution,
-      chromeos::ProcessMock *scan_process,
-      chromeos::ProcessMock *convert_process) {
+  static void ExpectStartScan(const char* mode,
+                              int resolution,
+                              chromeos::ProcessMock* scan_process,
+                              chromeos::ProcessMock* convert_process) {
     EXPECT_CALL(*scan_process, AddArg(GetScanImagePath()));
     EXPECT_CALL(*scan_process, AddArg("-d"));
     EXPECT_CALL(*scan_process, AddArg(kDeviceName));
@@ -105,7 +103,7 @@ class ManagerTest : public testing::Test {
   }
 
   static Manager::ScannerInfo ScannerInfoFromString(
-      const std::string &scanner_info_string) {
+      const std::string& scanner_info_string) {
     return Manager::ScannerInfoFromString(scanner_info_string);
   }
 
@@ -120,7 +118,7 @@ class ManagerTest : public testing::Test {
   ScopedFD input_scoped_fd_;
   ScopedFD output_scoped_fd_;
   Manager manager_;
-  MetricsLibraryMock *metrics_library_;  // Owned by manager_.
+  MetricsLibraryMock* metrics_library_;  // Owned by manager_.
 };
 
 // kInvalidFd must equal to base::internal::ScopedFDCloseTraits::InvalidValue().
