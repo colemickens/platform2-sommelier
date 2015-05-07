@@ -92,6 +92,10 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->InitializeTpm();
   }
 
+  TPM_RC AllocatePCR(const std::string& platform_password) override {
+    return target_->AllocatePCR(platform_password);
+  }
+
   TPM_RC TakeOwnership(const std::string& owner_password,
                        const std::string& endorsement_password,
                        const std::string& lockout_password) override {

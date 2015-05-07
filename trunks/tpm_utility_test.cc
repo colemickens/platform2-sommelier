@@ -134,6 +134,9 @@ TEST_F(TpmUtilityTest, InitializeTpmSuccess) {
   // Setup a hierarchy that needs to be disabled.
   EXPECT_CALL(mock_tpm_state_, IsPlatformHierarchyEnabled())
       .WillOnce(Return(true));
+  EXPECT_CALL(mock_tpm_, PCR_AllocateSync(_, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(YES),
+                      Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.InitializeTpm());
 }
 
@@ -151,10 +154,40 @@ TEST_F(TpmUtilityTest, InitializeTpmDisablePHFails) {
   // Setup a hierarchy that needs to be disabled.
   EXPECT_CALL(mock_tpm_state_, IsPlatformHierarchyEnabled())
       .WillOnce(Return(true));
+  EXPECT_CALL(mock_tpm_, PCR_AllocateSync(_, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(YES),
+                      Return(TPM_RC_SUCCESS)));
   // Reject attempts to disable the platform hierarchy.
   EXPECT_CALL(mock_tpm_, HierarchyControlSync(_, _, TPM_RH_PLATFORM, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.InitializeTpm());
+}
+
+TEST_F(TpmUtilityTest, AllocatePCRSuccess) {
+  TPML_PCR_SELECTION pcr_allocation;
+  EXPECT_CALL(mock_tpm_, PCR_AllocateSync(TPM_RH_PLATFORM, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<2>(&pcr_allocation),
+                      SetArgPointee<3>(YES),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.AllocatePCR(""));
+  EXPECT_EQ(1, pcr_allocation.count);
+  EXPECT_EQ(TPM_ALG_SHA256, pcr_allocation.pcr_selections[0].hash);
+  EXPECT_EQ(PCR_SELECT_MIN, pcr_allocation.pcr_selections[0].sizeof_select);
+  EXPECT_EQ(0xFF, pcr_allocation.pcr_selections[0].pcr_select[0]);
+  EXPECT_EQ(0xFF, pcr_allocation.pcr_selections[0].pcr_select[1]);
+}
+
+TEST_F(TpmUtilityTest, AllocatePCRCommandFailure) {
+  EXPECT_CALL(mock_tpm_, PCR_AllocateSync(_, _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.AllocatePCR(""));
+}
+
+TEST_F(TpmUtilityTest, AllocatePCRTpmFailure) {
+  EXPECT_CALL(mock_tpm_, PCR_AllocateSync(_, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(NO),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.AllocatePCR(""));
 }
 
 TEST_F(TpmUtilityTest, TakeOwnershipSuccess) {
@@ -311,11 +344,19 @@ TEST_F(TpmUtilityTest, GenerateRandomFails) {
 
 TEST_F(TpmUtilityTest, ExtendPCRSuccess) {
   TPM_HANDLE pcr_handle = HR_PCR + 1;
+  TPML_DIGEST_VALUES digests;
   EXPECT_CALL(mock_tpm_,
               PCR_ExtendSync(pcr_handle, _, _, &mock_authorization_delegate_))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.ExtendPCR(
-      1, "test digest", &mock_authorization_delegate_));
+      .WillOnce(DoAll(SaveArg<2>(&digests),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.ExtendPCR(1, "test digest",
+                                               &mock_authorization_delegate_));
+  EXPECT_EQ(1, digests.count);
+  EXPECT_EQ(TPM_ALG_SHA256, digests.digests[0].hash_alg);
+  std::string hash_string = crypto::SHA256HashString("test digest");
+  EXPECT_EQ(0, memcmp(hash_string.data(),
+                      digests.digests[0].digest.sha256,
+                      crypto::kSHA256Length));
 }
 
 TEST_F(TpmUtilityTest, ExtendPCRFail) {

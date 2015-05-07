@@ -50,6 +50,12 @@ class TRUNKS_EXPORT TpmUtility {
   // by the platform firmware and, in that case, this method has no effect.
   virtual TPM_RC InitializeTpm() = 0;
 
+  // Synchronously allocates the PCRs in the TPM. Currently we allocate
+  // the first 16 PCRs to use the SHA-256 hash algorithm.
+  // NOTE: PCR allocation only takes place at the next TPM_Startup call.
+  // NOTE: This command needs platform authorization and PP assertion.
+  virtual TPM_RC AllocatePCR(const std::string& platform_password) = 0;
+
   // Synchronously takes ownership of the TPM with the given passwords as
   // authorization values.
   virtual TPM_RC TakeOwnership(const std::string& owner_password,

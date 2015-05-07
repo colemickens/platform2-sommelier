@@ -7,6 +7,7 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <crypto/scoped_openssl_types.h>
+#include <crypto/sha2.h>
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 
@@ -263,13 +264,6 @@ bool TrunksClientTest::SimplePolicyTest() {
                << GetErrorString(result);
     return false;
   }
-  std::string policy_digest1(32, 0);
-  result = policy_session->GetDigest(&policy_digest1);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
-    return false;
-  }
-  CHECK_EQ(policy_digest.compare(policy_digest1), 0);
   std::string signature;
   policy_session->SetEntityAuthorizationValue("password");
   result = utility->Sign(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
@@ -318,7 +312,49 @@ bool TrunksClientTest::SimplePolicyTest() {
     LOG(ERROR) << "Error encrypting using RSA key: " << GetErrorString(result);
     return false;
   }
-  CHECK_EQ(plaintext.compare("plaintext"), 0);
+  if (plaintext.compare("plaintext") != 0) {
+    LOG(ERROR) << "Plaintext changed after encrypt + decrypt.";
+    return false;
+  }
+  return true;
+}
+
+bool TrunksClientTest::PCRTest() {
+  scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
+  scoped_ptr<HmacSession> session = factory_->GetHmacSession();
+  TPM_RC result = session->StartUnboundSession(true /* enable encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+    return false;
+  }
+  // We are using PCR 2 because it is currently not used by ChromeOS.
+  uint32_t pcr_index = 2;
+  std::string extend_data("data");
+  std::string old_data;
+  session->SetEntityAuthorizationValue("");
+  result = utility->ReadPCR(pcr_index, &old_data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error reading from PCR: " << GetErrorString(result);
+    return false;
+  }
+  result = utility->ExtendPCR(pcr_index, extend_data, session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error extending PCR value: " << GetErrorString(result);
+    return false;
+  }
+  std::string pcr_data;
+  result = utility->ReadPCR(pcr_index, &pcr_data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error reading from PCR: " << GetErrorString(result);
+    return false;
+  }
+  std::string hashed_extend_data = crypto::SHA256HashString(extend_data);
+  std::string expected_pcr_data =
+      crypto::SHA256HashString(old_data + hashed_extend_data);
+  if (pcr_data.compare(expected_pcr_data) != 0) {
+    LOG(ERROR) << "PCR data does not match expected value.";
+    return false;
+  }
   return true;
 }
 

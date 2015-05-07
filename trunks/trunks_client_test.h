@@ -53,6 +53,12 @@ class TrunksClientTest {
   // encrypt/decrypt.
   bool SimplePolicyTest();
 
+  // This test performs a simple PCR extension and then reads the value in the
+  // PCR to verify if it is correct.
+  // NOTE: PCR banks need to be configured for this test to succeed. Normally
+  // this is done by the platform firmware.
+  bool PCRTest();
+
   // This test verfies that we can create, write, read, lock and delete
   // NV spaces in the TPM.
   // NOTE: This test needs the |owner_password| to work.

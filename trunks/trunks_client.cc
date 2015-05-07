@@ -31,6 +31,7 @@ void PrintUsage() {
   puts("  --startup - Performs startup and self-tests.");
   puts("  --clear - Clears the TPM. Use before initializing the TPM.");
   puts("  --init_tpm - Initializes a TPM as CrOS firmware does.");
+  puts("  --allocate_pcr - Configures PCR 0-15 under the SHA256 bank.");
   puts("  --own - Takes ownership of the TPM with the provided password.");
   puts("  --regression_test - Runs some basic regression tests. If");
   puts("                      owner_password is supplied, it runs tests that");
@@ -52,6 +53,18 @@ int Clear() {
 int InitializeTpm() {
   trunks::TrunksFactoryImpl factory;
   return factory.GetTpmUtility()->InitializeTpm();
+}
+
+int AllocatePCR() {
+  trunks::TrunksFactoryImpl factory;
+  trunks::TPM_RC result;
+  result = factory.GetTpmUtility()->AllocatePCR("");
+  if (result != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error allocating PCR:" << trunks::GetErrorString(result);
+    return result;
+  }
+  factory.GetTpmUtility()->Shutdown();
+  return factory.GetTpmUtility()->Startup();
 }
 
 int TakeOwnership(const std::string& owner_password) {
@@ -113,6 +126,9 @@ int main(int argc, char **argv) {
   if (cl->HasSwitch("init_tpm")) {
     return InitializeTpm();
   }
+  if (cl->HasSwitch("allocate_pcr")) {
+    return AllocatePCR();
+  }
   if (cl->HasSwitch("help")) {
     puts("Trunks Client: A command line tool to access the TPM.");
     PrintUsage();
@@ -133,6 +149,8 @@ int main(int argc, char **argv) {
     CHECK(test.ImportTest()) << "Error running ImportTest.";
     LOG(INFO) << "Running AuthChangeTest.";
     CHECK(test.AuthChangeTest()) << "Error running AuthChangeTest.";
+    LOG(INFO) << "Running PCRTest.";
+    CHECK(test.PCRTest()) << "Error running PCRTest.";
     LOG(INFO) << "Running SimplePolicyTest.";
     CHECK(test.SimplePolicyTest()) << "Error running SimplePolicyTest.";
     if (cl->HasSwitch("owner_password")) {
