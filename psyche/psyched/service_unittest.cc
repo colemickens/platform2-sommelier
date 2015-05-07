@@ -63,7 +63,7 @@ TEST_F(ServiceTest, NotifyObserversAboutProxyChanges) {
 
   // Killing the proxy should result in the service stopping and the observer
   // being notified again.
-  binder_manager_->ReportBinderDeath(service_proxy);
+  binder_manager_->ReportBinderDeath(service_proxy->handle());
   EXPECT_FALSE(service.GetProxy());
   ASSERT_EQ(1U, observer.changed_services().size());
   EXPECT_EQ(&service, observer.changed_services()[0]);

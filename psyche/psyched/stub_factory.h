@@ -29,7 +29,7 @@ class StubFactory : public FactoryInterface {
   // Returns the last-created stub for the given identifier.
   CellStub* GetCell(const std::string& cell_name);
   ServiceStub* GetService(const std::string& service_name);
-  ClientStub* GetClient(const protobinder::BinderProxy& client_proxy);
+  ClientStub* GetClient(uint32_t client_proxy_handle);
 
   // Sets the cell that will be returned for a CreateCell() call for a CellSpec
   // named |cell_name|. If CreateCell() is called for a cell not present here, a

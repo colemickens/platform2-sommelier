@@ -9,6 +9,7 @@
 
 #include <base/logging.h>
 #include <base/macros.h>
+#include <chromeos/make_unique_ptr.h>
 #include <gtest/gtest.h>
 #include <protobinder/binder_manager_stub.h>
 #include <protobinder/binder_proxy.h>
@@ -21,6 +22,7 @@
 #include "psyche/psyched/service_stub.h"
 #include "psyche/psyched/stub_factory.h"
 
+using chromeos::make_unique_ptr;
 using protobinder::BinderProxy;
 using soma::ContainerSpec;
 
@@ -87,27 +89,25 @@ class GermInterfaceStub : public germ::IGerm {
 
 class CellTest : public BinderTestBase {
  public:
-  CellTest()
-      : germ_proxy_(nullptr),
-        germ_(nullptr) {
+  CellTest() : germ_handle_(0), germ_(nullptr) {
     InitGerm();
   }
   ~CellTest() override = default;
 
  protected:
-  // Initializes |germ_proxy_| and |germ_| and registers them with
+  // Initializes |germ_handle_| and |germ_| and registers them with
   // |binder_manager_|.
   void InitGerm() {
-    germ_proxy_ = CreateBinderProxy().release();
+    germ_handle_ = CreateBinderProxyHandle();
     germ_ = new GermInterfaceStub;
-    binder_manager_->SetTestInterface(germ_proxy_,
+    binder_manager_->SetTestInterface(germ_handle_,
                                       std::unique_ptr<IInterface>(germ_));
-    germ_connection_.SetProxy(std::unique_ptr<BinderProxy>(germ_proxy_));
+    germ_connection_.SetProxy(make_unique_ptr(new BinderProxy(germ_handle_)));
   }
 
   StubFactory factory_;
   GermConnection germ_connection_;
-  BinderProxy* germ_proxy_;  // Owned by this class.
+  uint32_t germ_handle_;
   GermInterfaceStub* germ_;  // Owned by |binder_manager_|.
 
  private:
@@ -159,7 +159,7 @@ TEST_F(CellTest, GermCommunication) {
 
   // Now report that the germd binder proxy died.
   germ_->set_launch_return_value(0);
-  binder_manager_->ReportBinderDeath(germ_proxy_);
+  binder_manager_->ReportBinderDeath(germ_handle_);
   EXPECT_FALSE(cell.Launch());
 
   // Register a new proxy for germd and check that the next service request is
@@ -175,7 +175,7 @@ TEST_F(CellTest, GermCommunication) {
   EXPECT_FALSE(cell.Terminate());
 
   germ_->set_terminate_return_value(0);
-  binder_manager_->ReportBinderDeath(germ_proxy_);
+  binder_manager_->ReportBinderDeath(germ_handle_);
   EXPECT_FALSE(cell.Terminate());
 
   InitGerm();

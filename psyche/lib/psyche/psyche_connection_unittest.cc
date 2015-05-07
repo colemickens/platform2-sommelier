@@ -14,14 +14,20 @@
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
+#include <chromeos/make_unique_ptr.h>
 #include <protobinder/binder_manager_stub.h>
 #include <protobinder/binder_proxy.h>
 #include <protobinder/iinterface.h>
+
+// binder.h requires types.h to be included first.
+#include <sys/types.h>
+#include <linux/android/binder.h>  // NOLINT(build/include_alpha)
 
 #include "psyche/common/binder_test_base.h"
 #include "psyche/proto_bindings/psyche.pb.h"
 #include "psyche/proto_bindings/psyche.pb.rpc.h"
 
+using chromeos::make_unique_ptr;
 using protobinder::BinderHost;
 using protobinder::BinderProxy;
 
@@ -40,27 +46,21 @@ class PsychedInterfaceStub : public IPsyched {
   void set_app_success(bool success) { app_success_ = success; }
   void set_ipc_success(bool success) { ipc_success_ = success; }
 
-  // Keyed by service name.
-  using HostMap = std::map<std::string, BinderHost*>;
+  // Keys are service names; values are binder cookies.
+  using HostMap = std::map<std::string, binder_uintptr_t>;
   const HostMap& registered_services() const { return registered_services_; }
 
-  // Sets a proxy to be returned in response to a RequestService call for
+  // Sets a proxy handle to be returned in response to a RequestService call for
   // |service_name|.
-  void SetService(const std::string& service_name,
-                  std::unique_ptr<BinderProxy> proxy) {
-    services_to_return_[service_name] = std::move(proxy);
+  void SetService(const std::string& service_name, uint32_t handle) {
+    services_to_return_[service_name] = handle;
   }
 
   // IPsyched:
   Status RegisterService(RegisterServiceRequest* in,
                          RegisterServiceResponse* out) override {
-    // So gross. Usually libprotobinder creates a BinderProxy object
-    // automatically in response to an incoming call and copies its address into
-    // the protobuf. We're not crossing a process boundary (or even going
-    // through libprotobinder, for that matter), so the underlying object here
-    // is just what we put into it: the address of the original BinderHost.
-    BinderHost* host = reinterpret_cast<BinderHost*>(in->binder().ibinder());
-    registered_services_[in->name()] = host;
+    registered_services_[in->name()] =
+        static_cast<binder_uintptr_t>(in->binder().host_cookie());
     if (!ipc_success_)
       return STATUS_BINDER_ERROR(Status::DEAD_ENDPOINT);
     return app_success_
@@ -74,18 +74,14 @@ class PsychedInterfaceStub : public IPsyched {
       return STATUS_BINDER_ERROR(Status::DEAD_ENDPOINT);
 
     const std::string service_name(in->name());
-    std::unique_ptr<BinderProxy> service_proxy;
     const auto& it = services_to_return_.find(service_name);
-    if (it != services_to_return_.end()) {
-      service_proxy = std::move(it->second);
-      services_to_return_.erase(it);
-    }
+    uint32_t service_handle = it != services_to_return_.end() ? it->second : 0;
 
-    // This is PsycheConnection's client interface. We're not crossing a process
-    // boundary here, so we don't take ownership of this.
-    CHECK(in->client_binder().ibinder());
-    IBinder* client_binder =
-        reinterpret_cast<IBinder*>(in->client_binder().ibinder());
+    binder_uintptr_t client_cookie = in->client_binder().host_cookie();
+    BinderHost* client_binder =
+        static_cast<BinderManagerStub*>(BinderManagerInterface::Get())
+            ->GetHostForCookie(client_cookie);
+    CHECK(client_binder) << "No host registered for cookie " << client_cookie;
 
     // Post a task to call the client's ReceiveService method asynchronously to
     // simulate what happens in reality, where RequestService and ReceiveService
@@ -95,7 +91,7 @@ class PsychedInterfaceStub : public IPsyched {
         base::Bind(&PsychedInterfaceStub::CallReceiveService,
                    weak_ptr_factory_.GetWeakPtr(),
                    static_cast<IPsycheClientHostInterface*>(client_binder),
-                   service_name, base::Passed(&service_proxy)));
+                   service_name, service_handle));
     return STATUS_OK();
   }
 
@@ -104,16 +100,11 @@ class PsychedInterfaceStub : public IPsyched {
   // ReceiveService method.
   void CallReceiveService(IPsycheClientHostInterface* client_interface,
                           std::string service_name,
-                          std::unique_ptr<BinderProxy> service_proxy) {
+                          uint32_t service_handle) {
     ReceiveServiceRequest request;
     request.set_name(service_name);
-    if (service_proxy) {
-      // libprotobinder would usually construct its own BinderProxy when it
-      // reads the binder handle from the protocol buffer, so pass ownership
-      // back to PsycheConnection here.
-      request.mutable_binder()->set_ibinder(
-          reinterpret_cast<uint64_t>(service_proxy.release()));
-    }
+    if (service_handle)
+      request.mutable_binder()->set_proxy_handle(service_handle);
     CHECK(client_interface->ReceiveService(&request));
   }
 
@@ -126,9 +117,9 @@ class PsychedInterfaceStub : public IPsyched {
   // Services that have been passed to RegisterService().
   HostMap registered_services_;
 
-  // Services that should be returned by RequestService(), keyed by service
-  // name.
-  using ProxyMap = std::map<std::string, std::unique_ptr<BinderProxy>>;
+  // Service proxy handles that should be returned by RequestService(), keyed by
+  // service name.
+  using ProxyMap = std::map<std::string, uint32_t>;
   ProxyMap services_to_return_;
 
   // Keep this member last.
@@ -195,12 +186,12 @@ class ServiceReceiver {
 
 class PsycheConnectionTest : public BinderTestBase {
  public:
-  PsycheConnectionTest() : psyched_(nullptr) {
-    std::unique_ptr<BinderProxy> proxy = CreateBinderProxy();
-    psyched_ = new PsychedInterfaceStub;
-    binder_manager_->SetTestInterface(proxy.get(),
+  PsycheConnectionTest() : psyched_(new PsychedInterfaceStub) {
+    int32_t psyched_handle = CreateBinderProxyHandle();
+    binder_manager_->SetTestInterface(psyched_handle,
                                       std::unique_ptr<IInterface>(psyched_));
-    connection_.SetProxyForTesting(std::move(proxy));
+    connection_.SetProxyForTesting(
+        make_unique_ptr(new BinderProxy(psyched_handle)));
     CHECK(connection_.Init());
   }
   ~PsycheConnectionTest() override = default;
@@ -231,7 +222,7 @@ TEST_F(PsycheConnectionTest, RegisterService) {
   EXPECT_TRUE(connection_.RegisterService(kServiceName, &host));
   auto it = psyched_->registered_services().find(kServiceName);
   ASSERT_TRUE(it != psyched_->registered_services().end());
-  EXPECT_EQ(&host, it->second);
+  EXPECT_EQ(host.cookie(), it->second);
 }
 
 TEST_F(PsycheConnectionTest, GetService) {
@@ -260,25 +251,21 @@ TEST_F(PsycheConnectionTest, GetService) {
 
   // Create the service so a second request will succeed. Both the old and new
   // callbacks should be invoked.
-  BinderProxy* service_proxy = CreateBinderProxy().release();
-  psyched_->SetService(kServiceName,
-                       std::unique_ptr<BinderProxy>(service_proxy));
+  uint32_t service_handle = CreateBinderProxyHandle();
+  psyched_->SetService(kServiceName, service_handle);
   ServiceReceiver successful_receiver;
   EXPECT_TRUE(connection_.GetService(
       kServiceName, base::Bind(&ServiceReceiver::ReceiveService,
                                base::Unretained(&successful_receiver))));
   successful_receiver.RunMessageLoop();
 
-  // We won't receive the original proxy (new ones are created so they can be
-  // passed to each callback), but the underlying binder handle should match.
   EXPECT_EQ(1, successful_receiver.num_calls());
   ASSERT_TRUE(successful_receiver.proxy());
-  EXPECT_EQ(service_proxy->handle(), successful_receiver.proxy()->handle());
+  EXPECT_EQ(service_handle, successful_receiver.proxy()->handle());
 
   EXPECT_EQ(1, unknown_service_receiver.num_calls());
   ASSERT_TRUE(unknown_service_receiver.proxy());
-  EXPECT_EQ(service_proxy->handle(),
-            unknown_service_receiver.proxy()->handle());
+  EXPECT_EQ(service_handle, unknown_service_receiver.proxy()->handle());
 }
 
 }  // namespace

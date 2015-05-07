@@ -16,7 +16,6 @@
 #include <protobinder/binder_manager_stub.h>
 #include <protobinder/binder_proxy.h>
 #include <protobinder/iinterface.h>
-#include <protobinder/proto_util.h>
 #include <soma/constants.h>
 
 #include "psyche/common/binder_test_base.h"
@@ -94,7 +93,7 @@ class RegistrarTest : public BinderTestBase {
   RegistrarTest()
       : factory_(new StubFactory),
         registrar_(new Registrar),
-        soma_proxy_(nullptr),
+        soma_handle_(0),
         // Create an interface immediately so that tests can add persistent
         // cells to it before calling Init().
         soma_(new SomaInterfaceStub) {
@@ -105,7 +104,7 @@ class RegistrarTest : public BinderTestBase {
     // Disgusting hack: manually delete the interface if Init() never got called
     // to transfer ownership to |binder_manager_|.
     // TODO(derat): Remove this after http://brbug.com/648 is fixed.
-    if (soma_ && !soma_proxy_)
+    if (soma_ && !soma_handle_)
       delete soma_;
   }
 
@@ -119,24 +118,23 @@ class RegistrarTest : public BinderTestBase {
     CHECK(InitSoma(std::unique_ptr<SomaInterfaceStub>(soma_)));
   }
 
-  // Initializes |soma_proxy_| and |soma_| and registers them with |registrar_|
+  // Initializes |soma_handle_| and |soma_| and registers them with |registrar_|
   // and |binder_manager_|. May be called from within a test to simulate somad
   // restarting and reregistering itself with psyched.
   bool InitSoma(
       std::unique_ptr<SomaInterfaceStub> interface) WARN_UNUSED_RESULT {
-    soma_proxy_ = CreateBinderProxy().release();
+    soma_handle_ = CreateBinderProxyHandle();
     soma_ = interface.get();
     binder_manager_->SetTestInterface(
-        soma_proxy_, std::unique_ptr<IInterface>(interface.release()));
-    return RegisterService(soma::kSomaServiceName,
-                           std::unique_ptr<BinderProxy>(soma_proxy_));
+        soma_handle_, std::unique_ptr<IInterface>(interface.release()));
+    return RegisterService(soma::kSomaServiceName, soma_handle_);
   }
 
-  // Returns the client that |factory_| created for |client_proxy|, crashing if
-  // it doesn't exist.
-  ClientStub* GetClientOrDie(const BinderProxy& client_proxy) {
-    ClientStub* client = factory_->GetClient(client_proxy);
-    CHECK(client) << "No client for proxy " << client_proxy.handle();
+  // Returns the client that |factory_| created for |client_proxy_handle|,
+  // crashing if it doesn't exist.
+  ClientStub* GetClientOrDie(uint32_t client_proxy_handle) {
+    ClientStub* client = factory_->GetClient(client_proxy_handle);
+    CHECK(client) << "No client for proxy " << client_proxy_handle;
     return client;
   }
 
@@ -151,13 +149,11 @@ class RegistrarTest : public BinderTestBase {
   // Calls |registrar_|'s RegisterService method, returning true on success.
   bool RegisterService(
       const std::string& service_name,
-      std::unique_ptr<BinderProxy> service_proxy) WARN_UNUSED_RESULT {
+      uint32_t service_proxy_handle) WARN_UNUSED_RESULT {
     RegisterServiceRequest request;
     request.set_name(service_name);
-    // |service_proxy| will be extracted from the protocol buffer into another
-    // std::unique_ptr, so release it from the original one here.
-    protobinder::StoreBinderInProto(*(service_proxy.release()),
-                                    request.mutable_binder());
+    BinderProxy(service_proxy_handle).CopyToProtocolBuffer(
+        request.mutable_binder());
 
     RegisterServiceResponse response;
     Status status = registrar_->RegisterService(&request, &response);
@@ -167,28 +163,24 @@ class RegistrarTest : public BinderTestBase {
   // Calls |registrar_|'s RequestService method, returning true if a failure
   // wasn't immediately reported back to the client.
   bool RequestService(const std::string& service_name,
-                      std::unique_ptr<BinderProxy> client_proxy) {
-    // Hang on to the proxy so we can use it to find the client later.
-    BinderProxy* client_proxy_ptr = client_proxy.get();
-    ClientStub* client = factory_->GetClient(*client_proxy_ptr);
+                      uint32_t client_proxy_handle) {
+    ClientStub* client = factory_->GetClient(client_proxy_handle);
     const int initial_failures =
         client ? client->GetServiceRequestFailures(service_name) : 0;
 
     RequestServiceRequest request;
     request.set_name(service_name);
-    // |service_proxy| will be extracted from the protocol buffer into another
-    // std::unique_ptr, so release it from the original one here.
-    protobinder::StoreBinderInProto(*(client_proxy.release()),
-                                    request.mutable_client_binder());
+    BinderProxy(client_proxy_handle).CopyToProtocolBuffer(
+        request.mutable_client_binder());
 
     Status status = registrar_->RequestService(&request);
     CHECK(status.IsOk()) << "RequestService call for " << service_name
                          << " failed";
 
-    const int new_failures = GetClientOrDie(*client_proxy_ptr)
+    const int new_failures = GetClientOrDie(client_proxy_handle)
                                  ->GetServiceRequestFailures(service_name);
     CHECK_GE(new_failures, initial_failures)
-        << "Client " << client_proxy_ptr->handle() << "'s request failures "
+        << "Client " << client_proxy_handle << "'s request failures "
         << "for \"" << service_name << " decreased from " << initial_failures
         << " to " << new_failures;
     return new_failures == initial_failures;
@@ -229,7 +221,7 @@ class RegistrarTest : public BinderTestBase {
   StubFactory* factory_;  // Owned by |registrar_|.
   std::unique_ptr<Registrar> registrar_;
 
-  BinderProxy* soma_proxy_;  // Owned by |registrar_|.
+  uint32_t soma_handle_;
   SomaInterfaceStub* soma_;  // Owned by |binder_manager_|.
 
  private:
@@ -241,17 +233,15 @@ TEST_F(RegistrarTest, RegisterAndRequestService) {
 
   // Register a service.
   const std::string kServiceName("service");
-  BinderProxy* service_proxy = CreateBinderProxy().release();
-  EXPECT_TRUE(RegisterService(kServiceName,
-                              std::unique_ptr<BinderProxy>(service_proxy)));
+  uint32_t service_handle = CreateBinderProxyHandle();
+  EXPECT_TRUE(RegisterService(kServiceName, service_handle));
 
   // Request the service.
-  BinderProxy* client_proxy = CreateBinderProxy().release();
-  EXPECT_TRUE(RequestService(kServiceName,
-                             std::unique_ptr<BinderProxy>(client_proxy)));
+  uint32_t client_handle = CreateBinderProxyHandle();
+  EXPECT_TRUE(RequestService(kServiceName, client_handle));
 
   // Check that the service was added to the client.
-  ClientStub* client = GetClientOrDie(*client_proxy);
+  ClientStub* client = GetClientOrDie(client_handle);
   ServiceStub* service = GetServiceOrDie(kServiceName);
   ASSERT_EQ(1U, client->GetServices().count(service));
 }
@@ -261,27 +251,26 @@ TEST_F(RegistrarTest, ReregisterService) {
 
   // Register a service.
   const std::string kServiceName("service");
-  BinderProxy* service_proxy = CreateBinderProxy().release();
-  EXPECT_TRUE(RegisterService(kServiceName,
-                              std::unique_ptr<BinderProxy>(service_proxy)));
+  uint32_t service_handle = CreateBinderProxyHandle();
+  EXPECT_TRUE(RegisterService(kServiceName, service_handle));
 
   // The service should hold the correct proxy.
   ServiceStub* service = GetServiceOrDie(kServiceName);
-  EXPECT_EQ(service_proxy, service->GetProxy());
+  ASSERT_TRUE(service->GetProxy());
+  EXPECT_EQ(service_handle, service->GetProxy()->handle());
 
   // Trying to register the same service again while it's still running should
   // fail.
-  service_proxy = CreateBinderProxy().release();
-  EXPECT_FALSE(RegisterService(kServiceName,
-                               std::unique_ptr<BinderProxy>(service_proxy)));
+  service_handle = CreateBinderProxyHandle();
+  EXPECT_FALSE(RegisterService(kServiceName, service_handle));
 
   // After clearing the service's proxy, it should be possible to register the
   // service again.
   service->SetProxyForTesting(std::unique_ptr<BinderProxy>());
-  service_proxy = CreateBinderProxy().release();
-  EXPECT_TRUE(RegisterService(kServiceName,
-                              std::unique_ptr<BinderProxy>(service_proxy)));
-  EXPECT_EQ(service_proxy, service->GetProxy());
+  service_handle = CreateBinderProxyHandle();
+  EXPECT_TRUE(RegisterService(kServiceName, service_handle));
+  ASSERT_TRUE(service->GetProxy());
+  EXPECT_EQ(service_handle, service->GetProxy()->handle());
 }
 
 TEST_F(RegistrarTest, QuerySomaForServices) {
@@ -296,29 +285,26 @@ TEST_F(RegistrarTest, QuerySomaForServices) {
   // When a client requests the first service, check that the cell is launched
   // and that the client is added to the service (so it can be notified after
   // the service is registered).
-  BinderProxy* client1_proxy = CreateBinderProxy().release();
-  EXPECT_TRUE(RequestService(kService1Name,
-                             std::unique_ptr<BinderProxy>(client1_proxy)));
+  uint32_t client1_handle = CreateBinderProxyHandle();
+  EXPECT_TRUE(RequestService(kService1Name, client1_handle));
   EXPECT_EQ(1, cell->launch_count());
-  ClientStub* client1 = GetClientOrDie(*client1_proxy);
+  ClientStub* client1 = GetClientOrDie(client1_handle);
   EXPECT_TRUE(service1->HasClient(client1));
   EXPECT_FALSE(service2->HasClient(client1));
 
   // Check that a second client is also added to the first service.
-  BinderProxy* client2_proxy = CreateBinderProxy().release();
-  EXPECT_TRUE(RequestService(kService1Name,
-                             std::unique_ptr<BinderProxy>(client2_proxy)));
+  uint32_t client2_handle = CreateBinderProxyHandle();
+  EXPECT_TRUE(RequestService(kService1Name, client2_handle));
   EXPECT_EQ(1, cell->launch_count());
-  ClientStub* client2 = GetClientOrDie(*client2_proxy);
+  ClientStub* client2 = GetClientOrDie(client2_handle);
   EXPECT_TRUE(service1->HasClient(client2));
   EXPECT_FALSE(service2->HasClient(client2));
 
   // Now make a third client request the second service.
-  BinderProxy* client3_proxy = CreateBinderProxy().release();
-  EXPECT_TRUE(RequestService(kService2Name,
-                             std::unique_ptr<BinderProxy>(client3_proxy)));
+  uint32_t client3_handle = CreateBinderProxyHandle();
+  EXPECT_TRUE(RequestService(kService2Name, client3_handle));
   EXPECT_EQ(1, cell->launch_count());
-  ClientStub* client3 = GetClientOrDie(*client3_proxy);
+  ClientStub* client3 = GetClientOrDie(client3_handle);
   EXPECT_FALSE(service1->HasClient(client3));
   EXPECT_TRUE(service2->HasClient(client3));
 }
@@ -335,7 +321,7 @@ TEST_F(RegistrarTest, UnknownService) {
   AddEphemeralCell(kCellName, kServiceName);
 
   // A request for the service should fail.
-  EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxy()));
+  EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxyHandle()));
   // TODO(derat): Once germd communication is present, check that no request was
   // made to launch the cell. We can't check the CellStub since it ought to have
   // been deleted by this point.
@@ -361,8 +347,8 @@ TEST_F(RegistrarTest, DuplicateService) {
   // Requesting the first service should succeed, but requesting the second
   // service should fail due to the second cell claiming that it also provides
   // the first service.
-  EXPECT_TRUE(RequestService(kService1Name, CreateBinderProxy()));
-  EXPECT_FALSE(RequestService(kService2Name, CreateBinderProxy()));
+  EXPECT_TRUE(RequestService(kService1Name, CreateBinderProxyHandle()));
+  EXPECT_FALSE(RequestService(kService2Name, CreateBinderProxyHandle()));
 }
 
 // Tests that a duplicate ContainerSpec (i.e. one that was previously received
@@ -374,7 +360,7 @@ TEST_F(RegistrarTest, ServiceListChanged) {
   const std::string kService1Name("org.example.cell.service1");
   CellStub* cell1 = AddEphemeralCell(kCellName, kService1Name);
   cell1->AddService(kService1Name);
-  EXPECT_TRUE(RequestService(kService1Name, CreateBinderProxy()));
+  EXPECT_TRUE(RequestService(kService1Name, CreateBinderProxyHandle()));
 
   // A request for a second service that returns the already-created spec (which
   // didn't previously claim to provide the second service) should fail.
@@ -382,7 +368,7 @@ TEST_F(RegistrarTest, ServiceListChanged) {
   CellStub* cell2 = AddEphemeralCell(kCellName, kService2Name);
   cell2->AddService(kService1Name);
   cell2->AddService(kService2Name);
-  EXPECT_FALSE(RequestService(kService2Name, CreateBinderProxy()));
+  EXPECT_FALSE(RequestService(kService2Name, CreateBinderProxyHandle()));
 }
 
 // Tests that persistent ContainerSpecs are fetched from soma during
@@ -405,16 +391,17 @@ TEST_F(RegistrarTest, PersistentCells) {
   EXPECT_EQ(1, cell2->launch_count());
 
   // Their services should also be available to clients.
-  EXPECT_TRUE(RequestService(kService1Name, CreateBinderProxy()));
+  EXPECT_TRUE(RequestService(kService1Name, CreateBinderProxyHandle()));
   EXPECT_EQ(1U, service1->num_clients());
-  EXPECT_TRUE(RequestService(kService2Name, CreateBinderProxy()));
+  EXPECT_TRUE(RequestService(kService2Name, CreateBinderProxyHandle()));
   EXPECT_EQ(1U, service2->num_clients());
 }
 
 // Tests that Registrar doesn't hand out its connection to somad.
 TEST_F(RegistrarTest, DontProvideSomaService) {
   Init();
-  EXPECT_FALSE(RequestService(soma::kSomaServiceName, CreateBinderProxy()));
+  EXPECT_FALSE(RequestService(soma::kSomaServiceName,
+                              CreateBinderProxyHandle()));
 }
 
 // Tests various failures when communicating with somad.
@@ -427,12 +414,12 @@ TEST_F(RegistrarTest, SomaFailures) {
 
   // Failure should be reported for RPC errors.
   soma_->set_return_value(-1);
-  EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxy()));
+  EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxyHandle()));
 
   // Now report that the somad binder proxy died.
   soma_->set_return_value(0);
-  binder_manager_->ReportBinderDeath(soma_proxy_);
-  EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxy()));
+  binder_manager_->ReportBinderDeath(soma_handle_);
+  EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxyHandle()));
 
   // Register a new proxy for somad and check that the next service request is
   // successful.
@@ -440,13 +427,14 @@ TEST_F(RegistrarTest, SomaFailures) {
       InitSoma(std::unique_ptr<SomaInterfaceStub>(new SomaInterfaceStub)));
   cell = AddEphemeralCell(kCellName, kServiceName);
   cell->AddService(kServiceName);
-  EXPECT_TRUE(RequestService(kServiceName, CreateBinderProxy()));
+  EXPECT_TRUE(RequestService(kServiceName, CreateBinderProxyHandle()));
 }
 
 // Tests that Registrar doesn't hand out its connection to germd.
 TEST_F(RegistrarTest, DontProvideGermService) {
   Init();
-  EXPECT_FALSE(RequestService(germ::kGermServiceName, CreateBinderProxy()));
+  EXPECT_FALSE(RequestService(germ::kGermServiceName,
+                              CreateBinderProxyHandle()));
 }
 
 // Tests that Registrar reports cell launch failures to clients.
@@ -459,7 +447,7 @@ TEST_F(RegistrarTest, CellLaunchFailure) {
   cell->AddService(kServiceName);
   cell->set_launch_return_value(false);
 
-  EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxy()));
+  EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxyHandle()));
 }
 
 }  // namespace

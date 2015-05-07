@@ -25,7 +25,11 @@ class BinderTestBase : public testing::Test {
   ~BinderTestBase() override;
 
  protected:
-  // Returns a new BinderProxy with a unique handle.
+  // Returns a new handle to use when creating BinderProxy objects.
+  uint32_t CreateBinderProxyHandle();
+
+  // Returns a new BinderProxy with a unique handle (from
+  // CreateBinderProxyHandle()).
   std::unique_ptr<protobinder::BinderProxy> CreateBinderProxy();
 
   protobinder::BinderManagerStub* binder_manager_;  // Not owned.

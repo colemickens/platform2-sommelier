@@ -7,7 +7,6 @@
 #include <utility>
 
 #include <protobinder/binder_proxy.h>
-#include <protobinder/proto_util.h>
 
 #include "psyche/proto_bindings/psyche.pb.h"
 #include "psyche/proto_bindings/psyche.pb.rpc.h"
@@ -65,7 +64,7 @@ void Client::SendServiceProxy(const std::string& service_name,
   ReceiveServiceRequest request;
   request.set_name(service_name);
   if (service_proxy)
-    protobinder::StoreBinderInProto(*service_proxy, request.mutable_binder());
+    service_proxy->CopyToProtocolBuffer(request.mutable_binder());
   Status status = interface_->ReceiveService(&request);
   if (!status) {
     LOG(WARNING) << "Failed to pass service \"" << service_name

@@ -27,8 +27,13 @@ BinderTestBase::~BinderTestBase() {
       scoped_ptr<BinderManagerInterface>());
 }
 
+uint32_t BinderTestBase::CreateBinderProxyHandle() {
+  return next_proxy_handle_++;
+}
+
 std::unique_ptr<BinderProxy> BinderTestBase::CreateBinderProxy() {
-  return std::unique_ptr<BinderProxy>(new BinderProxy(next_proxy_handle_++));
+  return std::unique_ptr<BinderProxy>(
+      new BinderProxy(CreateBinderProxyHandle()));
 }
 
 }  // namespace psyche

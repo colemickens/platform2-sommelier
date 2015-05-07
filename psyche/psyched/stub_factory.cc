@@ -31,8 +31,8 @@ ServiceStub* StubFactory::GetService(const std::string& service_name) {
   return it != services_.end() ? it->second : nullptr;
 }
 
-ClientStub* StubFactory::GetClient(const BinderProxy& client_proxy) {
-  auto const it = clients_.find(client_proxy.handle());
+ClientStub* StubFactory::GetClient(uint32_t client_proxy_handle) {
+  auto const it = clients_.find(client_proxy_handle);
   return it != clients_.end() ? it->second : nullptr;
 }
 
