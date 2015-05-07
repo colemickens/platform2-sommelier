@@ -220,8 +220,8 @@ bool TlsStream::TlsStreamImpl::WaitForData(
     AccessMode mode,
     const base::Callback<void(AccessMode)>& callback,
     ErrorPtr* error) {
-  bool is_read = (mode == AccessMode::READ || mode == AccessMode::READ_WRITE);
-  bool is_write = (mode == AccessMode::WRITE || mode == AccessMode::READ_WRITE);
+  bool is_read = stream_utils::IsReadAccessMode(mode);
+  bool is_write = stream_utils::IsWriteAccessMode(mode);
   is_read |= need_more_read_;
   is_write |= need_more_write_;
   need_more_read_ = false;
@@ -230,22 +230,15 @@ bool TlsStream::TlsStreamImpl::WaitForData(
     callback.Run(AccessMode::READ);
     return true;
   }
-  if (is_read && is_write)
-    mode = AccessMode::READ_WRITE;
-  else if (is_read)
-    mode = AccessMode::READ;
-  else if (is_write)
-    mode = AccessMode::WRITE;
+  mode = stream_utils::MakeAccessMode(is_read, is_write);
   return socket_->WaitForData(mode, callback, error);
 }
 
 bool TlsStream::TlsStreamImpl::WaitForDataBlocking(AccessMode in_mode,
                                                    AccessMode* out_mode,
                                                    ErrorPtr* error) {
-  bool is_read =
-      (in_mode == AccessMode::READ || in_mode == AccessMode::READ_WRITE);
-  bool is_write =
-      (in_mode == AccessMode::WRITE || in_mode == AccessMode::READ_WRITE);
+  bool is_read = stream_utils::IsReadAccessMode(in_mode);
+  bool is_write = stream_utils::IsWriteAccessMode(in_mode);
   is_read |= need_more_read_;
   is_write |= need_more_write_;
   need_more_read_ = need_more_write_ = false;
@@ -254,12 +247,7 @@ bool TlsStream::TlsStreamImpl::WaitForDataBlocking(AccessMode in_mode,
       *out_mode = AccessMode::READ;
     return true;
   }
-  if (is_read && is_write)
-    in_mode = AccessMode::READ_WRITE;
-  else if (is_read)
-    in_mode = AccessMode::READ;
-  else if (is_write)
-    in_mode = AccessMode::WRITE;
+  in_mode = stream_utils::MakeAccessMode(is_read, is_write);
   return socket_->WaitForDataBlocking(in_mode, out_mode, error);
 }
 

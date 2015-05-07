@@ -54,6 +54,26 @@ CHROMEOS_EXPORT bool CalculateStreamPosition(
     uint64_t* new_position,
     ErrorPtr* error);
 
+// Checks if |mode| allows read access.
+inline bool IsReadAccessMode(Stream::AccessMode mode) {
+  return mode == Stream::AccessMode::READ ||
+         mode == Stream::AccessMode::READ_WRITE;
+}
+
+// Checks if |mode| allows write access.
+inline bool IsWriteAccessMode(Stream::AccessMode mode) {
+  return mode == Stream::AccessMode::WRITE ||
+         mode == Stream::AccessMode::READ_WRITE;
+}
+
+// Make the access mode based on read/write rights requested.
+inline Stream::AccessMode MakeAccessMode(bool read, bool write) {
+  CHECK(read || write);  // Either read or write (or both) must be specified.
+  if (read && write)
+    return Stream::AccessMode::READ_WRITE;
+  return write ? Stream::AccessMode::WRITE : Stream::AccessMode::READ;
+}
+
 }  // namespace stream_utils
 }  // namespace chromeos
 

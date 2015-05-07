@@ -162,7 +162,7 @@ bool InputStreamSet::WaitForData(
   if (!IsOpen())
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
 
-  if (mode == AccessMode::WRITE || mode == AccessMode::READ_WRITE)
+  if (stream_utils::IsWriteAccessMode(mode))
     return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 
   if (!source_streams_.empty()) {
@@ -183,7 +183,7 @@ bool InputStreamSet::WaitForDataBlocking(AccessMode in_mode,
   if (!IsOpen())
     return stream_utils::ErrorStreamClosed(FROM_HERE, error);
 
-  if (in_mode == AccessMode::WRITE || in_mode == AccessMode::READ_WRITE)
+  if (stream_utils::IsWriteAccessMode(in_mode))
     return stream_utils::ErrorOperationNotSupported(FROM_HERE, error);
 
   if (!source_streams_.empty()) {

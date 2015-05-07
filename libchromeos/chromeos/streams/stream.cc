@@ -182,8 +182,7 @@ bool Stream::FlushAsync(const base::Closure& success_callback,
 
 void Stream::OnDataAvailable(AccessMode mode) {
   ErrorPtr error;
-  if ((mode == AccessMode::READ || mode == AccessMode::READ_WRITE) &&
-      async_read_buffer_ != nullptr) {
+  if (stream_utils::IsReadAccessMode(mode) && async_read_buffer_ != nullptr) {
     size_t read = 0;
     bool eos = false;
     void* buffer = async_read_buffer_;
@@ -206,8 +205,7 @@ void Stream::OnDataAvailable(AccessMode mode) {
   }
 
   error.reset();
-  if ((mode == AccessMode::WRITE || mode == AccessMode::READ_WRITE) &&
-      async_write_buffer_ != nullptr) {
+  if (stream_utils::IsWriteAccessMode(mode) && async_write_buffer_ != nullptr) {
     size_t written = 0;
     const void* buffer = async_write_buffer_;
     async_write_buffer_ = nullptr;  // reset the ptr to indicate end of write.

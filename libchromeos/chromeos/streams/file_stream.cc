@@ -81,13 +81,13 @@ class FileDescriptor : public base::MessageLoopForIO::Watcher,
     CHECK(base::MessageLoopForIO::current())
         << "MessageLoopForIO is required for asynchronous operations";
 
-    if (IsReadAccess(mode)) {
+    if (stream_utils::IsReadAccessMode(mode)) {
       read_watcher_.StopWatchingFileDescriptor();
       read_data_callback_ = data_callback;
       base::MessageLoopForIO::current()->WatchFileDescriptor(
           fd_, false, base::MessageLoopForIO::WATCH_READ, &read_watcher_, this);
     }
-    if (IsWriteAccess(mode)) {
+    if (stream_utils::IsWriteAccessMode(mode)) {
       write_watcher_.StopWatchingFileDescriptor();
       write_data_callback_ = data_callback;
       base::MessageLoopForIO::current()->WatchFileDescriptor(
@@ -106,25 +106,18 @@ class FileDescriptor : public base::MessageLoopForIO::Watcher,
     FD_ZERO(&write_fds);
     FD_ZERO(&error_fds);
 
-    if (IsReadAccess(in_mode))
+    if (stream_utils::IsReadAccessMode(in_mode))
       FD_SET(fd_, &read_fds);
 
-    if (IsWriteAccess(in_mode))
+    if (stream_utils::IsWriteAccessMode(in_mode))
       FD_SET(fd_, &write_fds);
 
     FD_SET(fd_, &error_fds);
     int res = HANDLE_EINTR(select(fd_ + 1, &read_fds, &write_fds, &error_fds,
                                   nullptr));
     if (res >= 0 && out_mode) {
-      if (FD_ISSET(fd_, &read_fds) && FD_ISSET(fd_, &write_fds)) {
-        *out_mode = Stream::AccessMode::READ_WRITE;
-      } else if (FD_ISSET(fd_, &write_fds)) {
-        *out_mode = Stream::AccessMode::WRITE;
-      } else if (FD_ISSET(fd_, &write_fds)) {
-        *out_mode = Stream::AccessMode::READ;
-      } else {
-        LOG(FATAL) << "Unexpected select() result";
-      }
+      *out_mode = stream_utils::MakeAccessMode(FD_ISSET(fd_, &read_fds),
+                                               FD_ISSET(fd_, &write_fds));
     }
     return res;
   }
@@ -311,19 +304,11 @@ bool FileStream::IsOpen() const {
 }
 
 bool FileStream::CanRead() const {
-  if (!IsOpen())
-    return false;
-
-  return access_mode_ == AccessMode::READ ||
-         access_mode_ == AccessMode::READ_WRITE;
+  return IsOpen() && stream_utils::IsReadAccessMode(access_mode_);
 }
 
 bool FileStream::CanWrite() const {
-  if (!IsOpen())
-    return false;
-
-  return access_mode_ == AccessMode::WRITE ||
-         access_mode_ == AccessMode::READ_WRITE;
+  return IsOpen() && stream_utils::IsWriteAccessMode(access_mode_);
 }
 
 bool FileStream::CanSeek() const {

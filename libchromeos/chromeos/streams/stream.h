@@ -429,17 +429,6 @@ class CHROMEOS_EXPORT Stream {
 // A smart pointer to the stream used to pass the stream object around.
 using StreamPtr = std::unique_ptr<Stream>;
 
-// Helper functions to determine if read or write operation can be performed
-// for streams open with the given access mode.
-inline bool IsReadAccess(Stream::AccessMode mode) {
-  return mode == Stream::AccessMode::READ ||
-         mode == Stream::AccessMode::READ_WRITE;
-}
-inline bool IsWriteAccess(Stream::AccessMode mode) {
-  return mode == Stream::AccessMode::WRITE ||
-         mode == Stream::AccessMode::READ_WRITE;
-}
-
 }  // namespace chromeos
 
 #endif  // LIBCHROMEOS_CHROMEOS_STREAMS_STREAM_H_
