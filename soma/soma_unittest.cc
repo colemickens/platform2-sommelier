@@ -15,6 +15,7 @@
 #include <base/strings/string_util.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
+#include <protobinder/binder_manager_stub.h>
 
 #include "soma/lib/soma/annotations.h"
 #include "soma/lib/soma/container_spec_reader.h"
@@ -26,11 +27,14 @@ using soma::parser::ContainerSpecReader;
 
 class SomaTest : public ::testing::Test {
  public:
-  SomaTest() = default;
-  virtual ~SomaTest() = default;
-
-  void SetUp() override {
-    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
+  SomaTest() {
+    CHECK(tmpdir_.CreateUniqueTempDir());
+    protobinder::BinderManagerInterface::SetForTesting(
+        scoped_ptr<BinderManagerInterface>(new protobinder::BinderManagerStub));
+  }
+  ~SomaTest() override {
+    protobinder::BinderManagerInterface::SetForTesting(
+        scoped_ptr<BinderManagerInterface>());
   }
 
  protected:
