@@ -7,6 +7,12 @@
 
 #include <signal.h>
 
+#include <string>
+
+#include <gmock/gmock.h>
+
+#include "germ/proto_bindings/soma_container_spec.pb.h"
+
 namespace germ {
 
 // Sends SIGTERM to all processes in the current process's process group if this
@@ -19,6 +25,13 @@ class ScopedAlarm {
  private:
   struct sigaction oldact_;
 };
+
+// Matcher for ContainerSpecs. Only checks whether names match.
+MATCHER_P(EqualsSpec, expected, "") {
+  return expected.name() == arg.name();
+}
+
+soma::ContainerSpec MakeSpecForTest(const std::string& name);
 
 }  // namespace germ
 

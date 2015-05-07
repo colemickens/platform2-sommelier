@@ -16,7 +16,6 @@
 #include "germ/constants.h"
 #include "germ/germ_host.h"
 #include "germ/germ_zygote.h"
-#include "germ/process_reaper.h"
 #include "germ/switches.h"
 
 // TODO(usanghi): Find a better way to instantiate PsycheDaemon without
@@ -31,7 +30,7 @@ class GermDaemon : public psyche::PsycheDaemon {
  private:
   // Implement PsycheDaemon
   int OnInit() override {
-    process_reaper_.RegisterWithDaemon(this);
+    host_.RegisterWithDaemon(this);
 
     int return_code = PsycheDaemon::OnInit();
     if (return_code != 0) {
@@ -47,7 +46,6 @@ class GermDaemon : public psyche::PsycheDaemon {
   }
 
   GermHost host_;
-  ProcessReaper process_reaper_;
 
   DISALLOW_COPY_AND_ASSIGN(GermDaemon);
 };
@@ -58,7 +56,7 @@ int main(int argc, char *argv[]) {
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cmdline = base::CommandLine::ForCurrentProcess();
 
-  int log_flags = chromeos::kLogToSyslog;
+  int log_flags = chromeos::kLogToSyslog | chromeos::kLogHeader;
   if (cmdline->HasSwitch(germ::kLogToStderr)) {
     log_flags |= chromeos::kLogToStderr;
   }

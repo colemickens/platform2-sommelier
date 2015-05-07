@@ -46,6 +46,8 @@
         'soma-protos',
       ],
       'sources': [
+        'container.cc',
+        'container_manager.cc',
         'environment.cc',
         'germ_client.cc',
         'germ_host.cc',
@@ -102,6 +104,8 @@
           'includes': ['../common-mk/common_test.gypi'],
           'dependencies': ['libgerm'],
           'sources': [
+            'container_manager_unittest.cc',
+            'container_unittest.cc',
             'germ_zygote_unittest.cc',
             'launcher_unittest.cc',
             'process_reaper_unittest.cc',

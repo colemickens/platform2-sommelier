@@ -35,7 +35,10 @@ class GermZygote {
   // Makes a request to the zygote process to spawn a container. Run from the
   // zygote's parent. Returns false on failure. On success, |pid| is populated
   // with the pid of the container's init process.
-  bool StartContainer(const soma::ContainerSpec& spec, pid_t* pid);
+  virtual bool StartContainer(const soma::ContainerSpec& spec, pid_t* pid);
+
+  // Kills a process (currently, this passes through to kill(2)).
+  virtual bool Kill(pid_t pid, int signal);
 
   pid_t pid() const { return zygote_pid_; }
 

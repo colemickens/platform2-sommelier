@@ -4,7 +4,9 @@
 
 #include "germ/process_reaper.h"
 
+#include <signal.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include <base/at_exit.h>
 #include <base/bind.h>

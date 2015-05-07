@@ -8,7 +8,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <string>
+
 #include <base/logging.h>
+
+#include "germ/proto_bindings/soma_container_spec.pb.h"
 
 namespace germ {
 
@@ -28,9 +32,16 @@ ScopedAlarm::ScopedAlarm(unsigned int seconds) {
   PCHECK(sigaction(SIGALRM, &act, &oldact_) == 0);
   alarm(seconds);
 }
+
 ScopedAlarm::~ScopedAlarm() {
   alarm(0);
   PCHECK(sigaction(SIGALRM, &oldact_, nullptr) == 0);
+}
+
+soma::ContainerSpec MakeSpecForTest(const std::string& name) {
+  soma::ContainerSpec spec;
+  spec.set_name(name);
+  return spec;
 }
 
 }  // namespace germ

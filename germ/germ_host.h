@@ -7,13 +7,15 @@
 
 #include "base/macros.h"
 
+#include "germ/container_manager.h"
 #include "germ/germ_zygote.h"
 #include "germ/launcher.h"
+#include "germ/process_reaper.h"
 #include "germ/proto_bindings/germ.pb.rpc.h"
 
 namespace germ {
 
-class GermHost : public IGermHostInterface {
+class GermHost : public IGermHostInterface, public ProcessReaper {
  public:
   explicit GermHost(GermZygote* zygote);
   virtual ~GermHost() = default;
@@ -24,7 +26,10 @@ class GermHost : public IGermHostInterface {
                    TerminateResponse* response) override;
 
  private:
+  void HandleReapedChild(const siginfo_t& info) override;
+
   GermZygote* zygote_;
+  ContainerManager container_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(GermHost);
 };

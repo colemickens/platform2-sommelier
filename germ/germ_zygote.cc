@@ -5,6 +5,7 @@
 #include "germ/germ_zygote.h"
 
 #include <sched.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -146,6 +147,15 @@ bool GermZygote::StartContainer(const soma::ContainerSpec& spec, pid_t* pid) {
   if (memcmp(ping_message_buf, kZygoteChildPingMessage,
              sizeof(ping_message_buf)) != 0) {
     LOG(ERROR) << "Received invalid ping message: " << ping_message_buf;
+    return false;
+  }
+
+  return true;
+}
+
+bool GermZygote::Kill(pid_t pid, int signal) {
+  if (kill(pid, signal) != 0) {
+    PLOG(ERROR) << "kill(" << pid << ", " << signal << ") failed";
     return false;
   }
 
