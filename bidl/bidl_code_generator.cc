@@ -38,7 +38,7 @@ string FullName(const Descriptor* desc) {
   return name;
 }
 
-string FullNameVaribleName(const Descriptor* desc) {
+string FullNameVariableName(const Descriptor* desc) {
   string name;
   vector<string> name_parts;
   SplitStringUsing(desc->full_name(), ".", &name_parts);
@@ -90,48 +90,49 @@ void PrintMarshallCodeForBinderTree(Printer* printer,
       if (node->is_repeated) {
         printer->Print(
             "for (size_t i=0; i<message_$message$->$field$_size(); i++) {\n",
-            "message", FullNameVaribleName(node->parent->desc), "field",
-            node->name);
+            "message", FullNameVariableName(node->parent->desc),
+            "field", node->name);
       } else {
-        printer->Print("if (message_$message$->has_$field$()) {\n", "message",
-                       FullNameVaribleName(node->parent->desc), "field",
-                       node->name);
+        printer->Print("if (message_$message$->has_$field$()) {\n",
+                       "message", FullNameVariableName(node->parent->desc),
+                       "field", node->name);
       }
       printer->Indent();
-      if (node->is_fd)
+      if (node->is_fd) {
         printer->Print(
-            "object_parcel.WriteFd(message_$message$->mutable_$field$($index$)-"
-            ">fd());"
-            "\n",
-            "message", FullNameVaribleName(node->parent->desc), "field",
-            node->name, "index", node->is_repeated ? "i" : "");
-      else
+            "object_parcel.WriteFd("
+            "message_$message$->mutable_$field$($index$)->fd());\n",
+            "message", FullNameVariableName(node->parent->desc),
+            "field", node->name,
+            "index", node->is_repeated ? "i" : "");
+      } else {
         printer->Print(
-            "object_parcel.WriteStrongBinder(reinterpret_cast<const "
-            "IBinder*>(message_$message$->mutable_$field$($index$)->ibinder()))"
-            ";"
-            "\n",
-            "message", FullNameVaribleName(node->parent->desc), "field",
-            node->name, "index", node->is_repeated ? "i" : "");
+            "object_parcel.WriteStrongBinderFromProtocolBuffer("
+            "message_$message$->$field$($index$));\n",
+            "message", FullNameVariableName(node->parent->desc),
+            "field", node->name,
+            "index", node->is_repeated ? "i" : "");
+      }
       printer->Print(
           "message_$message$->mutable_$field$($index$)->set_offset(offset);\n",
-          "message", FullNameVaribleName(node->parent->desc), "field",
-          node->name, "index", node->is_repeated ? "i" : "");
+          "message", FullNameVariableName(node->parent->desc),
+          "field", node->name,
+          "index", node->is_repeated ? "i" : "");
       printer->Print("offset++;\n");
       printer->Outdent();
       printer->Print("}\n");
-
     } else {
-      if (node->is_fd)
+      if (node->is_fd) {
         printer->Print("object_parcel.WriteFd(message_$message$->fd());\n",
-                       "message", FullNameVaribleName(node->desc));
-      else
+                       "message", FullNameVariableName(node->desc));
+      } else {
         printer->Print(
-            "object_parcel.WriteStrongBinder(reinterpret_cast<const "
-            "IBinder*>(message_$message$->ibinder()));\n",
-            "message", FullNameVaribleName(node->desc));
-      printer->Print("message_$message$->set_offset(offset);\n", "message",
-                     FullNameVaribleName(node->desc));
+            "object_parcel.WriteStrongBinderFromProtocolBuffer("
+            "*message_$message$);\n",
+            "message", FullNameVariableName(node->desc));
+      }
+      printer->Print("message_$message$->set_offset(offset);\n",
+                     "message", FullNameVariableName(node->desc));
     }
 
     return;
@@ -142,21 +143,22 @@ void PrintMarshallCodeForBinderTree(Printer* printer,
       if (node->is_repeated) {
         printer->Print(
             "for (size_t i=0; i<message_$parent$->$field$_size(); i++) {\n",
-            "parent", FullNameVaribleName(node->parent->desc), "field",
-            node->name);
+            "parent", FullNameVariableName(node->parent->desc),
+            "field", node->name);
       } else {
-        printer->Print("if (message_$parent$->has_$field$()) {\n", "parent",
-                       FullNameVaribleName(node->parent->desc), "field",
-                       node->name);
+        printer->Print("if (message_$parent$->has_$field$()) {\n",
+                       "parent", FullNameVariableName(node->parent->desc),
+                       "field", node->name);
       }
       printer->Indent();
 
       printer->Print("$name$* message_$varname$ = ", "name",
                      FullName(node->desc), "varname",
-                     FullNameVaribleName(node->desc));
-      printer->Print("message_$parent$->mutable_$field$($index$);\n", "parent",
-                     FullNameVaribleName(node->parent->desc), "field",
-                     node->name, "index", node->is_repeated ? "i" : "");
+                     FullNameVariableName(node->desc));
+      printer->Print("message_$parent$->mutable_$field$($index$);\n",
+                     "parent", FullNameVariableName(node->parent->desc),
+                     "field", node->name,
+                     "index", node->is_repeated ? "i" : "");
     }
     // Process children
     for (std::vector<MessageNode*>::iterator it = node->children.begin();
@@ -181,12 +183,12 @@ void PrintUnmarshallCodeForBinderTree(Printer* printer,
       if (node->is_repeated) {
         printer->Print(
             "for (size_t i=0; i<message_$message$->$field$_size(); i++) {\n",
-            "message", FullNameVaribleName(node->parent->desc), "field",
-            node->name);
+            "message", FullNameVariableName(node->parent->desc),
+            "field", node->name);
       } else {
-        printer->Print("if (message_$message$->has_$field$()) {\n", "message",
-                       FullNameVaribleName(node->parent->desc), "field",
-                       node->name);
+        printer->Print("if (message_$message$->has_$field$()) {\n",
+                       "message", FullNameVariableName(node->parent->desc),
+                       "field", node->name);
       }
 
       printer->Indent();
@@ -200,33 +202,31 @@ void PrintUnmarshallCodeForBinderTree(Printer* printer,
                        is_reply ? "reply." : "data->");
         printer->Print(
             "message_$message$->mutable_$field$($index$)->offset()))\n",
-            "message", FullNameVaribleName(node->parent->desc), "field",
-            node->name, "index", node->is_repeated ? "i" : "");
+            "message", FullNameVariableName(node->parent->desc),
+            "field", node->name,
+            "index", node->is_repeated ? "i" : "");
         printer->Indent();
         printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
         printer->Outdent();
 
         printer->Print(
             "message_$message$->mutable_$field$($index$)->set_fd(fd);\n",
-            "message", FullNameVaribleName(node->parent->desc), "field",
-            node->name, "index", node->is_repeated ? "i" : "");
-      } else {
-        printer->Print("IBinder* binder = nullptr;\n");
-        printer->Print("if (!$parcel$GetStrongBinderAtOffset(&binder, ",
+            "message", FullNameVariableName(node->parent->desc),
+            "field", node->name,
+            "index", node->is_repeated ? "i" : "");
+      } else {   // node->is_binder
+        // Break this up over two calls since the printer apparently supports a
+        // maximum of seven arguments (i.e. three template parameters).
+        printer->Print("if (!$parcel$CopyStrongBinderAtOffsetToProtocolBuffer(",
                        "parcel", is_reply ? "reply." : "data->");
-        printer->Print(
-            "message_$message$->mutable_$field$($index$)->offset()))\n",
-            "message", FullNameVaribleName(node->parent->desc), "field",
-            node->name, "index", node->is_repeated ? "i" : "");
+        printer->Print("message_$message$->$field$($index$).offset(), "
+                       "message_$message$->mutable_$field$()))\n",
+                       "message", FullNameVariableName(node->parent->desc),
+                       "field", node->name,
+                       "index", node->is_repeated ? "i" : "");
         printer->Indent();
         printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
         printer->Outdent();
-
-        printer->Print(
-            "message_$message$->mutable_$field$($index$)->set_ibinder("
-            "reinterpret_cast<uint64_t>(binder));\n",
-            "message", FullNameVaribleName(node->parent->desc), "field",
-            node->name, "index", node->is_repeated ? "i" : "");
       }
       printer->Outdent();
       printer->Print("}\n");
@@ -240,26 +240,21 @@ void PrintUnmarshallCodeForBinderTree(Printer* printer,
         printer->Print("if (!$parcel$GetFdAtOffset(&fd, ", "parcel",
                        is_reply ? "reply." : "data->");
         printer->Print("message_$message$->offset()))\n", "message",
-                       FullNameVaribleName(node->desc));
+                       FullNameVariableName(node->desc));
         printer->Indent();
         printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
         printer->Outdent();
         printer->Print("message_$message$->set_fd(fd);\n", "message",
-                       FullNameVaribleName(node->desc));
-      } else {
-        printer->Print("IBinder* binder = nullptr;\n");
-        printer->Print("if (!$parcel$GetStrongBinderAtOffset(&binder, ",
-                       "parcel", is_reply ? "reply." : "data->");
-        printer->Print("message_$message$->offset()))\n", "message",
-                       FullNameVaribleName(node->desc));
+                       FullNameVariableName(node->desc));
+      } else {  // node->is_binder
+        printer->Print("if (!$parcel$CopyStrongBinderAtOffsetToProtocolBuffer("
+                       "message_$message$->offset(), message_$message$))\n",
+                       "parcel", is_reply ? "reply." : "data->",
+                       "message", FullNameVariableName(node->parent->desc),
+                       "field", node->name);
         printer->Indent();
         printer->Print("return STATUS_BINDER_ERROR(Status::BAD_PARCEL);\n");
         printer->Outdent();
-
-        printer->Print(
-            "message_$message$->set_ibinder("
-            "reinterpret_cast<uint64_t>(binder));\n",
-            "message", FullNameVaribleName(node->desc));
       }
     }
 
@@ -271,21 +266,22 @@ void PrintUnmarshallCodeForBinderTree(Printer* printer,
       if (node->is_repeated) {
         printer->Print(
             "for (size_t i=0; i<message_$parent$->$field$_size(); i++) {\n",
-            "parent", FullNameVaribleName(node->parent->desc), "field",
-            node->name);
+            "parent", FullNameVariableName(node->parent->desc),
+            "field", node->name);
       } else {
-        printer->Print("if (message_$parent$->has_$field$()) {\n", "parent",
-                       FullNameVaribleName(node->parent->desc), "field",
-                       node->name);
+        printer->Print("if (message_$parent$->has_$field$()) {\n",
+                       "parent", FullNameVariableName(node->parent->desc),
+                       "field", node->name);
       }
       printer->Indent();
 
-      printer->Print("$name$* message_$varname$ = ", "name",
-                     FullName(node->desc), "varname",
-                     FullNameVaribleName(node->desc));
-      printer->Print("message_$parent$->mutable_$field$($index$);\n", "parent",
-                     FullNameVaribleName(node->parent->desc), "field",
-                     node->name, "index", node->is_repeated ? "i" : "");
+      printer->Print("$name$* message_$varname$ = ",
+                     "name", FullName(node->desc),
+                     "varname", FullNameVariableName(node->desc));
+      printer->Print("message_$parent$->mutable_$field$($index$);\n",
+                     "parent", FullNameVariableName(node->parent->desc),
+                     "field", node->name,
+                     "index", node->is_repeated ? "i" : "");
     }
     // Process children
     for (std::vector<MessageNode*>::iterator it = node->children.begin();
@@ -350,11 +346,12 @@ void BidlCodeGenerator::PrintStandardHeaders(Printer* printer) const {
 }
 
 void BidlCodeGenerator::PrintStandardIncludes(Printer* printer) const {
+  printer->Print("#include <string.h>\n");
+  printer->Print("\n");
+  printer->Print("#include <protobinder/binder_proxy.h>\n");
   printer->Print("#include <protobinder/iinterface.h>\n");
   printer->Print("#include <protobinder/parcel.h>\n");
   printer->Print("#include <protobinder/status.h>\n");
-  printer->Print("\n");
-  printer->Print("#include <string.h>\n");
   printer->Print("\n");
 }
 
@@ -444,7 +441,7 @@ bool BidlCodeGenerator::AddServiceToHeader(
       printer->Print("\n");
       printer->Print(FullName(method->input_type()).c_str());
       printer->Print("* message_");
-      printer->Print(FullNameVaribleName(method->input_type()).c_str());
+      printer->Print(FullNameVariableName(method->input_type()).c_str());
       printer->Print(" = &in;\n");
       PrintUnmarshallCodeForBinderTree(printer, &in_message, 0, false);
     }
@@ -474,7 +471,7 @@ bool BidlCodeGenerator::AddServiceToHeader(
         printer->Print("Parcel object_parcel;\n");
         printer->Print(FullName(method->output_type()).c_str());
         printer->Print("* message_");
-        printer->Print(FullNameVaribleName(method->output_type()).c_str());
+        printer->Print(FullNameVariableName(method->output_type()).c_str());
         printer->Print(" = &out;\n");
         PrintMarshallCodeForBinderTree(printer, &out_message, 0);
       }
@@ -570,8 +567,8 @@ bool BidlCodeGenerator::AddServiceToSource(
       " public:\n");
   printer->Indent();
   printer->Print(vars,
-                 "I$classname$Proxy(IBinder* impl) : "
-                 "BinderProxyInterface<I$classname$>(impl) {}\n\n");
+                 "I$classname$Proxy(BinderProxy* proxy) : "
+                 "BinderProxyInterface<I$classname$>(proxy) {}\n\n");
 
   int method_count = service->method_count();
 
@@ -603,7 +600,7 @@ bool BidlCodeGenerator::AddServiceToSource(
       printer->Print("Parcel object_parcel;\n");
       printer->Print(FullName(method->input_type()).c_str());
       printer->Print("* message_");
-      printer->Print(FullNameVaribleName(method->input_type()).c_str());
+      printer->Print(FullNameVariableName(method->input_type()).c_str());
       printer->Print(" = in;\n");
       PrintMarshallCodeForBinderTree(printer, &in_message, 0);
     }
@@ -674,7 +671,7 @@ bool BidlCodeGenerator::AddServiceToSource(
         printer->Print("\n");
         printer->Print(FullName(method->output_type()).c_str());
         printer->Print("* message_");
-        printer->Print(FullNameVaribleName(method->output_type()).c_str());
+        printer->Print(FullNameVariableName(method->output_type()).c_str());
         printer->Print(" = out;\n");
         PrintUnmarshallCodeForBinderTree(printer, &out_message, 0, true);
       }
