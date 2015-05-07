@@ -161,6 +161,7 @@
       'sources': [
         'chromeos/http/http_connection_fake.cc',
         'chromeos/http/http_transport_fake.cc',
+        'chromeos/streams/fake_stream.cc',
       ],
       'includes': ['../common-mk/deps.gypi'],
     },
@@ -326,6 +327,7 @@
             'chromeos/osrelease_reader_unittest.cc',
             'chromeos/process_test.cc',
             'chromeos/secure_blob_unittest.cc',
+            'chromeos/streams/fake_stream_unittest.cc',
             'chromeos/streams/file_stream_unittest.cc',
             'chromeos/streams/input_stream_set_unittest.cc',
             'chromeos/streams/memory_containers_unittest.cc',
