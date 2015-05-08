@@ -12,7 +12,7 @@
 
 namespace {
 
-const char kContainerSpecDir[] = "/etc/container_specs";
+const char kContainerSpecDir[] = "/usr/share/somad";
 
 }  // namespace
 

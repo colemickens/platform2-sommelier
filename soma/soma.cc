@@ -12,6 +12,7 @@
 #include <base/logging.h>
 
 #include "soma/proto_bindings/soma.pb.h"
+#include "soma/proto_bindings/soma_container_spec.pb.h"
 
 namespace soma {
 namespace {
@@ -42,14 +43,14 @@ Status Soma::GetContainerSpec(GetContainerSpecRequest* request,
   return STATUS_OK();
 }
 
-// Running over all JSON files in the directory on every call might be
+// Running over all spec files in the directory on every call might be
 // way too slow. If so, we could do it once at startup and then cache them,
 // possibly providing an RPC to make us refresh the cache.
 Status Soma::GetPersistentContainerSpecs(
     GetPersistentContainerSpecsRequest* ignored,
     GetPersistentContainerSpecsResponse* response) {
   base::FileEnumerator files(root_, false, base::FileEnumerator::FILES,
-                             "*.json");
+                             "*.spec");
   for (base::FilePath spec_path = files.Next(); !spec_path.empty();
        spec_path = files.Next()) {
     std::unique_ptr<ContainerSpec> spec = reader_->Read(spec_path);
@@ -60,7 +61,7 @@ Status Soma::GetPersistentContainerSpecs(
 }
 
 base::FilePath Soma::NameToPath(const std::string& service_name) const {
-  return root_.Append(service_name).ReplaceExtension(".json");
+  return root_.Append(service_name).ReplaceExtension(".spec");
 }
 
 }  // namespace soma

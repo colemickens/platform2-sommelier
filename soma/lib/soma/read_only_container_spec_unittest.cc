@@ -25,10 +25,10 @@ class ReadOnlyContainerSpecTest : public ::testing::Test {
 
   void SetUp() override {
     const char fully_qualified_spec_name[] = "/path/to/spec.json";
-    const char service_bundle_path[] = "/path/to/bundle";
+    const char service_bundle_path[] = "/path/to/brick";
     const uid_t uid = 1;
     const gid_t gid = 8;
-    const char* command_line[2] = { "command", "arg1" };
+    const char* command_line[2] = { "/bin/true", "arg1" };
 
     spec_.set_name(fully_qualified_spec_name);
     spec_.set_service_bundle_path(service_bundle_path);
@@ -64,7 +64,7 @@ TEST_F(ReadOnlyContainerSpecTest, RequiredFieldsTest) {
 TEST_F(ReadOnlyContainerSpecTest, TwoExecutablesTest) {
   const uid_t uid = 0;
   const gid_t gid = 0;
-  const char* command_line[3] = { "other_command", "arg1", "arg2" };
+  const char* command_line[3] = { "/bin/false", "arg1", "arg2" };
 
   ContainerSpec::Executable* executable = spec_.add_executables();
   executable->set_uid(uid);

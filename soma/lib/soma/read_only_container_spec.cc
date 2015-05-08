@@ -4,6 +4,7 @@
 
 #include "soma/lib/soma/read_only_container_spec.h"
 
+#include <base/files/file_util.h>
 #include <base/logging.h>
 
 #include "soma/proto_bindings/soma_container_spec.pb.h"
@@ -31,6 +32,14 @@ ReadOnlyContainerSpec::Namespace Translate(ContainerSpec::Namespace ns) {
   }
   NOTREACHED();
   return ReadOnlyContainerSpec::Namespace::INVALID;
+}
+
+bool AbsolutePathExistsAndIsExecutable(const std::string& exe_name) {
+  base::FilePath exe_path(exe_name);
+  int permissions = 00;
+  return (exe_path.IsAbsolute() && base::PathExists(exe_path) &&
+          base::GetPosixFilePermissions(exe_path, &permissions) &&
+          (permissions & base::FILE_PERMISSION_EXECUTE_BY_USER));
 }
 
 }  // namespace
@@ -100,6 +109,11 @@ bool ReadOnlyContainerSpec::Init(const ContainerSpec& spec) {
     }
     if (executable.command_line_size() == 0) {
       LOG(ERROR) << "All executables must define a non-empty command line!";
+      return false;
+    }
+    if (!AbsolutePathExistsAndIsExecutable(executable.command_line(0))) {
+      LOG(ERROR) << "Command line must reference an existing executable "
+                 << "by absolute path: " << executable.command_line(0);
       return false;
     }
 

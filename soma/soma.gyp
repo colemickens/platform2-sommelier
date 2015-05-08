@@ -47,30 +47,14 @@
       ],
     },
     {
-      'target_name': 'libsoma-static', # So symbols are visible to tests.
-      'type': 'static_library',
+      'target_name': 'libsoma',
+      'type': 'shared_library',
       'dependencies': [
         'soma-proto-lib',
       ],
       'sources': [
-        'lib/soma/annotations.cc',
-        'lib/soma/container_spec_helpers.cc',
-        'lib/soma/device_filter.cc',
-        'lib/soma/isolator_parser.cc',
-        'lib/soma/namespace.cc',
-        'lib/soma/port.cc',
-      ],
-    },
-    {
-      'target_name': 'libsoma',
-      'type': 'shared_library',
-      'dependencies': [
-        'libsoma-static',
-      ],
-      'sources': [
         'lib/soma/container_spec_reader.cc',
         'lib/soma/read_only_container_spec.cc',
-        'lib/soma/userdb.cc',
       ],
     },
     {
@@ -103,7 +87,6 @@
             'libsoma',
           ],
           'sources': [
-            'lib/soma/fake_userdb.cc',
             'soma_testrunner.cc',
             'soma_unittest.cc',
           ],
@@ -114,12 +97,11 @@
           'includes': ['../common-mk/common_test.gypi'],
           'defines': ['UNIT_TEST'],
           'dependencies': [
-            'libsoma-static',
             'libsoma',
+            'soma-proto-lib',
           ],
           'sources': [
             'lib/soma/container_spec_reader_unittest.cc',
-            'lib/soma/fake_userdb.cc',
             'lib/soma/libsoma_testrunner.cc',
             'lib/soma/read_only_container_spec_unittest.cc',
           ],
