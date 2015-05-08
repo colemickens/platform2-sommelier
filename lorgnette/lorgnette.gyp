@@ -40,7 +40,20 @@
       },
       'sources': [
         'daemon.cc',
+        'firewall_manager.cc',
         'manager.cc',
+      ],
+      'actions': [
+        {
+          'action_name': 'generate-permission_broker-proxies',
+          'variables': {
+            'proxy_output_file': 'include/permission_broker/dbus-proxies.h'
+          },
+          'sources': [
+            '../permission_broker/dbus_bindings/org.chromium.PermissionBroker.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
       ],
     },
     {

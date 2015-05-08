@@ -23,6 +23,7 @@
 #include <chromeos/variant_dictionary.h>
 
 #include "lorgnette/daemon.h"
+#include "lorgnette/firewall_manager.h"
 
 using base::ScopedFD;
 using base::StringPrintf;
@@ -54,13 +55,15 @@ void Manager::RegisterAsync(
     chromeos::dbus_utils::ExportedObjectManager* object_manager,
     chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
   CHECK(!dbus_object_) << "Already registered";
+  scoped_refptr<dbus::Bus> bus =
+      object_manager ? object_manager->GetBus() : nullptr;
   dbus_object_.reset(new chromeos::dbus_utils::DBusObject(
-        object_manager,
-        object_manager ? object_manager->GetBus() : nullptr,
-        dbus::ObjectPath(kManagerServicePath)));
+        object_manager, bus, dbus::ObjectPath(kManagerServicePath)));
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+  firewall_manager_.reset(new FirewallManager(""));
+  firewall_manager_->Init(bus);
 }
 
 bool Manager::ListScanners(chromeos::ErrorPtr* error,
@@ -77,6 +80,7 @@ bool Manager::ListScanners(chromeos::ErrorPtr* error,
   }
 
   chromeos::ProcessImpl process;
+  firewall_manager_->RequestScannerPortAccess();
   RunListScannersProcess(fileno(output_file_handle), &process);
   fclose(output_file_handle);
   string scanner_output_string;
@@ -93,6 +97,8 @@ bool Manager::ListScanners(chromeos::ErrorPtr* error,
   }
   activity_callback_.Run();
   *scanner_list = ScannerInfoFromString(scanner_output_string);
+
+  firewall_manager_->ReleaseAllPortsAccess();
   return true;
 }
 

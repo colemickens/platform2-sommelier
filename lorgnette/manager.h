@@ -32,6 +32,7 @@ class ExportedObjectManager;
 namespace lorgnette {
 
 class Minijail;
+class FirewallManager;
 
 class Manager : public org::chromium::lorgnette::ManagerAdaptor,
                 public org::chromium::lorgnette::ManagerInterface {
@@ -101,6 +102,9 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
   std::unique_ptr<chromeos::dbus_utils::DBusObject> dbus_object_;
   base::Callback<void()> activity_callback_;
   std::unique_ptr<MetricsLibraryInterface> metrics_library_;
+
+  // Manages port access for receiving replies from network scanners.
+  std::unique_ptr<FirewallManager> firewall_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };
