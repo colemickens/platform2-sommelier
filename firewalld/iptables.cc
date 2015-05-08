@@ -4,6 +4,8 @@
 
 #include "firewalld/iptables.h"
 
+#include <linux/capability.h>
+
 #include <string>
 #include <vector>
 
@@ -11,6 +13,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/minijail/minijail.h>
 #include <chromeos/process.h>
 
 namespace {
@@ -18,6 +21,10 @@ const char kIpTablesPath[] = "/sbin/iptables";
 const char kIp6TablesPath[] = "/sbin/ip6tables";
 
 const char kIpPath[] = "/bin/ip";
+
+const char kUnprivilegedUser[] = "nobody";
+const uint64_t kIpTablesCapMask =
+    CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
 
 // Interface names must be shorter than 'IFNAMSIZ' chars.
 // See http://man7.org/linux/man-pages/man7/netdevice.7.html
@@ -214,7 +221,8 @@ bool IpTables::AddAcceptRule(const std::string& executable_path,
   argv.push_back("-j");
   argv.push_back("ACCEPT");
 
-  return Execv(argv) == 0;
+  // Use CAP_NET_ADMIN|CAP_NET_RAW.
+  return ExecvNonRoot(argv, kIpTablesCapMask) == 0;
 }
 
 bool IpTables::DeleteAcceptRule(const std::string& executable_path,
@@ -236,7 +244,8 @@ bool IpTables::DeleteAcceptRule(const std::string& executable_path,
   argv.push_back("-j");
   argv.push_back("ACCEPT");
 
-  return Execv(argv) == 0;
+  // Use CAP_NET_ADMIN|CAP_NET_RAW.
+  return ExecvNonRoot(argv, kIpTablesCapMask) == 0;
 }
 
 bool IpTables::ApplyVpnSetup(const std::vector<std::string>& usernames,
@@ -295,7 +304,8 @@ bool IpTables::ApplyMasquerade(const std::string& interface, bool add) {
   argv.push_back("-j");
   argv.push_back("MASQUERADE");
 
-  return Execv(argv) == 0;
+  // Use CAP_NET_ADMIN|CAP_NET_RAW.
+  return ExecvNonRoot(argv, kIpTablesCapMask) == 0;
 }
 
 bool IpTables::ApplyMarkForUserTraffic(const std::string& user_name,
@@ -315,7 +325,8 @@ bool IpTables::ApplyMarkForUserTraffic(const std::string& user_name,
   argv.push_back("--set-mark");
   argv.push_back(kMarkForUserTraffic);
 
-  return Execv(argv) == 0;
+  // Use CAP_NET_ADMIN|CAP_NET_RAW.
+  return ExecvNonRoot(argv, kIpTablesCapMask) == 0;
 }
 
 bool IpTables::ApplyRuleForUserTraffic(bool add) {
@@ -331,12 +342,22 @@ bool IpTables::ApplyRuleForUserTraffic(bool add) {
   return ip.Run() == 0;
 }
 
-int IpTables::Execv(const std::vector<std::string>& argv) {
-  chromeos::ProcessImpl proc;
+int IpTables::ExecvNonRoot(const std::vector<std::string>& argv,
+                           uint64_t capmask) {
+  chromeos::Minijail* m = chromeos::Minijail::GetInstance();
+  minijail* jail = m->New();
+  m->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser);
+  m->UseCapabilities(jail, capmask);
+
+  std::vector<char*> args;
   for (const auto& arg : argv) {
-    proc.AddArg(arg);
+    args.push_back(const_cast<char*>(arg.c_str()));
   }
-  return proc.Run();
+  args.push_back(nullptr);
+
+  int status;
+  bool ran = m->RunSyncAndDestroy(jail, args, &status);
+  return ran ? status : -1;
 }
 
 }  // namespace firewalld

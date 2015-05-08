@@ -84,7 +84,8 @@ class IpTables : public org::chromium::FirewalldInterface {
   virtual bool ApplyMarkForUserTraffic(const std::string& user_name, bool add);
   virtual bool ApplyRuleForUserTraffic(bool add);
 
-  int Execv(const std::vector<std::string>& argv);
+  int ExecvNonRoot(const std::vector<std::string>& argv,
+                   uint64_t capmask);
 
   // Keep track of firewall holes to avoid adding redundant firewall rules.
   std::set<Hole> tcp_holes_;
