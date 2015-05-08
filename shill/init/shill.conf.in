@@ -12,7 +12,7 @@ author        "chromium-os-dev@chromium.org"
 # chromeos_shutdown script from running (jobs that "stop on stopping
 # boot-services" may still be running in parallel with chromeos_shutdown if
 # they do not exit quickly).
-start on started boot-services and started wpasupplicant
+start on @expected_started_services@
 stop on starting pre-shutdown
 kill timeout 10
 respawn
