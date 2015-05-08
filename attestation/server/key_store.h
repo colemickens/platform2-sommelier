@@ -9,6 +9,8 @@
 
 #include <base/macros.h>
 
+#include "attestation/common/common.pb.h"
+
 namespace attestation {
 
 // A mock-able key storage interface.
@@ -48,6 +50,8 @@ class KeyStore {
   // the key. Returns true on success.
   virtual bool Register(const std::string& username,
                         const std::string& label,
+                        KeyType key_type,
+                        KeyUsage key_usage,
                         const std::string& private_key_blob,
                         const std::string& public_key_der,
                         const std::string& certificate) = 0;

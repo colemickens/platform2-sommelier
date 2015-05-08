@@ -451,15 +451,17 @@ TEST_F(KeyStoreTest, FindNoObjects) {
 TEST_F(KeyStoreTest, RegisterKeyWithoutCertificate) {
   Pkcs11KeyStore key_store(&token_manager_);
   // Try with a malformed public key.
-  EXPECT_FALSE(key_store.Register(kDefaultUser, "test_label",
-                                  "private_key_blob", "bad_pubkey", ""));
+  EXPECT_FALSE(key_store.Register(kDefaultUser, "test_label", KEY_TYPE_RSA,
+                                  KEY_USAGE_SIGN, "private_key_blob",
+                                  "bad_pubkey", ""));
   // Try with a well-formed public key.
   std::string public_key_der = HexDecode(kValidPublicKeyHex);
   EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
       .Times(2)  // Public, private (no certificate).
       .WillRepeatedly(Return(CKR_OK));
-  EXPECT_TRUE(key_store.Register(kDefaultUser, "test_label",
-                                 "private_key_blob", public_key_der, ""));
+  EXPECT_TRUE(key_store.Register(kDefaultUser, "test_label", KEY_TYPE_RSA,
+                                 KEY_USAGE_SIGN, "private_key_blob",
+                                 public_key_der, ""));
 }
 
 TEST_F(KeyStoreTest, RegisterKeyWithCertificate) {
@@ -469,13 +471,15 @@ TEST_F(KeyStoreTest, RegisterKeyWithCertificate) {
   Pkcs11KeyStore key_store(&token_manager_);
   std::string public_key_der = HexDecode(kValidPublicKeyHex);
   std::string certificate_der = HexDecode(kValidCertificateHex);
-  EXPECT_TRUE(key_store.Register(kDefaultUser, "test_label", "private_key_blob",
+  EXPECT_TRUE(key_store.Register(kDefaultUser, "test_label", KEY_TYPE_RSA,
+                                 KEY_USAGE_SIGN, "private_key_blob",
                                  public_key_der, certificate_der));
   // Also try with the system token.
   EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
       .Times(3)  // Public, private, and certificate.
       .WillRepeatedly(Return(CKR_OK));
-  EXPECT_TRUE(key_store.Register(kDefaultUser, "test_label", "private_key_blob",
+  EXPECT_TRUE(key_store.Register(kDefaultUser, "test_label", KEY_TYPE_RSA,
+                                 KEY_USAGE_SIGN, "private_key_blob",
                                  public_key_der, certificate_der));
 }
 
@@ -485,8 +489,27 @@ TEST_F(KeyStoreTest, RegisterKeyWithBadCertificate) {
       .WillRepeatedly(Return(CKR_OK));
   Pkcs11KeyStore key_store(&token_manager_);
   std::string public_key_der = HexDecode(kValidPublicKeyHex);
-  EXPECT_TRUE(key_store.Register(kDefaultUser, "test_label", "private_key_blob",
+  EXPECT_TRUE(key_store.Register(kDefaultUser, "test_label", KEY_TYPE_RSA,
+                                 KEY_USAGE_SIGN, "private_key_blob",
                                  public_key_der, "bad_certificate"));
+}
+
+TEST_F(KeyStoreTest, RegisterWithUnsupportedKeyType) {
+  Pkcs11KeyStore key_store(&token_manager_);
+  std::string public_key_der = HexDecode(kValidPublicKeyHex);
+  EXPECT_FALSE(key_store.Register(kDefaultUser, "test_label", KEY_TYPE_ECC,
+                                  KEY_USAGE_SIGN, "private_key_blob",
+                                  public_key_der, ""));
+}
+
+TEST_F(KeyStoreTest, RegisterDecryptionKey) {
+  EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
+      .WillRepeatedly(Return(CKR_OK));
+  Pkcs11KeyStore key_store(&token_manager_);
+  std::string public_key_der = HexDecode(kValidPublicKeyHex);
+  EXPECT_TRUE(key_store.Register(kDefaultUser, "test_label", KEY_TYPE_RSA,
+                                 KEY_USAGE_DECRYPT, "private_key_blob",
+                                 public_key_der, ""));
 }
 
 TEST_F(KeyStoreTest, RegisterCertificate) {

@@ -48,6 +48,8 @@ class Pkcs11KeyStore : public KeyStore {
                       const std::string& key_prefix) override;
   bool Register(const std::string& username,
                 const std::string& label,
+                KeyType key_type,
+                KeyUsage key_usage,
                 const std::string& private_key_blob,
                 const std::string& public_key_der,
                 const std::string& certificate) override;
@@ -88,10 +90,12 @@ class Pkcs11KeyStore : public KeyStore {
                              const std::string& key_name,
                              CK_OBJECT_HANDLE object_handle);
 
-  // Extracts the subject information from an X.509 certificate. Returns false
-  // if the subject cannot be determined.
-  bool GetCertificateSubject(const std::string& certificate,
-                             std::string* subject);
+  // Extracts the |subject|, |issuer|, and |serial_number| information from an
+  // X.509 |certificate|. Returns false if the value cannot be determined.
+  bool GetCertificateFields(const std::string& certificate,
+                            std::string* subject,
+                            std::string* issuer,
+                            std::string* serial_number);
 
   // Returns true iff the given certificate already exists in the token.
   bool DoesCertificateExist(CK_SESSION_HANDLE session_handle,

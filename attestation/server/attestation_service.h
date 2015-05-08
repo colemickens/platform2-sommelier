@@ -75,6 +75,9 @@ class AttestationService : public AttestationInterface {
   void Decrypt(const DecryptRequest& request,
                const DecryptCallback& callback) override;
   void Sign(const SignRequest& request, const SignCallback& callback) override;
+  void RegisterKeyWithChapsToken(
+      const RegisterKeyWithChapsTokenRequest& request,
+      const RegisterKeyWithChapsTokenCallback& callback) override;
 
   // Mutators useful for testing.
   void set_crypto_utility(CryptoUtility* crypto_utility) {
@@ -156,6 +159,11 @@ class AttestationService : public AttestationInterface {
   // A blocking implementation of Sign.
   void SignTask(const SignRequest& request,
                 const std::shared_ptr<SignReply>& result);
+
+  // A synchronous implementation of RegisterKeyWithChapsToken.
+  void RegisterKeyWithChapsTokenTask(
+      const RegisterKeyWithChapsTokenRequest& request,
+      const std::shared_ptr<RegisterKeyWithChapsTokenReply>& result);
 
   // Returns true iff all information required for enrollment with the Google
   // Attestation CA is available.

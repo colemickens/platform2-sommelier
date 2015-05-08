@@ -29,8 +29,10 @@ class MockKeyStore : public KeyStore {
                             const std::string& name));
   MOCK_METHOD2(DeleteByPrefix, bool(const std::string& username,
                                     const std::string& key_prefix));
-  MOCK_METHOD5(Register, bool(const std::string& username,
+  MOCK_METHOD7(Register, bool(const std::string& username,
                               const std::string& label,
+                              KeyType key_type,
+                              KeyUsage key_usage,
                               const std::string& private_key_blob,
                               const std::string& public_key_der,
                               const std::string& certificate));

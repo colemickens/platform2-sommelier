@@ -340,4 +340,31 @@ TEST_F(DBusServiceTest, Sign) {
   EXPECT_EQ("signature", reply.signature());
 }
 
+TEST_F(DBusServiceTest, RegisterKeyWithChapsToken) {
+  RegisterKeyWithChapsTokenRequest request;
+  request.set_key_label("label");
+  request.set_username("user");
+  EXPECT_CALL(mock_service_, RegisterKeyWithChapsToken(_, _))
+      .WillOnce(Invoke([](
+          const RegisterKeyWithChapsTokenRequest& request,
+          const AttestationInterface::RegisterKeyWithChapsTokenCallback&
+              callback) {
+        EXPECT_EQ("label", request.key_label());
+        EXPECT_EQ("user", request.username());
+        RegisterKeyWithChapsTokenReply reply;
+        reply.set_status(STATUS_SUCCESS);
+        callback.Run(reply);
+      }));
+  std::unique_ptr<dbus::MethodCall> call =
+      CreateMethodCall(kRegisterKeyWithChapsToken);
+  dbus::MessageWriter writer(call.get());
+  writer.AppendProtoAsArrayOfBytes(request);
+  auto response = CallMethod(call.get());
+  dbus::MessageReader reader(response.get());
+  RegisterKeyWithChapsTokenReply reply;
+  EXPECT_TRUE(reader.PopArrayOfBytesAsProto(&reply));
+  EXPECT_EQ(STATUS_SUCCESS, reply.status());
+}
+
+
 }  // namespace attestation

@@ -33,6 +33,7 @@ const char kEncryptCommand[] = "encrypt";
 const char kDecryptCommand[] = "decrypt";
 const char kSignCommand[] = "sign";
 const char kVerifyCommand[] = "verify";
+const char kRegisterCommand[] = "register";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
@@ -70,6 +71,9 @@ Commands:
           --signature=<signature_file>
       Verifies the signature in |signature_file| against the contents of
       |input_file|.
+
+  register [--user=<email>] [--label=<keylabel]
+      Registers a key with a PKCS #11 token.
 )";
 
 // The Daemon class works well as a client loop as well.
@@ -239,6 +243,11 @@ class ClientLoop : public ClientLoopBase {
                         command_line->GetSwitchValueASCII("user"),
                         input,
                         signature);
+    } else if (args.front() == kRegisterCommand) {
+      task = base::Bind(&ClientLoop::CallRegister,
+                        weak_factory_.GetWeakPtr(),
+                        command_line->GetSwitchValueASCII("label"),
+                        command_line->GetSwitchValueASCII("user"));
     } else {
       return EX_USAGE;
     }
@@ -452,6 +461,15 @@ class ClientLoop : public ClientLoopBase {
       printf("Signature is BAD!\n");
     }
     Quit();
+  }
+
+  void CallRegister(const std::string& label, const std::string& username) {
+    RegisterKeyWithChapsTokenRequest request;
+    request.set_key_label(label);
+    request.set_username(username);
+    attestation_->RegisterKeyWithChapsToken(request, base::Bind(
+        &ClientLoop::PrintReplyAndQuit<RegisterKeyWithChapsTokenReply>,
+        weak_factory_.GetWeakPtr()));
   }
 
   std::unique_ptr<attestation::AttestationInterface> attestation_;

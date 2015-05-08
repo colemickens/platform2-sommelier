@@ -14,7 +14,7 @@ MockKeyStore::MockKeyStore() {
   ON_CALL(*this, Write(_, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, Delete(_, _)).WillByDefault(Return(true));
   ON_CALL(*this, DeleteByPrefix(_, _)).WillByDefault(Return(true));
-  ON_CALL(*this, Register(_, _, _, _, _)).WillByDefault(Return(true));
+  ON_CALL(*this, Register(_, _, _, _, _, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, RegisterCertificate(_, _)).WillByDefault(Return(true));
 }
 

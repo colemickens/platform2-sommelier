@@ -51,6 +51,10 @@ void DBusService::Register(const CompletionAction& callback) {
   dbus_interface->AddMethodHandler(kSign,
                                    base::Unretained(this),
                                    &DBusService::HandleSign);
+  dbus_interface->AddMethodHandler(
+      kRegisterKeyWithChapsToken,
+      base::Unretained(this),
+      &DBusService::HandleRegisterKeyWithChapsToken);
 
   dbus_object_.RegisterAsync(callback);
 }
@@ -200,6 +204,25 @@ void DBusService::HandleSign(
     response->Return(reply);
   };
   service_->Sign(
+      request,
+      base::Bind(callback, SharedResponsePointer(std::move(response))));
+}
+
+void DBusService::HandleRegisterKeyWithChapsToken(
+    std::unique_ptr<DBusMethodResponse<const RegisterKeyWithChapsTokenReply&>>
+        response,
+    const RegisterKeyWithChapsTokenRequest& request) {
+  VLOG(1) << __func__;
+  // Convert |response| to a shared_ptr so |service_| can safely copy the
+  // callback.
+  using SharedResponsePointer = std::shared_ptr<
+      DBusMethodResponse<const RegisterKeyWithChapsTokenReply&>>;
+  // A callback that fills the reply protobuf and sends it.
+  auto callback = [](const SharedResponsePointer& response,
+                     const RegisterKeyWithChapsTokenReply& reply) {
+    response->Return(reply);
+  };
+  service_->RegisterKeyWithChapsToken(
       request,
       base::Bind(callback, SharedResponsePointer(std::move(response))));
 }

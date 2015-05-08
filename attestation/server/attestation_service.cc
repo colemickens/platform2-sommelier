@@ -460,6 +460,54 @@ void AttestationService::SignTask(const SignRequest& request,
   result->set_signature(signature);
 }
 
+void AttestationService::RegisterKeyWithChapsToken(
+    const RegisterKeyWithChapsTokenRequest& request,
+    const RegisterKeyWithChapsTokenCallback& callback) {
+  auto result = std::make_shared<RegisterKeyWithChapsTokenReply>();
+  base::Closure task = base::Bind(
+      &AttestationService::RegisterKeyWithChapsTokenTask,
+      base::Unretained(this),
+      request,
+      result);
+  base::Closure reply = base::Bind(
+      &AttestationService::TaskRelayCallback<RegisterKeyWithChapsTokenReply>,
+      GetWeakPtr(),
+      callback,
+      result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, task, reply);
+}
+
+void AttestationService::RegisterKeyWithChapsTokenTask(
+    const RegisterKeyWithChapsTokenRequest& request,
+    const std::shared_ptr<RegisterKeyWithChapsTokenReply>& result) {
+  CertifiedKey key;
+  if (!FindKeyByLabel(request.username(), request.key_label(), &key)) {
+    result->set_status(STATUS_INVALID_PARAMETER);
+    return;
+  }
+  if (!key_store_->Register(request.username(), request.key_label(),
+                            key.key_type(), key.key_usage(), key.key_blob(),
+                            key.public_key(), key.certified_key_credential())) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  if (key.has_intermediate_ca_cert() &&
+      !key_store_->RegisterCertificate(request.username(),
+                                       key.intermediate_ca_cert())) {
+    result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+    return;
+  }
+  for (int i = 0; i < key.additional_intermediate_ca_cert_size(); ++i) {
+    if (!key_store_->RegisterCertificate(
+            request.username(),
+            key.additional_intermediate_ca_cert(i))) {
+      result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
+      return;
+    }
+  }
+  DeleteKey(request.username(), request.key_label());
+}
+
 bool AttestationService::IsPreparedForEnrollment() {
   if (!tpm_utility_->IsTpmReady()) {
     return false;

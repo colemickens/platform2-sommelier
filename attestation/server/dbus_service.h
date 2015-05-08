@@ -86,6 +86,12 @@ class DBusService {
           const SignReply&>> response,
       const SignRequest& request);
 
+  // Handles a RegisterKeyWithChapsToken D-Bus call.
+  void HandleRegisterKeyWithChapsToken(
+      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+          const RegisterKeyWithChapsTokenReply&>> response,
+      const RegisterKeyWithChapsTokenRequest& request);
+
   chromeos::dbus_utils::DBusObject dbus_object_;
   AttestationInterface* service_;
 

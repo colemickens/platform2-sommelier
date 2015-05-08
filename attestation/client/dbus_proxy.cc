@@ -175,4 +175,22 @@ void DBusProxy::Sign(const SignRequest& request, const SignCallback& callback) {
       request);
 }
 
+void DBusProxy::RegisterKeyWithChapsToken(
+    const RegisterKeyWithChapsTokenRequest& request,
+    const RegisterKeyWithChapsTokenCallback& callback) {
+  auto on_error = [callback](chromeos::Error* error) {
+    RegisterKeyWithChapsTokenReply reply;
+    reply.set_status(STATUS_NOT_AVAILABLE);
+    callback.Run(reply);
+  };
+  chromeos::dbus_utils::CallMethodWithTimeout(
+      kDBusTimeoutMS,
+      object_proxy_,
+      attestation::kAttestationInterface,
+      attestation::kRegisterKeyWithChapsToken,
+      callback,
+      base::Bind(on_error),
+      request);
+}
+
 }  // namespace attestation

@@ -88,7 +88,7 @@ bool Pkcs11KeyStore::Read(const std::string& username,
                           std::string* key_data) {
   CK_SLOT_ID slot;
   if (!GetUserSlot(username, &slot)) {
-    LOG(ERROR) << "Pkcs11KeyStore: No token for user: " << username;
+    LOG(ERROR) << "Pkcs11KeyStore: No token for user.";
     return false;
   }
   ScopedSession session(slot);
@@ -130,7 +130,7 @@ bool Pkcs11KeyStore::Write(const std::string& username,
   }
   CK_SLOT_ID slot;
   if (!GetUserSlot(username, &slot)) {
-    LOG(ERROR) << "Pkcs11KeyStore: No token for user: " << username;
+    LOG(ERROR) << "Pkcs11KeyStore: No token for user.";
     return false;
   }
   ScopedSession session(slot);
@@ -181,7 +181,7 @@ bool Pkcs11KeyStore::Delete(const std::string& username,
                             const std::string& key_name) {
   CK_SLOT_ID slot;
   if (!GetUserSlot(username, &slot)) {
-    LOG(ERROR) << "Pkcs11KeyStore: No token for user: " << username;
+    LOG(ERROR) << "Pkcs11KeyStore: No token for user.";
     return false;
   }
   ScopedSession session(slot);
@@ -203,7 +203,7 @@ bool Pkcs11KeyStore::DeleteByPrefix(const std::string& username,
                                     const std::string& key_prefix) {
   CK_SLOT_ID slot;
   if (!GetUserSlot(username, &slot)) {
-    LOG(ERROR) << "Pkcs11KeyStore: No token for user: " << username;
+    LOG(ERROR) << "Pkcs11KeyStore: No token for user.";
     return false;
   }
   ScopedSession session(slot);
@@ -225,14 +225,20 @@ bool Pkcs11KeyStore::DeleteByPrefix(const std::string& username,
 
 bool Pkcs11KeyStore::Register(const std::string& username,
                               const std::string& label,
+                              KeyType key_type,
+                              KeyUsage key_usage,
                               const std::string& private_key_blob,
                               const std::string& public_key_der,
                               const std::string& certificate) {
   const CK_ATTRIBUTE_TYPE kKeyBlobAttribute = CKA_VENDOR_DEFINED + 1;
 
+  if (key_type != KEY_TYPE_RSA) {
+    LOG(ERROR) << "Pkcs11KeyStore: Only RSA supported.";
+    return false;
+  }
   CK_SLOT_ID slot;
   if (!GetUserSlot(username, &slot)) {
-    LOG(ERROR) << "Pkcs11KeyStore: No token for user: " << username;
+    LOG(ERROR) << "Pkcs11KeyStore: No token for user.";
     return false;
   }
   ScopedSession session(slot);
@@ -263,21 +269,23 @@ bool Pkcs11KeyStore::Register(const std::string& username,
   // Construct a PKCS #11 template for the public key object.
   CK_BBOOL true_value = CK_TRUE;
   CK_BBOOL false_value = CK_FALSE;
-  CK_KEY_TYPE key_type = CKK_RSA;
+  CK_KEY_TYPE p11_key_type = CKK_RSA;
   CK_OBJECT_CLASS public_key_class = CKO_PUBLIC_KEY;
   std::string id = Sha1(modulus);
   std::string mutable_label(label);
   CK_ULONG modulus_bits = modulus.size() * 8;
+  CK_BBOOL sign_usage = (key_usage == KEY_USAGE_SIGN);
+  CK_BBOOL decrypt_usage = (key_usage == KEY_USAGE_DECRYPT);
   unsigned char public_exponent[] = {1, 0, 1};
   CK_ATTRIBUTE public_key_attributes[] = {
     {CKA_CLASS, &public_key_class, sizeof(public_key_class)},
     {CKA_TOKEN, &true_value, sizeof(true_value)},
     {CKA_DERIVE, &false_value, sizeof(false_value)},
     {CKA_WRAP, &false_value, sizeof(false_value)},
-    {CKA_VERIFY, &true_value, sizeof(true_value)},
+    {CKA_VERIFY, &sign_usage, sizeof(sign_usage)},
     {CKA_VERIFY_RECOVER, &false_value, sizeof(false_value)},
-    {CKA_ENCRYPT, &false_value, sizeof(false_value)},
-    {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+    {CKA_ENCRYPT, &decrypt_usage, sizeof(decrypt_usage)},
+    {CKA_KEY_TYPE, &p11_key_type, sizeof(p11_key_type)},
     {CKA_ID, string_as_array(&id), id.size()},
     {CKA_LABEL, string_as_array(&mutable_label), mutable_label.size()},
     {CKA_MODULUS_BITS, &modulus_bits, sizeof(modulus_bits)},
@@ -305,10 +313,10 @@ bool Pkcs11KeyStore::Register(const std::string& username,
     {CKA_EXTRACTABLE, &false_value, sizeof(false_value)},
     {CKA_DERIVE, &false_value, sizeof(false_value)},
     {CKA_UNWRAP, &false_value, sizeof(false_value)},
-    {CKA_SIGN, &true_value, sizeof(true_value)},
+    {CKA_SIGN, &sign_usage, sizeof(sign_usage)},
     {CKA_SIGN_RECOVER, &false_value, sizeof(false_value)},
-    {CKA_DECRYPT, &false_value, sizeof(false_value)},
-    {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+    {CKA_DECRYPT, &decrypt_usage, sizeof(decrypt_usage)},
+    {CKA_KEY_TYPE, &p11_key_type, sizeof(p11_key_type)},
     {CKA_ID, string_as_array(&id), id.size()},
     {CKA_LABEL, string_as_array(&mutable_label), mutable_label.size()},
     {CKA_PUBLIC_EXPONENT, public_exponent, arraysize(public_exponent)},
@@ -330,8 +338,10 @@ bool Pkcs11KeyStore::Register(const std::string& username,
 
   if (!certificate.empty()) {
     std::string subject;
-    if (!GetCertificateSubject(certificate, &subject)) {
-      LOG(WARNING) << "Pkcs11KeyStore: Failed to find certificate subject.";
+    std::string issuer;
+    std::string serial_number;
+    if (!GetCertificateFields(certificate, &subject, &issuer, &serial_number)) {
+      LOG(WARNING) << "Pkcs11KeyStore: Failed to find certificate fields.";
     }
     // Construct a PKCS #11 template for a certificate object.
     std::string mutable_certificate = certificate;
@@ -345,6 +355,12 @@ bool Pkcs11KeyStore::Register(const std::string& username,
       {CKA_LABEL, string_as_array(&mutable_label), mutable_label.size()},
       {CKA_CERTIFICATE_TYPE, &certificate_type, sizeof(certificate_type)},
       {CKA_SUBJECT, string_as_array(&subject), subject.size()},
+      {CKA_ISSUER, string_as_array(&issuer), issuer.size()},
+      {
+        CKA_SERIAL_NUMBER,
+        string_as_array(&serial_number),
+        serial_number.size()
+      },
       {
         CKA_VALUE,
         string_as_array(&mutable_certificate),
@@ -372,7 +388,7 @@ bool Pkcs11KeyStore::RegisterCertificate(const std::string& username,
                                          const std::string& certificate) {
   CK_SLOT_ID slot;
   if (!GetUserSlot(username, &slot)) {
-    LOG(ERROR) << "Pkcs11KeyStore: No token for user: " << username;
+    LOG(ERROR) << "Pkcs11KeyStore: No token for user.";
     return false;
   }
   ScopedSession session(slot);
@@ -386,8 +402,10 @@ bool Pkcs11KeyStore::RegisterCertificate(const std::string& username,
     return true;
   }
   std::string subject;
-  if (!GetCertificateSubject(certificate, &subject)) {
-    LOG(WARNING) << "Pkcs11KeyStore: Failed to find certificate subject.";
+  std::string issuer;
+  std::string serial_number;
+  if (!GetCertificateFields(certificate, &subject, &issuer, &serial_number)) {
+    LOG(WARNING) << "Pkcs11KeyStore: Failed to find certificate fields.";
   }
   // Construct a PKCS #11 template for a certificate object.
   std::string mutable_certificate = certificate;
@@ -401,6 +419,8 @@ bool Pkcs11KeyStore::RegisterCertificate(const std::string& username,
     {CKA_PRIVATE, &false_value, sizeof(false_value)},
     {CKA_CERTIFICATE_TYPE, &certificate_type, sizeof(certificate_type)},
     {CKA_SUBJECT, string_as_array(&subject), subject.size()},
+    {CKA_ISSUER, string_as_array(&issuer), issuer.size()},
+    {CKA_SERIAL_NUMBER, string_as_array(&serial_number), serial_number.size()},
     {
       CKA_VALUE,
       string_as_array(&mutable_certificate),
@@ -579,8 +599,10 @@ bool Pkcs11KeyStore::DeleteIfMatchesPrefix(CK_SESSION_HANDLE session_handle,
   return true;
 }
 
-bool Pkcs11KeyStore::GetCertificateSubject(const std::string& certificate,
-                                           std::string* subject) {
+bool Pkcs11KeyStore::GetCertificateFields(const std::string& certificate,
+                                          std::string* subject,
+                                          std::string* issuer,
+                                          std::string* serial_number) {
   const unsigned char* asn1_ptr = reinterpret_cast<const unsigned char*>(
       certificate.data());
   ScopedX509 x509(d2i_X509(nullptr, &asn1_ptr, certificate.size()));
@@ -588,14 +610,34 @@ bool Pkcs11KeyStore::GetCertificateSubject(const std::string& certificate,
     LOG(WARNING) << "Pkcs11KeyStore: Failed to decode certificate.";
     return false;
   }
-  unsigned char* buffer = nullptr;
-  int length = i2d_X509_NAME(x509->cert_info->subject, &buffer);
-  crypto::ScopedOpenSSLBytes scoped_buffer(buffer);
+  unsigned char* subject_buffer = nullptr;
+  int length = i2d_X509_NAME(x509->cert_info->subject, &subject_buffer);
+  crypto::ScopedOpenSSLBytes scoped_subject_buffer(subject_buffer);
   if (length <= 0) {
     LOG(WARNING) << "Pkcs11KeyStore: Failed to encode certificate subject.";
     return false;
   }
-  subject->assign(reinterpret_cast<char*>(buffer), length);
+  subject->assign(reinterpret_cast<char*>(subject_buffer), length);
+
+  unsigned char* issuer_buffer = nullptr;
+  length = i2d_X509_NAME(x509->cert_info->issuer, &issuer_buffer);
+  crypto::ScopedOpenSSLBytes scoped_issuer_buffer(issuer_buffer);
+  if (length <= 0) {
+    LOG(WARNING) << "Pkcs11KeyStore: Failed to encode certificate issuer.";
+    return false;
+  }
+  issuer->assign(reinterpret_cast<char*>(issuer_buffer), length);
+
+  unsigned char* serial_number_buffer = nullptr;
+  length = i2d_ASN1_INTEGER(x509->cert_info->serialNumber,
+                            &serial_number_buffer);
+  crypto::ScopedOpenSSLBytes scoped_serial_number_buffer(serial_number_buffer);
+  if (length <= 0) {
+    LOG(WARNING) << "Pkcs11KeyStore: Failed to encode certificate serial "
+                    "number.";
+    return false;
+  }
+  serial_number->assign(reinterpret_cast<char*>(serial_number_buffer), length);
   return true;
 }
 
