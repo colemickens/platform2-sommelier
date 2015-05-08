@@ -50,11 +50,6 @@ bool IsValidInterfaceName(const std::string& iface) {
 
 namespace firewalld {
 
-IpTables::IpTables() : IpTables{kIpTablesPath, kIp6TablesPath} {}
-
-IpTables::IpTables(const std::string& ip4_path, const std::string& ip6_path)
-    : ip4_exec_path_{ip4_path}, ip6_exec_path_{ip6_path} {}
-
 IpTables::~IpTables() {
   // Plug all holes when destructed.
   PlugAllHoles();
@@ -178,13 +173,13 @@ void IpTables::PlugAllHoles() {
 bool IpTables::AddAcceptRules(ProtocolEnum protocol,
                               uint16_t port,
                               const std::string& interface) {
-  if (!AddAcceptRule(ip4_exec_path_, protocol, port, interface)) {
-    LOG(ERROR) << "Could not add ACCEPT rule using '" << ip4_exec_path_ << "'";
+  if (!AddAcceptRule(kIpTablesPath, protocol, port, interface)) {
+    LOG(ERROR) << "Could not add ACCEPT rule using '" << kIpTablesPath << "'";
     return false;
   }
-  if (!AddAcceptRule(ip6_exec_path_, protocol, port, interface)) {
-    LOG(ERROR) << "Could not add ACCEPT rule using '" << ip6_exec_path_ << "'";
-    DeleteAcceptRule(ip4_exec_path_, protocol, port, interface);
+  if (!AddAcceptRule(kIp6TablesPath, protocol, port, interface)) {
+    LOG(ERROR) << "Could not add ACCEPT rule using '" << kIp6TablesPath << "'";
+    DeleteAcceptRule(kIpTablesPath, protocol, port, interface);
     return false;
   }
   return true;
@@ -193,9 +188,9 @@ bool IpTables::AddAcceptRules(ProtocolEnum protocol,
 bool IpTables::DeleteAcceptRules(ProtocolEnum protocol,
                                  uint16_t port,
                                  const std::string& interface) {
-  bool ip4_success = DeleteAcceptRule(ip4_exec_path_, protocol, port,
+  bool ip4_success = DeleteAcceptRule(kIpTablesPath, protocol, port,
                                       interface);
-  bool ip6_success = DeleteAcceptRule(ip6_exec_path_, protocol, port,
+  bool ip6_success = DeleteAcceptRule(kIp6TablesPath, protocol, port,
                                       interface);
   return ip4_success && ip6_success;
 }
@@ -204,45 +199,44 @@ bool IpTables::AddAcceptRule(const std::string& executable_path,
                              ProtocolEnum protocol,
                              uint16_t port,
                              const std::string& interface) {
-  chromeos::ProcessImpl iptables;
-  iptables.AddArg(executable_path);
-  iptables.AddArg("-I");  // insert
-  iptables.AddArg("INPUT");
-  iptables.AddArg("-p");  // protocol
-  iptables.AddArg(protocol == kProtocolTcp ? "tcp" : "udp");
-  iptables.AddArg("--dport");  // destination port
-  iptables.AddArg(std::to_string(port));
+  std::vector<std::string> argv;
+  argv.push_back(executable_path);
+  argv.push_back("-I");  // insert
+  argv.push_back("INPUT");
+  argv.push_back("-p");  // protocol
+  argv.push_back(protocol == kProtocolTcp ? "tcp" : "udp");
+  argv.push_back("--dport");  // destination port
+  argv.push_back(std::to_string(port));
   if (!interface.empty()) {
-    iptables.AddArg("-i");  // interface
-    iptables.AddArg(interface);
+    argv.push_back("-i");  // interface
+    argv.push_back(interface);
   }
-  iptables.AddArg("-j");
-  iptables.AddArg("ACCEPT");
+  argv.push_back("-j");
+  argv.push_back("ACCEPT");
 
-  return iptables.Run() == 0;
+  return Execv(argv) == 0;
 }
 
 bool IpTables::DeleteAcceptRule(const std::string& executable_path,
                                 ProtocolEnum protocol,
                                 uint16_t port,
                                 const std::string& interface) {
-  chromeos::ProcessImpl iptables;
-  iptables.AddArg(executable_path);
-  iptables.AddArg("-D");  // delete
-  iptables.AddArg("INPUT");
-  iptables.AddArg("-p");  // protocol
-  iptables.AddArg(protocol == kProtocolTcp ? "tcp" : "udp");
-  iptables.AddArg("--dport");  // destination port
-  std::string port_number = base::StringPrintf("%d", port);
-  iptables.AddArg(port_number.c_str());
+  std::vector<std::string> argv;
+  argv.push_back(executable_path);
+  argv.push_back("-D");  // delete
+  argv.push_back("INPUT");
+  argv.push_back("-p");  // protocol
+  argv.push_back(protocol == kProtocolTcp ? "tcp" : "udp");
+  argv.push_back("--dport");  // destination port
+  argv.push_back(std::to_string(port));
   if (interface != "") {
-    iptables.AddArg("-i");  // interface
-    iptables.AddArg(interface);
+    argv.push_back("-i");  // interface
+    argv.push_back(interface);
   }
-  iptables.AddArg("-j");
-  iptables.AddArg("ACCEPT");
+  argv.push_back("-j");
+  argv.push_back("ACCEPT");
 
-  return iptables.Run() == 0;
+  return Execv(argv) == 0;
 }
 
 bool IpTables::ApplyVpnSetup(const std::vector<std::string>& usernames,
@@ -290,38 +284,38 @@ bool IpTables::ApplyVpnSetup(const std::vector<std::string>& usernames,
 }
 
 bool IpTables::ApplyMasquerade(const std::string& interface, bool add) {
-  chromeos::ProcessImpl iptables;
-  iptables.AddArg(ip4_exec_path_);
-  iptables.AddArg("-t");  // table
-  iptables.AddArg("nat");
-  iptables.AddArg(add ? "-A" : "-D");  // rule
-  iptables.AddArg("POSTROUTING");
-  iptables.AddArg("-o");  // output interface
-  iptables.AddArg(interface);
-  iptables.AddArg("-j");
-  iptables.AddArg("MASQUERADE");
+  std::vector<std::string> argv;
+  argv.push_back(kIpTablesPath);
+  argv.push_back("-t");  // table
+  argv.push_back("nat");
+  argv.push_back(add ? "-A" : "-D");  // rule
+  argv.push_back("POSTROUTING");
+  argv.push_back("-o");  // output interface
+  argv.push_back(interface);
+  argv.push_back("-j");
+  argv.push_back("MASQUERADE");
 
-  return iptables.Run() == 0;
+  return Execv(argv) == 0;
 }
 
 bool IpTables::ApplyMarkForUserTraffic(const std::string& user_name,
                                        bool add) {
-  chromeos::ProcessImpl iptables;
-  iptables.AddArg(ip4_exec_path_);
-  iptables.AddArg("-t");  // table
-  iptables.AddArg("mangle");
-  iptables.AddArg(add ? "-A" : "-D");  // rule
-  iptables.AddArg("OUTPUT");
-  iptables.AddArg("-m");
-  iptables.AddArg("owner");
-  iptables.AddArg("--uid-owner");
-  iptables.AddArg(user_name);
-  iptables.AddArg("-j");
-  iptables.AddArg("MARK");
-  iptables.AddArg("--set-mark");
-  iptables.AddArg(kMarkForUserTraffic);
+  std::vector<std::string> argv;
+  argv.push_back(kIpTablesPath);
+  argv.push_back("-t");  // table
+  argv.push_back("mangle");
+  argv.push_back(add ? "-A" : "-D");  // rule
+  argv.push_back("OUTPUT");
+  argv.push_back("-m");
+  argv.push_back("owner");
+  argv.push_back("--uid-owner");
+  argv.push_back(user_name);
+  argv.push_back("-j");
+  argv.push_back("MARK");
+  argv.push_back("--set-mark");
+  argv.push_back(kMarkForUserTraffic);
 
-  return iptables.Run() == 0;
+  return Execv(argv) == 0;
 }
 
 bool IpTables::ApplyRuleForUserTraffic(bool add) {
@@ -335,6 +329,14 @@ bool IpTables::ApplyRuleForUserTraffic(bool add) {
   ip.AddArg(kTableIdForUserTraffic);
 
   return ip.Run() == 0;
+}
+
+int IpTables::Execv(const std::vector<std::string>& argv) {
+  chromeos::ProcessImpl proc;
+  for (const auto& arg : argv) {
+    proc.AddArg(arg);
+  }
+  return proc.Run();
 }
 
 }  // namespace firewalld

@@ -16,16 +16,22 @@ namespace firewalld {
 
 class MockIpTables : public IpTables {
  public:
-  MockIpTables();
+  MockIpTables() = default;
   ~MockIpTables() override;
 
-  MOCK_METHOD2(ApplyMasquerade, bool(const std::string& interface,
-                                     bool add));
+  MOCK_METHOD4(
+      AddAcceptRule,
+      bool(const std::string&, ProtocolEnum, uint16_t, const std::string&));
 
-  MOCK_METHOD2(ApplyMarkForUserTraffic, bool(const std::string& user_name,
-                                             bool add));
+  MOCK_METHOD4(
+      DeleteAcceptRule,
+      bool(const std::string&, ProtocolEnum, uint16_t, const std::string&));
 
-  MOCK_METHOD1(ApplyRuleForUserTraffic, bool(bool add));
+  MOCK_METHOD2(ApplyMasquerade, bool(const std::string&, bool));
+
+  MOCK_METHOD2(ApplyMarkForUserTraffic, bool(const std::string&, bool));
+
+  MOCK_METHOD1(ApplyRuleForUserTraffic, bool(bool));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockIpTables);

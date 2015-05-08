@@ -6,8 +6,8 @@
 
 namespace firewalld {
 
-MockIpTables::MockIpTables() : IpTables("", "") {}
-
-MockIpTables::~MockIpTables() {}
+MockIpTables::~MockIpTables() {
+  PlugAllHoles();
+}
 
 }  // namespace firewalld

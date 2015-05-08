@@ -25,7 +25,7 @@ class IpTables : public org::chromium::FirewalldInterface {
  public:
   typedef std::pair<uint16_t, std::string> Hole;
 
-  IpTables();
+  IpTables() = default;
   ~IpTables();
 
   // D-Bus methods.
@@ -41,10 +41,6 @@ class IpTables : public org::chromium::FirewalldInterface {
 
   // Close all outstanding firewall holes.
   void PlugAllHoles();
-
- protected:
-  // Test-only.
-  explicit IpTables(const std::string& ip4_path, const std::string& ip6_path);
 
  private:
   friend class IpTablesTest;
@@ -70,29 +66,25 @@ class IpTables : public org::chromium::FirewalldInterface {
   bool DeleteAcceptRules(ProtocolEnum protocol,
                          uint16_t port,
                          const std::string& interface);
-  bool AddAcceptRule(const std::string& executable_path,
-                     ProtocolEnum protocol,
-                     uint16_t port,
-                     const std::string& interface);
-  bool DeleteAcceptRule(const std::string& executable_path,
-                        ProtocolEnum protocol,
-                        uint16_t port,
-                        const std::string& interface);
+
+  virtual bool AddAcceptRule(const std::string& executable_path,
+                             ProtocolEnum protocol,
+                             uint16_t port,
+                             const std::string& interface);
+  virtual bool DeleteAcceptRule(const std::string& executable_path,
+                                ProtocolEnum protocol,
+                                uint16_t port,
+                                const std::string& interface);
 
   bool ApplyVpnSetup(const std::vector<std::string>& usernames,
                      const std::string& interface,
                      bool add);
 
-  virtual bool ApplyMasquerade(const std::string& interface,
-                               bool add);
-
-  virtual bool ApplyMarkForUserTraffic(const std::string& user_name,
-                                       bool add);
-
+  virtual bool ApplyMasquerade(const std::string& interface, bool add);
+  virtual bool ApplyMarkForUserTraffic(const std::string& user_name, bool add);
   virtual bool ApplyRuleForUserTraffic(bool add);
 
-  std::string ip4_exec_path_;
-  std::string ip6_exec_path_;
+  int Execv(const std::vector<std::string>& argv);
 
   // Keep track of firewall holes to avoid adding redundant firewall rules.
   std::set<Hole> tcp_holes_;
