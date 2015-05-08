@@ -6,11 +6,8 @@ option optimize_for = LITE_RUNTIME;
 
 package soma;
 
-// DEPRECATED in favor of SandboxSpec. Any new fields must be added there.
-// TODO(cmasone): Remove this as a part of http://brbug.com/1028
-message ContainerSpec {
+message SandboxSpec {
   // ------------- Submessage types ----------------------------------------- //
-  // NB: When adding a value here, add it to namespace.h as well.
   enum Namespace {
     NEWIPC = 0;
     NEWNET = 1;
@@ -53,32 +50,32 @@ message ContainerSpec {
   }
 
   message UserACL {
-    optional string service_name = 1;
+    optional string endpoint_name = 1;
     repeated uint32 uids = 2;
   }
 
   message GroupACL {
-    optional string service_name = 1;
+    optional string endpoint_name = 1;
     repeated uint32 gids = 2;
   }
 
   // ------------- Required fields ------------------------------------------ //
-  // Absolute path to the service's service bundle filesystem overlay.
-  optional string service_bundle_path = 1;
+  // Absolute path to the sandbox's filesystem overlay.
+  optional string overlay_path = 1;
 
-  // Unique name identifying this ContainerSpec.
+  // Unique name identifying this SandboxSpec.
   optional string name = 2;
 
-  // Executables to be run inside this container. There must be at least one.
+  // Executables to be run inside this sandbox. There must be at least one.
   repeated Executable executables = 3;
 
   // ------------- Optional fields ------------------------------------------ //
 
-  // List of fully-qualified names of services that should be registered
-  // from inside this container.
-  repeated string service_names = 4;
+  // List of fully-qualified names of endpoints that should be registered
+  // from inside this sandbox.
+  repeated string endpoint_names = 4;
 
-  // Namespaces to unshare for the container.
+  // Namespaces to unshare for the sandbox.
   repeated Namespace namespaces = 5;
 
   // Path-based filters indicating which device nodes should be visible.
@@ -87,7 +84,7 @@ message ContainerSpec {
   // mknod-number-based filters indicating which device nodes should be visible.
   repeated DeviceNodeFilter device_node_filters = 7;
 
-  // Whether this container should be running at all times or started on-demand.
+  // Whether this sandbox should be running at all times or started on-demand.
   optional bool is_persistent = 8;
 
   repeated UserACL user_acls = 9;
