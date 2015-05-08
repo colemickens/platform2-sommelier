@@ -152,8 +152,8 @@ void Manager::RunScanImageProcess(
   scan_process->AddArg(device_name);
 
   for (const auto& property : scan_properties) {
-    const string &property_name = property.first;
-    const auto &property_value = property.second;
+    const string& property_name = property.first;
+    const auto& property_value = property.second;
     if (property_name == kScanPropertyMode &&
         property_value.IsTypeCompatible<string>()) {
       string mode = property_value.Get<string>();
@@ -228,12 +228,12 @@ void Manager::RunScanImageProcess(
 
 // static
 Manager::ScannerInfo Manager::ScannerInfoFromString(
-    const string &scanner_info_string) {
+    const string& scanner_info_string) {
   vector<string> scanner_output_lines;
   base::SplitString(scanner_info_string, '\n', &scanner_output_lines);
 
   ScannerInfo scanners;
-  for (const auto &line : scanner_output_lines) {
+  for (const auto& line : scanner_output_lines) {
     vector<string> scanner_info_parts;
     base::SplitString(line, '%', &scanner_info_parts);
     if (scanner_info_parts.size() != 4) {
