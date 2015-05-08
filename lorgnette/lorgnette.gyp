@@ -40,6 +40,7 @@
       },
       'sources': [
         'daemon.cc',
+        'epson_probe.cc',
         'firewall_manager.cc',
         'manager.cc',
       ],

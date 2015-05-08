@@ -23,6 +23,7 @@
 #include <chromeos/variant_dictionary.h>
 
 #include "lorgnette/daemon.h"
+#include "lorgnette/epson_probe.h"
 #include "lorgnette/firewall_manager.h"
 
 using base::ScopedFD;
@@ -97,6 +98,7 @@ bool Manager::ListScanners(chromeos::ErrorPtr* error,
   }
   activity_callback_.Run();
   *scanner_list = ScannerInfoFromString(scanner_output_string);
+  epson_probe::ProbeForScanners(firewall_manager_.get(), scanner_list);
 
   firewall_manager_->ReleaseAllPortsAccess();
   return true;
