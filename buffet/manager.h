@@ -89,9 +89,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   std::shared_ptr<StateManager> state_manager_;
   std::unique_ptr<DeviceRegistrationInfo> device_info_;
 
-  // Token given by Command Manager to track the registered Command Definition
-  // change callback.
-  CommandManager::CallbackToken command_changed_callback_token_;
+  base::WeakPtrFactory<Manager> weak_ptr_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

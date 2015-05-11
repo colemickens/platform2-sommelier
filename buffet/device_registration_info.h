@@ -255,10 +255,6 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   // Device state manager.
   std::shared_ptr<StateManager> state_manager_;
 
-  // Token given by Command Manager to track the registered Command Definition
-  // change callback.
-  CommandManager::CallbackToken command_changed_callback_token_;
-
   std::unique_ptr<BuffetConfig> config_;
 
   const bool xmpp_enabled_;

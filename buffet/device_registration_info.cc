@@ -141,7 +141,7 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
       xmpp_enabled_{xmpp_enabled},
       manager_{manager} {
   OnConfigChanged();
-  command_changed_callback_token_ = command_manager_->AddOnCommandDefChanged(
+  command_manager_->AddOnCommandDefChanged(
       base::Bind(&DeviceRegistrationInfo::OnCommandDefsChanged,
                  weak_factory_.GetWeakPtr()));
 }

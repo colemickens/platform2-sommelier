@@ -53,7 +53,8 @@ bool CommandManager::LoadCommands(const base::DictionaryValue& json,
                                   chromeos::ErrorPtr* error) {
   bool result =
       dictionary_.LoadCommands(json, category, &base_dictionary_, error);
-  on_command_changed_.Notify();
+  for (const auto& cb : on_command_changed_)
+    cb.Run();
   return result;
 }
 
@@ -128,10 +129,10 @@ bool CommandManager::SetCommandVisibility(
 
   // Now that we know that all the command names were valid,
   // update the respective commands' visibility.
-  for (CommandDefinition* def : definitions) {
+  for (CommandDefinition* def : definitions)
     def->SetVisibility(visibility);
-  }
-  on_command_changed_.Notify();
+  for (const auto& cb : on_command_changed_)
+    cb.Run();
   return true;
 }
 

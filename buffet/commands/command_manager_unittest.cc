@@ -164,7 +164,7 @@ TEST(CommandManager, UpdateCommandVisibility) {
   CommandManager manager;
   int update_count = 0;
   auto on_command_change = [&update_count]() { update_count++; };
-  auto token = manager.AddOnCommandDefChanged(base::Bind(on_command_change));
+  manager.AddOnCommandDefChanged(base::Bind(on_command_change));
 
   auto json = CreateDictionaryValue(R"({
     'foo': {

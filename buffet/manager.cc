@@ -53,8 +53,8 @@ void Manager::Start(const base::FilePath& config_path,
                     const AsyncEventSequencer::CompletionAction& cb) {
   command_manager_ =
       std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
-  command_changed_callback_token_ = command_manager_->AddOnCommandDefChanged(
-      base::Bind(&Manager::OnCommandDefsChanged, base::Unretained(this)));
+  command_manager_->AddOnCommandDefChanged(base::Bind(
+      &Manager::OnCommandDefsChanged, weak_ptr_factory_.GetWeakPtr()));
   command_manager_->Startup(base::FilePath{"/etc/buffet"},
                             test_definitions_path);
   state_change_queue_ = std::unique_ptr<StateChangeQueue>(
