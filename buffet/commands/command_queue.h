@@ -10,25 +10,25 @@
 #include <queue>
 #include <string>
 #include <utility>
+#include <vector>
 
+#include <base/callback.h>
 #include <base/macros.h>
 
 #include "buffet/commands/command_instance.h"
 
 namespace buffet {
 
-class CommandDispachInterface;
-
 class CommandQueue final {
  public:
+  using Callback = base::Callback<void(CommandInstance*)>;
   CommandQueue() = default;
 
-  // Sets a command dispatch notifications for changes in command queue.
-  // |dispatch_interface| must outlive the CommandQueue object instance
-  // or be nullptr.
-  void SetCommandDispachInterface(CommandDispachInterface* dispatch_interface) {
-    dispatch_interface_ = dispatch_interface;
-  }
+  // Adds notifications callback for a new command is added to the queue.
+  void AddOnCommandAddedCallback(const Callback& callback);
+
+  // Adds notifications callback for a command is removed from the queue.
+  void AddOnCommandRemovedCallback(const Callback& callback);
 
   // Checks if the command queue is empty.
   bool IsEmpty() const { return map_.empty(); }
@@ -75,8 +75,9 @@ class CommandQueue final {
   // Queue of commands to be removed.
   std::queue<std::pair<base::Time, std::string>> remove_queue_;
 
-  // Callback interface for command dispatch, if provided.
-  CommandDispachInterface* dispatch_interface_ = nullptr;
+  using CallbackList = std::vector<Callback>;
+  CallbackList on_command_added_;
+  CallbackList on_command_removed_;
 
   DISALLOW_COPY_AND_ASSIGN(CommandQueue);
 };

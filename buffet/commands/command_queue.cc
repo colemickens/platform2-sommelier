@@ -4,14 +4,21 @@
 
 #include "buffet/commands/command_queue.h"
 
+#include <base/bind.h>
 #include <base/time/time.h>
-
-#include "buffet/commands/command_dispatch_interface.h"
 
 namespace buffet {
 
 namespace {
 const int kRemoveCommandDelayMin = 5;
+}
+
+void CommandQueue::AddOnCommandAddedCallback(const Callback& callback) {
+  on_command_added_.push_back(callback);
+}
+
+void CommandQueue::AddOnCommandRemovedCallback(const Callback& callback) {
+  on_command_removed_.push_back(callback);
 }
 
 void CommandQueue::Add(std::unique_ptr<CommandInstance> instance) {
@@ -21,8 +28,8 @@ void CommandQueue::Add(std::unique_ptr<CommandInstance> instance) {
   auto pair = map_.insert(std::make_pair(id, std::move(instance)));
   LOG_IF(FATAL, !pair.second) << "Command with ID '" << id
                               << "' is already in the queue";
-  if (dispatch_interface_)
-    dispatch_interface_->OnCommandAdded(pair.first->second.get());
+  for (const auto& cb : on_command_added_)
+    cb.Run(pair.first->second.get());
   Cleanup();
 }
 
@@ -43,8 +50,8 @@ bool CommandQueue::Remove(const std::string& id) {
   std::unique_ptr<CommandInstance> instance{std::move(p->second)};
   instance->SetCommandQueue(nullptr);
   map_.erase(p);
-  if (dispatch_interface_)
-    dispatch_interface_->OnCommandRemoved(instance.get());
+  for (const auto& cb : on_command_removed_)
+    cb.Run(instance.get());
   return true;
 }
 

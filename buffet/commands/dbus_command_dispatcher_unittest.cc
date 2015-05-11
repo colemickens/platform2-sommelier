@@ -16,6 +16,7 @@
 
 #include "buffet/commands/command_dictionary.h"
 #include "buffet/commands/command_queue.h"
+#include "buffet/commands/dbus_command_proxy.h"
 #include "buffet/commands/unittest_utils.h"
 #include "buffet/dbus_constants.h"
 
@@ -60,9 +61,10 @@ class DBusCommandDispacherTest : public testing::Test {
     om_.reset(new chromeos::dbus_utils::ExportedObjectManager(
         bus_.get(), kExportedObjectManagerPath));
     om_->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
-    command_dispatcher_.reset(
-        new DBusCommandDispacher(om_->GetBus(), om_.get()));
-    command_queue_.SetCommandDispachInterface(command_dispatcher_.get());
+    command_dispatcher_.reset(new DBusCommandDispacher(om_->AsWeakPtr()));
+    command_queue_.AddOnCommandAddedCallback(
+        base::Bind(&DBusCommandDispacher::OnCommandAdded,
+                   base::Unretained(command_dispatcher_.get())));
     // Use a mock exported object for command proxy.
     mock_exported_command_proxy_ = new dbus::MockExportedObject(
         bus_.get(), kCmdObjPath);
@@ -133,8 +135,8 @@ class DBusCommandDispacherTest : public testing::Test {
   scoped_refptr<dbus::MockExportedObject> mock_exported_command_proxy_;
   std::unique_ptr<chromeos::dbus_utils::ExportedObjectManager> om_;
   CommandDictionary dictionary_;
-  CommandQueue command_queue_;
   std::unique_ptr<DBusCommandDispacher> command_dispatcher_;
+  CommandQueue command_queue_;
 };
 
 TEST_F(DBusCommandDispacherTest, Test_Command_Base_Shutdown) {

@@ -38,8 +38,6 @@ class CommandManager final {
   explicit CommandManager(
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
           object_manager);
-  // Special constructor to help mock out command dispatcher for testing.
-  explicit CommandManager(CommandDispachInterface* dispatch_interface);
 
   // Sets callback which is called when command definitions is changed.
   void AddOnCommandDefChanged(const base::Closure& callback) {
@@ -103,8 +101,8 @@ class CommandManager final {
  private:
   CommandDictionary base_dictionary_;  // Base/std command definitions/schemas.
   CommandDictionary dictionary_;  // Command definitions/schemas.
-  CommandQueue command_queue_;
   DBusCommandDispacher command_dispatcher_;
+  CommandQueue command_queue_;
   std::vector<base::Callback<void()>> on_command_changed_;
 
   DISALLOW_COPY_AND_ASSIGN(CommandManager);

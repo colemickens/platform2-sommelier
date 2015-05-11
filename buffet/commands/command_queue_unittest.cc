@@ -8,11 +8,12 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/memory/weak_ptr.h>
 #include <chromeos/strings/string_utils.h>
 #include <gtest/gtest.h>
 
 #include "buffet/commands/command_definition.h"
-#include "buffet/commands/command_dispatch_interface.h"
 #include "buffet/commands/object_schema.h"
 
 namespace buffet {
@@ -44,22 +45,30 @@ class CommandQueueTest : public testing::Test {
                                         ObjectSchema::Create()};
 };
 
-// Fake implementation of CommandDispachInterface.
-// Just keeps track of commands being added to and removed from the queue_.
+// Keeps track of commands being added to and removed from the queue_.
 // Aborts if duplicate commands are added or non-existent commands are removed.
-class FakeDispatchInterface : public CommandDispachInterface {
+class FakeDispatcher {
  public:
-  void OnCommandAdded(CommandInstance* command_instance) override {
+  explicit FakeDispatcher(CommandQueue* queue) {
+    queue->AddOnCommandAddedCallback(
+        base::Bind(&FakeDispatcher::OnCommandAdded,
+                   weak_ptr_factory_.GetWeakPtr()));
+    queue->AddOnCommandRemovedCallback(
+        base::Bind(&FakeDispatcher::OnCommandRemoved,
+                   weak_ptr_factory_.GetWeakPtr()));
+  }
+
+  void OnCommandAdded(CommandInstance* command_instance) {
     CHECK(ids_.insert(command_instance->GetID()).second)
         << "Command ID already exists: " << command_instance->GetID();
     CHECK(commands_.insert(command_instance).second)
         << "Command instance already exists";
   }
 
-  void OnCommandRemoved(CommandInstance* command_instance) override {
-    CHECK_EQ(1, ids_.erase(command_instance->GetID()))
+  void OnCommandRemoved(CommandInstance* command_instance) {
+    CHECK_EQ(1u, ids_.erase(command_instance->GetID()))
         << "Command ID not found: " << command_instance->GetID();
-    CHECK_EQ(1, commands_.erase(command_instance))
+    CHECK_EQ(1u, commands_.erase(command_instance))
         << "Command instance not found";
   }
 
@@ -73,6 +82,7 @@ class FakeDispatchInterface : public CommandDispachInterface {
  private:
   std::set<std::string> ids_;
   std::set<CommandInstance*> commands_;
+  base::WeakPtrFactory<FakeDispatcher> weak_ptr_factory_{this};
 };
 
 TEST_F(CommandQueueTest, Empty) {
@@ -123,8 +133,7 @@ TEST_F(CommandQueueTest, DelayedRemove) {
 }
 
 TEST_F(CommandQueueTest, Dispatch) {
-  FakeDispatchInterface dispatch;
-  queue_.SetCommandDispachInterface(&dispatch);
+  FakeDispatcher dispatch(&queue_);
   const std::string id1 = "id1";
   const std::string id2 = "id2";
   queue_.Add(CreateDummyCommandInstance("base.reboot", id1));
@@ -137,7 +146,6 @@ TEST_F(CommandQueueTest, Dispatch) {
   EXPECT_EQ(id2, dispatch.GetIDs());
   Remove(id2);
   EXPECT_EQ("", dispatch.GetIDs());
-  queue_.SetCommandDispachInterface(nullptr);
 }
 
 TEST_F(CommandQueueTest, Find) {

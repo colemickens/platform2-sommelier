@@ -10,10 +10,6 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <dbus/bus.h>
-
-#include "buffet/commands/command_dispatch_interface.h"
-#include "buffet/commands/dbus_command_proxy.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -23,37 +19,29 @@ class ExportedObjectManager;
 
 namespace buffet {
 
-// Implements D-Bus dispatch of commands. When OnCommandAdded is called over
-// CommandDispachInterface, DBusCommandDispacher creates an instance of
-// DBusCommandProxy object and advertises it through ExportedObjectManager on
-// D-Bus. Command handling processes can watch the new D-Bus object appear
-// and communicate with it to update the command handling progress.
-// Once command is handled, DBusCommandProxy::Done() is called and the command
-// is removed from the command queue and D-Bus ExportedObjectManager.
-class DBusCommandDispacher : public CommandDispachInterface {
+class CommandInstance;
+
+// Implements D-Bus dispatch of commands. When OnCommandAdded is called,
+// DBusCommandDispacher creates an instance of DBusCommandProxy object and
+// advertises it through ExportedObjectManager on D-Bus. Command handling
+// processes can watch the new D-Bus object appear and communicate with it to
+// update the command handling progress. Once command is handled,
+// DBusCommandProxy::Done() is called and the command is removed from the
+// command queue and D-Bus ExportedObjectManager.
+class DBusCommandDispacher {
  public:
-  DBusCommandDispacher(
-      const scoped_refptr<dbus::Bus>& bus,
-      chromeos::dbus_utils::ExportedObjectManager* object_manager = nullptr);
-  virtual ~DBusCommandDispacher() = default;
+  explicit DBusCommandDispacher(const base::WeakPtr<
+      chromeos::dbus_utils::ExportedObjectManager>& object_manager);
 
-  // CommandDispachInterface overrides. Called by CommandQueue.
-  void OnCommandAdded(CommandInstance* command_instance) override;
-  void OnCommandRemoved(CommandInstance* command_instance) override;
-
- protected:
-  virtual std::unique_ptr<DBusCommandProxy> CreateDBusCommandProxy(
-      CommandInstance* command_instance);
+  void OnCommandAdded(CommandInstance* command_instance);
 
  private:
-  scoped_refptr<dbus::Bus> bus_;
   base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager> object_manager_;
-  int next_id_;
+  int next_id_{0};
 
   // Default constructor is used in special circumstances such as for testing.
   DBusCommandDispacher() = default;
 
-  friend class DBusCommandDispacherTest;
   friend class CommandManager;
   DISALLOW_COPY_AND_ASSIGN(DBusCommandDispacher);
 };

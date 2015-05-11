@@ -188,7 +188,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     storage_ = std::make_shared<MemStorage>();
     storage_->Save(&data_);
     transport_ = std::make_shared<chromeos::http::fake::Transport>();
-    command_manager_ = std::make_shared<CommandManager>(nullptr);
+    command_manager_ = std::make_shared<CommandManager>();
     state_manager_ = std::make_shared<StateManager>(&mock_state_change_queue_);
     chromeos::KeyValueStore config_store;
     config_store.SetString("client_id", test_data::kClientId);

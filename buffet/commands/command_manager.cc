@@ -16,18 +16,16 @@ using chromeos::dbus_utils::ExportedObjectManager;
 
 namespace buffet {
 
-CommandManager::CommandManager() {
-  command_queue_.SetCommandDispachInterface(&command_dispatcher_);
+CommandManager::CommandManager()
+    : CommandManager(base::WeakPtr<ExportedObjectManager>{}) {
 }
 
 CommandManager::CommandManager(
     const base::WeakPtr<ExportedObjectManager>& object_manager)
-    : command_dispatcher_(object_manager->GetBus(), object_manager.get()) {
-  command_queue_.SetCommandDispachInterface(&command_dispatcher_);
-}
-
-CommandManager::CommandManager(CommandDispachInterface* dispatch_interface) {
-  command_queue_.SetCommandDispachInterface(dispatch_interface);
+    : command_dispatcher_(object_manager) {
+  command_queue_.AddOnCommandAddedCallback(
+      base::Bind(&DBusCommandDispacher::OnCommandAdded,
+                 base::Unretained(&command_dispatcher_)));
 }
 
 const CommandDictionary& CommandManager::GetCommandDictionary() const {
