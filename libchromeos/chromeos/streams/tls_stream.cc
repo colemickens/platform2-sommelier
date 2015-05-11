@@ -24,7 +24,7 @@ namespace {
 
 // SSL info callback which is called by OpenSSL when we enable logging level of
 // at least 3. This logs the information about the internal TLS handshake.
-void tls_info_callback(const SSL *ssl, int where, int ret) {
+void TlsInfoCallback(const SSL *ssl, int where, int ret) {
   std::string reason;
   std::vector<std::string> info;
   if (where & SSL_CB_LOOP)
@@ -51,6 +51,13 @@ void tls_info_callback(const SSL *ssl, int where, int ret) {
           << ", with status: " << ret << reason;
 }
 
+// Static variable to store the index of TlsStream private data in SSL context
+// used to store custom data for OnCertVerifyResults().
+int ssl_ctx_private_data_index = -1;
+
+// Default trusted certificate store location.
+const char kChromeOSCACertificatePath[] = "/usr/share/chromeos-ca-certificates";
+
 }  // anonymous namespace
 
 namespace chromeos {
@@ -63,8 +70,7 @@ class TlsStream::TlsStreamImpl {
   ~TlsStreamImpl();
 
   bool Init(StreamPtr socket,
-            X509* certificate,
-            EVP_PKEY* private_key,
+            const std::string& host,
             const base::Closure& success_callback,
             const Stream::ErrorCallback& error_callback,
             ErrorPtr* error);
@@ -99,9 +105,11 @@ class TlsStream::TlsStreamImpl {
                       const Stream::ErrorCallback& error_callback,
                       Stream::AccessMode mode);
 
-  static int VerifyPeer(int ok, X509_STORE_CTX* ctx);
+  int OnCertVerifyResults(int ok, X509_STORE_CTX* ctx);
+  static int OnCertVerifyResultsStatic(int ok, X509_STORE_CTX* ctx);
 
   StreamPtr socket_;
+  std::string host_;  // Expected host name used to verify the server identity.
   std::unique_ptr<SSL_CTX, decltype(&SSL_CTX_free)> ctx_{nullptr, SSL_CTX_free};
   std::unique_ptr<SSL, decltype(&SSL_free)> ssl_{nullptr, SSL_free};
   BIO* stream_bio_{nullptr};
@@ -115,6 +123,12 @@ class TlsStream::TlsStreamImpl {
 };
 
 TlsStream::TlsStreamImpl::TlsStreamImpl() {
+  SSL_load_error_strings();
+  SSL_library_init();
+  if (ssl_ctx_private_data_index < 0) {
+    ssl_ctx_private_data_index =
+        SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+  }
   io_buffer.resize(4096);
 }
 
@@ -192,10 +206,12 @@ bool TlsStream::TlsStreamImpl::Flush(ErrorPtr* error) {
 }
 
 bool TlsStream::TlsStreamImpl::Close(ErrorPtr* error) {
-  for (;;) {
+  int retry_count = 0;
+  while (retry_count < 2) {
     int ret = SSL_shutdown(ssl_.get());
     if (ret == 0) {
       // TLS shutdown hasn't completed yet. Retrying...;
+      retry_count++;
       continue;
     }
     if (ret == 1)
@@ -275,51 +291,78 @@ bool TlsStream::TlsStreamImpl::ReportError(
   return false;
 }
 
-int TlsStream::TlsStreamImpl::VerifyPeer(int ok, X509_STORE_CTX* ctx) {
-  // TODO(avakulenko): Verify the server certificate chain here.
-  return 1;
+int TlsStream::TlsStreamImpl::OnCertVerifyResults(int ok, X509_STORE_CTX* ctx) {
+  // OpenSSL already performs a comprehensive check of the certificate chain
+  // (using X509_verify_cert() function) and calls back with the result of its
+  // verification.
+  // |ok| is set to 1 if the verification passed and 0 if an error was detected.
+  // Here we can perform some additional checks if we need to, or simply log
+  // the issues found.
+
+  // For now, just log an error if it occurred.
+  if (!ok) {
+    LOG(ERROR) << "Server certificate validation failed: "
+               << X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx));
+  } else {
+    // TODO(avakulenko): Verify the server name in the certificate against
+    // |host_| name expected by the caller: brbug.com/1050
+  }
+  return ok;
+}
+
+int TlsStream::TlsStreamImpl::OnCertVerifyResultsStatic(int ok,
+                                                        X509_STORE_CTX* ctx) {
+  // Obtain the pointer to the instance of TlsStream::TlsStreamImpl from the
+  // SSL CTX object referenced by |ctx|.
+  SSL* ssl = static_cast<SSL*>(X509_STORE_CTX_get_ex_data(
+      ctx, SSL_get_ex_data_X509_STORE_CTX_idx()));
+  SSL_CTX* ssl_ctx = ssl ? SSL_get_SSL_CTX(ssl) : nullptr;
+  TlsStream::TlsStreamImpl* self = nullptr;
+  if (ssl_ctx) {
+    self = static_cast<TlsStream::TlsStreamImpl*>(SSL_CTX_get_ex_data(
+        ssl_ctx, ssl_ctx_private_data_index));
+  }
+  return self ? self->OnCertVerifyResults(ok, ctx) : ok;
 }
 
 bool TlsStream::TlsStreamImpl::Init(StreamPtr socket,
-                                    X509* certificate,
-                                    EVP_PKEY* private_key,
+                                    const std::string& host,
                                     const base::Closure& success_callback,
                                     const Stream::ErrorCallback& error_callback,
                                     ErrorPtr* error) {
-  ctx_.reset(SSL_CTX_new(SSLv23_client_method()));
+  host_ = host;
+  ctx_.reset(SSL_CTX_new(TLSv1_2_client_method()));
   if (!ctx_)
     return ReportError(error, FROM_HERE, "Cannot create SSL_CTX");
 
+  // Top cipher suites supported by both Google GFEs and OpenSSL (in server
+  // preferred order).
   int res = SSL_CTX_set_cipher_list(ctx_.get(),
-                                    "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+                                    "ECDHE-ECDSA-AES128-GCM-SHA256:"
+                                    "ECDHE-ECDSA-AES256-GCM-SHA384:"
+                                    "ECDHE-RSA-AES128-GCM-SHA256:"
+                                    "ECDHE-RSA-AES256-GCM-SHA384");
   if (res != 1)
     return ReportError(error, FROM_HERE, "Cannot set the cipher list");
 
-  SSL_CTX_set_verify(ctx_.get(), SSL_VERIFY_PEER, &TlsStreamImpl::VerifyPeer);
+  res = SSL_CTX_load_verify_locations(ctx_.get(), nullptr,
+                                      kChromeOSCACertificatePath);
+  if (res != 1) {
+    return ReportError(error, FROM_HERE,
+                       "Failed to specify trusted certificate location");
+  }
 
-  res = SSL_CTX_use_certificate(ctx_.get(), certificate);
-  if (res != 1)
-    return ReportError(error, FROM_HERE, "Cannot set the certificate");
-
-  res = SSL_CTX_use_PrivateKey(ctx_.get(), private_key);
-  if (res != 1)
-    return ReportError(error, FROM_HERE, "Cannot set the private key");
-
-  res = SSL_CTX_check_private_key(ctx_.get());
-  if (res != 1)
-    return ReportError(error, FROM_HERE, "Checking the private key failed");
-
-  // Allow partial writes so our non-blocking writes work correctly.
-  res = SSL_CTX_set_mode(ctx_.get(), SSL_MODE_ENABLE_PARTIAL_WRITE);
-  if (res != 1)
-    return ReportError(error, FROM_HERE, "Checking the private key failed");
+  // Store a pointer to "this" into SSL_CTX instance.
+  SSL_CTX_set_ex_data(ctx_.get(), ssl_ctx_private_data_index, this);
+  SSL_CTX_set_verify(ctx_.get(), SSL_VERIFY_PEER,
+                     &TlsStreamImpl::OnCertVerifyResultsStatic);
 
   socket_ = std::move(socket);
   ssl_.reset(SSL_new(ctx_.get()));
 
   // Enable TLS progress callback if VLOG level is >=3.
   if (VLOG_IS_ON(3))
-    SSL_set_info_callback(ssl_.get(), tls_info_callback);
+    SSL_set_info_callback(ssl_.get(), TlsInfoCallback);
 
   stream_bio_ = BIO_new_stream(socket_.get());
   SSL_set_bio(ssl_.get(), stream_bio_, stream_bio_);
@@ -392,8 +435,7 @@ TlsStream::TlsStream(std::unique_ptr<TlsStreamImpl> impl)
 TlsStream::~TlsStream() {}
 
 void TlsStream::Connect(StreamPtr socket,
-                        X509* certificate,
-                        EVP_PKEY* private_key,
+                        const std::string& host,
                         const base::Callback<void(StreamPtr)>& success_callback,
                         const Stream::ErrorCallback& error_callback) {
   std::unique_ptr<TlsStreamImpl> impl{new TlsStreamImpl};
@@ -401,7 +443,7 @@ void TlsStream::Connect(StreamPtr socket,
 
   TlsStreamImpl* pimpl = stream->impl_.get();
   ErrorPtr error;
-  bool success = pimpl->Init(std::move(socket), certificate, private_key,
+  bool success = pimpl->Init(std::move(socket), host,
                              base::Bind(success_callback,
                                         base::Passed(std::move(stream))),
                              error_callback, &error);

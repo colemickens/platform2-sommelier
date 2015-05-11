@@ -6,18 +6,21 @@
 #define LIBCHROMEOS_CHROMEOS_STREAMS_TLS_STREAM_H_
 
 #include <memory>
+#include <string>
 
 #include <base/macros.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/streams/stream.h>
 
-// Forward-declarations of some of OpenSSL types.
-using X509 = struct x509_st;
-using EVP_PKEY = struct evp_pkey_st;
-
 namespace chromeos {
 
+// This class provides client-side TLS stream that performs handshake with the
+// server and established a secure communication channel which can be used
+// by performing read/write operations on this stream. Both synchronous and
+// asynchronous I/O is supported.
+// The underlying socket stream must already be created and connected to the
+// destination server and passed in TlsStream::Connect() method as |socket|.
 class CHROMEOS_EXPORT TlsStream : public Stream {
  public:
   ~TlsStream() override;
@@ -25,12 +28,10 @@ class CHROMEOS_EXPORT TlsStream : public Stream {
   // Perform a TLS handshake and establish secure connection over |socket|.
   // Calls |callback| when successful and passes the instance of TlsStream
   // as an argument. In case of an error, |error_callback| is called.
-  // It uses the specified |certificate| and |private_key| in TLS negotiations
-  // and data encryption.
+  // |host| must specify the expected remote host (server) name.
   static void Connect(
       StreamPtr socket,
-      X509* certificate,
-      EVP_PKEY* private_key,
+      const std::string& host,
       const base::Callback<void(StreamPtr)>& success_callback,
       const Stream::ErrorCallback& error_callback);
 
