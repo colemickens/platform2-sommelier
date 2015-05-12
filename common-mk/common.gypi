@@ -81,6 +81,7 @@
       '-Wa,--noexecstack',
     ],
     'cflags_c': [
+      '-std=gnu11',
       '<@(external_cppflags)',
       '<@(external_cflags)',
     ],
