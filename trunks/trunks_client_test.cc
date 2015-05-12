@@ -9,6 +9,7 @@
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <openssl/bn.h>
+#include <openssl/err.h>
 #include <openssl/rsa.h>
 
 #include "trunks/error_codes.h"
@@ -19,6 +20,8 @@
 #include "trunks/tpm_state.h"
 #include "trunks/tpm_utility.h"
 #include "trunks/trunks_factory_impl.h"
+
+#include "trunks/authorization_delegate.h"
 
 namespace trunks {
 
@@ -74,6 +77,7 @@ bool TrunksClientTest::SignTest() {
   session->SetEntityAuthorizationValue("");
   result = utility->CreateRSAKeyPair(TpmUtility::AsymmetricKeyUsage::kSignKey,
                                      2048, 0x10001, key_authorization, "",
+                                     false,  // use_only_policy_authorization
                                      session->GetDelegate(), &key_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating signing key: " << GetErrorString(result);
@@ -85,22 +89,9 @@ bool TrunksClientTest::SignTest() {
     LOG(ERROR) << "Error loading signing key: " << GetErrorString(result);
   }
   ScopedKeyHandle scoped_key(*factory_.get(), signing_key);
-  std::string signature;
-  session->SetEntityAuthorizationValue(key_authorization);
-  result = utility->Sign(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
-                         std::string(32, 'a'), session->GetDelegate(),
-                         &signature);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
-    return false;
-  }
-  result  = utility->Verify(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
-                            std::string(32, 'a'), signature, nullptr);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error using key to verify: " << GetErrorString(result);
-    return false;
-  }
-  return true;
+  return PerformRSASignAndVerify(scoped_key.get(),
+                                 key_authorization,
+                                 session.get());
 }
 
 bool TrunksClientTest::DecryptTest() {
@@ -116,7 +107,8 @@ bool TrunksClientTest::DecryptTest() {
   session->SetEntityAuthorizationValue("");
   result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
-      key_authorization, "", session->GetDelegate(), &key_blob);
+      key_authorization, "", false,  // use_only_policy_authorization
+      session->GetDelegate(), &key_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating decrypt key: " << GetErrorString(result);
     return false;
@@ -183,7 +175,8 @@ bool TrunksClientTest::AuthChangeTest() {
   session->SetEntityAuthorizationValue("");
   result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
-      "old_pass", "", session->GetDelegate(), &key_blob);
+      "old_pass", "", false,  // use_only_policy_authorization
+      session->GetDelegate(), &key_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating change auth key: " << GetErrorString(result);
     return false;
@@ -211,126 +204,6 @@ bool TrunksClientTest::AuthChangeTest() {
   scoped_key.reset(key_handle);
   return PerformRSAEncrpytAndDecrpyt(scoped_key.get(), key_authorization,
                                      session.get());
-}
-
-
-bool TrunksClientTest::SimplePolicyTest() {
-  scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
-  scoped_ptr<PolicySession> policy_session = factory_->GetPolicySession();
-  TPM_RC result;
-  result = policy_session->StartUnboundSession(false);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
-    return false;
-  }
-  result = policy_session->PolicyAuthValue();
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error restricting policy to auth value knowledge: "
-               << GetErrorString(result);
-    return false;
-  }
-  std::string policy_digest(32, 0);
-  result = policy_session->GetDigest(&policy_digest);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
-    return false;
-  }
-  // Now that we have the digest, we can close the policy session and use hmac.
-  policy_session.reset();
-
-  scoped_ptr<HmacSession> hmac_session = factory_->GetHmacSession();
-  result = hmac_session->StartUnboundSession(false);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
-    return false;
-  }
-
-  std::string key_blob;
-  result = utility->CreateRSAKeyPair(
-      TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
-      2048, 0x10001, "password", policy_digest, hmac_session->GetDelegate(),
-      &key_blob);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error creating RSA key: " << GetErrorString(result);
-    return false;
-  }
-
-  TPM_HANDLE key_handle;
-  result = utility->LoadKey(key_blob, hmac_session->GetDelegate(), &key_handle);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error loading RSA key: " << GetErrorString(result);
-    return false;
-  }
-  ScopedKeyHandle scoped_key(*factory_.get(), key_handle);
-
-  // Now we can reset the hmac_session.
-  hmac_session.reset();
-
-  policy_session = factory_->GetPolicySession();
-  result = policy_session->StartUnboundSession(true);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
-    return false;
-  }
-  result = policy_session->PolicyAuthValue();
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error restricting policy to auth value knowledge: "
-               << GetErrorString(result);
-    return false;
-  }
-  std::string signature;
-  policy_session->SetEntityAuthorizationValue("password");
-  result = utility->Sign(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
-                         std::string(32, 0), policy_session->GetDelegate(),
-                         &signature);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error signing using RSA key: " << GetErrorString(result);
-    return false;
-  }
-  result = utility->Verify(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
-                           std::string(32, 0), signature, nullptr);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error verifying using RSA key: " << GetErrorString(result);
-    return false;
-  }
-  // TODO(usanghi): Investigate resetting of policy_digest. crbug.com/486185.
-  result = policy_session->PolicyAuthValue();
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error restricting policy to auth value knowledge: "
-               << GetErrorString(result);
-    return false;
-  }
-  std::string ciphertext;
-  policy_session->SetEntityAuthorizationValue("");
-  result = utility->AsymmetricEncrypt(scoped_key.get(), TPM_ALG_NULL,
-                                      TPM_ALG_NULL, "plaintext",
-                                      policy_session->GetDelegate(),
-                                      &ciphertext);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error encrypting using RSA key: " << GetErrorString(result);
-    return false;
-  }
-  result = policy_session->PolicyAuthValue();
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error restricting policy to auth value knowledge: "
-               << GetErrorString(result);
-    return false;
-  }
-  std::string plaintext;
-  policy_session->SetEntityAuthorizationValue("password");
-  result = utility->AsymmetricDecrypt(scoped_key.get(), TPM_ALG_NULL,
-                                      TPM_ALG_NULL, ciphertext,
-                                      policy_session->GetDelegate(),
-                                      &plaintext);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error encrypting using RSA key: " << GetErrorString(result);
-    return false;
-  }
-  if (plaintext.compare("plaintext") != 0) {
-    LOG(ERROR) << "Plaintext changed after encrypt + decrypt.";
-    return false;
-  }
-  return true;
 }
 
 bool TrunksClientTest::PCRTest() {
@@ -367,6 +240,427 @@ bool TrunksClientTest::PCRTest() {
       crypto::SHA256HashString(old_data + hashed_extend_data);
   if (pcr_data.compare(expected_pcr_data) != 0) {
     LOG(ERROR) << "PCR data does not match expected value.";
+    return false;
+  }
+  return true;
+}
+
+bool TrunksClientTest::PolicyAuthValueTest() {
+  scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
+  scoped_ptr<PolicySession> trial_session = factory_->GetTrialSession();
+  TPM_RC result;
+  result = trial_session->StartUnboundSession(true);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+  result = trial_session->PolicyAuthValue();
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to auth value knowledge: "
+               << GetErrorString(result);
+    return false;
+  }
+  std::string policy_digest;
+  result = trial_session->GetDigest(&policy_digest);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
+    return false;
+  }
+  // Now that we have the digest, we can close the trial session and use hmac.
+  trial_session.reset();
+
+  scoped_ptr<HmacSession> hmac_session = factory_->GetHmacSession();
+  result = hmac_session->StartUnboundSession(true);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+    return false;
+  }
+
+  std::string key_blob;
+  result = utility->CreateRSAKeyPair(
+      TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, 2048, 0x10001,
+      "password", policy_digest, true,  // use_only_policy_authorization
+      hmac_session->GetDelegate(), &key_blob);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating RSA key: " << GetErrorString(result);
+    return false;
+  }
+
+  TPM_HANDLE key_handle;
+  result = utility->LoadKey(key_blob, hmac_session->GetDelegate(), &key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading RSA key: " << GetErrorString(result);
+    return false;
+  }
+  ScopedKeyHandle scoped_key(*factory_.get(), key_handle);
+
+  // Now we can reset the hmac_session.
+  hmac_session.reset();
+
+  scoped_ptr<PolicySession> policy_session = factory_->GetPolicySession();
+  result = policy_session->StartUnboundSession(false);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyAuthValue();
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to auth value knowledge: "
+               << GetErrorString(result);
+    return false;
+  }
+  std::string signature;
+  policy_session->SetEntityAuthorizationValue("password");
+  result = utility->Sign(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
+                         std::string(32, 0), policy_session->GetDelegate(),
+                         &signature);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error signing using RSA key: " << GetErrorString(result);
+    return false;
+  }
+  result = utility->Verify(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
+                           std::string(32, 0), signature, nullptr);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error verifying using RSA key: " << GetErrorString(result);
+    return false;
+  }
+  std::string ciphertext;
+  result = utility->AsymmetricEncrypt(scoped_key.get(), TPM_ALG_NULL,
+                                      TPM_ALG_NULL, "plaintext",
+                                      nullptr,
+                                      &ciphertext);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error encrypting using RSA key: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyAuthValue();
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to auth value knowledge: "
+               << GetErrorString(result);
+    return false;
+  }
+  std::string plaintext;
+  policy_session->SetEntityAuthorizationValue("password");
+  result = utility->AsymmetricDecrypt(scoped_key.get(), TPM_ALG_NULL,
+                                      TPM_ALG_NULL, ciphertext,
+                                      policy_session->GetDelegate(),
+                                      &plaintext);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error encrypting using RSA key: " << GetErrorString(result);
+    return false;
+  }
+  if (plaintext.compare("plaintext") != 0) {
+    LOG(ERROR) << "Plaintext changed after encrypt + decrypt.";
+    return false;
+  }
+  return true;
+}
+
+bool TrunksClientTest::PolicyAndTest() {
+  scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
+  scoped_ptr<PolicySession> trial_session = factory_->GetTrialSession();
+  TPM_RC result;
+  result = trial_session->StartUnboundSession(true);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+  result = trial_session->PolicyCommandCode(TPM_CC_Sign);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  uint32_t pcr_index = 2;
+  std::string pcr_value;
+  result = utility->ReadPCR(pcr_index, &pcr_value);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error reading pcr: " << GetErrorString(result);
+    return false;
+  }
+  std::string pcr_extend_data("extend");
+  std::string next_pcr_value;
+  std::string hashed_extend_data = crypto::SHA256HashString(pcr_extend_data);
+  next_pcr_value = crypto::SHA256HashString(pcr_value + hashed_extend_data);
+
+  result = trial_session->PolicyPCR(pcr_index, next_pcr_value);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  std::string policy_digest;
+  result = trial_session->GetDigest(&policy_digest);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
+    return false;
+  }
+  // Now that we have the digest, we can close the trial session and use hmac.
+  trial_session.reset();
+
+  scoped_ptr<HmacSession> hmac_session = factory_->GetHmacSession();
+  result = hmac_session->StartUnboundSession(true);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+    return false;
+  }
+  std::string key_authorization("password");
+  std::string key_blob;
+  // This key is created with a policy that dictates it can only be used
+  // when pcr 2 remains unchanged, and when the command is TPM2_Sign.
+  result = utility->CreateRSAKeyPair(
+      TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, 2048, 0x10001,
+      key_authorization, policy_digest, true,  // use_only_policy_authorization
+      hmac_session->GetDelegate(), &key_blob);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating RSA key: " << GetErrorString(result);
+    return false;
+  }
+  TPM_HANDLE key_handle;
+  result = utility->LoadKey(key_blob, hmac_session->GetDelegate(), &key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading RSA key: " << GetErrorString(result);
+    return false;
+  }
+  ScopedKeyHandle scoped_key(*factory_.get(), key_handle);
+
+  // Now we can reset the hmac_session.
+  hmac_session.reset();
+
+  scoped_ptr<PolicySession> policy_session = factory_->GetPolicySession();
+  result = policy_session->StartUnboundSession(false);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyCommandCode(TPM_CC_Sign);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyPCR(pcr_index, "");
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  std::string signature;
+  policy_session->SetEntityAuthorizationValue(key_authorization);
+  // Signing with this key when pcr 2 is unchanged fails.
+  result = utility->Sign(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
+                         std::string(32, 'a'), policy_session->GetDelegate(),
+                         &signature);
+  if (GetFormatOneError(result) != TPM_RC_POLICY_FAIL) {
+    LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
+    return false;
+  }
+  scoped_ptr<AuthorizationDelegate> delegate =
+      factory_->GetPasswordAuthorization("");
+  result = utility->ExtendPCR(pcr_index, pcr_extend_data, delegate.get());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error extending pcr: " << GetErrorString(result);
+    return false;
+  }
+  // we have to restart the session because we changed the pcr values.
+  result = policy_session->StartUnboundSession(false);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyCommandCode(TPM_CC_Sign);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyPCR(pcr_index, "");
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  policy_session->SetEntityAuthorizationValue(key_authorization);
+  // Signing with this key when pcr 2 is changed succeeds.
+  result = utility->Sign(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
+                         std::string(32, 'a'), policy_session->GetDelegate(),
+                         &signature);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
+    return false;
+  }
+  result = utility->Verify(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
+                           std::string(32, 'a'), signature, nullptr);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to verify: " << GetErrorString(result);
+    return false;
+  }
+  std::string ciphertext;
+  result = utility->AsymmetricEncrypt(key_handle, TPM_ALG_NULL, TPM_ALG_NULL,
+                                      "plaintext", nullptr, &ciphertext);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to encrypt: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyCommandCode(TPM_CC_Sign);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyPCR(pcr_index, "");
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  std::string plaintext;
+  policy_session->SetEntityAuthorizationValue(key_authorization);
+  // This call is not authorized with the policy, because its command code
+  // is not TPM_CC_SIGN. It should fail with TPM_RC_POLICY_CC.
+  result = utility->AsymmetricDecrypt(key_handle, TPM_ALG_NULL, TPM_ALG_NULL,
+                                      ciphertext, policy_session->GetDelegate(),
+                                      &plaintext);
+  if (GetFormatOneError(result) != TPM_RC_POLICY_CC) {
+    LOG(ERROR) << "Error: " << GetErrorString(result);
+    return false;
+  }
+  return true;
+}
+
+bool TrunksClientTest::PolicyOrTest() {
+  scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
+  scoped_ptr<PolicySession> trial_session = factory_->GetTrialSession();
+  TPM_RC result;
+  // Specify a policy that asserts either TPM_CC_RSA_Encrypt or
+  // TPM_CC_RSA_Decrypt. A key created under this policy can only be used
+  // to encrypt or decrypt.
+  result = trial_session->StartUnboundSession(true);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+  result = trial_session->PolicyCommandCode(TPM_CC_Sign);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  std::string sign_digest;
+  result = trial_session->GetDigest(&sign_digest);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
+    return false;
+  }
+  result = trial_session->StartUnboundSession(true);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+  result = trial_session->PolicyCommandCode(TPM_CC_RSA_Decrypt);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  std::string decrypt_digest;
+  result = trial_session->GetDigest(&decrypt_digest);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
+    return false;
+  }
+  std::vector<std::string> digests;
+  digests.push_back(sign_digest);
+  digests.push_back(decrypt_digest);
+  result = trial_session->PolicyOR(digests);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  std::string policy_digest;
+  result = trial_session->GetDigest(&policy_digest);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
+    return false;
+  }
+  // Now that we have the digest, we can close the trial session and use hmac.
+  trial_session.reset();
+
+  scoped_ptr<HmacSession> hmac_session = factory_->GetHmacSession();
+  result = hmac_session->StartUnboundSession(true);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+    return false;
+  }
+  std::string key_authorization("password");
+  std::string key_blob;
+  // This key is created with a policy that specifies that it can only be used
+  // for encrypt and decrypt operations.
+  result = utility->CreateRSAKeyPair(
+      TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, 2048, 0x10001,
+      key_authorization, policy_digest, true,  // use_only_policy_authorization
+      hmac_session->GetDelegate(), &key_blob);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating RSA key: " << GetErrorString(result);
+    return false;
+  }
+  TPM_HANDLE key_handle;
+  result = utility->LoadKey(key_blob, hmac_session->GetDelegate(), &key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading RSA key: " << GetErrorString(result);
+    return false;
+  }
+  ScopedKeyHandle scoped_key(*factory_.get(), key_handle);
+
+  // Now we can reset the hmac_session.
+  hmac_session.reset();
+
+  scoped_ptr<PolicySession> policy_session = factory_->GetPolicySession();
+  result = policy_session->StartUnboundSession(false);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+  std::string ciphertext;
+  result = utility->AsymmetricEncrypt(key_handle, TPM_ALG_NULL, TPM_ALG_NULL,
+                                      "plaintext", nullptr, &ciphertext);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to encrypt: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyCommandCode(TPM_CC_RSA_Decrypt);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyOR(digests);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  std::string plaintext;
+  policy_session->SetEntityAuthorizationValue(key_authorization);
+  // We can freely use the key for decryption.
+  result = utility->AsymmetricDecrypt(key_handle, TPM_ALG_NULL, TPM_ALG_NULL,
+                                      ciphertext, policy_session->GetDelegate(),
+                                      &plaintext);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to decrypt: " << GetErrorString(result);
+    return false;
+  }
+  if (plaintext.compare("plaintext") != 0) {
+    LOG(ERROR) << "Plaintext changed after encrypt + decrypt.";
+    return false;
+  }
+  result = policy_session->PolicyCommandCode(TPM_CC_Sign);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyOR(digests);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy: " << GetErrorString(result);
+    return false;
+  }
+  std::string signature;
+  policy_session->SetEntityAuthorizationValue(key_authorization);
+  // However signing with a key only authorized for encrypt/decrypt should
+  // fail with TPM_RC_POLICY_CC.
+  result = utility->Sign(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
+                         std::string(32, 'a'), policy_session->GetDelegate(),
+                         &signature);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
     return false;
   }
   return true;
@@ -463,6 +757,29 @@ bool TrunksClientTest::PerformRSAEncrpytAndDecrpyt(
   }
   if (plaintext.compare("plaintext") != 0) {
     LOG(ERROR) << "Plaintext changed after encrypt + decrypt.";
+    return false;
+  }
+  return true;
+}
+
+bool TrunksClientTest::PerformRSASignAndVerify(
+    TPM_HANDLE key_handle,
+    const std::string& key_authorization,
+    HmacSession* session) {
+  scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
+  std::string signature;
+  session->SetEntityAuthorizationValue(key_authorization);
+  TPM_RC result = utility->Sign(key_handle, TPM_ALG_NULL, TPM_ALG_NULL,
+                                std::string(32, 'a'), session->GetDelegate(),
+                                &signature);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to sign: " << GetErrorString(result);
+    return false;
+  }
+  result = utility->Verify(key_handle, TPM_ALG_NULL, TPM_ALG_NULL,
+                           std::string(32, 'a'), signature, nullptr);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error using key to verify: " << GetErrorString(result);
     return false;
   }
   return true;

@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/stl_util.h>
+#include <crypto/sha2.h>
 #include <openssl/rand.h>
 
 #include "trunks/error_codes.h"
@@ -103,15 +104,25 @@ TPM_RC PolicySessionImpl::PolicyOR(const std::vector<std::string>& digests) {
 TPM_RC PolicySessionImpl::PolicyPCR(uint32_t pcr_index,
                                     const std::string& pcr_value) {
   TPML_PCR_SELECTION pcr_select;
+  memset(&pcr_select, 0, sizeof(TPML_PCR_SELECTION));
   // This process of selecting pcrs is highlighted in TPM 2.0 Library Spec
   // Part 2 (Section 10.5 - PCR structures).
   uint8_t pcr_select_index = pcr_index / 8;
   uint8_t pcr_select_byte = 1 << (pcr_index % 8);
   pcr_select.count = 1;
   pcr_select.pcr_selections[0].hash = TPM_ALG_SHA256;
-  pcr_select.pcr_selections[0].sizeof_select = pcr_select_index + 1;
+  pcr_select.pcr_selections[0].sizeof_select = PCR_SELECT_MIN;
   pcr_select.pcr_selections[0].pcr_select[pcr_select_index] = pcr_select_byte;
-  TPM2B_DIGEST pcr_digest = Make_TPM2B_DIGEST(pcr_value);
+  TPM2B_DIGEST pcr_digest;
+  if (pcr_value.empty()) {
+    if (session_type_ == TPM_SE_TRIAL) {
+      LOG(ERROR) << "Trial sessions have to define a PCR value.";
+      return SAPI_RC_BAD_PARAMETER;
+    }
+    pcr_digest = Make_TPM2B_DIGEST("");
+  } else {
+    pcr_digest = Make_TPM2B_DIGEST(crypto::SHA256HashString(pcr_value));
+  }
 
   TPM_RC result = factory_.GetTpm()->PolicyPCRSync(
       session_manager_->GetSessionHandle(),

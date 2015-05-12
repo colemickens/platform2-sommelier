@@ -141,18 +141,18 @@ int main(int argc, char **argv) {
     trunks::TrunksClientTest test;
     LOG(INFO) << "Running RNG test.";
     CHECK(test.RNGTest()) << "Error running RNGtest.";
-    LOG(INFO) << "Running SignTest.";
+    LOG(INFO) << "Running RSA key tests.";
     CHECK(test.SignTest()) << "Error running SignTest.";
-    LOG(INFO) << "Running DecryptTest.";
     CHECK(test.DecryptTest()) << "Error running DecryptTest.";
-    LOG(INFO) << "Running ImportTest.";
     CHECK(test.ImportTest()) << "Error running ImportTest.";
-    LOG(INFO) << "Running AuthChangeTest.";
     CHECK(test.AuthChangeTest()) << "Error running AuthChangeTest.";
-    LOG(INFO) << "Running PCRTest.";
+    LOG(INFO) << "Running PCR tests.";
     CHECK(test.PCRTest()) << "Error running PCRTest.";
-    LOG(INFO) << "Running SimplePolicyTest.";
-    CHECK(test.SimplePolicyTest()) << "Error running SimplePolicyTest.";
+    LOG(INFO) << "Running Policy tests.";
+    CHECK(test.PolicyAuthValueTest()) << "Error running PolicyAuthValueTest.";
+    CHECK(test.PolicyAndTest()) << "Error running PolicyAndTest.";
+    CHECK(test.PolicyOrTest()) << "Error running PolicyOrTest.";
+
     if (cl->HasSwitch("owner_password")) {
       std::string owner_password = cl->GetSwitchValueASCII("owner_password");
       LOG(INFO) << "Running NvramTest.";

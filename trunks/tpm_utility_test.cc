@@ -1244,9 +1244,12 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairSuccess) {
   std::string key_blob;
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, 2048, 0x10001,
-      "password", "", &mock_authorization_delegate_, &key_blob));
+      "password", "", false, &mock_authorization_delegate_, &key_blob));
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
+  EXPECT_EQ(public_area.public_area.object_attributes & kUserWithAuth,
+            kUserWithAuth);
+  EXPECT_EQ(public_area.public_area.object_attributes & kAdminWithPolicy, 0);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
             TPM_ALG_NULL);
 }
@@ -1260,8 +1263,8 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairDecryptKeySuccess) {
                       Return(TPM_RC_SUCCESS)));
   std::string key_blob;
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateRSAKeyPair(
-      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001, "password",
-      "", &mock_authorization_delegate_, &key_blob));
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
+      "password", "", false, &mock_authorization_delegate_, &key_blob));
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, 0);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
@@ -1282,9 +1285,13 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccess) {
   std::string key_auth("password");
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001, key_auth,
-      policy_digest, &mock_authorization_delegate_, &key_blob));
+      policy_digest, true,  // use_only_policy_authorization
+      &mock_authorization_delegate_, &key_blob));
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, 0);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
+  EXPECT_EQ(public_area.public_area.object_attributes & kUserWithAuth, 0);
+  EXPECT_EQ(public_area.public_area.object_attributes & kAdminWithPolicy,
+            kAdminWithPolicy);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
             TPM_ALG_NULL);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.key_bits, 2048);
@@ -1301,7 +1308,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairBadDelegate) {
   std::string key_blob;
   EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001, "password",
-      "", nullptr, &key_blob));
+      "", false, nullptr, &key_blob));
 }
 
 TEST_F(TpmUtilityTest, CreateRSAKeyPairFailure) {
@@ -1312,7 +1319,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairFailure) {
   std::string key_blob;
   EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001, "password",
-      "", &mock_authorization_delegate_, &key_blob));
+      "", false, &mock_authorization_delegate_, &key_blob));
 }
 
 TEST_F(TpmUtilityTest, LoadKeySuccess) {

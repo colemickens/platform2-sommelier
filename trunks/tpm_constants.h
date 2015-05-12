@@ -14,6 +14,7 @@ const TPMA_OBJECT kFixedTPM = 1U << 1;
 const TPMA_OBJECT kFixedParent = 1U << 4;
 const TPMA_OBJECT kSensitiveDataOrigin = 1U << 5;
 const TPMA_OBJECT kUserWithAuth = 1U << 6;
+const TPMA_OBJECT kAdminWithPolicy = 1U << 7;
 const TPMA_OBJECT kNoDA = 1U << 10;
 const TPMA_OBJECT kRestricted = 1U << 16;
 const TPMA_OBJECT kDecrypt = 1U << 17;

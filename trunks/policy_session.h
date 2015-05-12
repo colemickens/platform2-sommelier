@@ -49,7 +49,8 @@ class PolicySession {
   // by this session is the OR of the provided policies.
   virtual TPM_RC PolicyOR(const std::vector<std::string>& digests) = 0;
 
-  // This method binds the PolicySession to a provided PCR value.
+  // This method binds the PolicySession to a provided PCR value. If the empty
+  // string is provided, the PolicySession is bound to the current PCR value.
   virtual TPM_RC PolicyPCR(uint32_t pcr_index,
                            const std::string& pcr_value) = 0;
 

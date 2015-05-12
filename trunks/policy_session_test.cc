@@ -4,6 +4,7 @@
 
 #include "trunks/policy_session_impl.h"
 
+#include <crypto/sha2.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -158,11 +159,11 @@ TEST_F(PolicySessionTest, PolicyPCRSuccess) {
   uint8_t pcr_select_byte = 1 << (pcr_index % 8);
   EXPECT_EQ(pcr_select.count, 1);
   EXPECT_EQ(pcr_select.pcr_selections[0].hash, TPM_ALG_SHA256);
-  EXPECT_EQ(pcr_select.pcr_selections[0].sizeof_select,
-            (pcr_select_index + 1));
+  EXPECT_EQ(pcr_select.pcr_selections[0].sizeof_select, PCR_SELECT_MIN);
   EXPECT_EQ(pcr_select.pcr_selections[0].pcr_select[pcr_select_index],
             pcr_select_byte);
-  EXPECT_EQ(StringFrom_TPM2B_DIGEST(pcr_value), pcr_digest);
+  EXPECT_EQ(StringFrom_TPM2B_DIGEST(pcr_value),
+            crypto::SHA256HashString(pcr_digest));
 }
 
 TEST_F(PolicySessionTest, PolicyPCRFailure) {
@@ -170,6 +171,11 @@ TEST_F(PolicySessionTest, PolicyPCRFailure) {
   EXPECT_CALL(mock_tpm_, PolicyPCRSync(_, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, session.PolicyPCR(1, "pcr_digest"));
+}
+
+TEST_F(PolicySessionTest, PolicyPCRTrialWithNoDigest) {
+  PolicySessionImpl session(factory_, TPM_SE_TRIAL);
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER, session.PolicyPCR(1, ""));
 }
 
 TEST_F(PolicySessionTest, PolicyCommandCodeSuccess) {

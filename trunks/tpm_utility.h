@@ -165,11 +165,16 @@ class TRUNKS_EXPORT TpmUtility {
   // |public_exponent| specifies the exponent of the key. After this function
   // terminates, |key_blob| contains a key blob that can be loaded into the TPM.
   // |policy_digest| specifies an optional policy to use to authorize this key.
+  // |use_only_policy_authorization| specifies if we can use HmacSession in
+  // addition to PolicySession to authorize use of this key.
+  // NOTE: if |use_only_policy_authorization| is set to true,
+  // parameter_encryption must be disabled when the key is used.
   virtual TPM_RC CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                                   int modulus_bits,
                                   uint32_t public_exponent,
                                   const std::string& password,
                                   const std::string& policy_digest,
+                                  bool use_only_policy_authorization,
                                   AuthorizationDelegate* delegate,
                                   std::string* key_blob) = 0;
 

@@ -48,16 +48,27 @@ class TrunksClientTest {
   // still use it to encrypt/decrypt data.
   bool AuthChangeTest();
 
-  // This test sets up a PolicySession with the PolicyAuthValue assertion.
-  // This policy is then used to create a key and use it to sign/verify and
-  // encrypt/decrypt.
-  bool SimplePolicyTest();
-
   // This test performs a simple PCR extension and then reads the value in the
   // PCR to verify if it is correct.
   // NOTE: PCR banks need to be configured for this test to succeed. Normally
   // this is done by the platform firmware.
   bool PCRTest();
+
+  // This test sets up a PolicySession with the PolicyAuthValue assertion.
+  // This policy is then used to create a key and use it to sign/verify and
+  // encrypt/decrypt.
+  bool PolicyAuthValueTest();
+
+  // This test sets up a PolicySession that is based on the current PCR value
+  // and a CommandCode for signing. The key created this way is restricted to
+  // be only used for signing, and only if the PCR remains unchanged. The key
+  // is then used to sign arbitrary data, and the signature verified.
+  bool PolicyAndTest();
+
+  // This test performs a complex assertion using PolicyOR.
+  // We create an unrestricted key, and restricts it to signing
+  // and decryption using Policy Sessions.
+  bool PolicyOrTest();
 
   // This test verfies that we can create, write, read, lock and delete
   // NV spaces in the TPM.
@@ -72,6 +83,13 @@ class TrunksClientTest {
   bool PerformRSAEncrpytAndDecrpyt(TPM_HANDLE key_handle,
                                    const std::string& key_authorization,
                                    HmacSession* session);
+
+  // This method performs verify(sign(data)) using a given key.
+  // TODO(usanghi): Remove |session| argument once we can support multiple
+  // sessions.
+  bool PerformRSASignAndVerify(TPM_HANDLE key_handle,
+                               const std::string& key_authorization,
+                               HmacSession* session);
 
   // Factory for instantiation of Tpm classes
   scoped_ptr<TrunksFactory> factory_;

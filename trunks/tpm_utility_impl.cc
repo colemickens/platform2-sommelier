@@ -771,6 +771,7 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                                         uint32_t public_exponent,
                                         const std::string& password,
                                         const std::string& policy_digest,
+                                        bool use_only_policy_authorization,
                                         AuthorizationDelegate* delegate,
                                         std::string* key_blob) {
   CHECK(key_blob);
@@ -802,6 +803,10 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
     case AsymmetricKeyUsage::kDecryptAndSignKey:
       public_area.object_attributes |= (kSign | kDecrypt);
       break;
+  }
+  if (use_only_policy_authorization && !policy_digest.empty()) {
+    public_area.object_attributes |= kAdminWithPolicy;
+    public_area.object_attributes &= (~kUserWithAuth);
   }
   public_area.parameters.rsa_detail.key_bits = modulus_bits;
   public_area.parameters.rsa_detail.exponent = public_exponent;
