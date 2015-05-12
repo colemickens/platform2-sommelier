@@ -15,8 +15,11 @@
 #include <soma/read_only_container_spec.h>
 
 #include "germ/environment.h"
+#include "germ/proto_bindings/soma_container_spec.pb.h"
 
 namespace germ {
+
+using SomaExecutable = soma::ContainerSpec_Executable;
 
 class UidService;
 
@@ -29,16 +32,9 @@ class Launcher {
                              const std::vector<std::string>& argv,
                              int* status);
   bool RunInteractiveSpec(const soma::ReadOnlyContainerSpec& spec, int* status);
-  bool RunDaemonized(const soma::ReadOnlyContainerSpec& spec,
-                     pid_t* pid);
-  bool Terminate(pid_t pid);
 
- protected:
-  pid_t GetPidFromOutput(const std::string& output);
-
-  // Can be overridden in unit tests.
-  virtual std::string ReadFromStdout(chromeos::Process* process);
-  virtual std::unique_ptr<chromeos::Process> GetProcessInstance();
+  // Does not return.
+  void ExecveInMinijail(const SomaExecutable& executable);
 
  private:
   bool RunWithMinijail(const Environment& env,
@@ -46,7 +42,6 @@ class Launcher {
                        int* status);
 
   std::unique_ptr<UidService> uid_service_;
-  std::unordered_map<pid_t, std::string> names_;
 
   DISALLOW_COPY_AND_ASSIGN(Launcher);
 };

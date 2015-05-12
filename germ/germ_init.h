@@ -9,6 +9,7 @@
 #include <chromeos/daemons/daemon.h>
 
 #include "germ/init_process_reaper.h"
+#include "germ/launcher.h"
 #include "germ/proto_bindings/soma_container_spec.pb.h"
 
 namespace germ {
@@ -24,6 +25,7 @@ class GermInit : public chromeos::Daemon {
   int OnInit() override;
   void StartProcesses();
 
+  Launcher launcher_;
   InitProcessReaper init_process_reaper_;
   const soma::ContainerSpec& spec_;
 

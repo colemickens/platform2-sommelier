@@ -107,7 +107,6 @@
             'container_manager_unittest.cc',
             'container_unittest.cc',
             'germ_zygote_unittest.cc',
-            'launcher_unittest.cc',
             'process_reaper_unittest.cc',
             'test_util.cc',
             'run_all_tests.cc',

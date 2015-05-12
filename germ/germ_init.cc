@@ -54,13 +54,6 @@ int GermInit::OnInit() {
 void GermInit::StartProcesses() {
   size_t i = 0;
   for (const auto& executable : spec_.executables()) {
-    std::vector<char*> argv;
-    argv.reserve(executable.command_line_size() + 1);
-    for (const std::string& command_line : executable.command_line()) {
-      argv.push_back(const_cast<char*>(command_line.c_str()));
-    }
-    argv.push_back(nullptr);
-
     const pid_t pid = fork();
     PCHECK(pid != -1) << "fork() failed: " << spec_.name() << "executable "
                       << i;
@@ -70,18 +63,8 @@ void GermInit::StartProcesses() {
       PCHECK(sigemptyset(&mask) == 0);
       PCHECK(sigprocmask(SIG_SETMASK, &mask, nullptr) == 0);
 
-      const gid_t gid = static_cast<gid_t>(executable.gid());
-      const uid_t uid = static_cast<uid_t>(executable.uid());
-
-      // TODO(rickyz): setgroups requires CAP_SETGID. Reenable this once we have
-      // an overridable Launcher class for tests.
-      // PCHECK(setgroups(0, nullptr) == 0);
-      PCHECK(setresgid(gid, gid, gid) == 0);
-      PCHECK(setresuid(uid, uid, uid) == 0);
-
-      // TODO(rickyz): Environment?
-      execve(argv[0], argv.data(), nullptr);
-      PLOG(FATAL) << "execve() failed: " << spec_.name() << " executable " << i;
+      launcher_.ExecveInMinijail(executable);
+      LOG(FATAL) << "execve() failed: " << spec_.name() << " executable " << i;
     }
 
     ++i;
