@@ -61,9 +61,17 @@ const int Nl80211AttributeBss::kTcpReportAttributeId =
     IEEE_80211::kElemIdTcpReport;
 const int Nl80211AttributeBss::kVendorSpecificAttributeId =
     IEEE_80211::kElemIdVendor;
+const int Nl80211AttributeBss::kVhtCapAttributeId =
+    IEEE_80211::kElemIdVHTCap;
+const int Nl80211AttributeBss::kVhtInfoAttributeId =
+    IEEE_80211::kElemIdVHTOperation;
 
 static const char kSsidString[] = "SSID";
 static const char kRatesString[] = "Rates";
+static const char kHtCapString[] = "HTCapabilities";
+static const char kHtOperString[] = "HTOperation";
+static const char kVhtCapString[] = "VHTCapabilities";
+static const char kVhtOperString[] = "VHTOperation";
 
 Nl80211AttributeBss::Nl80211AttributeBss()
     : NetlinkNestedAttribute(kName, kNameString) {
@@ -98,9 +106,6 @@ Nl80211AttributeBss::Nl80211AttributeBss()
   nested_template_.insert(
       AttrDataPair(NL80211_BSS_SEEN_MS_AGO,
                    NestedData(NLA_U32, "NL80211_BSS_SEEN_MS_AGO", false)));
-  nested_template_.insert(
-      AttrDataPair(NL80211_BSS_BEACON_IES,
-                   NestedData(NLA_UNSPEC, "NL80211_BSS_BEACON_IES", false)));
 }
 
 bool Nl80211AttributeBss::ParseInformationElements(
@@ -159,6 +164,38 @@ bool Nl80211AttributeBss::ParseInformationElements(
         ie_attribute->SetNestedAttributeHasAValue(type);
         break;
       }
+      case kHtCapAttributeId: {
+        ie_attribute->CreateRawAttribute(type, kHtCapString);
+        ie_attribute->SetRawAttributeValue(
+            type,
+            ByteString(
+                reinterpret_cast<const char *>(payload), payload_bytes));
+        break;
+      }
+      case kHtInfoAttributeId: {
+        ie_attribute->CreateRawAttribute(type, kHtOperString);
+        ie_attribute->SetRawAttributeValue(
+            type,
+            ByteString(
+                reinterpret_cast<const char *>(payload), payload_bytes));
+        break;
+      }
+      case kVhtCapAttributeId: {
+        ie_attribute->CreateRawAttribute(type, kVhtCapString);
+        ie_attribute->SetRawAttributeValue(
+            type,
+            ByteString(
+                reinterpret_cast<const char *>(payload), payload_bytes));
+        break;
+      }
+      case kVhtInfoAttributeId: {
+        ie_attribute->CreateRawAttribute(type, kVhtOperString);
+        ie_attribute->SetRawAttributeValue(
+            type,
+            ByteString(
+                reinterpret_cast<const char *>(payload), payload_bytes));
+        break;
+      }
       case kDSParameterSetAttributeId:
       case kCountryInfoAttributeId:
       case kRequestAttributeId:
@@ -168,9 +205,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
       case kTcpReportAttributeId:
       case kChannelsAttributeId:
       case kErpAttributeId:
-      case kHtCapAttributeId:
       case kRsnAttributeId:
-      case kHtInfoAttributeId:
       case kVendorSpecificAttributeId:
       default:
         break;

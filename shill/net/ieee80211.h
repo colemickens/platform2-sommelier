@@ -25,6 +25,8 @@ const uint8_t kElemIdSsid = 0x00;
 const uint8_t kElemIdSupportedRates = 0x01;
 const uint8_t kElemIdTcpReport = 0x23;
 const uint8_t kElemIdVendor = 0xdd;
+const uint8_t kElemIdVHTCap = 0xbf;
+const uint8_t kElemIdVHTOperation = 0xc0;
 
 const unsigned int kMaxSSIDLen = 32;
 
@@ -77,6 +79,18 @@ const uint16_t kHTCapMaskMaxAmsdu = 0x0800;
 const uint16_t kHTCapMaskDsssCck40 = 0x1000;
 const uint16_t kHTCapMask40MHzIntolerant = 0x4000;
 const uint16_t kHTCapMaskLsigTxopProt = 0x8000;
+
+// Beacon and Probe Response Capability Information field masks from
+// IEEE 802.11-2012 Section 8.4.1.4
+const uint16_t kWlanCapMaskEss = 0x0001;
+const uint16_t kWlanCapMaskIbss = 0x0002;
+const uint16_t kWlanCapMaskContentionFreePollable = 0x0004;
+const uint16_t kWlanCapMaskContentionFreePollRequest = 0x0008;
+const uint16_t kWlanCapMaskPrivacy = 0x0010;
+const uint16_t kWlanCapMaskShortPreamble = 0x0020;
+const uint16_t kWlanCapMaskPbcc = 0x0040;
+const uint16_t kWlanCapMaskChannelAgility = 0x0080;
+
 
 // This structure is incomplete.  Fields will be added as necessary.
 //
