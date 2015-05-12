@@ -304,6 +304,79 @@ TEST(PerfParserTest, MapsSampleEventIp) {
   EXPECT_EQ(0x300b, events[13].raw_event->sample.array[0]);
 }
 
+TEST(PerfParserTest, DsoInfoHasBuildId) {
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP |
+                                              PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_MMAP
+  testing::ExampleMmapEvent(
+      1001, 0x1c1000, 0x1000, 0, "/usr/lib/foo.so",
+      testing::SampleInfo().Tid(1001)).WriteTo(&input);        // 0
+  // becomes: 0x0000, 0x1000, 0
+  testing::ExampleMmapEvent(
+      1001, 0x1c3000, 0x2000, 0x2000, "/usr/lib/bar.so",
+      testing::SampleInfo().Tid(1001)).WriteTo(&input);        // 1
+  // becomes: 0x1000, 0x2000, 0
+
+  // PERF_RECORD_HEADER_BUILDID                                // N/A
+  string build_id_filename("/usr/lib/foo.so\0", 2*sizeof(u64));
+  ASSERT_EQ(0, build_id_filename.size() % sizeof(u64)) << "Sanity check";
+  const size_t event_size =
+      sizeof(struct build_id_event) +
+      build_id_filename.size();
+  const struct build_id_event event = {
+    .header = {
+      .type = PERF_RECORD_HEADER_BUILD_ID,
+      .misc = 0,
+      .size = static_cast<u16>(event_size),
+    },
+    .pid = -1,
+    .build_id = {0xde, 0xad, 0xf0, 0x0d },
+  };
+  input.write(reinterpret_cast<const char*>(&event), sizeof(event));
+  input.write(build_id_filename.data(), build_id_filename.size());
+
+  // PERF_RECORD_SAMPLE
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c1000).Tid(1001))  // 2
+      .WriteTo(&input);
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo().Ip(0x00000000001c300a).Tid(1001))  // 3
+      .WriteTo(&input);
+
+  //
+  // Parse input.
+  //
+
+  PerfParser::Options options;
+  options.sample_mapping_percentage_threshold = 0;
+  PerfParser parser(options);
+  EXPECT_TRUE(parser.ReadFromString(input.str()));
+  EXPECT_TRUE(parser.ParseRawEvents());
+  EXPECT_EQ(2, parser.stats().num_mmap_events);
+  EXPECT_EQ(2, parser.stats().num_sample_events);
+  EXPECT_EQ(2, parser.stats().num_sample_events_mapped);
+
+  const std::vector<ParsedEvent>& events = parser.parsed_events();
+  ASSERT_EQ(4, events.size());
+
+  EXPECT_EQ("/usr/lib/foo.so", events[2].dso_and_offset.dso_name());
+  EXPECT_EQ("deadf00d00000000000000000000000000000000",
+            events[2].dso_and_offset.build_id());
+  EXPECT_EQ("/usr/lib/bar.so", events[3].dso_and_offset.dso_name());
+  EXPECT_EQ("", events[3].dso_and_offset.build_id());
+}
+
 TEST(PerfParserTest, HandlesFinishedRoundEventsAndSortsByTime) {
   // For now at least, we are ignoring PERF_RECORD_FINISHED_ROUND events.
 

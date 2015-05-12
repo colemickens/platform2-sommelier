@@ -108,6 +108,14 @@ bool PerfParser::ProcessEvents() {
   pidtid_to_comm_map_[std::make_pair(kSwapperPid, kSwapperPid)] =
       &(*commands_.find(kSwapperCommandName));
 
+  std::map<string, string> filenames_to_build_ids;
+  reader_.GetFilenamesToBuildIDs(&filenames_to_build_ids);
+  const auto& build_id_for_filename =
+      [&filenames_to_build_ids](const string& filename) -> string {
+    const auto it = filenames_to_build_ids.find(filename);
+    return (it != filenames_to_build_ids.end()) ? it->second : "";
+  };
+
   // NB: Not necessarily actually sorted by time.
   for (unsigned int i = 0; i < parsed_events_sorted_by_time_.size(); ++i) {
     ParsedEvent& parsed_event = *parsed_events_sorted_by_time_[i];
@@ -131,8 +139,8 @@ bool PerfParser::ProcessEvents() {
         // No samples in this MMAP region yet, hopefully.
         parsed_event.num_samples_in_mmap_region = 0;
         DSOInfo dso_info;
-        // TODO(sque): Add Build ID as well.
         dso_info.name = event.mmap.filename;
+        dso_info.build_id = build_id_for_filename(event.mmap.filename);
         dso_set_.insert(dso_info);
         break;
       }
@@ -144,8 +152,8 @@ bool PerfParser::ProcessEvents() {
         // No samples in this MMAP region yet, hopefully.
         parsed_event.num_samples_in_mmap_region = 0;
         DSOInfo dso_info;
-        // TODO(sque): Add Build ID as well.
         dso_info.name = event.mmap2.filename;
+        dso_info.build_id = build_id_for_filename(event.mmap.filename);
         dso_set_.insert(dso_info);
         break;
       }
@@ -439,7 +447,9 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(
       }
 
       // Find the mmap DSO filename in the set of known DSO names.
-      // TODO(sque): take build IDs into account.
+      // TODO(dhsharp): the comparator for DSOInfo only uses the dso name,
+      // excluding buildid, so that this lookup works. Consider if std::set
+      // is actually the right data structure for this task.
       std::set<DSOInfo>::const_iterator dso_iter = dso_set_.find(dso_info);
       CHECK(dso_iter != dso_set_.end());
       dso_and_offset->dso_info_ = &(*dso_iter);
