@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 
 using testing::DoAll;
-using testing::InSequence;
 using testing::Invoke;
 using testing::Return;
 using testing::SaveArg;
@@ -33,6 +32,15 @@ class HttpCurlTransportTest : public testing::Test {
     curl_api_ = std::make_shared<MockCurlInterface>();
     transport_ = std::make_shared<Transport>(curl_api_);
     handle_ = reinterpret_cast<CURL*>(100);  // Mock handle value.
+    EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
+    EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
+        .WillOnce(Return(CURLE_OK));
+    EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_SSL_VERIFYPEER, 1))
+        .WillOnce(Return(CURLE_OK));
+    EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_SSL_VERIFYHOST, 2))
+        .WillOnce(Return(CURLE_OK));
+    EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_PRIVATE, _))
+        .WillRepeatedly(Return(CURLE_OK));
   }
 
   void TearDown() override {
@@ -47,12 +55,8 @@ class HttpCurlTransportTest : public testing::Test {
 };
 
 TEST_F(HttpCurlTransportTest, RequestGet) {
-  InSequence seq;
-  EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
-      .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_USERAGENT, "User Agent"))
@@ -61,8 +65,6 @@ TEST_F(HttpCurlTransportTest, RequestGet) {
               EasySetOptStr(handle_, CURLOPT_REFERER, "http://foo.bar/baz"))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
-      .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_PRIVATE, _))
       .WillOnce(Return(CURLE_OK));
   auto connection = transport_->CreateConnection("http://foo.bar/get",
                                                  request_type::kGet,
@@ -77,16 +79,10 @@ TEST_F(HttpCurlTransportTest, RequestGet) {
 }
 
 TEST_F(HttpCurlTransportTest, RequestHead) {
-  InSequence seq;
-  EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/head"))
       .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
-      .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_NOBODY, 1))
-      .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_PRIVATE, _))
       .WillOnce(Return(CURLE_OK));
   auto connection = transport_->CreateConnection(
       "http://foo.bar/head", request_type::kHead, {}, "", "", nullptr);
@@ -97,16 +93,10 @@ TEST_F(HttpCurlTransportTest, RequestHead) {
 }
 
 TEST_F(HttpCurlTransportTest, RequestPut) {
-  InSequence seq;
-  EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/put"))
       .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
-      .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_UPLOAD, 1))
-      .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_PRIVATE, _))
       .WillOnce(Return(CURLE_OK));
   auto connection = transport_->CreateConnection(
       "http://foo.bar/put", request_type::kPut, {}, "", "", nullptr);
@@ -117,18 +107,12 @@ TEST_F(HttpCurlTransportTest, RequestPut) {
 }
 
 TEST_F(HttpCurlTransportTest, RequestPost) {
-  InSequence seq;
-  EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://www.foo.bar/post"))
-      .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_POST, 1))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_POSTFIELDS, nullptr))
-      .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_PRIVATE, _))
       .WillOnce(Return(CURLE_OK));
   auto connection = transport_->CreateConnection(
       "http://www.foo.bar/post", request_type::kPost, {}, "", "", nullptr);
@@ -139,12 +123,8 @@ TEST_F(HttpCurlTransportTest, RequestPost) {
 }
 
 TEST_F(HttpCurlTransportTest, RequestPatch) {
-  InSequence seq;
-  EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://www.foo.bar/patch"))
-      .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_POST, 1))
       .WillOnce(Return(CURLE_OK));
@@ -153,8 +133,6 @@ TEST_F(HttpCurlTransportTest, RequestPatch) {
   EXPECT_CALL(
       *curl_api_,
       EasySetOptStr(handle_, CURLOPT_CUSTOMREQUEST, request_type::kPatch))
-      .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_PRIVATE, _))
       .WillOnce(Return(CURLE_OK));
   auto connection = transport_->CreateConnection(
       "http://www.foo.bar/patch", request_type::kPatch, {}, "", "", nullptr);
@@ -165,12 +143,8 @@ TEST_F(HttpCurlTransportTest, RequestPatch) {
 }
 
 TEST_F(HttpCurlTransportTest, CurlFailure) {
-  InSequence seq;
-  EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
-      .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
       .WillOnce(Return(CURLE_OUT_OF_MEMORY));
@@ -192,6 +166,15 @@ class HttpCurlTransportAsyncTest : public testing::Test {
   void SetUp() override {
     curl_api_ = std::make_shared<MockCurlInterface>();
     transport_ = std::make_shared<Transport>(curl_api_);
+    EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
+    EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
+        .WillOnce(Return(CURLE_OK));
+    EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_SSL_VERIFYPEER, 1))
+        .WillOnce(Return(CURLE_OK));
+    EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_SSL_VERIFYHOST, 2))
+        .WillOnce(Return(CURLE_OK));
+    EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_PRIVATE, _))
+        .WillOnce(Return(CURLE_OK));
   }
 
  protected:
@@ -211,15 +194,10 @@ TEST_F(HttpCurlTransportAsyncTest, StartAsyncTransfer) {
   base::RunLoop run_loop;
 
   // Initial expectations for creating a CURL connection.
-  EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
       .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
-      .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
-      .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_PRIVATE, _))
       .WillOnce(Return(CURLE_OK));
   auto connection = transport_->CreateConnection(
       "http://foo.bar/get", request_type::kGet, {}, "", "", nullptr);
@@ -304,19 +282,13 @@ TEST_F(HttpCurlTransportAsyncTest, StartAsyncTransfer) {
 }
 
 TEST_F(HttpCurlTransportTest, RequestGetTimeout) {
-  InSequence seq;
   transport_->SetDefaultTimeout(base::TimeDelta::FromMilliseconds(2000));
-  EXPECT_CALL(*curl_api_, EasyInit()).WillOnce(Return(handle_));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
-      .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptStr(handle_, CURLOPT_CAPATH, _))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_TIMEOUT_MS, 2000))
       .WillOnce(Return(CURLE_OK));
   EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
-      .WillOnce(Return(CURLE_OK));
-  EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_PRIVATE, _))
       .WillOnce(Return(CURLE_OK));
   auto connection = transport_->CreateConnection(
       "http://foo.bar/get", request_type::kGet, {}, "", "", nullptr);

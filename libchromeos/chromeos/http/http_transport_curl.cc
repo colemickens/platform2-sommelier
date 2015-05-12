@@ -138,6 +138,14 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
     code = curl_interface_->EasySetOptStr(curl_handle, CURLOPT_CAPATH,
                                           kChromeOSCACertificatePath);
   }
+  if (code == CURLE_OK) {
+    code =
+        curl_interface_->EasySetOptInt(curl_handle, CURLOPT_SSL_VERIFYPEER, 1);
+  }
+  if (code == CURLE_OK) {
+    code =
+        curl_interface_->EasySetOptInt(curl_handle, CURLOPT_SSL_VERIFYHOST, 2);
+  }
   if (code == CURLE_OK && !user_agent.empty()) {
     code = curl_interface_->EasySetOptStr(
         curl_handle, CURLOPT_USERAGENT, user_agent);
