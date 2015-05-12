@@ -29,9 +29,11 @@
       ],
       'dependencies': [
         'perf_data_proto',
+        'perf_stat_proto',
       ],
       'export_dependent_settings': [
         'perf_data_proto',
+        'perf_stat_proto',
       ],
     },
     {
@@ -67,6 +69,18 @@
       },
       'sources': [
         '<(proto_in_dir)/perf_data.proto',
+      ],
+      'includes': ['../common-mk/protoc.gypi'],
+    },
+    {
+      'target_name': 'perf_stat_proto',
+      'type': 'static_library',
+      'variables': {
+        'proto_in_dir': '.',
+        'proto_out_dir': 'include',
+      },
+      'sources': [
+        '<(proto_in_dir)/perf_stat.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },
