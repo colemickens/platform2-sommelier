@@ -38,6 +38,12 @@ class ServiceStub : public ServiceInterface {
   bool HasClient(ClientInterface* client) const override;
   void AddObserver(ServiceObserver* observer) override;
   void RemoveObserver(ServiceObserver* observer) override;
+  void OnCellLaunched() override;
+  void OnServiceUnavailable() override;
+
+  // For tests that want to assert the number of times OnServiceUnavailable()
+  // was called.
+  int GetAndResetOnServiceUnavailableCount();
 
  private:
   // The name of the service.
@@ -49,6 +55,12 @@ class ServiceStub : public ServiceInterface {
   // Clients registered via AddClient().
   using ClientSet = std::set<ClientInterface*>;
   ClientSet clients_;
+
+  // Whether the service timed out before registering itself.
+  bool timeout_pending_;
+
+  // Number of times that OnServiceUnavailable() has been called.
+  int on_service_unavailable_count_;
 
   DISALLOW_COPY_AND_ASSIGN(ServiceStub);
 };

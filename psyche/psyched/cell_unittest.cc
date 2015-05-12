@@ -33,19 +33,15 @@ namespace {
 class GermInterfaceStub : public germ::IGerm {
  public:
   GermInterfaceStub()
-      : launch_return_value_(0),
-        terminate_return_value_(0) {}
+      : launch_return_value_(0) {}
   ~GermInterfaceStub() override = default;
 
   void set_launch_return_value(int value) { launch_return_value_ = value; }
-  void set_terminate_return_value(int value) {
-    terminate_return_value_ = value;
+  void set_launch_pid(int pid) {
+    launch_pid_ = pid;
   }
   const std::vector<std::string>& launched_cell_names() const {
     return launched_cell_names_;
-  }
-  const std::vector<std::string>& terminated_cell_names() const {
-    return terminated_cell_names_;
   }
 
   // IGerm:
@@ -58,24 +54,18 @@ class GermInterfaceStub : public germ::IGerm {
 
   Status Terminate(germ::TerminateRequest* in,
                    germ::TerminateResponse* out) override {
-    terminated_cell_names_.push_back(in->name());
-    return terminate_return_value_
-               ? STATUS_APP_ERROR(terminate_return_value_, "Terminate Error")
-               : STATUS_OK();
+    return STATUS_OK();
   }
 
  private:
   // binder result returned by Launch().
   int launch_return_value_;
 
-  // binder result returned by Terminate().
-  int terminate_return_value_;
+  // germ pid field returned by LaunchResponse.
+  int launch_pid_;
 
   // Cell names passed to Launch().
   std::vector<std::string> launched_cell_names_;
-
-  // Cell names passed to Terminate().
-  std::vector<std::string> terminated_cell_names_;
 
   DISALLOW_COPY_AND_ASSIGN(GermInterfaceStub);
 };
@@ -159,20 +149,63 @@ TEST_F(CellTest, GermCommunication) {
   EXPECT_TRUE(cell.Launch());
   ASSERT_EQ(1, germ_->launched_cell_names().size());
   EXPECT_EQ(kCellName, germ_->launched_cell_names()[0]);
+}
 
-  // Make similar calls to Terminate() as Launch(), showing failures for RPC,
-  // binder death, and restart and success.
-  germ_->set_terminate_return_value(-1);
-  EXPECT_FALSE(cell.Terminate());
+// Tests notifying services that don't register themselves.
+TEST_F(CellTest, VerifyServiceRegistration) {
+  ContainerSpec spec;
+  const std::vector<std::string> kServiceNames = {
+    "org.example.search.query",
+    "org.example.search.autocomplete",
+  };
+  for (const auto& name : kServiceNames)
+    spec.add_service_names(name);
 
-  germ_->set_terminate_return_value(0);
-  binder_manager_->ReportBinderDeath(germ_handle_);
-  EXPECT_FALSE(cell.Terminate());
+  const std::string kCellName("/tmp/org.example.cell");
+  const int kCellPid(123);
+  spec.set_name(kCellName);
+  germ_->set_launch_pid(kCellPid);
 
+  Cell cell(spec, &factory_, &germ_connection_);
+  Cell::TestApi test_api(&cell);
+
+  // The timer should not be scheduled yet.
+  EXPECT_FALSE(test_api.TriggerVerifyServicesTimeout());
+
+  EXPECT_TRUE(cell.Launch());
+
+  // Trigger the timeout before the services register.
+  EXPECT_TRUE(test_api.TriggerVerifyServicesTimeout());
+  // After that, we give up and don't set the timer again.
+  EXPECT_FALSE(test_api.TriggerVerifyServicesTimeout());
+  // The services have been notified of the failure.
+  for (const auto& service_name : kServiceNames) {
+    ServiceStub* service = factory_.GetService(service_name);
+    EXPECT_EQ(1, service->GetAndResetOnServiceUnavailableCount())
+        << service_name << " had wrong unavailable count";
+  }
+
+  // Start again and make the services register.
   InitGerm();
-  EXPECT_TRUE(cell.Terminate());
-  ASSERT_EQ(1, germ_->terminated_cell_names().size());
-  EXPECT_EQ(kCellName, germ_->terminated_cell_names()[0]);
+  EXPECT_TRUE(cell.Launch());
+
+  for (const auto& service_it : cell.GetServices()) {
+    BinderProxy* service_proxy = CreateBinderProxy().release();
+    service_it.second->SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
+    // Manually call OnServiceProxyChange() because the ServiceStub class
+    // doesn't notify its oberservers of proxy changes.
+    cell.OnServiceProxyChange(service_it.second.get());
+  }
+
+  // The cell cleared the timer because all services registered in time.
+  EXPECT_FALSE(test_api.TriggerVerifyServicesTimeout());
+
+  // OnServiceUnavailable() hasn't been called on any of the services.
+  for (const auto& service_name : kServiceNames) {
+    ServiceStub* service = factory_.GetService(service_name);
+    EXPECT_EQ(0, service->GetAndResetOnServiceUnavailableCount())
+        << service_name << " had wrong unavailable count";
+  }
 }
 
 }  // namespace

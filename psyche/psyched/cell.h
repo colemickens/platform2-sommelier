@@ -10,7 +10,7 @@
 #include <string>
 
 #include <base/macros.h>
-
+#include <base/timer/timer.h>
 #include "psyche/proto_bindings/soma_container_spec.pb.h"
 #include "psyche/psyched/service_observer.h"
 
@@ -38,14 +38,26 @@ class CellInterface {
 
   // Launches the cell. Returns whether the cell was launched successfully.
   virtual bool Launch() = 0;
-
-  // Terminates the cell. Returns whether the cell was terminated successfully.
-  virtual bool Terminate() = 0;
 };
 
 // The real implementation of CellInterface.
 class Cell : public CellInterface, public ServiceObserver {
  public:
+  // Helper class for tests.
+  class TestApi {
+   public:
+    explicit TestApi(Cell* cell);
+    ~TestApi();
+
+    // Calls VerifyServicesRegistered(). Returns false if the timer wasn't set.
+    bool TriggerVerifyServicesTimeout();
+
+   private:
+    Cell* cell_;  // weak
+
+    DISALLOW_COPY_AND_ASSIGN(TestApi);
+  };
+
   // |factory| is used to construct ServiceInterface objects, permitting tests
   // to create stub services instead. Note: Ownership of |germ| remains with
   // the caller.
@@ -58,12 +70,22 @@ class Cell : public CellInterface, public ServiceObserver {
   std::string GetName() const override;
   const ServiceMap& GetServices() const override;
   bool Launch() override;
-  bool Terminate() override;
 
   // ServiceObserver:
   void OnServiceProxyChange(ServiceInterface* service) override;
 
  private:
+  // Terminates the cell. Returns whether the cell was terminated successfully.
+  bool Terminate();
+
+  // Checks that all services have registered and notifies unregistered services
+  // if not.
+  void VerifyServicesRegistered();
+
+  // Loops over all services and uses their GetProxy() methods to check that
+  // they have all been registered.
+  bool AllServicesRegistered();
+
   // The specification describing this cell.
   soma::ContainerSpec spec_;
 
@@ -75,6 +97,13 @@ class Cell : public CellInterface, public ServiceObserver {
   // Connection to germd to launch the cell. Note: This class doesn't own the
   // GermConnection object.
   GermConnection* germ_connection_;
+
+  // PID of the germ-provided init process inside the cell, which can be used to
+  // terminate all the processes in the cell.
+  int init_pid_;
+
+  // Calls VerifyServicesRegistered().
+  base::OneShotTimer<Cell> verify_services_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(Cell);
 };

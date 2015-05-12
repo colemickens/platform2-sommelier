@@ -21,6 +21,7 @@ namespace psyche {
 
 Service::Service(const std::string& name)
     : name_(name),
+      timeout_pending_(true),
       weak_ptr_factory_(this) {
 }
 
@@ -32,6 +33,7 @@ BinderProxy* Service::GetProxy() const { return proxy_.get(); }
 
 void Service::SetProxy(std::unique_ptr<BinderProxy> proxy) {
   DCHECK(proxy);
+  timeout_pending_ = false;
   proxy_ = std::move(proxy);
   proxy_->SetDeathCallback(base::Bind(&Service::HandleBinderDeath,
                                       weak_ptr_factory_.GetWeakPtr()));
@@ -40,6 +42,10 @@ void Service::SetProxy(std::unique_ptr<BinderProxy> proxy) {
 
 void Service::AddClient(ClientInterface* client) {
   clients_.insert(client);
+  // If we don't have a proxy, and one isn't pending, notify the client of
+  // failure immediately.
+  if (!proxy_.get() && !timeout_pending_)
+    client->ReportServiceRequestFailure(name_);
 }
 
 void Service::RemoveClient(ClientInterface* client) {
@@ -58,6 +64,17 @@ void Service::AddObserver(ServiceObserver* observer) {
 void Service::RemoveObserver(ServiceObserver* observer) {
   DCHECK(observer);
   observers_.RemoveObserver(observer);
+}
+
+void Service::OnCellLaunched() {
+  timeout_pending_ = true;
+}
+
+void Service::OnServiceUnavailable() {
+  timeout_pending_ = false;
+  for (const auto& client_it : clients_) {
+    client_it->ReportServiceRequestFailure(name_);
+  }
 }
 
 void Service::HandleBinderDeath() {

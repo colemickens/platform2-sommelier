@@ -327,6 +327,26 @@ TEST_F(RegistrarTest, UnknownService) {
   // been deleted by this point.
 }
 
+// Tests that failure is when the service requested has already timed out before
+// registering, say, from a previous reqeust.
+TEST_F(RegistrarTest, TimedOutService) {
+  Init();
+
+  // Register a service.
+  const std::string kServiceName("service");
+  uint32_t service_handle = CreateBinderProxyHandle();
+  EXPECT_TRUE(RegisterService(kServiceName, service_handle));
+
+  // Mark the service as unavailable, which could have happened from a previous
+  // request.
+  ServiceStub* service = GetServiceOrDie(kServiceName);
+  service->SetProxyForTesting(nullptr);
+  service->OnServiceUnavailable();
+
+  // A request for the service should fail.
+  EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxyHandle()));
+}
+
 // Tests that a second ContainerSpec claiming to provide a service that's
 // already provided by an earlier ContainerSpec is ignored.
 TEST_F(RegistrarTest, DuplicateService) {

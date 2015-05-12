@@ -13,6 +13,8 @@
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 
+#include "psyche/psyched/client.h"
+
 namespace protobinder {
 class BinderProxy;
 }  // namespace protobinder
@@ -52,6 +54,11 @@ class ServiceInterface {
   // Adds or removes observers of changes to this object.
   virtual void AddObserver(ServiceObserver* observer) = 0;
   virtual void RemoveObserver(ServiceObserver* observer) = 0;
+
+  // Notifies the service when the cell was launched or when cell marked the
+  // service unavailable.
+  virtual void OnCellLaunched() = 0;
+  virtual void OnServiceUnavailable() = 0;
 };
 
 // Real implementation of ServiceInterface.
@@ -69,6 +76,8 @@ class Service : public ServiceInterface {
   bool HasClient(ClientInterface* client) const override;
   void AddObserver(ServiceObserver* observer) override;
   void RemoveObserver(ServiceObserver* observer) override;
+  void OnCellLaunched() override;
+  void OnServiceUnavailable() override;
 
  private:
   // Invoked when |proxy_| has been closed, likely indicating that the process
@@ -87,6 +96,9 @@ class Service : public ServiceInterface {
   // Clients that are holding connections to this service.
   using ClientSet = std::set<ClientInterface*>;
   ClientSet clients_;
+
+  // Whether the registration timeout is currently active.
+  bool timeout_pending_;
 
   // Keep this member last.
   base::WeakPtrFactory<Service> weak_ptr_factory_;

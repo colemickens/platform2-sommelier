@@ -15,9 +15,7 @@ namespace psyche {
 CellStub::CellStub(const std::string& cell_name)
     : name_(cell_name),
       launch_count_(0),
-      launch_return_value_(true),
-      terminate_count_(0),
-      terminate_return_value_(true) {
+      launch_return_value_(true) {
 }
 
 CellStub::~CellStub() = default;
@@ -39,11 +37,6 @@ const CellInterface::ServiceMap& CellStub::GetServices() const {
 bool CellStub::Launch() {
   launch_count_++;
   return launch_return_value_;
-}
-
-bool CellStub::Terminate() {
-  terminate_count_++;
-  return terminate_return_value_;
 }
 
 }  // namespace psyche

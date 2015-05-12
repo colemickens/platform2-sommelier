@@ -14,6 +14,7 @@
 #include <protobinder/binder_proxy.h>
 
 #include "psyche/common/binder_test_base.h"
+#include "psyche/psyched/client_stub.h"
 #include "psyche/psyched/service_observer.h"
 
 using protobinder::BinderProxy;
@@ -69,6 +70,22 @@ TEST_F(ServiceTest, NotifyObserversAboutProxyChanges) {
   EXPECT_EQ(&service, observer.changed_services()[0]);
 
   service.RemoveObserver(&observer);
+}
+
+TEST_F(ServiceTest, NotifyClientsAboutRegistrationTimeout) {
+  const std::string kServiceName("service");
+  Service service(kServiceName);
+  EXPECT_FALSE(service.GetProxy());
+
+  ClientStub* client1 = new ClientStub(CreateBinderProxy());
+  service.AddClient(client1);
+
+  ClientStub* client2 = new ClientStub(CreateBinderProxy());
+  service.AddClient(client2);
+
+  service.OnServiceUnavailable();
+  EXPECT_EQ(1, client1->GetServiceRequestFailures(kServiceName));
+  EXPECT_EQ(1, client2->GetServiceRequestFailures(kServiceName));
 }
 
 }  // namespace

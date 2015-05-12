@@ -12,7 +12,9 @@ using protobinder::BinderProxy;
 
 namespace psyche {
 
-ServiceStub::ServiceStub(const std::string& name) : name_(name) {}
+ServiceStub::ServiceStub(const std::string& name)
+    : name_(name), timeout_pending_(true), on_service_unavailable_count_(0) {
+}
 
 ServiceStub::~ServiceStub() = default;
 
@@ -33,6 +35,8 @@ void ServiceStub::AddClient(ClientInterface* client) {
   CHECK(client);
   CHECK(clients_.insert(client).second)
       << "Client " << client << " already added to \"" << name_ << "\"";
+  if (!proxy_.get() && !timeout_pending_)
+    client->ReportServiceRequestFailure(name_);
 }
 
 void ServiceStub::RemoveClient(ClientInterface* client) {
@@ -49,5 +53,23 @@ bool ServiceStub::HasClient(ClientInterface* client) const {
 void ServiceStub::AddObserver(ServiceObserver* observer) {}
 
 void ServiceStub::RemoveObserver(ServiceObserver* observer) {}
+
+void ServiceStub::OnCellLaunched() {
+  timeout_pending_ = true;
+}
+
+void ServiceStub::OnServiceUnavailable() {
+  on_service_unavailable_count_++;
+  timeout_pending_ = false;
+  for (const auto& client_it : clients_) {
+    client_it->ReportServiceRequestFailure(GetName());
+  }
+}
+
+int ServiceStub::GetAndResetOnServiceUnavailableCount() {
+  int old_value = on_service_unavailable_count_;
+  on_service_unavailable_count_ = 0;
+  return old_value;
+}
 
 }  // namespace psyche
