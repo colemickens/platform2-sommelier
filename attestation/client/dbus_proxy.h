@@ -18,6 +18,7 @@ namespace attestation {
 // An implementation of AttestationInterface that forwards requests over D-Bus.
 // Usage:
 //   std::unique_ptr<AttestationInterface> attestation = new DBusProxy();
+//   attestation->Initialize();
 //   attestation->CreateGoogleAttestedKey(...);
 class DBusProxy : public AttestationInterface {
  public:
