@@ -18,6 +18,7 @@
         'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
       },
       'sources': [
+        'base_api_handler.cc',
         'buffet_config.cc',
         'commands/command_definition.cc',
         'commands/command_dictionary.cc',
@@ -106,6 +107,7 @@
           },
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
+            'base_api_handler_unittest.cc',
             'buffet_testrunner.cc',
             'commands/command_definition_unittest.cc',
             'commands/command_dictionary_unittest.cc',

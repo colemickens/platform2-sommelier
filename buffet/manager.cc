@@ -21,6 +21,7 @@
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
 
+#include "buffet/base_api_handler.h"
 #include "buffet/commands/command_instance.h"
 #include "buffet/commands/schema_constants.h"
 #include "buffet/states/state_change_queue.h"
@@ -57,8 +58,7 @@ void Manager::Start(const base::FilePath& config_path,
       &Manager::OnCommandDefsChanged, weak_ptr_factory_.GetWeakPtr()));
   command_manager_->Startup(base::FilePath{"/etc/buffet"},
                             test_definitions_path);
-  state_change_queue_ = std::unique_ptr<StateChangeQueue>(
-      new StateChangeQueue(kMaxStateChangeQueueSize));
+  state_change_queue_.reset(new StateChangeQueue(kMaxStateChangeQueueSize));
   state_manager_ = std::make_shared<StateManager>(state_change_queue_.get());
   state_manager_->Startup();
   std::unique_ptr<BuffetConfig> config{new BuffetConfig};
@@ -66,15 +66,14 @@ void Manager::Start(const base::FilePath& config_path,
   std::unique_ptr<FileStorage> state_store{new FileStorage{state_path}};
   // TODO(avakulenko): Figure out security implications of storing
   // device info state data unencrypted.
-  device_info_ = std::unique_ptr<DeviceRegistrationInfo>(
-      new DeviceRegistrationInfo(
-          command_manager_,
-          state_manager_,
-          std::move(config),
-          chromeos::http::Transport::CreateDefault(),
-          std::move(state_store),
-          xmpp_enabled,
-          &dbus_adaptor_));
+  device_info_.reset(new DeviceRegistrationInfo(
+      command_manager_, state_manager_, std::move(config),
+      chromeos::http::Transport::CreateDefault(), std::move(state_store),
+      xmpp_enabled, &dbus_adaptor_));
+
+  base_api_handler_.reset(
+      new BaseApiHandler{device_info_->AsWeakPtr(), command_manager_});
+
   device_info_->Load();
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(cb);

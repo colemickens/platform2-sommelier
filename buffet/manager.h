@@ -31,9 +31,10 @@ class ExportedObjectManager;
 
 namespace buffet {
 
+class BaseApiHandler;
+class BuffetConfig;
 class StateChangeQueue;
 class StateManager;
-class BuffetConfig;
 
 template<typename... Types>
 using DBusMethodResponse =
@@ -88,9 +89,9 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   std::unique_ptr<StateChangeQueue> state_change_queue_;
   std::shared_ptr<StateManager> state_manager_;
   std::unique_ptr<DeviceRegistrationInfo> device_info_;
+  std::unique_ptr<BaseApiHandler> base_api_handler_;
 
   base::WeakPtrFactory<Manager> weak_ptr_factory_{this};
-
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };
 

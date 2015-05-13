@@ -134,4 +134,14 @@ bool CommandManager::SetCommandVisibility(
   return true;
 }
 
+void CommandManager::AddOnCommandAddedCallback(
+    const CommandQueue::Callback& callback) {
+  command_queue_.AddOnCommandAddedCallback(callback);
+}
+
+void CommandManager::AddOnCommandRemovedCallback(
+    const CommandQueue::Callback& callback) {
+  command_queue_.AddOnCommandRemovedCallback(callback);
+}
+
 }  // namespace buffet

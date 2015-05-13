@@ -98,6 +98,12 @@ class CommandManager final {
                             CommandDefinition::Visibility visibility,
                             chromeos::ErrorPtr* error);
 
+  // Adds notifications callback for a new command being added to the queue.
+  void AddOnCommandAddedCallback(const CommandQueue::Callback& callback);
+
+  // Adds notifications callback for a command being removed from the queue.
+  void AddOnCommandRemovedCallback(const CommandQueue::Callback& callback);
+
  private:
   CommandDictionary base_dictionary_;  // Base/std command definitions/schemas.
   CommandDictionary dictionary_;  // Command definitions/schemas.

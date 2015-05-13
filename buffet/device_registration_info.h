@@ -146,6 +146,12 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
                         const std::string& location,
                         chromeos::ErrorPtr* error);
 
+  const BuffetConfig& GetConfig() const { return *config_; }
+
+  base::WeakPtr<DeviceRegistrationInfo> AsWeakPtr() {
+    return weak_factory_.GetWeakPtr();
+  }
+
  private:
   // Cause DeviceRegistrationInfo to attempt to StartDevice on its own later.
   void ScheduleStartDevice(const base::TimeDelta& later);
