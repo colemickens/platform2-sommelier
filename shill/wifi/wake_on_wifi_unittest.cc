@@ -3060,7 +3060,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Error) {
                      GetWakeupReportMsgContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Not a NL80211 Message")));
-  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
+  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived()).Times(0);
   OnWakeupReasonReceived(msg0);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
 
@@ -3072,7 +3072,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Error) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log,
               Log(_, _, HasSubstr("Not a NL80211_CMD_SET_WOWLAN message")));
-  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
+  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived()).Times(0);
   OnWakeupReasonReceived(msg1);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
 
@@ -3085,7 +3085,7 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Error) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(
       log, Log(_, _, HasSubstr("Wakeup reason not meant for this interface")));
-  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived());
+  EXPECT_CALL(metrics_, NotifyWakeupReasonReceived()).Times(0);
   OnWakeupReasonReceived(msg2);
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
 

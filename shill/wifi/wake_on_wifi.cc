@@ -1129,7 +1129,6 @@ void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage &netlink_message) {
   SLOG(this, 7) << __func__ << ": "
                 << "Wake on WiFi not supported, so do nothing";
 #else
-  metrics_->NotifyWakeupReasonReceived();
   // We only handle wakeup reason messages in this handler, which is are
   // nl80211 messages with the NL80211_CMD_SET_WOWLAN command.
   if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
@@ -1160,6 +1159,7 @@ void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage &netlink_message) {
                   << "Wakeup reason not meant for this interface";
     return;
   }
+  metrics_->NotifyWakeupReasonReceived();
   SLOG(this, 3) << __func__ << ": "
                 << "Parsing wakeup reason";
   AttributeListConstRefPtr triggers;
