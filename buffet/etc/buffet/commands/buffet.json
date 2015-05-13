@@ -9,16 +9,6 @@
       "results": {}
     },
 
-    "reboot": {
-      "parameters": {},
-      "results": {}
-    },
-
-    "identify": {
-      "parameters": {},
-      "results": {}
-    },
-
     "updateDeviceInfo": {
       "parameters": {
         "description": "string",
