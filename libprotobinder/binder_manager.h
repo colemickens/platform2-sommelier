@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <set>
 
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
@@ -152,6 +153,12 @@ class BINDER_EXPORT BinderManager : public BinderManagerInterface {
   // Associates handles with BinderProxy objects. Note that multiple proxies may
   // be created for a single binder handle.
   std::multimap<uint32_t, BinderProxy*> proxies_;
+
+  // BinderProxy objects that NotifyProxiesAboutBinderDeath() is in the process
+  // of notifying. Stored in a member so that UnregisterBinderProxy() can update
+  // it if one of the death callbacks happens to destroy a still-scheduled
+  // proxy.
+  std::set<BinderProxy*> proxies_to_notify_about_death_;
 
   // Keep this member last.
   base::WeakPtrFactory<BinderManager> weak_ptr_factory_;

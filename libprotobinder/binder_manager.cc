@@ -165,6 +165,7 @@ void BinderManager::UnregisterBinderProxy(BinderProxy* proxy) {
   CHECK_EQ(num_erased, 1U)
       << "Expected exactly one copy of proxy " << proxy << " for handle "
       << proxy->handle() << " when unregistering it";
+  proxies_to_notify_about_death_.erase(proxy);
 
   // If this was the only proxy for the handle, drop the reference and stop
   // listening for death notifications.
@@ -324,9 +325,18 @@ void BinderManager::NotifyProxiesAboutBinderDeath(uint32_t handle) {
     LOG(ERROR) << "Ignoring notification about death of binder " << handle;
     return;
   }
-  const auto range = proxies_.equal_range(handle);
+
+  // We can't directly iterate over the output of equal_range() since death
+  // callbacks can (and are likely to) destroy BinderProxy objects, invalidating
+  // the iterators that we're using.
+  auto range = proxies_.equal_range(handle);
   for (auto it = range.first; it != range.second; ++it)
-    it->second->HandleDeathNotification();
+    proxies_to_notify_about_death_.insert(it->second);
+  while (!proxies_to_notify_about_death_.empty()) {
+    BinderProxy* proxy = *proxies_to_notify_about_death_.begin();
+    proxies_to_notify_about_death_.erase(proxy);
+    proxy->HandleDeathNotification();
+  }
 }
 
 Status BinderManager::WaitAndActionReply(Parcel* reply) {

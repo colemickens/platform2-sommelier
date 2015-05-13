@@ -19,9 +19,18 @@ BinderManagerStub::~BinderManagerStub() {}
 
 void BinderManagerStub::ReportBinderDeath(uint32_t proxy_handle) {
   CHECK(proxy_handle);
-  const auto range = proxies_.equal_range(proxy_handle);
+
+  // We can't directly iterate over the output of equal_range() since death
+  // callbacks can (and are likely to) destroy BinderProxy objects, invalidating
+  // the iterators that we're using.
+  auto range = proxies_.equal_range(proxy_handle);
   for (auto it = range.first; it != range.second; ++it)
-    it->second->HandleDeathNotification();
+    proxies_to_notify_about_death_.insert(it->second);
+  while (!proxies_to_notify_about_death_.empty()) {
+    BinderProxy* proxy = *proxies_to_notify_about_death_.begin();
+    proxies_to_notify_about_death_.erase(proxy);
+    proxy->HandleDeathNotification();
+  }
 }
 
 void BinderManagerStub::SetTestInterface(
@@ -86,6 +95,7 @@ void BinderManagerStub::UnregisterBinderProxy(BinderProxy* proxy) {
            1U)
       << "Expected exactly one copy of proxy " << proxy << " for handle "
       << proxy->handle() << " when unregistering it";
+  proxies_to_notify_about_death_.erase(proxy);
 }
 
 std::unique_ptr<IInterface> BinderManagerStub::CreateTestInterface(

@@ -60,6 +60,11 @@ class BINDER_EXPORT BinderManagerStub : public BinderManagerInterface {
   std::map<uint64_t, BinderHost*> hosts_;
   std::multimap<uint32_t, BinderProxy*> proxies_;
 
+  // BinderProxy objects that ReportBinderDeath() is in the process of
+  // notifying. Stored in a member so that UnregisterBinderProxy() can update it
+  // if one of the death callbacks happens to destroy a still-scheduled proxy.
+  std::set<BinderProxy*> proxies_to_notify_about_death_;
+
   // Maps from BinderProxy handles to test interface objects that should be
   // released and returned in response to CreateTestInterface() calls.
   std::map<uint32_t, std::unique_ptr<IInterface>> test_interfaces_;
