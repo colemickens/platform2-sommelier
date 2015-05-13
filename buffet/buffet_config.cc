@@ -40,8 +40,7 @@ std::string GetDeviceKind(const std::string& manifest_id) {
 }
 
 bool IsValidAccessRole(const std::string& role) {
-  return role == "none" || role == "viewer" || role == "user" ||
-         role == "owner";
+  return role == "none" || role == "viewer" || role == "user";
 }
 
 }  // namespace
