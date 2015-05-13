@@ -40,7 +40,10 @@ class DemoClient : public PsycheDaemon {
   const int kPingIntervalMs = 1000;
 
   void ReceiveService(std::unique_ptr<BinderProxy> proxy) {
-    LOG(INFO) << "Received service with handle " << proxy->handle();
+    if (proxy)
+      LOG(INFO) << "Received service with handle " << proxy->handle();
+    else
+      LOG(ERROR) << "psyched reported service registration failure";
     proxy_ = std::move(proxy);
     server_ = protobinder::CreateInterface<psyche::IPsycheDemoServer>(
         proxy_.get());
