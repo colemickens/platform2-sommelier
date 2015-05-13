@@ -467,10 +467,6 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("gpu_sandbox_start_early"))
     AddArg("--gpu-sandbox-start-early");
 
-  if (IsBoard("peach_pi") || IsBoard("nyan") || IsBoard("nyan_big") ||
-      IsBoard("nyan_blaze") || IsBoard("nyan_kitty"))
-    AddArg("--ignore-resolution-limits-for-accelerated-video-decode");
-
   // Ozone platform configuration.
   if (UseFlagIsSet("ozone_platform_gbm")) {
     AddArg("--ozone-platform=gbm");
