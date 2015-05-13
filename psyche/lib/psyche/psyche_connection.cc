@@ -46,8 +46,8 @@ class PsycheConnection::Impl : public IPsycheClientHostInterface {
         return false;
       }
     }
-    psyched_interface_.reset(
-        protobinder::BinderToInterface<IPsyched>(psyched_proxy_.get()));
+    psyched_interface_ =
+        protobinder::CreateInterface<IPsyched>(psyched_proxy_.get());
     return true;
   }
 

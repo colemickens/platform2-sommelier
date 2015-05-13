@@ -16,7 +16,6 @@
 #include "psyche/proto_bindings/soma_container_spec.pb.h"
 
 using protobinder::BinderProxy;
-using protobinder::BinderToInterface;
 
 using soma::ContainerSpec;
 using soma::ISoma;
@@ -108,7 +107,7 @@ void SomaConnection::OnServiceProxyChange(ServiceInterface* service) {
   DCHECK_EQ(service, &service_);
   if (service->GetProxy()) {
     LOG(INFO) << "Got connection to somad";
-    interface_.reset(BinderToInterface<ISoma>(service->GetProxy()));
+    interface_ = protobinder::CreateInterface<ISoma>(service->GetProxy());
   } else {
     LOG(WARNING) << "Lost connection to somad";
     interface_.reset();

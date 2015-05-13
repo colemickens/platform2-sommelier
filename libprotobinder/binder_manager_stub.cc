@@ -88,21 +88,18 @@ void BinderManagerStub::UnregisterBinderProxy(BinderProxy* proxy) {
       << proxy->handle() << " when unregistering it";
 }
 
-IInterface* BinderManagerStub::CreateTestInterface(const BinderProxy* binder) {
-  if (!binder)
-    return test_interface_for_null_proxy_.release();
-
-  const BinderProxy* proxy = binder->GetBinderProxy();
+std::unique_ptr<IInterface> BinderManagerStub::CreateTestInterface(
+    const BinderProxy* proxy) {
   if (!proxy)
-    return nullptr;
+    return std::move(test_interface_for_null_proxy_);
 
   auto it = test_interfaces_.find(proxy->handle());
   if (it == test_interfaces_.end())
-    return nullptr;
+    return std::unique_ptr<IInterface>();
 
   std::unique_ptr<IInterface> interface = std::move(it->second);
   test_interfaces_.erase(it);
-  return interface.release();
+  return std::move(interface);
 }
 
 }  // namespace protobinder

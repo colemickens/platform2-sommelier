@@ -13,13 +13,12 @@
 #include "psyche/psyched/service.h"
 
 using protobinder::BinderProxy;
-using protobinder::BinderToInterface;
 
 namespace psyche {
 
 Client::Client(std::unique_ptr<BinderProxy> client_proxy)
     : proxy_(std::move(client_proxy)),
-      interface_(BinderToInterface<IPsycheClient>(proxy_.get())) {
+      interface_(protobinder::CreateInterface<IPsycheClient>(proxy_.get())) {
 }
 
 Client::~Client() {
@@ -60,7 +59,7 @@ void Client::OnServiceProxyChange(ServiceInterface* service) {
 }
 
 void Client::SendServiceProxy(const std::string& service_name,
-                              const protobinder::BinderProxy* service_proxy) {
+                              const BinderProxy* service_proxy) {
   ReceiveServiceRequest request;
   request.set_name(service_name);
   if (service_proxy)

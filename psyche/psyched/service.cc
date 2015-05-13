@@ -16,7 +16,6 @@
 #include "psyche/psyched/service_observer.h"
 
 using protobinder::BinderProxy;
-using protobinder::BinderToInterface;
 
 namespace psyche {
 
@@ -29,7 +28,7 @@ Service::~Service() = default;
 
 const std::string& Service::GetName() const { return name_; }
 
-protobinder::BinderProxy* Service::GetProxy() const { return proxy_.get(); }
+BinderProxy* Service::GetProxy() const { return proxy_.get(); }
 
 void Service::SetProxy(std::unique_ptr<BinderProxy> proxy) {
   DCHECK(proxy);

@@ -53,7 +53,8 @@ class BINDER_EXPORT BinderManagerStub : public BinderManagerInterface {
   void UnregisterBinderHost(BinderHost* host) override;
   void RegisterBinderProxy(BinderProxy* proxy) override;
   void UnregisterBinderProxy(BinderProxy* proxy) override;
-  IInterface* CreateTestInterface(const BinderProxy* binder) override;
+  std::unique_ptr<IInterface> CreateTestInterface(
+      const BinderProxy* proxy) override;
 
  private:
   std::map<uint64_t, BinderHost*> hosts_;

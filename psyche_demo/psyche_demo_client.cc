@@ -42,8 +42,8 @@ class DemoClient : public PsycheDaemon {
   void ReceiveService(std::unique_ptr<BinderProxy> proxy) {
     LOG(INFO) << "Received service with handle " << proxy->handle();
     proxy_ = std::move(proxy);
-    server_.reset(protobinder::BinderToInterface<psyche::IPsycheDemoServer>(
-        proxy_.get()));
+    server_ = protobinder::CreateInterface<psyche::IPsycheDemoServer>(
+        proxy_.get());
     timer_.Start(FROM_HERE, base::TimeDelta::FromMilliseconds(kPingIntervalMs),
                  this, &DemoClient::SendPing);
     SendPing();

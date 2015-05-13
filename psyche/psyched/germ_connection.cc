@@ -12,10 +12,8 @@
 #include "psyche/proto_bindings/germ.pb.h"
 #include "psyche/proto_bindings/germ.pb.rpc.h"
 
-using protobinder::BinderProxy;
-using protobinder::BinderToInterface;
-
 using germ::IGerm;
+using protobinder::BinderProxy;
 
 namespace psyche {
 
@@ -99,7 +97,7 @@ void GermConnection::OnServiceProxyChange(ServiceInterface* service) {
   DCHECK_EQ(service, &service_);
   if (service->GetProxy()) {
     LOG(INFO) << "Got connection to " << germ::kGermServiceName;
-    interface_.reset(BinderToInterface<IGerm>(service->GetProxy()));
+    interface_ = protobinder::CreateInterface<IGerm>(service->GetProxy());
   } else {
     LOG(WARNING) << "Lost connection to " << germ::kGermServiceName;
     interface_.reset();

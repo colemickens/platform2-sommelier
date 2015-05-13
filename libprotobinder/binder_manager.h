@@ -63,8 +63,9 @@ class BINDER_EXPORT BinderManagerInterface {
   virtual void UnregisterBinderProxy(BinderProxy* proxy) = 0;
 
   // If a test IInterface has been registered for |proxy|, returns it.
-  // Otherwise, returns nullptr.
-  virtual IInterface* CreateTestInterface(const BinderProxy* proxy) = 0;
+  // Otherwise, returns null.
+  virtual std::unique_ptr<IInterface> CreateTestInterface(
+      const BinderProxy* proxy) = 0;
 };
 
 // Real implementation of BinderManagerInterface that communicates with the
@@ -87,7 +88,8 @@ class BINDER_EXPORT BinderManager : public BinderManagerInterface {
   void UnregisterBinderHost(BinderHost* host) override;
   void RegisterBinderProxy(BinderProxy* proxy) override;
   void UnregisterBinderProxy(BinderProxy* proxy) override;
-  IInterface* CreateTestInterface(const BinderProxy* binder) override;
+  std::unique_ptr<IInterface> CreateTestInterface(
+      const BinderProxy* proxy) override;
 
  private:
   struct HostInfo;

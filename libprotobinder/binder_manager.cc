@@ -174,8 +174,9 @@ void BinderManager::UnregisterBinderProxy(BinderProxy* proxy) {
   }
 }
 
-IInterface* BinderManager::CreateTestInterface(const BinderProxy* binder) {
-  return nullptr;
+std::unique_ptr<IInterface> BinderManager::CreateTestInterface(
+    const BinderProxy* proxy) {
+  return std::unique_ptr<IInterface>();
 }
 
 void BinderManager::AddHostReference(binder_uintptr_t cookie) {

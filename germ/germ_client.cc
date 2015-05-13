@@ -20,7 +20,7 @@ namespace germ {
 void GermClient::ReceiveService(std::unique_ptr<BinderProxy> proxy) {
   LOG(INFO) << "Received service with handle " << proxy->handle();
   proxy_ = std::move(proxy);
-  germ_.reset(protobinder::BinderToInterface<IGerm>(proxy_.get()));
+  germ_ = protobinder::CreateInterface<IGerm>(proxy_.get());
   callback_.Run();
   Quit();
 }

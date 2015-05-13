@@ -16,8 +16,8 @@ IServiceManager* GetServiceManager() {
   if (g_service_manager)
     return g_service_manager;
 
-  g_service_manager = BinderToInterface<IServiceManager>(new BinderProxy(0));
-
+  g_service_manager = CreateInterface<IServiceManager>(
+      new BinderProxy(0)).release();
   return g_service_manager;
 }
 
