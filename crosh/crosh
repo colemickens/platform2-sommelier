@@ -574,10 +574,10 @@ cmd_ping() (
     # Convenient shorthand for the next-hop gateway attached
     # to the default route; this means if you have a host named
     # "gw" then you'll need to specify a FQDN or IP address.
-    dest=$(/sbin/route -n | awk '$1 == "0.0.0.0" { print $2; }')
+    dest=$(ip route show | awk '$1 == "default" { print $3 }')
     if [ -z "$dest" ]; then
       echo "Cannot determine primary gateway; routing table is:"
-      cmd_route -n
+      cmd_route
       return 1
     fi
   fi
