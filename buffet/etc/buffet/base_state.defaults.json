@@ -3,6 +3,6 @@
     "firmwareVersion": "",
     "localDiscoveryEnabled": false,
     "localAnonymousAccessMaxRole": "none",
-    "localPairingEnabled": true
+    "localPairingEnabled": false
   }
 }
