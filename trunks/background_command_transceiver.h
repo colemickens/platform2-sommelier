@@ -30,9 +30,9 @@ class BackgroundCommandTransceiver: public CommandTransceiver  {
   // All commands will be forwarded to |next_transceiver| on |task_runner|,
   // regardless of whether the synchronous or asynchronous method is used. This
   // class will hold a reference count to |task_runner|. If |task_runner| is
-  // NULL, all commands will be forwarded on the current thread. This class does
-  // not take ownership of |next_transceiver|; it must remain valid for the
-  // lifetime of the object.
+  // nullptr, all commands will be forwarded on the current thread. This class
+  // does not take ownership of |next_transceiver|; it must remain valid for
+  // the lifetime of the object.
   explicit BackgroundCommandTransceiver(
       CommandTransceiver* next_transceiver,
       const scoped_refptr<base::SequencedTaskRunner>& task_runner);

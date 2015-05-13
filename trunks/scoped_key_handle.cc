@@ -55,7 +55,7 @@ TPM_HANDLE ScopedKeyHandle::get() {
 
 void ScopedKeyHandle::FlushHandleContext(TPM_HANDLE handle) {
   TPM_RC result = TPM_RC_SUCCESS;
-  result = factory_.GetTpm()->FlushContextSync(handle, NULL);
+  result = factory_.GetTpm()->FlushContextSync(handle, nullptr);
   if (result) {
     LOG(WARNING) << "Error closing handle: " << handle << " : "
                  << GetErrorString(result);

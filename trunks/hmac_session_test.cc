@@ -46,7 +46,7 @@ TEST_F(HmacSessionTest, GetDelegateUninitialized) {
   HmacSessionImpl session(factory_);
   EXPECT_CALL(mock_session_manager_, GetSessionHandle())
       .WillRepeatedly(Return(kUninitializedHandle));
-  EXPECT_EQ(NULL, session.GetDelegate());
+  EXPECT_EQ(nullptr, session.GetDelegate());
 }
 
 TEST_F(HmacSessionTest, GetDelegateSuccess) {

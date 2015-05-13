@@ -306,9 +306,9 @@ TEST_F(TpmUtilityTest, StirRandomSuccess) {
 
 TEST_F(TpmUtilityTest, StirRandomFails) {
   std::string entropy_data("test data");
-  EXPECT_CALL(mock_tpm_, StirRandomSync(_, NULL))
+  EXPECT_CALL(mock_tpm_, StirRandomSync(_, nullptr))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility_.StirRandom(entropy_data, NULL));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.StirRandom(entropy_data, nullptr));
 }
 
 TEST_F(TpmUtilityTest, GenerateRandomSuccess) {
@@ -336,10 +336,10 @@ TEST_F(TpmUtilityTest, GenerateRandomSuccess) {
 TEST_F(TpmUtilityTest, GenerateRandomFails) {
   int num_bytes = 5;
   std::string random_data;
-  EXPECT_CALL(mock_tpm_, GetRandomSync(_, _, NULL))
+  EXPECT_CALL(mock_tpm_, GetRandomSync(_, _, nullptr))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE,
-            utility_.GenerateRandom(num_bytes, NULL, &random_data));
+            utility_.GenerateRandom(num_bytes, nullptr, &random_data));
 }
 
 TEST_F(TpmUtilityTest, ExtendPCRSuccess) {
@@ -364,11 +364,12 @@ TEST_F(TpmUtilityTest, ExtendPCRFail) {
   TPM_HANDLE pcr_handle = HR_PCR + pcr_index;
   EXPECT_CALL(mock_tpm_, PCR_ExtendSync(pcr_handle, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility_.ExtendPCR(pcr_index, "test digest", NULL));
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.ExtendPCR(pcr_index, "test digest", nullptr));
 }
 
 TEST_F(TpmUtilityTest, ExtendPCRBadParam) {
-  EXPECT_EQ(TPM_RC_FAILURE, utility_.ExtendPCR(-1, "test digest", NULL));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.ExtendPCR(-1, "test digest", nullptr));
 }
 
 TEST_F(TpmUtilityTest, ReadPCRSuccess) {
@@ -446,13 +447,13 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptFail) {
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, NULL))
+  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, nullptr))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.AsymmetricEncrypt(key_handle,
                                                       TPM_ALG_NULL,
                                                       TPM_ALG_NULL,
                                                       plaintext,
-                                                      NULL,
+                                                      nullptr,
                                                       &ciphertext));
 }
 
@@ -463,14 +464,14 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptBadParams) {
   TPM2B_PUBLIC public_area;
   public_area.public_area.type = TPM_ALG_RSA;
   public_area.public_area.object_attributes = kDecrypt | kRestricted;
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, NULL))
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, nullptr))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(SAPI_RC_BAD_PARAMETER, utility_.AsymmetricEncrypt(key_handle,
                                                              TPM_ALG_RSAES,
                                                              TPM_ALG_NULL,
                                                              plaintext,
-                                                             NULL,
+                                                             nullptr,
                                                              &ciphertext));
 }
 
@@ -490,7 +491,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptNullSchemeForward) {
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, NULL))
+  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, nullptr))
       .WillOnce(DoAll(SetArgPointee<5>(out_message),
                       SaveArg<3>(&scheme),
                       Return(TPM_RC_SUCCESS)));
@@ -498,7 +499,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptNullSchemeForward) {
                                                       TPM_ALG_NULL,
                                                       TPM_ALG_NULL,
                                                       plaintext,
-                                                      NULL,
+                                                      nullptr,
                                                       &ciphertext));
   EXPECT_EQ(scheme.scheme, TPM_ALG_OAEP);
   EXPECT_EQ(scheme.details.oaep.hash_alg, TPM_ALG_SHA256);
@@ -520,7 +521,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptSchemeForward) {
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(public_area),
                             Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, NULL))
+  EXPECT_CALL(mock_tpm_, RSA_EncryptSync(key_handle, _, _, _, _, _, nullptr))
       .WillOnce(DoAll(SetArgPointee<5>(out_message),
                       SaveArg<3>(&scheme),
                       Return(TPM_RC_SUCCESS)));
@@ -528,7 +529,7 @@ TEST_F(TpmUtilityTest, AsymmetricEncryptSchemeForward) {
                                                       TPM_ALG_RSAES,
                                                       TPM_ALG_NULL,
                                                       plaintext,
-                                                      NULL,
+                                                      nullptr,
                                                       &ciphertext));
   EXPECT_EQ(scheme.scheme, TPM_ALG_RSAES);
 }
@@ -616,7 +617,8 @@ TEST_F(TpmUtilityTest, AsymmetricDecryptBadSession) {
   std::string ciphertext;
   std::string password;
   EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.AsymmetricDecrypt(
-      key_handle, TPM_ALG_RSAES, TPM_ALG_NULL, ciphertext, NULL, &plaintext));
+      key_handle, TPM_ALG_RSAES, TPM_ALG_NULL,
+      ciphertext, nullptr, &plaintext));
 }
 
 TEST_F(TpmUtilityTest, AsymmetricDecryptNullSchemeForward) {
@@ -763,7 +765,7 @@ TEST_F(TpmUtilityTest, SignBadAuthorizationSession) {
                                                     TPM_ALG_RSAPSS,
                                                     TPM_ALG_NULL,
                                                     digest,
-                                                    NULL,
+                                                    nullptr,
                                                     &signature));
 }
 
@@ -1071,7 +1073,7 @@ TEST_F(TpmUtilityTest, ChangeAuthDataSuccess) {
   TPM_HANDLE key_handle = 1;
   std::string new_password;
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.ChangeKeyAuthorizationData(
-    key_handle, new_password, &mock_authorization_delegate_, NULL));
+    key_handle, new_password, &mock_authorization_delegate_, nullptr));
 }
 
 TEST_F(TpmUtilityTest, ChangeAuthDataKeyNameFail) {
@@ -1081,7 +1083,7 @@ TEST_F(TpmUtilityTest, ChangeAuthDataKeyNameFail) {
   EXPECT_CALL(mock_tpm_, ReadPublicSync(key_handle, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.ChangeKeyAuthorizationData(
-      key_handle, new_password, &mock_authorization_delegate_, NULL));
+      key_handle, new_password, &mock_authorization_delegate_, nullptr));
 }
 
 TEST_F(TpmUtilityTest, ChangeAuthDataFailure) {
@@ -1090,7 +1092,7 @@ TEST_F(TpmUtilityTest, ChangeAuthDataFailure) {
   EXPECT_CALL(mock_tpm_, ObjectChangeAuthSync(key_handle, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.ChangeKeyAuthorizationData(
-      key_handle, new_password, &mock_authorization_delegate_, NULL));
+      key_handle, new_password, &mock_authorization_delegate_, nullptr));
 }
 
 TEST_F(TpmUtilityTest, ChangeAuthDataWithReturnSuccess) {
@@ -1151,7 +1153,7 @@ TEST_F(TpmUtilityTest, ImportRSAKeySuccess) {
     private_data.size, &key, iv, &iv_in, AES_DECRYPT);
   TPM2B_DIGEST inner_integrity;
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM2B_DIGEST(&unencrypted_private,
-                                               &inner_integrity, NULL));
+                                               &inner_integrity, nullptr));
   std::string object_name;
   EXPECT_EQ(TPM_RC_SUCCESS,
             ComputeKeyName(public_data.public_area, &object_name));
@@ -1163,7 +1165,7 @@ TEST_F(TpmUtilityTest, ImportRSAKeySuccess) {
                       inner_integrity.size));
   TPM2B_SENSITIVE sensitive_data;
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM2B_SENSITIVE(&unencrypted_private,
-                                                  &sensitive_data, NULL));
+                                                  &sensitive_data, nullptr));
   EXPECT_EQ(sensitive_data.sensitive_area.auth_value.size, password.size());
   EXPECT_EQ(0, memcmp(sensitive_data.sensitive_area.auth_value.buffer,
                       password.data(), password.size()));
@@ -1187,7 +1189,7 @@ TEST_F(TpmUtilityTest, ImportRSAKeySuccessWithNoBlob) {
       prime_factor,
       password,
       &mock_authorization_delegate_,
-      NULL));
+      nullptr));
 }
 
 TEST_F(TpmUtilityTest, ImportRSAKeyParentNameFail) {
@@ -1204,7 +1206,7 @@ TEST_F(TpmUtilityTest, ImportRSAKeyParentNameFail) {
       prime_factor,
       password,
       &mock_authorization_delegate_,
-      NULL));
+      nullptr));
 }
 
 TEST_F(TpmUtilityTest, ImportRSAKeyFail) {
@@ -1220,7 +1222,7 @@ TEST_F(TpmUtilityTest, ImportRSAKeyFail) {
       prime_factor,
       password,
       &mock_authorization_delegate_,
-      NULL));
+      nullptr));
 }
 
 TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyDecryptSuccess) {
@@ -1238,7 +1240,7 @@ TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyDecryptSuccess) {
       "password",
       &mock_authorization_delegate_,
       &key_handle,
-      NULL));
+      nullptr));
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, 0);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
@@ -1258,7 +1260,7 @@ TEST_F(TpmUtilityTest, CreateAndLoadRSAKeySignSuccess) {
       "password",
       &mock_authorization_delegate_,
       &key_handle,
-      NULL));
+      nullptr));
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, 0);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
@@ -1278,7 +1280,7 @@ TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyLegacySuccess) {
       "password",
       &mock_authorization_delegate_,
       &key_handle,
-      NULL));
+      nullptr));
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
@@ -1294,7 +1296,7 @@ TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyFail1) {
       "password",
       &mock_authorization_delegate_,
       &key_handle,
-      NULL));
+      nullptr));
 }
 
 TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyFail2) {
@@ -1308,7 +1310,7 @@ TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyFail2) {
       "password",
       &mock_authorization_delegate_,
       &key_handle,
-      NULL));
+      nullptr));
 }
 
 TEST_F(TpmUtilityTest, DefineNVSpaceSuccess) {
@@ -1341,7 +1343,7 @@ TEST_F(TpmUtilityTest, DefineNVSpaceBadIndex) {
 }
 
 TEST_F(TpmUtilityTest, DefineNVSpaceBadSession) {
-  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.DefineNVSpace(0, 2, NULL));
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.DefineNVSpace(0, 2, nullptr));
 }
 
 TEST_F(TpmUtilityTest, DefineNVSpaceFail) {
@@ -1369,7 +1371,7 @@ TEST_F(TpmUtilityTest, DestroyNVSpaceBadIndex) {
 }
 
 TEST_F(TpmUtilityTest, DestroyNVSpaceBadSession) {
-  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.DestroyNVSpace(3, NULL));
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.DestroyNVSpace(3, nullptr));
 }
 
 TEST_F(TpmUtilityTest, DestroyNVSpaceFailure) {
@@ -1401,7 +1403,7 @@ TEST_F(TpmUtilityTest, LockNVSpaceBadIndex) {
 }
 
 TEST_F(TpmUtilityTest, LockNVSpaceBadSession) {
-  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.LockNVSpace(52, NULL));
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.LockNVSpace(52, nullptr));
 }
 
 TEST_F(TpmUtilityTest, LockNVSpaceFailure) {
@@ -1441,7 +1443,8 @@ TEST_F(TpmUtilityTest, WriteNVSpaceBadIndex) {
 }
 
 TEST_F(TpmUtilityTest, WriteNVSpaceBadSessions) {
-  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.WriteNVSpace(53, 0, "", NULL));
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS,
+            utility_.WriteNVSpace(53, 0, "", nullptr));
 }
 
 TEST_F(TpmUtilityTest, WriteNVSpaceFailure) {
@@ -1485,7 +1488,7 @@ TEST_F(TpmUtilityTest, ReadNVSpaceBadIndex) {
 TEST_F(TpmUtilityTest, ReadNVSpaceBadSession) {
   std::string nvram_data;
   EXPECT_EQ(SAPI_RC_INVALID_SESSIONS,
-            utility_.ReadNVSpace(53, 0, 5, &nvram_data, NULL));
+            utility_.ReadNVSpace(53, 0, 5, &nvram_data, nullptr));
 }
 
 TEST_F(TpmUtilityTest, ReadNVSpaceFailure) {

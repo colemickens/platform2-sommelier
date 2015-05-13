@@ -1314,7 +1314,7 @@ TPM_RC Tpm::ParseResponse_%(method_name)s(%(method_args)s) {
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -1348,7 +1348,7 @@ TPM_RC Tpm::ParseResponse_%(method_name)s(%(method_args)s) {
     rc = Parse_%(var_type)s(
         &%(var_name)s_bytes,
         %(var_name)s,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }

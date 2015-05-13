@@ -105,7 +105,7 @@ bool HmacAuthorizationDelegate::CheckResponseAuthorization(
   TPM_RC parse_error;
   parse_error = Parse_TPMS_AUTH_RESPONSE(&mutable_auth_string,
                                          &auth_response,
-                                         NULL);
+                                         nullptr);
   if (parse_error != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Could not parse authorization response.";
     return false;

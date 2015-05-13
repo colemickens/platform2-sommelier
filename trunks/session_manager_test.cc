@@ -67,7 +67,7 @@ class SessionManagerTest : public testing::Test {
 TEST_F(SessionManagerTest, CloseSessionSuccess) {
   TPM_HANDLE handle = TPM_RH_FIRST;
   SetHandle(handle);
-  EXPECT_CALL(mock_tpm_, FlushContextSync(handle, NULL))
+  EXPECT_CALL(mock_tpm_, FlushContextSync(handle, nullptr))
       .WillOnce(Return(TPM_RC_SUCCESS));
   session_manager_.CloseSession();
 }
@@ -75,7 +75,7 @@ TEST_F(SessionManagerTest, CloseSessionSuccess) {
 TEST_F(SessionManagerTest, CloseSessionNoHandle) {
   TPM_HANDLE handle = kUninitializedHandle;
   SetHandle(handle);
-  EXPECT_CALL(mock_tpm_, FlushContextSync(handle, NULL))
+  EXPECT_CALL(mock_tpm_, FlushContextSync(handle, nullptr))
       .Times(0);
   session_manager_.CloseSession();
 }
@@ -92,7 +92,7 @@ TEST_F(SessionManagerTest, StartSessionSuccess) {
   TPM_SE session_type = TPM_SE_TRIAL;
   TPM2B_PUBLIC public_data;
   public_data.public_area.unique.rsa = GetValidRSAPublicKey();
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, NULL))
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, nullptr))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),
                       Return(TPM_RC_SUCCESS)));
   TPM_HANDLE handle = TPM_RH_FIRST;
@@ -111,7 +111,7 @@ TEST_F(SessionManagerTest, StartSessionSuccess) {
 TEST_F(SessionManagerTest, StartSessionBadSaltingKey) {
   TPM2B_PUBLIC public_data;
   public_data.public_area.unique.rsa.size = 32;
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, NULL))
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, nullptr))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),
                       Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_FAILURE, session_manager_.StartSession(TPM_SE_TRIAL,
@@ -122,7 +122,7 @@ TEST_F(SessionManagerTest, StartSessionBadSaltingKey) {
 TEST_F(SessionManagerTest, StartSessionFailure) {
   TPM2B_PUBLIC public_data;
   public_data.public_area.unique.rsa = GetValidRSAPublicKey();
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, NULL))
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, nullptr))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),
                       Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_, StartAuthSessionSyncShort(_,
@@ -138,7 +138,7 @@ TEST_F(SessionManagerTest, StartSessionBadNonce) {
   TPM_SE session_type = TPM_SE_TRIAL;
   TPM2B_PUBLIC public_data;
   public_data.public_area.unique.rsa = GetValidRSAPublicKey();
-  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, NULL))
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, nullptr))
       .WillOnce(DoAll(SetArgPointee<2>(public_data),
                       Return(TPM_RC_SUCCESS)));
   TPM_HANDLE handle = TPM_RH_FIRST;

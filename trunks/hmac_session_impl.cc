@@ -24,7 +24,7 @@ HmacSessionImpl::~HmacSessionImpl() {
 
 AuthorizationDelegate* HmacSessionImpl::GetDelegate() {
   if (session_manager_->GetSessionHandle() == kUninitializedHandle) {
-    return NULL;
+    return nullptr;
   }
   return &hmac_delegate_;
 }

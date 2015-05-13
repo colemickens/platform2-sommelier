@@ -74,7 +74,7 @@ bool TrunksClientTest::SignTest() {
   session->SetEntityAuthorizationValue("");
   result = utility->CreateAndLoadRSAKey(
       TpmUtility::AsymmetricKeyUsage::kSignKey, key_authorization,
-      session->GetDelegate(), &signing_key, NULL);
+      session->GetDelegate(), &signing_key, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating signing key: " << GetErrorString(result);
     return false;
@@ -111,7 +111,7 @@ bool TrunksClientTest::DecryptTest() {
   session->SetEntityAuthorizationValue("");
   result = utility->CreateAndLoadRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, key_authorization,
-      session->GetDelegate(), &decrypt_key, NULL);
+      session->GetDelegate(), &decrypt_key, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating decryption key: " << GetErrorString(result);
     return false;
@@ -130,7 +130,7 @@ bool TrunksClientTest::ImportTest() {
     LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
     return false;
   }
-  crypto::ScopedRSA rsa(RSA_generate_key(2048, 0x10001, NULL, NULL));
+  crypto::ScopedRSA rsa(RSA_generate_key(2048, 0x10001, nullptr, nullptr));
   CHECK(rsa.get());
   std::string modulus(BN_num_bytes(rsa.get()->n), 0);
   BN_bn2bin(rsa.get()->n,
@@ -173,7 +173,7 @@ bool TrunksClientTest::AuthChangeTest() {
   session->SetEntityAuthorizationValue("");
   result = utility->CreateAndLoadRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, "old_pass",
-      session->GetDelegate(), &key_handle, NULL);
+      session->GetDelegate(), &key_handle, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating and loading key: " << GetErrorString(result);
     return false;

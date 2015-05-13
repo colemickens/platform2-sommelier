@@ -9535,7 +9535,7 @@ TPM_RC Tpm::ParseResponse_Startup(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -9771,7 +9771,7 @@ TPM_RC Tpm::ParseResponse_Shutdown(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -10007,7 +10007,7 @@ TPM_RC Tpm::ParseResponse_SelfTest(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -10244,7 +10244,7 @@ TPM_RC Tpm::ParseResponse_IncrementalSelfTest(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -10484,7 +10484,7 @@ TPM_RC Tpm::ParseResponse_GetTestResult(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -10540,7 +10540,7 @@ TPM_RC Tpm::ParseResponse_GetTestResult(
     rc = Parse_TPM2B_MAX_BUFFER(
         &out_data_bytes,
         out_data,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -10852,7 +10852,7 @@ TPM_RC Tpm::ParseResponse_StartAuthSession(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -10900,7 +10900,7 @@ TPM_RC Tpm::ParseResponse_StartAuthSession(
     rc = Parse_TPM2B_NONCE(
         &nonce_tpm_bytes,
         nonce_tpm,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -11157,7 +11157,7 @@ TPM_RC Tpm::ParseResponse_PolicyRestart(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -11459,7 +11459,7 @@ TPM_RC Tpm::ParseResponse_Create(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -11539,7 +11539,7 @@ TPM_RC Tpm::ParseResponse_Create(
     rc = Parse_TPM2B_PRIVATE(
         &out_private_bytes,
         out_private,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -11844,7 +11844,7 @@ TPM_RC Tpm::ParseResponse_Load(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -11892,7 +11892,7 @@ TPM_RC Tpm::ParseResponse_Load(
     rc = Parse_TPM2B_NAME(
         &name_bytes,
         name,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -12171,7 +12171,7 @@ TPM_RC Tpm::ParseResponse_LoadExternal(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -12219,7 +12219,7 @@ TPM_RC Tpm::ParseResponse_LoadExternal(
     rc = Parse_TPM2B_NAME(
         &name_bytes,
         name,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -12459,7 +12459,7 @@ TPM_RC Tpm::ParseResponse_ReadPublic(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -12523,7 +12523,7 @@ TPM_RC Tpm::ParseResponse_ReadPublic(
     rc = Parse_TPM2B_PUBLIC(
         &out_public_bytes,
         out_public,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -12804,7 +12804,7 @@ TPM_RC Tpm::ParseResponse_ActivateCredential(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -12852,7 +12852,7 @@ TPM_RC Tpm::ParseResponse_ActivateCredential(
     rc = Parse_TPM2B_DIGEST(
         &cert_info_bytes,
         cert_info,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -13124,7 +13124,7 @@ TPM_RC Tpm::ParseResponse_MakeCredential(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -13172,7 +13172,7 @@ TPM_RC Tpm::ParseResponse_MakeCredential(
     rc = Parse_TPM2B_ID_OBJECT(
         &credential_blob_bytes,
         credential_blob,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -13404,7 +13404,7 @@ TPM_RC Tpm::ParseResponse_Unseal(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -13452,7 +13452,7 @@ TPM_RC Tpm::ParseResponse_Unseal(
     rc = Parse_TPM2B_SENSITIVE_DATA(
         &out_data_bytes,
         out_data,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -13709,7 +13709,7 @@ TPM_RC Tpm::ParseResponse_ObjectChangeAuth(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -13757,7 +13757,7 @@ TPM_RC Tpm::ParseResponse_ObjectChangeAuth(
     rc = Parse_TPM2B_PRIVATE(
         &out_private_bytes,
         out_private,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -14039,7 +14039,7 @@ TPM_RC Tpm::ParseResponse_Duplicate(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -14095,7 +14095,7 @@ TPM_RC Tpm::ParseResponse_Duplicate(
     rc = Parse_TPM2B_DATA(
         &encryption_key_out_bytes,
         encryption_key_out,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -14386,7 +14386,7 @@ TPM_RC Tpm::ParseResponse_Rewrap(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -14434,7 +14434,7 @@ TPM_RC Tpm::ParseResponse_Rewrap(
     rc = Parse_TPM2B_PRIVATE(
         &out_duplicate_bytes,
         out_duplicate,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -14742,7 +14742,7 @@ TPM_RC Tpm::ParseResponse_Import(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -14790,7 +14790,7 @@ TPM_RC Tpm::ParseResponse_Import(
     rc = Parse_TPM2B_PRIVATE(
         &out_private_bytes,
         out_private,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -15078,7 +15078,7 @@ TPM_RC Tpm::ParseResponse_RSA_Encrypt(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -15126,7 +15126,7 @@ TPM_RC Tpm::ParseResponse_RSA_Encrypt(
     rc = Parse_TPM2B_PUBLIC_KEY_RSA(
         &out_data_bytes,
         out_data,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -15406,7 +15406,7 @@ TPM_RC Tpm::ParseResponse_RSA_Decrypt(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -15454,7 +15454,7 @@ TPM_RC Tpm::ParseResponse_RSA_Decrypt(
     rc = Parse_TPM2B_PUBLIC_KEY_RSA(
         &message_bytes,
         message,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -15691,7 +15691,7 @@ TPM_RC Tpm::ParseResponse_ECDH_KeyGen(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -15747,7 +15747,7 @@ TPM_RC Tpm::ParseResponse_ECDH_KeyGen(
     rc = Parse_TPM2B_ECC_POINT(
         &z_point_bytes,
         z_point,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -15997,7 +15997,7 @@ TPM_RC Tpm::ParseResponse_ECDH_ZGen(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -16045,7 +16045,7 @@ TPM_RC Tpm::ParseResponse_ECDH_ZGen(
     rc = Parse_TPM2B_ECC_POINT(
         &out_point_bytes,
         out_point,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -16272,7 +16272,7 @@ TPM_RC Tpm::ParseResponse_ECC_Parameters(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -16581,7 +16581,7 @@ TPM_RC Tpm::ParseResponse_ZGen_2Phase(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -16637,7 +16637,7 @@ TPM_RC Tpm::ParseResponse_ZGen_2Phase(
     rc = Parse_TPM2B_ECC_POINT(
         &out_z1_bytes,
         out_z1,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -16932,7 +16932,7 @@ TPM_RC Tpm::ParseResponse_EncryptDecrypt(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -16988,7 +16988,7 @@ TPM_RC Tpm::ParseResponse_EncryptDecrypt(
     rc = Parse_TPM2B_MAX_BUFFER(
         &out_data_bytes,
         out_data,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -17267,7 +17267,7 @@ TPM_RC Tpm::ParseResponse_Hash(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -17323,7 +17323,7 @@ TPM_RC Tpm::ParseResponse_Hash(
     rc = Parse_TPM2B_DIGEST(
         &out_hash_bytes,
         out_hash,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -17593,7 +17593,7 @@ TPM_RC Tpm::ParseResponse_HMAC(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -17641,7 +17641,7 @@ TPM_RC Tpm::ParseResponse_HMAC(
     rc = Parse_TPM2B_DIGEST(
         &out_hmac_bytes,
         out_hmac,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -17872,7 +17872,7 @@ TPM_RC Tpm::ParseResponse_GetRandom(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -17920,7 +17920,7 @@ TPM_RC Tpm::ParseResponse_GetRandom(
     rc = Parse_TPM2B_DIGEST(
         &random_bytes_bytes,
         random_bytes,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -18146,7 +18146,7 @@ TPM_RC Tpm::ParseResponse_StirRandom(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -18424,7 +18424,7 @@ TPM_RC Tpm::ParseResponse_HMAC_Start(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -18707,7 +18707,7 @@ TPM_RC Tpm::ParseResponse_HashSequenceStart(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -18974,7 +18974,7 @@ TPM_RC Tpm::ParseResponse_SequenceUpdate(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -19254,7 +19254,7 @@ TPM_RC Tpm::ParseResponse_SequenceComplete(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -19310,7 +19310,7 @@ TPM_RC Tpm::ParseResponse_SequenceComplete(
     rc = Parse_TPM2B_DIGEST(
         &result_bytes,
         result,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -19585,7 +19585,7 @@ TPM_RC Tpm::ParseResponse_EventSequenceComplete(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -19899,7 +19899,7 @@ TPM_RC Tpm::ParseResponse_Certify(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -19955,7 +19955,7 @@ TPM_RC Tpm::ParseResponse_Certify(
     rc = Parse_TPM2B_ATTEST(
         &certify_info_bytes,
         certify_info,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -20271,7 +20271,7 @@ TPM_RC Tpm::ParseResponse_CertifyCreation(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -20327,7 +20327,7 @@ TPM_RC Tpm::ParseResponse_CertifyCreation(
     rc = Parse_TPM2B_ATTEST(
         &certify_info_bytes,
         certify_info,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -20626,7 +20626,7 @@ TPM_RC Tpm::ParseResponse_Quote(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -20682,7 +20682,7 @@ TPM_RC Tpm::ParseResponse_Quote(
     rc = Parse_TPM2B_ATTEST(
         &quoted_bytes,
         quoted,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -20983,7 +20983,7 @@ TPM_RC Tpm::ParseResponse_GetSessionAuditDigest(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -21039,7 +21039,7 @@ TPM_RC Tpm::ParseResponse_GetSessionAuditDigest(
     rc = Parse_TPM2B_ATTEST(
         &audit_info_bytes,
         audit_info,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -21339,7 +21339,7 @@ TPM_RC Tpm::ParseResponse_GetCommandAuditDigest(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -21395,7 +21395,7 @@ TPM_RC Tpm::ParseResponse_GetCommandAuditDigest(
     rc = Parse_TPM2B_ATTEST(
         &audit_info_bytes,
         audit_info,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -21687,7 +21687,7 @@ TPM_RC Tpm::ParseResponse_GetTime(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -21743,7 +21743,7 @@ TPM_RC Tpm::ParseResponse_GetTime(
     rc = Parse_TPM2B_ATTEST(
         &time_info_bytes,
         time_info,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -22041,7 +22041,7 @@ TPM_RC Tpm::ParseResponse_Commit(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -22382,7 +22382,7 @@ TPM_RC Tpm::ParseResponse_EC_Ephemeral(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -22698,7 +22698,7 @@ TPM_RC Tpm::ParseResponse_VerifySignature(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -23006,7 +23006,7 @@ TPM_RC Tpm::ParseResponse_Sign(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -23309,7 +23309,7 @@ TPM_RC Tpm::ParseResponse_SetCommandCodeAuditStatus(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -23574,7 +23574,7 @@ TPM_RC Tpm::ParseResponse_PCR_Extend(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -23840,7 +23840,7 @@ TPM_RC Tpm::ParseResponse_PCR_Event(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -24101,7 +24101,7 @@ TPM_RC Tpm::ParseResponse_PCR_Read(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -24396,7 +24396,7 @@ TPM_RC Tpm::ParseResponse_PCR_Allocate(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -24742,7 +24742,7 @@ TPM_RC Tpm::ParseResponse_PCR_SetAuthPolicy(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -25019,7 +25019,7 @@ TPM_RC Tpm::ParseResponse_PCR_SetAuthValue(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -25264,7 +25264,7 @@ TPM_RC Tpm::ParseResponse_PCR_Reset(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -25576,7 +25576,7 @@ TPM_RC Tpm::ParseResponse_PolicySigned(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -25632,7 +25632,7 @@ TPM_RC Tpm::ParseResponse_PolicySigned(
     rc = Parse_TPM2B_TIMEOUT(
         &timeout_bytes,
         timeout,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -25944,7 +25944,7 @@ TPM_RC Tpm::ParseResponse_PolicySecret(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -26000,7 +26000,7 @@ TPM_RC Tpm::ParseResponse_PolicySecret(
     rc = Parse_TPM2B_TIMEOUT(
         &timeout_bytes,
         timeout,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -26317,7 +26317,7 @@ TPM_RC Tpm::ParseResponse_PolicyTicket(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -26590,7 +26590,7 @@ TPM_RC Tpm::ParseResponse_PolicyOR(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -26867,7 +26867,7 @@ TPM_RC Tpm::ParseResponse_PolicyPCR(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -27128,7 +27128,7 @@ TPM_RC Tpm::ParseResponse_PolicyLocality(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -27443,7 +27443,7 @@ TPM_RC Tpm::ParseResponse_PolicyNV(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -27756,7 +27756,7 @@ TPM_RC Tpm::ParseResponse_PolicyCounterTimer(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -28021,7 +28021,7 @@ TPM_RC Tpm::ParseResponse_PolicyCommandCode(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -28266,7 +28266,7 @@ TPM_RC Tpm::ParseResponse_PolicyPhysicalPresence(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -28527,7 +28527,7 @@ TPM_RC Tpm::ParseResponse_PolicyCpHash(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -28792,7 +28792,7 @@ TPM_RC Tpm::ParseResponse_PolicyNameHash(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -29081,7 +29081,7 @@ TPM_RC Tpm::ParseResponse_PolicyDuplicationSelect(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -29390,7 +29390,7 @@ TPM_RC Tpm::ParseResponse_PolicyAuthorize(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -29647,7 +29647,7 @@ TPM_RC Tpm::ParseResponse_PolicyAuthValue(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -29888,7 +29888,7 @@ TPM_RC Tpm::ParseResponse_PolicyPassword(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -30130,7 +30130,7 @@ TPM_RC Tpm::ParseResponse_PolicyGetDigest(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -30178,7 +30178,7 @@ TPM_RC Tpm::ParseResponse_PolicyGetDigest(
     rc = Parse_TPM2B_DIGEST(
         &policy_digest_bytes,
         policy_digest,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -30413,7 +30413,7 @@ TPM_RC Tpm::ParseResponse_PolicyNvWritten(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -30728,7 +30728,7 @@ TPM_RC Tpm::ParseResponse_CreatePrimary(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -30808,7 +30808,7 @@ TPM_RC Tpm::ParseResponse_CreatePrimary(
     rc = Parse_TPM2B_PUBLIC(
         &out_public_bytes,
         out_public,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -31101,7 +31101,7 @@ TPM_RC Tpm::ParseResponse_HierarchyControl(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -31382,7 +31382,7 @@ TPM_RC Tpm::ParseResponse_SetPrimaryPolicy(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -31631,7 +31631,7 @@ TPM_RC Tpm::ParseResponse_ChangePPS(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -31872,7 +31872,7 @@ TPM_RC Tpm::ParseResponse_ChangeEPS(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -32113,7 +32113,7 @@ TPM_RC Tpm::ParseResponse_Clear(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -32366,7 +32366,7 @@ TPM_RC Tpm::ParseResponse_ClearControl(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -32631,7 +32631,7 @@ TPM_RC Tpm::ParseResponse_HierarchyChangeAuth(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -32876,7 +32876,7 @@ TPM_RC Tpm::ParseResponse_DictionaryAttackLockReset(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -33153,7 +33153,7 @@ TPM_RC Tpm::ParseResponse_DictionaryAttackParameters(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -33430,7 +33430,7 @@ TPM_RC Tpm::ParseResponse_PP_Commands(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -33691,7 +33691,7 @@ TPM_RC Tpm::ParseResponse_SetAlgorithmSet(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -33981,7 +33981,7 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeStart(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -34247,7 +34247,7 @@ TPM_RC Tpm::ParseResponse_FieldUpgradeData(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -34512,7 +34512,7 @@ TPM_RC Tpm::ParseResponse_FirmwareRead(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -34560,7 +34560,7 @@ TPM_RC Tpm::ParseResponse_FirmwareRead(
     rc = Parse_TPM2B_MAX_BUFFER(
         &fu_data_bytes,
         fu_data,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -34780,7 +34780,7 @@ TPM_RC Tpm::ParseResponse_ContextSave(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -35043,7 +35043,7 @@ TPM_RC Tpm::ParseResponse_ContextLoad(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -35285,7 +35285,7 @@ TPM_RC Tpm::ParseResponse_FlushContext(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -35547,7 +35547,7 @@ TPM_RC Tpm::ParseResponse_EvictControl(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -35789,7 +35789,7 @@ TPM_RC Tpm::ParseResponse_ReadClock(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -36063,7 +36063,7 @@ TPM_RC Tpm::ParseResponse_ClockSet(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -36335,7 +36335,7 @@ TPM_RC Tpm::ParseResponse_ClockRateAdjust(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -36619,7 +36619,7 @@ TPM_RC Tpm::ParseResponse_GetCapability(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -36891,7 +36891,7 @@ TPM_RC Tpm::ParseResponse_TestParms(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -37160,7 +37160,7 @@ TPM_RC Tpm::ParseResponse_NV_DefineSpace(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -37422,7 +37422,7 @@ TPM_RC Tpm::ParseResponse_NV_UndefineSpace(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -37684,7 +37684,7 @@ TPM_RC Tpm::ParseResponse_NV_UndefineSpaceSpecial(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -37935,7 +37935,7 @@ TPM_RC Tpm::ParseResponse_NV_ReadPublic(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -37991,7 +37991,7 @@ TPM_RC Tpm::ParseResponse_NV_ReadPublic(
     rc = Parse_TPM2B_NV_PUBLIC(
         &nv_public_bytes,
         nv_public,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -38265,7 +38265,7 @@ TPM_RC Tpm::ParseResponse_NV_Write(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -38535,7 +38535,7 @@ TPM_RC Tpm::ParseResponse_NV_Increment(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -38817,7 +38817,7 @@ TPM_RC Tpm::ParseResponse_NV_Extend(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -39095,7 +39095,7 @@ TPM_RC Tpm::ParseResponse_NV_SetBits(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -39361,7 +39361,7 @@ TPM_RC Tpm::ParseResponse_NV_WriteLock(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -39610,7 +39610,7 @@ TPM_RC Tpm::ParseResponse_NV_GlobalWriteLock(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -39889,7 +39889,7 @@ TPM_RC Tpm::ParseResponse_NV_Read(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -39937,7 +39937,7 @@ TPM_RC Tpm::ParseResponse_NV_Read(
     rc = Parse_TPM2B_MAX_NV_BUFFER(
         &data_bytes,
         data,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -40189,7 +40189,7 @@ TPM_RC Tpm::ParseResponse_NV_ReadLock(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -40458,7 +40458,7 @@ TPM_RC Tpm::ParseResponse_NV_ChangeAuth(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -40787,7 +40787,7 @@ TPM_RC Tpm::ParseResponse_NV_Certify(
   std::string authorization_section_bytes;
   if (tag == TPM_ST_SESSIONS) {
     UINT32 parameter_section_size = buffer.size();
-    rc = Parse_UINT32(&buffer, &parameter_section_size, NULL);
+    rc = Parse_UINT32(&buffer, &parameter_section_size, nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }
@@ -40843,7 +40843,7 @@ TPM_RC Tpm::ParseResponse_NV_Certify(
     rc = Parse_TPM2B_ATTEST(
         &certify_info_bytes,
         certify_info,
-        NULL);
+        nullptr);
     if (rc != TPM_RC_SUCCESS) {
       return rc;
     }

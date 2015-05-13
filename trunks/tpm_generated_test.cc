@@ -71,11 +71,11 @@ TEST(GeneratorTest, ParseBufferOverflow) {
   malformed1 += std::string(0x1000, 'A');
   ASSERT_GT(0x1000, sizeof(tmp.buffer));
   EXPECT_EQ(TPM_RC_INSUFFICIENT,
-            Parse_TPM2B_MAX_BUFFER(&malformed1, &tmp, NULL));
+            Parse_TPM2B_MAX_BUFFER(&malformed1, &tmp, nullptr));
   // Case 2: Sufficient destination but overflow the source.
   std::string malformed2 = "\x00\x01";
   EXPECT_EQ(TPM_RC_INSUFFICIENT,
-            Parse_TPM2B_MAX_BUFFER(&malformed2, &tmp, NULL));
+            Parse_TPM2B_MAX_BUFFER(&malformed2, &tmp, nullptr));
 }
 
 TEST(GeneratorTest, SynchronousCommand) {

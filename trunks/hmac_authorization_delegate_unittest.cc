@@ -120,7 +120,7 @@ TEST_F(HmacAuthorizationDelegateFixture, NonceRegenerationTest) {
                                                 &authorization));
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPMS_AUTH_COMMAND(&authorization,
                                                     &auth_command,
-                                                    NULL));
+                                                    nullptr));
   EXPECT_EQ(delegate_.caller_nonce_.size, original_nonce.size);
   EXPECT_EQ(auth_command.nonce.size, original_nonce.size);
   EXPECT_NE(0, memcmp(delegate_.caller_nonce_.buffer,
@@ -144,7 +144,7 @@ TEST_F(HmacAuthorizationDelegateFixture, NonceRegenerationTest) {
                                                 &authorization));
   EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPMS_AUTH_COMMAND(&authorization,
                                                     &auth_command,
-                                                    NULL));
+                                                    nullptr));
   EXPECT_EQ(delegate_.caller_nonce_.size, original_nonce.size);
   EXPECT_EQ(auth_command.nonce.size, original_nonce.size);
   EXPECT_EQ(0, memcmp(delegate_.caller_nonce_.buffer,

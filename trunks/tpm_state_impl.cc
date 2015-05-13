@@ -50,7 +50,7 @@ TPM_RC TpmStateImpl::Initialize() {
                                          1,  // There is only one value.
                                          &more_data,
                                          &capability_data,
-                                         NULL);
+                                         nullptr);
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
@@ -69,7 +69,7 @@ TPM_RC TpmStateImpl::Initialize() {
                                   1,  // There is only one value.
                                   &more_data,
                                   &capability_data,
-                                  NULL);
+                                  nullptr);
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
@@ -89,7 +89,7 @@ TPM_RC TpmStateImpl::Initialize() {
                                   1,  // There is only one value.
                                   &more_data,
                                   &capability_data,
-                                  NULL);
+                                  nullptr);
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
@@ -109,7 +109,7 @@ TPM_RC TpmStateImpl::Initialize() {
                                   1,  // There is only one value.
                                   &more_data,
                                   &capability_data,
-                                  NULL);
+                                  nullptr);
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;

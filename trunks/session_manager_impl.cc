@@ -35,7 +35,7 @@ void SessionManagerImpl::CloseSession() {
   if (session_handle_ == kUninitializedHandle) {
     return;
   }
-  TPM_RC result = factory_.GetTpm()->FlushContextSync(session_handle_, NULL);
+  TPM_RC result = factory_.GetTpm()->FlushContextSync(session_handle_, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(WARNING) << "Error closing tpm session: " << GetErrorString(result);
   }
@@ -101,7 +101,7 @@ TPM_RC SessionManagerImpl::StartSession(
                                                 hash_algorithm,
                                                 &session_handle_,
                                                 &nonce_tpm,
-                                                NULL);  // No Authorization.
+                                                nullptr);  // No Authorization.
   if (tpm_result) {
     LOG(ERROR) << "Error creating an authorization session: "
                << GetErrorString(tpm_result);
@@ -128,14 +128,11 @@ TPM_RC SessionManagerImpl::EncryptSalt(const std::string& salt,
   TPM2B_PUBLIC public_data;
   public_data.public_area.unique.rsa.size = 0;
   // The TPM2 Command below needs no authorization. Therefore we can simply
-  // use the empty string for all the Key names, and NULL for the authorization
-  // delegate.
-  TPM_RC result = factory_.GetTpm()->ReadPublicSync(kSaltingKey,
-                                                    "",  // SaltingKey name.
-                                                    &public_data,
-                                                    &out_name,
-                                                    &qualified_name,
-                                                    NULL);  // No authorization
+  // use the empty string for all the Key names, and pullptr for the
+  // authorization delegate.
+  TPM_RC result = factory_.GetTpm()->ReadPublicSync(
+      kSaltingKey, "",  // SaltingKey name.
+      &public_data, &out_name, &qualified_name, nullptr);  // No authorization
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error fetching salting key public info.";
     return result;
@@ -149,7 +146,7 @@ TPM_RC SessionManagerImpl::EncryptSalt(const std::string& salt,
   BN_set_word(salting_rsa.get()->e, kWellKnownExponent);
   salting_rsa.get()->n = BN_bin2bn(public_data.public_area.unique.rsa.buffer,
                                    public_data.public_area.unique.rsa.size,
-                                   NULL);
+                                   nullptr);
   if (!salting_rsa.get()->n) {
     LOG(ERROR) << "Error setting public area of rsa key.";
     return TPM_RC_FAILURE;

@@ -6,7 +6,7 @@
 
 namespace trunks {
 
-MockTpm::MockTpm() : Tpm(NULL) {}
+MockTpm::MockTpm() : Tpm(nullptr) {}
 MockTpm::~MockTpm() {}
 
 void MockTpm::StartAuthSession(

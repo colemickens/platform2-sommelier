@@ -65,13 +65,13 @@ TpmUtilityImpl::~TpmUtilityImpl() {
 TPM_RC TpmUtilityImpl::Startup() {
   TPM_RC result = TPM_RC_SUCCESS;
   Tpm* tpm = factory_.GetTpm();
-  result = tpm->StartupSync(TPM_SU_CLEAR, NULL);
+  result = tpm->StartupSync(TPM_SU_CLEAR, nullptr);
   // Ignore TPM_RC_INITIALIZE, that means it was already started.
   if (result && result != TPM_RC_INITIALIZE) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
   }
-  result = tpm->SelfTestSync(YES /* Full test. */, NULL);
+  result = tpm->SelfTestSync(YES /* Full test. */, nullptr);
   if (result) {
     LOG(ERROR) << __func__ << ": " << GetErrorString(result);
     return result;
@@ -107,8 +107,7 @@ TPM_RC TpmUtilityImpl::Clear() {
 }
 
 void TpmUtilityImpl::Shutdown() {
-  TPM_RC return_code = factory_.GetTpm()->ShutdownSync(TPM_SU_CLEAR,
-                                                       NULL);
+  TPM_RC return_code = factory_.GetTpm()->ShutdownSync(TPM_SU_CLEAR, nullptr);
   if (return_code && return_code != TPM_RC_INITIALIZE) {
     // This should not happen, but if it does, there is nothing we can do.
     LOG(ERROR) << "Error shutting down: " << GetErrorString(return_code);
@@ -339,7 +338,7 @@ TPM_RC TpmUtilityImpl::ReadPCR(int pcr_index, std::string* pcr_value) {
                                               &pcr_update_counter,
                                               &pcr_select_out,
                                               &pcr_values,
-                                              NULL);
+                                              nullptr);
   if (rc) {
     LOG(INFO) << "Error trying to read a pcr: " << GetErrorString(rc);
     return rc;
@@ -440,7 +439,7 @@ TPM_RC TpmUtilityImpl::AsymmetricDecrypt(TPM_HANDLE key_handle,
     return SAPI_RC_BAD_PARAMETER;
   }
   TPM_RC result;
-  if (delegate == NULL) {
+  if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
     LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
@@ -510,7 +509,7 @@ TPM_RC TpmUtilityImpl::Sign(TPM_HANDLE key_handle,
     return SAPI_RC_BAD_PARAMETER;
   }
   TPM_RC result;
-  if (delegate == NULL) {
+  if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
     LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
@@ -614,7 +613,7 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
                                                        tpm_digest,
                                                        signature_in,
                                                        &verified,
-                                                       NULL);
+                                                       nullptr);
   if (return_code == TPM_RC_SIGNATURE) {
     LOG(WARNING) << "Incorrect signature for given digest.";
     return TPM_RC_SIGNATURE;
@@ -631,7 +630,7 @@ TPM_RC TpmUtilityImpl::ChangeKeyAuthorizationData(
     AuthorizationDelegate* delegate,
     std::string* key_blob) {
   TPM_RC result;
-  if (delegate == NULL) {
+  if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
     LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
@@ -690,7 +689,7 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
                                     AuthorizationDelegate* delegate,
                                     std::string* key_blob) {
   TPM_RC result;
-  if (delegate == NULL) {
+  if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
     LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
@@ -797,7 +796,7 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                                         std::string* key_blob) {
   CHECK(key_blob);
   TPM_RC result;
-  if (delegate == NULL) {
+  if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
     LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
@@ -870,7 +869,7 @@ TPM_RC TpmUtilityImpl::LoadKey(const std::string& key_blob,
                                AuthorizationDelegate* delegate,
                                TPM_HANDLE* key_handle) {
   TPM_RC result;
-  if (delegate == NULL) {
+  if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
     LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
@@ -935,7 +934,7 @@ TPM_RC TpmUtilityImpl::GetKeyPublicArea(TPM_HANDLE handle,
                                                          &public_area,
                                                          &out_name,
                                                          &qualified_name,
-                                                         NULL);
+                                                         nullptr);
   if (return_code) {
     LOG(ERROR) << "Error getting public area for object: " << handle;
     return return_code;
@@ -960,7 +959,7 @@ TPM_RC TpmUtilityImpl::DefineNVSpace(uint32_t index,
                << GetErrorString(result);
     return result;
   }
-  if (delegate == NULL) {
+  if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
     LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
@@ -1001,7 +1000,7 @@ TPM_RC TpmUtilityImpl::DestroyNVSpace(uint32_t index,
                << GetErrorString(result);
     return result;
   }
-  if (delegate == NULL) {
+  if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
     LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
@@ -1037,7 +1036,7 @@ TPM_RC TpmUtilityImpl::LockNVSpace(uint32_t index,
                << GetErrorString(result);
     return result;
   }
-  if (delegate == NULL) {
+  if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
     LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
@@ -1083,7 +1082,7 @@ TPM_RC TpmUtilityImpl::WriteNVSpace(uint32_t index,
                << GetErrorString(result);
     return result;
   }
-  if (delegate == NULL) {
+  if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
     LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
@@ -1132,7 +1131,7 @@ TPM_RC TpmUtilityImpl::ReadNVSpace(uint32_t index,
                << GetErrorString(result);
     return result;
   }
-  if (delegate == NULL) {
+  if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
     LOG(ERROR) << "This method needs a valid authorization delegate: "
                << GetErrorString(result);
@@ -1205,7 +1204,7 @@ TPM_RC TpmUtilityImpl::GetNVSpacePublicArea(uint32_t index,
                                                 "",
                                                 &public_area,
                                                 &nvram_name,
-                                                NULL);
+                                                nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error reading non-volatile space public information: "
                << GetErrorString(result);
@@ -1509,12 +1508,12 @@ TPM_RC TpmUtilityImpl::StringToKeyData(const std::string& key_blob,
     return TPM_RC_SUCCESS;
   }
   std::string mutable_key_blob = key_blob;
-  TPM_RC result = Parse_TPM2B_PUBLIC(&mutable_key_blob, public_info, NULL);
+  TPM_RC result = Parse_TPM2B_PUBLIC(&mutable_key_blob, public_info, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error parsing TPM2B_Public: " << GetErrorString(result);
     return result;
   }
-  result = Parse_TPM2B_PRIVATE(&mutable_key_blob, private_info, NULL);
+  result = Parse_TPM2B_PRIVATE(&mutable_key_blob, private_info, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error parsing TPM2B_Private: " << GetErrorString(result);
     return result;

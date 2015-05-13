@@ -28,7 +28,7 @@ PolicySessionImpl::~PolicySessionImpl() {
 
 AuthorizationDelegate* PolicySessionImpl::GetDelegate() {
   if (session_manager_->GetSessionHandle() == kUninitializedHandle) {
-    return NULL;
+    return nullptr;
   }
   return &hmac_delegate_;
 }
@@ -56,7 +56,7 @@ TPM_RC PolicySessionImpl::GetDigest(std::string* digest) {
       session_manager_->GetSessionHandle(),
       "",  // No name is needed for this command, as it does no authorization.
       &policy_digest,
-      NULL);
+      nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
     return result;
@@ -79,7 +79,7 @@ TPM_RC PolicySessionImpl::PolicyOR(const std::vector<std::string>& digests) {
       session_manager_->GetSessionHandle(),
       "",  // No policy name is needed as we do no authorization checks.
       tpm_digests,
-      NULL);
+      nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error performing PolicyOR: " << GetErrorString(result);
     return result;
@@ -106,7 +106,7 @@ TPM_RC PolicySessionImpl::PolicyPCR(uint32_t pcr_index,
       "",  // No policy name is needed as we do no authorization checks.
       pcr_digest,
       pcr_select,
-      NULL);
+      nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error performing PolicyPCR: " << GetErrorString(result);
     return result;
@@ -119,7 +119,7 @@ TPM_RC PolicySessionImpl::PolicyCommandCode(TPM_CC command_code) {
       session_manager_->GetSessionHandle(),
       "",  // No policy name is needed as we do no authorization checks.
       command_code,
-      NULL);
+      nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error performing PolicyCommandCode: "
                << GetErrorString(result);
@@ -132,7 +132,7 @@ TPM_RC PolicySessionImpl::PolicyAuthValue() {
   TPM_RC result = factory_.GetTpm()->PolicyAuthValueSync(
       session_manager_->GetSessionHandle(),
       "",  // No policy name is needed as we do no authorization checks.
-      NULL);
+      nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error performing PolicyAuthValue: "
                << GetErrorString(result);
