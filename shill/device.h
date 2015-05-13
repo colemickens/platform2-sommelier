@@ -722,6 +722,11 @@ class Device : public base::RefCounted<Device> {
   // detection on that connection.
   void SetupConnection(const IPConfigRefPtr &ipconfig);
 
+  // Set the system hostname to |hostname| if this device is configured to
+  // do so.  If |hostname| is too long, truncate this parameter to fit within
+  // the maximum hostname size.
+  bool SetHostname(const std::string &hostname);
+
   // Prepend the Manager's configured list of DNS servers into |ipconfig|
   // ensuring that only DNS servers of the same address family as |ipconfig| are
   // included in the final list.

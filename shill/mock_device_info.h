@@ -68,6 +68,7 @@ class MockDeviceInfo : public DeviceInfo {
   MOCK_CONST_METHOD1(DeleteInterface, bool(int interface_index));
   MOCK_METHOD1(RegisterDevice, void(const DeviceRefPtr &));
   MOCK_METHOD1(DeregisterDevice, void(const DeviceRefPtr &));
+  MOCK_CONST_METHOD1(SetHostname, bool(const std::string &hostname));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDeviceInfo);

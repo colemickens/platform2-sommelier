@@ -268,6 +268,10 @@ class DeviceTest : public PropertyStoreTest {
     device_->ip6config_->set_properties(properties);
   }
 
+  bool SetHostname(const string &hostname) {
+    return device_->SetHostname(hostname);
+  }
+
   MockControl control_interface_;
   scoped_refptr<TestDevice> device_;
   MockDeviceInfo device_info_;
@@ -1619,6 +1623,98 @@ TEST_F(DeviceTest, ResolvePeerMacAddress) {
       .WillOnce(DoAll(SetArgPointee<2>(kMacBytes), Return(true)));
   EXPECT_TRUE(device_->ResolvePeerMacAddress(kPeerIp, &result, &error));
   EXPECT_EQ(kResolvedMac, result);
+}
+
+TEST_F(DeviceTest, SetHostnameWithEmptyHostname) {
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+
+  EXPECT_CALL(manager, ShouldAcceptHostnameFrom(_)).Times(0);
+  EXPECT_CALL(device_info_, SetHostname(_)).Times(0);
+  EXPECT_FALSE(SetHostname(""));
+}
+
+TEST_F(DeviceTest, SetHostnameForDisallowedDevice) {
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+
+  EXPECT_CALL(manager, ShouldAcceptHostnameFrom(kDeviceName))
+      .WillOnce(Return(false));
+  EXPECT_CALL(device_info_, SetHostname(_)).Times(0);
+  EXPECT_FALSE(SetHostname("wilson"));
+}
+
+TEST_F(DeviceTest, SetHostnameWithFailingDeviceInfo) {
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+
+  EXPECT_CALL(manager, ShouldAcceptHostnameFrom(kDeviceName))
+      .WillOnce(Return(true));
+  EXPECT_CALL(device_info_, SetHostname("wilson"))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(SetHostname("wilson"));
+}
+
+TEST_F(DeviceTest, SetHostnameMaximumHostnameLength) {
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+
+  EXPECT_CALL(manager, ShouldAcceptHostnameFrom(kDeviceName))
+      .WillOnce(Return(true));
+  EXPECT_CALL(device_info_, SetHostname(
+      "wilson.was-a-good-ball.and-was.an-excellent-swimmer.in-high-seas"))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(SetHostname(
+      "wilson.was-a-good-ball.and-was.an-excellent-swimmer.in-high-seas"));
+}
+
+TEST_F(DeviceTest, SetHostnameTruncateDomainName) {
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+
+  EXPECT_CALL(manager, ShouldAcceptHostnameFrom(kDeviceName))
+      .WillOnce(Return(true));
+  EXPECT_CALL(device_info_, SetHostname("wilson"))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(SetHostname(
+      "wilson.was-a-great-ball.and-was.an-excellent-swimmer.in-high-seas"));
+}
+
+TEST_F(DeviceTest, SetHostnameTruncateHostname) {
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+
+  EXPECT_CALL(manager, ShouldAcceptHostnameFrom(kDeviceName))
+      .WillOnce(Return(true));
+  EXPECT_CALL(device_info_, SetHostname(
+      "wilson-was-a-great-ball-and-was-an-excellent-swimmer-in-high-sea"))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(SetHostname(
+      "wilson-was-a-great-ball-and-was-an-excellent-swimmer-in-high-sea-chop"));
 }
 
 class DevicePortalDetectionTest : public DeviceTest {

@@ -474,7 +474,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Accept hostname from DHCP server for devices matching |hostname_from|.
   void SetAcceptHostnameFrom(const std::string &hostname_from);
-  bool ShouldAcceptHostnameFrom(const std::string &device_name);
+  virtual bool ShouldAcceptHostnameFrom(const std::string &device_name) const;
 
   // Filter the list of prepended DNS servers, copying only those that match
   // |family| into |dns_servers|.  |dns_servers| is cleared, regardless of

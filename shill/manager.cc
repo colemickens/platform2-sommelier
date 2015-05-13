@@ -1158,7 +1158,7 @@ void Manager::SetAcceptHostnameFrom(const string &hostname_from) {
   accept_hostname_from_ = hostname_from;
 }
 
-bool Manager::ShouldAcceptHostnameFrom(const string &device_name) {
+bool Manager::ShouldAcceptHostnameFrom(const string &device_name) const {
   return MatchPattern(device_name, accept_hostname_from_);
 }
 

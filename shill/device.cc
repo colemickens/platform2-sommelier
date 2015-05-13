@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 #include <stdio.h>
+#include <sys/param.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -838,22 +839,26 @@ void Device::SetupConnection(const IPConfigRefPtr &ipconfig) {
     StartPortalDetection();
   }
 
-  // Accept hostname if configured to do so.
-  string accepted_hostname = ipconfig->properties().accepted_hostname;
-  if (manager()->ShouldAcceptHostnameFrom(link_name_)
-      && !accepted_hostname.empty()) {
-    const char* hostname = accepted_hostname.c_str();
-    int len = accepted_hostname.length();
-    if (sethostname(hostname, len) != 0) {
-          LOG(ERROR) << "Device " << FriendlyName()
-             << ": Failed to set hostname to: " << accepted_hostname
-             << "Error: " << strerror(errno);
-    }
-  }
-
-
+  SetHostname(ipconfig->properties().accepted_hostname);
   StartLinkMonitor();
   StartTrafficMonitor();
+}
+
+bool Device::SetHostname(const std::string &hostname) {
+  if (hostname.empty() || !manager()->ShouldAcceptHostnameFrom(link_name_)) {
+    return false;
+  }
+
+  string fixed_hostname = hostname;
+  if (fixed_hostname.length() > MAXHOSTNAMELEN) {
+    auto truncate_length = fixed_hostname.find('.');
+    if (truncate_length == string::npos || truncate_length > MAXHOSTNAMELEN) {
+      truncate_length = MAXHOSTNAMELEN;
+    }
+    fixed_hostname.resize(truncate_length);
+  }
+
+  return manager_->device_info()->SetHostname(fixed_hostname);
 }
 
 void Device::PrependDNSServersIntoIPConfig(const IPConfigRefPtr &ipconfig) {

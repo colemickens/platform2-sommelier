@@ -1198,4 +1198,13 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message &msg) {
 }
 #endif  // DISABLE_WIFI
 
+bool DeviceInfo::SetHostname(const std::string &hostname) const {
+  if (sethostname(hostname.c_str(), hostname.length())) {
+    PLOG(ERROR) << "Failed to set hostname to: " << hostname;
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace shill
