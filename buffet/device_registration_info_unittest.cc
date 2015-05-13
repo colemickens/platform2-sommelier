@@ -186,7 +186,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
  protected:
   void SetUp() override {
     storage_ = std::make_shared<MemStorage>();
-    storage_->Save(&data_);
+    storage_->Save(data_);
     transport_ = std::make_shared<chromeos::http::fake::Transport>();
     command_manager_ = std::make_shared<CommandManager>();
     state_manager_ = std::make_shared<StateManager>(&mock_state_change_queue_);
@@ -250,7 +250,7 @@ TEST_F(DeviceRegistrationInfoTest, VerifySave) {
   data.SetString(storage_keys::kLocation, "m");
   data.SetString(storage_keys::kAnonymousAccessRole, "user");
 
-  storage_->Save(&data);
+  storage_->Save(data);
 
   // This test isn't really trying to test Load, it is just the easiest
   // way to initialize the properties in dev_reg_.
@@ -258,7 +258,7 @@ TEST_F(DeviceRegistrationInfoTest, VerifySave) {
 
   // Clear the storage to get a clean test.
   base::DictionaryValue empty;
-  storage_->Save(&empty);
+  storage_->Save(empty);
   EXPECT_TRUE(DeviceRegistrationInfo::TestHelper::Save(dev_reg_.get()));
   EXPECT_TRUE(storage_->Load()->Equals(&data));
 }
@@ -287,7 +287,7 @@ TEST_F(DeviceRegistrationInfoTest, CheckRegistration) {
   EXPECT_EQ(0, transport_->GetRequestCount());
 
   SetDefaultDeviceRegistration(&data_);
-  storage_->Save(&data_);
+  storage_->Save(data_);
   EXPECT_TRUE(dev_reg_->Load());
 
   transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
@@ -301,7 +301,7 @@ TEST_F(DeviceRegistrationInfoTest, CheckRegistration) {
 
 TEST_F(DeviceRegistrationInfoTest, CheckAuthenticationFailure) {
   SetDefaultDeviceRegistration(&data_);
-  storage_->Save(&data_);
+  storage_->Save(data_);
   EXPECT_TRUE(dev_reg_->Load());
   EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
 
@@ -319,7 +319,7 @@ TEST_F(DeviceRegistrationInfoTest, CheckAuthenticationFailure) {
 
 TEST_F(DeviceRegistrationInfoTest, CheckDeregistration) {
   SetDefaultDeviceRegistration(&data_);
-  storage_->Save(&data_);
+  storage_->Save(data_);
   EXPECT_TRUE(dev_reg_->Load());
   EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
 
@@ -338,7 +338,7 @@ TEST_F(DeviceRegistrationInfoTest, CheckDeregistration) {
 
 TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
   SetDefaultDeviceRegistration(&data_);
-  storage_->Save(&data_);
+  storage_->Save(data_);
   EXPECT_TRUE(dev_reg_->Load());
 
   transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
@@ -360,7 +360,7 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
 
 TEST_F(DeviceRegistrationInfoTest, GetDeviceId) {
   SetDefaultDeviceRegistration(&data_);
-  storage_->Save(&data_);
+  storage_->Save(data_);
   EXPECT_TRUE(dev_reg_->Load());
 
   transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
@@ -513,7 +513,7 @@ TEST_F(DeviceRegistrationInfoTest, OOBRegistrationStatus) {
             dev_reg_->GetRegistrationStatus());
   // Put some credentials into our state, make sure we call that offline.
   SetDefaultDeviceRegistration(&data_);
-  storage_->Save(&data_);
+  storage_->Save(data_);
   EXPECT_TRUE(dev_reg_->Load());
   EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
 }

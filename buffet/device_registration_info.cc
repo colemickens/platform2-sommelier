@@ -236,7 +236,7 @@ bool DeviceRegistrationInfo::Save() const {
   dict.SetString(storage_keys::kAnonymousAccessRole,
                  config_->anonymous_access_role());
 
-  return storage_->Save(&dict);
+  return storage_->Save(dict);
 }
 
 void DeviceRegistrationInfo::ScheduleStartDevice(const base::TimeDelta& later) {

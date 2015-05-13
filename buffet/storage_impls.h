@@ -19,7 +19,7 @@ class FileStorage : public StorageInterface {
   explicit FileStorage(const base::FilePath& file_path);
   virtual ~FileStorage() = default;
   std::unique_ptr<base::Value> Load() override;
-  bool Save(const base::Value* config) override;
+  bool Save(const base::Value& config) override;
 
  private:
   base::FilePath file_path_;
@@ -32,7 +32,7 @@ class MemStorage : public StorageInterface {
   MemStorage() = default;
   virtual ~MemStorage() = default;
   std::unique_ptr<base::Value> Load() override;
-  bool Save(const base::Value* config) override;
+  bool Save(const base::Value& config) override;
   int save_count() { return save_count_; }
   void reset_save_count() { save_count_ = 0; }
 

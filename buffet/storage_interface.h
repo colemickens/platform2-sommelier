@@ -24,7 +24,7 @@ class StorageInterface {
   // If saved successfully, returns true. Could fail when writing to
   // physical storage like file system for various reasons (out of disk space,
   // access permissions, etc).
-  virtual bool Save(const base::Value* config) = 0;
+  virtual bool Save(const base::Value& config) = 0;
 };
 
 }  // namespace buffet

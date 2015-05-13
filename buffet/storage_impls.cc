@@ -23,10 +23,10 @@ std::unique_ptr<base::Value> FileStorage::Load() {
   return std::unique_ptr<base::Value>(base::JSONReader::Read(json));
 }
 
-bool FileStorage::Save(const base::Value* config) {
+bool FileStorage::Save(const base::Value& config) {
   std::string json;
   base::JSONWriter::WriteWithOptions(
-      config, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
+      &config, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
   return base::ImportantFileWriter::WriteFileAtomically(file_path_, json);
 }
 
@@ -35,8 +35,8 @@ std::unique_ptr<base::Value> MemStorage::Load() {
   return std::unique_ptr<base::Value>(cache_->DeepCopy());
 }
 
-bool MemStorage::Save(const base::Value* config) {
-  cache_.reset(config->DeepCopy());
+bool MemStorage::Save(const base::Value& config) {
+  cache_.reset(config.DeepCopy());
   ++save_count_;
   return true;
 }
