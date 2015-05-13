@@ -17,7 +17,9 @@ extern const char kRobotAccount[];
 extern const char kName[];
 extern const char kDescription[];
 extern const char kLocation[];
-extern const char kAnonymousAccessRole[];
+extern const char kLocalAnonymousAccessRole[];
+extern const char kLocalDiscoveryEnabled[];
+extern const char kLocalPairingEnabled[];
 
 }  // namespace storage_keys
 }  // namespace buffet

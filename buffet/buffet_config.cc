@@ -57,7 +57,9 @@ const char kServiceURL[] = "service_url";
 const char kName[] = "name";
 const char kDescription[] = "description";
 const char kLocation[] = "location";
-const char kAnonymousAccessRole[] = "anonymous_access_role";
+const char kLocalAnonymousAccessRole[] = "local_anonymous_access_role";
+const char kLocalDiscoveryEnabled[] = "local_discovery_enabled";
+const char kLocalPairingEnabled[] = "local_pairing_enabled";
 const char kOemName[] = "oem_name";
 const char kModelName[] = "model_name";
 const char kModelId[] = "model_id";
@@ -107,22 +109,32 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
   store.GetString(config_keys::kDescription, &description_);
   store.GetString(config_keys::kLocation, &location_);
 
-  store.GetString(config_keys::kAnonymousAccessRole, &anonymous_access_role_);
-  CHECK(IsValidAccessRole(anonymous_access_role_))
-      << "Invalid role: " << anonymous_access_role_;
+  store.GetString(config_keys::kLocalAnonymousAccessRole,
+                  &local_anonymous_access_role_);
+  CHECK(IsValidAccessRole(local_anonymous_access_role_))
+      << "Invalid role: " << local_anonymous_access_role_;
+
+  store.GetBoolean(config_keys::kLocalDiscoveryEnabled,
+                   &local_discovery_enabled_);
+  store.GetBoolean(config_keys::kLocalPairingEnabled, &local_pairing_enabled_);
 }
 
-void BuffetConfig::set_name(const std::string& name) {
-  CHECK(!name.empty());
-  name_ = name;
-}
-
-void BuffetConfig::set_anonymous_access_role(const std::string& role) {
-  if (IsValidAccessRole(role)) {
-    anonymous_access_role_ = role;
-  } else {
-    LOG(ERROR) << "Invalid role: " << role;
+bool BuffetConfig::set_name(const std::string& name) {
+  if (name.empty()) {
+    LOG(ERROR) << "Invalid name: " << name;
+    return false;
   }
+  name_ = name;
+  return true;
+}
+
+bool BuffetConfig::set_local_anonymous_access_role(const std::string& role) {
+  if (!IsValidAccessRole(role)) {
+    LOG(ERROR) << "Invalid role: " << role;
+    return false;
+  }
+  local_anonymous_access_role_ = role;
+  return true;
 }
 
 }  // namespace buffet

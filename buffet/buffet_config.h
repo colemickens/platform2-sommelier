@@ -33,14 +33,25 @@ class BuffetConfig {
   const std::string& name() const { return name_; }
   const std::string& description() const { return description_; }
   const std::string& location() const { return location_; }
-  std::string anonymous_access_role() const { return anonymous_access_role_; }
+  std::string local_anonymous_access_role() const {
+    return local_anonymous_access_role_;
+  }
+  bool local_pairing_enabled() const { return local_pairing_enabled_; }
+  bool local_discovery_enabled() const { return local_discovery_enabled_; }
 
-  void set_name(const std::string& name);
+  bool set_name(const std::string& name);
   void set_description(const std::string& description) {
     description_ = description;
   }
   void set_location(const std::string& location) { location_ = location; }
-  void set_anonymous_access_role(const std::string& role);
+
+  bool set_local_anonymous_access_role(const std::string& role);
+  void set_local_discovery_enabled(bool enabled) {
+    local_discovery_enabled_ = enabled;
+  }
+  void set_local_pairing_enabled(bool enabled) {
+    local_pairing_enabled_ = enabled;
+  }
 
  private:
   std::string client_id_{"58855907228.apps.googleusercontent.com"};
@@ -51,7 +62,9 @@ class BuffetConfig {
   std::string name_{"Developer device"};
   std::string description_;
   std::string location_;
-  std::string anonymous_access_role_{"viewer"};
+  std::string local_anonymous_access_role_{"viewer"};
+  bool local_discovery_enabled_{true};
+  bool local_pairing_enabled_{true};
   std::string oem_name_{"Chromium"};
   std::string model_name_{"Brillo"};
   std::string model_id_{"AAAAA"};

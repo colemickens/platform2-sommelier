@@ -45,7 +45,9 @@ const char kRobotAccount[] = "robot_account";
 const char kName[] = "name";
 const char kDescription[] = "description";
 const char kLocation[] = "location";
-const char kAnonymousAccessRole[] = "anonymous_access_role";
+const char kLocalAnonymousAccessRole[] = "local_anonymous_access_role";
+const char kLocalDiscoveryEnabled[] = "local_discovery_enabled";
+const char kLocalPairingEnabled[] = "local_pairing_enabled";
 
 }  // namespace storage_keys
 }  // namespace buffet
@@ -189,7 +191,7 @@ bool DeviceRegistrationInfo::Load() {
 
   // Read all available data before failing.
   std::string name;
-  if (dict->GetString(storage_keys::kName, &name) && !name.empty())
+  if (dict->GetString(storage_keys::kName, &name))
     config_->set_name(name);
 
   std::string description;
@@ -201,8 +203,18 @@ bool DeviceRegistrationInfo::Load() {
     config_->set_location(location);
 
   std::string access_role;
-  if (dict->GetString(storage_keys::kAnonymousAccessRole, &access_role))
-    config_->set_anonymous_access_role(access_role);
+  if (dict->GetString(storage_keys::kLocalAnonymousAccessRole, &access_role))
+    config_->set_local_anonymous_access_role(access_role);
+
+  bool local_discovery_enabled{false};
+  if (dict->GetBoolean(storage_keys::kLocalDiscoveryEnabled,
+                       &local_discovery_enabled))
+    config_->set_local_discovery_enabled(local_discovery_enabled);
+
+  bool local_pairing_enabled{false};
+  if (dict->GetBoolean(storage_keys::kLocalPairingEnabled,
+                       &local_pairing_enabled))
+    config_->set_local_pairing_enabled(local_pairing_enabled);
 
   dict->GetString(storage_keys::kRefreshToken, &refresh_token_);
   dict->GetString(storage_keys::kRobotAccount, &device_robot_account_);
@@ -233,8 +245,12 @@ bool DeviceRegistrationInfo::Save() const {
   dict.SetString(storage_keys::kName, config_->name());
   dict.SetString(storage_keys::kDescription, config_->description());
   dict.SetString(storage_keys::kLocation, config_->location());
-  dict.SetString(storage_keys::kAnonymousAccessRole,
-                 config_->anonymous_access_role());
+  dict.SetString(storage_keys::kLocalAnonymousAccessRole,
+                 config_->local_anonymous_access_role());
+  dict.SetBoolean(storage_keys::kLocalDiscoveryEnabled,
+                  config_->local_discovery_enabled());
+  dict.SetBoolean(storage_keys::kLocalPairingEnabled,
+                  config_->local_pairing_enabled());
 
   return storage_->Save(dict);
 }
@@ -765,17 +781,16 @@ bool DeviceRegistrationInfo::UpdateDeviceInfo(const std::string& name,
                                               const std::string& description,
                                               const std::string& location,
                                               chromeos::ErrorPtr* error) {
-  if (name.empty()) {
-    chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainBuffet,
-                           "invalid_parameter", "Empty device name");
+  if (!config_->set_name(name)) {
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
+                                 "invalid_parameter", "Invalid name: %s",
+                                 name.c_str());
     return false;
   }
-  config_->set_name(name);
   config_->set_description(description);
   config_->set_location(location);
 
   Save();
-
   OnConfigChanged();
 
   if (HaveRegistrationCredentials(nullptr)) {
@@ -1040,7 +1055,7 @@ void DeviceRegistrationInfo::OnConfigChanged() {
   manager_->SetName(config_->name());
   manager_->SetDescription(config_->description());
   manager_->SetLocation(config_->location());
-  manager_->SetAnonymousAccessRole(config_->anonymous_access_role());
+  manager_->SetAnonymousAccessRole(config_->local_anonymous_access_role());
 }
 
 void DeviceRegistrationInfo::OnCommandDefsChanged() {

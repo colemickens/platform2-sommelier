@@ -198,7 +198,9 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     config_store.SetString("name",  "Coffee Pot");
     config_store.SetString("description", "Easy to clean");
     config_store.SetString("location", "Kitchen");
-    config_store.SetString("anonymous_access_role", "viewer");
+    config_store.SetString("local_anonymous_access_role", "viewer");
+    config_store.SetBoolean("local_local_discovery_enabled", true);
+    config_store.SetBoolean("local_local_pairing_enabled", false);
     config_store.SetString("model_id", "AAAAA");
     config_store.SetString("oauth_url", test_data::kOAuthURL);
     config_store.SetString("service_url", test_data::kServiceURL);
@@ -241,16 +243,19 @@ TEST_F(DeviceRegistrationInfoTest, GetServiceURL) {
 }
 
 TEST_F(DeviceRegistrationInfoTest, VerifySave) {
-  base::DictionaryValue data;
-  data.SetString(storage_keys::kRefreshToken, "d");
-  data.SetString(storage_keys::kDeviceId, "e");
-  data.SetString(storage_keys::kRobotAccount, "h");
-  data.SetString(storage_keys::kName, "k");
-  data.SetString(storage_keys::kDescription, "l");
-  data.SetString(storage_keys::kLocation, "m");
-  data.SetString(storage_keys::kAnonymousAccessRole, "user");
+  auto expected = R"({
+     'description': 'l',
+     'device_id': 'e',
+     'local_anonymous_access_role': 'user',
+     'local_discovery_enabled': true,
+     'local_pairing_enabled': true,
+     'location': 'm',
+     'name': 'k',
+     'refresh_token': 'd',
+     'robot_account': 'h'
+  })";
 
-  storage_->Save(data);
+  storage_->Save(*unittests::CreateDictionaryValue(expected));
 
   // This test isn't really trying to test Load, it is just the easiest
   // way to initialize the properties in dev_reg_.
@@ -260,7 +265,8 @@ TEST_F(DeviceRegistrationInfoTest, VerifySave) {
   base::DictionaryValue empty;
   storage_->Save(empty);
   EXPECT_TRUE(DeviceRegistrationInfo::TestHelper::Save(dev_reg_.get()));
-  EXPECT_TRUE(storage_->Load()->Equals(&data));
+
+  EXPECT_JSON_EQ(expected, *storage_->Load());
 }
 
 TEST_F(DeviceRegistrationInfoTest, GetOAuthURL) {
