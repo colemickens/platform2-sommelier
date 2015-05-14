@@ -33,11 +33,8 @@ class MemStorage : public StorageInterface {
   virtual ~MemStorage() = default;
   std::unique_ptr<base::DictionaryValue> Load() override;
   bool Save(const base::DictionaryValue& config) override;
-  int save_count() { return save_count_; }
-  void reset_save_count() { save_count_ = 0; }
 
  private:
-  int save_count_ = 0;
   base::DictionaryValue cache_;
   DISALLOW_COPY_AND_ASSIGN(MemStorage);
 };

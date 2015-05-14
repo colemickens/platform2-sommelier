@@ -61,20 +61,24 @@ void Manager::Start(const base::FilePath& config_path,
   state_change_queue_.reset(new StateChangeQueue(kMaxStateChangeQueueSize));
   state_manager_ = std::make_shared<StateManager>(state_change_queue_.get());
   state_manager_->Startup();
-  std::unique_ptr<BuffetConfig> config{new BuffetConfig};
+
+  std::unique_ptr<BuffetConfig> config{new BuffetConfig{state_path}};
+  config->AddOnChangedCallback(
+      base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
   config->Load(config_path);
-  std::unique_ptr<FileStorage> state_store{new FileStorage{state_path}};
+
   // TODO(avakulenko): Figure out security implications of storing
   // device info state data unencrypted.
   device_info_.reset(new DeviceRegistrationInfo(
       command_manager_, state_manager_, std::move(config),
-      chromeos::http::Transport::CreateDefault(), std::move(state_store),
-      xmpp_enabled, &dbus_adaptor_));
+      chromeos::http::Transport::CreateDefault(), xmpp_enabled));
+  device_info_->AddOnRegistrationChangedCallback(base::Bind(
+      &Manager::OnRegistrationChanged, weak_ptr_factory_.GetWeakPtr()));
 
   base_api_handler_.reset(
       new BaseApiHandler{device_info_->AsWeakPtr(), command_manager_});
 
-  device_info_->Load();
+  device_info_->Start();
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(cb);
 }
@@ -91,7 +95,8 @@ void Manager::CheckDeviceRegistered(DBusMethodResponse<std::string> response) {
     return;
   }
 
-  response->Return(registered ? device_info_->GetDeviceId() : std::string());
+  response->Return(registered ? device_info_->GetConfig().device_id()
+                              : std::string());
 }
 
 void Manager::GetDeviceInfo(DBusMethodResponse<std::string> response) {
@@ -250,6 +255,21 @@ void Manager::OnCommandDefsChanged() {
   base::JSONWriter::WriteWithOptions(commands.get(),
       base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
   dbus_adaptor_.SetCommandDefs(json);
+}
+
+void Manager::OnRegistrationChanged(RegistrationStatus status) {
+  dbus_adaptor_.SetStatus(StatusToString(status));
+}
+
+void Manager::OnConfigChanged(const BuffetConfig& config) {
+  dbus_adaptor_.SetDeviceId(config.device_id());
+  dbus_adaptor_.SetOemName(config.oem_name());
+  dbus_adaptor_.SetModelName(config.model_name());
+  dbus_adaptor_.SetModelId(config.model_id());
+  dbus_adaptor_.SetName(config.name());
+  dbus_adaptor_.SetDescription(config.description());
+  dbus_adaptor_.SetLocation(config.location());
+  dbus_adaptor_.SetAnonymousAccessRole(config.local_anonymous_access_role());
 }
 
 }  // namespace buffet

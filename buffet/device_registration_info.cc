@@ -28,7 +28,6 @@
 #include "buffet/commands/schema_constants.h"
 #include "buffet/device_registration_storage_keys.h"
 #include "buffet/notification/xmpp_channel.h"
-#include "buffet/org.chromium.Buffet.Manager.h"
 #include "buffet/states/state_manager.h"
 #include "buffet/utils.h"
 
@@ -133,17 +132,12 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<StateManager>& state_manager,
     std::unique_ptr<BuffetConfig> config,
     const std::shared_ptr<chromeos::http::Transport>& transport,
-    const std::shared_ptr<StorageInterface>& state_store,
-    bool notifications_enabled,
-    org::chromium::Buffet::ManagerAdaptor* manager)
+    bool notifications_enabled)
     : transport_{transport},
-      storage_{state_store},
       command_manager_{command_manager},
       state_manager_{state_manager},
       config_{std::move(config)},
-      notifications_enabled_{notifications_enabled},
-      manager_{manager} {
-  OnConfigChanged();
+      notifications_enabled_{notifications_enabled} {
   command_manager_->AddOnCommandDefChanged(
       base::Bind(&DeviceRegistrationInfo::OnCommandDefsChanged,
                  weak_factory_.GetWeakPtr()));
@@ -165,9 +159,9 @@ std::string DeviceRegistrationInfo::GetServiceURL(
 std::string DeviceRegistrationInfo::GetDeviceURL(
     const std::string& subpath,
     const chromeos::data_encoding::WebParamList& params) const {
-  CHECK(!device_id_.empty()) << "Must have a valid device ID";
+  CHECK(!config_->device_id().empty()) << "Must have a valid device ID";
   return BuildURL(config_->service_url(),
-                  {"devices", device_id_, subpath}, params);
+                  {"devices", config_->device_id(), subpath}, params);
 }
 
 std::string DeviceRegistrationInfo::GetOAuthURL(
@@ -176,56 +170,7 @@ std::string DeviceRegistrationInfo::GetOAuthURL(
   return BuildURL(config_->oauth_url(), {subpath}, params);
 }
 
-const std::string& DeviceRegistrationInfo::GetDeviceId() const {
-  return device_id_;
-}
-
-bool DeviceRegistrationInfo::Load() {
-  // Set kInvalidCredentials to trigger on_status_changed_ callback.
-  registration_status_ = RegistrationStatus::kInvalidCredentials;
-  SetRegistrationStatus(RegistrationStatus::kUnconfigured);
-
-  auto value = storage_->Load();
-  const base::DictionaryValue* dict = nullptr;
-  if (!value || !value->GetAsDictionary(&dict))
-    return false;
-
-  // Read all available data before failing.
-  std::string name;
-  if (dict->GetString(storage_keys::kName, &name))
-    config_->set_name(name);
-
-  std::string description;
-  if (dict->GetString(storage_keys::kDescription, &description))
-    config_->set_description(description);
-
-  std::string location;
-  if (dict->GetString(storage_keys::kLocation, &location))
-    config_->set_location(location);
-
-  std::string access_role;
-  if (dict->GetString(storage_keys::kLocalAnonymousAccessRole, &access_role))
-    config_->set_local_anonymous_access_role(access_role);
-
-  bool local_discovery_enabled{false};
-  if (dict->GetBoolean(storage_keys::kLocalDiscoveryEnabled,
-                       &local_discovery_enabled))
-    config_->set_local_discovery_enabled(local_discovery_enabled);
-
-  bool local_pairing_enabled{false};
-  if (dict->GetBoolean(storage_keys::kLocalPairingEnabled,
-                       &local_pairing_enabled))
-    config_->set_local_pairing_enabled(local_pairing_enabled);
-
-  dict->GetString(storage_keys::kRefreshToken, &refresh_token_);
-  dict->GetString(storage_keys::kRobotAccount, &device_robot_account_);
-
-  std::string device_id;
-  if (dict->GetString(storage_keys::kDeviceId, &device_id))
-    SetDeviceId(device_id);
-
-  OnConfigChanged();
-
+void DeviceRegistrationInfo::Start() {
   if (HaveRegistrationCredentials(nullptr)) {
     // Wait a significant amount of time for local daemons to publish their
     // state to Buffet before publishing it to the cloud.
@@ -235,25 +180,6 @@ bool DeviceRegistrationInfo::Load() {
     //             we need not wait for them.
     ScheduleStartDevice(base::TimeDelta::FromSeconds(5));
   }
-  return true;
-}
-
-bool DeviceRegistrationInfo::Save() const {
-  base::DictionaryValue dict;
-  dict.SetString(storage_keys::kRefreshToken, refresh_token_);
-  dict.SetString(storage_keys::kDeviceId,     device_id_);
-  dict.SetString(storage_keys::kRobotAccount, device_robot_account_);
-  dict.SetString(storage_keys::kName, config_->name());
-  dict.SetString(storage_keys::kDescription, config_->description());
-  dict.SetString(storage_keys::kLocation, config_->location());
-  dict.SetString(storage_keys::kLocalAnonymousAccessRole,
-                 config_->local_anonymous_access_role());
-  dict.SetBoolean(storage_keys::kLocalDiscoveryEnabled,
-                  config_->local_discovery_enabled());
-  dict.SetBoolean(storage_keys::kLocalPairingEnabled,
-                  config_->local_pairing_enabled());
-
-  return storage_->Save(dict);
 }
 
 void DeviceRegistrationInfo::ScheduleStartDevice(const base::TimeDelta& later) {
@@ -283,9 +209,9 @@ bool DeviceRegistrationInfo::CheckRegistration(chromeos::ErrorPtr* error) {
 
 bool DeviceRegistrationInfo::HaveRegistrationCredentials(
     chromeos::ErrorPtr* error) {
-  const bool have_credentials = !refresh_token_.empty() &&
-                                !device_id_.empty() &&
-                                !device_robot_account_.empty();
+  const bool have_credentials = !config_->refresh_token().empty() &&
+                                !config_->device_id().empty() &&
+                                !config_->robot_account().empty();
 
   VLOG(1) << "Device registration record "
           << ((have_credentials) ? "found" : "not found.");
@@ -336,12 +262,15 @@ bool DeviceRegistrationInfo::MaybeRefreshAccessToken(
 bool DeviceRegistrationInfo::RefreshAccessToken(
     chromeos::ErrorPtr* error) {
   LOG(INFO) << "Refreshing access token.";
-  auto response = chromeos::http::PostFormDataAndBlock(GetOAuthURL("token"), {
-    {"refresh_token", refresh_token_},
-    {"client_id", config_->client_id()},
-    {"client_secret", config_->client_secret()},
-    {"grant_type", "refresh_token"},
-  }, {}, transport_, error);
+  auto response = chromeos::http::PostFormDataAndBlock(
+      GetOAuthURL("token"),
+      {
+       {"refresh_token", config_->refresh_token()},
+       {"client_id", config_->client_id()},
+       {"client_secret", config_->client_secret()},
+       {"grant_type", "refresh_token"},
+      },
+      {}, transport_, error);
   if (!response)
     return false;
 
@@ -385,9 +314,16 @@ void DeviceRegistrationInfo::StartNotificationChannel() {
   // this class completely. Also to be added the secondary (poll) notification
   // channel.
   primary_notification_channel_.reset(
-      new XmppChannel{device_robot_account_, access_token_,
+      new XmppChannel{config_->robot_account(),
+                      access_token_,
                       base::MessageLoop::current()->task_runner()});
   primary_notification_channel_->Start(this);
+}
+
+void DeviceRegistrationInfo::AddOnRegistrationChangedCallback(
+    const OnRegistrationChangedCallback& callback) {
+  on_registration_changed_.push_back(callback);
+  callback.Run(registration_status_);
 }
 
 std::unique_ptr<base::DictionaryValue>
@@ -405,8 +341,8 @@ DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
     return nullptr;
 
   std::unique_ptr<base::DictionaryValue> resource{new base::DictionaryValue};
-  if (!device_id_.empty())
-    resource->SetString("id", device_id_);
+  if (!config_->device_id().empty())
+    resource->SetString("id", config_->device_id());
   resource->SetString("name", config_->name());
   if (!config_->description().empty())
     resource->SetString("description", config_->description());
@@ -534,7 +470,8 @@ std::string DeviceRegistrationInfo::RegisterDevice(
 
   std::string auth_code;
   std::string device_id;
-  if (!json_resp->GetString("robotAccountEmail", &device_robot_account_) ||
+  std::string robot_account;
+  if (!json_resp->GetString("robotAccountEmail", &robot_account) ||
       !json_resp->GetString("robotAccountAuthorizationCode", &auth_code) ||
       !json_resp->GetString("deviceDraft.id", &device_id)) {
     chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainGCD,
@@ -542,7 +479,6 @@ std::string DeviceRegistrationInfo::RegisterDevice(
                            "Device account missing in response");
     return std::string();
   }
-  SetDeviceId(device_id);
 
   // Now get access_token and refresh_token
   response = chromeos::http::PostFormDataAndBlock(GetOAuthURL("token"), {
@@ -558,13 +494,11 @@ std::string DeviceRegistrationInfo::RegisterDevice(
 
   json_resp = ParseOAuthResponse(response.get(), error);
   int expires_in = 0;
-  if (!json_resp ||
-      !json_resp->GetString("access_token", &access_token_) ||
-      !json_resp->GetString("refresh_token", &refresh_token_) ||
+  std::string refresh_token;
+  if (!json_resp || !json_resp->GetString("access_token", &access_token_) ||
+      !json_resp->GetString("refresh_token", &refresh_token) ||
       !json_resp->GetInteger("expires_in", &expires_in) ||
-      access_token_.empty() ||
-      refresh_token_.empty() ||
-      expires_in <= 0) {
+      access_token_.empty() || refresh_token.empty() || expires_in <= 0) {
     chromeos::Error::AddTo(error, FROM_HERE,
                            kErrorDomainGCD, "unexpected_response",
                            "Device access_token missing in response");
@@ -574,13 +508,18 @@ std::string DeviceRegistrationInfo::RegisterDevice(
   access_token_expiration_ = base::Time::Now() +
                              base::TimeDelta::FromSeconds(expires_in);
 
-  Save();
+  BuffetConfig::Transaction change{config_.get()};
+  change.set_device_id(device_id);
+  change.set_robot_account(robot_account);
+  change.set_refresh_token(refresh_token);
+  change.Commit();
+
   StartNotificationChannel();
 
   // We're going to respond with our success immediately and we'll StartDevice
   // shortly after.
   ScheduleStartDevice(base::TimeDelta::FromSeconds(0));
-  return device_id_;
+  return device_id;
 }
 
 namespace {
@@ -769,17 +708,14 @@ bool DeviceRegistrationInfo::UpdateDeviceInfo(const std::string& name,
                                               const std::string& description,
                                               const std::string& location,
                                               chromeos::ErrorPtr* error) {
-  if (!config_->set_name(name)) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
-                                 "invalid_parameter", "Invalid name: %s",
-                                 name.c_str());
+  BuffetConfig::Transaction change{config_.get()};
+  if (!change.set_name(name)) {
+    chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainBuffet,
+                           "invalid_parameter", "Empty device name");
     return false;
   }
-  config_->set_description(description);
-  config_->set_location(location);
-
-  Save();
-  OnConfigChanged();
+  change.set_description(description);
+  change.set_location(location);
 
   if (HaveRegistrationCredentials(nullptr)) {
     UpdateDeviceResource(base::Bind(&base::DoNothing),
@@ -878,10 +814,8 @@ void DeviceRegistrationInfo::FetchCommands(
     const CloudRequestErrorCallback& on_failure) {
   DoCloudRequest(
       chromeos::http::request_type::kGet,
-      GetServiceURL("commands/queue", {{"deviceId", device_id_}}),
-      nullptr,
-      base::Bind(&HandleFetchCommandsResult, on_success),
-      on_failure);
+      GetServiceURL("commands/queue", {{"deviceId", config_->device_id()}}),
+      nullptr, base::Bind(&HandleFetchCommandsResult, on_success), on_failure);
 }
 
 void DeviceRegistrationInfo::AbortLimboCommands(
@@ -1021,29 +955,11 @@ void DeviceRegistrationInfo::PublishStateUpdates() {
 
 void DeviceRegistrationInfo::SetRegistrationStatus(
     RegistrationStatus new_status) {
-  registration_status_ = new_status;
-  if (manager_)
-    manager_->SetStatus(StatusToString(registration_status_));
   VLOG_IF(1, new_status != registration_status_)
       << "Changing registration status to " << StatusToString(new_status);
-}
-
-void DeviceRegistrationInfo::SetDeviceId(const std::string& device_id) {
-  device_id_ = device_id;
-  if (manager_)
-    manager_->SetDeviceId(device_id_);
-}
-
-void DeviceRegistrationInfo::OnConfigChanged() {
-  if (!manager_)
-    return;
-  manager_->SetOemName(config_->oem_name());
-  manager_->SetModelName(config_->model_name());
-  manager_->SetModelId(config_->model_id());
-  manager_->SetName(config_->name());
-  manager_->SetDescription(config_->description());
-  manager_->SetLocation(config_->location());
-  manager_->SetAnonymousAccessRole(config_->local_anonymous_access_role());
+  registration_status_ = new_status;
+  for (const auto& cb : on_registration_changed_)
+    cb.Run(registration_status_);
 }
 
 void DeviceRegistrationInfo::OnCommandDefsChanged() {

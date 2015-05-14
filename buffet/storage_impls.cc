@@ -39,7 +39,6 @@ std::unique_ptr<base::DictionaryValue> MemStorage::Load() {
 bool MemStorage::Save(const base::DictionaryValue& config) {
   cache_.Clear();
   cache_.MergeDictionary(&config);
-  ++save_count_;
   return true;
 }
 

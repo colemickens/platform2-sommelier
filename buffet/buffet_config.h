@@ -6,18 +6,77 @@
 #define BUFFET_BUFFET_CONFIG_H_
 
 #include <string>
+#include <vector>
 
+#include <base/callback.h>
 #include <base/files/file_path.h>
+#include <chromeos/errors/error.h>
 #include <chromeos/key_value_store.h>
 
 namespace buffet {
 
-class BuffetConfig {
+class StorageInterface;
+
+// Handles reading buffet config and state files.
+class BuffetConfig final {
  public:
-  BuffetConfig() = default;
+  using OnChangedCallback = base::Callback<void(const BuffetConfig&)>;
+
+  explicit BuffetConfig(std::unique_ptr<StorageInterface> storage);
+
+  explicit BuffetConfig(const base::FilePath& state_path);
+
+  void AddOnChangedCallback(const OnChangedCallback& callback) {
+    on_changed_.push_back(callback);
+    // Force to read current state.
+    callback.Run(*this);
+  }
 
   void Load(const base::FilePath& config_path);
   void Load(const chromeos::KeyValueStore& store);
+
+  // Allows editing of config. Makes sure that callbacks were called and changes
+  // were saved.
+  // User can commit changes by calling Commit method or by destroying the
+  // object.
+  class Transaction final {
+   public:
+    explicit Transaction(BuffetConfig* config) : config_(config) {
+      CHECK(config_);
+    }
+
+    ~Transaction();
+
+    bool set_name(const std::string& name);
+    void set_description(const std::string& description) {
+      config_->description_ = description;
+    }
+    void set_location(const std::string& location) {
+      config_->location_ = location;
+    }
+    bool set_local_anonymous_access_role(const std::string& role);
+    void set_local_discovery_enabled(bool enabled) {
+      config_->local_discovery_enabled_ = enabled;
+    }
+    void set_local_pairing_enabled(bool enabled) {
+      config_->local_pairing_enabled_ = enabled;
+    }
+    void set_device_id(const std::string& id) { config_->device_id_ = id; }
+    void set_refresh_token(const std::string& token) {
+      config_->refresh_token_ = token;
+    }
+    void set_robot_account(const std::string& account) {
+      config_->robot_account_ = account;
+    }
+
+    void Commit();
+
+   private:
+    friend class BuffetConfig;
+    void LoadState();
+    BuffetConfig* config_;
+    bool save_{true};
+  };
 
   const std::string& client_id() const { return client_id_; }
   const std::string& client_secret() const { return client_secret_; }
@@ -39,21 +98,13 @@ class BuffetConfig {
   bool local_pairing_enabled() const { return local_pairing_enabled_; }
   bool local_discovery_enabled() const { return local_discovery_enabled_; }
 
-  bool set_name(const std::string& name);
-  void set_description(const std::string& description) {
-    description_ = description;
-  }
-  void set_location(const std::string& location) { location_ = location; }
-
-  bool set_local_anonymous_access_role(const std::string& role);
-  void set_local_discovery_enabled(bool enabled) {
-    local_discovery_enabled_ = enabled;
-  }
-  void set_local_pairing_enabled(bool enabled) {
-    local_pairing_enabled_ = enabled;
-  }
+  std::string device_id() const { return device_id_; }
+  std::string refresh_token() const { return refresh_token_; }
+  std::string robot_account() const { return robot_account_; }
 
  private:
+  bool Save();
+
   std::string client_id_{"58855907228.apps.googleusercontent.com"};
   std::string client_secret_{"eHSAREAHrIqPsHBxCE9zPPBi"};
   std::string api_key_{"AIzaSyDSq46gG-AxUnC3zoqD9COIPrjolFsMfMA"};
@@ -70,6 +121,15 @@ class BuffetConfig {
   std::string model_id_{"AAAAA"};
   std::string device_kind_{"vendor"};
   uint64_t polling_period_ms_{7000};
+
+  std::string device_id_;
+  std::string refresh_token_;
+  std::string robot_account_;
+
+  // Serialization interface to save and load buffet state.
+  std::unique_ptr<StorageInterface> storage_;
+
+  std::vector<OnChangedCallback> on_changed_;
 
   DISALLOW_COPY_AND_ASSIGN(BuffetConfig);
 };

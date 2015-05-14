@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
@@ -24,14 +25,6 @@
 #include "buffet/notification/notification_delegate.h"
 #include "buffet/registration_status.h"
 #include "buffet/storage_interface.h"
-
-namespace org {
-namespace chromium {
-namespace Buffet {
-class ManagerAdaptor;
-}
-}
-}
 
 namespace base {
 class DictionaryValue;
@@ -52,24 +45,21 @@ extern const char kErrorDomainGCDServer[];
 // The DeviceRegistrationInfo class represents device registration information.
 class DeviceRegistrationInfo : public NotificationDelegate {
  public:
-  // This is a helper class for unit testing.
-  class TestHelper;
+  using OnRegistrationChangedCallback =
+      base::Callback<void(RegistrationStatus)>;
 
   DeviceRegistrationInfo(
       const std::shared_ptr<CommandManager>& command_manager,
       const std::shared_ptr<StateManager>& state_manager,
       std::unique_ptr<BuffetConfig> config,
       const std::shared_ptr<chromeos::http::Transport>& transport,
-      const std::shared_ptr<StorageInterface>& state_store,
-      bool notifications_enabled,
-      org::chromium::Buffet::ManagerAdaptor* manager);
+      bool notifications_enabled);
 
   virtual ~DeviceRegistrationInfo();
 
-  // Returns our current best known registration status.
-  RegistrationStatus GetRegistrationStatus() const {
-    return registration_status_;
-  }
+  // Add callback to listen for changes in registration status.
+  void AddOnRegistrationChangedCallback(
+      const OnRegistrationChangedCallback& callback);
 
   // Returns the authorization HTTP header that can be used to talk
   // to GCD server for authenticated device communication.
@@ -103,11 +93,8 @@ class DeviceRegistrationInfo : public NotificationDelegate {
     const std::string& subpath = {},
     const chromeos::data_encoding::WebParamList& params = {}) const;
 
-  // Returns the registered device ID (GUID) or empty string.
-  const std::string& GetDeviceId() const;
-
-  // Loads the device registration information from cache.
-  bool Load();
+  // Starts GCD device if credentials avalible.
+  void Start();
 
   // Checks whether we have credentials generated during registration.
   bool HaveRegistrationCredentials(chromeos::ErrorPtr* error);
@@ -124,9 +111,8 @@ class DeviceRegistrationInfo : public NotificationDelegate {
   // is omitted, a default value is used when possible.
   // Returns a device ID on success.
   // The values are all strings for now.
-  std::string RegisterDevice(
-    const std::map<std::string, std::string>& params,
-    chromeos::ErrorPtr* error);
+  std::string RegisterDevice(const std::map<std::string, std::string>& params,
+                             chromeos::ErrorPtr* error);
 
   // Updates a command.
   void UpdateCommand(const std::string& command_id,
@@ -147,6 +133,8 @@ class DeviceRegistrationInfo : public NotificationDelegate {
   }
 
  private:
+  friend class DeviceRegistrationInfoTest;
+
   // Cause DeviceRegistrationInfo to attempt to StartDevice on its own later.
   void ScheduleStartDevice(const base::TimeDelta& later);
 
@@ -156,9 +144,6 @@ class DeviceRegistrationInfo : public NotificationDelegate {
   // TODO(antonm): Consider moving into some other class.
   void StartDevice(chromeos::ErrorPtr* error,
                    const base::TimeDelta& retry_delay);
-
-  // Saves the device registration to cache.
-  bool Save() const;
 
   // Checks for the valid device registration as well as refreshes
   // the device access token, if available.
@@ -232,7 +217,6 @@ class DeviceRegistrationInfo : public NotificationDelegate {
 
   void SetRegistrationStatus(RegistrationStatus new_status);
   void SetDeviceId(const std::string& device_id);
-  void OnConfigChanged();
 
   // Callback called when command definitions are changed to re-publish new CDD.
   void OnCommandDefsChanged();
@@ -242,19 +226,12 @@ class DeviceRegistrationInfo : public NotificationDelegate {
   void OnDisconnected() override;
   void OnPermanentFailure() override;
 
-  // Data that is cached here, persisted in the state store.
-  std::string refresh_token_;
-  std::string device_id_;
-  std::string device_robot_account_;
-
   // Transient data
   std::string access_token_;
   base::Time access_token_expiration_;
 
   // HTTP transport used for communications.
   std::shared_ptr<chromeos::http::Transport> transport_;
-  // Serialization interface to save and load device registration info.
-  std::shared_ptr<StorageInterface> storage_;
   // Global command manager.
   std::shared_ptr<CommandManager> command_manager_;
   // Device state manager.
@@ -267,12 +244,12 @@ class DeviceRegistrationInfo : public NotificationDelegate {
 
   // Tracks our current registration status.
   RegistrationStatus registration_status_{RegistrationStatus::kUnconfigured};
-  org::chromium::Buffet::ManagerAdaptor* manager_;
 
   base::RepeatingTimer<DeviceRegistrationInfo> command_poll_timer_;
   base::RepeatingTimer<DeviceRegistrationInfo> state_push_timer_;
 
-  friend class TestHelper;
+  std::vector<OnRegistrationChangedCallback> on_registration_changed_;
+
   base::WeakPtrFactory<DeviceRegistrationInfo> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(DeviceRegistrationInfo);
 };

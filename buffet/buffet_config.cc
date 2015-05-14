@@ -7,6 +7,9 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
+#include "buffet/storage_impls.h"
+#include "buffet/storage_interface.h"
+
 namespace {
 
 // TODO(vitalybuka): Remove this when deviceKind is gone from server.
@@ -64,8 +67,20 @@ const char kOemName[] = "oem_name";
 const char kModelName[] = "model_name";
 const char kModelId[] = "model_id";
 const char kPollingPeriodMs[] = "polling_period_ms";
+const char kRefreshToken[] = "refresh_token";
+const char kDeviceId[] = "device_id";
+const char kRobotAccount[] = "robot_account";
 
 }  // namespace config_keys
+
+BuffetConfig::BuffetConfig(std::unique_ptr<StorageInterface> storage)
+    : storage_{std::move(storage)} {
+}
+
+BuffetConfig::BuffetConfig(const base::FilePath& state_path)
+    : BuffetConfig{
+          std::unique_ptr<StorageInterface>{new FileStorage{state_path}}} {
+}
 
 void BuffetConfig::Load(const base::FilePath& config_path) {
   chromeos::KeyValueStore store;
@@ -75,6 +90,9 @@ void BuffetConfig::Load(const base::FilePath& config_path) {
 }
 
 void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
+  Transaction change{this};
+  change.save_ = false;
+
   store.GetString(config_keys::kClientId, &client_id_);
   CHECK(!client_id_.empty());
 
@@ -117,24 +135,105 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
   store.GetBoolean(config_keys::kLocalDiscoveryEnabled,
                    &local_discovery_enabled_);
   store.GetBoolean(config_keys::kLocalPairingEnabled, &local_pairing_enabled_);
+
+  change.LoadState();
 }
 
-bool BuffetConfig::set_name(const std::string& name) {
+void BuffetConfig::Transaction::LoadState() {
+  if (!config_->storage_)
+    return;
+  auto value = config_->storage_->Load();
+  const base::DictionaryValue* dict = nullptr;
+  if (!value || !value->GetAsDictionary(&dict))
+    return;
+
+  std::string name;
+  if (dict->GetString(config_keys::kName, &name))
+    set_name(name);
+
+  std::string description;
+  if (dict->GetString(config_keys::kDescription, &description))
+    set_description(description);
+
+  std::string location;
+  if (dict->GetString(config_keys::kLocation, &location))
+    set_location(location);
+
+  std::string access_role;
+  if (dict->GetString(config_keys::kLocalAnonymousAccessRole, &access_role))
+    set_local_anonymous_access_role(access_role);
+
+  bool discovery_enabled{false};
+  if (dict->GetBoolean(config_keys::kLocalDiscoveryEnabled, &discovery_enabled))
+    set_local_discovery_enabled(discovery_enabled);
+
+  bool pairing_enabled{false};
+  if (dict->GetBoolean(config_keys::kLocalPairingEnabled, &pairing_enabled))
+    set_local_pairing_enabled(pairing_enabled);
+
+  std::string token;
+  if (dict->GetString(config_keys::kRefreshToken, &token))
+    set_refresh_token(token);
+
+  std::string account;
+  if (dict->GetString(config_keys::kRobotAccount, &account))
+    set_robot_account(account);
+
+  std::string device_id;
+  if (dict->GetString(config_keys::kDeviceId, &device_id))
+    set_device_id(device_id);
+}
+
+bool BuffetConfig::Save() {
+  if (!storage_)
+    return false;
+  base::DictionaryValue dict;
+  dict.SetString(config_keys::kRefreshToken, refresh_token_);
+  dict.SetString(config_keys::kDeviceId, device_id_);
+  dict.SetString(config_keys::kRobotAccount, robot_account_);
+  dict.SetString(config_keys::kName, name_);
+  dict.SetString(config_keys::kDescription, description_);
+  dict.SetString(config_keys::kLocation, location_);
+  dict.SetString(config_keys::kLocalAnonymousAccessRole,
+                 local_anonymous_access_role_);
+  dict.SetBoolean(config_keys::kLocalDiscoveryEnabled,
+                  local_discovery_enabled_);
+  dict.SetBoolean(config_keys::kLocalPairingEnabled, local_pairing_enabled_);
+
+  return storage_->Save(dict);
+}
+
+BuffetConfig::Transaction::~Transaction() {
+  Commit();
+}
+
+bool BuffetConfig::Transaction::set_name(const std::string& name) {
   if (name.empty()) {
     LOG(ERROR) << "Invalid name: " << name;
     return false;
   }
-  name_ = name;
+  config_->name_ = name;
   return true;
 }
 
-bool BuffetConfig::set_local_anonymous_access_role(const std::string& role) {
+bool BuffetConfig::Transaction::set_local_anonymous_access_role(
+    const std::string& role) {
   if (!IsValidAccessRole(role)) {
     LOG(ERROR) << "Invalid role: " << role;
     return false;
   }
-  local_anonymous_access_role_ = role;
+  config_->local_anonymous_access_role_ = role;
   return true;
+}
+
+void BuffetConfig::Transaction::Commit() {
+  if (!config_)
+    return;
+  if (save_)
+    config_->Save();
+  for (const auto& cb : config_->on_changed_)
+    cb.Run(*config_);
+  config_ = nullptr;
 }
 
 }  // namespace buffet

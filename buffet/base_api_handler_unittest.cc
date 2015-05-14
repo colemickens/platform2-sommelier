@@ -22,15 +22,15 @@ namespace buffet {
 class BaseApiHandlerTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    storage_ = std::make_shared<MemStorage>();
     transport_ = std::make_shared<chromeos::http::fake::Transport>();
     command_manager_ = std::make_shared<CommandManager>();
     state_manager_ = std::make_shared<StateManager>(&mock_state_change_queue_);
     state_manager_->Startup();
     dev_reg_.reset(new DeviceRegistrationInfo(
         command_manager_, state_manager_,
-        std::unique_ptr<BuffetConfig>{new BuffetConfig}, transport_, storage_,
-        true, nullptr));
+        std::unique_ptr<BuffetConfig>{new BuffetConfig{
+            std::unique_ptr<StorageInterface>{new MemStorage}}},
+        transport_, true));
     handler_.reset(new BaseApiHandler{dev_reg_->AsWeakPtr(), command_manager_});
   }
 
@@ -54,7 +54,6 @@ class BaseApiHandlerTest : public ::testing::Test {
               command_manager_->FindCommand(id)->GetStatus());
   }
 
-  std::shared_ptr<MemStorage> storage_;
   std::shared_ptr<chromeos::http::fake::Transport> transport_;
   std::unique_ptr<DeviceRegistrationInfo> dev_reg_;
   std::shared_ptr<CommandManager> command_manager_;

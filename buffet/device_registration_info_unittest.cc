@@ -162,34 +162,26 @@ void FinalizeTicketHandler(const ServerRequest& request,
 
 }  // anonymous namespace
 
-// This is a helper class that allows the unit tests to access private
-// methods and data since TestHelper is declared as a friend to
-// DeviceRegistrationInfo.
-class DeviceRegistrationInfo::TestHelper {
- public:
-  static bool Save(DeviceRegistrationInfo* info) {
-    return info->Save();
-  }
-
-  static void PublishCommands(DeviceRegistrationInfo* info,
-                              const base::ListValue& commands) {
-    return info->PublishCommands(commands);
-  }
-
-  static bool CheckRegistration(DeviceRegistrationInfo* info,
-                                chromeos::ErrorPtr* error) {
-    return info->CheckRegistration(error);
-  }
-};
-
 class DeviceRegistrationInfoTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    storage_ = std::make_shared<MemStorage>();
-    storage_->Save(data_);
+    std::unique_ptr<StorageInterface> storage{new MemStorage};
+    storage_ = storage.get();
+    storage->Save(data_);
     transport_ = std::make_shared<chromeos::http::fake::Transport>();
     command_manager_ = std::make_shared<CommandManager>();
     state_manager_ = std::make_shared<StateManager>(&mock_state_change_queue_);
+
+    std::unique_ptr<BuffetConfig> config{new BuffetConfig{std::move(storage)}};
+    config_ = config.get();
+    dev_reg_ = std::unique_ptr<DeviceRegistrationInfo>(
+        new DeviceRegistrationInfo(command_manager_, state_manager_,
+                                   std::move(config), transport_, true));
+
+    ReloadConfig();
+  }
+
+  void ReloadConfig() {
     chromeos::KeyValueStore config_store;
     config_store.SetString("client_id", test_data::kClientId);
     config_store.SetString("client_secret", test_data::kClientSecret);
@@ -199,23 +191,28 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     config_store.SetString("description", "Easy to clean");
     config_store.SetString("location", "Kitchen");
     config_store.SetString("local_anonymous_access_role", "viewer");
-    config_store.SetBoolean("local_local_discovery_enabled", true);
-    config_store.SetBoolean("local_local_pairing_enabled", false);
     config_store.SetString("model_id", "AAAAA");
     config_store.SetString("oauth_url", test_data::kOAuthURL);
     config_store.SetString("service_url", test_data::kServiceURL);
-    std::unique_ptr<BuffetConfig> config{new BuffetConfig};
-    config->Load(config_store);
-    dev_reg_ = std::unique_ptr<DeviceRegistrationInfo>(
-        new DeviceRegistrationInfo(command_manager_, state_manager_,
-                                   std::move(config),
-                                   transport_, storage_,
-                                   true,
-                                   nullptr));
+    config_->Load(config_store);
+    dev_reg_->Start();
+  }
+
+  void PublishCommands(const base::ListValue& commands) {
+    return dev_reg_->PublishCommands(commands);
+  }
+
+  bool CheckRegistration(chromeos::ErrorPtr* error) const {
+    return dev_reg_->CheckRegistration(error);
+  }
+
+  RegistrationStatus GetRegistrationStatus() const {
+    return dev_reg_->registration_status_;
   }
 
   base::DictionaryValue data_;
-  std::shared_ptr<MemStorage> storage_;
+  StorageInterface* storage_{nullptr};
+  BuffetConfig* config_{nullptr};
   std::shared_ptr<chromeos::http::fake::Transport> transport_;
   std::unique_ptr<DeviceRegistrationInfo> dev_reg_;
   std::shared_ptr<CommandManager> command_manager_;
@@ -225,7 +222,6 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
 
 ////////////////////////////////////////////////////////////////////////////////
 TEST_F(DeviceRegistrationInfoTest, GetServiceURL) {
-  EXPECT_TRUE(dev_reg_->Load());
   EXPECT_EQ(test_data::kServiceURL, dev_reg_->GetServiceURL());
   std::string url = test_data::kServiceURL;
   url += "registrationTickets";
@@ -242,35 +238,7 @@ TEST_F(DeviceRegistrationInfoTest, GetServiceURL) {
   }));
 }
 
-TEST_F(DeviceRegistrationInfoTest, VerifySave) {
-  auto expected = R"({
-     'description': 'l',
-     'device_id': 'e',
-     'local_anonymous_access_role': 'user',
-     'local_discovery_enabled': true,
-     'local_pairing_enabled': true,
-     'location': 'm',
-     'name': 'k',
-     'refresh_token': 'd',
-     'robot_account': 'h'
-  })";
-
-  storage_->Save(*unittests::CreateDictionaryValue(expected));
-
-  // This test isn't really trying to test Load, it is just the easiest
-  // way to initialize the properties in dev_reg_.
-  EXPECT_TRUE(dev_reg_->Load());
-
-  // Clear the storage to get a clean test.
-  base::DictionaryValue empty;
-  storage_->Save(empty);
-  EXPECT_TRUE(DeviceRegistrationInfo::TestHelper::Save(dev_reg_.get()));
-
-  EXPECT_JSON_EQ(expected, *storage_->Load());
-}
-
 TEST_F(DeviceRegistrationInfoTest, GetOAuthURL) {
-  EXPECT_TRUE(dev_reg_->Load());
   EXPECT_EQ(test_data::kOAuthURL, dev_reg_->GetOAuthURL());
   std::string url = test_data::kOAuthURL;
   url += "auth?scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fclouddevices&";
@@ -287,65 +255,59 @@ TEST_F(DeviceRegistrationInfoTest, GetOAuthURL) {
 }
 
 TEST_F(DeviceRegistrationInfoTest, CheckRegistration) {
-  EXPECT_TRUE(dev_reg_->Load());
-  EXPECT_FALSE(DeviceRegistrationInfo::TestHelper::CheckRegistration(
-      dev_reg_.get(), nullptr));
+  EXPECT_FALSE(CheckRegistration(nullptr));
   EXPECT_EQ(0, transport_->GetRequestCount());
 
   SetDefaultDeviceRegistration(&data_);
   storage_->Save(data_);
-  EXPECT_TRUE(dev_reg_->Load());
+  ReloadConfig();
 
   transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
                          chromeos::http::request_type::kPost,
                          base::Bind(OAuth2Handler));
   transport_->ResetRequestCount();
-  EXPECT_TRUE(DeviceRegistrationInfo::TestHelper::CheckRegistration(
-      dev_reg_.get(), nullptr));
+  EXPECT_TRUE(CheckRegistration(nullptr));
   EXPECT_EQ(1, transport_->GetRequestCount());
 }
 
 TEST_F(DeviceRegistrationInfoTest, CheckAuthenticationFailure) {
   SetDefaultDeviceRegistration(&data_);
   storage_->Save(data_);
-  EXPECT_TRUE(dev_reg_->Load());
-  EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
+  ReloadConfig();
+  EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 
   transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
                          chromeos::http::request_type::kPost,
                          base::Bind(OAuth2HandlerFail));
   transport_->ResetRequestCount();
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(DeviceRegistrationInfo::TestHelper::CheckRegistration(
-      dev_reg_.get(), &error));
+  EXPECT_FALSE(CheckRegistration(&error));
   EXPECT_EQ(1, transport_->GetRequestCount());
   EXPECT_TRUE(error->HasError(kErrorDomainOAuth2, "unable_to_authenticate"));
-  EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
+  EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 }
 
 TEST_F(DeviceRegistrationInfoTest, CheckDeregistration) {
   SetDefaultDeviceRegistration(&data_);
   storage_->Save(data_);
-  EXPECT_TRUE(dev_reg_->Load());
-  EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
+  ReloadConfig();
+  EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 
   transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
                          chromeos::http::request_type::kPost,
                          base::Bind(OAuth2HandlerDeregister));
   transport_->ResetRequestCount();
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(DeviceRegistrationInfo::TestHelper::CheckRegistration(
-      dev_reg_.get(), &error));
+  EXPECT_FALSE(CheckRegistration(&error));
   EXPECT_EQ(1, transport_->GetRequestCount());
   EXPECT_TRUE(error->HasError(kErrorDomainOAuth2, "invalid_grant"));
-  EXPECT_EQ(RegistrationStatus::kInvalidCredentials,
-            dev_reg_->GetRegistrationStatus());
+  EXPECT_EQ(RegistrationStatus::kInvalidCredentials, GetRegistrationStatus());
 }
 
 TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
   SetDefaultDeviceRegistration(&data_);
   storage_->Save(data_);
-  EXPECT_TRUE(dev_reg_->Load());
+  ReloadConfig();
 
   transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
                          chromeos::http::request_type::kPost,
@@ -367,7 +329,7 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
 TEST_F(DeviceRegistrationInfoTest, GetDeviceId) {
   SetDefaultDeviceRegistration(&data_);
   storage_->Save(data_);
-  EXPECT_TRUE(dev_reg_->Load());
+  ReloadConfig();
 
   transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
                          chromeos::http::request_type::kPost,
@@ -375,12 +337,10 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceId) {
   transport_->AddHandler(dev_reg_->GetDeviceURL(),
                          chromeos::http::request_type::kGet,
                          base::Bind(DeviceInfoHandler));
-  EXPECT_EQ(test_data::kDeviceId, dev_reg_->GetDeviceId());
+  EXPECT_EQ(test_data::kDeviceId, config_->device_id());
 }
 
 TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
-  EXPECT_TRUE(dev_reg_->Load());
-
   auto update_ticket = [](const ServerRequest& request,
                           ServerResponse* response) {
     EXPECT_EQ(test_data::kApiKey, request.GetFormField("key"));
@@ -487,16 +447,13 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
   transport_->AddHandler(dev_reg_->GetOAuthURL("token"),
                          chromeos::http::request_type::kPost,
                          base::Bind(OAuth2Handler));
-  storage_->reset_save_count();
-
   std::map<std::string, std::string> params;
   params["ticket_id"] = test_data::kClaimTicketId;
   std::string device_id = dev_reg_->RegisterDevice(params, nullptr);
 
   EXPECT_EQ(test_data::kDeviceId, device_id);
-  EXPECT_GT(storage_->save_count(), 1);  // The state must have been saved.
   EXPECT_EQ(3, transport_->GetRequestCount());
-  EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
+  EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 
   // Validate the device info saved to storage...
   auto storage_data = storage_->Load();
@@ -514,18 +471,15 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
 TEST_F(DeviceRegistrationInfoTest, OOBRegistrationStatus) {
   // After we've been initialized, we should be either offline or unregistered,
   // depending on whether or not we've found credentials.
-  EXPECT_TRUE(dev_reg_->Load());
-  EXPECT_EQ(RegistrationStatus::kUnconfigured,
-            dev_reg_->GetRegistrationStatus());
+  EXPECT_EQ(RegistrationStatus::kUnconfigured, GetRegistrationStatus());
   // Put some credentials into our state, make sure we call that offline.
   SetDefaultDeviceRegistration(&data_);
   storage_->Save(data_);
-  EXPECT_TRUE(dev_reg_->Load());
-  EXPECT_EQ(RegistrationStatus::kConnecting, dev_reg_->GetRegistrationStatus());
+  ReloadConfig();
+  EXPECT_EQ(RegistrationStatus::kConnecting, GetRegistrationStatus());
 }
 
 TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
-  EXPECT_TRUE(dev_reg_->Load());
   auto json_cmds = unittests::CreateDictionaryValue(R"({
     'robot': {
       '_jump': {
@@ -546,8 +500,7 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   ASSERT_NE(nullptr, commands_json.get());
   const base::ListValue* command_list = nullptr;
   ASSERT_TRUE(commands_json->GetAsList(&command_list));
-  DeviceRegistrationInfo::TestHelper::PublishCommands(dev_reg_.get(),
-                                                      *command_list);
+  PublishCommands(*command_list);
   auto command = command_manager_->FindCommand("1234");
   ASSERT_NE(nullptr, command);
   StringPropType string_type;

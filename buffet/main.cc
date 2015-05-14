@@ -42,7 +42,6 @@ class Daemon : public DBusServiceDaemon {
   }
 
  private:
-  BuffetConfig config_;
   std::unique_ptr<buffet::Manager> manager_;
   const base::FilePath config_path_;
   const base::FilePath state_path_;
