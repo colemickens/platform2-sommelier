@@ -12,7 +12,6 @@
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <chromeos/data_encoding.h>
@@ -21,9 +20,10 @@
 
 #include "buffet/buffet_config.h"
 #include "buffet/commands/command_manager.h"
+#include "buffet/notification/notification_channel.h"
+#include "buffet/notification/notification_delegate.h"
 #include "buffet/registration_status.h"
 #include "buffet/storage_interface.h"
-#include "buffet/xmpp/xmpp_client.h"
 
 namespace org {
 namespace chromium {
@@ -50,7 +50,7 @@ extern const char kErrorDomainGCD[];
 extern const char kErrorDomainGCDServer[];
 
 // The DeviceRegistrationInfo class represents device registration information.
-class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
+class DeviceRegistrationInfo : public NotificationDelegate {
  public:
   // This is a helper class for unit testing.
   class TestHelper;
@@ -61,16 +61,10 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
       std::unique_ptr<BuffetConfig> config,
       const std::shared_ptr<chromeos::http::Transport>& transport,
       const std::shared_ptr<StorageInterface>& state_store,
-      bool xmpp_enabled,
+      bool notifications_enabled,
       org::chromium::Buffet::ManagerAdaptor* manager);
 
-  ~DeviceRegistrationInfo() override;
-
-  void OnFileCanReadWithoutBlocking(int fd) override;
-
-  void OnFileCanWriteWithoutBlocking(int fd) override {
-    LOG(FATAL) << "No write watcher is configured";
-  }
+  virtual ~DeviceRegistrationInfo();
 
   // Returns our current best known registration status.
   RegistrationStatus GetRegistrationStatus() const {
@@ -183,9 +177,9 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
       chromeos::http::Response* response, chromeos::ErrorPtr* error);
 
-  // This attempts to open the XMPP channel. The XMPP channel needs to be
+  // This attempts to open a notification channel. The channel needs to be
   // restarted anytime the access_token is refreshed.
-  void StartXmpp();
+  void StartNotificationChannel();
 
   using CloudRequestCallback =
       base::Callback<void(const base::DictionaryValue&)>;
@@ -243,6 +237,11 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
   // Callback called when command definitions are changed to re-publish new CDD.
   void OnCommandDefsChanged();
 
+  // Overrides from NotificationDelegate
+  void OnConnected(const std::string& channel_name) override;
+  void OnDisconnected() override;
+  void OnPermanentFailure() override;
+
   // Data that is cached here, persisted in the state store.
   std::string refresh_token_;
   std::string device_id_;
@@ -263,9 +262,8 @@ class DeviceRegistrationInfo : public base::MessageLoopForIO::Watcher {
 
   std::unique_ptr<BuffetConfig> config_;
 
-  const bool xmpp_enabled_;
-  std::unique_ptr<XmppClient> xmpp_client_;
-  base::MessageLoopForIO::FileDescriptorWatcher fd_watcher_;
+  const bool notifications_enabled_;
+  std::unique_ptr<NotificationChannel> primary_notification_channel_;
 
   // Tracks our current registration status.
   RegistrationStatus registration_status_{RegistrationStatus::kUnconfigured};

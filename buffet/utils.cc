@@ -5,7 +5,11 @@
 #include "buffet/utils.h"
 
 #include <map>
+#include <netdb.h>
 #include <string>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
@@ -73,6 +77,30 @@ std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
   }
   result.reset(dict_value);
   return result;
+}
+
+int ConnectSocket(const std::string& host, uint16_t port) {
+  std::string service = std::to_string(port);
+  addrinfo hints = {0, AF_UNSPEC, SOCK_STREAM};
+  addrinfo* result = nullptr;
+  if (getaddrinfo(host.c_str(), service.c_str(), &hints, &result))
+    return -1;
+
+  int socket_fd = -1;
+  for (const addrinfo* info = result; info != nullptr; info = info->ai_next) {
+    socket_fd = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
+    if (socket_fd < 0)
+      continue;
+
+    if (connect(socket_fd, info->ai_addr, info->ai_addrlen) == 0)
+      break;  // Success.
+
+    close(socket_fd);
+    socket_fd = -1;
+  }
+
+  freeaddrinfo(result);
+  return socket_fd;
 }
 
 }  // namespace buffet

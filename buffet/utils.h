@@ -37,6 +37,11 @@ std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
 std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
     const std::string& json_string, chromeos::ErrorPtr* error);
 
+// Synchronously resolves the |host| and connects a socket to the resolved
+// address/port.
+// Returns the connected socket file descriptor or -1 if failed.
+int ConnectSocket(const std::string& host, uint16_t port);
+
 }  // namespace buffet
 
 #endif  // BUFFET_UTILS_H_
