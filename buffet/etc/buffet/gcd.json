@@ -22,11 +22,7 @@
     "updateDeviceInfo": {
       "parameters": {
         "description": "string",
-        "name": {
-          "type": "string",
-          "minLength": 1
-        },
-        "location": "string"
+        "name": "string"
       },
       "results": {}
     }
