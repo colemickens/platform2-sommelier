@@ -55,6 +55,9 @@ INTRO_TEXT="Welcome to crosh, the Chrome OS developer shell.
 If you got here by mistake, don't panic!  Just close this tab and carry on.
 
 Type 'help' for a list of commands.
+
+If you want to customize the look/behavior, you can use the options page.
+Load it by using the Ctrl+Shift+P keyboard shortcut.
 "
 
 # Gets set to "1" when in dev mode.
