@@ -90,6 +90,14 @@ const uint16_t kWlanCapMaskPrivacy = 0x0010;
 const uint16_t kWlanCapMaskShortPreamble = 0x0020;
 const uint16_t kWlanCapMaskPbcc = 0x0040;
 const uint16_t kWlanCapMaskChannelAgility = 0x0080;
+const uint16_t kWlanCapMaskSpectrumMgmt = 0x0100;
+const uint16_t kWlanCapMaskQoS = 0x0200;
+const uint16_t kWlanCapMaskShortTimeSlot = 0x0400;
+const uint16_t kWlanCapMaskApsd = 0x0800;
+const uint16_t kWlanCapMaskRadioMeasurement = 0x1000;
+const uint16_t kWlanCapMaskDsssOfdm = 0x2000;
+const uint16_t kWlanCapMaskDelayedBlockAck = 0x4000;
+const uint16_t kWlanCapMaskImmediateBlockAck = 0x8000;
 
 
 // This structure is incomplete.  Fields will be added as necessary.
