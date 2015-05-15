@@ -67,7 +67,8 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                 TPM_ALG_ID scheme,
                 TPM_ALG_ID hash_alg,
                 const std::string& plaintext,
-                const std::string& signature) override;
+                const std::string& signature,
+                AuthorizationDelegate* delegate) override;
   TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,
                                     const std::string& new_password,
                                     AuthorizationDelegate* delegate,
@@ -79,11 +80,6 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                       const std::string& password,
                       AuthorizationDelegate* delegate,
                       std::string* key_blob) override;
-  TPM_RC CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
-                             const std::string& password,
-                             AuthorizationDelegate* delegate,
-                             TPM_HANDLE* key_handle,
-                             std::string* key_blob) override;
   TPM_RC CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                           int modulus_bits,
                           uint32_t public_exponent,

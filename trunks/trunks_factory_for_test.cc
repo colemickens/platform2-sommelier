@@ -171,8 +171,10 @@ class TpmUtilityForwarder : public TpmUtility {
                 TPM_ALG_ID scheme,
                 TPM_ALG_ID hash_alg,
                 const std::string& plaintext,
-                const std::string& signature) override {
-    return target_->Verify(key_handle, scheme, hash_alg, plaintext, signature);
+                const std::string& signature,
+                AuthorizationDelegate* delegate) override {
+    return target_->Verify(key_handle, scheme, hash_alg,
+                           plaintext, signature, delegate);
   }
 
   TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,
@@ -194,15 +196,6 @@ class TpmUtilityForwarder : public TpmUtility {
                       std::string* key_blob) override {
     return target_->ImportRSAKey(key_type, modulus, public_exponent,
                                  prime_factor, password, delegate, key_blob);
-  }
-
-  TPM_RC CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
-                             const std::string& password,
-                             AuthorizationDelegate* delegate,
-                             TPM_HANDLE* key_handle,
-                             std::string* key_blob) override {
-    return target_->CreateAndLoadRSAKey(key_type, password, delegate,
-                                        key_handle, key_blob);
   }
 
   TPM_RC CreateRSAKeyPair(AsymmetricKeyUsage key_type,

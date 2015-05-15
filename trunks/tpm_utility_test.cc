@@ -916,7 +916,8 @@ TEST_F(TpmUtilityTest, VerifySuccess) {
                                             TPM_ALG_NULL,
                                             TPM_ALG_NULL,
                                             digest,
-                                            signature));
+                                            signature,
+                                            nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyFail) {
@@ -935,7 +936,8 @@ TEST_F(TpmUtilityTest, VerifyFail) {
                                             TPM_ALG_NULL,
                                             TPM_ALG_NULL,
                                             digest,
-                                            signature));
+                                            signature,
+                                            nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyBadParams1) {
@@ -952,7 +954,8 @@ TEST_F(TpmUtilityTest, VerifyBadParams1) {
                                                    TPM_ALG_NULL,
                                                    TPM_ALG_NULL,
                                                    digest,
-                                                   signature));
+                                                   signature,
+                                                   nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyBadParams2) {
@@ -969,7 +972,8 @@ TEST_F(TpmUtilityTest, VerifyBadParams2) {
                                                    TPM_ALG_NULL,
                                                    TPM_ALG_NULL,
                                                    digest,
-                                                   signature));
+                                                   signature,
+                                                   nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyBadParams3) {
@@ -986,7 +990,8 @@ TEST_F(TpmUtilityTest, VerifyBadParams3) {
                                                    TPM_ALG_NULL,
                                                    TPM_ALG_NULL,
                                                    digest,
-                                                   signature));
+                                                   signature,
+                                                   nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyBadParams4) {
@@ -1003,7 +1008,8 @@ TEST_F(TpmUtilityTest, VerifyBadParams4) {
                                             TPM_ALG_NULL,
                                             TPM_ALG_NULL,
                                             digest,
-                                            signature));
+                                            signature,
+                                            nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyBadParams5) {
@@ -1020,7 +1026,8 @@ TEST_F(TpmUtilityTest, VerifyBadParams5) {
                                                    TPM_ALG_AES,
                                                    TPM_ALG_NULL,
                                                    digest,
-                                                   signature));
+                                                   signature,
+                                                   nullptr));
 }
 
 TEST_F(TpmUtilityTest, VerifyNullSchemeForward) {
@@ -1041,7 +1048,8 @@ TEST_F(TpmUtilityTest, VerifyNullSchemeForward) {
                                             TPM_ALG_NULL,
                                             TPM_ALG_NULL,
                                             digest,
-                                            signature));
+                                            signature,
+                                            nullptr));
   EXPECT_EQ(signature_in.sig_alg, TPM_ALG_RSASSA);
   EXPECT_EQ(signature_in.signature.rsassa.hash, TPM_ALG_SHA256);
 }
@@ -1064,7 +1072,8 @@ TEST_F(TpmUtilityTest, VerifySchemeForward) {
                                             TPM_ALG_RSAPSS,
                                             TPM_ALG_SHA1,
                                             digest,
-                                            signature));
+                                            signature,
+                                            nullptr));
   EXPECT_EQ(signature_in.sig_alg, TPM_ALG_RSAPSS);
   EXPECT_EQ(signature_in.signature.rsassa.hash, TPM_ALG_SHA1);
 }
@@ -1225,93 +1234,116 @@ TEST_F(TpmUtilityTest, ImportRSAKeyFail) {
       nullptr));
 }
 
-TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyDecryptSuccess) {
-  TPM_HANDLE key_handle;
+TEST_F(TpmUtilityTest, CreateRSAKeyPairSuccess) {
   TPM2B_PUBLIC public_area;
-  EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _,
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey,
+                                         _, _, _, _, _, _, _, _,
                                          &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<2>(&public_area),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _,
-                                  &mock_authorization_delegate_))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateAndLoadRSAKey(
-      TpmUtility::AsymmetricKeyUsage::kDecryptKey,
-      "password",
-      &mock_authorization_delegate_,
-      &key_handle,
-      nullptr));
+  std::string key_blob;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateRSAKeyPair(
+      TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, 2048, 0x10001,
+      "password", "", &mock_authorization_delegate_, &key_blob));
+  EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
+  EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
+  EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
+            TPM_ALG_NULL);
+}
+
+TEST_F(TpmUtilityTest, CreateRSAKeyPairDecryptKeySuccess) {
+  TPM2B_PUBLIC public_area;
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey,
+                                         _, _, _, _, _, _, _, _,
+                                         &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<2>(&public_area),
+                      Return(TPM_RC_SUCCESS)));
+  std::string key_blob;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateRSAKeyPair(
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001, "password",
+      "", &mock_authorization_delegate_, &key_blob));
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, 0);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
             TPM_ALG_NULL);
 }
 
-TEST_F(TpmUtilityTest, CreateAndLoadRSAKeySignSuccess) {
-  TPM_HANDLE key_handle;
+TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccess) {
   TPM2B_PUBLIC public_area;
-  EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SaveArg<2>(&public_area),
+  TPM2B_SENSITIVE_CREATE sensitive_create;
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey,
+                                         _, _, _, _, _, _, _, _,
+                                         &mock_authorization_delegate_))
+      .WillOnce(DoAll(SaveArg<1>(&sensitive_create),
+                      SaveArg<2>(&public_area),
                       Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateAndLoadRSAKey(
-      TpmUtility::AsymmetricKeyUsage::kSignKey,
-      "password",
-      &mock_authorization_delegate_,
-      &key_handle,
-      nullptr));
-  EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
+  std::string key_blob;
+  std::string policy_digest(32, 'a');
+  std::string key_auth("password");
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateRSAKeyPair(
+      TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001, key_auth,
+      policy_digest, &mock_authorization_delegate_, &key_blob));
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, 0);
-  EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
-            TPM_ALG_NULL);
-}
-
-TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyLegacySuccess) {
-  TPM_HANDLE key_handle;
-  TPM2B_PUBLIC public_area;
-  EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SaveArg<2>(&public_area),
-                      Return(TPM_RC_SUCCESS)));
-  EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
-  EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateAndLoadRSAKey(
-      TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
-      "password",
-      &mock_authorization_delegate_,
-      &key_handle,
-      nullptr));
-  EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
             TPM_ALG_NULL);
+  EXPECT_EQ(public_area.public_area.parameters.rsa_detail.key_bits, 2048);
+  EXPECT_EQ(public_area.public_area.parameters.rsa_detail.exponent, 0x10001);
+  EXPECT_EQ(public_area.public_area.auth_policy.size, policy_digest.size());
+  EXPECT_EQ(0, memcmp(public_area.public_area.auth_policy.buffer,
+                      policy_digest.data(), policy_digest.size()));
+  EXPECT_EQ(sensitive_create.sensitive.user_auth.size, key_auth.size());
+  EXPECT_EQ(0, memcmp(sensitive_create.sensitive.user_auth.buffer,
+                      key_auth.data(), key_auth.size()));
 }
 
-TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyFail1) {
-  TPM_HANDLE key_handle;
-  EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
+TEST_F(TpmUtilityTest, CreateRSAKeyPairBadDelegate) {
+  std::string key_blob;
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.CreateRSAKeyPair(
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001, "password",
+      "", nullptr, &key_blob));
+}
+
+TEST_F(TpmUtilityTest, CreateRSAKeyPairFailure) {
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey,
+                                         _, _, _, _, _, _, _, _,
+                                         &mock_authorization_delegate_))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateAndLoadRSAKey(
-      TpmUtility::AsymmetricKeyUsage::kDecryptKey,
-      "password",
-      &mock_authorization_delegate_,
-      &key_handle,
-      nullptr));
+  std::string key_blob;
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateRSAKeyPair(
+      TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001, "password",
+      "", &mock_authorization_delegate_, &key_blob));
 }
 
-TEST_F(TpmUtilityTest, CreateAndLoadRSAKeyFail2) {
+TEST_F(TpmUtilityTest, LoadKeySuccess) {
+  TPM_HANDLE key_handle = TPM_RH_FIRST;
+  TPM_HANDLE loaded_handle;
+  EXPECT_CALL(mock_tpm_, LoadSync(kRSAStorageRootKey, _, _, _, _, _,
+                                  &mock_authorization_delegate_))
+      .WillOnce(DoAll(SetArgPointee<4>(key_handle),
+                      Return(TPM_RC_SUCCESS)));
+  std::string key_blob;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.LoadKey(
+      key_blob, &mock_authorization_delegate_, &loaded_handle));
+  EXPECT_EQ(loaded_handle, key_handle);
+}
+
+TEST_F(TpmUtilityTest, LoadKeyFailure) {
   TPM_HANDLE key_handle;
-  EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateAndLoadRSAKey(
-      TpmUtility::AsymmetricKeyUsage::kDecryptKey,
-      "password",
-      &mock_authorization_delegate_,
-      &key_handle,
-      nullptr));
+  std::string key_blob;
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.LoadKey(
+      key_blob, &mock_authorization_delegate_, &key_handle));
 }
+
+TEST_F(TpmUtilityTest, LoadKeyBadDelegate) {
+  TPM_HANDLE key_handle;
+  std::string key_blob;
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.LoadKey(
+      key_blob, nullptr, &key_handle));
+}
+
 
 TEST_F(TpmUtilityTest, DefineNVSpaceSuccess) {
   uint32_t index = 59;

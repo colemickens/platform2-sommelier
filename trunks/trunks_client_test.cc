@@ -70,14 +70,19 @@ bool TrunksClientTest::SignTest() {
     return false;
   }
   std::string key_authorization("sign");
-  TPM_HANDLE signing_key;
+  std::string key_blob;
   session->SetEntityAuthorizationValue("");
-  result = utility->CreateAndLoadRSAKey(
-      TpmUtility::AsymmetricKeyUsage::kSignKey, key_authorization,
-      session->GetDelegate(), &signing_key, nullptr);
+  result = utility->CreateRSAKeyPair(TpmUtility::AsymmetricKeyUsage::kSignKey,
+                                     2048, 0x10001, key_authorization, "",
+                                     session->GetDelegate(), &key_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating signing key: " << GetErrorString(result);
     return false;
+  }
+  TPM_HANDLE signing_key;
+  result = utility->LoadKey(key_blob, session->GetDelegate(), &signing_key);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading signing key: " << GetErrorString(result);
   }
   ScopedKeyHandle scoped_key(*factory_.get(), signing_key);
   std::string signature;
@@ -90,7 +95,7 @@ bool TrunksClientTest::SignTest() {
     return false;
   }
   result  = utility->Verify(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
-                       std::string(32, 'a'), signature);
+                            std::string(32, 'a'), signature, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error using key to verify: " << GetErrorString(result);
     return false;
@@ -106,15 +111,20 @@ bool TrunksClientTest::DecryptTest() {
     LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
     return false;
   }
-  TPM_HANDLE decrypt_key;
   std::string key_authorization("decrypt");
+  std::string key_blob;
   session->SetEntityAuthorizationValue("");
-  result = utility->CreateAndLoadRSAKey(
-      TpmUtility::AsymmetricKeyUsage::kDecryptKey, key_authorization,
-      session->GetDelegate(), &decrypt_key, nullptr);
+  result = utility->CreateRSAKeyPair(
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
+      key_authorization, "", session->GetDelegate(), &key_blob);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error creating decryption key: " << GetErrorString(result);
+    LOG(ERROR) << "Error creating decrypt key: " << GetErrorString(result);
     return false;
+  }
+  TPM_HANDLE decrypt_key;
+  result = utility->LoadKey(key_blob, session->GetDelegate(), &decrypt_key);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading decrypt key: " << GetErrorString(result);
   }
   ScopedKeyHandle scoped_key(*factory_.get(), decrypt_key);
   return PerformRSAEncrpytAndDecrpyt(scoped_key.get(),
@@ -168,18 +178,22 @@ bool TrunksClientTest::AuthChangeTest() {
     LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
     return false;
   }
-  TPM_HANDLE key_handle;
   std::string key_authorization("new_pass");
+  std::string key_blob;
   session->SetEntityAuthorizationValue("");
-  result = utility->CreateAndLoadRSAKey(
-      TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, "old_pass",
-      session->GetDelegate(), &key_handle, nullptr);
+  result = utility->CreateRSAKeyPair(
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
+      "old_pass", "", session->GetDelegate(), &key_blob);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error creating and loading key: " << GetErrorString(result);
+    LOG(ERROR) << "Error creating change auth key: " << GetErrorString(result);
     return false;
   }
+  TPM_HANDLE key_handle;
+  result = utility->LoadKey(key_blob, session->GetDelegate(), &key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading change auth key: " << GetErrorString(result);
+  }
   ScopedKeyHandle scoped_key(*factory_.get(), key_handle);
-  std::string key_blob;
   session->SetEntityAuthorizationValue("old_pass");
   result = utility->ChangeKeyAuthorizationData(key_handle, key_authorization,
                                                session->GetDelegate(),
@@ -274,7 +288,7 @@ bool TrunksClientTest::SimplePolicyTest() {
     return false;
   }
   result = utility->Verify(scoped_key.get(), TPM_ALG_NULL, TPM_ALG_NULL,
-                           std::string(32, 0), signature);
+                           std::string(32, 0), signature, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error verifying using RSA key: " << GetErrorString(result);
     return false;

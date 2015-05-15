@@ -571,7 +571,8 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
                               TPM_ALG_ID scheme,
                               TPM_ALG_ID hash_alg,
                               const std::string& plaintext,
-                              const std::string& signature) {
+                              const std::string& signature,
+                              AuthorizationDelegate* delegate) {
   TPMT_PUBLIC public_area;
   TPM_RC return_code = GetKeyPublicArea(key_handle, &public_area);
   if (return_code) {
@@ -613,7 +614,7 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
                                                        tpm_digest,
                                                        signature_in,
                                                        &verified,
-                                                       nullptr);
+                                                       delegate);
   if (return_code == TPM_RC_SIGNATURE) {
     LOG(WARNING) << "Incorrect signature for given digest.";
     return TPM_RC_SIGNATURE;
@@ -761,28 +762,6 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
     if (result != TPM_RC_SUCCESS) {
       return result;
     }
-  }
-  return TPM_RC_SUCCESS;
-}
-
-TPM_RC TpmUtilityImpl::CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
-                                           const std::string& password,
-                                           AuthorizationDelegate* delegate,
-                                           TPM_HANDLE* key_handle,
-                                           std::string* key_blob) {
-  std::string tmp_key_blob;
-  TPM_RC result = CreateRSAKeyPair(key_type, 2048, 0x10001, password,
-                                   "",  // policy_digest
-                                   delegate, &tmp_key_blob);
-  if (result != TPM_RC_SUCCESS) {
-    return result;
-  }
-  result = LoadKey(tmp_key_blob, delegate, key_handle);
-  if (result != TPM_RC_SUCCESS) {
-    return result;
-  }
-  if (key_blob) {
-    key_blob->assign(tmp_key_blob);
   }
   return TPM_RC_SUCCESS;
 }

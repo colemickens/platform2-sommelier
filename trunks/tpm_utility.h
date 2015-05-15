@@ -129,11 +129,13 @@ class TRUNKS_EXPORT TpmUtility {
   // This value is by default TPM_ALG_RSASSA with TPM_ALG_SHA256 but can take
   // the value of TPM_ALG_RSAPPS with other hash algorithms supported by the
   // tpm. Returns TPM_RC_SUCCESS when the signature is correct.
+  // |delegate| specifies an optional authorization delegate to be used.
   virtual TPM_RC Verify(TPM_HANDLE key_handle,
                         TPM_ALG_ID scheme,
                         TPM_ALG_ID hash_alg,
                         const std::string& plaintext,
-                        const std::string& signature) = 0;
+                        const std::string& signature,
+                        AuthorizationDelegate* delegate) = 0;
 
   // This method is used to change the authorization value associated with a
   // |key_handle| to |new_password|. |delegate| is an AuthorizationDelegate
@@ -157,18 +159,6 @@ class TRUNKS_EXPORT TpmUtility {
                               const std::string& password,
                               AuthorizationDelegate* delegate,
                               std::string* key_blob) = 0;
-
-  // This method creates an RSA key. It creates a 2048 bit RSA key with
-  // public exponent of 0x10001. |key_type| determines whether the key is
-  // a signing key, a decryption key, or both. The |password| parameter
-  // is used as the authorization for the created key. The created key
-  // is then loaded and its handle is returned as |key_handle|. The out
-  // argument |key_blob| can be used to load the key in the future.
-  virtual TPM_RC CreateAndLoadRSAKey(AsymmetricKeyUsage key_type,
-                                     const std::string& password,
-                                     AuthorizationDelegate* delegate,
-                                     TPM_HANDLE* key_handle,
-                                     std::string* key_blob) = 0;
 
   // This method uses the TPM to generates an RSA key of type |key_type|.
   // |modulus_bits| is used to specify the size of the modulus, and
