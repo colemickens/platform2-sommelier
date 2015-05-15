@@ -15,16 +15,14 @@ namespace buffet {
 // the details of this storage behind an interface for test purposes.
 class StorageInterface {
  public:
-  // Load the device registration configuration from storage.
-  // If it fails (e.g. the storage container [file?] doesn't exist), then
-  // it returns empty unique_ptr (aka nullptr).
-  virtual std::unique_ptr<base::Value> Load() = 0;
+  // Load the dictionary from storage. If it fails (e.g. the storage container
+  // [file?] doesn't exist), then it returns empty unique_ptr (aka nullptr).
+  virtual std::unique_ptr<base::DictionaryValue> Load() = 0;
 
-  // Save the device registration configuration to storage.
-  // If saved successfully, returns true. Could fail when writing to
-  // physical storage like file system for various reasons (out of disk space,
-  // access permissions, etc).
-  virtual bool Save(const base::Value& config) = 0;
+  // Save the dictionary to storage. If saved successfully, returns true. Could
+  // fail when writing to physical storage like file system for various reasons
+  // (out of disk space,access permissions, etc).
+  virtual bool Save(const base::DictionaryValue& config) = 0;
 };
 
 }  // namespace buffet

@@ -30,12 +30,14 @@ const char kDefaultCategory[] = "";
 // Helper function to load a JSON file that is expected to be
 // an object/dictionary. In case of error, returns empty unique ptr and fills
 // in error details in |error|.
-std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
-    const base::FilePath& json_file_path, chromeos::ErrorPtr* error);
+std::unique_ptr<base::DictionaryValue> LoadJsonDict(
+    const base::FilePath& json_file_path,
+    chromeos::ErrorPtr* error);
 
 // Helper function to load a JSON dictionary from a string.
-std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
-    const std::string& json_string, chromeos::ErrorPtr* error);
+std::unique_ptr<base::DictionaryValue> LoadJsonDict(
+    const std::string& json_string,
+    chromeos::ErrorPtr* error);
 
 // Synchronously resolves the |host| and connects a socket to the resolved
 // address/port.

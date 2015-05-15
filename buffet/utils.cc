@@ -36,8 +36,9 @@ const char kFileReadError[] = "file_read_error";
 const char kInvalidCategoryError[] = "invalid_category";
 const char kInvalidPackageError[] = "invalid_package";
 
-std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
-    const base::FilePath& json_file_path, chromeos::ErrorPtr* error) {
+std::unique_ptr<base::DictionaryValue> LoadJsonDict(
+    const base::FilePath& json_file_path,
+    chromeos::ErrorPtr* error) {
   std::string json_string;
   if (!base::ReadFileToString(json_file_path, &json_string)) {
     chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
@@ -50,9 +51,10 @@ std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
   return LoadJsonDict(json_string, error);
 }
 
-std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
-    const std::string& json_string, chromeos::ErrorPtr* error) {
-  std::unique_ptr<const base::DictionaryValue> result;
+std::unique_ptr<base::DictionaryValue> LoadJsonDict(
+    const std::string& json_string,
+    chromeos::ErrorPtr* error) {
+  std::unique_ptr<base::DictionaryValue> result;
   std::string error_message;
   base::Value* value = base::JSONReader::ReadAndReturnError(
       json_string, base::JSON_PARSE_RFC, nullptr, &error_message);
@@ -65,7 +67,7 @@ std::unique_ptr<const base::DictionaryValue> LoadJsonDict(
                                  error_message.c_str());
     return result;
   }
-  const base::DictionaryValue* dict_value = nullptr;
+  base::DictionaryValue* dict_value = nullptr;
   if (!value->GetAsDictionary(&dict_value)) {
     delete value;
     chromeos::Error::AddToPrintf(error, FROM_HERE,
