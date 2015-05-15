@@ -5,6 +5,8 @@
 #ifndef GERM_GERM_INIT_H_
 #define GERM_GERM_INIT_H_
 
+#include <sys/signalfd.h>
+
 #include <base/macros.h>
 #include <chromeos/daemons/daemon.h>
 
@@ -24,6 +26,8 @@ class GermInit : public chromeos::Daemon {
  private:
   int OnInit() override;
   void StartProcesses();
+
+  bool HandleSIGTERM(const signalfd_siginfo& sigfd_info);
 
   Launcher launcher_;
   InitProcessReaper init_process_reaper_;
