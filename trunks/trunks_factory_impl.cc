@@ -55,7 +55,11 @@ scoped_ptr<HmacSession> TrunksFactoryImpl::GetHmacSession() const {
 }
 
 scoped_ptr<PolicySession> TrunksFactoryImpl::GetPolicySession() const {
-  return scoped_ptr<PolicySession>(new PolicySessionImpl(*this));
+  return scoped_ptr<PolicySession>(new PolicySessionImpl(*this, TPM_SE_POLICY));
+}
+
+scoped_ptr<PolicySession> TrunksFactoryImpl::GetTrialSession() const {
+  return scoped_ptr<PolicySession>(new PolicySessionImpl(*this, TPM_SE_TRIAL));
 }
 
 }  // namespace trunks

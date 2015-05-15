@@ -31,6 +31,10 @@ namespace trunks {
 class TRUNKS_EXPORT PolicySessionImpl: public PolicySession {
  public:
   explicit PolicySessionImpl(const TrunksFactory& factory);
+  // |session_type| specifies what type of session this is. It can only
+  // be TPM_SE_TRIAL or TPM_SE_POLICY. If other values are used,
+  // StartBoundSession will return SAPI_RC_INVALID_SESSIONS.
+  PolicySessionImpl(const TrunksFactory& factory, TPM_SE session_type);
   ~PolicySessionImpl() override;
 
   // PolicySession methods
@@ -50,6 +54,9 @@ class TRUNKS_EXPORT PolicySessionImpl: public PolicySession {
   // This factory is only set in the constructor and is used to instantiate
   // The TPM class to forward commands to the TPM chip.
   const TrunksFactory& factory_;
+  // This field determines if this session is of type TPM_SE_TRIAL or
+  // TPM_SE_POLICY.
+  TPM_SE session_type_;
   // This delegate is what provides authorization to commands. It is what is
   // returned when the GetDelegate method is called.
   HmacAuthorizationDelegate hmac_delegate_;

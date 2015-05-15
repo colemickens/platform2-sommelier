@@ -56,6 +56,7 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   scoped_ptr<SessionManager> GetSessionManager() const override;
   scoped_ptr<HmacSession> GetHmacSession() const override;
   scoped_ptr<PolicySession> GetPolicySession() const override;
+  scoped_ptr<PolicySession> GetTrialSession() const override;
 
   // Mutators to inject custom mocks.
   void set_tpm(Tpm* tpm) {

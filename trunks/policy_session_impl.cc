@@ -18,7 +18,15 @@
 namespace trunks {
 
 PolicySessionImpl::PolicySessionImpl(const TrunksFactory& factory)
-    : factory_(factory) {
+    : factory_(factory),
+      session_type_(TPM_SE_POLICY) {
+  session_manager_ = factory_.GetSessionManager();
+}
+
+PolicySessionImpl::PolicySessionImpl(const TrunksFactory& factory,
+                                     TPM_SE session_type)
+    : factory_(factory),
+      session_type_(session_type) {
   session_manager_ = factory_.GetSessionManager();
 }
 
@@ -38,7 +46,11 @@ TPM_RC PolicySessionImpl::StartBoundSession(
     const std::string& bind_authorization_value,
     bool enable_encryption) {
   hmac_delegate_.set_use_entity_authorization_for_encryption_only(true);
-  return session_manager_->StartSession(TPM_SE_POLICY, bind_entity,
+  if (session_type_ != TPM_SE_POLICY && session_type_ != TPM_SE_TRIAL) {
+    LOG(ERROR) << "Cannot start a session of that type.";
+    return SAPI_RC_INVALID_SESSIONS;
+  }
+  return session_manager_->StartSession(session_type_, bind_entity,
                                         bind_authorization_value,
                                         enable_encryption, &hmac_delegate_);
 }

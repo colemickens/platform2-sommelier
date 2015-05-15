@@ -53,6 +53,9 @@ class TRUNKS_EXPORT TrunksFactory {
   // Returns a PolicySession instance. The caller takes ownership.
   virtual scoped_ptr<PolicySession> GetPolicySession() const = 0;
 
+  // Returns a TrialSession instance. The caller takes ownership.
+  virtual scoped_ptr<PolicySession> GetTrialSession() const = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(TrunksFactory);
 };

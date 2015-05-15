@@ -70,6 +70,12 @@ TEST_F(PolicySessionTest, StartBoundSessionFailure) {
   EXPECT_EQ(TPM_RC_FAILURE, session.StartBoundSession(handle, "auth", true));
 }
 
+TEST_F(PolicySessionTest, StartBoundSessionBadType) {
+  PolicySessionImpl session(factory_, TPM_SE_HMAC);
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS,
+            session.StartBoundSession(TPM_RH_FIRST, "auth", true));
+}
+
 TEST_F(PolicySessionTest, StartUnboundSessionSuccess) {
   PolicySessionImpl session(factory_);
   EXPECT_EQ(TPM_RC_SUCCESS, session.StartUnboundSession(true));

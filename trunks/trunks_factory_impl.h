@@ -39,6 +39,7 @@ class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
   scoped_ptr<SessionManager> GetSessionManager() const override;
   scoped_ptr<HmacSession> GetHmacSession() const override;
   scoped_ptr<PolicySession> GetPolicySession() const override;
+  scoped_ptr<PolicySession> GetTrialSession() const override;
 
  private:
   scoped_ptr<TrunksProxy> proxy_;

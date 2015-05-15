@@ -473,4 +473,8 @@ scoped_ptr<PolicySession> TrunksFactoryForTest::GetPolicySession() const {
   return scoped_ptr<PolicySession>(new PolicySessionForwarder(policy_session_));
 }
 
+scoped_ptr<PolicySession> TrunksFactoryForTest::GetTrialSession() const {
+  return scoped_ptr<PolicySession>(new PolicySessionForwarder(policy_session_));
+}
+
 }  // namespace trunks
