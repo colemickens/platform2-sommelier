@@ -33,6 +33,9 @@ class SandboxedProcess : public chromeos::ProcessImpl {
   // Allow this process to access the root mount namespace.
   virtual void AllowAccessRootMountNamespace();
 
+  // Kill the sandboxed process' process group.
+  virtual bool KillProcessGroup();
+
   static const char *kDefaultUser;
   static const char *kDefaultGroup;
 

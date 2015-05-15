@@ -41,8 +41,7 @@ void SubprocessTool::Stop(const std::string& handle, DBus::Error* error) {
     return;
   }
   ProcessWithId* p = processes_[handle];
-  p->Kill(SIGKILL, 0);  // no timeout
-  p->Wait();
+  p->KillProcessGroup();
   processes_.erase(handle);
   delete p;
 }
