@@ -14,20 +14,6 @@
 
 namespace chromeos {
 
-namespace {
-
-bool HasBuiltinHandler(int signal) {
-  for (int handled_signal : {SIGTERM, SIGINT, SIGHUP}) {
-    if (signal == handled_signal) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-}  // namespace
-
 Daemon::Daemon() : exit_code_{EX_OK} {
 }
 
@@ -77,21 +63,10 @@ void Daemon::QuitWithExitCode(int exit_code) {
 
 void Daemon::RegisterHandler(
     int signal, const AsynchronousSignalHandler::SignalHandler& callback) {
-  if (HasBuiltinHandler(signal)) {
-    LOG(DFATAL) << "Attempted to override built-in signal handler: " << signal;
-    return;
-  }
-
   async_signal_handler_.RegisterHandler(signal, callback);
 }
 
 void Daemon::UnregisterHandler(int signal) {
-  if (HasBuiltinHandler(signal)) {
-    LOG(DFATAL) << "Attempted to unregister built-in signal handler: "
-                << signal;
-    return;
-  }
-
   async_signal_handler_.UnregisterHandler(signal);
 }
 
