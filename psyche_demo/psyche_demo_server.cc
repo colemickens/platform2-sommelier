@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <sysexits.h>
+#include <unistd.h>
 
 #include <base/logging.h>
 #include <base/macros.h>
@@ -20,8 +21,9 @@ namespace {
 class DemoServer : public PsycheDaemon,
                    public IPsycheDemoServerHostInterface {
  public:
-  explicit DemoServer(const std::string& service_name)
-      : service_name_(service_name) {}
+  explicit DemoServer(const std::string& service_name, int wait_to_register_sec)
+      : service_name_(service_name),
+        wait_to_register_sec_(wait_to_register_sec) {}
   ~DemoServer() override = default;
 
   // PsycheDaemon:
@@ -29,6 +31,9 @@ class DemoServer : public PsycheDaemon,
     int return_code = PsycheDaemon::OnInit();
     if (return_code != EX_OK)
       return return_code;
+
+    if (wait_to_register_sec_)
+      sleep(wait_to_register_sec_);
 
     if (!psyche_connection()->RegisterService(service_name_, this))
       return -1;
@@ -46,6 +51,9 @@ class DemoServer : public PsycheDaemon,
   // Name of service to register with psyched.
   std::string service_name_;
 
+  // How long to wait before registering with psyched, in seconds.
+  int wait_to_register_sec_;
+
   DISALLOW_COPY_AND_ASSIGN(DemoServer);
 };
 
@@ -55,8 +63,12 @@ class DemoServer : public PsycheDaemon,
 int main(int argc, char* argv[]) {
   DEFINE_string(service_name, psyche::kDefaultService,
                 "Service name to register with psyche");
+  DEFINE_int32(wait_to_register_sec, 0,
+             "Seconds to wait before registering with psyche. Used to test "
+             "registration timeout.");
   chromeos::FlagHelper::Init(
       argc, argv, "Example server that registers with psyched.");
 
-  return psyche::DemoServer(FLAGS_service_name).Run();
+  return psyche::DemoServer(FLAGS_service_name, FLAGS_wait_to_register_sec)
+      .Run();
 }
