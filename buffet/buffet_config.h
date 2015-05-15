@@ -47,6 +47,15 @@ class BuffetConfig final {
 
     ~Transaction();
 
+    void set_client_id(const std::string& id) { config_->client_id_ = id; }
+    void set_client_secret(const std::string& secret) {
+      config_->client_secret_ = secret;
+    }
+    void set_api_key(const std::string& key) { config_->api_key_ = key; }
+    void set_oauth_url(const std::string& url) { config_->oauth_url_ = url; }
+    void set_service_url(const std::string& url) {
+      config_->service_url_ = url;
+    }
     bool set_name(const std::string& name);
     void set_description(const std::string& description) {
       config_->description_ = description;

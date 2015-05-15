@@ -122,30 +122,40 @@ TEST_F(BuffetConfigTest, LoadConfig) {
   change.Commit();
 
   auto expected = R"({
-     'description': 'conf_description',
-     'device_id': '',
-     'local_anonymous_access_role': 'user',
-     'local_discovery_enabled': false,
-     'local_pairing_enabled': false,
-     'location': 'conf_location',
-     'name': 'conf_name',
-     'refresh_token': '',
-     'robot_account': ''
+    'api_key': 'conf_api_key',
+    'client_id': 'conf_client_id',
+    'client_secret': 'conf_client_secret',
+    'description': 'conf_description',
+    'device_id': '',
+    'local_anonymous_access_role': 'user',
+    'local_discovery_enabled': false,
+    'local_pairing_enabled': false,
+    'location': 'conf_location',
+    'name': 'conf_name',
+    'oauth_url': 'conf_oauth_url',
+    'refresh_token': '',
+    'robot_account': '',
+    'service_url': 'conf_service_url'
   })";
   EXPECT_JSON_EQ(expected, *storage_->Load());
 }
 
 TEST_F(BuffetConfigTest, LoadState) {
   auto state = R"({
-     'description': 'state_description',
-     'device_id': 'state_device_id',
-     'local_anonymous_access_role': 'user',
-     'local_discovery_enabled': false,
-     'local_pairing_enabled': false,
-     'location': 'state_location',
-     'name': 'state_name',
-     'refresh_token': 'state_refresh_token',
-     'robot_account': 'state_robot_account'
+    'api_key': 'state_api_key',
+    'client_id': 'state_client_id',
+    'client_secret': 'state_client_secret',
+    'description': 'state_description',
+    'device_id': 'state_device_id',
+    'local_anonymous_access_role': 'user',
+    'local_discovery_enabled': false,
+    'local_pairing_enabled': false,
+    'location': 'state_location',
+    'name': 'state_name',
+    'oauth_url': 'state_oauth_url',
+    'refresh_token': 'state_refresh_token',
+    'robot_account': 'state_robot_account',
+    'service_url': 'state_service_url'
   })";
   storage_->Save(*buffet::unittests::CreateDictionaryValue(state));
 
@@ -156,11 +166,11 @@ TEST_F(BuffetConfigTest, LoadState) {
   // Clear storage.
   storage_->Save(base::DictionaryValue());
 
-  EXPECT_EQ(default_.client_id(), config_->client_id());
-  EXPECT_EQ(default_.client_secret(), config_->client_secret());
-  EXPECT_EQ(default_.api_key(), config_->api_key());
-  EXPECT_EQ(default_.oauth_url(), config_->oauth_url());
-  EXPECT_EQ(default_.service_url(), config_->service_url());
+  EXPECT_EQ("state_client_id", config_->client_id());
+  EXPECT_EQ("state_client_secret", config_->client_secret());
+  EXPECT_EQ("state_api_key", config_->api_key());
+  EXPECT_EQ("state_oauth_url", config_->oauth_url());
+  EXPECT_EQ("state_service_url", config_->service_url());
   EXPECT_EQ(default_.oem_name(), config_->oem_name());
   EXPECT_EQ(default_.model_name(), config_->model_name());
   EXPECT_EQ(default_.model_id(), config_->model_id());
@@ -188,6 +198,21 @@ TEST_F(BuffetConfigTest, LoadState) {
 
 TEST_F(BuffetConfigTest, Setters) {
   BuffetConfig::Transaction change{config_.get()};
+
+  change.set_client_id("set_client_id");
+  EXPECT_EQ("set_client_id", config_->client_id());
+
+  change.set_client_secret("set_client_secret");
+  EXPECT_EQ("set_client_secret", config_->client_secret());
+
+  change.set_api_key("set_api_key");
+  EXPECT_EQ("set_api_key", config_->api_key());
+
+  change.set_oauth_url("set_oauth_url");
+  EXPECT_EQ("set_oauth_url", config_->oauth_url());
+
+  change.set_service_url("set_service_url");
+  EXPECT_EQ("set_service_url", config_->service_url());
 
   change.set_name("set_name");
   EXPECT_EQ("set_name", config_->name());
@@ -232,6 +257,9 @@ TEST_F(BuffetConfigTest, Setters) {
   change.Commit();
 
   auto expected = R"({
+    'api_key': 'set_api_key',
+    'client_id': 'set_client_id',
+    'client_secret': 'set_client_secret',
     'description': 'set_description',
     'device_id': 'set_id',
     'local_anonymous_access_role': 'user',
@@ -239,8 +267,10 @@ TEST_F(BuffetConfigTest, Setters) {
     'local_pairing_enabled': true,
     'location': 'set_location',
     'name': 'set_name',
+    'oauth_url': 'set_oauth_url',
     'refresh_token': 'set_token',
-    'robot_account': 'set_account'
+    'robot_account': 'set_account',
+    'service_url': 'set_service_url'
   })";
   EXPECT_JSON_EQ(expected, *storage_->Load());
 }

@@ -243,6 +243,16 @@ bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* error,
                                         error);
 }
 
+bool Manager::UpdateServiceConfig(chromeos::ErrorPtr* error,
+                                  const std::string& client_id,
+                                  const std::string& client_secret,
+                                  const std::string& api_key,
+                                  const std::string& oauth_url,
+                                  const std::string& service_url) {
+  return device_info_->UpdateServiceConfig(client_id, client_secret, api_key,
+                                           oauth_url, service_url, error);
+}
+
 void Manager::OnCommandDefsChanged() {
   chromeos::ErrorPtr error;
   // Limit only to commands that are visible to the local clients.

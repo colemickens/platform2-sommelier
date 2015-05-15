@@ -147,47 +147,61 @@ void BuffetConfig::Transaction::LoadState() {
   if (!value || !value->GetAsDictionary(&dict))
     return;
 
-  std::string name;
-  if (dict->GetString(config_keys::kName, &name))
-    set_name(name);
+  std::string tmp;
+  bool tmp_bool{false};
 
-  std::string description;
-  if (dict->GetString(config_keys::kDescription, &description))
-    set_description(description);
+  if (dict->GetString(config_keys::kClientId, &tmp))
+    set_client_id(tmp);
 
-  std::string location;
-  if (dict->GetString(config_keys::kLocation, &location))
-    set_location(location);
+  if (dict->GetString(config_keys::kClientSecret, &tmp))
+    set_client_secret(tmp);
 
-  std::string access_role;
-  if (dict->GetString(config_keys::kLocalAnonymousAccessRole, &access_role))
-    set_local_anonymous_access_role(access_role);
+  if (dict->GetString(config_keys::kApiKey, &tmp))
+    set_api_key(tmp);
 
-  bool discovery_enabled{false};
-  if (dict->GetBoolean(config_keys::kLocalDiscoveryEnabled, &discovery_enabled))
-    set_local_discovery_enabled(discovery_enabled);
+  if (dict->GetString(config_keys::kOAuthURL, &tmp))
+    set_oauth_url(tmp);
 
-  bool pairing_enabled{false};
-  if (dict->GetBoolean(config_keys::kLocalPairingEnabled, &pairing_enabled))
-    set_local_pairing_enabled(pairing_enabled);
+  if (dict->GetString(config_keys::kServiceURL, &tmp))
+    set_service_url(tmp);
 
-  std::string token;
-  if (dict->GetString(config_keys::kRefreshToken, &token))
-    set_refresh_token(token);
+  if (dict->GetString(config_keys::kName, &tmp))
+    set_name(tmp);
 
-  std::string account;
-  if (dict->GetString(config_keys::kRobotAccount, &account))
-    set_robot_account(account);
+  if (dict->GetString(config_keys::kDescription, &tmp))
+    set_description(tmp);
 
-  std::string device_id;
-  if (dict->GetString(config_keys::kDeviceId, &device_id))
-    set_device_id(device_id);
+  if (dict->GetString(config_keys::kLocation, &tmp))
+    set_location(tmp);
+
+  if (dict->GetString(config_keys::kLocalAnonymousAccessRole, &tmp))
+    set_local_anonymous_access_role(tmp);
+
+  if (dict->GetBoolean(config_keys::kLocalDiscoveryEnabled, &tmp_bool))
+    set_local_discovery_enabled(tmp_bool);
+
+  if (dict->GetBoolean(config_keys::kLocalPairingEnabled, &tmp_bool))
+    set_local_pairing_enabled(tmp_bool);
+
+  if (dict->GetString(config_keys::kRefreshToken, &tmp))
+    set_refresh_token(tmp);
+
+  if (dict->GetString(config_keys::kRobotAccount, &tmp))
+    set_robot_account(tmp);
+
+  if (dict->GetString(config_keys::kDeviceId, &tmp))
+    set_device_id(tmp);
 }
 
 bool BuffetConfig::Save() {
   if (!storage_)
     return false;
   base::DictionaryValue dict;
+  dict.SetString(config_keys::kClientId, client_id_);
+  dict.SetString(config_keys::kClientSecret, client_secret_);
+  dict.SetString(config_keys::kApiKey, api_key_);
+  dict.SetString(config_keys::kOAuthURL, oauth_url_);
+  dict.SetString(config_keys::kServiceURL, service_url_);
   dict.SetString(config_keys::kRefreshToken, refresh_token_);
   dict.SetString(config_keys::kDeviceId, device_id_);
   dict.SetString(config_keys::kRobotAccount, robot_account_);

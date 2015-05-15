@@ -27,6 +27,14 @@
       <arg name="location" type="s" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="UpdateServiceConfig">
+      <arg name="client_id" type="s" direction="in"/>
+      <arg name="client_secret" type="s" direction="in"/>
+      <arg name="api_key" type="s" direction="in"/>
+      <arg name="oauth_url" type="s" direction="in"/>
+      <arg name="service_url" type="s" direction="in"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
     <method name="UpdateState">
       <arg name="property_set" type="a{sv}" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>

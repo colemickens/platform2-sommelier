@@ -67,6 +67,12 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
                         const std::string& in_name,
                         const std::string& in_description,
                         const std::string& in_location) override;
+  bool UpdateServiceConfig(chromeos::ErrorPtr* error,
+                           const std::string& client_id,
+                           const std::string& client_secret,
+                           const std::string& api_key,
+                           const std::string& oauth_url,
+                           const std::string& service_url) override;
   void UpdateState(DBusMethodResponse<> response,
                    const chromeos::VariantDictionary& property_set) override;
   bool GetState(chromeos::ErrorPtr* error, std::string* state) override;

@@ -126,6 +126,14 @@ class DeviceRegistrationInfo : public NotificationDelegate {
                         const std::string& location,
                         chromeos::ErrorPtr* error);
 
+  // Updates GCD service configuration. Usually for testing.
+  bool UpdateServiceConfig(const std::string& client_id,
+                           const std::string& client_secret,
+                           const std::string& api_key,
+                           const std::string& oauth_url,
+                           const std::string& service_url,
+                           chromeos::ErrorPtr* error);
+
   const BuffetConfig& GetConfig() const { return *config_; }
 
   base::WeakPtr<DeviceRegistrationInfo> AsWeakPtr() {

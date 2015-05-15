@@ -716,12 +716,35 @@ bool DeviceRegistrationInfo::UpdateDeviceInfo(const std::string& name,
   }
   change.set_description(description);
   change.set_location(location);
+  change.Commit();
 
   if (HaveRegistrationCredentials(nullptr)) {
     UpdateDeviceResource(base::Bind(&base::DoNothing),
                          base::Bind(&IgnoreCloudError));
   }
 
+  return true;
+}
+
+bool DeviceRegistrationInfo::UpdateServiceConfig(
+    const std::string& client_id,
+    const std::string& client_secret,
+    const std::string& api_key,
+    const std::string& oauth_url,
+    const std::string& service_url,
+    chromeos::ErrorPtr* error) {
+  if (HaveRegistrationCredentials(nullptr)) {
+    chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainBuffet,
+                           "already_registered",
+                           "Unable to change config for registered device");
+    return false;
+  }
+  BuffetConfig::Transaction change{config_.get()};
+  change.set_client_id(client_id);
+  change.set_client_secret(client_secret);
+  change.set_api_key(api_key);
+  change.set_oauth_url(oauth_url);
+  change.set_service_url(service_url);
   return true;
 }
 
