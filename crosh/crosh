@@ -610,52 +610,53 @@ debugd_poll() (
 
 cmd_ping() (
   local option="dict:string:variant:"
+  local dest
 
-  # NB: use printf to avoid echo interpreting -n
-  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
+  while [ $# -gt 0 ]; do
     # Do just enough parsing to filter/map options; we
-    # depend on ping to handle final validation
-    if [ "$1" = "-i" ]; then
-      shift; option="${option}interval,int32:$1,"
-    elif [ "$1" = "-c" ]; then
-      shift; option="${option}count,int32:$1,"
-    elif [ "$1" = "-W" ]; then
-      shift; option="${option}waittime,int32:$1,"
-    elif [ "$1" = "-s" ]; then
-      shift; option="${option}packetsize,int32:$1,"
-    elif [ "$1" = "-n" ]; then
-      option="${option}numeric,boolean:true,"
-    elif [ "$1" = "-b" ]; then
-      option="${option}broadcast,boolean:true,"
-    else
+    # depend on ping to handle final validation.
+    case "$1" in
+    -i) shift; option="${option}interval,int32:$1," ;;
+    -c) shift; option="${option}count,int32:$1," ;;
+    -W) shift; option="${option}waittime,int32:$1," ;;
+    -s) shift; option="${option}packetsize,int32:$1," ;;
+    -n) option="${option}numeric,boolean:true," ;;
+    -b) option="${option}broadcast,boolean:true," ;;
+    -*)
       echo "Unknown option: $1"
       return 1
-    fi
+      ;;
+    *)
+      if [ "${dest+set}" = "set" ]; then
+        echo "Error: too many destinations specified"
+        return 1
+      fi
+      dest="$1"
+      ;;
+    esac
 
     shift
   done
 
-  if [ -z "$1" ]; then
+  if [ "${dest+set}" != "set" ]; then
     echo "Missing parameter: destination"
     return 1
   fi
 
-  local dest="$1"
-  if [ "$dest" = "gw" ]; then
+  if [ "${dest}" = "gw" ]; then
     # Convenient shorthand for the next-hop gateway attached
     # to the default route; this means if you have a host named
     # "gw" then you'll need to specify a FQDN or IP address.
     dest=$(ip route show | awk '$1 == "default" { print $3 }')
-    if [ -z "$dest" ]; then
+    if [ -z "${dest}" ]; then
       echo "Cannot determine primary gateway; routing table is:"
       cmd_route
       return 1
     fi
   fi
 
-  option=$(echo "$option" | sed 's/,$//')
-
-  debugd_poll Ping "fd:1" "string:${dest}" "${option}"
+  # Remove trailing comma in the options list if it exists.
+  debugd_poll Ping "fd:1" "string:${dest}" "${option%,}"
 )
 
 cmd_chaps_debug() (
@@ -698,27 +699,36 @@ cmd_route() (
 
 cmd_tracepath() (
   local option="dict:string:variant:"
+  local dest
 
-  # NB: use printf to avoid echo interpreting -n
-  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
-    if [ "$1" = "-n" ]; then
-      option="${option}numeric,boolean:true,"
-    else
+  while [ $# -gt 0 ]; do
+    # Do just enough parsing to filter/map options; we
+    # depend on tracepath to handle final validation.
+    case "$1" in
+    -n) option="${option}numeric,boolean:true," ;;
+    -*)
       echo "Unknown option: $1"
       return 1
-    fi
+      ;;
+    *)
+      if [ "${dest+set}" = "set" ]; then
+        echo "Error: too many destinations specified"
+        return 1
+      fi
+      dest="$1"
+      ;;
+    esac
 
     shift
   done
 
-  option=$(echo "$option" | sed 's/,$//')
-
-  if [ -z "$1" ]; then
+  if [ "${dest+set}" != "set" ]; then
     echo "Missing parameter: destination"
     return 1
   fi
 
-  debugd_poll TracePath "fd:1" "string:$1" "${option}"
+  # Remove trailing comma in the options list if it exists.
+  debugd_poll TracePath "fd:1" "string:${dest}" "${option%,}"
 )
 
 cmd_top() (

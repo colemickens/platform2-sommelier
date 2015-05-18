@@ -38,34 +38,33 @@ HELP="$HELP$DEV_HELP"
 cmd_packet_capture() (
   local option="dict:string:variant:"
 
-  # NB: use printf to avoid echo interpreting -n
-  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
+  while [ $# -gt 0 ]; do
     # Do just enough parsing to filter/map options; we
-    # depend on debugd and capture_utility to handle final validation
-    if [ "$1" = "--device" ]; then
-      shift; option="${option}device,string:$1,"
-    elif [ "$1" = "--frequency" ]; then
-      shift; option="${option}frequency,int32:$1,"
-    elif [ "$1" = "--ht-location" ]; then
-      shift; option="${option}ht_location,string:$1,"
-    elif [ "$1" = "--monitor-connection-on" ]; then
-      shift; option="${option}monitor_connection_on,string:$1,"
-    else
+    # depend on capture_utility to handle final validation.
+    case "$1" in
+    --device)
+      shift; option="${option}device,string:$1," ;;
+    --frequency)
+      shift; option="${option}frequency,int32:$1," ;;
+    --ht-location)
+      shift; option="${option}ht_location,string:$1," ;;
+    --monitor-connection-on)
+      shift; option="${option}monitor_connection_on,string:$1," ;;
+    *)
       echo "Unknown option: $1"
       return 1
-    fi
+    esac
 
     shift
   done
-
-  option=$(echo "$option" | sed 's/,$//')
 
   local downloads_dir="/home/${USER}/user/Downloads"
   if ! capture_file=$(mktemp ${downloads_dir}/packet_capture_XXXX.pcap); then
     echo "Couldn't create capture file."
     return 1
   fi
-  debugd_poll PacketCapture "fd:1" "fd:3" "${option}" 3>"${capture_file}"
+  # Remove trailing comma in the options list if it exists.
+  debugd_poll PacketCapture "fd:1" "fd:3" "${option%,}" 3>"${capture_file}"
   if [ -s "${capture_file}" ]; then
     echo "Capture stored in ${capture_file}"
   else
