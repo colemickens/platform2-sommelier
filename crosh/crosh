@@ -1134,8 +1134,13 @@ repl() {
 
   # This will be set by the 'exit' command to tell us to quit.
   local exit
+
+  # Create a colorized prompt to make it easier to see commands start/finish.
+  local prompt
+  prompt="$(printf '%bcrosh>%b ' '\033[1;33m' '\033[0m')"
+
   while [ -z "${exit}" ]; do
-    if shell_read "crosh> " LINE_; then
+    if shell_read "${prompt}" LINE_; then
       if [ ! -z "$LINE_" ]; then
         shell_history -s "$LINE_"
         dispatch "$LINE_"
