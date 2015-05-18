@@ -18,8 +18,8 @@
                 "exec": [
                     "/usr/bin/psyche_demo_server"
                 ],
-                "user": "1000",
-                "group": "1000"
+                "user": "chronos",
+                "group": "chronos"
             }
         }
     ],
