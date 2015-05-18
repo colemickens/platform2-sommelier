@@ -72,6 +72,9 @@ HELP='
 '
 
 HELP_ADVANCED='
+ autest [-scheduled]
+  Trigger an auto-update. To fake a scheduled update check use -scheduled.
+
  battery_firmware <info|check|update>
   info   : query battery info
   check  : checks AC Adapter is connnected or not.
@@ -92,6 +95,9 @@ HELP_ADVANCED='
 
  connectivity
   Shows connectivity status.  "connectivity help" for more details
+
+ dump_emk
+  Show the EMK (Enterprise Machine Key).
 
  ff_debug [<tag_expr>] [--help] [--list_valid_tags] [--reset]
   Add and remove flimflam debugging tags.
@@ -171,6 +177,9 @@ HELP_ADVANCED='
  storage_test_2
   Performs an extensive readability test.
 
+ swap [enable <size (MB)> | disable | status]
+  Manage the system swap file.
+
  syslog <message>
   Logs a message to syslog.
 
@@ -182,6 +191,9 @@ HELP_ADVANCED='
 
  tracepath [-n] <destination>[/port]
   Trace the path/route to a network host.
+
+ try_touch_experiment <experiment hex>
+  Manage touchpad experiments.
 
  update_over_cellular [enable|disable]
   Enables or disables the auto updates over cellular networks. Run without
@@ -832,10 +844,6 @@ cmd_upload_devcoredumps() (
       return 1
       ;;
   esac
-)
-
-cmd_tpcontrol() (
-  echo "tpcontrol is deprecated. Please use inputcontrol instead."
 )
 
 cmd_try_touch_experiment() (
