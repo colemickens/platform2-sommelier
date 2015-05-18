@@ -263,8 +263,62 @@ shell_read() {
 shell_history() {
   if [ "$IS_BASH" -eq "1" ]; then
     # In bash, the history builtin can be used to manage readline history
-    history $@
+    history "$@"
   fi
+}
+
+shell_history_init() {
+  # Do not set any HISTXXX vars until after security check below.
+  local histfile="${HOME}/.crosh_history"
+
+  # Limit the history to the last 100 entries to keep the file from growing
+  # out of control (unlikely, but let's be safe).
+  local histsize="100"
+
+  # For security sake, let's clean up the file before we let the shell get a
+  # chance to read it.  Clean out any non-printable ASCII chars (sorry UTF8
+  # users) as it's the easiest way to be sure.  We limit to 4k to be sane.
+  # We need a tempfile on the same device to avoid races w/multiple crosh
+  # tabs opening at the same time.
+  local tmpfile
+  if ! tmpfile="$(mktemp "${histfile}.XXXXXX")"; then
+    echo "warning: could not clean up history; ignoring it"
+    return
+  fi
+  # Ignore cat errors in case it doesn't exist yet.
+  cat "${histfile}" 2>/dev/null |
+    tr -dc '[:print:]\t\n' |
+    tail -n "${histsize}" |
+    tail -c 4096 > "${tmpfile}"
+  if ! mv "${tmpfile}" "${histfile}"; then
+    echo "warning: could not clean up history; ignoring it"
+    rm -f "${tmpfile}"
+    return
+  fi
+
+  # Set this before any other history settings as some of them implicitly
+  # operate on this file.
+  HISTFILE="${histfile}"
+
+  # Now we can limit the size of the history file.
+  HISTSIZE=${histsize}
+  HISTFILESIZE=${histsize}
+
+  # Do not add entries that begin with a space, and dedupe sequential commands.
+  HISTCONTROL="ignoreboth"
+
+  # Initialize pseudo completion support.  Do it before we load the user's
+  # history so that new entries don't come after old ones.
+  if [ ${IS_BASH} -eq 1 ]; then
+    local f
+    for f in $(declare -F | sed -n '/-f cmd_/s:.*cmd_::p'); do
+      # Do not add duplicates to avoid ballooning history.
+      grep -qs "^${f} *$" "${HISTFILE}" || shell_history -s "${f}"
+    done
+  fi
+
+  # Now load the user's history.
+  shell_history -r "${HISTFILE}"
 }
 
 # Prints the value corresponding to the passed-in field in the output from
@@ -1101,20 +1155,12 @@ main() {
     # We aren't installed; use local copy for testing.
     INPUTRC="$(dirname "$0")/inputrc.crosh"
   fi
-  HISTFILE="${HOME}/.crosh_history"
-  shell_history -r "${HISTFILE}"
 
-  # Initialize pseudo completion support.
-  if [ ${IS_BASH} -eq 1 ]; then
-    local f
-    for f in $(declare -F | sed -n '/-f cmd_/s:.*cmd_::p'); do
-      # Do not add duplicates to avoid ballooning history.
-      grep -qs "^${f}$" $HISTFILE || shell_history -s $f
-    done
-  fi
+  shell_history_init
 
   repl
 
-  shell_history -w $HISTFILE
+  # Save the history after the clean exit.
+  shell_history -w "${HISTFILE}"
 }
 main "$@"
