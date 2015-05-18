@@ -10,24 +10,10 @@ if [ "$(basename $0)" = "crosh-usb" ]; then
   exec "$(dirname $0)/crosh" --usb
 fi
 
-USB_HELP='
- install [<dev>]
-  Install Chrome OS to the target device, clearing out all existing data.
-
- update_firmware [--factory]
-  Update system firmware, if applicable. This command will update only the RW
-  region by default. To rewrite RO and everything, add option --factory.
-
- upgrade [<dev>]
-  Upgrade an existing Chrome OS installation, saving existing user data.
-'
-
-HELP="$HELP$USB_HELP"
-
 do_install() {
   if [ "$1" ]; then
     if [ $(expr "$1" : '^/dev/[[:alnum:]]\+$') == 0 ]; then
-      echo "Invalid device name: $1"
+      help "invalid device name: $1"
       return 1
     fi
 
@@ -40,6 +26,11 @@ do_install() {
   fi
 }
 
+USAGE_update_firmware='[--factory]'
+HELP_update_firmware='
+  Update system firmware, if applicable. This command will update only the RW
+  region by default. To rewrite RO and everything, add option --factory.
+'
 cmd_update_firmware() (
   local CHROMEOS_FIRMWARE_UPDATE="/usr/sbin/chromeos-firmwareupdate"
   local UPDATE_OPTION="--mode=recovery"
@@ -52,7 +43,7 @@ cmd_update_firmware() (
       # default option.
       ;;
     * )
-      echo "Sorry, unsupported option: $1"
+      help "unsupported option: $1"
       return 1
       ;;
   esac
@@ -70,10 +61,18 @@ cmd_update_firmware() (
   fi
 )
 
+USAGE_install='[<dev>]'
+HELP_install='
+  Install Chrome OS to the target device, clearing out all existing data.
+'
 cmd_install() (
   do_install "$1"
 )
 
+USAGE_upgrade='[<dev>]'
+HELP_upgrade='
+  Upgrade an existing Chrome OS installation, saving existing user data.
+'
 cmd_upgrade() (
   do_install "$1" --preserve_stateful
 )

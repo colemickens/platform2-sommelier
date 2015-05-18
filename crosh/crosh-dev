@@ -9,32 +9,16 @@ if [ "$(basename $0)" = "crosh-dev" ]; then
   exec "$(dirname $0)/crosh" --dev
 fi
 
-DEV_HELP='
- packet_capture [ --device <device> ] [ --frequency <frequency> ]
-                [ --ht-location <above|below> ]
-                [ --monitor-connection-on <monitored_device> ]
+USAGE_packet_capture="[--device <device>] [--frequency <frequency>] \
+[--ht-location <above|below>] [--monitor-connection-on <monitored_device>]"
+HELP_packet_capture='
   Start packet capture.  Start a device-based capture on <device>,
   or do an over-the-air capture on <frequency> with an optionally
   provided HT channel location.  An over-the-air capture can also
   be initiated using the channel parameters of a currently connected
   <monitored_device>.  Note that over-the-air captures are not available
   with all 802.11 devices.
-
- shell
-  Open a command line shell.
-
- systrace [<start | stop | status>]
-  Start/stop system tracing.  Turning tracing off will generate a trace
-  log file in the Downloads directory with all the events collected
-  since the last time tracing was enabled.  One can control the events
-  collected by specifying categories after "start"; e.g. "start gfx"
-  will collect only graphics-related system events.  "systrace status"
-  (or just "systrace") will display the current state of tracing, including
-  the set of events being traced.
 '
-
-HELP="$HELP$DEV_HELP"
-
 cmd_packet_capture() (
   local option="dict:string:variant:"
 
@@ -51,7 +35,7 @@ cmd_packet_capture() (
     --monitor-connection-on)
       shift; option="${option}monitor_connection_on,string:$1," ;;
     *)
-      echo "Unknown option: $1"
+      help "unknown option: $1"
       return 1
     esac
 
@@ -73,6 +57,10 @@ cmd_packet_capture() (
   fi
 )
 
+USAGE_shell=''
+HELP_shell='
+  Open a command line shell.
+'
 cmd_shell() (
   # Verify we have sanity with the dev mode password db.
   local passwd="/mnt/stateful_partition/etc/devmode.passwd"
@@ -93,6 +81,16 @@ cmd_shell() (
   SHELL=${shell} ${shell} -l
 )
 
+USAGE_systrace='[<start | stop | status>]'
+HELP_systrace='
+  Start/stop system tracing.  Turning tracing off will generate a trace
+  log file in the Downloads directory with all the events collected
+  since the last time tracing was enabled.  One can control the events
+  collected by specifying categories after "start"; e.g. "start gfx"
+  will collect only graphics-related system events.  "systrace status"
+  (or just "systrace") will display the current state of tracing, including
+  the set of events being traced.
+'
 cmd_systrace() (
   case x"$1" in
   xstart)

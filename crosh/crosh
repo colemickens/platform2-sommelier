@@ -50,169 +50,6 @@ try_bash() {
 }
 try_bash "$@"
 
-#
-# Please keep the help text in alphabetical order!
-#
-HELP='
- exit
-  Exit crosh.
-
- help
-  Display this help.
-
- help_advanced
-  Display the help for more advanced commands, mainly used for debugging.
-
- ping [-4] [-6] [-c count] [-i interval] [-n] [-s packetsize] [-W waittime]
-      <destination>
-  Send ICMP ECHO_REQUEST packets to a network host.  If <destination> is "gw"
-  then the next hop gateway for the default route is used.
-  Default is to use IPv4 [-4] rather than IPv6 [-6] addresses.
-
- top
-  Run top.
-'
-
-HELP_ADVANCED='
- autest [-scheduled]
-  Trigger an auto-update. To fake a scheduled update check use -scheduled.
-
- battery_firmware <info|check|update>
-  info   : query battery info
-  check  : checks AC Adapter is connnected or not.
-           also checks the battery firmware is the latest or not.
-  update : trigger battery firmware update
-
- battery_test [<test length>]
-  Tests battery discharge rate for given number of seconds. Without an argument,
-  defaults to 300 seconds.
-
- bt_console [<agent capability>]
-  Enters a Bluetooth debugging console. Optional argument specifies the
-  capability of a pairing agent the console will provide; see the Bluetooth
-  Core specification for valid options.
-
- chaps_debug [start|stop|<log_level>]
-  Sets the chapsd logging level.  No arguments will start verbose logging.
-
- connectivity
-  Shows connectivity status.  "connectivity help" for more details
-
- dump_emk
-  Show the EMK (Enterprise Machine Key).
-
- ff_debug [<tag_expr>] [--help] [--list_valid_tags] [--reset]
-  Add and remove flimflam debugging tags.
-
- inputcontrol
-  Manually adjust advanced touchpad and mouse settings. Run
-  "inputcontrol -h" for full list of options.
-
- memory_test
-  Performs extensive memory testing on the available free memory.
-
- modem <command> [args...]
-  Interact with the 3G modem. Run "modem help" for detailed help.
-
- modem_set_carrier carrier-name
-  Configures the modem for the specified carrier.
-
- network_diag [--date] [--flimflam] [--link] [--show-macs] [--wifi] [--help]
-   [--wifi-mon] <host>
-  A function that performs a suite of network diagnostics.  Saves a copy
-  of the output to your download directory.
-
- network_logging <wifi | cellular | ethernet>
-  A function that enables a predefined set of tags useful for
-  debugging the specified device.
-
- p2p_update [enable|disable]
-  Enables or disables the peer-to-peer (P2P) sharing of updates over the local
-  network. This will both, attempt to get updates from other peers in the
-  network and share the downloaded updates with them. Run this command without
-  arguments to see the current state.
-
- rlz < status | enable | disable >
-  Enable or disable RLZ.
-
- rollback
-  Attempt to rollback to the previous update cached on your system. Only
-  available on non-stable channels and non-enterprise enrolled devices. Please
-  note that this will powerwash your device.
-
- route [-4] [-6]
-  Display the routing tables.
-  Default is to trace IPv4 [-4] rather than IPv6 [-6] targets.
-
- set_apn [-n <network-id>] [-u <username>] [-p <password>] <apn>
-  Set the APN to use when connecting to the network specified by <network-id>.
-  If <network-id> is not specified, use the network-id of the currently
-  registered network.
-
- set_apn -c
-  Clear the APN to be used, so that the default APN will be used instead.
-
- set_arpgw <true | false>
-  Turn on extra network state checking to make sure the default gateway
-  is reachable.
-
- set_cellular_ppp [-u <username>] [-p <password>]
-  Set the PPP username and/or password for an existing cellular connection.
-  If neither -u nor -p is provided, show the existing PPP username for
-  the cellular connection.
-
- set_cellular_ppp -c
-  Clear any existing PPP username and PPP password for an existing cellular
-  connection.
-
- set_time [<time string>]
-  Sets the system time if the the system has been unable to get it from the
-  network.  The <time string> uses the format of the GNU coreutils date command.
-
- set_wake_on_lan <true | false>
-  Enable or disable Wake on LAN for Ethernet devices.  This command takes
-  effect after re-connecting to Ethernet and is not persistent across system
-  restarts.
-
- storage_test_1
-  Performs a short offline SMART test.
-
- storage_test_2
-  Performs an extensive readability test.
-
- swap [enable <size (MB)> | disable | status]
-  Manage the system swap file.
-
- syslog <message>
-  Logs a message to syslog.
-
- time_info
-  Returns the current synchronization state for the time service.
-
- tpm_status
-  Prints TPM status information.
-
- tracepath [-4] [-6] [-n] <destination>[/port]
-  Trace the path/route to a network host.
-  Default is to use IPv4 addresses.
-
- try_touch_experiment <experiment hex>
-  Manage touchpad experiments.
-
- update_over_cellular [enable|disable]
-  Enables or disables the auto updates over cellular networks. Run without
-  arguments to see the current state.
-
- upload_crashes
-  Uploads available crash reports to the crash server.
-
- upload_devcoredumps [enable|disable]
-  Enable or disable the upload of devcoredump reports.
-
- wpa_debug [<debug_level>] [--help] [--list_valid_level] [--reset]
-  Set wpa_supplicant debugging level.
-'
-
 INTRO_TEXT="Welcome to crosh, the Chrome OS developer shell.
 
 If you got here by mistake, don't panic!  Just close this tab and carry on.
@@ -344,23 +181,86 @@ get_power_status_field() {
   dump_power_status | awk -v field="${field}" '$1 == field { print $2 }'
 }
 
+USAGE_help='[command]'
+HELP_help='
+  Display general help, or details for a specific command.
+'
 cmd_help() (
-  echo "$HELP"
+  local cmd
+
+  case $# in
+  0)
+    local cmds="exit help help_advanced ping top"
+    for cmd in ${cmds}; do
+      cmd_help "${cmd}"
+    done
+    ;;
+  1)
+    cmd="$1"
+    if check_command "${cmd}"; then
+      local usage="USAGE_${cmd}" help="HELP_${cmd}"
+      printf "${cmd} "
+      eval printf %s "\"\$${usage}\""
+      eval echo "\"  \$${help}\""
+    else
+      echo "help: unknown command '${cmd}'"
+      return 1
+    fi
+    ;;
+  *)
+    help "too many arguments"
+    return 1
+    ;;
+  esac
 )
 
+# Useful alias for commands to call us.
+help() {
+  if [ $# -ne 0 ]; then
+    printf 'ERROR: %s\n\n' "$*"
+  fi
+
+  # This is set by `dispatch`.
+  cmd_help "${CURRENT_COMMAND}"
+}
+
+USAGE_help_advanced=''
+HELP_help_advanced='
+  Display the help for more advanced commands, mainly used for debugging.
+'
 cmd_help_advanced() (
-  echo "$HELP_ADVANCED"
+  local cmd commands
+
+  if [ $# -ne 0 ]; then
+    help "too many arguments"
+    return 1
+  fi
+
+  commands=$(set | grep -o '^HELP_[^=]*' | \
+             sed -e 's:^HELP_::' -e 's:=$::' | sort)
+  for cmd in ${commands}; do
+    cmd_help "${cmd}"
+  done
 )
 
 # We move the trailing brace to the next line so that we avoid the style
 # checker from rejecting the use of braces.  We cannot use subshells here
 # as we want the set the exit variable in crosh itself.
 # http://crbug.com/318368
+USAGE_exit=''
+HELP_exit='
+  Exit crosh.
+'
 cmd_exit()
 {
   exit='y'
 }
 
+USAGE_set_time='[<time string>]'
+HELP_set_time='
+  Sets the system time if the the system has been unable to get it from the
+  network.  The <time string> uses the format of the GNU coreutils date command.
+'
 cmd_set_time() (
   local spec="$*"
   if [ -z "${spec}" ]; then
@@ -408,6 +308,11 @@ cmd_set_time() (
   esac
 )
 
+# Set the vars to pass the unittests ...
+USAGE_ssh=''
+HELP_ssh=''
+# ... then unset them to hide the command from "help" output.
+unset USAGE_ssh HELP_ssh
 cmd_ssh() (
   cat <<EOF
 The 'ssh' command has been removed.  Please install the official SSH extension:
@@ -415,6 +320,10 @@ https://chrome.google.com/webstore/detail/pnhechapfaindjhompbnflcldabbghjo
 EOF
 )
 
+USAGE_swap='[enable <size (MB)> | disable | status]'
+HELP_swap='
+  Manage the system swap file.
+'
 cmd_swap() (
   local swap_enable_file="/home/chronos/.swap_enabled"
 
@@ -425,8 +334,7 @@ cmd_swap() (
       rm -f $swap_enable_file
       touch $swap_enable_file
     elif ! echo "$2" | grep -q "^[0-9]*$"; then
-      echo "$2 is not a valid integer literal"
-      cmd_swap usage
+      help "$2 is not a valid integer literal"
       return 1
     elif [ "$2" -ne 500 -a \
            "$2" -ne 1000 -a \
@@ -435,9 +343,8 @@ cmd_swap() (
            "$2" -ne 4000 -a \
            "$2" -ne 4500 -a \
            "$2" -ne 6000 ]; then
-      echo "invalid size $2."
       echo "Valid choices: 500, 1000, 2000, 3000, 4000, 4500 or 6000."
-      cmd_swap usage
+      help "invalid size $2."
       return 1
     else
       # remove file in case root owns it
@@ -462,15 +369,16 @@ cmd_swap() (
     /sbin/swapon -s
     ;;
   *)
-    echo "Usage:"
-    echo "  swap status          print swap device max and current size (if on)"
-    echo "  swap enable [<optional swap size (MB)>]"
-    echo "  swap disable"
+    help "unknown option: $1"
     return 1
     ;;
   esac
 )
 
+USAGE_time_info=''
+HELP_time_info='
+  Returns the current synchronization state for the time service.
+'
 cmd_time_info() (
   echo "Last time synchronization information:"
   dbus-send --system --type=method_call --print-reply \
@@ -482,6 +390,12 @@ cmd_time_info() (
         -e 's/int64/last-synced-time:/p'
 )
 
+USAGE_bt_console='[<agent capability>]'
+HELP_bt_console='
+  Enters a Bluetooth debugging console. Optional argument specifies the
+  capability of a pairing agent the console will provide; see the Bluetooth
+  Core specification for valid options.
+'
 cmd_bt_console() (
   if [ -x /usr/bin/bluetoothctl ]; then
     /usr/bin/bluetoothctl "${1:+--agent=$1}"
@@ -490,14 +404,33 @@ cmd_bt_console() (
   fi
 )
 
+USAGE_ff_debug='[<tag_expr>] [--list_valid_tags] [--reset]'
+HELP_ff_debug='
+  Add and remove flimflam debugging tags.  "ff_debug help" for more details.
+'
 cmd_ff_debug() (
+  if [ "$1" = "help" ]; then
+    set -- --help
+  fi
   /usr/bin/ff_debug "$@"
 )
 
+USAGE_wpa_debug='[<debug_level>] [--list_valid_level] [--reset]'
+HELP_wpa_debug='
+  Set wpa_supplicant debugging level.  "wpa_debug help" for more details.
+'
 cmd_wpa_debug() (
+  if [ "$1" = "help" ]; then
+    set -- --help
+  fi
   /usr/bin/wpa_debug "$@"
 )
 
+USAGE_set_arpgw='<true | false>'
+HELP_set_arpgw='
+  Turn on extra network state checking to make sure the default gateway
+  is reachable.
+'
 cmd_set_arpgw() (
   case "$1" in
     "true"|"false")
@@ -507,12 +440,18 @@ cmd_set_arpgw() (
       /usr/bin/set_arpgw
       ;;
     *)
-      echo "Unknown option: $1"
+      help "unknown option: $1"
       return 1
       ;;
   esac
 )
 
+USAGE_set_wake_on_lan='<true | false>'
+HELP_set_wake_on_lan='
+  Enable or disable Wake on LAN for Ethernet devices.  This command takes
+  effect after re-connecting to Ethernet and is not persistent across system
+  restarts.
+'
 cmd_set_wake_on_lan() (
   case "$1" in
     "true"|"false")
@@ -522,12 +461,17 @@ cmd_set_wake_on_lan() (
       /usr/bin/set_wake_on_lan
       ;;
     *)
-      echo "Unknown option: $1"
+      help "unknown option: $1"
       return 1
       ;;
   esac
 )
 
+USAGE_network_logging='<wifi | cellular | ethernet>'
+HELP_network_logging='
+  A function that enables a predefined set of tags useful for
+  debugging the specified device.
+'
 cmd_network_logging() (
   if [ -n "$1" ]; then
     case "$1" in
@@ -546,18 +490,21 @@ cmd_network_logging() (
         echo; /usr/bin/wpa_debug info
         echo; /usr/bin/modem set-logging info
         ;;
-      "--help")
-        echo "Usage: network_logging <wifi | cellular | ethernet>"
-        ;;
       *)
-        echo "Invalid parameter $1"
+        help "unknown option: $1"
         ;;
     esac
   else
-    echo "Missing parameter wifi | cellular | ethernet"
+    help "missing command"
   fi
 )
 
+USAGE_network_diag="[--date] [--flimflam] [--link] [--show-macs] [--wifi] \
+[--wifi-mon] <host>"
+HELP_network_diag='
+  A function that performs a suite of network diagnostics.  Saves a copy
+  of the output to your Downloads directory.
+'
 cmd_network_diag() (
   /usr/bin/network_diag "$@"
 )
@@ -612,6 +559,13 @@ debugd_poll() (
   cleanup
 )
 
+USAGE_ping="[-4] [-6] [-c count] [-i interval] [-n] [-s packetsize] \
+[-W waittime] <destination>"
+HELP_ping='
+  Send ICMP ECHO_REQUEST packets to a network host.  If <destination> is "gw"
+  then the next hop gateway for the default route is used.
+  Default is to use IPv4 [-4] rather than IPv6 [-6] addresses.
+'
 cmd_ping() (
   local option="dict:string:variant:"
   local dest
@@ -629,12 +583,12 @@ cmd_ping() (
     -n) option="${option}numeric,boolean:true," ;;
     -b) option="${option}broadcast,boolean:true," ;;
     -*)
-      echo "Unknown option: $1"
+      help "unknown option: $1"
       return 1
       ;;
     *)
       if [ "${dest+set}" = "set" ]; then
-        echo "Error: too many destinations specified"
+        help "too many destinations specified"
         return 1
       fi
       dest="$1"
@@ -645,7 +599,7 @@ cmd_ping() (
   done
 
   if [ "${dest+set}" != "set" ]; then
-    echo "Missing parameter: destination"
+    help "missing parameter: destination"
     return 1
   fi
 
@@ -665,6 +619,10 @@ cmd_ping() (
   debugd_poll Ping "fd:1" "string:${dest}" "${option%,}"
 )
 
+USAGE_chaps_debug='[start|stop|<log_level>]'
+HELP_chaps_debug='
+  Sets the chapsd logging level.  No arguments will start verbose logging.
+'
 cmd_chaps_debug() (
   local level=${1:--2}
   if [ "$1" = "stop" ]; then
@@ -687,6 +645,11 @@ cmd_chaps_debug() (
   fi
 )
 
+USAGE_route='[-4] [-6]'
+HELP_route='
+  Display the routing tables.
+  Default is to show IPv4 [-4] rather than IPv6 [-6] routes.
+'
 cmd_route() (
   local option="dict:string:variant:"
 
@@ -695,7 +658,7 @@ cmd_route() (
     -4) option="${option}v6,boolean:false," ;;
     -6) option="${option}v6,boolean:true," ;;
     *)
-      echo "Unknown option: $1"
+      help "unknown option: $1"
       return 1
     esac
     shift
@@ -704,6 +667,11 @@ cmd_route() (
   debugd GetRoutes "${option%,}"
 )
 
+USAGE_tracepath='[-4] [-6] [-n] <destination>[/port]'
+HELP_tracepath='
+  Trace the path/route to a network host.
+  Default is to trace IPv4 [-4] rather than IPv6 [-6] targets.
+'
 cmd_tracepath() (
   local option="dict:string:variant:"
   local dest
@@ -716,12 +684,12 @@ cmd_tracepath() (
     -6) option="${option}v6,boolean:true," ;;
     -n) option="${option}numeric,boolean:true," ;;
     -*)
-      echo "Unknown option: $1"
+      help "unknown option: $1"
       return 1
       ;;
     *)
       if [ "${dest+set}" = "set" ]; then
-        echo "Error: too many destinations specified"
+        help "too many destinations specified"
         return 1
       fi
       dest="$1"
@@ -732,7 +700,7 @@ cmd_tracepath() (
   done
 
   if [ "${dest+set}" != "set" ]; then
-    echo "Missing parameter: destination"
+    help "missing parameter: destination"
     return 1
   fi
 
@@ -740,45 +708,90 @@ cmd_tracepath() (
   debugd_poll TracePath "fd:1" "string:${dest}" "${option%,}"
 )
 
+USAGE_top=''
+HELP_top='
+  Run top.
+'
 cmd_top() (
   # -s is "secure" mode, which disables kill, renice, and change display/sleep
   # interval.
   top -s
 )
 
+USAGE_modem='<command> [args...]'
+HELP_modem='
+  Interact with the 3G modem. Run "modem help" for detailed help.
+'
 cmd_modem() (
   /usr/bin/modem "$@"
 )
 
+USAGE_modem_set_carrier='carrier-name'
+HELP_modem_set_carrier='
+  Configures the modem for the specified carrier.
+'
 cmd_modem_set_carrier() (
   /usr/bin/modem set-carrier "$@"
 )
 
+USAGE_set_apn='[-c] [-n <network-id>] [-u <username>] [-p <password>] <apn>'
+HELP_set_apn='
+  Set the APN to use when connecting to the network specified by <network-id>.
+  If <network-id> is not specified, use the network-id of the currently
+  registered network.
+
+  The -c option clears the APN to be used, so that the default APN will be used
+  instead.
+'
 cmd_set_apn() (
   /usr/bin/set_apn "$@"
 )
 
+USAGE_set_cellular_ppp='[-c] [-u <username>] [-p <password>]'
+HELP_set_cellular_ppp='
+  Set the PPP username and/or password for an existing cellular connection.
+  If neither -u nor -p is provided, show the existing PPP username for
+  the cellular connection.
+
+  The -c option clears any existing PPP username and PPP password for an
+  existing cellular connection.
+'
 cmd_set_cellular_ppp() (
   /usr/bin/set_cellular_ppp "$@"
 )
 
+USAGE_connectivity=''
+HELP_connectivity='
+  Shows connectivity status.  "connectivity help" for more details
+'
 cmd_connectivity() (
   /usr/bin/connectivity "$@"
 )
 
+USAGE_autest='[-scheduled]'
+HELP_autest='
+  Trigger an auto-update. To fake a scheduled update check use -scheduled.
+'
 cmd_autest() (
   local omaha_url="autest"
 
   if [ "$1" = "-scheduled" ]; then
-   # pretend that this is a scheduled check as opposed to an user-initiated
-   # check for testing features that get enabled only on scheduled checks.
-   omaha_url="autest-scheduled"
+    # pretend that this is a scheduled check as opposed to an user-initiated
+    # check for testing features that get enabled only on scheduled checks.
+    omaha_url="autest-scheduled"
   fi
 
   echo "Calling update_engine_client with omaha_url = $omaha_url"
   /usr/bin/update_engine_client --omaha_url=$omaha_url
 )
 
+USAGE_p2p_update='[enable|disable]'
+HELP_p2p_update='
+  Enables or disables the peer-to-peer (P2P) sharing of updates over the local
+  network. This will both attempt to get updates from other peers in the
+  network and share the downloaded updates with them. Run this command without
+  arguments to see the current state.
+'
 cmd_p2p_update() (
   case "$1" in
     "enable")
@@ -794,17 +807,19 @@ cmd_p2p_update() (
       ;;
 
     *)
-      echo "Usage: p2p_update [enable|disable]
-  Enables or disables the peer-to-peer (P2P) sharing of updates over the local
-  network. This will both, attempt to get updates from other peers in the
-  network and share the downloaded updates with them. Run this command without
-  arguments to see the current state."
+      help "unknown option: $1"
       return 1
       ;;
   esac
   /usr/bin/update_engine_client $param -show_p2p_update
 )
 
+USAGE_rollback=''
+HELP_rollback='
+  Attempt to rollback to the previous update cached on your system. Only
+  available on non-stable channels and non-enterprise enrolled devices. Please
+  note that this will powerwash your device.
+'
 cmd_rollback() (
   if /usr/bin/update_engine_client --rollback; then
     echo "Rollback attempt succeeded -- after a couple minutes you will" \
@@ -814,6 +829,11 @@ cmd_rollback() (
   fi
 )
 
+USAGE_update_over_cellular='[enable|disable]'
+HELP_update_over_cellular='
+  Enables or disables the auto updates over cellular networks. Run without
+  arguments to see the current state.
+'
 cmd_update_over_cellular() (
   case "$1" in
     "enable")
@@ -833,20 +853,26 @@ cmd_update_over_cellular() (
       ;;
 
     *)
-      echo "Usage: update_over_cellular [enable|disable]
-  Enables or disables the auto updates over cellular networks. Run without
-  arguments to see the current state."
+      help "unknown option: $1"
       return 1
       ;;
   esac
   /usr/bin/update_engine_client $param -show_update_over_cellular
 )
 
+USAGE_upload_crashes=''
+HELP_upload_crashes='
+  Uploads available crash reports to the crash server.
+'
 cmd_upload_crashes() (
   debugd UploadCrashes
   echo "Check chrome://crashes for status updates"
 )
 
+USAGE_upload_devcoredumps='[enable|disable]'
+HELP_upload_devcoredumps='
+  Enable or disable the upload of devcoredump reports.
+'
 cmd_upload_devcoredumps() (
   case "$1" in
     "enable")
@@ -858,21 +884,38 @@ cmd_upload_devcoredumps() (
       ;;
 
     *)
-      echo "Usage: upload_devcoredumps [enable|disable]
-  Enable or disable the upload of devcoredump reports."
+      help "unknown option: $1"
       return 1
       ;;
   esac
 )
 
+USAGE_try_touch_experiment='<experiment hex>'
+HELP_try_touch_experiment='
+  Manage touchpad experiments.
+'
 cmd_try_touch_experiment() (
   /usr/sbin/try_touch_experiment "$@"
 )
 
+USAGE_inputcontrol=''
+HELP_inputcontrol='
+  Manually adjust advanced touchpad and mouse settings. Run
+  "inputcontrol help" for full list of options.
+'
 cmd_inputcontrol() (
+  if [ "$1" = "help" ]; then
+    set -- -h
+  fi
   /opt/google/input/inputcontrol "$@"
 )
 
+USAGE_rlz='< status | enable | disable >'
+HELP_rlz="
+  Enable or disable RLZ.  See this site for details:
+  http://dev.chromium.org/developers/design-documents/extensions/\
+proposed-changes/apis-under-development/rlz-api
+"
 cmd_rlz() (
   local flag_file="$HOME/.rlz_disabled"
   local enabled=1
@@ -905,7 +948,7 @@ cmd_rlz() (
       ;;
 
     *)
-      echo "Usage: rlz < status | enable | disable >"
+      help "unknown option: $1"
       return 1
       ;;
   esac
@@ -916,6 +959,10 @@ cmd_rlz() (
   fi
 )
 
+USAGE_syslog='<message>'
+HELP_syslog='
+  Logs a message to syslog (the system log daemon).
+'
 cmd_syslog() (
   logger -t crosh -- "$*"
 )
@@ -942,6 +989,10 @@ mk_fifo() {
   echo "${fifo}"
 }
 
+USAGE_storage_test_1=''
+HELP_storage_test_1='
+  Performs a short offline SMART test.
+'
 cmd_storage_test_1() (
   option="$1"
 
@@ -973,14 +1024,27 @@ cmd_storage_test_1() (
   debugd Smartctl "string:abort_test" >/dev/null
 )
 
+USAGE_storage_test_2=''
+HELP_storage_test_2='
+  Performs an extensive readability test.
+'
 cmd_storage_test_2() (
   debugd_poll Badblocks "fd:1"
 )
 
+# Set the vars to pass the unittests ...
+USAGE_storage_status=''
+HELP_storage_status=''
+# ... then unset them to hide the command from "help" output.
+unset USAGE_storage_status HELP_storage_status
 cmd_storage_status() (
   echo "Removed. See storage_info section in chrome://system"
 )
 
+USAGE_memory_test=''
+HELP_memory_test='
+  Performs extensive memory testing on the available free memory.
+'
 cmd_memory_test() (
   # Getting total free memory in KB.
   mem=$(cat /proc/meminfo | grep MemFree | tr -s " " | cut -d" " -f 2)
@@ -994,6 +1058,13 @@ cmd_memory_test() (
   debugd_poll Memtester "fd:1" "uint32:${mem}"
 )
 
+USAGE_battery_firmware='<info|check|update>'
+HELP_battery_firmware='
+  info   : Query battery info.
+  check  : Check whether the AC adapter is connected.
+           Also check whether the battery firmware is the latest.
+  update : Trigger battery firmware update.
+'
 cmd_battery_firmware() (
   option="$1"
   case "${option}" in
@@ -1010,11 +1081,16 @@ cmd_battery_firmware() (
       echo ""
       ;;
     *)
-      echo "Unknown option: ${option}"
+      help "Unknown option: ${option}"
       ;;
   esac
 )
 
+USAGE_battery_test='[<test length>]'
+HELP_battery_test='
+  Tests battery discharge rate for given number of seconds. Without an argument,
+  defaults to 300 seconds.
+'
 cmd_battery_test() (
   local test_length="$1"
   if [ -z "$test_length" ]; then
@@ -1063,11 +1139,19 @@ cmd_battery_test() (
   echo "Battery discharged ${bat_diff}% in ${test_length} second(s)."
 )
 
+USAGE_dump_emk=''
+HELP_dump_emk='
+  Show the EMK (Enterprise Machine Key).
+'
 cmd_dump_emk() (
   /usr/sbin/cryptohome --action=tpm_attestation_key_status \
                        --name=attest-ent-machine
 )
 
+USAGE_tpm_status=''
+HELP_tpm_status='
+  Prints TPM (Trusted Platform Module) status information.
+'
 cmd_tpm_status() (
   /usr/sbin/cryptohome --action=tpm_more_status
 )
@@ -1096,10 +1180,17 @@ substr() {
   echo "$str" | cut -c${start}-${end}
 }
 
+# Return true if the first arg is a valid command.
+check_command() {
+  local command="$1"
+
+  type "cmd_${command}" 2>/dev/null | head -1 | grep -q "function"
+}
+
 dispatch() {
   local line="$1"
   local command=""
-  local params=""
+  local p params=""
 
   local space_pos=$(expr index "$line" ' ')
 
@@ -1111,11 +1202,21 @@ dispatch() {
     params=$(substr "$line" "$space_pos")
   fi
 
-  if ! type "cmd_$command" 2>/dev/null | head -1 | grep -q "function"; then
-    echo "Unknown command: '$command'"
+  if ! check_command "${command}"; then
+    help "unknown command: ${command}"
   else
-    command="cmd_$command"
-    $command $params
+    # See if --help was requested; if so, handle it directly so each command
+    # doesn't have to deal with it directly.
+    local p
+    for p in ${params}; do
+      if [ "${p}" = "-h" -o "${p}" = "--help" ]; then
+        cmd_help "${command}"
+        return 0
+      fi
+    done
+
+    # Set CURRENT_COMMAND for the `help` helper.
+    CURRENT_COMMAND="${command}" "cmd_${command}" ${params}
   fi
 }
 

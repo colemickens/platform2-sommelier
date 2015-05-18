@@ -32,14 +32,32 @@ for s in crosh*; do
   bash -n ${s} || ret=1
 
   #
-  # Keep HELP sorted.
+  # Make sure every command is documented.
   #
-  for help in $(sed -n "/^[A-Z_]*HELP[A-Z_]*='$/s:='::p" "${s}"); do
-    cmds=$(sed -n "/^${help}=/,/'$/p" "${s}" | egrep -o '^ [^ ]+')
-    sorted=$(echo "${cmds}" | sort)
-    if [[ ${cmds} != "${sorted}" ]]; then
-      echo "ERROR: ${help} is not sorted:"
-      show_diff "${cmds}" "${sorted}"
+  commands=$(grep -o '^cmd_[^(]*' "${s}" | sed 's:^cmd_::' | sort)
+  for command in ${commands}; do
+    if ! grep -q "^USAGE_${command}=" "${s}"; then
+      echo "ERROR: ${command} is not documented (missing USAGE_${command})"
+      ret=1
+    fi
+    if ! grep -q "^HELP_${command}=" "${s}"; then
+      echo "ERROR: ${command} is not documented (missing HELP_${command})"
+      ret=1
+    fi
+  done
+  # Every HELP_xxx needs a cmd_xxx (catch typos).
+  commands=$(grep -o '^HELP_[^=]*' "${s}" | sed 's:^HELP_::' | sort)
+  for command in ${commands}; do
+    if ! grep -q "^cmd_${command}()" "${s}"; then
+      echo "ERROR: stray HELP_${command} var (typo?)"
+      ret=1
+    fi
+  done
+  # Same for USAGE_xxx.
+  commands=$(grep -o '^USAGE_[^=]*' "${s}" | sed 's:^USAGE_::' | sort)
+  for command in ${commands}; do
+    if ! grep -q "^cmd_${command}()" "${s}"; then
+      echo "ERROR: stray USAGE_${command} var (typo?)"
       ret=1
     fi
   done
