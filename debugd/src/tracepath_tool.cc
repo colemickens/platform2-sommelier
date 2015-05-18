@@ -9,6 +9,7 @@
 namespace debugd {
 
 const char kTracepath[] = "/usr/sbin/tracepath";
+const char kTracepath6[] = "/usr/sbin/tracepath6";
 
 std::string TracePathTool::Start(
     const DBus::FileDescriptor& outfd,
@@ -18,7 +19,13 @@ std::string TracePathTool::Start(
   ProcessWithId* p = CreateProcess(true);
   if (!p)
     return "";
-  p->AddArg(kTracepath);
+
+  auto option_iter = options.find("v6");
+  if (option_iter != options.end() && option_iter->second.reader().get_bool())
+    p->AddArg(kTracepath6);
+  else
+    p->AddArg(kTracepath);
+
   if (options.count("numeric") == 1) {
     p->AddArg("-n");
   }

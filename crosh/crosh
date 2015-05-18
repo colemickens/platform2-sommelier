@@ -63,9 +63,11 @@ HELP='
  help_advanced
   Display the help for more advanced commands, mainly used for debugging.
 
- ping [-c count] [-i interval] [-n] [-s packetsize] [-W waittime] <destination>
+ ping [-4] [-6] [-c count] [-i interval] [-n] [-s packetsize] [-W waittime]
+      <destination>
   Send ICMP ECHO_REQUEST packets to a network host.  If <destination> is "gw"
   then the next hop gateway for the default route is used.
+  Default is to use IPv4 [-4] rather than IPv6 [-6] addresses.
 
  top
   Run top.
@@ -138,8 +140,9 @@ HELP_ADVANCED='
   available on non-stable channels and non-enterprise enrolled devices. Please
   note that this will powerwash your device.
 
- route [-6]
+ route [-4] [-6]
   Display the routing tables.
+  Default is to trace IPv4 [-4] rather than IPv6 [-6] targets.
 
  set_apn [-n <network-id>] [-u <username>] [-p <password>] <apn>
   Set the APN to use when connecting to the network specified by <network-id>.
@@ -189,8 +192,9 @@ HELP_ADVANCED='
  tpm_status
   Prints TPM status information.
 
- tracepath [-n] <destination>[/port]
+ tracepath [-4] [-6] [-n] <destination>[/port]
   Trace the path/route to a network host.
+  Default is to use IPv4 addresses.
 
  try_touch_experiment <experiment hex>
   Manage touchpad experiments.
@@ -616,6 +620,8 @@ cmd_ping() (
     # Do just enough parsing to filter/map options; we
     # depend on ping to handle final validation.
     case "$1" in
+    -4) option="${option}v6,boolean:false," ;;
+    -6) option="${option}v6,boolean:true," ;;
     -i) shift; option="${option}interval,int32:$1," ;;
     -c) shift; option="${option}count,int32:$1," ;;
     -W) shift; option="${option}waittime,int32:$1," ;;
@@ -686,6 +692,7 @@ cmd_route() (
 
   while [ $# -gt 0 ]; do
     case $1 in
+    -4) option="${option}v6,boolean:false," ;;
     -6) option="${option}v6,boolean:true," ;;
     *)
       echo "Unknown option: $1"
@@ -705,6 +712,8 @@ cmd_tracepath() (
     # Do just enough parsing to filter/map options; we
     # depend on tracepath to handle final validation.
     case "$1" in
+    -4) option="${option}v6,boolean:false," ;;
+    -6) option="${option}v6,boolean:true," ;;
     -n) option="${option}numeric,boolean:true," ;;
     -*)
       echo "Unknown option: $1"

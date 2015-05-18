@@ -20,13 +20,13 @@ std::vector<std::string> RouteTool::GetRoutes(
   if (!p.Init())
     return result;
   p.AddArg(kIpTool);
+
   auto option_iter = options.find("v6");
-  // Casting a variant converts it to the proper type; if it's actually a
-  // different type the caller will get org.freedesktop.DBus.Error.InvalidArgs.
-  if (option_iter != options.end() && static_cast<bool>(option_iter->second))
+  if (option_iter != options.end() && option_iter->second.reader().get_bool())
     p.AddArg("-6");
   p.AddArg("r");  // route
   p.AddArg("s");  // show
+
   if (p.Run())
     return result;
   p.GetOutputLines(&result);

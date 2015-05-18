@@ -28,6 +28,7 @@
             interval (int): Time to wait between packets.
             numeric (bool): Print numeric remote hosts.
             packetsize (int): Size of each packet sent.
+            v6 (bool): True for ipv6.
             waittime (int): Time to wait for a response.
           Unrecognized keys return a DBus error and print no output to the
           supplied file descriptor.
@@ -96,6 +97,7 @@
         <tp:docstring>
           Options to pass to the tracepath command:
             numeric (bool): Print numeric remote hosts.
+            v6 (bool): True for ipv6.
           Unrecognized keys return a DBus error and print no output to the
           supplied file descriptor.
         </tp:docstring>

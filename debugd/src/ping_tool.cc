@@ -13,6 +13,7 @@ namespace debugd {
 
 const char* kSetuidHack = "/usr/libexec/debugd/helpers/minijail-setuid-hack.sh";
 const char* kPing = "/bin/ping";
+const char* kPing6 = "/bin/ping6";
 
 std::string PingTool::Start(const DBus::FileDescriptor& outfd,
                             const std::string& destination,
@@ -22,7 +23,13 @@ std::string PingTool::Start(const DBus::FileDescriptor& outfd,
   if (!p)
     return "";
   p->AddArg(kSetuidHack);
-  p->AddArg(kPing);
+
+  auto option_iter = options.find("v6");
+  if (option_iter != options.end() && option_iter->second.reader().get_bool())
+    p->AddArg(kPing6);
+  else
+    p->AddArg(kPing);
+
   if (options.count("broadcast") == 1) {
     p->AddArg("-b");
   }
