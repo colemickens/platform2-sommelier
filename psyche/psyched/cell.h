@@ -64,20 +64,20 @@ class Cell : public CellInterface, public ServiceObserver {
   Cell(const soma::ContainerSpec& spec,
        FactoryInterface* factory,
        GermConnection* germ);
-  ~Cell() override;
+  ~Cell() override = default;
 
   // CellInterface:
   std::string GetName() const override;
   const ServiceMap& GetServices() const override;
   bool Launch() override;
 
+  // Terminates the cell. Returns whether the cell was terminated successfully.
+  bool Terminate();
+
   // ServiceObserver:
   void OnServiceProxyChange(ServiceInterface* service) override;
 
  private:
-  // Terminates the cell. Returns whether the cell was terminated successfully.
-  bool Terminate();
-
   // Checks that all services have registered and notifies unregistered services
   // if not.
   void VerifyServicesRegistered();
@@ -97,10 +97,6 @@ class Cell : public CellInterface, public ServiceObserver {
   // Connection to germd to launch the cell. Note: This class doesn't own the
   // GermConnection object.
   GermConnection* germ_connection_;
-
-  // PID of the germ-provided init process inside the cell, which can be used to
-  // terminate all the processes in the cell.
-  int init_pid_;
 
   // Calls VerifyServicesRegistered().
   base::OneShotTimer<Cell> verify_services_timer_;

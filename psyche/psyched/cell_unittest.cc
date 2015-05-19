@@ -37,9 +37,6 @@ class GermInterfaceStub : public germ::IGerm {
   ~GermInterfaceStub() override = default;
 
   void set_launch_return_value(int value) { launch_return_value_ = value; }
-  void set_launch_pid(int pid) {
-    launch_pid_ = pid;
-  }
   const std::vector<std::string>& launched_cell_names() const {
     return launched_cell_names_;
   }
@@ -60,9 +57,6 @@ class GermInterfaceStub : public germ::IGerm {
  private:
   // binder result returned by Launch().
   int launch_return_value_;
-
-  // germ pid field returned by LaunchResponse.
-  int launch_pid_;
 
   // Cell names passed to Launch().
   std::vector<std::string> launched_cell_names_;
@@ -162,9 +156,7 @@ TEST_F(CellTest, VerifyServiceRegistration) {
     spec.add_service_names(name);
 
   const std::string kCellName("/tmp/org.example.cell");
-  const int kCellPid(123);
   spec.set_name(kCellName);
-  germ_->set_launch_pid(kCellPid);
 
   Cell cell(spec, &factory_, &germ_connection_);
   Cell::TestApi test_api(&cell);
@@ -193,7 +185,7 @@ TEST_F(CellTest, VerifyServiceRegistration) {
     BinderProxy* service_proxy = CreateBinderProxy().release();
     service_it.second->SetProxy(std::unique_ptr<BinderProxy>(service_proxy));
     // Manually call OnServiceProxyChange() because the ServiceStub class
-    // doesn't notify its oberservers of proxy changes.
+    // doesn't notify its observers of proxy changes.
     cell.OnServiceProxyChange(service_it.second.get());
   }
 

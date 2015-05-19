@@ -46,11 +46,6 @@ Cell::Cell(const ContainerSpec& spec,
   }
 }
 
-Cell::~Cell() {
-  if (init_pid_ >= 0)
-    Terminate();
-}
-
 std::string Cell::GetName() const {
   return spec_.name();
 }
@@ -84,12 +79,11 @@ void Cell::OnServiceProxyChange(ServiceInterface* service) {
 }
 
 bool Cell::Terminate() {
-  DCHECK_GE(init_pid_, 0);
   verify_services_timer_.Stop();
-  bool success =
-      germ_connection_->Terminate(GetName()) == GermConnection::Result::SUCCESS;
-  init_pid_ = -1;
-  return success;
+  // TODO(rickyz): Do we need to call VerifyServicesRegistered here? It could
+  // cause a duplicate message to be sent to clients.
+  return germ_connection_->Terminate(GetName()) ==
+         GermConnection::Result::SUCCESS;
 }
 
 void Cell::VerifyServicesRegistered() {
