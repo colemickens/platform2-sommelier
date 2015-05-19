@@ -352,8 +352,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const int kRequestStationInfoPeriodSeconds;
   static const size_t kMinumumFrequenciesToScan;
   static const float kDefaultFractionPerScan;
-  // TODO(wdg): Remove after progressive scan field trial is over.
-  static const char kProgressiveScanFieldTrialFlagFile[];
   static const size_t kStuckQueueLengthThreshold;
   // Number of milliseconds to wait after waking from suspend to report the
   // connection status to metrics.
@@ -366,8 +364,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // resetting the scan state to idle.
   static const int kPostScanFailedDelayMilliseconds;
 
-  // TODO(wdg): Remove after progressive scan field trial is over.
-  void ParseFieldTrialFile(const base::FilePath &field_trial_file_path);
   void GetPhyInfo();
   void AppendBgscan(WiFiService *service,
                     std::map<std::string, DBus::Variant> *service_params) const;
