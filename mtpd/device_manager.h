@@ -56,6 +56,10 @@ class DeviceManager {
   // Returns storage metadata for |storage_name|.
   const StorageInfo* GetStorageInfo(const std::string& storage_name);
 
+  // Returns storage metadata for |storage_name| by reading device. This method
+  // updates all storage info of the device.
+  const StorageInfo* GetStorageInfoFromDevice(const std::string& storage_name);
+
   // Exposed for testing.
   // |storage_name| should be in the form of "usb:bus_location:storage_id".
   // Returns true and fills |usb_bus_str| and |storage_id| on success.

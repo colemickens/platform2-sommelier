@@ -50,6 +50,19 @@ StorageInfo::StorageInfo()
 StorageInfo::~StorageInfo() {
 }
 
+void StorageInfo::Update(const LIBMTP_devicestorage_t& storage) {
+  storage_type_ = storage.StorageType;
+  filesystem_type_ = storage.FilesystemType;
+  access_capability_ = storage.AccessCapability;
+  max_capacity_ = storage.MaxCapacity;
+  free_space_in_bytes_ = storage.FreeSpaceInBytes;
+  free_space_in_objects_ = storage.FreeSpaceInObjects;
+  if (storage.StorageDescription)
+    storage_description_ = storage.StorageDescription;
+  if (storage.VolumeIdentifier)
+    volume_identifier_ = storage.VolumeIdentifier;
+}
+
 std::vector<uint8_t> StorageInfo::ToDBusFormat() const {
   MtpStorageInfo protobuf;
   protobuf.set_storage_name(storage_name_);

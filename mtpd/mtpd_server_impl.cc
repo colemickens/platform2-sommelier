@@ -54,6 +54,14 @@ std::vector<uint8_t> MtpdServer::GetStorageInfo(const std::string& storageName,
   return info ? info->ToDBusFormat() : StorageInfo().ToDBusFormat();
 }
 
+std::vector<uint8_t> MtpdServer::GetStorageInfoFromDevice(
+    const std::string& storageName,
+    DBus::Error& error) {
+  const StorageInfo* info =
+      device_manager_.GetStorageInfoFromDevice(storageName);
+  return info ? info->ToDBusFormat() : StorageInfo().ToDBusFormat();
+}
+
 std::string MtpdServer::OpenStorage(const std::string& storageName,
                                     const std::string& mode,
                                     DBus::Error& error) {

@@ -176,6 +176,39 @@ const StorageInfo* DeviceManager::GetStorageInfo(
   return (storage_it != storage_map.end()) ? &(storage_it->second) : NULL;
 }
 
+const StorageInfo* DeviceManager::GetStorageInfoFromDevice(
+    const std::string& storage_name) {
+  std::string usb_bus_str;
+  uint32_t storage_id = 0;
+  if (!ParseStorageName(storage_name, &usb_bus_str, &storage_id))
+    return NULL;
+
+  base::AutoLock al(device_map_lock_);
+  MtpDeviceMap::iterator device_it = device_map_.find(usb_bus_str);
+  if (device_it == device_map_.end())
+    return NULL;
+
+  // Update |storage_map| with the latest storage info.
+  MtpStorageMap& storage_map = device_it->second.second;
+  LIBMTP_mtpdevice_t* mtp_device = device_it->second.first;
+  LIBMTP_Get_Storage(mtp_device, LIBMTP_STORAGE_SORTBY_NOTSORTED);
+  for (LIBMTP_devicestorage_t* storage = mtp_device->storage;
+       storage != NULL;
+       storage = storage->next) {
+    MtpStorageMap::iterator storage_it = storage_map.find(storage->id);
+    // If |storage->id| does not exist in the map, just ignore here. It should
+    // be added at AddOrUpdateDevices.
+    if (storage_it == storage_map.end())
+      continue;
+
+    storage_it->second.Update(*storage);
+  }
+
+  // Returns StorageInfo of |storage_id|.
+  MtpStorageMap::const_iterator new_storage_it = storage_map.find(storage_id);
+  return new_storage_it == storage_map.end() ? NULL : &(new_storage_it->second);
+}
+
 bool DeviceManager::ReadDirectoryEntryIds(const std::string& storage_name,
                                           uint32_t file_id,
                                           std::vector<uint32_t>* out) {

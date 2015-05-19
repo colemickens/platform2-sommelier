@@ -21,6 +21,20 @@
       </arg>
     </method>
 
+    <method name="GetStorageInfoFromDevice">
+      <arg name="storageName" type="s" direction="in">
+      <tp:docstring>
+        Storage name is in the same format as EnumerateStorages.
+      </tp:docstring>
+      </arg>
+      <arg name="storageInfo" type="ay" direction="out">
+      <tp:docstring>
+        Storage info read from device. While this contains device related
+        properties, these properties are not updated with this call.
+      </tp:docstring>
+      </arg>
+    </method>
+
     <method name="OpenStorage">
       <arg name="storageName" type="s" direction="in">
       <tp:docstring>

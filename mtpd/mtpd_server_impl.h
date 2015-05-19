@@ -32,6 +32,8 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
   std::vector<std::string> EnumerateStorages(DBus::Error& error) override;
   std::vector<uint8_t> GetStorageInfo(const std::string& storageName,
                                       DBus::Error& error) override;
+  std::vector<uint8_t> GetStorageInfoFromDevice(const std::string& storageName,
+                                                DBus::Error& error) override;
   std::string OpenStorage(const std::string& storageName,
                           const std::string& mode,
                           DBus::Error& error) override;

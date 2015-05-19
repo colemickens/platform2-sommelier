@@ -24,6 +24,7 @@ class StorageInfo {
   StorageInfo();
   ~StorageInfo();
 
+  void Update(const LIBMTP_devicestorage_t& storage);
   std::vector<uint8_t> ToDBusFormat() const;
 
  private:
