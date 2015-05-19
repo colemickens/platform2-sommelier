@@ -103,14 +103,13 @@ NiceMock<MockFileEnumerator>* CreateMockFileEnumerator() {
 
 class HomeDirsTest : public ::testing::Test {
  public:
-  HomeDirsTest() { }
+  HomeDirsTest() : crypto_(&platform_) { }
   virtual ~HomeDirsTest() { }
 
   void SetUp() {
     test_helper_.SetUpSystemSalt();
     // TODO(wad) Only generate the user data we need. This is time consuming.
     test_helper_.InitTestData(kTestRoot, kDefaultUsers, kDefaultUserCount);
-    crypto_.set_platform(&platform_);
     homedirs_.set_shadow_root(kTestRoot);
     test_helper_.InjectSystemSalt(&platform_,
                                   StringPrintf("%s/salt", kTestRoot));
@@ -151,14 +150,14 @@ class HomeDirsTest : public ::testing::Test {
   }
 
  protected:
-  HomeDirs homedirs_;
-  NiceMock<MockCrypto> crypto_;
-  NiceMock<MockPlatform> platform_;
-  std::vector<std::string> homedir_paths_;
   MakeTests test_helper_;
+  NiceMock<MockPlatform> platform_;
+  Crypto crypto_;
+  std::vector<std::string> homedir_paths_;
   MockUserOldestActivityTimestampCache timestamp_cache_;
   std::vector<base::Time> homedir_times_;
   MockVaultKeysetFactory vault_keyset_factory_;
+  HomeDirs homedirs_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HomeDirsTest);

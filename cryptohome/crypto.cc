@@ -92,7 +92,8 @@ Crypto::Crypto(Platform* platform)
     : use_tpm_(false),
       tpm_(NULL),
       platform_(platform),
-      tpm_init_(NULL) {
+      tpm_init_(NULL),
+      scrypt_max_encrypt_time_(kScryptMaxEncryptTime) {
 }
 
 Crypto::~Crypto() {
@@ -156,8 +157,10 @@ bool Crypto::PasskeyToTokenAuthData(const chromeos::Blob& passkey,
   return true;
 }
 
-bool Crypto::GetOrCreateSalt(const base::FilePath& path, unsigned int length,
-                             bool force, SecureBlob* salt) const {
+bool Crypto::GetOrCreateSalt(const base::FilePath& path,
+                             size_t length,
+                             bool force,
+                             SecureBlob* salt) const {
   int64_t file_len = 0;
   if (platform_->FileExists(path.value())) {
     if (!platform_->GetFileSize(path.value(), &file_len)) {
@@ -704,7 +707,7 @@ bool Crypto::EncryptScrypt(const VaultKeyset& vault_keyset,
                                  key.size(),
                                  kScryptMaxMem,
                                  100.0,
-                                 kScryptMaxEncryptTime))) {
+                                 scrypt_max_encrypt_time_))) {
     LOG(ERROR) << "Vault Keyset Scrypt encryption returned error code: "
                << scrypt_rc;
     return false;
@@ -720,7 +723,7 @@ bool Crypto::EncryptScrypt(const VaultKeyset& vault_keyset,
                             key.size(),
                             kScryptMaxMem,
                             100.0,
-                            kScryptMaxEncryptTime);
+                            scrypt_max_encrypt_time_);
   if (scrypt_rc) {
     LOG(ERROR) << "Chaps Key Scrypt encryption returned error code: "
                << scrypt_rc;

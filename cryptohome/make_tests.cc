@@ -180,8 +180,9 @@ void TestUser::GenerateCredentials() {
   memcpy(&salt.at(0), system_salt->c_str(), system_salt->size());
   NiceMock<MockTpm> tpm;
   NiceMock<MockPlatform> platform;
-  NiceMock<MockCrypto> crypto;
-  crypto.set_platform(&platform);
+  Crypto crypto(&platform);
+  crypto.set_use_tpm(false);
+  crypto.set_scrypt_max_encrypt_time(0.001);
   UserOldestActivityTimestampCache timestamp_cache;
 
   scoped_refptr<Mount> mount = new Mount();

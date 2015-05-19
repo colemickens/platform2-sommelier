@@ -111,6 +111,7 @@ class CryptohomeEventBase {
 
 class CryptohomeEventSourceSink {
  public:
+  virtual ~CryptohomeEventSourceSink() { }
   virtual void NotifyEvent(CryptohomeEventBase* event) = 0;
 };
 

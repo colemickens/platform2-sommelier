@@ -133,6 +133,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
     chaps_client_ = chaps_client;
   }
 
+  virtual void set_event_source_sink(CryptohomeEventSourceSink* sink) {
+    event_source_sink_ = sink;
+  }
+
   // Checks if the given user is the system owner.
   virtual bool IsOwner(const std::string &userid);
 
@@ -543,8 +547,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                      DBusGMethodInvocation* context);
 
  protected:
-  FRIEND_TEST(Standalone, StoreEnrollmentState);
-  FRIEND_TEST(Standalone, LoadEnrollmentState);
+  FRIEND_TEST(ServiceTestNotInitialized, CheckAsyncTestCredentials);
+  FRIEND_TEST(ServiceTest, StoreEnrollmentState);
+  FRIEND_TEST(ServiceTest, LoadEnrollmentState);
   virtual GMainLoop *main_loop() { return loop_; }
 
   // Called periodically on Mount thread to initiate automatic disk
@@ -607,7 +612,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                     bool return_status);
 
  private:
-  FRIEND_TEST_ALL_PREFIXES(ServiceInterfaceTest, GetPublicMountPassKey);
+  FRIEND_TEST(ServiceTest, GetPublicMountPassKey);
 
   bool CreateSystemSaltIfNeeded();
   bool CreatePublicMountSaltIfNeeded();
@@ -659,6 +664,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   guint async_data_complete_signal_;
   guint tpm_init_signal_;
   CryptohomeEventSource event_source_;
+  CryptohomeEventSourceSink* event_source_sink_;
   int auto_cleanup_period_;
   scoped_ptr<cryptohome::InstallAttributes> default_install_attrs_;
   cryptohome::InstallAttributes* install_attrs_;

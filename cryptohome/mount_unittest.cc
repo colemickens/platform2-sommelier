@@ -63,14 +63,19 @@ using ::testing::SetArgumentPointee;
 using ::testing::StartsWith;
 using ::testing::StrictMock;
 using ::testing::Unused;
+using ::testing::WithArgs;
 using ::testing::_;
 
-namespace cryptohome {
+namespace {
 
 const char kImageDir[] = "test_image_dir";
 const char kImageSaltFile[] = "test_image_dir/salt";
 const char kSkelDir[] = "test_image_dir/skel";
 const gid_t kDaemonGid = 400;  // TODO(wad): expose this in mount.h
+
+}  // namespace
+
+namespace cryptohome {
 
 ACTION_P2(SetOwner, owner_known, owner) {
   if (owner_known)
@@ -104,7 +109,7 @@ Tpm::TpmRetryAction TpmPassthroughDecrypt(uint32_t _key,
 
 class MountTest : public ::testing::Test {
  public:
-  MountTest() { }
+  MountTest() : crypto_(&platform_) { }
   virtual ~MountTest() { }
 
   void SetUp() {
@@ -119,7 +124,6 @@ class MountTest : public ::testing::Test {
     chaps_uid_ = 223;
 
     crypto_.set_tpm(&tpm_);
-    crypto_.set_platform(&platform_);
     crypto_.set_use_tpm(false);
 
     user_timestamp_cache_.reset(new UserOldestActivityTimestampCache());
@@ -203,11 +207,11 @@ class MountTest : public ::testing::Test {
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
   NiceMock<MockTpmInit> tpm_init_;
+  Crypto crypto_;
   NiceMock<MockHomeDirs> homedirs_;
-  NiceMock<MockCrypto> crypto_;
   MockChapsClientFactory chaps_client_factory_;
-  scoped_refptr<Mount> mount_;
   scoped_ptr<UserOldestActivityTimestampCache> user_timestamp_cache_;
+  scoped_refptr<Mount> mount_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MountTest);

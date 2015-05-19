@@ -47,7 +47,7 @@ class Crypto {
   virtual ~Crypto();
 
   // Initializes Crypto
-  bool Init(TpmInit* tpm_init);
+  virtual bool Init(TpmInit* tpm_init);
 
   // Decrypts an encrypted vault keyset.  The vault keyset should be the output
   // of EncryptVaultKeyset().
@@ -58,10 +58,10 @@ class Crypto {
   //   crypt_flags (OUT) - Whether the keyset was wrapped by the TPM or scrypt
   //   error (OUT) - The specific error code on failure
   //   vault_keyset (OUT) - The decrypted vault keyset on success
-  bool DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
-                          const chromeos::SecureBlob& vault_key,
-                          unsigned int* crypt_flags, CryptoError* error,
-                          VaultKeyset* vault_keyset) const;
+  virtual bool DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
+                                  const chromeos::SecureBlob& vault_key,
+                                  unsigned int* crypt_flags, CryptoError* error,
+                                  VaultKeyset* vault_keyset) const;
 
   // Encrypts the vault keyset with the given passkey
   //
@@ -71,10 +71,10 @@ class Crypto {
   //   vault_key_salt - The salt to use for the vault passkey to key conversion
   //                    when encrypting the keyset
   //   encrypted_keyset - On success, the encrypted vault keyset
-  bool EncryptVaultKeyset(const VaultKeyset& vault_keyset,
-                          const chromeos::SecureBlob& vault_key,
-                          const chromeos::SecureBlob& vault_key_salt,
-                          SerializedVaultKeyset* serialized) const;
+  virtual bool EncryptVaultKeyset(const VaultKeyset& vault_keyset,
+                                  const chromeos::SecureBlob& vault_key,
+                                  const chromeos::SecureBlob& vault_key_salt,
+                                  SerializedVaultKeyset* serialized) const;
 
   // Converts the passkey to authorization data for a TPM-backed crypto token.
   //
@@ -82,9 +82,9 @@ class Crypto {
   //   passkey - The passkey from which to derive the authorization data.
   //   salt - The salt file used in deriving the authorization data.
   //   auth_data (OUT) - The token authorization data.
-  bool PasskeyToTokenAuthData(const chromeos::Blob& passkey,
-                              const base::FilePath& salt_file,
-                              chromeos::SecureBlob* auth_data) const;
+  virtual bool PasskeyToTokenAuthData(const chromeos::Blob& passkey,
+                                      const base::FilePath& salt_file,
+                                      chromeos::SecureBlob* auth_data) const;
 
   // Gets an existing salt, or creates one if it doesn't exist
   //
@@ -93,8 +93,10 @@ class Crypto {
   //   length - The length of the new salt if it needs to be created
   //   force - If true, forces creation of a new salt even if the file exists
   //   salt (OUT) - The salt
-  bool GetOrCreateSalt(const base::FilePath& path, unsigned int length,
-                       bool force, chromeos::SecureBlob* salt) const;
+  virtual bool GetOrCreateSalt(const base::FilePath& path,
+                               size_t length,
+                               bool force,
+                               chromeos::SecureBlob* salt) const;
 
   // Adds the specified key to the ecryptfs keyring so that the cryptohome can
   // be mounted.  Clears the user keyring first.
@@ -105,12 +107,12 @@ class Crypto {
   //     used in subsequent calls to mount(2)
   //   filename_key_signature (OUT) - The signature of the cryptohome filename
   //     encryption key that should be used in subsequent calls to mount(2)
-  bool AddKeyset(const VaultKeyset& vault_keyset,
-                 std::string* key_signature,
-                 std::string* filename_key_signature) const;
+  virtual bool AddKeyset(const VaultKeyset& vault_keyset,
+                         std::string* key_signature,
+                         std::string* filename_key_signature) const;
 
   // Clears the user's kernel keyring
-  void ClearKeyset() const;
+  virtual void ClearKeyset() const;
 
   // Converts a null-terminated password to a passkey (ascii-encoded first half
   // of the salted SHA1 hash of the password).
@@ -148,25 +150,25 @@ class Crypto {
   // Otherwise, a user should use Encrypt/DecryptWithTpm.
 
   // Creates a randomly generated aes key and seals it to the TPM's PCR0.
-  bool CreateSealedKey(chromeos::SecureBlob* aes_key,
-                       chromeos::SecureBlob* sealed_key) const;
+  virtual bool CreateSealedKey(chromeos::SecureBlob* aes_key,
+                               chromeos::SecureBlob* sealed_key) const;
 
   // Encrypts the given data using the aes_key. Sealed key is necessary to
   // wrap into the returned data to allow for decryption.
-  bool EncryptData(const chromeos::SecureBlob& data,
-                   const chromeos::SecureBlob& aes_key,
-                   const chromeos::SecureBlob& sealed_key,
-                   std::string* encrypted_data) const;
+  virtual bool EncryptData(const chromeos::SecureBlob& data,
+                           const chromeos::SecureBlob& aes_key,
+                           const chromeos::SecureBlob& sealed_key,
+                           std::string* encrypted_data) const;
 
   // Returns the sealed and unsealed aes_key wrapped in the encrypted_data.
-  bool UnsealKey(const std::string& encrypted_data,
-                 chromeos::SecureBlob* aes_key,
-                 chromeos::SecureBlob* sealed_key) const;
+  virtual bool UnsealKey(const std::string& encrypted_data,
+                         chromeos::SecureBlob* aes_key,
+                         chromeos::SecureBlob* sealed_key) const;
 
   // Decrypts encrypted_data using the aes_key.
-  bool DecryptData(const std::string& encrypted_data,
-                   const chromeos::SecureBlob& aes_key,
-                   chromeos::SecureBlob* data) const;
+  virtual bool DecryptData(const std::string& encrypted_data,
+                           const chromeos::SecureBlob& aes_key,
+                           chromeos::SecureBlob* data) const;
 
   // Sets whether or not to use the TPM (must be called before init, depends
   // on the presence of a functioning, initialized TPM).  The TPM is merely used
@@ -202,6 +204,10 @@ class Crypto {
 
   Platform* platform() {
     return platform_;
+  }
+
+  void set_scrypt_max_encrypt_time(double max_time) {
+    scrypt_max_encrypt_time_ = max_time;
   }
 
   static const int64_t kSaltMax;
@@ -252,6 +258,8 @@ class Crypto {
 
   // The TpmInit object used to reload Cryptohome key
   TpmInit* tpm_init_;
+
+  double scrypt_max_encrypt_time_;
 
   DISALLOW_COPY_AND_ASSIGN(Crypto);
 };

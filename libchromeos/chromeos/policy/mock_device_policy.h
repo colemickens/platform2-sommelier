@@ -46,6 +46,11 @@ namespace policy {
 // See metrics_library_test.cc for example.
 class MockDevicePolicy : public DevicePolicy {
  public:
+  MockDevicePolicy() {
+    ON_CALL(*this, LoadPolicy()).WillByDefault(testing::Return(true));
+  }
+  ~MockDevicePolicy() override = default;
+
   MOCK_METHOD0(LoadPolicy, bool(void));
 
   MOCK_CONST_METHOD1(GetPolicyRefreshRate,

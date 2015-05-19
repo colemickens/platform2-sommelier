@@ -41,8 +41,6 @@
 
 using base::PlatformThread;
 using chromeos::SecureBlob;
-
-namespace cryptohome {
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::EndsWith;
@@ -55,125 +53,142 @@ using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::StrEq;
 using ::testing::SetArgumentPointee;
+using ::testing::WithArgs;
+
+namespace {
 
 const char kImageDir[] = "test_image_dir";
 const char kSaltFile[] = "test_image_dir/salt";
-class ServiceInterfaceTest : public ::testing::Test {
- public:
-  ServiceInterfaceTest() { }
-  virtual ~ServiceInterfaceTest() { }
 
-  void SetUp() {
-    test_helper_.SetUpSystemSalt();
+class FakeEventSourceSink : public cryptohome::CryptohomeEventSourceSink {
+ public:
+  FakeEventSourceSink() = default;
+  ~FakeEventSourceSink() override = default;
+
+  void NotifyEvent(cryptohome::CryptohomeEventBase* result) override {
+    if (strcmp(result->GetEventName(),
+               cryptohome::kMountTaskResultEventType)) {
+      return;
+    }
+    cryptohome::MountTaskResult* r =
+        static_cast<cryptohome::MountTaskResult*>(result);
+    completed_tasks_.push_back(*r);
   }
-  void TearDown() {
+
+  std::vector<cryptohome::MountTaskResult> completed_tasks_;
+};
+
+bool AssignSalt(size_t size, SecureBlob* salt) {
+  SecureBlob fake_salt(size, 'S');
+  salt->swap(fake_salt);
+  return true;
+}
+
+}  // namespace
+
+namespace cryptohome {
+
+// Tests that need to do more setup work before calling Service::Initialize can
+// use this instead of ServiceTest.
+class ServiceTestNotInitialized : public ::testing::Test {
+ public:
+  ServiceTestNotInitialized() = default;
+  ~ServiceTestNotInitialized() override = default;
+
+  void SetUp() override {
+    service_.set_crypto(&crypto_);
+    service_.set_attestation(&attest_);
+    service_.set_homedirs(&homedirs_);
+    service_.set_install_attrs(&attrs_);
+    service_.set_initialize_tpm(false);
+    service_.set_use_tpm(false);
+    service_.set_platform(&platform_);
+    service_.set_chaps_client(&chaps_client_);
+    service_.set_boot_lockbox(&lockbox_);
+    service_.set_boot_attributes(&boot_attributes_);
+    service_.set_reply_factory(&reply_factory_);
+    service_.set_event_source_sink(&event_sink_);
+    test_helper_.SetUpSystemSalt();
+    ON_CALL(homedirs_, FreeDiskSpace()).WillByDefault(Return(true));
+    ON_CALL(homedirs_, Init(_, _, _)).WillByDefault(Return(true));
+    ON_CALL(boot_attributes_, Load()).WillByDefault(Return(true));
+    // Empty token list by default.  The effect is that there are no attempts
+    // to unload tokens unless a test explicitly sets up the token list.
+    ON_CALL(chaps_client_, GetTokenList(_, _)).WillByDefault(Return(true));
+    // Skip CleanUpStaleMounts by default.
+    ON_CALL(platform_, GetMountsBySourcePrefix(_, _))
+        .WillByDefault(Return(false));
+    // Setup fake salt by default.
+    ON_CALL(crypto_, GetOrCreateSalt(_, _, _, _))
+        .WillByDefault(WithArgs<1, 3>(Invoke(AssignSalt)));
+    // Skip StatefulRecovery by default.
+    ON_CALL(platform_, ReadFileToString(EndsWith("decrypt_stateful"), _))
+        .WillByDefault(Return(false));
+  }
+
+  void SetupMount(const std::string& username) {
+    mount_ = new NiceMock<MockMount>();
+    service_.set_mount_for_user(username, mount_.get());
+  }
+
+  void TearDown() override {
     test_helper_.TearDownSystemSalt();
   }
 
  protected:
   MakeTests test_helper_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ServiceInterfaceTest);
-};
-
-class ServiceSubclass : public Service {
- public:
-  ServiceSubclass()
-    : Service(),
-      completed_tasks_() { }
-  virtual ~ServiceSubclass() { }
-
-  virtual void NotifyEvent(CryptohomeEventBase* result) {
-    if (strcmp(result->GetEventName(), kMountTaskResultEventType))
-      return;
-    MountTaskResult* r = static_cast<MountTaskResult*>(result);
-    completed_tasks_.push_back(*r);
-  }
-
-  virtual void Dispatch() {
-    DispatchEvents();
-  }
-
-  std::vector<MountTaskResult> completed_tasks_;
-};
-
-TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
-  MockHomeDirs homedirs;
-  scoped_refptr<MockMount> mount = new MockMount();
-  EXPECT_CALL(homedirs, FreeDiskSpace())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*mount, AreSameUser(_))
-      .WillOnce(Return(false));
-  EXPECT_CALL(homedirs, AreCredentialsValid(_))
-      .WillOnce(Return(true));
-
-  Service service;
-  service.set_homedirs(&homedirs);
-  service.set_mount_for_user("chromeos-user", mount.get());
-  NiceMock<MockInstallAttributes> attrs;
-  service.set_install_attrs(&attrs);
-  NiceMock<MockAttestation> attest;
-  service.set_attestation(&attest);
-  NiceMock<chaps::TokenManagerClientMock> chaps;
-  NiceMock<MockPlatform> platform;
-  service.set_platform(&platform);
-  service.set_chaps_client(&chaps);
-  service.set_initialize_tpm(false);
-  EXPECT_CALL(homedirs, Init(&platform, service.crypto(), _))
-    .WillOnce(Return(true));
-
-  service.Initialize();
-  gboolean out = FALSE;
-  GError *error = NULL;
-
-  char user[] = "chromeos-user";
-  char key[] = "274146c6e8886a843ddfea373e2dc71b";
-  EXPECT_TRUE(service.CheckKey(user, key, &out, &error));
-  EXPECT_TRUE(out);
-}
-
-class CheckKeyExInterfaceTest : public ::testing::Test {
- public:
-  CheckKeyExInterfaceTest() { }
-  virtual ~CheckKeyExInterfaceTest() { }
-
-  void SetUp() {
-    mount_ = new MockMount();
-    EXPECT_CALL(homedirs_, FreeDiskSpace())
-        .WillOnce(Return(true));
-
-    service_.set_reply_factory(&reply_factory_);
-    service_.set_homedirs(&homedirs_);
-    service_.set_mount_for_user("chromeos-user", mount_.get());
-    service_.set_install_attrs(&attrs_);
-    service_.set_attestation(&attest_);
-    service_.set_platform(&platform_);
-    service_.set_chaps_client(&chaps_);
-    service_.set_initialize_tpm(false);
-    EXPECT_CALL(homedirs_, Init(&platform_, service_.crypto(), _))
-        .WillOnce(Return(true));
-    service_.Initialize();
-  }
-  void TearDown() {
-  }
-
- protected:
-  MockHomeDirs homedirs_;
-  MockDBusReplyFactory reply_factory_;
-  NiceMock<MockInstallAttributes> attrs_;
+  NiceMock<MockCrypto> crypto_;
   NiceMock<MockAttestation> attest_;
-  NiceMock<chaps::TokenManagerClientMock> chaps_;
+  NiceMock<MockHomeDirs> homedirs_;
+  NiceMock<MockInstallAttributes> attrs_;
+  NiceMock<MockBootLockbox> lockbox_;
+  NiceMock<MockBootAttributes> boot_attributes_;
   NiceMock<MockPlatform> platform_;
+  NiceMock<MockDBusReplyFactory> reply_factory_;
+  NiceMock<chaps::TokenManagerClientMock> chaps_client_;
+  FakeEventSourceSink event_sink_;
   scoped_refptr<MockMount> mount_;
+  // Declare service_ last so it gets destroyed before all the mocks. This is
+  // important because otherwise the background thread may call into mocks that
+  // have already been destroyed.
   Service service_;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(CheckKeyExInterfaceTest);
+  DISALLOW_COPY_AND_ASSIGN(ServiceTestNotInitialized);
 };
-TEST_F(CheckKeyExInterfaceTest, CheckKeyExMountTest) {
+
+class ServiceTest : public ServiceTestNotInitialized {
+ public:
+  ServiceTest() = default;
+  ~ServiceTest() override = default;
+
+  void SetUp() override {
+    ServiceTestNotInitialized::SetUp();
+    ASSERT_TRUE(service_.Initialize());
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ServiceTest);
+};
+
+TEST_F(ServiceTest, CheckKeySuccessTest) {
+  char user[] = "chromeos-user";
+  char key[] = "274146c6e8886a843ddfea373e2dc71b";
+  SetupMount(user);
+  EXPECT_CALL(*mount_, AreSameUser(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, AreCredentialsValid(_))
+      .WillOnce(Return(true));
+  gboolean out = FALSE;
+  GError *error = NULL;
+  EXPECT_TRUE(service_.CheckKey(user, key, &out, &error));
+  EXPECT_TRUE(out);
+}
+
+TEST_F(ServiceTest, CheckKeyMountTest) {
   static const char kUser[] = "chromeos-user";
   static const char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
+  SetupMount(kUser);
   scoped_ptr<AccountIdentifier> id(new AccountIdentifier);
   scoped_ptr<AuthorizationRequest> auth(new AuthorizationRequest);
   scoped_ptr<CheckKeyRequest> req(new CheckKeyRequest);
@@ -229,9 +244,10 @@ TEST_F(CheckKeyExInterfaceTest, CheckKeyExMountTest) {
   base_reply_ptr = NULL;
 }
 
-TEST_F(CheckKeyExInterfaceTest, CheckKeyExHomedirsTest) {
+TEST_F(ServiceTest, CheckKeyHomedirsTest) {
   static const char kUser[] = "chromeos-user";
   static const char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
+  SetupMount(kUser);
   scoped_ptr<AccountIdentifier> id(new AccountIdentifier);
   scoped_ptr<AuthorizationRequest> auth(new AuthorizationRequest);
   scoped_ptr<CheckKeyRequest> req(new CheckKeyRequest);
@@ -284,44 +300,34 @@ TEST_F(CheckKeyExInterfaceTest, CheckKeyExHomedirsTest) {
   base_reply_ptr = NULL;
 }
 
-TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
-  NiceMock<MockTpm> tpm;
-  NiceMock<MockPlatform> platform;
-
-  test_helper_.InjectSystemSalt(&platform, kSaltFile);
-  test_helper_.InitTestData(kImageDir, kDefaultUsers, kDefaultUserCount);
-  TestUser* user = &test_helper_.users[7];
-  user->InjectKeyset(&platform);
-
-  HomeDirs homedirs;
-  homedirs.set_shadow_root(kImageDir);
-  homedirs.set_platform(&platform);
-  scoped_ptr<policy::PolicyProvider> policy_provider(
-      new policy::PolicyProvider(new NiceMock<policy::MockDevicePolicy>));
-  homedirs.set_policy_provider(policy_provider.get());
-
-  ServiceSubclass service;
-  service.set_platform(&platform);
-  service.set_homedirs(&homedirs);
-  service.crypto()->set_platform(&platform);
-  NiceMock<MockInstallAttributes> attrs;
-  service.set_install_attrs(&attrs);
-  service.set_initialize_tpm(false);
-  NiceMock<MockAttestation> attest;
-  service.set_attestation(&attest);
-  NiceMock<chaps::TokenManagerClientMock> chaps;
-  service.set_chaps_client(&chaps);
-  service.Initialize();
-
+TEST_F(ServiceTestNotInitialized, CheckAsyncTestCredentials) {
+  // Setup a real homedirs instance (making this a pseudo-integration test).
+  test_helper_.InjectSystemSalt(&platform_, kSaltFile);
+  test_helper_.InitTestData(kImageDir, kDefaultUsers, 1);
+  TestUser* user = &test_helper_.users[0];
+  user->InjectKeyset(&platform_);
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(user->password,
                                         test_helper_.system_salt, &passkey);
   std::string passkey_string = passkey.to_string();
+  Crypto real_crypto(&platform_);
+  real_crypto.set_use_tpm(false);
+  real_crypto.Init(nullptr);
+  HomeDirs real_homedirs;
+  real_homedirs.set_crypto(&real_crypto);
+  real_homedirs.set_shadow_root(kImageDir);
+  real_homedirs.set_platform(&platform_);
+  policy::PolicyProvider policy_provider(
+      new NiceMock<policy::MockDevicePolicy>);
+  real_homedirs.set_policy_provider(&policy_provider);
+  service_.set_homedirs(&real_homedirs);
+  service_.set_crypto(&real_crypto);
+  service_.Initialize();
 
   gboolean out = FALSE;
   GError *error = NULL;
   gint async_id = -1;
-  EXPECT_TRUE(service.AsyncCheckKey(
+  EXPECT_TRUE(service_.AsyncCheckKey(
       const_cast<gchar*>(static_cast<const gchar*>(user->username)),
       const_cast<gchar*>(static_cast<const gchar*>(passkey_string.c_str())),
       &async_id,
@@ -329,10 +335,10 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   EXPECT_NE(-1, async_id);
   for (unsigned int i = 0; i < 64; i++) {
     bool found = false;
-    service.Dispatch();
-    for (unsigned int j = 0; j < service.completed_tasks_.size(); j++) {
-      if (service.completed_tasks_[j].sequence_id() == async_id) {
-        out = service.completed_tasks_[j].return_status();
+    service_.DispatchEvents();
+    for (unsigned int j = 0; j < event_sink_.completed_tasks_.size(); j++) {
+      if (event_sink_.completed_tasks_[j].sequence_id() == async_id) {
+        out = event_sink_.completed_tasks_[j].return_status();
         found = true;
       }
     }
@@ -344,57 +350,26 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   EXPECT_TRUE(out);
 }
 
-TEST_F(ServiceInterfaceTest, GetPublicMountPassKey) {
-  NiceMock<MockPlatform> platform;
-
-  const char kPublicMountSaltPath[] = "/var/lib/public_mount_salt";
-  chromeos::Blob public_mount_salt(CRYPTOHOME_DEFAULT_SALT_LENGTH, 'P');
-  EXPECT_CALL(platform, FileExists(kPublicMountSaltPath))
-    .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, GetFileSize(kPublicMountSaltPath, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(public_mount_salt.size()),
-                          Return(true)));
-  EXPECT_CALL(platform, ReadFile(kPublicMountSaltPath, _))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(public_mount_salt),
-                          Return(true)));
-
-  MockHomeDirs homedirs;
-  ServiceSubclass service;
-  service.set_platform(&platform);
-  service.set_homedirs(&homedirs);
-  service.crypto()->set_platform(&platform);
-  NiceMock<MockInstallAttributes> attrs;
-  service.set_install_attrs(&attrs);
-  service.set_initialize_tpm(false);
-  NiceMock<MockAttestation> attest;
-  service.set_attestation(&attest);
-  NiceMock<chaps::TokenManagerClientMock> chaps;
-  service.set_chaps_client(&chaps);
-  service.Initialize();
-
+TEST_F(ServiceTest, GetPublicMountPassKey) {
   const char kPublicUser1[] = "public_user_1";
   const char kPublicUser2[] = "public_user_2";
-
   std::string public_user1_passkey;
-  service.GetPublicMountPassKey(kPublicUser1, &public_user1_passkey);
-
+  service_.GetPublicMountPassKey(kPublicUser1, &public_user1_passkey);
   std::string public_user2_passkey;
-  service.GetPublicMountPassKey(kPublicUser2, &public_user2_passkey);
+  service_.GetPublicMountPassKey(kPublicUser2, &public_user2_passkey);
   // The passkey should be different for different user.
   EXPECT_NE(public_user1_passkey, public_user2_passkey);
-
   std::string public_user1_passkey2;
-  service.GetPublicMountPassKey(kPublicUser1, &public_user1_passkey2);
+  service_.GetPublicMountPassKey(kPublicUser1, &public_user1_passkey2);
   // The passkey should be the same for the same user.
   EXPECT_EQ(public_user1_passkey, public_user1_passkey2);
 }
 
-TEST_F(ServiceInterfaceTest, GetSanitizedUsername) {
-  Service service;
+TEST_F(ServiceTest, GetSanitizedUsername) {
   char username[] = "chromeos-user";
   gchar *sanitized = NULL;
   GError *error = NULL;
-  EXPECT_TRUE(service.GetSanitizedUsername(username, &sanitized, &error));
+  EXPECT_TRUE(service_.GetSanitizedUsername(username, &sanitized, &error));
   EXPECT_TRUE(error == NULL);
   ASSERT_TRUE(sanitized);
 
@@ -406,71 +381,29 @@ TEST_F(ServiceInterfaceTest, GetSanitizedUsername) {
   g_free(sanitized);
 }
 
-TEST(Standalone, CheckAutoCleanupCallback) {
+TEST_F(ServiceTestNotInitialized, CheckAutoCleanupCallback) {
   // Checks that AutoCleanupCallback() is called periodically.
-  MockHomeDirs homedirs;
-  NiceMock<MockPlatform> platform;
-  NiceMock<MockInstallAttributes> attrs;
-  NiceMock<MockTpm> tpm;
-  NiceMock<MockAttestation> attest;
-  NiceMock<chaps::TokenManagerClientMock> chaps;
-  NiceMock<MockBootAttributes> boot_attributes;
-  Service service;
-  service.set_homedirs(&homedirs);
-  service.set_platform(&platform);
-  service.set_install_attrs(&attrs);
-  service.set_initialize_tpm(false);
-  service.set_use_tpm(false);
-  service.set_tpm(&tpm);
-  service.set_boot_attributes(&boot_attributes);
-  service.set_attestation(&attest);
-  service.set_chaps_client(&chaps);
-
   // Service will schedule periodic clean-ups. Wait a bit and make
   // sure that we had at least 3 executed.
-  EXPECT_CALL(homedirs, Init(&platform, service.crypto(), _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(homedirs, FreeDiskSpace())
+  EXPECT_CALL(homedirs_, FreeDiskSpace())
+      .Times(::testing::AtLeast(3));
+  SetupMount("some-user-to-clean-up");
+  EXPECT_CALL(*mount_, UpdateCurrentUserActivityTimestamp(0))
       .Times(::testing::AtLeast(3));
 
-  scoped_refptr<MockMount> mount = new MockMount();
-  EXPECT_CALL(*mount, UpdateCurrentUserActivityTimestamp(0))
-      .Times(::testing::AtLeast(3));
-  service.set_mount_for_user("some-user-to-clean-up", mount.get());
-
-  service.set_auto_cleanup_period(2);  // 2ms = 500HZ
-  service.set_update_user_activity_period(2);  // 2 x 5ms = 25HZ
-  service.Initialize();
+  service_.set_auto_cleanup_period(2);  // 2ms = 500HZ
+  service_.set_update_user_activity_period(2);  // 2 x 5ms = 25HZ
+  service_.Initialize();
   PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
 }
 
-TEST(Standalone, CheckAutoCleanupCallbackFirst) {
+TEST_F(ServiceTestNotInitialized, CheckAutoCleanupCallbackFirst) {
   // Checks that AutoCleanupCallback() is called first right after init.
-  MockHomeDirs homedirs;
-  NiceMock<MockInstallAttributes> attrs;
-  NiceMock<MockTpm> tpm;
-  NiceMock<MockAttestation> attest;
-  NiceMock<MockPlatform> platform;
-  NiceMock<MockBootAttributes> boot_attributes;
-  NiceMock<chaps::TokenManagerClientMock> chaps;
-  Service service;
-  service.set_homedirs(&homedirs);
-  service.set_install_attrs(&attrs);
-  service.set_initialize_tpm(false);
-  service.set_use_tpm(false);
-  service.set_tpm(&tpm);
-  service.set_attestation(&attest);
-  service.set_platform(&platform);
-  service.set_boot_attributes(&boot_attributes);
-  service.set_chaps_client(&chaps);
-
   // Service will schedule first cleanup right after its init.
-  EXPECT_CALL(homedirs, Init(&platform, service.crypto(), _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(homedirs, FreeDiskSpace())
+  EXPECT_CALL(homedirs_, FreeDiskSpace())
       .Times(1);
-  service.set_auto_cleanup_period(1000);  // 1s - long enough
-  service.Initialize();
+  service_.set_auto_cleanup_period(1000);  // 1s - long enough
+  service_.Initialize();
   // short delay to see the first invocation
   PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
 }
@@ -489,8 +422,9 @@ const struct Mounts kShadowMounts[] = {
 };
 const int kShadowMountsCount = 5;
 
-bool StaleShadowMounts(const std::string& from_prefix,
-                 std::multimap<const std::string, const std::string>* mounts) {
+bool StaleShadowMounts(
+    const std::string& from_prefix,
+    std::multimap<const std::string, const std::string>* mounts) {
   LOG(INFO) << "StaleShadowMounts(" << from_prefix << "): called";
   if (from_prefix == "/home/.shadow/") {
     if (!mounts)
@@ -506,37 +440,7 @@ bool StaleShadowMounts(const std::string& from_prefix,
   return false;
 }
 
-class CleanUpStaleTest : public ::testing::Test {
- public:
-  CleanUpStaleTest() { }
-  virtual ~CleanUpStaleTest() { }
-
-  void SetUp() {
-    service_.set_homedirs(&homedirs_);
-    service_.set_install_attrs(&attrs_);
-    service_.set_initialize_tpm(false);
-    service_.set_platform(&platform_);
-    service_.set_chaps_client(&chaps_client_);
-    // Empty token list by default.  The effect is that there are no attempts
-    // to unload tokens unless a test explicitly sets up the token list.
-    EXPECT_CALL(chaps_client_, GetTokenList(_, _))
-        .WillRepeatedly(Return(true));
-  }
-
-  void TearDown() { }
-
- protected:
-  NiceMock<MockHomeDirs> homedirs_;
-  NiceMock<MockInstallAttributes> attrs_;
-  MockPlatform platform_;
-  chaps::TokenManagerClientMock chaps_client_;
-  Service service_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(CleanUpStaleTest);
-};
-
-TEST_F(CleanUpStaleTest, EmptyMap_NoOpenFiles_ShadowOnly) {
+TEST_F(ServiceTest, CleanUpStale_EmptyMap_NoOpenFiles_ShadowOnly) {
   // Check that when we have a bunch of stale shadow mounts, no active mounts,
   // and no open filehandles, all stale mounts are unmounted.
 
@@ -551,7 +455,7 @@ TEST_F(CleanUpStaleTest, EmptyMap_NoOpenFiles_ShadowOnly) {
   EXPECT_FALSE(service_.CleanUpStaleMounts(false));
 }
 
-TEST_F(CleanUpStaleTest, EmptyMap_OpenLegacy_ShadowOnly) {
+TEST_F(ServiceTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
   // Check that when we have a bunch of stale shadow mounts, no active mounts,
   // and some open filehandles to the legacy homedir, all mounts without
   // filehandles are unmounted.
@@ -572,35 +476,28 @@ TEST_F(CleanUpStaleTest, EmptyMap_OpenLegacy_ShadowOnly) {
   EXPECT_TRUE(service_.CleanUpStaleMounts(false));
 }
 
-TEST_F(CleanUpStaleTest, FilledMap_NoOpenFiles_ShadowOnly) {
+TEST_F(ServiceTestNotInitialized,
+       CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   // Checks that when we have a bunch of stale shadow mounts, some active
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
   // ownership handed off to the Service MountMap
-  MockMountFactory f;
-  MockMount *m = new MockMount();
-
-  EXPECT_CALL(f, New())
-    .WillOnce(Return(m));
-
-  service_.set_mount_factory(&f);
-
-  EXPECT_CALL(homedirs_, Init(&platform_, service_.crypto(), _))
-    .WillOnce(Return(true));
-
+  MockMountFactory mount_factory;
+  MockMount* mount = new MockMount();
+  EXPECT_CALL(mount_factory, New())
+    .WillOnce(Return(mount));
+  service_.set_mount_factory(&mount_factory);
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
     .Times(3)
     .WillRepeatedly(Return(false));
-
   ASSERT_TRUE(service_.Initialize());
 
-  EXPECT_CALL(*m, Init(&platform_, service_.crypto(), _))
+  EXPECT_CALL(*mount, Init(&platform_, service_.crypto(), _))
     .WillOnce(Return(true));
-  EXPECT_CALL(*m, MountCryptohome(_, _, _))
+  EXPECT_CALL(*mount, MountCryptohome(_, _, _))
     .WillOnce(Return(true));
-  EXPECT_CALL(*m, UpdateCurrentUserActivityTimestamp(_))
+  EXPECT_CALL(*mount, UpdateCurrentUserActivityTimestamp(_))
     .WillOnce(Return(true));
-
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
     .Times(3)
     .WillRepeatedly(Return(false));
@@ -616,11 +513,11 @@ TEST_F(CleanUpStaleTest, FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
     .Times(kShadowMountsCount);
 
-  EXPECT_CALL(*m, OwnsMountPoint(_))
+  EXPECT_CALL(*mount, OwnsMountPoint(_))
     .WillRepeatedly(Return(false));
-  EXPECT_CALL(*m, OwnsMountPoint("/home/user/1"))
+  EXPECT_CALL(*mount, OwnsMountPoint("/home/user/1"))
     .WillOnce(Return(true));
-  EXPECT_CALL(*m, OwnsMountPoint("/home/root/1"))
+  EXPECT_CALL(*mount, OwnsMountPoint("/home/root/1"))
     .WillOnce(Return(true));
 
   EXPECT_CALL(platform_, Unmount(EndsWith("/0"), true, _))
@@ -645,15 +542,7 @@ TEST_F(CleanUpStaleTest, FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_FALSE(service_.CleanUpStaleMounts(false));
 }
 
-TEST(Standalone, StoreEnrollmentState) {
-  NiceMock<MockInstallAttributes> attrs;
-  MockPlatform platform;
-  MockCrypto crypto;
-  Service service;
-  service.set_crypto(&crypto);
-  service.set_install_attrs(&attrs);
-  service.set_platform(&platform);
-
+TEST_F(ServiceTest, StoreEnrollmentState) {
   chromeos::glib::ScopedArray test_array(g_array_new(FALSE, FALSE, 1));
   std::string data = "123456";
   g_array_append_vals(test_array.get(), data.data(), data.length());
@@ -669,42 +558,38 @@ TEST(Standalone, StoreEnrollmentState) {
   GError* error = NULL;
 
   // Set us as non-enterprise enrolled.
-  EXPECT_CALL(attrs, Get("enterprise.owned", _)).WillOnce(
+  EXPECT_CALL(attrs_, Get("enterprise.owned", _)).WillOnce(
       DoAll(SetArgumentPointee<1>(false_value), Return(true)));
-  service.DetectEnterpriseOwnership();
+  service_.DetectEnterpriseOwnership();
 
   // Should not enterprise-enroll this device.
-  EXPECT_TRUE(service.StoreEnrollmentState(test_array.get(), &success, &error));
+  EXPECT_TRUE(service_.StoreEnrollmentState(test_array.get(), &success,
+                                            &error));
   EXPECT_FALSE(success);
 
   // Set us as enterprise enrolled.
-  EXPECT_CALL(attrs, Get("enterprise.owned", _)).WillOnce(
+  EXPECT_CALL(attrs_, Get("enterprise.owned", _)).WillOnce(
       DoAll(SetArgumentPointee<1>(true_value), Return(true)));
-  service.DetectEnterpriseOwnership();
+  service_.DetectEnterpriseOwnership();
 
   std::string encrypted_data = "so_encrypted";
 
   // Test successful encryption.
-  EXPECT_CALL(crypto, EncryptWithTpm(_, _)).WillOnce(DoAll(
+  EXPECT_CALL(crypto_, EncryptWithTpm(_, _)).WillOnce(DoAll(
       SetArgumentPointee<1>(encrypted_data), Return(true)));
 
   // Should write file as this device is enterprise enrolled.
-  EXPECT_CALL(platform, WriteStringToFileAtomicDurable(
+  EXPECT_CALL(platform_, WriteStringToFileAtomicDurable(
       "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb",
       encrypted_data, _)).WillOnce(Return(true));
-  EXPECT_TRUE(service.StoreEnrollmentState(test_array.get(), &success, &error));
+  EXPECT_TRUE(service_.StoreEnrollmentState(test_array.get(), &success,
+                                            &error));
   EXPECT_TRUE(success);
 
-  EXPECT_TRUE(service.homedirs()->enterprise_owned());
+  EXPECT_TRUE(service_.homedirs()->enterprise_owned());
 }
 
-TEST(Standalone, LoadEnrollmentState) {
-  MockPlatform platform;
-  MockCrypto crypto;
-  Service service;
-  service.set_crypto(&crypto);
-  service.set_platform(&platform);
-
+TEST_F(ServiceTest, LoadEnrollmentState) {
   gboolean success;
   GError* error = NULL;
   chromeos::glib::ScopedArray output;
@@ -716,14 +601,14 @@ TEST(Standalone, LoadEnrollmentState) {
   SecureBlob decrypted_blob("decrypted");
 
   // Assume the data is there, we should return the value and success.
-  EXPECT_CALL(platform, ReadFile(
+  EXPECT_CALL(platform_, ReadFile(
       "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb",
       _)).WillOnce(DoAll(SetArgumentPointee<1>(data_blob), Return(true)));
 
-  EXPECT_CALL(crypto, DecryptWithTpm(_, _)).WillOnce(DoAll(
+  EXPECT_CALL(crypto_, DecryptWithTpm(_, _)).WillOnce(DoAll(
       SetArgumentPointee<1>(decrypted_blob), Return(TRUE)));
 
-  EXPECT_TRUE(service.LoadEnrollmentState(
+  EXPECT_TRUE(service_.LoadEnrollmentState(
       &(chromeos::Resetter(&output).lvalue()), &success, &error));
   EXPECT_TRUE(success);
 
@@ -732,55 +617,26 @@ TEST(Standalone, LoadEnrollmentState) {
   EXPECT_EQ(decrypted_blob, output_blob);
 
   // Assume we fail to read the data, we should not return success.
-  EXPECT_CALL(platform, ReadFile(
+  EXPECT_CALL(platform_, ReadFile(
       "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb",
       _)).WillOnce(Return(false));
 
-  EXPECT_TRUE(service.LoadEnrollmentState(
+  EXPECT_TRUE(service_.LoadEnrollmentState(
       &(chromeos::Resetter(&output).lvalue()), &success, &error));
   EXPECT_FALSE(success);
 }
 
-class ExTest : public ::testing::Test {
+class ServiceExTest : public ServiceTest {
  public:
-  ExTest() { }
-  virtual ~ExTest() { }
+  ServiceExTest() = default;
+  ~ServiceExTest() override = default;
 
-  void SetUp() {
-    service_.set_attestation(&attest_);
-    service_.set_homedirs(&homedirs_);
-    service_.set_install_attrs(&attrs_);
-    service_.set_initialize_tpm(false);
-    service_.set_use_tpm(false);
-    service_.set_platform(&platform_);
-    service_.set_chaps_client(&chaps_client_);
-    service_.set_boot_lockbox(&lockbox_);
-    service_.set_boot_attributes(&boot_attributes_);
-    service_.set_reply_factory(&reply_factory_);
-    // Empty token list by default.  The effect is that there are no attempts
-    // to unload tokens unless a test explicitly sets up the token list.
-    EXPECT_CALL(chaps_client_, GetTokenList(_, _))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(platform_, ReadFileToString(EndsWith("decrypt_stateful"), _))
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(boot_attributes_, Load())
-        .WillRepeatedly(Return(true));
-
-    g_error_ = NULL;
-    // Fast path through Initialize()
-    EXPECT_CALL(homedirs_, Init(&platform_, service_.crypto(), _))
-        .WillOnce(Return(true));
-    // Skip the CleanUpStaleMounts bit.
-    EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
-        .WillRepeatedly(Return(false));
-    ASSERT_TRUE(service_.Initialize());
-  }
-
-  void TearDown() {
+  void TearDown() override {
     if (g_error_) {
       g_error_free(g_error_);
       g_error_ = NULL;
     }
+    ServiceTest::TearDown();
   }
 
   void SetupErrorReply() {
@@ -841,13 +697,6 @@ class ExTest : public ::testing::Test {
   }
 
  protected:
-  NiceMock<MockAttestation> attest_;
-  NiceMock<MockHomeDirs> homedirs_;
-  NiceMock<MockInstallAttributes> attrs_;
-  NiceMock<MockBootLockbox> lockbox_;
-  NiceMock<MockBootAttributes> boot_attributes_;
-  MockDBusReplyFactory reply_factory_;
-
   scoped_ptr<AccountIdentifier> id_;
   scoped_ptr<AuthorizationRequest> auth_;
   scoped_ptr<AddKeyRequest> add_req_;
@@ -856,28 +705,24 @@ class ExTest : public ::testing::Test {
   scoped_ptr<RemoveKeyRequest> remove_req_;
   scoped_ptr<ListKeysRequest> list_keys_req_;
 
-  GError* g_error_;
-  std::string* reply_;
-  MockPlatform platform_;
-  chaps::TokenManagerClientMock chaps_client_;
-  Service service_;
+  GError* g_error_{nullptr};
+  std::string* reply_{nullptr};
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(ExTest);
+  DISALLOW_COPY_AND_ASSIGN(ServiceExTest);
 };
 
-TEST_F(ExTest, MountInvalidArgsNoEmail) {
+TEST_F(ServiceExTest, MountInvalidArgsNoEmail) {
   SetupErrorReply();
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.
   // For the same reason, DoMountEx is called directly.
-  // TODO(wad) Look at using the ServiceSubclass.
   service_.DoMountEx(id_.get(), auth_.get(), mount_req_.get(), NULL);
   ASSERT_NE(g_error_, reinterpret_cast<void *>(0));
   EXPECT_STREQ("No email supplied", g_error_->message);
 }
 
-TEST_F(ExTest, MountInvalidArgsNoSecret) {
+TEST_F(ServiceExTest, MountInvalidArgsNoSecret) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
@@ -886,7 +731,7 @@ TEST_F(ExTest, MountInvalidArgsNoSecret) {
   EXPECT_STREQ("No key secret supplied", g_error_->message);
 }
 
-TEST_F(ExTest, MountInvalidArgsEmptySecret) {
+TEST_F(ServiceExTest, MountInvalidArgsEmptySecret) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
@@ -896,7 +741,7 @@ TEST_F(ExTest, MountInvalidArgsEmptySecret) {
   EXPECT_STREQ("No key secret supplied", g_error_->message);
 }
 
-TEST_F(ExTest, MountInvalidArgsCreateWithNoKey) {
+TEST_F(ServiceExTest, MountInvalidArgsCreateWithNoKey) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
@@ -907,7 +752,7 @@ TEST_F(ExTest, MountInvalidArgsCreateWithNoKey) {
   EXPECT_STREQ("CreateRequest supplied with no keys", g_error_->message);
 }
 
-TEST_F(ExTest, MountInvalidArgsCreateWithEmptyKey) {
+TEST_F(ServiceExTest, MountInvalidArgsCreateWithEmptyKey) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
@@ -920,7 +765,7 @@ TEST_F(ExTest, MountInvalidArgsCreateWithEmptyKey) {
                g_error_->message);
 }
 
-TEST_F(ExTest, AddKeyInvalidArgsNoEmail) {
+TEST_F(ServiceExTest, AddKeyInvalidArgsNoEmail) {
   SetupErrorReply();
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.
@@ -930,7 +775,7 @@ TEST_F(ExTest, AddKeyInvalidArgsNoEmail) {
   EXPECT_STREQ("No email supplied", g_error_->message);
 }
 
-TEST_F(ExTest, AddKeyInvalidArgsNoSecret) {
+TEST_F(ServiceExTest, AddKeyInvalidArgsNoSecret) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
@@ -939,7 +784,7 @@ TEST_F(ExTest, AddKeyInvalidArgsNoSecret) {
   EXPECT_STREQ("No key secret supplied", g_error_->message);
 }
 
-TEST_F(ExTest, AddKeyInvalidArgsNoNewKeySet) {
+TEST_F(ServiceExTest, AddKeyInvalidArgsNoNewKeySet) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
@@ -950,7 +795,7 @@ TEST_F(ExTest, AddKeyInvalidArgsNoNewKeySet) {
   EXPECT_STREQ("No new key supplied", g_error_->message);
 }
 
-TEST_F(ExTest, AddKeyInvalidArgsNoKeyFilled) {
+TEST_F(ServiceExTest, AddKeyInvalidArgsNoKeyFilled) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
@@ -961,7 +806,7 @@ TEST_F(ExTest, AddKeyInvalidArgsNoKeyFilled) {
   EXPECT_STREQ("No new key supplied", g_error_->message);
 }
 
-TEST_F(ExTest, AddKeyInvalidArgsNoNewKeyLabel) {
+TEST_F(ServiceExTest, AddKeyInvalidArgsNoNewKeyLabel) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
@@ -974,7 +819,7 @@ TEST_F(ExTest, AddKeyInvalidArgsNoNewKeyLabel) {
   EXPECT_STREQ("No new key label supplied", g_error_->message);
 }
 
-TEST_F(ExTest, CheckKeyInvalidArgsNoEmail) {
+TEST_F(ServiceExTest, CheckKeyInvalidArgsNoEmail) {
   SetupErrorReply();
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.
@@ -984,7 +829,7 @@ TEST_F(ExTest, CheckKeyInvalidArgsNoEmail) {
   EXPECT_STREQ("No email supplied", g_error_->message);
 }
 
-TEST_F(ExTest, CheckKeyInvalidArgsNoSecret) {
+TEST_F(ServiceExTest, CheckKeyInvalidArgsNoSecret) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
@@ -993,7 +838,7 @@ TEST_F(ExTest, CheckKeyInvalidArgsNoSecret) {
   EXPECT_STREQ("No key secret supplied", g_error_->message);
 }
 
-TEST_F(ExTest, CheckKeyInvalidArgsEmptySecret) {
+TEST_F(ServiceExTest, CheckKeyInvalidArgsEmptySecret) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
@@ -1003,7 +848,7 @@ TEST_F(ExTest, CheckKeyInvalidArgsEmptySecret) {
   EXPECT_STREQ("No key secret supplied", g_error_->message);
 }
 
-TEST_F(ExTest, RemoveKeyInvalidArgsNoEmail) {
+TEST_F(ServiceExTest, RemoveKeyInvalidArgsNoEmail) {
   SetupErrorReply();
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.
@@ -1013,7 +858,7 @@ TEST_F(ExTest, RemoveKeyInvalidArgsNoEmail) {
   EXPECT_STREQ("No email supplied", g_error_->message);
 }
 
-TEST_F(ExTest, RemoveKeyInvalidArgsNoSecret) {
+TEST_F(ServiceExTest, RemoveKeyInvalidArgsNoSecret) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
@@ -1022,7 +867,7 @@ TEST_F(ExTest, RemoveKeyInvalidArgsNoSecret) {
   EXPECT_STREQ("No key secret supplied", g_error_->message);
 }
 
-TEST_F(ExTest, RemoveKeyInvalidArgsEmptySecret) {
+TEST_F(ServiceExTest, RemoveKeyInvalidArgsEmptySecret) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
@@ -1032,7 +877,7 @@ TEST_F(ExTest, RemoveKeyInvalidArgsEmptySecret) {
   EXPECT_STREQ("No key secret supplied", g_error_->message);
 }
 
-TEST_F(ExTest, RemoveKeyInvalidArgsEmptyRemoveLabel) {
+TEST_F(ServiceExTest, RemoveKeyInvalidArgsEmptyRemoveLabel) {
   SetupErrorReply();
   PrepareArguments();
   id_->set_email("foo@gmail.com");
@@ -1043,7 +888,7 @@ TEST_F(ExTest, RemoveKeyInvalidArgsEmptyRemoveLabel) {
   EXPECT_STREQ("No label provided for target key", g_error_->message);
 }
 
-TEST_F(ExTest, BootLockboxSignSuccess) {
+TEST_F(ServiceExTest, BootLockboxSignSuccess) {
   SetupReply();
   SecureBlob test_signature("test");
   EXPECT_CALL(lockbox_, Sign(_, _))
@@ -1060,7 +905,7 @@ TEST_F(ExTest, BootLockboxSignSuccess) {
             reply.GetExtension(SignBootLockboxReply::reply).signature());
 }
 
-TEST_F(ExTest, BootLockboxSignBadArgs) {
+TEST_F(ServiceExTest, BootLockboxSignBadArgs) {
   // Try with bad proto data.
   SetupErrorReply();
   service_.DoSignBootLockbox(SecureBlob("not_a_protobuf"), NULL);
@@ -1074,7 +919,7 @@ TEST_F(ExTest, BootLockboxSignBadArgs) {
   EXPECT_STRNE("", g_error_->message);
 }
 
-TEST_F(ExTest, BootLockboxSignError) {
+TEST_F(ServiceExTest, BootLockboxSignError) {
   SetupReply();
   EXPECT_CALL(lockbox_, Sign(_, _))
       .WillRepeatedly(Return(false));
@@ -1088,7 +933,7 @@ TEST_F(ExTest, BootLockboxSignError) {
   EXPECT_FALSE(reply.HasExtension(SignBootLockboxReply::reply));
 }
 
-TEST_F(ExTest, BootLockboxVerifySuccess) {
+TEST_F(ServiceExTest, BootLockboxVerifySuccess) {
   SetupReply();
   EXPECT_CALL(lockbox_, Verify(_, _))
       .WillRepeatedly(Return(true));
@@ -1102,7 +947,7 @@ TEST_F(ExTest, BootLockboxVerifySuccess) {
   EXPECT_FALSE(reply.HasExtension(SignBootLockboxReply::reply));
 }
 
-TEST_F(ExTest, BootLockboxVerifyBadArgs) {
+TEST_F(ServiceExTest, BootLockboxVerifyBadArgs) {
   // Try with bad proto data.
   SetupErrorReply();
   service_.DoVerifyBootLockbox(SecureBlob("not_a_protobuf"), NULL);
@@ -1124,7 +969,7 @@ TEST_F(ExTest, BootLockboxVerifyBadArgs) {
   EXPECT_STRNE("", g_error_->message);
 }
 
-TEST_F(ExTest, BootLockboxVerifyError) {
+TEST_F(ServiceExTest, BootLockboxVerifyError) {
   SetupReply();
   EXPECT_CALL(lockbox_, Verify(_, _))
       .WillRepeatedly(Return(false));
@@ -1138,7 +983,7 @@ TEST_F(ExTest, BootLockboxVerifyError) {
   EXPECT_EQ(CRYPTOHOME_ERROR_LOCKBOX_SIGNATURE_INVALID, reply.error());
 }
 
-TEST_F(ExTest, BootLockboxFinalizeSuccess) {
+TEST_F(ServiceExTest, BootLockboxFinalizeSuccess) {
   SetupReply();
   EXPECT_CALL(lockbox_, FinalizeBoot())
       .WillRepeatedly(Return(true));
@@ -1150,7 +995,7 @@ TEST_F(ExTest, BootLockboxFinalizeSuccess) {
   EXPECT_FALSE(reply.HasExtension(SignBootLockboxReply::reply));
 }
 
-TEST_F(ExTest, BootLockboxFinalizeBadArgs) {
+TEST_F(ServiceExTest, BootLockboxFinalizeBadArgs) {
   // Try with bad proto data.
   SetupErrorReply();
   service_.DoFinalizeBootLockbox(SecureBlob("not_a_protobuf"), NULL);
@@ -1158,7 +1003,7 @@ TEST_F(ExTest, BootLockboxFinalizeBadArgs) {
   EXPECT_STRNE("", g_error_->message);
 }
 
-TEST_F(ExTest, BootLockboxFinalizeError) {
+TEST_F(ServiceExTest, BootLockboxFinalizeError) {
   SetupReply();
   EXPECT_CALL(lockbox_, FinalizeBoot())
       .WillRepeatedly(Return(false));
@@ -1170,7 +1015,7 @@ TEST_F(ExTest, BootLockboxFinalizeError) {
   EXPECT_EQ(CRYPTOHOME_ERROR_TPM_COMM_ERROR, reply.error());
 }
 
-TEST_F(ExTest, GetBootAttributeSuccess) {
+TEST_F(ServiceExTest, GetBootAttributeSuccess) {
   SetupReply();
   EXPECT_CALL(boot_attributes_, Get(_, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>("1234"), Return(true)));
@@ -1185,7 +1030,7 @@ TEST_F(ExTest, GetBootAttributeSuccess) {
             reply.GetExtension(GetBootAttributeReply::reply).value());
 }
 
-TEST_F(ExTest, GetBootAttributeBadArgs) {
+TEST_F(ServiceExTest, GetBootAttributeBadArgs) {
   // Try with bad proto data.
   SetupErrorReply();
   service_.DoGetBootAttribute(SecureBlob("not_a_protobuf"), NULL);
@@ -1193,7 +1038,7 @@ TEST_F(ExTest, GetBootAttributeBadArgs) {
   EXPECT_STRNE("", g_error_->message);
 }
 
-TEST_F(ExTest, GetBootAttributeError) {
+TEST_F(ServiceExTest, GetBootAttributeError) {
   SetupReply();
   EXPECT_CALL(boot_attributes_, Get(_, _))
       .WillRepeatedly(Return(false));
@@ -1206,7 +1051,7 @@ TEST_F(ExTest, GetBootAttributeError) {
   EXPECT_EQ(CRYPTOHOME_ERROR_BOOT_ATTRIBUTE_NOT_FOUND, reply.error());
 }
 
-TEST_F(ExTest, SetBootAttributeSuccess) {
+TEST_F(ServiceExTest, SetBootAttributeSuccess) {
   SetupReply();
   SetBootAttributeRequest request;
   request.set_name("test");
@@ -1216,7 +1061,7 @@ TEST_F(ExTest, SetBootAttributeSuccess) {
   EXPECT_FALSE(reply.has_error());
 }
 
-TEST_F(ExTest, SetBootAttributeBadArgs) {
+TEST_F(ServiceExTest, SetBootAttributeBadArgs) {
   // Try with bad proto data.
   SetupErrorReply();
   service_.DoSetBootAttribute(SecureBlob("not_a_protobuf"), NULL);
@@ -1224,7 +1069,7 @@ TEST_F(ExTest, SetBootAttributeBadArgs) {
   EXPECT_STRNE("", g_error_->message);
 }
 
-TEST_F(ExTest, FlushAndSignBootAttributesSuccess) {
+TEST_F(ServiceExTest, FlushAndSignBootAttributesSuccess) {
   SetupReply();
   EXPECT_CALL(boot_attributes_, FlushAndSign())
       .WillRepeatedly(Return(true));
@@ -1235,7 +1080,7 @@ TEST_F(ExTest, FlushAndSignBootAttributesSuccess) {
   EXPECT_FALSE(reply.has_error());
 }
 
-TEST_F(ExTest, FlushAndSignBootAttributesBadArgs) {
+TEST_F(ServiceExTest, FlushAndSignBootAttributesBadArgs) {
   // Try with bad proto data.
   SetupErrorReply();
   service_.DoFlushAndSignBootAttributes(SecureBlob("not_a_protobuf"), NULL);
@@ -1243,7 +1088,7 @@ TEST_F(ExTest, FlushAndSignBootAttributesBadArgs) {
   EXPECT_STRNE("", g_error_->message);
 }
 
-TEST_F(ExTest, FlushAndSignBootAttributesError) {
+TEST_F(ServiceExTest, FlushAndSignBootAttributesError) {
   SetupReply();
   EXPECT_CALL(boot_attributes_, FlushAndSign())
       .WillRepeatedly(Return(false));
@@ -1255,7 +1100,7 @@ TEST_F(ExTest, FlushAndSignBootAttributesError) {
   EXPECT_EQ(CRYPTOHOME_ERROR_BOOT_ATTRIBUTES_CANNOT_SIGN, reply.error());
 }
 
-TEST_F(ExTest, GetLoginStatusSuccess) {
+TEST_F(ServiceExTest, GetLoginStatusSuccess) {
   SetupReply();
   EXPECT_CALL(homedirs_, GetPlainOwner(_))
     .WillOnce(Return(true));
@@ -1273,7 +1118,7 @@ TEST_F(ExTest, GetLoginStatusSuccess) {
       reply.GetExtension(GetLoginStatusReply::reply).boot_lockbox_finalized());
 }
 
-TEST_F(ExTest, GetLoginStatusBadArgs) {
+TEST_F(ServiceExTest, GetLoginStatusBadArgs) {
   // Try with bad proto data.
   SetupErrorReply();
   service_.DoVerifyBootLockbox(SecureBlob("not_a_protobuf"), NULL);
@@ -1281,7 +1126,7 @@ TEST_F(ExTest, GetLoginStatusBadArgs) {
   EXPECT_STRNE("", g_error_->message);
 }
 
-TEST_F(ExTest, GetKeyDataExNoMatch) {
+TEST_F(ServiceExTest, GetKeyDataExNoMatch) {
   SetupReply();
   PrepareArguments();
 
@@ -1302,7 +1147,7 @@ TEST_F(ExTest, GetKeyDataExNoMatch) {
   EXPECT_EQ(0, sub_reply.key_data_size());
 }
 
-TEST_F(ExTest, GetKeyDataExOneMatch) {
+TEST_F(ServiceExTest, GetKeyDataExOneMatch) {
   // Request the single key by label.
   SetupReply();
   PrepareArguments();
@@ -1315,7 +1160,7 @@ TEST_F(ExTest, GetKeyDataExOneMatch) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(homedirs_, GetVaultKeyset(_))
       .Times(1)
-      .WillRepeatedly(Invoke(this, &ExTest::GetNiceMockVaultKeyset));
+      .WillRepeatedly(Invoke(this, &ServiceExTest::GetNiceMockVaultKeyset));
 
   id_->set_email("unittest@example.com");
   service_.DoGetKeyDataEx(id_.get(), auth_.get(), &req, NULL);
@@ -1327,7 +1172,7 @@ TEST_F(ExTest, GetKeyDataExOneMatch) {
   EXPECT_EQ(std::string(kExpectedLabel), sub_reply.key_data(0).label());
 }
 
-TEST_F(ExTest, GetKeyDataInvalidArgsNoEmail) {
+TEST_F(ServiceExTest, GetKeyDataInvalidArgsNoEmail) {
   SetupErrorReply();
   PrepareArguments();
   GetKeyDataRequest req;
@@ -1336,7 +1181,7 @@ TEST_F(ExTest, GetKeyDataInvalidArgsNoEmail) {
   EXPECT_STREQ("No email supplied", g_error_->message);
 }
 
-TEST_F(ExTest, ListKeysInvalidArgsNoEmail) {
+TEST_F(ServiceExTest, ListKeysInvalidArgsNoEmail) {
   SetupErrorReply();
   PrepareArguments();
   // Run will never be called because we aren't running the event loop.

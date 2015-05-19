@@ -17,7 +17,8 @@ namespace policy {
 // This is a generic mock of the PolicyProvider class.
 class MockPolicyProvider : public PolicyProvider {
  public:
-  MockPolicyProvider() {}
+  MockPolicyProvider() = default;
+  ~MockPolicyProvider() override = default;
 
   MOCK_METHOD0(Reload, bool(void));
   MOCK_CONST_METHOD0(device_policy_is_loaded, bool(void));

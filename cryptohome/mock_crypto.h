@@ -23,6 +23,10 @@ class MockCrypto : public Crypto {
   MockCrypto(): Crypto(NULL) { set_use_tpm(true); }
   virtual ~MockCrypto() {}
 
+  MOCK_CONST_METHOD4(GetOrCreateSalt, bool(const base::FilePath&,
+                                           size_t,
+                                           bool,
+                                           chromeos::SecureBlob*));
   MOCK_CONST_METHOD2(EncryptWithTpm, bool(const chromeos::SecureBlob&,
                                           std::string*));
   MOCK_CONST_METHOD2(DecryptWithTpm, bool(const std::string&,

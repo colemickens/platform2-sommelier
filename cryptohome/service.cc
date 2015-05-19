@@ -160,9 +160,8 @@ Service::Service()
       platform_(default_platform_.get()),
       default_crypto_(new Crypto(platform_)),
       crypto_(default_crypto_.get()),
-      tpm_(Tpm::GetSingleton()),
-      default_tpm_init_(new TpmInit(tpm_, platform_)),
-      tpm_init_(default_tpm_init_.get()),
+      tpm_(nullptr),
+      tpm_init_(nullptr),
       default_pkcs11_init_(new Pkcs11Init()),
       pkcs11_init_(default_pkcs11_init_.get()),
       initialize_tpm_(true),
@@ -171,6 +170,7 @@ Service::Service()
       async_data_complete_signal_(-1),
       tpm_init_signal_(-1),
       event_source_(),
+      event_source_sink_(this),
       auto_cleanup_period_(kAutoCleanupPeriodMS),
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
@@ -192,10 +192,8 @@ Service::Service()
       chaps_client_(default_chaps_client_.get()),
       default_attestation_(new Attestation()),
       attestation_(default_attestation_.get()),
-      default_boot_lockbox_(new BootLockbox(tpm_, platform_, crypto_)),
-      boot_lockbox_(default_boot_lockbox_.get()),
-      default_boot_attributes_(new BootAttributes(boot_lockbox_, platform_)),
-      boot_attributes_(default_boot_attributes_.get()) {
+      boot_lockbox_(nullptr),
+      boot_attributes_(nullptr) {
 }
 
 Service::~Service() {
@@ -358,11 +356,25 @@ bool Service::CleanUpStaleMounts(bool force) {
 
 bool Service::Initialize() {
   bool result = true;
-
+  if (!tpm_ && use_tpm_) {
+    tpm_ = Tpm::GetSingleton();
+  }
+  if (!tpm_init_ && initialize_tpm_) {
+    default_tpm_init_.reset(new TpmInit(tpm_, platform_));
+    tpm_init_ = default_tpm_init_.get();
+  }
+  if (!boot_lockbox_) {
+    default_boot_lockbox_.reset(new BootLockbox(tpm_, platform_, crypto_));
+    boot_lockbox_ = default_boot_lockbox_.get();
+  }
+  if (!boot_attributes_) {
+    default_boot_attributes_.reset(
+        new BootAttributes(boot_lockbox_, platform_));
+    boot_attributes_ = default_boot_attributes_.get();
+  }
   crypto_->set_use_tpm(use_tpm_);
   if (!crypto_->Init(tpm_init_))
     return false;
-
   if (!homedirs_->Init(platform_, crypto_, user_timestamp_cache_.get()))
     return false;
 
@@ -406,45 +418,57 @@ bool Service::Initialize() {
     result = false;
   }
 
-  async_complete_signal_ = g_signal_new("async_call_status",
-                                        gobject::cryptohome_get_type(),
-                                        G_SIGNAL_RUN_LAST,
-                                        0,
-                                        NULL,
-                                        NULL,
-                                        nullptr,
-                                        G_TYPE_NONE,
-                                        3,
-                                        G_TYPE_INT,
-                                        G_TYPE_BOOLEAN,
-                                        G_TYPE_INT);
+  async_complete_signal_ = g_signal_lookup("async_call_status",
+                                           gobject::cryptohome_get_type());
+  if (!async_complete_signal_) {
+    async_complete_signal_ = g_signal_new("async_call_status",
+                                          gobject::cryptohome_get_type(),
+                                          G_SIGNAL_RUN_LAST,
+                                          0,
+                                          NULL,
+                                          NULL,
+                                          nullptr,
+                                          G_TYPE_NONE,
+                                          3,
+                                          G_TYPE_INT,
+                                          G_TYPE_BOOLEAN,
+                                          G_TYPE_INT);
+  }
 
-  async_data_complete_signal_ = g_signal_new(
-      "async_call_status_with_data",
-      gobject::cryptohome_get_type(),
-      G_SIGNAL_RUN_LAST,
-      0,
-      NULL,
-      NULL,
-      nullptr,
-      G_TYPE_NONE,
-      3,
-      G_TYPE_INT,
-      G_TYPE_BOOLEAN,
-      DBUS_TYPE_G_UCHAR_ARRAY);
+  async_data_complete_signal_ = g_signal_lookup("async_call_status_with_data",
+                                                gobject::cryptohome_get_type());
+  if (!async_data_complete_signal_) {
+    async_data_complete_signal_ = g_signal_new(
+        "async_call_status_with_data",
+        gobject::cryptohome_get_type(),
+        G_SIGNAL_RUN_LAST,
+        0,
+        NULL,
+        NULL,
+        nullptr,
+        G_TYPE_NONE,
+        3,
+        G_TYPE_INT,
+        G_TYPE_BOOLEAN,
+        DBUS_TYPE_G_UCHAR_ARRAY);
+  }
 
-  tpm_init_signal_ = g_signal_new("tpm_init_status",
-                                  gobject::cryptohome_get_type(),
-                                  G_SIGNAL_RUN_LAST,
-                                  0,
-                                  NULL,
-                                  NULL,
-                                  nullptr,
-                                  G_TYPE_NONE,
-                                  3,
-                                  G_TYPE_BOOLEAN,
-                                  G_TYPE_BOOLEAN,
-                                  G_TYPE_BOOLEAN);
+  tpm_init_signal_ = g_signal_lookup("tpm_init_status",
+                                     gobject::cryptohome_get_type());
+  if (!tpm_init_signal_) {
+    tpm_init_signal_ = g_signal_new("tpm_init_status",
+                                    gobject::cryptohome_get_type(),
+                                    G_SIGNAL_RUN_LAST,
+                                    0,
+                                    NULL,
+                                    NULL,
+                                    nullptr,
+                                    G_TYPE_NONE,
+                                    3,
+                                    G_TYPE_BOOLEAN,
+                                    G_TYPE_BOOLEAN,
+                                    G_TYPE_BOOLEAN);
+  }
 
   mount_thread_.Start();
 
@@ -563,7 +587,7 @@ bool Service::Reset() {
   }
 
   // Install the local event source for handling async results
-  event_source_.Reset(this, g_main_loop_get_context(loop_));
+  event_source_.Reset(event_source_sink_, g_main_loop_get_context(loop_));
   return true;
 }
 
@@ -3081,6 +3105,9 @@ void Service::AutoCleanupCallback() {
 }
 
 void Service::ResetDictionaryAttackMitigation() {
+  if (!use_tpm_) {
+    return;
+  }
   int counter = 0;
   int threshold;
   int seconds_remaining;
@@ -3236,7 +3263,6 @@ bool Service::GetPublicMountPassKey(const std::string& public_mount_id,
                                     std::string* public_mount_passkey) {
   if (!CreatePublicMountSaltIfNeeded())
     return false;
-
   SecureBlob passkey;
   Crypto::PasswordToPasskey(public_mount_id.c_str(),
                             public_mount_salt_,
