@@ -203,8 +203,8 @@ void BinderManager::RemoveHostReference(binder_uintptr_t cookie) {
 }
 
 Status BinderManager::SendReply(const Parcel& reply, const Status& status) {
+  Parcel status_reply;
   if (!status) {
-    Parcel status_reply;
     status.AddToParcel(&status_reply);
     SetUpTransaction(true, -1, 0, status_reply, TF_STATUS_CODE);
   } else {
