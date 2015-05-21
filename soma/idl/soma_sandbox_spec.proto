@@ -89,4 +89,8 @@ message SandboxSpec {
 
   repeated UserACL user_acls = 9;
   repeated GroupACL group_acls = 10;
+
+  // When terminating the sandbox, the amount of time to wait after sending
+  // SIGTERM before falling back to SIGKILL.
+  optional int32 shutdown_timeout_ms = 11 [default = 100];
 }

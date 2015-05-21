@@ -14,7 +14,6 @@
 
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <base/time/time.h>
 
 #include "germ/container.h"
 #include "germ/germ_zygote.h"
@@ -38,7 +37,7 @@ class ContainerManager {
   // Terminates a container. When the container's init process is reaped, the
   // container object will be removed from the ContainerManager entirely.
   // Returns true on success.
-  bool TerminateContainer(const std::string& name, base::TimeDelta kill_delay);
+  bool TerminateContainer(const std::string& name);
 
   // Called when a container init process has been reaped.
   void OnReap(const siginfo_t& info);
@@ -47,13 +46,10 @@ class ContainerManager {
   scoped_refptr<Container> Lookup(const std::string& name);
 
  private:
-  // Terminate the container by sending SIGTERM, followed by SIGKILL.
-  // |kill_delay| is the amount of time to wait for the process to exit after
-  // sending SIGTERM before sending SIGKILL. Depending on the container's
-  // desired state, the container may be automatically restarted after it dies.
-  // Returns true on success.
-  bool DoTerminate(scoped_refptr<Container> container,
-                   base::TimeDelta kill_delay);
+  // Terminate the container. Depending on the container's desired state, the
+  // container may be automatically restarted after it dies.  Returns true on
+  // success.
+  bool DoTerminate(scoped_refptr<Container> container);
 
   // Starts a container and adds an entry for its init process into |pid_map_|.
   // Does *not* add the container to |containers_|. Returns true on success.

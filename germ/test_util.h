@@ -9,6 +9,7 @@
 
 #include <string>
 
+#include <base/message_loop/message_loop.h>
 #include <gmock/gmock.h>
 
 #include "germ/proto_bindings/soma_sandbox_spec.pb.h"
@@ -32,6 +33,10 @@ MATCHER_P(EqualsSpec, expected, "") {
 }
 
 soma::SandboxSpec MakeSpecForTest(const std::string& name);
+
+ACTION_P(PostTask, closure) {
+  base::MessageLoop::current()->task_runner()->PostTask(FROM_HERE, closure);
+}
 
 }  // namespace germ
 

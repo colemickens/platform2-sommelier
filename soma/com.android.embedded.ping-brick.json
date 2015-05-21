@@ -69,7 +69,7 @@
             "value": {
                 "endpoint": "com.android.embedded.ping-brick.ping-endpoint",
                 "whitelist": [ "com.android.embedded.ping-brick.pingers",
-			       "com.android.embedded.ping-brick.echoers" ]
+                               "com.android.embedded.ping-brick.echoers" ]
             }
         },
         {
@@ -88,6 +88,10 @@
         {
             "name": "bruteus-endpoint-1",
             "value": "com.android.embedded.ping-brick.echo-endpoint"
+        },
+        {
+            "name": "bruteus-sandbox-shutdown-timeout-ms",
+            "value": "50"
         }
     ]
 }

@@ -12,7 +12,6 @@
 
 #include <base/at_exit.h>
 #include <base/run_loop.h>
-#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -21,6 +20,7 @@
 #include "germ/test_util.h"
 
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::InSequence;
 using ::testing::Return;
 using ::testing::SetArgPointee;
@@ -32,6 +32,7 @@ namespace {
 TEST(ContainerManagerTest, StartAndTerminate) {
   base::AtExitManager exit_manager;
   base::MessageLoopForIO message_loop;
+  base::RunLoop run_loop;
 
   MockGermZygote mock_zygote;
   ContainerManager container_manager(&mock_zygote);
@@ -40,6 +41,7 @@ TEST(ContainerManagerTest, StartAndTerminate) {
   const pid_t kContainerPid = 1234;
 
   soma::SandboxSpec spec = MakeSpecForTest(kContainerName);
+  spec.set_shutdown_timeout_ms(50);
 
   {
     InSequence seq;
@@ -48,7 +50,7 @@ TEST(ContainerManagerTest, StartAndTerminate) {
     EXPECT_CALL(mock_zygote, Kill(kContainerPid, SIGTERM))
         .WillOnce(Return(true));
     EXPECT_CALL(mock_zygote, Kill(kContainerPid, SIGKILL))
-        .WillOnce(Return(true));
+        .WillOnce(DoAll(PostTask(run_loop.QuitClosure()), Return(true)));
   }
 
   // Start the container.
@@ -61,14 +63,12 @@ TEST(ContainerManagerTest, StartAndTerminate) {
   EXPECT_EQ(kContainerPid, container->init_pid());
 
   // Terminate the container.
-  EXPECT_TRUE(
-      container_manager.TerminateContainer(kContainerName, base::TimeDelta()));
+  EXPECT_TRUE(container_manager.TerminateContainer(kContainerName));
   EXPECT_EQ(Container::State::STOPPED, container->desired_state());
 
   // TerminateContainer should have queued a task on the message loop to send
   // SIGKILL to the container, so run it.
-  base::RunLoop run_loop;
-  run_loop.RunUntilIdle();
+  run_loop.Run();
 
   EXPECT_EQ(Container::State::DYING, container->state());
 
@@ -98,6 +98,7 @@ TEST(ContainerManagerTest, RestartContainer) {
   const pid_t kRestartedContainerPid = 5678;
 
   soma::SandboxSpec spec = MakeSpecForTest(kContainerName);
+  spec.set_shutdown_timeout_ms(50);
 
   EXPECT_CALL(mock_zygote, StartContainer(EqualsSpec(spec), _))
       .Times(2)
@@ -135,6 +136,7 @@ TEST(ContainerManagerTest, RestartContainer) {
 TEST(ContainerManagerTest, StartContainerAlreadyRunning) {
   base::AtExitManager exit_manager;
   base::MessageLoopForIO message_loop;
+  base::RunLoop run_loop;
 
   MockGermZygote mock_zygote;
   ContainerManager container_manager(&mock_zygote);
@@ -144,6 +146,7 @@ TEST(ContainerManagerTest, StartContainerAlreadyRunning) {
   const pid_t kRestartedContainerPid = 5678;
 
   soma::SandboxSpec spec = MakeSpecForTest(kContainerName);
+  spec.set_shutdown_timeout_ms(50);
 
   {
     InSequence seq;
@@ -152,7 +155,7 @@ TEST(ContainerManagerTest, StartContainerAlreadyRunning) {
     EXPECT_CALL(mock_zygote, Kill(kContainerPid, SIGTERM))
         .WillOnce(Return(true));
     EXPECT_CALL(mock_zygote, Kill(kContainerPid, SIGKILL))
-        .WillOnce(Return(true));
+        .WillOnce(DoAll(PostTask(run_loop.QuitClosure()), Return(true)));
     EXPECT_CALL(mock_zygote, StartContainer(EqualsSpec(spec), _))
         .WillOnce(
             DoAll(SetArgPointee<1>(kRestartedContainerPid), Return(true)));
@@ -175,8 +178,7 @@ TEST(ContainerManagerTest, StartContainerAlreadyRunning) {
 
   // When killing the running container, we should have queued a task on the
   // message loop to send SIGKILL to the container, so run it.
-  base::RunLoop run_loop;
-  run_loop.RunUntilIdle();
+  run_loop.Run();
 
   // Notify container_manager that the original container process has been
   // reaped.

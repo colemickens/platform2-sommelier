@@ -14,7 +14,6 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <soma/read_only_sandbox_spec.h>
-#include <base/time/time.h>
 
 #include "germ/container.h"
 #include "germ/container_manager.h"
@@ -46,8 +45,7 @@ Status GermHost::Launch(LaunchRequest* request, LaunchResponse* response) {
 Status GermHost::Terminate(TerminateRequest* request,
                            TerminateResponse* response) {
   const std::string& name = request->name();
-  if (!container_manager_.TerminateContainer(
-          name, base::TimeDelta::FromSeconds(10))) {
+  if (!container_manager_.TerminateContainer(name)) {
     // TODO(rickyz): Return more detailed error messages.
     return STATUS_APP_ERROR_LOG(logging::LOG_ERROR,
                                 TerminateResponse::TERMINATE_FAILED,

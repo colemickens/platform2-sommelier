@@ -21,6 +21,7 @@
 #include "germ/test_util.h"
 
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::InSequence;
 using ::testing::Return;
 using ::testing::SetArgPointee;
@@ -34,6 +35,7 @@ namespace {
 TEST(ContainerTest, OnlyKillCurrentGeneration) {
   base::AtExitManager exit_manager;
   base::MessageLoopForIO message_loop;
+  base::RunLoop run_loop;
 
   MockGermZygote mock_zygote;
 
@@ -56,7 +58,7 @@ TEST(ContainerTest, OnlyKillCurrentGeneration) {
     EXPECT_CALL(mock_zygote, Kill(kRestartedContainerPid, SIGTERM))
         .WillOnce(Return(true));
     EXPECT_CALL(mock_zygote, Kill(kRestartedContainerPid, SIGKILL))
-        .WillOnce(Return(true));
+        .WillOnce(DoAll(PostTask(run_loop.QuitClosure()), Return(true)));
   }
 
   // Start a container, and terminate it by sending it a SIGTERM (and queuing up
@@ -66,7 +68,7 @@ TEST(ContainerTest, OnlyKillCurrentGeneration) {
   EXPECT_EQ(kContainerPid, container->init_pid());
   EXPECT_EQ(Container::State::RUNNING, container->state());
 
-  EXPECT_TRUE(container->Terminate(&mock_zygote, base::TimeDelta()));
+  EXPECT_TRUE(container->Terminate(&mock_zygote));
   EXPECT_EQ(Container::State::DYING, container->state());
 
   // Pretend that the container was killed by the SIGTERM.
@@ -78,14 +80,13 @@ TEST(ContainerTest, OnlyKillCurrentGeneration) {
   EXPECT_EQ(kRestartedContainerPid, container->init_pid());
   EXPECT_EQ(Container::State::RUNNING, container->state());
 
-  EXPECT_TRUE(container->Terminate(&mock_zygote, base::TimeDelta()));
+  EXPECT_TRUE(container->Terminate(&mock_zygote));
   EXPECT_EQ(Container::State::DYING, container->state());
 
   // Now, the message loop should have the SIGKILL tasks for both instantiations
   // of the container, but only the one for the second instantiation should
   // do anything.
-  base::RunLoop run_loop;
-  run_loop.RunUntilIdle();
+  run_loop.Run();
 }
 
 // When killing a container, a delayed task is queued up which sends SIGKILL to
@@ -94,6 +95,7 @@ TEST(ContainerTest, OnlyKillCurrentGeneration) {
 TEST(ContainerTest, DoesNotSendSIGKILLToReapedContainer) {
   base::AtExitManager exit_manager;
   base::MessageLoopForIO message_loop;
+  base::RunLoop run_loop;
 
   MockGermZygote mock_zygote;
 
@@ -101,6 +103,7 @@ TEST(ContainerTest, DoesNotSendSIGKILLToReapedContainer) {
   const pid_t kContainerPid = 1234;
 
   soma::SandboxSpec spec = MakeSpecForTest(kContainerName);
+  spec.set_shutdown_timeout_ms(50);
 
   {
     InSequence seq;
@@ -117,17 +120,21 @@ TEST(ContainerTest, DoesNotSendSIGKILLToReapedContainer) {
   EXPECT_EQ(Container::State::RUNNING, container->state());
   EXPECT_EQ(kContainerPid, container->init_pid());
 
-  EXPECT_TRUE(container->Terminate(&mock_zygote, base::TimeDelta()));
+  EXPECT_TRUE(container->Terminate(&mock_zygote));
   EXPECT_EQ(Container::State::DYING, container->state());
 
   // Pretend that the container was killed by the SIGTERM.
   container->OnReap();
   EXPECT_EQ(Container::State::STOPPED, container->state());
 
+  // Should be scheduled after the SIGKILL task.
+  base::MessageLoop::current()->task_runner()->PostDelayedTask(
+      FROM_HERE, run_loop.QuitClosure(),
+      base::TimeDelta::FromMilliseconds(spec.shutdown_timeout_ms()));
+
   // Now, the message loop should have the SIGKILL task, but it should do
   // nothing because the container is already in state STOPPED.
-  base::RunLoop run_loop;
-  run_loop.RunUntilIdle();
+  run_loop.Run();
 }
 
 }  // namespace

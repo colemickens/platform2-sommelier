@@ -43,8 +43,8 @@ int GermInit::OnInit() {
 
   // Must happen after chromeos::Daemon::OnInit in order to override the SIGTERM
   // handler which it installs.
-  RegisterHandler(SIGTERM, base::Bind(&GermInit::HandleSIGTERM,
-                                      base::Unretained(this)));
+  RegisterHandler(SIGTERM,
+                  base::Bind(&GermInit::HandleSIGTERM, base::Unretained(this)));
 
   // It is important that we start all processes in a single task, since
   // otherwise |init_process_reaper_| might cause us to exit after only some of
@@ -79,9 +79,6 @@ void GermInit::StartProcesses() {
 }
 
 bool GermInit::HandleSIGTERM(const struct signalfd_siginfo& sigfd_info) {
-  // TODO(rickyz): Make this a field in SandboxSpec.
-  const int64 kKillDelayMs = 500;
-
   // Send SIGTERM to all processes we can signal. Children are given a set
   // amount of time to terminate cleanly. If the init process is still running
   // after time time (meaning that it has unterminated children), it will
@@ -89,7 +86,7 @@ bool GermInit::HandleSIGTERM(const struct signalfd_siginfo& sigfd_info) {
   PCHECK(kill(-1, SIGTERM) == 0);
   CHECK(base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE, QuitClosure(),
-      base::TimeDelta::FromMilliseconds(kKillDelayMs)));
+      base::TimeDelta::FromMilliseconds(spec_.shutdown_timeout_ms())));
 
   // Return false to indicate that our handler should not be uninstalled.
   return false;

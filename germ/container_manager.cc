@@ -14,7 +14,6 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/stl_util.h>
-#include <base/time/time.h>
 
 #include "germ/container.h"
 #include "germ/proto_bindings/soma_sandbox_spec.pb.h"
@@ -42,8 +41,7 @@ bool ContainerManager::StartContainer(const soma::SandboxSpec& spec) {
       return DoStart(container);
 
     case Container::State::RUNNING:
-      // TODO(rickyz): Make kill_delay part of the SandboxSpec.
-      return DoTerminate(container, base::TimeDelta());
+      return DoTerminate(container);
 
     case Container::State::DYING:
       // TODO(rickyz): This return value sucks.
@@ -54,8 +52,7 @@ bool ContainerManager::StartContainer(const soma::SandboxSpec& spec) {
   return false;
 }
 
-bool ContainerManager::TerminateContainer(const std::string& name,
-                                          base::TimeDelta kill_delay) {
+bool ContainerManager::TerminateContainer(const std::string& name) {
   scoped_refptr<Container> container = Lookup(name);
   if (container == nullptr) {
     LOG(ERROR) << "Attempted to terminate nonexistent container: " << name;
@@ -63,7 +60,7 @@ bool ContainerManager::TerminateContainer(const std::string& name,
   }
 
   container->set_desired_state(Container::State::STOPPED);
-  return DoTerminate(container, kill_delay);
+  return DoTerminate(container);
 }
 
 bool ContainerManager::DoStart(scoped_refptr<Container> container) {
@@ -78,14 +75,13 @@ bool ContainerManager::DoStart(scoped_refptr<Container> container) {
   return true;
 }
 
-bool ContainerManager::DoTerminate(scoped_refptr<Container> container,
-                                   base::TimeDelta kill_delay) {
+bool ContainerManager::DoTerminate(scoped_refptr<Container> container) {
   switch (container->state()) {
     case Container::State::STOPPED:
       return true;
 
     case Container::State::RUNNING:
-      return container->Terminate(zygote_, kill_delay);
+      return container->Terminate(zygote_);
 
     case Container::State::DYING:
       return true;

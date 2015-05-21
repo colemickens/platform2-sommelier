@@ -6,6 +6,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/time/time.h>
 
 #include "soma/proto_bindings/soma_sandbox_spec.pb.h"
 
@@ -134,6 +135,13 @@ bool ReadOnlySandboxSpec::Init(const SandboxSpec& spec) {
     LOG(ERROR) << "All SandboxSpecs must define at least one executable!";
     return false;
   }
+
+  shutdown_timeout_ =
+      base::TimeDelta::FromMilliseconds(spec.shutdown_timeout_ms());
+  if (shutdown_timeout_ < base::TimeDelta()) {
+    return false;
+  }
+
   return true;
 }
 

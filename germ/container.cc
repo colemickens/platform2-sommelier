@@ -37,7 +37,7 @@ bool Container::Launch(GermZygote* zygote) {
   return true;
 }
 
-bool Container::Terminate(GermZygote* zygote, base::TimeDelta kill_delay) {
+bool Container::Terminate(GermZygote* zygote) {
   DCHECK_EQ(State::RUNNING, state_);
   if (!Kill(zygote, SIGTERM)) {
     return false;
@@ -46,7 +46,7 @@ bool Container::Terminate(GermZygote* zygote, base::TimeDelta kill_delay) {
   // Note: zygote must outlive the message loop.
   CHECK(base::MessageLoop::current()->task_runner()->PostDelayedTask(
       FROM_HERE, base::Bind(&Container::SendSIGKILL, this, zygote, generation_),
-      kill_delay));
+      base::TimeDelta::FromMilliseconds(spec_.shutdown_timeout_ms())));
 
   state_ = State::DYING;
   return true;

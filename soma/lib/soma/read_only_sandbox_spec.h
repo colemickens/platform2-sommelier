@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/time/time.h>
 #include <base/macros.h>
 #include <soma/soma_export.h>
 
@@ -101,6 +102,8 @@ class SOMA_EXPORT ReadOnlySandboxSpec {
                                              : empty_group_acl_);
   }
 
+  base::TimeDelta shutdown_timeout() const { return shutdown_timeout_; }
+
  private:
   std::string name_;
   base::FilePath overlay_path_;
@@ -114,6 +117,8 @@ class SOMA_EXPORT ReadOnlySandboxSpec {
 
   static const std::vector<uid_t> empty_user_acl_;
   static const std::vector<gid_t> empty_group_acl_;
+
+  base::TimeDelta shutdown_timeout_;
 
   DISALLOW_COPY_AND_ASSIGN(ReadOnlySandboxSpec);
 };

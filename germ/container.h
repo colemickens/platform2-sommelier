@@ -13,7 +13,6 @@
 #include <base/basictypes.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <base/time/time.h>
 
 #include "germ/germ_zygote.h"
 #include "germ/proto_bindings/soma_sandbox_spec.pb.h"
@@ -70,7 +69,7 @@ class Container : public base::RefCounted<Container> {
   // Terminates the container by sending SIGTERM. If the container does not die
   // after |kill_delay|, we send SIGKILL. The container must be RUNNING. On
   // success, returns true and transitions the container to DYING.
-  bool Terminate(GermZygote* zygote, base::TimeDelta kill_delay);
+  bool Terminate(GermZygote* zygote);
 
   // Called when container init has been reaped. The container should be RUNNING
   // or DYING. Transitions the container to STOPPED.
