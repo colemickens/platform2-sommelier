@@ -122,56 +122,57 @@ class PowerManagerTest : public Test {
 
   virtual void TearDown() { dbus_manager_.Stop(); }
 
-  void AddProxyRegisterSuspendDelayExpectation(int delay_id,
-                                               bool return_value) {
+  void AddProxyExpectationForRegisterSuspendDelay(int delay_id,
+                                                  bool return_value) {
     EXPECT_CALL(*power_manager_proxy_,
                 RegisterSuspendDelay(kTimeout, kDescription, _))
         .WillOnce(DoAll(SetArgumentPointee<2>(delay_id), Return(return_value)));
   }
 
-  void AddProxyUnregisterSuspendDelayExpectation(int delay_id,
-                                                 bool return_value) {
+  void AddProxyExpectationForUnregisterSuspendDelay(int delay_id,
+                                                    bool return_value) {
     EXPECT_CALL(*power_manager_proxy_, UnregisterSuspendDelay(delay_id))
         .WillOnce(Return(return_value));
   }
 
-  void AddProxyReportSuspendReadinessExpectation(int delay_id, int suspend_id,
-                                                 bool return_value) {
+  void AddProxyExpectationForReportSuspendReadiness(int delay_id,
+                                                    int suspend_id,
+                                                    bool return_value) {
     EXPECT_CALL(*power_manager_proxy_,
                 ReportSuspendReadiness(delay_id, suspend_id))
         .WillOnce(Return(return_value));
   }
 
-  void AddProxyRecordDarkResumeWakeReasonExpectation(const string &wake_reason,
-                                                     bool return_value) {
+  void AddProxyExpectationForRecordDarkResumeWakeReason(
+      const string &wake_reason, bool return_value) {
     EXPECT_CALL(*power_manager_proxy_, RecordDarkResumeWakeReason(wake_reason))
         .WillOnce(Return(return_value));
   }
 
-  void AddProxyRegisterDarkSuspendDelayExpectation(int delay_id,
-                                                   bool return_value) {
+  void AddProxyExpectationForRegisterDarkSuspendDelay(int delay_id,
+                                                      bool return_value) {
     EXPECT_CALL(*power_manager_proxy_,
                 RegisterDarkSuspendDelay(kTimeout, kDarkDescription, _))
         .WillOnce(DoAll(SetArgumentPointee<2>(delay_id), Return(return_value)));
   }
 
-  void AddProxyReportDarkSuspendReadinessExpectation(int delay_id,
-                                                     int suspend_id,
-                                                     bool return_value) {
+  void AddProxyExpectationForReportDarkSuspendReadiness(int delay_id,
+                                                        int suspend_id,
+                                                        bool return_value) {
     EXPECT_CALL(*power_manager_proxy_,
                 ReportDarkSuspendReadiness(delay_id, suspend_id))
         .WillOnce(Return(return_value));
   }
 
-  void AddProxyUnregisterDarkSuspendDelayExpectation(int delay_id,
-                                                     bool return_value) {
+  void AddProxyExpectationForUnregisterDarkSuspendDelay(int delay_id,
+                                                        bool return_value) {
     EXPECT_CALL(*power_manager_proxy_, UnregisterDarkSuspendDelay(delay_id))
         .WillOnce(Return(return_value));
   }
 
   void RegisterSuspendDelays() {
-    AddProxyRegisterSuspendDelayExpectation(kDelayId, true);
-    AddProxyRegisterDarkSuspendDelayExpectation(kDelayId, true);
+    AddProxyExpectationForRegisterSuspendDelay(kDelayId, true);
+    AddProxyExpectationForRegisterDarkSuspendDelay(kDelayId, true);
     OnPowerManagerAppeared();
     Mock::VerifyAndClearExpectations(power_manager_proxy_);
   }
@@ -229,7 +230,7 @@ TEST_F(PowerManagerTest, SuspendingState) {
 }
 
 TEST_F(PowerManagerTest, RegisterSuspendDelayFailure) {
-  AddProxyRegisterSuspendDelayExpectation(kDelayId, false);
+  AddProxyExpectationForRegisterSuspendDelay(kDelayId, false);
   OnPowerManagerAppeared();
   Mock::VerifyAndClearExpectations(power_manager_proxy_);
 
@@ -252,7 +253,7 @@ TEST_F(PowerManagerTest, RegisterSuspendDelayFailure) {
 }
 
 TEST_F(PowerManagerTest, RegisterDarkSuspendDelayFailure) {
-  AddProxyRegisterDarkSuspendDelayExpectation(kDelayId, false);
+  AddProxyExpectationForRegisterDarkSuspendDelay(kDelayId, false);
   OnPowerManagerAppeared();
   Mock::VerifyAndClearExpectations(power_manager_proxy_);
 
@@ -267,7 +268,7 @@ TEST_F(PowerManagerTest, ReportSuspendReadinessFailure) {
   RegisterSuspendDelays();
   EXPECT_CALL(*this, SuspendImminentAction());
   OnSuspendImminent(kSuspendId1);
-  AddProxyReportSuspendReadinessExpectation(kDelayId, kSuspendId1, false);
+  AddProxyExpectationForReportSuspendReadiness(kDelayId, kSuspendId1, false);
   EXPECT_FALSE(power_manager_.ReportSuspendReadiness());
 }
 
@@ -276,7 +277,7 @@ TEST_F(PowerManagerTest, RecordDarkResumeWakeReasonFailure) {
   RegisterSuspendDelays();
   EXPECT_CALL(*this, DarkSuspendImminentAction());
   OnDarkSuspendImminent(kSuspendId1);
-  AddProxyRecordDarkResumeWakeReasonExpectation(kWakeReason, false);
+  AddProxyExpectationForRecordDarkResumeWakeReason(kWakeReason, false);
   EXPECT_FALSE(power_manager_.RecordDarkResumeWakeReason(kWakeReason));
 }
 
@@ -285,7 +286,7 @@ TEST_F(PowerManagerTest, RecordDarkResumeWakeReasonSuccess) {
   RegisterSuspendDelays();
   EXPECT_CALL(*this, DarkSuspendImminentAction());
   OnDarkSuspendImminent(kSuspendId1);
-  AddProxyRecordDarkResumeWakeReasonExpectation(kWakeReason, true);
+  AddProxyExpectationForRecordDarkResumeWakeReason(kWakeReason, true);
   EXPECT_TRUE(power_manager_.RecordDarkResumeWakeReason(kWakeReason));
 }
 
@@ -293,7 +294,8 @@ TEST_F(PowerManagerTest, ReportDarkSuspendReadinessFailure) {
   RegisterSuspendDelays();
   EXPECT_CALL(*this, DarkSuspendImminentAction());
   OnDarkSuspendImminent(kSuspendId1);
-  AddProxyReportDarkSuspendReadinessExpectation(kDelayId, kSuspendId1, false);
+  AddProxyExpectationForReportDarkSuspendReadiness(kDelayId, kSuspendId1,
+                                                   false);
   EXPECT_FALSE(power_manager_.ReportDarkSuspendReadiness());
 }
 
@@ -329,15 +331,15 @@ TEST_F(PowerManagerTest, ReportDarkSuspendReadinessSynchronous) {
 
 TEST_F(PowerManagerTest, Stop) {
   RegisterSuspendDelays();
-  AddProxyUnregisterSuspendDelayExpectation(kDelayId, true);
-  AddProxyUnregisterDarkSuspendDelayExpectation(kDelayId, true);
+  AddProxyExpectationForUnregisterSuspendDelay(kDelayId, true);
+  AddProxyExpectationForUnregisterDarkSuspendDelay(kDelayId, true);
   power_manager_.Stop();
 }
 
 TEST_F(PowerManagerTest, StopFailure) {
   RegisterSuspendDelays();
 
-  AddProxyUnregisterSuspendDelayExpectation(kDelayId, false);
+  AddProxyExpectationForUnregisterSuspendDelay(kDelayId, false);
   power_manager_.Stop();
   Mock::VerifyAndClearExpectations(power_manager_proxy_);
 
@@ -352,8 +354,8 @@ TEST_F(PowerManagerTest, OnPowerManagerReappeared) {
   RegisterSuspendDelays();
 
   // Check that we re-register suspend delay on powerd restart.
-  AddProxyRegisterSuspendDelayExpectation(kDelayId2, true);
-  AddProxyRegisterDarkSuspendDelayExpectation(kDelayId2, true);
+  AddProxyExpectationForRegisterSuspendDelay(kDelayId2, true);
+  AddProxyExpectationForRegisterDarkSuspendDelay(kDelayId2, true);
   OnPowerManagerVanished();
   OnPowerManagerAppeared();
   Mock::VerifyAndClearExpectations(power_manager_proxy_);
@@ -362,7 +364,7 @@ TEST_F(PowerManagerTest, OnPowerManagerReappeared) {
   // id.
   EXPECT_CALL(*this, SuspendImminentAction());
   OnSuspendImminent(kSuspendId1);
-  AddProxyReportSuspendReadinessExpectation(kDelayId2, kSuspendId1, true);
+  AddProxyExpectationForReportSuspendReadiness(kDelayId2, kSuspendId1, true);
   EXPECT_TRUE(power_manager_.ReportSuspendReadiness());
   Mock::VerifyAndClearExpectations(power_manager_proxy_);
 
@@ -370,7 +372,8 @@ TEST_F(PowerManagerTest, OnPowerManagerReappeared) {
   // delay id.
   EXPECT_CALL(*this, DarkSuspendImminentAction());
   OnDarkSuspendImminent(kSuspendId1);
-  AddProxyReportDarkSuspendReadinessExpectation(kDelayId2, kSuspendId1, true);
+  AddProxyExpectationForReportDarkSuspendReadiness(kDelayId2, kSuspendId1,
+                                                   true);
   EXPECT_TRUE(power_manager_.ReportDarkSuspendReadiness());
 }
 
@@ -391,8 +394,8 @@ TEST_F(PowerManagerTest, PowerManagerReappearedInSuspend) {
   OnSuspendImminent(kSuspendId1);
   Mock::VerifyAndClearExpectations(this);
 
-  AddProxyRegisterSuspendDelayExpectation(kDelayId2, true);
-  AddProxyRegisterDarkSuspendDelayExpectation(kDelayId2, true);
+  AddProxyExpectationForRegisterSuspendDelay(kDelayId2, true);
+  AddProxyExpectationForRegisterDarkSuspendDelay(kDelayId2, true);
   EXPECT_CALL(*this, SuspendDoneAction());
   OnPowerManagerVanished();
   OnPowerManagerAppeared();
