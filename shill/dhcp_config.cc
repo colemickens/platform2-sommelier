@@ -310,7 +310,7 @@ bool DHCPConfig::Start() {
   }
   if (arp_gateway_) {
     args.push_back(const_cast<char *>("-R"));  // ARP for default gateway.
-    args.push_back(const_cast<char *>("-U"));  // Enable unicast ARP on renew.
+    args.push_back(const_cast<char *>("-P"));  // Enable unicast ARP on renew.
   }
   string interface_arg(device_name());
   if (lease_file_suffix_ != device_name()) {

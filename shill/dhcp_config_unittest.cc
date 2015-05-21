@@ -344,7 +344,7 @@ MATCHER_P3(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix, "") {
 
   if (has_arp_gateway) {
     if (string(arg[end_offset]) != "-R" ||
-        string(arg[end_offset + 1]) != "-U") {
+        string(arg[end_offset + 1]) != "-P") {
       return false;
     }
     end_offset += 2;
