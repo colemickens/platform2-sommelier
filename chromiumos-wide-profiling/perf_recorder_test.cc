@@ -5,12 +5,12 @@
 #include <string>
 #include <vector>
 
+#include "chromiumos-wide-profiling/compat/string.h"
+#include "chromiumos-wide-profiling/compat/test.h"
 #include "chromiumos-wide-profiling/perf_protobuf_io.h"
 #include "chromiumos-wide-profiling/perf_reader.h"
 #include "chromiumos-wide-profiling/perf_recorder.h"
 #include "chromiumos-wide-profiling/perf_serializer.h"
-#include "chromiumos-wide-profiling/quipper_string.h"
-#include "chromiumos-wide-profiling/quipper_test.h"
 #include "chromiumos-wide-profiling/run_command.h"
 #include "chromiumos-wide-profiling/test_utils.h"
 

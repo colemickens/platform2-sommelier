@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHROMIUMOS_WIDE_PROFILING_QUIPPER_STRING_H_
-#define CHROMIUMOS_WIDE_PROFILING_QUIPPER_STRING_H_
+#ifndef CHROMIUMOS_WIDE_PROFILING_COMPAT_STRING_H_
+#define CHROMIUMOS_WIDE_PROFILING_COMPAT_STRING_H_
 
 #include <string>
 
@@ -12,4 +12,4 @@ using std::string;
 using std::stringstream;
 #endif
 
-#endif  // CHROMIUMOS_WIDE_PROFILING_QUIPPER_STRING_H_
+#endif  // CHROMIUMOS_WIDE_PROFILING_COMPAT_STRING_H_

@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "chromiumos-wide-profiling/buffer_reader.h"
-#include "chromiumos-wide-profiling/quipper_test.h"
+#include "chromiumos-wide-profiling/compat/test.h"
 
 namespace quipper {
 
