@@ -163,6 +163,7 @@ class SessionManagerService
   void EnsureJobExit(base::TimeDelta timeout) override;
 
   // Set all changed signal handlers back to the default behavior.
+  // This _must_ be async signal safe. No library calls or malloc'ing allowed.
   static void RevertHandlers();
 
  private:

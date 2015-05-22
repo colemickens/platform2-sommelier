@@ -7,7 +7,6 @@
 
 #include <unistd.h>
 
-#include <map>
 #include <string>
 #include <vector>
 
@@ -29,11 +28,11 @@ class ChildJobInterface {
     Subprocess(uid_t desired_uid, SystemUtils* system);
     virtual ~Subprocess();
 
-    // fork(), export |environment_variables|, and exec(argv).
+    // fork(), export |environment_variables|, and exec(argv, env_vars).
     // Returns false if fork() fails, true otherwise.
     bool ForkAndExec(
         const std::vector<std::string>& args,
-        const std::map<std::string, std::string>& environment_variables);
+        const std::vector<std::string>& env_vars);
 
     // Sends signal to pid_. No-op if there is no subprocess running.
     void Kill(int signal);
@@ -46,15 +45,6 @@ class ChildJobInterface {
     void clear_pid() { pid_ = -1; }
 
    private:
-    // If the caller has provided a UID with set_desired_uid(), this method will
-    // 1) try to setgid to that uid
-    // 2) try to setgroups to that uid
-    // 3) try to setuid to that uid
-    //
-    // Returns 0 on success, the appropriate exit code (defined above) if a
-    // call fails.
-    int SetIDs();
-
     // The pid of the managed subprocess, when running. Set to -1 when
     // cleared, or not yet set by ForkAndExec().
     pid_t pid_;
@@ -63,6 +53,13 @@ class ChildJobInterface {
     SystemUtils* const system_;  // weak; owned by embedder.
     DISALLOW_COPY_AND_ASSIGN(Subprocess);
   };
+
+  // Potential exit codes for use in Subprocess::Run().
+  static const int kCantSetUid;
+  static const int kCantSetGid;
+  static const int kCantSetGroups;
+  static const int kCantSetEnv;
+  static const int kCantExec;
 
   virtual ~ChildJobInterface() {}
 
@@ -90,13 +87,6 @@ class ChildJobInterface {
 
   // Returns the pid of the current instance of this job. May be -1.
   virtual pid_t CurrentPid() const = 0;
-
-  // Potential exit codes for use in Subprocess::Run().
-  static const int kCantSetUid;
-  static const int kCantSetGid;
-  static const int kCantSetGroups;
-  static const int kCantSetEnv;
-  static const int kCantExec;
 };
 
 }  // namespace login_manager

@@ -51,8 +51,7 @@ BrowserJob::BrowserJob(
     FileChecker* checker,
     LoginMetrics* metrics,
     SystemUtils* utils)
-    : environment_variables_(environment_variables),
-      arguments_(arguments),
+    : arguments_(arguments),
       file_checker_(checker),
       login_metrics_(metrics),
       system_(utils),
@@ -60,6 +59,10 @@ BrowserJob::BrowserJob(
       removed_login_manager_flag_(false),
       session_already_started_(false),
       subprocess_(desired_uid, system_) {
+  // Convert map of env vars into a vector of strings.
+  for (const auto& it : environment_variables)
+    environment_variables_.push_back(it.first + "=" + it.second);
+
   // Take over managing the kLoginManagerFlag.
   std::vector<std::string>::iterator to_erase =
       std::remove(arguments_.begin(), arguments_.end(), kLoginManagerFlag);

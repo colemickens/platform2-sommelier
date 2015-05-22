@@ -362,12 +362,12 @@ void SessionManagerService::SetUpHandlers() {
   }
 }
 
+// This _must_ be async signal safe. No library calls or malloc'ing allowed.
 void SessionManagerService::RevertHandlers() {
-  struct sigaction action;
-  memset(&action, 0, sizeof(action));
+  struct sigaction action = {};
   action.sa_handler = SIG_DFL;
-  CHECK_EQ(sigaction(SIGUSR1, &action, NULL), 0);
-  CHECK_EQ(sigaction(SIGALRM, &action, NULL), 0);
+  RAW_CHECK(sigaction(SIGUSR1, &action, NULL) == 0);
+  RAW_CHECK(sigaction(SIGALRM, &action, NULL) == 0);
 }
 
 base::TimeDelta SessionManagerService::GetKillTimeout() {

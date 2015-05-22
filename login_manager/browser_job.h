@@ -115,7 +115,7 @@ class BrowserJob : public BrowserJobInterface {
 
  private:
   // Environment variables exported for Chrome.
-  std::map<std::string, std::string> environment_variables_;
+  std::vector<std::string> environment_variables_;
 
   // Arguments to pass to exec.
   std::vector<std::string> arguments_;
