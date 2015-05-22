@@ -59,6 +59,9 @@ NetlinkAttribute* NetlinkAttribute::NewNl80211AttributeFromId(
     case NL80211_ATTR_DEVICE_AP_SME:
       attr.reset(new Nl80211AttributeDeviceApSme());
       break;
+    case NL80211_ATTR_DFS_REGION:
+      attr.reset(new Nl80211AttributeDfsRegion());
+      break;
     case NL80211_ATTR_DISCONNECTED_BY_AP:
       attr.reset(new Nl80211AttributeDisconnectedByAp());
       break;
@@ -130,6 +133,9 @@ NetlinkAttribute* NetlinkAttribute::NewNl80211AttributeFromId(
       break;
     case NL80211_ATTR_REG_INITIATOR:
       attr.reset(new Nl80211AttributeRegInitiator());
+      break;
+    case NL80211_ATTR_REG_RULES:
+      attr.reset(new Nl80211AttributeRegRules());
       break;
     case NL80211_ATTR_REG_TYPE:
       attr.reset(new Nl80211AttributeRegType());

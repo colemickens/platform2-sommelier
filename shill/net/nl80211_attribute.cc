@@ -428,6 +428,9 @@ const int Nl80211AttributeDeviceApSme::kName = NL80211_ATTR_DEVICE_AP_SME;
 const char Nl80211AttributeDeviceApSme::kNameString[] =
     "NL80211_ATTR_DEVICE_AP_SME";
 
+const int Nl80211AttributeDfsRegion::kName = NL80211_ATTR_DFS_REGION;
+const char Nl80211AttributeDfsRegion::kNameString[] = "NL80211_ATTR_DFS_REGION";
+
 const int Nl80211AttributeDisconnectedByAp::kName =
     NL80211_ATTR_DISCONNECTED_BY_AP;
 const char Nl80211AttributeDisconnectedByAp::kNameString[] =
@@ -545,6 +548,44 @@ const char Nl80211AttributeRegAlpha2::kNameString[] = "NL80211_ATTR_REG_ALPHA2";
 const int Nl80211AttributeRegInitiator::kName = NL80211_ATTR_REG_INITIATOR;
 const char Nl80211AttributeRegInitiator::kNameString[] =
     "NL80211_ATTR_REG_INITIATOR";
+
+const int Nl80211AttributeRegRules::kName = NL80211_ATTR_REG_RULES;
+const char Nl80211AttributeRegRules::kNameString[] = "NL80211_ATTR_REG_RULES";
+
+Nl80211AttributeRegRules::Nl80211AttributeRegRules()
+    : NetlinkNestedAttribute(kName, kNameString) {
+  NestedData reg_rules(kTypeNested, "NL80211_REG_RULES", true);
+  reg_rules.deeper_nesting.insert(
+      AttrDataPair(__NL80211_REG_RULE_ATTR_INVALID,
+                   NestedData(kTypeU32, "__NL80211_ATTR_REG_RULE_INVALID",
+                              false)));
+  reg_rules.deeper_nesting.insert(
+      AttrDataPair(NL80211_ATTR_REG_RULE_FLAGS,
+                   NestedData(kTypeU32, "NL80211_ATTR_REG_RULE_FLAGS",
+                              false)));
+  reg_rules.deeper_nesting.insert(
+      AttrDataPair(NL80211_ATTR_FREQ_RANGE_START,
+                   NestedData(kTypeU32, "NL80211_ATTR_FREQ_RANGE_START",
+                              false)));
+  reg_rules.deeper_nesting.insert(
+      AttrDataPair(NL80211_ATTR_FREQ_RANGE_END,
+                   NestedData(kTypeU32, "NL80211_ATTR_FREQ_RANGE_END",
+                              false)));
+  reg_rules.deeper_nesting.insert(
+      AttrDataPair(NL80211_ATTR_FREQ_RANGE_MAX_BW,
+                   NestedData(kTypeU32, "NL80211_ATTR_FREQ_RANGE_MAX_BW",
+                              false)));
+  reg_rules.deeper_nesting.insert(
+      AttrDataPair(NL80211_ATTR_POWER_RULE_MAX_ANT_GAIN,
+                   NestedData(kTypeU32, "NL80211_ATTR_POWER_RULE_MAX_ANT_GAIN",
+                              false)));
+  reg_rules.deeper_nesting.insert(
+      AttrDataPair(NL80211_ATTR_POWER_RULE_MAX_EIRP,
+                   NestedData(kTypeU32, "NL80211_ATTR_POWER_RULE_MAX_EIRP",
+                              false)));
+
+  nested_template_.insert(AttrDataPair(kArrayAttrEnumVal, reg_rules));
+}
 
 const int Nl80211AttributeRegType::kName = NL80211_ATTR_REG_TYPE;
 const char Nl80211AttributeRegType::kNameString[] = "NL80211_ATTR_REG_TYPE";

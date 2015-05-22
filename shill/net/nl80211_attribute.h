@@ -18,6 +18,16 @@ namespace shill {
 
 // U8.
 
+class Nl80211AttributeDfsRegion : public NetlinkU8Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeDfsRegion() : NetlinkU8Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeDfsRegion);
+};
+
 class Nl80211AttributeKeyIdx : public NetlinkU8Attribute {
  public:
   static const int kName;
@@ -569,6 +579,16 @@ class Nl80211AttributeCqm : public NetlinkNestedAttribute {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeCqm);
+};
+
+class Nl80211AttributeRegRules : public NetlinkNestedAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeRegRules();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeRegRules);
 };
 
 class Nl80211AttributeScanFrequencies : public NetlinkNestedAttribute {
