@@ -31,7 +31,7 @@
         },
       },
       'sources': [
-        '<(proto_in_dir)/soma_container_spec.proto',
+        '<(proto_in_dir)/soma_sandbox_spec.proto',
         '<(proto_in_dir)/soma.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
@@ -53,8 +53,8 @@
         'soma-proto-lib',
       ],
       'sources': [
-        'lib/soma/container_spec_reader.cc',
-        'lib/soma/read_only_container_spec.cc',
+        'lib/soma/sandbox_spec_reader.cc',
+        'lib/soma/read_only_sandbox_spec.cc',
       ],
     },
     {
@@ -101,9 +101,9 @@
             'soma-proto-lib',
           ],
           'sources': [
-            'lib/soma/container_spec_reader_unittest.cc',
+            'lib/soma/sandbox_spec_reader_unittest.cc',
             'lib/soma/libsoma_testrunner.cc',
-            'lib/soma/read_only_container_spec_unittest.cc',
+            'lib/soma/read_only_sandbox_spec_unittest.cc',
           ],
         },
       ],

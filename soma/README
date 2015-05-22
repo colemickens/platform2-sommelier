@@ -1,35 +1,40 @@
 Soma
 --------------------------------------------------------------------------------
-Soma is the Brillo daemon that manages the on-disk presence of Brillo service
-bundles.
+Soma is the Brillo daemon that manages the on-disk presence of Brillo overlays.
 
 Currently, this mostly entails determining the appropriate containment
-policy for a given service at runtime. By convention, an appropriately
-packaged service bundle installs a config file in its own filesystem
-overlay at /etc/services/<service-name>.conf. Soma handles locating
-this file within the appropriate service bundle, interpreting it and
-exporting the info as a handy data structure upon request.
+policy for a given set of executables at runtime. By convention, an
+appropriately packaged overlay installs sandbox specification files in
+its own filesystem overlay at /usr/share/somad/<sandbox
+name>.spec. Soma handles locating this file within the appropriate
+overlay, interpreting it and exporting the info as a handy data
+structure upon request.
 
-The Soma API consists of one function that takes the fully-qualified
-name of a service and returns a specification describing how it should
-be contained.
-
+The Soma API consists of two functions.
+GetSandboxSpec() takes the fully-qualified name of an IPC endpoint and returns
+a specification describing how it should be contained.
+GetPersistentSandboxSpec() finds the specs of all sandboxes that should be
+running at all times and returns them.
 
 
 Talking to Soma
 --------------------------------------------------------------------------------
 Soma uses proto2 RPC. The interface is defined in idl/soma.proto, while the
-protobuf that describes a container is in idl/container_spec.proto.
+protobuf that describes a container is in idl/soma_sandbox_spec.proto.
 
 See .proto files in idl/ for descriptions of the API and message format.
 
 
 
-Container specifications
+Sandbox specifications
 --------------------------------------------------------------------------------
-Soma container specifications are JSON files that comply with a subset of
+Soma sandbox specifications are JSON files that comply with a subset of
 the 'appc' specification used by Rocket and others
 (https://github.com/appc/spec/blob/master/SPEC.md).
+
+These JSON files are compiled into serialized protos at buildtime and
+installed using the 'dobrsandbox' function provided by the
+brillo-sandbox eclass.
 
 TODO(cmasone): Once this settles down, explain all the fields in this example.
                Currently only single-entry 'apps' list is supported.

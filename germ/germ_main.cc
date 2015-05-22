@@ -11,11 +11,11 @@
 #include <base/logging.h>
 #include <chromeos/flag_helper.h>
 #include <chromeos/syslog_logging.h>
-#include <soma/container_spec_reader.h>
-#include <soma/read_only_container_spec.h>
+#include <soma/sandbox_spec_reader.h>
+#include <soma/read_only_sandbox_spec.h>
 
 #include "germ/launcher.h"
-#include "germ/proto_bindings/soma_container_spec.pb.h"
+#include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 
 namespace {
 const char kShellExecutablePath[] = "/bin/sh";
@@ -23,7 +23,7 @@ const char kShellExecutablePath[] = "/bin/sh";
 
 int main(int argc, char** argv) {
   DEFINE_string(name, "", "Name of service");
-  DEFINE_string(spec, "", "Path to ContainerSpec");
+  DEFINE_string(spec, "", "Path to SandboxSpec");
   DEFINE_bool(shell, false,
               "Don't actually run the service, just launch a shell");
 
@@ -35,21 +35,21 @@ int main(int argc, char** argv) {
   germ::Launcher launcher;
   int status = 0;
 
-  // Should we launch a ContainerSpec?
+  // Should we launch a SandboxSpec?
   if (!FLAGS_spec.empty()) {
-    // Read and launch a ContainerSpec.
+    // Read and launch a SandboxSpec.
     // TODO(jorgelo): Allow launching a shell.
-    soma::parser::ContainerSpecReader csr;
+    soma::SandboxSpecReader csr;
     base::FilePath path(FLAGS_spec);
-    std::unique_ptr<soma::ContainerSpec> cspec = csr.Read(path);
+    std::unique_ptr<soma::SandboxSpec> cspec = csr.Read(path);
     if (!cspec) {
-      // ContainerSpecReader::Path() will print an appropriate error.
+      // SandboxSpecReader::Path() will print an appropriate error.
       return 1;
     }
-    LOG(INFO) << "Read ContainerSpec '" << FLAGS_spec << "'";
-    soma::ReadOnlyContainerSpec spec;
+    LOG(INFO) << "Read SandboxSpec '" << FLAGS_spec << "'";
+    soma::ReadOnlySandboxSpec spec;
     if (!spec.Init(*cspec)) {
-      LOG(ERROR) << "Failed to initialize read-only ContainerSpec";
+      LOG(ERROR) << "Failed to initialize read-only SandboxSpec";
       return 1;
     }
     if (!launcher.RunInteractiveSpec(spec, &status)) {

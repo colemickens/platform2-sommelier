@@ -38,7 +38,7 @@ class StubFactory : public FactoryInterface {
 
   // FactoryInterface:
   std::unique_ptr<CellInterface> CreateCell(
-      const soma::ContainerSpec& spec) override;
+      const soma::SandboxSpec& spec) override;
   std::unique_ptr<ServiceInterface> CreateService(
       const std::string& name) override;
   std::unique_ptr<ClientInterface> CreateClient(

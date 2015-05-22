@@ -4,11 +4,11 @@
 
 #include "psyche/psyched/cell_stub.h"
 
-#include "psyche/proto_bindings/soma_container_spec.pb.h"
+#include "psyche/proto_bindings/soma_sandbox_spec.pb.h"
 #include "psyche/psyched/service.h"
 #include "psyche/psyched/service_stub.h"
 
-using soma::ContainerSpec;
+using soma::SandboxSpec;
 
 namespace psyche {
 

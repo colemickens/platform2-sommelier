@@ -8,7 +8,7 @@
 
 #include <protobinder/binder_proxy.h>
 
-#include "psyche/proto_bindings/soma_container_spec.pb.h"
+#include "psyche/proto_bindings/soma_sandbox_spec.pb.h"
 #include "psyche/psyched/cell_stub.h"
 #include "psyche/psyched/client_stub.h"
 #include "psyche/psyched/service_stub.h"
@@ -26,8 +26,8 @@ CellStub* StubFactory::GetCell(const std::string& cell_name) {
   return it != cells_.end() ? it->second : nullptr;
 }
 
-ServiceStub* StubFactory::GetService(const std::string& service_name) {
-  auto const it = services_.find(service_name);
+ServiceStub* StubFactory::GetService(const std::string& endpoint_name) {
+  auto const it = services_.find(endpoint_name);
   return it != services_.end() ? it->second : nullptr;
 }
 
@@ -42,7 +42,7 @@ void StubFactory::SetCell(const std::string& cell_name,
 }
 
 std::unique_ptr<CellInterface> StubFactory::CreateCell(
-    const soma::ContainerSpec& spec) {
+    const soma::SandboxSpec& spec) {
   const std::string& cell_name = spec.name();
   std::unique_ptr<CellStub> cell;
   auto it = new_cells_.find(cell_name);
@@ -51,8 +51,8 @@ std::unique_ptr<CellInterface> StubFactory::CreateCell(
     new_cells_.erase(it);
   } else {
     cell.reset(new CellStub(cell_name));
-    for (const auto& service_name : spec.service_names())
-      cell->AddService(service_name);
+    for (const auto& endpoint_name : spec.endpoint_names())
+      cell->AddService(endpoint_name);
   }
 
   cells_[cell->GetName()] = cell.get();

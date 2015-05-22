@@ -6,39 +6,39 @@ option optimize_for = LITE_RUNTIME;
 
 package soma;
 
-import "soma_container_spec.proto";
+import "soma_sandbox_spec.proto";
 
 service Soma {
-  // Given a fully-specified service name, returns a container specification.
+  // Given a fully-specified service name, returns a sandbox specification.
   // Example usage:
   //
-  //   soma.GetContainerSpecRequest request;
-  //   soma.GetContainerSpecResponse response;
-  //   request.set_service_name("com.android.embedded.MyService");
-  //   soma_proxy->GetContainerSpec(&request, &response);
-  rpc GetContainerSpec (GetContainerSpecRequest)
-      returns (GetContainerSpecResponse);
+  //   soma.GetSandboxSpecRequest request;
+  //   soma.GetSandboxSpecResponse response;
+  //   request.set_endpoint_name("com.foo.my-service.my-endpoint");
+  //   soma_proxy->GetSandboxSpec(&request, &response);
+  rpc GetSandboxSpec(GetSandboxSpecRequest) returns (GetSandboxSpecResponse);
 
-  // Returns all ContainerSpecs marked with a 'persistent' annotation.
-  rpc GetPersistentContainerSpecs (GetPersistentContainerSpecsRequest)
-      returns (GetPersistentContainerSpecsResponse);
+  // Returns all SandboxSpecs marked with a 'persistent' annotation.
+  rpc GetPersistentSandboxSpecs(GetPersistentSandboxSpecsRequest)
+      returns (GetPersistentSandboxSpecsResponse);
 }
 
-message GetContainerSpecRequest {
-  optional string service_name = 1;  // e.g. com.android.embedded.MyService
+message GetSandboxSpecRequest {
+  optional string endpoint_name = 1;  // e.g. com.foo.my-overlay.my-endpoint
 }
 
-message GetContainerSpecResponse {
+message GetSandboxSpecResponse {
   enum Error {
     INVALID_NAME = 1;
   }
-  // Defined in soma_container_spec.proto.
-  optional ContainerSpec container_spec = 1;
+  // Defined in soma_sandbox_spec.proto.
+  optional SandboxSpec sandbox_spec = 1;
 }
 
-message GetPersistentContainerSpecsRequest {}
+message GetPersistentSandboxSpecsRequest {
+}
 
-message GetPersistentContainerSpecsResponse {
-  // Defined in soma_container_spec.proto.
-  repeated ContainerSpec container_specs = 1;
+message GetPersistentSandboxSpecsResponse {
+  // Defined in soma_sandbox_spec.proto.
+  repeated SandboxSpec sandbox_specs = 1;
 }

@@ -24,13 +24,13 @@
 #include <base/strings/string_piece.h>
 
 #include "germ/germ_init.h"
-#include "germ/proto_bindings/soma_container_spec.pb.h"
+#include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 
 namespace germ {
 
 namespace {
 static const char kZygoteChildPingMessage[] = "CHILD_PING";
-// TODO(rickyz) Is it reasonable to have a hard limit for the ContainerSpecs +
+// TODO(rickyz) Is it reasonable to have a hard limit for the SandboxSpecs +
 // pickle size?
 static size_t kZygoteMaxMessageLength = 8192;
 }  // namespace
@@ -88,7 +88,7 @@ void GermZygote::HandleRequests() {
       LOG(ERROR) << "Failed to parse serialized spec from pickle.";
     }
 
-    soma::ContainerSpec spec;
+    soma::SandboxSpec spec;
     if (!spec.ParseFromArray(serialized_spec.data(), serialized_spec.size())) {
       LOG(ERROR) << "Failed to parse spec.";
       continue;
@@ -102,7 +102,7 @@ void GermZygote::HandleRequests() {
   _exit(1);
 }
 
-bool GermZygote::StartContainer(const soma::ContainerSpec& spec, pid_t* pid) {
+bool GermZygote::StartContainer(const soma::SandboxSpec& spec, pid_t* pid) {
   std::string serialized_spec;
   if (!spec.SerializeToString(&serialized_spec)) {
     LOG(ERROR) << "Failed to serialize spec.";
@@ -162,28 +162,28 @@ bool GermZygote::Kill(pid_t pid, int signal) {
   return true;
 }
 
-pid_t GermZygote::ForkContainer(const soma::ContainerSpec& spec) {
+pid_t GermZygote::ForkContainer(const soma::SandboxSpec& spec) {
   unsigned long flags = SIGCHLD;  // NOLINT(runtime/int)
   for (const int ns_int : spec.namespaces()) {
-    const soma::ContainerSpec::Namespace ns =
-        static_cast<soma::ContainerSpec::Namespace>(ns_int);
+    const soma::SandboxSpec::Namespace ns =
+        static_cast<soma::SandboxSpec::Namespace>(ns_int);
     switch (ns) {
-      case soma::ContainerSpec::NEWIPC:
+      case soma::SandboxSpec::NEWIPC:
         flags |= CLONE_NEWIPC;
         break;
-      case soma::ContainerSpec::NEWNET:
+      case soma::SandboxSpec::NEWNET:
         flags |= CLONE_NEWNET;
         break;
-      case soma::ContainerSpec::NEWNS:
+      case soma::SandboxSpec::NEWNS:
         flags |= CLONE_NEWNS;
         break;
-      case soma::ContainerSpec::NEWPID:
+      case soma::SandboxSpec::NEWPID:
         flags |= CLONE_NEWPID;
         break;
-      case soma::ContainerSpec::NEWUSER:
+      case soma::SandboxSpec::NEWUSER:
         flags |= CLONE_NEWUSER;
         break;
-      case soma::ContainerSpec::NEWUTS:
+      case soma::SandboxSpec::NEWUTS:
         flags |= CLONE_NEWUTS;
         break;
       default:
@@ -193,9 +193,8 @@ pid_t GermZygote::ForkContainer(const soma::ContainerSpec& spec) {
   }
 
   if (!(flags & CLONE_NEWPID)) {
-    LOG(WARNING)
-        << "PID namespaces missing from ContainerSpec, enabling anyway: "
-        << spec.name();
+    LOG(WARNING) << "PID namespaces missing from SandboxSpec, enabling anyway: "
+                 << spec.name();
     flags |= CLONE_NEWPID;
   }
 
@@ -203,8 +202,7 @@ pid_t GermZygote::ForkContainer(const soma::ContainerSpec& spec) {
   return base::ForkWithFlags(flags, nullptr, nullptr);
 }
 
-void GermZygote::SpawnContainer(const soma::ContainerSpec& spec,
-                                int client_fd) {
+void GermZygote::SpawnContainer(const soma::SandboxSpec& spec, int client_fd) {
   const pid_t pid = fork();
   PCHECK(pid != -1);
 

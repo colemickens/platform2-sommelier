@@ -10,7 +10,7 @@
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
-#include "germ/proto_bindings/soma_container_spec.pb.h"
+#include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 
 namespace germ {
 
@@ -19,7 +19,7 @@ class MockGermZygote : public GermZygote {
   MockGermZygote() = default;
   ~MockGermZygote() = default;
 
-  MOCK_METHOD2(StartContainer, bool(const soma::ContainerSpec&, pid_t*));
+  MOCK_METHOD2(StartContainer, bool(const soma::SandboxSpec&, pid_t*));
   MOCK_METHOD2(Kill, bool(pid_t, int));
 
  private:

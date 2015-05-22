@@ -47,7 +47,7 @@ void GermConnection::SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy) {
   service_.SetProxy(std::move(proxy));
 }
 
-GermConnection::Result GermConnection::Launch(const soma::ContainerSpec& spec) {
+GermConnection::Result GermConnection::Launch(const soma::SandboxSpec& spec) {
   if (!interface_)
     return Result::NO_CONNECTION;
 

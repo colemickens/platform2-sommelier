@@ -18,7 +18,7 @@
 
 #include "germ/container.h"
 #include "germ/germ_zygote.h"
-#include "germ/proto_bindings/soma_container_spec.pb.h"
+#include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 
 namespace germ {
 
@@ -33,7 +33,7 @@ class ContainerManager {
   // Starts a container. If a container with the given name is already running,
   // its spec is set to |spec| and the container is restarted. Returns true on
   // success.
-  bool StartContainer(const soma::ContainerSpec& spec);
+  bool StartContainer(const soma::SandboxSpec& spec);
 
   // Terminates a container. When the container's init process is reaped, the
   // container object will be removed from the ContainerManager entirely.

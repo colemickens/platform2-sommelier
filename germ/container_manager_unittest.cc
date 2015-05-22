@@ -39,7 +39,7 @@ TEST(ContainerManagerTest, StartAndTerminate) {
   const char kContainerName[] = "test_container";
   const pid_t kContainerPid = 1234;
 
-  soma::ContainerSpec spec = MakeSpecForTest(kContainerName);
+  soma::SandboxSpec spec = MakeSpecForTest(kContainerName);
 
   {
     InSequence seq;
@@ -97,7 +97,7 @@ TEST(ContainerManagerTest, RestartContainer) {
   const pid_t kContainerPid = 1234;
   const pid_t kRestartedContainerPid = 5678;
 
-  soma::ContainerSpec spec = MakeSpecForTest(kContainerName);
+  soma::SandboxSpec spec = MakeSpecForTest(kContainerName);
 
   EXPECT_CALL(mock_zygote, StartContainer(EqualsSpec(spec), _))
       .Times(2)
@@ -143,7 +143,7 @@ TEST(ContainerManagerTest, StartContainerAlreadyRunning) {
   const pid_t kContainerPid = 1234;
   const pid_t kRestartedContainerPid = 5678;
 
-  soma::ContainerSpec spec = MakeSpecForTest(kContainerName);
+  soma::SandboxSpec spec = MakeSpecForTest(kContainerName);
 
   {
     InSequence seq;

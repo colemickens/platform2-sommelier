@@ -41,7 +41,7 @@ TEST(ContainerTest, OnlyKillCurrentGeneration) {
   const pid_t kContainerPid = 1234;
   const pid_t kRestartedContainerPid = 5678;
 
-  soma::ContainerSpec spec = MakeSpecForTest(kContainerName);
+  soma::SandboxSpec spec = MakeSpecForTest(kContainerName);
 
   {
     InSequence seq;
@@ -100,7 +100,7 @@ TEST(ContainerTest, DoesNotSendSIGKILLToReapedContainer) {
   const char kContainerName[] = "test_container";
   const pid_t kContainerPid = 1234;
 
-  soma::ContainerSpec spec = MakeSpecForTest(kContainerName);
+  soma::SandboxSpec spec = MakeSpecForTest(kContainerName);
 
   {
     InSequence seq;

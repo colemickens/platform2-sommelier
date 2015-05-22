@@ -9,7 +9,7 @@
 
 #include <base/macros.h>
 
-#include "psyche/proto_bindings/soma_container_spec.pb.h"
+#include "psyche/proto_bindings/soma_sandbox_spec.pb.h"
 #include "psyche/psyched/service.h"
 #include "psyche/psyched/service_observer.h"
 
@@ -43,7 +43,7 @@ class GermConnection : public ServiceObserver {
   void SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy);
 
   // Makes a request to germ to launch a cell.
-  Result Launch(const soma::ContainerSpec& spec);
+  Result Launch(const soma::SandboxSpec& spec);
 
   // Makes a request to germ to terminate a cell with the given name.
   Result Terminate(const std::string& name);

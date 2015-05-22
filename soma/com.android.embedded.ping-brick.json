@@ -3,7 +3,7 @@
     "acKind": "PodManifest",
     "apps": [
         {
-            "name": "ping-service",
+            "name": "ping-endpoint",
             "image": {
                 "name": "com.android.embedded.ping-brick",
                 "id": "sha512-...",
@@ -58,36 +58,36 @@
             }
         },
         {
-            "name": "os/bruteus/service-user-whitelist",
+            "name": "os/bruteus/endpoint-user-whitelist",
             "value": {
-                "service": "com.android.embedded.ping-brick.ping-service",
+                "endpoint": "com.android.embedded.ping-brick.ping-endpoint",
                 "whitelist": [ "com.android.embedded.ping-brick.ping-user" ]
             }
         },
         {
-            "name": "os/bruteus/service-group-whitelist",
+            "name": "os/bruteus/endpoint-group-whitelist",
             "value": {
-                "service": "com.android.embedded.ping-brick.ping-service",
+                "endpoint": "com.android.embedded.ping-brick.ping-endpoint",
                 "whitelist": [ "com.android.embedded.ping-brick.pingers",
 			       "com.android.embedded.ping-brick.echoers" ]
             }
         },
         {
-            "name": "os/bruteus/service-group-whitelist",
+            "name": "os/bruteus/endpoint-group-whitelist",
             "value": {
-                "service": "com.android.embedded.ping-brick.echo-service",
+                "endpoint": "com.android.embedded.ping-brick.echo-endpoint",
                 "whitelist": [ "com.android.embedded.ping-brick.echoers" ]
             }
         }
     ],
     "annotations": [
         {
-            "name": "bruteus-service-0",
-            "value": "com.android.embedded.ping-brick.ping-service"
+            "name": "bruteus-endpoint-0",
+            "value": "com.android.embedded.ping-brick.ping-endpoint"
         },
         {
-            "name": "bruteus-service-1",
-            "value": "com.android.embedded.ping-brick.echo-service"
+            "name": "bruteus-endpoint-1",
+            "value": "com.android.embedded.ping-brick.echo-endpoint"
         }
     ]
 }

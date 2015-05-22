@@ -13,11 +13,11 @@
 
 #include "psyche/proto_bindings/soma.pb.h"
 #include "psyche/proto_bindings/soma.pb.rpc.h"
-#include "psyche/proto_bindings/soma_container_spec.pb.h"
+#include "psyche/proto_bindings/soma_sandbox_spec.pb.h"
 
 using protobinder::BinderProxy;
 
-using soma::ContainerSpec;
+using soma::SandboxSpec;
 using soma::ISoma;
 
 namespace psyche {
@@ -56,49 +56,48 @@ void SomaConnection::SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy) {
   service_.SetProxy(std::move(proxy));
 }
 
-SomaConnection::Result SomaConnection::GetContainerSpecForService(
-    const std::string& service_name,
-    ContainerSpec* spec_out) {
+SomaConnection::Result SomaConnection::GetSandboxSpecForService(
+    const std::string& endpoint_name,
+    SandboxSpec* spec_out) {
   DCHECK(spec_out);
 
   if (!interface_)
     return Result::NO_SOMA_CONNECTION;
 
-  soma::GetContainerSpecRequest request;
-  request.set_service_name(service_name);
-  soma::GetContainerSpecResponse response;
-  Status status = interface_->GetContainerSpec(&request, &response);
+  soma::GetSandboxSpecRequest request;
+  request.set_endpoint_name(endpoint_name);
+  soma::GetSandboxSpecResponse response;
+  Status status = interface_->GetSandboxSpec(&request, &response);
   if (!status) {
-    LOG(ERROR) << "GetContainerSpec RPC to somad returned " << status;
+    LOG(ERROR) << "GetSandboxSpec RPC to somad returned " << status;
     return Result::RPC_ERROR;
   }
 
-  if (!response.has_container_spec())
+  if (!response.has_sandbox_spec())
     return Result::UNKNOWN_SERVICE;
 
-  *spec_out = response.container_spec();
+  *spec_out = response.sandbox_spec();
   return Result::SUCCESS;
 }
 
-SomaConnection::Result SomaConnection::GetPersistentContainerSpecs(
-    std::vector<soma::ContainerSpec>* specs_out) {
+SomaConnection::Result SomaConnection::GetPersistentSandboxSpecs(
+    std::vector<soma::SandboxSpec>* specs_out) {
   DCHECK(specs_out);
   specs_out->clear();
 
   if (!interface_)
     return Result::NO_SOMA_CONNECTION;
 
-  soma::GetPersistentContainerSpecsRequest request;
-  soma::GetPersistentContainerSpecsResponse response;
-  Status status = interface_->GetPersistentContainerSpecs(&request, &response);
+  soma::GetPersistentSandboxSpecsRequest request;
+  soma::GetPersistentSandboxSpecsResponse response;
+  Status status = interface_->GetPersistentSandboxSpecs(&request, &response);
   if (!status) {
-    LOG(ERROR) << "GetPersistentContainerSpecs RPC to somad returned "
-               << status;
+    LOG(ERROR) << "GetPersistentSandboxSpecs RPC to somad returned " << status;
     return Result::RPC_ERROR;
   }
 
-  specs_out->reserve(response.container_specs_size());
-  for (const auto& spec : response.container_specs())
+  specs_out->reserve(response.sandbox_specs_size());
+  for (const auto& spec : response.sandbox_specs())
     specs_out->push_back(spec);
   return Result::SUCCESS;
 }

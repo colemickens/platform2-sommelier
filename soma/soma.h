@@ -11,7 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 
-#include "soma/lib/soma/container_spec_reader.h"
+#include "soma/lib/soma/sandbox_spec_reader.h"
 #include "soma/proto_bindings/soma.pb.h"
 #include "soma/proto_bindings/soma.pb.rpc.h"
 
@@ -23,15 +23,15 @@ class Soma : public ISomaHostInterface {
   virtual ~Soma() = default;
 
   // Implementation of ISomaHostInterface.
-  Status GetContainerSpec(GetContainerSpecRequest* request,
-                          GetContainerSpecResponse* response) override;
-  Status GetPersistentContainerSpecs(
-      GetPersistentContainerSpecsRequest* ignored,
-      GetPersistentContainerSpecsResponse* response) override;
+  Status GetSandboxSpec(GetSandboxSpecRequest* request,
+                        GetSandboxSpecResponse* response) override;
+  Status GetPersistentSandboxSpecs(
+      GetPersistentSandboxSpecsRequest* ignored,
+      GetPersistentSandboxSpecsResponse* response) override;
 
  private:
   friend class SomaTest;
-  void InjectReader(std::unique_ptr<parser::ContainerSpecReader> reader) {
+  void InjectReader(std::unique_ptr<SandboxSpecReader> reader) {
     reader_ = std::move(reader);
   }
 
@@ -39,7 +39,7 @@ class Soma : public ISomaHostInterface {
 
   // Path under which to search for service bundles.
   const base::FilePath root_;
-  std::unique_ptr<parser::ContainerSpecReader> reader_;
+  std::unique_ptr<SandboxSpecReader> reader_;
 
   DISALLOW_COPY_AND_ASSIGN(Soma);
 };

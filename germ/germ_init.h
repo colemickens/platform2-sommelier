@@ -12,15 +12,15 @@
 
 #include "germ/init_process_reaper.h"
 #include "germ/launcher.h"
-#include "germ/proto_bindings/soma_container_spec.pb.h"
+#include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 
 namespace germ {
 
 // Init process for Germ containers. Responsible for launching processes
-// specified in the given ContainerSpec and for reaping children.
+// specified in the given SandboxSpec and for reaping children.
 class GermInit : public chromeos::Daemon {
  public:
-  explicit GermInit(const soma::ContainerSpec& spec);
+  explicit GermInit(const soma::SandboxSpec& spec);
   ~GermInit();
 
  private:
@@ -31,7 +31,7 @@ class GermInit : public chromeos::Daemon {
 
   Launcher launcher_;
   InitProcessReaper init_process_reaper_;
-  const soma::ContainerSpec& spec_;
+  const soma::SandboxSpec& spec_;
 
   DISALLOW_COPY_AND_ASSIGN(GermInit);
 };

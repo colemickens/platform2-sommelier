@@ -16,7 +16,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <gtest/gtest.h>
 
-#include "germ/proto_bindings/soma_container_spec.pb.h"
+#include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 #include "germ/test_util.h"
 
 namespace germ {
@@ -33,17 +33,15 @@ class TestGermZygote : public GermZygote {
   // Use a plain fork so that the test can run unprivileged (since PID
   // namespaces require CAP_SYS_ADMIN, and unprivileged user namespaces are not
   // allowed from inside a chroot).
-  pid_t ForkContainer(const soma::ContainerSpec& spec) override {
-    return fork();
-  }
+  pid_t ForkContainer(const soma::SandboxSpec& spec) override { return fork(); }
 };
 
-soma::ContainerSpec ContainerSpecForTest() {
-  soma::ContainerSpec spec;
+soma::SandboxSpec SandboxSpecForTest() {
+  soma::SandboxSpec spec;
   spec.set_name("test_container");
-  spec.set_service_bundle_path("/path/to/bundle");
-  spec.add_namespaces(soma::ContainerSpec::NEWPID);
-  soma::ContainerSpec::Executable* executable;
+  spec.set_overlay_path("/path/to/overlay");
+  spec.add_namespaces(soma::SandboxSpec::NEWPID);
+  soma::SandboxSpec::Executable* executable;
   for (int i = 0; i < 3; ++i) {
     executable = spec.add_executables();
     executable->add_command_line("/bin/true");
@@ -61,7 +59,7 @@ TEST(GermZygote, BasicUsage) {
   TestGermZygote zygote;
   zygote.Start();
 
-  const soma::ContainerSpec spec = ContainerSpecForTest();
+  const soma::SandboxSpec spec = SandboxSpecForTest();
   pid_t init_pid;
 
   ASSERT_TRUE(zygote.StartContainer(spec, &init_pid));

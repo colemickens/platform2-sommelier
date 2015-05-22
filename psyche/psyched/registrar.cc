@@ -17,7 +17,7 @@
 #include <soma/constants.h>
 
 #include "psyche/common/constants.h"
-#include "psyche/proto_bindings/soma_container_spec.pb.h"
+#include "psyche/proto_bindings/soma_sandbox_spec.pb.h"
 #include "psyche/psyched/cell.h"
 #include "psyche/psyched/client.h"
 #include "psyche/psyched/factory_interface.h"
@@ -39,7 +39,7 @@ class RealFactory : public FactoryInterface {
 
   // FactoryInterface:
   std::unique_ptr<CellInterface> CreateCell(
-      const soma::ContainerSpec& spec) override {
+      const soma::SandboxSpec& spec) override {
     return std::unique_ptr<CellInterface>(
         new Cell(spec, this, germ_connection_));
   }
@@ -175,7 +175,7 @@ bool Registrar::AddCell(std::unique_ptr<CellInterface> cell) {
   const std::string cell_name = cell->GetName();
 
   if (cells_.count(cell_name)) {
-    // This means that somad for some reason returned this ContainerSpec
+    // This means that somad for some reason returned this SandboxSpec
     // earlier, but it didn't previously list the service that we're looking for
     // now.
     LOG(WARNING) << "Cell \"" << cell_name << "\" already exists";
@@ -184,7 +184,7 @@ bool Registrar::AddCell(std::unique_ptr<CellInterface> cell) {
 
   for (const auto& service_it : cell->GetServices()) {
     if (services_.count(service_it.first)) {
-      // This means that somad didn't validate that a ContainerSpec doesn't list
+      // This means that somad didn't validate that a SandboxSpec doesn't list
       // any services outside of its service namespace, or that this service was
       // already registered in |non_cell_services_|.
       LOG(WARNING) << "Cell \"" << cell_name << "\" provides already-known "
@@ -213,15 +213,14 @@ ServiceInterface* Registrar::GetService(const std::string& service_name,
   if (!create_cell)
     return nullptr;
 
-  soma::ContainerSpec spec;
+  soma::SandboxSpec spec;
   const SomaConnection::Result result =
-      soma_->GetContainerSpecForService(service_name, &spec);
+      soma_->GetSandboxSpecForService(service_name, &spec);
   if (result != SomaConnection::Result::SUCCESS) {
     // TODO(derat): Pass back an error code so the client can be notified if the
     // service is unknown vs. this being a possibly-transient error.
-    LOG(WARNING) << "Failed to get ContainerSpec for service \""
-                 << service_name << "\" from soma: "
-                 << SomaConnection::ResultToString(result);
+    LOG(WARNING) << "Failed to get SandboxSpec for service \"" << service_name
+                 << "\" from soma: " << SomaConnection::ResultToString(result);
     return nullptr;
   }
 
@@ -245,10 +244,10 @@ ServiceInterface* Registrar::GetService(const std::string& service_name,
 }
 
 void Registrar::CreatePersistentCells() {
-  std::vector<soma::ContainerSpec> specs;
-  SomaConnection::Result result = soma_->GetPersistentContainerSpecs(&specs);
+  std::vector<soma::SandboxSpec> specs;
+  SomaConnection::Result result = soma_->GetPersistentSandboxSpecs(&specs);
   if (result != SomaConnection::Result::SUCCESS) {
-    LOG(ERROR) << "Failed to get persistent container specs: "
+    LOG(ERROR) << "Failed to get persistent sandbox specs: "
                << SomaConnection::ResultToString(result);
     return;
   }

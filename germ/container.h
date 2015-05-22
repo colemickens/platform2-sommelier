@@ -16,7 +16,7 @@
 #include <base/time/time.h>
 
 #include "germ/germ_zygote.h"
-#include "germ/proto_bindings/soma_container_spec.pb.h"
+#include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 
 namespace germ {
 
@@ -44,10 +44,10 @@ class Container : public base::RefCounted<Container> {
     DYING,
   };
 
-  explicit Container(const soma::ContainerSpec& spec);
+  explicit Container(const soma::SandboxSpec& spec);
   ~Container();
 
-  const soma::ContainerSpec& spec() const { return spec_; }
+  const soma::SandboxSpec& spec() const { return spec_; }
   const std::string& name() const { return spec_.name(); }
   pid_t init_pid() const { return init_pid_; }
   State state() const { return state_; }
@@ -58,7 +58,7 @@ class Container : public base::RefCounted<Container> {
     desired_state_ = desired_state;
   }
 
-  void set_spec(const soma::ContainerSpec& spec) {
+  void set_spec(const soma::SandboxSpec& spec) {
     DCHECK_EQ(name(), spec.name());
     spec_ = spec;
   }
@@ -84,7 +84,7 @@ class Container : public base::RefCounted<Container> {
   // Callback which sends SIGKILL to the container init process.
   void SendSIGKILL(GermZygote* zygote, uint64 generation);
 
-  soma::ContainerSpec spec_;
+  soma::SandboxSpec spec_;
 
   pid_t init_pid_;
 

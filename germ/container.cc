@@ -15,12 +15,13 @@ namespace germ {
 
 const pid_t kInvalidPid = -1;
 
-Container::Container(const soma::ContainerSpec& spec)
+Container::Container(const soma::SandboxSpec& spec)
     : spec_(spec),
       init_pid_(kInvalidPid),
       state_(Container::State::STOPPED),
       desired_state_(Container::State::RUNNING),
-      generation_(0) {}
+      generation_(0) {
+}
 
 Container::~Container() {}
 

@@ -12,7 +12,7 @@
 
 namespace {
 
-const char kContainerSpecDir[] = "/usr/share/somad";
+const char kSandboxSpecDir[] = "/usr/share/somad";
 
 }  // namespace
 
@@ -21,7 +21,7 @@ const char kContainerSpecDir[] = "/usr/share/somad";
 namespace soma {
 class SomaDaemon : public psyche::PsycheDaemon {
  public:
-  SomaDaemon() : soma_host_(base::FilePath(kContainerSpecDir)) {}
+  SomaDaemon() : soma_host_(base::FilePath(kSandboxSpecDir)) {}
   ~SomaDaemon() override {}
 
  private:

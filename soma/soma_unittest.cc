@@ -14,12 +14,11 @@
 #include <gtest/gtest.h>
 #include <protobinder/binder_manager_stub.h>
 
-#include "soma/lib/soma/container_spec_reader.h"
+#include "soma/lib/soma/sandbox_spec_reader.h"
 #include "soma/proto_bindings/soma.pb.h"
-#include "soma/proto_bindings/soma_container_spec.pb.h"
+#include "soma/proto_bindings/soma_sandbox_spec.pb.h"
 
 namespace soma {
-using soma::parser::ContainerSpecReader;
 
 class SomaTest : public ::testing::Test {
  public:
@@ -34,73 +33,74 @@ class SomaTest : public ::testing::Test {
   }
 
   void SetUp() override {
-    ContainerSpec spec;
+    SandboxSpec spec;
     std::string spec_string;
     ASSERT_TRUE(spec.SerializeToString(&spec_string));
-    std::string file_name = kServiceNamespace + std::string(".spec");
+    std::string file_name = kEndpointNamespace + std::string(".spec");
     ASSERT_EQ(base::WriteFile(tmpdir_.path().AppendASCII(file_name),
                               spec_string.c_str(), spec_string.length()),
               spec_string.length());
   }
 
  protected:
-  static const char kServiceNamespace[];
-  static const char kServiceName[];
+  static const char kEndpointNamespace[];
+  static const char kEndpointName[];
 
   base::ScopedTempDir tmpdir_;
 };
 
-const char SomaTest::kServiceNamespace[] = "com.android.embedded.ping-brick";
-const char SomaTest::kServiceName[] = "ping-service";
+const char SomaTest::kEndpointNamespace[] = "com.android.embedded.ping-overlay";
+const char SomaTest::kEndpointName[] = "ping-endpoint";
 
 TEST_F(SomaTest, FindSpecProtoFile) {
   Soma soma(base::FilePath(tmpdir_.path()));
-  GetContainerSpecRequest request;
-  GetContainerSpecResponse response;
-  request.set_service_name(JoinString({kServiceNamespace, kServiceName}, '.'));
+  GetSandboxSpecRequest request;
+  GetSandboxSpecResponse response;
+  request.set_endpoint_name(
+      JoinString({kEndpointNamespace, kEndpointName}, '.'));
 
-  EXPECT_TRUE(soma.GetContainerSpec(&request, &response));
-  EXPECT_TRUE(response.has_container_spec());
+  EXPECT_TRUE(soma.GetSandboxSpec(&request, &response));
+  EXPECT_TRUE(response.has_sandbox_spec());
 }
 
 TEST_F(SomaTest, SpecFileNotFound) {
   Soma soma(base::FilePath(tmpdir_.path()));
-  GetContainerSpecRequest request;
-  GetContainerSpecResponse response;
-  request.set_service_name(JoinString({"org.shut.up", kServiceName}, '.'));
+  GetSandboxSpecRequest request;
+  GetSandboxSpecResponse response;
+  request.set_endpoint_name(JoinString({"org.shut.up", kEndpointName}, '.'));
 
-  EXPECT_TRUE(soma.GetContainerSpec(&request, &response));
-  EXPECT_FALSE(response.has_container_spec());
+  EXPECT_TRUE(soma.GetSandboxSpec(&request, &response));
+  EXPECT_FALSE(response.has_sandbox_spec());
 }
 
 TEST_F(SomaTest, MalformedRequest) {
   Soma soma(base::FilePath("."));
-  GetContainerSpecRequest request;
-  GetContainerSpecResponse response;
-  EXPECT_FALSE(soma.GetContainerSpec(&request, &response));
+  GetSandboxSpecRequest request;
+  GetSandboxSpecResponse response;
+  EXPECT_FALSE(soma.GetSandboxSpec(&request, &response));
 
-  request.set_service_name(".");
-  EXPECT_FALSE(soma.GetContainerSpec(&request, &response));
-  request.set_service_name("..");
-  EXPECT_FALSE(soma.GetContainerSpec(&request, &response));
-  request.set_service_name("../../etc/passwd");
-  EXPECT_FALSE(soma.GetContainerSpec(&request, &response));
-  request.set_service_name("subdir/thing.json");
-  EXPECT_FALSE(soma.GetContainerSpec(&request, &response));
+  request.set_endpoint_name(".");
+  EXPECT_FALSE(soma.GetSandboxSpec(&request, &response));
+  request.set_endpoint_name("..");
+  EXPECT_FALSE(soma.GetSandboxSpec(&request, &response));
+  request.set_endpoint_name("../../etc/passwd");
+  EXPECT_FALSE(soma.GetSandboxSpec(&request, &response));
+  request.set_endpoint_name("subdir/thing.json");
+  EXPECT_FALSE(soma.GetSandboxSpec(&request, &response));
 }
 
-TEST_F(SomaTest, GetContainerSpecs) {
+TEST_F(SomaTest, GetPersistentSandboxSpecs) {
   Soma soma(base::FilePath(tmpdir_.path()));
 
-  GetPersistentContainerSpecsRequest request;
-  GetPersistentContainerSpecsResponse response;
-  EXPECT_TRUE(soma.GetPersistentContainerSpecs(&request, &response));
-  EXPECT_EQ(response.container_specs_size(), 0);
+  GetPersistentSandboxSpecsRequest request;
+  GetPersistentSandboxSpecsResponse response;
+  EXPECT_TRUE(soma.GetPersistentSandboxSpecs(&request, &response));
+  EXPECT_EQ(response.sandbox_specs_size(), 0);
 
-  // Create a ContainerSpec that has a persistent tag on it and write it out
+  // Create a SandboxSpec that has a persistent tag on it and write it out
   // to a new file name in tmpdir_.
-  std::string file_name = kServiceNamespace + std::string("-2.spec");
-  ContainerSpec spec;
+  std::string file_name = kEndpointNamespace + std::string("-2.spec");
+  SandboxSpec spec;
   spec.set_is_persistent(true);
   spec.set_name(file_name);
   std::string spec_string;
@@ -110,9 +110,9 @@ TEST_F(SomaTest, GetContainerSpecs) {
             spec_string.length());
 
   response.Clear();
-  EXPECT_TRUE(soma.GetPersistentContainerSpecs(&request, &response));
-  ASSERT_EQ(1, response.container_specs_size());
-  EXPECT_EQ(file_name, response.container_specs(0).name());
+  EXPECT_TRUE(soma.GetPersistentSandboxSpecs(&request, &response));
+  ASSERT_EQ(1, response.sandbox_specs_size());
+  EXPECT_EQ(file_name, response.sandbox_specs(0).name());
 }
 
 }  // namespace soma

@@ -4,7 +4,7 @@
 syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
 
-import "soma_container_spec.proto";
+import "soma_sandbox_spec.proto";
 
 package germ;
 
@@ -14,7 +14,7 @@ service Germ {
 }
 
 message LaunchRequest {
-  optional soma.ContainerSpec spec = 1;
+  optional soma.SandboxSpec spec = 1;
 }
 
 message LaunchResponse {

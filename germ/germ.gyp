@@ -34,7 +34,7 @@
         'gen_bidl': 1,
       },
       'sources': [
-        '<(proto_in_dir)/soma_container_spec.proto',
+        '<(proto_in_dir)/soma_sandbox_spec.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },

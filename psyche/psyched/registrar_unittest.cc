@@ -23,19 +23,19 @@
 #include "psyche/proto_bindings/psyche.pb.rpc.h"
 #include "psyche/proto_bindings/soma.pb.h"
 #include "psyche/proto_bindings/soma.pb.rpc.h"
-#include "psyche/proto_bindings/soma_container_spec.pb.h"
+#include "psyche/proto_bindings/soma_sandbox_spec.pb.h"
 #include "psyche/psyched/cell_stub.h"
 #include "psyche/psyched/client_stub.h"
 #include "psyche/psyched/service_stub.h"
 #include "psyche/psyched/stub_factory.h"
 
 using protobinder::BinderProxy;
-using soma::ContainerSpec;
+using soma::SandboxSpec;
 
 namespace psyche {
 namespace {
 
-// Stub implementation of the Soma interface that returns canned ContainerSpecs.
+// Stub implementation of the Soma interface that returns canned SandboxSpecs.
 class SomaInterfaceStub : public soma::ISoma {
  public:
   SomaInterfaceStub() : return_value_(0) {}
@@ -43,44 +43,44 @@ class SomaInterfaceStub : public soma::ISoma {
 
   void set_return_value(int value) { return_value_ = value; }
 
-  // Sets the ContainerSpec to return in response to a request for
-  // |service_name|.
-  void AddEphemeralContainerSpec(const ContainerSpec& spec,
-                                 const std::string& service_name) {
-    service_specs_[service_name] = spec;
+  // Sets the SandboxSpec to return in response to a request for
+  // |endpoint_name|.
+  void AddEphemeralSandboxSpec(const SandboxSpec& spec,
+                               const std::string& endpoint_name) {
+    service_specs_[endpoint_name] = spec;
   }
 
-  // Adds a ContainerSpec to be returned by GetPersistentContainerSpecs().
-  void AddPersistentContainerSpec(const ContainerSpec& spec) {
+  // Adds a SandboxSpec to be returned by GetPersistentSandboxSpecs().
+  void AddPersistentSandboxSpec(const SandboxSpec& spec) {
     persistent_specs_.push_back(spec);
   }
 
   // ISoma:
-  Status GetContainerSpec(soma::GetContainerSpecRequest* in,
-                          soma::GetContainerSpecResponse* out) override {
-    const auto& it = service_specs_.find(in->service_name());
+  Status GetSandboxSpec(soma::GetSandboxSpecRequest* in,
+                        soma::GetSandboxSpecResponse* out) override {
+    const auto& it = service_specs_.find(in->endpoint_name());
     if (it != service_specs_.end())
-      out->mutable_container_spec()->CopyFrom(it->second);
+      out->mutable_sandbox_spec()->CopyFrom(it->second);
     return return_value_
-               ? STATUS_APP_ERROR(return_value_, "GetContainerSpec Error")
+               ? STATUS_APP_ERROR(return_value_, "GetSandboxSpec Error")
                : STATUS_OK();
   }
 
-  Status GetPersistentContainerSpecs(
-      soma::GetPersistentContainerSpecsRequest* in,
-      soma::GetPersistentContainerSpecsResponse* out) override {
+  Status GetPersistentSandboxSpecs(
+      soma::GetPersistentSandboxSpecsRequest* in,
+      soma::GetPersistentSandboxSpecsResponse* out) override {
     for (const auto& spec : persistent_specs_)
-      out->add_container_specs()->CopyFrom(spec);
+      out->add_sandbox_specs()->CopyFrom(spec);
     return return_value_ ? STATUS_APP_ERROR(return_value_,
-                                            "GetPersistentContainerSpecs Error")
+                                            "GetPersistentSandboxSpecs Error")
                          : STATUS_OK();
   }
 
  private:
   // Keyed by service name for which the spec should be returned.
-  std::map<std::string, ContainerSpec> service_specs_;
+  std::map<std::string, SandboxSpec> service_specs_;
 
-  std::vector<ContainerSpec> persistent_specs_;
+  std::vector<SandboxSpec> persistent_specs_;
 
   // binder result returned by handlers.
   int return_value_;
@@ -138,20 +138,19 @@ class RegistrarTest : public BinderTestBase {
     return client;
   }
 
-  // Returns the service that |factory_| created for |service_name|, crashing if
-  // it doesn't exist.
-  ServiceStub* GetServiceOrDie(const std::string& service_name) {
-    ServiceStub* service = factory_->GetService(service_name);
-    CHECK(service) << "No service named \"" << service_name << "\"";
+  // Returns the service that |factory_| created for |endpoint_name|, crashing
+  // if it doesn't exist.
+  ServiceStub* GetServiceOrDie(const std::string& endpoint_name) {
+    ServiceStub* service = factory_->GetService(endpoint_name);
+    CHECK(service) << "No service named \"" << endpoint_name << "\"";
     return service;
   }
 
   // Calls |registrar_|'s RegisterService method, returning true on success.
-  bool RegisterService(
-      const std::string& service_name,
-      uint32_t service_proxy_handle) WARN_UNUSED_RESULT {
+  bool RegisterService(const std::string& endpoint_name,
+                       uint32_t service_proxy_handle) WARN_UNUSED_RESULT {
     RegisterServiceRequest request;
-    request.set_name(service_name);
+    request.set_name(endpoint_name);
     BinderProxy(service_proxy_handle).CopyToProtocolBuffer(
         request.mutable_binder());
 
@@ -162,42 +161,42 @@ class RegistrarTest : public BinderTestBase {
 
   // Calls |registrar_|'s RequestService method, returning true if a failure
   // wasn't immediately reported back to the client.
-  bool RequestService(const std::string& service_name,
+  bool RequestService(const std::string& endpoint_name,
                       uint32_t client_proxy_handle) {
     ClientStub* client = factory_->GetClient(client_proxy_handle);
     const int initial_failures =
-        client ? client->GetServiceRequestFailures(service_name) : 0;
+        client ? client->GetServiceRequestFailures(endpoint_name) : 0;
 
     RequestServiceRequest request;
-    request.set_name(service_name);
+    request.set_name(endpoint_name);
     BinderProxy(client_proxy_handle).CopyToProtocolBuffer(
         request.mutable_client_binder());
 
     Status status = registrar_->RequestService(&request);
-    CHECK(status.IsOk()) << "RequestService call for " << service_name
+    CHECK(status.IsOk()) << "RequestService call for " << endpoint_name
                          << " failed";
 
     const int new_failures = GetClientOrDie(client_proxy_handle)
-                                 ->GetServiceRequestFailures(service_name);
+                                 ->GetServiceRequestFailures(endpoint_name);
     CHECK_GE(new_failures, initial_failures)
         << "Client " << client_proxy_handle << "'s request failures "
-        << "for \"" << service_name << " decreased from " << initial_failures
+        << "for \"" << endpoint_name << " decreased from " << initial_failures
         << " to " << new_failures;
     return new_failures == initial_failures;
   }
 
   // Creates a CellStub object named |cell_name| and registers it in
   // |soma_| and |factory_| so it'll be returned for a request for
-  // |service_name|. The caller is responsible for calling the stub's
+  // |endpoint_name|. The caller is responsible for calling the stub's
   // AddService() method to make it claim to provide services.
   //
   // The returned object is owned by |registrar_| (and may not
   // persist beyond the request if |registrar_| decides not to keep it).
   CellStub* AddEphemeralCell(const std::string& cell_name,
-                             const std::string& service_name) {
-    ContainerSpec spec;
+                             const std::string& endpoint_name) {
+    SandboxSpec spec;
     spec.set_name(cell_name);
-    soma_->AddEphemeralContainerSpec(spec, service_name);
+    soma_->AddEphemeralSandboxSpec(spec, endpoint_name);
     CellStub* cell = new CellStub(cell_name);
     factory_->SetCell(cell_name, std::unique_ptr<CellStub>(cell));
     return cell;
@@ -209,10 +208,10 @@ class RegistrarTest : public BinderTestBase {
   // The returned object is owned by |registrar_| (and may not
   // persist beyond the request if |registrar_| decides not to keep it).
   CellStub* AddPersistentCell(const std::string& cell_name) {
-    ContainerSpec spec;
+    SandboxSpec spec;
     spec.set_name(cell_name);
     spec.set_is_persistent(true);
-    soma_->AddPersistentContainerSpec(spec);
+    soma_->AddPersistentSandboxSpec(spec);
     CellStub* cell = new CellStub(cell_name);
     factory_->SetCell(cell_name, std::unique_ptr<CellStub>(cell));
     return cell;
@@ -309,12 +308,12 @@ TEST_F(RegistrarTest, QuerySomaForServices) {
   EXPECT_TRUE(service2->HasClient(client3));
 }
 
-// Tests that failure is reported when a ContainerSpec is returned in response
+// Tests that failure is reported when a SandboxSpec is returned in response
 // to a request for a service that it doesn't actually provide.
 TEST_F(RegistrarTest, UnknownService) {
   Init();
 
-  // Create a ContainerSpec that'll get returned for a given service, but don't
+  // Create a SandboxSpec that'll get returned for a given service, but don't
   // make it claim to provide that service.
   const std::string kCellName("/foo/org.example.cell.json");
   const std::string kServiceName("org.example.cell.service");
@@ -347,8 +346,8 @@ TEST_F(RegistrarTest, TimedOutService) {
   EXPECT_FALSE(RequestService(kServiceName, CreateBinderProxyHandle()));
 }
 
-// Tests that a second ContainerSpec claiming to provide a service that's
-// already provided by an earlier ContainerSpec is ignored.
+// Tests that a second SandboxSpec claiming to provide a service that's
+// already provided by an earlier SandboxSpec is ignored.
 TEST_F(RegistrarTest, DuplicateService) {
   Init();
   const std::string kCell1Name("/foo/org.example.cell1.json");
@@ -371,7 +370,7 @@ TEST_F(RegistrarTest, DuplicateService) {
   EXPECT_FALSE(RequestService(kService2Name, CreateBinderProxyHandle()));
 }
 
-// Tests that a duplicate ContainerSpec (i.e. one that was previously received
+// Tests that a duplicate SandboxSpec (i.e. one that was previously received
 // from somad, but that now claims to provide a service that it didn't provide
 // earlier) gets ignored.
 TEST_F(RegistrarTest, ServiceListChanged) {
@@ -391,7 +390,7 @@ TEST_F(RegistrarTest, ServiceListChanged) {
   EXPECT_FALSE(RequestService(kService2Name, CreateBinderProxyHandle()));
 }
 
-// Tests that persistent ContainerSpecs are fetched from soma during
+// Tests that persistent SandboxSpecs are fetched from soma during
 // initialization and launched.
 TEST_F(RegistrarTest, PersistentCells) {
   // Create two persistent cells with one service each.

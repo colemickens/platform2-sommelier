@@ -12,14 +12,14 @@
 
 #include <base/macros.h>
 #include <chromeos/process.h>
-#include <soma/read_only_container_spec.h>
+#include <soma/read_only_sandbox_spec.h>
 
 #include "germ/environment.h"
-#include "germ/proto_bindings/soma_container_spec.pb.h"
+#include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 
 namespace germ {
 
-using SomaExecutable = soma::ContainerSpec_Executable;
+using SomaExecutable = soma::SandboxSpec_Executable;
 
 class UidService;
 
@@ -31,7 +31,7 @@ class Launcher {
   bool RunInteractiveCommand(const std::string& name,
                              const std::vector<std::string>& argv,
                              int* status);
-  bool RunInteractiveSpec(const soma::ReadOnlyContainerSpec& spec, int* status);
+  bool RunInteractiveSpec(const soma::ReadOnlySandboxSpec& spec, int* status);
 
   // Does not return.
   void ExecveInMinijail(const SomaExecutable& executable);

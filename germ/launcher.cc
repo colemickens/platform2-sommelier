@@ -54,7 +54,7 @@ bool Launcher::RunInteractiveCommand(const std::string& name,
   return RunWithMinijail(env, cmdline, status);
 }
 
-bool Launcher::RunInteractiveSpec(const soma::ReadOnlyContainerSpec& spec,
+bool Launcher::RunInteractiveSpec(const soma::ReadOnlySandboxSpec& spec,
                                   int* status) {
   std::vector<char*> cmdline;
   // TODO(jorgelo): support running more than one executable.

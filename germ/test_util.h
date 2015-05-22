@@ -11,7 +11,7 @@
 
 #include <gmock/gmock.h>
 
-#include "germ/proto_bindings/soma_container_spec.pb.h"
+#include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 
 namespace germ {
 
@@ -26,12 +26,12 @@ class ScopedAlarm {
   struct sigaction oldact_;
 };
 
-// Matcher for ContainerSpecs. Only checks whether names match.
+// Matcher for SandboxSpecs. Only checks whether names match.
 MATCHER_P(EqualsSpec, expected, "") {
   return expected.name() == arg.name();
 }
 
-soma::ContainerSpec MakeSpecForTest(const std::string& name);
+soma::SandboxSpec MakeSpecForTest(const std::string& name);
 
 }  // namespace germ
 

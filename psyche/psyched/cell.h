@@ -11,7 +11,7 @@
 
 #include <base/macros.h>
 #include <base/timer/timer.h>
-#include "psyche/proto_bindings/soma_container_spec.pb.h"
+#include "psyche/proto_bindings/soma_sandbox_spec.pb.h"
 #include "psyche/psyched/service_observer.h"
 
 namespace psyche {
@@ -20,7 +20,7 @@ class FactoryInterface;
 class GermConnection;
 class ServiceInterface;
 
-// Corresponds to a ContainerSpec returned by soma and launched one or more
+// Corresponds to a SandboxSpec returned by soma and launched one or more
 // times by germ. This class persists across multiple launches of the cell.
 class CellInterface {
  public:
@@ -61,7 +61,7 @@ class Cell : public CellInterface, public ServiceObserver {
   // |factory| is used to construct ServiceInterface objects, permitting tests
   // to create stub services instead. Note: Ownership of |germ| remains with
   // the caller.
-  Cell(const soma::ContainerSpec& spec,
+  Cell(const soma::SandboxSpec& spec,
        FactoryInterface* factory,
        GermConnection* germ);
   ~Cell() override = default;
@@ -87,7 +87,7 @@ class Cell : public CellInterface, public ServiceObserver {
   bool AllServicesRegistered();
 
   // The specification describing this cell.
-  soma::ContainerSpec spec_;
+  soma::SandboxSpec spec_;
 
   // Services that are provided by this cell. These are created when the service
   // is created; the binder proxies that are given to clients are set later when

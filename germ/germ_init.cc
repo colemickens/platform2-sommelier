@@ -22,13 +22,14 @@
 #include <chromeos/daemons/daemon.h>
 
 #include "germ/init_process_reaper.h"
-#include "germ/proto_bindings/soma_container_spec.pb.h"
+#include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 
 namespace germ {
 
-GermInit::GermInit(const soma::ContainerSpec& spec)
+GermInit::GermInit(const soma::SandboxSpec& spec)
     : init_process_reaper_(base::Bind(&GermInit::Quit, base::Unretained(this))),
-      spec_(spec) {}
+      spec_(spec) {
+}
 GermInit::~GermInit() {}
 
 int GermInit::OnInit() {
@@ -78,7 +79,7 @@ void GermInit::StartProcesses() {
 }
 
 bool GermInit::HandleSIGTERM(const struct signalfd_siginfo& sigfd_info) {
-  // TODO(rickyz): Make this a field in ContainerSpec.
+  // TODO(rickyz): Make this a field in SandboxSpec.
   const int64 kKillDelayMs = 500;
 
   // Send SIGTERM to all processes we can signal. Children are given a set

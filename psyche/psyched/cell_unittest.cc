@@ -17,14 +17,14 @@
 #include "psyche/common/binder_test_base.h"
 #include "psyche/proto_bindings/germ.pb.h"
 #include "psyche/proto_bindings/germ.pb.rpc.h"
-#include "psyche/proto_bindings/soma_container_spec.pb.h"
+#include "psyche/proto_bindings/soma_sandbox_spec.pb.h"
 #include "psyche/psyched/germ_connection.h"
 #include "psyche/psyched/service_stub.h"
 #include "psyche/psyched/stub_factory.h"
 
 using chromeos::make_unique_ptr;
 using protobinder::BinderProxy;
-using soma::ContainerSpec;
+using soma::SandboxSpec;
 
 namespace psyche {
 namespace {
@@ -92,22 +92,21 @@ class CellTest : public BinderTestBase {
 };
 
 TEST_F(CellTest, InitializeFromSpec) {
-  ContainerSpec spec;
+  SandboxSpec spec;
   const std::string kCellName("/tmp/org.example.cell");
   spec.set_name(kCellName);
-  const std::vector<std::string> kServiceNames = {
-    "org.example.search.query",
-    "org.example.search.autocomplete",
+  const std::vector<std::string> kEndpointNames = {
+      "org.example.search.query", "org.example.search.autocomplete",
   };
-  for (const auto& name : kServiceNames)
-    spec.add_service_names(name);
+  for (const auto& name : kEndpointNames)
+    spec.add_endpoint_names(name);
 
   Cell cell(spec, &factory_, &germ_connection_);
   EXPECT_EQ(kCellName, cell.GetName());
 
   // Check that all of the listed services were created.
   const CellInterface::ServiceMap& services = cell.GetServices();
-  for (const auto& name : kServiceNames) {
+  for (const auto& name : kEndpointNames) {
     SCOPED_TRACE(name);
     const auto it = services.find(name);
     ASSERT_TRUE(it != services.end());
@@ -122,7 +121,7 @@ TEST_F(CellTest, InitializeFromSpec) {
 
 // Tests various failures when communicating with germd.
 TEST_F(CellTest, GermCommunication) {
-  ContainerSpec spec;
+  SandboxSpec spec;
   const std::string kCellName("/tmp/org.example.cell");
   spec.set_name(kCellName);
 
@@ -147,13 +146,12 @@ TEST_F(CellTest, GermCommunication) {
 
 // Tests notifying services that don't register themselves.
 TEST_F(CellTest, VerifyServiceRegistration) {
-  ContainerSpec spec;
-  const std::vector<std::string> kServiceNames = {
-    "org.example.search.query",
-    "org.example.search.autocomplete",
+  SandboxSpec spec;
+  const std::vector<std::string> kEndpointNames = {
+      "org.example.search.query", "org.example.search.autocomplete",
   };
-  for (const auto& name : kServiceNames)
-    spec.add_service_names(name);
+  for (const auto& name : kEndpointNames)
+    spec.add_endpoint_names(name);
 
   const std::string kCellName("/tmp/org.example.cell");
   spec.set_name(kCellName);
@@ -171,10 +169,10 @@ TEST_F(CellTest, VerifyServiceRegistration) {
   // After that, we give up and don't set the timer again.
   EXPECT_FALSE(test_api.TriggerVerifyServicesTimeout());
   // The services have been notified of the failure.
-  for (const auto& service_name : kServiceNames) {
-    ServiceStub* service = factory_.GetService(service_name);
+  for (const auto& endpoint_name : kEndpointNames) {
+    ServiceStub* service = factory_.GetService(endpoint_name);
     EXPECT_EQ(1, service->GetAndResetOnServiceUnavailableCount())
-        << service_name << " had wrong unavailable count";
+        << endpoint_name << " had wrong unavailable count";
   }
 
   // Start again and make the services register.
@@ -193,10 +191,10 @@ TEST_F(CellTest, VerifyServiceRegistration) {
   EXPECT_FALSE(test_api.TriggerVerifyServicesTimeout());
 
   // OnServiceUnavailable() hasn't been called on any of the services.
-  for (const auto& service_name : kServiceNames) {
-    ServiceStub* service = factory_.GetService(service_name);
+  for (const auto& endpoint_name : kEndpointNames) {
+    ServiceStub* service = factory_.GetService(endpoint_name);
     EXPECT_EQ(0, service->GetAndResetOnServiceUnavailableCount())
-        << service_name << " had wrong unavailable count";
+        << endpoint_name << " had wrong unavailable count";
   }
 }
 

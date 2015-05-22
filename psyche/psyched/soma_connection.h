@@ -19,13 +19,13 @@ class BinderProxy;
 }  // namespace protobinder
 
 namespace soma {
-class ContainerSpec;
+class SandboxSpec;
 class ISoma;
 }  // namespace soma
 
 namespace psyche {
 
-// Used to communicate with somad to look up ContainerSpecs.
+// Used to communicate with somad to look up SandboxSpecs.
 class SomaConnection : public ServiceObserver {
  public:
   enum class Result {
@@ -51,15 +51,14 @@ class SomaConnection : public ServiceObserver {
   // Sets the proxy that should be used for communication with somad.
   void SetProxy(std::unique_ptr<protobinder::BinderProxy> proxy);
 
-  // Synchronously fetches the ContainerSpec supplying |service_name| and copies
+  // Synchronously fetches the SandboxSpec supplying |service_name| and copies
   // it to |spec_out|.
-  Result GetContainerSpecForService(const std::string& service_name,
-                                    soma::ContainerSpec* spec_out);
+  Result GetSandboxSpecForService(const std::string& service_name,
+                                  soma::SandboxSpec* spec_out);
 
-  // Synchronously fetches all persistent ContainerSpecs and copies them to
+  // Synchronously fetches all persistent SandboxSpecs and copies them to
   // |specs_out| (after clearing it).
-  Result GetPersistentContainerSpecs(
-      std::vector<soma::ContainerSpec>* specs_out);
+  Result GetPersistentSandboxSpecs(std::vector<soma::SandboxSpec>* specs_out);
 
   // ServiceObserver:
   void OnServiceProxyChange(ServiceInterface* service) override;

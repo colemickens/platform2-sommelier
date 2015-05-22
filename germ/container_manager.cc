@@ -17,7 +17,7 @@
 #include <base/time/time.h>
 
 #include "germ/container.h"
-#include "germ/proto_bindings/soma_container_spec.pb.h"
+#include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 
 namespace germ {
 
@@ -25,7 +25,7 @@ ContainerManager::ContainerManager(GermZygote* zygote) : zygote_(zygote) {}
 
 ContainerManager::~ContainerManager() {}
 
-bool ContainerManager::StartContainer(const soma::ContainerSpec& spec) {
+bool ContainerManager::StartContainer(const soma::SandboxSpec& spec) {
   const std::string& name = spec.name();
   scoped_refptr<Container> container = Lookup(name);
   if (container == nullptr) {
@@ -42,7 +42,7 @@ bool ContainerManager::StartContainer(const soma::ContainerSpec& spec) {
       return DoStart(container);
 
     case Container::State::RUNNING:
-      // TODO(rickyz): Make kill_delay part of the ContainerSpec.
+      // TODO(rickyz): Make kill_delay part of the SandboxSpec.
       return DoTerminate(container, base::TimeDelta());
 
     case Container::State::DYING:

@@ -12,7 +12,7 @@
 
 #include <base/logging.h>
 
-#include "germ/proto_bindings/soma_container_spec.pb.h"
+#include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 
 namespace germ {
 
@@ -38,8 +38,8 @@ ScopedAlarm::~ScopedAlarm() {
   PCHECK(sigaction(SIGALRM, &oldact_, nullptr) == 0);
 }
 
-soma::ContainerSpec MakeSpecForTest(const std::string& name) {
-  soma::ContainerSpec spec;
+soma::SandboxSpec MakeSpecForTest(const std::string& name) {
+  soma::SandboxSpec spec;
   spec.set_name(name);
   return spec;
 }

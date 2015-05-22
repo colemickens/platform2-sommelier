@@ -20,7 +20,7 @@ class BinderProxy;
 }  // namespace protobinder
 
 namespace soma {
-class ContainerSpec;
+class SandboxSpec;
 }  // namespace soma
 
 namespace psyche {
@@ -56,11 +56,11 @@ class Registrar : public IPsychedHostInterface {
 
   // Returns the object representing |service_name|. If the service isn't
   // present in |services_| and |create_cell| is true, fetches its
-  // ContainerSpec from soma, launches it, and adds the service to |services_|.
+  // SandboxSpec from soma, launches it, and adds the service to |services_|.
   ServiceInterface* GetService(const std::string& service_name,
                                bool create_cell);
 
-  // Requests persistent ContainerSpecs from soma and creates corresponding
+  // Requests persistent SandboxSpecs from soma and creates corresponding
   // cell objects.
   void CreatePersistentCells();
 
@@ -90,7 +90,7 @@ class Registrar : public IPsychedHostInterface {
   using ClientMap = std::map<int32_t, std::unique_ptr<ClientInterface>>;
   ClientMap clients_;
 
-  // Connection to somad used to look up ContainerSpecs.
+  // Connection to somad used to look up SandboxSpecs.
   std::unique_ptr<SomaConnection> soma_;
 
   // Connection to germd used to launch cells.

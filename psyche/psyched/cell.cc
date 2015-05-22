@@ -10,7 +10,7 @@
 #include "psyche/psyched/germ_connection.h"
 #include "psyche/psyched/service.h"
 
-using soma::ContainerSpec;
+using soma::SandboxSpec;
 
 namespace psyche {
 
@@ -34,12 +34,12 @@ bool Cell::TestApi::TriggerVerifyServicesTimeout() {
   return true;
 }
 
-Cell::Cell(const ContainerSpec& spec,
+Cell::Cell(const SandboxSpec& spec,
            FactoryInterface* factory,
            GermConnection* germ)
     : spec_(spec), germ_connection_(germ) {
   DCHECK(factory);
-  for (const auto& name : spec_.service_names()) {
+  for (const auto& name : spec_.endpoint_names()) {
     std::unique_ptr<ServiceInterface> service(factory->CreateService(name));
     service->AddObserver(this);
     services_[name] = std::move(service);

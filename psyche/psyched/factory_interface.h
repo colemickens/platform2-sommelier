@@ -13,7 +13,7 @@ class BinderProxy;
 }  // namespace protobinder
 
 namespace soma {
-class ContainerSpec;
+class SandboxSpec;
 }  // namespace soma
 
 namespace psyche {
@@ -29,7 +29,7 @@ class FactoryInterface {
   virtual ~FactoryInterface() = default;
 
   virtual std::unique_ptr<CellInterface> CreateCell(
-      const soma::ContainerSpec& spec) = 0;
+      const soma::SandboxSpec& spec) = 0;
   virtual std::unique_ptr<ServiceInterface> CreateService(
       const std::string& name) = 0;
   virtual std::unique_ptr<ClientInterface> CreateClient(

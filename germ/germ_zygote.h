@@ -12,7 +12,7 @@
 #include <chromeos/daemons/daemon.h>
 
 #include "germ/process_reaper.h"
-#include "germ/proto_bindings/soma_container_spec.pb.h"
+#include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 
 namespace germ {
 
@@ -35,7 +35,7 @@ class GermZygote {
   // Makes a request to the zygote process to spawn a container. Run from the
   // zygote's parent. Returns false on failure. On success, |pid| is populated
   // with the pid of the container's init process.
-  virtual bool StartContainer(const soma::ContainerSpec& spec, pid_t* pid);
+  virtual bool StartContainer(const soma::SandboxSpec& spec, pid_t* pid);
 
   // Kills a process (currently, this passes through to kill(2)).
   virtual bool Kill(pid_t pid, int signal);
@@ -46,13 +46,13 @@ class GermZygote {
   // Fork off the container init process. On success, returns the init process's
   // pid in the parent and 0 in the child. Returns -1 on error. Should only be
   // overriden in tests.
-  virtual pid_t ForkContainer(const soma::ContainerSpec& spec);
+  virtual pid_t ForkContainer(const soma::SandboxSpec& spec);
 
   // Zygote process request loop. Does not return.
   void HandleRequests();
 
   // Runs from the zygote process.
-  void SpawnContainer(const soma::ContainerSpec& spec, int client_fd);
+  void SpawnContainer(const soma::SandboxSpec& spec, int client_fd);
 
   pid_t zygote_pid_;
 
