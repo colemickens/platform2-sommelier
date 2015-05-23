@@ -51,12 +51,15 @@ class GermZygote {
   // Zygote process request loop. Does not return.
   void HandleRequests();
 
+  // Sets up the cgroups mounts required for process tracking/accounting.
+  bool SetUpCgroups();
+
   // Runs from the zygote process.
   void SpawnContainer(const soma::SandboxSpec& spec, int client_fd);
 
   pid_t zygote_pid_;
 
-  // Unix socket used to send requests to the zygote procses.
+  // Unix socket used to send requests to the zygote process.
   base::ScopedFD client_fd_;
   base::ScopedFD server_fd_;
 

@@ -6,13 +6,17 @@
 
 #include <sched.h>
 #include <signal.h>
+#include <sys/mount.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
@@ -33,6 +37,7 @@ static const char kZygoteChildPingMessage[] = "CHILD_PING";
 // TODO(rickyz) Is it reasonable to have a hard limit for the SandboxSpecs +
 // pickle size?
 static size_t kZygoteMaxMessageLength = 8192;
+static const char kSysFsCgroupDir[] = "/sys/fs/cgroup";
 }  // namespace
 
 GermZygote::GermZygote() : zygote_pid_(-1) {}
@@ -50,6 +55,10 @@ void GermZygote::Start() {
 
   if (zygote_pid_ == 0) {
     client_fd_.reset();
+    if (!SetUpCgroups()) {
+      // TODO(jorgelo): Make this fatal.
+      LOG(ERROR) << "Failed to set up cgroups";
+    }
     HandleRequests();
     NOTREACHED();
   }
@@ -206,6 +215,35 @@ pid_t GermZygote::ForkContainer(const soma::SandboxSpec& spec) {
 
   PCHECK(setsid() != -1);
   return base::ForkWithFlags(flags, nullptr, nullptr);
+}
+
+bool GermZygote::SetUpCgroups() {
+  base::FilePath cgroup(kSysFsCgroupDir);
+  if (!base::PathExists(cgroup)) {
+    // The system should be creating this path.
+    LOG(ERROR) << kSysFsCgroupDir << " does not exist";
+    return false;
+  }
+
+  base::FilePath cpuacct = cgroup.Append("cpuacct");
+  std::string cpuacct_path = cpuacct.MaybeAsASCII();
+  if (mkdir(cpuacct_path.c_str(), 0700) == -1) {
+    // Don't fail if the path already exists.
+    if (errno != EEXIST) {
+      PLOG(ERROR) << "mkdir(" << cpuacct_path << ")";
+      return false;
+    }
+  }
+
+  if (mount("cgroup", cpuacct_path.c_str(), "cgroup",
+            MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RELATIME, "cpuacct") == -1) {
+    if (errno != EBUSY) {
+      PLOG(ERROR) << "mount(" << cpuacct_path << ")";
+      return false;
+    }
+    PLOG(INFO) << "mount(" << cpuacct_path << ")";
+  }
+  return true;
 }
 
 void GermZygote::SpawnContainer(const soma::SandboxSpec& spec, int client_fd) {

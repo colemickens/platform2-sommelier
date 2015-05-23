@@ -29,6 +29,8 @@ class GermInit : public chromeos::Daemon {
 
   bool HandleSIGTERM(const signalfd_siginfo& sigfd_info);
 
+  bool SetUpContainerCgroups();
+
   Launcher launcher_;
   InitProcessReaper init_process_reaper_;
   const soma::SandboxSpec& spec_;

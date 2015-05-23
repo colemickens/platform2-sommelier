@@ -4,9 +4,11 @@
 
 #include "germ/germ_init.h"
 
+#include <errno.h>
 #include <grp.h>
 #include <signal.h>
 #include <sys/signalfd.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sysexits.h>
 #include <unistd.h>
@@ -14,6 +16,8 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/bind.h>
 #include <base/bind_helpers.h>
 #include <base/location.h>
@@ -46,6 +50,11 @@ int GermInit::OnInit() {
   RegisterHandler(SIGTERM,
                   base::Bind(&GermInit::HandleSIGTERM, base::Unretained(this)));
 
+  if (!SetUpContainerCgroups()) {
+    // TODO(jorgelo): Make this fatal.
+    LOG(ERROR) << "Failed to set up container cgroups";
+  }
+
   // It is important that we start all processes in a single task, since
   // otherwise |init_process_reaper_| might cause us to exit after only some of
   // the processes have exited. This is because InitProcessReaper's behavior is:
@@ -62,7 +71,7 @@ void GermInit::StartProcesses() {
   size_t i = 0;
   for (const auto& executable : spec_.executables()) {
     const pid_t pid = fork();
-    PCHECK(pid != -1) << "fork() failed: " << spec_.name() << "executable "
+    PCHECK(pid != -1) << "fork() failed: " << spec_.name() << " executable "
                       << i;
 
     if (pid == 0) {
@@ -90,6 +99,34 @@ bool GermInit::HandleSIGTERM(const struct signalfd_siginfo& sigfd_info) {
 
   // Return false to indicate that our handler should not be uninstalled.
   return false;
+}
+
+bool GermInit::SetUpContainerCgroups() {
+  base::FilePath cpuacct("/sys/fs/cgroup/cpuacct");
+  base::FilePath container_cgroup = cpuacct.Append(spec_.name());
+  if (mkdir(container_cgroup.MaybeAsASCII().c_str(), 0700) == -1) {
+    if (errno != EEXIST) {
+      PLOG(ERROR) << "mkdir(container_cgroup)";
+      return false;
+    }
+    PLOG(INFO) << "mkdir(container_cgroup)";
+  }
+
+  base::FilePath tasks = container_cgroup.Append("tasks");
+
+  pid_t current_pid = getpid();
+  std::string spid = std::to_string(current_pid);
+  int n = base::WriteFile(tasks, spid.c_str(), spid.size());
+  if (n < 0) {
+    LOG(ERROR) << "WriteFile(tasks, pid) failed";
+    return false;
+  }
+  if (static_cast<size_t>(n) < spid.size()) {
+    LOG(ERROR) << "Could not write PID to " << tasks.MaybeAsASCII();
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace germ
