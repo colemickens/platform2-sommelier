@@ -54,7 +54,7 @@ clean: CLEAN($(SYSTEM_API_PROTO_HEADERS))
 clean: CLEAN($(SYSTEM_API_PROTO_OBJS))
 # Add rules for compiling generated protobuffer code, as the CXX_OBJECTS list
 # is built before these source files exists and, as such, does not contain them.
-$(eval $(call add_object_rules,$(SYSTEM_API_PROTO_OBJS),CXX,cc))
+$(eval $(call add_object_rules,$(SYSTEM_API_PROTO_OBJS),CXX,cc,CXXFLAGS))
 
 GEN_DBUSXX(mtpd_server/mtpd_server.h): $(SRC)/mtpd.xml
 mtpd_server/mtpd_server.h: GEN_DBUSXX(mtpd_server/mtpd_server.h)
