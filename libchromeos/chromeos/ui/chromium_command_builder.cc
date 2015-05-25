@@ -455,8 +455,10 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("neon"))
     AddEnvVar("VPX_SIMD_CAPS", "0xf");
 
-  if (IsBoard("link") || IsBoard("link_freon"))
+  if (IsBoard("link") || IsBoard("link_freon")) {
     AddArg("--touch-calibration=0,0,0,50");
+    AddArg("--touch-noise-filtering");
+  }
 
   AddArg(std::string("--gpu-sandbox-failures-fatal=") +
       (is_chrome_os_hardware() ? "yes" : "no"));
