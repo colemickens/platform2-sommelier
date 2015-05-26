@@ -81,3 +81,4 @@ rmdir: 1
 chmod: 1
 chown32: 1
 dup: 1
+writev: 1

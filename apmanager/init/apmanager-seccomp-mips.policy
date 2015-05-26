@@ -66,3 +66,4 @@ sigreturn: 1
 kill: 1
 rt_sigaction: 1
 waitpid: 1
+writev: 1

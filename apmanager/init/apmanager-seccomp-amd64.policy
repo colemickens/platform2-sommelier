@@ -86,3 +86,4 @@ mkdir: 1
 rmdir: 1
 chown: 1
 chmod: 1
+writev: 1

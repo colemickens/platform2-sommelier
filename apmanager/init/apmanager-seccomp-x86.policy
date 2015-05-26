@@ -68,3 +68,4 @@ rmdir: 1
 chown32: 1
 chmod: 1
 unlink: 1
+writev: 1
