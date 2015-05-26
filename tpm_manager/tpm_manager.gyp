@@ -69,6 +69,9 @@
       'sources': [
         'server/main.cc',
       ],
+      'libraries': [
+        '-lminijail',
+      ],
       'dependencies': [
         'proto_library',
         'server_library',
