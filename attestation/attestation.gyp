@@ -125,6 +125,9 @@
       'sources': [
         'server/main.cc',
       ],
+      'libraries': [
+        '-lminijail',
+      ],
       'dependencies': [
         'common_library',
         'proto_library',
