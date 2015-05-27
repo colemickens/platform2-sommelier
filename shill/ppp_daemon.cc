@@ -77,7 +77,7 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
   std::map<std::string, std::string> environment;
   if (task->Start(base::FilePath(kDaemonPath), arguments, environment, true,
                   error)) {
-    return std::move(task);
+    return task;
   }
   return nullptr;
 }
