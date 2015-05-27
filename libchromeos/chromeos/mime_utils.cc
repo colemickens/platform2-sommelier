@@ -132,7 +132,7 @@ mime::Parameters mime::GetParameters(const std::string& mime_string) {
   mime::Parameters parameters;
 
   if (mime::Split(mime_string, &type, &subtype, &parameters))
-    return std::move(parameters);
+    return parameters;
 
   return mime::Parameters();
 }
