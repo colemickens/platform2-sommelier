@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -6,6 +6,30 @@
 
 # Helper script to initiate over-the-air or regular net-device packet
 # capture.
+
+
+# get_array_size returns the number of positional arguments passed to
+# this function.
+#
+# @param a, b, c... the input positional parameters.
+# @return count of positional parameters.
+get_array_size ()
+{
+  echo "$#"
+}
+
+
+# get_array_element returns the n'th positional argument passed to
+# this function.
+#
+# @param count the number of the positional parameter to return.
+# @param a, b, c... the input positional parameters.
+# @return positional paramter #|count|.
+get_array_element ()
+{
+  shift $1
+  echo "$1"
+}
 
 
 # get_device_list returns the name of all network devices shown in an
@@ -88,7 +112,7 @@ get_ht_info ()
   local frequency="${3}"
   iw dev "${device}" scan dump 2>/dev/null |
       awk -v search_bssid="${bssid}" -v search_frequency="${frequency}" \
-           '/^BSS/ { bssid=$2 };
+           '/^BSS/ { gsub(/\(.*/, ""); bssid=$2 };
            /^\tfreq:/ { frequency=$2 };
            /\* secondary channel offset: (above|below)/ {
                if (bssid == search_bssid && frequency == search_frequency)
@@ -129,11 +153,11 @@ configure_monitor ()
   local device="${1}"
   local frequency="${2}"
   local ht_location="${3}"
-  if [[ -z "${ht_location}" ]] ; then
+  if [ -z "${ht_location}" ] ; then
     iw dev "${device}" set freq "${frequency}"
-  elif [[ "${ht_location}" == "above" ]] ; then
+  elif [ "${ht_location}" = "above" ] ; then
     iw dev "${device}" set freq "${frequency}" HT40+
-  elif [[ "${ht_location}" == "below" ]] ; then
+  elif [ "${ht_location}" = "below" ] ; then
     iw dev "${device}" set freq "${frequency}" HT40-
   else
     error "ht_location should be \"above\" or \"below\", not \"${ht_location}\""
@@ -162,11 +186,13 @@ get_monitor_device ()
   # See if there is a monitor device already around.
   local device
   for device in $(get_device_list); do
-    local -a phy_info=($(get_phy_info "$device"))
-    if [[ "${phy_info[0]}" != "monitor" ]] ; then
+    local phy_info="$(get_phy_info "$device")"
+    local mode="$(get_array_element 1 $phy_info)"
+    if [ "${mode}" != "monitor" ] ; then
       continue
     fi
-    if [[ "${phy_info[1]}" == "${wiphy}" ]] ; then
+    local phy="$(get_array_element 2 $phy_info)"
+    if [ "${phy}" = "${wiphy}" ] ; then
       # Save this one for later, if we don't find anything better.
       connected_monitor_device="${device}"
       continue
@@ -183,18 +209,17 @@ get_monitor_device ()
   # Find a monitor-capable phy and try to create a device on it.
   local phy
   for phy in $(get_monitor_phy_list "${frequency}"); do
-    if [[ "${phy}" = "phy${wiphy}" ]] ; then
+    if [ "${phy}" = "phy${wiphy}" ] ; then
       # Try this phy as a last resort.
       connected_monitor_phy=$phy
       continue
     fi
 
     # Shutdown any un-connected interfaces on this phy.
-    local -a phy_devices=($(get_devices_for_phy "${phy}"))
     local check_device
     for check_device in $(get_devices_for_phy "${phy}") ; do
-      local -a phy_info=($(get_phy_info "$check_device"))
-      if [[ "${phy_info[0]}" == "monitor" ]] ; then
+      local mode="$(get_array_element 1 $(get_phy_info "$check_device"))"
+      if [ "${mode}" = "monitor" ] ; then
         # We have already tried to use this monitor device and failed in
         # the first loop.  Skip this phy.
         continue 2
@@ -203,8 +228,8 @@ get_monitor_device ()
 
     local unused_device
     for unused_device in $(get_devices_for_phy "${phy}") ; do
-      local link_info=($(get_link_info "$unused_device"))
-      if [[ ${#link_info[@]} -eq 0 ]] ; then
+      local link_count="$(get_array_size $(get_link_info "$unused_device"))"
+      if [ ${link_count} -eq 0 ] ; then
         error "Shutting down interface ${unused_device} so we can perform"
         error "monitoring.  You may need to disable, then re-enable WiFi to"
         error "use this interface again normally again."
@@ -216,7 +241,7 @@ get_monitor_device ()
     done
 
     device=$(create_monitor "${phy}")
-    if [[ -z "${device}" ]] ; then
+    if [ -z "${device}" ] ; then
       continue
     fi
 
@@ -232,14 +257,14 @@ get_monitor_device ()
   # We were unable to find or create a monitor device on a different phy than
   # the one we are connected through.  Let's try using a monitor on the
   # the connected phy.
-  if [[ -n "$connected_monitor_device" ]] ; then
+  if [ -n "$connected_monitor_device" ] ; then
     device="${connected_monitor_device}"
     if ! configure_monitor "${device}" "${frequency}" "${ht_location}" ; then
       return 1
     fi
-  elif [[ -n "${connected_monitor_phy}" ]] ; then
+  elif [ -n "${connected_monitor_phy}" ] ; then
     device=$(create_monitor "${connected_monitor_phy}")
-    if [[ -z "${device}" ]] ; then
+    if [ -z "${device}" ] ; then
       return 1
     fi
 
@@ -269,11 +294,13 @@ get_monitor_on_phy()
   # See if there is a monitor device already around.
   local device
   for device in $(get_device_list); do
-    local -a phy_info=($(get_phy_info "$device"))
-    if [[ "${phy_info[0]}" != "monitor" ]] ; then
+    local phy_info="$(get_phy_info "$device")"
+    local mode="$(get_array_element 1 $phy_info)"
+    if [ "${mode}" != "monitor" ] ; then
       continue
     fi
-    if [[ "${phy_info[1]}" == "${target_phy}" ]] ; then
+    local phy="$(get_array_element 2 $phy_info)"
+    if [ "${phy}" = "${target_phy}" ] ; then
       echo "$device"
       return
     fi
@@ -305,31 +332,33 @@ get_monitor_for_link ()
 {
   local monitored_device="${1}"
   local device="${2}"
-  local -a phy_info=($(get_phy_info "$monitored_device"))
-  if [[ "${phy_info[0]}" != "managed" ]] ; then
+  local phy_info="$(get_phy_info "$monitored_device")"
+  local mode="$(get_array_element 1 $phy_info)"
+  if [ "${mode}" != "managed" ] ; then
     error "Cannot monitor ${monitored_device}: it is not an 802.11 device."
     return
   fi
 
-  local link_info=($(get_link_info "$monitored_device"))
-  if [[ ${#link_info[@]} -eq 0 ]] ; then
+  local link_info="$(get_link_info "$monitored_device")"
+  if [ $(get_array_size $link_info) -eq 0 ] ; then
     error "Cannot monitor ${monitored_device}: it is not currently connected."
     return
   fi
 
-  local bssid="${link_info[0]}"
-  local frequency="${link_info[1]}"
-  local ht_info=$(get_ht_info "${monitored_device}" "${bssid}" "${frequency}")
-  if [[ -z "${device}" ]] ; then
+  local bssid="$(get_array_element 1 $link_info)"
+  local frequency="$(get_array_element 2 $link_info)"
+  local ht_info="$(get_ht_info "${monitored_device}" "${bssid}" "${frequency}")"
+  if [ -z "${device}" ] ; then
+    local phy="$(get_array_element 2 $phy_info)"
     device=$(
-      get_monitor_device "${frequency}" "${ht_info}" "${phy_info[1]}" ||
-      get_monitor_on_phy "${phy_info[1]}")
+      get_monitor_device "${frequency}" "${ht_info}" "${phy}" ||
+      get_monitor_on_phy "${phy}")
   elif ! configure_monitor "${device}" "${frequency}" "${ht_info}" ; then
     error "Cannot monitor ${monitored_device}: ${device} did not configure."
     return
   fi
 
-  if [[ -z "${device}" ]] ; then
+  if [ -z "${device}" ] ; then
     # Couldn't find or create a monitor-mode device.
     return
   fi
@@ -366,13 +395,15 @@ usage ()
   echo "Where <device> can be one of:"
   local device
   for device in $(get_device_list); do
-    local -a phy_info=($(get_phy_info "$device"))
+    local phy_info="$(get_phy_info "$device")"
     echo -n "    $device: "
-    if [[ ${#phy_info[@]} -eq 0 ]] ; then
+    if [ "$(get_array_size $phy_info)" -eq 0 ] ; then
       echo "Ethernet-like device"
       continue
     else
-      echo "Wireless device in ${phy_info[0]} mode using Wiphy${phy_info[1]}"
+      local mode="$(get_array_element 1 $phy_info)"
+      local phy="$(get_array_element 2 $phy_info)"
+      echo "Wireless device in ${mode} mode using Wiphy${phy}"
     fi
   done
 }
@@ -421,7 +452,7 @@ main ()
   local ht_location
   local monitor_connection_on
   local output_file
-  while [[ $# -gt 0 ]] ; do
+  while [ $# -gt 0 ] ; do
     param="${1}"
     shift
     case "${param}" in
@@ -435,8 +466,8 @@ main ()
         ;;
       --ht-location)
         ht_location="${1}"
-        if [[ "${ht_location}" != "above" &&
-              "${ht_location}" != "below" ]] ; then
+        if [ "${ht_location}" != "above" -a
+              "${ht_location}" != "below" ] ; then
           command_line_error "HT location must be either \"above\" or \"below\""
         fi
         shift
@@ -459,7 +490,7 @@ main ()
     esac
   done
 
-  if [[ -z "${output_file}" ]] ; then
+  if [ -z "${output_file}" ] ; then
     command_line_error "The --output-file argument is mandatory"
   fi
 
@@ -468,35 +499,35 @@ main ()
   # user specified device here.
   local user_device="${device}"
 
-  if [[ -n "${monitor_connection_on}" ]] ; then
+  if [ -n "${monitor_connection_on}" ] ; then
     user_device="${monitor_connection_on}"
     device=$(get_monitor_for_link "${monitor_connection_on}" "${device}")
-    if [[ -z "${device}" ]] ; then
+    if [ -z "${device}" ] ; then
       fatal_error "Cannot create a device to monitor ${monitor_connection_on}"
     fi
-  elif [[ -z "${device}" ]] ; then
-    if [[ -n "${frequency}" ]] ; then
+  elif [ -z "${device}" ] ; then
+    if [ -n "${frequency}" ] ; then
       device=$(get_monitor_device "${frequency}" "${ht_location}")
-      if [[ -z "${device}" ]] ; then
+      if [ -z "${device}" ] ; then
         fatal_error "No devices found to capture channel ${frequency}"
       fi
     else
       command_line_error "I don't know what you want me to capture!"
     fi
-  elif [[ -n "${frequency}" ]] ; then
+  elif [ -n "${frequency}" ] ; then
     if ! configure_monitor "${device}" "${frequency}" "${ht_location}" ; then
       fatal_error "Unable to set frequency on device ${device}."
     fi
-  elif [[ -n "${ht_location}" ]] ; then
+  elif [ -n "${ht_location}" ] ; then
     command_line_error "Channel was not specified but ht_location was."
   fi
 
-  if get_phy_info "${user_device}" >& /dev/null; then
-    iw dev "${user_device}" set power_save off
+  if get_phy_info "${user_device}" > /dev/null 2>&1; then
+    iw dev "${user_device}" set power_save off || true
     for bf_params in \
         /sys/kernel/debug/ieee80211/*/netdev:"${user_device}"/iwlmvm/bf_params;
     do
-      [[ -e $bf_params ]] || break  # unmatched glob expands to itself
+      [ -e $bf_params ] || break  # unmatched glob expands to itself
       echo "bf_enable_beacon_filter=0" > "${bf_params}"
     done
   fi
@@ -505,6 +536,5 @@ main ()
 }
 
 set -e  # exit on failures
-set -o pipefail  # make pipelines fail if any stage fails
 
-main $@
+main "$@"

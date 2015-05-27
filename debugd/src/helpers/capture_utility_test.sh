@@ -88,7 +88,8 @@ test_get_ht_info ()
           "${3}" != "scan" || "${4}" != "dump" ]] ; then
       fatal_error "Unexpected arguments to iw: $*"
     fi
-    echo -e 'BSS 00:11:22\n\tfreq: 1000\n\t\* secondary channel offset: above'
+    echo -e 'BSS 00:11:22(on wlan0) -- associated' \
+            '\n\tfreq: 1000\n\t\* secondary channel offset: above'
     echo -e 'BSS 33:44:55\n\tfreq: 2000\n\t\* secondary channel offset: below'
     echo -e 'BSS 66:77:88\n\tfreq: 3000\n\t\* secondary channel offset: no'
     echo -e 'BSS 99:aa:bb\n\tfreq: 4000'
@@ -305,6 +306,21 @@ test_get_phy_info ()
   expect_eq "Phy info" "${dtype} ${wiphy}" "$(get_phy_info ${device})"
 }
 
+test_get_array_size ()
+{
+  expect_eq "empty list" "0" "$(get_array_size)"
+  expect_eq "single entry list" "1" "$(get_array_size 1)"
+  expect_eq "double entry list" "2" "$(get_array_size 1 "number two")"
+}
+
+test_get_array_element ()
+{
+  local list="a b c d e"
+  expect_eq "first element" "a" "$(get_array_element 1 $list)"
+  expect_eq "second element" "b" "$(get_array_element 2 $list)"
+  expect_eq "third element" "c" "$(get_array_element 3 $list)"
+}
+
 main ()
 {
   # Load the capture utility functions.  Set the command line to something
@@ -326,7 +342,9 @@ main ()
       get_monitor_for_link \
       get_monitor_on_phy \
       get_monitor_phy_list \
-      get_phy_info; do
+      get_phy_info \
+      get_array_size \
+      get_array_element; do
     if (test_${test}) ; then
       echo "Passed: $test"
     else
