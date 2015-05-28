@@ -35,6 +35,7 @@ for v; do
     "libchromeos.pc.in" > "${pc}"
 
   deps_test=$(<"${OUT}"/gen/libchromeos-test-${v}-deps.txt)
+  deps_test+=" libchromeos-${v}"
   sed \
     -e "s/@BSLOT@/${v}/g" \
     -e "s/@PRIVATE_PC@/${deps_test}/g" \
