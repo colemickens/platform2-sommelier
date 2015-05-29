@@ -943,6 +943,144 @@ TEST(PerfReaderTest, ReadsAndWritesMmap2Events) {
   }
 }
 
+// Regression test for http://crbug.com/493533
+TEST(PerfReaderTest, ReadsAllAvailableMetadataTypes) {
+  std::stringstream input;
+
+  const size_t attr_count = 0;
+  const size_t data_size = 0;
+  const uint32_t features = (1 << HEADER_HOSTNAME) |
+                            (1 << HEADER_OSRELEASE) |
+                            (1 << HEADER_VERSION) |
+                            (1 << HEADER_ARCH) |
+                            (1 << HEADER_LAST_FEATURE);
+
+  // header
+  testing::ExamplePerfDataFileHeader file_header(attr_count, data_size,
+                                                 features);
+  file_header.WriteTo(&input);
+
+  // metadata
+
+  size_t metadata_offset =
+      file_header.data_end() + 5 * sizeof(perf_file_section);
+
+  // HEADER_HOSTNAME
+  testing::ExampleStringMetadata hostname_metadata("hostname", metadata_offset);
+  metadata_offset += hostname_metadata.size();
+
+  // HEADER_OSRELEASE
+  testing::ExampleStringMetadata osrelease_metadata("osrelease",
+                                                    metadata_offset);
+  metadata_offset += osrelease_metadata.size();
+
+  // HEADER_VERSION
+  testing::ExampleStringMetadata version_metadata("version", metadata_offset);
+  metadata_offset += version_metadata.size();
+
+  // HEADER_ARCH
+  testing::ExampleStringMetadata arch_metadata("arch", metadata_offset);
+  metadata_offset += arch_metadata.size();
+
+  // HEADER_LAST_FEATURE -- this is just a dummy metadata that will be skipped
+  // over. In practice, there will not actually be a metadata entry of type
+  // HEADER_LAST_FEATURE. But use because it will never become a supported
+  // metadata type.
+  testing::ExampleStringMetadata last_feature("*unsupported*", metadata_offset);
+  metadata_offset += last_feature.size();
+
+  hostname_metadata.index_entry().WriteTo(&input);
+  osrelease_metadata.index_entry().WriteTo(&input);
+  version_metadata.index_entry().WriteTo(&input);
+  arch_metadata.index_entry().WriteTo(&input);
+  last_feature.index_entry().WriteTo(&input);
+
+  hostname_metadata.WriteTo(&input);
+  osrelease_metadata.WriteTo(&input);
+  version_metadata.WriteTo(&input);
+  arch_metadata.WriteTo(&input);
+  last_feature.WriteTo(&input);
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+
+  const auto& string_metadata = pr.string_metadata();
+
+  // The dummy metadata should not have been stored.
+  EXPECT_EQ(4, string_metadata.size());
+
+  // Make sure each metadata entry has a stored string value.
+  for (const auto& entry : string_metadata)
+    EXPECT_EQ(1, entry.data.size());
+
+  EXPECT_EQ(HEADER_HOSTNAME, string_metadata[0].type);
+  EXPECT_EQ("hostname", string_metadata[0].data[0].str);
+
+  EXPECT_EQ(HEADER_OSRELEASE, string_metadata[1].type);
+  EXPECT_EQ("osrelease", string_metadata[1].data[0].str);
+
+  EXPECT_EQ(HEADER_VERSION, string_metadata[2].type);
+  EXPECT_EQ("version", string_metadata[2].data[0].str);
+
+  EXPECT_EQ(HEADER_ARCH, string_metadata[3].type);
+  EXPECT_EQ("arch", string_metadata[3].data[0].str);
+}
+
+// Regression test for http://crbug.com/493533
+TEST(PerfReaderTest, ReadsAllAvailableMetadataTypesPiped) {
+  std::stringstream input;
+
+  // pipe header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // metadata
+
+  // Provide these out of order. Order should not matter to the PerfReader, but
+  // this tests whether the reader is capable of skipping an unsupported type.
+  testing::ExampleStringMetadataEvent(PERF_RECORD_HEADER_HOSTNAME, "hostname")
+      .WriteTo(&input);
+  testing::ExampleStringMetadataEvent(PERF_RECORD_HEADER_OSRELEASE, "osrelease")
+      .WriteTo(&input);
+  testing::ExampleStringMetadataEvent(PERF_RECORD_HEADER_MAX, "*unsupported*")
+      .WriteTo(&input);
+  testing::ExampleStringMetadataEvent(PERF_RECORD_HEADER_VERSION, "version")
+      .WriteTo(&input);
+  testing::ExampleStringMetadataEvent(PERF_RECORD_HEADER_ARCH, "arch")
+      .WriteTo(&input);
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+
+  const auto& string_metadata = pr.string_metadata();
+
+  // The dummy metadata should not have been stored.
+  EXPECT_EQ(4, string_metadata.size());
+
+  // Make sure each metadata entry has a stored string value.
+  for (const auto& entry : string_metadata)
+    EXPECT_EQ(1, entry.data.size());
+
+  EXPECT_EQ(HEADER_HOSTNAME, string_metadata[0].type);
+  EXPECT_EQ("hostname", string_metadata[0].data[0].str);
+
+  EXPECT_EQ(HEADER_OSRELEASE, string_metadata[1].type);
+  EXPECT_EQ("osrelease", string_metadata[1].data[0].str);
+
+  EXPECT_EQ(HEADER_VERSION, string_metadata[2].type);
+  EXPECT_EQ("version", string_metadata[2].data[0].str);
+
+  EXPECT_EQ(HEADER_ARCH, string_metadata[3].type);
+  EXPECT_EQ("arch", string_metadata[3].data[0].str);
+}
+
 }  // namespace quipper
 
 int main(int argc, char* argv[]) {

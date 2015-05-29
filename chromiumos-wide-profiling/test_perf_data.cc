@@ -267,6 +267,33 @@ void ExamplePerfSampleEvent_Tracepoint::WriteTo(std::ostream* out) const {
 const size_t ExamplePerfSampleEvent_Tracepoint::kEventSize =
     (1 /*perf_event_header*/ + 14 /*sample array*/) * sizeof(u64);
 
+void ExampleStringMetadata::WriteTo(std::ostream* out) const {
+  const perf_file_section &index_entry = index_entry_.index_entry_;
+  CHECK_EQ(static_cast<u64>(out->tellp()), index_entry.offset);
+  const u32 data_size = data_.size();
+  out->write(reinterpret_cast<const char*>(&data_size), sizeof(data_size));
+  out->write(data_.data(), data_.size());
+
+  CHECK_EQ(static_cast<u64>(out->tellp()), index_entry.offset + size());
+}
+
+void ExampleStringMetadataEvent::WriteTo(std::ostream* out) const {
+  const size_t initial_position = out->tellp();
+
+  const u32 data_size = data_.size();
+  const perf_event_header header = {
+    .type = type_,
+    .misc = 0,
+    .size = static_cast<u16>(sizeof(header) + sizeof(data_size) + data_.size()),
+  };
+  out->write(reinterpret_cast<const char*>(&header), sizeof(header));
+
+  out->write(reinterpret_cast<const char*>(&data_size), sizeof(data_size));
+  out->write(reinterpret_cast<const char*>(data_.data()), data_.size());
+
+  CHECK_EQ(static_cast<u64>(out->tellp()), initial_position + header.size);
+}
+
 static const char kTraceMetadataValue[] =
     "\x17\x08\x44tracing0.5BLAHBLAHBLAH....";
 

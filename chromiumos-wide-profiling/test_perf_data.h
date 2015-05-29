@@ -233,6 +233,47 @@ class MetadataIndexEntry : public StreamWriteable {
   const perf_file_section index_entry_;
 };
 
+// Produces sample string metadata, and corresponding metadata index entry.
+class ExampleStringMetadata : public StreamWriteable {
+ public:
+  // The input string gets zero-padded/truncated to |kStringAlignSize| bytes if
+  // it is shorter/longer, respectively.
+  explicit ExampleStringMetadata(const string& data, size_t offset)
+      : data_(data),
+        index_entry_(offset, sizeof(u32) + kStringAlignSize) {
+    data_.resize(kStringAlignSize);
+  }
+  void WriteTo(std::ostream* out) const override;
+
+  const MetadataIndexEntry& index_entry() { return index_entry_; }
+  size_t size() const {
+    return sizeof(u32) + data_.size();
+  }
+
+ private:
+  string data_;
+  MetadataIndexEntry index_entry_;
+
+  static const int kStringAlignSize = 64;
+};
+
+// Produces sample string metadata event for piped mode.
+class ExampleStringMetadataEvent : public StreamWriteable {
+ public:
+  // The input string gets aligned to |kStringAlignSize|.
+  explicit ExampleStringMetadataEvent(u32 type, const string& data)
+      : type_(type), data_(data) {
+    data_.resize(kStringAlignSize);
+  }
+  void WriteTo(std::ostream* out) const override;
+
+ private:
+  u32 type_;
+  string data_;
+
+  static const int kStringAlignSize = 64;
+};
+
 // Produces sample tracing metadata, and corresponding metadata index entry.
 class ExampleTracingMetadata {
  public:

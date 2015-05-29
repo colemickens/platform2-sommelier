@@ -61,6 +61,13 @@ const uint32_t kSupportedMetadataMask =
 // By default, the build ID event has PID = -1.
 const uint32_t kDefaultBuildIDEventPid = static_cast<uint32_t>(-1);
 
+// Returns the number of bits in a numerical value.
+template <typename T>
+size_t GetNumBits(const T& value) {
+  std::bitset<sizeof(T) * CHAR_BIT> bits(value);
+  return bits.count();
+}
+
 // Eight bits in a byte.
 size_t BytesToBits(size_t num_bytes) {
   return num_bytes * 8;
@@ -742,7 +749,7 @@ size_t PerfReader::GetSize() {
     total_size += attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
 
   // Additional info about metadata.  See WriteMetadata for explanation.
-  total_size += GetNumMetadata() * sizeof(struct perf_file_section);
+  total_size += GetNumSupportedMetadata() * sizeof(struct perf_file_section);
 
   // Add the sizes of the various metadata.
   total_size += tracing_data_.size();
@@ -1269,8 +1276,11 @@ bool PerfReader::ReadMetadata(DataReader* data) {
   // Metadata comes after the event data.
   data->SeekSet(header_.data.offset + header_.data.size);
 
-  // Read the (offset, size) pairs of all the metadata elements.
-  std::vector<struct perf_file_section> sections(GetNumMetadata());
+  // Read the (offset, size) pairs of all the metadata elements. Note that this
+  // takes into account all present metadata types, not just the ones included
+  // in |kSupportedMetadataMask|. If a metadata type is not supported, it is
+  // skipped over.
+  std::vector<struct perf_file_section> sections(GetNumBits(metadata_mask_));
   if (!data->ReadDataValue(sections.size() * sizeof(struct perf_file_section),
                            "feature metadata index", sections.data())) {
     return false;
@@ -1328,8 +1338,9 @@ bool PerfReader::ReadMetadata(DataReader* data) {
         return false;
       break;
     case HEADER_BRANCH_STACK:
-      continue;
-    default: LOG(INFO) << "Unsupported metadata type: " << type;
+      break;
+    default:
+      LOG(INFO) << "Unsupported metadata type, skipping: " << type;
       break;
     }
     ++section_iter;
@@ -1704,8 +1715,9 @@ bool PerfReader::ReadPipedData(DataReader* data) {
                                         size_without_header);
       break;
     default:
-      LOG(WARNING) << "Event type " << header.type
-                   << " is not yet supported!";
+      LOG(WARNING) << "Event type " << header.type << " is not yet supported!";
+      // Skip over the data in this event.
+      data->SeekSet(data->Tell() + size_without_header);
       break;
     }
   }
@@ -1778,13 +1790,14 @@ bool PerfReader::WriteMetadata(DataWriter* data) const {
 
   // There is one header for each feature pointing to the metadata for that
   // feature. If a feature has no metadata, the size field is zero.
-  const size_t headers_size = GetNumMetadata() * sizeof(perf_file_section);
+  const size_t headers_size =
+      GetNumSupportedMetadata() * sizeof(perf_file_section);
   const size_t metadata_offset = header_offset + headers_size;
   data->SeekSet(metadata_offset);
 
   // Record the new metadata offsets and sizes in this vector of info entries.
   std::vector<struct perf_file_section> metadata_sections;
-  metadata_sections.reserve(GetNumMetadata());
+  metadata_sections.reserve(GetNumSupportedMetadata());
 
   for (u32 type = HEADER_FIRST_FEATURE; type != HEADER_LAST_FEATURE; ++type) {
     if ((out_header_.adds_features[0] & (1 << type)) == 0)
@@ -1846,7 +1859,7 @@ bool PerfReader::WriteMetadata(DataWriter* data) const {
     metadata_sections.push_back(header_entry);
   }
   // Make sure we have recorded the right number of entries.
-  CHECK_EQ(GetNumMetadata(), metadata_sections.size());
+  CHECK_EQ(GetNumSupportedMetadata(), metadata_sections.size());
 
   // Now write the metadata offset and size info back to the metadata headers.
   size_t old_offset = data->Tell();
@@ -2125,12 +2138,8 @@ void PerfReader::MaybeSwapEventFields(event_t* event) {
   }
 }
 
-size_t PerfReader::GetNumMetadata() const {
-  // This is just the number of 1s in the binary representation of the metadata
-  // mask.  However, make sure to only use supported metadata.
-  uint64_t new_mask = metadata_mask_ & kSupportedMetadataMask;
-  std::bitset<sizeof(new_mask) * CHAR_BIT> bits(new_mask);
-  return bits.count();
+size_t PerfReader::GetNumSupportedMetadata() const {
+  return GetNumBits(metadata_mask_ & kSupportedMetadataMask);
 }
 
 size_t PerfReader::GetEventDescMetadataSize() const {

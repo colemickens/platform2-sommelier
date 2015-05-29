@@ -188,6 +188,10 @@ class PerfReader {
     return metadata_mask_;
   }
 
+  const std::vector<PerfStringMetadata>& string_metadata() const {
+    return string_metadata_;
+  }
+
  protected:
   bool ReadHeader(DataReader* data);
 
@@ -249,8 +253,8 @@ class PerfReader {
   // |event|, if |is_cross_endian_| is true. Otherwise leaves the data the same.
   void MaybeSwapEventFields(event_t* event);
 
-  // Returns the number of types of metadata stored.
-  size_t GetNumMetadata() const;
+  // Returns the number of types of metadata stored and written to output data.
+  size_t GetNumSupportedMetadata() const;
 
   // For computing the sizes of the various types of metadata.
   size_t GetBuildIDMetadataSize() const;
