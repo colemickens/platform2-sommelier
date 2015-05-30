@@ -93,6 +93,9 @@ const int kFirmwareUpdatePollMs = 100;
 // kFlashromLockPath or kBatteryToolLockPath exist, in seconds.
 const int kRetryShutdownForFirmwareUpdateSec = 5;
 
+// Interval between log messages while audio is active, in seconds.
+const int kLogAudioSec = 180;
+
 // Maximum amount of time to wait for responses to D-Bus method calls to other
 // processes.
 const int kSessionManagerDBusTimeoutMs = 3000;
@@ -228,6 +231,12 @@ bool FirmwareIsBeingUpdated(std::string* details_out) {
 
   *details_out = JoinString(paths, ", ");
   return !paths.empty();
+}
+
+// Intended to aid in debugging: if powerd only logs when audio starts, people
+// often get confused about why their system is blocked from suspending.
+void LogAudioActivity() {
+  LOG(INFO) << "Audio is still active";
 }
 
 }  // namespace
@@ -367,6 +376,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       shutting_down_(false),
       retry_shutdown_for_firmware_update_timer_(false /* retain_user_task */,
                                                 true /* is_repeating */),
+      log_audio_timer_(false /* retain_user_task */, true /* is_repeating */),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
       session_state_(SESSION_STOPPED),
       created_suspended_state_file_(false),
@@ -784,6 +794,13 @@ bool Daemon::CanSafelyExitDarkResume() {
 void Daemon::OnAudioStateChange(bool active) {
   LOG(INFO) << "Audio is " << (active ? "active" : "inactive");
   state_controller_->HandleAudioStateChange(active);
+  if (active) {
+    log_audio_timer_.Start(FROM_HERE,
+                           base::TimeDelta::FromSeconds(kLogAudioSec),
+                           base::Bind(&LogAudioActivity));
+  } else {
+    log_audio_timer_.Stop();
+  }
 }
 
 void Daemon::OnPowerStatusUpdate() {

@@ -134,10 +134,10 @@ void AudioClient::UpdateNumActiveStreams() {
   num_active_streams_ = std::max(num_streams, 0);
 
   if (num_active_streams_ && !old_num_streams) {
-    LOG(INFO) << "Audio playback started";
+    VLOG(1) << "Audio playback started";
     FOR_EACH_OBSERVER(AudioObserver, observers_, OnAudioStateChange(true));
   } else if (!num_active_streams_ && old_num_streams) {
-    LOG(INFO) << "Audio playback stopped";
+    VLOG(1) << "Audio playback stopped";
     FOR_EACH_OBSERVER(AudioObserver, observers_, OnAudioStateChange(false));
   }
 }

@@ -289,6 +289,9 @@ class Daemon : public policy::BacklightControllerObserver,
   // eventually be shut down after the firmware-updating process exits.
   base::Timer retry_shutdown_for_firmware_update_timer_;
 
+  // Timer that periodically calls LogAudioActivity() while audio is active.
+  base::Timer log_audio_timer_;
+
   // Timer that periodically calls RequestTpmStatus() if
   // |cryptohome_dbus_proxy_| is non-null.
   base::RepeatingTimer<Daemon> tpm_status_timer_;
