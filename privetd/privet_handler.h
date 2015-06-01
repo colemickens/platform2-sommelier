@@ -63,36 +63,54 @@ class PrivetHandler : public CloudDelegate::Observer {
                      const RequestCallback& callback);
 
  private:
+  struct UserInfo {
+    AuthScope scope;
+    // TODO(vitalybuka): Add "std::string user_id;" brbug.com/745
+  };
   using ApiHandler = void (PrivetHandler::*)(const base::DictionaryValue&,
+                                             const UserInfo&,
                                              const RequestCallback&);
 
   void AddHandler(const std::string& path, ApiHandler handler, AuthScope scope);
 
   void HandleInfo(const base::DictionaryValue&,
+                  const UserInfo& user_info,
                   const RequestCallback& callback);
   void HandlePairingStart(const base::DictionaryValue& input,
+                          const UserInfo& user_info,
                           const RequestCallback& callback);
   void HandlePairingConfirm(const base::DictionaryValue& input,
+                            const UserInfo& user_info,
                             const RequestCallback& callback);
   void HandlePairingCancel(const base::DictionaryValue& input,
+                           const UserInfo& user_info,
                            const RequestCallback& callback);
   void HandleAuth(const base::DictionaryValue& input,
+                  const UserInfo& user_info,
                   const RequestCallback& callback);
   void HandleSetupStart(const base::DictionaryValue& input,
+                        const UserInfo& user_info,
                         const RequestCallback& callback);
   void HandleSetupStatus(const base::DictionaryValue&,
+                         const UserInfo& user_info,
                          const RequestCallback& callback);
   void HandleState(const base::DictionaryValue& input,
+                   const UserInfo& user_info,
                    const RequestCallback& callback);
   void HandleCommandDefs(const base::DictionaryValue& input,
+                         const UserInfo& user_info,
                          const RequestCallback& callback);
   void HandleCommandsExecute(const base::DictionaryValue& input,
+                             const UserInfo& user_info,
                              const RequestCallback& callback);
   void HandleCommandsStatus(const base::DictionaryValue& input,
+                            const UserInfo& user_info,
                             const RequestCallback& callback);
   void HandleCommandsList(const base::DictionaryValue& input,
+                          const UserInfo& user_info,
                           const RequestCallback& callback);
   void HandleCommandsCancel(const base::DictionaryValue& input,
+                            const UserInfo& user_info,
                             const RequestCallback& callback);
 
   void OnUpdateDeviceInfoDone(const std::string& ssid,

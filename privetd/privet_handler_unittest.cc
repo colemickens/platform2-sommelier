@@ -649,8 +649,8 @@ TEST_F(PrivetHandlerSetupTest, CommandsExecute) {
   base::DictionaryValue command;
   LoadTestJson(kInput, &command);
   LoadTestJson("{'id':'5'}", &command);
-  EXPECT_CALL(cloud_, AddCommand(_, _, _))
-      .WillOnce(RunCallback<1, const base::DictionaryValue&>(command));
+  EXPECT_CALL(cloud_, AddCommand(_, _, _, _))
+      .WillOnce(RunCallback<2, const base::DictionaryValue&>(command));
 
   EXPECT_PRED2(IsEqualJson, "{'name':'test', 'id':'5'}",
                HandleRequest("/privet/v3/commands/execute", kInput));

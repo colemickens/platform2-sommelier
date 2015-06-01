@@ -99,6 +99,7 @@ class CloudDelegate {
 
   // Adds command created from the given JSON representation.
   virtual void AddCommand(const base::DictionaryValue& command,
+                          AuthScope scope,
                           const SuccessCallback& success_callback,
                           const ErrorCallback& error_callback) = 0;
 

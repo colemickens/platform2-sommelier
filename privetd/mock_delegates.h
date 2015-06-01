@@ -166,8 +166,9 @@ class MockCloudDelegate : public CloudDelegate {
   MOCK_CONST_METHOD0(GetCloudId, std::string());
   MOCK_CONST_METHOD0(GetState, const base::DictionaryValue&());
   MOCK_CONST_METHOD0(GetCommandDef, const base::DictionaryValue&());
-  MOCK_METHOD3(AddCommand,
+  MOCK_METHOD4(AddCommand,
                void(const base::DictionaryValue&,
+                    AuthScope,
                     const SuccessCallback&,
                     const ErrorCallback&));
   MOCK_METHOD3(GetCommand,

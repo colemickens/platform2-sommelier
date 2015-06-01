@@ -314,6 +314,12 @@ void OnCommandRequestFailed(const PrivetHandler::RequestCallback& callback,
                            errors::kNotFound, "Unknown command ID");
     return ReturnError(*new_error, callback);
   }
+  if (error->HasError("gcd", "access_denied")) {
+    chromeos::ErrorPtr new_error = error->Clone();
+    chromeos::Error::AddTo(&new_error, FROM_HERE, errors::kDomain,
+                           errors::kAccessDenied, error->GetMessage());
+    return ReturnError(*new_error, callback);
+  }
   return ReturnError(*error, callback);
 }
 
@@ -547,7 +553,8 @@ void PrivetHandler::HandleRequest(const std::string& api,
                                  EnumToString(scope).c_str(), api.c_str());
     return ReturnError(*error, callback);
   }
-  (this->*handler->second.second)(*input, callback);
+  UserInfo user_info{scope};
+  (this->*handler->second.second)(*input, user_info, callback);
 }
 
 void PrivetHandler::AddHandler(const std::string& path,
@@ -557,6 +564,7 @@ void PrivetHandler::AddHandler(const std::string& path,
 }
 
 void PrivetHandler::HandleInfo(const base::DictionaryValue&,
+                               const UserInfo& user_info,
                                const RequestCallback& callback) {
   base::DictionaryValue output;
 
@@ -603,6 +611,7 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
 }
 
 void PrivetHandler::HandlePairingStart(const base::DictionaryValue& input,
+                                       const UserInfo& user_info,
                                        const RequestCallback& callback) {
   chromeos::ErrorPtr error;
 
@@ -642,6 +651,7 @@ void PrivetHandler::HandlePairingStart(const base::DictionaryValue& input,
 }
 
 void PrivetHandler::HandlePairingConfirm(const base::DictionaryValue& input,
+                                         const UserInfo& user_info,
                                          const RequestCallback& callback) {
   std::string id;
   input.GetString(kPairingSessionIdKey, &id);
@@ -664,6 +674,7 @@ void PrivetHandler::HandlePairingConfirm(const base::DictionaryValue& input,
 }
 
 void PrivetHandler::HandlePairingCancel(const base::DictionaryValue& input,
+                                        const UserInfo& user_info,
                                         const RequestCallback& callback) {
   std::string id;
   input.GetString(kPairingSessionIdKey, &id);
@@ -677,6 +688,7 @@ void PrivetHandler::HandlePairingCancel(const base::DictionaryValue& input,
 }
 
 void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
+                               const UserInfo& user_info,
                                const RequestCallback& callback) {
   chromeos::ErrorPtr error;
 
@@ -736,6 +748,7 @@ void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
 }
 
 void PrivetHandler::HandleSetupStart(const base::DictionaryValue& input,
+                                     const UserInfo& user_info,
                                      const RequestCallback& callback) {
   std::string name;
   chromeos::ErrorPtr error;
@@ -809,6 +822,7 @@ void PrivetHandler::OnUpdateDeviceInfoDone(
 }
 
 void PrivetHandler::HandleSetupStatus(const base::DictionaryValue&,
+                                      const UserInfo& user_info,
                                       const RequestCallback& callback) {
   ReplyWithSetupStatus(callback);
 }
@@ -841,6 +855,7 @@ void PrivetHandler::ReplyWithSetupStatus(
 }
 
 void PrivetHandler::HandleState(const base::DictionaryValue& input,
+                                const UserInfo& user_info,
                                 const RequestCallback& callback) {
   base::DictionaryValue output;
   base::DictionaryValue* defs = cloud_->GetState().DeepCopy();
@@ -851,6 +866,7 @@ void PrivetHandler::HandleState(const base::DictionaryValue& input,
 }
 
 void PrivetHandler::HandleCommandDefs(const base::DictionaryValue& input,
+                                      const UserInfo& user_info,
                                       const RequestCallback& callback) {
   base::DictionaryValue output;
   base::DictionaryValue* defs = cloud_->GetCommandDef().DeepCopy();
@@ -862,12 +878,15 @@ void PrivetHandler::HandleCommandDefs(const base::DictionaryValue& input,
 }
 
 void PrivetHandler::HandleCommandsExecute(const base::DictionaryValue& input,
+                                          const UserInfo& user_info,
                                           const RequestCallback& callback) {
-  cloud_->AddCommand(input, base::Bind(&OnCommandRequestSucceeded, callback),
+  cloud_->AddCommand(input, user_info.scope,
+                     base::Bind(&OnCommandRequestSucceeded, callback),
                      base::Bind(&OnCommandRequestFailed, callback));
 }
 
 void PrivetHandler::HandleCommandsStatus(const base::DictionaryValue& input,
+                                         const UserInfo& user_info,
                                          const RequestCallback& callback) {
   std::string id;
   if (!input.GetString(kCommandsIdKey, &id)) {
@@ -882,12 +901,14 @@ void PrivetHandler::HandleCommandsStatus(const base::DictionaryValue& input,
 }
 
 void PrivetHandler::HandleCommandsList(const base::DictionaryValue& input,
+                                       const UserInfo& user_info,
                                        const RequestCallback& callback) {
   cloud_->ListCommands(base::Bind(&OnCommandRequestSucceeded, callback),
                        base::Bind(&OnCommandRequestFailed, callback));
 }
 
 void PrivetHandler::HandleCommandsCancel(const base::DictionaryValue& input,
+                                         const UserInfo& user_info,
                                          const RequestCallback& callback) {
   std::string id;
   if (!input.GetString(kCommandsIdKey, &id)) {
@@ -911,6 +932,10 @@ std::string PairingTypeToString(PairingType id) {
 
 bool StringToAuthScope(const std::string& scope, AuthScope* id) {
   return StringToEnum(scope, id);
+}
+
+std::string AuthScopeToString(AuthScope id) {
+  return EnumToString(id);
 }
 
 }  // namespace privetd

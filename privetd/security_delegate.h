@@ -81,6 +81,7 @@ bool StringToPairingType(const std::string& mode, PairingType* id);
 std::string PairingTypeToString(PairingType id);
 
 bool StringToAuthScope(const std::string& scope, AuthScope* id);
+std::string AuthScopeToString(AuthScope id);
 
 }  // namespace privetd
 

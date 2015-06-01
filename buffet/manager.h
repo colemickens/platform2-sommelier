@@ -77,7 +77,8 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
                    const chromeos::VariantDictionary& property_set) override;
   bool GetState(chromeos::ErrorPtr* error, std::string* state) override;
   void AddCommand(DBusMethodResponse<std::string> response,
-                  const std::string& json_command) override;
+                  const std::string& json_command,
+                  const std::string& in_user_role) override;
   void GetCommand(DBusMethodResponse<std::string> response,
                   const std::string& id) override;
   void SetCommandVisibility(

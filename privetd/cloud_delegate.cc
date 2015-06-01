@@ -178,8 +178,11 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
   void AddCommand(const base::DictionaryValue& command,
+                  AuthScope scope,
                   const SuccessCallback& success_callback,
                   const ErrorCallback& error_callback) override {
+    CHECK(scope >= AuthScope::kViewer);
+
     chromeos::ErrorPtr error;
     if (!IsManagerReady(&error))
       return error_callback.Run(error.get());
@@ -187,9 +190,10 @@ class CloudDelegateImpl : public CloudDelegate {
     std::string command_str;
     base::JSONWriter::Write(&command, &command_str);
     manager_->AddCommandAsync(
-        command_str, base::Bind(&CloudDelegateImpl::OnAddCommandSucceeded,
-                                weak_factory_.GetWeakPtr(), success_callback,
-                                error_callback),
+        command_str, AuthScopeToString(scope),
+        base::Bind(&CloudDelegateImpl::OnAddCommandSucceeded,
+                   weak_factory_.GetWeakPtr(), success_callback,
+                   error_callback),
         error_callback);
   }
 
