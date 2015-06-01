@@ -14,6 +14,7 @@
 #include <soma/sandbox_spec_reader.h>
 #include <soma/read_only_sandbox_spec.h>
 
+#include "germ/germ_zygote.h"
 #include "germ/launcher.h"
 #include "germ/proto_bindings/soma_sandbox_spec.pb.h"
 
@@ -31,33 +32,35 @@ int main(int argc, char** argv) {
                              "germ [OPTIONS] [-- EXECUTABLE [ARGUMENTS...]]");
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
 
-  base::AtExitManager exit_manager;
-  germ::Launcher launcher;
   int status = 0;
 
   // Should we launch a SandboxSpec?
   if (!FLAGS_spec.empty()) {
     // Read and launch a SandboxSpec.
     // TODO(jorgelo): Allow launching a shell.
-    soma::SandboxSpecReader csr;
+    soma::SandboxSpecReader ssr;
     base::FilePath path(FLAGS_spec);
-    std::unique_ptr<soma::SandboxSpec> cspec = csr.Read(path);
+    std::unique_ptr<soma::SandboxSpec> cspec = ssr.Read(path);
     if (!cspec) {
       // SandboxSpecReader::Path() will print an appropriate error.
       return 1;
     }
     LOG(INFO) << "Read SandboxSpec '" << FLAGS_spec << "'";
-    soma::ReadOnlySandboxSpec spec;
-    if (!spec.Init(*cspec)) {
-      LOG(ERROR) << "Failed to initialize read-only SandboxSpec";
+
+    germ::GermZygote zygote;
+    zygote.Start();
+    pid_t pid = -1;
+    if (!zygote.StartContainer(*cspec, &pid)) {
+      LOG(ERROR) << "Failed to launch '" << cspec->name() << "'";
       return 1;
     }
-    if (!launcher.RunInteractiveSpec(spec, &status)) {
-      LOG(ERROR) << "Failed to launch '" << spec.name() << "'";
-      return 1;
-    }
+    LOG(INFO) << "Launched '" << cspec->name() << "' with init PID " << pid;
+    status = 0;
   } else {
     // Launch an executable.
+    base::AtExitManager exit_manager;
+    germ::Launcher launcher;
+
     std::vector<std::string> args =
         base::CommandLine::ForCurrentProcess()->GetArgs();
     // It would be great if we could print the "Usage" message here,

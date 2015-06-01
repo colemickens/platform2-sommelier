@@ -193,9 +193,15 @@ pid_t GermZygote::ForkContainer(const soma::SandboxSpec& spec) {
   }
 
   if (!(flags & CLONE_NEWPID)) {
-    LOG(WARNING) << "PID namespaces missing from SandboxSpec, enabling anyway: "
+    LOG(WARNING) << "PID namespace missing from SandboxSpec, enabling anyway: "
                  << spec.name();
     flags |= CLONE_NEWPID;
+  }
+  if (!(flags & CLONE_NEWNS)) {
+    LOG(WARNING)
+        << "Mount namespace missing from SandboxSpec, enabling anyway: "
+        << spec.name();
+    flags |= CLONE_NEWNS;
   }
 
   PCHECK(setsid() != -1);
