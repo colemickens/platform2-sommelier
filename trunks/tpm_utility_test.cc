@@ -1656,7 +1656,12 @@ TEST_F(TpmUtilityTest, SaltingKeySuccess) {
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
+  TPM2B_PUBLIC public_area;
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(_, _, _, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<2>(&public_area),
+                      Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TPM_RC_SUCCESS, CreateSaltingKey("password"));
+  EXPECT_EQ(TPM_ALG_SHA256, public_area.public_area.name_alg);
 }
 
 TEST_F(TpmUtilityTest, SaltingKeyConsistency) {

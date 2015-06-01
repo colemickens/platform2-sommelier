@@ -1353,11 +1353,7 @@ TPM_RC TpmUtilityImpl::CreateSaltingKey(const std::string& owner_password) {
     return result;
   }
   public_area = CreateDefaultPublicArea(TPM_ALG_RSA);
-  // We are limited by openssl to using SHA1, because OAEP padding in openssl
-  // is limited to using SHA1.
-  // TODO(usanghi): Change this to SHA256 when that functionality is available
-  // in openssl. crbug.com/442823.
-  public_area.name_alg = TPM_ALG_SHA1;
+  public_area.name_alg = TPM_ALG_SHA256;
   public_area.object_attributes |=
       kSensitiveDataOrigin | kUserWithAuth | kNoDA | kDecrypt;
   TPML_PCR_SELECTION creation_pcrs;

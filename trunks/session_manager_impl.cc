@@ -52,7 +52,7 @@ TPM_RC SessionManagerImpl::StartSession(
   // If we already have an active session, close it.
   CloseSession();
 
-  std::string salt(SHA1_DIGEST_SIZE, 0);
+  std::string salt(SHA256_DIGEST_SIZE, 0);
   unsigned char* salt_buffer =
       reinterpret_cast<unsigned char*>(string_as_array(&salt));
   CHECK_EQ(RAND_bytes(salt_buffer, salt.size()), 1)
@@ -154,14 +154,17 @@ TPM_RC SessionManagerImpl::EncryptSalt(const std::string& salt,
   // Label for RSAES-OAEP. Defined in TPM2.0 Part1 Architecture,
   // Appendix B.10.2.
   unsigned char oaep_param[7] = {'S', 'E', 'C', 'R', 'E', 'T', '\0'};
+  const EVP_MD* sha256_md = EVP_sha256();
   std::string padded_input(RSA_size(salting_rsa.get()), 0);
-  int rsa_result = RSA_padding_add_PKCS1_OAEP(
+  int rsa_result = RSA_padding_add_PKCS1_OAEP_mgf1(
       reinterpret_cast<unsigned char*>(string_as_array(&padded_input)),
       padded_input.size(),
       reinterpret_cast<const unsigned char*>(salt.c_str()),
       salt.size(),
       oaep_param,
-      arraysize(oaep_param));
+      arraysize(oaep_param),
+      sha256_md,
+      sha256_md);
   if (!rsa_result) {
     unsigned long err = ERR_get_error();  // NOLINT openssl types
     ERR_load_ERR_strings();
