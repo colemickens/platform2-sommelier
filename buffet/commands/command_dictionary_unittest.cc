@@ -58,6 +58,47 @@ TEST(CommandDictionary, LoadCommands) {
   EXPECT_EQ(expected_commands, dict.GetCommandNamesByCategory("powerd"));
 }
 
+TEST(CommandDictionary, LoadWithInheritance) {
+  auto json = CreateDictionaryValue(R"({
+    'robot': {
+      'jump': {
+        'minimalRole': 'viewer',
+        'visibility':'local',
+        'parameters': {
+          'height': 'integer'
+        },
+        'progress': {
+          'progress': 'integer'
+        },
+        'results': {
+          'success': 'boolean'
+        }
+      }
+    }
+  })");
+  CommandDictionary base_dict;
+  EXPECT_TRUE(base_dict.LoadCommands(*json, "test1", nullptr, nullptr));
+  EXPECT_EQ(1, base_dict.GetSize());
+  json = CreateDictionaryValue(R"({'robot': {'jump': {}}})");
+
+  CommandDictionary dict;
+  EXPECT_TRUE(dict.LoadCommands(*json, "test2", &base_dict, nullptr));
+  EXPECT_EQ(1, dict.GetSize());
+
+  auto cmd = dict.FindCommand("robot.jump");
+  EXPECT_NE(nullptr, cmd);
+
+  EXPECT_EQ("local", cmd->GetVisibility().ToString());
+  EXPECT_EQ(UserRole::kViewer, cmd->GetMinimalRole());
+
+  EXPECT_JSON_EQ("{'height': {'type': 'integer'}}",
+                 *cmd->GetParameters()->ToJson(true, nullptr));
+  EXPECT_JSON_EQ("{'progress': {'type': 'integer'}}",
+                 *cmd->GetProgress()->ToJson(true, nullptr));
+  EXPECT_JSON_EQ("{'success': {'type': 'boolean'}}",
+                 *cmd->GetResults()->ToJson(true, nullptr));
+}
+
 TEST(CommandDictionary, LoadCommands_Failures) {
   CommandDictionary dict;
   chromeos::ErrorPtr error;

@@ -1,20 +1,6 @@
 {
   "base": {
-    "updateBaseConfiguration": {
-      "parameters": {
-        "localDiscoveryEnabled": "boolean",
-        "localAnonymousAccessMaxRole": [ "none", "viewer", "user" ],
-        "localPairingEnabled": "boolean"
-      },
-      "results": {}
-    },
-
-    "updateDeviceInfo": {
-      "parameters": {
-        "description": "string",
-        "name": "string"
-      },
-      "results": {}
-    }
+    "updateBaseConfiguration": { },
+    "updateDeviceInfo": { }
   }
 }

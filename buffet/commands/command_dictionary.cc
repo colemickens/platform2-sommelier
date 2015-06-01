@@ -196,6 +196,8 @@ std::unique_ptr<ObjectSchema> CommandDictionary::BuildObjectSchema(
   const base::DictionaryValue* schema_def = nullptr;
   if (!command_def_json->GetDictionaryWithoutPathExpansion(property_name,
                                                            &schema_def)) {
+    if (base_def)
+      return base_def->Clone();
     return object_schema;
   }
 
