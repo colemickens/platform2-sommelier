@@ -92,7 +92,8 @@ const char BrowserJobTest::kHash[] = "fake_hash";
 void BrowserJobTest::SetUp() {
   argv_ =
       std::vector<std::string>(kArgv, kArgv + arraysize(BrowserJobTest::kArgv));
-  job_.reset(new BrowserJob(argv_, env_, 1, &checker_, &metrics_, &utils_));
+  job_.reset(
+      new BrowserJob(argv_, env_, getuid(), &checker_, &metrics_, &utils_));
 }
 
 TEST_F(BrowserJobTest, InitializationTest) {
