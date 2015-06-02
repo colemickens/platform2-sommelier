@@ -56,7 +56,7 @@ class BuffetConfig final {
     void set_service_url(const std::string& url) {
       config_->service_url_ = url;
     }
-    bool set_name(const std::string& name);
+    void set_name(const std::string& name) { config_->name_ = name; }
     void set_description(const std::string& description) {
       config_->description_ = description;
     }

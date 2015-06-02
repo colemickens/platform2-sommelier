@@ -669,11 +669,7 @@ bool DeviceRegistrationInfo::UpdateDeviceInfo(const std::string& name,
                                               const std::string& location,
                                               chromeos::ErrorPtr* error) {
   BuffetConfig::Transaction change{config_.get()};
-  if (!change.set_name(name)) {
-    chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainBuffet,
-                           "invalid_parameter", "Empty device name");
-    return false;
-  }
+  change.set_name(name);
   change.set_description(description);
   change.set_location(location);
   change.Commit();

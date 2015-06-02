@@ -118,7 +118,6 @@ void PeerdClient::ExposeService() {
       !cloud_->GetModelId(&model_id, nullptr)) {
     return;
   }
-  DCHECK(!name.empty());
   DCHECK_EQ(model_id.size(), 5U);
 
   VLOG(1) << "Starting peerd advertising.";

@@ -63,11 +63,6 @@ class CloudDelegateImpl : public CloudDelegate {
   bool GetName(std::string* name, chromeos::ErrorPtr* error) const override {
     if (!IsManagerReady(error))
       return false;
-    if (manager_->name().empty()) {
-      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
-                             errors::kInvalidState, "Device name is empty");
-      return false;
-    }
     *name = manager_->name();
     return true;
   }
@@ -88,12 +83,6 @@ class CloudDelegateImpl : public CloudDelegate {
     chromeos::ErrorPtr error;
     if (!IsManagerReady(&error))
       return error_callback.Run(error.get());
-
-    if (name.empty()) {
-      chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
-                             errors::kInvalidParams, "Empty device name");
-      return error_callback.Run(error.get());
-    }
 
     if (name == manager_->name() && description == manager_->description() &&
         location == manager_->location()) {

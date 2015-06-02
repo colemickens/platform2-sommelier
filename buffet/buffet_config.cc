@@ -128,6 +128,8 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
   if (store.GetString(config_keys::kBackupPollingPeriodMs, &polling_period_str))
     CHECK(base::StringToUint64(polling_period_str, &backup_polling_period_ms_));
 
+  // Empty name set by user or server is allowed, still we expect some
+  // meaningfull config value.
   store.GetString(config_keys::kName, &name_);
   CHECK(!name_.empty());
 
@@ -226,15 +228,6 @@ bool BuffetConfig::Save() {
 
 BuffetConfig::Transaction::~Transaction() {
   Commit();
-}
-
-bool BuffetConfig::Transaction::set_name(const std::string& name) {
-  if (name.empty()) {
-    LOG(ERROR) << "Invalid name: " << name;
-    return false;
-  }
-  config_->name_ = name;
-  return true;
 }
 
 bool BuffetConfig::Transaction::set_local_anonymous_access_role(
