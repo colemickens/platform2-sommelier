@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# UDEV script that sets up the debug link.
+# UDEV script that sets up the USB-Ethernet debug link.
 
 DEVICE_IP="169.254.100.2"
 MAX_VETH_SUFFIX=99
@@ -23,7 +23,7 @@ for d in /sys/bus/usb/devices/*; do
 done
 
 if [ -z "${devdir}" ]; then
-  logger "setup-debug-link: could not find debug link hardware"
+  logger "setup-veth-link: could not find debug link hardware"
   exit 1
 fi
 
@@ -42,7 +42,7 @@ for i in $(seq 0 ${MAX_VETH_SUFFIX}); do
   if nameif "${new_ifname}" "${address}"; then
     break
   elif [ ${i} -eq ${MAX_VETH_SUFFIX} ]; then
-    logger "setup-debug-link: could not find an available veth* interface name"
+    logger "setup-veth-link: could not find an available veth* interface name"
     exit 1
   fi
 done
