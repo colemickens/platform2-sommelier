@@ -134,6 +134,7 @@ TEST_F(IcmpTest, TransmitEchoRequest) {
   EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
 
   struct icmphdr icmp_header;
+  memset(&icmp_header, 0, sizeof(icmp_header));
   icmp_header.type = ICMP_ECHO;
   icmp_header.un.echo.id = 1;
   icmp_header.un.echo.sequence = 1;
