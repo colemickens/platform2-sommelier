@@ -87,7 +87,7 @@ class MockSecurityDelegate : public SecurityDelegate {
 
     EXPECT_CALL(*this, ParseAccessToken(_, _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(base::Time::Now()),
-                              Return(AuthScope::kGuest)));
+                              Return(AuthScope::kViewer)));
 
     EXPECT_CALL(*this, GetPairingTypes())
         .WillRepeatedly(Return(std::set<PairingType>{

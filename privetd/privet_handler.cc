@@ -193,8 +193,7 @@ const EnumToStringMap<CryptoType>::Map EnumToStringMap<CryptoType>::kMap[] = {
 
 template <>
 const EnumToStringMap<AuthScope>::Map EnumToStringMap<AuthScope>::kMap[] = {
-    {AuthScope::kNone, nullptr},
-    {AuthScope::kGuest, "guest"},
+    {AuthScope::kNone, "none"},
     {AuthScope::kViewer, "viewer"},
     {AuthScope::kUser, "user"},
     {AuthScope::kOwner, "owner"},
@@ -441,7 +440,7 @@ std::unique_ptr<base::DictionaryValue> CreateGcdSection(
 AuthScope GetAnonymousMaxScope(const CloudDelegate& cloud,
                                const WifiDelegate* wifi) {
   if (wifi && !wifi->GetHostedSsid().empty())
-    return AuthScope::kGuest;
+    return AuthScope::kNone;
   return cloud.GetAnonymousMaxScope();
 }
 
@@ -462,14 +461,14 @@ PrivetHandler::PrivetHandler(CloudDelegate* cloud,
   CHECK(security_);
   cloud_observer_.Add(cloud_);
 
-  AddHandler("/privet/info", &PrivetHandler::HandleInfo, AuthScope::kGuest);
+  AddHandler("/privet/info", &PrivetHandler::HandleInfo, AuthScope::kNone);
   AddHandler("/privet/v3/pairing/start", &PrivetHandler::HandlePairingStart,
-             AuthScope::kGuest);
+             AuthScope::kNone);
   AddHandler("/privet/v3/pairing/confirm", &PrivetHandler::HandlePairingConfirm,
-             AuthScope::kGuest);
+             AuthScope::kNone);
   AddHandler("/privet/v3/pairing/cancel", &PrivetHandler::HandlePairingCancel,
-             AuthScope::kGuest);
-  AddHandler("/privet/v3/auth", &PrivetHandler::HandleAuth, AuthScope::kGuest);
+             AuthScope::kNone);
+  AddHandler("/privet/v3/auth", &PrivetHandler::HandleAuth, AuthScope::kNone);
   AddHandler("/privet/v3/setup/start", &PrivetHandler::HandleSetupStart,
              AuthScope::kOwner);
   AddHandler("/privet/v3/setup/status", &PrivetHandler::HandleSetupStatus,
@@ -534,18 +533,19 @@ void PrivetHandler::HandleRequest(const std::string& api,
   } else {
     base::Time time;
     scope = security_->ParseAccessToken(token, &time);
+    if (scope == AuthScope::kNone) {
+      chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                                   errors::kInvalidAuthorization,
+                                   "Invalid access token: %s", token.c_str());
+      return ReturnError(*error, callback);
+    }
     time += base::TimeDelta::FromSeconds(kAccesssTokenExpirationSeconds);
     time +=
         base::TimeDelta::FromSeconds(kAccesssTokenExpirationThresholdSeconds);
     if (time < base::Time::Now())
       scope = AuthScope::kNone;
   }
-  if (scope == AuthScope::kNone) {
-    chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
-                                 errors::kInvalidAuthorization,
-                                 "Invalid access token: %s", token.c_str());
-    return ReturnError(*error, callback);
-  }
+
   if (handler->second.first > scope) {
     chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
                                  errors::kInvalidAuthorizationScope,

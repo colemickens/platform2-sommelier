@@ -303,7 +303,7 @@ TEST_F(PrivetHandlerTest, Info) {
       'httpsUpdatesPort': 10443
     },
     'authentication': {
-      'anonymousMaxScope': 'guest',
+      'anonymousMaxScope': 'none',
       'mode': [
         'anonymous',
         'pairing'

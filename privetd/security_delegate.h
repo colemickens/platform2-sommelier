@@ -26,7 +26,6 @@ enum class PairingType {
 // Scopes in order of increasing privileges.
 enum class AuthScope {
   kNone,
-  kGuest,
   kViewer,
   kUser,
   kOwner,

@@ -122,29 +122,29 @@ class SecurityManagerTest : public testing::Test {
 };
 
 TEST_F(SecurityManagerTest, IsBase64) {
-  EXPECT_TRUE(IsBase64(security_.CreateAccessToken(AuthScope::kGuest, time_)));
+  EXPECT_TRUE(IsBase64(security_.CreateAccessToken(AuthScope::kUser, time_)));
 }
 
 TEST_F(SecurityManagerTest, CreateSameToken) {
-  EXPECT_EQ(security_.CreateAccessToken(AuthScope::kGuest, time_),
-            security_.CreateAccessToken(AuthScope::kGuest, time_));
+  EXPECT_EQ(security_.CreateAccessToken(AuthScope::kViewer, time_),
+            security_.CreateAccessToken(AuthScope::kViewer, time_));
 }
 
 TEST_F(SecurityManagerTest, CreateTokenDifferentScope) {
-  EXPECT_NE(security_.CreateAccessToken(AuthScope::kGuest, time_),
+  EXPECT_NE(security_.CreateAccessToken(AuthScope::kViewer, time_),
             security_.CreateAccessToken(AuthScope::kOwner, time_));
 }
 
 TEST_F(SecurityManagerTest, CreateTokenDifferentTime) {
-  EXPECT_NE(security_.CreateAccessToken(AuthScope::kGuest, time_),
-            security_.CreateAccessToken(AuthScope::kGuest,
+  EXPECT_NE(security_.CreateAccessToken(AuthScope::kOwner, time_),
+            security_.CreateAccessToken(AuthScope::kOwner,
                                         base::Time::FromTimeT(1400000000)));
 }
 
 TEST_F(SecurityManagerTest, CreateTokenDifferentInstance) {
-  EXPECT_NE(security_.CreateAccessToken(AuthScope::kGuest, time_),
+  EXPECT_NE(security_.CreateAccessToken(AuthScope::kUser, time_),
             SecurityManager({}, base::FilePath{})
-                .CreateAccessToken(AuthScope::kGuest, time_));
+                .CreateAccessToken(AuthScope::kUser, time_));
 }
 
 TEST_F(SecurityManagerTest, ParseAccessToken) {

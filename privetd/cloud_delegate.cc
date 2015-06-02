@@ -127,7 +127,7 @@ class CloudDelegateImpl : public CloudDelegate {
       if (StringToAuthScope(manager_->anonymous_access_role(), &scope))
         return scope;
     }
-    return AuthScope::kGuest;
+    return AuthScope::kNone;
   }
 
   const ConnectionState& GetConnectionState() const override {
