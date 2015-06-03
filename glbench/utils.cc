@@ -34,7 +34,7 @@ void SetBasePathFromSelfExe(const char* relative) {
     delete g_base_path;
   }
   FilePath exe_path;
-  base::ReadSymbolicLink(FilePath("/self/proc/exe"), &exe_path);
+  base::ReadSymbolicLink(FilePath("/proc/self/exe"), &exe_path);
   exe_path = exe_path.DirName();
   FilePath base_path = relative ? exe_path.Append(relative) : exe_path;
   g_base_path = new FilePath(base_path);
