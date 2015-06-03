@@ -529,11 +529,11 @@ void PrivetHandler::HandleRequest(const std::string& api,
         "Invalid authorization header: %s", auth_header.c_str());
     return ReturnError(*error, callback);
   }
-  AuthScope scope = AuthScope::kNone;
+  UserInfo user_info;
   if (token != kAuthTypeAnonymousValue) {
     base::Time time;
-    scope = security_->ParseAccessToken(token, &time);
-    if (scope == AuthScope::kNone) {
+    user_info = security_->ParseAccessToken(token, &time);
+    if (user_info.scope() == AuthScope::kNone) {
       chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
                                    errors::kInvalidAuthorization,
                                    "Invalid access token: %s", token.c_str());
@@ -550,14 +550,13 @@ void PrivetHandler::HandleRequest(const std::string& api,
     }
   }
 
-  if (handler->second.first > scope) {
-    chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
-                                 errors::kInvalidAuthorizationScope,
-                                 "Scope '%s' does not allow '%s'",
-                                 EnumToString(scope).c_str(), api.c_str());
+  if (handler->second.first > user_info.scope()) {
+    chromeos::Error::AddToPrintf(
+        &error, FROM_HERE, errors::kDomain, errors::kInvalidAuthorizationScope,
+        "Scope '%s' does not allow '%s'",
+        EnumToString(user_info.scope()).c_str(), api.c_str());
     return ReturnError(*error, callback);
   }
-  UserInfo user_info{scope};
   (this->*handler->second.second)(*input, user_info, callback);
 }
 
@@ -744,7 +743,8 @@ void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
   base::DictionaryValue output;
   output.SetString(
       kAuthAccessTokenKey,
-      security_->CreateAccessToken(requested_auth_scope, base::Time::Now()));
+      security_->CreateAccessToken(
+          UserInfo{requested_auth_scope, ++last_user_id_}, base::Time::Now()));
   output.SetString(kAuthTokenTypeKey, kAuthorizationHeaderPrefix);
   output.SetInteger(kAuthExpiresInKey, kAccessTokenExpirationSeconds);
   output.SetString(kAuthScopeKey, EnumToString(requested_auth_scope));

@@ -50,10 +50,10 @@ class SecurityManager : public SecurityDelegate {
   ~SecurityManager() override;
 
   // SecurityDelegate methods
-  std::string CreateAccessToken(AuthScope scope,
-                                const base::Time& time) const override;
-  AuthScope ParseAccessToken(const std::string& token,
-                             base::Time* time) const override;
+  std::string CreateAccessToken(const UserInfo& user_info,
+                                const base::Time& time) override;
+  UserInfo ParseAccessToken(const std::string& token,
+                            base::Time* time) const override;
   std::set<PairingType> GetPairingTypes() const override;
   std::set<CryptoType> GetCryptoTypes() const override;
   bool IsValidPairingCode(const std::string& auth_code) const override;

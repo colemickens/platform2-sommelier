@@ -38,27 +38,35 @@ const int kPairingBlockingTimeMinutes = 1;
 
 const char kEmbeddedCode[] = "embedded_code";
 
-// Returns "scope:time".
-std::string CreateTokenData(AuthScope scope, const base::Time& time) {
-  return base::IntToString(static_cast<int>(scope)) + kTokenDelimeter +
-         base::Int64ToString(time.ToTimeT());
+// Returns "scope:id:time".
+std::string CreateTokenData(const UserInfo& user_info, const base::Time& time) {
+  return base::IntToString(static_cast<int>(user_info.scope())) +
+         kTokenDelimeter + base::Uint64ToString(user_info.user_id()) +
+         kTokenDelimeter + base::Int64ToString(time.ToTimeT());
 }
 
-// Splits string of "scope:time" format.
-AuthScope SplitTokenData(const std::string& token, base::Time* time) {
-  auto parts = chromeos::string_utils::SplitAtFirst(token, kTokenDelimeter);
+// Splits string of "scope:id:time" format.
+UserInfo SplitTokenData(const std::string& token, base::Time* time) {
+  const UserInfo kNone;
+  auto parts = chromeos::string_utils::Split(token, kTokenDelimeter);
+  if (parts.size() != 3)
+    return kNone;
   int scope = 0;
-  if (!base::StringToInt(parts.first, &scope) ||
+  if (!base::StringToInt(parts[0], &scope) ||
       scope < static_cast<int>(AuthScope::kNone) ||
       scope > static_cast<int>(AuthScope::kOwner)) {
-    return AuthScope::kNone;
+    return kNone;
   }
 
-  int64_t timestamp = 0;
-  if (!base::StringToInt64(parts.second, &timestamp))
-    return AuthScope::kNone;
+  uint64_t id{0};
+  if (!base::StringToUint64(parts[1], &id))
+    return kNone;
+
+  int64_t timestamp{0};
+  if (!base::StringToInt64(parts[2], &timestamp))
+    return kNone;
   *time = base::Time::FromTimeT(timestamp);
-  return static_cast<AuthScope>(scope);
+  return UserInfo{static_cast<AuthScope>(scope), id};
 }
 
 std::string LoadEmbeddedCode(const base::FilePath& path) {
@@ -143,26 +151,27 @@ SecurityManager::~SecurityManager() {
     ClosePendingSession(pending_sessions_.begin()->first);
 }
 
-// Returns "base64([hmac]scope:time)".
-std::string SecurityManager::CreateAccessToken(AuthScope scope,
-                                               const base::Time& time) const {
-  chromeos::SecureBlob data(CreateTokenData(scope, time));
+// Returns "base64([hmac]scope:id:time)".
+std::string SecurityManager::CreateAccessToken(const UserInfo& user_info,
+                                               const base::Time& time) {
+  chromeos::SecureBlob data(CreateTokenData(user_info, time));
   chromeos::Blob hash(HmacSha256(secret_, data));
   return chromeos::data_encoding::Base64Encode(chromeos::SecureBlob::Combine(
       chromeos::SecureBlob(hash.begin(), hash.end()), data));
 }
 
-// Parses "base64([hmac]scope:time)".
-AuthScope SecurityManager::ParseAccessToken(const std::string& token,
-                                            base::Time* time) const {
+// Parses "base64([hmac]scope:id:time)".
+UserInfo SecurityManager::ParseAccessToken(const std::string& token,
+                                           base::Time* time) const {
   chromeos::Blob decoded;
   if (!chromeos::data_encoding::Base64Decode(token, &decoded) ||
-      decoded.size() <= kSha256OutputSize)
-    return AuthScope::kNone;
+      decoded.size() <= kSha256OutputSize) {
+    return UserInfo{};
+  }
   chromeos::SecureBlob data(decoded.begin() + kSha256OutputSize, decoded.end());
   decoded.resize(kSha256OutputSize);
   if (decoded != HmacSha256(secret_, data))
-    return AuthScope::kNone;
+    return UserInfo{};
   return SplitTokenData(data.to_string(), time);
 }
 

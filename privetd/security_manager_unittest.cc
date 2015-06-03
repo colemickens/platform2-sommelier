@@ -122,38 +122,52 @@ class SecurityManagerTest : public testing::Test {
 };
 
 TEST_F(SecurityManagerTest, IsBase64) {
-  EXPECT_TRUE(IsBase64(security_.CreateAccessToken(AuthScope::kUser, time_)));
+  EXPECT_TRUE(IsBase64(
+      security_.CreateAccessToken(UserInfo{AuthScope::kUser, 7}, time_)));
 }
 
 TEST_F(SecurityManagerTest, CreateSameToken) {
-  EXPECT_EQ(security_.CreateAccessToken(AuthScope::kViewer, time_),
-            security_.CreateAccessToken(AuthScope::kViewer, time_));
+  EXPECT_EQ(
+      security_.CreateAccessToken(UserInfo{AuthScope::kViewer, 555}, time_),
+      security_.CreateAccessToken(UserInfo{AuthScope::kViewer, 555}, time_));
 }
 
 TEST_F(SecurityManagerTest, CreateTokenDifferentScope) {
-  EXPECT_NE(security_.CreateAccessToken(AuthScope::kViewer, time_),
-            security_.CreateAccessToken(AuthScope::kOwner, time_));
+  EXPECT_NE(
+      security_.CreateAccessToken(UserInfo{AuthScope::kViewer, 456}, time_),
+      security_.CreateAccessToken(UserInfo{AuthScope::kOwner, 456}, time_));
+}
+
+TEST_F(SecurityManagerTest, CreateTokenDifferentUser) {
+  EXPECT_NE(
+      security_.CreateAccessToken(UserInfo{AuthScope::kOwner, 456}, time_),
+      security_.CreateAccessToken(UserInfo{AuthScope::kOwner, 789}, time_));
 }
 
 TEST_F(SecurityManagerTest, CreateTokenDifferentTime) {
-  EXPECT_NE(security_.CreateAccessToken(AuthScope::kOwner, time_),
-            security_.CreateAccessToken(AuthScope::kOwner,
-                                        base::Time::FromTimeT(1400000000)));
+  EXPECT_NE(
+      security_.CreateAccessToken(UserInfo{AuthScope::kOwner, 567}, time_),
+      security_.CreateAccessToken(UserInfo{AuthScope::kOwner, 567},
+                                  base::Time::FromTimeT(1400000000)));
 }
 
 TEST_F(SecurityManagerTest, CreateTokenDifferentInstance) {
-  EXPECT_NE(security_.CreateAccessToken(AuthScope::kUser, time_),
+  EXPECT_NE(security_.CreateAccessToken(UserInfo{AuthScope::kUser, 123}, time_),
             SecurityManager({}, base::FilePath{})
-                .CreateAccessToken(AuthScope::kUser, time_));
+                .CreateAccessToken(UserInfo{AuthScope::kUser, 123}, time_));
 }
 
 TEST_F(SecurityManagerTest, ParseAccessToken) {
   // Multiple attempts with random secrets.
   for (size_t i = 0; i < 1000; ++i) {
     SecurityManager security{{}, base::FilePath{}};
-    std::string token = security.CreateAccessToken(AuthScope::kUser, time_);
+
+    std::string token =
+        security.CreateAccessToken(UserInfo{AuthScope::kUser, 5}, time_);
     base::Time time2;
-    EXPECT_EQ(AuthScope::kUser, security.ParseAccessToken(token, &time2));
+    EXPECT_EQ(AuthScope::kUser,
+              security.ParseAccessToken(token, &time2).scope());
+    EXPECT_EQ(5u, security.ParseAccessToken(token, &time2).user_id());
     // Token timestamp resolution is one second.
     EXPECT_GE(1, std::abs((time_ - time2).InSeconds()));
   }

@@ -457,7 +457,7 @@ class PrivetHandlerSetupTest : public PrivetHandlerTest {
     auth_header_ = "Privet 123";
     EXPECT_CALL(security_, ParseAccessToken(_, _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(base::Time::Now()),
-                              Return(AuthScope::kOwner)));
+                              Return(UserInfo{AuthScope::kOwner, 1})));
   }
 };
 

@@ -124,6 +124,7 @@ class PrivetHandler : public CloudDelegate::Observer {
 
   std::map<std::string, std::pair<AuthScope, ApiHandler>> handlers_;
 
+  uint64_t last_user_id_{0};
   int state_fingerprint_{0};
   int command_defs_fingerprint_{0};
   ScopedObserver<CloudDelegate, CloudDelegate::Observer> cloud_observer_{this};

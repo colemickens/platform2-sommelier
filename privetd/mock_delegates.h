@@ -60,10 +60,10 @@ class MockDeviceDelegate : public DeviceDelegate {
 
 class MockSecurityDelegate : public SecurityDelegate {
  public:
-  MOCK_CONST_METHOD2(CreateAccessToken,
-                     std::string(AuthScope, const base::Time&));
+  MOCK_METHOD2(CreateAccessToken,
+               std::string(const UserInfo&, const base::Time&));
   MOCK_CONST_METHOD2(ParseAccessToken,
-                     AuthScope(const std::string&, base::Time*));
+                     UserInfo(const std::string&, base::Time*));
   MOCK_CONST_METHOD0(GetPairingTypes, std::set<PairingType>());
   MOCK_CONST_METHOD0(GetCryptoTypes, std::set<CryptoType>());
   MOCK_CONST_METHOD1(IsValidPairingCode, bool(const std::string&));
@@ -87,7 +87,7 @@ class MockSecurityDelegate : public SecurityDelegate {
 
     EXPECT_CALL(*this, ParseAccessToken(_, _))
         .WillRepeatedly(DoAll(SetArgPointee<1>(base::Time::Now()),
-                              Return(AuthScope::kViewer)));
+                              Return(UserInfo{AuthScope::kViewer, 1234567})));
 
     EXPECT_CALL(*this, GetPairingTypes())
         .WillRepeatedly(Return(std::set<PairingType>{
