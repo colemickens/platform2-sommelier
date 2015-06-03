@@ -361,6 +361,7 @@ void XmppChannel::OnWriteError(const chromeos::Error* error) {
 
 void XmppChannel::Connect(const std::string& host, uint16_t port,
                           const base::Closure& callback) {
+  LOG(INFO) << "Starting XMPP connection to " << host << ":" << port;
   int socket_fd = ConnectSocket(host, port);
   if (socket_fd >= 0) {
     raw_socket_ =

@@ -206,15 +206,13 @@ bool TlsStream::TlsStreamImpl::Flush(ErrorPtr* error) {
 bool TlsStream::TlsStreamImpl::Close(ErrorPtr* error) {
   // 2 seconds should be plenty here.
   const base::TimeDelta kTimeout = base::TimeDelta::FromSeconds(2);
-  int retry_count = 0;
-  while (retry_count < 2) {
+  // The retry count of 4 below is just arbitrary, to ensure we don't get stuck
+  // here forever. We should rarely need to repeat SSL_shutdown anyway.
+  for (int retry_count = 0; retry_count < 4; retry_count++) {
     int ret = SSL_shutdown(ssl_.get());
-    if (ret == 0) {
-      // TLS shutdown hasn't completed yet. Retrying...;
-      retry_count++;
-      continue;
-    }
-    if (ret == 1)
+    // We really don't care for bi-directional shutdown here.
+    // Just make sure we only send the "close notify" alert to the remote peer.
+    if (ret >= 0)
       break;
 
     int err = SSL_get_error(ssl_.get(), ret);
@@ -229,6 +227,7 @@ bool TlsStream::TlsStreamImpl::Close(ErrorPtr* error) {
         break;
       }
     } else {
+      LOG(ERROR) << "SSL_shutdown returned error #" << err;
       ReportError(error, FROM_HERE, "Failed to shut down TLS socket");
       break;
     }
