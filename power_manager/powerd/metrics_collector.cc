@@ -364,7 +364,7 @@ void MetricsCollector::GenerateBatteryDischargeRateMetric() {
   if (!last_battery_discharge_rate_metric_timestamp_.is_null() &&
       (clock_.GetCurrentTime() -
        last_battery_discharge_rate_metric_timestamp_).InSeconds() <
-      kMetricBatteryDischargeRateInterval) {
+      kMetricBatteryDischargeRateIntervalSec) {
     return;
   }
 

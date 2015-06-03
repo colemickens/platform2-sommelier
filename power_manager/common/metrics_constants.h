@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_COMMON_METRICS_CONSTANTS_H_
 #define POWER_MANAGER_COMMON_METRICS_CONSTANTS_H_
 
-#include <ctime>
-
 namespace power_manager {
 
 // Suffixes added to certain metric names when on different power sources.
@@ -31,7 +29,7 @@ extern const int kMetricShutdownReasonMax;
 
 extern const char kMetricBacklightLevelName[];
 extern const char kMetricKeyboardBacklightLevelName[];
-extern const time_t kMetricBacklightLevelIntervalMs;
+extern const int kMetricBacklightLevelIntervalMs;
 
 extern const char kMetricIdleAfterScreenOffName[];
 extern const int kMetricIdleAfterScreenOffMin;
@@ -51,7 +49,7 @@ extern const int kMetricBatteryChargeHealthMax;
 extern const char kMetricBatteryDischargeRateName[];
 extern const int kMetricBatteryDischargeRateMin;
 extern const int kMetricBatteryDischargeRateMax;
-extern const time_t kMetricBatteryDischargeRateInterval;
+extern const int kMetricBatteryDischargeRateIntervalSec;
 
 extern const char kMetricBatteryDischargeRateWhileSuspendedName[];
 extern const int kMetricBatteryDischargeRateWhileSuspendedMin;

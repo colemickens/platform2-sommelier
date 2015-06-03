@@ -26,7 +26,7 @@ const int kMetricShutdownReasonMax = 10;
 
 const char kMetricBacklightLevelName[] = "Power.BacklightLevel";
 const char kMetricKeyboardBacklightLevelName[] = "Power.KeyboardBacklightLevel";
-const time_t kMetricBacklightLevelIntervalMs = 30000;
+const int kMetricBacklightLevelIntervalMs = 30000;
 
 const char kMetricIdleAfterScreenOffName[] = "Power.IdleTimeAfterScreenOff";
 const int kMetricIdleAfterScreenOffMin = 100;
@@ -49,7 +49,7 @@ const char kMetricBatteryDischargeRateName[] =
     "Power.BatteryDischargeRate";  // mW
 const int kMetricBatteryDischargeRateMin = 1000;
 const int kMetricBatteryDischargeRateMax = 30000;
-const time_t kMetricBatteryDischargeRateInterval = 30;  // seconds
+const int kMetricBatteryDischargeRateIntervalSec = 30;
 
 const char kMetricBatteryDischargeRateWhileSuspendedName[] =
     "Power.BatteryDischargeRateWhileSuspended";  // mW

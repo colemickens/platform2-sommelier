@@ -218,7 +218,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRate) {
   // This much time must elapse before the discharge rate will be reported
   // again.
   const base::TimeDelta interval = base::TimeDelta::FromSeconds(
-      kMetricBatteryDischargeRateInterval);
+      kMetricBatteryDischargeRateIntervalSec);
 
   power_status_.battery_energy_rate = 5.0;
   ExpectBatteryDischargeRateMetric(5000);
