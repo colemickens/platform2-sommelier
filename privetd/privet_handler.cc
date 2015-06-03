@@ -130,7 +130,8 @@ class EnumToStringMap final {
         return m.name;
       }
     }
-    NOTREACHED();
+    NOTREACHED() << static_cast<int>(id) << " is not part of "
+                 << typeid(T).name();
     return std::string();
   }
 
@@ -528,9 +529,7 @@ void PrivetHandler::HandleRequest(const std::string& api,
     return ReturnError(*error, callback);
   }
   AuthScope scope = AuthScope::kNone;
-  if (token == kAuthTypeAnonymousValue) {
-    scope = GetAnonymousMaxScope(*cloud_, wifi_);
-  } else {
+  if (token != kAuthTypeAnonymousValue) {
     base::Time time;
     scope = security_->ParseAccessToken(token, &time);
     if (scope == AuthScope::kNone) {
