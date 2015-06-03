@@ -14,10 +14,10 @@
 
 #include <base/memory/ref_counted.h>
 
+#include "shill/dhcp/mock_dhcp_config.h"
+#include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/ethernet/mock_ethernet_service.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_dhcp_config.h"
-#include "shill/mock_dhcp_provider.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_log.h"

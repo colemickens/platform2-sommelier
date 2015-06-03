@@ -8,7 +8,7 @@
 
 #include <base/bind.h>
 
-#include "shill/dhcp_provider.h"
+#include "shill/dhcp/dhcp_provider.h"
 #include "shill/diagnostics_reporter.h"
 #include "shill/error.h"
 #include "shill/logging.h"

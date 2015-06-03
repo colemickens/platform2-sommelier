@@ -15,9 +15,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/logging.h"
 #include "shill/mock_control.h"
-#include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_proxy_factory.h"

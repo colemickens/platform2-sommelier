@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_DHCP_CONFIG_H_
-#define SHILL_MOCK_DHCP_CONFIG_H_
+#ifndef SHILL_DHCP_MOCK_DHCP_CONFIG_H_
+#define SHILL_DHCP_MOCK_DHCP_CONFIG_H_
 
 #include <string>
 
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
-#include "shill/dhcp_config.h"
+#include "shill/dhcp/dhcp_config.h"
 
 namespace shill {
 
@@ -31,4 +31,4 @@ class MockDHCPConfig : public DHCPConfig {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_DHCP_CONFIG_H_
+#endif  // SHILL_DHCP_MOCK_DHCP_CONFIG_H_

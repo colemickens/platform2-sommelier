@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/dhcp_config.h"
+#include "shill/dhcp/dhcp_config.h"
 
 #include <vector>
 
@@ -16,8 +16,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/minijail/minijail.h>
 
-#include "shill/dhcp_provider.h"
-#include "shill/dhcpcd_proxy.h"
+#include "shill/dhcp/dhcp_provider.h"
+#include "shill/dhcp/dhcpcd_proxy.h"
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/logging.h"

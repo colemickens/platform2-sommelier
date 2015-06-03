@@ -24,6 +24,8 @@
 #include <dbus-c++/dbus.h>
 
 #include "shill/dbus_adaptor.h"
+#include "shill/dhcp/mock_dhcp_config.h"
+#include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
@@ -35,8 +37,6 @@
 #include "shill/mock_dbus_service_proxy.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_dhcp_config.h"
-#include "shill/mock_dhcp_provider.h"
 #include "shill/mock_eap_credentials.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_ipconfig.h"

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/dhcp_config.h"
+#include "shill/dhcp/dhcp_config.h"
 
 #include <memory>
 #include <string>
@@ -16,10 +16,10 @@
 #include <chromeos/minijail/mock_minijail.h>
 
 #include "shill/dbus_adaptor.h"
-#include "shill/dhcp_provider.h"
+#include "shill/dhcp/dhcp_provider.h"
+#include "shill/dhcp/mock_dhcp_proxy.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"
-#include "shill/mock_dhcp_proxy.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"

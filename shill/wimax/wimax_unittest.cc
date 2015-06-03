@@ -7,9 +7,9 @@
 #include <memory>
 #include <string>
 
+#include "shill/dhcp/mock_dhcp_config.h"
+#include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/event_dispatcher.h"
-#include "shill/mock_dhcp_config.h"
-#include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_proxy_factory.h"

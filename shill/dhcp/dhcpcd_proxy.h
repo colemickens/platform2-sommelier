@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_DHCPCD_PROXY_H_
-#define SHILL_DHCPCD_PROXY_H_
+#ifndef SHILL_DHCP_DHCPCD_PROXY_H_
+#define SHILL_DHCP_DHCPCD_PROXY_H_
 
 #include <string>
 
 #include <base/macros.h>
 
 #include "shill/dbus_proxies/dhcpcd.h"
-#include "shill/dhcp_config.h"
-#include "shill/dhcp_proxy_interface.h"
+#include "shill/dhcp/dhcp_config.h"
+#include "shill/dhcp/dhcp_proxy_interface.h"
 
 namespace shill {
 
@@ -85,4 +85,4 @@ class DHCPCDProxy : public DHCPProxyInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_DHCPCD_PROXY_H_
+#endif  // SHILL_DHCP_DHCPCD_PROXY_H_

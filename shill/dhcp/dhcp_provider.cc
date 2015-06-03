@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/dhcp_provider.h"
+#include "shill/dhcp/dhcp_provider.h"
 
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/control_interface.h"
-#include "shill/dhcp_config.h"
-#include "shill/dhcpcd_proxy.h"
+#include "shill/dhcp/dhcp_config.h"
+#include "shill/dhcp/dhcpcd_proxy.h"
 #include "shill/logging.h"
 #include "shill/shared_dbus_connection.h"
 

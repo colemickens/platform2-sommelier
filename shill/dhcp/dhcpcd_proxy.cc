@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/dhcpcd_proxy.h"
+#include "shill/dhcp/dhcpcd_proxy.h"
 
 #include <dbus/dbus.h>
 #include <string.h>
 
 #include <limits>
 
-#include "shill/dhcp_provider.h"
+#include "shill/dhcp/dhcp_provider.h"
 #include "shill/logging.h"
 
 using std::string;
