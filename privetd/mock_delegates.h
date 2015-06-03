@@ -168,19 +168,23 @@ class MockCloudDelegate : public CloudDelegate {
   MOCK_CONST_METHOD0(GetCommandDef, const base::DictionaryValue&());
   MOCK_METHOD4(AddCommand,
                void(const base::DictionaryValue&,
-                    AuthScope,
+                    const UserInfo&,
                     const SuccessCallback&,
                     const ErrorCallback&));
-  MOCK_METHOD3(GetCommand,
+  MOCK_METHOD4(GetCommand,
                void(const std::string&,
+                    const UserInfo&,
                     const SuccessCallback&,
                     const ErrorCallback&));
-  MOCK_METHOD3(CancelCommand,
+  MOCK_METHOD4(CancelCommand,
                void(const std::string&,
+                    const UserInfo&,
                     const SuccessCallback&,
                     const ErrorCallback&));
-  MOCK_METHOD2(ListCommands,
-               void(const SuccessCallback&, const ErrorCallback&));
+  MOCK_METHOD3(ListCommands,
+               void(const UserInfo&,
+                    const SuccessCallback&,
+                    const ErrorCallback&));
 
   MockCloudDelegate() {
     EXPECT_CALL(*this, GetModelId(_, _))

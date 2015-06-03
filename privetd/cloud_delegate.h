@@ -99,22 +99,25 @@ class CloudDelegate {
 
   // Adds command created from the given JSON representation.
   virtual void AddCommand(const base::DictionaryValue& command,
-                          AuthScope scope,
+                          const UserInfo& user_info,
                           const SuccessCallback& success_callback,
                           const ErrorCallback& error_callback) = 0;
 
   // Returns command with the given ID.
   virtual void GetCommand(const std::string& id,
+                          const UserInfo& user_info,
                           const SuccessCallback& success_callback,
                           const ErrorCallback& error_callback) = 0;
 
   // Cancels command with the given ID.
   virtual void CancelCommand(const std::string& id,
+                             const UserInfo& user_info,
                              const SuccessCallback& success_callback,
                              const ErrorCallback& error_callback) = 0;
 
   // Lists commands.
-  virtual void ListCommands(const SuccessCallback& success_callback,
+  virtual void ListCommands(const UserInfo& user_info,
+                            const SuccessCallback& success_callback,
                             const ErrorCallback& error_callback) = 0;
 
   void AddObserver(Observer* observer) { observer_list_.AddObserver(observer); }

@@ -167,10 +167,10 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
   void AddCommand(const base::DictionaryValue& command,
-                  AuthScope scope,
+                  const UserInfo& user_info,
                   const SuccessCallback& success_callback,
                   const ErrorCallback& error_callback) override {
-    CHECK(scope >= AuthScope::kViewer);
+    CHECK(user_info.scope() != AuthScope::kNone);
 
     chromeos::ErrorPtr error;
     if (!IsManagerReady(&error))
@@ -179,7 +179,7 @@ class CloudDelegateImpl : public CloudDelegate {
     std::string command_str;
     base::JSONWriter::Write(&command, &command_str);
     manager_->AddCommandAsync(
-        command_str, AuthScopeToString(scope),
+        command_str, AuthScopeToString(user_info.scope()),
         base::Bind(&CloudDelegateImpl::OnAddCommandSucceeded,
                    weak_factory_.GetWeakPtr(), success_callback,
                    error_callback),
@@ -187,25 +187,24 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
   void GetCommand(const std::string& id,
+                  const UserInfo& user_info,
                   const SuccessCallback& success_callback,
                   const ErrorCallback& error_callback) override {
-    chromeos::ErrorPtr error;
-    if (!IsManagerReady(&error))
-      return error_callback.Run(error.get());
-    manager_->GetCommandAsync(
-        id, base::Bind(&CloudDelegateImpl::OnGetCommandSucceeded,
-                       weak_factory_.GetWeakPtr(), success_callback,
-                       error_callback),
-        error_callback);
+    CHECK(user_info.scope() != AuthScope::kNone);
+
+    GetCommandInternal(id, success_callback, error_callback);
   }
 
   void CancelCommand(const std::string& id,
+                     const UserInfo& user_info,
                      const SuccessCallback& success_callback,
                      const ErrorCallback& error_callback) override {
+    CHECK(user_info.scope() != AuthScope::kNone);
+
     for (auto command : object_manager_.GetCommandInstances()) {
       if (command->id() == id) {
         return command->CancelAsync(
-            base::Bind(&CloudDelegateImpl::GetCommand,
+            base::Bind(&CloudDelegateImpl::GetCommandInternal,
                        weak_factory_.GetWeakPtr(), id, success_callback,
                        error_callback),
             error_callback);
@@ -218,8 +217,11 @@ class CloudDelegateImpl : public CloudDelegate {
     error_callback.Run(error.get());
   }
 
-  void ListCommands(const SuccessCallback& success_callback,
+  void ListCommands(const UserInfo& user_info,
+                    const SuccessCallback& success_callback,
                     const ErrorCallback& error_callback) override {
+    CHECK(user_info.scope() != AuthScope::kNone);
+
     std::vector<org::chromium::Buffet::CommandProxy*> commands{
         object_manager_.GetCommandInstances()};
 
@@ -232,6 +234,19 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
  private:
+  void GetCommandInternal(const std::string& id,
+                          const SuccessCallback& success_callback,
+                          const ErrorCallback& error_callback) {
+    chromeos::ErrorPtr error;
+    if (!IsManagerReady(&error))
+      return error_callback.Run(error.get());
+    manager_->GetCommandAsync(
+        id, base::Bind(&CloudDelegateImpl::OnGetCommandSucceeded,
+                       weak_factory_.GetWeakPtr(), success_callback,
+                       error_callback),
+        error_callback);
+  }
+
   void OnManagerAdded(ManagerProxy* manager) {
     manager_ = manager;
     manager_->SetPropertyChangedCallback(
@@ -360,7 +375,7 @@ class CloudDelegateImpl : public CloudDelegate {
   void OnAddCommandSucceeded(const SuccessCallback& success_callback,
                              const ErrorCallback& error_callback,
                              const std::string& id) {
-    GetCommand(id, success_callback, error_callback);
+    GetCommandInternal(id, success_callback, error_callback);
   }
 
   void OnGetCommandSucceeded(const SuccessCallback& success_callback,
@@ -414,7 +429,7 @@ class CloudDelegateImpl : public CloudDelegate {
                                weak_factory_.GetWeakPtr(), ids, commands,
                                success_callback, error_callback);
 
-    GetCommand(next_id, on_success, on_error);
+    GetCommandInternal(next_id, on_success, on_error);
   }
 
   bool IsManagerReady(chromeos::ErrorPtr* error) const {

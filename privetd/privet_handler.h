@@ -63,10 +63,6 @@ class PrivetHandler : public CloudDelegate::Observer {
                      const RequestCallback& callback);
 
  private:
-  struct UserInfo {
-    AuthScope scope;
-    // TODO(vitalybuka): Add "std::string user_id;" brbug.com/745
-  };
   using ApiHandler = void (PrivetHandler::*)(const base::DictionaryValue&,
                                              const UserInfo&,
                                              const RequestCallback&);

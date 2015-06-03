@@ -879,7 +879,7 @@ void PrivetHandler::HandleCommandDefs(const base::DictionaryValue& input,
 void PrivetHandler::HandleCommandsExecute(const base::DictionaryValue& input,
                                           const UserInfo& user_info,
                                           const RequestCallback& callback) {
-  cloud_->AddCommand(input, user_info.scope,
+  cloud_->AddCommand(input, user_info,
                      base::Bind(&OnCommandRequestSucceeded, callback),
                      base::Bind(&OnCommandRequestFailed, callback));
 }
@@ -895,14 +895,16 @@ void PrivetHandler::HandleCommandsStatus(const base::DictionaryValue& input,
         kInvalidParamValueFormat, kCommandsIdKey, id.c_str());
     return ReturnError(*error, callback);
   }
-  cloud_->GetCommand(id, base::Bind(&OnCommandRequestSucceeded, callback),
+  cloud_->GetCommand(id, user_info,
+                     base::Bind(&OnCommandRequestSucceeded, callback),
                      base::Bind(&OnCommandRequestFailed, callback));
 }
 
 void PrivetHandler::HandleCommandsList(const base::DictionaryValue& input,
                                        const UserInfo& user_info,
                                        const RequestCallback& callback) {
-  cloud_->ListCommands(base::Bind(&OnCommandRequestSucceeded, callback),
+  cloud_->ListCommands(user_info,
+                       base::Bind(&OnCommandRequestSucceeded, callback),
                        base::Bind(&OnCommandRequestFailed, callback));
 }
 
@@ -917,7 +919,8 @@ void PrivetHandler::HandleCommandsCancel(const base::DictionaryValue& input,
         kInvalidParamValueFormat, kCommandsIdKey, id.c_str());
     return ReturnError(*error, callback);
   }
-  cloud_->CancelCommand(id, base::Bind(&OnCommandRequestSucceeded, callback),
+  cloud_->CancelCommand(id, user_info,
+                        base::Bind(&OnCommandRequestSucceeded, callback),
                         base::Bind(&OnCommandRequestFailed, callback));
 }
 

@@ -23,14 +23,6 @@ enum class PairingType {
   kAudible32,
 };
 
-// Scopes in order of increasing privileges.
-enum class AuthScope {
-  kNone,
-  kViewer,
-  kUser,
-  kOwner,
-};
-
 enum class CryptoType {
   kNone,
   kSpake_p224,

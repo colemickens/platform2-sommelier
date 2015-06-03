@@ -11,6 +11,26 @@
 
 namespace privetd {
 
+// Scopes in order of increasing privileges.
+enum class AuthScope {
+  kNone,
+  kViewer,
+  kUser,
+  kOwner,
+};
+
+class UserInfo {
+ public:
+  explicit UserInfo(AuthScope scope = AuthScope::kNone, uint64_t user_id = 0)
+      : scope_{scope}, user_id_{scope == AuthScope::kNone ? 0 : user_id} {}
+  AuthScope scope() const { return scope_; }
+  uint64_t user_id() const { return user_id_; }
+
+ private:
+  AuthScope scope_;
+  uint64_t user_id_;
+};
+
 class ConnectionState final {
  public:
   enum Status {
