@@ -36,7 +36,7 @@ std::unique_ptr<SandboxSpec> SandboxSpecReader::Read(
     return nullptr;
   }
 
-  return std::move(spec);
+  return spec;
 }
 
 }  // namespace soma
