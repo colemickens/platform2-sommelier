@@ -29,10 +29,10 @@ class SharedDBusConnection;
 // configurations for devices can be obtained through its CreateConfig
 // method. For example, a single DHCP configuration request can be initiated as:
 //
-// DHCPProvider::GetInstance()->CreateConfig(device_name,
-//                                           host_name,
-//                                           lease_file_suffix,
-//                                           arp_gateway)->Request();
+// DHCPProvider::GetInstance()->CreateIPv4Config(device_name,
+//                                               host_name,
+//                                               lease_file_suffix,
+//                                               arp_gateway)->Request();
 class DHCPProvider {
  public:
   static constexpr char kDHCPCDPathFormatLease[] =
@@ -54,8 +54,8 @@ class DHCPProvider {
   // Called on shutdown to release |listener_|.
   void Stop();
 
-  // Creates a new DHCPConfig for |device_name|. The DHCP configuration for the
-  // device can then be initiated through DHCPConfig::Request and
+  // Creates a new DHCPv4Config for |device_name|. The DHCP configuration for
+  // the device can then be initiated through DHCPConfig::Request and
   // DHCPConfig::Renew.  If |host_name| is not-empty, it is placed in the DHCP
   // request to allow the server to map the request to a specific user-named
   // origin.  The DHCP lease file will contain the suffix supplied
@@ -63,10 +63,11 @@ class DHCPProvider {
   // |arp_gateway| is true, the DHCP client will ARP for the gateway IP
   // address as an additional safeguard against the issued IP address being
   // in-use by another station.
-  virtual DHCPConfigRefPtr CreateConfig(const std::string &device_name,
-                                        const std::string &host_name,
-                                        const std::string &lease_file_suffix,
-                                        bool arp_gateway);
+  virtual DHCPConfigRefPtr CreateIPv4Config(
+      const std::string &device_name,
+      const std::string &host_name,
+      const std::string &lease_file_suffix,
+      bool arp_gateway);
 
   // Returns the DHCP configuration associated with DHCP client |pid|. Return
   // nullptr if |pid| is not bound to a configuration.
@@ -93,7 +94,7 @@ class DHCPProvider {
   friend class DHCPProviderTest;
   friend class DeviceInfoTest;
   friend class DeviceTest;
-  FRIEND_TEST(DHCPProviderTest, CreateConfig);
+  FRIEND_TEST(DHCPProviderTest, CreateIPv4Config);
   FRIEND_TEST(DHCPProviderTest, DestroyLease);
 
   typedef std::map<int, DHCPConfigRefPtr> PIDConfigMap;

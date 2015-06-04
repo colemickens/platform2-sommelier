@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
@@ -30,9 +31,6 @@ class Metrics;
 class ProxyFactory;
 
 // This class provides a DHCP client instance for the device |device_name|.
-// If |request_hostname| is non-empty, it asks the DHCP server to register
-// this hostname on our behalf, for purposes of administration or creating
-// a dynamic DNS entry.
 //
 // The DHPCConfig instance asks the DHCP client to create a lease file
 // containing the name |lease_file_suffix|.  If this suffix is the same as
@@ -47,11 +45,9 @@ class DHCPConfig : public IPConfig {
              EventDispatcher *dispatcher,
              DHCPProvider *provider,
              const std::string &device_name,
-             const std::string &request_hostname,
+             const std::string &type,
              const std::string &lease_file_suffix,
-             bool arp_gateway,
-             GLib *glib,
-             Metrics *metrics);
+             GLib *glib);
   ~DHCPConfig() override;
 
   // Inherited from IPConfig.
@@ -64,11 +60,11 @@ class DHCPConfig : public IPConfig {
   void InitProxy(const std::string &service);
 
   // Processes an Event signal from dhcpcd.
-  void ProcessEventSignal(const std::string &reason,
-                          const Configuration &configuration);
+  virtual void ProcessEventSignal(const std::string &reason,
+                                  const Configuration &configuration) = 0;
 
   // Processes an Status Change signal from dhcpcd.
-  void ProcessStatusChangeSignal(const std::string &status);
+  virtual void ProcessStatusChangeSignal(const std::string &status) = 0;
 
   // Set the minimum MTU that this configuration will respect.
   virtual void set_minimum_mtu(const int minimum_mtu) {
@@ -81,88 +77,63 @@ class DHCPConfig : public IPConfig {
                         bool new_lease_acquired) override;
   void NotifyFailure() override;
 
+  int minimum_mtu() const { return minimum_mtu_; }
+
+  void set_is_lease_active(bool active) { is_lease_active_ = active; }
+
+  // Return true if the lease file is ephermeral, which means the lease file
+  // should be deleted during cleanup.
+  bool IsEphemeralLease() const;
+
+  // Cleans up remaining state from a running client, if any, including freeing
+  // its GPid, exit watch callback, and state files.
+  // The file path for the lease file and pid file is different for IPv4
+  // and IPv6. So make this function virtual to have the derived class delete
+  // the files accordingly.
+  virtual void CleanupClientState();
+
+  // Return true if we should treat acquisition timeout as failure.
+  virtual bool ShouldFailOnAcquisitionTimeout() { return true; }
+
+  // Return true if we should keep the lease on disconnect.
+  virtual bool ShouldKeepLeaseOnDisconnect() { return false; }
+
+  // Return the list of flags used to start dhcpcd.
+  virtual std::vector<std::string> GetFlags();
+
+  base::FilePath root() const { return root_; }
+
  private:
   friend class DHCPConfigTest;
-  FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalFail);
-  FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalGatewayArp);
-  FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalGatewayArpNak);
-  FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalSuccess);
-  FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalUnknown);
+  friend class DHCPv4ConfigTest;
+  FRIEND_TEST(DHCPConfigCallbackTest, NotifyFailure);
+  FRIEND_TEST(DHCPConfigCallbackTest, ProcessAcquisitionTimeout);
   FRIEND_TEST(DHCPConfigCallbackTest, RequestIPTimeout);
   FRIEND_TEST(DHCPConfigCallbackTest, StartTimeout);
   FRIEND_TEST(DHCPConfigCallbackTest, StoppedDuringFailureCallback);
   FRIEND_TEST(DHCPConfigCallbackTest, StoppedDuringSuccessCallback);
-  FRIEND_TEST(DHCPConfigTest, GetIPv4AddressString);
   FRIEND_TEST(DHCPConfigTest, InitProxy);
-  FRIEND_TEST(DHCPConfigTest, ParseClasslessStaticRoutes);
-  FRIEND_TEST(DHCPConfigTest, ParseConfiguration);
-  FRIEND_TEST(DHCPConfigTest, ParseConfigurationWithMinimumMTU);
-  FRIEND_TEST(DHCPConfigTest, ProcessStatusChangeSingal);
+  FRIEND_TEST(DHCPConfigTest, KeepLeaseOnDisconnect);
   FRIEND_TEST(DHCPConfigTest, ReleaseIP);
-  FRIEND_TEST(DHCPConfigTest, ReleaseIPArpGW);
   FRIEND_TEST(DHCPConfigTest, ReleaseIPStaticIPWithLease);
   FRIEND_TEST(DHCPConfigTest, ReleaseIPStaticIPWithoutLease);
+  FRIEND_TEST(DHCPConfigTest, ReleaseLeaseOnDisconnect);
   FRIEND_TEST(DHCPConfigTest, RenewIP);
   FRIEND_TEST(DHCPConfigTest, RequestIP);
   FRIEND_TEST(DHCPConfigTest, Restart);
   FRIEND_TEST(DHCPConfigTest, RestartNoClient);
   FRIEND_TEST(DHCPConfigTest, StartFail);
-  FRIEND_TEST(DHCPConfigTest, StartWithHostname);
-  FRIEND_TEST(DHCPConfigTest, StartWithoutArpGateway);
-  FRIEND_TEST(DHCPConfigTest, StartWithoutHostname);
   FRIEND_TEST(DHCPConfigTest, StartWithoutLeaseSuffix);
   FRIEND_TEST(DHCPConfigTest, Stop);
   FRIEND_TEST(DHCPConfigTest, StopDuringRequestIP);
-  FRIEND_TEST(DHCPProviderTest, CreateConfig);
+  FRIEND_TEST(DHCPProviderTest, CreateIPv4Config);
 
   static const int kAcquisitionTimeoutSeconds;
-
-  static const char kConfigurationKeyBroadcastAddress[];
-  static const char kConfigurationKeyClasslessStaticRoutes[];
-  static const char kConfigurationKeyDNS[];
-  static const char kConfigurationKeyDomainName[];
-  static const char kConfigurationKeyDomainSearch[];
-  static const char kConfigurationKeyHostname[];
-  static const char kConfigurationKeyIPAddress[];
-  static const char kConfigurationKeyLeaseTime[];
-  static const char kConfigurationKeyMTU[];
-  static const char kConfigurationKeyRouters[];
-  static const char kConfigurationKeySubnetCIDR[];
-  static const char kConfigurationKeyVendorEncapsulatedOptions[];
-  static const char kConfigurationKeyWebProxyAutoDiscoveryUrl[];
 
   static const int kDHCPCDExitPollMilliseconds;
   static const int kDHCPCDExitWaitMilliseconds;
   static const char kDHCPCDPath[];
-  static const char kDHCPCDPathFormatPID[];
   static const char kDHCPCDUser[];
-
-  static const char kReasonBound[];
-  static const char kReasonFail[];
-  static const char kReasonGatewayArp[];
-  static const char kReasonNak[];
-  static const char kReasonRebind[];
-  static const char kReasonReboot[];
-  static const char kReasonRenew[];
-
-  static const char kStatusArpGateway[];
-  static const char kStatusArpSelf[];
-  static const char kStatusBound[];
-  static const char kStatusDiscover[];
-  static const char kStatusIgnoreAdditionalOffer[];
-  static const char kStatusIgnoreFailedOffer[];
-  static const char kStatusIgnoreInvalidOffer[];
-  static const char kStatusIgnoreNonOffer[];
-  static const char kStatusInform[];
-  static const char kStatusInit[];
-  static const char kStatusNakDefer[];
-  static const char kStatusRebind[];
-  static const char kStatusReboot[];
-  static const char kStatusRelease[];
-  static const char kStatusRenew[];
-  static const char kStatusRequest[];
-
-  static const char kType[];
 
   // Starts dhcpcd, returns true on success and false otherwise.
   bool Start();
@@ -174,29 +145,8 @@ class DHCPConfig : public IPConfig {
   // and false otherwise.
   bool Restart();
 
-  // Parses |classless_routes| into |properties|.  Sets the default gateway
-  // if one is supplied and |properties| does not already contain one.  It
-  // also sets the "routes" parameter of the IPConfig properties for all
-  // routes not converted into the default gateway.  Returns true on
-  // success, and false otherwise.
-  static bool ParseClasslessStaticRoutes(const std::string &classless_routes,
-                                         IPConfig::Properties *properties);
-
-  // Parses |configuration| into |properties|. Returns true on success, and
-  // false otherwise.
-  bool ParseConfiguration(const Configuration &configuration,
-                          IPConfig::Properties *properties);
-
-  // Returns the string representation of the IP address |address|, or an
-  // empty string on failure.
-  static std::string GetIPv4AddressString(unsigned int address);
-
   // Called when the dhcpcd client process exits.
   static void ChildWatchCallback(GPid pid, gint status, gpointer data);
-
-  // Cleans up remaining state from a running client, if any, including freeing
-  // its GPid, exit watch callback, and state files.
-  void CleanupClientState();
 
   // Initialize a callback that will invoke ProcessAcquisitionTimeout if we
   // do not get a lease in a reasonable amount of time.
@@ -226,17 +176,9 @@ class DHCPConfig : public IPConfig {
 
   DHCPProvider *provider_;
 
-  // Hostname to be used in the request.  This will be passed to the DHCP
-  // server in the request.
-  std::string request_hostname_;
-
   // DHCP lease file suffix, used to differentiate the lease of one interface
   // or network from another.
   std::string lease_file_suffix_;
-
-  // Specifies whether to supply an argument to the DHCP client to validate
-  // the acquired IP address using an ARP request to the gateway IP address.
-  bool arp_gateway_;
 
   // The PID of the spawned DHCP client. May be 0 if no client has been spawned
   // yet or the client has died.
@@ -247,9 +189,6 @@ class DHCPConfig : public IPConfig {
 
   // Whether a lease has been acquired from the DHCP server or gateway ARP.
   bool is_lease_active_;
-
-  // Whether it is valid to retain the lease acquired via gateway ARP.
-  bool is_gateway_arp_active_;
 
   // The proxy for communicating with the DHCP client.
   std::unique_ptr<DHCPProxyInterface> proxy_;

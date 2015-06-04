@@ -344,7 +344,7 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
   SetService(mock_service_);
   SetLinkUp(false);
   EXPECT_EQ(nullptr, GetSelectedService().get());
-  EXPECT_CALL(dhcp_provider_, CreateConfig(_, _, _, _)).Times(0);
+  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _)).Times(0);
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(0);
   EXPECT_CALL(dispatcher_, PostTask(_)).Times(0);
   EXPECT_CALL(*mock_service_, SetState(_)).Times(0);
@@ -357,7 +357,7 @@ TEST_F(EthernetTest, ConnectToFailure) {
   SetService(mock_service_);
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService().get());
-  EXPECT_CALL(dhcp_provider_, CreateConfig(_, _, _, _)).
+  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _)).
       WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).WillOnce(Return(false));
   EXPECT_CALL(dispatcher_, PostTask(_));  // Posts ConfigureStaticIPTask.
@@ -371,7 +371,7 @@ TEST_F(EthernetTest, ConnectToSuccess) {
   SetService(mock_service_);
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService().get());
-  EXPECT_CALL(dhcp_provider_, CreateConfig(_, _, _, _)).
+  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _)).
       WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(dispatcher_, PostTask(_));  // Posts ConfigureStaticIPTask.

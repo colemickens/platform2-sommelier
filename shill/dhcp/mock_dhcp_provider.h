@@ -23,7 +23,7 @@ class MockDHCPProvider : public DHCPProvider {
 
   MOCK_METHOD4(Init,
                void(ControlInterface *, EventDispatcher *, GLib *, Metrics *));
-  MOCK_METHOD4(CreateConfig,
+  MOCK_METHOD4(CreateIPv4Config,
                DHCPConfigRefPtr(const std::string &device_name,
                                 const std::string &host_name,
                                 const std::string &storage_identifier,

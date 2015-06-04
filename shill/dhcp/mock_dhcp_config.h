@@ -20,6 +20,10 @@ class MockDHCPConfig : public DHCPConfig {
                  const std::string &device_name);
   ~MockDHCPConfig() override;
 
+  void ProcessEventSignal(const std::string &reason,
+                          const Configuration &configuration) override;
+  void ProcessStatusChangeSignal(const std::string &status) override;
+
   MOCK_METHOD0(RequestIP, bool());
   MOCK_METHOD1(ReleaseIP, bool(ReleaseReason));
   MOCK_METHOD0(RenewIP, bool());

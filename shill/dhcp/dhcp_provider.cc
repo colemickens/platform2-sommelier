@@ -8,8 +8,8 @@
 #include <base/strings/stringprintf.h>
 
 #include "shill/control_interface.h"
-#include "shill/dhcp/dhcp_config.h"
 #include "shill/dhcp/dhcpcd_proxy.h"
+#include "shill/dhcp/dhcpv4_config.h"
 #include "shill/logging.h"
 #include "shill/shared_dbus_connection.h"
 
@@ -64,20 +64,21 @@ void DHCPProvider::Stop() {
   listener_.reset();
 }
 
-DHCPConfigRefPtr DHCPProvider::CreateConfig(const string &device_name,
-                                            const string &host_name,
-                                            const string &lease_file_suffix,
-                                            bool arp_gateway) {
+DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
+    const string &device_name,
+    const string &host_name,
+    const string &lease_file_suffix,
+    bool arp_gateway) {
   SLOG(this, 2) << __func__ << " device: " << device_name;
-  return new DHCPConfig(control_interface_,
-                        dispatcher_,
-                        this,
-                        device_name,
-                        host_name,
-                        lease_file_suffix,
-                        arp_gateway,
-                        glib_,
-                        metrics_);
+  return new DHCPv4Config(control_interface_,
+                          dispatcher_,
+                          this,
+                          device_name,
+                          host_name,
+                          lease_file_suffix,
+                          arp_gateway,
+                          glib_,
+                          metrics_);
 }
 
 DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {

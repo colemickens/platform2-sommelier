@@ -16,10 +16,12 @@ MockDHCPConfig::MockDHCPConfig(ControlInterface *control_interface,
                  device_name,
                  string(),
                  string(),
-                 false,
-                 nullptr,
                  nullptr) {}
 
 MockDHCPConfig::~MockDHCPConfig() {}
+
+void MockDHCPConfig::ProcessEventSignal(const std::string &reason,
+                                        const Configuration &configuration) {}
+void MockDHCPConfig::ProcessStatusChangeSignal(const std::string &status) {}
 
 }  // namespace shill

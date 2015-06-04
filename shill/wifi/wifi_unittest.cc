@@ -598,7 +598,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     EXPECT_CALL(*mac80211_monitor_, UpdateConnectedState(_))
         .Times(AnyNumber());
 
-    ON_CALL(dhcp_provider_, CreateConfig(_, _, _, _))
+    ON_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _))
         .WillByDefault(Return(dhcp_config_));
     ON_CALL(*dhcp_config_.get(), RequestIP()).WillByDefault(Return(true));
     ON_CALL(*manager(), IsSuspending()).WillByDefault(Return(false));
@@ -930,7 +930,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
     EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
     EXPECT_CALL(*service, ResetSuspectedCredentialFailures());
-    EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
+    EXPECT_CALL(*dhcp_provider(), CreateIPv4Config(_, _, _, _))
+        .Times(AnyNumber());
     EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
     EXPECT_CALL(wifi_provider_, IncrementConnectCount(_));
     ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
@@ -1714,7 +1715,7 @@ TEST_F(WiFiMainTest, UseArpGateway) {
 
   // With no selected service.
   EXPECT_TRUE(wifi()->ShouldUseArpGateway());
-  EXPECT_CALL(dhcp_provider_, CreateConfig(kDeviceName, _, _, true))
+  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kDeviceName, _, _, true))
       .WillOnce(Return(dhcp_config_));
   const_cast<WiFi *>(wifi().get())->AcquireIPConfig();
 
@@ -1724,7 +1725,7 @@ TEST_F(WiFiMainTest, UseArpGateway) {
   // Selected service that does not have a static IP address.
   EXPECT_CALL(*service, HasStaticIPAddress()).WillRepeatedly(Return(false));
   EXPECT_TRUE(wifi()->ShouldUseArpGateway());
-  EXPECT_CALL(dhcp_provider_, CreateConfig(kDeviceName, _, _, true))
+  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kDeviceName, _, _, true))
       .WillOnce(Return(dhcp_config_));
   const_cast<WiFi *>(wifi().get())->AcquireIPConfig();
   Mock::VerifyAndClearExpectations(service.get());
@@ -1732,7 +1733,7 @@ TEST_F(WiFiMainTest, UseArpGateway) {
   // Selected service that has a static IP address.
   EXPECT_CALL(*service, HasStaticIPAddress()).WillRepeatedly(Return(true));
   EXPECT_FALSE(wifi()->ShouldUseArpGateway());
-  EXPECT_CALL(dhcp_provider_, CreateConfig(kDeviceName, _, _, false))
+  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kDeviceName, _, _, false))
       .WillOnce(Return(dhcp_config_));
   const_cast<WiFi *>(wifi().get())->AcquireIPConfig();
 }
@@ -2725,7 +2726,8 @@ TEST_F(WiFiMainTest, StateChangeWithService) {
 TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
   // Some backwards transitions should not trigger a Service state change.
   // Supplicant state should still be updated, however.
-  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_provider(), CreateIPv4Config(_, _, _, _))
+      .Times(AnyNumber());
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
@@ -3322,7 +3324,8 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   // on the service just because supplicant entered the Completed state.
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
   EXPECT_CALL(*service, ResetSuspectedCredentialFailures()).Times(0);
-  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_provider(), CreateIPv4Config(_, _, _, _))
+      .Times(AnyNumber());
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
   EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
   EXPECT_CALL(*device_info(), GetByteCounts(_, _, _))

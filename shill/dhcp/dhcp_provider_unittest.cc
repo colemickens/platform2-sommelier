@@ -42,11 +42,11 @@ class DHCPProviderTest : public Test {
   DHCPProvider *provider_;
 };
 
-TEST_F(DHCPProviderTest, CreateConfig) {
-  DHCPConfigRefPtr config = provider_->CreateConfig(kDeviceName,
-                                                    kHostName,
-                                                    kStorageIdentifier,
-                                                    kArpGateway);
+TEST_F(DHCPProviderTest, CreateIPv4Config) {
+  DHCPConfigRefPtr config = provider_->CreateIPv4Config(kDeviceName,
+                                                        kHostName,
+                                                        kStorageIdentifier,
+                                                        kArpGateway);
   EXPECT_TRUE(config.get());
   EXPECT_EQ(&glib_, config->glib_);
   EXPECT_EQ(kDeviceName, config->device_name());
