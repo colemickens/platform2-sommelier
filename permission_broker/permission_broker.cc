@@ -7,7 +7,9 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <linux/usb/ch9.h>
+#include <linux/usbdevice_fs.h>
 #include <sys/epoll.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
 #include <string>
@@ -44,6 +46,10 @@ using permission_broker::DenyUnsafeHidrawDeviceRule;
 using permission_broker::DenyUsbDeviceClassRule;
 using permission_broker::DenyUsbVendorIdRule;
 using permission_broker::PermissionBroker;
+
+#ifndef USBDEVFS_DROP_PRIVILEGES
+#define USBDEVFS_DROP_PRIVILEGES   _IO('U', 30)
+#endif
 
 namespace {
 const uint16_t kLinuxFoundationUsbVendorId = 0x1d6b;
@@ -107,12 +113,13 @@ void PermissionBroker::RegisterAsync(
 }
 
 bool PermissionBroker::CheckPathAccess(const std::string& in_path) {
-  return rule_engine_.ProcessPath(in_path, Rule::ANY_INTERFACE);
+  Rule::Result result = rule_engine_.ProcessPath(in_path);
+  return result == Rule::ALLOW || result == Rule::ALLOW_WITH_LOCKDOWN;
 }
 
 bool PermissionBroker::RequestPathAccess(const std::string& in_path,
                                          int32_t in_interface_id) {
-  if (rule_engine_.ProcessPath(in_path, in_interface_id)) {
+  if (rule_engine_.ProcessPath(in_path) == Rule::ALLOW) {
     return GrantAccess(in_path);
   }
   return false;
@@ -121,7 +128,8 @@ bool PermissionBroker::RequestPathAccess(const std::string& in_path,
 bool PermissionBroker::OpenPath(chromeos::ErrorPtr* error,
                                 const std::string& in_path,
                                 dbus::FileDescriptor* out_fd) {
-  if (!rule_engine_.ProcessPath(in_path, Rule::ANY_INTERFACE)) {
+  Rule::Result rule_result = rule_engine_.ProcessPath(in_path);
+  if (rule_result != Rule::ALLOW && rule_result != Rule::ALLOW_WITH_LOCKDOWN) {
     chromeos::Error::AddToPrintf(
         error, FROM_HERE, kErrorDomainPermissionBroker, kPermissionDeniedError,
         "Permission to open '%s' denied", in_path.c_str());
@@ -140,6 +148,16 @@ bool PermissionBroker::OpenPath(chromeos::ErrorPtr* error,
   dbus::FileDescriptor result;
   result.PutValue(fd);
   result.CheckValidity();
+
+  if (rule_result == Rule::ALLOW_WITH_LOCKDOWN) {
+    if (ioctl(fd, USBDEVFS_DROP_PRIVILEGES) < 0) {
+      chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
+      chromeos::Error::AddToPrintf(
+          error, FROM_HERE, kErrorDomainPermissionBroker, kOpenFailedError,
+          "USBDEVFS_DROP_PRIVILEGES ioctl failed on '%s'", in_path.c_str());
+      return false;
+    }
+  }
 
   *out_fd = result.Pass();
   return true;

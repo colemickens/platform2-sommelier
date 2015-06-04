@@ -21,13 +21,11 @@ class AllowTtyDeviceRuleTest : public testing::Test {
 };
 
 TEST_F(AllowTtyDeviceRuleTest, IgnoreNonTtyDevice) {
-  ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/loop0",
-                                        Rule::ANY_INTERFACE));
+  ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/loop0"));
 }
 
 TEST_F(AllowTtyDeviceRuleTest, AllowTtyDevice) {
-  ASSERT_EQ(Rule::ALLOW, rule_.Process("/dev/tty",
-                                       Rule::ANY_INTERFACE));
+  ASSERT_EQ(Rule::ALLOW, rule_.Process("/dev/tty"));
 }
 
 }  // namespace permission_broker

@@ -27,7 +27,7 @@ class DenyClaimedUsbDeviceRule : public Rule {
   DenyClaimedUsbDeviceRule();
   ~DenyClaimedUsbDeviceRule() override;
 
-  Result Process(const std::string &path, const int interface_id) override;
+  Result Process(const std::string& path) override;
 
  private:
   struct udev *const udev_;

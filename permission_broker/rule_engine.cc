@@ -37,24 +37,27 @@ void RuleEngine::AddRule(Rule* rule) {
   rules_.push_back(rule);
 }
 
-bool RuleEngine::ProcessPath(const std::string& path, int interface_id) {
+Rule::Result RuleEngine::ProcessPath(const std::string& path) {
   WaitForEmptyUdevQueue();
 
   LOG(INFO) << "ProcessPath(" << path << ")";
   Rule::Result result = Rule::IGNORE;
   for (unsigned int i = 0; i < rules_.size(); ++i) {
-    const Rule::Result rule_result = rules_[i]->Process(path, interface_id);
+    const Rule::Result rule_result = rules_[i]->Process(path);
     LOG(INFO) << "  " << rules_[i]->name() << ": "
               << Rule::ResultToString(rule_result);
     if (rule_result == Rule::DENY) {
       result = Rule::DENY;
       break;
-    } else if (rule_result == Rule::ALLOW) {
+    } else if (rule_result == Rule::ALLOW_WITH_LOCKDOWN) {
+      result = Rule::ALLOW_WITH_LOCKDOWN;
+    } else if (rule_result == Rule::ALLOW &&
+               result != Rule::ALLOW_WITH_LOCKDOWN) {
       result = Rule::ALLOW;
     }
   }
   LOG(INFO) << "Verdict for " << path << ": " << Rule::ResultToString(result);
-  return result == Rule::ALLOW;
+  return result;
 }
 
 void RuleEngine::WaitForEmptyUdevQueue() {

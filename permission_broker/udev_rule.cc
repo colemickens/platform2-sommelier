@@ -59,7 +59,7 @@ UdevRule::~UdevRule() {
   udev_unref(udev_);
 }
 
-Rule::Result UdevRule::Process(const string& path, int interface_id) {
+Rule::Result UdevRule::Process(const string& path) {
   udev_enumerate_scan_devices(enumerate_);
 
   struct udev_list_entry* entry = NULL;

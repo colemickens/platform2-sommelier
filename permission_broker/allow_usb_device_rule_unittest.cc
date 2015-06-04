@@ -21,13 +21,11 @@ class AllowUsbDeviceRuleTest : public testing::Test {
 };
 
 TEST_F(AllowUsbDeviceRuleTest, IgnoreNonUsbDevice) {
-  ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/loop0",
-                                        Rule::ANY_INTERFACE));
+  ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/loop0"));
 }
 
 TEST_F(AllowUsbDeviceRuleTest, DISABLED_AllowUsbDevice) {
-  ASSERT_EQ(Rule::ALLOW, rule_.Process("/dev/bus/usb/001/001",
-                                       Rule::ANY_INTERFACE));
+  ASSERT_EQ(Rule::ALLOW, rule_.Process("/dev/bus/usb/001/001"));
 }
 
 }  // namespace permission_broker

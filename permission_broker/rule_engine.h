@@ -5,8 +5,6 @@
 #ifndef PERMISSION_BROKER_RULE_ENGINE_H_
 #define PERMISSION_BROKER_RULE_ENGINE_H_
 
-#include <libudev.h>
-
 #include <set>
 #include <string>
 #include <utility>
@@ -14,9 +12,11 @@
 
 #include <base/macros.h>
 
-namespace permission_broker {
+#include "permission_broker/rule.h"
 
-class Rule;
+struct udev;
+
+namespace permission_broker {
 
 class RuleEngine {
  public:
@@ -32,7 +32,7 @@ class RuleEngine {
   // executing all of the stored rules, no rule has explicitly allowed access to
   // the path then access is denied. If _any_ rule denies access to |path| then
   // processing the rules is aborted early and access is denied.
-  bool ProcessPath(const std::string& path, int interface_id);
+  Rule::Result ProcessPath(const std::string& path);
 
  protected:
   // This constructor is for use by test code only.

@@ -13,21 +13,23 @@ namespace permission_broker {
 
 // A Rule represents a single unit of policy used to decide to which paths
 // access is granted. Each time a Rule processes a path it can return one of
-// three values: |ALLOW|, |DENY|, or |IGNORE|. If a Rule returns |ALLOW|, it
-// means that the policy it represents would allow access to the requested path.
-// If |DENY| is returned, then the rule is explicitly denying access to the
-// resource. |IGNORE| means that the Rule makes no decision one way or another.
+// these values: |ALLOW|, |ALLOW_WITH_LOCKDOWN|, |DENY|, or |IGNORE|. If a Rule
+// returns |ALLOW|, it means that the policy it represents would allow access to
+// the requested path. If |ALLOW_WITH_LOCKDOWN| is returned, then the policy it
+// represents would allow access to the requested path only if further measures
+// are taken to restrict access. If |DENY| is returned, then the rule is
+// explicitly denying access to the resource. |IGNORE| means that the Rule makes
+// no decision one way or another.
 class Rule {
  public:
-  enum Result { ALLOW, DENY, IGNORE };
-  enum SpecialInterfaces { ANY_INTERFACE = -1 };
+  enum Result { ALLOW, ALLOW_WITH_LOCKDOWN, DENY, IGNORE };
 
   static const char* ResultToString(const Result& result);
 
   virtual ~Rule() = default;
   const std::string& name() const;
 
-  virtual Result Process(const std::string& path, const int interface_id) = 0;
+  virtual Result Process(const std::string& path) = 0;
 
  protected:
   explicit Rule(const std::string& name);

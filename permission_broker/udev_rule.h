@@ -24,7 +24,7 @@ class UdevRule : public Rule {
 
   virtual Result ProcessDevice(udev_device* device) = 0;
 
-  Result Process(const std::string& path, int interface_id) override;
+  Result Process(const std::string& path) override;
 
  private:
   struct udev* const udev_;

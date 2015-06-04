@@ -24,11 +24,11 @@ class GroupTtyDeviceRuleTest : public testing::Test {
 };
 
 TEST_F(GroupTtyDeviceRuleTest, AllowRuleIgnoreNonMatchingGroup) {
-  ASSERT_EQ(Rule::IGNORE, allow_rule_.Process("/dev/tty", Rule::ANY_INTERFACE));
+  ASSERT_EQ(Rule::IGNORE, allow_rule_.Process("/dev/tty"));
 }
 
 TEST_F(GroupTtyDeviceRuleTest, DenyRuleIgnoreNonMatchingGroup) {
-  ASSERT_EQ(Rule::IGNORE, deny_rule_.Process("/dev/tty", Rule::ANY_INTERFACE));
+  ASSERT_EQ(Rule::IGNORE, deny_rule_.Process("/dev/tty"));
 }
 
 }  // namespace permission_broker

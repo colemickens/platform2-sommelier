@@ -10,6 +10,8 @@ const char* Rule::ResultToString(const Result& result) {
   switch (result) {
     case ALLOW:
       return "ALLOW";
+    case ALLOW_WITH_LOCKDOWN:
+      return "ALLOW_WITH_LOCKDOWN";
     case DENY:
       return "DENY";
     case IGNORE:

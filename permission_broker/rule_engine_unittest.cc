@@ -22,7 +22,7 @@ class MockRule : public Rule {
   MockRule() : Rule("MockRule") {}
   ~MockRule() override = default;
 
-  MOCK_METHOD2(Process, Result(const string &path, int interface_id));
+  MOCK_METHOD1(Process, Result(const string& path));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockRule);
@@ -44,15 +44,14 @@ class RuleEngineTest : public testing::Test {
   RuleEngineTest() = default;
   ~RuleEngineTest() override = default;
 
-  bool ProcessPath(const string &path, int interface_id) {
-    return engine_.ProcessPath(path, interface_id);
+  Rule::Result ProcessPath(const string& path) {
+    return engine_.ProcessPath(path);
   }
 
  protected:
   Rule *CreateMockRule(const Rule::Result result) const {
     MockRule *rule = new MockRule();
-    EXPECT_CALL(*rule, Process(_, _))
-        .WillOnce(Return(result));
+    EXPECT_CALL(*rule, Process(_)).WillOnce(Return(result));
     return rule;
   }
 
@@ -63,31 +62,38 @@ class RuleEngineTest : public testing::Test {
 };
 
 TEST_F(RuleEngineTest, EmptyRuleChain) {
-  ASSERT_FALSE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
+  EXPECT_EQ(Rule::IGNORE, ProcessPath("/dev/foo"));
 }
 
 TEST_F(RuleEngineTest, AllowAccess) {
   engine_.AddRule(CreateMockRule(Rule::ALLOW));
-  ASSERT_TRUE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
+  EXPECT_EQ(Rule::ALLOW, ProcessPath("/dev/foo"));
 }
 
 TEST_F(RuleEngineTest, DenyAccess) {
   engine_.AddRule(CreateMockRule(Rule::DENY));
-  ASSERT_FALSE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
+  EXPECT_EQ(Rule::DENY, ProcessPath("/dev/foo"));
 }
 
 TEST_F(RuleEngineTest, DenyPrecedence) {
   engine_.AddRule(CreateMockRule(Rule::ALLOW));
   engine_.AddRule(CreateMockRule(Rule::IGNORE));
   engine_.AddRule(CreateMockRule(Rule::DENY));
-  ASSERT_FALSE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
+  EXPECT_EQ(Rule::DENY, ProcessPath("/dev/foo"));
 }
 
 TEST_F(RuleEngineTest, AllowPrecedence) {
   engine_.AddRule(CreateMockRule(Rule::IGNORE));
   engine_.AddRule(CreateMockRule(Rule::ALLOW));
   engine_.AddRule(CreateMockRule(Rule::IGNORE));
-  ASSERT_TRUE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
+  EXPECT_EQ(Rule::ALLOW, ProcessPath("/dev/foo"));
+}
+
+TEST_F(RuleEngineTest, LockdownPrecedence) {
+  engine_.AddRule(CreateMockRule(Rule::IGNORE));
+  engine_.AddRule(CreateMockRule(Rule::ALLOW_WITH_LOCKDOWN));
+  engine_.AddRule(CreateMockRule(Rule::ALLOW));
+  EXPECT_EQ(Rule::ALLOW_WITH_LOCKDOWN, ProcessPath("/dev/foo"));
 }
 
 }  // namespace permission_broker
