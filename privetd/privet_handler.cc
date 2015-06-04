@@ -106,11 +106,11 @@ const char kCommandsIdKey[] = "id";
 
 const char kInvalidParamValueFormat[] = "Invalid parameter: '%s'='%s'";
 
-const int kAccesssTokenExpirationSeconds = 3600;
+const int kAccessTokenExpirationSeconds = 3600;
 
 // Threshold to reduce probability of expiration because of clock difference
 // between device and client. Value is just a guess.
-const int kAccesssTokenExpirationThresholdSeconds = 300;
+const int kAccessTokenExpirationThresholdSeconds = 300;
 
 template <class Container>
 std::unique_ptr<base::ListValue> ToValue(const Container& list) {
@@ -210,6 +210,7 @@ struct {
     {errors::kInvalidAuthorization, chromeos::http::status_code::Denied},
     {errors::kInvalidAuthorizationScope,
      chromeos::http::status_code::Forbidden},
+    {errors::kAuthorizationExpired, chromeos::http::status_code::Forbidden},
     {errors::kCommitmentMismatch, chromeos::http::status_code::Forbidden},
     {errors::kUnknownSession, chromeos::http::status_code::NotFound},
     {errors::kInvalidAuthCode, chromeos::http::status_code::Forbidden},
@@ -538,11 +539,15 @@ void PrivetHandler::HandleRequest(const std::string& api,
                                    "Invalid access token: %s", token.c_str());
       return ReturnError(*error, callback);
     }
-    time += base::TimeDelta::FromSeconds(kAccesssTokenExpirationSeconds);
+    time += base::TimeDelta::FromSeconds(kAccessTokenExpirationSeconds);
     time +=
-        base::TimeDelta::FromSeconds(kAccesssTokenExpirationThresholdSeconds);
-    if (time < base::Time::Now())
-      scope = AuthScope::kNone;
+        base::TimeDelta::FromSeconds(kAccessTokenExpirationThresholdSeconds);
+    if (time < base::Time::Now()) {
+      chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                                   errors::kAuthorizationExpired,
+                                   "Token expired: %s", token.c_str());
+      return ReturnError(*error, callback);
+    }
   }
 
   if (handler->second.first > scope) {
@@ -741,7 +746,7 @@ void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
       kAuthAccessTokenKey,
       security_->CreateAccessToken(requested_auth_scope, base::Time::Now()));
   output.SetString(kAuthTokenTypeKey, kAuthorizationHeaderPrefix);
-  output.SetInteger(kAuthExpiresInKey, kAccesssTokenExpirationSeconds);
+  output.SetInteger(kAuthExpiresInKey, kAccessTokenExpirationSeconds);
   output.SetString(kAuthScopeKey, EnumToString(requested_auth_scope));
   callback.Run(chromeos::http::status_code::Ok, output);
 }

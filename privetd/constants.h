@@ -16,6 +16,7 @@ extern const char kInvalidFormat[];
 extern const char kMissingAuthorization[];
 extern const char kInvalidAuthorization[];
 extern const char kInvalidAuthorizationScope[];
+extern const char kAuthorizationExpired[];
 extern const char kCommitmentMismatch[];
 extern const char kUnknownSession[];
 extern const char kInvalidAuthCode[];

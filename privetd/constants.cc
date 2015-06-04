@@ -15,6 +15,7 @@ const char kInvalidFormat[] = "invalidFormat";
 const char kMissingAuthorization[] = "missingAuthorization";
 const char kInvalidAuthorization[] = "invalidAuthorization";
 const char kInvalidAuthorizationScope[] = "invalidAuthorizationScope";
+const char kAuthorizationExpired[] = "authorizationExpired";
 const char kCommitmentMismatch[] = "commitmentMismatch";
 const char kUnknownSession[] = "unknownSession";
 const char kInvalidAuthCode[] = "invalidAuthCode";
