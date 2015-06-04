@@ -4,7 +4,9 @@
 
 #include "chromiumos-wide-profiling/test_perf_data.h"
 
+#include <algorithm>
 #include <ostream>  // NOLINT
+#include <vector>
 
 #include "base/logging.h"
 
@@ -13,6 +15,16 @@
 
 namespace quipper {
 namespace testing {
+
+namespace {
+
+// Write extra bytes to an output stream.
+void WriteExtraBytes(size_t size, std::ostream* out) {
+  std::vector<char> padding(size);
+  out->write(padding.data(), size);
+}
+
+}  // namespace
 
 ExamplePerfDataFileHeader::ExamplePerfDataFileHeader(
     const size_t attr_count,
@@ -37,6 +49,22 @@ void ExamplePerfDataFileHeader::WriteTo(std::ostream* out) const {
   CHECK_EQ(static_cast<u64>(out->tellp()), header_.attrs.offset);
 }
 
+ExamplePerfDataFileHeader_CustomAttrSize::
+    ExamplePerfDataFileHeader_CustomAttrSize(
+        const size_t event_attr_size, const u64 data_size)
+            : ExamplePerfDataFileHeader(1, data_size, 0) {  // NOLINT
+  const size_t file_attr_size = event_attr_size + sizeof(perf_file_section);
+  header_ = {
+    .magic = kPerfMagic,
+    .size = 104,
+    .attr_size = file_attr_size,
+    .attrs = {.offset = 104, .size = file_attr_size},
+    .data = {.offset = 104 + file_attr_size, .size = data_size},
+    .event_types = {0},
+    .adds_features = {0, 0, 0, 0},
+  };
+}
+
 void ExamplePipedPerfDataFileHeader::WriteTo(std::ostream* out) const {
   const perf_pipe_file_header header = {
     .magic = kPerfMagic,
@@ -51,7 +79,7 @@ void ExamplePerfEventAttrEvent_Hardware::WriteTo(std::ostream* out) const {
   // be initialized with designated initializers.
   perf_event_attr attr = {};
   attr.type = PERF_TYPE_HARDWARE;
-  attr.size = sizeof(perf_event_attr);
+  attr.size = attr_size_;
   attr.config = config_;
   attr.sample_period = 100001;
   attr.sample_type = sample_type_;
@@ -61,12 +89,16 @@ void ExamplePerfEventAttrEvent_Hardware::WriteTo(std::ostream* out) const {
     .header = {
       .type = PERF_RECORD_HEADER_ATTR,
       .misc = 0,
-      .size = sizeof(attr_event),  // No ids to add to size.
+      // No ids to add to size.
+      .size = static_cast<u16>(sizeof(event.header) + attr.size),
     },
     .attr = attr,
   };
 
-  out->write(reinterpret_cast<const char*>(&event), sizeof(event));
+  out->write(reinterpret_cast<const char*>(&event),
+             std::min(sizeof(event), static_cast<size_t>(event.header.size)));
+  if (sizeof(event) < event.header.size)
+    WriteExtraBytes(event.header.size - sizeof(event), out);
 }
 
 void ExamplePerfFileAttr_Hardware::WriteTo(std::ostream* out) const {
@@ -74,17 +106,23 @@ void ExamplePerfFileAttr_Hardware::WriteTo(std::ostream* out) const {
   // be initialized with designated initializers.
   perf_event_attr attr = {};
   attr.type = PERF_TYPE_HARDWARE;
-  attr.size = sizeof(perf_event_attr);
+  attr.size = attr_size_;
   attr.config = config_;
   attr.sample_period = 1;
   attr.sample_type = sample_type_;
   attr.sample_id_all = sample_id_all_;
 
-  const perf_file_attr file_attr = {
-    .attr = attr,
-    .ids = {.offset = 104, .size = 0},
-  };
-  out->write(reinterpret_cast<const char*>(&file_attr), sizeof(file_attr));
+  // perf_event_attr can be of a size other than the static struct size. Thus we
+  // cannot simply statically create a perf_file_attr (which contains a
+  // perf_event_attr and a perf_file_section). Instead, create and write each
+  // component separately.
+  out->write(reinterpret_cast<const char*>(&attr),
+             std::min(sizeof(attr), static_cast<size_t>(attr_size_)));
+  if (sizeof(attr) < attr.size)
+    WriteExtraBytes(attr.size - sizeof(attr), out);
+
+  const perf_file_section ids = { .offset = 104, .size = 0 };
+  out->write(reinterpret_cast<const char*>(&ids), sizeof(ids));
 }
 
 void ExamplePerfFileAttr_Tracepoint::WriteTo(std::ostream* out) const {
@@ -191,15 +229,16 @@ void FinishedRoundEvent::WriteTo(std::ostream* out) const {
   out->write(reinterpret_cast<const char*>(&event), sizeof(event));
 }
 
+size_t ExamplePerfSampleEvent::GetSize() const {
+  return sizeof(struct sample_event) + sample_info_.size();
+}
+
 void ExamplePerfSampleEvent::WriteTo(std::ostream* out) const {
-  const size_t event_size =
-      sizeof(struct sample_event) +
-      sample_info_.size();
   const sample_event event = {
     .header = {
       .type = PERF_RECORD_SAMPLE,
       .misc = PERF_RECORD_MISC_USER,
-      .size = static_cast<u16>(event_size),
+      .size = static_cast<u16>(GetSize()),
     }
   };
   out->write(reinterpret_cast<const char*>(&event), sizeof(event));

@@ -43,8 +43,17 @@ class ExamplePerfDataFileHeader : public StreamWriteable {
 
   void WriteTo(std::ostream* out) const override;
 
- private:
+ protected:
   perf_file_header header_;
+};
+
+// Normal mode header with custom event attr size.
+class ExamplePerfDataFileHeader_CustomAttrSize
+    : public ExamplePerfDataFileHeader {
+ public:
+  explicit ExamplePerfDataFileHeader_CustomAttrSize(
+      const size_t event_attr_size,
+      const u64 data_size);  // NOLINT
 };
 
 // Produces the pipe-mode file header.
@@ -62,13 +71,16 @@ class ExamplePerfEventAttrEvent_Hardware : public StreamWriteable {
   typedef ExamplePerfEventAttrEvent_Hardware SelfT;
   explicit ExamplePerfEventAttrEvent_Hardware(u64 sample_type,
                                               bool sample_id_all)
-      : sample_type_(sample_type),
+      : attr_size_(sizeof(perf_event_attr)),
+        sample_type_(sample_type),
         sample_id_all_(sample_id_all),
         config_(0) {
   }
   SelfT& WithConfig(u64 config) { config_ = config; return *this; }
+  SelfT& WithAttrSize(u32 size) { attr_size_ = size; return *this; }
   void WriteTo(std::ostream* out) const override;
  private:
+  u32 attr_size_;
   const u64 sample_type_;
   const bool sample_id_all_;
   u64 config_;
@@ -79,15 +91,17 @@ class ExamplePerfEventAttrEvent_Hardware : public StreamWriteable {
 class ExamplePerfFileAttr_Hardware : public StreamWriteable {
  public:
   typedef ExamplePerfFileAttr_Hardware SelfT;
-  explicit ExamplePerfFileAttr_Hardware(u64 sample_type,
-                                        bool sample_id_all)
-      : sample_type_(sample_type),
+  explicit ExamplePerfFileAttr_Hardware(u64 sample_type, bool sample_id_all)
+      : attr_size_(sizeof(perf_event_attr)),
+        sample_type_(sample_type),
         sample_id_all_(sample_id_all),
         config_(0) {
   }
+  SelfT& WithAttrSize(u32 size) { attr_size_ = size; return *this; }
   SelfT& WithConfig(u64 config) { config_ = config; return *this; }
   void WriteTo(std::ostream* out) const override;
  private:
+  u32 attr_size_;
   const u64 sample_type_;
   const bool sample_id_all_;
   u64 config_;
@@ -201,6 +215,7 @@ class ExamplePerfSampleEvent : public StreamWriteable {
   explicit ExamplePerfSampleEvent(const SampleInfo& sample_info)
       : sample_info_(sample_info) {
   }
+  size_t GetSize() const;
   void WriteTo(std::ostream* out) const override;
  private:
   const SampleInfo sample_info_;

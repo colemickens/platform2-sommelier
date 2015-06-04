@@ -668,6 +668,32 @@ bool PerfReader::ReadFromData(DataReader* data) {
   // Check if it is normal perf data.
   if (header_.size == sizeof(header_)) {
     DLOG(INFO) << "Perf data is in normal format.";
+
+    // Make sure sections are within the size of the file. This check prevents
+    // more obscure messages later when attempting to read from one of these
+    // sections.
+    if (header_.attrs.offset + header_.attrs.size > data->size()) {
+      LOG(ERROR) << "Header says attrs section ends at "
+                 << header_.attrs.offset + header_.attrs.size
+                 << "bytes, which is larger than perf data size of "
+                 << data->size() << " bytes.";
+      return false;
+    }
+    if (header_.data.offset + header_.data.size > data->size()) {
+      LOG(ERROR) << "Header says data section ends at "
+                 << header_.data.offset + header_.data.size
+                 << "bytes, which is larger than perf data size of "
+                 << data->size() << " bytes.";
+      return false;
+    }
+    if (header_.event_types.offset + header_.event_types.size > data->size()) {
+      LOG(ERROR) << "Header says event_types section ends at "
+                 << header_.event_types.offset + header_.event_types.size
+                 << "bytes, which is larger than perf data size of "
+                 << data->size() << " bytes.";
+      return false;
+    }
+
     metadata_mask_ = header_.adds_features[0];
     if (!(metadata_mask_ & (1 << HEADER_EVENT_DESC))) {
       // Prefer to read attrs and event names from HEADER_EVENT_DESC metadata if
@@ -1114,12 +1140,13 @@ bool PerfReader::ReadEventAttr(DataReader* data, perf_event_attr* attr) {
 
   // Now read the rest of the attr struct.
   const size_t attr_offset = sizeof(attr->type) + sizeof(attr->size);
-  CHECK_LE(attr_offset, attr->size) << "perf_event_attr has size of "
-                                    << attr->size << ", which is too small!";
-  if (!data->ReadDataValue(attr->size - attr_offset, "attribute",
+  const size_t attr_readable_size =
+      std::min(static_cast<size_t>(attr->size), sizeof(*attr));
+  if (!data->ReadDataValue(attr_readable_size - attr_offset, "attribute",
                            reinterpret_cast<char*>(attr) + attr_offset)) {
     return false;
   }
+  data->SeekSet(data->Tell() + attr->size - attr_readable_size);
 
   if (is_cross_endian_) {
     // Depending on attr->size, some of these might not have actually been
@@ -1484,8 +1511,6 @@ bool PerfReader::ReadEventDescMetadata(DataReader* data, u32 type,
                            &attr_size)) {
     return false;
   }
-
-  CHECK_LE(attr_size, sizeof(perf_event_attr));
 
   attrs_.clear();
   attrs_.resize(nr_events);

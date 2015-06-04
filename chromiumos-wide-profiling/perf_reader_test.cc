@@ -1081,6 +1081,228 @@ TEST(PerfReaderTest, ReadsAllAvailableMetadataTypesPiped) {
   EXPECT_EQ("arch", string_metadata[3].data[0].str);
 }
 
+// Regression test for http://crbug.com/496441
+TEST(PerfReaderTest, LargePerfEventAttr) {
+  std::stringstream input;
+
+  const size_t attr_size = sizeof(perf_event_attr) + sizeof(u64);
+  testing::ExamplePerfSampleEvent sample_event(
+      testing::SampleInfo().Ip(0x00000000002c100a).Tid(1002));
+  const size_t data_size = sample_event.GetSize();
+
+  // header
+  testing::ExamplePerfDataFileHeader_CustomAttrSize file_header(
+      attr_size, data_size);
+  file_header.WriteTo(&input);
+
+  // attrs
+  testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                        false /*sample_id_all*/)
+      .WithAttrSize(attr_size)
+      .WithConfig(456)
+      .WriteTo(&input);
+
+  // data
+
+  ASSERT_EQ(static_cast<u64>(input.tellp()), file_header.header().data.offset);
+  sample_event.WriteTo(&input);
+  ASSERT_EQ(static_cast<u64>(input.tellp()),
+            file_header.header().data.offset + data_size);
+
+  // no metadata
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+
+  // Make sure the attr was recorded properly.
+  EXPECT_EQ(1, pr.attrs().size());
+  EXPECT_EQ(456, pr.attrs()[0].attr.config);
+
+  // Verify subsequent sample event was read properly.
+  ASSERT_EQ(1, pr.events().size());
+  const event_t& event = *pr.events()[0].get();
+  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
+  EXPECT_EQ(data_size, event.header.size);
+
+  perf_sample sample_info;
+  ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
+  EXPECT_EQ(0x00000000002c100a, sample_info.ip);
+  EXPECT_EQ(1002, sample_info.tid);
+}
+
+// Regression test for http://crbug.com/496441
+TEST(PerfReaderTest, LargePerfEventAttrPiped) {
+  std::stringstream input;
+
+  // pipe header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WithAttrSize(sizeof(perf_event_attr) + sizeof(u64))
+      .WithConfig(123)
+      .WriteTo(&input);
+
+  // PERF_RECORD_HEADER_EVENT_TYPE
+  const struct event_type_event event_type = {
+    .header = {
+      .type = PERF_RECORD_HEADER_EVENT_TYPE,
+      .misc = 0,
+      .size = sizeof(struct event_type_event),
+    },
+    .event_type = {
+      /*event_id*/ 123,
+      /*name*/ "cycles",
+    },
+  };
+  input.write(reinterpret_cast<const char*>(&event_type), sizeof(event_type));
+
+  testing::ExamplePerfSampleEvent sample_event(
+      testing::SampleInfo().Ip(0x00000000002c100a).Tid(1002));
+  sample_event.WriteTo(&input);
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+
+  // Make sure the attr was recorded properly.
+  EXPECT_EQ(1, pr.attrs().size());
+  EXPECT_EQ(123, pr.attrs()[0].attr.config);
+  EXPECT_EQ("cycles", pr.attrs()[0].name);
+
+  // Verify subsequent sample event was read properly.
+  ASSERT_EQ(1, pr.events().size());
+  const event_t& event = *pr.events()[0].get();
+  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
+  EXPECT_EQ(sample_event.GetSize(), event.header.size);
+
+  perf_sample sample_info;
+  ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
+  EXPECT_EQ(0x00000000002c100a, sample_info.ip);
+  EXPECT_EQ(1002, sample_info.tid);
+}
+
+// Regression test for http://crbug.com/496441
+TEST(PerfReaderTest, SmallPerfEventAttr) {
+  std::stringstream input;
+
+  const size_t attr_size = sizeof(perf_event_attr) - sizeof(u64);
+  testing::ExamplePerfSampleEvent sample_event(
+      testing::SampleInfo().Ip(0x00000000002c100a).Tid(1002));
+  const size_t data_size = sample_event.GetSize();
+
+  // header
+  testing::ExamplePerfDataFileHeader_CustomAttrSize file_header(
+      attr_size, data_size);
+  file_header.WriteTo(&input);
+
+  // attrs
+  testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                        false /*sample_id_all*/)
+      .WithAttrSize(attr_size)
+      .WithConfig(456)
+      .WriteTo(&input);
+
+  // data
+
+  ASSERT_EQ(static_cast<u64>(input.tellp()), file_header.header().data.offset);
+  sample_event.WriteTo(&input);
+  ASSERT_EQ(static_cast<u64>(input.tellp()),
+            file_header.header().data.offset + data_size);
+
+  // no metadata
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+
+  // Make sure the attr was recorded properly.
+  EXPECT_EQ(1, pr.attrs().size());
+  EXPECT_EQ(456, pr.attrs()[0].attr.config);
+
+  // Verify subsequent sample event was read properly.
+  ASSERT_EQ(1, pr.events().size());
+  const event_t& event = *pr.events()[0].get();
+  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
+  EXPECT_EQ(data_size, event.header.size);
+
+  perf_sample sample_info;
+  ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
+  EXPECT_EQ(0x00000000002c100a, sample_info.ip);
+  EXPECT_EQ(1002, sample_info.tid);
+}
+
+// Regression test for http://crbug.com/496441
+TEST(PerfReaderTest, SmallPerfEventAttrPiped) {
+  std::stringstream input;
+
+  // pipe header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                              true /*sample_id_all*/)
+      .WithAttrSize(sizeof(perf_event_attr) - sizeof(u64))
+      .WithConfig(123)
+      .WriteTo(&input);
+
+  // PERF_RECORD_HEADER_EVENT_TYPE
+  const struct event_type_event event_type = {
+    .header = {
+      .type = PERF_RECORD_HEADER_EVENT_TYPE,
+      .misc = 0,
+      .size = sizeof(struct event_type_event),
+    },
+    .event_type = {
+      /*event_id*/ 123,
+      /*name*/ "cycles",
+    },
+  };
+  input.write(reinterpret_cast<const char*>(&event_type), sizeof(event_type));
+
+  testing::ExamplePerfSampleEvent sample_event(
+      testing::SampleInfo().Ip(0x00000000002c100a).Tid(1002));
+  sample_event.WriteTo(&input);
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+
+  // Make sure the attr was recorded properly.
+  EXPECT_EQ(1, pr.attrs().size());
+  EXPECT_EQ(123, pr.attrs()[0].attr.config);
+  EXPECT_EQ("cycles", pr.attrs()[0].name);
+
+  // Verify subsequent sample event was read properly.
+  ASSERT_EQ(1, pr.events().size());
+  const event_t& event = *pr.events()[0].get();
+  EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
+  EXPECT_EQ(sample_event.GetSize(), event.header.size);
+
+  perf_sample sample_info;
+  ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
+  EXPECT_EQ(0x00000000002c100a, sample_info.ip);
+  EXPECT_EQ(1002, sample_info.tid);
+}
+
 }  // namespace quipper
 
 int main(int argc, char* argv[]) {
