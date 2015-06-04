@@ -1,6 +1,0 @@
-{
-  "object_manager": {
-    "name": "org.chromium.peerd.ObjectManager",
-    "object_path": "/org/chromium/peerd"
-  }
-}
