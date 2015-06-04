@@ -109,7 +109,7 @@ std::unique_ptr<IInterface> BinderManagerStub::CreateTestInterface(
 
   std::unique_ptr<IInterface> interface = std::move(it->second);
   test_interfaces_.erase(it);
-  return std::move(interface);
+  return interface;
 }
 
 }  // namespace protobinder
