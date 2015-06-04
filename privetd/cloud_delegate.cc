@@ -4,6 +4,7 @@
 
 #include "privetd/cloud_delegate.h"
 
+#include <map>
 #include <vector>
 
 #include <base/bind.h>
@@ -43,6 +44,8 @@ class CloudDelegateImpl : public CloudDelegate {
     object_manager_.SetManagerRemovedCallback(
         base::Bind(&CloudDelegateImpl::OnManagerRemoved,
                    weak_factory_.GetWeakPtr()));
+    object_manager_.SetCommandRemovedCallback(base::Bind(
+        &CloudDelegateImpl::OnCommandRemoved, weak_factory_.GetWeakPtr()));
   }
 
   ~CloudDelegateImpl() override = default;
@@ -191,6 +194,13 @@ class CloudDelegateImpl : public CloudDelegate {
                   const SuccessCallback& success_callback,
                   const ErrorCallback& error_callback) override {
     CHECK(user_info.scope() != AuthScope::kNone);
+    chromeos::ErrorPtr error;
+    if (!CanAccessCommand(id, user_info)) {
+      chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
+                             errors::kAccessDenied,
+                             "Need to be owner of the command.");
+      return error_callback.Run(error.get());
+    }
 
     GetCommandInternal(id, success_callback, error_callback);
   }
@@ -200,6 +210,13 @@ class CloudDelegateImpl : public CloudDelegate {
                      const SuccessCallback& success_callback,
                      const ErrorCallback& error_callback) override {
     CHECK(user_info.scope() != AuthScope::kNone);
+    chromeos::ErrorPtr error;
+    if (!CanAccessCommand(id, user_info)) {
+      chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
+                             errors::kAccessDenied,
+                             "Need to be owner of the command.");
+      return error_callback.Run(error.get());
+    }
 
     for (auto command : object_manager_.GetCommandInstances()) {
       if (command->id() == id) {
@@ -210,7 +227,7 @@ class CloudDelegateImpl : public CloudDelegate {
             error_callback);
       }
     }
-    chromeos::ErrorPtr error;
+
     chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
                                  errors::kNotFound,
                                  "Command not found, ID='%s'", id.c_str());
@@ -226,8 +243,10 @@ class CloudDelegateImpl : public CloudDelegate {
         object_manager_.GetCommandInstances()};
 
     auto ids = std::make_shared<std::vector<std::string>>();
-    for (auto command : commands)
-      ids->push_back(command->id());
+    for (auto command : commands) {
+      if (CanAccessCommand(command->id(), user_info))
+        ids->push_back(command->id());
+    }
 
     GetNextCommand(ids, std::make_shared<base::ListValue>(), success_callback,
                    error_callback, base::DictionaryValue{});
@@ -254,6 +273,10 @@ class CloudDelegateImpl : public CloudDelegate {
                    weak_factory_.GetWeakPtr()));
     // Read all initial values.
     OnManagerPropertyChanged(manager, std::string{});
+  }
+
+  void OnCommandRemoved(const dbus::ObjectPath& object_path) {
+    command_owners_.erase(object_manager_.GetCommandProxy(object_path)->id());
   }
 
   void OnManagerPropertyChanged(ManagerProxy* manager,
@@ -330,6 +353,7 @@ class CloudDelegateImpl : public CloudDelegate {
     connection_state_ = ConnectionState(ConnectionState::kDisabled);
     state_.Clear();
     command_defs_.Clear();
+    command_owners_.clear();
     NotifyOnDeviceInfoChanged();
     NotifyOnCommandDefsChanged();
     NotifyOnStateChanged();
@@ -441,6 +465,14 @@ class CloudDelegateImpl : public CloudDelegate {
     return true;
   }
 
+  bool CanAccessCommand(const std::string& command_id,
+                        const UserInfo& user_info) const {
+    if (user_info.scope() == AuthScope::kOwner)
+      return true;
+    auto it = command_owners_.find(command_id);
+    return it != command_owners_.end() && it->second == user_info.user_id();
+  }
+
   ObjectManagerProxy object_manager_;
 
   bool is_gcd_setup_enabled_{false};
@@ -458,6 +490,9 @@ class CloudDelegateImpl : public CloudDelegate {
 
   // Current commands definitions.
   base::DictionaryValue command_defs_;
+
+  // Map of command IDs to user IDs.
+  std::map<std::string, uint64_t> command_owners_;
 
   // |setup_weak_factory_| tracks the lifetime of callbacks used in connection
   // with a particular invocation of Setup().

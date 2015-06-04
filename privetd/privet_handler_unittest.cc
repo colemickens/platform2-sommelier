@@ -221,8 +221,8 @@ TEST_F(PrivetHandlerTest, InvalidAuth) {
 TEST_F(PrivetHandlerTest, ExpiredAuth) {
   auth_header_ = "Privet 123";
   EXPECT_CALL(security_, ParseAccessToken(_, _))
-        .WillRepeatedly(DoAll(SetArgPointee<1>(base::Time()),
-                              Return(UserInfo{AuthScope::kOwner, 1})));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(base::Time()),
+                            Return(UserInfo{AuthScope::kOwner, 1})));
   EXPECT_PRED2(IsEqualError, CodeWithReason(403, "authorizationExpired"),
                HandleRequest("/privet/info", "{}"));
 }
