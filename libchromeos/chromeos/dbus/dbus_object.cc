@@ -97,7 +97,7 @@ void DBusInterface::HandleMethodCall(dbus::MethodCall* method_call,
     sender.Run(response.Pass());
     return;
   }
-  LOG(INFO) << "Dispatching DBus method call: " << method_name;
+  VLOG(1) << "Dispatching DBus method call: " << method_name;
   pair->second->HandleMethod(method_call, sender);
 }
 
