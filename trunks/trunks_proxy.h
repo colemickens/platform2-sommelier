@@ -9,10 +9,8 @@
 
 #include <string>
 
-#include <base/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus/bus.h>
-#include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
 #include "trunks/trunks_export.h"
@@ -36,23 +34,12 @@ class TRUNKS_EXPORT TrunksProxy: public CommandTransceiver {
   std::string SendCommandAndWait(const std::string& command) override;
 
  private:
-  // A callback for asynchronous D-Bus calls.
-  void OnResponse(const ResponseCallback& callback,
-                  dbus::Response* response);
-
-  // Extracts and returns response data from a D-Bus response. If an error
-  // occurs a well-formed error response will be returned.
-  std::string GetResponseData(dbus::Response* response);
-
-  scoped_ptr<dbus::MethodCall> CreateSendCommandMethodCall(
-      const std::string& command);
-
   base::WeakPtr<TrunksProxy> GetWeakPtr() {
     return weak_factory_.GetWeakPtr();
   }
 
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* object_;
+  dbus::ObjectProxy* object_proxy_;
 
   // Declared last so weak pointers are invalidated first on destruction.
   base::WeakPtrFactory<TrunksProxy> weak_factory_;

@@ -2,24 +2,29 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sysexits.h>
+
 #include <base/at_exit.h>
 #include <base/bind.h>
 #include <base/command_line.h>
-#include <base/message_loop/message_loop.h>
 #include <base/threading/thread.h>
+#include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/libminijail.h>
 #include <chromeos/minijail/minijail.h>
 #include <chromeos/syslog_logging.h>
+#include <chromeos/userdb_utils.h>
 
 #include "trunks/background_command_transceiver.h"
+#include "trunks/dbus_interface.h"
 #include "trunks/resource_manager.h"
 #include "trunks/tpm_handle.h"
 #include "trunks/trunks_factory_impl.h"
 #include "trunks/trunks_service.h"
 
+using chromeos::dbus_utils::AsyncEventSequencer;
+
 namespace {
 
-const uid_t kTrunksUID = 251;
 const uid_t kRootUID = 0;
 const char kTrunksUser[] = "trunks";
 const char kTrunksGroup[] = "trunks";
@@ -27,50 +32,84 @@ const char kTrunksSeccompPath[] = "/usr/share/policy/trunksd-seccomp.policy";
 const char kBackgroundThreadName[] = "trunksd_background_thread";
 
 void InitMinijailSandbox() {
+  uid_t trunks_uid;
+  gid_t trunks_gid;
+  CHECK(chromeos::userdb::GetUserInfo(kTrunksUser,
+                                      &trunks_uid,
+                                      &trunks_gid))
+      << "Error getting trunks uid and gid.";
   CHECK_EQ(getuid(), kRootUID) << "Trunks Daemon not initialized as root.";
   chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
   struct minijail* jail = minijail->New();
-  minijail->UseSeccompFilter(jail, kTrunksSeccompPath);
   minijail->DropRoot(jail, kTrunksUser, kTrunksGroup);
+  minijail->UseSeccompFilter(jail, kTrunksSeccompPath);
   minijail->Enter(jail);
   minijail->Destroy(jail);
-  CHECK_EQ(getuid(), kTrunksUID)
-      << "Trunks Daemon was not able to drop to trunks user.";
+  CHECK_EQ(getuid(), trunks_uid)
+      << "TrunksDaemon was not able to drop to trunks user.";
+  CHECK_EQ(getgid(), trunks_gid)
+      << "TrunksDaemon was not able to drop to trunks group.";
 }
 
 }  // namespace
 
+class TrunksDaemon : public chromeos::DBusServiceDaemon {
+ public:
+  explicit TrunksDaemon(trunks::TpmHandle* tpm_handle) :
+      chromeos::DBusServiceDaemon(trunks::kTrunksServiceName) {
+    tpm_handle_.reset(tpm_handle);
+    background_thread_.reset(new base::Thread(kBackgroundThreadName));
+    CHECK(background_thread_->Start());
+    // Chain together command transceivers:
+    //   [IPC] --> TrunksService --> BackgroundCommandTransceiver -->
+    //       ResourceManager --> TpmHandle --> [TPM]
+    tpm_.reset(new trunks::Tpm(tpm_handle_.get()));
+    factory_.reset(new trunks::TrunksFactoryImpl(tpm_.get()));
+    resource_manager_.reset(new trunks::ResourceManager(
+        *factory_,
+        tpm_handle_.get()));
+    background_thread_->message_loop_proxy()->PostNonNestableTask(
+        FROM_HERE,
+        base::Bind(&trunks::ResourceManager::Initialize,
+        base::Unretained(resource_manager_.get())));
+    background_transceiver_.reset(
+        new trunks::BackgroundCommandTransceiver(
+            resource_manager_.get(),
+            background_thread_->message_loop_proxy()));
+  }
+
+ protected:
+  void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
+    trunks_service_.reset(new trunks::TrunksService(
+        bus_,
+        background_transceiver_.get()));
+    trunks_service_->Register(
+        sequencer->GetHandler("Register() failed.", true));
+  }
+
+
+ private:
+  std::unique_ptr<trunks::TrunksService> trunks_service_;
+  std::unique_ptr<trunks::TpmHandle> tpm_handle_;
+  // Thread for executing TPM comands.
+  std::unique_ptr<base::Thread> background_thread_;
+  std::unique_ptr<trunks::Tpm> tpm_;
+  std::unique_ptr<trunks::TrunksFactory> factory_;
+  std::unique_ptr<trunks::ResourceManager> resource_manager_;
+  std::unique_ptr<trunks::CommandTransceiver> background_transceiver_;
+
+  DISALLOW_COPY_AND_ASSIGN(TrunksDaemon);
+};
+
 int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
-  base::AtExitManager at_exit_manager;
   // Open a handle to the TPM and drop privilege.
   trunks::TpmHandle tpm_handle;
+  // AtExitManager must be instantiated before tpm_handle.Init()
+  TrunksDaemon daemon(&tpm_handle);
   CHECK(tpm_handle.Init());
   InitMinijailSandbox();
-  // A main message loop. This loop will process all incoming and outgoing IPC
-  // messages. It *must* not block on the TPM.
-  base::MessageLoopForIO message_loop;
-  // A thread for executing TPM commands.
-  base::Thread background_thread(kBackgroundThreadName);
-  CHECK(background_thread.Start());
-  // Chain together command transceivers:
-  //   [IPC] --> TrunksService --> BackgroundCommandTransceiver -->
-  //       ResourceManager --> TpmHandle --> [TPM]
-  trunks::Tpm tpm(&tpm_handle);
-  trunks::TrunksFactoryImpl factory(&tpm);
-  trunks::ResourceManager resource_manager(factory, &tpm_handle);
-  // Schedule resource manager initialization in the background.
-  background_thread.message_loop_proxy()->PostNonNestableTask(
-      FROM_HERE,
-      base::Bind(&trunks::ResourceManager::Initialize,
-                 base::Unretained(&resource_manager)));
-  trunks::BackgroundCommandTransceiver background_transceiver(
-      &resource_manager,
-      background_thread.message_loop_proxy());
-  trunks::TrunksService service(&background_transceiver);
-  service.Init();
-  LOG(INFO) << "Trunks service started!";
-  message_loop.Run();
-  return -1;
+  LOG(INFO) << "Trunks Service Started";
+  return daemon.Run();
 }

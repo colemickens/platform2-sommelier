@@ -5,77 +5,55 @@
 #include "trunks/trunks_service.h"
 
 #include <base/bind.h>
-#include <base/logging.h>
-#include <base/stl_util.h>
+#include <chromeos/bind_lambda.h>
 
-#include "trunks/command_transceiver.h"
 #include "trunks/dbus_interface.h"
 #include "trunks/dbus_interface.pb.h"
 #include "trunks/error_codes.h"
 
 namespace trunks {
 
-TrunksService::TrunksService(CommandTransceiver* transceiver)
-    : bus_(nullptr),
-      trunks_dbus_object_(nullptr),
+using chromeos::dbus_utils::DBusMethodResponse;
+
+TrunksService::TrunksService(const scoped_refptr<dbus::Bus>& bus,
+                             CommandTransceiver* transceiver)
+    : trunks_dbus_object_(nullptr, bus, dbus::ObjectPath(kTrunksServicePath)),
       transceiver_(transceiver),
       weak_factory_(this) {}
 
-TrunksService::~TrunksService() {}
-
-void TrunksService::Init() {
-  InitDBusService();
+void TrunksService::Register(const CompletionAction& callback) {
+  chromeos::dbus_utils::DBusInterface* dbus_interface =
+      trunks_dbus_object_.AddOrGetInterface(kTrunksInterface);
+  dbus_interface->AddMethodHandler(kSendCommand,
+                                   base::Unretained(this),
+                                   &TrunksService::HandleSendCommand);
+  trunks_dbus_object_.RegisterAsync(callback);
 }
 
 void TrunksService::HandleSendCommand(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  scoped_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(method_call));
-  base::Callback<void(const std::string& response)> callback =
-      base::Bind(&TrunksService::OnResponse,
-                 GetWeakPtr(),
-                 response_sender,
-                 base::Passed(&response));
-  dbus::MessageReader reader(method_call);
-  SendCommandRequest tpm_command_proto;
-  if (!reader.PopArrayOfBytesAsProto(&tpm_command_proto) ||
-      !tpm_command_proto.has_command() ||
-      tpm_command_proto.command().empty()) {
+    std::unique_ptr<DBusMethodResponse<
+        const SendCommandResponse&>> response_sender,
+    const SendCommandRequest& request) {
+  // Convert |response_sender| to a shared_ptr so |transceiver_| can safely
+  // copy the callback.
+  using SharedResponsePointer = std::shared_ptr<
+      DBusMethodResponse<const SendCommandResponse&>>;
+  // A callback that constructs the response protobuf and sends it.
+  auto callback = [](const SharedResponsePointer& response,
+                     const std::string& response_from_tpm) {
+    SendCommandResponse tpm_response_proto;
+    tpm_response_proto.set_response(response_from_tpm);
+    response->Return(tpm_response_proto);
+  };
+  if (!request.has_command() || request.command().empty()) {
     LOG(ERROR) << "TrunksService: Invalid request.";
-    callback.Run(CreateErrorResponse(SAPI_RC_BAD_PARAMETER));
+    callback(SharedResponsePointer(std::move(response_sender)),
+             CreateErrorResponse(SAPI_RC_BAD_PARAMETER));
     return;
   }
-  transceiver_->SendCommand(tpm_command_proto.command(), callback);
-}
-
-void TrunksService::OnResponse(
-    dbus::ExportedObject::ResponseSender response_sender,
-    scoped_ptr<dbus::Response> dbus_response,
-    const std::string& response_from_tpm) {
-  SendCommandResponse tpm_response_proto;
-  tpm_response_proto.set_response(response_from_tpm);
-  dbus::MessageWriter writer(dbus_response.get());
-  writer.AppendProtoAsArrayOfBytes(tpm_response_proto);
-  response_sender.Run(dbus_response.Pass());
-}
-
-void TrunksService::InitDBusService() {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  bus_ = new dbus::Bus(options);
-  CHECK(bus_->Connect());
-
-  trunks_dbus_object_ = bus_->GetExportedObject(
-      dbus::ObjectPath(kTrunksServicePath));
-  CHECK(trunks_dbus_object_);
-
-  trunks_dbus_object_->ExportMethodAndBlock(kTrunksInterface, kSendCommand,
-      base::Bind(&TrunksService::HandleSendCommand, GetWeakPtr()));
-
-  CHECK(bus_->RequestOwnershipAndBlock(kTrunksServiceName,
-                                       dbus::Bus::REQUIRE_PRIMARY))
-      << "Unable to take ownership of " << kTrunksServiceName;
+  transceiver_->SendCommand(
+      request.command(),
+      base::Bind(callback, SharedResponsePointer(std::move(response_sender))));
 }
 
 }  // namespace trunks
