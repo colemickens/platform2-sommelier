@@ -19,6 +19,7 @@
 #include "attestation/common/attestation_ca.pb.h"
 #include "attestation/common/crypto_utility_impl.h"
 #include "attestation/common/interface.pb.h"
+#include "attestation/common/print_interface_proto.h"
 
 namespace attestation {
 
@@ -257,7 +258,7 @@ class ClientLoop : public ClientLoopBase {
 
   template <typename ProtobufType>
   void PrintReplyAndQuit(const ProtobufType& reply) {
-    reply.PrintDebugString();
+    printf("%s\n", GetProtoDebugString(reply).c_str());
     Quit();
   }
 

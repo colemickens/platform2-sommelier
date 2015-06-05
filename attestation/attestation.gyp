@@ -8,7 +8,7 @@
       'deps': [  # This is a list of pkg-config dependencies
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
-        'protobuf',
+        'protobuf-lite',
       ],
     },
   },
@@ -32,6 +32,8 @@
         '<(proto_in_dir)/common.proto',
         '<(proto_in_dir)/database.proto',
         '<(proto_in_dir)/interface.proto',
+        'common/print_common_proto.cc',
+        'common/print_interface_proto.cc',
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },
