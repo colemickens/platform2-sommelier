@@ -87,6 +87,10 @@ class CommandManager final {
 
   // Adds a new command to the command queue.
   void AddCommand(std::unique_ptr<CommandInstance> command_instance);
+  bool AddCommand(const base::DictionaryValue& command,
+                  UserRole role,
+                  std::string* id,
+                  chromeos::ErrorPtr* error);
 
   // Finds a command by the command |id|. Returns nullptr if the command with
   // the given |id| is not found. The returned pointer should not be persisted
@@ -110,6 +114,7 @@ class CommandManager final {
   DBusCommandDispacher command_dispatcher_;
   CommandQueue command_queue_;
   std::vector<base::Callback<void()>> on_command_changed_;
+  uint32_t next_command_id_{0};
 
   DISALLOW_COPY_AND_ASSIGN(CommandManager);
 };

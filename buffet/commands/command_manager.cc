@@ -99,6 +99,32 @@ void CommandManager::AddCommand(
   command_queue_.Add(std::move(command_instance));
 }
 
+bool CommandManager::AddCommand(const base::DictionaryValue& command,
+                                UserRole role,
+                                std::string* id,
+                                chromeos::ErrorPtr* error) {
+  auto command_instance = buffet::CommandInstance::FromJson(
+      &command, commands::attributes::kCommand_Visibility_Local,
+      GetCommandDictionary(), nullptr, error);
+  if (!command_instance)
+    return false;
+
+  UserRole minimal_role =
+      command_instance->GetCommandDefinition()->GetMinimalRole();
+  if (role < minimal_role) {
+    chromeos::Error::AddToPrintf(
+        error, FROM_HERE, errors::commands::kDomain, "access_denied",
+        "User role '%s' less than minimal: '%s'", ToString(role).c_str(),
+        ToString(minimal_role).c_str());
+    return false;
+  }
+
+  *id = std::to_string(++next_command_id_);
+  command_instance->SetID(*id);
+  AddCommand(std::move(command_instance));
+  return true;
+}
+
 CommandInstance* CommandManager::FindCommand(const std::string& id) const {
   return command_queue_.Find(id);
 }

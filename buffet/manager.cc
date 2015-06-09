@@ -164,45 +164,25 @@ bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
 void Manager::AddCommand(DBusMethodResponse<std::string> response,
                          const std::string& json_command,
                          const std::string& in_user_role) {
-  static int next_id = 0;
   std::string error_message;
   std::unique_ptr<base::Value> value(base::JSONReader::ReadAndReturnError(
       json_command, base::JSON_PARSE_RFC, nullptr, &error_message));
-  if (!value) {
-    response->ReplyWithError(FROM_HERE, chromeos::errors::json::kDomain,
-                             chromeos::errors::json::kParseError,
-                             error_message);
-    return;
+  const base::DictionaryValue* command{nullptr};
+  if (!value || !value->GetAsDictionary(&command)) {
+    return response->ReplyWithError(FROM_HERE, chromeos::errors::json::kDomain,
+                                    chromeos::errors::json::kParseError,
+                                    error_message);
   }
+
   chromeos::ErrorPtr error;
-  auto command_instance = buffet::CommandInstance::FromJson(
-      value.get(), commands::attributes::kCommand_Visibility_Local,
-      command_manager_->GetCommandDictionary(), nullptr, &error);
-  if (!command_instance) {
-    response->ReplyWithError(error.get());
-    return;
-  }
-
   UserRole role;
-  if (!FromString(in_user_role, &role, &error)) {
-    response->ReplyWithError(error.get());
-    return;
-  }
+  if (!FromString(in_user_role, &role, &error))
+    return response->ReplyWithError(error.get());
 
-  UserRole minimal_role =
-      command_instance->GetCommandDefinition()->GetMinimalRole();
-  if (role < minimal_role) {
-    chromeos::Error::AddToPrintf(
-        &error, FROM_HERE, kErrorDomainGCD, "access_denied",
-        "User role '%s' less than minimal: '%s'", ToString(role).c_str(),
-        ToString(minimal_role).c_str());
-    response->ReplyWithError(error.get());
-    return;
-  }
+  std::string id;
+  if (!command_manager_->AddCommand(*command, role, &id, &error))
+    return response->ReplyWithError(error.get());
 
-  std::string id = std::to_string(++next_id);
-  command_instance->SetID(id);
-  command_manager_->AddCommand(std::move(command_instance));
   response->Return(id);
 }
 
