@@ -10,7 +10,6 @@
 #include <cmath>
 
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"
