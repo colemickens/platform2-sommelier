@@ -75,15 +75,13 @@ void PeerdClient::Update() {
 void PeerdClient::OnNewPeer(PeerProxy* peer) {
   if (!peer || peer->GetObjectPath().value() != kSelfPath)
     return;
-  peer->SetPropertyChangedCallback(
-      base::Bind(&PeerdClient::OnPeerPropertyChanged,
-                 weak_ptr_factory_.GetWeakPtr()));
+  peer->SetPropertyChangedCallback(base::Bind(
+      &PeerdClient::OnPeerPropertyChanged, weak_ptr_factory_.GetWeakPtr()));
   OnPeerPropertyChanged(peer, PeerProxy::UUIDName());
 }
 
-void PeerdClient::OnPeerPropertyChanged(
-    PeerProxy* peer,
-    const std::string& property_name) {
+void PeerdClient::OnPeerPropertyChanged(PeerProxy* peer,
+                                        const std::string& property_name) {
   if (property_name != PeerProxy::UUIDName() ||
       peer->GetObjectPath().value() != kSelfPath)
     return;

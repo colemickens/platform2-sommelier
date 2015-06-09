@@ -28,13 +28,9 @@ class DeviceDelegateImpl : public DeviceDelegate {
     return base::Time::Now() - start_time_;
   }
 
-  void SetHttpPort(uint16_t port) override {
-    http_port_ = port;
-  }
+  void SetHttpPort(uint16_t port) override { http_port_ = port; }
 
-  void SetHttpsPort(uint16_t port) override {
-    https_port_ = port;
-  }
+  void SetHttpsPort(uint16_t port) override { https_port_ = port; }
 
  private:
   uint16_t http_port_{0};

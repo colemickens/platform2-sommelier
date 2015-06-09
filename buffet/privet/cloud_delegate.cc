@@ -38,12 +38,10 @@ class CloudDelegateImpl : public CloudDelegate {
   CloudDelegateImpl(const scoped_refptr<dbus::Bus>& bus,
                     bool is_gcd_setup_enabled)
       : object_manager_{bus}, is_gcd_setup_enabled_(is_gcd_setup_enabled) {
-    object_manager_.SetManagerAddedCallback(
-        base::Bind(&CloudDelegateImpl::OnManagerAdded,
-                   weak_factory_.GetWeakPtr()));
-    object_manager_.SetManagerRemovedCallback(
-        base::Bind(&CloudDelegateImpl::OnManagerRemoved,
-                   weak_factory_.GetWeakPtr()));
+    object_manager_.SetManagerAddedCallback(base::Bind(
+        &CloudDelegateImpl::OnManagerAdded, weak_factory_.GetWeakPtr()));
+    object_manager_.SetManagerRemovedCallback(base::Bind(
+        &CloudDelegateImpl::OnManagerRemoved, weak_factory_.GetWeakPtr()));
     object_manager_.SetCommandRemovedCallback(base::Bind(
         &CloudDelegateImpl::OnCommandRemoved, weak_factory_.GetWeakPtr()));
   }

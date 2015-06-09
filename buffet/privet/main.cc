@@ -122,24 +122,20 @@ class Daemon : public chromeos::DBusServiceDaemon,
     peerd_client_.reset(new PeerdClient(bus_, device_.get(), cloud_.get(),
                                         wifi_bootstrap_manager_.get()));
 
-    privet_handler_.reset(new PrivetHandler(cloud_.get(), device_.get(),
-                                            security_.get(),
-                                            wifi_bootstrap_manager_.get(),
-                                            peerd_client_.get()));
+    privet_handler_.reset(
+        new PrivetHandler(cloud_.get(), device_.get(), security_.get(),
+                          wifi_bootstrap_manager_.get(), peerd_client_.get()));
 
-    web_server_.OnProtocolHandlerConnected(
-        base::Bind(&Daemon::OnProtocolHandlerConnected,
-                   weak_ptr_factory_.GetWeakPtr()));
+    web_server_.OnProtocolHandlerConnected(base::Bind(
+        &Daemon::OnProtocolHandlerConnected, weak_ptr_factory_.GetWeakPtr()));
     web_server_.OnProtocolHandlerDisconnected(
         base::Bind(&Daemon::OnProtocolHandlerDisconnected,
                    weak_ptr_factory_.GetWeakPtr()));
 
-    web_server_.Connect(
-        bus_,
-        kServiceName,
-        sequencer->GetHandler("Server::Connect failed.", true),
-        base::Bind(&base::DoNothing),
-        base::Bind(&base::DoNothing));
+    web_server_.Connect(bus_, kServiceName,
+                        sequencer->GetHandler("Server::Connect failed.", true),
+                        base::Bind(&base::DoNothing),
+                        base::Bind(&base::DoNothing));
 
     web_server_.GetDefaultHttpHandler()->AddHandlerCallback(
         "/privet/", "",
@@ -222,9 +218,7 @@ class Daemon : public chromeos::DBusServiceDaemon,
       peerd_client_->Update();
   }
 
-  void OnConnectivityChanged(bool online) {
-    OnChanged();
-  }
+  void OnConnectivityChanged(bool online) { OnChanged(); }
 
   void OnProtocolHandlerConnected(ProtocolHandler* protocol_handler) {
     if (protocol_handler->GetName() == ProtocolHandler::kHttp) {

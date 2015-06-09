@@ -27,7 +27,8 @@ namespace privetd {
 
 namespace {
 
-void IgnoreDetachEvent() { }
+void IgnoreDetachEvent() {
+}
 
 bool GetStateForService(ServiceProxy* service, string* state) {
   CHECK(service) << "|service| was nullptr in GetStateForService()";
@@ -106,9 +107,8 @@ ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus,
                  weak_factory_.GetWeakPtr()));
   auto owner_changed_cb = base::Bind(&ShillClient::OnShillServiceOwnerChange,
                                      weak_factory_.GetWeakPtr());
-  bus_->GetObjectProxy(
-      shill::kFlimflamServiceName,
-      ObjectPath{"/"})->SetNameOwnerChangedCallback(owner_changed_cb);
+  bus_->GetObjectProxy(shill::kFlimflamServiceName, ObjectPath{"/"})
+      ->SetNameOwnerChangedCallback(owner_changed_cb);
 }
 
 void ShillClient::Init() {
@@ -141,8 +141,7 @@ bool ShillClient::ConnectToService(const string& ssid,
   service_properties[shill::kSaveCredentialsProperty] = Any{true};
   service_properties[shill::kAutoConnectProperty] = Any{true};
   ObjectPath service_path;
-  if (!manager_proxy_.ConfigureService(service_properties,
-                                       &service_path,
+  if (!manager_proxy_.ConfigureService(service_properties, &service_path,
                                        error)) {
     return false;
   }
@@ -153,11 +152,9 @@ bool ShillClient::ConnectToService(const string& ssid,
   on_connect_success_.Reset(on_success);
   connecting_service_->RegisterPropertyChangedSignalHandler(
       base::Bind(&ShillClient::OnServicePropertyChange,
-                 weak_factory_.GetWeakPtr(),
-                 service_path),
+                 weak_factory_.GetWeakPtr(), service_path),
       base::Bind(&ShillClient::OnServicePropertyChangeRegistration,
-                 weak_factory_.GetWeakPtr(),
-                 service_path));
+                 weak_factory_.GetWeakPtr(), service_path));
   return true;
 }
 
@@ -248,11 +245,9 @@ void ShillClient::OnManagerPropertyChange(const string& property_name,
     }
     device->RegisterPropertyChangedSignalHandler(
         base::Bind(&ShillClient::OnDevicePropertyChange,
-                   weak_factory_.GetWeakPtr(),
-                   device_path),
+                   weak_factory_.GetWeakPtr(), device_path),
         base::Bind(&ShillClient::OnDevicePropertyChangeRegistration,
-                   weak_factory_.GetWeakPtr(),
-                   device_path));
+                   weak_factory_.GetWeakPtr(), device_path));
     VLOG(3) << "Creating device proxy at " << device_path.value();
     devices_[device_path].device = std::move(device);
   }
@@ -287,8 +282,7 @@ void ShillClient::OnDevicePropertyChangeRegistration(
     LOG(WARNING) << "Failed to get device's selected service?";
     return;
   }
-  OnDevicePropertyChange(device_path,
-                         shill::kSelectedServiceProperty,
+  OnDevicePropertyChange(device_path, shill::kSelectedServiceProperty,
                          prop_it->second);
 }
 
@@ -311,8 +305,8 @@ void ShillClient::OnDevicePropertyChange(const ObjectPath& device_path,
                << " selected invalid service path.";
     return;
   }
-  VLOG(3) << "Device at " << it->first.value()
-          << " has selected service at " << service_path.value();
+  VLOG(3) << "Device at " << it->first.value() << " has selected service at "
+          << service_path.value();
   bool removed_old_service{false};
   if (device_state.selected_service) {
     if (device_state.selected_service->GetObjectPath() == service_path) {
@@ -324,8 +318,7 @@ void ShillClient::OnDevicePropertyChange(const ObjectPath& device_path,
   }
   std::shared_ptr<ServiceProxy> new_service;
   const bool reuse_connecting_service =
-      service_path.value() != "/" &&
-      connecting_service_ &&
+      service_path.value() != "/" && connecting_service_ &&
       connecting_service_->GetObjectPath() == service_path;
   if (reuse_connecting_service) {
     new_service = connecting_service_;
@@ -345,11 +338,9 @@ void ShillClient::OnDevicePropertyChange(const ObjectPath& device_path,
     new_service.reset(new ServiceProxy{bus_, service_path});
     new_service->RegisterPropertyChangedSignalHandler(
         base::Bind(&ShillClient::OnServicePropertyChange,
-                   weak_factory_.GetWeakPtr(),
-                   service_path),
+                   weak_factory_.GetWeakPtr(), service_path),
         base::Bind(&ShillClient::OnServicePropertyChangeRegistration,
-                   weak_factory_.GetWeakPtr(),
-                   service_path));
+                   weak_factory_.GetWeakPtr(), service_path));
   }
   device_state.selected_service = new_service;
   if (reuse_connecting_service || removed_old_service) {
@@ -389,13 +380,11 @@ void ShillClient::OnServicePropertyChangeRegistration(const ObjectPath& path,
   // values.
   auto it = properties.find(shill::kStateProperty);
   if (it != properties.end()) {
-    OnServicePropertyChange(path, shill::kStateProperty,
-                            it->second);
+    OnServicePropertyChange(path, shill::kStateProperty, it->second);
   }
   it = properties.find(shill::kSignalStrengthProperty);
   if (it != properties.end()) {
-    OnServicePropertyChange(path, shill::kSignalStrengthProperty,
-                            it->second);
+    OnServicePropertyChange(path, shill::kSignalStrengthProperty, it->second);
   }
 }
 
@@ -414,8 +403,8 @@ void ShillClient::OnServicePropertyChange(const ObjectPath& service_path,
     OnStateChangeForSelectedService(service_path, state);
     OnStateChangeForConnectingService(service_path, state);
   } else if (property_name == shill::kSignalStrengthProperty) {
-    OnStrengthChangeForConnectingService(
-        service_path, property_value.TryGet<uint8_t>());
+    OnStrengthChangeForConnectingService(service_path,
+                                         property_value.TryGet<uint8_t>());
   }
 }
 
@@ -437,8 +426,7 @@ void ShillClient::OnStrengthChangeForConnectingService(
     uint8_t signal_strength) {
   if (!connecting_service_ ||
       connecting_service_->GetObjectPath() != service_path ||
-      signal_strength <= 0 ||
-      have_called_connect_) {
+      signal_strength <= 0 || have_called_connect_) {
     return;
   }
   VLOG(1) << "Connecting service has signal. Calling Connect().";
@@ -486,9 +474,8 @@ void ShillClient::UpdateConnectivityState() {
     // underway.  Therefore, call our callbacks later, when we're in a good
     // state.
     base::MessageLoop::current()->PostTask(
-        FROM_HERE,
-        base::Bind(&ShillClient::NotifyConnectivityListeners,
-                   weak_factory_.GetWeakPtr(), AmOnline()));
+        FROM_HERE, base::Bind(&ShillClient::NotifyConnectivityListeners,
+                              weak_factory_.GetWeakPtr(), AmOnline()));
   }
 }
 

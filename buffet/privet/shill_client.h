@@ -41,7 +41,6 @@ class ShillClient final {
               const std::set<std::string>& device_whitelist);
   ~ShillClient() = default;
 
-
   void Init();
   void RegisterConnectivityListener(const ConnectivityListener& listener);
   // Causes shill to attempt to connect to the given network with the given

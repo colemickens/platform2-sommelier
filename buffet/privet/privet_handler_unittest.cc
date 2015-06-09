@@ -161,9 +161,9 @@ class PrivetHandlerTest : public testing::Test {
         .WillRepeatedly(ReturnRef(gcd_disabled_state_));
     auto set_error =
         [](const std::string&, const std::string&, chromeos::ErrorPtr* error) {
-          chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
-                                 "setupUnavailable", "");
-        };
+      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                             "setupUnavailable", "");
+    };
     EXPECT_CALL(cloud_, Setup(_, _, _))
         .WillRepeatedly(DoAll(Invoke(set_error), Return(false)));
   }
@@ -446,8 +446,8 @@ TEST_F(PrivetHandlerTest, AuthPairing) {
     'scope': 'owner',
     'tokenType': 'Privet'
   })";
-  EXPECT_PRED2(
-      IsEqualJson, kExpected, HandleRequest("/privet/v3/auth", kInput));
+  EXPECT_PRED2(IsEqualJson, kExpected,
+               HandleRequest("/privet/v3/auth", kInput));
 }
 
 class PrivetHandlerSetupTest : public PrivetHandlerTest {
@@ -463,8 +463,8 @@ class PrivetHandlerSetupTest : public PrivetHandlerTest {
 
 TEST_F(PrivetHandlerSetupTest, StatusEmpty) {
   SetNoWifiAndGcd();
-  EXPECT_PRED2(
-      IsEqualJson, "{}", HandleRequest("/privet/v3/setup/status", "{}"));
+  EXPECT_PRED2(IsEqualJson, "{}",
+               HandleRequest("/privet/v3/setup/status", "{}"));
 }
 
 TEST_F(PrivetHandlerSetupTest, StatusWifi) {
@@ -476,8 +476,8 @@ TEST_F(PrivetHandlerSetupTest, StatusWifi) {
         'status': 'success'
      }
   })";
-  EXPECT_PRED2(
-      IsEqualJson, kExpected, HandleRequest("/privet/v3/setup/status", "{}"));
+  EXPECT_PRED2(IsEqualJson, kExpected,
+               HandleRequest("/privet/v3/setup/status", "{}"));
 }
 
 TEST_F(PrivetHandlerSetupTest, StatusWifiError) {
@@ -493,8 +493,8 @@ TEST_F(PrivetHandlerSetupTest, StatusWifiError) {
         }
      }
   })";
-  EXPECT_PRED2(
-      IsEqualJson, kExpected, HandleRequest("/privet/v3/setup/status", "{}"));
+  EXPECT_PRED2(IsEqualJson, kExpected,
+               HandleRequest("/privet/v3/setup/status", "{}"));
 }
 
 TEST_F(PrivetHandlerSetupTest, StatusGcd) {
@@ -506,8 +506,8 @@ TEST_F(PrivetHandlerSetupTest, StatusGcd) {
         'status': 'success'
      }
   })";
-  EXPECT_PRED2(
-      IsEqualJson, kExpected, HandleRequest("/privet/v3/setup/status", "{}"));
+  EXPECT_PRED2(IsEqualJson, kExpected,
+               HandleRequest("/privet/v3/setup/status", "{}"));
 }
 
 TEST_F(PrivetHandlerSetupTest, StatusGcdError) {
@@ -523,8 +523,8 @@ TEST_F(PrivetHandlerSetupTest, StatusGcdError) {
         }
      }
   })";
-  EXPECT_PRED2(
-      IsEqualJson, kExpected, HandleRequest("/privet/v3/setup/status", "{}"));
+  EXPECT_PRED2(IsEqualJson, kExpected,
+               HandleRequest("/privet/v3/setup/status", "{}"));
 }
 
 TEST_F(PrivetHandlerSetupTest, SetupNameDescriptionLocation) {
@@ -570,8 +570,8 @@ TEST_F(PrivetHandlerSetupTest, WifiSetup) {
       'passphrase': 'testPass'
     }
   })";
-  auto set_error = [](const std::string&, const std::string&,
-                      chromeos::ErrorPtr* error) {
+  auto set_error =
+      [](const std::string&, const std::string&, chromeos::ErrorPtr* error) {
     chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain, "deviceBusy", "");
   };
   EXPECT_CALL(wifi_, ConfigureCredentials(_, _, _))
@@ -612,8 +612,8 @@ TEST_F(PrivetHandlerSetupTest, GcdSetup) {
     }
   })";
 
-  auto set_error = [](const std::string&, const std::string&,
-                      chromeos::ErrorPtr* error) {
+  auto set_error =
+      [](const std::string&, const std::string&, chromeos::ErrorPtr* error) {
     chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain, "deviceBusy", "");
   };
   EXPECT_CALL(cloud_, Setup(_, _, _))

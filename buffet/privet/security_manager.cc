@@ -374,7 +374,7 @@ void SecurityManager::RegisterPairingListeners(
     const PairingEndListener& on_end) {
   CHECK(on_start_.is_null() && on_end_.is_null());
   on_start_ = on_start;
-  on_end_  = on_end;
+  on_end_ = on_end;
 }
 
 bool SecurityManager::CheckIfPairingAllowed(chromeos::ErrorPtr* error) {

@@ -32,9 +32,9 @@ DBusManager::DBusManager(ExportedObjectManager* object_manager,
                          WifiBootstrapManager* wifi_bootstrap_manager,
                          CloudDelegate* cloud_delegate,
                          SecurityManager* security_manager)
-  : dbus_object_{new DBusObject{object_manager,
-                                object_manager->GetBus(),
-                                ManagerAdaptor::GetObjectPath()}} {
+    : dbus_object_{new DBusObject{object_manager,
+                                  object_manager->GetBus(),
+                                  ManagerAdaptor::GetObjectPath()}} {
   if (wifi_bootstrap_manager) {
     wifi_bootstrap_manager->RegisterStateListener(
         base::Bind(&DBusManager::UpdateWiFiBootstrapState,
@@ -43,10 +43,8 @@ DBusManager::DBusManager(ExportedObjectManager* object_manager,
     UpdateWiFiBootstrapState(WifiBootstrapManager::kDisabled);
   }
   security_manager->RegisterPairingListeners(
-      base::Bind(&DBusManager::OnPairingStart,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&DBusManager::OnPairingEnd,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::Bind(&DBusManager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&DBusManager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
   // TODO(wiley) Watch for appropriate state variables from |cloud_delegate|.
 }
 

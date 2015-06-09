@@ -59,9 +59,8 @@ class PrivetdConfParserTest : public testing::Test {
     }
     string blob{Join("\n", file_pieces)};
     int expected_len = blob.length();
-    CHECK(expected_len == base::WriteFile(temp_file_,
-                                          blob.c_str(),
-                                          expected_len));
+    CHECK(expected_len ==
+          base::WriteFile(temp_file_, blob.c_str(), expected_len));
     CHECK(store->Load(temp_file_));
   }
 
