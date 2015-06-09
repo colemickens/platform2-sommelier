@@ -4,8 +4,10 @@
       'deps': [
         'dbus-1',
         'expat',
+        'openssl',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'system_api',
       ],
     },
     'include_dirs': ['.'],
@@ -47,6 +49,20 @@
         'notification/xmpp_channel.cc',
         'notification/xmpp_iq_stanza_handler.cc',
         'notification/xmpp_stream_parser.cc',
+        'privet/ap_manager_client.cc',
+        'privet/cloud_delegate.cc',
+        'privet/constants.cc',
+        'privet/daemon_state.cc',
+        'privet/device_delegate.cc',
+        'privet/main.cc',
+        'privet/openssl_utils.cc',
+        'privet/peerd_client.cc',
+        'privet/privet_handler.cc',
+        'privet/privetd_conf_parser.cc',
+        'privet/security_manager.cc',
+        'privet/shill_client.cc',
+        'privet/wifi_bootstrap_manager.cc',
+        'privet/wifi_ssid_generator.cc',
         'registration_status.cc',
         'storage_impls.cc',
         'states/error_codes.cc',
@@ -69,6 +85,49 @@
           ],
           'includes': ['../common-mk/generate-dbus-proxies.gypi'],
         },
+        {
+          # Import D-Bus bindings from peerd.
+          'action_name': 'generate-peerd-proxies',
+          'variables': {
+            'dbus_service_config': '../peerd/dbus_bindings/dbus-service-config.json',
+            'proxy_output_file': 'include/peerd/dbus-proxies.h'
+          },
+          'sources': [
+            '../peerd/dbus_bindings/org.chromium.peerd.Manager.xml',
+            '../peerd/dbus_bindings/org.chromium.peerd.Peer.xml',
+            '../peerd/dbus_bindings/org.chromium.peerd.Service.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
+        {
+          # Import D-Bus bindings from shill.
+          'action_name': 'generate-shill-proxies',
+          'variables': {
+            'dbus_service_config': '../shill/dbus_bindings/dbus-service-config.json',
+            'proxy_output_file': 'include/shill/dbus-proxies.h'
+          },
+          'sources': [
+            '../shill/dbus_bindings/org.chromium.flimflam.Device.xml',
+            '../shill/dbus_bindings/org.chromium.flimflam.Manager.xml',
+            '../shill/dbus_bindings/org.chromium.flimflam.Service.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
+        {
+          # Import D-Bus bindings from apmanager.
+          'action_name': 'generate-apmanager-proxies',
+          'variables': {
+            'dbus_service_config': '../apmanager/dbus_bindings/dbus-service-config.json',
+            'proxy_output_file': 'include/apmanager/dbus-proxies.h'
+          },
+          'sources': [
+            '../apmanager/dbus_bindings/org.chromium.apmanager.Config.xml',
+            '../apmanager/dbus_bindings/org.chromium.apmanager.Device.xml',
+            '../apmanager/dbus_bindings/org.chromium.apmanager.Manager.xml',
+            '../apmanager/dbus_bindings/org.chromium.apmanager.Service.xml',
+          ],
+          'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+        },
       ],
     },
     {
@@ -77,6 +136,12 @@
       'dependencies': [
         'buffet_common',
       ],
+      'variables': {
+        'exported_deps': [
+          'libwebserv-<(libbase_ver)',
+        ],
+        'deps': ['<@(exported_deps)'],
+      },
       'sources': [
         'main.cc',
       ],
@@ -132,6 +197,10 @@
             'notification/xmpp_channel_unittest.cc',
             'notification/xmpp_iq_stanza_handler_unittest.cc',
             'notification/xmpp_stream_parser_unittest.cc',
+            'privet/privetd_conf_parser_unittest.cc',
+            'privet/privet_handler_unittest.cc',
+            'privet/security_manager_unittest.cc',
+            'privet/wifi_ssid_generator_unittest.cc',
             'states/state_change_queue_unittest.cc',
             'states/state_manager_unittest.cc',
             'states/state_package_unittest.cc',

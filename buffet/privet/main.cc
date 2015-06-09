@@ -30,7 +30,6 @@
 #include "buffet/privet/cloud_delegate.h"
 #include "buffet/privet/constants.h"
 #include "buffet/privet/daemon_state.h"
-#include "buffet/privet/dbus_manager.h"
 #include "buffet/privet/device_delegate.h"
 #include "buffet/privet/peerd_client.h"
 #include "buffet/privet/privet_handler.h"
@@ -151,13 +150,6 @@ class Daemon : public chromeos::DBusServiceDaemon,
           "/privet/ping", chromeos::http::request_type::kGet,
           base::Bind(&Daemon::HelloWorldHandler, base::Unretained(this)));
     }
-
-    dbus_manager_.reset(new DBusManager{object_manager_.get(),
-                                        wifi_bootstrap_manager_.get(),
-                                        cloud_.get(),
-                                        security_.get()});
-    dbus_manager_->RegisterAsync(
-        sequencer->GetHandler("DBusManager.RegisterAsync() failed.", true));
   }
 
   void OnShutdown(int* return_code) override {
@@ -258,7 +250,6 @@ class Daemon : public chromeos::DBusServiceDaemon,
   std::unique_ptr<PeerdClient> peerd_client_;
   std::unique_ptr<PrivetHandler> privet_handler_;
   ScopedObserver<CloudDelegate, CloudDelegate::Observer> cloud_observer_{this};
-  std::unique_ptr<DBusManager> dbus_manager_;
   libwebserv::Server web_server_;
 
   base::WeakPtrFactory<Daemon> weak_ptr_factory_{this};
@@ -269,7 +260,7 @@ class Daemon : public chromeos::DBusServiceDaemon,
 
 }  // namespace privetd
 
-int main(int argc, char* argv[]) {
+int old_main(int argc, char* argv[]) {
   DEFINE_bool(disable_security, false, "disable Privet security for tests");
   DEFINE_bool(enable_ping, false, "enable test HTTP handler at /privet/ping");
   DEFINE_bool(log_to_stderr, false, "log trace messages to stderr as well");
