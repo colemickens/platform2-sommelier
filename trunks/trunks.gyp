@@ -52,6 +52,7 @@
             'sources': [
               'ftdi/mpsse.c',
               'ftdi/support.c',
+              'trunks_ftdi_spi.cc',
             ],
             'libraries': [
               '-lftdi1',

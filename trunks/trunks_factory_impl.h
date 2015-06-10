@@ -12,6 +12,7 @@
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 
+#include "trunks/command_transceiver.h"
 #include "trunks/trunks_export.h"
 
 namespace trunks {
@@ -27,7 +28,7 @@ class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
   // factory.
   explicit TrunksFactoryImpl(Tpm* tpm);
   // A default Tpm instance will be used which sends commands to a TrunksProxy.
-  TrunksFactoryImpl();
+  explicit TrunksFactoryImpl(bool use_ftdi = false);
   ~TrunksFactoryImpl() override;
 
   // TrunksFactory methods.
@@ -42,7 +43,7 @@ class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
   scoped_ptr<PolicySession> GetTrialSession() const override;
 
  private:
-  scoped_ptr<TrunksProxy> proxy_;
+  scoped_ptr<CommandTransceiver> proxy_;
   scoped_ptr<Tpm> default_tpm_;
   Tpm* tpm_;
 

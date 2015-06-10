@@ -29,7 +29,7 @@ class TpmHandle : public CommandTransceiver  {
 
   // Initializes a TpmHandle instance. This method must be called successfully
   // before any other method. Returns true on success.
-  bool Init();
+  bool Init() override;
 
   // CommandTranceiver methods.
   void SendCommand(const std::string& command,

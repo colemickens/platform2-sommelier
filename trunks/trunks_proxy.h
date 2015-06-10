@@ -26,7 +26,7 @@ class TRUNKS_EXPORT TrunksProxy: public CommandTransceiver {
   ~TrunksProxy() override;
 
   // Initializes the D-Bus client. Returns true on success.
-  bool Init();
+  bool Init() override;
 
   // CommandTransceiver methods.
   void SendCommand(const std::string& command,

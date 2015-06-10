@@ -11,15 +11,23 @@
 #include "trunks/tpm_generated.h"
 #include "trunks/tpm_state_impl.h"
 #include "trunks/tpm_utility_impl.h"
+#include "trunks/trunks_ftdi_spi.h"
 #include "trunks/trunks_proxy.h"
 
 namespace trunks {
 
 TrunksFactoryImpl::TrunksFactoryImpl(Tpm* tpm) : tpm_(tpm) {}
 
-TrunksFactoryImpl::TrunksFactoryImpl() : proxy_(new TrunksProxy()),
-                                         default_tpm_(new Tpm(proxy_.get())),
-                                         tpm_(default_tpm_.get()) {
+TrunksFactoryImpl::TrunksFactoryImpl(bool use_ftdi) {
+  if (use_ftdi)
+    proxy_ = scoped_ptr<CommandTransceiver> (new TrunksFtdiSpi());
+  else
+    proxy_ = scoped_ptr<CommandTransceiver> (new TrunksProxy());
+
+  default_tpm_ = scoped_ptr<Tpm>(new Tpm(proxy_.get()));
+
+  tpm_ = default_tpm_.get();
+
   if (!proxy_->Init()) {
     LOG(ERROR) << "Failed to initialize trunks proxy.";
   }

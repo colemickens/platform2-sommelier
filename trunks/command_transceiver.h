@@ -31,6 +31,10 @@ class CommandTransceiver {
   // the response. If a transmission error occurs the response will be populated
   // with a well-formed error response.
   virtual std::string SendCommandAndWait(const std::string& command) = 0;
+
+  // Initializes the actual interface, replaced by the derived classes, where
+  // needed.
+  virtual bool Init() { return true; }
 };
 
 }  // namespace trunks
