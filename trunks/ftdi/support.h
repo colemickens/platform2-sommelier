@@ -1,7 +1,16 @@
-#ifndef _SUPPORT_H_
-#define _SUPPORT_H_
+/*
+ * Copyright 2015 The Chromium OS Authors. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ *
+ * This file was copied from https://github.com/devttys0/libmpsse.git (sha1
+ * f1a6744b), and modified to suite the Chromium OS project.
+ */
 
-#include "mpsse.h"
+#ifndef TRUNKS_FTDI_SUPPORT_H_
+#define TRUNKS_FTDI_SUPPORT_H_
+
+#include "trunks/ftdi/mpsse.h"
 
 int raw_write(struct mpsse_context* mpsse, unsigned char* buf, int size);
 int raw_read(struct mpsse_context* mpsse, unsigned char* buf, int size);
@@ -18,4 +27,4 @@ int set_bits_low(struct mpsse_context* mpsse, int port);
 int gpio_write(struct mpsse_context* mpsse, int pin, int direction);
 int is_valid_context(struct mpsse_context* mpsse);
 
-#endif
+#endif  /*  TRUNKS_FTDI_SUPPORT_H_ */

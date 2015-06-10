@@ -1,13 +1,17 @@
-#ifndef _LIBMPSSE_H_
-#define _LIBMPSSE_H_
+/*
+ * Copyright 2015 The Chromium OS Authors. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ *
+ * This file was copied from https://github.com/devttys0/libmpsse.git (sha1
+ * f1a6744b), and modified to suite the Chromium OS project.
+ */
 
-#include <stdint.h>
+#ifndef TRUNKS_FTDI_MPSSE_H_
+#define TRUNKS_FTDI_MPSSE_H_
 
-#if LIBFTDI1 == 1
 #include <libftdi1/ftdi.h>
-#else
-#include <ftdi.h>
-#endif
+#include <stdint.h>
 
 #define MPSSE_OK 0
 #define MPSSE_FAIL -1
@@ -102,9 +106,8 @@ enum gpio_pins {
 
 enum i2c_ack { ACK = 0, NACK = 1 };
 
-#define DEFAULT_TRIS                      \
-  (SK | DO | CS | GPIO0 | GPIO1 | GPIO2 | \
-   GPIO3) /* SK/DO/CS and GPIOs are outputs, DI is an input */
+/* SK/DO/CS and GPIOs are outputs, DI is an input */
+#define DEFAULT_TRIS (SK | DO | CS | GPIO0 | GPIO1 | GPIO2 | GPIO3)
 #define DEFAULT_PORT (SK | CS) /* SK and CS are high, all others low */
 
 enum mpsse_commands {
@@ -227,4 +230,4 @@ int FastTransfer(struct mpsse_context* mpsse,
                  int size);
 #endif
 
-#endif
+#endif  /* TRUNKS_FTDI_MPSSE_H_ */

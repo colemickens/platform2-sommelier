@@ -1,4 +1,11 @@
 /*
+ * Copyright 2015 The Chromium OS Authors. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ *
+ * This file was copied from https://github.com/devttys0/libmpsse.git (sha1
+ * f1a6744b), and modified to suite the Chromium OS project.
+ *
  * Internal functions used by libmpsse.
  *
  * Craig Heffner
@@ -7,14 +14,7 @@
 
 #include <string.h>
 
-#if LIBFTDI1 == 1
-#include <libftdi1/ftdi.h>
-#else
-#include <ftdi.h>
-#endif
-
-#include "mpsse.h"
-#include "support.h"
+#include "trunks/ftdi/support.h"
 
 /* Write data to the FTDI chip */
 int raw_write(struct mpsse_context* mpsse, unsigned char* buf, int size) {

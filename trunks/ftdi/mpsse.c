@@ -1,4 +1,11 @@
 /*
+ * Copyright 2015 The Chromium OS Authors. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ *
+ * This file was copied from https://github.com/devttys0/libmpsse.git (sha1
+ * f1a6744b), and modified to suite the Chromium OS project.
+ *
  * Main libmpsse source file.
  *
  * Craig Heffner
@@ -10,15 +17,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#if LIBFTDI1 == 1
-#include <libftdi1/ftdi.h>
-#else
-#include <ftdi.h>
-#endif
-
-#include "mpsse.h"
-#include "support.h"
-#include "config.h"
+#include "trunks/ftdi/support.h"
 
 /* List of known FT2232-based devices */
 struct vid_pid supported_devices[] = {
@@ -1144,30 +1143,4 @@ int Tristate(struct mpsse_context* mpsse) {
   cmd[2] = 0xFF;
 
   return raw_write(mpsse, cmd, sizeof(cmd));
-}
-
-/*
- * Returns the libmpsse version number.
- * High nibble is major version, low nibble is minor version.
- */
-char Version(void) {
-  int major = 0, minor = 0;
-  char version = 0, *version_string = NULL, *decimal_ptr = NULL;
-
-  version_string = strdup(PACKAGE_VERSION);
-  if (version_string) {
-    decimal_ptr = strchr(version_string, '.');
-    if (decimal_ptr && strlen(decimal_ptr) > 1) {
-      memset(decimal_ptr, 0, 1);
-      minor = atoi(decimal_ptr + 1);
-    }
-
-    major = atoi(version_string);
-
-    free(version_string);
-  }
-
-  version = (char)((major << 4) + (minor & 0x0F));
-
-  return version;
 }

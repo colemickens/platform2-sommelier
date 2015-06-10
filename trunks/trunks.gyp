@@ -47,6 +47,21 @@
       'dependencies': [
         'dbus_interface_proto',
       ],
+      'conditions': [
+        ['USE_cros_host == 1', {
+            'sources': [
+              'ftdi/mpsse.c',
+              'ftdi/support.c',
+            ],
+            'libraries': [
+              '-lftdi1',
+            ],
+            'defines': [
+              'SPI_OVER_FTDI=1',
+            ],
+          },
+        ],
+      ],
     },
     {
       'target_name': 'trunks_client',
