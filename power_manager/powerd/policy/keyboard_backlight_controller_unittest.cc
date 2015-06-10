@@ -124,7 +124,7 @@ TEST_F(KeyboardBacklightControllerTest, GetBrightnessPercent) {
   EXPECT_DOUBLE_EQ(static_cast<double>(backlight_.current_level()), percent);
 }
 
-TEST_F(KeyboardBacklightControllerTest, DimForFullscreenVideo) {
+TEST_F(KeyboardBacklightControllerTest, TurnOffForFullscreenVideo) {
   als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
   user_steps_pref_ = "0.0\n100.0";
   Init();
@@ -168,10 +168,16 @@ TEST_F(KeyboardBacklightControllerTest, DimForFullscreenVideo) {
 
   // It should also be ignored after the brightness has been set by the user.
   controller_.HandleSessionStateChange(SESSION_STARTED);
+  controller_.HandleVideoActivity(true);
+  EXPECT_EQ(0, backlight_.current_level());
   EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(100, backlight_.current_level());
   controller_.HandleVideoActivity(true);
   EXPECT_EQ(100, backlight_.current_level());
+  EXPECT_TRUE(controller_.DecreaseUserBrightness(true /* allow_off */));
+  EXPECT_EQ(0, backlight_.current_level());
+  ASSERT_TRUE(test_api_.TriggerVideoTimeout());
+  EXPECT_EQ(0, backlight_.current_level());
 }
 
 TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {

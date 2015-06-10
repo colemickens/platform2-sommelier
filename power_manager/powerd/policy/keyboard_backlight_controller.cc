@@ -411,8 +411,12 @@ double KeyboardBacklightController::GetUndimmedPercent() const {
 bool KeyboardBacklightController::UpdateUndimmedBrightness(
     TransitionStyle transition,
     BrightnessChangeCause cause) {
-  if (shutting_down_|| fullscreen_video_playing_ || off_for_inactivity_ ||
-      dimmed_for_inactivity_ || docked_)
+  if (shutting_down_|| off_for_inactivity_ || dimmed_for_inactivity_ || docked_)
+    return false;
+
+  // Ignore automated brightness adjustments but permit user adjustments while
+  // fullscreen video is forcing the backlight off.
+  if (fullscreen_video_playing_ && cause != BRIGHTNESS_CHANGE_USER_INITIATED)
     return false;
 
   return ApplyBrightnessPercent(GetUndimmedPercent(), transition, cause);
