@@ -79,6 +79,10 @@ void IPConfig::Init() {
                              &properties_.vendor_encapsulated_options);
   store_.RegisterConstString(kWebProxyAutoDiscoveryUrlProperty,
                              &properties_.web_proxy_auto_discovery);
+  store_.RegisterConstString(kDelegatedPrefixProperty,
+                             &properties_.delegated_prefix);
+  store_.RegisterConstInt32(kDelegatedPrefixLengthProperty,
+                            &properties_.delegated_prefix_length);
   time_ = Time::GetInstance();
   current_lease_expiration_time_ = {kDefaultLeaseExpirationTime, 0};
   SLOG(this, 2) << __func__ << " device: " << device_name();

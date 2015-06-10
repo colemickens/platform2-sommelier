@@ -10,6 +10,9 @@
 #include "shill/control_interface.h"
 #include "shill/dhcp/dhcpcd_proxy.h"
 #include "shill/dhcp/dhcpv4_config.h"
+#ifndef DISABLE_DHCPV6
+#include "shill/dhcp/dhcpv6_config.h"
+#endif
 #include "shill/logging.h"
 #include "shill/shared_dbus_connection.h"
 
@@ -28,6 +31,9 @@ base::LazyInstance<DHCPProvider> g_dhcp_provider = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
 constexpr char DHCPProvider::kDHCPCDPathFormatLease[];
+#ifndef DISABLE_DHCPV6
+constexpr char DHCPProvider::kDHCPCDPathFormatLease6[];
+#endif  // DISABLE_DHCPV6
 
 DHCPProvider::DHCPProvider()
     : shared_dbus_connection_(SharedDBusConnection::GetInstance()),
@@ -81,6 +87,19 @@ DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
                           metrics_);
 }
 
+#ifndef DISABLE_DHCPV6
+DHCPConfigRefPtr DHCPProvider::CreateIPv6Config(
+    const string &device_name, const string &lease_file_suffix) {
+  SLOG(this, 2) << __func__ << " device: " << device_name;
+  return new DHCPv6Config(control_interface_,
+                          dispatcher_,
+                          this,
+                          device_name,
+                          lease_file_suffix,
+                          glib_);
+}
+#endif
+
 DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {
   SLOG(this, 2) << __func__ << " pid: " << pid;
   PIDConfigMap::const_iterator it = configs_.find(pid);
@@ -105,6 +124,11 @@ void DHCPProvider::DestroyLease(const string &name) {
   base::DeleteFile(root_.Append(
       base::StringPrintf(kDHCPCDPathFormatLease,
                          name.c_str())), false);
+#ifndef DISABLE_DHCPV6
+  base::DeleteFile(root_.Append(
+      base::StringPrintf(kDHCPCDPathFormatLease6,
+                         name.c_str())), false);
+#endif  // DISABLE_DHCPV6
 }
 
 }  // namespace shill

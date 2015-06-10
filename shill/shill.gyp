@@ -58,6 +58,11 @@
           'DISABLE_WIRED_8021X',
         ],
       }],
+      ['USE_dhcpv6 == 0', {
+        'defines': [
+          'DISABLE_DHCPV6',
+        ],
+      }],
     ],
   },
   'includes': [
@@ -329,6 +334,11 @@
           'sources': [
             'ethernet/ethernet_eap_provider.cc',
             'ethernet/ethernet_eap_service.cc',
+          ],
+        }],
+        ['USE_dhcpv6 == 1', {
+          'sources': [
+            'dhcp/dhcpv6_config.cc',
           ],
         }],
       ],
@@ -751,6 +761,11 @@
                 'cellular/modem_manager_unittest.cc',
                 'cellular/modem_unittest.cc',
                 'cellular/subscription_state_out_of_credits_detector_unittest.cc',
+              ],
+            }],
+            ['USE_dhcpv6 == 1', {
+              'sources': [
+                'dhcp/dhcpv6_config_unittest.cc',
               ],
             }],
             ['USE_vpn == 1', {

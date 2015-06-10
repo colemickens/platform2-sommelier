@@ -106,6 +106,7 @@ class DHCPConfig : public IPConfig {
  private:
   friend class DHCPConfigTest;
   friend class DHCPv4ConfigTest;
+  friend class DHCPv6ConfigTest;
   FRIEND_TEST(DHCPConfigCallbackTest, NotifyFailure);
   FRIEND_TEST(DHCPConfigCallbackTest, ProcessAcquisitionTimeout);
   FRIEND_TEST(DHCPConfigCallbackTest, RequestIPTimeout);
