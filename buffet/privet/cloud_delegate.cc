@@ -509,8 +509,10 @@ CloudDelegate::~CloudDelegate() {
 
 // static
 std::unique_ptr<CloudDelegate> CloudDelegate::CreateDefault(
-    const scoped_refptr<dbus::Bus>& bus,
     bool is_gcd_setup_enabled) {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus{new dbus::Bus{options}};
   return std::unique_ptr<CloudDelegateImpl>{
       new CloudDelegateImpl{bus, is_gcd_setup_enabled}};
 }

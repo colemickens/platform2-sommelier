@@ -9,6 +9,7 @@
 #include <chromeos/dbus/exported_object_manager.h>
 #include <chromeos/daemons/dbus_daemon.h>
 #include <chromeos/flag_helper.h>
+#include <chromeos/strings/string_utils.h>
 #include <chromeos/syslog_logging.h>
 
 #include "buffet/dbus_constants.h"
@@ -23,31 +24,20 @@ namespace buffet {
 
 class Daemon final : public DBusServiceDaemon {
  public:
-  Daemon(const base::FilePath& config_path,
-         const base::FilePath& state_path,
-         const base::FilePath& test_definitions_path,
-         bool enable_xmpp)
-      : DBusServiceDaemon(kServiceName, kRootServicePath),
-        config_path_{config_path},
-        state_path_{state_path},
-        test_definitions_path_{test_definitions_path},
-        enable_xmpp_{enable_xmpp} {}
+  explicit Daemon(const buffet::Manager::Options& options)
+      : DBusServiceDaemon(kServiceName, kRootServicePath), options_{options} {}
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override {
     manager_.reset(new buffet::Manager(object_manager_->AsWeakPtr()));
-    manager_->Start(
-        config_path_, state_path_, test_definitions_path_, enable_xmpp_,
-        sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+    manager_->Start(options_, sequencer);
   }
 
- private:
-  std::unique_ptr<buffet::Manager> manager_;
-  const base::FilePath config_path_;
-  const base::FilePath state_path_;
-  const base::FilePath test_definitions_path_;
-  const bool enable_xmpp_;
+  void OnShutdown(int* return_code) override { manager_->Stop(); }
 
+ private:
+  buffet::Manager::Options options_;
+  std::unique_ptr<buffet::Manager> manager_;
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 
@@ -71,6 +61,12 @@ int main(int argc, char* argv[]) {
                 "and state definitions.  For use in test only.");
   DEFINE_bool(enable_xmpp, true,
               "Connect to GCD via a persistent XMPP connection.");
+  DEFINE_bool(disable_privet, false, "disable Privet protocol");
+  DEFINE_bool(disable_security, false, "disable Privet security for tests");
+  DEFINE_bool(enable_ping, false, "enable test HTTP handler at /privet/ping");
+  DEFINE_string(device_whitelist, "",
+                "Comma separated list of network interfaces to monitor for "
+                "connectivity (an empty list enables all interfaces).");
   chromeos::FlagHelper::Init(argc, argv, "Privet protocol handler daemon");
   if (FLAGS_config_path.empty())
     FLAGS_config_path = kDefaultConfigFilePath;
@@ -81,9 +77,20 @@ int main(int argc, char* argv[]) {
     flags |= chromeos::kLogToStderr;
   chromeos::InitLog(flags);
 
-  buffet::Daemon daemon{base::FilePath{FLAGS_config_path},
-                        base::FilePath{FLAGS_state_path},
-                        base::FilePath{FLAGS_test_definitions_path},
-                        FLAGS_enable_xmpp};
+  auto device_whitelist =
+      chromeos::string_utils::Split(FLAGS_device_whitelist, ",", true, true);
+
+  buffet::Manager::Options options;
+  options.config_path = base::FilePath{FLAGS_config_path};
+  options.state_path = base::FilePath{FLAGS_state_path};
+  options.test_definitions_path = base::FilePath{FLAGS_test_definitions_path};
+  options.xmpp_enabled = FLAGS_enable_xmpp;
+  options.privet.disable_privet = FLAGS_disable_privet;
+  options.privet.disable_security = FLAGS_disable_security;
+  options.privet.enable_ping = FLAGS_enable_ping;
+  options.privet.device_whitelist.insert(device_whitelist.begin(),
+                                         device_whitelist.end());
+
+  buffet::Daemon daemon{options};
   return daemon.Run();
 }

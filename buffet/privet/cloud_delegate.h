@@ -131,7 +131,6 @@ class CloudDelegate {
 
   // Create default instance.
   static std::unique_ptr<CloudDelegate> CreateDefault(
-      const scoped_refptr<dbus::Bus>& bus,
       bool is_gcd_setup_enabled);
 
  private:

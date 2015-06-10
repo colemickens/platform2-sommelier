@@ -7,7 +7,6 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <sysexits.h>
 
 #include <base/bind.h>
 #include <base/command_line.h>
@@ -39,6 +38,7 @@
 #include "buffet/privet/security_manager.h"
 #include "buffet/privet/shill_client.h"
 #include "buffet/privet/wifi_bootstrap_manager.h"
+#include "buffet/dbus_constants.h"
 
 namespace privetd {
 
@@ -57,59 +57,60 @@ std::string GetFirstHeader(const Request& request, const std::string& name) {
   return headers.empty() ? std::string() : headers.front();
 }
 
-const char kServiceName[] = "org.chromium.privetd";
-const char kRootPath[] = "/org/chromium/privetd";
-
 }  // namespace
 
-Manager::Manager(bool disable_security,
-                 bool enable_ping,
-                 const std::set<std::string>& device_whitelist,
-                 const base::FilePath& config_path,
-                 const base::FilePath& state_path)
-    : DBusServiceDaemon(kServiceName, kRootPath),
-      disable_security_(disable_security),
-      enable_ping_(enable_ping),
-      device_whitelist_(device_whitelist),
-      config_path_(config_path),
-      state_store_(new DaemonState(state_path)) {
+Manager::Manager() {
 }
 
-void Manager::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
+Manager::~Manager() {
+}
+
+void Manager::Start(const Options& options,
+                    const scoped_refptr<dbus::Bus>& bus,
+                    AsyncEventSequencer* sequencer) {
+  disable_security_ = options.disable_security;
+
+  // TODO(vitalybuka): switch to BuffetConfig.
+  base::FilePath config_path{privetd::kDefaultConfigFilePath};
+  base::FilePath state_path{privetd::kDefaultStateFilePath};
+
+  state_store_.reset(new DaemonState(state_path));
   parser_.reset(new PrivetdConfigParser);
 
   chromeos::KeyValueStore config_store;
-  if (!config_store.Load(config_path_)) {
+  if (!config_store.Load(config_path)) {
     LOG(ERROR) << "Failed to read privetd config file from "
-               << config_path_.value();
+               << config_path.value();
   } else {
     CHECK(parser_->Parse(config_store)) << "Failed to read configuration file.";
   }
   state_store_->Init();
+
+  std::set<std::string> device_whitelist{options.device_whitelist};
   // This state store key doesn't exist naturally, but developers
   // sometime put it in their state store to cause the device to bring
   // up WiFi bootstrapping while being connected to an ethernet interface.
   std::string test_device_whitelist;
-  if (device_whitelist_.empty() &&
+  if (device_whitelist.empty() &&
       state_store_->GetString(kWiFiBootstrapInterfaces,
                               &test_device_whitelist)) {
     auto interfaces =
         chromeos::string_utils::Split(test_device_whitelist, ",", true, true);
-    device_whitelist_.insert(interfaces.begin(), interfaces.end());
+    device_whitelist.insert(interfaces.begin(), interfaces.end());
   }
   device_ = DeviceDelegate::CreateDefault();
-  cloud_ = CloudDelegate::CreateDefault(
-      bus_, parser_->gcd_bootstrap_mode() != GcdBootstrapMode::kDisabled);
+  cloud_ = CloudDelegate::CreateDefault(parser_->gcd_bootstrap_mode() !=
+                                        GcdBootstrapMode::kDisabled);
   cloud_observer_.Add(cloud_.get());
   security_.reset(new SecurityManager(parser_->pairing_modes(),
                                       parser_->embedded_code_path(),
                                       disable_security_));
   shill_client_.reset(new ShillClient(
-      bus_, device_whitelist_.empty() ? parser_->automatic_wifi_interfaces()
-                                      : device_whitelist_));
+      bus, device_whitelist.empty() ? parser_->automatic_wifi_interfaces()
+                                    : device_whitelist));
   shill_client_->RegisterConnectivityListener(
       base::Bind(&Manager::OnConnectivityChanged, base::Unretained(this)));
-  ap_manager_client_.reset(new ApManagerClient(bus_));
+  ap_manager_client_.reset(new ApManagerClient(bus));
 
   if (parser_->wifi_bootstrap_mode() != WiFiBootstrapMode::kDisabled) {
     VLOG(1) << "Enabling WiFi bootstrapping.";
@@ -121,19 +122,20 @@ void Manager::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
     wifi_bootstrap_manager_->Init();
   }
 
-  peerd_client_.reset(new PeerdClient(bus_, device_.get(), cloud_.get(),
+  peerd_client_.reset(new PeerdClient(bus, device_.get(), cloud_.get(),
                                       wifi_bootstrap_manager_.get()));
 
   privet_handler_.reset(
       new PrivetHandler(cloud_.get(), device_.get(), security_.get(),
                         wifi_bootstrap_manager_.get(), peerd_client_.get()));
+
   web_server_.reset(new libwebserv::Server);
   web_server_->OnProtocolHandlerConnected(base::Bind(
       &Manager::OnProtocolHandlerConnected, weak_ptr_factory_.GetWeakPtr()));
   web_server_->OnProtocolHandlerDisconnected(base::Bind(
       &Manager::OnProtocolHandlerDisconnected, weak_ptr_factory_.GetWeakPtr()));
 
-  web_server_->Connect(bus_, kServiceName,
+  web_server_->Connect(bus, buffet::dbus_constants::kServiceName,
                        sequencer->GetHandler("Server::Connect failed.", true),
                        base::Bind(&base::DoNothing),
                        base::Bind(&base::DoNothing));
@@ -144,7 +146,7 @@ void Manager::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   web_server_->GetDefaultHttpsHandler()->AddHandlerCallback(
       "/privet/", "",
       base::Bind(&Manager::PrivetRequestHandler, base::Unretained(this)));
-  if (enable_ping_) {
+  if (options.enable_ping) {
     web_server_->GetDefaultHttpHandler()->AddHandlerCallback(
         "/privet/ping", chromeos::http::request_type::kGet,
         base::Bind(&Manager::HelloWorldHandler, base::Unretained(this)));
@@ -154,14 +156,13 @@ void Manager::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
   }
 }
 
-void Manager::OnShutdown(int* return_code) {
+void Manager::OnShutdown() {
   web_server_->Disconnect();
-  DBusDaemon::OnShutdown(return_code);
 }
 
 void Manager::OnDeviceInfoChanged() {
   OnChanged();
-}
+};
 
 void Manager::PrivetRequestHandler(std::unique_ptr<Request> request,
                                    std::unique_ptr<Response> response) {
@@ -240,38 +241,3 @@ void Manager::OnProtocolHandlerDisconnected(ProtocolHandler* protocol_handler) {
 }
 
 }  // namespace privetd
-
-int old_main(int argc, char* argv[]) {
-  DEFINE_bool(disable_security, false, "disable Privet security for tests");
-  DEFINE_bool(enable_ping, false, "enable test HTTP handler at /privet/ping");
-  DEFINE_bool(log_to_stderr, false, "log trace messages to stderr as well");
-  DEFINE_string(config_path, privetd::kDefaultConfigFilePath,
-                "Path to file containing config information.");
-  DEFINE_string(state_path, privetd::kDefaultStateFilePath,
-                "Path to file containing state information.");
-  DEFINE_string(device_whitelist, "",
-                "Comma separated list of network interfaces to monitor for "
-                "connectivity (an empty list enables all interfaces).");
-
-  chromeos::FlagHelper::Init(argc, argv, "Privet protocol handler daemon");
-
-  int flags = chromeos::kLogToSyslog;
-  if (FLAGS_log_to_stderr)
-    flags |= chromeos::kLogToStderr;
-  chromeos::InitLog(flags | chromeos::kLogHeader);
-
-  if (FLAGS_config_path.empty())
-    FLAGS_config_path = privetd::kDefaultConfigFilePath;
-
-  if (FLAGS_state_path.empty())
-    FLAGS_state_path = privetd::kDefaultStateFilePath;
-
-  auto device_whitelist =
-      chromeos::string_utils::Split(FLAGS_device_whitelist, ",", true, true);
-
-  privetd::Manager daemon(
-      FLAGS_disable_security, FLAGS_enable_ping,
-      std::set<std::string>(device_whitelist.begin(), device_whitelist.end()),
-      base::FilePath(FLAGS_config_path), base::FilePath(FLAGS_state_path));
-  return daemon.Run();
-}

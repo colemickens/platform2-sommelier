@@ -59,27 +59,23 @@ Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
 Manager::~Manager() {
 }
 
-void Manager::Start(const base::FilePath& config_path,
-                    const base::FilePath& state_path,
-                    const base::FilePath& test_definitions_path,
-                    bool xmpp_enabled,
-                    const AsyncEventSequencer::CompletionAction& cb) {
+void Manager::Start(const Options& options, AsyncEventSequencer* sequencer) {
   command_manager_ =
       std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
   command_manager_->AddOnCommandDefChanged(base::Bind(
       &Manager::OnCommandDefsChanged, weak_ptr_factory_.GetWeakPtr()));
   command_manager_->Startup(base::FilePath{"/etc/buffet"},
-                            test_definitions_path);
+                            options.test_definitions_path);
   state_change_queue_.reset(new StateChangeQueue(kMaxStateChangeQueueSize));
   state_manager_ = std::make_shared<StateManager>(state_change_queue_.get());
   state_manager_->AddOnChangedCallback(
       base::Bind(&Manager::OnStateChanged, weak_ptr_factory_.GetWeakPtr()));
   state_manager_->Startup();
 
-  std::unique_ptr<BuffetConfig> config{new BuffetConfig{state_path}};
+  std::unique_ptr<BuffetConfig> config{new BuffetConfig{options.state_path}};
   config->AddOnChangedCallback(
       base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
-  config->Load(config_path);
+  config->Load(options.config_path);
 
   auto transport = chromeos::http::Transport::CreateDefault();
   transport->SetDefaultTimeout(base::TimeDelta::FromSeconds(
@@ -89,7 +85,7 @@ void Manager::Start(const base::FilePath& config_path,
   // device info state data unencrypted.
   device_info_.reset(new DeviceRegistrationInfo(
       command_manager_, state_manager_, std::move(config), transport,
-      xmpp_enabled));
+      options.xmpp_enabled));
   device_info_->AddOnRegistrationChangedCallback(base::Bind(
       &Manager::OnRegistrationChanged, weak_ptr_factory_.GetWeakPtr()));
 
@@ -97,8 +93,36 @@ void Manager::Start(const base::FilePath& config_path,
       device_info_->AsWeakPtr(), state_manager_, command_manager_});
 
   device_info_->Start();
+
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
-  dbus_object_.RegisterAsync(cb);
+  dbus_object_.RegisterAsync(
+      sequencer->GetHandler("Manager.RegisterAsync() failed.", true));
+
+  if (!options.privet.disable_privet)
+    StartPrivet(options.privet, sequencer);
+}
+
+void Manager::StartPrivet(const privetd::Manager::Options& options,
+                          AsyncEventSequencer* sequencer) {
+  privet_.reset(new privetd::Manager{});
+  privet_->Start(options, dbus_object_.GetBus(), sequencer);
+
+  if (privet_->GetWifiBootstrapManager()) {
+    privet_->GetWifiBootstrapManager()->RegisterStateListener(base::Bind(
+        &Manager::UpdateWiFiBootstrapState, weak_ptr_factory_.GetWeakPtr()));
+  } else {
+    UpdateWiFiBootstrapState(privetd::WifiBootstrapManager::kDisabled);
+  }
+
+  privet_->GetSecurityManager()->RegisterPairingListeners(
+      base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
+      base::Bind(&Manager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
+  // TODO(wiley) Watch for appropriate state variables from |cloud_delegate|.
+}
+
+void Manager::Stop() {
+  if (privet_)
+    privet_->OnShutdown();
 }
 
 void Manager::CheckDeviceRegistered(DBusMethodResponse<std::string> response) {

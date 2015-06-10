@@ -52,12 +52,18 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
           object_manager);
   ~Manager();
 
-  void Start(
-      const base::FilePath& config_path,
-      const base::FilePath& state_path,
-      const base::FilePath& test_definitions_path,
-      bool xmpp_enabled,
-      const chromeos::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
+  struct Options {
+    base::FilePath config_path;
+    base::FilePath state_path;
+    base::FilePath test_definitions_path;
+    bool xmpp_enabled{true};
+    privetd::Manager::Options privet;
+  };
+
+  void Start(const Options& options,
+             chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+
+  void Stop();
 
  private:
   // DBus methods:
@@ -99,6 +105,9 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
       const chromeos::VariantDictionary& in_options) override;
   bool DisableGCDBootstrapping(chromeos::ErrorPtr* error) override;
 
+  void StartPrivet(const privetd::Manager::Options& options,
+                   chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+
   void OnCommandDefsChanged();
   void OnStateChanged();
   void OnRegistrationChanged(RegistrationStatus status);
@@ -117,6 +126,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   std::shared_ptr<StateManager> state_manager_;
   std::unique_ptr<DeviceRegistrationInfo> device_info_;
   std::unique_ptr<BaseApiHandler> base_api_handler_;
+  std::unique_ptr<privetd::Manager> privet_;
 
   base::WeakPtrFactory<Manager> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Manager);

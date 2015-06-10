@@ -12,9 +12,13 @@
 
 #include <base/memory/weak_ptr.h>
 #include <base/scoped_observer.h>
-#include <chromeos/daemons/dbus_daemon.h>
 
 #include "buffet/privet/cloud_delegate.h"
+
+namespace buffet {
+class CommandManager;
+class DeviceRegistrationInfo;
+}
 
 namespace chromeos {
 namespace dbus_utils {
@@ -31,33 +35,42 @@ class Server;
 
 namespace privetd {
 
-class PrivetdConfigParser;
-class DaemonState;
-class CloudDelegate;
-class DeviceDelegate;
-class SecurityManager;
-class ShillClient;
 class ApManagerClient;
-class WifiBootstrapManager;
+class CloudDelegate;
+class DaemonState;
+class DeviceDelegate;
 class PeerdClient;
 class PrivetHandler;
+class PrivetdConfigParser;
+class SecurityManager;
+class ShillClient;
+class WifiBootstrapManager;
 
-class Manager : public chromeos::DBusServiceDaemon,
-                public CloudDelegate::Observer {
+class Manager : public CloudDelegate::Observer {
  public:
-  Manager(bool disable_security,
-          bool enable_ping,
-          const std::set<std::string>& device_whitelist,
-          const base::FilePath& config_path,
-          const base::FilePath& state_path);
-  ~Manager() override;
+  struct Options {
+    bool disable_privet{false};
+    bool disable_security{false};
+    bool enable_ping{false};
+    std::set<std::string> device_whitelist;
+  };
 
-  void RegisterDBusObjectsAsync(
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer) override;
+  Manager();
+  ~Manager();
 
-  void OnShutdown(int* return_code) override;
+  void Start(const Options& options,
+             const scoped_refptr<dbus::Bus>& bus,
+             chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+
+  void OnShutdown();
 
   void OnDeviceInfoChanged() override;
+
+  privetd::WifiBootstrapManager* GetWifiBootstrapManager() {
+    return wifi_bootstrap_manager_.get();
+  }
+
+  privetd::SecurityManager* GetSecurityManager() { return security_.get(); }
 
  private:
   void PrivetRequestHandler(std::unique_ptr<libwebserv::Request> request,
@@ -80,11 +93,8 @@ class Manager : public chromeos::DBusServiceDaemon,
   void OnProtocolHandlerDisconnected(
       libwebserv::ProtocolHandler* protocol_handler);
 
-  bool disable_security_;
-  bool enable_ping_;
+  bool disable_security_{false};
   std::unique_ptr<PrivetdConfigParser> parser_;
-  std::set<std::string> device_whitelist_;
-  base::FilePath config_path_;
   std::unique_ptr<DaemonState> state_store_;
   std::unique_ptr<CloudDelegate> cloud_;
   std::unique_ptr<DeviceDelegate> device_;
