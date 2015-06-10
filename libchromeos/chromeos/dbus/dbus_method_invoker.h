@@ -73,6 +73,7 @@
 #include <chromeos/errors/error.h>
 #include <chromeos/errors/error_codes.h>
 #include <chromeos/chromeos_export.h>
+#include <dbus/file_descriptor.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
@@ -140,6 +141,27 @@ inline std::unique_ptr<dbus::Response> CallMethodAndBlock(
                                        args...);
 }
 
+namespace internal {
+// In order to support non-copyable dbus::FileDescriptor, we have this
+// internal::HackMove() helper function that does really nothing for normal
+// types but uses Pass() for file descriptors so we can move them out from
+// the temporaries created inside DBusParamReader<...>::Invoke().
+// If only libchrome supported real rvalues so we can just do std::move() and
+// be done with it.
+template <typename T>
+inline const T& HackMove(const T& val) {
+  return val;
+}
+
+// Even though |val| here is passed as const&, the actual value is created
+// inside DBusParamReader<...>::Invoke() and is temporary in nature, so it is
+// safe to move the file descriptor out of |val|. That's why we are doing
+// const_cast here. It is a bit hacky, but there is no negative side effects.
+inline dbus::FileDescriptor HackMove(const dbus::FileDescriptor& val) {
+  return const_cast<dbus::FileDescriptor&>(val).Pass();
+}
+}  // namespace internal
+
 // Extracts the parameters of |ResultTypes...| types from the message reader
 // and puts the values in the resulting |tuple|. Returns false on error and
 // provides additional error details in |error| object.
@@ -149,7 +171,7 @@ inline bool ExtractMessageParametersAsTuple(
     ErrorPtr* error,
     std::tuple<ResultTypes...>* val_tuple) {
   auto callback = [val_tuple](const ResultTypes&... params) {
-    *val_tuple = std::tie(params...);
+    *val_tuple = std::forward_as_tuple(internal::HackMove(params)...);
   };
   return DBusParamReader<false, ResultTypes...>::Invoke(
       callback, reader, error);
@@ -162,7 +184,7 @@ inline bool ExtractMessageParametersAsTuple(
     ErrorPtr* error,
     std::tuple<ResultTypes&...>* ref_tuple) {
   auto callback = [ref_tuple](const ResultTypes&... params) {
-    *ref_tuple = std::tie(params...);
+    *ref_tuple = std::forward_as_tuple(internal::HackMove(params)...);
   };
   return DBusParamReader<false, ResultTypes...>::Invoke(
       callback, reader, error);

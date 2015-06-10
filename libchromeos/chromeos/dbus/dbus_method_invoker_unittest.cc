@@ -34,6 +34,7 @@ const char kTestInterface[] = "org.test.Object.TestInterface";
 const char kTestMethod1[] = "TestMethod1";
 const char kTestMethod2[] = "TestMethod2";
 const char kTestMethod3[] = "TestMethod3";
+const char kTestMethod4[] = "TestMethod4";
 
 class DBusMethodInvokerTest : public testing::Test {
  public:
@@ -86,6 +87,17 @@ class DBusMethodInvokerTest : public testing::Test {
           AppendValueToWriter(&writer, msg);
           return response.release();
         }
+      } else if (method_call->GetMember() == kTestMethod4) {
+        method_call->SetSerial(123);
+        MessageReader reader(method_call);
+        dbus::FileDescriptor fd;
+        if (reader.PopFileDescriptor(&fd)) {
+          auto response = Response::CreateEmpty();
+          MessageWriter writer(response.get());
+          fd.CheckValidity();
+          writer.AppendFileDescriptor(fd);
+          return response.release();
+        }
       }
     }
 
@@ -122,6 +134,19 @@ class DBusMethodInvokerTest : public testing::Test {
     return result;
   }
 
+  // Sends a file descriptor received over D-Bus back to the caller.
+  dbus::FileDescriptor EchoFD(const dbus::FileDescriptor& fd_in) {
+    std::unique_ptr<dbus::Response> response =
+        chromeos::dbus_utils::CallMethodAndBlock(mock_object_proxy_.get(),
+                                                 kTestInterface, kTestMethod4,
+                                                 nullptr, fd_in);
+    EXPECT_NE(nullptr, response.get());
+    dbus::FileDescriptor fd_out;
+    using chromeos::dbus_utils::ExtractMethodCallResults;
+    EXPECT_TRUE(ExtractMethodCallResults(response.get(), nullptr, &fd_out));
+    return fd_out.Pass();
+  }
+
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_object_proxy_;
 };
@@ -152,6 +177,21 @@ TEST_F(DBusMethodInvokerTest, TestProtobuf) {
 
   EXPECT_EQ(123, resp.foo());
   EXPECT_EQ("bar", resp.bar());
+}
+
+TEST_F(DBusMethodInvokerTest, TestFileDescriptors) {
+  // Passing a file descriptor over D-Bus would effectively duplicate the fd.
+  // So the resulting file descriptor value would be different but it still
+  // should be valid.
+  dbus::FileDescriptor fd_stdin(0);
+  fd_stdin.CheckValidity();
+  EXPECT_NE(fd_stdin.value(), EchoFD(fd_stdin).value());
+  dbus::FileDescriptor fd_stdout(1);
+  fd_stdout.CheckValidity();
+  EXPECT_NE(fd_stdout.value(), EchoFD(fd_stdout).value());
+  dbus::FileDescriptor fd_stderr(2);
+  fd_stderr.CheckValidity();
+  EXPECT_NE(fd_stderr.value(), EchoFD(fd_stderr).value());
 }
 
 //////////////////////////////////////////////////////////////////////////////
