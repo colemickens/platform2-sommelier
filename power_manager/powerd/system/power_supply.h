@@ -48,6 +48,7 @@ struct PowerStatus {
     Source(const std::string& id,
            const std::string& manufacturer_id,
            const std::string& model_id,
+           double max_power,
            bool active_by_default);
     ~Source();
 
@@ -57,6 +58,9 @@ struct PowerStatus {
     // Values read from |manufacturer| and |model_name|.
     std::string manufacturer_id;
     std::string model_id;
+
+    // Maximum power this source is capable of delivering, in watts.
+    double max_power;
 
     // True if the power source automatically provides charge when connected
     // (e.g. a dedicated charger).

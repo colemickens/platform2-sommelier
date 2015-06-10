@@ -364,6 +364,8 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
             status.available_external_power_sources[0].manufacturer_id);
   EXPECT_EQ(kLine1ModelName,
             status.available_external_power_sources[0].model_id);
+  EXPECT_EQ(kCurrentMax * kVoltageMax,
+            status.available_external_power_sources[0].max_power);
   EXPECT_TRUE(status.available_external_power_sources[0].active_by_default);
   EXPECT_EQ(kLine1Id, status.external_power_source_id);
   EXPECT_TRUE(status.supports_dual_role_devices);
@@ -376,8 +378,9 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   WriteValue(line2_dir, "type", kUsbType);
   WriteValue(line2_dir, "online", "1");
   WriteValue(line2_dir, "status", kCharging);
-  WriteDoubleValue(line2_dir, "current_max", kCurrentMax / 2.0);
-  WriteDoubleValue(line2_dir, "voltage_max_design", kVoltageMax / 2.0);
+  const double kCurrentFactor = 0.5;
+  WriteDoubleValue(line2_dir, "current_max", kCurrentMax * kCurrentFactor);
+  WriteDoubleValue(line2_dir, "voltage_max_design", kVoltageMax);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.line_power_on);
   EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, status.external_power);
@@ -388,6 +391,8 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
             status.available_external_power_sources[0].manufacturer_id);
   EXPECT_EQ(kLine2ModelName,
             status.available_external_power_sources[0].model_id);
+  EXPECT_EQ(kCurrentMax * kCurrentFactor * kVoltageMax,
+            status.available_external_power_sources[0].max_power);
   EXPECT_TRUE(status.available_external_power_sources[0].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
@@ -406,12 +411,16 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
             status.available_external_power_sources[0].manufacturer_id);
   EXPECT_EQ(kLine1ModelName,
             status.available_external_power_sources[0].model_id);
+  EXPECT_EQ(kCurrentMax * kVoltageMax,
+            status.available_external_power_sources[0].max_power);
   EXPECT_TRUE(status.available_external_power_sources[0].active_by_default);
   EXPECT_EQ(kLine2Id, status.available_external_power_sources[1].id);
   EXPECT_EQ(kLine2Manufacturer,
             status.available_external_power_sources[1].manufacturer_id);
   EXPECT_EQ(kLine2ModelName,
             status.available_external_power_sources[1].model_id);
+  EXPECT_EQ(kCurrentMax * kCurrentFactor * kVoltageMax,
+            status.available_external_power_sources[1].max_power);
   EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
@@ -1188,14 +1197,17 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   const char kChargerId[] = "PORT1";
   const char kChargerManufacturerId[] = "ab4e";
   const char kChargerModelId[] = "0f31";
+  const double kChargerMaxPower = 60.0;
   const char kPhoneId[] = "PORT2";
   const char kPhoneManufacturerId[] = "468b";
   const char kPhoneModelId[] = "0429";
+  const double kPhoneMaxPower = 7.5;
   status.external_power_source_id = kChargerId;
+  status.available_external_power_sources.push_back(
+      PowerStatus::Source(kChargerId, kChargerManufacturerId, kChargerModelId,
+                          kChargerMaxPower, true));
   status.available_external_power_sources.push_back(PowerStatus::Source(
-      kChargerId, kChargerManufacturerId, kChargerModelId, true));
-  status.available_external_power_sources.push_back(PowerStatus::Source(
-      kPhoneId, kPhoneManufacturerId, kPhoneModelId, false));
+      kPhoneId, kPhoneManufacturerId, kPhoneModelId, kPhoneMaxPower, false));
   status.supports_dual_role_devices = true;
 
   proto.Clear();
@@ -1207,12 +1219,15 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
             proto.available_external_power_source(0).manufacturer_id());
   EXPECT_EQ(kChargerModelId,
             proto.available_external_power_source(0).model_id());
+  EXPECT_EQ(kChargerMaxPower,
+            proto.available_external_power_source(0).max_power());
   EXPECT_TRUE(proto.available_external_power_source(0).active_by_default());
   EXPECT_EQ(kPhoneId, proto.available_external_power_source(1).id());
   EXPECT_EQ(kPhoneManufacturerId,
             proto.available_external_power_source(1).manufacturer_id());
-  EXPECT_EQ(kPhoneModelId,
-            proto.available_external_power_source(1).model_id());
+  EXPECT_EQ(kPhoneModelId, proto.available_external_power_source(1).model_id());
+  EXPECT_EQ(kPhoneMaxPower,
+            proto.available_external_power_source(1).max_power());
   EXPECT_FALSE(proto.available_external_power_source(1).active_by_default());
   EXPECT_TRUE(proto.supports_dual_role_devices());
 

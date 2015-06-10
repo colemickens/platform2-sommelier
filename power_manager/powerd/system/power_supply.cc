@@ -161,6 +161,7 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
     proto_source->set_id(source.id);
     proto_source->set_manufacturer_id(source.manufacturer_id);
     proto_source->set_model_id(source.model_id);
+    proto_source->set_max_power(source.max_power);
     proto_source->set_active_by_default(source.active_by_default);
   }
   if (!status.external_power_source_id.empty())
@@ -236,10 +237,12 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
 PowerStatus::Source::Source(const std::string& id,
                             const std::string& manufacturer_id,
                             const std::string& model_id,
+                            double max_power,
                             bool active_by_default)
     : id(id),
       manufacturer_id(manufacturer_id),
       model_id(model_id),
+      max_power(max_power),
       active_by_default(active_by_default) {}
 
 PowerStatus::Source::~Source() {}
@@ -630,8 +633,12 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   ReadAndTrimString(path, "manufacturer", &manufacturer_id);
   ReadAndTrimString(path, "model_name", &model_id);
 
-  status->available_external_power_sources.push_back(
-      PowerStatus::Source(id, manufacturer_id, model_id, active_by_default));
+  const double max_voltage = ReadScaledDouble(path, "voltage_max_design");
+  const double max_current = ReadScaledDouble(path, "current_max");
+  const double max_power = max_voltage * max_current;  // watts
+
+  status->available_external_power_sources.push_back(PowerStatus::Source(
+      id, manufacturer_id, model_id, max_power, active_by_default));
 
   // If this is a dual-role device, make sure that we're actually getting
   // charged by it.
@@ -648,9 +655,9 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   status->line_power_path = path.value();
   status->line_power_type = type;
   status->line_power_voltage = ReadScaledDouble(path, "voltage_now");
-  status->line_power_max_voltage = ReadScaledDouble(path, "voltage_max_design");
+  status->line_power_max_voltage = max_voltage;
   status->line_power_current = ReadScaledDouble(path, "current_now");
-  status->line_power_max_current = ReadScaledDouble(path, "current_max");
+  status->line_power_max_current = max_current;
   if (IsUsbChargerType(status->line_power_type)) {
     if (!line_status.empty()) {
       // The USB PD kernel driver reports all types of chargers as "USB". Check
