@@ -15,6 +15,10 @@
 #include <base/threading/thread.h>
 #include <chromeos/bind_lambda.h>
 
+#include "tpm_manager/server/local_data_store.h"
+#include "tpm_manager/server/tpm_initializer.h"
+#include "tpm_manager/server/tpm_status.h"
+
 namespace tpm_manager {
 
 // This class implements the core tpm_manager service. All Tpm access is
@@ -37,13 +41,30 @@ namespace tpm_manager {
 // back to the main thread.
 class TpmManagerService : public TpmManagerInterface {
  public:
-  TpmManagerService();
+  // If |wait_for_ownership| is set, TPM initialization will be postponed until
+  // an explicit TakeOwnership request is received.
+  explicit TpmManagerService(bool wait_for_ownership);
   ~TpmManagerService() override = default;
 
   // TpmManagerInterface methods.
   bool Initialize() override;
   void GetTpmStatus(const GetTpmStatusRequest& request,
                     const GetTpmStatusCallback& callback) override;
+  void TakeOwnership(const TakeOwnershipRequest& request,
+                     const TakeOwnershipCallback& callback) override;
+
+  // Mutators useful for injecting dependencies for testing.
+  void set_local_data_store(LocalDataStore* local_data_store) {
+    local_data_store_ = local_data_store;
+  }
+
+  void set_tpm_initializer(TpmInitializer* initializer) {
+    tpm_initializer_ = initializer;
+  }
+
+  void set_tpm_status(TpmStatus* status) {
+    tpm_status_ = status;
+  }
 
  private:
   // A relay callback which allows the use of weak pointer semantics for a reply
@@ -60,8 +81,25 @@ class TpmManagerService : public TpmManagerInterface {
   void GetTpmStatusTask(const GetTpmStatusRequest& request,
                         const std::shared_ptr<GetTpmStatusReply>& result);
 
-  // Background thread to allow processing of potentially large TPM
-  // requests in the background.
+  // Blocking implementation of TakeOwnership that can be executed on the
+  // background worker thread.
+  void TakeOwnershipTask(const TakeOwnershipRequest& request,
+                         const std::shared_ptr<TakeOwnershipReply>& result);
+
+  // Synchronously initializes the TPM according to the current configuration.
+  // If an initialization process was interrupted it will be continued. If the
+  // TPM is already initialized or cannot yet be initialized, this method has no
+  // effect.
+  void InitializeTask();
+
+  LocalDataStore* local_data_store_{nullptr};
+  TpmInitializer* tpm_initializer_{nullptr};
+  TpmStatus* tpm_status_{nullptr};
+  // Whether to wait for an explicit call to 'TakeOwnership' before initializing
+  // the TPM. Normally tracks the --wait_for_ownership command line option.
+  bool wait_for_ownership_;
+  // Background thread to allow processing of potentially lengthy TPM requests
+  // in the background.
   std::unique_ptr<base::Thread> worker_thread_;
 
   // Declared last so any weak pointers are destroyed first.

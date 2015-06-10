@@ -1,0 +1,9 @@
+option optimize_for = LITE_RUNTIME;
+package tpm_manager;
+
+// The format of persistent local TPM management data stored on the device.
+message LocalData {
+  optional bool owned_by_this_install = 1;
+  optional bytes owner_password = 2;
+  repeated string owner_dependency = 3;
+}

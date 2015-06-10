@@ -53,4 +53,21 @@ void DBusProxy::GetTpmStatus(const GetTpmStatusRequest& request,
       request);
 }
 
+void DBusProxy::TakeOwnership(const TakeOwnershipRequest& request,
+                              const TakeOwnershipCallback& callback) {
+  auto on_error = [callback](chromeos::Error* error) {
+    TakeOwnershipReply reply;
+    reply.set_status(STATUS_NOT_AVAILABLE);
+    callback.Run(reply);
+  };
+  chromeos::dbus_utils::CallMethodWithTimeout(
+      kDBusTimeoutMS,
+      object_proxy_,
+      tpm_manager::kTpmManagerInterface,
+      tpm_manager::kTakeOwnership,
+      callback,
+      base::Bind(on_error),
+      request);
+}
+
 }  // namespace tpm_manager

@@ -13,6 +13,7 @@ constexpr char kTpmManagerServiceName[] = "org.chromium.TpmManager";
 
 // Methods exported by tpm_manager.
 constexpr char kGetTpmStatus[] = "GetTpmStatus";
+constexpr char kTakeOwnership[] = "TakeOwnership";
 
 }  // namespace tpm_manager
 

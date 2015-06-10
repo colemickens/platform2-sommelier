@@ -35,11 +35,19 @@ class DBusService {
   }
 
  private:
+  friend class DBusServiceTest;
+
   // Handles the GetTpmStatus D-Bus call.
   void HandleGetTpmStatus(
       std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
           const GetTpmStatusReply&>> response,
       const GetTpmStatusRequest& request);
+
+  // Handles the TakeOwnership D-Bus call.
+  void HandleTakeOwnership(
+      std::unique_ptr<chromeos::dbus_utils::DBusMethodResponse<
+          const TakeOwnershipReply&>> response,
+      const TakeOwnershipRequest& request);
 
   chromeos::dbus_utils::DBusObject dbus_object_;
   TpmManagerInterface* service_;

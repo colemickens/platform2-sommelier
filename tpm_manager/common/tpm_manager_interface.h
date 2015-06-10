@@ -26,6 +26,11 @@ class TPM_MANAGER_EXPORT TpmManagerInterface {
   using GetTpmStatusCallback = base::Callback<void(const GetTpmStatusReply&)>;
   virtual void GetTpmStatus(const GetTpmStatusRequest& request,
                             const GetTpmStatusCallback& callback) = 0;
+
+  // Processes a TakeOwnershipRequest and responds with a TakeOwnershipReply.
+  using TakeOwnershipCallback = base::Callback<void(const TakeOwnershipReply&)>;
+  virtual void TakeOwnership(const TakeOwnershipRequest& request,
+                             const TakeOwnershipCallback& callback) = 0;
 };
 
 }  // namespace tpm_manager

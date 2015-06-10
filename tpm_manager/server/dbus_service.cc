@@ -28,6 +28,8 @@ void DBusService::Register(const CompletionAction& callback) {
 
   dbus_interface->AddMethodHandler(kGetTpmStatus, base::Unretained(this),
                                    &DBusService::HandleGetTpmStatus);
+  dbus_interface->AddMethodHandler(kTakeOwnership, base::Unretained(this),
+                                   &DBusService::HandleTakeOwnership);
   dbus_object_.RegisterAsync(callback);
 }
 
@@ -38,12 +40,29 @@ void DBusService::HandleGetTpmStatus(
   // callback.
   using SharedResponsePointer = std::shared_ptr<
       DBusMethodResponse<const GetTpmStatusReply&>>;
-  // A callback that fills the reply protobuf and sends it.
+  // A callback that sends off the reply protobuf.
   auto callback = [](const SharedResponsePointer& response,
                      const GetTpmStatusReply& reply) {
     response->Return(reply);
   };
   service_->GetTpmStatus(
+      request,
+      base::Bind(callback, SharedResponsePointer(std::move(response))));
+}
+
+void DBusService::HandleTakeOwnership(
+    std::unique_ptr<DBusMethodResponse<const TakeOwnershipReply&>> response,
+    const TakeOwnershipRequest& request) {
+  // Convert |response| to a shared_ptr so |service_| can safely copy the
+  // callback.
+  using SharedResponsePointer = std::shared_ptr<
+      DBusMethodResponse<const TakeOwnershipReply&>>;
+  // A callback that sends off the reply protobuf.
+  auto callback = [](const SharedResponsePointer& response,
+                     const TakeOwnershipReply& reply) {
+    response->Return(reply);
+  };
+  service_->TakeOwnership(
       request,
       base::Bind(callback, SharedResponsePointer(std::move(response))));
 }

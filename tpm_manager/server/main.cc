@@ -25,6 +25,8 @@ const char kTpmManagerUser[] = "tpm_manager";
 const char kTpmManagerGroup[] = "tpm_manager";
 const char kTpmManagerSeccompPath[] =
     "/usr/share/policy/tpm_managerd-seccomp.policy";
+const char kWaitForOwnershipTriggerSwitch[] = "wait_for_ownership_trigger";
+
 
 void InitMinijailSandbox() {
   uid_t tpm_manager_uid;
@@ -46,13 +48,13 @@ void InitMinijailSandbox() {
       << "TpmManagerDaemon was not able to drop to tpm_manager group.";
 }
 
-}  // namespace
-
 class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
  public:
   TpmManagerDaemon()
       : chromeos::DBusServiceDaemon(tpm_manager::kTpmManagerServiceName) {
-    tpm_manager_service_.reset(new tpm_manager::TpmManagerService);
+    base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+    tpm_manager_service_.reset(new tpm_manager::TpmManagerService(
+        command_line->HasSwitch(kWaitForOwnershipTriggerSwitch)));
   }
 
  protected:
@@ -79,11 +81,13 @@ class TpmManagerDaemon : public chromeos::DBusServiceDaemon {
   DISALLOW_COPY_AND_ASSIGN(TpmManagerDaemon);
 };
 
+}  // namespace
+
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  InitMinijailSandbox();
   TpmManagerDaemon daemon;
   LOG(INFO) << "TpmManager Daemon Started";
-  InitMinijailSandbox();
   return daemon.Run();
 }

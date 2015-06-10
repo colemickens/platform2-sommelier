@@ -1,50 +1,44 @@
 option optimize_for = LITE_RUNTIME;
 package tpm_manager;
 
+import "local_data.proto";
+
 // The messages in this file correspond to the TpmManager D-Bus interface.
 
 enum TpmManagerStatus {
   STATUS_SUCCESS = 0;
-  STATUS_NOT_AVAILABLE = 1;
+  STATUS_UNEXPECTED_DEVICE_ERROR = 1;
+  STATUS_NOT_AVAILABLE = 2;
 }
 
-// Input for the GetTpmStatus method
+// Input for the GetTpmStatus method.
 message GetTpmStatusRequest {
 }
 
-// Output from the GetTpmStatus method
+// Output from the GetTpmStatus method.
 message GetTpmStatusReply {
   optional TpmManagerStatus status = 1;
-
   // Whether a TPM is enabled on the system.
   optional bool enabled = 2;
   // Whether the TPM has been owned.
   optional bool owned = 3;
-  // Whether the TPM initialization flow has completed. This includes taking
-  // ownership, preparing attestation data, and finalizing lockbox NVRAM.
-  optional bool initialized = 4;
-  // The TPM owner password. This is only available when (owned &&
-  // !initialized) and sometimes not even then.
-  optional string owner_password = 5;
-  // Whether attestation data has been prepared. This includes reading the
-  // endorsement certificate out of NVRAM and generating an identity key. This
-  // does not include any kind of enrollment with a Privacy CA.
-  optional bool attestation_prepared = 6;
-  // Whether the device has enrolled with a Privacy CA. This means the identity
-  // key has been successfully certified.
-  optional bool attestation_enrolled = 7;
+  // Local TPM management data (including the owner password if available).
+  optional LocalData local_data = 4;
   // The current dictionary attack counter value.
-  optional int32 dictionary_attack_counter = 8;
+  optional int32 dictionary_attack_counter = 5;
   // The current dictionary attack counter threshold.
-  optional int32 dictionary_attack_threshold = 9;
+  optional int32 dictionary_attack_threshold = 6;
   // Whether the TPM is in some form of dictionary attack lockout.
-  optional bool dictionary_attack_lockout_in_effect = 10;
+  optional bool dictionary_attack_lockout_in_effect = 7;
   // The number of seconds remaining in the lockout.
-  optional int32 dictionary_attack_lockout_seconds_remaining = 11;
-  // Whether the install lockbox has been finalized.
-  optional bool install_lockbox_finalized = 12;
-  // Whether the boot lockbox has been finalized.
-  optional bool boot_lockbox_finalized = 13;
-  // Whether the current PCR values show a verified boot.
-  optional bool verified_boot_measured = 14;
+  optional int32 dictionary_attack_lockout_seconds_remaining = 8;
+}
+
+// Input for the TakeOwnership method.
+message TakeOwnershipRequest {
+}
+
+// Output from the TakeOwnership method.
+message TakeOwnershipReply {
+  optional TpmManagerStatus status = 1;
 }

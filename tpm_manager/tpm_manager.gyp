@@ -24,6 +24,7 @@
       },
       'sources': [
         '<(proto_in_dir)/dbus_interface.proto',
+        '<(proto_in_dir)/local_data.proto',
       ],
       'includes': ['../common-mk/protoc.gypi'],
     },
@@ -92,10 +93,17 @@
             ],
           },
           'sources': [
+            'client/dbus_proxy_test.cc',
+            'common/mock_tpm_manager_interface.cc',
+            'server/dbus_service_test.cc',
+            'server/mock_local_data_store.cc',
+            'server/mock_tpm_initializer.cc',
+            'server/mock_tpm_status.cc',
+            'server/tpm_manager_service_test.cc',
             'tpm_manager_testrunner.cc',
           ],
           'dependencies': [
-            'client_library',
+            'libtpm_manager',
             'proto_library',
             'server_library',
           ],
