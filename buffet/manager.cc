@@ -25,6 +25,9 @@
 #include "buffet/base_api_handler.h"
 #include "buffet/commands/command_instance.h"
 #include "buffet/commands/schema_constants.h"
+#include "buffet/privet/constants.h"
+#include "buffet/privet/security_manager.h"
+#include "buffet/privet/wifi_bootstrap_manager.h"
 #include "buffet/states/state_change_queue.h"
 #include "buffet/states/state_manager.h"
 #include "buffet/storage_impls.h"
@@ -35,10 +38,16 @@ using chromeos::dbus_utils::ExportedObjectManager;
 namespace buffet {
 
 namespace {
+
 // Max of 100 state update events should be enough in the queue.
 const size_t kMaxStateChangeQueueSize = 100;
 // The number of seconds each HTTP request will be allowed before timing out.
 const int kRequestTimeoutSeconds = 30;
+
+const char kPairingSessionIdKey[] = "sessionId";
+const char kPairingModeKey[] = "mode";
+const char kPairingCodeKey[] = "code";
+
 }  // anonymous namespace
 
 Manager::Manager(const base::WeakPtr<ExportedObjectManager>& object_manager)
@@ -222,6 +231,40 @@ std::string Manager::TestMethod(const std::string& message) {
   return message;
 }
 
+bool Manager::EnableWiFiBootstrapping(
+    chromeos::ErrorPtr* error,
+    const dbus::ObjectPath& in_listener_path,
+    const chromeos::VariantDictionary& in_options) {
+  chromeos::Error::AddTo(error, FROM_HERE, privetd::errors::kDomain,
+                         privetd::errors::kNotImplemented,
+                         "Manual WiFi bootstrapping is not implemented");
+  return false;
+}
+
+bool Manager::DisableWiFiBootstrapping(chromeos::ErrorPtr* error) {
+  chromeos::Error::AddTo(error, FROM_HERE, privetd::errors::kDomain,
+                         privetd::errors::kNotImplemented,
+                         "Manual WiFi bootstrapping is not implemented");
+  return false;
+}
+
+bool Manager::EnableGCDBootstrapping(
+    chromeos::ErrorPtr* error,
+    const dbus::ObjectPath& in_listener_path,
+    const chromeos::VariantDictionary& in_options) {
+  chromeos::Error::AddTo(error, FROM_HERE, privetd::errors::kDomain,
+                         privetd::errors::kNotImplemented,
+                         "Manual GCD bootstrapping is not implemented");
+  return false;
+}
+
+bool Manager::DisableGCDBootstrapping(chromeos::ErrorPtr* error) {
+  chromeos::Error::AddTo(error, FROM_HERE, privetd::errors::kDomain,
+                         privetd::errors::kNotImplemented,
+                         "Manual GCD bootstrapping is not implemented");
+  return false;
+}
+
 bool Manager::UpdateDeviceInfo(chromeos::ErrorPtr* error,
                                const std::string& in_name,
                                const std::string& in_description,
@@ -275,6 +318,48 @@ void Manager::OnConfigChanged(const BuffetConfig& config) {
   dbus_adaptor_.SetDescription(config.description());
   dbus_adaptor_.SetLocation(config.location());
   dbus_adaptor_.SetAnonymousAccessRole(config.local_anonymous_access_role());
+}
+
+void Manager::UpdateWiFiBootstrapState(
+    privetd::WifiBootstrapManager::State state) {
+  switch (state) {
+    case privetd::WifiBootstrapManager::kDisabled:
+      dbus_adaptor_.SetWiFiBootstrapState("disabled");
+      break;
+    case privetd::WifiBootstrapManager::kBootstrapping:
+      dbus_adaptor_.SetWiFiBootstrapState("waiting");
+      break;
+    case privetd::WifiBootstrapManager::kMonitoring:
+      dbus_adaptor_.SetWiFiBootstrapState("monitoring");
+      break;
+    case privetd::WifiBootstrapManager::kConnecting:
+      dbus_adaptor_.SetWiFiBootstrapState("connecting");
+      break;
+  }
+}
+
+void Manager::OnPairingStart(const std::string& session_id,
+                             privetd::PairingType pairing_type,
+                             const std::vector<uint8_t>& code) {
+  // For now, just overwrite the exposed PairInfo with
+  // the most recent pairing attempt.
+  dbus_adaptor_.SetPairingInfo(chromeos::VariantDictionary{
+      {kPairingSessionIdKey, session_id},
+      {kPairingModeKey, PairingTypeToString(pairing_type)},
+      {kPairingCodeKey, code},
+  });
+}
+
+void Manager::OnPairingEnd(const std::string& session_id) {
+  auto exposed_pairing_attempt = dbus_adaptor_.GetPairingInfo();
+  auto it = exposed_pairing_attempt.find(kPairingSessionIdKey);
+  if (it == exposed_pairing_attempt.end()) {
+    return;
+  }
+  std::string exposed_session{it->second.TryGet<std::string>()};
+  if (exposed_session == session_id) {
+    dbus_adaptor_.SetPairingInfo(chromeos::VariantDictionary{});
+  }
 }
 
 }  // namespace buffet

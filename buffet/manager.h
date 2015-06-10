@@ -22,6 +22,8 @@
 #include "buffet/commands/command_manager.h"
 #include "buffet/device_registration_info.h"
 #include "buffet/org.chromium.Buffet.Manager.h"
+#include "buffet/privet/privet_manager.h"
+#include "buffet/privet/wifi_bootstrap_manager.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -86,11 +88,26 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
       const std::vector<std::string>& in_names,
       const std::string& in_visibility) override;
   std::string TestMethod(const std::string& message) override;
+  bool EnableWiFiBootstrapping(
+      chromeos::ErrorPtr* error,
+      const dbus::ObjectPath& in_listener_path,
+      const chromeos::VariantDictionary& in_options) override;
+  bool DisableWiFiBootstrapping(chromeos::ErrorPtr* error) override;
+  bool EnableGCDBootstrapping(
+      chromeos::ErrorPtr* error,
+      const dbus::ObjectPath& in_listener_path,
+      const chromeos::VariantDictionary& in_options) override;
+  bool DisableGCDBootstrapping(chromeos::ErrorPtr* error) override;
 
   void OnCommandDefsChanged();
   void OnStateChanged();
   void OnRegistrationChanged(RegistrationStatus status);
   void OnConfigChanged(const BuffetConfig& config);
+  void UpdateWiFiBootstrapState(privetd::WifiBootstrapManager::State state);
+  void OnPairingStart(const std::string& session_id,
+                      privetd::PairingType pairing_type,
+                      const std::vector<uint8_t>& code);
+  void OnPairingEnd(const std::string& session_id);
 
   org::chromium::Buffet::ManagerAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
