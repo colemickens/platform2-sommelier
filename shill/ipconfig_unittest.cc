@@ -45,6 +45,17 @@ class IPConfigTest : public Test {
   IPConfigTest() : ipconfig_(new IPConfig(&control_, kDeviceName)) {
     ipconfig_->time_ = &time_;
   }
+
+  virtual void SetUp() {
+    ScopeLogger::GetInstance()->EnableScopesByName("inet");
+    ScopeLogger::GetInstance()->set_verbose_level(3);
+  }
+
+  virtual void TearDown() {
+    ScopeLogger::GetInstance()->EnableScopesByName("-inet");
+    ScopeLogger::GetInstance()->set_verbose_level(0);
+  }
+
   void DropRef(const IPConfigRefPtr & /*ipconfig*/,
                bool /*new_lease_acquired*/) {
     ipconfig_ = nullptr;
@@ -254,7 +265,7 @@ TEST_F(IPConfigTest, TimeToLeaseExpiry_NoDHCPLease) {
   ScopedMockLog log;
   uint32_t time_left = 0;
   // |current_lease_expiration_time_| has not been set, so expect an error.
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+  EXPECT_CALL(log, Log(_, _,
                        EndsWith("No current DHCP lease")));
   EXPECT_FALSE(ipconfig_->TimeToLeaseExpiry(&time_left));
   EXPECT_EQ(0, time_left);
@@ -269,7 +280,7 @@ TEST_F(IPConfigTest, TimeToLeaseExpiry_CurrentLeaseExpired) {
   ipconfig_->current_lease_expiration_time_ = {kTimeNow - 1, 0};
   EXPECT_CALL(time_, GetTimeBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(time_now), Return(0)));
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+  EXPECT_CALL(log, Log(_, _,
                        EndsWith("Current DHCP lease has already expired")));
   EXPECT_FALSE(ipconfig_->TimeToLeaseExpiry(&time_left));
   EXPECT_EQ(0, time_left);

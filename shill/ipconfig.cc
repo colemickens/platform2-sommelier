@@ -136,15 +136,13 @@ void IPConfig::ResetLeaseExpirationTime() {
 
 bool IPConfig::TimeToLeaseExpiry(uint32_t *time_left) {
   if (current_lease_expiration_time_.tv_sec == kDefaultLeaseExpirationTime) {
-    LOG(ERROR) << __func__ << ": "
-               << "No current DHCP lease";
+    SLOG(this, 2) << __func__ << ": No current DHCP lease";
     return false;
   }
   struct timeval now;
   time_->GetTimeBoottime(&now);
   if (now.tv_sec > current_lease_expiration_time_.tv_sec) {
-    LOG(ERROR) << __func__ << ": "
-               << "Current DHCP lease has already expired";
+    SLOG(this, 2) << __func__ << ": Current DHCP lease has already expired";
     return false;
   }
   *time_left = current_lease_expiration_time_.tv_sec - now.tv_sec;
