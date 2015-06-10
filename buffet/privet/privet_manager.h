@@ -18,6 +18,7 @@
 namespace buffet {
 class CommandManager;
 class DeviceRegistrationInfo;
+class StateManager;
 }
 
 namespace chromeos {
@@ -60,6 +61,9 @@ class Manager : public CloudDelegate::Observer {
 
   void Start(const Options& options,
              const scoped_refptr<dbus::Bus>& bus,
+             buffet::DeviceRegistrationInfo* device,
+             buffet::CommandManager* command_manager,
+             buffet::StateManager* state_manager,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   void OnShutdown();

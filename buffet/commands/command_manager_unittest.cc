@@ -186,11 +186,11 @@ TEST(CommandManager, UpdateCommandVisibility) {
     }
   })");
   ASSERT_TRUE(manager.LoadCommands(*json, "test", nullptr));
-  EXPECT_EQ(1, update_count);
+  EXPECT_EQ(2, update_count);
   const CommandDictionary& dict = manager.GetCommandDictionary();
   EXPECT_TRUE(manager.SetCommandVisibility(
       {"foo._baz"}, CommandDefinition::Visibility::GetLocal(), nullptr));
-  EXPECT_EQ(2, update_count);
+  EXPECT_EQ(3, update_count);
   EXPECT_EQ("local", dict.FindCommand("foo._baz")->GetVisibility().ToString());
   EXPECT_EQ("all", dict.FindCommand("foo._bar")->GetVisibility().ToString());
   EXPECT_EQ("none", dict.FindCommand("bar._quux")->GetVisibility().ToString());
@@ -202,7 +202,7 @@ TEST(CommandManager, UpdateCommandVisibility) {
   EXPECT_EQ(errors::commands::kInvalidCommandName, error->GetCode());
   EXPECT_EQ("Command 'test.cmd' is unknown", error->GetMessage());
   // The visibility state of commands shouldn't have changed.
-  EXPECT_EQ(2, update_count);
+  EXPECT_EQ(3, update_count);
   EXPECT_EQ("local", dict.FindCommand("foo._baz")->GetVisibility().ToString());
   EXPECT_EQ("all", dict.FindCommand("foo._bar")->GetVisibility().ToString());
   EXPECT_EQ("none", dict.FindCommand("bar._quux")->GetVisibility().ToString());
@@ -210,7 +210,7 @@ TEST(CommandManager, UpdateCommandVisibility) {
   EXPECT_TRUE(manager.SetCommandVisibility(
       {"foo._baz", "bar._quux"}, CommandDefinition::Visibility::GetCloud(),
       nullptr));
-  EXPECT_EQ(3, update_count);
+  EXPECT_EQ(4, update_count);
   EXPECT_EQ("cloud", dict.FindCommand("foo._baz")->GetVisibility().ToString());
   EXPECT_EQ("all", dict.FindCommand("foo._bar")->GetVisibility().ToString());
   EXPECT_EQ("cloud", dict.FindCommand("bar._quux")->GetVisibility().ToString());

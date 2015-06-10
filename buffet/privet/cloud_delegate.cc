@@ -8,8 +8,6 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/json/json_reader.h>
-#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/message_loop/message_loop.h>
@@ -18,8 +16,12 @@
 #include <chromeos/variant_dictionary.h>
 #include <dbus/bus.h>
 
+#include "buffet/buffet_config.h"
+#include "buffet/commands/command_manager.h"
 #include "buffet/dbus-proxies.h"
+#include "buffet/device_registration_info.h"
 #include "buffet/privet/constants.h"
+#include "buffet/states/state_manager.h"
 
 namespace privetd {
 
@@ -33,47 +35,64 @@ using org::chromium::Buffet::ObjectManagerProxy;
 const int kMaxSetupRetries = 5;
 const int kFirstRetryTimeoutSec = 1;
 
+buffet::CommandInstance* ReturnNotFound(const std::string& command_id,
+                                        chromeos::ErrorPtr* error) {
+  chromeos::Error::AddToPrintf(error, FROM_HERE, errors::kDomain,
+                               errors::kNotFound, "Command not found, ID='%s'",
+                               command_id.c_str());
+  return nullptr;
+}
+
 class CloudDelegateImpl : public CloudDelegate {
  public:
-  CloudDelegateImpl(const scoped_refptr<dbus::Bus>& bus,
-                    bool is_gcd_setup_enabled)
-      : object_manager_{bus}, is_gcd_setup_enabled_(is_gcd_setup_enabled) {
-    object_manager_.SetManagerAddedCallback(base::Bind(
-        &CloudDelegateImpl::OnManagerAdded, weak_factory_.GetWeakPtr()));
-    object_manager_.SetManagerRemovedCallback(base::Bind(
-        &CloudDelegateImpl::OnManagerRemoved, weak_factory_.GetWeakPtr()));
-    object_manager_.SetCommandRemovedCallback(base::Bind(
+  CloudDelegateImpl(bool is_gcd_setup_enabled,
+                    buffet::DeviceRegistrationInfo* device,
+                    buffet::CommandManager* command_manager,
+                    buffet::StateManager* state_manager)
+      : is_gcd_setup_enabled_(is_gcd_setup_enabled),
+        device_{device},
+        command_manager_{command_manager},
+        state_manager_{state_manager} {
+    device_->AddOnConfigChangedCallback(base::Bind(
+        &CloudDelegateImpl::OnConfigChanged, weak_factory_.GetWeakPtr()));
+    device_->AddOnRegistrationChangedCallback(base::Bind(
+        &CloudDelegateImpl::OnRegistrationChanged, weak_factory_.GetWeakPtr()));
+
+    command_manager_->AddOnCommandDefChanged(base::Bind(
+        &CloudDelegateImpl::OnCommandDefChanged, weak_factory_.GetWeakPtr()));
+    command_manager_->AddOnCommandAddedCallback(base::Bind(
+        &CloudDelegateImpl::OnCommandAdded, weak_factory_.GetWeakPtr()));
+    command_manager_->AddOnCommandAddedCallback(base::Bind(
         &CloudDelegateImpl::OnCommandRemoved, weak_factory_.GetWeakPtr()));
+
+    state_manager_->AddOnChangedCallback(base::Bind(
+        &CloudDelegateImpl::OnStateChanged, weak_factory_.GetWeakPtr()));
   }
 
   ~CloudDelegateImpl() override = default;
 
   bool GetModelId(std::string* id, chromeos::ErrorPtr* error) const override {
-    if (!IsManagerReady(error))
-      return false;
-    if (manager_->model_id().size() != 5) {
+    if (device_->GetConfig().model_id().size() != 5) {
       chromeos::Error::AddToPrintf(
           error, FROM_HERE, errors::kDomain, errors::kInvalidState,
-          "Model ID is invalid: %s", manager_->model_id().c_str());
+          "Model ID is invalid: %s", device_->GetConfig().model_id().c_str());
       return false;
     }
-    *id = manager_->model_id();
+    *id = device_->GetConfig().model_id();
     return true;
   }
 
   bool GetName(std::string* name, chromeos::ErrorPtr* error) const override {
-    if (!IsManagerReady(error))
-      return false;
-    *name = manager_->name();
+    *name = device_->GetConfig().name();
     return true;
   }
 
   std::string GetDescription() const override {
-    return manager_ ? manager_->description() : std::string{};
+    return device_->GetConfig().description();
   }
 
   std::string GetLocation() const override {
-    return manager_ ? manager_->location() : std::string{};
+    return device_->GetConfig().location();
   }
 
   void UpdateDeviceInfo(const std::string& name,
@@ -82,24 +101,17 @@ class CloudDelegateImpl : public CloudDelegate {
                         const base::Closure& success_callback,
                         const ErrorCallback& error_callback) override {
     chromeos::ErrorPtr error;
-    if (!IsManagerReady(&error))
+    if (!device_->UpdateDeviceInfo(name, description, location, &error))
       return error_callback.Run(error.get());
-
-    if (name == manager_->name() && description == manager_->description() &&
-        location == manager_->location()) {
-      return success_callback.Run();
-    }
-
-    manager_->UpdateDeviceInfoAsync(name, description, location,
-                                    success_callback, error_callback);
+    success_callback.Run();
   }
 
   std::string GetOemName() const override {
-    return manager_ ? manager_->oem_name() : std::string{};
+    return device_->GetConfig().oem_name();
   }
 
   std::string GetModelName() const override {
-    return manager_ ? manager_->model_name() : std::string{};
+    return device_->GetConfig().model_name();
   }
 
   std::set<std::string> GetServices() const override {
@@ -112,10 +124,10 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
   AuthScope GetAnonymousMaxScope() const override {
-    if (manager_) {
-      AuthScope scope;
-      if (StringToAuthScope(manager_->anonymous_access_role(), &scope))
-        return scope;
+    AuthScope scope;
+    if (StringToAuthScope(device_->GetConfig().local_anonymous_access_role(),
+                          &scope)) {
+      return scope;
     }
     return AuthScope::kNone;
   }
@@ -133,11 +145,6 @@ class CloudDelegateImpl : public CloudDelegate {
       chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
                              errors::kSetupUnavailable,
                              "GCD setup unavailible");
-      return false;
-    }
-    if (!object_manager_.GetManagerProxy()) {
-      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
-                             errors::kDeviceBusy, "Buffet is not ready");
       return false;
     }
     if (setup_state_.IsStatusEqual(SetupState::kInProgress)) {
@@ -158,7 +165,7 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
   std::string GetCloudId() const override {
-    return manager_ ? manager_->device_id() : std::string{};
+    return device_->GetConfig().device_id();
   }
 
   const base::DictionaryValue& GetState() const override { return state_; }
@@ -172,19 +179,19 @@ class CloudDelegateImpl : public CloudDelegate {
                   const SuccessCallback& success_callback,
                   const ErrorCallback& error_callback) override {
     CHECK(user_info.scope() != AuthScope::kNone);
+    CHECK_NE(user_info.user_id(), 0u);
 
     chromeos::ErrorPtr error;
-    if (!IsManagerReady(&error))
+    buffet::UserRole role;
+    if (!FromString(AuthScopeToString(user_info.scope()), &role, &error))
       return error_callback.Run(error.get());
 
-    std::string command_str;
-    base::JSONWriter::Write(&command, &command_str);
-    manager_->AddCommandAsync(
-        command_str, AuthScopeToString(user_info.scope()),
-        base::Bind(&CloudDelegateImpl::OnAddCommandSucceeded,
-                   weak_factory_.GetWeakPtr(), success_callback,
-                   error_callback),
-        error_callback);
+    std::string id;
+    if (!command_manager_->AddCommand(command, role, &id, &error))
+      return error_callback.Run(error.get());
+
+    CHECK(command_owners_.emplace(id, user_info.user_id()).second);
+    success_callback.Run(*command_manager_->FindCommand(id)->ToJson());
   }
 
   void GetCommand(const std::string& id,
@@ -193,14 +200,10 @@ class CloudDelegateImpl : public CloudDelegate {
                   const ErrorCallback& error_callback) override {
     CHECK(user_info.scope() != AuthScope::kNone);
     chromeos::ErrorPtr error;
-    if (!CanAccessCommand(id, user_info)) {
-      chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
-                             errors::kAccessDenied,
-                             "Need to be owner of the command.");
+    auto command = GetCommandInternal(id, user_info, &error);
+    if (!command)
       return error_callback.Run(error.get());
-    }
-
-    GetCommandInternal(id, success_callback, error_callback);
+    success_callback.Run(*command->ToJson());
   }
 
   void CancelCommand(const std::string& id,
@@ -209,27 +212,12 @@ class CloudDelegateImpl : public CloudDelegate {
                      const ErrorCallback& error_callback) override {
     CHECK(user_info.scope() != AuthScope::kNone);
     chromeos::ErrorPtr error;
-    if (!CanAccessCommand(id, user_info)) {
-      chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
-                             errors::kAccessDenied,
-                             "Need to be owner of the command.");
+    auto command = GetCommandInternal(id, user_info, &error);
+    if (!command)
       return error_callback.Run(error.get());
-    }
 
-    for (auto command : object_manager_.GetCommandInstances()) {
-      if (command->id() == id) {
-        return command->CancelAsync(
-            base::Bind(&CloudDelegateImpl::GetCommandInternal,
-                       weak_factory_.GetWeakPtr(), id, success_callback,
-                       error_callback),
-            error_callback);
-      }
-    }
-
-    chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
-                                 errors::kNotFound,
-                                 "Command not found, ID='%s'", id.c_str());
-    error_callback.Run(error.get());
+    command->Cancel();
+    success_callback.Run(*command->ToJson());
   }
 
   void ListCommands(const UserInfo& user_info,
@@ -237,124 +225,72 @@ class CloudDelegateImpl : public CloudDelegate {
                     const ErrorCallback& error_callback) override {
     CHECK(user_info.scope() != AuthScope::kNone);
 
-    std::vector<org::chromium::Buffet::CommandProxy*> commands{
-        object_manager_.GetCommandInstances()};
+    base::ListValue list_value;
 
-    auto ids = std::make_shared<std::vector<std::string>>();
-    for (auto command : commands) {
-      if (CanAccessCommand(command->id(), user_info))
-        ids->push_back(command->id());
+    for (const auto& it : command_owners_) {
+      if (CanAccessCommand(it.second, user_info, nullptr)) {
+        list_value.Append(
+            command_manager_->FindCommand(it.first)->ToJson().release());
+      }
     }
 
-    GetNextCommand(ids, std::make_shared<base::ListValue>(), success_callback,
-                   error_callback, base::DictionaryValue{});
+    base::DictionaryValue commands_json;
+    commands_json.Set("commands", list_value.DeepCopy());
+
+    success_callback.Run(commands_json);
   }
 
  private:
-  void GetCommandInternal(const std::string& id,
-                          const SuccessCallback& success_callback,
-                          const ErrorCallback& error_callback) {
-    chromeos::ErrorPtr error;
-    if (!IsManagerReady(&error))
-      return error_callback.Run(error.get());
-    manager_->GetCommandAsync(
-        id, base::Bind(&CloudDelegateImpl::OnGetCommandSucceeded,
-                       weak_factory_.GetWeakPtr(), success_callback,
-                       error_callback),
-        error_callback);
+  void OnCommandAdded(buffet::CommandInstance* command) {
+    // Set to 0 for any new unknown command.
+    command_owners_.emplace(command->GetID(), 0);
   }
 
-  void OnManagerAdded(ManagerProxy* manager) {
-    manager_ = manager;
-    manager_->SetPropertyChangedCallback(
-        base::Bind(&CloudDelegateImpl::OnManagerPropertyChanged,
-                   weak_factory_.GetWeakPtr()));
-    // Read all initial values.
-    OnManagerPropertyChanged(manager, std::string{});
+  void OnCommandRemoved(buffet::CommandInstance* command) {
+    CHECK(command_owners_.erase(command->GetID()));
   }
 
-  void OnCommandRemoved(const dbus::ObjectPath& object_path) {
-    command_owners_.erase(object_manager_.GetCommandProxy(object_path)->id());
+  void OnConfigChanged(const buffet::BuffetConfig&) {
+    NotifyOnDeviceInfoChanged();
   }
 
-  void OnManagerPropertyChanged(ManagerProxy* manager,
-                                const std::string& property_name) {
-    CHECK_EQ(manager_, manager);
-
-    if (property_name.empty() || property_name == ManagerProxy::StatusName()) {
-      OnStatusPropertyChanged();
-    }
-
-    if (property_name.empty() ||
-        property_name == ManagerProxy::DeviceIdName() ||
-        property_name == ManagerProxy::OemNameName() ||
-        property_name == ManagerProxy::ModelNameName() ||
-        property_name == ManagerProxy::ModelIdName() ||
-        property_name == ManagerProxy::NameName() ||
-        property_name == ManagerProxy::DescriptionName() ||
-        property_name == ManagerProxy::LocationName() ||
-        property_name == ManagerProxy::AnonymousAccessRoleName()) {
-      NotifyOnDeviceInfoChanged();
-    }
-
-    if (property_name.empty() || property_name == ManagerProxy::StateName()) {
-      OnStatePropertyChanged();
-    }
-
-    if (property_name.empty() ||
-        property_name == ManagerProxy::CommandDefsName()) {
-      OnCommandDefsPropertyChanged();
-    }
-  }
-
-  void OnStatusPropertyChanged() {
-    const std::string& status = manager_->status();
-    if (status == "unconfigured") {
+  void OnRegistrationChanged(buffet::RegistrationStatus status) {
+    if (status == buffet::RegistrationStatus::kUnconfigured) {
       connection_state_ = ConnectionState{ConnectionState::kUnconfigured};
-    } else if (status == "connecting") {
+    } else if (status == buffet::RegistrationStatus::kConnecting) {
       // TODO(vitalybuka): Find conditions for kOffline.
       connection_state_ = ConnectionState{ConnectionState::kConnecting};
-    } else if (status == "connected") {
+    } else if (status == buffet::RegistrationStatus::kConnected) {
       connection_state_ = ConnectionState{ConnectionState::kOnline};
     } else {
       chromeos::ErrorPtr error;
-      chromeos::Error::AddToPrintf(
-          &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
-          "Unexpected buffet status: %s", status.c_str());
+      chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                                   errors::kInvalidState,
+                                   "Unexpected buffet status: %s",
+                                   buffet::StatusToString(status).c_str());
       connection_state_ = ConnectionState{std::move(error)};
     }
     NotifyOnDeviceInfoChanged();
   }
 
-  void OnStatePropertyChanged() {
+  void OnStateChanged() {
     state_.Clear();
-    std::unique_ptr<base::Value> value{
-        base::JSONReader::Read(manager_->state())};
-    const base::DictionaryValue* state{nullptr};
-    if (value && value->GetAsDictionary(&state))
-      state_.MergeDictionary(state);
+    auto state = state_manager_->GetStateValuesAsJson(nullptr);
+    CHECK(state);
+    state_.MergeDictionary(state.get());
     NotifyOnStateChanged();
   }
 
-  void OnCommandDefsPropertyChanged() {
+  void OnCommandDefChanged() {
     command_defs_.Clear();
-    std::unique_ptr<base::Value> value{
-        base::JSONReader::Read(manager_->command_defs())};
-    const base::DictionaryValue* defs{nullptr};
-    if (value && value->GetAsDictionary(&defs))
-      command_defs_.MergeDictionary(defs);
+    auto commands = command_manager_->GetCommandDictionary().GetCommandsAsJson(
+        [](const buffet::CommandDefinition* def) {
+          return def->GetVisibility().local;
+        },
+        true, nullptr);
+    CHECK(commands);
+    command_defs_.MergeDictionary(commands.get());
     NotifyOnCommandDefsChanged();
-  }
-
-  void OnManagerRemoved(const dbus::ObjectPath& path) {
-    manager_ = nullptr;
-    connection_state_ = ConnectionState(ConnectionState::kDisabled);
-    state_.Clear();
-    command_defs_.Clear();
-    command_owners_.clear();
-    NotifyOnDeviceInfoChanged();
-    NotifyOnCommandDefsChanged();
-    NotifyOnStateChanged();
   }
 
   void RetryRegister(const std::string& ticket_id,
@@ -381,101 +317,51 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
   void CallManagerRegisterDevice(const std::string& ticket_id, int retries) {
-    auto manager_proxy = object_manager_.GetManagerProxy();
-    if (!manager_proxy) {
-      LOG(ERROR) << "Couldn't register because Buffet was offline.";
-      RetryRegister(ticket_id, retries, nullptr);
-      return;
-    }
-    manager_proxy->RegisterDeviceAsync(
-        ticket_id, base::Bind(&CloudDelegateImpl::OnRegisterSuccess,
-                              setup_weak_factory_.GetWeakPtr()),
-        base::Bind(&CloudDelegateImpl::RetryRegister,
-                   setup_weak_factory_.GetWeakPtr(), ticket_id, retries));
+    chromeos::ErrorPtr error;
+    if (device_->RegisterDevice(ticket_id, &error).empty())
+      RetryRegister(ticket_id, retries, error.get());
   }
 
-  void OnAddCommandSucceeded(const SuccessCallback& success_callback,
-                             const ErrorCallback& error_callback,
-                             const std::string& id) {
-    GetCommandInternal(id, success_callback, error_callback);
-  }
-
-  void OnGetCommandSucceeded(const SuccessCallback& success_callback,
-                             const ErrorCallback& error_callback,
-                             const std::string& json_command) {
-    std::unique_ptr<base::Value> value{base::JSONReader::Read(json_command)};
-    base::DictionaryValue* command{nullptr};
-    if (!value || !value->GetAsDictionary(&command)) {
-      chromeos::ErrorPtr error;
-      chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
-                             errors::kInvalidFormat,
-                             "Buffet returned invalid JSON");
-      return error_callback.Run(error.get());
-    }
-    success_callback.Run(*command);
-  }
-
-  void GetNextCommandSkipError(
-      const std::shared_ptr<std::vector<std::string>>& ids,
-      const std::shared_ptr<base::ListValue>& commands,
-      const SuccessCallback& success_callback,
-      const ErrorCallback& error_callback,
-      chromeos::Error*) {
-    // Ignore if we can't get some commands. Maybe they were removed.
-    GetNextCommand(ids, commands, success_callback, error_callback,
-                   base::DictionaryValue{});
-  }
-
-  void GetNextCommand(const std::shared_ptr<std::vector<std::string>>& ids,
-                      const std::shared_ptr<base::ListValue>& commands,
-                      const SuccessCallback& success_callback,
-                      const ErrorCallback& error_callback,
-                      const base::DictionaryValue& json) {
-    if (!json.empty())
-      commands->Append(json.DeepCopy());
-
-    if (ids->empty()) {
-      base::DictionaryValue commands_json;
-      commands_json.Set("commands", commands->DeepCopy());
-      return success_callback.Run(commands_json);
+  buffet::CommandInstance* GetCommandInternal(const std::string& command_id,
+                                              const UserInfo& user_info,
+                                              chromeos::ErrorPtr* error) const {
+    if (user_info.scope() != AuthScope::kOwner) {
+      auto it = command_owners_.find(command_id);
+      if (it == command_owners_.end())
+        return ReturnNotFound(command_id, error);
+      if (CanAccessCommand(it->second, user_info, error))
+        return nullptr;
     }
 
-    std::string next_id = ids->back();
-    ids->pop_back();
+    auto command = command_manager_->FindCommand(command_id);
+    if (!command)
+      return ReturnNotFound(command_id, error);
 
-    auto on_success = base::Bind(&CloudDelegateImpl::GetNextCommand,
-                                 weak_factory_.GetWeakPtr(), ids, commands,
-                                 success_callback, error_callback);
-
-    auto on_error = base::Bind(&CloudDelegateImpl::GetNextCommandSkipError,
-                               weak_factory_.GetWeakPtr(), ids, commands,
-                               success_callback, error_callback);
-
-    GetCommandInternal(next_id, on_success, on_error);
+    return command;
   }
 
-  bool IsManagerReady(chromeos::ErrorPtr* error) const {
-    if (!manager_) {
-      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
-                             errors::kDeviceBusy, "Buffet is not ready");
-      return false;
-    }
-    return true;
-  }
+  bool CanAccessCommand(uint64_t owner_id,
+                        const UserInfo& user_info,
+                        chromeos::ErrorPtr* error) const {
+    CHECK(user_info.scope() != AuthScope::kNone);
+    CHECK_NE(user_info.user_id(), 0u);
 
-  bool CanAccessCommand(const std::string& command_id,
-                        const UserInfo& user_info) const {
-    if (user_info.scope() == AuthScope::kOwner)
+    if (user_info.scope() == AuthScope::kOwner ||
+        owner_id == user_info.user_id()) {
       return true;
-    auto it = command_owners_.find(command_id);
-    return it != command_owners_.end() && it->second == user_info.user_id();
-  }
+    }
 
-  ObjectManagerProxy object_manager_;
+    chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
+                           errors::kAccessDenied,
+                           "Need to be owner of the command.");
+    return false;
+  }
 
   bool is_gcd_setup_enabled_{false};
 
-  ManagerProxy* manager_{nullptr};
+  buffet::DeviceRegistrationInfo* device_{nullptr};
+  buffet::CommandManager* command_manager_{nullptr};
+  buffet::StateManager* state_manager_{nullptr};
 
   // Primary state of GCD.
   ConnectionState connection_state_{ConnectionState::kDisabled};
@@ -509,12 +395,12 @@ CloudDelegate::~CloudDelegate() {
 
 // static
 std::unique_ptr<CloudDelegate> CloudDelegate::CreateDefault(
-    bool is_gcd_setup_enabled) {
-  dbus::Bus::Options options;
-  options.bus_type = dbus::Bus::SYSTEM;
-  scoped_refptr<dbus::Bus> bus{new dbus::Bus{options}};
-  return std::unique_ptr<CloudDelegateImpl>{
-      new CloudDelegateImpl{bus, is_gcd_setup_enabled}};
+    bool is_gcd_setup_enabled,
+    buffet::DeviceRegistrationInfo* device,
+    buffet::CommandManager* command_manager,
+    buffet::StateManager* state_manager) {
+  return std::unique_ptr<CloudDelegateImpl>{new CloudDelegateImpl{
+      is_gcd_setup_enabled, device, command_manager, state_manager}};
 }
 
 void CloudDelegate::NotifyOnDeviceInfoChanged() {

@@ -20,9 +20,11 @@ namespace base {
 class DictionaryValue;
 }  // namespace base
 
-namespace dbus {
-class Bus;
-}  // namespace dbus
+namespace buffet {
+class CommandManager;
+class DeviceRegistrationInfo;
+class StateManager;
+}
 
 namespace privetd {
 
@@ -131,7 +133,10 @@ class CloudDelegate {
 
   // Create default instance.
   static std::unique_ptr<CloudDelegate> CreateDefault(
-      bool is_gcd_setup_enabled);
+      bool is_gcd_setup_enabled,
+      buffet::DeviceRegistrationInfo* device,
+      buffet::CommandManager* command_manager,
+      buffet::StateManager* state_manager);
 
  private:
   ObserverList<Observer> observer_list_;

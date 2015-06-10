@@ -343,6 +343,11 @@ void DeviceRegistrationInfo::AddOnRegistrationChangedCallback(
   callback.Run(registration_status_);
 }
 
+void DeviceRegistrationInfo::AddOnConfigChangedCallback(
+    const BuffetConfig::OnChangedCallback& callback) {
+  config_->AddOnChangedCallback(callback);
+}
+
 std::unique_ptr<base::DictionaryValue>
 DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
   // Limit only to commands that are visible to the cloud.

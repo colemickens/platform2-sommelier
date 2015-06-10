@@ -62,6 +62,10 @@ class DeviceRegistrationInfo : public NotificationDelegate {
   void AddOnRegistrationChangedCallback(
       const OnRegistrationChangedCallback& callback);
 
+  // Add callback to listen for changes in config.
+  void AddOnConfigChangedCallback(
+      const BuffetConfig::OnChangedCallback& callback);
+
   // Returns the authorization HTTP header that can be used to talk
   // to GCD server for authenticated device communication.
   // Make sure ValidateAndRefreshAccessToken() is called before this call.

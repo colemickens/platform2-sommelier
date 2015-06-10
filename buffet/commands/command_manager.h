@@ -41,7 +41,8 @@ class CommandManager final {
 
   // Sets callback which is called when command definitions is changed.
   void AddOnCommandDefChanged(const base::Closure& callback) {
-    return on_command_changed_.push_back(callback);
+    on_command_changed_.push_back(callback);
+    callback.Run();
   }
 
   // Returns the command definitions for the device.

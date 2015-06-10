@@ -27,6 +27,7 @@
 #include <libwebserv/response.h>
 #include <libwebserv/server.h>
 
+#include "buffet/dbus_constants.h"
 #include "buffet/privet/ap_manager_client.h"
 #include "buffet/privet/cloud_delegate.h"
 #include "buffet/privet/constants.h"
@@ -38,7 +39,6 @@
 #include "buffet/privet/security_manager.h"
 #include "buffet/privet/shill_client.h"
 #include "buffet/privet/wifi_bootstrap_manager.h"
-#include "buffet/dbus_constants.h"
 
 namespace privetd {
 
@@ -67,6 +67,9 @@ Manager::~Manager() {
 
 void Manager::Start(const Options& options,
                     const scoped_refptr<dbus::Bus>& bus,
+                    buffet::DeviceRegistrationInfo* device,
+                    buffet::CommandManager* command_manager,
+                    buffet::StateManager* state_manager,
                     AsyncEventSequencer* sequencer) {
   disable_security_ = options.disable_security;
 
@@ -99,8 +102,9 @@ void Manager::Start(const Options& options,
     device_whitelist.insert(interfaces.begin(), interfaces.end());
   }
   device_ = DeviceDelegate::CreateDefault();
-  cloud_ = CloudDelegate::CreateDefault(parser_->gcd_bootstrap_mode() !=
-                                        GcdBootstrapMode::kDisabled);
+  cloud_ = CloudDelegate::CreateDefault(
+      parser_->gcd_bootstrap_mode() != GcdBootstrapMode::kDisabled, device,
+      command_manager, state_manager);
   cloud_observer_.Add(cloud_.get());
   security_.reset(new SecurityManager(parser_->pairing_modes(),
                                       parser_->embedded_code_path(),
@@ -162,7 +166,7 @@ void Manager::OnShutdown() {
 
 void Manager::OnDeviceInfoChanged() {
   OnChanged();
-};
+}
 
 void Manager::PrivetRequestHandler(std::unique_ptr<Request> request,
                                    std::unique_ptr<Response> response) {

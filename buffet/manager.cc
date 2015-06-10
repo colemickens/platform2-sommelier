@@ -105,7 +105,8 @@ void Manager::Start(const Options& options, AsyncEventSequencer* sequencer) {
 void Manager::StartPrivet(const privetd::Manager::Options& options,
                           AsyncEventSequencer* sequencer) {
   privet_.reset(new privetd::Manager{});
-  privet_->Start(options, dbus_object_.GetBus(), sequencer);
+  privet_->Start(options, dbus_object_.GetBus(), device_info_.get(),
+                 command_manager_.get(), state_manager_.get(), sequencer);
 
   if (privet_->GetWifiBootstrapManager()) {
     privet_->GetWifiBootstrapManager()->RegisterStateListener(base::Bind(
