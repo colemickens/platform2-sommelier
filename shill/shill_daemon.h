@@ -46,6 +46,7 @@ class Daemon {
   void SetPrependDNSServers(const std::string &prepend_dns_servers);
   void SetMinimumMTU(const int mtu);
   void SetAcceptHostnameFrom(const std::string &hostname_from);
+  void SetDHCPv6EnabledDevices(const std::vector<std::string> &device_list);
 
   // Main for connection manager.  Starts main process and holds event loop.
   void Run();

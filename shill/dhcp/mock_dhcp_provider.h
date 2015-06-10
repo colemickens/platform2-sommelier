@@ -28,6 +28,9 @@ class MockDHCPProvider : public DHCPProvider {
                                 const std::string &host_name,
                                 const std::string &storage_identifier,
                                 bool arp_gateway));
+  MOCK_METHOD2(CreateIPv6Config,
+               DHCPConfigRefPtr(const std::string &device_name,
+                                const std::string &storage_identifier));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDHCPProvider);

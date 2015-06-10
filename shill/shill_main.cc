@@ -55,6 +55,10 @@ static const char kMinimumMTU[] = "minimum-mtu";
 // Accept hostname from the DHCP server for the specified devices.
 // eg. eth0 or eth*
 static const char kAcceptHostnameFrom[] = "accept-hostname-from";
+#ifndef DISABLE_DHCPV6
+// List of devices to enable DHCPv6.
+static const char kDhcpv6EnabledDevices[] = "dhcpv6-enabled-devices";
+#endif  // DISABLE_DHCPV6
 // Flag that causes shill to show the help message and exit.
 static const char kHelp[] = "help";
 
@@ -83,6 +87,10 @@ static const char kHelpMessage[] = "\n"
     "    Prepend the provided DNS servers to the resolver list.\n"
     "  --accept-hostname-from=eth0 or --accept-hostname-from=eth*\n"
     "    Accept a hostname from the DHCP server for the matching devices.\n"
+#ifndef DISABLE_DHCPV6
+    "  --dhcpv6-enabled-devices=device1,device2\n"
+    "    Enable DHCPv6 for devices named device1 and device2\n"
+#endif  // DISABLE_DHCPV6
     "  --minimum-mtu=mtu\n"
     "    Set the minimum value to respect as the MTU from DHCP responses.\n";
 }  // namespace switches
@@ -240,6 +248,15 @@ int main(int argc, char** argv) {
     daemon.SetAcceptHostnameFrom(
         cl->GetSwitchValueASCII(switches::kAcceptHostnameFrom));
   }
+
+#ifndef DISABLE_DHCPV6
+  if (cl->HasSwitch(switches::kDhcpv6EnabledDevices)) {
+    vector<string> device_list;
+    base::SplitString(cl->GetSwitchValueASCII(switches::kDhcpv6EnabledDevices),
+                      ',', &device_list);
+    daemon.SetDHCPv6EnabledDevices(device_list);
+  }
+#endif  // DISABLE_DHCPV6
 
   g_unix_signal_add(SIGINT, ExitSigHandler, &daemon);
   g_unix_signal_add(SIGTERM, ExitSigHandler, &daemon);

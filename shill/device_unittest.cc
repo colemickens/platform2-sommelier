@@ -330,17 +330,21 @@ TEST_F(DeviceTest, DestroyIPConfig) {
   ASSERT_FALSE(device_->ipconfig_.get());
   device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
   device_->ip6config_ = new IPConfig(control_interface(), kDeviceName);
+  device_->dhcpv6_config_ = new IPConfig(control_interface(), kDeviceName);
   device_->DestroyIPConfig();
   ASSERT_FALSE(device_->ipconfig_.get());
   ASSERT_FALSE(device_->ip6config_.get());
+  ASSERT_FALSE(device_->dhcpv6_config_.get());
 }
 
 TEST_F(DeviceTest, DestroyIPConfigNULL) {
   ASSERT_FALSE(device_->ipconfig_.get());
   ASSERT_FALSE(device_->ip6config_.get());
+  ASSERT_FALSE(device_->dhcpv6_config_.get());
   device_->DestroyIPConfig();
   ASSERT_FALSE(device_->ipconfig_.get());
   ASSERT_FALSE(device_->ip6config_.get());
+  ASSERT_FALSE(device_->dhcpv6_config_.get());
 }
 
 TEST_F(DeviceTest, AcquireIPConfig) {
@@ -350,14 +354,37 @@ TEST_F(DeviceTest, AcquireIPConfig) {
   scoped_refptr<MockDHCPConfig> dhcp_config(new MockDHCPConfig(
                                                     control_interface(),
                                                     kDeviceName));
+#ifndef DISABLE_DHCPV6
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  manager.set_mock_device_info(&device_info_);
+  SetManager(&manager);
+
+  device_->dhcpv6_config_ = new IPConfig(control_interface(), "randomname");
+  scoped_refptr<MockDHCPConfig> dhcpv6_config(
+      new MockDHCPConfig(control_interface(), kDeviceName));
+
+  EXPECT_CALL(manager, IsDHCPv6EnabledForDevice(kDeviceName))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*dhcp_provider, CreateIPv6Config(_, _))
+      .WillOnce(Return(dhcpv6_config));
+  EXPECT_CALL(*dhcpv6_config, RequestIP()).WillOnce(Return(true));
+#endif  // DISABLE_DHCPV6
+
   EXPECT_CALL(*dhcp_provider, CreateIPv4Config(_, _, _, _))
       .WillOnce(Return(dhcp_config));
   EXPECT_CALL(*dhcp_config, RequestIP())
-      .WillOnce(Return(false));
-  EXPECT_FALSE(device_->AcquireIPConfig());
+      .WillOnce(Return(true));
+  EXPECT_TRUE(device_->AcquireIPConfig());
   ASSERT_TRUE(device_->ipconfig_.get());
   EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
   EXPECT_FALSE(device_->ipconfig_->update_callback_.is_null());
+#ifndef DISABLE_DHCPV6
+  EXPECT_EQ(kDeviceName, device_->dhcpv6_config_->device_name());
+  EXPECT_FALSE(device_->dhcpv6_config_->update_callback_.is_null());
+#endif  // DISABLE_DHCPV6
   device_->dhcp_provider_ = nullptr;
 }
 
@@ -1124,6 +1151,12 @@ TEST_F(DeviceTest, AvailableIPConfigs) {
   // of them when both IPv6 and IPv4 IPConfigs are available.
   EXPECT_EQ(2, device_->AvailableIPConfigs(nullptr).size());
 
+  device_->dhcpv6_config_ = new IPConfig(control_interface(), kDeviceName);
+  EXPECT_EQ(3, device_->AvailableIPConfigs(nullptr).size());
+
+  device_->dhcpv6_config_ = nullptr;
+  EXPECT_EQ(2, device_->AvailableIPConfigs(nullptr).size());
+
   device_->ipconfig_ = nullptr;
   EXPECT_EQ(vector<string> { IPConfigMockAdaptor::kRpcId },
             device_->AvailableIPConfigs(nullptr));
@@ -1463,6 +1496,49 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(service.get());
   Mock::VerifyAndClearExpectations(connection.get());
+}
+
+TEST_F(DeviceTest, OnDHCPv6ConfigUpdated) {
+  device_->dhcpv6_config_ = new IPConfig(control_interface(), kDeviceName);
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+  device_->OnDHCPv6ConfigUpdated(device_->dhcpv6_config_.get(), true);
+}
+
+TEST_F(DeviceTest, OnDHCPv6ConfigFailed) {
+  device_->dhcpv6_config_ = new IPConfig(control_interface(), kDeviceName);
+  IPConfig::Properties properties;
+  properties.address = "2001:db8:0:1::1";
+  properties.delegated_prefix = "2001:db8:0:100::";
+  properties.lease_duration_seconds = 1;
+  device_->dhcpv6_config_->set_properties(properties);
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+  device_->OnDHCPv6ConfigFailed(device_->dhcpv6_config_.get());
+  EXPECT_TRUE(device_->dhcpv6_config_->properties().address.empty());
+  EXPECT_TRUE(device_->dhcpv6_config_->properties().delegated_prefix.empty());
+  EXPECT_EQ(0, device_->dhcpv6_config_->properties().lease_duration_seconds);
+}
+
+TEST_F(DeviceTest, OnDHCPv6ConfigExpired) {
+  device_->dhcpv6_config_ = new IPConfig(control_interface(), kDeviceName);
+  IPConfig::Properties properties;
+  properties.address = "2001:db8:0:1::1";
+  properties.delegated_prefix = "2001:db8:0:100::";
+  properties.lease_duration_seconds = 1;
+  device_->dhcpv6_config_->set_properties(properties);
+  EXPECT_CALL(*GetDeviceMockAdaptor(),
+              EmitRpcIdentifierArrayChanged(
+                  kIPConfigsProperty,
+                  vector<string> { IPConfigMockAdaptor::kRpcId }));
+  device_->OnDHCPv6ConfigExpired(device_->dhcpv6_config_.get());
+  EXPECT_TRUE(device_->dhcpv6_config_->properties().address.empty());
+  EXPECT_TRUE(device_->dhcpv6_config_->properties().delegated_prefix.empty());
+  EXPECT_EQ(0, device_->dhcpv6_config_->properties().lease_duration_seconds);
 }
 
 TEST_F(DeviceTest, PrependIPv4DNSServers) {

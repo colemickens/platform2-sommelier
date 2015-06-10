@@ -89,6 +89,10 @@ void Daemon::SetAcceptHostnameFrom(const string &hostname_from) {
   manager_->SetAcceptHostnameFrom(hostname_from);
 }
 
+void Daemon::SetDHCPv6EnabledDevices(const vector<string> &device_list) {
+  manager_->SetDHCPv6EnabledDevices(device_list);
+}
+
 void Daemon::Run() {
   Start();
   SLOG(this, 1) << "Running main loop.";

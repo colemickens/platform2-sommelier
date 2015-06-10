@@ -5147,4 +5147,29 @@ TEST_F(ManagerTest, AcceptHostnameFrom) {
   EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("wlan0"));
 }
 
+TEST_F(ManagerTest, DHCPv6EnabledDevices) {
+  EXPECT_FALSE(manager()->IsDHCPv6EnabledForDevice("eth0"));
+  EXPECT_FALSE(manager()->IsDHCPv6EnabledForDevice("eth1"));
+  EXPECT_FALSE(manager()->IsDHCPv6EnabledForDevice("wlan0"));
+
+  vector<string> enabled_devices;
+  enabled_devices.push_back("eth0");
+  manager()->SetDHCPv6EnabledDevices(enabled_devices);
+  EXPECT_TRUE(manager()->IsDHCPv6EnabledForDevice("eth0"));
+  EXPECT_FALSE(manager()->IsDHCPv6EnabledForDevice("eth1"));
+  EXPECT_FALSE(manager()->IsDHCPv6EnabledForDevice("wlan0"));
+
+  enabled_devices.push_back("eth1");
+  manager()->SetDHCPv6EnabledDevices(enabled_devices);
+  EXPECT_TRUE(manager()->IsDHCPv6EnabledForDevice("eth0"));
+  EXPECT_TRUE(manager()->IsDHCPv6EnabledForDevice("eth1"));
+  EXPECT_FALSE(manager()->IsDHCPv6EnabledForDevice("wlan0"));
+
+  enabled_devices.push_back("wlan0");
+  manager()->SetDHCPv6EnabledDevices(enabled_devices);
+  EXPECT_TRUE(manager()->IsDHCPv6EnabledForDevice("eth0"));
+  EXPECT_TRUE(manager()->IsDHCPv6EnabledForDevice("eth1"));
+  EXPECT_TRUE(manager()->IsDHCPv6EnabledForDevice("wlan0"));
+}
+
 }  // namespace shill

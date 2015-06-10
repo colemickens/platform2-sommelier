@@ -89,7 +89,8 @@ class MockManager : public Manager {
   MOCK_CONST_METHOD0(GetMinimumMTU, int());
   MOCK_CONST_METHOD1(ShouldAcceptHostnameFrom,
                      bool(const std::string &device_name));
-
+  MOCK_CONST_METHOD1(IsDHCPv6EnabledForDevice,
+                     bool(const std::string &device_name));
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo *mock_device_info() { return mock_device_info_; }

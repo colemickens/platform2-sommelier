@@ -226,6 +226,7 @@ class Device : public base::RefCounted<Device> {
 
   virtual const IPConfigRefPtr &ipconfig() const { return ipconfig_; }
   virtual const IPConfigRefPtr &ip6config() const { return ip6config_; }
+  virtual const IPConfigRefPtr &dhcpv6_config() const { return dhcpv6_config_; }
   void set_ipconfig(const IPConfigRefPtr &config) { ipconfig_ = config; }
 
   const std::string &FriendlyName() const;
@@ -358,6 +359,9 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, IsConnectedViaTether);
   FRIEND_TEST(DeviceTest, LinkMonitorFailure);
   FRIEND_TEST(DeviceTest, Load);
+  FRIEND_TEST(DeviceTest, OnDHCPv6ConfigExpired);
+  FRIEND_TEST(DeviceTest, OnDHCPv6ConfigFailed);
+  FRIEND_TEST(DeviceTest, OnDHCPv6ConfigUpdated);
   FRIEND_TEST(DeviceTest, OnIPv6AddressChanged);
   FRIEND_TEST(DeviceTest, OnIPv6ConfigurationCompleted);
   FRIEND_TEST(DeviceTest, OnIPv6DnsServerAddressesChanged);
@@ -476,6 +480,18 @@ class Device : public base::RefCounted<Device> {
   // failing to get an IP.  The default implementation disconnects the selected
   // service with Service::kFailureDHCP.
   virtual void OnIPConfigFailure();
+
+  // Callback invoked on successful DHCPv6 configuration updates.
+  void OnDHCPv6ConfigUpdated(const IPConfigRefPtr &ipconfig,
+                             bool new_lease_acquired);
+
+  // Callback invoked on DHCPv6 configuration failures.
+  void OnDHCPv6ConfigFailed(const IPConfigRefPtr &ipconfig);
+
+  // Callback invoked when an DHCPv6Config restarts due to lease expiry.  This
+  // is advisory, since an "Updated" or "Failed" signal is guaranteed to
+  // follow.
+  void OnDHCPv6ConfigExpired(const IPConfigRefPtr &ipconfig);
 
   // Maintain connection state (Routes, IP Addresses and DNS) in the OS.
   void CreateConnection();
@@ -781,6 +797,7 @@ class Device : public base::RefCounted<Device> {
   Manager *manager_;
   IPConfigRefPtr ipconfig_;
   IPConfigRefPtr ip6config_;
+  IPConfigRefPtr dhcpv6_config_;
   ConnectionRefPtr connection_;
   base::WeakPtrFactory<Device> weak_ptr_factory_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
