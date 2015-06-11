@@ -20,6 +20,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 
 #include "shill/net/io_handler.h"
 #include "shill/net/ip_address.h"
@@ -37,6 +38,7 @@ namespace shill {
 // Keep this large enough to avoid overflows on IPv6 SNM routing update spikes
 const int RTNLHandler::kReceiveBufferSize = 512 * 1024;
 const int RTNLHandler::kInvalidSocket = -1;
+const int RTNLHandler::kErrorWindowSize = 16;
 
 namespace {
 base::LazyInstance<RTNLHandler> g_rtnl_handler = LAZY_INSTANCE_INITIALIZER;
@@ -52,6 +54,7 @@ RTNLHandler::RTNLHandler()
       rtnl_callback_(Bind(&RTNLHandler::ParseRTNL, Unretained(this))),
       io_handler_factory_(
           IOHandlerFactoryContainer::GetInstance()->GetIOHandlerFactory()) {
+  error_mask_window_.resize(kErrorWindowSize);
   VLOG(2) << "RTNLHandler created";
 }
 
@@ -261,14 +264,14 @@ void RTNLHandler::ParseRTNL(InputData *data) {
     if (!NLMSG_OK(hdr, static_cast<unsigned int>(end - buf)))
       break;
 
-    VLOG(3) << __func__ << ": received payload (" << end - buf << ")";
+    VLOG(5) << __func__ << ": received payload (" << end - buf << ")";
 
     RTNLMessage msg;
     ByteString payload(reinterpret_cast<unsigned char *>(hdr), hdr->nlmsg_len);
     VLOG(5) << "RTNL received payload length " << payload.GetLength()
             << ": \"" << payload.HexEncode() << "\"";
     if (!msg.Decode(payload)) {
-      VLOG(3) << __func__ << ": rtnl packet type "
+      VLOG(5) << __func__ << ": rtnl packet type "
               << hdr->nlmsg_type
               << " length " << hdr->nlmsg_len
               << " sequence " << hdr->nlmsg_seq;
@@ -278,14 +281,24 @@ void RTNLHandler::ParseRTNL(InputData *data) {
         case NLMSG_OVERRUN:
           break;
         case NLMSG_DONE:
+          GetAndClearErrorMask(hdr->nlmsg_seq);  // Clear any queued error mask.
           NextRequest(hdr->nlmsg_seq);
           break;
         case NLMSG_ERROR:
           {
             struct nlmsgerr *err =
                 reinterpret_cast<nlmsgerr *>(NLMSG_DATA(hdr));
-            LOG(ERROR) << "error " << -err->error << " ("
-                       << strerror(-err->error) << ")";
+            int error_number = -err->error;
+            std::ostringstream message;
+            message << "sequence " << hdr->nlmsg_seq << " received error "
+                    << error_number << " ("
+                    << strerror(error_number) << ")";
+            if (!ContainsValue(GetAndClearErrorMask(hdr->nlmsg_seq),
+                               error_number)) {
+              LOG(ERROR) << message.str();
+            } else {
+              VLOG(3) << message.str();
+            }
             break;
           }
         default:
@@ -413,7 +426,14 @@ int RTNLHandler::GetInterfaceIndex(const string &interface_name) {
   return ifr.ifr_ifindex;
 }
 
-bool RTNLHandler::SendMessage(RTNLMessage *message) {
+bool RTNLHandler::SendMessageWithErrorMask(RTNLMessage *message,
+                                           const ErrorMask &error_mask) {
+  VLOG(5) << __func__ << " sequence " << request_sequence_
+          << " message type " << message->type()
+          << " mode " << message->mode()
+          << " with error mask size " << error_mask.size();
+
+  SetErrorMask(request_sequence_, error_mask);
   message->set_seq(request_sequence_);
   ByteString msgdata = message->Encode();
 
@@ -436,6 +456,37 @@ bool RTNLHandler::SendMessage(RTNLMessage *message) {
   }
 
   return true;
+}
+
+bool RTNLHandler::SendMessage(RTNLMessage *message) {
+  ErrorMask error_mask;
+  if (message->mode() == RTNLMessage::kModeAdd) {
+    error_mask = { EEXIST };
+  } else if (message->mode() == RTNLMessage::kModeDelete) {
+    error_mask = { ESRCH, ENODEV };
+    if (message->type() == RTNLMessage::kTypeAddress) {
+      error_mask.insert(EADDRNOTAVAIL);
+    }
+  }
+  return SendMessageWithErrorMask(message, error_mask);
+}
+
+bool RTNLHandler::IsSequenceInErrorMaskWindow(uint32_t sequence) {
+  return (request_sequence_ - sequence) < kErrorWindowSize;
+}
+
+void RTNLHandler::SetErrorMask(uint32_t sequence, const ErrorMask &error_mask) {
+  if (IsSequenceInErrorMaskWindow(sequence)) {
+    error_mask_window_[sequence % kErrorWindowSize] = error_mask;
+  }
+}
+
+RTNLHandler::ErrorMask RTNLHandler::GetAndClearErrorMask(uint32_t sequence) {
+  ErrorMask error_mask;
+  if (IsSequenceInErrorMaskWindow(sequence)) {
+    error_mask.swap(error_mask_window_[sequence % kErrorWindowSize]);
+  }
+  return error_mask;
 }
 
 void RTNLHandler::OnReadError(const string &error_msg) {

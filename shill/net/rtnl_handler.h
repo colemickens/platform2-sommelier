@@ -6,6 +6,7 @@
 #define SHILL_NET_RTNL_HANDLER_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -42,6 +43,8 @@ class SHILL_EXPORT RTNLHandler {
   static const int kRequestRoute = 4;
   static const int kRequestRdnss = 8;
   static const int kRequestNeighbor = 16;
+
+  typedef std::set<int> ErrorMask;
 
   virtual ~RTNLHandler();
 
@@ -96,7 +99,16 @@ class SHILL_EXPORT RTNLHandler {
   // determine the index.
   virtual int GetInterfaceIndex(const std::string &interface_name);
 
-  // Send a formatted RTNL message.  The sequence number in the message is set.
+  // Send a formatted RTNL message.  Associates an error mask -- a list
+  // of errors that are expected and should not trigger log messages by
+  // default -- with the outgoing message.  If the message is sent
+  // successfully, the sequence number in |message| is set, and the
+  // function returns true.  Otherwise this function returns false.
+  virtual bool SendMessageWithErrorMask(RTNLMessage *message,
+                                        const ErrorMask &error_mask);
+
+  // Sends a formatted RTNL message using SendMessageWithErrorMask
+  // using an error mask inferred from the mode and type of |message|.
   virtual bool SendMessage(RTNLMessage *message);
 
  protected:
@@ -117,6 +129,9 @@ class SHILL_EXPORT RTNLHandler {
 
   static const int kReceiveBufferSize;
   static const int kInvalidSocket;
+
+  // Size of the window for receiving error sequences out-of-order.
+  static const int kErrorWindowSize;
 
   // This stops the event-monitoring function of the RTNL handler -- it is
   // private since it will never happen in normal running, but is useful for
@@ -140,6 +155,17 @@ class SHILL_EXPORT RTNLHandler {
   // Called by the RTNL read handler on exceptional events.
   void OnReadError(const std::string &error_msg);
 
+  // Returns whether |sequence| lies within the current error mask window.
+  bool IsSequenceInErrorMaskWindow(uint32_t sequence);
+
+  // Saves an error mask to be associated with this sequence number.
+  void SetErrorMask(uint32_t sequence, const ErrorMask &error_mask);
+
+  // Destructively retrieves the error mask associated with this sequeunce
+  // number.  If this sequence number now lies outside the receive window
+  // or no error mask was assigned, an empty ErrorMask is returned.
+  ErrorMask GetAndClearErrorMask(uint32_t sequence);
+
   std::unique_ptr<Sockets> sockets_;
   bool in_request_;
 
@@ -152,6 +178,7 @@ class SHILL_EXPORT RTNLHandler {
   base::Callback<void(InputData *)> rtnl_callback_;
   std::unique_ptr<IOHandler> rtnl_handler_;
   IOHandlerFactory *io_handler_factory_;
+  std::vector<ErrorMask> error_mask_window_;
 
   DISALLOW_COPY_AND_ASSIGN(RTNLHandler);
 };
