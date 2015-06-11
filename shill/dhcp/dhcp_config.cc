@@ -220,7 +220,9 @@ void DHCPConfig::KillClient() {
     return;
   }
   if (kill(pid_, SIGTERM) < 0) {
-    PLOG(ERROR);
+    if (errno != ESRCH) {
+      PLOG(ERROR);
+    }
     return;
   }
   pid_t ret;

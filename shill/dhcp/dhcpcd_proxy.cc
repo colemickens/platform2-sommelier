@@ -138,7 +138,7 @@ void DHCPCDProxy::Release(const string &interface) {
   } catch (const DBus::Error &e) {
     if (!strcmp(e.name(), DBUS_ERROR_SERVICE_UNKNOWN) ||
         !strcmp(e.name(), DBUS_ERROR_NO_REPLY)) {
-      LOG(ERROR) << "dhcpcd daemon appears to have already exited.";
+      LOG(INFO) << "dhcpcd daemon appears to have already exited.";
     } else {
       LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
                  << " interface: " << interface;
