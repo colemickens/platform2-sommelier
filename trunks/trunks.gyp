@@ -74,6 +74,14 @@
       'dependencies': [
         'trunks',
       ],
+      'conditions': [
+        ['USE_cros_host == 1', {
+            'defines': [
+              'SPI_OVER_FTDI=1',
+            ],
+          },
+        ],
+      ],
     },
     {
       'target_name': 'trunksd_lib',

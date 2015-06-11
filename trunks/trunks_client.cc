@@ -26,37 +26,40 @@ namespace {
 
 void PrintUsage() {
   puts("Options:");
-  puts("  --help - Prints this message.");
-  puts("  --status - Prints TPM status information.");
-  puts("  --startup - Performs startup and self-tests.");
-  puts("  --clear - Clears the TPM. Use before initializing the TPM.");
-  puts("  --init_tpm - Initializes a TPM as CrOS firmware does.");
   puts("  --allocate_pcr - Configures PCR 0-15 under the SHA256 bank.");
+  puts("  --clear - Clears the TPM. Use before initializing the TPM.");
+#if defined SPI_OVER_FTDI
+  puts("  --ftdi - Tries to communicate with a TPM2 chip over FTDI.");
+#endif
+  puts("  --help - Prints this message.");
+  puts("  --init_tpm - Initializes a TPM as CrOS firmware does.");
   puts("  --own - Takes ownership of the TPM with the provided password.");
+  puts("  --owner_password - used to provide an owner password");
   puts("  --regression_test - Runs some basic regression tests. If");
   puts("                      owner_password is supplied, it runs tests that");
   puts("                      need owner permissions.");
-  puts("  --owner_password - used to provide an owner password");
+  puts("  --startup - Performs startup and self-tests.");
+  puts("  --status - Prints TPM status information.");
   puts("  --stress_test - Runs some basic stress tests.");
 }
 
-int Startup() {
-  trunks::TrunksFactoryImpl factory;
+int Startup(bool use_ftdi) {
+  trunks::TrunksFactoryImpl factory(use_ftdi);
   factory.GetTpmUtility()->Shutdown();
   return factory.GetTpmUtility()->Startup();
 }
 
-int Clear() {
+int Clear(bool use_ftdi) {
   trunks::TrunksFactoryImpl factory;
   return factory.GetTpmUtility()->Clear();
 }
 
-int InitializeTpm() {
+int InitializeTpm(bool use_ftdi) {
   trunks::TrunksFactoryImpl factory;
   return factory.GetTpmUtility()->InitializeTpm();
 }
 
-int AllocatePCR() {
+int AllocatePCR(bool use_ftdi) {
   trunks::TrunksFactoryImpl factory;
   trunks::TPM_RC result;
   result = factory.GetTpmUtility()->AllocatePCR("");
@@ -68,7 +71,7 @@ int AllocatePCR() {
   return factory.GetTpmUtility()->Startup();
 }
 
-int TakeOwnership(const std::string& owner_password) {
+int TakeOwnership(const std::string& owner_password, bool use_ftdi) {
   trunks::TrunksFactoryImpl factory;
   trunks::TPM_RC rc;
   rc = factory.GetTpmUtility()->TakeOwnership(owner_password,
@@ -81,7 +84,7 @@ int TakeOwnership(const std::string& owner_password) {
   return 0;
 }
 
-int DumpStatus() {
+int DumpStatus(bool use_ftdi) {
   trunks::TrunksFactoryImpl factory;
   scoped_ptr<trunks::TpmState> state = factory.GetTpmState();
   trunks::TPM_RC result = state->Initialize();
@@ -115,20 +118,24 @@ int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
   base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
+  bool use_ftdi = false;
+#if defined SPI_OVER_FTDI
+  use_ftdi  = cl->HasSwitch("ftdi");
+#endif
   if (cl->HasSwitch("status")) {
-    return DumpStatus();
+    return DumpStatus(use_ftdi);
   }
   if (cl->HasSwitch("startup")) {
-    return Startup();
+    return Startup(use_ftdi);
   }
   if (cl->HasSwitch("clear")) {
-    return Clear();
+    return Clear(use_ftdi);
   }
   if (cl->HasSwitch("init_tpm")) {
-    return InitializeTpm();
+    return InitializeTpm(use_ftdi);
   }
   if (cl->HasSwitch("allocate_pcr")) {
-    return AllocatePCR();
+    return AllocatePCR(use_ftdi);
   }
   if (cl->HasSwitch("help")) {
     puts("Trunks Client: A command line tool to access the TPM.");
@@ -136,7 +143,7 @@ int main(int argc, char **argv) {
     return 0;
   }
   if (cl->HasSwitch("own")) {
-    return TakeOwnership(cl->GetSwitchValueASCII("owner_password"));
+    return TakeOwnership(cl->GetSwitchValueASCII("owner_password"), use_ftdi);
   }
   if (cl->HasSwitch("regression_test")) {
     trunks::TrunksClientTest test;
