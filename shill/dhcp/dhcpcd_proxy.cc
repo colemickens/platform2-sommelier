@@ -57,7 +57,12 @@ void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
 
   DHCPConfigRefPtr config = provider_->GetConfig(pid);
   if (!config.get()) {
-    LOG(ERROR) << "Unknown DHCP client PID " << pid;
+    if (provider_->IsRecentlyUnbound(pid)) {
+      SLOG(DHCP, nullptr, 3)
+          << __func__ << ": ignoring message from recently unbound PID " << pid;
+    } else {
+      LOG(ERROR) << "Unknown DHCP client PID " << pid;
+    }
     return;
   }
   config->InitProxy(signal.sender());
@@ -100,7 +105,12 @@ void DHCPCDListener::Proxy::StatusChangedSignal(
   // appropriate proxy for the PID/sender pair.
   DHCPConfigRefPtr config = provider_->GetConfig(pid);
   if (!config.get()) {
-    LOG(ERROR) << "Unknown DHCP client PID " << pid;
+    if (provider_->IsRecentlyUnbound(pid)) {
+      SLOG(DHCP, nullptr, 3)
+          << __func__ << ": ignoring message from recently unbound PID " << pid;
+    } else {
+      LOG(ERROR) << "Unknown DHCP client PID " << pid;
+    }
     return;
   }
   config->InitProxy(signal.sender());

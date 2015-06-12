@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -85,15 +86,18 @@ class DHCPProvider {
 
   // Binds a |pid| to a DHCP |config|. When a DHCP config spawns a new DHCP
   // client, it binds itself to that client's |pid|.
-  void BindPID(int pid, const DHCPConfigRefPtr &config);
+  virtual void BindPID(int pid, const DHCPConfigRefPtr &config);
 
   // Unbinds a |pid|. This method is used by a DHCP config to signal the
   // provider that the DHCP client has been terminated. This may result in
   // destruction of the DHCP config instance if its reference count goes to 0.
-  void UnbindPID(int pid);
+  virtual void UnbindPID(int pid);
 
   // Destroy lease file associated with this |name|.
   virtual void DestroyLease(const std::string &name);
+
+  // Returns true if |pid| was recently unbound from the provider.
+  bool IsRecentlyUnbound(int pid);
 
  protected:
   DHCPProvider();
@@ -108,6 +112,9 @@ class DHCPProvider {
   FRIEND_TEST(DHCPProviderTest, DestroyLease);
 
   typedef std::map<int, DHCPConfigRefPtr> PIDConfigMap;
+
+  // Retire |pid| from the set of recently retired PIDs.
+  void RetireUnboundPID(int pid);
 
   // Store cached copies of singletons for speed/ease of testing.
   SharedDBusConnection *shared_dbus_connection_;
@@ -124,6 +131,10 @@ class DHCPProvider {
   EventDispatcher *dispatcher_;
   GLib *glib_;
   Metrics *metrics_;
+
+  // Track the set of PIDs recently unbound from the provider in case messages
+  // arrive addressed from them.
+  std::set<int> recently_unbound_pids_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPProvider);
 };

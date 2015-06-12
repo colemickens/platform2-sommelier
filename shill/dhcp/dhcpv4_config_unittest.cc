@@ -16,7 +16,7 @@
 #include <chromeos/minijail/mock_minijail.h>
 
 #include "shill/dbus_adaptor.h"
-#include "shill/dhcp/dhcp_provider.h"
+#include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/dhcp/mock_dhcp_proxy.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"
@@ -65,7 +65,7 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
         metrics_(dispatcher()),
         config_(new DHCPv4Config(&control_,
                                 dispatcher(),
-                                DHCPProvider::GetInstance(),
+                                &provider_,
                                 kDeviceName,
                                 kHostName,
                                 kLeaseFileSuffix,
@@ -112,6 +112,7 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
   MockControl control_;
   unique_ptr<MockMinijail> minijail_;
   MockMetrics metrics_;
+  MockDHCPProvider provider_;
   DHCPv4ConfigRefPtr config_;
 };
 
@@ -124,7 +125,7 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
     bool arp_gateway) {
   DHCPv4ConfigRefPtr config(new DHCPv4Config(&control_,
                                             dispatcher(),
-                                            DHCPProvider::GetInstance(),
+                                            &provider_,
                                             kDeviceName,
                                             hostname,
                                             lease_suffix,
@@ -140,7 +141,7 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
     const string &hostname, const string &lease_suffix, bool arp_gateway) {
   DHCPv4ConfigRefPtr config(new DHCPv4Config(&control_,
                                             dispatcher(),
-                                            DHCPProvider::GetInstance(),
+                                            &provider_,
                                             kDeviceName,
                                             hostname,
                                             lease_suffix,
@@ -151,9 +152,9 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
   EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _))
       .WillOnce(DoAll(SetArgumentPointee<2>(kPID), Return(true)));
   EXPECT_CALL(*glib(), ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
+  EXPECT_CALL(provider_, BindPID(kPID, IsRefPtrTo(config)));
   EXPECT_TRUE(config->Start());
   EXPECT_EQ(kPID, config->pid_);
-  EXPECT_EQ(config.get(), DHCPProvider::GetInstance()->GetConfig(kPID).get());
   EXPECT_EQ(kTag, config->child_watch_tag_);
 
   EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -178,8 +179,8 @@ void DHCPv4ConfigTest::StopRunningConfigAndExpect(DHCPv4ConfigRefPtr config,
   ScopedMockLog log;
   // We use a non-zero exit status so that we get the log message.
   EXPECT_CALL(log, Log(_, _, ::testing::EndsWith("status 10")));
+  EXPECT_CALL(provider_, UnbindPID(kPID));
   DHCPConfig::ChildWatchCallback(kPID, 10, config.get());
-  EXPECT_EQ(nullptr, DHCPProvider::GetInstance()->GetConfig(kPID).get());
 
   EXPECT_FALSE(base::PathExists(pid_file_));
   EXPECT_EQ(lease_file_exists, base::PathExists(lease_file_));

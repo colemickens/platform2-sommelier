@@ -4,7 +4,9 @@
 
 #include "shill/dhcp/dhcp_provider.h"
 
+#include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/control_interface.h"
@@ -13,6 +15,7 @@
 #ifndef DISABLE_DHCPV6
 #include "shill/dhcp/dhcpv6_config.h"
 #endif
+#include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/shared_dbus_connection.h"
 
@@ -28,6 +31,7 @@ static string ObjectID(DHCPProvider *d) { return "(dhcp_provider)"; }
 
 namespace {
 base::LazyInstance<DHCPProvider> g_dhcp_provider = LAZY_INSTANCE_INITIALIZER;
+static const int kUnbindDelayMilliseconds = 2000;
 }  // namespace
 
 constexpr char DHCPProvider::kDHCPCDPathFormatLease[];
@@ -117,6 +121,18 @@ void DHCPProvider::BindPID(int pid, const DHCPConfigRefPtr &config) {
 void DHCPProvider::UnbindPID(int pid) {
   SLOG(this, 2) << __func__ << " pid: " << pid;
   configs_.erase(pid);
+  recently_unbound_pids_.insert(pid);
+  dispatcher_->PostDelayedTask(base::Bind(&DHCPProvider::RetireUnboundPID,
+                                          base::Unretained(this),
+                                          pid), kUnbindDelayMilliseconds);
+}
+
+void DHCPProvider::RetireUnboundPID(int pid) {
+  recently_unbound_pids_.erase(pid);
+}
+
+bool DHCPProvider::IsRecentlyUnbound(int pid) {
+  return ContainsValue(recently_unbound_pids_, pid);
 }
 
 void DHCPProvider::DestroyLease(const string &name) {

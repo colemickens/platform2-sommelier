@@ -31,6 +31,8 @@ class MockDHCPProvider : public DHCPProvider {
   MOCK_METHOD2(CreateIPv6Config,
                DHCPConfigRefPtr(const std::string &device_name,
                                 const std::string &storage_identifier));
+  MOCK_METHOD2(BindPID, void(int pid, const DHCPConfigRefPtr &config));
+  MOCK_METHOD1(UnbindPID, void(int pid));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDHCPProvider);

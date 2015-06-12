@@ -10,10 +10,14 @@
 
 #include "shill/dhcp/dhcp_config.h"
 #include "shill/mock_control.h"
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
 
 using base::FilePath;
 using base::ScopedTempDir;
+using testing::_;
+using testing::SaveArg;
+using testing::StrictMock;
 using testing::Test;
 
 namespace shill {
@@ -30,16 +34,22 @@ class DHCPProviderTest : public Test {
   DHCPProviderTest() : provider_(DHCPProvider::GetInstance()) {
     provider_->glib_ = &glib_;
     provider_->control_interface_ = &control_;
+    provider_->dispatcher_ = &dispatcher_;
+  }
+
+  void SetUp() {
     // DHCPProvider is a singleton, there is no guarentee that it is
     // not setup/used elsewhere, so reset its state before running our
     // tests.
     provider_->configs_.clear();
+    provider_->recently_unbound_pids_.clear();
   }
 
  protected:
   MockControl control_;
   MockGLib glib_;
   DHCPProvider *provider_;
+  StrictMock<MockEventDispatcher> dispatcher_;
 };
 
 TEST_F(DHCPProviderTest, CreateIPv4Config) {
@@ -66,6 +76,30 @@ TEST_F(DHCPProviderTest, DestroyLease) {
   EXPECT_TRUE(base::PathExists(lease_file));
   provider_->DestroyLease(kDeviceName);
   EXPECT_FALSE(base::PathExists(lease_file));
+}
+
+TEST_F(DHCPProviderTest, BindAndUnbind) {
+  int kPid = 999;
+  EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
+  EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
+
+  DHCPConfigRefPtr config = provider_->CreateIPv4Config(kDeviceName,
+                                                        kHostName,
+                                                        kStorageIdentifier,
+                                                        kArpGateway);
+  provider_->BindPID(kPid, config);
+  EXPECT_NE(nullptr, provider_->GetConfig(kPid));
+  EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
+
+  base::Closure task;
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _)).WillOnce(SaveArg<0>(&task));
+  provider_->UnbindPID(kPid);
+  EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
+  EXPECT_TRUE(provider_->IsRecentlyUnbound(kPid));
+
+  task.Run();  // Execute as if the PostDelayedTask() timer expired.
+  EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
+  EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
 }
 
 }  // namespace shill

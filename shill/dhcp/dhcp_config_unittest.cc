@@ -14,7 +14,7 @@
 #include <chromeos/minijail/mock_minijail.h>
 
 #include "shill/dbus_adaptor.h"
-#include "shill/dhcp/dhcp_provider.h"
+#include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/dhcp/mock_dhcp_proxy.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"
@@ -87,7 +87,7 @@ class DHCPConfigTest : public PropertyStoreTest {
         minijail_(new MockMinijail()),
         config_(new TestDHCPConfig(&control_,
                                    dispatcher(),
-                                   DHCPProvider::GetInstance(),
+                                   &provider_,
                                    kDeviceName,
                                    kDhcpMethod,
                                    kLeaseFileSuffix,
@@ -118,6 +118,7 @@ class DHCPConfigTest : public PropertyStoreTest {
   MockControl control_;
   unique_ptr<MockMinijail> minijail_;
   TestDHCPConfigRefPtr config_;
+  MockDHCPProvider provider_;
 };
 
 const int DHCPConfigTest::kPID = 123456;
@@ -127,7 +128,7 @@ TestDHCPConfigRefPtr DHCPConfigTest::CreateMockMinijailConfig(
     const string &lease_suffix) {
   TestDHCPConfigRefPtr config(new TestDHCPConfig(&control_,
                                                  dispatcher(),
-                                                 DHCPProvider::GetInstance(),
+                                                 &provider_,
                                                  kDeviceName,
                                                  kDhcpMethod,
                                                  lease_suffix,
@@ -373,16 +374,15 @@ TEST_F(DHCPConfigTest, Restart) {
   const unsigned int kTag2 = 22;
   config_->pid_ = kPID1;
   config_->child_watch_tag_ = kTag1;
-  DHCPProvider::GetInstance()->BindPID(kPID1, config_);
+  EXPECT_CALL(provider_, UnbindPID(kPID1));
   EXPECT_CALL(*glib(), SourceRemove(kTag1)).WillOnce(Return(true));
   EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(
       DoAll(SetArgumentPointee<2>(kPID2), Return(true)));
   EXPECT_CALL(*glib(), ChildWatchAdd(kPID2, _, _)).WillOnce(Return(kTag2));
+  EXPECT_CALL(provider_, BindPID(kPID2, IsRefPtrTo(config_)));
   EXPECT_TRUE(config_->Restart());
   EXPECT_EQ(kPID2, config_->pid_);
-  EXPECT_EQ(config_.get(), DHCPProvider::GetInstance()->GetConfig(kPID2).get());
   EXPECT_EQ(kTag2, config_->child_watch_tag_);
-  DHCPProvider::GetInstance()->UnbindPID(kPID2);
   config_->pid_ = 0;
   config_->child_watch_tag_ = 0;
 }
@@ -394,11 +394,10 @@ TEST_F(DHCPConfigTest, RestartNoClient) {
   EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(
       DoAll(SetArgumentPointee<2>(kPID), Return(true)));
   EXPECT_CALL(*glib(), ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
+  EXPECT_CALL(provider_, BindPID(kPID, IsRefPtrTo(config_)));
   EXPECT_TRUE(config_->Restart());
   EXPECT_EQ(kPID, config_->pid_);
-  EXPECT_EQ(config_.get(), DHCPProvider::GetInstance()->GetConfig(kPID).get());
   EXPECT_EQ(kTag, config_->child_watch_tag_);
-  DHCPProvider::GetInstance()->UnbindPID(kPID);
   config_->pid_ = 0;
   config_->child_watch_tag_ = 0;
 }
@@ -424,13 +423,12 @@ TEST_F(DHCPConfigTest, Stop) {
   EXPECT_CALL(log, Log(_, _, ContainsRegex(
       base::StringPrintf("Stopping.+%s", __func__))));
   config_->pid_ = kPID;
-  DHCPProvider::GetInstance()->BindPID(kPID, config_);
   config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
   config_->lease_expiration_callback_.Reset(base::Bind(&DoNothing));
+  EXPECT_CALL(provider_, UnbindPID(kPID));
   config_->Stop(__func__);
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
-  EXPECT_FALSE(DHCPProvider::GetInstance()->GetConfig(kPID));
   EXPECT_FALSE(config_->pid_);
 }
 
