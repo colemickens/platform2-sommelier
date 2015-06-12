@@ -18,6 +18,12 @@ using std::unique_ptr;
 
 namespace shill {
 
+namespace {
+
+const char *kErrorNameHasNoOwner = "org.freedesktop.DBus.Error.NameHasNoOwner";
+
+}  // namespace
+
 DBusServiceProxy::DBusServiceProxy(DBus::Connection *connection)
     : proxy_(connection) {}
 
@@ -47,8 +53,15 @@ void DBusServiceProxy::FromDBusError(const DBus::Error &dbus_error,
     error->Reset();
     return;
   }
-  Error::PopulateAndLog(
-      FROM_HERE, error, Error::kOperationFailed, dbus_error.what());
+  if (strcmp(dbus_error.name(), kErrorNameHasNoOwner) == 0) {
+    // TODO(pstew): It would be ideal to surface this error more widely if
+    // the service continues to have no owner after the name-owner timeout,
+    // in order to eliminate startup transients.  crbug.com/499924
+    LOG(INFO) << dbus_error.what();
+  } else {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed, dbus_error.what());
+  }
 }
 
 DBusServiceProxy::Proxy::Proxy(DBus::Connection *connection)
