@@ -244,8 +244,8 @@ void EnableBitmode(struct mpsse_context* mpsse, int tf) {
  */
 int SetMode(struct mpsse_context* mpsse, int endianess) {
   int retval = MPSSE_OK, i = 0, setup_commands_size = 0;
-  unsigned char buf[CMD_SIZE] = {0};
-  unsigned char setup_commands[CMD_SIZE * MAX_SETUP_COMMANDS] = {0};
+  uint8_t buf[CMD_SIZE] = {0};
+  uint8_t setup_commands[CMD_SIZE * MAX_SETUP_COMMANDS] = {0};
 
   /* Do not call is_valid_context() here, as the FTDI chip may not be completely
    * configured when SetMode is called */
@@ -393,7 +393,7 @@ int SetClock(struct mpsse_context* mpsse, uint32_t freq) {
   int retval = MPSSE_FAIL;
   uint32_t system_clock = 0;
   uint16_t divisor = 0;
-  unsigned char buf[CMD_SIZE] = {0};
+  uint8_t buf[CMD_SIZE] = {0};
 
   /* Do not call is_valid_context() here, as the FTDI chip may not be completely
    * configured when SetClock is called */
@@ -520,7 +520,7 @@ const char* GetDescription(struct mpsse_context* mpsse) {
  * Returns MPSSE_FAIL on failure.
  */
 int SetLoopback(struct mpsse_context* mpsse, int enable) {
-  unsigned char buf[1] = {0};
+  uint8_t buf[1] = {0};
   int retval = MPSSE_FAIL;
 
   if (is_valid_context(mpsse)) {
@@ -637,7 +637,7 @@ int Start(struct mpsse_context* mpsse) {
  * Returns MPSSE_OK on success, MPSSE_FAIL on failure.
  */
 int WriteBits(struct mpsse_context* mpsse, char bits, int size) {
-  char data[8] = {0};
+  uint8_t data[8] = {0};
   int i = 0, retval = MPSSE_OK;
 
   if (size > sizeof(data)) {
@@ -674,8 +674,8 @@ int WriteBits(struct mpsse_context* mpsse, char bits, int size) {
  * Returns MPSSE_OK on success.
  * Returns MPSSE_FAIL on failure.
  */
-int Write(struct mpsse_context* mpsse, char* data, int size) {
-  unsigned char* buf = NULL;
+int Write(struct mpsse_context* mpsse, const void* data, int size) {
+  uint8_t* buf = NULL;
   int retval = MPSSE_FAIL, buf_size = 0, txsize = 0, n = 0;
 
   if (is_valid_context(mpsse)) {
@@ -694,8 +694,7 @@ int Write(struct mpsse_context* mpsse, char* data, int size) {
           txsize = 1;
         }
 
-        buf = build_block_buffer(mpsse, mpsse->tx, (unsigned char*)(data + n),
-                                 txsize, &buf_size);
+        buf = build_block_buffer(mpsse, mpsse->tx, data + n, txsize, &buf_size);
         if (buf) {
           retval = raw_write(mpsse, buf, buf_size);
           n += txsize;
@@ -707,7 +706,7 @@ int Write(struct mpsse_context* mpsse, char* data, int size) {
 
           /* Read in the ACK bit and store it in mpsse->rack */
           if (mpsse->mode == I2C) {
-            raw_read(mpsse, (unsigned char*)&mpsse->rack, 1);
+            raw_read(mpsse, (uint8_t*)&mpsse->rack, 1);
           }
         } else {
           break;
@@ -724,9 +723,9 @@ int Write(struct mpsse_context* mpsse, char* data, int size) {
 }
 
 /* Performs a read. For internal use only; see Read() and ReadBits(). */
-char* InternalRead(struct mpsse_context* mpsse, int size) {
-  unsigned char *data = NULL, *buf = NULL;
-  unsigned char sbuf[SPI_RW_SIZE] = {0};
+uint8_t* InternalRead(struct mpsse_context* mpsse, int size) {
+  uint8_t *data = NULL, *buf = NULL;
+  uint8_t sbuf[SPI_RW_SIZE] = {0};
   int n = 0, rxsize = 0, data_size = 0, retval = 0;
 
   if (is_valid_context(mpsse)) {
@@ -759,7 +758,7 @@ char* InternalRead(struct mpsse_context* mpsse, int size) {
     }
   }
 
-  return (char*)buf;
+  return buf;
 }
 
 /*
@@ -774,10 +773,10 @@ char* InternalRead(struct mpsse_context* mpsse, int size) {
 #ifdef SWIGPYTHON
 swig_string_data Read(struct mpsse_context* mpsse, int size)
 #else
-char* Read(struct mpsse_context* mpsse, int size)
+uint8_t* Read(struct mpsse_context* mpsse, int size)
 #endif
 {
-  char* buf = NULL;
+  uint8_t* buf = NULL;
 
   buf = InternalRead(mpsse, size);
 
@@ -801,7 +800,7 @@ char* Read(struct mpsse_context* mpsse, int size)
  */
 char ReadBits(struct mpsse_context* mpsse, int size) {
   char bits = 0;
-  char* rdata = NULL;
+  uint8_t* rdata = NULL;
 
   if (size > 8) {
     size = 8;
@@ -850,10 +849,10 @@ char ReadBits(struct mpsse_context* mpsse, int size) {
 #ifdef SWIGPYTHON
 swig_string_data Transfer(struct mpsse_context* mpsse, char* data, int size)
 #else
-char* Transfer(struct mpsse_context* mpsse, char* data, int size)
+uint8_t* Transfer(struct mpsse_context* mpsse, uint8_t* data, int size)
 #endif
 {
-  unsigned char *txdata = NULL, *buf = NULL;
+  uint8_t *txdata = NULL, *buf = NULL;
   int n = 0, data_size = 0, rxsize = 0, retval = 0;
 
   if (is_valid_context(mpsse)) {
@@ -872,7 +871,7 @@ char* Transfer(struct mpsse_context* mpsse, char* data, int size)
           }
 
           txdata =
-              build_block_buffer(mpsse, mpsse->txrx, (unsigned char*)(data + n),
+              build_block_buffer(mpsse, mpsse->txrx, data + n,
                                  rxsize, &data_size);
           if (txdata) {
             retval = raw_write(mpsse, txdata, data_size);
@@ -897,7 +896,7 @@ char* Transfer(struct mpsse_context* mpsse, char* data, int size)
   sdata.data = (char*)buf;
   return sdata;
 #else
-  return (char*)buf;
+  return buf;
 #endif
 }
 
@@ -1088,7 +1087,7 @@ int ReadPins(struct mpsse_context* mpsse) {
   uint8_t val = 0;
 
   if (is_valid_context(mpsse)) {
-    ftdi_read_pins((struct ftdi_context*)&mpsse->ftdi, (unsigned char*)&val);
+    ftdi_read_pins((struct ftdi_context*)&mpsse->ftdi, (uint8_t*)&val);
   }
 
   return (int)val;
@@ -1126,7 +1125,7 @@ int PinState(struct mpsse_context* mpsse, int pin, int state) {
  * Returns MPSSE_OK on success, MPSSE_FAIL on failure.
  */
 int Tristate(struct mpsse_context* mpsse) {
-  unsigned char cmd[CMD_SIZE] = {0};
+  uint8_t cmd[CMD_SIZE] = {0};
 
   /* Tristate the all I/O pins (FT232H only) */
   cmd[0] = TRISTATE_IO;

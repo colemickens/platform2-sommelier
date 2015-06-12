@@ -190,7 +190,7 @@ const char* GetDescription(struct mpsse_context* mpsse);
 int SetLoopback(struct mpsse_context* mpsse, int enable);
 void SetCSIdle(struct mpsse_context* mpsse, int idle);
 int Start(struct mpsse_context* mpsse);
-int Write(struct mpsse_context* mpsse, char* data, int size);
+int Write(struct mpsse_context* mpsse, const void* data, int size);
 int Stop(struct mpsse_context* mpsse);
 int GetAck(struct mpsse_context* mpsse);
 void SetAck(struct mpsse_context* mpsse, int ack);
@@ -217,8 +217,9 @@ typedef struct swig_string_data {
 swig_string_data Read(struct mpsse_context* mpsse, int size);
 swig_string_data Transfer(struct mpsse_context* mpsse, char* data, int size);
 #else
-char* Read(struct mpsse_context* mpsse, int size);
-char* Transfer(struct mpsse_context* mpsse, char* data, int size);
+uint8_t* Read(struct mpsse_context* mpsse, int size);
+uint8_t* Transfer(struct mpsse_context* mpsse,
+                        uint8_t* data, int size);
 
 int FastWrite(struct mpsse_context* mpsse, char* data, int size);
 int FastRead(struct mpsse_context* mpsse, char* data, int size);

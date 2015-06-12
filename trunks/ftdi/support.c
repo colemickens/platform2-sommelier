@@ -17,7 +17,7 @@
 #include "trunks/ftdi/support.h"
 
 /* Write data to the FTDI chip */
-int raw_write(struct mpsse_context* mpsse, unsigned char* buf, int size) {
+int raw_write(struct mpsse_context* mpsse, uint8_t* buf, int size) {
   int retval = MPSSE_FAIL;
 
   if (mpsse->mode) {
@@ -30,7 +30,7 @@ int raw_write(struct mpsse_context* mpsse, unsigned char* buf, int size) {
 }
 
 /* Read data from the FTDI chip */
-int raw_read(struct mpsse_context* mpsse, unsigned char* buf, int size) {
+int raw_read(struct mpsse_context* mpsse, uint8_t* buf, int size) {
   int n = 0, r = 0;
 
   if (mpsse->mode) {
@@ -77,12 +77,12 @@ uint32_t div2freq(uint32_t system_clock, uint16_t div) {
 }
 
 /* Builds a buffer of commands + data blocks */
-unsigned char* build_block_buffer(struct mpsse_context* mpsse,
+uint8_t* build_block_buffer(struct mpsse_context* mpsse,
                                   uint8_t cmd,
-                                  unsigned char* data,
+                                  const uint8_t* data,
                                   int size,
                                   int* buf_size) {
-  unsigned char* buf = NULL;
+  uint8_t* buf = NULL;
   int i = 0, j = 0, k = 0, dsize = 0, num_blocks = 0, total_size = 0,
       xfer_size = 0;
   uint16_t rsize = 0;
@@ -197,7 +197,7 @@ int set_bits_low(struct mpsse_context* mpsse, int port) {
   buf[1] = port;
   buf[2] = mpsse->tris;
 
-  return raw_write(mpsse, (unsigned char*)&buf, sizeof(buf));
+  return raw_write(mpsse, (uint8_t*)&buf, sizeof(buf));
 }
 
 /* Set the high bit pins high/low */
@@ -208,7 +208,7 @@ int set_bits_high(struct mpsse_context* mpsse, int port) {
   buf[1] = port;
   buf[2] = mpsse->trish;
 
-  return raw_write(mpsse, (unsigned char*)&buf, sizeof(buf));
+  return raw_write(mpsse, (uint8_t*)&buf, sizeof(buf));
 }
 
 /* Set the GPIO pins high/low */
@@ -223,7 +223,7 @@ int gpio_write(struct mpsse_context* mpsse, int pin, int direction) {
     }
 
     if (set_bits_high(mpsse, mpsse->bitbang) == MPSSE_OK) {
-      retval = raw_write(mpsse, (unsigned char*)&mpsse->bitbang, 1);
+      retval = raw_write(mpsse, (uint8_t*)&mpsse->bitbang, 1);
     }
   } else {
     /* The first four pins can't be changed unless we are in a stopped status */
