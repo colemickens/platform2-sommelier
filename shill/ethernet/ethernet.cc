@@ -470,9 +470,11 @@ void Ethernet::SetupWakeOnLan() {
 
 bool Ethernet::ConfigurePPPoEMode(const bool &enable, Error *error) {
 #if defined(DISABLE_PPPOE)
-  LOG(WARNING) << "PPPoE support is not implemented.  Ignoring attempt "
-               << "to configure " << link_name();
-  error->Populate(Error::kNotSupported);
+  if (enable) {
+    LOG(WARNING) << "PPPoE support is not implemented.  Ignoring attempt "
+                 << "to configure " << link_name();
+    error->Populate(Error::kNotSupported);
+  }
   return false;
 #else
   CHECK(service_);
