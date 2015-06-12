@@ -145,26 +145,23 @@ void RTNLHandler::SetInterfaceFlags(int interface_index, unsigned int flags,
     return;
   }
 
-  struct rtnl_request {
-    struct nlmsghdr hdr;
-    struct ifinfomsg msg;
-  } req;
+  RTNLMessage msg(
+      RTNLMessage::kTypeLink,
+      RTNLMessage::kModeAdd,
+      NLM_F_REQUEST,
+      0,  // sequence to be filled in by RTNLHandler::SendMessage().
+      0,  // pid.
+      interface_index,
+      IPAddress::kFamilyUnknown);
 
-  request_sequence_++;
-  memset(&req, 0, sizeof(req));
+  msg.set_link_status(RTNLMessage::LinkStatus(ARPHRD_VOID, flags, change));
 
-  req.hdr.nlmsg_len = sizeof(req);
-  req.hdr.nlmsg_flags = NLM_F_REQUEST;
-  req.hdr.nlmsg_pid = 0;
-  req.hdr.nlmsg_seq = request_sequence_;
-  req.hdr.nlmsg_type = RTM_NEWLINK;
-  req.msg.ifi_index = interface_index;
-  req.msg.ifi_flags = flags;
-  req.msg.ifi_change = change;
-
-  if (sockets_->Send(rtnl_socket_, &req, sizeof(req), 0) < 0) {
-    PLOG(ERROR) << "RTNL sendto failed";
+  ErrorMask error_mask;
+  if ((flags & IFF_UP) == 0) {
+    error_mask.insert(ENODEV);
   }
+
+  SendMessageWithErrorMask(&msg, error_mask);
 }
 
 void RTNLHandler::SetInterfaceMTU(int interface_index, unsigned int mtu) {
