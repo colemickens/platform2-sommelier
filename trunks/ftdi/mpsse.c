@@ -43,31 +43,22 @@ struct vid_pid supported_devices[] = {
  * @freq      - Clock frequency to use for the specified mode.
  * @endianess - Specifies how data is clocked in/out (MSB, LSB).
  *
- * Returns a pointer to an MPSSE context structure.
- * On success, mpsse->open will be set to 1.
- * On failure, mpsse->open will be set to 0.
+ * Returns a pointer to an MPSSE context structure if succeeded, NULL otherwise.
  */
 struct mpsse_context* MPSSE(enum modes mode, int freq, int endianess) {
   int i = 0;
   struct mpsse_context* mpsse = NULL;
 
   for (i = 0; supported_devices[i].vid != 0; i++) {
-    if ((mpsse = Open(supported_devices[i].vid, supported_devices[i].pid, mode,
-                      freq, endianess, IFACE_A, NULL, NULL)) != NULL) {
-      if (mpsse->open) {
-        mpsse->description = supported_devices[i].description;
-        break;
-      }
-      /* If there is another device still left to try, free the context pointer
-         and try again */
-      else if (supported_devices[i + 1].vid != 0) {
-        Close(mpsse);
-        mpsse = NULL;
-      }
+    mpsse = Open(supported_devices[i].vid, supported_devices[i].pid, mode,
+                 freq, endianess, IFACE_A, NULL, NULL);
+    if (mpsse) {
+      mpsse->description = supported_devices[i].description;
+      return mpsse;
     }
   }
 
-  return mpsse;
+  return NULL;
 }
 
 /*
@@ -82,9 +73,7 @@ struct mpsse_context* MPSSE(enum modes mode, int freq, int endianess) {
  * @description - Device product description (set to NULL if not needed).
  * @serial      - Device serial number (set to NULL if not needed).
  *
- * Returns a pointer to an MPSSE context structure.
- * On success, mpsse->open will be set to 1.
- * On failure, mpsse->open will be set to 0.
+ * Returns a pointer to an MPSSE context structure on success.
  */
 struct mpsse_context* Open(int vid,
                            int pid,
@@ -124,76 +113,83 @@ struct mpsse_context* OpenIndex(int vid,
                                 const char* description,
                                 const char* serial,
                                 int index) {
-  int status = 0;
+  int status = 0, success = 0;
   struct mpsse_context* mpsse = NULL;
 
   mpsse = malloc(sizeof(struct mpsse_context));
-  if (mpsse) {
-    memset(mpsse, 0, sizeof(struct mpsse_context));
+  if (!mpsse)
+    return NULL;
 
-    /* Legacy; flushing is no longer needed, so disable it by default. */
-    FlushAfterRead(mpsse, 0);
+  memset(mpsse, 0, sizeof(struct mpsse_context));
 
-    /* ftdilib initialization */
-    if (ftdi_init(&mpsse->ftdi) == 0) {
-      /* Set the FTDI interface  */
-      ftdi_set_interface(&mpsse->ftdi, interface);
+  /* Legacy; flushing is no longer needed, so disable it by default. */
+  FlushAfterRead(mpsse, 0);
 
-      /* Open the specified device */
-      if (ftdi_usb_open_desc_index(&mpsse->ftdi, vid, pid, description, serial,
-                                   index) == 0) {
-        mpsse->mode = mode;
-        mpsse->vid = vid;
-        mpsse->pid = pid;
-        mpsse->status = STOPPED;
-        mpsse->endianess = endianess;
+  /* ftdilib initialization */
+  if (ftdi_init(&mpsse->ftdi)) {
+    free(mpsse);
+    return NULL;
+  }
 
-        /* Set the appropriate transfer size for the requested protocol */
-        if (mpsse->mode == I2C) {
-          mpsse->xsize = I2C_TRANSFER_SIZE;
-        } else {
-          mpsse->xsize = SPI_RW_SIZE;
-        }
+  /* Set the FTDI interface  */
+  ftdi_set_interface(&mpsse->ftdi, interface);
 
-        status |= ftdi_usb_reset(&mpsse->ftdi);
-        status |= ftdi_set_latency_timer(&mpsse->ftdi, LATENCY_MS);
-        status |= ftdi_write_data_set_chunksize(&mpsse->ftdi, CHUNK_SIZE);
-        status |= ftdi_read_data_set_chunksize(&mpsse->ftdi, CHUNK_SIZE);
-        status |= ftdi_set_bitmode(&mpsse->ftdi, 0, BITMODE_RESET);
+  /* Open the specified device */
+  if (!ftdi_usb_open_desc_index(&mpsse->ftdi, vid, pid, description, serial,
+                                index)) {
+    mpsse->mode = mode;
+    mpsse->vid = vid;
+    mpsse->pid = pid;
+    mpsse->status = STOPPED;
+    mpsse->endianess = endianess;
 
-        if (status == 0) {
-          /* Set the read and write timeout periods */
-          set_timeouts(mpsse, USB_TIMEOUT);
+    /* Set the appropriate transfer size for the requested protocol */
+    if (mpsse->mode == I2C)
+      mpsse->xsize = I2C_TRANSFER_SIZE;
+    else
+      mpsse->xsize = SPI_RW_SIZE;
 
-          if (mpsse->mode != BITBANG) {
-            ftdi_set_bitmode(&mpsse->ftdi, 0, BITMODE_MPSSE);
+    status |= ftdi_usb_reset(&mpsse->ftdi);
+    status |= ftdi_set_latency_timer(&mpsse->ftdi, LATENCY_MS);
+    status |= ftdi_write_data_set_chunksize(&mpsse->ftdi, CHUNK_SIZE);
+    status |= ftdi_read_data_set_chunksize(&mpsse->ftdi, CHUNK_SIZE);
+    status |= ftdi_set_bitmode(&mpsse->ftdi, 0, BITMODE_RESET);
 
-            if (SetClock(mpsse, freq) == MPSSE_OK) {
-              if (SetMode(mpsse, endianess) == MPSSE_OK) {
-                mpsse->open = 1;
+    if (status == 0) {
+      /* Set the read and write timeout periods */
+      set_timeouts(mpsse, USB_TIMEOUT);
 
-                /* Give the chip a few mS to initialize */
-                usleep(SETUP_DELAY);
+      if (mpsse->mode != BITBANG) {
+        ftdi_set_bitmode(&mpsse->ftdi, 0, BITMODE_MPSSE);
 
-                /*
-                 * Not all FTDI chips support all the commands that SetMode may
-                 * have sent.
-                 * This clears out any errors from unsupported commands that
-                 * might have been sent during set up.
-                 */
-                ftdi_usb_purge_buffers(&mpsse->ftdi);
-              }
-            }
-          } else {
-            /* Skip the setup functions if we're just operating in BITBANG mode
+        if (SetClock(mpsse, freq) == MPSSE_OK) {
+          if (SetMode(mpsse, endianess) == MPSSE_OK) {
+            success = 1;
+
+            /* Give the chip a few mS to initialize */
+            usleep(SETUP_DELAY);
+
+            /*
+             * Not all FTDI chips support all the commands that SetMode may
+             * have sent.
+             * This clears out any errors from unsupported commands that
+             * might have been sent during set up.
              */
-            if (ftdi_set_bitmode(&mpsse->ftdi, 0xFF, BITMODE_BITBANG) == 0) {
-              mpsse->open = 1;
-            }
+            ftdi_usb_purge_buffers(&mpsse->ftdi);
           }
         }
+      } else {
+        /* Skip the setup functions if we're just operating in BITBANG mode
+         */
+        if (!ftdi_set_bitmode(&mpsse->ftdi, 0xFF, BITMODE_BITBANG))
+          success = 1;
       }
     }
+  }
+
+  if (mpsse && !success) {
+    Close(mpsse);
+    mpsse = NULL;
   }
 
   return mpsse;
@@ -208,18 +204,13 @@ struct mpsse_context* OpenIndex(int vid,
  * Returns void.
  */
 void Close(struct mpsse_context* mpsse) {
-  if (mpsse) {
-    if (mpsse->open) {
-      ftdi_set_bitmode(&mpsse->ftdi, 0, BITMODE_RESET);
-      ftdi_usb_close(&mpsse->ftdi);
-      ftdi_deinit(&mpsse->ftdi);
-    }
+  if (!mpsse)
+    return;
 
-    free(mpsse);
-    mpsse = NULL;
-  }
-
-  return;
+  ftdi_set_bitmode(&mpsse->ftdi, 0, BITMODE_RESET);
+  ftdi_usb_close(&mpsse->ftdi);
+  ftdi_deinit(&mpsse->ftdi);
+  free(mpsse);
 }
 
 /* Enables bit-wise data transfers.

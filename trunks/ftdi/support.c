@@ -261,11 +261,5 @@ int gpio_write(struct mpsse_context* mpsse, int pin, int direction) {
 
 /* Checks if a given MPSSE context is valid. */
 int is_valid_context(struct mpsse_context* mpsse) {
-  int retval = 0;
-
-  if (mpsse != NULL && mpsse->open) {
-    retval = 1;
-  }
-
-  return retval;
+  return mpsse != NULL;
 }
