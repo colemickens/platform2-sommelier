@@ -43,6 +43,10 @@
 
 #define NULL_CONTEXT_ERROR_MSG "NULL MPSSE context pointer!"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* FTDI interfaces */
 enum interface {
   IFACE_ANY = INTERFACE_ANY,
@@ -228,5 +232,7 @@ int FastTransfer(struct mpsse_context* mpsse,
                  char* rdata,
                  int size);
 #endif
-
+#ifdef __cplusplus
+}
+#endif
 #endif  /* TRUNKS_FTDI_MPSSE_H_ */
