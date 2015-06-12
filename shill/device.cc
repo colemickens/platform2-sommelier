@@ -20,6 +20,7 @@
 #include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
+#include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -1148,9 +1149,17 @@ bool Device::SetIPFlag(IPAddress::Family family, const string &flag,
   SLOG(this, 2) << "Writing " << value << " to flag file "
                 << flag_file.value();
   if (base::WriteFile(flag_file, value.c_str(), value.length()) != 1) {
-    LOG(ERROR) << StringPrintf("IP flag write failed: %s to %s",
-                               value.c_str(), flag_file.value().c_str());
+    string message = StringPrintf("IP flag write failed: %s to %s",
+                                  value.c_str(), flag_file.value().c_str());
+    if (!base::PathExists(flag_file) &&
+        ContainsValue(written_flags_, flag_file.value())) {
+      SLOG(this, 2) << message << " (device is no longer present?)";
+    } else {
+      LOG(ERROR) << message;
+    }
     return false;
+  } else {
+    written_flags_.insert(flag_file.value());
   }
   return true;
 }

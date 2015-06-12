@@ -6,6 +6,7 @@
 #define SHILL_DEVICE_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -847,6 +848,9 @@ class Device : public base::RefCounted<Device> {
 
   // Track the current same-net multi-home state.
   bool is_multi_homed_;
+
+  // Remember which flag files were previously successfully written.
+  std::set<std::string> written_flags_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };
