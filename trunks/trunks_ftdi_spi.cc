@@ -58,7 +58,7 @@ TrunksFtdiSpi::~TrunksFtdiSpi() {
 }
 
 bool TrunksFtdiSpi::ReadTpmSts(uint32_t *status) {
-  return FtdiReadReg(TPM_STS_REG, sizeof(status), status);
+  return FtdiReadReg(TPM_STS_REG, sizeof(*status), status);
 }
 
 bool TrunksFtdiSpi::WriteTpmSts(uint32_t status) {
@@ -186,8 +186,57 @@ void TrunksFtdiSpi::SendCommand(const std::string& command,
   printf("%s invoked\n", __func__);
 }
 
+bool TrunksFtdiSpi::WaitForStatus(uint32_t statusMask,
+                                  uint32_t statusExpected, int timeout_ms) {
+  uint32_t status;
+  do {
+    usleep(1000);
+    if (!timeout_ms--) {
+      LOG(ERROR) << "failed to get expected status " << std::hex
+                 << statusExpected;
+      return false;
+    }
+    ReadTpmSts(&status);
+  } while ((status & statusMask) != statusExpected);
+  return true;
+}
+
 std::string TrunksFtdiSpi::SendCommandAndWait(const std::string& command) {
-  return std::string("");
+  uint32_t status;
+  uint32_t expected_status_bits;
+  std::string rv("");
+
+  if (command.length() > burst_count_) {
+    LOG(ERROR) << "cannot (yet) transmit more than " << burst_count_
+               << " bytes";
+    return rv;
+  }
+
+  WriteTpmSts(commandReady);
+
+  // No need to wait for the sts.Expect bit to be set, at least with the
+  // 15d1:001b device, let's just write the command into FIFO.
+  FtdiWriteReg(TPM_DATA_FIFO_REG, command.length(), command.c_str());
+
+  // And tell the device it can start processing it.
+  WriteTpmSts(tpmGo);
+
+  expected_status_bits = stsValid | dataAvail;
+  if (!WaitForStatus(expected_status_bits, expected_status_bits))
+      return rv;
+
+  // The response is ready, read it out byte by byte for now. Will be
+  // optimized to read the length first an then the entire remaining data in
+  // one shot.
+  do {
+    uint8_t c;
+
+    FtdiReadReg(TPM_DATA_FIFO_REG, sizeof(c), &c);
+    rv.push_back(c);
+    ReadTpmSts(&status);
+  } while ((status & expected_status_bits) == expected_status_bits);
+
+  return rv;
 }
 
 }  // namespace trunks

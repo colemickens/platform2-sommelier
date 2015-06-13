@@ -56,6 +56,10 @@ class TRUNKS_EXPORT TrunksFtdiSpi: public CommandTransceiver {
   // accessors for it,
   bool ReadTpmSts(uint32_t *status);
   bool WriteTpmSts(uint32_t status);
+  // Poll status register until the required value is read or the timeout
+  // expires.
+  bool WaitForStatus(uint32_t statusMask,
+                     uint32_t statusExpected, int timeout_ms = 100);
 
   DISALLOW_COPY_AND_ASSIGN(TrunksFtdiSpi);
 };
