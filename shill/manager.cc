@@ -107,8 +107,7 @@ Manager::Manager(ControlInterface *control_interface,
                  GLib *glib,
                  const string &run_directory,
                  const string &storage_directory,
-                 const string &user_storage_directory,
-                 const vector<Technology::Identifier> &default_technology_order)
+                 const string &user_storage_directory)
     : dispatcher_(dispatcher),
       run_path_(FilePath(run_directory)),
       storage_path_(FilePath(storage_directory)),
@@ -212,9 +211,6 @@ Manager::Manager(ControlInterface *control_interface,
   store_.RegisterBool(kWakeOnLanEnabledProperty, &is_wake_on_lan_enabled_);
   HelpRegisterConstDerivedStrings(kClaimedDevicesProperty,
                                   &Manager::ClaimedDevices);
-
-  // Do not invoke SetTechnologyOrder here because of its side effects.
-  technology_order_ = default_technology_order;
 
   UpdateProviderMapping();
 
@@ -1172,17 +1168,18 @@ bool Manager::IsDHCPv6EnabledForDevice(const string &device_name) const {
                    device_name) != dhcpv6_enabled_devices_.end();
 }
 
-void Manager::FilterPrependDNSServersByFamily(const IPAddress::Family family,
-                                              vector<string> *dns_servers) {
-  dns_servers->clear();
+vector<string> Manager::FilterPrependDNSServersByFamily(
+    IPAddress::Family family) const {
+  vector<string> dns_servers;
   vector<string> split_servers;
   base::SplitString(props_.prepend_dns_servers, ',', &split_servers);
   for (const auto &server : split_servers) {
     const IPAddress address(server);
     if (address.family() == family) {
-      dns_servers->push_back(server);
+      dns_servers.push_back(server);
     }
   }
+  return dns_servers;
 }
 
 bool Manager::IsSuspending() {
@@ -2542,7 +2539,9 @@ void Manager::SetTechnologyOrder(const string &order, Error *error) {
   }
 
   technology_order_ = new_order;
-  SortServices();
+  if (running_) {
+    SortServices();
+  }
 }
 
 bool Manager::IsWifiIdle() {

@@ -6,6 +6,7 @@
 #define SHILL_MOCK_MANAGER_H_
 
 #include <string>
+#include <vector>
 
 #include <base/macros.h>
 #include <gmock/gmock.h>
@@ -91,6 +92,21 @@ class MockManager : public Manager {
                      bool(const std::string &device_name));
   MOCK_CONST_METHOD1(IsDHCPv6EnabledForDevice,
                      bool(const std::string &device_name));
+  MOCK_METHOD1(AddDeviceToBlackList, void(const std::string &device_name));
+  MOCK_METHOD1(SetDHCPv6EnabledDevices,
+               void(const std::vector<std::string> &device_list));
+  MOCK_METHOD2(SetTechnologyOrder,
+               void(const std::string &order, Error *error));
+  MOCK_METHOD1(SetIgnoreUnknownEthernet, void(bool ignore));
+  MOCK_METHOD1(SetStartupPortalList, void(const std::string &portal_list));
+  MOCK_METHOD0(SetPassiveMode, void());
+  MOCK_METHOD1(SetPrependDNSServers,
+               void(const std::string &prepend_dns_servers));
+  MOCK_METHOD1(SetMinimumMTU, void(const int mtu));
+  MOCK_METHOD1(SetAcceptHostnameFrom, void(const std::string &hostname_from));
+  MOCK_CONST_METHOD0(ignore_unknown_ethernet, bool());
+  MOCK_CONST_METHOD1(FilterPrependDNSServersByFamily,
+                     std::vector<std::string>(IPAddress::Family family));
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo *mock_device_info() { return mock_device_info_; }

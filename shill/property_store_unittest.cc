@@ -90,8 +90,7 @@ PropertyStoreTest::PropertyStoreTest()
                glib(),
                run_path(),
                storage_path(),
-               string(),
-               default_technology_order()) {
+               string()) {
 }
 
 PropertyStoreTest::~PropertyStoreTest() {}

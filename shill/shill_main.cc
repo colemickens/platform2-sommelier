@@ -47,7 +47,7 @@ static const char kPortalList[] = "portal-list";
 // org.chromium.flimflam.Manager's ClaimInterface/ReleaseInterface APIs.
 static const char kPassiveMode[] = "passive-mode";
 // Default priority order of the technologies.
-static const char kDefaultTechnologyOrder[] = "default-technology-order";
+static const char kTechnologyOrder[] = "default-technology-order";
 // Comma-separated list of DNS servers to prepend to the resolver list.
 static const char kPrependDNSServers[] = "prepend-dns-servers";
 // The minimum MTU value that will be respected in DHCP responses.
@@ -99,6 +99,7 @@ namespace {
 
 const char *kLoggerCommand = "/usr/bin/logger";
 const char *kLoggerUser = "syslog";
+const char *kDefaultTechnologyOrder = "vpn,ethernet,wifi,wimax,cellular";
 
 }  // namespace
 
@@ -179,60 +180,42 @@ int main(int argc, char** argv) {
   shill::DBusControl* dbus_control = new shill::DBusControl();
   dbus_control->Init();
 
-  vector<shill::Technology::Identifier> technology_order;
-  if (cl->HasSwitch(switches::kDefaultTechnologyOrder)) {
+  shill::Daemon::Settings settings;
+  if (cl->HasSwitch(switches::kTechnologyOrder)) {
     shill::Error error;
     string order_flag = cl->GetSwitchValueASCII(
-        switches::kDefaultTechnologyOrder);
-    if (!shill::Technology::GetTechnologyVectorFromString(
-        order_flag, &technology_order, &error)) {
+        switches::kTechnologyOrder);
+    vector<shill::Technology::Identifier> test_order_vector;
+    if (shill::Technology::GetTechnologyVectorFromString(
+        order_flag, &test_order_vector, &error)) {
+      settings.default_technology_order = order_flag;
+    }  else {
       LOG(ERROR) << "Invalid default technology order: [" << order_flag
                  << "] Error: " << error.message();
     }
   }
-  if (technology_order.empty()) {
-    technology_order.push_back(
-        shill::Technology::IdentifierFromName(shill::kTypeVPN));
-    technology_order.push_back(
-        shill::Technology::IdentifierFromName(shill::kTypeEthernet));
-    technology_order.push_back(
-        shill::Technology::IdentifierFromName(shill::kTypeWifi));
-    technology_order.push_back(
-        shill::Technology::IdentifierFromName(shill::kTypeWimax));
-    technology_order.push_back(
-        shill::Technology::IdentifierFromName(shill::kTypeCellular));
+  if (settings.default_technology_order.empty()) {
+    settings.default_technology_order = kDefaultTechnologyOrder;
   }
-
-  shill::Config config;
-
-  // Passes ownership of dbus_control.
-  shill::Daemon daemon(&config, dbus_control, technology_order);
 
   if (cl->HasSwitch(switches::kDeviceBlackList)) {
-    vector<string> device_list;
     base::SplitString(cl->GetSwitchValueASCII(switches::kDeviceBlackList),
-                      ',', &device_list);
-
-    for (const auto &device : device_list) {
-      daemon.AddDeviceToBlackList(device);
-    }
+                      ',', &settings.device_blacklist);
   }
 
-  if (cl->HasSwitch(switches::kIgnoreUnknownEthernet)) {
-    daemon.SetIgnoreUnknownEthernet(true);
-  }
+  settings.ignore_unknown_ethernet =
+      cl->HasSwitch(switches::kIgnoreUnknownEthernet);
 
   if (cl->HasSwitch(switches::kPortalList)) {
-    daemon.SetStartupPortalList(cl->GetSwitchValueASCII(switches::kPortalList));
+    settings.use_portal_list = true;
+    settings.portal_list = cl->GetSwitchValueASCII(switches::kPortalList);
   }
 
-  if (cl->HasSwitch(switches::kPassiveMode)) {
-    daemon.SetPassiveMode();
-  }
+  settings.passive_mode = cl->HasSwitch(switches::kPassiveMode);
 
   if (cl->HasSwitch(switches::kPrependDNSServers)) {
-    daemon.SetPrependDNSServers(cl->GetSwitchValueASCII(
-        switches::kPrependDNSServers));
+    settings.prepend_dns_servers =
+        cl->GetSwitchValueASCII(switches::kPrependDNSServers);
   }
 
   if (cl->HasSwitch(switches::kMinimumMTU)) {
@@ -241,22 +224,26 @@ int main(int argc, char** argv) {
     if (!base::StringToInt(value, &mtu)) {
       LOG(FATAL) << "Could not convert '" << value << "' to integer.";
     }
-    daemon.SetMinimumMTU(mtu);
+    settings.minimum_mtu = mtu;
   }
 
   if (cl->HasSwitch(switches::kAcceptHostnameFrom)) {
-    daemon.SetAcceptHostnameFrom(
-        cl->GetSwitchValueASCII(switches::kAcceptHostnameFrom));
+    settings.accept_hostname_from =
+        cl->GetSwitchValueASCII(switches::kAcceptHostnameFrom);
   }
 
 #ifndef DISABLE_DHCPV6
   if (cl->HasSwitch(switches::kDhcpv6EnabledDevices)) {
-    vector<string> device_list;
     base::SplitString(cl->GetSwitchValueASCII(switches::kDhcpv6EnabledDevices),
-                      ',', &device_list);
-    daemon.SetDHCPv6EnabledDevices(device_list);
+                      ',', &settings.dhcpv6_enabled_devices);
   }
 #endif  // DISABLE_DHCPV6
+
+  shill::Config config;
+
+  // Passes ownership of dbus_control.
+  shill::Daemon daemon(&config, dbus_control);
+  daemon.ApplySettings(settings);
 
   g_unix_signal_add(SIGINT, ExitSigHandler, &daemon);
   g_unix_signal_add(SIGTERM, ExitSigHandler, &daemon);

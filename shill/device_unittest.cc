@@ -1171,6 +1171,8 @@ TEST_F(DeviceTest, OnIPv6AddressChanged) {
                                   metrics(),
                                   glib());
   manager.set_mock_device_info(&device_info_);
+  EXPECT_CALL(manager, FilterPrependDNSServersByFamily(_))
+      .WillRepeatedly(Return(vector<string>()));
   SetManager(&manager);
 
   // An IPv6 clear while ip6config_ is nullptr will not emit a change.
@@ -1255,6 +1257,8 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged_LeaseExpirationUpdated) {
                                   metrics(),
                                   glib());
   manager.set_mock_device_info(&device_info_);
+  EXPECT_CALL(manager, FilterPrependDNSServersByFamily(_))
+      .WillRepeatedly(Return(vector<string>()));
   SetManager(&manager);
 
   scoped_refptr<MockIPConfig> ip6config =
@@ -1290,6 +1294,8 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
                                   metrics(),
                                   glib());
   manager.set_mock_device_info(&device_info_);
+  EXPECT_CALL(manager, FilterPrependDNSServersByFamily(_))
+      .WillRepeatedly(Return(vector<string>()));
   SetManager(&manager);
 
   // With existing IPv4 connection, so no attempt to setup IPv6 connection.
@@ -1428,6 +1434,8 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
                                   metrics(),
                                   glib());
   manager.set_mock_device_info(&device_info_);
+  EXPECT_CALL(manager, FilterPrependDNSServersByFamily(_))
+      .WillRepeatedly(Return(vector<string>()));
   SetManager(&manager);
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(control_interface(),
@@ -1546,49 +1554,35 @@ TEST_F(DeviceTest, PrependIPv4DNSServers) {
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
 
-  scoped_refptr<IPConfig> ipconfig =
-      new IPConfig(control_interface(), kDeviceName);
+  const struct {
+    vector<string> ipconfig_servers;
+    vector<string> prepend_servers;
+    vector<string> expected_servers;
+  } expectations[] = {
+    {{}, {"8.8.8.8"}, {"8.8.8.8"}},
+    {{"8.8.8.8"}, {}, {"8.8.8.8"}},
+    {{"8.8.8.8"}, {"10.10.10.10"}, {"10.10.10.10", "8.8.8.8"}},
+    {{"8.8.8.8", "10.10.10.10"}, {"10.10.10.10"}, {"10.10.10.10", "8.8.8.8"}},
+    {{"8.8.8.8", "10.10.10.10"}, {"8.8.8.8"}, {"8.8.8.8", "10.10.10.10"}},
+    {{"8.8.8.8", "9.9.9.9", "10.10.10.10"}, {"9.9.9.9"},
+     {"9.9.9.9", "8.8.8.8", "10.10.10.10"}},
+  };
 
-  {
+  for (const auto &expectation : expectations) {
+    scoped_refptr<IPConfig> ipconfig =
+        new IPConfig(control_interface(), kDeviceName);
+
+    EXPECT_CALL(manager, FilterPrependDNSServersByFamily(
+        IPAddress::kFamilyIPv4)).WillOnce(Return(expectation.prepend_servers));
     IPConfig::Properties properties;
+    properties.dns_servers = expectation.ipconfig_servers;
     properties.address_family = IPAddress::kFamilyIPv4;
     ipconfig->set_properties(properties);
 
     device_->set_ipconfig(ipconfig);
-    manager.SetPrependDNSServers("8.8.8.8");
-
     OnIPConfigUpdated(ipconfig.get());
-
-    vector<string> expected = {"8.8.8.8"};
-    EXPECT_EQ(expected, device_->ipconfig()->properties().dns_servers);
-  }
-  {
-    IPConfig::Properties properties;
-    properties.address_family = IPAddress::kFamilyIPv4;
-    properties.dns_servers = {"8.8.8.8"};
-    ipconfig->set_properties(properties);
-
-    device_->set_ipconfig(ipconfig);
-    manager.SetPrependDNSServers("8.8.8.8,2001:4860:4860::8888");
-
-    OnIPConfigUpdated(ipconfig.get());
-
-    vector<string> expected = {"8.8.8.8"};
-    EXPECT_EQ(expected, device_->ipconfig()->properties().dns_servers);
-  }
-  {
-    IPConfig::Properties properties;
-    properties.address_family = IPAddress::kFamilyIPv4;
-    properties.dns_servers = {"8.8.8.8", "8.8.4.4"};
-    ipconfig->set_properties(properties);
-
-    device_->set_ipconfig(ipconfig);
-    manager.SetPrependDNSServers("8.8.4.4");
-
-    OnIPConfigUpdated(ipconfig.get());
-
-    vector<string> expected = {"8.8.4.4", "8.8.8.8"};
-    EXPECT_EQ(expected, device_->ipconfig()->properties().dns_servers);
+    EXPECT_EQ(expectation.expected_servers,
+              device_->ipconfig()->properties().dns_servers);
   }
 }
 
@@ -1599,35 +1593,30 @@ TEST_F(DeviceTest, DISABLED_PrependIPv6DNSServers) {
 
   vector<IPAddress> dns_server_addresses = {
     IPAddress("2001:4860:4860::8888"),
-    IPAddress("2001:4860:4860::8844"),
+    IPAddress("2001:4860:4860::8844")
   };
 
   EXPECT_CALL(device_info_, GetIPv6DnsServerAddresses(_, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(dns_server_addresses),
                             Return(true)));
+  const vector<string> kOutputServers {"2001:4860:4860::8899"};
+  EXPECT_CALL(manager, FilterPrependDNSServersByFamily(
+      IPAddress::kFamilyIPv6)).WillOnce(Return(kOutputServers));
   device_->OnIPv6DnsServerAddressesChanged();
 
-  vector<string> expected = {"2001:4860:4860::8888", "2001:4860:4860::8844"};
-  EXPECT_EQ(expected, device_->ip6config()->properties().dns_servers);
-
-  manager.SetPrependDNSServers("8.8.8.8");
-  device_->OnIPv6DnsServerAddressesChanged();
-  EXPECT_EQ(expected, device_->ip6config()->properties().dns_servers);
-
-  manager.SetPrependDNSServers("2001:4860:4860::8844");
-  device_->OnIPv6DnsServerAddressesChanged();
-  std::reverse(expected.begin(), expected.end());
-  EXPECT_EQ(expected, device_->ip6config()->properties().dns_servers);
+  const vector<string> kExpectedServers
+      {"2001:4860:4860::8899", "2001:4860:4860::8888", "2001:4860:4860::8844"};
+  EXPECT_EQ(kExpectedServers, device_->ip6config()->properties().dns_servers);
 }
 
 TEST_F(DeviceTest, PrependWithStaticConfiguration) {
   MockManager manager(control_interface(), dispatcher(), metrics(), glib());
   manager.set_mock_device_info(&device_info_);
-  manager.SetPrependDNSServers("8.8.8.8");
   SetManager(&manager);
 
-  scoped_refptr<IPConfig> ipconfig = new IPConfig(control_interface(),
-                                                  kDeviceName);
+  scoped_refptr<IPConfig> ipconfig =
+      new IPConfig(control_interface(), kDeviceName);
+
   device_->set_ipconfig(ipconfig);
 
   scoped_refptr<MockService> service = new MockService(control_interface(),
@@ -1647,10 +1636,12 @@ TEST_F(DeviceTest, PrependWithStaticConfiguration) {
 
   // Ensure that in the absence of statically configured nameservers that the
   // prepend DNS servers are still prepended.
-  const vector<string> servers = {"8.8.8.8"};
   EXPECT_CALL(*service, HasStaticNameServers()).WillOnce(Return(false));
+  const vector<string> kOutputServers {"8.8.8.8"};
+  EXPECT_CALL(manager, FilterPrependDNSServersByFamily(
+      IPAddress::kFamilyIPv4)).WillRepeatedly(Return(kOutputServers));
   OnIPConfigUpdated(ipconfig.get());
-  EXPECT_EQ(servers, device_->ipconfig()->properties().dns_servers);
+  EXPECT_EQ(kOutputServers, device_->ipconfig()->properties().dns_servers);
 
   // Ensure that when nameservers are statically configured that the prepend DNS
   // servers are not used.

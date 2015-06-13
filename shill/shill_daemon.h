@@ -35,18 +35,30 @@ class NetlinkManager;
 
 class Daemon {
  public:
-  Daemon(Config *config, ControlInterface *control,
-         const std::vector<Technology::Identifier> &default_technology_order);
+  // Run-time settings retrieved from command line.
+  struct Settings {
+    Settings()
+        : ignore_unknown_ethernet(false),
+          minimum_mtu(0),
+          passive_mode(false),
+          use_portal_list(false) {}
+    std::string accept_hostname_from;
+    std::string default_technology_order;
+    std::vector<std::string> device_blacklist;
+    std::vector<std::string> dhcpv6_enabled_devices;
+    bool ignore_unknown_ethernet;
+    int minimum_mtu;
+    bool passive_mode;
+    std::string portal_list;
+    std::string prepend_dns_servers;
+    bool use_portal_list;
+  };
+
+  Daemon(Config *config, ControlInterface *control);
   ~Daemon();
 
-  void AddDeviceToBlackList(const std::string &device_name);
-  void SetIgnoreUnknownEthernet(bool ignore);
-  void SetStartupPortalList(const std::string &portal_list);
-  void SetPassiveMode();
-  void SetPrependDNSServers(const std::string &prepend_dns_servers);
-  void SetMinimumMTU(const int mtu);
-  void SetAcceptHostnameFrom(const std::string &hostname_from);
-  void SetDHCPv6EnabledDevices(const std::vector<std::string> &device_list);
+  // Apply run-time settings to the manager.
+  void ApplySettings(const Settings &settings);
 
   // Main for connection manager.  Starts main process and holds event loop.
   void Run();

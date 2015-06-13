@@ -914,16 +914,17 @@ void Device::PrependDNSServersIntoIPConfig(const IPConfigRefPtr &ipconfig) {
 
 void Device::PrependDNSServers(const IPAddress::Family family,
                                vector<string> *servers) {
-  vector<string> suffix(servers->begin(), servers->end());
-  manager_->FilterPrependDNSServersByFamily(family, servers);
+  vector<string>output_servers =
+      manager_->FilterPrependDNSServersByFamily(family);
 
-  set<string> unique(servers->begin(), servers->end());
-  for (const auto &server : suffix) {
+  set<string> unique(output_servers.begin(), output_servers.end());
+  for (const auto &server : *servers) {
     if (unique.find(server) == unique.end()) {
-      servers->push_back(server);
+      output_servers.push_back(server);
       unique.insert(server);
     }
   }
+  servers->swap(output_servers);
 }
 
 void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,

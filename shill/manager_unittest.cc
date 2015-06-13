@@ -641,8 +641,7 @@ TEST_F(ManagerTest, ServiceRegistration) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  string(),
-                  default_technology_order());
+                  string());
   ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
   ASSERT_TRUE(profile.get());
   AdoptProfile(&manager, profile);
@@ -695,8 +694,7 @@ TEST_F(ManagerTest, RegisterKnownService) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  string(),
-                  default_technology_order());
+                  string());
   ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
   ASSERT_TRUE(profile.get());
   AdoptProfile(&manager, profile);
@@ -729,8 +727,7 @@ TEST_F(ManagerTest, RegisterUnknownService) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  string(),
-                  default_technology_order());
+                  string());
   ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
   ASSERT_TRUE(profile.get());
   AdoptProfile(&manager, profile);
@@ -832,8 +829,7 @@ TEST_F(ManagerTest, MoveService) {
                   glib(),
                   run_path(),
                   storage_path(),
-                  string(),
-                  default_technology_order());
+                  string());
   scoped_refptr<MockService> s2(new MockService(control_interface(),
                                                 dispatcher(),
                                                 metrics(),
@@ -957,8 +953,7 @@ TEST_F(ManagerTest, CreateProfile) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value(),
-                  default_technology_order());
+                  temp_dir.path().value());
 
   // Invalid name should be rejected.
   EXPECT_EQ(Error::kInvalidArguments, TestCreateProfile(&manager, ""));
@@ -998,8 +993,7 @@ TEST_F(ManagerTest, PushPopProfile) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value(),
-                  default_technology_order());
+                  temp_dir.path().value());
   vector<ProfileRefPtr> &profiles = GetProfiles(&manager);
 
   // Pushing an invalid profile should fail.
@@ -1175,8 +1169,7 @@ TEST_F(ManagerTest, RemoveProfile) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value(),
-                  default_technology_order());
+                  temp_dir.path().value());
 
   const char kProfile0[] = "profile0";
   FilePath profile_path(
@@ -1290,8 +1283,7 @@ TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value(),
-                  default_technology_order());
+                  temp_dir.path().value());
 
   const char kProfile0[] = "profile0";
   FilePath profile_path(
@@ -2422,14 +2414,20 @@ TEST_F(ManagerTest, FindMatchingService) {
 }
 
 TEST_F(ManagerTest, TechnologyOrder) {
+  // If the Manager is not running, setting the technology order should not
+  // lauch a service sorting task.
+  SetRunning(false);
   Error error;
+  manager()->SetTechnologyOrder("vpn,ethernet,wifi,wimax,cellular", &error);
+  ASSERT_TRUE(error.IsSuccess());
+  EXPECT_FALSE(IsSortServicesTaskPending());
   EXPECT_THAT(GetTechnologyOrder(), ElementsAre(Technology::kVPN,
                                                 Technology::kEthernet,
                                                 Technology::kWifi,
                                                 Technology::kWiMax,
                                                 Technology::kCellular));
 
-  EXPECT_FALSE(IsSortServicesTaskPending());
+  SetRunning(true);
   manager()->SetTechnologyOrder(string(kTypeEthernet) + "," + string(kTypeWifi),
                                 &error);
   EXPECT_TRUE(IsSortServicesTaskPending());
@@ -4362,8 +4360,7 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
                   &glib,
                   run_path(),
                   storage_path(),
-                  temp_dir.path().value(),
-                  default_technology_order());
+                  temp_dir.path().value());
   // Can't use |wifi_provider_|, because it's owned by the Manager
   // object in the fixture.
   MockWiFiProvider *wifi_provider = new NiceMock<MockWiFiProvider>();
@@ -4420,8 +4417,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
                             &glib,
                             run_path(),
                             temp_dir.path().value(),
-                            temp_dir.path().value(),
-                            default_technology_order()));
+                            temp_dir.path().value()));
   manager->InitializeProfiles();
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager->props_.check_portal_list);
@@ -4448,8 +4444,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
                             &glib,
                             run_path(),
                             temp_dir.path().value(),
-                            temp_dir.path().value(),
-                            default_technology_order()));
+                            temp_dir.path().value()));
   manager->InitializeProfiles();
   EXPECT_EQ(kCustomCheckPortalList, manager->props_.check_portal_list);
 
@@ -4462,8 +4457,7 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
                             &glib,
                             run_path(),
                             temp_dir.path().value(),
-                            temp_dir.path().value(),
-                            default_technology_order()));
+                            temp_dir.path().value()));
   manager->InitializeProfiles();
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager->props_.check_portal_list);
@@ -4482,8 +4476,7 @@ TEST_F(ManagerTest, ProfileStackChangeLogging) {
                             &glib,
                             run_path(),
                             temp_dir.path().value(),
-                            temp_dir.path().value(),
-                            default_technology_order()));
+                            temp_dir.path().value()));
 
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
@@ -5170,6 +5163,32 @@ TEST_F(ManagerTest, DHCPv6EnabledDevices) {
   EXPECT_TRUE(manager()->IsDHCPv6EnabledForDevice("eth0"));
   EXPECT_TRUE(manager()->IsDHCPv6EnabledForDevice("eth1"));
   EXPECT_TRUE(manager()->IsDHCPv6EnabledForDevice("wlan0"));
+}
+
+TEST_F(ManagerTest, FilterPrependDNSServersByFamily) {
+  const struct {
+    IPAddress::Family family;
+    string prepend_value;
+    vector<string> output_list;
+  } expectations[] = {
+    {IPAddress::kFamilyIPv4, "", {}},
+    {IPAddress::kFamilyIPv4, "8.8.8.8", {"8.8.8.8"}},
+    {IPAddress::kFamilyIPv4, "8.8.8.8,2001:4860:4860::8888", {"8.8.8.8"}},
+    {IPAddress::kFamilyIPv4, "2001:4860:4860::8844", {}},
+    {IPAddress::kFamilyIPv6, "", {}},
+    {IPAddress::kFamilyIPv6, "8.8.8.8", {}},
+    {IPAddress::kFamilyIPv6, "2001:4860:4860::8844",
+        {"2001:4860:4860::8844"}},
+    {IPAddress::kFamilyIPv6, "8.8.8.8,2001:4860:4860::8888",
+        {"2001:4860:4860::8888"}}
+  };
+
+  for (const auto &expectation : expectations) {
+    manager()->SetPrependDNSServers(expectation.prepend_value);
+    auto dns_servers =
+        manager()->FilterPrependDNSServersByFamily(expectation.family);
+    EXPECT_EQ(expectation.output_list, dns_servers);
+  }
 }
 
 }  // namespace shill

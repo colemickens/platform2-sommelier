@@ -38,6 +38,7 @@ using base::Callback;
 using base::CancelableClosure;
 using base::Unretained;
 using base::WeakPtrFactory;
+using std::string;
 using std::vector;
 
 using ::testing::Expectation;
@@ -189,8 +190,7 @@ class MockEventDispatchTester {
 class ShillDaemonTest : public Test {
  public:
   ShillDaemonTest()
-      : daemon_(&config_, new MockControl(),
-                vector<Technology::Identifier>()),  // Passes ownership.
+      : daemon_(&config_, new MockControl()),  // Passes ownership.
         metrics_(new MockMetrics(&daemon_.dispatcher_)),
         manager_(new MockManager(daemon_.control_.get(),
                                  &daemon_.dispatcher_,
@@ -343,6 +343,46 @@ TEST_F(ShillDaemonTest, Quit) {
 #if !defined(DISABLE_WIFI)
   ResetNetlinkManager();
 #endif  // DISABLE_WIFI
+}
+
+TEST_F(ShillDaemonTest, ApplySettings) {
+  Daemon::Settings settings;
+  EXPECT_CALL(*manager_, AddDeviceToBlackList(_)).Times(0);
+  vector<string> kEmptyStringList;
+  EXPECT_CALL(*manager_, SetDHCPv6EnabledDevices(kEmptyStringList));
+  EXPECT_CALL(*manager_, SetTechnologyOrder("", _));
+  EXPECT_CALL(*manager_, SetIgnoreUnknownEthernet(false));
+  EXPECT_CALL(*manager_, SetStartupPortalList(_)).Times(0);
+  EXPECT_CALL(*manager_, SetPassiveMode()).Times(0);
+  EXPECT_CALL(*manager_, SetPrependDNSServers(""));
+  EXPECT_CALL(*manager_, SetMinimumMTU(_)).Times(0);
+  EXPECT_CALL(*manager_, SetAcceptHostnameFrom(""));
+  daemon_.ApplySettings(settings);
+  Mock::VerifyAndClearExpectations(manager_);
+
+  settings.device_blacklist = {"eth0", "eth1"};
+  settings.default_technology_order = "wifi,ethernet";
+  vector<string> kDHCPv6EnabledDevices {"eth2", "eth3"};
+  settings.dhcpv6_enabled_devices = kDHCPv6EnabledDevices;
+  settings.ignore_unknown_ethernet = false;
+  settings.portal_list = "wimax";
+  settings.use_portal_list = true;
+  settings.passive_mode = true;
+  settings.prepend_dns_servers = "8.8.8.8,8.8.4.4";
+  settings.minimum_mtu = 256;
+  settings.accept_hostname_from = "eth*";
+  EXPECT_CALL(*manager_, AddDeviceToBlackList("eth0"));
+  EXPECT_CALL(*manager_, AddDeviceToBlackList("eth1"));
+  EXPECT_CALL(*manager_, SetDHCPv6EnabledDevices(kDHCPv6EnabledDevices));
+  EXPECT_CALL(*manager_, SetTechnologyOrder("wifi,ethernet", _));
+  EXPECT_CALL(*manager_, SetIgnoreUnknownEthernet(false));
+  EXPECT_CALL(*manager_, SetStartupPortalList("wimax"));
+  EXPECT_CALL(*manager_, SetPassiveMode());
+  EXPECT_CALL(*manager_, SetPrependDNSServers("8.8.8.8,8.8.4.4"));
+  EXPECT_CALL(*manager_, SetMinimumMTU(256));
+  EXPECT_CALL(*manager_, SetAcceptHostnameFrom("eth*"));
+  daemon_.ApplySettings(settings);
+  Mock::VerifyAndClearExpectations(manager_);
 }
 
 }  // namespace shill

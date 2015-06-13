@@ -101,6 +101,8 @@ class DeviceInfoTest : public Test {
 #endif  // DISABLE_WIFI
     device_info_.time_ = &time_;
     manager_.set_mock_device_info(&device_info_);
+    EXPECT_CALL(manager_, FilterPrependDNSServersByFamily(_))
+      .WillRepeatedly(Return(vector<string>()));
   }
 
   IPAddress CreateInterfaceAddress() {
@@ -1362,6 +1364,8 @@ void DeviceInfoTechnologyTest::CreateInfoSymLink(const string &name,
 TEST_F(DeviceInfoTechnologyTest, Unknown) {
   // With a uevent file but no driver symlink, we should act as if this
   // is a regular Ethernet driver by default.
+  EXPECT_CALL(manager_, ignore_unknown_ethernet())
+      .WillRepeatedly(Return(false));
   EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
 
   // Should be unknown without a uevent file.
@@ -1372,7 +1376,7 @@ TEST_F(DeviceInfoTechnologyTest, Unknown) {
 TEST_F(DeviceInfoTechnologyTest, UnknownWithNoSymlink) {
   // If the manager is setup to ignore devices with no device symlink,
   // this device should instead be unknown.
-  manager_.SetIgnoreUnknownEthernet(true);
+  EXPECT_CALL(manager_, ignore_unknown_ethernet()).WillOnce(Return(true));
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
 }
 

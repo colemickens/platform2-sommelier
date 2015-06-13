@@ -100,11 +100,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
           GLib *glib,
           const std::string &run_directory,
           const std::string &storage_directory,
-          const std::string &user_storage_directory,
-          const std::vector<Technology::Identifier> &default_technology_order);
+          const std::string &user_storage_directory);
   virtual ~Manager();
 
-  void AddDeviceToBlackList(const std::string &device_name);
+  virtual void AddDeviceToBlackList(const std::string &device_name);
 
   virtual void Start();
   virtual void Stop();
@@ -184,7 +183,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Configure scheduled scan for wifi devices.
   virtual void SetSchedScan(bool enable, Error *error);
   std::string GetTechnologyOrder();
-  void SetTechnologyOrder(const std::string &order, Error *error);
+  virtual void SetTechnologyOrder(const std::string &order, Error *error);
   // Set up the profile list starting with a default profile along with
   // an (optional) list of startup profiles.
   void InitializeProfiles();
@@ -268,7 +267,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // be used until a value set explicitly over the control API.  Until
   // then, we ignore but do not overwrite whatever value is stored in the
   // profile.
-  void SetStartupPortalList(const std::string &portal_list);
+  virtual void SetStartupPortalList(const std::string &portal_list);
 
   // Returns true if profile |a| has been pushed on the Manager's
   // |profiles_| stack before profile |b|.
@@ -356,7 +355,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   const std::string &GetHostName() const { return props_.host_name; }
 
   virtual int GetMinimumMTU() const { return props_.minimum_mtu; }
-  void SetMinimumMTU(const int mtu) { props_.minimum_mtu = mtu; }
+  virtual void SetMinimumMTU(const int mtu) { props_.minimum_mtu = mtu; }
 
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();
@@ -462,31 +461,34 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // are blacklisted) by default. Remote application can specify devices for
   // shill to manage through ReleaseInterface/ClaimInterface DBus API using
   // default claimer (with "" as claimer_name).
-  void SetPassiveMode();
+  virtual void SetPassiveMode();
 
   // Decides whether Ethernet-like devices are treated as unknown devices
   // if they do not indicate a driver name.
-  void SetIgnoreUnknownEthernet(bool ignore);
-  bool ignore_unknown_ethernet() const { return ignore_unknown_ethernet_; }
+  virtual void SetIgnoreUnknownEthernet(bool ignore);
+  virtual bool ignore_unknown_ethernet() const {
+    return ignore_unknown_ethernet_;
+  }
 
   // Set the list of prepended DNS servers to |prepend_dns_servers|.
-  void SetPrependDNSServers(const std::string &prepend_dns_servers);
+  virtual void SetPrependDNSServers(const std::string &prepend_dns_servers);
 
   // Accept hostname from DHCP server for devices matching |hostname_from|.
-  void SetAcceptHostnameFrom(const std::string &hostname_from);
+  virtual void SetAcceptHostnameFrom(const std::string &hostname_from);
   virtual bool ShouldAcceptHostnameFrom(const std::string &device_name) const;
 
   // Set DHCPv6 enabled device list.
-  void SetDHCPv6EnabledDevices(const std::vector<std::string> &device_list);
+  virtual void SetDHCPv6EnabledDevices(
+      const std::vector<std::string> &device_list);
+
   // Return true if DHCPv6 is enabled for the given device with |device_name|.
   virtual bool IsDHCPv6EnabledForDevice(const std::string &device_name) const;
 
   // Filter the list of prepended DNS servers, copying only those that match
   // |family| into |dns_servers|.  |dns_servers| is cleared, regardless of
   // whether or not there are any addresses that match |family|.
-  virtual void FilterPrependDNSServersByFamily(
-      const IPAddress::Family family,
-      std::vector<std::string> *dns_servers);
+  virtual std::vector<std::string> FilterPrependDNSServersByFamily(
+      IPAddress::Family family) const;
 
   // Returns true iff |power_manager_| exists and is suspending (i.e.
   // power_manager->suspending() is true), false otherwise.

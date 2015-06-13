@@ -36,8 +36,7 @@ static string ObjectID(Daemon *d) { return "(shill_daemon)"; }
 }
 
 
-Daemon::Daemon(Config *config, ControlInterface *control,
-               const vector<Technology::Identifier> &default_technology_order)
+Daemon::Daemon(Config *config, ControlInterface *control)
     : config_(config),
       control_(control),
       metrics_(new Metrics(&dispatcher_)),
@@ -55,42 +54,31 @@ Daemon::Daemon(Config *config, ControlInterface *control,
                            &glib_,
                            config->GetRunDirectory(),
                            config->GetStorageDirectory(),
-                           config->GetUserStorageDirectory(),
-                           default_technology_order)) {
+                           config->GetUserStorageDirectory())) {
 }
 
 Daemon::~Daemon() {}
 
-void Daemon::AddDeviceToBlackList(const string &device_name) {
-  manager_->AddDeviceToBlackList(device_name);
-}
-
-void Daemon::SetStartupPortalList(const string &portal_list) {
-  manager_->SetStartupPortalList(portal_list);
-}
-
-void Daemon::SetPassiveMode() {
-  manager_->SetPassiveMode();
-}
-
-void Daemon::SetIgnoreUnknownEthernet(bool ignore) {
-  manager_->SetIgnoreUnknownEthernet(ignore);
-}
-
-void Daemon::SetPrependDNSServers(const string &prepend_dns_servers) {
-  manager_->SetPrependDNSServers(prepend_dns_servers);
-}
-
-void Daemon::SetMinimumMTU(const int mtu) {
-  manager_->SetMinimumMTU(mtu);
-}
-
-void Daemon::SetAcceptHostnameFrom(const string &hostname_from) {
-  manager_->SetAcceptHostnameFrom(hostname_from);
-}
-
-void Daemon::SetDHCPv6EnabledDevices(const vector<string> &device_list) {
-  manager_->SetDHCPv6EnabledDevices(device_list);
+void Daemon::ApplySettings(const Settings &settings) {
+  for (const auto &device_name : settings.device_blacklist) {
+    manager_->AddDeviceToBlackList(device_name);
+  }
+  Error error;
+  manager_->SetTechnologyOrder(settings.default_technology_order, &error);
+  CHECK(error.IsSuccess());  // Command line should have been validated.
+  manager_->SetIgnoreUnknownEthernet(settings.ignore_unknown_ethernet);
+  if (settings.use_portal_list) {
+    manager_->SetStartupPortalList(settings.portal_list);
+  }
+  if (settings.passive_mode) {
+    manager_->SetPassiveMode();
+  }
+  manager_->SetPrependDNSServers(settings.prepend_dns_servers);
+  if (settings.minimum_mtu) {
+    manager_->SetMinimumMTU(settings.minimum_mtu);
+  }
+  manager_->SetAcceptHostnameFrom(settings.accept_hostname_from);
+  manager_->SetDHCPv6EnabledDevices(settings.dhcpv6_enabled_devices);
 }
 
 void Daemon::Run() {
