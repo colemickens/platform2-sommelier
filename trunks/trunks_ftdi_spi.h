@@ -33,6 +33,7 @@ class TRUNKS_EXPORT TrunksFtdiSpi: public CommandTransceiver {
 
  private:
   struct mpsse_context* mpsse_;
+  size_t burst_count_;  // As reported by the TPM_STS register
 
   // Read a TPM register into the passed in buffer, where 'bytes' the width of
   // the register. Return true on success, false on failure.
@@ -50,6 +51,10 @@ class TRUNKS_EXPORT TrunksFtdiSpi: public CommandTransceiver {
   // Note that this function is expected to be called when the SPI bus is idle
   // (CS deasserted), and will assert the CS before transmitting.
   void StartTransaction(bool read_write, size_t bytes, unsigned addr);
+  // TPM Status Register is going to be accessed a lot, let's have dedicated
+  // accessors for it,
+  bool ReadTpmSts(uint32_t *status);
+  bool WriteTpmSts(uint32_t status);
 
   DISALLOW_COPY_AND_ASSIGN(TrunksFtdiSpi);
 };

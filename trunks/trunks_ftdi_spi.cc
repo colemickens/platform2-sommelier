@@ -10,10 +10,11 @@
 #include "trunks/trunks_ftdi_spi.h"
 
 // Assorted TPM2 registers for interface type FIFO.
-#define TPM_ACCESS_REG      0
-#define TPM_STS_REG      0x18
-#define TPM_DID_VID_REG 0xf00
-#define TPM_RID_REG     0xf04
+#define TPM_ACCESS_REG       0
+#define TPM_STS_REG       0x18
+#define TPM_DATA_FIFO_REG 0x24
+#define TPM_DID_VID_REG  0xf00
+#define TPM_RID_REG      0xf04
 
 namespace trunks {
 
@@ -23,6 +24,23 @@ enum TpmAccessBits {
   activeLocality = (1 << 5),
   requestUse = (1 << 1),
   tpmEstablishment = (1 << 0),
+};
+
+enum TpmStsBits {
+  tpmFamilyShift = 26,
+  tpmFamilyMask = ((1 << 2) - 1),  // 2 bits wide
+  tpmFamilyTPM2 = 1,
+  resetEstablishmentBit = (1 << 25),
+  commandCancel = (1 << 24),
+  burstCountShift = 8,
+  burstCountMask = ((1 << 16) -1),  // 16 bits wide
+  stsValid = (1 << 7),
+  commandReady = (1 << 6),
+  tpmGo = (1 << 5),
+  dataAvail = (1 << 4),
+  Expect = (1 << 3),
+  selfTestDone = (1 << 2),
+  responseRetry = (1 << 1),
 };
 
   // SPI frame header for TPM transactions is 4 bytes in size, it is described
@@ -37,6 +55,14 @@ TrunksFtdiSpi::~TrunksFtdiSpi() {
     Close(mpsse_);
 
   mpsse_ = NULL;
+}
+
+bool TrunksFtdiSpi::ReadTpmSts(uint32_t *status) {
+  return FtdiReadReg(TPM_STS_REG, sizeof(status), status);
+}
+
+bool TrunksFtdiSpi::WriteTpmSts(uint32_t status) {
+  return FtdiWriteReg(TPM_STS_REG, sizeof(status), &status);
 }
 
 void TrunksFtdiSpi::StartTransaction(bool read_write,
@@ -104,7 +130,7 @@ bool TrunksFtdiSpi::FtdiReadReg(unsigned reg_number, size_t bytes,
 }
 
 bool TrunksFtdiSpi::Init() {
-  uint32_t did_vid;
+  uint32_t did_vid, status;
   uint8_t cmd;
 
   if (mpsse_)
@@ -141,6 +167,13 @@ bool TrunksFtdiSpi::Init() {
     return false;
   }
 
+  ReadTpmSts(&status);
+  if (((status >> tpmFamilyShift) & tpmFamilyMask) != tpmFamilyTPM2) {
+    LOG(ERROR) << "unexpected TPM family value, status: 0x" << std::hex
+               << status;
+    return false;
+  }
+  burst_count_ = (status >> burstCountShift) & burstCountMask;
   FtdiReadReg(TPM_RID_REG, sizeof(cmd), &cmd);
   printf("Connected to device vid:did:rid of %4.4x:%4.4x:%2.2x\n",
          did_vid & 0xffff, did_vid >> 16, cmd);
