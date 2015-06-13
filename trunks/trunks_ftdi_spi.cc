@@ -103,24 +103,24 @@ void TrunksFtdiSpi::StartTransaction(bool read_write,
 }
 
 bool TrunksFtdiSpi::FtdiWriteReg(unsigned reg_number, size_t bytes,
-                                 void *buffer, int locality) {
+                                 const void *buffer) {
   if (!mpsse_)
     return false;
 
-  StartTransaction(false, bytes, reg_number + locality * 0x10000);
+  StartTransaction(false, bytes, reg_number + locality_ * 0x10000);
   Write(mpsse_, buffer, bytes);
   Stop(mpsse_);
   return true;
 }
 
 bool TrunksFtdiSpi::FtdiReadReg(unsigned reg_number, size_t bytes,
-                                void *buffer, int locality) {
+                                void *buffer) {
   unsigned char *value;
 
   if (!mpsse_)
     return false;
 
-  StartTransaction(true, bytes, reg_number + locality * 0x10000);
+  StartTransaction(true, bytes, reg_number + locality_ * 0x10000);
   value = Read(mpsse_, bytes);
   if (buffer)
     memcpy(buffer, value, bytes);

@@ -22,7 +22,7 @@ namespace trunks {
 // commands to the SPI over FTDI interface directly to a TPM chip.
 class TRUNKS_EXPORT TrunksFtdiSpi: public CommandTransceiver {
  public:
-  TrunksFtdiSpi() : mpsse_(NULL) {}
+  TrunksFtdiSpi() : mpsse_(NULL), locality_(0) {}
   ~TrunksFtdiSpi() override;
 
   // CommandTransceiver methods.
@@ -33,16 +33,17 @@ class TRUNKS_EXPORT TrunksFtdiSpi: public CommandTransceiver {
 
  private:
   struct mpsse_context* mpsse_;
-  size_t burst_count_;  // As reported by the TPM_STS register
+  size_t burst_count_;  // As reported by the TPM_STS register.
+  unsigned locality_;   // Set at initialization.
 
   // Read a TPM register into the passed in buffer, where 'bytes' the width of
   // the register. Return true on success, false on failure.
   bool FtdiReadReg(unsigned reg_number, size_t bytes,
-                   void *buffer, int locality = 0);
+                   void *buffer);
   // Write a TPM register from the passed in buffer, where 'bytes' the width of
   // the register. Return true on success, false on failure.
   bool FtdiWriteReg(unsigned reg_number, size_t bytes,
-                    void *buffer, int locality = 0);
+                    const void *buffer);
   // Generate a proper SPI frame for read/write transaction, read_write set to
   // true for read transactions, the size of the transaction is passed as
   // 'bytes', addr is the internal TPM address space address (accounting for
