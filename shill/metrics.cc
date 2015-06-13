@@ -375,6 +375,13 @@ const char Metrics::kMetricDhcpClientStatus[] =
     "Network.Shill.DHCPClientStatus";
 
 // static
+const char Metrics::kMetricDhcpClientMTUValue[] =
+    "Network.Shill.DHCPClientMTUValue";
+const int Metrics::kMetricDhcpClientMTUValueMin = 0;
+const int Metrics::kMetricDhcpClientMTUValueMax = 1520;
+const int Metrics::kMetricDhcpClientMTUValueNumBuckets = 160;
+
+// static
 const char Metrics::kMetricNetworkConnectionIPTypeSuffix[] =
     "NetworkConnectionIPType";
 

@@ -367,7 +367,11 @@ bool DHCPv4Config::ParseConfiguration(const Configuration& configuration,
       properties->domain_search = value.operator vector<string>();
     } else if (key == kConfigurationKeyMTU) {
       int mtu = value.reader().get_uint16();
-      if (mtu >= minimum_mtu()) {
+      metrics_->SendToUMA(Metrics::kMetricDhcpClientMTUValue, mtu,
+                          Metrics::kMetricDhcpClientMTUValueMin,
+                          Metrics::kMetricDhcpClientMTUValueMax,
+                          Metrics::kMetricDhcpClientMTUValueNumBuckets);
+      if (mtu >= minimum_mtu() && mtu != kMinIPv4MTU) {
         properties->mtu = mtu;
       }
     } else if (key == kConfigurationKeyClasslessStaticRoutes) {
