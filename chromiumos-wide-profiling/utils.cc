@@ -7,14 +7,12 @@
 #include <openssl/md5.h>
 #include <sys/stat.h>
 
-#include <cctype>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>  // NOLINT(readability/streams)
 #include <iomanip>
 #include <sstream>
-#include <zlib.h>
 
 #include "base/logging.h"
 #include "base/macros.h"

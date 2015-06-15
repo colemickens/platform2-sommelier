@@ -12,7 +12,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <type_traits>
 #include <vector>
 
 #include "base/logging.h"
@@ -1160,8 +1159,7 @@ bool PerfReader::ReadEventAttr(DataReader* data, perf_event_attr* attr) {
 
     // NB: This will also reverse precise_ip : 2 as if it was two fields:
     auto *const bitfield_start = &attr->read_format + 1;
-    SwapBitfieldOfBits(reinterpret_cast<u8*>(bitfield_start),
-                       sizeof(u64));
+    SwapBitfieldOfBits(reinterpret_cast<u8*>(bitfield_start), sizeof(u64));
     // ... So swap it back:
     const auto tmp = attr->precise_ip;
     attr->precise_ip = (tmp & 0x2) >> 1 | (tmp & 0x1) << 1;
@@ -1242,8 +1240,7 @@ bool PerfReader::ReadEventType(DataReader* data,
   if (event_size == 0) {  // Not in an event.
     event_name_len = sizeof(perf_trace_event_type::name);
   } else {
-    event_name_len =
-        event_size - sizeof(perf_event_header) - sizeof(event_id);
+    event_name_len = event_size - sizeof(perf_event_header) - sizeof(event_id);
   }
   string event_name;
   if (!data->ReadString(event_name_len, &event_name)) {

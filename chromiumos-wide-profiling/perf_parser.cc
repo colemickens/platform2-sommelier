@@ -4,10 +4,8 @@
 
 #include "chromiumos-wide-profiling/perf_parser.h"
 
-
 #include <algorithm>
 #include <cstdio>
-#include <limits>
 #include <set>
 
 #include "base/logging.h"
