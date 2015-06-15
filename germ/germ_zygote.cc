@@ -36,7 +36,7 @@ namespace {
 static const char kZygoteChildPingMessage[] = "CHILD_PING";
 // TODO(rickyz) Is it reasonable to have a hard limit for the SandboxSpecs +
 // pickle size?
-static size_t kZygoteMaxMessageLength = 8192;
+static const size_t kZygoteMaxMessageLength = 8192;
 static const char kSysFsCgroupDir[] = "/sys/fs/cgroup";
 }  // namespace
 
@@ -72,8 +72,8 @@ void GermZygote::HandleRequests() {
     // doing this because we do not want to fork in the presence of binder.
     char buf[kZygoteMaxMessageLength];
     ScopedVector<base::ScopedFD> ipc_fds;
-    ssize_t len =
-        UnixDomainSocket::RecvMsg(server_fd_.get(), buf, sizeof(buf), &ipc_fds);
+    ssize_t len = base::UnixDomainSocket::RecvMsg(server_fd_.get(), buf,
+                                                  sizeof(buf), &ipc_fds);
 
     if (len == 0 || (len == -1 && errno == ECONNRESET)) {
       _exit(0);
@@ -89,8 +89,8 @@ void GermZygote::HandleRequests() {
       continue;
     }
 
-    Pickle pickle(buf, len);
-    PickleIterator iter(pickle);
+    base::Pickle pickle(buf, len);
+    base::PickleIterator iter(pickle);
 
     base::StringPiece serialized_spec;
     if (!iter.ReadStringPiece(&serialized_spec)) {
@@ -118,7 +118,7 @@ bool GermZygote::StartContainer(const soma::SandboxSpec& spec, pid_t* pid) {
     return false;
   }
 
-  Pickle pickle;
+  base::Pickle pickle;
   if (!pickle.WriteString(serialized_spec)) {
     LOG(ERROR) << "Failed to pickle serialized spec.";
     return false;
@@ -133,11 +133,11 @@ bool GermZygote::StartContainer(const soma::SandboxSpec& spec, pid_t* pid) {
   // TODO(rickyz): These can CHECK fail.
   base::ScopedFD client_fd(ipc_fds[0]);
   base::ScopedFD server_fd(ipc_fds[1]);
-  PCHECK(UnixDomainSocket::EnableReceiveProcessId(client_fd.get()));
+  PCHECK(base::UnixDomainSocket::EnableReceiveProcessId(client_fd.get()));
 
   std::vector<int> fds = {server_fd.get()};
-  if (!UnixDomainSocket::SendMsg(client_fd_.get(), pickle.data(), pickle.size(),
-                                 fds)) {
+  if (!base::UnixDomainSocket::SendMsg(client_fd_.get(), pickle.data(),
+                                       pickle.size(), fds)) {
     PLOG(ERROR) << "SendMsg failed (spec)";
     return false;
   }
@@ -146,9 +146,9 @@ bool GermZygote::StartContainer(const soma::SandboxSpec& spec, pid_t* pid) {
 
   ScopedVector<base::ScopedFD> dummy_fds;
   char ping_message_buf[sizeof(kZygoteChildPingMessage)];
-  if (!UnixDomainSocket::RecvMsgWithPid(client_fd.get(), ping_message_buf,
-                                        sizeof(ping_message_buf), &dummy_fds,
-                                        pid)) {
+  if (!base::UnixDomainSocket::RecvMsgWithPid(client_fd.get(), ping_message_buf,
+                                              sizeof(ping_message_buf),
+                                              &dummy_fds, pid)) {
     PLOG(ERROR) << "RecvMsgWithPid failed (ping message)";
     return false;
   }
@@ -260,9 +260,9 @@ void GermZygote::SpawnContainer(const soma::SandboxSpec& spec, int client_fd) {
 
     if (init_pid == 0) {
       // Send a ping back so that the requester can obtain our PID.
-      CHECK(UnixDomainSocket::SendMsg(client_fd, kZygoteChildPingMessage,
-                                      sizeof(kZygoteChildPingMessage),
-                                      std::vector<int>()));
+      CHECK(base::UnixDomainSocket::SendMsg(client_fd, kZygoteChildPingMessage,
+                                            sizeof(kZygoteChildPingMessage),
+                                            std::vector<int>()));
       PCHECK(IGNORE_EINTR(close(client_fd)) == 0);
 
       GermInit init(spec);

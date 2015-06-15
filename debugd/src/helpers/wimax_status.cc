@@ -43,9 +43,8 @@ class WiMaxStatus {
     string json;
     scoped_ptr<DictionaryValue> manager_properties(GetManagerProperties());
     if (manager_properties) {
-      base::JSONWriter::WriteWithOptions(manager_properties.get(),
-                                         base::JSONWriter::OPTIONS_PRETTY_PRINT,
-                                         &json);
+      base::JSONWriter::WriteWithOptions(
+          *manager_properties, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
     }
     return json;
   }

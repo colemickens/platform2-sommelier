@@ -377,10 +377,12 @@ void WiFiEndpoint::ParseKeyManagementMethods(
       find(WPASupplicant::kSecurityMethodPropertyKeyManagement)->second.
       operator vector<string>();
   for (const auto &method : key_management_vec) {
-    if (EndsWith(method, WPASupplicant::kKeyManagementMethodSuffixEAP, true)) {
+    if (base::EndsWith(method, WPASupplicant::kKeyManagementMethodSuffixEAP,
+                       true)) {
       key_management_methods->insert(kKeyManagement802_1x);
-    } else if (
-        EndsWith(method, WPASupplicant::kKeyManagementMethodSuffixPSK, true)) {
+    } else if (base::EndsWith(method,
+                              WPASupplicant::kKeyManagementMethodSuffixPSK,
+                              true)) {
       key_management_methods->insert(kKeyManagementPSK);
     }
   }

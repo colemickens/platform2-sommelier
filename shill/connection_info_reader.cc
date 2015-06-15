@@ -164,10 +164,10 @@ bool ConnectionInfoReader::ParseIPAddress(
     const string &input, IPAddress *ip_address, bool *is_source) {
   string ip_address_string;
 
-  if (StartsWithASCII(input, kSourceIPAddressTag, false)) {
+  if (base::StartsWithASCII(input, kSourceIPAddressTag, false)) {
     *is_source = true;
     ip_address_string = input.substr(strlen(kSourceIPAddressTag));
-  } else if (StartsWithASCII(input, kDestinationIPAddressTag, false)) {
+  } else if (base::StartsWithASCII(input, kDestinationIPAddressTag, false)) {
     *is_source = false;
     ip_address_string = input.substr(strlen(kDestinationIPAddressTag));
   } else {
@@ -194,10 +194,10 @@ bool ConnectionInfoReader::ParsePort(
   int result = 0;
   string port_string;
 
-  if (StartsWithASCII(input, kSourcePortTag, false)) {
+  if (base::StartsWithASCII(input, kSourcePortTag, false)) {
     *is_source = true;
     port_string = input.substr(strlen(kSourcePortTag));
-  } else if (StartsWithASCII(input, kDestinationPortTag, false)) {
+  } else if (base::StartsWithASCII(input, kDestinationPortTag, false)) {
     *is_source = false;
     port_string = input.substr(strlen(kDestinationPortTag));
   } else {

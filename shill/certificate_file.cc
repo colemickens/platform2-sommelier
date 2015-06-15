@@ -72,7 +72,7 @@ string CertificateFile::ExtractHexData(const std::string &pem_data) {
        it != input_lines.end(); ++it) {
     string line;
     base::TrimWhitespaceASCII(*it, base::TRIM_ALL, &line);
-    if (StartsWithASCII(line, kPEMHeader, kCaseSensitive)) {
+    if (base::StartsWithASCII(line, kPEMHeader, kCaseSensitive)) {
       if (found_header) {
         LOG(ERROR) << "Found two PEM headers in a row.";
         return string();
@@ -80,7 +80,7 @@ string CertificateFile::ExtractHexData(const std::string &pem_data) {
         found_header = true;
         output_lines.clear();
       }
-    } else if (StartsWithASCII(line, kPEMFooter, kCaseSensitive)) {
+    } else if (base::StartsWithASCII(line, kPEMFooter, kCaseSensitive)) {
       if (!found_header) {
         LOG(ERROR) << "Found a PEM footer before header.";
         return string();

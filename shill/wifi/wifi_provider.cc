@@ -695,7 +695,7 @@ time_t WiFiProvider::StringListToFrequencyMap(const vector<string> &strings,
 
 // static
 time_t WiFiProvider::GetStringListStartWeek(const string &week_string) {
-  if (!StartsWithASCII(week_string, kStartWeekHeader, false)) {
+  if (!base::StartsWithASCII(week_string, kStartWeekHeader, false)) {
     LOG(ERROR) << "Found no leading '" << kStartWeekHeader << "' in '"
                << week_string << "'";
     return kIllegalStartWeek;

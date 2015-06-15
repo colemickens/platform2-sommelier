@@ -105,7 +105,7 @@ bool BootDeviceIsRotationalDisk() {
     PLOG(WARNING) << "Couldn't find root device. Guessing it's not rotational.";
     return false;
   }
-  CHECK(StartsWithASCII(full_rootdev_path, "/dev/", true));
+  CHECK(base::StartsWithASCII(full_rootdev_path, "/dev/", true));
   string device_only(full_rootdev_path + 5, PATH_MAX - 5);
   base::FilePath sysfs_path(
       base::StringPrintf("/sys/block/%s/queue/rotational",

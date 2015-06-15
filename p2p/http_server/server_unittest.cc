@@ -172,7 +172,7 @@ TEST(P2PHttpServer, ReportServerMessageTest) {
 
   // Check the messages reported by the Server.
   ASSERT_EQ(messages.size(), 4);
-  EXPECT_TRUE(StartsWithASCII(messages[0], "{PortNumber: ", false));
+  EXPECT_TRUE(base::StartsWithASCII(messages[0], "{PortNumber: ", false));
   EXPECT_EQ(messages[1], "{NumConnections: 1}");
   EXPECT_EQ(messages[2], "{ClientCount: 1}");
   EXPECT_EQ(messages[3], "{NumConnections: 0}");

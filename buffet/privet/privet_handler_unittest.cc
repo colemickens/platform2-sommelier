@@ -37,8 +37,10 @@ void LoadTestJson(const std::string& test_json,
   base::ReplaceChars(json, "'", "\"", &json);
   int error = 0;
   std::string message;
-  std::unique_ptr<base::Value> value(base::JSONReader::ReadAndReturnError(
-      json, base::JSON_PARSE_RFC, &error, &message));
+  std::unique_ptr<base::Value> value(
+      base::JSONReader::ReadAndReturnError(json, base::JSON_PARSE_RFC, &error,
+                                           &message)
+          .release());
   EXPECT_TRUE(value.get()) << "\nError: " << message << "\n" << json;
   base::DictionaryValue* dictionary_ptr = nullptr;
   if (value->GetAsDictionary(&dictionary_ptr))

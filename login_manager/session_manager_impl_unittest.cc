@@ -301,12 +301,12 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
           true)).Times(1);
 
   string testing_path = impl_.EnableChromeTesting(false, args, NULL);
-  EXPECT_TRUE(EndsWith(testing_path, expected_testing_path, false));
+  EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path, false));
 
   // Calling again, without forcing relaunch, should not do anything.
   testing_path.clear();
   testing_path = impl_.EnableChromeTesting(false, args, NULL);
-  EXPECT_TRUE(EndsWith(testing_path, expected_testing_path, false));
+  EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path, false));
 
   // Force relaunch.  Should go through the whole path again.
   args[0] = "--dummy";
@@ -319,7 +319,7 @@ TEST_F(SessionManagerImplTest, EnableChromeTesting) {
           true)).Times(1);
 
   testing_path = impl_.EnableChromeTesting(true, args, NULL);
-  EXPECT_TRUE(EndsWith(testing_path, expected_testing_path, false));
+  EXPECT_TRUE(base::EndsWith(testing_path, expected_testing_path, false));
 }
 
 TEST_F(SessionManagerImplTest, StartSession) {

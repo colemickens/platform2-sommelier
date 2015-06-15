@@ -29,7 +29,7 @@ class AmbientLightSensorStub : public AmbientLightSensorInterface {
   int GetAmbientLightLux() override;
 
  private:
-  ObserverList<AmbientLightObserver> observers_;
+  base::ObserverList<AmbientLightObserver> observers_;
 
   // Value returned by GetAmbientLightLux().
   int lux_;

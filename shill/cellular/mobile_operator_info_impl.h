@@ -152,7 +152,7 @@ class MobileOperatorInfoImpl {
   // The observers added to this list are not owned by this object. Moreover,
   // the observer is likely to outlive this object. We do enforce removal of all
   // observers before this object is destroyed.
-  ObserverList<MobileOperatorInfo::Observer> observers_;
+  base::ObserverList<MobileOperatorInfo::Observer> observers_;
   base::CancelableClosure notify_operator_changed_task_;
 
   std::unique_ptr<mobile_operator_db::MobileOperatorDB> database_;

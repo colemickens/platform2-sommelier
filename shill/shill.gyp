@@ -560,6 +560,7 @@
           'includes': ['../common-mk/common_test.gypi'],
           'variables': {
             'deps': [
+              'libchrome-test-<(libbase_ver)',
               'libnetfilter_queue',
               'libnfnetlink',
             ],

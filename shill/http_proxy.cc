@@ -226,7 +226,7 @@ void HTTPProxy::OnConnectCompletion(bool success, int fd) {
 
   // If this was a "CONNECT" request, notify the client that the connection
   // has been established by sending an "OK" response.
-  if (LowerCaseEqualsASCII(client_method_, kHTTPMethodConnect)) {
+  if (base::LowerCaseEqualsASCII(client_method_, kHTTPMethodConnect)) {
     SetClientResponse(200, "OK", "", "");
     StartReceive();
   }
@@ -249,15 +249,15 @@ bool HTTPProxy::ParseClientRequest() {
   bool found_via = false;
   bool found_connection = false;
   for (auto &header : client_headers_) {
-    if (StartsWithASCII(header, "Host:", false)) {
+    if (base::StartsWithASCII(header, "Host:", false)) {
       host = header.substr(5);
-    } else if (StartsWithASCII(header, "Via:", false)) {
+    } else if (base::StartsWithASCII(header, "Via:", false)) {
       found_via = true;
       header.append(StringPrintf(", %s shill-proxy", client_version_.c_str()));
-    } else if (StartsWithASCII(header, "Connection:", false)) {
+    } else if (base::StartsWithASCII(header, "Connection:", false)) {
       found_connection = true;
       header.assign("Connection: close");
-    } else if (StartsWithASCII(header, "Proxy-Connection:", false)) {
+    } else if (base::StartsWithASCII(header, "Proxy-Connection:", false)) {
       header.assign("Proxy-Connection: close");
     }
   }
@@ -272,7 +272,7 @@ bool HTTPProxy::ParseClientRequest() {
 
   // Assemble the request as it will be sent to the server.
   client_data_.Clear();
-  if (!LowerCaseEqualsASCII(client_method_, kHTTPMethodConnect)) {
+  if (!base::LowerCaseEqualsASCII(client_method_, kHTTPMethodConnect)) {
     for (const auto &header : client_headers_) {
       client_data_.Append(ByteString(header + "\r\n", false));
     }

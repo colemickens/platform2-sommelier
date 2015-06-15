@@ -155,6 +155,19 @@
             'chaps-protos',
             'libchaps_static',
           ],
+          'variables': {
+            'exported_deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+            'deps': ['<@(exported_deps)'],
+          },
+          'all_dependent_settings': {
+            'variables': {
+              'deps': [
+                '<@(exported_deps)',
+              ],
+            },
+          },
           'sources': [
             'chaps_factory_mock.cc',
             'object_mock.cc',

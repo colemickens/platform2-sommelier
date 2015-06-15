@@ -144,7 +144,7 @@ class CloudDelegateImpl : public CloudDelegate {
     if (!is_gcd_setup_enabled_) {
       chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
                              errors::kSetupUnavailable,
-                             "GCD setup unavailible");
+                             "GCD setup unavailable");
       return false;
     }
     if (setup_state_.IsStatusEqual(SetupState::kInProgress)) {

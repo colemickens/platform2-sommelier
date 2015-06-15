@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <crypto/nss_key_util.h>
 #include <crypto/nss_util.h>
 #include <crypto/nss_util_internal.h>
 #include <crypto/rsa_private_key.h>
@@ -37,6 +38,19 @@ class PolicyKeyTest : public ::testing::Test {
   virtual void TearDown() {}
 
   void StartUnowned() { base::DeleteFile(tmpfile_, false); }
+
+  static scoped_ptr<crypto::RSAPrivateKey> CreateRSAPrivateKey(
+      PK11SlotInfo* slot,
+      uint16_t num_bits) {
+    scoped_ptr<crypto::RSAPrivateKey> key;
+    crypto::ScopedSECKEYPublicKey public_key_obj;
+    crypto::ScopedSECKEYPrivateKey private_key_obj;
+    if (crypto::GenerateRSAKeyPairNSS(slot, num_bits, true /* permanent */,
+                                      &public_key_obj, &private_key_obj)) {
+      key.reset(crypto::RSAPrivateKey::CreateFromKey(private_key_obj.get()));
+    }
+    return key.Pass();
+  }
 
   base::FilePath tmpfile_;
 
@@ -171,7 +185,7 @@ TEST_F(PolicyKeyTest, SignVerify) {
   crypto::ScopedTestNSSDB test_db;
 
   scoped_ptr<crypto::RSAPrivateKey> pair(
-      crypto::RSAPrivateKey::CreateSensitive(test_db.slot(), 512));
+      CreateRSAPrivateKey(test_db.slot(), 512));
   ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
@@ -199,7 +213,7 @@ TEST_F(PolicyKeyTest, RotateKey) {
   crypto::ScopedTestNSSDB test_db;
 
   scoped_ptr<crypto::RSAPrivateKey> pair(
-      crypto::RSAPrivateKey::CreateSensitive(test_db.slot(), 512));
+      CreateRSAPrivateKey(test_db.slot(), 512));
   ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
@@ -219,7 +233,7 @@ TEST_F(PolicyKeyTest, RotateKey) {
   ASSERT_TRUE(key2.IsPopulated());
 
   scoped_ptr<crypto::RSAPrivateKey> new_pair(
-      crypto::RSAPrivateKey::CreateSensitive(test_db.slot(), 512));
+      CreateRSAPrivateKey(test_db.slot(), 512));
   ASSERT_NE(new_pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
   std::vector<uint8_t> new_export;
   ASSERT_TRUE(new_pair->ExportPublicKey(&new_export));

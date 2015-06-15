@@ -208,7 +208,7 @@ void OpenVPNManagementServer::ProcessMessage(const string &message) {
 }
 
 bool OpenVPNManagementServer::ProcessInfoMessage(const string &message) {
-  if (!StartsWithASCII(message, ">INFO:", true)) {
+  if (!base::StartsWithASCII(message, ">INFO:", true)) {
     return false;
   }
   LOG(INFO) << message;
@@ -217,7 +217,7 @@ bool OpenVPNManagementServer::ProcessInfoMessage(const string &message) {
 
 bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
     const string &message) {
-  if (!StartsWithASCII(message, ">PASSWORD:Need ", true)) {
+  if (!base::StartsWithASCII(message, ">PASSWORD:Need ", true)) {
     return false;
   }
   LOG(INFO) << "Processing need-password message.";
@@ -228,7 +228,7 @@ bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
     } else {
       PerformAuthentication(tag);
     }
-  } else if (StartsWithASCII(tag, "User-Specific TPM Token", true)) {
+  } else if (base::StartsWithASCII(tag, "User-Specific TPM Token", true)) {
     SupplyTPMToken(tag);
   } else {
     NOTIMPLEMENTED() << ": Unsupported need-password message: " << message;
@@ -334,7 +334,7 @@ void OpenVPNManagementServer::SupplyTPMToken(const string &tag) {
 
 bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
     const string &message) {
-  if (!StartsWithASCII(message, ">PASSWORD:Verification Failed:", true)) {
+  if (!base::StartsWithASCII(message, ">PASSWORD:Verification Failed:", true)) {
     return false;
   }
   LOG(INFO) << message;
@@ -347,7 +347,7 @@ bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
 }
 
 bool OpenVPNManagementServer::ProcessAuthTokenMessage(const string &message) {
-  if (!StartsWithASCII(message, ">PASSWORD:Auth-Token:", true)) {
+  if (!base::StartsWithASCII(message, ">PASSWORD:Auth-Token:", true)) {
     return false;
   }
   LOG(INFO) << "Auth-Token message ignored.";
@@ -365,7 +365,7 @@ bool OpenVPNManagementServer::ProcessAuthTokenMessage(const string &message) {
 // <local-ip> is a dotted-quad for the local IPv4 address (when available)
 // <remote-ip> is a dotted-quad for the remote IPv4 address (when available)
 bool OpenVPNManagementServer::ProcessStateMessage(const string &message) {
-  if (!StartsWithASCII(message, ">STATE:", true)) {
+  if (!base::StartsWithASCII(message, ">STATE:", true)) {
     return false;
   }
   vector<string> details;
@@ -387,7 +387,7 @@ bool OpenVPNManagementServer::ProcessStateMessage(const string &message) {
 }
 
 bool OpenVPNManagementServer::ProcessHoldMessage(const string &message) {
-  if (!StartsWithASCII(message, ">HOLD:Waiting for hold release", true)) {
+  if (!base::StartsWithASCII(message, ">HOLD:Waiting for hold release", true)) {
     return false;
   }
   LOG(INFO) << "Client waiting for hold release.";
@@ -399,7 +399,7 @@ bool OpenVPNManagementServer::ProcessHoldMessage(const string &message) {
 }
 
 bool OpenVPNManagementServer::ProcessSuccessMessage(const string &message) {
-  if (!StartsWithASCII(message, "SUCCESS: ", true)) {
+  if (!base::StartsWithASCII(message, "SUCCESS: ", true)) {
     return false;
   }
   LOG(INFO) << message;

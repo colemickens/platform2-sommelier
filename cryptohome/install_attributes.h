@@ -215,7 +215,7 @@ class InstallAttributes {
   SerializedInstallAttributes* attributes_;
   Lockbox* lockbox_;
   Platform* platform_;
-  ObserverList<Observer> observer_list_;
+  base::ObserverList<Observer> observer_list_;
 
   DISALLOW_COPY_AND_ASSIGN(InstallAttributes);
 };

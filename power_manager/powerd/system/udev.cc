@@ -90,9 +90,11 @@ void Udev::AddSubsystemObserver(const std::string& subsystem,
   DCHECK(observer);
   SubsystemObserverMap::iterator it = subsystem_observers_.find(subsystem);
   if (it == subsystem_observers_.end()) {
-    it = subsystem_observers_.insert(std::make_pair(
-        subsystem, make_linked_ptr(new ObserverList<UdevSubsystemObserver>)))
-        .first;
+    it = subsystem_observers_
+             .emplace(
+                 subsystem,
+                 make_linked_ptr(new base::ObserverList<UdevSubsystemObserver>))
+             .first;
   }
   it->second->AddObserver(observer);
 }
@@ -229,7 +231,7 @@ void Udev::HandleSubsystemEvent(UdevAction action,
 
   SubsystemObserverMap::iterator it = subsystem_observers_.find(subsystem);
   if (it != subsystem_observers_.end()) {
-    ObserverList<UdevSubsystemObserver>* observers = it->second.get();
+    base::ObserverList<UdevSubsystemObserver>* observers = it->second.get();
     FOR_EACH_OBSERVER(UdevSubsystemObserver, *observers,
         OnUdevEvent(subsystem, sysname ? sysname : "", action));
   }

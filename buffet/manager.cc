@@ -153,8 +153,8 @@ void Manager::GetDeviceInfo(DBusMethodResponse<std::string> response) {
   }
 
   std::string device_info_str;
-  base::JSONWriter::WriteWithOptions(device_info.get(),
-      base::JSONWriter::OPTIONS_PRETTY_PRINT, &device_info_str);
+  base::JSONWriter::WriteWithOptions(
+      *device_info, base::JSONWriter::OPTIONS_PRETTY_PRINT, &device_info_str);
   response->Return(device_info_str);
 }
 
@@ -191,7 +191,7 @@ bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
   if (!json)
     return false;
   base::JSONWriter::WriteWithOptions(
-      json.get(), base::JSONWriter::OPTIONS_PRETTY_PRINT, state);
+      *json, base::JSONWriter::OPTIONS_PRETTY_PRINT, state);
   return true;
 }
 
@@ -199,8 +199,10 @@ void Manager::AddCommand(DBusMethodResponse<std::string> response,
                          const std::string& json_command,
                          const std::string& in_user_role) {
   std::string error_message;
-  std::unique_ptr<base::Value> value(base::JSONReader::ReadAndReturnError(
-      json_command, base::JSON_PARSE_RFC, nullptr, &error_message));
+  std::unique_ptr<base::Value> value(
+      base::JSONReader::ReadAndReturnError(json_command, base::JSON_PARSE_RFC,
+                                           nullptr, &error_message)
+          .release());
   const base::DictionaryValue* command{nullptr};
   if (!value || !value->GetAsDictionary(&command)) {
     return response->ReplyWithError(FROM_HERE, chromeos::errors::json::kDomain,
@@ -229,8 +231,8 @@ void Manager::GetCommand(DBusMethodResponse<std::string> response,
     return;
   }
   std::string command_str;
-  base::JSONWriter::WriteWithOptions(command->ToJson().get(),
-      base::JSONWriter::OPTIONS_PRETTY_PRINT, &command_str);
+  base::JSONWriter::WriteWithOptions(
+      *command->ToJson(), base::JSONWriter::OPTIONS_PRETTY_PRINT, &command_str);
   response->Return(command_str);
 }
 
@@ -316,8 +318,8 @@ void Manager::OnCommandDefsChanged() {
       }, true, nullptr);
   CHECK(commands);
   std::string json;
-  base::JSONWriter::WriteWithOptions(commands.get(),
-      base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
+  base::JSONWriter::WriteWithOptions(
+      *commands, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
   dbus_adaptor_.SetCommandDefs(json);
 }
 
@@ -326,7 +328,7 @@ void Manager::OnStateChanged() {
   CHECK(state);
   std::string json;
   base::JSONWriter::WriteWithOptions(
-      state.get(), base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
+      *state, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
   dbus_adaptor_.SetState(json);
 }
 

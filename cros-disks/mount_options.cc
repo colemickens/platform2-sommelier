@@ -48,21 +48,19 @@ void MountOptions::Initialize(const vector<string>& options,
       option_read_only = true;
     } else if (option == kOptionReadWrite) {
       option_read_write = true;
-    } else if (StartsWithASCII(option, "uid=", false)) {
+    } else if (base::StartsWithASCII(option, "uid=", false)) {
       option_user_id = option;
-    } else if (StartsWithASCII(option, "gid=", false)) {
+    } else if (base::StartsWithASCII(option, "gid=", false)) {
       option_group_id = option;
     } else if (option == kOptionNoDev ||
                option == kOptionNoExec ||
                option == kOptionNoSuid) {
       // We'll add these options unconditionally below.
       continue;
-    } else if (option == kOptionBind ||
-               option == kOptionDirSync ||
-               option == kOptionFlush ||
-               option == kOptionSynchronous ||
+    } else if (option == kOptionBind || option == kOptionDirSync ||
+               option == kOptionFlush || option == kOptionSynchronous ||
                option == kOptionUtf8 ||
-               StartsWithASCII(option, "shortname=", false)) {
+               base::StartsWithASCII(option, "shortname=", false)) {
       // Only add options in the whitelist.
       options_.push_back(option);
     } else {

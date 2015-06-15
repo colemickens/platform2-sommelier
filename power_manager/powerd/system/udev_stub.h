@@ -59,7 +59,7 @@ class UdevStub : public UdevInterface {
       SubsystemObserverMap;
   SubsystemObserverMap subsystem_observers_;
 
-  ObserverList<UdevTaggedDeviceObserver> tagged_device_observers_;
+  base::ObserverList<UdevTaggedDeviceObserver> tagged_device_observers_;
 
   // Maps a syspath to the corresponding TaggedDevice.
   std::map<std::string, TaggedDevice> tagged_devices_;

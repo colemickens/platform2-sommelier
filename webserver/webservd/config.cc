@@ -97,8 +97,10 @@ bool LoadConfigFromString(const std::string& config_json,
                           Config* config,
                           chromeos::ErrorPtr* error) {
   std::string error_msg;
-  std::unique_ptr<const base::Value> value{base::JSONReader::ReadAndReturnError(
-      config_json, base::JSON_ALLOW_TRAILING_COMMAS, nullptr, &error_msg)};
+  std::unique_ptr<const base::Value> value{
+      base::JSONReader::ReadAndReturnError(
+          config_json, base::JSON_ALLOW_TRAILING_COMMAS, nullptr, &error_msg)
+          .release()};
 
   if (!value) {
     chromeos::Error::AddToPrintf(error, FROM_HERE,

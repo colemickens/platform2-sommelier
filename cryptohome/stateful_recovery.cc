@@ -61,8 +61,7 @@ bool StatefulRecovery::CopyPartitionInfo() {
   dv.SetInteger("inodes-avail", vfs.f_favail);
 
   std::string output;
-  base::JSONWriter::WriteWithOptions(&dv,
-                                     base::JSONWriter::OPTIONS_PRETTY_PRINT,
+  base::JSONWriter::WriteWithOptions(dv, base::JSONWriter::OPTIONS_PRETTY_PRINT,
                                      &output);
 
   if (!platform_->WriteStringToFile(kRecoverBlockUsage, output))

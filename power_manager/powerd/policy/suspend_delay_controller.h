@@ -137,7 +137,7 @@ class SuspendDelayController {
   // Used to invoke OnDelayExpiration().
   base::OneShotTimer<SuspendDelayController> delay_expiration_timer_;
 
-  ObserverList<SuspendDelayObserver> observers_;
+  base::ObserverList<SuspendDelayObserver> observers_;
 
   DISALLOW_COPY_AND_ASSIGN(SuspendDelayController);
 };

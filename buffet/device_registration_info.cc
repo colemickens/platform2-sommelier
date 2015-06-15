@@ -579,7 +579,7 @@ void DeviceRegistrationInfo::DoCloudRequest(
 
   std::string data;
   if (body)
-    base::JSONWriter::Write(body, &data);
+    base::JSONWriter::Write(*body, &data);
 
   const std::string mime_type{chromeos::mime::AppendParameter(
       chromeos::mime::application::kJson,

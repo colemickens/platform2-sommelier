@@ -68,7 +68,7 @@ bool CryptoUtilProxy::VerifyDestination(
     Error *error) {
   string unsigned_data(reinterpret_cast<const char *>(&ssid[0]),
                        ssid.size());
-  string upper_case_bssid(StringToUpperASCII(bssid));
+  string upper_case_bssid(base::StringToUpperASCII(bssid));
   unsigned_data.append(StringPrintf(",%s,%s,%s,%s",
                                     destination_udn.c_str(),
                                     upper_case_bssid.c_str(),

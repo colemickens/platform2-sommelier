@@ -60,11 +60,12 @@ string GetRegError(int code, const regex_t *compiled) {
 
 }  // namespace
 
-MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher *dispatcher,
-                                               const string &info_owner)
+MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
+                                               const string& info_owner)
     : dispatcher_(dispatcher),
       info_owner_(info_owner),
-      observers_(ObserverList<MobileOperatorInfo::Observer, true>::NOTIFY_ALL),
+      observers_(
+          base::ObserverList<MobileOperatorInfo::Observer, true>::NOTIFY_ALL),
       operator_code_type_(kOperatorCodeTypeUnknown),
       current_mno_(nullptr),
       current_mvno_(nullptr),
@@ -219,7 +220,7 @@ void MobileOperatorInfoImpl::UpdateIMSI(const string &imsi) {
   user_imsi_ = imsi;
 
   if (!user_mccmnc_.empty()) {
-    if (!StartsWithASCII(imsi, user_mccmnc_, false)) {
+    if (!base::StartsWithASCII(imsi, user_mccmnc_, false)) {
       LOG(WARNING) << "MCCMNC [" << user_mccmnc_ << "] is not a substring of "
                    << "the IMSI [" << imsi << "].";
     }

@@ -84,7 +84,7 @@ class ExternalBacklightController : public BacklightController,
   system::DisplayWatcherInterface* display_watcher_;  // weak
   system::DisplayPowerSetterInterface* display_power_setter_;  // weak
 
-  ObserverList<BacklightControllerObserver> observers_;
+  base::ObserverList<BacklightControllerObserver> observers_;
 
   bool dimmed_for_inactivity_;
   bool off_for_inactivity_;

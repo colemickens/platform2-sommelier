@@ -130,7 +130,7 @@ bool USBDeviceInfo::IsLineSkippable(const string& line) const {
   string trimmed_line;
   // Trim only ASCII whitespace for now.
   base::TrimWhitespaceASCII(line, base::TRIM_ALL, &trimmed_line);
-  return trimmed_line.empty() || StartsWithASCII(trimmed_line, "#", true);
+  return trimmed_line.empty() || base::StartsWithASCII(trimmed_line, "#", true);
 }
 
 bool USBDeviceInfo::ExtractIdAndName(

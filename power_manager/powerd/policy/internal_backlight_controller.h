@@ -174,7 +174,7 @@ class InternalBacklightController : public BacklightController,
   scoped_ptr<Clock> clock_;
 
   // Observers for changes to the brightness level.
-  ObserverList<BacklightControllerObserver> observers_;
+  base::ObserverList<BacklightControllerObserver> observers_;
 
   // Information describing the current state of the system.
   PowerSource power_source_;

@@ -35,7 +35,7 @@ class SessionManagerProxy : public DBus::InterfaceProxy,
   // Handles the SessionStateChanged DBus signal.
   void OnSessionStateChanged(const DBus::SignalMessage& signal);
 
-  ObserverList<SessionManagerObserverInterface> observer_list_;
+  base::ObserverList<SessionManagerObserverInterface> observer_list_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerProxy);
 };

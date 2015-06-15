@@ -896,7 +896,7 @@ string Cellular::CreateDefaultFriendlyServiceName() {
 }
 
 bool Cellular::IsDefaultFriendlyServiceName(const string &service_name) const {
-  return StartsWithASCII(service_name, kGenericServiceNamePrefix, true);
+  return base::StartsWithASCII(service_name, kGenericServiceNamePrefix, true);
 }
 
 void Cellular::OnModemStateChanged(ModemState new_state) {

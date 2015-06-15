@@ -48,7 +48,7 @@ string CryptoProvider::Encrypt(const string &plaintext) {
 string CryptoProvider::Decrypt(const string &ciphertext) {
   for (auto crypto : cryptos_) {
     const string prefix = crypto->GetID() + ":";
-    if (StartsWithASCII(ciphertext, prefix, true)) {
+    if (base::StartsWithASCII(ciphertext, prefix, true)) {
       string to_decrypt = ciphertext;
       to_decrypt.erase(0, prefix.size());
       string plaintext;

@@ -21,7 +21,7 @@ void ReportJsonTypeMismatch(const base::Value* value_in,
                             const std::string& expected_type,
                             chromeos::ErrorPtr* error) {
   std::string value_as_string;
-  base::JSONWriter::Write(value_in, &value_as_string);
+  base::JSONWriter::Write(*value_in, &value_as_string);
   chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                errors::commands::kTypeMismatch,
                                "Unable to convert value %s into %s",
@@ -255,14 +255,14 @@ bool operator==(const native_types::Array& arr1,
 std::string ToString(const native_types::Object& obj) {
   auto val = TypedValueToJson(obj, nullptr);
   std::string str;
-  base::JSONWriter::Write(val.get(), &str);
+  base::JSONWriter::Write(*val, &str);
   return str;
 }
 
 std::string ToString(const native_types::Array& arr) {
   auto val = TypedValueToJson(arr, nullptr);
   std::string str;
-  base::JSONWriter::Write(val.get(), &str);
+  base::JSONWriter::Write(*val, &str);
   return str;
 }
 

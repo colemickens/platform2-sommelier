@@ -132,9 +132,9 @@ const char ManagerTest::kMode[] = "Color";
 
 MATCHER_P(IsDbusErrorStartingWith, message, "") {
   return arg != nullptr &&
-      arg->GetDomain() == chromeos::errors::dbus::kDomain &&
-      arg->GetCode() == kManagerServiceError &&
-      StartsWithASCII(arg->GetMessage(), message, false);
+         arg->GetDomain() == chromeos::errors::dbus::kDomain &&
+         arg->GetCode() == kManagerServiceError &&
+         base::StartsWithASCII(arg->GetMessage(), message, false);
 }
 
 TEST_F(ManagerTest, RunListScannersProcess) {

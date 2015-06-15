@@ -218,7 +218,7 @@ static bool PrefixPresent(const std::vector<std::string>& prefixes,
                           const std::string& path) {
   std::vector<std::string>::const_iterator it;
   for (it = prefixes.begin(); it != prefixes.end(); ++it)
-    if (StartsWithASCII(path, *it, false))
+    if (base::StartsWithASCII(path, *it, false))
       return true;
   return false;
 }
@@ -3072,8 +3072,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   dv.Set("installattrs", attrs);
   dv.Set("tpm", tpm);
   std::string json;
-  base::JSONWriter::WriteWithOptions(&dv,
-                                     base::JSONWriter::OPTIONS_PRETTY_PRINT,
+  base::JSONWriter::WriteWithOptions(dv, base::JSONWriter::OPTIONS_PRETTY_PRINT,
                                      &json);
   *OUT_status = g_strdup(json.c_str());
   return TRUE;

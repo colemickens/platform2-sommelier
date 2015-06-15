@@ -85,7 +85,7 @@ class DisplayWatcher : public DisplayWatcherInterface,
 
   UdevInterface* udev_;  // weak pointer
 
-  ObserverList<DisplayWatcherObserver> observers_;
+  base::ObserverList<DisplayWatcherObserver> observers_;
 
   // Currently-connected displays.
   std::vector<DisplayInfo> displays_;

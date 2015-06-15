@@ -91,7 +91,7 @@ class Service : public ServiceInterface {
   // service is currently unregistered.
   std::unique_ptr<protobinder::BinderProxy> proxy_;
 
-  ObserverList<ServiceObserver> observers_;
+  base::ObserverList<ServiceObserver> observers_;
 
   // Clients that are holding connections to this service.
   using ClientSet = std::set<ClientInterface*>;

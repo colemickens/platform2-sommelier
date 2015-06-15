@@ -2,7 +2,7 @@
   'target_defaults': {
     'defines': [
       'OS_CHROMEOS',
-      'USE_NSS',
+      'USE_NSS_CERTS',
     ],
     'variables': {
       'deps': [
@@ -102,6 +102,11 @@
           'includes': ['../common-mk/common_test.gypi'],
           'defines': ['UNIT_TEST'],
           'dependencies': ['libsession_manager'],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
           'sources': [
             'browser_job_unittest.cc',
             'child_exit_handler_unittest.cc',

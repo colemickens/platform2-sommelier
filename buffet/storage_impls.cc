@@ -27,7 +27,7 @@ std::unique_ptr<base::DictionaryValue> FileStorage::Load() {
 bool FileStorage::Save(const base::DictionaryValue& config) {
   std::string json;
   base::JSONWriter::WriteWithOptions(
-      &config, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
+      config, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
   return base::ImportantFileWriter::WriteFileAtomically(file_path_, json);
 }
 

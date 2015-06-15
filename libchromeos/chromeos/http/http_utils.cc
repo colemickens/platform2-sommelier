@@ -303,7 +303,7 @@ std::unique_ptr<Response> PostJsonAndBlock(const std::string& url,
                                            chromeos::ErrorPtr* error) {
   std::string data;
   if (json)
-    base::JSONWriter::Write(json, &data);
+    base::JSONWriter::Write(*json, &data);
   std::string mime_type = AppendParameter(chromeos::mime::application::kJson,
                                           chromeos::mime::parameters::kCharset,
                                           "utf-8");
@@ -319,7 +319,7 @@ RequestID PostJson(const std::string& url,
                    const ErrorCallback& error_callback) {
   std::string data;
   if (json)
-    base::JSONWriter::Write(json.get(), &data);
+    base::JSONWriter::Write(*json, &data);
   std::string mime_type = AppendParameter(chromeos::mime::application::kJson,
                                           chromeos::mime::parameters::kCharset,
                                           "utf-8");
@@ -341,7 +341,7 @@ std::unique_ptr<Response> PatchJsonAndBlock(
     chromeos::ErrorPtr* error) {
   std::string data;
   if (json)
-    base::JSONWriter::Write(json, &data);
+    base::JSONWriter::Write(*json, &data);
   std::string mime_type = AppendParameter(chromeos::mime::application::kJson,
                                           chromeos::mime::parameters::kCharset,
                                           "utf-8");
@@ -363,7 +363,7 @@ RequestID PatchJson(const std::string& url,
                     const ErrorCallback& error_callback) {
   std::string data;
   if (json)
-    base::JSONWriter::Write(json.get(), &data);
+    base::JSONWriter::Write(*json, &data);
   std::string mime_type = AppendParameter(chromeos::mime::application::kJson,
                                           chromeos::mime::parameters::kCharset,
                                           "utf-8");
@@ -403,8 +403,8 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
 
   std::string json = response->ExtractDataAsString();
   std::string error_message;
-  base::Value* value = base::JSONReader::ReadAndReturnError(
-      json, base::JSON_PARSE_RFC, nullptr, &error_message);
+  auto value = base::JSONReader::ReadAndReturnError(json, base::JSON_PARSE_RFC,
+                                                    nullptr, &error_message);
   if (!value) {
     chromeos::Error::AddToPrintf(error,
                                  FROM_HERE,
@@ -416,7 +416,6 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
   }
   base::DictionaryValue* dict_value = nullptr;
   if (!value->GetAsDictionary(&dict_value)) {
-    delete value;
     chromeos::Error::AddToPrintf(error,
                                  FROM_HERE,
                                  chromeos::errors::json::kDomain,
@@ -424,6 +423,9 @@ std::unique_ptr<base::DictionaryValue> ParseJsonResponse(
                                  "Response is not a valid JSON object: '%s'",
                                  json.c_str());
     return std::unique_ptr<base::DictionaryValue>();
+  } else {
+    // |value| is now owned by |dict_value|, so release the scoped_ptr now.
+    base::IgnoreResult(value.release());
   }
   return std::unique_ptr<base::DictionaryValue>(dict_value);
 }

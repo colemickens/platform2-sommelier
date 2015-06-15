@@ -1022,10 +1022,10 @@ bool WiFiService::CheckWEPIsHex(const string &passphrase, Error *error) {
 
 // static
 bool WiFiService::CheckWEPKeyIndex(const string &passphrase, Error *error) {
-  if (StartsWithASCII(passphrase, "0:", false) ||
-      StartsWithASCII(passphrase, "1:", false) ||
-      StartsWithASCII(passphrase, "2:", false) ||
-      StartsWithASCII(passphrase, "3:", false)) {
+  if (base::StartsWithASCII(passphrase, "0:", false) ||
+      base::StartsWithASCII(passphrase, "1:", false) ||
+      base::StartsWithASCII(passphrase, "2:", false) ||
+      base::StartsWithASCII(passphrase, "3:", false)) {
     return true;
   } else {
     error->Populate(Error::kInvalidPassphrase);
@@ -1035,7 +1035,7 @@ bool WiFiService::CheckWEPKeyIndex(const string &passphrase, Error *error) {
 
 // static
 bool WiFiService::CheckWEPPrefix(const string &passphrase, Error *error) {
-  if (StartsWithASCII(passphrase, "0x", false)) {
+  if (base::StartsWithASCII(passphrase, "0x", false)) {
     return true;
   } else {
     error->Populate(Error::kInvalidPassphrase);

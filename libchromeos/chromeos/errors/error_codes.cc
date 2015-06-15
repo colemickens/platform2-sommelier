@@ -4,7 +4,7 @@
 
 #include <chromeos/errors/error_codes.h>
 
-#include <base/safe_strerror_posix.h>
+#include <base/posix/safe_strerror.h>
 
 namespace chromeos {
 namespace errors {
@@ -188,7 +188,7 @@ std::string ErrorCodeFromSystemError(int errnum) {
 void AddSystemError(ErrorPtr* error,
                     const tracked_objects::Location& location,
                     int errnum) {
-  std::string message = safe_strerror(errnum);
+  std::string message = base::safe_strerror(errnum);
   std::string code = ErrorCodeFromSystemError(errnum);
   if (message.empty())
     message = "Unknown error " + std::to_string(errnum);

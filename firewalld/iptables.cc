@@ -42,8 +42,8 @@ bool IsValidInterfaceName(const std::string& iface) {
   if (iface.length() >= kInterfaceNameSize) {
     return false;
   }
-  if (StartsWithASCII(iface, "-", true /* case_sensitive */) ||
-      EndsWith(iface, "-", true /* case_sensitive */)) {
+  if (base::StartsWithASCII(iface, "-", true /* case_sensitive */) ||
+      base::EndsWith(iface, "-", true /* case_sensitive */)) {
     return false;
   }
   for (auto c : iface) {

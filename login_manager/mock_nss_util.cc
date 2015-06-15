@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+#include <crypto/nss_key_util.h>
 #include <crypto/nss_util.h>
 #include <crypto/rsa_private_key.h>
 #include <crypto/scoped_nss_types.h>
@@ -30,8 +31,14 @@ MockNssUtil::MockNssUtil()
 MockNssUtil::~MockNssUtil() {}
 
 crypto::RSAPrivateKey* MockNssUtil::CreateShortKey() {
-  crypto::RSAPrivateKey* ret =
-      crypto::RSAPrivateKey::CreateSensitive(test_nssdb_.slot(), 256);
+  crypto::RSAPrivateKey* ret = nullptr;
+  crypto::ScopedSECKEYPublicKey public_key_obj;
+  crypto::ScopedSECKEYPrivateKey private_key_obj;
+  if (crypto::GenerateRSAKeyPairNSS(test_nssdb_.slot(), 256,
+                                    true /* permanent */, &public_key_obj,
+                                    &private_key_obj)) {
+    ret = crypto::RSAPrivateKey::CreateFromKey(private_key_obj.get());
+  }
   LOG_IF(ERROR, ret == NULL) << "returning NULL!!!";
   return ret;
 }

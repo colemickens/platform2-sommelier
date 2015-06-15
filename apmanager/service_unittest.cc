@@ -76,9 +76,9 @@ class ServiceTest : public testing::Test {
 
 MATCHER_P(IsServiceErrorStartingWith, message, "") {
   return arg != nullptr &&
-      arg->GetDomain() == chromeos::errors::dbus::kDomain &&
-      arg->GetCode() == kServiceError &&
-      EndsWith(arg->GetMessage(), message, false);
+         arg->GetDomain() == chromeos::errors::dbus::kDomain &&
+         arg->GetCode() == kServiceError &&
+         base::EndsWith(arg->GetMessage(), message, false);
 }
 
 TEST_F(ServiceTest, StartWhenServiceAlreadyRunning) {

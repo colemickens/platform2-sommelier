@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
   base::SplitString(modules, '\n', &lines);
   for (const std::string& line : lines) {
     // If the line isn't empty, and isn't a comment, parse it as a static node.
-    if (!line.empty() && !StartsWithASCII(line, "#", false)) {
+    if (!line.empty() && !base::StartsWithASCII(line, "#", false)) {
       base::SplitString(line, ' ', &tokens);
 
       // Static node descriptions in the file should be of the form:

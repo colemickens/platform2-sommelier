@@ -120,9 +120,9 @@ class ConfigTest : public testing::Test {
 
 MATCHER_P(IsConfigErrorStartingWith, message, "") {
   return arg != nullptr &&
-      arg->GetDomain() == chromeos::errors::dbus::kDomain &&
-      arg->GetCode() == kConfigError &&
-      StartsWithASCII(arg->GetMessage(), message, false);
+         arg->GetDomain() == chromeos::errors::dbus::kDomain &&
+         arg->GetCode() == kConfigError &&
+         base::StartsWithASCII(arg->GetMessage(), message, false);
 }
 
 TEST_F(ConfigTest, GetFrequencyFromChannel) {

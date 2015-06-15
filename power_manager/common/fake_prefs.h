@@ -42,7 +42,7 @@ class FakePrefs : public PrefsInterface {
   void SetDouble(const std::string& name, double value) override;
 
  private:
-  ObserverList<PrefsObserver> observers_;
+  base::ObserverList<PrefsObserver> observers_;
 
   std::map<std::string, int64_t> int64_prefs_;
   std::map<std::string, double> double_prefs_;

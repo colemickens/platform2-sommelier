@@ -94,7 +94,7 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
 
   // List of backlight controllers that are currently interested in updates from
   // this sensor.
-  ObserverList<AmbientLightObserver> observers_;
+  base::ObserverList<AmbientLightObserver> observers_;
 
   // Lux value read by the class. If this read did not succeed or no read has
   // occured yet this variable is set to -1.

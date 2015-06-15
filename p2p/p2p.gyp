@@ -187,6 +187,7 @@
           'variables': {
             'exported_deps': [
               'gobject-2.0',
+              'libchrome-test-<(libbase_ver)',
             ],
             'deps': ['<@(exported_deps)'],
           },

@@ -370,7 +370,7 @@ bool UdevDevice::IsOnRemovableDevice() const {
 bool UdevDevice::IsVirtual() const {
   const char *sys_path = udev_device_get_syspath(dev_);
   if (sys_path) {
-    return StartsWithASCII(sys_path, kVirtualDevicePathPrefix, true);
+    return base::StartsWithASCII(sys_path, kVirtualDevicePathPrefix, true);
   }
   // To be safe, mark it as virtual device if sys path cannot be determined.
   return true;
@@ -379,7 +379,7 @@ bool UdevDevice::IsVirtual() const {
 bool UdevDevice::IsLoopDevice() const {
   const char *sys_path = udev_device_get_syspath(dev_);
   if (sys_path) {
-    return StartsWithASCII(sys_path, kLoopDevicePathPrefix, true);
+    return base::StartsWithASCII(sys_path, kLoopDevicePathPrefix, true);
   }
   return false;
 }

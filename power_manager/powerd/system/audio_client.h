@@ -55,7 +55,7 @@ class AudioClient {
   // Is an HDMI output active?
   bool hdmi_active_;
 
-  ObserverList<AudioObserver> observers_;
+  base::ObserverList<AudioObserver> observers_;
 
   DISALLOW_COPY_AND_ASSIGN(AudioClient);
 };

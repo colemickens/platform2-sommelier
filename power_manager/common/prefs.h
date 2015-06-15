@@ -129,7 +129,7 @@ class Prefs : public PrefsInterface {
   // other paths.
   std::vector<base::FilePath> pref_paths_;
 
-  ObserverList<PrefsObserver> observers_;
+  base::ObserverList<PrefsObserver> observers_;
 
   // For notification of updates to pref files.
   base::FilePathWatcher dir_watcher_;

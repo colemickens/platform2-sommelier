@@ -89,7 +89,7 @@ class UsbDeviceEventNotifier : public base::MessageLoopForIO::Watcher {
   static bool ConvertStringToUint8(const std::string& str, uint8_t* value);
 
   EventDispatcher* const dispatcher_;
-  ObserverList<UsbDeviceEventObserver> observer_list_;
+  base::ObserverList<UsbDeviceEventObserver> observer_list_;
   Udev* const udev_;
   std::unique_ptr<UdevMonitor> udev_monitor_;
   int udev_monitor_file_descriptor_;

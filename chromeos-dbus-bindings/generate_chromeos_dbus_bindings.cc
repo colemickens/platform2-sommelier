@@ -78,7 +78,7 @@ bool LoadConfig(const base::FilePath& path, ServiceConfig *config) {
   if (!base::ReadFileToString(path, &contents))
     return false;
 
-  std::unique_ptr<base::Value> json{base::JSONReader::Read(contents)};
+  std::unique_ptr<base::Value> json{base::JSONReader::Read(contents).release()};
   if (!json)
     return false;
 

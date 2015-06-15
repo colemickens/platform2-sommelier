@@ -139,7 +139,7 @@ class CloudDelegate {
       buffet::StateManager* state_manager);
 
  private:
-  ObserverList<Observer> observer_list_;
+  base::ObserverList<Observer> observer_list_;
 };
 
 }  // namespace privetd

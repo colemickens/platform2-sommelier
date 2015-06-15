@@ -95,7 +95,7 @@ bool ArchiveManager::CanMount(const string& source_path) const {
     //   '/', 'home', 'chronos', 'u-<userid>', 'Downloads', ..., 'doc.zip'
     //   '/', 'home', 'chronos', 'u-<userid>', 'GCache', ..., 'doc.zip'
     if (components.size() > 5 &&
-        (StartsWithASCII(components[3], "u-", false) &&
+        (base::StartsWithASCII(components[3], "u-", false) &&
          chromeos::cryptohome::home::IsSanitizedUserName(
              components[3].substr(2))) &&
         (components[4] == "Downloads" || components[4] == "GCache")) {

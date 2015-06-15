@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <base/bind_helpers.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <chromeos/errors/error_codes.h>
@@ -56,7 +57,7 @@ std::unique_ptr<base::DictionaryValue> LoadJsonDict(
     chromeos::ErrorPtr* error) {
   std::unique_ptr<base::DictionaryValue> result;
   std::string error_message;
-  base::Value* value = base::JSONReader::ReadAndReturnError(
+  auto value = base::JSONReader::ReadAndReturnError(
       json_string, base::JSON_PARSE_RFC, nullptr, &error_message);
   if (!value) {
     chromeos::Error::AddToPrintf(error, FROM_HERE,
@@ -69,13 +70,15 @@ std::unique_ptr<base::DictionaryValue> LoadJsonDict(
   }
   base::DictionaryValue* dict_value = nullptr;
   if (!value->GetAsDictionary(&dict_value)) {
-    delete value;
     chromeos::Error::AddToPrintf(error, FROM_HERE,
                                  chromeos::errors::json::kDomain,
                                  chromeos::errors::json::kObjectExpected,
                                  "JSON string '%s' is not a JSON object",
                                  LimitString(json_string, kMaxStrLen).c_str());
     return result;
+  } else {
+    // |value| is now owned by |dict_value|.
+    base::IgnoreResult(value.release());
   }
   result.reset(dict_value);
   return result;

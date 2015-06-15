@@ -56,7 +56,7 @@ class BacklightControllerStub : public policy::BacklightController {
   void NotifyObservers(double percent, BrightnessChangeCause cause);
 
  private:
-  ObserverList<BacklightControllerObserver> observers_;
+  base::ObserverList<BacklightControllerObserver> observers_;
 
   // Percent to be returned by GetBrightnessPercent().
   double percent_;

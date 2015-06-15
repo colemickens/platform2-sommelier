@@ -19,7 +19,7 @@ std::string PropValueToString(const PropValue& value) {
   std::string result;
   auto json = value.ToJson(nullptr);
   if (json)
-    base::JSONWriter::Write(json.get(), &result);
+    base::JSONWriter::Write(*json, &result);
   return result;
 }
 

@@ -66,7 +66,7 @@ std::unique_ptr<base::DictionaryValue> DictionaryToJson(
 std::string DictionaryToString(const chromeos::VariantDictionary& dictionary) {
   std::unique_ptr<base::DictionaryValue> json{DictionaryToJson(dictionary)};
   std::string str;
-  base::JSONWriter::Write(json.get(), &str);
+  base::JSONWriter::Write(*json, &str);
   return str;
 }
 

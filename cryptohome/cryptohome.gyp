@@ -351,6 +351,7 @@
               'dbus-1',
               'dbus-glib-1',
               'glib-2.0',
+              'libchrome-test-<(libbase_ver)',
               'libchromeos-test-<(libbase_ver)',
               'libecryptfs',
               'openssl',

@@ -178,9 +178,9 @@ ServerRequestResponseBase::GetDataAsJson() const {
     if (value) {
       base::DictionaryValue* dict = nullptr;
       if (value->GetAsDictionary(&dict)) {
+        // |value| is now owned by |dict|.
+        base::IgnoreResult(value.release());
         return std::unique_ptr<base::DictionaryValue>(dict);
-      } else {
-        delete value;
       }
     }
   }
@@ -193,7 +193,7 @@ std::string ServerRequestResponseBase::GetDataAsNormalizedJsonString() const {
   // the string comparison works correctly.
   auto json = GetDataAsJson();
   if (json)
-    base::JSONWriter::Write(json.get(), &value);
+    base::JSONWriter::Write(*json, &value);
   return value;
 }
 
@@ -255,7 +255,7 @@ void ServerResponse::ReplyText(int status_code,
 void ServerResponse::ReplyJson(int status_code, const base::Value* json) {
   std::string text;
   base::JSONWriter::WriteWithOptions(
-      json, base::JSONWriter::OPTIONS_PRETTY_PRINT, &text);
+      *json, base::JSONWriter::OPTIONS_PRETTY_PRINT, &text);
   std::string mime_type =
       chromeos::mime::AppendParameter(chromeos::mime::application::kJson,
                                       chromeos::mime::parameters::kCharset,

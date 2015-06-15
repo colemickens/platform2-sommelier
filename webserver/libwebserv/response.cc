@@ -56,9 +56,8 @@ void Response::ReplyWithText(int status_code,
 
 void Response::ReplyWithJson(int status_code, const base::Value* json) {
   std::string text;
-  base::JSONWriter::WriteWithOptions(json,
-                                     base::JSONWriter::OPTIONS_PRETTY_PRINT,
-                                     &text);
+  base::JSONWriter::WriteWithOptions(
+      *json, base::JSONWriter::OPTIONS_PRETTY_PRINT, &text);
   std::string mime_type = chromeos::mime::AppendParameter(
       chromeos::mime::application::kJson,
       chromeos::mime::parameters::kCharset,

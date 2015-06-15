@@ -75,6 +75,11 @@
           'type': 'executable',
           'dependencies': ['libmist'],
           'includes': ['../common-mk/common_test.gypi'],
+          'variables': {
+            'deps': [
+              'libchrome-test-<(libbase_ver)',
+            ],
+          },
           'sources': [
             'config_loader_unittest.cc',
             'event_dispatcher_unittest.cc',

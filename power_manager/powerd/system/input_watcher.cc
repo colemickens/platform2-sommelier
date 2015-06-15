@@ -51,7 +51,7 @@ const char kConsolePath[] = "/dev/tty0";
 // integer, extracts the integer to |num_out|. Returns false if |name| didn't
 // match the expected format.
 bool GetInputNumber(const std::string& name, int* num_out) {
-  if (!StartsWithASCII(name, kInputBaseName, true))
+  if (!base::StartsWithASCII(name, kInputBaseName, true))
     return false;
   size_t base_len = strlen(kInputBaseName);
   return base::StringToInt(name.substr(base_len, name.size() - base_len),
@@ -371,7 +371,8 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
   }
 
   const std::string phys = device->GetPhysPath();
-  if (StartsWithASCII(phys, power_button_to_skip_, true /* case_sensitive */)) {
+  if (base::StartsWithASCII(phys, power_button_to_skip_,
+                            true /* case_sensitive */)) {
     VLOG(1) << "Skipping event device with phys path: " << phys;
     return;
   }

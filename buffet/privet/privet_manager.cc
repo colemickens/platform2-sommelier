@@ -187,7 +187,7 @@ void Manager::PrivetRequestHandler(std::unique_ptr<Request> request,
     std::string content_type = chromeos::mime::RemoveParameters(
         GetFirstHeader(*request, chromeos::http::request_header::kContentType));
     if (content_type == chromeos::mime::application::kJson) {
-      value.reset(base::JSONReader::Read(data));
+      value.reset(base::JSONReader::Read(data).release());
       if (value)
         value->GetAsDictionary(&dictionary);
     }

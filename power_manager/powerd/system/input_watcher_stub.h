@@ -42,7 +42,7 @@ class InputWatcherStub : public InputWatcherInterface {
   bool usb_input_device_connected_;
   int active_vt_;
 
-  ObserverList<InputObserver> observers_;
+  base::ObserverList<InputObserver> observers_;
 
   DISALLOW_COPY_AND_ASSIGN(InputWatcherStub);
 };

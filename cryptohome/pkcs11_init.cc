@@ -176,7 +176,7 @@ bool Pkcs11Init::CheckTokenInSlot(CK_SLOT_ID slot_id,
 
   std::string label(reinterpret_cast<const char*>(token_info.label),
                     arraysize(token_info.label));
-  if (!StartsWithASCII(label, expected_label_prefix, true)) {
+  if (!base::StartsWithASCII(label, expected_label_prefix, true)) {
     LOG(WARNING) << "Token Label (" << label << ") does not match expected "
                  << "label prefix (" << expected_label_prefix << ")";
     return false;

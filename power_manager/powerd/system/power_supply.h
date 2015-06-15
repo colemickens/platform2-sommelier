@@ -338,7 +338,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
   scoped_ptr<Clock> clock_;
 
-  ObserverList<PowerSupplyObserver> observers_;
+  base::ObserverList<PowerSupplyObserver> observers_;
 
   // Most-recently-computed status.
   PowerStatus power_status_;

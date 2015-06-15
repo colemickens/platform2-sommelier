@@ -56,7 +56,7 @@ const char kTestTestCommands[] = R"({
 static void SaveJsonToFile(const base::DictionaryValue& dict,
                            const base::FilePath& file_path) {
   std::string json;
-  base::JSONWriter::Write(&dict, &json);
+  base::JSONWriter::Write(dict, &json);
   const int bytes_to_write = static_cast<int>(json.size());
   CHECK_EQ(bytes_to_write, WriteFile(file_path, json.data(), bytes_to_write));
 }

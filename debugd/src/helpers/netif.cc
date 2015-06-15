@@ -321,9 +321,8 @@ int main() {
     result.Set(it->first, it->second->ToValue());
 
   std::string json;
-  base::JSONWriter::WriteWithOptions(&result,
-                                     base::JSONWriter::OPTIONS_PRETTY_PRINT,
-                                     &json);
+  base::JSONWriter::WriteWithOptions(
+      result, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
   printf("%s\n", json.c_str());
   return 0;
 }

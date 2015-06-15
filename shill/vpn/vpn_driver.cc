@@ -229,7 +229,7 @@ KeyValueStore VPNDriver::GetProvider(Error *error) {
 
     // Chomp off leading "Provider." from properties that have this prefix.
     string chopped_prop;
-    if (StartsWithASCII(prop, provider_prefix, false)) {
+    if (base::StartsWithASCII(prop, provider_prefix, false)) {
       chopped_prop = prop.substr(provider_prefix.length());
     } else {
       chopped_prop = prop;

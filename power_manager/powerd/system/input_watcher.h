@@ -183,7 +183,7 @@ class InputWatcher : public InputWatcherInterface,
   typedef std::map<int, linked_ptr<EventDeviceInterface>> InputMap;
   InputMap event_devices_;
 
-  ObserverList<InputObserver> observers_;
+  base::ObserverList<InputObserver> observers_;
 
   // Used by IsUSBInputDeviceConnected() instead of the default path if
   // non-empty.

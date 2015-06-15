@@ -337,8 +337,10 @@ class Daemon final : public chromeos::DBusDaemon {
                        ManagerProxy* manager_proxy) {
     ErrorPtr error;
     std::string error_message;
-    std::unique_ptr<base::Value> json(base::JSONReader::ReadAndReturnError(
-        value, base::JSON_PARSE_RFC, nullptr, &error_message));
+    std::unique_ptr<base::Value> json(
+        base::JSONReader::ReadAndReturnError(value, base::JSON_PARSE_RFC,
+                                             nullptr, &error_message)
+            .release());
     if (!json) {
       Error::AddTo(&error, FROM_HERE, chromeos::errors::json::kDomain,
                    chromeos::errors::json::kParseError, error_message);

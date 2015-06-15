@@ -160,7 +160,7 @@ class KeyboardBacklightController
   scoped_ptr<AmbientLightHandler> ambient_light_handler_;
 
   // Observers to notify about changes.
-  ObserverList<BacklightControllerObserver> observers_;
+  base::ObserverList<BacklightControllerObserver> observers_;
 
   // True if the system is capable of detecting whether the user's hands are
   // hovering over the touchpad.
