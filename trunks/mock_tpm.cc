@@ -4,9 +4,21 @@
 
 #include "trunks/mock_tpm.h"
 
+#include "trunks/tpm_utility.h"
+
+using testing::_;
+using testing::DoAll;
+using testing::Return;
+using testing::SetArgPointee;
+
 namespace trunks {
 
-MockTpm::MockTpm() : Tpm(nullptr) {}
+MockTpm::MockTpm() : Tpm(nullptr) {
+  ON_CALL(*this, PCR_AllocateSync(_, _, _, _, _, _, _, _))
+      .WillByDefault(DoAll(SetArgPointee<3>(YES),
+                           Return(TPM_RC_SUCCESS)));
+}
+
 MockTpm::~MockTpm() {}
 
 void MockTpm::StartAuthSession(

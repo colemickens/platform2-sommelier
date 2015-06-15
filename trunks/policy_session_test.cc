@@ -51,8 +51,6 @@ TEST_F(PolicySessionTest, GetDelegateUninitialized) {
 
 TEST_F(PolicySessionTest, GetDelegateSuccess) {
   PolicySessionImpl session(factory_);
-  EXPECT_CALL(mock_session_manager_, GetSessionHandle())
-      .WillRepeatedly(Return(TPM_RH_FIRST));
   EXPECT_EQ(GetHmacDelegate(&session), session.GetDelegate());
 }
 

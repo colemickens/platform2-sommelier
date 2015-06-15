@@ -6,17 +6,20 @@
 
 #include <gmock/gmock.h>
 
+using testing::Return;
+
 namespace trunks {
 
 MockTpmState::MockTpmState() {
-  ON_CALL(*this, IsOwnerPasswordSet()).WillByDefault(testing::Return(true));
-  ON_CALL(*this, IsEndorsementPasswordSet())
-      .WillByDefault(testing::Return(true));
-  ON_CALL(*this, IsLockoutPasswordSet()).WillByDefault(testing::Return(true));
-  ON_CALL(*this, WasShutdownOrderly()).WillByDefault(testing::Return(true));
-  ON_CALL(*this, IsRSASupported()).WillByDefault(testing::Return(true));
-  ON_CALL(*this, IsECCSupported()).WillByDefault(testing::Return(true));
+  ON_CALL(*this, IsOwnerPasswordSet()).WillByDefault(Return(true));
+  ON_CALL(*this, IsEndorsementPasswordSet()).WillByDefault(Return(true));
+  ON_CALL(*this, IsLockoutPasswordSet()).WillByDefault(Return(true));
+  ON_CALL(*this, WasShutdownOrderly()).WillByDefault(Return(true));
+  ON_CALL(*this, IsRSASupported()).WillByDefault(Return(true));
+  ON_CALL(*this, IsECCSupported()).WillByDefault(Return(true));
+  ON_CALL(*this, IsPlatformHierarchyEnabled()).WillByDefault(Return(true));
 }
+
 MockTpmState::~MockTpmState() {}
 
 }  // namespace trunks

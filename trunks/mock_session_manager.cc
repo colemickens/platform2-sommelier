@@ -4,9 +4,15 @@
 
 #include "trunks/mock_session_manager.h"
 
+#include "trunks/tpm_generated.h"
+
 namespace trunks {
 
-MockSessionManager::MockSessionManager() {}
+MockSessionManager::MockSessionManager() {
+  ON_CALL(*this, GetSessionHandle())
+      .WillByDefault(testing::Return(TPM_RH_FIRST));
+}
+
 MockSessionManager::~MockSessionManager() {}
 
 }  // namespace trunks

@@ -102,8 +102,6 @@ TEST_F(TpmUtilityTest, StartupSelfTestFailure) {
 }
 
 TEST_F(TpmUtilityTest, ClearSuccess) {
-  EXPECT_CALL(mock_tpm_, ClearSync(_, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.Clear());
 }
 
@@ -131,9 +129,6 @@ TEST_F(TpmUtilityTest, InitializeTpmAlreadyInit) {
 }
 
 TEST_F(TpmUtilityTest, InitializeTpmSuccess) {
-  // Setup a hierarchy that needs to be disabled.
-  EXPECT_CALL(mock_tpm_state_, IsPlatformHierarchyEnabled())
-      .WillOnce(Return(true));
   EXPECT_CALL(mock_tpm_, PCR_AllocateSync(_, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(YES),
                       Return(TPM_RC_SUCCESS)));
@@ -141,9 +136,6 @@ TEST_F(TpmUtilityTest, InitializeTpmSuccess) {
 }
 
 TEST_F(TpmUtilityTest, InitializeTpmBadAuth) {
-  // Setup a hierarchy that needs to be disabled.
-  EXPECT_CALL(mock_tpm_state_, IsPlatformHierarchyEnabled())
-      .WillOnce(Return(true));
   // Reject attempts to set platform auth.
   EXPECT_CALL(mock_tpm_, HierarchyChangeAuthSync(TPM_RH_PLATFORM, _, _, _))
       .WillRepeatedly(Return(TPM_RC_FAILURE));
@@ -151,9 +143,6 @@ TEST_F(TpmUtilityTest, InitializeTpmBadAuth) {
 }
 
 TEST_F(TpmUtilityTest, InitializeTpmDisablePHFails) {
-  // Setup a hierarchy that needs to be disabled.
-  EXPECT_CALL(mock_tpm_state_, IsPlatformHierarchyEnabled())
-      .WillOnce(Return(true));
   EXPECT_CALL(mock_tpm_, PCR_AllocateSync(_, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(YES),
                       Return(TPM_RC_SUCCESS)));
@@ -203,12 +192,6 @@ TEST_F(TpmUtilityTest, TakeOwnershipSuccess) {
 }
 
 TEST_F(TpmUtilityTest, TakeOwnershipOwnershipDone) {
-  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet())
-      .WillRepeatedly(Return(true));
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.TakeOwnership("owner",
                                                    "endorsement",
                                                    "lockout"));
@@ -233,8 +216,6 @@ TEST_F(TpmUtilityTest, TakeOwnershipFailure) {
 TEST_F(TpmUtilityTest, ChangeOwnerPasswordEndorsementDone) {
   EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
-      .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet())
       .WillRepeatedly(Return(false));
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.TakeOwnership("owner",
@@ -247,8 +228,6 @@ TEST_F(TpmUtilityTest, ChangeOwnerPasswordLockoutDone) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet())
-      .WillRepeatedly(Return(true));
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.TakeOwnership("owner",
                                                    "endorsement",
                                                    "lockout"));
@@ -257,16 +236,12 @@ TEST_F(TpmUtilityTest, ChangeOwnerPasswordLockoutDone) {
 TEST_F(TpmUtilityTest, ChangeOwnerPasswordEndorsementLockoutDone) {
   EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet())
-      .WillRepeatedly(Return(true));
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.TakeOwnership("owner",
                                                    "endorsement",
                                                    "lockout"));
 }
 
-TEST_F(TpmUtilityTest, ChangeOwnerPasswordEndoresmentFail) {
+TEST_F(TpmUtilityTest, ChangeOwnerPasswordEndorsementFail) {
   EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_state_, IsEndorsementPasswordSet())
@@ -298,8 +273,6 @@ TEST_F(TpmUtilityTest, ChangeOwnerPasswordLockoutFailure) {
 
 TEST_F(TpmUtilityTest, StirRandomSuccess) {
   std::string entropy_data("large test data", 100);
-  EXPECT_CALL(mock_tpm_, StirRandomSync(_, &mock_authorization_delegate_))
-      .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(TPM_RC_SUCCESS,
             utility_.StirRandom(entropy_data, &mock_authorization_delegate_));
 }
@@ -401,8 +374,6 @@ TEST_F(TpmUtilityTest, ReadPCRFail) {
 
 TEST_F(TpmUtilityTest, ReadPCRBadReturn) {
   std::string pcr_value;
-  EXPECT_CALL(mock_tpm_, PCR_ReadSync(_, _, _, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.ReadPCR(1, &pcr_value));
 }
 
@@ -1189,8 +1160,6 @@ TEST_F(TpmUtilityTest, ImportRSAKeySuccessWithNoBlob) {
   std::string modulus(256, 'a');
   std::string prime_factor(128, 'b');
   std::string password;
-  EXPECT_CALL(mock_tpm_, ImportSync(_, _, _, _, _, _, _, _, _))
-      .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.ImportRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey,
       modulus,
@@ -1595,8 +1564,6 @@ TEST_F(TpmUtilityTest, SetKnownPasswordSuccess) {
 }
 
 TEST_F(TpmUtilityTest, SetKnownPasswordOwnershipDone) {
-  EXPECT_CALL(mock_tpm_state_, IsOwnerPasswordSet())
-      .WillOnce(Return(true));
   EXPECT_EQ(TPM_RC_SUCCESS, SetKnownOwnerPassword("password"));
 }
 
@@ -1667,9 +1634,9 @@ TEST_F(TpmUtilityTest, SaltingKeySuccess) {
 TEST_F(TpmUtilityTest, SaltingKeyConsistency) {
   EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
-  TPM_HANDLE test_handle = 42;
   EXPECT_CALL(mock_tpm_, ReadPublicSync(kSaltingKey, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
+  TPM_HANDLE test_handle = 42;
   EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<4>(test_handle),
                             Return(TPM_RC_SUCCESS)));
