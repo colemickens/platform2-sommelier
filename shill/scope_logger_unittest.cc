@@ -139,7 +139,7 @@ TEST_F(ScopeLoggerTest, SetScopeEnabled) {
 }
 
 TEST_F(ScopeLoggerTest, SetVerboseLevel) {
-  ScopeLogger *logger = ScopeLogger::GetInstance();
+  ScopeLogger* logger = ScopeLogger::GetInstance();
   logger->SetScopeEnabled(ScopeLogger::kService, true);
   EXPECT_TRUE(logger->IsLogEnabled(ScopeLogger::kService, 0));
   EXPECT_FALSE(logger->IsLogEnabled(ScopeLogger::kService, 1));

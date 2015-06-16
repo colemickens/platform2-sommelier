@@ -74,13 +74,13 @@ namespace shill {
 
 class TestEventDispatcherForDeviceInfo : public EventDispatcher {
  public:
-  virtual IOHandler *CreateInputHandler(
+  virtual IOHandler* CreateInputHandler(
       int /*fd*/,
-      const IOHandler::InputCallback &/*input_callback*/,
-      const IOHandler::ErrorCallback &/*error_callback*/) {
+      const IOHandler::InputCallback& /*input_callback*/,
+      const IOHandler::ErrorCallback& /*error_callback*/) {
     return nullptr;
   }
-  MOCK_METHOD2(PostDelayedTask, bool(const base::Closure &task,
+  MOCK_METHOD2(PostDelayedTask, bool(const base::Closure& task,
                                      int64_t delay_ms));
 };
 
@@ -111,22 +111,22 @@ class DeviceInfoTest : public Test {
     IPAddress address(IPAddress::kFamilyIPv4);
     EXPECT_TRUE(address.SetAddressFromString(kTestIPAddress0));
     address.set_prefix(kTestIPAddressPrefix0);
-    vector<DeviceInfo::AddressData> &addresses =
+    vector<DeviceInfo::AddressData>& addresses =
         device_info_.infos_[kTestDeviceIndex].ip_addresses;
     addresses.push_back(DeviceInfo::AddressData(address, 0, RT_SCOPE_UNIVERSE));
     EXPECT_EQ(1, addresses.size());
     return address;
   }
 
-  DeviceRefPtr CreateDevice(const std::string &link_name,
-                            const std::string &address,
+  DeviceRefPtr CreateDevice(const std::string& link_name,
+                            const std::string& address,
                             int interface_index,
                             Technology::Identifier technology) {
     return device_info_.CreateDevice(link_name, address, interface_index,
                                      technology);
   }
 
-  virtual std::set<int> &GetDelayedDevices() {
+  virtual std::set<int>& GetDelayedDevices() {
     return device_info_.delayed_devices_;
   }
 
@@ -140,7 +140,7 @@ class DeviceInfoTest : public Test {
   }
 
   // Takes ownership of |provider|.
-  void SetVPNProvider(VPNProvider *provider) {
+  void SetVPNProvider(VPNProvider* provider) {
     manager_.vpn_provider_.reset(provider);
     manager_.UpdateProviderMapping();
   }
@@ -165,17 +165,17 @@ class DeviceInfoTest : public Test {
   static const int kReceiveByteCount;
   static const int kTransmitByteCount;
 
-  RTNLMessage *BuildLinkMessage(RTNLMessage::Mode mode);
-  RTNLMessage *BuildLinkMessageWithInterfaceName(RTNLMessage::Mode mode,
-                                                 const string &interface_name);
-  RTNLMessage *BuildAddressMessage(RTNLMessage::Mode mode,
-                                   const IPAddress &address,
+  RTNLMessage* BuildLinkMessage(RTNLMessage::Mode mode);
+  RTNLMessage* BuildLinkMessageWithInterfaceName(RTNLMessage::Mode mode,
+                                                 const string& interface_name);
+  RTNLMessage* BuildAddressMessage(RTNLMessage::Mode mode,
+                                   const IPAddress& address,
                                    unsigned char flags,
                                    unsigned char scope);
-  RTNLMessage *BuildRdnssMessage(RTNLMessage::Mode mode,
+  RTNLMessage* BuildRdnssMessage(RTNLMessage::Mode mode,
                                  uint32_t lifetime,
-                                 const vector<IPAddress> &dns_servers);
-  void SendMessageToDeviceInfo(const RTNLMessage &message);
+                                 const vector<IPAddress>& dns_servers);
+  void SendMessageToDeviceInfo(const RTNLMessage& message);
 
   MockGLib glib_;
   MockControl control_interface_;
@@ -188,7 +188,7 @@ class DeviceInfoTest : public Test {
   MockNetlinkManager netlink_manager_;
 #endif  // DISABLE_WIFI
   StrictMock<MockRTNLHandler> rtnl_handler_;
-  MockSockets *mock_sockets_;  // Owned by DeviceInfo.
+  MockSockets* mock_sockets_;  // Owned by DeviceInfo.
   MockTime time_;
 };
 
@@ -208,9 +208,9 @@ const char DeviceInfoTest::kTestIPAddress6[] = "192.168.2.2";
 const int DeviceInfoTest::kReceiveByteCount = 1234;
 const int DeviceInfoTest::kTransmitByteCount = 5678;
 
-RTNLMessage *DeviceInfoTest::BuildLinkMessageWithInterfaceName(
-    RTNLMessage::Mode mode, const string &interface_name) {
-  RTNLMessage *message = new RTNLMessage(
+RTNLMessage* DeviceInfoTest::BuildLinkMessageWithInterfaceName(
+    RTNLMessage::Mode mode, const string& interface_name) {
+  RTNLMessage* message = new RTNLMessage(
       RTNLMessage::kTypeLink,
       mode,
       0,
@@ -225,15 +225,15 @@ RTNLMessage *DeviceInfoTest::BuildLinkMessageWithInterfaceName(
   return message;
 }
 
-RTNLMessage *DeviceInfoTest::BuildLinkMessage(RTNLMessage::Mode mode) {
+RTNLMessage* DeviceInfoTest::BuildLinkMessage(RTNLMessage::Mode mode) {
   return BuildLinkMessageWithInterfaceName(mode, kTestDeviceName);
 }
 
-RTNLMessage *DeviceInfoTest::BuildAddressMessage(RTNLMessage::Mode mode,
-                                                 const IPAddress &address,
+RTNLMessage* DeviceInfoTest::BuildAddressMessage(RTNLMessage::Mode mode,
+                                                 const IPAddress& address,
                                                  unsigned char flags,
                                                  unsigned char scope) {
-  RTNLMessage *message = new RTNLMessage(
+  RTNLMessage* message = new RTNLMessage(
       RTNLMessage::kTypeAddress,
       mode,
       0,
@@ -247,9 +247,9 @@ RTNLMessage *DeviceInfoTest::BuildAddressMessage(RTNLMessage::Mode mode,
   return message;
 }
 
-RTNLMessage *DeviceInfoTest::BuildRdnssMessage(RTNLMessage::Mode mode,
-    uint32_t lifetime, const vector<IPAddress> &dns_servers) {
-  RTNLMessage *message = new RTNLMessage(
+RTNLMessage* DeviceInfoTest::BuildRdnssMessage(RTNLMessage::Mode mode,
+    uint32_t lifetime, const vector<IPAddress>& dns_servers) {
+  RTNLMessage* message = new RTNLMessage(
       RTNLMessage::kTypeRdnss,
       mode,
       0,
@@ -262,7 +262,7 @@ RTNLMessage *DeviceInfoTest::BuildRdnssMessage(RTNLMessage::Mode mode,
   return message;
 }
 
-void DeviceInfoTest::SendMessageToDeviceInfo(const RTNLMessage &message) {
+void DeviceInfoTest::SendMessageToDeviceInfo(const RTNLMessage& message) {
   if (message.type() == RTNLMessage::kTypeLink) {
     device_info_.LinkMsgHandler(message);
   } else if (message.type() == RTNLMessage::kTypeAddress) {
@@ -535,7 +535,7 @@ MATCHER_P(IsGetInterfaceMessage, index, "") {
   if (arg->message_type() != Nl80211Message::GetMessageType()) {
     return false;
   }
-  const Nl80211Message *msg = reinterpret_cast<const Nl80211Message *>(arg);
+  const Nl80211Message* msg = reinterpret_cast<const Nl80211Message*>(arg);
   if (msg->command() != NL80211_CMD_GET_INTERFACE) {
     return false;
   }
@@ -573,7 +573,7 @@ TEST_F(DeviceInfoTest, CreateDeviceTunnelAccepted) {
   IPAddress address = CreateInterfaceAddress();
 
   // A VPN device should be offered to VPNProvider.
-  MockVPNProvider *vpn_provider = new StrictMock<MockVPNProvider>;
+  MockVPNProvider* vpn_provider = new StrictMock<MockVPNProvider>;
   SetVPNProvider(vpn_provider);
   EXPECT_CALL(*vpn_provider,
               OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex))
@@ -590,7 +590,7 @@ TEST_F(DeviceInfoTest, CreateDeviceTunnelRejected) {
   IPAddress address = CreateInterfaceAddress();
 
   // A VPN device should be offered to VPNProvider.
-  MockVPNProvider *vpn_provider = new StrictMock<MockVPNProvider>;
+  MockVPNProvider* vpn_provider = new StrictMock<MockVPNProvider>;
   SetVPNProvider(vpn_provider);
   EXPECT_CALL(*vpn_provider,
               OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex))
@@ -609,7 +609,7 @@ TEST_F(DeviceInfoTest, CreateDevicePPP) {
   IPAddress address = CreateInterfaceAddress();
 
   // A VPN device should be offered to VPNProvider.
-  MockVPNProvider *vpn_provider = new StrictMock<MockVPNProvider>;
+  MockVPNProvider* vpn_provider = new StrictMock<MockVPNProvider>;
   SetVPNProvider(vpn_provider);
   EXPECT_CALL(*vpn_provider,
               OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex))
@@ -987,14 +987,14 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernelIoctlFails) {
 }
 
 MATCHER_P2(IfreqEquals, ifindex, ifname, "") {
-  const struct ifreq *const ifr = static_cast<struct ifreq *>(arg);
+  const struct ifreq* const ifr = static_cast<struct ifreq*>(arg);
   return (ifr != nullptr) &&
       (ifr->ifr_ifindex == ifindex) &&
       (strcmp(ifname, ifr->ifr_name) == 0);
 }
 
 ACTION_P(SetIfreq, ifr) {
-  struct ifreq *const ifr_arg = static_cast<struct ifreq *>(arg2);
+  struct ifreq* const ifr_arg = static_cast<struct ifreq*>(arg2);
   *ifr_arg = ifr;
 }
 
@@ -1088,15 +1088,15 @@ TEST_F(DeviceInfoTest, GetMACAddressOfPeerIoctlFails) {
 }
 
 MATCHER_P2(ArpreqEquals, ifname, peer, "") {
-  const struct arpreq *const areq = static_cast<struct arpreq *>(arg);
+  const struct arpreq* const areq = static_cast<struct arpreq*>(arg);
   if (areq == nullptr) {
     return false;
   }
 
-  const struct sockaddr_in *const protocol_address =
-      reinterpret_cast<const struct sockaddr_in *>(&areq->arp_pa);
-  const struct sockaddr_in *const hardware_address =
-      reinterpret_cast<const struct sockaddr_in *>(&areq->arp_ha);
+  const struct sockaddr_in* const protocol_address =
+      reinterpret_cast<const struct sockaddr_in*>(&areq->arp_pa);
+  const struct sockaddr_in* const hardware_address =
+      reinterpret_cast<const struct sockaddr_in*>(&areq->arp_ha);
 
   return
       strcmp(ifname, areq->arp_dev) == 0 &&
@@ -1108,7 +1108,7 @@ MATCHER_P2(ArpreqEquals, ifname, peer, "") {
 }
 
 ACTION_P(SetArpreq, areq) {
-  struct arpreq *const areq_arg = static_cast<struct arpreq *>(arg2);
+  struct arpreq* const areq_arg = static_cast<struct arpreq*>(arg2);
   *areq_arg = areq;
 }
 
@@ -1326,10 +1326,10 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
   Technology::Identifier GetDeviceTechnology() {
     return device_info_.GetDeviceTechnology(test_device_name_);
   }
-  FilePath GetInfoPath(const string &name);
-  void CreateInfoFile(const string &name, const string &contents);
-  void CreateInfoSymLink(const string &name, const string &contents);
-  void SetDeviceName(const string &name) {
+  FilePath GetInfoPath(const string& name);
+  void CreateInfoFile(const string& name, const string& contents);
+  void CreateInfoSymLink(const string& name, const string& contents);
+  void SetDeviceName(const string& name) {
     test_device_name_ = name;
     EXPECT_TRUE(temp_dir_.Delete());  // nuke old temp dir
     SetUp();
@@ -1341,12 +1341,12 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
   string test_device_name_;
 };
 
-FilePath DeviceInfoTechnologyTest::GetInfoPath(const string &name) {
+FilePath DeviceInfoTechnologyTest::GetInfoPath(const string& name) {
   return device_info_root_.Append(test_device_name_).Append(name);
 }
 
-void DeviceInfoTechnologyTest::CreateInfoFile(const string &name,
-                                              const string &contents) {
+void DeviceInfoTechnologyTest::CreateInfoFile(const string& name,
+                                              const string& contents) {
   FilePath info_path = GetInfoPath(name);
   EXPECT_TRUE(base::CreateDirectory(info_path.DirName()));
   string contents_newline(contents + "\n");
@@ -1354,8 +1354,8 @@ void DeviceInfoTechnologyTest::CreateInfoFile(const string &name,
                               contents_newline.size()));
 }
 
-void DeviceInfoTechnologyTest::CreateInfoSymLink(const string &name,
-                                                 const string &contents) {
+void DeviceInfoTechnologyTest::CreateInfoSymLink(const string& name,
+                                                 const string& contents) {
   FilePath info_path = GetInfoPath(name);
   EXPECT_TRUE(base::CreateDirectory(info_path.DirName()));
   EXPECT_TRUE(base::CreateSymbolicLink(FilePath(contents), info_path));
@@ -1536,17 +1536,17 @@ TEST_F(DeviceInfoTechnologyTest, PseudoModem) {
 
 class DeviceInfoForDelayedCreationTest : public DeviceInfo {
  public:
-  DeviceInfoForDelayedCreationTest(ControlInterface *control_interface,
-                                   EventDispatcher *dispatcher,
-                                   Metrics *metrics,
-                                   Manager *manager)
+  DeviceInfoForDelayedCreationTest(ControlInterface* control_interface,
+                                   EventDispatcher* dispatcher,
+                                   Metrics* metrics,
+                                   Manager* manager)
       : DeviceInfo(control_interface, dispatcher, metrics, manager) {}
-  MOCK_METHOD4(CreateDevice, DeviceRefPtr(const std::string &link_name,
-                                          const std::string &address,
+  MOCK_METHOD4(CreateDevice, DeviceRefPtr(const std::string& link_name,
+                                          const std::string& address,
                                           int interface_index,
                                           Technology::Identifier technology));
   MOCK_METHOD1(GetDeviceTechnology,
-               Technology::Identifier(const string &iface_name));
+               Technology::Identifier(const string& iface_name));
 };
 
 class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
@@ -1557,7 +1557,7 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
             &control_interface_, &dispatcher_, &metrics_, &manager_) {}
   virtual ~DeviceInfoDelayedCreationTest() {}
 
-  virtual std::set<int> &GetDelayedDevices() {
+  virtual std::set<int>& GetDelayedDevices() {
     return test_device_info_.delayed_devices_;
   }
 
@@ -1581,7 +1581,7 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
   }
 
 #if !defined(DISABLE_WIFI)
-  void TriggerOnWiFiInterfaceInfoReceived(const Nl80211Message &message) {
+  void TriggerOnWiFiInterfaceInfoReceived(const Nl80211Message& message) {
     test_device_info_.OnWiFiInterfaceInfoReceived(message);
   }
 #endif  // DISABLE_WIFI

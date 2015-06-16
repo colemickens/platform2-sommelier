@@ -75,7 +75,7 @@ class ConnectionHealthCheckerTest : public Test {
         socket_(nullptr) {}
 
   // Invokes
-  int GetSockName(int fd, struct sockaddr *addr_out, socklen_t *sockaddr_size) {
+  int GetSockName(int fd, struct sockaddr* addr_out, socklen_t* sockaddr_size) {
     struct sockaddr_in addr;
     EXPECT_EQ(kProxyFD, fd);
     EXPECT_LE(sizeof(sockaddr_in), *sockaddr_size);
@@ -87,8 +87,8 @@ class ConnectionHealthCheckerTest : public Test {
     return 0;
   }
 
-  int GetSockNameReturnsIPv6(int fd, struct sockaddr *addr_out,
-                             socklen_t *sockaddr_size) {
+  int GetSockNameReturnsIPv6(int fd, struct sockaddr* addr_out,
+                             socklen_t* sockaddr_size) {
     struct sockaddr_in6 addr;
     EXPECT_EQ(kProxyFD, fd);
     EXPECT_LE(sizeof(sockaddr_in6), *sockaddr_size);
@@ -110,7 +110,7 @@ class ConnectionHealthCheckerTest : public Test {
     health_checker_->GetDNSResult(error, address);
   }
 
-  void InvokeGetDNSResultSuccess(const IPAddress &address) {
+  void InvokeGetDNSResultSuccess(const IPAddress& address) {
     Error error;
     health_checker_->GetDNSResult(error, address);
   }
@@ -146,13 +146,13 @@ class ConnectionHealthCheckerTest : public Test {
   }
 
   // Accessors for private data in ConnectionHealthChecker.
-  const Sockets *socket() {
+  const Sockets* socket() {
     return health_checker_->socket_.get();
   }
-  const AsyncConnection *tcp_connection() {
+  const AsyncConnection* tcp_connection() {
     return health_checker_->tcp_connection_.get();
   }
-  ScopedVector<DNSClient> &dns_clients() {
+  ScopedVector<DNSClient>& dns_clients() {
     return health_checker_->dns_clients_;
   }
   int NumDNSQueries() {
@@ -179,7 +179,7 @@ class ConnectionHealthCheckerTest : public Test {
                void(ConnectionHealthChecker::Result result));
 
   // Helper methods
-  IPAddress StringToIPv4Address(const string &address_string) {
+  IPAddress StringToIPv4Address(const string& address_string) {
     IPAddress ip_address(IPAddress::kFamilyIPv4);
     EXPECT_TRUE(ip_address.SetAddressFromString(address_string));
     return ip_address;
@@ -305,9 +305,9 @@ class ConnectionHealthCheckerTest : public Test {
   scoped_refptr<NiceMock<MockConnection>> connection_;
   EventDispatcher dispatcher_;
   MockIPAddressStore remote_ips_;
-  StrictMock<MockSockets> *socket_;
-  StrictMock<MockSocketInfoReader> *socket_info_reader_;
-  StrictMock<MockAsyncConnection> *tcp_connection_;
+  StrictMock<MockSockets>* socket_;
+  StrictMock<MockSocketInfoReader>* socket_info_reader_;
+  StrictMock<MockAsyncConnection>* tcp_connection_;
   // Expectations in the Expect* functions are put in this sequence.
   // This allows us to chain calls to Expect* functions.
   Sequence seq_;
@@ -348,7 +348,7 @@ TEST_F(ConnectionHealthCheckerTest, GarbageCollectDNSClients) {
   EXPECT_TRUE(dns_clients().empty());
 
   for (int i = 0; i < 3; ++i) {
-    MockDNSClient *dns_client = new MockDNSClient();
+    MockDNSClient* dns_client = new MockDNSClient();
     EXPECT_CALL(*dns_client, IsActive())
         .WillOnce(Return(true))
         .WillOnce(Return(true))
@@ -357,7 +357,7 @@ TEST_F(ConnectionHealthCheckerTest, GarbageCollectDNSClients) {
     dns_clients().push_back(dns_client);
   }
   for (int i = 0; i < 2; ++i) {
-    MockDNSClient *dns_client = new MockDNSClient();
+    MockDNSClient* dns_client = new MockDNSClient();
     EXPECT_CALL(*dns_client, IsActive())
         .WillOnce(Return(false));
     // Takes ownership.
@@ -380,13 +380,13 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
   IPAddress remote_ip = StringToIPv4Address(kProxyIPAddressRemote);
   IPAddress remote_ip_2 = StringToIPv4Address(kIPAddress_8_8_8_8);
 
-  MockDNSClientFactory *dns_client_factory
+  MockDNSClientFactory* dns_client_factory
       = MockDNSClientFactory::GetInstance();
-  vector<MockDNSClient *> dns_client_buffer;
+  vector<MockDNSClient*> dns_client_buffer;
 
   // All DNS queries fail.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    MockDNSClient *dns_client = new MockDNSClient();
+    MockDNSClient* dns_client = new MockDNSClient();
     EXPECT_CALL(*dns_client, Start(host, _))
         .WillOnce(Return(false));
     dns_client_buffer.push_back(dns_client);
@@ -406,7 +406,7 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
 
   // All but one DNS queries fail, 1 succeeds.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    MockDNSClient *dns_client = new MockDNSClient();
+    MockDNSClient* dns_client = new MockDNSClient();
     EXPECT_CALL(*dns_client, Start(host, _))
         .WillOnce(Return(true));
     dns_client_buffer.push_back(dns_client);
@@ -430,7 +430,7 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
 
   // Only 2 distinct IP addresses are returned.
   for (int i = 0; i < NumDNSQueries(); ++i) {
-    MockDNSClient *dns_client = new MockDNSClient();
+    MockDNSClient* dns_client = new MockDNSClient();
     EXPECT_CALL(*dns_client, Start(host, _))
         .WillOnce(Return(true));
     dns_client_buffer.push_back(dns_client);

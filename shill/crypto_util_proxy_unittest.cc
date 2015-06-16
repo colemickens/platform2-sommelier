@@ -114,17 +114,17 @@ class CryptoUtilProxyTest : public testing::Test {
     // to declare the proxy after mocks it consumes.
   }
 
-  bool HandleRunPipesAndDestroy(struct minijail *jail, vector<char *> args,
-                                int *shim_pid, int *stdin, int *stdout,
-                                int *stderr) {
+  bool HandleRunPipesAndDestroy(struct minijail* jail, vector<char*> args,
+                                int* shim_pid, int* stdin, int* stdout,
+                                int* stderr) {
     *shim_pid = kTestShimPid;
     *stdin = kTestStdinFd;
     *stdout = kTestStdoutFd;
     return true;
   }
 
-  void StartAndCheckShim(const std::string &command,
-                         const std::string &shim_stdin) {
+  void StartAndCheckShim(const std::string& command,
+                         const std::string& shim_stdin) {
     InSequence seq;
     // Delegate the start call to the real implementation just for this test.
     EXPECT_CALL(crypto_util_proxy_, StartShimForCommand(_, _, _))
@@ -171,7 +171,7 @@ class CryptoUtilProxyTest : public testing::Test {
     Mock::VerifyAndClearExpectations(&process_killer_);
   }
 
-  void ExpectCleanup(const Error &expected_result) {
+  void ExpectCleanup(const Error& expected_result) {
     if (crypto_util_proxy_.shim_stdin_ > -1) {
       EXPECT_CALL(file_io_,
                   Close(crypto_util_proxy_.shim_stdin_)).Times(1);
@@ -192,11 +192,11 @@ class CryptoUtilProxyTest : public testing::Test {
     EXPECT_FALSE(crypto_util_proxy_.shim_pid_);
   }
 
-  void HandleShimKill(int /*pid*/, const base::Closure &callback) {
+  void HandleShimKill(int /*pid*/, const base::Closure& callback) {
     callback.Run();
   }
 
-  void StopAndCheckShim(const Error &error) {
+  void StopAndCheckShim(const Error& error) {
     ExpectCleanup(error);
     crypto_util_proxy_.CleanupShim(error);
     crypto_util_proxy_.OnShimDeath();
@@ -378,7 +378,7 @@ TEST_F(CryptoUtilProxyTest, ShimLifeTime) {
   while (bytes_left > 0) {
     int bytes_written = min(kBytesAtATime, bytes_left);
     data.len = bytes_written;
-    data.buf = reinterpret_cast<unsigned char *>(const_cast<char *>(
+    data.buf = reinterpret_cast<unsigned char*>(const_cast<char*>(
           kTestSerializedCommandResponse + response_length - bytes_left));
     bytes_left -= bytes_written;
     crypto_util_proxy_.HandleShimOutput(&data);

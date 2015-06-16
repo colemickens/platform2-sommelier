@@ -36,13 +36,13 @@ class CryptoProviderTest : public Test {
   CryptoProviderTest() : provider_(&glib_) {}
 
  protected:
-  FilePath InitKeyMatterFile(const FilePath &dir);
+  FilePath InitKeyMatterFile(const FilePath& dir);
 
   GLib glib_;  // Use actual GLib for testing.
   CryptoProvider provider_;
 };
 
-FilePath CryptoProviderTest::InitKeyMatterFile(const FilePath &dir) {
+FilePath CryptoProviderTest::InitKeyMatterFile(const FilePath& dir) {
   FilePath path = dir.Append(kKeyMatterFile);
   string matter = string(kTestIV) + kTestKey;
   base::WriteFile(path, matter.data(), matter.size());

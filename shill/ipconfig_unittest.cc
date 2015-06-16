@@ -62,17 +62,17 @@ class IPConfigTest : public Test {
   }
 
   MOCK_METHOD2(OnIPConfigUpdated,
-               void(const IPConfigRefPtr &ipconfig, bool new_lease_acquired));
-  MOCK_METHOD1(OnIPConfigFailed, void(const IPConfigRefPtr &ipconfig));
-  MOCK_METHOD1(OnIPConfigRefreshed, void(const IPConfigRefPtr &ipconfig));
-  MOCK_METHOD1(OnIPConfigExpired, void(const IPConfigRefPtr &ipconfig));
+               void(const IPConfigRefPtr& ipconfig, bool new_lease_acquired));
+  MOCK_METHOD1(OnIPConfigFailed, void(const IPConfigRefPtr& ipconfig));
+  MOCK_METHOD1(OnIPConfigRefreshed, void(const IPConfigRefPtr& ipconfig));
+  MOCK_METHOD1(OnIPConfigExpired, void(const IPConfigRefPtr& ipconfig));
 
  protected:
-  IPConfigMockAdaptor *GetAdaptor() {
-    return dynamic_cast<IPConfigMockAdaptor *>(ipconfig_->adaptor_.get());
+  IPConfigMockAdaptor* GetAdaptor() {
+    return dynamic_cast<IPConfigMockAdaptor*>(ipconfig_->adaptor_.get());
   }
 
-  void UpdateProperties(const IPConfig::Properties &properties) {
+  void UpdateProperties(const IPConfig::Properties& properties) {
     ipconfig_->UpdateProperties(properties, true);
   }
 
@@ -84,7 +84,7 @@ class IPConfigTest : public Test {
     ipconfig_->NotifyExpiry();
   }
 
-  void ExpectPropertiesEqual(const IPConfig::Properties &properties) {
+  void ExpectPropertiesEqual(const IPConfig::Properties& properties) {
     EXPECT_EQ(properties.address, ipconfig_->properties().address);
     EXPECT_EQ(properties.subnet_prefix, ipconfig_->properties().subnet_prefix);
     EXPECT_EQ(properties.broadcast_address,
@@ -211,7 +211,7 @@ TEST_F(IPConfigTest, UpdatePropertiesWithDropRef) {
 }
 
 TEST_F(IPConfigTest, PropertyChanges) {
-  IPConfigMockAdaptor *adaptor = GetAdaptor();
+  IPConfigMockAdaptor* adaptor = GetAdaptor();
 
   StaticIPParameters static_ip_params;
   EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));

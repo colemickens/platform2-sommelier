@@ -90,7 +90,7 @@ class TrafficMonitorTest : public Test {
     EXPECT_FALSE(monitor_.sample_traffic_callback_.IsCancelled());
   }
 
-  void SetupMockSocketInfos(const vector<SocketInfo> &socket_infos) {
+  void SetupMockSocketInfos(const vector<SocketInfo>& socket_infos) {
     mock_socket_infos_ = socket_infos;
     EXPECT_CALL(*mock_socket_info_reader_, LoadTcpSocketInfo(_))
         .WillRepeatedly(
@@ -98,24 +98,24 @@ class TrafficMonitorTest : public Test {
   }
 
   void SetupMockConnectionInfos(
-      const vector<ConnectionInfo> &connection_infos) {
+      const vector<ConnectionInfo>& connection_infos) {
     mock_connection_infos_ = connection_infos;
     EXPECT_CALL(*mock_connection_info_reader_, LoadConnectionInfo(_))
         .WillRepeatedly(
             Invoke(this, &TrafficMonitorTest::MockLoadConnectionInfo));
   }
 
-  bool MockLoadTcpSocketInfo(vector<SocketInfo> *info_list) {
+  bool MockLoadTcpSocketInfo(vector<SocketInfo>* info_list) {
     *info_list = mock_socket_infos_;
     return true;
   }
 
-  bool MockLoadConnectionInfo(vector<ConnectionInfo> *info_list) {
+  bool MockLoadConnectionInfo(vector<ConnectionInfo>* info_list) {
     *info_list = mock_connection_infos_;
     return true;
   }
 
-  string FormatIPPort(const IPAddress &ip, const uint16_t port) {
+  string FormatIPPort(const IPAddress& ip, const uint16_t port) {
     return StringPrintf("%s:%d", ip.ToString().c_str(), port);
   }
 
@@ -124,8 +124,8 @@ class TrafficMonitorTest : public Test {
   scoped_refptr<MockDevice> device_;
   scoped_refptr<MockIPConfig> ipconfig_;
   IPConfig::Properties ipconfig_properties_;
-  MockSocketInfoReader *mock_socket_info_reader_;
-  MockConnectionInfoReader *mock_connection_info_reader_;
+  MockSocketInfoReader* mock_socket_info_reader_;
+  MockConnectionInfoReader* mock_connection_info_reader_;
   TrafficMonitor monitor_;
   vector<SocketInfo> mock_socket_infos_;
   vector<ConnectionInfo> mock_connection_infos_;

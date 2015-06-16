@@ -165,7 +165,7 @@ TEST_F(PendingActivationStoreTest, FileInteractions) {
 }
 
 TEST_F(PendingActivationStoreTest, GetActivationState) {
-  MockStore *mock_store = mock_store_.get();
+  MockStore* mock_store = mock_store_.get();
   SetMockStore();
 
   const char kEntry[] = "12345689";
@@ -214,7 +214,7 @@ TEST_F(PendingActivationStoreTest, GetActivationState) {
 }
 
 TEST_F(PendingActivationStoreTest, SetActivationState) {
-  MockStore *mock_store = mock_store_.get();
+  MockStore* mock_store = mock_store_.get();
   SetMockStore();
 
   const char kEntry[] = "12345689";
@@ -259,7 +259,7 @@ TEST_F(PendingActivationStoreTest, SetActivationState) {
 }
 
 TEST_F(PendingActivationStoreTest, RemoveEntry) {
-  MockStore *mock_store = mock_store_.get();
+  MockStore* mock_store = mock_store_.get();
   SetMockStore();
 
   const char kEntry[] = "12345689";

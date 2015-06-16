@@ -42,10 +42,10 @@ namespace shill {
 
 class TestEventDispatcher : public EventDispatcher {
  public:
-  virtual IOHandler *CreateInputHandler(
+  virtual IOHandler* CreateInputHandler(
       int /*fd*/,
-      const IOHandler::InputCallback &/*input_callback*/,
-      const IOHandler::ErrorCallback &/*error_callback*/) {
+      const IOHandler::InputCallback& /*input_callback*/,
+      const IOHandler::ErrorCallback& /*error_callback*/) {
     return nullptr;
   }
 };
@@ -65,27 +65,27 @@ class RoutingTableTest : public Test {
     RTNLHandler::GetInstance()->Stop();
   }
 
-  std::unordered_map<int, vector<RoutingTableEntry>> *GetRoutingTables() {
+  std::unordered_map<int, vector<RoutingTableEntry>>* GetRoutingTables() {
     return &routing_table_->tables_;
   }
 
-  deque<RoutingTable::Query> *GetQueries() {
+  deque<RoutingTable::Query>* GetQueries() {
     return &routing_table_->route_queries_;
   }
 
   void SendRouteEntry(RTNLMessage::Mode mode,
                       uint32_t interface_index,
-                      const RoutingTableEntry &entry);
+                      const RoutingTableEntry& entry);
 
   void SendRouteEntryWithSeqAndProto(RTNLMessage::Mode mode,
                                      uint32_t interface_index,
-                                     const RoutingTableEntry &entry,
+                                     const RoutingTableEntry& entry,
                                      uint32_t seq,
                                      unsigned char proto);
 
-  void SendRouteMessage(const RTNLMessage &msg);
+  void SendRouteMessage(const RTNLMessage& msg);
 
-  bool SetSequenceForMessage(RTNLMessage *message) {
+  bool SetSequenceForMessage(RTNLMessage* message) {
     message->set_seq(RoutingTableTest::kTestRequestSeq);
     return true;
   }
@@ -119,17 +119,17 @@ class RoutingTableTest : public Test {
                                    weak_ptr_factory_.GetWeakPtr())) {}
 
     MOCK_METHOD2(MockedTarget,
-                 void(int interface_index, const RoutingTableEntry &entry));
+                 void(int interface_index, const RoutingTableEntry& entry));
 
-    void UnreachedTarget(int interface_index, const RoutingTableEntry &entry) {
+    void UnreachedTarget(int interface_index, const RoutingTableEntry& entry) {
       CHECK(false);
     }
 
-    const RoutingTable::Query::Callback &mocked_callback() const {
+    const RoutingTable::Query::Callback& mocked_callback() const {
       return mocked_callback_;
     }
 
-    const RoutingTable::Query::Callback &unreached_callback() const {
+    const RoutingTable::Query::Callback& unreached_callback() const {
       return unreached_callback_;
     }
 
@@ -166,7 +166,7 @@ const uint8_t RoutingTableTest::kTestTableId = 0xa5;
 namespace {
 
 MATCHER_P3(IsBlackholeRoutingPacket, index, family, metric, "") {
-  const RTNLMessage::RouteStatus &status = arg->route_status();
+  const RTNLMessage::RouteStatus& status = arg->route_status();
 
   uint32_t oif;
   uint32_t priority;
@@ -189,7 +189,7 @@ MATCHER_P3(IsBlackholeRoutingPacket, index, family, metric, "") {
 }
 
 MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
-  const RTNLMessage::RouteStatus &status = arg->route_status();
+  const RTNLMessage::RouteStatus& status = arg->route_status();
 
   uint32_t oif;
   uint32_t priority;
@@ -224,14 +224,14 @@ MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
 
 void RoutingTableTest::SendRouteEntry(RTNLMessage::Mode mode,
                                       uint32_t interface_index,
-                                      const RoutingTableEntry &entry) {
+                                      const RoutingTableEntry& entry) {
   SendRouteEntryWithSeqAndProto(mode, interface_index, entry, 0, RTPROT_BOOT);
 }
 
 void RoutingTableTest::SendRouteEntryWithSeqAndProto(
     RTNLMessage::Mode mode,
     uint32_t interface_index,
-    const RoutingTableEntry &entry,
+    const RoutingTableEntry& entry,
     uint32_t seq,
     unsigned char proto) {
   RTNLMessage msg(
@@ -265,7 +265,7 @@ void RoutingTableTest::SendRouteEntryWithSeqAndProto(
   routing_table_->RouteMsgHandler(msg);
 }
 
-void RoutingTableTest::SendRouteMessage(const RTNLMessage &msg) {
+void RoutingTableTest::SendRouteMessage(const RTNLMessage& msg) {
   routing_table_->RouteMsgHandler(msg);
 }
 
@@ -299,7 +299,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                  kTestDeviceIndex0,
                  entry0);
 
-  std::unordered_map<int, vector<RoutingTableEntry>> *tables =
+  std::unordered_map<int, vector<RoutingTableEntry>>* tables =
       GetRoutingTables();
 
   // We should have a single table, which should in turn have a single entry.
@@ -492,7 +492,7 @@ TEST_F(RoutingTableTest, ConfigureRoutes) {
   IPConfigRefPtr ipconfig(new IPConfig(&control, kTestDeviceName0));
   IPConfig::Properties properties;
   properties.address_family = IPAddress::kFamilyIPv4;
-  vector<IPConfig::Route> &routes = properties.routes;
+  vector<IPConfig::Route>& routes = properties.routes;
   ipconfig->UpdateProperties(properties, true);
 
   const int kMetric = 10;
@@ -557,7 +557,7 @@ TEST_F(RoutingTableTest, ConfigureRoutes) {
 }
 
 MATCHER_P2(IsRoutingQuery, destination, index, "") {
-  const RTNLMessage::RouteStatus &status = arg->route_status();
+  const RTNLMessage::RouteStatus& status = arg->route_status();
 
   uint32_t oif;
 
@@ -625,7 +625,7 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
                                 kTestRequestSeq,
                                 RTPROT_UNSPEC);
 
-  std::unordered_map<int, vector<RoutingTableEntry>> *tables =
+  std::unordered_map<int, vector<RoutingTableEntry>>* tables =
       GetRoutingTables();
 
   // We should have a single table, which should in turn have a single entry.

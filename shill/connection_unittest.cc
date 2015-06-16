@@ -126,11 +126,11 @@ class ConnectionTest : public Test {
     return connection->PinHostRoute(trusted_ip, gateway);
   }
 
-  const IPAddress &GetLocalAddress(ConnectionRefPtr connection) {
+  const IPAddress& GetLocalAddress(ConnectionRefPtr connection) {
     return connection->local_;
   }
 
-  const IPAddress &GetGatewayAddress(ConnectionRefPtr connection) {
+  const IPAddress& GetGatewayAddress(ConnectionRefPtr connection) {
     return connection->gateway_;
   }
 
@@ -146,7 +146,7 @@ class ConnectionTest : public Test {
       return Connection::kNonDefaultMetricBase;
   }
 
-  void SetLocal(const IPAddress &local) {
+  void SetLocal(const IPAddress& local) {
     connection_->local_ = local;
   }
 
@@ -158,7 +158,7 @@ class ConnectionTest : public Test {
                                base::Unretained(this))) {}
 
     MOCK_METHOD0(CallTarget, void());
-    const base::Closure &callback() { return callback_; }
+    const base::Closure& callback() { return callback_; }
 
    private:
     base::Closure callback_;
@@ -334,7 +334,7 @@ TEST_F(ConnectionTest, AddConfigUserTrafficOnly) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
                                              IPConfig::kDefaultMTU));
 
-  MockPermissionBrokerProxy *permission_broker =
+  MockPermissionBrokerProxy* permission_broker =
       new MockPermissionBrokerProxy();
   connection->permission_broker_.reset(permission_broker);
   EXPECT_CALL(*permission_broker, RequestVpnSetup(_, _));
@@ -915,7 +915,7 @@ TEST_F(ConnectionTest, Binders) {
 
 TEST_F(ConnectionTest, Binder) {
   // No connection should be bound initially.
-  Connection::Binder *binder = &connection_->lower_binder_;
+  Connection::Binder* binder = &connection_->lower_binder_;
   EXPECT_EQ(connection_->interface_name(), binder->name_);
   EXPECT_FALSE(binder->client_disconnect_callback_.is_null());
   EXPECT_FALSE(binder->IsBound());
@@ -1027,7 +1027,7 @@ TEST_F(ConnectionTest, Binder) {
 }
 
 TEST_F(ConnectionTest, OnRouteQueryResponse) {
-  Connection::Binder *binder = &connection_->lower_binder_;
+  Connection::Binder* binder = &connection_->lower_binder_;
   ConnectionRefPtr connection = GetNewConnection();
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_,

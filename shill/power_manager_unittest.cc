@@ -46,34 +46,34 @@ class FakeProxyFactory : public ProxyFactory {
         power_manager_proxy_(power_manager_proxy_raw_),
         dbus_service_proxy_(dbus_service_proxy_raw_) {}
 
-  virtual PowerManagerProxyInterface *CreatePowerManagerProxy(
-      PowerManagerProxyDelegate *delegate) {
+  virtual PowerManagerProxyInterface* CreatePowerManagerProxy(
+      PowerManagerProxyDelegate* delegate) {
     CHECK(power_manager_proxy_);
     delegate_ = delegate;
     // Passes ownership.
     return power_manager_proxy_.release();
   }
 
-  virtual DBusServiceProxyInterface *CreateDBusServiceProxy() {
+  virtual DBusServiceProxyInterface* CreateDBusServiceProxy() {
     CHECK(dbus_service_proxy_);
     // Passes ownership.
     return dbus_service_proxy_.release();
   }
 
-  PowerManagerProxyDelegate *delegate() const { return delegate_; }
+  PowerManagerProxyDelegate* delegate() const { return delegate_; }
   // Can not guarantee that the returned object is alive.
-  MockPowerManagerProxy *power_manager_proxy() const {
+  MockPowerManagerProxy* power_manager_proxy() const {
     return power_manager_proxy_raw_;
   }
   // Can not guarantee that the returned object is alive.
-  MockDBusServiceProxy *dbus_service_proxy() const {
+  MockDBusServiceProxy* dbus_service_proxy() const {
     return dbus_service_proxy_raw_;
   }
 
  private:
-  PowerManagerProxyDelegate *delegate_;
-  MockPowerManagerProxy *const power_manager_proxy_raw_;
-  MockDBusServiceProxy *const dbus_service_proxy_raw_;
+  PowerManagerProxyDelegate* delegate_;
+  MockPowerManagerProxy* const power_manager_proxy_raw_;
+  MockDBusServiceProxy* const dbus_service_proxy_raw_;
   std::unique_ptr<MockPowerManagerProxy> power_manager_proxy_;
   std::unique_ptr<MockDBusServiceProxy> dbus_service_proxy_;
 };
@@ -144,7 +144,7 @@ class PowerManagerTest : public Test {
   }
 
   void AddProxyExpectationForRecordDarkResumeWakeReason(
-      const string &wake_reason, bool return_value) {
+      const string& wake_reason, bool return_value) {
     EXPECT_CALL(*power_manager_proxy_, RecordDarkResumeWakeReason(wake_reason))
         .WillOnce(Return(return_value));
   }
@@ -208,8 +208,8 @@ class PowerManagerTest : public Test {
   FakeProxyFactory factory_;
   DBusManager dbus_manager_;
   PowerManager power_manager_;
-  MockPowerManagerProxy *const power_manager_proxy_;
-  PowerManagerProxyDelegate *const delegate_;
+  MockPowerManagerProxy* const power_manager_proxy_;
+  PowerManagerProxyDelegate* const delegate_;
   PowerManager::SuspendImminentCallback suspend_imminent_callback_;
   PowerManager::SuspendDoneCallback suspend_done_callback_;
   PowerManager::DarkSuspendImminentCallback dark_suspend_imminent_callback_;

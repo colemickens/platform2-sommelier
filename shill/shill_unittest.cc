@@ -54,7 +54,7 @@ namespace shill {
 
 class MockEventDispatchTester {
  public:
-  explicit MockEventDispatchTester(EventDispatcher *dispatcher)
+  explicit MockEventDispatchTester(EventDispatcher* dispatcher)
       : dispatcher_(dispatcher),
         triggered_(false),
         callback_count_(0),
@@ -99,7 +99,7 @@ class MockEventDispatchTester {
     triggered_ = true;
   }
 
-  void HandleData(InputData *inputData) {
+  void HandleData(InputData* inputData) {
     LOG(INFO) << "MockEventDispatchTester handling data len "
               << base::StringPrintf("%zd %.*s", inputData->len,
                                     static_cast<int>(inputData->len),
@@ -175,7 +175,7 @@ class MockEventDispatchTester {
   MOCK_METHOD1(IOComplete, void(int data_length));
 
  private:
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   bool triggered_;
   int callback_count_;
   bool got_data_;
@@ -244,12 +244,12 @@ class ShillDaemonTest : public Test {
   MockRTNLHandler rtnl_handler_;
   MockRoutingTable routing_table_;
   MockDHCPProvider dhcp_provider_;
-  MockMetrics *metrics_;
-  MockManager *manager_;
+  MockMetrics* metrics_;
+  MockManager* manager_;
 #if !defined(DISABLE_WIFI)
   MockNetlinkManager netlink_manager_;
 #endif  // DISABLE_WIFI
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   DeviceInfo device_info_;
   StrictMock<MockEventDispatchTester> dispatcher_test_;
 };

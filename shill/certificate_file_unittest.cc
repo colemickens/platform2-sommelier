@@ -39,15 +39,15 @@ class CertificateFileTest : public testing::Test {
   static const char kDERData[];
   static const char kPEMData[];
 
-  string ExtractHexData(const std::string &pem_data) {
+  string ExtractHexData(const std::string& pem_data) {
     return CertificateFile::ExtractHexData(pem_data);
   }
-  const FilePath &GetOutputFile() { return certificate_file_.output_file_; }
-  const FilePath &GetRootDirectory() {
+  const FilePath& GetOutputFile() { return certificate_file_.output_file_; }
+  const FilePath& GetRootDirectory() {
     return certificate_file_.root_directory_;
   }
-  const char *GetPEMHeader() { return CertificateFile::kPEMHeader; }
-  const char *GetPEMFooter() { return CertificateFile::kPEMFooter; }
+  const char* GetPEMHeader() { return CertificateFile::kPEMHeader; }
+  const char* GetPEMFooter() { return CertificateFile::kPEMFooter; }
 
   CertificateFile certificate_file_;
   base::ScopedTempDir temp_dir_;

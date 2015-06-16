@@ -34,25 +34,25 @@ class PPPDaemonTest : public Test, public RPCTaskDelegate {
   PPPDaemonTest() : weak_ptr_factory_(this) {}
   virtual ~PPPDaemonTest() {}
 
-  std::unique_ptr<ExternalTask> Start(const PPPDaemon::Options &options,
-                                      const std::string &device,
-                                      Error *error) {
+  std::unique_ptr<ExternalTask> Start(const PPPDaemon::Options& options,
+                                      const std::string& device,
+                                      Error* error) {
     PPPDaemon::DeathCallback callback(base::Bind(&PPPDaemonTest::DeathCallback,
                                                  base::Unretained(this)));
     return PPPDaemon::Start(&control_, &glib_, weak_ptr_factory_.GetWeakPtr(),
                             options, device, callback, error);
   }
 
-  gboolean CaptureArgv(gchar **argv) {
-    for (gchar **i = argv; *i != nullptr; ++i) {
+  gboolean CaptureArgv(gchar** argv) {
+    for (gchar** i = argv; *i != nullptr; ++i) {
       argv_.push_back(*i);
     }
     return TRUE;
   }
 
-  MOCK_METHOD2(GetLogin, void(std::string *user, std::string *password));
-  MOCK_METHOD2(Notify, void(const std::string &reason,
-                            const std::map<std::string, std::string> &dict));
+  MOCK_METHOD2(GetLogin, void(std::string* user, std::string* password));
+  MOCK_METHOD2(Notify, void(const std::string& reason,
+                            const std::map<std::string, std::string>& dict));
 
  protected:
   MockControl control_;
@@ -101,7 +101,7 @@ TEST_F(PPPDaemonTest, OptionsConverted) {
     "nodetach", "nodefaultroute", "usepeerdns", "lcp-echo-interval",
     "lcp-echo-failure", "maxfail",
   };
-  for (const auto &argument : argv_) {
+  for (const auto& argument : argv_) {
     expected_arguments.erase(argument);
   }
   EXPECT_TRUE(expected_arguments.empty());

@@ -268,20 +268,20 @@ TEST(PropertyAccessorTest, StringCorrectness) {
 
 class StringWrapper {
  public:
-  string Get(Error */*error*/) {
+  string Get(Error* /*error*/) {
     return value_;
   }
-  string ConstGet(Error */*error*/) const {
+  string ConstGet(Error* /*error*/) const {
     return value_;
   }
-  bool Set(const string &value, Error */*error*/) {
+  bool Set(const string& value, Error* /*error*/) {
     if (value_ == value) {
       return false;
     }
     value_ = value;
     return true;
   }
-  void Clear(Error */*error*/) {
+  void Clear(Error* /*error*/) {
     value_.clear();
   }
 
@@ -476,14 +476,14 @@ TEST(PropertyAccessorTest, CustomReadOnlyAccessor) {
 
 class StringMapWrapper {
  public:
-  void Clear(const string &key, Error */*error*/) {
+  void Clear(const string& key, Error* /*error*/) {
     value_.erase(key);
   }
-  string Get(const string &key, Error */*error*/) {
+  string Get(const string& key, Error* /*error*/) {
     EXPECT_TRUE(ContainsKey(value_, key));
     return value_[key];
   }
-  bool Set(const string &key, const string &value, Error */*error*/) {
+  bool Set(const string& key, const string& value, Error* /*error*/) {
     if (value_[key] == value) {
       return false;
     }

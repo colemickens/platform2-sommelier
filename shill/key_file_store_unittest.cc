@@ -50,9 +50,9 @@ class KeyFileStoreTest : public Test {
  protected:
   string ReadKeyFile();
   void WriteKeyFile(string data);
-  bool OpenCheckClose(const string &group,
-                      const string &key,
-                      const string &expected_value);
+  bool OpenCheckClose(const string& group,
+                      const string& key,
+                      const string& expected_value);
 
   GLib glib_;  // Use real GLib for testing KeyFileStore.
   base::ScopedTempDir temp_dir_;
@@ -650,9 +650,9 @@ TEST_F(KeyFileStoreTest, PersistAcrossClose) {
   ASSERT_TRUE(store_.Close());
 }
 
-bool KeyFileStoreTest::OpenCheckClose(const string &group,
-                                      const string &key,
-                                      const string &expected_value) {
+bool KeyFileStoreTest::OpenCheckClose(const string& group,
+                                      const string& key,
+                                      const string& expected_value) {
   KeyFileStore store(&glib_);
   store.set_path(test_file_);
   EXPECT_TRUE(store.Open());

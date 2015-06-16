@@ -42,46 +42,46 @@ class EapCredentialsTest : public testing::Test {
     eap_.PopulateSupplicantProperties(&certificate_file_, &params_);
   }
 
-  void SetAnonymousIdentity(const string &anonymous_identity) {
+  void SetAnonymousIdentity(const string& anonymous_identity) {
     eap_.anonymous_identity_ = anonymous_identity;
   }
-  void SetCACertNSS(const string &ca_cert_nss) {
+  void SetCACertNSS(const string& ca_cert_nss) {
     eap_.ca_cert_nss_ = ca_cert_nss;
   }
-  void SetCACertPEM(const vector<string> &ca_cert_pem) {
+  void SetCACertPEM(const vector<string>& ca_cert_pem) {
     eap_.ca_cert_pem_ = ca_cert_pem;
   }
-  void SetClientCert(const string &client_cert) {
+  void SetClientCert(const string& client_cert) {
     eap_.client_cert_ = client_cert;
   }
-  void SetCertId(const string &cert_id) {
+  void SetCertId(const string& cert_id) {
     eap_.cert_id_ = cert_id;
   }
-  void SetCACertId(const string &ca_cert_id) {
+  void SetCACertId(const string& ca_cert_id) {
     eap_.ca_cert_id_ = ca_cert_id;
   }
-  void SetEap(const string &eap) {
+  void SetEap(const string& eap) {
     eap_.eap_ = eap;
   }
-  void SetIdentity(const string &identity) {
+  void SetIdentity(const string& identity) {
     eap_.identity_ = identity;
   }
-  void SetInnerEap(const string &inner_eap) {
+  void SetInnerEap(const string& inner_eap) {
     eap_.inner_eap_ = inner_eap;
   }
-  void SetKeyId(const string &key_id) {
+  void SetKeyId(const string& key_id) {
     eap_.key_id_ = key_id;
   }
-  const string &GetPassword() {
+  const string& GetPassword() {
     return eap_.password_;
   }
-  void SetPassword(const string &password) {
+  void SetPassword(const string& password) {
     eap_.password_ = password;
   }
-  void SetPrivateKey(const string &private_key) {
+  void SetPrivateKey(const string& private_key) {
     eap_.private_key_ = private_key;
   }
-  void SetPin(const string &pin) {
+  void SetPin(const string& pin) {
     eap_.pin_ = pin;
   }
   void SetUseProactiveKeyCaching(bool use_proactive_key_caching) {
@@ -112,13 +112,13 @@ class EapCredentialsTest : public testing::Test {
         eap_.use_proactive_key_caching_ == false;
   }
 
-  const string &GetKeyManagement() {
+  const string& GetKeyManagement() {
     return eap_.key_management_;
   }
-  bool SetEapPassword(const string &password, Error *error) {
+  bool SetEapPassword(const string& password, Error* error) {
     return eap_.SetEapPassword(password, error);
   }
-  bool SetEapPrivateKeyPassword(const string &password, Error *error) {
+  bool SetEapPrivateKeyPassword(const string& password, Error* error) {
     return eap_.SetEapPrivateKeyPassword(password, error);
   }
 

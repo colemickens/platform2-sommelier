@@ -44,7 +44,7 @@ const char kInterfaceName[] = "int0";
 const char kURL[] = "http://www.chromium.org";
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
-const char *kDNSServers[] = { kDNSServer0, kDNSServer1 };
+const char* kDNSServers[] = { kDNSServer0, kDNSServer1 };
 }  // namespace
 
 MATCHER_P(IsResult, result, "") {
@@ -101,7 +101,7 @@ class ConnectivityTrialTest : public Test {
     }
 
     MOCK_METHOD1(ResultCallback, void(ConnectivityTrial::Result result));
-    Callback<void(ConnectivityTrial::Result)> &result_callback() {
+    Callback<void(ConnectivityTrial::Result)>& result_callback() {
       return result_callback_;
     }
 
@@ -114,7 +114,7 @@ class ConnectivityTrialTest : public Test {
     connectivity_trial_->request_.reset(http_request_);  // Passes ownership.
   }
 
-  bool StartTrialWithDelay(const string &url_string, int delay) {
+  bool StartTrialWithDelay(const string& url_string, int delay) {
     bool ret = connectivity_trial_->Start(url_string, delay);
     if (ret) {
       AssignHTTPRequest();
@@ -122,7 +122,7 @@ class ConnectivityTrialTest : public Test {
     return ret;
   }
 
-  bool StartTrial(const string &url_string) {
+  bool StartTrial(const string& url_string) {
     return StartTrialWithDelay(url_string, 0);
   }
 
@@ -134,7 +134,7 @@ class ConnectivityTrialTest : public Test {
     connectivity_trial()->StartTrialTask();
   }
 
-  void ExpectTrialReturn(const ConnectivityTrial::Result &result) {
+  void ExpectTrialReturn(const ConnectivityTrial::Result& result) {
     EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
 
     // Expect the PortalDetector to stop the current request.
@@ -145,11 +145,11 @@ class ConnectivityTrialTest : public Test {
     connectivity_trial_->TimeoutTrialTask();
   }
 
-  MockHTTPRequest *http_request() { return http_request_; }
-  ConnectivityTrial *connectivity_trial() { return connectivity_trial_.get(); }
-  MockEventDispatcher &dispatcher() { return dispatcher_; }
-  CallbackTarget &callback_target() { return callback_target_; }
-  ByteString &response_data() { return response_data_; }
+  MockHTTPRequest* http_request() { return http_request_; }
+  ConnectivityTrial* connectivity_trial() { return connectivity_trial_.get(); }
+  MockEventDispatcher& dispatcher() { return dispatcher_; }
+  CallbackTarget& callback_target() { return callback_target_; }
+  ByteString& response_data() { return response_data_; }
 
   void ExpectReset() {
     EXPECT_TRUE(callback_target_.result_callback().
@@ -157,7 +157,7 @@ class ConnectivityTrialTest : public Test {
     EXPECT_FALSE(connectivity_trial_->request_.get());
   }
 
-  void ExpectTrialRetry(const ConnectivityTrial::Result &result, int delay) {
+  void ExpectTrialRetry(const ConnectivityTrial::Result& result, int delay) {
     EXPECT_CALL(callback_target(), ResultCallback(IsResult(result)));
 
     // Expect the ConnectivityTrial to stop the current request.
@@ -185,13 +185,13 @@ class ConnectivityTrialTest : public Test {
     connectivity_trial()->StartTrialTask();
   }
 
-  void AppendReadData(const string &read_data) {
+  void AppendReadData(const string& read_data) {
     response_data_.Append(ByteString(read_data, false));
     connectivity_trial_->RequestReadCallback(response_data_);
   }
 
  private:
-  int GetTimeMonotonic(struct timeval *tv) {
+  int GetTimeMonotonic(struct timeval* tv) {
     *tv = current_time_;
     return 0;
   }
@@ -207,7 +207,7 @@ class ConnectivityTrialTest : public Test {
   const string interface_name_;
   vector<string> dns_servers_;
   ByteString response_data_;
-  MockHTTPRequest *http_request_;
+  MockHTTPRequest* http_request_;
 };
 
 // static
@@ -437,7 +437,7 @@ TEST_F(ConnectivityTrialTest, ReadMatchingHeader) {
 struct ResultMapping {
   ResultMapping() : http_result(HTTPRequest::kResultUnknown), trial_result() {}
   ResultMapping(HTTPRequest::Result in_http_result,
-                const ConnectivityTrial::Result &in_trial_result)
+                const ConnectivityTrial::Result& in_trial_result)
       : http_result(in_http_result),
         trial_result(in_trial_result) {}
   HTTPRequest::Result http_result;

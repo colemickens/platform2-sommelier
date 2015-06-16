@@ -125,7 +125,7 @@ class MetricsTest : public Test {
   scoped_refptr<MockWiFiService> open_wifi_service_;
   scoped_refptr<MockWiFiService> wep_wifi_service_;
   scoped_refptr<MockWiFiService> eap_wifi_service_;
-  MockEapCredentials *eap_;  // Owned by |eap_wifi_service_|.
+  MockEapCredentials* eap_;  // Owned by |eap_wifi_service_|.
 #endif  // DISABLE_WIFI
   scoped_refptr<MockService> service_;
 };
@@ -185,7 +185,7 @@ TEST_F(MetricsTest, WiFiServiceTimeToJoin) {
 
 TEST_F(MetricsTest, WiFiServicePostReady) {
   base::TimeDelta non_zero_time_delta = base::TimeDelta::FromMilliseconds(1);
-  chromeos_metrics::TimerMock *mock_time_resume_to_ready_timer =
+  chromeos_metrics::TimerMock* mock_time_resume_to_ready_timer =
       new chromeos_metrics::TimerMock;
   metrics_.set_time_resume_to_ready_timer(mock_time_resume_to_ready_timer);
 
@@ -310,10 +310,10 @@ TEST_F(MetricsTest, FrequencyToChannel) {
 }
 
 TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
-  chromeos_metrics::TimerMock *mock_time_online_timer =
+  chromeos_metrics::TimerMock* mock_time_online_timer =
       new chromeos_metrics::TimerMock;
   metrics_.set_time_online_timer(mock_time_online_timer);
-  chromeos_metrics::TimerMock *mock_time_to_drop_timer =
+  chromeos_metrics::TimerMock* mock_time_to_drop_timer =
       new chromeos_metrics::TimerMock;
   metrics_.set_time_to_drop_timer(mock_time_to_drop_timer);
   scoped_refptr<MockService> wifi_service =
@@ -547,13 +547,13 @@ TEST_F(MetricsTest, SpontaneousConnect) {
 TEST_F(MetricsTest, ResetConnectTimer) {
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kWifi);
-  chromeos_metrics::TimerReporterMock *mock_scan_timer =
+  chromeos_metrics::TimerReporterMock* mock_scan_timer =
       new chromeos_metrics::TimerReporterMock;
   metrics_.set_time_to_scan_timer(kInterfaceIndex, mock_scan_timer);
-  chromeos_metrics::TimerReporterMock *mock_connect_timer =
+  chromeos_metrics::TimerReporterMock* mock_connect_timer =
       new chromeos_metrics::TimerReporterMock;
   metrics_.set_time_to_connect_timer(kInterfaceIndex, mock_connect_timer);
-  chromeos_metrics::TimerReporterMock *mock_scan_connect_timer =
+  chromeos_metrics::TimerReporterMock* mock_scan_connect_timer =
       new chromeos_metrics::TimerReporterMock;
   metrics_.set_time_to_scan_connect_timer(kInterfaceIndex,
                                           mock_scan_connect_timer);
@@ -580,7 +580,7 @@ TEST_F(MetricsTest, TimeToScanIgnore) {
   base::TimeDelta large_time_delta =
       base::TimeDelta::FromMilliseconds(
           Metrics::kMetricTimeToScanMillisecondsMax + 1);
-  chromeos_metrics::TimerReporterMock *mock_time_to_scan_timer =
+  chromeos_metrics::TimerReporterMock* mock_time_to_scan_timer =
       new chromeos_metrics::TimerReporterMock;
   metrics_.set_time_to_scan_timer(kInterfaceIndex, mock_time_to_scan_timer);
   EXPECT_CALL(*mock_time_to_scan_timer, Stop()).WillOnce(Return(true));
@@ -633,7 +633,7 @@ TEST_F(MetricsTest, CellularAutoConnect) {
 }
 
 TEST_F(MetricsTest, CellularDrop) {
-  const char *kUMATechnologyStrings[] = {
+  const char* kUMATechnologyStrings[] = {
       kNetworkTechnology1Xrtt,
       kNetworkTechnologyEdge,
       kNetworkTechnologyEvdo,
@@ -873,7 +873,7 @@ TEST_F(MetricsTest, NotifySuspendWithWakeOnWiFiEnabledDone) {
 
 TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {
   base::TimeDelta non_zero_time_delta = base::TimeDelta::FromMilliseconds(1);
-  chromeos_metrics::TimerMock *mock_time_suspend_actions_timer =
+  chromeos_metrics::TimerMock* mock_time_suspend_actions_timer =
       new chromeos_metrics::TimerMock;
   metrics_.set_time_suspend_actions_timer(mock_time_suspend_actions_timer);
   metrics_.wake_reason_received_ = true;
@@ -897,7 +897,7 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {
 
 TEST_F(MetricsTest, NotifySuspendActionsCompleted_Failure) {
   base::TimeDelta non_zero_time_delta = base::TimeDelta::FromMilliseconds(1);
-  chromeos_metrics::TimerMock *mock_time_suspend_actions_timer =
+  chromeos_metrics::TimerMock* mock_time_suspend_actions_timer =
       new chromeos_metrics::TimerMock;
   metrics_.set_time_suspend_actions_timer(mock_time_suspend_actions_timer);
   metrics_.wake_reason_received_ = true;
@@ -922,7 +922,7 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Failure) {
 TEST_F(MetricsTest, NotifyDarkResumeActionsCompleted_Success) {
   metrics_.num_scan_results_expected_in_dark_resume_ = 0;
   base::TimeDelta non_zero_time_delta = base::TimeDelta::FromMilliseconds(1);
-  chromeos_metrics::TimerMock *mock_time_dark_resume_actions_timer =
+  chromeos_metrics::TimerMock* mock_time_dark_resume_actions_timer =
       new chromeos_metrics::TimerMock;
   metrics_.set_time_dark_resume_actions_timer(
       mock_time_dark_resume_actions_timer);
@@ -961,7 +961,7 @@ TEST_F(MetricsTest, NotifyDarkResumeActionsCompleted_Success) {
 TEST_F(MetricsTest, NotifyDarkResumeActionsCompleted_Failure) {
   metrics_.num_scan_results_expected_in_dark_resume_ = 0;
   base::TimeDelta non_zero_time_delta = base::TimeDelta::FromMilliseconds(1);
-  chromeos_metrics::TimerMock *mock_time_dark_resume_actions_timer =
+  chromeos_metrics::TimerMock* mock_time_dark_resume_actions_timer =
       new chromeos_metrics::TimerMock;
   metrics_.set_time_dark_resume_actions_timer(
       mock_time_dark_resume_actions_timer);

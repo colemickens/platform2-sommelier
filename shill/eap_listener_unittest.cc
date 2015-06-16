@@ -48,8 +48,8 @@ class EapListenerTest : public testing::Test {
     }
   }
 
-  ssize_t SimulateRecvFrom(int sockfd, void *buf, size_t len, int flags,
-                           struct sockaddr *src_addr, socklen_t *addrlen);
+  ssize_t SimulateRecvFrom(int sockfd, void* buf, size_t len, int flags,
+                           struct sockaddr* src_addr, socklen_t* addrlen);
 
   MOCK_METHOD0(ReceiveCallback, void());
 
@@ -70,7 +70,7 @@ class EapListenerTest : public testing::Test {
   EapListener listener_;
 
   // Owned by EapListener, and tracked here only for mocks.
-  MockSockets *sockets_;
+  MockSockets* sockets_;
 
   // Tests can assign this in order to set the data isreturned in our
   // mock implementation of Sockets::RecvFrom().
@@ -90,9 +90,9 @@ const uint8_t EapListenerTest::kEapPacketPayload[] = {
   0x01         // Request type: Identity (not parsed by EapListener).
 };
 
-ssize_t EapListenerTest::SimulateRecvFrom(int sockfd, void *buf, size_t len,
-                                          int flags, struct sockaddr *src_addr,
-                                          socklen_t *addrlen) {
+ssize_t EapListenerTest::SimulateRecvFrom(int sockfd, void* buf, size_t len,
+                                          int flags, struct sockaddr* src_addr,
+                                          socklen_t* addrlen) {
   // Mimic behavior of the real recvfrom -- copy no more than requested.
   int copy_length = std::min(recvfrom_reply_data_.GetLength(), len);
   memcpy(buf, recvfrom_reply_data_.GetConstData(), copy_length);
@@ -100,8 +100,8 @@ ssize_t EapListenerTest::SimulateRecvFrom(int sockfd, void *buf, size_t len,
 }
 
 MATCHER_P(IsEapLinkAddress, interface_index, "") {
-  const struct sockaddr_ll *socket_address =
-      reinterpret_cast<const struct sockaddr_ll *>(arg);
+  const struct sockaddr_ll* socket_address =
+      reinterpret_cast<const struct sockaddr_ll*>(arg);
   return socket_address->sll_family == AF_PACKET &&
       socket_address->sll_protocol == htons(ETH_P_PAE) &&
       socket_address->sll_ifindex == interface_index;

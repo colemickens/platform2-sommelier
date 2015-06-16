@@ -37,16 +37,16 @@ class DBusNameWatcherCallbackObserver {
 
   virtual ~DBusNameWatcherCallbackObserver() {}
 
-  MOCK_CONST_METHOD2(OnNameAppeared, void(const string &name,
-                                          const string &owner));
-  MOCK_CONST_METHOD1(OnNameVanished, void(const string &name));
+  MOCK_CONST_METHOD2(OnNameAppeared, void(const string& name,
+                                          const string& owner));
+  MOCK_CONST_METHOD1(OnNameVanished, void(const string& name));
 
-  const DBusNameWatcher::NameAppearedCallback &name_appeared_callback()
+  const DBusNameWatcher::NameAppearedCallback& name_appeared_callback()
       const {
     return name_appeared_callback_;
   }
 
-  const DBusNameWatcher::NameVanishedCallback &name_vanished_callback()
+  const DBusNameWatcher::NameVanishedCallback& name_vanished_callback()
       const {
     return name_vanished_callback_;
   }

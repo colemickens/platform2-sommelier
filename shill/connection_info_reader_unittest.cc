@@ -25,7 +25,7 @@ namespace {
 
 // TODO(benchan): Test IPv6 addresses.
 
-const char *kConnectionInfoLines[] = {
+const char* kConnectionInfoLines[] = {
   "udp      17 30 src=192.168.1.1 dst=192.168.1.2 sport=9000 dport=53 "
   "[UNREPLIED] src=192.168.1.2 dst=192.168.1.1 sport=53 dport=9000 use=2",
   "tcp      6 299 ESTABLISHED src=192.168.2.1 dst=192.168.2.3 sport=8000 "
@@ -45,20 +45,20 @@ class ConnectionInfoReaderUnderTest : public ConnectionInfoReader {
 
 class ConnectionInfoReaderTest : public testing::Test {
  protected:
-  IPAddress StringToIPv4Address(const string &address_string) {
+  IPAddress StringToIPv4Address(const string& address_string) {
     IPAddress ip_address(IPAddress::kFamilyIPv4);
     EXPECT_TRUE(ip_address.SetAddressFromString(address_string));
     return ip_address;
   }
 
-  IPAddress StringToIPv6Address(const string &address_string) {
+  IPAddress StringToIPv6Address(const string& address_string) {
     IPAddress ip_address(IPAddress::kFamilyIPv6);
     EXPECT_TRUE(ip_address.SetAddressFromString(address_string));
     return ip_address;
   }
 
-  void CreateConnectionInfoFile(const char **lines, size_t num_lines,
-                                const FilePath &dir_path, FilePath *file_path) {
+  void CreateConnectionInfoFile(const char** lines, size_t num_lines,
+                                const FilePath& dir_path, FilePath* file_path) {
     ASSERT_TRUE(base::CreateTemporaryFileInDir(dir_path, file_path));
     for (size_t i = 0; i < num_lines; ++i) {
       string line = lines[i];
@@ -67,8 +67,8 @@ class ConnectionInfoReaderTest : public testing::Test {
     }
   }
 
-  void ExpectConnectionInfoEqual(const ConnectionInfo &info1,
-                                 const ConnectionInfo &info2) {
+  void ExpectConnectionInfoEqual(const ConnectionInfo& info1,
+                                 const ConnectionInfo& info2) {
     EXPECT_EQ(info1.protocol(), info2.protocol());
     EXPECT_EQ(info1.time_to_expire_seconds(), info2.time_to_expire_seconds());
     EXPECT_EQ(info1.is_unreplied(), info2.is_unreplied());

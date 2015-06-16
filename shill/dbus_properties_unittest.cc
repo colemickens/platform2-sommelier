@@ -84,14 +84,14 @@ template <typename DerivedT, typename ValueT, typename DBusT = ValueT>
 struct TestTraits {
   typedef ValueT ValueType;
   typedef DBusT DBusType;
-  typedef bool (*GetterType)(const DBusPropertiesMap &properties,
-                             const string &key,
-                             ValueType *value);
+  typedef bool (*GetterType)(const DBusPropertiesMap& properties,
+                             const string& key,
+                             ValueType* value);
 
   static DBusType GetTestValue() { return DerivedT::GetNewValue(); }
 
-  static void CheckValueEqual(const ValueType &expected,
-                              const ValueType &actual) {
+  static void CheckValueEqual(const ValueType& expected,
+                              const ValueType& actual) {
     EXPECT_EQ(expected, actual);
   }
 };
@@ -209,26 +209,26 @@ struct DBusPropertiesMapTestTraits
   }
 
   template <typename T>
-  static void CheckDBusVariantEqual(const string &key,
-                                    const DBus::Variant &expected,
-                                    const DBus::Variant &actual) {
+  static void CheckDBusVariantEqual(const string& key,
+                                    const DBus::Variant& expected,
+                                    const DBus::Variant& actual) {
     T expected_value = expected.operator T();
     T actual_value = actual.operator T();
     EXPECT_EQ(expected_value, actual_value) << "Value mismatch - key: " << key;
   }
 
-  static void CheckValueEqual(const DBusPropertiesMap &expected,
-                              const DBusPropertiesMap &actual) {
+  static void CheckValueEqual(const DBusPropertiesMap& expected,
+                              const DBusPropertiesMap& actual) {
     ASSERT_EQ(expected.size(), actual.size()) << "Map size mismatch";
 
-    for (const auto &key_value_pair : expected) {
-      const string &key = key_value_pair.first;
+    for (const auto& key_value_pair : expected) {
+      const string& key = key_value_pair.first;
 
-      const auto &actual_it = actual.find(key);
+      const auto& actual_it = actual.find(key);
       ASSERT_TRUE(actual_it != actual.end()) << "Key '" << key << "' not found";
 
-      const DBus::Variant &actual_value = actual_it->second;
-      const DBus::Variant &expected_value = key_value_pair.second;
+      const DBus::Variant& actual_value = actual_it->second;
+      const DBus::Variant& expected_value = key_value_pair.second;
 
       string actual_signature = actual_value.signature();
       string expected_signature = expected_value.signature();

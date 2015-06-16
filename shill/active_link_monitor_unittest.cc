@@ -178,7 +178,7 @@ class ActiveLinkMonitorTest : public Test {
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
   }
 
-  string HardwareAddressToString(const ByteString &address) {
+  string HardwareAddressToString(const ByteString& address) {
     return ActiveLinkMonitor::HardwareAddressToString(address);
   }
 
@@ -196,7 +196,7 @@ class ActiveLinkMonitorTest : public Test {
   void TriggerRequestTimer() {
     GetSendRequestCallback().callback().Run();
   }
-  const base::CancelableClosure &GetSendRequestCallback() {
+  const base::CancelableClosure& GetSendRequestCallback() {
     return monitor_.send_request_callback_;
   }
   int GetBroadcastFailureCount() {
@@ -234,7 +234,7 @@ class ActiveLinkMonitorTest : public Test {
     return ActiveLinkMonitor::kMaxResponseSampleFilterDepth;
   }
   void ExpectTransmit(bool is_unicast, int transmit_period_milliseconds) {
-    const ByteString &destination_mac = is_unicast ? gateway_mac_ : zero_mac_;
+    const ByteString& destination_mac = is_unicast ? gateway_mac_ : zero_mac_;
     EXPECT_CALL(*client_, TransmitRequest(
         IsArpRequest(local_ip_, gateway_ip_, local_mac_, destination_mac)))
         .WillOnce(Return(true));
@@ -260,10 +260,10 @@ class ActiveLinkMonitorTest : public Test {
     EXPECT_FALSE(GetSendRequestCallback().IsCancelled());
   }
   void ReceiveResponse(uint16_t operation,
-                       const IPAddress &local_ip,
-                       const ByteString &local_mac,
-                       const IPAddress &remote_ip,
-                       const ByteString &remote_mac) {
+                       const IPAddress& local_ip,
+                       const ByteString& local_mac,
+                       const IPAddress& remote_ip,
+                       const ByteString& remote_mac) {
     client_test_helper_.GeneratePacket(operation,
                                        local_ip,
                                        local_mac,
@@ -345,7 +345,7 @@ class ActiveLinkMonitorTest : public Test {
   MockTime time_;
   struct timeval time_val_;
   // This is owned by the LinkMonitor, and only tracked here for EXPECT*().
-  MockArpClient *client_;
+  MockArpClient* client_;
   ArpClientTestHelper client_test_helper_;
   ActiveLinkMonitorObserver observer_;
   IPAddress gateway_ip_;

@@ -95,9 +95,9 @@ class ExternalTaskTest : public testing::Test,
 
  protected:
   // Implements RPCTaskDelegate interface.
-  MOCK_METHOD2(GetLogin, void(string *user, string *password));
-  MOCK_METHOD2(Notify, void(const string &reason,
-                            const map<string, string> &dict));
+  MOCK_METHOD2(GetLogin, void(string* user, string* password));
+  MOCK_METHOD2(Notify, void(const string& reason,
+                            const map<string, string>& dict));
 
   MOCK_METHOD2(TaskDiedCallback, void(pid_t dead_process, int exit_status));
 
@@ -115,14 +115,14 @@ namespace {
 
 class TestRPCTask : public RPCTask {
  public:
-  TestRPCTask(ControlInterface *control, ExternalTaskTest *test);
+  TestRPCTask(ControlInterface* control, ExternalTaskTest* test);
   virtual ~TestRPCTask();
 
  private:
-  ExternalTaskTest *test_;
+  ExternalTaskTest* test_;
 };
 
-TestRPCTask::TestRPCTask(ControlInterface *control, ExternalTaskTest *test)
+TestRPCTask::TestRPCTask(ControlInterface* control, ExternalTaskTest* test)
     : RPCTask(control, test),
       test_(test) {
   test_->set_test_rpc_task_destroyed(false);
@@ -168,9 +168,9 @@ namespace {
 // |arg| is a NULL-terminated array of C-strings.
 // |expected_values| is a container of regular expressions (as strings).
 MATCHER_P(HasElementsMatching, expected_values, "") {
-  for (const auto &expected_value : expected_values) {
+  for (const auto& expected_value : expected_values) {
     auto regex_matcher(MatchesRegex(expected_value).impl());
-    char **arg_local = arg;
+    char** arg_local = arg;
     while (*arg_local) {
       if (regex_matcher.MatchAndExplain(*arg_local, result_listener)) {
         break;
@@ -253,7 +253,7 @@ TEST_F(ExternalTaskTest, GetLogin) {
 
 TEST_F(ExternalTaskTest, Notify) {
   const string kReason("you may already have won!");
-  const map<string, string> &kArgs{
+  const map<string, string>& kArgs{
     {"arg1", "val1"},
     {"arg2", "val2"}};
   EXPECT_CALL(*this, GetLogin(_, _)).Times(0);

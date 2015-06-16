@@ -56,7 +56,7 @@ class ResolverTest : public Test {
   string ReadFile();
 
   base::ScopedTempDir temp_dir_;
-  Resolver *resolver_;
+  Resolver* resolver_;
   FilePath path_;
 };
 

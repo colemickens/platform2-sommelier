@@ -38,13 +38,13 @@ class HookTableTest : public testing::Test {
  public:
   MOCK_METHOD0(StartAction, void());
   MOCK_METHOD0(StartAction2, void());
-  MOCK_METHOD1(DoneAction, void(const Error &));
+  MOCK_METHOD1(DoneAction, void(const Error&));
 
  protected:
   HookTableTest()
       : hook_table_(&event_dispatcher_) {}
 
-  ResultCallback *GetDoneCallback() { return &hook_table_.done_callback_; }
+  ResultCallback* GetDoneCallback() { return &hook_table_.done_callback_; }
 
   EventDispatcher event_dispatcher_;
   HookTable hook_table_;

@@ -58,7 +58,7 @@ class DiagnosticsReporterTest : public testing::Test {
     return DiagnosticsReporter::kLogStashThrottleSeconds;
   }
 
-  void SetStashedNetLog(const FilePath &stashed_net_log) {
+  void SetStashedNetLog(const FilePath& stashed_net_log) {
     reporter_.stashed_net_log_ = stashed_net_log;
   }
 

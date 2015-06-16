@@ -185,7 +185,7 @@ TEST_F(DBusAdaptorTest, Signatures) {
 template <typename T>
 class DBusAdaptorTypedTest : public DBusAdaptorTest {
  protected:
-  T *property() { return &property_; }
+  T* property() { return &property_; }
 
  private:
   T property_{};  // value-initialize primitives
@@ -288,7 +288,7 @@ TEST_F(DBusAdaptorTest, SetPropertyFailure) {
   EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", byte_v_, &e12));
 }
 
-void SetError(const string &/*name*/, Error *error) {
+void SetError(const string& /*name*/, Error* error) {
   error->Populate(Error::kInvalidProperty);
 }
 

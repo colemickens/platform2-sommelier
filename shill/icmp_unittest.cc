@@ -59,7 +59,7 @@ class IcmpTest : public Test {
   }
 
   // Owned by Icmp, and tracked here only for mocks.
-  MockSockets *sockets_;
+  MockSockets* sockets_;
 
   Icmp icmp_;
 };
@@ -112,8 +112,8 @@ MATCHER_P(IsIcmpHeader, header, "") {
 
 
 MATCHER_P(IsSocketAddress, address, "") {
-  const struct sockaddr_in *sock_addr =
-      reinterpret_cast<const struct sockaddr_in *>(arg);
+  const struct sockaddr_in* sock_addr =
+      reinterpret_cast<const struct sockaddr_in*>(arg);
   return sock_addr->sin_family == address.family() &&
       memcmp(&sock_addr->sin_addr.s_addr, address.GetConstData(),
              address.GetLength()) == 0;

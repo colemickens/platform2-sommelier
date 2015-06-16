@@ -24,28 +24,28 @@ class RPCTaskTest : public testing::Test,
         task_(&control_, this) {}
 
   // Inherited from RPCTaskDelegate.
-  virtual void GetLogin(string *user, string *password);
-  virtual void Notify(const string &reason, const map<string, string> &dict);
+  virtual void GetLogin(string* user, string* password);
+  virtual void Notify(const string& reason, const map<string, string>& dict);
 
  protected:
   int get_login_calls_;
   int notify_calls_;
-  string *last_user_;
-  string *last_password_;
+  string* last_user_;
+  string* last_password_;
   string last_notify_reason_;
   map<string, string> last_notify_dict_;
   NiceMockControl control_;
   RPCTask task_;
 };
 
-void RPCTaskTest::GetLogin(string *user, string *password) {
+void RPCTaskTest::GetLogin(string* user, string* password) {
   get_login_calls_++;
   last_user_ = user;
   last_password_ = password;
 }
 
-void RPCTaskTest::Notify(const string &reason,
-                         const map<string, string> &dict) {
+void RPCTaskTest::Notify(const string& reason,
+                         const map<string, string>& dict) {
   notify_calls_++;
   last_notify_reason_ = reason;
   last_notify_dict_ = dict;

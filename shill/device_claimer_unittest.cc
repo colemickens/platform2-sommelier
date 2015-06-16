@@ -37,7 +37,7 @@ class DeviceClaimerTest : public testing::Test {
 TEST_F(DeviceClaimerTest, StartDBusNameWatcher) {
   // Setup DBus name watcher.
   MockDBusManager dbus_manager;
-  DBusNameWatcher *name_watcher =
+  DBusNameWatcher* name_watcher =
       new DBusNameWatcher(&dbus_manager,
                           kDBusServiceName,
                           DBusNameWatcher::NameAppearedCallback(),

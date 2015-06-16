@@ -26,7 +26,7 @@ class ProcessKillerTest : public testing::Test {
     MOCK_METHOD0(Call, void());
   };
 
-  ProcessKiller *process_killer_;
+  ProcessKiller* process_killer_;
 };
 
 TEST_F(ProcessKillerTest, OnProcessDied) {

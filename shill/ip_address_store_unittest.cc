@@ -25,7 +25,7 @@ class IPAddressStoreTest : public Test {
   IPAddressStoreTest() {}
 
  protected:
-  IPAddress StringToIPv4Address(const string &address_string) {
+  IPAddress StringToIPv4Address(const string& address_string) {
     IPAddress ip_address(IPAddress::kFamilyIPv4);
     EXPECT_TRUE(ip_address.SetAddressFromString(address_string));
     return ip_address;

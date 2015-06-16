@@ -43,7 +43,7 @@ class ProfileTest : public PropertyStoreTest {
         new Profile(control_interface(), metrics(), manager(), id, "", false);
   }
 
-  MockService *CreateMockService() {
+  MockService* CreateMockService() {
     return new StrictMock<MockService>(control_interface(),
                                        dispatcher(),
                                        metrics(),
@@ -60,7 +60,7 @@ class ProfileTest : public PropertyStoreTest {
     profile_->set_storage(storage.release());  // Passes ownership.
   }
 
-  bool ProfileInitStorage(const Profile::Identifier &id,
+  bool ProfileInitStorage(const Profile::Identifier& id,
                           Profile::InitStorageOption storage_option,
                           bool save,
                           Error::Type error_type) {
@@ -87,7 +87,7 @@ TEST_F(ProfileTest, DeleteEntry) {
       control_interface(), dispatcher(), metrics(), glib()));
   profile_->manager_ = manager.get();
 
-  MockStore *storage(new StrictMock<MockStore>());
+  MockStore* storage(new StrictMock<MockStore>());
   profile_->storage_.reset(storage);  // Passes ownership
   const string kEntryName("entry_name");
 
@@ -470,7 +470,7 @@ TEST_F(ProfileTest, GetServiceFromEntry) {
       control_interface(), dispatcher(), metrics(), glib()));
   profile_->manager_ = manager.get();
 
-  MockStore *storage(new StrictMock<MockStore>());
+  MockStore* storage(new StrictMock<MockStore>());
   profile_->storage_.reset(storage);  // Passes ownership
   const string kEntryName("entry_name");
 

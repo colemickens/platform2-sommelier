@@ -42,7 +42,7 @@ namespace {
 const char kInterfaceName[] = "int0";
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
-const char *kDNSServers[] = { kDNSServer0, kDNSServer1 };
+const char* kDNSServers[] = { kDNSServer0, kDNSServer1 };
 }  // namespace
 
 class DNSServerTesterTest : public Test {
@@ -74,7 +74,7 @@ class DNSServerTesterTest : public Test {
     }
 
     MOCK_METHOD1(ResultCallback, void(const DNSServerTester::Status status));
-    Callback<void(const DNSServerTester::Status)> &result_callback() {
+    Callback<void(const DNSServerTester::Status)>& result_callback() {
       return result_callback_;
     }
 
@@ -82,9 +82,9 @@ class DNSServerTesterTest : public Test {
     Callback<void(const DNSServerTester::Status)> result_callback_;
   };
 
-  DNSServerTester *dns_server_tester() { return dns_server_tester_.get(); }
-  MockEventDispatcher &dispatcher() { return dispatcher_; }
-  CallbackTarget &callback_target() { return callback_target_; }
+  DNSServerTester* dns_server_tester() { return dns_server_tester_.get(); }
+  MockEventDispatcher& dispatcher() { return dispatcher_; }
+  CallbackTarget& callback_target() { return callback_target_; }
 
   void ExpectReset() {
     EXPECT_TRUE(callback_target_.result_callback().Equals(
@@ -118,7 +118,7 @@ TEST_F(DNSServerTesterTest, StartAttempt) {
 
 TEST_F(DNSServerTesterTest, StartAttemptTask) {
   // Setup mock DNS test client.
-  MockDNSClient *dns_test_client = new MockDNSClient();
+  MockDNSClient* dns_test_client = new MockDNSClient();
   dns_server_tester()->dns_test_client_.reset(dns_test_client);
 
   // DNS test task started successfully.
@@ -163,7 +163,7 @@ TEST_F(DNSServerTesterTest, AttemptCompleted) {
 
 TEST_F(DNSServerTesterTest, StopAttempt) {
   // Setup mock DNS test client.
-  MockDNSClient *dns_test_client = new MockDNSClient();
+  MockDNSClient* dns_test_client = new MockDNSClient();
   dns_server_tester()->dns_test_client_.reset(dns_test_client);
 
   // DNS test task started successfully.

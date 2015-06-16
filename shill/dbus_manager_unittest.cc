@@ -30,7 +30,7 @@ const char kOwner1[] = ":1.17";
 const char kName2[] = "org.chromium.Service2";
 const char kOwner2[] = ":1.27";
 
-void SetErrorOperationFailed(Error *error) {
+void SetErrorOperationFailed(Error* error) {
   error->Populate(Error::kOperationFailed);
 }
 
@@ -60,16 +60,16 @@ class DBusManagerTest : public testing::Test {
 
     virtual ~DBusNameWatcherCallbackObserver() {}
 
-    MOCK_CONST_METHOD2(OnNameAppeared, void(const string &name,
-                                            const string &owner));
-    MOCK_CONST_METHOD1(OnNameVanished, void(const string &name));
+    MOCK_CONST_METHOD2(OnNameAppeared, void(const string& name,
+                                            const string& owner));
+    MOCK_CONST_METHOD1(OnNameVanished, void(const string& name));
 
-    const DBusNameWatcher::NameAppearedCallback &name_appeared_callback()
+    const DBusNameWatcher::NameAppearedCallback& name_appeared_callback()
         const {
       return name_appeared_callback_;
     }
 
-    const DBusNameWatcher::NameVanishedCallback &name_vanished_callback()
+    const DBusNameWatcher::NameVanishedCallback& name_vanished_callback()
         const {
       return name_vanished_callback_;
     }
@@ -81,7 +81,7 @@ class DBusManagerTest : public testing::Test {
     DISALLOW_COPY_AND_ASSIGN(DBusNameWatcherCallbackObserver);
   };
 
-  MockDBusServiceProxy *ExpectCreateDBusServiceProxy() {
+  MockDBusServiceProxy* ExpectCreateDBusServiceProxy() {
     EXPECT_CALL(proxy_factory_, CreateDBusServiceProxy())
         .WillOnce(ReturnAndReleasePointee(&proxy_));
     return proxy_.get();
@@ -93,7 +93,7 @@ class DBusManagerTest : public testing::Test {
 };
 
 TEST_F(DBusManagerTest, GetNameOwnerFails) {
-  MockDBusServiceProxy *proxy = ExpectCreateDBusServiceProxy();
+  MockDBusServiceProxy* proxy = ExpectCreateDBusServiceProxy();
 
   EXPECT_CALL(*proxy, set_name_owner_changed_callback(_));
   manager_->Start();
@@ -113,7 +113,7 @@ TEST_F(DBusManagerTest, GetNameOwnerFails) {
 
 TEST_F(DBusManagerTest,
        GetNameOwnerReturnsAfterDBusManagerAndNameWatcherDestroyed) {
-  MockDBusServiceProxy *proxy = ExpectCreateDBusServiceProxy();
+  MockDBusServiceProxy* proxy = ExpectCreateDBusServiceProxy();
 
   EXPECT_CALL(*proxy, set_name_owner_changed_callback(_));
   manager_->Start();
@@ -138,7 +138,7 @@ TEST_F(DBusManagerTest,
 }
 
 TEST_F(DBusManagerTest, NameWatchers) {
-  MockDBusServiceProxy *proxy = ExpectCreateDBusServiceProxy();
+  MockDBusServiceProxy* proxy = ExpectCreateDBusServiceProxy();
 
   // Start the DBus service manager.
   EXPECT_CALL(*proxy, set_name_owner_changed_callback(_));

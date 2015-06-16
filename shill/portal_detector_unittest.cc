@@ -44,7 +44,7 @@ const char kInterfaceName[] = "int0";
 const char kURL[] = "http://www.chromium.org";
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
-const char *kDNSServers[] = { kDNSServer0, kDNSServer1 };
+const char* kDNSServers[] = { kDNSServer0, kDNSServer1 };
 }  // namespace
 
 MATCHER_P(IsResult, result, "") {
@@ -104,24 +104,24 @@ class PortalDetectorTest : public Test {
                                 Unretained(this))) {
     }
 
-    MOCK_METHOD1(ResultCallback, void(const PortalDetector::Result &result));
-    Callback<void(const PortalDetector::Result &)> &result_callback() {
+    MOCK_METHOD1(ResultCallback, void(const PortalDetector::Result& result));
+    Callback<void(const PortalDetector::Result&)>& result_callback() {
       return result_callback_;
     }
 
    private:
-    Callback<void(const PortalDetector::Result &)> result_callback_;
+    Callback<void(const PortalDetector::Result&)> result_callback_;
   };
 
-  bool StartPortalRequest(const string &url_string) {
+  bool StartPortalRequest(const string& url_string) {
     bool ret = portal_detector_->Start(url_string);
     return ret;
   }
 
-  PortalDetector *portal_detector() { return portal_detector_.get(); }
-  MockConnectivityTrial *connectivity_trial() { return connectivity_trial_; }
-  MockEventDispatcher &dispatcher() { return dispatcher_; }
-  CallbackTarget &callback_target() { return callback_target_; }
+  PortalDetector* portal_detector() { return portal_detector_.get(); }
+  MockConnectivityTrial* connectivity_trial() { return connectivity_trial_; }
+  MockEventDispatcher& dispatcher() { return dispatcher_; }
+  CallbackTarget& callback_target() { return callback_target_; }
 
   void ExpectReset() {
     EXPECT_FALSE(portal_detector_->attempt_count_);
@@ -130,7 +130,7 @@ class PortalDetectorTest : public Test {
                 Equals(portal_detector_->portal_result_callback_));
   }
 
-  void ExpectAttemptRetry(const PortalDetector::Result &result) {
+  void ExpectAttemptRetry(const PortalDetector::Result& result) {
     EXPECT_CALL(callback_target(),
                 ResultCallback(IsResult(result)));
     EXPECT_CALL(*connectivity_trial(),
@@ -149,7 +149,7 @@ class PortalDetectorTest : public Test {
   }
 
  private:
-  int GetTimeMonotonic(struct timeval *tv) {
+  int GetTimeMonotonic(struct timeval* tv) {
     *tv = current_time_;
     return 0;
   }

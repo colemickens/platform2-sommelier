@@ -125,7 +125,7 @@ class PassiveLinkMonitorTest : public Test {
   NiceMock<MockDeviceInfo> device_info_;
   ResultCallbackObserver observer_;
   scoped_refptr<MockConnection> connection_;
-  MockArpClient *client_;
+  MockArpClient* client_;
   ArpClientTestHelper client_test_helper_;
   PassiveLinkMonitor link_monitor_;
   const string interface_name_;

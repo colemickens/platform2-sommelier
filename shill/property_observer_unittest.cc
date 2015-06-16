@@ -24,9 +24,9 @@ namespace shill {
 
 class TestPropertyAccessor : public AccessorInterface<bool> {
  public:
-  MOCK_METHOD1(Clear, void(Error *error));
-  MOCK_METHOD1(Get, bool(Error *error));
-  MOCK_METHOD2(Set, bool(const bool &value, Error *error));
+  MOCK_METHOD1(Clear, void(Error* error));
+  MOCK_METHOD1(Get, bool(Error* error));
+  MOCK_METHOD2(Set, bool(const bool& value, Error* error));
 };
 
 class PropertyObserverTest : public testing::Test {
@@ -36,19 +36,19 @@ class PropertyObserverTest : public testing::Test {
        bool_accessor_(test_accessor_) {}
   virtual ~PropertyObserverTest() {}
 
-  MOCK_METHOD1(TestCallback, void(const bool &value));
+  MOCK_METHOD1(TestCallback, void(const bool& value));
 
   // Invoked method during expectations.
-  void SetError(Error *error) {
+  void SetError(Error* error) {
     error->Populate(Error::kPermissionDenied);
   }
 
  protected:
-  bool GetSavedValue(const PropertyObserver<bool> &observer) {
+  bool GetSavedValue(const PropertyObserver<bool>& observer) {
     return observer.saved_value_;
   }
 
-  TestPropertyAccessor *test_accessor_;
+  TestPropertyAccessor* test_accessor_;
   BoolAccessor bool_accessor_;  // Owns reference to |test_accessor_|.
 };
 

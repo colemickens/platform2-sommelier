@@ -108,11 +108,11 @@ class LinkMonitorTest : public Test {
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
   }
 
-  void SetGatewayMacAddress(const ByteString &gateway_mac_address) {
+  void SetGatewayMacAddress(const ByteString& gateway_mac_address) {
     monitor_.gateway_mac_address_ = gateway_mac_address;
   }
 
-  void VerifyGatewayMacAddress(const ByteString &gateway_mac_address) {
+  void VerifyGatewayMacAddress(const ByteString& gateway_mac_address) {
     EXPECT_TRUE(monitor_.gateway_mac_address_.Equals(gateway_mac_address));
   }
 
@@ -140,8 +140,8 @@ class LinkMonitorTest : public Test {
   scoped_refptr<MockConnection> connection_;
   MockTime time_;
   struct timeval time_val_;
-  MockActiveLinkMonitor *active_link_monitor_;
-  MockPassiveLinkMonitor *passive_link_monitor_;
+  MockActiveLinkMonitor* active_link_monitor_;
+  MockPassiveLinkMonitor* passive_link_monitor_;
   LinkMonitorObserver observer_;
   LinkMonitor monitor_;
 };

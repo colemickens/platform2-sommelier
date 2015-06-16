@@ -12,16 +12,16 @@ using testing::Test;
 namespace shill {
 
 struct StringAndResult {
-  StringAndResult(const string &in_url_string,
+  StringAndResult(const string& in_url_string,
                   bool in_result)
       : url_string(in_url_string),
         result(in_result) {}
-  StringAndResult(const string &in_url_string,
+  StringAndResult(const string& in_url_string,
                   bool in_result,
                   HTTPURL::Protocol in_protocol,
-                  const string &in_host,
+                  const string& in_host,
                   int in_port,
-                  const string &in_path)
+                  const string& in_path)
       : url_string(in_url_string),
         result(in_result),
         protocol(in_protocol),

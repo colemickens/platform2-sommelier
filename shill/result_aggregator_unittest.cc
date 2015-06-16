@@ -35,7 +35,7 @@ class ResultAggregatorTest : public ::testing::Test {
     aggregator_ = nullptr;  // Ensure ReportResult is invoked before our dtor.
   }
 
-  MOCK_METHOD1(ReportResult, void(const Error &));
+  MOCK_METHOD1(ReportResult, void(const Error&));
 
  protected:
   scoped_refptr<ResultAggregator> aggregator_;
@@ -67,7 +67,7 @@ class ResultAggregatorTestWithMockDispatcher : public ResultAggregatorTest {
 
 class ResultGenerator {
  public:
-  explicit ResultGenerator(const scoped_refptr<ResultAggregator> &aggregator)
+  explicit ResultGenerator(const scoped_refptr<ResultAggregator>& aggregator)
       : aggregator_(aggregator) {}
   ~ResultGenerator() {}
 

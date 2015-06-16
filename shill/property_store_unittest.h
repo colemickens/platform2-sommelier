@@ -56,141 +56,141 @@ class PropertyStoreTest : public testing::TestWithParam<::DBus::Variant> {
   ~PropertyStoreTest() override;
 
   void SetUp() override;
-  MOCK_METHOD1(TestCallback, void(const std::string &property_name));
-  MOCK_METHOD1(GetKeyValueStoreCallback, KeyValueStore(Error *error));
-  MOCK_METHOD2(SetKeyValueStoreCallback, bool(const KeyValueStore &value,
-                                              Error *error));
+  MOCK_METHOD1(TestCallback, void(const std::string& property_name));
+  MOCK_METHOD1(GetKeyValueStoreCallback, KeyValueStore(Error* error));
+  MOCK_METHOD2(SetKeyValueStoreCallback, bool(const KeyValueStore& value,
+                                              Error* error));
 
   // Convenience overloads for GetProperty. Normally, we don't overload
   // functions. But this is extremely useful for type-parameterized tests.
-  static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          bool *storage, Error *error) {
+  static bool GetProperty(const PropertyStore& store, const std::string& name,
+                          bool* storage, Error* error) {
     return store.GetBoolProperty(name, storage, error);
   }
 
-  static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          int16_t *storage, Error *error) {
+  static bool GetProperty(const PropertyStore& store, const std::string& name,
+                          int16_t* storage, Error* error) {
     return store.GetInt16Property(name, storage, error);
   }
 
-  static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          int32_t *storage, Error *error) {
+  static bool GetProperty(const PropertyStore& store, const std::string& name,
+                          int32_t* storage, Error* error) {
     return store.GetInt32Property(name, storage, error);
   }
 
-  static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          std::string *storage, Error *error) {
+  static bool GetProperty(const PropertyStore& store, const std::string& name,
+                          std::string* storage, Error* error) {
     return store.GetStringProperty(name, storage, error);
   }
 
-  static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          Stringmap *storage, Error *error) {
+  static bool GetProperty(const PropertyStore& store, const std::string& name,
+                          Stringmap* storage, Error* error) {
     return store.GetStringmapProperty(name, storage, error);
   }
 
-  static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          Stringmaps *storage, Error *error) {
+  static bool GetProperty(const PropertyStore& store, const std::string& name,
+                          Stringmaps* storage, Error* error) {
     return store.GetStringmapsProperty(name, storage, error);
   }
 
-  static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          Strings *storage, Error *error) {
+  static bool GetProperty(const PropertyStore& store, const std::string& name,
+                          Strings* storage, Error* error) {
     return store.GetStringsProperty(name, storage, error);
   }
 
-  static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          uint8_t *storage, Error *error) {
+  static bool GetProperty(const PropertyStore& store, const std::string& name,
+                          uint8_t* storage, Error* error) {
     return store.GetUint8Property(name, storage, error);
   }
 
-  static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          uint16_t *storage, Error *error) {
+  static bool GetProperty(const PropertyStore& store, const std::string& name,
+                          uint16_t* storage, Error* error) {
     return store.GetUint16Property(name, storage, error);
   }
 
-  static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          Uint16s *storage, Error *error) {
+  static bool GetProperty(const PropertyStore& store, const std::string& name,
+                          Uint16s* storage, Error* error) {
     return store.GetUint16sProperty(name, storage, error);
   }
 
-  static bool GetProperty(const PropertyStore &store, const std::string &name,
-                          uint32_t *storage, Error *error) {
+  static bool GetProperty(const PropertyStore& store, const std::string& name,
+                          uint32_t* storage, Error* error) {
     return store.GetUint32Property(name, storage, error);
   }
 
   // Convenience overloads for RegisterProperty. Normally, we don't overload
   // functions. But this is extremely useful for type-parameterized tests.
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, bool *storage) {
+      PropertyStore* store, const std::string& name, bool* storage) {
     store->RegisterBool(name, storage);
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, int16_t *storage) {
+      PropertyStore* store, const std::string& name, int16_t* storage) {
     store->RegisterInt16(name, storage);
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, int32_t *storage) {
+      PropertyStore* store, const std::string& name, int32_t* storage) {
     store->RegisterInt32(name, storage);
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, std::string *storage) {
+      PropertyStore* store, const std::string& name, std::string* storage) {
     store->RegisterString(name, storage);
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, Stringmap *storage) {
+      PropertyStore* store, const std::string& name, Stringmap* storage) {
     store->RegisterStringmap(name, storage);
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, Stringmaps *storage) {
+      PropertyStore* store, const std::string& name, Stringmaps* storage) {
     store->RegisterStringmaps(name, storage);
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, Strings *storage) {
+      PropertyStore* store, const std::string& name, Strings* storage) {
     store->RegisterStrings(name, storage);
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, uint8_t *storage) {
+      PropertyStore* store, const std::string& name, uint8_t* storage) {
     store->RegisterUint8(name, storage);
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, uint16_t *storage) {
+      PropertyStore* store, const std::string& name, uint16_t* storage) {
     store->RegisterUint16(name, storage);
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, Uint16s *storage) {
+      PropertyStore* store, const std::string& name, Uint16s* storage) {
     store->RegisterUint16s(name, storage);
   }
 
   static void RegisterProperty(
-      PropertyStore *store, const std::string &name, uint32_t *storage) {
+      PropertyStore* store, const std::string& name, uint32_t* storage) {
     store->RegisterUint32(name, storage);
   }
 
  protected:
-  Manager *manager() { return &manager_; }
-  MockControl *control_interface() { return &control_interface_; }
-  EventDispatcher *dispatcher() { return &dispatcher_; }
-  MockGLib *glib() { return &glib_; }
-  MockMetrics *metrics() { return &metrics_; }
-  const std::vector<Technology::Identifier> &default_technology_order() {
+  Manager* manager() { return &manager_; }
+  MockControl* control_interface() { return &control_interface_; }
+  EventDispatcher* dispatcher() { return &dispatcher_; }
+  MockGLib* glib() { return &glib_; }
+  MockMetrics* metrics() { return &metrics_; }
+  const std::vector<Technology::Identifier>& default_technology_order() {
     return default_technology_order_;
   }
 
-  const std::string &run_path() const { return path_; }
-  const std::string &storage_path() const { return path_; }
+  const std::string& run_path() const { return path_; }
+  const std::string& storage_path() const { return path_; }
 
-  const std::string &internal_error() const { return internal_error_; }
-  const std::string &invalid_args() const { return invalid_args_; }
-  const std::string &invalid_prop() const { return invalid_prop_; }
+  const std::string& internal_error() const { return internal_error_; }
+  const std::string& invalid_args() const { return invalid_args_; }
+  const std::string& invalid_prop() const { return invalid_prop_; }
 
  private:
   const std::string internal_error_;

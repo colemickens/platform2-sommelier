@@ -176,18 +176,18 @@ class ManagerTest : public PropertyStoreTest {
   }
   virtual ~ManagerTest() {}
 
-  void SetMetrics(Metrics *metrics) {
+  void SetMetrics(Metrics* metrics) {
     manager()->set_metrics(metrics);
   }
 
-  bool IsDeviceRegistered(const DeviceRefPtr &device,
+  bool IsDeviceRegistered(const DeviceRefPtr& device,
                           Technology::Identifier tech) {
     auto devices = manager()->FilterByTechnology(tech);
     return (devices.size() == 1 && devices[0].get() == device.get());
   }
   bool ServiceOrderIs(ServiceRefPtr svc1, ServiceRefPtr svc2);
 
-  void AdoptProfile(Manager *manager, ProfileRefPtr profile) {
+  void AdoptProfile(Manager* manager, ProfileRefPtr profile) {
     manager->profiles_.push_back(profile);
   }
 
@@ -195,15 +195,15 @@ class ManagerTest : public PropertyStoreTest {
     manager()->running_ = running;
   }
 
-  ProfileRefPtr GetEphemeralProfile(Manager *manager) {
+  ProfileRefPtr GetEphemeralProfile(Manager* manager) {
     return manager->ephemeral_profile_;
   }
 
-  vector<ProfileRefPtr> &GetProfiles(Manager *manager) {
+  vector<ProfileRefPtr>& GetProfiles(Manager* manager) {
     return manager->profiles_;
   }
 
-  Profile *CreateProfileForManager(Manager *manager, GLib *glib) {
+  Profile* CreateProfileForManager(Manager* manager, GLib* glib) {
     Profile::Identifier id("rather", "irrelevant");
     FilePath final_path(storage_path());
     final_path = final_path.Append("test.profile");
@@ -211,7 +211,7 @@ class ManagerTest : public PropertyStoreTest {
     storage->set_path(final_path);
     if (!storage->Open())
       return nullptr;
-    Profile *profile(new Profile(control_interface(),
+    Profile* profile(new Profile(control_interface(),
                                  metrics(),
                                  manager,
                                  id,
@@ -221,10 +221,10 @@ class ManagerTest : public PropertyStoreTest {
     return profile;  // Passes onwership of "profile".
   }
 
-  bool CreateBackingStoreForService(ScopedTempDir *temp_dir,
-                                    const string &user_identifier,
-                                    const string &profile_identifier,
-                                    const string &service_name) {
+  bool CreateBackingStoreForService(ScopedTempDir* temp_dir,
+                                    const string& user_identifier,
+                                    const string& profile_identifier,
+                                    const string& service_name) {
     GLib glib;
     KeyFileStore store(&glib);
     store.set_path(temp_dir->path().Append(
@@ -235,41 +235,41 @@ class ManagerTest : public PropertyStoreTest {
         store.Close();
   }
 
-  Error::Type TestCreateProfile(Manager *manager, const string &name) {
+  Error::Type TestCreateProfile(Manager* manager, const string& name) {
     Error error;
     string path;
     manager->CreateProfile(name, &path, &error);
     return error.type();
   }
 
-  Error::Type TestPopAnyProfile(Manager *manager) {
+  Error::Type TestPopAnyProfile(Manager* manager) {
     Error error;
     manager->PopAnyProfile(&error);
     return error.type();
   }
 
-  Error::Type TestPopAllUserProfiles(Manager *manager) {
+  Error::Type TestPopAllUserProfiles(Manager* manager) {
     Error error;
     manager->PopAllUserProfiles(&error);
     return error.type();
   }
 
-  Error::Type TestPopProfile(Manager *manager, const string &name) {
+  Error::Type TestPopProfile(Manager* manager, const string& name) {
     Error error;
     manager->PopProfile(name, &error);
     return error.type();
   }
 
-  Error::Type TestPushProfile(Manager *manager, const string &name) {
+  Error::Type TestPushProfile(Manager* manager, const string& name) {
     Error error;
     string path;
     manager->PushProfile(name, &path, &error);
     return error.type();
   }
 
-  Error::Type TestInsertUserProfile(Manager *manager,
-                                    const string &name,
-                                    const string &user_hash) {
+  Error::Type TestInsertUserProfile(Manager* manager,
+                                    const string& name,
+                                    const string& user_hash) {
     Error error;
     string path;
     manager->InsertUserProfile(name, user_hash, &path, &error);
@@ -277,7 +277,7 @@ class ManagerTest : public PropertyStoreTest {
   }
 
   scoped_refptr<MockProfile> AddNamedMockProfileToManager(
-      Manager *manager, const string &name) {
+      Manager* manager, const string& name) {
     scoped_refptr<MockProfile> profile(
         new MockProfile(control_interface(), metrics(), manager, ""));
     EXPECT_CALL(*profile, GetRpcIdentifier()).WillRepeatedly(Return(name));
@@ -286,7 +286,7 @@ class ManagerTest : public PropertyStoreTest {
     return profile;
   }
 
-  void AddMockProfileToManager(Manager *manager) {
+  void AddMockProfileToManager(Manager* manager) {
     AddNamedMockProfileToManager(manager, "/");
   }
 
@@ -308,19 +308,19 @@ class ManagerTest : public PropertyStoreTest {
     return manager()->GetDefaultServiceRpcIdentifier(nullptr);
   }
 
-  void SetResolver(Resolver *resolver) {
+  void SetResolver(Resolver* resolver) {
     manager()->resolver_ = resolver;
   }
 
-  bool SetIgnoredDNSSearchPaths(const string &search_paths, Error *error) {
+  bool SetIgnoredDNSSearchPaths(const string& search_paths, Error* error) {
     return manager()->SetIgnoredDNSSearchPaths(search_paths, error);
   }
 
-  bool SetCheckPortalList(const string &check_portal_list, Error *error) {
+  bool SetCheckPortalList(const string& check_portal_list, Error* error) {
     return manager()->SetCheckPortalList(check_portal_list, error);
   }
 
-  const string &GetIgnoredDNSSearchPaths() {
+  const string& GetIgnoredDNSSearchPaths() {
     return manager()->props_.ignored_dns_search_paths;
   }
 
@@ -333,11 +333,11 @@ class ManagerTest : public PropertyStoreTest {
   }
 #endif  // DISABLE_WIFI
 
-  void SetDBusManager(DBusManager *dbus_manager) {
+  void SetDBusManager(DBusManager* dbus_manager) {
     manager()->dbus_manager_.reset(dbus_manager);
   }
 
-  void SetDeviceClaimer(DeviceClaimer *device_claimer) {
+  void SetDeviceClaimer(DeviceClaimer* device_claimer) {
     manager()->device_claimer_.reset(device_claimer);
   }
 
@@ -354,7 +354,7 @@ class ManagerTest : public PropertyStoreTest {
     ServiceWatcher() {}
     virtual ~ServiceWatcher() {}
 
-    MOCK_METHOD1(OnDefaultServiceChanged, void(const ServiceRefPtr &service));
+    MOCK_METHOD1(OnDefaultServiceChanged, void(const ServiceRefPtr& service));
 
    private:
     DISALLOW_COPY_AND_ASSIGN(ServiceWatcher);
@@ -368,16 +368,16 @@ class ManagerTest : public PropertyStoreTest {
     TerminationActionTest() : manager_(nullptr) {}
     virtual ~TerminationActionTest() {}
 
-    MOCK_METHOD1(Done, void(const Error &error));
+    MOCK_METHOD1(Done, void(const Error& error));
 
     void Action() {
       manager_->TerminationActionComplete("action");
     }
 
-    void set_manager(Manager *manager) { manager_ = manager; }
+    void set_manager(Manager* manager) { manager_ = manager; }
 
    private:
-    Manager *manager_;
+    Manager* manager_;
     DISALLOW_COPY_AND_ASSIGN(TerminationActionTest);
   };
 
@@ -387,9 +387,9 @@ class ManagerTest : public PropertyStoreTest {
     DestinationVerificationTest() {}
     virtual ~DestinationVerificationTest() {}
 
-    MOCK_METHOD2(ResultBoolCallbackStub, void(const Error &result, bool flag));
-    MOCK_METHOD2(ResultStringCallbackStub, void(const Error &result,
-                                                const string &value));
+    MOCK_METHOD2(ResultBoolCallbackStub, void(const Error& result, bool flag));
+    MOCK_METHOD2(ResultStringCallbackStub, void(const Error& result,
+                                                const string& value));
    private:
     DISALLOW_COPY_AND_ASSIGN(DestinationVerificationTest);
   };
@@ -400,7 +400,7 @@ class ManagerTest : public PropertyStoreTest {
     DisableTechnologyReplyHandler() {}
     virtual ~DisableTechnologyReplyHandler() {}
 
-    MOCK_METHOD1(ReportResult, void(const Error &));
+    MOCK_METHOD1(ReportResult, void(const Error&));
 
    private:
     DISALLOW_COPY_AND_ASSIGN(DisableTechnologyReplyHandler);
@@ -414,9 +414,9 @@ class ManagerTest : public PropertyStoreTest {
                    Unretained(this))) {}
     virtual ~ResultCallbackObserver() {}
 
-    MOCK_METHOD1(OnResultCallback, void(const Error &error));
+    MOCK_METHOD1(OnResultCallback, void(const Error& error));
 
-    const ResultCallback &result_callback() const {
+    const ResultCallback& result_callback() const {
       return result_callback_;
     }
 
@@ -434,7 +434,7 @@ class ManagerTest : public PropertyStoreTest {
     manager()->set_power_manager(power_manager_.release());
   }
 
-  HookTable *GetTerminationActions() {
+  HookTable* GetTerminationActions() {
     return &manager()->termination_actions_;
   }
 
@@ -450,7 +450,7 @@ class ManagerTest : public PropertyStoreTest {
     manager()->OnSuspendDone();
   }
 
-  void OnSuspendActionsComplete(const Error &error) {
+  void OnSuspendActionsComplete(const Error& error) {
     manager()->OnSuspendActionsComplete(error);
   }
 
@@ -473,12 +473,12 @@ class ManagerTest : public PropertyStoreTest {
   }
 
 #if !defined(DISABLE_WIRED_8021X)
-  void SetEapProviderService(const ServiceRefPtr &service) {
+  void SetEapProviderService(const ServiceRefPtr& service) {
     ethernet_eap_provider_->set_service(service);
   }
 #endif  // DISABLE_WIRED_8021X
 
-  const std::vector<Technology::Identifier> &GetTechnologyOrder() {
+  const std::vector<Technology::Identifier>& GetTechnologyOrder() {
     return manager()->technology_order_;
   }
 
@@ -496,15 +496,15 @@ class ManagerTest : public PropertyStoreTest {
 
   // These pointers are owned by the manager, and only tracked here for
   // EXPECT*()
-  ManagerMockAdaptor *manager_adaptor_;
+  ManagerMockAdaptor* manager_adaptor_;
 #if !defined(DISABLE_WIRED_8021X)
-  MockEthernetEapProvider *ethernet_eap_provider_;
+  MockEthernetEapProvider* ethernet_eap_provider_;
 #endif  // DISABLE_WIRED_8021X
 #if !defined(DISABLE_WIFI)
-  MockWiFiProvider *wifi_provider_;
+  MockWiFiProvider* wifi_provider_;
 #endif  // DISABLE_WIFI
-  MockCryptoUtilProxy *crypto_util_proxy_;
-  MockUpstart *upstart_;
+  MockCryptoUtilProxy* crypto_util_proxy_;
+  MockUpstart* upstart_;
 };
 
 const char ManagerTest::TerminationActionTest::kActionName[] = "action";
@@ -517,11 +517,11 @@ bool ManagerTest::ServiceOrderIs(ServiceRefPtr svc0, ServiceRefPtr svc1) {
           svc1.get() == manager()->services_[1].get());
 }
 
-void SetErrorPermissionDenied(Error *error) {
+void SetErrorPermissionDenied(Error* error) {
   error->Populate(Error::kPermissionDenied);
 }
 
-void SetErrorSuccess(Error *error) {
+void SetErrorSuccess(Error* error) {
   error->Reset();
 }
 
@@ -540,7 +540,7 @@ TEST_F(ManagerTest, PassiveModeDeviceRegistration) {
   VerifyPassiveMode();
 
   // Setup mock device claimer.
-  MockDeviceClaimer *device_claimer = new MockDeviceClaimer("");
+  MockDeviceClaimer* device_claimer = new MockDeviceClaimer("");
   SetDeviceClaimer(device_claimer);
   EXPECT_CALL(*device_claimer, default_claimer()).WillRepeatedly(Return(true));
 
@@ -596,7 +596,7 @@ TEST_F(ManagerTest, DeviceRegistrationAndStart) {
 }
 
 TEST_F(ManagerTest, DeviceRegistrationWithProfile) {
-  MockProfile *profile =
+  MockProfile* profile =
       new MockProfile(control_interface(), metrics(), manager(), "");
   DeviceRefPtr device_ref(mock_devices_[0].get());
   AdoptProfile(manager(), profile);  // Passes ownership.
@@ -617,7 +617,7 @@ TEST_F(ManagerTest, DeviceDeregistration) {
   ASSERT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
   ASSERT_TRUE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
 
-  MockProfile *profile =
+  MockProfile* profile =
       new MockProfile(control_interface(), metrics(), manager(), "");
   AdoptProfile(manager(), profile);  // Passes ownership.
 
@@ -665,7 +665,7 @@ TEST_F(ManagerTest, ServiceRegistration) {
   EXPECT_CALL(*mock_service2.get(), GetRpcIdentifier())
       .WillRepeatedly(Return(service2_name));
   // TODO(quiche): make this EXPECT_CALL work (crbug.com/203247)
-  // EXPECT_CALL(*dynamic_cast<ManagerMockAdaptor *>(manager.adaptor_.get()),
+  // EXPECT_CALL(*dynamic_cast<ManagerMockAdaptor*>(manager.adaptor_.get()),
   //             EmitRpcIdentifierArrayChanged(kServicesProperty, _));
 
   manager.RegisterService(mock_service);
@@ -818,7 +818,7 @@ TEST_F(ManagerTest, GetServicesProperty) {
   map<string, ::DBus::Variant>::const_iterator prop =
       props.find(kServicesProperty);
   ASSERT_FALSE(prop == props.end());
-  const ::DBus::Variant &variant = prop->second;
+  const ::DBus::Variant& variant = prop->second;
   ASSERT_TRUE(DBusAdaptor::IsPaths(variant.signature()));
 }
 
@@ -839,7 +839,7 @@ TEST_F(ManagerTest, MoveService) {
     Profile::Identifier id("irrelevant");
     ProfileRefPtr profile(
         new Profile(control_interface(), metrics(), &manager, id, "", false));
-    MockStore *storage = new MockStore;
+    MockStore* storage = new MockStore;
     EXPECT_CALL(*storage, ContainsGroup(s2->GetStorageIdentifier()))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*storage, Flush())
@@ -994,7 +994,7 @@ TEST_F(ManagerTest, PushPopProfile) {
                   run_path(),
                   storage_path(),
                   temp_dir.path().value());
-  vector<ProfileRefPtr> &profiles = GetProfiles(&manager);
+  vector<ProfileRefPtr>& profiles = GetProfiles(&manager);
 
   // Pushing an invalid profile should fail.
   EXPECT_EQ(Error::kInvalidArguments, TestPushProfile(&manager, ""));
@@ -1228,7 +1228,7 @@ TEST_F(ManagerTest, RemoveService) {
                                 manager()));
 
   // Used in expectations which cannot accept a mock refptr.
-  const ServiceRefPtr &service = mock_service;
+  const ServiceRefPtr& service = mock_service;
 
   manager()->RegisterService(service);
   EXPECT_EQ(GetEphemeralProfile(manager()), service->profile().get());
@@ -2345,7 +2345,7 @@ TEST_F(ManagerTest,
                                     false);
 
   // Only hold a pointer here so we don't affect the refcount.
-  MockWiFiService *mock_service_ptr = temp_mock_service_.get();
+  MockWiFiService* mock_service_ptr = temp_mock_service_.get();
 
   KeyValueStore args;
   args.SetString(kTypeProperty, kTypeWifi);
@@ -3027,11 +3027,11 @@ TEST_F(ManagerTest, SaveSuccessfulService) {
 }
 
 TEST_F(ManagerTest, UpdateDevice) {
-  MockProfile *profile0 =
+  MockProfile* profile0 =
       new MockProfile(control_interface(), metrics(), manager(), "");
-  MockProfile *profile1 =
+  MockProfile* profile1 =
       new MockProfile(control_interface(), metrics(), manager(), "");
-  MockProfile *profile2 =
+  MockProfile* profile2 =
       new MockProfile(control_interface(), metrics(), manager(), "");
   AdoptProfile(manager(), profile0);  // Passes ownership.
   AdoptProfile(manager(), profile1);  // Passes ownership.
@@ -4363,7 +4363,7 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
                   temp_dir.path().value());
   // Can't use |wifi_provider_|, because it's owned by the Manager
   // object in the fixture.
-  MockWiFiProvider *wifi_provider = new NiceMock<MockWiFiProvider>();
+  MockWiFiProvider* wifi_provider = new NiceMock<MockWiFiProvider>();
   manager.wifi_provider_.reset(wifi_provider);  // pass ownership
   manager.UpdateProviderMapping();
   // Give manager a valid place to write the user profile list.
@@ -4664,7 +4664,7 @@ TEST_F(ManagerTest, DetectMultiHomedDevices) {
                                                    "null5",
                                                    "addr5",
                                                    0));
-  for (const auto &device : mock_devices_) {
+  for (const auto& device : mock_devices_) {
     manager()->RegisterDevice(device);
     mock_connections.emplace_back(
         new NiceMock<MockConnection>(device_info_.get()));
@@ -4791,9 +4791,9 @@ TEST_F(ManagerTest, ClaimDeviceWithoutClaimer) {
   const char kDeviceName[] = "test_device";
 
   // Setup DBus manager and name watcher.
-  MockDBusManager *dbus_manager = new MockDBusManager();
+  MockDBusManager* dbus_manager = new MockDBusManager();
   SetDBusManager(dbus_manager);
-  DBusNameWatcher *name_watcher =
+  DBusNameWatcher* name_watcher =
       new DBusNameWatcher(dbus_manager,
                           kClaimerName,
                           DBusNameWatcher::NameAppearedCallback(),
@@ -4824,7 +4824,7 @@ TEST_F(ManagerTest, ClaimDeviceWithClaimer) {
   const char kDeviceName[] = "test_device";
 
   // Setup device claimer.
-  MockDeviceClaimer *device_claimer = new MockDeviceClaimer(kClaimer1Name);
+  MockDeviceClaimer* device_claimer = new MockDeviceClaimer(kClaimer1Name);
   SetDeviceClaimer(device_claimer);
 
   // Claim device with empty string name.
@@ -4861,7 +4861,7 @@ TEST_F(ManagerTest, ClaimDeviceWhenClaimerNotVerified) {
   ResultCallbackObserver observer2;
 
   // Setup device claimer.
-  MockDeviceClaimer *device_claimer = new MockDeviceClaimer(kClaimerName);
+  MockDeviceClaimer* device_claimer = new MockDeviceClaimer(kClaimerName);
   SetDeviceClaimer(device_claimer);
 
   Error error(Error::kOperationInitiated);
@@ -4880,7 +4880,7 @@ TEST_F(ManagerTest, ClaimRegisteredDevice) {
   const char kClaimerName[] = "test_claimer";
 
   // Setup device claimer.
-  MockDeviceClaimer *device_claimer = new MockDeviceClaimer(kClaimerName);
+  MockDeviceClaimer* device_claimer = new MockDeviceClaimer(kClaimerName);
   SetDeviceClaimer(device_claimer);
 
   // Register a device to manager.
@@ -4915,7 +4915,7 @@ TEST_F(ManagerTest, ReleaseDevice) {
   EXPECT_EQ(string(kNoClaimerError), error.message());
 
   // Setup device claimer.
-  MockDeviceClaimer *device_claimer = new MockDeviceClaimer(kClaimerName);
+  MockDeviceClaimer* device_claimer = new MockDeviceClaimer(kClaimerName);
   SetDeviceClaimer(device_claimer);
 
   // Release device from wrong claimer.
@@ -4968,7 +4968,7 @@ TEST_F(ManagerTest, DeviceClaimerVanishedTask) {
                                                  observer2.result_callback());
 
   // Setup device claimer.
-  MockDeviceClaimer *device_claimer = new MockDeviceClaimer(kClaimerName);
+  MockDeviceClaimer* device_claimer = new MockDeviceClaimer(kClaimerName);
   SetDeviceClaimer(device_claimer);
 
   // Invoke result callback.
@@ -5009,7 +5009,7 @@ TEST_F(ManagerTest, OnDeviceClaimerAppeared) {
                                                  observer2.result_callback());
 
   // Setup device claimer.
-  MockDeviceClaimer *device_claimer = new MockDeviceClaimer(kClaimerName);
+  MockDeviceClaimer* device_claimer = new MockDeviceClaimer(kClaimerName);
   SetDeviceClaimer(device_claimer);
 
   // DBus service appeared for the first time.
@@ -5041,7 +5041,7 @@ TEST_F(ManagerTest, OnDeviceClaimerAppeared) {
                                                  observer1.result_callback());
 
   // Setup device claimer.
-  MockDeviceClaimer *device_claimer1 = new MockDeviceClaimer(kClaimerName);
+  MockDeviceClaimer* device_claimer1 = new MockDeviceClaimer(kClaimerName);
   SetDeviceClaimer(device_claimer1);
   EXPECT_NE(nullptr, manager()->device_claimer_.get());
 
@@ -5183,7 +5183,7 @@ TEST_F(ManagerTest, FilterPrependDNSServersByFamily) {
         {"2001:4860:4860::8888"}}
   };
 
-  for (const auto &expectation : expectations) {
+  for (const auto& expectation : expectations) {
     manager()->SetPrependDNSServers(expectation.prepend_value);
     auto dns_servers =
         manager()->FilterPrependDNSServersByFamily(expectation.family);

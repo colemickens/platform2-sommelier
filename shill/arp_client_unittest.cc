@@ -47,8 +47,8 @@ class ArpClientTest : public Test {
     }
   }
 
-  ssize_t SimulateRecvFrom(int sockfd, void *buf, size_t len, int flags,
-                           struct sockaddr *src_addr, socklen_t *addrlen);
+  ssize_t SimulateRecvFrom(int sockfd, void* buf, size_t len, int flags,
+                           struct sockaddr* src_addr, socklen_t* addrlen);
 
  protected:
   static const int kInterfaceIndex;
@@ -63,12 +63,12 @@ class ArpClientTest : public Test {
   int GetInterfaceIndex() { return client_.interface_index_; }
   size_t GetMaxArpPacketLength() { return ArpClient::kMaxArpPacketLength; }
   int GetSocket() { return client_.socket_; }
-  void SetupValidPacket(ArpPacket *packet);
+  void SetupValidPacket(ArpPacket* packet);
   void StartClient() { StartClientWithFD(kSocketFD); }
   void StartClientWithFD(int fd);
 
   // Owned by ArpClient, and tracked here only for mocks.
-  MockSockets *sockets_;
+  MockSockets* sockets_;
   ArpClient client_;
   ByteString recvfrom_reply_data_;
   sockaddr_ll recvfrom_sender_;
@@ -85,10 +85,10 @@ const int ArpClientTest::kArpOpOffset = 7;
 
 
 MATCHER_P2(IsLinkAddress, interface_index, destination_mac, "") {
-  const struct sockaddr_ll *socket_address =
-      reinterpret_cast<const struct sockaddr_ll *>(arg);
+  const struct sockaddr_ll* socket_address =
+      reinterpret_cast<const struct sockaddr_ll*>(arg);
   ByteString socket_mac(
-      reinterpret_cast<const unsigned char *>(&socket_address->sll_addr),
+      reinterpret_cast<const unsigned char*>(&socket_address->sll_addr),
       destination_mac.GetLength());
   return socket_address->sll_family == AF_PACKET &&
       socket_address->sll_protocol == htons(ETHERTYPE_ARP) &&
@@ -97,11 +97,11 @@ MATCHER_P2(IsLinkAddress, interface_index, destination_mac, "") {
 }
 
 MATCHER_P(IsByteData, byte_data, "") {
-  return ByteString(reinterpret_cast<const unsigned char *>(arg),
+  return ByteString(reinterpret_cast<const unsigned char*>(arg),
                     byte_data.GetLength()).Equals(byte_data);
 }
 
-void ArpClientTest::SetupValidPacket(ArpPacket *packet) {
+void ArpClientTest::SetupValidPacket(ArpPacket* packet) {
   IPAddress local_ip(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(local_ip.SetAddressFromString(kLocalIPAddress));
   packet->set_local_ip_address(local_ip);
@@ -114,9 +114,9 @@ void ArpClientTest::SetupValidPacket(ArpPacket *packet) {
   packet->set_remote_mac_address(remote_mac);
 }
 
-ssize_t ArpClientTest::SimulateRecvFrom(int sockfd, void *buf, size_t len,
-                                        int flags, struct sockaddr *src_addr,
-                                        socklen_t *addrlen) {
+ssize_t ArpClientTest::SimulateRecvFrom(int sockfd, void* buf, size_t len,
+                                        int flags, struct sockaddr* src_addr,
+                                        socklen_t* addrlen) {
   memcpy(buf, recvfrom_reply_data_.GetConstData(),
          recvfrom_reply_data_.GetLength());
   memcpy(src_addr, &recvfrom_sender_, sizeof(recvfrom_sender_));
@@ -251,7 +251,7 @@ TEST_F(ArpClientTest, Transmit) {
   EXPECT_FALSE(client_.TransmitRequest(packet));
 
   SetupValidPacket(&packet);
-  const ByteString &remote_mac = packet.remote_mac_address();
+  const ByteString& remote_mac = packet.remote_mac_address();
   ByteString packet_bytes;
   ASSERT_TRUE(packet.FormatRequest(&packet_bytes));
   EXPECT_CALL(*sockets_, SendTo(kSocketFD,

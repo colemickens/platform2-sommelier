@@ -68,7 +68,7 @@ class AsyncConnectionTest : public Test {
                          Unretained(this))) {}
 
     MOCK_METHOD2(CallTarget, void(bool success, int fd));
-    const Callback<void(bool, int)> &callback() { return callback_; }
+    const Callback<void(bool, int)>& callback() { return callback_; }
 
    private:
     Callback<void(bool, int)> callback_;
@@ -105,14 +105,14 @@ class AsyncConnectionTest : public Test {
   void OnConnectCompletion(int fd) {
     async_connection_->OnConnectCompletion(fd);
   }
-  AsyncConnection &async_connection() { return *async_connection_.get(); }
-  StrictMock<MockSockets> &sockets() { return sockets_; }
-  MockEventDispatcher &dispatcher() { return dispatcher_; }
-  const IPAddress &ipv4_address() { return ipv4_address_; }
-  const IPAddress &ipv6_address() { return ipv6_address_; }
+  AsyncConnection& async_connection() { return *async_connection_.get(); }
+  StrictMock<MockSockets>& sockets() { return sockets_; }
+  MockEventDispatcher& dispatcher() { return dispatcher_; }
+  const IPAddress& ipv4_address() { return ipv4_address_; }
+  const IPAddress& ipv6_address() { return ipv6_address_; }
   int fd() { return async_connection_->fd_; }
   void set_fd(int fd) { async_connection_->fd_ = fd; }
-  StrictMock<ConnectCallbackTarget> &callback_target() {
+  StrictMock<ConnectCallbackTarget>& callback_target() {
     return callback_target_;
   }
 
@@ -189,20 +189,20 @@ TEST_F(AsyncConnectionTest, SynchronousFailure) {
 }
 
 MATCHER_P2(IsSocketAddress, address, port, "") {
-  const struct sockaddr_in *arg_saddr =
-      reinterpret_cast<const struct sockaddr_in *>(arg);
+  const struct sockaddr_in* arg_saddr =
+      reinterpret_cast<const struct sockaddr_in*>(arg);
   IPAddress arg_addr(IPAddress::kFamilyIPv4,
-                     ByteString(reinterpret_cast<const unsigned char *>(
+                     ByteString(reinterpret_cast<const unsigned char*>(
                          &arg_saddr->sin_addr.s_addr),
                                 sizeof(arg_saddr->sin_addr.s_addr)));
   return address.Equals(arg_addr) && arg_saddr->sin_port == htons(port);
 }
 
 MATCHER_P2(IsSocketIpv6Address, ipv6_address, port, "") {
-  const struct sockaddr_in6 *arg_saddr =
-      reinterpret_cast<const struct sockaddr_in6 *>(arg);
+  const struct sockaddr_in6* arg_saddr =
+      reinterpret_cast<const struct sockaddr_in6*>(arg);
   IPAddress arg_addr(IPAddress::kFamilyIPv6,
-                     ByteString(reinterpret_cast<const unsigned char *>(
+                     ByteString(reinterpret_cast<const unsigned char*>(
                          &arg_saddr->sin6_addr.s6_addr),
                                 sizeof(arg_saddr->sin6_addr.s6_addr)));
   return ipv6_address.Equals(arg_addr) && arg_saddr->sin6_port == htons(port);

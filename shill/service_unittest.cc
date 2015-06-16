@@ -102,13 +102,13 @@ class ServiceTest : public PropertyStoreTest {
 
   virtual ~ServiceTest() {}
 
-  MOCK_METHOD1(TestCallback, void(const Error &error));
+  MOCK_METHOD1(TestCallback, void(const Error& error));
 
  protected:
   typedef scoped_refptr<MockProfile> MockProfileRefPtr;
 
-  ServiceMockAdaptor *GetAdaptor() {
-    return dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+  ServiceMockAdaptor* GetAdaptor() {
+    return dynamic_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
   string GetFriendlyName() { return service_->friendly_name(); }
@@ -137,24 +137,24 @@ class ServiceTest : public PropertyStoreTest {
     service_->NoteDisconnectEvent();
   }
 
-  EventHistory *GetDisconnects() {
+  EventHistory* GetDisconnects() {
     return &service_->disconnects_;
   }
-  EventHistory *GetMisconnects() {
+  EventHistory* GetMisconnects() {
     return &service_->misconnects_;
   }
 
   Timestamp GetTimestamp(int monotonic_seconds, int boottime_seconds,
-                         const string &wall_clock) {
+                         const string& wall_clock) {
     struct timeval monotonic = { .tv_sec = monotonic_seconds, .tv_usec = 0 };
     struct timeval boottime = { .tv_sec = boottime_seconds, .tv_usec = 0 };
     return Timestamp(monotonic, boottime, wall_clock);
   }
 
-  void PushTimestamp(EventHistory *events,
+  void PushTimestamp(EventHistory* events,
                      int monotonic_seconds,
                      int boottime_seconds,
-                     const string &wall_clock) {
+                     const string& wall_clock) {
     events->RecordEventInternal(
         GetTimestamp(monotonic_seconds, boottime_seconds, wall_clock));
   }
@@ -183,20 +183,20 @@ class ServiceTest : public PropertyStoreTest {
     return Service::kMaxMisconnectEventHistory;
   }
 
-  bool GetAutoConnect(Error *error) {
+  bool GetAutoConnect(Error* error) {
     return service_->GetAutoConnect(error);
   }
 
-  void ClearAutoConnect(Error *error) {
+  void ClearAutoConnect(Error* error) {
     service_->ClearAutoConnect(error);
   }
 
-  bool SetAutoConnectFull(bool connect, Error *error) {
+  bool SetAutoConnectFull(bool connect, Error* error) {
     return service_->SetAutoConnectFull(connect, error);
   }
 
-  bool SortingOrderIs(const ServiceRefPtr &service0,
-                      const ServiceRefPtr &service1,
+  bool SortingOrderIs(const ServiceRefPtr& service0,
+                      const ServiceRefPtr& service1,
                       bool should_compare_connectivity_state) {
     vector<ServiceRefPtr> services;
     services.push_back(service1);
@@ -208,8 +208,8 @@ class ServiceTest : public PropertyStoreTest {
             service1.get() == services[1].get());
   }
 
-  bool DefaultSortingOrderIs(const ServiceRefPtr &service0,
-                             const ServiceRefPtr &service1) {
+  bool DefaultSortingOrderIs(const ServiceRefPtr& service0,
+                             const ServiceRefPtr& service1) {
     const bool kShouldCompareConnectivityState = true;
     return SortingOrderIs(
         service0, service1, kShouldCompareConnectivityState);
@@ -223,9 +223,9 @@ class ServiceTest : public PropertyStoreTest {
   string storage_id_;
   NiceMock<MockProxyFactory> proxy_factory_;
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  MockEapCredentials *eap_;  // Owned by |service_|.
+  MockEapCredentials* eap_;  // Owned by |service_|.
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-  MockPowerManager *power_manager_;  // Owned by |mock_manager_|.
+  MockPowerManager* power_manager_;  // Owned by |mock_manager_|.
   vector<Technology::Identifier> technology_order_for_sorting_;
 };
 
@@ -435,11 +435,11 @@ TEST_F(ServiceTest, IsLoadableFrom) {
 class ServiceWithOnEapCredentialsChangedOverride : public ServiceUnderTest {
  public:
   ServiceWithOnEapCredentialsChangedOverride(
-      ControlInterface *control_interface,
-      EventDispatcher *dispatcher,
-      Metrics *metrics,
-      Manager *manager,
-      EapCredentials *eap)
+      ControlInterface* control_interface,
+      EventDispatcher* dispatcher,
+      Metrics* metrics,
+      Manager* manager,
+      EapCredentials* eap)
       : ServiceUnderTest(control_interface, dispatcher, metrics, manager) {
     SetEapCredentials(eap);
   }
@@ -451,7 +451,7 @@ class ServiceWithOnEapCredentialsChangedOverride : public ServiceUnderTest {
 
 TEST_F(ServiceTest, Load) {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  MockEapCredentials *eap = new MockEapCredentials();  // Owned by |service|.
+  MockEapCredentials* eap = new MockEapCredentials();  // Owned by |service|.
   scoped_refptr<ServiceWithOnEapCredentialsChangedOverride> service(
       new ServiceWithOnEapCredentialsChangedOverride(control_interface(),
                                                      dispatcher(),
@@ -992,7 +992,7 @@ TEST_F(ServiceTest, ReRetainAutoConnect) {
 }
 
 TEST_F(ServiceTest, IsAutoConnectable) {
-  const char *reason = nullptr;
+  const char* reason = nullptr;
   service_->SetConnectable(true);
 
   // Services with non-primary connectivity technologies should not auto-connect
@@ -1074,7 +1074,7 @@ TEST_F(ServiceTest, AutoConnectLogging) {
 
 
 TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
-  const char *reason;
+  const char* reason;
   service_->SetConnectable(true);
   service_->technology_ = Technology::kEthernet;
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
@@ -1204,7 +1204,7 @@ TEST_F(ServiceTest, ConfigureStringsProperty) {
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 TEST_F(ServiceTest, ConfigureEapStringProperty) {
-  MockEapCredentials *eap = new MockEapCredentials();
+  MockEapCredentials* eap = new MockEapCredentials();
   service2_->SetEapCredentials(eap);  // Passes ownership.
 
   const string kEAPManagement0 = "management_zero";
@@ -1483,7 +1483,7 @@ TEST_F(ServiceTest, SetCheckPortal) {
 
 TEST_F(ServiceTest, SetFriendlyName) {
   EXPECT_EQ(service_->unique_name_, service_->friendly_name_);
-  ServiceMockAdaptor *adaptor = GetAdaptor();
+  ServiceMockAdaptor* adaptor = GetAdaptor();
 
   EXPECT_CALL(*adaptor, EmitStringChanged(_, _)).Times(0);
   service_->SetFriendlyName(service_->unique_name_);
@@ -1507,7 +1507,7 @@ TEST_F(ServiceTest, SetFriendlyName) {
 TEST_F(ServiceTest, SetConnectableFull) {
   EXPECT_FALSE(service_->connectable());
 
-  ServiceMockAdaptor *adaptor = GetAdaptor();
+  ServiceMockAdaptor* adaptor = GetAdaptor();
 
   EXPECT_CALL(*adaptor, EmitBoolChanged(_, _)).Times(0);
   EXPECT_CALL(mock_manager_, HasService(_)).Times(0);
@@ -1597,10 +1597,10 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 class ServiceWithMockOnEapCredentialsChanged : public ServiceUnderTest {
  public:
-  ServiceWithMockOnEapCredentialsChanged(ControlInterface *control_interface,
-                                         EventDispatcher *dispatcher,
-                                         Metrics *metrics,
-                                         Manager *manager)
+  ServiceWithMockOnEapCredentialsChanged(ControlInterface* control_interface,
+                                         EventDispatcher* dispatcher,
+                                         Metrics* metrics,
+                                         Manager* manager)
       : ServiceUnderTest(control_interface, dispatcher, metrics, manager),
         is_8021x_(false) {}
   MOCK_METHOD1(OnEapCredentialsChanged, void(Service::UpdateCredentialsReason));
@@ -1865,7 +1865,7 @@ TEST_F(ServiceTest, NoteDisconnectEventDiscardOld) {
   EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(0);
   for (int i = 0; i < 2; i++) {
     int now = 0;
-    EventHistory *events = nullptr;
+    EventHistory* events = nullptr;
     if (i == 0) {
       SetStateField(Service::kStateConnected);
       now = GetDisconnectsMonitorSeconds() + 1;
@@ -1962,7 +1962,7 @@ TEST_F(ServiceTest, SecurityLevel) {
 TEST_F(ServiceTest, SetErrorDetails) {
   EXPECT_EQ(Service::kErrorDetailsNone, service_->error_details());
   static const char kDetails[] = "Certificate revoked.";
-  ServiceMockAdaptor *adaptor = GetAdaptor();
+  ServiceMockAdaptor* adaptor = GetAdaptor();
   EXPECT_CALL(*adaptor, EmitStringChanged(kErrorDetailsProperty, kDetails));
   service_->SetErrorDetails(Service::kErrorDetailsNone);
   EXPECT_EQ(Service::kErrorDetailsNone, service_->error_details());
@@ -2112,12 +2112,12 @@ TEST_F(ServiceTest, GetTethering) {
 
 class ServiceWithMockOnPropertyChanged : public ServiceUnderTest {
  public:
-  ServiceWithMockOnPropertyChanged(ControlInterface *control_interface,
-                                   EventDispatcher *dispatcher,
-                                   Metrics *metrics,
-                                   Manager *manager)
+  ServiceWithMockOnPropertyChanged(ControlInterface* control_interface,
+                                   EventDispatcher* dispatcher,
+                                   Metrics* metrics,
+                                   Manager* manager)
       : ServiceUnderTest(control_interface, dispatcher, metrics, manager) {}
-  MOCK_METHOD1(OnPropertyChanged, void(const string &property));
+  MOCK_METHOD1(OnPropertyChanged, void(const string& property));
 };
 
 TEST_F(ServiceTest, ConfigureServiceTriggersOnPropertyChanged) {

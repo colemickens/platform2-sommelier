@@ -82,12 +82,12 @@ namespace shill {
 
 class TestDevice : public Device {
  public:
-  TestDevice(ControlInterface *control_interface,
-             EventDispatcher *dispatcher,
-             Metrics *metrics,
-             Manager *manager,
-             const std::string &link_name,
-             const std::string &address,
+  TestDevice(ControlInterface* control_interface,
+             EventDispatcher* dispatcher,
+             Metrics* metrics,
+             Manager* manager,
+             const std::string& link_name,
+             const std::string& address,
              int interface_index,
              Technology::Identifier technology)
       : Device(control_interface, dispatcher, metrics, manager, link_name,
@@ -107,13 +107,13 @@ class TestDevice : public Device {
 
   ~TestDevice() {}
 
-  virtual void Start(Error *error,
-                     const EnabledStateChangedCallback &callback) {
+  virtual void Start(Error* error,
+                     const EnabledStateChangedCallback& callback) {
     DCHECK(error);
   }
 
-  virtual void Stop(Error *error,
-                    const EnabledStateChangedCallback &callback) {
+  virtual void Stop(Error* error,
+                    const EnabledStateChangedCallback& callback) {
     DCHECK(error);
   }
 
@@ -121,13 +121,13 @@ class TestDevice : public Device {
   MOCK_CONST_METHOD0(IsTrafficMonitorEnabled, bool());
 
   MOCK_METHOD3(SetIPFlag, bool(IPAddress::Family family,
-                               const std::string &flag,
-                               const std::string &value));
+                               const std::string& flag,
+                               const std::string& value));
 
   MOCK_METHOD3(StartDNSTest, bool(
-      const std::vector<std::string> &dns_servers,
+      const std::vector<std::string>& dns_servers,
       const bool retry_until_success,
-      const base::Callback<void(const DNSServerTester::Status)> &callback));
+      const base::Callback<void(const DNSServerTester::Status)>& callback));
 
   virtual bool DeviceIsIPv6Allowed() const {
     return Device::IsIPv6Allowed();
@@ -138,15 +138,15 @@ class TestDevice : public Device {
   }
 
   virtual bool DeviceSetIPFlag(IPAddress::Family family,
-                               const std::string &flag,
-                               const std::string &value) {
+                               const std::string& flag,
+                               const std::string& value) {
     return Device::SetIPFlag(family, flag, value);
   }
 
   virtual bool DeviceStartDNSTest(
-      const std::vector<std::string> &dns_servers,
+      const std::vector<std::string>& dns_servers,
       const bool retry_until_success,
-      const base::Callback<void(const DNSServerTester::Status)> &callback) {
+      const base::Callback<void(const DNSServerTester::Status)>& callback) {
     return Device::StartDNSTest(dns_servers, retry_until_success, callback);
   }
 };
@@ -181,15 +181,15 @@ class DeviceTest : public PropertyStoreTest {
   static const char kDeviceAddress[];
   static const int kDeviceInterfaceIndex;
 
-  void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig) {
+  void OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
     device_->OnIPConfigUpdated(ipconfig, true);
   }
 
-  void OnIPConfigFailed(const IPConfigRefPtr &ipconfig) {
+  void OnIPConfigFailed(const IPConfigRefPtr& ipconfig) {
     device_->OnIPConfigFailed(ipconfig);
   }
 
-  void OnIPConfigExpired(const IPConfigRefPtr &ipconfig) {
+  void OnIPConfigExpired(const IPConfigRefPtr& ipconfig) {
     device_->OnIPConfigExpired(ipconfig);
   }
 
@@ -201,7 +201,7 @@ class DeviceTest : public PropertyStoreTest {
     device_->connection_ = connection;
   }
 
-  void SetLinkMonitor(LinkMonitor *link_monitor) {
+  void SetLinkMonitor(LinkMonitor* link_monitor) {
     device_->set_link_monitor(link_monitor);  // Passes ownership.
   }
 
@@ -217,11 +217,11 @@ class DeviceTest : public PropertyStoreTest {
     device_->StopLinkMonitor();
   }
 
-  uint64_t GetLinkMonitorResponseTime(Error *error) {
+  uint64_t GetLinkMonitorResponseTime(Error* error) {
     return device_->GetLinkMonitorResponseTime(error);
   }
 
-  void SetTrafficMonitor(TrafficMonitor *traffic_monitor) {
+  void SetTrafficMonitor(TrafficMonitor* traffic_monitor) {
     device_->set_traffic_monitor(traffic_monitor);  // Passes ownership.
   }
 
@@ -237,11 +237,11 @@ class DeviceTest : public PropertyStoreTest {
     device_->OnEncounterNetworkProblem(reason);
   }
 
-  DeviceMockAdaptor *GetDeviceMockAdaptor() {
-    return dynamic_cast<DeviceMockAdaptor *>(device_->adaptor_.get());
+  DeviceMockAdaptor* GetDeviceMockAdaptor() {
+    return dynamic_cast<DeviceMockAdaptor*>(device_->adaptor_.get());
   }
 
-  void SetManager(Manager *manager) {
+  void SetManager(Manager* manager) {
     device_->manager_ = manager;
   }
 
@@ -268,7 +268,7 @@ class DeviceTest : public PropertyStoreTest {
     device_->ip6config_->set_properties(properties);
   }
 
-  bool SetHostname(const string &hostname) {
+  bool SetHostname(const string& hostname) {
     return device_->SetHostname(hostname);
   }
 
@@ -921,7 +921,7 @@ TEST_F(DeviceTest, ResumeWithoutIPConfig) {
 }
 
 TEST_F(DeviceTest, ResumeWithLinkMonitor) {
-  MockLinkMonitor *link_monitor = new StrictMock<MockLinkMonitor>();
+  MockLinkMonitor* link_monitor = new StrictMock<MockLinkMonitor>();
   SetLinkMonitor(link_monitor);  // Passes ownership.
   EXPECT_CALL(*link_monitor, OnAfterResume());
   device_->OnAfterResume();
@@ -982,7 +982,7 @@ TEST_F(DeviceTest, LinkMonitor) {
                                   &manager));
   SelectService(service);
   SetConnection(connection.get());
-  MockLinkMonitor *link_monitor = new StrictMock<MockLinkMonitor>();
+  MockLinkMonitor* link_monitor = new StrictMock<MockLinkMonitor>();
   SetLinkMonitor(link_monitor);  // Passes ownership.
   SetManager(&manager);
   EXPECT_CALL(*link_monitor, Start()).Times(0);
@@ -1033,7 +1033,7 @@ TEST_F(DeviceTest, LinkMonitorCancelledOnSelectService) {
                                   &manager));
   SelectService(service);
   SetConnection(connection.get());
-  MockLinkMonitor *link_monitor = new StrictMock<MockLinkMonitor>();
+  MockLinkMonitor* link_monitor = new StrictMock<MockLinkMonitor>();
   SetLinkMonitor(link_monitor);  // Passes ownership.
   SetManager(&manager);
   EXPECT_CALL(*service, state())
@@ -1059,7 +1059,7 @@ TEST_F(DeviceTest, TrafficMonitor) {
                                   &manager));
   SelectService(service);
   SetConnection(connection.get());
-  MockTrafficMonitor *traffic_monitor = new StrictMock<MockTrafficMonitor>();
+  MockTrafficMonitor* traffic_monitor = new StrictMock<MockTrafficMonitor>();
   SetTrafficMonitor(traffic_monitor);  // Passes ownership.
   SetManager(&manager);
 
@@ -1099,7 +1099,7 @@ TEST_F(DeviceTest, TrafficMonitorCancelledOnSelectService) {
                                   &manager));
   SelectService(service);
   SetConnection(connection.get());
-  MockTrafficMonitor *traffic_monitor = new StrictMock<MockTrafficMonitor>();
+  MockTrafficMonitor* traffic_monitor = new StrictMock<MockTrafficMonitor>();
   SetTrafficMonitor(traffic_monitor);  // Passes ownership.
   EXPECT_CALL(*device_, IsTrafficMonitorEnabled()).WillRepeatedly(Return(true));
   SetManager(&manager);
@@ -1568,7 +1568,7 @@ TEST_F(DeviceTest, PrependIPv4DNSServers) {
      {"9.9.9.9", "8.8.8.8", "10.10.10.10"}},
   };
 
-  for (const auto &expectation : expectations) {
+  for (const auto& expectation : expectations) {
     scoped_refptr<IPConfig> ipconfig =
         new IPConfig(control_interface(), kDeviceName);
 
@@ -1814,7 +1814,7 @@ class DevicePortalDetectionTest : public DeviceTest {
   bool StartPortalDetection() { return device_->StartPortalDetection(); }
   void StopPortalDetection() { device_->StopPortalDetection(); }
 
-  void PortalDetectorCallback(const PortalDetector::Result &result) {
+  void PortalDetectorCallback(const PortalDetector::Result& result) {
     device_->PortalDetectorCallback(result);
   }
   bool RequestPortalDetection() {
@@ -1844,7 +1844,7 @@ class DevicePortalDetectionTest : public DeviceTest {
   scoped_refptr<MockService> service_;
 
   // Used only for EXPECT_CALL().  Object is owned by device.
-  MockPortalDetector *portal_detector_;
+  MockPortalDetector* portal_detector_;
 };
 
 const int DevicePortalDetectionTest::kPortalAttempts = 2;
@@ -2224,7 +2224,7 @@ TEST_F(DevicePortalDetectionTest, CancelledOnSelectService) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
-  const char *kGoogleDNSServers[] = { "8.8.8.8", "8.8.4.4" };
+  const char* kGoogleDNSServers[] = { "8.8.8.8", "8.8.4.4" };
   vector<string> fallback_dns_servers(kGoogleDNSServers, kGoogleDNSServers + 2);
   const string kInterfaceName("int0");
   EXPECT_CALL(*connection_.get(), interface_name())
@@ -2472,7 +2472,7 @@ class DeviceByteCountTest : public DeviceTest {
             Invoke(this, &DeviceByteCountTest::GetStoredTransmitCount));
   }
 
-  bool ReturnByteCounts(int interface_index, uint64_t *rx, uint64_t *tx) {
+  bool ReturnByteCounts(int interface_index, uint64_t* rx, uint64_t* tx) {
     *rx = rx_byte_count_;
     *tx = tx_byte_count_;
     return true;
@@ -2499,8 +2499,8 @@ class DeviceByteCountTest : public DeviceTest {
   }
 
 
-  bool GetStoredReceiveCount(const string &group, const string &key,
-                             uint64_t *value) {
+  bool GetStoredReceiveCount(const string& group, const string& key,
+                             uint64_t* value) {
     if (!rx_stored_byte_count_) {
       return false;
     }
@@ -2508,8 +2508,8 @@ class DeviceByteCountTest : public DeviceTest {
     return true;
   }
 
-  bool GetStoredTransmitCount(const string &group, const string &key,
-                              uint64_t *value) {
+  bool GetStoredTransmitCount(const string& group, const string& key,
+                              uint64_t* value) {
     if (!tx_stored_byte_count_) {
       return false;
     }

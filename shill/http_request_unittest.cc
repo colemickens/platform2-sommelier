@@ -54,7 +54,7 @@ const char kPath[] = "/path/to/resource";
 const char kInterfaceName[] = "int0";
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
-const char *kDNSServers[] = { kDNSServer0, kDNSServer1 };
+const char* kDNSServers[] = { kDNSServer0, kDNSServer1 };
 const char kServerAddress[] = "10.1.1.1";
 const int kServerFD = 10203;
 const int kServerPort = 80;
@@ -94,20 +94,20 @@ class HTTPRequestTest : public Test {
           result_callback_(
               Bind(&CallbackTarget::ResultCallTarget, Unretained(this))) {}
 
-    MOCK_METHOD1(ReadEventCallTarget, void(const ByteString &response_data));
+    MOCK_METHOD1(ReadEventCallTarget, void(const ByteString& response_data));
     MOCK_METHOD2(ResultCallTarget, void(HTTPRequest::Result result,
-                                        const ByteString &response_data));
-    const Callback<void(const ByteString &)> &read_event_callback() {
+                                        const ByteString& response_data));
+    const Callback<void(const ByteString&)>& read_event_callback() {
       return read_event_callback_;
     }
     const Callback<void(HTTPRequest::Result,
-                        const ByteString &)> &result_callback() {
+                        const ByteString&)>& result_callback() {
       return result_callback_;
     }
 
    private:
-    Callback<void(const ByteString &)> read_event_callback_;
-    Callback<void(HTTPRequest::Result, const ByteString &)> result_callback_;
+    Callback<void(const ByteString&)> read_event_callback_;
+    Callback<void(HTTPRequest::Result, const ByteString&)> result_callback_;
   };
 
   virtual void SetUp() {
@@ -133,18 +133,18 @@ class HTTPRequestTest : public Test {
       request_.reset();
     }
   }
-  size_t FindInRequestData(const string &find_string) {
+  size_t FindInRequestData(const string& find_string) {
     string request_string(
-        reinterpret_cast<char *>(request_->request_data_.GetData()),
+        reinterpret_cast<char*>(request_->request_data_.GetData()),
         request_->request_data_.GetLength());
     return request_string.find(find_string);
   }
   // Accessors
-  const ByteString &GetRequestData() {
+  const ByteString& GetRequestData() {
     return request_->request_data_;
   }
-  HTTPRequest *request() { return request_.get(); }
-  MockSockets &sockets() { return sockets_; }
+  HTTPRequest* request() { return request_.get(); }
+  MockSockets& sockets() { return sockets_; }
 
   // Expectations
   void ExpectReset() {
@@ -191,17 +191,17 @@ class HTTPRequestTest : public Test {
   void ExpectSetInputTimeout() {
     ExpectSetTimeout(HTTPRequest::kInputTimeoutSeconds);
   }
-  void ExpectInResponse(const string &expected_response_data) {
+  void ExpectInResponse(const string& expected_response_data) {
     string response_string(
-        reinterpret_cast<char *>(request_->response_data_.GetData()),
+        reinterpret_cast<char*>(request_->response_data_.GetData()),
         request_->response_data_.GetLength());
     EXPECT_NE(string::npos, response_string.find(expected_response_data));
   }
-  void ExpectDNSRequest(const string &host, bool return_value) {
+  void ExpectDNSRequest(const string& host, bool return_value) {
     EXPECT_CALL(*dns_client_, Start(StrEq(host), _))
         .WillOnce(Return(return_value));
   }
-  void ExpectAsyncConnect(const string &address, int port,
+  void ExpectAsyncConnect(const string& address, int port,
                           bool return_value) {
     EXPECT_CALL(*server_async_connection_, Start(IsIPAddress(address), port))
         .WillOnce(Return(return_value));
@@ -209,13 +209,13 @@ class HTTPRequestTest : public Test {
       ExpectSetConnectTimeout();
     }
   }
-  void  InvokeSyncConnect(const IPAddress &/*address*/, int /*port*/) {
+  void  InvokeSyncConnect(const IPAddress& /*address*/, int /*port*/) {
     CallConnectCompletion(true, kServerFD);
   }
   void CallConnectCompletion(bool success, int fd) {
     request_->OnConnectCompletion(success, fd);
   }
-  void ExpectSyncConnect(const string &address, int port) {
+  void ExpectSyncConnect(const string& address, int port) {
     EXPECT_CALL(*server_async_connection_, Start(IsIPAddress(address), port))
         .WillOnce(DoAll(Invoke(this, &HTTPRequestTest::InvokeSyncConnect),
                         Return(true)));
@@ -250,34 +250,34 @@ class HTTPRequestTest : public Test {
     EXPECT_CALL(target_, ResultCallTarget(result, _));
   }
   void InvokeResultVerify(HTTPRequest::Result result,
-                          const ByteString &response_data) {
+                          const ByteString& response_data) {
     EXPECT_EQ(HTTPRequest::kResultSuccess, result);
     EXPECT_TRUE(expected_response_.Equals(response_data));
   }
-  void ExpectResultCallbackWithResponse(const string &response) {
+  void ExpectResultCallbackWithResponse(const string& response) {
     expected_response_ = ByteString(response, false);
     EXPECT_CALL(target_, ResultCallTarget(HTTPRequest::kResultSuccess, _))
         .WillOnce(Invoke(this, &HTTPRequestTest::InvokeResultVerify));
   }
-  void ExpectReadEventCallback(const string &response) {
+  void ExpectReadEventCallback(const string& response) {
     ByteString response_data(response, false);
     EXPECT_CALL(target_, ReadEventCallTarget(ByteStringMatches(response_data)));
   }
-  void GetDNSResultFailure(const string &error_msg) {
+  void GetDNSResultFailure(const string& error_msg) {
     Error error(Error::kOperationFailed, error_msg);
     IPAddress address(IPAddress::kFamilyUnknown);
     request_->GetDNSResult(error, address);
   }
-  void GetDNSResultSuccess(const IPAddress &address) {
+  void GetDNSResultSuccess(const IPAddress& address) {
     Error error;
     request_->GetDNSResult(error, address);
   }
   void OnConnectCompletion(bool result, int sockfd) {
     request_->OnConnectCompletion(result, sockfd);
   }
-  void ReadFromServer(const string &data) {
-    const unsigned char *ptr =
-        reinterpret_cast<const unsigned char *>(data.c_str());
+  void ReadFromServer(const string& data) {
+    const unsigned char* ptr =
+        reinterpret_cast<const unsigned char*>(data.c_str());
     vector<unsigned char> data_writable(ptr, ptr + data.length());
     InputData server_data(data_writable.data(), data_writable.size());
     request_->ReadFromServer(&server_data);
@@ -285,14 +285,14 @@ class HTTPRequestTest : public Test {
   void WriteToServer(int fd) {
     request_->WriteToServer(fd);
   }
-  HTTPRequest::Result StartRequest(const string &url) {
+  HTTPRequest::Result StartRequest(const string& url) {
     HTTPURL http_url;
     EXPECT_TRUE(http_url.ParseFromString(url));
     return request_->Start(http_url,
                            target_.read_event_callback(),
                            target_.result_callback());
   }
-  void SetupConnectWithURL(const string &url, const string &expected_hostname) {
+  void SetupConnectWithURL(const string& url, const string& expected_hostname) {
     ExpectRouteRequest();
     ExpectDNSRequest(expected_hostname, true);
     EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(url));
@@ -322,10 +322,10 @@ class HTTPRequestTest : public Test {
  private:
   const string interface_name_;
   // Owned by the HTTPRequest, but tracked here for EXPECT().
-  StrictMock<MockAsyncConnection> *server_async_connection_;
+  StrictMock<MockAsyncConnection>* server_async_connection_;
   vector<string> dns_servers_;
   // Owned by the HTTPRequest, but tracked here for EXPECT().
-  StrictMock<MockDNSClient> *dns_client_;
+  StrictMock<MockDNSClient>* dns_client_;
   StrictMock<MockEventDispatcher> dispatcher_;
   MockControl control_;
   std::unique_ptr<MockDeviceInfo> device_info_;

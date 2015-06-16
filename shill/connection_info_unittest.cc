@@ -25,8 +25,8 @@ const uint16_t kPort4 = 4000;
 
 class ConnectionInfoTest : public testing::Test {
  protected:
-  void ExpectConnectionInfoEqual(const ConnectionInfo &info1,
-                                 const ConnectionInfo &info2) {
+  void ExpectConnectionInfoEqual(const ConnectionInfo& info1,
+                                 const ConnectionInfo& info2) {
     EXPECT_EQ(info1.protocol(), info2.protocol());
     EXPECT_EQ(info1.time_to_expire_seconds(), info2.time_to_expire_seconds());
     EXPECT_EQ(info1.is_unreplied(), info2.is_unreplied());

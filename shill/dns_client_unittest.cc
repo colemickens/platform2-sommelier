@@ -45,7 +45,7 @@ const char kGoodServer[] = "8.8.8.8";
 const char kBadServer[] = "10.9xx8.7";
 const char kNetworkInterface[] = "eth0";
 char kReturnAddressList0[] = { static_cast<char>(224), 0, 0, 1 };
-char *kReturnAddressList[] = { kReturnAddressList0, nullptr };
+char* kReturnAddressList[] = { kReturnAddressList0, nullptr };
 char kFakeAresChannelData = 0;
 const ares_channel kAresChannel =
     reinterpret_cast<ares_channel>(&kFakeAresChannelData);
@@ -109,7 +109,7 @@ class DNSClientTest : public Test {
     dns_client_->HandleCompletion();
   }
 
-  void CreateClient(const vector<string> &dns_servers, int timeout_ms) {
+  void CreateClient(const vector<string>& dns_servers, int timeout_ms) {
     dns_client_.reset(new DNSClient(IPAddress::kFamilyIPv4,
                                     kNetworkInterface,
                                     dns_servers,
@@ -136,7 +136,7 @@ class DNSClientTest : public Test {
         .WillRepeatedly(ReturnArg<1>());
   }
 
-  void SetupRequest(const string &name, const string &server) {
+  void SetupRequest(const string& name, const string& server) {
     vector<string> dns_servers;
     dns_servers.push_back(server);
     CreateClient(dns_servers, kAresTimeoutMS);
@@ -187,7 +187,7 @@ class DNSClientTest : public Test {
     EXPECT_TRUE(dns_client_->address_.IsDefault());
   }
 
-  void SaveCallbackArgs(const Error &error, const IPAddress &address)  {
+  void SaveCallbackArgs(const Error& error, const IPAddress& address)  {
     error_result_.CopyFrom(error);
     address_result_ = address;
   }
@@ -208,9 +208,9 @@ class DNSClientTest : public Test {
     DNSCallbackTarget()
         : callback_(Bind(&DNSCallbackTarget::CallTarget, Unretained(this))) {}
 
-    MOCK_METHOD2(CallTarget, void(const Error &error,
-                                  const IPAddress &address));
-    const DNSClient::ClientCallback &callback() { return callback_; }
+    MOCK_METHOD2(CallTarget, void(const Error& error,
+                                  const IPAddress& address));
+    const DNSClient::ClientCallback& callback() { return callback_; }
 
    private:
     DNSClient::ClientCallback callback_;
@@ -390,7 +390,7 @@ TEST_F(DNSClientTest, HostNotFound) {
 TEST_F(DNSClientTest, IOHandleDeallocGetSock) {
   SetupRequest(kGoodName, kGoodServer);
   // This isn't any kind of scoped/ref pointer because we are tracking dealloc.
-  SentinelIOHandler *io_handler = new SentinelIOHandler();
+  SentinelIOHandler* io_handler = new SentinelIOHandler();
   EXPECT_CALL(dispatcher_,
               CreateReadyHandler(kAresFd, IOHandler::kModeInput, _))
       .WillOnce(Return(io_handler));
@@ -411,7 +411,7 @@ TEST_F(DNSClientTest, IOHandleDeallocGetSock) {
 TEST_F(DNSClientTest, IOHandleDeallocStop) {
   SetupRequest(kGoodName, kGoodServer);
   // This isn't any kind of scoped/ref pointer because we are tracking dealloc.
-  SentinelIOHandler *io_handler = new SentinelIOHandler();
+  SentinelIOHandler* io_handler = new SentinelIOHandler();
   EXPECT_CALL(dispatcher_,
               CreateReadyHandler(kAresFd, IOHandler::kModeInput, _))
       .WillOnce(Return(io_handler));

@@ -75,7 +75,7 @@ const char kInterfaceName[] = "int0";
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
 const char kServerAddress[] = "10.10.10.10";
-const char *kDNSServers[] = { kDNSServer0, kDNSServer1 };
+const char* kDNSServers[] = { kDNSServer0, kDNSServer1 };
 const int kProxyFD = 10203;
 const int kServerFD = 10204;
 const int kClientFD = 10205;
@@ -127,8 +127,8 @@ class HTTPProxyTest : public Test {
       }
     }
   }
-  string CreateRequest(const string &url, const string &http_version,
-                       const string &extra_lines) {
+  string CreateRequest(const string& url, const string& http_version,
+                       const string& extra_lines) {
     string append_lines(extra_lines);
     if (append_lines.size()) {
       append_lines.append("\r\n");
@@ -136,8 +136,8 @@ class HTTPProxyTest : public Test {
     return StringPrintf(kQueryTemplate, url.c_str(), http_version.c_str(),
                         append_lines.c_str());
   }
-  int InvokeGetSockName(int fd, struct sockaddr *addr_out,
-                        socklen_t *sockaddr_size) {
+  int InvokeGetSockName(int fd, struct sockaddr* addr_out,
+                        socklen_t* sockaddr_size) {
     struct sockaddr_in addr;
     EXPECT_EQ(kProxyFD, fd);
     EXPECT_GE(sizeof(sockaddr_in), *sockaddr_size);
@@ -147,29 +147,29 @@ class HTTPProxyTest : public Test {
     *sockaddr_size = sizeof(sockaddr_in);
     return 0;
   }
-  void  InvokeSyncConnect(const IPAddress &/*address*/, int /*port*/) {
+  void  InvokeSyncConnect(const IPAddress& /*address*/, int /*port*/) {
     proxy_.OnConnectCompletion(true, kServerFD);
   }
-  size_t FindInRequest(const string &find_string) {
-    const ByteString &request_data = GetClientData();
+  size_t FindInRequest(const string& find_string) {
+    const ByteString& request_data = GetClientData();
     string request_string(
-        reinterpret_cast<const char *>(request_data.GetConstData()),
+        reinterpret_cast<const char*>(request_data.GetConstData()),
         request_data.GetLength());
     return request_string.find(find_string);
   }
   // Accessors
-  const ByteString &GetClientData() {
+  const ByteString& GetClientData() {
     return proxy_.client_data_;
   }
-  HTTPProxy *proxy() { return &proxy_; }
+  HTTPProxy* proxy() { return &proxy_; }
   HTTPProxy::State GetProxyState() {
     return proxy_.state_;
   }
-  const ByteString &GetServerData() {
+  const ByteString& GetServerData() {
     return proxy_.server_data_;
   }
-  MockSockets &sockets() { return sockets_; }
-  MockEventDispatcher &dispatcher() { return dispatcher_; }
+  MockSockets& sockets() { return sockets_; }
+  MockEventDispatcher& dispatcher() { return dispatcher_; }
 
 
   // Expectations
@@ -264,12 +264,12 @@ class HTTPProxyTest : public Test {
   void ExpectTransactionTimeout() {
     ExpectTimeout(HTTPProxy::kTransactionTimeoutSeconds);
   }
-  void ExpectInClientResponse(const string &response_data) {
-    string server_data(reinterpret_cast<char *>(proxy_.server_data_.GetData()),
+  void ExpectInClientResponse(const string& response_data) {
+    string server_data(reinterpret_cast<char*>(proxy_.server_data_.GetData()),
                        proxy_.server_data_.GetLength());
     EXPECT_NE(string::npos, server_data.find(response_data));
   }
-  void ExpectClientError(int code, const string &error) {
+  void ExpectClientError(int code, const string& error) {
     EXPECT_EQ(HTTPProxy::kStateFlushResponse, GetProxyState());
     string status_line = StringPrintf("HTTP/1.1 %d ERROR", code);
     ExpectInClientResponse(status_line);
@@ -278,25 +278,25 @@ class HTTPProxyTest : public Test {
   void ExpectClientInternalError() {
     ExpectClientError(500, HTTPProxy::kInternalErrorMsg);
   }
-  void ExpectClientVersion(const string &version) {
+  void ExpectClientVersion(const string& version) {
     EXPECT_EQ(version, proxy_.client_version_);
   }
-  void ExpectServerHostname(const string &hostname) {
+  void ExpectServerHostname(const string& hostname) {
     EXPECT_EQ(hostname, proxy_.server_hostname_);
   }
-  void ExpectFirstLine(const string &line) {
+  void ExpectFirstLine(const string& line) {
     EXPECT_EQ(line, proxy_.client_headers_[0] + "\r\n");
   }
-  void ExpectDNSRequest(const string &host, bool return_value) {
+  void ExpectDNSRequest(const string& host, bool return_value) {
     EXPECT_CALL(*dns_client_, Start(StrEq(host), _))
         .WillOnce(Return(return_value));
   }
-  void ExpectAsyncConnect(const string &address, int port,
+  void ExpectAsyncConnect(const string& address, int port,
                           bool return_value) {
     EXPECT_CALL(*server_async_connection_, Start(IsIPAddress(address), port))
         .WillOnce(Return(return_value));
   }
-  void ExpectSyncConnect(const string &address, int port) {
+  void ExpectSyncConnect(const string& address, int port) {
     EXPECT_CALL(*server_async_connection_, Start(IsIPAddress(address), port))
         .WillOnce(DoAll(Invoke(this, &HTTPProxyTest::InvokeSyncConnect),
                         Return(true)));
@@ -364,33 +364,33 @@ class HTTPProxyTest : public Test {
   void AcceptClient(int fd) {
     proxy_.AcceptClient(fd);
   }
-  void GetDNSResultFailure(const string &error_msg) {
+  void GetDNSResultFailure(const string& error_msg) {
     Error error(Error::kOperationFailed, error_msg);
     IPAddress address(IPAddress::kFamilyUnknown);
     proxy_.GetDNSResult(error, address);
   }
-  void GetDNSResultSuccess(const IPAddress &address) {
+  void GetDNSResultSuccess(const IPAddress& address) {
     Error error;
     proxy_.GetDNSResult(error, address);
   }
   void OnConnectCompletion(bool result, int sockfd) {
     proxy_.OnConnectCompletion(result, sockfd);
   }
-  void ReadFromClient(const string &data) {
-    const unsigned char *ptr =
-        reinterpret_cast<const unsigned char *>(data.c_str());
+  void ReadFromClient(const string& data) {
+    const unsigned char* ptr =
+        reinterpret_cast<const unsigned char*>(data.c_str());
     vector<unsigned char> data_bytes(ptr, ptr + data.length());
     InputData proxy_data(data_bytes.data(), data_bytes.size());
     proxy_.ReadFromClient(&proxy_data);
   }
-  void ReadFromServer(const string &data) {
-    const unsigned char *ptr =
-        reinterpret_cast<const unsigned char *>(data.c_str());
+  void ReadFromServer(const string& data) {
+    const unsigned char* ptr =
+        reinterpret_cast<const unsigned char*>(data.c_str());
     vector<unsigned char> data_bytes(ptr, ptr + data.length());
     InputData proxy_data(data_bytes.data(), data_bytes.size());
     proxy_.ReadFromServer(&proxy_data);
   }
-  void SendClientError(int code, const string &error) {
+  void SendClientError(int code, const string& error) {
     proxy_.SendClientError(code, error);
     EXPECT_FALSE(proxy_.server_data_.IsEmpty());
   }
@@ -420,8 +420,8 @@ class HTTPProxyTest : public Test {
     AcceptClient(kProxyFD);
     EXPECT_EQ(HTTPProxy::kStateReadClientHeader, GetProxyState());
   }
-  void SetupConnectWithRequest(const string &url, const string &http_version,
-                               const string &extra_lines) {
+  void SetupConnectWithRequest(const string& url, const string& http_version,
+                               const string& extra_lines) {
     ExpectDNSRequest("www.chromium.org", true);
     ExpectRouteRequest();
     ReadFromClient(CreateRequest(url, http_version, extra_lines));
@@ -451,10 +451,10 @@ class HTTPProxyTest : public Test {
  private:
   const string interface_name_;
   // Owned by the HTTPProxy, but tracked here for EXPECT().
-  StrictMock<MockAsyncConnection> *server_async_connection_;
+  StrictMock<MockAsyncConnection>* server_async_connection_;
   vector<string> dns_servers_;
   // Owned by the HTTPProxy, but tracked here for EXPECT().
-  StrictMock<MockDNSClient> *dns_client_;
+  StrictMock<MockDNSClient>* dns_client_;
   MockEventDispatcher dispatcher_;
   MockControl control_;
   std::unique_ptr<MockDeviceInfo> device_info_;
@@ -755,7 +755,7 @@ TEST_F(HTTPProxyTest, TunnelData) {
   ExpectClientResult();
   ReadFromServer(server_result);
   EXPECT_EQ(server_result,
-            string(reinterpret_cast<const char *>(
+            string(reinterpret_cast<const char*>(
                 GetServerData().GetConstData()),
                    GetServerData().GetLength()));
 

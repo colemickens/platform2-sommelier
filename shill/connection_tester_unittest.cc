@@ -70,7 +70,7 @@ class ConnectionTesterTest : public Test {
     }
 
     MOCK_METHOD0(TesterCallback, void());
-    Callback<void()> &tester_callback() {
+    Callback<void()>& tester_callback() {
       return tester_callback_;
     }
 
@@ -82,10 +82,10 @@ class ConnectionTesterTest : public Test {
     connection_tester_->Start();
   }
 
-  ConnectionTester *connection_tester() { return connection_tester_.get(); }
-  MockConnectivityTrial *connectivity_trial() { return connectivity_trial_; }
-  MockEventDispatcher &dispatcher() { return dispatcher_; }
-  CallbackTarget &callback_target() { return callback_target_; }
+  ConnectionTester* connection_tester() { return connection_tester_.get(); }
+  MockConnectivityTrial* connectivity_trial() { return connectivity_trial_; }
+  MockEventDispatcher& dispatcher() { return dispatcher_; }
+  CallbackTarget& callback_target() { return callback_target_; }
 
   void ExpectReset() {
     EXPECT_TRUE(callback_target_.tester_callback().

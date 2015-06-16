@@ -51,7 +51,7 @@ class StaticIpParametersTest : public Test {
   }
   // Modify an IP address string in some predictable way.  There's no need
   // for the output string to be valid from a networking perspective.
-  string VersionedAddress(const string &address, int version) {
+  string VersionedAddress(const string& address, int version) {
     string returned_address = address;
     CHECK(returned_address.length());
     returned_address[returned_address.length() - 1] += version;
@@ -71,8 +71,8 @@ class StaticIpParametersTest : public Test {
     EXPECT_EQ(kPrefixLen + version, ipconfig_props_.subnet_prefix);
   }
   void ExpectPopulatedIPConfig() { ExpectPopulatedIPConfigWithVersion(0); }
-  void ExpectPropertiesWithVersion(PropertyStore *store,
-                                        const string &property_prefix,
+  void ExpectPropertiesWithVersion(PropertyStore* store,
+                                        const string& property_prefix,
                                         int version) {
     string string_value;
     Error unused_error;
@@ -103,7 +103,7 @@ class StaticIpParametersTest : public Test {
                                         &unused_error));
     EXPECT_EQ(kPrefixLen + version, int_value);
   }
-  void ExpectProperties(PropertyStore *store, const string &property_prefix) {
+  void ExpectProperties(PropertyStore* store, const string& property_prefix) {
     ExpectPropertiesWithVersion(store, property_prefix, 0);
   }
   void PopulateIPConfig() {
@@ -115,7 +115,7 @@ class StaticIpParametersTest : public Test {
     ipconfig_props_.peer_address = kPeerAddress;
     ipconfig_props_.subnet_prefix = kPrefixLen;
   }
-  void SetStaticPropertiesWithVersion(PropertyStore *store, int version) {
+  void SetStaticPropertiesWithVersion(PropertyStore* store, int version) {
     Error error;
     store->SetStringProperty(
         "StaticIP.Address", VersionedAddress(kAddress, version), &error);
@@ -134,10 +134,10 @@ class StaticIpParametersTest : public Test {
         &error);
     store->SetInt32Property("StaticIP.Prefixlen", kPrefixLen + version, &error);
   }
-  void SetStaticProperties(PropertyStore *store) {
+  void SetStaticProperties(PropertyStore* store) {
     SetStaticPropertiesWithVersion(store, 0);
   }
-  void SetStaticDictPropertiesWithVersion(PropertyStore *store, int version) {
+  void SetStaticDictPropertiesWithVersion(PropertyStore* store, int version) {
     KeyValueStore args;
     args.SetString(kAddressProperty, VersionedAddress(kAddress, version));
     args.SetString(kGatewayProperty, VersionedAddress(kGateway, version));
