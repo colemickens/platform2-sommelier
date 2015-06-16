@@ -68,9 +68,9 @@ class CellularCapabilityTest : public testing::Test {
   }
 
   virtual void SetUp() {
-    static_cast<Device *>(cellular_.get())->rtnl_handler_ = &rtnl_handler_;
+    static_cast<Device*>(cellular_.get())->rtnl_handler_ = &rtnl_handler_;
 
-    capability_ = dynamic_cast<CellularCapabilityClassic *>(
+    capability_ = dynamic_cast<CellularCapabilityClassic*>(
         cellular_->capability_.get());
     device_adaptor_ =
         dynamic_cast<DeviceMockAdaptor*>(cellular_->adaptor());
@@ -104,39 +104,39 @@ class CellularCapabilityTest : public testing::Test {
     cellular_->service_ = service;
   }
 
-  CellularCapabilityGSM *GetGsmCapability() {
-    return dynamic_cast<CellularCapabilityGSM *>(cellular_->capability_.get());
+  CellularCapabilityGSM* GetGsmCapability() {
+    return dynamic_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
   }
 
   void ReleaseCapabilityProxies() {
     capability_->ReleaseProxies();
   }
 
-  void InvokeEnable(bool enable, Error *error,
-                    const ResultCallback &callback, int timeout) {
+  void InvokeEnable(bool enable, Error* error,
+                    const ResultCallback& callback, int timeout) {
     callback.Run(Error());
   }
-  void InvokeEnableFail(bool enable, Error *error,
-                        const ResultCallback &callback, int timeout) {
+  void InvokeEnableFail(bool enable, Error* error,
+                        const ResultCallback& callback, int timeout) {
     callback.Run(Error(Error::kOperationFailed));
   }
-  void InvokeDisconnect(Error *error, const ResultCallback &callback,
+  void InvokeDisconnect(Error* error, const ResultCallback& callback,
                         int timeout) {
     callback.Run(Error());
   }
-  void InvokeDisconnectFail(Error *error, const ResultCallback &callback,
+  void InvokeDisconnectFail(Error* error, const ResultCallback& callback,
                             int timeout) {
     callback.Run(Error(Error::kOperationFailed));
   }
-  void InvokeGetModemStatus(Error *error,
-                            const DBusPropertyMapCallback &callback,
+  void InvokeGetModemStatus(Error* error,
+                            const DBusPropertyMapCallback& callback,
                             int timeout) {
     DBusPropertiesMap props;
     props["carrier"].writer().append_string(kTestCarrier);
     props["unknown-property"].writer().append_string("irrelevant-value");
     callback.Run(props, Error());
   }
-  void InvokeGetModemInfo(Error *error, const ModemInfoCallback &callback,
+  void InvokeGetModemInfo(Error* error, const ModemInfoCallback& callback,
                           int timeout) {
     ModemHardwareInfo info;
     info._1 = kManufacturer;
@@ -144,12 +144,12 @@ class CellularCapabilityTest : public testing::Test {
     info._3 = kHWRev;
     callback.Run(info, Error());
   }
-  void InvokeSetCarrier(const string &carrier, Error *error,
-                        const ResultCallback &callback, int timeout) {
+  void InvokeSetCarrier(const string& carrier, Error* error,
+                        const ResultCallback& callback, int timeout) {
     callback.Run(Error());
   }
 
-  MOCK_METHOD1(TestCallback, void(const Error &error));
+  MOCK_METHOD1(TestCallback, void(const Error& error));
 
  protected:
   static const char kTestMobileProviderDBPath[];
@@ -160,29 +160,29 @@ class CellularCapabilityTest : public testing::Test {
 
   class TestProxyFactory : public ProxyFactory {
    public:
-    explicit TestProxyFactory(CellularCapabilityTest *test) : test_(test) {}
+    explicit TestProxyFactory(CellularCapabilityTest* test) : test_(test) {}
 
-    virtual ModemProxyInterface *CreateModemProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemProxyInterface* CreateModemProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       return test_->proxy_.release();
     }
 
-    virtual ModemSimpleProxyInterface *CreateModemSimpleProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemSimpleProxyInterface* CreateModemSimpleProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       return test_->simple_proxy_.release();
     }
 
-    virtual ModemCDMAProxyInterface *CreateModemCDMAProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemCDMAProxyInterface* CreateModemCDMAProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       return test_->cdma_proxy_.release();
     }
 
-    virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemGSMCardProxyInterface* CreateModemGSMCardProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       // TODO(benchan): This code conditionally returns a nullptr to avoid
       // CellularCapabilityGSM::InitProperties (and thus
       // CellularCapabilityGSM::GetIMSI) from being called during the
@@ -191,20 +191,20 @@ class CellularCapabilityTest : public testing::Test {
           test_->gsm_card_proxy_.release() : nullptr;
     }
 
-    virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       return test_->gsm_network_proxy_.release();
     }
 
-    virtual ModemGobiProxyInterface *CreateModemGobiProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemGobiProxyInterface* CreateModemGobiProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       return test_->gobi_proxy_.release();
     }
 
    private:
-    CellularCapabilityTest *test_;
+    CellularCapabilityTest* test_;
   };
 
   void SetProxy() {
@@ -216,14 +216,14 @@ class CellularCapabilityTest : public testing::Test {
   }
 
   void SetGSMNetworkProxy() {
-    CellularCapabilityGSM *gsm_capability =
-        dynamic_cast<CellularCapabilityGSM *>(cellular_->capability_.get());
+    CellularCapabilityGSM* gsm_capability =
+        dynamic_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
     gsm_capability->network_proxy_.reset(gsm_network_proxy_.release());
   }
 
   void SetCellularType(Cellular::Type type) {
     cellular_->InitCapability(type);
-    capability_ = dynamic_cast<CellularCapabilityClassic *>(
+    capability_ = dynamic_cast<CellularCapabilityClassic*>(
         cellular_->capability_.get());
   }
 
@@ -242,8 +242,8 @@ class CellularCapabilityTest : public testing::Test {
   std::unique_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
   std::unique_ptr<MockModemGobiProxy> gobi_proxy_;
   TestProxyFactory proxy_factory_;
-  CellularCapabilityClassic *capability_;  // Owned by |cellular_|.
-  DeviceMockAdaptor *device_adaptor_;  // Owned by |cellular_|.
+  CellularCapabilityClassic* capability_;  // Owned by |cellular_|.
+  DeviceMockAdaptor* device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;
 };
 
@@ -337,7 +337,7 @@ TEST_F(CellularCapabilityTest, AllowRoaming) {
   }
 
   cellular_->state_ = Cellular::kStateConnected;
-  dynamic_cast<CellularCapabilityGSM *>(capability_)->registration_state_ =
+  dynamic_cast<CellularCapabilityGSM*>(capability_)->registration_state_ =
       MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
   cellular_->SetAllowRoaming(true, nullptr);
   EXPECT_TRUE(cellular_->GetAllowRoaming(nullptr));
@@ -401,7 +401,7 @@ TEST_F(CellularCapabilityTest, TryApns) {
   Error error;
   Stringmap apn_info;
   DBusPropertiesMap props;
-  CellularCapabilityGSM *gsm_capability = GetGsmCapability();
+  CellularCapabilityGSM* gsm_capability = GetGsmCapability();
 
   apn_info[kApnProperty] = kLastGoodApn;
   apn_info[kApnUsernameProperty] = kLastGoodUsername;

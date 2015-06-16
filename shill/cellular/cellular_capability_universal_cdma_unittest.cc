@@ -50,7 +50,7 @@ namespace shill {
 
 class CellularCapabilityUniversalCDMATest : public testing::Test {
  public:
-  explicit CellularCapabilityUniversalCDMATest(EventDispatcher *dispatcher)
+  explicit CellularCapabilityUniversalCDMATest(EventDispatcher* dispatcher)
       : dispatcher_(dispatcher),
         capability_(nullptr),
         device_adaptor_(nullptr),
@@ -83,10 +83,10 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   }
 
   virtual void SetUp() {
-    capability_ = dynamic_cast<CellularCapabilityUniversalCDMA *>(
+    capability_ = dynamic_cast<CellularCapabilityUniversalCDMA*>(
         cellular_->capability_.get());
     device_adaptor_ =
-        dynamic_cast<NiceMock<DeviceMockAdaptor> *>(cellular_->adaptor());
+        dynamic_cast<NiceMock<DeviceMockAdaptor>*>(cellular_->adaptor());
     cellular_->service_ = service_;
   }
 
@@ -132,54 +132,54 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
 
   class TestProxyFactory : public ProxyFactory {
    public:
-    explicit TestProxyFactory(CellularCapabilityUniversalCDMATest *test) :
+    explicit TestProxyFactory(CellularCapabilityUniversalCDMATest* test) :
         test_(test) {}
 
     // TODO(armansito): Some of these methods won't be necessary after 3GPP
     // gets refactored out of CellularCapabilityUniversal.
-    virtual mm1::ModemModem3gppProxyInterface *CreateMM1ModemModem3gppProxy(
-        const std::string &/*path*/,
-        const std::string &/*service*/) {
+    virtual mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
+        const std::string& /*path*/,
+        const std::string& /*service*/) {
       return test_->modem_3gpp_proxy_.release();
     }
 
-    virtual mm1::ModemModemCdmaProxyInterface *CreateMM1ModemModemCdmaProxy(
-        const std::string &/*path*/,
-        const std::string &/*service*/) {
+    virtual mm1::ModemModemCdmaProxyInterface* CreateMM1ModemModemCdmaProxy(
+        const std::string& /*path*/,
+        const std::string& /*service*/) {
       return test_->modem_cdma_proxy_.release();
     }
 
-    virtual mm1::ModemProxyInterface *CreateMM1ModemProxy(
-        const std::string &/*path*/,
-        const std::string &/*service*/) {
+    virtual mm1::ModemProxyInterface* CreateMM1ModemProxy(
+        const std::string& /*path*/,
+        const std::string& /*service*/) {
       return test_->modem_proxy_.release();
     }
 
-    virtual mm1::ModemSimpleProxyInterface *CreateMM1ModemSimpleProxy(
-        const std::string &/*path*/,
-        const std::string &/*service*/) {
+    virtual mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(
+        const std::string& /*path*/,
+        const std::string& /*service*/) {
       return test_->modem_simple_proxy_.release();
     }
 
-    virtual mm1::SimProxyInterface *CreateSimProxy(
-        const std::string &/*path*/,
-        const std::string &/*service*/) {
+    virtual mm1::SimProxyInterface* CreateSimProxy(
+        const std::string& /*path*/,
+        const std::string& /*service*/) {
       return test_->sim_proxy_.release();
     }
 
-    virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
-        const std::string &/*path*/,
-        const std::string &/*service*/) {
+    virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
+        const std::string& /*path*/,
+        const std::string& /*service*/) {
       return test_->properties_proxy_.release();
     }
 
    private:
-    CellularCapabilityUniversalCDMATest *test_;
+    CellularCapabilityUniversalCDMATest* test_;
   };
 
-  EventDispatcher *dispatcher_;
-  CellularCapabilityUniversalCDMA *capability_;
-  NiceMock<DeviceMockAdaptor> *device_adaptor_;
+  EventDispatcher* dispatcher_;
+  CellularCapabilityUniversalCDMA* capability_;
+  NiceMock<DeviceMockAdaptor>* device_adaptor_;
   MockModemInfo modem_info_;
   MockGLib glib_;
   // TODO(armansito): Remove |modem_3gpp_proxy_| after refactor.
@@ -191,11 +191,11 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   unique_ptr<MockDBusPropertiesProxy> properties_proxy_;
   TestProxyFactory proxy_factory_;
   CellularRefPtr cellular_;
-  MockCellularService *service_;
+  MockCellularService* service_;
 
   // Set when required and passed to |cellular_|. Owned by |cellular_|.
-  MockMobileOperatorInfo *mock_home_provider_info_;
-  MockMobileOperatorInfo *mock_serving_operator_info_;
+  MockMobileOperatorInfo* mock_home_provider_info_;
+  MockMobileOperatorInfo* mock_serving_operator_info_;
 };
 
 // static
@@ -332,7 +332,7 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, ActivateAutomatic) {
   const string activation_code {"1234"};
   SetMockMobileOperatorInfoObjects();
 
-  mm1::MockModemModemCdmaProxy *cdma_proxy = modem_cdma_proxy_.get();
+  mm1::MockModemModemCdmaProxy* cdma_proxy = modem_cdma_proxy_.get();
   SetUp();
   capability_->InitProxies();
 

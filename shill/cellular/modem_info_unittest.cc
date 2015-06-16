@@ -44,7 +44,7 @@ class ModemInfoTest : public Test {
   EventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
-  MockDBusServiceProxy *dbus_service_proxy_;
+  MockDBusServiceProxy* dbus_service_proxy_;
   ModemInfo modem_info_;
 };
 
@@ -66,7 +66,7 @@ TEST_F(ModemInfoTest, RegisterModemManager) {
   modem_info_.RegisterModemManager(
       new ModemManagerClassic(kService, "/dbus/service/path", &modem_info_));
   ASSERT_EQ(1, modem_info_.modem_managers_.size());
-  ModemManager *manager = modem_info_.modem_managers_[0];
+  ModemManager* manager = modem_info_.modem_managers_[0];
   EXPECT_EQ(kService, manager->service_);
   EXPECT_EQ(&modem_info_, manager->modem_info_);
 }

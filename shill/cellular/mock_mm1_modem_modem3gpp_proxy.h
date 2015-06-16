@@ -20,12 +20,12 @@ class MockModemModem3gppProxy : public ModemModem3gppProxyInterface {
   MockModemModem3gppProxy();
   ~MockModemModem3gppProxy() override;
 
-  MOCK_METHOD4(Register, void(const std::string &operator_id,
-                              Error *error,
-                              const ResultCallback &callback,
+  MOCK_METHOD4(Register, void(const std::string& operator_id,
+                              Error* error,
+                              const ResultCallback& callback,
                               int timeout));
-  MOCK_METHOD3(Scan, void(Error *error,
-                          const DBusPropertyMapsCallback &callback,
+  MOCK_METHOD3(Scan, void(Error* error,
+                          const DBusPropertyMapsCallback& callback,
                           int timeout));
 
  private:

@@ -58,44 +58,44 @@ class CellularCapabilityCDMATest : public testing::Test {
 
   virtual void SetUp() {
     capability_ =
-        dynamic_cast<CellularCapabilityCDMA *>(cellular_->capability_.get());
+        dynamic_cast<CellularCapabilityCDMA*>(cellular_->capability_.get());
   }
 
-  void InvokeActivate(const string &carrier, Error *error,
-                      const ActivationResultCallback &callback,
+  void InvokeActivate(const string& carrier, Error* error,
+                      const ActivationResultCallback& callback,
                       int timeout) {
     callback.Run(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR, Error());
   }
-  void InvokeActivateError(const string &carrier, Error *error,
-                           const ActivationResultCallback &callback,
+  void InvokeActivateError(const string& carrier, Error* error,
+                           const ActivationResultCallback& callback,
                            int timeout) {
     callback.Run(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL, Error());
   }
-  void InvokeDisconnect(Error *error,
-                        const ResultCallback &callback,
+  void InvokeDisconnect(Error* error,
+                        const ResultCallback& callback,
                         int timeout) {
     callback.Run(Error());
   }
-  void InvokeDisconnectError(Error *error,
-                             const ResultCallback &callback,
+  void InvokeDisconnectError(Error* error,
+                             const ResultCallback& callback,
                              int timeout) {
     Error err(Error::kOperationFailed);
     callback.Run(err);
   }
-  void InvokeGetSignalQuality(Error *error,
-                              const SignalQualityCallback &callback,
+  void InvokeGetSignalQuality(Error* error,
+                              const SignalQualityCallback& callback,
                               int timeout) {
     callback.Run(kStrength, Error());
   }
-  void InvokeGetRegistrationState(Error *error,
-                                  const RegistrationStateCallback &callback,
+  void InvokeGetRegistrationState(Error* error,
+                                  const RegistrationStateCallback& callback,
                                   int timeout) {
     callback.Run(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,
                  MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
                  Error());
   }
 
-  MOCK_METHOD1(TestCallback, void(const Error &error));
+  MOCK_METHOD1(TestCallback, void(const Error& error));
 
  protected:
   static const char kMEID[];
@@ -133,7 +133,7 @@ class CellularCapabilityCDMATest : public testing::Test {
   scoped_refptr<MockCellular> cellular_;
   std::unique_ptr<MockModemProxy> classic_proxy_;
   std::unique_ptr<MockModemCDMAProxy> proxy_;
-  CellularCapabilityCDMA *capability_;  // Owned by |cellular_|.
+  CellularCapabilityCDMA* capability_;  // Owned by |cellular_|.
 };
 
 const char CellularCapabilityCDMATest::kMEID[] = "D1234567EF8901";

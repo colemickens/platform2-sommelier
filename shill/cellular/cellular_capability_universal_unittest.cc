@@ -66,7 +66,7 @@ MATCHER_P(HasApn, expected_apn, "") {
 
 class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
  public:
-  explicit CellularCapabilityUniversalTest(EventDispatcher *dispatcher)
+  explicit CellularCapabilityUniversalTest(EventDispatcher* dispatcher)
       : dispatcher_(dispatcher),
         modem_info_(nullptr, dispatcher, nullptr, nullptr, nullptr),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
@@ -101,10 +101,10 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   }
 
   virtual void SetUp() {
-    capability_ = dynamic_cast<CellularCapabilityUniversal *>(
+    capability_ = dynamic_cast<CellularCapabilityUniversal*>(
         cellular_->capability_.get());
     device_adaptor_ =
-        dynamic_cast<DeviceMockAdaptor *>(cellular_->adaptor());
+        dynamic_cast<DeviceMockAdaptor*>(cellular_->adaptor());
     cellular_->service_ = service_;
 
     // kStateUnknown leads to minimal extra work in maintaining
@@ -178,25 +178,25 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
         .WillOnce(Return(modem3gpp_properties));
   }
 
-  void InvokeEnable(bool enable, Error *error,
-                    const ResultCallback &callback, int timeout) {
+  void InvokeEnable(bool enable, Error* error,
+                    const ResultCallback& callback, int timeout) {
     callback.Run(Error());
   }
-  void InvokeEnableFail(bool enable, Error *error,
-                        const ResultCallback &callback, int timeout) {
+  void InvokeEnableFail(bool enable, Error* error,
+                        const ResultCallback& callback, int timeout) {
     callback.Run(Error(Error::kOperationFailed));
   }
-  void InvokeEnableInWrongState(bool enable, Error *error,
-                                const ResultCallback &callback, int timeout) {
+  void InvokeEnableInWrongState(bool enable, Error* error,
+                                const ResultCallback& callback, int timeout) {
     callback.Run(Error(Error::kWrongState));
   }
-  void InvokeRegister(const string &operator_id, Error *error,
-                      const ResultCallback &callback, int timeout) {
+  void InvokeRegister(const string& operator_id, Error* error,
+                      const ResultCallback& callback, int timeout) {
     callback.Run(Error());
   }
-  void InvokeSetPowerState(const uint32_t &power_state,
-                           Error *error,
-                           const ResultCallback &callback,
+  void InvokeSetPowerState(const uint32_t& power_state,
+                           Error* error,
+                           const ResultCallback& callback,
                            int timeout) {
     callback.Run(Error());
   }
@@ -228,7 +228,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
         timeout_milliseconds;
   }
 
-  MOCK_METHOD1(TestCallback, void(const Error &error));
+  MOCK_METHOD1(TestCallback, void(const Error& error));
 
   MOCK_METHOD0(DummyCallback, void(void));
 
@@ -248,7 +248,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 
   class TestProxyFactory : public ProxyFactory {
    public:
-    explicit TestProxyFactory(CellularCapabilityUniversalTest *test) :
+    explicit TestProxyFactory(CellularCapabilityUniversalTest* test) :
         test_(test) {
       active_bearer_properties_[MM_BEARER_PROPERTY_CONNECTED].writer()
           .append_bool(true);
@@ -265,50 +265,50 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
           .append_bool(false);
     }
 
-    DBusPropertiesMap *mutable_active_bearer_properties() {
+    DBusPropertiesMap* mutable_active_bearer_properties() {
       return &active_bearer_properties_;
     }
 
-    DBusPropertiesMap *mutable_inactive_bearer_properties() {
+    DBusPropertiesMap* mutable_inactive_bearer_properties() {
       return &inactive_bearer_properties_;
     }
 
-    virtual mm1::ModemModem3gppProxyInterface *CreateMM1ModemModem3gppProxy(
-        const std::string &/*path*/,
-        const std::string &/*service*/) {
+    virtual mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
+        const std::string& /*path*/,
+        const std::string& /*service*/) {
       return test_->modem_3gpp_proxy_.release();
     }
 
-    virtual mm1::ModemModemCdmaProxyInterface *CreateMM1ModemModemCdmaProxy(
-        const std::string &/*path*/,
-        const std::string &/*service*/) {
+    virtual mm1::ModemModemCdmaProxyInterface* CreateMM1ModemModemCdmaProxy(
+        const std::string& /*path*/,
+        const std::string& /*service*/) {
       return test_->modem_cdma_proxy_.release();
     }
 
-    virtual mm1::ModemProxyInterface *CreateMM1ModemProxy(
-        const std::string &/*path*/,
-        const std::string &/*service*/) {
+    virtual mm1::ModemProxyInterface* CreateMM1ModemProxy(
+        const std::string& /*path*/,
+        const std::string& /*service*/) {
       return test_->modem_proxy_.release();
     }
 
-    virtual mm1::ModemSimpleProxyInterface *CreateMM1ModemSimpleProxy(
-        const std::string &/*path*/,
-        const std::string &/*service*/) {
+    virtual mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(
+        const std::string& /*path*/,
+        const std::string& /*service*/) {
       return test_->modem_simple_proxy_.release();
     }
 
-    virtual mm1::SimProxyInterface *CreateSimProxy(
-        const std::string &/*path*/,
-        const std::string &/*service*/) {
-      mm1::MockSimProxy *sim_proxy = test_->sim_proxy_.release();
+    virtual mm1::SimProxyInterface* CreateSimProxy(
+        const std::string& /*path*/,
+        const std::string& /*service*/) {
+      mm1::MockSimProxy* sim_proxy = test_->sim_proxy_.release();
       test_->sim_proxy_.reset(new mm1::MockSimProxy());
       return sim_proxy;
     }
 
-    virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
-        const std::string &path,
-        const std::string &/*service*/) {
-      MockDBusPropertiesProxy *properties_proxy =
+    virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
+        const std::string& path,
+        const std::string& /*service*/) {
+      MockDBusPropertiesProxy* properties_proxy =
           test_->properties_proxy_.release();
       if (path.find(kActiveBearerPathPrefix) != std::string::npos) {
         EXPECT_CALL(*properties_proxy, GetAll(MM_DBUS_INTERFACE_BEARER))
@@ -324,12 +324,12 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     }
 
    private:
-    CellularCapabilityUniversalTest *test_;
+    CellularCapabilityUniversalTest* test_;
     DBusPropertiesMap active_bearer_properties_;
     DBusPropertiesMap inactive_bearer_properties_;
   };
 
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   MockModemInfo modem_info_;
   unique_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
   unique_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
@@ -338,15 +338,15 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   unique_ptr<mm1::MockSimProxy> sim_proxy_;
   unique_ptr<MockDBusPropertiesProxy> properties_proxy_;
   TestProxyFactory proxy_factory_;
-  CellularCapabilityUniversal *capability_;  // Owned by |cellular_|.
-  DeviceMockAdaptor *device_adaptor_;  // Owned by |cellular_|.
+  CellularCapabilityUniversal* capability_;  // Owned by |cellular_|.
+  DeviceMockAdaptor* device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;
-  MockCellularService *service_;  // owned by cellular_
+  MockCellularService* service_;  // owned by cellular_
   DBusPathCallback connect_callback_;  // saved for testing connect operations
 
   // Set when required and passed to |cellular_|. Owned by |cellular_|.
-  MockMobileOperatorInfo *mock_home_provider_info_;
-  MockMobileOperatorInfo *mock_serving_operator_info_;
+  MockMobileOperatorInfo* mock_home_provider_info_;
+  MockMobileOperatorInfo* mock_serving_operator_info_;
 };
 
 // Most of our tests involve using a real EventDispatcher object.
@@ -492,7 +492,7 @@ TEST_F(CellularCapabilityUniversalMainTest,
 
 TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
   // Save pointers to proxies before they are lost by the call to InitProxies
-  mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
+  mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
 
@@ -529,7 +529,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
 
 TEST_F(CellularCapabilityUniversalMainTest, StopModemAltair) {
   // Save pointers to proxies before they are lost by the call to InitProxies
-  mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
+  mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
 
@@ -576,7 +576,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemAltair) {
 TEST_F(CellularCapabilityUniversalMainTest,
        StopModemAltairDeleteBearerFailure) {
   // Save pointers to proxies before they are lost by the call to InitProxies
-  mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
+  mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
 
@@ -622,7 +622,7 @@ TEST_F(CellularCapabilityUniversalMainTest,
 
 TEST_F(CellularCapabilityUniversalMainTest, StopModemAltairNotConnected) {
   // Save pointers to proxies before they are lost by the call to InitProxies
-  mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
+  mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
   capability_->set_active_bearer(nullptr);
@@ -959,7 +959,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
   cellular_->set_modem_state(Cellular::kModemStateConnected);
   SetRegistrationDroppedUpdateTimeout(0);
 
-  const Stringmap &home_provider_map = cellular_->home_provider();
+  const Stringmap& home_provider_map = cellular_->home_provider();
   ASSERT_NE(home_provider_map.end(), home_provider_map.find(kOperatorNameKey));
   string home_provider = home_provider_map.find(kOperatorNameKey)->second;
   string ota_name = cellular_->service_->friendly_name();
@@ -1114,7 +1114,7 @@ TEST_F(CellularCapabilityUniversalMainTest,
   cellular_->set_modem_state(Cellular::kModemStateRegistered);
   SetRegistrationDroppedUpdateTimeout(0);
 
-  const Stringmap &home_provider_map = cellular_->home_provider();
+  const Stringmap& home_provider_map = cellular_->home_provider();
   ASSERT_NE(home_provider_map.end(), home_provider_map.find(kOperatorNameKey));
   string home_provider = home_provider_map.find(kOperatorNameKey)->second;
   string ota_name = cellular_->service_->friendly_name();
@@ -1297,7 +1297,7 @@ MATCHER_P(SizeIs, value, "") {
 
 TEST_F(CellularCapabilityUniversalMainTest, Reset) {
   // Save pointers to proxies before they are lost by the call to InitProxies
-  mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
+  mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   capability_->InitProxies();
 
@@ -1360,7 +1360,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateActiveBearer) {
 
 // Validates expected behavior of Connect function
 TEST_F(CellularCapabilityUniversalMainTest, Connect) {
-  mm1::MockModemSimpleProxy *modem_simple_proxy = modem_simple_proxy_.get();
+  mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
   Error error;
   DBusPropertiesMap properties;
@@ -1400,7 +1400,7 @@ TEST_F(CellularCapabilityUniversalMainTest, Connect) {
 
 // Validates Connect iterates over APNs
 TEST_F(CellularCapabilityUniversalMainTest, ConnectApns) {
-  mm1::MockModemSimpleProxy *modem_simple_proxy = modem_simple_proxy_.get();
+  mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
   Error error;
   DBusPropertiesMap properties;

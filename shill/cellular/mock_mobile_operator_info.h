@@ -18,25 +18,25 @@ namespace shill {
 
 class MockMobileOperatorInfo : public MobileOperatorInfo {
  public:
-  MockMobileOperatorInfo(EventDispatcher *dispatcher,
-                         const std::string &info_owner);
+  MockMobileOperatorInfo(EventDispatcher* dispatcher,
+                         const std::string& info_owner);
   ~MockMobileOperatorInfo() override;
 
   MOCK_CONST_METHOD0(IsMobileNetworkOperatorKnown, bool());
 
-  MOCK_CONST_METHOD0(mccmnc, const std::string &());
+  MOCK_CONST_METHOD0(mccmnc, const std::string&());
   MOCK_CONST_METHOD0(olp_list,
-                     const std::vector<MobileOperatorInfo::OnlinePortal> &());
-  MOCK_CONST_METHOD0(activation_code, const std::string &());
-  MOCK_CONST_METHOD0(operator_name, const std::string &());
-  MOCK_CONST_METHOD0(country, const std::string &());
-  MOCK_CONST_METHOD0(uuid, const std::string &());
+                     const std::vector<MobileOperatorInfo::OnlinePortal>&());
+  MOCK_CONST_METHOD0(activation_code, const std::string&());
+  MOCK_CONST_METHOD0(operator_name, const std::string&());
+  MOCK_CONST_METHOD0(country, const std::string&());
+  MOCK_CONST_METHOD0(uuid, const std::string&());
 
-  MOCK_METHOD1(UpdateMCCMNC, void(const std::string &));
-  MOCK_METHOD1(UpdateSID, void(const std::string &));
-  MOCK_METHOD1(UpdateIMSI, void(const std::string &));
-  MOCK_METHOD1(UpdateNID, void(const std::string &));
-  MOCK_METHOD1(UpdateOperatorName, void(const std::string &));
+  MOCK_METHOD1(UpdateMCCMNC, void(const std::string&));
+  MOCK_METHOD1(UpdateSID, void(const std::string&));
+  MOCK_METHOD1(UpdateIMSI, void(const std::string&));
+  MOCK_METHOD1(UpdateNID, void(const std::string&));
+  MOCK_METHOD1(UpdateOperatorName, void(const std::string&));
 
   // Sets up the mock object to return empty strings/vectors etc for all
   // propeties.

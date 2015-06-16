@@ -10,11 +10,11 @@ MockModemInfo::MockModemInfo() :
     ModemInfo(nullptr, nullptr, nullptr, nullptr, nullptr),
     mock_pending_activation_store_(nullptr) {}
 
-MockModemInfo::MockModemInfo(ControlInterface *control,
-                             EventDispatcher *dispatcher,
-                             Metrics *metrics,
-                             Manager *manager,
-                             GLib *glib) :
+MockModemInfo::MockModemInfo(ControlInterface* control,
+                             EventDispatcher* dispatcher,
+                             Metrics* metrics,
+                             Manager* manager,
+                             GLib* glib) :
     ModemInfo(control, dispatcher, metrics, manager, glib),
     mock_pending_activation_store_(nullptr) {
   SetMockMembers();

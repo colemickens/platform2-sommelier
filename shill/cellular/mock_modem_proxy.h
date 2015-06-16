@@ -17,15 +17,15 @@ class MockModemProxy : public ModemProxyInterface {
   MockModemProxy();
   ~MockModemProxy() override;
 
-  MOCK_METHOD4(Enable, void(bool enable, Error *error,
-                            const ResultCallback &callback, int timeout));
-  MOCK_METHOD3(Disconnect, void(Error *error, const ResultCallback &callback,
+  MOCK_METHOD4(Enable, void(bool enable, Error* error,
+                            const ResultCallback& callback, int timeout));
+  MOCK_METHOD3(Disconnect, void(Error* error, const ResultCallback& callback,
                                 int timeout));
-  MOCK_METHOD3(GetModemInfo, void(Error *error,
-                                  const ModemInfoCallback &callback,
+  MOCK_METHOD3(GetModemInfo, void(Error* error,
+                                  const ModemInfoCallback& callback,
                                   int timeout));
   MOCK_METHOD1(set_state_changed_callback,
-               void(const ModemStateChangedSignalCallback &callback));
+               void(const ModemStateChangedSignalCallback& callback));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemProxy);

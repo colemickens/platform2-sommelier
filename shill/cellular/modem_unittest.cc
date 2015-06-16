@@ -127,7 +127,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
                      Return(true)));
 
   // modem will take ownership
-  MockCellular *cellular = new MockCellular(
+  MockCellular* cellular = new MockCellular(
       &modem_info_,
       kLinkName,
       kAddressAsString,
@@ -212,7 +212,7 @@ TEST_F(ModemTest, CreateDevicePPP) {
       base::StringPrintf(Modem::kFakeDevNameFormat, Modem::fake_dev_serial_));
 
   // |modem_| will take ownership.
-  MockCellular *cellular = new MockCellular(
+  MockCellular* cellular = new MockCellular(
       &modem_info_,
       dev_name,
       Modem::kFakeDevAddress,

@@ -19,22 +19,22 @@ class MockModemCDMAProxy : public ModemCDMAProxyInterface {
   MockModemCDMAProxy();
   ~MockModemCDMAProxy() override;
 
-  MOCK_METHOD4(Activate, void(const std::string &carrier, Error *error,
-                              const ActivationResultCallback &callback,
+  MOCK_METHOD4(Activate, void(const std::string& carrier, Error* error,
+                              const ActivationResultCallback& callback,
                               int timeout));
   MOCK_METHOD3(GetRegistrationState,
-               void(Error *error, const RegistrationStateCallback &callback,
+               void(Error* error, const RegistrationStateCallback& callback,
                     int timeout));
-  MOCK_METHOD3(GetSignalQuality, void(Error *error,
-                                      const SignalQualityCallback &callback,
+  MOCK_METHOD3(GetSignalQuality, void(Error* error,
+                                      const SignalQualityCallback& callback,
                                       int timeout));
   MOCK_METHOD0(MEID, const std::string());
   MOCK_METHOD1(set_activation_state_callback,
-      void(const ActivationStateSignalCallback &callback));
+      void(const ActivationStateSignalCallback& callback));
   MOCK_METHOD1(set_signal_quality_callback,
-      void(const SignalQualitySignalCallback &callback));
+      void(const SignalQualitySignalCallback& callback));
   MOCK_METHOD1(set_registration_state_callback,
-      void(const RegistrationStateSignalCallback &callback));
+      void(const RegistrationStateSignalCallback& callback));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemCDMAProxy);

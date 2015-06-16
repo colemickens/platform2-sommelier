@@ -54,15 +54,15 @@ class CellularServiceTest : public testing::Test {
 
   virtual void SetUp() {
     adaptor_ =
-        dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+        dynamic_cast<ServiceMockAdaptor*>(service_->adaptor());
     out_of_credits_detector_ =
         new MockOutOfCreditsDetector(nullptr, nullptr, nullptr, service_.get());
     // Passes ownership.
     service_->set_out_of_credits_detector(out_of_credits_detector_);
   }
 
-  CellularCapabilityCDMA *GetCapabilityCDMA() {
-    return dynamic_cast<CellularCapabilityCDMA *>(device_->capability_.get());
+  CellularCapabilityCDMA* GetCapabilityCDMA() {
+    return dynamic_cast<CellularCapabilityCDMA*>(device_->capability_.get());
   }
 
  protected:
@@ -74,8 +74,8 @@ class CellularServiceTest : public testing::Test {
   MockModemInfo modem_info_;
   scoped_refptr<MockCellular> device_;
   CellularServiceRefPtr service_;
-  ServiceMockAdaptor *adaptor_;  // Owned by |service_|.
-  MockOutOfCreditsDetector *out_of_credits_detector_;  // Owned by |service_|.
+  ServiceMockAdaptor* adaptor_;  // Owned by |service_|.
+  MockOutOfCreditsDetector* out_of_credits_detector_;  // Owned by |service_|.
 };
 
 const char CellularServiceTest::kAddress[] = "000102030405";
@@ -172,7 +172,7 @@ TEST_F(CellularServiceTest, SetServingOperator) {
   EXPECT_CALL(*adaptor_,
               EmitStringmapChanged(kServingOperatorProperty, _));
   service_->set_serving_operator(test_operator);
-  const Stringmap &serving_operator = service_->serving_operator();
+  const Stringmap& serving_operator = service_->serving_operator();
   ASSERT_NE(serving_operator.end(), serving_operator.find(kOperatorCodeKey));
   ASSERT_NE(serving_operator.end(), serving_operator.find(kOperatorNameKey));
   EXPECT_EQ(kCode, serving_operator.find(kOperatorCodeKey)->second);
@@ -296,7 +296,7 @@ TEST_F(CellularServiceTest, LastGoodApn) {
   EXPECT_CALL(*adaptor_,
               EmitStringmapChanged(kCellularLastGoodApnProperty, _));
   service_->SetLastGoodApn(testapn);
-  Stringmap *resultapn = service_->GetLastGoodApn();
+  Stringmap* resultapn = service_->GetLastGoodApn();
   EXPECT_NE(nullptr, resultapn);
   EXPECT_EQ(2, resultapn->size());
   Stringmap::const_iterator it = resultapn->find(kApnProperty);
@@ -322,7 +322,7 @@ TEST_F(CellularServiceTest, LastGoodApn) {
 }
 
 TEST_F(CellularServiceTest, IsAutoConnectable) {
-  const char *reason = nullptr;
+  const char* reason = nullptr;
 
   ON_CALL(*out_of_credits_detector_, IsDetecting())
       .WillByDefault(Return(false));

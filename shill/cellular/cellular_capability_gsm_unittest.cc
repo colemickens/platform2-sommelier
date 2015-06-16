@@ -76,95 +76,95 @@ class CellularCapabilityGSMTest : public testing::Test {
 
   virtual void SetUp() {
     capability_ =
-        dynamic_cast<CellularCapabilityGSM *>(cellular_->capability_.get());
+        dynamic_cast<CellularCapabilityGSM*>(cellular_->capability_.get());
     device_adaptor_ =
-        dynamic_cast<DeviceMockAdaptor *>(cellular_->adaptor());
+        dynamic_cast<DeviceMockAdaptor*>(cellular_->adaptor());
   }
 
-  void InvokeEnable(bool enable, Error *error,
-                    const ResultCallback &callback, int timeout) {
+  void InvokeEnable(bool enable, Error* error,
+                    const ResultCallback& callback, int timeout) {
     callback.Run(Error());
   }
-  void InvokeGetIMEI(Error *error, const GSMIdentifierCallback &callback,
+  void InvokeGetIMEI(Error* error, const GSMIdentifierCallback& callback,
                      int timeout) {
     callback.Run(kIMEI, Error());
   }
-  void InvokeGetIMSI(Error *error, const GSMIdentifierCallback &callback,
+  void InvokeGetIMSI(Error* error, const GSMIdentifierCallback& callback,
                      int timeout) {
     callback.Run(kIMSI, Error());
   }
-  void InvokeGetIMSIFails(Error *error, const GSMIdentifierCallback &callback,
+  void InvokeGetIMSIFails(Error* error, const GSMIdentifierCallback& callback,
                           int timeout) {
     callback.Run("", Error(Error::kOperationFailed));
   }
-  void InvokeGetMSISDN(Error *error, const GSMIdentifierCallback &callback,
+  void InvokeGetMSISDN(Error* error, const GSMIdentifierCallback& callback,
                        int timeout) {
     callback.Run(kMSISDN, Error());
   }
-  void InvokeGetMSISDNFail(Error *error, const GSMIdentifierCallback &callback,
+  void InvokeGetMSISDNFail(Error* error, const GSMIdentifierCallback& callback,
                            int timeout) {
     callback.Run("", Error(Error::kOperationFailed));
   }
-  void InvokeGetSPN(Error *error, const GSMIdentifierCallback &callback,
+  void InvokeGetSPN(Error* error, const GSMIdentifierCallback& callback,
                     int timeout) {
     callback.Run(kTestCarrier, Error());
   }
-  void InvokeGetSPNFail(Error *error, const GSMIdentifierCallback &callback,
+  void InvokeGetSPNFail(Error* error, const GSMIdentifierCallback& callback,
                         int timeout) {
     callback.Run("", Error(Error::kOperationFailed));
   }
-  void InvokeGetSignalQuality(Error *error,
-                              const SignalQualityCallback &callback,
+  void InvokeGetSignalQuality(Error* error,
+                              const SignalQualityCallback& callback,
                               int timeout) {
     callback.Run(kStrength, Error());
   }
-  void InvokeGetRegistrationInfo(Error *error,
-                                 const RegistrationInfoCallback &callback,
+  void InvokeGetRegistrationInfo(Error* error,
+                                 const RegistrationInfoCallback& callback,
                                  int timeout) {
     callback.Run(MM_MODEM_GSM_NETWORK_REG_STATUS_HOME,
                  kTestNetwork, kTestCarrier, Error());
   }
-  void InvokeRegister(const string &network_id,
-                      Error *error,
-                      const ResultCallback &callback,
+  void InvokeRegister(const string& network_id,
+                      Error* error,
+                      const ResultCallback& callback,
                       int timeout) {
     callback.Run(Error());
   }
-  void InvokeEnablePIN(const string &pin, bool enable,
-                       Error *error, const ResultCallback &callback,
+  void InvokeEnablePIN(const string& pin, bool enable,
+                       Error* error, const ResultCallback& callback,
                        int timeout) {
     callback.Run(Error());
   }
-  void InvokeSendPIN(const string &pin, Error *error,
-                     const ResultCallback &callback, int timeout) {
+  void InvokeSendPIN(const string& pin, Error* error,
+                     const ResultCallback& callback, int timeout) {
     callback.Run(Error());
   }
-  void InvokeSendPUK(const string &puk, const string &pin, Error *error,
-                     const ResultCallback &callback, int timeout) {
+  void InvokeSendPUK(const string& puk, const string& pin, Error* error,
+                     const ResultCallback& callback, int timeout) {
     callback.Run(Error());
   }
-  void InvokeChangePIN(const string &old_pin, const string &pin, Error *error,
-                       const ResultCallback &callback, int timeout) {
+  void InvokeChangePIN(const string& old_pin, const string& pin, Error* error,
+                       const ResultCallback& callback, int timeout) {
     callback.Run(Error());
   }
-  void InvokeGetModemStatus(Error *error,
-                            const DBusPropertyMapCallback &callback,
+  void InvokeGetModemStatus(Error* error,
+                            const DBusPropertyMapCallback& callback,
                             int timeout) {
     DBusPropertiesMap props;
     callback.Run(props, Error());
   }
-  void InvokeGetModemInfo(Error *error, const ModemInfoCallback &callback,
+  void InvokeGetModemInfo(Error* error, const ModemInfoCallback& callback,
                           int timeout) {
     ModemHardwareInfo info;
     callback.Run(info, Error());
   }
 
-  void InvokeConnectFail(DBusPropertiesMap props, Error *error,
-                         const ResultCallback &callback, int timeout) {
+  void InvokeConnectFail(DBusPropertiesMap props, Error* error,
+                         const ResultCallback& callback, int timeout) {
     callback.Run(Error(Error::kOperationFailed));
   }
 
-  MOCK_METHOD1(TestCallback, void(const Error &error));
+  MOCK_METHOD1(TestCallback, void(const Error& error));
 
  protected:
   static const char kAddress[];
@@ -180,23 +180,23 @@ class CellularCapabilityGSMTest : public testing::Test {
 
   class TestProxyFactory : public ProxyFactory {
    public:
-    explicit TestProxyFactory(CellularCapabilityGSMTest *test) : test_(test) {}
+    explicit TestProxyFactory(CellularCapabilityGSMTest* test) : test_(test) {}
 
-    virtual ModemProxyInterface *CreateModemProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemProxyInterface* CreateModemProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       return test_->proxy_.release();
     }
 
-    virtual ModemSimpleProxyInterface *CreateModemSimpleProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemSimpleProxyInterface* CreateModemSimpleProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       return test_->simple_proxy_.release();
     }
 
-    virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemGSMCardProxyInterface* CreateModemGSMCardProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       // TODO(benchan): This code conditionally returns a nullptr to avoid
       // CellularCapabilityGSM::InitProperties (and thus
       // CellularCapabilityGSM::GetIMSI) from being called during the
@@ -205,14 +205,14 @@ class CellularCapabilityGSMTest : public testing::Test {
           test_->card_proxy_.release() : nullptr;
     }
 
-    virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       return test_->network_proxy_.release();
     }
 
    private:
-    CellularCapabilityGSMTest *test_;
+    CellularCapabilityGSMTest* test_;
   };
 
   void SetProxy() {
@@ -316,13 +316,13 @@ class CellularCapabilityGSMTest : public testing::Test {
   std::unique_ptr<MockModemGSMCardProxy> card_proxy_;
   std::unique_ptr<MockModemGSMNetworkProxy> network_proxy_;
   TestProxyFactory proxy_factory_;
-  CellularCapabilityGSM *capability_;  // Owned by |cellular_|.
-  DeviceMockAdaptor *device_adaptor_;  // Owned by |cellular_|.
+  CellularCapabilityGSM* capability_;  // Owned by |cellular_|.
+  DeviceMockAdaptor* device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;
 
   // Set when required and passed to |cellular_|. Owned by |cellular_|.
-  MockMobileOperatorInfo *mock_home_provider_info_;
-  MockMobileOperatorInfo *mock_serving_operator_info_;
+  MockMobileOperatorInfo* mock_home_provider_info_;
+  MockMobileOperatorInfo* mock_serving_operator_info_;
 };
 
 const char CellularCapabilityGSMTest::kAddress[] = "1122334455";
@@ -569,7 +569,7 @@ TEST_F(CellularCapabilityGSMTest, ParseScanResultProviderLookup) {
   static const char kID[] = "10001";
   const string kLongName = "TestNetworkLongName";
   // Replace the |MobileOperatorInfo| used by |ParseScanResult| by a mock.
-  auto *mock_mobile_operator_info = new MockMobileOperatorInfo(
+  auto* mock_mobile_operator_info = new MockMobileOperatorInfo(
       &dispatcher_,
       "MockParseScanResult");
   capability_->mobile_operator_info_.reset(mock_mobile_operator_info);

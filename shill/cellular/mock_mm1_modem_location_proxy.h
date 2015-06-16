@@ -21,12 +21,12 @@ class MockModemLocationProxy : public ModemLocationProxyInterface {
   // Inherited methods from ModemLocationProxyInterface.
   MOCK_METHOD5(Setup, void(uint32_t sources,
                            bool signal_location,
-                           Error *error,
-                           const ResultCallback &callback,
+                           Error* error,
+                           const ResultCallback& callback,
                            int timeout));
 
-  MOCK_METHOD3(GetLocation, void(Error *error,
-                                 const DBusEnumValueMapCallback &callback,
+  MOCK_METHOD3(GetLocation, void(Error* error,
+                                 const DBusEnumValueMapCallback& callback,
                                  int timeout));
 
  private:

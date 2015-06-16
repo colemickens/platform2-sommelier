@@ -19,8 +19,8 @@ class MockModemGobiProxy : public ModemGobiProxyInterface {
   MockModemGobiProxy();
   ~MockModemGobiProxy() override;
 
-  MOCK_METHOD4(SetCarrier, void(const std::string &carrier,
-                                Error *error, const ResultCallback &callback,
+  MOCK_METHOD4(SetCarrier, void(const std::string& carrier,
+                                Error* error, const ResultCallback& callback,
                                 int timeout));
 
  private:

@@ -10,8 +10,8 @@ using testing::ReturnRef;
 
 namespace shill {
 
-MockCellularService::MockCellularService(ModemInfo *modem_info,
-                                         const CellularRefPtr &device)
+MockCellularService::MockCellularService(ModemInfo* modem_info,
+                                         const CellularRefPtr& device)
     : CellularService(modem_info, device),
       default_activation_state_(kActivationStateUnknown) {
   ON_CALL(*this, activation_state())

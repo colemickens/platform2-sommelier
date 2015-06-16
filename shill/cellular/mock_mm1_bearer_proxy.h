@@ -19,11 +19,11 @@ class MockBearerProxy : public BearerProxyInterface {
   MockBearerProxy();
   ~MockBearerProxy() override;
 
-  MOCK_METHOD3(Connect, void(Error *error,
-                             const ResultCallback &callback,
+  MOCK_METHOD3(Connect, void(Error* error,
+                             const ResultCallback& callback,
                              int timeout));
-  MOCK_METHOD3(Disconnect, void(Error *error,
-                                const ResultCallback &callback,
+  MOCK_METHOD3(Disconnect, void(Error* error,
+                                const ResultCallback& callback,
                                 int timeout));
 };
 

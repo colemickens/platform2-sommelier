@@ -86,7 +86,7 @@ class MobileOperatorInfoInitTest : public Test {
         operator_info_impl_(operator_info_->impl()) {}
 
   void TearDown() override {
-    for (const auto &tmp_db_path : tmp_db_paths_) {
+    for (const auto& tmp_db_path : tmp_db_paths_) {
       base::DeleteFile(tmp_db_path, false);
     }
   }
@@ -110,7 +110,7 @@ class MobileOperatorInfoInitTest : public Test {
     EXPECT_EQ(0, operator_info_impl_->database()->imvno_size());
   }
 
-  const MobileOperatorDB *GetDatabase() {
+  const MobileOperatorDB* GetDatabase() {
     return operator_info_impl_->database();
   }
 
@@ -118,7 +118,7 @@ class MobileOperatorInfoInitTest : public Test {
   vector<FilePath> tmp_db_paths_;
   std::unique_ptr<MobileOperatorInfo> operator_info_;
   // Owned by |operator_info_| and tied to its life cycle.
-  MobileOperatorInfoImpl *operator_info_impl_;
+  MobileOperatorInfoImpl* operator_info_impl_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoInitTest);
@@ -212,13 +212,13 @@ class MobileOperatorInfoMainTest
  protected:
   // ///////////////////////////////////////////////////////////////////////////
   // Helper functions.
-  void VerifyMNOWithUUID(const string &uuid) {
+  void VerifyMNOWithUUID(const string& uuid) {
     EXPECT_TRUE(operator_info_->IsMobileNetworkOperatorKnown());
     EXPECT_FALSE(operator_info_->IsMobileVirtualNetworkOperatorKnown());
     EXPECT_EQ(uuid, operator_info_->uuid());
   }
 
-  void VerifyMVNOWithUUID(const string &uuid) {
+  void VerifyMVNOWithUUID(const string& uuid) {
     EXPECT_TRUE(operator_info_->IsMobileNetworkOperatorKnown());
     EXPECT_TRUE(operator_info_->IsMobileVirtualNetworkOperatorKnown());
     EXPECT_EQ(uuid, operator_info_->uuid());
@@ -254,39 +254,39 @@ class MobileOperatorInfoMainTest
   // Use these wrappers to send updates to |operator_info_|. These wrappers
   // optionally run the dispatcher if we want strict checking of the number of
   // events raised.
-  void UpdateMCCMNC(const std::string &mccmnc) {
+  void UpdateMCCMNC(const std::string& mccmnc) {
     operator_info_->UpdateMCCMNC(mccmnc);
     DispatchPendingEventsIfStrict();
   }
 
-  void UpdateSID(const std::string &sid) {
+  void UpdateSID(const std::string& sid) {
     operator_info_->UpdateSID(sid);
     DispatchPendingEventsIfStrict();
   }
 
-  void UpdateIMSI(const std::string &imsi) {
+  void UpdateIMSI(const std::string& imsi) {
     operator_info_->UpdateIMSI(imsi);
     DispatchPendingEventsIfStrict();
   }
 
-  void UpdateICCID(const std::string &iccid) {
+  void UpdateICCID(const std::string& iccid) {
     operator_info_->UpdateICCID(iccid);
     DispatchPendingEventsIfStrict();
   }
 
-  void UpdateNID(const std::string &nid) {
+  void UpdateNID(const std::string& nid) {
     operator_info_->UpdateNID(nid);
     DispatchPendingEventsIfStrict();
   }
 
-  void UpdateOperatorName(const std::string &operator_name) {
+  void UpdateOperatorName(const std::string& operator_name) {
     operator_info_->UpdateOperatorName(operator_name);
     DispatchPendingEventsIfStrict();
   }
 
-  void UpdateOnlinePortal(const std::string &url,
-                          const std::string &method,
-                          const std::string &post_data) {
+  void UpdateOnlinePortal(const std::string& url,
+                          const std::string& method,
+                          const std::string& post_data) {
     operator_info_->UpdateOnlinePortal(url, method, post_data);
     DispatchPendingEventsIfStrict();
   }
@@ -1073,7 +1073,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     EXPECT_EQ(mccmnc_list_.size(), operator_info_->mccmnc_list().size());
     set<string> mccmnc_set(operator_info_->mccmnc_list().begin(),
                            operator_info_->mccmnc_list().end());
-    for (const auto &mccmnc : mccmnc_list_) {
+    for (const auto& mccmnc : mccmnc_list_) {
       EXPECT_TRUE(mccmnc_set.find(mccmnc) != mccmnc_set.end());
     }
     if (mccmnc_list_.size() > 0) {
@@ -1087,13 +1087,13 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
 
     // This comparison breaks if two apns have the same |apn| field.
     EXPECT_EQ(apn_list_.size(), operator_info_->apn_list().size());
-    map<string, const MobileOperatorInfo::MobileAPN *> mobile_apns;
-    for (const auto &apn_node : operator_info_->apn_list()) {
+    map<string, const MobileOperatorInfo::MobileAPN*> mobile_apns;
+    for (const auto& apn_node : operator_info_->apn_list()) {
       mobile_apns[apn_node->apn] = apn_node;
     }
-    for (const auto &apn_lhs : apn_list_) {
+    for (const auto& apn_lhs : apn_list_) {
       ASSERT_TRUE(mobile_apns.find(apn_lhs->apn) != mobile_apns.end());
-      const auto &apn_rhs = mobile_apns[apn_lhs->apn];
+      const auto& apn_rhs = mobile_apns[apn_lhs->apn];
       // Only comparing apn, name, username, password.
       EXPECT_EQ(apn_lhs->apn, apn_rhs->apn);
       EXPECT_EQ(apn_lhs->username, apn_rhs->username);
@@ -1105,12 +1105,12 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     EXPECT_EQ(olp_list_.size(), operator_info_->olp_list().size());
     // This comparison breaks if two OLPs have the same |url|.
     map<string, MobileOperatorInfo::OnlinePortal> olps;
-    for (const auto &olp : operator_info_->olp_list()) {
+    for (const auto& olp : operator_info_->olp_list()) {
       olps[olp.url] = olp;
     }
-    for (const auto &olp : olp_list_) {
+    for (const auto& olp : olp_list_) {
       ASSERT_TRUE(olps.find(olp.url) != olps.end());
-      const auto &olp_rhs = olps[olp.url];
+      const auto& olp_rhs = olps[olp.url];
       EXPECT_EQ(olp.method, olp_rhs.method);
       EXPECT_EQ(olp.post_data, olp_rhs.post_data);
     }
@@ -1118,7 +1118,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     EXPECT_EQ(sid_list_.size(), operator_info_->sid_list().size());
     set<string> sid_set(operator_info_->sid_list().begin(),
                         operator_info_->sid_list().end());
-    for (const auto &sid : sid_list_) {
+    for (const auto& sid : sid_list_) {
       EXPECT_TRUE(sid_set.find(sid) != sid_set.end());
     }
     if (sid_list_.size() > 0) {
@@ -1135,14 +1135,14 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   }
 
   void VerifyNameListsMatch(
-      const vector<MobileOperatorInfo::LocalizedName> &operator_name_list_lhs,
-      const vector<MobileOperatorInfo::LocalizedName> &operator_name_list_rhs) {
+      const vector<MobileOperatorInfo::LocalizedName>& operator_name_list_lhs,
+      const vector<MobileOperatorInfo::LocalizedName>& operator_name_list_rhs) {
     // This comparison breaks if two localized names have the same |name|.
     map<string, MobileOperatorInfo::LocalizedName> localized_names;
-    for (const auto &localized_name : operator_name_list_rhs) {
+    for (const auto& localized_name : operator_name_list_rhs) {
       localized_names[localized_name.name] = localized_name;
     }
-    for (const auto &localized_name : operator_name_list_lhs) {
+    for (const auto& localized_name : operator_name_list_lhs) {
       EXPECT_TRUE(localized_names.find(localized_name.name) !=
                   localized_names.end());
       EXPECT_EQ(localized_name.language,
@@ -1167,7 +1167,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     operator_name_list_.push_back({"name200002", ""});
 
     apn_list_.clear();
-    MobileOperatorInfo::MobileAPN *apn;
+    MobileOperatorInfo::MobileAPN* apn;
     apn = new MobileOperatorInfo::MobileAPN();
     apn->apn = "test@test.com";
     apn->username = "testuser";
@@ -1200,7 +1200,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     operator_name_list_.push_back({"name200102", ""});
 
     apn_list_.clear();
-    MobileOperatorInfo::MobileAPN *apn;
+    MobileOperatorInfo::MobileAPN* apn;
     apn = new MobileOperatorInfo::MobileAPN();
     apn->apn = "test2@test.com";
     apn->username = "testuser2";
@@ -1470,7 +1470,7 @@ TEST_P(MobileOperatorInfoDataTest, FilteredOLP) {
   ASSERT_EQ(2, operator_info_->olp_list().size());
   EXPECT_NE("olp@sid", operator_info_->olp_list()[0].url);
   bool found_olp_by_mccmnc = false;
-  for (const auto &olp : operator_info_->olp_list()) {
+  for (const auto& olp : operator_info_->olp_list()) {
     found_olp_by_mccmnc |= ("olp@mccmnc" == olp.url);
   }
   EXPECT_TRUE(found_olp_by_mccmnc);
@@ -1489,7 +1489,7 @@ TEST_P(MobileOperatorInfoDataTest, FilteredOLP) {
   ASSERT_EQ(2, operator_info_->olp_list().size());
   EXPECT_NE("olp@mccmnc", operator_info_->olp_list()[0].url);
   bool found_olp_by_sid = false;
-  for (const auto &olp : operator_info_->olp_list()) {
+  for (const auto& olp : operator_info_->olp_list()) {
     found_olp_by_sid |= ("olp@sid" == olp.url);
   }
   EXPECT_TRUE(found_olp_by_sid);

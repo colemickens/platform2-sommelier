@@ -60,7 +60,7 @@ class ModemManagerTest : public Test {
   MockManager manager_;
   MockModemInfo modem_info_;
   MockProxyFactory proxy_factory_;
-  MockDBusServiceProxy *dbus_service_proxy_;
+  MockDBusServiceProxy* dbus_service_proxy_;
 };
 
 const char ModemManagerTest::kService[] = "org.chromium.ModemManager";
@@ -153,9 +153,9 @@ TEST_F(ModemManagerCoreTest, AddRemoveModem) {
 
 class ModemManagerClassicMockInit : public ModemManagerClassic {
  public:
-  ModemManagerClassicMockInit(const string &service,
-                              const string &path,
-                              ModemInfo *modem_info_) :
+  ModemManagerClassicMockInit(const string& service,
+                              const string& path,
+                              ModemInfo* modem_info_) :
       ModemManagerClassic(service, path, modem_info_) {}
 
   MOCK_METHOD1(InitModemClassic, void(shared_ptr<ModemClassic>));
@@ -202,12 +202,12 @@ TEST_F(ModemManagerClassicTest, Connect) {
 
 class ModemManager1MockInit : public ModemManager1 {
  public:
-  ModemManager1MockInit(const string &service,
-                        const string &path,
-                        ModemInfo *modem_info_) :
+  ModemManager1MockInit(const string& service,
+                        const string& path,
+                        ModemInfo* modem_info_) :
       ModemManager1(service, path, modem_info_) {}
   MOCK_METHOD2(InitModem1, void(shared_ptr<Modem1>,
-                                const DBusInterfaceToProperties &));
+                                const DBusInterfaceToProperties&));
 };
 
 
@@ -228,7 +228,7 @@ class ModemManager1Test : public ModemManagerTest {
     modem_manager_.proxy_factory_ = nullptr;
   }
 
-  void Connect(const DBusObjectsWithProperties &expected_objects) {
+  void Connect(const DBusObjectsWithProperties& expected_objects) {
     EXPECT_CALL(proxy_factory_, CreateDBusObjectManagerProxy(kPath, kOwner))
         .WillOnce(ReturnAndReleasePointee(&proxy_));
     EXPECT_CALL(*proxy_, set_interfaces_added_callback(_));

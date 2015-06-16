@@ -162,7 +162,7 @@ class CellularTest : public testing::Test {
   }
 
   virtual void SetUp() {
-    static_cast<Device *>(device_.get())->rtnl_handler_ = &rtnl_handler_;
+    static_cast<Device*>(device_.get())->rtnl_handler_ = &rtnl_handler_;
     device_->set_dhcp_provider(&dhcp_provider_);
     EXPECT_CALL(*modem_info_.mock_manager(), device_info())
         .WillRepeatedly(Return(&device_info_));
@@ -204,28 +204,28 @@ class CellularTest : public testing::Test {
     device_->set_serving_operator_info(mock_serving_operator_info_);
   }
 
-  void InvokeEnable(bool enable, Error *error,
-                    const ResultCallback &callback, int timeout) {
+  void InvokeEnable(bool enable, Error* error,
+                    const ResultCallback& callback, int timeout) {
     callback.Run(Error());
   }
   void InvokeEnableReturningWrongState(
-      bool enable, Error *error, const ResultCallback &callback, int timeout) {
+      bool enable, Error* error, const ResultCallback& callback, int timeout) {
     callback.Run(Error(Error::kWrongState));
   }
-  void InvokeGetSignalQuality(Error *error,
-                              const SignalQualityCallback &callback,
+  void InvokeGetSignalQuality(Error* error,
+                              const SignalQualityCallback& callback,
                               int timeout) {
     callback.Run(kStrength, Error());
   }
-  void InvokeGetModemStatus(Error *error,
-                            const DBusPropertyMapCallback &callback,
+  void InvokeGetModemStatus(Error* error,
+                            const DBusPropertyMapCallback& callback,
                             int timeout) {
     DBusPropertiesMap props;
     props["carrier"].writer().append_string(kTestCarrier);
     props["unknown-property"].writer().append_string("irrelevant-value");
     callback.Run(props, Error());
   }
-  void InvokeGetModemInfo(Error *error, const ModemInfoCallback &callback,
+  void InvokeGetModemInfo(Error* error, const ModemInfoCallback& callback,
                             int timeout) {
     static const char kManufacturer[] = "Company";
     static const char kModelID[] = "Gobi 2000";
@@ -236,97 +236,97 @@ class CellularTest : public testing::Test {
     info._3 = kHWRev;
     callback.Run(info, Error());
   }
-  void InvokeGetRegistrationState1X(Error *error,
-                                    const RegistrationStateCallback &callback,
+  void InvokeGetRegistrationState1X(Error* error,
+                                    const RegistrationStateCallback& callback,
                                     int timeout) {
     callback.Run(MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
                  MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
                  Error());
   }
-  void InvokeGetIMEI(Error *error, const GSMIdentifierCallback &callback,
+  void InvokeGetIMEI(Error* error, const GSMIdentifierCallback& callback,
                      int timeout) {
     callback.Run(kIMEI, Error());
   }
-  void InvokeGetIMSI(Error *error, const GSMIdentifierCallback &callback,
+  void InvokeGetIMSI(Error* error, const GSMIdentifierCallback& callback,
                      int timeout) {
     callback.Run(kIMSI, Error());
   }
-  void InvokeGetMSISDN(Error *error, const GSMIdentifierCallback &callback,
+  void InvokeGetMSISDN(Error* error, const GSMIdentifierCallback& callback,
                        int timeout) {
     callback.Run(kMSISDN, Error());
   }
-  void InvokeGetSPN(Error *error, const GSMIdentifierCallback &callback,
+  void InvokeGetSPN(Error* error, const GSMIdentifierCallback& callback,
                     int timeout) {
     callback.Run(kTestCarrierSPN, Error());
   }
-  void InvokeGetRegistrationInfo(Error *error,
-                                 const RegistrationInfoCallback &callback,
+  void InvokeGetRegistrationInfo(Error* error,
+                                 const RegistrationInfoCallback& callback,
                                  int timeout) {
     static const char kNetworkID[] = "22803";
     callback.Run(MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING,
                  kNetworkID, kTestCarrier, Error());
   }
-  void InvokeRegister(const string &network_id,
-                      Error *error,
-                      const ResultCallback &callback,
+  void InvokeRegister(const string& network_id,
+                      Error* error,
+                      const ResultCallback& callback,
                       int timeout) {
     callback.Run(Error());
   }
-  void InvokeGetRegistrationState(Error *error,
-                                  const RegistrationStateCallback &callback,
+  void InvokeGetRegistrationState(Error* error,
+                                  const RegistrationStateCallback& callback,
                                   int timeout) {
     callback.Run(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,
                  MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
                  Error());
   }
   void InvokeGetRegistrationStateUnregistered(
-      Error *error,
-      const RegistrationStateCallback &callback,
+      Error* error,
+      const RegistrationStateCallback& callback,
       int timeout) {
     callback.Run(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
                  MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
                  Error());
   }
-  void InvokeConnect(DBusPropertiesMap props, Error *error,
-                     const ResultCallback &callback, int timeout) {
+  void InvokeConnect(DBusPropertiesMap props, Error* error,
+                     const ResultCallback& callback, int timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
     callback.Run(Error());
   }
-  void InvokeConnectFail(DBusPropertiesMap props, Error *error,
-                         const ResultCallback &callback, int timeout) {
+  void InvokeConnectFail(DBusPropertiesMap props, Error* error,
+                         const ResultCallback& callback, int timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
     callback.Run(Error(Error::kNotOnHomeNetwork));
   }
-  void InvokeConnectFailNoService(DBusPropertiesMap props, Error *error,
-                                  const ResultCallback &callback, int timeout) {
+  void InvokeConnectFailNoService(DBusPropertiesMap props, Error* error,
+                                  const ResultCallback& callback, int timeout) {
     device_->service_ = nullptr;
     callback.Run(Error(Error::kNotOnHomeNetwork));
   }
-  void InvokeConnectSuccessNoService(DBusPropertiesMap props, Error *error,
-                                     const ResultCallback &callback,
+  void InvokeConnectSuccessNoService(DBusPropertiesMap props, Error* error,
+                                     const ResultCallback& callback,
                                      int timeout) {
     device_->service_ = nullptr;
     callback.Run(Error());
   }
-  void InvokeDisconnect(Error *error, const ResultCallback &callback,
+  void InvokeDisconnect(Error* error, const ResultCallback& callback,
                         int timeout) {
     if (!callback.is_null())
       callback.Run(Error());
   }
-  void InvokeDisconnectFail(Error *error, const ResultCallback &callback,
+  void InvokeDisconnectFail(Error* error, const ResultCallback& callback,
                             int timeout) {
     error->Populate(Error::kOperationFailed);
     if (!callback.is_null())
       callback.Run(*error);
   }
-  void InvokeDisconnectMM1(const ::DBus::Path &bearer, Error *error,
-                           const ResultCallback &callback, int timeout) {
+  void InvokeDisconnectMM1(const ::DBus::Path& bearer, Error* error,
+                           const ResultCallback& callback, int timeout) {
     if (!callback.is_null())
       callback.Run(Error());
   }
-  void InvokeSetPowerState(const uint32_t &power_state,
-                           Error *error,
-                           const ResultCallback &callback,
+  void InvokeSetPowerState(const uint32_t& power_state,
+                           Error* error,
+                           const ResultCallback& callback,
                            int timeout) {
     callback.Run(Error());
   }
@@ -368,7 +368,7 @@ class CellularTest : public testing::Test {
   }
 
   void StartPPP(int pid) {
-    MockGLib &mock_glib(*dynamic_cast<MockGLib *>(modem_info_.glib()));
+    MockGLib& mock_glib(*dynamic_cast<MockGLib*>(modem_info_.glib()));
     EXPECT_CALL(mock_glib, ChildWatchAdd(pid, _, _));
     EXPECT_CALL(mock_glib, SpawnAsync(_, _, _, _, _, _, _, _))
         .WillOnce(DoAll(SetArgumentPointee<6>(pid), Return(true)));
@@ -392,7 +392,7 @@ class CellularTest : public testing::Test {
 
   void ExpectPPPStopped() {
     auto mock_ppp_device =
-        dynamic_cast<MockPPPDevice *>(device_->ppp_device_.get());
+        dynamic_cast<MockPPPDevice*>(device_->ppp_device_.get());
     EXPECT_CALL(*mock_ppp_device, DropConnection());
   }
 
@@ -409,20 +409,20 @@ class CellularTest : public testing::Test {
         .Times(AnyNumber());
     EXPECT_CALL(*modem_info_.mock_manager(), UpdateEnabledTechnologies())
         .Times(AnyNumber());
-    EXPECT_CALL(*dynamic_cast<DeviceMockAdaptor *>(device_->adaptor()),
+    EXPECT_CALL(*dynamic_cast<DeviceMockAdaptor*>(device_->adaptor()),
                 EmitBoolChanged(_, _)).Times(AnyNumber());
   }
 
-  mm1::MockModemProxy *SetupOnAfterResume() {
+  mm1::MockModemProxy* SetupOnAfterResume() {
     SetCellularType(Cellular::kTypeUniversal);
     SetCommonOnAfterResumeExpectations();
     return mm1_proxy_.get();  // Before the capability snags it.
   }
 
-  void VerifyOperatorMap(const Stringmap &operator_map,
-                         const string &code,
-                         const string &name,
-                         const string &country) {
+  void VerifyOperatorMap(const Stringmap& operator_map,
+                         const string& code,
+                         const string& name,
+                         const string& country) {
     Stringmap::const_iterator it;
     Stringmap::const_iterator endit = operator_map.end();
 
@@ -449,7 +449,7 @@ class CellularTest : public testing::Test {
     }
   }
 
-  MOCK_METHOD1(TestCallback, void(const Error &error));
+  MOCK_METHOD1(TestCallback, void(const Error& error));
 
  protected:
   static const char kTestDeviceName[];
@@ -478,39 +478,39 @@ class CellularTest : public testing::Test {
 
   class TestProxyFactory : public ProxyFactory {
    public:
-    explicit TestProxyFactory(CellularTest *test) : test_(test) {}
+    explicit TestProxyFactory(CellularTest* test) : test_(test) {}
 
-    virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
-        const std::string &path,
-        const std::string &service) {
+    virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
+        const std::string& path,
+        const std::string& service) {
       CHECK(test_->dbus_properties_proxy_);
       return test_->dbus_properties_proxy_.release();
     }
 
-    virtual ModemProxyInterface *CreateModemProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemProxyInterface* CreateModemProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       CHECK(test_->proxy_);
       return test_->proxy_.release();
     }
 
-    virtual ModemSimpleProxyInterface *CreateModemSimpleProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemSimpleProxyInterface* CreateModemSimpleProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       CHECK(test_->simple_proxy_);
       return test_->simple_proxy_.release();
     }
 
-    virtual ModemCDMAProxyInterface *CreateModemCDMAProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemCDMAProxyInterface* CreateModemCDMAProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       CHECK(test_->cdma_proxy_);
       return test_->cdma_proxy_.release();
     }
 
-    virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemGSMCardProxyInterface* CreateModemGSMCardProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       // TODO(benchan): This code conditionally returns a nullptr to avoid
       // CellularCapabilityGSM::InitProperties (and thus
       // CellularCapabilityGSM::GetIMSI) from being called during the
@@ -521,36 +521,36 @@ class CellularTest : public testing::Test {
           test_->gsm_card_proxy_.release() : nullptr;
     }
 
-    virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       CHECK(test_->gsm_network_proxy_);
       return test_->gsm_network_proxy_.release();
     }
 
-    virtual mm1::ModemModem3gppProxyInterface *CreateMM1ModemModem3gppProxy(
-      const std::string &path,
-      const std::string &service) {
+    virtual mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
+      const std::string& path,
+      const std::string& service) {
       CHECK(test_->mm1_modem_3gpp_proxy_);
       return test_->mm1_modem_3gpp_proxy_.release();
     }
 
-    virtual mm1::ModemProxyInterface *CreateMM1ModemProxy(
-      const std::string &path,
-      const std::string &service) {
+    virtual mm1::ModemProxyInterface* CreateMM1ModemProxy(
+      const std::string& path,
+      const std::string& service) {
       CHECK(test_->mm1_proxy_);
       return test_->mm1_proxy_.release();
     }
 
-    virtual mm1::ModemSimpleProxyInterface *CreateMM1ModemSimpleProxy(
-        const string &/*path*/,
-        const string &/*service*/) {
+    virtual mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(
+        const string& /*path*/,
+        const string& /*service*/) {
       CHECK(test_->mm1_simple_proxy_);
       return test_->mm1_simple_proxy_.release();
     }
 
    private:
-    CellularTest *test_;
+    CellularTest* test_;
   };
   void StartRTNLHandler();
   void StopRTNLHandler();
@@ -563,33 +563,33 @@ class CellularTest : public testing::Test {
     device_->InitCapability(type);
   }
 
-  CellularCapabilityClassic *GetCapabilityClassic() {
-    return dynamic_cast<CellularCapabilityClassic *>(
+  CellularCapabilityClassic* GetCapabilityClassic() {
+    return dynamic_cast<CellularCapabilityClassic*>(
         device_->capability_.get());
   }
 
-  CellularCapabilityCDMA *GetCapabilityCDMA() {
-    return dynamic_cast<CellularCapabilityCDMA *>(device_->capability_.get());
+  CellularCapabilityCDMA* GetCapabilityCDMA() {
+    return dynamic_cast<CellularCapabilityCDMA*>(device_->capability_.get());
   }
 
-  CellularCapabilityGSM *GetCapabilityGSM() {
-    return dynamic_cast<CellularCapabilityGSM *>(device_->capability_.get());
+  CellularCapabilityGSM* GetCapabilityGSM() {
+    return dynamic_cast<CellularCapabilityGSM*>(device_->capability_.get());
   }
 
-  CellularCapabilityUniversal *GetCapabilityUniversal() {
-    return dynamic_cast<CellularCapabilityUniversal *>(
+  CellularCapabilityUniversal* GetCapabilityUniversal() {
+    return dynamic_cast<CellularCapabilityUniversal*>(
         device_->capability_.get());
   }
 
   // Different tests simulate a cellular service being set using a real /mock
   // service.
-  CellularService *SetService() {
+  CellularService* SetService() {
     device_->service_ = new CellularService(&modem_info_, device_);
     return device_->service_.get();
   }
-  MockCellularService *SetMockService() {
+  MockCellularService* SetMockService() {
     device_->service_ = new MockCellularService(&modem_info_, device_);
-    return static_cast<MockCellularService *>(device_->service_.get());
+    return static_cast<MockCellularService*>(device_->service_.get());
   }
 
   void set_enabled_persistent(bool new_value) {
@@ -598,7 +598,7 @@ class CellularTest : public testing::Test {
 
   void SetCapabilityUniversalActiveBearer(unique_ptr<CellularBearer> bearer) {
     SetCellularType(Cellular::kTypeUniversal);
-    CellularCapabilityUniversal *capability = GetCapabilityUniversal();
+    CellularCapabilityUniversal* capability = GetCapabilityUniversal();
     capability->active_bearer_ = std::move(bearer);
   }
 
@@ -621,8 +621,8 @@ class CellularTest : public testing::Test {
   unique_ptr<mm1::MockModemProxy> mm1_proxy_;
   unique_ptr<mm1::MockModemSimpleProxy> mm1_simple_proxy_;
   TestProxyFactory proxy_factory_;
-  MockMobileOperatorInfo *mock_home_provider_info_;
-  MockMobileOperatorInfo *mock_serving_operator_info_;
+  MockMobileOperatorInfo* mock_home_provider_info_;
+  MockMobileOperatorInfo* mock_serving_operator_info_;
   CellularRefPtr device_;
 };
 
@@ -1287,7 +1287,7 @@ TEST_F(CellularTest, LinkEventWontDestroyService) {
   // If the network interface goes down, Cellular::LinkEvent should
   // drop the connection but the service object should persist.
   device_->state_ = Cellular::kStateLinked;
-  CellularService *service = SetService();
+  CellularService* service = SetService();
   device_->LinkEvent(0, 0);  // flags doesn't contain IFF_UP
   EXPECT_EQ(device_->state_, Cellular::kStateConnected);
   EXPECT_EQ(device_->service_, service);
@@ -1376,7 +1376,7 @@ TEST_F(CellularTest, ModemStateChangeValidConnected) {
 
 TEST_F(CellularTest, ModemStateChangeLostRegistration) {
   SetCellularType(Cellular::kTypeUniversal);
-  CellularCapabilityUniversal *capability = GetCapabilityUniversal();
+  CellularCapabilityUniversal* capability = GetCapabilityUniversal();
   capability->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
   EXPECT_TRUE(capability->IsRegistered());
   device_->set_modem_state(Cellular::kModemStateRegistered);
@@ -1435,9 +1435,9 @@ class TestRPCTaskDelegate :
       public RPCTaskDelegate,
       public base::SupportsWeakPtr<TestRPCTaskDelegate> {
  public:
-  virtual void GetLogin(std::string *user, std::string *password) {}
-  virtual void Notify(const std::string &reason,
-                      const std::map<std::string, std::string> &dict) {}
+  virtual void GetLogin(std::string* user, std::string* password) {}
+  virtual void Notify(const std::string& reason,
+                      const std::map<std::string, std::string>& dict) {}
 };
 
 TEST_F(CellularTest, LinkEventUpWithPPP) {
@@ -1483,7 +1483,7 @@ TEST_F(CellularTest, StartPPPAlreadyStarted) {
 }
 
 TEST_F(CellularTest, StartPPPAfterEthernetUp) {
-  CellularService *service(SetService());
+  CellularService* service(SetService());
   device_->state_ = Cellular::kStateLinked;
   device_->set_ipconfig(dhcp_config_);
   device_->SelectService(service);
@@ -1506,7 +1506,7 @@ TEST_F(CellularTest, GetLogin) {
   // Provides expected username and password in normal case.
   const char kFakeUsername[] = "fake-user";
   const char kFakePassword[] = "fake-password";
-  CellularService &service(*SetService());
+  CellularService& service(*SetService());
   service.ppp_username_ = kFakeUsername;
   service.ppp_password_ = kFakePassword;
   device_->GetLogin(&username_to_pppd, &password_to_pppd);
@@ -1514,7 +1514,7 @@ TEST_F(CellularTest, GetLogin) {
 
 TEST_F(CellularTest, Notify) {
   // Common setup.
-  MockPPPDeviceFactory *ppp_device_factory =
+  MockPPPDeviceFactory* ppp_device_factory =
       MockPPPDeviceFactory::GetInstance();
   const int kPID = 91;
   device_->ppp_device_factory_ = ppp_device_factory;
@@ -1604,7 +1604,7 @@ TEST_F(CellularTest, PPPConnectionFailedBeforeAuth) {
   // where pppd disconnects after connecting).
   const int kPID = 52;
   const map<string, string> kEmptyArgs;
-  MockCellularService *service = SetMockService();
+  MockCellularService* service = SetMockService();
   StartPPP(kPID);
 
   ExpectDisconnectCapabilityUniversal();
@@ -1624,7 +1624,7 @@ TEST_F(CellularTest, PPPConnectionFailedDuringAuth) {
   // where pppd disconnects after connecting).
   const int kPID = 52;
   const map<string, string> kEmptyArgs;
-  MockCellularService *service = SetMockService();
+  MockCellularService* service = SetMockService();
   StartPPP(kPID);
 
   ExpectDisconnectCapabilityUniversal();
@@ -1646,7 +1646,7 @@ TEST_F(CellularTest, PPPConnectionFailedAfterAuth) {
   // connecting).
   const int kPID = 52;
   const map<string, string> kEmptyArgs;
-  MockCellularService *service = SetMockService();
+  MockCellularService* service = SetMockService();
   StartPPP(kPID);
 
   EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
@@ -1703,7 +1703,7 @@ TEST_F(CellularTest, DropConnectionPPP) {
 }
 
 TEST_F(CellularTest, ChangeServiceState) {
-  MockCellularService *service(SetMockService());
+  MockCellularService* service(SetMockService());
   EXPECT_CALL(*service, SetState(_));
   EXPECT_CALL(*service, SetFailure(_));
   EXPECT_CALL(*service, SetFailureSilent(_));
@@ -1718,7 +1718,7 @@ TEST_F(CellularTest, ChangeServiceState) {
 }
 
 TEST_F(CellularTest, ChangeServiceStatePPP) {
-  MockCellularService *service(SetMockService());
+  MockCellularService* service(SetMockService());
   scoped_refptr<MockPPPDevice> ppp_device(
       new MockPPPDevice(modem_info_.control_interface(),
                         nullptr, nullptr, nullptr, "fake_ppp0", -1));
@@ -1763,7 +1763,7 @@ TEST_F(CellularTest, OnAfterResumeDisabledWantDisabled) {
   // things alone.
 
   // Initial state.
-  mm1::MockModemProxy *mm1_proxy = SetupOnAfterResume();
+  mm1::MockModemProxy* mm1_proxy = SetupOnAfterResume();
   set_enabled_persistent(false);
   EXPECT_FALSE(device_->running());
   EXPECT_FALSE(device_->enabled_persistent());
@@ -1784,7 +1784,7 @@ TEST_F(CellularTest, OnAfterResumeDisableInProgressWantDisabled) {
   // complete before we suspended. We should leave things alone.
 
   // Initial state.
-  mm1::MockModemProxy *mm1_proxy = SetupOnAfterResume();
+  mm1::MockModemProxy* mm1_proxy = SetupOnAfterResume();
   Error error;
   EXPECT_CALL(*mm1_proxy, Enable(true, _, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
@@ -1826,7 +1826,7 @@ TEST_F(CellularTest, OnAfterResumeDisableQueuedWantEnabled) {
   // The tests exists to document this corner case, which we get wrong.
 
   // Initial state.
-  mm1::MockModemProxy *mm1_proxy = SetupOnAfterResume();
+  mm1::MockModemProxy* mm1_proxy = SetupOnAfterResume();
   EXPECT_CALL(*mm1_proxy, Enable(true, _, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
   device_->SetEnabled(true);
@@ -1899,7 +1899,7 @@ TEST_F(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   // device is currently enabled.
 
   // Initial state.
-  mm1::MockModemProxy *mm1_proxy = SetupOnAfterResume();
+  mm1::MockModemProxy* mm1_proxy = SetupOnAfterResume();
   EXPECT_CALL(*mm1_proxy, Enable(true, _, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
   device_->SetEnabled(true);
@@ -1977,7 +1977,7 @@ TEST_F(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
 TEST_F(CellularTest, OnAfterResumeDisabledWantEnabled) {
   // This is the ideal case. The disable process completed before
   // going into suspend.
-  mm1::MockModemProxy *mm1_proxy = SetupOnAfterResume();
+  mm1::MockModemProxy* mm1_proxy = SetupOnAfterResume();
   EXPECT_FALSE(device_->running());
   EXPECT_TRUE(device_->enabled_persistent());
   EXPECT_EQ(Cellular::kStateDisabled, device_->state_);
@@ -2080,7 +2080,7 @@ TEST_F(CellularTest, EstablishLinkDHCP) {
   SetCapabilityUniversalActiveBearer(std::move(bearer));
   device_->state_ = Cellular::kStateConnected;
 
-  MockCellularService *service = SetMockService();
+  MockCellularService* service = SetMockService();
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
 
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
@@ -2102,7 +2102,7 @@ TEST_F(CellularTest, EstablishLinkPPP) {
   device_->state_ = Cellular::kStateConnected;
 
   const int kPID = 123;
-  MockGLib &mock_glib(*dynamic_cast<MockGLib *>(modem_info_.glib()));
+  MockGLib& mock_glib(*dynamic_cast<MockGLib*>(modem_info_.glib()));
   EXPECT_CALL(mock_glib, ChildWatchAdd(kPID, _, _));
   EXPECT_CALL(mock_glib, SpawnAsync(_, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
@@ -2118,7 +2118,7 @@ TEST_F(CellularTest, EstablishLinkStatic) {
   const char kAddress[] = "10.0.0.1";
   const char kGateway[] = "10.0.0.254";
   const int32_t kSubnetPrefix = 16;
-  const char *const kDNS[] = {"10.0.0.2", "8.8.4.4", "8.8.8.8"};
+  const char* const kDNS[] = {"10.0.0.2", "8.8.4.4", "8.8.8.8"};
 
   unique_ptr<IPConfig::Properties> ipconfig_properties(
       new IPConfig::Properties);
@@ -2135,7 +2135,7 @@ TEST_F(CellularTest, EstablishLinkStatic) {
   SetCapabilityUniversalActiveBearer(std::move(bearer));
   device_->state_ = Cellular::kStateConnected;
 
-  MockCellularService *service = SetMockService();
+  MockCellularService* service = SetMockService();
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
 
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))

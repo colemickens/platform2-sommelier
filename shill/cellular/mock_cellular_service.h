@@ -15,23 +15,23 @@ namespace shill {
 
 class MockCellularService : public CellularService {
  public:
-  MockCellularService(ModemInfo *modem_info,
-                      const CellularRefPtr &device);
+  MockCellularService(ModemInfo* modem_info,
+                      const CellularRefPtr& device);
   ~MockCellularService() override;
 
   MOCK_METHOD0(AutoConnect, void());
-  MOCK_METHOD1(SetLastGoodApn, void(const Stringmap &apn_info));
+  MOCK_METHOD1(SetLastGoodApn, void(const Stringmap& apn_info));
   MOCK_METHOD0(ClearLastGoodApn, void());
-  MOCK_METHOD1(SetActivationState, void(const std::string &state));
-  MOCK_METHOD2(Connect, void(Error *error, const char *reason));
-  MOCK_METHOD2(Disconnect, void(Error *error, const char *reason));
+  MOCK_METHOD1(SetActivationState, void(const std::string& state));
+  MOCK_METHOD2(Connect, void(Error* error, const char* reason));
+  MOCK_METHOD2(Disconnect, void(Error* error, const char* reason));
   MOCK_METHOD1(SetState, void(ConnectState state));
   MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
   MOCK_METHOD1(SetFailureSilent, void(ConnectFailure failure));
   MOCK_CONST_METHOD0(state, ConnectState());
   MOCK_CONST_METHOD0(explicitly_disconnected, bool());
-  MOCK_CONST_METHOD0(activation_state, const std::string &());
-  MOCK_CONST_METHOD0(resume_start_time, const base::Time &());
+  MOCK_CONST_METHOD0(activation_state, const std::string&());
+  MOCK_CONST_METHOD0(resume_start_time, const base::Time&());
 
  private:
   std::string default_activation_state_;

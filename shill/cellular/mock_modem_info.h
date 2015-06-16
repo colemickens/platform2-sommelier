@@ -26,11 +26,11 @@ class MockModemInfo : public ModemInfo {
   MockModemInfo();
 
   // All nullptr parameters are replaced by mock objects.
-  MockModemInfo(ControlInterface *control,
-                EventDispatcher *dispatcher,
-                Metrics *metrics,
-                Manager *manager,
-                GLib *glib);
+  MockModemInfo(ControlInterface* control,
+                EventDispatcher* dispatcher,
+                Metrics* metrics,
+                Manager* manager,
+                GLib* glib);
 
   ~MockModemInfo() override;
 
@@ -62,7 +62,7 @@ class MockModemInfo : public ModemInfo {
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
-  MOCK_METHOD1(OnDeviceInfoAvailable, void(const std::string &link_name));
+  MOCK_METHOD1(OnDeviceInfoAvailable, void(const std::string& link_name));
 
  private:
   std::unique_ptr<MockControl> mock_control_;
@@ -72,7 +72,7 @@ class MockModemInfo : public ModemInfo {
   std::unique_ptr<MockGLib> mock_glib_;
 
   // owned by ModemInfo
-  MockPendingActivationStore *mock_pending_activation_store_;
+  MockPendingActivationStore* mock_pending_activation_store_;
 
   DISALLOW_COPY_AND_ASSIGN(MockModemInfo);
 };

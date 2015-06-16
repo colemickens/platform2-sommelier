@@ -19,31 +19,31 @@ class MockModemGSMCardProxy : public ModemGSMCardProxyInterface {
   MockModemGSMCardProxy();
   ~MockModemGSMCardProxy() override;
 
-  MOCK_METHOD3(GetIMEI, void(Error *error,
-                             const GSMIdentifierCallback &callback,
+  MOCK_METHOD3(GetIMEI, void(Error* error,
+                             const GSMIdentifierCallback& callback,
                              int timeout));
-  MOCK_METHOD3(GetIMSI, void(Error *error,
-                             const GSMIdentifierCallback &callback,
+  MOCK_METHOD3(GetIMSI, void(Error* error,
+                             const GSMIdentifierCallback& callback,
                              int timeout));
-  MOCK_METHOD3(GetSPN, void(Error *error,
-                            const GSMIdentifierCallback &callback,
+  MOCK_METHOD3(GetSPN, void(Error* error,
+                            const GSMIdentifierCallback& callback,
                             int timeout));
-  MOCK_METHOD3(GetMSISDN, void(Error *error,
-                               const GSMIdentifierCallback &callback,
+  MOCK_METHOD3(GetMSISDN, void(Error* error,
+                               const GSMIdentifierCallback& callback,
                                int timeout));
 
-  MOCK_METHOD5(EnablePIN, void(const std::string &pin, bool enabled,
-                               Error *error, const ResultCallback &callback,
+  MOCK_METHOD5(EnablePIN, void(const std::string& pin, bool enabled,
+                               Error* error, const ResultCallback& callback,
                                int timeout));
-  MOCK_METHOD4(SendPIN, void(const std::string &pin,
-                             Error *error, const ResultCallback &callback,
+  MOCK_METHOD4(SendPIN, void(const std::string& pin,
+                             Error* error, const ResultCallback& callback,
                              int timeout));
-  MOCK_METHOD5(SendPUK, void(const std::string &puk, const std::string &pin,
-                             Error *error, const ResultCallback &callback,
+  MOCK_METHOD5(SendPUK, void(const std::string& puk, const std::string& pin,
+                             Error* error, const ResultCallback& callback,
                              int timeout));
-  MOCK_METHOD5(ChangePIN, void(const std::string &old_pin,
-                               const std::string &new_pin,
-                               Error *error, const ResultCallback &callback,
+  MOCK_METHOD5(ChangePIN, void(const std::string& old_pin,
+                               const std::string& new_pin,
+                               Error* error, const ResultCallback& callback,
                                int timeout));
   MOCK_METHOD0(EnabledFacilityLocks, uint32_t());
 

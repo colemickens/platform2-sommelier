@@ -90,11 +90,11 @@ class ActivePassiveOutOfCreditsDetectorTest : public testing::Test {
     out_of_credits_detector_->NotifyServiceStateChanged(old_state, new_state);
   }
 
-  void SetTrafficMonitor(TrafficMonitor *traffic_monitor) {
+  void SetTrafficMonitor(TrafficMonitor* traffic_monitor) {
     out_of_credits_detector_->set_traffic_monitor(traffic_monitor);
   }
 
-  void SetConnectionHealthChecker(ConnectionHealthChecker *health_checker) {
+  void SetConnectionHealthChecker(ConnectionHealthChecker* health_checker) {
     out_of_credits_detector_->set_connection_health_checker(health_checker);
   }
 
@@ -231,7 +231,7 @@ TEST_F(ActivePassiveOutOfCreditsDetectorTest,
 }
 
 TEST_F(ActivePassiveOutOfCreditsDetectorTest, StartTrafficMonitor) {
-  MockTrafficMonitor *traffic_monitor = new StrictMock<MockTrafficMonitor>();
+  MockTrafficMonitor* traffic_monitor = new StrictMock<MockTrafficMonitor>();
   SetTrafficMonitor(traffic_monitor);  // Passes ownership.
 
   // Traffic monitor should only start when the service is connected.
@@ -252,7 +252,7 @@ TEST_F(ActivePassiveOutOfCreditsDetectorTest, StartTrafficMonitor) {
 
 TEST_F(ActivePassiveOutOfCreditsDetectorTest, StopTrafficMonitor) {
   // Traffic monitor should stop when the service is disconnected.
-  MockTrafficMonitor *traffic_monitor = new StrictMock<MockTrafficMonitor>();
+  MockTrafficMonitor* traffic_monitor = new StrictMock<MockTrafficMonitor>();
   SetTrafficMonitor(traffic_monitor);  // Passes ownership.
   EXPECT_CALL(*traffic_monitor, Start());
   EXPECT_CALL(*traffic_monitor, Stop());
@@ -275,7 +275,7 @@ TEST_F(ActivePassiveOutOfCreditsDetectorTest, OnNoNetworkRouting) {
   // Make sure the connection health checker starts when there is no network
   // routing.
   EXPECT_FALSE(out_of_credits_detector_->out_of_credits());
-  MockConnectionHealthChecker *health_checker =
+  MockConnectionHealthChecker* health_checker =
       new MockConnectionHealthChecker(
           service_->connection(),
           modem_info_.dispatcher(),
