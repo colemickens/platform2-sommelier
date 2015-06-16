@@ -22,12 +22,12 @@ Environment::Environment() {}
 Environment::~Environment() {}
 
 // static
-Environment *Environment::GetInstance() {
+Environment* Environment::GetInstance() {
   return g_environment.Pointer();
 }
 
-bool Environment::GetVariable(const string &name, string *value) {
-  char *v = getenv(name.c_str());
+bool Environment::GetVariable(const string& name, string* value) {
+  char* v = getenv(name.c_str());
   if (v) {
     *value = v;
     return true;
@@ -37,7 +37,7 @@ bool Environment::GetVariable(const string &name, string *value) {
 
 map<string, string> Environment::AsMap() {
   map<string, string> env;
-  for (char **var = environ; var && *var; var++) {
+  for (char** var = environ; var && *var; var++) {
     string v = *var;
     size_t assign = v.find('=');
     if (assign != string::npos) {

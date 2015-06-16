@@ -20,11 +20,11 @@ class Environment {
   virtual ~Environment();
 
   // This is a singleton -- use Environment::GetInstance()->Foo().
-  static Environment *GetInstance();
+  static Environment* GetInstance();
 
   // Sets |value| to the value of environment variable |name| and returns
   // true. Returns false if variable |name| is not set.
-  virtual bool GetVariable(const std::string &name, std::string *value);
+  virtual bool GetVariable(const std::string& name, std::string* value);
 
   // Parses and returns the environment as a name->value string map.
   virtual std::map<std::string, std::string> AsMap();

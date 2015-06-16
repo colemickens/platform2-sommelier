@@ -38,7 +38,7 @@ PPP::PPP() : running_(false) {}
 PPP::~PPP() {}
 
 // static
-PPP *PPP::GetInstance() {
+PPP* PPP::GetInstance() {
   return g_ppp.Pointer();
 }
 
@@ -52,7 +52,7 @@ void PPP::Init() {
   LOG(INFO) << "PPP started.";
 }
 
-bool PPP::GetSecret(string *username, string *password) {
+bool PPP::GetSecret(string* username, string* password) {
   LOG(INFO) << __func__;
   if (!CreateProxy()) {
     return false;
@@ -80,7 +80,7 @@ void PPP::OnAuthenticateDone() {
   }
 }
 
-void PPP::OnConnect(const string &ifname) {
+void PPP::OnConnect(const string& ifname) {
   LOG(INFO) << __func__ << "(" << ifname << ")";
   if (!ipcp_gotoptions[0].ouraddr) {
     LOG(ERROR) << "ouraddr not set.";
@@ -120,7 +120,7 @@ void PPP::OnDisconnect() {
 }
 
 bool PPP::CreateProxy() {
-  Environment *environment = Environment::GetInstance();
+  Environment* environment = Environment::GetInstance();
   string service, path;
   if (!environment->GetVariable(kRPCTaskServiceVariable, &service) ||
       !environment->GetVariable(kRPCTaskPathVariable, &path)) {
@@ -145,7 +145,7 @@ void PPP::DestroyProxy() {
 }
 
 // static
-string PPP::ConvertIPToText(const void *addr) {
+string PPP::ConvertIPToText(const void* addr) {
   char text[INET_ADDRSTRLEN];
   inet_ntop(AF_INET, addr, text, INET_ADDRSTRLEN);
   return text;

@@ -58,8 +58,8 @@ std::string NetfilterQueueProcessor::AddressAndPortToString(uint32_t ip,
 }
 
 bool NetfilterQueueProcessor::Packet::ParseNetfilterData(
-    struct nfq_data *netfilter_data) {
-  struct nfqnl_msg_packet_hdr *packet_header =
+    struct nfq_data* netfilter_data) {
+  struct nfqnl_msg_packet_hdr* packet_header =
       nfq_get_msg_packet_hdr(netfilter_data);
   if (!packet_header) {
     return false;
@@ -68,7 +68,7 @@ bool NetfilterQueueProcessor::Packet::ParseNetfilterData(
   in_device_ = nfq_get_indev(netfilter_data);
   out_device_ = nfq_get_outdev(netfilter_data);
 
-  unsigned char *payload;
+  unsigned char* payload;
   int payload_len = nfq_get_payload(netfilter_data, &payload);
   if (payload_len >= 0) {
     is_udp_ = ParsePayloadUDPData(payload, payload_len);
@@ -78,7 +78,7 @@ bool NetfilterQueueProcessor::Packet::ParseNetfilterData(
 }
 
 bool NetfilterQueueProcessor::Packet::ParsePayloadUDPData(
-    const unsigned char *payload, size_t payload_len) {
+    const unsigned char* payload, size_t payload_len) {
   struct iphdr ip;
 
   if (payload_len <= sizeof(ip)) {
@@ -234,17 +234,17 @@ void NetfilterQueueProcessor::Stop() {
 
 // static
 int NetfilterQueueProcessor::InputQueueCallback(
-    struct nfq_q_handle *queue_handle,
-    struct nfgenmsg *generic_message,
-    struct nfq_data *netfilter_data,
-    void *private_data) {
+    struct nfq_q_handle* queue_handle,
+    struct nfgenmsg* generic_message,
+    struct nfq_data* netfilter_data,
+    void* private_data) {
   Packet packet;
   if (!packet.ParseNetfilterData(netfilter_data)) {
     LOG(FATAL) << "Unable to parse netfilter data.";
   }
 
-  NetfilterQueueProcessor *processor =
-      reinterpret_cast<NetfilterQueueProcessor *>(private_data);
+  NetfilterQueueProcessor* processor =
+      reinterpret_cast<NetfilterQueueProcessor*>(private_data);
   uint32_t verdict;
   time_t now = time(NULL);
   if (processor->IsIncomingPacketAllowed(packet, now)) {
@@ -257,17 +257,17 @@ int NetfilterQueueProcessor::InputQueueCallback(
 
 // static
 int NetfilterQueueProcessor::OutputQueueCallback(
-    struct nfq_q_handle *queue_handle,
-    struct nfgenmsg *generic_message,
-    struct nfq_data *netfilter_data,
-    void *private_data) {
+    struct nfq_q_handle* queue_handle,
+    struct nfgenmsg* generic_message,
+    struct nfq_data* netfilter_data,
+    void* private_data) {
   Packet packet;
   if (!packet.ParseNetfilterData(netfilter_data)) {
     LOG(FATAL) << "Unable to get parse netfilter data.";
   }
 
-  NetfilterQueueProcessor *processor =
-      reinterpret_cast<NetfilterQueueProcessor *>(private_data);
+  NetfilterQueueProcessor* processor =
+      reinterpret_cast<NetfilterQueueProcessor*>(private_data);
   time_t now = time(NULL);
   processor->LogOutgoingPacket(packet, now);
   return nfq_set_verdict(queue_handle, packet.packet_id(), NF_ACCEPT, 0, NULL);
@@ -292,8 +292,8 @@ uint32_t NetfilterQueueProcessor::GetNetmaskForDevice(int device_index) {
     return INADDR_NONE;
   }
 
-  struct sockaddr_in *netmask_addr =
-      reinterpret_cast<struct sockaddr_in *>(&ifr.ifr_netmask);
+  struct sockaddr_in* netmask_addr =
+      reinterpret_cast<struct sockaddr_in*>(&ifr.ifr_netmask);
   return ntohl(netmask_addr->sin_addr.s_addr);
 }
 
@@ -301,7 +301,7 @@ void NetfilterQueueProcessor::ExpireListeners(time_t now) {
   time_t expiration_threshold = now - kExpirationIntervalSeconds;
   VLOG(2) << __func__ << " entered.";
   while (!listeners_.empty()) {
-    const ListenerEntryPtr &last_listener = listeners_.back();
+    const ListenerEntryPtr& last_listener = listeners_.back();
     if (last_listener->last_transmission >= expiration_threshold &&
         listeners_.size() <= kMaxListenerEntries) {
       break;
@@ -344,7 +344,7 @@ deque<NetfilterQueueProcessor::ListenerEntryPtr>::iterator
 }
 
 bool NetfilterQueueProcessor::IsIncomingPacketAllowed(
-    const Packet &packet, time_t now) {
+    const Packet& packet, time_t now) {
   VLOG(2) << __func__ << " entered.";
   VLOG(3) << "Incoming packet is from "
           << AddressAndPortToString(packet.source_ip(),
@@ -387,7 +387,7 @@ bool NetfilterQueueProcessor::IsIncomingPacketAllowed(
 }
 
 void NetfilterQueueProcessor::LogOutgoingPacket(
-    const Packet &packet, time_t now) {
+    const Packet& packet, time_t now) {
   VLOG(2) << __func__ << " entered.";
   if (!packet.is_udp()) {
     VLOG(2) << "Outgoing packet is not udp.";

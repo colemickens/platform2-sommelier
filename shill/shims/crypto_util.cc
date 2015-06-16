@@ -53,19 +53,19 @@ const size_t kMacLength = 12;
 // set *|rsa_ptr| to an RSA object which should be freed in the caller.
 // Returns the encrypted result in |encrypted_output| and returns true on
 // success.  Returns false on failure.
-bool EncryptByteStringImpl(const string &public_key,
-                           const string &data,
-                           RSA **rsa_ptr,
-                           string *encrypted_output) {
+bool EncryptByteStringImpl(const string& public_key,
+                           const string& data,
+                           RSA** rsa_ptr,
+                           string* encrypted_output) {
   CHECK(rsa_ptr);
   CHECK(!*rsa_ptr);
   CHECK(encrypted_output);
 
   // This pointer will be incremented internally by the parsing routine.
-  const unsigned char *throwaway_ptr =
-      reinterpret_cast<const unsigned char *>(public_key.data());
+  const unsigned char* throwaway_ptr =
+      reinterpret_cast<const unsigned char*>(public_key.data());
   *rsa_ptr = d2i_RSAPublicKey(NULL, &throwaway_ptr, public_key.length());
-  RSA *rsa = *rsa_ptr;
+  RSA* rsa = *rsa_ptr;
   if (!rsa) {
     LOG(ERROR) << "Failed to parse public key.";
     return false;
@@ -77,7 +77,7 @@ bool EncryptByteStringImpl(const string &public_key,
       data.length(),
       // The API helpfully tells us that this operation will treat this buffer
       // as read only, but fails to mark the parameter const.
-      reinterpret_cast<unsigned char *>(const_cast<char *>(data.data())),
+      reinterpret_cast<unsigned char*>(const_cast<char*>(data.data())),
       rsa_output.data(),
       rsa,
       RSA_PKCS1_PADDING);
@@ -86,7 +86,7 @@ bool EncryptByteStringImpl(const string &public_key,
     return false;
   }
 
-  encrypted_output->assign(reinterpret_cast<char *>(rsa_output.data()),
+  encrypted_output->assign(reinterpret_cast<char*>(rsa_output.data()),
                            encrypted_length);
   return true;
 }
@@ -94,7 +94,7 @@ bool EncryptByteStringImpl(const string &public_key,
 // Parse the EncryptDataMessage contained in |raw_input| and return an
 // EncryptDataResponse in output on success.  Returns true on success and
 // false otherwise.
-bool EncryptByteString(const string &raw_input, string *output) {
+bool EncryptByteString(const string& raw_input, string* output) {
   EncryptDataMessage message;
   if (!message.ParseFromString(raw_input)) {
     LOG(ERROR) << "Failed to read VerifyCredentialsMessage from stdin.";
@@ -106,7 +106,7 @@ bool EncryptByteString(const string &raw_input, string *output) {
     return false;
   }
 
-  RSA *rsa = NULL;
+  RSA* rsa = NULL;
   string encrypted_output;
   bool operation_successful = EncryptByteStringImpl(
       message.public_key(), message.data(), &rsa, &encrypted_output);
@@ -140,17 +140,17 @@ bool EncryptByteString(const string &raw_input, string *output) {
 // 3) |signed_data| matches the hashed |unsigned_data| encrypted with
 //    the public key in |certificate|.
 //
-// All pointers should be valid, but point to NULL values.  Sets *ptr to
+// All pointers should be valid, but point to NULL values.  Sets* ptr to
 // NULL or a valid object which should be freed with the appropriate destructor
 // upon completion.
-bool VerifyCredentialsImpl(const string &certificate,
-                           const string &signed_data,
-                           const string &unsigned_data,
-                           const string &connected_mac,
-                           RSA **rsa_ptr,
-                           EVP_PKEY **pkey_ptr,
-                           BIO **raw_certificate_bio_ptr,
-                           X509 **x509_ptr) {
+bool VerifyCredentialsImpl(const string& certificate,
+                           const string& signed_data,
+                           const string& unsigned_data,
+                           const string& connected_mac,
+                           RSA** rsa_ptr,
+                           EVP_PKEY** pkey_ptr,
+                           BIO** raw_certificate_bio_ptr,
+                           X509** x509_ptr) {
   CHECK(rsa_ptr);
   CHECK(pkey_ptr);
   CHECK(raw_certificate_bio_ptr);
@@ -161,9 +161,9 @@ bool VerifyCredentialsImpl(const string &certificate,
   CHECK(!*x509_ptr);
 
   *rsa_ptr = RSA_new();
-  RSA *rsa = *rsa_ptr;
+  RSA* rsa = *rsa_ptr;
   *pkey_ptr = EVP_PKEY_new();
-  EVP_PKEY *pkey = *pkey_ptr;
+  EVP_PKEY* pkey = *pkey_ptr;
   if (!rsa || !pkey) {
     LOG(ERROR) << "Failed to allocate key.";
     return false;
@@ -186,8 +186,8 @@ bool VerifyCredentialsImpl(const string &certificate,
   *rsa_ptr = NULL;  // pkey took ownership
   // Another helpfully unmarked const interface.
   *raw_certificate_bio_ptr = BIO_new_mem_buf(
-      const_cast<char *>(certificate.data()), certificate.length());
-  BIO *raw_certificate_bio = *raw_certificate_bio_ptr;
+      const_cast<char*>(certificate.data()), certificate.length());
+  BIO* raw_certificate_bio = *raw_certificate_bio_ptr;
   if (!raw_certificate_bio) {
     LOG(ERROR) << "Failed to allocate openssl certificate buffer.";
     return false;
@@ -195,7 +195,7 @@ bool VerifyCredentialsImpl(const string &certificate,
 
   // No callback for a passphrase, and no passphrase either.
   *x509_ptr = PEM_read_bio_X509(raw_certificate_bio, NULL, NULL, NULL);
-  X509 *x509 = *x509_ptr;
+  X509* x509 = *x509_ptr;
   if (!x509) {
     LOG(ERROR) << "Failed to parse certificate.";
     return false;
@@ -238,23 +238,23 @@ bool VerifyCredentialsImpl(const string &certificate,
   // Excellent, the certificate checks out, now make sure that the certificate
   // matches the unsigned data presented.
   // We're going to verify that hash(unsigned_data) == public(signed_data)
-  EVP_PKEY *cert_pubkey = X509_get_pubkey(x509);
+  EVP_PKEY* cert_pubkey = X509_get_pubkey(x509);
   if (!cert_pubkey) {
     LOG(ERROR) << "Unable to extract public key from certificate.";
     return false;
   }
 
-  RSA *cert_rsa = EVP_PKEY_get1_RSA(cert_pubkey);
+  RSA* cert_rsa = EVP_PKEY_get1_RSA(cert_pubkey);
   if (!cert_rsa) {
     LOG(ERROR) << "Failed to extract RSA key from certificate.";
     return false;
   }
 
-  const unsigned char *signature =
-      reinterpret_cast<const unsigned char *>(signed_data.data());
+  const unsigned char* signature =
+      reinterpret_cast<const unsigned char*>(signed_data.data());
   const size_t signature_len = signed_data.length();
-  unsigned char *unsigned_data_bytes =
-      reinterpret_cast<unsigned char *>(const_cast<char *>(
+  unsigned char* unsigned_data_bytes =
+      reinterpret_cast<unsigned char*>(const_cast<char*>(
           unsigned_data.data()));
   const size_t unsigned_data_len = unsigned_data.length();
   unsigned char digest[SHA_DIGEST_LENGTH];
@@ -276,7 +276,7 @@ bool VerifyCredentialsImpl(const string &certificate,
 // a serialized VerifyCredentialsMessage protobuffer in |raw_input|, returns a
 // serialized VerifyCredentialsResponse protobuffer in |output| on success.
 // Returns false if the credentials fail to meet a check, and true on success.
-bool VerifyCredentials(const string &raw_input, string *output) {
+bool VerifyCredentials(const string& raw_input, string* output) {
   VerifyCredentialsMessage message;
   if (!message.ParseFromString(raw_input)) {
     LOG(ERROR) << "Failed to read VerifyCredentialsMessage from stdin.";
@@ -301,10 +301,10 @@ bool VerifyCredentials(const string &raw_input, string *output) {
     return false;
   }
 
-  RSA *rsa = NULL;
-  EVP_PKEY *pkey = NULL;
-  BIO *raw_certificate_bio = NULL;
-  X509 *x509 = NULL;
+  RSA* rsa = NULL;
+  EVP_PKEY* pkey = NULL;
+  BIO* raw_certificate_bio = NULL;
+  X509* x509 = NULL;
   bool operation_successful = VerifyCredentialsImpl(message.certificate(),
       message.signed_data(), message.unsigned_data(), connected_mac,
       &rsa, &pkey, &raw_certificate_bio, &x509);
@@ -344,7 +344,7 @@ bool VerifyCredentials(const string &raw_input, string *output) {
 // Read the full stdin stream into a buffer, and execute the operation
 // described in |command| with the contends of the stdin buffer.  Write
 // the serialized protocol buffer output of the command to stdout.
-bool ParseAndExecuteCommand(const string &command) {
+bool ParseAndExecuteCommand(const string& command) {
   string raw_input;
   char input_buffer[512];
   LOG(INFO) << "Reading input for command " << command << ".";
@@ -395,7 +395,7 @@ bool ParseAndExecuteCommand(const string &command) {
 
 }  // namespace
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToStderr | chromeos::kLogHeader);
   LOG(INFO) << "crypto-util in action";
@@ -404,7 +404,7 @@ int main(int argc, char **argv) {
     LOG(ERROR) << "Invalid usage";
     return EXIT_FAILURE;
   }
-  const char *command = argv[1];
+  const char* command = argv[1];
   if (strcmp(kCommandVerify, command) && strcmp(kCommandEncrypt, command)) {
     LOG(ERROR) << "Invalid command";
     return EXIT_FAILURE;

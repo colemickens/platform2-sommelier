@@ -9,11 +9,11 @@
 
 char pppd_version[] = VERSION;
 
-static void PPPOnUp(void *data, int arg) {
+static void PPPOnUp(void* data, int arg) {
   PPPOnConnect(ifname);
 }
 
-static void PPPOnPhaseChange(void *data, int arg) {
+static void PPPOnPhaseChange(void* data, int arg) {
   if (arg == PHASE_AUTHENTICATE) {
     PPPOnAuthenticateStart();
   } else if (arg == PHASE_NETWORK) {

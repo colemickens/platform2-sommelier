@@ -50,7 +50,7 @@ class NetfilterQueueProcessor {
     // and attempts to decode the payload as a UDP packet.  Returns true if
     // the meta-information is decoded, regardless of whether the payload
     // was decoded.
-    bool ParseNetfilterData(struct nfq_data *netfilter_data);
+    bool ParseNetfilterData(struct nfq_data* netfilter_data);
 
     // Getters.
     int in_device() const { return in_device_; }
@@ -65,7 +65,7 @@ class NetfilterQueueProcessor {
    private:
     friend class NetfilterQueueProcessorTest;
 
-    bool ParsePayloadUDPData(const unsigned char *payload, size_t payload_len);
+    bool ParsePayloadUDPData(const unsigned char* payload, size_t payload_len);
 
     // Setter only used in unit tests.
     void SetValues(int in_device,
@@ -121,17 +121,17 @@ class NetfilterQueueProcessor {
 
   // Called by the netlink_queue code when a packet arrives for the
   // input queue.
-  static int InputQueueCallback(struct nfq_q_handle *queue_handle,
-                                struct nfgenmsg *generic_message,
-                                struct nfq_data *netfilter_data,
-                                void *private_data);
+  static int InputQueueCallback(struct nfq_q_handle* queue_handle,
+                                struct nfgenmsg* generic_message,
+                                struct nfq_data* netfilter_data,
+                                void* private_data);
 
   // Called by the netlink_queue code when a packet arrives for the
   // output queue.
-  static int OutputQueueCallback(struct nfq_q_handle *queue_handle,
-                                 struct nfgenmsg *generic_message,
-                                 struct nfq_data *netfilter_data,
-                                 void *private_data);
+  static int OutputQueueCallback(struct nfq_q_handle* queue_handle,
+                                 struct nfgenmsg* generic_message,
+                                 struct nfq_data* netfilter_data,
+                                 void* private_data);
 
   // Return the netmask associated with |device_index|.
   static uint32_t GetNetmaskForDevice(int device_index);
@@ -150,10 +150,10 @@ class NetfilterQueueProcessor {
       uint16_t port, int device_index, uint32_t destination);
 
   // Returns true if incoming packet |packet| should be allowed to pass.
-  bool IsIncomingPacketAllowed(const Packet &packet, time_t now);
+  bool IsIncomingPacketAllowed(const Packet& packet, time_t now);
 
   // Log the transmission of an outgoing packet.
-  void LogOutgoingPacket(const Packet &packet, time_t now);
+  void LogOutgoingPacket(const Packet& packet, time_t now);
 
   static std::string AddressAndPortToString(uint32_t ip, uint16_t port);
 
@@ -177,12 +177,12 @@ class NetfilterQueueProcessor {
 
   // Pointer to a netfilter queue library instance.  A bare pointer is
   // necessary since this must be freed via nfq_close().
-  struct nfq_handle *nfq_handle_;
+  struct nfq_handle* nfq_handle_;
 
   // Input and output queue handles.  A bare pointer is necessary since
   // this must be freed via nfq_destroy_queue().
-  struct nfq_q_handle *input_queue_handle_;
-  struct nfq_q_handle *output_queue_handle_;
+  struct nfq_q_handle* input_queue_handle_;
+  struct nfq_q_handle* output_queue_handle_;
 
   // A list of records of listening sockets.
   std::deque<ListenerEntryPtr> listeners_;

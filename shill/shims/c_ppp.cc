@@ -14,7 +14,7 @@ using shill::shims::PPP;
 using std::string;
 
 namespace {
-base::AtExitManager *g_exit_manager = NULL;  // Cleans up LazyInstances.
+base::AtExitManager* g_exit_manager = NULL;  // Cleans up LazyInstances.
 }  // namespace
 
 void PPPInit() {
@@ -26,7 +26,7 @@ int PPPHasSecret() {
   return 1;
 }
 
-int PPPGetSecret(char *username, char *password) {
+int PPPGetSecret(char* username, char* password) {
   string user, pass;
   if (!PPP::GetInstance()->GetSecret(&user, &pass)) {
     return -1;
@@ -48,7 +48,7 @@ void PPPOnAuthenticateDone() {
   PPP::GetInstance()->OnAuthenticateDone();
 }
 
-void PPPOnConnect(const char *ifname) {
+void PPPOnConnect(const char* ifname) {
   PPP::GetInstance()->OnConnect(ifname);
 }
 
@@ -56,7 +56,7 @@ void PPPOnDisconnect() {
   PPP::GetInstance()->OnDisconnect();
 }
 
-void PPPOnExit(void */*data*/, int /*arg*/) {
+void PPPOnExit(void* /*data*/, int /*arg*/) {
   LOG(INFO) << __func__;
   delete g_exit_manager;
   g_exit_manager = NULL;

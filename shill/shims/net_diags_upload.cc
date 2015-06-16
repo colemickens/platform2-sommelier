@@ -53,7 +53,7 @@ void StashLogs() {
 
 }  // namespace shill
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();

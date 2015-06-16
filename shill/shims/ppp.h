@@ -27,14 +27,14 @@ class PPP {
   ~PPP();
 
   // This is a singleton -- use PPP::GetInstance()->Foo().
-  static PPP *GetInstance();
+  static PPP* GetInstance();
 
   void Init();
 
-  bool GetSecret(std::string *username, std::string *password);
+  bool GetSecret(std::string* username, std::string* password);
   void OnAuthenticateStart();
   void OnAuthenticateDone();
-  void OnConnect(const std::string &ifname);
+  void OnConnect(const std::string& ifname);
   void OnDisconnect();
 
  protected:
@@ -46,7 +46,7 @@ class PPP {
   bool CreateProxy();
   void DestroyProxy();
 
-  static std::string ConvertIPToText(const void *addr);
+  static std::string ConvertIPToText(const void* addr);
 
   std::unique_ptr<DBus::BusDispatcher> dispatcher_;
   std::unique_ptr<DBus::Connection> connection_;

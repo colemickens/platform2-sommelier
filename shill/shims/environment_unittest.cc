@@ -19,11 +19,11 @@ class EnvironmentTest : public testing::Test {
   EnvironmentTest() : environment_(Environment::GetInstance()) {}
 
  protected:
-  Environment *environment_;
+  Environment* environment_;
 };
 
 TEST_F(EnvironmentTest, GetVariable) {
-  static const char * const kVarValues[] = {
+  static const char* const kVarValues[] = {
     "VALUE",
     "",
   };
@@ -39,12 +39,12 @@ TEST_F(EnvironmentTest, GetVariable) {
 }
 
 TEST_F(EnvironmentTest, AsMap) {
-  static const char * const kVarNames[] = {
+  static const char* const kVarNames[] = {
     "SHILL_SHIMS_AS_MAP_TEST_1",
     "SHILL_SHIMS_AS_MAP_TEST_EMPTY",
     "SHILL_SHIMS_AS_MAP_TEST_2",
   };
-  static const char * const kVarValues[] = {
+  static const char* const kVarValues[] = {
     "VALUE 1",
     "",
     "VALUE 2",

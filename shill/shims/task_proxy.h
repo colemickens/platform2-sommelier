@@ -18,23 +18,23 @@ namespace shims {
 
 class TaskProxy {
  public:
-  TaskProxy(DBus::Connection *connection,
-            const std::string &path,
-            const std::string &service);
+  TaskProxy(DBus::Connection* connection,
+            const std::string& path,
+            const std::string& service);
   ~TaskProxy();
 
-  void Notify(const std::string &reason,
-              const std::map<std::string, std::string> &dict);
+  void Notify(const std::string& reason,
+              const std::map<std::string, std::string>& dict);
 
-  bool GetSecret(std::string *username, std::string *password);
+  bool GetSecret(std::string* username, std::string* password);
 
  private:
   class Proxy : public org::chromium::flimflam::Task_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
-          const std::string &path,
-          const std::string &service);
+    Proxy(DBus::Connection* connection,
+          const std::string& path,
+          const std::string& service);
     virtual ~Proxy();
 
    private:

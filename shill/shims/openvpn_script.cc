@@ -19,12 +19,12 @@ using shill::shims::Environment;
 using std::map;
 using std::string;
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
   base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
 
-  Environment *environment = Environment::GetInstance();
+  Environment* environment = Environment::GetInstance();
   string service, path, reason;
   if (!environment->GetVariable(shill::kRPCTaskServiceVariable, &service) ||
       !environment->GetVariable(shill::kRPCTaskPathVariable, &path) ||

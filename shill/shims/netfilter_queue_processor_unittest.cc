@@ -25,17 +25,17 @@ class NetfilterQueueProcessorTest : public testing::Test {
  protected:
   int GetInputQueue() { return processor_.input_queue_; }
   int GetOutputQueue() { return processor_.output_queue_; }
-  struct nfq_handle *GetNFQHandle() { return processor_.nfq_handle_; }
-  struct nfq_q_handle *GetInputQueueHandle() {
+  struct nfq_handle* GetNFQHandle() { return processor_.nfq_handle_; }
+  struct nfq_q_handle* GetInputQueueHandle() {
     return processor_.input_queue_handle_;
   }
-  struct nfq_q_handle *GetOutputQueueHandle() {
+  struct nfq_q_handle* GetOutputQueueHandle() {
     return processor_.output_queue_handle_;
   }
-  std::deque<NetfilterQueueProcessor::ListenerEntryPtr> &GetListeners() {
+  std::deque<NetfilterQueueProcessor::ListenerEntryPtr>& GetListeners() {
     return processor_.listeners_;
   }
-  NetfilterQueueProcessor::ListenerEntry &GetListener(int index) {
+  NetfilterQueueProcessor::ListenerEntry& GetListener(int index) {
     return *processor_.listeners_[index];
   }
   int GetExpirationInterval() {
