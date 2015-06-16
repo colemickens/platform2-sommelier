@@ -22,15 +22,15 @@ FileIO::FileIO() {}
 FileIO::~FileIO() {}
 
 // static
-FileIO *FileIO::GetInstance() {
+FileIO* FileIO::GetInstance() {
   return g_file_io.Pointer();
 }
 
-ssize_t FileIO::Write(int fd, const void *buf, size_t count) {
+ssize_t FileIO::Write(int fd, const void* buf, size_t count) {
   return HANDLE_EINTR(write(fd, buf, count));
 }
 
-ssize_t FileIO::Read(int fd, void *buf, size_t count) {
+ssize_t FileIO::Read(int fd, void* buf, size_t count) {
   return HANDLE_EINTR(read(fd, buf, count));
 }
 

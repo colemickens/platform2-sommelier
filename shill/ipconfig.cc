@@ -22,7 +22,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kInet;
-static string ObjectID(IPConfig *i) { return i->GetRpcIdentifier(); }
+static string ObjectID(IPConfig* i) { return i->GetRpcIdentifier(); }
 }
 
 namespace {
@@ -41,8 +41,8 @@ const char IPConfig::kType[] = "ip";
 // static
 uint IPConfig::global_serial_ = 0;
 
-IPConfig::IPConfig(ControlInterface *control_interface,
-                   const std::string &device_name)
+IPConfig::IPConfig(ControlInterface* control_interface,
+                   const std::string& device_name)
     : device_name_(device_name),
       type_(kType),
       serial_(global_serial_++),
@@ -50,9 +50,9 @@ IPConfig::IPConfig(ControlInterface *control_interface,
   Init();
 }
 
-IPConfig::IPConfig(ControlInterface *control_interface,
-                   const std::string &device_name,
-                   const std::string &type)
+IPConfig::IPConfig(ControlInterface* control_interface,
+                   const std::string& device_name,
+                   const std::string& type)
     : device_name_(device_name),
       type_(type),
       serial_(global_serial_++),
@@ -108,7 +108,7 @@ bool IPConfig::ReleaseIP(ReleaseReason reason) {
   return false;
 }
 
-void IPConfig::Refresh(Error */*error*/) {
+void IPConfig::Refresh(Error* /*error*/) {
   if (!refresh_callback_.is_null()) {
     refresh_callback_.Run(this);
   }
@@ -116,13 +116,13 @@ void IPConfig::Refresh(Error */*error*/) {
 }
 
 void IPConfig::ApplyStaticIPParameters(
-    StaticIPParameters *static_ip_parameters) {
+    StaticIPParameters* static_ip_parameters) {
   static_ip_parameters->ApplyTo(&properties_);
   EmitChanges();
 }
 
 void IPConfig::RestoreSavedIPParameters(
-    StaticIPParameters *static_ip_parameters) {
+    StaticIPParameters* static_ip_parameters) {
   static_ip_parameters->RestoreTo(&properties_);
   EmitChanges();
 }
@@ -138,7 +138,7 @@ void IPConfig::ResetLeaseExpirationTime() {
   current_lease_expiration_time_ = {kDefaultLeaseExpirationTime, 0};
 }
 
-bool IPConfig::TimeToLeaseExpiry(uint32_t *time_left) {
+bool IPConfig::TimeToLeaseExpiry(uint32_t* time_left) {
   if (current_lease_expiration_time_.tv_sec == kDefaultLeaseExpirationTime) {
     SLOG(this, 2) << __func__ << ": No current DHCP lease";
     return false;
@@ -153,7 +153,7 @@ bool IPConfig::TimeToLeaseExpiry(uint32_t *time_left) {
   return true;
 }
 
-void IPConfig::UpdateProperties(const Properties &properties,
+void IPConfig::UpdateProperties(const Properties& properties,
                                 bool new_lease_acquired) {
   // Take a reference of this instance to make sure we don't get destroyed in
   // the middle of this call. (The |update_callback_| may cause a reference
@@ -169,7 +169,7 @@ void IPConfig::UpdateProperties(const Properties &properties,
   EmitChanges();
 }
 
-void IPConfig::UpdateDNSServers(const std::vector<std::string> &dns_servers) {
+void IPConfig::UpdateDNSServers(const std::vector<std::string>& dns_servers) {
   properties_.dns_servers = dns_servers;
   EmitChanges();
 }
@@ -192,19 +192,19 @@ void IPConfig::NotifyExpiry() {
   }
 }
 
-void IPConfig::RegisterUpdateCallback(const UpdateCallback &callback) {
+void IPConfig::RegisterUpdateCallback(const UpdateCallback& callback) {
   update_callback_ = callback;
 }
 
-void IPConfig::RegisterFailureCallback(const Callback &callback) {
+void IPConfig::RegisterFailureCallback(const Callback& callback) {
   failure_callback_ = callback;
 }
 
-void IPConfig::RegisterRefreshCallback(const Callback &callback) {
+void IPConfig::RegisterRefreshCallback(const Callback& callback) {
   refresh_callback_ = callback;
 }
 
-void IPConfig::RegisterExpireCallback(const Callback &callback) {
+void IPConfig::RegisterExpireCallback(const Callback& callback) {
   expire_callback_ = callback;
 }
 

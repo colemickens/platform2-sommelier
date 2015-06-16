@@ -22,16 +22,16 @@ class GlibIOReadyHandler : public IOHandler {
  public:
   GlibIOReadyHandler(int fd,
                      IOHandler::ReadyMode mode,
-                     const base::Callback<void(int)> &callback);
+                     const base::Callback<void(int)>& callback);
   ~GlibIOReadyHandler();
 
   virtual void Start();
   virtual void Stop();
 
-  const base::Callback<void(int)> &callback() { return callback_; }
+  const base::Callback<void(int)>& callback() { return callback_; }
 
  private:
-  GIOChannel *channel_;
+  GIOChannel* channel_;
   GIOCondition condition_;
   const base::Callback<void(int)> callback_;
   guint source_id_;

@@ -12,21 +12,6 @@ To keep the shill source code consistent, please follow the conventions below:
   Emacs mode at
   http://google-styleguide.googlecode.com/svn/trunk/google-c-style.el
 
-  Note that we've deviated from the Chromium style in the following
-  ways. In these cases, follow the shill style, for consistency with
-  the rest of the shill code:
-
-  - We denote pointer and reference variables by placing the '*' and '&'
-    adjacent to the variable name, rather than the type. E.g.
-
-       void *bar
-
-    rather than
-
-       void* bar
-
-  - <no other deviations documented yet>
-
 - When working with DBus::Variant:
   - Read data via the appropriate named method, rather than depending on
     implicit conversion. E.g.,
@@ -136,7 +121,7 @@ To keep the shill source code consistent, please follow the conventions below:
 - When performing trivial iteration through a container, prefer using
   range based for loops, preferably:
 
-     for (const auto &element : container) {
+     for (const auto& element : container) {
 
   Remove "const" where necessary if the element will be modified during
   the loop.  Removal of the "const" and reference for trivial types is

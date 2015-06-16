@@ -29,7 +29,7 @@ HTTPURL::HTTPURL()
 
 HTTPURL::~HTTPURL() {}
 
-bool HTTPURL::ParseFromString(const string &url_string) {
+bool HTTPURL::ParseFromString(const string& url_string) {
   Protocol protocol = kProtocolUnknown;
   size_t host_start = 0;
   int port = 0;

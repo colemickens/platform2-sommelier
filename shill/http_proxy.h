@@ -55,7 +55,7 @@ class HTTPProxy {
   virtual ~HTTPProxy();
 
   // Start HTTP proxy.
-  bool Start(EventDispatcher *dispatcher, Sockets *sockets);
+  bool Start(EventDispatcher* dispatcher, Sockets* sockets);
 
   // Shutdown.
   void Stop();
@@ -93,22 +93,22 @@ class HTTPProxy {
   static const char kInternalErrorMsg[];  // Message to send on failure.
 
   void AcceptClient(int fd);
-  bool ConnectServer(const IPAddress &address, int port);
-  void GetDNSResult(const Error &error, const IPAddress &address);
-  void OnReadError(const std::string &error_msg);
+  bool ConnectServer(const IPAddress& address, int port);
+  void GetDNSResult(const Error& error, const IPAddress& address);
+  void OnReadError(const std::string& error_msg);
   void OnConnectCompletion(bool success, int fd);
   bool ParseClientRequest();
   bool ProcessLastHeaderLine();
-  bool ReadClientHeaders(InputData *data);
-  bool ReadClientHostname(std::string *header);
-  bool ReadClientHTTPMethod(std::string *header);
-  bool ReadClientHTTPVersion(std::string *header);
-  void ReadFromClient(InputData *data);
-  void ReadFromServer(InputData *data);
-  void SetClientResponse(int code, const std::string &type,
-                         const std::string &content_type,
-                         const std::string &message);
-  void SendClientError(int code, const std::string &error);
+  bool ReadClientHeaders(InputData* data);
+  bool ReadClientHostname(std::string* header);
+  bool ReadClientHTTPMethod(std::string* header);
+  bool ReadClientHTTPVersion(std::string* header);
+  void ReadFromClient(InputData* data);
+  void ReadFromServer(InputData* data);
+  void SetClientResponse(int code, const std::string& type,
+                         const std::string& content_type,
+                         const std::string& message);
+  void SendClientError(int code, const std::string& error);
   void StartIdleTimeout();
   void StartReceive();
   void StartTransmit();
@@ -122,20 +122,20 @@ class HTTPProxy {
   base::WeakPtrFactory<HTTPProxy> weak_ptr_factory_;
   base::Callback<void(int)> accept_callback_;
   base::Callback<void(bool, int)> connect_completion_callback_;
-  base::Callback<void(const Error &, const IPAddress &)> dns_client_callback_;
-  base::Callback<void(InputData *)> read_client_callback_;
-  base::Callback<void(InputData *)> read_server_callback_;
+  base::Callback<void(const Error&, const IPAddress&)> dns_client_callback_;
+  base::Callback<void(InputData*)> read_client_callback_;
+  base::Callback<void(InputData*)> read_server_callback_;
   base::Callback<void(int)> write_client_callback_;
   base::Callback<void(int)> write_server_callback_;
 
   // State held while proxy is started (even if no transaction is active).
   std::unique_ptr<IOHandler> accept_handler_;
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   std::unique_ptr<DNSClient> dns_client_;
   int proxy_port_;
   int proxy_socket_;
   std::unique_ptr<AsyncConnection> server_async_connection_;
-  Sockets *sockets_;
+  Sockets* sockets_;
 
   // State held while proxy is started and a transaction is active.
   int client_socket_;

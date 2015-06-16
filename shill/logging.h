@@ -90,7 +90,7 @@ extern const char kLogScopes[];
 
 // Looks for the command line switches |kLogLevelSwitch| and |kLogScopesSwitch|
 // in |cl| and accordingly sets log scopes and levels.
-void SetLogLevelFromCommandLine(base::CommandLine *cl);
+void SetLogLevelFromCommandLine(base::CommandLine* cl);
 
 }  // namespace shill
 

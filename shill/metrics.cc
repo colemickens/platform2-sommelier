@@ -19,7 +19,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kMetrics;
-static string ObjectID(const Metrics *m) { return "(metrics)"; }
+static string ObjectID(const Metrics* m) { return "(metrics)"; }
 }
 
 static const char kMetricPrefix[] = "Network.Shill";
@@ -397,7 +397,7 @@ const int Metrics::kMetricSerivceSignalStrengthMin = 0;
 const int Metrics::kMetricServiceSignalStrengthMax = 100;
 const int Metrics::kMetricServiceSignalStrengthNumBuckets = 40;
 
-Metrics::Metrics(EventDispatcher *dispatcher)
+Metrics::Metrics(EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
       library_(&metrics_library_),
       last_default_technology_(Technology::kUnknown),
@@ -471,7 +471,7 @@ Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16_t frequency) {
 
 // static
 Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
-    const string &security) {
+    const string& security) {
   if (security == kSecurityNone) {
     return kWiFiSecurityNone;
   } else if (security == kSecurityWep) {
@@ -490,7 +490,7 @@ Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
 }
 
 // static
-Metrics::WiFiApMode Metrics::WiFiApModeStringToEnum(const string &ap_mode) {
+Metrics::WiFiApMode Metrics::WiFiApModeStringToEnum(const string& ap_mode) {
   if (ap_mode == kModeManaged) {
     return kWiFiApModeManaged;
   } else if (ap_mode == kModeAdhoc) {
@@ -502,7 +502,7 @@ Metrics::WiFiApMode Metrics::WiFiApModeStringToEnum(const string &ap_mode) {
 
 // static
 Metrics::EapOuterProtocol Metrics::EapOuterProtocolStringToEnum(
-    const string &outer) {
+    const string& outer) {
   if (outer == kEapMethodPEAP) {
     return kEapOuterProtocolPeap;
   } else if (outer == kEapMethodTLS) {
@@ -518,7 +518,7 @@ Metrics::EapOuterProtocol Metrics::EapOuterProtocolStringToEnum(
 
 // static
 Metrics::EapInnerProtocol Metrics::EapInnerProtocolStringToEnum(
-    const string &inner) {
+    const string& inner) {
   if (inner.empty()) {
     return kEapInnerProtocolNone;
   } else if (inner == kEapPhase2AuthPEAPMD5) {
@@ -544,7 +544,7 @@ Metrics::EapInnerProtocol Metrics::EapInnerProtocolStringToEnum(
 
 // static
 Metrics::PortalResult Metrics::PortalDetectionResultToEnum(
-      const PortalDetector::Result &portal_result) {
+      const PortalDetector::Result& portal_result) {
   DCHECK(portal_result.final);
   PortalResult retval = kPortalResultUnknown;
   ConnectivityTrial::Result result = portal_result.trial_result;
@@ -614,7 +614,7 @@ void Metrics::Stop() {
   SLOG(this, 2) << __func__;
 }
 
-void Metrics::RegisterService(const Service &service) {
+void Metrics::RegisterService(const Service& service) {
   SLOG(this, 2) << __func__;
   LOG_IF(WARNING, ContainsKey(services_metrics_, &service))
       << "Repeatedly registering " << service.unique_name();
@@ -623,13 +623,13 @@ void Metrics::RegisterService(const Service &service) {
   InitializeCommonServiceMetrics(service);
 }
 
-void Metrics::DeregisterService(const Service &service) {
+void Metrics::DeregisterService(const Service& service) {
   services_metrics_.erase(&service);
 }
 
 void Metrics::AddServiceStateTransitionTimer(
-    const Service &service,
-    const string &histogram_name,
+    const Service& service,
+    const string& histogram_name,
     Service::ConnectState start_state,
     Service::ConnectState stop_state) {
   SLOG(this, 2) << __func__ << ": adding " << histogram_name << " for "
@@ -641,9 +641,9 @@ void Metrics::AddServiceStateTransitionTimer(
     DCHECK(false);
     return;
   }
-  ServiceMetrics *service_metrics = it->second.get();
+  ServiceMetrics* service_metrics = it->second.get();
   CHECK(start_state < stop_state);
-  chromeos_metrics::TimerReporter *timer =
+  chromeos_metrics::TimerReporter* timer =
       new chromeos_metrics::TimerReporter(histogram_name,
                                           kTimerHistogramMillisecondsMin,
                                           kTimerHistogramMillisecondsMax,
@@ -653,7 +653,7 @@ void Metrics::AddServiceStateTransitionTimer(
   service_metrics->stop_on_state[stop_state].push_back(timer);
 }
 
-void Metrics::NotifyDefaultServiceChanged(const Service *service) {
+void Metrics::NotifyDefaultServiceChanged(const Service* service) {
   base::TimeDelta elapsed_seconds;
 
   Technology::Identifier technology = (service) ? service->technology() :
@@ -694,7 +694,7 @@ void Metrics::NotifyDefaultServiceChanged(const Service *service) {
   was_online_ = (service != nullptr);
 }
 
-void Metrics::NotifyServiceStateChanged(const Service &service,
+void Metrics::NotifyServiceStateChanged(const Service& service,
                                         Service::ConnectState new_state) {
   ServiceMetricsLookupMap::iterator it = services_metrics_.find(&service);
   if (it == services_metrics_.end()) {
@@ -702,7 +702,7 @@ void Metrics::NotifyServiceStateChanged(const Service &service,
     DCHECK(false);
     return;
   }
-  ServiceMetrics *service_metrics = it->second.get();
+  ServiceMetrics* service_metrics = it->second.get();
   UpdateServiceStateTransitionMetrics(service_metrics, new_state);
 
   if (new_state == Service::kStateFailure)
@@ -724,7 +724,7 @@ void Metrics::NotifyServiceStateChanged(const Service &service,
   service.SendPostReadyStateMetrics(time_resume_to_ready.InMilliseconds());
 }
 
-string Metrics::GetFullMetricName(const char *metric_suffix,
+string Metrics::GetFullMetricName(const char* metric_suffix,
                                   Technology::Identifier technology_id) {
   string technology = Technology::NameFromIdentifier(technology_id);
   technology[0] = base::ToUpperASCII(technology[0]);
@@ -732,7 +732,7 @@ string Metrics::GetFullMetricName(const char *metric_suffix,
                             metric_suffix);
 }
 
-void Metrics::NotifyServiceDisconnect(const Service &service) {
+void Metrics::NotifyServiceDisconnect(const Service& service) {
   Technology::Identifier technology = service.technology();
   string histogram = GetFullMetricName(kMetricDisconnectSuffix, technology);
   SendToUMA(histogram,
@@ -742,7 +742,7 @@ void Metrics::NotifyServiceDisconnect(const Service &service) {
             kMetricDisconnectNumBuckets);
 }
 
-void Metrics::NotifySignalAtDisconnect(const Service &service,
+void Metrics::NotifySignalAtDisconnect(const Service& service,
                                        int16_t signal_strength) {
   // Negate signal_strength (goes from dBm to -dBm) because the metrics don't
   // seem to handle negative values well.  Now everything's positive.
@@ -1053,7 +1053,7 @@ bool Metrics::IsDeviceRegistered(int interface_index,
                                  Technology::Identifier technology) {
   SLOG(this, 2) << __func__ << ": interface index: " << interface_index
                             << ", technology: " << technology;
-  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return false;
   // Make sure the device technologies match.
@@ -1063,7 +1063,7 @@ bool Metrics::IsDeviceRegistered(int interface_index,
 void Metrics::DeregisterDevice(int interface_index) {
   SLOG(this, 2) << __func__ << ": interface index: " << interface_index;
 
-  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics != nullptr) {
     NotifyDeviceRemovedEvent(device_metrics->technology);
   }
@@ -1072,7 +1072,7 @@ void Metrics::DeregisterDevice(int interface_index) {
 }
 
 void Metrics::NotifyDeviceInitialized(int interface_index) {
-  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return;
   if (!device_metrics->initialization_timer->Stop())
@@ -1081,14 +1081,14 @@ void Metrics::NotifyDeviceInitialized(int interface_index) {
 }
 
 void Metrics::NotifyDeviceEnableStarted(int interface_index) {
-  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return;
   device_metrics->enable_timer->Start();
 }
 
 void Metrics::NotifyDeviceEnableFinished(int interface_index) {
-  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return;
   if (!device_metrics->enable_timer->Stop())
@@ -1097,14 +1097,14 @@ void Metrics::NotifyDeviceEnableFinished(int interface_index) {
 }
 
 void Metrics::NotifyDeviceDisableStarted(int interface_index) {
-  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return;
   device_metrics->disable_timer->Start();
 }
 
 void Metrics::NotifyDeviceDisableFinished(int interface_index) {
-  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return;
   if (!device_metrics->disable_timer->Stop())
@@ -1113,7 +1113,7 @@ void Metrics::NotifyDeviceDisableFinished(int interface_index) {
 }
 
 void Metrics::NotifyDeviceScanStarted(int interface_index) {
-  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return;
   device_metrics->scan_timer->Start();
@@ -1121,7 +1121,7 @@ void Metrics::NotifyDeviceScanStarted(int interface_index) {
 }
 
 void Metrics::NotifyDeviceScanFinished(int interface_index) {
-  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return;
   if (!device_metrics->scan_timer->Stop())
@@ -1137,7 +1137,7 @@ void Metrics::NotifyDeviceScanFinished(int interface_index) {
 }
 
 void Metrics::ResetScanTimer(int interface_index) {
-  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return;
   device_metrics->scan_timer->Reset();
@@ -1145,7 +1145,7 @@ void Metrics::ResetScanTimer(int interface_index) {
 
 void Metrics::NotifyDeviceConnectStarted(int interface_index,
                                          bool is_auto_connecting) {
-  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return;
   device_metrics->connect_timer->Start();
@@ -1160,7 +1160,7 @@ void Metrics::NotifyDeviceConnectStarted(int interface_index,
 }
 
 void Metrics::NotifyDeviceConnectFinished(int interface_index) {
-  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return;
   if (!device_metrics->connect_timer->Stop())
@@ -1189,7 +1189,7 @@ void Metrics::NotifyDeviceConnectFinished(int interface_index) {
 }
 
 void Metrics::ResetConnectTimer(int interface_index) {
-  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == nullptr)
     return;
   device_metrics->connect_timer->Reset();
@@ -1208,7 +1208,7 @@ void Metrics::Notify3GPPRegistrationDelayedDropCanceled() {
                 kCellular3GPPRegistrationDelayedDropMax);
 }
 
-void Metrics::NotifyCellularDeviceDrop(const string &network_technology,
+void Metrics::NotifyCellularDeviceDrop(const string& network_technology,
                                        uint16_t signal_strength) {
   SLOG(this, 2) << __func__ << ": " << network_technology
                             << ", " << signal_strength;
@@ -1242,7 +1242,7 @@ void Metrics::NotifyCellularDeviceDrop(const string &network_technology,
             kMetricCellularSignalStrengthBeforeDropNumBuckets);
 }
 
-void Metrics::NotifyCellularDeviceFailure(const Error &error) {
+void Metrics::NotifyCellularDeviceFailure(const Error& error) {
   library_->SendUserActionToUMA(
       kMetricCellularFailureReason + error.message());
 }
@@ -1298,7 +1298,7 @@ void Metrics::NotifyWifiTxBitrate(int bitrate) {
             kMetricWifiTxBitrateNumBuckets);
 }
 
-void Metrics::NotifyUserInitiatedConnectionResult(const string &name,
+void Metrics::NotifyUserInitiatedConnectionResult(const string& name,
                                                   int result) {
   SendEnumToUMA(name,
                 result,
@@ -1306,7 +1306,7 @@ void Metrics::NotifyUserInitiatedConnectionResult(const string &name,
 }
 
 void Metrics::NotifyUserInitiatedConnectionFailureReason(
-    const string &name, const Service::ConnectFailure failure) {
+    const string& name, const Service::ConnectFailure failure) {
   UserInitiatedConnectionFailureReason reason;
   switch (failure) {
     case Service::kFailureBadPassphrase:
@@ -1432,13 +1432,13 @@ void Metrics::NotifyUnreliableLinkSignalStrength(
             kMetricServiceSignalStrengthNumBuckets);
 }
 
-bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {
+bool Metrics::SendEnumToUMA(const string& name, int sample, int max) {
   SLOG(this, 5)
       << "Sending enum " << name << " with value " << sample << ".";
   return library_->SendEnumToUMA(name, sample, max);
 }
 
-bool Metrics::SendToUMA(const string &name, int sample, int min, int max,
+bool Metrics::SendToUMA(const string& name, int sample, int min, int max,
                         int num_buckets) {
   SLOG(this, 5)
       << "Sending metric " << name << " with value " << sample << ".";
@@ -1514,7 +1514,7 @@ void Metrics::NotifyBeforeSuspendActions(bool is_connected,
   }
 }
 
-void Metrics::InitializeCommonServiceMetrics(const Service &service) {
+void Metrics::InitializeCommonServiceMetrics(const Service& service) {
   Technology::Identifier technology = service.technology();
   string histogram = GetFullMetricName(kMetricTimeToConfigMillisecondsSuffix,
                                        technology);
@@ -1540,19 +1540,19 @@ void Metrics::InitializeCommonServiceMetrics(const Service &service) {
 }
 
 void Metrics::UpdateServiceStateTransitionMetrics(
-    ServiceMetrics *service_metrics,
+    ServiceMetrics* service_metrics,
     Service::ConnectState new_state) {
-  const char *state_string = Service::ConnectStateToString(new_state);
+  const char* state_string = Service::ConnectStateToString(new_state);
   SLOG(this, 5) << __func__ << ": new_state=" << state_string;
-  TimerReportersList &start_timers = service_metrics->start_on_state[new_state];
-  for (auto &start_timer : start_timers) {
+  TimerReportersList& start_timers = service_metrics->start_on_state[new_state];
+  for (auto& start_timer : start_timers) {
     SLOG(this, 5) << "Starting timer for " << start_timer->histogram_name()
                   << " due to new state " << state_string << ".";
     start_timer->Start();
   }
 
-  TimerReportersList &stop_timers = service_metrics->stop_on_state[new_state];
-  for (auto &stop_timer : stop_timers) {
+  TimerReportersList& stop_timers = service_metrics->stop_on_state[new_state];
+  for (auto& stop_timer : stop_timers) {
     SLOG(this, 5) << "Stopping timer for " << stop_timer->histogram_name()
                   << " due to new state " << state_string << ".";
     if (stop_timer->Stop())
@@ -1560,7 +1560,7 @@ void Metrics::UpdateServiceStateTransitionMetrics(
   }
 }
 
-void Metrics::SendServiceFailure(const Service &service) {
+void Metrics::SendServiceFailure(const Service& service) {
   NetworkServiceError error = kNetworkServiceErrorUnknown;
   // Explicitly map all possible failures. So when new failures are added,
   // they will need to be mapped as well. Otherwise, the compiler will
@@ -1637,7 +1637,7 @@ void Metrics::SendServiceFailure(const Service &service) {
                           kNetworkServiceErrorMax);
 }
 
-Metrics::DeviceMetrics *Metrics::GetDeviceMetrics(int interface_index) const {
+Metrics::DeviceMetrics* Metrics::GetDeviceMetrics(int interface_index) const {
   DeviceMetricsLookupMap::const_iterator it =
       devices_metrics_.find(interface_index);
   if (it == devices_metrics_.end()) {
@@ -1648,12 +1648,12 @@ Metrics::DeviceMetrics *Metrics::GetDeviceMetrics(int interface_index) const {
   return it->second.get();
 }
 
-void Metrics::AutoConnectMetricsReset(DeviceMetrics *device_metrics) {
+void Metrics::AutoConnectMetricsReset(DeviceMetrics* device_metrics) {
   device_metrics->auto_connect_tries = 0;
   device_metrics->auto_connect_timer->Reset();
 }
 
-void Metrics::set_library(MetricsLibraryInterface *library) {
+void Metrics::set_library(MetricsLibraryInterface* library) {
   chromeos_metrics::TimerReporter::set_metrics_lib(library);
   library_ = library;
 }

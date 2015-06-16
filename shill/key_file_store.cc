@@ -27,12 +27,12 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kStorage;
-static string ObjectID(const KeyFileStore *k) { return "(key_file_store)"; }
+static string ObjectID(const KeyFileStore* k) { return "(key_file_store)"; }
 }
 
 const char KeyFileStore::kCorruptSuffix[] = ".corrupted";
 
-KeyFileStore::KeyFileStore(GLib *glib)
+KeyFileStore::KeyFileStore(GLib* glib)
     : glib_(glib),
       crypto_(glib),
       key_file_(nullptr) {}
@@ -62,7 +62,7 @@ bool KeyFileStore::Open() {
     LOG(INFO) << "Creating a new key file at " << path_.value();
     return true;
   }
-  GError *error = nullptr;
+  GError* error = nullptr;
   if (glib_->KeyFileLoadFromFile(
           key_file_,
           path_.value().c_str(),
@@ -85,9 +85,9 @@ bool KeyFileStore::Close() {
 
 bool KeyFileStore::Flush() {
   CHECK(key_file_);
-  GError *error = nullptr;
+  GError* error = nullptr;
   gsize length = 0;
-  gchar *data = glib_->KeyFileToData(key_file_, &length, &error);
+  gchar* data = glib_->KeyFileToData(key_file_, &length, &error);
 
   bool success = true;
   if (path_.empty()) {
@@ -128,7 +128,7 @@ bool KeyFileStore::MarkAsCorrupted() {
 set<string> KeyFileStore::GetGroups() const {
   CHECK(key_file_);
   gsize length = 0;
-  gchar **groups = glib_->KeyFileGetGroups(key_file_, &length);
+  gchar** groups = glib_->KeyFileGetGroups(key_file_, &length);
   if (!groups) {
     LOG(ERROR) << "Unable to obtain groups.";
     return set<string>();
@@ -140,10 +140,10 @@ set<string> KeyFileStore::GetGroups() const {
 
 // Returns a set so that caller can easily test whether a particular group
 // is contained within this collection.
-set<string> KeyFileStore::GetGroupsWithKey(const string &key) const {
+set<string> KeyFileStore::GetGroupsWithKey(const string& key) const {
   set<string> groups = GetGroups();
   set<string> groups_with_key;
-  for (const auto &group : groups) {
+  for (const auto& group : groups) {
     if (glib_->KeyFileHasKey(key_file_, group.c_str(), key.c_str(), nullptr)) {
       groups_with_key.insert(group);
     }
@@ -152,10 +152,10 @@ set<string> KeyFileStore::GetGroupsWithKey(const string &key) const {
 }
 
 set<string> KeyFileStore::GetGroupsWithProperties(
-     const KeyValueStore &properties) const {
+     const KeyValueStore& properties) const {
   set<string> groups = GetGroups();
   set<string> groups_with_properties;
-  for (const auto &group : groups) {
+  for (const auto& group : groups) {
     if (DoesGroupMatchProperties(group, properties)) {
       groups_with_properties.insert(group);
     }
@@ -163,14 +163,14 @@ set<string> KeyFileStore::GetGroupsWithProperties(
   return groups_with_properties;
 }
 
-bool KeyFileStore::ContainsGroup(const string &group) const {
+bool KeyFileStore::ContainsGroup(const string& group) const {
   CHECK(key_file_);
   return glib_->KeyFileHasGroup(key_file_, group.c_str());
 }
 
-bool KeyFileStore::DeleteKey(const string &group, const string &key) {
+bool KeyFileStore::DeleteKey(const string& group, const string& key) {
   CHECK(key_file_);
-  GError *error = nullptr;
+  GError* error = nullptr;
   glib_->KeyFileRemoveKey(key_file_, group.c_str(), key.c_str(), &error);
   if (error && error->code != G_KEY_FILE_ERROR_KEY_NOT_FOUND) {
     LOG(ERROR) << "Failed to delete (" << group << ":" << key << "): "
@@ -180,9 +180,9 @@ bool KeyFileStore::DeleteKey(const string &group, const string &key) {
   return true;
 }
 
-bool KeyFileStore::DeleteGroup(const string &group) {
+bool KeyFileStore::DeleteGroup(const string& group) {
   CHECK(key_file_);
-  GError *error = nullptr;
+  GError* error = nullptr;
   glib_->KeyFileRemoveGroup(key_file_, group.c_str(), &error);
   if (error && error->code != G_KEY_FILE_ERROR_GROUP_NOT_FOUND) {
     LOG(ERROR) << "Failed to delete group " << group << ": "
@@ -192,8 +192,8 @@ bool KeyFileStore::DeleteGroup(const string &group) {
   return true;
 }
 
-bool KeyFileStore::SetHeader(const string &header) {
-  GError *error = nullptr;
+bool KeyFileStore::SetHeader(const string& header) {
+  GError* error = nullptr;
   glib_->KeyFileSetComment(key_file_, nullptr, nullptr, header.c_str(), &error);
   if (error) {
     LOG(ERROR) << "Failed to to set header: "
@@ -203,12 +203,12 @@ bool KeyFileStore::SetHeader(const string &header) {
   return true;
 }
 
-bool KeyFileStore::GetString(const string &group,
-                             const string &key,
-                             string *value) const {
+bool KeyFileStore::GetString(const string& group,
+                             const string& key,
+                             string* value) const {
   CHECK(key_file_);
-  GError *error = nullptr;
-  gchar *data =
+  GError* error = nullptr;
+  gchar* data =
       glib_->KeyFileGetString(key_file_, group.c_str(), key.c_str(), &error);
   if (!data) {
     string s = glib_->ConvertErrorToMessage(error);
@@ -222,19 +222,19 @@ bool KeyFileStore::GetString(const string &group,
   return true;
 }
 
-bool KeyFileStore::SetString(const string &group,
-                             const string &key,
-                             const string &value) {
+bool KeyFileStore::SetString(const string& group,
+                             const string& key,
+                             const string& value) {
   CHECK(key_file_);
   glib_->KeyFileSetString(key_file_, group.c_str(), key.c_str(), value.c_str());
   return true;
 }
 
-bool KeyFileStore::GetBool(const string &group,
-                           const string &key,
-                           bool *value) const {
+bool KeyFileStore::GetBool(const string& group,
+                           const string& key,
+                           bool* value) const {
   CHECK(key_file_);
-  GError *error = nullptr;
+  GError* error = nullptr;
   gboolean data =
       glib_->KeyFileGetBoolean(key_file_, group.c_str(), key.c_str(), &error);
   if (error) {
@@ -248,7 +248,7 @@ bool KeyFileStore::GetBool(const string &group,
   return true;
 }
 
-bool KeyFileStore::SetBool(const string &group, const string &key, bool value) {
+bool KeyFileStore::SetBool(const string& group, const string& key, bool value) {
   CHECK(key_file_);
   glib_->KeyFileSetBoolean(key_file_,
                            group.c_str(),
@@ -258,9 +258,9 @@ bool KeyFileStore::SetBool(const string &group, const string &key, bool value) {
 }
 
 bool KeyFileStore::GetInt(
-    const string &group, const string &key, int *value) const {
+    const string& group, const string& key, int* value) const {
   CHECK(key_file_);
-  GError *error = nullptr;
+  GError* error = nullptr;
   gint data =
       glib_->KeyFileGetInteger(key_file_, group.c_str(), key.c_str(), &error);
   if (error) {
@@ -274,14 +274,14 @@ bool KeyFileStore::GetInt(
   return true;
 }
 
-bool KeyFileStore::SetInt(const string &group, const string &key, int value) {
+bool KeyFileStore::SetInt(const string& group, const string& key, int value) {
   CHECK(key_file_);
   glib_->KeyFileSetInteger(key_file_, group.c_str(), key.c_str(), value);
   return true;
 }
 
 bool KeyFileStore::GetUint64(
-    const string &group, const string &key, uint64_t *value) const {
+    const string& group, const string& key, uint64_t* value) const {
   // Read the value in as a string and then convert to uint64_t because glib's
   // g_key_file_set_uint64 appears not to work correctly on 32-bit platforms
   // in unit tests.
@@ -305,20 +305,20 @@ bool KeyFileStore::GetUint64(
 }
 
 bool KeyFileStore::SetUint64(
-    const string &group, const string &key, uint64_t value) {
+    const string& group, const string& key, uint64_t value) {
   // Convert the value to a string first, then save the value because glib's
   // g_key_file_get_uint64 appears not to work on 32-bit platforms in our
   // unit tests.
   return SetString(group, key, base::Uint64ToString(value));
 }
 
-bool KeyFileStore::GetStringList(const string &group,
-                                 const string &key,
-                                 vector<string> *value) const {
+bool KeyFileStore::GetStringList(const string& group,
+                                 const string& key,
+                                 vector<string>* value) const {
   CHECK(key_file_);
   gsize length = 0;
-  GError *error = nullptr;
-  gchar **data = glib_->KeyFileGetStringList(key_file_,
+  GError* error = nullptr;
+  gchar** data = glib_->KeyFileGetStringList(key_file_,
                                              group.c_str(),
                                              key.c_str(),
                                              &length,
@@ -335,12 +335,12 @@ bool KeyFileStore::GetStringList(const string &group,
   return true;
 }
 
-bool KeyFileStore::SetStringList(const string &group,
-                                 const string &key,
-                                 const vector<string> &value) {
+bool KeyFileStore::SetStringList(const string& group,
+                                 const string& key,
+                                 const vector<string>& value) {
   CHECK(key_file_);
-  vector<const char *> list;
-  for (const auto &string_entry : value) {
+  vector<const char*> list;
+  for (const auto& string_entry : value) {
     list.push_back(string_entry.c_str());
   }
   glib_->KeyFileSetStringList(key_file_,
@@ -351,9 +351,9 @@ bool KeyFileStore::SetStringList(const string &group,
   return true;
 }
 
-bool KeyFileStore::GetCryptedString(const string &group,
-                                    const string &key,
-                                    string *value) {
+bool KeyFileStore::GetCryptedString(const string& group,
+                                    const string& key,
+                                    string* value) {
   if (!GetString(group, key, value)) {
     return false;
   }
@@ -363,28 +363,28 @@ bool KeyFileStore::GetCryptedString(const string &group,
   return true;
 }
 
-bool KeyFileStore::SetCryptedString(const string &group,
-                                    const string &key,
-                                    const string &value) {
+bool KeyFileStore::SetCryptedString(const string& group,
+                                    const string& key,
+                                    const string& value) {
   return SetString(group, key, crypto_.Encrypt(value));
 }
 
 bool KeyFileStore::DoesGroupMatchProperties(
-    const string &group, const KeyValueStore &properties) const {
+    const string& group, const KeyValueStore& properties) const {
   map<string, bool>::const_iterator bool_it;
-  for (const auto &property : properties.bool_properties()) {
+  for (const auto& property : properties.bool_properties()) {
     bool value;
     if (!GetBool(group, property.first, &value) || value != property.second) {
       return false;
     }
   }
-  for (const auto &property : properties.int_properties()) {
+  for (const auto& property : properties.int_properties()) {
     int value;
     if (!GetInt(group, property.first, &value) || value != property.second) {
       return false;
     }
   }
-  for (const auto &property : properties.string_properties()) {
+  for (const auto& property : properties.string_properties()) {
     string value;
     if (!GetString(group, property.first, &value) || value != property.second) {
       return false;

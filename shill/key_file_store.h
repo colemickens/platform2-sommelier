@@ -23,11 +23,11 @@ namespace shill {
 // of the key file format.
 class KeyFileStore : public StoreInterface {
  public:
-  explicit KeyFileStore(GLib *glib);
+  explicit KeyFileStore(GLib* glib);
   ~KeyFileStore() override;
 
-  void set_path(const base::FilePath &path) { path_ = path; }
-  const base::FilePath &path() const { return path_; }
+  void set_path(const base::FilePath& path) { path_ = path; }
+  const base::FilePath& path() const { return path_; }
 
   // Returns true if the store exists and is non-empty.
   bool IsNonEmpty() const;
@@ -53,49 +53,49 @@ class KeyFileStore : public StoreInterface {
   // Inherited from StoreInterface.
   bool Flush() override;
   std::set<std::string> GetGroups() const override;
-  std::set<std::string> GetGroupsWithKey(const std::string &key) const override;
+  std::set<std::string> GetGroupsWithKey(const std::string& key) const override;
   std::set<std::string> GetGroupsWithProperties(
-      const KeyValueStore &properties) const override;
-  bool ContainsGroup(const std::string &group) const override;
-  bool DeleteKey(const std::string &group, const std::string &key) override;
-  bool DeleteGroup(const std::string &group) override;
-  bool SetHeader(const std::string &header) override;
-  bool GetString(const std::string &group,
-                 const std::string &key,
-                 std::string *value) const override;
-  bool SetString(const std::string &group,
-                 const std::string &key,
-                 const std::string &value) override;
-  bool GetBool(const std::string &group,
-               const std::string &key,
-               bool *value) const override;
-  bool SetBool(const std::string &group,
-               const std::string &key,
+      const KeyValueStore& properties) const override;
+  bool ContainsGroup(const std::string& group) const override;
+  bool DeleteKey(const std::string& group, const std::string& key) override;
+  bool DeleteGroup(const std::string& group) override;
+  bool SetHeader(const std::string& header) override;
+  bool GetString(const std::string& group,
+                 const std::string& key,
+                 std::string* value) const override;
+  bool SetString(const std::string& group,
+                 const std::string& key,
+                 const std::string& value) override;
+  bool GetBool(const std::string& group,
+               const std::string& key,
+               bool* value) const override;
+  bool SetBool(const std::string& group,
+               const std::string& key,
                bool value) override;
-  bool GetInt(const std::string &group,
-              const std::string &key,
-              int *value) const override;
-  bool SetInt(const std::string &group,
-              const std::string &key,
+  bool GetInt(const std::string& group,
+              const std::string& key,
+              int* value) const override;
+  bool SetInt(const std::string& group,
+              const std::string& key,
               int value) override;
-  bool GetUint64(const std::string &group,
-                 const std::string &key,
-                 uint64_t *value) const override;
-  bool SetUint64(const std::string &group,
-                 const std::string &key,
+  bool GetUint64(const std::string& group,
+                 const std::string& key,
+                 uint64_t* value) const override;
+  bool SetUint64(const std::string& group,
+                 const std::string& key,
                  uint64_t value) override;
-  bool GetStringList(const std::string &group,
-                     const std::string &key,
-                     std::vector<std::string> *value) const override;
-  bool SetStringList(const std::string &group,
-                     const std::string &key,
-                     const std::vector<std::string> &value) override;
-  bool GetCryptedString(const std::string &group,
-                        const std::string &key,
-                        std::string *value) override;
-  bool SetCryptedString(const std::string &group,
-                        const std::string &key,
-                        const std::string &value) override;
+  bool GetStringList(const std::string& group,
+                     const std::string& key,
+                     std::vector<std::string>* value) const override;
+  bool SetStringList(const std::string& group,
+                     const std::string& key,
+                     const std::vector<std::string>& value) override;
+  bool GetCryptedString(const std::string& group,
+                        const std::string& key,
+                        std::string* value) override;
+  bool SetCryptedString(const std::string& group,
+                        const std::string& key,
+                        const std::string& value) override;
 
  private:
   FRIEND_TEST(KeyFileStoreTest, OpenClose);
@@ -104,12 +104,12 @@ class KeyFileStore : public StoreInterface {
   static const char kCorruptSuffix[];
 
   void ReleaseKeyFile();
-  bool DoesGroupMatchProperties(const std::string &group,
-                                const KeyValueStore &properties) const;
+  bool DoesGroupMatchProperties(const std::string& group,
+                                const KeyValueStore& properties) const;
 
-  GLib *glib_;
+  GLib* glib_;
   CryptoProvider crypto_;
-  GKeyFile *key_file_;
+  GKeyFile* key_file_;
   base::FilePath path_;
 
   DISALLOW_COPY_AND_ASSIGN(KeyFileStore);

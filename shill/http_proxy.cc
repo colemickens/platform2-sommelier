@@ -36,7 +36,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kHTTPProxy;
-static string ObjectID(Connection *c) {
+static string ObjectID(Connection* c) {
   return c->interface_name();
 }
 }
@@ -89,8 +89,8 @@ HTTPProxy::~HTTPProxy() {
   Stop();
 }
 
-bool HTTPProxy::Start(EventDispatcher *dispatcher,
-                      Sockets *sockets) {
+bool HTTPProxy::Start(EventDispatcher* dispatcher,
+                      Sockets* sockets) {
   SLOG(connection_.get(), 3) << "In " << __func__;
 
   if (sockets_) {
@@ -110,10 +110,10 @@ bool HTTPProxy::Start(EventDispatcher *dispatcher,
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   if (sockets->Bind(proxy_socket_,
-                    reinterpret_cast<struct sockaddr *>(&addr),
+                    reinterpret_cast<struct sockaddr*>(&addr),
                     sizeof(addr)) < 0 ||
       sockets->GetSockName(proxy_socket_,
-                           reinterpret_cast<struct sockaddr *>(&addr),
+                           reinterpret_cast<struct sockaddr*>(&addr),
                            &addrlen) < 0 ||
       sockets->SetNonBlocking(proxy_socket_) < 0 ||
       sockets->Listen(proxy_socket_, kMaxClientQueue) < 0) {
@@ -193,7 +193,7 @@ void HTTPProxy::AcceptClient(int fd) {
   StartIdleTimeout();
 }
 
-bool HTTPProxy::ConnectServer(const IPAddress &address, int port) {
+bool HTTPProxy::ConnectServer(const IPAddress& address, int port) {
   state_ = kStateConnectServer;
   if (!server_async_connection_->Start(address, port)) {
     SendClientError(500, "Could not create socket to connect to server");
@@ -204,7 +204,7 @@ bool HTTPProxy::ConnectServer(const IPAddress &address, int port) {
 }
 
 // DNSClient callback that fires when the DNS request completes.
-void HTTPProxy::GetDNSResult(const Error &error, const IPAddress &address) {
+void HTTPProxy::GetDNSResult(const Error& error, const IPAddress& address) {
   if (!error.IsSuccess()) {
     SendClientError(502, string("Could not resolve hostname: ") +
                     error.message());
@@ -234,7 +234,7 @@ void HTTPProxy::OnConnectCompletion(bool success, int fd) {
   StartTransmit();
 }
 
-void HTTPProxy::OnReadError(const string &error_msg) {
+void HTTPProxy::OnReadError(const string& error_msg) {
   StopClient();
 }
 
@@ -248,7 +248,7 @@ bool HTTPProxy::ParseClientRequest() {
   string host;
   bool found_via = false;
   bool found_connection = false;
-  for (auto &header : client_headers_) {
+  for (auto& header : client_headers_) {
     if (base::StartsWithASCII(header, "Host:", false)) {
       host = header.substr(5);
     } else if (base::StartsWithASCII(header, "Via:", false)) {
@@ -273,7 +273,7 @@ bool HTTPProxy::ParseClientRequest() {
   // Assemble the request as it will be sent to the server.
   client_data_.Clear();
   if (!base::LowerCaseEqualsASCII(client_method_, kHTTPMethodConnect)) {
-    for (const auto &header : client_headers_) {
+    for (const auto& header : client_headers_) {
       client_data_.Append(ByteString(header + "\r\n", false));
     }
     client_data_.Append(ByteString(string("\r\n"), false));
@@ -330,7 +330,7 @@ bool HTTPProxy::ParseClientRequest() {
 // Accept a new line into the client headers.  Returns false if a parse
 // error occurs.
 bool HTTPProxy::ProcessLastHeaderLine() {
-  string *header = &client_headers_.back();
+  string* header = &client_headers_.back();
   base::TrimString(*header, "\r", header);
 
   if (header->empty()) {
@@ -361,9 +361,9 @@ bool HTTPProxy::ProcessLastHeaderLine() {
 // Split input from client into header lines, and consume parsed lines
 // from InputData.  The passed in |data| is modified to indicate the
 // characters consumed.
-bool HTTPProxy::ReadClientHeaders(InputData *data) {
-  unsigned char *ptr = data->buf;
-  unsigned char *end = ptr + data->len;
+bool HTTPProxy::ReadClientHeaders(InputData* data) {
+  unsigned char* ptr = data->buf;
+  unsigned char* end = ptr + data->len;
 
   if (client_headers_.empty()) {
     client_headers_.push_back(string());
@@ -380,7 +380,7 @@ bool HTTPProxy::ReadClientHeaders(InputData *data) {
       continue;
     }
 
-    string *header = &client_headers_.back();
+    string* header = &client_headers_.back();
     // Is the first character of the header line a space or tab character?
     if (header->empty() && (*ptr == ' ' || *ptr == '\t') &&
         client_headers_.size() > 1) {
@@ -415,7 +415,7 @@ bool HTTPProxy::ReadClientHeaders(InputData *data) {
 // and removes the hostname (and port) from the URL.  Returns false if a
 // parse error occurs, and true otherwise (whether or not the hostname was
 // found).
-bool HTTPProxy::ReadClientHostname(string *header) {
+bool HTTPProxy::ReadClientHostname(string* header) {
   const string http_url_prefix(kHTTPURLPrefix);
   size_t url_idx = header->find(http_url_prefix);
   if (url_idx != string::npos) {
@@ -440,7 +440,7 @@ bool HTTPProxy::ReadClientHostname(string *header) {
   return true;
 }
 
-bool HTTPProxy::ReadClientHTTPMethod(string *header) {
+bool HTTPProxy::ReadClientHTTPMethod(string* header) {
   size_t method_end = header->find(kHTTPMethodTerminator);
   if (method_end == string::npos || method_end == 0) {
     LOG(ERROR) << "Could not parse HTTP method.  Line was: " << *header;
@@ -453,7 +453,7 @@ bool HTTPProxy::ReadClientHTTPMethod(string *header) {
 
 // Extract the HTTP version number from the first line of the client headers.
 // Returns true if found.
-bool HTTPProxy::ReadClientHTTPVersion(string *header) {
+bool HTTPProxy::ReadClientHTTPVersion(string* header) {
   const string http_version_prefix(kHTTPVersionPrefix);
   size_t http_ver_pos = header->find(http_version_prefix);
   if (http_ver_pos != string::npos) {
@@ -468,7 +468,7 @@ bool HTTPProxy::ReadClientHTTPVersion(string *header) {
 
 // IOInputHandler callback that fires when data is read from the client.
 // This could be header data, or perhaps POST data that follows the headers.
-void HTTPProxy::ReadFromClient(InputData *data) {
+void HTTPProxy::ReadFromClient(InputData* data) {
   SLOG(connection_.get(), 3) << "In " << __func__ << " length " << data->len;
 
   if (data->len == 0) {
@@ -501,7 +501,7 @@ void HTTPProxy::ReadFromClient(InputData *data) {
 
 // IOInputHandler callback which fires when data has been read from the
 // server.
-void HTTPProxy::ReadFromServer(InputData *data) {
+void HTTPProxy::ReadFromServer(InputData* data) {
   SLOG(connection_.get(), 3) << "In " << __func__ << " length " << data->len;
   if (data->len == 0) {
     // Server closed connection.
@@ -520,7 +520,7 @@ void HTTPProxy::ReadFromServer(InputData *data) {
 }
 
 // Return an HTTP error message back to the client.
-void HTTPProxy::SendClientError(int code, const string &error) {
+void HTTPProxy::SendClientError(int code, const string& error) {
   SLOG(connection_.get(), 3) << "In " << __func__;
   LOG(ERROR) << "Sending error " << error;
   SetClientResponse(code, "ERROR", "text/plain", error);
@@ -529,9 +529,9 @@ void HTTPProxy::SendClientError(int code, const string &error) {
 }
 
 // Create an HTTP response message to be sent to the client.
-void HTTPProxy::SetClientResponse(int code, const string &type,
-                                  const string &content_type,
-                                  const string &message) {
+void HTTPProxy::SetClientResponse(int code, const string& type,
+                                  const string& content_type,
+                                  const string& message) {
   string content_line;
   if (!message.empty() && !content_type.empty()) {
     content_line = StringPrintf("Content-Type: %s\r\n", content_type.c_str());

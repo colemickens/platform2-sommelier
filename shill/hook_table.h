@@ -45,26 +45,26 @@ class Error;
 
 class HookTable {
  public:
-  explicit HookTable(EventDispatcher *event_dispatcher);
+  explicit HookTable(EventDispatcher* event_dispatcher);
   ~HookTable();
 
   // Adds a closure to the hook table.  |name| should be unique; otherwise, a
   // previous closure by the same name will be replaced.  |start| will be called
   // when Run() is called.
-  void Add(const std::string &name, const base::Closure &start);
+  void Add(const std::string& name, const base::Closure& start);
 
   // Users call this function to report the completion of an action |name|.
-  void ActionComplete(const std::string &name);
+  void ActionComplete(const std::string& name);
 
   // Removes the action associated with |name| from the hook table.  If |name|
   // does not exist, the hook table is unchanged.
-  void Remove(const std::string &name);
+  void Remove(const std::string& name);
 
   // Runs the actions that have been added to the HookTable via Add().  It
   // starts a timer for completion in |timeout_ms|.  If all actions complete
   // successfully within the timeout period, |done| is called with a value of
   // Error::kSuccess.  Otherwise, it is called with Error::kOperationTimeout.
-  void Run(int timeout_ms, const ResultCallback &done);
+  void Run(int timeout_ms, const ResultCallback& done);
 
   bool IsEmpty() const { return hook_table_.empty(); }
 
@@ -74,7 +74,7 @@ class HookTable {
   // For each action, there is a |start| callback which is stored in this
   // structure.
   struct HookAction {
-    explicit HookAction(const base::Closure &start_callback)
+    explicit HookAction(const base::Closure& start_callback)
         : start_callback(start_callback),
           started(false),
           completed(false) {}
@@ -108,7 +108,7 @@ class HookTable {
 
   // Used for setting a timeout action to run in case all the actions do not
   // complete in time.
-  EventDispatcher *const event_dispatcher_;
+  EventDispatcher* const event_dispatcher_;
 
   DISALLOW_COPY_AND_ASSIGN(HookTable);
 };

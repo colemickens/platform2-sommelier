@@ -25,13 +25,13 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kManager;
-static string ObjectID(const HookTable *h) { return "(hook_table)"; }
+static string ObjectID(const HookTable* h) { return "(hook_table)"; }
 }
 
-HookTable::HookTable(EventDispatcher *event_dispatcher)
+HookTable::HookTable(EventDispatcher* event_dispatcher)
     : event_dispatcher_(event_dispatcher) {}
 
-void HookTable::Add(const string &name, const Closure &start_callback) {
+void HookTable::Add(const string& name, const Closure& start_callback) {
   SLOG(this, 2) << __func__ << ": " << name;
   Remove(name);
   hook_table_.emplace(name, HookAction(start_callback));
@@ -41,16 +41,16 @@ HookTable::~HookTable() {
   timeout_callback_.Cancel();
 }
 
-void HookTable::Remove(const std::string &name) {
+void HookTable::Remove(const std::string& name) {
   SLOG(this, 2) << __func__ << ": " << name;
   hook_table_.erase(name);
 }
 
-void HookTable::ActionComplete(const std::string &name) {
+void HookTable::ActionComplete(const std::string& name) {
   SLOG(this, 2) << __func__ << ": " << name;
   HookTableMap::iterator it = hook_table_.find(name);
   if (it != hook_table_.end()) {
-    HookAction *action = &it->second;
+    HookAction* action = &it->second;
     if (action->started && !action->completed) {
       action->completed = true;
     }
@@ -62,7 +62,7 @@ void HookTable::ActionComplete(const std::string &name) {
   }
 }
 
-void HookTable::Run(int timeout_ms, const ResultCallback &done) {
+void HookTable::Run(int timeout_ms, const ResultCallback& done) {
   SLOG(this, 2) << __func__;
   if (hook_table_.empty()) {
     done.Run(Error(Error::kSuccess));
@@ -82,22 +82,22 @@ void HookTable::Run(int timeout_ms, const ResultCallback &done) {
   // |hook_table_| to execute the actions. Instead, we keep a list of start
   // callback of each action and iterate through that to invoke the callback.
   list<Closure> action_start_callbacks;
-  for (auto &hook_entry : hook_table_) {
-    HookAction *action = &hook_entry.second;
+  for (auto& hook_entry : hook_table_) {
+    HookAction* action = &hook_entry.second;
     action_start_callbacks.push_back(action->start_callback);
     action->started = true;
     action->completed = false;
   }
   // Now start the actions.
-  for (auto &callback : action_start_callbacks) {
+  for (auto& callback : action_start_callbacks) {
     callback.Run();
   }
 }
 
 bool HookTable::AllActionsComplete() const {
   SLOG(this, 2) << __func__;
-  for (const auto &hook_entry : hook_table_) {
-    const HookAction &action = hook_entry.second;
+  for (const auto& hook_entry : hook_table_) {
+    const HookAction& action = hook_entry.second;
     if (action.started && !action.completed) {
         return false;
     }

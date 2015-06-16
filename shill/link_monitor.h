@@ -41,12 +41,12 @@ class LinkMonitor {
   // Failure threshold count used by ActiveLinkMonitor.  Needed by Metrics.
   static const int kFailureThreshold;
 
-  LinkMonitor(const ConnectionRefPtr &connection,
-              EventDispatcher *dispatcher,  // Owned by caller; can't be NULL.
-              Metrics *metrics,  // Owned by caller; must not be NULL.
-              DeviceInfo *device_info,
-              const FailureCallback &failure_callback,
-              const GatewayChangeCallback &gateway_change_callback);
+  LinkMonitor(const ConnectionRefPtr& connection,
+              EventDispatcher* dispatcher,  // Owned by caller; can't be NULL.
+              Metrics* metrics,  // Owned by caller; must not be NULL.
+              DeviceInfo* device_info,
+              const FailureCallback& failure_callback,
+              const GatewayChangeCallback& gateway_change_callback);
   virtual ~LinkMonitor();
 
   // Starts link-monitoring on the selected connection.  Returns
@@ -71,7 +71,7 @@ class LinkMonitor {
   // gateway via broadcast ARP.
   virtual bool IsGatewayFound() const;
 
-  const ByteString &gateway_mac_address() const {
+  const ByteString& gateway_mac_address() const {
     return gateway_mac_address_;
   }
 
@@ -87,9 +87,9 @@ class LinkMonitor {
   // The connection on which to perform link monitoring.
   ConnectionRefPtr connection_;
   // Dispatcher on which to create delayed tasks.
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   // Metrics instance on which to post performance results.
-  Metrics *metrics_;
+  Metrics* metrics_;
   // Failure callback method to call if LinkMonitor fails.
   FailureCallback failure_callback_;
   // Callback method to call if gateway mac address changes.
@@ -101,7 +101,7 @@ class LinkMonitor {
   // The time at which the link monitor started.
   struct timeval started_monitoring_at_;
   // Time instance for performing GetTimeMonotonic().
-  Time *time_;
+  Time* time_;
 
   DISALLOW_COPY_AND_ASSIGN(LinkMonitor);
 };

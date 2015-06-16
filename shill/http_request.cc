@@ -29,7 +29,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kHTTP;
-static string ObjectID(Connection *c) { return c->interface_name(); }
+static string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
 const int HTTPRequest::kConnectTimeoutSeconds = 10;
@@ -42,8 +42,8 @@ const char HTTPRequest::kHTTPRequestTemplate[] =
     "Connection: Close\r\n\r\n";
 
 HTTPRequest::HTTPRequest(ConnectionRefPtr connection,
-                         EventDispatcher *dispatcher,
-                         Sockets *sockets)
+                         EventDispatcher* dispatcher,
+                         Sockets* sockets)
     : connection_(connection),
       dispatcher_(dispatcher),
       sockets_(sockets),
@@ -79,9 +79,9 @@ HTTPRequest::~HTTPRequest() {
 }
 
 HTTPRequest::Result HTTPRequest::Start(
-    const HTTPURL &url,
-    const Callback<void(const ByteString &)> &read_event_callback,
-    const Callback<void(Result, const ByteString &)> &result_callback) {
+    const HTTPURL& url,
+    const Callback<void(const ByteString&)>& read_event_callback,
+    const Callback<void(Result, const ByteString&)>& result_callback) {
   SLOG(connection_.get(), 3) << "In " << __func__;
 
   DCHECK(!is_running_);
@@ -154,7 +154,7 @@ void HTTPRequest::Stop() {
   timeout_result_ = kResultUnknown;
 }
 
-bool HTTPRequest::ConnectServer(const IPAddress &address, int port) {
+bool HTTPRequest::ConnectServer(const IPAddress& address, int port) {
   SLOG(connection_.get(), 3) << "In " << __func__;
   if (!server_async_connection_->Start(address, port)) {
     LOG(ERROR) << "Could not create socket to connect to server at "
@@ -170,7 +170,7 @@ bool HTTPRequest::ConnectServer(const IPAddress &address, int port) {
 }
 
 // DNSClient callback that fires when the DNS request completes.
-void HTTPRequest::GetDNSResult(const Error &error, const IPAddress &address) {
+void HTTPRequest::GetDNSResult(const Error& error, const IPAddress& address) {
   SLOG(connection_.get(), 3) << "In " << __func__;
   if (!error.IsSuccess()) {
     LOG(ERROR) << "Could not resolve hostname "
@@ -208,13 +208,13 @@ void HTTPRequest::OnConnectCompletion(bool success, int fd) {
   StartIdleTimeout(kInputTimeoutSeconds, kResultRequestTimeout);
 }
 
-void HTTPRequest::OnServerReadError(const string &/*error_msg*/) {
+void HTTPRequest::OnServerReadError(const string& /*error_msg*/) {
   SendStatus(kResultResponseFailure);
 }
 
 // IOInputHandler callback which fires when data has been read from the
 // server.
-void HTTPRequest::ReadFromServer(InputData *data) {
+void HTTPRequest::ReadFromServer(InputData* data) {
   SLOG(connection_.get(), 3) << "In " << __func__ << " length " << data->len;
   if (data->len == 0) {
     SendStatus(kResultSuccess);
@@ -230,7 +230,7 @@ void HTTPRequest::ReadFromServer(InputData *data) {
 
 void HTTPRequest::SendStatus(Result result) {
   // Save copies on the stack, since Stop() will remove them.
-  Callback<void(Result, const ByteString &)> result_callback = result_callback_;
+  Callback<void(Result, const ByteString&)> result_callback = result_callback_;
   const ByteString response_data(response_data_);
   Stop();
 

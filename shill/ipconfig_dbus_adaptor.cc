@@ -24,14 +24,14 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(IPConfigDBusAdaptor *i) { return i->GetRpcIdentifier(); }
+static string ObjectID(IPConfigDBusAdaptor* i) { return i->GetRpcIdentifier(); }
 }
 
 // static
 const char IPConfigDBusAdaptor::kPath[] = "/ipconfig/";
 
-IPConfigDBusAdaptor::IPConfigDBusAdaptor(DBus::Connection *conn,
-                                         IPConfig *config)
+IPConfigDBusAdaptor::IPConfigDBusAdaptor(DBus::Connection* conn,
+                                         IPConfig* config)
     : DBusAdaptor(conn, StringPrintf("%s%s_%u_%s",
                                      kPath,
                                      SanitizePathElement(
@@ -45,45 +45,45 @@ IPConfigDBusAdaptor::~IPConfigDBusAdaptor() {
   ipconfig_ = nullptr;
 }
 
-void IPConfigDBusAdaptor::EmitBoolChanged(const string &name, bool value) {
+void IPConfigDBusAdaptor::EmitBoolChanged(const string& name, bool value) {
   SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::BoolToVariant(value));
 }
 
-void IPConfigDBusAdaptor::EmitUintChanged(const string &name,
+void IPConfigDBusAdaptor::EmitUintChanged(const string& name,
                                           uint32_t value) {
   SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }
 
-void IPConfigDBusAdaptor::EmitIntChanged(const string &name, int value) {
+void IPConfigDBusAdaptor::EmitIntChanged(const string& name, int value) {
   SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Int32ToVariant(value));
 }
 
-void IPConfigDBusAdaptor::EmitStringChanged(const string &name,
-                                            const string &value) {
+void IPConfigDBusAdaptor::EmitStringChanged(const string& name,
+                                            const string& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
 }
 
-void IPConfigDBusAdaptor::EmitStringsChanged(const string &name,
-                                             const vector<string> &value) {
+void IPConfigDBusAdaptor::EmitStringsChanged(const string& name,
+                                             const vector<string>& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::StringsToVariant(value));
 }
 
 map<string, DBus::Variant> IPConfigDBusAdaptor::GetProperties(
-    DBus::Error &error) {  // NOLINT
+    DBus::Error& error) {  // NOLINT
   SLOG(this, 2) << __func__;
   map<string, DBus::Variant> properties;
   DBusAdaptor::GetProperties(ipconfig_->store(), &properties, &error);
   return properties;
 }
 
-void IPConfigDBusAdaptor::SetProperty(const string &name,
-                                      const DBus::Variant &value,
-                                      DBus::Error &error) {  // NOLINT
+void IPConfigDBusAdaptor::SetProperty(const string& name,
+                                      const DBus::Variant& value,
+                                      DBus::Error& error) {  // NOLINT
   SLOG(this, 2) << __func__ << ": " << name;
   if (DBusAdaptor::SetProperty(ipconfig_->mutable_store(),
                                name,
@@ -93,17 +93,17 @@ void IPConfigDBusAdaptor::SetProperty(const string &name,
   }
 }
 
-void IPConfigDBusAdaptor::ClearProperty(const string &name,
-                                        DBus::Error &error) {  // NOLINT
+void IPConfigDBusAdaptor::ClearProperty(const string& name,
+                                        DBus::Error& error) {  // NOLINT
   SLOG(this, 2) << __func__ << ": " << name;
   DBusAdaptor::ClearProperty(ipconfig_->mutable_store(), name, &error);
 }
 
-void IPConfigDBusAdaptor::Remove(DBus::Error &/*error*/) {  // NOLINT
+void IPConfigDBusAdaptor::Remove(DBus::Error& /*error*/) {  // NOLINT
   SLOG(this, 2) << __func__;
 }
 
-void IPConfigDBusAdaptor::Refresh(DBus::Error &error) {  // NOLINT
+void IPConfigDBusAdaptor::Refresh(DBus::Error& error) {  // NOLINT
   SLOG(this, 2) << __func__;
   Error e;
   ipconfig_->Refresh(&e);

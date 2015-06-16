@@ -74,7 +74,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kManager;
-static string ObjectID(const Manager *m) { return "manager"; }
+static string ObjectID(const Manager* m) { return "manager"; }
 }
 
 
@@ -91,7 +91,7 @@ const int Manager::kTerminationActionsTimeoutMilliseconds = 19500;
 const int Manager::kDeviceStatusCheckIntervalMilliseconds = 180000;
 
 // static
-const char *Manager::kProbeTechnologies[] = {
+const char* Manager::kProbeTechnologies[] = {
     kTypeEthernet,
     kTypeWifi,
     kTypeWimax,
@@ -101,13 +101,13 @@ const char *Manager::kProbeTechnologies[] = {
 // static
 const char Manager::kDefaultClaimerName[] = "";
 
-Manager::Manager(ControlInterface *control_interface,
-                 EventDispatcher *dispatcher,
-                 Metrics *metrics,
-                 GLib *glib,
-                 const string &run_directory,
-                 const string &storage_directory,
-                 const string &user_storage_directory)
+Manager::Manager(ControlInterface* control_interface,
+                 EventDispatcher* dispatcher,
+                 Metrics* metrics,
+                 GLib* glib,
+                 const string& run_directory,
+                 const string& storage_directory,
+                 const string& user_storage_directory)
     : dispatcher_(dispatcher),
       run_path_(FilePath(run_directory)),
       storage_path_(FilePath(storage_directory)),
@@ -219,7 +219,7 @@ Manager::Manager(ControlInterface *control_interface,
 
 Manager::~Manager() {}
 
-void Manager::AddDeviceToBlackList(const string &device_name) {
+void Manager::AddDeviceToBlackList(const string& device_name) {
   device_info_.AddDeviceToBlackList(device_name);
 }
 
@@ -249,7 +249,7 @@ void Manager::Start() {
 #if !defined(DISABLE_CELLULAR)
   modem_info_.Start();
 #endif  // DISABLE_CELLULAR
-  for (const auto &provider_mapping : providers_) {
+  for (const auto& provider_mapping : providers_) {
     provider_mapping.second->Start();
   }
 
@@ -261,7 +261,7 @@ void Manager::Start() {
 void Manager::Stop() {
   running_ = false;
   // Persist device information to disk;
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     UpdateDevice(device);
   }
 
@@ -270,7 +270,7 @@ void Manager::Stop() {
 #endif  // DISABLE_WIFI
 
   // Persist profile, service information to disk.
-  for (const auto &profile : profiles_) {
+  for (const auto& profile : profiles_) {
     // Since this happens in a loop, the current manager state is stored to
     // all default profiles in the stack.  This is acceptable because the
     // only time multiple default profiles are loaded are during autotests.
@@ -278,16 +278,16 @@ void Manager::Stop() {
   }
 
   Error e;
-  for (const auto &service : services_) {
+  for (const auto& service : services_) {
     service->Disconnect(&e, __func__);
   }
 
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     device->SetEnabled(false);
   }
 
   adaptor_->UpdateRunning();
-  for (const auto &provider_mapping : providers_) {
+  for (const auto& provider_mapping : providers_) {
     provider_mapping.second->Stop();
   }
 #if !defined(DISABLE_CELLULAR)
@@ -343,12 +343,12 @@ void Manager::InitializeProfiles() {
   CHECK(!profiles_.empty());  // Must have a default profile.
 
   // Push user profiles onto the stack.
-  for (const auto &profile_id : identifiers)  {
+  for (const auto& profile_id : identifiers)  {
     PushProfileInternal(profile_id, &path, &error);
   }
 }
 
-void Manager::CreateProfile(const string &name, string *path, Error *error) {
+void Manager::CreateProfile(const string& name, string* path, Error* error) {
   SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
@@ -395,8 +395,8 @@ void Manager::CreateProfile(const string &name, string *path, Error *error) {
   *path = profile->GetRpcIdentifier();
 }
 
-bool Manager::HasProfile(const Profile::Identifier &ident) {
-  for (const auto &profile : profiles_) {
+bool Manager::HasProfile(const Profile::Identifier& ident) {
+  for (const auto& profile : profiles_) {
     if (profile->MatchesIdentifier(ident)) {
       return true;
     }
@@ -405,7 +405,7 @@ bool Manager::HasProfile(const Profile::Identifier &ident) {
 }
 
 void Manager::PushProfileInternal(
-    const Profile::Identifier &ident, string *path, Error *error) {
+    const Profile::Identifier& ident, string* path, Error* error) {
   if (HasProfile(ident)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyExists,
                           "Profile name " + Profile::IdentifierToString(ident) +
@@ -457,7 +457,7 @@ void Manager::PushProfileInternal(
 
   profiles_.push_back(profile);
 
-  for (ServiceRefPtr &service : services_) {
+  for (ServiceRefPtr& service : services_) {
     service->ClearExplicitlyDisconnected();
 
     // Offer each registered Service the opportunity to join this new Profile.
@@ -469,13 +469,13 @@ void Manager::PushProfileInternal(
 
   // Shop the Profile contents around to Devices which may have configuration
   // stored in these profiles.
-  for (DeviceRefPtr &device : devices_) {
+  for (DeviceRefPtr& device : devices_) {
     profile->ConfigureDevice(device);
   }
 
   // Offer the Profile contents to the service providers which will
   // create new services if necessary.
-  for (const auto &provider_mapping : providers_) {
+  for (const auto& provider_mapping : providers_) {
     provider_mapping.second->CreateServicesFromProfile(profile);
   }
 
@@ -486,7 +486,7 @@ void Manager::PushProfileInternal(
             << " profile(s) now present.";
 }
 
-void Manager::PushProfile(const string &name, string *path, Error *error) {
+void Manager::PushProfile(const string& name, string* path, Error* error) {
   SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
@@ -497,10 +497,10 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
   PushProfileInternal(ident, path, error);
 }
 
-void Manager::InsertUserProfile(const string &name,
-                                const string &user_hash,
-                                string *path,
-                                Error *error) {
+void Manager::InsertUserProfile(const string& name,
+                                const string& user_hash,
+                                string* path,
+                                Error* error) {
   SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident) ||
@@ -564,7 +564,7 @@ void Manager::OnProfilesChanged() {
   Profile::SaveUserProfileList(user_profile_list_path_, profiles_);
 }
 
-void Manager::PopProfile(const string &name, Error *error) {
+void Manager::PopProfile(const string& name, Error* error) {
   SLOG(this, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (profiles_.empty()) {
@@ -586,7 +586,7 @@ void Manager::PopProfile(const string &name, Error *error) {
   PopProfileInternal();
 }
 
-void Manager::PopAnyProfile(Error *error) {
+void Manager::PopAnyProfile(Error* error) {
   SLOG(this, 2) << __func__;
   Profile::Identifier ident;
   if (profiles_.empty()) {
@@ -597,14 +597,14 @@ void Manager::PopAnyProfile(Error *error) {
   PopProfileInternal();
 }
 
-void Manager::PopAllUserProfiles(Error */*error*/) {
+void Manager::PopAllUserProfiles(Error* /*error*/) {
   SLOG(this, 2) << __func__;
   while (!profiles_.empty() && !profiles_.back()->GetUser().empty()) {
     PopProfileInternal();
   }
 }
 
-void Manager::RemoveProfile(const string &name, Error *error) {
+void Manager::RemoveProfile(const string& name, Error* error) {
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
@@ -643,10 +643,10 @@ void Manager::RemoveProfile(const string &name, Error *error) {
   return;
 }
 
-void Manager::ClaimDevice(const string &claimer_name,
-                          const string &device_name,
-                          Error *error,
-                          const ResultCallback &callback) {
+void Manager::ClaimDevice(const string& claimer_name,
+                          const string& device_name,
+                          Error* error,
+                          const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
 
   // Basic check for device name.
@@ -702,9 +702,9 @@ void Manager::ClaimDevice(const string &claimer_name,
   error->Populate(Error::kSuccess);
 }
 
-void Manager::ReleaseDevice(const string &claimer_name,
-                            const string &device_name,
-                            Error *error) {
+void Manager::ReleaseDevice(const string& claimer_name,
+                            const string& device_name,
+                            Error* error) {
   SLOG(this, 2) << __func__;
   if (!device_claimer_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
@@ -733,14 +733,14 @@ void Manager::ReleaseDevice(const string &claimer_name,
   }
 }
 
-void Manager::OnDeviceClaimerAppeared(const string &/*name*/,
-                                      const string &owner) {
+void Manager::OnDeviceClaimerAppeared(const string& /*name*/,
+                                      const string& owner) {
   SLOG(this, 2) << __func__;
   CHECK(device_claimer_);
 
   // Claim device for any pending claims.
   if (!pending_device_claims_.empty()) {
-    for (const auto &device_claim : pending_device_claims_) {
+    for (const auto& device_claim : pending_device_claims_) {
       Error error;
       if (device_claimer_->Claim(device_claim.device_name, &error)) {
         DeregisterDeviceByLinkName(device_claim.device_name);
@@ -768,7 +768,7 @@ void Manager::OnDeviceClaimerAppeared(const string &/*name*/,
   }
 }
 
-void Manager::OnDeviceClaimerVanished(const string &/*name*/) {
+void Manager::OnDeviceClaimerVanished(const string& /*name*/) {
   SLOG(this, 2) << __func__;
 
   // Currently, this function can be called synchronously through creation
@@ -786,7 +786,7 @@ void Manager::DeviceClaimerVanishedTask() {
                           &error,
                           Error::kInvalidArguments,
                           "Invalid DBus service name");
-    for (const auto &device_claim : pending_device_claims_) {
+    for (const auto& device_claim : pending_device_claims_) {
       device_claim.result_callback.Run(error);
     }
     pending_device_claims_.clear();
@@ -795,7 +795,7 @@ void Manager::DeviceClaimerVanishedTask() {
   device_claimer_.reset();
 }
 
-void Manager::RemoveService(const ServiceRefPtr &service) {
+void Manager::RemoveService(const ServiceRefPtr& service) {
   LOG(INFO) << __func__ << " for service " << service->unique_name();
   if (!IsServiceEphemeral(service)) {
     service->profile()->AbandonService(service);
@@ -813,8 +813,8 @@ void Manager::RemoveService(const ServiceRefPtr &service) {
   SortServices();
 }
 
-bool Manager::HandleProfileEntryDeletion(const ProfileRefPtr &profile,
-                                         const std::string &entry_name) {
+bool Manager::HandleProfileEntryDeletion(const ProfileRefPtr& profile,
+                                         const std::string& entry_name) {
   bool moved_services = false;
   for (auto it = services_.begin(); it != services_.end();) {
     if ((*it)->profile().get() == profile.get() &&
@@ -836,9 +836,9 @@ bool Manager::HandleProfileEntryDeletion(const ProfileRefPtr &profile,
 }
 
 map<string, string> Manager::GetLoadableProfileEntriesForService(
-    const ServiceConstRefPtr &service) {
+    const ServiceConstRefPtr& service) {
   map<string, string> profile_entries;
-  for (const auto &profile : profiles_) {
+  for (const auto& profile : profiles_) {
     string entry_name = service->GetLoadableStorageIdentifier(
         *profile->GetConstStorage());
     if (!entry_name.empty()) {
@@ -849,8 +849,8 @@ map<string, string> Manager::GetLoadableProfileEntriesForService(
 }
 
 ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
-    const ProfileRefPtr &profile, const std::string &entry_name, Error *error) {
-  for (const auto &service : services_) {
+    const ProfileRefPtr& profile, const std::string& entry_name, Error* error) {
+  for (const auto& service : services_) {
     if (service->profile().get() == profile.get() &&
         service->GetStorageIdentifier() == entry_name) {
       return service;
@@ -863,7 +863,7 @@ ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
 }
 
 ServiceRefPtr Manager::CreateTemporaryServiceFromProfile(
-    const ProfileRefPtr &profile, const std::string &entry_name, Error *error) {
+    const ProfileRefPtr& profile, const std::string& entry_name, Error* error) {
   Technology::Identifier technology =
       Technology::IdentifierFromStorageGroup(entry_name);
   if (technology == Technology::kUnknown) {
@@ -900,8 +900,8 @@ ServiceRefPtr Manager::CreateTemporaryServiceFromProfile(
 }
 
 ServiceRefPtr Manager::GetServiceWithGUID(
-    const std::string &guid, Error *error) {
-  for (const auto &service : services_) {
+    const std::string& guid, Error* error) {
+  for (const auto& service : services_) {
     if (service->guid() == guid) {
       return service;
     }
@@ -926,12 +926,12 @@ ServiceRefPtr Manager::GetDefaultService() const {
   return services_[0];
 }
 
-RpcIdentifier Manager::GetDefaultServiceRpcIdentifier(Error */*error*/) {
+RpcIdentifier Manager::GetDefaultServiceRpcIdentifier(Error* /*error*/) {
   ServiceRefPtr default_service = GetDefaultService();
   return default_service ? default_service->GetRpcIdentifier() : "/";
 }
 
-bool Manager::IsTechnologyInList(const string &technology_list,
+bool Manager::IsTechnologyInList(const string& technology_list,
                                  Technology::Identifier tech) const {
   if (technology_list.empty())
     return false;
@@ -949,15 +949,15 @@ bool Manager::IsPortalDetectionEnabled(Technology::Identifier tech) {
   return IsTechnologyInList(GetCheckPortalList(nullptr), tech);
 }
 
-void Manager::SetStartupPortalList(const string &portal_list) {
+void Manager::SetStartupPortalList(const string& portal_list) {
   startup_portal_list_ = portal_list;
   use_startup_portal_list_ = true;
 }
 
-bool Manager::IsProfileBefore(const ProfileRefPtr &a,
-                              const ProfileRefPtr &b) const {
+bool Manager::IsProfileBefore(const ProfileRefPtr& a,
+                              const ProfileRefPtr& b) const {
   DCHECK(a != b);
-  for (const auto &profile : profiles_) {
+  for (const auto& profile : profiles_) {
     if (profile == a) {
       return true;
     }
@@ -969,7 +969,7 @@ bool Manager::IsProfileBefore(const ProfileRefPtr &a,
   return false;
 }
 
-bool Manager::IsServiceEphemeral(const ServiceConstRefPtr &service) const {
+bool Manager::IsServiceEphemeral(const ServiceConstRefPtr& service) const {
   return service->profile() == ephemeral_profile_;
 }
 
@@ -988,7 +988,7 @@ bool Manager::IsTechnologyProhibited(
   return IsTechnologyInList(props_.prohibited_technologies, technology);
 }
 
-void Manager::OnProfileStorageInitialized(Profile *profile) {
+void Manager::OnProfileStorageInitialized(Profile* profile) {
 #if !defined(DISABLE_WIFI)
   wifi_provider_->LoadAndFixupServiceEntries(profile);
 #endif  // DISABLE_WIFI
@@ -996,7 +996,7 @@ void Manager::OnProfileStorageInitialized(Profile *profile) {
 
 DeviceRefPtr Manager::GetEnabledDeviceWithTechnology(
     Technology::Identifier technology) const {
-  for (const auto &device : FilterByTechnology(technology)) {
+  for (const auto& device : FilterByTechnology(technology)) {
     if (device->enabled()) {
       return device;
     }
@@ -1005,7 +1005,7 @@ DeviceRefPtr Manager::GetEnabledDeviceWithTechnology(
 }
 
 DeviceRefPtr Manager::GetEnabledDeviceByLinkName(
-    const string &link_name) const {
+    const string& link_name) const {
   for (const auto& device : devices_) {
     if (device->link_name() == link_name) {
       if (!device->enabled()) {
@@ -1017,18 +1017,18 @@ DeviceRefPtr Manager::GetEnabledDeviceByLinkName(
   return nullptr;
 }
 
-const ProfileRefPtr &Manager::ActiveProfile() const {
+const ProfileRefPtr& Manager::ActiveProfile() const {
   DCHECK_NE(profiles_.size(), 0U);
   return profiles_.back();
 }
 
-bool Manager::IsActiveProfile(const ProfileRefPtr &profile) const {
+bool Manager::IsActiveProfile(const ProfileRefPtr& profile) const {
   return (profiles_.size() > 0 &&
           ActiveProfile().get() == profile.get());
 }
 
-bool Manager::MoveServiceToProfile(const ServiceRefPtr &to_move,
-                                   const ProfileRefPtr &destination) {
+bool Manager::MoveServiceToProfile(const ServiceRefPtr& to_move,
+                                   const ProfileRefPtr& destination) {
   const ProfileRefPtr from = to_move->profile();
   SLOG(this, 2) << "Moving service "
                 << to_move->unique_name()
@@ -1040,8 +1040,8 @@ bool Manager::MoveServiceToProfile(const ServiceRefPtr &to_move,
 }
 
 ProfileRefPtr Manager::LookupProfileByRpcIdentifier(
-    const string &profile_rpcid) {
-  for (const auto &profile : profiles_) {
+    const string& profile_rpcid) {
+  for (const auto& profile : profiles_) {
     if (profile_rpcid == profile->GetRpcIdentifier()) {
       return profile;
     }
@@ -1049,9 +1049,9 @@ ProfileRefPtr Manager::LookupProfileByRpcIdentifier(
   return nullptr;
 }
 
-void Manager::SetProfileForService(const ServiceRefPtr &to_set,
-                                   const string &profile_rpcid,
-                                   Error *error) {
+void Manager::SetProfileForService(const ServiceRefPtr& to_set,
+                                   const string& profile_rpcid,
+                                   Error* error) {
   ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
   if (!profile) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
@@ -1075,10 +1075,10 @@ void Manager::SetProfileForService(const ServiceRefPtr &to_set,
   }
 }
 
-void Manager::SetEnabledStateForTechnology(const std::string &technology_name,
+void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
                                            bool enabled_state,
-                                           Error *error,
-                                           const ResultCallback &callback) {
+                                           Error* error,
+                                           const ResultCallback& callback) {
   CHECK(error);
   DCHECK(error->IsOngoing());
   Technology::Identifier id = Technology::IdentifierFromName(technology_name);
@@ -1093,7 +1093,7 @@ void Manager::SetEnabledStateForTechnology(const std::string &technology_name,
   }
   bool deferred = false;
   auto result_aggregator(make_scoped_refptr(new ResultAggregator(callback)));
-  for (auto &device : devices_) {
+  for (auto& device : devices_) {
     if (device->technology() != id)
       continue;
 
@@ -1146,23 +1146,23 @@ void Manager::SetIgnoreUnknownEthernet(bool ignore) {
   ignore_unknown_ethernet_ = ignore;
 }
 
-void Manager::SetPrependDNSServers(const std::string &prepend_dns_servers) {
+void Manager::SetPrependDNSServers(const std::string& prepend_dns_servers) {
   props_.prepend_dns_servers = prepend_dns_servers;
 }
 
-void Manager::SetAcceptHostnameFrom(const string &hostname_from) {
+void Manager::SetAcceptHostnameFrom(const string& hostname_from) {
   accept_hostname_from_ = hostname_from;
 }
 
-bool Manager::ShouldAcceptHostnameFrom(const string &device_name) const {
+bool Manager::ShouldAcceptHostnameFrom(const string& device_name) const {
   return MatchPattern(device_name, accept_hostname_from_);
 }
 
-void Manager::SetDHCPv6EnabledDevices(const vector<string> &device_list) {
+void Manager::SetDHCPv6EnabledDevices(const vector<string>& device_list) {
   dhcpv6_enabled_devices_ = device_list;
 }
 
-bool Manager::IsDHCPv6EnabledForDevice(const string &device_name) const {
+bool Manager::IsDHCPv6EnabledForDevice(const string& device_name) const {
   return std::find(dhcpv6_enabled_devices_.begin(),
                    dhcpv6_enabled_devices_.end(),
                    device_name) != dhcpv6_enabled_devices_.end();
@@ -1173,7 +1173,7 @@ vector<string> Manager::FilterPrependDNSServersByFamily(
   vector<string> dns_servers;
   vector<string> split_servers;
   base::SplitString(props_.prepend_dns_servers, ',', &split_servers);
-  for (const auto &server : split_servers) {
+  for (const auto& server : split_servers) {
     const IPAddress address(server);
     if (address.family() == family) {
       dns_servers.push_back(server);
@@ -1189,11 +1189,11 @@ bool Manager::IsSuspending() {
   return false;
 }
 
-void Manager::RecordDarkResumeWakeReason(const string &wake_reason) {
+void Manager::RecordDarkResumeWakeReason(const string& wake_reason) {
   power_manager_->RecordDarkResumeWakeReason(wake_reason);
 }
 
-void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
+void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
   LOG(INFO) << "Device " << to_manage->FriendlyName() << " registered.";
   // Manager is running in passive mode when default claimer is created, which
   // means devices are being managed by remote application. Only manage the
@@ -1207,7 +1207,7 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
     }
   }
 
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     if (to_manage == device)
       return;
   }
@@ -1232,7 +1232,7 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
   EmitDeviceProperties();
 }
 
-void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
+void Manager::DeregisterDevice(const DeviceRefPtr& to_forget) {
   SLOG(this, 2) << __func__ << "(" << to_forget->FriendlyName() << ")";
   for (auto it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_forget.get() == it->get()) {
@@ -1248,7 +1248,7 @@ void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
                 << to_forget->UniqueName();
 }
 
-void Manager::DeregisterDeviceByLinkName(const string &link_name) {
+void Manager::DeregisterDeviceByLinkName(const string& link_name) {
   for (const auto& device : devices_) {
     if (device->link_name() == link_name) {
       DeregisterDevice(device);
@@ -1257,22 +1257,22 @@ void Manager::DeregisterDeviceByLinkName(const string &link_name) {
   }
 }
 
-vector<string> Manager::ClaimedDevices(Error *error) {
+vector<string> Manager::ClaimedDevices(Error* error) {
   vector<string> results;
   if (!device_claimer_) {
     return results;
   }
 
-  const auto &devices = device_claimer_->claimed_device_names();
+  const auto& devices = device_claimer_->claimed_device_names();
   results.resize(devices.size());
   std::copy(devices.begin(), devices.end(), results.begin());
   return results;
 }
 
-void Manager::LoadDeviceFromProfiles(const DeviceRefPtr &device) {
+void Manager::LoadDeviceFromProfiles(const DeviceRefPtr& device) {
   // We are applying device properties from the DefaultProfile, and adding the
   // union of hidden services in all loaded profiles to the device.
-  for (const auto &profile : profiles_) {
+  for (const auto& profile : profiles_) {
     // Load device configuration, if any exists, as well as hidden services.
     profile->ConfigureDevice(device);
   }
@@ -1280,7 +1280,7 @@ void Manager::LoadDeviceFromProfiles(const DeviceRefPtr &device) {
 
 void Manager::EmitDeviceProperties() {
   vector<string> device_paths;
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     device_paths.push_back(device->GetRpcIdentifier());
   }
   adaptor_->EmitRpcIdentifierArrayChanged(kDevicesProperty,
@@ -1295,7 +1295,7 @@ void Manager::EmitDeviceProperties() {
 }
 
 #if !defined(DISABLE_WIFI)
-bool Manager::SetDisableWiFiVHT(const bool &disable_wifi_vht, Error *error) {
+bool Manager::SetDisableWiFiVHT(const bool& disable_wifi_vht, Error* error) {
   if (disable_wifi_vht == wifi_provider_->disable_vht()) {
     return false;
   }
@@ -1303,20 +1303,20 @@ bool Manager::SetDisableWiFiVHT(const bool &disable_wifi_vht, Error *error) {
   return true;
 }
 
-bool Manager::GetDisableWiFiVHT(Error *error) {
+bool Manager::GetDisableWiFiVHT(Error* error) {
   return wifi_provider_->disable_vht();
 }
 #endif  // DISABLE_WIFI
 
-bool Manager::SetProhibitedTechnologies(const string &prohibited_technologies,
-                                        Error *error) {
+bool Manager::SetProhibitedTechnologies(const string& prohibited_technologies,
+                                        Error* error) {
   vector<Technology::Identifier> technology_vector;
   if (!Technology::GetTechnologyVectorFromString(prohibited_technologies,
                                                  &technology_vector,
                                                  error)) {
     return false;
   }
-  for (const auto &technology : technology_vector) {
+  for (const auto& technology : technology_vector) {
     Error unused_error(Error::kOperationInitiated);
     ResultCallback result_callback(Bind(
         &Manager::OnTechnologyProhibited, Unretained(this), technology));
@@ -1331,37 +1331,37 @@ bool Manager::SetProhibitedTechnologies(const string &prohibited_technologies,
 }
 
 void Manager::OnTechnologyProhibited(Technology::Identifier technology,
-                                     const Error &error) {
+                                     const Error& error) {
   SLOG(this, 2) << __func__ << " for "
                 << Technology::NameFromIdentifier(technology);
 }
 
-string Manager::GetProhibitedTechnologies(Error *error) {
+string Manager::GetProhibitedTechnologies(Error* error) {
   return props_.prohibited_technologies;
 }
 
-bool Manager::HasService(const ServiceRefPtr &service) {
-  for (const auto &manager_service : services_) {
+bool Manager::HasService(const ServiceRefPtr& service) {
+  for (const auto& manager_service : services_) {
     if (manager_service->unique_name() == service->unique_name())
       return true;
   }
   return false;
 }
 
-void Manager::RegisterService(const ServiceRefPtr &to_manage) {
+void Manager::RegisterService(const ServiceRefPtr& to_manage) {
   SLOG(this, 2) << "Registering service " << to_manage->unique_name();
 
   MatchProfileWithService(to_manage);
 
   // Now add to OUR list.
-  for (const auto &service : services_) {
+  for (const auto& service : services_) {
     CHECK(to_manage->unique_name() != service->unique_name());
   }
   services_.push_back(to_manage);
   SortServices();
 }
 
-void Manager::DeregisterService(const ServiceRefPtr &to_forget) {
+void Manager::DeregisterService(const ServiceRefPtr& to_forget) {
   for (auto it = services_.begin(); it != services_.end(); ++it) {
     if (to_forget->unique_name() == (*it)->unique_name()) {
       DLOG_IF(FATAL, (*it)->connection())
@@ -1376,7 +1376,7 @@ void Manager::DeregisterService(const ServiceRefPtr &to_forget) {
   }
 }
 
-bool Manager::UnloadService(vector<ServiceRefPtr>::iterator *service_iterator) {
+bool Manager::UnloadService(vector<ServiceRefPtr>::iterator* service_iterator) {
   if (!(**service_iterator)->Unload()) {
     return false;
   }
@@ -1388,10 +1388,10 @@ bool Manager::UnloadService(vector<ServiceRefPtr>::iterator *service_iterator) {
   return true;
 }
 
-void Manager::UpdateService(const ServiceRefPtr &to_update) {
+void Manager::UpdateService(const ServiceRefPtr& to_update) {
   CHECK(to_update);
   bool is_interesting_state_change = false;
-  const auto &state_it = watched_service_states_.find(to_update->unique_name());
+  const auto& state_it = watched_service_states_.find(to_update->unique_name());
   if (state_it != watched_service_states_.end()) {
     is_interesting_state_change = (to_update->state() != state_it->second);
   } else {
@@ -1418,7 +1418,7 @@ void Manager::UpdateService(const ServiceRefPtr &to_update) {
   SortServices();
 }
 
-void Manager::UpdateDevice(const DeviceRefPtr &to_update) {
+void Manager::UpdateDevice(const DeviceRefPtr& to_update) {
   LOG(INFO) << "Device " << to_update->link_name() << " updated: "
             << (to_update->enabled_persistent() ? "enabled" : "disabled");
   // Saves the device to the topmost profile that accepts it (ordinary
@@ -1448,7 +1448,7 @@ void Manager::UpdateWiFiProvider() {
 }
 #endif  // DISABLE_WIFI
 
-void Manager::SaveServiceToProfile(const ServiceRefPtr &to_update) {
+void Manager::SaveServiceToProfile(const ServiceRefPtr& to_update) {
   if (IsServiceEphemeral(to_update)) {
     if (profiles_.empty()) {
       LOG(ERROR) << "Cannot assign profile to service: no profiles exist!";
@@ -1460,34 +1460,34 @@ void Manager::SaveServiceToProfile(const ServiceRefPtr &to_update) {
   }
 }
 
-void Manager::LoadProperties(const scoped_refptr<DefaultProfile> &profile) {
+void Manager::LoadProperties(const scoped_refptr<DefaultProfile>& profile) {
   profile->LoadManagerProperties(&props_);
   SetIgnoredDNSSearchPaths(props_.ignored_dns_search_paths, nullptr);
 }
 
-void Manager::AddTerminationAction(const string &name,
-                                   const base::Closure &start) {
+void Manager::AddTerminationAction(const string& name,
+                                   const base::Closure& start) {
   termination_actions_.Add(name, start);
 }
 
-void Manager::TerminationActionComplete(const string &name) {
+void Manager::TerminationActionComplete(const string& name) {
   SLOG(this, 2) << __func__;
   termination_actions_.ActionComplete(name);
 }
 
-void Manager::RemoveTerminationAction(const string &name) {
+void Manager::RemoveTerminationAction(const string& name) {
   SLOG(this, 2) << __func__;
   termination_actions_.Remove(name);
 }
 
-void Manager::RunTerminationActions(const ResultCallback &done_callback) {
+void Manager::RunTerminationActions(const ResultCallback& done_callback) {
   LOG(INFO) << "Running termination actions.";
   termination_actions_.Run(kTerminationActionsTimeoutMilliseconds,
                            done_callback);
 }
 
 bool Manager::RunTerminationActionsAndNotifyMetrics(
-    const ResultCallback &done_callback) {
+    const ResultCallback& done_callback) {
   if (termination_actions_.IsEmpty())
     return false;
 
@@ -1496,7 +1496,7 @@ bool Manager::RunTerminationActionsAndNotifyMetrics(
   return true;
 }
 
-int Manager::RegisterDefaultServiceCallback(const ServiceCallback &callback) {
+int Manager::RegisterDefaultServiceCallback(const ServiceCallback& callback) {
   default_service_callbacks_[++default_service_callback_tag_] = callback;
   return default_service_callback_tag_;
 }
@@ -1506,15 +1506,15 @@ void Manager::DeregisterDefaultServiceCallback(int tag) {
 }
 
 #if !defined(DISABLE_WIFI)
-void Manager::VerifyDestination(const string &certificate,
-                                const string &public_key,
-                                const string &nonce,
-                                const string &signed_data,
-                                const string &destination_udn,
-                                const string &hotspot_ssid,
-                                const string &hotspot_bssid,
-                                const ResultBoolCallback &cb,
-                                Error *error) {
+void Manager::VerifyDestination(const string& certificate,
+                                const string& public_key,
+                                const string& nonce,
+                                const string& signed_data,
+                                const string& destination_udn,
+                                const string& hotspot_ssid,
+                                const string& hotspot_bssid,
+                                const ResultBoolCallback& cb,
+                                Error* error) {
   if (hotspot_bssid.length() > 32) {
     error->Populate(Error::kOperationFailed,
                     "Invalid SSID given for verification.");
@@ -1532,10 +1532,10 @@ void Manager::VerifyDestination(const string &certificate,
     // For now, we only support a single connected WiFi service.  If we change
     // that, we'll need to revisit this.
     bool found_one = false;
-    for (const auto &service : services_) {
+    for (const auto& service : services_) {
       if (service->technology() == Technology::kWifi &&
           service->IsConnected()) {
-        WiFiService *wifi = reinterpret_cast<WiFiService *>(&(*service));
+        WiFiService* wifi = reinterpret_cast<WiFiService*>(&(*service));
         bssid = wifi->bssid();
         ssid = wifi->ssid();
         found_one = true;
@@ -1556,7 +1556,7 @@ void Manager::VerifyDestination(const string &certificate,
 void Manager::VerifyToEncryptLink(string public_key,
                                   string data,
                                   ResultStringCallback cb,
-                                  const Error &error,
+                                  const Error& error,
                                   bool success) {
   if (!success || !error.IsSuccess()) {
     CHECK(error.IsFailure()) << "Return code from CryptoUtilProxy "
@@ -1572,16 +1572,16 @@ void Manager::VerifyToEncryptLink(string public_key,
   }
 }
 
-void Manager::VerifyAndEncryptData(const string &certificate,
-                                   const string &public_key,
-                                   const string &nonce,
-                                   const string &signed_data,
-                                   const string &destination_udn,
-                                   const string &hotspot_ssid,
-                                   const string &hotspot_bssid,
-                                   const string &data,
-                                   const ResultStringCallback &cb,
-                                   Error *error) {
+void Manager::VerifyAndEncryptData(const string& certificate,
+                                   const string& public_key,
+                                   const string& nonce,
+                                   const string& signed_data,
+                                   const string& destination_udn,
+                                   const string& hotspot_ssid,
+                                   const string& hotspot_bssid,
+                                   const string& data,
+                                   const ResultStringCallback& cb,
+                                   Error* error) {
   ResultBoolCallback on_verification_success = Bind(
       &Manager::VerifyToEncryptLink, AsWeakPtr(), public_key, data, cb);
   VerifyDestination(certificate, public_key, nonce, signed_data,
@@ -1589,16 +1589,16 @@ void Manager::VerifyAndEncryptData(const string &certificate,
                     on_verification_success, error);
 }
 
-void Manager::VerifyAndEncryptCredentials(const string &certificate,
-                                          const string &public_key,
-                                          const string &nonce,
-                                          const string &signed_data,
-                                          const string &destination_udn,
-                                          const string &hotspot_ssid,
-                                          const string &hotspot_bssid,
-                                          const string &network_path,
-                                          const ResultStringCallback &cb,
-                                          Error *error) {
+void Manager::VerifyAndEncryptCredentials(const string& certificate,
+                                          const string& public_key,
+                                          const string& nonce,
+                                          const string& signed_data,
+                                          const string& destination_udn,
+                                          const string& hotspot_ssid,
+                                          const string& hotspot_bssid,
+                                          const string& network_path,
+                                          const ResultStringCallback& cb,
+                                          Error* error) {
   // This is intentionally left unimplemented until we have a security review.
   error->Populate(Error::kNotImplemented, "Not implemented");
 }
@@ -1612,7 +1612,7 @@ int Manager::CalcConnectionId(std::string gateway_ip,
 
 void Manager::ReportServicesOnSameNetwork(int connection_id) {
   int num_services = 0;
-  for (const auto &service : services_) {
+  for (const auto& service : services_) {
     if (service->connection_id() == connection_id) {
       num_services++;
     }
@@ -1620,8 +1620,8 @@ void Manager::ReportServicesOnSameNetwork(int connection_id) {
   metrics_->NotifyServicesOnSameNetwork(num_services);
 }
 
-void Manager::NotifyDefaultServiceChanged(const ServiceRefPtr &service) {
-  for (const auto &callback : default_service_callbacks_) {
+void Manager::NotifyDefaultServiceChanged(const ServiceRefPtr& service) {
+  for (const auto& callback : default_service_callbacks_) {
     callback.second.Run(service);
   }
   metrics_->NotifyDefaultServiceChanged(service.get());
@@ -1648,7 +1648,7 @@ void Manager::OnSuspendImminent() {
   auto result_aggregator(make_scoped_refptr(new ResultAggregator(
       Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr()), dispatcher_,
       kTerminationActionsTimeoutMilliseconds)));
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     ResultCallback aggregator_callback(
         Bind(&ResultAggregator::ReportResult, result_aggregator));
     device->OnBeforeSuspend(aggregator_callback);
@@ -1659,11 +1659,11 @@ void Manager::OnSuspendDone() {
   metrics_->NotifySuspendDone();
   // Un-suppress auto-connect in case this flag was left set in dark resume.
   set_suppress_autoconnect(false);
-  for (const auto &service : services_) {
+  for (const auto& service : services_) {
     service->OnAfterResume();
   }
   SortServices();
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     device->OnAfterResume();
   }
 }
@@ -1680,20 +1680,20 @@ void Manager::OnDarkSuspendImminent() {
   auto result_aggregator(make_scoped_refptr(new ResultAggregator(
       Bind(&Manager::OnDarkResumeActionsComplete, AsWeakPtr()), dispatcher_,
       kTerminationActionsTimeoutMilliseconds)));
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     ResultCallback aggregator_callback(
         Bind(&ResultAggregator::ReportResult, result_aggregator));
     device->OnDarkResume(aggregator_callback);
   }
 }
 
-void Manager::OnSuspendActionsComplete(const Error &error) {
+void Manager::OnSuspendActionsComplete(const Error& error) {
   LOG(INFO) << "Finished suspend actions. Result: " << error;
   metrics_->NotifySuspendActionsCompleted(error.IsSuccess());
   power_manager_->ReportSuspendReadiness();
 }
 
-void Manager::OnDarkResumeActionsComplete(const Error &error) {
+void Manager::OnDarkResumeActionsComplete(const Error& error) {
   LOG(INFO) << "Finished dark resume actions. Result: " << error;
   metrics_->NotifyDarkResumeActionsCompleted(error.IsSuccess());
   power_manager_->ReportDarkSuspendReadiness();
@@ -1703,15 +1703,15 @@ void Manager::OnDarkResumeActionsComplete(const Error &error) {
 vector<DeviceRefPtr>
 Manager::FilterByTechnology(Technology::Identifier tech) const {
   vector<DeviceRefPtr> found;
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     if (device->technology() == tech)
       found.push_back(device);
   }
   return found;
 }
 
-ServiceRefPtr Manager::FindService(const string &name) {
-  for (const auto &service : services_) {
+ServiceRefPtr Manager::FindService(const string& name) {
+  for (const auto& service : services_) {
     if (name == service->unique_name())
       return service;
   }
@@ -1719,8 +1719,8 @@ ServiceRefPtr Manager::FindService(const string &name) {
 }
 
 void Manager::HelpRegisterConstDerivedRpcIdentifier(
-    const string &name,
-    RpcIdentifier(Manager::*get)(Error *error)) {
+    const string& name,
+    RpcIdentifier(Manager::*get)(Error* error)) {
   store_.RegisterDerivedRpcIdentifier(
       name,
       RpcIdentifierAccessor(
@@ -1728,8 +1728,8 @@ void Manager::HelpRegisterConstDerivedRpcIdentifier(
 }
 
 void Manager::HelpRegisterConstDerivedRpcIdentifiers(
-    const string &name,
-    RpcIdentifiers(Manager::*get)(Error *error)) {
+    const string& name,
+    RpcIdentifiers(Manager::*get)(Error* error)) {
   store_.RegisterDerivedRpcIdentifiers(
       name,
       RpcIdentifiersAccessor(
@@ -1737,26 +1737,26 @@ void Manager::HelpRegisterConstDerivedRpcIdentifiers(
 }
 
 void Manager::HelpRegisterDerivedString(
-    const string &name,
-    string(Manager::*get)(Error *error),
-    bool(Manager::*set)(const string&, Error *)) {
+    const string& name,
+    string(Manager::*get)(Error* error),
+    bool(Manager::*set)(const string&, Error*)) {
   store_.RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<Manager, string>(this, get, set)));
 }
 
 void Manager::HelpRegisterConstDerivedStrings(
-    const string &name,
-    Strings(Manager::*get)(Error *)) {
+    const string& name,
+    Strings(Manager::*get)(Error*)) {
   store_.RegisterDerivedStrings(
       name, StringsAccessor(
                 new CustomAccessor<Manager, Strings>(this, get, nullptr)));
 }
 
 void Manager::HelpRegisterDerivedBool(
-    const string &name,
-    bool(Manager::*get)(Error *error),
-    bool(Manager::*set)(const bool&, Error *)) {
+    const string& name,
+    bool(Manager::*get)(Error* error),
+    bool(Manager::*set)(const bool&, Error*)) {
   store_.RegisterDerivedBool(
       name,
       BoolAccessor(new CustomAccessor<Manager, bool>(this, get, set, nullptr)));
@@ -1852,7 +1852,7 @@ void Manager::DevicePresenceStatusCheck() {
   Error error;
   vector<string> available_technologies = AvailableTechnologies(&error);
 
-  for (const auto &technology : kProbeTechnologies) {
+  for (const auto& technology : kProbeTechnologies) {
     bool presence = std::find(available_technologies.begin(),
                               available_technologies.end(),
                               technology) != available_technologies.end();
@@ -1861,7 +1861,7 @@ void Manager::DevicePresenceStatusCheck() {
   }
 }
 
-bool Manager::MatchProfileWithService(const ServiceRefPtr &service) {
+bool Manager::MatchProfileWithService(const ServiceRefPtr& service) {
   vector<ProfileRefPtr>::reverse_iterator it;
   for (it = profiles_.rbegin(); it != profiles_.rend(); ++it) {
     if ((*it)->ConfigureService(service)) {
@@ -1898,7 +1898,7 @@ void Manager::AutoConnect() {
     SLOG(this, 4) << "Sorted service list for AutoConnect: ";
     for (size_t i = 0; i < services_.size(); ++i) {
       ServiceRefPtr service = services_[i];
-      const char *compare_reason = nullptr;
+      const char* compare_reason = nullptr;
       if (i + 1 < services_.size()) {
         const bool kCompareConnectivityState = true;
         Service::Compare(
@@ -1936,14 +1936,14 @@ void Manager::AutoConnect() {
 #endif  // DISABLE_WIFI
 
   // Perform auto-connect.
-  for (const auto &service : services_) {
+  for (const auto& service : services_) {
     if (service->auto_connect()) {
       service->AutoConnect();
     }
   }
 }
 
-void Manager::ConnectToBestServices(Error */*error*/) {
+void Manager::ConnectToBestServices(Error* /*error*/) {
   dispatcher_->PostTask(Bind(&Manager::ConnectToBestServicesTask, AsWeakPtr()));
 }
 
@@ -1953,7 +1953,7 @@ void Manager::ConnectToBestServicesTask() {
   sort(services_copy.begin(), services_copy.end(),
        ServiceSorter(this, kCompareConnectivityState, technology_order_));
   set<Technology::Identifier> connecting_technologies;
-  for (const auto &service : services_copy) {
+  for (const auto& service : services_copy) {
     if (!service->connectable()) {
       // Due to service sort order, it is guaranteed that no services beyond
       // this one will be connectable either.
@@ -1993,7 +1993,7 @@ void Manager::ConnectToBestServicesTask() {
     SLOG(this, 4) << "Sorted service list for ConnectToBestServicesTask: ";
     for (size_t i = 0; i < services_copy.size(); ++i) {
       ServiceRefPtr service = services_copy[i];
-      const char *compare_reason = nullptr;
+      const char* compare_reason = nullptr;
       if (i + 1 < services_copy.size()) {
         if (!service->connectable()) {
           // Due to service sort order, it is guaranteed that no services beyond
@@ -2027,19 +2027,19 @@ void Manager::ConnectToBestServicesTask() {
   }
 }
 
-void Manager::CreateConnectivityReport(Error */*error*/) {
+void Manager::CreateConnectivityReport(Error* /*error*/) {
   LOG(INFO) << "Creating Connectivity Report";
 
   // For each of the connected services, perform a single portal detection
   // test to assess connectivity.  The results should be written to the log.
-  for (const auto &service : services_) {
+  for (const auto& service : services_) {
     if (!service->IsConnected()) {
       // Service sort order guarantees that no service beyond this one will be
       // connected either.
       break;
     }
     // Get the underlying device for this service and perform connectivity test.
-    for (const auto &device : devices_) {
+    for (const auto& device : devices_) {
       if (device->IsConnectedToService(service)) {
         if (device->StartConnectivityTest()) {
           SLOG(this, 3) << "Started connectivity test for service "
@@ -2065,12 +2065,12 @@ bool Manager::IsOnline() const {
   return !services_.empty() && services_.front()->IsOnline();
 }
 
-string Manager::CalculateState(Error */*error*/) {
+string Manager::CalculateState(Error* /*error*/) {
   return IsConnected() ? kStateOnline : kStateOffline;
 }
 
 void Manager::RefreshConnectionState() {
-  const ServiceRefPtr &service = GetDefaultService();
+  const ServiceRefPtr& service = GetDefaultService();
   string connection_state = service ? service->GetStateString() : kStateIdle;
   if (connection_state_ == connection_state) {
     return;
@@ -2090,18 +2090,18 @@ void Manager::RefreshConnectionState() {
   }
 }
 
-vector<string> Manager::AvailableTechnologies(Error */*error*/) {
+vector<string> Manager::AvailableTechnologies(Error* /*error*/) {
   set<string> unique_technologies;
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     unique_technologies.insert(
         Technology::NameFromIdentifier(device->technology()));
   }
   return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
 
-vector<string> Manager::ConnectedTechnologies(Error */*error*/) {
+vector<string> Manager::ConnectedTechnologies(Error* /*error*/) {
   set<string> unique_technologies;
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     if (device->IsConnected())
       unique_technologies.insert(
           Technology::NameFromIdentifier(device->technology()));
@@ -2110,21 +2110,21 @@ vector<string> Manager::ConnectedTechnologies(Error */*error*/) {
 }
 
 bool Manager::IsTechnologyConnected(Technology::Identifier technology) const {
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     if (device->technology() == technology && device->IsConnected())
       return true;
   }
   return false;
 }
 
-string Manager::DefaultTechnology(Error */*error*/) {
+string Manager::DefaultTechnology(Error* /*error*/) {
   return (!services_.empty() && services_[0]->IsConnected()) ?
       services_[0]->GetTechnologyString() : "";
 }
 
-vector<string> Manager::EnabledTechnologies(Error */*error*/) {
+vector<string> Manager::EnabledTechnologies(Error* /*error*/) {
   set<string> unique_technologies;
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     if (device->enabled())
       unique_technologies.insert(
           Technology::NameFromIdentifier(device->technology()));
@@ -2132,29 +2132,29 @@ vector<string> Manager::EnabledTechnologies(Error */*error*/) {
   return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
 
-vector<string> Manager::UninitializedTechnologies(Error */*error*/) {
+vector<string> Manager::UninitializedTechnologies(Error* /*error*/) {
   return device_info_.GetUninitializedTechnologies();
 }
 
-RpcIdentifiers Manager::EnumerateDevices(Error */*error*/) {
+RpcIdentifiers Manager::EnumerateDevices(Error* /*error*/) {
   RpcIdentifiers device_rpc_ids;
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     device_rpc_ids.push_back(device->GetRpcIdentifier());
   }
   return device_rpc_ids;
 }
 
-RpcIdentifiers Manager::EnumerateProfiles(Error */*error*/) {
+RpcIdentifiers Manager::EnumerateProfiles(Error* /*error*/) {
   RpcIdentifiers profile_rpc_ids;
-  for (const auto &profile : profiles_) {
+  for (const auto& profile : profiles_) {
     profile_rpc_ids.push_back(profile->GetRpcIdentifier());
   }
   return profile_rpc_ids;
 }
 
-RpcIdentifiers Manager::EnumerateAvailableServices(Error */*error*/) {
+RpcIdentifiers Manager::EnumerateAvailableServices(Error* /*error*/) {
   RpcIdentifiers service_rpc_ids;
-  for (const auto &service : services_) {
+  for (const auto& service : services_) {
     if (service->IsVisible()) {
       service_rpc_ids.push_back(service->GetRpcIdentifier());
     }
@@ -2162,18 +2162,18 @@ RpcIdentifiers Manager::EnumerateAvailableServices(Error */*error*/) {
   return service_rpc_ids;
 }
 
-RpcIdentifiers Manager::EnumerateCompleteServices(Error */*error*/) {
+RpcIdentifiers Manager::EnumerateCompleteServices(Error* /*error*/) {
   RpcIdentifiers service_rpc_ids;
-  for (const auto &service : services_) {
+  for (const auto& service : services_) {
     service_rpc_ids.push_back(service->GetRpcIdentifier());
   }
   return service_rpc_ids;
 }
 
-RpcIdentifiers Manager::EnumerateWatchedServices(Error */*error*/) {
+RpcIdentifiers Manager::EnumerateWatchedServices(Error* /*error*/) {
   RpcIdentifiers service_rpc_ids;
   watched_service_states_.clear();
-  for (const auto &service : services_) {
+  for (const auto& service : services_) {
     if (service->IsVisible() && service->IsActive(nullptr)) {
       service_rpc_ids.push_back(service->GetRpcIdentifier());
       watched_service_states_[service->unique_name()] = service->state();
@@ -2182,16 +2182,16 @@ RpcIdentifiers Manager::EnumerateWatchedServices(Error */*error*/) {
   return service_rpc_ids;
 }
 
-string Manager::GetActiveProfileRpcIdentifier(Error */*error*/) {
+string Manager::GetActiveProfileRpcIdentifier(Error* /*error*/) {
   return ActiveProfile()->GetRpcIdentifier();
 }
 
-string Manager::GetCheckPortalList(Error */*error*/) {
+string Manager::GetCheckPortalList(Error* /*error*/) {
   return use_startup_portal_list_ ? startup_portal_list_ :
       props_.check_portal_list;
 }
 
-bool Manager::SetCheckPortalList(const string &portal_list, Error *error) {
+bool Manager::SetCheckPortalList(const string& portal_list, Error* error) {
   use_startup_portal_list_ = false;
   if (props_.check_portal_list == portal_list) {
     return false;
@@ -2200,12 +2200,12 @@ bool Manager::SetCheckPortalList(const string &portal_list, Error *error) {
   return true;
 }
 
-string Manager::GetIgnoredDNSSearchPaths(Error */*error*/) {
+string Manager::GetIgnoredDNSSearchPaths(Error* /*error*/) {
   return props_.ignored_dns_search_paths;
 }
 
-bool Manager::SetIgnoredDNSSearchPaths(const string &ignored_paths,
-                                       Error */*error*/) {
+bool Manager::SetIgnoredDNSSearchPaths(const string& ignored_paths,
+                                       Error* /*error*/) {
   if (props_.ignored_dns_search_paths == ignored_paths) {
     return false;
   }
@@ -2219,7 +2219,7 @@ bool Manager::SetIgnoredDNSSearchPaths(const string &ignored_paths,
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
-ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
+ServiceRefPtr Manager::GetService(const KeyValueStore& args, Error* error) {
   if (args.ContainsString(kTypeProperty) &&
       args.GetString(kTypeProperty) == kTypeVPN) {
      // GetService on a VPN service should actually perform ConfigureService.
@@ -2237,8 +2237,8 @@ ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
   return service;
 }
 
-ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
-                                       Error *error) {
+ServiceRefPtr Manager::GetServiceInner(const KeyValueStore& args,
+                                       Error* error) {
   if (args.ContainsString(kGuidProperty)) {
     SLOG(this, 2) << __func__ << ": searching by GUID";
     ServiceRefPtr service =
@@ -2267,8 +2267,8 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
-ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
-                                        Error *error) {
+ServiceRefPtr Manager::ConfigureService(const KeyValueStore& args,
+                                        Error* error) {
   ProfileRefPtr profile = ActiveProfile();
   bool profile_specified = args.ContainsString(kProfileProperty);
   if (profile_specified) {
@@ -2338,7 +2338,7 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
 ServiceRefPtr Manager::ConfigureServiceForProfile(
-    const string &profile_rpcid, const KeyValueStore &args, Error *error) {
+    const string& profile_rpcid, const KeyValueStore& args, Error* error) {
   if (!args.ContainsString(kTypeProperty)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInvalidArguments, kErrorTypeRequired);
@@ -2354,7 +2354,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
     return nullptr;
   }
 
-  ProviderInterface *provider = providers_[technology];
+  ProviderInterface* provider = providers_[technology];
 
   ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
   if (!profile) {
@@ -2434,16 +2434,16 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
 
 void Manager::SetupServiceInProfile(ServiceRefPtr service,
                                     ProfileRefPtr profile,
-                                    const KeyValueStore &args,
-                                    Error *error) {
+                                    const KeyValueStore& args,
+                                    Error* error) {
   service->SetProfile(profile);
   service->Configure(args, error);
   profile->UpdateService(service);
 }
 
-ServiceRefPtr Manager::FindMatchingService(const KeyValueStore &args,
-                                           Error *error) {
-  for (const auto &service : services_) {
+ServiceRefPtr Manager::FindMatchingService(const KeyValueStore& args,
+                                           Error* error) {
+  for (const auto& service : services_) {
     if (service->DoPropertiesMatch(args)) {
       return service;
     }
@@ -2457,7 +2457,7 @@ const map<string, GeolocationInfos>
   return networks_for_geolocation_;
 }
 
-void Manager::OnDeviceGeolocationInfoUpdated(const DeviceRefPtr &device) {
+void Manager::OnDeviceGeolocationInfoUpdated(const DeviceRefPtr& device) {
   SLOG(this, 2) << __func__ << " for technology "
                 << Technology::NameFromIdentifier(device->technology());
   switch (device->technology()) {
@@ -2479,8 +2479,8 @@ void Manager::OnDeviceGeolocationInfoUpdated(const DeviceRefPtr &device) {
   }
 }
 
-void Manager::RecheckPortal(Error */*error*/) {
-  for (const auto &device : devices_) {
+void Manager::RecheckPortal(Error* /*error*/) {
+  for (const auto& device : devices_) {
     if (device->RequestPortalDetection()) {
       // Only start Portal Detection on the device with the default connection.
       // We will get a "true" return value when we've found that device, and
@@ -2490,8 +2490,8 @@ void Manager::RecheckPortal(Error */*error*/) {
   }
 }
 
-void Manager::RecheckPortalOnService(const ServiceRefPtr &service) {
-  for (const auto &device : devices_) {
+void Manager::RecheckPortalOnService(const ServiceRefPtr& service) {
+  for (const auto& device : devices_) {
     if (device->IsConnectedToService(service)) {
       // As opposed to RecheckPortal() above, we explicitly stop and then
       // restart portal detection, since the service to recheck was explicitly
@@ -2503,9 +2503,9 @@ void Manager::RecheckPortalOnService(const ServiceRefPtr &service) {
 }
 
 void Manager::RequestScan(Device::ScanType scan_type,
-                          const string &technology, Error *error) {
+                          const string& technology, Error* error) {
   if (technology == kTypeWifi || technology == "") {
-    for (const auto &wifi_device : FilterByTechnology(Technology::kWifi)) {
+    for (const auto& wifi_device : FilterByTechnology(Technology::kWifi)) {
       metrics_->NotifyUserInitiatedEvent(Metrics::kUserInitiatedEventWifiScan);
       wifi_device->Scan(scan_type, error, __func__);
     }
@@ -2516,22 +2516,22 @@ void Manager::RequestScan(Device::ScanType scan_type,
   }
 }
 
-void Manager::SetSchedScan(bool enable, Error *error) {
-  for (const auto &wifi_device : FilterByTechnology(Technology::kWifi)) {
+void Manager::SetSchedScan(bool enable, Error* error) {
+  for (const auto& wifi_device : FilterByTechnology(Technology::kWifi)) {
     wifi_device->SetSchedScan(enable, error);
   }
 }
 
 string Manager::GetTechnologyOrder() {
   vector<string> technology_names;
-  for (const auto &technology : technology_order_) {
+  for (const auto& technology : technology_order_) {
     technology_names.push_back(Technology::NameFromIdentifier(technology));
   }
 
   return JoinString(technology_names, ',');
 }
 
-void Manager::SetTechnologyOrder(const string &order, Error *error) {
+void Manager::SetTechnologyOrder(const string& order, Error* error) {
   vector<Technology::Identifier> new_order;
   SLOG(this, 2) << "Setting technology order to " << order;
   if (!Technology::GetTechnologyVectorFromString(order, &new_order, error)) {
@@ -2549,7 +2549,7 @@ bool Manager::IsWifiIdle() {
 
   // Since services are sorted by connection state, status of the wifi device
   // can be determine by examing the connection state of the first wifi service.
-  for (const auto &service : services_) {
+  for (const auto& service : services_) {
     if (service->technology() == Technology::kWifi) {
       if (!service->IsConnecting() && !service->IsConnected()) {
         ret = true;
@@ -2584,8 +2584,8 @@ DeviceRefPtr Manager::GetDeviceConnectedToService(ServiceRefPtr service) {
 
 void Manager::DetectMultiHomedDevices() {
   map<string, vector<DeviceRefPtr>> subnet_buckets;
-  for (const auto &device : devices_) {
-    const auto &connection = device->connection();
+  for (const auto& device : devices_) {
+    const auto& connection = device->connection();
     string subnet_name;
     if (connection) {
       subnet_name = connection->GetSubnetName();
@@ -2597,10 +2597,10 @@ void Manager::DetectMultiHomedDevices() {
     }
   }
 
-  for (const auto &subnet_bucket : subnet_buckets) {
-    const auto &device_list = subnet_bucket.second;
+  for (const auto& subnet_bucket : subnet_buckets) {
+    const auto& device_list = subnet_bucket.second;
     if (device_list.size() > 1) {
-      for (const auto &device : device_list) {
+      for (const auto& device : device_list) {
         device->SetIsMultiHomed(true);
       }
     } else {

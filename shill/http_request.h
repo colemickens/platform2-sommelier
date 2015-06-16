@@ -50,8 +50,8 @@ class HTTPRequest {
   };
 
   HTTPRequest(ConnectionRefPtr connection,
-              EventDispatcher *dispatcher,
-              Sockets *sockets);
+              EventDispatcher* dispatcher,
+              Sockets* sockets);
   virtual ~HTTPRequest();
 
   // Start an http GET request to the URL |url|.  Whenever any data is
@@ -70,9 +70,9 @@ class HTTPRequest {
   // failed during initialization, or kResultInProgress if the request
   // has started successfully and is now in progress.
   virtual Result Start(
-      const HTTPURL &url,
-      const base::Callback<void(const ByteString &)> &read_event_callback,
-      const base::Callback<void(Result, const ByteString &)> &result_callback);
+      const HTTPURL& url,
+      const base::Callback<void(const ByteString&)>& read_event_callback,
+      const base::Callback<void(Result, const ByteString&)>& result_callback);
 
   // Stop the current HTTPRequest.  No callback is called as a side
   // effect of this function.
@@ -81,7 +81,7 @@ class HTTPRequest {
   // Returns the data received so far from the server in the current
   // request.  This data is available only while the request is active,
   // and before the result callback is called.
-  virtual const ByteString &response_data() const { return response_data_; }
+  virtual const ByteString& response_data() const { return response_data_; }
 
  private:
   friend class HTTPRequestTest;
@@ -95,27 +95,27 @@ class HTTPRequest {
 
   static const char kHTTPRequestTemplate[];
 
-  bool ConnectServer(const IPAddress &address, int port);
-  void GetDNSResult(const Error &error, const IPAddress &address);
+  bool ConnectServer(const IPAddress& address, int port);
+  void GetDNSResult(const Error& error, const IPAddress& address);
   void OnConnectCompletion(bool success, int fd);
-  void OnServerReadError(const std::string &error_msg);
-  void ReadFromServer(InputData *data);
+  void OnServerReadError(const std::string& error_msg);
+  void ReadFromServer(InputData* data);
   void SendStatus(Result result);
   void StartIdleTimeout(int timeout_seconds, Result timeout_result);
   void TimeoutTask();
   void WriteToServer(int fd);
 
   ConnectionRefPtr connection_;
-  EventDispatcher *dispatcher_;
-  Sockets *sockets_;
+  EventDispatcher* dispatcher_;
+  Sockets* sockets_;
 
   base::WeakPtrFactory<HTTPRequest> weak_ptr_factory_;
   base::Callback<void(bool, int)> connect_completion_callback_;
-  base::Callback<void(const Error &, const IPAddress &)> dns_client_callback_;
-  base::Callback<void(InputData *)> read_server_callback_;
+  base::Callback<void(const Error&, const IPAddress&)> dns_client_callback_;
+  base::Callback<void(InputData*)> read_server_callback_;
   base::Callback<void(int)> write_server_callback_;
-  base::Callback<void(Result, const ByteString &)> result_callback_;
-  base::Callback<void(const ByteString &)> read_event_callback_;
+  base::Callback<void(Result, const ByteString&)> result_callback_;
+  base::Callback<void(const ByteString&)> read_event_callback_;
   std::unique_ptr<IOHandler> read_server_handler_;
   std::unique_ptr<IOHandler> write_server_handler_;
   std::unique_ptr<DNSClient> dns_client_;

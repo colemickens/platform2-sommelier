@@ -14,15 +14,15 @@ class GlibIOHandlerFactory : public IOHandlerFactory {
   GlibIOHandlerFactory();
   virtual ~GlibIOHandlerFactory();
 
-  IOHandler *CreateIOInputHandler(
+  IOHandler* CreateIOInputHandler(
       int fd,
-      const IOHandler::InputCallback &input_callback,
-      const IOHandler::ErrorCallback &error_callback) override;
+      const IOHandler::InputCallback& input_callback,
+      const IOHandler::ErrorCallback& error_callback) override;
 
-  IOHandler *CreateIOReadyHandler(
+  IOHandler* CreateIOReadyHandler(
       int fd,
       IOHandler::ReadyMode mode,
-      const IOHandler::ReadyCallback &input_callback) override;
+      const IOHandler::ReadyCallback& input_callback) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(GlibIOHandlerFactory);

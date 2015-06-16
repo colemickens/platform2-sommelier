@@ -24,7 +24,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
-static string ObjectID(Connection *c) { return c->interface_name(); }
+static string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
 const int LinkMonitor::kDefaultTestPeriodMilliseconds =
@@ -33,12 +33,12 @@ const int LinkMonitor::kFailureThreshold =
     ActiveLinkMonitor::kFailureThreshold;
 const char LinkMonitor::kDefaultLinkMonitorTechnologies[] = "wifi";
 
-LinkMonitor::LinkMonitor(const ConnectionRefPtr &connection,
-                         EventDispatcher *dispatcher,
-                         Metrics *metrics,
-                         DeviceInfo *device_info,
-                         const FailureCallback &failure_callback,
-                         const GatewayChangeCallback &gateway_change_callback)
+LinkMonitor::LinkMonitor(const ConnectionRefPtr& connection,
+                         EventDispatcher* dispatcher,
+                         Metrics* metrics,
+                         DeviceInfo* device_info,
+                         const FailureCallback& failure_callback,
+                         const GatewayChangeCallback& gateway_change_callback)
     : connection_(connection),
       dispatcher_(dispatcher),
       metrics_(metrics),

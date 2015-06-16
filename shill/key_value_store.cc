@@ -37,7 +37,7 @@ bool KeyValueStore::IsEmpty() {
       uint_properties_.empty();
 }
 
-void KeyValueStore::CopyFrom(const KeyValueStore &b) {
+void KeyValueStore::CopyFrom(const KeyValueStore& b) {
   bool_properties_ = b.bool_properties_;
   int_properties_ = b.int_properties_;
   key_value_store_properties_ = b.key_value_store_properties_;
@@ -48,10 +48,10 @@ void KeyValueStore::CopyFrom(const KeyValueStore &b) {
 }
 
 bool KeyValueStore::KeyValueStorePropertiesAreEqual(
-    const KeyValueStore &other) const {
-  for (const auto &entry : key_value_store_properties_) {
-    const auto &key = entry.first;
-    const auto &value = entry.second;
+    const KeyValueStore& other) const {
+  for (const auto& entry : key_value_store_properties_) {
+    const auto& key = entry.first;
+    const auto& value = entry.second;
     if (!other.ContainsKeyValueStore(key) ||
         !value.Equals(other.GetKeyValueStore(key))) {
       return false;
@@ -60,7 +60,7 @@ bool KeyValueStore::KeyValueStorePropertiesAreEqual(
   return true;
 }
 
-bool KeyValueStore::Equals(const KeyValueStore &other) const {
+bool KeyValueStore::Equals(const KeyValueStore& other) const {
   // First compare sizes of all maps to detect unequal stores faster.
   if (bool_properties_.size() != other.bool_properties_.size() ||
       int_properties_.size() != other.int_properties_.size() ||
@@ -81,143 +81,143 @@ bool KeyValueStore::Equals(const KeyValueStore &other) const {
          uint_properties_ == other.uint_properties_;
 }
 
-bool KeyValueStore::ContainsBool(const string &name) const {
+bool KeyValueStore::ContainsBool(const string& name) const {
   return ContainsKey(bool_properties_, name);
 }
 
-bool KeyValueStore::ContainsInt(const string &name) const {
+bool KeyValueStore::ContainsInt(const string& name) const {
   return ContainsKey(int_properties_, name);
 }
 
-bool KeyValueStore::ContainsKeyValueStore(const string &name) const {
+bool KeyValueStore::ContainsKeyValueStore(const string& name) const {
   return ContainsKey(key_value_store_properties_, name);
 }
 
-bool KeyValueStore::ContainsString(const string &name) const {
+bool KeyValueStore::ContainsString(const string& name) const {
   return ContainsKey(string_properties_, name);
 }
 
-bool KeyValueStore::ContainsStringmap(const std::string &name) const {
+bool KeyValueStore::ContainsStringmap(const std::string& name) const {
   return ContainsKey(stringmap_properties_, name);
 }
 
-bool KeyValueStore::ContainsStrings(const string &name) const {
+bool KeyValueStore::ContainsStrings(const string& name) const {
   return ContainsKey(strings_properties_, name);
 }
 
-bool KeyValueStore::ContainsUint(const string &name) const {
+bool KeyValueStore::ContainsUint(const string& name) const {
   return ContainsKey(uint_properties_, name);
 }
 
-bool KeyValueStore::GetBool(const string &name) const {
+bool KeyValueStore::GetBool(const string& name) const {
   const auto it(bool_properties_.find(name));
   CHECK(it != bool_properties_.end()) << "for bool property " << name;
   return it->second;
 }
 
-int32_t KeyValueStore::GetInt(const string &name) const {
+int32_t KeyValueStore::GetInt(const string& name) const {
   const auto it(int_properties_.find(name));
   CHECK(it != int_properties_.end()) << "for int property " << name;
   return it->second;
 }
 
-const KeyValueStore &KeyValueStore::GetKeyValueStore(const string &name) const {
+const KeyValueStore& KeyValueStore::GetKeyValueStore(const string& name) const {
   const auto it(key_value_store_properties_.find(name));
   CHECK(it != key_value_store_properties_.end())
       << "for key value store property " << name;
   return it->second;
 }
 
-const string &KeyValueStore::GetString(const string &name) const {
+const string& KeyValueStore::GetString(const string& name) const {
   const auto it(string_properties_.find(name));
   CHECK(it != string_properties_.end()) << "for string property " << name;
   return it->second;
 }
 
-const map<string, string> &KeyValueStore::GetStringmap(
-    const string &name) const {
+const map<string, string>& KeyValueStore::GetStringmap(
+    const string& name) const {
   const auto it(stringmap_properties_.find(name));
   CHECK(it != stringmap_properties_.end()) << "for stringmap property "
                                            << name;
   return it->second;
 }
 
-const vector<string> &KeyValueStore::GetStrings(const string &name) const {
+const vector<string>& KeyValueStore::GetStrings(const string& name) const {
   const auto it(strings_properties_.find(name));
   CHECK(it != strings_properties_.end()) << "for strings property " << name;
   return it->second;
 }
 
-uint32_t KeyValueStore::GetUint(const string &name) const {
+uint32_t KeyValueStore::GetUint(const string& name) const {
   const auto it(uint_properties_.find(name));
   CHECK(it != uint_properties_.end()) << "for uint property " << name;
   return it->second;
 }
 
-void KeyValueStore::SetBool(const string &name, bool value) {
+void KeyValueStore::SetBool(const string& name, bool value) {
   bool_properties_[name] = value;
 }
 
-void KeyValueStore::SetInt(const string &name, int32_t value) {
+void KeyValueStore::SetInt(const string& name, int32_t value) {
   int_properties_[name] = value;
 }
 
-void KeyValueStore::SetKeyValueStore(const string &name,
-                                     const KeyValueStore &value) {
+void KeyValueStore::SetKeyValueStore(const string& name,
+                                     const KeyValueStore& value) {
   key_value_store_properties_[name].Clear();
   key_value_store_properties_[name].CopyFrom(value);
 }
 
-void KeyValueStore::SetString(const string &name, const string &value) {
+void KeyValueStore::SetString(const string& name, const string& value) {
   string_properties_[name] = value;
 }
 
-void KeyValueStore::SetStringmap(const string &name,
-                                 const map<string, string> &value) {
+void KeyValueStore::SetStringmap(const string& name,
+                                 const map<string, string>& value) {
   stringmap_properties_[name] = value;
 }
 
-void KeyValueStore::SetStrings(const string &name,
-                               const vector<string> &value) {
+void KeyValueStore::SetStrings(const string& name,
+                               const vector<string>& value) {
   strings_properties_[name] = value;
 }
 
-void KeyValueStore::SetUint(const string &name, uint32_t value) {
+void KeyValueStore::SetUint(const string& name, uint32_t value) {
   uint_properties_[name] = value;
 }
 
-void KeyValueStore::RemoveInt(const string &name) {
+void KeyValueStore::RemoveInt(const string& name) {
   int_properties_.erase(name);
 }
 
-void KeyValueStore::RemoveKeyValueStore(const string &name) {
+void KeyValueStore::RemoveKeyValueStore(const string& name) {
   key_value_store_properties_.erase(name);
 }
 
-void KeyValueStore::RemoveString(const string &name) {
+void KeyValueStore::RemoveString(const string& name) {
   string_properties_.erase(name);
 }
 
-void KeyValueStore::RemoveStringmap(const string &name) {
+void KeyValueStore::RemoveStringmap(const string& name) {
   stringmap_properties_.erase(name);
 }
 
-void KeyValueStore::RemoveStrings(const string &name) {
+void KeyValueStore::RemoveStrings(const string& name) {
   strings_properties_.erase(name);
 }
 
-bool KeyValueStore::LookupBool(const string &name, bool default_value) const {
+bool KeyValueStore::LookupBool(const string& name, bool default_value) const {
   const auto it(bool_properties_.find(name));
   return it == bool_properties_.end() ? default_value : it->second;
 }
 
-int KeyValueStore::LookupInt(const string &name, int default_value) const {
+int KeyValueStore::LookupInt(const string& name, int default_value) const {
   const auto it(int_properties_.find(name));
   return it == int_properties_.end() ? default_value : it->second;
 }
 
-string KeyValueStore::LookupString(const string &name,
-                                   const string &default_value) const {
+string KeyValueStore::LookupString(const string& name,
+                                   const string& default_value) const {
   const auto it(string_properties_.find(name));
   return it == string_properties_.end() ? default_value : it->second;
 }

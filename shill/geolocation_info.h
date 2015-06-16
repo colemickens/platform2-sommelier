@@ -22,8 +22,8 @@ class GeolocationInfo {
   GeolocationInfo();
   ~GeolocationInfo();
 
-  void AddField(const std::string &key, const std::string &value);
-  const std::string &GetFieldValue(const std::string &key) const;
+  void AddField(const std::string& key, const std::string& value);
+  const std::string& GetFieldValue(const std::string& key) const;
 
   const std::map<std::string, std::string> properties() const {
     return properties_;
@@ -33,7 +33,7 @@ class GeolocationInfo {
   FRIEND_TEST(WiFiMainTest, GetGeolocationObjects);
 
   // An equality testing helper for unit tests.
-  bool Equals(const GeolocationInfo &info) const;
+  bool Equals(const GeolocationInfo& info) const;
 
   std::map<std::string, std::string> properties_;
 };

@@ -31,7 +31,7 @@ class Icmp {
   virtual bool IsStarted() const;
 
   // Send an ICMP Echo Request (Ping) packet to |destination|.
-  virtual bool TransmitEchoRequest(const IPAddress &destinaton);
+  virtual bool TransmitEchoRequest(const IPAddress& destinaton);
 
  private:
   friend class IcmpTest;

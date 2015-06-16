@@ -16,17 +16,17 @@ GeolocationInfo::GeolocationInfo() {
 GeolocationInfo::~GeolocationInfo() {
 }
 
-void GeolocationInfo::AddField(const string &key,
-                               const string &value) {
+void GeolocationInfo::AddField(const string& key,
+                               const string& value) {
   properties_[key] = value;
 }
 
-const string &GeolocationInfo::GetFieldValue(
-    const string &key) const {
+const string& GeolocationInfo::GetFieldValue(
+    const string& key) const {
   return properties_.find(key)->second;
 }
 
-bool GeolocationInfo::Equals(const GeolocationInfo &info) const {
+bool GeolocationInfo::Equals(const GeolocationInfo& info) const {
   return properties_ == info.properties_;
 }
 

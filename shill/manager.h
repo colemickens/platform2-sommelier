@@ -58,7 +58,7 @@ class EthernetEapProvider;
 
 class Manager : public base::SupportsWeakPtr<Manager> {
  public:
-  typedef base::Callback<void(const ServiceRefPtr &service)> ServiceCallback;
+  typedef base::Callback<void(const ServiceRefPtr& service)> ServiceCallback;
 
   struct Properties {
    public:
@@ -94,46 +94,46 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     int minimum_mtu;
   };
 
-  Manager(ControlInterface *control_interface,
-          EventDispatcher *dispatcher,
-          Metrics *metrics,
-          GLib *glib,
-          const std::string &run_directory,
-          const std::string &storage_directory,
-          const std::string &user_storage_directory);
+  Manager(ControlInterface* control_interface,
+          EventDispatcher* dispatcher,
+          Metrics* metrics,
+          GLib* glib,
+          const std::string& run_directory,
+          const std::string& storage_directory,
+          const std::string& user_storage_directory);
   virtual ~Manager();
 
-  virtual void AddDeviceToBlackList(const std::string &device_name);
+  virtual void AddDeviceToBlackList(const std::string& device_name);
 
   virtual void Start();
   virtual void Stop();
   bool running() const { return running_; }
 
-  const ProfileRefPtr &ActiveProfile() const;
-  bool IsActiveProfile(const ProfileRefPtr &profile) const;
-  bool MoveServiceToProfile(const ServiceRefPtr &to_move,
-                            const ProfileRefPtr &destination);
-  ProfileRefPtr LookupProfileByRpcIdentifier(const std::string &profile_rpcid);
+  const ProfileRefPtr& ActiveProfile() const;
+  bool IsActiveProfile(const ProfileRefPtr& profile) const;
+  bool MoveServiceToProfile(const ServiceRefPtr& to_move,
+                            const ProfileRefPtr& destination);
+  ProfileRefPtr LookupProfileByRpcIdentifier(const std::string& profile_rpcid);
 
   // Called via RPC call on Service (|to_set|) to set the "Profile" property.
-  virtual void SetProfileForService(const ServiceRefPtr &to_set,
-                                    const std::string &profile,
-                                    Error *error);
+  virtual void SetProfileForService(const ServiceRefPtr& to_set,
+                                    const std::string& profile,
+                                    Error* error);
 
-  virtual void RegisterDevice(const DeviceRefPtr &to_manage);
-  virtual void DeregisterDevice(const DeviceRefPtr &to_forget);
+  virtual void RegisterDevice(const DeviceRefPtr& to_manage);
+  virtual void DeregisterDevice(const DeviceRefPtr& to_forget);
 
-  virtual bool HasService(const ServiceRefPtr &service);
+  virtual bool HasService(const ServiceRefPtr& service);
   // Register a Service with the Manager. Manager may choose to
   // connect to it immediately.
-  virtual void RegisterService(const ServiceRefPtr &to_manage);
+  virtual void RegisterService(const ServiceRefPtr& to_manage);
   // Deregister a Service from the Manager. Caller is responsible
   // for disconnecting the Service before-hand.
-  virtual void DeregisterService(const ServiceRefPtr &to_forget);
-  virtual void UpdateService(const ServiceRefPtr &to_update);
+  virtual void DeregisterService(const ServiceRefPtr& to_forget);
+  virtual void UpdateService(const ServiceRefPtr& to_update);
 
   // Persists |to_update| into an appropriate profile.
-  virtual void UpdateDevice(const DeviceRefPtr &to_update);
+  virtual void UpdateDevice(const DeviceRefPtr& to_update);
 
 #if !defined(DISABLE_WIFI)
   virtual void UpdateWiFiProvider();
@@ -143,139 +143,139 @@ class Manager : public base::SupportsWeakPtr<Manager> {
       FilterByTechnology(Technology::Identifier tech) const;
 
   ServiceRefPtr FindService(const std::string& name);
-  RpcIdentifiers EnumerateAvailableServices(Error *error);
+  RpcIdentifiers EnumerateAvailableServices(Error* error);
 
   // Return the complete list of services, including those that are not visible.
-  RpcIdentifiers EnumerateCompleteServices(Error *error);
+  RpcIdentifiers EnumerateCompleteServices(Error* error);
 
   // called via RPC (e.g., from ManagerDBusAdaptor)
   std::map<std::string, std::string> GetLoadableProfileEntriesForService(
-      const ServiceConstRefPtr &service);
-  ServiceRefPtr GetService(const KeyValueStore &args, Error *error);
-  ServiceRefPtr ConfigureService(const KeyValueStore &args, Error *error);
+      const ServiceConstRefPtr& service);
+  ServiceRefPtr GetService(const KeyValueStore& args, Error* error);
+  ServiceRefPtr ConfigureService(const KeyValueStore& args, Error* error);
   ServiceRefPtr ConfigureServiceForProfile(
-      const std::string &profile_rpcid,
-      const KeyValueStore &args,
-      Error *error);
-  ServiceRefPtr FindMatchingService(const KeyValueStore &args, Error *error);
+      const std::string& profile_rpcid,
+      const KeyValueStore& args,
+      Error* error);
+  ServiceRefPtr FindMatchingService(const KeyValueStore& args, Error* error);
 
   // Retrieve geolocation data from the Manager.
   const std::map<std::string, GeolocationInfos>
       &GetNetworksForGeolocation() const;
 
   // Called by Device when its geolocation data has been updated.
-  virtual void OnDeviceGeolocationInfoUpdated(const DeviceRefPtr &device);
+  virtual void OnDeviceGeolocationInfoUpdated(const DeviceRefPtr& device);
 
-  void ConnectToBestServices(Error *error);
+  void ConnectToBestServices(Error* error);
 
   // Method to create connectivity report for connected services.
-  void CreateConnectivityReport(Error *error);
+  void CreateConnectivityReport(Error* error);
 
   // Request portal detection checks on each registered device until a portal
   // detection attempt starts on one of them.
-  void RecheckPortal(Error *error);
+  void RecheckPortal(Error* error);
   // Request portal detection be restarted on the device connected to
   // |service|.
-  virtual void RecheckPortalOnService(const ServiceRefPtr &service);
+  virtual void RecheckPortalOnService(const ServiceRefPtr& service);
 
   virtual void RequestScan(Device::ScanType scan_type,
-                           const std::string &technology, Error *error);
+                           const std::string& technology, Error* error);
   // Configure scheduled scan for wifi devices.
-  virtual void SetSchedScan(bool enable, Error *error);
+  virtual void SetSchedScan(bool enable, Error* error);
   std::string GetTechnologyOrder();
-  virtual void SetTechnologyOrder(const std::string &order, Error *error);
+  virtual void SetTechnologyOrder(const std::string& order, Error* error);
   // Set up the profile list starting with a default profile along with
   // an (optional) list of startup profiles.
   void InitializeProfiles();
   // Create a profile.  This does not affect the profile stack.  Returns
   // the RPC path of the created profile in |path|.
-  void CreateProfile(const std::string &name, std::string *path, Error *error);
+  void CreateProfile(const std::string& name, std::string* path, Error* error);
   // Pushes existing profile with name |name| onto stack of managed profiles.
   // Returns the RPC path of the pushed profile in |path|.
-  void PushProfile(const std::string &name, std::string *path, Error *error);
+  void PushProfile(const std::string& name, std::string* path, Error* error);
   // Insert an existing user profile with name |name| into the stack of
   // managed profiles.  Associate |user_hash| with this profile entry.
   // Returns the RPC path of the pushed profile in |path|.
-  void InsertUserProfile(const std::string &name,
-                         const std::string &user_hash,
-                         std::string *path,
-                         Error *error);
+  void InsertUserProfile(const std::string& name,
+                         const std::string& user_hash,
+                         std::string* path,
+                         Error* error);
   // Pops profile named |name| off the top of the stack of managed profiles.
-  void PopProfile(const std::string &name, Error *error);
+  void PopProfile(const std::string& name, Error* error);
   // Remove the active profile.
-  void PopAnyProfile(Error *error);
+  void PopAnyProfile(Error* error);
   // Remove all user profiles from the stack of managed profiles leaving only
   // default profiles.
-  void PopAllUserProfiles(Error *error);
+  void PopAllUserProfiles(Error* error);
   // Remove the underlying persistent storage for a profile.
-  void RemoveProfile(const std::string &name, Error *error);
+  void RemoveProfile(const std::string& name, Error* error);
   // Give the ownership of the device with name |device_name| to claimer with
   // name |claimer_name|. This will cause shill to stop managing this device.
-  void ClaimDevice(const std::string &claimer_name,
-                   const std::string &interface_name,
-                   Error *error,
-                   const ResultCallback &callback);
+  void ClaimDevice(const std::string& claimer_name,
+                   const std::string& interface_name,
+                   Error* error,
+                   const ResultCallback& callback);
   // Claimer |claimer_name| release the ownership of the device with
   // |interface_name| back to shill.
-  void ReleaseDevice(const std::string &claimer_name,
-                     const std::string &interface_name,
-                     Error *error);
+  void ReleaseDevice(const std::string& claimer_name,
+                     const std::string& interface_name,
+                     Error* error);
   // Called by a service to remove its associated configuration.  If |service|
   // is associated with a non-ephemeral profile, this configuration entry
   // will be removed and the manager will search for another matching profile.
   // If the service ends up with no matching profile, it is unloaded (which
   // may also remove the service from the manager's list, e.g. WiFi services
   // that are not visible)..
-  void RemoveService(const ServiceRefPtr &service);
+  void RemoveService(const ServiceRefPtr& service);
   // Handle the event where a profile is about to remove a profile entry.
   // Any Services that are dependent on this storage identifier will need
   // to find new profiles.  Return true if any service has been moved to a new
   // profile.  Any such services will have had the profile group removed from
   // the profile.
-  virtual bool HandleProfileEntryDeletion(const ProfileRefPtr &profile,
-                                          const std::string &entry_name);
+  virtual bool HandleProfileEntryDeletion(const ProfileRefPtr& profile,
+                                          const std::string& entry_name);
   // Find a registered service that contains a GUID property that
   // matches |guid|.
-  virtual ServiceRefPtr GetServiceWithGUID(const std::string &guid,
-                                           Error *error);
+  virtual ServiceRefPtr GetServiceWithGUID(const std::string& guid,
+                                           Error* error);
   // Find a service that is both the member of |profile| and has a
   // storage identifier that matches |entry_name|.  This function is
   // called by the Profile in order to return a profile entry's properties.
   virtual ServiceRefPtr GetServiceWithStorageIdentifier(
-      const ProfileRefPtr &profile,
-      const std::string &entry_name,
-      Error *error);
+      const ProfileRefPtr& profile,
+      const std::string& entry_name,
+      Error* error);
   // Create a temporary service for an entry |entry_name| within |profile|.
   // Callers must not register this service with the Manager or connect it
   // since it was never added to the provider's service list.
   virtual ServiceRefPtr CreateTemporaryServiceFromProfile(
-      const ProfileRefPtr &profile,
-      const std::string &entry_name,
-      Error *error);
+      const ProfileRefPtr& profile,
+      const std::string& entry_name,
+      Error* error);
   // Return a reference to the Service associated with the default connection.
   // If there is no such connection, this function returns a reference to NULL.
   virtual ServiceRefPtr GetDefaultService() const;
 
   // Set enabled state of all |technology_name| devices to |enabled_state|.
-  void SetEnabledStateForTechnology(const std::string &technology_name,
+  void SetEnabledStateForTechnology(const std::string& technology_name,
                                     bool enabled_state,
-                                    Error *error,
-                                    const ResultCallback &callback);
+                                    Error* error,
+                                    const ResultCallback& callback);
   // Return whether a technology is marked as enabled for portal detection.
   virtual bool IsPortalDetectionEnabled(Technology::Identifier tech);
   // Set the start-up value for the portal detection list.  This list will
   // be used until a value set explicitly over the control API.  Until
   // then, we ignore but do not overwrite whatever value is stored in the
   // profile.
-  virtual void SetStartupPortalList(const std::string &portal_list);
+  virtual void SetStartupPortalList(const std::string& portal_list);
 
   // Returns true if profile |a| has been pushed on the Manager's
   // |profiles_| stack before profile |b|.
-  virtual bool IsProfileBefore(const ProfileRefPtr &a,
-                               const ProfileRefPtr &b) const;
+  virtual bool IsProfileBefore(const ProfileRefPtr& a,
+                               const ProfileRefPtr& b) const;
 
   // Return whether a service belongs to the ephemeral profile.
-  virtual bool IsServiceEphemeral(const ServiceConstRefPtr &service) const;
+  virtual bool IsServiceEphemeral(const ServiceConstRefPtr& service) const;
 
   // Return whether a Technology has any connected Services.
   virtual bool IsTechnologyConnected(Technology::Identifier technology) const;
@@ -295,7 +295,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual bool IsTechnologyProhibited(Technology::Identifier technology) const;
 
   // Called by Profile when a |storage| completes initialization.
-  void OnProfileStorageInitialized(Profile *storage);
+  void OnProfileStorageInitialized(Profile* storage);
 
   // Return a Device with technology |technology| in the enabled state.
   virtual DeviceRefPtr GetEnabledDeviceWithTechnology(
@@ -303,7 +303,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Return a Device with link_name |link_name| in the enabled state.
   virtual DeviceRefPtr GetEnabledDeviceByLinkName(
-      const std::string &link_name) const;
+      const std::string& link_name) const;
 
   // Returns true if at least one connection exists, and false if there's no
   // connected service.
@@ -311,7 +311,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Returns true if at least one connection exists that have Internet
   // connectivity, and false if there's no such service.
   virtual bool IsOnline() const;
-  std::string CalculateState(Error *error);
+  std::string CalculateState(Error* error);
 
   // Recalculate the |connected_state_| string and emit a singal if it has
   // changed.
@@ -320,39 +320,39 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual int GetPortalCheckInterval() const {
     return props_.portal_check_interval_seconds;
   }
-  virtual const std::string &GetPortalCheckURL() const {
+  virtual const std::string& GetPortalCheckURL() const {
     return props_.portal_url;
   }
 
-  DBusManager *dbus_manager() const { return dbus_manager_.get(); }
-  virtual DeviceInfo *device_info() { return &device_info_; }
+  DBusManager* dbus_manager() const { return dbus_manager_.get(); }
+  virtual DeviceInfo* device_info() { return &device_info_; }
 #if !defined(DISABLE_CELLULAR)
-  virtual ModemInfo *modem_info() { return &modem_info_; }
+  virtual ModemInfo* modem_info() { return &modem_info_; }
 #endif  // DISABLE_CELLULAR
-  PowerManager *power_manager() const { return power_manager_.get(); }
+  PowerManager* power_manager() const { return power_manager_.get(); }
 #if !defined(DISABLE_WIRED_8021X)
-  virtual EthernetEapProvider *ethernet_eap_provider() const {
+  virtual EthernetEapProvider* ethernet_eap_provider() const {
     return ethernet_eap_provider_.get();
   }
 #endif  // DISABLE_WIRED_8021X
-  VPNProvider *vpn_provider() const { return vpn_provider_.get(); }
+  VPNProvider* vpn_provider() const { return vpn_provider_.get(); }
 #if !defined(DISABLE_WIFI)
-  WiFiProvider *wifi_provider() const { return wifi_provider_.get(); }
+  WiFiProvider* wifi_provider() const { return wifi_provider_.get(); }
 #endif  // DISABLE_WIFI
 #if !defined(DISABLE_WIMAX)
-  virtual WiMaxProvider *wimax_provider() { return wimax_provider_.get(); }
+  virtual WiMaxProvider* wimax_provider() { return wimax_provider_.get(); }
 #endif  // DISABLE_WIMAX
-  PropertyStore *mutable_store() { return &store_; }
-  virtual const PropertyStore &store() const { return store_; }
-  GLib *glib() const { return glib_; }
-  virtual const base::FilePath &run_path() const { return run_path_; }
-  const base::FilePath &storage_path() const { return storage_path_; }
-  IPAddressStore * health_checker_remote_ips() const {
+  PropertyStore* mutable_store() { return &store_; }
+  virtual const PropertyStore& store() const { return store_; }
+  GLib* glib() const { return glib_; }
+  virtual const base::FilePath& run_path() const { return run_path_; }
+  const base::FilePath& storage_path() const { return storage_path_; }
+  IPAddressStore* health_checker_remote_ips() const {
     return health_checker_remote_ips_.get();
   }
 
   bool GetArpGateway() const { return props_.arp_gateway; }
-  const std::string &GetHostName() const { return props_.host_name; }
+  const std::string& GetHostName() const { return props_.host_name; }
 
   virtual int GetMinimumMTU() const { return props_.minimum_mtu; }
   virtual void SetMinimumMTU(const int mtu) { props_.minimum_mtu = mtu; }
@@ -362,22 +362,22 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Writes the service |to_update| to persistant storage.  If the service's is
   // ephemeral, it is moved to the current profile.
-  void SaveServiceToProfile(const ServiceRefPtr &to_update);
+  void SaveServiceToProfile(const ServiceRefPtr& to_update);
 
   // Adds a closure to be executed when ChromeOS suspends or shill terminates.
   // |name| should be unique; otherwise, a previous closure by the same name
   // will be replaced.  |start| will be called when RunTerminationActions() is
   // called.  When an action completed, TerminationActionComplete() must be
   // called.
-  void AddTerminationAction(const std::string &name,
-                            const base::Closure &start);
+  void AddTerminationAction(const std::string& name,
+                            const base::Closure& start);
 
   // Users call this function to report the completion of an action |name|.
   // This function should be called once for each action.
-  void TerminationActionComplete(const std::string &name);
+  void TerminationActionComplete(const std::string& name);
 
   // Removes the action associtated with |name|.
-  void RemoveTerminationAction(const std::string &name);
+  void RemoveTerminationAction(const std::string& name);
 
   // Runs the termination actions and notifies the metrics framework
   // that the termination actions started running, only if any termination
@@ -388,12 +388,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   //
   // Returns true, if termination actions were run.
   bool RunTerminationActionsAndNotifyMetrics(
-      const ResultCallback &done_callback);
+      const ResultCallback& done_callback);
 
   // Registers a |callback| that's invoked whenever the default service
   // changes. Returns a unique tag that can be used to deregister the
   // callback. A tag equal to 0 is invalid.
-  virtual int RegisterDefaultServiceCallback(const ServiceCallback &callback);
+  virtual int RegisterDefaultServiceCallback(const ServiceCallback& callback);
   virtual void DeregisterDefaultServiceCallback(int tag);
 
 #if !defined(DISABLE_WIFI)
@@ -407,46 +407,46 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // encoded public half of an RSA key, |nonce| is a random string, and
   // |signed_data| is a base64 encoded string as described in
   // doc/manager-api.txt.
-  void VerifyDestination(const std::string &certificate,
-                         const std::string &public_key,
-                         const std::string &nonce,
-                         const std::string &signed_data,
-                         const std::string &destination_udn,
-                         const std::string &hotspot_ssid,
-                         const std::string &hotspot_bssid,
-                         const ResultBoolCallback &cb,
-                         Error *error);
+  void VerifyDestination(const std::string& certificate,
+                         const std::string& public_key,
+                         const std::string& nonce,
+                         const std::string& signed_data,
+                         const std::string& destination_udn,
+                         const std::string& hotspot_ssid,
+                         const std::string& hotspot_bssid,
+                         const ResultBoolCallback& cb,
+                         Error* error);
 
   // After verifying the destination, encrypt the string data with
   // |public_key|, the base64 encoded public half of an RSA key pair.  Returns
   // the base64 encoded result if successful, or an empty string on failure.
   // On failure, |error| will be filled with an appropriately descriptive
   // message and error code.
-  void VerifyAndEncryptData(const std::string &certificate,
-                            const std::string &public_key,
-                            const std::string &nonce,
-                            const std::string &signed_data,
-                            const std::string &destination_udn,
-                            const std::string &hotspot_ssid,
-                            const std::string &hotspot_bssid,
-                            const std::string &data,
-                            const ResultStringCallback &cb,
-                            Error *error);
+  void VerifyAndEncryptData(const std::string& certificate,
+                            const std::string& public_key,
+                            const std::string& nonce,
+                            const std::string& signed_data,
+                            const std::string& destination_udn,
+                            const std::string& hotspot_ssid,
+                            const std::string& hotspot_bssid,
+                            const std::string& data,
+                            const ResultStringCallback& cb,
+                            Error* error);
 
   // After verifying the destination, encrypt the password for |network_path|
   // under |public_key|.  Similar to EncryptData above except that the
   // information being encrypted is implicitly the authentication credentials
   // of the given network.
-  void VerifyAndEncryptCredentials(const std::string &certificate,
-                                   const std::string &public_key,
-                                   const std::string &nonce,
-                                   const std::string &signed_data,
-                                   const std::string &destination_udn,
-                                   const std::string &hotspot_ssid,
-                                   const std::string &hotspot_bssid,
-                                   const std::string &network_path,
-                                   const ResultStringCallback &cb,
-                                   Error *error);
+  void VerifyAndEncryptCredentials(const std::string& certificate,
+                                   const std::string& public_key,
+                                   const std::string& nonce,
+                                   const std::string& signed_data,
+                                   const std::string& destination_udn,
+                                   const std::string& hotspot_ssid,
+                                   const std::string& hotspot_bssid,
+                                   const std::string& network_path,
+                                   const ResultStringCallback& cb,
+                                   Error* error);
 #endif  // DISABLE_WIFI
 
   // Calculate connection identifier, which is hash of salt value, gateway IP
@@ -471,18 +471,18 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   }
 
   // Set the list of prepended DNS servers to |prepend_dns_servers|.
-  virtual void SetPrependDNSServers(const std::string &prepend_dns_servers);
+  virtual void SetPrependDNSServers(const std::string& prepend_dns_servers);
 
   // Accept hostname from DHCP server for devices matching |hostname_from|.
-  virtual void SetAcceptHostnameFrom(const std::string &hostname_from);
-  virtual bool ShouldAcceptHostnameFrom(const std::string &device_name) const;
+  virtual void SetAcceptHostnameFrom(const std::string& hostname_from);
+  virtual bool ShouldAcceptHostnameFrom(const std::string& device_name) const;
 
   // Set DHCPv6 enabled device list.
   virtual void SetDHCPv6EnabledDevices(
-      const std::vector<std::string> &device_list);
+      const std::vector<std::string>& device_list);
 
   // Return true if DHCPv6 is enabled for the given device with |device_name|.
-  virtual bool IsDHCPv6EnabledForDevice(const std::string &device_name) const;
+  virtual bool IsDHCPv6EnabledForDevice(const std::string& device_name) const;
 
   // Filter the list of prepended DNS servers, copying only those that match
   // |family| into |dns_servers|.  |dns_servers| is cleared, regardless of
@@ -497,7 +497,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void set_suppress_autoconnect(bool val) { suppress_autoconnect_ = val; }
   bool suppress_autoconnect() { return suppress_autoconnect_; }
 
-  void RecordDarkResumeWakeReason(const std::string &wake_reason);
+  void RecordDarkResumeWakeReason(const std::string& wake_reason);
 
  private:
   friend class CellularTest;
@@ -554,8 +554,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   struct DeviceClaim {
     DeviceClaim() {}
-    DeviceClaim(const std::string &in_device_name,
-                const ResultCallback &in_result_callback)
+    DeviceClaim(const std::string& in_device_name,
+                const ResultCallback& in_result_callback)
         : device_name(in_device_name),
           result_callback(in_result_callback) {}
     std::string device_name;
@@ -567,7 +567,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   static const char kErrorUnsupportedServiceType[];
 
   // Technologies to probe for.
-  static const char *kProbeTechnologies[];
+  static const char* kProbeTechnologies[];
 
   // Name of the default claimer.
   static const char kDefaultClaimerName[];
@@ -579,34 +579,34 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   static const int kTerminationActionsTimeoutMilliseconds;
 
   void AutoConnect();
-  std::vector<std::string> AvailableTechnologies(Error *error);
-  std::vector<std::string> ConnectedTechnologies(Error *error);
-  std::string DefaultTechnology(Error *error);
-  std::vector<std::string> EnabledTechnologies(Error *error);
-  std::vector<std::string> UninitializedTechnologies(Error *error);
-  RpcIdentifiers EnumerateDevices(Error *error);
-  RpcIdentifiers EnumerateProfiles(Error *error);
-  RpcIdentifiers EnumerateWatchedServices(Error *error);
-  std::string GetActiveProfileRpcIdentifier(Error *error);
-  std::string GetCheckPortalList(Error *error);
-  RpcIdentifier GetDefaultServiceRpcIdentifier(Error *error);
-  std::string GetIgnoredDNSSearchPaths(Error *error);
-  ServiceRefPtr GetServiceInner(const KeyValueStore &args, Error *error);
-  bool SetCheckPortalList(const std::string &portal_list, Error *error);
-  bool SetIgnoredDNSSearchPaths(const std::string &ignored_paths, Error *error);
+  std::vector<std::string> AvailableTechnologies(Error* error);
+  std::vector<std::string> ConnectedTechnologies(Error* error);
+  std::string DefaultTechnology(Error* error);
+  std::vector<std::string> EnabledTechnologies(Error* error);
+  std::vector<std::string> UninitializedTechnologies(Error* error);
+  RpcIdentifiers EnumerateDevices(Error* error);
+  RpcIdentifiers EnumerateProfiles(Error* error);
+  RpcIdentifiers EnumerateWatchedServices(Error* error);
+  std::string GetActiveProfileRpcIdentifier(Error* error);
+  std::string GetCheckPortalList(Error* error);
+  RpcIdentifier GetDefaultServiceRpcIdentifier(Error* error);
+  std::string GetIgnoredDNSSearchPaths(Error* error);
+  ServiceRefPtr GetServiceInner(const KeyValueStore& args, Error* error);
+  bool SetCheckPortalList(const std::string& portal_list, Error* error);
+  bool SetIgnoredDNSSearchPaths(const std::string& ignored_paths, Error* error);
   void EmitDefaultService();
-  bool IsTechnologyInList(const std::string &technology_list,
+  bool IsTechnologyInList(const std::string& technology_list,
                           Technology::Identifier tech) const;
   void EmitDeviceProperties();
 #if !defined(DISABLE_WIFI)
-  bool SetDisableWiFiVHT(const bool &disable_wifi_vht, Error *error);
-  bool GetDisableWiFiVHT(Error *error);
+  bool SetDisableWiFiVHT(const bool& disable_wifi_vht, Error* error);
+  bool GetDisableWiFiVHT(Error* error);
 #endif  // DISABLE_WIFI
-  bool SetProhibitedTechnologies(const std::string &prohibited_technologies,
-                                 Error *error);
-  std::string GetProhibitedTechnologies(Error *error);
+  bool SetProhibitedTechnologies(const std::string& prohibited_technologies,
+                                 Error* error);
+  std::string GetProhibitedTechnologies(Error* error);
   void OnTechnologyProhibited(Technology::Identifier technology,
-                              const Error &error);
+                              const Error& error);
 
   // For every device instance that is sharing the same connectivity with
   // another device, enable the multi-home flag.
@@ -616,36 +616,36 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // service was erased (which means the caller loop should not increment
   // |service_iterator|), false otherwise (meaning the caller should
   // increment |service_iterator|).
-  bool UnloadService(std::vector<ServiceRefPtr>::iterator *service_iterator);
+  bool UnloadService(std::vector<ServiceRefPtr>::iterator* service_iterator);
 
   // Load Manager default properties from |profile|.
-  void LoadProperties(const scoped_refptr<DefaultProfile> &profile);
+  void LoadProperties(const scoped_refptr<DefaultProfile>& profile);
 
   // Configure the device with profile data from all current profiles.
-  void LoadDeviceFromProfiles(const DeviceRefPtr &device);
+  void LoadDeviceFromProfiles(const DeviceRefPtr& device);
 
   void HelpRegisterConstDerivedRpcIdentifier(
-      const std::string &name,
-      RpcIdentifier(Manager::*get)(Error *));
+      const std::string& name,
+      RpcIdentifier(Manager::*get)(Error*));
   void HelpRegisterConstDerivedRpcIdentifiers(
-      const std::string &name,
-      RpcIdentifiers(Manager::*get)(Error *));
+      const std::string& name,
+      RpcIdentifiers(Manager::*get)(Error*));
   void HelpRegisterDerivedString(
-      const std::string &name,
-      std::string(Manager::*get)(Error *error),
-      bool(Manager::*set)(const std::string&, Error *));
+      const std::string& name,
+      std::string(Manager::*get)(Error* error),
+      bool(Manager::*set)(const std::string&, Error*));
   void HelpRegisterConstDerivedStrings(
-      const std::string &name,
-      Strings(Manager::*get)(Error *));
+      const std::string& name,
+      Strings(Manager::*get)(Error*));
   void HelpRegisterDerivedBool(
-      const std::string &name,
-      bool(Manager::*get)(Error *error),
-      bool(Manager::*set)(const bool &value, Error *error));
+      const std::string& name,
+      bool(Manager::*get)(Error* error),
+      bool(Manager::*set)(const bool& value, Error* error));
 
-  bool HasProfile(const Profile::Identifier &ident);
-  void PushProfileInternal(const Profile::Identifier &ident,
-                           std::string *path,
-                           Error *error);
+  bool HasProfile(const Profile::Identifier& ident);
+  void PushProfileInternal(const Profile::Identifier& ident,
+                           std::string* path,
+                           Error* error);
   void PopProfileInternal();
   void OnProfilesChanged();
 
@@ -655,7 +655,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void ConnectionStatusCheck();
   void DevicePresenceStatusCheck();
 
-  bool MatchProfileWithService(const ServiceRefPtr &service);
+  bool MatchProfileWithService(const ServiceRefPtr& service);
 
   // Sets the profile of |service| to |profile|, without notifying its
   // previous profile.  Configures a |service| with |args|, then saves
@@ -664,20 +664,20 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // or writing a newly created service config to a specific profile.
   static void SetupServiceInProfile(ServiceRefPtr service,
                                     ProfileRefPtr profile,
-                                    const KeyValueStore &args,
-                                    Error *error);
+                                    const KeyValueStore& args,
+                                    Error* error);
 
   // For each technology present, connect to the "best" service available,
   // as determined by sorting all services independent of their current state.
   void ConnectToBestServicesTask();
 
-  void NotifyDefaultServiceChanged(const ServiceRefPtr &service);
+  void NotifyDefaultServiceChanged(const ServiceRefPtr& service);
 
   // Runs the termination actions.  If all actions complete within
   // |kTerminationActionsTimeoutMilliseconds|, |done_callback| is called with a
   // value of Error::kSuccess.  Otherwise, it is called with
   // Error::kOperationTimeout.
-  void RunTerminationActions(const ResultCallback &done_callback);
+  void RunTerminationActions(const ResultCallback& done_callback);
 
   // Called when the system is about to be suspended.  Each call will be
   // followed by a call to OnSuspendDone().
@@ -691,12 +691,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // suspend is imminent).
   void OnDarkSuspendImminent();
 
-  void OnSuspendActionsComplete(const Error &error);
-  void OnDarkResumeActionsComplete(const Error &error);
+  void OnSuspendActionsComplete(const Error& error);
+  void OnDarkResumeActionsComplete(const Error& error);
 
 #if !defined(DISABLE_WIFI)
   void VerifyToEncryptLink(std::string public_key, std::string data,
-                           ResultStringCallback cb, const Error &error,
+                           ResultStringCallback cb, const Error& error,
                            bool success);
 #endif  // DISABLE_WIFI
 
@@ -705,12 +705,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool IsWifiIdle();
 
   // For unit testing.
-  void set_metrics(Metrics *metrics) { metrics_ = metrics; }
+  void set_metrics(Metrics* metrics) { metrics_ = metrics; }
   void UpdateProviderMapping();
 
   // Used by tests to set a mock PowerManager.  Takes ownership of
   // power_manager.
-  void set_power_manager(PowerManager *power_manager) {
+  void set_power_manager(PowerManager* power_manager) {
     power_manager_.reset(power_manager);
   }
 
@@ -718,19 +718,19 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Called when the DBus service that claimed ownership of devices from shill
   // appear/vanish from the DBus connection.
-  void OnDeviceClaimerAppeared(const std::string &/*name*/,
-                                    const std::string &owner);
-  void OnDeviceClaimerVanished(const std::string &/*name*/);
+  void OnDeviceClaimerAppeared(const std::string& /*name*/,
+                                    const std::string& owner);
+  void OnDeviceClaimerVanished(const std::string& /*name*/);
   // Task for cleanup device claimer when it is vanished.
   void DeviceClaimerVanishedTask();
 
-  void DeregisterDeviceByLinkName(const std::string &link_name);
+  void DeregisterDeviceByLinkName(const std::string& link_name);
 
   // Returns the names of all of the devices that have been claimed by the
   // current DeviceClaimer.  Returns an empty vector if no DeviceClaimer is set.
-  std::vector<std::string> ClaimedDevices(Error *error);
+  std::vector<std::string> ClaimedDevices(Error* error);
 
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   const base::FilePath run_path_;
   const base::FilePath storage_path_;
   const std::string user_storage_path_;
@@ -752,7 +752,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::unique_ptr<WiMaxProvider> wimax_provider_;
 #endif  // DISABLE_WIMAX
   // Hold pointer to singleton Resolver instance for testing purposes.
-  Resolver *resolver_;
+  Resolver* resolver_;
   bool running_;
   // Used to facilitate unit tests which can't use RPC.
   bool connect_profiles_to_rpc_;
@@ -764,13 +764,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Map of technologies to Provider instances.  These pointers are owned
   // by the respective scoped_reptr objects that are held over the lifetime
   // of the Manager object.
-  std::map<Technology::Identifier, ProviderInterface *> providers_;
+  std::map<Technology::Identifier, ProviderInterface*> providers_;
   // List of startup profile names to push on the profile stack on startup.
   std::vector<ProfileRefPtr> profiles_;
   ProfileRefPtr ephemeral_profile_;
-  ControlInterface *control_interface_;
-  Metrics *metrics_;
-  GLib *glib_;
+  ControlInterface* control_interface_;
+  Metrics* metrics_;
+  GLib* glib_;
   std::unique_ptr<PowerManager> power_manager_;
   std::unique_ptr<Upstart> upstart_;
 

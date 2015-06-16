@@ -102,14 +102,14 @@ class IPConfig : public base::RefCounted<IPConfig> {
   static const int kMinIPv6MTU;
   static const int kUndefinedMTU;
 
-  IPConfig(ControlInterface *control_interface, const std::string &device_name);
-  IPConfig(ControlInterface *control_interface,
-           const std::string &device_name,
-           const std::string &type);
+  IPConfig(ControlInterface* control_interface, const std::string& device_name);
+  IPConfig(ControlInterface* control_interface,
+           const std::string& device_name,
+           const std::string& type);
   virtual ~IPConfig();
 
-  const std::string &device_name() const { return device_name_; }
-  const std::string &type() const { return type_; }
+  const std::string& device_name() const { return device_name_; }
+  const std::string& type() const { return type_; }
   uint serial() const { return serial_; }
 
   std::string GetRpcIdentifier();
@@ -120,35 +120,35 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // configuration instance allowing clients to more easily manage multiple IP
   // configurations. The callback's second argument is a boolean indicating
   // whether or not a DHCP lease was acquired from the server.
-  void RegisterUpdateCallback(const UpdateCallback &callback);
+  void RegisterUpdateCallback(const UpdateCallback& callback);
 
   // Registers a callback that's executed every time the configuration
   // properties fail to be acquired. Takes ownership of |callback|.  Pass NULL
   // to remove a callback. The callback's argument is a pointer to this IP
   // configuration instance allowing clients to more easily manage multiple IP
   // configurations.
-  void RegisterFailureCallback(const Callback &callback);
+  void RegisterFailureCallback(const Callback& callback);
 
   // Registers a callback that's executed every time the Refresh method
   // on the ipconfig is called.  Takes ownership of |callback|. Pass NULL
   // to remove a callback. The callback's argument is a pointer to this IP
   // configuration instance allowing clients to more easily manage multiple IP
   // configurations.
-  void RegisterRefreshCallback(const Callback &callback);
+  void RegisterRefreshCallback(const Callback& callback);
 
   // Registers a callback that's executed every time the the lease exipres
   // and the IPConfig is about to perform a restart to attempt to regain it.
   // Takes ownership of |callback|. Pass NULL  to remove a callback. The
   // callback's argument is a pointer to this IP configuration instance
   // allowing clients to more easily manage multiple IP configurations.
-  void RegisterExpireCallback(const Callback &callback);
+  void RegisterExpireCallback(const Callback& callback);
 
-  void set_properties(const Properties &props) { properties_ = props; }
-  virtual const Properties &properties() const { return properties_; }
+  void set_properties(const Properties& props) { properties_ = props; }
+  virtual const Properties& properties() const { return properties_; }
 
   // Update DNS servers setting for this ipconfig, this allows Chrome
   // to retrieve the new DNS servers.
-  virtual void UpdateDNSServers(const std::vector<std::string> &dns_servers);
+  virtual void UpdateDNSServers(const std::vector<std::string>& dns_servers);
 
   // Reset the IPConfig properties to their default values.
   virtual void ResetProperties();
@@ -165,15 +165,15 @@ class IPConfig : public base::RefCounted<IPConfig> {
   virtual bool ReleaseIP(ReleaseReason reason);
 
   // Refresh IP configuration.  Called by the DBus Adaptor "Refresh" call.
-  void Refresh(Error *error);
+  void Refresh(Error* error);
 
-  PropertyStore *mutable_store() { return &store_; }
-  const PropertyStore &store() const { return store_; }
-  void ApplyStaticIPParameters(StaticIPParameters *static_ip_parameters);
+  PropertyStore* mutable_store() { return &store_; }
+  const PropertyStore& store() const { return store_; }
+  void ApplyStaticIPParameters(StaticIPParameters* static_ip_parameters);
 
   // Restore the fields of |properties_| to their original values before
   // static IP parameters were previously applied.
-  void RestoreSavedIPParameters(StaticIPParameters *static_ip_parameters);
+  void RestoreSavedIPParameters(StaticIPParameters* static_ip_parameters);
 
   // Updates |current_lease_expiration_time_| by adding |new_lease_duration| to
   // the current time.
@@ -185,7 +185,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // Returns the time left (in seconds) till the current DHCP lease is to be
   // renewed in |time_left|. Returns false if an error occurs (i.e. current
   // lease has already expired or no current DHCP lease), true otherwise.
-  bool TimeToLeaseExpiry(uint32_t *time_left);
+  bool TimeToLeaseExpiry(uint32_t* time_left);
 
  protected:
   // Inform RPC listeners of changes to our properties. MAY emit
@@ -194,7 +194,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   // Updates the IP configuration properties and notifies registered listeners
   // about the event.
-  virtual void UpdateProperties(const Properties &properties,
+  virtual void UpdateProperties(const Properties& properties,
                                 bool new_lease_acquired);
 
   // Notifies registered listeners that the configuration process has failed.
@@ -240,7 +240,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   Callback refresh_callback_;
   Callback expire_callback_;
   struct timeval current_lease_expiration_time_;
-  Time *time_;
+  Time* time_;
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };

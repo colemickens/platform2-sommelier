@@ -17,18 +17,18 @@ namespace shill {
 class GlibIOInputHandler : public IOHandler {
  public:
   GlibIOInputHandler(int fd,
-                     const InputCallback &input_callback,
-                     const ErrorCallback &error_callback);
+                     const InputCallback& input_callback,
+                     const ErrorCallback& error_callback);
   ~GlibIOInputHandler();
 
   virtual void Start();
   virtual void Stop();
 
-  const InputCallback &input_callback() { return input_callback_; }
-  const ErrorCallback &error_callback() { return error_callback_; }
+  const InputCallback& input_callback() { return input_callback_; }
+  const ErrorCallback& error_callback() { return error_callback_; }
 
  private:
-  GIOChannel *channel_;
+  GIOChannel* channel_;
   InputCallback input_callback_;
   ErrorCallback error_callback_;
   guint source_id_;

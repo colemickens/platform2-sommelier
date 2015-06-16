@@ -29,79 +29,79 @@ class KeyValueStore {
   KeyValueStore();
 
   void Clear();
-  void CopyFrom(const KeyValueStore &b);
-  bool Equals(const KeyValueStore &other) const;
+  void CopyFrom(const KeyValueStore& b);
+  bool Equals(const KeyValueStore& other) const;
   bool IsEmpty();
 
-  bool ContainsBool(const std::string &name) const;
-  bool ContainsInt(const std::string &name) const;
-  bool ContainsKeyValueStore(const std::string &name) const;
-  bool ContainsString(const std::string &name) const;
-  bool ContainsStringmap(const std::string &name) const;
-  bool ContainsStrings(const std::string &name) const;
-  bool ContainsUint(const std::string &name) const;
+  bool ContainsBool(const std::string& name) const;
+  bool ContainsInt(const std::string& name) const;
+  bool ContainsKeyValueStore(const std::string& name) const;
+  bool ContainsString(const std::string& name) const;
+  bool ContainsStringmap(const std::string& name) const;
+  bool ContainsStrings(const std::string& name) const;
+  bool ContainsUint(const std::string& name) const;
 
-  bool GetBool(const std::string &name) const;
-  int32_t GetInt(const std::string &name) const;
-  const KeyValueStore &GetKeyValueStore(const std::string &name) const;
-  const std::string &GetString(const std::string &name) const;
-  const std::map<std::string, std::string> &GetStringmap(
-      const std::string &name) const;
-  const std::vector<std::string> &GetStrings(const std::string &name) const;
-  uint32_t GetUint(const std::string &name) const;
+  bool GetBool(const std::string& name) const;
+  int32_t GetInt(const std::string& name) const;
+  const KeyValueStore& GetKeyValueStore(const std::string& name) const;
+  const std::string& GetString(const std::string& name) const;
+  const std::map<std::string, std::string>& GetStringmap(
+      const std::string& name) const;
+  const std::vector<std::string>& GetStrings(const std::string& name) const;
+  uint32_t GetUint(const std::string& name) const;
 
-  void SetBool(const std::string &name, bool value);
-  void SetInt(const std::string &name, int32_t value);
-  void SetKeyValueStore(const std::string &name, const KeyValueStore &value);
-  void SetString(const std::string &name, const std::string &value);
-  void SetStringmap(const std::string &name,
-                    const std::map<std::string, std::string> &value);
-  void SetStrings(const std::string &name,
-                  const std::vector<std::string> &value);
-  void SetUint(const std::string &name, uint32_t value);
+  void SetBool(const std::string& name, bool value);
+  void SetInt(const std::string& name, int32_t value);
+  void SetKeyValueStore(const std::string& name, const KeyValueStore& value);
+  void SetString(const std::string& name, const std::string& value);
+  void SetStringmap(const std::string& name,
+                    const std::map<std::string, std::string>& value);
+  void SetStrings(const std::string& name,
+                  const std::vector<std::string>& value);
+  void SetUint(const std::string& name, uint32_t value);
 
-  void RemoveString(const std::string &name);
-  void RemoveStringmap(const std::string &name);
-  void RemoveStrings(const std::string &name);
-  void RemoveInt(const std::string &name);
-  void RemoveKeyValueStore(const std::string &name);
+  void RemoveString(const std::string& name);
+  void RemoveStringmap(const std::string& name);
+  void RemoveStrings(const std::string& name);
+  void RemoveInt(const std::string& name);
+  void RemoveKeyValueStore(const std::string& name);
 
   // If |name| is in this store returns its value, otherwise returns
   // |default_value|.
-  bool LookupBool(const std::string &name, bool default_value) const;
-  int LookupInt(const std::string &name, int default_value) const;
-  std::string LookupString(const std::string &name,
-                           const std::string &default_value) const;
+  bool LookupBool(const std::string& name, bool default_value) const;
+  int LookupInt(const std::string& name, int default_value) const;
+  std::string LookupString(const std::string& name,
+                           const std::string& default_value) const;
 
-  const std::map<std::string, bool> &bool_properties() const {
+  const std::map<std::string, bool>& bool_properties() const {
     return bool_properties_;
   }
-  const std::map<std::string, int32_t> &int_properties() const {
+  const std::map<std::string, int32_t>& int_properties() const {
     return int_properties_;
   }
   const std::map<std::string, KeyValueStore>
       &key_value_store_properties() const {
     return key_value_store_properties_;
   }
-  const std::map<std::string, std::string> &string_properties() const {
+  const std::map<std::string, std::string>& string_properties() const {
     return string_properties_;
   }
   const std::map<
       std::string,
-      std::map<std::string, std::string>> &stringmap_properties() const {
+      std::map<std::string, std::string>>& stringmap_properties() const {
     return stringmap_properties_;
   }
   const std::map<std::string,
-                 std::vector<std::string>> &strings_properties() const {
+                 std::vector<std::string>>& strings_properties() const {
     return strings_properties_;
   }
-  const std::map<std::string, uint32_t> &uint_properties() const {
+  const std::map<std::string, uint32_t>& uint_properties() const {
     return uint_properties_;
   }
 
  private:
   // Recursively compare KeyValueStore properties with |other|.
-  bool KeyValueStorePropertiesAreEqual(const KeyValueStore &other) const;
+  bool KeyValueStorePropertiesAreEqual(const KeyValueStore& other) const;
 
   std::map<std::string, bool> bool_properties_;
   std::map<std::string, int32_t> int_properties_;

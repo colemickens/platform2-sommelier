@@ -47,7 +47,7 @@ bool Icmp::IsStarted() const {
   return socket_closer_.get();
 }
 
-bool Icmp::TransmitEchoRequest(const IPAddress &destination) {
+bool Icmp::TransmitEchoRequest(const IPAddress& destination) {
   if (!IsStarted() && !Start()) {
     return false;
   }
@@ -81,7 +81,7 @@ bool Icmp::TransmitEchoRequest(const IPAddress &destination) {
       &icmp_header,
       sizeof(icmp_header),
       0,
-      reinterpret_cast<struct sockaddr *>(&destination_address),
+      reinterpret_cast<struct sockaddr*>(&destination_address),
       sizeof(destination_address));
   int expected_result = sizeof(icmp_header);
   if (result != expected_result) {

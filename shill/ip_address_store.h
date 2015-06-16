@@ -13,7 +13,7 @@
 namespace shill {
 
 struct IPAddressLTIgnorePrefix {
-  bool operator () (const IPAddress &lhs, const IPAddress &rhs) const;
+  bool operator () (const IPAddress& lhs, const IPAddress& rhs) const;
 };
 
 // Stores a set of IP addresses used by ConnectionHealthChecker to check
@@ -32,13 +32,13 @@ class IPAddressStore {
   virtual ~IPAddressStore();
 
   // Add a new IP address if it does not already exist.
-  virtual void AddUnique(const IPAddress &ip);
-  virtual void Remove(const IPAddress &ip);
+  virtual void AddUnique(const IPAddress& ip);
+  virtual void Remove(const IPAddress& ip);
   virtual void Clear();
-  virtual bool Contains(const IPAddress &ip) const;
+  virtual bool Contains(const IPAddress& ip) const;
   virtual size_t Count() const;
   virtual bool Empty() const;
-  const IPAddresses &GetIPAddresses() const { return ip_addresses_; }
+  const IPAddresses& GetIPAddresses() const { return ip_addresses_; }
 
   virtual IPAddress GetRandomIP();
 

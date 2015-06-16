@@ -27,10 +27,10 @@ class HTTPURL {
   virtual ~HTTPURL();
 
   // Parse a URL from |url_string|.
-  bool ParseFromString(const std::string &url_string);
+  bool ParseFromString(const std::string& url_string);
 
-  const std::string &host() const { return host_; }
-  const std::string &path() const { return path_; }
+  const std::string& host() const { return host_; }
+  const std::string& path() const { return path_; }
   int port() const { return port_; }
   Protocol protocol() const { return protocol_; }
 

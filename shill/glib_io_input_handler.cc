@@ -23,14 +23,14 @@ using std::vector;
 
 namespace shill {
 
-static gboolean DispatchIOHandler(GIOChannel *chan,
+static gboolean DispatchIOHandler(GIOChannel* chan,
                                   GIOCondition cond,
                                   gpointer data) {
-  GlibIOInputHandler *handler = reinterpret_cast<GlibIOInputHandler *>(data);
+  GlibIOInputHandler* handler = reinterpret_cast<GlibIOInputHandler*>(data);
   unsigned char buf[IOHandler::kDataBufferSize];
   gsize len = 0;
   gint fd = g_io_channel_unix_get_fd(chan);
-  GError *err = 0;
+  GError* err = 0;
   vector<string> error_conditions;
 
   if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR)) {
@@ -42,7 +42,7 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
   }
 
   GIOStatus status = g_io_channel_read_chars(
-      chan, reinterpret_cast<gchar *>(buf), sizeof(buf), &len, &err);
+      chan, reinterpret_cast<gchar*>(buf), sizeof(buf), &len, &err);
   if (err) {
     string condition = base::StringPrintf(
         "GLib error code %d/%d (%s) on read(%d): %s",
@@ -75,8 +75,8 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
 
 GlibIOInputHandler::GlibIOInputHandler(
     int fd,
-    const InputCallback &input_callback,
-    const ErrorCallback &error_callback)
+    const InputCallback& input_callback,
+    const ErrorCallback& error_callback)
     : channel_(g_io_channel_unix_new(fd)),
       input_callback_(input_callback),
       error_callback_(error_callback),

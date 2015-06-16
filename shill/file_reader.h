@@ -25,12 +25,12 @@ class FileReader {
   void Close();
 
   // Opens the file of a given path. Returns true on success.
-  bool Open(const base::FilePath &file_path);
+  bool Open(const base::FilePath& file_path);
 
   // Reads a line, terminated by either LF or EOF, from the file into
   // a given string, with LF excluded. Returns false if no more line
   // can be read from the file.
-  bool ReadLine(std::string *line);
+  bool ReadLine(std::string* line);
 
  private:
   // The file to read.

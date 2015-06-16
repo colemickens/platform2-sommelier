@@ -733,29 +733,29 @@ class Metrics {
   // Device removal event.
   static const char kMetricDeviceRemovedEvent[];
 
-  explicit Metrics(EventDispatcher *dispatcher);
+  explicit Metrics(EventDispatcher* dispatcher);
   virtual ~Metrics();
 
   // Converts the WiFi frequency into the associated UMA channel enumerator.
   static WiFiChannel WiFiFrequencyToChannel(uint16_t frequency);
 
   // Converts a flimflam security string into its UMA security enumerator.
-  static WiFiSecurity WiFiSecurityStringToEnum(const std::string &security);
+  static WiFiSecurity WiFiSecurityStringToEnum(const std::string& security);
 
   // Converts a flimflam AP mode string into its UMA AP mode enumerator.
-  static WiFiApMode WiFiApModeStringToEnum(const std::string &ap_mode);
+  static WiFiApMode WiFiApModeStringToEnum(const std::string& ap_mode);
 
   // Converts a flimflam EAP outer protocol string into its UMA enumerator.
   static EapOuterProtocol EapOuterProtocolStringToEnum(
-      const std::string &outer);
+      const std::string& outer);
 
   // Converts a flimflam EAP inner protocol string into its UMA enumerator.
   static EapInnerProtocol EapInnerProtocolStringToEnum(
-      const std::string &inner);
+      const std::string& inner);
 
   // Converts portal detection result to UMA portal result enumerator.
   static PortalResult PortalDetectionResultToEnum(
-      const PortalDetector::Result &result);
+      const PortalDetector::Result& result);
 
   // Starts this object.  Call this during initialization.
   virtual void Start();
@@ -765,35 +765,35 @@ class Metrics {
 
   // Registers a service with this object so it can use the timers to track
   // state transition metrics.
-  void RegisterService(const Service &service);
+  void RegisterService(const Service& service);
 
   // Deregisters the service from this class.  All state transition timers
   // will be removed.
-  void DeregisterService(const Service &service);
+  void DeregisterService(const Service& service);
 
   // Tracks the time it takes |service| to go from |start_state| to
   // |stop_state|.  When |stop_state| is reached, the time is sent to UMA.
   virtual void AddServiceStateTransitionTimer(
-      const Service &service, const std::string &histogram_name,
+      const Service& service, const std::string& histogram_name,
       Service::ConnectState start_state, Service::ConnectState stop_state);
 
   // Specializes |metric_suffix| for the specified |technology_id|.
-  std::string GetFullMetricName(const char *metric_suffix,
+  std::string GetFullMetricName(const char* metric_suffix,
                                 Technology::Identifier technology_id);
 
   // Notifies this object that the default service has changed.
   // |service| is the new default service.
-  virtual void NotifyDefaultServiceChanged(const Service *service);
+  virtual void NotifyDefaultServiceChanged(const Service* service);
 
   // Notifies this object that |service| state has changed.
-  virtual void NotifyServiceStateChanged(const Service &service,
+  virtual void NotifyServiceStateChanged(const Service& service,
                                          Service::ConnectState new_state);
 
   // Notifies this object that |service| has been disconnected.
-  void NotifyServiceDisconnect(const Service &service);
+  void NotifyServiceDisconnect(const Service& service);
 
   // Notifies this object of power at disconnect.
-  void NotifySignalAtDisconnect(const Service &service,
+  void NotifySignalAtDisconnect(const Service& service,
                                 int16_t signal_strength);
 
   // Notifies this object of the end of a suspend attempt.
@@ -913,7 +913,7 @@ class Metrics {
 
   // Notifies this object that a cellular device has been dropped by the
   // network.
-  void NotifyCellularDeviceDrop(const std::string &network_technology,
+  void NotifyCellularDeviceDrop(const std::string& network_technology,
                                 uint16_t signal_strength);
 
   // Notifies this object about 3GPP registration drop events.
@@ -921,7 +921,7 @@ class Metrics {
   virtual void Notify3GPPRegistrationDelayedDropCanceled();
 
   // Notifies this object about a cellular device failure code.
-  void NotifyCellularDeviceFailure(const Error &error);
+  void NotifyCellularDeviceFailure(const Error& error);
 
   // Notifies this object that a cellular service has been marked as
   // out-of-credits.
@@ -944,13 +944,13 @@ class Metrics {
 
   // Notifies this object about the result of user-initiated connection
   // attempt.
-  virtual void NotifyUserInitiatedConnectionResult(const std::string &name,
+  virtual void NotifyUserInitiatedConnectionResult(const std::string& name,
                                                    int result);
 
   // Notifies this object about the reason of failed user-initiated connection
   // attempt.
   virtual void NotifyUserInitiatedConnectionFailureReason(
-      const std::string &name, const Service::ConnectFailure failure);
+      const std::string& name, const Service::ConnectFailure failure);
 
   // Notifies this object about a corrupted profile.
   virtual void NotifyCorruptedProfile();
@@ -990,10 +990,10 @@ class Metrics {
       Technology::Identifier technology_id, int signal_strength);
 
   // Sends linear histogram data to UMA.
-  virtual bool SendEnumToUMA(const std::string &name, int sample, int max);
+  virtual bool SendEnumToUMA(const std::string& name, int sample, int max);
 
   // Send histogram data to UMA.
-  virtual bool SendToUMA(const std::string &name, int sample, int min,
+  virtual bool SendToUMA(const std::string& name, int sample, int min,
                          int max, int num_buckets);
 
   // Notifies this object that wake on WiFi has been disabled because of
@@ -1063,7 +1063,7 @@ class Metrics {
   FRIEND_TEST(WiFiMainTest, GetGeolocationObjects);
 
   typedef ScopedVector<chromeos_metrics::TimerReporter> TimerReporters;
-  typedef std::list<chromeos_metrics::TimerReporter *> TimerReportersList;
+  typedef std::list<chromeos_metrics::TimerReporter*> TimerReportersList;
   typedef std::map<Service::ConnectState, TimerReportersList>
       TimerReportersByState;
   struct ServiceMetrics {
@@ -1074,7 +1074,7 @@ class Metrics {
     TimerReportersByState start_on_state;
     TimerReportersByState stop_on_state;
   };
-  typedef std::map<const Service *, std::shared_ptr<ServiceMetrics>>
+  typedef std::map<const Service*, std::shared_ptr<ServiceMetrics>>
       ServiceMetricsLookupMap;
 
   struct DeviceMetrics {
@@ -1107,63 +1107,63 @@ class Metrics {
   static const uint16_t kWiFiFrequency5745;
   static const uint16_t kWiFiFrequency5825;
 
-  void InitializeCommonServiceMetrics(const Service &service);
-  void UpdateServiceStateTransitionMetrics(ServiceMetrics *service_metrics,
+  void InitializeCommonServiceMetrics(const Service& service);
+  void UpdateServiceStateTransitionMetrics(ServiceMetrics* service_metrics,
                                            Service::ConnectState new_state);
-  void SendServiceFailure(const Service &service);
+  void SendServiceFailure(const Service& service);
 
-  DeviceMetrics *GetDeviceMetrics(int interface_index) const;
-  void AutoConnectMetricsReset(DeviceMetrics *device_metrics);
+  DeviceMetrics* GetDeviceMetrics(int interface_index) const;
+  void AutoConnectMetricsReset(DeviceMetrics* device_metrics);
 
   // Notifies this object about the removal/resetting of a device with given
   // technology type.
   void NotifyDeviceRemovedEvent(Technology::Identifier technology_id);
 
   // For unit test purposes.
-  void set_library(MetricsLibraryInterface *library);
-  void set_time_online_timer(chromeos_metrics::Timer *timer) {
+  void set_library(MetricsLibraryInterface* library);
+  void set_time_online_timer(chromeos_metrics::Timer* timer) {
     time_online_timer_.reset(timer);  // Passes ownership
   }
-  void set_time_to_drop_timer(chromeos_metrics::Timer *timer) {
+  void set_time_to_drop_timer(chromeos_metrics::Timer* timer) {
     time_to_drop_timer_.reset(timer);  // Passes ownership
   }
-  void set_time_resume_to_ready_timer(chromeos_metrics::Timer *timer) {
+  void set_time_resume_to_ready_timer(chromeos_metrics::Timer* timer) {
     time_resume_to_ready_timer_.reset(timer);  // Passes ownership
   }
   void set_time_termination_actions_timer(
-    chromeos_metrics::Timer *timer) {
+    chromeos_metrics::Timer* timer) {
     time_termination_actions_timer.reset(timer);  // Passes ownership
   }
   void set_time_suspend_actions_timer(
-    chromeos_metrics::Timer *timer) {
+    chromeos_metrics::Timer* timer) {
     time_suspend_actions_timer.reset(timer);  // Passes ownership
   }
   void set_time_dark_resume_actions_timer(
-    chromeos_metrics::Timer *timer) {
+    chromeos_metrics::Timer* timer) {
     time_dark_resume_actions_timer.reset(timer);  // Passes ownership
   }
   void set_time_to_scan_timer(int interface_index,
-                              chromeos_metrics::TimerReporter *timer) {
-    DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+                              chromeos_metrics::TimerReporter* timer) {
+    DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
     device_metrics->scan_timer.reset(timer);  // Passes ownership
   }
   void set_time_to_connect_timer(int interface_index,
-                                 chromeos_metrics::TimerReporter *timer) {
-    DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+                                 chromeos_metrics::TimerReporter* timer) {
+    DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
     device_metrics->connect_timer.reset(timer);  // Passes ownership
   }
   void set_time_to_scan_connect_timer(int interface_index,
-                                      chromeos_metrics::TimerReporter *timer) {
-    DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+                                      chromeos_metrics::TimerReporter* timer) {
+    DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
     device_metrics->scan_connect_timer.reset(timer);  // Passes ownership
   }
 
   // |library_| points to |metrics_library_| when shill runs normally.
   // However, in order to allow for unit testing, we point |library_| to a
   // MetricsLibraryMock object instead.
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   MetricsLibrary metrics_library_;
-  MetricsLibraryInterface *library_;
+  MetricsLibraryInterface* library_;
   ServiceMetricsLookupMap services_metrics_;
   Technology::Identifier last_default_technology_;
   bool was_online_;

@@ -16,10 +16,10 @@ using base::Callback;
 
 namespace shill {
 
-static gboolean DispatchIOHandler(GIOChannel *chan,
+static gboolean DispatchIOHandler(GIOChannel* chan,
                                   GIOCondition cond,
                                   gpointer data) {
-  GlibIOReadyHandler *handler = reinterpret_cast<GlibIOReadyHandler *>(data);
+  GlibIOReadyHandler* handler = reinterpret_cast<GlibIOReadyHandler*>(data);
   gint fd = g_io_channel_unix_get_fd(chan);
 
   if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
@@ -33,7 +33,7 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
 
 GlibIOReadyHandler::GlibIOReadyHandler(int fd,
                                        IOHandler::ReadyMode mode,
-                                       const Callback<void(int)> &callback)
+                                       const Callback<void(int)>& callback)
     : channel_(nullptr),
       callback_(callback),
       source_id_(G_MAXUINT) {

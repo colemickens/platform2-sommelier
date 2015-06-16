@@ -21,7 +21,7 @@ const char kLogScopes[] = "log-scopes";
 
 }  // namespace switches
 
-void SetLogLevelFromCommandLine(CommandLine *cl) {
+void SetLogLevelFromCommandLine(CommandLine* cl) {
   if (cl->HasSwitch(switches::kLogLevel)) {
     string log_level = cl->GetSwitchValueASCII(switches::kLogLevel);
     int level = 0;
