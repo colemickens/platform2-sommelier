@@ -19,7 +19,7 @@ using testing::Return;
 namespace shill {
 
 MockCryptoUtilProxy::MockCryptoUtilProxy(
-    EventDispatcher *dispatcher, GLib *glib)
+    EventDispatcher* dispatcher, GLib* glib)
     : CryptoUtilProxy(dispatcher, glib) {
   ON_CALL(*this, VerifyDestination(_, _, _, _, _, _, _, _, _))
       .WillByDefault(DoAll(SetOperationFailedInArgumentAndWarn<8>(),
@@ -32,15 +32,15 @@ MockCryptoUtilProxy::MockCryptoUtilProxy(
 MockCryptoUtilProxy::~MockCryptoUtilProxy() {}
 
 bool MockCryptoUtilProxy::RealVerifyDestination(
-    const std::string &certificate,
-    const std::string &public_key,
-    const std::string &nonce,
-    const std::string &signed_data,
-    const std::string &destination_udn,
-    const std::vector<uint8_t> &ssid,
-    const std::string &bssid,
-    const ResultBoolCallback &result_callback,
-    Error *error) {
+    const std::string& certificate,
+    const std::string& public_key,
+    const std::string& nonce,
+    const std::string& signed_data,
+    const std::string& destination_udn,
+    const std::vector<uint8_t>& ssid,
+    const std::string& bssid,
+    const ResultBoolCallback& result_callback,
+    Error* error) {
   return CryptoUtilProxy::VerifyDestination(certificate, public_key,
                                             nonce, signed_data,
                                             destination_udn, ssid, bssid,
@@ -48,18 +48,18 @@ bool MockCryptoUtilProxy::RealVerifyDestination(
 }
 
 bool MockCryptoUtilProxy::RealEncryptData(
-    const std::string &public_key,
-    const std::string &data,
-    const ResultStringCallback &result_callback,
-    Error *error) {
+    const std::string& public_key,
+    const std::string& data,
+    const ResultStringCallback& result_callback,
+    Error* error) {
   return CryptoUtilProxy::EncryptData(public_key, data,
                                       result_callback, error);
 }
 
 bool MockCryptoUtilProxy::RealStartShimForCommand(
-    const std::string &command,
-    const std::string &input,
-    const StringCallback &result_handler) {
+    const std::string& command,
+    const std::string& input,
+    const StringCallback& result_handler) {
   return CryptoUtilProxy::StartShimForCommand(command, input,
                                               result_handler);
 }

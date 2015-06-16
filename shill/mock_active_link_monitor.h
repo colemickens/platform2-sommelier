@@ -21,8 +21,8 @@ class MockActiveLinkMonitor : public ActiveLinkMonitor {
 
   MOCK_METHOD1(Start, bool(int));
   MOCK_METHOD0(Stop, void());
-  MOCK_CONST_METHOD0(gateway_mac_address, const ByteString &());
-  MOCK_METHOD1(set_gateway_mac_address, void(const ByteString &));
+  MOCK_CONST_METHOD0(gateway_mac_address, const ByteString&());
+  MOCK_METHOD1(set_gateway_mac_address, void(const ByteString&));
   MOCK_CONST_METHOD0(gateway_supports_unicast_arp, bool());
   MOCK_METHOD1(set_gateway_supports_unicast_arp, void(bool));
 

@@ -15,19 +15,19 @@ namespace shill {
 
 class MockVirtualDevice : public VirtualDevice {
  public:
-  MockVirtualDevice(ControlInterface *control,
-                    EventDispatcher *dispatcher,
-                    Metrics *metrics,
-                    Manager *manager,
-                    const std::string &link_name,
+  MockVirtualDevice(ControlInterface* control,
+                    EventDispatcher* dispatcher,
+                    Metrics* metrics,
+                    Manager* manager,
+                    const std::string& link_name,
                     int interface_index,
                     Technology::Identifier technology);
   ~MockVirtualDevice() override;
 
   MOCK_METHOD2(Stop,
-               void(Error *error, const EnabledStateChangedCallback &callback));
+               void(Error* error, const EnabledStateChangedCallback& callback));
   MOCK_METHOD1(UpdateIPConfig,
-               void(const IPConfig::Properties &properties));
+               void(const IPConfig::Properties& properties));
   MOCK_METHOD0(DropConnection, void());
   MOCK_METHOD1(SetEnabled, void(bool));
 

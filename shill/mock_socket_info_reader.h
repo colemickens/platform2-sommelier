@@ -21,7 +21,7 @@ class MockSocketInfoReader : public SocketInfoReader {
   MockSocketInfoReader();
   ~MockSocketInfoReader() override;
 
-  MOCK_METHOD1(LoadTcpSocketInfo, bool(std::vector<SocketInfo> *info_list));
+  MOCK_METHOD1(LoadTcpSocketInfo, bool(std::vector<SocketInfo>* info_list));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSocketInfoReader);

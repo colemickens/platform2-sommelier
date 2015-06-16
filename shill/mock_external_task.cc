@@ -7,10 +7,10 @@
 namespace shill {
 
 MockExternalTask::MockExternalTask(
-    ControlInterface *control,
-    GLib *glib,
-    const base::WeakPtr<RPCTaskDelegate> &task_delegate,
-    const base::Callback<void(pid_t, int)> &death_callback)
+    ControlInterface* control,
+    GLib* glib,
+    const base::WeakPtr<RPCTaskDelegate>& task_delegate,
+    const base::Callback<void(pid_t, int)>& death_callback)
     : ExternalTask(control, glib, task_delegate, death_callback) {}
 
 MockExternalTask::~MockExternalTask() {

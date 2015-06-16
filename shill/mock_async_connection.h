@@ -17,7 +17,7 @@ class MockAsyncConnection : public AsyncConnection {
   MockAsyncConnection();
   ~MockAsyncConnection() override;
 
-  MOCK_METHOD2(Start, bool(const IPAddress &address, int port));
+  MOCK_METHOD2(Start, bool(const IPAddress& address, int port));
   MOCK_METHOD0(Stop, void());
 
  private:

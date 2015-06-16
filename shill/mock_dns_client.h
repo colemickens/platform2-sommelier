@@ -19,7 +19,7 @@ class MockDNSClient : public DNSClient {
   MockDNSClient();
   ~MockDNSClient() override;
 
-  MOCK_METHOD2(Start, bool(const std::string &hostname, Error *error));
+  MOCK_METHOD2(Start, bool(const std::string& hostname, Error* error));
   MOCK_METHOD0(Stop, void());
   MOCK_CONST_METHOD0(IsActive, bool());
 

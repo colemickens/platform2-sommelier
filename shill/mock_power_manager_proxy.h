@@ -21,18 +21,18 @@ class MockPowerManagerProxy : public PowerManagerProxyInterface {
 
   MOCK_METHOD3(RegisterSuspendDelay,
                bool(base::TimeDelta timeout,
-                    const std::string &description,
-                    int *delay_id_out));
+                    const std::string& description,
+                    int* delay_id_out));
   MOCK_METHOD1(UnregisterSuspendDelay, bool(int delay_id));
   MOCK_METHOD2(ReportSuspendReadiness, bool(int delay_id, int suspend_id));
   MOCK_METHOD3(RegisterDarkSuspendDelay,
                bool(base::TimeDelta timeout,
-                    const std::string &description,
-                    int *delay_id_out));
+                    const std::string& description,
+                    int* delay_id_out));
   MOCK_METHOD1(UnregisterDarkSuspendDelay, bool(int delay_id));
   MOCK_METHOD2(ReportDarkSuspendReadiness, bool(int delay_id, int suspend_id));
   MOCK_METHOD1(RecordDarkResumeWakeReason,
-               bool(const std::string &wake_reason));
+               bool(const std::string& wake_reason));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPowerManagerProxy);

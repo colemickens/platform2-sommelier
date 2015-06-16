@@ -16,13 +16,13 @@ namespace shill {
 
 class MockDeviceClaimer : public DeviceClaimer {
  public:
-  explicit MockDeviceClaimer(const std::string &dbus_service_name);
+  explicit MockDeviceClaimer(const std::string& dbus_service_name);
   ~MockDeviceClaimer() override;
 
-  MOCK_METHOD2(Claim, bool(const std::string &device_name, Error *error));
-  MOCK_METHOD2(Release, bool(const std::string &device_name, Error *error));
+  MOCK_METHOD2(Claim, bool(const std::string& device_name, Error* error));
+  MOCK_METHOD2(Release, bool(const std::string& device_name, Error* error));
   MOCK_METHOD0(DevicesClaimed, bool());
-  MOCK_METHOD1(IsDeviceReleased, bool(const std::string &device_name));
+  MOCK_METHOD1(IsDeviceReleased, bool(const std::string& device_name));
   MOCK_CONST_METHOD0(default_claimer, bool());
 
  private:

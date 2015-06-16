@@ -22,54 +22,54 @@ class MockCryptoUtilProxy
     : public CryptoUtilProxy,
       public base::SupportsWeakPtr<MockCryptoUtilProxy> {
  public:
-  MockCryptoUtilProxy(EventDispatcher *dispatcher, GLib *glib);
+  MockCryptoUtilProxy(EventDispatcher* dispatcher, GLib* glib);
   ~MockCryptoUtilProxy() override;
 
   MOCK_METHOD9(VerifyDestination,
-               bool(const std::string &certificate,
-                    const std::string &public_key,
-                    const std::string &nonce,
-                    const std::string &signed_data,
-                    const std::string &destination_udn,
-                    const std::vector<uint8_t> &ssid,
-                    const std::string &bssid,
-                    const ResultBoolCallback &result_callback,
-                    Error *error));
-  MOCK_METHOD4(EncryptData, bool(const std::string &public_key,
-                                 const std::string &data,
-                                 const ResultStringCallback &result_callback,
-                                 Error *error));
+               bool(const std::string& certificate,
+                    const std::string& public_key,
+                    const std::string& nonce,
+                    const std::string& signed_data,
+                    const std::string& destination_udn,
+                    const std::vector<uint8_t>& ssid,
+                    const std::string& bssid,
+                    const ResultBoolCallback& result_callback,
+                    Error* error));
+  MOCK_METHOD4(EncryptData, bool(const std::string& public_key,
+                                 const std::string& data,
+                                 const ResultStringCallback& result_callback,
+                                 Error* error));
 
-  bool RealVerifyDestination(const std::string &certificate,
-                             const std::string &public_key,
-                             const std::string &nonce,
-                             const std::string &signed_data,
-                             const std::string &destination_udn,
-                             const std::vector<uint8_t> &ssid,
-                             const std::string &bssid,
-                             const ResultBoolCallback &result_callback,
-                             Error *error);
+  bool RealVerifyDestination(const std::string& certificate,
+                             const std::string& public_key,
+                             const std::string& nonce,
+                             const std::string& signed_data,
+                             const std::string& destination_udn,
+                             const std::vector<uint8_t>& ssid,
+                             const std::string& bssid,
+                             const ResultBoolCallback& result_callback,
+                             Error* error);
 
-  bool RealEncryptData(const std::string &public_key,
-                       const std::string &data,
-                       const ResultStringCallback &result_callback,
-                       Error *error);
+  bool RealEncryptData(const std::string& public_key,
+                       const std::string& data,
+                       const ResultStringCallback& result_callback,
+                       Error* error);
 
   // Mock methods with useful callback signatures.  You can bind these to check
   // that appropriate async callbacks are firing at expected times.
-  MOCK_METHOD2(TestResultBoolCallback, void(const Error &error, bool));
-  MOCK_METHOD2(TestResultStringCallback, void(const Error &error,
-                                              const std::string &));
-  MOCK_METHOD2(TestResultHandlerCallback, void(const std::string &result,
-                                               const Error &error));
-  MOCK_METHOD3(StartShimForCommand, bool(const std::string &command,
-                                         const std::string &input,
-                                         const StringCallback &result_handler));
+  MOCK_METHOD2(TestResultBoolCallback, void(const Error& error, bool));
+  MOCK_METHOD2(TestResultStringCallback, void(const Error& error,
+                                              const std::string&));
+  MOCK_METHOD2(TestResultHandlerCallback, void(const std::string& result,
+                                               const Error& error));
+  MOCK_METHOD3(StartShimForCommand, bool(const std::string& command,
+                                         const std::string& input,
+                                         const StringCallback& result_handler));
 
   // Methods injected to permit us to call the real method implementations.
-  bool RealStartShimForCommand(const std::string &command,
-                               const std::string &input,
-                               const StringCallback &result_handler);
+  bool RealStartShimForCommand(const std::string& command,
+                               const std::string& input,
+                               const StringCallback& result_handler);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockCryptoUtilProxy);

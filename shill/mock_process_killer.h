@@ -16,8 +16,8 @@ class MockProcessKiller : public ProcessKiller {
   MockProcessKiller();
   ~MockProcessKiller() override;
 
-  MOCK_METHOD2(Wait, bool(int pid, const base::Closure &callback));
-  MOCK_METHOD2(Kill, void(int pid, const base::Closure &callback));
+  MOCK_METHOD2(Wait, bool(int pid, const base::Closure& callback));
+  MOCK_METHOD2(Kill, void(int pid, const base::Closure& callback));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockProcessKiller);

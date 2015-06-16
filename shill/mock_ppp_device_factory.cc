@@ -16,7 +16,7 @@ base::LazyInstance<MockPPPDeviceFactory> g_mock_ppp_device_factory
 MockPPPDeviceFactory::MockPPPDeviceFactory() {}
 MockPPPDeviceFactory::~MockPPPDeviceFactory() {}
 
-MockPPPDeviceFactory *MockPPPDeviceFactory::GetInstance() {
+MockPPPDeviceFactory* MockPPPDeviceFactory::GetInstance() {
   return g_mock_ppp_device_factory.Pointer();
 }
 

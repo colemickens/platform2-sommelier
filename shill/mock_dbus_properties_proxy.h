@@ -19,13 +19,13 @@ class MockDBusPropertiesProxy : public DBusPropertiesProxyInterface {
   MockDBusPropertiesProxy();
   ~MockDBusPropertiesProxy() override;
 
-  MOCK_METHOD1(GetAll, DBusPropertiesMap(const std::string &interface_name));
-  MOCK_METHOD2(Get, DBus::Variant(const std::string &interface_name,
-                                  const std::string &property));
+  MOCK_METHOD1(GetAll, DBusPropertiesMap(const std::string& interface_name));
+  MOCK_METHOD2(Get, DBus::Variant(const std::string& interface_name,
+                                  const std::string& property));
   MOCK_METHOD1(set_properties_changed_callback,
-               void(const PropertiesChangedCallback &callback));
+               void(const PropertiesChangedCallback& callback));
   MOCK_METHOD1(set_modem_manager_properties_changed_callback,
-               void(const ModemManagerPropertiesChangedCallback &callback));
+               void(const ModemManagerPropertiesChangedCallback& callback));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDBusPropertiesProxy);

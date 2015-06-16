@@ -25,13 +25,13 @@ class ControlInterface;
 class EventDispatcher;
 class Manager;
 
-MockService::MockService(ControlInterface *control_interface,
-                         EventDispatcher *dispatcher,
-                         Metrics *metrics,
-                         Manager *manager)
+MockService::MockService(ControlInterface* control_interface,
+                         EventDispatcher* dispatcher,
+                         Metrics* metrics,
+                         Manager* manager)
     : Service(control_interface, dispatcher, metrics, manager,
               Technology::kUnknown) {
-  const string &id = unique_name();
+  const string& id = unique_name();
   EXPECT_CALL(*this, GetRpcIdentifier()).WillRepeatedly(Return(id));
   EXPECT_CALL(*this, GetStorageIdentifier()).WillRepeatedly(Return(id));
   ON_CALL(*this, IsVisible()).WillByDefault(Return(true));
@@ -43,7 +43,7 @@ MockService::MockService(ControlInterface *control_interface,
 
 MockService::~MockService() {}
 
-bool MockService::FauxSave(StoreInterface *store) {
+bool MockService::FauxSave(StoreInterface* store) {
   return store->SetString(GetStorageIdentifier(), "dummy", "dummy");
 }
 

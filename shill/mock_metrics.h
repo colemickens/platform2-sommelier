@@ -15,13 +15,13 @@ namespace shill {
 
 class MockMetrics : public Metrics {
  public:
-  explicit MockMetrics(EventDispatcher *dispatcher);
+  explicit MockMetrics(EventDispatcher* dispatcher);
   ~MockMetrics() override;
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD4(AddServiceStateTransitionTimer,
-               void(const Service &service, const std::string &histogram_name,
+               void(const Service& service, const std::string& histogram_name,
                     Service::ConnectState start_state,
                     Service::ConnectState stop_state));
   MOCK_METHOD1(DeregisterDevice, void(int interface_index));
@@ -32,9 +32,9 @@ class MockMetrics : public Metrics {
                                                 bool is_auto_connecting));
   MOCK_METHOD1(NotifyDeviceConnectFinished, void(int interface_index));
   MOCK_METHOD1(ResetConnectTimer, void(int interface_index));
-  MOCK_METHOD1(NotifyDefaultServiceChanged, void(const Service *service));
+  MOCK_METHOD1(NotifyDefaultServiceChanged, void(const Service* service));
   MOCK_METHOD2(NotifyServiceStateChanged,
-               void(const Service &service, Service::ConnectState new_state));
+               void(const Service& service, Service::ConnectState new_state));
 #if !defined(DISABLE_WIFI)
   MOCK_METHOD2(Notify80211Disconnect, void(WiFiDisconnectByWhom by_whom,
                                            IEEE_80211::WiFiReasonCode reason));
@@ -42,9 +42,9 @@ class MockMetrics : public Metrics {
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropPosted, void());
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropCanceled, void());
   MOCK_METHOD0(NotifyCorruptedProfile, void());
-  MOCK_METHOD3(SendEnumToUMA, bool(const std::string &name, int sample,
+  MOCK_METHOD3(SendEnumToUMA, bool(const std::string& name, int sample,
                                    int max));
-  MOCK_METHOD5(SendToUMA, bool(const std::string &name, int sample, int min,
+  MOCK_METHOD5(SendToUMA, bool(const std::string& name, int sample, int min,
                                int max, int num_buckets));
   MOCK_METHOD1(NotifyWifiAutoConnectableServices, void(int num_service));
   MOCK_METHOD1(NotifyWifiAvailableBSSes, void(int num_bss));
@@ -52,9 +52,9 @@ class MockMetrics : public Metrics {
   MOCK_METHOD1(NotifyUserInitiatedEvent, void(int event));
   MOCK_METHOD1(NotifyWifiTxBitrate, void(int bitrate));
   MOCK_METHOD2(NotifyUserInitiatedConnectionResult,
-               void(const std::string &name, int result));
+               void(const std::string& name, int result));
   MOCK_METHOD2(NotifyUserInitiatedConnectionFailureReason,
-               void(const std::string &name,
+               void(const std::string& name,
                     const Service::ConnectFailure failure));
   MOCK_METHOD2(NotifyNetworkProblemDetected,
                void(Technology::Identifier technology_id, int reason));

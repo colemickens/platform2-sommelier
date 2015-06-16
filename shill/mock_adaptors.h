@@ -23,30 +23,30 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
 
   DeviceMockAdaptor();
   ~DeviceMockAdaptor() override;
-  const std::string &GetRpcIdentifier() override;
-  const std::string &GetRpcConnectionIdentifier() override;
+  const std::string& GetRpcIdentifier() override;
+  const std::string& GetRpcConnectionIdentifier() override;
 
-  MOCK_METHOD2(EmitBoolChanged, void(const std::string &name, bool value));
-  MOCK_METHOD2(EmitUintChanged, void(const std::string &name, uint32_t value));
+  MOCK_METHOD2(EmitBoolChanged, void(const std::string& name, bool value));
+  MOCK_METHOD2(EmitUintChanged, void(const std::string& name, uint32_t value));
   MOCK_METHOD2(EmitUint16Changed,
-               void(const std::string &name, uint16_t value));
-  MOCK_METHOD2(EmitIntChanged, void(const std::string &name, int value));
-  MOCK_METHOD2(EmitStringChanged, void(const std::string &name,
-                                       const std::string &value));
-  MOCK_METHOD2(EmitStringmapChanged, void(const std::string &name,
-                                          const Stringmap &value));
-  MOCK_METHOD2(EmitStringmapsChanged, void(const std::string &name,
-                                           const Stringmaps &value));
-  MOCK_METHOD2(EmitStringsChanged, void(const std::string &name,
-                                        const Strings &value));
-  MOCK_METHOD2(EmitKeyValueStoreChanged, void(const std::string &name,
-                                              const KeyValueStore &value));
+               void(const std::string& name, uint16_t value));
+  MOCK_METHOD2(EmitIntChanged, void(const std::string& name, int value));
+  MOCK_METHOD2(EmitStringChanged, void(const std::string& name,
+                                       const std::string& value));
+  MOCK_METHOD2(EmitStringmapChanged, void(const std::string& name,
+                                          const Stringmap& value));
+  MOCK_METHOD2(EmitStringmapsChanged, void(const std::string& name,
+                                           const Stringmaps& value));
+  MOCK_METHOD2(EmitStringsChanged, void(const std::string& name,
+                                        const Strings& value));
+  MOCK_METHOD2(EmitKeyValueStoreChanged, void(const std::string& name,
+                                              const KeyValueStore& value));
   MOCK_METHOD2(EmitRpcIdentifierChanged,
-               void(const std::string &name,
-                    const std::string &value));
+               void(const std::string& name,
+                    const std::string& value));
   MOCK_METHOD2(EmitRpcIdentifierArrayChanged,
-               void(const std::string &name,
-                    const std::vector<std::string> &value));
+               void(const std::string& name,
+                    const std::vector<std::string>& value));
 
  private:
   const std::string rpc_id_;
@@ -60,7 +60,7 @@ class IPConfigMockAdaptor : public IPConfigAdaptorInterface {
 
   IPConfigMockAdaptor();
   ~IPConfigMockAdaptor() override;
-  const std::string &GetRpcIdentifier() override;
+  const std::string& GetRpcIdentifier() override;
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32_t));
@@ -80,7 +80,7 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
 
   ManagerMockAdaptor();
   ~ManagerMockAdaptor() override;
-  const std::string &GetRpcIdentifier() override;
+  const std::string& GetRpcIdentifier() override;
 
   MOCK_METHOD0(UpdateRunning, void(void));
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
@@ -88,11 +88,11 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
   MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
   MOCK_METHOD2(EmitStringsChanged,
-               void(const std::string &, const std::vector<std::string> &));
+               void(const std::string&, const std::vector<std::string>&));
   MOCK_METHOD2(EmitRpcIdentifierChanged,
-               void(const std::string &, const std::string &));
+               void(const std::string&, const std::string&));
   MOCK_METHOD2(EmitRpcIdentifierArrayChanged,
-               void(const std::string &, const std::vector<std::string> &));
+               void(const std::string&, const std::vector<std::string>&));
 
   MOCK_METHOD1(EmitStateChanged, void(const std::string&));
 
@@ -107,7 +107,7 @@ class ProfileMockAdaptor : public ProfileAdaptorInterface {
 
   ProfileMockAdaptor();
   ~ProfileMockAdaptor() override;
-  const std::string &GetRpcIdentifier() override;
+  const std::string& GetRpcIdentifier() override;
 
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32_t));
@@ -128,9 +128,9 @@ class RPCTaskMockAdaptor : public RPCTaskAdaptorInterface {
   RPCTaskMockAdaptor();
   ~RPCTaskMockAdaptor() override;
 
-  const std::string &GetRpcIdentifier() override;
-  const std::string &GetRpcInterfaceIdentifier() override;
-  const std::string &GetRpcConnectionIdentifier() override;
+  const std::string& GetRpcIdentifier() override;
+  const std::string& GetRpcInterfaceIdentifier() override;
+  const std::string& GetRpcConnectionIdentifier() override;
 
  private:
   const std::string rpc_id_;
@@ -145,23 +145,23 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
 
   ServiceMockAdaptor();
   ~ServiceMockAdaptor() override;
-  const std::string &GetRpcIdentifier() override;
+  const std::string& GetRpcIdentifier() override;
 
   MOCK_METHOD0(UpdateConnected, void());
-  MOCK_METHOD2(EmitBoolChanged, void(const std::string &name, bool value));
-  MOCK_METHOD2(EmitUint8Changed, void(const std::string &name, uint8_t value));
+  MOCK_METHOD2(EmitBoolChanged, void(const std::string& name, bool value));
+  MOCK_METHOD2(EmitUint8Changed, void(const std::string& name, uint8_t value));
   MOCK_METHOD2(EmitUint16Changed,
-               void(const std::string &name, uint16_t value));
-  MOCK_METHOD2(EmitUint16sChanged, void(const std::string &name,
-                                        const Uint16s &value));
-  MOCK_METHOD2(EmitUintChanged, void(const std::string &name, uint32_t value));
-  MOCK_METHOD2(EmitIntChanged, void(const std::string &name, int value));
+               void(const std::string& name, uint16_t value));
+  MOCK_METHOD2(EmitUint16sChanged, void(const std::string& name,
+                                        const Uint16s& value));
+  MOCK_METHOD2(EmitUintChanged, void(const std::string& name, uint32_t value));
+  MOCK_METHOD2(EmitIntChanged, void(const std::string& name, int value));
   MOCK_METHOD2(EmitRpcIdentifierChanged,
-               void(const std::string &name, const std::string &value));
+               void(const std::string& name, const std::string& value));
   MOCK_METHOD2(EmitStringChanged,
-               void(const std::string &name, const std::string &value));
+               void(const std::string& name, const std::string& value));
   MOCK_METHOD2(EmitStringmapChanged,
-               void(const std::string &name, const Stringmap &value));
+               void(const std::string& name, const Stringmap& value));
 
  private:
   const std::string rpc_id_;
@@ -173,7 +173,7 @@ class ThirdPartyVpnMockAdaptor : public ThirdPartyVpnAdaptorInterface {
   ThirdPartyVpnMockAdaptor();
   ~ThirdPartyVpnMockAdaptor() override;
 
-  MOCK_METHOD1(EmitPacketReceived, void(const std::vector<uint8_t> &packet));
+  MOCK_METHOD1(EmitPacketReceived, void(const std::vector<uint8_t>& packet));
 
   MOCK_METHOD1(EmitPlatformMessage, void(uint32_t message));
 };

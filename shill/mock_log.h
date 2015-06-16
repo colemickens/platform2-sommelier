@@ -67,8 +67,8 @@ class ScopedMockLog {
   // issues the log message, like "foo.cc".  |user_messages| is the message you
   // expect to see.  Arguments can be ignored by specifying ::testing::_.  You
   // can also specify gMock matchers for arguments.
-  MOCK_METHOD3(Log, void(int severity, const char *file,
-                         const std::string &user_message));
+  MOCK_METHOD3(Log, void(int severity, const char* file,
+                         const std::string& user_message));
 
  private:
   // This function gets invoked by the logging subsystem for each message that
@@ -77,13 +77,13 @@ class ScopedMockLog {
   // be passed.  See the typedef LogMessageHandlerFunction in base/logging.h for
   // this function signature.
   static bool HandleLogMessages(int severity,
-                                const char *file,
+                                const char* file,
                                 int line,
                                 size_t message_start,
-                                const std::string &full_message);
+                                const std::string& full_message);
 
   // A pointer to the current ScopedMockLog object.
-  static ScopedMockLog *instance_;
+  static ScopedMockLog* instance_;
 
   // A pointer to any pre-existing message hander function in the logging
   // system.  It is invoked after calling ScopedMockLog::Log().

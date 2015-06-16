@@ -17,17 +17,17 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kManager;
-static string ObjectID(testing::Test *m) { return "(mock_log_test)"; }
+static string ObjectID(testing::Test* m) { return "(mock_log_test)"; }
 }
 
 class MockLogTest : public testing::Test {
  protected:
   MockLogTest() {}
 
-  void LogSomething(const string &message) const {
+  void LogSomething(const string& message) const {
     LOG(INFO) << message;
   }
-  void SlogSomething(testing::Test *t, const string &message) const {
+  void SlogSomething(testing::Test* t, const string& message) const {
     ScopeLogger::GetInstance()->EnableScopesByName("manager");
     ScopeLogger::GetInstance()->set_verbose_level(2);
     SLOG(t, 2) << message;

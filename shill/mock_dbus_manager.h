@@ -20,11 +20,11 @@ class MockDBusManager : public DBusManager {
   ~MockDBusManager() override;
 
   MOCK_METHOD3(CreateNameWatcher,
-      DBusNameWatcher *(
-          const std::string &name,
-          const DBusNameWatcher::NameAppearedCallback &name_appeared_callback,
-          const DBusNameWatcher::NameVanishedCallback &name_vanished_callback));
-  MOCK_METHOD1(RemoveNameWatcher, void(DBusNameWatcher *name_watcher));
+      DBusNameWatcher* (
+          const std::string& name,
+          const DBusNameWatcher::NameAppearedCallback& name_appeared_callback,
+          const DBusNameWatcher::NameVanishedCallback& name_vanished_callback));
+  MOCK_METHOD1(RemoveNameWatcher, void(DBusNameWatcher* name_watcher));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDBusManager);

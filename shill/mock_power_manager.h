@@ -18,18 +18,18 @@ class ProxyFactory;
 
 class MockPowerManager : public PowerManager {
  public:
-  MockPowerManager(EventDispatcher *dispatcher, ProxyFactory *proxy_factory);
+  MockPowerManager(EventDispatcher* dispatcher, ProxyFactory* proxy_factory);
   ~MockPowerManager() override;
 
   MOCK_METHOD0(ReportSuspendReadiness, bool());
   MOCK_METHOD0(ReportDarkSuspendReadiness, bool());
   MOCK_METHOD5(
       Start,
-      void(DBusManager *dbus_manager,
+      void(DBusManager* dbus_manager,
            base::TimeDelta suspend_delay,
-           const PowerManager::SuspendImminentCallback &imminent_callback,
-           const PowerManager::SuspendDoneCallback &done_callback,
-           const PowerManager::DarkSuspendImminentCallback &dark_imminent));
+           const PowerManager::SuspendImminentCallback& imminent_callback,
+           const PowerManager::SuspendDoneCallback& done_callback,
+           const PowerManager::DarkSuspendImminentCallback& dark_imminent));
   MOCK_METHOD0(Stop, void());
 
  private:

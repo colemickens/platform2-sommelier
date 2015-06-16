@@ -19,14 +19,14 @@ class MockPPPDeviceFactory : public PPPDeviceFactory {
   ~MockPPPDeviceFactory() override;
 
   // This is a singleton. Use MockPPPDeviceFactory::GetInstance()->Foo().
-  static MockPPPDeviceFactory *GetInstance();
+  static MockPPPDeviceFactory* GetInstance();
 
   MOCK_METHOD6(CreatePPPDevice,
-               PPPDevice *(ControlInterface *control,
-                           EventDispatcher *dispatcher,
-                           Metrics *metrics,
-                           Manager *manager,
-                           const std::string &link_name,
+               PPPDevice* (ControlInterface* control,
+                           EventDispatcher* dispatcher,
+                           Metrics* metrics,
+                           Manager* manager,
+                           const std::string& link_name,
                            int interface_index));
 
  protected:

@@ -8,8 +8,8 @@ using testing::Invoke;
 
 namespace shill {
 
-MockIPConfig::MockIPConfig(ControlInterface *control_interface,
-                           const std::string &device_name)
+MockIPConfig::MockIPConfig(ControlInterface* control_interface,
+                           const std::string& device_name)
     : IPConfig(control_interface, device_name) {
   ON_CALL(*this, properties())
       .WillByDefault(Invoke(this, &MockIPConfig::real_properties));

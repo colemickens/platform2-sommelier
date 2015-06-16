@@ -19,11 +19,11 @@ class MockHTTPRequest : public HTTPRequest {
   ~MockHTTPRequest() override;
 
   MOCK_METHOD3(Start, HTTPRequest::Result(
-      const HTTPURL &url,
-      const base::Callback<void(const ByteString &)> &read_event_callback,
-      const base::Callback<void(Result, const ByteString &)> &result_callback));
+      const HTTPURL& url,
+      const base::Callback<void(const ByteString&)>& read_event_callback,
+      const base::Callback<void(Result, const ByteString&)>& result_callback));
   MOCK_METHOD0(Stop, void());
-  MOCK_CONST_METHOD0(response_data, const ByteString &());
+  MOCK_CONST_METHOD0(response_data, const ByteString& ());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockHTTPRequest);

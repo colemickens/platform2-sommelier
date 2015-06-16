@@ -18,13 +18,13 @@ class MockDBusServiceProxy : public DBusServiceProxyInterface {
   MockDBusServiceProxy();
   ~MockDBusServiceProxy() override;
 
-  MOCK_METHOD4(GetNameOwner, void(const std::string &name,
-                                  Error *error,
-                                  const StringCallback &callback,
+  MOCK_METHOD4(GetNameOwner, void(const std::string& name,
+                                  Error* error,
+                                  const StringCallback& callback,
                                   int timeout));
 
   MOCK_METHOD1(set_name_owner_changed_callback,
-               void(const NameOwnerChangedCallback &callback));
+               void(const NameOwnerChangedCallback& callback));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDBusServiceProxy);

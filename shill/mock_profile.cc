@@ -14,16 +14,16 @@
 
 namespace shill {
 
-MockProfile::MockProfile(ControlInterface *control,
-                         Metrics *metrics,
-                         Manager *manager)
+MockProfile::MockProfile(ControlInterface* control,
+                         Metrics* metrics,
+                         Manager* manager)
     : Profile(control, metrics, manager, Identifier("mock"), "", false) {
 }
 
-MockProfile::MockProfile(ControlInterface *control,
-                         Metrics *metrics,
-                         Manager *manager,
-                         const std::string &identifier)
+MockProfile::MockProfile(ControlInterface* control,
+                         Metrics* metrics,
+                         Manager* manager,
+                         const std::string& identifier)
     : Profile(control, metrics, manager, Identifier(identifier), "", false) {
 }
 

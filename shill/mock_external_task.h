@@ -17,18 +17,18 @@ namespace shill {
 
 class MockExternalTask : public ExternalTask {
  public:
-  MockExternalTask(ControlInterface *control,
-                   GLib *glib,
-                   const base::WeakPtr<RPCTaskDelegate> &task_delegate,
-                   const base::Callback<void(pid_t, int)> &death_callback);
+  MockExternalTask(ControlInterface* control,
+                   GLib* glib,
+                   const base::WeakPtr<RPCTaskDelegate>& task_delegate,
+                   const base::Callback<void(pid_t, int)>& death_callback);
   ~MockExternalTask() override;
 
   MOCK_METHOD5(Start,
-               bool(const base::FilePath &file,
-                    const std::vector<std::string> &arguments,
-                    const std::map<std::string, std::string> &environment,
+               bool(const base::FilePath& file,
+                    const std::vector<std::string>& arguments,
+                    const std::map<std::string, std::string>& environment,
                     bool terminate_with_parent,
-                    Error *error));
+                    Error* error));
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD0(OnDelete, void());
 

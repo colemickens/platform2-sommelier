@@ -20,12 +20,12 @@ using ::testing::DefaultValue;
 using ::testing::ReturnRef;
 using std::string;
 
-MockDevice::MockDevice(ControlInterface *control_interface,
-                       EventDispatcher *dispatcher,
-                       Metrics *metrics,
-                       Manager *manager,
-                       const string &link_name,
-                       const string &address,
+MockDevice::MockDevice(ControlInterface* control_interface,
+                       EventDispatcher* dispatcher,
+                       Metrics* metrics,
+                       Manager* manager,
+                       const string& link_name,
+                       const string& address,
                        int interface_index)
     : Device(control_interface,
              dispatcher,

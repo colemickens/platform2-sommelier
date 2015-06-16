@@ -16,10 +16,10 @@ using testing::Return;
 
 namespace shill {
 
-MockManager::MockManager(ControlInterface *control_interface,
-                         EventDispatcher *dispatcher,
-                         Metrics *metrics,
-                         GLib *glib)
+MockManager::MockManager(ControlInterface* control_interface,
+                         EventDispatcher* dispatcher,
+                         Metrics* metrics,
+                         GLib* glib)
     : Manager(control_interface, dispatcher, metrics, glib, "", "", ""),
       mock_device_info_(nullptr) {
   EXPECT_CALL(*this, device_info())

@@ -14,7 +14,7 @@ base::LazyInstance<MockDNSClientFactory> g_mock_dns_client_factory
 MockDNSClientFactory::MockDNSClientFactory() {}
 MockDNSClientFactory::~MockDNSClientFactory() {}
 
-MockDNSClientFactory *MockDNSClientFactory::GetInstance() {
+MockDNSClientFactory* MockDNSClientFactory::GetInstance() {
   return g_mock_dns_client_factory.Pointer();
 }
 

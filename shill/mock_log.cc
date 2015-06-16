@@ -14,7 +14,7 @@ using testing::AnyNumber;
 
 namespace shill {
 
-ScopedMockLog *ScopedMockLog::instance_ = nullptr;
+ScopedMockLog* ScopedMockLog::instance_ = nullptr;
 
 ScopedMockLog::ScopedMockLog() {
   previous_handler_ = ::logging::GetLogMessageHandler();
@@ -29,10 +29,10 @@ ScopedMockLog::~ScopedMockLog() {
 
 // static
 bool ScopedMockLog::HandleLogMessages(int severity,
-                                      const char *file,
+                                      const char* file,
                                       int line,
                                       size_t message_start,
-                                      const string &full_message) {
+                                      const string& full_message) {
   CHECK(instance_);
 
   // |full_message| looks like this if it came through MemoryLog:

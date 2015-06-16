@@ -16,28 +16,28 @@ namespace shill {
 
 class MockPPPDevice : public PPPDevice {
  public:
-  MockPPPDevice(ControlInterface *control,
-                EventDispatcher *dispatcher,
-                Metrics *metrics,
-                Manager *manager,
-                const std::string &link_name,
+  MockPPPDevice(ControlInterface* control,
+                EventDispatcher* dispatcher,
+                Metrics* metrics,
+                Manager* manager,
+                const std::string& link_name,
                 int interface_index);
   ~MockPPPDevice() override;
 
   MOCK_METHOD2(Stop,
-               void(Error *error, const EnabledStateChangedCallback &callback));
-  MOCK_METHOD1(UpdateIPConfig, void(const IPConfig::Properties &properties));
+               void(Error* error, const EnabledStateChangedCallback& callback));
+  MOCK_METHOD1(UpdateIPConfig, void(const IPConfig::Properties& properties));
   MOCK_METHOD0(DropConnection, void());
-  MOCK_METHOD1(SelectService, void(const ServiceRefPtr &service));
+  MOCK_METHOD1(SelectService, void(const ServiceRefPtr& service));
   MOCK_METHOD1(SetServiceState, void(Service::ConnectState));
   MOCK_METHOD1(SetServiceFailure, void(Service::ConnectFailure));
   MOCK_METHOD1(SetServiceFailureSilent, void(Service::ConnectFailure));
   MOCK_METHOD1(SetEnabled, void(bool));
   MOCK_METHOD2(UpdateIPConfigFromPPP, void(
-      const std::map<std::string, std::string> &config,
+      const std::map<std::string, std::string>& config,
       bool blackhole_ipv6));
   MOCK_METHOD3(UpdateIPConfigFromPPPWithMTU, void(
-      const std::map<std::string, std::string> &config,
+      const std::map<std::string, std::string>& config,
       bool blackhole_ipv6,
       int32_t mtu));
 

@@ -17,7 +17,7 @@ class MockIPAddressStore : public IPAddressStore {
   MockIPAddressStore();
   ~MockIPAddressStore() override;
 
-  MOCK_METHOD1(AddUnique, void(const IPAddress &ip));
+  MOCK_METHOD1(AddUnique, void(const IPAddress& ip));
   MOCK_METHOD0(Clear, void());
   MOCK_CONST_METHOD0(Count, size_t());
   MOCK_CONST_METHOD0(Empty, bool());
