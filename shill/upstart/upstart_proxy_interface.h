@@ -18,8 +18,8 @@ class UpstartProxyInterface {
   virtual ~UpstartProxyInterface() = default;
 
   // Sends a request to upstart to propagate an event.
-  virtual void EmitEvent(const std::string &name,
-                         const std::vector<std::string> &env,
+  virtual void EmitEvent(const std::string& name,
+                         const std::vector<std::string>& env,
                          bool wait) = 0;
 };
 

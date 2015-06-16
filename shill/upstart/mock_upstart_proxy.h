@@ -21,8 +21,8 @@ class MockUpstartProxy : public UpstartProxyInterface {
   ~MockUpstartProxy() override;
 
   MOCK_METHOD3(EmitEvent,
-               void(const std::string &name,
-                    const std::vector<std::string> &env,
+               void(const std::string& name,
+                    const std::vector<std::string>& env,
                     bool wait));
 
  private:

@@ -19,7 +19,7 @@ class Upstart {
  public:
   // |proxy_factory| creates the UpstartProxy.  Usually this is
   // ProxyFactory::GetInstance().  Use a fake for testing.
-  explicit Upstart(ProxyFactory *proxy_factory);
+  explicit Upstart(ProxyFactory* proxy_factory);
   virtual ~Upstart();
 
   // Report an event to upstart indicating that the system has disconnected.

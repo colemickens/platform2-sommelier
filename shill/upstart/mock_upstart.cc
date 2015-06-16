@@ -6,7 +6,7 @@
 
 namespace shill {
 
-MockUpstart::MockUpstart(ProxyFactory *proxy_factory)
+MockUpstart::MockUpstart(ProxyFactory* proxy_factory)
     : Upstart(proxy_factory) {}
 
 MockUpstart::~MockUpstart() {}

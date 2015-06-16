@@ -25,19 +25,19 @@ class FakeProxyFactory : public ProxyFactory {
       : upstart_proxy_raw_(new MockUpstartProxy),
         upstart_proxy_(upstart_proxy_raw_) {}
 
-  UpstartProxyInterface *CreateUpstartProxy() override {
+  UpstartProxyInterface* CreateUpstartProxy() override {
     CHECK(upstart_proxy_);
     // Passes ownership.
     return upstart_proxy_.release();
   }
 
   // Can not guarantee that the returned object is alive.
-  MockUpstartProxy *upstart_proxy() const {
+  MockUpstartProxy* upstart_proxy() const {
     return upstart_proxy_raw_;
   }
 
  private:
-  MockUpstartProxy *const upstart_proxy_raw_;
+  MockUpstartProxy* const upstart_proxy_raw_;
   std::unique_ptr<MockUpstartProxy> upstart_proxy_;
 };
 
@@ -52,7 +52,7 @@ class UpstartTest : public Test {
  protected:
   FakeProxyFactory factory_;
   Upstart upstart_;
-  MockUpstartProxy *const upstart_proxy_;
+  MockUpstartProxy* const upstart_proxy_;
 };
 
 TEST_F(UpstartTest, NotifyDisconnected) {

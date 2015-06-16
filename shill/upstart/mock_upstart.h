@@ -18,7 +18,7 @@ class ProxyFactory;
 
 class MockUpstart : public Upstart {
  public:
-  explicit MockUpstart(ProxyFactory *proxy_factory);
+  explicit MockUpstart(ProxyFactory* proxy_factory);
   ~MockUpstart() override;
 
   MOCK_METHOD0(NotifyDisconnected, void());

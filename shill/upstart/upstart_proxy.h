@@ -27,20 +27,20 @@ class UpstartProxy : public UpstartProxyInterface {
   ~UpstartProxy() override = default;
 
   // Inherited from UpstartProxyInterface.
-  void EmitEvent(const std::string &name,
-                 const std::vector<std::string> &env,
+  void EmitEvent(const std::string& name,
+                 const std::vector<std::string>& env,
                  bool wait) override;
 
  private:
   // Only this factory method can create an UpstartProxy.
-  friend UpstartProxyInterface *ProxyFactory::CreateUpstartProxy();
+  friend UpstartProxyInterface* ProxyFactory::CreateUpstartProxy();
 
   static const int kCommandTimeoutMilliseconds;
 
   class Proxy : public com::ubuntu::Upstart0_6_proxy,
                 public DBus::ObjectProxy {
    public:
-    explicit Proxy(DBus::Connection *connection);
+    explicit Proxy(DBus::Connection* connection);
     ~Proxy() override = default;
 
    private:
@@ -48,21 +48,21 @@ class UpstartProxy : public UpstartProxyInterface {
     static const char kServicePath[];
 
     // Signal callbacks inherited from org::chromium::Upstart0_6_proxy.
-    void JobAdded(const ::DBus::Path &job) override;
-    void JobRemoved(const ::DBus::Path &job) override;
+    void JobAdded(const ::DBus::Path& job) override;
+    void JobRemoved(const ::DBus::Path& job) override;
 
     // Async callbacks.
-    void EmitEventCallback(const ::DBus::Error &error, void *data) override;
+    void EmitEventCallback(const ::DBus::Error& error, void* data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
 
   // Constructs a Upstart DBus object proxy with signals dispatched to
   // |delegate|.
-  explicit UpstartProxy(DBus::Connection *connection);
+  explicit UpstartProxy(DBus::Connection* connection);
 
   // Dummy method required by async DBus call.
-  static void FromDBusError(const DBus::Error &dbus_error, Error *error);
+  static void FromDBusError(const DBus::Error& dbus_error, Error* error);
 
   Proxy proxy_;
 
