@@ -7,11 +7,11 @@
 namespace shill {
 
 MockMac80211Monitor::MockMac80211Monitor(
-    EventDispatcher *dispatcher,
-    const std::string &link_name,
+    EventDispatcher* dispatcher,
+    const std::string& link_name,
     size_t queue_length_limit,
-    const base::Closure &on_repair_callback,
-    Metrics *metrics)
+    const base::Closure& on_repair_callback,
+    Metrics* metrics)
     : Mac80211Monitor(
         dispatcher, link_name, queue_length_limit, on_repair_callback, metrics)
 {}

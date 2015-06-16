@@ -570,7 +570,7 @@ MATCHER_P(EndpointMatch, endpoint, "") {
 
 class WiFiObjectTest : public ::testing::TestWithParam<string> {
  public:
-  explicit WiFiObjectTest(EventDispatcher *dispatcher)
+  explicit WiFiObjectTest(EventDispatcher* dispatcher)
       : event_dispatcher_(dispatcher),
         metrics_(nullptr),
         manager_(&control_interface_, nullptr, &metrics_, &glib_),
@@ -638,7 +638,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ScopeLogger::GetInstance()->set_verbose_level(3);
     dbus_manager_->proxy_factory_ = &proxy_factory_;
     wifi_->proxy_factory_ = &proxy_factory_;
-    static_cast<Device *>(wifi_.get())->rtnl_handler_ = &rtnl_handler_;
+    static_cast<Device*>(wifi_.get())->rtnl_handler_ = &rtnl_handler_;
     wifi_->set_dhcp_provider(&dhcp_provider_);
     ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
@@ -728,13 +728,13 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->progressive_scan_enabled_ = false;
   }
 
-  void OnTriggerScanResponse(const Nl80211Message &message) {
+  void OnTriggerScanResponse(const Nl80211Message& message) {
     wifi_->scan_session_->OnTriggerScanResponse(message);
   }
 
   void SetScanState(WiFi::ScanState new_state,
                     WiFi::ScanMethod new_method,
-                    const char *reason) {
+                    const char* reason) {
     wifi_->SetScanState(new_state, new_method, reason);
   }
 
@@ -762,12 +762,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   // removed.
   class EndpointRemovalHandler {
    public:
-    EndpointRemovalHandler(WiFiRefPtr wifi, const WiFiServiceRefPtr &service)
+    EndpointRemovalHandler(WiFiRefPtr wifi, const WiFiServiceRefPtr& service)
         : wifi_(wifi), service_(service) {}
     virtual ~EndpointRemovalHandler() {}
 
     WiFiServiceRefPtr OnEndpointRemoved(
-        const WiFiEndpointConstRefPtr &endpoint) {
+        const WiFiEndpointConstRefPtr& endpoint) {
       wifi_->DisassociateFromService(service_);
       return service_;
     }
@@ -777,8 +777,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     WiFiServiceRefPtr service_;
   };
 
-  EndpointRemovalHandler *MakeEndpointRemovalHandler(
-      const WiFiServiceRefPtr &service) {
+  EndpointRemovalHandler* MakeEndpointRemovalHandler(
+      const WiFiServiceRefPtr& service) {
     return new EndpointRemovalHandler(wifi_, service);
   }
   void CancelScanTimer() {
@@ -788,11 +788,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   // synthesize new |path| and |bssid| values, since we don't really care
   // what they are for unit tests.  If "use_ssid" is true, we used the
   // passed-in ssid, otherwise we create a synthesized value for it as well.
-  WiFiEndpointRefPtr MakeNewEndpoint(const char *mode,
+  WiFiEndpointRefPtr MakeNewEndpoint(const char* mode,
                                      bool use_ssid,
-                                     string *ssid,
-                                     string *path,
-                                     string *bssid) {
+                                     string* ssid,
+                                     string* path,
+                                     string* bssid) {
     bss_counter_++;
     if (!use_ssid) {
       *ssid = StringPrintf("ssid%d", bss_counter_);
@@ -804,16 +804,16 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                 OnEndpointAdded(EndpointMatch(endpoint))).Times(1);
     return endpoint;
   }
-  WiFiEndpointRefPtr MakeEndpoint(const string &ssid, const string &bssid) {
+  WiFiEndpointRefPtr MakeEndpoint(const string& ssid, const string& bssid) {
     return MakeEndpointWithMode(ssid, bssid, kNetworkModeInfrastructure);
   }
   WiFiEndpointRefPtr MakeEndpointWithMode(
-      const string &ssid, const string &bssid, const string &mode) {
+      const string& ssid, const string& bssid, const string& mode) {
     return WiFiEndpoint::MakeOpenEndpoint(
         &proxy_factory_, nullptr, ssid, bssid, mode, 0, 0);
   }
   MockWiFiServiceRefPtr MakeMockServiceWithSSID(
-      vector<uint8_t> ssid, const std::string &security) {
+      vector<uint8_t> ssid, const std::string& security) {
     return new NiceMock<MockWiFiService>(
         &control_interface_,
         event_dispatcher_,
@@ -825,14 +825,14 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         security,
         false);
   }
-  MockWiFiServiceRefPtr MakeMockService(const std::string &security) {
+  MockWiFiServiceRefPtr MakeMockService(const std::string& security) {
     return MakeMockServiceWithSSID(vector<uint8_t>(1, 'a'), security);
   }
   ::DBus::Path MakeNewEndpointAndService(int16_t signal_strength,
                                          uint16_t frequency,
-                                         const char *mode,
-                                         WiFiEndpointRefPtr *endpoint_ptr,
-                                         MockWiFiServiceRefPtr *service_ptr) {
+                                         const char* mode,
+                                         WiFiEndpointRefPtr* endpoint_ptr,
+                                         MockWiFiServiceRefPtr* service_ptr) {
     string ssid;
     ::DBus::Path path;
     string bssid;
@@ -856,8 +856,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
       WiFiServiceRefPtr service,
       int16_t signal_strength,
       uint16_t frequency,
-      const char *mode,
-      WiFiEndpointRefPtr *endpoint_ptr) {
+      const char* mode,
+      WiFiEndpointRefPtr* endpoint_ptr) {
     string ssid(service->ssid().begin(), service->ssid().end());
     ::DBus::Path path;
     string bssid;
@@ -881,9 +881,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->DisconnectFromIfActive(service.get());
   }
   MockWiFiServiceRefPtr SetupConnectingService(
-      const DBus::Path &network_path,
-      WiFiEndpointRefPtr *endpoint_ptr,
-      ::DBus::Path *bss_path_ptr) {
+      const DBus::Path& network_path,
+      WiFiEndpointRefPtr* endpoint_ptr,
+      ::DBus::Path* bss_path_ptr) {
     MockWiFiServiceRefPtr service;
     WiFiEndpointRefPtr endpoint;
     ::DBus::Path bss_path(MakeNewEndpointAndService(
@@ -910,9 +910,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
 
   MockWiFiServiceRefPtr SetupConnectedService(
-      const DBus::Path &network_path,
-      WiFiEndpointRefPtr *endpoint_ptr,
-      ::DBus::Path *bss_path_ptr) {
+      const DBus::Path& network_path,
+      WiFiEndpointRefPtr* endpoint_ptr,
+      ::DBus::Path* bss_path_ptr) {
     WiFiEndpointRefPtr endpoint;
     ::DBus::Path bss_path;
     MockWiFiServiceRefPtr service =
@@ -951,81 +951,81 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
       wifi_->Scan(Device::kProgressiveScan, nullptr, __func__);
     }
   }
-  const WiFiServiceRefPtr &GetCurrentService() {
+  const WiFiServiceRefPtr& GetCurrentService() {
     return wifi_->current_service_;
   }
-  void SetCurrentService(const WiFiServiceRefPtr &service) {
+  void SetCurrentService(const WiFiServiceRefPtr& service) {
     wifi_->current_service_ = service;
   }
-  const WiFi::EndpointMap &GetEndpointMap() {
+  const WiFi::EndpointMap& GetEndpointMap() {
     return wifi_->endpoint_by_rpcid_;
   }
-  const WiFiServiceRefPtr &GetPendingService() {
+  const WiFiServiceRefPtr& GetPendingService() {
     return wifi_->pending_service_;
   }
-  const base::CancelableClosure &GetPendingTimeout() {
+  const base::CancelableClosure& GetPendingTimeout() {
     return wifi_->pending_timeout_callback_;
   }
-  const base::CancelableClosure &GetReconnectTimeoutCallback() {
+  const base::CancelableClosure& GetReconnectTimeoutCallback() {
     return wifi_->reconnect_timeout_callback_;
   }
-  const ServiceRefPtr &GetSelectedService() {
+  const ServiceRefPtr& GetSelectedService() {
     return wifi_->selected_service();
   }
-  const string &GetSupplicantBSS() {
+  const string& GetSupplicantBSS() {
     return wifi_->supplicant_bss_;
   }
-  void SetSupplicantBSS(const string &bss) {
+  void SetSupplicantBSS(const string& bss) {
     wifi_->supplicant_bss_ = bss;
   }
   int GetReconnectTimeoutSeconds() {
     return WiFi::kReconnectTimeoutSeconds;
   }
-  const base::CancelableClosure &GetScanTimer() {
+  const base::CancelableClosure& GetScanTimer() {
     return wifi_->scan_timer_callback_;
   }
   // note: the tests need the proxies referenced by WiFi (not the
   // proxies instantiated by WiFiObjectTest), to ensure that WiFi
   // sets up its proxies correctly.
-  SupplicantProcessProxyInterface *GetSupplicantProcessProxy() {
+  SupplicantProcessProxyInterface* GetSupplicantProcessProxy() {
     return wifi_->supplicant_process_proxy_.get();
   }
-  MockSupplicantInterfaceProxy *GetSupplicantInterfaceProxyFromWiFi() {
-    return dynamic_cast<MockSupplicantInterfaceProxy *>(
+  MockSupplicantInterfaceProxy* GetSupplicantInterfaceProxyFromWiFi() {
+    return dynamic_cast<MockSupplicantInterfaceProxy*>(
         wifi_->supplicant_interface_proxy_.get());
   }
   // This function returns the supplicant interface proxy whether
   // or not we have passed the instantiated object to the WiFi instance
   // from WiFiObjectTest, so tests don't need to worry about when they
   // set expectations relative to StartWiFi().
-  MockSupplicantInterfaceProxy *GetSupplicantInterfaceProxy() {
-    MockSupplicantInterfaceProxy *proxy = GetSupplicantInterfaceProxyFromWiFi();
+  MockSupplicantInterfaceProxy* GetSupplicantInterfaceProxy() {
+    MockSupplicantInterfaceProxy* proxy = GetSupplicantInterfaceProxyFromWiFi();
     return proxy ? proxy : supplicant_interface_proxy_.get();
   }
-  const string &GetSupplicantState() {
+  const string& GetSupplicantState() {
     return wifi_->supplicant_state_;
   }
-  void ClearCachedCredentials(const WiFiService *service) {
+  void ClearCachedCredentials(const WiFiService* service) {
     return wifi_->ClearCachedCredentials(service);
   }
-  void NotifyEndpointChanged(const WiFiEndpointConstRefPtr &endpoint) {
+  void NotifyEndpointChanged(const WiFiEndpointConstRefPtr& endpoint) {
     wifi_->NotifyEndpointChanged(endpoint);
   }
-  bool RemoveNetwork(const ::DBus::Path &network) {
+  bool RemoveNetwork(const ::DBus::Path& network) {
     return wifi_->RemoveNetwork(network);
   }
-  map<string, ::DBus::Variant> CreateBSSProperties(const string &ssid,
-                                                   const string &bssid,
+  map<string, ::DBus::Variant> CreateBSSProperties(const string& ssid,
+                                                   const string& bssid,
                                                    int16_t signal_strength,
                                                    uint16_t frequency,
-                                                   const char *mode);
-  void RemoveBSS(const ::DBus::Path &bss_path);
-  void ReportBSS(const ::DBus::Path &bss_path,
-                 const string &ssid,
-                 const string &bssid,
+                                                   const char* mode);
+  void RemoveBSS(const ::DBus::Path& bss_path);
+  void ReportBSS(const ::DBus::Path& bss_path,
+                 const string& ssid,
+                 const string& bssid,
                  int16_t signal_strength,
                  uint16_t frequency,
-                 const char *mode);
+                 const char* mode);
   void ReportIPConfigComplete() {
     wifi_->OnIPConfigUpdated(dhcp_config_, true);
   }
@@ -1034,11 +1034,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
 
   // Calls the delayed version of the BSS methods.
-  void BSSAdded(const ::DBus::Path &bss_path,
-                const map<string, ::DBus::Variant> &properties) {
+  void BSSAdded(const ::DBus::Path& bss_path,
+                const map<string, ::DBus::Variant>& properties) {
     wifi_->BSSAdded(bss_path, properties);
   }
-  void BSSRemoved(const ::DBus::Path &bss_path) {
+  void BSSRemoved(const ::DBus::Path& bss_path) {
     wifi_->BSSRemoved(bss_path);
   }
 
@@ -1054,7 +1054,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ReportLinkUp() {
     wifi_->LinkEvent(IFF_LOWER_UP, IFF_LOWER_UP);
   }
-  void ScanDone(const bool &success) {
+  void ScanDone(const bool& success) {
     wifi_->ScanDone(success);
   }
   void ReportScanFailed() {
@@ -1070,10 +1070,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ReportScanDoneKeepScanSession() {
     wifi_->ScanDoneTask();
   }
-  void ReportCurrentBSSChanged(const string &new_bss) {
+  void ReportCurrentBSSChanged(const string& new_bss) {
     wifi_->CurrentBSSChanged(new_bss);
   }
-  void ReportStateChanged(const string &new_state) {
+  void ReportStateChanged(const string& new_state) {
     wifi_->StateChanged(new_state);
   }
   void ReportWiFiDebugScopeChanged(bool enabled) {
@@ -1082,23 +1082,23 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void RequestStationInfo() {
     wifi_->RequestStationInfo();
   }
-  void ReportReceivedStationInfo(const Nl80211Message &nl80211_message) {
+  void ReportReceivedStationInfo(const Nl80211Message& nl80211_message) {
     wifi_->OnReceivedStationInfo(nl80211_message);
   }
   KeyValueStore GetLinkStatistics() {
     return wifi_->GetLinkStatistics(nullptr);
   }
-  void SetPendingService(const WiFiServiceRefPtr &service) {
+  void SetPendingService(const WiFiServiceRefPtr& service) {
     wifi_->SetPendingService(service);
   }
   void SetServiceNetworkRpcId(
-      const WiFiServiceRefPtr &service, const string &rpcid) {
+      const WiFiServiceRefPtr& service, const string& rpcid) {
     wifi_->rpcid_by_service_[service.get()] = rpcid;
   }
   bool RpcIdByServiceIsEmpty() {
     return wifi_->rpcid_by_service_.empty();
   }
-  bool SetScanInterval(uint16_t interval_seconds, Error *error) {
+  bool SetScanInterval(uint16_t interval_seconds, Error* error) {
     return wifi_->SetScanInterval(interval_seconds, error);
   }
   uint16_t GetScanInterval() {
@@ -1157,10 +1157,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void InitiateScan(Device::ScanType scan_type) {
     wifi_->InitiateScan(scan_type);
   }
-  void InitiateScanInDarkResume(const WiFi::FreqSet &freqs) {
+  void InitiateScanInDarkResume(const WiFi::FreqSet& freqs) {
     wifi_->InitiateScanInDarkResume(freqs);
   }
-  void TriggerPassiveScan(const WiFi::FreqSet &freqs) {
+  void TriggerPassiveScan(const WiFi::FreqSet& freqs) {
     wifi_->TriggerPassiveScan(freqs);
   }
   void OnSupplicantAppear() {
@@ -1177,10 +1177,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   bool GetIsRoamingInProgress() {
     return wifi_->is_roaming_in_progress_;
   }
-  void SetIPConfig(const IPConfigRefPtr &ipconfig) {
+  void SetIPConfig(const IPConfigRefPtr& ipconfig) {
     return wifi_->set_ipconfig(ipconfig);
   }
-  bool SetBgscanMethod(const string &method) {
+  bool SetBgscanMethod(const string& method) {
     ::DBus::Error error;
     return DBusAdaptor::SetProperty(
         wifi_->mutable_store(),
@@ -1189,16 +1189,16 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         &error);
   }
 
-  void AppendBgscan(WiFiService *service,
-                    std::map<std::string, DBus::Variant> *service_params) {
+  void AppendBgscan(WiFiService* service,
+                    std::map<std::string, DBus::Variant>* service_params) {
     wifi_->AppendBgscan(service, service_params);
   }
 
-  void ReportCertification(const map<string, ::DBus::Variant> &properties) {
+  void ReportCertification(const map<string, ::DBus::Variant>& properties) {
     wifi_->CertificationTask(properties);
   }
 
-  void ReportEAPEvent(const string &status, const string &parameter) {
+  void ReportEAPEvent(const string& status, const string& parameter) {
     wifi_->EAPEventTask(status, parameter);
   }
 
@@ -1218,12 +1218,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->StopReconnectTimer();
   }
 
-  void SetLinkMonitor(LinkMonitor *link_monitor) {
+  void SetLinkMonitor(LinkMonitor* link_monitor) {
     wifi_->set_link_monitor(link_monitor);
   }
 
-  bool SuspectCredentials(const WiFiServiceRefPtr &service,
-                          Service::ConnectFailure *failure) {
+  bool SuspectCredentials(const WiFiServiceRefPtr& service,
+                          Service::ConnectFailure* failure) {
     return wifi_->SuspectCredentials(service, failure);
   }
 
@@ -1235,24 +1235,24 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->OnUnreliableLink();
   }
 
-  bool SetBgscanShortInterval(const uint16_t &interval, Error *error) {
+  bool SetBgscanShortInterval(const uint16_t& interval, Error* error) {
     return wifi_->SetBgscanShortInterval(interval, error);
   }
 
-  bool SetBgscanSignalThreshold(const int32_t &threshold, Error *error) {
+  bool SetBgscanSignalThreshold(const int32_t& threshold, Error* error) {
     return wifi_->SetBgscanSignalThreshold(threshold, error);
   }
 
-  void SetTDLSManager(TDLSManager *tdls_manager) {
+  void SetTDLSManager(TDLSManager* tdls_manager) {
     wifi_->tdls_manager_.reset(tdls_manager);
   }
 
-  void TDLSDiscoverResponse(const string &peer_address) {
+  void TDLSDiscoverResponse(const string& peer_address) {
     wifi_->TDLSDiscoverResponse(peer_address);
   }
 
   string PerformTDLSOperation(
-      const string &operation, const string &peer, Error *error) {
+      const string& operation, const string& peer, Error* error) {
     return wifi_->PerformTDLSOperation(operation, peer, error);
   }
 
@@ -1260,7 +1260,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->PendingTimeoutHandler();
   }
 
-  void OnNewWiphy(const Nl80211Message &new_wiphy_message) {
+  void OnNewWiphy(const Nl80211Message& new_wiphy_message) {
     wifi_->OnNewWiphy(new_wiphy_message);
   }
 
@@ -1268,23 +1268,23 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_->IsConnectedToCurrentService();
   }
 
-  NiceMockControl *control_interface() {
+  NiceMockControl* control_interface() {
     return &control_interface_;
   }
 
-  MockMetrics *metrics() {
+  MockMetrics* metrics() {
     return &metrics_;
   }
 
-  MockManager *manager() {
+  MockManager* manager() {
     return &manager_;
   }
 
-  MockDeviceInfo *device_info() {
+  MockDeviceInfo* device_info() {
     return &device_info_;
   }
 
-  MockDHCPProvider *dhcp_provider() {
+  MockDHCPProvider* dhcp_provider() {
     return &dhcp_provider_;
   }
 
@@ -1292,15 +1292,15 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_;
   }
 
-  MockProxyFactory *proxy_factory() {
+  MockProxyFactory* proxy_factory() {
     return &proxy_factory_;
   }
 
-  MockWiFiProvider *wifi_provider() {
+  MockWiFiProvider* wifi_provider() {
     return &wifi_provider_;
   }
 
-  MockMac80211Monitor *mac80211_monitor() {
+  MockMac80211Monitor* mac80211_monitor() {
     return mac80211_monitor_;
   }
 
@@ -1312,7 +1312,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->StartScanTimer();
   }
 
-  bool ParseWiphyIndex(const Nl80211Message &nl80211_message) {
+  bool ParseWiphyIndex(const Nl80211Message& nl80211_message) {
     return wifi_->ParseWiphyIndex(nl80211_message);
   }
 
@@ -1320,11 +1320,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   void SetWiphyIndex(uint32_t index) { wifi_->wiphy_index_ = index; }
 
-  std::set<uint16_t> *GetAllScanFrequencies() {
+  std::set<uint16_t>* GetAllScanFrequencies() {
     return &wifi_->all_scan_frequencies_;
   }
 
-  void OnScanStarted(const NetlinkMessage &netlink_message) {
+  void OnScanStarted(const NetlinkMessage& netlink_message) {
     wifi_->OnScanStarted(netlink_message);
   }
 
@@ -1332,11 +1332,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_->scan_failed_callback_.IsCancelled();
   }
 
-  MOCK_METHOD1(SuspendCallback, void(const Error &error));
+  MOCK_METHOD1(SuspendCallback, void(const Error& error));
 
-  EventDispatcher *event_dispatcher_;
-  MockScanSession *scan_session_;  // Owned by |wifi_|.
-  MockWakeOnWiFi *wake_on_wifi_;  // Owned by |wifi_|.
+  EventDispatcher* event_dispatcher_;
+  MockScanSession* scan_session_;  // Owned by |wifi_|.
+  MockWakeOnWiFi* wake_on_wifi_;  // Owned by |wifi_|.
   NiceMock<MockRTNLHandler> rtnl_handler_;
   MockTime time_;
 
@@ -1349,7 +1349,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   WiFiRefPtr wifi_;
   NiceMock<MockWiFiProvider> wifi_provider_;
   int bss_counter_;
-  MockMac80211Monitor *mac80211_monitor_;  // Owned by |wifi_|.
+  MockMac80211Monitor* mac80211_monitor_;  // Owned by |wifi_|.
 
   // protected fields interspersed between private fields, due to
   // initialization order
@@ -1367,12 +1367,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   unique_ptr<MockSupplicantBSSProxy> supplicant_bss_proxy_;
   MockDHCPProvider dhcp_provider_;
   scoped_refptr<MockDHCPConfig> dhcp_config_;
-  DBusManager *dbus_manager_;
+  DBusManager* dbus_manager_;
 
   // These pointers track mock objects owned by the WiFi device instance
   // and manager so we can perform expectations against them.
-  DeviceMockAdaptor *adaptor_;
-  MockSupplicantEAPStateHandler *eap_state_handler_;
+  DeviceMockAdaptor* adaptor_;
+  MockSupplicantEAPStateHandler* eap_state_handler_;
   MockNetlinkManager netlink_manager_;
 
  private:
@@ -1388,16 +1388,16 @@ const char WiFiObjectTest::kBSSName[] = "bss0";
 const char WiFiObjectTest::kSSIDName[] = "ssid0";
 const uint16_t WiFiObjectTest::kRoamThreshold = 32;  // Arbitrary value.
 
-void WiFiObjectTest::RemoveBSS(const ::DBus::Path &bss_path) {
+void WiFiObjectTest::RemoveBSS(const ::DBus::Path& bss_path) {
   wifi_->BSSRemovedTask(bss_path);
 }
 
 map<string, ::DBus::Variant> WiFiObjectTest::CreateBSSProperties(
-    const string &ssid,
-    const string &bssid,
+    const string& ssid,
+    const string& bssid,
     int16_t signal_strength,
     uint16_t frequency,
-    const char *mode) {
+    const char* mode) {
   map<string, ::DBus::Variant> bss_properties;
   {
     DBus::MessageIter writer(bss_properties["SSID"].writer());
@@ -1421,12 +1421,12 @@ map<string, ::DBus::Variant> WiFiObjectTest::CreateBSSProperties(
   return bss_properties;
 }
 
-void WiFiObjectTest::ReportBSS(const ::DBus::Path &bss_path,
-                             const string &ssid,
-                             const string &bssid,
+void WiFiObjectTest::ReportBSS(const ::DBus::Path& bss_path,
+                             const string& ssid,
+                             const string& bssid,
                              int16_t signal_strength,
                              uint16_t frequency,
-                             const char *mode) {
+                             const char* mode) {
   wifi_->BSSAddedTask(
       bss_path,
       CreateBSSProperties(ssid, bssid, signal_strength, frequency, mode));
@@ -1461,8 +1461,8 @@ class WiFiMainTest : public WiFiObjectTest {
   }
 
   MockWiFiServiceRefPtr AttemptConnection(WiFi::ScanMethod method,
-                                          WiFiEndpointRefPtr *endpoint,
-                                          ::DBus::Path *bss_path) {
+                                          WiFiEndpointRefPtr* endpoint,
+                                          ::DBus::Path* bss_path) {
     WiFiEndpointRefPtr dummy_endpoint;
     if (!endpoint) {
       endpoint = &dummy_endpoint;  // If caller doesn't care about endpoint.
@@ -1717,7 +1717,7 @@ TEST_F(WiFiMainTest, UseArpGateway) {
   EXPECT_TRUE(wifi()->ShouldUseArpGateway());
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kDeviceName, _, _, true))
       .WillOnce(Return(dhcp_config_));
-  const_cast<WiFi *>(wifi().get())->AcquireIPConfig();
+  const_cast<WiFi*>(wifi().get())->AcquireIPConfig();
 
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
   InitiateConnect(service);
@@ -1727,7 +1727,7 @@ TEST_F(WiFiMainTest, UseArpGateway) {
   EXPECT_TRUE(wifi()->ShouldUseArpGateway());
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kDeviceName, _, _, true))
       .WillOnce(Return(dhcp_config_));
-  const_cast<WiFi *>(wifi().get())->AcquireIPConfig();
+  const_cast<WiFi*>(wifi().get())->AcquireIPConfig();
   Mock::VerifyAndClearExpectations(service.get());
 
   // Selected service that has a static IP address.
@@ -1735,7 +1735,7 @@ TEST_F(WiFiMainTest, UseArpGateway) {
   EXPECT_FALSE(wifi()->ShouldUseArpGateway());
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kDeviceName, _, _, false))
       .WillOnce(Return(dhcp_config_));
-  const_cast<WiFi *>(wifi().get())->AcquireIPConfig();
+  const_cast<WiFi*>(wifi().get())->AcquireIPConfig();
 }
 
 TEST_F(WiFiMainTest, RemoveNetworkWhenSupplicantReturnsInvalidArgs) {
@@ -2034,7 +2034,7 @@ TEST_F(WiFiMainTest, ScanResults) {
   ReportBSS("bss4", "ssid4", "00:00:00:00:00:04", 4, frequency,
             kNetworkModeAdHoc);
 
-  const WiFi::EndpointMap &endpoints_by_rpcid = GetEndpointMap();
+  const WiFi::EndpointMap& endpoints_by_rpcid = GetEndpointMap();
   EXPECT_EQ(5, endpoints_by_rpcid.size());
 
   WiFi::EndpointMap::const_iterator i;
@@ -2365,7 +2365,7 @@ TEST_F(WiFiMainTest, DisconnectWithWiFiServiceConnectedInError) {
 
 TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
   StartScan(WiFi::kScanMethodProgressive);
-  const base::CancelableClosure &pending_timeout = GetPendingTimeout();
+  const base::CancelableClosure& pending_timeout = GetPendingTimeout();
   EXPECT_TRUE(pending_timeout.IsCancelled());
   MockWiFiServiceRefPtr service = AttemptConnection(
       WiFi::kScanMethodProgressive, nullptr, nullptr);
@@ -2404,7 +2404,7 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
 
 TEST_F(WiFiMainTest, TimeoutPendingServiceWithoutEndpoints) {
   StartWiFi();
-  const base::CancelableClosure &pending_timeout = GetPendingTimeout();
+  const base::CancelableClosure& pending_timeout = GetPendingTimeout();
   EXPECT_TRUE(pending_timeout.IsCancelled());
   MockWiFiServiceRefPtr service(
       SetupConnectingService(DBus::Path(), nullptr, nullptr));
@@ -2507,9 +2507,9 @@ MATCHER_P(HasHiddenSSID_FullScan, ssid, "") {
     return false;
   }
 
-  const DBus::Variant &ssids_variant = it->second;
+  const DBus::Variant& ssids_variant = it->second;
   EXPECT_TRUE(DBusAdaptor::IsByteArrays(ssids_variant.signature()));
-  const ByteArrays &ssids = it->second.operator ByteArrays();
+  const ByteArrays& ssids = it->second.operator ByteArrays();
   // A valid Scan containing a single hidden SSID should contain
   // two SSID entries: one containing the SSID we are looking for,
   // and an empty entry, signifying that we also want to do a
@@ -2747,7 +2747,7 @@ TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
 }
 
 TEST_F(WiFiMainTest, ConnectToServiceWithoutRecentIssues) {
-  MockSupplicantProcessProxy *process_proxy = supplicant_process_proxy_.get();
+  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_.get();
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
@@ -2763,7 +2763,7 @@ TEST_F(WiFiMainTest, ConnectToServiceWithRecentIssues) {
   // debugging will be to debug a problematic connection.
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
 
-  MockSupplicantProcessProxy *process_proxy = supplicant_process_proxy_.get();
+  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_.get();
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
@@ -3032,7 +3032,7 @@ TEST_F(WiFiMainTest, BSSRemovedDestroysBSSProxy) {
   // TODO(quiche): As for BSSAddedCreatesBSSProxy, consider using a
   // factory for WiFiEndpoints.
   // Get the pointer before we transfer ownership.
-  MockSupplicantBSSProxy *proxy = supplicant_bss_proxy_.get();
+  MockSupplicantBSSProxy* proxy = supplicant_bss_proxy_.get();
   EXPECT_CALL(*proxy, Die());
   StartWiFi();
   DBus::Path bss_path(
@@ -3842,7 +3842,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
                                               StrEq("EAPEventTask")));
   ReportEAPEvent(kEAPStatus, kEAPParameter);
 
-  MockEapCredentials *eap = new MockEapCredentials();
+  MockEapCredentials* eap = new MockEapCredentials();
   service->eap_.reset(eap);  // Passes ownership.
   const char kNetworkRpcId[] = "/service/network/rpcid";
   SetServiceNetworkRpcId(service, kNetworkRpcId);
@@ -3923,7 +3923,7 @@ TEST_F(WiFiMainTest, GetGeolocationObjects) {
 }
 
 TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
-  MockSupplicantProcessProxy *process_proxy = supplicant_process_proxy_.get();
+  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_.get();
 
   // With WiFi not yet started, nothing interesting (including a crash) should
   // happen.
@@ -4315,7 +4315,7 @@ TEST_F(WiFiMainTest, FullScanDuringProgressive) {
 
 TEST_F(WiFiMainTest, TDLSDiscoverResponse) {
   const char kPeer[] = "peer";
-  MockTDLSManager *tdls_manager = new StrictMock<MockTDLSManager>();
+  MockTDLSManager* tdls_manager = new StrictMock<MockTDLSManager>();
   SetTDLSManager(tdls_manager);
 
   EXPECT_CALL(*tdls_manager, OnDiscoverResponseReceived(kPeer));
@@ -4325,7 +4325,7 @@ TEST_F(WiFiMainTest, TDLSDiscoverResponse) {
 
 TEST_F(WiFiMainTest, PerformTDLSOperation) {
   const char kPeerMac[] = "00:11:22:33:44:55";
-  MockTDLSManager *tdls_manager = new StrictMock<MockTDLSManager>();
+  MockTDLSManager* tdls_manager = new StrictMock<MockTDLSManager>();
   SetTDLSManager(tdls_manager);
 
   Error error;
@@ -4341,7 +4341,7 @@ TEST_F(WiFiMainTest, PerformTDLSOperation) {
 TEST_F(WiFiMainTest, OnNewWiphy) {
   NewWiphyMessage new_wiphy_message;
   new_wiphy_message.InitFromNlmsg(
-      reinterpret_cast<const nlmsghdr *>(kNewWiphyNlMsg),
+      reinterpret_cast<const nlmsghdr*>(kNewWiphyNlMsg),
       NetlinkMessage::MessageContext());
   EXPECT_CALL(*mac80211_monitor(), Start(_));
   EXPECT_CALL(*wake_on_wifi_, ParseWakeOnWiFiCapabilities(_));
@@ -4550,7 +4550,7 @@ TEST_F(WiFiMainTest, PendingScanEvents) {
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(wifi_provider());
 
-  const WiFi::EndpointMap &endpoints_by_rpcid = GetEndpointMap();
+  const WiFi::EndpointMap& endpoints_by_rpcid = GetEndpointMap();
   EXPECT_EQ(2, endpoints_by_rpcid.size());
 }
 
@@ -4559,7 +4559,7 @@ TEST_F(WiFiMainTest, ParseWiphyIndex_Success) {
   // for having the wiphy index is set by ParseWiphyIndex.
   EXPECT_EQ(GetWiphyIndex(), WiFi::kDefaultWiphyIndex);
   NewWiphyMessage msg;
-  msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr *>(kNewWiphyNlMsg),
+  msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr*>(kNewWiphyNlMsg),
                     NetlinkMessage::MessageContext());
   EXPECT_TRUE(ParseWiphyIndex(msg));
   EXPECT_EQ(GetWiphyIndex(), kNewWiphyNlMsg_WiphyIndex);
@@ -4573,10 +4573,10 @@ TEST_F(WiFiMainTest, ParseWiphyIndex_Failure) {
   NewWiphyMessage msg;
   uint8_t message_memory[sizeof(kNewWiphyNlMsg)];
   memcpy(message_memory, kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
-  struct nlattr *nl80211_attr_wiphy = reinterpret_cast<struct nlattr *>(
+  struct nlattr* nl80211_attr_wiphy = reinterpret_cast<struct nlattr*>(
       &message_memory[kNewWiphyNlMsg_Nl80211AttrWiphyOffset]);
   nl80211_attr_wiphy->nla_type = NL80211_ATTR_WIPHY_FREQ;
-  msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr *>(message_memory),
+  msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr*>(message_memory),
                     NetlinkMessage::MessageContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
@@ -4588,7 +4588,7 @@ TEST_F(WiFiMainTest, ParseWiphyIndex_Failure) {
 TEST_F(WiFiMainTest, OnScanStarted_ActiveScan) {
   SetWiphyIndex(kScanTriggerMsgWiphyIndex);
   TriggerScanMessage msg;
-  msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr *>(kActiveScanTriggerNlMsg),
+  msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr*>(kActiveScanTriggerNlMsg),
                     NetlinkMessage::MessageContext());
   EXPECT_CALL(*wake_on_wifi_, OnScanStarted(true));
   OnScanStarted(msg);
@@ -4598,7 +4598,7 @@ TEST_F(WiFiMainTest, OnScanStarted_PassiveScan) {
   SetWiphyIndex(kScanTriggerMsgWiphyIndex);
   TriggerScanMessage msg;
   msg.InitFromNlmsg(
-      reinterpret_cast<const nlmsghdr *>(kPassiveScanTriggerNlMsg),
+      reinterpret_cast<const nlmsghdr*>(kPassiveScanTriggerNlMsg),
       NetlinkMessage::MessageContext());
   EXPECT_CALL(*wake_on_wifi_, OnScanStarted(false));
   OnScanStarted(msg);

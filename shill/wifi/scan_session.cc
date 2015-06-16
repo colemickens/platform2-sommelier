@@ -32,7 +32,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static string ObjectID(ScanSession *s) { return "(scan_session)"; }
+static string ObjectID(ScanSession* s) { return "(scan_session)"; }
 }
 
 const float ScanSession::kAllFrequencies = 1.1;
@@ -40,16 +40,16 @@ const uint64_t ScanSession::kScanRetryDelayMilliseconds = 200;  // Arbitrary.
 const size_t ScanSession::kScanRetryCount = 50;
 
 ScanSession::ScanSession(
-    NetlinkManager *netlink_manager,
-    EventDispatcher *dispatcher,
-    const WiFiProvider::FrequencyCountList &previous_frequencies,
-    const set<uint16_t> &available_frequencies,
+    NetlinkManager* netlink_manager,
+    EventDispatcher* dispatcher,
+    const WiFiProvider::FrequencyCountList& previous_frequencies,
+    const set<uint16_t>& available_frequencies,
     uint32_t ifindex,
-    const FractionList &fractions,
+    const FractionList& fractions,
     size_t min_frequencies,
     size_t max_frequencies,
     OnScanFailed on_scan_failed,
-    Metrics *metrics)
+    Metrics* metrics)
     : weak_ptr_factory_(this),
       netlink_manager_(netlink_manager),
       dispatcher_(dispatcher),
@@ -71,7 +71,7 @@ ScanSession::ScanSession(
   // Add to |frequency_list_| all the frequencies from |available_frequencies|
   // that aren't in |previous_frequencies|.
   set<uint16_t> seen_frequencies;
-  for (const auto &freq_conn : frequency_list_) {
+  for (const auto& freq_conn : frequency_list_) {
     seen_frequencies.insert(freq_conn.frequency);
     total_connections_ += freq_conn.connection_count;
   }
@@ -82,7 +82,7 @@ ScanSession::ScanSession(
   }
 
   SLOG(this, 6) << "Frequency connections vector:";
-  for (const auto &freq_conn : frequency_list_) {
+  for (const auto& freq_conn : frequency_list_) {
     SLOG(this, 6) << "    freq[" << freq_conn.frequency << "] = "
                   << freq_conn.connection_count;
   }
@@ -146,7 +146,7 @@ void ScanSession::ReInitiateScan() {
   DoScan(current_scan_frequencies_);
 }
 
-void ScanSession::DoScan(const vector<uint16_t> &scan_frequencies) {
+void ScanSession::DoScan(const vector<uint16_t>& scan_frequencies) {
   if (scan_frequencies.empty()) {
     LOG(INFO) << "Not sending empty frequency list";
     return;
@@ -187,7 +187,7 @@ void ScanSession::DoScan(const vector<uint16_t> &scan_frequencies) {
         NL80211_ATTR_SCAN_SSIDS);
     int i = 0;
     string attribute_name;
-    for (const auto &ssid : ssids_) {
+    for (const auto& ssid : ssids_) {
       attribute_name = StringPrintf("NL80211_ATTR_SSID_%d", i);
       ssid_list->CreateRawAttribute(i, attribute_name.c_str());
       ssid_list->SetRawAttributeValue(i, ssid);
@@ -208,7 +208,7 @@ void ScanSession::DoScan(const vector<uint16_t> &scan_frequencies) {
            weak_ptr_factory_.GetWeakPtr()));
 }
 
-void ScanSession::OnTriggerScanResponse(const Nl80211Message &netlink_message) {
+void ScanSession::OnTriggerScanResponse(const Nl80211Message& netlink_message) {
   LOG(WARNING) << "Didn't expect _this_ netlink message, here:";
   netlink_message.Print(0, 0);
   on_scan_failed_.Run();
@@ -217,7 +217,7 @@ void ScanSession::OnTriggerScanResponse(const Nl80211Message &netlink_message) {
 
 void ScanSession::OnTriggerScanErrorResponse(
     NetlinkManager::AuxilliaryMessageType type,
-    const NetlinkMessage *netlink_message) {
+    const NetlinkMessage* netlink_message) {
   switch (type) {
     case NetlinkManager::kErrorFromKernel: {
         if (!netlink_message) {
@@ -233,8 +233,8 @@ void ScanSession::OnTriggerScanErrorResponse(
           on_scan_failed_.Run();
           break;
         }
-        const ErrorAckMessage *error_ack_message =
-            dynamic_cast<const ErrorAckMessage *>(netlink_message);
+        const ErrorAckMessage* error_ack_message =
+            dynamic_cast<const ErrorAckMessage*>(netlink_message);
         if (error_ack_message->error()) {
           LOG(ERROR) << __func__ << ": Message failed: "
                      << error_ack_message->ToString();
@@ -313,14 +313,14 @@ void ScanSession::ReportResults(int log_level) {
                         << " milliseconds waiting for EBUSY.";
 }
 
-void ScanSession::AddSsid(const ByteString &ssid) {
+void ScanSession::AddSsid(const ByteString& ssid) {
   ssids_.insert(ssid);
 }
 
 // static
 bool ScanSession::CompareFrequencyCount(
-    const WiFiProvider::FrequencyCount &first,
-    const WiFiProvider::FrequencyCount &second) {
+    const WiFiProvider::FrequencyCount& first,
+    const WiFiProvider::FrequencyCount& second) {
   return first.connection_count > second.connection_count;
 }
 

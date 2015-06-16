@@ -59,9 +59,9 @@ class Mac80211MonitorTest : public testing::Test {
   base::FilePath fake_wake_queues_file_path_;  // Call FakeUpSysfs() first.
 
   // Getters for fixture fields.
-  MockTime &time() { return time_; }
-  MockEventDispatcher &event_dispatcher() { return event_dispatcher_; }
-  MockMetrics &metrics() { return metrics_; }
+  MockTime& time() { return time_; }
+  MockEventDispatcher& event_dispatcher() { return event_dispatcher_; }
+  MockMetrics& metrics() { return metrics_; }
 
   // Complex fixture methods.
   void AllowWakeQueuesIfNeededCommonCalls() {
@@ -114,24 +114,24 @@ class Mac80211MonitorTest : public testing::Test {
   time_t GetLastWokeQueuesMonotonicSeconds() const {
     return mac80211_monitor_.last_woke_queues_monotonic_seconds_;
   }
-  const string &GetLinkName() const {
+  const string& GetLinkName() const {
     return mac80211_monitor_.link_name_;
   }
   time_t GetMinimumTimeBetweenWakesSeconds() const {
     return Mac80211Monitor::kMinimumTimeBetweenWakesSeconds;
   }
-  const string &GetPhyName() const {
+  const string& GetPhyName() const {
     return mac80211_monitor_.phy_name_;
   }
-  const base::FilePath &GetQueueStateFilePath() const {
+  const base::FilePath& GetQueueStateFilePath() const {
     return mac80211_monitor_.queue_state_file_path_;
   }
-  const base::FilePath &GetWakeQueuesFilePath() const {
+  const base::FilePath& GetWakeQueuesFilePath() const {
     return mac80211_monitor_.wake_queues_file_path_;
   }
 
   // Pass-through methods to Mac80211Monitor methods.
-  void StartMonitor(const string &phy_name) {
+  void StartMonitor(const string& phy_name) {
     EXPECT_CALL(
         event_dispatcher_,
         PostDelayedTask(
@@ -144,7 +144,7 @@ class Mac80211MonitorTest : public testing::Test {
   void StopMonitor() {
     mac80211_monitor_.Stop();
   }
-  uint32_t CheckAreQueuesStuck(const vector<QState> &queue_states) {
+  uint32_t CheckAreQueuesStuck(const vector<QState>& queue_states) {
     return mac80211_monitor_.CheckAreQueuesStuck(queue_states);
   }
   void UpdateConnectedState(bool new_state) {
@@ -162,7 +162,7 @@ class Mac80211MonitorTest : public testing::Test {
   StrictMock<MockTime> time_;
   Mac80211Monitor mac80211_monitor_;
 
-  void FakeUpQueueFiles(const string &queue_state_string) {
+  void FakeUpQueueFiles(const string& queue_state_string) {
     CHECK(fake_sysfs_tree_.IsValid());  // Keep tests hermetic.
     base::WriteFile(fake_queue_state_file_path_,
                     queue_state_string.c_str(),
@@ -178,7 +178,7 @@ class Mac80211MonitorTest : public testing::Test {
 
 // Can't be in an anonymous namespace, due to ADL.
 // Instead, we use static to constain visibility to this unit.
-static bool operator==(const QState &a, const QState &b) {
+static bool operator==(const QState& a, const QState& b) {
   return a.queue_number == b.queue_number &&
       a.stop_flags == b.stop_flags &&
       a.queue_length == b.queue_length;

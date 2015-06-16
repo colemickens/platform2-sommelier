@@ -44,7 +44,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static string ObjectID(WiFiProvider *w) { return "(wifi_provider)"; }
+static string ObjectID(WiFiProvider* w) { return "(wifi_provider)"; }
 }
 
 // Note that WiFiProvider generates some manager-level errors, because it
@@ -72,10 +72,10 @@ const int WiFiProvider::kMaxStorageFrequencies = 20;
 const time_t WiFiProvider::kWeeksToKeepFrequencyCounts = 3;
 const time_t WiFiProvider::kSecondsPerWeek = 60 * 60 * 24 * 7;
 
-WiFiProvider::WiFiProvider(ControlInterface *control_interface,
-                           EventDispatcher *dispatcher,
-                           Metrics *metrics,
-                           Manager *manager)
+WiFiProvider::WiFiProvider(ControlInterface* control_interface,
+                           EventDispatcher* dispatcher,
+                           Metrics* metrics,
+                           Manager* manager)
     : control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
@@ -104,12 +104,12 @@ void WiFiProvider::Stop() {
   running_ = false;
 }
 
-void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
-  const StoreInterface *storage = profile->GetConstStorage();
+void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
+  const StoreInterface* storage = profile->GetConstStorage();
   KeyValueStore args;
   args.SetString(kTypeProperty, kTypeWifi);
   bool created_hidden_service = false;
-  for (const auto &group : storage->GetGroupsWithProperties(args)) {
+  for (const auto& group : storage->GetGroupsWithProperties(args)) {
     vector<uint8_t> ssid_bytes;
     string network_mode;
     string security;
@@ -163,7 +163,7 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
 }
 
 ServiceRefPtr WiFiProvider::FindSimilarService(
-    const KeyValueStore &args, Error *error) const {
+    const KeyValueStore& args, Error* error) const {
   vector<uint8_t> ssid;
   string mode;
   string security;
@@ -183,7 +183,7 @@ ServiceRefPtr WiFiProvider::FindSimilarService(
 }
 
 ServiceRefPtr WiFiProvider::CreateTemporaryService(
-    const KeyValueStore &args, Error *error) {
+    const KeyValueStore& args, Error* error) {
   vector<uint8_t> ssid;
   string mode;
   string security;
@@ -206,7 +206,7 @@ ServiceRefPtr WiFiProvider::CreateTemporaryService(
 }
 
 ServiceRefPtr WiFiProvider::CreateTemporaryServiceFromProfile(
-    const ProfileRefPtr &profile, const std::string &entry_name, Error *error) {
+    const ProfileRefPtr& profile, const std::string& entry_name, Error* error) {
   vector<uint8_t> ssid;
   string mode;
   string security;
@@ -232,12 +232,12 @@ ServiceRefPtr WiFiProvider::CreateTemporaryServiceFromProfile(
 }
 
 ServiceRefPtr WiFiProvider::GetService(
-    const KeyValueStore &args, Error *error) {
+    const KeyValueStore& args, Error* error) {
   return GetWiFiService(args, error);
 }
 
 WiFiServiceRefPtr WiFiProvider::GetWiFiService(
-    const KeyValueStore &args, Error *error) {
+    const KeyValueStore& args, Error* error) {
   vector<uint8_t> ssid_bytes;
   string mode;
   string security_method;
@@ -260,7 +260,7 @@ WiFiServiceRefPtr WiFiProvider::GetWiFiService(
 }
 
 WiFiServiceRefPtr WiFiProvider::FindServiceForEndpoint(
-    const WiFiEndpointConstRefPtr &endpoint) {
+    const WiFiEndpointConstRefPtr& endpoint) {
   EndpointServiceMap::iterator service_it =
       service_by_endpoint_.find(endpoint.get());
   if (service_it == service_by_endpoint_.end())
@@ -268,7 +268,7 @@ WiFiServiceRefPtr WiFiProvider::FindServiceForEndpoint(
   return service_it->second;
 }
 
-void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr &endpoint) {
+void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint) {
   if (!running_) {
     return;
   }
@@ -295,7 +295,7 @@ void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr &endpoint) {
 }
 
 WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
-    const WiFiEndpointConstRefPtr &endpoint) {
+    const WiFiEndpointConstRefPtr& endpoint) {
   if (!running_) {
     return nullptr;
   }
@@ -322,12 +322,12 @@ WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
   return service;
 }
 
-void WiFiProvider::OnEndpointUpdated(const WiFiEndpointConstRefPtr &endpoint) {
+void WiFiProvider::OnEndpointUpdated(const WiFiEndpointConstRefPtr& endpoint) {
   if (!running_) {
     return;
   }
 
-  WiFiService *service = FindServiceForEndpoint(endpoint).get();
+  WiFiService* service = FindServiceForEndpoint(endpoint).get();
   CHECK(service);
 
   // If the service still matches the endpoint in its new configuration,
@@ -346,7 +346,7 @@ void WiFiProvider::OnEndpointUpdated(const WiFiEndpointConstRefPtr &endpoint) {
   OnEndpointAdded(endpoint);
 }
 
-bool WiFiProvider::OnServiceUnloaded(const WiFiServiceRefPtr &service) {
+bool WiFiProvider::OnServiceUnloaded(const WiFiServiceRefPtr& service) {
   // If the service still has endpoints, it should remain in the service list.
   if (service->HasEndpoints()) {
     return false;
@@ -359,9 +359,9 @@ bool WiFiProvider::OnServiceUnloaded(const WiFiServiceRefPtr &service) {
   return true;
 }
 
-void WiFiProvider::LoadAndFixupServiceEntries(Profile *profile) {
+void WiFiProvider::LoadAndFixupServiceEntries(Profile* profile) {
   CHECK(profile);
-  StoreInterface *storage = profile->GetStorage();
+  StoreInterface* storage = profile->GetStorage();
   bool is_default_profile = profile->IsDefault();
   if (WiFiService::FixupServiceEntries(storage)) {
     storage->Flush();
@@ -406,7 +406,7 @@ void WiFiProvider::LoadAndFixupServiceEntries(Profile *profile) {
       connect_count_by_frequency_dated_[start_week] =
           connect_count_by_frequency;
 
-      for (const auto &freq_count :
+      for (const auto& freq_count :
            connect_count_by_frequency_dated_[start_week]) {
         connect_count_by_frequency_[freq_count.first] += freq_count.second;
         total_frequency_connections_ += freq_count.second;
@@ -417,7 +417,7 @@ void WiFiProvider::LoadAndFixupServiceEntries(Profile *profile) {
   }
 }
 
-bool WiFiProvider::Save(StoreInterface *storage) const {
+bool WiFiProvider::Save(StoreInterface* storage) const {
   int freq = 0;
   // Iterating backwards since I want to make sure that I get the newest data.
   ConnectFrequencyMapDated::const_reverse_iterator freq_count;
@@ -438,9 +438,9 @@ bool WiFiProvider::Save(StoreInterface *storage) const {
   return true;
 }
 
-WiFiServiceRefPtr WiFiProvider::AddService(const vector<uint8_t> &ssid,
-                                           const string &mode,
-                                           const string &security,
+WiFiServiceRefPtr WiFiProvider::AddService(const vector<uint8_t>& ssid,
+                                           const string& mode,
+                                           const string& security,
                                            bool is_hidden) {
   WiFiServiceRefPtr service = new WiFiService(control_interface_,
                                               dispatcher_,
@@ -457,10 +457,10 @@ WiFiServiceRefPtr WiFiProvider::AddService(const vector<uint8_t> &ssid,
   return service;
 }
 
-WiFiServiceRefPtr WiFiProvider::FindService(const vector<uint8_t> &ssid,
-                                            const string &mode,
-                                            const string &security) const {
-  for (const auto &service : services_) {
+WiFiServiceRefPtr WiFiProvider::FindService(const vector<uint8_t>& ssid,
+                                            const string& mode,
+                                            const string& security) const {
+  for (const auto& service : services_) {
     if (service->ssid() == ssid && service->mode() == mode &&
         service->IsSecurityMatch(security)) {
       return service;
@@ -472,7 +472,7 @@ WiFiServiceRefPtr WiFiProvider::FindService(const vector<uint8_t> &ssid,
 ByteArrays WiFiProvider::GetHiddenSSIDList() {
   // Create a unique set of hidden SSIDs.
   set<ByteArray> hidden_ssids_set;
-  for (const auto &service : services_) {
+  for (const auto& service : services_) {
     if (service->hidden_ssid() && service->IsRemembered()) {
       hidden_ssids_set.insert(service->ssid());
     }
@@ -481,7 +481,7 @@ ByteArrays WiFiProvider::GetHiddenSSIDList() {
   return ByteArrays(hidden_ssids_set.begin(), hidden_ssids_set.end());
 }
 
-void WiFiProvider::ForgetService(const WiFiServiceRefPtr &service) {
+void WiFiProvider::ForgetService(const WiFiServiceRefPtr& service) {
   vector<WiFiServiceRefPtr>::iterator it;
   it = std::find(services_.begin(), services_.end(), service);
   if (it == services_.end()) {
@@ -503,7 +503,7 @@ void WiFiProvider::ReportRememberedNetworkCount() {
 }
 
 void WiFiProvider::ReportServiceSourceMetrics() {
-  for (const auto &security_mode :
+  for (const auto& security_mode :
     {kSecurityNone, kSecurityWep, kSecurityPsk, kSecurity8021x}) {
     metrics_->SendToUMA(
         base::StringPrintf(
@@ -537,12 +537,12 @@ void WiFiProvider::ReportServiceSourceMetrics() {
 }
 
 // static
-bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
-                                                vector<uint8_t> *ssid_bytes,
-                                                string *mode,
-                                                string *security_method,
-                                                bool *hidden_ssid,
-                                                Error *error) {
+bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore& args,
+                                                vector<uint8_t>* ssid_bytes,
+                                                string* mode,
+                                                string* security_method,
+                                                bool* hidden_ssid,
+                                                Error* error) {
   CHECK_EQ(args.LookupString(kTypeProperty, ""), kTypeWifi);
 
   string mode_test =
@@ -624,13 +624,13 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
 
 // static
 bool WiFiProvider::GetServiceParametersFromStorage(
-    const StoreInterface *storage,
-    const std::string &entry_name,
-    std::vector<uint8_t> *ssid_bytes,
-    std::string *mode,
-    std::string *security,
-    bool *hidden_ssid,
-    Error *error) {
+    const StoreInterface* storage,
+    const std::string& entry_name,
+    std::vector<uint8_t>* ssid_bytes,
+    std::string* mode,
+    std::string* security,
+    bool* hidden_ssid,
+    Error* error) {
   // Verify service type.
   string type;
   if (!storage->GetString(entry_name, WiFiService::kStorageType, &type) ||
@@ -668,8 +668,8 @@ bool WiFiProvider::GetServiceParametersFromStorage(
 }
 
 // static
-time_t WiFiProvider::StringListToFrequencyMap(const vector<string> &strings,
-                                            ConnectFrequencyMap *numbers) {
+time_t WiFiProvider::StringListToFrequencyMap(const vector<string>& strings,
+                                            ConnectFrequencyMap* numbers) {
   if (!numbers) {
     LOG(ERROR) << "Null |numbers| parameter";
     return kIllegalStartWeek;
@@ -694,7 +694,7 @@ time_t WiFiProvider::StringListToFrequencyMap(const vector<string> &strings,
 }
 
 // static
-time_t WiFiProvider::GetStringListStartWeek(const string &week_string) {
+time_t WiFiProvider::GetStringListStartWeek(const string& week_string) {
   if (!base::StartsWithASCII(week_string, kStartWeekHeader, false)) {
     LOG(ERROR) << "Found no leading '" << kStartWeekHeader << "' in '"
                << week_string << "'";
@@ -704,8 +704,8 @@ time_t WiFiProvider::GetStringListStartWeek(const string &week_string) {
 }
 
 // static
-void WiFiProvider::ParseStringListFreqCount(const string &freq_count_string,
-                                            ConnectFrequencyMap *numbers) {
+void WiFiProvider::ParseStringListFreqCount(const string& freq_count_string,
+                                            ConnectFrequencyMap* numbers) {
   vector<string> freq_count;
   SplitString(freq_count_string, kFrequencyDelimiter, &freq_count);
   if (freq_count.size() != 2) {
@@ -721,8 +721,8 @@ void WiFiProvider::ParseStringListFreqCount(const string &freq_count_string,
 
 // static
 void WiFiProvider::FrequencyMapToStringList(time_t start_week,
-                                            const ConnectFrequencyMap &numbers,
-                                            vector<string> *strings) {
+                                            const ConnectFrequencyMap& numbers,
+                                            vector<string>* strings) {
   if (!strings) {
     LOG(ERROR) << "Null |strings| parameter";
     return;
@@ -731,7 +731,7 @@ void WiFiProvider::FrequencyMapToStringList(time_t start_week,
   strings->push_back(StringPrintf("%s%" PRIu64, kStartWeekHeader,
                                   static_cast<uint64_t>(start_week)));
 
-  for (const auto &freq_conn : numbers) {
+  for (const auto& freq_conn : numbers) {
     // Use base::Int64ToString() instead of using something like "%llu"
     // (not correct for native 64 bit architectures) or PRId64 (does not
     // work correctly using cros_workon_make due to include intricacies).
@@ -756,7 +756,7 @@ void WiFiProvider::IncrementConnectCount(uint16_t frequency_mhz) {
   while (oldest->first < oldest_legal_week) {
     SLOG(this, 6) << "Discarding frequency count info that's "
                   << this_week - oldest->first << " weeks old";
-    for (const auto &freq_count : oldest->second) {
+    for (const auto& freq_count : oldest->second) {
       connect_count_by_frequency_[freq_count.first] -= freq_count.second;
       if (connect_count_by_frequency_[freq_count.first] <= 0) {
         connect_count_by_frequency_.erase(freq_count.first);
@@ -794,10 +794,10 @@ void WiFiProvider::ReportAutoConnectableServices() {
 }
 
 int WiFiProvider::NumAutoConnectableServices() {
-  const char *reason = nullptr;
+  const char* reason = nullptr;
   int num_services = 0;
   // Determine the number of services available for auto-connect.
-  for (const auto &service : services_) {
+  for (const auto& service : services_) {
     // Service is available for auto connect if it is configured for auto
     // connect, and is auto-connectable.
     if (service->auto_connect() && service->IsAutoConnectable(&reason)) {
@@ -809,7 +809,7 @@ int WiFiProvider::NumAutoConnectableServices() {
 
 vector<ByteString> WiFiProvider::GetSsidsConfiguredForAutoConnect() {
   vector<ByteString> results;
-  for (const auto &service : services_) {
+  for (const auto& service : services_) {
     if (service->auto_connect()) {
       // Service configured for auto-connect.
       ByteString ssid_bytes(service->ssid());

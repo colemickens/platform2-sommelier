@@ -10,18 +10,18 @@
 
 namespace shill {
 
-MockScanSession::MockScanSession(NetlinkManager *netlink_manager,
-                                 EventDispatcher *dispatcher,
+MockScanSession::MockScanSession(NetlinkManager* netlink_manager,
+                                 EventDispatcher* dispatcher,
                                  const WiFiProvider::FrequencyCountList
                                      &previous_frequencies,
                                  const std::set<uint16_t>
                                      &available_frequencies,
                                  uint32_t ifindex,
-                                 const FractionList &fractions,
+                                 const FractionList& fractions,
                                  int min_frequencies,
                                  int max_frequencies,
                                  OnScanFailed on_scan_failed,
-                                 Metrics *metrics)
+                                 Metrics* metrics)
     : ScanSession(netlink_manager,
                   dispatcher,
                   previous_frequencies,

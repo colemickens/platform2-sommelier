@@ -41,61 +41,61 @@ class WiFiService : public Service {
   static const char kStorageRoamThreshold[];
   static const char kStorageRoamThresholdSet[];
 
-  WiFiService(ControlInterface *control_interface,
-              EventDispatcher *dispatcher,
-              Metrics *metrics,
-              Manager *manager,
-              WiFiProvider *provider,
-              const std::vector<uint8_t> &ssid,
-              const std::string &mode,
-              const std::string &security,
+  WiFiService(ControlInterface* control_interface,
+              EventDispatcher* dispatcher,
+              Metrics* metrics,
+              Manager* manager,
+              WiFiProvider* provider,
+              const std::vector<uint8_t>& ssid,
+              const std::string& mode,
+              const std::string& security,
               bool hidden_ssid);
   ~WiFiService();
 
   // Inherited from Service.
-  void Connect(Error *error, const char *reason) override;
-  void Disconnect(Error *error, const char *reason) override;
+  void Connect(Error* error, const char* reason) override;
+  void Disconnect(Error* error, const char* reason) override;
   bool Is8021x() const override;
 
-  virtual void AddEndpoint(const WiFiEndpointConstRefPtr &endpoint);
-  virtual void RemoveEndpoint(const WiFiEndpointConstRefPtr &endpoint);
+  virtual void AddEndpoint(const WiFiEndpointConstRefPtr& endpoint);
+  virtual void RemoveEndpoint(const WiFiEndpointConstRefPtr& endpoint);
   virtual int GetEndpointCount() const { return endpoints_.size(); }
 
   // Called to update the identity of the currently connected endpoint.
   // To indicate that there is no currently connect endpoint, call with
   // |endpoint| set to nullptr.
-  virtual void NotifyCurrentEndpoint(const WiFiEndpointConstRefPtr &endpoint);
+  virtual void NotifyCurrentEndpoint(const WiFiEndpointConstRefPtr& endpoint);
   // Called to inform of changes in the properties of an endpoint.
   // (Not necessarily the currently connected endpoint.)
-  virtual void NotifyEndpointUpdated(const WiFiEndpointConstRefPtr &endpoint);
+  virtual void NotifyEndpointUpdated(const WiFiEndpointConstRefPtr& endpoint);
 
   // wifi_<MAC>_<BSSID>_<mode_string>_<security_string>
   std::string GetStorageIdentifier() const override;
-  static bool ParseStorageIdentifier(const std::string &storage_name,
-                                     std::string *address,
-                                     std::string *mode,
-                                     std::string *security);
+  static bool ParseStorageIdentifier(const std::string& storage_name,
+                                     std::string* address,
+                                     std::string* mode,
+                                     std::string* security);
 
   // Iterate over |storage| looking for WiFi servces with "old-style"
   // properties that don't include explicit type/mode/security, and add
   // these properties.  Returns true if any entries were fixed.
-  static bool FixupServiceEntries(StoreInterface *storage);
+  static bool FixupServiceEntries(StoreInterface* storage);
 
   // Validate |mode| against all valid and supported service modes.
-  static bool IsValidMode(const std::string &mode);
+  static bool IsValidMode(const std::string& mode);
 
   // Validate |method| against all valid and supported security methods.
-  static bool IsValidSecurityMethod(const std::string &method);
+  static bool IsValidSecurityMethod(const std::string& method);
 
   // Validate |security_class| against all valid and supported
   // security classes.
-  static bool IsValidSecurityClass(const std::string &security_class);
+  static bool IsValidSecurityClass(const std::string& security_class);
 
-  const std::string &mode() const { return mode_; }
-  const std::string &key_management() const { return GetEAPKeyManagement(); }
-  const std::vector<uint8_t> &ssid() const { return ssid_; }
-  const std::string &bssid() const { return bssid_; }
-  const std::vector<uint16_t> &frequency_list() const {
+  const std::string& mode() const { return mode_; }
+  const std::string& key_management() const { return GetEAPKeyManagement(); }
+  const std::vector<uint8_t>& ssid() const { return ssid_; }
+  const std::string& bssid() const { return bssid_; }
+  const std::vector<uint16_t>& frequency_list() const {
     return frequency_list_;
   }
   uint16_t physical_mode() const { return physical_mode_; }
@@ -105,13 +105,13 @@ class WiFiService : public Service {
   // storage identifier.  Override the methods from the parent Service
   // class which pertain to whether this service may be loaded from |storage|.
   std::string GetLoadableStorageIdentifier(
-      const StoreInterface &storage) const override;
-  bool IsLoadableFrom(const StoreInterface &storage) const override;
+      const StoreInterface& storage) const override;
+  bool IsLoadableFrom(const StoreInterface& storage) const override;
 
   // Override Load and Save from parent Service class.  We will call
   // the parent method.
-  bool Load(StoreInterface *storage) override;
-  bool Save(StoreInterface *storage) override;
+  bool Load(StoreInterface* storage) override;
+  bool Save(StoreInterface* storage) override;
   bool Unload() override;
 
   // Override SetState from parent Service class.  We will call the
@@ -120,7 +120,7 @@ class WiFiService : public Service {
 
   virtual bool HasEndpoints() const { return !endpoints_.empty(); }
   bool IsVisible() const override;
-  bool IsSecurityMatch(const std::string &security) const;
+  bool IsSecurityMatch(const std::string& security) const;
 
   // Used by WiFi objects to indicate that the credentials for this network
   // have been called into question.  This method returns true if given this
@@ -164,9 +164,9 @@ class WiFiService : public Service {
 
   // "wpa", "rsn" and "psk" are equivalent from a configuration perspective.
   // This function maps them all into "psk".
-  static std::string ComputeSecurityClass(const std::string &security);
+  static std::string ComputeSecurityClass(const std::string& security);
 
-  bool IsAutoConnectable(const char **reason) const override;
+  bool IsAutoConnectable(const char** reason) const override;
 
   // Signal level in dBm.  If no current endpoint, returns
   // std::numeric_limits<int>::min().
@@ -179,8 +179,8 @@ class WiFiService : public Service {
   bool roam_threshold_db_set() { return roam_threshold_db_set_; }
 
  protected:
-  void SetEAPKeyManagement(const std::string &key_management) override;
-  std::string GetTethering(Error *error) const override;
+  void SetEAPKeyManagement(const std::string& key_management) override;
+  std::string GetTethering(Error* error) const override;
 
  private:
   friend class WiFiServiceSecurityTest;
@@ -229,43 +229,43 @@ class WiFiService : public Service {
   // Override the base clase implementation, because we need to allow
   // arguments that aren't base class methods.
   void HelpRegisterConstDerivedString(
-      const std::string &name,
-      std::string(WiFiService::*get)(Error *error));
+      const std::string& name,
+      std::string(WiFiService::*get)(Error* error));
   void HelpRegisterDerivedString(
-      const std::string &name,
-      std::string(WiFiService::*get)(Error *error),
-      bool(WiFiService::*set)(const std::string &value, Error *error));
+      const std::string& name,
+      std::string(WiFiService::*get)(Error* error),
+      bool(WiFiService::*set)(const std::string& value, Error* error));
   void HelpRegisterWriteOnlyDerivedString(
-      const std::string &name,
-      bool(WiFiService::*set)(const std::string &value, Error *error),
-      void(WiFiService::*clear)(Error *error),
-      const std::string *default_value);
+      const std::string& name,
+      bool(WiFiService::*set)(const std::string& value, Error* error),
+      void(WiFiService::*clear)(Error* error),
+      const std::string* default_value);
   void HelpRegisterDerivedUint16(
-      const std::string &name,
-      uint16_t(WiFiService::*get)(Error *error),
-      bool(WiFiService::*set)(const uint16_t &value, Error *error),
-      void(WiFiService::*clear)(Error *error));
+      const std::string& name,
+      uint16_t(WiFiService::*get)(Error* error),
+      bool(WiFiService::*set)(const uint16_t& value, Error* error),
+      void(WiFiService::*clear)(Error* error));
 
-  std::string GetDeviceRpcId(Error *error) const override;
+  std::string GetDeviceRpcId(Error* error) const override;
 
-  void ClearPassphrase(Error *error);
+  void ClearPassphrase(Error* error);
   void UpdateConnectable();
   void UpdateFromEndpoints();
   void UpdateSecurity();
 
   static CryptoAlgorithm ComputeCipher8021x(
-      const std::set<WiFiEndpointConstRefPtr> &endpoints);
-  static void ValidateWEPPassphrase(const std::string &passphrase,
-                                    Error *error);
-  static void ValidateWPAPassphrase(const std::string &passphrase,
-                                    Error *error);
-  static void ParseWEPPassphrase(const std::string &passphrase,
-                                 int *key_index,
-                                 std::vector<uint8_t> *password_bytes,
-                                 Error *error);
-  static bool CheckWEPIsHex(const std::string &passphrase, Error *error);
-  static bool CheckWEPKeyIndex(const std::string &passphrase, Error *error);
-  static bool CheckWEPPrefix(const std::string &passphrase, Error *error);
+      const std::set<WiFiEndpointConstRefPtr>& endpoints);
+  static void ValidateWEPPassphrase(const std::string& passphrase,
+                                    Error* error);
+  static void ValidateWPAPassphrase(const std::string& passphrase,
+                                    Error* error);
+  static void ParseWEPPassphrase(const std::string& passphrase,
+                                 int* key_index,
+                                 std::vector<uint8_t>* password_bytes,
+                                 Error* error);
+  static bool CheckWEPIsHex(const std::string& passphrase, Error* error);
+  static bool CheckWEPKeyIndex(const std::string& passphrase, Error* error);
+  static bool CheckWEPPrefix(const std::string& passphrase, Error* error);
 
   // Maps a signal value, in dBm, to a "strength" value, from
   // |Service::kStrengthMin| to |Service:kStrengthMax|.
@@ -277,7 +277,7 @@ class WiFiService : public Service {
   // Return the security of this service.  If connected, the security
   // reported from the currently connected endpoint is returned.  Otherwise
   // the configured security for the service is returned.
-  std::string GetSecurity(Error *error);
+  std::string GetSecurity(Error* error);
 
   // Return the security class of this service.  If connected, the
   // security class of the currently connected endpoint is returned.
@@ -285,7 +285,7 @@ class WiFiService : public Service {
   // returned.
   //
   // See also: ComputeSecurityClass.
-  std::string GetSecurityClass(Error *error);
+  std::string GetSecurityClass(Error* error);
 
   // Profile data for a WPA/RSN service can be stored under a number of
   // different security types.  These functions create different storage
@@ -300,7 +300,7 @@ class WiFiService : public Service {
   // passphrase is already set to the value of |passphrase|, this method will
   // return false.  If it is due to an error, |error| will be populated with the
   // appropriate information.
-  bool SetPassphrase(const std::string &passphrase, Error *error);
+  bool SetPassphrase(const std::string& passphrase, Error* error);
 
   // Called by SetPassphrase and LoadPassphrase to perform the check on a
   // passphrase change.  |passphrase| is the new passphrase to be used for the
@@ -309,25 +309,25 @@ class WiFiService : public Service {
   // the SetPassphraseInternal method was triggered.  If the method was called
   // from Load, the has_ever_connected flag will not be reset.  If the method
   // was called from SetPassphrase, has_ever_connected will be set to false.
-  bool SetPassphraseInternal(const std::string &passphrase,
+  bool SetPassphraseInternal(const std::string& passphrase,
                              Service::UpdateCredentialsReason reason);
 
   // Select a WiFi device (e.g, for connecting a hidden service with no
   // endpoints).
   WiFiRefPtr ChooseDevice();
 
-  std::string GetPreferredDevice(Error *error);
+  std::string GetPreferredDevice(Error* error);
   // Called from DBus and during load to apply the preferred device for this
   // service.
-  bool SetPreferredDevice(const std::string &device_name, Error *error);
+  bool SetPreferredDevice(const std::string& device_name, Error* error);
 
-  void SetWiFi(const WiFiRefPtr &new_wifi);
+  void SetWiFi(const WiFiRefPtr& new_wifi);
 
   // This method can't be 'const' because it is passed to
   // HelpRegisterDerivedUint16, which doesn't take const methods.
-  uint16_t GetRoamThreshold(Error *error) /*const*/;
-  bool SetRoamThreshold(const uint16_t &threshold, Error *error);
-  void ClearRoamThreshold(Error *error);
+  uint16_t GetRoamThreshold(Error* error) /*const*/;
+  bool SetRoamThreshold(const uint16_t& threshold, Error* error);
+  void ClearRoamThreshold(Error* error);
 
   // Properties
   std::string passphrase_;
@@ -379,7 +379,7 @@ class WiFiService : public Service {
   // Bare pointer is safe because WiFi service instances are owned by
   // the WiFiProvider and are guaranteed to be deallocated by the time
   // the WiFiProvider is.
-  WiFiProvider *provider_;
+  WiFiProvider* provider_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFiService);
 };

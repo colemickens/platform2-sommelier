@@ -136,9 +136,9 @@ class WiFiProviderTest : public testing::Test {
         .Times(AnyNumber());
   }
 
-  bool GetStringList(const std::string &/*group*/,
-                     const std::string &key,
-                     std::vector<std::string> *value) {
+  bool GetStringList(const std::string& /*group*/,
+                     const std::string& key,
+                     std::vector<std::string>* value) {
     if (!value) {
       return false;
     }
@@ -149,9 +149,9 @@ class WiFiProviderTest : public testing::Test {
     return false;
   }
 
-  bool GetIllegalDayStringList(const std::string &/*group*/,
-                               const std::string &key,
-                               std::vector<std::string> *value) {
+  bool GetIllegalDayStringList(const std::string& /*group*/,
+                               const std::string& key,
+                               std::vector<std::string>* value) {
     if (!value) {
       return false;
     }
@@ -164,21 +164,21 @@ class WiFiProviderTest : public testing::Test {
 
   // Used by mock invocations of RegisterService() to maintain the side-effect
   // of assigning a profile to |service|.
-  void BindServiceToDefaultProfile(const ServiceRefPtr &service) {
+  void BindServiceToDefaultProfile(const ServiceRefPtr& service) {
     service->set_profile(default_profile_);
   }
-  void BindServiceToUserProfile(const ServiceRefPtr &service) {
+  void BindServiceToUserProfile(const ServiceRefPtr& service) {
     service->set_profile(user_profile_);
   }
 
  protected:
   typedef scoped_refptr<MockWiFiService> MockWiFiServiceRefPtr;
 
-  void CreateServicesFromProfile(Profile *profile) {
+  void CreateServicesFromProfile(Profile* profile) {
     provider_.CreateServicesFromProfile(profile);
   }
 
-  void LoadAndFixupServiceEntries(Profile *profile) {
+  void LoadAndFixupServiceEntries(Profile* profile) {
     provider_.LoadAndFixupServiceEntries(profile);
   }
 
@@ -190,7 +190,7 @@ class WiFiProviderTest : public testing::Test {
     return provider_.services_;
   }
 
-  const WiFiProvider::EndpointServiceMap &GetServiceByEndpoint() {
+  const WiFiProvider::EndpointServiceMap& GetServiceByEndpoint() {
     return provider_.service_by_endpoint_;
   }
 
@@ -198,25 +198,25 @@ class WiFiProviderTest : public testing::Test {
     return provider_.running_;
   }
 
-  void AddStringParameterToStorage(MockStore *storage,
-                                   const string &id,
-                                   const string &key,
-                                   const string &value) {
+  void AddStringParameterToStorage(MockStore* storage,
+                                   const string& id,
+                                   const string& key,
+                                   const string& value) {
     EXPECT_CALL(*storage, GetString(id, key, _))
         .WillRepeatedly(DoAll(SetArgumentPointee<2>(value),
                               Return(true)));
   }
 
   // Adds service to profile's storage. But does not set profile on the Service.
-  string AddServiceToProfileStorage(Profile *profile,
-                                    const char *ssid,
-                                    const char *mode,
-                                    const char *security,
+  string AddServiceToProfileStorage(Profile* profile,
+                                    const char* ssid,
+                                    const char* mode,
+                                    const char* security,
                                     bool is_hidden,
                                     bool provide_hidden) {
     string id = base::StringToLowerASCII(
         base::StringPrintf("entry_%d", storage_entry_index_));
-    auto profile_storage = dynamic_cast<MockStore *>(profile->GetStorage());
+    auto profile_storage = dynamic_cast<MockStore*>(profile->GetStorage());
     EXPECT_CALL(*profile_storage, GetString(id, _, _))
         .WillRepeatedly(Return(false));
     AddStringParameterToStorage(
@@ -248,12 +248,12 @@ class WiFiProviderTest : public testing::Test {
     return id;
   }
 
-  void SetServiceParameters(const char *ssid,
-                            const char *mode,
-                            const char *security_class,
+  void SetServiceParameters(const char* ssid,
+                            const char* mode,
+                            const char* security_class,
                             bool is_hidden,
                             bool provide_hidden,
-                            KeyValueStore *args) {
+                            KeyValueStore* args) {
     args->SetString(kTypeProperty, kTypeWifi);
     if (ssid) {
       // TODO(pstew): When Chrome switches to using kWifiHexSsid primarily for
@@ -271,48 +271,48 @@ class WiFiProviderTest : public testing::Test {
     }
   }
 
-  ServiceRefPtr CreateTemporaryService(const char *ssid,
-                                       const char *mode,
-                                       const char *security,
+  ServiceRefPtr CreateTemporaryService(const char* ssid,
+                                       const char* mode,
+                                       const char* security,
                                        bool is_hidden,
                                        bool provide_hidden,
-                                       Error *error) {
+                                       Error* error) {
     KeyValueStore args;
     SetServiceParameters(
         ssid, mode, security, is_hidden, provide_hidden, &args);
     return provider_.CreateTemporaryService(args, error);
   }
 
-  WiFiServiceRefPtr GetService(const char *ssid,
-                               const char *mode,
-                               const char *security_class,
+  WiFiServiceRefPtr GetService(const char* ssid,
+                               const char* mode,
+                               const char* security_class,
                                bool is_hidden,
                                bool provide_hidden,
-                               Error *error) {
+                               Error* error) {
     KeyValueStore args;
     SetServiceParameters(
         ssid, mode, security_class, is_hidden, provide_hidden, &args);
     return provider_.GetWiFiService(args, error);
   }
 
-  WiFiServiceRefPtr GetWiFiService(const KeyValueStore &args, Error *error) {
+  WiFiServiceRefPtr GetWiFiService(const KeyValueStore& args, Error* error) {
     return provider_.GetWiFiService(args, error);
   }
 
-  WiFiServiceRefPtr FindService(const vector<uint8_t> &ssid,
-                                const string &mode,
-                                const string &security) {
+  WiFiServiceRefPtr FindService(const vector<uint8_t>& ssid,
+                                const string& mode,
+                                const string& security) {
     return provider_.FindService(ssid, mode, security);
   }
-  WiFiEndpointRefPtr MakeEndpoint(const string &ssid, const string &bssid,
+  WiFiEndpointRefPtr MakeEndpoint(const string& ssid, const string& bssid,
                                   uint16_t frequency, int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
         nullptr, nullptr, ssid, bssid,
         WPASupplicant::kNetworkModeInfrastructure, frequency, signal_dbm);
   }
-  MockWiFiServiceRefPtr AddMockService(const vector<uint8_t> &ssid,
-                                       const string &mode,
-                                       const string &security,
+  MockWiFiServiceRefPtr AddMockService(const vector<uint8_t>& ssid,
+                                       const string& mode,
+                                       const string& security,
                                        bool hidden_ssid) {
     MockWiFiServiceRefPtr service = new MockWiFiService(
         &control_,
@@ -328,15 +328,15 @@ class WiFiProviderTest : public testing::Test {
     return service;
   }
   void AddEndpointToService(WiFiServiceRefPtr service,
-                            const WiFiEndpointConstRefPtr &endpoint) {
+                            const WiFiEndpointConstRefPtr& endpoint) {
     provider_.service_by_endpoint_[endpoint.get()] = service;
   }
 
-  void BuildFreqCountStrings(vector<string> *strings) {
+  void BuildFreqCountStrings(vector<string>* strings) {
     // NOTE: These strings match the frequencies in |BuildFreqCountMap|.  They
     // are also provided, here, in sorted order to match the frequency map
     // (iterators for which will provide them in frequency-sorted order).
-    static const char *kStrings[] = {
+    static const char* kStrings[] = {
       "@20", "5180:14", "5240:16", "5745:7", "5765:4", "5785:14", "5805:5"
     };
     if (!strings) {
@@ -348,7 +348,7 @@ class WiFiProviderTest : public testing::Test {
     }
   }
 
-  void BuildFreqCountMap(WiFiProvider::ConnectFrequencyMap *frequencies) {
+  void BuildFreqCountMap(WiFiProvider::ConnectFrequencyMap* frequencies) {
     // NOTE: These structures match the strings in |BuildFreqCountStrings|.
     static const struct FreqCount {
       uint16_t freq;
@@ -718,7 +718,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenNotConnected) {
 TEST_F(WiFiProviderTest, CreateTemporaryServiceFromProfileNonWiFi) {
   const string kEntryName("name");
   auto profile_storage =
-      dynamic_cast<MockStore *>(default_profile_->GetStorage());
+      dynamic_cast<MockStore*>(default_profile_->GetStorage());
   EXPECT_CALL(*profile_storage,
               GetString(kEntryName, WiFiService::kStorageType, _))
       .WillOnce(Return(false));

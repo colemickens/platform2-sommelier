@@ -24,19 +24,19 @@ class NetlinkMessage;
 class Callback80211Metrics :
   public base::SupportsWeakPtr<Callback80211Metrics> {
  public:
-  explicit Callback80211Metrics(Metrics *metrics);
+  explicit Callback80211Metrics(Metrics* metrics);
 
   // Called with each broadcast netlink message that arrives to NetlinkManager.
   // If the message is a deauthenticate message, the method collects the reason
   // for the deauthentication and communicates those to UMA.
-  void CollectDisconnectStatistics(const NetlinkMessage &msg);
+  void CollectDisconnectStatistics(const NetlinkMessage& msg);
 
  private:
   static const char kMetricLinkDisconnectCount[];
 
   IEEE_80211::WiFiReasonCode WiFiReasonCodeFromUint16(uint16_t reason) const;
 
-  Metrics *metrics_;
+  Metrics* metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(Callback80211Metrics);
 };

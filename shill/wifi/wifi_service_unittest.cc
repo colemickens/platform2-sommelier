@@ -79,19 +79,19 @@ class WiFiServiceTest : public PropertyStoreTest {
  protected:
   static const char fake_mac[];
 
-  MockEapCredentials *SetMockEap(
-      const WiFiServiceRefPtr &service) {
-    MockEapCredentials *eap = new MockEapCredentials();
+  MockEapCredentials* SetMockEap(
+      const WiFiServiceRefPtr& service) {
+    MockEapCredentials* eap = new MockEapCredentials();
     service->eap_.reset(eap);  // Passes ownership.
     return eap;
   }
-  bool CheckConnectable(const string &security, const char *passphrase,
+  bool CheckConnectable(const string& security, const char* passphrase,
                         bool is_1x_connectable) {
     Error error;
     WiFiServiceRefPtr service = MakeSimpleService(security);
     if (passphrase)
       service->SetPassphrase(passphrase, &error);
-    MockEapCredentials *eap = SetMockEap(service);
+    MockEapCredentials* eap = SetMockEap(service);
     EXPECT_CALL(*eap, IsConnectable())
         .WillRepeatedly(Return(is_1x_connectable));
     const string kKeyManagement8021x(WPASupplicant::kKeyManagementIeee8021X);
@@ -102,29 +102,29 @@ class WiFiServiceTest : public PropertyStoreTest {
     service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
     return service->connectable();
   }
-  WiFiEndpoint *MakeEndpoint(const string &ssid, const string &bssid,
+  WiFiEndpoint* MakeEndpoint(const string& ssid, const string& bssid,
                              uint16_t frequency, int16_t signal_dbm,
                              bool has_wpa_property, bool has_rsn_property) {
     return WiFiEndpoint::MakeEndpoint(
         nullptr, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm, has_wpa_property, has_rsn_property);
   }
-  WiFiEndpoint *MakeOpenEndpoint(const string &ssid, const string &bssid,
+  WiFiEndpoint* MakeOpenEndpoint(const string& ssid, const string& bssid,
                                  uint16_t frequency, int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
         nullptr, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm);
   }
-  WiFiEndpoint *MakeOpenEndpointWithWiFi(WiFiRefPtr wifi,
-                                         const string &ssid,
-                                         const string &bssid,
+  WiFiEndpoint* MakeOpenEndpointWithWiFi(WiFiRefPtr wifi,
+                                         const string& ssid,
+                                         const string& bssid,
                                          uint16_t frequency,
                                          int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
         nullptr, wifi, ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm);
   }
-  WiFiServiceRefPtr MakeSimpleService(const string &security) {
+  WiFiServiceRefPtr MakeSimpleService(const string& security) {
     return new WiFiService(control_interface(),
                            dispatcher(),
                            metrics(),
@@ -144,7 +144,7 @@ class WiFiServiceTest : public PropertyStoreTest {
   void SetWiFiForService(WiFiServiceRefPtr service, WiFiRefPtr wifi) {
     service->wifi_ = wifi;
   }
-  WiFiServiceRefPtr MakeServiceWithWiFi(const string &security) {
+  WiFiServiceRefPtr MakeServiceWithWiFi(const string& security) {
     WiFiServiceRefPtr service = MakeSimpleService(security);
     SetWiFiForService(service, wifi_);
     return service;
@@ -160,7 +160,7 @@ class WiFiServiceTest : public PropertyStoreTest {
                            kSecurityNone,
                            false);
   }
-  scoped_refptr<MockWiFi> MakeSimpleWiFi(const string &link_name) {
+  scoped_refptr<MockWiFi> MakeSimpleWiFi(const string& link_name) {
     return new NiceMock<MockWiFi>(control_interface(),
                                   dispatcher(),
                                   metrics(),
@@ -169,11 +169,11 @@ class WiFiServiceTest : public PropertyStoreTest {
                                   fake_mac,
                                   0);
   }
-  ServiceMockAdaptor *GetAdaptor(WiFiService *service) {
-    return dynamic_cast<ServiceMockAdaptor *>(service->adaptor());
+  ServiceMockAdaptor* GetAdaptor(WiFiService* service) {
+    return dynamic_cast<ServiceMockAdaptor*>(service->adaptor());
   }
-  Error::Type TestConfigurePassphrase(const string &security,
-                                      const char *passphrase) {
+  Error::Type TestConfigurePassphrase(const string& security,
+                                      const char* passphrase) {
     WiFiServiceRefPtr service = MakeSimpleService(security);
     KeyValueStore args;
     if (passphrase) {
@@ -190,11 +190,11 @@ class WiFiServiceTest : public PropertyStoreTest {
     return service->GetRoamThreshold(nullptr);
   }
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
-  MockManager *mock_manager() { return &mock_manager_; }
-  MockWiFiProvider *provider() { return &provider_; }
+  MockManager* mock_manager() { return &mock_manager_; }
+  MockWiFiProvider* provider() { return &provider_; }
   string GetAnyDeviceAddress() { return WiFiService::kAnyDeviceAddress; }
-  const vector<uint8_t> &simple_ssid() { return simple_ssid_; }
-  const string &simple_ssid_string() { return simple_ssid_string_; }
+  const vector<uint8_t>& simple_ssid() { return simple_ssid_; }
+  const string& simple_ssid_string() { return simple_ssid_string_; }
 
  private:
   MockManager mock_manager_;
@@ -223,7 +223,7 @@ MATCHER_P3(ContainsWiFiProperties, ssid, mode, security, "") {
 class WiFiServiceSecurityTest : public WiFiServiceTest {
  public:
   bool TestStorageSecurityIs(WiFiServiceRefPtr wifi_service,
-                             const string &security) {
+                             const string& security) {
     string id = wifi_service->GetStorageIdentifier();
     size_t mac_pos = id.find(base::StringToLowerASCII(GetAnyDeviceAddress()));
     EXPECT_NE(mac_pos, string::npos);
@@ -236,8 +236,8 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
   // gets by default a storage identifier with |to_security| as its
   // security component, and that when saved, it sets the Security
   // property in to |to_security| as well.
-  bool TestStorageMapping(const string &from_security,
-                          const string &to_security) {
+  bool TestStorageMapping(const string& from_security,
+                          const string& to_security) {
     WiFiServiceRefPtr wifi_service = MakeSimpleService(from_security);
     NiceMock<MockStore> mock_store;
     EXPECT_CALL(mock_store, SetString(_, _, _)).WillRepeatedly(Return(true));
@@ -256,8 +256,8 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
   // Make sure the result meets |expectation|.  If |expectation| is
   // true, also make sure the service storage identifier changes to
   // match |storage_security|.
-  bool TestLoadMapping(const string &service_security,
-                       const string &storage_security,
+  bool TestLoadMapping(const string& service_security,
+                       const string& storage_security,
                        bool expectation) {
     WiFiServiceRefPtr wifi_service = MakeSimpleService(service_security);
     NiceMock<MockStore> mock_store;
@@ -318,9 +318,9 @@ class WiFiServiceUpdateFromEndpointsTest : public WiFiServiceTest {
   static const int16_t kOkEndpointSignal = -50;
   static const int16_t kBadEndpointSignal = -75;
   static const int16_t kGoodEndpointSignal = -25;
-  static const char *kOkEndpointBssId;
-  static const char *kGoodEndpointBssId;
-  static const char *kBadEndpointBssId;
+  static const char* kOkEndpointBssId;
+  static const char* kGoodEndpointBssId;
+  static const char* kBadEndpointBssId;
   // Can't be both static and const (because initialization requires a
   // function call). So choose to be just const.
   const uint8_t kOkEndpointStrength;
@@ -330,14 +330,14 @@ class WiFiServiceUpdateFromEndpointsTest : public WiFiServiceTest {
   WiFiEndpointRefPtr bad_endpoint;
   WiFiEndpointRefPtr good_endpoint;
   WiFiServiceRefPtr service;
-  ServiceMockAdaptor &adaptor;
+  ServiceMockAdaptor& adaptor;
 };
 
-const char *WiFiServiceUpdateFromEndpointsTest::kOkEndpointBssId =
+const char* WiFiServiceUpdateFromEndpointsTest::kOkEndpointBssId =
     "00:00:00:00:00:01";
-const char *WiFiServiceUpdateFromEndpointsTest::kGoodEndpointBssId =
+const char* WiFiServiceUpdateFromEndpointsTest::kGoodEndpointBssId =
     "00:00:00:00:00:02";
-const char *WiFiServiceUpdateFromEndpointsTest::kBadEndpointBssId =
+const char* WiFiServiceUpdateFromEndpointsTest::kBadEndpointBssId =
     "00:00:00:00:00:03";
 
 class WiFiServiceFixupStorageTest : public WiFiServiceTest {
@@ -581,7 +581,7 @@ TEST_F(WiFiServiceTest, ConnectTask8021x) {
 
 TEST_F(WiFiServiceTest, ConnectTask8021xWithMockEap) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurity8021x);
-  MockEapCredentials *eap = SetMockEap(service);
+  MockEapCredentials* eap = SetMockEap(service);
   EXPECT_CALL(*eap, IsConnectable()).WillOnce(Return(true));
   EXPECT_CALL(*wifi(), ConnectTo(service.get()));
   service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
@@ -842,7 +842,7 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
 TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
   WiFiServiceRefPtr wifi_service =
       MakeServiceWithWiFi(kSecurity8021x);
-  PropertyStore &property_store(*wifi_service->mutable_store());
+  PropertyStore& property_store(*wifi_service->mutable_store());
 
   // Property with custom accessor.
   const string kPassword = "abcdefgh";
@@ -1344,7 +1344,7 @@ TEST_F(WiFiServiceTest, Connectable) {
 }
 
 TEST_F(WiFiServiceTest, IsAutoConnectable) {
-  const char *reason;
+  const char* reason;
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
   EXPECT_CALL(*wifi(), IsIdle())
       .WillRepeatedly(Return(true));
@@ -1373,7 +1373,7 @@ TEST_F(WiFiServiceTest, IsAutoConnectable) {
 }
 
 TEST_F(WiFiServiceTest, AutoConnect) {
-  const char *reason;
+  const char* reason;
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
   EXPECT_FALSE(service->IsAutoConnectable(&reason));
   EXPECT_CALL(*wifi(), ConnectTo(_)).Times(0);
@@ -1757,7 +1757,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, FrequencyList) {
 TEST_F(WiFiServiceTest, SecurityFromCurrentEndpoint) {
   WiFiServiceRefPtr service(MakeSimpleService(kSecurityPsk));
   EXPECT_EQ(kSecurityPsk, service->GetSecurity(nullptr));
-  WiFiEndpoint *endpoint = MakeOpenEndpoint(
+  WiFiEndpoint* endpoint = MakeOpenEndpoint(
         simple_ssid_string(), "00:00:00:00:00:00", 0, 0);
   service->AddEndpoint(endpoint);
   EXPECT_EQ(kSecurityPsk, service->GetSecurity(nullptr));
@@ -1945,7 +1945,7 @@ TEST_F(WiFiServiceTest, Unload) {
 
 TEST_F(WiFiServiceTest, PropertyChanges) {
   WiFiServiceRefPtr service = MakeServiceWithMockManager();
-  ServiceMockAdaptor *adaptor = GetAdaptor(service.get());
+  ServiceMockAdaptor* adaptor = GetAdaptor(service.get());
   TestCommonPropertyChanges(service, adaptor);
   TestAutoConnectPropertyChange(service, adaptor);
 
@@ -2079,7 +2079,7 @@ TEST_F(WiFiServiceTest, GetTethering) {
 
 TEST_F(WiFiServiceTest, IsVisible) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityNone);
-  ServiceMockAdaptor *adaptor = GetAdaptor(wifi_service.get());
+  ServiceMockAdaptor* adaptor = GetAdaptor(wifi_service.get());
 
   // Adding the first endpoint emits a change: Visible = true.
   EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, true));

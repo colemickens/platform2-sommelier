@@ -32,20 +32,20 @@ class TDLSManagerTest : public testing::Test {
   TDLSManagerTest()
       : tdls_manager_(&event_dispatcher_, &supplicant_interface_proxy_, "") {}
 
-  void SetPeerDiscovering(const string &peer_mac_address) {
+  void SetPeerDiscovering(const string& peer_mac_address) {
     tdls_manager_.peer_discovery_state_[peer_mac_address] =
         TDLSManager::PeerDiscoveryState::kRequestSent;
   }
-  bool IsPeerDiscovering(const string &peer_mac_address) {
+  bool IsPeerDiscovering(const string& peer_mac_address) {
     return tdls_manager_.CheckDiscoveryState(peer_mac_address) ==
         TDLSManager::PeerDiscoveryState::kRequestSent;
   }
 
-  void SetPeerDiscovered(const string &peer_mac_address) {
+  void SetPeerDiscovered(const string& peer_mac_address) {
     tdls_manager_.peer_discovery_state_[peer_mac_address] =
         TDLSManager::PeerDiscoveryState::kResponseReceived;
   }
-  bool IsPeerDiscovered(const string &peer_mac_address) {
+  bool IsPeerDiscovered(const string& peer_mac_address) {
     return tdls_manager_.CheckDiscoveryState(peer_mac_address) ==
         TDLSManager::PeerDiscoveryState::kResponseReceived;
   }
@@ -167,7 +167,7 @@ TEST_F(TDLSManagerTest, PeerStatus) {
     { WPASupplicant::kTDLSStatePeerDoesNotExist, kTDLSNonexistentState },
     { WPASupplicant::kTDLSStatePeerNotConnected, kTDLSDisconnectedState },
   };
-  for (const auto &it : kTDLSStatusMap) {
+  for (const auto& it : kTDLSStatusMap) {
     error.Reset();
     EXPECT_CALL(supplicant_interface_proxy_, TDLSStatus(StrEq(kPeer)))
         .WillOnce(Return(it.first));

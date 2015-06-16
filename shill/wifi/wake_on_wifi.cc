@@ -41,7 +41,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static std::string ObjectID(WakeOnWiFi *w) { return "(wake_on_wifi)"; }
+static std::string ObjectID(WakeOnWiFi* w) { return "(wake_on_wifi)"; }
 }
 
 const char WakeOnWiFi::kWakeOnIPAddressPatternsNotSupported[] =
@@ -74,8 +74,8 @@ const char WakeOnWiFi::kWakeReasonStringDisconnect[] = "WiFi.Disconnect";
 const char WakeOnWiFi::kWakeReasonStringSSID[] = "WiFi.SSID";
 
 WakeOnWiFi::WakeOnWiFi(
-    NetlinkManager *netlink_manager, EventDispatcher *dispatcher,
-    Metrics *metrics,
+    NetlinkManager* netlink_manager, EventDispatcher* dispatcher,
+    Metrics* metrics,
     RecordWakeReasonCallback record_wake_reason_callback)
     : dispatcher_(dispatcher),
       netlink_manager_(netlink_manager),
@@ -111,7 +111,7 @@ WakeOnWiFi::WakeOnWiFi(
 
 WakeOnWiFi::~WakeOnWiFi() {}
 
-void WakeOnWiFi::InitPropertyStore(PropertyStore *store) {
+void WakeOnWiFi::InitPropertyStore(PropertyStore* store) {
   store->RegisterDerivedString(
       kWakeOnWiFiFeaturesEnabledProperty,
       StringAccessor(new CustomAccessor<WakeOnWiFi, string>(
@@ -132,12 +132,12 @@ void WakeOnWiFi::StartMetricsTimer() {
 #endif  // DISABLE_WAKE_ON_WIFI
 }
 
-string WakeOnWiFi::GetWakeOnWiFiFeaturesEnabled(Error *error) {
+string WakeOnWiFi::GetWakeOnWiFiFeaturesEnabled(Error* error) {
   return wake_on_wifi_features_enabled_;
 }
 
-bool WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled(const std::string &enabled,
-                                              Error *error) {
+bool WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled(const std::string& enabled,
+                                              Error* error) {
 #if defined(DISABLE_WAKE_ON_WIFI)
   error->Populate(Error::kNotSupported, kWakeOnWiFiNotSupported);
   SLOG(this, 7) << __func__ << ": " << kWakeOnWiFiNotSupported;
@@ -159,7 +159,7 @@ bool WakeOnWiFi::SetWakeOnWiFiFeaturesEnabled(const std::string &enabled,
 #endif  // DISABLE_WAKE_ON_WIFI
 }
 
-void WakeOnWiFi::RunAndResetSuspendActionsDoneCallback(const Error &error) {
+void WakeOnWiFi::RunAndResetSuspendActionsDoneCallback(const Error& error) {
   if (!suspend_actions_done_callback_.is_null()) {
     suspend_actions_done_callback_.Run(error);
     suspend_actions_done_callback_.Reset();
@@ -168,14 +168,14 @@ void WakeOnWiFi::RunAndResetSuspendActionsDoneCallback(const Error &error) {
 
 // static
 bool WakeOnWiFi::ByteStringPairIsLessThan(
-    const std::pair<ByteString, ByteString> &lhs,
-    const std::pair<ByteString, ByteString> &rhs) {
+    const std::pair<ByteString, ByteString>& lhs,
+    const std::pair<ByteString, ByteString>& rhs) {
   // Treat the first value of the pair as the key.
   return ByteString::IsLessThan(lhs.first, rhs.first);
 }
 
 // static
-void WakeOnWiFi::SetMask(ByteString *mask, uint32_t pattern_len,
+void WakeOnWiFi::SetMask(ByteString* mask, uint32_t pattern_len,
                          uint32_t offset) {
   // Round up number of bytes required for the mask.
   int result_mask_len = (pattern_len + 8 - 1) / 8;
@@ -192,9 +192,9 @@ void WakeOnWiFi::SetMask(ByteString *mask, uint32_t pattern_len,
 }
 
 // static
-bool WakeOnWiFi::CreateIPAddressPatternAndMask(const IPAddress &ip_addr,
-                                               ByteString *pattern,
-                                               ByteString *mask) {
+bool WakeOnWiFi::CreateIPAddressPatternAndMask(const IPAddress& ip_addr,
+                                               ByteString* pattern,
+                                               ByteString* mask) {
   if (ip_addr.family() == IPAddress::kFamilyIPv4) {
     WakeOnWiFi::CreateIPV4PatternAndMask(ip_addr, pattern, mask);
     return true;
@@ -208,9 +208,9 @@ bool WakeOnWiFi::CreateIPAddressPatternAndMask(const IPAddress &ip_addr,
 }
 
 // static
-void WakeOnWiFi::CreateIPV4PatternAndMask(const IPAddress &ip_addr,
-                                          ByteString *pattern,
-                                          ByteString *mask) {
+void WakeOnWiFi::CreateIPV4PatternAndMask(const IPAddress& ip_addr,
+                                          ByteString* pattern,
+                                          ByteString* mask) {
   struct {
     struct ethhdr eth_hdr;
     struct iphdr ipv4_hdr;
@@ -220,19 +220,19 @@ void WakeOnWiFi::CreateIPV4PatternAndMask(const IPAddress &ip_addr,
   memcpy(&pattern_bytes.ipv4_hdr.saddr, ip_addr.GetConstData(),
          ip_addr.GetLength());
   int src_ip_offset =
-      reinterpret_cast<unsigned char *>(&pattern_bytes.ipv4_hdr.saddr) -
-      reinterpret_cast<unsigned char *>(&pattern_bytes);
+      reinterpret_cast<unsigned char*>(&pattern_bytes.ipv4_hdr.saddr) -
+      reinterpret_cast<unsigned char*>(&pattern_bytes);
   int pattern_len = src_ip_offset + ip_addr.GetLength();
   pattern->Clear();
   pattern->Append(ByteString(
-      reinterpret_cast<const unsigned char *>(&pattern_bytes), pattern_len));
+      reinterpret_cast<const unsigned char*>(&pattern_bytes), pattern_len));
   WakeOnWiFi::SetMask(mask, pattern_len, src_ip_offset);
 }
 
 // static
-void WakeOnWiFi::CreateIPV6PatternAndMask(const IPAddress &ip_addr,
-                                          ByteString *pattern,
-                                          ByteString *mask) {
+void WakeOnWiFi::CreateIPV6PatternAndMask(const IPAddress& ip_addr,
+                                          ByteString* pattern,
+                                          ByteString* mask) {
   struct {
     struct ethhdr eth_hdr;
     struct ip6_hdr ipv6_hdr;
@@ -242,17 +242,17 @@ void WakeOnWiFi::CreateIPV6PatternAndMask(const IPAddress &ip_addr,
   memcpy(&pattern_bytes.ipv6_hdr.ip6_src, ip_addr.GetConstData(),
          ip_addr.GetLength());
   int src_ip_offset =
-      reinterpret_cast<unsigned char *>(&pattern_bytes.ipv6_hdr.ip6_src) -
-      reinterpret_cast<unsigned char *>(&pattern_bytes);
+      reinterpret_cast<unsigned char*>(&pattern_bytes.ipv6_hdr.ip6_src) -
+      reinterpret_cast<unsigned char*>(&pattern_bytes);
   int pattern_len = src_ip_offset + ip_addr.GetLength();
   pattern->Clear();
   pattern->Append(ByteString(
-      reinterpret_cast<const unsigned char *>(&pattern_bytes), pattern_len));
+      reinterpret_cast<const unsigned char*>(&pattern_bytes), pattern_len));
   WakeOnWiFi::SetMask(mask, pattern_len, src_ip_offset);
 }
 
 // static
-bool WakeOnWiFi::ConfigureWiphyIndex(Nl80211Message *msg, int32_t index) {
+bool WakeOnWiFi::ConfigureWiphyIndex(Nl80211Message* msg, int32_t index) {
   if (!msg->attributes()->CreateU32Attribute(NL80211_ATTR_WIPHY,
                                              "WIPHY index")) {
     return false;
@@ -265,7 +265,7 @@ bool WakeOnWiFi::ConfigureWiphyIndex(Nl80211Message *msg, int32_t index) {
 
 // static
 bool WakeOnWiFi::ConfigureDisableWakeOnWiFiMessage(
-    SetWakeOnPacketConnMessage *msg, uint32_t wiphy_index, Error *error) {
+    SetWakeOnPacketConnMessage* msg, uint32_t wiphy_index, Error* error) {
   if (!ConfigureWiphyIndex(msg, wiphy_index)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to configure Wiphy index.");
@@ -276,11 +276,11 @@ bool WakeOnWiFi::ConfigureDisableWakeOnWiFiMessage(
 
 // static
 bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
-    SetWakeOnPacketConnMessage *msg, const set<WakeOnWiFiTrigger> &trigs,
-    const IPAddressStore &addrs, uint32_t wiphy_index,
+    SetWakeOnPacketConnMessage* msg, const set<WakeOnWiFiTrigger>& trigs,
+    const IPAddressStore& addrs, uint32_t wiphy_index,
     uint32_t net_detect_scan_period_seconds,
-    const vector<ByteString> &ssid_whitelist,
-    Error *error) {
+    const vector<ByteString>& ssid_whitelist,
+    Error* error) {
   if (trigs.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "No triggers to configure.");
@@ -361,7 +361,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
           return false;
         }
         uint8_t patnum = 1;
-        for (const IPAddress &addr : addrs.GetIPAddresses()) {
+        for (const IPAddress& addr : addrs.GetIPAddresses()) {
           if (!CreateSinglePattern(addr, patterns, patnum++, error)) {
             return false;
           }
@@ -431,7 +431,7 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
           return false;
         }
         int ssid_num = 0;
-        for (const ByteString &ssid_bytes :
+        for (const ByteString& ssid_bytes :
              ssid_whitelist) {
           if (!ssids->CreateNestedAttribute(
                   ssid_num, "NL80211_ATTR_SCHED_SCAN_MATCH_SINGLE")) {
@@ -483,9 +483,9 @@ bool WakeOnWiFi::ConfigureSetWakeOnWiFiSettingsMessage(
 }
 
 // static
-bool WakeOnWiFi::CreateSinglePattern(const IPAddress &ip_addr,
+bool WakeOnWiFi::CreateSinglePattern(const IPAddress& ip_addr,
                                      AttributeListRefPtr patterns,
-                                     uint8_t patnum, Error *error) {
+                                     uint8_t patnum, Error* error) {
   ByteString pattern;
   ByteString mask;
   WakeOnWiFi::CreateIPAddressPatternAndMask(ip_addr, &pattern, &mask);
@@ -555,7 +555,7 @@ bool WakeOnWiFi::CreateSinglePattern(const IPAddress &ip_addr,
 
 // static
 bool WakeOnWiFi::ConfigureGetWakeOnWiFiSettingsMessage(
-    GetWakeOnPacketConnMessage *msg, uint32_t wiphy_index, Error *error) {
+    GetWakeOnPacketConnMessage* msg, uint32_t wiphy_index, Error* error) {
   if (!ConfigureWiphyIndex(msg, wiphy_index)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to configure Wiphy index.");
@@ -566,9 +566,9 @@ bool WakeOnWiFi::ConfigureGetWakeOnWiFiSettingsMessage(
 
 // static
 bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
-    const Nl80211Message &msg, const set<WakeOnWiFiTrigger> &trigs,
-    const IPAddressStore &addrs, uint32_t net_detect_scan_period_seconds,
-    const vector<ByteString> &ssid_whitelist) {
+    const Nl80211Message& msg, const set<WakeOnWiFiTrigger>& trigs,
+    const IPAddressStore& addrs, uint32_t net_detect_scan_period_seconds,
+    const vector<ByteString>& ssid_whitelist) {
   if (msg.command() != NL80211_CMD_GET_WOWLAN &&
       msg.command() != NL80211_CMD_SET_WOWLAN) {
     LOG(ERROR) << __func__ << ": "
@@ -632,7 +632,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
             expected_patt_mask_pairs(ByteStringPairIsLessThan);
         ByteString temp_pattern;
         ByteString temp_mask;
-        for (const IPAddress &addr : addrs.GetIPAddresses()) {
+        for (const IPAddress& addr : addrs.GetIPAddresses()) {
           temp_pattern.Clear();
           temp_mask.Clear();
           CreateIPAddressPatternAndMask(addr, &temp_pattern, &temp_mask);
@@ -773,8 +773,8 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
   return true;
 }
 
-void WakeOnWiFi::AddWakeOnPacketConnection(const string &ip_endpoint,
-                                           Error *error) {
+void WakeOnWiFi::AddWakeOnPacketConnection(const string& ip_endpoint,
+                                           Error* error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
   if (wake_on_wifi_triggers_supported_.find(kWakeTriggerPattern) ==
       wake_on_wifi_triggers_supported_.end()) {
@@ -801,8 +801,8 @@ void WakeOnWiFi::AddWakeOnPacketConnection(const string &ip_endpoint,
 #endif  // DISABLE_WAKE_ON_WIFI
 }
 
-void WakeOnWiFi::RemoveWakeOnPacketConnection(const string &ip_endpoint,
-                                              Error *error) {
+void WakeOnWiFi::RemoveWakeOnPacketConnection(const string& ip_endpoint,
+                                              Error* error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
   if (wake_on_wifi_triggers_supported_.find(kWakeTriggerPattern) ==
       wake_on_wifi_triggers_supported_.end()) {
@@ -828,7 +828,7 @@ void WakeOnWiFi::RemoveWakeOnPacketConnection(const string &ip_endpoint,
 #endif  // DISABLE_WAKE_ON_WIFI
 }
 
-void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error *error) {
+void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error* error) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
   if (wake_on_wifi_triggers_supported_.find(kWakeTriggerPattern) ==
       wake_on_wifi_triggers_supported_.end()) {
@@ -845,7 +845,7 @@ void WakeOnWiFi::RemoveAllWakeOnPacketConnections(Error *error) {
 
 void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
     NetlinkManager::AuxilliaryMessageType type,
-    const NetlinkMessage *raw_message) {
+    const NetlinkMessage* raw_message) {
   Error error(Error::kOperationFailed);
   switch (type) {
     case NetlinkManager::kErrorFromKernel:
@@ -854,8 +854,8 @@ void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
         break;
       }
       if (raw_message->message_type() == ErrorAckMessage::GetMessageType()) {
-        const ErrorAckMessage *error_ack_message =
-            dynamic_cast<const ErrorAckMessage *>(raw_message);
+        const ErrorAckMessage* error_ack_message =
+            dynamic_cast<const ErrorAckMessage*>(raw_message);
         if (error_ack_message->error() == EOPNOTSUPP) {
           error.Populate(Error::kNotSupported);
         }
@@ -886,7 +886,7 @@ void WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse(
 
 // static
 void WakeOnWiFi::OnSetWakeOnPacketConnectionResponse(
-    const Nl80211Message &nl80211_message) {
+    const Nl80211Message& nl80211_message) {
   // NOP because kernel does not send a response to NL80211_CMD_SET_WOWLAN
   // requests.
 }
@@ -909,7 +909,7 @@ void WakeOnWiFi::RequestWakeOnPacketSettings() {
 }
 
 void WakeOnWiFi::VerifyWakeOnWiFiSettings(
-    const Nl80211Message &nl80211_message) {
+    const Nl80211Message& nl80211_message) {
   SLOG(this, 3) << __func__;
   if (WakeOnWiFiSettingsMatch(nl80211_message, wake_on_wifi_triggers_,
                               wake_on_packet_connections_,
@@ -1068,7 +1068,7 @@ void WakeOnWiFi::ReportMetrics() {
 }
 
 void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
-    const Nl80211Message &nl80211_message) {
+    const Nl80211Message& nl80211_message) {
   // Verify NL80211_CMD_NEW_WIPHY.
   if (nl80211_message.command() != NewWiphyMessage::kCommand) {
     LOG(ERROR) << "Received unexpected command:" << nl80211_message.command();
@@ -1089,8 +1089,8 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
     ByteString pattern_data;
     if (triggers_supported->GetRawAttributeValue(
             NL80211_WOWLAN_TRIG_PKT_PATTERN, &pattern_data)) {
-      struct nl80211_pattern_support *patt_support =
-          reinterpret_cast<struct nl80211_pattern_support *>(
+      struct nl80211_pattern_support* patt_support =
+          reinterpret_cast<struct nl80211_pattern_support*>(
               pattern_data.GetData());
       // Determine the IPV4 and IPV6 pattern lengths we will use by
       // constructing dummy patterns and getting their lengths.
@@ -1128,7 +1128,7 @@ void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
   }
 }
 
-void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage &netlink_message) {
+void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage& netlink_message) {
 #if defined(DISABLE_WAKE_ON_WIFI)
   SLOG(this, 7) << __func__ << ": "
                 << "Wake on WiFi not supported, so do nothing";
@@ -1140,8 +1140,8 @@ void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage &netlink_message) {
                   << "Not a NL80211 Message";
     return;
   }
-  const Nl80211Message &wakeup_reason_msg =
-      *reinterpret_cast<const Nl80211Message *>(&netlink_message);
+  const Nl80211Message& wakeup_reason_msg =
+      *reinterpret_cast<const Nl80211Message*>(&netlink_message);
   if (wakeup_reason_msg.command() != SetWakeOnPacketConnMessage::kCommand) {
     SLOG(this, 7) << __func__ << ": "
                   << "Not a NL80211_CMD_SET_WOWLAN message";
@@ -1214,10 +1214,10 @@ void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage &netlink_message) {
 
 void WakeOnWiFi::OnBeforeSuspend(
     bool is_connected,
-    const vector<ByteString> &ssid_whitelist,
-    const ResultCallback &done_callback,
-    const Closure &renew_dhcp_lease_callback,
-    const Closure &remove_supplicant_networks_callback, bool have_dhcp_lease,
+    const vector<ByteString>& ssid_whitelist,
+    const ResultCallback& done_callback,
+    const Closure& renew_dhcp_lease_callback,
+    const Closure& remove_supplicant_networks_callback, bool have_dhcp_lease,
     uint32_t time_to_next_lease_renewal) {
 #if defined(DISABLE_WAKE_ON_WIFI)
   // Wake on WiFi not supported, so immediately report success.
@@ -1261,11 +1261,11 @@ void WakeOnWiFi::OnAfterResume() {
 
 void WakeOnWiFi::OnDarkResume(
     bool is_connected,
-    const vector<ByteString> &ssid_whitelist,
-    const ResultCallback &done_callback,
-    const Closure &renew_dhcp_lease_callback,
-    const InitiateScanCallback &initiate_scan_callback,
-    const Closure &remove_supplicant_networks_callback) {
+    const vector<ByteString>& ssid_whitelist,
+    const ResultCallback& done_callback,
+    const Closure& renew_dhcp_lease_callback,
+    const InitiateScanCallback& initiate_scan_callback,
+    const Closure& remove_supplicant_networks_callback) {
 #if defined(DISABLE_WAKE_ON_WIFI)
   done_callback.Run(Error(Error::kSuccess));
 #else
@@ -1358,7 +1358,7 @@ void WakeOnWiFi::BeforeSuspendActions(
     bool is_connected,
     bool start_lease_renewal_timer,
     uint32_t time_to_next_lease_renewal,
-    const Closure &remove_supplicant_networks_callback) {
+    const Closure& remove_supplicant_networks_callback) {
   LOG(INFO) << __func__ << ": "
             << (is_connected ? "connected" : "not connected");
   // Note: No conditional compilation because all entry points to this functions
@@ -1496,8 +1496,8 @@ WiFi::FreqSet WakeOnWiFi::ParseWakeOnWakeOnSSIDResults(
 }
 
 void WakeOnWiFi::InitiateScanInDarkResume(
-    const InitiateScanCallback &initiate_scan_callback,
-    const WiFi::FreqSet &freqs) {
+    const InitiateScanCallback& initiate_scan_callback,
+    const WiFi::FreqSet& freqs) {
   SLOG(this, 3) << __func__;
   if (!freqs.empty() && freqs.size() <= kMaxFreqsForDarkResumeScanRetries) {
     SLOG(this, 3) << __func__ << ": "
@@ -1554,9 +1554,9 @@ void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected) {
 }
 
 void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(
-    const vector<ByteString> &ssid_whitelist,
-    const Closure &remove_supplicant_networks_callback,
-    const InitiateScanCallback &initiate_scan_callback) {
+    const vector<ByteString>& ssid_whitelist,
+    const Closure& remove_supplicant_networks_callback,
+    const InitiateScanCallback& initiate_scan_callback) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
   SLOG(this, 3) << __func__ << ": "
                 << (in_dark_resume_ ? "In dark resume" : "Not in dark resume");

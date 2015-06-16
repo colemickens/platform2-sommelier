@@ -123,25 +123,25 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
  public:
   typedef std::set<uint32_t> FreqSet;
 
-  WiFi(ControlInterface *control_interface,
-       EventDispatcher *dispatcher,
-       Metrics *metrics,
-       Manager *manager,
-       const std::string &link,
-       const std::string &address,
+  WiFi(ControlInterface* control_interface,
+       EventDispatcher* dispatcher,
+       Metrics* metrics,
+       Manager* manager,
+       const std::string& link,
+       const std::string& address,
        int interface_index);
   ~WiFi() override;
 
-  void Start(Error *error,
-             const EnabledStateChangedCallback &callback) override;
-  void Stop(Error *error, const EnabledStateChangedCallback &callback) override;
-  void Scan(ScanType scan_type, Error *error,
-            const std::string &reason) override;
-  void SetSchedScan(bool enable, Error *error) override;
+  void Start(Error* error,
+             const EnabledStateChangedCallback& callback) override;
+  void Stop(Error* error, const EnabledStateChangedCallback& callback) override;
+  void Scan(ScanType scan_type, Error* error,
+            const std::string& reason) override;
+  void SetSchedScan(bool enable, Error* error) override;
   // Callback for system suspend.
-  void OnBeforeSuspend(const ResultCallback &callback) override;
+  void OnBeforeSuspend(const ResultCallback& callback) override;
   // Callback for dark resume.
-  void OnDarkResume(const ResultCallback &callback) override;
+  void OnDarkResume(const ResultCallback& callback) override;
   // Callback for system resume. If this WiFi device is idle, a scan
   // is initiated. Additionally, the base class implementation is
   // invoked unconditionally.
@@ -153,55 +153,55 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Calls corresponding functions of |wake_on_wifi_|. Refer to wake_on_wifi.h
   // for documentation.
-  void AddWakeOnPacketConnection(const std::string &ip_endpoint,
-                                 Error *error) override;
-  void RemoveWakeOnPacketConnection(const std::string &ip_endpoint,
-                                    Error *error) override;
-  void RemoveAllWakeOnPacketConnections(Error *error) override;
+  void AddWakeOnPacketConnection(const std::string& ip_endpoint,
+                                 Error* error) override;
+  void RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
+                                    Error* error) override;
+  void RemoveAllWakeOnPacketConnections(Error* error) override;
 
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
   void BSSAdded(
-      const ::DBus::Path &BSS,
-      const std::map<std::string, ::DBus::Variant> &properties) override;
-  void BSSRemoved(const ::DBus::Path &BSS) override;
+      const ::DBus::Path& BSS,
+      const std::map<std::string, ::DBus::Variant>& properties) override;
+  void BSSRemoved(const ::DBus::Path& BSS) override;
   void Certification(
-      const std::map<std::string, ::DBus::Variant> &properties) override;
+      const std::map<std::string, ::DBus::Variant>& properties) override;
   void EAPEvent(
-      const std::string &status, const std::string &parameter) override;
+      const std::string& status, const std::string& parameter) override;
   void PropertiesChanged(
-      const std::map<std::string, ::DBus::Variant> &properties) override;
-  void ScanDone(const bool &success) override;
-  void TDLSDiscoverResponse(const std::string &peer_address) override;
+      const std::map<std::string, ::DBus::Variant>& properties) override;
+  void ScanDone(const bool& success) override;
+  void TDLSDiscoverResponse(const std::string& peer_address) override;
 
   // Called by WiFiService.
-  virtual void ConnectTo(WiFiService *service);
+  virtual void ConnectTo(WiFiService* service);
 
   // After checking |service| state is active, initiate
   // process of disconnecting.  Log and return if not active.
-  virtual void DisconnectFromIfActive(WiFiService *service);
+  virtual void DisconnectFromIfActive(WiFiService* service);
 
   // If |service| is connected, initiate the process of disconnecting it.
   // Otherwise, if it a pending or current service, discontinue the process
   // of connecting and return |service| to the idle state.
-  virtual void DisconnectFrom(WiFiService *service);
+  virtual void DisconnectFrom(WiFiService* service);
   virtual bool IsIdle() const;
   // Clear any cached credentials wpa_supplicant may be holding for
   // |service|.  This has a side-effect of disconnecting the service
   // if it is connected.
-  virtual void ClearCachedCredentials(const WiFiService *service);
+  virtual void ClearCachedCredentials(const WiFiService* service);
 
   // Called by WiFiEndpoint.
-  virtual void NotifyEndpointChanged(const WiFiEndpointConstRefPtr &endpoint);
+  virtual void NotifyEndpointChanged(const WiFiEndpointConstRefPtr& endpoint);
 
   // Utility, used by WiFiService and WiFiEndpoint.
   // Replace non-ASCII characters with '?'. Return true if one or more
   // characters were changed.
-  static bool SanitizeSSID(std::string *ssid);
+  static bool SanitizeSSID(std::string* ssid);
 
   // Formats |ssid| for logging purposes, to ease scrubbing.
-  static std::string LogSSID(const std::string &ssid);
+  static std::string LogSSID(const std::string& ssid);
 
   // Called by Linkmonitor (overridden from Device superclass).
   void OnLinkMonitorFailure() override;
@@ -221,15 +221,15 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool ShouldUseArpGateway() const override;
 
   // Called by a WiFiService when it disassociates itself from this Device.
-  virtual void DisassociateFromService(const WiFiServiceRefPtr &service);
+  virtual void DisassociateFromService(const WiFiServiceRefPtr& service);
 
   // Called by a WiFiService when it unloads to destroy its lease file.
-  virtual void DestroyServiceLease(const WiFiService &service);
+  virtual void DestroyServiceLease(const WiFiService& service);
 
   // Perform TDLS |operation| on |peer|.
-  std::string PerformTDLSOperation(const std::string &operation,
-                                   const std::string &peer,
-                                   Error *error) override;
+  std::string PerformTDLSOperation(const std::string& operation,
+                                   const std::string& peer,
+                                   Error* error) override;
 
   // Overridden from Device superclass.
   bool IsTrafficMonitorEnabled() const override;
@@ -259,8 +259,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Result from a BSSAdded or BSSRemoved event.
   struct ScanResult {
     ScanResult() : is_removal(false) {}
-    ScanResult(const ::DBus::Path &path_in,
-               const std::map<std::string, ::DBus::Variant> &properties_in,
+    ScanResult(const ::DBus::Path& path_in,
+               const std::map<std::string, ::DBus::Variant>& properties_in,
                bool is_removal_in)
         : path(path_in), properties(properties_in), is_removal(is_removal_in) {}
     ::DBus::Path path;
@@ -270,7 +270,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   struct PendingScanResults {
     PendingScanResults() : is_complete(false) {}
-    explicit PendingScanResults(const base::Closure &process_results_callback)
+    explicit PendingScanResults(const base::Closure& process_results_callback)
         : is_complete(false), callback(process_results_callback) {}
 
     // List of pending scan results to process.
@@ -332,9 +332,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, InitiateScanInDarkResume_Idle);
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
-  typedef std::map<const WiFiService *, std::string> ReverseServiceMap;
+  typedef std::map<const WiFiService*, std::string> ReverseServiceMap;
 
-  static const char *kDefaultBgscanMethod;
+  static const char* kDefaultBgscanMethod;
   static const uint16_t kBackgroundScanIntervalSeconds;
   static const uint16_t kDefaultBgscanShortIntervalSeconds;
   static const int32_t kDefaultBgscanSignalThresholdDbm;
@@ -365,57 +365,57 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const int kPostScanFailedDelayMilliseconds;
 
   void GetPhyInfo();
-  void AppendBgscan(WiFiService *service,
-                    std::map<std::string, DBus::Variant> *service_params) const;
-  std::string GetBgscanMethod(const int &argument, Error *error);
-  uint16_t GetBgscanShortInterval(Error */* error */) {
+  void AppendBgscan(WiFiService* service,
+                    std::map<std::string, DBus::Variant>* service_params) const;
+  std::string GetBgscanMethod(const int& argument, Error* error);
+  uint16_t GetBgscanShortInterval(Error* /* error */) {
     return bgscan_short_interval_seconds_;
   }
-  int32_t GetBgscanSignalThreshold(Error */* error */) {
+  int32_t GetBgscanSignalThreshold(Error* /* error */) {
     return bgscan_signal_threshold_dbm_;
   }
   // These methods can't be 'const' because they are passed to
   // HelpRegisterDerivedUint16 which don't take const methods.
-  uint16_t GetRoamThreshold(Error */* error */) /*const*/ {
+  uint16_t GetRoamThreshold(Error* /* error */) /*const*/ {
     return roam_threshold_db_;
   }
-  uint16_t GetScanInterval(Error */* error */) /*const*/ {
+  uint16_t GetScanInterval(Error* /* error */) /*const*/ {
     return scan_interval_seconds_;
   }
 
   // RPC accessor for |link_statistics_|.
-  KeyValueStore GetLinkStatistics(Error *error);
+  KeyValueStore GetLinkStatistics(Error* error);
 
-  bool GetScanPending(Error */* error */);
+  bool GetScanPending(Error* /* error */);
   bool SetBgscanMethod(
-      const int &argument, const std::string &method, Error *error);
-  bool SetBgscanShortInterval(const uint16_t &seconds, Error *error);
-  bool SetBgscanSignalThreshold(const int32_t &dbm, Error *error);
-  bool SetRoamThreshold(const uint16_t &threshold, Error */*error*/);
-  bool SetScanInterval(const uint16_t &seconds, Error *error);
-  void ClearBgscanMethod(const int &argument, Error *error);
+      const int& argument, const std::string& method, Error* error);
+  bool SetBgscanShortInterval(const uint16_t& seconds, Error* error);
+  bool SetBgscanSignalThreshold(const int32_t& dbm, Error* error);
+  bool SetRoamThreshold(const uint16_t& threshold, Error* /*error*/);
+  bool SetScanInterval(const uint16_t& seconds, Error* error);
+  void ClearBgscanMethod(const int& argument, Error* error);
 
-  void CurrentBSSChanged(const ::DBus::Path &new_bss);
+  void CurrentBSSChanged(const ::DBus::Path& new_bss);
   // Return the RPC identifier associated with the wpa_supplicant network
   // entry created for |service|.  If one does not exist, an empty string
   // is returned, and |error| is populated.
-  std::string FindNetworkRpcidForService(const WiFiService *service,
-                                         Error *error);
+  std::string FindNetworkRpcidForService(const WiFiService* service,
+                                         Error* error);
   void HandleDisconnect();
   // Update failure and state for disconnected service.
   // Set failure for disconnected service if disconnect is not user-initiated
   // and failure is not already set. Then set the state of the service back
   // to idle, so it can be used for future connections.
   void ServiceDisconnected(WiFiServiceRefPtr service);
-  void HandleRoam(const ::DBus::Path &new_bssid);
-  void BSSAddedTask(const ::DBus::Path &BSS,
-                    const std::map<std::string, ::DBus::Variant> &properties);
-  void BSSRemovedTask(const ::DBus::Path &BSS);
+  void HandleRoam(const ::DBus::Path& new_bssid);
+  void BSSAddedTask(const ::DBus::Path& BSS,
+                    const std::map<std::string, ::DBus::Variant>& properties);
+  void BSSRemovedTask(const ::DBus::Path& BSS);
   void CertificationTask(
-      const std::map<std::string, ::DBus::Variant> &properties);
-  void EAPEventTask(const std::string &status, const std::string &parameter);
+      const std::map<std::string, ::DBus::Variant>& properties);
+  void EAPEventTask(const std::string& status, const std::string& parameter);
   void PropertiesChangedTask(
-      const std::map<std::string, ::DBus::Variant> &properties);
+      const std::map<std::string, ::DBus::Variant>& properties);
   void ScanDoneTask();
   void ScanFailedTask();
   // UpdateScanStateAfterScanDone is spawned as a task from ScanDoneTask in
@@ -432,30 +432,30 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // [ScanDone]-->[ScanDoneTask]-->[UpdateScanStateAfterScanDone]
   void UpdateScanStateAfterScanDone();
   void ScanTask();
-  void StateChanged(const std::string &new_state);
+  void StateChanged(const std::string& new_state);
   // Heuristic check if a connection failure was due to bad credentials.
   // Returns true and puts type of failure in |failure| if a credential
   // problem is detected.
   bool SuspectCredentials(WiFiServiceRefPtr service,
-                          Service::ConnectFailure *failure) const;
+                          Service::ConnectFailure* failure) const;
   void HelpRegisterDerivedInt32(
-      PropertyStore *store,
-      const std::string &name,
-      int32_t(WiFi::*get)(Error *error),
-      bool(WiFi::*set)(const int32_t &value, Error *error));
+      PropertyStore* store,
+      const std::string& name,
+      int32_t(WiFi::*get)(Error* error),
+      bool(WiFi::*set)(const int32_t& value, Error* error));
   void HelpRegisterDerivedUint16(
-      PropertyStore *store,
-      const std::string &name,
-      uint16_t(WiFi::*get)(Error *error),
-      bool(WiFi::*set)(const uint16_t &value, Error *error));
+      PropertyStore* store,
+      const std::string& name,
+      uint16_t(WiFi::*get)(Error* error),
+      bool(WiFi::*set)(const uint16_t& value, Error* error));
   void HelpRegisterConstDerivedBool(
-      PropertyStore *store,
-      const std::string &name,
-      bool(WiFi::*get)(Error *error));
+      PropertyStore* store,
+      const std::string& name,
+      bool(WiFi::*get)(Error* error));
 
   // Disable a network entry in wpa_supplicant, and catch any exception
   // that occurs.  Returns false if an exception occurred, true otherwise.
-  bool DisableNetwork(const ::DBus::Path &network);
+  bool DisableNetwork(const ::DBus::Path& network);
   // Disable the wpa_supplicant network entry associated with |service|.
   // Any cached credentials stored in wpa_supplicant related to this
   // network entry will be preserved.  This will have the side-effect of
@@ -463,10 +463,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // true if successful, otherwise returns false and populates |error|
   // with the reason for failure.
   virtual bool DisableNetworkForService(
-      const WiFiService *service, Error *error);
+      const WiFiService* service, Error* error);
   // Remove a network entry from wpa_supplicant, and catch any exception
   // that occurs.  Returns false if an exception occurred, true otherwise.
-  bool RemoveNetwork(const ::DBus::Path &network);
+  bool RemoveNetwork(const ::DBus::Path& network);
   // Remove the wpa_supplicant network entry associated with |service|.
   // Any cached credentials stored in wpa_supplicant related to this
   // network entry will be removed.  This will have the side-effect of
@@ -474,9 +474,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // true if successful, otherwise returns false and populates |error|
   // with the reason for failure.
   virtual bool RemoveNetworkForService(
-      const WiFiService *service, Error *error);
+      const WiFiService* service, Error* error);
   // Update disable_ht40 setting in wpa_supplicant for the given service.
-  void SetHT40EnableForService(const WiFiService *service, bool enable);
+  void SetHT40EnableForService(const WiFiService* service, bool enable);
   // Perform the next in a series of progressive scans.
   void ProgressiveScanTask();
   // Task to configure scheduled scan in wpa_supplicant.
@@ -502,11 +502,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // triggers the passive scan. Meant for use in dark resume where we want to
   // ensure that shill and supplicant do not use stale information to launch
   // connection attempts.
-  void InitiateScanInDarkResume(const FreqSet &freqs);
+  void InitiateScanInDarkResume(const FreqSet& freqs);
   // If |freqs| contains at least one frequency channel a passive scan is
   // launched on all the frequencies in |freqs|. Otherwise, a passive scan is
   // launched on all channels.
-  void TriggerPassiveScan(const FreqSet &freqs);
+  void TriggerPassiveScan(const FreqSet& freqs);
   // Starts a timer in order to limit the length of an attempt to
   // connect to a pending network.
   void StartPendingTimer();
@@ -525,10 +525,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Sets the current pending service.  If the argument is non-NULL,
   // the Pending timer is started and the associated service is set
   // to "Associating", otherwise it is stopped.
-  void SetPendingService(const WiFiServiceRefPtr &service);
+  void SetPendingService(const WiFiServiceRefPtr& service);
 
-  void OnSupplicantAppear(const std::string &name, const std::string &owner);
-  void OnSupplicantVanish(const std::string &name);
+  void OnSupplicantAppear(const std::string& name, const std::string& owner);
+  void OnSupplicantVanish(const std::string& name);
   // Called by ScopeLogger when WiFi debug scope is enabled/disabled.
   void OnWiFiDebugScopeChanged(bool enabled);
   // Enable or disable debugging for the current connection attempt.
@@ -539,31 +539,31 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Request and retrieve information about the currently connected station.
   void RequestStationInfo();
-  void OnReceivedStationInfo(const Nl80211Message &nl80211_message);
+  void OnReceivedStationInfo(const Nl80211Message& nl80211_message);
   void StopRequestingStationInfo();
 
   void ConnectToSupplicant();
 
   void Restart();
 
-  std::string GetServiceLeaseName(const WiFiService &service);
+  std::string GetServiceLeaseName(const WiFiService& service);
 
   // Netlink message handler for NL80211_CMD_NEW_WIPHY messages; copies
   // device's supported frequencies from that message into
   // |all_scan_frequencies_|.
-  void OnNewWiphy(const Nl80211Message &nl80211_message);
+  void OnNewWiphy(const Nl80211Message& nl80211_message);
 
-  void OnTriggerPassiveScanResponse(const Nl80211Message &netlink_message);
+  void OnTriggerPassiveScanResponse(const Nl80211Message& netlink_message);
 
   void SetScanState(ScanState new_state,
                     ScanMethod new_method,
-                    const char *reason);
+                    const char* reason);
   void ReportScanResultToUma(ScanState state, ScanMethod method);
   static std::string ScanStateString(ScanState state, ScanMethod type);
 
   // In addition to calling the implementations of these functions in Device,
   // calls WakeOnWiFi::PrepareForWakeOnWiFiBeforeSuspend.
-  void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,
+  void OnIPConfigUpdated(const IPConfigRefPtr& ipconfig,
                          bool new_lease_acquired) override;
   void OnIPv6ConfigUpdated() override;
 
@@ -578,8 +578,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Add a scan result to the list of pending scan results, and post a task
   // for handling these results if one is not already running.
   void AddPendingScanResult(
-    const ::DBus::Path &path,
-    const std::map<std::string, ::DBus::Variant> &properties,
+    const ::DBus::Path& path,
+    const std::map<std::string, ::DBus::Variant>& properties,
     bool is_removal);
 
   // Callback invoked to handle pending scan results from AddPendingScanResult.
@@ -588,24 +588,24 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Given a NL80211_CMD_NEW_WIPHY message |nl80211_message|, parses the
   // wiphy index of the NIC and sets |wiphy_index_| with the parsed index.
   // Returns true iff the wiphy index was parsed successfully, false otherwise.
-  bool ParseWiphyIndex(const Nl80211Message &nl80211_message);
+  bool ParseWiphyIndex(const Nl80211Message& nl80211_message);
 
   // Callback invoked when the kernel broadcasts a notification that a scan has
   // started.
-  virtual void OnScanStarted(const NetlinkMessage &netlink_message);
+  virtual void OnScanStarted(const NetlinkMessage& netlink_message);
 
   // Helper function for setting supplicant_interface_proxy_ pointer.
   void SetSupplicantInterfaceProxy(
-      SupplicantInterfaceProxyInterface *supplicant_interface_proxy);
+      SupplicantInterfaceProxyInterface* supplicant_interface_proxy);
 
   // Pointer to the provider object that maintains WiFiService objects.
-  WiFiProvider *provider_;
+  WiFiProvider* provider_;
 
   base::WeakPtrFactory<WiFi> weak_ptr_factory_;
 
   // Store cached copies of singletons for speed/ease of testing.
-  ProxyFactory *proxy_factory_;
-  Time *time_;
+  ProxyFactory* proxy_factory_;
+  Time* time_;
 
   std::unique_ptr<DBusNameWatcher> supplicant_name_watcher_;
   bool supplicant_present_;
@@ -675,7 +675,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   bool progressive_scan_enabled_;
   std::string scan_configuration_;
-  NetlinkManager *netlink_manager_;
+  NetlinkManager* netlink_manager_;
   std::set<uint16_t> all_scan_frequencies_;
   std::unique_ptr<ScanSession> scan_session_;
   size_t min_frequencies_to_scan_;

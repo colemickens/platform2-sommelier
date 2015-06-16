@@ -18,12 +18,12 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static string ObjectID(const Callback80211Metrics *c) {
+static string ObjectID(const Callback80211Metrics* c) {
   return "(callback80211metrics)";
 }
 }
 
-Callback80211Metrics::Callback80211Metrics(Metrics *metrics)
+Callback80211Metrics::Callback80211Metrics(Metrics* metrics)
     : metrics_(metrics) {}
 
 IEEE_80211::WiFiReasonCode Callback80211Metrics::WiFiReasonCodeFromUint16(
@@ -45,7 +45,7 @@ IEEE_80211::WiFiReasonCode Callback80211Metrics::WiFiReasonCodeFromUint16(
 }
 
 void Callback80211Metrics::CollectDisconnectStatistics(
-    const NetlinkMessage &netlink_message) {
+    const NetlinkMessage& netlink_message) {
   if (!metrics_) {
     return;
   }
@@ -54,8 +54,8 @@ void Callback80211Metrics::CollectDisconnectStatistics(
   if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
     return;
   }
-  const Nl80211Message &message =
-      * reinterpret_cast<const Nl80211Message *>(&netlink_message);
+  const Nl80211Message& message =
+      * reinterpret_cast<const Nl80211Message*>(&netlink_message);
 
   // Station-instigated disconnects provide their information in the
   // deauthenticate message but AP-instigated disconnects provide it in the

@@ -31,13 +31,13 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static string ObjectID(WiFiEndpoint *w) { return "(wifi_endpoint)"; }
+static string ObjectID(WiFiEndpoint* w) { return "(wifi_endpoint)"; }
 }
 
-WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
-                           const WiFiRefPtr &device,
-                           const string &rpc_id,
-                           const map<string, ::DBus::Variant> &properties)
+WiFiEndpoint::WiFiEndpoint(ProxyFactory* proxy_factory,
+                           const WiFiRefPtr& device,
+                           const string& rpc_id,
+                           const map<string, ::DBus::Variant>& properties)
     : frequency_(0),
       physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       ieee80211w_required_(false),
@@ -94,7 +94,7 @@ void WiFiEndpoint::Start() {
 }
 
 void WiFiEndpoint::PropertiesChanged(
-    const map<string, ::DBus::Variant> &properties) {
+    const map<string, ::DBus::Variant>& properties) {
   SLOG(this, 2) << __func__;
   bool should_notify = false;
   map<string, ::DBus::Variant>::const_iterator properties_it =
@@ -117,7 +117,7 @@ void WiFiEndpoint::PropertiesChanged(
     }
   }
 
-  const char *new_security_mode = ParseSecurity(properties, &security_flags_);
+  const char* new_security_mode = ParseSecurity(properties, &security_flags_);
   if (new_security_mode != security_mode()) {
     set_security_mode(new_security_mode);
     SLOG(this, 2) << "WiFiEndpoint " << bssid_string_ << " security is now "
@@ -173,7 +173,7 @@ map<string, string> WiFiEndpoint::GetVendorInformation() const {
 }
 
 // static
-uint32_t WiFiEndpoint::ModeStringToUint(const string &mode_string) {
+uint32_t WiFiEndpoint::ModeStringToUint(const string& mode_string) {
   if (mode_string == kModeManaged)
     return WPASupplicant::kNetworkModeInfrastructureInt;
   else if (mode_string == kModeAdhoc)
@@ -184,31 +184,31 @@ uint32_t WiFiEndpoint::ModeStringToUint(const string &mode_string) {
   return 0;
 }
 
-const vector<uint8_t> &WiFiEndpoint::ssid() const {
+const vector<uint8_t>& WiFiEndpoint::ssid() const {
   return ssid_;
 }
 
-const string &WiFiEndpoint::ssid_string() const {
+const string& WiFiEndpoint::ssid_string() const {
   return ssid_string_;
 }
 
-const string &WiFiEndpoint::ssid_hex() const {
+const string& WiFiEndpoint::ssid_hex() const {
   return ssid_hex_;
 }
 
-const string &WiFiEndpoint::bssid_string() const {
+const string& WiFiEndpoint::bssid_string() const {
   return bssid_string_;
 }
 
-const string &WiFiEndpoint::bssid_hex() const {
+const string& WiFiEndpoint::bssid_hex() const {
   return bssid_hex_;
 }
 
-const string &WiFiEndpoint::country_code() const {
+const string& WiFiEndpoint::country_code() const {
   return country_code_;
 }
 
-const WiFiRefPtr &WiFiEndpoint::device() const {
+const WiFiRefPtr& WiFiEndpoint::device() const {
   return device_;
 }
 
@@ -224,11 +224,11 @@ uint16_t WiFiEndpoint::physical_mode() const {
   return physical_mode_;
 }
 
-const string &WiFiEndpoint::network_mode() const {
+const string& WiFiEndpoint::network_mode() const {
   return network_mode_;
 }
 
-const string &WiFiEndpoint::security_mode() const {
+const string& WiFiEndpoint::security_mode() const {
   return security_mode_;
 }
 
@@ -249,11 +249,11 @@ bool WiFiEndpoint::has_tethering_signature() const {
 }
 
 // static
-WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(ProxyFactory *proxy_factory,
-                                             const WiFiRefPtr &wifi,
-                                             const string &ssid,
-                                             const string &bssid,
-                                             const string &network_mode,
+WiFiEndpoint* WiFiEndpoint::MakeOpenEndpoint(ProxyFactory* proxy_factory,
+                                             const WiFiRefPtr& wifi,
+                                             const string& ssid,
+                                             const string& bssid,
+                                             const string& network_mode,
                                              uint16_t frequency,
                                              int16_t signal_dbm) {
   return MakeEndpoint(proxy_factory, wifi, ssid, bssid, network_mode,
@@ -262,11 +262,11 @@ WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(ProxyFactory *proxy_factory,
 
 
 // static
-WiFiEndpoint *WiFiEndpoint::MakeEndpoint(ProxyFactory *proxy_factory,
-                                         const WiFiRefPtr &wifi,
-                                         const string &ssid,
-                                         const string &bssid,
-                                         const string &network_mode,
+WiFiEndpoint* WiFiEndpoint::MakeEndpoint(ProxyFactory* proxy_factory,
+                                         const WiFiRefPtr& wifi,
+                                         const string& ssid,
+                                         const string& bssid,
+                                         const string& network_mode,
                                          uint16_t frequency,
                                          int16_t signal_dbm,
                                          bool has_wpa_property,
@@ -305,7 +305,7 @@ WiFiEndpoint *WiFiEndpoint::MakeEndpoint(ProxyFactory *proxy_factory,
 }
 
 // static
-const char *WiFiEndpoint::ParseMode(const string &mode_string) {
+const char* WiFiEndpoint::ParseMode(const string& mode_string) {
   if (mode_string == WPASupplicant::kNetworkModeInfrastructure) {
     return kModeManaged;
   } else if (mode_string == WPASupplicant::kNetworkModeAdHoc) {
@@ -320,8 +320,8 @@ const char *WiFiEndpoint::ParseMode(const string &mode_string) {
 }
 
 // static
-const char *WiFiEndpoint::ParseSecurity(
-    const map<string, ::DBus::Variant> &properties, SecurityFlags *flags) {
+const char* WiFiEndpoint::ParseSecurity(
+    const map<string, ::DBus::Variant>& properties, SecurityFlags* flags) {
   if (ContainsKey(properties, WPASupplicant::kPropertyRSN)) {
     // TODO(quiche): check type before casting
     const map<string, ::DBus::Variant> rsn_properties(
@@ -364,8 +364,8 @@ const char *WiFiEndpoint::ParseSecurity(
 
 // static
 void WiFiEndpoint::ParseKeyManagementMethods(
-    const map<string, ::DBus::Variant> &security_method_properties,
-    set<KeyManagement> *key_management_methods) {
+    const map<string, ::DBus::Variant>& security_method_properties,
+    set<KeyManagement>* key_management_methods) {
   if (!ContainsKey(security_method_properties,
                    WPASupplicant::kSecurityMethodPropertyKeyManagement)) {
     return;
@@ -376,7 +376,7 @@ void WiFiEndpoint::ParseKeyManagementMethods(
       security_method_properties.
       find(WPASupplicant::kSecurityMethodPropertyKeyManagement)->second.
       operator vector<string>();
-  for (const auto &method : key_management_vec) {
+  for (const auto& method : key_management_vec) {
     if (base::EndsWith(method, WPASupplicant::kKeyManagementMethodSuffixEAP,
                        true)) {
       key_management_methods->insert(kKeyManagement802_1x);
@@ -390,7 +390,7 @@ void WiFiEndpoint::ParseKeyManagementMethods(
 
 // static
 Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyModeFromFrequency(
-    const map<string, ::DBus::Variant> &properties, uint16_t frequency) {
+    const map<string, ::DBus::Variant>& properties, uint16_t frequency) {
   uint32_t max_rate = 0;
   map<string, ::DBus::Variant>::const_iterator it =
       properties.find(WPASupplicant::kBSSPropertyRates);
@@ -417,10 +417,10 @@ Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyModeFromFrequency(
 
 // static
 bool WiFiEndpoint::ParseIEs(
-    const map<string, ::DBus::Variant> &properties,
-    Metrics::WiFiNetworkPhyMode *phy_mode,
-    VendorInformation *vendor_information,
-    bool *ieee80211w_required, string *country_code) {
+    const map<string, ::DBus::Variant>& properties,
+    Metrics::WiFiNetworkPhyMode* phy_mode,
+    VendorInformation* vendor_information,
+    bool* ieee80211w_required, string* country_code) {
 
   map<string, ::DBus::Variant>::const_iterator ies_property =
       properties.find(WPASupplicant::kBSSPropertyIEs);
@@ -483,7 +483,7 @@ bool WiFiEndpoint::ParseIEs(
 void WiFiEndpoint::ParseWPACapabilities(
     vector<uint8_t>::const_iterator ie,
     vector<uint8_t>::const_iterator end,
-    bool *ieee80211w_required) {
+    bool* ieee80211w_required) {
   // Format of an RSN Information Element:
   //    2             4
   // +------+--------------------+
@@ -551,8 +551,8 @@ void WiFiEndpoint::ParseWPACapabilities(
 // static
 void WiFiEndpoint::ParseVendorIE(vector<uint8_t>::const_iterator ie,
                                  vector<uint8_t>::const_iterator end,
-                                 VendorInformation *vendor_information,
-                                 bool *ieee80211w_required) {
+                                 VendorInformation* vendor_information,
+                                 bool* ieee80211w_required) {
   // Format of an vendor-specific information element (with type
   // and length field for the IE removed by the caller):
   //        3           1       1 - 248

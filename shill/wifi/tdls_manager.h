@@ -19,20 +19,20 @@ class SupplicantInterfaceProxyInterface;
 // Manage TDLS peers for the specified interface |interface_name|.
 class TDLSManager {
  public:
-  TDLSManager(EventDispatcher *dispatcher,
-              SupplicantInterfaceProxyInterface *supplicant_interface_proxy,
-              const std::string &interface_name);
+  TDLSManager(EventDispatcher* dispatcher,
+              SupplicantInterfaceProxyInterface* supplicant_interface_proxy,
+              const std::string& interface_name);
   virtual ~TDLSManager();
 
   // Perform TDLS |operation| on |peer|.
-  virtual std::string PerformOperation(const std::string &peer_mac_address,
-                                       const std::string &operation,
-                                       Error *error);
+  virtual std::string PerformOperation(const std::string& peer_mac_address,
+                                       const std::string& operation,
+                                       Error* error);
 
   // Called when a discover response for |peer_mac_address| is received.
-  virtual void OnDiscoverResponseReceived(const std::string &peer_mac_address);
+  virtual void OnDiscoverResponseReceived(const std::string& peer_mac_address);
 
-  const std::string &interface_name() const { return interface_name_; }
+  const std::string& interface_name() const { return interface_name_; }
 
  private:
   friend class TDLSManagerTest;
@@ -47,18 +47,18 @@ class TDLSManager {
 
   // Discover TDLS service on a remote |peer_mac_address|.  Returns true if
   // operation is initiated successfully.
-  bool DiscoverPeer(const std::string &peer_mac_address);
+  bool DiscoverPeer(const std::string& peer_mac_address);
 
   // Setup a TDLS pairing with |peer_mac_address|.  Returns true if operation is
   // initiated successfully.
-  bool SetupPeer(const std::string &peer_mac_address);
+  bool SetupPeer(const std::string& peer_mac_address);
 
   // Tear down the TDLS pairing with |peer|.  Returns true if operation is
   // initiated successfully.
-  bool TearDownPeer(const std::string &peer_mac_address);
+  bool TearDownPeer(const std::string& peer_mac_address);
 
   // Return a string indicating the TDLS status with |peer_mac_address|.
-  std::string PeerStatus(const std::string &peer_mac_address);
+  std::string PeerStatus(const std::string& peer_mac_address);
 
   // Start the timer to delete any peer entries stored in our peer discovery
   // map.
@@ -68,7 +68,7 @@ class TDLSManager {
   void PeerDiscoveryCleanup();
 
   // Returns the TDLS discover status for this peer
-  PeerDiscoveryState CheckDiscoveryState(const std::string &peer_mac_address);
+  PeerDiscoveryState CheckDiscoveryState(const std::string& peer_mac_address);
 
   // Executes when the TDLS peer discovery cleanup timer expires.
   base::CancelableClosure peer_discovery_cleanup_callback_;
@@ -76,8 +76,8 @@ class TDLSManager {
   // Maps peer to its discovery state.
   std::map<std::string, PeerDiscoveryState> peer_discovery_state_;
 
-  EventDispatcher *dispatcher_;
-  SupplicantInterfaceProxyInterface *supplicant_interface_proxy_;
+  EventDispatcher* dispatcher_;
+  SupplicantInterfaceProxyInterface* supplicant_interface_proxy_;
   std::string interface_name_;
 
   DISALLOW_COPY_AND_ASSIGN(TDLSManager);

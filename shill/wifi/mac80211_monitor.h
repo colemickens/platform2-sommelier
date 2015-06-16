@@ -37,18 +37,18 @@ class Mac80211Monitor {
     size_t queue_length;
   };
 
-  Mac80211Monitor(EventDispatcher *dispatcher,
-                  const std::string &link_name,
+  Mac80211Monitor(EventDispatcher* dispatcher,
+                  const std::string& link_name,
                   size_t queue_length_limit,
-                  const base::Closure &on_repair_callback,
-                  Metrics *metrics);
+                  const base::Closure& on_repair_callback,
+                  Metrics* metrics);
   virtual ~Mac80211Monitor();
 
-  virtual void Start(const std::string &phy_name);
+  virtual void Start(const std::string& phy_name);
   virtual void Stop();
   virtual void UpdateConnectedState(bool new_state);
 
-  const std::string &link_name() const { return link_name_; }
+  const std::string& link_name() const { return link_name_; }
 
  private:
   friend class Mac80211MonitorTest;
@@ -102,18 +102,18 @@ class Mac80211Monitor {
   // Returns a bitmask of QueueStopFlags. A flag will be set if
   // any of the queues has that flag set, and is non-empty.
   // A return value if 0 indicates no queues are stuck.
-  uint32_t CheckAreQueuesStuck(const std::vector<QueueState> &queue_states);
+  uint32_t CheckAreQueuesStuck(const std::vector<QueueState>& queue_states);
 
   static std::vector<QueueState> ParseQueueState(
-      const std::string &state_string);
+      const std::string& state_string);
   static QueueStopFlag GetFlagForReason(QueueStopReason reason);
 
-  Time *time_;  // for mocking in tests
-  EventDispatcher *dispatcher_;
+  Time* time_;  // for mocking in tests
+  EventDispatcher* dispatcher_;
   const std::string link_name_;
   size_t queue_length_limit_;
   base::Closure on_repair_callback_;
-  Metrics *metrics_;
+  Metrics* metrics_;
   std::string phy_name_;
   time_t last_woke_queues_monotonic_seconds_;
   bool is_running_;

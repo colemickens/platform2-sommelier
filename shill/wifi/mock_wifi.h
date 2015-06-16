@@ -25,29 +25,29 @@ class EventDispatcher;
 
 class MockWiFi : public WiFi {
  public:
-  MockWiFi(ControlInterface *control_interface,
-           EventDispatcher *dispatcher,
-           Metrics *metrics,
-           Manager *manager,
-           const std::string &link_name,
-           const std::string &address,
+  MockWiFi(ControlInterface* control_interface,
+           EventDispatcher* dispatcher,
+           Metrics* metrics,
+           Manager* manager,
+           const std::string& link_name,
+           const std::string& address,
            int interface_index);
   ~MockWiFi() override;
 
-  MOCK_METHOD2(Start, void(Error *error,
-                           const EnabledStateChangedCallback &callback));
-  MOCK_METHOD2(Stop, void(Error *error,
-                          const EnabledStateChangedCallback &callback));
-  MOCK_METHOD3(Scan, void(ScanType scan_type, Error *error,
-                          const std::string &reason));
-  MOCK_METHOD1(DisconnectFromIfActive, void(WiFiService *service));
-  MOCK_METHOD1(DisconnectFrom, void(WiFiService *service));
-  MOCK_METHOD1(ClearCachedCredentials, void(const WiFiService *service));
-  MOCK_METHOD1(ConnectTo, void(WiFiService *service));
+  MOCK_METHOD2(Start, void(Error* error,
+                           const EnabledStateChangedCallback& callback));
+  MOCK_METHOD2(Stop, void(Error* error,
+                          const EnabledStateChangedCallback& callback));
+  MOCK_METHOD3(Scan, void(ScanType scan_type, Error* error,
+                          const std::string& reason));
+  MOCK_METHOD1(DisconnectFromIfActive, void(WiFiService* service));
+  MOCK_METHOD1(DisconnectFrom, void(WiFiService* service));
+  MOCK_METHOD1(ClearCachedCredentials, void(const WiFiService* service));
+  MOCK_METHOD1(ConnectTo, void(WiFiService* service));
   MOCK_CONST_METHOD0(IsIdle, bool());
   MOCK_METHOD1(NotifyEndpointChanged,
-               void(const WiFiEndpointConstRefPtr &endpoint));
-  MOCK_METHOD1(DestroyIPConfigLease, void(const std::string &));
+               void(const WiFiEndpointConstRefPtr& endpoint));
+  MOCK_METHOD1(DestroyIPConfigLease, void(const std::string&));
   MOCK_CONST_METHOD0(IsConnectedViaTether, bool());
 
  private:

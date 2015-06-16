@@ -22,7 +22,7 @@ using std::vector;
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static string ObjectID(Mac80211Monitor *m) { return m->link_name(); }
+static string ObjectID(Mac80211Monitor* m) { return m->link_name(); }
 }
 
 // statics
@@ -37,11 +37,11 @@ const time_t Mac80211Monitor::kQueueStatePollIntervalSeconds = 30;
 const time_t Mac80211Monitor::kMinimumTimeBetweenWakesSeconds = 60;
 
 Mac80211Monitor::Mac80211Monitor(
-    EventDispatcher *dispatcher,
-    const string &link_name,
+    EventDispatcher* dispatcher,
+    const string& link_name,
     size_t queue_length_limit,
-    const base::Closure &on_repair_callback,
-    Metrics *metrics)
+    const base::Closure& on_repair_callback,
+    Metrics* metrics)
     : time_(Time::GetInstance()),
       dispatcher_(dispatcher),
       link_name_(link_name),
@@ -62,7 +62,7 @@ Mac80211Monitor::~Mac80211Monitor() {
   Stop();
 }
 
-void Mac80211Monitor::Start(const string &phy_name) {
+void Mac80211Monitor::Start(const string& phy_name) {
   SLOG(this, 2) << __func__ << " on " << link_name_ << " (" << phy_name << ")";
   CHECK(!is_running_);
   phy_name_ = phy_name;
@@ -160,10 +160,10 @@ void Mac80211Monitor::WakeQueuesIfNeeded() {
 }
 
 uint32_t Mac80211Monitor::CheckAreQueuesStuck(
-    const vector<QueueState> &queue_states) {
+    const vector<QueueState>& queue_states) {
   size_t max_stuck_queue_len = 0;
   uint32_t stuck_flags = 0;
-  for (const auto &queue_state : queue_states) {
+  for (const auto& queue_state : queue_states) {
     if (queue_state.queue_length < queue_length_limit_) {
       SLOG(this, 5) << __func__
                     << " skipping queue of length " << queue_state.queue_length
@@ -212,7 +212,7 @@ uint32_t Mac80211Monitor::CheckAreQueuesStuck(
 //
 // static
 vector<Mac80211Monitor::QueueState>
-Mac80211Monitor::ParseQueueState(const string &state_string) {
+Mac80211Monitor::ParseQueueState(const string& state_string) {
   vector<string> queue_state_strings;
   vector <QueueState> queue_states;
   base::SplitString(state_string, '\n', &queue_state_strings);
@@ -227,7 +227,7 @@ Mac80211Monitor::ParseQueueState(const string &state_string) {
     queue_state_strings.pop_back();
   }
 
-  for (const auto &queue_state : queue_state_strings) {
+  for (const auto& queue_state : queue_state_strings) {
     // Example |queue_state|: "00: 0x00000000/10".
     vector<string> queuenum_and_state;
     base::SplitString(queue_state, ':', &queuenum_and_state);

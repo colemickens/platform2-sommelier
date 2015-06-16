@@ -97,16 +97,16 @@ class ScanSession {
   // If a scan request to the kernel returns an error, |on_scan_failed| is
   // called.  The caller can reissue the scan by calling |ReInitiateScan| or
   // abort the scan session by deleting the |ScanSession| object.
-  ScanSession(NetlinkManager *netlink_manager,
-              EventDispatcher *dispatcher,
-              const WiFiProvider::FrequencyCountList &previous_frequencies,
-              const std::set<uint16_t> &available_frequencies,
+  ScanSession(NetlinkManager* netlink_manager,
+              EventDispatcher* dispatcher,
+              const WiFiProvider::FrequencyCountList& previous_frequencies,
+              const std::set<uint16_t>& available_frequencies,
               uint32_t ifindex,
-              const FractionList &fractions,
+              const FractionList& fractions,
               size_t min_frequencies,
               size_t max_frequencies,
               OnScanFailed on_scan_failed,
-              Metrics *metrics);
+              Metrics* metrics);
 
   virtual ~ScanSession();
 
@@ -115,7 +115,7 @@ class ScanSession {
 
   // Adds an SSID to the list of things for which to scan.  Useful for hidden
   // SSIDs.
-  virtual void AddSsid(const ByteString &ssid);
+  virtual void AddSsid(const ByteString& ssid);
 
   // Start a wifi scan of the next set of frequencies (derived from the
   // constructor's parameters) after saving those frequencies for the potential
@@ -143,8 +143,8 @@ class ScanSession {
 
   // Assists with sorting the |previous_frequencies| passed to the
   // constructor.
-  static bool CompareFrequencyCount(const WiFiProvider::FrequencyCount &first,
-                                    const WiFiProvider::FrequencyCount &second);
+  static bool CompareFrequencyCount(const WiFiProvider::FrequencyCount& first,
+                                    const WiFiProvider::FrequencyCount& second);
 
   // |GetScanFrequencies| gets the next set of WiFi scan frequencies.  Returns
   // at least |min_frequencies| (unless fewer frequencies remain from previous
@@ -174,14 +174,14 @@ class ScanSession {
   // Does the real work of initiating a scan by sending an
   // NL80211_CMD_TRIGGER_SCAN message to the kernel and installing a handler for
   // any response (which only happens in the error case).
-  void DoScan(const std::vector<uint16_t> &scan_frequencies);
+  void DoScan(const std::vector<uint16_t>& scan_frequencies);
 
   // Handles any unicast response to NL80211_CMD_TRIGGER_SCAN (which is,
   // likely, an error -- when things work, we get an
   // NL80211_CMD_NEW_SCAN_RESULTS broadcast message).
-  void OnTriggerScanResponse(const Nl80211Message &message);
+  void OnTriggerScanResponse(const Nl80211Message& message);
   void OnTriggerScanErrorResponse(NetlinkManager::AuxilliaryMessageType type,
-                                  const NetlinkMessage *netlink_message);
+                                  const NetlinkMessage* netlink_message);
   void ReportEbusyTime(int log_level);
 
   // Logs the results of the scan.
@@ -189,8 +189,8 @@ class ScanSession {
 
   base::WeakPtrFactory<ScanSession> weak_ptr_factory_;
 
-  NetlinkManager *netlink_manager_;
-  EventDispatcher *dispatcher_;
+  NetlinkManager* netlink_manager_;
+  EventDispatcher* dispatcher_;
 
   // List of frequencies, sorted by the number of successful connections for
   // each frequency.
@@ -200,7 +200,7 @@ class ScanSession {
   float total_fraction_wanted_;
   std::vector<uint16_t> current_scan_frequencies_;
   uint32_t wifi_interface_index_;
-  std::set<ByteString, bool(*)(const ByteString &, const ByteString &)> ssids_;
+  std::set<ByteString, bool(*)(const ByteString&, const ByteString&)> ssids_;
   FractionList fractions_;
   size_t min_frequencies_;
   size_t max_frequencies_;
@@ -211,7 +211,7 @@ class ScanSession {
   // Statistics gathering.
   size_t original_frequency_count_;
   chromeos_metrics::Timer ebusy_timer_;
-  Metrics *metrics_;
+  Metrics* metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(ScanSession);
 };

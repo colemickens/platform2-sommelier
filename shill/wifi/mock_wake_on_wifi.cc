@@ -8,8 +8,8 @@
 
 namespace shill {
 
-MockWakeOnWiFi::MockWakeOnWiFi(NetlinkManager *netlink_manager,
-                               EventDispatcher *dispatcher, Metrics *metrics)
+MockWakeOnWiFi::MockWakeOnWiFi(NetlinkManager* netlink_manager,
+                               EventDispatcher* dispatcher, Metrics* metrics)
     : WakeOnWiFi(netlink_manager, dispatcher, metrics,
                  RecordWakeReasonCallback()) {}
 

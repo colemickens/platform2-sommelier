@@ -131,10 +131,10 @@ class SetWakeOnPacketConnMessage;
 
 class WakeOnWiFi {
  public:
-  typedef base::Callback<void(const WiFi::FreqSet &)> InitiateScanCallback;
+  typedef base::Callback<void(const WiFi::FreqSet&)> InitiateScanCallback;
   // Callback used to report the wake reason for the current dark resume to
   // powerd.
-  typedef base::Callback<void(const std::string &)> RecordWakeReasonCallback;
+  typedef base::Callback<void(const std::string&)> RecordWakeReasonCallback;
 
   // Types of triggers that we can program the NIC to wake the WiFi device.
   enum WakeOnWiFiTrigger {
@@ -144,13 +144,13 @@ class WakeOnWiFi {
     kWakeTriggerSSID = 3
   };
 
-  WakeOnWiFi(NetlinkManager *netlink_manager, EventDispatcher *dispatcher,
-             Metrics *metrics,
+  WakeOnWiFi(NetlinkManager* netlink_manager, EventDispatcher* dispatcher,
+             Metrics* metrics,
              RecordWakeReasonCallback record_wake_reason_callback);
   virtual ~WakeOnWiFi();
 
   // Registers |store| with properties related to wake on WiFi.
-  void InitPropertyStore(PropertyStore *store);
+  void InitPropertyStore(PropertyStore* store);
 
   // Starts |metrics_timer_| so that wake on WiFi related metrics are
   // periodically collected.
@@ -159,21 +159,21 @@ class WakeOnWiFi {
   // Enable the NIC to wake on packets received from |ip_endpoint|.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
-  void AddWakeOnPacketConnection(const std::string &ip_endpoint, Error *error);
+  void AddWakeOnPacketConnection(const std::string& ip_endpoint, Error* error);
   // Remove rule to wake on packets received from |ip_endpoint| from the NIC.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
-  void RemoveWakeOnPacketConnection(const std::string &ip_endpoint,
-                                    Error *error);
+  void RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
+                                    Error* error);
   // Remove all rules to wake on incoming packets from the NIC.
   // Note: The actual programming of the NIC only happens before the system
   // suspends, in |OnBeforeSuspend|.
-  void RemoveAllWakeOnPacketConnections(Error *error);
+  void RemoveAllWakeOnPacketConnections(Error* error);
   // Given a NL80211_CMD_NEW_WIPHY message |nl80211_message|, parses the
   // wake on WiFi capabilities of the NIC and set relevant members of this
   // WakeOnWiFi object to reflect the supported capbilities.
   virtual void ParseWakeOnWiFiCapabilities(
-      const Nl80211Message &nl80211_message);
+      const Nl80211Message& nl80211_message);
   // Callback invoked when the system reports its wakeup reason.
   //
   // Arguments:
@@ -182,7 +182,7 @@ class WakeOnWiFi {
   //
   // Note: Assumes only one wakeup reason is received. If more than one is
   // received, the only first one parsed will be handled.
-  virtual void OnWakeupReasonReceived(const NetlinkMessage &netlink_message);
+  virtual void OnWakeupReasonReceived(const NetlinkMessage& netlink_message);
   // Performs pre-suspend actions relevant to wake on WiFi functionality.
   //
   // Arguments:
@@ -200,10 +200,10 @@ class WakeOnWiFi {
   //    renewal is due.
   virtual void OnBeforeSuspend(
       bool is_connected,
-      const std::vector<ByteString> &ssid_whitelist,
-      const ResultCallback &done_callback,
-      const base::Closure &renew_dhcp_lease_callback,
-      const base::Closure &remove_supplicant_networks_callback,
+      const std::vector<ByteString>& ssid_whitelist,
+      const ResultCallback& done_callback,
+      const base::Closure& renew_dhcp_lease_callback,
+      const base::Closure& remove_supplicant_networks_callback,
       bool have_dhcp_lease,
       uint32_t time_to_next_lease_renewal);
   // Performs post-resume actions relevant to wake on wireless functionality.
@@ -223,11 +223,11 @@ class WakeOnWiFi {
   //    to remove all networks from WPA supplicant.
   virtual void OnDarkResume(
       bool is_connected,
-      const std::vector<ByteString> &ssid_whitelist,
-      const ResultCallback &done_callback,
-      const base::Closure &renew_dhcp_lease_callback,
-      const InitiateScanCallback &initiate_scan_callback,
-      const base::Closure &remove_supplicant_networks_callback);
+      const std::vector<ByteString>& ssid_whitelist,
+      const ResultCallback& done_callback,
+      const base::Closure& renew_dhcp_lease_callback,
+      const InitiateScanCallback& initiate_scan_callback,
+      const base::Closure& remove_supplicant_networks_callback);
   // Wrapper around WakeOnWiFi::BeforeSuspendActions that checks if shill is
   // currently in dark resume before invoking the function.
   virtual void OnDHCPLeaseObtained(bool start_lease_renewal_timer,
@@ -239,9 +239,9 @@ class WakeOnWiFi {
   // for auto-connect after a scan. |initiate_scan_callback| is used for dark
   // resume scan retries.
   virtual void OnNoAutoConnectableServicesAfterScan(
-      const std::vector<ByteString> &ssid_whitelist,
-      const base::Closure &remove_supplicant_networks_callback,
-      const InitiateScanCallback &initiate_scan_callback);
+      const std::vector<ByteString>& ssid_whitelist,
+      const base::Closure& remove_supplicant_networks_callback,
+      const InitiateScanCallback& initiate_scan_callback);
   // Called by WiFi when it is notified by the kernel that a scan has started.
   // If |is_active_scan| is true, the scan is an active scan. Otherwise, the
   // scan is a passive scan.
@@ -311,42 +311,42 @@ class WakeOnWiFi {
   static const char kWakeReasonStringDisconnect[];
   static const char kWakeReasonStringSSID[];
 
-  std::string GetWakeOnWiFiFeaturesEnabled(Error *error);
-  bool SetWakeOnWiFiFeaturesEnabled(const std::string &enabled, Error *error);
+  std::string GetWakeOnWiFiFeaturesEnabled(Error* error);
+  bool SetWakeOnWiFiFeaturesEnabled(const std::string& enabled, Error* error);
   // Helper function to run and reset |suspend_actions_done_callback_|.
-  void RunAndResetSuspendActionsDoneCallback(const Error &error);
+  void RunAndResetSuspendActionsDoneCallback(const Error& error);
   // Used for comparison of ByteString pairs in a set.
   static bool ByteStringPairIsLessThan(
-      const std::pair<ByteString, ByteString> &lhs,
-      const std::pair<ByteString, ByteString> &rhs);
+      const std::pair<ByteString, ByteString>& lhs,
+      const std::pair<ByteString, ByteString>& rhs);
   // Creates a mask which specifies which bytes in pattern of length
   // |pattern_len| to match against. Bits |offset| to |pattern_len| - 1 are set,
   // which bits 0 to bits 0 to |offset| - 1 are unset. This mask is saved in
   // |mask|.
-  static void SetMask(ByteString *mask, uint32_t pattern_len, uint32_t offset);
+  static void SetMask(ByteString* mask, uint32_t pattern_len, uint32_t offset);
   // Creates a pattern and mask for a NL80211 message that programs the NIC to
   // wake on packets originating from IP address |ip_addr|. The pattern and mask
   // are saved in |pattern| and |mask| respectively. Returns true iff the
   // pattern and mask are successfully created and written to |pattern| and
   // |mask| respectively.
-  static bool CreateIPAddressPatternAndMask(const IPAddress &ip_addr,
-                                            ByteString *pattern,
-                                            ByteString *mask);
-  static void CreateIPV4PatternAndMask(const IPAddress &ip_addr,
-                                       ByteString *pattern, ByteString *mask);
-  static void CreateIPV6PatternAndMask(const IPAddress &ip_addr,
-                                       ByteString *pattern, ByteString *mask);
+  static bool CreateIPAddressPatternAndMask(const IPAddress& ip_addr,
+                                            ByteString* pattern,
+                                            ByteString* mask);
+  static void CreateIPV4PatternAndMask(const IPAddress& ip_addr,
+                                       ByteString* pattern, ByteString* mask);
+  static void CreateIPV6PatternAndMask(const IPAddress& ip_addr,
+                                       ByteString* pattern, ByteString* mask);
   // Creates and sets an attribute in a NL80211 message |msg| which indicates
   // the index of the wiphy interface to program. Returns true iff |msg| is
   // successfully configured.
-  static bool ConfigureWiphyIndex(Nl80211Message *msg, int32_t index);
+  static bool ConfigureWiphyIndex(Nl80211Message* msg, int32_t index);
   // Creates and sets attributes in an SetWakeOnPacketConnMessage |msg| so that
   // the message will disable wake-on-packet functionality of the NIC with wiphy
   // index |wiphy_index|. Returns true iff |msg| is successfully configured.
   // NOTE: Assumes that |msg| has not been altered since construction.
-  static bool ConfigureDisableWakeOnWiFiMessage(SetWakeOnPacketConnMessage *msg,
+  static bool ConfigureDisableWakeOnWiFiMessage(SetWakeOnPacketConnMessage* msg,
                                                 uint32_t wiphy_index,
-                                                Error *error);
+                                                Error* error);
   // Creates and sets attributes in a SetWakeOnPacketConnMessage |msg|
   // so that the message will program the NIC with wiphy index |wiphy_index|
   // with wake on wireless triggers in |trigs|. If |trigs| contains the
@@ -357,11 +357,11 @@ class WakeOnWiFi {
   // Returns true iff |msg| is successfully configured.
   // NOTE: Assumes that |msg| has not been altered since construction.
   static bool ConfigureSetWakeOnWiFiSettingsMessage(
-      SetWakeOnPacketConnMessage *msg, const std::set<WakeOnWiFiTrigger> &trigs,
-      const IPAddressStore &addrs, uint32_t wiphy_index,
+      SetWakeOnPacketConnMessage* msg, const std::set<WakeOnWiFiTrigger>& trigs,
+      const IPAddressStore& addrs, uint32_t wiphy_index,
       uint32_t net_detect_scan_period_seconds,
-      const std::vector<ByteString> &ssid_whitelist,
-      Error *error);
+      const std::vector<ByteString>& ssid_whitelist,
+      Error* error);
   // Helper function to ConfigureSetWakeOnWiFiSettingsMessage that creates a
   // single nested attribute inside the attribute list referenced by |patterns|
   // representing a wake-on-packet pattern matching rule with index |patnum|.
@@ -371,16 +371,16 @@ class WakeOnWiFi {
   // NOTE: |patnum| should be unique across multiple calls to this function to
   // prevent the formation of a erroneous nl80211 message or the overwriting of
   // pattern matching rules.
-  static bool CreateSinglePattern(const IPAddress &ip_addr,
+  static bool CreateSinglePattern(const IPAddress& ip_addr,
                                   AttributeListRefPtr patterns, uint8_t patnum,
-                                  Error *error);
+                                  Error* error);
   // Creates and sets attributes in an GetWakeOnPacketConnMessage msg| so that
   // the message will request for wake-on-packet settings information from the
   // NIC with wiphy index |wiphy_index|. Returns true iff |msg| is successfully
   // configured.
   // NOTE: Assumes that |msg| has not been altered since construction.
   static bool ConfigureGetWakeOnWiFiSettingsMessage(
-      GetWakeOnPacketConnMessage *msg, uint32_t wiphy_index, Error *error);
+      GetWakeOnPacketConnMessage* msg, uint32_t wiphy_index, Error* error);
   // Given a NL80211_CMD_GET_WOWLAN response or NL80211_CMD_SET_WOWLAN request
   // |msg|, returns true iff the wake-on-wifi trigger settings in |msg| match
   // those in |trigs|. Performs the following checks for the following triggers:
@@ -393,23 +393,23 @@ class WakeOnWiFi {
   // Note: finding a trigger is in |msg| that is not expected based on the flags
   // in |trig| also counts as a mismatch.
   static bool WakeOnWiFiSettingsMatch(
-      const Nl80211Message &msg, const std::set<WakeOnWiFiTrigger> &trigs,
-      const IPAddressStore &addrs, uint32_t net_detect_scan_period_seconds,
-      const std::vector<ByteString> &ssid_whitelist);
+      const Nl80211Message& msg, const std::set<WakeOnWiFiTrigger>& trigs,
+      const IPAddressStore& addrs, uint32_t net_detect_scan_period_seconds,
+      const std::vector<ByteString>& ssid_whitelist);
   // Handler for NL80211 message error responses from NIC wake on WiFi setting
   // programming attempts.
   void OnWakeOnWiFiSettingsErrorResponse(
       NetlinkManager::AuxilliaryMessageType type,
-      const NetlinkMessage *raw_message);
+      const NetlinkMessage* raw_message);
   // Message handler for NL80211_CMD_SET_WOWLAN responses.
   static void OnSetWakeOnPacketConnectionResponse(
-      const Nl80211Message &nl80211_message);
+      const Nl80211Message& nl80211_message);
   // Request wake on WiFi settings for this WiFi device.
   void RequestWakeOnPacketSettings();
   // Verify that the wake on WiFi settings programmed into the NIC match
   // those recorded locally for this device in |wake_on_packet_connections_|,
   // |wake_on_wifi_triggers_|, and |wake_on_ssid_whitelist_|.
-  void VerifyWakeOnWiFiSettings(const Nl80211Message &nl80211_message);
+  void VerifyWakeOnWiFiSettings(const Nl80211Message& nl80211_message);
   // Sends an NL80211 message to program the NIC with wake on WiFi settings
   // configured in |wake_on_packet_connections_|, |wake_on_ssid_whitelist_|, and
   // |wake_on_wifi_triggers_|. If |wake_on_wifi_triggers_| is empty, calls
@@ -443,7 +443,7 @@ class WakeOnWiFi {
       bool is_connected,
       bool start_lease_renewal_timer,
       uint32_t time_to_next_lease_renewal,
-      const base::Closure &remove_supplicant_networks_callback);
+      const base::Closure& remove_supplicant_networks_callback);
 
   // Needed for |dhcp_lease_renewal_timer_| and |wake_to_scan_timer_| since
   // passing a empty base::Closure() causes a run-time DCHECK error when
@@ -467,13 +467,13 @@ class WakeOnWiFi {
   // Sets the |dark_resume_scan_retries_left_| counter if necessary, then runs
   // |initiate_scan_callback| with |freqs|.
   void InitiateScanInDarkResume(
-      const InitiateScanCallback &initiate_scan_callback,
-      const WiFi::FreqSet &freqs);
+      const InitiateScanCallback& initiate_scan_callback,
+      const WiFi::FreqSet& freqs);
 
   // Pointers to objects owned by the WiFi object that created this object.
-  EventDispatcher *dispatcher_;
-  NetlinkManager *netlink_manager_;
-  Metrics *metrics_;
+  EventDispatcher* dispatcher_;
+  NetlinkManager* netlink_manager_;
+  Metrics* metrics_;
   // Executes after the NIC's wake-on-packet settings are configured via
   // NL80211 messages to verify that the new configuration has taken effect.
   // Calls RequestWakeOnPacketSettings.

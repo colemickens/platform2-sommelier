@@ -44,7 +44,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kService;
-static string ObjectID(const WiFiService *w) { return w->GetRpcIdentifier(); }
+static string ObjectID(const WiFiService* w) { return w->GetRpcIdentifier(); }
 }
 
 const char WiFiService::kAutoConnNoEndpoint[] = "no endpoints";
@@ -63,14 +63,14 @@ const char WiFiService::kStorageRoamThresholdSet[] = "WiFi.RoamThresholdSet";
 
 bool WiFiService::logged_signal_warning = false;
 
-WiFiService::WiFiService(ControlInterface *control_interface,
-                         EventDispatcher *dispatcher,
-                         Metrics *metrics,
-                         Manager *manager,
-                         WiFiProvider *provider,
-                         const vector<uint8_t> &ssid,
-                         const string &mode,
-                         const string &security,
+WiFiService::WiFiService(ControlInterface* control_interface,
+                         EventDispatcher* dispatcher,
+                         Metrics* metrics,
+                         Manager* manager,
+                         WiFiProvider* provider,
+                         const vector<uint8_t>& ssid,
+                         const string& mode,
+                         const string& security,
                          bool hidden_ssid)
     : Service(control_interface, dispatcher, metrics, manager,
               Technology::kWifi),
@@ -90,7 +90,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       roam_threshold_db_(0),
       roam_threshold_db_set_(false),
       provider_(provider) {
-  PropertyStore *store = this->mutable_store();
+  PropertyStore* store = this->mutable_store();
   store->RegisterConstString(kModeProperty, &mode_);
   HelpRegisterWriteOnlyDerivedString(kPassphraseProperty,
                                      &WiFiService::SetPassphrase,
@@ -125,7 +125,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                             &WiFiService::ClearRoamThreshold);
 
   string ssid_string(
-      reinterpret_cast<const char *>(ssid_.data()), ssid_.size());
+      reinterpret_cast<const char*>(ssid_.data()), ssid_.size());
   WiFi::SanitizeSSID(&ssid_string);
   set_friendly_name(ssid_string);
 
@@ -176,7 +176,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
 
 WiFiService::~WiFiService() {}
 
-bool WiFiService::IsAutoConnectable(const char **reason) const {
+bool WiFiService::IsAutoConnectable(const char** reason) const {
   if (!Service::IsAutoConnectable(reason)) {
     return false;
   }
@@ -201,18 +201,18 @@ bool WiFiService::IsAutoConnectable(const char **reason) const {
   return true;
 }
 
-void WiFiService::SetEAPKeyManagement(const string &key_management) {
+void WiFiService::SetEAPKeyManagement(const string& key_management) {
   Service::SetEAPKeyManagement(key_management);
   UpdateSecurity();
 }
 
-void WiFiService::AddEndpoint(const WiFiEndpointConstRefPtr &endpoint) {
+void WiFiService::AddEndpoint(const WiFiEndpointConstRefPtr& endpoint) {
   DCHECK(endpoint->ssid() == ssid());
   endpoints_.insert(endpoint);
   UpdateFromEndpoints();
 }
 
-void WiFiService::RemoveEndpoint(const WiFiEndpointConstRefPtr &endpoint) {
+void WiFiService::RemoveEndpoint(const WiFiEndpointConstRefPtr& endpoint) {
   set<WiFiEndpointConstRefPtr>::iterator i = endpoints_.find(endpoint);
   DCHECK(i != endpoints_.end());
   if (i == endpoints_.end()) {
@@ -229,14 +229,14 @@ void WiFiService::RemoveEndpoint(const WiFiEndpointConstRefPtr &endpoint) {
 }
 
 void WiFiService::NotifyCurrentEndpoint(
-    const WiFiEndpointConstRefPtr &endpoint) {
+    const WiFiEndpointConstRefPtr& endpoint) {
   DCHECK(!endpoint || (endpoints_.find(endpoint) != endpoints_.end()));
   current_endpoint_ = endpoint;
   UpdateFromEndpoints();
 }
 
 void WiFiService::NotifyEndpointUpdated(
-    const WiFiEndpointConstRefPtr &endpoint) {
+    const WiFiEndpointConstRefPtr& endpoint) {
   DCHECK(endpoints_.find(endpoint) != endpoints_.end());
   UpdateFromEndpoints();
 }
@@ -245,7 +245,7 @@ string WiFiService::GetStorageIdentifier() const {
   return storage_identifier_;
 }
 
-bool WiFiService::SetPassphrase(const string &passphrase, Error *error) {
+bool WiFiService::SetPassphrase(const string& passphrase, Error* error) {
   if (security_ == kSecurityWep) {
     ValidateWEPPassphrase(passphrase, error);
   } else if (security_ == kSecurityPsk ||
@@ -265,7 +265,7 @@ bool WiFiService::SetPassphrase(const string &passphrase, Error *error) {
 }
 
 bool WiFiService::SetPassphraseInternal(
-    const string &passphrase,
+    const string& passphrase,
     Service::UpdateCredentialsReason reason) {
   if (passphrase_ == passphrase) {
     // After a user logs in, Chrome may reconfigure a Service with the
@@ -281,18 +281,18 @@ bool WiFiService::SetPassphraseInternal(
 
 // ClearPassphrase is separate from SetPassphrase, because the default
 // value for |passphrase_| would not pass validation.
-void WiFiService::ClearPassphrase(Error */*error*/) {
+void WiFiService::ClearPassphrase(Error* /*error*/) {
   passphrase_.clear();
   ClearCachedCredentials();
   UpdateConnectable();
 }
 
-string WiFiService::GetPreferredDevice(Error */*error*/) {
+string WiFiService::GetPreferredDevice(Error* /*error*/) {
   return preferred_device_;
 }
 
-bool WiFiService::SetPreferredDevice(const string &device_name,
-                                     Error */*error*/) {
+bool WiFiService::SetPreferredDevice(const string& device_name,
+                                     Error* /*error*/) {
   // Reset device if it is not the preferred device.
   if (!device_name.empty() && wifi_ && wifi_->link_name() != device_name) {
     ResetWiFi();
@@ -301,7 +301,7 @@ bool WiFiService::SetPreferredDevice(const string &device_name,
   return true;
 }
 
-string WiFiService::GetTethering(Error */*error*/) const {
+string WiFiService::GetTethering(Error* /*error*/) const {
   if (IsConnected() && wifi_ && wifi_->IsConnectedViaTether()) {
     return kTetheringConfirmedState;
   }
@@ -317,7 +317,7 @@ string WiFiService::GetTethering(Error */*error*/) const {
 }
 
 string WiFiService::GetLoadableStorageIdentifier(
-    const StoreInterface &storage) const {
+    const StoreInterface& storage) const {
   set<string> groups = storage.GetGroupsWithProperties(GetStorageProperties());
   if (groups.empty()) {
     LOG(WARNING) << "Configuration for service "
@@ -333,7 +333,7 @@ string WiFiService::GetLoadableStorageIdentifier(
   return *groups.begin();
 }
 
-bool WiFiService::IsLoadableFrom(const StoreInterface &storage) const {
+bool WiFiService::IsLoadableFrom(const StoreInterface& storage) const {
   return !storage.GetGroupsWithProperties(GetStorageProperties()).empty();
 }
 
@@ -344,7 +344,7 @@ bool WiFiService::IsVisible() const {
   return HasEndpoints() || IsConnected() || IsConnecting();
 }
 
-bool WiFiService::Load(StoreInterface *storage) {
+bool WiFiService::Load(StoreInterface* storage) {
   string id = GetLoadableStorageIdentifier(*storage);
   if (id.empty()) {
     return false;
@@ -386,7 +386,7 @@ bool WiFiService::Load(StoreInterface *storage) {
   return true;
 }
 
-bool WiFiService::Save(StoreInterface *storage) {
+bool WiFiService::Save(StoreInterface* storage) {
   // Save properties common to all Services.
   if (!Service::Save(storage)) {
     return false;
@@ -437,7 +437,7 @@ void WiFiService::SetState(ConnectState state) {
   NotifyPropertyChanges();
 }
 
-bool WiFiService::IsSecurityMatch(const string &security) const {
+bool WiFiService::IsSecurityMatch(const string& security) const {
   return ComputeSecurityClass(security) == ComputeSecurityClass(security_);
 }
 
@@ -527,8 +527,8 @@ void WiFiService::SendPostReadyStateMetrics(
 
 // private methods
 void WiFiService::HelpRegisterConstDerivedString(
-    const string &name,
-    string(WiFiService::*get)(Error *)) {
+    const string& name,
+    string(WiFiService::*get)(Error*)) {
   mutable_store()->RegisterDerivedString(
       name,
       StringAccessor(
@@ -536,19 +536,19 @@ void WiFiService::HelpRegisterConstDerivedString(
 }
 
 void WiFiService::HelpRegisterDerivedString(
-    const string &name,
-    string(WiFiService::*get)(Error *error),
-    bool(WiFiService::*set)(const string &, Error *)) {
+    const string& name,
+    string(WiFiService::*get)(Error* error),
+    bool(WiFiService::*set)(const string&, Error*)) {
   mutable_store()->RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<WiFiService, string>(this, get, set)));
 }
 
 void WiFiService::HelpRegisterWriteOnlyDerivedString(
-    const string &name,
-    bool(WiFiService::*set)(const string &, Error *),
-    void(WiFiService::*clear)(Error *error),
-    const string *default_value) {
+    const string& name,
+    bool(WiFiService::*set)(const string&, Error*),
+    void(WiFiService::*clear)(Error* error),
+    const string* default_value) {
   mutable_store()->RegisterDerivedString(
       name,
       StringAccessor(
@@ -557,16 +557,16 @@ void WiFiService::HelpRegisterWriteOnlyDerivedString(
 }
 
 void WiFiService::HelpRegisterDerivedUint16(
-    const string &name,
-    uint16_t(WiFiService::*get)(Error *error),
-    bool(WiFiService::*set)(const uint16_t &value, Error *error),
-    void(WiFiService::*clear)(Error *error)) {
+    const string& name,
+    uint16_t(WiFiService::*get)(Error* error),
+    bool(WiFiService::*set)(const uint16_t& value, Error* error),
+    void(WiFiService::*clear)(Error* error)) {
   mutable_store()->RegisterDerivedUint16(
       name, Uint16Accessor(new CustomAccessor<WiFiService, uint16_t>(
                 this, get, set, clear)));
 }
 
-void WiFiService::Connect(Error *error, const char *reason) {
+void WiFiService::Connect(Error* error, const char* reason) {
   if (!connectable()) {
     LOG(ERROR) << "Can't connect. Service " << unique_name()
                << " is not connectable.";
@@ -696,7 +696,7 @@ DBusPropertiesMap WiFiService::GetSupplicantConfigurationParameters() const {
 }
 
 
-void WiFiService::Disconnect(Error *error, const char *reason) {
+void WiFiService::Disconnect(Error* error, const char* reason) {
   Service::Disconnect(error, reason);
   if (!wifi_) {
     // If we are connecting to a hidden service, but have not yet found
@@ -714,7 +714,7 @@ void WiFiService::Disconnect(Error *error, const char *reason) {
   wifi_->DisconnectFromIfActive(this);
 }
 
-string WiFiService::GetDeviceRpcId(Error *error) const {
+string WiFiService::GetDeviceRpcId(Error* error) const {
   if (!wifi_) {
     error->Populate(Error::kNotFound, "Not associated with a device");
     return DBusAdaptor::kNullPath;
@@ -741,7 +741,7 @@ void WiFiService::UpdateConnectable() {
 }
 
 void WiFiService::UpdateFromEndpoints() {
-  const WiFiEndpoint *representative_endpoint = nullptr;
+  const WiFiEndpoint* representative_endpoint = nullptr;
 
   if (current_endpoint_) {
     representative_endpoint = current_endpoint_.get();
@@ -751,7 +751,7 @@ void WiFiService::UpdateFromEndpoints() {
     // This will set the representative_endpoint to the best endpoint associated
     // with the preferred_device_ if it exist, otherwise the best overall
     // endpoint.
-    for (const auto &endpoint : endpoints_) {
+    for (const auto& endpoint : endpoints_) {
       if (preferred_device_found) {
         // Skip endpoints associated with non-preferred device.
         if (endpoint->device()->link_name() != preferred_device_) {
@@ -793,7 +793,7 @@ void WiFiService::UpdateFromEndpoints() {
 
   SetWiFi(wifi);
 
-  for (const auto &endpoint : endpoints_) {
+  for (const auto& endpoint : endpoints_) {
     if (endpoint->ieee80211w_required()) {
       // Never reset ieee80211w_required_ to false, so we track whether we have
       // ever seen an AP that requires 802.11w.
@@ -802,7 +802,7 @@ void WiFiService::UpdateFromEndpoints() {
   }
 
   set<uint16_t> frequency_set;
-  for (const auto &endpoint : endpoints_) {
+  for (const auto& endpoint : endpoints_) {
     frequency_set.insert(endpoint->frequency());
   }
   frequency_list_.assign(frequency_set.begin(), frequency_set.end());
@@ -885,7 +885,7 @@ void WiFiService::UpdateSecurity() {
 
 // static
 Service::CryptoAlgorithm WiFiService::ComputeCipher8021x(
-    const set<WiFiEndpointConstRefPtr> &endpoints) {
+    const set<WiFiEndpointConstRefPtr>& endpoints) {
 
   if (endpoints.empty())
     return kCryptoNone;  // Will update after scan results.
@@ -893,7 +893,7 @@ Service::CryptoAlgorithm WiFiService::ComputeCipher8021x(
   // Find weakest cipher (across endpoints) of the strongest ciphers
   // (per endpoint).
   Service::CryptoAlgorithm cipher = Service::kCryptoAes;
-  for (const auto &endpoint : endpoints) {
+  for (const auto& endpoint : endpoints) {
     Service::CryptoAlgorithm endpoint_cipher;
     if (endpoint->has_rsn_property()) {
       endpoint_cipher = Service::kCryptoAes;
@@ -910,14 +910,14 @@ Service::CryptoAlgorithm WiFiService::ComputeCipher8021x(
 }
 
 // static
-void WiFiService::ValidateWEPPassphrase(const std::string &passphrase,
-                                        Error *error) {
+void WiFiService::ValidateWEPPassphrase(const std::string& passphrase,
+                                        Error* error) {
   ParseWEPPassphrase(passphrase, nullptr, nullptr, error);
 }
 
 // static
-void WiFiService::ValidateWPAPassphrase(const std::string &passphrase,
-                                        Error *error) {
+void WiFiService::ValidateWPAPassphrase(const std::string& passphrase,
+                                        Error* error) {
   unsigned int length = passphrase.length();
   vector<uint8_t> passphrase_bytes;
 
@@ -936,10 +936,10 @@ void WiFiService::ValidateWPAPassphrase(const std::string &passphrase,
 }
 
 // static
-void WiFiService::ParseWEPPassphrase(const string &passphrase,
-                                     int *key_index,
-                                     std::vector<uint8_t> *password_bytes,
-                                     Error *error) {
+void WiFiService::ParseWEPPassphrase(const string& passphrase,
+                                     int* key_index,
+                                     std::vector<uint8_t>* password_bytes,
+                                     Error* error) {
   unsigned int length = passphrase.length();
   int key_index_local;
   std::string password_text;
@@ -1010,7 +1010,7 @@ void WiFiService::ParseWEPPassphrase(const string &passphrase,
 }
 
 // static
-bool WiFiService::CheckWEPIsHex(const string &passphrase, Error *error) {
+bool WiFiService::CheckWEPIsHex(const string& passphrase, Error* error) {
   vector<uint8_t> passphrase_bytes;
   if (base::HexStringToBytes(passphrase, &passphrase_bytes)) {
     return true;
@@ -1021,7 +1021,7 @@ bool WiFiService::CheckWEPIsHex(const string &passphrase, Error *error) {
 }
 
 // static
-bool WiFiService::CheckWEPKeyIndex(const string &passphrase, Error *error) {
+bool WiFiService::CheckWEPKeyIndex(const string& passphrase, Error* error) {
   if (base::StartsWithASCII(passphrase, "0:", false) ||
       base::StartsWithASCII(passphrase, "1:", false) ||
       base::StartsWithASCII(passphrase, "2:", false) ||
@@ -1034,7 +1034,7 @@ bool WiFiService::CheckWEPKeyIndex(const string &passphrase, Error *error) {
 }
 
 // static
-bool WiFiService::CheckWEPPrefix(const string &passphrase, Error *error) {
+bool WiFiService::CheckWEPPrefix(const string& passphrase, Error* error) {
   if (base::StartsWithASCII(passphrase, "0x", false)) {
     return true;
   } else {
@@ -1044,7 +1044,7 @@ bool WiFiService::CheckWEPPrefix(const string &passphrase, Error *error) {
 }
 
 // static
-string WiFiService::ComputeSecurityClass(const string &security) {
+string WiFiService::ComputeSecurityClass(const string& security) {
   if (security == kSecurityRsn ||
       security == kSecurityWpa) {
     return kSecurityPsk;
@@ -1060,10 +1060,10 @@ int16_t WiFiService::SignalLevel() const {
 }
 
 // static
-bool WiFiService::ParseStorageIdentifier(const string &storage_name,
-                                         string *address,
-                                         string *mode,
-                                         string *security) {
+bool WiFiService::ParseStorageIdentifier(const string& storage_name,
+                                         string* address,
+                                         string* mode,
+                                         string* security) {
   vector<string> wifi_parts;
   base::SplitString(storage_name, '_', &wifi_parts);
   if ((wifi_parts.size() != 5 && wifi_parts.size() != 6) ||
@@ -1082,10 +1082,10 @@ bool WiFiService::ParseStorageIdentifier(const string &storage_name,
 }
 
 // static
-bool WiFiService::FixupServiceEntries(StoreInterface *storage) {
+bool WiFiService::FixupServiceEntries(StoreInterface* storage) {
   bool fixed_entry = false;
   set<string> groups = storage->GetGroups();
-  for (const auto &id : groups) {
+  for (const auto& id : groups) {
     string device_address, network_mode, security;
     if (!ParseStorageIdentifier(id, &device_address,
                                 &network_mode, &security)) {
@@ -1113,12 +1113,12 @@ bool WiFiService::FixupServiceEntries(StoreInterface *storage) {
 }
 
 // static
-bool WiFiService::IsValidMode(const string &mode) {
+bool WiFiService::IsValidMode(const string& mode) {
   return mode == kModeManaged || mode == kModeAdhoc;
 }
 
 // static
-bool WiFiService::IsValidSecurityMethod(const string &method) {
+bool WiFiService::IsValidSecurityMethod(const string& method) {
   return method == kSecurityNone ||
       method == kSecurityWep ||
       method == kSecurityPsk ||
@@ -1128,7 +1128,7 @@ bool WiFiService::IsValidSecurityMethod(const string &method) {
 }
 
 // static
-bool WiFiService::IsValidSecurityClass(const string &security_class) {
+bool WiFiService::IsValidSecurityClass(const string& security_class) {
   return IsValidSecurityMethod(security_class) &&
       ComputeSecurityClass(security_class) == security_class;
 }
@@ -1174,14 +1174,14 @@ string WiFiService::GetDefaultStorageIdentifier() const {
                                                      security.c_str()));
 }
 
-string WiFiService::GetSecurity(Error */*error*/) {
+string WiFiService::GetSecurity(Error* /*error*/) {
   if (current_endpoint_) {
     return current_endpoint_->security_mode();
   }
   return security_;
 }
 
-string WiFiService::GetSecurityClass(Error *error) {
+string WiFiService::GetSecurityClass(Error* error) {
   return ComputeSecurityClass(GetSecurity(error));
 }
 
@@ -1243,14 +1243,14 @@ WiFiRefPtr WiFiService::ChooseDevice() {
     device =
       manager()->GetEnabledDeviceWithTechnology(Technology::kWifi);
   }
-  return dynamic_cast<WiFi *>(device.get());
+  return dynamic_cast<WiFi*>(device.get());
 }
 
 void WiFiService::ResetWiFi() {
   SetWiFi(nullptr);
 }
 
-void WiFiService::SetWiFi(const WiFiRefPtr &new_wifi) {
+void WiFiService::SetWiFi(const WiFiRefPtr& new_wifi) {
   if (wifi_ == new_wifi) {
     return;
   }
@@ -1268,18 +1268,18 @@ void WiFiService::SetWiFi(const WiFiRefPtr &new_wifi) {
   wifi_ = new_wifi;
 }
 
-uint16_t WiFiService::GetRoamThreshold(Error */*error*/) {
+uint16_t WiFiService::GetRoamThreshold(Error* /*error*/) {
   return roam_threshold_db_;
 }
 
-bool WiFiService::SetRoamThreshold(const uint16_t &threshold,
-                                   Error */*error*/) {
+bool WiFiService::SetRoamThreshold(const uint16_t& threshold,
+                                   Error* /*error*/) {
   roam_threshold_db_ = threshold;
   roam_threshold_db_set_ = true;
   return true;
 }
 
-void WiFiService::ClearRoamThreshold(Error */*error*/) {
+void WiFiService::ClearRoamThreshold(Error* /*error*/) {
   roam_threshold_db_ = 0;
   roam_threshold_db_set_ = false;
 }

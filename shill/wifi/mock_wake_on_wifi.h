@@ -17,40 +17,40 @@ namespace shill {
 
 class MockWakeOnWiFi : public WakeOnWiFi {
  public:
-  MockWakeOnWiFi(NetlinkManager *netlink_manager, EventDispatcher *dispatcher,
-                 Metrics *metrics);
+  MockWakeOnWiFi(NetlinkManager* netlink_manager, EventDispatcher* dispatcher,
+                 Metrics* metrics);
   ~MockWakeOnWiFi() override;
 
   MOCK_METHOD0(OnAfterResume, void());
   MOCK_METHOD7(OnBeforeSuspend,
                void(bool is_connected,
-                    const std::vector<ByteString> &ssid_whitelist,
-                    const ResultCallback &done_callback,
-                    const base::Closure &renew_dhcp_lease_callback,
-                    const base::Closure &remove_supplicant_networks_callback,
+                    const std::vector<ByteString>& ssid_whitelist,
+                    const ResultCallback& done_callback,
+                    const base::Closure& renew_dhcp_lease_callback,
+                    const base::Closure& remove_supplicant_networks_callback,
                     bool have_dhcp_lease, uint32_t time_to_next_lease_renewal));
   MOCK_METHOD6(OnDarkResume,
                void(bool is_connected,
-                    const std::vector<ByteString> &ssid_whitelist,
-                    const ResultCallback &done_callback,
-                    const base::Closure &renew_dhcp_lease_callback,
-                    const InitiateScanCallback &initiate_scan_callback,
-                    const base::Closure &remove_supplicant_networks_callback));
+                    const std::vector<ByteString>& ssid_whitelist,
+                    const ResultCallback& done_callback,
+                    const base::Closure& renew_dhcp_lease_callback,
+                    const InitiateScanCallback& initiate_scan_callback,
+                    const base::Closure& remove_supplicant_networks_callback));
   MOCK_METHOD2(OnDHCPLeaseObtained, void(bool start_lease_renewal_timer,
                                          uint32_t time_to_next_lease_renewal));
   MOCK_METHOD1(ReportConnectedToServiceAfterWake, void(bool is_connected));
   MOCK_METHOD3(OnNoAutoConnectableServicesAfterScan,
-               void(const std::vector<ByteString> &ssid_whitelist,
-                    const base::Closure &remove_supplicant_networks_callback,
-                    const InitiateScanCallback &initiate_scan_callback));
+               void(const std::vector<ByteString>& ssid_whitelist,
+                    const base::Closure& remove_supplicant_networks_callback,
+                    const InitiateScanCallback& initiate_scan_callback));
   MOCK_METHOD1(OnWakeupReasonReceived,
-               void(const NetlinkMessage &netlink_message));
+               void(const NetlinkMessage& netlink_message));
   MOCK_METHOD0(NotifyWakeupReasonReceived, void());
   MOCK_METHOD1(NotifyWakeOnWiFiOnDarkResume,
                void(WakeOnWiFi::WakeOnWiFiTrigger reason));
   MOCK_METHOD1(OnWiphyIndexReceived, void(uint32_t));
   MOCK_METHOD1(ParseWakeOnWiFiCapabilities,
-               void(const Nl80211Message &nl80211_message));
+               void(const Nl80211Message& nl80211_message));
   MOCK_METHOD1(OnScanStarted, void(bool is_active_scan));
 
  private:

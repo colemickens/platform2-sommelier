@@ -46,10 +46,10 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
     std::string wps_device_name;
     std::set<uint32_t> oui_set;
   };
-  WiFiEndpoint(ProxyFactory *proxy_factory,
-               const WiFiRefPtr &device,
-               const std::string &rpc_id,
-               const std::map<std::string, ::DBus::Variant> &properties);
+  WiFiEndpoint(ProxyFactory* proxy_factory,
+               const WiFiRefPtr& device,
+               const std::string& rpc_id,
+               const std::map<std::string, ::DBus::Variant>& properties);
   virtual ~WiFiEndpoint();
 
   // Set up RPC channel. Broken out from the ctor, so that WiFi can
@@ -60,31 +60,31 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   // Called by SupplicantBSSProxy, in response to events from
   // wpa_supplicant.
   void PropertiesChanged(
-      const std::map<std::string, ::DBus::Variant> &properties);
+      const std::map<std::string, ::DBus::Variant>& properties);
 
   // Called by WiFi when it polls for signal strength from the kernel.
   void UpdateSignalStrength(int16_t strength);
 
   // Maps mode strings from flimflam's nomenclature, as defined
   // in chromeos/dbus/service_constants.h, to uints used by supplicant
-  static uint32_t ModeStringToUint(const std::string &mode_string);
+  static uint32_t ModeStringToUint(const std::string& mode_string);
 
   // Returns a stringmap containing information gleaned about the
   // vendor of this AP.
   std::map<std::string, std::string> GetVendorInformation() const;
 
-  const std::vector<uint8_t> &ssid() const;
-  const std::string &ssid_string() const;
-  const std::string &ssid_hex() const;
-  const std::string &bssid_string() const;
-  const std::string &bssid_hex() const;
-  const std::string &country_code() const;
-  const WiFiRefPtr &device() const;
+  const std::vector<uint8_t>& ssid() const;
+  const std::string& ssid_string() const;
+  const std::string& ssid_hex() const;
+  const std::string& bssid_string() const;
+  const std::string& bssid_hex() const;
+  const std::string& country_code() const;
+  const WiFiRefPtr& device() const;
   int16_t signal_strength() const;
   uint16_t frequency() const;
   uint16_t physical_mode() const;
-  const std::string &network_mode() const;
-  const std::string &security_mode() const;
+  const std::string& network_mode() const;
+  const std::string& security_mode() const;
   bool ieee80211w_required() const;
   bool has_rsn_property() const;
   bool has_wpa_property() const;
@@ -116,70 +116,70 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   };
 
   // Build a simple WiFiEndpoint, for testing purposes.
-  static WiFiEndpoint *MakeEndpoint(ProxyFactory *proxy_factory,
-                                    const WiFiRefPtr &wifi,
-                                    const std::string &ssid,
-                                    const std::string &bssid,
-                                    const std::string &network_mode,
+  static WiFiEndpoint* MakeEndpoint(ProxyFactory* proxy_factory,
+                                    const WiFiRefPtr& wifi,
+                                    const std::string& ssid,
+                                    const std::string& bssid,
+                                    const std::string& network_mode,
                                     uint16_t frequency,
                                     int16_t signal_dbm,
                                     bool has_wpa_property,
                                     bool has_rsn_property);
   // As above, but with the last two parameters false.
-  static WiFiEndpoint *MakeOpenEndpoint(ProxyFactory *proxy_factory,
-                                        const WiFiRefPtr &wifi,
-                                        const std::string &ssid,
-                                        const std::string &bssid,
-                                        const std::string &network_mode,
+  static WiFiEndpoint* MakeOpenEndpoint(ProxyFactory* proxy_factory,
+                                        const WiFiRefPtr& wifi,
+                                        const std::string& ssid,
+                                        const std::string& bssid,
+                                        const std::string& network_mode,
                                         uint16_t frequency,
                                         int16_t signal_dbm);
   // Maps mode strings from supplicant into flimflam's nomenclature, as defined
   // in chromeos/dbus/service_constants.h.
-  static const char *ParseMode(const std::string &mode_string);
+  static const char* ParseMode(const std::string& mode_string);
   // Parses an Endpoint's properties to identify an approprirate flimflam
   // security property value, as defined in chromeos/dbus/service_constants.h.
   // The stored data in the |flags| parameter is merged with the provided
   // properties, and the security value returned is the result of the
   // merger.
-  static const char *ParseSecurity(
-      const std::map<std::string, ::DBus::Variant> &properties,
-      SecurityFlags *flags);
+  static const char* ParseSecurity(
+      const std::map<std::string, ::DBus::Variant>& properties,
+      SecurityFlags* flags);
   // Parses an Endpoint's properties' "RSN" or "WPA" sub-dictionary, to
   // identify supported key management methods (802.1x or PSK).
   static void ParseKeyManagementMethods(
-      const std::map<std::string, ::DBus::Variant> &security_method_properties,
-      std::set<KeyManagement> *key_management_methods);
+      const std::map<std::string, ::DBus::Variant>& security_method_properties,
+      std::set<KeyManagement>* key_management_methods);
   // Determine the negotiated operating mode for the channel by looking at
   // the information elements, frequency and data rates.  The information
   // elements and data rates live in |properties|.
   static Metrics::WiFiNetworkPhyMode DeterminePhyModeFromFrequency(
-      const std::map<std::string, ::DBus::Variant> &properties,
+      const std::map<std::string, ::DBus::Variant>& properties,
       uint16_t frequency);
   // Parse information elements to determine the physical mode, vendor
   // information and IEEE 802.11w requirement information associated
   // with the AP.  Returns true if a physical mode was determined from
   // the IE elements, false otherwise.
-  static bool ParseIEs(const std::map<std::string, ::DBus::Variant> &properties,
-                       Metrics::WiFiNetworkPhyMode *phy_mode,
-                       VendorInformation *vendor_information,
-                       bool *ieee80211w_required, std::string *country_code);
+  static bool ParseIEs(const std::map<std::string, ::DBus::Variant>& properties,
+                       Metrics::WiFiNetworkPhyMode* phy_mode,
+                       VendorInformation* vendor_information,
+                       bool* ieee80211w_required, std::string* country_code);
   // Parse a WPA information element and set *|ieee80211w_required| to true
   // if IEEE 802.11w is required by this AP.
   static void ParseWPACapabilities(std::vector<uint8_t>::const_iterator ie,
                                    std::vector<uint8_t>::const_iterator end,
-                                   bool *ieee80211w_required);
+                                   bool* ieee80211w_required);
   // Parse a single vendor information element.  If this is a WPA vendor
   // element, call ParseWPACapabilites with |ieee80211w_required|.
   static void ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
                             std::vector<uint8_t>::const_iterator end,
-                            VendorInformation *vendor_information,
-                            bool *ieee80211w_required);
+                            VendorInformation* vendor_information,
+                            bool* ieee80211w_required);
 
   // Assigns a value to |has_tethering_signature_|.
   void CheckForTetheringSignature();
 
   // Private setter used in unit tests.
-  void set_security_mode(const std::string &mode) { security_mode_ = mode; }
+  void set_security_mode(const std::string& mode) { security_mode_ = mode; }
 
   // TODO(quiche): make const?
   std::vector<uint8_t> ssid_;
@@ -203,7 +203,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   bool has_tethering_signature_;
   SecurityFlags security_flags_;
 
-  ProxyFactory *proxy_factory_;
+  ProxyFactory* proxy_factory_;
   WiFiRefPtr device_;
   std::string rpc_id_;
   std::unique_ptr<SupplicantBSSProxyInterface> supplicant_bss_proxy_;

@@ -78,7 +78,7 @@ class ScanSessionTest : public Test {
 
   void BuildScanSession(const WiFiProvider::FrequencyCountList
                             &connected_frequencies,
-                        const std::set<uint16_t> &unconnected_frequencies) {
+                        const std::set<uint16_t>& unconnected_frequencies) {
     const int kArbitraryMinimum = 1;
     const int kArbitraryMaximum = std::numeric_limits<int>::max();
     scan_session_.reset(new ScanSession(&netlink_manager_,
@@ -100,7 +100,7 @@ class ScanSessionTest : public Test {
     return scan_session_->GetScanFrequencies(scan_fraction, min_frequencies,
                                              max_frequencies);
   }
-  ScanSession *scan_session() { return scan_session_.get(); }
+  ScanSession* scan_session() { return scan_session_.get(); }
 
   void SetScanSize(size_t min_frequencies, size_t max_frequencies) {
     scan_session_->min_frequencies_ = min_frequencies;
@@ -114,8 +114,8 @@ class ScanSessionTest : public Test {
 
  protected:
   MOCK_METHOD0(OnScanError, void());
-  MockNetlinkManager *netlink_manager() { return &netlink_manager_; }
-  MockEventDispatcher *dispatcher() { return &dispatcher_; }
+  MockNetlinkManager* netlink_manager() { return &netlink_manager_; }
+  MockEventDispatcher* dispatcher() { return &dispatcher_; }
 
   MockEventDispatcher dispatcher_;
   MockNetlinkManager netlink_manager_;

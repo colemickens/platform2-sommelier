@@ -47,13 +47,13 @@ class WiFiEndpointTest : public PropertyStoreTest {
   virtual ~WiFiEndpointTest() {}
 
  protected:
-  vector<string> make_string_vector1(const string &str1) {
+  vector<string> make_string_vector1(const string& str1) {
     vector<string> strvec;
     strvec.push_back(str1);
     return strvec;
   }
 
-  vector<string> make_string_vector2(const string &str1, const string &str2) {
+  vector<string> make_string_vector2(const string& str1, const string& str2) {
     vector<string> strvec;
     strvec.push_back(str1);
     strvec.push_back(str2);
@@ -77,8 +77,8 @@ class WiFiEndpointTest : public PropertyStoreTest {
   }
 
   map<string, ::DBus::Variant> make_security_args(
-      const string &security_protocol,
-      const string &key_management_method) {
+      const string& security_protocol,
+      const string& key_management_method) {
     map<string, ::DBus::Variant> args;
     ::DBus::MessageIter writer;
     writer = args[security_protocol].writer();
@@ -90,25 +90,25 @@ class WiFiEndpointTest : public PropertyStoreTest {
     return args;
   }
 
-  const char *ParseSecurity(
-    const map<string, ::DBus::Variant> &properties) {
+  const char* ParseSecurity(
+    const map<string, ::DBus::Variant>& properties) {
     WiFiEndpoint::SecurityFlags security_flags;
     return WiFiEndpoint::ParseSecurity(properties, &security_flags);
   }
 
-  void AddIEWithData(uint8_t type, vector<uint8_t> data, vector<uint8_t> *ies) {
+  void AddIEWithData(uint8_t type, vector<uint8_t> data, vector<uint8_t>* ies) {
     ies->push_back(type);           // type
     ies->push_back(data.size());    // length
     ies->insert(ies->end(), data.begin(), data.end());
   }
 
-  void AddIE(uint8_t type, vector<uint8_t> *ies) {
+  void AddIE(uint8_t type, vector<uint8_t>* ies) {
     AddIEWithData(type, vector<uint8_t>(1), ies);
   }
 
   void AddVendorIE(uint32_t oui, uint8_t vendor_type,
-                   const vector<uint8_t> &data,
-                   vector<uint8_t> *ies) {
+                   const vector<uint8_t>& data,
+                   vector<uint8_t>* ies) {
     ies->push_back(IEEE_80211::kElemIdVendor);  // type
     ies->push_back(4 + data.size());            // length
     ies->push_back((oui >> 16) & 0xff);         // OUI MSByte
@@ -118,8 +118,8 @@ class WiFiEndpointTest : public PropertyStoreTest {
     ies->insert(ies->end(), data.begin(), data.end());
   }
 
-  void AddWPSElement(uint16_t type, const string &value,
-                     vector<uint8_t> *wps) {
+  void AddWPSElement(uint16_t type, const string& value,
+                     vector<uint8_t>* wps) {
     wps->push_back(type >> 8);                   // type MSByte
     wps->push_back(type);                        // type LSByte
     CHECK(value.size() < kuint16max);
@@ -129,7 +129,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
   }
 
   map<string, ::DBus::Variant> MakeBSSPropertiesWithIEs(
-      const vector<uint8_t> &ies) {
+      const vector<uint8_t>& ies) {
     map<string, ::DBus::Variant> properties;
     ::DBus::MessageIter writer =
           properties[WPASupplicant::kBSSPropertyIEs].writer();
@@ -165,24 +165,24 @@ class WiFiEndpointTest : public PropertyStoreTest {
     return rsn;
   }
 
-  bool ParseIEs(const std::map<std::string, ::DBus::Variant> &properties,
-                Metrics::WiFiNetworkPhyMode *phy_mode,
-                WiFiEndpoint::VendorInformation *vendor_information,
-                bool *ieee80211w_required, std::string *country_code) {
+  bool ParseIEs(const std::map<std::string, ::DBus::Variant>& properties,
+                Metrics::WiFiNetworkPhyMode* phy_mode,
+                WiFiEndpoint::VendorInformation* vendor_information,
+                bool* ieee80211w_required, std::string* country_code) {
     return WiFiEndpoint::ParseIEs(properties, phy_mode, vendor_information,
                                   ieee80211w_required, country_code);
   }
 
   void SetVendorInformation(
-      const WiFiEndpointRefPtr &endpoint,
-      const WiFiEndpoint::VendorInformation &vendor_information) {
+      const WiFiEndpointRefPtr& endpoint,
+      const WiFiEndpoint::VendorInformation& vendor_information) {
     endpoint->vendor_information_ = vendor_information;
   }
 
-  WiFiEndpoint *MakeEndpoint(ProxyFactory *proxy_factory,
-                             const WiFiRefPtr &wifi,
-                             const std::string &ssid,
-                             const std::string &bssid,
+  WiFiEndpoint* MakeEndpoint(ProxyFactory* proxy_factory,
+                             const WiFiRefPtr& wifi,
+                             const std::string& ssid,
+                             const std::string& bssid,
                              bool has_wpa_property,
                              bool has_rsn_property) {
     return WiFiEndpoint::MakeEndpoint(
@@ -191,10 +191,10 @@ class WiFiEndpointTest : public PropertyStoreTest {
         has_rsn_property);
   }
 
-  WiFiEndpoint *MakeOpenEndpoint(ProxyFactory *proxy_factory,
-                                 const WiFiRefPtr &wifi,
-                                 const std::string &ssid,
-                                 const std::string &bssid) {
+  WiFiEndpoint* MakeOpenEndpoint(ProxyFactory* proxy_factory,
+                                 const WiFiRefPtr& wifi,
+                                 const std::string& ssid,
+                                 const std::string& bssid) {
     return WiFiEndpoint::MakeOpenEndpoint(
         proxy_factory, wifi, ssid, bssid,
         WPASupplicant::kNetworkModeInfrastructure, 0, 0);

@@ -13,14 +13,14 @@ class ControlInterface;
 class EventDispatcher;
 class Manager;
 
-MockWiFiService::MockWiFiService(ControlInterface *control_interface,
-                                 EventDispatcher *dispatcher,
-                                 Metrics *metrics,
-                                 Manager *manager,
-                                 WiFiProvider *provider,
-                                 const vector<uint8_t> &ssid,
-                                 const string &mode,
-                                 const string &security,
+MockWiFiService::MockWiFiService(ControlInterface* control_interface,
+                                 EventDispatcher* dispatcher,
+                                 Metrics* metrics,
+                                 Manager* manager,
+                                 WiFiProvider* provider,
+                                 const vector<uint8_t>& ssid,
+                                 const string& mode,
+                                 const string& security,
                                  bool hidden_ssid)
     : WiFiService(
         control_interface, dispatcher, metrics, manager, provider, ssid, mode,

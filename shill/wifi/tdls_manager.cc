@@ -20,7 +20,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static string ObjectID(const TDLSManager *c) {
+static string ObjectID(const TDLSManager* c) {
   return "(" + c->interface_name() + "-tdlsmanager)";
 }
 }
@@ -28,18 +28,18 @@ static string ObjectID(const TDLSManager *c) {
 const int TDLSManager::kPeerDiscoveryCleanupTimeoutSeconds = 30;
 
 TDLSManager::TDLSManager(
-    EventDispatcher *dispatcher,
-    SupplicantInterfaceProxyInterface *supplicant_interface_proxy,
-    const string &interface_name)
+    EventDispatcher* dispatcher,
+    SupplicantInterfaceProxyInterface* supplicant_interface_proxy,
+    const string& interface_name)
     : dispatcher_(dispatcher),
       supplicant_interface_proxy_(supplicant_interface_proxy),
       interface_name_(interface_name) {}
 
 TDLSManager::~TDLSManager() {}
 
-string TDLSManager::PerformOperation(const string &peer_mac_address,
-                                     const string &operation,
-                                     Error *error) {
+string TDLSManager::PerformOperation(const string& peer_mac_address,
+                                     const string& operation,
+                                     Error* error) {
   CHECK(supplicant_interface_proxy_);
 
   SLOG(this, 2) << "Processing TDLS command: " << operation
@@ -88,7 +88,7 @@ string TDLSManager::PerformOperation(const string &peer_mac_address,
   return "";
 }
 
-void TDLSManager::OnDiscoverResponseReceived(const string &peer_mac_address) {
+void TDLSManager::OnDiscoverResponseReceived(const string& peer_mac_address) {
   if (CheckDiscoveryState(peer_mac_address) ==
       PeerDiscoveryState::kRequestSent) {
     peer_discovery_state_[peer_mac_address] =
@@ -96,42 +96,42 @@ void TDLSManager::OnDiscoverResponseReceived(const string &peer_mac_address) {
   }
 }
 
-bool TDLSManager::DiscoverPeer(const string &peer_mac_address) {
+bool TDLSManager::DiscoverPeer(const string& peer_mac_address) {
   try {
     supplicant_interface_proxy_->TDLSDiscover(peer_mac_address);
     peer_discovery_state_[peer_mac_address] = PeerDiscoveryState::kRequestSent;
     StartPeerDiscoveryCleanupTimer();
-  } catch (const DBus::Error &e) {  // NOLINT
+  } catch (const DBus::Error& e) {  // NOLINT
     LOG(ERROR) << "exception while performing TDLS discover: " << e.what();
     return false;
   }
   return true;
 }
 
-bool TDLSManager::SetupPeer(const string &peer_mac_address) {
+bool TDLSManager::SetupPeer(const string& peer_mac_address) {
   try {
     supplicant_interface_proxy_->TDLSSetup(peer_mac_address);
-  } catch (const DBus::Error &e) {  // NOLINT
+  } catch (const DBus::Error& e) {  // NOLINT
     LOG(ERROR) << "exception while performing TDLS setup: " << e.what();
     return false;
   }
   return true;
 }
 
-bool TDLSManager::TearDownPeer(const string &peer_mac_address) {
+bool TDLSManager::TearDownPeer(const string& peer_mac_address) {
   try {
     supplicant_interface_proxy_->TDLSTeardown(peer_mac_address);
-  } catch (const DBus::Error &e) {  // NOLINT
+  } catch (const DBus::Error& e) {  // NOLINT
     LOG(ERROR) << "exception while performing TDLS teardown: " << e.what();
     return false;
   }
   return true;
 }
 
-string TDLSManager::PeerStatus(const string &peer_mac_address) {
+string TDLSManager::PeerStatus(const string& peer_mac_address) {
   try {
     return supplicant_interface_proxy_->TDLSStatus(peer_mac_address);
-  } catch (const DBus::Error &e) {  // NOLINT
+  } catch (const DBus::Error& e) {  // NOLINT
     LOG(ERROR) << "exception while getting TDLS status: " << e.what();
     return "";
   }
@@ -155,7 +155,7 @@ void TDLSManager::PeerDiscoveryCleanup() {
 }
 
 TDLSManager::PeerDiscoveryState TDLSManager::CheckDiscoveryState(
-    const string &peer_mac_address) {
+    const string& peer_mac_address) {
   auto iter = peer_discovery_state_.find(peer_mac_address);
   if (iter == peer_discovery_state_.end()) {
     return PeerDiscoveryState::kNone;
