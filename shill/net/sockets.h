@@ -28,19 +28,19 @@ class SHILL_EXPORT Sockets {
 
   // accept
   virtual int Accept(int sockfd,
-                     struct sockaddr *addr,
-                     socklen_t *addrlen) const;
+                     struct sockaddr* addr,
+                     socklen_t* addrlen) const;
 
   // getsockopt(sockfd, SOL_SOCKET, SO_ATTACH_FILTER, ...)
-  virtual int AttachFilter(int sockfd, struct sock_fprog *pf) const;
+  virtual int AttachFilter(int sockfd, struct sock_fprog* pf) const;
 
   // bind
   virtual int Bind(int sockfd,
-                   const struct sockaddr *addr,
+                   const struct sockaddr* addr,
                    socklen_t addrlen) const;
 
   // setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE ...)
-  virtual int BindToDevice(int sockfd, const std::string &device) const;
+  virtual int BindToDevice(int sockfd, const std::string& device) const;
 
   // setsockopt(s, SOL_SOCKET, SO_REUSEADDR, ...)
   virtual int ReuseAddress(int sockfd) const;
@@ -53,7 +53,7 @@ class SHILL_EXPORT Sockets {
 
   // connect
   virtual int Connect(int sockfd,
-                      const struct sockaddr *addr,
+                      const struct sockaddr* addr,
                       socklen_t addrlen) const;
 
   // errno
@@ -64,41 +64,41 @@ class SHILL_EXPORT Sockets {
 
   // getsockname
   virtual int GetSockName(int sockfd,
-                          struct sockaddr *addr,
-                          socklen_t *addrlen) const;
+                          struct sockaddr* addr,
+                          socklen_t* addrlen) const;
 
   // getsockopt(sockfd, SOL_SOCKET, SO_ERROR, ...)
   virtual int GetSocketError(int sockfd) const;
 
   // ioctl
-  virtual int Ioctl(int d, int request, void *argp) const;
+  virtual int Ioctl(int d, int request, void* argp) const;
 
   // listen
   virtual int Listen(int sockfd, int backlog) const;
 
   // recvfrom
-  virtual ssize_t RecvFrom(int sockfd, void *buf, size_t len, int flags,
-                           struct sockaddr *src_addr, socklen_t *addrlen) const;
+  virtual ssize_t RecvFrom(int sockfd, void* buf, size_t len, int flags,
+                           struct sockaddr* src_addr, socklen_t* addrlen) const;
 
   // select
   virtual int Select(int nfds,
-                     fd_set *readfds,
-                     fd_set *writefds,
-                     fd_set *exceptfds,
-                     struct timeval *timeout) const;
+                     fd_set* readfds,
+                     fd_set* writefds,
+                     fd_set* exceptfds,
+                     struct timeval* timeout) const;
 
   // send
   virtual ssize_t Send(int sockfd,
-                       const void *buf,
+                       const void* buf,
                        size_t len,
                        int flags) const;
 
   // sendto
   virtual ssize_t SendTo(int sockfd,
-                         const void *buf,
+                         const void* buf,
                          size_t len,
                          int flags,
-                         const struct sockaddr *dest_addr,
+                         const struct sockaddr* dest_addr,
                          socklen_t addrlen) const;
 
   // fcntl(sk, F_SETFL, fcntl(sk, F_GETFL) | O_NONBLOCK)
@@ -119,11 +119,11 @@ class SHILL_EXPORT Sockets {
 
 class SHILL_EXPORT ScopedSocketCloser {
  public:
-  ScopedSocketCloser(Sockets *sockets, int fd);
+  ScopedSocketCloser(Sockets* sockets, int fd);
   ~ScopedSocketCloser();
 
  private:
-  Sockets *sockets_;
+  Sockets* sockets_;
   int fd_;
 
   DISALLOW_COPY_AND_ASSIGN(ScopedSocketCloser);

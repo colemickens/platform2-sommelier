@@ -109,7 +109,7 @@ Nl80211AttributeBss::Nl80211AttributeBss()
 }
 
 bool Nl80211AttributeBss::ParseInformationElements(
-    AttributeList *attribute_list, size_t id, const string &attribute_name,
+    AttributeList* attribute_list, size_t id, const string& attribute_name,
     ByteString data) {
   if (!attribute_list) {
     LOG(ERROR) << "NULL |attribute_list| parameter";
@@ -126,11 +126,11 @@ bool Nl80211AttributeBss::ParseInformationElements(
     return false;
   }
   while (data.GetLength()) {
-    const uint8_t *sub_attribute = data.GetConstData();
+    const uint8_t* sub_attribute = data.GetConstData();
     const size_t kHeaderBytes = 2;
     uint8_t type = sub_attribute[0];
     uint8_t payload_bytes = sub_attribute[1];
-    const uint8_t *payload = &sub_attribute[kHeaderBytes];
+    const uint8_t* payload = &sub_attribute[kHeaderBytes];
     // See http://dox.ipxe.org/ieee80211_8h_source.html for more info on types
     // and data inside information elements.
     switch (type) {
@@ -141,7 +141,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
         } else {
           ie_attribute->SetStringAttributeValue(
               type,
-              string(reinterpret_cast<const char *>(payload), payload_bytes));
+              string(reinterpret_cast<const char*>(payload), payload_bytes));
         }
         break;
       }
@@ -169,7 +169,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
         ie_attribute->SetRawAttributeValue(
             type,
             ByteString(
-                reinterpret_cast<const char *>(payload), payload_bytes));
+                reinterpret_cast<const char*>(payload), payload_bytes));
         break;
       }
       case kHtInfoAttributeId: {
@@ -177,7 +177,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
         ie_attribute->SetRawAttributeValue(
             type,
             ByteString(
-                reinterpret_cast<const char *>(payload), payload_bytes));
+                reinterpret_cast<const char*>(payload), payload_bytes));
         break;
       }
       case kVhtCapAttributeId: {
@@ -185,7 +185,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
         ie_attribute->SetRawAttributeValue(
             type,
             ByteString(
-                reinterpret_cast<const char *>(payload), payload_bytes));
+                reinterpret_cast<const char*>(payload), payload_bytes));
         break;
       }
       case kVhtInfoAttributeId: {
@@ -193,7 +193,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
         ie_attribute->SetRawAttributeValue(
             type,
             ByteString(
-                reinterpret_cast<const char *>(payload), payload_bytes));
+                reinterpret_cast<const char*>(payload), payload_bytes));
         break;
       }
       case kDSParameterSetAttributeId:
@@ -466,7 +466,7 @@ const char Nl80211AttributeKeyType::kNameString[] = "NL80211_ATTR_KEY_TYPE";
 const int Nl80211AttributeMac::kName = NL80211_ATTR_MAC;
 const char Nl80211AttributeMac::kNameString[] = "NL80211_ATTR_MAC";
 
-bool Nl80211AttributeMac::ToString(std::string *value) const {
+bool Nl80211AttributeMac::ToString(std::string* value) const {
   if (!value) {
     LOG(ERROR) << "Null |value| parameter";
     return false;
@@ -476,7 +476,7 @@ bool Nl80211AttributeMac::ToString(std::string *value) const {
 }
 
 // static
-string Nl80211AttributeMac::StringFromMacAddress(const uint8_t *arg) {
+string Nl80211AttributeMac::StringFromMacAddress(const uint8_t* arg) {
   string output;
 
   if (!arg) {

@@ -36,9 +36,9 @@ class ByteStringTest : public Test {
     return htonl(kTestValue) == kTestValue;
   }
 
-  void CalculateBitwiseAndResult(ByteString *bs,
-                                 ByteString *mask,
-                                 ByteString *expected_result,
+  void CalculateBitwiseAndResult(ByteString* bs,
+                                 ByteString* mask,
+                                 ByteString* expected_result,
                                  size_t count) {
     ASSERT_NE(nullptr, bs);
     ASSERT_NE(nullptr, mask);
@@ -53,9 +53,9 @@ class ByteStringTest : public Test {
     }
   }
 
-  void CalculateBitwiseOrResult(ByteString *bs,
-                                ByteString *merge,
-                                ByteString *expected_result,
+  void CalculateBitwiseOrResult(ByteString* bs,
+                                ByteString* merge,
+                                ByteString* expected_result,
                                 size_t count) {
     ASSERT_NE(nullptr, bs);
     ASSERT_NE(nullptr, merge);

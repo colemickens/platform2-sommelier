@@ -15,9 +15,9 @@ namespace shill {
 
 struct SHILL_EXPORT InputData {
   InputData() : buf(nullptr), len(0) {}
-  InputData(unsigned char *in_buf, size_t in_len) : buf(in_buf), len(in_len) {}
+  InputData(unsigned char* in_buf, size_t in_len) : buf(in_buf), len(in_len) {}
 
-  unsigned char *buf;
+  unsigned char* buf;
   size_t len;
 };
 
@@ -28,8 +28,8 @@ class SHILL_EXPORT IOHandler {
     kModeOutput
   };
 
-  typedef base::Callback<void(const std::string &)> ErrorCallback;
-  typedef base::Callback<void(InputData *)> InputCallback;
+  typedef base::Callback<void(const std::string&)> ErrorCallback;
+  typedef base::Callback<void(InputData*)> InputCallback;
   typedef base::Callback<void(int)> ReadyCallback;
 
   // Data buffer size in bytes.

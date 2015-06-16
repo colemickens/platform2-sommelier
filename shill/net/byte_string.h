@@ -18,34 +18,34 @@ namespace shill {
 class SHILL_EXPORT ByteString {
  public:
   ByteString() : begin_(data_.begin()) {}
-  ByteString(const ByteString &b);
+  ByteString(const ByteString& b);
 
-  explicit ByteString(const std::vector<unsigned char> &data)
+  explicit ByteString(const std::vector<unsigned char>& data)
       : data_(data), begin_(data_.begin()) {}
 
   explicit ByteString(size_t length) : data_(length), begin_(data_.begin()) {}
 
-  ByteString(const unsigned char *data, size_t length)
+  ByteString(const unsigned char* data, size_t length)
       : data_(data, data + length), begin_(data_.begin()) {}
 
-  ByteString(const char *data, size_t length)
+  ByteString(const char* data, size_t length)
       : data_(data, data + length), begin_(data_.begin()) {}
 
-  ByteString(const signed char *data, size_t length)
+  ByteString(const signed char* data, size_t length)
       : data_(data, data + length), begin_(data_.begin()) {}
 
-  ByteString(const std::string &data, bool copy_terminator)
-    : data_(reinterpret_cast<const unsigned char *>(data.c_str()),
-            reinterpret_cast<const unsigned char *>(data.c_str() +
+  ByteString(const std::string& data, bool copy_terminator)
+    : data_(reinterpret_cast<const unsigned char*>(data.c_str()),
+            reinterpret_cast<const unsigned char*>(data.c_str() +
                                                     data.length() +
                                                     (copy_terminator ?
                                                      1 : 0))),
       begin_(data_.begin()) {}
 
-  ByteString &operator=(const ByteString &b);
+  ByteString& operator=(const ByteString& b);
 
-  unsigned char *GetData();
-  const unsigned char *GetConstData() const;
+  unsigned char* GetData();
+  const unsigned char* GetConstData() const;
   size_t GetLength() const;
 
   // Returns a ByteString containing |length| bytes from the ByteString
@@ -64,14 +64,14 @@ class SHILL_EXPORT ByteString {
   // Returns a default-constructed ByteString if |hex_string| is empty
   // or not a valid string of hexadecimal digits representing a sequence
   // of bytes.
-  static ByteString CreateFromHexString(const std::string &hex_string);
+  static ByteString CreateFromHexString(const std::string& hex_string);
 
   // Converts to a uint32_t from a host-order value stored in the ByteString
   // Returns true on success
-  bool ConvertToCPUUInt32(uint32_t *val) const;
+  bool ConvertToCPUUInt32(uint32_t* val) const;
   // Converts to a uint32_t from a network-order value stored in the ByteString
   // Returns true on success
-  bool ConvertToNetUInt32(uint32_t *val) const;
+  bool ConvertToNetUInt32(uint32_t* val) const;
 
   // Converts the string of bytes stored in the ByteString from network order
   // to host order in 32-bit chunks. Returns true on success or false if the
@@ -92,19 +92,19 @@ class SHILL_EXPORT ByteString {
   // corresponding byte of |b|.  Returns true if both |this| and |b|
   // are the same length, and as such the operation succeeds; false
   // if they are not.  The result of the operation is stored in |this|.
-  bool BitwiseAnd(const ByteString &b);
+  bool BitwiseAnd(const ByteString& b);
 
   // Perform an OR operation between each element of |this| with the
   // corresponding byte of |b|.  Returns true if both |this| and |b|
   // are the same length, and as such the operation succeeds; false
   // if they are not.  The result of the operation is stored in |this|.
-  bool BitwiseOr(const ByteString &b);
+  bool BitwiseOr(const ByteString& b);
 
   // Perform an inversion operation on each of the bits this string.
   void BitwiseInvert();
 
-  bool Equals(const ByteString &b) const;
-  void Append(const ByteString &b);
+  bool Equals(const ByteString& b) const;
+  void Append(const ByteString& b);
   void Clear();
   void Resize(int size);
 
@@ -114,7 +114,7 @@ class SHILL_EXPORT ByteString {
   // not cause a copy).
   void RemovePrefix(size_t offset);
 
-  static bool IsLessThan(const ByteString &lhs, const ByteString &rhs);
+  static bool IsLessThan(const ByteString& lhs, const ByteString& rhs);
 
  private:
   typedef std::vector<unsigned char> Vector;

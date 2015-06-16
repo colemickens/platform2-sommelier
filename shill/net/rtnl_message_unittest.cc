@@ -372,7 +372,7 @@ const unsigned char kNdRdnssMessage[] = {
 
 class RTNLMessageTest : public Test {
  protected:
-  void TestParseLink(const ByteString &packet,
+  void TestParseLink(const ByteString& packet,
                      RTNLMessage::Mode mode,
                      int interface_index,
                      unsigned int flags,
@@ -414,10 +414,10 @@ class RTNLMessageTest : public Test {
     EXPECT_EQ(oper_state, msg.GetAttribute(IFLA_OPERSTATE).GetConstData()[0]);
   }
 
-  void TestParseAddress(const ByteString &packet,
+  void TestParseAddress(const ByteString& packet,
                         RTNLMessage::Mode mode,
                         int interface_index,
-                        const IPAddress &address,
+                        const IPAddress& address,
                         unsigned char scope) {
     RTNLMessage msg;
 
@@ -438,13 +438,13 @@ class RTNLMessageTest : public Test {
                   status.prefix_len).Equals(address));
   }
 
-  void TestParseRoute(const ByteString &packet,
+  void TestParseRoute(const ByteString& packet,
                       RTNLMessage::Mode /*mode*/,
                       IPAddress::Family family,
                       int interface_index,
-                      const IPAddress &dst,
-                      const IPAddress &src,
-                      const IPAddress &gateway,
+                      const IPAddress& dst,
+                      const IPAddress& src,
+                      const IPAddress& gateway,
                       unsigned char table,
                       int protocol,
                       unsigned char scope,
@@ -502,11 +502,11 @@ class RTNLMessageTest : public Test {
     }
   }
 
-  void TestParseRdnss(const ByteString &packet,
+  void TestParseRdnss(const ByteString& packet,
                       RTNLMessage::Mode mode,
                       int interface_index,
                       uint32_t lifetime,
-                      const std::string &dns_server_addresses) {
+                      const std::string& dns_server_addresses) {
     RTNLMessage msg;
 
     EXPECT_TRUE(msg.Decode(packet));
@@ -519,7 +519,7 @@ class RTNLMessageTest : public Test {
     // Format addresses string for verification.
     std::string addresses;
     bool first = true;
-    for (auto &ip : rdnss.addresses) {
+    for (auto& ip : rdnss.addresses) {
       if (!first) {
         addresses += ", ";
       } else {
@@ -533,7 +533,7 @@ class RTNLMessageTest : public Test {
     EXPECT_EQ(dns_server_addresses, addresses);
   }
 
-  void TestParseNeighbor(const ByteString &packet,
+  void TestParseNeighbor(const ByteString& packet,
                          RTNLMessage::Mode mode,
                          IPAddress::Family family,
                          int interface_index,

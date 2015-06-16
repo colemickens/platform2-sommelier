@@ -61,8 +61,8 @@ const uint8_t Nl80211Frame::kMinimumFrameByteCount = 26;
 const uint8_t Nl80211Frame::kFrameTypeMask = 0xfc;
 
 const char Nl80211Message::kMessageTypeString[] = "nl80211";
-map<uint16_t, string> *Nl80211Message::reason_code_string_ = nullptr;
-map<uint16_t, string> *Nl80211Message::status_code_string_ = nullptr;
+map<uint16_t, string>* Nl80211Message::reason_code_string_ = nullptr;
+map<uint16_t, string>* Nl80211Message::status_code_string_ = nullptr;
 uint16_t Nl80211Message::nl80211_message_type_ = kIllegalMessageType;
 
 // static
@@ -78,13 +78,13 @@ void Nl80211Message::SetMessageType(uint16_t message_type) {
   nl80211_message_type_ = message_type;
 }
 
-bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg,
+bool Nl80211Message::InitFromNlmsg(const nlmsghdr* const_msg,
                                    NetlinkMessage::MessageContext context) {
   if (!const_msg) {
     LOG(ERROR) << "Null |msg| parameter";
     return false;
   }
-  ByteString message(reinterpret_cast<const unsigned char *>(const_msg),
+  ByteString message(reinterpret_cast<const unsigned char*>(const_msg),
                      const_msg->nlmsg_len);
 
   if (!InitAndStripHeader(&message)) {
@@ -93,9 +93,9 @@ bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg,
 
   // Attributes.
   // Parse the attributes from the nl message payload into the 'tb' array.
-  nlattr *tb[NL80211_ATTR_MAX + 1];
+  nlattr* tb[NL80211_ATTR_MAX + 1];
   nla_parse(tb, NL80211_ATTR_MAX,
-            reinterpret_cast<nlattr *>(message.GetData()), message.GetLength(),
+            reinterpret_cast<nlattr*>(message.GetData()), message.GetLength(),
             nullptr);
 
   for (int i = 0; i < NL80211_ATTR_MAX + 1; ++i) {
@@ -338,13 +338,13 @@ string Nl80211Message::StringFromStatus(uint16_t status) {
 
 // Nl80211Frame
 
-Nl80211Frame::Nl80211Frame(const ByteString &raw_frame)
+Nl80211Frame::Nl80211Frame(const ByteString& raw_frame)
   : frame_type_(kIllegalFrameType),
     reason_(std::numeric_limits<uint16_t>::max()),
     status_(std::numeric_limits<uint16_t>::max()),
     frame_(raw_frame) {
-  const IEEE_80211::ieee80211_frame *frame =
-      reinterpret_cast<const IEEE_80211::ieee80211_frame *>(
+  const IEEE_80211::ieee80211_frame* frame =
+      reinterpret_cast<const IEEE_80211::ieee80211_frame*>(
           frame_.GetConstData());
 
   // Now, let's populate the other stuff.
@@ -375,7 +375,7 @@ Nl80211Frame::Nl80211Frame(const ByteString &raw_frame)
   }
 }
 
-bool Nl80211Frame::ToString(string *output) const {
+bool Nl80211Frame::ToString(string* output) const {
   if (!output) {
     LOG(ERROR) << "NULL |output|";
     return false;
@@ -425,7 +425,7 @@ bool Nl80211Frame::ToString(string *output) const {
     output->append(" [frame: ");
   }
 
-  const unsigned char *frame = frame_.GetConstData();
+  const unsigned char* frame = frame_.GetConstData();
   for (size_t i = 0; i < frame_.GetLength(); ++i) {
     StringAppendF(output, "%02x, ", frame[i]);
   }
@@ -434,7 +434,7 @@ bool Nl80211Frame::ToString(string *output) const {
   return true;
 }
 
-bool Nl80211Frame::IsEqual(const Nl80211Frame &other) const {
+bool Nl80211Frame::IsEqual(const Nl80211Frame& other) const {
   return frame_.Equals(other.frame_);
 }
 
@@ -607,16 +607,16 @@ const char SurveyResultsMessage::kCommandString[] =
     "NL80211_CMD_NEW_SURVEY_RESULTS";
 
 // static
-NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
+NetlinkMessage* Nl80211Message::CreateMessage(const nlmsghdr* const_msg) {
   if (!const_msg) {
     LOG(ERROR) << "NULL |const_msg| parameter";
     return nullptr;
   }
   // Casting away constness since, while nlmsg_data doesn't change its
   // parameter, it also doesn't declare its paramenter as const.
-  nlmsghdr *msg = const_cast<nlmsghdr *>(const_msg);
-  void *payload = nlmsg_data(msg);
-  genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(payload);
+  nlmsghdr* msg = const_cast<nlmsghdr*>(const_msg);
+  void* payload = nlmsg_data(msg);
+  genlmsghdr* gnlh = reinterpret_cast<genlmsghdr*>(payload);
   std::unique_ptr<NetlinkMessage> message;
 
   switch (gnlh->cmd) {
@@ -722,7 +722,7 @@ Nl80211MessageDataCollector::Nl80211MessageDataCollector() {
 }
 
 void Nl80211MessageDataCollector::CollectDebugData(
-    const Nl80211Message &message, nlmsghdr *msg) {
+    const Nl80211Message& message, nlmsghdr* msg) {
   if (!msg) {
     LOG(ERROR) << "NULL |msg| parameter";
     return;
@@ -743,7 +743,7 @@ void Nl80211MessageDataCollector::CollectDebugData(
     int payload_bytes = nlmsg_datalen(msg);
 
     size_t bytes = nlmsg_total_size(payload_bytes);
-    unsigned char *rawdata = reinterpret_cast<unsigned char *>(msg);
+    unsigned char* rawdata = reinterpret_cast<unsigned char*>(msg);
     for (size_t i = 0; i < bytes; ++i) {
       LOG(INFO) << "  0x"
                  << std::hex << std::setfill('0') << std::setw(2)

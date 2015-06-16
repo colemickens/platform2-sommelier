@@ -31,20 +31,20 @@ namespace shill {
 
 // This is a type-corrected copy of |nla_for_each_nested| from libnl.
 #define nla_for_each_nested_type_corrected(pos, nla, rem) \
-  for (pos = reinterpret_cast<struct nlattr *>(nla_data(nla)), \
+  for (pos = reinterpret_cast<struct nlattr*>(nla_data(nla)), \
        rem = nla_len(nla); \
     nla_ok(pos, rem); \
     pos = nla_next(pos, &(rem)))
 
 NetlinkAttribute::NetlinkAttribute(int id,
-                                   const char *id_string,
+                                   const char* id_string,
                                    Type datatype,
-                                   const char *datatype_string)
+                                   const char* datatype_string)
     : has_a_value_(false), id_(id), id_string_(id_string), datatype_(datatype),
       datatype_string_(datatype_string) {}
 
 // static
-NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(
+NetlinkAttribute* NetlinkAttribute::NewNl80211AttributeFromId(
     NetlinkMessage::MessageContext context, int id) {
   unique_ptr<NetlinkAttribute> attr;
   switch (id) {
@@ -248,7 +248,7 @@ NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(
 }
 
 // static
-NetlinkAttribute *NetlinkAttribute::NewControlAttributeFromId(int id) {
+NetlinkAttribute* NetlinkAttribute::NewControlAttributeFromId(int id) {
   unique_ptr<NetlinkAttribute> attr;
   switch (id) {
     case CTRL_ATTR_FAMILY_ID:
@@ -280,19 +280,19 @@ NetlinkAttribute *NetlinkAttribute::NewControlAttributeFromId(int id) {
 }
 
 // Duplicate attribute data, store in map indexed on |id|.
-bool NetlinkAttribute::InitFromNlAttr(const nlattr *other) {
+bool NetlinkAttribute::InitFromNlAttr(const nlattr* other) {
   if (!other) {
     LOG(ERROR) << "NULL data";
     return false;
   }
 
   data_ = ByteString(
-      reinterpret_cast<char *>(nla_data(const_cast<nlattr *>(other))),
-      nla_len(const_cast<nlattr *>(other)));
+      reinterpret_cast<char*>(nla_data(const_cast<nlattr*>(other))),
+      nla_len(const_cast<nlattr*>(other)));
   return true;
 }
 
-bool NetlinkAttribute::GetU8Value(uint8_t *value) const {
+bool NetlinkAttribute::GetU8Value(uint8_t* value) const {
   LOG(ERROR) << "Attribute is not of type 'U8'";
   return false;
 }
@@ -302,7 +302,7 @@ bool NetlinkAttribute::SetU8Value(uint8_t value) {
   return false;
 }
 
-bool NetlinkAttribute::GetU16Value(uint16_t *value) const {
+bool NetlinkAttribute::GetU16Value(uint16_t* value) const {
   LOG(ERROR) << "Attribute is not of type 'U16'";
   return false;
 }
@@ -312,7 +312,7 @@ bool NetlinkAttribute::SetU16Value(uint16_t value) {
   return false;
 }
 
-bool NetlinkAttribute::GetU32Value(uint32_t *value) const {
+bool NetlinkAttribute::GetU32Value(uint32_t* value) const {
   LOG(ERROR) << "Attribute is not of type 'U32'";
   return false;
 }
@@ -322,7 +322,7 @@ bool NetlinkAttribute::SetU32Value(uint32_t value) {
   return false;
 }
 
-bool NetlinkAttribute::GetU64Value(uint64_t *value) const {
+bool NetlinkAttribute::GetU64Value(uint64_t* value) const {
   LOG(ERROR) << "Attribute is not of type 'U64'";
   return false;
 }
@@ -332,7 +332,7 @@ bool NetlinkAttribute::SetU64Value(uint64_t value) {
   return false;
 }
 
-bool NetlinkAttribute::GetFlagValue(bool *value) const {
+bool NetlinkAttribute::GetFlagValue(bool* value) const {
   LOG(ERROR) << "Attribute is not of type 'Flag'";
   return false;
 }
@@ -342,7 +342,7 @@ bool NetlinkAttribute::SetFlagValue(bool value) {
   return false;
 }
 
-bool NetlinkAttribute::GetStringValue(string *value) const {
+bool NetlinkAttribute::GetStringValue(string* value) const {
   LOG(ERROR) << "Attribute is not of type 'String'";
   return false;
 }
@@ -352,13 +352,13 @@ bool NetlinkAttribute::SetStringValue(string value) {
   return false;
 }
 
-bool NetlinkAttribute::GetNestedAttributeList(AttributeListRefPtr *value) {
+bool NetlinkAttribute::GetNestedAttributeList(AttributeListRefPtr* value) {
   LOG(ERROR) << "Attribute is not of type 'Nested'";
   return false;
 }
 
 bool NetlinkAttribute::ConstGetNestedAttributeList(
-    AttributeListConstRefPtr *value) const {
+    AttributeListConstRefPtr* value) const {
   LOG(ERROR) << "Attribute is not of type 'Nested'";
   return false;
 }
@@ -368,7 +368,7 @@ bool NetlinkAttribute::SetNestedHasAValue() {
   return false;
 }
 
-bool NetlinkAttribute::GetRawValue(ByteString *value) const {
+bool NetlinkAttribute::GetRawValue(ByteString* value) const {
   LOG(ERROR) << "Attribute is not of type 'Raw'";
   return false;
 }
@@ -394,7 +394,7 @@ string NetlinkAttribute::RawToString() const {
   }
 
   uint16_t length = data_.GetLength();
-  const uint8_t *const_data = data_.GetConstData();
+  const uint8_t* const_data = data_.GetConstData();
 
   StringAppendF(&output, "len=%u", length);
   output.append(" DATA: ");
@@ -415,14 +415,14 @@ string NetlinkAttribute::HeaderToPrint(int indent) const {
             ((has_a_value()) ?  "": "UNINITIALIZED "));
 }
 
-ByteString NetlinkAttribute::EncodeGeneric(const unsigned char *data,
+ByteString NetlinkAttribute::EncodeGeneric(const unsigned char* data,
                                            size_t num_bytes) const {
   ByteString result;
   if (has_a_value_) {
     nlattr header;
     header.nla_type = id();
     header.nla_len = nla_attr_size(num_bytes);
-    result = ByteString(reinterpret_cast<unsigned char *>(&header),
+    result = ByteString(reinterpret_cast<unsigned char*>(&header),
                         sizeof(header));
     result.Resize(NLA_HDRLEN);  // Add padding after the header.
     if (data && (num_bytes != 0)) {
@@ -439,7 +439,7 @@ const char NetlinkU8Attribute::kMyTypeString[] = "uint8_t";
 const NetlinkAttribute::Type NetlinkU8Attribute::kType =
     NetlinkAttribute::kTypeU8;
 
-bool NetlinkU8Attribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkU8Attribute::InitFromNlAttr(const nlattr* input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
@@ -450,7 +450,7 @@ bool NetlinkU8Attribute::InitFromNlAttr(const nlattr *input) {
   return NetlinkAttribute::InitFromNlAttr(input);
 }
 
-bool NetlinkU8Attribute::GetU8Value(uint8_t *output) const {
+bool NetlinkU8Attribute::GetU8Value(uint8_t* output) const {
   if (!has_a_value_) {
     VLOG(7) << "U8 attribute " << id_string()
             << " hasn't been set to any value.";
@@ -468,7 +468,7 @@ bool NetlinkU8Attribute::SetU8Value(uint8_t new_value) {
   return true;
 }
 
-bool NetlinkU8Attribute::ToString(string *output) const {
+bool NetlinkU8Attribute::ToString(string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -482,7 +482,7 @@ bool NetlinkU8Attribute::ToString(string *output) const {
 
 ByteString NetlinkU8Attribute::Encode() const {
   return NetlinkAttribute::EncodeGeneric(
-      reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
+      reinterpret_cast<const unsigned char*>(&value_), sizeof(value_));
 }
 
 // NetlinkU16Attribute
@@ -491,7 +491,7 @@ const char NetlinkU16Attribute::kMyTypeString[] = "uint16_t";
 const NetlinkAttribute::Type NetlinkU16Attribute::kType =
     NetlinkAttribute::kTypeU16;
 
-bool NetlinkU16Attribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkU16Attribute::InitFromNlAttr(const nlattr* input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
@@ -502,7 +502,7 @@ bool NetlinkU16Attribute::InitFromNlAttr(const nlattr *input) {
   return NetlinkAttribute::InitFromNlAttr(input);
 }
 
-bool NetlinkU16Attribute::GetU16Value(uint16_t *output) const {
+bool NetlinkU16Attribute::GetU16Value(uint16_t* output) const {
   if (!has_a_value_) {
     VLOG(7)  << "U16 attribute " << id_string()
              << " hasn't been set to any value.";
@@ -520,7 +520,7 @@ bool NetlinkU16Attribute::SetU16Value(uint16_t new_value) {
   return true;
 }
 
-bool NetlinkU16Attribute::ToString(string *output) const {
+bool NetlinkU16Attribute::ToString(string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -534,7 +534,7 @@ bool NetlinkU16Attribute::ToString(string *output) const {
 
 ByteString NetlinkU16Attribute::Encode() const {
   return NetlinkAttribute::EncodeGeneric(
-      reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
+      reinterpret_cast<const unsigned char*>(&value_), sizeof(value_));
 }
 
 // NetlinkU32Attribute::
@@ -543,7 +543,7 @@ const char NetlinkU32Attribute::kMyTypeString[] = "uint32_t";
 const NetlinkAttribute::Type NetlinkU32Attribute::kType =
     NetlinkAttribute::kTypeU32;
 
-bool NetlinkU32Attribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkU32Attribute::InitFromNlAttr(const nlattr* input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
@@ -554,7 +554,7 @@ bool NetlinkU32Attribute::InitFromNlAttr(const nlattr *input) {
   return NetlinkAttribute::InitFromNlAttr(input);
 }
 
-bool NetlinkU32Attribute::GetU32Value(uint32_t *output) const {
+bool NetlinkU32Attribute::GetU32Value(uint32_t* output) const {
   if (!has_a_value_) {
     VLOG(7)  << "U32 attribute " << id_string()
              << " hasn't been set to any value.";
@@ -572,7 +572,7 @@ bool NetlinkU32Attribute::SetU32Value(uint32_t new_value) {
   return true;
 }
 
-bool NetlinkU32Attribute::ToString(string *output) const {
+bool NetlinkU32Attribute::ToString(string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -586,7 +586,7 @@ bool NetlinkU32Attribute::ToString(string *output) const {
 
 ByteString NetlinkU32Attribute::Encode() const {
   return NetlinkAttribute::EncodeGeneric(
-      reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
+      reinterpret_cast<const unsigned char*>(&value_), sizeof(value_));
 }
 
 // NetlinkU64Attribute
@@ -595,7 +595,7 @@ const char NetlinkU64Attribute::kMyTypeString[] = "uint64_t";
 const NetlinkAttribute::Type NetlinkU64Attribute::kType =
     NetlinkAttribute::kTypeU64;
 
-bool NetlinkU64Attribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkU64Attribute::InitFromNlAttr(const nlattr* input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
@@ -606,7 +606,7 @@ bool NetlinkU64Attribute::InitFromNlAttr(const nlattr *input) {
   return NetlinkAttribute::InitFromNlAttr(input);
 }
 
-bool NetlinkU64Attribute::GetU64Value(uint64_t *output) const {
+bool NetlinkU64Attribute::GetU64Value(uint64_t* output) const {
   if (!has_a_value_) {
     VLOG(7)  << "U64 attribute " << id_string()
              << " hasn't been set to any value.";
@@ -624,7 +624,7 @@ bool NetlinkU64Attribute::SetU64Value(uint64_t new_value) {
   return true;
 }
 
-bool NetlinkU64Attribute::ToString(string *output) const {
+bool NetlinkU64Attribute::ToString(string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -638,7 +638,7 @@ bool NetlinkU64Attribute::ToString(string *output) const {
 
 ByteString NetlinkU64Attribute::Encode() const {
   return NetlinkAttribute::EncodeGeneric(
-      reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
+      reinterpret_cast<const unsigned char*>(&value_), sizeof(value_));
 }
 
 // NetlinkFlagAttribute
@@ -647,7 +647,7 @@ const char NetlinkFlagAttribute::kMyTypeString[] = "flag";
 const NetlinkAttribute::Type NetlinkFlagAttribute::kType =
     NetlinkAttribute::kTypeFlag;
 
-bool NetlinkFlagAttribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkFlagAttribute::InitFromNlAttr(const nlattr* input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
@@ -659,7 +659,7 @@ bool NetlinkFlagAttribute::InitFromNlAttr(const nlattr *input) {
 }
 
 
-bool NetlinkFlagAttribute::GetFlagValue(bool *output) const {
+bool NetlinkFlagAttribute::GetFlagValue(bool* output) const {
   if (output) {
     // The lack of the existence of the attribute implies 'false'.
     *output = (has_a_value_) ? value_ : false;
@@ -673,7 +673,7 @@ bool NetlinkFlagAttribute::SetFlagValue(bool new_value) {
   return true;
 }
 
-bool NetlinkFlagAttribute::ToString(string *output) const {
+bool NetlinkFlagAttribute::ToString(string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -698,7 +698,7 @@ const char NetlinkStringAttribute::kMyTypeString[] = "string";
 const NetlinkAttribute::Type NetlinkStringAttribute::kType =
     NetlinkAttribute::kTypeString;
 
-bool NetlinkStringAttribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkStringAttribute::InitFromNlAttr(const nlattr* input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
@@ -708,7 +708,7 @@ bool NetlinkStringAttribute::InitFromNlAttr(const nlattr *input) {
   return NetlinkAttribute::InitFromNlAttr(input);
 }
 
-bool NetlinkStringAttribute::GetStringValue(string *output) const {
+bool NetlinkStringAttribute::GetStringValue(string* output) const {
   if (!has_a_value_) {
     VLOG(7)  << "String attribute " << id_string()
              << " hasn't been set to any value.";
@@ -726,7 +726,7 @@ bool NetlinkStringAttribute::SetStringValue(const string new_value) {
   return true;
 }
 
-bool NetlinkStringAttribute::ToString(string *output) const {
+bool NetlinkStringAttribute::ToString(string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -741,13 +741,13 @@ bool NetlinkStringAttribute::ToString(string *output) const {
 
 ByteString NetlinkStringAttribute::Encode() const {
   return NetlinkAttribute::EncodeGeneric(
-      reinterpret_cast<const unsigned char *>(value_.c_str()),
+      reinterpret_cast<const unsigned char*>(value_.c_str()),
       value_.size() + 1);
 }
 
 // SSID attribute.
 
-bool NetlinkSsidAttribute::ToString(string *output) const {
+bool NetlinkSsidAttribute::ToString(string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -757,7 +757,7 @@ bool NetlinkSsidAttribute::ToString(string *output) const {
     return false;
 
   string temp;
-  for (const auto &chr : value) {
+  for (const auto& chr : value) {
     // Replace '[' and ']' (in addition to non-printable characters) so that
     // it's easy to match the right substring through a non-greedy regex.
     if (chr == '[' || chr == ']' || !std::isprint(chr)) {
@@ -779,7 +779,7 @@ const NetlinkAttribute::Type NetlinkNestedAttribute::kType =
 const size_t NetlinkNestedAttribute::kArrayAttrEnumVal = 0;
 
 NetlinkNestedAttribute::NetlinkNestedAttribute(int id,
-                                               const char *id_string) :
+                                               const char* id_string) :
     NetlinkAttribute(id, id_string, kType, kMyTypeString),
     value_(new AttributeList) {}
 
@@ -788,7 +788,7 @@ ByteString NetlinkNestedAttribute::Encode() const {
   nlattr header;
   header.nla_type = id();
   header.nla_len = nla_attr_size(sizeof(header));
-  ByteString result(reinterpret_cast<unsigned char *>(&header), sizeof(header));
+  ByteString result(reinterpret_cast<unsigned char*>(&header), sizeof(header));
   result.Resize(NLA_HDRLEN);  // Add padding after the header.
 
   // Encode all nested attributes.
@@ -802,7 +802,7 @@ ByteString NetlinkNestedAttribute::Encode() const {
   }
 
   // Go back and fill-in the size.
-  nlattr *new_header = reinterpret_cast<nlattr *>(result.GetData());
+  nlattr* new_header = reinterpret_cast<nlattr*>(result.GetData());
   new_header->nla_len = result.GetLength();
 
   return result;
@@ -813,7 +813,7 @@ void NetlinkNestedAttribute::Print(int log_level, int indent) const {
   value_->Print(log_level, indent + 1);
 }
 
-bool NetlinkNestedAttribute::ToString(string *output) const {
+bool NetlinkNestedAttribute::ToString(string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -828,7 +828,7 @@ bool NetlinkNestedAttribute::ToString(string *output) const {
   return true;
 }
 
-bool NetlinkNestedAttribute::InitFromNlAttr(const nlattr *const_data) {
+bool NetlinkNestedAttribute::InitFromNlAttr(const nlattr* const_data) {
   if (!InitNestedFromNlAttr(value_.get(), nested_template_, const_data)) {
     LOG(ERROR) << "InitNestedFromNlAttr() failed";
     return false;
@@ -838,7 +838,7 @@ bool NetlinkNestedAttribute::InitFromNlAttr(const nlattr *const_data) {
 }
 
 bool NetlinkNestedAttribute::GetNestedAttributeList(
-    AttributeListRefPtr *output) {
+    AttributeListRefPtr* output) {
   // Not checking |has_a_value| since GetNestedAttributeList is called to get
   // a newly created AttributeList in order to have something to which to add
   // attributes.
@@ -849,7 +849,7 @@ bool NetlinkNestedAttribute::GetNestedAttributeList(
 }
 
 bool NetlinkNestedAttribute::ConstGetNestedAttributeList(
-    AttributeListConstRefPtr *output) const {
+    AttributeListConstRefPtr* output) const {
   if (!has_a_value_) {
     LOG(ERROR) << "Attribute does not exist.";
     return false;
@@ -866,9 +866,9 @@ bool NetlinkNestedAttribute::SetNestedHasAValue() {
 }
 
 bool NetlinkNestedAttribute::InitNestedFromNlAttr(
-    AttributeList *list,
-    const NetlinkNestedAttribute::NestedData::NestedDataMap &templates,
-    const nlattr *const_data) {
+    AttributeList* list,
+    const NetlinkNestedAttribute::NestedData::NestedDataMap& templates,
+    const nlattr* const_data) {
   if (templates.size() == 1 && templates.cbegin()->second.is_array) {
     return ParseNestedArray(list, templates.cbegin()->second, const_data);
   } else {
@@ -881,9 +881,9 @@ bool NetlinkNestedAttribute::InitNestedFromNlAttr(
 // data type.  Each array element may be a simple type or may be a structure.
 //
 // static
-bool NetlinkNestedAttribute::ParseNestedArray(AttributeList *list,
-                                              const NestedData &array_template,
-                                              const nlattr *const_data) {
+bool NetlinkNestedAttribute::ParseNestedArray(AttributeList* list,
+                                              const NestedData& array_template,
+                                              const nlattr* const_data) {
   if (!list) {
     LOG(ERROR) << "NULL |list| parameter";
     return false;
@@ -894,9 +894,9 @@ bool NetlinkNestedAttribute::ParseNestedArray(AttributeList *list,
   }
   // Casting away constness since |nla_parse_nested| doesn't mark its input as
   // const even though it doesn't modify this input parameter.
-  nlattr *attrs = const_cast<nlattr *>(const_data);
+  nlattr* attrs = const_cast<nlattr*>(const_data);
 
-  struct nlattr *attr;
+  struct nlattr* attr;
   int remaining;
   nla_for_each_nested_type_corrected(attr, attrs, remaining) {
     string attribute_name = StringPrintf(
@@ -911,9 +911,9 @@ bool NetlinkNestedAttribute::ParseNestedArray(AttributeList *list,
 // which may be optional).
 // static
 bool NetlinkNestedAttribute::ParseNestedStructure(
-    AttributeList *list,
-    const NetlinkNestedAttribute::NestedData::NestedDataMap &templates,
-    const nlattr *const_data) {
+    AttributeList* list,
+    const NetlinkNestedAttribute::NestedData::NestedDataMap& templates,
+    const nlattr* const_data) {
   if (!list) {
     LOG(ERROR) << "NULL |list| parameter";
     return false;
@@ -928,7 +928,7 @@ bool NetlinkNestedAttribute::ParseNestedStructure(
   }
   // Casting away constness since |nla_parse_nested| doesn't mark its input as
   // const even though it doesn't modify this input parameter.
-  nlattr *attr_data = const_cast<nlattr *>(const_data);
+  nlattr* attr_data = const_cast<nlattr*>(const_data);
 
   // |nla_parse_nested| requires an array of |nla_policy|. While an attribute id
   // of zero is illegal, we still need to fill that spot in the policy
@@ -936,8 +936,8 @@ bool NetlinkNestedAttribute::ParseNestedStructure(
   size_t largest_attribute = templates.crbegin()->first;
   unique_ptr<nla_policy[]> policy(new nla_policy[largest_attribute + 1]);
   memset(&policy[0], 0, sizeof(nla_policy) * (largest_attribute + 1));
-  for (const auto &temp : templates) {
-    const size_t &id = temp.first;
+  for (const auto& temp : templates) {
+    const size_t& id = temp.first;
     policy[id].type = temp.second.type;
   }
 
@@ -950,8 +950,8 @@ bool NetlinkNestedAttribute::ParseNestedStructure(
   }
 
   // Note that the attribute id of zero is illegal so we'll start with id=1.
-  for (const auto &temp : templates) {
-    const size_t &id = temp.first;
+  for (const auto& temp : templates) {
+    const size_t& id = temp.first;
     if (attr[id]) {
       AddAttributeToNested(list, policy[id].type, id,
                            temp.second.attribute_name, *attr[id], temp.second);
@@ -962,13 +962,13 @@ bool NetlinkNestedAttribute::ParseNestedStructure(
 
 // static
 void NetlinkNestedAttribute::AddAttributeToNested(
-    AttributeList *list, uint16_t type, size_t id, const string &attribute_name,
-    const nlattr &attr, const NestedData &nested_template) {
+    AttributeList* list, uint16_t type, size_t id, const string& attribute_name,
+    const nlattr& attr, const NestedData& nested_template) {
   CHECK(list);
   if (!nested_template.parse_attribute.is_null()) {
     if (!nested_template.parse_attribute.Run(
         list, id, attribute_name,
-        ByteString(reinterpret_cast<const char *>(nla_data(&attr)),
+        ByteString(reinterpret_cast<const char*>(nla_data(&attr)),
                    nla_len(&attr)))) {
       LOG(WARNING) << "Custom attribute parser returned |false| for "
                    << attribute_name << "(" << id << ").";
@@ -979,7 +979,7 @@ void NetlinkNestedAttribute::AddAttributeToNested(
     case NLA_UNSPEC:
       list->CreateRawAttribute(id, attribute_name.c_str());
       list->SetRawAttributeValue(id, ByteString(
-          reinterpret_cast<const char *>(nla_data(&attr)), nla_len(&attr)));
+          reinterpret_cast<const char*>(nla_data(&attr)), nla_len(&attr)));
       break;
     case NLA_U8:
       list->CreateU8Attribute(id, attribute_name.c_str());
@@ -1058,7 +1058,7 @@ NetlinkNestedAttribute::NestedData::NestedData(
 
 NetlinkNestedAttribute::NestedData::NestedData(
     uint16_t type_arg, string attribute_name_arg, bool is_array_arg,
-    const AttributeParser &parse_attribute_arg)
+    const AttributeParser& parse_attribute_arg)
     : type(type_arg), attribute_name(attribute_name_arg),
       is_array(is_array_arg), parse_attribute(parse_attribute_arg) {}
 
@@ -1068,7 +1068,7 @@ const char NetlinkRawAttribute::kMyTypeString[] = "<raw>";
 const NetlinkAttribute::Type NetlinkRawAttribute::kType =
     NetlinkAttribute::kTypeRaw;
 
-bool NetlinkRawAttribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkRawAttribute::InitFromNlAttr(const nlattr* input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
@@ -1081,7 +1081,7 @@ bool NetlinkRawAttribute::InitFromNlAttr(const nlattr *input) {
   return true;
 }
 
-bool NetlinkRawAttribute::GetRawValue(ByteString *output) const {
+bool NetlinkRawAttribute::GetRawValue(ByteString* output) const {
   if (!has_a_value_) {
     VLOG(7)  << "Raw attribute " << id_string()
              << " hasn't been set to any value.";
@@ -1099,7 +1099,7 @@ bool NetlinkRawAttribute::SetRawValue(const ByteString new_value) {
   return true;
 }
 
-bool NetlinkRawAttribute::ToString(string *output) const {
+bool NetlinkRawAttribute::ToString(string* output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -1110,7 +1110,7 @@ bool NetlinkRawAttribute::ToString(string *output) const {
     return false;
   }
   int total_bytes = data_.GetLength();
-  const uint8_t *const_data = data_.GetConstData();
+  const uint8_t* const_data = data_.GetConstData();
 
   *output = StringPrintf("%d bytes:", total_bytes);
   for (int i = 0; i < total_bytes; ++i) {
@@ -1129,7 +1129,7 @@ NetlinkAttributeGeneric::NetlinkAttributeGeneric(int id)
   StringAppendF(&id_string_, "<UNKNOWN ATTRIBUTE %d>", id);
 }
 
-const char *NetlinkAttributeGeneric::id_string() const {
+const char* NetlinkAttributeGeneric::id_string() const {
   return id_string_.c_str();
 }
 

@@ -65,15 +65,15 @@ class SHILL_EXPORT NetlinkSocket {
   // Reads data from the socket into |message| and returns true if successful.
   // The |message| parameter will be resized to hold the entirety of the read
   // message (and any data in |message| will be overwritten).
-  virtual bool RecvMessage(ByteString *message);
+  virtual bool RecvMessage(ByteString* message);
 
   // Sends a message, returns true if successful.
-  virtual bool SendMessage(const ByteString &message);
+  virtual bool SendMessage(const ByteString& message);
 
   // Subscribes to netlink broadcast events.
   virtual bool SubscribeToEvents(uint32_t group_id);
 
-  virtual const Sockets *sockets() const { return sockets_.get(); }
+  virtual const Sockets* sockets() const { return sockets_.get(); }
 
  protected:
   uint32_t sequence_number_;

@@ -18,22 +18,22 @@ using std::vector;
 
 namespace shill {
 
-ByteString::ByteString(const ByteString &b) {
+ByteString::ByteString(const ByteString& b) {
   data_.assign(Vector::const_iterator(b.begin_), b.data_.end());
   begin_ = data_.begin();
 }
 
-ByteString &ByteString::operator=(const ByteString &b) {
+ByteString& ByteString::operator=(const ByteString& b) {
   data_.assign(Vector::const_iterator(b.begin_), b.data_.end());
   begin_ = data_.begin();
   return *this;
 }
 
-unsigned char *ByteString::GetData() {
+unsigned char* ByteString::GetData() {
   return (GetLength() == 0) ? nullptr : &*begin_;
 }
 
-const unsigned char *ByteString::GetConstData() const {
+const unsigned char* ByteString::GetConstData() const {
   return (GetLength() == 0) ? nullptr : &*begin_;
 }
 
@@ -53,7 +53,7 @@ ByteString ByteString::GetSubstring(size_t offset, size_t length) const {
 
 // static
 ByteString ByteString::CreateFromCPUUInt32(uint32_t val) {
-  return ByteString(reinterpret_cast<unsigned char *>(&val), sizeof(val));
+  return ByteString(reinterpret_cast<unsigned char*>(&val), sizeof(val));
 }
 
 // static
@@ -62,7 +62,7 @@ ByteString ByteString::CreateFromNetUInt32(uint32_t val) {
 }
 
 // static
-ByteString ByteString::CreateFromHexString(const string &hex_string) {
+ByteString ByteString::CreateFromHexString(const string& hex_string) {
   vector<uint8_t> bytes;
   if (!base::HexStringToBytes(hex_string, &bytes)) {
     return ByteString();
@@ -70,7 +70,7 @@ ByteString ByteString::CreateFromHexString(const string &hex_string) {
   return ByteString(&bytes.front(), bytes.size());
 }
 
-bool ByteString::ConvertToCPUUInt32(uint32_t *val) const {
+bool ByteString::ConvertToCPUUInt32(uint32_t* val) const {
   if (val == nullptr || GetLength() != sizeof(*val)) {
     return false;
   }
@@ -79,7 +79,7 @@ bool ByteString::ConvertToCPUUInt32(uint32_t *val) const {
   return true;
 }
 
-bool ByteString::ConvertToNetUInt32(uint32_t *val) const {
+bool ByteString::ConvertToNetUInt32(uint32_t* val) const {
   if (!ConvertToCPUUInt32(val)) {
     return false;
   }
@@ -120,7 +120,7 @@ bool ByteString::IsZero() const {
   return true;
 }
 
-bool ByteString::BitwiseAnd(const ByteString &b) {
+bool ByteString::BitwiseAnd(const ByteString& b) {
   if (GetLength() != b.GetLength()) {
     return false;
   }
@@ -132,7 +132,7 @@ bool ByteString::BitwiseAnd(const ByteString &b) {
   return true;
 }
 
-bool ByteString::BitwiseOr(const ByteString &b) {
+bool ByteString::BitwiseOr(const ByteString& b) {
   if (GetLength() != b.GetLength()) {
     return false;
   }
@@ -150,7 +150,7 @@ void ByteString::BitwiseInvert() {
   }
 }
 
-bool ByteString::Equals(const ByteString &b) const {
+bool ByteString::Equals(const ByteString& b) const {
   if (GetLength() != b.GetLength()) {
     return false;
   }
@@ -164,7 +164,7 @@ bool ByteString::Equals(const ByteString &b) const {
   return true;
 }
 
-void ByteString::Append(const ByteString &b) {
+void ByteString::Append(const ByteString& b) {
   // Save and reapply offset since |insert| may reallocate the memory and
   // invalidate the iterator.
   size_t offset = distance(data_.begin(), begin_);
@@ -198,7 +198,7 @@ void ByteString::RemovePrefix(size_t offset) {
 }
 
 // static
-bool ByteString::IsLessThan(const ByteString &lhs, const ByteString &rhs) {
+bool ByteString::IsLessThan(const ByteString& lhs, const ByteString& rhs) {
   size_t byte_count = min(lhs.GetLength(), rhs.GetLength());
   int result = memcmp(lhs.GetConstData(), rhs.GetConstData(), byte_count);
   if (result == 0) {

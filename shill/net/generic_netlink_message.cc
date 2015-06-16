@@ -33,11 +33,11 @@ ByteString GenericNetlinkMessage::EncodeHeader(uint32_t sequence_number) {
   genl_header.reserved = 0;
 
   ByteString genl_header_string(
-      reinterpret_cast<unsigned char *>(&genl_header), sizeof(genl_header));
+      reinterpret_cast<unsigned char*>(&genl_header), sizeof(genl_header));
   size_t genlmsghdr_with_pad = NLMSG_ALIGN(sizeof(genl_header));
   genl_header_string.Resize(genlmsghdr_with_pad);  // Zero-fill.
 
-  nlmsghdr *pheader = reinterpret_cast<nlmsghdr *>(result.GetData());
+  nlmsghdr* pheader = reinterpret_cast<nlmsghdr*>(result.GetData());
   pheader->nlmsg_len += genlmsghdr_with_pad;
   result.Append(genl_header_string);
   return result;
@@ -55,14 +55,14 @@ ByteString GenericNetlinkMessage::Encode(uint32_t sequence_number) {
   ByteString attribute_string = attributes_->Encode();
 
   // Need to re-calculate |header| since |Append|, above, moves the data.
-  nlmsghdr *pheader = reinterpret_cast<nlmsghdr *>(result.GetData());
+  nlmsghdr* pheader = reinterpret_cast<nlmsghdr*>(result.GetData());
   pheader->nlmsg_len += attribute_string.GetLength();
   result.Append(attribute_string);
 
   return result;
 }
 
-bool GenericNetlinkMessage::InitAndStripHeader(ByteString *input) {
+bool GenericNetlinkMessage::InitAndStripHeader(ByteString* input) {
   if (!input) {
     LOG(ERROR) << "NULL input";
     return false;
@@ -72,7 +72,7 @@ bool GenericNetlinkMessage::InitAndStripHeader(ByteString *input) {
   }
 
   // Read the genlmsghdr.
-  genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(input->GetData());
+  genlmsghdr* gnlh = reinterpret_cast<genlmsghdr*>(input->GetData());
   if (command_ != gnlh->cmd) {
     LOG(WARNING) << "This object thinks it's a " << command_
                  << " but the message thinks it's a " << gnlh->cmd;
@@ -96,12 +96,12 @@ void GenericNetlinkMessage::Print(int header_log_level,
 const uint16_t ControlNetlinkMessage::kMessageType = GENL_ID_CTRL;
 
 bool ControlNetlinkMessage::InitFromNlmsg(
-    const nlmsghdr *const_msg, NetlinkMessage::MessageContext context) {
+    const nlmsghdr* const_msg, NetlinkMessage::MessageContext context) {
   if (!const_msg) {
     LOG(ERROR) << "Null |msg| parameter";
     return false;
   }
-  ByteString message(reinterpret_cast<const unsigned char *>(const_msg),
+  ByteString message(reinterpret_cast<const unsigned char*>(const_msg),
                      const_msg->nlmsg_len);
 
   if (!InitAndStripHeader(&message)) {
@@ -110,9 +110,9 @@ bool ControlNetlinkMessage::InitFromNlmsg(
 
   // Attributes.
   // Parse the attributes from the nl message payload into the 'tb' array.
-  nlattr *tb[CTRL_ATTR_MAX + 1];
+  nlattr* tb[CTRL_ATTR_MAX + 1];
   nla_parse(tb, CTRL_ATTR_MAX,
-            reinterpret_cast<nlattr *>(message.GetData()), message.GetLength(),
+            reinterpret_cast<nlattr*>(message.GetData()), message.GetLength(),
             nullptr);
 
   for (int i = 0; i < CTRL_ATTR_MAX + 1; ++i) {
@@ -139,17 +139,17 @@ GetFamilyMessage::GetFamilyMessage()
 }
 
 // static
-NetlinkMessage *ControlNetlinkMessage::CreateMessage(
-    const nlmsghdr *const_msg) {
+NetlinkMessage* ControlNetlinkMessage::CreateMessage(
+    const nlmsghdr* const_msg) {
   if (!const_msg) {
     LOG(ERROR) << "NULL |const_msg| parameter";
     return nullptr;
   }
   // Casting away constness since, while nlmsg_data doesn't change its
   // parameter, it also doesn't declare its paramenter as const.
-  nlmsghdr *msg = const_cast<nlmsghdr *>(const_msg);
-  void *payload = nlmsg_data(msg);
-  genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(payload);
+  nlmsghdr* msg = const_cast<nlmsghdr*>(const_msg);
+  void* payload = nlmsg_data(msg);
+  genlmsghdr* gnlh = reinterpret_cast<genlmsghdr*>(payload);
 
   switch (gnlh->cmd) {
     case NewFamilyMessage::kCommand:

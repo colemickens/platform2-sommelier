@@ -28,22 +28,22 @@ Sockets::~Sockets() {}
 // Handlers".
 
 int Sockets::Accept(int sockfd,
-                    struct sockaddr *addr,
-                    socklen_t *addrlen) const {
+                    struct sockaddr* addr,
+                    socklen_t* addrlen) const {
   return HANDLE_EINTR(accept(sockfd, addr, addrlen));
 }
 
-int Sockets::AttachFilter(int sockfd, struct sock_fprog *pf) const {
+int Sockets::AttachFilter(int sockfd, struct sock_fprog* pf) const {
   return setsockopt(sockfd, SOL_SOCKET, SO_ATTACH_FILTER, pf, sizeof(*pf));
 }
 
 int Sockets::Bind(int sockfd,
-                  const struct sockaddr *addr,
+                  const struct sockaddr* addr,
                   socklen_t addrlen) const {
   return bind(sockfd, addr, addrlen);
 }
 
-int Sockets::BindToDevice(int sockfd, const std::string &device) const {
+int Sockets::BindToDevice(int sockfd, const std::string& device) const {
   char dev_name[IFNAMSIZ];
   CHECK_GT(sizeof(dev_name), device.length());
   memset(&dev_name, 0, sizeof(dev_name));
@@ -69,7 +69,7 @@ int Sockets::Close(int fd) const {
 }
 
 int Sockets::Connect(int sockfd,
-                     const struct sockaddr *addr,
+                     const struct sockaddr* addr,
                      socklen_t addrlen) const {
   return HANDLE_EINTR(connect(sockfd, addr, addrlen));
 }
@@ -83,8 +83,8 @@ std::string Sockets::ErrorString() const {
 }
 
 int Sockets::GetSockName(int sockfd,
-                         struct sockaddr *addr,
-                         socklen_t *addrlen) const {
+                         struct sockaddr* addr,
+                         socklen_t* addrlen) const {
   return getsockname(sockfd, addr, addrlen);
 }
 
@@ -99,7 +99,7 @@ int Sockets::GetSocketError(int sockfd) const {
 }
 
 
-int Sockets::Ioctl(int d, int request, void *argp) const {
+int Sockets::Ioctl(int d, int request, void* argp) const {
   return HANDLE_EINTR(ioctl(d, request, argp));
 }
 
@@ -108,34 +108,34 @@ int Sockets::Listen(int sockfd, int backlog) const {
 }
 
 ssize_t Sockets::RecvFrom(int sockfd,
-                          void *buf,
+                          void* buf,
                           size_t len,
                           int flags,
-                          struct sockaddr *src_addr,
-                          socklen_t *addrlen) const {
+                          struct sockaddr* src_addr,
+                          socklen_t* addrlen) const {
   return HANDLE_EINTR(recvfrom(sockfd, buf, len, flags, src_addr, addrlen));
 }
 
 int Sockets::Select(int nfds,
-                    fd_set *readfds,
-                    fd_set *writefds,
-                    fd_set *exceptfds,
-                    struct timeval *timeout) const {
+                    fd_set* readfds,
+                    fd_set* writefds,
+                    fd_set* exceptfds,
+                    struct timeval* timeout) const {
   return HANDLE_EINTR(select(nfds, readfds, writefds, exceptfds, timeout));
 }
 
 ssize_t Sockets::Send(int sockfd,
-                      const void *buf,
+                      const void* buf,
                       size_t len,
                       int flags) const {
   return HANDLE_EINTR(send(sockfd, buf, len, flags));
 }
 
 ssize_t Sockets::SendTo(int sockfd,
-                        const void *buf,
+                        const void* buf,
                         size_t len,
                         int flags,
-                        const struct sockaddr *dest_addr,
+                        const struct sockaddr* dest_addr,
                         socklen_t addrlen) const {
   return HANDLE_EINTR(sendto(sockfd, buf, len, flags, dest_addr, addrlen));
 }
@@ -158,7 +158,7 @@ int Sockets::Socket(int domain, int type, int protocol) const {
   return socket(domain, type, protocol);
 }
 
-ScopedSocketCloser::ScopedSocketCloser(Sockets *sockets, int fd)
+ScopedSocketCloser::ScopedSocketCloser(Sockets* sockets, int fd)
     : sockets_(sockets),
       fd_(fd) {}
 

@@ -31,7 +31,7 @@ class NetlinkRawAttribute;
 class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
  public:
   typedef std::shared_ptr<NetlinkAttribute> AttributePointer;
-  typedef base::Callback<NetlinkAttribute *(int id)> NewFromIdMethod;
+  typedef base::Callback<NetlinkAttribute*(int id)> NewFromIdMethod;
 
   AttributeList() {}
 
@@ -47,7 +47,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
 
   // Instantiates an NetlinkAttribute of the appropriate type from |id|,
   // initializes it from |data|, and adds it to |attributes_|.
-  bool CreateAndInitAttribute(int id, const nlattr *data,
+  bool CreateAndInitAttribute(int id, const nlattr* data,
                               AttributeList::NewFromIdMethod factory);
 
   // Prints the attribute list with each attribute using no less than 1 line.
@@ -63,50 +63,50 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   // Create, get, and set attributes of the given types.  Attributes are
   // accessed via an integer |id|.  |id_string| is a string used to describe
   // the attribute in debug output.
-  bool CreateU8Attribute(int id, const char *id_string);
+  bool CreateU8Attribute(int id, const char* id_string);
   bool SetU8AttributeValue(int id, uint8_t value);
-  bool GetU8AttributeValue(int id, uint8_t *value) const;
+  bool GetU8AttributeValue(int id, uint8_t* value) const;
 
-  bool CreateU16Attribute(int id, const char *id_string);
+  bool CreateU16Attribute(int id, const char* id_string);
   bool SetU16AttributeValue(int id, uint16_t value);
-  bool GetU16AttributeValue(int id, uint16_t *value) const;
+  bool GetU16AttributeValue(int id, uint16_t* value) const;
 
-  bool CreateU32Attribute(int id, const char *id_string);
+  bool CreateU32Attribute(int id, const char* id_string);
   bool SetU32AttributeValue(int id, uint32_t value);
-  bool GetU32AttributeValue(int id, uint32_t *value) const;
+  bool GetU32AttributeValue(int id, uint32_t* value) const;
 
-  bool CreateU64Attribute(int id, const char *id_string);
+  bool CreateU64Attribute(int id, const char* id_string);
   bool SetU64AttributeValue(int id, uint64_t value);
-  bool GetU64AttributeValue(int id, uint64_t *value) const;
+  bool GetU64AttributeValue(int id, uint64_t* value) const;
 
-  bool CreateFlagAttribute(int id, const char *id_string);
+  bool CreateFlagAttribute(int id, const char* id_string);
   bool SetFlagAttributeValue(int id, bool value);
-  bool GetFlagAttributeValue(int id, bool *value) const;
+  bool GetFlagAttributeValue(int id, bool* value) const;
   // |IsFlagAttributeTrue| returns true if the flag attribute |id| is true.  It
   // retruns false if the attribute does not exist, is not of type kTypeFlag,
   // or is not true.
   bool IsFlagAttributeTrue(int id) const;
 
-  bool CreateStringAttribute(int id, const char *id_string);
+  bool CreateStringAttribute(int id, const char* id_string);
   // SSID attributes are derived from string attributes.
-  bool CreateSsidAttribute(int id, const char *id_string);
+  bool CreateSsidAttribute(int id, const char* id_string);
   bool SetStringAttributeValue(int id, std::string value);
-  bool GetStringAttributeValue(int id, std::string *value) const;
+  bool GetStringAttributeValue(int id, std::string* value) const;
 
-  bool CreateNestedAttribute(int id, const char *id_string);
+  bool CreateNestedAttribute(int id, const char* id_string);
   bool SetNestedAttributeHasAValue(int id);
-  bool GetNestedAttributeList(int id, AttributeListRefPtr *value);
+  bool GetNestedAttributeList(int id, AttributeListRefPtr* value);
   bool ConstGetNestedAttributeList(int id,
-                                   AttributeListConstRefPtr *value) const;
+                                   AttributeListConstRefPtr* value) const;
 
-  bool CreateRawAttribute(int id, const char *id_string);
+  bool CreateRawAttribute(int id, const char* id_string);
   // |value| should point to the data (after the |nlattr| header, if there is
   // one).
   bool SetRawAttributeValue(int id, ByteString value);
-  bool GetRawAttributeValue(int id, ByteString *output) const;
+  bool GetRawAttributeValue(int id, ByteString* output) const;
 
   // This retrieves a string from any kind of attribute.
-  bool GetAttributeAsString(int id, std::string *value) const;
+  bool GetAttributeAsString(int id, std::string* value) const;
 
  protected:
   friend class base::RefCounted<AttributeList>;
@@ -118,7 +118,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   friend class NetlinkNestedAttribute;
 
   // Using this to get around issues with const and operator[].
-  SHILL_PRIVATE NetlinkAttribute *GetAttribute(int id) const;
+  SHILL_PRIVATE NetlinkAttribute* GetAttribute(int id) const;
 
   AttributeMap attributes_;
 
@@ -130,7 +130,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
 // knows the type of each attribute in advance (such as with a nested array).
 class AttributeIdIterator {
  public:
-  explicit AttributeIdIterator(const AttributeList &list)
+  explicit AttributeIdIterator(const AttributeList& list)
       : iter_(list.attributes_.begin()),
         end_(list.attributes_.end()) {
   }

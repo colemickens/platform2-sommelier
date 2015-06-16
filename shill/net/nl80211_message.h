@@ -25,7 +25,7 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
  public:
   static const char kMessageTypeString[];
 
-  Nl80211Message(uint8_t command, const char *command_string)
+  Nl80211Message(uint8_t command, const char* command_string)
       : GenericNetlinkMessage(nl80211_message_type_, command, command_string) {}
   ~Nl80211Message() override {}
 
@@ -35,10 +35,10 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
   // Sets the family_id / message_type for all Nl80211 messages.
   static void SetMessageType(uint16_t message_type);
 
-  bool InitFromNlmsg(const nlmsghdr *msg, MessageContext context) override;
+  bool InitFromNlmsg(const nlmsghdr* msg, MessageContext context) override;
 
   uint8_t command() const { return command_; }
-  const char *command_string() const { return command_string_; }
+  const char* command_string() const { return command_string_; }
   uint16_t message_type() const { return message_type_; }
   uint32_t sequence_number() const { return sequence_number_; }
   void set_sequence_number(uint32_t seq) { sequence_number_ = seq; }
@@ -50,11 +50,11 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
   static std::string StringFromStatus(uint16_t status);
 
   // Message factory for all types of Nl80211 message.
-  static NetlinkMessage *CreateMessage(const nlmsghdr *const_msg);
+  static NetlinkMessage* CreateMessage(const nlmsghdr* const_msg);
 
  private:
-  static std::map<uint16_t, std::string> *reason_code_string_;
-  static std::map<uint16_t, std::string> *status_code_string_;
+  static std::map<uint16_t, std::string>* reason_code_string_;
+  static std::map<uint16_t, std::string>* status_code_string_;
   static uint16_t nl80211_message_type_;
 
   DISALLOW_COPY_AND_ASSIGN(Nl80211Message);
@@ -73,9 +73,9 @@ class SHILL_EXPORT Nl80211Frame {
     kIllegalFrameType = 0xff
   };
 
-  explicit Nl80211Frame(const ByteString &init);
-  bool ToString(std::string *output) const;
-  bool IsEqual(const Nl80211Frame &other) const;
+  explicit Nl80211Frame(const ByteString& init);
+  bool ToString(std::string* output) const;
+  bool IsEqual(const Nl80211Frame& other) const;
   uint16_t reason() const { return reason_; }
   uint16_t status() const { return status_; }
   uint8_t frame_type() const { return frame_type_; }
@@ -516,9 +516,9 @@ class SHILL_EXPORT SurveyResultsMessage : public Nl80211Message {
 
 class Nl80211MessageDataCollector {
  public:
-  static Nl80211MessageDataCollector *GetInstance();
+  static Nl80211MessageDataCollector* GetInstance();
 
-  void CollectDebugData(const Nl80211Message &message, nlmsghdr *msg);
+  void CollectDebugData(const Nl80211Message& message, nlmsghdr* msg);
 
  protected:
   friend struct

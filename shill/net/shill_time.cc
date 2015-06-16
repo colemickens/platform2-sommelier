@@ -33,7 +33,7 @@ Time* Time::GetInstance() {
   return g_time.Pointer();
 }
 
-bool Time::GetSecondsMonotonic(time_t *seconds) {
+bool Time::GetSecondsMonotonic(time_t* seconds) {
   struct timeval now;
   if (GetTimeMonotonic(&now) < 0) {
     return false;
@@ -43,7 +43,7 @@ bool Time::GetSecondsMonotonic(time_t *seconds) {
   }
 }
 
-bool Time::GetSecondsBoottime(time_t *seconds) {
+bool Time::GetSecondsBoottime(time_t* seconds) {
   struct timeval now;
   if (GetTimeBoottime(&now) < 0) {
     return false;
@@ -53,7 +53,7 @@ bool Time::GetSecondsBoottime(time_t *seconds) {
   }
 }
 
-int Time::GetTimeMonotonic(struct timeval *tv) {
+int Time::GetTimeMonotonic(struct timeval* tv) {
   struct timespec ts;
   if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
     return -1;
@@ -64,7 +64,7 @@ int Time::GetTimeMonotonic(struct timeval *tv) {
   return 0;
 }
 
-int Time::GetTimeBoottime(struct timeval *tv) {
+int Time::GetTimeBoottime(struct timeval* tv) {
   struct timespec ts;
   if (clock_gettime(CLOCK_BOOTTIME, &ts) != 0) {
     return -1;
@@ -75,7 +75,7 @@ int Time::GetTimeBoottime(struct timeval *tv) {
   return 0;
 }
 
-int Time::GetTimeOfDay(struct timeval *tv, struct timezone *tz) {
+int Time::GetTimeOfDay(struct timeval* tv, struct timezone* tz) {
   return gettimeofday(tv, tz);
 }
 
@@ -96,7 +96,7 @@ Timestamp Time::GetNow() {
 }
 
 // static
-string Time::FormatTime(const struct tm &date_time, suseconds_t usec) {
+string Time::FormatTime(const struct tm& date_time, suseconds_t usec) {
   char date_time_string[64];
   size_t date_time_length;
   date_time_length = strftime(date_time_string, sizeof(date_time_string),
@@ -105,7 +105,7 @@ string Time::FormatTime(const struct tm &date_time, suseconds_t usec) {
   // Stitch in the microseconds, to provider finer resolution than
   // strftime allows.
   string full_string = "<unknown>";
-  char *split_pos = static_cast<char *>(
+  char* split_pos = static_cast<char*>(
       memchr(date_time_string, ' ', sizeof(date_time_string)));
   if (date_time_length && date_time_length < sizeof(date_time_string) &&
       split_pos) {

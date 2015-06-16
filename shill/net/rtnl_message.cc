@@ -54,7 +54,7 @@ RTNLMessage::RTNLMessage(Type type,
       interface_index_(interface_index),
       family_(family) {}
 
-bool RTNLMessage::Decode(const ByteString &msg) {
+bool RTNLMessage::Decode(const ByteString& msg) {
   bool ret = DecodeInternal(msg);
   if (!ret) {
     Reset();
@@ -62,9 +62,9 @@ bool RTNLMessage::Decode(const ByteString &msg) {
   return ret;
 }
 
-bool RTNLMessage::DecodeInternal(const ByteString &msg) {
-  const RTNLHeader *hdr =
-      reinterpret_cast<const RTNLHeader *>(msg.GetConstData());
+bool RTNLMessage::DecodeInternal(const ByteString& msg) {
+  const RTNLHeader* hdr =
+      reinterpret_cast<const RTNLHeader*>(msg.GetConstData());
 
   if (msg.GetLength() < sizeof(hdr->hdr) ||
       msg.GetLength() < hdr->hdr.nlmsg_len)
@@ -91,7 +91,7 @@ bool RTNLMessage::DecodeInternal(const ByteString &msg) {
     return false;
   }
 
-  rtattr *attr_data = nullptr;
+  rtattr* attr_data = nullptr;
   int attr_length = 0;
 
   switch (hdr->hdr.nlmsg_type) {
@@ -135,7 +135,7 @@ bool RTNLMessage::DecodeInternal(const ByteString &msg) {
   while (attr_data && RTA_OK(attr_data, attr_length)) {
     SetAttribute(
         attr_data->rta_type,
-        ByteString(reinterpret_cast<unsigned char *>(RTA_DATA(attr_data)),
+        ByteString(reinterpret_cast<unsigned char*>(RTA_DATA(attr_data)),
                    RTA_PAYLOAD(attr_data)));
     attr_data = RTA_NEXT(attr_data, attr_length);
   }
@@ -149,10 +149,10 @@ bool RTNLMessage::DecodeInternal(const ByteString &msg) {
   return true;
 }
 
-bool RTNLMessage::DecodeLink(const RTNLHeader *hdr,
+bool RTNLMessage::DecodeLink(const RTNLHeader* hdr,
                              Mode mode,
-                             rtattr **attr_data,
-                             int *attr_length) {
+                             rtattr** attr_data,
+                             int* attr_length) {
   if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->ifi))) {
     return false;
   }
@@ -170,10 +170,10 @@ bool RTNLMessage::DecodeLink(const RTNLHeader *hdr,
   return true;
 }
 
-bool RTNLMessage::DecodeAddress(const RTNLHeader *hdr,
+bool RTNLMessage::DecodeAddress(const RTNLHeader* hdr,
                                 Mode mode,
-                                rtattr **attr_data,
-                                int *attr_length) {
+                                rtattr** attr_data,
+                                int* attr_length) {
   if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->ifa))) {
     return false;
   }
@@ -190,10 +190,10 @@ bool RTNLMessage::DecodeAddress(const RTNLHeader *hdr,
   return true;
 }
 
-bool RTNLMessage::DecodeRoute(const RTNLHeader *hdr,
+bool RTNLMessage::DecodeRoute(const RTNLHeader* hdr,
                               Mode mode,
-                              rtattr **attr_data,
-                              int *attr_length) {
+                              rtattr** attr_data,
+                              int* attr_length) {
   if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->rtm))) {
     return false;
   }
@@ -213,10 +213,10 @@ bool RTNLMessage::DecodeRoute(const RTNLHeader *hdr,
   return true;
 }
 
-bool RTNLMessage::DecodeNdUserOption(const RTNLHeader *hdr,
+bool RTNLMessage::DecodeNdUserOption(const RTNLHeader* hdr,
                                      Mode mode,
-                                     rtattr **attr_data,
-                                     int *attr_length) {
+                                     rtattr** attr_data,
+                                     int* attr_length) {
   if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->nd_user_opt))) {
     return false;
   }
@@ -235,9 +235,9 @@ bool RTNLMessage::DecodeNdUserOption(const RTNLHeader *hdr,
   }
 
   // Parse the option header.
-  const NDUserOptionHeader *nd_user_option_header =
-      reinterpret_cast<const NDUserOptionHeader *>(
-          reinterpret_cast<const uint8_t *>(&hdr->nd_user_opt) +
+  const NDUserOptionHeader* nd_user_option_header =
+      reinterpret_cast<const NDUserOptionHeader*>(
+          reinterpret_cast<const uint8_t*>(&hdr->nd_user_opt) +
           sizeof(struct nduseroptmsg));
   uint32_t lifetime = ntohl(nd_user_option_header->lifetime);
 
@@ -249,8 +249,8 @@ bool RTNLMessage::DecodeNdUserOption(const RTNLHeader *hdr,
   }
 
   // Determine option data pointer and data length.
-  const uint8_t *option_data =
-      reinterpret_cast<const uint8_t *>(nd_user_option_header + 1);
+  const uint8_t* option_data =
+      reinterpret_cast<const uint8_t*>(nd_user_option_header + 1);
   int data_len = opt_len - sizeof(NDUserOptionHeader);
 
   if (nd_user_option_header->type == ND_OPT_DNSSL) {
@@ -266,7 +266,7 @@ bool RTNLMessage::DecodeNdUserOption(const RTNLHeader *hdr,
   return false;
 }
 
-bool RTNLMessage::ParseRdnssOption(const uint8_t *data,
+bool RTNLMessage::ParseRdnssOption(const uint8_t* data,
                                    int length,
                                    uint32_t lifetime) {
   const int addr_length = IPAddress::GetAddressLength(IPAddress::kFamilyIPv6);
@@ -289,10 +289,10 @@ bool RTNLMessage::ParseRdnssOption(const uint8_t *data,
   return true;
 }
 
-bool RTNLMessage::DecodeNeighbor(const RTNLHeader *hdr,
+bool RTNLMessage::DecodeNeighbor(const RTNLHeader* hdr,
                                  Mode mode,
-                                 rtattr **attr_data,
-                                 int *attr_length) {
+                                 rtattr** attr_data,
+                                 int* attr_length) {
   if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->ndm))) {
     return false;
   }
@@ -382,7 +382,7 @@ ByteString RTNLMessage::Encode() const {
       static_cast<unsigned short>(len),  // NOLINT(runtime/int)
       attr->first
     };
-    ByteString attr_header(reinterpret_cast<unsigned char *>(&rt_attr),
+    ByteString attr_header(reinterpret_cast<unsigned char*>(&rt_attr),
                            sizeof(rt_attr));
     attr_header.Resize(RTA_ALIGN(attr_header.GetLength()));
     attributes.Append(attr_header);
@@ -392,13 +392,13 @@ ByteString RTNLMessage::Encode() const {
     attributes.Append(attr_data);
   }
 
-  ByteString packet(reinterpret_cast<unsigned char *>(&hdr), header_length);
+  ByteString packet(reinterpret_cast<unsigned char*>(&hdr), header_length);
   packet.Append(attributes);
 
   return packet;
 }
 
-bool RTNLMessage::EncodeLink(RTNLHeader *hdr) const {
+bool RTNLMessage::EncodeLink(RTNLHeader* hdr) const {
   switch (mode_) {
     case kModeAdd:
       hdr->hdr.nlmsg_type = RTM_NEWLINK;
@@ -422,7 +422,7 @@ bool RTNLMessage::EncodeLink(RTNLHeader *hdr) const {
   return true;
 }
 
-bool RTNLMessage::EncodeAddress(RTNLHeader *hdr) const {
+bool RTNLMessage::EncodeAddress(RTNLHeader* hdr) const {
   switch (mode_) {
     case kModeAdd:
       hdr->hdr.nlmsg_type = RTM_NEWADDR;
@@ -446,7 +446,7 @@ bool RTNLMessage::EncodeAddress(RTNLHeader *hdr) const {
   return true;
 }
 
-bool RTNLMessage::EncodeRoute(RTNLHeader *hdr) const {
+bool RTNLMessage::EncodeRoute(RTNLHeader* hdr) const {
   switch (mode_) {
     case kModeAdd:
       hdr->hdr.nlmsg_type = RTM_NEWROUTE;
@@ -473,7 +473,7 @@ bool RTNLMessage::EncodeRoute(RTNLHeader *hdr) const {
   return true;
 }
 
-bool RTNLMessage::EncodeNeighbor(RTNLHeader *hdr) const {
+bool RTNLMessage::EncodeNeighbor(RTNLHeader* hdr) const {
   switch (mode_) {
     case kModeAdd:
       hdr->hdr.nlmsg_type = RTM_NEWNEIGH;

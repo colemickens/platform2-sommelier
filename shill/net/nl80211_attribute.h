@@ -555,9 +555,9 @@ class Nl80211AttributeBss : public NetlinkNestedAttribute {
   Nl80211AttributeBss();
 
  private:
-  static bool ParseInformationElements(AttributeList *attribute_list,
+  static bool ParseInformationElements(AttributeList* attribute_list,
                                        size_t id,
-                                       const std::string &attribute_name,
+                                       const std::string& attribute_name,
                                        ByteString data);
 
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeBss);
@@ -692,11 +692,11 @@ class Nl80211AttributeMac : public NetlinkRawAttribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeMac() : NetlinkRawAttribute(kName, kNameString) {}
-  virtual bool ToString(std::string *value) const;
+  virtual bool ToString(std::string* value) const;
 
   // Stringizes the MAC address found in 'arg'.  If there are problems (such
   // as a NULL |arg|), |value| is set to a bogus MAC address.
-  static std::string StringFromMacAddress(const uint8_t *arg);
+  static std::string StringFromMacAddress(const uint8_t* arg);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeMac);

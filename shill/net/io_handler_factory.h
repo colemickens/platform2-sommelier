@@ -15,15 +15,15 @@ class SHILL_EXPORT IOHandlerFactory {
   IOHandlerFactory();
   virtual ~IOHandlerFactory();
 
-  virtual IOHandler *CreateIOInputHandler(
+  virtual IOHandler* CreateIOInputHandler(
       int fd,
-      const IOHandler::InputCallback &input_callback,
-      const IOHandler::ErrorCallback &error_callback);
+      const IOHandler::InputCallback& input_callback,
+      const IOHandler::ErrorCallback& error_callback);
 
-  virtual IOHandler *CreateIOReadyHandler(
+  virtual IOHandler* CreateIOReadyHandler(
       int fd,
       IOHandler::ReadyMode mode,
-      const IOHandler::ReadyCallback &input_callback);
+      const IOHandler::ReadyCallback& input_callback);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(IOHandlerFactory);

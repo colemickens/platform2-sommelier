@@ -21,13 +21,13 @@ class SHILL_EXPORT IOHandlerFactoryContainer {
   virtual ~IOHandlerFactoryContainer();
 
   // This is a singleton. Use IOHandlerFactoryContainer::GetInstance()->Foo().
-  static IOHandlerFactoryContainer *GetInstance();
+  static IOHandlerFactoryContainer* GetInstance();
 
   // Update the default IOHandlerFactory for creating IOHandlers. This
   // container will assume the ownership of the passed in |factory|.
-  void SetIOHandlerFactory(IOHandlerFactory *factory);
+  void SetIOHandlerFactory(IOHandlerFactory* factory);
 
-  IOHandlerFactory *GetIOHandlerFactory();
+  IOHandlerFactory* GetIOHandlerFactory();
 
  protected:
   IOHandlerFactoryContainer();

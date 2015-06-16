@@ -137,32 +137,32 @@ class NetlinkManagerTest : public Test {
   // enable a test to get a response to a sent message.  They must be called
   // in the order, above, so that a) a reply message is available to b) have
   // its sequence number replaced, and then c) sent back to the code.
-  void SaveReply(const ByteString &message) {
+  void SaveReply(const ByteString& message) {
     saved_message_ = message;
   }
 
   // Replaces the |saved_message_|'s sequence number with the sent value.
-  bool SendMessage(const ByteString &outgoing_message) {
+  bool SendMessage(const ByteString& outgoing_message) {
     if (outgoing_message.GetLength() < sizeof(nlmsghdr)) {
       LOG(ERROR) << "Outgoing message is too short";
       return false;
     }
-    const nlmsghdr *outgoing_header =
-        reinterpret_cast<const nlmsghdr *>(outgoing_message.GetConstData());
+    const nlmsghdr* outgoing_header =
+        reinterpret_cast<const nlmsghdr*>(outgoing_message.GetConstData());
 
     if (saved_message_.GetLength() < sizeof(nlmsghdr)) {
       LOG(ERROR) << "Saved message is too short; have you called |SaveReply|?";
       return false;
     }
-    nlmsghdr *reply_header =
-        reinterpret_cast<nlmsghdr *>(saved_message_.GetData());
+    nlmsghdr* reply_header =
+        reinterpret_cast<nlmsghdr*>(saved_message_.GetData());
 
     reply_header->nlmsg_seq = outgoing_header->nlmsg_seq;
     saved_sequence_number_ = reply_header->nlmsg_seq;
     return true;
   }
 
-  bool ReplyToSentMessage(ByteString *message) {
+  bool ReplyToSentMessage(ByteString* message) {
     if (!message) {
       return false;
     }
@@ -170,7 +170,7 @@ class NetlinkManagerTest : public Test {
     return true;
   }
 
-  bool ReplyWithRandomMessage(ByteString *message) {
+  bool ReplyWithRandomMessage(ByteString* message) {
     GetFamilyMessage get_family_message;
     // Any number that's not 0 or 1 is acceptable, here.  Zero is bad because
     // we want to make sure that this message is different than the main
@@ -192,8 +192,8 @@ class NetlinkManagerTest : public Test {
     MockHandlerNetlink() :
       on_netlink_message_(base::Bind(&MockHandlerNetlink::OnNetlinkMessage,
                                      base::Unretained(this))) {}
-    MOCK_METHOD1(OnNetlinkMessage, void(const NetlinkMessage &msg));
-    const NetlinkManager::NetlinkMessageHandler &on_netlink_message() const {
+    MOCK_METHOD1(OnNetlinkMessage, void(const NetlinkMessage& msg));
+    const NetlinkManager::NetlinkMessageHandler& on_netlink_message() const {
       return on_netlink_message_;
     }
    private:
@@ -209,8 +209,8 @@ class NetlinkManagerTest : public Test {
                      base::Unretained(this))) {}
     MOCK_METHOD2(OnErrorHandler,
                  void(NetlinkManager::AuxilliaryMessageType type,
-                      const NetlinkMessage *msg));
-    const NetlinkManager::NetlinkAuxilliaryMessageHandler &on_netlink_message()
+                      const NetlinkMessage* msg));
+    const NetlinkManager::NetlinkAuxilliaryMessageHandler& on_netlink_message()
         const {
       return on_netlink_message_;
     }
@@ -224,8 +224,8 @@ class NetlinkManagerTest : public Test {
     MockHandler80211() :
       on_netlink_message_(base::Bind(&MockHandler80211::OnNetlinkMessage,
                                      base::Unretained(this))) {}
-    MOCK_METHOD1(OnNetlinkMessage, void(const Nl80211Message &msg));
-    const NetlinkManager::Nl80211MessageHandler &on_netlink_message() const {
+    MOCK_METHOD1(OnNetlinkMessage, void(const Nl80211Message& msg));
+    const NetlinkManager::Nl80211MessageHandler& on_netlink_message() const {
       return on_netlink_message_;
     }
    private:
@@ -238,8 +238,8 @@ class NetlinkManagerTest : public Test {
     MockHandlerNetlinkAck()
         : on_netlink_message_(base::Bind(&MockHandlerNetlinkAck::OnAckHandler,
                                          base::Unretained(this))) {}
-    MOCK_METHOD1(OnAckHandler, void(bool *remove_callbacks));
-    const NetlinkManager::NetlinkAckHandler &on_netlink_message() const {
+    MOCK_METHOD1(OnAckHandler, void(bool* remove_callbacks));
+    const NetlinkManager::NetlinkAckHandler& on_netlink_message() const {
       return on_netlink_message_;
     }
    private:
@@ -251,9 +251,9 @@ class NetlinkManagerTest : public Test {
     netlink_manager_->Reset(false);
   }
 
-  NetlinkManager *netlink_manager_;
-  MockNetlinkSocket *netlink_socket_;  // Owned by |netlink_manager_|.
-  MockSockets *sockets_;  // Owned by |netlink_socket_|.
+  NetlinkManager* netlink_manager_;
+  MockNetlinkSocket* netlink_socket_;  // Owned by |netlink_manager_|.
+  MockSockets* sockets_;  // Owned by |netlink_socket_|.
   StrictMock<MockIOHandlerFactory> io_handler_factory_;
   ByteString saved_message_;
   uint32_t saved_sequence_number_;
@@ -274,19 +274,19 @@ class TimeFunctor {
     return_value_.tv_usec = 0;
   }
 
-  TimeFunctor(const TimeFunctor &other) {
+  TimeFunctor(const TimeFunctor& other) {
     return_value_.tv_sec = other.return_value_.tv_sec;
     return_value_.tv_usec = other.return_value_.tv_usec;
   }
 
-  TimeFunctor &operator=(const TimeFunctor &rhs) {
+  TimeFunctor& operator=(const TimeFunctor& rhs) {
     return_value_.tv_sec = rhs.return_value_.tv_sec;
     return_value_.tv_usec = rhs.return_value_.tv_usec;
     return *this;
   }
 
   // Replaces GetTimeMonotonic.
-  int operator()(struct timeval *answer) {
+  int operator()(struct timeval* answer) {
     if (answer) {
       *answer = return_value_;
     }
@@ -386,7 +386,7 @@ TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
 TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
   Reset();
   MockTime time;
-  Time *old_time = netlink_manager_->time_;
+  Time* old_time = netlink_manager_->time_;
   netlink_manager_->time_ = &time;
 
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
@@ -413,8 +413,8 @@ TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
 
 TEST_F(NetlinkManagerTest, BroadcastHandler) {
   Reset();
-  nlmsghdr *message = const_cast<nlmsghdr *>(
-        reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT));
+  nlmsghdr* message = const_cast<nlmsghdr*>(
+        reinterpret_cast<const nlmsghdr*>(kNL80211_CMD_DISCONNECT));
 
   MockHandlerNetlink handler1;
   MockHandlerNetlink handler2;
@@ -476,7 +476,7 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   unsigned char message_memory[sizeof(kNL80211_CMD_DISCONNECT)];
   memcpy(message_memory, kNL80211_CMD_DISCONNECT,
          sizeof(kNL80211_CMD_DISCONNECT));
-  nlmsghdr *received_message = reinterpret_cast<nlmsghdr *>(message_memory);
+  nlmsghdr* received_message = reinterpret_cast<nlmsghdr*>(message_memory);
 
   // Now, we can start the actual test...
 
@@ -545,8 +545,8 @@ TEST_F(NetlinkManagerTest, AckHandler) {
   // Set up message as an ack in response to sent_message.
   unsigned char message_memory_1[sizeof(kNLMSG_ACK)];
   memcpy(message_memory_1, kNLMSG_ACK, sizeof(kNLMSG_ACK));
-  nlmsghdr *received_ack_message =
-      reinterpret_cast<nlmsghdr *>(message_memory_1);
+  nlmsghdr* received_ack_message =
+      reinterpret_cast<nlmsghdr*>(message_memory_1);
   // Make it appear that this message is in response to our sent message.
   received_ack_message->nlmsg_seq = netlink_socket_->GetLastSequenceNumber();
   EXPECT_CALL(handler_sent_2, OnAckHandler(_))
@@ -560,8 +560,8 @@ TEST_F(NetlinkManagerTest, AckHandler) {
   unsigned char message_memory_2[sizeof(kNL80211_CMD_DISCONNECT)];
   memcpy(message_memory_2, kNL80211_CMD_DISCONNECT,
          sizeof(kNL80211_CMD_DISCONNECT));
-  nlmsghdr *received_response_message =
-      reinterpret_cast<nlmsghdr *>(message_memory_2);
+  nlmsghdr* received_response_message =
+      reinterpret_cast<nlmsghdr*>(message_memory_2);
   // Make it appear that this message is in response to our sent message.
   received_response_message->nlmsg_seq = received_ack_message->nlmsg_seq;
   EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
@@ -602,8 +602,8 @@ TEST_F(NetlinkManagerTest, ErrorHandler) {
   unsigned char message_memory_1[sizeof(kNL80211_CMD_DISCONNECT)];
   memcpy(message_memory_1, kNL80211_CMD_DISCONNECT,
          sizeof(kNL80211_CMD_DISCONNECT));
-  nlmsghdr *received_response_message =
-      reinterpret_cast<nlmsghdr *>(message_memory_1);
+  nlmsghdr* received_response_message =
+      reinterpret_cast<nlmsghdr*>(message_memory_1);
   received_response_message->nlmsg_seq =
       netlink_socket_->GetLastSequenceNumber();
   EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
@@ -616,8 +616,8 @@ TEST_F(NetlinkManagerTest, ErrorHandler) {
       handler_sent_3.on_netlink_message()));
   unsigned char message_memory_2[sizeof(kNLMSG_Error)];
   memcpy(message_memory_2, kNLMSG_Error, sizeof(kNLMSG_Error));
-  nlmsghdr *received_error_message =
-      reinterpret_cast<nlmsghdr *>(message_memory_2);
+  nlmsghdr* received_error_message =
+      reinterpret_cast<nlmsghdr*>(message_memory_2);
   received_error_message->nlmsg_seq = netlink_socket_->GetLastSequenceNumber();
   EXPECT_CALL(handler_sent_3,
               OnErrorHandler(NetlinkManager::kErrorFromKernel, _))
@@ -654,8 +654,8 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   NewScanResultsMessage new_scan_results;
   new_scan_results.AddFlag(NLM_F_MULTI);
   ByteString new_scan_results_bytes(new_scan_results.Encode(kSequenceNumber));
-  nlmsghdr *received_message =
-        reinterpret_cast<nlmsghdr *>(new_scan_results_bytes.GetData());
+  nlmsghdr* received_message =
+        reinterpret_cast<nlmsghdr*>(new_scan_results_bytes.GetData());
   received_message->nlmsg_seq = netlink_socket_->GetLastSequenceNumber();
 
   // Verify that the message-specific handler is called.
@@ -677,7 +677,7 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   EXPECT_CALL(auxilliary_handler, OnErrorHandler(NetlinkManager::kDone, _));
 
   netlink_manager_->OnNlMessageReceived(
-      reinterpret_cast<nlmsghdr *>(done_message_bytes.GetData()));
+      reinterpret_cast<nlmsghdr*>(done_message_bytes.GetData()));
 
   // Verify that broadcast handler is called now that the done message has
   // been seen.
@@ -700,8 +700,8 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
   const uint32_t kRandomSequenceNumber = 3;
   ByteString new_wiphy_message_bytes =
       new_wiphy_message.Encode(kRandomSequenceNumber);
-  nlmsghdr *received_message =
-      reinterpret_cast<nlmsghdr *>(new_wiphy_message_bytes.GetData());
+  nlmsghdr* received_message =
+      reinterpret_cast<nlmsghdr*>(new_wiphy_message_bytes.GetData());
 
   // Setup a random received message to trigger wiping out old messages.
   NewScanResultsMessage new_scan_results;
@@ -710,7 +710,7 @@ TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
 
   // Setup the timestamps of various messages
   MockTime time;
-  Time *old_time = netlink_manager_->time_;
+  Time* old_time = netlink_manager_->time_;
   netlink_manager_->time_ = &time;
 
   time_t kStartSeconds = 1234;  // Arbitrary.
@@ -788,13 +788,13 @@ TEST_F(NetlinkManagerTest, PendingDump) {
       new_station_message_1_pt2.Encode(kRandomSequenceNumber);
   ByteString new_station_message_2_bytes =
       new_station_message_2.Encode(kRandomSequenceNumber);
-  nlmsghdr *received_message_1_pt1 =
-      reinterpret_cast<nlmsghdr *>(new_station_message_1_pt1_bytes.GetData());
-  nlmsghdr *received_message_1_pt2 =
-      reinterpret_cast<nlmsghdr *>(new_station_message_1_pt2_bytes.GetData());
+  nlmsghdr* received_message_1_pt1 =
+      reinterpret_cast<nlmsghdr*>(new_station_message_1_pt1_bytes.GetData());
+  nlmsghdr* received_message_1_pt2 =
+      reinterpret_cast<nlmsghdr*>(new_station_message_1_pt2_bytes.GetData());
   received_message_1_pt2->nlmsg_type = NLMSG_DONE;
-  nlmsghdr *received_message_2 =
-      reinterpret_cast<nlmsghdr *>(new_station_message_2_bytes.GetData());
+  nlmsghdr* received_message_2 =
+      reinterpret_cast<nlmsghdr*>(new_station_message_2_bytes.GetData());
 
   // The two get station messages (with the dump flag set) will be sent one
   // after another. The second message can only be sent once all replies to the
@@ -947,10 +947,10 @@ TEST_F(NetlinkManagerTest, PendingDump_Retry) {
   // ErrorAckMessage does not implement NetlinkMessage::Encode.
   unsigned char message_memory[sizeof(kNLMSG_ACK)];
   memcpy(message_memory, kNLMSG_ACK, sizeof(kNLMSG_ACK));
-  nlmsghdr *received_ebusy_message =
-      reinterpret_cast<nlmsghdr *>(message_memory);
-  uint32_t *error_field =
-      reinterpret_cast<uint32_t *>(NLMSG_DATA(received_ebusy_message));
+  nlmsghdr* received_ebusy_message =
+      reinterpret_cast<nlmsghdr*>(message_memory);
+  uint32_t* error_field =
+      reinterpret_cast<uint32_t*>(NLMSG_DATA(received_ebusy_message));
   *error_field = EBUSY;
 
   // The two get station messages (with the dump flag set) will be sent one

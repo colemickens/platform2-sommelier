@@ -58,7 +58,7 @@ bool NetlinkSocket::Init() {
   addr.nl_family = AF_NETLINK;
 
   if (sockets_->Bind(file_descriptor_,
-                    reinterpret_cast<struct sockaddr *>(&addr),
+                    reinterpret_cast<struct sockaddr*>(&addr),
                     sizeof(addr)) < 0) {
     sockets_->Close(file_descriptor_);
     file_descriptor_ = -1;
@@ -70,7 +70,7 @@ bool NetlinkSocket::Init() {
   return true;
 }
 
-bool NetlinkSocket::RecvMessage(ByteString *message) {
+bool NetlinkSocket::RecvMessage(ByteString* message) {
   if (!message) {
     LOG(ERROR) << "Null |message|";
     return false;
@@ -108,7 +108,7 @@ bool NetlinkSocket::RecvMessage(ByteString *message) {
   return true;
 }
 
-bool NetlinkSocket::SendMessage(const ByteString &out_msg) {
+bool NetlinkSocket::SendMessage(const ByteString& out_msg) {
   ssize_t result = sockets_->Send(file_descriptor(), out_msg.GetConstData(),
                                   out_msg.GetLength(), 0);
   if (!result) {

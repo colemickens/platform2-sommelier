@@ -45,7 +45,7 @@ class EventHistoryTest : public ::testing::Test {
 
   bool GetMaxEventsSpecified() { return event_history_->max_events_specified_; }
 
-  deque<Timestamp> *GetEvents() { return &event_history_->events_; }
+  deque<Timestamp>* GetEvents() { return &event_history_->events_; }
 
   void RecordEvent(Timestamp now) {
     EXPECT_CALL(time_, GetNow()).WillOnce(Return(now));
@@ -69,7 +69,7 @@ class EventHistoryTest : public ::testing::Test {
   }
 
   Timestamp GetTimestamp(int monotonic_seconds, int boottime_seconds,
-                         const string &wall_clock) {
+                         const string& wall_clock) {
     struct timeval monotonic = {.tv_sec = monotonic_seconds, .tv_usec = 0};
     struct timeval boottime = {.tv_sec = boottime_seconds, .tv_usec = 0};
     return Timestamp(monotonic, boottime, wall_clock);

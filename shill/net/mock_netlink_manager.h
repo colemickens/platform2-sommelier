@@ -23,24 +23,24 @@ class MockNetlinkManager : public NetlinkManager {
 
   MOCK_METHOD2(
       GetFamily,
-      uint16_t(const std::string &family_name,
-               const NetlinkMessageFactory::FactoryMethod &message_factory));
+      uint16_t(const std::string& family_name,
+               const NetlinkMessageFactory::FactoryMethod& message_factory));
   MOCK_METHOD1(RemoveBroadcastHandler,
-               bool(const NetlinkMessageHandler &message_handler));
+               bool(const NetlinkMessageHandler& message_handler));
   MOCK_METHOD1(AddBroadcastHandler,
-               bool(const NetlinkMessageHandler &messge_handler));
+               bool(const NetlinkMessageHandler& messge_handler));
   MOCK_METHOD4(SendControlMessage,
-               bool(ControlNetlinkMessage *message,
-                    const ControlNetlinkMessageHandler &message_handler,
-                    const NetlinkAckHandler &ack_handler,
-                    const NetlinkAuxilliaryMessageHandler &error_handler));
+               bool(ControlNetlinkMessage* message,
+                    const ControlNetlinkMessageHandler& message_handler,
+                    const NetlinkAckHandler& ack_handler,
+                    const NetlinkAuxilliaryMessageHandler& error_handler));
   MOCK_METHOD4(SendNl80211Message,
-               bool(Nl80211Message *message,
-                    const Nl80211MessageHandler &message_handler,
-                    const NetlinkAckHandler &ack_handler,
-                    const NetlinkAuxilliaryMessageHandler &error_handler));
+               bool(Nl80211Message* message,
+                    const Nl80211MessageHandler& message_handler,
+                    const NetlinkAckHandler& ack_handler,
+                    const NetlinkAuxilliaryMessageHandler& error_handler));
   MOCK_METHOD2(SubscribeToEvents,
-               bool(const std::string &family, const std::string &group));
+               bool(const std::string& family, const std::string& group));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockNetlinkManager);

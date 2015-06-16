@@ -35,10 +35,10 @@ const unsigned char kV6Address2[] = { 0x19, 0x80, 0x00, 0x00,
 class IPAddressTest : public Test {
  protected:
   void TestAddress(IPAddress::Family family,
-                   const string &good_string,
-                   const ByteString &good_bytes,
-                   const string &bad_string,
-                   const ByteString &bad_bytes) {
+                   const string& good_string,
+                   const ByteString& good_bytes,
+                   const string& bad_string,
+                   const ByteString& bad_bytes) {
     IPAddress good_addr(family);
 
     EXPECT_TRUE(good_addr.SetAddressFromString(good_string));
@@ -166,7 +166,7 @@ struct PrefixMapping {
   PrefixMapping() : family(IPAddress::kFamilyUnknown), prefix(0) {}
   PrefixMapping(IPAddress::Family family_in,
                 size_t prefix_in,
-                const string &expected_address_in)
+                const string& expected_address_in)
       : family(family_in),
         prefix(prefix_in),
         expected_address(expected_address_in) {}
@@ -227,10 +227,10 @@ INSTANTIATE_TEST_CASE_P(
 struct BitOperationMapping {
   BitOperationMapping() : family(IPAddress::kFamilyUnknown) {}
   BitOperationMapping(IPAddress::Family family_in,
-              const string &address_a_in,
-              const string &address_b_in,
-              const string &expected_anded_in,
-              const string &expected_orred_in)
+              const string& address_a_in,
+              const string& address_b_in,
+              const string& expected_anded_in,
+              const string& expected_orred_in)
       : family(family_in),
         address_a(address_a_in),
         address_b(address_b_in),
@@ -287,10 +287,10 @@ INSTANTIATE_TEST_CASE_P(
 struct NetworkPartMapping {
   NetworkPartMapping() : family(IPAddress::kFamilyUnknown) {}
   NetworkPartMapping(IPAddress::Family family_in,
-                     const string &address_in,
+                     const string& address_in,
                      size_t prefix_in,
-                     const string &expected_network_in,
-                     const string &expected_broadcast_in)
+                     const string& expected_network_in,
+                     const string& expected_broadcast_in)
       : family(family_in),
         address(address_in),
         prefix(prefix_in),
@@ -351,7 +351,7 @@ INSTANTIATE_TEST_CASE_P(
 struct MinPrefixLengthMapping {
   MinPrefixLengthMapping() : family(IPAddress::kFamilyUnknown) {}
   MinPrefixLengthMapping(IPAddress::Family family_in,
-                         const string &address_in,
+                         const string& address_in,
                          size_t expected_min_prefix_in)
       : family(family_in),
         address(address_in),
@@ -384,8 +384,8 @@ INSTANTIATE_TEST_CASE_P(
 struct CanReachAddressMapping {
   CanReachAddressMapping() : family(IPAddress::kFamilyUnknown) {}
   CanReachAddressMapping(IPAddress::Family family_in,
-                         const string &address_a_in,
-                         const string &address_b_in,
+                         const string& address_a_in,
+                         const string& address_b_in,
                          bool expected_result_in)
       : family(family_in),
         address_a(address_a_in),

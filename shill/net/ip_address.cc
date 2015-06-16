@@ -39,13 +39,13 @@ const char IPAddress::kFamilyNameIPv4[] = "IPv4";
 // static
 const char IPAddress::kFamilyNameIPv6[] = "IPv6";
 
-IPAddress::IPAddress(Family family, const ByteString &address)
+IPAddress::IPAddress(Family family, const ByteString& address)
     : family_(family) ,
       address_(address),
       prefix_(0) {}
 
 IPAddress::IPAddress(Family family,
-                     const ByteString &address,
+                     const ByteString& address,
                      unsigned int prefix)
     : family_(family) ,
       address_(address),
@@ -109,7 +109,7 @@ size_t IPAddress::GetMinPrefixLength() const {
 }
 
 // static
-size_t IPAddress::GetPrefixLengthFromMask(Family family, const string &mask) {
+size_t IPAddress::GetPrefixLengthFromMask(Family family, const string& mask) {
   switch (family) {
     case kFamilyIPv4: {
       in_addr_t mask_val = inet_network(mask.c_str());
@@ -133,7 +133,7 @@ size_t IPAddress::GetPrefixLengthFromMask(Family family, const string &mask) {
 // static
 IPAddress IPAddress::GetAddressMaskFromPrefix(Family family, size_t prefix) {
   ByteString address_bytes(GetAddressLength(family));
-  unsigned char *address_ptr = address_bytes.GetData();
+  unsigned char* address_ptr = address_bytes.GetData();
 
   size_t bits = prefix;
   if (bits > GetMaxPrefixLength(family)) {
@@ -165,7 +165,7 @@ string IPAddress::GetAddressFamilyName(Family family) {
   }
 }
 
-bool IPAddress::SetAddressFromString(const string &address_string) {
+bool IPAddress::SetAddressFromString(const string& address_string) {
   size_t address_length = GetAddressLength(family_);
 
   if (!address_length) {
@@ -180,7 +180,7 @@ bool IPAddress::SetAddressFromString(const string &address_string) {
   return true;
 }
 
-bool IPAddress::SetAddressAndPrefixFromString(const string &address_string) {
+bool IPAddress::SetAddressAndPrefixFromString(const string& address_string) {
   vector<string> address_parts;
   base::SplitString(address_string, '/', &address_parts);
   if (address_parts.size() != 2) {
@@ -205,7 +205,7 @@ void IPAddress::SetAddressToDefault() {
   address_ = ByteString(GetAddressLength(family_));
 }
 
-bool IPAddress::IntoString(string *address_string) const {
+bool IPAddress::IntoString(string* address_string) const {
   // Noting that INET6_ADDRSTRLEN > INET_ADDRSTRLEN
   char address_buf[INET6_ADDRSTRLEN];
   if (GetLength() != GetAddressLength(family_) ||
@@ -222,16 +222,16 @@ string IPAddress::ToString() const {
   return out;
 }
 
-bool IPAddress::Equals(const IPAddress &b) const {
+bool IPAddress::Equals(const IPAddress& b) const {
   return family_ == b.family_ && address_.Equals(b.address_) &&
       prefix_ == b.prefix_;
 }
 
-bool IPAddress::HasSameAddressAs(const IPAddress &b) const {
+bool IPAddress::HasSameAddressAs(const IPAddress& b) const {
   return family_ == b.family_ && address_.Equals(b.address_);
 }
 
-IPAddress IPAddress::MaskWith(const IPAddress &b) const {
+IPAddress IPAddress::MaskWith(const IPAddress& b) const {
   CHECK(IsValid());
   CHECK(b.IsValid());
   CHECK_EQ(family(), b.family());
@@ -242,7 +242,7 @@ IPAddress IPAddress::MaskWith(const IPAddress &b) const {
   return IPAddress(family(), address_bytes);
 }
 
-IPAddress IPAddress::MergeWith(const IPAddress &b) const {
+IPAddress IPAddress::MergeWith(const IPAddress& b) const {
   CHECK(IsValid());
   CHECK(b.IsValid());
   CHECK_EQ(family(), b.family());
@@ -264,7 +264,7 @@ IPAddress IPAddress::GetDefaultBroadcast() {
   return MergeWith(IPAddress(family(), broadcast_bytes));
 }
 
-bool IPAddress::CanReachAddress(const IPAddress &b) const {
+bool IPAddress::CanReachAddress(const IPAddress& b) const {
   CHECK_EQ(family(), b.family());
   IPAddress b_prefixed(b);
   b_prefixed.set_prefix(prefix());

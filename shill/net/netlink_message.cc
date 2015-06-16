@@ -53,13 +53,13 @@ ByteString NetlinkMessage::EncodeHeader(uint32_t sequence_number) {
   header.nlmsg_pid = getpid();
 
   // Netlink header + pad.
-  result.Append(ByteString(reinterpret_cast<unsigned char *>(&header),
+  result.Append(ByteString(reinterpret_cast<unsigned char*>(&header),
                            sizeof(header)));
   result.Resize(nlmsghdr_with_pad);  // Zero-fill pad space (if any).
   return result;
 }
 
-bool NetlinkMessage::InitAndStripHeader(ByteString *input) {
+bool NetlinkMessage::InitAndStripHeader(ByteString* input) {
   if (!input) {
     LOG(ERROR) << "NULL input";
     return false;
@@ -70,7 +70,7 @@ bool NetlinkMessage::InitAndStripHeader(ByteString *input) {
   }
 
   // Read the nlmsghdr.
-  nlmsghdr *header = reinterpret_cast<nlmsghdr *>(input->GetData());
+  nlmsghdr* header = reinterpret_cast<nlmsghdr*>(input->GetData());
   message_type_ = header->nlmsg_type;
   flags_ = header->nlmsg_flags;
   sequence_number_ = header->nlmsg_seq;
@@ -80,13 +80,13 @@ bool NetlinkMessage::InitAndStripHeader(ByteString *input) {
   return true;
 }
 
-bool NetlinkMessage::InitFromNlmsg(const nlmsghdr *const_msg,
+bool NetlinkMessage::InitFromNlmsg(const nlmsghdr* const_msg,
                                    NetlinkMessage::MessageContext context) {
   if (!const_msg) {
     LOG(ERROR) << "Null |const_msg| parameter";
     return false;
   }
-  ByteString message(reinterpret_cast<const unsigned char *>(const_msg),
+  ByteString message(reinterpret_cast<const unsigned char*>(const_msg),
                      const_msg->nlmsg_len);
   if (!InitAndStripHeader(&message)) {
     return false;
@@ -95,7 +95,7 @@ bool NetlinkMessage::InitFromNlmsg(const nlmsghdr *const_msg,
 }
 
 // static
-void NetlinkMessage::PrintBytes(int log_level, const unsigned char *buf,
+void NetlinkMessage::PrintBytes(int log_level, const unsigned char* buf,
                                 size_t num_bytes) {
   VLOG(log_level) << "Netlink Message -- Examining Bytes";
   if (!buf) {
@@ -104,7 +104,7 @@ void NetlinkMessage::PrintBytes(int log_level, const unsigned char *buf,
   }
 
   if (num_bytes >= sizeof(nlmsghdr)) {
-      const nlmsghdr *header = reinterpret_cast<const nlmsghdr *>(buf);
+      const nlmsghdr* header = reinterpret_cast<const nlmsghdr*>(buf);
       VLOG(log_level) << StringPrintf(
           "len:          %02x %02x %02x %02x = %u bytes",
           buf[0], buf[1], buf[2], buf[3], header->nlmsg_len);
@@ -147,20 +147,20 @@ void NetlinkMessage::PrintBytes(int log_level, const unsigned char *buf,
 
 const uint16_t ErrorAckMessage::kMessageType = NLMSG_ERROR;
 
-bool ErrorAckMessage::InitFromNlmsg(const nlmsghdr *const_msg,
+bool ErrorAckMessage::InitFromNlmsg(const nlmsghdr* const_msg,
                                     NetlinkMessage::MessageContext context) {
   if (!const_msg) {
     LOG(ERROR) << "Null |const_msg| parameter";
     return false;
   }
-  ByteString message(reinterpret_cast<const unsigned char *>(const_msg),
+  ByteString message(reinterpret_cast<const unsigned char*>(const_msg),
                      const_msg->nlmsg_len);
   if (!InitAndStripHeader(&message)) {
     return false;
   }
 
   // Get the error code from the payload.
-  error_ = *(reinterpret_cast<const uint32_t *>(message.GetConstData()));
+  error_ = *(reinterpret_cast<const uint32_t*>(message.GetConstData()));
   return true;
 }
 
@@ -234,7 +234,7 @@ ByteString UnknownMessage::Encode(uint32_t sequence_number) {
 void UnknownMessage::Print(int header_log_level,
                            int /*detail_log_level*/) const {
   int total_bytes = message_body_.GetLength();
-  const uint8_t *const_data = message_body_.GetConstData();
+  const uint8_t* const_data = message_body_.GetConstData();
 
   string output = StringPrintf("%d bytes:", total_bytes);
   for (int i = 0; i < total_bytes; ++i) {
@@ -261,8 +261,8 @@ bool NetlinkMessageFactory::AddFactoryMethod(uint16_t message_type,
   return true;
 }
 
-NetlinkMessage *NetlinkMessageFactory::CreateMessage(
-    const nlmsghdr *const_msg, NetlinkMessage::MessageContext context) const {
+NetlinkMessage* NetlinkMessageFactory::CreateMessage(
+    const nlmsghdr* const_msg, NetlinkMessage::MessageContext context) const {
   if (!const_msg) {
     LOG(ERROR) << "NULL |const_msg| parameter";
     return nullptr;
@@ -290,8 +290,8 @@ NetlinkMessage *NetlinkMessageFactory::CreateMessage(
   if (!message) {
     // Casting away constness since, while nlmsg_data doesn't change its
     // parameter, it also doesn't declare its paramenter as const.
-    nlmsghdr *msg = const_cast<nlmsghdr *>(const_msg);
-    ByteString payload(reinterpret_cast<char *>(nlmsg_data(msg)),
+    nlmsghdr* msg = const_cast<nlmsghdr*>(const_msg);
+    ByteString payload(reinterpret_cast<char*>(nlmsg_data(msg)),
                        nlmsg_datalen(msg));
     message.reset(new UnknownMessage(msg->nlmsg_type, payload));
   }

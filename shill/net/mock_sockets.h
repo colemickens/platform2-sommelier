@@ -19,39 +19,39 @@ class MockSockets : public Sockets {
   MockSockets() {}
   ~MockSockets() override {}
 
-  MOCK_CONST_METHOD3(Accept, int(int sockfd, struct sockaddr *addr,
-                                 socklen_t *addrlen));
-  MOCK_CONST_METHOD2(AttachFilter, int(int sockfd, struct sock_fprog *pf));
-  MOCK_CONST_METHOD3(Bind, int(int sockfd, const struct sockaddr *addr,
+  MOCK_CONST_METHOD3(Accept, int(int sockfd, struct sockaddr* addr,
+                                 socklen_t* addrlen));
+  MOCK_CONST_METHOD2(AttachFilter, int(int sockfd, struct sock_fprog* pf));
+  MOCK_CONST_METHOD3(Bind, int(int sockfd, const struct sockaddr* addr,
                                socklen_t addrlen));
-  MOCK_CONST_METHOD2(BindToDevice, int(int sockfd, const std::string &device));
+  MOCK_CONST_METHOD2(BindToDevice, int(int sockfd, const std::string& device));
   MOCK_CONST_METHOD1(Close, int(int fd));
-  MOCK_CONST_METHOD3(Connect, int(int sockfd, const struct sockaddr *addr,
+  MOCK_CONST_METHOD3(Connect, int(int sockfd, const struct sockaddr* addr,
                                   socklen_t addrlen));
   MOCK_CONST_METHOD0(Error, int());
-  MOCK_CONST_METHOD3(GetSockName, int(int sockfd, struct sockaddr *addr,
-                                      socklen_t *addrlen));
+  MOCK_CONST_METHOD3(GetSockName, int(int sockfd, struct sockaddr* addr,
+                                      socklen_t* addrlen));
   MOCK_CONST_METHOD1(GetSocketError, int(int fd));
-  MOCK_CONST_METHOD3(Ioctl, int(int d, int request, void *argp));
+  MOCK_CONST_METHOD3(Ioctl, int(int d, int request, void* argp));
   MOCK_CONST_METHOD2(Listen, int(int d, int backlog));
   MOCK_CONST_METHOD6(RecvFrom, ssize_t(int sockfd,
-                                       void *buf,
+                                       void* buf,
                                        size_t len,
                                        int flags,
-                                       struct sockaddr *src_addr,
-                                       socklen_t *addrlen));
+                                       struct sockaddr* src_addr,
+                                       socklen_t* addrlen));
   MOCK_CONST_METHOD5(Select, int(int nfds,
-                                 fd_set *readfds,
-                                 fd_set *writefds,
-                                 fd_set *exceptfds,
-                                 struct timeval *timeout));
-  MOCK_CONST_METHOD4(Send, ssize_t(int sockfd, const void *buf, size_t len,
+                                 fd_set* readfds,
+                                 fd_set* writefds,
+                                 fd_set* exceptfds,
+                                 struct timeval* timeout));
+  MOCK_CONST_METHOD4(Send, ssize_t(int sockfd, const void* buf, size_t len,
                                    int flags));
   MOCK_CONST_METHOD6(SendTo, ssize_t(int sockfd,
-                                     const void *buf,
+                                     const void* buf,
                                      size_t len,
                                      int flags,
-                                     const struct sockaddr *dest_addr,
+                                     const struct sockaddr* dest_addr,
                                      socklen_t addrlen));
   MOCK_CONST_METHOD1(SetNonBlocking, int(int sockfd));
   MOCK_CONST_METHOD2(SetReceiveBuffer, int(int sockfd, int size));

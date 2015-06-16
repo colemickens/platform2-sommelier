@@ -42,7 +42,7 @@ const int kTestInterfaceIndex = 4;
 
 ACTION(SetInterfaceIndex) {
   if (arg2) {
-    reinterpret_cast<struct ifreq *>(arg2)->ifr_ifindex = kTestInterfaceIndex;
+    reinterpret_cast<struct ifreq*>(arg2)->ifr_ifindex = kTestInterfaceIndex;
   }
 }
 
@@ -88,7 +88,7 @@ class RTNLHandlerTest : public Test {
   }
 
   void SetErrorMask(uint32_t sequence,
-                    const RTNLHandler::ErrorMask &error_mask) {
+                    const RTNLHandler::ErrorMask& error_mask) {
     return RTNLHandler::GetInstance()->SetErrorMask(sequence, error_mask);
   }
 
@@ -100,7 +100,7 @@ class RTNLHandlerTest : public Test {
     return  RTNLHandler::kErrorWindowSize;
   }
 
-  MOCK_METHOD1(HandlerCallback, void(const RTNLMessage &));
+  MOCK_METHOD1(HandlerCallback, void(const RTNLMessage&));
 
  protected:
   static const int kTestSocket;
@@ -113,9 +113,9 @@ class RTNLHandlerTest : public Test {
   void StopRTNLHandler();
   void ReturnError(uint32_t sequence, int error_number);
 
-  MockSockets *sockets_;
+  MockSockets* sockets_;
   StrictMock<MockIOHandlerFactory> io_handler_factory_;
-  Callback<void(const RTNLMessage &)> callback_;
+  Callback<void(const RTNLMessage&)> callback_;
   RTNLMessage dummy_message_;
 };
 
@@ -178,7 +178,7 @@ void RTNLHandlerTest::ReturnError(uint32_t sequence, int error_number) {
   errmsg.hdr.nlmsg_seq = sequence;
   errmsg.err.error = -error_number;
 
-  InputData data(reinterpret_cast<unsigned char *>(&errmsg), sizeof(errmsg));
+  InputData data(reinterpret_cast<unsigned char*>(&errmsg), sizeof(errmsg));
   RTNLHandler::GetInstance()->ParseRTNL(&data);
 }
 
@@ -190,9 +190,9 @@ TEST_F(RTNLHandlerTest, ListenersInvoked) {
   std::unique_ptr<RTNLListener> neighbor_listener(
       new RTNLListener(RTNLHandler::kRequestNeighbor, callback_));
 
-  EXPECT_CALL(*this, HandlerCallback(A<const RTNLMessage &>()))
+  EXPECT_CALL(*this, HandlerCallback(A<const RTNLMessage&>()))
       .With(MessageType(RTNLMessage::kTypeLink));
-  EXPECT_CALL(*this, HandlerCallback(A<const RTNLMessage &>()))
+  EXPECT_CALL(*this, HandlerCallback(A<const RTNLMessage&>()))
       .With(MessageType(RTNLMessage::kTypeNeighbor));
 
   AddLink();
@@ -295,7 +295,7 @@ TEST_F(RTNLHandlerTest, SendMessageInferredErrorMasks) {
   };
   const uint32_t kSequenceNumber = 123;
   EXPECT_CALL(*sockets_, Send(_, _, _, 0)).WillRepeatedly(ReturnArg<2>());
-  for (const auto &expectation : expectations) {
+  for (const auto& expectation : expectations) {
     SetRequestSequence(kSequenceNumber);
     RTNLMessage message(expectation.type,
                         expectation.mode,

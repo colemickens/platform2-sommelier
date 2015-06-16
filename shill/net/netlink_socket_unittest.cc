@@ -50,19 +50,19 @@ class NetlinkSocketTest : public Test {
   }
 
  protected:
-  MockSockets *mock_sockets_;  // Owned by netlink_socket_.
+  MockSockets* mock_sockets_;  // Owned by netlink_socket_.
   NetlinkSocket netlink_socket_;
 };
 
 class FakeSocketRead {
  public:
-  explicit FakeSocketRead(const ByteString &next_read_string) {
+  explicit FakeSocketRead(const ByteString& next_read_string) {
     next_read_string_ = next_read_string;
   }
   // Copies |len| bytes of |next_read_string_| into |buf| and clears
   // |next_read_string_|.
-  ssize_t FakeSuccessfulRead(int sockfd, void *buf, size_t len, int flags,
-                             struct sockaddr *src_addr, socklen_t *addrlen) {
+  ssize_t FakeSuccessfulRead(int sockfd, void* buf, size_t len, int flags,
+                             struct sockaddr* src_addr, socklen_t* addrlen) {
     if (!buf) {
       return -1;
     }

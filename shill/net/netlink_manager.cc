@@ -54,15 +54,15 @@ const long NetlinkManager::kNlMessageRetryDelayMilliseconds = 300;  // NOLINT
 const int NetlinkManager::kMaxNlMessageRetries = 1;  // NOLINT
 
 NetlinkManager::NetlinkResponseHandler::NetlinkResponseHandler(
-    const NetlinkManager::NetlinkAckHandler &ack_handler,
-    const NetlinkManager::NetlinkAuxilliaryMessageHandler &error_handler)
+    const NetlinkManager::NetlinkAckHandler& ack_handler,
+    const NetlinkManager::NetlinkAuxilliaryMessageHandler& error_handler)
     : ack_handler_(ack_handler),
       error_handler_(error_handler) {}
 
 NetlinkManager::NetlinkResponseHandler::~NetlinkResponseHandler() {}
 
 void NetlinkManager::NetlinkResponseHandler::HandleError(
-    AuxilliaryMessageType type, const NetlinkMessage *netlink_message) const {
+    AuxilliaryMessageType type, const NetlinkMessage* netlink_message) const {
   if (!error_handler_.is_null())
     error_handler_.Run(type, netlink_message);
 }
@@ -87,13 +87,13 @@ bool NetlinkManager::NetlinkResponseHandler::HandleAck() const {
 class ControlResponseHandler : public NetlinkManager::NetlinkResponseHandler {
  public:
   ControlResponseHandler(
-      const NetlinkManager::NetlinkAckHandler &ack_handler,
-      const NetlinkManager::NetlinkAuxilliaryMessageHandler &error_handler,
-      const NetlinkManager::ControlNetlinkMessageHandler &handler)
+      const NetlinkManager::NetlinkAckHandler& ack_handler,
+      const NetlinkManager::NetlinkAuxilliaryMessageHandler& error_handler,
+      const NetlinkManager::ControlNetlinkMessageHandler& handler)
     : NetlinkManager::NetlinkResponseHandler(ack_handler, error_handler),
       handler_(handler) {}
 
-  bool HandleMessage(const NetlinkMessage &netlink_message) const override {
+  bool HandleMessage(const NetlinkMessage& netlink_message) const override {
     if (netlink_message.message_type() !=
         ControlNetlinkMessage::GetMessageType()) {
       LOG(ERROR) << "Message is type " << netlink_message.message_type()
@@ -102,8 +102,8 @@ class ControlResponseHandler : public NetlinkManager::NetlinkResponseHandler {
       return false;
     }
     if (!handler_.is_null()) {
-      const ControlNetlinkMessage *message =
-          dynamic_cast<const ControlNetlinkMessage *>(&netlink_message);
+      const ControlNetlinkMessage* message =
+          dynamic_cast<const ControlNetlinkMessage*>(&netlink_message);
       handler_.Run(*message);
     }
     return true;
@@ -129,13 +129,13 @@ class ControlResponseHandler : public NetlinkManager::NetlinkResponseHandler {
 class Nl80211ResponseHandler : public NetlinkManager::NetlinkResponseHandler {
  public:
   Nl80211ResponseHandler(
-      const NetlinkManager::NetlinkAckHandler &ack_handler,
-      const NetlinkManager::NetlinkAuxilliaryMessageHandler &error_handler,
-      const NetlinkManager::Nl80211MessageHandler &handler)
+      const NetlinkManager::NetlinkAckHandler& ack_handler,
+      const NetlinkManager::NetlinkAuxilliaryMessageHandler& error_handler,
+      const NetlinkManager::Nl80211MessageHandler& handler)
     : NetlinkManager::NetlinkResponseHandler(ack_handler, error_handler),
       handler_(handler) {}
 
-  bool HandleMessage(const NetlinkMessage &netlink_message) const override {
+  bool HandleMessage(const NetlinkMessage& netlink_message) const override {
     if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
       LOG(ERROR) << "Message is type " << netlink_message.message_type()
                  << ", not " << Nl80211Message::GetMessageType()
@@ -143,8 +143,8 @@ class Nl80211ResponseHandler : public NetlinkManager::NetlinkResponseHandler {
       return false;
     }
     if (!handler_.is_null()) {
-      const Nl80211Message *message =
-          dynamic_cast<const Nl80211Message *>(&netlink_message);
+      const Nl80211Message* message =
+          dynamic_cast<const Nl80211Message*>(&netlink_message);
       handler_.Run(*message);
     }
     return true;
@@ -182,7 +182,7 @@ NetlinkManager::NetlinkManager()
 
 NetlinkManager::~NetlinkManager() {}
 
-NetlinkManager *NetlinkManager::GetInstance() {
+NetlinkManager* NetlinkManager::GetInstance() {
   return g_netlink_manager.Pointer();
 }
 
@@ -200,7 +200,7 @@ void NetlinkManager::Reset(bool full) {
   }
 }
 
-void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage &message) {
+void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage& message) {
   uint16_t family_id;
   string family_name;
 
@@ -249,7 +249,7 @@ void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage &message) {
 
 // static
 void NetlinkManager::OnNetlinkMessageError(AuxilliaryMessageType type,
-                                           const NetlinkMessage *raw_message) {
+                                           const NetlinkMessage* raw_message) {
   switch (type) {
     case kErrorFromKernel:
       if (!raw_message) {
@@ -257,8 +257,8 @@ void NetlinkManager::OnNetlinkMessageError(AuxilliaryMessageType type,
         break;
       }
       if (raw_message->message_type() == ErrorAckMessage::GetMessageType()) {
-        const ErrorAckMessage *error_ack_message =
-            dynamic_cast<const ErrorAckMessage *>(raw_message);
+        const ErrorAckMessage* error_ack_message =
+            dynamic_cast<const ErrorAckMessage*>(raw_message);
         // error_ack_message->error() should be non-zero (i.e. not an ACK),
         // since ACKs would be routed to a NetlinkAckHandler in
         // NetlinkManager::OnNlMessageReceived.
@@ -318,9 +318,9 @@ int NetlinkManager::file_descriptor() const {
   return (sock_ ? sock_->file_descriptor() : Sockets::kInvalidFileDescriptor);
 }
 
-uint16_t NetlinkManager::GetFamily(const string &name,
-    const NetlinkMessageFactory::FactoryMethod &message_factory) {
-  MessageType &message_type = message_types_[name];
+uint16_t NetlinkManager::GetFamily(const string& name,
+    const NetlinkMessageFactory::FactoryMethod& message_factory) {
+  MessageType& message_type = message_types_[name];
   if (message_type.family_id != NetlinkMessage::kIllegalMessageType) {
     return message_type.family_id;
   }
@@ -401,7 +401,7 @@ uint16_t NetlinkManager::GetFamily(const string &name,
   return NetlinkMessage::kIllegalMessageType;
 }
 
-bool NetlinkManager::AddBroadcastHandler(const NetlinkMessageHandler &handler) {
+bool NetlinkManager::AddBroadcastHandler(const NetlinkMessageHandler& handler) {
   if (FindBroadcastHandler(handler)) {
     LOG(WARNING) << "Trying to re-add a handler";
     return false;  // Should only be one copy in the list.
@@ -417,7 +417,7 @@ bool NetlinkManager::AddBroadcastHandler(const NetlinkMessageHandler &handler) {
 }
 
 bool NetlinkManager::RemoveBroadcastHandler(
-    const NetlinkMessageHandler &handler) {
+    const NetlinkMessageHandler& handler) {
   list<NetlinkMessageHandler>::iterator i;
   for (i = broadcast_handlers_.begin(); i != broadcast_handlers_.end(); ++i) {
     if ((*i).Equals(handler)) {
@@ -431,9 +431,9 @@ bool NetlinkManager::RemoveBroadcastHandler(
   return false;
 }
 
-bool NetlinkManager::FindBroadcastHandler(const NetlinkMessageHandler &handler)
+bool NetlinkManager::FindBroadcastHandler(const NetlinkMessageHandler& handler)
     const {
-  for (const auto &broadcast_handler : broadcast_handlers_) {
+  for (const auto& broadcast_handler : broadcast_handlers_) {
     if (broadcast_handler.Equals(handler)) {
       return true;
     }
@@ -446,10 +446,10 @@ void NetlinkManager::ClearBroadcastHandlers() {
 }
 
 bool NetlinkManager::SendControlMessage(
-    ControlNetlinkMessage *message,
-    const ControlNetlinkMessageHandler &message_handler,
-    const NetlinkAckHandler &ack_handler,
-    const NetlinkAuxilliaryMessageHandler &error_handler) {
+    ControlNetlinkMessage* message,
+    const ControlNetlinkMessageHandler& message_handler,
+    const NetlinkAckHandler& ack_handler,
+    const NetlinkAuxilliaryMessageHandler& error_handler) {
   return SendOrPostMessage(message,
                            new ControlResponseHandler(ack_handler,
                                                       error_handler,
@@ -457,10 +457,10 @@ bool NetlinkManager::SendControlMessage(
 }
 
 bool NetlinkManager::SendNl80211Message(
-    Nl80211Message *message,
-    const Nl80211MessageHandler &message_handler,
-    const NetlinkAckHandler &ack_handler,
-    const NetlinkAuxilliaryMessageHandler &error_handler) {
+    Nl80211Message* message,
+    const Nl80211MessageHandler& message_handler,
+    const NetlinkAckHandler& ack_handler,
+    const NetlinkAuxilliaryMessageHandler& error_handler) {
   return SendOrPostMessage(message,
                            new Nl80211ResponseHandler(ack_handler,
                                                       error_handler,
@@ -468,8 +468,8 @@ bool NetlinkManager::SendNl80211Message(
 }
 
 bool NetlinkManager::SendOrPostMessage(
-    NetlinkMessage *message,
-    NetlinkManager::NetlinkResponseHandler *response_handler) {
+    NetlinkMessage* message,
+    NetlinkManager::NetlinkResponseHandler* response_handler) {
   if (!message) {
     LOG(ERROR) << "Message is NULL.";
     return false;
@@ -500,7 +500,7 @@ bool NetlinkManager::SendOrPostMessage(
 }
 
 bool NetlinkManager::RegisterHandlersAndSendMessage(
-    const NetlinkPendingMessage &pending_message) {
+    const NetlinkPendingMessage& pending_message) {
   // Clean out timed-out message handlers.  The list of outstanding messages
   // should be small so the time wasted by looking through all of them should
   // be small.
@@ -541,7 +541,7 @@ bool NetlinkManager::RegisterHandlersAndSendMessage(
 }
 
 bool NetlinkManager::SendMessageInternal(
-    const NetlinkPendingMessage &pending_message) {
+    const NetlinkPendingMessage& pending_message) {
   VLOG(5) << "Sending NL message " << pending_message.sequence_number;
 
   if (!sock_->SendMessage(pending_message.message_string)) {
@@ -562,7 +562,7 @@ bool NetlinkManager::SendMessageInternal(
 }
 
 NetlinkMessage::MessageContext NetlinkManager::InferMessageContext(
-    const nlmsghdr *msg) {
+    const nlmsghdr* msg) {
   NetlinkMessage::MessageContext context;
 
   const uint32_t sequence_number = msg->nlmsg_seq;
@@ -572,7 +572,7 @@ NetlinkMessage::MessageContext NetlinkManager::InferMessageContext(
   }
 
   if (msg->nlmsg_type == Nl80211Message::GetMessageType()) {
-    genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(nlmsg_data(msg));
+    genlmsghdr* gnlh = reinterpret_cast<genlmsghdr*>(nlmsg_data(msg));
     context.nl80211_cmd = gnlh->cmd;
   }
 
@@ -611,7 +611,7 @@ uint16_t NetlinkManager::PendingDumpSequenceNumber() {
   return pending_messages_.front().sequence_number;
 }
 
-bool NetlinkManager::RemoveMessageHandler(const NetlinkMessage &message) {
+bool NetlinkManager::RemoveMessageHandler(const NetlinkMessage& message) {
   if (!ContainsKey(message_handlers_, message.sequence_number())) {
     return false;
   }
@@ -624,8 +624,8 @@ uint32_t NetlinkManager::GetSequenceNumber() {
       sock_->GetSequenceNumber() : NetlinkMessage::kBroadcastSequenceNumber;
 }
 
-bool NetlinkManager::SubscribeToEvents(const string &family_id,
-                                       const string &group_name) {
+bool NetlinkManager::SubscribeToEvents(const string& family_id,
+                                       const string& group_name) {
   if (!ContainsKey(message_types_, family_id)) {
     LOG(ERROR) << "Family '" << family_id << "' doesn't exist";
     return false;
@@ -644,15 +644,15 @@ bool NetlinkManager::SubscribeToEvents(const string &family_id,
   return sock_->SubscribeToEvents(group_id);
 }
 
-void NetlinkManager::OnRawNlMessageReceived(InputData *data) {
+void NetlinkManager::OnRawNlMessageReceived(InputData* data) {
   if (!data) {
     LOG(ERROR) << __func__ << "() called with null header.";
     return;
   }
-  unsigned char *buf = data->buf;
-  unsigned char *end = buf + data->len;
+  unsigned char* buf = data->buf;
+  unsigned char* end = buf + data->len;
   while (buf < end) {
-    nlmsghdr *msg = reinterpret_cast<nlmsghdr *>(buf);
+    nlmsghdr* msg = reinterpret_cast<nlmsghdr*>(buf);
     size_t bytes_left = end - buf;
     if (bytes_left < sizeof(nlmsghdr) || bytes_left < msg->nlmsg_len) {
       LOG(ERROR) << "Discarding incomplete message.";
@@ -663,7 +663,7 @@ void NetlinkManager::OnRawNlMessageReceived(InputData *data) {
   }
 }
 
-void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
+void NetlinkManager::OnNlMessageReceived(nlmsghdr* msg) {
   if (!msg) {
     LOG(ERROR) << __func__ << "() called with null header.";
     return;
@@ -680,15 +680,15 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
   VLOG(5) << "NL Message " << sequence_number << " Received (" << msg->nlmsg_len
           << " bytes) <===";
   message->Print(6, 7);
-  NetlinkMessage::PrintBytes(8, reinterpret_cast<const unsigned char *>(msg),
+  NetlinkMessage::PrintBytes(8, reinterpret_cast<const unsigned char*>(msg),
                              msg->nlmsg_len);
 
   bool is_error_ack_message = false;
   uint32_t error_code = 0;
   if (message->message_type() == ErrorAckMessage::GetMessageType()) {
     is_error_ack_message = true;
-    const ErrorAckMessage *error_ack_message =
-        dynamic_cast<const ErrorAckMessage *>(message.get());
+    const ErrorAckMessage* error_ack_message =
+        dynamic_cast<const ErrorAckMessage*>(message.get());
     error_code = error_ack_message->error();
   }
 
@@ -764,7 +764,7 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
     return;
   }
 
-  for (const auto &handler : broadcast_handlers_) {
+  for (const auto& handler : broadcast_handlers_) {
     VLOG(6) << "Calling broadcast handler";
     if (!handler.is_null()) {
       handler.Run(*message);
@@ -797,7 +797,7 @@ void NetlinkManager::ResendPendingDumpMessage() {
 
 void NetlinkManager::CallErrorHandler(uint32_t sequence_number,
                                       AuxilliaryMessageType type,
-                                      const NetlinkMessage *netlink_message) {
+                                      const NetlinkMessage* netlink_message) {
   if (ContainsKey(message_handlers_, sequence_number)) {
     VLOG(6) << "Found message-specific error handler";
     message_handlers_[sequence_number]->HandleError(type, netlink_message);
@@ -805,7 +805,7 @@ void NetlinkManager::CallErrorHandler(uint32_t sequence_number,
   }
 }
 
-void NetlinkManager::OnReadError(const string &error_msg) {
+void NetlinkManager::OnReadError(const string& error_msg) {
   // TODO(wdg): When netlink_manager is used for scan, et al., this should
   // either be LOG(FATAL) or the code should properly deal with errors,
   // e.g., dropped messages due to the socket buffer being full.

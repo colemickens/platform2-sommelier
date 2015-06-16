@@ -18,16 +18,16 @@ IOHandlerFactoryContainer::IOHandlerFactoryContainer()
 
 IOHandlerFactoryContainer::~IOHandlerFactoryContainer() {}
 
-IOHandlerFactoryContainer *IOHandlerFactoryContainer::GetInstance() {
+IOHandlerFactoryContainer* IOHandlerFactoryContainer::GetInstance() {
   return g_io_handler_factory_container.Pointer();
 }
 
-void IOHandlerFactoryContainer::SetIOHandlerFactory(IOHandlerFactory *factory) {
+void IOHandlerFactoryContainer::SetIOHandlerFactory(IOHandlerFactory* factory) {
   CHECK(factory);
   factory_.reset(factory);
 }
 
-IOHandlerFactory *IOHandlerFactoryContainer::GetIOHandlerFactory() {
+IOHandlerFactory* IOHandlerFactoryContainer::GetIOHandlerFactory() {
   return factory_.get();
 }
 

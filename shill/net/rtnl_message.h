@@ -144,7 +144,7 @@ class SHILL_EXPORT RTNLMessage {
               IPAddress::Family family);
 
   // Parse an RTNL message.  Returns true on success.
-  bool Decode(const ByteString &data);
+  bool Decode(const ByteString& data);
   // Encode an RTNL message.  Returns empty ByteString on failure.
   ByteString Encode() const;
   // Reset all fields.
@@ -160,24 +160,24 @@ class SHILL_EXPORT RTNLMessage {
   uint32_t interface_index() const { return interface_index_; }
   IPAddress::Family family() const { return family_; }
 
-  const LinkStatus &link_status() const { return link_status_; }
-  void set_link_status(const LinkStatus &link_status) {
+  const LinkStatus& link_status() const { return link_status_; }
+  void set_link_status(const LinkStatus& link_status) {
     link_status_ = link_status;
   }
-  const AddressStatus &address_status() const { return address_status_; }
-  void set_address_status(const AddressStatus &address_status) {
+  const AddressStatus& address_status() const { return address_status_; }
+  void set_address_status(const AddressStatus& address_status) {
     address_status_ = address_status;
   }
-  const RouteStatus &route_status() const { return route_status_; }
-  void set_route_status(const RouteStatus &route_status) {
+  const RouteStatus& route_status() const { return route_status_; }
+  void set_route_status(const RouteStatus& route_status) {
     route_status_ = route_status;
   }
-  const RdnssOption &rdnss_option() const { return rdnss_option_; }
-  void set_rdnss_option(const RdnssOption &rdnss_option) {
+  const RdnssOption& rdnss_option() const { return rdnss_option_; }
+  void set_rdnss_option(const RdnssOption& rdnss_option) {
     rdnss_option_ = rdnss_option;
   }
-  const NeighborStatus &neighbor_status() const { return neighbor_status_; }
-  void set_neighbor_status(const NeighborStatus &neighbor_status) {
+  const NeighborStatus& neighbor_status() const { return neighbor_status_; }
+  void set_neighbor_status(const NeighborStatus& neighbor_status) {
     neighbor_status_ = neighbor_status;
   }
   // GLint hates "unsigned short", and I don't blame it, but that's the
@@ -190,39 +190,39 @@ class SHILL_EXPORT RTNLMessage {
     return HasAttribute(attr) ?
         attributes_.find(attr)->second : ByteString(0);
   }
-  void SetAttribute(uint16_t attr, const ByteString &val) {
+  void SetAttribute(uint16_t attr, const ByteString& val) {
     attributes_[attr] = val;
   }
 
  private:
-  SHILL_PRIVATE bool DecodeInternal(const ByteString &msg);
-  SHILL_PRIVATE bool DecodeLink(const RTNLHeader *hdr,
+  SHILL_PRIVATE bool DecodeInternal(const ByteString& msg);
+  SHILL_PRIVATE bool DecodeLink(const RTNLHeader* hdr,
                                 Mode mode,
-                                rtattr **attr_data,
-                                int *attr_length);
-  SHILL_PRIVATE bool DecodeAddress(const RTNLHeader *hdr,
+                                rtattr** attr_data,
+                                int* attr_length);
+  SHILL_PRIVATE bool DecodeAddress(const RTNLHeader* hdr,
                                    Mode mode,
-                                   rtattr **attr_data,
-                                   int *attr_length);
-  SHILL_PRIVATE bool DecodeRoute(const RTNLHeader *hdr,
+                                   rtattr** attr_data,
+                                   int* attr_length);
+  SHILL_PRIVATE bool DecodeRoute(const RTNLHeader* hdr,
                                  Mode mode,
-                                 rtattr **attr_data,
-                                 int *attr_length);
-  SHILL_PRIVATE bool DecodeNdUserOption(const RTNLHeader *hdr,
+                                 rtattr** attr_data,
+                                 int* attr_length);
+  SHILL_PRIVATE bool DecodeNdUserOption(const RTNLHeader* hdr,
                                         Mode mode,
-                                        rtattr **attr_data,
-                                        int *attr_length);
-  SHILL_PRIVATE bool ParseRdnssOption(const uint8_t *data,
+                                        rtattr** attr_data,
+                                        int* attr_length);
+  SHILL_PRIVATE bool ParseRdnssOption(const uint8_t* data,
                                       int length,
                                       uint32_t lifetime);
-  SHILL_PRIVATE bool DecodeNeighbor(const RTNLHeader *hdr,
+  SHILL_PRIVATE bool DecodeNeighbor(const RTNLHeader* hdr,
                                     Mode mode,
-                                    rtattr **attr_data,
-                                    int *attr_length);
-  SHILL_PRIVATE bool EncodeLink(RTNLHeader *hdr) const;
-  SHILL_PRIVATE bool EncodeAddress(RTNLHeader *hdr) const;
-  SHILL_PRIVATE bool EncodeRoute(RTNLHeader *hdr) const;
-  SHILL_PRIVATE bool EncodeNeighbor(RTNLHeader *hdr) const;
+                                    rtattr** attr_data,
+                                    int* attr_length);
+  SHILL_PRIVATE bool EncodeLink(RTNLHeader* hdr) const;
+  SHILL_PRIVATE bool EncodeAddress(RTNLHeader* hdr) const;
+  SHILL_PRIVATE bool EncodeRoute(RTNLHeader* hdr) const;
+  SHILL_PRIVATE bool EncodeNeighbor(RTNLHeader* hdr) const;
 
   Type type_;
   Mode mode_;

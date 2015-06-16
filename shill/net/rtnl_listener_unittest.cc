@@ -29,7 +29,7 @@ class RTNLListenerTest : public Test {
       : callback_(Bind(&RTNLListenerTest::ListenerCallback,
                        Unretained(this))) {}
 
-  MOCK_METHOD1(ListenerCallback, void(const RTNLMessage &));
+  MOCK_METHOD1(ListenerCallback, void(const RTNLMessage&));
 
   virtual void SetUp() {
     // RTNLHandler is a singleton, there's no guarentee that it is not
@@ -39,7 +39,7 @@ class RTNLListenerTest : public Test {
   }
 
  protected:
-  Callback<void(const RTNLMessage &)> callback_;
+  Callback<void(const RTNLMessage&)> callback_;
 };
 
 TEST_F(RTNLListenerTest, NoRun) {
@@ -60,7 +60,7 @@ TEST_F(RTNLListenerTest, Run) {
         callback_);
     EXPECT_EQ(1, RTNLHandler::GetInstance()->listeners_.size());
     RTNLMessage message;
-    EXPECT_CALL(*this, ListenerCallback(A<const RTNLMessage &>())).Times(1);
+    EXPECT_CALL(*this, ListenerCallback(A<const RTNLMessage&>())).Times(1);
     listener.NotifyEvent(RTNLHandler::kRequestLink, message);
   }
   EXPECT_EQ(0, RTNLHandler::GetInstance()->listeners_.size());

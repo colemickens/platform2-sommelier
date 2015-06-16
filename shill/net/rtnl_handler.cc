@@ -89,7 +89,7 @@ void RTNLHandler::Start(uint32_t netlink_groups_mask) {
   addr.nl_groups = netlink_groups_mask;
 
   if (sockets_->Bind(rtnl_socket_,
-                    reinterpret_cast<struct sockaddr *>(&addr),
+                    reinterpret_cast<struct sockaddr*>(&addr),
                     sizeof(addr)) < 0) {
     sockets_->Close(rtnl_socket_);
     rtnl_socket_ = kInvalidSocket;
@@ -118,8 +118,8 @@ void RTNLHandler::Stop() {
   VLOG(2) << "RTNLHandler stopped";
 }
 
-void RTNLHandler::AddListener(RTNLListener *to_add) {
-  for (const auto &listener : listeners_) {
+void RTNLHandler::AddListener(RTNLListener* to_add) {
+  for (const auto& listener : listeners_) {
     if (to_add == listener)
       return;
   }
@@ -127,7 +127,7 @@ void RTNLHandler::AddListener(RTNLListener *to_add) {
   VLOG(2) << "RTNLHandler added listener";
 }
 
-void RTNLHandler::RemoveListener(RTNLListener *to_remove) {
+void RTNLHandler::RemoveListener(RTNLListener* to_remove) {
   for (auto it = listeners_.begin(); it != listeners_.end(); ++it) {
     if (to_remove == *it) {
       listeners_.erase(it);
@@ -176,7 +176,7 @@ void RTNLHandler::SetInterfaceMTU(int interface_index, unsigned int mtu) {
 
   msg.SetAttribute(
       IFLA_MTU,
-      ByteString(reinterpret_cast<unsigned char *>(&mtu), sizeof(mtu)));
+      ByteString(reinterpret_cast<unsigned char*>(&mtu), sizeof(mtu)));
 
   CHECK(SendMessage(&msg));
 }
@@ -200,8 +200,8 @@ void RTNLHandler::RequestDump(int request_flags) {
   }
 }
 
-void RTNLHandler::DispatchEvent(int type, const RTNLMessage &msg) {
-  for (const auto &listener : listeners_) {
+void RTNLHandler::DispatchEvent(int type, const RTNLMessage& msg) {
+  for (const auto& listener : listeners_) {
     listener->NotifyEvent(type, msg);
   }
 }
@@ -252,19 +252,19 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   in_request_ = true;
 }
 
-void RTNLHandler::ParseRTNL(InputData *data) {
-  unsigned char *buf = data->buf;
-  unsigned char *end = buf + data->len;
+void RTNLHandler::ParseRTNL(InputData* data) {
+  unsigned char* buf = data->buf;
+  unsigned char* end = buf + data->len;
 
   while (buf < end) {
-    struct nlmsghdr *hdr = reinterpret_cast<struct nlmsghdr *>(buf);
+    struct nlmsghdr* hdr = reinterpret_cast<struct nlmsghdr*>(buf);
     if (!NLMSG_OK(hdr, static_cast<unsigned int>(end - buf)))
       break;
 
     VLOG(5) << __func__ << ": received payload (" << end - buf << ")";
 
     RTNLMessage msg;
-    ByteString payload(reinterpret_cast<unsigned char *>(hdr), hdr->nlmsg_len);
+    ByteString payload(reinterpret_cast<unsigned char*>(hdr), hdr->nlmsg_len);
     VLOG(5) << "RTNL received payload length " << payload.GetLength()
             << ": \"" << payload.HexEncode() << "\"";
     if (!msg.Decode(payload)) {
@@ -283,8 +283,8 @@ void RTNLHandler::ParseRTNL(InputData *data) {
           break;
         case NLMSG_ERROR:
           {
-            struct nlmsgerr *err =
-                reinterpret_cast<nlmsgerr *>(NLMSG_DATA(hdr));
+            struct nlmsgerr* err =
+                reinterpret_cast<nlmsgerr*>(NLMSG_DATA(hdr));
             int error_number = -err->error;
             std::ostringstream message;
             message << "sequence " << hdr->nlmsg_seq << " received error "
@@ -332,9 +332,9 @@ void RTNLHandler::ParseRTNL(InputData *data) {
 bool RTNLHandler::AddressRequest(int interface_index,
                                  RTNLMessage::Mode mode,
                                  int flags,
-                                 const IPAddress &local,
-                                 const IPAddress &broadcast,
-                                 const IPAddress &peer) {
+                                 const IPAddress& local,
+                                 const IPAddress& broadcast,
+                                 const IPAddress& peer) {
   CHECK(local.family() == broadcast.family());
   CHECK(local.family() == peer.family());
 
@@ -364,9 +364,9 @@ bool RTNLHandler::AddressRequest(int interface_index,
 }
 
 bool RTNLHandler::AddInterfaceAddress(int interface_index,
-                                      const IPAddress &local,
-                                      const IPAddress &broadcast,
-                                      const IPAddress &peer) {
+                                      const IPAddress& local,
+                                      const IPAddress& broadcast,
+                                      const IPAddress& peer) {
     return AddressRequest(interface_index,
                           RTNLMessage::kModeAdd,
                           NLM_F_CREATE | NLM_F_EXCL | NLM_F_ECHO,
@@ -376,7 +376,7 @@ bool RTNLHandler::AddInterfaceAddress(int interface_index,
 }
 
 bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
-                                         const IPAddress &local) {
+                                         const IPAddress& local) {
   return AddressRequest(interface_index,
                         RTNLMessage::kModeDelete,
                         NLM_F_ECHO,
@@ -397,7 +397,7 @@ bool RTNLHandler::RemoveInterface(int interface_index) {
   return SendMessage(&msg);
 }
 
-int RTNLHandler::GetInterfaceIndex(const string &interface_name) {
+int RTNLHandler::GetInterfaceIndex(const string& interface_name) {
   if (interface_name.empty()) {
     LOG(ERROR) << "Empty interface name -- unable to obtain index.";
     return -1;
@@ -423,8 +423,8 @@ int RTNLHandler::GetInterfaceIndex(const string &interface_name) {
   return ifr.ifr_ifindex;
 }
 
-bool RTNLHandler::SendMessageWithErrorMask(RTNLMessage *message,
-                                           const ErrorMask &error_mask) {
+bool RTNLHandler::SendMessageWithErrorMask(RTNLMessage* message,
+                                           const ErrorMask& error_mask) {
   VLOG(5) << __func__ << " sequence " << request_sequence_
           << " message type " << message->type()
           << " mode " << message->mode()
@@ -455,7 +455,7 @@ bool RTNLHandler::SendMessageWithErrorMask(RTNLMessage *message,
   return true;
 }
 
-bool RTNLHandler::SendMessage(RTNLMessage *message) {
+bool RTNLHandler::SendMessage(RTNLMessage* message) {
   ErrorMask error_mask;
   if (message->mode() == RTNLMessage::kModeAdd) {
     error_mask = { EEXIST };
@@ -472,7 +472,7 @@ bool RTNLHandler::IsSequenceInErrorMaskWindow(uint32_t sequence) {
   return (request_sequence_ - sequence) < kErrorWindowSize;
 }
 
-void RTNLHandler::SetErrorMask(uint32_t sequence, const ErrorMask &error_mask) {
+void RTNLHandler::SetErrorMask(uint32_t sequence, const ErrorMask& error_mask) {
   if (IsSequenceInErrorMaskWindow(sequence)) {
     error_mask_window_[sequence % kErrorWindowSize] = error_mask;
   }
@@ -486,7 +486,7 @@ RTNLHandler::ErrorMask RTNLHandler::GetAndClearErrorMask(uint32_t sequence) {
   return error_mask;
 }
 
-void RTNLHandler::OnReadError(const string &error_msg) {
+void RTNLHandler::OnReadError(const string& error_msg) {
   LOG(FATAL) << "RTNL Socket read returns error: "
              << error_msg;
 }

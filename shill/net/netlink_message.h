@@ -89,7 +89,7 @@ class SHILL_EXPORT NetlinkMessage {
 
   // Initializes the |NetlinkMessage| from a complete and legal message
   // (potentially received from the kernel via a netlink socket).
-  virtual bool InitFromNlmsg(const nlmsghdr *msg, MessageContext context);
+  virtual bool InitFromNlmsg(const nlmsghdr* msg, MessageContext context);
 
   uint16_t message_type() const { return message_type_; }
   void AddFlag(uint16_t new_flag) { flags_ |= new_flag; }
@@ -101,7 +101,7 @@ class SHILL_EXPORT NetlinkMessage {
   virtual void Print(int header_log_level, int detail_log_level) const = 0;
 
   // Logs the message's raw bytes (with minimal interpretation).
-  static void PrintBytes(int log_level, const unsigned char *buf,
+  static void PrintBytes(int log_level, const unsigned char* buf,
                          size_t num_bytes);
 
  protected:
@@ -112,7 +112,7 @@ class SHILL_EXPORT NetlinkMessage {
   // padding.
   virtual ByteString EncodeHeader(uint32_t sequence_number);
   // Reads the |nlmsghdr| and removes it from |input|.
-  virtual bool InitAndStripHeader(ByteString *input);
+  virtual bool InitAndStripHeader(ByteString* input);
 
   uint16_t flags_;
   uint16_t message_type_;
@@ -138,7 +138,7 @@ class SHILL_EXPORT ErrorAckMessage : public NetlinkMessage {
   explicit ErrorAckMessage(uint32_t err)
       : NetlinkMessage(kMessageType), error_(err) {}
   static uint16_t GetMessageType() { return kMessageType; }
-  virtual bool InitFromNlmsg(const nlmsghdr *const_msg, MessageContext context);
+  virtual bool InitFromNlmsg(const nlmsghdr* const_msg, MessageContext context);
   virtual ByteString Encode(uint32_t sequence_number);
   virtual void Print(int header_log_level, int detail_log_level) const;
   std::string ToString() const;
@@ -216,7 +216,7 @@ class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
 
 class SHILL_EXPORT NetlinkMessageFactory {
  public:
-  typedef base::Callback<NetlinkMessage *(const nlmsghdr *msg)> FactoryMethod;
+  typedef base::Callback<NetlinkMessage*(const nlmsghdr* msg)> FactoryMethod;
 
   NetlinkMessageFactory() {}
 
@@ -226,7 +226,7 @@ class SHILL_EXPORT NetlinkMessageFactory {
 
   // Ownership of the message is passed to the caller and, as such, he should
   // delete it.
-  NetlinkMessage *CreateMessage(const nlmsghdr *msg,
+  NetlinkMessage* CreateMessage(const nlmsghdr* msg,
                                 NetlinkMessage::MessageContext context) const;
 
  private:

@@ -11,7 +11,7 @@ using base::Callback;
 namespace shill {
 
 RTNLListener::RTNLListener(int listen_flags,
-                           const Callback<void(const RTNLMessage &)> &callback)
+                           const Callback<void(const RTNLMessage&)>& callback)
     : listen_flags_(listen_flags), callback_(callback) {
   RTNLHandler::GetInstance()->AddListener(this);
 }
@@ -20,7 +20,7 @@ RTNLListener::~RTNLListener() {
   RTNLHandler::GetInstance()->RemoveListener(this);
 }
 
-void RTNLListener::NotifyEvent(int type, const RTNLMessage &msg) {
+void RTNLListener::NotifyEvent(int type, const RTNLMessage& msg) {
   if ((type & listen_flags_) != 0)
     callback_.Run(msg);
 }

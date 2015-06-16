@@ -24,9 +24,9 @@ namespace shill {
 // suspended.
 struct SHILL_EXPORT Timestamp {
   Timestamp() : monotonic{} {}
-  Timestamp(const struct timeval &in_monotonic,
-            const struct timeval &in_boottime,
-            const std::string &in_wall_clock)
+  Timestamp(const struct timeval& in_monotonic,
+            const struct timeval& in_boottime,
+            const std::string& in_wall_clock)
       : monotonic(in_monotonic),
         boottime(in_boottime),
         wall_clock(in_wall_clock) {}
@@ -41,29 +41,29 @@ class SHILL_EXPORT Time {
  public:
   virtual ~Time();
 
-  static Time *GetInstance();
+  static Time* GetInstance();
 
   // Returns CLOCK_MONOTONIC time, or 0 if a failure occurred.
-  virtual bool GetSecondsMonotonic(time_t *seconds);
+  virtual bool GetSecondsMonotonic(time_t* seconds);
 
   // Returns CLOCK_BOOTTIME time, or 0 if a failure occurred.
-  virtual bool GetSecondsBoottime(time_t *seconds);
+  virtual bool GetSecondsBoottime(time_t* seconds);
 
   // On success, sets |tv| to CLOCK_MONOTONIC time, and returns 0.
-  virtual int GetTimeMonotonic(struct timeval *tv);
+  virtual int GetTimeMonotonic(struct timeval* tv);
 
   // On success, sets |tv| to CLOCK_BOOTTIME time, and returns 0.
-  virtual int GetTimeBoottime(struct timeval *tv);
+  virtual int GetTimeBoottime(struct timeval* tv);
 
   // gettimeofday
-  virtual int GetTimeOfDay(struct timeval *tv, struct timezone *tz);
+  virtual int GetTimeOfDay(struct timeval* tv, struct timezone* tz);
 
   // Returns a snapshot of the current time.
   virtual Timestamp GetNow();
 
   virtual time_t GetSecondsSinceEpoch() const;
 
-  static std::string FormatTime(const struct tm &date_time, suseconds_t usec);
+  static std::string FormatTime(const struct tm& date_time, suseconds_t usec);
 
  protected:
   Time();

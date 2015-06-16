@@ -49,7 +49,7 @@ class SHILL_EXPORT RTNLHandler {
   virtual ~RTNLHandler();
 
   // Since this is a singleton, use RTNHandler::GetInstance()->Foo().
-  static RTNLHandler *GetInstance();
+  static RTNLHandler* GetInstance();
 
   // This starts the event-monitoring function of the RTNL handler. This
   // function will create an IOHandler and add it to the current message
@@ -58,10 +58,10 @@ class SHILL_EXPORT RTNLHandler {
 
   // Add an RTNL event listener to the list of entities that will
   // be notified of RTNL events.
-  virtual void AddListener(RTNLListener *to_add);
+  virtual void AddListener(RTNLListener* to_add);
 
   // Remove a previously added RTNL event listener
-  virtual void RemoveListener(RTNLListener *to_remove);
+  virtual void RemoveListener(RTNLListener* to_remove);
 
   // Set flags on a network interface that has a kernel index of
   // 'interface_index'.  Only the flags bits set in 'change' will
@@ -77,14 +77,14 @@ class SHILL_EXPORT RTNLHandler {
   // Set address of a network interface that has a kernel index of
   // 'interface_index'.
   virtual bool AddInterfaceAddress(int interface_index,
-                                   const IPAddress &local,
-                                   const IPAddress &gateway,
-                                   const IPAddress &peer);
+                                   const IPAddress& local,
+                                   const IPAddress& gateway,
+                                   const IPAddress& peer);
 
   // Remove address from a network interface that has a kernel index of
   // 'interface_index'.
   virtual bool RemoveInterfaceAddress(int interface_index,
-                                      const IPAddress &local);
+                                      const IPAddress& local);
 
   // Remove a network interface from the kernel.
   virtual bool RemoveInterface(int interface_index);
@@ -97,19 +97,19 @@ class SHILL_EXPORT RTNLHandler {
 
   // Returns the index of interface |interface_name|, or -1 if unable to
   // determine the index.
-  virtual int GetInterfaceIndex(const std::string &interface_name);
+  virtual int GetInterfaceIndex(const std::string& interface_name);
 
   // Send a formatted RTNL message.  Associates an error mask -- a list
   // of errors that are expected and should not trigger log messages by
   // default -- with the outgoing message.  If the message is sent
   // successfully, the sequence number in |message| is set, and the
   // function returns true.  Otherwise this function returns false.
-  virtual bool SendMessageWithErrorMask(RTNLMessage *message,
-                                        const ErrorMask &error_mask);
+  virtual bool SendMessageWithErrorMask(RTNLMessage* message,
+                                        const ErrorMask& error_mask);
 
   // Sends a formatted RTNL message using SendMessageWithErrorMask
   // using an error mask inferred from the mode and type of |message|.
-  virtual bool SendMessage(RTNLMessage *message);
+  virtual bool SendMessage(RTNLMessage* message);
 
  protected:
   RTNLHandler();
@@ -139,27 +139,27 @@ class SHILL_EXPORT RTNLHandler {
   void Stop();
 
   // Dispatches an rtnl message to all listeners
-  void DispatchEvent(int type, const RTNLMessage &msg);
+  void DispatchEvent(int type, const RTNLMessage& msg);
   // Send the next table-dump request to the kernel
   void NextRequest(uint32_t seq);
   // Parse an incoming rtnl message from the kernel
-  void ParseRTNL(InputData *data);
+  void ParseRTNL(InputData* data);
 
   bool AddressRequest(int interface_index,
                       RTNLMessage::Mode mode,
                       int flags,
-                      const IPAddress &local,
-                      const IPAddress &gateway,
-                      const IPAddress &peer);
+                      const IPAddress& local,
+                      const IPAddress& gateway,
+                      const IPAddress& peer);
 
   // Called by the RTNL read handler on exceptional events.
-  void OnReadError(const std::string &error_msg);
+  void OnReadError(const std::string& error_msg);
 
   // Returns whether |sequence| lies within the current error mask window.
   bool IsSequenceInErrorMaskWindow(uint32_t sequence);
 
   // Saves an error mask to be associated with this sequence number.
-  void SetErrorMask(uint32_t sequence, const ErrorMask &error_mask);
+  void SetErrorMask(uint32_t sequence, const ErrorMask& error_mask);
 
   // Destructively retrieves the error mask associated with this sequeunce
   // number.  If this sequence number now lies outside the receive window
@@ -174,10 +174,10 @@ class SHILL_EXPORT RTNLHandler {
   uint32_t request_sequence_;
   uint32_t last_dump_sequence_;
 
-  std::vector<RTNLListener *> listeners_;
-  base::Callback<void(InputData *)> rtnl_callback_;
+  std::vector<RTNLListener*> listeners_;
+  base::Callback<void(InputData*)> rtnl_callback_;
   std::unique_ptr<IOHandler> rtnl_handler_;
-  IOHandlerFactory *io_handler_factory_;
+  IOHandlerFactory* io_handler_factory_;
   std::vector<ErrorMask> error_mask_window_;
 
   DISALLOW_COPY_AND_ASSIGN(RTNLHandler);

@@ -16,14 +16,14 @@ class RTNLMessage;
 class SHILL_EXPORT RTNLListener {
  public:
   RTNLListener(int listen_flags,
-               const base::Callback<void(const RTNLMessage &)> &callback);
+               const base::Callback<void(const RTNLMessage&)>& callback);
   ~RTNLListener();
 
-  void NotifyEvent(int type, const RTNLMessage &msg);
+  void NotifyEvent(int type, const RTNLMessage& msg);
 
  private:
   int listen_flags_;
-  base::Callback<void(const RTNLMessage &)> callback_;
+  base::Callback<void(const RTNLMessage&)> callback_;
 
   DISALLOW_COPY_AND_ASSIGN(RTNLListener);
 };

@@ -79,7 +79,7 @@ int EventHistory::CountEventsWithinInterval(int seconds_ago,
   Timestamp now = time_->GetNow();
   struct timeval interval = (const struct timeval){seconds_ago};
   int i = 0;
-  for (const auto &event : events_) {
+  for (const auto& event : events_) {
     struct timeval elapsed = {0, 0};
     switch (clock_type) {
       case kClockTypeBoottime:

@@ -76,7 +76,7 @@ class SHILL_EXPORT EventHistory {
   bool max_events_specified_;
   int max_events_saved_;
   std::deque<Timestamp> events_;
-  Time *time_;
+  Time* time_;
 
   DISALLOW_COPY_AND_ASSIGN(EventHistory);
 };

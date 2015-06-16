@@ -57,7 +57,7 @@ namespace shill {
 class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
  public:
   GenericNetlinkMessage(uint16_t my_message_type, uint8_t command,
-                        const char *command_string)
+                        const char* command_string)
       : NetlinkMessage(my_message_type),
         attributes_(new AttributeList),
         command_(command),
@@ -67,7 +67,7 @@ class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
   ByteString Encode(uint32_t sequence_number) override;
 
   uint8_t command() const { return command_; }
-  const char *command_string() const { return command_string_; }
+  const char* command_string() const { return command_string_; }
   AttributeListConstRefPtr const_attributes() const { return attributes_; }
   AttributeListRefPtr attributes() { return attributes_; }
 
@@ -79,11 +79,11 @@ class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
   ByteString EncodeHeader(uint32_t sequence_number) override;
   // Reads the |nlmsghdr| and |genlmsghdr| headers and removes them from
   // |input|.
-  bool InitAndStripHeader(ByteString *input) override;
+  bool InitAndStripHeader(ByteString* input) override;
 
   AttributeListRefPtr attributes_;
   const uint8_t command_;
-  const char *command_string_;
+  const char* command_string_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(GenericNetlinkMessage);
@@ -94,15 +94,15 @@ class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
 class SHILL_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
  public:
   static const uint16_t kMessageType;
-  ControlNetlinkMessage(uint8_t command, const char *command_string)
+  ControlNetlinkMessage(uint8_t command, const char* command_string)
       : GenericNetlinkMessage(kMessageType, command, command_string) {}
 
   static uint16_t GetMessageType() { return kMessageType; }
 
-  bool InitFromNlmsg(const nlmsghdr *msg, MessageContext context);
+  bool InitFromNlmsg(const nlmsghdr* msg, MessageContext context);
 
   // Message factory for all types of Control netlink message.
-  static NetlinkMessage *CreateMessage(const nlmsghdr *const_msg);
+  static NetlinkMessage* CreateMessage(const nlmsghdr* const_msg);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ControlNetlinkMessage);

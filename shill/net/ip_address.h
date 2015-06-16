@@ -27,16 +27,16 @@ class SHILL_EXPORT IPAddress {
   // IP address (e.g. "192.144.30.54").
   explicit IPAddress(std::string ip_string);
 
-  IPAddress(Family family, const ByteString &address);
-  IPAddress(Family family, const ByteString &address, unsigned int prefix);
+  IPAddress(Family family, const ByteString& address);
+  IPAddress(Family family, const ByteString& address, unsigned int prefix);
   ~IPAddress();
 
   // Since this is a copyable datatype...
-  IPAddress(const IPAddress &b)
+  IPAddress(const IPAddress& b)
     : family_(b.family_),
       address_(b.address_),
       prefix_(b.prefix_) {}
-  IPAddress &operator=(const IPAddress &b) {
+  IPAddress& operator=(const IPAddress& b) {
     family_ = b.family_;
     address_ = b.address_;
     prefix_ = b.prefix_;
@@ -64,7 +64,7 @@ class SHILL_EXPORT IPAddress {
 
   // Returns the prefix length given an address |family| and a |mask|. For
   // example, returns 24 for an IPv4 mask 255.255.255.0.
-  static size_t GetPrefixLengthFromMask(Family family, const std::string &mask);
+  static size_t GetPrefixLengthFromMask(Family family, const std::string& mask);
 
   // Returns an IPAddress of type |family| that has all the high-order |prefix|
   // bits set.
@@ -76,10 +76,10 @@ class SHILL_EXPORT IPAddress {
   // Getters and Setters
   Family family() const { return family_; }
   void set_family(Family family) { family_ = family; }
-  const ByteString &address() const { return address_; }
+  const ByteString& address() const { return address_; }
   unsigned int prefix() const { return prefix_; }
   void set_prefix(unsigned int prefix) { prefix_ = prefix; }
-  const unsigned char *GetConstData() const { return address_.GetConstData(); }
+  const unsigned char* GetConstData() const { return address_.GetConstData(); }
   size_t GetLength() const { return address_.GetLength(); }
   bool IsDefault() const { return address_.IsZero(); }
   bool IsValid() const {
@@ -88,9 +88,9 @@ class SHILL_EXPORT IPAddress {
   }
 
   // Parse an IP address string.
-  bool SetAddressFromString(const std::string &address_string);
+  bool SetAddressFromString(const std::string& address_string);
   // Parse an "address/prefix" IP address and prefix pair from a string.
-  bool SetAddressAndPrefixFromString(const std::string &address_string);
+  bool SetAddressAndPrefixFromString(const std::string& address_string);
   // An uninitialized IPAddress is empty and invalid when constructed.
   // Use SetAddressToDefault() to set it to the default or "all-zeroes" address.
   void SetAddressToDefault();
@@ -98,27 +98,27 @@ class SHILL_EXPORT IPAddress {
   // conversion succeeds in which case |address_string| is set to the
   // result.  Otherwise the function returns false and |address_string|
   // is left unmodified.
-  bool IntoString(std::string *address_string) const;
+  bool IntoString(std::string* address_string) const;
   // Similar to IntoString, but returns by value. Convenient for logging.
   std::string ToString() const;
 
   // Returns whether |b| has the same family, address and prefix as |this|.
-  bool Equals(const IPAddress &b) const;
+  bool Equals(const IPAddress& b) const;
 
   // Returns whether |b| has the same family and address as |this|.
-  bool HasSameAddressAs(const IPAddress &b) const;
+  bool HasSameAddressAs(const IPAddress& b) const;
 
   // Perform an AND operation between the address data of |this| and that
   // of |b|.  Returns an IPAddress containing the result of the operation.
   // It is an error if |this| and |b| are not of the same address family
   // or if either are not valid,
-  IPAddress MaskWith(const IPAddress &b) const;
+  IPAddress MaskWith(const IPAddress& b) const;
 
   // Perform an OR operation between the address data of |this| and that
   // of |b|.  Returns an IPAddress containing the result of the operation.
   // It is an error if |this| and |b| are not of the same address family
   // or if either are not valid,
-  IPAddress MergeWith(const IPAddress &b) const;
+  IPAddress MergeWith(const IPAddress& b) const;
 
   // Return an address that represents the network-part of the address,
   // i.e, the address with all but the prefix bits masked out.
@@ -132,7 +132,7 @@ class SHILL_EXPORT IPAddress {
   // |b| without an intervening gateway.  It tests whether the network
   // part of |b| is the same as the network part of |this|, using the
   // prefix of |this|.  Returns true if |b| is reachable, false otherwise.
-  bool CanReachAddress(const IPAddress &b) const;
+  bool CanReachAddress(const IPAddress& b) const;
 
  private:
   Family family_;
