@@ -48,7 +48,7 @@ class DHCPProviderTest : public Test {
  protected:
   MockControl control_;
   MockGLib glib_;
-  DHCPProvider *provider_;
+  DHCPProvider* provider_;
   StrictMock<MockEventDispatcher> dispatcher_;
 };
 

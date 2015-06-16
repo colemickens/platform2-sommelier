@@ -53,13 +53,13 @@ const bool kHasLeaseSuffix = true;
 
 class TestDHCPConfig : public DHCPConfig {
  public:
-  TestDHCPConfig(ControlInterface *control_interface,
-                 EventDispatcher *dispatcher,
-                 DHCPProvider *provider,
-                 const std::string &device_name,
-                 const std::string &type,
-                 const std::string &lease_file_suffix,
-                 GLib *glib)
+  TestDHCPConfig(ControlInterface* control_interface,
+                 EventDispatcher* dispatcher,
+                 DHCPProvider* provider,
+                 const std::string& device_name,
+                 const std::string& type,
+                 const std::string& lease_file_suffix,
+                 GLib* glib)
      : DHCPConfig(control_interface,
                   dispatcher,
                   provider,
@@ -70,9 +70,9 @@ class TestDHCPConfig : public DHCPConfig {
 
   ~TestDHCPConfig() {}
 
-  void ProcessEventSignal(const std::string &reason,
-                          const Configuration &configuration) override {}
-  void ProcessStatusChangeSignal(const std::string &status) override {}
+  void ProcessEventSignal(const std::string& reason,
+                          const Configuration& configuration) override {}
+  void ProcessStatusChangeSignal(const std::string& status) override {}
 
   MOCK_METHOD0(ShouldFailOnAcquisitionTimeout, bool());
   MOCK_METHOD0(ShouldKeepLeaseOnDisconnect, bool());
@@ -107,7 +107,7 @@ class DHCPConfigTest : public PropertyStoreTest {
     config_->Stop("In test");
   }
 
-  TestDHCPConfigRefPtr CreateMockMinijailConfig(const string &lease_suffix);
+  TestDHCPConfigRefPtr CreateMockMinijailConfig(const string& lease_suffix);
 
  protected:
   static const int kPID;
@@ -125,7 +125,7 @@ const int DHCPConfigTest::kPID = 123456;
 const unsigned int DHCPConfigTest::kTag = 77;
 
 TestDHCPConfigRefPtr DHCPConfigTest::CreateMockMinijailConfig(
-    const string &lease_suffix) {
+    const string& lease_suffix) {
   TestDHCPConfigRefPtr config(new TestDHCPConfig(&control_,
                                                  dispatcher(),
                                                  &provider_,
@@ -194,13 +194,13 @@ class DHCPConfigCallbackTest : public DHCPConfigTest {
   }
 
   MOCK_METHOD2(SuccessCallback,
-               void(const IPConfigRefPtr &ipconfig, bool new_lease_acquired));
-  MOCK_METHOD1(FailureCallback, void(const IPConfigRefPtr &ipconfig));
+               void(const IPConfigRefPtr& ipconfig, bool new_lease_acquired));
+  MOCK_METHOD1(FailureCallback, void(const IPConfigRefPtr& ipconfig));
 
   // The mock methods above take IPConfigRefPtr because this is the type
   // that the registered callbacks take.  This conversion of the DHCP
   // config ref pointer eases our work in setting up expectations.
-  const IPConfigRefPtr &ConfigRef() { return ip_config_; }
+  const IPConfigRefPtr& ConfigRef() { return ip_config_; }
 
  private:
   IPConfigRefPtr ip_config_;
@@ -315,7 +315,7 @@ TEST_F(DHCPConfigTest, ReleaseIPStaticIPWithoutLease) {
   config_->pid_ = 1 << 18;  // Ensure unknown positive PID.
   config_->is_lease_active_ = false;
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(0);
-  MockDHCPProxy *proxy_pointer = proxy_.get();
+  MockDHCPProxy* proxy_pointer = proxy_.get();
   config_->proxy_.reset(proxy_.release());
   EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonStaticIP));
   // Expect that proxy has not been released.

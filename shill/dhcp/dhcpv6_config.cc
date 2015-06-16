@@ -19,7 +19,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(DHCPv6Config *d) {
+static string ObjectID(DHCPv6Config* d) {
   if (d == nullptr)
     return "(DHCPv6_config)";
   else
@@ -53,12 +53,12 @@ const char DHCPv6Config::kReasonRenew[] = "RENEW6";
 
 const char DHCPv6Config::kType[] = "dhcp6";
 
-DHCPv6Config::DHCPv6Config(ControlInterface *control_interface,
-                           EventDispatcher *dispatcher,
-                           DHCPProvider *provider,
-                           const string &device_name,
-                           const string &lease_file_suffix,
-                           GLib *glib)
+DHCPv6Config::DHCPv6Config(ControlInterface* control_interface,
+                           EventDispatcher* dispatcher,
+                           DHCPProvider* provider,
+                           const string& device_name,
+                           const string& lease_file_suffix,
+                           GLib* glib)
     : DHCPConfig(control_interface,
                  dispatcher,
                  provider,
@@ -73,8 +73,8 @@ DHCPv6Config::~DHCPv6Config() {
   SLOG(this, 2) << __func__ << ": " << device_name();
 }
 
-void DHCPv6Config::ProcessEventSignal(const string &reason,
-                                      const Configuration &configuration) {
+void DHCPv6Config::ProcessEventSignal(const string& reason,
+                                      const Configuration& configuration) {
   LOG(INFO) << "Event reason: " << reason;
   if (reason == kReasonFail) {
     LOG(ERROR) << "Received failure event from DHCPv6 client.";
@@ -98,7 +98,7 @@ void DHCPv6Config::ProcessEventSignal(const string &reason,
   DHCPConfig::UpdateProperties(properties_, true);
 }
 
-void DHCPv6Config::ProcessStatusChangeSignal(const string &status) {
+void DHCPv6Config::ProcessStatusChangeSignal(const string& status) {
   SLOG(this, 2) << __func__ << ": " << status;
   // TODO(zqiu): metric reporting for status.
 }
@@ -128,14 +128,14 @@ vector<string> DHCPv6Config::GetFlags() {
   return flags;
 }
 
-bool DHCPv6Config::ParseConfiguration(const Configuration &configuration) {
+bool DHCPv6Config::ParseConfiguration(const Configuration& configuration) {
   SLOG(nullptr, 2) << __func__;
   properties_.method = kTypeDHCP6;
   properties_.address_family = IPAddress::kFamilyIPv6;
   for (Configuration::const_iterator it = configuration.begin();
        it != configuration.end(); ++it) {
-    const string &key = it->first;
-    const DBus::Variant &value = it->second;
+    const string& key = it->first;
+    const DBus::Variant& value = it->second;
     SLOG(nullptr, 2) << "Processing key: " << key;
     if (key == kConfigurationKeyIPAddress) {
       properties_.address = value.reader().get_string();

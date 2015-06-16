@@ -46,15 +46,15 @@ class DHCPProvider {
   virtual ~DHCPProvider();
 
   // This is a singleton -- use DHCPProvider::GetInstance()->Foo().
-  static DHCPProvider *GetInstance();
+  static DHCPProvider* GetInstance();
 
   // Initializes the provider singleton. This method hooks up a D-Bus signal
   // listener that catches signals from spawned DHCP clients and dispatches them
   // to the appropriate DHCP configuration instance.
-  virtual void Init(ControlInterface *control_interface,
-                    EventDispatcher *dispatcher,
-                    GLib *glib,
-                    Metrics *metrics);
+  virtual void Init(ControlInterface* control_interface,
+                    EventDispatcher* dispatcher,
+                    GLib* glib,
+                    Metrics* metrics);
 
   // Called on shutdown to release |listener_|.
   void Stop();
@@ -69,15 +69,15 @@ class DHCPProvider {
   // address as an additional safeguard against the issued IP address being
   // in-use by another station.
   virtual DHCPConfigRefPtr CreateIPv4Config(
-      const std::string &device_name,
-      const std::string &host_name,
-      const std::string &lease_file_suffix,
+      const std::string& device_name,
+      const std::string& host_name,
+      const std::string& lease_file_suffix,
       bool arp_gateway);
 
 #ifndef DISABLE_DHCPV6
   // Create a new DHCPv6Config for |device_name|.
   virtual DHCPConfigRefPtr CreateIPv6Config(
-      const std::string &device_name, const std::string &lease_file_suffix);
+      const std::string& device_name, const std::string& lease_file_suffix);
 #endif
 
   // Returns the DHCP configuration associated with DHCP client |pid|. Return
@@ -86,7 +86,7 @@ class DHCPProvider {
 
   // Binds a |pid| to a DHCP |config|. When a DHCP config spawns a new DHCP
   // client, it binds itself to that client's |pid|.
-  virtual void BindPID(int pid, const DHCPConfigRefPtr &config);
+  virtual void BindPID(int pid, const DHCPConfigRefPtr& config);
 
   // Unbinds a |pid|. This method is used by a DHCP config to signal the
   // provider that the DHCP client has been terminated. This may result in
@@ -94,7 +94,7 @@ class DHCPProvider {
   virtual void UnbindPID(int pid);
 
   // Destroy lease file associated with this |name|.
-  virtual void DestroyLease(const std::string &name);
+  virtual void DestroyLease(const std::string& name);
 
   // Returns true if |pid| was recently unbound from the provider.
   bool IsRecentlyUnbound(int pid);
@@ -117,7 +117,7 @@ class DHCPProvider {
   void RetireUnboundPID(int pid);
 
   // Store cached copies of singletons for speed/ease of testing.
-  SharedDBusConnection *shared_dbus_connection_;
+  SharedDBusConnection* shared_dbus_connection_;
 
   // A single listener is used to catch signals from all DHCP clients and
   // dispatch them to the appropriate DHCP configuration instance.
@@ -127,10 +127,10 @@ class DHCPProvider {
   PIDConfigMap configs_;
 
   base::FilePath root_;
-  ControlInterface *control_interface_;
-  EventDispatcher *dispatcher_;
-  GLib *glib_;
-  Metrics *metrics_;
+  ControlInterface* control_interface_;
+  EventDispatcher* dispatcher_;
+  GLib* glib_;
+  Metrics* metrics_;
 
   // Track the set of PIDs recently unbound from the provider in case messages
   // arrive addressed from them.

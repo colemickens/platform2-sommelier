@@ -32,7 +32,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(DHCPConfig *d) {
+static string ObjectID(DHCPConfig* d) {
   if (d == nullptr)
     return "(dhcp_config)";
   else
@@ -47,13 +47,13 @@ const int DHCPConfig::kDHCPCDExitWaitMilliseconds = 3000;
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
 const char DHCPConfig::kDHCPCDUser[] = "dhcp";
 
-DHCPConfig::DHCPConfig(ControlInterface *control_interface,
-                       EventDispatcher *dispatcher,
-                       DHCPProvider *provider,
-                       const string &device_name,
-                       const string &type,
-                       const string &lease_file_suffix,
-                       GLib *glib)
+DHCPConfig::DHCPConfig(ControlInterface* control_interface,
+                       EventDispatcher* dispatcher,
+                       DHCPProvider* provider,
+                       const string& device_name,
+                       const string& type,
+                       const string& lease_file_suffix,
+                       GLib* glib)
     : IPConfig(control_interface, device_name, type),
       proxy_factory_(ProxyFactory::GetInstance()),
       provider_(provider),
@@ -133,14 +133,14 @@ bool DHCPConfig::ReleaseIP(ReleaseReason reason) {
   return true;
 }
 
-void DHCPConfig::InitProxy(const string &service) {
+void DHCPConfig::InitProxy(const string& service) {
   if (!proxy_.get()) {
     LOG(INFO) << "Init DHCP Proxy: " << device_name() << " at " << service;
     proxy_.reset(proxy_factory_->CreateDHCPProxy(service));
   }
 }
 
-void DHCPConfig::UpdateProperties(const Properties &properties,
+void DHCPConfig::UpdateProperties(const Properties& properties,
                                   bool new_lease_acquired) {
   StopAcquisitionTimeout();
   if (properties.lease_duration_seconds) {
@@ -169,13 +169,13 @@ bool DHCPConfig::Start() {
 
   // TODO(quiche): This should be migrated to use ExternalTask.
   // (crbug.com/246263).
-  vector<char *> args;
-  args.push_back(const_cast<char *>(kDHCPCDPath));
+  vector<char*> args;
+  args.push_back(const_cast<char*>(kDHCPCDPath));
 
   // Append flags.
   vector<string> flags = GetFlags();
-  for (const auto &flag : flags) {
-    args.push_back(const_cast<char *>(flag.c_str()));
+  for (const auto& flag : flags) {
+    args.push_back(const_cast<char*>(flag.c_str()));
   }
 
   string interface_arg(device_name());
@@ -183,10 +183,10 @@ bool DHCPConfig::Start() {
     interface_arg = base::StringPrintf("%s=%s", device_name().c_str(),
                                        lease_file_suffix_.c_str());
   }
-  args.push_back(const_cast<char *>(interface_arg.c_str()));
+  args.push_back(const_cast<char*>(interface_arg.c_str()));
   args.push_back(nullptr);
 
-  struct minijail *jail = minijail_->New();
+  struct minijail* jail = minijail_->New();
   minijail_->DropRoot(jail, kDHCPCDUser, kDHCPCDUser);
   minijail_->UseCapabilities(jail,
                              CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
@@ -207,7 +207,7 @@ bool DHCPConfig::Start() {
   return true;
 }
 
-void DHCPConfig::Stop(const char *reason) {
+void DHCPConfig::Stop(const char* reason) {
   LOG_IF(INFO, pid_) << "Stopping " << pid_ << " (" << reason << ")";
   KillClient();
   // KillClient waits for the client to terminate so it's safe to cleanup the
@@ -257,7 +257,7 @@ void DHCPConfig::ChildWatchCallback(GPid pid, gint status, gpointer data) {
   } else {
     LOG(WARNING) << "pid " << pid << " exit status " << status;
   }
-  DHCPConfig *config = reinterpret_cast<DHCPConfig *>(data);
+  DHCPConfig* config = reinterpret_cast<DHCPConfig*>(data);
   config->child_watch_tag_ = 0;
   CHECK_EQ(pid, config->pid_);
   // |config| instance may be destroyed after this call.

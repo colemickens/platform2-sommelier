@@ -19,18 +19,18 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(DHCPCDProxy *d) { return "(dhcpcd_proxy)"; }
+static string ObjectID(DHCPCDProxy* d) { return "(dhcpcd_proxy)"; }
 }
 
 const char DHCPCDProxy::kDBusInterfaceName[] = "org.chromium.dhcpcd";
 const char DHCPCDProxy::kDBusPath[] = "/org/chromium/dhcpcd";
 
-DHCPCDListener::DHCPCDListener(DBus::Connection *connection,
-                               DHCPProvider *provider)
+DHCPCDListener::DHCPCDListener(DBus::Connection* connection,
+                               DHCPProvider* provider)
     : proxy_(connection, provider) {}
 
-DHCPCDListener::Proxy::Proxy(DBus::Connection *connection,
-                             DHCPProvider *provider)
+DHCPCDListener::Proxy::Proxy(DBus::Connection* connection,
+                             DHCPProvider* provider)
     : DBus::InterfaceProxy(DHCPCDProxy::kDBusInterfaceName),
       DBus::ObjectProxy(*connection, DHCPCDProxy::kDBusPath),
       provider_(provider) {
@@ -41,13 +41,13 @@ DHCPCDListener::Proxy::Proxy(DBus::Connection *connection,
 
 DHCPCDListener::Proxy::~Proxy() {}
 
-void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
+void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage& signal) {
   SLOG(DBus, nullptr, 2) << __func__;
   DBus::MessageIter ri = signal.reader();
   unsigned int pid = std::numeric_limits<unsigned int>::max();
   try {
     ri >> pid;
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
                << " interface: " << signal.interface()
                << " member: " << signal.member() << " path: " << signal.path();
@@ -70,7 +70,7 @@ void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
   string reason;
   try {
   ri >> reason;
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
                << " interface: " << signal.interface()
                << " member: " << signal.member() << " path: " << signal.path();
@@ -78,7 +78,7 @@ void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
   DHCPConfig::Configuration configuration;
   try {
     ri >> configuration;
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
                << " interface: " << signal.interface()
                << " member: " << signal.member() << " path: " << signal.path();
@@ -87,13 +87,13 @@ void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
 }
 
 void DHCPCDListener::Proxy::StatusChangedSignal(
-    const DBus::SignalMessage &signal) {
+    const DBus::SignalMessage& signal) {
   SLOG(DBus, nullptr, 2) << __func__;
   DBus::MessageIter ri = signal.reader();
   unsigned int pid = std::numeric_limits<unsigned int>::max();
   try {
     ri >> pid;
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
                << " interface: " << signal.interface()
                << " member: " << signal.member() << " path: " << signal.path();
@@ -118,7 +118,7 @@ void DHCPCDListener::Proxy::StatusChangedSignal(
   string status;
   try {
     ri >> status;
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
                << " interface: " << signal.interface()
                << " member: " << signal.member() << " path: " << signal.path();
@@ -126,26 +126,26 @@ void DHCPCDListener::Proxy::StatusChangedSignal(
   config->ProcessStatusChangeSignal(status);
 }
 
-DHCPCDProxy::DHCPCDProxy(DBus::Connection *connection, const string &service)
+DHCPCDProxy::DHCPCDProxy(DBus::Connection* connection, const string& service)
     : proxy_(connection, service) {
   SLOG(this, 2) << "DHCPCDProxy(service=" << service << ").";
 }
 
-void DHCPCDProxy::Rebind(const string &interface) {
+void DHCPCDProxy::Rebind(const string& interface) {
   SLOG(DBus, nullptr, 2) << __func__;
   try {
     proxy_.Rebind(interface);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
                << " interface: " << interface;
   }
 }
 
-void DHCPCDProxy::Release(const string &interface) {
+void DHCPCDProxy::Release(const string& interface) {
   SLOG(DBus, nullptr, 2) << __func__;
   try {
     proxy_.Release(interface);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     if (!strcmp(e.name(), DBUS_ERROR_SERVICE_UNKNOWN) ||
         !strcmp(e.name(), DBUS_ERROR_NO_REPLY)) {
       LOG(INFO) << "dhcpcd daemon appears to have already exited.";
@@ -156,8 +156,8 @@ void DHCPCDProxy::Release(const string &interface) {
   }
 }
 
-DHCPCDProxy::Proxy::Proxy(DBus::Connection *connection,
-                          const string &service)
+DHCPCDProxy::Proxy::Proxy(DBus::Connection* connection,
+                          const string& service)
     : DBus::ObjectProxy(*connection, kDBusPath, service.c_str()) {
   // Don't catch signals directly in this proxy because they will be dispatched
   // to the client by the DHCPCD listener.
@@ -168,15 +168,15 @@ DHCPCDProxy::Proxy::Proxy(DBus::Connection *connection,
 DHCPCDProxy::Proxy::~Proxy() {}
 
 void DHCPCDProxy::Proxy::Event(
-    const uint32_t &/*pid*/,
-    const std::string &/*reason*/,
-    const DHCPConfig::Configuration &/*configuration*/) {
+    const uint32_t& /*pid*/,
+    const std::string& /*reason*/,
+    const DHCPConfig::Configuration& /*configuration*/) {
   SLOG(DBus, nullptr, 2) << __func__;
   NOTREACHED();
 }
 
-void DHCPCDProxy::Proxy::StatusChanged(const uint32_t &/*pid*/,
-                                       const std::string &/*status*/) {
+void DHCPCDProxy::Proxy::StatusChanged(const uint32_t& /*pid*/,
+                                       const std::string& /*status*/) {
   SLOG(DBus, nullptr, 2) << __func__;
   NOTREACHED();
 }

@@ -91,11 +91,11 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
     config_->Stop("In test");
   }
 
-  DHCPv4ConfigRefPtr CreateMockMinijailConfig(const string &hostname,
-                                              const string &lease_suffix,
+  DHCPv4ConfigRefPtr CreateMockMinijailConfig(const string& hostname,
+                                              const string& lease_suffix,
                                               bool arp_gateway);
-  DHCPv4ConfigRefPtr CreateRunningConfig(const string &hostname,
-                                         const string &lease_suffix,
+  DHCPv4ConfigRefPtr CreateRunningConfig(const string& hostname,
+                                         const string& lease_suffix,
                                          bool arp_gateway);
   void StopRunningConfigAndExpect(DHCPv4ConfigRefPtr config,
                                   bool lease_file_exists);
@@ -120,8 +120,8 @@ const int DHCPv4ConfigTest::kPID = 123456;
 const unsigned int DHCPv4ConfigTest::kTag = 77;
 
 DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
-    const string &hostname,
-    const string &lease_suffix,
+    const string& hostname,
+    const string& lease_suffix,
     bool arp_gateway) {
   DHCPv4ConfigRefPtr config(new DHCPv4Config(&control_,
                                             dispatcher(),
@@ -138,7 +138,7 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
 }
 
 DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
-    const string &hostname, const string &lease_suffix, bool arp_gateway) {
+    const string& hostname, const string& lease_suffix, bool arp_gateway) {
   DHCPv4ConfigRefPtr config(new DHCPv4Config(&control_,
                                             dispatcher(),
                                             &provider_,
@@ -229,12 +229,12 @@ TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   // The two routes (including the one which would have otherwise been
   // classified as a default route) are added to the routing table.
   EXPECT_EQ(2, properties.routes.size());
-  const IPConfig::Route &route0 = properties.routes[0];
+  const IPConfig::Route& route0 = properties.routes[0];
   EXPECT_EQ(kDefaultAddress, route0.host);
   EXPECT_EQ("0.0.0.0", route0.netmask);
   EXPECT_EQ(kRouter2, route0.gateway);
 
-  const IPConfig::Route &route1 = properties.routes[1];
+  const IPConfig::Route& route1 = properties.routes[1];
   EXPECT_EQ(kAddress1, route1.host);
   EXPECT_EQ("255.255.255.0", route1.netmask);
   EXPECT_EQ(kRouter1, route1.gateway);
@@ -388,13 +388,13 @@ class DHCPv4ConfigCallbackTest : public DHCPv4ConfigTest {
   }
 
   MOCK_METHOD2(SuccessCallback,
-               void(const IPConfigRefPtr &ipconfig, bool new_lease_acquired));
-  MOCK_METHOD1(FailureCallback, void(const IPConfigRefPtr &ipconfig));
+               void(const IPConfigRefPtr& ipconfig, bool new_lease_acquired));
+  MOCK_METHOD1(FailureCallback, void(const IPConfigRefPtr& ipconfig));
 
   // The mock methods above take IPConfigRefPtr because this is the type
   // that the registered callbacks take.  This conversion of the DHCP
   // config ref pointer eases our work in setting up expectations.
-  const IPConfigRefPtr &ConfigRef() { return ip_config_; }
+  const IPConfigRefPtr& ConfigRef() { return ip_config_; }
 
  private:
   IPConfigRefPtr ip_config_;
@@ -414,7 +414,7 @@ TEST_F(DHCPv4ConfigCallbackTest, ProcessEventSignalFail) {
 }
 
 TEST_F(DHCPv4ConfigCallbackTest, ProcessEventSignalSuccess) {
-  for (const auto &reason : { DHCPv4Config::kReasonBound,
+  for (const auto& reason : { DHCPv4Config::kReasonBound,
                               DHCPv4Config::kReasonRebind,
                               DHCPv4Config::kReasonReboot,
                               DHCPv4Config::kReasonRenew }) {

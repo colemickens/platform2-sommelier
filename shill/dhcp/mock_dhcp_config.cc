@@ -8,8 +8,8 @@ using std::string;
 
 namespace shill {
 
-MockDHCPConfig::MockDHCPConfig(ControlInterface *control_interface,
-                               const string &device_name)
+MockDHCPConfig::MockDHCPConfig(ControlInterface* control_interface,
+                               const string& device_name)
     : DHCPConfig(control_interface,
                  nullptr,
                  nullptr,
@@ -20,8 +20,8 @@ MockDHCPConfig::MockDHCPConfig(ControlInterface *control_interface,
 
 MockDHCPConfig::~MockDHCPConfig() {}
 
-void MockDHCPConfig::ProcessEventSignal(const std::string &reason,
-                                        const Configuration &configuration) {}
-void MockDHCPConfig::ProcessStatusChangeSignal(const std::string &status) {}
+void MockDHCPConfig::ProcessEventSignal(const std::string& reason,
+                                        const Configuration& configuration) {}
+void MockDHCPConfig::ProcessStatusChangeSignal(const std::string& status) {}
 
 }  // namespace shill

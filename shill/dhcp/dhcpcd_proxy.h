@@ -22,20 +22,20 @@ class DHCPProvider;
 // client based on the PID.
 class DHCPCDListener {
  public:
-  DHCPCDListener(DBus::Connection *connection, DHCPProvider *provider);
+  DHCPCDListener(DBus::Connection* connection, DHCPProvider* provider);
 
  private:
   class Proxy : public DBus::InterfaceProxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection, DHCPProvider *provider);
+    Proxy(DBus::Connection* connection, DHCPProvider* provider);
     ~Proxy() override;
 
    private:
-    void EventSignal(const DBus::SignalMessage &signal);
-    void StatusChangedSignal(const DBus::SignalMessage &signal);
+    void EventSignal(const DBus::SignalMessage& signal);
+    void StatusChangedSignal(const DBus::SignalMessage& signal);
 
-    DHCPProvider *provider_;
+    DHCPProvider* provider_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
@@ -52,17 +52,17 @@ class DHCPCDProxy : public DHCPProxyInterface {
   static const char kDBusInterfaceName[];
   static const char kDBusPath[];
 
-  DHCPCDProxy(DBus::Connection *connection, const std::string &service);
+  DHCPCDProxy(DBus::Connection* connection, const std::string& service);
 
   // Inherited from DHCPProxyInterface.
-  virtual void Rebind(const std::string &interface);
-  virtual void Release(const std::string &interface);
+  virtual void Rebind(const std::string& interface);
+  virtual void Release(const std::string& interface);
 
  private:
   class Proxy : public org::chromium::dhcpcd_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection, const std::string &service);
+    Proxy(DBus::Connection* connection, const std::string& service);
     ~Proxy() override;
 
    private:
@@ -70,10 +70,10 @@ class DHCPCDProxy : public DHCPProxyInterface {
     // are unused because signals are dispatched directly to the DHCP
     // configuration instance by the signal listener.
     void Event(
-        const uint32_t &pid,
-        const std::string &reason,
-        const DHCPConfig::Configuration &configuration) override;
-    void StatusChanged(const uint32_t &pid, const std::string &status) override;
+        const uint32_t& pid,
+        const std::string& reason,
+        const DHCPConfig::Configuration& configuration) override;
+    void StatusChanged(const uint32_t& pid, const std::string& status) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

@@ -26,7 +26,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(DHCPProvider *d) { return "(dhcp_provider)"; }
+static string ObjectID(DHCPProvider* d) { return "(dhcp_provider)"; }
 }
 
 namespace {
@@ -57,12 +57,12 @@ DHCPProvider* DHCPProvider::GetInstance() {
   return g_dhcp_provider.Pointer();
 }
 
-void DHCPProvider::Init(ControlInterface *control_interface,
-                        EventDispatcher *dispatcher,
-                        GLib *glib,
-                        Metrics *metrics) {
+void DHCPProvider::Init(ControlInterface* control_interface,
+                        EventDispatcher* dispatcher,
+                        GLib* glib,
+                        Metrics* metrics) {
   SLOG(this, 2) << __func__;
-  DBus::Connection *connection = shared_dbus_connection_->GetProxyConnection();
+  DBus::Connection* connection = shared_dbus_connection_->GetProxyConnection();
   listener_.reset(new DHCPCDListener(connection, this));
   glib_ = glib;
   control_interface_ = control_interface;
@@ -75,9 +75,9 @@ void DHCPProvider::Stop() {
 }
 
 DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
-    const string &device_name,
-    const string &host_name,
-    const string &lease_file_suffix,
+    const string& device_name,
+    const string& host_name,
+    const string& lease_file_suffix,
     bool arp_gateway) {
   SLOG(this, 2) << __func__ << " device: " << device_name;
   return new DHCPv4Config(control_interface_,
@@ -93,7 +93,7 @@ DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
 
 #ifndef DISABLE_DHCPV6
 DHCPConfigRefPtr DHCPProvider::CreateIPv6Config(
-    const string &device_name, const string &lease_file_suffix) {
+    const string& device_name, const string& lease_file_suffix) {
   SLOG(this, 2) << __func__ << " device: " << device_name;
   return new DHCPv6Config(control_interface_,
                           dispatcher_,
@@ -113,7 +113,7 @@ DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {
   return it->second;
 }
 
-void DHCPProvider::BindPID(int pid, const DHCPConfigRefPtr &config) {
+void DHCPProvider::BindPID(int pid, const DHCPConfigRefPtr& config) {
   SLOG(this, 2) << __func__ << " pid: " << pid;
   configs_[pid] = config;
 }
@@ -135,7 +135,7 @@ bool DHCPProvider::IsRecentlyUnbound(int pid) {
   return ContainsValue(recently_unbound_pids_, pid);
 }
 
-void DHCPProvider::DestroyLease(const string &name) {
+void DHCPProvider::DestroyLease(const string& name) {
   SLOG(this, 2) << __func__ << " name: " << name;
   base::DeleteFile(root_.Append(
       base::StringPrintf(kDHCPCDPathFormatLease,

@@ -23,21 +23,21 @@ class Metrics;
 // a dynamic DNS entry.
 class DHCPv4Config : public DHCPConfig {
  public:
-  DHCPv4Config(ControlInterface *control_interface,
-               EventDispatcher *dispatcher,
-               DHCPProvider *provider,
-               const std::string &device_name,
-               const std::string &request_hostname,
-               const std::string &lease_file_suffix,
+  DHCPv4Config(ControlInterface* control_interface,
+               EventDispatcher* dispatcher,
+               DHCPProvider* provider,
+               const std::string& device_name,
+               const std::string& request_hostname,
+               const std::string& lease_file_suffix,
                bool arp_gateway,
-               GLib *glib,
-               Metrics *metrics);
+               GLib* glib,
+               Metrics* metrics);
   ~DHCPv4Config() override;
 
   // Inherited from DHCPConfig.
-  void ProcessEventSignal(const std::string &reason,
-                          const Configuration &configuration) override;
-  void ProcessStatusChangeSignal(const std::string &status) override;
+  void ProcessEventSignal(const std::string& reason,
+                          const Configuration& configuration) override;
+  void ProcessStatusChangeSignal(const std::string& status) override;
 
  protected:
   // Inherited from DHCPConfig.
@@ -112,13 +112,13 @@ class DHCPv4Config : public DHCPConfig {
   // also sets the "routes" parameter of the IPConfig properties for all
   // routes not converted into the default gateway.  Returns true on
   // success, and false otherwise.
-  static bool ParseClasslessStaticRoutes(const std::string &classless_routes,
-                                         IPConfig::Properties *properties);
+  static bool ParseClasslessStaticRoutes(const std::string& classless_routes,
+                                         IPConfig::Properties* properties);
 
   // Parses |configuration| into |properties|. Returns true on success, and
   // false otherwise.
-  bool ParseConfiguration(const Configuration &configuration,
-                          IPConfig::Properties *properties);
+  bool ParseConfiguration(const Configuration& configuration,
+                          IPConfig::Properties* properties);
 
   // Returns the string representation of the IP address |address|, or an
   // empty string on failure.
@@ -135,7 +135,7 @@ class DHCPv4Config : public DHCPConfig {
   // Whether it is valid to retain the lease acquired via gateway ARP.
   bool is_gateway_arp_active_;
 
-  Metrics *metrics_;
+  Metrics* metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPv4Config);
 };

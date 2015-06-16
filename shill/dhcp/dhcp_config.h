@@ -41,13 +41,13 @@ class DHCPConfig : public IPConfig {
  public:
   typedef std::map<std::string, DBus::Variant> Configuration;
 
-  DHCPConfig(ControlInterface *control_interface,
-             EventDispatcher *dispatcher,
-             DHCPProvider *provider,
-             const std::string &device_name,
-             const std::string &type,
-             const std::string &lease_file_suffix,
-             GLib *glib);
+  DHCPConfig(ControlInterface* control_interface,
+             EventDispatcher* dispatcher,
+             DHCPProvider* provider,
+             const std::string& device_name,
+             const std::string& type,
+             const std::string& lease_file_suffix,
+             GLib* glib);
   ~DHCPConfig() override;
 
   // Inherited from IPConfig.
@@ -57,14 +57,14 @@ class DHCPConfig : public IPConfig {
 
   // If |proxy_| is not initialized already, sets it to a new D-Bus proxy to
   // |service|.
-  void InitProxy(const std::string &service);
+  void InitProxy(const std::string& service);
 
   // Processes an Event signal from dhcpcd.
-  virtual void ProcessEventSignal(const std::string &reason,
-                                  const Configuration &configuration) = 0;
+  virtual void ProcessEventSignal(const std::string& reason,
+                                  const Configuration& configuration) = 0;
 
   // Processes an Status Change signal from dhcpcd.
-  virtual void ProcessStatusChangeSignal(const std::string &status) = 0;
+  virtual void ProcessStatusChangeSignal(const std::string& status) = 0;
 
   // Set the minimum MTU that this configuration will respect.
   virtual void set_minimum_mtu(const int minimum_mtu) {
@@ -73,7 +73,7 @@ class DHCPConfig : public IPConfig {
 
  protected:
   // Overrides base clase implementation.
-  void UpdateProperties(const Properties &properties,
+  void UpdateProperties(const Properties& properties,
                         bool new_lease_acquired) override;
   void NotifyFailure() override;
 
@@ -140,7 +140,7 @@ class DHCPConfig : public IPConfig {
   bool Start();
 
   // Stops dhcpcd if running.
-  void Stop(const char *reason);
+  void Stop(const char* reason);
 
   // Stops dhcpcd if already running and then starts it. Returns true on success
   // and false otherwise.
@@ -173,9 +173,9 @@ class DHCPConfig : public IPConfig {
   void KillClient();
 
   // Store cached copies of singletons for speed/ease of testing.
-  ProxyFactory *proxy_factory_;
+  ProxyFactory* proxy_factory_;
 
-  DHCPProvider *provider_;
+  DHCPProvider* provider_;
 
   // DHCP lease file suffix, used to differentiate the lease of one interface
   // or network from another.
@@ -211,11 +211,11 @@ class DHCPConfig : public IPConfig {
   base::FilePath root_;
 
   base::WeakPtrFactory<DHCPConfig> weak_ptr_factory_;
-  EventDispatcher *dispatcher_;
-  GLib *glib_;
-  Metrics *metrics_;
+  EventDispatcher* dispatcher_;
+  GLib* glib_;
+  Metrics* metrics_;
 
-  chromeos::Minijail *minijail_;
+  chromeos::Minijail* minijail_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPConfig);
 };

@@ -23,7 +23,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static string ObjectID(DHCPv4Config *d) {
+static string ObjectID(DHCPv4Config* d) {
   if (d == nullptr)
     return "(DHCPv4_config)";
   else
@@ -78,15 +78,15 @@ const char DHCPv4Config::kStatusRequest[] = "Request";
 const char DHCPv4Config::kType[] = "dhcp";
 
 
-DHCPv4Config::DHCPv4Config(ControlInterface *control_interface,
-                       EventDispatcher *dispatcher,
-                       DHCPProvider *provider,
-                       const string &device_name,
-                       const string &request_hostname,
-                       const string &lease_file_suffix,
+DHCPv4Config::DHCPv4Config(ControlInterface* control_interface,
+                       EventDispatcher* dispatcher,
+                       DHCPProvider* provider,
+                       const string& device_name,
+                       const string& request_hostname,
+                       const string& lease_file_suffix,
                        bool arp_gateway,
-                       GLib *glib,
-                       Metrics *metrics)
+                       GLib* glib,
+                       Metrics* metrics)
     : DHCPConfig(control_interface,
                  dispatcher,
                  provider,
@@ -105,8 +105,8 @@ DHCPv4Config::~DHCPv4Config() {
   SLOG(this, 2) << __func__ << ": " << device_name();
 }
 
-void DHCPv4Config::ProcessEventSignal(const string &reason,
-                                     const Configuration &configuration) {
+void DHCPv4Config::ProcessEventSignal(const string& reason,
+                                     const Configuration& configuration) {
   LOG(INFO) << "Event reason: " << reason;
   if (reason == kReasonFail) {
     LOG(ERROR) << "Received failure event from DHCP client.";
@@ -149,7 +149,7 @@ void DHCPv4Config::ProcessEventSignal(const string &reason,
   }
 }
 
-void DHCPv4Config::ProcessStatusChangeSignal(const string &status) {
+void DHCPv4Config::ProcessStatusChangeSignal(const string& status) {
   SLOG(this, 2) << __func__ << ": " << status;
 
   if (status == kStatusArpGateway) {
@@ -244,8 +244,8 @@ string DHCPv4Config::GetIPv4AddressString(unsigned int address) {
 }
 
 // static
-bool DHCPv4Config::ParseClasslessStaticRoutes(const string &classless_routes,
-                                             IPConfig::Properties *properties) {
+bool DHCPv4Config::ParseClasslessStaticRoutes(const string& classless_routes,
+                                             IPConfig::Properties* properties) {
   if (classless_routes.empty()) {
     // It is not an error for this string to be empty.
     return true;
@@ -265,7 +265,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(const string &classless_routes,
   // "destination/prefix gateway" values.  As such, we iterate twice
   // for each pass of the loop below.
   while (route_iterator != route_strings.end()) {
-    const string &destination_as_string(*route_iterator);
+    const string& destination_as_string(*route_iterator);
     route_iterator++;
     IPAddress destination(IPAddress::kFamilyIPv4);
     if (!destination.SetAddressAndPrefixFromString(
@@ -276,7 +276,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(const string &classless_routes,
     }
 
     CHECK(route_iterator != route_strings.end());
-    const string &gateway_as_string(*route_iterator);
+    const string& gateway_as_string(*route_iterator);
     route_iterator++;
     IPAddress gateway(IPAddress::kFamilyIPv4);
     if (!gateway.SetAddressFromString(gateway_as_string)) {
@@ -312,8 +312,8 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(const string &classless_routes,
 }
 
 // static
-bool DHCPv4Config::ParseConfiguration(const Configuration &configuration,
-                                     IPConfig::Properties *properties) {
+bool DHCPv4Config::ParseConfiguration(const Configuration& configuration,
+                                     IPConfig::Properties* properties) {
   SLOG(nullptr, 2) << __func__;
   properties->method = kTypeDHCP;
   properties->address_family = IPAddress::kFamilyIPv4;
@@ -321,8 +321,8 @@ bool DHCPv4Config::ParseConfiguration(const Configuration &configuration,
   bool default_gateway_parse_error = false;
   for (Configuration::const_iterator it = configuration.begin();
        it != configuration.end(); ++it) {
-    const string &key = it->first;
-    const DBus::Variant &value = it->second;
+    const string& key = it->first;
+    const DBus::Variant& value = it->second;
     SLOG(nullptr, 2) << "Processing key: " << key;
     if (key == kConfigurationKeyIPAddress) {
       properties->address = GetIPv4AddressString(value.reader().get_uint32());

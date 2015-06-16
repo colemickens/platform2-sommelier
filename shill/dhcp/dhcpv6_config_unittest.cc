@@ -86,8 +86,8 @@ class DHCPv6ConfigTest : public PropertyStoreTest {
     config_->Stop("In test");
   }
 
-  DHCPv6ConfigRefPtr CreateMockMinijailConfig(const string &lease_suffix);
-  DHCPv6ConfigRefPtr CreateRunningConfig(const string &lease_suffix);
+  DHCPv6ConfigRefPtr CreateMockMinijailConfig(const string& lease_suffix);
+  DHCPv6ConfigRefPtr CreateRunningConfig(const string& lease_suffix);
   void StopRunningConfigAndExpect(DHCPv6ConfigRefPtr config,
                                   bool lease_file_exists);
 
@@ -109,7 +109,7 @@ const int DHCPv6ConfigTest::kPID = 123456;
 const unsigned int DHCPv6ConfigTest::kTag = 77;
 
 DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateMockMinijailConfig(
-    const string &lease_suffix) {
+    const string& lease_suffix) {
   DHCPv6ConfigRefPtr config(new DHCPv6Config(&control_,
                                              dispatcher(),
                                              DHCPProvider::GetInstance(),
@@ -122,7 +122,7 @@ DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateMockMinijailConfig(
 }
 
 DHCPv6ConfigRefPtr DHCPv6ConfigTest::CreateRunningConfig(
-    const string &lease_suffix) {
+    const string& lease_suffix) {
   DHCPv6ConfigRefPtr config(new DHCPv6Config(&control_,
                                              dispatcher(),
                                              DHCPProvider::GetInstance(),
@@ -255,13 +255,13 @@ class DHCPv6ConfigCallbackTest : public DHCPv6ConfigTest {
   }
 
   MOCK_METHOD2(SuccessCallback,
-               void(const IPConfigRefPtr &ipconfig, bool new_lease_acquired));
-  MOCK_METHOD1(FailureCallback, void(const IPConfigRefPtr &ipconfig));
+               void(const IPConfigRefPtr& ipconfig, bool new_lease_acquired));
+  MOCK_METHOD1(FailureCallback, void(const IPConfigRefPtr& ipconfig));
 
   // The mock methods above take IPConfigRefPtr because this is the type
   // that the registered callbacks take.  This conversion of the DHCP
   // config ref pointer eases our work in setting up expectations.
-  const IPConfigRefPtr &ConfigRef() { return ip_config_; }
+  const IPConfigRefPtr& ConfigRef() { return ip_config_; }
 
  private:
   IPConfigRefPtr ip_config_;
@@ -283,7 +283,7 @@ TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalFail) {
 }
 
 TEST_F(DHCPv6ConfigCallbackTest, ProcessEventSignalSuccess) {
-  for (const auto &reason : { DHCPv6Config::kReasonBound,
+  for (const auto& reason : { DHCPv6Config::kReasonBound,
                               DHCPv6Config::kReasonRebind,
                               DHCPv6Config::kReasonReboot,
                               DHCPv6Config::kReasonRenew }) {

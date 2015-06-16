@@ -16,13 +16,13 @@ namespace shill {
 
 class MockDHCPConfig : public DHCPConfig {
  public:
-  MockDHCPConfig(ControlInterface *control_interface,
-                 const std::string &device_name);
+  MockDHCPConfig(ControlInterface* control_interface,
+                 const std::string& device_name);
   ~MockDHCPConfig() override;
 
-  void ProcessEventSignal(const std::string &reason,
-                          const Configuration &configuration) override;
-  void ProcessStatusChangeSignal(const std::string &status) override;
+  void ProcessEventSignal(const std::string& reason,
+                          const Configuration& configuration) override;
+  void ProcessStatusChangeSignal(const std::string& status) override;
 
   MOCK_METHOD0(RequestIP, bool());
   MOCK_METHOD1(ReleaseIP, bool(ReleaseReason));

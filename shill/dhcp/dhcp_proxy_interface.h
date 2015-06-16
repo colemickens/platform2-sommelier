@@ -15,8 +15,8 @@ class DHCPProxyInterface {
  public:
   virtual ~DHCPProxyInterface() {}
 
-  virtual void Rebind(const std::string &interface) = 0;
-  virtual void Release(const std::string &interface) = 0;
+  virtual void Rebind(const std::string& interface) = 0;
+  virtual void Release(const std::string& interface) = 0;
 };
 
 }  // namespace shill

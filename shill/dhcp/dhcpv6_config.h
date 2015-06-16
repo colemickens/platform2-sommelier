@@ -21,18 +21,18 @@ namespace shill {
 // DHCPv6 server.
 class DHCPv6Config : public DHCPConfig {
  public:
-  DHCPv6Config(ControlInterface *control_interface,
-               EventDispatcher *dispatcher,
-               DHCPProvider *provider,
-               const std::string &device_name,
-               const std::string &lease_file_suffix,
-               GLib *glib);
+  DHCPv6Config(ControlInterface* control_interface,
+               EventDispatcher* dispatcher,
+               DHCPProvider* provider,
+               const std::string& device_name,
+               const std::string& lease_file_suffix,
+               GLib* glib);
   ~DHCPv6Config() override;
 
   // Inherited from DHCPConfig.
-  void ProcessEventSignal(const std::string &reason,
-                          const Configuration &configuration) override;
-  void ProcessStatusChangeSignal(const std::string &status) override;
+  void ProcessEventSignal(const std::string& reason,
+                          const Configuration& configuration) override;
+  void ProcessStatusChangeSignal(const std::string& status) override;
 
  protected:
   // Inherited from DHCPConfig.
@@ -69,7 +69,7 @@ class DHCPv6Config : public DHCPConfig {
 
   // Parses |configuration| into |properties|. Returns true on success, and
   // false otherwise.
-  bool ParseConfiguration(const Configuration &configuration);
+  bool ParseConfiguration(const Configuration& configuration);
 
   void UpdateLeaseTime(uint32_t lease_time);
 
