@@ -146,11 +146,12 @@ class PerfSerializer : public PerfParser {
       const quipper::PerfDataProto_CommEvent& sample,
       event_t* event) const;
 
-  bool SerializeForkSample(const event_t& event,
-                           quipper::PerfDataProto_ForkEvent* sample) const;
-  bool DeserializeForkSample(
-      const quipper::PerfDataProto_ForkEvent& sample,
-      event_t* event) const;
+  // These handle both fork and exit events, which use the same protobuf
+  // message definition.
+  bool SerializeForkExitSample(const event_t& event,
+                               quipper::PerfDataProto_ForkEvent* sample) const;
+  bool DeserializeForkExitSample(const quipper::PerfDataProto_ForkEvent& sample,
+                                 event_t* event) const;
 
   bool SerializeLostSample(const event_t& event,
                            quipper::PerfDataProto_LostEvent* sample) const;

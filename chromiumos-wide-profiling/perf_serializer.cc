@@ -316,9 +316,16 @@ bool PerfSerializer::SerializeEvent(
         return false;
       break;
     case PERF_RECORD_EXIT:
-    case PERF_RECORD_FORK:
-      if (!SerializeForkSample(raw_event, event_proto->mutable_fork_event()))
+      if (!SerializeForkExitSample(raw_event,
+                                   event_proto->mutable_exit_event())) {
         return false;
+      }
+      break;
+    case PERF_RECORD_FORK:
+      if (!SerializeForkExitSample(raw_event,
+                                   event_proto->mutable_fork_event())) {
+        return false;
+      }
       break;
     case PERF_RECORD_LOST:
       if (!SerializeLostSample(raw_event, event_proto->mutable_lost_event()))
@@ -385,9 +392,16 @@ bool PerfSerializer::DeserializeEvent(
         event_deserialized = false;
       break;
     case PERF_RECORD_EXIT:
-    case PERF_RECORD_FORK:
-      if (!DeserializeForkSample(event_proto.fork_event(), temp_event.get()))
+      if (!DeserializeForkExitSample(event_proto.exit_event(),
+                                     temp_event.get())) {
         event_deserialized = false;
+      }
+      break;
+    case PERF_RECORD_FORK:
+      if (!DeserializeForkExitSample(event_proto.fork_event(),
+                                     temp_event.get())) {
+        event_deserialized = false;
+      }
       break;
     case PERF_RECORD_LOST:
       if (!DeserializeLostSample(event_proto.lost_event(), temp_event.get()))
@@ -645,20 +659,20 @@ bool PerfSerializer::DeserializeCommSample(
   return DeserializeSampleInfo(sample.sample_info(), event);
 }
 
-bool PerfSerializer::SerializeForkSample(
+bool PerfSerializer::SerializeForkExitSample(
     const event_t& event,
     PerfDataProto_ForkEvent* sample) const {
   const struct fork_event& fork = event.fork;
   sample->set_pid(fork.pid);
   sample->set_ppid(fork.ppid);
   sample->set_tid(fork.tid);
-  sample->set_ptid(fork.ppid);
+  sample->set_ptid(fork.ptid);
   sample->set_fork_time_ns(fork.time);
 
   return SerializeSampleInfo(event, sample->mutable_sample_info());
 }
 
-bool PerfSerializer::DeserializeForkSample(
+bool PerfSerializer::DeserializeForkExitSample(
     const PerfDataProto_ForkEvent& sample,
     event_t* event) const {
   struct fork_event& fork = event->fork;

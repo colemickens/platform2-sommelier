@@ -202,6 +202,47 @@ class ExampleMmap2Event : public StreamWriteable {
   const SampleInfo sample_id_;
 };
 
+// Produces a PERF_RECORD_FORK or PERF_RECORD_EXIT event.
+// Cannot be instantiated directly; use a derived class.
+class ExampleForkExitEvent : public StreamWriteable {
+ public:
+  void WriteTo(std::ostream* out) const override;
+ protected:
+  ExampleForkExitEvent(u32 type, u32 pid, u32 ppid, u32 tid, u32 ptid, u64 time,
+                       const SampleInfo& sample_id)
+      : type_(type),
+        pid_(pid), ppid_(ppid),
+        tid_(tid), ptid_(ptid),
+        time_(time),
+        sample_id_(sample_id) {}
+  const u32 type_;    // Either PERF_RECORD_FORK or PERF_RECORD_EXIT.
+ private:
+  const u32 pid_;
+  const u32 ppid_;
+  const u32 tid_;
+  const u32 ptid_;
+  const u64 time_;
+  const SampleInfo sample_id_;
+};
+
+// Produces a PERF_RECORD_FORK event.
+class ExampleForkEvent : public ExampleForkExitEvent {
+ public:
+  ExampleForkEvent(u32 pid, u32 ppid, u32 tid, u32 ptid, u64 time,
+                   const SampleInfo& sample_id)
+      : ExampleForkExitEvent(PERF_RECORD_FORK, pid, ppid, tid, ptid, time,
+                             sample_id) {}
+};
+
+// Produces a PERF_RECORD_EXIT event.
+class ExampleExitEvent : public ExampleForkExitEvent {
+ public:
+  ExampleExitEvent(u32 pid, u32 ppid, u32 tid, u32 ptid, u64 time,
+                   const SampleInfo& sample_id)
+      : ExampleForkExitEvent(PERF_RECORD_EXIT, pid, ppid, tid, ptid, time,
+                             sample_id) {}
+};
+
 // Produces the PERF_RECORD_FINISHED_ROUND event. This event is just a header.
 class FinishedRoundEvent : public StreamWriteable {
  public:

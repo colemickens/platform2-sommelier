@@ -220,6 +220,28 @@ void ExampleMmap2Event::WriteTo(std::ostream* out) const {
            static_cast<u64>(written_event_size));
 }
 
+void ExampleForkExitEvent::WriteTo(std::ostream* out) const {
+  const size_t event_size = sizeof(struct fork_event) + sample_id_.size();
+
+  struct fork_event event = {
+    .header = {
+      .type = type_,
+      .misc = 0,
+      .size = static_cast<u16>(event_size),
+    },
+    .pid = pid_, .ppid = ppid_,
+    .tid = tid_, .ptid = ptid_,
+    .time = time_,
+  };
+
+  const size_t pre_event_offset = out->tellp();
+  out->write(reinterpret_cast<const char*>(&event), sizeof(event));
+  out->write(sample_id_.data(), sample_id_.size());
+  const size_t written_event_size =
+      static_cast<size_t>(out->tellp()) - pre_event_offset;
+  CHECK_EQ(event.header.size, static_cast<u64>(written_event_size));
+}
+
 void FinishedRoundEvent::WriteTo(std::ostream* out) const {
   const perf_event_header event = {
     .type = PERF_RECORD_FINISHED_ROUND,

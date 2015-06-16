@@ -49,6 +49,8 @@ const uint64_t GetSampleTimestampFromEventProto(
     return event.comm_event().sample_info().sample_time_ns();
   } else if (event.has_fork_event()) {
     return event.fork_event().sample_info().sample_time_ns();
+  } else if (event.has_exit_event()) {
+    return event.exit_event().sample_info().sample_time_ns();
   } else if (event.has_lost_event()) {
     return event.lost_event().sample_info().sample_time_ns();
   } else if (event.has_throttle_event()) {
@@ -629,6 +631,120 @@ TEST(PerfSerializerTest, SerializesAndDeserializesBuildIDs) {
   EXPECT_EQ(string("file8"), build_id_events[7]->filename);
   EXPECT_EQ("0123456789abcdef012345670000000000000000",
             HexToString(build_id_events[7]->build_id, kBuildIDArraySize));
+}
+
+// Regression test for http://crbug.com/500746.
+TEST(PerfSerializerTest, SerializesAndDeserializesForkAndExitEvents) {
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_TID |
+                                              PERF_SAMPLE_TIME,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_FORK
+  testing::ExampleForkEvent(
+      1010, 1020, 1030, 1040, 355ULL * 1000000000,
+      testing::SampleInfo().Tid(2010, 2020).Time(356ULL * 1000000000))
+          .WriteTo(&input);
+
+  // PERF_RECORD_EXIT
+  testing::ExampleExitEvent(
+      3010, 3020, 3030, 3040, 432ULL * 1000000000,
+      testing::SampleInfo().Tid(4010, 4020).Time(433ULL * 1000000000))
+          .WriteTo(&input);
+
+  // Parse and serialize.
+  PerfSerializer serializer;
+  EXPECT_TRUE(serializer.ReadFromString(input.str()));
+  PerfDataProto perf_data_proto;
+  EXPECT_TRUE(serializer.Serialize(&perf_data_proto));
+
+  EXPECT_EQ(1, perf_data_proto.stats().num_fork_events());
+  EXPECT_EQ(1, perf_data_proto.stats().num_exit_events());
+  EXPECT_EQ(2, perf_data_proto.events_size());
+
+  {
+    const PerfDataProto_PerfEvent& event = perf_data_proto.events(0);
+    EXPECT_EQ(PERF_RECORD_FORK, event.header().type());
+    EXPECT_TRUE(event.has_fork_event());
+    EXPECT_FALSE(event.has_exit_event());
+
+    EXPECT_EQ(1010, event.fork_event().pid());
+    EXPECT_EQ(1020, event.fork_event().ppid());
+    EXPECT_EQ(1030, event.fork_event().tid());
+    EXPECT_EQ(1040, event.fork_event().ptid());
+    EXPECT_EQ(355ULL * 1000000000, event.fork_event().fork_time_ns());
+
+    EXPECT_EQ(2010, event.fork_event().sample_info().pid());
+    EXPECT_EQ(2020, event.fork_event().sample_info().tid());
+    EXPECT_EQ(356ULL * 1000000000,
+              event.fork_event().sample_info().sample_time_ns());
+  }
+
+  {
+    const PerfDataProto_PerfEvent& event = perf_data_proto.events(1);
+    EXPECT_EQ(PERF_RECORD_EXIT, event.header().type());
+    EXPECT_FALSE(event.has_fork_event());
+    EXPECT_TRUE(event.has_exit_event());
+
+    EXPECT_EQ(3010, event.exit_event().pid());
+    EXPECT_EQ(3020, event.exit_event().ppid());
+    EXPECT_EQ(3030, event.exit_event().tid());
+    EXPECT_EQ(3040, event.exit_event().ptid());
+    EXPECT_EQ(432ULL * 1000000000, event.exit_event().fork_time_ns());
+
+    EXPECT_EQ(4010, event.exit_event().sample_info().pid());
+    EXPECT_EQ(4020, event.exit_event().sample_info().tid());
+    EXPECT_EQ(433ULL * 1000000000,
+              event.exit_event().sample_info().sample_time_ns());
+  }
+
+  // Deserialize and verify raw events.
+  PerfSerializer deserializer;
+  EXPECT_TRUE(deserializer.Deserialize(perf_data_proto));
+
+  EXPECT_EQ(2, deserializer.events().size());
+
+  {
+    const event_t& event = *deserializer.events()[0].get();
+    EXPECT_EQ(PERF_RECORD_FORK, event.header.type);
+
+    EXPECT_EQ(1010, event.fork.pid);
+    EXPECT_EQ(1020, event.fork.ppid);
+    EXPECT_EQ(1030, event.fork.tid);
+    EXPECT_EQ(1040, event.fork.ptid);
+    EXPECT_EQ(355ULL * 1000000000, event.fork.time);
+
+    struct perf_sample sample_info;
+    EXPECT_TRUE(deserializer.ReadPerfSampleInfo(event, &sample_info));
+    EXPECT_EQ(2010, sample_info.pid);
+    EXPECT_EQ(2020, sample_info.tid);
+    EXPECT_EQ(356ULL * 1000000000, sample_info.time);
+  }
+
+  {
+    const event_t& event = *deserializer.events()[1].get();
+    EXPECT_EQ(PERF_RECORD_EXIT, event.header.type);
+
+    EXPECT_EQ(3010, event.fork.pid);
+    EXPECT_EQ(3020, event.fork.ppid);
+    EXPECT_EQ(3030, event.fork.tid);
+    EXPECT_EQ(3040, event.fork.ptid);
+    EXPECT_EQ(432ULL * 1000000000, event.fork.time);
+
+    struct perf_sample sample_info;
+    EXPECT_TRUE(deserializer.ReadPerfSampleInfo(event, &sample_info));
+    EXPECT_EQ(4010, sample_info.pid);
+    EXPECT_EQ(4020, sample_info.tid);
+    EXPECT_EQ(433ULL * 1000000000, sample_info.time);
+  }
 }
 
 }  // namespace quipper
