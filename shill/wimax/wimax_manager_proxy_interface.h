@@ -19,15 +19,15 @@ class Error;
 // is provided so that it can be mocked in tests.
 class WiMaxManagerProxyInterface {
  public:
-  typedef base::Callback<void(const RpcIdentifiers &)> DevicesChangedCallback;
+  typedef base::Callback<void(const RpcIdentifiers&)> DevicesChangedCallback;
 
   virtual ~WiMaxManagerProxyInterface() {}
 
   virtual void set_devices_changed_callback(
-      const DevicesChangedCallback &callback) = 0;
+      const DevicesChangedCallback& callback) = 0;
 
   // Properties.
-  virtual RpcIdentifiers Devices(Error *error) = 0;
+  virtual RpcIdentifiers Devices(Error* error) = 0;
 };
 
 }  // namespace shill

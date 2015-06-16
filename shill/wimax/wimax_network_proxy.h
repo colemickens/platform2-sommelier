@@ -17,34 +17,34 @@ namespace shill {
 class WiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
  public:
   // Constructs a WiMaxManager.Network DBus object proxy at |path|.
-  WiMaxNetworkProxy(DBus::Connection *connection,
-                   const DBus::Path &path);
+  WiMaxNetworkProxy(DBus::Connection* connection,
+                    const DBus::Path& path);
   ~WiMaxNetworkProxy() override;
 
   // Inherited from WiMaxNetwokProxyInterface.
   RpcIdentifier path() const override;
   void set_signal_strength_changed_callback(
-      const SignalStrengthChangedCallback &callback) override;
-  uint32_t Identifier(Error *error) override;
-  std::string Name(Error *error) override;
-  int Type(Error *error) override;
-  int CINR(Error *error) override;
-  int RSSI(Error *error) override;
-  int SignalStrength(Error *error) override;
+      const SignalStrengthChangedCallback& callback) override;
+  uint32_t Identifier(Error* error) override;
+  std::string Name(Error* error) override;
+  int Type(Error* error) override;
+  int CINR(Error* error) override;
+  int RSSI(Error* error) override;
+  int SignalStrength(Error* error) override;
 
  private:
   class Proxy : public org::chromium::WiMaxManager::Network_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection, const DBus::Path &path);
+    Proxy(DBus::Connection* connection, const DBus::Path& path);
     ~Proxy() override;
 
     void set_signal_strength_changed_callback(
-        const SignalStrengthChangedCallback &callback);
+        const SignalStrengthChangedCallback& callback);
 
    private:
     // Signal callbacks inherited from WiMaxManager::Network_proxy.
-    void SignalStrengthChanged(const int32_t &signal_strength) override;
+    void SignalStrengthChanged(const int32_t& signal_strength) override;
 
     // Method callbacks inherited from WiMaxManager::Network_proxy.
     // [None]
@@ -54,7 +54,7 @@ class WiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
 
-  static void FromDBusError(const DBus::Error &dbus_error, Error *error);
+  static void FromDBusError(const DBus::Error& dbus_error, Error* error);
 
   Proxy proxy_;
 

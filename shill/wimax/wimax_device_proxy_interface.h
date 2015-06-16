@@ -20,39 +20,39 @@ class KeyValueStore;
 // interface is provided so that it can be mocked in tests.
 class WiMaxDeviceProxyInterface {
  public:
-  typedef base::Callback<void(const RpcIdentifiers &)> NetworksChangedCallback;
+  typedef base::Callback<void(const RpcIdentifiers&)> NetworksChangedCallback;
   typedef base::Callback<void(
       wimax_manager::DeviceStatus)> StatusChangedCallback;
 
   virtual ~WiMaxDeviceProxyInterface() {}
 
-  virtual void Enable(Error *error,
-                      const ResultCallback &callback,
+  virtual void Enable(Error* error,
+                      const ResultCallback& callback,
                       int timeout) = 0;
-  virtual void Disable(Error *error,
-                       const ResultCallback &callback,
+  virtual void Disable(Error* error,
+                       const ResultCallback& callback,
                        int timeout) = 0;
-  virtual void ScanNetworks(Error *error,
-                            const ResultCallback &callback,
+  virtual void ScanNetworks(Error* error,
+                            const ResultCallback& callback,
                             int timeout) = 0;
-  virtual void Connect(const RpcIdentifier &network,
-                       const KeyValueStore &parameters,
-                       Error *error,
-                       const ResultCallback &callback,
+  virtual void Connect(const RpcIdentifier& network,
+                       const KeyValueStore& parameters,
+                       Error* error,
+                       const ResultCallback& callback,
                        int timeout) = 0;
-  virtual void Disconnect(Error *error,
-                          const ResultCallback &callback,
+  virtual void Disconnect(Error* error,
+                          const ResultCallback& callback,
                           int timeout) = 0;
 
   virtual void set_networks_changed_callback(
-      const NetworksChangedCallback &callback) = 0;
+      const NetworksChangedCallback& callback) = 0;
   virtual void set_status_changed_callback(
-      const StatusChangedCallback &callback) = 0;
+      const StatusChangedCallback& callback) = 0;
 
   // Properties.
-  virtual uint8_t Index(Error *error) = 0;
-  virtual std::string Name(Error *error) = 0;
-  virtual RpcIdentifiers Networks(Error *error) = 0;
+  virtual uint8_t Index(Error* error) = 0;
+  virtual std::string Name(Error* error) = 0;
+  virtual RpcIdentifiers Networks(Error* error) = 0;
 };
 
 }  // namespace shill

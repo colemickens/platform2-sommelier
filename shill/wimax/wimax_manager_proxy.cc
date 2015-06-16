@@ -19,25 +19,25 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(WiMaxManagerProxy *w) { return "(wimax_manager_proxy)"; }
+static string ObjectID(WiMaxManagerProxy* w) { return "(wimax_manager_proxy)"; }
 }
 
-WiMaxManagerProxy::WiMaxManagerProxy(DBus::Connection *connection)
+WiMaxManagerProxy::WiMaxManagerProxy(DBus::Connection* connection)
     : proxy_(connection) {}
 
 WiMaxManagerProxy::~WiMaxManagerProxy() {}
 
 void WiMaxManagerProxy::set_devices_changed_callback(
-    const DevicesChangedCallback &callback) {
+    const DevicesChangedCallback& callback) {
   proxy_.set_devices_changed_callback(callback);
 }
 
-RpcIdentifiers WiMaxManagerProxy::Devices(Error *error) {
+RpcIdentifiers WiMaxManagerProxy::Devices(Error* error) {
   SLOG(this, 2) << __func__;
   vector<DBus::Path> dbus_devices;
   try {
     dbus_devices = proxy_.Devices();
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed, e.what());
   }
   RpcIdentifiers devices;
@@ -45,7 +45,7 @@ RpcIdentifiers WiMaxManagerProxy::Devices(Error *error) {
   return devices;
 }
 
-WiMaxManagerProxy::Proxy::Proxy(DBus::Connection *connection)
+WiMaxManagerProxy::Proxy::Proxy(DBus::Connection* connection)
     : DBus::ObjectProxy(*connection,
                         wimax_manager::kWiMaxManagerServicePath,
                         wimax_manager::kWiMaxManagerServiceName) {}
@@ -53,12 +53,12 @@ WiMaxManagerProxy::Proxy::Proxy(DBus::Connection *connection)
 WiMaxManagerProxy::Proxy::~Proxy() {}
 
 void WiMaxManagerProxy::Proxy::set_devices_changed_callback(
-    const DevicesChangedCallback &callback) {
+    const DevicesChangedCallback& callback) {
   devices_changed_callback_ = callback;
 }
 
 void WiMaxManagerProxy::Proxy::DevicesChanged(
-    const vector<DBus::Path> &devices) {
+    const vector<DBus::Path>& devices) {
   SLOG(DBus, nullptr, 2) << __func__ << "(" << devices.size() << ")";
   if (devices_changed_callback_.is_null()) {
     return;

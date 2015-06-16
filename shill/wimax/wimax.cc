@@ -25,12 +25,12 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiMax;
-static string ObjectID(WiMax *w) { return w->GetRpcIdentifier(); }
+static string ObjectID(WiMax* w) { return w->GetRpcIdentifier(); }
 }
 
 namespace {
 
-const char *DeviceStatusToString(wimax_manager::DeviceStatus status) {
+const char* DeviceStatusToString(wimax_manager::DeviceStatus status) {
   switch (status) {
     case wimax_manager::kDeviceStatusUninitialized:
       return "Uninitialized";
@@ -54,14 +54,14 @@ const char *DeviceStatusToString(wimax_manager::DeviceStatus status) {
 const int WiMax::kDefaultConnectTimeoutSeconds = 60;
 const int WiMax::kDefaultRPCTimeoutSeconds = 30;
 
-WiMax::WiMax(ControlInterface *control,
-             EventDispatcher *dispatcher,
-             Metrics *metrics,
-             Manager *manager,
-             const string &link_name,
-             const string &address,
+WiMax::WiMax(ControlInterface* control,
+             EventDispatcher* dispatcher,
+             Metrics* metrics,
+             Manager* manager,
+             const string& link_name,
+             const string& address,
              int interface_index,
-             const RpcIdentifier &path)
+             const RpcIdentifier& path)
     : Device(control, dispatcher, metrics, manager, link_name, address,
              interface_index, Technology::kWiMax),
       path_(path),
@@ -71,7 +71,7 @@ WiMax::WiMax(ControlInterface *control,
       proxy_factory_(ProxyFactory::GetInstance()),
       connect_timeout_seconds_(kDefaultConnectTimeoutSeconds) {
   LOG(INFO) << "WiMAX device created: " << link_name << " @ " << path;
-  PropertyStore *store = mutable_store();
+  PropertyStore* store = mutable_store();
   store->RegisterConstBool(kScanningProperty, &scanning_);
 }
 
@@ -79,7 +79,7 @@ WiMax::~WiMax() {
   LOG(INFO) << "WiMAX device destroyed: " << link_name();
 }
 
-void WiMax::Start(Error *error, const EnabledStateChangedCallback &callback) {
+void WiMax::Start(Error* error, const EnabledStateChangedCallback& callback) {
   SLOG(this, 2) << __func__;
   scanning_ = false;
   proxy_.reset(proxy_factory_->CreateWiMaxDeviceProxy(path_));
@@ -92,7 +92,7 @@ void WiMax::Start(Error *error, const EnabledStateChangedCallback &callback) {
       kDefaultRPCTimeoutSeconds * 1000);
 }
 
-void WiMax::Stop(Error *error, const EnabledStateChangedCallback &callback) {
+void WiMax::Stop(Error* error, const EnabledStateChangedCallback& callback) {
   SLOG(this, 2) << __func__;
   StopConnectTimeout();
   if (pending_service_) {
@@ -115,8 +115,8 @@ void WiMax::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   }
 }
 
-void WiMax::Scan(ScanType /*scan_type*/, Error *error,
-                 const string &/*reason*/) {
+void WiMax::Scan(ScanType /*scan_type*/, Error* error,
+                 const string& /*reason*/) {
   SLOG(this, 2) << __func__;
   if (scanning_) {
     Error::PopulateAndLog(
@@ -132,7 +132,7 @@ void WiMax::Scan(ScanType /*scan_type*/, Error *error,
   }
 }
 
-void WiMax::ConnectTo(const WiMaxServiceRefPtr &service, Error *error) {
+void WiMax::ConnectTo(const WiMaxServiceRefPtr& service, Error* error) {
   SLOG(this, 2) << __func__ << "(" << service->GetStorageIdentifier() << ")";
   if (pending_service_) {
     Error::PopulateAndLog(
@@ -166,7 +166,7 @@ void WiMax::ConnectTo(const WiMaxServiceRefPtr &service, Error *error) {
   }
 }
 
-void WiMax::DisconnectFrom(const ServiceRefPtr &service, Error *error) {
+void WiMax::DisconnectFrom(const ServiceRefPtr& service, Error* error) {
   SLOG(this, 2) << __func__;
   if (pending_service_) {
     Error::PopulateAndLog(
@@ -200,7 +200,7 @@ bool WiMax::IsIdle() const {
   return !pending_service_ && !selected_service();
 }
 
-void WiMax::OnServiceStopped(const WiMaxServiceRefPtr &service) {
+void WiMax::OnServiceStopped(const WiMaxServiceRefPtr& service) {
   SLOG(this, 2) << __func__;
   if (service == selected_service()) {
     DropConnection();
@@ -219,13 +219,13 @@ void WiMax::OnDeviceVanished() {
   SetEnabled(false);
 }
 
-void WiMax::OnScanNetworksComplete(const Error &/*error*/) {
+void WiMax::OnScanNetworksComplete(const Error& /*error*/) {
   SLOG(this, 2) << __func__;
   scanning_ = false;
   // The networks are updated when the NetworksChanged signal is received.
 }
 
-void WiMax::OnConnectComplete(const Error &error) {
+void WiMax::OnConnectComplete(const Error& error) {
   SLOG(this, 2) << __func__;
   if (error.IsSuccess()) {
     // Nothing to do -- the connection process is resumed on the StatusChanged
@@ -235,12 +235,12 @@ void WiMax::OnConnectComplete(const Error &error) {
   DropService(Service::kStateFailure);
 }
 
-void WiMax::OnDisconnectComplete(const Error &/*error*/) {
+void WiMax::OnDisconnectComplete(const Error& /*error*/) {
   SLOG(this, 2) << __func__;
 }
 
-void WiMax::OnEnableComplete(const EnabledStateChangedCallback &callback,
-                             const Error &error) {
+void WiMax::OnEnableComplete(const EnabledStateChangedCallback& callback,
+                             const Error& error) {
   SLOG(this, 2) << __func__;
   if (error.IsFailure()) {
     proxy_.reset();
@@ -254,14 +254,14 @@ void WiMax::OnEnableComplete(const EnabledStateChangedCallback &callback,
   callback.Run(error);
 }
 
-void WiMax::OnDisableComplete(const EnabledStateChangedCallback &callback,
-                              const Error &error) {
+void WiMax::OnDisableComplete(const EnabledStateChangedCallback& callback,
+                              const Error& error) {
   LOG(INFO) << "WiMAX device " << link_name() << " disabled.";
   proxy_.reset();
   callback.Run(error);
 }
 
-void WiMax::OnNetworksChanged(const RpcIdentifiers &networks) {
+void WiMax::OnNetworksChanged(const RpcIdentifiers& networks) {
   SLOG(this, 2) << __func__;
   networks_.clear();
   networks_.insert(networks.begin(), networks.end());

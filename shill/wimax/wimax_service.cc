@@ -27,20 +27,20 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiMax;
-static string ObjectID(WiMaxService *w) { return w->GetRpcIdentifier(); }
+static string ObjectID(WiMaxService* w) { return w->GetRpcIdentifier(); }
 }
 
 const char WiMaxService::kStorageNetworkId[] = "NetworkId";
 const char WiMaxService::kNetworkIdProperty[] = "NetworkId";
 
-WiMaxService::WiMaxService(ControlInterface *control,
-                           EventDispatcher *dispatcher,
-                           Metrics *metrics,
-                           Manager *manager)
+WiMaxService::WiMaxService(ControlInterface* control,
+                           EventDispatcher* dispatcher,
+                           Metrics* metrics,
+                           Manager* manager)
     : Service(control, dispatcher, metrics, manager, Technology::kWiMax),
       need_passphrase_(true),
       is_default_(false) {
-  PropertyStore *store = this->mutable_store();
+  PropertyStore* store = this->mutable_store();
   // TODO(benchan): Support networks that require no user credentials or
   // implicitly defined credentials.
   store->RegisterBool(kPassphraseRequiredProperty, &need_passphrase_);
@@ -63,7 +63,7 @@ WiMaxService::WiMaxService(ControlInterface *control,
 
 WiMaxService::~WiMaxService() {}
 
-void WiMaxService::GetConnectParameters(KeyValueStore *parameters) const {
+void WiMaxService::GetConnectParameters(KeyValueStore* parameters) const {
   CHECK(parameters);
   eap()->PopulateWiMaxProperties(parameters);
 }
@@ -88,7 +88,7 @@ void WiMaxService::Stop() {
   NotifyPropertyChanges();
 }
 
-bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
+bool WiMaxService::Start(WiMaxNetworkProxyInterface* proxy) {
   SLOG(this, 2) << __func__;
   CHECK(proxy);
   std::unique_ptr<WiMaxNetworkProxyInterface> local_proxy(proxy);
@@ -132,7 +132,7 @@ bool WiMaxService::IsStarted() const {
   return proxy_.get();
 }
 
-void WiMaxService::Connect(Error *error, const char *reason) {
+void WiMaxService::Connect(Error* error, const char* reason) {
   SLOG(this, 2) << __func__;
   if (device_) {
     // TODO(benchan): Populate error again after changing the way that
@@ -164,7 +164,7 @@ void WiMaxService::Connect(Error *error, const char *reason) {
   }
 }
 
-void WiMaxService::Disconnect(Error *error, const char *reason) {
+void WiMaxService::Disconnect(Error* error, const char* reason) {
   SLOG(this, 2) << __func__;
   if (!device_) {
     Error::PopulateAndLog(
@@ -180,7 +180,7 @@ string WiMaxService::GetStorageIdentifier() const {
   return storage_id_;
 }
 
-string WiMaxService::GetDeviceRpcId(Error *error) const {
+string WiMaxService::GetDeviceRpcId(Error* error) const {
   if (!device_) {
     error->Populate(Error::kNotFound, "Not associated with a device");
     return DBusAdaptor::kNullPath;
@@ -188,7 +188,7 @@ string WiMaxService::GetDeviceRpcId(Error *error) const {
   return device_->GetRpcIdentifier();
 }
 
-bool WiMaxService::IsAutoConnectable(const char **reason) const {
+bool WiMaxService::IsAutoConnectable(const char** reason) const {
   if (!Service::IsAutoConnectable(reason)) {
     return false;
   }
@@ -243,7 +243,7 @@ void WiMaxService::SetDevice(WiMaxRefPtr new_device) {
   device_ = new_device;
 }
 
-bool WiMaxService::Save(StoreInterface *storage) {
+bool WiMaxService::Save(StoreInterface* storage) {
   SLOG(this, 2) << __func__;
   if (!Service::Save(storage)) {
     return false;
@@ -282,8 +282,8 @@ void WiMaxService::InitStorageIdentifier() {
 }
 
 // static
-string WiMaxService::CreateStorageIdentifier(const WiMaxNetworkId &id,
-                                             const string &name) {
+string WiMaxService::CreateStorageIdentifier(const WiMaxNetworkId& id,
+                                             const string& name) {
   string storage_id =
       base::StringPrintf("%s_%s_%s",
                          kTypeWimax, name.c_str(), id.c_str());

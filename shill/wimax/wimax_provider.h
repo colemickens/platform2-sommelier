@@ -31,40 +31,40 @@ class WiMaxManagerProxyInterface;
 
 class WiMaxProvider : public ProviderInterface {
  public:
-  WiMaxProvider(ControlInterface *control,
-                EventDispatcher *dispatcher,
-                Metrics *metrics,
-                Manager *manager);
+  WiMaxProvider(ControlInterface* control,
+                EventDispatcher* dispatcher,
+                Metrics* metrics,
+                Manager* manager);
   ~WiMaxProvider() override;
 
   // Called by Manager as a part of the Provider interface.  The attributes
   // used for matching services for the WiMax provider are the NetworkId,
   // mode and Name parameters.
-  void CreateServicesFromProfile(const ProfileRefPtr &profile) override;
+  void CreateServicesFromProfile(const ProfileRefPtr& profile) override;
   ServiceRefPtr FindSimilarService(
-      const KeyValueStore &args, Error *error) const override;
-  ServiceRefPtr GetService(const KeyValueStore &args, Error *error) override;
+      const KeyValueStore& args, Error* error) const override;
+  ServiceRefPtr GetService(const KeyValueStore& args, Error* error) override;
   ServiceRefPtr CreateTemporaryService(
-      const KeyValueStore &args, Error *error) override;
+      const KeyValueStore& args, Error* error) override;
   ServiceRefPtr CreateTemporaryServiceFromProfile(
-      const ProfileRefPtr &profile,
-      const std::string &entry_name,
-      Error *error) override;
+      const ProfileRefPtr& profile,
+      const std::string& entry_name,
+      Error* error) override;
   void Start() override;
   void Stop() override;
 
   // Signaled by DeviceInfo when a new WiMAX device becomes available.
-  virtual void OnDeviceInfoAvailable(const std::string &link_name);
+  virtual void OnDeviceInfoAvailable(const std::string& link_name);
 
   // Signaled by a WiMAX device when its set of live networks changes.
   virtual void OnNetworksChanged();
 
   // Signaled by |service| when it's been unloaded by Manager. Returns true if
   // this provider has released ownership of the service, and false otherwise.
-  virtual bool OnServiceUnloaded(const WiMaxServiceRefPtr &service);
+  virtual bool OnServiceUnloaded(const WiMaxServiceRefPtr& service);
 
   // Selects and returns a WiMAX device to connect |service| through.
-  virtual WiMaxRefPtr SelectCarrier(const WiMaxServiceConstRefPtr &service);
+  virtual WiMaxRefPtr SelectCarrier(const WiMaxServiceConstRefPtr& service);
 
  private:
   friend class WiMaxProviderTest;
@@ -93,47 +93,47 @@ class WiMaxProvider : public ProviderInterface {
 
   void ConnectToWiMaxManager();
   void DisconnectFromWiMaxManager();
-  void OnWiMaxManagerAppear(const std::string &name, const std::string &owner);
-  void OnWiMaxManagerVanish(const std::string &name);
+  void OnWiMaxManagerAppear(const std::string& name, const std::string& owner);
+  void OnWiMaxManagerVanish(const std::string& name);
 
-  void OnDevicesChanged(const RpcIdentifiers &devices);
+  void OnDevicesChanged(const RpcIdentifiers& devices);
 
-  void CreateDevice(const std::string &link_name, const RpcIdentifier &path);
-  void DestroyDeadDevices(const RpcIdentifiers &live_devices);
+  void CreateDevice(const std::string& link_name, const RpcIdentifier& path);
+  void DestroyDeadDevices(const RpcIdentifiers& live_devices);
 
-  std::string GetLinkName(const RpcIdentifier &path);
+  std::string GetLinkName(const RpcIdentifier& path);
 
   // Retrieves network info for a network at RPC |path| into |networks_| if it's
   // not already available.
-  void RetrieveNetworkInfo(const RpcIdentifier &path);
+  void RetrieveNetworkInfo(const RpcIdentifier& path);
 
   // Finds and returns the service identified by |storage_id|. Returns nullptr
   // if the service is not found.
-  WiMaxServiceRefPtr FindService(const std::string &storage_id) const;
+  WiMaxServiceRefPtr FindService(const std::string& storage_id) const;
 
   // Finds or creates a service with the given parameters. The parameters
   // uniquely identify a service so no duplicate services will be created.
   // The service will be registered and a memeber of the provider's
   // |services_| map.
-  WiMaxServiceRefPtr GetUniqueService(const WiMaxNetworkId &id,
-                                      const std::string &name);
+  WiMaxServiceRefPtr GetUniqueService(const WiMaxNetworkId& id,
+                                      const std::string& name);
 
   // Allocates a service with the given parameters.
-  WiMaxServiceRefPtr CreateService(const WiMaxNetworkId &id,
-                                   const std::string &name);
+  WiMaxServiceRefPtr CreateService(const WiMaxNetworkId& id,
+                                   const std::string& name);
 
   // Populates the |id_ptr| and |name_ptr| from the parameters in |args|.
   // Returns true on success, otheriwse populates |error| and returns false.
-  static bool GetServiceParametersFromArgs(const KeyValueStore &args,
-                                           WiMaxNetworkId *id_ptr,
-                                           std::string *name_ptr,
-                                           Error *error);
+  static bool GetServiceParametersFromArgs(const KeyValueStore& args,
+                                           WiMaxNetworkId* id_ptr,
+                                           std::string* name_ptr,
+                                           Error* error);
 
-  static bool GetServiceParametersFromStorage(const StoreInterface *storage,
-                                              const std::string &entry_name,
-                                              WiMaxNetworkId *id_ptr,
-                                              std::string *name_ptr,
-                                              Error *error);
+  static bool GetServiceParametersFromStorage(const StoreInterface* storage,
+                                              const std::string& entry_name,
+                                              WiMaxNetworkId* id_ptr,
+                                              std::string* name_ptr,
+                                              Error* error);
 
   // Starts all services with network ids in the current set of live
   // networks. This method also creates, registers and starts the default
@@ -147,10 +147,10 @@ class WiMaxProvider : public ProviderInterface {
   // Stops, deregisters and destroys all services.
   void DestroyAllServices();
 
-  ControlInterface *control_;
-  EventDispatcher *dispatcher_;
-  Metrics *metrics_;
-  Manager *manager_;
+  ControlInterface* control_;
+  EventDispatcher* dispatcher_;
+  Metrics* metrics_;
+  Manager* manager_;
 
   // Monitor WiMaxManager DBus name ownership to detect daemon presence.
   std::unique_ptr<DBusNameWatcher> wimax_manager_name_watcher_;
@@ -164,7 +164,7 @@ class WiMaxProvider : public ProviderInterface {
   std::map<std::string, WiMaxServiceRefPtr> services_;
   std::map<RpcIdentifier, NetworkInfo> networks_;
 
-  ProxyFactory *proxy_factory_;
+  ProxyFactory* proxy_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(WiMaxProvider);
 };

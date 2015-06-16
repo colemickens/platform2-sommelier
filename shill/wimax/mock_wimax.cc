@@ -10,14 +10,14 @@ namespace shill {
 
 using std::string;
 
-MockWiMax::MockWiMax(ControlInterface *control,
-                     EventDispatcher *dispatcher,
-                     Metrics *metrics,
-                     Manager *manager,
-                     const string &link_name,
-                     const string &address,
+MockWiMax::MockWiMax(ControlInterface* control,
+                     EventDispatcher* dispatcher,
+                     Metrics* metrics,
+                     Manager* manager,
+                     const string& link_name,
+                     const string& address,
                      int interface_index,
-                     const RpcIdentifier &path)
+                     const RpcIdentifier& path)
     : WiMax(control, dispatcher, metrics, manager, link_name, address,
             interface_index, path) {
 }

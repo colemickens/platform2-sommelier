@@ -56,7 +56,7 @@ class WiMaxTest : public testing::Test {
    public:
     virtual ~Target() {}
 
-    MOCK_METHOD1(EnabledStateChanged, void(const Error &error));
+    MOCK_METHOD1(EnabledStateChanged, void(const Error& error));
   };
 
   virtual void SetUp() {

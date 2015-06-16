@@ -6,10 +6,10 @@
 
 namespace shill {
 
-MockWiMaxService::MockWiMaxService(ControlInterface *control,
-                                   EventDispatcher *dispatcher,
-                                   Metrics *metrics,
-                                   Manager *manager)
+MockWiMaxService::MockWiMaxService(ControlInterface* control,
+                                   EventDispatcher* dispatcher,
+                                   Metrics* metrics,
+                                   Manager* manager)
     : WiMaxService(control, dispatcher, metrics, manager) {}
 
 MockWiMaxService::~MockWiMaxService() {}

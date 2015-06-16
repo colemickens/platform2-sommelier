@@ -23,29 +23,29 @@ class WiMaxDeviceProxyInterface;
 
 class WiMax : public Device {
  public:
-  WiMax(ControlInterface *control,
-        EventDispatcher *dispatcher,
-        Metrics *metrics,
-        Manager *manager,
-        const std::string &link_name,
-        const std::string &address,
+  WiMax(ControlInterface* control,
+        EventDispatcher* dispatcher,
+        Metrics* metrics,
+        Manager* manager,
+        const std::string& link_name,
+        const std::string& address,
         int interface_index,
-        const RpcIdentifier &path);
+        const RpcIdentifier& path);
 
   ~WiMax() override;
 
   // Inherited from Device.
-  void Start(Error *error,
-             const EnabledStateChangedCallback &callback) override;
-  void Stop(Error *error, const EnabledStateChangedCallback &callback) override;
-  void Scan(ScanType /*scan_type*/, Error *error,
-            const std::string &/*reason*/) override;
+  void Start(Error* error,
+             const EnabledStateChangedCallback& callback) override;
+  void Stop(Error* error, const EnabledStateChangedCallback& callback) override;
+  void Scan(ScanType /*scan_type*/, Error* error,
+            const std::string& /*reason*/) override;
 
-  virtual void ConnectTo(const WiMaxServiceRefPtr &service, Error *error);
-  virtual void DisconnectFrom(const ServiceRefPtr &service, Error *error);
+  virtual void ConnectTo(const WiMaxServiceRefPtr& service, Error* error);
+  virtual void DisconnectFrom(const ServiceRefPtr& service, Error* error);
 
   // Signaled by |service| when stopped.
-  virtual void OnServiceStopped(const WiMaxServiceRefPtr &service);
+  virtual void OnServiceStopped(const WiMaxServiceRefPtr& service);
 
   // Signaled by WiMaxProvider when the RPC device disappears. The provider will
   // deregister and destroy the device after invoking this method.
@@ -54,9 +54,9 @@ class WiMax : public Device {
   // Returns true if this device is not connecting or connected to a service.
   virtual bool IsIdle() const;
 
-  const RpcIdentifier &path() const { return path_; }
+  const RpcIdentifier& path() const { return path_; }
   bool scanning() const { return scanning_; }
-  const std::set<RpcIdentifier> &networks() const { return networks_; }
+  const std::set<RpcIdentifier>& networks() const { return networks_; }
 
  private:
   friend class WiMaxTest;
@@ -76,15 +76,15 @@ class WiMax : public Device {
   static const int kDefaultConnectTimeoutSeconds;
   static const int kDefaultRPCTimeoutSeconds;
 
-  void OnScanNetworksComplete(const Error &error);
-  void OnConnectComplete(const Error &error);
-  void OnDisconnectComplete(const Error &error);
-  void OnEnableComplete(const EnabledStateChangedCallback &callback,
-                        const Error &error);
-  void OnDisableComplete(const EnabledStateChangedCallback &callback,
-                         const Error &error);
+  void OnScanNetworksComplete(const Error& error);
+  void OnConnectComplete(const Error& error);
+  void OnDisconnectComplete(const Error& error);
+  void OnEnableComplete(const EnabledStateChangedCallback& callback,
+                        const Error& error);
+  void OnDisableComplete(const EnabledStateChangedCallback& callback,
+                         const Error& error);
 
-  void OnNetworksChanged(const RpcIdentifiers &networks);
+  void OnNetworksChanged(const RpcIdentifiers& networks);
   void OnStatusChanged(wimax_manager::DeviceStatus status);
 
   void DropService(Service::ConnectState state);
@@ -110,7 +110,7 @@ class WiMax : public Device {
   std::set<RpcIdentifier> networks_;
   wimax_manager::DeviceStatus status_;
 
-  ProxyFactory *proxy_factory_;
+  ProxyFactory* proxy_factory_;
 
   base::CancelableClosure connect_timeout_callback_;
   int connect_timeout_seconds_;

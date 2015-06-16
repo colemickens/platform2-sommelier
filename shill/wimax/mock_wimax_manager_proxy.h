@@ -20,8 +20,8 @@ class MockWiMaxManagerProxy : public WiMaxManagerProxyInterface {
   ~MockWiMaxManagerProxy() override;
 
   MOCK_METHOD1(set_devices_changed_callback,
-               void(const DevicesChangedCallback &callback));
-  MOCK_METHOD1(Devices, RpcIdentifiers(Error *error));
+               void(const DevicesChangedCallback& callback));
+  MOCK_METHOD1(Devices, RpcIdentifiers(Error* error));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiMaxManagerProxy);

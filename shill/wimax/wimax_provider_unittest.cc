@@ -85,7 +85,7 @@ class WiMaxProviderTest : public testing::Test {
     provider_.proxy_factory_ = nullptr;
   }
 
-  string GetServiceFriendlyName(const ServiceRefPtr &service) {
+  string GetServiceFriendlyName(const ServiceRefPtr& service) {
     return service->friendly_name();
   }
 
@@ -97,7 +97,7 @@ class WiMaxProviderTest : public testing::Test {
   MockMetrics metrics_;
   MockManager manager_;
   MockDeviceInfo device_info_;
-  DBusManager *dbus_manager_;
+  DBusManager* dbus_manager_;
   WiMaxProvider provider_;
 };
 
@@ -196,7 +196,7 @@ TEST_F(WiMaxProviderTest, CreateDevice) {
   EXPECT_EQ(GetTestLinkName(1),
             provider_.devices_[GetTestLinkName(1)]->link_name());
 
-  WiMax *device = provider_.devices_[GetTestLinkName(1)].get();
+  WiMax* device = provider_.devices_[GetTestLinkName(1)].get();
   provider_.CreateDevice(GetTestLinkName(1), GetTestPath(1));
   EXPECT_EQ(device, provider_.devices_[GetTestLinkName(1)].get());
 }

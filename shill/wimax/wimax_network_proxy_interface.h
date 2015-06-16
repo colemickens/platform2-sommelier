@@ -31,15 +31,15 @@ class WiMaxNetworkProxyInterface {
   virtual RpcIdentifier path() const = 0;
 
   virtual void set_signal_strength_changed_callback(
-      const SignalStrengthChangedCallback &callback) = 0;
+      const SignalStrengthChangedCallback& callback) = 0;
 
   // Properties.
-  virtual uint32_t Identifier(Error *error) = 0;
-  virtual std::string Name(Error *error) = 0;
-  virtual int Type(Error *error) = 0;
-  virtual int CINR(Error *error) = 0;
-  virtual int RSSI(Error *error) = 0;
-  virtual int SignalStrength(Error *error) = 0;
+  virtual uint32_t Identifier(Error* error) = 0;
+  virtual std::string Name(Error* error) = 0;
+  virtual int Type(Error* error) = 0;
+  virtual int CINR(Error* error) = 0;
+  virtual int RSSI(Error* error) = 0;
+  virtual int SignalStrength(Error* error) = 0;
 };
 
 }  // namespace shill

@@ -18,11 +18,11 @@ class MockWiMaxProvider : public WiMaxProvider {
   MockWiMaxProvider();
   ~MockWiMaxProvider() override;
 
-  MOCK_METHOD1(OnDeviceInfoAvailable, void(const std::string &link_name));
+  MOCK_METHOD1(OnDeviceInfoAvailable, void(const std::string& link_name));
   MOCK_METHOD0(OnNetworksChanged, void());
-  MOCK_METHOD1(OnServiceUnloaded, bool(const WiMaxServiceRefPtr &service));
+  MOCK_METHOD1(OnServiceUnloaded, bool(const WiMaxServiceRefPtr& service));
   MOCK_METHOD1(SelectCarrier,
-               WiMaxRefPtr(const WiMaxServiceConstRefPtr &service));
+               WiMaxRefPtr(const WiMaxServiceConstRefPtr& service));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiMaxProvider);

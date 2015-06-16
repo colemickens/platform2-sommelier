@@ -19,30 +19,30 @@ class MockWiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
   MockWiMaxDeviceProxy();
   ~MockWiMaxDeviceProxy() override;
 
-  MOCK_METHOD3(Enable, void(Error *error,
-                            const ResultCallback &callback,
+  MOCK_METHOD3(Enable, void(Error* error,
+                            const ResultCallback& callback,
                             int timeout));
-  MOCK_METHOD3(Disable, void(Error *error,
-                             const ResultCallback &callback,
+  MOCK_METHOD3(Disable, void(Error* error,
+                             const ResultCallback& callback,
                              int timeout));
-  MOCK_METHOD3(ScanNetworks, void(Error *error,
-                                  const ResultCallback &callback,
+  MOCK_METHOD3(ScanNetworks, void(Error* error,
+                                  const ResultCallback& callback,
                                   int timeout));
-  MOCK_METHOD5(Connect, void(const RpcIdentifier &network,
-                             const KeyValueStore &parameters,
-                             Error *error,
-                             const ResultCallback &callback,
+  MOCK_METHOD5(Connect, void(const RpcIdentifier& network,
+                             const KeyValueStore& parameters,
+                             Error* error,
+                             const ResultCallback& callback,
                              int timeout));
-  MOCK_METHOD3(Disconnect, void(Error *error,
-                                const ResultCallback &callback,
+  MOCK_METHOD3(Disconnect, void(Error* error,
+                                const ResultCallback& callback,
                                 int timeout));
   MOCK_METHOD1(set_networks_changed_callback,
-               void(const NetworksChangedCallback &callback));
+               void(const NetworksChangedCallback& callback));
   MOCK_METHOD1(set_status_changed_callback,
-               void(const StatusChangedCallback &callback));
-  MOCK_METHOD1(Index, uint8_t(Error *error));
-  MOCK_METHOD1(Name, std::string(Error *error));
-  MOCK_METHOD1(Networks, RpcIdentifiers(Error *error));
+               void(const StatusChangedCallback& callback));
+  MOCK_METHOD1(Index, uint8_t(Error* error));
+  MOCK_METHOD1(Name, std::string(Error* error));
+  MOCK_METHOD1(Networks, RpcIdentifiers(Error* error));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiMaxDeviceProxy);

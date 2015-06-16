@@ -82,8 +82,8 @@ class WiMaxServiceTest : public testing::Test {
     service_->SetDevice(device);
   }
 
-  ServiceMockAdaptor *GetAdaptor() {
-    return dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+  ServiceMockAdaptor* GetAdaptor() {
+    return dynamic_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
   std::unique_ptr<MockWiMaxNetworkProxy> proxy_;
@@ -92,7 +92,7 @@ class WiMaxServiceTest : public testing::Test {
   NiceMock<MockMetrics> metrics_;
   scoped_refptr<MockWiMax> device_;
   WiMaxServiceRefPtr service_;
-  MockEapCredentials *eap_;  // Owned by |service_|.
+  MockEapCredentials* eap_;  // Owned by |service_|.
 };
 
 TEST_F(WiMaxServiceTest, GetConnectParameters) {
@@ -130,7 +130,7 @@ TEST_F(WiMaxServiceTest, StartStop) {
   EXPECT_CALL(*proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
   EXPECT_CALL(*proxy_, SignalStrength(_)).WillOnce(Return(kStrength));
   EXPECT_CALL(*proxy_, set_signal_strength_changed_callback(_));
-  ServiceMockAdaptor *adaptor = GetAdaptor();
+  ServiceMockAdaptor* adaptor = GetAdaptor();
   EXPECT_CALL(*adaptor, EmitBoolChanged(kConnectableProperty, _))
      .Times(AnyNumber());
   EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, true));
@@ -307,7 +307,7 @@ TEST_F(WiMaxServiceTest, SetState) {
 
 TEST_F(WiMaxServiceTest, IsAutoConnectable) {
   EXPECT_FALSE(service_->connectable());
-  const char *reason = "";
+  const char* reason = "";
 
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
 
@@ -331,7 +331,7 @@ TEST_F(WiMaxServiceTest, IsAutoConnectable) {
 }
 
 TEST_F(WiMaxServiceTest, PropertyChanges) {
-  ServiceMockAdaptor *adaptor = GetAdaptor();
+  ServiceMockAdaptor* adaptor = GetAdaptor();
   TestCommonPropertyChanges(service_, adaptor);
   TestAutoConnectPropertyChange(service_, adaptor);
 

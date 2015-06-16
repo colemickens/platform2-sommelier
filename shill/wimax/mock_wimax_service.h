@@ -13,14 +13,14 @@ namespace shill {
 
 class MockWiMaxService : public WiMaxService {
  public:
-  MockWiMaxService(ControlInterface *control,
-                   EventDispatcher *dispatcher,
-                   Metrics *metrics,
-                   Manager *manager);
+  MockWiMaxService(ControlInterface* control,
+                   EventDispatcher* dispatcher,
+                   Metrics* metrics,
+                   Manager* manager);
   ~MockWiMaxService() override;
 
   MOCK_CONST_METHOD0(GetNetworkObjectPath, RpcIdentifier());
-  MOCK_METHOD1(Start, bool(WiMaxNetworkProxyInterface *proxy));
+  MOCK_METHOD1(Start, bool(WiMaxNetworkProxyInterface* proxy));
   MOCK_METHOD0(Stop, void());
   MOCK_CONST_METHOD0(IsStarted, bool());
   MOCK_METHOD1(SetState, void(ConnectState state));

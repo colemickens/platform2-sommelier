@@ -17,26 +17,26 @@ namespace shill {
 
 class WiMaxManagerProxy : public WiMaxManagerProxyInterface {
  public:
-  explicit WiMaxManagerProxy(DBus::Connection *connection);
+  explicit WiMaxManagerProxy(DBus::Connection* connection);
   ~WiMaxManagerProxy() override;
 
   // Inherited from WiMaxManagerProxyInterface.
   void set_devices_changed_callback(
-      const DevicesChangedCallback &callback) override;
-  RpcIdentifiers Devices(Error *error) override;
+      const DevicesChangedCallback& callback) override;
+  RpcIdentifiers Devices(Error* error) override;
 
  private:
   class Proxy : public org::chromium::WiMaxManager_proxy,
                 public DBus::ObjectProxy {
    public:
-    explicit Proxy(DBus::Connection *connection);
+    explicit Proxy(DBus::Connection* connection);
     ~Proxy() override;
 
-    void set_devices_changed_callback(const DevicesChangedCallback &callback);
+    void set_devices_changed_callback(const DevicesChangedCallback& callback);
 
    private:
     // Signal callbacks inherited from WiMaxManager_proxy.
-    void DevicesChanged(const std::vector<DBus::Path> &devices) override;
+    void DevicesChanged(const std::vector<DBus::Path>& devices) override;
 
     // Method callbacks inherited from WiMaxManager_proxy.
     // [None]
