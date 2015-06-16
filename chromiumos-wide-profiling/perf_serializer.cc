@@ -985,9 +985,21 @@ bool PerfSerializer::SerializeBuildIDEvent(
     PerfDataProto_PerfBuildID* to) const {
   to->set_misc(from->header.misc);
   to->set_pid(from->pid);
-  to->set_build_id_hash(from->build_id, kBuildIDArraySize);
   to->set_filename(from->filename);
   to->set_filename_md5_prefix(Md5Prefix(from->filename));
+
+  // Trim out trailing zeroes from the build ID.
+  string build_id = HexToString(from->build_id, kBuildIDArraySize);
+  TrimZeroesFromBuildIDString(&build_id);
+
+  uint8_t build_id_bytes[kBuildIDArraySize];
+  if (!StringToHex(build_id, build_id_bytes, sizeof(build_id_bytes)))
+    return false;
+  // Used to convert build IDs (and possibly other hashes) between raw data
+  // format and as string of hex digits.
+  const int kHexCharsPerByte = 2;
+  to->set_build_id_hash(build_id_bytes, build_id.size() / kHexCharsPerByte);
+
   return true;
 }
 
@@ -1003,7 +1015,8 @@ bool PerfSerializer::DeserializeBuildIDEvent(
   event->header.size = size;
   event->header.misc = from.misc();
   event->pid = from.pid();
-  memcpy(event->build_id, from.build_id_hash().c_str(), kBuildIDArraySize);
+  memcpy(event->build_id, from.build_id_hash().c_str(),
+         from.build_id_hash().size());
 
   if (from.has_filename() && !filename.empty()) {
     CHECK_GT(snprintf(event->filename, filename.size() + 1, "%s",

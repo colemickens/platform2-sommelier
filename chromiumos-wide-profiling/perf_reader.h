@@ -86,7 +86,7 @@ class PerfReader {
   // through perf.  Specifically, it keeps removing trailing sequences of four
   // zero bytes (or eight '0' characters) until there are no more such
   // sequences, or the build id would be empty if the process were repeated.
-  static void UnperfizeBuildIDString(string* build_id);
+  static void TrimZeroesFromBuildIDString(string* build_id);
 
   bool ReadFile(const string& filename);
   bool ReadFromVector(const std::vector<char>& data);

@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <sys/time.h>
 
+#include <map>
 #include <sstream>
 #include <string>
 
@@ -154,6 +155,13 @@ void SerializeToFileAndBack(const string& input,
 
   remove(input_filename.c_str());
   remove(output_filename.c_str());
+}
+
+// Converts build ID data (stored as a string) to an actual string containing
+// hex digits.
+string BuildIDToString(const string& raw_build_id_data) {
+  return HexToString(reinterpret_cast<const u8*>(raw_build_id_data.c_str()),
+                     raw_build_id_data.size());
 }
 
 }  // namespace
@@ -507,6 +515,120 @@ TEST(PerfSerializerTest, SerializesAndDeserializesMmapEvents) {
     EXPECT_EQ(1|2, mmap.prot());
     EXPECT_EQ(2, mmap.flags());
   }
+}
+
+// Regression test for http://crbug.com/501004.
+TEST(PerfSerializerTest, SerializesAndDeserializesBuildIDs) {
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // no data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_TID |
+                                              PERF_SAMPLE_TIME,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  PerfSerializer serializer;
+  EXPECT_TRUE(serializer.ReadFromString(input.str()));
+
+  std::map<string, string> build_id_map;
+  build_id_map["file1"] = "0123456789abcdef0123456789abcdef01234567";
+  build_id_map["file2"] = "0123456789abcdef0123456789abcdef01230000";
+  build_id_map["file3"] = "0123456789abcdef0123456789abcdef00000000";
+  build_id_map["file4"] = "0123456789abcdef0123456789abcdef0000";
+  build_id_map["file5"] = "0123456789abcdef0123456789abcdef";
+  build_id_map["file6"] = "0123456789abcdef0123456789ab0000";
+  build_id_map["file7"] = "0123456789abcdef012345670000";
+  build_id_map["file8"] = "0123456789abcdef01234567";
+  EXPECT_TRUE(serializer.InjectBuildIDs(build_id_map));
+
+  PerfDataProto perf_data_proto;
+  EXPECT_TRUE(serializer.Serialize(&perf_data_proto));
+
+  // Verify that the build ID info was properly injected.
+  EXPECT_EQ(8, perf_data_proto.build_ids_size());
+  for (int i = 0; i < perf_data_proto.build_ids_size(); ++i) {
+    EXPECT_TRUE(perf_data_proto.build_ids(i).has_filename());
+    EXPECT_TRUE(perf_data_proto.build_ids(i).has_build_id_hash());
+  }
+
+  // Verify that the serialized build IDs have had their trailing zeroes
+  // trimmed.
+  EXPECT_EQ("file1", perf_data_proto.build_ids(0).filename());
+  EXPECT_EQ("0123456789abcdef0123456789abcdef01234567",
+            BuildIDToString(perf_data_proto.build_ids(0).build_id_hash()));
+
+  EXPECT_EQ("file2", perf_data_proto.build_ids(1).filename());
+  EXPECT_EQ("0123456789abcdef0123456789abcdef01230000",
+            BuildIDToString(perf_data_proto.build_ids(1).build_id_hash()));
+
+  EXPECT_EQ("file3", perf_data_proto.build_ids(2).filename());
+  EXPECT_EQ("0123456789abcdef0123456789abcdef",
+            BuildIDToString(perf_data_proto.build_ids(2).build_id_hash()));
+
+  EXPECT_EQ("file4", perf_data_proto.build_ids(3).filename());
+  EXPECT_EQ("0123456789abcdef0123456789abcdef",
+            BuildIDToString(perf_data_proto.build_ids(3).build_id_hash()));
+
+  EXPECT_EQ("file5", perf_data_proto.build_ids(4).filename());
+  EXPECT_EQ("0123456789abcdef0123456789abcdef",
+            BuildIDToString(perf_data_proto.build_ids(4).build_id_hash()));
+
+  EXPECT_EQ("file6", perf_data_proto.build_ids(5).filename());
+  EXPECT_EQ("0123456789abcdef0123456789ab0000",
+            BuildIDToString(perf_data_proto.build_ids(5).build_id_hash()));
+
+  EXPECT_EQ("file7", perf_data_proto.build_ids(6).filename());
+  EXPECT_EQ("0123456789abcdef01234567",
+            BuildIDToString(perf_data_proto.build_ids(6).build_id_hash()));
+
+  EXPECT_EQ("file8", perf_data_proto.build_ids(7).filename());
+  EXPECT_EQ("0123456789abcdef01234567",
+            BuildIDToString(perf_data_proto.build_ids(7).build_id_hash()));
+
+  // Check deserialization.
+  PerfSerializer deserializer;
+  EXPECT_TRUE(deserializer.Deserialize(perf_data_proto));
+  const std::vector<malloced_unique_ptr<build_id_event>>& build_id_events =
+      deserializer.build_id_events();
+  EXPECT_EQ(8, build_id_events.size());
+
+  // All trimmed build IDs should be padded to the full 20 byte length.
+  EXPECT_EQ(string("file1"), build_id_events[0]->filename);
+  EXPECT_EQ("0123456789abcdef0123456789abcdef01234567",
+            HexToString(build_id_events[0]->build_id, kBuildIDArraySize));
+
+  EXPECT_EQ(string("file2"), build_id_events[1]->filename);
+  EXPECT_EQ("0123456789abcdef0123456789abcdef01230000",
+            HexToString(build_id_events[1]->build_id, kBuildIDArraySize));
+
+  EXPECT_EQ(string("file3"), build_id_events[2]->filename);
+  EXPECT_EQ("0123456789abcdef0123456789abcdef00000000",
+            HexToString(build_id_events[2]->build_id, kBuildIDArraySize));
+
+  EXPECT_EQ(string("file4"), build_id_events[3]->filename);
+  EXPECT_EQ("0123456789abcdef0123456789abcdef00000000",
+            HexToString(build_id_events[3]->build_id, kBuildIDArraySize));
+
+  EXPECT_EQ(string("file5"), build_id_events[4]->filename);
+  EXPECT_EQ("0123456789abcdef0123456789abcdef00000000",
+            HexToString(build_id_events[4]->build_id, kBuildIDArraySize));
+
+  EXPECT_EQ(string("file6"), build_id_events[5]->filename);
+  EXPECT_EQ("0123456789abcdef0123456789ab000000000000",
+            HexToString(build_id_events[5]->build_id, kBuildIDArraySize));
+
+  EXPECT_EQ(string("file7"), build_id_events[6]->filename);
+  EXPECT_EQ("0123456789abcdef012345670000000000000000",
+            HexToString(build_id_events[6]->build_id, kBuildIDArraySize));
+
+  EXPECT_EQ(string("file8"), build_id_events[7]->filename);
+  EXPECT_EQ("0123456789abcdef012345670000000000000000",
+            HexToString(build_id_events[7]->build_id, kBuildIDArraySize));
 }
 
 }  // namespace quipper

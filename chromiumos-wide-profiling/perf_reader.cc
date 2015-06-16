@@ -620,7 +620,7 @@ void PerfReader::PerfizeBuildIDString(string* build_id) {
   build_id->resize(kBuildIDStringLength, '0');
 }
 
-void PerfReader::UnperfizeBuildIDString(string* build_id) {
+void PerfReader::TrimZeroesFromBuildIDString(string* build_id) {
   const size_t kPaddingSize = 8;
   const string kBuildIDPadding = string(kPaddingSize, '0');
 
