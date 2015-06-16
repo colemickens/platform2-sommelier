@@ -20,36 +20,36 @@ class ProviderInterface {
   virtual ~ProviderInterface() {}
 
   // Creates services from the entries within |profile|.
-  virtual void CreateServicesFromProfile(const ProfileRefPtr &profile) = 0;
+  virtual void CreateServicesFromProfile(const ProfileRefPtr& profile) = 0;
 
   // Finds a Service with similar properties to |args|.  The criteria
   // used are specific to the provider subclass.  Returns a reference
   // to a matching service if one exists.  Otherwise it returns a NULL
   // reference and populates |error|.
   virtual ServiceRefPtr FindSimilarService(
-      const KeyValueStore &args, Error *error) const = 0;
+      const KeyValueStore& args, Error* error) const = 0;
 
   // Retrieves (see FindSimilarService) or creates a service with the
   // unique attributes in |args|.  The remaining attributes will be
   // populated (by Manager) via a later call to Service::Configure().
   // Returns a NULL reference and populates |error| on failure.
-  virtual ServiceRefPtr GetService(const KeyValueStore &args, Error *error) = 0;
+  virtual ServiceRefPtr GetService(const KeyValueStore& args, Error* error) = 0;
 
   // Creates a temporary service with the identifying properties populated
   // from |args|.  Callers outside of the Provider must never register
   // this service with the Manager or connect it since it was never added
   // to the provider's service list.
   virtual ServiceRefPtr CreateTemporaryService(
-      const KeyValueStore &args, Error *error) = 0;
+      const KeyValueStore& args, Error* error) = 0;
 
   // Create a temporary service for an entry |entry_name| within |profile|.
   // Callers outside of the Provider must never register this service with the
   // Manager or connect it since it was never added to the provider's service
   // list.
   virtual ServiceRefPtr CreateTemporaryServiceFromProfile(
-      const ProfileRefPtr &profile,
-      const std::string &entry_name,
-      Error *error) = 0;
+      const ProfileRefPtr& profile,
+      const std::string& entry_name,
+      Error* error) = 0;
 
   // Starts the provider.
   virtual void Start() = 0;

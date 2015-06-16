@@ -47,7 +47,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kService;
-static string ObjectID(const Service *s) { return s->GetRpcIdentifier(); }
+static string ObjectID(const Service* s) { return s->GetRpcIdentifier(); }
 }
 
 const char Service::kAutoConnBusy[] = "busy";
@@ -126,10 +126,10 @@ const int Service::kMaxMisconnectEventHistory = 20;
 // static
 unsigned int Service::next_serial_number_ = 0;
 
-Service::Service(ControlInterface *control_interface,
-                 EventDispatcher *dispatcher,
-                 Metrics *metrics,
-                 Manager *manager,
+Service::Service(ControlInterface* control_interface,
+                 EventDispatcher* dispatcher,
+                 Metrics* metrics,
+                 Manager* manager,
                  Technology::Identifier technology)
     : weak_ptr_factory_(this),
       state_(kStateIdle),
@@ -293,7 +293,7 @@ Service::~Service() {
 }
 
 void Service::AutoConnect() {
-  const char *reason = nullptr;
+  const char* reason = nullptr;
   if (IsAutoConnectable(&reason)) {
     Error error;
     LOG(INFO) << "Auto-connecting to service " << unique_name_;
@@ -311,7 +311,7 @@ void Service::AutoConnect() {
   }
 }
 
-void Service::Connect(Error */*error*/, const char *reason) {
+void Service::Connect(Error* /*error*/, const char* reason) {
   LOG(INFO) << "Connect to service " << unique_name() <<": " << reason;
   ClearExplicitlyDisconnected();
   // Clear any failure state from a previous connect attempt.
@@ -319,7 +319,7 @@ void Service::Connect(Error */*error*/, const char *reason) {
     SetState(kStateIdle);
 }
 
-void Service::Disconnect(Error */*error*/, const char *reason) {
+void Service::Disconnect(Error* /*error*/, const char* reason) {
   string log_message = base::StringPrintf(
       "Disconnecting from service %s: %s", unique_name_.c_str(), reason);
   if (IsActive(nullptr)) {
@@ -330,36 +330,36 @@ void Service::Disconnect(Error */*error*/, const char *reason) {
 }
 
 void Service::DisconnectWithFailure(ConnectFailure failure,
-                                    Error *error,
-                                    const char *reason) {
+                                    Error* error,
+                                    const char* reason) {
   Disconnect(error, reason);
   SetFailure(failure);
 }
 
-void Service::UserInitiatedDisconnect(Error *error) {
+void Service::UserInitiatedDisconnect(Error* error) {
   Disconnect(error, "D-Bus RPC");
   explicitly_disconnected_ = true;
 }
 
-void Service::UserInitiatedConnect(Error *error) {
+void Service::UserInitiatedConnect(Error* error) {
   Connect(error, "D-Bus RPC");
   is_in_user_connect_ = true;
 }
 
-void Service::ActivateCellularModem(const string &/*carrier*/,
-                                    Error *error,
-                                    const ResultCallback &/*callback*/) {
+void Service::ActivateCellularModem(const string& /*carrier*/,
+                                    Error* error,
+                                    const ResultCallback& /*callback*/) {
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Service doesn't support cellular modem activation.");
 }
 
-void Service::CompleteCellularActivation(Error *error) {
+void Service::CompleteCellularActivation(Error* error) {
   Error::PopulateAndLog(
       FROM_HERE, error, Error::kNotSupported,
       "Service doesn't support cellular activation completion.");
 }
 
-bool Service::IsActive(Error */*error*/) {
+bool Service::IsActive(Error* /*error*/) {
   return state() != kStateUnknown &&
     state() != kStateIdle &&
     state() != kStateFailure;
@@ -428,8 +428,8 @@ void Service::SetState(ConnectState state) {
   adaptor_->EmitStringChanged(kStateProperty, GetStateString());
 }
 
-void Service::SetPortalDetectionFailure(const string &phase,
-                                        const string &status) {
+void Service::SetPortalDetectionFailure(const string& phase,
+                                        const string& status) {
   portal_detection_failure_phase_ = phase;
   portal_detection_failure_status_ = status;
   adaptor_->EmitStringChanged(kPortalDetectionFailedPhaseProperty, phase);
@@ -489,15 +489,15 @@ string Service::GetRpcIdentifier() const {
 }
 
 string Service::GetLoadableStorageIdentifier(
-    const StoreInterface &storage) const {
+    const StoreInterface& storage) const {
   return IsLoadableFrom(storage) ? GetStorageIdentifier() : "";
 }
 
-bool Service::IsLoadableFrom(const StoreInterface &storage) const {
+bool Service::IsLoadableFrom(const StoreInterface& storage) const {
   return storage.ContainsGroup(GetStorageIdentifier());
 }
 
-bool Service::Load(StoreInterface *storage) {
+bool Service::Load(StoreInterface* storage) {
   const string id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
     LOG(WARNING) << "Service is not available in the persistent store: " << id;
@@ -579,12 +579,12 @@ bool Service::Unload() {
   return false;
 }
 
-void Service::Remove(Error */*error*/) {
+void Service::Remove(Error* /*error*/) {
   manager()->RemoveService(this);
   // |this| may no longer be valid now.
 }
 
-bool Service::Save(StoreInterface *storage) {
+bool Service::Save(StoreInterface* storage) {
   const string id = GetStorageIdentifier();
 
   storage->SetString(id, kStorageType, GetTechnologyString());
@@ -643,9 +643,9 @@ void Service::SaveToCurrentProfile() {
   }
 }
 
-void Service::Configure(const KeyValueStore &args, Error *error) {
+void Service::Configure(const KeyValueStore& args, Error* error) {
   SLOG(this, 5) << "Configuring bool properties:";
-  for (const auto &bool_it : args.bool_properties()) {
+  for (const auto& bool_it : args.bool_properties()) {
     if (ContainsKey(parameters_ignored_for_configure_, bool_it.first)) {
       continue;
     }
@@ -657,7 +657,7 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
     }
   }
   SLOG(this, 5) << "Configuring int32_t properties:";
-  for (const auto &int_it : args.int_properties()) {
+  for (const auto& int_it : args.int_properties()) {
     if (ContainsKey(parameters_ignored_for_configure_, int_it.first)) {
       continue;
     }
@@ -669,7 +669,7 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
     }
   }
   SLOG(this, 5) << "Configuring key value store properties:";
-  for (const auto &key_value_it : args.key_value_store_properties()) {
+  for (const auto& key_value_it : args.key_value_store_properties()) {
     if (ContainsKey(parameters_ignored_for_configure_, key_value_it.first)) {
       continue;
     }
@@ -682,7 +682,7 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
     }
   }
   SLOG(this, 5) << "Configuring string properties:";
-  for (const auto &string_it : args.string_properties()) {
+  for (const auto& string_it : args.string_properties()) {
     if (ContainsKey(parameters_ignored_for_configure_, string_it.first)) {
       continue;
     }
@@ -694,7 +694,7 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
     }
   }
   SLOG(this, 5) << "Configuring string array properties:";
-  for (const auto &strings_it : args.strings_properties()) {
+  for (const auto& strings_it : args.strings_properties()) {
     if (ContainsKey(parameters_ignored_for_configure_, strings_it.first)) {
       continue;
     }
@@ -706,7 +706,7 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
     }
   }
   SLOG(this, 5) << "Configuring string map properties:";
-  for (const auto &stringmap_it : args.stringmap_properties()) {
+  for (const auto& stringmap_it : args.stringmap_properties()) {
     if (ContainsKey(parameters_ignored_for_configure_, stringmap_it.first)) {
       continue;
     }
@@ -720,9 +720,9 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
   }
 }
 
-bool Service::DoPropertiesMatch(const KeyValueStore &args) const {
+bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
   SLOG(this, 5) << "Checking bool properties:";
-  for (const auto &bool_it : args.bool_properties()) {
+  for (const auto& bool_it : args.bool_properties()) {
     SLOG(this, 5) << "   " << bool_it.first;
     Error get_error;
     bool value;
@@ -732,7 +732,7 @@ bool Service::DoPropertiesMatch(const KeyValueStore &args) const {
     }
   }
   SLOG(this, 5) << "Checking int32_t properties:";
-  for (const auto &int_it : args.int_properties()) {
+  for (const auto& int_it : args.int_properties()) {
     SLOG(this, 5) << "   " << int_it.first;
     Error get_error;
     int32_t value;
@@ -742,7 +742,7 @@ bool Service::DoPropertiesMatch(const KeyValueStore &args) const {
     }
   }
   SLOG(this, 5) << "Checking string properties:";
-  for (const auto &string_it : args.string_properties()) {
+  for (const auto& string_it : args.string_properties()) {
     SLOG(this, 5) << "   " << string_it.first;
     Error get_error;
     string value;
@@ -752,7 +752,7 @@ bool Service::DoPropertiesMatch(const KeyValueStore &args) const {
     }
   }
   SLOG(this, 5) << "Checking string array properties:";
-  for (const auto &strings_it : args.strings_properties()) {
+  for (const auto& strings_it : args.strings_properties()) {
     SLOG(this, 5) << "   " << strings_it.first;
     Error get_error;
     vector<string> value;
@@ -762,7 +762,7 @@ bool Service::DoPropertiesMatch(const KeyValueStore &args) const {
     }
   }
   SLOG(this, 5) << "Checking key value store properties:";
-  for (const auto &key_value_it : args.key_value_store_properties()) {
+  for (const auto& key_value_it : args.key_value_store_properties()) {
     SLOG(this, 5) << "   " << key_value_it.first;
     Error get_error;
     KeyValueStore value;
@@ -779,7 +779,7 @@ bool Service::IsRemembered() const {
   return profile_ && !manager_->IsServiceEphemeral(this);
 }
 
-bool Service::IsDependentOn(const ServiceRefPtr &b) const {
+bool Service::IsDependentOn(const ServiceRefPtr& b) const {
   if (!connection_ || !b || !b->connection()) {
     return false;
   }
@@ -797,7 +797,7 @@ void Service::EnableAndRetainAutoConnect() {
   RetainAutoConnect();
 }
 
-void Service::SetConnection(const ConnectionRefPtr &connection) {
+void Service::SetConnection(const ConnectionRefPtr& connection) {
   if (connection.get()) {
     // TODO(pstew): Make this function testable by using a factory here.
     // http://crbug.com/216664
@@ -826,7 +826,7 @@ bool Service::Is8021xConnectable() const {
   return eap() && eap()->IsConnectable();
 }
 
-bool Service::AddEAPCertification(const string &name, size_t depth) {
+bool Service::AddEAPCertification(const string& name, size_t depth) {
   if (depth >= kEAPMaxCertificationElements) {
     LOG(WARNING) << "Ignoring certification " << name
                  << " because depth " << depth
@@ -853,7 +853,7 @@ void Service::ClearEAPCertification() {
   remote_certification_.clear();
 }
 
-void Service::SetEapCredentials(EapCredentials *eap) {
+void Service::SetEapCredentials(EapCredentials* eap) {
   // This operation must be done at most once for the lifetime of the service.
   CHECK(eap && !eap_);
 
@@ -879,7 +879,7 @@ void Service::SetAutoConnect(bool connect) {
 }
 
 // static
-const char *Service::ConnectFailureToString(const ConnectFailure &state) {
+const char* Service::ConnectFailureToString(const ConnectFailure& state) {
   switch (state) {
     case kFailureUnknown:
       return "Unknown";
@@ -930,7 +930,7 @@ const char *Service::ConnectFailureToString(const ConnectFailure &state) {
 }
 
 // static
-const char *Service::ConnectStateToString(const ConnectState &state) {
+const char* Service::ConnectStateToString(const ConnectState& state) {
   switch (state) {
     case kStateUnknown:
       return "Unknown";
@@ -956,7 +956,7 @@ string Service::GetTechnologyString() const {
   return Technology::NameFromIdentifier(technology());
 }
 
-string Service::CalculateTechnology(Error */*error*/) {
+string Service::CalculateTechnology(Error* /*error*/) {
   return GetTechnologyString();
 }
 
@@ -974,14 +974,14 @@ void Service::NoteDisconnectEvent() {
     return;
   }
   // Ignore the event if the system is suspending.
-  PowerManager *power_manager = manager_->power_manager();
+  PowerManager* power_manager = manager_->power_manager();
   if (!power_manager || power_manager->suspending()) {
     SLOG(this, 2) << "Disconnect in transitional power state ignored.";
     return;
   }
   int period = 0;
   size_t threshold = 0;
-  EventHistory *events = nullptr;
+  EventHistory* events = nullptr;
   // Sometimes services transition to Idle before going into a failed state so
   // take into account the last non-idle state.
   ConnectState state = state_ == kStateIdle ? previous_state_ : state_;
@@ -1045,7 +1045,7 @@ bool Service::HasRecentConnectionIssues() {
 }
 
 // static
-bool Service::DecideBetween(int a, int b, bool *decision) {
+bool Service::DecideBetween(int a, int b, bool* decision) {
   if (a == b)
     return false;
   *decision = (a > b);
@@ -1057,12 +1057,12 @@ uint16_t Service::SecurityLevel() {
 }
 
 // static
-bool Service::Compare(Manager *manager,
+bool Service::Compare(Manager* manager,
                       ServiceRefPtr a,
                       ServiceRefPtr b,
                       bool compare_connectivity_state,
-                      const vector<Technology::Identifier> &tech_order,
-                      const char **reason) {
+                      const vector<Technology::Identifier>& tech_order,
+                      const char** reason) {
   bool ret;
 
   if (compare_connectivity_state && a->state() != b->state()) {
@@ -1169,11 +1169,11 @@ bool Service::Compare(Manager *manager,
   return a->serial_number_ < b->serial_number_;
 }
 
-const ProfileRefPtr &Service::profile() const { return profile_; }
+const ProfileRefPtr& Service::profile() const { return profile_; }
 
-void Service::set_profile(const ProfileRefPtr &p) { profile_ = p; }
+void Service::set_profile(const ProfileRefPtr& p) { profile_ = p; }
 
-void Service::SetProfile(const ProfileRefPtr &p) {
+void Service::SetProfile(const ProfileRefPtr& p) {
   SLOG(this, 2) << "SetProfile from "
                 << (profile_ ? profile_->GetFriendlyName() : "(none)")
                 << " to " << (p ? p->GetFriendlyName() : "(none)")
@@ -1190,7 +1190,7 @@ void Service::SetProfile(const ProfileRefPtr &p) {
   adaptor_->EmitStringChanged(kProfileProperty, profile_rpc_id);
 }
 
-void Service::OnPropertyChanged(const string &property) {
+void Service::OnPropertyChanged(const string& property) {
   SLOG(this, 1) << __func__ << " " << property;
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   if (Is8021x() && EapCredentials::IsEapAuthenticationProperty(property)) {
@@ -1219,7 +1219,7 @@ void Service::OnDarkResume() {
   // Nothing to do in the general case.
 }
 
-string Service::GetIPConfigRpcIdentifier(Error *error) const {
+string Service::GetIPConfigRpcIdentifier(Error* error) const {
   if (!connection_) {
     error->Populate(Error::kNotFound);
     return DBusAdaptor::kNullPath;
@@ -1277,11 +1277,11 @@ string Service::GetStateString() const {
   }
 }
 
-string Service::CalculateState(Error */*error*/) {
+string Service::CalculateState(Error* /*error*/) {
   return GetStateString();
 }
 
-bool Service::IsAutoConnectable(const char **reason) const {
+bool Service::IsAutoConnectable(const char** reason) const {
   if (manager_->IsTechnologyAutoConnectDisabled(technology_)) {
     *reason = kAutoConnTechnologyNotConnectable;
     return false;
@@ -1330,36 +1330,36 @@ bool Service::IsPortalDetectionAuto() const {
 }
 
 void Service::HelpRegisterDerivedBool(
-    const string &name,
-    bool(Service::*get)(Error *error),
-    bool(Service::*set)(const bool&, Error *),
-    void(Service::*clear)(Error *)) {
+    const string& name,
+    bool(Service::*get)(Error* error),
+    bool(Service::*set)(const bool&, Error*),
+    void(Service::*clear)(Error*)) {
   store_.RegisterDerivedBool(
       name,
       BoolAccessor(new CustomAccessor<Service, bool>(this, get, set, clear)));
 }
 
 void Service::HelpRegisterDerivedInt32(
-    const string &name,
-    int32_t(Service::*get)(Error *error),
-    bool(Service::*set)(const int32_t&, Error *)) {
+    const string& name,
+    int32_t(Service::*get)(Error* error),
+    bool(Service::*set)(const int32_t&, Error*)) {
   store_.RegisterDerivedInt32(
       name,
       Int32Accessor(new CustomAccessor<Service, int32_t>(this, get, set)));
 }
 
 void Service::HelpRegisterDerivedString(
-    const string &name,
-    string(Service::*get)(Error *error),
-    bool(Service::*set)(const string&, Error *)) {
+    const string& name,
+    string(Service::*get)(Error* error),
+    bool(Service::*set)(const string&, Error*)) {
   store_.RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<Service, string>(this, get, set)));
 }
 
 void Service::HelpRegisterConstDerivedRpcIdentifier(
-    const string &name,
-    RpcIdentifier(Service::*get)(Error *) const) {
+    const string& name,
+    RpcIdentifier(Service::*get)(Error*) const) {
   store_.RegisterDerivedRpcIdentifier(
       name,
       RpcIdentifierAccessor(new CustomReadOnlyAccessor<Service, RpcIdentifier>(
@@ -1367,32 +1367,32 @@ void Service::HelpRegisterConstDerivedRpcIdentifier(
 }
 
 void Service::HelpRegisterConstDerivedUint16(
-    const string &name,
-    uint16_t(Service::*get)(Error *) const) {
+    const string& name,
+    uint16_t(Service::*get)(Error*) const) {
   store_.RegisterDerivedUint16(
       name,
       Uint16Accessor(new CustomReadOnlyAccessor<Service, uint16_t>(this, get)));
 }
 
 void Service::HelpRegisterConstDerivedStrings(
-    const string &name, Strings(Service::*get)(Error *error) const) {
+    const string& name, Strings(Service::*get)(Error* error) const) {
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomReadOnlyAccessor<Service, Strings>(this, get)));
 }
 
 void Service::HelpRegisterConstDerivedString(
-    const string &name, string(Service::*get)(Error *error) const) {
+    const string& name, string(Service::*get)(Error* error) const) {
   store_.RegisterDerivedString(
       name,
       StringAccessor(new CustomReadOnlyAccessor<Service, string>(this, get)));
 }
 
 void Service::HelpRegisterObservedDerivedBool(
-    const string &name,
-    bool(Service::*get)(Error *error),
-    bool(Service::*set)(const bool&, Error *),
-    void(Service::*clear)(Error *)) {
+    const string& name,
+    bool(Service::*get)(Error* error),
+    bool(Service::*set)(const bool&, Error*),
+    void(Service::*clear)(Error*)) {
   BoolAccessor accessor(
       new CustomAccessor<Service, bool>(this, get, set, clear));
   store_.RegisterDerivedBool(name, accessor);
@@ -1400,21 +1400,21 @@ void Service::HelpRegisterObservedDerivedBool(
 }
 
 // static
-void Service::LoadString(StoreInterface *storage,
-                         const string &id,
-                         const string &key,
-                         const string &default_value,
-                         string *value) {
+void Service::LoadString(StoreInterface* storage,
+                         const string& id,
+                         const string& key,
+                         const string& default_value,
+                         string* value) {
   if (!storage->GetString(id, key, value)) {
     *value = default_value;
   }
 }
 
 // static
-void Service::SaveString(StoreInterface *storage,
-                         const string &id,
-                         const string &key,
-                         const string &value,
+void Service::SaveString(StoreInterface* storage,
+                         const string& id,
+                         const string& key,
+                         const string& value,
                          bool crypted,
                          bool save) {
   if (value.empty() || !save) {
@@ -1432,27 +1432,27 @@ map<string, string> Service::GetLoadableProfileEntries() {
   return manager_->GetLoadableProfileEntriesForService(this);
 }
 
-void Service::IgnoreParameterForConfigure(const string &parameter) {
+void Service::IgnoreParameterForConfigure(const string& parameter) {
   parameters_ignored_for_configure_.insert(parameter);
 }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-const string &Service::GetEAPKeyManagement() const {
+const string& Service::GetEAPKeyManagement() const {
   CHECK(eap());
   return eap()->key_management();
 }
 
-void Service::SetEAPKeyManagement(const string &key_management) {
+void Service::SetEAPKeyManagement(const string& key_management) {
   CHECK(mutable_eap());
   mutable_eap()->SetKeyManagement(key_management, nullptr);
 }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-bool Service::GetAutoConnect(Error */*error*/) {
+bool Service::GetAutoConnect(Error* /*error*/) {
   return auto_connect();
 }
 
-bool Service::SetAutoConnectFull(const bool &connect, Error */*error*/) {
+bool Service::SetAutoConnectFull(const bool& connect, Error* /*error*/) {
   LOG(INFO) << "Service " << unique_name() << ": AutoConnect="
             << auto_connect() << "->" << connect;
   if (!retain_auto_connect_) {
@@ -1473,7 +1473,7 @@ bool Service::SetAutoConnectFull(const bool &connect, Error */*error*/) {
   return true;
 }
 
-void Service::ClearAutoConnect(Error */*error*/) {
+void Service::ClearAutoConnect(Error* /*error*/) {
   if (auto_connect()) {
     SetAutoConnect(false);
     manager_->UpdateService(this);
@@ -1482,11 +1482,11 @@ void Service::ClearAutoConnect(Error */*error*/) {
   retain_auto_connect_ = false;
 }
 
-string Service::GetCheckPortal(Error *error) {
+string Service::GetCheckPortal(Error* error) {
   return check_portal_;
 }
 
-bool Service::SetCheckPortal(const string &check_portal, Error *error) {
+bool Service::SetCheckPortal(const string& check_portal, Error* error) {
   if (check_portal != kCheckPortalFalse &&
       check_portal != kCheckPortalTrue &&
       check_portal != kCheckPortalAuto) {
@@ -1503,11 +1503,11 @@ bool Service::SetCheckPortal(const string &check_portal, Error *error) {
   return true;
 }
 
-string Service::GetGuid(Error *error) {
+string Service::GetGuid(Error* error) {
   return guid_;
 }
 
-bool Service::SetGuid(const string &guid, Error */*error*/) {
+bool Service::SetGuid(const string& guid, Error* /*error*/) {
   if (guid_ == guid) {
     return false;
   }
@@ -1527,11 +1527,11 @@ void Service::SetSecurity(CryptoAlgorithm crypto_algorithm, bool key_rotation,
   endpoint_auth_ = endpoint_auth;
 }
 
-string Service::GetNameProperty(Error */*error*/) {
+string Service::GetNameProperty(Error* /*error*/) {
   return friendly_name_;
 }
 
-bool Service::SetNameProperty(const string &name, Error *error) {
+bool Service::SetNameProperty(const string& name, Error* error) {
   if (name != friendly_name_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           base::StringPrintf(
@@ -1548,11 +1548,11 @@ void Service::SetHasEverConnected(bool has_ever_connected) {
   has_ever_connected_ = has_ever_connected;
 }
 
-int32_t Service::GetPriority(Error *error) {
+int32_t Service::GetPriority(Error* error) {
   return priority_;
 }
 
-bool Service::SetPriority(const int32_t &priority, Error *error) {
+bool Service::SetPriority(const int32_t& priority, Error* error) {
   if (priority_ == priority) {
     return false;
   }
@@ -1561,12 +1561,12 @@ bool Service::SetPriority(const int32_t &priority, Error *error) {
   return true;
 }
 
-int32_t Service::GetPriorityWithinTechnology(Error *error) {
+int32_t Service::GetPriorityWithinTechnology(Error* error) {
   return priority_within_technology_;
 }
 
-bool Service::SetPriorityWithinTechnology(const int32_t &priority,
-                                          Error *error) {
+bool Service::SetPriorityWithinTechnology(const int32_t& priority,
+                                          Error* error) {
   if (priority_within_technology_ == priority) {
     return false;
   }
@@ -1576,7 +1576,7 @@ bool Service::SetPriorityWithinTechnology(const int32_t &priority,
   return true;
 }
 
-string Service::GetProfileRpcId(Error *error) {
+string Service::GetProfileRpcId(Error* error) {
   if (!profile_) {
     // This happens in some unit tests where profile_ is not set.
     error->Populate(Error::kNotFound);
@@ -1585,7 +1585,7 @@ string Service::GetProfileRpcId(Error *error) {
   return profile_->GetRpcIdentifier();
 }
 
-bool Service::SetProfileRpcId(const string &profile, Error *error) {
+bool Service::SetProfileRpcId(const string& profile, Error* error) {
   if (profile_ && profile_->GetRpcIdentifier() == profile) {
     return false;
   }
@@ -1598,18 +1598,18 @@ bool Service::SetProfileRpcId(const string &profile, Error *error) {
   return (profile_ != old_profile);
 }
 
-uint16_t Service::GetHTTPProxyPort(Error */*error*/) const {
+uint16_t Service::GetHTTPProxyPort(Error* /*error*/) const {
   if (http_proxy_.get()) {
     return static_cast<uint16_t>(http_proxy_->proxy_port());
   }
   return 0;
 }
 
-string Service::GetProxyConfig(Error *error) {
+string Service::GetProxyConfig(Error* error) {
   return proxy_config_;
 }
 
-bool Service::SetProxyConfig(const string &proxy_config, Error *error) {
+bool Service::SetProxyConfig(const string& proxy_config, Error* error) {
   if (proxy_config_ == proxy_config)
     return false;
   proxy_config_ = proxy_config;
@@ -1617,7 +1617,7 @@ bool Service::SetProxyConfig(const string &proxy_config, Error *error) {
   return true;
 }
 
-string Service::GetTethering(Error *error) const {
+string Service::GetTethering(Error* error) const {
   // The "Tethering" property isn't supported by the Service base class, and
   // therefore should not be listed in the properties returned by
   // the GetProperties() RPC method.
@@ -1630,15 +1630,15 @@ void Service::NotifyPropertyChanges() {
   property_change_notifier_->UpdatePropertyObservers();
 }
 
-Strings Service::GetDisconnectsProperty(Error */*error*/) const {
+Strings Service::GetDisconnectsProperty(Error* /*error*/) const {
   return disconnects_.ExtractWallClockToStrings();
 }
 
-Strings Service::GetMisconnectsProperty(Error */*error*/) const {
+Strings Service::GetMisconnectsProperty(Error* /*error*/) const {
   return misconnects_.ExtractWallClockToStrings();
 }
 
-bool Service::GetVisibleProperty(Error */*error*/) {
+bool Service::GetVisibleProperty(Error* /*error*/) {
   return IsVisible();
 }
 
@@ -1648,7 +1648,7 @@ void Service::SaveToProfile() {
   }
 }
 
-void Service::SetFriendlyName(const string &friendly_name) {
+void Service::SetFriendlyName(const string& friendly_name) {
   if (friendly_name == friendly_name_)
     return;
   friendly_name_ = friendly_name;
@@ -1663,7 +1663,7 @@ void Service::SetStrength(uint8_t strength) {
   adaptor_->EmitUint8Changed(kSignalStrengthProperty, strength);
 }
 
-void Service::SetErrorDetails(const string &details) {
+void Service::SetErrorDetails(const string& details) {
   if (error_details_ == details) {
     return;
   }

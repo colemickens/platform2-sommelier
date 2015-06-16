@@ -27,9 +27,9 @@ class RPCTaskDelegate {
  public:
   virtual ~RPCTaskDelegate() {}
 
-  virtual void GetLogin(std::string *user, std::string *password) = 0;
-  virtual void Notify(const std::string &reason,
-                      const std::map<std::string, std::string> &dict) = 0;
+  virtual void GetLogin(std::string* user, std::string* password) = 0;
+  virtual void Notify(const std::string& reason,
+                      const std::map<std::string, std::string>& dict) = 0;
 };
 
 // RPC tasks are currently used by VPN drivers for communication with external
@@ -38,16 +38,16 @@ class RPCTaskDelegate {
 class RPCTask {
  public:
   // A constructor for the RPCTask object.
-  RPCTask(ControlInterface *control_interface, RPCTaskDelegate *delegate);
+  RPCTask(ControlInterface* control_interface, RPCTaskDelegate* delegate);
   virtual ~RPCTask();
 
-  virtual void GetLogin(std::string *user, std::string *password) const;
-  virtual void Notify(const std::string &reason,
-                      const std::map<std::string, std::string> &dict);
+  virtual void GetLogin(std::string* user, std::string* password) const;
+  virtual void Notify(const std::string& reason,
+                      const std::map<std::string, std::string>& dict);
 
   // Returns a string that is guaranteed to uniquely identify this RPCTask
   // instance.
-  const std::string &UniqueName() const { return unique_name_; }
+  const std::string& UniqueName() const { return unique_name_; }
 
   // Generates environment variable strings for a child process to
   // communicate back to us over RPC.
@@ -56,7 +56,7 @@ class RPCTask {
   std::string GetRpcConnectionIdentifier() const;
 
  private:
-  RPCTaskDelegate *delegate_;
+  RPCTaskDelegate* delegate_;
   static unsigned int serial_number_;
   std::string unique_name_;  // MUST be unique amongst RPC task instances
   std::unique_ptr<RPCTaskAdaptorInterface> adaptor_;

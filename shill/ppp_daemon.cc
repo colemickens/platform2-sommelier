@@ -28,13 +28,13 @@ const char PPPDaemon::kPPPoEPluginPath[] = "rp-pppoe.so";
 const uint32_t PPPDaemon::kUnspecifiedValue = UINT32_MAX;
 
 std::unique_ptr<ExternalTask> PPPDaemon::Start(
-    ControlInterface *control_interface,
-    GLib *glib,
-    const base::WeakPtr<RPCTaskDelegate> &task_delegate,
-    const PPPDaemon::Options &options,
-    const std::string &device,
-    const PPPDaemon::DeathCallback &death_callback,
-    Error *error) {
+    ControlInterface* control_interface,
+    GLib* glib,
+    const base::WeakPtr<RPCTaskDelegate>& task_delegate,
+    const PPPDaemon::Options& options,
+    const std::string& device,
+    const PPPDaemon::DeathCallback& death_callback,
+    Error* error) {
   std::vector<std::string> arguments;
   if (options.debug) {
     arguments.push_back("debug");

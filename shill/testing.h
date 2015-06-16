@@ -70,7 +70,7 @@ class SetErrorTypeInArgumentAction {
 
   template <typename Result, typename ArgumentTuple>
   Result Perform(const ArgumentTuple& args) const {
-    Error *error_arg = ::std::tr1::get<error_argument_index>(args);
+    Error* error_arg = ::std::tr1::get<error_argument_index>(args);
     if (error_arg)
       error_arg->Populate(error_type_);
 
@@ -88,7 +88,7 @@ class SetErrorTypeInArgumentAction {
   bool warn_default_;
 };
 
-// Many functions in the the DBus proxy classes take a (shill::Error *) output
+// Many functions in the the DBus proxy classes take a (shill::Error*) output
 // argument that is set to shill::Error::kOperationFailed to notify the caller
 // synchronously of error conditions.
 //
@@ -105,7 +105,7 @@ SetOperationFailedInArgumentAndWarn() {
           true));
 }
 
-// Use this action to set the (shill::Error *) output argument to any
+// Use this action to set the (shill::Error*) output argument to any
 // shill::Error value on mock DBus proxy method calls.
 template<int error_argument_index>
 ::testing::PolymorphicAction<SetErrorTypeInArgumentAction<error_argument_index>>

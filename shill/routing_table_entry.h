@@ -28,9 +28,9 @@ struct RoutingTableEntry {
         table(RT_TABLE_MAIN),
         tag(kDefaultTag) {}
 
-  RoutingTableEntry(const IPAddress &dst_in,
-                    const IPAddress &src_in,
-                    const IPAddress &gateway_in,
+  RoutingTableEntry(const IPAddress& dst_in,
+                    const IPAddress& src_in,
+                    const IPAddress& gateway_in,
                     uint32_t metric_in,
                     unsigned char scope_in,
                     bool from_rtnl_in)
@@ -43,9 +43,9 @@ struct RoutingTableEntry {
         table(RT_TABLE_MAIN),
         tag(kDefaultTag) {}
 
-  RoutingTableEntry(const IPAddress &dst_in,
-                    const IPAddress &src_in,
-                    const IPAddress &gateway_in,
+  RoutingTableEntry(const IPAddress& dst_in,
+                    const IPAddress& src_in,
+                    const IPAddress& gateway_in,
                     uint32_t metric_in,
                     unsigned char scope_in,
                     bool from_rtnl_in,
@@ -59,9 +59,9 @@ struct RoutingTableEntry {
         table(RT_TABLE_MAIN),
         tag(tag_in) {}
 
-  RoutingTableEntry(const IPAddress &dst_in,
-                    const IPAddress &src_in,
-                    const IPAddress &gateway_in,
+  RoutingTableEntry(const IPAddress& dst_in,
+                    const IPAddress& src_in,
+                    const IPAddress& gateway_in,
                     uint32_t metric_in,
                     unsigned char scope_in,
                     bool from_rtnl_in,
@@ -76,7 +76,7 @@ struct RoutingTableEntry {
         table(table_in),
         tag(tag_in) {}
 
-  RoutingTableEntry(const RoutingTableEntry &b)
+  RoutingTableEntry(const RoutingTableEntry& b)
       : dst(b.dst),
         src(b.src),
         gateway(b.gateway),
@@ -86,7 +86,7 @@ struct RoutingTableEntry {
         table(b.table),
         tag(b.tag) {}
 
-  RoutingTableEntry &operator=(const RoutingTableEntry &b) {
+  RoutingTableEntry& operator=(const RoutingTableEntry& b) {
     dst = b.dst;
     src = b.src;
     gateway = b.gateway;
@@ -101,7 +101,7 @@ struct RoutingTableEntry {
 
   ~RoutingTableEntry() {}
 
-  bool Equals(const RoutingTableEntry &b) {
+  bool Equals(const RoutingTableEntry& b) {
     return (dst.Equals(b.dst) &&
             src.Equals(b.src) &&
             gateway.Equals(b.gateway) &&

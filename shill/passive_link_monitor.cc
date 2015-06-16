@@ -23,7 +23,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
-static string ObjectID(Connection *c) { return c->interface_name(); }
+static string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
 // static.
@@ -31,9 +31,9 @@ const int PassiveLinkMonitor::kDefaultMonitorCycles = 40;
 const int PassiveLinkMonitor::kCyclePeriodMilliseconds = 25000;
 const int PassiveLinkMonitor::kMinArpRequestsPerCycle = 5;
 
-PassiveLinkMonitor::PassiveLinkMonitor(const ConnectionRefPtr &connection,
-                                       EventDispatcher *dispatcher,
-                                       const ResultCallback &result_callback)
+PassiveLinkMonitor::PassiveLinkMonitor(const ConnectionRefPtr& connection,
+                                       EventDispatcher* dispatcher,
+                                       const ResultCallback& result_callback)
     : connection_(connection),
       dispatcher_(dispatcher),
       // Connection is not provided when this is used as a mock for testing

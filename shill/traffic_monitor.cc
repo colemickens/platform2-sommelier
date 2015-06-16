@@ -22,7 +22,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
-static string ObjectID(Device *d) { return d->link_name(); }
+static string ObjectID(Device* d) { return d->link_name(); }
 }
 
 // static
@@ -31,8 +31,8 @@ const int64_t TrafficMonitor::kDnsTimedOutThresholdSeconds = 15;
 const int TrafficMonitor::kMinimumFailedSamplesToTrigger = 2;
 const int64_t TrafficMonitor::kSamplingIntervalMilliseconds = 5000;
 
-TrafficMonitor::TrafficMonitor(const DeviceRefPtr &device,
-                               EventDispatcher *dispatcher)
+TrafficMonitor::TrafficMonitor(const DeviceRefPtr& device,
+                               EventDispatcher* dispatcher)
     : device_(device),
       dispatcher_(dispatcher),
       socket_info_reader_(new SocketInfoReader),
@@ -72,11 +72,11 @@ void TrafficMonitor::ResetCongestedTxQueuesStatsWithLogging() {
 }
 
 void TrafficMonitor::BuildIPPortToTxQueueLength(
-    const vector<SocketInfo> &socket_infos,
-    IPPortToTxQueueLengthMap *tx_queue_lengths) {
+    const vector<SocketInfo>& socket_infos,
+    IPPortToTxQueueLengthMap* tx_queue_lengths) {
   SLOG(device_.get(), 3) << __func__;
   string device_ip_address = device_->ipconfig()->properties().address;
-  for (const auto &info : socket_infos) {
+  for (const auto& info : socket_infos) {
     SLOG(device_.get(), 4) << "SocketInfo(IP="
                            << info.local_ip_address().ToString()
                            << ", TX=" << info.transmit_queue_value()
@@ -119,7 +119,7 @@ bool TrafficMonitor::IsCongestedTxQueues() {
     SLOG(device_.get(), 3) << __func__ << ": No interesting socket info";
     ResetCongestedTxQueuesStatsWithLogging();
   } else {
-    for (const auto &length_entry : old_tx_queue_lengths_) {
+    for (const auto& length_entry : old_tx_queue_lengths_) {
       IPPortToTxQueueLengthMap::iterator curr_tx_queue_it =
           curr_tx_queue_lengths.find(length_entry.first);
       if (curr_tx_queue_it == curr_tx_queue_lengths.end() ||
@@ -175,7 +175,7 @@ bool TrafficMonitor::IsDnsFailing() {
     const int64_t kDnsTimedOutLowerThresholdSeconds =
         kDnsTimedOutThresholdSeconds - kSamplingIntervalMilliseconds / 1000;
     string device_ip_address = device_->ipconfig()->properties().address;
-    for (const auto &info : connection_infos) {
+    for (const auto& info : connection_infos) {
       if (info.protocol() != IPPROTO_UDP ||
           info.time_to_expire_seconds() > kDnsTimedOutThresholdSeconds ||
           info.time_to_expire_seconds() <= kDnsTimedOutLowerThresholdSeconds ||

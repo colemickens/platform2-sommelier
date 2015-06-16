@@ -9,11 +9,11 @@
 
 namespace shill {
 
-ResultAggregator::ResultAggregator(const ResultCallback &callback)
+ResultAggregator::ResultAggregator(const ResultCallback& callback)
     : ResultAggregator(callback, nullptr, -1) {}
 
-ResultAggregator::ResultAggregator(const ResultCallback &callback,
-                                   EventDispatcher *dispatcher,
+ResultAggregator::ResultAggregator(const ResultCallback& callback,
+                                   EventDispatcher* dispatcher,
                                    int timeout_milliseconds)
     : weak_ptr_factory_(this),
       callback_(callback),
@@ -36,7 +36,7 @@ ResultAggregator::~ResultAggregator() {
   // is invoked.
 }
 
-void ResultAggregator::ReportResult(const Error &error) {
+void ResultAggregator::ReportResult(const Error& error) {
   LOG(INFO) << "Error type " << error << " reported";
   CHECK(!error.IsOngoing());  // We want the final result.
   got_result_ = true;

@@ -24,18 +24,18 @@ class SharedDBusConnection {
   ~SharedDBusConnection() = default;
 
   // Since this is a singleton, use SharedDBusConnection::GetInstance()->Foo().
-  static SharedDBusConnection *GetInstance();
+  static SharedDBusConnection* GetInstance();
 
   void Init();
 
   // Returns a DBus connection that may be attached to a name instance.
   // This is useful for adaptor instances which handle incoming method calls.
-  DBus::Connection *GetAdaptorConnection();
+  DBus::Connection* GetAdaptorConnection();
 
   // Returns a DBus connection that is not associated with an acquired name.
   // This is useful for proxy instances which handle incoming signals and
   // outgoing method calls.
-  DBus::Connection *GetProxyConnection();
+  DBus::Connection* GetProxyConnection();
 
  protected:
   SharedDBusConnection() = default;

@@ -32,11 +32,11 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDaemon;
-static string ObjectID(Daemon *d) { return "(shill_daemon)"; }
+static string ObjectID(Daemon* d) { return "(shill_daemon)"; }
 }
 
 
-Daemon::Daemon(Config *config, ControlInterface *control)
+Daemon::Daemon(Config* config, ControlInterface* control)
     : config_(config),
       control_(control),
       metrics_(new Metrics(&dispatcher_)),
@@ -59,8 +59,8 @@ Daemon::Daemon(Config *config, ControlInterface *control)
 
 Daemon::~Daemon() {}
 
-void Daemon::ApplySettings(const Settings &settings) {
-  for (const auto &device_name : settings.device_blacklist) {
+void Daemon::ApplySettings(const Settings& settings) {
+  for (const auto& device_name : settings.device_blacklist) {
     manager_->AddDeviceToBlackList(device_name);
   }
   Error error;
@@ -97,7 +97,7 @@ void Daemon::Quit() {
   }
 }
 
-void Daemon::TerminationActionsCompleted(const Error &error) {
+void Daemon::TerminationActionsCompleted(const Error& error) {
   SLOG(this, 1) << "Finished termination actions.  Result: " << error;
   metrics_->NotifyTerminationActionsCompleted(error.IsSuccess());
 

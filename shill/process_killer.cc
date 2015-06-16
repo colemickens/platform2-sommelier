@@ -27,11 +27,11 @@ ProcessKiller::~ProcessKiller() {
 }
 
 // static
-ProcessKiller *ProcessKiller::GetInstance() {
+ProcessKiller* ProcessKiller::GetInstance() {
   return g_process_killer.Pointer();
 }
 
-bool ProcessKiller::Wait(int pid, const Closure &callback) {
+bool ProcessKiller::Wait(int pid, const Closure& callback) {
   LOG(INFO) << "Waiting for pid " << pid;
   if (!callback.is_null()) {
     callbacks_[pid] = callback;
@@ -56,7 +56,7 @@ bool ProcessKiller::Wait(int pid, const Closure &callback) {
   return true;
 }
 
-void ProcessKiller::Kill(int pid, const Closure &callback) {
+void ProcessKiller::Kill(int pid, const Closure& callback) {
   if (!Wait(pid, callback)) {
     LOG(INFO) << "Process already dead, no need to kill.";
     return;
@@ -72,12 +72,12 @@ void ProcessKiller::Kill(int pid, const Closure &callback) {
 // static
 void ProcessKiller::OnProcessDied(GPid pid, gint status, gpointer data) {
   LOG(INFO) << "pid " << pid << " died, status " << status;
-  ProcessKiller *me = reinterpret_cast<ProcessKiller *>(data);
+  ProcessKiller* me = reinterpret_cast<ProcessKiller*>(data);
   map<int, Closure>::iterator callback_it = me->callbacks_.find(pid);
   if (callback_it == me->callbacks_.end()) {
     return;
   }
-  const Closure &callback = callback_it->second;
+  const Closure& callback = callback_it->second;
   if (!callback.is_null()) {
     LOG(INFO) << "Running callback for dead pid " << pid;
     callback.Run();

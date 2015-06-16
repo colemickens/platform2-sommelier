@@ -79,12 +79,12 @@ class EventDispatcher;
 
 class ResultAggregator : public base::RefCounted<ResultAggregator> {
  public:
-  explicit ResultAggregator(const ResultCallback &callback);
-  ResultAggregator(const ResultCallback &callback, EventDispatcher *dispatcher,
+  explicit ResultAggregator(const ResultCallback& callback);
+  ResultAggregator(const ResultCallback& callback, EventDispatcher* dispatcher,
                    int timeout_milliseconds);
   virtual ~ResultAggregator();
 
-  void ReportResult(const Error &error);
+  void ReportResult(const Error& error);
 
  private:
   // Callback for timeout registered with EventDispatcher.

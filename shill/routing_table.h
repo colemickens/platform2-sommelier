@@ -36,7 +36,7 @@ class RoutingTable {
 
   struct Query {
     // Callback::Run(interface_index, entry)
-    typedef base::Callback<void(int, const RoutingTableEntry &)> Callback;
+    typedef base::Callback<void(int, const RoutingTableEntry&)> Callback;
 
     Query() : sequence(0), tag(0), table_id(0) {}
     Query(uint32_t sequence_in,
@@ -56,32 +56,32 @@ class RoutingTable {
 
   virtual ~RoutingTable();
 
-  static RoutingTable *GetInstance();
+  static RoutingTable* GetInstance();
 
   virtual void Start();
   virtual void Stop();
 
   // Add an entry to the routing table.
-  virtual bool AddRoute(int interface_index, const RoutingTableEntry &entry);
+  virtual bool AddRoute(int interface_index, const RoutingTableEntry& entry);
 
   // Get the default route associated with an interface of a given addr family.
   // The route is copied into |*entry|.
   virtual bool GetDefaultRoute(int interface_index,
                                IPAddress::Family family,
-                               RoutingTableEntry *entry);
+                               RoutingTableEntry* entry);
 
   // Set the default route for an interface with index |interface_index|,
   // given the IPAddress of the gateway |gateway_address| and priority
   // |metric|.
   virtual bool SetDefaultRoute(int interface_index,
-                               const IPAddress &gateway_address,
+                               const IPAddress& gateway_address,
                                uint32_t metric,
                                uint8_t table_id);
 
   // Configure routing table entries from the "routes" portion of |ipconfig|.
   // Returns true if all routes were installed successfully, false otherwise.
   virtual bool ConfigureRoutes(int interface_index,
-                               const IPConfigRefPtr &ipconfig,
+                               const IPConfigRefPtr& ipconfig,
                                uint32_t metric,
                                uint8_t table_id);
 
@@ -96,8 +96,8 @@ class RoutingTable {
   // must be directly reachable from |local_address|.  Returns true
   // on successfully sending the route request, false otherwise.
   virtual bool CreateLinkRoute(int interface_index,
-                               const IPAddress &local_address,
-                               const IPAddress &remote_address,
+                               const IPAddress& local_address,
+                               const IPAddress& remote_address,
                                uint8_t table_id);
 
   // Remove routes associated with interface.
@@ -124,10 +124,10 @@ class RoutingTable {
   // all their dependent routes.  If |callback| is not null, it will be invoked
   // when the request-route response is received and the add-route request has
   // been sent successfully.
-  virtual bool RequestRouteToHost(const IPAddress &destination,
+  virtual bool RequestRouteToHost(const IPAddress& destination,
                                   int interface_index,
                                   int tag,
-                                  const Query::Callback &callback,
+                                  const Query::Callback& callback,
                                   uint8_t table_id);
 
  protected:
@@ -137,22 +137,22 @@ class RoutingTable {
   friend struct base::DefaultLazyInstanceTraits<RoutingTable>;
   friend class RoutingTableTest;
 
-  static bool ParseRoutingTableMessage(const RTNLMessage &message,
-                                       int *interface_index,
-                                       RoutingTableEntry *entry);
-  void RouteMsgHandler(const RTNLMessage &msg);
+  static bool ParseRoutingTableMessage(const RTNLMessage& message,
+                                       int* interface_index,
+                                       RoutingTableEntry* entry);
+  void RouteMsgHandler(const RTNLMessage& msg);
   bool ApplyRoute(uint32_t interface_index,
-                  const RoutingTableEntry &entry,
+                  const RoutingTableEntry& entry,
                   RTNLMessage::Mode mode,
                   unsigned int flags);
   // Get the default route associated with an interface of a given addr family.
   // A pointer to the route is placed in |*entry|.
   virtual bool GetDefaultRouteInternal(int interface_index,
                                IPAddress::Family family,
-                               RoutingTableEntry **entry);
+                               RoutingTableEntry** entry);
 
   void ReplaceMetric(uint32_t interface_index,
-                     RoutingTableEntry *entry,
+                     RoutingTableEntry* entry,
                      uint32_t metric);
 
   static const char kRouteFlushPath4[];
@@ -160,12 +160,12 @@ class RoutingTable {
 
   Tables tables_;
 
-  base::Callback<void(const RTNLMessage &)> route_callback_;
+  base::Callback<void(const RTNLMessage&)> route_callback_;
   std::unique_ptr<RTNLListener> route_listener_;
   std::deque<Query> route_queries_;
 
   // Cache singleton pointer for performance and test purposes.
-  RTNLHandler *rtnl_handler_;
+  RTNLHandler* rtnl_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(RoutingTable);
 };

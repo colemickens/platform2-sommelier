@@ -64,7 +64,7 @@ class ScopeLogger {
   typedef std::vector<ScopeEnableChangedCallback>ScopeEnableChangedCallbacks;
 
   // Returns a singleton of this class.
-  static ScopeLogger *GetInstance();
+  static ScopeLogger* GetInstance();
 
   ~ScopeLogger();
 
@@ -98,7 +98,7 @@ class ScopeLogger {
   //
   // If |expression| is an empty string, all scopes are disabled. Any unknown
   // scope name found in |expression| is ignored.
-  void EnableScopesByName(const std::string &expression);
+  void EnableScopesByName(const std::string& expression);
 
   // Register for log scope enable/disable state changes for |scope|.
   void RegisterScopeEnableChangedCallback(

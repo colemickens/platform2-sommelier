@@ -21,7 +21,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
-static string ObjectID(SocketInfoReader *s) { return "(socket_info_reader)"; }
+static string ObjectID(SocketInfoReader* s) { return "(socket_info_reader)"; }
 }
 
 namespace {
@@ -43,7 +43,7 @@ FilePath SocketInfoReader::GetTcpv6SocketInfoFilePath() const {
   return FilePath(kTcpv6SocketInfoFilePath);
 }
 
-bool SocketInfoReader::LoadTcpSocketInfo(vector<SocketInfo> *info_list) {
+bool SocketInfoReader::LoadTcpSocketInfo(vector<SocketInfo>* info_list) {
   info_list->clear();
   bool v4_loaded = AppendSocketInfo(GetTcpv4SocketInfoFilePath(), info_list);
   bool v6_loaded = AppendSocketInfo(GetTcpv6SocketInfoFilePath(), info_list);
@@ -52,8 +52,8 @@ bool SocketInfoReader::LoadTcpSocketInfo(vector<SocketInfo> *info_list) {
   return v4_loaded || v6_loaded;
 }
 
-bool SocketInfoReader::AppendSocketInfo(const FilePath &info_file_path,
-                                        vector<SocketInfo> *info_list) {
+bool SocketInfoReader::AppendSocketInfo(const FilePath& info_file_path,
+                                        vector<SocketInfo>* info_list) {
   FileReader file_reader;
   if (!file_reader.Open(info_file_path)) {
     SLOG(this, 2) << __func__ << ": Failed to open '"
@@ -70,8 +70,8 @@ bool SocketInfoReader::AppendSocketInfo(const FilePath &info_file_path,
   return true;
 }
 
-bool SocketInfoReader::ParseSocketInfo(const string &input,
-                                       SocketInfo *socket_info) {
+bool SocketInfoReader::ParseSocketInfo(const string& input,
+                                       SocketInfo* socket_info) {
   vector<string> tokens;
   base::SplitStringAlongWhitespace(input, &tokens);
   if (tokens.size() < 10) {
@@ -118,7 +118,7 @@ bool SocketInfoReader::ParseSocketInfo(const string &input,
 }
 
 bool SocketInfoReader::ParseIPAddressAndPort(
-    const string &input, IPAddress *ip_address, uint16_t *port) {
+    const string& input, IPAddress* ip_address, uint16_t* port) {
   vector<string> tokens;
 
   base::SplitString(input, ':', &tokens);
@@ -131,8 +131,8 @@ bool SocketInfoReader::ParseIPAddressAndPort(
   return true;
 }
 
-bool SocketInfoReader::ParseIPAddress(const string &input,
-                                      IPAddress *ip_address) {
+bool SocketInfoReader::ParseIPAddress(const string& input,
+                                      IPAddress* ip_address) {
   ByteString byte_string = ByteString::CreateFromHexString(input);
   if (byte_string.IsEmpty())
     return false;
@@ -156,7 +156,7 @@ bool SocketInfoReader::ParseIPAddress(const string &input,
   return true;
 }
 
-bool SocketInfoReader::ParsePort(const string &input, uint16_t *port) {
+bool SocketInfoReader::ParsePort(const string& input, uint16_t* port) {
   int result = 0;
 
   if (input.size() != 4 || !base::HexStringToInt(input, &result) ||
@@ -169,8 +169,8 @@ bool SocketInfoReader::ParsePort(const string &input, uint16_t *port) {
 }
 
 bool SocketInfoReader::ParseTransimitAndReceiveQueueValues(
-    const string &input,
-    uint64_t *transmit_queue_value, uint64_t *receive_queue_value) {
+    const string& input,
+    uint64_t* transmit_queue_value, uint64_t* receive_queue_value) {
   vector<string> tokens;
   int64_t signed_transmit_queue_value = 0, signed_receive_queue_value = 0;
 
@@ -187,7 +187,7 @@ bool SocketInfoReader::ParseTransimitAndReceiveQueueValues(
 }
 
 bool SocketInfoReader::ParseConnectionState(
-    const string &input, SocketInfo::ConnectionState *connection_state) {
+    const string& input, SocketInfo::ConnectionState* connection_state) {
   int result = 0;
 
   if (input.size() != 2 || !base::HexStringToInt(input, &result)) {
@@ -203,7 +203,7 @@ bool SocketInfoReader::ParseConnectionState(
 }
 
 bool SocketInfoReader::ParseTimerState(
-    const string &input, SocketInfo::TimerState *timer_state) {
+    const string& input, SocketInfo::TimerState* timer_state) {
   vector<string> tokens;
   int result = 0;
 

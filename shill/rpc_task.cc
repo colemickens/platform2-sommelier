@@ -19,7 +19,7 @@ namespace shill {
 // static
 unsigned int RPCTask::serial_number_ = 0;
 
-RPCTask::RPCTask(ControlInterface *control_interface, RPCTaskDelegate *delegate)
+RPCTask::RPCTask(ControlInterface* control_interface, RPCTaskDelegate* delegate)
     : delegate_(delegate),
       unique_name_(base::UintToString(serial_number_++)),
       adaptor_(control_interface->CreateRPCTaskAdaptor(this)) {
@@ -31,11 +31,11 @@ RPCTask::~RPCTask() {
   LOG(INFO) << "RPCTask " + unique_name_ + " destroyed.";
 }
 
-void RPCTask::GetLogin(string *user, string *password) const {
+void RPCTask::GetLogin(string* user, string* password) const {
   delegate_->GetLogin(user, password);
 }
 
-void RPCTask::Notify(const string &reason, const map<string, string> &dict) {
+void RPCTask::Notify(const string& reason, const map<string, string>& dict) {
   delegate_->Notify(reason, dict);
 }
 

@@ -18,7 +18,7 @@ const uint32_t Tethering::kIosOui = 0x0017f2;
 const uint8_t Tethering::kLocallyAdministratedMACBit = 0x02;
 
 // static
-bool Tethering::IsAndroidBSSID(const vector<uint8_t> &bssid) {
+bool Tethering::IsAndroidBSSID(const vector<uint8_t>& bssid) {
   vector<uint8_t> truncated_bssid = bssid;
   truncated_bssid.resize(arraysize(kAndroidBSSIDPrefix));
   return truncated_bssid == vector<uint8_t>(
@@ -27,12 +27,12 @@ bool Tethering::IsAndroidBSSID(const vector<uint8_t> &bssid) {
 }
 
 // static
-bool Tethering::IsLocallyAdministeredBSSID(const vector<uint8_t> &bssid) {
+bool Tethering::IsLocallyAdministeredBSSID(const vector<uint8_t>& bssid) {
   return bssid.size() > 0 && (bssid[0] & kLocallyAdministratedMACBit);
 }
 
 // static
-bool Tethering::HasIosOui(const set<uint32_t> &oui_set) {
+bool Tethering::HasIosOui(const set<uint32_t>& oui_set) {
   return oui_set.find(kIosOui) != oui_set.end();
 }
 

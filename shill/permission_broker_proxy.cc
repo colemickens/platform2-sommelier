@@ -19,7 +19,7 @@ PermissionBrokerProxyInterface::PermissionBrokerProxyInterface() {}
 
 PermissionBrokerProxyInterface::~PermissionBrokerProxyInterface() {}
 
-PermissionBrokerProxy::PermissionBrokerProxy(DBus::Connection *connection)
+PermissionBrokerProxy::PermissionBrokerProxy(DBus::Connection* connection)
     : proxy_(connection),
       lifeline_read_fd_(kInvalidHandle),
       lifeline_write_fd_(kInvalidHandle) {}
@@ -27,8 +27,8 @@ PermissionBrokerProxy::PermissionBrokerProxy(DBus::Connection *connection)
 PermissionBrokerProxy::~PermissionBrokerProxy() {}
 
 bool PermissionBrokerProxy::RequestVpnSetup(
-    const std::vector<std::string> &user_names,
-    const std::string &interface) {
+    const std::vector<std::string>& user_names,
+    const std::string& interface) {
   if (lifeline_read_fd_ != kInvalidHandle ||
       lifeline_write_fd_ != kInvalidHandle) {
     LOG(ERROR) << "Already setup?";
@@ -47,7 +47,7 @@ bool PermissionBrokerProxy::RequestVpnSetup(
   bool return_value = false;
   try {
     return_value = proxy_.RequestVpnSetup(user_names, interface, dbus_fd);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
   }
   return return_value;
@@ -63,7 +63,7 @@ bool PermissionBrokerProxy::RemoveVpnSetup() {
     lifeline_write_fd_ = kInvalidHandle;
     try {
       return_value = proxy_.RemoveVpnSetup();
-    } catch (const DBus::Error &e) {
+    } catch (const DBus::Error& e) {
       return_value = false;
       LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
     }
@@ -71,7 +71,7 @@ bool PermissionBrokerProxy::RemoveVpnSetup() {
   return return_value;
 }
 
-PermissionBrokerProxy::Proxy::Proxy(DBus::Connection *connection)
+PermissionBrokerProxy::Proxy::Proxy(DBus::Connection* connection)
     : DBus::ObjectProxy(*connection,
                         permission_broker::kPermissionBrokerServicePath,
                         permission_broker::kPermissionBrokerServiceName) {}

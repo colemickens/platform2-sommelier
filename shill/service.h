@@ -139,10 +139,10 @@ class Service : public base::RefCounted<Service> {
   static const int kPriorityNone;
 
   // A constructor for the Service object
-  Service(ControlInterface *control_interface,
-          EventDispatcher *dispatcher,
-          Metrics *metrics,
-          Manager *manager,
+  Service(ControlInterface* control_interface,
+          EventDispatcher* dispatcher,
+          Metrics* metrics,
+          Manager* manager,
           Technology::Identifier technology);
 
   // AutoConnect MAY choose to ignore the connection request in some
@@ -157,31 +157,31 @@ class Service : public base::RefCounted<Service> {
   // base class implementation before beginning a connect. The base
   // class will log the connection attempt, and update base-class
   // state.
-  virtual void Connect(Error *error, const char *reason);
+  virtual void Connect(Error* error, const char* reason);
   // Disconnect this service.  Override this method to add your service specific
   // disconnect logic, but call the super class's Disconnect() first.
-  virtual void Disconnect(Error *error, const char *reason);
+  virtual void Disconnect(Error* error, const char* reason);
   // Disconnects this service via Disconnect().  Marks the service as having
   // failed with |failure|.  Do not override this method.
   virtual void DisconnectWithFailure(ConnectFailure failure,
-                                     Error *error,
-                                     const char *reason);
+                                     Error* error,
+                                     const char* reason);
   // Disconnects this service via Disconnect(). The service will not be eligible
   // for auto-connect until a subsequent call to Connect, or Load.  Do not
   // override this method.
-  virtual void UserInitiatedDisconnect(Error *error);
+  virtual void UserInitiatedDisconnect(Error* error);
   // Connect to this service via Connect(). This function indicates that the
   // connection attempt is user-initiated.
-  virtual void UserInitiatedConnect(Error *error);
+  virtual void UserInitiatedConnect(Error* error);
 
   // The default implementation returns the error kInvalidArguments.
-  virtual void ActivateCellularModem(const std::string &carrier,
-                                     Error *error,
-                                     const ResultCallback &callback);
+  virtual void ActivateCellularModem(const std::string& carrier,
+                                     Error* error,
+                                     const ResultCallback& callback);
   // The default implementation returns the error kNotSupported.
-  virtual void CompleteCellularActivation(Error *error);
+  virtual void CompleteCellularActivation(Error* error);
 
-  virtual bool IsActive(Error *error);
+  virtual bool IsActive(Error* error);
 
   // Returns whether services of this type should be auto-connect by default.
   virtual bool IsAutoConnectByDefault() const { return false; }
@@ -194,8 +194,8 @@ class Service : public base::RefCounted<Service> {
 
   // Set portal detection failure phase and status (reason). This function
   // is called when portal detection failed for the Service.
-  virtual void SetPortalDetectionFailure(const std::string &phase,
-                                         const std::string &status);
+  virtual void SetPortalDetectionFailure(const std::string& phase,
+                                         const std::string& status);
 
   // State utility functions
   static bool IsConnectedState(ConnectState state);
@@ -219,7 +219,7 @@ class Service : public base::RefCounted<Service> {
   }
 
   // Returns true if the connection for |this| depends on service |b|.
-  virtual bool IsDependentOn(const ServiceRefPtr &b) const;
+  virtual bool IsDependentOn(const ServiceRefPtr& b) const;
 
   virtual bool IsPortalled() const {
     return state() == kStatePortal;
@@ -245,7 +245,7 @@ class Service : public base::RefCounted<Service> {
 
   // Returns a string that is guaranteed to uniquely identify this Service
   // instance.
-  const std::string &unique_name() const { return unique_name_; }
+  const std::string& unique_name() const { return unique_name_; }
 
   virtual std::string GetRpcIdentifier() const;
 
@@ -256,16 +256,16 @@ class Service : public base::RefCounted<Service> {
   // this service can be loaded.  Returns an empty string if no entry in
   // |storage| can be used.
   virtual std::string GetLoadableStorageIdentifier(
-      const StoreInterface &storage) const;
+      const StoreInterface& storage) const;
 
   // Returns whether the service configuration can be loaded from |storage|.
-  virtual bool IsLoadableFrom(const StoreInterface &storage) const;
+  virtual bool IsLoadableFrom(const StoreInterface& storage) const;
 
   // Returns true if the service uses 802.1x for key management.
   virtual bool Is8021x() const { return false; }
 
   // Loads the service from persistent |storage|. Returns true on success.
-  virtual bool Load(StoreInterface *storage);
+  virtual bool Load(StoreInterface* storage);
 
   // Indicate to service that it is no longer persisted to storage.  It
   // should purge any stored profile state (e.g., credentials).  Returns
@@ -274,10 +274,10 @@ class Service : public base::RefCounted<Service> {
   virtual bool Unload();
 
   // Attempt to remove the service. On failure, no changes in state will occur.
-  virtual void Remove(Error *error);
+  virtual void Remove(Error* error);
 
   // Saves the service to persistent |storage|. Returns true on success.
-  virtual bool Save(StoreInterface *storage);
+  virtual bool Save(StoreInterface* storage);
 
   // Saves the service to the current profile.
   virtual void SaveToCurrentProfile();
@@ -286,12 +286,12 @@ class Service : public base::RefCounted<Service> {
   // store, except for those in parameters_ignored_for_configure_.
   // Returns an error in |error| if one or more parameter set attempts
   // fails, but will only return the first error.
-  virtual void Configure(const KeyValueStore &args, Error *error);
+  virtual void Configure(const KeyValueStore& args, Error* error);
 
   // Iterate over all the properties in |args| and test for an identical
   // value in this service object's store.  Returns false if one or more
   // keys in |args| do not exist or have different values, true otherwise.
-  virtual bool DoPropertiesMatch(const KeyValueStore &args) const;
+  virtual bool DoPropertiesMatch(const KeyValueStore& args) const;
 
   // Returns whether portal detection is explicitly disabled on this service
   // via a property set on it.
@@ -321,8 +321,8 @@ class Service : public base::RefCounted<Service> {
   // Set the connection for this service.  If the connection is non-NULL, create
   // an HTTP Proxy that will utilize this service's connection to serve
   // requests.
-  virtual void SetConnection(const ConnectionRefPtr &connection);
-  virtual const ConnectionRefPtr &connection() const { return connection_; }
+  virtual void SetConnection(const ConnectionRefPtr& connection);
+  virtual const ConnectionRefPtr& connection() const { return connection_; }
 
   // Emit service's IP config change event to chrome.
   virtual void NotifyIPConfigChanges();
@@ -334,7 +334,7 @@ class Service : public base::RefCounted<Service> {
 
   // Add an EAP certification id |name| at position |depth| in the stack.
   // Returns true if entry was added, false otherwise.
-  virtual bool AddEAPCertification(const std::string &name, size_t depth);
+  virtual bool AddEAPCertification(const std::string& name, size_t depth);
   // Clear all EAP certification elements.
   virtual void ClearEAPCertification();
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
@@ -375,13 +375,13 @@ class Service : public base::RefCounted<Service> {
   bool retain_auto_connect() const { return retain_auto_connect_; }
   // Setter is deliberately omitted; use EnableAndRetainAutoConnect.
 
-  void set_friendly_name(const std::string &n) { friendly_name_ = n; }
-  const std::string &friendly_name() const { return friendly_name_; }
+  void set_friendly_name(const std::string& n) { friendly_name_ = n; }
+  const std::string& friendly_name() const { return friendly_name_; }
   // Sets the kNameProperty and broadcasts the change.
-  void SetFriendlyName(const std::string &friendly_name);
+  void SetFriendlyName(const std::string& friendly_name);
 
-  const std::string &guid() const { return guid_; }
-  bool SetGuid(const std::string &guid, Error *error);
+  const std::string& guid() const { return guid_; }
+  bool SetGuid(const std::string& guid, Error* error);
 
   bool has_ever_connected() const { return has_ever_connected_; }
   // Sets the has_ever_connected_ property of the service
@@ -389,11 +389,11 @@ class Service : public base::RefCounted<Service> {
   void SetHasEverConnected(bool has_ever_connected);
 
   int32_t priority() const { return priority_; }
-  bool SetPriority(const int32_t &priority, Error *error);
+  bool SetPriority(const int32_t& priority, Error* error);
   int32_t priority_within_technology() const {
       return priority_within_technology_;
   }
-  bool SetPriorityWithinTechnology(const int32_t &priority, Error *error);
+  bool SetPriorityWithinTechnology(const int32_t& priority, Error* error);
 
   size_t crypto_algorithm() const { return crypto_algorithm_; }
   bool key_rotation() const { return key_rotation_; }
@@ -409,21 +409,21 @@ class Service : public base::RefCounted<Service> {
   std::string GetTechnologyString() const;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  virtual const EapCredentials *eap() const { return eap_.get(); }
-  void SetEapCredentials(EapCredentials *eap);
+  virtual const EapCredentials* eap() const { return eap_.get(); }
+  void SetEapCredentials(EapCredentials* eap);
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   bool save_credentials() const { return save_credentials_; }
   void set_save_credentials(bool save) { save_credentials_ = save; }
 
-  const std::string &error() const { return error_; }
-  void set_error(const std::string &error) { error_ = error; }
+  const std::string& error() const { return error_; }
+  void set_error(const std::string& error) { error_ = error; }
 
-  const std::string &error_details() const { return error_details_; }
-  void SetErrorDetails(const std::string &details);
+  const std::string& error_details() const { return error_details_; }
+  void SetErrorDetails(const std::string& details);
 
-  static const char *ConnectFailureToString(const ConnectFailure &state);
-  static const char *ConnectStateToString(const ConnectState &state);
+  static const char* ConnectFailureToString(const ConnectFailure& state);
+  static const char* ConnectStateToString(const ConnectState& state);
 
   // Compare two services.  Returns true if Service |a| should be displayed
   // above |b|.  If |compare_connectivity_state| is true, the connectivity
@@ -432,28 +432,28 @@ class Service : public base::RefCounted<Service> {
   // |tech_order| to rank services if more decisive criteria do not yield a
   // difference.  |reason| is populated with the exact criteria used for the
   // ultimate comparison.
-  static bool Compare(Manager *manager,
+  static bool Compare(Manager* manager,
                       ServiceRefPtr a,
                       ServiceRefPtr b,
                       bool compare_connectivity_state,
-                      const std::vector<Technology::Identifier> &tech_order,
-                      const char **reason);
+                      const std::vector<Technology::Identifier>& tech_order,
+                      const char** reason);
 
   // These are defined in service.cc so that we don't have to include profile.h
   // TODO(cmasone): right now, these are here only so that we can get the
   // profile name as a property.  Can we store just the name, and then handle
   // setting the profile for this service via |manager_|?
-  const ProfileRefPtr &profile() const;
+  const ProfileRefPtr& profile() const;
 
   // Sets the profile property of this service. Broadcasts the new value if it's
   // not nullptr. If the new value is nullptr, the service will either be set to
   // another profile afterwards or it will not be visible and not monitored
   // anymore.
-  void SetProfile(const ProfileRefPtr &p);
+  void SetProfile(const ProfileRefPtr& p);
 
   // This is called from tests and shouldn't be called otherwise. Use SetProfile
   // instead.
-  void set_profile(const ProfileRefPtr &p);
+  void set_profile(const ProfileRefPtr& p);
 
   // Notification that occurs when a service now has profile data saved
   // on its behalf.  Some service types like WiFi can choose to register
@@ -462,7 +462,7 @@ class Service : public base::RefCounted<Service> {
 
   // Notification that occurs when a single property has been changed via
   // the RPC adaptor.
-  virtual void OnPropertyChanged(const std::string &property);
+  virtual void OnPropertyChanged(const std::string& property);
 
   // Notification that occurs when an EAP credential property has been
   // changed.  Some service subclasses can choose to respond to this
@@ -480,33 +480,33 @@ class Service : public base::RefCounted<Service> {
   virtual void ClearExplicitlyDisconnected();
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  EapCredentials *mutable_eap() { return eap_.get(); }
+  EapCredentials* mutable_eap() { return eap_.get(); }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-  PropertyStore *mutable_store() { return &store_; }
-  const PropertyStore &store() const { return store_; }
-  StaticIPParameters *mutable_static_ip_parameters() {
+  PropertyStore* mutable_store() { return &store_; }
+  const PropertyStore& store() const { return store_; }
+  StaticIPParameters* mutable_static_ip_parameters() {
     return &static_ip_parameters_;
   }
-  const StaticIPParameters &static_ip_parameters() const {
+  const StaticIPParameters& static_ip_parameters() const {
     return static_ip_parameters_;
   }
 
   // Retrieves |key| from |id| in |storage| to |value|.  If this key does
   // not exist, assign |default_value| to |value|.
-  static void LoadString(StoreInterface *storage,
-                         const std::string &id,
-                         const std::string &key,
-                         const std::string &default_value,
-                         std::string *value);
+  static void LoadString(StoreInterface* storage,
+                         const std::string& id,
+                         const std::string& key,
+                         const std::string& default_value,
+                         std::string* value);
 
   // Assigns |value| to |key| in |storage| if |value| is non-empty and |save| is
   // true. Otherwise, removes |key| from |storage|. If |crypted| is true, the
   // value is encrypted.
-  static void SaveString(StoreInterface *storage,
-                         const std::string &id,
-                         const std::string &key,
-                         const std::string &value,
+  static void SaveString(StoreInterface* storage,
+                         const std::string& id,
+                         const std::string& key,
+                         const std::string& value,
                          bool crypted,
                          bool save);
 
@@ -534,10 +534,10 @@ class Service : public base::RefCounted<Service> {
   // Returns true if a character is disallowed to be in a service storage id.
   static bool IllegalChar(char a) { return !LegalChar(a); }
 
-  virtual std::string CalculateState(Error *error);
-  std::string CalculateTechnology(Error *error);
+  virtual std::string CalculateState(Error* error);
+  std::string CalculateTechnology(Error* error);
 
-  bool GetVisibleProperty(Error *error);
+  bool GetVisibleProperty(Error* error);
 
   // Returns whether this service is in a state conducive to auto-connect.
   // This should include any tests used for computing connectable(),
@@ -546,7 +546,7 @@ class Service : public base::RefCounted<Service> {
   //
   // If the service is not auto-connectable, |*reason| will be set to
   // point to C-string explaining why the service is not auto-connectable.
-  virtual bool IsAutoConnectable(const char **reason) const;
+  virtual bool IsAutoConnectable(const char** reason) const;
 
   // HelpRegisterDerived*: Expose a property over RPC, with the name |name|.
   //
@@ -554,45 +554,45 @@ class Service : public base::RefCounted<Service> {
   // Writes to the property will be handled by invoking |set|.
   // Clearing the property will be handled by PropertyStore.
   void HelpRegisterDerivedBool(
-      const std::string &name,
-      bool(Service::*get)(Error *error),
-      bool(Service::*set)(const bool &value, Error *error),
-      void(Service::*clear)(Error *error));
+      const std::string& name,
+      bool(Service::*get)(Error* error),
+      bool(Service::*set)(const bool& value, Error* error),
+      void(Service::*clear)(Error* error));
   void HelpRegisterDerivedInt32(
-      const std::string &name,
-      int32_t(Service::*get)(Error *error),
-      bool(Service::*set)(const int32_t &value, Error *error));
+      const std::string& name,
+      int32_t(Service::*get)(Error* error),
+      bool(Service::*set)(const int32_t& value, Error* error));
   void HelpRegisterDerivedString(
-      const std::string &name,
-      std::string(Service::*get)(Error *error),
-      bool(Service::*set)(const std::string &value, Error *error));
+      const std::string& name,
+      std::string(Service::*get)(Error* error),
+      bool(Service::*set)(const std::string& value, Error* error));
   void HelpRegisterConstDerivedUint16(
-      const std::string &name,
-      uint16_t(Service::*get)(Error *error) const);
+      const std::string& name,
+      uint16_t(Service::*get)(Error* error) const);
   void HelpRegisterConstDerivedRpcIdentifier(
-      const std::string &name,
-      std::string(Service::*get)(Error *) const);
+      const std::string& name,
+      std::string(Service::*get)(Error*) const);
   void HelpRegisterConstDerivedStrings(
-      const std::string &name, Strings(Service::*get)(Error *error) const);
+      const std::string& name, Strings(Service::*get)(Error* error) const);
   void HelpRegisterConstDerivedString(
-      const std::string &name, std::string(Service::*get)(Error *error) const);
+      const std::string& name, std::string(Service::*get)(Error* error) const);
 
   // HelpRegisterObservedDerived*: Expose an property over RPC, with the
   // name |name|, for which property changes are automatically generated.
   //
   void HelpRegisterObservedDerivedBool(
-      const std::string &name,
-      bool(Service::*get)(Error *error),
-      bool(Service::*set)(const bool &value, Error *error),
-      void(Service::*clear)(Error *error));
-  ServiceAdaptorInterface *adaptor() const { return adaptor_.get(); }
+      const std::string& name,
+      bool(Service::*get)(Error* error),
+      bool(Service::*set)(const bool& value, Error* error),
+      void(Service::*clear)(Error* error));
+  ServiceAdaptorInterface* adaptor() const { return adaptor_.get(); }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   void UnloadEapCredentials();
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
   // Ignore |parameter| when performing a Configure() operation.
-  void IgnoreParameterForConfigure(const std::string &parameter);
+  void IgnoreParameterForConfigure(const std::string& parameter);
 
   // Update the service's string-based "Error" RPC property based on the
   // failure_ enum.
@@ -600,22 +600,22 @@ class Service : public base::RefCounted<Service> {
 
   // RPC setter for the the "AutoConnect" property. Updates the |manager_|.
   // (cf. SetAutoConnect, which does not update the manager.)
-  virtual bool SetAutoConnectFull(const bool &connect, Error *error);
+  virtual bool SetAutoConnectFull(const bool& connect, Error* error);
 
   // RPC clear method for the "AutoConnect" property.  Sets the AutoConnect
   // property back to its default value, and clears the retain_auto_connect_
   // property to allow the AutoConnect property to be enabled automatically.
-  void ClearAutoConnect(Error *error);
+  void ClearAutoConnect(Error* error);
 
   // Property accessors reserved for subclasses
-  EventDispatcher *dispatcher() const { return dispatcher_; }
+  EventDispatcher* dispatcher() const { return dispatcher_; }
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
-  const std::string &GetEAPKeyManagement() const;
-  virtual void SetEAPKeyManagement(const std::string &key_management);
+  const std::string& GetEAPKeyManagement() const;
+  virtual void SetEAPKeyManagement(const std::string& key_management);
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-  Manager *manager() const { return manager_; }
-  Metrics *metrics() const { return metrics_; }
+  Manager* manager() const { return manager_; }
+  Metrics* metrics() const { return metrics_; }
 
   // Save the serivce's auto_connect value, without affecting its auto_connect
   // property itself. (cf. EnableAndRetainAutoConnect)
@@ -630,7 +630,7 @@ class Service : public base::RefCounted<Service> {
   // Return whether this service is suspected or confirmed to be
   // provided by a mobile device, which is likely to be using a
   // metered backhaul for internet connectivity.
-  virtual std::string GetTethering(Error *error) const;
+  virtual std::string GetTethering(Error* error) const;
 
   // Emit property change notifications for all observed properties.
   void NotifyPropertyChanges();
@@ -649,9 +649,9 @@ class Service : public base::RefCounted<Service> {
   friend class WiFiServiceTest;
   friend class WiMaxProviderTest;
   friend class WiMaxServiceTest;
-  friend void TestCommonPropertyChanges(ServiceRefPtr, ServiceMockAdaptor *);
-  friend void TestCustomSetterNoopChange(ServiceRefPtr, MockManager *);
-  friend void TestNamePropertyChange(ServiceRefPtr, ServiceMockAdaptor *);
+  friend void TestCommonPropertyChanges(ServiceRefPtr, ServiceMockAdaptor*);
+  friend void TestCustomSetterNoopChange(ServiceRefPtr, MockManager*);
+  friend void TestNamePropertyChange(ServiceRefPtr, ServiceMockAdaptor*);
   FRIEND_TEST(AllMockServiceTest, AutoConnectWithFailures);
   FRIEND_TEST(CellularCapabilityGSMTest, SetStorageIdentifier);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
@@ -737,36 +737,36 @@ class Service : public base::RefCounted<Service> {
   static const int kMaxDisconnectEventHistory;
   static const int kMaxMisconnectEventHistory;
 
-  bool GetAutoConnect(Error *error);
+  bool GetAutoConnect(Error* error);
 
-  std::string GetCheckPortal(Error *error);
-  bool SetCheckPortal(const std::string &check_portal, Error *error);
+  std::string GetCheckPortal(Error* error);
+  bool SetCheckPortal(const std::string& check_portal, Error* error);
 
-  std::string GetGuid(Error *error);
+  std::string GetGuid(Error* error);
 
-  virtual std::string GetDeviceRpcId(Error *error) const = 0;
+  virtual std::string GetDeviceRpcId(Error* error) const = 0;
 
-  std::string GetIPConfigRpcIdentifier(Error *error) const;
+  std::string GetIPConfigRpcIdentifier(Error* error) const;
 
-  std::string GetNameProperty(Error *error);
+  std::string GetNameProperty(Error* error);
   // The base implementation asserts that |name| matches the current Name
   // property value.
-  virtual bool SetNameProperty(const std::string &name, Error *error);
+  virtual bool SetNameProperty(const std::string& name, Error* error);
 
-  int32_t GetPriority(Error *error);
-  int32_t GetPriorityWithinTechnology(Error *error);
+  int32_t GetPriority(Error* error);
+  int32_t GetPriorityWithinTechnology(Error* error);
 
-  std::string GetProfileRpcId(Error *error);
-  bool SetProfileRpcId(const std::string &profile, Error *error);
+  std::string GetProfileRpcId(Error* error);
+  bool SetProfileRpcId(const std::string& profile, Error* error);
 
   // Returns TCP port of service's HTTP proxy in host order.
-  uint16_t GetHTTPProxyPort(Error *error) const;
+  uint16_t GetHTTPProxyPort(Error* error) const;
 
-  std::string GetProxyConfig(Error *error);
-  bool SetProxyConfig(const std::string &proxy_config, Error *error);
+  std::string GetProxyConfig(Error* error);
+  bool SetProxyConfig(const std::string& proxy_config, Error* error);
 
-  Strings GetDisconnectsProperty(Error *error) const;
-  Strings GetMisconnectsProperty(Error *error) const;
+  Strings GetDisconnectsProperty(Error* error) const;
+  Strings GetMisconnectsProperty(Error* error) const;
 
   void ReEnableAutoConnectTask();
   // Disables autoconnect and posts a task to re-enable it after a cooldown.
@@ -786,7 +786,7 @@ class Service : public base::RefCounted<Service> {
 
   // Utility function that returns true if a is different from b.  When they
   // are, "decision" is populated with the boolean value of "a > b".
-  static bool DecideBetween(int a, int b, bool *decision);
+  static bool DecideBetween(int a, int b, bool* decision);
 
   // Report the result of user-initiated connection attempt to UMA stats.
   // Currently only report stats for wifi service.
@@ -850,7 +850,7 @@ class Service : public base::RefCounted<Service> {
   PropertyStore store_;
   std::set<std::string> parameters_ignored_for_configure_;
 
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   unsigned int serial_number_;
   std::string unique_name_;  // MUST be unique amongst service instances
 
@@ -868,11 +868,11 @@ class Service : public base::RefCounted<Service> {
   std::unique_ptr<HTTPProxy> http_proxy_;
   ConnectionRefPtr connection_;
   StaticIPParameters static_ip_parameters_;
-  Metrics *metrics_;
-  Manager *manager_;
+  Metrics* metrics_;
+  Manager* manager_;
   std::unique_ptr<Sockets> sockets_;
-  Time *time_;
-  DiagnosticsReporter *diagnostics_reporter_;
+  Time* time_;
+  DiagnosticsReporter* diagnostics_reporter_;
 
   // The |serial_number_| for the next Service.
   static unsigned int next_serial_number_;

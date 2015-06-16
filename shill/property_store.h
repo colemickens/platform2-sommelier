@@ -21,7 +21,7 @@ class Error;
 
 class PropertyStore {
  public:
-  typedef base::Callback<void(const std::string &)> PropertyChangeCallback;
+  typedef base::Callback<void(const std::string&)> PropertyChangeCallback;
   PropertyStore();
   explicit PropertyStore(PropertyChangeCallback property_change_callback);
   virtual ~PropertyStore();
@@ -32,34 +32,34 @@ class PropertyStore {
   // |store_| by name. Upon success, these methods return true and return the
   // property value in |value|. Upon failure, they return false and
   // leave |value| untouched.
-  bool GetBoolProperty(const std::string &name, bool *value,
-                       Error *error) const;
-  bool GetInt16Property(const std::string &name, int16_t *value,
-                        Error *error) const;
-  bool GetInt32Property(const std::string &name, int32_t *value,
-                        Error *error) const;
-  bool GetKeyValueStoreProperty(const std::string &name, KeyValueStore *value,
-                                Error *error) const;
-  bool GetStringProperty(const std::string &name, std::string *value,
-                         Error *error) const;
-  bool GetStringmapProperty(const std::string &name, Stringmap *values,
-                            Error *error) const;
-  bool GetStringmapsProperty(const std::string &name, Stringmaps *values,
-                             Error *error) const;
-  bool GetStringsProperty(const std::string &name, Strings *values,
-                          Error *error) const;
-  bool GetUint8Property(const std::string &name, uint8_t *value,
-                        Error *error) const;
-  bool GetUint16Property(const std::string &name, uint16_t *value,
-                         Error *error) const;
-  bool GetUint16sProperty(const std::string &name, Uint16s *value,
-                          Error *error) const;
-  bool GetUint32Property(const std::string &name, uint32_t *value,
-                         Error *error) const;
-  bool GetUint64Property(const std::string &name, uint64_t *value,
-                         Error *error) const;
-  bool GetRpcIdentifierProperty(const std::string &name, RpcIdentifier *value,
-                                Error *error) const;
+  bool GetBoolProperty(const std::string& name, bool* value,
+                       Error* error) const;
+  bool GetInt16Property(const std::string& name, int16_t* value,
+                        Error* error) const;
+  bool GetInt32Property(const std::string& name, int32_t* value,
+                        Error* error) const;
+  bool GetKeyValueStoreProperty(const std::string& name, KeyValueStore* value,
+                                Error* error) const;
+  bool GetStringProperty(const std::string& name, std::string* value,
+                         Error* error) const;
+  bool GetStringmapProperty(const std::string& name, Stringmap* values,
+                            Error* error) const;
+  bool GetStringmapsProperty(const std::string& name, Stringmaps* values,
+                             Error* error) const;
+  bool GetStringsProperty(const std::string& name, Strings* values,
+                          Error* error) const;
+  bool GetUint8Property(const std::string& name, uint8_t* value,
+                        Error* error) const;
+  bool GetUint16Property(const std::string& name, uint16_t* value,
+                         Error* error) const;
+  bool GetUint16sProperty(const std::string& name, Uint16s* value,
+                          Error* error) const;
+  bool GetUint32Property(const std::string& name, uint32_t* value,
+                         Error* error) const;
+  bool GetUint64Property(const std::string& name, uint64_t* value,
+                         Error* error) const;
+  bool GetRpcIdentifierProperty(const std::string& name, RpcIdentifier* value,
+                                Error* error) const;
 
   // Methods to allow the setting, by name, of properties stored in this object.
   // The property names are declared in chromeos/dbus/service_constants.h,
@@ -70,63 +70,63 @@ class PropertyStore {
   // these methods return false, and leave |error| untouched.
   // If the property change fails, these methods return false, and update
   // |error|. However, updating |error| is skipped if |error| is NULL.
-  virtual bool SetBoolProperty(const std::string &name,
+  virtual bool SetBoolProperty(const std::string& name,
                                bool value,
-                               Error *error);
+                               Error* error);
 
-  virtual bool SetInt16Property(const std::string &name,
+  virtual bool SetInt16Property(const std::string& name,
                                 int16_t value,
-                                Error *error);
+                                Error* error);
 
-  virtual bool SetInt32Property(const std::string &name,
+  virtual bool SetInt32Property(const std::string& name,
                                 int32_t value,
-                                Error *error);
+                                Error* error);
 
-  virtual bool SetKeyValueStoreProperty(const std::string &name,
-                                        const KeyValueStore &value,
-                                        Error *error);
+  virtual bool SetKeyValueStoreProperty(const std::string& name,
+                                        const KeyValueStore& value,
+                                        Error* error);
 
-  virtual bool SetStringProperty(const std::string &name,
-                                 const std::string &value,
-                                 Error *error);
+  virtual bool SetStringProperty(const std::string& name,
+                                 const std::string& value,
+                                 Error* error);
 
   virtual bool SetStringmapProperty(
-      const std::string &name,
-      const std::map<std::string, std::string> &values,
-      Error *error);
+      const std::string& name,
+      const std::map<std::string, std::string>& values,
+      Error* error);
 
   virtual bool SetStringmapsProperty(
-      const std::string &name,
-      const std::vector<std::map<std::string, std::string>> &values,
-      Error *error);
+      const std::string& name,
+      const std::vector<std::map<std::string, std::string>>& values,
+      Error* error);
 
-  virtual bool SetStringsProperty(const std::string &name,
-                                  const std::vector<std::string> &values,
-                                  Error *error);
+  virtual bool SetStringsProperty(const std::string& name,
+                                  const std::vector<std::string>& values,
+                                  Error* error);
 
-  virtual bool SetUint8Property(const std::string &name,
+  virtual bool SetUint8Property(const std::string& name,
                                 uint8_t value,
-                                Error *error);
+                                Error* error);
 
-  virtual bool SetUint16Property(const std::string &name,
+  virtual bool SetUint16Property(const std::string& name,
                                  uint16_t value,
-                                 Error *error);
+                                 Error* error);
 
-  virtual bool SetUint16sProperty(const std::string &name,
-                                  const std::vector<uint16_t> &value,
-                                  Error *error);
+  virtual bool SetUint16sProperty(const std::string& name,
+                                  const std::vector<uint16_t>& value,
+                                  Error* error);
 
-  virtual bool SetUint32Property(const std::string &name,
+  virtual bool SetUint32Property(const std::string& name,
                                  uint32_t value,
-                                 Error *error);
+                                 Error* error);
 
-  virtual bool SetUint64Property(const std::string &name,
+  virtual bool SetUint64Property(const std::string& name,
                                  uint64_t value,
-                                 Error *error);
+                                 Error* error);
 
-  virtual bool SetRpcIdentifierProperty(const std::string &name,
-                                        const RpcIdentifier &value,
-                                        Error *error);
+  virtual bool SetRpcIdentifierProperty(const std::string& name,
+                                        const RpcIdentifier& value,
+                                        Error* error);
 
   // Clearing a property resets it to its "factory" value. This value
   // is generally the value that it (the property) had when it was
@@ -140,7 +140,7 @@ class PropertyStore {
   // |name| is the key used to access the property. If the property
   // cannot be cleared, |error| is set, and the method returns false.
   // Otherwise, |error| is unchanged, and the method returns true.
-  virtual bool ClearProperty(const std::string &name, Error *error);
+  virtual bool ClearProperty(const std::string& name, Error* error);
 
   // Accessors for iterators over property maps. Useful for dumping all
   // properties.
@@ -176,77 +176,77 @@ class PropertyStore {
   // (Corollary of the rebinding-to-same-type restriction: a
   // PropertyStore cannot hold two properties of the same name, but
   // differing types.)
-  void RegisterBool(const std::string &name, bool *prop);
-  void RegisterConstBool(const std::string &name, const bool *prop);
-  void RegisterWriteOnlyBool(const std::string &name, bool *prop);
-  void RegisterInt16(const std::string &name, int16_t *prop);
-  void RegisterConstInt16(const std::string &name, const int16_t *prop);
-  void RegisterWriteOnlyInt16(const std::string &name, int16_t *prop);
-  void RegisterInt32(const std::string &name, int32_t *prop);
-  void RegisterConstInt32(const std::string &name, const int32_t *prop);
-  void RegisterWriteOnlyInt32(const std::string &name, int32_t *prop);
-  void RegisterUint32(const std::string &name, uint32_t *prop);
-  void RegisterString(const std::string &name, std::string *prop);
-  void RegisterConstString(const std::string &name, const std::string *prop);
-  void RegisterWriteOnlyString(const std::string &name, std::string *prop);
-  void RegisterStringmap(const std::string &name, Stringmap *prop);
-  void RegisterConstStringmap(const std::string &name, const Stringmap *prop);
-  void RegisterWriteOnlyStringmap(const std::string &name, Stringmap *prop);
-  void RegisterStringmaps(const std::string &name, Stringmaps *prop);
-  void RegisterConstStringmaps(const std::string &name, const Stringmaps *prop);
-  void RegisterWriteOnlyStringmaps(const std::string &name, Stringmaps *prop);
-  void RegisterStrings(const std::string &name, Strings *prop);
-  void RegisterConstStrings(const std::string &name, const Strings *prop);
-  void RegisterWriteOnlyStrings(const std::string &name, Strings *prop);
-  void RegisterUint8(const std::string &name, uint8_t *prop);
-  void RegisterConstUint8(const std::string &name, const uint8_t *prop);
-  void RegisterWriteOnlyUint8(const std::string &name, uint8_t *prop);
-  void RegisterUint16(const std::string &name, uint16_t *prop);
-  void RegisterUint16s(const std::string &name, Uint16s *prop);
-  void RegisterConstUint16(const std::string &name, const uint16_t *prop);
-  void RegisterConstUint16s(const std::string &name, const Uint16s *prop);
-  void RegisterWriteOnlyUint16(const std::string &name, uint16_t *prop);
+  void RegisterBool(const std::string& name, bool* prop);
+  void RegisterConstBool(const std::string& name, const bool* prop);
+  void RegisterWriteOnlyBool(const std::string& name, bool* prop);
+  void RegisterInt16(const std::string& name, int16_t* prop);
+  void RegisterConstInt16(const std::string& name, const int16_t* prop);
+  void RegisterWriteOnlyInt16(const std::string& name, int16_t* prop);
+  void RegisterInt32(const std::string& name, int32_t* prop);
+  void RegisterConstInt32(const std::string& name, const int32_t* prop);
+  void RegisterWriteOnlyInt32(const std::string& name, int32_t* prop);
+  void RegisterUint32(const std::string& name, uint32_t* prop);
+  void RegisterString(const std::string& name, std::string* prop);
+  void RegisterConstString(const std::string& name, const std::string* prop);
+  void RegisterWriteOnlyString(const std::string& name, std::string* prop);
+  void RegisterStringmap(const std::string& name, Stringmap* prop);
+  void RegisterConstStringmap(const std::string& name, const Stringmap* prop);
+  void RegisterWriteOnlyStringmap(const std::string& name, Stringmap* prop);
+  void RegisterStringmaps(const std::string& name, Stringmaps* prop);
+  void RegisterConstStringmaps(const std::string& name, const Stringmaps* prop);
+  void RegisterWriteOnlyStringmaps(const std::string& name, Stringmaps* prop);
+  void RegisterStrings(const std::string& name, Strings* prop);
+  void RegisterConstStrings(const std::string& name, const Strings* prop);
+  void RegisterWriteOnlyStrings(const std::string& name, Strings* prop);
+  void RegisterUint8(const std::string& name, uint8_t* prop);
+  void RegisterConstUint8(const std::string& name, const uint8_t* prop);
+  void RegisterWriteOnlyUint8(const std::string& name, uint8_t* prop);
+  void RegisterUint16(const std::string& name, uint16_t* prop);
+  void RegisterUint16s(const std::string& name, Uint16s* prop);
+  void RegisterConstUint16(const std::string& name, const uint16_t* prop);
+  void RegisterConstUint16s(const std::string& name, const Uint16s* prop);
+  void RegisterWriteOnlyUint16(const std::string& name, uint16_t* prop);
 
-  void RegisterDerivedBool(const std::string &name,
-                           const BoolAccessor &accessor);
-  void RegisterDerivedInt32(const std::string &name,
-                            const Int32Accessor &accessor);
-  void RegisterDerivedKeyValueStore(const std::string &name,
-                                    const KeyValueStoreAccessor &accessor);
-  void RegisterDerivedRpcIdentifier(const std::string &name,
-                                    const RpcIdentifierAccessor &acc);
-  void RegisterDerivedRpcIdentifiers(const std::string &name,
-                                     const RpcIdentifiersAccessor &accessor);
-  void RegisterDerivedString(const std::string &name,
-                             const StringAccessor &accessor);
-  void RegisterDerivedStringmap(const std::string &name,
-                                const StringmapAccessor &accessor);
-  void RegisterDerivedStringmaps(const std::string &name,
-                                 const StringmapsAccessor &accessor);
-  void RegisterDerivedStrings(const std::string &name,
-                              const StringsAccessor &accessor);
-  void RegisterDerivedUint16(const std::string &name,
-                             const Uint16Accessor &accessor);
-  void RegisterDerivedUint64(const std::string &name,
-                             const Uint64Accessor &accessor);
+  void RegisterDerivedBool(const std::string& name,
+                           const BoolAccessor& accessor);
+  void RegisterDerivedInt32(const std::string& name,
+                            const Int32Accessor& accessor);
+  void RegisterDerivedKeyValueStore(const std::string& name,
+                                    const KeyValueStoreAccessor& accessor);
+  void RegisterDerivedRpcIdentifier(const std::string& name,
+                                    const RpcIdentifierAccessor& acc);
+  void RegisterDerivedRpcIdentifiers(const std::string& name,
+                                     const RpcIdentifiersAccessor& accessor);
+  void RegisterDerivedString(const std::string& name,
+                             const StringAccessor& accessor);
+  void RegisterDerivedStringmap(const std::string& name,
+                                const StringmapAccessor& accessor);
+  void RegisterDerivedStringmaps(const std::string& name,
+                                 const StringmapsAccessor& accessor);
+  void RegisterDerivedStrings(const std::string& name,
+                              const StringsAccessor& accessor);
+  void RegisterDerivedUint16(const std::string& name,
+                             const Uint16Accessor& accessor);
+  void RegisterDerivedUint64(const std::string& name,
+                             const Uint64Accessor& accessor);
 
  private:
   template <class V>
   bool GetProperty(
-      const std::string &name,
-      V *value,
-      Error *error,
+      const std::string& name,
+      V* value,
+      Error* error,
       const std::map<std::string,
-                     std::shared_ptr<AccessorInterface<V>>> &collection,
-      const std::string &value_type_english) const;
+                     std::shared_ptr<AccessorInterface<V>>>& collection,
+      const std::string& value_type_english) const;
 
   template <class V>
   bool SetProperty(
-      const std::string &name,
-      const V &value,
-      Error *error,
-      std::map<std::string, std::shared_ptr<AccessorInterface<V>>> *collection,
-      const std::string &value_type_english);
+      const std::string& name,
+      const V& value,
+      Error* error,
+      std::map<std::string, std::shared_ptr<AccessorInterface<V>>>* collection,
+      const std::string& value_type_english);
 
   // These are std::maps instead of something cooler because the common
   // operation is iterating through them and returning all properties.

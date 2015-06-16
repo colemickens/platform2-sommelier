@@ -30,9 +30,9 @@ class PassiveLinkMonitor {
   // The default number of cycles to monitor for.
   static const int kDefaultMonitorCycles;
 
-  PassiveLinkMonitor(const ConnectionRefPtr &connection,
-                     EventDispatcher *dispatcher,
-                     const ResultCallback &result_callback);
+  PassiveLinkMonitor(const ConnectionRefPtr& connection,
+                     EventDispatcher* dispatcher,
+                     const ResultCallback& result_callback);
   virtual ~PassiveLinkMonitor();
 
   // Starts passive link-monitoring for the specified number of cycles.
@@ -64,7 +64,7 @@ class PassiveLinkMonitor {
   // The connection on which to perform passive link monitoring.
   ConnectionRefPtr connection_;
   // The dispatcher on which to create delayed tasks.
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   // ArpClient instance for monitoring ARP requests.
   std::unique_ptr<ArpClient> arp_client_;
   // Callback to be invoked when monitor is completed, either failure or

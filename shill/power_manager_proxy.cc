@@ -18,8 +18,8 @@ namespace shill {
 namespace {
 
 // Serializes |protobuf| to |out| and returns true on success.
-bool SerializeProtocolBuffer(const google::protobuf::MessageLite &protobuf,
-                             vector<uint8_t> *out) {
+bool SerializeProtocolBuffer(const google::protobuf::MessageLite& protobuf,
+                             vector<uint8_t>* out) {
   CHECK(out);
   out->clear();
   string serialized_protobuf;
@@ -31,8 +31,8 @@ bool SerializeProtocolBuffer(const google::protobuf::MessageLite &protobuf,
 
 // Deserializes |serialized_protobuf| to |protobuf_out| and returns true on
 // success.
-bool DeserializeProtocolBuffer(const vector<uint8_t> &serialized_protobuf,
-                               google::protobuf::MessageLite *protobuf_out) {
+bool DeserializeProtocolBuffer(const vector<uint8_t>& serialized_protobuf,
+                               google::protobuf::MessageLite* protobuf_out) {
   CHECK(protobuf_out);
   if (serialized_protobuf.empty())
     return false;
@@ -42,16 +42,16 @@ bool DeserializeProtocolBuffer(const vector<uint8_t> &serialized_protobuf,
 
 }  // namespace
 
-PowerManagerProxy::PowerManagerProxy(PowerManagerProxyDelegate *delegate,
-                                     DBus::Connection *connection)
+PowerManagerProxy::PowerManagerProxy(PowerManagerProxyDelegate* delegate,
+                                     DBus::Connection* connection)
     : proxy_(delegate, connection) {}
 
 PowerManagerProxy::~PowerManagerProxy() {}
 
 bool PowerManagerProxy::RegisterSuspendDelay(
     base::TimeDelta timeout,
-    const string &description,
-    int *delay_id_out) {
+    const string& description,
+    int* delay_id_out) {
   return RegisterSuspendDelayInternal(false,
                                       timeout,
                                       description,
@@ -68,8 +68,8 @@ bool PowerManagerProxy::ReportSuspendReadiness(int delay_id, int suspend_id) {
 
 bool PowerManagerProxy::RegisterDarkSuspendDelay(
     base::TimeDelta timeout,
-    const string &description,
-    int *delay_id_out) {
+    const string& description,
+    int* delay_id_out) {
   return RegisterSuspendDelayInternal(true,
                                       timeout,
                                       description,
@@ -85,7 +85,7 @@ bool PowerManagerProxy::ReportDarkSuspendReadiness(int delay_id,
   return ReportSuspendReadinessInternal(true, delay_id, suspend_id);
 }
 
-bool PowerManagerProxy::RecordDarkResumeWakeReason(const string &wake_reason) {
+bool PowerManagerProxy::RecordDarkResumeWakeReason(const string& wake_reason) {
   LOG(INFO) << __func__;
 
   power_manager::DarkResumeWakeReason proto;
@@ -95,7 +95,7 @@ bool PowerManagerProxy::RecordDarkResumeWakeReason(const string &wake_reason) {
 
   try {
     proxy_.RecordDarkResumeWakeReason(serialized_proto);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     return false;
   }
@@ -105,8 +105,8 @@ bool PowerManagerProxy::RecordDarkResumeWakeReason(const string &wake_reason) {
 bool PowerManagerProxy::RegisterSuspendDelayInternal(
     bool is_dark,
     base::TimeDelta timeout,
-    const string &description,
-    int *delay_id_out) {
+    const string& description,
+    int* delay_id_out) {
   const string is_dark_arg = (is_dark ? "dark=true" : "dark=false");
   LOG(INFO) << __func__ << "(" << timeout.InMilliseconds()
             << ", " << is_dark_arg <<")";
@@ -123,7 +123,7 @@ bool PowerManagerProxy::RegisterSuspendDelayInternal(
       serialized_reply = proxy_.RegisterDarkSuspendDelay(serialized_request);
     else
       serialized_reply = proxy_.RegisterSuspendDelay(serialized_request);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     return false;
   }
@@ -154,7 +154,7 @@ bool PowerManagerProxy::UnregisterSuspendDelayInternal(bool is_dark,
       proxy_.UnregisterDarkSuspendDelay(serialized_request);
     else
       proxy_.UnregisterSuspendDelay(serialized_request);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     return false;
   }
@@ -181,15 +181,15 @@ bool PowerManagerProxy::ReportSuspendReadinessInternal(bool is_dark,
       proxy_.HandleDarkSuspendReadiness(serialized_proto);
     else
       proxy_.HandleSuspendReadiness(serialized_proto);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     return false;
   }
   return true;
 }
 
-PowerManagerProxy::Proxy::Proxy(PowerManagerProxyDelegate *delegate,
-                                DBus::Connection *connection)
+PowerManagerProxy::Proxy::Proxy(PowerManagerProxyDelegate* delegate,
+                                DBus::Connection* connection)
     : DBus::ObjectProxy(*connection,
                         power_manager::kPowerManagerServicePath,
                         power_manager::kPowerManagerServiceName),
@@ -198,7 +198,7 @@ PowerManagerProxy::Proxy::Proxy(PowerManagerProxyDelegate *delegate,
 PowerManagerProxy::Proxy::~Proxy() {}
 
 void PowerManagerProxy::Proxy::SuspendImminent(
-    const vector<uint8_t> &serialized_proto) {
+    const vector<uint8_t>& serialized_proto) {
   LOG(INFO) << __func__;
   power_manager::SuspendImminent proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
@@ -209,7 +209,7 @@ void PowerManagerProxy::Proxy::SuspendImminent(
 }
 
 void PowerManagerProxy::Proxy::SuspendDone(
-    const vector<uint8_t> &serialized_proto) {
+    const vector<uint8_t>& serialized_proto) {
   LOG(INFO) << __func__;
   power_manager::SuspendDone proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
@@ -220,7 +220,7 @@ void PowerManagerProxy::Proxy::SuspendDone(
 }
 
 void PowerManagerProxy::Proxy::DarkSuspendImminent(
-    const vector<uint8_t> &serialized_proto) {
+    const vector<uint8_t>& serialized_proto) {
   LOG(INFO) << __func__;
   power_manager::SuspendImminent proto;
   if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {

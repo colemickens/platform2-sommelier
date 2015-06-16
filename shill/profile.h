@@ -46,8 +46,8 @@ class Profile : public base::RefCounted<Profile> {
   };
   struct Identifier {
     Identifier() {}
-    explicit Identifier(const std::string &i) : identifier(i) {}
-    Identifier(const std::string &u, const std::string &i)
+    explicit Identifier(const std::string& i) : identifier(i) {}
+    Identifier(const std::string& u, const std::string& i)
         : user(u),
           identifier(i) {
     }
@@ -60,19 +60,19 @@ class Profile : public base::RefCounted<Profile> {
   // startup.
   static const char kUserProfileListPathname[];
 
-  Profile(ControlInterface *control_interface,
-          Metrics *metrics,
-          Manager *manager,
-          const Identifier &name,
-          const std::string &user_storage_directory,
+  Profile(ControlInterface* control_interface,
+          Metrics* metrics,
+          Manager* manager,
+          const Identifier& name,
+          const std::string& user_storage_directory,
           bool connect_to_rpc);
 
   virtual ~Profile();
 
   // Set up persistent storage for this Profile.
-  bool InitStorage(GLib *glib,
+  bool InitStorage(GLib* glib,
                    InitStorageOption storage_option,
-                   Error *error);
+                   Error* error);
 
   // Set up stub storage for this Profile. The data will NOT be
   // persisted. In most cases, you should prefer InitStorage.
@@ -81,76 +81,76 @@ class Profile : public base::RefCounted<Profile> {
   // Remove the persistent storage for this Profile.  It is an error to
   // do so while the underlying storage is open via InitStorage() or
   // set_storage().
-  bool RemoveStorage(GLib *glib, Error *error);
+  bool RemoveStorage(GLib* glib, Error* error);
 
   virtual std::string GetFriendlyName();
 
   virtual std::string GetRpcIdentifier();
 
-  PropertyStore *mutable_store() { return &store_; }
-  const PropertyStore &store() const { return store_; }
+  PropertyStore* mutable_store() { return &store_; }
+  const PropertyStore& store() const { return store_; }
 
   // Set the storage inteface.  This is used for testing purposes.  It
   // takes ownership of |storage|.
-  void set_storage(StoreInterface *storage);
+  void set_storage(StoreInterface* storage);
 
   // Begin managing the persistence of |service|.
   // Returns true if |service| is new to this profile and was added,
   // false if the |service| already existed.
-  virtual bool AdoptService(const ServiceRefPtr &service);
+  virtual bool AdoptService(const ServiceRefPtr& service);
 
   // Cease managing the persistence of the Service |service|.
   // Returns true if |service| was found and abandoned, or not found.
   // Returns false if can't be abandoned.
-  virtual bool AbandonService(const ServiceRefPtr &service);
+  virtual bool AbandonService(const ServiceRefPtr& service);
 
   // Clobbers persisted notion of |service| with data from |service|.
   // Returns true if |service| was found and updated, false if not found.
-  virtual bool UpdateService(const ServiceRefPtr &service);
+  virtual bool UpdateService(const ServiceRefPtr& service);
 
   // Ask |service| if it can configure itself from the profile.  If it can,
   // ask |service| to perform the configuration and return true.  If not,
   // return false.
-  virtual bool LoadService(const ServiceRefPtr &service);
+  virtual bool LoadService(const ServiceRefPtr& service);
 
   // Perform LoadService() on |service|.  If this succeeds, change
   // the service to point at this profile and return true.  If not, return
   // false.
-  virtual bool ConfigureService(const ServiceRefPtr &service);
+  virtual bool ConfigureService(const ServiceRefPtr& service);
 
   // Allow the device to configure itself from this profile.  Returns
   // true if the device succeeded in finding its configuration.  If not,
   // return false.
-  virtual bool ConfigureDevice(const DeviceRefPtr &device);
+  virtual bool ConfigureDevice(const DeviceRefPtr& device);
 
   // Remove a named entry from the profile.  This includes detaching
   // any service that uses this profile entry.
-  virtual void DeleteEntry(const std::string &entry_name, Error *error);
+  virtual void DeleteEntry(const std::string& entry_name, Error* error);
 
   // Return a service configured from the given profile entry.
   // Callers must not register the returned service with the Manager or connect
   // it since it might not be in the provider's service list.
-  virtual ServiceRefPtr GetServiceFromEntry(const std::string &entry_name,
-                                            Error *error);
+  virtual ServiceRefPtr GetServiceFromEntry(const std::string& entry_name,
+                                            Error* error);
 
   // Return whether |service| can configure itself from the profile.
-  bool ContainsService(const ServiceConstRefPtr &service);
+  bool ContainsService(const ServiceConstRefPtr& service);
 
-  std::vector<std::string> EnumerateAvailableServices(Error *error);
-  std::vector<std::string> EnumerateEntries(Error *error);
+  std::vector<std::string> EnumerateAvailableServices(Error* error);
+  std::vector<std::string> EnumerateEntries(Error* error);
 
   // Clobbers persisted notion of |device| with data from |device|. Returns true
   // if |device| was found and updated, false otherwise. The base implementation
   // always returns false -- currently devices are persisted only in
   // DefaultProfile.
-  virtual bool UpdateDevice(const DeviceRefPtr &device);
+  virtual bool UpdateDevice(const DeviceRefPtr& device);
 
 #if !defined(DISABLE_WIFI)
   // Clobbers persisted notion of |wifi_provider| with data from
   // |wifi_provider|. Returns true if |wifi_provider| was found and updated,
   // false otherwise. The base implementation always returns false -- currently
   // wifi_provider is persisted only in DefaultProfile.
-  virtual bool UpdateWiFiProvider(const WiFiProvider &wifi_provider);
+  virtual bool UpdateWiFiProvider(const WiFiProvider& wifi_provider);
 #endif  // DISABLE_WIFI
 
   // Write all in-memory state to disk via |storage_|.
@@ -160,40 +160,40 @@ class Profile : public base::RefCounted<Profile> {
   // identifier: "identifier" and "~user/identifier". Both "user" and
   // "identifier" must be suitable for use in a D-Bus object path. Returns true
   // on success.
-  static bool ParseIdentifier(const std::string &raw, Identifier *parsed);
+  static bool ParseIdentifier(const std::string& raw, Identifier* parsed);
 
   // Returns the composite string identifier for a profile, as would have
   // been used in an argument to Manager::PushProfile() in creating this
   // profile.  It returns a string in the form "identifier", or
   // "~user/identifier" depending on whether this profile has a user
   // component.
-  static std::string IdentifierToString(const Identifier &name);
+  static std::string IdentifierToString(const Identifier& name);
 
   // Load a list of user profile identifiers from a cache file |path|.
   // The profiles themselves are not loaded.
   static std::vector<Identifier> LoadUserProfileList(
-      const base::FilePath &path);
+      const base::FilePath& path);
 
   // Save a list of user profile identifiers |profiles| to a cache file |path|.
   // Returns true if successful, false otherwise.
-  static bool SaveUserProfileList(const base::FilePath &path,
-                                  const std::vector<ProfileRefPtr> &profiles);
+  static bool SaveUserProfileList(const base::FilePath& path,
+                                  const std::vector<ProfileRefPtr>& profiles);
 
   // Returns whether |name| matches this Profile's |name_|.
-  virtual bool MatchesIdentifier(const Identifier &name) const;
+  virtual bool MatchesIdentifier(const Identifier& name) const;
 
   // Returns the username component of the profile identifier.
-  const std::string &GetUser() const { return name_.user; }
+  const std::string& GetUser() const { return name_.user; }
 
   // Returns the user_hash component of the profile identifier.
-  const std::string &GetUserHash() const { return name_.user_hash; }
+  const std::string& GetUserHash() const { return name_.user_hash; }
 
-  virtual StoreInterface *GetStorage() {
+  virtual StoreInterface* GetStorage() {
     return storage_.get();
   }
 
   // Returns a read-only copy of the backing storage of the profile.
-  virtual const StoreInterface *GetConstStorage() const {
+  virtual const StoreInterface* GetConstStorage() const {
     return storage_.get();
   }
 
@@ -201,9 +201,9 @@ class Profile : public base::RefCounted<Profile> {
 
  protected:
   // Protected getters
-  Metrics *metrics() const { return metrics_; }
-  Manager *manager() const { return manager_; }
-  StoreInterface *storage() { return storage_.get(); }
+  Metrics* metrics() const { return metrics_; }
+  Manager* manager() const { return manager_; }
+  StoreInterface* storage() { return storage_.get(); }
 
   // Sets |path| to the persistent store file path for a profile identified by
   // |name_|. Returns true on success, and false if unable to determine an
@@ -212,7 +212,7 @@ class Profile : public base::RefCounted<Profile> {
   //
   // In the default implementation, |name_.user| cannot be empty, because
   // all regular profiles should be associated with a user.
-  virtual bool GetStoragePath(base::FilePath *path);
+  virtual bool GetStoragePath(base::FilePath* path);
 
  private:
   friend class ProfileAdaptorInterface;
@@ -221,16 +221,16 @@ class Profile : public base::RefCounted<Profile> {
   FRIEND_TEST(ProfileTest, IsValidIdentifierToken);
   FRIEND_TEST(ProfileTest, GetServiceFromEntry);
 
-  static bool IsValidIdentifierToken(const std::string &token);
+  static bool IsValidIdentifierToken(const std::string& token);
 
   void HelpRegisterConstDerivedStrings(
-      const std::string &name,
-      Strings(Profile::*get)(Error *error));
+      const std::string& name,
+      Strings(Profile::*get)(Error* error));
 
   // Data members shared with subclasses via getter/setters above in the
   // protected: section
-  Metrics *metrics_;
-  Manager *manager_;
+  Metrics* metrics_;
+  Manager* manager_;
 
   // Shared with |adaptor_| via public getter.
   PropertyStore store_;

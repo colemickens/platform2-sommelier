@@ -49,7 +49,7 @@ class PowerManager : public PowerManagerProxyDelegate {
   // |proxy_factory| creates the PowerManagerProxy.  Usually this is
   // ProxyFactory::GetInstance().  Use a fake for testing.
   // Note: |Start| should be called to initialize this object before using it.
-  PowerManager(EventDispatcher *dispatcher, ProxyFactory *proxy_factory);
+  PowerManager(EventDispatcher* dispatcher, ProxyFactory* proxy_factory);
   ~PowerManager() override;
 
   bool suspending() const { return suspending_; }
@@ -65,11 +65,11 @@ class PowerManager : public PowerManagerProxyDelegate {
   //   a call to |done_callback| (before any more calls to |imminent_callback|).
   // Requires a |DBusManager| that has been |Start|'ed.
   virtual void Start(
-      DBusManager *dbus_manager,
+      DBusManager* dbus_manager,
       base::TimeDelta suspend_delay,
-      const SuspendImminentCallback &suspend_imminent_callback,
-      const SuspendDoneCallback &suspend_done_callback,
-      const DarkSuspendImminentCallback &dark_suspend_imminent_callback);
+      const SuspendImminentCallback& suspend_imminent_callback,
+      const SuspendDoneCallback& suspend_done_callback,
+      const DarkSuspendImminentCallback& dark_suspend_imminent_callback);
   virtual void Stop();
 
   // Report suspend readiness. If called when there is no suspend attempt
@@ -81,7 +81,7 @@ class PowerManager : public PowerManagerProxyDelegate {
   virtual bool ReportDarkSuspendReadiness();
 
   // Record the wake reason for the current dark resume.
-  bool RecordDarkResumeWakeReason(const std::string &wake_reason);
+  bool RecordDarkResumeWakeReason(const std::string& wake_reason);
 
   // Methods inherited from PowerManagerProxyDelegate.
   void OnSuspendImminent(int suspend_id) override;
@@ -102,11 +102,11 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   // These functions track the power_manager daemon appearing/vanishing from the
   // DBus connection.
-  void OnPowerManagerAppeared(const std::string &name,
-                              const std::string &owner);
-  void OnPowerManagerVanished(const std::string &name);
+  void OnPowerManagerAppeared(const std::string& name,
+                              const std::string& owner);
+  void OnPowerManagerVanished(const std::string& name);
 
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
 
   // The power manager proxy created by this class.  It dispatches the inherited
   // delegate methods of this object when changes in the power state occur.

@@ -36,7 +36,7 @@ class Technology {
 
   // Returns the technology identifier for a technology name in |name|,
   // or Technology::kUnknown if the technology name is unknown.
-  static Identifier IdentifierFromName(const std::string &name);
+  static Identifier IdentifierFromName(const std::string& name);
 
   // Returns the technology name for a technology identifier in |id|,
   // or Technology::kUnknownName ("Unknown") if the technology identifier
@@ -47,7 +47,7 @@ class Technology {
   // |group|, which should have the format of <technology name>_<suffix>,
   // or Technology::kUnknown if |group| is not prefixed with a known
   // technology name.
-  static Identifier IdentifierFromStorageGroup(const std::string &group);
+  static Identifier IdentifierFromStorageGroup(const std::string& group);
 
   // Converts the comma-separated list of technology names (with no whitespace
   // around commas) in |technologies_string| into a vector of technology
@@ -55,9 +55,9 @@ class Technology {
   // |technologies_string| contains a valid set of technologies with no
   // duplicate elements, false otherwise.
   static bool GetTechnologyVectorFromString(
-      const std::string &technologies_string,
-      std::vector<Identifier> *technologies_vector,
-      Error *error);
+      const std::string& technologies_string,
+      std::vector<Identifier>* technologies_vector,
+      Error* error);
 
   // Returns true if |technology| is a primary connectivity technology, i.e.
   // Ethernet, Cellular, WiFi, WiMAX, or PPPoE.

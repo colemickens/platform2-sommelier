@@ -30,7 +30,7 @@ namespace shill {
 // change notifications documented (and tested) in one place.
 
 void TestCommonPropertyChanges(ServiceRefPtr service,
-                               ServiceMockAdaptor *adaptor) {
+                               ServiceMockAdaptor* adaptor) {
   Error error;
 
   EXPECT_EQ(Service::kStateIdle, service->state());
@@ -104,7 +104,7 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
 }
 
 void TestAutoConnectPropertyChange(ServiceRefPtr service,
-                                   ServiceMockAdaptor *adaptor) {
+                                   ServiceMockAdaptor* adaptor) {
   bool auto_connect = service->auto_connect();
   EXPECT_CALL(*adaptor, EmitBoolChanged(kAutoConnectProperty, _));
   service->SetAutoConnect(!auto_connect);
@@ -112,7 +112,7 @@ void TestAutoConnectPropertyChange(ServiceRefPtr service,
 }
 
 void TestNamePropertyChange(ServiceRefPtr service,
-                            ServiceMockAdaptor *adaptor) {
+                            ServiceMockAdaptor* adaptor) {
   Error error;
   string name = service->GetNameProperty(&error);
   EXPECT_CALL(*adaptor, EmitStringChanged(kNameProperty, _));
@@ -121,7 +121,7 @@ void TestNamePropertyChange(ServiceRefPtr service,
 }
 
 void TestCustomSetterNoopChange(ServiceRefPtr service,
-                                MockManager *mock_manager) {
+                                MockManager* mock_manager) {
   // SetAutoConnectFull
   {
     Error error;

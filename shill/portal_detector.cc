@@ -25,7 +25,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kPortal;
-static string ObjectID(Connection *c) { return c->interface_name(); }
+static string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
 const int PortalDetector::kDefaultCheckIntervalSeconds = 30;
@@ -38,8 +38,8 @@ const int PortalDetector::kMaxFailuresInContentPhase = 2;
 
 PortalDetector::PortalDetector(
     ConnectionRefPtr connection,
-    EventDispatcher *dispatcher,
-    const Callback<void(const PortalDetector::Result &)> &callback)
+    EventDispatcher* dispatcher,
+    const Callback<void(const PortalDetector::Result&)>& callback)
     : attempt_count_(0),
       attempt_start_time_((struct timeval){0}),
       connection_(connection),
@@ -60,11 +60,11 @@ PortalDetector::~PortalDetector() {
   Stop();
 }
 
-bool PortalDetector::Start(const string &url_string) {
+bool PortalDetector::Start(const string& url_string) {
   return StartAfterDelay(url_string, 0);
 }
 
-bool PortalDetector::StartAfterDelay(const string &url_string,
+bool PortalDetector::StartAfterDelay(const string& url_string,
                                      int delay_seconds) {
   SLOG(connection_.get(), 3) << "In " << __func__;
 

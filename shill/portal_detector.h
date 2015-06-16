@@ -73,7 +73,7 @@ class PortalDetector {
   static const int kMaxRequestAttempts;
 
   PortalDetector(ConnectionRefPtr connection,
-                 EventDispatcher *dispatcher,
+                 EventDispatcher* dispatcher,
                  const base::Callback<void(const PortalDetector::Result&)>
                      &callback);
   virtual ~PortalDetector();
@@ -88,8 +88,8 @@ class PortalDetector {
   // this is the last attempt, the "final" flag in the Result structure will
   // be true, otherwise it will be false, and the PortalDetector will
   // schedule the next attempt.
-  virtual bool Start(const std::string &url_string);
-  virtual bool StartAfterDelay(const std::string &url_string,
+  virtual bool Start(const std::string& url_string);
+  virtual bool StartAfterDelay(const std::string& url_string,
                                int delay_seconds);
 
   // End the current portal detection process if one exists, and do not call
@@ -145,11 +145,11 @@ class PortalDetector {
   int attempt_count_;
   struct timeval attempt_start_time_;
   ConnectionRefPtr connection_;
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
-  base::Callback<void(const Result &)> portal_result_callback_;
+  base::Callback<void(const Result&)> portal_result_callback_;
   base::Callback<void(ConnectivityTrial::Result)> connectivity_trial_callback_;
-  Time *time_;
+  Time* time_;
   int failures_in_content_phase_;
   std::unique_ptr<ConnectivityTrial> connectivity_trial_;
 

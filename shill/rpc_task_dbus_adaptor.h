@@ -28,24 +28,24 @@ class RPCTaskDBusAdaptor : public org::chromium::flimflam::Task_adaptor,
  public:
   static const char kPath[];
 
-  RPCTaskDBusAdaptor(DBus::Connection *conn, RPCTask *task);
+  RPCTaskDBusAdaptor(DBus::Connection* conn, RPCTask* task);
   ~RPCTaskDBusAdaptor() override;
 
   // Implementation of RPCTaskAdaptorInterface.
-  const std::string &GetRpcIdentifier() override;
-  const std::string &GetRpcInterfaceIdentifier() override;
-  const std::string &GetRpcConnectionIdentifier() override;
+  const std::string& GetRpcIdentifier() override;
+  const std::string& GetRpcInterfaceIdentifier() override;
+  const std::string& GetRpcConnectionIdentifier() override;
 
   // Implementation of Task_adaptor
-  void getsec(std::string &user,
-              std::string &password,
-              DBus::Error &error) override;  // NOLINT
-  void notify(const std::string &reason,
-              const std::map<std::string, std::string> &dict,
-              DBus::Error &error) override;  // NOLINT
+  void getsec(std::string& user,
+              std::string& password,
+              DBus::Error& error) override;  // NOLINT
+  void notify(const std::string& reason,
+              const std::map<std::string, std::string>& dict,
+              DBus::Error& error) override;  // NOLINT
 
  private:
-  RPCTask *task_;
+  RPCTask* task_;
   const std::string interface_name_;
   const std::string connection_name_;
 

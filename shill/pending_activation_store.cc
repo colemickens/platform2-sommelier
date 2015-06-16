@@ -14,7 +14,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(const PendingActivationStore *p) {
+static string ObjectID(const PendingActivationStore* p) {
   return "(pending_activation_store)";
 }
 }
@@ -48,7 +48,7 @@ string StateToString(PendingActivationStore::State state) {
 }
 
 string FormattedIdentifier(PendingActivationStore::IdentifierType type,
-                           const string &identifier) {
+                           const string& identifier) {
   string label;
   switch (type) {
     case PendingActivationStore::kIdentifierICCID:
@@ -79,8 +79,8 @@ string PendingActivationStore::IdentifierTypeToGroupId(IdentifierType type) {
 }
 
 bool PendingActivationStore::InitStorage(
-    GLib *glib,
-    const FilePath &storage_path) {
+    GLib* glib,
+    const FilePath& storage_path) {
   // Close the current file.
   if (storage_.get()) {
     storage_->Flush();
@@ -112,7 +112,7 @@ bool PendingActivationStore::InitStorage(
 
 PendingActivationStore::State PendingActivationStore::GetActivationState(
     IdentifierType type,
-    const string &identifier) const {
+    const string& identifier) const {
   string formatted_identifier = FormattedIdentifier(type, identifier);
   SLOG(this, 2) << __func__ << ": " << formatted_identifier;
   if (!storage_.get()) {
@@ -134,7 +134,7 @@ PendingActivationStore::State PendingActivationStore::GetActivationState(
 
 bool PendingActivationStore::SetActivationState(
     IdentifierType type,
-    const string &identifier,
+    const string& identifier,
     State state) {
   SLOG(this, 2) << __func__ << ": State=" << StateToString(state) << ", "
                 << FormattedIdentifier(type, identifier);
@@ -161,7 +161,7 @@ bool PendingActivationStore::SetActivationState(
 }
 
 bool PendingActivationStore::RemoveEntry(IdentifierType type,
-                                         const std::string &identifier) {
+                                         const std::string& identifier) {
   SLOG(this, 2) << __func__ << ": "
                 << FormattedIdentifier(type, identifier);
   if (!storage_.get()) {

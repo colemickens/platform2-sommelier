@@ -31,15 +31,15 @@ class Tethering {
   static const uint8_t kLocallyAdministratedMACBit;
 
   // Returns whether an 802.11 BSSID is likely to be owned by an Android device.
-  static bool IsAndroidBSSID(const std::vector<uint8_t> &bssid);
+  static bool IsAndroidBSSID(const std::vector<uint8_t>& bssid);
 
   // Returns whether an 802.11 BSSID is a locally-administered address, as
   // opposed to a unique IEEE-issued address.
-  static bool IsLocallyAdministeredBSSID(const std::vector<uint8_t> &bssid);
+  static bool IsLocallyAdministeredBSSID(const std::vector<uint8_t>& bssid);
 
   // Returns whether any of the organizationally unique identifiers in
   // |oui_set| is commonly associated with IOS devices.
-  static bool HasIosOui(const std::set<uint32_t> &oui_set);
+  static bool HasIosOui(const std::set<uint32_t>& oui_set);
 };
 
 }  // namespace shill

@@ -22,8 +22,8 @@ class PermissionBrokerProxyInterface {
  public:
   PermissionBrokerProxyInterface();
   virtual ~PermissionBrokerProxyInterface();
-  virtual bool RequestVpnSetup(const std::vector<std::string> &user_names,
-                               const std::string &interface) = 0;
+  virtual bool RequestVpnSetup(const std::vector<std::string>& user_names,
+                               const std::string& interface) = 0;
   virtual bool RemoveVpnSetup() = 0;
 };
 
@@ -32,8 +32,8 @@ class PermissionBrokerProxy : public PermissionBrokerProxyInterface {
   explicit PermissionBrokerProxy(DBus::Connection* connection);
   ~PermissionBrokerProxy() override;
 
-  bool RequestVpnSetup(const std::vector<std::string> &user_names,
-                       const std::string &interface) override;
+  bool RequestVpnSetup(const std::vector<std::string>& user_names,
+                       const std::string& interface) override;
 
   bool RemoveVpnSetup() override;
 

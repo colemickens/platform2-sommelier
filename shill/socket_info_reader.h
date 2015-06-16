@@ -34,7 +34,7 @@ class SocketInfoReader {
   // Loads TCP socket information from /proc/net/tcp and /proc/net/tcp6.
   // Existing entries in |info_list| are always discarded. Returns false
   // if when neither /proc/net/tcp nor /proc/net/tcp6 can be read.
-  virtual bool LoadTcpSocketInfo(std::vector<SocketInfo> *info_list);
+  virtual bool LoadTcpSocketInfo(std::vector<SocketInfo>* info_list);
 
  private:
   FRIEND_TEST(SocketInfoReaderTest, AppendSocketInfo);
@@ -46,20 +46,20 @@ class SocketInfoReader {
   FRIEND_TEST(SocketInfoReaderTest, ParseTimerState);
   FRIEND_TEST(SocketInfoReaderTest, ParseTransimitAndReceiveQueueValues);
 
-  bool AppendSocketInfo(const base::FilePath &info_file_path,
-                        std::vector<SocketInfo> *info_list);
-  bool ParseSocketInfo(const std::string &input, SocketInfo *socket_info);
+  bool AppendSocketInfo(const base::FilePath& info_file_path,
+                        std::vector<SocketInfo>* info_list);
+  bool ParseSocketInfo(const std::string& input, SocketInfo* socket_info);
   bool ParseIPAddressAndPort(
-      const std::string &input, IPAddress *ip_address, uint16_t *port);
-  bool ParseIPAddress(const std::string &input, IPAddress *ip_address);
-  bool ParsePort(const std::string &input, uint16_t *port);
+      const std::string& input, IPAddress* ip_address, uint16_t* port);
+  bool ParseIPAddress(const std::string& input, IPAddress* ip_address);
+  bool ParsePort(const std::string& input, uint16_t* port);
   bool ParseTransimitAndReceiveQueueValues(
-      const std::string &input,
-      uint64_t *transmit_queue_value, uint64_t *receive_queue_value);
-  bool ParseConnectionState(const std::string &input,
-                            SocketInfo::ConnectionState *connection_state);
-  bool ParseTimerState(const std::string &input,
-                       SocketInfo::TimerState *timer_state);
+      const std::string& input,
+      uint64_t* transmit_queue_value, uint64_t* receive_queue_value);
+  bool ParseConnectionState(const std::string& input,
+                            SocketInfo::ConnectionState* connection_state);
+  bool ParseTimerState(const std::string& input,
+                       SocketInfo::TimerState* timer_state);
 
   DISALLOW_COPY_AND_ASSIGN(SocketInfoReader);
 };

@@ -31,50 +31,50 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
 
   // Inherited from PowerManagerProxyInterface.
   bool RegisterSuspendDelay(base::TimeDelta timeout,
-                            const std::string &description,
-                            int *delay_id_out) override;
+                            const std::string& description,
+                            int* delay_id_out) override;
   bool UnregisterSuspendDelay(int delay_id) override;
   bool ReportSuspendReadiness(int delay_id, int suspend_id) override;
   bool RegisterDarkSuspendDelay(base::TimeDelta timeout,
-                                const std::string &description,
-                                int *delay_id_out) override;
+                                const std::string& description,
+                                int* delay_id_out) override;
   bool UnregisterDarkSuspendDelay(int delay_id) override;
   bool ReportDarkSuspendReadiness(int delay_id, int suspend_id) override;
-  bool RecordDarkResumeWakeReason(const std::string &wake_reason) override;
+  bool RecordDarkResumeWakeReason(const std::string& wake_reason) override;
 
  private:
   // Only this factory method can create a PowerManagerProxy.
-  friend PowerManagerProxyInterface *ProxyFactory::CreatePowerManagerProxy(
-      PowerManagerProxyDelegate *delegate);
+  friend PowerManagerProxyInterface* ProxyFactory::CreatePowerManagerProxy(
+      PowerManagerProxyDelegate* delegate);
 
   class Proxy : public org::chromium::PowerManager_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(PowerManagerProxyDelegate *delegate,
-          DBus::Connection *connection);
+    Proxy(PowerManagerProxyDelegate* delegate,
+          DBus::Connection* connection);
     ~Proxy() override;
 
    private:
     // Signal callbacks inherited from org::chromium::PowerManager_proxy.
-    void SuspendImminent(const std::vector<uint8_t> &serialized_proto) override;
-    void SuspendDone(const std::vector<uint8_t> &serialized_proto) override;
+    void SuspendImminent(const std::vector<uint8_t>& serialized_proto) override;
+    void SuspendDone(const std::vector<uint8_t>& serialized_proto) override;
     void DarkSuspendImminent(
-        const std::vector<uint8_t> &serialized_proto) override;
+        const std::vector<uint8_t>& serialized_proto) override;
 
-    PowerManagerProxyDelegate *const delegate_;
+    PowerManagerProxyDelegate* const delegate_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
 
   // Constructs a PowerManager DBus object proxy with signals dispatched to
   // |delegate|.
-  PowerManagerProxy(PowerManagerProxyDelegate *delegate,
-                    DBus::Connection *connection);
+  PowerManagerProxy(PowerManagerProxyDelegate* delegate,
+                    DBus::Connection* connection);
 
   bool RegisterSuspendDelayInternal(bool is_dark,
                                     base::TimeDelta timeout,
-                                    const std::string &description,
-                                    int *delay_id_out);
+                                    const std::string& description,
+                                    int* delay_id_out);
   bool UnregisterSuspendDelayInternal(bool is_dark, int delay_id);
   bool ReportSuspendReadinessInternal(bool is_dark,
                                       int delay_id,

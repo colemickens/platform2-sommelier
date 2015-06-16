@@ -7,9 +7,9 @@
 namespace shill {
 
 SocketInfo::SocketInfo(ConnectionState connection_state,
-                       const IPAddress &local_ip_address,
+                       const IPAddress& local_ip_address,
                        uint16_t local_port,
-                       const IPAddress &remote_ip_address,
+                       const IPAddress& remote_ip_address,
                        uint16_t remote_port,
                        uint64_t transmit_queue_value,
                        uint64_t receive_queue_value,
@@ -35,7 +35,7 @@ SocketInfo::SocketInfo()
       timer_state_(kTimerStateUnknown) {
 }
 
-SocketInfo::SocketInfo(const SocketInfo &socket_info)
+SocketInfo::SocketInfo(const SocketInfo& socket_info)
     : connection_state_(socket_info.connection_state_),
       local_ip_address_(socket_info.local_ip_address_),
       local_port_(socket_info.local_port_),
@@ -48,7 +48,7 @@ SocketInfo::SocketInfo(const SocketInfo &socket_info)
 
 SocketInfo::~SocketInfo() {}
 
-SocketInfo &SocketInfo::operator=(const SocketInfo &socket_info) {
+SocketInfo& SocketInfo::operator=(const SocketInfo& socket_info) {
   connection_state_ = socket_info.connection_state_;
   local_ip_address_ = socket_info.local_ip_address_;
   local_port_ = socket_info.local_port_;
@@ -61,7 +61,7 @@ SocketInfo &SocketInfo::operator=(const SocketInfo &socket_info) {
   return *this;
 }
 
-bool SocketInfo::IsSameSocketAs(const SocketInfo &socket_info) const {
+bool SocketInfo::IsSameSocketAs(const SocketInfo& socket_info) const {
   return (local_ip_address_.Equals(socket_info.local_ip_address_) &&
           local_port_ == socket_info.local_port_ &&
           remote_ip_address_.Equals(socket_info.remote_ip_address_) &&

@@ -27,7 +27,7 @@ const char Technology::kPPPName[] = "ppp";
 const char Technology::kUnknownName[] = "unknown";
 
 // static
-Technology::Identifier Technology::IdentifierFromName(const string &name) {
+Technology::Identifier Technology::IdentifierFromName(const string& name) {
   if (name == kTypeEthernet) {
     return kEthernet;
   } else if (name == kTypeEthernetEap) {
@@ -82,7 +82,7 @@ string Technology::NameFromIdentifier(Technology::Identifier id) {
 
 // static
 Technology::Identifier Technology::IdentifierFromStorageGroup(
-    const string &group) {
+    const string& group) {
   vector<string> group_parts;
   base::SplitString(group, '_', &group_parts);
   if (group_parts.empty()) {
@@ -93,9 +93,9 @@ Technology::Identifier Technology::IdentifierFromStorageGroup(
 
 // static
 bool Technology::GetTechnologyVectorFromString(
-    const string &technologies_string,
-    vector<Identifier> *technologies_vector,
-    Error *error) {
+    const string& technologies_string,
+    vector<Identifier>* technologies_vector,
+    Error* error) {
   CHECK(technologies_vector);
   CHECK(error);
 
@@ -109,7 +109,7 @@ bool Technology::GetTechnologyVectorFromString(
   if (!technologies_string.empty())
     base::SplitString(technologies_string, ',', &technology_parts);
 
-  for (const auto &name : technology_parts) {
+  for (const auto& name : technology_parts) {
     Technology::Identifier identifier = Technology::IdentifierFromName(name);
 
     if (identifier == Technology::kUnknown) {

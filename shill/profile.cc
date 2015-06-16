@@ -36,11 +36,11 @@ namespace shill {
 const char Profile::kUserProfileListPathname[] =
     RUNDIR "/loaded_profile_list";
 
-Profile::Profile(ControlInterface *control_interface,
-                 Metrics *metrics,
-                 Manager *manager,
-                 const Identifier &name,
-                 const string &user_storage_directory,
+Profile::Profile(ControlInterface* control_interface,
+                 Metrics* metrics,
+                 Manager* manager,
+                 const Identifier& name,
+                 const string& user_storage_directory,
                  bool connect_to_rpc)
     : metrics_(metrics),
       manager_(manager),
@@ -64,8 +64,8 @@ Profile::Profile(ControlInterface *control_interface,
 
 Profile::~Profile() {}
 
-bool Profile::InitStorage(GLib *glib, InitStorageOption storage_option,
-                          Error *error) {
+bool Profile::InitStorage(GLib* glib, InitStorageOption storage_option,
+                          Error* error) {
   FilePath final_path;
   if (!GetStoragePath(&final_path)) {
     Error::PopulateAndLog(
@@ -123,7 +123,7 @@ void Profile::InitStubStorage() {
   set_storage(new StubStorage());
 }
 
-bool Profile::RemoveStorage(GLib *glib, Error *error) {
+bool Profile::RemoveStorage(GLib* glib, Error* error) {
   FilePath path;
 
   CHECK(!storage_.get());
@@ -158,11 +158,11 @@ string Profile::GetRpcIdentifier() {
   return adaptor_->GetRpcIdentifier();
 }
 
-void Profile::set_storage(StoreInterface *storage) {
+void Profile::set_storage(StoreInterface* storage) {
   storage_.reset(storage);
 }
 
-bool Profile::AdoptService(const ServiceRefPtr &service) {
+bool Profile::AdoptService(const ServiceRefPtr& service) {
   if (service->profile() == this) {
     return false;
   }
@@ -170,39 +170,39 @@ bool Profile::AdoptService(const ServiceRefPtr &service) {
   return service->Save(storage_.get()) && storage_->Flush();
 }
 
-bool Profile::AbandonService(const ServiceRefPtr &service) {
+bool Profile::AbandonService(const ServiceRefPtr& service) {
   if (service->profile() == this)
     service->SetProfile(nullptr);
   return storage_->DeleteGroup(service->GetStorageIdentifier()) &&
       storage_->Flush();
 }
 
-bool Profile::UpdateService(const ServiceRefPtr &service) {
+bool Profile::UpdateService(const ServiceRefPtr& service) {
   return service->Save(storage_.get()) && storage_->Flush();
 }
 
-bool Profile::LoadService(const ServiceRefPtr &service) {
+bool Profile::LoadService(const ServiceRefPtr& service) {
   if (!ContainsService(service))
     return false;
   return service->Load(storage_.get());
 }
 
-bool Profile::ConfigureService(const ServiceRefPtr &service) {
+bool Profile::ConfigureService(const ServiceRefPtr& service) {
   if (!LoadService(service))
     return false;
   service->SetProfile(this);
   return true;
 }
 
-bool Profile::ConfigureDevice(const DeviceRefPtr &device) {
+bool Profile::ConfigureDevice(const DeviceRefPtr& device) {
   return device->Load(storage_.get());
 }
 
-bool Profile::ContainsService(const ServiceConstRefPtr &service) {
+bool Profile::ContainsService(const ServiceConstRefPtr& service) {
   return service->IsLoadableFrom(*storage_.get());
 }
 
-void Profile::DeleteEntry(const std::string &entry_name, Error *error) {
+void Profile::DeleteEntry(const std::string& entry_name, Error* error) {
   if (!storage_->ContainsGroup(entry_name)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kNotFound,
@@ -219,8 +219,8 @@ void Profile::DeleteEntry(const std::string &entry_name, Error *error) {
   Save();
 }
 
-ServiceRefPtr Profile::GetServiceFromEntry(const std::string &entry_name,
-                                           Error *error) {
+ServiceRefPtr Profile::GetServiceFromEntry(const std::string& entry_name,
+                                           Error* error) {
   if (!storage_->ContainsGroup(entry_name)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kNotFound,
@@ -240,7 +240,7 @@ ServiceRefPtr Profile::GetServiceFromEntry(const std::string &entry_name,
   return manager_->CreateTemporaryServiceFromProfile(this, entry_name, error);
 }
 
-bool Profile::IsValidIdentifierToken(const string &token) {
+bool Profile::IsValidIdentifierToken(const string& token) {
   if (token.empty()) {
     return false;
   }
@@ -253,7 +253,7 @@ bool Profile::IsValidIdentifierToken(const string &token) {
 }
 
 // static
-bool Profile::ParseIdentifier(const string &raw, Identifier *parsed) {
+bool Profile::ParseIdentifier(const string& raw, Identifier* parsed) {
   if (raw.empty()) {
     return false;
   }
@@ -283,7 +283,7 @@ bool Profile::ParseIdentifier(const string &raw, Identifier *parsed) {
 }
 
 // static
-string Profile::IdentifierToString(const Identifier &name) {
+string Profile::IdentifierToString(const Identifier& name) {
   if (name.user.empty()) {
     // Format: "identifier".
     return name.identifier;
@@ -295,7 +295,7 @@ string Profile::IdentifierToString(const Identifier &name) {
 }
 
 // static
-vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath &path) {
+vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath& path) {
   vector<Identifier> profile_identifiers;
   string profile_data;
   if (!base::ReadFileToString(path, &profile_data)) {
@@ -304,7 +304,7 @@ vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath &path) {
 
   vector<string> profile_lines;
   base::SplitStringDontTrim(profile_data, '\n', &profile_lines);
-  for (const auto &line : profile_lines) {
+  for (const auto& line : profile_lines) {
     if (line.empty()) {
       // This will be the case on the last line, so let's not complain about it.
       continue;
@@ -330,11 +330,11 @@ vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath &path) {
 }
 
 // static
-bool Profile::SaveUserProfileList(const FilePath &path,
-                                  const vector<ProfileRefPtr> &profiles) {
+bool Profile::SaveUserProfileList(const FilePath& path,
+                                  const vector<ProfileRefPtr>& profiles) {
   vector<string> lines;
-  for (const auto &profile : profiles) {
-    Identifier &id = profile->name_;
+  for (const auto& profile : profiles) {
+    Identifier& id = profile->name_;
     if (id.user.empty()) {
       continue;
     }
@@ -347,7 +347,7 @@ bool Profile::SaveUserProfileList(const FilePath &path,
   return ret == content.length();
 }
 
-bool Profile::MatchesIdentifier(const Identifier &name) const {
+bool Profile::MatchesIdentifier(const Identifier& name) const {
   return name.user == name_.user && name.identifier == name_.identifier;
 }
 
@@ -355,7 +355,7 @@ bool Profile::Save() {
   return storage_->Flush();
 }
 
-bool Profile::GetStoragePath(FilePath *path) {
+bool Profile::GetStoragePath(FilePath* path) {
   if (name_.user.empty()) {
     LOG(ERROR) << "Non-default profiles cannot be stored globally.";
     return false;
@@ -367,7 +367,7 @@ bool Profile::GetStoragePath(FilePath *path) {
   return true;
 }
 
-vector<string> Profile::EnumerateAvailableServices(Error *error) {
+vector<string> Profile::EnumerateAvailableServices(Error* error) {
   // We should return the Manager's service list if this is the active profile.
   if (manager_->IsActiveProfile(this)) {
     return manager_->EnumerateAvailableServices(error);
@@ -376,12 +376,12 @@ vector<string> Profile::EnumerateAvailableServices(Error *error) {
   }
 }
 
-vector<string> Profile::EnumerateEntries(Error */*error*/) {
+vector<string> Profile::EnumerateEntries(Error* /*error*/) {
   vector<string> service_groups;
 
   // Filter this list down to only entries that correspond
   // to a technology.  (wifi_*, etc)
-  for (const auto &group : storage_->GetGroups()) {
+  for (const auto& group : storage_->GetGroups()) {
     if (Technology::IdentifierFromStorageGroup(group) != Technology::kUnknown)
       service_groups.push_back(group);
   }
@@ -389,19 +389,19 @@ vector<string> Profile::EnumerateEntries(Error */*error*/) {
   return service_groups;
 }
 
-bool Profile::UpdateDevice(const DeviceRefPtr &device) {
+bool Profile::UpdateDevice(const DeviceRefPtr& device) {
   return false;
 }
 
 #if !defined(DISABLE_WIFI)
-bool Profile::UpdateWiFiProvider(const WiFiProvider &wifi_provider) {
+bool Profile::UpdateWiFiProvider(const WiFiProvider& wifi_provider) {
   return false;
 }
 #endif  // DISABLE_WIFI
 
 void Profile::HelpRegisterConstDerivedStrings(
-    const string &name,
-    Strings(Profile::*get)(Error *)) {
+    const string& name,
+    Strings(Profile::*get)(Error*)) {
   store_.RegisterDerivedStrings(
       name, StringsAccessor(
                 new CustomAccessor<Profile, Strings>(this, get, nullptr)));

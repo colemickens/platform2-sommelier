@@ -27,25 +27,25 @@ class ServiceUnderTest : public Service {
   static const char kStringsProperty[];
   static const char kStorageId[];
 
-  ServiceUnderTest(ControlInterface *control_interface,
-                   EventDispatcher *dispatcher,
-                   Metrics *metrics,
-                   Manager *manager);
+  ServiceUnderTest(ControlInterface* control_interface,
+                   EventDispatcher* dispatcher,
+                   Metrics* metrics,
+                   Manager* manager);
   ~ServiceUnderTest() override;
 
   std::string GetRpcIdentifier() const override;
-  std::string GetDeviceRpcId(Error *error) const override;
+  std::string GetDeviceRpcId(Error* error) const override;
   std::string GetStorageIdentifier() const override;
 
   // Getter and setter for a string array property for use in testing.
-  void set_strings(const std::vector<std::string> &strings) {
+  void set_strings(const std::vector<std::string>& strings) {
     strings_ = strings;
   }
-  const std::vector<std::string> &strings() const { return strings_; }
+  const std::vector<std::string>& strings() const { return strings_; }
 
   // Getter and setter for a KeyValueStore property for use in testing.
-  bool SetKeyValueStore(const KeyValueStore &value, Error *error);
-  KeyValueStore GetKeyValueStore(Error *error);
+  bool SetKeyValueStore(const KeyValueStore& value, Error* error);
+  KeyValueStore GetKeyValueStore(Error* error);
 
  private:
   // The Service superclass has no string array or KeyValueStore properties

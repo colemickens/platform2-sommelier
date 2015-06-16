@@ -19,10 +19,10 @@ const char ServiceUnderTest::kRpcId[] = "/mock_device_rpc";
 const char ServiceUnderTest::kStringsProperty[] = "strings";
 const char ServiceUnderTest::kStorageId[] = "service";
 
-ServiceUnderTest::ServiceUnderTest(ControlInterface *control_interface,
-                                   EventDispatcher *dispatcher,
-                                   Metrics *metrics,
-                                   Manager *manager)
+ServiceUnderTest::ServiceUnderTest(ControlInterface* control_interface,
+                                   EventDispatcher* dispatcher,
+                                   Metrics* metrics,
+                                   Manager* manager)
     : Service(control_interface, dispatcher, metrics, manager,
               Technology::kUnknown) {
   mutable_store()->RegisterStrings(kStringsProperty, &strings_);
@@ -40,20 +40,20 @@ string ServiceUnderTest::GetRpcIdentifier() const {
   return ServiceMockAdaptor::kRpcId;
 }
 
-string ServiceUnderTest::GetDeviceRpcId(Error */*error*/) const {
+string ServiceUnderTest::GetDeviceRpcId(Error* /*error*/) const {
   return kRpcId;
 }
 
 string ServiceUnderTest::GetStorageIdentifier() const { return kStorageId; }
 
 bool ServiceUnderTest::SetKeyValueStore(
-    const KeyValueStore &value, Error *error) {
+    const KeyValueStore& value, Error* error) {
   key_value_store_.Clear();
   key_value_store_.CopyFrom(value);
   return true;
 }
 
-KeyValueStore ServiceUnderTest::GetKeyValueStore(Error *error) {
+KeyValueStore ServiceUnderTest::GetKeyValueStore(Error* error) {
   return key_value_store_;
 }
 

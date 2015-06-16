@@ -86,13 +86,13 @@ class PPPDaemon {
   // underlying pppd process dies.  |error| is populated if the task cannot be
   // started, and nullptr is returned.
   static std::unique_ptr<ExternalTask> Start(
-      ControlInterface *control_interface,
-      GLib *glib,
-      const base::WeakPtr<RPCTaskDelegate> &task_delegate,
-      const Options &options,
-      const std::string &device,
-      const DeathCallback &death_callback,
-      Error *error);
+      ControlInterface* control_interface,
+      GLib* glib,
+      const base::WeakPtr<RPCTaskDelegate>& task_delegate,
+      const Options& options,
+      const std::string& device,
+      const DeathCallback& death_callback,
+      Error* error);
 
  private:
   FRIEND_TEST(PPPDaemonTest, PluginUsed);

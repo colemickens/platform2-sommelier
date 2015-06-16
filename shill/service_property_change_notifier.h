@@ -26,38 +26,38 @@ class ServiceAdaptorInterface;
 // property change notifier.
 class ServicePropertyChangeNotifier {
  public:
-  explicit ServicePropertyChangeNotifier(ServiceAdaptorInterface *adaptor);
+  explicit ServicePropertyChangeNotifier(ServiceAdaptorInterface* adaptor);
   virtual ~ServicePropertyChangeNotifier();
 
-  virtual void AddBoolPropertyObserver(const std::string &name,
+  virtual void AddBoolPropertyObserver(const std::string& name,
                                        BoolAccessor accessor);
-  virtual void AddUint8PropertyObserver(const std::string &name,
+  virtual void AddUint8PropertyObserver(const std::string& name,
                                         Uint8Accessor accessor);
-  virtual void AddUint16PropertyObserver(const std::string &name,
+  virtual void AddUint16PropertyObserver(const std::string& name,
                                          Uint16Accessor accessor);
-  virtual void AddUint16sPropertyObserver(const std::string &name,
+  virtual void AddUint16sPropertyObserver(const std::string& name,
                                           Uint16sAccessor accessor);
-  virtual void AddUintPropertyObserver(const std::string &name,
+  virtual void AddUintPropertyObserver(const std::string& name,
                                        Uint32Accessor accessor);
-  virtual void AddIntPropertyObserver(const std::string &name,
+  virtual void AddIntPropertyObserver(const std::string& name,
                                       Int32Accessor accessor);
-  virtual void AddRpcIdentifierPropertyObserver(const std::string &name,
+  virtual void AddRpcIdentifierPropertyObserver(const std::string& name,
                                                 RpcIdentifierAccessor accessor);
-  virtual void AddStringPropertyObserver(const std::string &name,
+  virtual void AddStringPropertyObserver(const std::string& name,
                                          StringAccessor accessor);
-  virtual void AddStringmapPropertyObserver(const std::string &name,
+  virtual void AddStringmapPropertyObserver(const std::string& name,
                                             StringmapAccessor accessor);
   virtual void UpdatePropertyObservers();
 
  private:
   // Redirects templated calls to a value reference to a by-copy version.
-  void BoolPropertyUpdater(const std::string &name, const bool &value);
-  void Uint8PropertyUpdater(const std::string &name, const uint8_t &value);
-  void Uint16PropertyUpdater(const std::string &name, const uint16_t &value);
-  void Uint32PropertyUpdater(const std::string &name, const uint32_t &value);
-  void Int32PropertyUpdater(const std::string &name, const int32_t &value);
+  void BoolPropertyUpdater(const std::string& name, const bool& value);
+  void Uint8PropertyUpdater(const std::string& name, const uint8_t& value);
+  void Uint16PropertyUpdater(const std::string& name, const uint16_t& value);
+  void Uint32PropertyUpdater(const std::string& name, const uint32_t& value);
+  void Int32PropertyUpdater(const std::string& name, const int32_t& value);
 
-  ServiceAdaptorInterface *rpc_adaptor_;
+  ServiceAdaptorInterface* rpc_adaptor_;
   std::vector<std::unique_ptr<PropertyObserverInterface>> property_observers_;
 
   DISALLOW_COPY_AND_ASSIGN(ServicePropertyChangeNotifier);

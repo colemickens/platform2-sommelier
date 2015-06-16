@@ -28,21 +28,21 @@ class StaticIPParameters {
   virtual ~StaticIPParameters();
 
   // Take a property store and add static IP parameters to them.
-  void PlumbPropertyStore(PropertyStore *store);
+  void PlumbPropertyStore(PropertyStore* store);
 
   // Load static IP parameters from a persistent store with id |storage_id|.
-  void Load(StoreInterface *storage, const std::string &storage_id);
+  void Load(StoreInterface* storage, const std::string& storage_id);
 
   // Save static IP parameters to a persistent store with id |storage_id|.
-  void Save(StoreInterface *storage, const std::string &storage_id);
+  void Save(StoreInterface* storage, const std::string& storage_id);
 
   // Apply static IP parameters to an IPConfig properties object, and save
   // their original values.
-  void ApplyTo(IPConfig::Properties *props);
+  void ApplyTo(IPConfig::Properties* props);
 
   // Restore IP parameters from |saved_args_| to |props|, then clear
   // |saved_args_|.
-  void RestoreTo(IPConfig::Properties *props);
+  void RestoreTo(IPConfig::Properties* props);
 
   // Remove any saved parameters from a previous call to ApplyTo().
   void ClearSavedParameters();
@@ -70,7 +70,7 @@ class StaticIPParameters {
       kTypeStrings
     };
 
-    const char *name;
+    const char* name;
     Type type;
   };
 
@@ -81,35 +81,35 @@ class StaticIPParameters {
   // These functions try to retrieve the argument |property| out of the
   // KeyValueStore in |args_|.  If that value exists, overwrite |value_out|
   // with its contents, and save the previous value into |saved_args_|.
-  void ApplyInt(const std::string &property, int32_t *value_out);
-  void ApplyString(const std::string &property, std::string *value_out);
-  void ApplyStrings(const std::string &property,
-                    std::vector<std::string> *value_out);
+  void ApplyInt(const std::string& property, int32_t* value_out);
+  void ApplyString(const std::string& property, std::string* value_out);
+  void ApplyStrings(const std::string& property,
+                    std::vector<std::string>* value_out);
 
-  void ClearMappedProperty(const size_t &index, Error *error);
-  void ClearMappedSavedProperty(const size_t &index, Error *error);
-  int32_t GetMappedInt32Property(const size_t &index, Error *error);
-  int32_t GetMappedSavedInt32Property(const size_t &index, Error *error);
-  std::string GetMappedStringProperty(const size_t &index, Error *error);
-  std::string GetMappedSavedStringProperty(const size_t &index, Error *error);
-  std::string GetMappedStringsProperty(const size_t &index, Error *error);
-  std::string GetMappedSavedStringsProperty(const size_t &index, Error *error);
+  void ClearMappedProperty(const size_t& index, Error* error);
+  void ClearMappedSavedProperty(const size_t& index, Error* error);
+  int32_t GetMappedInt32Property(const size_t& index, Error* error);
+  int32_t GetMappedSavedInt32Property(const size_t& index, Error* error);
+  std::string GetMappedStringProperty(const size_t& index, Error* error);
+  std::string GetMappedSavedStringProperty(const size_t& index, Error* error);
+  std::string GetMappedStringsProperty(const size_t& index, Error* error);
+  std::string GetMappedSavedStringsProperty(const size_t& index, Error* error);
   bool SetMappedInt32Property(
-      const size_t &index, const int32_t &value, Error *error);
+      const size_t& index, const int32_t& value, Error* error);
   bool SetMappedSavedInt32Property(
-      const size_t &index, const int32_t &value, Error *error);
+      const size_t& index, const int32_t& value, Error* error);
   bool SetMappedStringProperty(
-      const size_t &index, const std::string &value, Error *error);
+      const size_t& index, const std::string& value, Error* error);
   bool SetMappedSavedStringProperty(
-      const size_t &index, const std::string &value, Error *error);
+      const size_t& index, const std::string& value, Error* error);
   bool SetMappedStringsProperty(
-      const size_t &index, const std::string &value, Error *error);
+      const size_t& index, const std::string& value, Error* error);
   bool SetMappedSavedStringsProperty(
-      const size_t &index, const std::string &value, Error *error);
+      const size_t& index, const std::string& value, Error* error);
 
-  KeyValueStore GetSavedIPConfig(Error *error);
-  KeyValueStore GetStaticIPConfig(Error *error);
-  bool SetStaticIPConfig(const KeyValueStore &value, Error *error);
+  KeyValueStore GetSavedIPConfig(Error* error);
+  KeyValueStore GetStaticIPConfig(Error* error);
+  bool SetStaticIPConfig(const KeyValueStore& value, Error* error);
 
   KeyValueStore args_;
   KeyValueStore saved_args_;

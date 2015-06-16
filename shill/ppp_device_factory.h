@@ -22,14 +22,14 @@ class PPPDeviceFactory {
   virtual ~PPPDeviceFactory();
 
   // This is a singleton. Use PPPDeviceFactory::GetInstance()->Foo().
-  static PPPDeviceFactory *GetInstance();
+  static PPPDeviceFactory* GetInstance();
 
-  virtual PPPDevice *CreatePPPDevice(
-      ControlInterface *control,
-      EventDispatcher *dispatcher,
-      Metrics *metrics,
-      Manager *manager,
-      const std::string &link_name,
+  virtual PPPDevice* CreatePPPDevice(
+      ControlInterface* control,
+      EventDispatcher* dispatcher,
+      Metrics* metrics,
+      Manager* manager,
+      const std::string& link_name,
       int interface_index);
 
  protected:

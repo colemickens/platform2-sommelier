@@ -97,15 +97,15 @@ static const char kHelpMessage[] = "\n"
 
 namespace {
 
-const char *kLoggerCommand = "/usr/bin/logger";
-const char *kLoggerUser = "syslog";
-const char *kDefaultTechnologyOrder = "vpn,ethernet,wifi,wimax,cellular";
+const char* kLoggerCommand = "/usr/bin/logger";
+const char* kLoggerUser = "syslog";
+const char* kDefaultTechnologyOrder = "vpn,ethernet,wifi,wimax,cellular";
 
 }  // namespace
 
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
-void SetupLogging(bool foreground, char *daemon_name) {
+void SetupLogging(bool foreground, char* daemon_name) {
   int log_flags = 0;
   log_flags |= chromeos::kLogToSyslog;
   log_flags |= chromeos::kLogHeader;
@@ -115,17 +115,17 @@ void SetupLogging(bool foreground, char *daemon_name) {
   chromeos::InitLog(log_flags);
 
   if (!foreground) {
-    vector<char *> logger_command_line;
+    vector<char*> logger_command_line;
     int logger_stdin_fd;
-    logger_command_line.push_back(const_cast<char *>(kLoggerCommand));
-    logger_command_line.push_back(const_cast<char *>("--priority"));
-    logger_command_line.push_back(const_cast<char *>("daemon.err"));
-    logger_command_line.push_back(const_cast<char *>("--tag"));
+    logger_command_line.push_back(const_cast<char*>(kLoggerCommand));
+    logger_command_line.push_back(const_cast<char*>("--priority"));
+    logger_command_line.push_back(const_cast<char*>("daemon.err"));
+    logger_command_line.push_back(const_cast<char*>("--tag"));
     logger_command_line.push_back(daemon_name);
     logger_command_line.push_back(nullptr);
 
-    chromeos::Minijail *minijail = chromeos::Minijail::GetInstance();
-    struct minijail *jail = minijail->New();
+    chromeos::Minijail* minijail = chromeos::Minijail::GetInstance();
+    struct minijail* jail = minijail->New();
     minijail->DropRoot(jail, kLoggerUser, kLoggerUser);
 
     if (!minijail->RunPipeAndDestroy(jail, logger_command_line, nullptr,

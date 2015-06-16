@@ -54,11 +54,11 @@ class Daemon {
     bool use_portal_list;
   };
 
-  Daemon(Config *config, ControlInterface *control);
+  Daemon(Config* config, ControlInterface* control);
   ~Daemon();
 
   // Apply run-time settings to the manager.
-  void ApplySettings(const Settings &settings);
+  void ApplySettings(const Settings& settings);
 
   // Main for connection manager.  Starts main process and holds event loop.
   void Run();
@@ -70,7 +70,7 @@ class Daemon {
   friend class ShillDaemonTest;
 
   // Called when the termination actions are completed.
-  void TerminationActionsCompleted(const Error &error);
+  void TerminationActionsCompleted(const Error& error);
 
   // Calls Stop() and then causes the dispatcher message loop to terminate and
   // return to the main function which started the daemon.
@@ -79,17 +79,17 @@ class Daemon {
   void Start();
   void Stop();
 
-  Config *config_;
+  Config* config_;
   std::unique_ptr<ControlInterface> control_;
   EventDispatcher dispatcher_;
   GLib glib_;
   std::unique_ptr<Metrics> metrics_;
-  ProxyFactory *proxy_factory_;
-  RTNLHandler *rtnl_handler_;
-  RoutingTable *routing_table_;
-  DHCPProvider *dhcp_provider_;
+  ProxyFactory* proxy_factory_;
+  RTNLHandler* rtnl_handler_;
+  RoutingTable* routing_table_;
+  DHCPProvider* dhcp_provider_;
 #if !defined(DISABLE_WIFI)
-  NetlinkManager *netlink_manager_;
+  NetlinkManager* netlink_manager_;
   Callback80211Metrics callback80211_metrics_;
 #endif  // DISABLE_WIFI
   std::unique_ptr<Manager> manager_;

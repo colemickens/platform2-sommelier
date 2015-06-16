@@ -16,18 +16,18 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDevice;
-static string ObjectID(VirtualDevice *v) { return "(virtual_device)"; }
+static string ObjectID(VirtualDevice* v) { return "(virtual_device)"; }
 }
 
 namespace {
 const char kHardwareAddressEmpty[] = "";
 }  // namespace
 
-VirtualDevice::VirtualDevice(ControlInterface *control,
-                             EventDispatcher *dispatcher,
-                             Metrics *metrics,
-                             Manager *manager,
-                             const string &link_name,
+VirtualDevice::VirtualDevice(ControlInterface* control,
+                             EventDispatcher* dispatcher,
+                             Metrics* metrics,
+                             Manager* manager,
+                             const string& link_name,
                              int interface_index,
                              Technology::Identifier technology)
     : Device(control, dispatcher, metrics, manager, link_name,
@@ -35,32 +35,32 @@ VirtualDevice::VirtualDevice(ControlInterface *control,
 
 VirtualDevice::~VirtualDevice() {}
 
-bool VirtualDevice::Load(StoreInterface */*storage*/) {
+bool VirtualDevice::Load(StoreInterface* /*storage*/) {
   // Virtual devices have no persistent state.
   return true;
 }
 
-bool VirtualDevice::Save(StoreInterface */*storage*/) {
+bool VirtualDevice::Save(StoreInterface* /*storage*/) {
   // Virtual devices have no persistent state.
   return true;
 }
 
-void VirtualDevice::Start(Error *error,
-                          const EnabledStateChangedCallback &/*callback*/) {
+void VirtualDevice::Start(Error* error,
+                          const EnabledStateChangedCallback& /*callback*/) {
   rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
   // TODO(quiche): Should we call OnEnabledStateChanged, like other Devices?
   if (error)
     error->Reset();  // indicate immediate completion
 }
 
-void VirtualDevice::Stop(Error *error,
-                         const EnabledStateChangedCallback &/*callback*/) {
+void VirtualDevice::Stop(Error* error,
+                         const EnabledStateChangedCallback& /*callback*/) {
   // TODO(quiche): Should we call OnEnabledStateChanged, like other Devices?
   if (error)
     error->Reset();  // indicate immediate completion
 }
 
-void VirtualDevice::UpdateIPConfig(const IPConfig::Properties &properties) {
+void VirtualDevice::UpdateIPConfig(const IPConfig::Properties& properties) {
   SLOG(this, 2) << __func__ << " on " << link_name();
   if (!ipconfig()) {
     set_ipconfig(new IPConfig(control_interface(), link_name()));
@@ -73,7 +73,7 @@ void VirtualDevice::DropConnection() {
   Device::DropConnection();
 }
 
-void VirtualDevice::SelectService(const ServiceRefPtr &service) {
+void VirtualDevice::SelectService(const ServiceRefPtr& service) {
   Device::SelectService(service);
 }
 

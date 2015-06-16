@@ -14,7 +14,7 @@ base::LazyInstance<SharedDBusConnection> g_shared_dbus_connection =
     LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
-SharedDBusConnection *SharedDBusConnection::GetInstance() {
+SharedDBusConnection* SharedDBusConnection::GetInstance() {
   return g_shared_dbus_connection.Pointer();
 }
 
@@ -28,12 +28,12 @@ void SharedDBusConnection::Init() {
   proxy_connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
 }
 
-DBus::Connection *SharedDBusConnection::GetAdaptorConnection() {
+DBus::Connection* SharedDBusConnection::GetAdaptorConnection() {
   CHECK(adaptor_connection_.get());
   return adaptor_connection_.get();
 }
 
-DBus::Connection *SharedDBusConnection::GetProxyConnection() {
+DBus::Connection* SharedDBusConnection::GetProxyConnection() {
   CHECK(proxy_connection_.get());
   return proxy_connection_.get();
 }

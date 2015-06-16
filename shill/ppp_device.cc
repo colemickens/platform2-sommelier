@@ -17,21 +17,21 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kPPP;
-static string ObjectID(PPPDevice *p) { return p->link_name(); }
+static string ObjectID(PPPDevice* p) { return p->link_name(); }
 }
 
-PPPDevice::PPPDevice(ControlInterface *control,
-                     EventDispatcher *dispatcher,
-                     Metrics *metrics,
-                     Manager *manager,
-                     const string &link_name,
+PPPDevice::PPPDevice(ControlInterface* control,
+                     EventDispatcher* dispatcher,
+                     Metrics* metrics,
+                     Manager* manager,
+                     const string& link_name,
                      int interface_index)
     : VirtualDevice(control, dispatcher, metrics, manager, link_name,
                     interface_index, Technology::kPPP) {}
 
 PPPDevice::~PPPDevice() {}
 
-void PPPDevice::UpdateIPConfigFromPPP(const map<string, string> &configuration,
+void PPPDevice::UpdateIPConfigFromPPP(const map<string, string>& configuration,
                                       bool blackhole_ipv6) {
   SLOG(this, 2) << __func__ << " on " << link_name();
   IPConfig::Properties properties =
@@ -41,7 +41,7 @@ void PPPDevice::UpdateIPConfigFromPPP(const map<string, string> &configuration,
 }
 
 void PPPDevice::UpdateIPConfigFromPPPWithMTU(
-    const map<string, string> &configuration,
+    const map<string, string>& configuration,
     bool blackhole_ipv6,
     int32_t mtu) {
   SLOG(this, 2) << __func__ << " on " << link_name();
@@ -53,7 +53,7 @@ void PPPDevice::UpdateIPConfigFromPPPWithMTU(
 }
 
 // static
-string PPPDevice::GetInterfaceName(const map<string, string> &configuration) {
+string PPPDevice::GetInterfaceName(const map<string, string>& configuration) {
   if (ContainsKey(configuration, kPPPInterfaceName)) {
     return configuration.find(kPPPInterfaceName)->second;
   }
@@ -62,15 +62,15 @@ string PPPDevice::GetInterfaceName(const map<string, string> &configuration) {
 
 // static
 IPConfig::Properties PPPDevice::ParseIPConfiguration(
-    const string &link_name, const map<string, string> &configuration) {
+    const string& link_name, const map<string, string>& configuration) {
   SLOG(PPP, nullptr, 2) << __func__ << " on " << link_name;
   IPConfig::Properties properties;
   properties.address_family = IPAddress::kFamilyIPv4;
   properties.subnet_prefix = IPAddress::GetMaxPrefixLength(
       properties.address_family);
-  for (const auto &it : configuration)  {
-    const string &key = it.first;
-    const string &value = it.second;
+  for (const auto& it : configuration)  {
+    const string& key = it.first;
+    const string& value = it.second;
     SLOG(PPP, nullptr, 2) << "Processing: " << key << " -> " << value;
     if (key == kPPPInternalIP4Address) {
       properties.address = value;

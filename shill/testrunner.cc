@@ -29,7 +29,7 @@ static const char kHelpMessage[] = "\n"
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
   base::CommandLine::Init(argc, argv);
-  base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   chromeos::InitLog(chromeos::kLogToStderr);
   shill::SetLogLevelFromCommandLine(cl);
   ::testing::InitGoogleTest(&argc, argv);

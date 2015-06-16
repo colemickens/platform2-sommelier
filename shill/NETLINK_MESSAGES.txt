@@ -147,14 +147,14 @@ Make some sort of handler for the response message.
    // ...
    private:
     // More on this, later.
-    void OnTriggerScanResponse(const Nl80211Message &response) {
+    void OnTriggerScanResponse(const Nl80211Message& response) {
       // Do whatever you want with the response.
       return;
     }
 
     void OnTriggerScanErrorResponse(
         NetlinkManager::AuxilliaryMessageType type,
-        const NetlinkMessage *netlink_message) {
+        const NetlinkMessage* netlink_message) {
       switch (type) {
         case NetlinkManager::kErrorFromKernel: {
             if (!netlink_message) {
@@ -166,8 +166,8 @@ Make some sort of handler for the response message.
               LOG(ERROR) << __func__ << ": Message failed: Not an error.";
               break;
             }
-            const ErrorAckMessage *error_ack_message =
-                dynamic_cast<const ErrorAckMessage *>(netlink_message);
+            const ErrorAckMessage* error_ack_message =
+                dynamic_cast<const ErrorAckMessage*>(netlink_message);
             if (error_ack_message->error()) {
               LOG(ERROR) << __func__ << ": Message failed: "
                          << error_ack_message->ToString();
@@ -219,7 +219,7 @@ Send the message with the handlers for the various cases.
 The message handler should take a single parameter of the type of message you
 want to handle.  For example:
 
-  void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage &message) {
+  void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage& message) {
 
 You'll probably want to look for some attributes:
 

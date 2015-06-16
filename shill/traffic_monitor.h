@@ -37,7 +37,7 @@ class TrafficMonitor {
 
   typedef base::Callback<void(int)> NetworkProblemDetectedCallback;
 
-  TrafficMonitor(const DeviceRefPtr &device, EventDispatcher *dispatcher);
+  TrafficMonitor(const DeviceRefPtr& device, EventDispatcher* dispatcher);
   virtual ~TrafficMonitor();
 
   // Starts traffic monitoring on the selected device.
@@ -50,7 +50,7 @@ class TrafficMonitor {
   // problem, either too many packets are failing to get transmitted over a
   // TCP connection or DNS is failing.
   void set_network_problem_detected_callback(
-      const NetworkProblemDetectedCallback &callback) {
+      const NetworkProblemDetectedCallback& callback) {
     network_problem_detected_callback_ = callback;
   }
 
@@ -103,8 +103,8 @@ class TrafficMonitor {
   // Skips sockets not on device, tx queue length is 0, connection state is not
   // established or does not have a pending retransmit timer.
   void BuildIPPortToTxQueueLength(
-      const std::vector<SocketInfo> &socket_infos,
-      IPPortToTxQueueLengthMap *tx_queue_length);
+      const std::vector<SocketInfo>& socket_infos,
+      IPPortToTxQueueLengthMap* tx_queue_length);
 
   // Checks for congested tx-queue via network statistics.
   // Returns |true| if tx-queue is congested.
@@ -126,7 +126,7 @@ class TrafficMonitor {
   DeviceRefPtr device_;
 
   // Dispatcher on which to create delayed tasks.
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
 
   // Callback to invoke when TrafficMonitor needs to sample traffic
   // of the network interface.

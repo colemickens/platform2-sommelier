@@ -16,39 +16,39 @@ NiceMockControl::NiceMockControl() {}
 
 NiceMockControl::~NiceMockControl() {}
 
-DeviceAdaptorInterface *NiceMockControl::CreateDeviceAdaptor(
-    Device */*device*/) {
+DeviceAdaptorInterface* NiceMockControl::CreateDeviceAdaptor(
+    Device* /*device*/) {
   return new NiceMock<DeviceMockAdaptor>();
 }
 
-IPConfigAdaptorInterface *NiceMockControl::CreateIPConfigAdaptor(
-    IPConfig */*config*/) {
+IPConfigAdaptorInterface* NiceMockControl::CreateIPConfigAdaptor(
+    IPConfig* /*config*/) {
   return new NiceMock<IPConfigMockAdaptor>();
 }
 
-ManagerAdaptorInterface *NiceMockControl::CreateManagerAdaptor(
-    Manager */*manager*/) {
+ManagerAdaptorInterface* NiceMockControl::CreateManagerAdaptor(
+    Manager* /*manager*/) {
   return new NiceMock<ManagerMockAdaptor>();
 }
 
-ProfileAdaptorInterface *NiceMockControl::CreateProfileAdaptor(
-    Profile */*profile*/) {
+ProfileAdaptorInterface* NiceMockControl::CreateProfileAdaptor(
+    Profile* /*profile*/) {
   return new NiceMock<ProfileMockAdaptor>();
 }
 
-RPCTaskAdaptorInterface *NiceMockControl::CreateRPCTaskAdaptor(
-    RPCTask */*task*/) {
+RPCTaskAdaptorInterface* NiceMockControl::CreateRPCTaskAdaptor(
+    RPCTask* /*task*/) {
   return new NiceMock<RPCTaskMockAdaptor>();
 }
 
-ServiceAdaptorInterface *NiceMockControl::CreateServiceAdaptor(
-    Service */*service*/) {
+ServiceAdaptorInterface* NiceMockControl::CreateServiceAdaptor(
+    Service* /*service*/) {
   return new NiceMock<ServiceMockAdaptor>();
 }
 
 #ifndef DISABLE_VPN
-ThirdPartyVpnAdaptorInterface *NiceMockControl::CreateThirdPartyVpnAdaptor(
-      ThirdPartyVpnDriver */*driver*/) {
+ThirdPartyVpnAdaptorInterface* NiceMockControl::CreateThirdPartyVpnAdaptor(
+      ThirdPartyVpnDriver* /*driver*/) {
   return new NiceMock<ThirdPartyVpnMockAdaptor>();
 }
 #endif

@@ -31,9 +31,9 @@ class ReadablePropertyConstIterator {
     }
   }
 
-  const std::string &Key() const { return it_->first; }
+  const std::string& Key() const { return it_->first; }
 
-  const V &value() const { return value_; }
+  const V& value() const { return value_; }
 
  private:
   friend class PropertyStore;
@@ -41,7 +41,7 @@ class ReadablePropertyConstIterator {
   typedef std::shared_ptr<AccessorInterface<V>> VAccessorPtr;
 
   explicit ReadablePropertyConstIterator(
-      const typename std::map<std::string, VAccessorPtr> &collection)
+      const typename std::map<std::string, VAccessorPtr>& collection)
       : collection_(collection),
         it_(collection_.begin()),
         value_() {
@@ -58,7 +58,7 @@ class ReadablePropertyConstIterator {
     return error.IsSuccess();
   }
 
-  const typename std::map<std::string, VAccessorPtr> &collection_;
+  const typename std::map<std::string, VAccessorPtr>& collection_;
   typename std::map<std::string, VAccessorPtr>::const_iterator it_;
   V value_;
 };

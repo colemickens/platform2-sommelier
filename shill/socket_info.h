@@ -47,38 +47,38 @@ class SocketInfo {
 
   SocketInfo();
   SocketInfo(ConnectionState connection_state,
-             const IPAddress &local_ip_address,
+             const IPAddress& local_ip_address,
              uint16_t local_port,
-             const IPAddress &remote_ip_address,
+             const IPAddress& remote_ip_address,
              uint16_t remote_port,
              uint64_t transmit_queue_value,
              uint64_t receive_queue_value,
              TimerState timer_state);
-  SocketInfo(const SocketInfo &socket_info);
+  SocketInfo(const SocketInfo& socket_info);
   ~SocketInfo();
 
-  SocketInfo &operator=(const SocketInfo &socket_info);
+  SocketInfo& operator=(const SocketInfo& socket_info);
 
   // Returns true if this socket info and |socket_info| refer to the same
   // socket, i.e. both have the same local address, local port, remote address,
   // and remote port.
-  bool IsSameSocketAs(const SocketInfo &socket_info) const;
+  bool IsSameSocketAs(const SocketInfo& socket_info) const;
 
   ConnectionState connection_state() const { return connection_state_; }
   void set_connection_state(ConnectionState connection_state) {
     connection_state_ = connection_state;
   }
 
-  const IPAddress &local_ip_address() const { return local_ip_address_; }
-  void set_local_ip_address(const IPAddress &local_ip_address) {
+  const IPAddress& local_ip_address() const { return local_ip_address_; }
+  void set_local_ip_address(const IPAddress& local_ip_address) {
     local_ip_address_ = local_ip_address;
   }
 
   uint16_t local_port() const { return local_port_; }
   void set_local_port(uint16_t local_port) { local_port_ = local_port; }
 
-  const IPAddress &remote_ip_address() const { return remote_ip_address_; }
-  void set_remote_ip_address(const IPAddress &remote_ip_address) {
+  const IPAddress& remote_ip_address() const { return remote_ip_address_; }
+  void set_remote_ip_address(const IPAddress& remote_ip_address) {
     remote_ip_address_ = remote_ip_address;
   }
 

@@ -23,7 +23,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kResolver;
-static string ObjectID(Resolver *r) { return "(resolver)"; }
+static string ObjectID(Resolver* r) { return "(resolver)"; }
 }
 
 namespace {
@@ -40,8 +40,8 @@ Resolver* Resolver::GetInstance() {
   return g_resolver.Pointer();
 }
 
-bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
-                               const std::vector<std::string> &domain_search) {
+bool Resolver::SetDNSFromLists(const std::vector<std::string>& dns_servers,
+                               const std::vector<std::string>& domain_search) {
   SLOG(this, 2) << __func__;
 
   if (dns_servers.empty() && domain_search.empty()) {

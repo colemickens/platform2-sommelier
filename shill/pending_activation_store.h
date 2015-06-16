@@ -60,24 +60,24 @@ class PendingActivationStore {
   // open will allways be flushed and closed, however it is not guaranteed that
   // the file will always be successfully reopened (technically it should, but
   // it is not guaranteed).
-  virtual bool InitStorage(GLib *glib, const base::FilePath &storage_path);
+  virtual bool InitStorage(GLib* glib, const base::FilePath& storage_path);
 
   // Returns the activation state for a SIM with the given identifier. A return
   // value of kStateUnknown indicates that the given identifier was not found.
   virtual State GetActivationState(IdentifierType type,
-                                   const std::string &identifier) const;
+                                   const std::string& identifier) const;
 
   // Sets the activation state for the given identifier. If an entry for this
   // identifier was not found, a new entry will be created. Returns true on
   // success.
   virtual bool SetActivationState(IdentifierType type,
-                                  const std::string &identifier,
+                                  const std::string& identifier,
                                   State state);
 
   // Removes the entry for the given identifier from the database. Returns true
   // if the operation was successful. If the identifier did not exist in the
   // database, still returns true.
-  virtual bool RemoveEntry(IdentifierType type, const std::string &identifier);
+  virtual bool RemoveEntry(IdentifierType type, const std::string& identifier);
 
  private:
   friend class PendingActivationStoreTest;

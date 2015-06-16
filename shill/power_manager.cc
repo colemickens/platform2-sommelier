@@ -31,8 +31,8 @@ const char PowerManager::kSuspendDelayDescription[] = "shill";
 const char PowerManager::kDarkSuspendDelayDescription[] = "shill";
 const int PowerManager::kSuspendTimeoutMilliseconds = 15 * 1000;
 
-PowerManager::PowerManager(EventDispatcher *dispatcher,
-                           ProxyFactory *proxy_factory)
+PowerManager::PowerManager(EventDispatcher* dispatcher,
+                           ProxyFactory* proxy_factory)
     : dispatcher_(dispatcher),
       power_manager_proxy_(proxy_factory->CreatePowerManagerProxy(this)),
       suspend_delay_registered_(false),
@@ -47,11 +47,11 @@ PowerManager::PowerManager(EventDispatcher *dispatcher,
 PowerManager::~PowerManager() {}
 
 void PowerManager::Start(
-    DBusManager *dbus_manager,
+    DBusManager* dbus_manager,
     TimeDelta suspend_delay,
-    const SuspendImminentCallback &suspend_imminent_callback,
-    const SuspendDoneCallback &suspend_done_callback,
-    const DarkSuspendImminentCallback &dark_suspend_imminent_callback) {
+    const SuspendImminentCallback& suspend_imminent_callback,
+    const SuspendDoneCallback& suspend_done_callback,
+    const DarkSuspendImminentCallback& dark_suspend_imminent_callback) {
   power_manager_name_watcher_.reset(
       dbus_manager->CreateNameWatcher(
           power_manager::kPowerManagerServiceName,
@@ -94,7 +94,7 @@ bool PowerManager::ReportDarkSuspendReadiness() {
       current_dark_suspend_id_);
 }
 
-bool PowerManager::RecordDarkResumeWakeReason(const string &wake_reason) {
+bool PowerManager::RecordDarkResumeWakeReason(const string& wake_reason) {
   return power_manager_proxy_->RecordDarkResumeWakeReason(wake_reason);
 }
 
@@ -142,8 +142,8 @@ void PowerManager::OnDarkSuspendImminent(int suspend_id) {
   dark_suspend_imminent_callback_.Run();
 }
 
-void PowerManager::OnPowerManagerAppeared(const string &/*name*/,
-                                          const string &/*owner*/) {
+void PowerManager::OnPowerManagerAppeared(const string& /*name*/,
+                                          const string& /*owner*/) {
   LOG(INFO) << __func__;
   CHECK(!suspend_delay_registered_);
   if (power_manager_proxy_->RegisterSuspendDelay(suspend_delay_,
@@ -158,7 +158,7 @@ void PowerManager::OnPowerManagerAppeared(const string &/*name*/,
     dark_suspend_delay_registered_ = true;
 }
 
-void PowerManager::OnPowerManagerVanished(const string &/*name*/) {
+void PowerManager::OnPowerManagerVanished(const string& /*name*/) {
   LOG(INFO) << __func__;
   // If powerd vanished during a suspend, we need to wake ourselves up.
   if (suspending_)

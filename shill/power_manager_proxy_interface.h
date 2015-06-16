@@ -28,8 +28,8 @@ class PowerManagerProxyInterface {
   // corresponding to the registered delay to |delay_id_out| and returns
   // true on success.
   virtual bool RegisterSuspendDelay(base::TimeDelta timeout,
-                                    const std::string &description,
-                                    int *delay_id_out) = 0;
+                                    const std::string& description,
+                                    int* delay_id_out) = 0;
 
   // Unregisters a previously-registered suspend delay.  Returns true on
   // success.
@@ -44,8 +44,8 @@ class PowerManagerProxyInterface {
   // |timeout| before suspending the system from a dark resume. Arguments
   // are as explained for |RegisterSuspendDelay|. Returns true on success.
   virtual bool RegisterDarkSuspendDelay(base::TimeDelta timeout,
-                                        const std::string &description,
-                                        int *delay_id_out) = 0;
+                                        const std::string& description,
+                                        int* delay_id_out) = 0;
 
   // Unregisters a previously-registered dark suspend delay. Returns true on
   // success.
@@ -57,7 +57,7 @@ class PowerManagerProxyInterface {
 
   // Calls the power manager's RecordDarkResumeWakeReason method to record the
   // wake reason for the current dark resume. Returns true on success.
-  virtual bool RecordDarkResumeWakeReason(const std::string &wake_reason) = 0;
+  virtual bool RecordDarkResumeWakeReason(const std::string& wake_reason) = 0;
 };
 
 // PowerManager signal delegate to be associated with the proxy.

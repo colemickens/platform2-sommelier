@@ -32,35 +32,35 @@ class ProfileDBusAdaptor : public org::chromium::flimflam::Profile_adaptor,
  public:
   static const char kPath[];
 
-  ProfileDBusAdaptor(DBus::Connection *conn, Profile *profile);
+  ProfileDBusAdaptor(DBus::Connection* conn, Profile* profile);
   ~ProfileDBusAdaptor() override;
 
   // Implementation of ProfileAdaptorInterface.
-  const std::string &GetRpcIdentifier() override { return path(); }
-  void EmitBoolChanged(const std::string &name, bool value) override;
-  void EmitUintChanged(const std::string &name, uint32_t value) override;
-  void EmitIntChanged(const std::string &name, int value) override;
-  void EmitStringChanged(const std::string &name,
-                         const std::string &value) override;
+  const std::string& GetRpcIdentifier() override { return path(); }
+  void EmitBoolChanged(const std::string& name, bool value) override;
+  void EmitUintChanged(const std::string& name, uint32_t value) override;
+  void EmitIntChanged(const std::string& name, int value) override;
+  void EmitStringChanged(const std::string& name,
+                         const std::string& value) override;
 
   // Implementation of Profile_adaptor
   std::map<std::string, DBus::Variant> GetProperties(
-      DBus::Error &error) override;  // NOLINT
-  void SetProperty(const std::string &name,
-                   const DBus::Variant &value,
-                   DBus::Error &error) override;  // NOLINT
+      DBus::Error& error) override;  // NOLINT
+  void SetProperty(const std::string& name,
+                   const DBus::Variant& value,
+                   DBus::Error& error) override;  // NOLINT
 
   // Gets an "Entry", which is apparently a different set of properties than
   // those returned by GetProperties.
   std::map<std::string, DBus::Variant> GetEntry(
-      const std::string &,
-      DBus::Error &error) override;  // NOLINT
+      const std::string&,
+      DBus::Error& error) override;  // NOLINT
 
   // Deletes an Entry.
-  void DeleteEntry(const std::string& , DBus::Error &error) override;  // NOLINT
+  void DeleteEntry(const std::string& , DBus::Error& error) override;  // NOLINT
 
  private:
-  Profile *profile_;
+  Profile* profile_;
 
   DISALLOW_COPY_AND_ASSIGN(ProfileDBusAdaptor);
 };

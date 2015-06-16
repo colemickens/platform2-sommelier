@@ -31,15 +31,15 @@ class Resolver {
   virtual ~Resolver();
 
   // Since this is a singleton, use Resolver::GetInstance()->Foo().
-  static Resolver *GetInstance();
+  static Resolver* GetInstance();
 
-  virtual void set_path(const base::FilePath &path) { path_ = path; }
+  virtual void set_path(const base::FilePath& path) { path_ = path; }
 
   // Install domain name service parameters, given a list of
   // DNS servers in |dns_servers|, and a list of DNS search suffixes in
   // |domain_search|.
-  virtual bool SetDNSFromLists(const std::vector<std::string> &dns_servers,
-                               const std::vector<std::string> &domain_search);
+  virtual bool SetDNSFromLists(const std::vector<std::string>& dns_servers,
+                               const std::vector<std::string>& domain_search);
 
   // Remove any created domain name service file.
   virtual bool ClearDNS();
@@ -47,7 +47,7 @@ class Resolver {
   // Sets the list of ignored DNS search suffixes.  This list will be used
   // to filter the domain_search parameter of later SetDNSFromLists() calls.
   virtual void set_ignored_search_list(
-      const std::vector<std::string> &ignored_list) {
+      const std::vector<std::string>& ignored_list) {
     ignored_search_list_ = ignored_list;
   }
 

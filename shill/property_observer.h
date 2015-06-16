@@ -24,7 +24,7 @@ namespace shill {
 template <class T>
 class PropertyObserver : public PropertyObserverInterface {
  public:
-  typedef base::Callback<void(const T &new_value)> Callback;
+  typedef base::Callback<void(const T& new_value)> Callback;
 
   PropertyObserver(std::shared_ptr<AccessorInterface<T>> accessor,
                    Callback callback)

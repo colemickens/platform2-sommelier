@@ -20,7 +20,7 @@ namespace {
 const int kDefaultVerboseLevel = 0;
 
 // Scope names corresponding to the scope defined by ScopeLogger::Scope.
-const char *const kScopeNames[] = {
+const char* const kScopeNames[] = {
   "cellular",
   "connection",
   "crypto",
@@ -103,7 +103,7 @@ string ScopeLogger::GetEnabledScopeNames() const {
   return JoinString(names, '+');
 }
 
-void ScopeLogger::EnableScopesByName(const string &expression) {
+void ScopeLogger::EnableScopesByName(const string& expression) {
   if (expression.empty()) {
     DisableAllScopes();
     return;
@@ -159,7 +159,7 @@ void ScopeLogger::SetScopeEnabled(Scope scope, bool enabled) {
   CHECK_LT(scope, kNumScopes);
 
   if (scope_enabled_[scope] != enabled) {
-    for (const auto &callback : log_scope_callbacks_[scope]) {
+    for (const auto& callback : log_scope_callbacks_[scope]) {
       callback.Run(enabled);
     }
   }

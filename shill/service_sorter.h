@@ -20,22 +20,22 @@ class Manager;
 // compare two Service objects at a time.
 class ServiceSorter {
  public:
-  ServiceSorter(Manager *manager,
+  ServiceSorter(Manager* manager,
                 bool compare_connectivity_state,
-                const std::vector<Technology::Identifier> &tech_order)
+                const std::vector<Technology::Identifier>& tech_order)
       : manager_(manager),
         compare_connectivity_state_(compare_connectivity_state),
         technology_order_(tech_order) {}
   bool operator() (ServiceRefPtr a, ServiceRefPtr b) {
-    const char *reason;
+    const char* reason;
     return Service::Compare(manager_, a, b, compare_connectivity_state_,
                             technology_order_, &reason);
   }
 
  private:
-  Manager *manager_;
+  Manager* manager_;
   const bool compare_connectivity_state_;
-  const std::vector<Technology::Identifier> &technology_order_;
+  const std::vector<Technology::Identifier>& technology_order_;
   // We can't DISALLOW_COPY_AND_ASSIGN since this is passed by value to STL
   // sort.
 };

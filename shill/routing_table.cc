@@ -44,7 +44,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kRoute;
-static string ObjectID(RoutingTable *r) { return "(routing_table)"; }
+static string ObjectID(RoutingTable* r) { return "(routing_table)"; }
 }
 
 namespace {
@@ -83,7 +83,7 @@ void RoutingTable::Stop() {
 }
 
 bool RoutingTable::AddRoute(int interface_index,
-                            const RoutingTableEntry &entry) {
+                            const RoutingTableEntry& entry) {
   SLOG(this, 2) << __func__ << ": "
                 << "destination " << entry.dst.ToString()
                 << " index " << interface_index
@@ -103,8 +103,8 @@ bool RoutingTable::AddRoute(int interface_index,
 
 bool RoutingTable::GetDefaultRoute(int interface_index,
                                    IPAddress::Family family,
-                                   RoutingTableEntry *entry) {
-  RoutingTableEntry *found_entry;
+                                   RoutingTableEntry* entry) {
+  RoutingTableEntry* found_entry;
   bool ret = GetDefaultRouteInternal(interface_index, family, &found_entry);
   if (ret) {
     *entry = *found_entry;
@@ -114,7 +114,7 @@ bool RoutingTable::GetDefaultRoute(int interface_index,
 
 bool RoutingTable::GetDefaultRouteInternal(int interface_index,
                                            IPAddress::Family family,
-                                           RoutingTableEntry **entry) {
+                                           RoutingTableEntry** entry) {
   SLOG(this, 2) << __func__ << " index " << interface_index
                 << " family " << IPAddress::GetAddressFamilyName(family);
 
@@ -124,7 +124,7 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
     return false;
   }
 
-  for (auto &nent : table->second) {
+  for (auto& nent : table->second) {
     if (nent.dst.IsDefault() && nent.dst.family() == family) {
       *entry = &nent;
       SLOG(this, 2) << __func__ << ": found"
@@ -139,13 +139,13 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
 }
 
 bool RoutingTable::SetDefaultRoute(int interface_index,
-                                   const IPAddress &gateway_address,
+                                   const IPAddress& gateway_address,
                                    uint32_t metric,
                                    uint8_t table_id) {
   SLOG(this, 2) << __func__ << " index " << interface_index
                 << " metric " << metric;
 
-  RoutingTableEntry *old_entry;
+  RoutingTableEntry* old_entry;
 
   if (GetDefaultRouteInternal(interface_index,
                               gateway_address.family(),
@@ -179,15 +179,15 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
 }
 
 bool RoutingTable::ConfigureRoutes(int interface_index,
-                                   const IPConfigRefPtr &ipconfig,
+                                   const IPConfigRefPtr& ipconfig,
                                    uint32_t metric,
                                    uint8_t table_id) {
   bool ret = true;
 
   IPAddress::Family address_family = ipconfig->properties().address_family;
-  const vector<IPConfig::Route> &routes = ipconfig->properties().routes;
+  const vector<IPConfig::Route>& routes = ipconfig->properties().routes;
 
-  for (const auto &route : routes) {
+  for (const auto& route : routes) {
     SLOG(this, 3) << "Installing route:"
                   << " Destination: " << route.host
                   << " Netmask: " << route.netmask
@@ -232,7 +232,7 @@ void RoutingTable::FlushRoutes(int interface_index) {
     return;
   }
 
-  for (const auto &nent : table->second) {
+  for (const auto& nent : table->second) {
     ApplyRoute(interface_index, nent, RTNLMessage::kModeDelete, 0);
   }
   table->second.clear();
@@ -241,7 +241,7 @@ void RoutingTable::FlushRoutes(int interface_index) {
 void RoutingTable::FlushRoutesWithTag(int tag) {
   SLOG(this, 2) << __func__;
 
-  for (auto &table : tables_) {
+  for (auto& table : tables_) {
     for (auto nent = table.second.begin(); nent != table.second.end();) {
       if (nent->tag == tag) {
         ApplyRoute(table.first, *nent, RTNLMessage::kModeDelete, 0);
@@ -261,7 +261,7 @@ void RoutingTable::SetDefaultMetric(int interface_index, uint32_t metric) {
   SLOG(this, 2) << __func__ << " index " << interface_index
                 << " metric " << metric;
 
-  RoutingTableEntry *entry;
+  RoutingTableEntry* entry;
   if (GetDefaultRouteInternal(
           interface_index, IPAddress::kFamilyIPv4, &entry) &&
       entry->metric != metric) {
@@ -276,16 +276,16 @@ void RoutingTable::SetDefaultMetric(int interface_index, uint32_t metric) {
 }
 
 // static
-bool RoutingTable::ParseRoutingTableMessage(const RTNLMessage &message,
-                                            int *interface_index,
-                                            RoutingTableEntry *entry) {
+bool RoutingTable::ParseRoutingTableMessage(const RTNLMessage& message,
+                                            int* interface_index,
+                                            RoutingTableEntry* entry) {
   if (message.type() != RTNLMessage::kTypeRoute ||
       message.family() == IPAddress::kFamilyUnknown ||
       !message.HasAttribute(RTA_OIF)) {
     return false;
   }
 
-  const RTNLMessage::RouteStatus &route_status = message.route_status();
+  const RTNLMessage::RouteStatus& route_status = message.route_status();
 
   if (route_status.type != RTN_UNICAST) {
     return false;
@@ -329,7 +329,7 @@ bool RoutingTable::ParseRoutingTableMessage(const RTNLMessage &message,
   return true;
 }
 
-void RoutingTable::RouteMsgHandler(const RTNLMessage &message) {
+void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
   int interface_index;
   RoutingTableEntry entry;
 
@@ -355,7 +355,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &message) {
         return;
     }
 
-    const Query &query = route_queries_.front();
+    const Query& query = route_queries_.front();
     if (query.sequence == message.seq()) {
       RoutingTableEntry add_entry(entry);
       add_entry.from_rtnl = false;
@@ -384,7 +384,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &message) {
     return;
   }
 
-  TableEntryVector &table = tables_[interface_index];
+  TableEntryVector& table = tables_[interface_index];
   for (auto nent = table.begin(); nent != table.end(); ++nent)  {
     if (nent->dst.Equals(entry.dst) &&
         nent->src.Equals(entry.src) &&
@@ -412,7 +412,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &message) {
 }
 
 bool RoutingTable::ApplyRoute(uint32_t interface_index,
-                              const RoutingTableEntry &entry,
+                              const RoutingTableEntry& entry,
                               RTNLMessage::Mode mode,
                               unsigned int flags) {
   SLOG(this, 2) << base::StringPrintf(
@@ -461,7 +461,7 @@ bool RoutingTable::ApplyRoute(uint32_t interface_index,
 // We do so after creating the route at a new metric so there is no traffic
 // disruption to existing network streams.
 void RoutingTable::ReplaceMetric(uint32_t interface_index,
-                                 RoutingTableEntry *entry,
+                                 RoutingTableEntry* entry,
                                  uint32_t metric) {
   SLOG(this, 2) << __func__ << " index " << interface_index
                 << " metric " << metric;
@@ -477,7 +477,7 @@ void RoutingTable::ReplaceMetric(uint32_t interface_index,
 }
 
 bool RoutingTable::FlushCache() {
-  static const char *kPaths[2] = { kRouteFlushPath4, kRouteFlushPath6 };
+  static const char* kPaths[2] = { kRouteFlushPath4, kRouteFlushPath6 };
   bool ret = true;
 
   SLOG(this, 2) << __func__;
@@ -493,10 +493,10 @@ bool RoutingTable::FlushCache() {
   return ret;
 }
 
-bool RoutingTable::RequestRouteToHost(const IPAddress &address,
+bool RoutingTable::RequestRouteToHost(const IPAddress& address,
                                       int interface_index,
                                       int tag,
-                                      const Query::Callback &callback,
+                                      const Query::Callback& callback,
                                       uint8_t table_id) {
   // Make sure we don't get a cached response that is no longer valid.
   FlushCache();
@@ -567,8 +567,8 @@ bool RoutingTable::CreateBlackholeRoute(int interface_index,
 }
 
 bool RoutingTable::CreateLinkRoute(int interface_index,
-                                   const IPAddress &local_address,
-                                   const IPAddress &remote_address,
+                                   const IPAddress& local_address,
+                                   const IPAddress& remote_address,
                                    uint8_t table_id) {
   if (!local_address.CanReachAddress(remote_address)) {
     LOG(ERROR) << __func__ << " failed: "

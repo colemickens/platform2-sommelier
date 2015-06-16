@@ -30,39 +30,39 @@ static const char kPPPReasonDisconnect[] = "disconnect";
 
 class PPPDevice : public VirtualDevice {
  public:
-  PPPDevice(ControlInterface *control,
-            EventDispatcher *dispatcher,
-            Metrics *metrics,
-            Manager *manager,
-            const std::string &link_name,
+  PPPDevice(ControlInterface* control,
+            EventDispatcher* dispatcher,
+            Metrics* metrics,
+            Manager* manager,
+            const std::string& link_name,
             int interface_index);
   ~PPPDevice() override;
 
   // Set IPConfig for this device, based on the dictionary of
   // configuration strings received from our PPP plugin.
   virtual void UpdateIPConfigFromPPP(
-      const std::map<std::string, std::string> &configuration,
+      const std::map<std::string, std::string>& configuration,
       bool blackhole_ipv6);
 
   // Same as UpdateIPConfigFromPPP except overriding the default MTU
   // in the IPConfig.
   virtual void UpdateIPConfigFromPPPWithMTU(
-      const std::map<std::string, std::string> &configuration,
+      const std::map<std::string, std::string>& configuration,
       bool blackhole_ipv6,
       int32_t mtu);
 
   // Get the network device name (e.g. "ppp0") from the dictionary of
   // configuration strings received from our PPP plugin.
   static std::string GetInterfaceName(
-      const std::map<std::string, std::string> &configuration);
+      const std::map<std::string, std::string>& configuration);
 
  private:
   FRIEND_TEST(PPPDeviceTest, GetInterfaceName);
   FRIEND_TEST(PPPDeviceTest, ParseIPConfiguration);
 
   static IPConfig::Properties ParseIPConfiguration(
-      const std::string &link_name,
-      const std::map<std::string, std::string> &configuration);
+      const std::string& link_name,
+      const std::map<std::string, std::string>& configuration);
 
   DISALLOW_COPY_AND_ASSIGN(PPPDevice);
 };
