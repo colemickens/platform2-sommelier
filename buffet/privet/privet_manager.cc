@@ -49,7 +49,6 @@ using libwebserv::ProtocolHandler;
 using libwebserv::Request;
 using libwebserv::Response;
 
-const char kDefaultConfigFilePath[] = "/etc/privetd/privetd.conf";
 const char kDefaultStateFilePath[] = "/var/lib/privetd/privetd.state";
 
 std::string GetFirstHeader(const Request& request, const std::string& name) {
@@ -74,16 +73,15 @@ void Manager::Start(const Options& options,
   disable_security_ = options.disable_security;
 
   // TODO(vitalybuka): switch to BuffetConfig.
-  base::FilePath config_path{privetd::kDefaultConfigFilePath};
   base::FilePath state_path{privetd::kDefaultStateFilePath};
 
   state_store_.reset(new DaemonState(state_path));
   parser_.reset(new PrivetdConfigParser);
 
   chromeos::KeyValueStore config_store;
-  if (!config_store.Load(config_path)) {
+  if (!config_store.Load(options.config_path)) {
     LOG(ERROR) << "Failed to read privetd config file from "
-               << config_path.value();
+               << options.config_path.value();
   } else {
     CHECK(parser_->Parse(config_store)) << "Failed to read configuration file.";
   }

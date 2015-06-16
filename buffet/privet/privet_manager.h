@@ -54,6 +54,7 @@ class Manager : public CloudDelegate::Observer {
     bool disable_security{false};
     bool enable_ping{false};
     std::set<std::string> device_whitelist;
+    base::FilePath config_path;
   };
 
   Manager();
