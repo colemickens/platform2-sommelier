@@ -13,9 +13,9 @@ namespace shill {
 
 class CellularError {
  public:
-  static void FromDBusError(const DBus::Error &dbus_error, Error *error);
+  static void FromDBusError(const DBus::Error& dbus_error, Error* error);
 
-  static void FromMM1DBusError(const DBus::Error &dbus_error, Error *error);
+  static void FromMM1DBusError(const DBus::Error& dbus_error, Error* error);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CellularError);

@@ -20,7 +20,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(CellularService *c) { return c->GetRpcIdentifier(); }
+static string ObjectID(CellularService* c) { return c->GetRpcIdentifier(); }
 }
 
 // statics
@@ -45,9 +45,9 @@ const char kStorageAPN[] = "Cellular.APN";
 const char kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
 }  // namespace
 
-static bool GetNonEmptyField(const Stringmap &stringmap,
-                             const string &fieldname,
-                             string *value) {
+static bool GetNonEmptyField(const Stringmap& stringmap,
+                             const string& fieldname,
+                             string* value) {
   Stringmap::const_iterator it = stringmap.find(fieldname);
   if (it != stringmap.end() && !it->second.empty()) {
     *value = it->second;
@@ -56,8 +56,8 @@ static bool GetNonEmptyField(const Stringmap &stringmap,
   return false;
 }
 
-CellularService::CellularService(ModemInfo *modem_info,
-                                 const CellularRefPtr &device)
+CellularService::CellularService(ModemInfo* modem_info,
+                                 const CellularRefPtr& device)
     : Service(modem_info->control_interface(), modem_info->dispatcher(),
               modem_info->metrics(), modem_info->manager(),
               Technology::kCellular),
@@ -66,7 +66,7 @@ CellularService::CellularService(ModemInfo *modem_info,
       cellular_(device),
       is_auto_connecting_(false) {
   SetConnectable(true);
-  PropertyStore *store = this->mutable_store();
+  PropertyStore* store = this->mutable_store();
   HelpRegisterDerivedString(kActivationTypeProperty,
                             &CellularService::CalculateActivationType,
                             nullptr);
@@ -97,7 +97,7 @@ CellularService::CellularService(ModemInfo *modem_info,
 
 CellularService::~CellularService() { }
 
-bool CellularService::IsAutoConnectable(const char **reason) const {
+bool CellularService::IsAutoConnectable(const char** reason) const {
   if (!cellular_->running()) {
     *reason = kAutoConnDeviceDisabled;
     return false;
@@ -122,9 +122,9 @@ bool CellularService::IsAutoConnectable(const char **reason) const {
 }
 
 void CellularService::HelpRegisterDerivedString(
-    const string &name,
-    string(CellularService::*get)(Error *error),
-    bool(CellularService::*set)(const string &value, Error *error)) {
+    const string& name,
+    string(CellularService::*get)(Error* error),
+    bool(CellularService::*set)(const string& value, Error* error)) {
   mutable_store()->RegisterDerivedString(
       name,
       StringAccessor(
@@ -132,10 +132,10 @@ void CellularService::HelpRegisterDerivedString(
 }
 
 void CellularService::HelpRegisterDerivedStringmap(
-    const string &name,
-    Stringmap(CellularService::*get)(Error *error),
+    const string& name,
+    Stringmap(CellularService::*get)(Error* error),
     bool(CellularService::*set)(
-        const Stringmap &value, Error *error)) {
+        const Stringmap& value, Error* error)) {
   mutable_store()->RegisterDerivedStringmap(
       name,
       StringmapAccessor(
@@ -143,37 +143,37 @@ void CellularService::HelpRegisterDerivedStringmap(
 }
 
 void CellularService::HelpRegisterDerivedBool(
-    const string &name,
-    bool(CellularService::*get)(Error *error),
-    bool(CellularService::*set)(const bool&, Error *)) {
+    const string& name,
+    bool(CellularService::*get)(Error* error),
+    bool(CellularService::*set)(const bool&, Error*)) {
   mutable_store()->RegisterDerivedBool(
     name,
     BoolAccessor(new CustomAccessor<CellularService, bool>(this, get, set)));
 }
 
-Stringmap *CellularService::GetUserSpecifiedApn() {
+Stringmap* CellularService::GetUserSpecifiedApn() {
   Stringmap::iterator it = apn_info_.find(kApnProperty);
   if (it == apn_info_.end() || it->second.empty())
     return nullptr;
   return &apn_info_;
 }
 
-Stringmap *CellularService::GetLastGoodApn() {
+Stringmap* CellularService::GetLastGoodApn() {
   Stringmap::iterator it = last_good_apn_info_.find(kApnProperty);
   if (it == last_good_apn_info_.end() || it->second.empty())
     return nullptr;
   return &last_good_apn_info_;
 }
 
-string CellularService::CalculateActivationType(Error *error) {
+string CellularService::CalculateActivationType(Error* error) {
   return GetActivationTypeString();
 }
 
-Stringmap CellularService::GetApn(Error */*error*/) {
+Stringmap CellularService::GetApn(Error* /*error*/) {
   return apn_info_;
 }
 
-bool CellularService::SetApn(const Stringmap &value, Error *error) {
+bool CellularService::SetApn(const Stringmap& value, Error* error) {
   // Only copy in the fields we care about, and validate the contents.
   // If the "apn" field is missing or empty, the APN is cleared.
   string str;
@@ -201,7 +201,7 @@ bool CellularService::SetApn(const Stringmap &value, Error *error) {
   return true;
 }
 
-void CellularService::SetLastGoodApn(const Stringmap &apn_info) {
+void CellularService::SetLastGoodApn(const Stringmap& apn_info) {
   last_good_apn_info_ = apn_info;
   adaptor()->EmitStringmapChanged(kCellularLastGoodApnProperty,
                                   last_good_apn_info_);
@@ -228,7 +228,7 @@ void CellularService::InitOutOfCreditsDetection(
                                            this));
 }
 
-bool CellularService::Load(StoreInterface *storage) {
+bool CellularService::Load(StoreInterface* storage) {
   // Load properties common to all Services.
   if (!Service::Load(storage))
     return false;
@@ -248,21 +248,21 @@ bool CellularService::Load(StoreInterface *storage) {
   return true;
 }
 
-void CellularService::LoadApn(StoreInterface *storage,
-                              const string &storage_group,
-                              const string &keytag,
-                              Stringmap *apn_info) {
+void CellularService::LoadApn(StoreInterface* storage,
+                              const string& storage_group,
+                              const string& keytag,
+                              Stringmap* apn_info) {
   if (!LoadApnField(storage, storage_group, keytag, kApnProperty, apn_info))
     return;
   LoadApnField(storage, storage_group, keytag, kApnUsernameProperty, apn_info);
   LoadApnField(storage, storage_group, keytag, kApnPasswordProperty, apn_info);
 }
 
-bool CellularService::LoadApnField(StoreInterface *storage,
-                                   const string &storage_group,
-                                   const string &keytag,
-                                   const string &apntag,
-                                   Stringmap *apn_info) {
+bool CellularService::LoadApnField(StoreInterface* storage,
+                                   const string& storage_group,
+                                   const string& keytag,
+                                   const string& apntag,
+                                   Stringmap* apn_info) {
   string value;
   if (storage->GetString(storage_group, keytag + "." + apntag, &value) &&
       !value.empty()) {
@@ -272,7 +272,7 @@ bool CellularService::LoadApnField(StoreInterface *storage,
   return false;
 }
 
-bool CellularService::Save(StoreInterface *storage) {
+bool CellularService::Save(StoreInterface* storage) {
   // Save properties common to all Services.
   if (!Service::Save(storage))
     return false;
@@ -285,20 +285,20 @@ bool CellularService::Save(StoreInterface *storage) {
   return true;
 }
 
-void CellularService::SaveApn(StoreInterface *storage,
-                              const string &storage_group,
-                              const Stringmap *apn_info,
-                              const string &keytag) {
+void CellularService::SaveApn(StoreInterface* storage,
+                              const string& storage_group,
+                              const Stringmap* apn_info,
+                              const string& keytag) {
   SaveApnField(storage, storage_group, apn_info, keytag, kApnProperty);
   SaveApnField(storage, storage_group, apn_info, keytag, kApnUsernameProperty);
   SaveApnField(storage, storage_group, apn_info, keytag, kApnPasswordProperty);
 }
 
-void CellularService::SaveApnField(StoreInterface *storage,
-                                   const string &storage_group,
-                                   const Stringmap *apn_info,
-                                   const string &keytag,
-                                   const string &apntag) {
+void CellularService::SaveApnField(StoreInterface* storage,
+                                   const string& storage_group,
+                                   const Stringmap* apn_info,
+                                   const string& keytag,
+                                   const string& apntag) {
   const string key = keytag + "." + apntag;
   string str;
   if (apn_info && GetNonEmptyField(*apn_info, apntag, &str))
@@ -307,12 +307,12 @@ void CellularService::SaveApnField(StoreInterface *storage,
     storage->DeleteKey(storage_group, key);
 }
 
-bool CellularService::IsOutOfCredits(Error */*error*/) {
+bool CellularService::IsOutOfCredits(Error* /*error*/) {
   return out_of_credits_detector_->out_of_credits();
 }
 
 void CellularService::set_out_of_credits_detector(
-    OutOfCreditsDetector *detector) {
+    OutOfCreditsDetector* detector) {
   out_of_credits_detector_.reset(detector);
 }
 
@@ -326,25 +326,25 @@ void CellularService::AutoConnect() {
   is_auto_connecting_ = false;
 }
 
-void CellularService::Connect(Error *error, const char *reason) {
+void CellularService::Connect(Error* error, const char* reason) {
   Service::Connect(error, reason);
   cellular_->Connect(error);
   if (error->IsFailure())
     out_of_credits_detector_->ResetDetector();
 }
 
-void CellularService::Disconnect(Error *error, const char *reason) {
+void CellularService::Disconnect(Error* error, const char* reason) {
   Service::Disconnect(error, reason);
   cellular_->Disconnect(error, reason);
 }
 
-void CellularService::ActivateCellularModem(const string &carrier,
-                                            Error *error,
-                                            const ResultCallback &callback) {
+void CellularService::ActivateCellularModem(const string& carrier,
+                                            Error* error,
+                                            const ResultCallback& callback) {
   cellular_->Activate(carrier, error, callback);
 }
 
-void CellularService::CompleteCellularActivation(Error *error) {
+void CellularService::CompleteCellularActivation(Error* error) {
   cellular_->CompleteActivation(error);
 }
 
@@ -353,7 +353,7 @@ void CellularService::SetState(ConnectState new_state) {
   Service::SetState(new_state);
 }
 
-void CellularService::SetStorageIdentifier(const string &identifier) {
+void CellularService::SetStorageIdentifier(const string& identifier) {
   SLOG(this, 3) << __func__ << ": " << identifier;
   storage_identifier_ = identifier;
   std::replace_if(storage_identifier_.begin(),
@@ -365,7 +365,7 @@ string CellularService::GetStorageIdentifier() const {
   return storage_identifier_;
 }
 
-string CellularService::GetDeviceRpcId(Error */*error*/) const {
+string CellularService::GetDeviceRpcId(Error* /*error*/) const {
   return cellular_->GetRpcIdentifier();
 }
 
@@ -396,7 +396,7 @@ string CellularService::GetActivationTypeString() const {
   }
 }
 
-void CellularService::SetActivationState(const string &state) {
+void CellularService::SetActivationState(const string& state) {
   if (state == activation_state_) {
     return;
   }
@@ -405,9 +405,9 @@ void CellularService::SetActivationState(const string &state) {
   SetConnectableFull(state != kActivationStateNotActivated);
 }
 
-void CellularService::SetOLP(const string &url,
-                             const string &method,
-                             const string &post_data) {
+void CellularService::SetOLP(const string& url,
+                             const string& method,
+                             const string& post_data) {
   Stringmap olp;
   olp[kPaymentPortalURL] = url;
   olp[kPaymentPortalMethod] = method;
@@ -420,7 +420,7 @@ void CellularService::SetOLP(const string &url,
   adaptor()->EmitStringmapChanged(kPaymentPortalProperty, olp);
 }
 
-void CellularService::SetUsageURL(const string &url) {
+void CellularService::SetUsageURL(const string& url) {
   if (url == usage_url_) {
     return;
   }
@@ -428,7 +428,7 @@ void CellularService::SetUsageURL(const string &url) {
   adaptor()->EmitStringChanged(kUsageURLProperty, url);
 }
 
-void CellularService::SetNetworkTechnology(const string &technology) {
+void CellularService::SetNetworkTechnology(const string& technology) {
   if (technology == network_technology_) {
     return;
   }
@@ -437,7 +437,7 @@ void CellularService::SetNetworkTechnology(const string &technology) {
                                technology);
 }
 
-void CellularService::SetRoamingState(const string &state) {
+void CellularService::SetRoamingState(const string& state) {
   if (state == roaming_state_) {
     return;
   }
@@ -445,7 +445,7 @@ void CellularService::SetRoamingState(const string &state) {
   adaptor()->EmitStringChanged(kRoamingStateProperty, state);
 }
 
-void CellularService::set_serving_operator(const Stringmap &serving_operator) {
+void CellularService::set_serving_operator(const Stringmap& serving_operator) {
   if (serving_operator_ == serving_operator)
     return;
 

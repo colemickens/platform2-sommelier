@@ -21,10 +21,10 @@ namespace shill {
 //   - Watch for connect/disconnect loop.
 class ActivePassiveOutOfCreditsDetector : public OutOfCreditsDetector {
  public:
-  ActivePassiveOutOfCreditsDetector(EventDispatcher *dispatcher,
-                                    Manager *manager,
-                                    Metrics *metrics,
-                                    CellularService *service);
+  ActivePassiveOutOfCreditsDetector(EventDispatcher* dispatcher,
+                                    Manager* manager,
+                                    Metrics* metrics,
+                                    CellularService* service);
   ~ActivePassiveOutOfCreditsDetector() override;
 
   void ResetDetector() override;
@@ -34,11 +34,11 @@ class ActivePassiveOutOfCreditsDetector : public OutOfCreditsDetector {
       Service::ConnectState new_state) override;
   void NotifySubscriptionStateChanged(uint32_t subscription_state) override {}
 
-  const TrafficMonitor *traffic_monitor() const {
+  const TrafficMonitor* traffic_monitor() const {
     return traffic_monitor_.get();
   }
 
-  const std::string &GetServiceRpcIdentifier() const {
+  const std::string& GetServiceRpcIdentifier() const {
     return service_rpc_identifier_;
   }
 
@@ -86,10 +86,10 @@ class ActivePassiveOutOfCreditsDetector : public OutOfCreditsDetector {
   void OutOfCreditsReconnect();
 
   // Ownership of |traffic_monitor| is taken.
-  void set_traffic_monitor(TrafficMonitor *traffic_monitor);
+  void set_traffic_monitor(TrafficMonitor* traffic_monitor);
 
   // Ownership of |healther_checker| is taken.
-  void set_connection_health_checker(ConnectionHealthChecker *health_checker);
+  void set_connection_health_checker(ConnectionHealthChecker* health_checker);
 
   base::WeakPtrFactory<ActivePassiveOutOfCreditsDetector> weak_ptr_factory_;
 

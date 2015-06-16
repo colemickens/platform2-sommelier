@@ -22,12 +22,12 @@ class ModemLocationProxyInterface {
 
   virtual void Setup(uint32_t sources,
                      bool signal_location,
-                     Error *error,
-                     const ResultCallback &callback,
+                     Error* error,
+                     const ResultCallback& callback,
                      int timeout) = 0;
 
-  virtual void GetLocation(Error *error,
-                           const DBusEnumValueMapCallback &callback,
+  virtual void GetLocation(Error* error,
+                           const DBusEnumValueMapCallback& callback,
                            int timeout) = 0;
 };
 

@@ -30,10 +30,10 @@ class Modem {
   // |owner| is the ModemManager DBus service owner (e.g., ":1.17"). |path| is
   // the ModemManager.Modem DBus object path (e.g.,
   // "/org/chromium/ModemManager/Gobi/0").
-  Modem(const std::string &owner,
-        const std::string &service,
-        const std::string &path,
-        ModemInfo *modem_info);
+  Modem(const std::string& owner,
+        const std::string& service,
+        const std::string& path,
+        ModemInfo* modem_info);
   virtual ~Modem();
 
   // Asynchronously initializes support for the modem.
@@ -41,13 +41,13 @@ class Modem {
   // constructs and registers a Cellular device in |device_| based on
   // |properties|.
   virtual void CreateDeviceFromModemProperties(
-      const DBusInterfaceToProperties &properties);
+      const DBusInterfaceToProperties& properties);
 
-  void OnDeviceInfoAvailable(const std::string &link_name);
+  void OnDeviceInfoAvailable(const std::string& link_name);
 
-  const std::string &owner() const { return owner_; }
-  const std::string &service() const { return service_; }
-  const std::string &path() const { return path_; }
+  const std::string& owner() const { return owner_; }
+  const std::string& service() const { return service_; }
+  const std::string& path() const { return path_; }
 
   void set_type(Cellular::Type type) { type_ = type; }
 
@@ -60,11 +60,11 @@ class Modem {
 
   CellularRefPtr device() const { return device_; }
 
-  virtual Cellular *ConstructCellular(const std::string &link_name,
-                                      const std::string &device_name,
+  virtual Cellular* ConstructCellular(const std::string& link_name,
+                                      const std::string& device_name,
                                       int interface_index);
-  virtual bool GetLinkName(const DBusPropertiesMap &properties,
-                           std::string *name) const = 0;
+  virtual bool GetLinkName(const DBusPropertiesMap& properties,
+                           std::string* name) const = 0;
   // Returns the name of the DBUS Modem interface.
   virtual std::string GetModemInterface(void) const = 0;
 
@@ -94,15 +94,15 @@ class Modem {
   // network device with name |link_name|. Returns true iff both
   // |mac_address| and |interface_index| were found. Modifies
   // |interface_index| even on failure.
-  virtual bool GetDeviceParams(std::string *mac_address, int *interface_index);
+  virtual bool GetDeviceParams(std::string* mac_address, int* interface_index);
 
   virtual void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties);
+      const std::string& interface,
+      const DBusPropertiesMap& changed_properties,
+      const std::vector<std::string>& invalidated_properties);
   virtual void OnModemManagerPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &properties);
+      const std::string& interface,
+      const DBusPropertiesMap& properties);
 
   // A proxy to the org.freedesktop.DBusProperties interface used to obtain
   // ModemManager.Modem properties and watch for property changes
@@ -116,14 +116,14 @@ class Modem {
 
   CellularRefPtr device_;
 
-  ModemInfo *modem_info_;
+  ModemInfo* modem_info_;
   std::string link_name_;
   Cellular::Type type_;
   bool pending_device_info_;
-  RTNLHandler *rtnl_handler_;
+  RTNLHandler* rtnl_handler_;
 
   // Store cached copies of singletons for speed/ease of testing.
-  ProxyFactory *proxy_factory_;
+  ProxyFactory* proxy_factory_;
 
   // Serial number used to uniquify fake device names for Cellular
   // devices that don't have network devices. (Names must be unique
@@ -135,18 +135,18 @@ class Modem {
 
 class ModemClassic : public Modem {
  public:
-  ModemClassic(const std::string &owner,
-               const std::string &service,
-               const std::string &path,
-               ModemInfo *modem_info);
+  ModemClassic(const std::string& owner,
+               const std::string& service,
+               const std::string& path,
+               ModemInfo* modem_info);
   ~ModemClassic() override;
 
   // Gathers information and passes it to CreateDeviceFromModemProperties.
-  void CreateDeviceClassic(const DBusPropertiesMap &modem_properties);
+  void CreateDeviceClassic(const DBusPropertiesMap& modem_properties);
 
  protected:
-  bool GetLinkName(const DBusPropertiesMap &modem_properties,
-                   std::string *name) const override;
+  bool GetLinkName(const DBusPropertiesMap& modem_properties,
+                   std::string* name) const override;
   std::string GetModemInterface(void) const override;
 
  private:
@@ -155,18 +155,18 @@ class ModemClassic : public Modem {
 
 class Modem1 : public Modem {
  public:
-  Modem1(const std::string &owner,
-         const std::string &service,
-         const std::string &path,
-         ModemInfo *modem_info);
+  Modem1(const std::string& owner,
+         const std::string& service,
+         const std::string& path,
+         ModemInfo* modem_info);
   ~Modem1() override;
 
   // Gathers information and passes it to CreateDeviceFromModemProperties.
-  void CreateDeviceMM1(const DBusInterfaceToProperties &properties);
+  void CreateDeviceMM1(const DBusInterfaceToProperties& properties);
 
  protected:
-  bool GetLinkName(const DBusPropertiesMap &modem_properties,
-                   std::string *name) const override;
+  bool GetLinkName(const DBusPropertiesMap& modem_properties,
+                   std::string* name) const override;
   std::string GetModemInterface(void) const override;
 
  private:

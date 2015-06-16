@@ -23,18 +23,18 @@ class ModemModemCdmaProxyInterface {
  public:
   virtual ~ModemModemCdmaProxyInterface() {}
 
-  virtual void Activate(const std::string &carrier,
-                        Error *error,
-                        const ResultCallback &callback,
+  virtual void Activate(const std::string& carrier,
+                        Error* error,
+                        const ResultCallback& callback,
                         int timeout) = 0;
   virtual void ActivateManual(
-      const DBusPropertiesMap &properties,
-      Error *error,
-      const ResultCallback &callback,
+      const DBusPropertiesMap& properties,
+      Error* error,
+      const ResultCallback& callback,
       int timeout) = 0;
 
   virtual void set_activation_state_callback(
-      const ActivationStateSignalCallback &callback) = 0;
+      const ActivationStateSignalCallback& callback) = 0;
 };
 
 }  // namespace mm1

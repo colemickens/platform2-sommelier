@@ -19,7 +19,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(CellularCapability *c) {
+static string ObjectID(CellularCapability* c) {
   return c->cellular()->GetRpcIdentifier();
 }
 }
@@ -36,17 +36,17 @@ const int CellularCapability::kTimeoutRegister = 90000;
 const int CellularCapability::kTimeoutReset = 90000;
 const int CellularCapability::kTimeoutScan = 120000;
 
-CellularCapability::CellularCapability(Cellular *cellular,
-                                       ProxyFactory *proxy_factory,
-                                       ModemInfo *modem_info)
+CellularCapability::CellularCapability(Cellular* cellular,
+                                       ProxyFactory* proxy_factory,
+                                       ModemInfo* modem_info)
     : cellular_(cellular),
       proxy_factory_(proxy_factory),
       modem_info_(modem_info) {}
 
 CellularCapability::~CellularCapability() {}
 
-void CellularCapability::OnUnsupportedOperation(const char *operation,
-                                                Error *error) {
+void CellularCapability::OnUnsupportedOperation(const char* operation,
+                                                Error* error) {
   string message("The ");
   message.append(operation).append(" operation is not supported.");
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported, message);
@@ -54,13 +54,13 @@ void CellularCapability::OnUnsupportedOperation(const char *operation,
 
 void CellularCapability::DisconnectCleanup() {}
 
-void CellularCapability::Activate(const string &carrier,
-                                  Error *error,
-                                  const ResultCallback &callback) {
+void CellularCapability::Activate(const string& carrier,
+                                  Error* error,
+                                  const ResultCallback& callback) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapability::CompleteActivation(Error *error) {
+void CellularCapability::CompleteActivation(Error* error) {
   OnUnsupportedOperation(__func__, error);
 }
 
@@ -69,56 +69,56 @@ bool CellularCapability::IsServiceActivationRequired() const {
 }
 
 void CellularCapability::RegisterOnNetwork(
-    const string &/*network_id*/,
-    Error *error,
-    const ResultCallback &/*callback*/) {
+    const string& /*network_id*/,
+    Error* error,
+    const ResultCallback& /*callback*/) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapability::RequirePIN(const std::string &/*pin*/,
+void CellularCapability::RequirePIN(const std::string& /*pin*/,
                                     bool /*require*/,
-                                    Error *error,
-                                    const ResultCallback &/*callback*/) {
+                                    Error* error,
+                                    const ResultCallback& /*callback*/) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapability::EnterPIN(const string &/*pin*/,
-                                  Error *error,
-                                  const ResultCallback &/*callback*/) {
+void CellularCapability::EnterPIN(const string& /*pin*/,
+                                  Error* error,
+                                  const ResultCallback& /*callback*/) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapability::UnblockPIN(const string &/*unblock_code*/,
-                                    const string &/*pin*/,
-                                    Error *error,
-                                    const ResultCallback &/*callback*/) {
+void CellularCapability::UnblockPIN(const string& /*unblock_code*/,
+                                    const string& /*pin*/,
+                                    Error* error,
+                                    const ResultCallback& /*callback*/) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapability::ChangePIN(const string &/*old_pin*/,
-                                   const string &/*new_pin*/,
-                                   Error *error,
-                                   const ResultCallback &/*callback*/) {
+void CellularCapability::ChangePIN(const string& /*old_pin*/,
+                                   const string& /*new_pin*/,
+                                   Error* error,
+                                   const ResultCallback& /*callback*/) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapability::Scan(Error *error,
-                              const ResultStringmapsCallback &callback) {
+void CellularCapability::Scan(Error* error,
+                              const ResultStringmapsCallback& callback) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapability::Reset(Error *error,
-                               const ResultCallback &/*callback*/) {
+void CellularCapability::Reset(Error* error,
+                               const ResultCallback& /*callback*/) {
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapability::SetCarrier(const std::string &/*carrier*/,
-                                    Error *error,
-                                    const ResultCallback &/*callback*/) {
+void CellularCapability::SetCarrier(const std::string& /*carrier*/,
+                                    Error* error,
+                                    const ResultCallback& /*callback*/) {
   OnUnsupportedOperation(__func__, error);
 }
 
-CellularBearer *CellularCapability::GetActiveBearer() const {
+CellularBearer* CellularCapability::GetActiveBearer() const {
   return nullptr;
 }
 

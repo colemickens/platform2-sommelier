@@ -14,10 +14,10 @@ namespace shill {
 // This object performs no out-of-credits detection.
 class NoOutOfCreditsDetector : public OutOfCreditsDetector {
  public:
-  NoOutOfCreditsDetector(EventDispatcher *dispatcher,
-                         Manager *manager,
-                         Metrics *metrics,
-                         CellularService *service)
+  NoOutOfCreditsDetector(EventDispatcher* dispatcher,
+                         Manager* manager,
+                         Metrics* metrics,
+                         CellularService* service)
       : OutOfCreditsDetector(dispatcher, manager, metrics, service) {}
   ~NoOutOfCreditsDetector() override {}
 

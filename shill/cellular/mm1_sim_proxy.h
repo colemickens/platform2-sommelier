@@ -19,52 +19,52 @@ class SimProxy : public SimProxyInterface {
  public:
   // Constructs an org.freedesktop.ModemManager1.Sim DBus object
   // proxy at |path| owned by |service|.
-  SimProxy(DBus::Connection *connection,
-           const std::string &path,
-           const std::string &service);
+  SimProxy(DBus::Connection* connection,
+           const std::string& path,
+           const std::string& service);
   ~SimProxy() override;
 
   // Inherited methods from SimProxyInterface.
-  void SendPin(const std::string &pin,
-               Error *error,
-               const ResultCallback &callback,
+  void SendPin(const std::string& pin,
+               Error* error,
+               const ResultCallback& callback,
                int timeout) override;
-  void SendPuk(const std::string &puk,
-               const std::string &pin,
-               Error *error,
-               const ResultCallback &callback,
+  void SendPuk(const std::string& puk,
+               const std::string& pin,
+               Error* error,
+               const ResultCallback& callback,
                int timeout) override;
-  void EnablePin(const std::string &pin,
+  void EnablePin(const std::string& pin,
                  const bool enabled,
-                 Error *error,
-                 const ResultCallback &callback,
+                 Error* error,
+                 const ResultCallback& callback,
                  int timeout) override;
-  void ChangePin(const std::string &old_pin,
-                 const std::string &new_pin,
-                 Error *error,
-                 const ResultCallback &callback,
+  void ChangePin(const std::string& old_pin,
+                 const std::string& new_pin,
+                 Error* error,
+                 const ResultCallback& callback,
                  int timeout) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Sim_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
-          const std::string &path,
-          const std::string &service);
+    Proxy(DBus::Connection* connection,
+          const std::string& path,
+          const std::string& service);
     ~Proxy() override;
 
    private:
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::SimProxy
-    void SendPinCallback(const ::DBus::Error &dberror,
-                         void *data) override;
-    void SendPukCallback(const ::DBus::Error &dberror,
-                         void *data) override;
-    void EnablePinCallback(const ::DBus::Error &dberror,
-                           void *data) override;
-    void ChangePinCallback(const ::DBus::Error &dberror,
-                           void *data) override;
+    void SendPinCallback(const ::DBus::Error& dberror,
+                         void* data) override;
+    void SendPukCallback(const ::DBus::Error& dberror,
+                         void* data) override;
+    void EnablePinCallback(const ::DBus::Error& dberror,
+                           void* data) override;
+    void ChangePinCallback(const ::DBus::Error& dberror,
+                           void* data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
@@ -74,8 +74,8 @@ class SimProxy : public SimProxyInterface {
   template<typename TraceMsgT, typename CallT, typename CallbackT,
       typename... ArgTypes>
       void BeginCall(
-          const TraceMsgT &trace_msg, const CallT &call,
-          const CallbackT &callback, Error *error, int timeout,
+          const TraceMsgT& trace_msg, const CallT& call,
+          const CallbackT& callback, Error* error, int timeout,
           ArgTypes... rest);
 
   DISALLOW_COPY_AND_ASSIGN(SimProxy);

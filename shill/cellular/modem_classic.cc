@@ -13,21 +13,21 @@ using std::vector;
 
 namespace shill {
 
-ModemClassic::ModemClassic(const string &owner,
-                           const string &service,
-                           const string &path,
-                           ModemInfo *modem_info)
+ModemClassic::ModemClassic(const string& owner,
+                           const string& service,
+                           const string& path,
+                           ModemInfo* modem_info)
     : Modem(owner, service, path, modem_info) {}
 
 ModemClassic::~ModemClassic() {}
 
 bool ModemClassic::GetLinkName(const DBusPropertiesMap& modem_properties,
-                               string *name) const {
+                               string* name) const {
   return DBusProperties::GetString(modem_properties, kPropertyLinkName, name);
 }
 
 void ModemClassic::CreateDeviceClassic(
-    const DBusPropertiesMap &modem_properties) {
+    const DBusPropertiesMap& modem_properties) {
   Init();
   uint32_t mm_type = kuint32max;
   DBusProperties::GetUint32(modem_properties, kPropertyType, &mm_type);

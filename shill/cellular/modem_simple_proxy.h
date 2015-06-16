@@ -19,27 +19,27 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
  public:
   // Constructs a ModemManager.Modem.Simple DBus object proxy at
   // |path| owned by |service|.
-  ModemSimpleProxy(DBus::Connection *connection,
-                   const std::string &path,
-                   const std::string &service);
+  ModemSimpleProxy(DBus::Connection* connection,
+                   const std::string& path,
+                   const std::string& service);
   ~ModemSimpleProxy() override;
 
   // Inherited from ModemSimpleProxyInterface.
-  void GetModemStatus(Error *error,
-                      const DBusPropertyMapCallback &callback,
+  void GetModemStatus(Error* error,
+                      const DBusPropertyMapCallback& callback,
                       int timeout) override;
-  void Connect(const DBusPropertiesMap &properties,
-               Error *error,
-               const ResultCallback &callback,
+  void Connect(const DBusPropertiesMap& properties,
+               Error* error,
+               const ResultCallback& callback,
                int timeout) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager::Modem::Simple_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
-          const std::string &path,
-          const std::string &service);
+    Proxy(DBus::Connection* connection,
+          const std::string& path,
+          const std::string& service);
     ~Proxy() override;
 
    private:
@@ -47,9 +47,9 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
     // [None]
 
     // Method callbacks inherited from ModemManager::Modem::Simple_proxy.
-    void GetStatusCallback(const DBusPropertiesMap &props,
-                           const DBus::Error &dberror, void *data) override;
-    void ConnectCallback(const DBus::Error &dberror, void *data) override;
+    void GetStatusCallback(const DBusPropertiesMap& props,
+                           const DBus::Error& dberror, void* data) override;
+    void ConnectCallback(const DBus::Error& dberror, void* data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

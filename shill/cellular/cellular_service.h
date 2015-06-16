@@ -36,76 +36,76 @@ class CellularService : public Service {
     kActivationTypeUnknown
   };
 
-  CellularService(ModemInfo *modem_info,
-                  const CellularRefPtr &device);
+  CellularService(ModemInfo* modem_info,
+                  const CellularRefPtr& device);
   ~CellularService() override;
 
   // Inherited from Service.
   void AutoConnect() override;
-  void Connect(Error *error, const char *reason) override;
-  void Disconnect(Error *error, const char *reason) override;
-  void ActivateCellularModem(const std::string &carrier,
-                             Error *error,
-                             const ResultCallback &callback) override;
-  void CompleteCellularActivation(Error *error) override;
+  void Connect(Error* error, const char* reason) override;
+  void Disconnect(Error* error, const char* reason) override;
+  void ActivateCellularModem(const std::string& carrier,
+                             Error* error,
+                             const ResultCallback& callback) override;
+  void CompleteCellularActivation(Error* error) override;
   void SetState(ConnectState new_state) override;
 
   std::string GetStorageIdentifier() const override;
-  void SetStorageIdentifier(const std::string &identifier);
+  void SetStorageIdentifier(const std::string& identifier);
 
-  const CellularRefPtr &cellular() const { return cellular_; }
+  const CellularRefPtr& cellular() const { return cellular_; }
 
   void SetActivationType(ActivationType type);
   std::string GetActivationTypeString() const;
 
-  virtual void SetActivationState(const std::string &state);
-  virtual const std::string &activation_state() const {
+  virtual void SetActivationState(const std::string& state);
+  virtual const std::string& activation_state() const {
       return activation_state_;
   }
 
-  void SetOLP(const std::string &url,
-              const std::string &method,
-              const std::string &post_data);
-  const Stringmap &olp() const { return olp_; }
+  void SetOLP(const std::string& url,
+              const std::string& method,
+              const std::string& post_data);
+  const Stringmap& olp() const { return olp_; }
 
-  void SetUsageURL(const std::string &url);
-  const std::string &usage_url() const { return usage_url_; }
+  void SetUsageURL(const std::string& url);
+  const std::string& usage_url() const { return usage_url_; }
 
-  void set_serving_operator(const Stringmap &serving_operator);
-  const Stringmap &serving_operator() const { return serving_operator_; }
+  void set_serving_operator(const Stringmap& serving_operator);
+  const Stringmap& serving_operator() const { return serving_operator_; }
 
   // Sets network technology to |technology| and broadcasts the property change.
-  void SetNetworkTechnology(const std::string &technology);
-  const std::string &network_technology() const { return network_technology_; }
+  void SetNetworkTechnology(const std::string& technology);
+  const std::string& network_technology() const { return network_technology_; }
 
   // Sets roaming state to |state| and broadcasts the property change.
-  void SetRoamingState(const std::string &state);
-  const std::string &roaming_state() const { return roaming_state_; }
+  void SetRoamingState(const std::string& state);
+  const std::string& roaming_state() const { return roaming_state_; }
 
   bool is_auto_connecting() const {
     return is_auto_connecting_;
   }
 
-  const std::string &ppp_username() const { return ppp_username_; }
-  const std::string &ppp_password() const { return ppp_password_; }
+  const std::string& ppp_username() const { return ppp_username_; }
+  const std::string& ppp_password() const { return ppp_password_; }
 
-  virtual const base::Time &resume_start_time() const {
+  virtual const base::Time& resume_start_time() const {
     return resume_start_time_;
   }
 
-  OutOfCreditsDetector *out_of_credits_detector() {
+  OutOfCreditsDetector* out_of_credits_detector() {
     return out_of_credits_detector_.get();
   }
   void SignalOutOfCreditsChanged(bool state) const;
 
   // Overrides Load and Save from parent Service class.  We will call
   // the parent method.
-  bool Load(StoreInterface *storage) override;
-  bool Save(StoreInterface *storage) override;
+  bool Load(StoreInterface* storage) override;
+  bool Save(StoreInterface* storage) override;
 
-  Stringmap *GetUserSpecifiedApn();
-  Stringmap *GetLastGoodApn();
-  virtual void SetLastGoodApn(const Stringmap &apn_info);
+  Stringmap* GetUserSpecifiedApn();
+  Stringmap* GetLastGoodApn();
+  virtual void SetLastGoodApn(const Stringmap& apn_info);
   virtual void ClearLastGoodApn();
 
   void OnAfterResume() override;
@@ -115,7 +115,7 @@ class CellularService : public Service {
 
  protected:
   // Overrides IsAutoConnectable from parent Service class.
-  bool IsAutoConnectable(const char **reason) const override;
+  bool IsAutoConnectable(const char** reason) const override;
 
  private:
   friend class CellularCapabilityUniversalTest;
@@ -155,46 +155,46 @@ class CellularService : public Service {
   static const char kStoragePPPPassword[];
 
   void HelpRegisterDerivedString(
-      const std::string &name,
-      std::string(CellularService::*get)(Error *error),
-      bool(CellularService::*set)(const std::string &value, Error *error));
+      const std::string& name,
+      std::string(CellularService::*get)(Error* error),
+      bool(CellularService::*set)(const std::string& value, Error* error));
   void HelpRegisterDerivedStringmap(
-      const std::string &name,
-      Stringmap(CellularService::*get)(Error *error),
-      bool(CellularService::*set)(const Stringmap &value, Error *error));
+      const std::string& name,
+      Stringmap(CellularService::*get)(Error* error),
+      bool(CellularService::*set)(const Stringmap& value, Error* error));
   void HelpRegisterDerivedBool(
-      const std::string &name,
-      bool(CellularService::*get)(Error *error),
-      bool(CellularService::*set)(const bool&, Error *));
+      const std::string& name,
+      bool(CellularService::*get)(Error* error),
+      bool(CellularService::*set)(const bool&, Error*));
 
-  std::string GetDeviceRpcId(Error *error) const override;
+  std::string GetDeviceRpcId(Error* error) const override;
 
-  std::string CalculateActivationType(Error *error);
+  std::string CalculateActivationType(Error* error);
 
-  Stringmap GetApn(Error *error);
-  bool SetApn(const Stringmap &value, Error *error);
-  static void SaveApn(StoreInterface *storage,
-                      const std::string &storage_group,
-                      const Stringmap *apn_info,
-                      const std::string &keytag);
-  static void SaveApnField(StoreInterface *storage,
-                           const std::string &storage_group,
-                           const Stringmap *apn_info,
-                           const std::string &keytag,
-                           const std::string &apntag);
-  static void LoadApn(StoreInterface *storage,
-                      const std::string &storage_group,
-                      const std::string &keytag,
-                      Stringmap *apn_info);
-  static bool LoadApnField(StoreInterface *storage,
-                           const std::string &storage_group,
-                           const std::string &keytag,
-                           const std::string &apntag,
-                           Stringmap *apn_info);
-  bool IsOutOfCredits(Error */*error*/);
+  Stringmap GetApn(Error* error);
+  bool SetApn(const Stringmap& value, Error* error);
+  static void SaveApn(StoreInterface* storage,
+                      const std::string& storage_group,
+                      const Stringmap* apn_info,
+                      const std::string& keytag);
+  static void SaveApnField(StoreInterface* storage,
+                           const std::string& storage_group,
+                           const Stringmap* apn_info,
+                           const std::string& keytag,
+                           const std::string& apntag);
+  static void LoadApn(StoreInterface* storage,
+                      const std::string& storage_group,
+                      const std::string& keytag,
+                      Stringmap* apn_info);
+  static bool LoadApnField(StoreInterface* storage,
+                           const std::string& storage_group,
+                           const std::string& keytag,
+                           const std::string& apntag,
+                           Stringmap* apn_info);
+  bool IsOutOfCredits(Error* /*error*/);
 
   // For unit test.
-  void set_out_of_credits_detector(OutOfCreditsDetector *detector);
+  void set_out_of_credits_detector(OutOfCreditsDetector* detector);
 
   base::WeakPtrFactory<CellularService> weak_ptr_factory_;
 

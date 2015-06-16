@@ -29,23 +29,23 @@ class ModemInfo;
 
 class CellularCapabilityGSM : public CellularCapabilityClassic {
  public:
-  CellularCapabilityGSM(Cellular *cellular,
-                        ProxyFactory *proxy_factory,
-                        ModemInfo *modem_info);
+  CellularCapabilityGSM(Cellular* cellular,
+                        ProxyFactory* proxy_factory,
+                        ModemInfo* modem_info);
   ~CellularCapabilityGSM() override;
 
   // Inherited from CellularCapability.
   std::string GetTypeString() const override;
   void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties) override;
-  void StartModem(Error *error, const ResultCallback &callback) override;
+      const std::string& interface,
+      const DBusPropertiesMap& changed_properties,
+      const std::vector<std::string>& invalidated_properties) override;
+  void StartModem(Error* error, const ResultCallback& callback) override;
   bool AreProxiesInitialized() const override;
-  void Scan(Error *error, const ResultStringmapsCallback &callback) override;
-  void RegisterOnNetwork(const std::string &network_id,
-                         Error *error,
-                         const ResultCallback &callback) override;
+  void Scan(Error* error, const ResultStringmapsCallback& callback) override;
+  void RegisterOnNetwork(const std::string& network_id,
+                         Error* error,
+                         const ResultCallback& callback) override;
   bool IsRegistered() const override;
   void SetUnregistered(bool searching) override;
   void OnServiceCreated() override;
@@ -53,37 +53,37 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   std::string GetRoamingStateString() const override;
   bool AllowRoaming() override;
   void GetSignalQuality() override;
-  void SetupConnectProperties(DBusPropertiesMap *properties) override;
-  void Connect(const DBusPropertiesMap &properties,
-               Error *error,
-               const ResultCallback &callback) override;
-  void RequirePIN(const std::string &pin,
+  void SetupConnectProperties(DBusPropertiesMap* properties) override;
+  void Connect(const DBusPropertiesMap& properties,
+               Error* error,
+               const ResultCallback& callback) override;
+  void RequirePIN(const std::string& pin,
                   bool require,
-                  Error *error,
-                  const ResultCallback &callback) override;
-  void EnterPIN(const std::string &pin,
-                Error *error,
-                const ResultCallback &callback) override;
-  void UnblockPIN(const std::string &unblock_code,
-                  const std::string &pin,
-                  Error *error,
-                  const ResultCallback &callback) override;
-  void ChangePIN(const std::string &old_pin,
-                 const std::string &new_pin,
-                 Error *error,
-                 const ResultCallback &callback) override;
+                  Error* error,
+                  const ResultCallback& callback) override;
+  void EnterPIN(const std::string& pin,
+                Error* error,
+                const ResultCallback& callback) override;
+  void UnblockPIN(const std::string& unblock_code,
+                  const std::string& pin,
+                  Error* error,
+                  const ResultCallback& callback) override;
+  void ChangePIN(const std::string& old_pin,
+                 const std::string& new_pin,
+                 Error* error,
+                 const ResultCallback& callback) override;
 
   // Inherited from CellularCapabilityClassic.
   void GetRegistrationState() override;
   // The following six methods are only ever called as callbacks (from the main
-  // loop), which is why they don't take an Error * argument.
-  void GetProperties(const ResultCallback &callback) override;
+  // loop), which is why they don't take an Error* argument.
+  void GetProperties(const ResultCallback& callback) override;
 
-  virtual void GetIMEI(const ResultCallback &callback);
-  virtual void GetIMSI(const ResultCallback &callback);
-  virtual void GetSPN(const ResultCallback &callback);
-  virtual void GetMSISDN(const ResultCallback &callback);
-  virtual void Register(const ResultCallback &callback);
+  virtual void GetIMEI(const ResultCallback& callback);
+  virtual void GetIMSI(const ResultCallback& callback);
+  virtual void GetSPN(const ResultCallback& callback);
+  virtual void GetMSISDN(const ResultCallback& callback);
+  virtual void Register(const ResultCallback& callback);
 
  protected:
   // Inherited from CellularCapabilityClassic.
@@ -153,50 +153,50 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
 
   void SetAccessTechnology(uint32_t access_technology);
 
-  Stringmap ParseScanResult(const GSMScanResult &result);
+  Stringmap ParseScanResult(const GSMScanResult& result);
 
-  KeyValueStore SimLockStatusToProperty(Error *error);
+  KeyValueStore SimLockStatusToProperty(Error* error);
 
   void SetupApnTryList();
-  void FillConnectPropertyMap(DBusPropertiesMap *properties);
+  void FillConnectPropertyMap(DBusPropertiesMap* properties);
 
   void HelpRegisterConstDerivedKeyValueStore(
-      const std::string &name,
-      KeyValueStore(CellularCapabilityGSM::*get)(Error *error));
+      const std::string& name,
+      KeyValueStore(CellularCapabilityGSM::*get)(Error* error));
 
   bool IsUnderlyingDeviceRegistered() const;
 
   // Signal callbacks
   void OnNetworkModeSignal(uint32_t mode);
   void OnRegistrationInfoSignal(uint32_t status,
-                                const std::string &operator_code,
-                                const std::string &operator_name);
+                                const std::string& operator_code,
+                                const std::string& operator_name);
   void OnSignalQualitySignal(uint32_t quality);
 
   // Method callbacks
   void OnGetRegistrationInfoReply(uint32_t status,
-                                  const std::string &operator_code,
-                                  const std::string &operator_name,
-                                  const Error &error);
-  void OnGetSignalQualityReply(uint32_t quality, const Error &error);
-  void OnRegisterReply(const ResultCallback &callback,
-                       const Error &error);
-  void OnGetIMEIReply(const ResultCallback &callback,
-                      const std::string &imei,
-                      const Error &error);
-  void OnGetIMSIReply(const ResultCallback &callback,
-                      const std::string &imsi,
-                      const Error &error);
-  void OnGetSPNReply(const ResultCallback &callback,
-                     const std::string &spn,
-                     const Error &error);
-  void OnGetMSISDNReply(const ResultCallback &callback,
-                        const std::string &msisdn,
-                        const Error &error);
-  void OnScanReply(const ResultStringmapsCallback &callback,
-                   const GSMScanResults &results,
-                   const Error &error);
-  void OnConnectReply(const ResultCallback &callback, const Error &error);
+                                  const std::string& operator_code,
+                                  const std::string& operator_name,
+                                  const Error& error);
+  void OnGetSignalQualityReply(uint32_t quality, const Error& error);
+  void OnRegisterReply(const ResultCallback& callback,
+                       const Error& error);
+  void OnGetIMEIReply(const ResultCallback& callback,
+                      const std::string& imei,
+                      const Error& error);
+  void OnGetIMSIReply(const ResultCallback& callback,
+                      const std::string& imsi,
+                      const Error& error);
+  void OnGetSPNReply(const ResultCallback& callback,
+                     const std::string& spn,
+                     const Error& error);
+  void OnGetMSISDNReply(const ResultCallback& callback,
+                        const std::string& msisdn,
+                        const Error& error);
+  void OnScanReply(const ResultStringmapsCallback& callback,
+                   const GSMScanResults& results,
+                   const Error& error);
+  void OnConnectReply(const ResultCallback& callback, const Error& error);
 
   std::unique_ptr<ModemGSMCardProxyInterface> card_proxy_;
   std::unique_ptr<ModemGSMNetworkProxyInterface> network_proxy_;
@@ -209,7 +209,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   uint32_t registration_state_;
   uint32_t access_technology_;
   std::string spn_;
-  mobile_provider *home_provider_info_;
+  mobile_provider* home_provider_info_;
   std::string desired_network_;
 
   // The number of times GetIMSI() has been retried.

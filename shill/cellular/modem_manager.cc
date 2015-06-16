@@ -21,9 +21,9 @@ using std::vector;
 
 namespace shill {
 
-ModemManager::ModemManager(const string &service,
-                           const string &path,
-                           ModemInfo *modem_info)
+ModemManager::ModemManager(const string& service,
+                           const string& path,
+                           ModemInfo* modem_info)
     : proxy_factory_(ProxyFactory::GetInstance()),
       service_(service),
       path_(path),
@@ -48,7 +48,7 @@ void ModemManager::Stop() {
   Disconnect();
 }
 
-void ModemManager::Connect(const string &owner) {
+void ModemManager::Connect(const string& owner) {
   // Inheriting classes call this superclass method.
   owner_ = owner;
 }
@@ -59,17 +59,17 @@ void ModemManager::Disconnect() {
   owner_.clear();
 }
 
-void ModemManager::OnAppear(const string &name, const string &owner) {
+void ModemManager::OnAppear(const string& name, const string& owner) {
   LOG(INFO) << "Modem manager " << name << " appeared. Owner: " << owner;
   Connect(owner);
 }
 
-void ModemManager::OnVanish(const string &name) {
+void ModemManager::OnVanish(const string& name) {
   LOG(INFO) << "Modem manager " << name << " vanished.";
   Disconnect();
 }
 
-bool ModemManager::ModemExists(const std::string &path) const {
+bool ModemManager::ModemExists(const std::string& path) const {
   CHECK(!owner_.empty());
   if (ContainsKey(modems_, path)) {
     LOG(INFO) << "ModemExists: " << path << " already exists.";
@@ -83,13 +83,13 @@ void ModemManager::RecordAddedModem(shared_ptr<Modem> modem) {
   modems_[modem->path()] = modem;
 }
 
-void ModemManager::RemoveModem(const string &path) {
+void ModemManager::RemoveModem(const string& path) {
   LOG(INFO) << "Remove modem: " << path;
   CHECK(!owner_.empty());
   modems_.erase(path);
 }
 
-void ModemManager::OnDeviceInfoAvailable(const string &link_name) {
+void ModemManager::OnDeviceInfoAvailable(const string& link_name) {
   for (Modems::const_iterator it = modems_.begin(); it != modems_.end(); ++it) {
     it->second->OnDeviceInfoAvailable(link_name);
   }
@@ -97,16 +97,16 @@ void ModemManager::OnDeviceInfoAvailable(const string &link_name) {
 
 // ModemManagerClassic
 ModemManagerClassic::ModemManagerClassic(
-    const string &service,
-    const string &path,
-    ModemInfo *modem_info)
+    const string& service,
+    const string& path,
+    ModemInfo* modem_info)
     : ModemManager(service,
                    path,
                    modem_info) {}
 
 ModemManagerClassic::~ModemManagerClassic() {}
 
-void ModemManagerClassic::Connect(const string &supplied_owner) {
+void ModemManagerClassic::Connect(const string& supplied_owner) {
   ModemManager::Connect(supplied_owner);
   proxy_.reset(proxy_factory()->CreateModemManagerProxy(this, path(), owner()));
   // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
@@ -118,7 +118,7 @@ void ModemManagerClassic::Connect(const string &supplied_owner) {
   }
 }
 
-void ModemManagerClassic::AddModemClassic(const string &path) {
+void ModemManagerClassic::AddModemClassic(const string& path) {
   if (ModemExists(path)) {
     return;
   }
@@ -150,11 +150,11 @@ void ModemManagerClassic::InitModemClassic(shared_ptr<ModemClassic> modem) {
   modem->CreateDeviceClassic(properties);
 }
 
-void ModemManagerClassic::OnDeviceAdded(const string &path) {
+void ModemManagerClassic::OnDeviceAdded(const string& path) {
   AddModemClassic(path);
 }
 
-void ModemManagerClassic::OnDeviceRemoved(const string &path) {
+void ModemManagerClassic::OnDeviceRemoved(const string& path) {
   RemoveModem(path);
 }
 

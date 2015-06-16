@@ -19,50 +19,50 @@ class ModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
  public:
   // Constructs a org.freedesktop.ModemManager1.Modem.ModemCdma DBus
   // object proxy at |path| owned by |service|.
-  ModemModemCdmaProxy(DBus::Connection *connection,
-                      const std::string &path,
-                      const std::string &service);
+  ModemModemCdmaProxy(DBus::Connection* connection,
+                      const std::string& path,
+                      const std::string& service);
   ~ModemModemCdmaProxy() override;
 
   // Inherited methods from ModemModemCdmaProxyInterface.
-  void Activate(const std::string &carrier,
-                Error *error,
-                const ResultCallback &callback,
+  void Activate(const std::string& carrier,
+                Error* error,
+                const ResultCallback& callback,
                 int timeout) override;
   void ActivateManual(
-      const DBusPropertiesMap &properties,
-      Error *error,
-      const ResultCallback &callback,
+      const DBusPropertiesMap& properties,
+      Error* error,
+      const ResultCallback& callback,
       int timeout) override;
 
   void set_activation_state_callback(
-      const ActivationStateSignalCallback &callback) override;
+      const ActivationStateSignalCallback& callback) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::ModemCdma_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
-          const std::string &path,
-          const std::string &service);
+    Proxy(DBus::Connection* connection,
+          const std::string& path,
+          const std::string& service);
     ~Proxy() override;
 
     virtual void set_activation_state_callback(
-        const ActivationStateSignalCallback &callback);
+        const ActivationStateSignalCallback& callback);
 
    private:
     // Signal callbacks inherited from Proxy
     // handle signals
     void ActivationStateChanged(
-        const uint32_t &activation_state,
-        const uint32_t &activation_error,
-        const DBusPropertiesMap &status_changes) override;
+        const uint32_t& activation_state,
+        const uint32_t& activation_error,
+        const DBusPropertiesMap& status_changes) override;
 
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::Modem::ModemCdmaProxy
-    void ActivateCallback(const ::DBus::Error& dberror, void *data) override;
+    void ActivateCallback(const ::DBus::Error& dberror, void* data) override;
     void ActivateManualCallback(const ::DBus::Error& dberror,
-                                void *data) override;
+                                void* data) override;
     ActivationStateSignalCallback activation_state_callback_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);

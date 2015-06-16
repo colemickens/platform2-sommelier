@@ -31,9 +31,9 @@ class CellularBearer {
   //
   // TODO(benchan): Use a context object approach to pass objects like
   // ProxyFactory through constructor.
-  CellularBearer(ProxyFactory *proxy_factory,
-                 const std::string &dbus_path,
-                 const std::string &dbus_service);
+  CellularBearer(ProxyFactory* proxy_factory,
+                 const std::string& dbus_path,
+                 const std::string& dbus_service);
   ~CellularBearer();
 
   // Initializes this object by creating a DBus properties proxy to observe
@@ -44,21 +44,21 @@ class CellularBearer {
 
   // Callback upon DBus property changes of the bearer.
   void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties);
+      const std::string& interface,
+      const DBusPropertiesMap& changed_properties,
+      const std::vector<std::string>& invalidated_properties);
 
-  const std::string &dbus_path() const { return dbus_path_; }
-  const std::string &dbus_service() const { return dbus_service_; }
+  const std::string& dbus_path() const { return dbus_path_; }
+  const std::string& dbus_service() const { return dbus_service_; }
 
   bool connected() const { return connected_; }
-  const std::string &data_interface() const { return data_interface_; }
+  const std::string& data_interface() const { return data_interface_; }
   IPConfig::Method ipv4_config_method() const { return ipv4_config_method_; }
-  const IPConfig::Properties *ipv4_config_properties() const {
+  const IPConfig::Properties* ipv4_config_properties() const {
     return ipv4_config_properties_.get();
   }
   IPConfig::Method ipv6_config_method() const { return ipv6_config_method_; }
-  const IPConfig::Properties *ipv6_config_properties() const {
+  const IPConfig::Properties* ipv6_config_properties() const {
     return ipv6_config_properties_.get();
   }
 
@@ -73,10 +73,10 @@ class CellularBearer {
   // |ipconfig_method| and |ipconfig_properties| are used to return the IP
   // configuration method and properties and should be non-NULL.
   void GetIPConfigMethodAndProperties(
-      const DBusPropertiesMap &properties,
+      const DBusPropertiesMap& properties,
       IPAddress::Family address_family,
-      IPConfig::Method *ipconfig_method,
-      std::unique_ptr<IPConfig::Properties> *ipconfig_properties) const;
+      IPConfig::Method* ipconfig_method,
+      std::unique_ptr<IPConfig::Properties>* ipconfig_properties) const;
 
   // Resets bearer properties.
   void ResetProperties();
@@ -87,7 +87,7 @@ class CellularBearer {
 
   // Setters for unit tests.
   void set_connected(bool connected) { connected_ = connected; }
-  void set_data_interface(const std::string &data_interface) {
+  void set_data_interface(const std::string& data_interface) {
     data_interface_ = data_interface;
   }
   void set_ipv4_config_method(IPConfig::Method ipv4_config_method) {
@@ -105,7 +105,7 @@ class CellularBearer {
     ipv6_config_properties_ = std::move(ipv6_config_properties);
   }
 
-  ProxyFactory *proxy_factory_;
+  ProxyFactory* proxy_factory_;
   std::string dbus_path_;
   std::string dbus_service_;
   std::unique_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;

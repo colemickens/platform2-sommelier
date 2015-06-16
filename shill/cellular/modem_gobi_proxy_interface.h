@@ -20,8 +20,8 @@ class ModemGobiProxyInterface {
  public:
   virtual ~ModemGobiProxyInterface() {}
 
-  virtual void SetCarrier(const std::string &carrier,
-                          Error *error, const ResultCallback &callback,
+  virtual void SetCarrier(const std::string& carrier,
+                          Error* error, const ResultCallback& callback,
                           int timeout) = 0;
 };
 

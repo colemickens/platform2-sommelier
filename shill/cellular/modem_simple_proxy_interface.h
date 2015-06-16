@@ -19,11 +19,11 @@ class ModemSimpleProxyInterface {
  public:
   virtual ~ModemSimpleProxyInterface() {}
 
-  virtual void GetModemStatus(Error *error,
-                              const DBusPropertyMapCallback &callback,
+  virtual void GetModemStatus(Error* error,
+                              const DBusPropertyMapCallback& callback,
                               int timeout) = 0;
-  virtual void Connect(const DBusPropertiesMap &properties,
-                       Error *error, const ResultCallback &callback,
+  virtual void Connect(const DBusPropertiesMap& properties,
+                       Error* error, const ResultCallback& callback,
                        int timeout) = 0;
 };
 

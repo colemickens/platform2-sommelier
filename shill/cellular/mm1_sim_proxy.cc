@@ -20,23 +20,23 @@ namespace mm1 {
 template<typename TraceMsgT, typename CallT, typename CallbackT,
          typename... ArgTypes>
 void SimProxy::BeginCall(
-    const TraceMsgT &trace_msg, const CallT &call, const CallbackT &callback,
-    Error *error, int timeout, ArgTypes... rest) {
+    const TraceMsgT& trace_msg, const CallT& call, const CallbackT& callback,
+    Error* error, int timeout, ArgTypes... rest) {
   BeginAsyncDBusCall(trace_msg, proxy_, call, callback, error,
                      &CellularError::FromMM1DBusError, timeout, rest...);
 }
 
-SimProxy::SimProxy(DBus::Connection *connection,
-                   const string &path,
-                   const string &service)
+SimProxy::SimProxy(DBus::Connection* connection,
+                   const string& path,
+                   const string& service)
     : proxy_(connection, path, service) {}
 
 SimProxy::~SimProxy() {}
 
 
-void SimProxy::SendPin(const string &pin,
-                       Error *error,
-                       const ResultCallback &callback,
+void SimProxy::SendPin(const string& pin,
+                       Error* error,
+                       const ResultCallback& callback,
                        int timeout) {
   // pin is intentionally not logged.
   SLOG(&proxy_.path(), 2) << __func__ << "( XXX, " << timeout << ")";
@@ -44,10 +44,10 @@ void SimProxy::SendPin(const string &pin,
             pin);
 }
 
-void SimProxy::SendPuk(const string &puk,
-                       const string &pin,
-                       Error *error,
-                       const ResultCallback &callback,
+void SimProxy::SendPuk(const string& puk,
+                       const string& pin,
+                       Error* error,
+                       const ResultCallback& callback,
                        int timeout) {
   // pin and puk are intentionally not logged.
   SLOG(&proxy_.path(), 2) << __func__ << "( XXX, XXX, " << timeout << ")";
@@ -55,10 +55,10 @@ void SimProxy::SendPuk(const string &puk,
             puk, pin);
 }
 
-void SimProxy::EnablePin(const string &pin,
+void SimProxy::EnablePin(const string& pin,
                          const bool enabled,
-                         Error *error,
-                         const ResultCallback &callback,
+                         Error* error,
+                         const ResultCallback& callback,
                          int timeout) {
   // pin is intentionally not logged.
   SLOG(&proxy_.path(), 2) << __func__ << "( XXX, "
@@ -67,10 +67,10 @@ void SimProxy::EnablePin(const string &pin,
             pin, enabled);
 }
 
-void SimProxy::ChangePin(const string &old_pin,
-                         const string &new_pin,
-                         Error *error,
-                         const ResultCallback &callback,
+void SimProxy::ChangePin(const string& old_pin,
+                         const string& new_pin,
+                         Error* error,
+                         const ResultCallback& callback,
                          int timeout) {
   // old_pin and new_pin are intentionally not logged.
   SLOG(&proxy_.path(), 2) << __func__ << "( XXX, XXX, " << timeout << ")";
@@ -78,46 +78,46 @@ void SimProxy::ChangePin(const string &old_pin,
             old_pin, new_pin);
 }
 
-SimProxy::Proxy::Proxy(DBus::Connection *connection,
-                       const string &path,
-                       const string &service)
+SimProxy::Proxy::Proxy(DBus::Connection* connection,
+                       const string& path,
+                       const string& service)
     : DBus::ObjectProxy(*connection, path, service.c_str()) {}
 
 SimProxy::Proxy::~Proxy() {}
 
 // Method callbacks inherited from
 // org::freedesktop::ModemManager1::SimProxy
-void SimProxy::Proxy::SendPinCallback(const ::DBus::Error &dberror,
-                                      void *data) {
+void SimProxy::Proxy::SendPinCallback(const ::DBus::Error& dberror,
+                                      void* data) {
   SLOG(DBus, &path(), 2) << __func__;
-  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback*>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
-void SimProxy::Proxy::SendPukCallback(const ::DBus::Error &dberror,
-                                      void *data)  {
+void SimProxy::Proxy::SendPukCallback(const ::DBus::Error& dberror,
+                                      void* data)  {
   SLOG(DBus, &path(), 2) << __func__;
-  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback*>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
-void SimProxy::Proxy::EnablePinCallback(const ::DBus::Error &dberror,
-                                        void *data)  {
+void SimProxy::Proxy::EnablePinCallback(const ::DBus::Error& dberror,
+                                        void* data)  {
   SLOG(DBus, &path(), 2) << __func__;
-  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback*>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
-void SimProxy::Proxy::ChangePinCallback(const ::DBus::Error &dberror,
-                                        void *data) {
+void SimProxy::Proxy::ChangePinCallback(const ::DBus::Error& dberror,
+                                        void* data) {
   SLOG(DBus, &path(), 2) << __func__;
-  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback*>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);

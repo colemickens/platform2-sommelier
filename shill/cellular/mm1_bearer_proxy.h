@@ -19,36 +19,36 @@ class BearerProxy : public BearerProxyInterface {
  public:
   // Constructs an org.freedesktop.ModemManager1.Bearer DBus object
   // proxy at |path| owned by |service|.
-  BearerProxy(DBus::Connection *connection,
-              const std::string &path,
-              const std::string &service);
+  BearerProxy(DBus::Connection* connection,
+              const std::string& path,
+              const std::string& service);
 
   ~BearerProxy() override;
 
   // Inherited methods from BearerProxyInterface
-  void Connect(Error *error,
-               const ResultCallback &callback,
+  void Connect(Error* error,
+               const ResultCallback& callback,
                int timeout) override;
-  void Disconnect(Error *error,
-                  const ResultCallback &callback,
+  void Disconnect(Error* error,
+                  const ResultCallback& callback,
                   int timeout) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Bearer_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
-          const std::string &path,
-          const std::string &service);
+    Proxy(DBus::Connection* connection,
+          const std::string& path,
+          const std::string& service);
     ~Proxy() override;
 
    private:
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::BearerProxy
-    void ConnectCallback(const ::DBus::Error &dberror,
-                         void *data) override;
-    void DisconnectCallback(const ::DBus::Error &dberror,
-                            void *data) override;
+    void ConnectCallback(const ::DBus::Error& dberror,
+                         void* data) override;
+    void DisconnectCallback(const ::DBus::Error& dberror,
+                            void* data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

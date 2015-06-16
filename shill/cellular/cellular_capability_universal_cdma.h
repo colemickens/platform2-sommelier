@@ -20,9 +20,9 @@ namespace shill {
 
 class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
  public:
-  CellularCapabilityUniversalCDMA(Cellular *cellular,
-                                  ProxyFactory *proxy_factory,
-                                  ModemInfo *modem_info);
+  CellularCapabilityUniversalCDMA(Cellular* cellular,
+                                  ProxyFactory* proxy_factory,
+                                  ModemInfo* modem_info);
   ~CellularCapabilityUniversalCDMA() override;
 
   // Returns true if the service is activated.
@@ -30,37 +30,37 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
 
   // Inherited from CellularCapability.
   void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties) override;
+      const std::string& interface,
+      const DBusPropertiesMap& changed_properties,
+      const std::vector<std::string>& invalidated_properties) override;
   bool IsServiceActivationRequired() const override;
   bool IsActivating() const override;
-  void Activate(const std::string &carrier,
-                Error *error,
-                const ResultCallback &callback) override;
-  void CompleteActivation(Error *error) override;
+  void Activate(const std::string& carrier,
+                Error* error,
+                const ResultCallback& callback) override;
+  void CompleteActivation(Error* error) override;
   bool IsRegistered() const override;
   void SetUnregistered(bool searching) override;
   void OnServiceCreated() override;
   std::string GetRoamingStateString() const override;
-  void SetupConnectProperties(DBusPropertiesMap *properties) override;
+  void SetupConnectProperties(DBusPropertiesMap* properties) override;
 
   // TODO(armansito): Remove once 3GPP is implemented in its own class
-  void Register(const ResultCallback &callback) override;
-  void RegisterOnNetwork(const std::string &network_id, Error *error,
-                         const ResultCallback &callback) override;
-  void RequirePIN(const std::string &pin, bool require, Error *error,
-                  const ResultCallback &callback) override;
-  void EnterPIN(const std::string &pin, Error *error,
-                const ResultCallback &callback) override;
-  void UnblockPIN(const std::string &unblock_code,
-                  const std::string &pin, Error *error,
-                  const ResultCallback &callback) override;
-  void ChangePIN(const std::string &old_pin, const std::string &new_pin,
-                 Error *error, const ResultCallback &callback) override;
-  void Scan(Error *error,
-            const ResultStringmapsCallback &callback) override;
-  void OnSimPathChanged(const std::string &sim_path) override;
+  void Register(const ResultCallback& callback) override;
+  void RegisterOnNetwork(const std::string& network_id, Error* error,
+                         const ResultCallback& callback) override;
+  void RequirePIN(const std::string& pin, bool require, Error* error,
+                  const ResultCallback& callback) override;
+  void EnterPIN(const std::string& pin, Error* error,
+                const ResultCallback& callback) override;
+  void UnblockPIN(const std::string& unblock_code,
+                  const std::string& pin, Error* error,
+                  const ResultCallback& callback) override;
+  void ChangePIN(const std::string& old_pin, const std::string& new_pin,
+                 Error* error, const ResultCallback& callback) override;
+  void Scan(Error* error,
+            const ResultStringmapsCallback& callback) override;
+  void OnSimPathChanged(const std::string& sim_path) override;
 
   void GetProperties() override;
 
@@ -91,8 +91,8 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
 
   // CDMA property change handlers
   virtual void OnModemCDMAPropertiesChanged(
-      const DBusPropertiesMap &properties,
-      const std::vector<std::string> &invalidated_properties);
+      const DBusPropertiesMap& properties,
+      const std::vector<std::string>& invalidated_properties);
   void OnCDMARegistrationChanged(MMModemCdmaRegistrationState state_1x,
                                  MMModemCdmaRegistrationState state_evdo,
                                  uint32_t sid, uint32_t nid);
@@ -101,9 +101,9 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
   void ActivateAutomatic();
   void OnActivationStateChangedSignal(uint32_t activation_state,
                                       uint32_t activation_error,
-                                      const DBusPropertiesMap &status_changes);
-  void OnActivateReply(const ResultCallback &callback,
-                       const Error &error);
+                                      const DBusPropertiesMap& status_changes);
+  void OnActivateReply(const ResultCallback& callback,
+                       const Error& error);
   void HandleNewActivationStatus(uint32_t error);
 
   void UpdateServiceActivationStateProperty();

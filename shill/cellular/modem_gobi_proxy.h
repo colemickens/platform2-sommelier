@@ -19,14 +19,14 @@ class ModemGobiProxy : public ModemGobiProxyInterface {
  public:
   // Constructs a ModemManager.Modem.Gobi DBus object proxy at |path| owned by
   // |service|.
-  ModemGobiProxy(DBus::Connection *connection,
-                 const std::string &path,
-                 const std::string &service);
+  ModemGobiProxy(DBus::Connection* connection,
+                 const std::string& path,
+                 const std::string& service);
   ~ModemGobiProxy() override;
 
   // Inherited from ModemGobiProxyInterface.
-  void SetCarrier(const std::string &carrier,
-                  Error *error, const ResultCallback &callback,
+  void SetCarrier(const std::string& carrier,
+                  Error* error, const ResultCallback& callback,
                   int timeout) override;
 
  private:
@@ -34,9 +34,9 @@ class ModemGobiProxy : public ModemGobiProxyInterface {
       : public org::chromium::ModemManager::Modem::Gobi_proxy,
         public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
-          const std::string &path,
-          const std::string &service);
+    Proxy(DBus::Connection* connection,
+          const std::string& path,
+          const std::string& service);
     ~Proxy() override;
 
    private:
@@ -44,7 +44,7 @@ class ModemGobiProxy : public ModemGobiProxyInterface {
     // [None]
 
     // Method callbacks inherited from ModemManager::Modem::Gobi_proxy.
-    void SetCarrierCallback(const DBus::Error &dberror, void *data) override;
+    void SetCarrierCallback(const DBus::Error& dberror, void* data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

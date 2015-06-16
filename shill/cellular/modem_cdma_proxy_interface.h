@@ -18,10 +18,10 @@ typedef base::Callback<void(uint32_t)> SignalQualitySignalCallback;
 typedef base::Callback<void(uint32_t, uint32_t)>
     RegistrationStateSignalCallback;
 
-typedef base::Callback<void(uint32_t, const Error &)> ActivationResultCallback;
-typedef base::Callback<void(uint32_t, const Error &)> SignalQualityCallback;
+typedef base::Callback<void(uint32_t, const Error&)> ActivationResultCallback;
+typedef base::Callback<void(uint32_t, const Error&)> SignalQualityCallback;
 typedef base::Callback<void(uint32_t, uint32_t,
-                            const Error &)> RegistrationStateCallback;
+                            const Error&)> RegistrationStateCallback;
 
 // These are the methods that a ModemManager.Modem.CDMA proxy must support.
 // The interface is provided so that it can be mocked in tests.
@@ -31,25 +31,25 @@ class ModemCDMAProxyInterface {
  public:
   virtual ~ModemCDMAProxyInterface() {}
 
-  virtual void Activate(const std::string &carrier, Error *error,
-                        const ActivationResultCallback &callback,
+  virtual void Activate(const std::string& carrier, Error* error,
+                        const ActivationResultCallback& callback,
                         int timeout) = 0;
-  virtual void GetRegistrationState(Error *error,
-                                    const RegistrationStateCallback &callback,
+  virtual void GetRegistrationState(Error* error,
+                                    const RegistrationStateCallback& callback,
                                     int timeout) = 0;
-  virtual void GetSignalQuality(Error *error,
-                                const SignalQualityCallback &callback,
+  virtual void GetSignalQuality(Error* error,
+                                const SignalQualityCallback& callback,
                                 int timeout) = 0;
 
   // Properties.
   virtual const std::string MEID() = 0;
 
   virtual void set_activation_state_callback(
-      const ActivationStateSignalCallback &callback) = 0;
+      const ActivationStateSignalCallback& callback) = 0;
   virtual void set_signal_quality_callback(
-      const SignalQualitySignalCallback &callback) = 0;
+      const SignalQualitySignalCallback& callback) = 0;
   virtual void set_registration_state_callback(
-      const RegistrationStateSignalCallback &callback) = 0;
+      const RegistrationStateSignalCallback& callback) = 0;
 };
 
 }  // namespace shill

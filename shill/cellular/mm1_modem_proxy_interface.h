@@ -27,49 +27,49 @@ class ModemProxyInterface {
   virtual ~ModemProxyInterface() {}
 
   virtual void Enable(bool enable,
-                      Error *error,
-                      const ResultCallback &callback,
+                      Error* error,
+                      const ResultCallback& callback,
                       int timeout) = 0;
-  virtual void CreateBearer(const DBusPropertiesMap &properties,
-                            Error *error,
-                            const DBusPathCallback &callback,
+  virtual void CreateBearer(const DBusPropertiesMap& properties,
+                            Error* error,
+                            const DBusPathCallback& callback,
                             int timeout) = 0;
-  virtual void DeleteBearer(const ::DBus::Path &bearer,
-                            Error *error,
-                            const ResultCallback &callback,
+  virtual void DeleteBearer(const ::DBus::Path& bearer,
+                            Error* error,
+                            const ResultCallback& callback,
                             int timeout) = 0;
-  virtual void Reset(Error *error,
-                     const ResultCallback &callback,
+  virtual void Reset(Error* error,
+                     const ResultCallback& callback,
                      int timeout) = 0;
-  virtual void FactoryReset(const std::string &code,
-                            Error *error,
-                            const ResultCallback &callback,
+  virtual void FactoryReset(const std::string& code,
+                            Error* error,
+                            const ResultCallback& callback,
                             int timeout) = 0;
-  virtual void SetCurrentCapabilities(const uint32_t &capabilities,
-                                      Error *error,
-                                      const ResultCallback &callback,
+  virtual void SetCurrentCapabilities(const uint32_t& capabilities,
+                                      Error* error,
+                                      const ResultCallback& callback,
                                       int timeout) = 0;
-  virtual void SetCurrentModes(const ::DBus::Struct<uint32_t, uint32_t> &modes,
-                               Error *error,
-                               const ResultCallback &callback,
+  virtual void SetCurrentModes(const ::DBus::Struct<uint32_t, uint32_t>& modes,
+                               Error* error,
+                               const ResultCallback& callback,
                                int timeout) = 0;
-  virtual void SetCurrentBands(const std::vector<uint32_t> &bands,
-                               Error *error,
-                               const ResultCallback &callback,
+  virtual void SetCurrentBands(const std::vector<uint32_t>& bands,
+                               Error* error,
+                               const ResultCallback& callback,
                                int timeout) = 0;
-  virtual void Command(const std::string &cmd,
-                       const uint32_t &user_timeout,
-                       Error *error,
-                       const StringCallback &callback,
+  virtual void Command(const std::string& cmd,
+                       const uint32_t& user_timeout,
+                       Error* error,
+                       const StringCallback& callback,
                        int timeout) = 0;
-  virtual void SetPowerState(const uint32_t &power_state,
-                             Error *error,
-                             const ResultCallback &callback,
+  virtual void SetPowerState(const uint32_t& power_state,
+                             Error* error,
+                             const ResultCallback& callback,
                              int timeout) = 0;
 
 
   virtual void set_state_changed_callback(
-      const ModemStateChangedSignalCallback &callback) = 0;
+      const ModemStateChangedSignalCallback& callback) = 0;
 };
 
 }  // namespace mm1

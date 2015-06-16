@@ -22,7 +22,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kModem;
-static string ObjectID(Modem *m) { return m->path().c_str(); }
+static string ObjectID(Modem* m) { return m->path().c_str(); }
 }
 
 // TODO(petkov): Consider generating these in mm/mm-modem.h.
@@ -36,10 +36,10 @@ const char Modem::kFakeDevAddress[] = "000000000000";
 const int Modem::kFakeDevInterfaceIndex = -1;
 size_t Modem::fake_dev_serial_ = 0;
 
-Modem::Modem(const string &owner,
-             const string &service,
-             const string &path,
-             ModemInfo * modem_info)
+Modem::Modem(const string& owner,
+             const string& service,
+             const string& path,
+             ModemInfo* modem_info)
     : owner_(owner),
       service_(service),
       path_(path),
@@ -68,7 +68,7 @@ void Modem::Init() {
       Bind(&Modem::OnDBusPropertiesChanged, Unretained(this)));
 }
 
-void Modem::OnDeviceInfoAvailable(const string &link_name) {
+void Modem::OnDeviceInfoAvailable(const string& link_name) {
   SLOG(this, 2) << __func__;
   if (pending_device_info_ && link_name_ == link_name) {
     // pending_device_info_ is only set if we've already been through
@@ -79,8 +79,8 @@ void Modem::OnDeviceInfoAvailable(const string &link_name) {
   }
 }
 
-Cellular *Modem::ConstructCellular(const string &link_name,
-                                   const string &address,
+Cellular* Modem::ConstructCellular(const string& link_name,
+                                   const string& address,
                                    int interface_index) {
   LOG(INFO) << "Creating a cellular device on link " << link_name
             << " interface index " << interface_index << ".";
@@ -96,7 +96,7 @@ Cellular *Modem::ConstructCellular(const string &link_name,
 }
 
 void Modem::CreateDeviceFromModemProperties(
-    const DBusInterfaceToProperties &properties) {
+    const DBusInterfaceToProperties& properties) {
   SLOG(this, 2) << __func__;
 
   if (device_.get()) {
@@ -153,7 +153,7 @@ void Modem::CreateDeviceFromModemProperties(
   modem_info_->manager()->device_info()->RegisterDevice(device_);
 }
 
-bool Modem::GetDeviceParams(string *mac_address, int *interface_index) {
+bool Modem::GetDeviceParams(string* mac_address, int* interface_index) {
   // TODO(petkov): Get the interface index from DeviceInfo, similar to the MAC
   // address below.
   *interface_index = rtnl_handler_->GetInterfaceIndex(link_name_);
@@ -172,9 +172,9 @@ bool Modem::GetDeviceParams(string *mac_address, int *interface_index) {
 }
 
 void Modem::OnDBusPropertiesChanged(
-    const string &interface,
-    const DBusPropertiesMap &changed_properties,
-    const vector<string> &invalidated_properties) {
+    const string& interface,
+    const DBusPropertiesMap& changed_properties,
+    const vector<string>& invalidated_properties) {
   SLOG(this, 2) << __func__;
   SLOG(this, 3) << "PropertiesChanged signal received.";
   if (device_.get()) {
@@ -185,8 +185,8 @@ void Modem::OnDBusPropertiesChanged(
 }
 
 void Modem::OnModemManagerPropertiesChanged(
-    const string &interface,
-    const DBusPropertiesMap &properties) {
+    const string& interface,
+    const DBusPropertiesMap& properties) {
   vector<string> invalidated_properties;
   OnDBusPropertiesChanged(interface, properties, invalidated_properties);
 }

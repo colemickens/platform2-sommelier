@@ -55,26 +55,26 @@ class CellularCapabilityClassic : public CellularCapability {
   static const int kTimeoutSetCarrierMilliseconds;
 
   // |cellular| is the parent Cellular device.
-  CellularCapabilityClassic(Cellular *cellular,
-                            ProxyFactory *proxy_factory,
-                            ModemInfo *modem_info);
+  CellularCapabilityClassic(Cellular* cellular,
+                            ProxyFactory* proxy_factory,
+                            ModemInfo* modem_info);
   ~CellularCapabilityClassic() override;
 
   // Inherited from CellularCapability.
   void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties) override;
-  void StopModem(Error *error, const ResultCallback &callback) override;
+      const std::string& interface,
+      const DBusPropertiesMap& changed_properties,
+      const std::vector<std::string>& invalidated_properties) override;
+  void StopModem(Error* error, const ResultCallback& callback) override;
   bool AreProxiesInitialized() const override;
-  void SetCarrier(const std::string &carrier,
-                  Error *error,
-                  const ResultCallback &callback) override;
-  void Connect(const DBusPropertiesMap &properties,
-               Error *error,
-               const ResultCallback &callback) override;
-  void Disconnect(Error *error,
-                  const ResultCallback &callback) override;
+  void SetCarrier(const std::string& carrier,
+                  Error* error,
+                  const ResultCallback& callback) override;
+  void Connect(const DBusPropertiesMap& properties,
+               Error* error,
+               const ResultCallback& callback) override;
+  void Disconnect(Error* error,
+                  const ResultCallback& callback) override;
 
  protected:
   typedef std::vector<base::Closure> CellularTaskList;
@@ -83,34 +83,34 @@ class CellularCapabilityClassic : public CellularCapability {
 
   // The following five methods are only ever called as
   // callbacks (from the main loop), which is why they
-  // don't take an Error * argument.
-  virtual void EnableModem(const ResultCallback &callback);
-  virtual void DisableModem(const ResultCallback &callback);
-  virtual void GetModemStatus(const ResultCallback &callback);
-  virtual void GetModemInfo(const ResultCallback &callback);
-  virtual void GetProperties(const ResultCallback &callback) = 0;
+  // don't take an Error* argument.
+  virtual void EnableModem(const ResultCallback& callback);
+  virtual void DisableModem(const ResultCallback& callback);
+  virtual void GetModemStatus(const ResultCallback& callback);
+  virtual void GetModemInfo(const ResultCallback& callback);
+  virtual void GetProperties(const ResultCallback& callback) = 0;
 
-  void FinishEnable(const ResultCallback &callback);
-  void FinishDisable(const ResultCallback &callback);
+  void FinishEnable(const ResultCallback& callback);
+  void FinishDisable(const ResultCallback& callback);
   virtual void InitProxies();
   void ReleaseProxies() override;
 
   // Default implementation is no-op.
-  virtual void UpdateStatus(const DBusPropertiesMap &properties);
+  virtual void UpdateStatus(const DBusPropertiesMap& properties);
 
   // Runs the next task in a list.
   // Precondition: |tasks| is not empty.
-  void RunNextStep(CellularTaskList *tasks);
+  void RunNextStep(CellularTaskList* tasks);
   // StepCompletedCallback is called after a task completes.
   // |callback| is the original callback that needs to be invoked when all of
   // the tasks complete or if there is a failure.  |ignore_error| will be set
   // to true if the next task should be run regardless of the result of the
   // just-completed task.  |tasks| is the list of tasks remaining.  |error| is
   // the result of the just-completed task.
-  void StepCompletedCallback(const ResultCallback &callback,
+  void StepCompletedCallback(const ResultCallback& callback,
                              bool ignore_error,
-                             CellularTaskList *tasks,
-                             const Error &error);
+                             CellularTaskList* tasks,
+                             const Error& error);
 
   std::unique_ptr<ModemSimpleProxyInterface> simple_proxy_;
 
@@ -148,16 +148,16 @@ class CellularCapabilityClassic : public CellularCapability {
   void OnModemStateChangedSignal(uint32_t old_state,
                                  uint32_t new_state,
                                  uint32_t reason);
-  void OnGetModemInfoReply(const ResultCallback &callback,
-                           const ModemHardwareInfo &info,
-                           const Error &error);
+  void OnGetModemInfoReply(const ResultCallback& callback,
+                           const ModemHardwareInfo& info,
+                           const Error& error);
 
   // Method reply callbacks from Modem.Simple interface
-  void OnGetModemStatusReply(const ResultCallback &callback,
-                             const DBusPropertiesMap &props,
-                             const Error &error);
+  void OnGetModemStatusReply(const ResultCallback& callback,
+                             const DBusPropertiesMap& props,
+                             const Error& error);
 
-  Cellular *cellular_;
+  Cellular* cellular_;
   base::WeakPtrFactory<CellularCapabilityClassic> weak_ptr_factory_;
   std::unique_ptr<ModemProxyInterface> proxy_;
   std::unique_ptr<ModemGobiProxyInterface> gobi_proxy_;

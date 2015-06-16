@@ -33,9 +33,9 @@ class ProxyFactory;
 // Handles a modem manager service and creates and destroys modem instances.
 class ModemManager {
  public:
-  ModemManager(const std::string &service,
-               const std::string &path,
-               ModemInfo *modem_info);
+  ModemManager(const std::string& service,
+               const std::string& path,
+               ModemInfo* modem_info);
   virtual ~ModemManager();
 
   // Starts watching for and handling the DBus modem manager service.
@@ -46,32 +46,32 @@ class ModemManager {
   void Stop();
 
   // DBusNameWatcher callbacks.
-  void OnAppear(const std::string &name, const std::string &owner);
-  void OnVanish(const std::string &name);
+  void OnAppear(const std::string& name, const std::string& owner);
+  void OnVanish(const std::string& name);
 
-  void OnDeviceInfoAvailable(const std::string &link_name);
+  void OnDeviceInfoAvailable(const std::string& link_name);
 
  protected:
   typedef std::map<std::string, std::shared_ptr<Modem>> Modems;
 
-  const std::string &owner() const { return owner_; }
-  const std::string &service() const { return service_; }
-  const std::string &path() const { return path_; }
-  ProxyFactory *proxy_factory() const { return proxy_factory_; }
-  ModemInfo *modem_info() const { return modem_info_; }
+  const std::string& owner() const { return owner_; }
+  const std::string& service() const { return service_; }
+  const std::string& path() const { return path_; }
+  ProxyFactory* proxy_factory() const { return proxy_factory_; }
+  ModemInfo* modem_info() const { return modem_info_; }
 
   // Connect/Disconnect to a modem manager service.
   // Inheriting classes must call this superclass method.
-  virtual void Connect(const std::string &owner);
+  virtual void Connect(const std::string& owner);
   // Inheriting classes must call this superclass method.
   virtual void Disconnect();
 
-  bool ModemExists(const std::string &path) const;
+  bool ModemExists(const std::string& path) const;
   // Put the modem into our modem map
   void RecordAddedModem(std::shared_ptr<Modem> modem);
 
   // Removes a modem on |path|.
-  void RemoveModem(const std::string &path);
+  void RemoveModem(const std::string& path);
 
  private:
   friend class ModemManagerCoreTest;
@@ -89,7 +89,7 @@ class ModemManager {
   FRIEND_TEST(ModemManagerCoreTest, StartStopWithModemManagerServicePresent);
 
   // Store cached copies of singletons for speed/ease of testing.
-  ProxyFactory *proxy_factory_;
+  ProxyFactory* proxy_factory_;
 
   const std::string service_;
   const std::string path_;
@@ -99,28 +99,28 @@ class ModemManager {
 
   Modems modems_;  // Maps a modem |path| to a modem instance.
 
-  ModemInfo *modem_info_;
+  ModemInfo* modem_info_;
 
   DISALLOW_COPY_AND_ASSIGN(ModemManager);
 };
 
 class ModemManagerClassic : public ModemManager {
  public:
-  ModemManagerClassic(const std::string &service,
-                      const std::string &path,
-                      ModemInfo *modem_info);
+  ModemManagerClassic(const std::string& service,
+                      const std::string& path,
+                      ModemInfo* modem_info);
 
   ~ModemManagerClassic() override;
 
   // Called by our dbus proxy
-  void OnDeviceAdded(const std::string &path);
-  void OnDeviceRemoved(const std::string &path);
+  void OnDeviceAdded(const std::string& path);
+  void OnDeviceRemoved(const std::string& path);
 
  protected:
-  void Connect(const std::string &owner) override;
+  void Connect(const std::string& owner) override;
   void Disconnect() override;
 
-  virtual void AddModemClassic(const std::string &path);
+  virtual void AddModemClassic(const std::string& path);
   virtual void InitModemClassic(std::shared_ptr<ModemClassic> modem);
 
  private:
@@ -134,34 +134,34 @@ class ModemManagerClassic : public ModemManager {
 
 class ModemManager1 : public ModemManager {
  public:
-  ModemManager1(const std::string &service,
-                const std::string &path,
-                ModemInfo *modem_info);
+  ModemManager1(const std::string& service,
+                const std::string& path,
+                ModemInfo* modem_info);
 
   ~ModemManager1() override;
 
  protected:
-  void AddModem1(const std::string &path,
-                 const DBusInterfaceToProperties &properties);
+  void AddModem1(const std::string& path,
+                 const DBusInterfaceToProperties& properties);
   virtual void InitModem1(std::shared_ptr<Modem1> modem,
-                          const DBusInterfaceToProperties &properties);
+                          const DBusInterfaceToProperties& properties);
 
   // ModemManager methods
-  void Connect(const std::string &owner) override;
+  void Connect(const std::string& owner) override;
   void Disconnect() override;
 
   // DBusObjectManagerProxyDelegate signal methods
   virtual void OnInterfacesAddedSignal(
-      const ::DBus::Path &object_path,
-      const DBusInterfaceToProperties &properties);
+      const ::DBus::Path& object_path,
+      const DBusInterfaceToProperties& properties);
   virtual void OnInterfacesRemovedSignal(
-      const ::DBus::Path &object_path,
-      const std::vector<std::string> &interfaces);
+      const ::DBus::Path& object_path,
+      const std::vector<std::string>& interfaces);
 
   // DBusObjectManagerProxyDelegate method callbacks
   virtual void OnGetManagedObjectsReply(
-      const DBusObjectsWithProperties &objects_with_properties,
-      const Error &error);
+      const DBusObjectsWithProperties& objects_with_properties,
+      const Error& error);
 
  private:
   friend class ModemManager1Test;

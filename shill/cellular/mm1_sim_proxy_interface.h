@@ -23,24 +23,24 @@ class SimProxyInterface {
  public:
   virtual ~SimProxyInterface() {}
 
-  virtual void SendPin(const std::string &pin,
-                       Error *error,
-                       const ResultCallback &callback,
+  virtual void SendPin(const std::string& pin,
+                       Error* error,
+                       const ResultCallback& callback,
                        int timeout) = 0;
-  virtual void SendPuk(const std::string &puk,
-                       const std::string &pin,
-                       Error *error,
-                       const ResultCallback &callback,
+  virtual void SendPuk(const std::string& puk,
+                       const std::string& pin,
+                       Error* error,
+                       const ResultCallback& callback,
                        int timeout) = 0;
-  virtual void EnablePin(const std::string &pin,
+  virtual void EnablePin(const std::string& pin,
                          const bool enabled,
-                         Error *error,
-                         const ResultCallback &callback,
+                         Error* error,
+                         const ResultCallback& callback,
                          int timeout) = 0;
-  virtual void ChangePin(const std::string &old_pin,
-                         const std::string &new_pin,
-                         Error *error,
-                         const ResultCallback &callback,
+  virtual void ChangePin(const std::string& old_pin,
+                         const std::string& new_pin,
+                         Error* error,
+                         const ResultCallback& callback,
                          int timeout) = 0;
 };
 

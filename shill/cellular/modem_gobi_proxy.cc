@@ -20,33 +20,33 @@ using std::unique_ptr;
 
 namespace shill {
 
-ModemGobiProxy::ModemGobiProxy(DBus::Connection *connection,
-                               const string &path,
-                               const string &service)
+ModemGobiProxy::ModemGobiProxy(DBus::Connection* connection,
+                               const string& path,
+                               const string& service)
     : proxy_(connection, path, service) {}
 
 ModemGobiProxy::~ModemGobiProxy() {}
 
-void ModemGobiProxy::SetCarrier(const string &carrier,
-                                Error *error,
-                                const ResultCallback &callback,
+void ModemGobiProxy::SetCarrier(const string& carrier,
+                                Error* error,
+                                const ResultCallback& callback,
                                 int timeout) {
   BeginAsyncDBusCall(__func__, proxy_, &Proxy::SetCarrierAsync, callback,
                      error, &CellularError::FromDBusError, timeout,
                      carrier);
 }
 
-ModemGobiProxy::Proxy::Proxy(DBus::Connection *connection,
-                             const string &path,
-                             const string &service)
+ModemGobiProxy::Proxy::Proxy(DBus::Connection* connection,
+                             const string& path,
+                             const string& service)
     : DBus::ObjectProxy(*connection, path, service.c_str()) {}
 
 ModemGobiProxy::Proxy::~Proxy() {}
 
-void ModemGobiProxy::Proxy::SetCarrierCallback(const DBus::Error &dberror,
-                                               void *data) {
+void ModemGobiProxy::Proxy::SetCarrierCallback(const DBus::Error& dberror,
+                                               void* data) {
   SLOG(&path(), 2) << __func__;
-  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback*>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
   callback->Run(error);

@@ -20,7 +20,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(const CellularBearer *c) { return "(cellular_bearer)"; }
+static string ObjectID(const CellularBearer* c) { return "(cellular_bearer)"; }
 }
 
 namespace {
@@ -48,9 +48,9 @@ IPConfig::Method ConvertMMBearerIPConfigMethod(uint32_t method) {
 
 }  // namespace
 
-CellularBearer::CellularBearer(ProxyFactory *proxy_factory,
-                               const string &dbus_path,
-                               const string &dbus_service)
+CellularBearer::CellularBearer(ProxyFactory* proxy_factory,
+                               const string& dbus_path,
+                               const string& dbus_service)
     : proxy_factory_(proxy_factory),
       dbus_path_(dbus_path),
       dbus_service_(dbus_service),
@@ -83,10 +83,10 @@ bool CellularBearer::Init() {
 }
 
 void CellularBearer::GetIPConfigMethodAndProperties(
-    const DBusPropertiesMap &properties,
+    const DBusPropertiesMap& properties,
     IPAddress::Family address_family,
-    IPConfig::Method *ipconfig_method,
-    std::unique_ptr<IPConfig::Properties> *ipconfig_properties) const {
+    IPConfig::Method* ipconfig_method,
+    std::unique_ptr<IPConfig::Properties>* ipconfig_properties) const {
   DCHECK(ipconfig_method);
   DCHECK(ipconfig_properties);
 
@@ -163,9 +163,9 @@ void CellularBearer::UpdateProperties() {
 }
 
 void CellularBearer::OnDBusPropertiesChanged(
-    const string &interface,
-    const DBusPropertiesMap &changed_properties,
-    const vector<string> &/*invalidated_properties*/) {
+    const string& interface,
+    const DBusPropertiesMap& changed_properties,
+    const vector<string>& /*invalidated_properties*/) {
   SLOG(this, 3) << __func__ << ": path=" << dbus_path_
                 << ", interface=" << interface;
 

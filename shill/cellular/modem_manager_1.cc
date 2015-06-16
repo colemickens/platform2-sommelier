@@ -20,9 +20,9 @@ using std::vector;
 
 namespace shill {
 
-ModemManager1::ModemManager1(const string &service,
-                             const string &path,
-                             ModemInfo *modem_info)
+ModemManager1::ModemManager1(const string& service,
+                             const string& path,
+                             ModemInfo* modem_info)
     : ModemManager(service,
                    path,
                    modem_info),
@@ -30,7 +30,7 @@ ModemManager1::ModemManager1(const string &service,
 
 ModemManager1::~ModemManager1() {}
 
-void ModemManager1::Connect(const string &supplied_owner) {
+void ModemManager1::Connect(const string& supplied_owner) {
   ModemManager::Connect(supplied_owner);
   proxy_.reset(
       proxy_factory()->CreateDBusObjectManagerProxy(path(), owner()));
@@ -54,8 +54,8 @@ void ModemManager1::Disconnect() {
   proxy_.reset();
 }
 
-void ModemManager1::AddModem1(const string &path,
-                              const DBusInterfaceToProperties &properties) {
+void ModemManager1::AddModem1(const string& path,
+                              const DBusInterfaceToProperties& properties) {
   if (ModemExists(path)) {
     return;
   }
@@ -68,7 +68,7 @@ void ModemManager1::AddModem1(const string &path,
 }
 
 void ModemManager1::InitModem1(shared_ptr<Modem1> modem,
-                               const DBusInterfaceToProperties &properties) {
+                               const DBusInterfaceToProperties& properties) {
   if (modem == nullptr) {
     return;
   }
@@ -78,8 +78,8 @@ void ModemManager1::InitModem1(shared_ptr<Modem1> modem,
 // signal methods
 // Also called by OnGetManagedObjectsReply
 void ModemManager1::OnInterfacesAddedSignal(
-    const ::DBus::Path &object_path,
-    const DBusInterfaceToProperties &properties) {
+    const ::DBus::Path& object_path,
+    const DBusInterfaceToProperties& properties) {
   if (ContainsKey(properties, MM_DBUS_INTERFACE_MODEM)) {
     AddModem1(object_path, properties);
   } else {
@@ -88,8 +88,8 @@ void ModemManager1::OnInterfacesAddedSignal(
 }
 
 void ModemManager1::OnInterfacesRemovedSignal(
-    const ::DBus::Path &object_path,
-    const vector<string> &interfaces) {
+    const ::DBus::Path& object_path,
+    const vector<string>& interfaces) {
   LOG(INFO) << "MM1:  Removing interfaces from " << object_path;
   if (find(interfaces.begin(),
            interfaces.end(),
@@ -104,8 +104,8 @@ void ModemManager1::OnInterfacesRemovedSignal(
 
 // DBusObjectManagerProxy async method call
 void ModemManager1::OnGetManagedObjectsReply(
-    const DBusObjectsWithProperties &objects,
-    const Error &error) {
+    const DBusObjectsWithProperties& objects,
+    const Error& error) {
   if (error.IsSuccess()) {
     DBusObjectsWithProperties::const_iterator m;
     for (m = objects.begin(); m != objects.end(); ++m) {

@@ -23,16 +23,16 @@ class ModemSimpleProxyInterface {
  public:
   virtual ~ModemSimpleProxyInterface() {}
 
-  virtual void Connect(const DBusPropertiesMap &properties,
-                       Error *error,
-                       const DBusPathCallback &callback,
+  virtual void Connect(const DBusPropertiesMap& properties,
+                       Error* error,
+                       const DBusPathCallback& callback,
                        int timeout) = 0;
-  virtual void Disconnect(const ::DBus::Path &bearer,
-                          Error *error,
-                          const ResultCallback &callback,
+  virtual void Disconnect(const ::DBus::Path& bearer,
+                          Error* error,
+                          const ResultCallback& callback,
                           int timeout) = 0;
-  virtual void GetStatus(Error *error,
-                         const DBusPropertyMapCallback &callback,
+  virtual void GetStatus(Error* error,
+                         const DBusPropertyMapCallback& callback,
                          int timeout) = 0;
 };
 

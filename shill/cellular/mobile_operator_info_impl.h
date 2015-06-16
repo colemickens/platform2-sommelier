@@ -26,47 +26,47 @@ class MobileOperatorInfoImpl {
  public:
   typedef
   std::map<std::string,
-           std::vector<const mobile_operator_db::MobileNetworkOperator *>>
+           std::vector<const mobile_operator_db::MobileNetworkOperator*>>
       StringToMNOListMap;
 
-  MobileOperatorInfoImpl(EventDispatcher *dispatcher,
-                         const std::string &info_owner);
+  MobileOperatorInfoImpl(EventDispatcher* dispatcher,
+                         const std::string& info_owner);
   ~MobileOperatorInfoImpl();
 
   // API functions of the interface.
   // See mobile_operator_info_impl.h for details.
   void ClearDatabasePaths();
-  void AddDatabasePath(const base::FilePath &absolute_path);
+  void AddDatabasePath(const base::FilePath& absolute_path);
   bool Init();
-  void AddObserver(MobileOperatorInfo::Observer *observer);
-  void RemoveObserver(MobileOperatorInfo::Observer *observer);
+  void AddObserver(MobileOperatorInfo::Observer* observer);
+  void RemoveObserver(MobileOperatorInfo::Observer* observer);
   bool IsMobileNetworkOperatorKnown() const;
   bool IsMobileVirtualNetworkOperatorKnown() const;
-  const std::string &info_owner() const;
-  const std::string &uuid() const;
-  const std::string &operator_name() const;
-  const std::string &country() const;
-  const std::string &mccmnc() const;
-  const std::string &sid() const;
-  const std::string &nid() const;
-  const std::vector<std::string> &mccmnc_list() const;
-  const std::vector<std::string> &sid_list() const;
+  const std::string& info_owner() const;
+  const std::string& uuid() const;
+  const std::string& operator_name() const;
+  const std::string& country() const;
+  const std::string& mccmnc() const;
+  const std::string& sid() const;
+  const std::string& nid() const;
+  const std::vector<std::string>& mccmnc_list() const;
+  const std::vector<std::string>& sid_list() const;
   const std::vector<MobileOperatorInfo::LocalizedName>
       &operator_name_list() const;
-  const ScopedVector<MobileOperatorInfo::MobileAPN> &apn_list() const;
-  const std::vector<MobileOperatorInfo::OnlinePortal> &olp_list() const;
-  const std::string &activation_code() const;
+  const ScopedVector<MobileOperatorInfo::MobileAPN>& apn_list() const;
+  const std::vector<MobileOperatorInfo::OnlinePortal>& olp_list() const;
+  const std::string& activation_code() const;
   bool requires_roaming() const;
   void Reset();
-  void UpdateIMSI(const std::string &imsi);
-  void UpdateICCID(const std::string &iccid);
-  void UpdateMCCMNC(const std::string &mccmnc);
-  void UpdateSID(const std::string &sid);
-  void UpdateNID(const std::string &nid);
-  void UpdateOperatorName(const std::string &operator_name);
-  void UpdateOnlinePortal(const std::string &url,
-                          const std::string &method,
-                          const std::string &post_data);
+  void UpdateIMSI(const std::string& imsi);
+  void UpdateICCID(const std::string& iccid);
+  void UpdateMCCMNC(const std::string& mccmnc);
+  void UpdateSID(const std::string& sid);
+  void UpdateNID(const std::string& nid);
+  void UpdateOperatorName(const std::string& operator_name);
+  void UpdateOnlinePortal(const std::string& url,
+                          const std::string& method,
+                          const std::string& post_data);
 
  private:
   friend class MobileOperatorInfoInitTest;
@@ -74,7 +74,7 @@ class MobileOperatorInfoImpl {
   // ///////////////////////////////////////////////////////////////////////////
   // Static variables.
   // Default databases to load.
-  static const char *kDefaultDatabasePath;
+  static const char* kDefaultDatabasePath;
   // MCCMNC can be of length 5 or 6. When using this constant, keep in mind that
   // the length of MCCMNC can by |kMCCMNCMinLen| or |kMCCMNCMinLen + 1|.
   static const int kMCCMNCMinLen;
@@ -86,14 +86,14 @@ class MobileOperatorInfoImpl {
   // same |key|. If you do that, the function is too dumb to deduplicate the
   // |value|s, and two copies will get stored.
   void InsertIntoStringToMNOListMap(
-      StringToMNOListMap *table,
-      const std::string &key,
-      const mobile_operator_db::MobileNetworkOperator *value);
+      StringToMNOListMap* table,
+      const std::string& key,
+      const mobile_operator_db::MobileNetworkOperator* value);
 
   bool UpdateMNO();
   bool UpdateMVNO();
-  bool FilterMatches(const shill::mobile_operator_db::Filter &filter);
-  const mobile_operator_db::MobileNetworkOperator *PickOneFromDuplicates(
+  bool FilterMatches(const shill::mobile_operator_db::Filter& filter);
+  const mobile_operator_db::MobileNetworkOperator* PickOneFromDuplicates(
       const std::vector<const mobile_operator_db::MobileNetworkOperator*>
           &duplicates) const;
   // Reloads the information about M[V]NO from the database.
@@ -105,10 +105,10 @@ class MobileOperatorInfoImpl {
   // then we replace *all* names. Otherwise, we leave names untouched.
   // This allows MVNOs to overwrite information obtained from the corresponding
   // MNO.
-  void ReloadData(const mobile_operator_db::Data &data);
+  void ReloadData(const mobile_operator_db::Data& data);
   // Append candidates recognized by |mccmnc| to the candidate list.
-  bool AppendToCandidatesByMCCMNC(const std::string &mccmnc);
-  bool AppendToCandidatesBySID(const std::string &sid);
+  bool AppendToCandidatesByMCCMNC(const std::string& mccmnc);
+  bool AppendToCandidatesBySID(const std::string& sid);
   std::string OperatorCodeString() const;
 
   // Notifies all observers that the operator has changed.
@@ -123,7 +123,7 @@ class MobileOperatorInfoImpl {
 
   // OperatorName comparisons for determining the MNO are done after normalizing
   // the names to ignore case and spaces.
-  std::string NormalizeOperatorName(const std::string &name) const;
+  std::string NormalizeOperatorName(const std::string& name) const;
 
   // These functions encapsulate the logic to update different properties
   // properly whenever an update is either received from the user or the
@@ -134,14 +134,14 @@ class MobileOperatorInfoImpl {
   void HandleOnlinePortalUpdate();
 
   // Accessor functions for testing purpose only.
-  mobile_operator_db::MobileOperatorDB *database() {
+  mobile_operator_db::MobileOperatorDB* database() {
     return database_.get();
   }
 
   // ///////////////////////////////////////////////////////////////////////////
   // Data.
   // Not owned by MobileOperatorInfoImpl.
-  EventDispatcher *const dispatcher_;
+  EventDispatcher* const dispatcher_;
 
   const std::string info_owner_;
 
@@ -170,13 +170,13 @@ class MobileOperatorInfoImpl {
     kOperatorCodeTypeSID,
   };
   OperatorCodeType operator_code_type_;
-  std::vector<const mobile_operator_db::MobileNetworkOperator *>
+  std::vector<const mobile_operator_db::MobileNetworkOperator*>
       candidates_by_operator_code_;
 
-  std::vector<const mobile_operator_db::MobileNetworkOperator *>
+  std::vector<const mobile_operator_db::MobileNetworkOperator*>
       candidates_by_name_;
-  const mobile_operator_db::MobileNetworkOperator *current_mno_;
-  const mobile_operator_db::MobileVirtualNetworkOperator *current_mvno_;
+  const mobile_operator_db::MobileNetworkOperator* current_mno_;
+  const mobile_operator_db::MobileVirtualNetworkOperator* current_mvno_;
 
   // These fields are the information expected to be populated by this object
   // after successfully determining the MVNO.

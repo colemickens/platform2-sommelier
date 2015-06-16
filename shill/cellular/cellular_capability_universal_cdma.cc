@@ -30,7 +30,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(CellularCapabilityUniversalCDMA *c) {
+static string ObjectID(CellularCapabilityUniversalCDMA* c) {
   return c->cellular()->GetRpcIdentifier();
 }
 }
@@ -43,9 +43,9 @@ const char kPropertyConnectNumber[] = "number";
 }  // namespace
 
 CellularCapabilityUniversalCDMA::CellularCapabilityUniversalCDMA(
-    Cellular *cellular,
-    ProxyFactory *proxy_factory,
-    ModemInfo *modem_info)
+    Cellular* cellular,
+    ProxyFactory* proxy_factory,
+    ModemInfo* modem_info)
     : CellularCapabilityUniversal(cellular, proxy_factory, modem_info),
       weak_cdma_ptr_factory_(this),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
@@ -77,9 +77,9 @@ void CellularCapabilityUniversalCDMA::ReleaseProxies() {
   CellularCapabilityUniversal::ReleaseProxies();
 }
 
-void CellularCapabilityUniversalCDMA::Activate(const string &carrier,
-                                               Error *error,
-                                               const ResultCallback &callback) {
+void CellularCapabilityUniversalCDMA::Activate(const string& carrier,
+                                               Error* error,
+                                               const ResultCallback& callback) {
   // Currently activation over the cellular network is not supported using
   // ModemManager-next. Service activation is currently carried through over
   // non-cellular networks and only the final step of the OTA activation
@@ -87,7 +87,7 @@ void CellularCapabilityUniversalCDMA::Activate(const string &carrier,
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapabilityUniversalCDMA::CompleteActivation(Error *error) {
+void CellularCapabilityUniversalCDMA::CompleteActivation(Error* error) {
   SLOG(this, 2) << __func__;
   if (cellular()->state() < Cellular::kStateEnabled) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
@@ -218,7 +218,7 @@ void CellularCapabilityUniversalCDMA::UpdateServiceOLP() {
     return;
   }
 
-  const vector<MobileOperatorInfo::OnlinePortal> &olp_list =
+  const vector<MobileOperatorInfo::OnlinePortal>& olp_list =
       cellular()->serving_operator_info()->olp_list();
   if (olp_list.empty()) {
     return;
@@ -252,7 +252,7 @@ void CellularCapabilityUniversalCDMA::GetProperties() {
 void CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal(
     uint32_t activation_state,
     uint32_t activation_error,
-    const DBusPropertiesMap &status_changes) {
+    const DBusPropertiesMap& status_changes) {
   SLOG(this, 2) << __func__;
 
   activation_state_ =
@@ -272,8 +272,8 @@ void CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal(
 }
 
 void CellularCapabilityUniversalCDMA::OnActivateReply(
-    const ResultCallback &callback,
-    const Error &error) {
+    const ResultCallback& callback,
+    const Error& error) {
   SLOG(this, 2) << __func__;
   if (error.IsSuccess()) {
     LOG(INFO) << "Activation completed successfully.";
@@ -348,14 +348,14 @@ string CellularCapabilityUniversalCDMA::GetActivationErrorString(
   }
 }
 
-void CellularCapabilityUniversalCDMA::Register(const ResultCallback &callback) {
+void CellularCapabilityUniversalCDMA::Register(const ResultCallback& callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
 void CellularCapabilityUniversalCDMA::RegisterOnNetwork(
-    const string &network_id,
-    Error *error,
-    const ResultCallback &callback) {
+    const string& network_id,
+    Error* error,
+    const ResultCallback& callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
@@ -381,47 +381,47 @@ void CellularCapabilityUniversalCDMA::SetUnregistered(bool /*searching*/) {
 }
 
 void CellularCapabilityUniversalCDMA::SetupConnectProperties(
-    DBusPropertiesMap *properties) {
+    DBusPropertiesMap* properties) {
   (*properties)[kPropertyConnectNumber].writer().append_string(
       kPhoneNumber);
 }
 
 void CellularCapabilityUniversalCDMA::RequirePIN(
-    const string &pin, bool require,
-    Error *error, const ResultCallback &callback) {
+    const string& pin, bool require,
+    Error* error, const ResultCallback& callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
 void CellularCapabilityUniversalCDMA::EnterPIN(
-    const string &pin,
-    Error *error,
-    const ResultCallback &callback) {
+    const string& pin,
+    Error* error,
+    const ResultCallback& callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
 void CellularCapabilityUniversalCDMA::UnblockPIN(
-    const string &unblock_code,
-    const string &pin,
-    Error *error,
-    const ResultCallback &callback) {
+    const string& unblock_code,
+    const string& pin,
+    Error* error,
+    const ResultCallback& callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
 void CellularCapabilityUniversalCDMA::ChangePIN(
-    const string &old_pin, const string &new_pin,
-    Error *error, const ResultCallback &callback) {
+    const string& old_pin, const string& new_pin,
+    Error* error, const ResultCallback& callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
 void CellularCapabilityUniversalCDMA::Scan(
-    Error *error,
-    const ResultStringmapsCallback &callback) {
+    Error* error,
+    const ResultStringmapsCallback& callback) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
   OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapabilityUniversalCDMA::OnSimPathChanged(
-    const string &sim_path) {
+    const string& sim_path) {
   // TODO(armansito): Remove once 3GPP is implemented in its own class.
 }
 
@@ -445,9 +445,9 @@ string CellularCapabilityUniversalCDMA::GetRoamingStateString() const {
 }
 
 void CellularCapabilityUniversalCDMA::OnDBusPropertiesChanged(
-    const string &interface,
-    const DBusPropertiesMap &changed_properties,
-    const vector<string> &invalidated_properties) {
+    const string& interface,
+    const DBusPropertiesMap& changed_properties,
+    const vector<string>& invalidated_properties) {
   SLOG(this, 2) << __func__ << "(" << interface << ")";
   if (interface == MM_DBUS_INTERFACE_MODEM_MODEMCDMA) {
     OnModemCDMAPropertiesChanged(changed_properties, invalidated_properties);
@@ -458,8 +458,8 @@ void CellularCapabilityUniversalCDMA::OnDBusPropertiesChanged(
 }
 
 void CellularCapabilityUniversalCDMA::OnModemCDMAPropertiesChanged(
-    const DBusPropertiesMap &properties,
-    const std::vector<std::string> &/*invalidated_properties*/) {
+    const DBusPropertiesMap& properties,
+    const std::vector<std::string>& /*invalidated_properties*/) {
   SLOG(this, 2) << __func__;
   string str_value;
   if (DBusProperties::GetString(properties,

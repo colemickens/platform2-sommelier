@@ -18,13 +18,13 @@ using std::string;
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(CellularService *c) { return c->GetRpcIdentifier(); }
+static string ObjectID(CellularService* c) { return c->GetRpcIdentifier(); }
 }
 
-OutOfCreditsDetector::OutOfCreditsDetector(EventDispatcher *dispatcher,
-                                           Manager *manager,
-                                           Metrics *metrics,
-                                           CellularService *service)
+OutOfCreditsDetector::OutOfCreditsDetector(EventDispatcher* dispatcher,
+                                           Manager* manager,
+                                           Metrics* metrics,
+                                           CellularService* service)
     : dispatcher_(dispatcher),
       manager_(manager),
       metrics_(metrics),
@@ -36,12 +36,12 @@ OutOfCreditsDetector::~OutOfCreditsDetector() {
 }
 
 // static
-OutOfCreditsDetector *
+OutOfCreditsDetector*
 OutOfCreditsDetector::CreateDetector(OOCType detector_type,
-                                     EventDispatcher *dispatcher,
-                                     Manager *manager,
-                                     Metrics *metrics,
-                                     CellularService *service) {
+                                     EventDispatcher* dispatcher,
+                                     Manager* manager,
+                                     Metrics* metrics,
+                                     CellularService* service) {
   switch (detector_type) {
     case OOCTypeActivePassive:
       LOG(INFO) << __func__

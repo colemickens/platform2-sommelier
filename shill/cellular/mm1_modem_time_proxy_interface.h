@@ -14,7 +14,7 @@ class Error;
 
 namespace mm1 {
 
-typedef base::Callback<void(const std::string &)>
+typedef base::Callback<void(const std::string&)>
     NetworkTimeChangedSignalCallback;
 
 // These are the methods that an org.freedesktop.ModemManager1.Modem.Time
@@ -25,12 +25,12 @@ class ModemTimeProxyInterface {
  public:
   virtual ~ModemTimeProxyInterface() {}
 
-  virtual void GetNetworkTime(Error *error,
-                              const StringCallback &callback,
+  virtual void GetNetworkTime(Error* error,
+                              const StringCallback& callback,
                               int timeout) = 0;
 
   virtual void set_network_time_changed_callback(
-      const NetworkTimeChangedSignalCallback &callback) = 0;
+      const NetworkTimeChangedSignalCallback& callback) = 0;
 };
 
 }  // namespace mm1

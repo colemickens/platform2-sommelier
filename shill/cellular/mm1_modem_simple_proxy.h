@@ -19,45 +19,45 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
  public:
   // Constructs a org.freedesktop.ModemManager1.Modem.Simple DBus
   // object proxy at |path| owned by |service|.
-  ModemSimpleProxy(DBus::Connection *connection,
-                   const std::string &path,
-                   const std::string &service);
+  ModemSimpleProxy(DBus::Connection* connection,
+                   const std::string& path,
+                   const std::string& service);
   ~ModemSimpleProxy() override;
 
   // Inherited methods from SimpleProxyInterface.
   void Connect(
-      const DBusPropertiesMap &properties,
-      Error *error,
-      const DBusPathCallback &callback,
+      const DBusPropertiesMap& properties,
+      Error* error,
+      const DBusPathCallback& callback,
       int timeout) override;
-  void Disconnect(const ::DBus::Path &bearer,
-                  Error *error,
-                  const ResultCallback &callback,
+  void Disconnect(const ::DBus::Path& bearer,
+                  Error* error,
+                  const ResultCallback& callback,
                   int timeout) override;
-  void GetStatus(Error *error,
-                 const DBusPropertyMapCallback &callback,
+  void GetStatus(Error* error,
+                 const DBusPropertyMapCallback& callback,
                  int timeout) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::Simple_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
-          const std::string &path,
-          const std::string &service);
+    Proxy(DBus::Connection* connection,
+          const std::string& path,
+          const std::string& service);
     ~Proxy() override;
 
    private:
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::Modem::SimpleProxy
-    void ConnectCallback(const ::DBus::Path &bearer,
-                         const ::DBus::Error &dberror,
-                         void *data) override;
-    void DisconnectCallback(const ::DBus::Error &dberror, void *data) override;
+    void ConnectCallback(const ::DBus::Path& bearer,
+                         const ::DBus::Error& dberror,
+                         void* data) override;
+    void DisconnectCallback(const ::DBus::Error& dberror, void* data) override;
     void GetStatusCallback(
-        const DBusPropertiesMap &bearer,
-        const ::DBus::Error &dberror,
-        void *data) override;
+        const DBusPropertiesMap& bearer,
+        const ::DBus::Error& dberror,
+        void* data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

@@ -12,8 +12,8 @@
 namespace shill {
 
 class Error;
-typedef base::Callback<void(const std::string &,
-                            const Error &)> GSMIdentifierCallback;
+typedef base::Callback<void(const std::string&,
+                            const Error&)> GSMIdentifierCallback;
 
 // These are the methods that a ModemManager.Modem.Gsm.Card proxy must
 // support. The interface is provided so that it can be mocked in tests.
@@ -22,26 +22,26 @@ class ModemGSMCardProxyInterface {
  public:
   virtual ~ModemGSMCardProxyInterface() {}
 
-  virtual void GetIMEI(Error *error, const GSMIdentifierCallback &callback,
+  virtual void GetIMEI(Error* error, const GSMIdentifierCallback& callback,
                        int timeout) = 0;
-  virtual void GetIMSI(Error *error, const GSMIdentifierCallback &callback,
+  virtual void GetIMSI(Error* error, const GSMIdentifierCallback& callback,
                        int timeout) = 0;
-  virtual void GetSPN(Error *error, const GSMIdentifierCallback &callback,
+  virtual void GetSPN(Error* error, const GSMIdentifierCallback& callback,
                       int timeout) = 0;
-  virtual void GetMSISDN(Error *error, const GSMIdentifierCallback &callback,
+  virtual void GetMSISDN(Error* error, const GSMIdentifierCallback& callback,
                          int timeout) = 0;
-  virtual void EnablePIN(const std::string &pin, bool enabled,
-                         Error *error, const ResultCallback &callback,
+  virtual void EnablePIN(const std::string& pin, bool enabled,
+                         Error* error, const ResultCallback& callback,
                          int timeout) = 0;
-  virtual void SendPIN(const std::string &pin,
-                       Error *error, const ResultCallback &callback,
+  virtual void SendPIN(const std::string& pin,
+                       Error* error, const ResultCallback& callback,
                        int timeout) = 0;
-  virtual void SendPUK(const std::string &puk, const std::string &pin,
-                       Error *error, const ResultCallback &callback,
+  virtual void SendPUK(const std::string& puk, const std::string& pin,
+                       Error* error, const ResultCallback& callback,
                        int timeout) = 0;
-  virtual void ChangePIN(const std::string &old_pin,
-                         const std::string &new_pin,
-                         Error *error, const ResultCallback &callback,
+  virtual void ChangePIN(const std::string& old_pin,
+                         const std::string& new_pin,
+                         Error* error, const ResultCallback& callback,
                          int timeout) = 0;
 
   // Properties.

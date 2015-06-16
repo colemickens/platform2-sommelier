@@ -29,7 +29,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(CellularCapabilityGSM *c) {
+static string ObjectID(CellularCapabilityGSM* c) {
   return c->cellular()->GetRpcIdentifier();
 }
 }
@@ -54,9 +54,9 @@ const int CellularCapabilityGSM::kGetIMSIRetryLimit = 40;
 const int64_t CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds = 500;
 
 
-CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
-                                             ProxyFactory *proxy_factory,
-                                             ModemInfo *modem_info)
+CellularCapabilityGSM::CellularCapabilityGSM(Cellular* cellular,
+                                             ProxyFactory* proxy_factory,
+                                             ModemInfo* modem_info)
     : CellularCapabilityClassic(cellular, proxy_factory, modem_info),
       weak_ptr_factory_(this),
       mobile_operator_info_(new MobileOperatorInfo(cellular->dispatcher(),
@@ -95,7 +95,7 @@ string CellularCapabilityGSM::GetTypeString() const {
   return kTechnologyFamilyGsm;
 }
 
-KeyValueStore CellularCapabilityGSM::SimLockStatusToProperty(Error */*error*/) {
+KeyValueStore CellularCapabilityGSM::SimLockStatusToProperty(Error* /*error*/) {
   KeyValueStore status;
   status.SetBool(kSIMLockEnabledProperty, sim_lock_status_.enabled);
   status.SetString(kSIMLockTypeProperty, sim_lock_status_.lock_type);
@@ -104,8 +104,8 @@ KeyValueStore CellularCapabilityGSM::SimLockStatusToProperty(Error */*error*/) {
 }
 
 void CellularCapabilityGSM::HelpRegisterConstDerivedKeyValueStore(
-    const string &name,
-    KeyValueStore(CellularCapabilityGSM::*get)(Error *error)) {
+    const string& name,
+    KeyValueStore(CellularCapabilityGSM::*get)(Error* error)) {
   cellular()->mutable_store()->RegisterDerivedKeyValueStore(
       name,
       KeyValueStoreAccessor(
@@ -137,7 +137,7 @@ void CellularCapabilityGSM::InitProxies() {
 }
 
 void CellularCapabilityGSM::InitProperties() {
-  CellularTaskList *tasks = new CellularTaskList();
+  CellularTaskList* tasks = new CellularTaskList();
   ResultCallback cb_ignore_error =
       Bind(&CellularCapabilityGSM::StepCompletedCallback,
            weak_ptr_factory_.GetWeakPtr(), ResultCallback(), true, tasks);
@@ -149,11 +149,11 @@ void CellularCapabilityGSM::InitProperties() {
   RunNextStep(tasks);
 }
 
-void CellularCapabilityGSM::StartModem(Error *error,
-                                       const ResultCallback &callback) {
+void CellularCapabilityGSM::StartModem(Error* error,
+                                       const ResultCallback& callback) {
   InitProxies();
 
-  CellularTaskList *tasks = new CellularTaskList();
+  CellularTaskList* tasks = new CellularTaskList();
   ResultCallback cb =
       Bind(&CellularCapabilityGSM::StepCompletedCallback,
            weak_ptr_factory_.GetWeakPtr(), callback, false, tasks);
@@ -237,7 +237,7 @@ void CellularCapabilityGSM::SetupApnTryList() {
   apn_try_list_.clear();
 
   DCHECK(cellular()->service().get());
-  const Stringmap *apn_info = cellular()->service()->GetLastGoodApn();
+  const Stringmap* apn_info = cellular()->service()->GetLastGoodApn();
   if (apn_info)
     apn_try_list_.push_back(*apn_info);
 
@@ -251,13 +251,13 @@ void CellularCapabilityGSM::SetupApnTryList() {
 }
 
 void CellularCapabilityGSM::SetupConnectProperties(
-    DBusPropertiesMap *properties) {
+    DBusPropertiesMap* properties) {
   SetupApnTryList();
   FillConnectPropertyMap(properties);
 }
 
 void CellularCapabilityGSM::FillConnectPropertyMap(
-    DBusPropertiesMap *properties) {
+    DBusPropertiesMap* properties) {
   (*properties)[kConnectPropertyPhoneNumber].writer().append_string(
       kPhoneNumber);
 
@@ -280,9 +280,9 @@ void CellularCapabilityGSM::FillConnectPropertyMap(
   }
 }
 
-void CellularCapabilityGSM::Connect(const DBusPropertiesMap &properties,
-                                    Error *error,
-                                    const ResultCallback &callback) {
+void CellularCapabilityGSM::Connect(const DBusPropertiesMap& properties,
+                                    Error* error,
+                                    const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
   ResultCallback cb = Bind(&CellularCapabilityGSM::OnConnectReply,
                            weak_ptr_factory_.GetWeakPtr(),
@@ -290,8 +290,8 @@ void CellularCapabilityGSM::Connect(const DBusPropertiesMap &properties,
   simple_proxy_->Connect(properties, error, cb, kTimeoutConnect);
 }
 
-void CellularCapabilityGSM::OnConnectReply(const ResultCallback &callback,
-                                           const Error &error) {
+void CellularCapabilityGSM::OnConnectReply(const ResultCallback& callback,
+                                           const Error& error) {
   CellularServiceRefPtr service = cellular()->service();
   if (!service) {
     // The service could have been deleted before our Connect() request
@@ -326,7 +326,7 @@ bool CellularCapabilityGSM::AllowRoaming() {
 }
 
 // always called from an async context
-void CellularCapabilityGSM::GetIMEI(const ResultCallback &callback) {
+void CellularCapabilityGSM::GetIMEI(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
@@ -343,7 +343,7 @@ void CellularCapabilityGSM::GetIMEI(const ResultCallback &callback) {
 }
 
 // always called from an async context
-void CellularCapabilityGSM::GetIMSI(const ResultCallback &callback) {
+void CellularCapabilityGSM::GetIMSI(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
@@ -363,7 +363,7 @@ void CellularCapabilityGSM::GetIMSI(const ResultCallback &callback) {
 }
 
 // always called from an async context
-void CellularCapabilityGSM::GetSPN(const ResultCallback &callback) {
+void CellularCapabilityGSM::GetSPN(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
@@ -381,7 +381,7 @@ void CellularCapabilityGSM::GetSPN(const ResultCallback &callback) {
 }
 
 // always called from an async context
-void CellularCapabilityGSM::GetMSISDN(const ResultCallback &callback) {
+void CellularCapabilityGSM::GetMSISDN(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
@@ -415,7 +415,7 @@ void CellularCapabilityGSM::GetRegistrationState() {
   network_proxy_->GetRegistrationInfo(nullptr, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityGSM::GetProperties(const ResultCallback &callback) {
+void CellularCapabilityGSM::GetProperties(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
 
   // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
@@ -432,7 +432,7 @@ void CellularCapabilityGSM::GetProperties(const ResultCallback &callback) {
 }
 
 // always called from an async context
-void CellularCapabilityGSM::Register(const ResultCallback &callback) {
+void CellularCapabilityGSM::Register(const ResultCallback& callback) {
   SLOG(this, 2) << __func__ << " \"" << cellular()->selected_network()
                 << "\"";
   CHECK(!callback.is_null());
@@ -446,9 +446,9 @@ void CellularCapabilityGSM::Register(const ResultCallback &callback) {
 }
 
 void CellularCapabilityGSM::RegisterOnNetwork(
-    const string &network_id,
-    Error *error,
-    const ResultCallback &callback) {
+    const string& network_id,
+    Error* error,
+    const ResultCallback& callback) {
   SLOG(this, 2) << __func__ << "(" << network_id << ")";
   CHECK(error);
   desired_network_ = network_id;
@@ -457,8 +457,8 @@ void CellularCapabilityGSM::RegisterOnNetwork(
   network_proxy_->Register(network_id, error, cb, kTimeoutRegister);
 }
 
-void CellularCapabilityGSM::OnRegisterReply(const ResultCallback &callback,
-                                            const Error &error) {
+void CellularCapabilityGSM::OnRegisterReply(const ResultCallback& callback,
+                                            const Error& error) {
   SLOG(this, 2) << __func__ << "(" << error << ")";
 
   if (error.IsSuccess()) {
@@ -495,64 +495,64 @@ void CellularCapabilityGSM::SetUnregistered(bool searching) {
 }
 
 void CellularCapabilityGSM::RequirePIN(
-    const std::string &pin, bool require,
-    Error *error, const ResultCallback &callback) {
+    const std::string& pin, bool require,
+    Error* error, const ResultCallback& callback) {
   CHECK(error);
   card_proxy_->EnablePIN(pin, require, error, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityGSM::EnterPIN(const string &pin,
-                                     Error *error,
-                                     const ResultCallback &callback) {
+void CellularCapabilityGSM::EnterPIN(const string& pin,
+                                     Error* error,
+                                     const ResultCallback& callback) {
   CHECK(error);
   card_proxy_->SendPIN(pin, error, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityGSM::UnblockPIN(const string &unblock_code,
-                                       const string &pin,
-                                       Error *error,
-                                       const ResultCallback &callback) {
+void CellularCapabilityGSM::UnblockPIN(const string& unblock_code,
+                                       const string& pin,
+                                       Error* error,
+                                       const ResultCallback& callback) {
   CHECK(error);
   card_proxy_->SendPUK(unblock_code, pin, error, callback, kTimeoutDefault);
 }
 
 void CellularCapabilityGSM::ChangePIN(
-    const string &old_pin, const string &new_pin,
-    Error *error, const ResultCallback &callback) {
+    const string& old_pin, const string& new_pin,
+    Error* error, const ResultCallback& callback) {
   CHECK(error);
   card_proxy_->ChangePIN(old_pin, new_pin, error, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityGSM::Scan(Error *error,
-                                 const ResultStringmapsCallback &callback) {
+void CellularCapabilityGSM::Scan(Error* error,
+                                 const ResultStringmapsCallback& callback) {
   ScanResultsCallback cb = Bind(&CellularCapabilityGSM::OnScanReply,
                                 weak_ptr_factory_.GetWeakPtr(), callback);
   network_proxy_->Scan(error, cb, kTimeoutScan);
 }
 
 void CellularCapabilityGSM::OnScanReply(
-    const ResultStringmapsCallback &callback,
-    const GSMScanResults &results,
-    const Error &error) {
+    const ResultStringmapsCallback& callback,
+    const GSMScanResults& results,
+    const Error& error) {
   Stringmaps found_networks;
-  for (const auto &result : results)
+  for (const auto& result : results)
     found_networks.push_back(ParseScanResult(result));
   callback.Run(found_networks, error);
 }
 
-Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult &result) {
+Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult& result) {
   Stringmap parsed;
   for (GSMScanResult::const_iterator it = result.begin();
        it != result.end(); ++it) {
     // TODO(petkov): Define these in system_api/service_constants.h. The
     // numerical values are taken from 3GPP TS 27.007 Section 7.3.
-    static const char * const kStatusString[] = {
+    static const char* const kStatusString[] = {
       "unknown",
       "available",
       "current",
       "forbidden",
     };
-    static const char * const kTechnologyString[] = {
+    static const char* const kTechnologyString[] = {
       kNetworkTechnologyGsm,
       "GSM Compact",
       kNetworkTechnologyUmts,
@@ -649,9 +649,9 @@ string CellularCapabilityGSM::GetRoamingStateString() const {
 }
 
 void CellularCapabilityGSM::OnDBusPropertiesChanged(
-    const string &interface,
-    const DBusPropertiesMap &properties,
-    const vector<string> &invalidated_properties) {
+    const string& interface,
+    const DBusPropertiesMap& properties,
+    const vector<string>& invalidated_properties) {
   CellularCapabilityClassic::OnDBusPropertiesChanged(interface,
                                                      properties,
                                                      invalidated_properties);
@@ -697,7 +697,7 @@ void CellularCapabilityGSM::OnNetworkModeSignal(uint32_t /*mode*/) {
 }
 
 void CellularCapabilityGSM::OnRegistrationInfoSignal(
-    uint32_t status, const string &operator_code, const string &operator_name) {
+    uint32_t status, const string& operator_code, const string& operator_name) {
   SLOG(this, 2) << __func__ << ": regstate=" << status
                 << ", opercode=" << operator_code
                 << ", opername=" << operator_name;
@@ -712,21 +712,21 @@ void CellularCapabilityGSM::OnSignalQualitySignal(uint32_t quality) {
 }
 
 void CellularCapabilityGSM::OnGetRegistrationInfoReply(
-    uint32_t status, const string &operator_code, const string &operator_name,
-    const Error &error) {
+    uint32_t status, const string& operator_code, const string& operator_name,
+    const Error& error) {
   if (error.IsSuccess())
     OnRegistrationInfoSignal(status, operator_code, operator_name);
 }
 
 void CellularCapabilityGSM::OnGetSignalQualityReply(uint32_t quality,
-                                                    const Error &error) {
+                                                    const Error& error) {
   if (error.IsSuccess())
     OnSignalQualitySignal(quality);
 }
 
-void CellularCapabilityGSM::OnGetIMEIReply(const ResultCallback &callback,
-                                           const string &imei,
-                                           const Error &error) {
+void CellularCapabilityGSM::OnGetIMEIReply(const ResultCallback& callback,
+                                           const string& imei,
+                                           const Error& error) {
   if (error.IsSuccess()) {
     SLOG(this, 2) << "IMEI: " << imei;
     cellular()->set_imei(imei);
@@ -736,9 +736,9 @@ void CellularCapabilityGSM::OnGetIMEIReply(const ResultCallback &callback,
   callback.Run(error);
 }
 
-void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback &callback,
-                                           const string &imsi,
-                                           const Error &error) {
+void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback& callback,
+                                           const string& imsi,
+                                           const Error& error) {
   if (error.IsSuccess()) {
     SLOG(this, 2) << "IMSI: " << imsi;
     cellular()->set_imsi(imsi);
@@ -770,9 +770,9 @@ void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback &callback,
   }
 }
 
-void CellularCapabilityGSM::OnGetSPNReply(const ResultCallback &callback,
-                                          const string &spn,
-                                          const Error &error) {
+void CellularCapabilityGSM::OnGetSPNReply(const ResultCallback& callback,
+                                          const string& spn,
+                                          const Error& error) {
   if (error.IsSuccess()) {
     SLOG(this, 2) << "SPN: " << spn;
     spn_ = spn;
@@ -783,9 +783,9 @@ void CellularCapabilityGSM::OnGetSPNReply(const ResultCallback &callback,
   callback.Run(error);
 }
 
-void CellularCapabilityGSM::OnGetMSISDNReply(const ResultCallback &callback,
-                                             const string &msisdn,
-                                             const Error &error) {
+void CellularCapabilityGSM::OnGetMSISDNReply(const ResultCallback& callback,
+                                             const string& msisdn,
+                                             const Error& error) {
   if (error.IsSuccess()) {
     SLOG(this, 2) << "MSISDN: " << msisdn;
     cellular()->set_mdn(msisdn);

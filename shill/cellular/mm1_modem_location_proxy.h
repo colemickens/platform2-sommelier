@@ -19,41 +19,41 @@ class ModemLocationProxy : public ModemLocationProxyInterface {
  public:
   // Constructs an org.freedesktop.ModemManager1.Modem.Location DBus
   // object proxy at |path| owned by |service|.
-  ModemLocationProxy(DBus::Connection *connection,
-                     const std::string &path,
-                     const std::string &service);
+  ModemLocationProxy(DBus::Connection* connection,
+                     const std::string& path,
+                     const std::string& service);
 
   ~ModemLocationProxy() override;
 
   // Inherited methods from ModemLocationProxyInterface.
   void Setup(uint32_t sources,
              bool signal_location,
-             Error *error,
-             const ResultCallback &callback,
+             Error* error,
+             const ResultCallback& callback,
              int timeout) override;
 
-  void GetLocation(Error *error,
-                   const DBusEnumValueMapCallback &callback,
+  void GetLocation(Error* error,
+                   const DBusEnumValueMapCallback& callback,
                    int timeout) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::Location_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
-          const std::string &path,
-          const std::string &service);
+    Proxy(DBus::Connection* connection,
+          const std::string& path,
+          const std::string& service);
     ~Proxy() override;
 
    private:
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::Modem:Location_proxy
-    void SetupCallback(const ::DBus::Error &dberror,
-                       void *data) override;
+    void SetupCallback(const ::DBus::Error& dberror,
+                       void* data) override;
 
-    void GetLocationCallback(const DBusEnumValueMap &location,
-                             const ::DBus::Error &dberror,
-                             void *data) override;
+    void GetLocationCallback(const DBusEnumValueMap& location,
+                             const ::DBus::Error& dberror,
+                             void* data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

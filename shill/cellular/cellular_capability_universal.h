@@ -53,31 +53,31 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kConnectAllowRoaming[];
   static const char kConnectRMProtocol[];
 
-  CellularCapabilityUniversal(Cellular *cellular,
-                              ProxyFactory *proxy_factory,
-                              ModemInfo *modem_info);
+  CellularCapabilityUniversal(Cellular* cellular,
+                              ProxyFactory* proxy_factory,
+                              ModemInfo* modem_info);
   ~CellularCapabilityUniversal() override;
 
   // Inherited from CellularCapability.
   std::string GetTypeString() const override;
   void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties) override;
+      const std::string& interface,
+      const DBusPropertiesMap& changed_properties,
+      const std::vector<std::string>& invalidated_properties) override;
   // Checks the modem state.  If the state is kModemStateDisabled, then the
   // modem is enabled.  Otherwise, the enable command is buffered until the
   // modem becomes disabled.  ModemManager rejects the enable command if the
   // modem is not disabled, for example, if it is initializing instead.
-  void StartModem(Error *error, const ResultCallback &callback) override;
-  void StopModem(Error *error, const ResultCallback &callback) override;
-  void Reset(Error *error, const ResultCallback &callback) override;
+  void StartModem(Error* error, const ResultCallback& callback) override;
+  void StopModem(Error* error, const ResultCallback& callback) override;
+  void Reset(Error* error, const ResultCallback& callback) override;
   bool AreProxiesInitialized() const override;
   bool IsServiceActivationRequired() const override;
-  void CompleteActivation(Error *error) override;
-  void Scan(Error *error, const ResultStringmapsCallback &callback) override;
-  void RegisterOnNetwork(const std::string &network_id,
-                         Error *error,
-                         const ResultCallback &callback) override;
+  void CompleteActivation(Error* error) override;
+  void Scan(Error* error, const ResultStringmapsCallback& callback) override;
+  void RegisterOnNetwork(const std::string& network_id,
+                         Error* error,
+                         const ResultCallback& callback) override;
   bool IsRegistered() const override;
   void SetUnregistered(bool searching) override;
   void OnServiceCreated() override;
@@ -85,30 +85,30 @@ class CellularCapabilityUniversal : public CellularCapability {
   std::string GetRoamingStateString() const override;
   bool AllowRoaming() override;
   void GetSignalQuality() override;
-  void SetupConnectProperties(DBusPropertiesMap *properties) override;
-  void Connect(const DBusPropertiesMap &properties,
-               Error *error,
-               const ResultCallback &callback) override;
-  void Disconnect(Error *error, const ResultCallback &callback) override;
-  CellularBearer *GetActiveBearer() const override;
-  void RequirePIN(const std::string &pin,
+  void SetupConnectProperties(DBusPropertiesMap* properties) override;
+  void Connect(const DBusPropertiesMap& properties,
+               Error* error,
+               const ResultCallback& callback) override;
+  void Disconnect(Error* error, const ResultCallback& callback) override;
+  CellularBearer* GetActiveBearer() const override;
+  void RequirePIN(const std::string& pin,
                   bool require,
-                  Error *error,
-                  const ResultCallback &callback) override;
-  void EnterPIN(const std::string &pin,
-                Error *error,
-                const ResultCallback &callback) override;
-  void UnblockPIN(const std::string &unblock_code,
-                  const std::string &pin,
-                  Error *error,
-                  const ResultCallback &callback) override;
-  void ChangePIN(const std::string &old_pin,
-                 const std::string &new_pin,
-                 Error *error,
-                 const ResultCallback &callback) override;
+                  Error* error,
+                  const ResultCallback& callback) override;
+  void EnterPIN(const std::string& pin,
+                Error* error,
+                const ResultCallback& callback) override;
+  void UnblockPIN(const std::string& unblock_code,
+                  const std::string& pin,
+                  Error* error,
+                  const ResultCallback& callback) override;
+  void ChangePIN(const std::string& old_pin,
+                 const std::string& new_pin,
+                 Error* error,
+                 const ResultCallback& callback) override;
 
   virtual void GetProperties();
-  virtual void Register(const ResultCallback &callback);
+  virtual void Register(const ResultCallback& callback);
 
  protected:
   virtual void InitProxies();
@@ -117,7 +117,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Updates the |sim_path_| variable and creates a new proxy to the
   // DBUS ModemManager1.Sim interface.
   // TODO(armansito): Put this method in a 3GPP-only subclass.
-  virtual void OnSimPathChanged(const std::string &sim_path);
+  virtual void OnSimPathChanged(const std::string& sim_path);
 
   // Updates the online payment portal information, if any, for the cellular
   // provider.
@@ -128,7 +128,7 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Returns the operator-specific form of |mdn|, which is passed to the online
   // payment portal of a cellular operator.
-  std::string GetMdnForOLP(const MobileOperatorInfo *operator_info) const;
+  std::string GetMdnForOLP(const MobileOperatorInfo* operator_info) const;
 
  private:
   struct ModemModes {
@@ -261,41 +261,41 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Methods used in starting a modem
   void EnableModem(bool deferralbe,
-                   Error *error,
+                   Error* error,
                    const ResultCallback& callback);
   void EnableModemCompleted(bool deferrable,
-                            const ResultCallback &callback,
-                            const Error &error);
+                            const ResultCallback& callback,
+                            const Error& error);
 
   // Methods used in stopping a modem
-  void Stop_DeleteActiveBearer(const ResultCallback &callback);
-  void Stop_DeleteActiveBearerCompleted(const ResultCallback &callback,
-                                        const Error &error);
-  void Stop_Disable(const ResultCallback &callback);
-  void Stop_DisableCompleted(const ResultCallback &callback,
-                             const Error &error);
-  void Stop_PowerDown(const ResultCallback &callback);
-  void Stop_PowerDownCompleted(const ResultCallback &callback,
-                               const Error &error);
+  void Stop_DeleteActiveBearer(const ResultCallback& callback);
+  void Stop_DeleteActiveBearerCompleted(const ResultCallback& callback,
+                                        const Error& error);
+  void Stop_Disable(const ResultCallback& callback);
+  void Stop_DisableCompleted(const ResultCallback& callback,
+                             const Error& error);
+  void Stop_PowerDown(const ResultCallback& callback);
+  void Stop_PowerDownCompleted(const ResultCallback& callback,
+                               const Error& error);
 
   // Updates |active_bearer_| to match the currently active bearer.
   void UpdateActiveBearer();
 
-  Stringmap ParseScanResult(const ScanResult &result);
+  Stringmap ParseScanResult(const ScanResult& result);
 
-  KeyValueStore SimLockStatusToProperty(Error *error);
+  KeyValueStore SimLockStatusToProperty(Error* error);
 
   void SetupApnTryList();
-  void FillConnectPropertyMap(DBusPropertiesMap *properties);
+  void FillConnectPropertyMap(DBusPropertiesMap* properties);
 
   void HelpRegisterConstDerivedKeyValueStore(
-      const std::string &name,
-      KeyValueStore(CellularCapabilityUniversal::*get)(Error *error));
+      const std::string& name,
+      KeyValueStore(CellularCapabilityUniversal::*get)(Error* error));
 
   // Returns true if a connect error should be retried.  This function
   // abstracts modem specific behavior for modems which do a lousy job
   // of returning specific errors on connect failures.
-  bool RetriableConnectError(const Error &error) const;
+  bool RetriableConnectError(const Error& error) const;
 
   // Signal callbacks
   void OnNetworkModeSignal(uint32_t mode);
@@ -305,22 +305,22 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Property Change notification handlers
   void OnModemPropertiesChanged(
-      const DBusPropertiesMap &properties,
-      const std::vector<std::string> &invalidated_properties);
+      const DBusPropertiesMap& properties,
+      const std::vector<std::string>& invalidated_properties);
 
   void OnSignalQualityChanged(uint32_t quality);
 
   void OnSupportedCapabilitesChanged(
-      const std::vector<uint32_t> &supported_capabilities);
+      const std::vector<uint32_t>& supported_capabilities);
   void OnModemCurrentCapabilitiesChanged(uint32_t current_capabilities);
-  void OnMdnChanged(const std::string &mdn);
-  void OnModemRevisionChanged(const std::string &revision);
+  void OnMdnChanged(const std::string& mdn);
+  void OnModemRevisionChanged(const std::string& revision);
   void OnModemStateChanged(Cellular::ModemState state);
   void OnAccessTechnologiesChanged(uint32_t access_technologies);
-  void OnSupportedModesChanged(const std::vector<ModemModes> &supported_modes);
-  void OnCurrentModesChanged(const ModemModes &current_modes);
-  void OnBearersChanged(const RpcIdentifiers &bearers);
-  void OnLockRetriesChanged(const LockRetryData &lock_retries);
+  void OnSupportedModesChanged(const std::vector<ModemModes>& supported_modes);
+  void OnCurrentModesChanged(const ModemModes& current_modes);
+  void OnBearersChanged(const RpcIdentifiers& bearers);
+  void OnLockRetriesChanged(const LockRetryData& lock_retries);
   void OnLockTypeChanged(MMModemLock unlock_required);
   void OnSimLockStatusChanged();
 
@@ -329,11 +329,11 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // 3GPP property change handlers
   virtual void OnModem3GPPPropertiesChanged(
-      const DBusPropertiesMap &properties,
-      const std::vector<std::string> &invalidated_properties);
+      const DBusPropertiesMap& properties,
+      const std::vector<std::string>& invalidated_properties);
   void On3GPPRegistrationChanged(MMModem3gppRegistrationState state,
-                                 const std::string &operator_code,
-                                 const std::string &operator_name);
+                                 const std::string& operator_code,
+                                 const std::string& operator_name);
   void Handle3GPPRegistrationChange(
       MMModem3gppRegistrationState updated_state,
       std::string updated_operator_code,
@@ -344,37 +344,37 @@ class CellularCapabilityUniversal : public CellularCapability {
   // SIM property change handlers
   // TODO(armansito): Put these methods in a 3GPP-only subclass.
   void OnSimPropertiesChanged(
-      const DBusPropertiesMap &props,
-      const std::vector<std::string> &invalidated_properties);
-  void OnSpnChanged(const std::string &spn);
-  void OnSimIdentifierChanged(const std::string &id);
-  void OnOperatorIdChanged(const std::string &operator_id);
-  void OnOperatorNameChanged(const std::string &operator_name);
+      const DBusPropertiesMap& props,
+      const std::vector<std::string>& invalidated_properties);
+  void OnSpnChanged(const std::string& spn);
+  void OnSimIdentifierChanged(const std::string& id);
+  void OnOperatorIdChanged(const std::string& operator_id);
+  void OnOperatorNameChanged(const std::string& operator_name);
 
   // Method callbacks
-  void OnRegisterReply(const ResultCallback &callback,
-                       const Error &error);
-  void OnResetReply(const ResultCallback &callback, const Error &error);
-  void OnScanReply(const ResultStringmapsCallback &callback,
-                   const ScanResults &results,
-                   const Error &error);
-  void OnConnectReply(const ResultCallback &callback,
-                      const DBus::Path &bearer,
-                      const Error &error);
+  void OnRegisterReply(const ResultCallback& callback,
+                       const Error& error);
+  void OnResetReply(const ResultCallback& callback, const Error& error);
+  void OnScanReply(const ResultStringmapsCallback& callback,
+                   const ScanResults& results,
+                   const Error& error);
+  void OnConnectReply(const ResultCallback& callback,
+                      const DBus::Path& bearer,
+                      const Error& error);
 
   // Returns true, if |sim_path| constitutes a valid SIM path. Currently, a
   // path is accepted to be valid, as long as it is not equal to one of ""
   // and "/".
-  bool IsValidSimPath(const std::string &sim_path) const;
+  bool IsValidSimPath(const std::string& sim_path) const;
 
   // Returns the normalized version of |mdn| by keeping only digits in |mdn|
   // and removing other non-digit characters.
-  std::string NormalizeMdn(const std::string &mdn) const;
+  std::string NormalizeMdn(const std::string& mdn) const;
 
   // Post-payment activation handlers.
   void ResetAfterActivation();
   void UpdateServiceActivationState();
-  void OnResetAfterActivationReply(const Error &error);
+  void OnResetAfterActivationReply(const Error& error);
 
   static bool IsRegisteredState(MMModem3gppRegistrationState state);
 
@@ -382,7 +382,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   OutOfCreditsDetector::OOCType GetOutOfCreditsDetectionType() const;
 
   // For unit tests.
-  void set_active_bearer(CellularBearer *bearer) {
+  void set_active_bearer(CellularBearer* bearer) {
     active_bearer_.reset(bearer);  // Takes ownership
   }
 

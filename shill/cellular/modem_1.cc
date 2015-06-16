@@ -14,16 +14,16 @@ using std::vector;
 
 namespace shill {
 
-Modem1::Modem1(const string &owner,
-               const string &service,
-               const string &path,
-               ModemInfo *modem_info)
+Modem1::Modem1(const string& owner,
+               const string& service,
+               const string& path,
+               ModemInfo* modem_info)
     : Modem(owner, service, path, modem_info) {}
 
 Modem1::~Modem1() {}
 
-bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
-                         string *name) const {
+bool Modem1::GetLinkName(const DBusPropertiesMap& modem_props,
+                         string* name) const {
   DBusPropertiesMap::const_iterator props_it;
   string net_port;
 
@@ -34,7 +34,7 @@ bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
   }
 
   vector<DBus::Struct<string, uint32_t>> ports = props_it->second;
-  for (const auto &port_pair : ports) {
+  for (const auto& port_pair : ports) {
     if (port_pair._2 == MM_MODEM_PORT_TYPE_NET) {
       net_port = port_pair._1;
       break;
@@ -50,7 +50,7 @@ bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
   return true;
 }
 
-void Modem1::CreateDeviceMM1(const DBusInterfaceToProperties &properties) {
+void Modem1::CreateDeviceMM1(const DBusInterfaceToProperties& properties) {
   Init();
   uint32_t capabilities = kuint32max;
   DBusInterfaceToProperties::const_iterator it =
@@ -59,7 +59,7 @@ void Modem1::CreateDeviceMM1(const DBusInterfaceToProperties &properties) {
     LOG(ERROR) << "Cellular device with no modem properties";
     return;
   }
-  const DBusPropertiesMap &modem_props = it->second;
+  const DBusPropertiesMap& modem_props = it->second;
   DBusProperties::GetUint32(modem_props,
                             MM_MODEM_PROPERTY_CURRENTCAPABILITIES,
                             &capabilities);

@@ -24,46 +24,46 @@ class PendingActivationStore;
 // Manages modem managers.
 class ModemInfo {
  public:
-  ModemInfo(ControlInterface *control,
-            EventDispatcher *dispatcher,
-            Metrics *metrics,
-            Manager *manager,
-            GLib *glib);
+  ModemInfo(ControlInterface* control,
+            EventDispatcher* dispatcher,
+            Metrics* metrics,
+            Manager* manager,
+            GLib* glib);
   virtual ~ModemInfo();
 
   virtual void Start();
   virtual void Stop();
 
-  virtual void OnDeviceInfoAvailable(const std::string &link_name);
+  virtual void OnDeviceInfoAvailable(const std::string& link_name);
 
-  ControlInterface *control_interface() const { return control_interface_; }
-  EventDispatcher *dispatcher() const { return dispatcher_; }
-  Metrics *metrics() const { return metrics_; }
-  Manager *manager() const { return manager_; }
-  GLib *glib() const { return glib_; }
-  PendingActivationStore *pending_activation_store() const {
+  ControlInterface* control_interface() const { return control_interface_; }
+  EventDispatcher* dispatcher() const { return dispatcher_; }
+  Metrics* metrics() const { return metrics_; }
+  Manager* manager() const { return manager_; }
+  GLib* glib() const { return glib_; }
+  PendingActivationStore* pending_activation_store() const {
     return pending_activation_store_.get();
   }
 
  protected:
   // Write accessors for unit-tests.
-  void set_control_interface(ControlInterface *control) {
+  void set_control_interface(ControlInterface* control) {
     control_interface_ = control;
   }
-  void set_event_dispatcher(EventDispatcher *dispatcher) {
+  void set_event_dispatcher(EventDispatcher* dispatcher) {
     dispatcher_ = dispatcher;
   }
-  void set_metrics(Metrics *metrics) {
+  void set_metrics(Metrics* metrics) {
     metrics_ = metrics;
   }
-  void set_manager(Manager *manager) {
+  void set_manager(Manager* manager) {
     manager_ = manager;
   }
-  void set_glib(GLib *glib) {
+  void set_glib(GLib* glib) {
     glib_ = glib;
   }
   void set_pending_activation_store(
-      PendingActivationStore *pending_activation_store);
+      PendingActivationStore* pending_activation_store);
 
  private:
   friend class ModemInfoTest;
@@ -73,14 +73,14 @@ class ModemInfo {
   typedef ScopedVector<ModemManager> ModemManagers;
 
   // Registers and starts |manager|. Takes ownership of |manager|.
-  void RegisterModemManager(ModemManager *manager);
+  void RegisterModemManager(ModemManager* manager);
   ModemManagers modem_managers_;
 
-  ControlInterface *control_interface_;
-  EventDispatcher *dispatcher_;
-  Metrics *metrics_;
-  Manager *manager_;
-  GLib *glib_;
+  ControlInterface* control_interface_;
+  EventDispatcher* dispatcher_;
+  Metrics* metrics_;
+  Manager* manager_;
+  GLib* glib_;
 
   // Post-payment activation state of the modem.
   std::unique_ptr<PendingActivationStore> pending_activation_store_;

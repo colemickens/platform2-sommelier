@@ -17,14 +17,14 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(CellularService *c) { return c->GetRpcIdentifier(); }
+static string ObjectID(CellularService* c) { return c->GetRpcIdentifier(); }
 }
 
 SubscriptionStateOutOfCreditsDetector::SubscriptionStateOutOfCreditsDetector(
-    EventDispatcher *dispatcher,
-    Manager *manager,
-    Metrics *metrics,
-    CellularService *service)
+    EventDispatcher* dispatcher,
+    Manager* manager,
+    Metrics* metrics,
+    CellularService* service)
     : OutOfCreditsDetector(dispatcher, manager, metrics, service) {
 }
 

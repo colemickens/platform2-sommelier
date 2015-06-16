@@ -17,55 +17,55 @@ namespace shill {
 
 namespace mm1 {
 
-ModemLocationProxy::ModemLocationProxy(DBus::Connection *connection,
-                                       const string &path,
-                                       const string &service)
+ModemLocationProxy::ModemLocationProxy(DBus::Connection* connection,
+                                       const string& path,
+                                       const string& service)
     : proxy_(connection, path, service) {}
 
 ModemLocationProxy::~ModemLocationProxy() {}
 
 void ModemLocationProxy::Setup(uint32_t sources,
                                bool signal_location,
-                               Error *error,
-                               const ResultCallback &callback,
+                               Error* error,
+                               const ResultCallback& callback,
                                int timeout) {
   BeginAsyncDBusCall(__func__, proxy_, &Proxy::SetupAsync, callback,
                      error, &CellularError::FromMM1DBusError, timeout,
                      sources, signal_location);
 }
 
-void ModemLocationProxy::GetLocation(Error *error,
-                                     const DBusEnumValueMapCallback &callback,
+void ModemLocationProxy::GetLocation(Error* error,
+                                     const DBusEnumValueMapCallback& callback,
                                      int timeout) {
   BeginAsyncDBusCall(__func__, proxy_, &Proxy::GetLocationAsync, callback,
                      error, &CellularError::FromMM1DBusError, timeout);
 }
 
-ModemLocationProxy::Proxy::Proxy(DBus::Connection *connection,
-                                 const string &path,
-                                 const string &service)
+ModemLocationProxy::Proxy::Proxy(DBus::Connection* connection,
+                                 const string& path,
+                                 const string& service)
     : DBus::ObjectProxy(*connection, path, service.c_str()) {}
 
 ModemLocationProxy::Proxy::~Proxy() {}
 
 // Method callbacks inherited from
 // org::freedesktop::ModemManager1::Modem:LocationProxy
-void ModemLocationProxy::Proxy::SetupCallback(const ::DBus::Error &dberror,
-                                              void *data) {
+void ModemLocationProxy::Proxy::SetupCallback(const ::DBus::Error& dberror,
+                                              void* data) {
   SLOG(&path(), 2) << __func__;
-  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback*>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
 void ModemLocationProxy::Proxy::GetLocationCallback(
-    const DBusEnumValueMap &location,
-    const ::DBus::Error &dberror,
-    void *data) {
+    const DBusEnumValueMap& location,
+    const ::DBus::Error& dberror,
+    void* data) {
   SLOG(&path(), 2) << __func__;
   unique_ptr<DBusEnumValueMapCallback> callback(
-      reinterpret_cast<DBusEnumValueMapCallback *>(data));
+      reinterpret_cast<DBusEnumValueMapCallback*>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(location, error);

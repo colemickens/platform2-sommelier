@@ -82,44 +82,44 @@ class Cellular : public Device, public RPCTaskDelegate {
   // "/org/chromium/ModemManager/Gobi/0").
   // |service| is the modem mananager service name (e.g.,
   // /org/chromium/ModemManager or /org/freedesktop/ModemManager1).
-  Cellular(ModemInfo *modem_info,
-           const std::string &link_name,
-           const std::string &address,
+  Cellular(ModemInfo* modem_info,
+           const std::string& link_name,
+           const std::string& address,
            int interface_index,
            Type type,
-           const std::string &owner,
-           const std::string &service,
-           const std::string &path,
-           ProxyFactory *proxy_factory);
+           const std::string& owner,
+           const std::string& service,
+           const std::string& path,
+           ProxyFactory* proxy_factory);
   ~Cellular() override;
 
   // Load configuration for the device from |storage|.
-  bool Load(StoreInterface *storage) override;
+  bool Load(StoreInterface* storage) override;
 
   // Save configuration for the device to |storage|.
-  bool Save(StoreInterface *storage) override;
+  bool Save(StoreInterface* storage) override;
 
   // Asynchronously connects the modem to the network. Populates |error| on
   // failure, leaves it unchanged otherwise.
-  virtual void Connect(Error *error);
+  virtual void Connect(Error* error);
 
   // Asynchronously disconnects the modem from the network and populates
   // |error| on failure, leaves it unchanged otherwise.
-  virtual void Disconnect(Error *error, const char *reason);
+  virtual void Disconnect(Error* error, const char* reason);
 
   // Asynchronously activates the modem. Returns an error on failure.
-  void Activate(const std::string &carrier, Error *error,
-                const ResultCallback &callback);
+  void Activate(const std::string& carrier, Error* error,
+                const ResultCallback& callback);
 
   // Performs the necessary steps to bring the service to the activated state,
   // once an online payment has been done.
-  void CompleteActivation(Error *error);
+  void CompleteActivation(Error* error);
 
-  const CellularServiceRefPtr &service() const { return service_; }
-  MobileOperatorInfo *home_provider_info() const {
+  const CellularServiceRefPtr& service() const { return service_; }
+  MobileOperatorInfo* home_provider_info() const {
     return home_provider_info_.get();
   }
-  MobileOperatorInfo *serving_operator_info() const {
+  MobileOperatorInfo* serving_operator_info() const {
     return serving_operator_info_.get();
   }
 
@@ -132,16 +132,16 @@ class Cellular : public Device, public RPCTaskDelegate {
   static std::string GetModemStateString(ModemState modem_state);
 
   std::string CreateDefaultFriendlyServiceName();
-  bool IsDefaultFriendlyServiceName(const std::string &service_name) const;
+  bool IsDefaultFriendlyServiceName(const std::string& service_name) const;
 
   // Update the home provider from the information in |operator_info|. This
   // information may be from the SIM / received OTA.
-  void UpdateHomeProvider(const MobileOperatorInfo *operator_info);
+  void UpdateHomeProvider(const MobileOperatorInfo* operator_info);
   // Update the serving operator using information in |operator_info|.
   // Additionally, if |home_provider_info| is not nullptr, use it to come up
   // with a better name.
-  void UpdateServingOperator(const MobileOperatorInfo *operator_info,
-                             const MobileOperatorInfo *home_provider_info);
+  void UpdateServingOperator(const MobileOperatorInfo* operator_info,
+                             const MobileOperatorInfo* home_provider_info);
 
   State state() const { return state_; }
 
@@ -158,55 +158,55 @@ class Cellular : public Device, public RPCTaskDelegate {
   void HandleNewRegistrationState();
 
   virtual void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties);
+      const std::string& interface,
+      const DBusPropertiesMap& changed_properties,
+      const std::vector<std::string>& invalidated_properties);
 
   // Inherited from Device.
-  void Start(Error *error,
-             const EnabledStateChangedCallback &callback) override;
-  void Stop(Error *error, const EnabledStateChangedCallback &callback) override;
+  void Start(Error* error,
+             const EnabledStateChangedCallback& callback) override;
+  void Stop(Error* error, const EnabledStateChangedCallback& callback) override;
   void LinkEvent(unsigned int flags, unsigned int change) override;
-  void Scan(ScanType /*scan_type*/, Error *error,
-            const std::string &/*reason*/) override;
-  void RegisterOnNetwork(const std::string &network_id,
-                         Error *error,
-                         const ResultCallback &callback) override;
-  void RequirePIN(const std::string &pin, bool require,
-                  Error *error, const ResultCallback &callback) override;
-  void EnterPIN(const std::string &pin,
-                Error *error, const ResultCallback &callback) override;
-  void UnblockPIN(const std::string &unblock_code,
-                  const std::string &pin,
-                  Error *error, const ResultCallback &callback) override;
-  void ChangePIN(const std::string &old_pin,
-                 const std::string &new_pin,
-                 Error *error, const ResultCallback &callback) override;
-  void Reset(Error *error, const ResultCallback &callback) override;
-  void SetCarrier(const std::string &carrier,
-                  Error *error, const ResultCallback &callback) override;
+  void Scan(ScanType /*scan_type*/, Error* error,
+            const std::string& /*reason*/) override;
+  void RegisterOnNetwork(const std::string& network_id,
+                         Error* error,
+                         const ResultCallback& callback) override;
+  void RequirePIN(const std::string& pin, bool require,
+                  Error* error, const ResultCallback& callback) override;
+  void EnterPIN(const std::string& pin,
+                Error* error, const ResultCallback& callback) override;
+  void UnblockPIN(const std::string& unblock_code,
+                  const std::string& pin,
+                  Error* error, const ResultCallback& callback) override;
+  void ChangePIN(const std::string& old_pin,
+                 const std::string& new_pin,
+                 Error* error, const ResultCallback& callback) override;
+  void Reset(Error* error, const ResultCallback& callback) override;
+  void SetCarrier(const std::string& carrier,
+                  Error* error, const ResultCallback& callback) override;
   bool IsIPv6Allowed() const override;
   void DropConnection() override;
   void SetServiceState(Service::ConnectState state) override;
   void SetServiceFailure(Service::ConnectFailure failure_state) override;
   void SetServiceFailureSilent(Service::ConnectFailure failure_state) override;
-  void OnBeforeSuspend(const ResultCallback &callback) override;
+  void OnBeforeSuspend(const ResultCallback& callback) override;
   void OnAfterResume() override;
 
-  void StartModemCallback(const EnabledStateChangedCallback &callback,
-                          const Error &error);
-  void StopModemCallback(const EnabledStateChangedCallback &callback,
-                         const Error &error);
+  void StartModemCallback(const EnabledStateChangedCallback& callback,
+                          const Error& error);
+  void StopModemCallback(const EnabledStateChangedCallback& callback,
+                         const Error& error);
   void OnDisabled();
   void OnEnabled();
   void OnConnecting();
   void OnConnected() override;
-  void OnConnectFailed(const Error &error);
+  void OnConnectFailed(const Error& error);
   void OnDisconnected();
   void OnDisconnectFailed();
-  std::string GetTechnologyFamily(Error *error);
+  std::string GetTechnologyFamily(Error* error);
   void OnModemStateChanged(ModemState new_state);
-  void OnScanReply(const Stringmaps &found_networks, const Error &error);
+  void OnScanReply(const Stringmaps& found_networks, const Error& error);
 
   // accessor to read the allow roaming property
   bool allow_roaming_property() const { return allow_roaming_; }
@@ -214,80 +214,80 @@ class Cellular : public Device, public RPCTaskDelegate {
   bool IsActivating() const;
 
   // Initiate PPP link. Called from capabilities.
-  virtual void StartPPP(const std::string &serial_device);
+  virtual void StartPPP(const std::string& serial_device);
   // Callback for |ppp_task_|.
   virtual void OnPPPDied(pid_t pid, int exit);
   // Implements RPCTaskDelegate, for |ppp_task_|.
-  void GetLogin(std::string *user, std::string *password) override;
-  void Notify(const std::string &reason,
-              const std::map<std::string, std::string> &dict) override;
+  void GetLogin(std::string* user, std::string* password) override;
+  void Notify(const std::string& reason,
+              const std::map<std::string, std::string>& dict) override;
 
   // ///////////////////////////////////////////////////////////////////////////
   // DBus Properties exposed by the Device interface of shill.
   void RegisterProperties();
 
   // getters
-  const std::string &dbus_owner() const { return dbus_owner_; }
-  const std::string &dbus_service() const { return dbus_service_; }
-  const std::string &dbus_path() const { return dbus_path_; }
-  const Stringmap &home_provider() const { return home_provider_; }
-  const std::string &carrier() const { return carrier_; }
+  const std::string& dbus_owner() const { return dbus_owner_; }
+  const std::string& dbus_service() const { return dbus_service_; }
+  const std::string& dbus_path() const { return dbus_path_; }
+  const Stringmap& home_provider() const { return home_provider_; }
+  const std::string& carrier() const { return carrier_; }
   bool scanning_supported() const { return scanning_supported_; }
-  const std::string &esn() const { return esn_; }
-  const std::string &firmware_revision() const { return firmware_revision_; }
-  const std::string &hardware_revision() const { return hardware_revision_; }
-  const std::string &imei() const { return imei_; }
-  const std::string &imsi() const { return imsi_; }
-  const std::string &mdn() const { return mdn_; }
-  const std::string &meid() const { return meid_; }
-  const std::string &min() const { return min_; }
-  const std::string &manufacturer() const { return manufacturer_; }
-  const std::string &model_id() const { return model_id_; }
-  const std::string &mm_plugin() const { return mm_plugin_; }
+  const std::string& esn() const { return esn_; }
+  const std::string& firmware_revision() const { return firmware_revision_; }
+  const std::string& hardware_revision() const { return hardware_revision_; }
+  const std::string& imei() const { return imei_; }
+  const std::string& imsi() const { return imsi_; }
+  const std::string& mdn() const { return mdn_; }
+  const std::string& meid() const { return meid_; }
+  const std::string& min() const { return min_; }
+  const std::string& manufacturer() const { return manufacturer_; }
+  const std::string& model_id() const { return model_id_; }
+  const std::string& mm_plugin() const { return mm_plugin_; }
   bool scanning() const { return scanning_; }
 
-  const std::string &selected_network() const { return selected_network_; }
-  const Stringmaps &found_networks() const { return found_networks_; }
+  const std::string& selected_network() const { return selected_network_; }
+  const Stringmaps& found_networks() const { return found_networks_; }
   bool provider_requires_roaming() const { return provider_requires_roaming_; }
   bool sim_present() const { return sim_present_; }
-  const Stringmaps &apn_list() const { return apn_list_; }
-  const std::string &sim_identifier() const { return sim_identifier_; }
+  const Stringmaps& apn_list() const { return apn_list_; }
+  const std::string& sim_identifier() const { return sim_identifier_; }
 
-  const Strings &supported_carriers() const { return supported_carriers_; }
+  const Strings& supported_carriers() const { return supported_carriers_; }
   uint16_t prl_version() const { return prl_version_; }
 
   // setters
-  void set_home_provider(const Stringmap &home_provider);
-  void set_carrier(const std::string &carrier);
+  void set_home_provider(const Stringmap& home_provider);
+  void set_carrier(const std::string& carrier);
   void set_scanning_supported(bool scanning_supported);
-  void set_esn(const std::string &esn);
-  void set_firmware_revision(const std::string &firmware_revision);
-  void set_hardware_revision(const std::string &hardware_revision);
-  void set_imei(const std::string &imei);
-  void set_imsi(const std::string &imsi);
-  void set_mdn(const std::string &mdn);
-  void set_meid(const std::string &meid);
-  void set_min(const std::string &min);
-  void set_manufacturer(const std::string &manufacturer);
-  void set_model_id(const std::string &model_id);
-  void set_mm_plugin(const std::string &mm_plugin);
+  void set_esn(const std::string& esn);
+  void set_firmware_revision(const std::string& firmware_revision);
+  void set_hardware_revision(const std::string& hardware_revision);
+  void set_imei(const std::string& imei);
+  void set_imsi(const std::string& imsi);
+  void set_mdn(const std::string& mdn);
+  void set_meid(const std::string& meid);
+  void set_min(const std::string& min);
+  void set_manufacturer(const std::string& manufacturer);
+  void set_model_id(const std::string& model_id);
+  void set_mm_plugin(const std::string& mm_plugin);
   void set_scanning(bool scanning);
 
-  void set_selected_network(const std::string &selected_network);
+  void set_selected_network(const std::string& selected_network);
   void clear_found_networks();
-  void set_found_networks(const Stringmaps &found_networks);
+  void set_found_networks(const Stringmaps& found_networks);
   void set_provider_requires_roaming(bool provider_requires_roaming);
   void set_sim_present(bool sim_present);
-  void set_apn_list(const Stringmaps &apn_list);
-  void set_sim_identifier(const std::string &sim_identifier);
+  void set_apn_list(const Stringmaps& apn_list);
+  void set_sim_identifier(const std::string& sim_identifier);
 
-  void set_supported_carriers(const Strings &supported_carriers);
+  void set_supported_carriers(const Strings& supported_carriers);
   void set_prl_version(uint16_t prl_version);
 
   // Takes ownership.
-  void set_home_provider_info(MobileOperatorInfo *home_provider_info);
+  void set_home_provider_info(MobileOperatorInfo* home_provider_info);
   // Takes ownership.
-  void set_serving_operator_info(MobileOperatorInfo *serving_operator_info);
+  void set_serving_operator_info(MobileOperatorInfo* serving_operator_info);
 
  private:
   friend class ActivePassiveOutOfCreditsDetectorTest;
@@ -388,10 +388,10 @@ class Cellular : public Device, public RPCTaskDelegate {
    public:
     // |cellular| must have lifespan longer than this object. In practice this
     // is enforced because |cellular| owns this object.
-    explicit MobileOperatorInfoObserver(Cellular *cellular);
+    explicit MobileOperatorInfoObserver(Cellular* cellular);
     ~MobileOperatorInfoObserver() override;
 
-    void set_capability(CellularCapability *capability) {
+    void set_capability(CellularCapability* capability) {
       capability_ = capability;
     }
 
@@ -399,9 +399,9 @@ class Cellular : public Device, public RPCTaskDelegate {
     void OnOperatorChanged() override;
 
    private:
-    Cellular *const cellular_;
+    Cellular* const cellular_;
     // Owned by |Cellular|.
-    CellularCapability *capability_;
+    CellularCapability* capability_;
 
     DISALLOW_COPY_AND_ASSIGN(MobileOperatorInfoObserver);
   };
@@ -435,26 +435,26 @@ class Cellular : public Device, public RPCTaskDelegate {
   // Writes to the property will be handled by invoking |set|.
   // Clearing the property will be handled by PropertyStore.
   void HelpRegisterDerivedBool(
-      const std::string &name,
-      bool(Cellular::*get)(Error *error),
-      bool(Cellular::*set)(const bool &value, Error *error));
+      const std::string& name,
+      bool(Cellular::*get)(Error* error),
+      bool(Cellular::*set)(const bool& value, Error* error));
   void HelpRegisterConstDerivedString(
-      const std::string &name,
-      std::string(Cellular::*get)(Error *error));
+      const std::string& name,
+      std::string(Cellular::*get)(Error* error));
 
-  void OnConnectReply(const Error &error);
-  void OnDisconnectReply(const Error &error);
+  void OnConnectReply(const Error& error);
+  void OnDisconnectReply(const Error& error);
 
   // DBUS accessors to read/modify the allow roaming property
-  bool GetAllowRoaming(Error */*error*/) { return allow_roaming_; }
-  bool SetAllowRoaming(const bool &value, Error *error);
+  bool GetAllowRoaming(Error* /*error*/) { return allow_roaming_; }
+  bool SetAllowRoaming(const bool& value, Error* error);
 
   // When shill terminates or ChromeOS suspends, this function is called to
   // disconnect from the cellular network.
   void StartTermination();
 
   // This method is invoked upon the completion of StartTermination().
-  void OnTerminationCompleted(const Error &error);
+  void OnTerminationCompleted(const Error& error);
 
   // This function does the final cleanup once a disconnect request terminates.
   // Returns true, if the device state is successfully changed.
@@ -462,7 +462,7 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   // Executed after the asynchronous CellularCapability::StartModem
   // call from OnAfterResume completes.
-  static void LogRestartModemResult(const Error &error);
+  static void LogRestartModemResult(const Error& error);
 
   // Terminate the pppd process associated with this Device, and remove the
   // association between the PPPDevice and our CellularService. If this
@@ -472,7 +472,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   // Handlers for PPP events. Dispatched from Notify().
   void OnPPPAuthenticated();
   void OnPPPAuthenticating();
-  void OnPPPConnected(const std::map<std::string, std::string> &params);
+  void OnPPPConnected(const std::map<std::string, std::string>& params);
   void OnPPPDisconnected();
 
   void UpdateScanning();
@@ -535,10 +535,10 @@ class Cellular : public Device, public RPCTaskDelegate {
   // End of DBus properties.
   // ///////////////////////////////////////////////////////////////////////////
 
-  ModemInfo *modem_info_;
+  ModemInfo* modem_info_;
   const Type type_;
-  ProxyFactory *proxy_factory_;
-  PPPDeviceFactory *ppp_device_factory_;
+  ProxyFactory* proxy_factory_;
+  PPPDeviceFactory* ppp_device_factory_;
 
   CellularServiceRefPtr service_;
 

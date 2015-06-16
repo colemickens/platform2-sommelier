@@ -18,48 +18,48 @@ class DBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
   // Constructs a org.freedesktop.DBus.ObjectManager DBus object proxy
   // at |path| owned by |service|.
 
-  DBusObjectManagerProxy(DBus::Connection *connection,
-                         const std::string &path,
-                         const std::string &service);
+  DBusObjectManagerProxy(DBus::Connection* connection,
+                         const std::string& path,
+                         const std::string& service);
   ~DBusObjectManagerProxy() override;
 
   // Inherited methods from DBusObjectManagerProxyInterface.
-  void GetManagedObjects(Error *error,
-                         const ManagedObjectsCallback &callback,
+  void GetManagedObjects(Error* error,
+                         const ManagedObjectsCallback& callback,
                          int timeout) override;
 
   void set_interfaces_added_callback(
-      const InterfacesAddedSignalCallback &callback) override;
+      const InterfacesAddedSignalCallback& callback) override;
   void set_interfaces_removed_callback(
-      const InterfacesRemovedSignalCallback &callback) override;
+      const InterfacesRemovedSignalCallback& callback) override;
 
  private:
   class Proxy : public org::freedesktop::DBus::ObjectManager_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
-          const std::string &path,
-          const std::string &service);
+    Proxy(DBus::Connection* connection,
+          const std::string& path,
+          const std::string& service);
     ~Proxy() override;
 
     virtual void set_interfaces_added_callback(
-        const InterfacesAddedSignalCallback &callback);
+        const InterfacesAddedSignalCallback& callback);
     virtual void set_interfaces_removed_callback(
-        const InterfacesRemovedSignalCallback &callback);
+        const InterfacesRemovedSignalCallback& callback);
 
    private:
     // Signal callbacks
     void InterfacesAdded(
-        const ::DBus::Path &object_path,
-        const DBusInterfaceToProperties &interfaces_and_properties) override;
-    void InterfacesRemoved(const ::DBus::Path &object_path,
-                           const std::vector<std::string> &interfaces) override;
+        const ::DBus::Path& object_path,
+        const DBusInterfaceToProperties& interfaces_and_properties) override;
+    void InterfacesRemoved(const ::DBus::Path& object_path,
+                           const std::vector<std::string>& interfaces) override;
 
     // Method callbacks
     void GetManagedObjectsCallback(
-        const DBusObjectsWithProperties &objects_with_properties,
-        const DBus::Error &error,
-        void *call_handler) override;
+        const DBusObjectsWithProperties& objects_with_properties,
+        const DBus::Error& error,
+        void* call_handler) override;
 
     InterfacesAddedSignalCallback interfaces_added_callback_;
     InterfacesRemovedSignalCallback interfaces_removed_callback_;

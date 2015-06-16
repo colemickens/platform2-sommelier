@@ -20,35 +20,35 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
  public:
   // Constructs an org.freedesktop.ModemManager1.Modem.Modem3gpp DBus
   // object proxy at |path| owned by |service|.
-  ModemModem3gppProxy(DBus::Connection *connection,
-                      const std::string &path,
-                      const std::string &service);
+  ModemModem3gppProxy(DBus::Connection* connection,
+                      const std::string& path,
+                      const std::string& service);
   ~ModemModem3gppProxy() override;
   // Inherited methods from ModemModem3gppProxyInterface.
-  void Register(const std::string &operator_id,
-                Error *error,
-                const ResultCallback &callback,
+  void Register(const std::string& operator_id,
+                Error* error,
+                const ResultCallback& callback,
                 int timeout) override;
-  void Scan(Error *error,
-            const DBusPropertyMapsCallback &callback,
+  void Scan(Error* error,
+            const DBusPropertyMapsCallback& callback,
             int timeout) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::Modem3gpp_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
-          const std::string &path,
-          const std::string &service);
+    Proxy(DBus::Connection* connection,
+          const std::string& path,
+          const std::string& service);
     ~Proxy() override;
 
    private:
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::Modem::Modem3gppProxy
-    void RegisterCallback(const ::DBus::Error& dberror, void *data) override;
+    void RegisterCallback(const ::DBus::Error& dberror, void* data) override;
     void ScanCallback(
-        const std::vector<DBusPropertiesMap> &results,
-        const ::DBus::Error& dberror, void *data) override;
+        const std::vector<DBusPropertiesMap>& results,
+        const ::DBus::Error& dberror, void* data) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

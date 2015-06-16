@@ -68,21 +68,21 @@ class MobileOperatorInfo {
   // |Init| must be called on the constructed object before it is used.
   // This object does not take ownership of dispatcher, and |dispatcher| is
   // expected to outlive this object.
-  MobileOperatorInfo(EventDispatcher *dispatcher,
-                     const std::string &info_owner);
+  MobileOperatorInfo(EventDispatcher* dispatcher,
+                     const std::string& info_owner);
   virtual ~MobileOperatorInfo();
 
   // These functions can be called before Init to read non default database
   // file(s).
   void ClearDatabasePaths();
-  void AddDatabasePath(const base::FilePath &absolute_path);
+  void AddDatabasePath(const base::FilePath& absolute_path);
 
-  std::string GetLogPrefix(const char *func) const;
+  std::string GetLogPrefix(const char* func) const;
   bool Init();
 
   // Add/remove observers to subscribe to notifications.
-  void AddObserver(MobileOperatorInfo::Observer *observer);
-  void RemoveObserver(MobileOperatorInfo::Observer *observer);
+  void AddObserver(MobileOperatorInfo::Observer* observer);
+  void RemoveObserver(MobileOperatorInfo::Observer* observer);
 
   // ///////////////////////////////////////////////////////////////////////////
   // Objects that encapsulate related information about the mobile operator.
@@ -146,17 +146,17 @@ class MobileOperatorInfo {
   // The unique identifier of this carrier. This is primarily used to
   // identify the user profile in store for each carrier. This identifier is
   // access technology agnostic and should be the same across 3GPP and CDMA.
-  virtual const std::string &uuid() const;
+  virtual const std::string& uuid() const;
 
-  virtual const std::string &operator_name() const;
-  virtual const std::string &country() const;
-  virtual const std::string &mccmnc() const;
-  const std::string &sid() const;
-  const std::string &nid() const;
+  virtual const std::string& operator_name() const;
+  virtual const std::string& country() const;
+  virtual const std::string& mccmnc() const;
+  const std::string& sid() const;
+  const std::string& nid() const;
 
   // A given MVNO can be associated with multiple mcc/mnc pairs. A list of all
   // associated mcc/mnc pairs concatenated together.
-  const std::vector<std::string> &mccmnc_list() const;
+  const std::vector<std::string>& mccmnc_list() const;
   // A given MVNO can be associated with multiple sid(s). A list of all
   // associated sid(s).
   // There are likely many SID values associated with a CDMA carrier as they
@@ -164,18 +164,18 @@ class MobileOperatorInfo {
   // thing to keep in mind is that, since an SID contains fine grained
   // information on where a modem is physically located, it should be regarded
   // as user-sensitive information.
-  const std::vector<std::string> &sid_list() const;
+  const std::vector<std::string>& sid_list() const;
   // All localized names associated with this carrier entry.
-  const std::vector<LocalizedName> &operator_name_list() const;
+  const std::vector<LocalizedName>& operator_name_list() const;
   // All access point names associated with this carrier entry.
-  const ScopedVector<MobileAPN> &apn_list() const;
+  const ScopedVector<MobileAPN>& apn_list() const;
   // All Online Payment Portal URLs associated with this carrier entry. There
   // are usually multiple OLPs based on access technology and it is up to the
   // application to use the appropriate one.
-  virtual const std::vector<OnlinePortal> &olp_list() const;
+  virtual const std::vector<OnlinePortal>& olp_list() const;
 
   // The number to dial for automatic activation.
-  virtual const std::string &activation_code() const;
+  virtual const std::string& activation_code() const;
   // Some carriers are only available while roaming. This is mainly used by
   // Chrome.
   bool requires_roaming() const;
@@ -193,20 +193,20 @@ class MobileOperatorInfo {
   // Both MCCMNC and SID correspond to operator code in the different
   // technologies. They are never to be used together. If you want to use SID
   // after MCCMNC (or vice-versa), ensure a call to |Reset| to clear state.
-  virtual void UpdateMCCMNC(const std::string &mccmnc);
-  virtual void UpdateSID(const std::string &sid);
+  virtual void UpdateMCCMNC(const std::string& mccmnc);
+  virtual void UpdateSID(const std::string& sid);
 
-  virtual void UpdateIMSI(const std::string &imsi);
-  void UpdateICCID(const std::string &iccid);
-  virtual void UpdateNID(const std::string &nid);
-  virtual void UpdateOperatorName(const std::string &operator_name);
-  void UpdateOnlinePortal(const std::string &url,
-                          const std::string &method,
-                          const std::string &post_data);
+  virtual void UpdateIMSI(const std::string& imsi);
+  void UpdateICCID(const std::string& iccid);
+  virtual void UpdateNID(const std::string& nid);
+  virtual void UpdateOperatorName(const std::string& operator_name);
+  void UpdateOnlinePortal(const std::string& url,
+                          const std::string& method,
+                          const std::string& post_data);
 
   // ///////////////////////////////////////////////////////////////////////////
   // Expose implementation for test purposes only.
-  MobileOperatorInfoImpl * impl() { return impl_.get(); }
+  MobileOperatorInfoImpl* impl() { return impl_.get(); }
 
  private:
   std::unique_ptr<MobileOperatorInfoImpl> impl_;

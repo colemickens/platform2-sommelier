@@ -25,17 +25,17 @@ typedef std::vector<GSMScanResult> GSMScanResults;
 typedef base::Callback<void(uint32_t)> SignalQualitySignalCallback;
 typedef base::Callback<void(
     uint32_t,
-    const std::string &,
-    const std::string &)> RegistrationInfoSignalCallback;
+    const std::string&,
+    const std::string&)> RegistrationInfoSignalCallback;
 typedef base::Callback<void(uint32_t)> NetworkModeSignalCallback;
 
-typedef base::Callback<void(uint32_t, const Error &)> SignalQualityCallback;
+typedef base::Callback<void(uint32_t, const Error&)> SignalQualityCallback;
 typedef base::Callback<void(uint32_t,
-                            const std::string &,
-                            const std::string &,
-                            const Error &)> RegistrationInfoCallback;
-typedef base::Callback<void(const GSMScanResults &,
-                            const Error &)> ScanResultsCallback;
+                            const std::string&,
+                            const std::string&,
+                            const Error&)> RegistrationInfoCallback;
+typedef base::Callback<void(const GSMScanResults&,
+                            const Error&)> ScanResultsCallback;
 
 // These are the methods that a ModemManager.Modem.Gsm.Network proxy must
 // support. The interface is provided so that it can be mocked in tests.
@@ -45,27 +45,27 @@ class ModemGSMNetworkProxyInterface {
  public:
   virtual ~ModemGSMNetworkProxyInterface() {}
 
-  virtual void GetRegistrationInfo(Error *error,
-                                   const RegistrationInfoCallback &callback,
+  virtual void GetRegistrationInfo(Error* error,
+                                   const RegistrationInfoCallback& callback,
                                    int timeout) = 0;
-  virtual void GetSignalQuality(Error *error,
-                                const SignalQualityCallback &callback,
+  virtual void GetSignalQuality(Error* error,
+                                const SignalQualityCallback& callback,
                                 int timeout) = 0;
-  virtual void Register(const std::string &network_id,
-                        Error *error, const ResultCallback &callback,
+  virtual void Register(const std::string& network_id,
+                        Error* error, const ResultCallback& callback,
                         int timeout) = 0;
-  virtual void Scan(Error *error, const ScanResultsCallback &callback,
+  virtual void Scan(Error* error, const ScanResultsCallback& callback,
                     int timeout) = 0;
 
   // Properties.
   virtual uint32_t AccessTechnology() = 0;
   // Signal callbacks
   virtual void set_signal_quality_callback(
-      const SignalQualitySignalCallback &callback) = 0;
+      const SignalQualitySignalCallback& callback) = 0;
   virtual void set_network_mode_callback(
-      const NetworkModeSignalCallback &callback) = 0;
+      const NetworkModeSignalCallback& callback) = 0;
   virtual void set_registration_info_callback(
-      const RegistrationInfoSignalCallback &callback) = 0;
+      const RegistrationInfoSignalCallback& callback) = 0;
 };
 
 }  // namespace shill

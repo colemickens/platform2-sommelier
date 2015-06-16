@@ -17,11 +17,11 @@ using std::string;
 
 namespace shill {
 
-ModemInfo::ModemInfo(ControlInterface *control_interface,
-                     EventDispatcher *dispatcher,
-                     Metrics *metrics,
-                     Manager *manager,
-                     GLib *glib)
+ModemInfo::ModemInfo(ControlInterface* control_interface,
+                     EventDispatcher* dispatcher,
+                     Metrics* metrics,
+                     Manager* manager,
+                     GLib* glib)
     : control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
@@ -51,18 +51,18 @@ void ModemInfo::Stop() {
   modem_managers_.clear();
 }
 
-void ModemInfo::OnDeviceInfoAvailable(const string &link_name) {
-  for (const auto &manager : modem_managers_) {
+void ModemInfo::OnDeviceInfoAvailable(const string& link_name) {
+  for (const auto& manager : modem_managers_) {
     manager->OnDeviceInfoAvailable(link_name);
   }
 }
 
 void ModemInfo::set_pending_activation_store(
-    PendingActivationStore *pending_activation_store) {
+    PendingActivationStore* pending_activation_store) {
   pending_activation_store_.reset(pending_activation_store);
 }
 
-void ModemInfo::RegisterModemManager(ModemManager *manager) {
+void ModemInfo::RegisterModemManager(ModemManager* manager) {
   modem_managers_.push_back(manager);  // Passes ownership.
   manager->Start();
 }

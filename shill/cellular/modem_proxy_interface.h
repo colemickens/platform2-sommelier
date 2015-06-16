@@ -21,8 +21,8 @@ typedef DBus::Struct<std::string, std::string, std::string> ModemHardwareInfo;
 
 typedef base::Callback<void(uint32_t, uint32_t, uint32_t)>
     ModemStateChangedSignalCallback;
-typedef base::Callback<void(const ModemHardwareInfo &,
-                            const Error &)> ModemInfoCallback;
+typedef base::Callback<void(const ModemHardwareInfo&,
+                            const Error&)> ModemInfoCallback;
 
 // These are the methods that a ModemManager.Modem proxy must support. The
 // interface is provided so that it can be mocked in tests. All calls are
@@ -31,15 +31,15 @@ class ModemProxyInterface {
  public:
   virtual ~ModemProxyInterface() {}
 
-  virtual void Enable(bool enable, Error *error,
-                      const ResultCallback &callback, int timeout) = 0;
-  virtual void Disconnect(Error *error, const ResultCallback &callback,
+  virtual void Enable(bool enable, Error* error,
+                      const ResultCallback& callback, int timeout) = 0;
+  virtual void Disconnect(Error* error, const ResultCallback& callback,
                           int timeout) = 0;
-  virtual void GetModemInfo(Error *error, const ModemInfoCallback &callback,
+  virtual void GetModemInfo(Error* error, const ModemInfoCallback& callback,
                             int timeout) = 0;
 
   virtual void set_state_changed_callback(
-      const ModemStateChangedSignalCallback &callback) = 0;
+      const ModemStateChangedSignalCallback& callback) = 0;
 };
 
 }  // namespace shill

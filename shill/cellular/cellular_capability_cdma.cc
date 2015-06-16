@@ -25,7 +25,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(CellularCapabilityCDMA *c) {
+static string ObjectID(CellularCapabilityCDMA* c) {
   return c->cellular()->GetRpcIdentifier();
 }
 }
@@ -33,9 +33,9 @@ static string ObjectID(CellularCapabilityCDMA *c) {
 // static
 const char CellularCapabilityCDMA::kPhoneNumber[] = "#777";
 
-CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular,
-                                               ProxyFactory *proxy_factory,
-                                               ModemInfo *modem_info)
+CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular* cellular,
+                                               ProxyFactory* proxy_factory,
+                                               ModemInfo* modem_info)
     : CellularCapabilityClassic(cellular, proxy_factory, modem_info),
       weak_ptr_factory_(this),
       activation_starting_(false),
@@ -66,12 +66,12 @@ string CellularCapabilityCDMA::GetTypeString() const {
   return kTechnologyFamilyCdma;
 }
 
-void CellularCapabilityCDMA::StartModem(Error *error,
-                                        const ResultCallback &callback) {
+void CellularCapabilityCDMA::StartModem(Error* error,
+                                        const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
   InitProxies();
 
-  CellularTaskList *tasks = new CellularTaskList();
+  CellularTaskList* tasks = new CellularTaskList();
   ResultCallback cb =
       Bind(&CellularCapabilityCDMA::StepCompletedCallback,
            weak_ptr_factory_.GetWeakPtr(), callback, false, tasks);
@@ -112,7 +112,7 @@ void CellularCapabilityCDMA::OnServiceCreated() {
   HandleNewActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
 }
 
-void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap &properties) {
+void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap& properties) {
   string carrier;
   DBusProperties::GetUint32(
       properties, "activation_state", &activation_state_);
@@ -132,7 +132,7 @@ void CellularCapabilityCDMA::UpdateServiceOLP() {
     return;
   }
 
-  const vector<MobileOperatorInfo::OnlinePortal> &olp_list =
+  const vector<MobileOperatorInfo::OnlinePortal>& olp_list =
       cellular()->home_provider_info()->olp_list();
   if (olp_list.empty()) {
     return;
@@ -147,14 +147,14 @@ void CellularCapabilityCDMA::UpdateServiceOLP() {
 }
 
 void CellularCapabilityCDMA::SetupConnectProperties(
-    DBusPropertiesMap *properties) {
+    DBusPropertiesMap* properties) {
   (*properties)[kConnectPropertyPhoneNumber].writer().append_string(
       kPhoneNumber);
 }
 
-void CellularCapabilityCDMA::Activate(const string &carrier,
-                                      Error *error,
-                                      const ResultCallback &callback) {
+void CellularCapabilityCDMA::Activate(const string& carrier,
+                                      Error* error,
+                                      const ResultCallback& callback) {
   SLOG(this, 2) << __func__ << "(" << carrier << ")";
   // We're going to trigger something which leads to an activation.
   activation_starting_ = true;
@@ -250,7 +250,7 @@ string CellularCapabilityCDMA::GetActivationErrorString(uint32_t error) {
   }
 }
 
-void CellularCapabilityCDMA::GetMEID(const ResultCallback &callback) {
+void CellularCapabilityCDMA::GetMEID(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
   if (cellular()->meid().empty()) {
     // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
@@ -260,7 +260,7 @@ void CellularCapabilityCDMA::GetMEID(const ResultCallback &callback) {
   callback.Run(Error());
 }
 
-void CellularCapabilityCDMA::GetProperties(const ResultCallback &callback) {
+void CellularCapabilityCDMA::GetProperties(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
   // No properties.
   callback.Run(Error());
@@ -327,7 +327,7 @@ void CellularCapabilityCDMA::GetRegistrationState() {
 }
 
 void CellularCapabilityCDMA::OnActivateReply(
-    const ResultCallback &callback, uint32_t status, const Error &error) {
+    const ResultCallback& callback, uint32_t status, const Error& error) {
   activation_starting_ = false;
   if (error.IsSuccess()) {
     if (status == MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR) {
@@ -344,14 +344,14 @@ void CellularCapabilityCDMA::OnActivateReply(
 }
 
 void CellularCapabilityCDMA::OnGetRegistrationStateReply(
-    uint32_t state_1x, uint32_t state_evdo, const Error &error) {
+    uint32_t state_1x, uint32_t state_evdo, const Error& error) {
   SLOG(this, 2) << __func__;
   if (error.IsSuccess())
     OnRegistrationStateChangedSignal(state_1x, state_evdo);
 }
 
 void CellularCapabilityCDMA::OnGetSignalQualityReply(uint32_t quality,
-                                                     const Error &error) {
+                                                     const Error& error) {
   if (error.IsSuccess())
     OnSignalQualitySignal(quality);
 }
@@ -359,7 +359,7 @@ void CellularCapabilityCDMA::OnGetSignalQualityReply(uint32_t quality,
 void CellularCapabilityCDMA::OnActivationStateChangedSignal(
     uint32_t activation_state,
     uint32_t activation_error,
-    const DBusPropertiesMap &status_changes) {
+    const DBusPropertiesMap& status_changes) {
   SLOG(this, 2) << __func__;
   string prop_value;
 
@@ -386,7 +386,7 @@ void CellularCapabilityCDMA::OnSignalQualitySignal(uint32_t strength) {
 }
 
 void CellularCapabilityCDMA::UpdateOnlinePortal(
-    const DBusPropertiesMap &properties) {
+    const DBusPropertiesMap& properties) {
   // Treat the three updates atomically: Only update the serving operator when
   // all three are known:
   string olp_url, olp_method, olp_post_data;

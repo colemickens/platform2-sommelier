@@ -23,11 +23,11 @@ class BearerProxyInterface {
  public:
   virtual ~BearerProxyInterface() {}
 
-  virtual void Connect(Error *error,
-                       const ResultCallback &callback,
+  virtual void Connect(Error* error,
+                       const ResultCallback& callback,
                        int timeout) = 0;
-  virtual void Disconnect(Error *error,
-                          const ResultCallback &callback,
+  virtual void Disconnect(Error* error,
+                          const ResultCallback& callback,
                           int timeout) = 0;
 };
 

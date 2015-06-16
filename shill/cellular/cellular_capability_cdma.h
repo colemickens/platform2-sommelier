@@ -24,19 +24,19 @@ class ModemInfo;
 
 class CellularCapabilityCDMA : public CellularCapabilityClassic {
  public:
-  CellularCapabilityCDMA(Cellular *cellular,
-                         ProxyFactory *proxy_factory,
-                         ModemInfo *modem_info);
+  CellularCapabilityCDMA(Cellular* cellular,
+                         ProxyFactory* proxy_factory,
+                         ModemInfo* modem_info);
   ~CellularCapabilityCDMA() override;
 
   // Inherited from CellularCapability.
   std::string GetTypeString() const override;
-  void StartModem(Error *error,
-                  const ResultCallback &callback) override;
+  void StartModem(Error* error,
+                  const ResultCallback& callback) override;
   bool AreProxiesInitialized() const override;
-  void Activate(const std::string &carrier,
-                Error *error,
-                const ResultCallback &callback) override;
+  void Activate(const std::string& carrier,
+                Error* error,
+                const ResultCallback& callback) override;
   bool IsActivating() const override;
   bool IsRegistered() const override;
   void SetUnregistered(bool searching) override;
@@ -45,14 +45,14 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   std::string GetRoamingStateString() const override;
   bool AllowRoaming() override;
   void GetSignalQuality() override;
-  void SetupConnectProperties(DBusPropertiesMap *properties) override;
+  void SetupConnectProperties(DBusPropertiesMap* properties) override;
   void DisconnectCleanup() override;
 
   // Inherited from CellularCapabilityClassic.
   void GetRegistrationState() override;
-  void GetProperties(const ResultCallback &callback) override;
+  void GetProperties(const ResultCallback& callback) override;
 
-  virtual void GetMEID(const ResultCallback &callback);
+  virtual void GetMEID(const ResultCallback& callback);
 
   uint32_t activation_state() const { return activation_state_; }
   uint32_t registration_state_evdo() const { return registration_state_evdo_; }
@@ -62,7 +62,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   // Inherited from CellularCapabilityClassic.
   void InitProxies() override;
   void ReleaseProxies() override;
-  void UpdateStatus(const DBusPropertiesMap &properties) override;
+  void UpdateStatus(const DBusPropertiesMap& properties) override;
 
  private:
   friend class CellularCapabilityCDMATest;
@@ -85,24 +85,24 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   void OnActivationStateChangedSignal(
       uint32_t activation_state,
       uint32_t activation_error,
-      const DBusPropertiesMap &status_changes);
+      const DBusPropertiesMap& status_changes);
   void OnRegistrationStateChangedSignal(
       uint32_t state_1x, uint32_t state_evdo);
   void OnSignalQualitySignal(uint32_t strength);
 
   // Method reply callbacks from the Modem.CDMA interface
-  void OnActivateReply(const ResultCallback &callback,
-                       uint32_t status, const Error &error);
+  void OnActivateReply(const ResultCallback& callback,
+                       uint32_t status, const Error& error);
 
   void OnGetRegistrationStateReply(uint32_t state_1x, uint32_t state_evdo,
-                                   const Error &error);
-  void OnGetSignalQualityReply(uint32_t strength, const Error &error);
+                                   const Error& error);
+  void OnGetSignalQualityReply(uint32_t strength, const Error& error);
 
   std::unique_ptr<ModemCDMAProxyInterface> proxy_;
   base::WeakPtrFactory<CellularCapabilityCDMA> weak_ptr_factory_;
 
   // Helper method to extract the online portal information from properties.
-  void UpdateOnlinePortal(const DBusPropertiesMap &properties);
+  void UpdateOnlinePortal(const DBusPropertiesMap& properties);
   void UpdateServiceOLP() override;
 
   bool activation_starting_;

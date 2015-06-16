@@ -20,15 +20,15 @@ class Error;
 typedef std::map<std::string, DBusPropertiesMap> DBusInterfaceToProperties;
 typedef std::map<::DBus::Path, DBusInterfaceToProperties>
     DBusObjectsWithProperties;
-typedef base::Callback<void(const DBusObjectsWithProperties &, const Error &)>
+typedef base::Callback<void(const DBusObjectsWithProperties&, const Error&)>
     ManagedObjectsCallback;
-typedef base::Callback<void(const DBusInterfaceToProperties &, const Error &)>
+typedef base::Callback<void(const DBusInterfaceToProperties&, const Error&)>
     InterfaceAndPropertiesCallback;
-typedef base::Callback<void(const DBus::Path &,
-                            const DBusInterfaceToProperties &)>
+typedef base::Callback<void(const DBus::Path&,
+                            const DBusInterfaceToProperties&)>
     InterfacesAddedSignalCallback;
-typedef base::Callback<void(const DBus::Path &,
-                            const std::vector<std::string> &)>
+typedef base::Callback<void(const DBus::Path&,
+                            const std::vector<std::string>&)>
     InterfacesRemovedSignalCallback;
 
 // These are the methods that a org.freedesktop.DBus.ObjectManager
@@ -38,13 +38,13 @@ typedef base::Callback<void(const DBus::Path &,
 class DBusObjectManagerProxyInterface {
  public:
   virtual ~DBusObjectManagerProxyInterface() {}
-  virtual void GetManagedObjects(Error *error,
-                                 const ManagedObjectsCallback &callback,
+  virtual void GetManagedObjects(Error* error,
+                                 const ManagedObjectsCallback& callback,
                                  int timeout) = 0;
   virtual void set_interfaces_added_callback(
-      const InterfacesAddedSignalCallback &callback) = 0;
+      const InterfacesAddedSignalCallback& callback) = 0;
   virtual void set_interfaces_removed_callback(
-      const InterfacesRemovedSignalCallback &callback) = 0;
+      const InterfacesRemovedSignalCallback& callback) = 0;
 };
 
 }  // namespace shill

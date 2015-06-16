@@ -19,7 +19,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
-static string ObjectID(ActivePassiveOutOfCreditsDetector *a) {
+static string ObjectID(ActivePassiveOutOfCreditsDetector* a) {
   return a->GetServiceRpcIdentifier();
 }
 }
@@ -33,10 +33,10 @@ const int64_t
     ActivePassiveOutOfCreditsDetector::kOutOfCreditsResumeIgnoreSeconds = 5;
 
 ActivePassiveOutOfCreditsDetector::ActivePassiveOutOfCreditsDetector(
-    EventDispatcher *dispatcher,
-    Manager *manager,
-    Metrics *metrics,
-    CellularService *service)
+    EventDispatcher* dispatcher,
+    Manager* manager,
+    Metrics* metrics,
+    CellularService* service)
     : OutOfCreditsDetector(dispatcher, manager, metrics, service),
       weak_ptr_factory_(this),
       traffic_monitor_(
@@ -269,12 +269,12 @@ void ActivePassiveOutOfCreditsDetector::OutOfCreditsReconnect() {
 }
 
 void ActivePassiveOutOfCreditsDetector::set_traffic_monitor(
-    TrafficMonitor *traffic_monitor) {
+    TrafficMonitor* traffic_monitor) {
   traffic_monitor_.reset(traffic_monitor);
 }
 
 void ActivePassiveOutOfCreditsDetector::set_connection_health_checker(
-    ConnectionHealthChecker *health_checker) {
+    ConnectionHealthChecker* health_checker) {
   health_checker_.reset(health_checker);
 }
 

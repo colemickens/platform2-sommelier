@@ -17,16 +17,16 @@ namespace shill {
 
 namespace mm1 {
 
-ModemModemCdmaProxy::ModemModemCdmaProxy(DBus::Connection *connection,
-                                         const string &path,
-                                         const string &service)
+ModemModemCdmaProxy::ModemModemCdmaProxy(DBus::Connection* connection,
+                                         const string& path,
+                                         const string& service)
     : proxy_(connection, path, service) {}
 
 ModemModemCdmaProxy::~ModemModemCdmaProxy() {}
 
-void ModemModemCdmaProxy::Activate(const std::string &carrier,
-                        Error *error,
-                        const ResultCallback &callback,
+void ModemModemCdmaProxy::Activate(const std::string& carrier,
+                        Error* error,
+                        const ResultCallback& callback,
                         int timeout) {
   BeginAsyncDBusCall(__func__, proxy_, &Proxy::ActivateAsync, callback,
                      error, &CellularError::FromMM1DBusError, timeout,
@@ -34,9 +34,9 @@ void ModemModemCdmaProxy::Activate(const std::string &carrier,
 }
 
 void ModemModemCdmaProxy::ActivateManual(
-    const DBusPropertiesMap &properties,
-    Error *error,
-    const ResultCallback &callback,
+    const DBusPropertiesMap& properties,
+    Error* error,
+    const ResultCallback& callback,
     int timeout) {
   BeginAsyncDBusCall(__func__, proxy_, &Proxy::ActivateManualAsync, callback,
                      error, &CellularError::FromMM1DBusError, timeout,
@@ -44,28 +44,28 @@ void ModemModemCdmaProxy::ActivateManual(
 }
 
 void ModemModemCdmaProxy::set_activation_state_callback(
-    const ActivationStateSignalCallback &callback) {
+    const ActivationStateSignalCallback& callback) {
   proxy_.set_activation_state_callback(callback);
 }
 
 // ModemModemCdmaProxy::Proxy
-ModemModemCdmaProxy::Proxy::Proxy(DBus::Connection *connection,
-                                  const std::string &path,
-                                  const std::string &service)
+ModemModemCdmaProxy::Proxy::Proxy(DBus::Connection* connection,
+                                  const std::string& path,
+                                  const std::string& service)
     : DBus::ObjectProxy(*connection, path, service.c_str()) {}
 
 ModemModemCdmaProxy::Proxy::~Proxy() {}
 
 void ModemModemCdmaProxy::Proxy::set_activation_state_callback(
-    const ActivationStateSignalCallback &callback) {
+    const ActivationStateSignalCallback& callback) {
   activation_state_callback_ = callback;
 }
 
 // Signal callbacks inherited from Proxy
 void ModemModemCdmaProxy::Proxy::ActivationStateChanged(
-    const uint32_t &activation_state,
-    const uint32_t &activation_error,
-    const DBusPropertiesMap &status_changes) {
+    const uint32_t& activation_state,
+    const uint32_t& activation_error,
+    const DBusPropertiesMap& status_changes) {
   SLOG(&path(), 2) << __func__;
   activation_state_callback_.Run(activation_state,
                                  activation_error,
@@ -75,9 +75,9 @@ void ModemModemCdmaProxy::Proxy::ActivationStateChanged(
 // Method callbacks inherited from
 // org::freedesktop::ModemManager1::Modem::ModemModemCdmaProxy
 void ModemModemCdmaProxy::Proxy::ActivateCallback(const ::DBus::Error& dberror,
-                                                  void *data) {
+                                                  void* data) {
   SLOG(&path(), 2) << __func__;
-  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback*>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
@@ -85,9 +85,9 @@ void ModemModemCdmaProxy::Proxy::ActivateCallback(const ::DBus::Error& dberror,
 
 void ModemModemCdmaProxy::Proxy::ActivateManualCallback(
     const ::DBus::Error& dberror,
-    void *data) {
+    void* data) {
   SLOG(&path(), 2) << __func__;
-  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  unique_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback*>(data));
   Error error;
   CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);

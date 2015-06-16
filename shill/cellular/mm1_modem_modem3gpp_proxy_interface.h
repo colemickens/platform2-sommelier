@@ -23,12 +23,12 @@ class ModemModem3gppProxyInterface {
  public:
   virtual ~ModemModem3gppProxyInterface() {}
 
-  virtual void Register(const std::string &operator_id,
-                        Error *error,
-                        const ResultCallback &callback,
+  virtual void Register(const std::string& operator_id,
+                        Error* error,
+                        const ResultCallback& callback,
                         int timeout) = 0;
-  virtual void Scan(Error *error,
-                    const DBusPropertyMapsCallback &callback,
+  virtual void Scan(Error* error,
+                    const DBusPropertyMapsCallback& callback,
                     int timeout) = 0;
 };
 

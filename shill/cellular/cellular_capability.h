@@ -70,9 +70,9 @@ class CellularCapability {
   static const char kModemPropertyState[];
 
   // |cellular| is the parent Cellular device.
-  CellularCapability(Cellular *cellular,
-                     ProxyFactory *proxy_factory,
-                     ModemInfo *modem_info);
+  CellularCapability(Cellular* cellular,
+                     ProxyFactory* proxy_factory,
+                     ModemInfo* modem_info);
   virtual ~CellularCapability();
 
   virtual std::string GetTypeString() const = 0;
@@ -80,9 +80,9 @@ class CellularCapability {
   // Called when the modem manager has sent a property change notification
   // signal over DBus.
   virtual void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties) = 0;
+      const std::string& interface,
+      const DBusPropertiesMap& changed_properties,
+      const std::vector<std::string>& invalidated_properties) = 0;
 
   // -------------------------------------------------------------------------
   // Modem management
@@ -96,16 +96,16 @@ class CellularCapability {
   // operation advances to the next step, until either an error occurs in one of
   // them, or all the steps have been completed, at which point StartModem() is
   // finished.
-  virtual void StartModem(Error *error, const ResultCallback &callback) = 0;
+  virtual void StartModem(Error* error, const ResultCallback& callback) = 0;
 
   // StopModem disconnects and disables a modem asynchronously.  |callback| is
   // invoked when this completes and the result is passed to the callback.
-  virtual void StopModem(Error *error, const ResultCallback &callback) = 0;
+  virtual void StopModem(Error* error, const ResultCallback& callback) = 0;
 
   // Resets the modem.
   //
   // The default implementation fails by returning kNotSupported via |error|.
-  virtual void Reset(Error *error, const ResultCallback &callback);
+  virtual void Reset(Error* error, const ResultCallback& callback);
 
   // Checks to see if all proxies have been initialized.
   virtual bool AreProxiesInitialized() const = 0;
@@ -127,15 +127,15 @@ class CellularCapability {
   // Activates the modem.
   //
   // The default implementation fails by returning kNotSupported via |error|.
-  virtual void Activate(const std::string &carrier,
-                        Error *error, const ResultCallback &callback);
+  virtual void Activate(const std::string& carrier,
+                        Error* error, const ResultCallback& callback);
 
   // Initiates the necessary to steps to verify that the cellular service has
   // been activated. Once these steps have been completed, the service should
   // be marked as activated.
   //
   // The default implementation fails by returning kNotSupported via |error|.
-  virtual void CompleteActivation(Error *error);
+  virtual void CompleteActivation(Error* error);
 
   // -------------------------------------------------------------------------
   // Network service and registration
@@ -144,9 +144,9 @@ class CellularCapability {
   // Configures the modem to support the |carrier|.
   //
   // The default implementation fails by returning kNotSupported via |error|.
-  virtual void SetCarrier(const std::string &carrier,
-                          Error *error,
-                          const ResultCallback &callback);
+  virtual void SetCarrier(const std::string& carrier,
+                          Error* error,
+                          const ResultCallback& callback);
 
   // Asks the modem to scan for networks.
   //
@@ -164,12 +164,12 @@ class CellularCapability {
   // Cellular or CellularCapability.
   //
   // TODO(jglasgow): Implement real error handling.
-  virtual void Scan(Error *error, const ResultStringmapsCallback &callback);
+  virtual void Scan(Error* error, const ResultStringmapsCallback& callback);
 
   // Registers on a network with |network_id|.
-  virtual void RegisterOnNetwork(const std::string &network_id,
-                                 Error *error,
-                                 const ResultCallback &callback);
+  virtual void RegisterOnNetwork(const std::string& network_id,
+                                 Error* error,
+                                 const ResultCallback& callback);
 
   // Returns true if the modem is registered on a network, which can be a home
   // or roaming network. It is possible that we cannot determine whether it is
@@ -215,16 +215,16 @@ class CellularCapability {
 
   // Fills |properties| with properties for establishing a connection, which
   // will be passed to Connect().
-  virtual void SetupConnectProperties(DBusPropertiesMap *properties) = 0;
+  virtual void SetupConnectProperties(DBusPropertiesMap* properties) = 0;
 
   // Connects the modem to a network based on the connection properties
   // specified by |properties|.
-  virtual void Connect(const DBusPropertiesMap &properties,
-                       Error *error,
-                       const ResultCallback &callback) = 0;
+  virtual void Connect(const DBusPropertiesMap& properties,
+                       Error* error,
+                       const ResultCallback& callback) = 0;
 
   // Disconnects the modem from a network.
-  virtual void Disconnect(Error *error, const ResultCallback &callback) = 0;
+  virtual void Disconnect(Error* error, const ResultCallback& callback) = 0;
 
   // Called when a disconnect operation completes, successful or not.
   //
@@ -234,44 +234,44 @@ class CellularCapability {
   // Returns a pointer to the current active bearer object or nullptr if no
   // active bearer exists. The returned bearer object is managed by this
   // capability object. This implementation returns nullptr by default.
-  virtual CellularBearer *GetActiveBearer() const;
+  virtual CellularBearer* GetActiveBearer() const;
 
   // -------------------------------------------------------------------------
   // SIM PIN management
   // -------------------------------------------------------------------------
 
   // The default implementation fails by returning kNotSupported via |error|.
-  virtual void RequirePIN(const std::string &pin,
+  virtual void RequirePIN(const std::string& pin,
                           bool require,
-                          Error *error,
-                          const ResultCallback &callback);
+                          Error* error,
+                          const ResultCallback& callback);
 
-  virtual void EnterPIN(const std::string &pin,
-                        Error *error,
-                        const ResultCallback &callback);
+  virtual void EnterPIN(const std::string& pin,
+                        Error* error,
+                        const ResultCallback& callback);
 
-  virtual void UnblockPIN(const std::string &unblock_code,
-                          const std::string &pin,
-                          Error *error,
-                          const ResultCallback &callback);
+  virtual void UnblockPIN(const std::string& unblock_code,
+                          const std::string& pin,
+                          Error* error,
+                          const ResultCallback& callback);
 
-  virtual void ChangePIN(const std::string &old_pin,
-                         const std::string &new_pin,
-                         Error *error,
-                         const ResultCallback &callback);
+  virtual void ChangePIN(const std::string& old_pin,
+                         const std::string& new_pin,
+                         Error* error,
+                         const ResultCallback& callback);
 
   // -------------------------------------------------------------------------
 
-  Cellular *cellular() const { return cellular_; }
-  ProxyFactory *proxy_factory() const { return proxy_factory_; }
-  ModemInfo *modem_info() const { return modem_info_; }
+  Cellular* cellular() const { return cellular_; }
+  ProxyFactory* proxy_factory() const { return proxy_factory_; }
+  ModemInfo* modem_info() const { return modem_info_; }
 
  protected:
   // Releases all proxies held by the object. This is most useful during unit
   // tests.
   virtual void ReleaseProxies() = 0;
 
-  static void OnUnsupportedOperation(const char *operation, Error *error);
+  static void OnUnsupportedOperation(const char* operation, Error* error);
 
   // Accessor for subclasses to read the 'allow roaming' property.
   bool allow_roaming_property() const {
@@ -289,9 +289,9 @@ class CellularCapability {
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, TearDown);
 
-  Cellular *cellular_;
-  ProxyFactory *proxy_factory_;
-  ModemInfo *modem_info_;
+  Cellular* cellular_;
+  ProxyFactory* proxy_factory_;
+  ModemInfo* modem_info_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapability);
 };

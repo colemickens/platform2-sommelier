@@ -19,41 +19,41 @@ class ModemTimeProxy : public ModemTimeProxyInterface {
  public:
   // Constructs an org.freedesktop.ModemManager1.Modem.Time DBus object
   // proxy at |path| owned by |service|.
-  ModemTimeProxy(DBus::Connection *connection,
-                 const std::string &path,
-                 const std::string &service);
+  ModemTimeProxy(DBus::Connection* connection,
+                 const std::string& path,
+                 const std::string& service);
   ~ModemTimeProxy() override;
 
   // Inherited methods from ModemTimeProxyInterface.
-  void GetNetworkTime(Error *error,
-                      const StringCallback &callback,
+  void GetNetworkTime(Error* error,
+                      const StringCallback& callback,
                       int timeout) override;
 
   void set_network_time_changed_callback(
-      const NetworkTimeChangedSignalCallback &callback) override;
+      const NetworkTimeChangedSignalCallback& callback) override;
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::Time_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
-          const std::string &path,
-          const std::string &service);
+    Proxy(DBus::Connection* connection,
+          const std::string& path,
+          const std::string& service);
     ~Proxy() override;
 
     void set_network_time_changed_callback(
-        const NetworkTimeChangedSignalCallback &callback);
+        const NetworkTimeChangedSignalCallback& callback);
 
    private:
     // Signal callbacks inherited from Proxy
     // handle signals.
-    void NetworkTimeChanged(const std::string &time) override;
+    void NetworkTimeChanged(const std::string& time) override;
 
     // Method callbacks inherited from
     // org::freedesktop::ModemManager1::Modem::Time_proxy.
-    void GetNetworkTimeCallback(const std::string &time,
-                                const ::DBus::Error &dberror,
-                                void *data) override;
+    void GetNetworkTimeCallback(const std::string& time,
+                                const ::DBus::Error& dberror,
+                                void* data) override;
 
     NetworkTimeChangedSignalCallback network_time_changed_callback_;
 
