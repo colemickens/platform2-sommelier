@@ -1586,7 +1586,7 @@ TEST_F(DeviceTest, PrependIPv4DNSServers) {
   }
 }
 
-TEST_F(DeviceTest, DISABLED_PrependIPv6DNSServers) {
+TEST_F(DeviceTest, PrependIPv6DNSServers) {
   MockManager manager(control_interface(), dispatcher(), metrics(), glib());
   manager.set_mock_device_info(&device_info_);
   SetManager(&manager);
@@ -1596,8 +1596,10 @@ TEST_F(DeviceTest, DISABLED_PrependIPv6DNSServers) {
     IPAddress("2001:4860:4860::8844")
   };
 
+  const uint32 kAddressLifetime = 1000;
   EXPECT_CALL(device_info_, GetIPv6DnsServerAddresses(_, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(dns_server_addresses),
+                            SetArgPointee<2>(kAddressLifetime),
                             Return(true)));
   const vector<string> kOutputServers {"2001:4860:4860::8899"};
   EXPECT_CALL(manager, FilterPrependDNSServersByFamily(

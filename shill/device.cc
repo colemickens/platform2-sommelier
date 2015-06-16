@@ -559,7 +559,7 @@ void Device::OnIPv6AddressChanged() {
 
 void Device::OnIPv6DnsServerAddressesChanged() {
   vector<IPAddress> server_addresses;
-  uint32 lifetime;
+  uint32 lifetime = 0;
 
   // Stop any existing timer.
   StopIPv6DNSServerTimer();
