@@ -29,10 +29,10 @@ class ProcessKiller;
 
 class ExternalTask : public RPCTaskDelegate {
  public:
-  ExternalTask(ControlInterface *control,
-               GLib *glib,
-               const base::WeakPtr<RPCTaskDelegate> &task_delegate,
-               const base::Callback<void(pid_t, int)> &death_callback);
+  ExternalTask(ControlInterface* control,
+               GLib* glib,
+               const base::WeakPtr<RPCTaskDelegate>& task_delegate,
+               const base::Callback<void(pid_t, int)>& death_callback);
   ~ExternalTask() override;  // But consider DestroyLater...
 
   // Schedule later deletion of the ExternalTask. Useful when in the
@@ -52,7 +52,7 @@ class ExternalTask : public RPCTaskDelegate {
   //    private:
   //      std::unique_ptr<ExternalTask> task_;
   //   }
-  void DestroyLater(EventDispatcher *dispatcher);
+  void DestroyLater(EventDispatcher* dispatcher);
 
   // Forks off a process to run |program|, with the command-line
   // arguments |arguments|, and the environment variables specified in
@@ -68,11 +68,11 @@ class ExternalTask : public RPCTaskDelegate {
   // |environment| SHOULD NOT contain kRPCTaskServiceVariable or
   // kRPCTaskPathVariable, as that may prevent the child process
   // from communicating back to the ExternalTask.
-  virtual bool Start(const base::FilePath &program,
-                     const std::vector<std::string> &arguments,
-                     const std::map<std::string, std::string> &environment,
+  virtual bool Start(const base::FilePath& program,
+                     const std::vector<std::string>& arguments,
+                     const std::map<std::string, std::string>& environment,
                      bool terminate_with_parent,
-                     Error *error);
+                     Error* error);
   virtual void Stop();
 
  private:
@@ -86,23 +86,23 @@ class ExternalTask : public RPCTaskDelegate {
   FRIEND_TEST(ExternalTaskTest, StopNotStarted);
 
   // Implements RPCTaskDelegate.
-  void GetLogin(std::string *user, std::string *password) override;
+  void GetLogin(std::string* user, std::string* password) override;
   void Notify(
-      const std::string &event,
-      const std::map<std::string, std::string> &details) override;
+      const std::string& event,
+      const std::map<std::string, std::string>& details) override;
   // Called when the external process exits.
   static void OnTaskDied(GPid pid, gint status, gpointer data);
 
-  static void Destroy(ExternalTask *task);
+  static void Destroy(ExternalTask* task);
 
   // This method is run in the child process (i.e. after fork(), but
   // before exec()). It configures the child to receive a SIGTERM when
   // the parent exits.
   static void SetupTermination(gpointer glib_user_data);
 
-  ControlInterface *control_;
-  GLib *glib_;
-  ProcessKiller *process_killer_;  // Field permits mocking.
+  ControlInterface* control_;
+  GLib* glib_;
+  ProcessKiller* process_killer_;  // Field permits mocking.
 
   std::unique_ptr<RPCTask> rpc_task_;
   base::WeakPtr<RPCTaskDelegate> task_delegate_;

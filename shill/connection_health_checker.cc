@@ -37,13 +37,13 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kConnection;
-static string ObjectID(Connection *c) {
+static string ObjectID(Connection* c) {
   return c->interface_name();
 }
 }
 
 // static
-const char *ConnectionHealthChecker::kDefaultRemoteIPPool[] = {
+const char* ConnectionHealthChecker::kDefaultRemoteIPPool[] = {
     "74.125.224.47",
     "74.125.224.79",
     "74.125.224.111",
@@ -70,9 +70,9 @@ const uint16_t ConnectionHealthChecker::kRemotePort = 80;
 
 ConnectionHealthChecker::ConnectionHealthChecker(
     ConnectionRefPtr connection,
-    EventDispatcher *dispatcher,
-    IPAddressStore *remote_ips,
-    const base::Callback<void(Result)> &result_callback)
+    EventDispatcher* dispatcher,
+    IPAddressStore* remote_ips,
+    const base::Callback<void(Result)>& result_callback)
     : connection_(connection),
       dispatcher_(dispatcher),
       remote_ips_(remote_ips),
@@ -100,7 +100,7 @@ ConnectionHealthChecker::ConnectionHealthChecker(
       num_successful_sends_(0),
       tcp_state_update_wait_milliseconds_(kTCPStateUpdateWaitMilliseconds) {
   for (size_t i = 0; i < arraysize(kDefaultRemoteIPPool); ++i) {
-    const char *ip_string = kDefaultRemoteIPPool[i];
+    const char* ip_string = kDefaultRemoteIPPool[i];
     IPAddress ip(IPAddress::kFamilyIPv4);
     ip.SetAddressFromString(ip_string);
     remote_ips_->AddUnique(ip);
@@ -119,7 +119,7 @@ void ConnectionHealthChecker::AddRemoteIP(IPAddress ip) {
   remote_ips_->AddUnique(ip);
 }
 
-void ConnectionHealthChecker::AddRemoteURL(const string &url_string) {
+void ConnectionHealthChecker::AddRemoteURL(const string& url_string) {
   GarbageCollectDNSClients();
 
   HTTPURL url;
@@ -137,7 +137,7 @@ void ConnectionHealthChecker::AddRemoteURL(const string &url_string) {
   }
   for (int i = 0; i < kNumDNSQueries; ++i) {
     Error error;
-    DNSClient *dns_client =
+    DNSClient* dns_client =
       dns_client_factory_->CreateDNSClient(IPAddress::kFamilyIPv4,
                                            connection_->interface_name(),
                                            connection_->dns_servers(),
@@ -208,7 +208,7 @@ void ConnectionHealthChecker::SetConnection(ConnectionRefPtr connection) {
     Start();
 }
 
-const char *ConnectionHealthChecker::ResultToString(
+const char* ConnectionHealthChecker::ResultToString(
     ConnectionHealthChecker::Result result) {
   switch (result) {
     case kResultUnknown:
@@ -224,7 +224,7 @@ const char *ConnectionHealthChecker::ResultToString(
   }
 }
 
-void ConnectionHealthChecker::GetDNSResult(const Error &error,
+void ConnectionHealthChecker::GetDNSResult(const Error& error,
                                            const IPAddress& ip) {
   if (!error.IsSuccess()) {
     SLOG(connection_.get(), 2) << __func__ << "DNSClient returned failure: "
@@ -371,12 +371,12 @@ void ConnectionHealthChecker::VerifySentData() {
 
 // TODO(pprabhu): Scrub IP address logging.
 bool ConnectionHealthChecker::GetSocketInfo(int sock_fd,
-                                            SocketInfo *sock_info) {
+                                            SocketInfo* sock_info) {
   struct sockaddr_storage addr;
   socklen_t addrlen = sizeof(addr);
   memset(&addr, 0, sizeof(addr));
   if (socket_->GetSockName(sock_fd,
-                           reinterpret_cast<struct sockaddr *>(&addr),
+                           reinterpret_cast<struct sockaddr*>(&addr),
                            &addrlen) != 0) {
     SLOG(connection_.get(), 2) << __func__
                                << ": Failed to get address of created socket.";
@@ -388,10 +388,10 @@ bool ConnectionHealthChecker::GetSocketInfo(int sock_fd,
   }
 
   CHECK_EQ(sizeof(struct sockaddr_in), addrlen);
-  struct sockaddr_in *addr_in = reinterpret_cast<sockaddr_in *>(&addr);
+  struct sockaddr_in* addr_in = reinterpret_cast<sockaddr_in*>(&addr);
   uint16_t local_port = ntohs(addr_in->sin_port);
   char ipstr[INET_ADDRSTRLEN];
-  const char *res = inet_ntop(AF_INET, &addr_in->sin_addr,
+  const char* res = inet_ntop(AF_INET, &addr_in->sin_addr,
                               ipstr, sizeof(ipstr));
   if (res == nullptr) {
     SLOG(connection_.get(), 2) << __func__
@@ -414,7 +414,7 @@ bool ConnectionHealthChecker::GetSocketInfo(int sock_fd,
   for (vector<SocketInfo>::const_iterator info_list_it = info_list.begin();
        info_list_it != info_list.end();
        ++info_list_it) {
-    const SocketInfo &cur_sock_info = *info_list_it;
+    const SocketInfo& cur_sock_info = *info_list_it;
 
     SLOG(connection_.get(), 4)
         << "Testing against IP = "

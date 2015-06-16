@@ -20,18 +20,18 @@ namespace shill {
 
 namespace {
 
-const char *kErrorNameHasNoOwner = "org.freedesktop.DBus.Error.NameHasNoOwner";
+const char* kErrorNameHasNoOwner = "org.freedesktop.DBus.Error.NameHasNoOwner";
 
 }  // namespace
 
-DBusServiceProxy::DBusServiceProxy(DBus::Connection *connection)
+DBusServiceProxy::DBusServiceProxy(DBus::Connection* connection)
     : proxy_(connection) {}
 
 DBusServiceProxy::~DBusServiceProxy() {}
 
-void DBusServiceProxy::GetNameOwner(const string &name,
-                                    Error *error,
-                                    const StringCallback &callback,
+void DBusServiceProxy::GetNameOwner(const string& name,
+                                    Error* error,
+                                    const StringCallback& callback,
                                     int timeout) {
   BeginAsyncDBusCall(base::StringPrintf("%s(%s)", __func__, name.c_str()),
                      proxy_, &Proxy::GetNameOwnerAsync, callback,
@@ -39,13 +39,13 @@ void DBusServiceProxy::GetNameOwner(const string &name,
 }
 
 void DBusServiceProxy::set_name_owner_changed_callback(
-    const NameOwnerChangedCallback &callback) {
+    const NameOwnerChangedCallback& callback) {
   proxy_.set_name_owner_changed_callback(callback);
 }
 
 // static
-void DBusServiceProxy::FromDBusError(const DBus::Error &dbus_error,
-                                     Error *error) {
+void DBusServiceProxy::FromDBusError(const DBus::Error& dbus_error,
+                                     Error* error) {
   if (!error) {
     return;
   }
@@ -64,29 +64,29 @@ void DBusServiceProxy::FromDBusError(const DBus::Error &dbus_error,
   }
 }
 
-DBusServiceProxy::Proxy::Proxy(DBus::Connection *connection)
+DBusServiceProxy::Proxy::Proxy(DBus::Connection* connection)
     : DBus::ObjectProxy(*connection,
                         dbus::kDBusServicePath, dbus::kDBusServiceName) {}
 
 DBusServiceProxy::Proxy::~Proxy() {}
 
 void DBusServiceProxy::Proxy::set_name_owner_changed_callback(
-    const NameOwnerChangedCallback &callback) {
+    const NameOwnerChangedCallback& callback) {
   name_owner_changed_callback_ = callback;
 }
 
-void DBusServiceProxy::Proxy::NameOwnerChanged(const string &name,
-                                               const string &old_owner,
-                                               const string &new_owner) {
+void DBusServiceProxy::Proxy::NameOwnerChanged(const string& name,
+                                               const string& old_owner,
+                                               const string& new_owner) {
   if (!name_owner_changed_callback_.is_null()) {
     name_owner_changed_callback_.Run(name, old_owner, new_owner);
   }
 }
 
-void DBusServiceProxy::Proxy::GetNameOwnerCallback(const string &unique_name,
-                                                   const DBus::Error &error,
-                                                   void *data) {
-  unique_ptr<StringCallback> callback(reinterpret_cast<StringCallback *>(data));
+void DBusServiceProxy::Proxy::GetNameOwnerCallback(const string& unique_name,
+                                                   const DBus::Error& error,
+                                                   void* data) {
+  unique_ptr<StringCallback> callback(reinterpret_cast<StringCallback*>(data));
   Error e;
   FromDBusError(error, &e);
   callback->Run(unique_name, e);

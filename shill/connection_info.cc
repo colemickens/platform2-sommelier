@@ -46,7 +46,7 @@ ConnectionInfo::ConnectionInfo(int protocol,
       reply_destination_port_(reply_destination_port) {
 }
 
-ConnectionInfo::ConnectionInfo(const ConnectionInfo &info)
+ConnectionInfo::ConnectionInfo(const ConnectionInfo& info)
     : protocol_(info.protocol_),
       time_to_expire_seconds_(info.time_to_expire_seconds_),
       is_unreplied_(info.is_unreplied_),
@@ -64,7 +64,7 @@ ConnectionInfo::ConnectionInfo(const ConnectionInfo &info)
 
 ConnectionInfo::~ConnectionInfo() {}
 
-ConnectionInfo &ConnectionInfo::operator=(const ConnectionInfo &info) {
+ConnectionInfo& ConnectionInfo::operator=(const ConnectionInfo& info) {
   protocol_ = info.protocol_;
   time_to_expire_seconds_ = info.time_to_expire_seconds_;
   is_unreplied_ = info.is_unreplied_;

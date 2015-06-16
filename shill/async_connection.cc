@@ -21,10 +21,10 @@ using std::string;
 
 namespace shill {
 
-AsyncConnection::AsyncConnection(const string &interface_name,
-                                 EventDispatcher *dispatcher,
-                                 Sockets *sockets,
-                                 const Callback<void(bool, int)> &callback)
+AsyncConnection::AsyncConnection(const string& interface_name,
+                                 EventDispatcher* dispatcher,
+                                 Sockets* sockets,
+                                 const Callback<void(bool, int)>& callback)
     : interface_name_(interface_name),
       dispatcher_(dispatcher),
       sockets_(sockets),
@@ -37,7 +37,7 @@ AsyncConnection::~AsyncConnection() {
   Stop();
 }
 
-bool AsyncConnection::Start(const IPAddress &address, int port) {
+bool AsyncConnection::Start(const IPAddress& address, int port) {
   DCHECK_LT(fd_, 0);
 
   int family = PF_INET;
@@ -111,8 +111,8 @@ void AsyncConnection::OnConnectCompletion(int fd) {
   callback_.Run(success, returned_fd);  // Passes ownership
 }
 
-int AsyncConnection::ConnectTo(const IPAddress &address, int port) {
-  struct sockaddr *sock_addr = nullptr;
+int AsyncConnection::ConnectTo(const IPAddress& address, int port) {
+  struct sockaddr* sock_addr = nullptr;
   socklen_t addr_len = 0;
   struct sockaddr_in iaddr;
   struct sockaddr_in6 iaddr6;
@@ -125,7 +125,7 @@ int AsyncConnection::ConnectTo(const IPAddress &address, int port) {
            sizeof(iaddr.sin_addr.s_addr));
     iaddr.sin_port = htons(port);
 
-    sock_addr = reinterpret_cast<struct sockaddr *>(&iaddr);
+    sock_addr = reinterpret_cast<struct sockaddr*>(&iaddr);
     addr_len = sizeof(iaddr);
   } else if (address.family() == IPAddress::kFamilyIPv6) {
     CHECK_EQ(sizeof(iaddr6.sin6_addr.s6_addr), address.GetLength());
@@ -136,7 +136,7 @@ int AsyncConnection::ConnectTo(const IPAddress &address, int port) {
            sizeof(iaddr6.sin6_addr.s6_addr));
     iaddr6.sin6_port = htons(port);
 
-    sock_addr = reinterpret_cast<struct sockaddr *>(&iaddr6);
+    sock_addr = reinterpret_cast<struct sockaddr*>(&iaddr6);
     addr_len = sizeof(iaddr6);
   } else {
     NOTREACHED();

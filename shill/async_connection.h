@@ -28,10 +28,10 @@ class AsyncConnection {
  public:
   // If non-empty |interface_name| specifies an local interface from which
   // to originate the connection.
-  AsyncConnection(const std::string &interface_name,
-                  EventDispatcher *dispatcher,
-                  Sockets *sockets,
-                  const base::Callback<void(bool, int)> &callback);
+  AsyncConnection(const std::string& interface_name,
+                  EventDispatcher* dispatcher,
+                  Sockets* sockets,
+                  const base::Callback<void(bool, int)>& callback);
   virtual ~AsyncConnection();
 
   // Open a connection given an IP address and port (in host order).
@@ -48,7 +48,7 @@ class AsyncConnection {
   //
   // Calling Start() on an AsyncConnection that is already Start()ed is
   // an error.
-  virtual bool Start(const IPAddress &address, int port);
+  virtual bool Start(const IPAddress& address, int port);
 
   // Stop the open connection, closing any fds that are still owned.
   // Calling Stop() on an unstarted or Stop()ped AsyncConnection is
@@ -63,11 +63,11 @@ class AsyncConnection {
   void OnConnectCompletion(int fd);
 
   // Initiate a socket connection to given IP address and port (in host order).
-  int ConnectTo(const IPAddress &address, int port);
+  int ConnectTo(const IPAddress& address, int port);
 
   std::string interface_name_;
-  EventDispatcher *dispatcher_;
-  Sockets *sockets_;
+  EventDispatcher* dispatcher_;
+  Sockets* sockets_;
   base::Callback<void(bool, int)> callback_;
   std::string error_;
   int fd_;

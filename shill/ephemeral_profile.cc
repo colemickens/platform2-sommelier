@@ -17,15 +17,15 @@ using std::string;
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kProfile;
-static string ObjectID(EphemeralProfile *e) { return e->GetRpcIdentifier(); }
+static string ObjectID(EphemeralProfile* e) { return e->GetRpcIdentifier(); }
 }
 
 // static
 const char EphemeralProfile::kFriendlyName[] = "(ephemeral)";
 
-EphemeralProfile::EphemeralProfile(ControlInterface *control_interface,
-                                   Metrics *metrics,
-                                   Manager *manager)
+EphemeralProfile::EphemeralProfile(ControlInterface* control_interface,
+                                   Metrics* metrics,
+                                   Manager* manager)
     : Profile(control_interface, metrics, manager, Identifier(), "", false) {
 }
 
@@ -35,14 +35,14 @@ string EphemeralProfile::GetFriendlyName() {
   return kFriendlyName;
 }
 
-bool EphemeralProfile::AdoptService(const ServiceRefPtr &service) {
+bool EphemeralProfile::AdoptService(const ServiceRefPtr& service) {
   SLOG(this, 2) << "Adding service " << service->unique_name()
                 << " to ephemeral profile.";
   service->SetProfile(this);
   return true;
 }
 
-bool EphemeralProfile::AbandonService(const ServiceRefPtr &service) {
+bool EphemeralProfile::AbandonService(const ServiceRefPtr& service) {
   if (service->profile() == this)
     service->SetProfile(nullptr);
   SLOG(this, 2) << "Removing service " << service->unique_name()

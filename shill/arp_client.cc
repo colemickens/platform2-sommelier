@@ -74,7 +74,7 @@ bool ArpClient::CreateSocket(uint16_t arp_opcode) {
   };
 
   sock_fprog pf;
-  pf.filter = const_cast<sock_filter *>(arp_filter);
+  pf.filter = const_cast<sock_filter*>(arp_filter);
   pf.len = arraysize(arp_filter);
   if (sockets_->AttachFilter(socket_, &pf) != 0) {
     PLOG(ERROR) << "Could not attach packet filter";
@@ -93,7 +93,7 @@ bool ArpClient::CreateSocket(uint16_t arp_opcode) {
   socket_address.sll_ifindex = interface_index_;
 
   if (sockets_->Bind(socket_,
-                     reinterpret_cast<struct sockaddr *>(&socket_address),
+                     reinterpret_cast<struct sockaddr*>(&socket_address),
                      sizeof(socket_address)) != 0) {
     PLOG(ERROR) << "Could not bind socket to interface";
     return false;
@@ -102,7 +102,7 @@ bool ArpClient::CreateSocket(uint16_t arp_opcode) {
   return true;
 }
 
-bool ArpClient::ReceivePacket(ArpPacket *packet, ByteString *sender) const {
+bool ArpClient::ReceivePacket(ArpPacket* packet, ByteString* sender) const {
   ByteString payload(kMaxArpPacketLength);
   sockaddr_ll socket_address;
   memset(&socket_address, 0, sizeof(socket_address));
@@ -112,7 +112,7 @@ bool ArpClient::ReceivePacket(ArpPacket *packet, ByteString *sender) const {
       payload.GetData(),
       payload.GetLength(),
       0,
-      reinterpret_cast<struct sockaddr *>(&socket_address),
+      reinterpret_cast<struct sockaddr*>(&socket_address),
       &socklen);
   if (result < 0) {
     PLOG(ERROR) << "Socket recvfrom failed";
@@ -131,12 +131,12 @@ bool ArpClient::ReceivePacket(ArpPacket *packet, ByteString *sender) const {
         sizeof(socket_address) - sizeof(socket_address.sll_addr) + ETH_ALEN);
   CHECK(socket_address.sll_halen == ETH_ALEN);
   *sender = ByteString(
-      reinterpret_cast<const unsigned char *>(&socket_address.sll_addr),
+      reinterpret_cast<const unsigned char*>(&socket_address.sll_addr),
       socket_address.sll_halen);
   return true;
 }
 
-bool ArpClient::TransmitRequest(const ArpPacket &packet) const {
+bool ArpClient::TransmitRequest(const ArpPacket& packet) const {
   ByteString payload;
   if (!packet.FormatRequest(&payload)) {
     return false;
@@ -165,7 +165,7 @@ bool ArpClient::TransmitRequest(const ArpPacket &packet) const {
       payload.GetConstData(),
       payload.GetLength(),
       0,
-      reinterpret_cast<struct sockaddr *>(&socket_address),
+      reinterpret_cast<struct sockaddr*>(&socket_address),
       sizeof(socket_address));
   const int expected_result  = static_cast<int>(payload.GetLength());
   if (result != expected_result) {

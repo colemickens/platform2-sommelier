@@ -18,7 +18,7 @@ namespace shill {
 
 const char CryptoProvider::kKeyMatterFile[] = "/var/lib/whitelist/owner.key";
 
-CryptoProvider::CryptoProvider(GLib *glib)
+CryptoProvider::CryptoProvider(GLib* glib)
     : glib_(glib),
       key_matter_file_(kKeyMatterFile) {}
 
@@ -33,7 +33,7 @@ void CryptoProvider::Init() {
   cryptos_.push_back(new CryptoROT47());
 }
 
-string CryptoProvider::Encrypt(const string &plaintext) {
+string CryptoProvider::Encrypt(const string& plaintext) {
   for (auto crypto : cryptos_) {
     string ciphertext;
     if (crypto->Encrypt(plaintext, &ciphertext)) {
@@ -45,7 +45,7 @@ string CryptoProvider::Encrypt(const string &plaintext) {
   return plaintext;
 }
 
-string CryptoProvider::Decrypt(const string &ciphertext) {
+string CryptoProvider::Decrypt(const string& ciphertext) {
   for (auto crypto : cryptos_) {
     const string prefix = crypto->GetID() + ":";
     if (base::StartsWithASCII(ciphertext, prefix, true)) {

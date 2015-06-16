@@ -21,7 +21,7 @@ namespace shill {
 const size_t EapListener::kMaxEapPacketLength =
     sizeof(eap_protocol::Ieee8021xHdr) + sizeof(eap_protocol::EapHeader);
 
-EapListener::EapListener(EventDispatcher *event_dispatcher,
+EapListener::EapListener(EventDispatcher* event_dispatcher,
                          int interface_index)
     : dispatcher_(event_dispatcher),
       interface_index_(interface_index),
@@ -74,7 +74,7 @@ bool EapListener::CreateSocket() {
   socket_address.sll_ifindex = interface_index_;
 
   if (sockets_->Bind(socket_,
-                     reinterpret_cast<struct sockaddr *>(&socket_address),
+                     reinterpret_cast<struct sockaddr*>(&socket_address),
                      sizeof(socket_address)) != 0) {
     PLOG(ERROR) << "Could not bind socket to interface";
     return false;
@@ -93,7 +93,7 @@ void EapListener::ReceiveRequest(int fd) {
   socklen_t socklen = sizeof(remote_address);
   int result = sockets_->RecvFrom(
       socket_, &payload, sizeof(payload), 0,
-      reinterpret_cast<struct sockaddr *>(&remote_address),
+      reinterpret_cast<struct sockaddr*>(&remote_address),
       &socklen);
   if (result < 0) {
     PLOG(ERROR) << "Socket recvfrom failed";

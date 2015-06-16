@@ -23,18 +23,18 @@ class DeviceInfo;
 class DeviceClaimer {
  public:
   DeviceClaimer(
-      const std::string &dbus_service_name,
-      DeviceInfo *device_info,
+      const std::string& dbus_service_name,
+      DeviceInfo* device_info,
       bool default_claimer);
   virtual ~DeviceClaimer();
 
   virtual bool StartDBusNameWatcher(
-      DBusManager *dbus_manager,
-      const DBusNameWatcher::NameAppearedCallback &name_appeared_callback,
-      const DBusNameWatcher::NameVanishedCallback &name_vanished_callback);
+      DBusManager* dbus_manager,
+      const DBusNameWatcher::NameAppearedCallback& name_appeared_callback,
+      const DBusNameWatcher::NameVanishedCallback& name_vanished_callback);
 
-  virtual bool Claim(const std::string &device_name, Error *error);
-  virtual bool Release(const std::string &device_name, Error *error);
+  virtual bool Claim(const std::string& device_name, Error* error);
+  virtual bool Release(const std::string& device_name, Error* error);
 
   // Return true if there are devices claimed by this claimer, false
   // otherwise.
@@ -42,17 +42,17 @@ class DeviceClaimer {
 
   // Return true if the specified device is released by this claimer, false
   // otherwise.
-  virtual bool IsDeviceReleased(const std::string &device_name);
+  virtual bool IsDeviceReleased(const std::string& device_name);
 
-  const std::string &name() const { return dbus_service_name_; }
-  const std::string &owner() const { return dbus_service_owner_; }
-  void set_owner(const std::string &dbus_service_owner) {
+  const std::string& name() const { return dbus_service_name_; }
+  const std::string& owner() const { return dbus_service_owner_; }
+  void set_owner(const std::string& dbus_service_owner) {
     dbus_service_owner_ = dbus_service_owner;
   }
 
   virtual bool default_claimer() const { return default_claimer_; }
 
-  const std::set<std::string> &claimed_device_names() const {
+  const std::set<std::string>& claimed_device_names() const {
     return claimed_device_names_;
   }
 
@@ -68,7 +68,7 @@ class DeviceClaimer {
   // DBus service owner name of the claimer.
   std::string dbus_service_owner_;
 
-  DeviceInfo *device_info_;
+  DeviceInfo* device_info_;
 
   // Flag indicating if this is the default claimer. When set to true, this
   // claimer will only be deleted when shill terminates.

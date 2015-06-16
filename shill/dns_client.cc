@@ -35,7 +35,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDNS;
-static string ObjectID(DNSClient *d) { return d->interface_name(); }
+static string ObjectID(DNSClient* d) { return d->interface_name(); }
 }
 
 const char DNSClient::kErrorNoData[] = "The query response contains no answers";
@@ -62,11 +62,11 @@ struct DNSClientState {
 };
 
 DNSClient::DNSClient(IPAddress::Family family,
-                     const string &interface_name,
-                     const vector<string> &dns_servers,
+                     const string& interface_name,
+                     const vector<string>& dns_servers,
                      int timeout_ms,
-                     EventDispatcher *dispatcher,
-                     const ClientCallback &callback)
+                     EventDispatcher* dispatcher,
+                     const ClientCallback& callback)
     : address_(IPAddress(family)),
       interface_name_(interface_name),
       dns_servers_(dns_servers),
@@ -82,7 +82,7 @@ DNSClient::~DNSClient() {
   Stop();
 }
 
-bool DNSClient::Start(const string &hostname, Error *error) {
+bool DNSClient::Start(const string& hostname, Error* error) {
   if (running_) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
                           "Only one DNS request is allowed at a time");
@@ -124,7 +124,7 @@ bool DNSClient::Start(const string &hostname, Error *error) {
     // explicitly construct a link list of ares_addr_node.
     string server_addresses;
     bool first = true;
-    for (const auto &ip : dns_servers_) {
+    for (const auto& ip : dns_servers_) {
       if (!first) {
         server_addresses += ",";
       } else {
@@ -215,7 +215,7 @@ void DNSClient::HandleTimeout() {
   RefreshHandles();
 }
 
-void DNSClient::ReceiveDNSReply(int status, struct hostent *hostent) {
+void DNSClient::ReceiveDNSReply(int status, struct hostent* hostent) {
   if (!running_) {
     // We can be called during ARES shutdown -- ignore these events.
     return;
@@ -234,7 +234,7 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent *hostent) {
       hostent->h_addr_list != nullptr &&
       hostent->h_addr_list[0] != nullptr) {
     address_ = IPAddress(address_.family(),
-                         ByteString(reinterpret_cast<unsigned char *>(
+                         ByteString(reinterpret_cast<unsigned char*>(
                              hostent->h_addr_list[0]), hostent->h_length));
   } else {
     switch (status) {
@@ -280,10 +280,10 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent *hostent) {
   }
 }
 
-void DNSClient::ReceiveDNSReplyCB(void *arg, int status,
+void DNSClient::ReceiveDNSReplyCB(void* arg, int status,
                                   int /*timeouts*/,
-                                  struct hostent *hostent) {
-  DNSClient *res = static_cast<DNSClient *>(arg);
+                                  struct hostent* hostent) {
+  DNSClient* res = static_cast<DNSClient*>(arg);
   res->ReceiveDNSReply(status, hostent);
 }
 
@@ -363,7 +363,7 @@ bool DNSClient::RefreshHandles() {
   } else {
     struct timeval max, ret_tv;
     timersub(&timeout_tv, &elapsed_time, &max);
-    struct timeval *tv = ares_->Timeout(resolver_state_->channel,
+    struct timeval* tv = ares_->Timeout(resolver_state_->channel,
                                         &max, &ret_tv);
     timeout_closure_.Reset(
         Bind(&DNSClient::HandleTimeout, weak_ptr_factory_.GetWeakPtr()));

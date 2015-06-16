@@ -21,15 +21,15 @@ class DNSClientFactory {
   virtual ~DNSClientFactory();
 
   // This is a singleton. Use DNSClientFactory::GetInstance()->Foo().
-  static DNSClientFactory *GetInstance();
+  static DNSClientFactory* GetInstance();
 
-  virtual DNSClient *CreateDNSClient(
+  virtual DNSClient* CreateDNSClient(
       IPAddress::Family family,
-      const std::string &interface_name,
-      const std::vector<std::string> &dns_servers,
+      const std::string& interface_name,
+      const std::vector<std::string>& dns_servers,
       int timeout_ms,
-      EventDispatcher *dispatcher,
-      const DNSClient::ClientCallback &callback);
+      EventDispatcher* dispatcher,
+      const DNSClient::ClientCallback& callback);
 
  protected:
   DNSClientFactory();

@@ -54,7 +54,7 @@ Error::Error(Type type) {
   Populate(type);
 }
 
-Error::Error(Type type, const string &message) {
+Error::Error(Type type, const string& message) {
   Populate(type, message);
 }
 
@@ -64,7 +64,7 @@ void Error::Populate(Type type) {
   Populate(type, GetDefaultMessage(type));
 }
 
-void Error::Populate(Type type, const string &message) {
+void Error::Populate(Type type, const string& message) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
   type_ = type;
   message_ = message;
@@ -74,11 +74,11 @@ void Error::Reset() {
   Populate(kSuccess);
 }
 
-void Error::CopyFrom(const Error &error) {
+void Error::CopyFrom(const Error& error) {
   Populate(error.type_, error.message_);
 }
 
-bool Error::ToDBusError(::DBus::Error *error) const {
+bool Error::ToDBusError(::DBus::Error* error) const {
   if (IsFailure()) {
     error->set(GetDBusResult(type_).c_str(), message_.c_str());
     return true;
@@ -100,8 +100,8 @@ string Error::GetDefaultMessage(Type type) {
 }
 
 // static
-void Error::PopulateAndLog(const tracked_objects::Location &from_here,
-                           Error *error, Type type, const string &message) {
+void Error::PopulateAndLog(const tracked_objects::Location& from_here,
+                           Error* error, Type type, const string& message) {
   string file_name = base::FilePath(from_here.file_name()).BaseName().value();
   LOG(ERROR) << "[" << file_name << "("
              << from_here.line_number() << ")]: "<< message;
@@ -112,7 +112,7 @@ void Error::PopulateAndLog(const tracked_objects::Location &from_here,
 
 }  // namespace shill
 
-std::ostream &operator<<(std::ostream &stream, const shill::Error &error) {
+std::ostream& operator<<(std::ostream& stream, const shill::Error& error) {
   stream << error.GetDBusResult(error.type()) << ": " << error.message();
   return stream;
 }

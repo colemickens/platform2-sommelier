@@ -30,7 +30,7 @@ struct DNSClientState;
 // Implements a DNS resolution client that can run asynchronously.
 class DNSClient {
  public:
-  typedef base::Callback<void(const Error &, const IPAddress &)> ClientCallback;
+  typedef base::Callback<void(const Error&, const IPAddress&)> ClientCallback;
 
   static const char kErrorNoData[];
   static const char kErrorFormErr[];
@@ -44,11 +44,11 @@ class DNSClient {
   static const char kErrorUnknown[];
 
   DNSClient(IPAddress::Family family,
-            const std::string &interface_name,
-            const std::vector<std::string> &dns_servers,
+            const std::string& interface_name,
+            const std::vector<std::string>& dns_servers,
             int timeout_ms,
-            EventDispatcher *dispatcher,
-            const ClientCallback &callback);
+            EventDispatcher* dispatcher,
+            const ClientCallback& callback);
   virtual ~DNSClient();
 
   // Returns true if the DNS client started successfully, false otherwise.
@@ -56,7 +56,7 @@ class DNSClient {
   // request.  If Start() fails and returns false, the callback will not
   // be called, but the error that caused the failure will be returned in
   // |error|.
-  virtual bool Start(const std::string &hostname, Error *error);
+  virtual bool Start(const std::string& hostname, Error* error);
 
   // Aborts any running DNS client transaction.  This will cancel any callback
   // invocation.
@@ -73,9 +73,9 @@ class DNSClient {
   void HandleDNSRead(int fd);
   void HandleDNSWrite(int fd);
   void HandleTimeout();
-  void ReceiveDNSReply(int status, struct hostent *hostent);
-  static void ReceiveDNSReplyCB(void *arg, int status, int timeouts,
-                                struct hostent *hostent);
+  void ReceiveDNSReply(int status, struct hostent* hostent);
+  static void ReceiveDNSReplyCB(void* arg, int status, int timeouts,
+                                struct hostent* hostent);
   bool RefreshHandles();
 
   static const int kDefaultDNSPort;
@@ -84,15 +84,15 @@ class DNSClient {
   IPAddress address_;
   std::string interface_name_;
   std::vector<std::string> dns_servers_;
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   ClientCallback callback_;
   int timeout_ms_;
   bool running_;
   std::unique_ptr<DNSClientState> resolver_state_;
   base::CancelableClosure timeout_closure_;
   base::WeakPtrFactory<DNSClient> weak_ptr_factory_;
-  Ares *ares_;
-  Time *time_;
+  Ares* ares_;
+  Time* time_;
 
   DISALLOW_COPY_AND_ASSIGN(DNSClient);
 };

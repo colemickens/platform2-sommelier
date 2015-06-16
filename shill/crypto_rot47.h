@@ -22,8 +22,8 @@ class CryptoROT47 : public CryptoInterface {
 
   // Inherited from CryptoInterface.
   virtual std::string GetID();
-  virtual bool Encrypt(const std::string &plaintext, std::string *ciphertext);
-  virtual bool Decrypt(const std::string &ciphertext, std::string *plaintext);
+  virtual bool Encrypt(const std::string& plaintext, std::string* ciphertext);
+  virtual bool Decrypt(const std::string& ciphertext, std::string* plaintext);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CryptoROT47);

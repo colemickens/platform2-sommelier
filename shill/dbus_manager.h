@@ -42,14 +42,14 @@ class DBusManager : public base::SupportsWeakPtr<DBusManager> {
   // to this DBus manager.  When it is destructed, it automatically calls
   // RemoveNameWatcher() to deregister and remove itself from this DBus
   // manager.
-  virtual DBusNameWatcher *CreateNameWatcher(
-      const std::string &name,
-      const DBusNameWatcher::NameAppearedCallback &name_appeared_callback,
-      const DBusNameWatcher::NameVanishedCallback &name_vanished_callback);
+  virtual DBusNameWatcher* CreateNameWatcher(
+      const std::string& name,
+      const DBusNameWatcher::NameAppearedCallback& name_appeared_callback,
+      const DBusNameWatcher::NameVanishedCallback& name_vanished_callback);
 
   // Deregisters and removes the watcher such that it stops monitoring the
   // associated DBus service name.
-  virtual void RemoveNameWatcher(DBusNameWatcher *name_watcher);
+  virtual void RemoveNameWatcher(DBusNameWatcher* name_watcher);
 
  private:
   friend class DBusManagerTest;
@@ -62,20 +62,20 @@ class DBusManager : public base::SupportsWeakPtr<DBusManager> {
   FRIEND_TEST(WiMaxProviderTest, StartStop);
   FRIEND_TEST(ModemManagerCoreTest, OnAppearVanish);
 
-  void OnNameOwnerChanged(const std::string &name,
-                          const std::string &old_owner,
-                          const std::string &new_owner);
+  void OnNameOwnerChanged(const std::string& name,
+                          const std::string& old_owner,
+                          const std::string& new_owner);
 
   void OnGetNameOwnerComplete(
-      const base::WeakPtr<DBusNameWatcher> &name_watcher,
-      const std::string &unique_name,
-      const Error &error);
+      const base::WeakPtr<DBusNameWatcher>& name_watcher,
+      const std::string& unique_name,
+      const Error& error);
 
-  ProxyFactory *proxy_factory_;
+  ProxyFactory* proxy_factory_;
 
   std::unique_ptr<DBusServiceProxyInterface> proxy_;
 
-  std::map<std::string, std::list<DBusNameWatcher *>> name_watchers_;
+  std::map<std::string, std::list<DBusNameWatcher*>> name_watchers_;
 
   DISALLOW_COPY_AND_ASSIGN(DBusManager);
 };

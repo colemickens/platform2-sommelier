@@ -54,12 +54,12 @@ class ActiveLinkMonitor {
   // are reset, and the link monitoring quiesces.  Needed by Metrics.
   static const int kFailureThreshold;
 
-  ActiveLinkMonitor(const ConnectionRefPtr &connection,
-                    EventDispatcher *dispatcher,
-                    Metrics *metrics,
-                    DeviceInfo *device_info,
-                    const FailureCallback &failure_callback,
-                    const SuccessCallback &success_callback);
+  ActiveLinkMonitor(const ConnectionRefPtr& connection,
+                    EventDispatcher* dispatcher,
+                    Metrics* metrics,
+                    DeviceInfo* device_info,
+                    const FailureCallback& failure_callback,
+                    const SuccessCallback& success_callback);
   virtual ~ActiveLinkMonitor();
 
   // Starts an active link-monitoring cycle on the selected connection, with
@@ -80,10 +80,10 @@ class ActiveLinkMonitor {
   // gateway via broadcast ARP.
   bool IsGatewayFound() const;
 
-  virtual const ByteString &gateway_mac_address() const {
+  virtual const ByteString& gateway_mac_address() const {
     return gateway_mac_address_;
   }
-  virtual void set_gateway_mac_address(const ByteString &gateway_mac_address) {
+  virtual void set_gateway_mac_address(const ByteString& gateway_mac_address) {
     gateway_mac_address_ = gateway_mac_address;
   }
 
@@ -122,7 +122,7 @@ class ActiveLinkMonitor {
   bool StartArpClient();
   void StopArpClient();
   // Convert a hardware address byte-string to a colon-separated string.
-  static std::string HardwareAddressToString(const ByteString &address);
+  static std::string HardwareAddressToString(const ByteString& address);
   // Denote a missed response.  Returns true if this loss has caused us
   // to exceed the failure threshold.
   bool AddMissedResponse();
@@ -135,11 +135,11 @@ class ActiveLinkMonitor {
   // The connection on which to perform link monitoring.
   ConnectionRefPtr connection_;
   // Dispatcher on which to create delayed tasks.
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   // Metrics instance on which to post performance results.
-  Metrics *metrics_;
+  Metrics* metrics_;
   // DeviceInfo instance for retrieving the MAC address of a device.
-  DeviceInfo *device_info_;
+  DeviceInfo* device_info_;
   // Callback methods to call when ActiveLinkMonitor completes a cycle.
   FailureCallback failure_callback_;
   SuccessCallback success_callback_;
@@ -192,7 +192,7 @@ class ActiveLinkMonitor {
   // The time at which the last ARP request was sent.
   struct timeval sent_request_at_;
   // Time instance for performing GetTimeMonotonic().
-  Time *time_;
+  Time* time_;
 
   DISALLOW_COPY_AND_ASSIGN(ActiveLinkMonitor);
 };

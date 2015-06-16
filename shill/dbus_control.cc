@@ -25,53 +25,53 @@ DBusControl::DBusControl() {}
 DBusControl::~DBusControl() {}
 
 template <typename Object, typename AdaptorInterface, typename Adaptor>
-AdaptorInterface *DBusControl::CreateAdaptor(Object *object) {
-  AdaptorInterface *adaptor = nullptr;
+AdaptorInterface* DBusControl::CreateAdaptor(Object* object) {
+  AdaptorInterface* adaptor = nullptr;
   try {
     adaptor = new Adaptor(GetConnection(), object);
-  } catch(const DBus::ErrorObjectPathInUse &error) {
+  } catch(const DBus::ErrorObjectPathInUse& error) {
     LOG(FATAL) << error.message() << " (object path in use)";
-  } catch(const DBus::ErrorNoMemory &error) {
+  } catch(const DBus::ErrorNoMemory& error) {
     LOG(FATAL) << error.message() << " (no memory)";
-  } catch(const DBus::Error &error) {
+  } catch(const DBus::Error& error) {
     LOG(FATAL) << error.message();
   }
   return adaptor;
 }
 
-DeviceAdaptorInterface *DBusControl::CreateDeviceAdaptor(Device *device) {
+DeviceAdaptorInterface* DBusControl::CreateDeviceAdaptor(Device* device) {
   return CreateAdaptor<Device, DeviceAdaptorInterface, DeviceDBusAdaptor>(
       device);
 }
 
-IPConfigAdaptorInterface *DBusControl::CreateIPConfigAdaptor(IPConfig *config) {
+IPConfigAdaptorInterface* DBusControl::CreateIPConfigAdaptor(IPConfig* config) {
   return CreateAdaptor<IPConfig, IPConfigAdaptorInterface, IPConfigDBusAdaptor>(
       config);
 }
 
-ManagerAdaptorInterface *DBusControl::CreateManagerAdaptor(Manager *manager) {
+ManagerAdaptorInterface* DBusControl::CreateManagerAdaptor(Manager* manager) {
   return CreateAdaptor<Manager, ManagerAdaptorInterface, ManagerDBusAdaptor>(
       manager);
 }
 
-ProfileAdaptorInterface *DBusControl::CreateProfileAdaptor(Profile *profile) {
+ProfileAdaptorInterface* DBusControl::CreateProfileAdaptor(Profile* profile) {
   return CreateAdaptor<Profile, ProfileAdaptorInterface, ProfileDBusAdaptor>(
       profile);
 }
 
-RPCTaskAdaptorInterface *DBusControl::CreateRPCTaskAdaptor(RPCTask *task) {
+RPCTaskAdaptorInterface* DBusControl::CreateRPCTaskAdaptor(RPCTask* task) {
   return CreateAdaptor<RPCTask, RPCTaskAdaptorInterface, RPCTaskDBusAdaptor>(
       task);
 }
 
-ServiceAdaptorInterface *DBusControl::CreateServiceAdaptor(Service *service) {
+ServiceAdaptorInterface* DBusControl::CreateServiceAdaptor(Service* service) {
   return CreateAdaptor<Service, ServiceAdaptorInterface, ServiceDBusAdaptor>(
       service);
 }
 
 #ifndef DISABLE_VPN
-ThirdPartyVpnAdaptorInterface *DBusControl::CreateThirdPartyVpnAdaptor(
-    ThirdPartyVpnDriver *driver) {
+ThirdPartyVpnAdaptorInterface* DBusControl::CreateThirdPartyVpnAdaptor(
+    ThirdPartyVpnDriver* driver) {
   return CreateAdaptor<ThirdPartyVpnDriver, ThirdPartyVpnAdaptorInterface,
                        ThirdPartyVpnAdaptor>(driver);
 }
@@ -84,7 +84,7 @@ void DBusControl::Init() {
   }
 }
 
-DBus::Connection *DBusControl::GetConnection() const {
+DBus::Connection* DBusControl::GetConnection() const {
   return SharedDBusConnection::GetInstance()->GetAdaptorConnection();
 }
 

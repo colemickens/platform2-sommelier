@@ -67,7 +67,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDevice;
-static string ObjectID(Device *d) { return d->GetRpcIdentifier(); }
+static string ObjectID(Device* d) { return d->GetRpcIdentifier(); }
 }
 
 // static
@@ -119,12 +119,12 @@ const int Device::kDNSTimeoutMilliseconds = 5000;
 const int Device::kLinkUnreliableThresholdSeconds = 60 * 60;
 const size_t Device::kHardwareAddressLength = 6U;
 
-Device::Device(ControlInterface *control_interface,
-               EventDispatcher *dispatcher,
-               Metrics *metrics,
-               Manager *manager,
-               const string &link_name,
-               const string &address,
+Device::Device(ControlInterface* control_interface,
+               EventDispatcher* dispatcher,
+               Metrics* metrics,
+               Manager* manager,
+               const string& link_name,
+               const string& address,
                int interface_index,
                Technology::Identifier technology)
     : enabled_(false),
@@ -232,64 +232,64 @@ void Device::LinkEvent(unsigned flags, unsigned change) {
                 << std::dec << std::noshowbase;
 }
 
-void Device::Scan(ScanType scan_type, Error *error, const string &reason) {
+void Device::Scan(ScanType scan_type, Error* error, const string& reason) {
   SLOG(this, 2) << __func__ << " [Device] on " << link_name() << " from "
                 << reason;
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support scan.");
 }
 
-void Device::SetSchedScan(bool enable, Error *error) {
+void Device::SetSchedScan(bool enable, Error* error) {
   SLOG(this, 2) << __func__ << " [Device] on " << link_name();
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support scheduled scan.");
 }
 
-void Device::RegisterOnNetwork(const std::string &/*network_id*/, Error *error,
-                                 const ResultCallback &/*callback*/) {
+void Device::RegisterOnNetwork(const std::string& /*network_id*/, Error* error,
+                                 const ResultCallback& /*callback*/) {
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support network registration.");
 }
 
 void Device::RequirePIN(
-    const string &/*pin*/, bool /*require*/,
-    Error *error, const ResultCallback &/*callback*/) {
+    const string& /*pin*/, bool /*require*/,
+    Error* error, const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support RequirePIN.");
 }
 
-void Device::EnterPIN(const string &/*pin*/,
-                      Error *error, const ResultCallback &/*callback*/) {
+void Device::EnterPIN(const string& /*pin*/,
+                      Error* error, const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support EnterPIN.");
 }
 
-void Device::UnblockPIN(const string &/*unblock_code*/,
-                        const string &/*pin*/,
-                        Error *error, const ResultCallback &/*callback*/) {
+void Device::UnblockPIN(const string& /*unblock_code*/,
+                        const string& /*pin*/,
+                        Error* error, const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support UnblockPIN.");
 }
 
-void Device::ChangePIN(const string &/*old_pin*/,
-                       const string &/*new_pin*/,
-                       Error *error, const ResultCallback &/*callback*/) {
+void Device::ChangePIN(const string& /*old_pin*/,
+                       const string& /*new_pin*/,
+                       Error* error, const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support ChangePIN.");
 }
 
-void Device::Reset(Error *error, const ResultCallback &/*callback*/) {
+void Device::Reset(Error* error, const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support Reset.");
 }
 
-void Device::SetCarrier(const string &/*carrier*/,
-                        Error *error, const ResultCallback &/*callback*/) {
+void Device::SetCarrier(const string& /*carrier*/,
+                        Error* error, const ResultCallback& /*callback*/) {
   SLOG(this, 2) << __func__;
   Error::PopulateAndLog(FROM_HERE, error, Error::kNotSupported,
                         "Device doesn't support SetCarrier.");
@@ -386,7 +386,7 @@ bool Device::IsConnected() const {
   return false;
 }
 
-bool Device::IsConnectedToService(const ServiceRefPtr &service) const {
+bool Device::IsConnectedToService(const ServiceRefPtr& service) const {
   return service == selected_service_ && IsConnected();
 }
 
@@ -414,7 +414,7 @@ vector<GeolocationInfo> Device::GetGeolocationObjects() const {
   return vector<GeolocationInfo>();
 }
 
-string Device::GetTechnologyString(Error */*error*/) {
+string Device::GetTechnologyString(Error* /*error*/) {
   return Technology::NameFromIdentifier(technology());
 }
 
@@ -426,7 +426,7 @@ const string& Device::UniqueName() const {
   return unique_id_;
 }
 
-bool Device::Load(StoreInterface *storage) {
+bool Device::Load(StoreInterface* storage) {
   const string id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
     SLOG(this, 2) << "Device is not available in the persistent store: " << id;
@@ -454,7 +454,7 @@ bool Device::Load(StoreInterface *storage) {
   return true;
 }
 
-bool Device::Save(StoreInterface *storage) {
+bool Device::Save(StoreInterface* storage) {
   const string id = GetStorageIdentifier();
   storage->SetBool(id, kStoragePowered, enabled_persistent_);
   storage->SetUint64(id, kStorageReceiveByteCount, GetReceiveByteCount());
@@ -462,7 +462,7 @@ bool Device::Save(StoreInterface *storage) {
   return true;
 }
 
-void Device::OnBeforeSuspend(const ResultCallback &callback) {
+void Device::OnBeforeSuspend(const ResultCallback& callback) {
   // Nothing to be done in the general case, so immediately report success.
   callback.Run(Error(Error::kSuccess));
 }
@@ -482,7 +482,7 @@ void Device::OnAfterResume() {
   last_link_monitor_failed_time_ = 0;
 }
 
-void Device::OnDarkResume(const ResultCallback &callback) {
+void Device::OnDarkResume(const ResultCallback& callback) {
   // Nothing to be done in the general case, so immediately report success.
   callback.Run(Error(Error::kSuccess));
 }
@@ -571,7 +571,7 @@ void Device::OnIPv6DnsServerAddressesChanged() {
   }
 
   vector<string> addresses_str;
-  for (const auto &ip : server_addresses) {
+  for (const auto& ip : server_addresses) {
     string address_str;
     if (!ip.IntoString(&address_str)) {
       LOG(ERROR) << "Unable to convert IPv6 address into a string!";
@@ -636,23 +636,23 @@ void Device::StopAllActivities() {
   StopIPv6DNSServerTimer();
 }
 
-void Device::AddWakeOnPacketConnection(const string &ip_endpoint,
-                                       Error *error) {
+void Device::AddWakeOnPacketConnection(const string& ip_endpoint,
+                                       Error* error) {
   Error::PopulateAndLog(
       FROM_HERE, error, Error::kNotSupported,
       "AddWakeOnPacketConnection not implemented for " + link_name_ + ".");
   return;
 }
 
-void Device::RemoveWakeOnPacketConnection(const string &ip_endpoint,
-                                          Error *error) {
+void Device::RemoveWakeOnPacketConnection(const string& ip_endpoint,
+                                          Error* error) {
   Error::PopulateAndLog(
       FROM_HERE, error, Error::kNotSupported,
       "RemoveWakeOnPacketConnection not implemented for " + link_name_ + ".");
   return;
 }
 
-void Device::RemoveAllWakeOnPacketConnections(Error *error) {
+void Device::RemoveAllWakeOnPacketConnections(Error* error) {
   Error::PopulateAndLog(
       FROM_HERE, error, Error::kNotSupported,
       "RemoveAllWakeOnPacketConnections not implemented for " + link_name_ +
@@ -703,7 +703,7 @@ bool Device::AcquireIPConfig() {
   return AcquireIPConfigWithLeaseName(string());
 }
 
-bool Device::AcquireIPConfigWithLeaseName(const string &lease_name) {
+bool Device::AcquireIPConfigWithLeaseName(const string& lease_name) {
   DestroyIPConfig();
   EnableIPv6();
   bool arp_gateway = manager_->GetArpGateway() && ShouldUseArpGateway();
@@ -751,7 +751,7 @@ bool Device::AcquireIPConfigWithLeaseName(const string &lease_name) {
   return true;
 }
 
-void Device::AssignIPConfig(const IPConfig::Properties &properties) {
+void Device::AssignIPConfig(const IPConfig::Properties& properties) {
   DestroyIPConfig();
   EnableIPv6();
   ipconfig_ = new IPConfig(control_interface_, link_name_);
@@ -760,21 +760,21 @@ void Device::AssignIPConfig(const IPConfig::Properties &properties) {
                              weak_ptr_factory_.GetWeakPtr(), ipconfig_, true));
 }
 
-void Device::DestroyIPConfigLease(const string &name) {
+void Device::DestroyIPConfigLease(const string& name) {
   dhcp_provider_->DestroyLease(name);
 }
 
 void Device::HelpRegisterConstDerivedString(
-    const string &name,
-    string(Device::*get)(Error *error)) {
+    const string& name,
+    string(Device::*get)(Error* error)) {
   store_.RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<Device, string>(this, get, nullptr)));
 }
 
 void Device::HelpRegisterConstDerivedRpcIdentifier(
-    const string &name,
-    RpcIdentifier(Device::*get)(Error *error)) {
+    const string& name,
+    RpcIdentifier(Device::*get)(Error* error)) {
   store_.RegisterDerivedRpcIdentifier(
       name,
       RpcIdentifierAccessor(
@@ -782,8 +782,8 @@ void Device::HelpRegisterConstDerivedRpcIdentifier(
 }
 
 void Device::HelpRegisterConstDerivedRpcIdentifiers(
-    const string &name,
-    RpcIdentifiers(Device::*get)(Error *)) {
+    const string& name,
+    RpcIdentifiers(Device::*get)(Error*)) {
   store_.RegisterDerivedRpcIdentifiers(
       name,
       RpcIdentifiersAccessor(
@@ -791,8 +791,8 @@ void Device::HelpRegisterConstDerivedRpcIdentifiers(
 }
 
 void Device::HelpRegisterConstDerivedUint64(
-    const string &name,
-    uint64_t(Device::*get)(Error *)) {
+    const string& name,
+    uint64_t(Device::*get)(Error*)) {
   store_.RegisterDerivedUint64(
       name,
       Uint64Accessor(
@@ -827,7 +827,7 @@ void Device::ConfigureStaticIPTask() {
   }
 }
 
-bool Device::IPConfigCompleted(const IPConfigRefPtr &ipconfig) {
+bool Device::IPConfigCompleted(const IPConfigRefPtr& ipconfig) {
   return ipconfig && !ipconfig->properties().address.empty() &&
       !ipconfig->properties().dns_servers.empty();
 }
@@ -843,7 +843,7 @@ void Device::OnIPv6ConfigUpdated() {
   }
 }
 
-void Device::SetupConnection(const IPConfigRefPtr &ipconfig) {
+void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
   CreateConnection();
   connection_->UpdateFromIPConfig(ipconfig);
 
@@ -880,7 +880,7 @@ void Device::SetupConnection(const IPConfigRefPtr &ipconfig) {
   StartTrafficMonitor();
 }
 
-bool Device::SetHostname(const std::string &hostname) {
+bool Device::SetHostname(const std::string& hostname) {
   if (hostname.empty() || !manager()->ShouldAcceptHostnameFrom(link_name_)) {
     return false;
   }
@@ -897,8 +897,8 @@ bool Device::SetHostname(const std::string &hostname) {
   return manager_->device_info()->SetHostname(fixed_hostname);
 }
 
-void Device::PrependDNSServersIntoIPConfig(const IPConfigRefPtr &ipconfig) {
-  const auto &properties = ipconfig->properties();
+void Device::PrependDNSServersIntoIPConfig(const IPConfigRefPtr& ipconfig) {
+  const auto& properties = ipconfig->properties();
 
   vector<string> servers(properties.dns_servers.begin(),
                          properties.dns_servers.end());
@@ -913,12 +913,12 @@ void Device::PrependDNSServersIntoIPConfig(const IPConfigRefPtr &ipconfig) {
 }
 
 void Device::PrependDNSServers(const IPAddress::Family family,
-                               vector<string> *servers) {
+                               vector<string>* servers) {
   vector<string>output_servers =
       manager_->FilterPrependDNSServersByFamily(family);
 
   set<string> unique(output_servers.begin(), output_servers.end());
-  for (const auto &server : *servers) {
+  for (const auto& server : *servers) {
     if (unique.find(server) == unique.end()) {
       output_servers.push_back(server);
       unique.insert(server);
@@ -927,7 +927,7 @@ void Device::PrependDNSServers(const IPAddress::Family family,
   servers->swap(output_servers);
 }
 
-void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,
+void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig,
                                bool /*new_lease_acquired*/) {
   SLOG(this, 2) << __func__;
   if (selected_service_) {
@@ -951,7 +951,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,
   UpdateIPConfigsProperty();
 }
 
-void Device::OnIPConfigFailed(const IPConfigRefPtr &ipconfig) {
+void Device::OnIPConfigFailed(const IPConfigRefPtr& ipconfig) {
   SLOG(this, 2) << __func__;
   // TODO(pstew): This logic gets yet more complex when multiple
   // IPConfig types are run in parallel (e.g. DHCP and DHCP6)
@@ -999,7 +999,7 @@ void Device::OnIPConfigFailed(const IPConfigRefPtr &ipconfig) {
   DestroyConnection();
 }
 
-void Device::OnIPConfigRefreshed(const IPConfigRefPtr &ipconfig) {
+void Device::OnIPConfigRefreshed(const IPConfigRefPtr& ipconfig) {
   // Clear the previously applied static IP parameters.
   ipconfig->RestoreSavedIPParameters(
       selected_service_->mutable_static_ip_parameters());
@@ -1017,7 +1017,7 @@ void Device::OnIPConfigFailure() {
   }
 }
 
-void Device::OnIPConfigExpired(const IPConfigRefPtr &ipconfig) {
+void Device::OnIPConfigExpired(const IPConfigRefPtr& ipconfig) {
   metrics()->SendToUMA(
       metrics()->GetFullMetricName(
           Metrics::kMetricExpiredLeaseLengthSecondsSuffix, technology()),
@@ -1027,19 +1027,19 @@ void Device::OnIPConfigExpired(const IPConfigRefPtr &ipconfig) {
       Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets);
 }
 
-void Device::OnDHCPv6ConfigUpdated(const IPConfigRefPtr &ipconfig,
+void Device::OnDHCPv6ConfigUpdated(const IPConfigRefPtr& ipconfig,
                                    bool /*new_lease_acquired*/) {
   // Emit configuration update.
   UpdateIPConfigsProperty();
 }
 
-void Device::OnDHCPv6ConfigFailed(const IPConfigRefPtr &ipconfig) {
+void Device::OnDHCPv6ConfigFailed(const IPConfigRefPtr& ipconfig) {
   // Reset configuration data.
   ipconfig->ResetProperties();
   UpdateIPConfigsProperty();
 }
 
-void Device::OnDHCPv6ConfigExpired(const IPConfigRefPtr &ipconfig) {
+void Device::OnDHCPv6ConfigExpired(const IPConfigRefPtr& ipconfig) {
   // Reset configuration data.
   ipconfig->ResetProperties();
   UpdateIPConfigsProperty();
@@ -1084,7 +1084,7 @@ void Device::DestroyConnection() {
   connection_ = nullptr;
 }
 
-void Device::SelectService(const ServiceRefPtr &service) {
+void Device::SelectService(const ServiceRefPtr& service) {
   SLOG(this, 2) << __func__ << ": service "
                 << (service ? service->unique_name() : "*reset*")
                 << " on " << link_name_;
@@ -1135,8 +1135,8 @@ void Device::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
   }
 }
 
-bool Device::SetIPFlag(IPAddress::Family family, const string &flag,
-                       const string &value) {
+bool Device::SetIPFlag(IPAddress::Family family, const string& flag,
+                       const string& value) {
   string ip_version;
   if (family == IPAddress::kFamilyIPv4) {
     ip_version = kIPFlagVersion4;
@@ -1165,9 +1165,9 @@ bool Device::SetIPFlag(IPAddress::Family family, const string &flag,
   return true;
 }
 
-string Device::PerformTDLSOperation(const string &/* operation */,
-                                    const string &/* peer */,
-                                    Error */* error */) {
+string Device::PerformTDLSOperation(const string& /* operation */,
+                                    const string& /* peer */,
+                                    Error* /* error */) {
   return "";
 }
 
@@ -1287,7 +1287,7 @@ void Device::StopConnectivityTest() {
   connection_tester_.reset();
 }
 
-void Device::set_link_monitor(LinkMonitor *link_monitor) {
+void Device::set_link_monitor(LinkMonitor* link_monitor) {
   link_monitor_.reset(link_monitor);
 }
 
@@ -1369,9 +1369,9 @@ void Device::OnLinkMonitorGatewayChange() {
 }
 
 bool Device::StartDNSTest(
-    const vector<string> &dns_servers,
+    const vector<string>& dns_servers,
     bool retry_until_success,
-    const Callback<void(const DNSServerTester::Status)> &callback) {
+    const Callback<void(const DNSServerTester::Status)>& callback) {
   if (dns_server_tester_.get()) {
     LOG(ERROR) << FriendlyName() << ": "
                << "Failed to start DNS Test: current test still running";
@@ -1430,7 +1430,7 @@ void Device::ConfigDNSResultCallback(const DNSServerTester::Status status) {
   SwitchDNSServers(config_dns_servers_);
 }
 
-void Device::SwitchDNSServers(const vector<string> &dns_servers) {
+void Device::SwitchDNSServers(const vector<string>& dns_servers) {
   CHECK(ipconfig_);
   CHECK(connection_);
   // Push new DNS servers setting to the IP config object.
@@ -1444,11 +1444,11 @@ void Device::SwitchDNSServers(const vector<string> &dns_servers) {
   RestartPortalDetection();
 }
 
-void Device::set_traffic_monitor(TrafficMonitor *traffic_monitor) {
+void Device::set_traffic_monitor(TrafficMonitor* traffic_monitor) {
   traffic_monitor_.reset(traffic_monitor);
 }
 
-bool Device::TimeToNextDHCPLeaseRenewal(uint32_t *result) {
+bool Device::TimeToNextDHCPLeaseRenewal(uint32_t* result) {
   if (!ipconfig() && !ip6config()) {
     return false;
   }
@@ -1560,7 +1560,7 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
   SetServiceState(state);
 }
 
-void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
+void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
   if (!result.final) {
     SLOG(this, 2) << "Device " << FriendlyName()
                   << ": Received non-final status: "
@@ -1629,14 +1629,14 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
   }
 }
 
-string Device::GetSelectedServiceRpcIdentifier(Error */*error*/) {
+string Device::GetSelectedServiceRpcIdentifier(Error* /*error*/) {
   if (!selected_service_) {
     return "/";
   }
   return selected_service_->GetRpcIdentifier();
 }
 
-vector<string> Device::AvailableIPConfigs(Error */*error*/) {
+vector<string> Device::AvailableIPConfigs(Error* /*error*/) {
   vector<string> ipconfigs;
   if (ipconfig_) {
     ipconfigs.push_back(ipconfig_->GetRpcIdentifier());
@@ -1654,7 +1654,7 @@ string Device::GetRpcConnectionIdentifier() {
   return adaptor_->GetRpcConnectionIdentifier();
 }
 
-uint64_t Device::GetLinkMonitorResponseTime(Error *error) {
+uint64_t Device::GetLinkMonitorResponseTime(Error* error) {
   if (!link_monitor_.get()) {
     // It is not strictly an error that the link monitor does not
     // exist, but returning an error here allows the GetProperties
@@ -1679,11 +1679,11 @@ uint64_t Device::GetTransmitByteCount() {
   return tx_byte_count - transmit_byte_offset_;
 }
 
-uint64_t Device::GetReceiveByteCountProperty(Error */*error*/) {
+uint64_t Device::GetReceiveByteCountProperty(Error* /*error*/) {
   return GetReceiveByteCount();
 }
 
-uint64_t Device::GetTransmitByteCountProperty(Error */*error*/) {
+uint64_t Device::GetTransmitByteCountProperty(Error* /*error*/) {
   return GetTransmitByteCount();
 }
 
@@ -1692,8 +1692,8 @@ bool Device::IsUnderlyingDeviceEnabled() const {
 }
 
 // callback
-void Device::OnEnabledStateChanged(const ResultCallback &callback,
-                                   const Error &error) {
+void Device::OnEnabledStateChanged(const ResultCallback& callback,
+                                   const Error& error) {
   SLOG(this, 2) << __func__
                 << " (target: " << enabled_pending_ << ","
                 << " success: " << error.IsSuccess() << ")"
@@ -1726,21 +1726,21 @@ void Device::SetEnabled(bool enable) {
 }
 
 void Device::SetEnabledNonPersistent(bool enable,
-                                     Error *error,
-                                     const ResultCallback &callback) {
+                                     Error* error,
+                                     const ResultCallback& callback) {
   SetEnabledChecked(enable, false, error, callback);
 }
 
 void Device::SetEnabledPersistent(bool enable,
-                                  Error *error,
-                                  const ResultCallback &callback) {
+                                  Error* error,
+                                  const ResultCallback& callback) {
   SetEnabledChecked(enable, true, error, callback);
 }
 
 void Device::SetEnabledChecked(bool enable,
                                bool persist,
-                               Error *error,
-                               const ResultCallback &callback) {
+                               Error* error,
+                               const ResultCallback& callback) {
   DCHECK(error);
   SLOG(this, 2) << "Device " << link_name_ << " "
                 << (enable ? "starting" : "stopping");
@@ -1780,8 +1780,8 @@ void Device::SetEnabledChecked(bool enable,
   SetEnabledUnchecked(enable, error, callback);
 }
 
-void Device::SetEnabledUnchecked(bool enable, Error *error,
-                                 const ResultCallback &on_enable_complete) {
+void Device::SetEnabledUnchecked(bool enable, Error* error,
+                                 const ResultCallback& on_enable_complete) {
   enabled_pending_ = enable;
   EnabledStateChangedCallback chained_callback =
       Bind(&Device::OnEnabledStateChanged,
@@ -1811,9 +1811,9 @@ void Device::UpdateIPConfigsProperty() {
       kIPConfigsProperty, AvailableIPConfigs(nullptr));
 }
 
-bool Device::ResolvePeerMacAddress(const string &input,
-                                   string *output,
-                                   Error *error) {
+bool Device::ResolvePeerMacAddress(const string& input,
+                                   string* output,
+                                   Error* error) {
   if (!MakeHardwareAddressFromString(input).empty()) {
     // Input is already a MAC address.
     *output = input;
@@ -1828,7 +1828,7 @@ bool Device::ResolvePeerMacAddress(const string &input,
   }
 
   // Peer address was specified as an IP address which we need to resolve.
-  const DeviceInfo *device_info = manager()->device_info();
+  const DeviceInfo* device_info = manager()->device_info();
   if (!device_info->HasDirectConnectivityTo(interface_index_, ip_address)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "IP address is not local to this interface");
@@ -1863,7 +1863,7 @@ bool Device::ResolvePeerMacAddress(const string &input,
 
 // static
 vector<uint8_t> Device::MakeHardwareAddressFromString(
-    const string &address_string) {
+    const string& address_string) {
   string address_nosep;
   base::RemoveChars(address_string, ":", &address_nosep);
   vector<uint8_t> address_bytes;
@@ -1876,7 +1876,7 @@ vector<uint8_t> Device::MakeHardwareAddressFromString(
 
 // static
 string Device::MakeStringFromHardwareAddress(
-    const vector<uint8_t> &address_bytes) {
+    const vector<uint8_t>& address_bytes) {
   CHECK_EQ(kHardwareAddressLength, address_bytes.size());
   return StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
                       address_bytes[0], address_bytes[1], address_bytes[2],

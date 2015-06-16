@@ -33,8 +33,8 @@ namespace shill {
 class ConnectionTester {
  public:
   ConnectionTester(ConnectionRefPtr connection,
-                   EventDispatcher *dispatcher,
-                   const base::Closure &callback);
+                   EventDispatcher* dispatcher,
+                   const base::Closure& callback);
   virtual ~ConnectionTester();
 
   // Start a connectivity test.  The Start method creates a ConnectivityTrial
@@ -56,7 +56,7 @@ class ConnectionTester {
   void CompleteTest(ConnectivityTrial::Result result);
 
   ConnectionRefPtr connection_;
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   base::WeakPtrFactory<ConnectionTester> weak_ptr_factory_;
   base::Callback<void()> tester_callback_;
   std::unique_ptr<ConnectivityTrial> connectivity_trial_;

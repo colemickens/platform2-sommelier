@@ -51,22 +51,22 @@ class Error {
 
   Error();  // Success by default.
   explicit Error(Type type);  // Uses the default message for |type|.
-  Error(Type type, const std::string &message);
+  Error(Type type, const std::string& message);
   ~Error();
 
   void Populate(Type type);  // Uses the default message for |type|.
-  void Populate(Type type, const std::string &message);
+  void Populate(Type type, const std::string& message);
 
   void Reset();
 
-  void CopyFrom(const Error &error);
+  void CopyFrom(const Error& error);
 
   // Sets the DBus |error| and returns true if Error represents failure.
   // Leaves |error| unchanged, and returns false, otherwise.
-  bool ToDBusError(::DBus::Error *error) const;
+  bool ToDBusError(::DBus::Error* error) const;
 
   Type type() const { return type_; }
-  const std::string &message() const { return message_; }
+  const std::string& message() const { return message_; }
 
   bool IsSuccess() const { return type_ == kSuccess; }
   bool IsFailure() const { return !IsSuccess() && !IsOngoing(); }
@@ -77,14 +77,14 @@ class Error {
 
   // Log an error message from |from_here|.  If |error| is non-NULL, also
   // populate it.
-  static void PopulateAndLog(const tracked_objects::Location &from_here,
-                             Error *error, Type type,
-                             const std::string &message);
+  static void PopulateAndLog(const tracked_objects::Location& from_here,
+                             Error* error, Type type,
+                             const std::string& message);
 
  private:
   struct Info {
-    const char *dbus_result;  // Error type name.
-    const char *message;  // Default Error type message.
+    const char* dbus_result;  // Error type name.
+    const char* message;  // Default Error type message.
   };
 
   static const Info kInfos[kNumErrors];
@@ -98,6 +98,6 @@ class Error {
 }  // namespace shill
 
 // stream operator provided to facilitate logging
-std::ostream &operator<<(std::ostream &stream, const shill::Error &error);
+std::ostream& operator<<(std::ostream& stream, const shill::Error& error);
 
 #endif  // SHILL_ERROR_H_

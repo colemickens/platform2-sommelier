@@ -28,7 +28,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(DBusAdaptor *d) {
+static string ObjectID(DBusAdaptor* d) {
   if (d == nullptr)
     return "(dbus_adaptor)";
   return d->path();
@@ -38,7 +38,7 @@ static string ObjectID(DBusAdaptor *d) {
 // public static
 const char DBusAdaptor::kNullPath[] = "/";
 
-DBusAdaptor::DBusAdaptor(DBus::Connection* conn, const string &object_path)
+DBusAdaptor::DBusAdaptor(DBus::Connection* conn, const string& object_path)
     : DBus::ObjectAdaptor(*conn, object_path) {
   SLOG(this, 2) << "DBusAdaptor: " << object_path;
 }
@@ -46,10 +46,10 @@ DBusAdaptor::DBusAdaptor(DBus::Connection* conn, const string &object_path)
 DBusAdaptor::~DBusAdaptor() {}
 
 // static
-bool DBusAdaptor::SetProperty(PropertyStore *store,
-                              const string &name,
-                              const ::DBus::Variant &value,
-                              ::DBus::Error *error) {
+bool DBusAdaptor::SetProperty(PropertyStore* store,
+                              const string& name,
+                              const ::DBus::Variant& value,
+                              ::DBus::Error* error) {
   Error e;
   bool ret;
 
@@ -107,9 +107,9 @@ bool DBusAdaptor::SetProperty(PropertyStore *store,
 }
 
 // static
-bool DBusAdaptor::GetProperties(const PropertyStore &store,
-                                map<string, ::DBus::Variant> *out,
-                                ::DBus::Error */*error*/) {
+bool DBusAdaptor::GetProperties(const PropertyStore& store,
+                                map<string, ::DBus::Variant>* out,
+                                ::DBus::Error* /*error*/) {
   {
     ReadablePropertyConstIterator<bool> it = store.GetBoolPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
@@ -140,7 +140,7 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
         store.GetRpcIdentifiersPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       vector < ::DBus::Path> rpc_identifiers_as_paths;
-      for (const auto &path : it.value()) {
+      for (const auto& path : it.value()) {
         rpc_identifiers_as_paths.push_back(path);
       }
       (*out)[it.Key()] = PathsToVariant(rpc_identifiers_as_paths);
@@ -218,9 +218,9 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
 }
 
 // static
-bool DBusAdaptor::ClearProperty(PropertyStore *store,
-                                const string &name,
-                                ::DBus::Error *error) {
+bool DBusAdaptor::ClearProperty(PropertyStore* store,
+                                const string& name,
+                                ::DBus::Error* error) {
   Error e;
   store->ClearProperty(name, &e);
 
@@ -233,10 +233,10 @@ bool DBusAdaptor::ClearProperty(PropertyStore *store,
 
 // static
 void DBusAdaptor::ArgsToKeyValueStore(
-    const map<string, ::DBus::Variant> &args,
-    KeyValueStore *out,
-    Error *error) {  // TODO(quiche): Should be ::DBus::Error?
-  for (const auto &key_value_pair : args) {
+    const map<string, ::DBus::Variant>& args,
+    KeyValueStore* out,
+    Error* error) {  // TODO(quiche): Should be ::DBus::Error?
+  for (const auto& key_value_pair : args) {
     string key = key_value_pair.first;
     DBus::type<string> string_type;
     DBus::type<bool> bool_type;
@@ -283,7 +283,7 @@ void DBusAdaptor::ArgsToKeyValueStore(
 }
 
 // static
-string DBusAdaptor::SanitizePathElement(const string &object_path) {
+string DBusAdaptor::SanitizePathElement(const string& object_path) {
   string sanitized_path(object_path);
   size_t length = sanitized_path.length();
 
@@ -311,7 +311,7 @@ string DBusAdaptor::SanitizePathElement(const string &object_path) {
 }
 
 // static
-::DBus::Variant DBusAdaptor::ByteArraysToVariant(const ByteArrays &value) {
+::DBus::Variant DBusAdaptor::ByteArraysToVariant(const ByteArrays& value) {
   ::DBus::MessageIter writer;
   ::DBus::Variant v;
 
@@ -355,14 +355,14 @@ string DBusAdaptor::SanitizePathElement(const string &object_path) {
 }
 
 // static
-::DBus::Variant DBusAdaptor::PathToVariant(const ::DBus::Path &value) {
+::DBus::Variant DBusAdaptor::PathToVariant(const ::DBus::Path& value) {
   ::DBus::Variant v;
   v.writer().append_path(value.c_str());
   return v;
 }
 
 // static
-::DBus::Variant DBusAdaptor::PathsToVariant(const vector<::DBus::Path> &value) {
+::DBus::Variant DBusAdaptor::PathsToVariant(const vector<::DBus::Path>& value) {
   ::DBus::MessageIter writer;
   ::DBus::Variant v;
 
@@ -373,14 +373,14 @@ string DBusAdaptor::SanitizePathElement(const string &object_path) {
 }
 
 // static
-::DBus::Variant DBusAdaptor::StringToVariant(const string &value) {
+::DBus::Variant DBusAdaptor::StringToVariant(const string& value) {
   ::DBus::Variant v;
   v.writer().append_string(value.c_str());
   return v;
 }
 
 // static
-::DBus::Variant DBusAdaptor::StringmapToVariant(const Stringmap &value) {
+::DBus::Variant DBusAdaptor::StringmapToVariant(const Stringmap& value) {
   ::DBus::Variant v;
   ::DBus::MessageIter writer = v.writer();
   writer << value;
@@ -388,7 +388,7 @@ string DBusAdaptor::SanitizePathElement(const string &object_path) {
 }
 
 // static
-::DBus::Variant DBusAdaptor::StringmapsToVariant(const Stringmaps &value) {
+::DBus::Variant DBusAdaptor::StringmapsToVariant(const Stringmaps& value) {
   ::DBus::Variant v;
   ::DBus::MessageIter writer = v.writer();
   writer << value;
@@ -396,7 +396,7 @@ string DBusAdaptor::SanitizePathElement(const string &object_path) {
 }
 
 // static
-::DBus::Variant DBusAdaptor::StringsToVariant(const Strings &value) {
+::DBus::Variant DBusAdaptor::StringsToVariant(const Strings& value) {
   ::DBus::Variant v;
   ::DBus::MessageIter writer = v.writer();
   writer << value;
@@ -405,7 +405,7 @@ string DBusAdaptor::SanitizePathElement(const string &object_path) {
 
 // static
 ::DBus::Variant DBusAdaptor::KeyValueStoreToVariant(
-    const KeyValueStore &value) {
+    const KeyValueStore& value) {
   DBusPropertiesMap props;
   DBusProperties::ConvertKeyValueStoreToMap(value, &props);
   ::DBus::Variant v;
@@ -422,7 +422,7 @@ string DBusAdaptor::SanitizePathElement(const string &object_path) {
 }
 
 // static
-::DBus::Variant DBusAdaptor::Uint16sToVariant(const Uint16s &value) {
+::DBus::Variant DBusAdaptor::Uint16sToVariant(const Uint16s& value) {
   ::DBus::Variant v;
   ::DBus::MessageIter writer = v.writer();
   writer << value;
@@ -523,27 +523,27 @@ bool DBusAdaptor::IsKeyValueStore(::DBus::Signature signature) {
   return signature == ::DBus::type<map<string, ::DBus::Variant>>::sig();
 }
 
-void DBusAdaptor::DeferReply(const DBus::Tag *tag) {
+void DBusAdaptor::DeferReply(const DBus::Tag* tag) {
   return_later(tag);
 }
 
-void DBusAdaptor::ReplyNow(const DBus::Tag *tag) {
-  Continuation *cont = find_continuation(tag);
+void DBusAdaptor::ReplyNow(const DBus::Tag* tag) {
+  Continuation* cont = find_continuation(tag);
   CHECK(cont) << "Failed to find continuation.";
   return_now(cont);
 }
 
 template <typename T>
-void DBusAdaptor::TypedReplyNow(const DBus::Tag *tag, const T &value) {
-  Continuation *cont = find_continuation(tag);
+void DBusAdaptor::TypedReplyNow(const DBus::Tag* tag, const T& value) {
+  Continuation* cont = find_continuation(tag);
   CHECK(cont) << "Failed to find continuation.";
   cont->writer() << value;
   return_now(cont);
 }
 
-void DBusAdaptor::ReplyNowWithError(const DBus::Tag *tag,
-                                    const DBus::Error &error) {
-  Continuation *cont = find_continuation(tag);
+void DBusAdaptor::ReplyNowWithError(const DBus::Tag* tag,
+                                    const DBus::Error& error) {
+  Continuation* cont = find_continuation(tag);
   CHECK(cont) << "Failed to find continuation.";
   SLOG(this, 1) << "Returning error: (" << error.name() << ": "
                 << error.message() << ")";
@@ -551,24 +551,24 @@ void DBusAdaptor::ReplyNowWithError(const DBus::Tag *tag,
 }
 
 ResultCallback DBusAdaptor::GetMethodReplyCallback(
-    const DBus::Tag *tag) {
+    const DBus::Tag* tag) {
   return Bind(&DBusAdaptor::MethodReplyCallback, AsWeakPtr(), Owned(tag));
 }
 
 ResultStringCallback DBusAdaptor::GetStringMethodReplyCallback(
-    const DBus::Tag *tag) {
+    const DBus::Tag* tag) {
   return Bind(&DBusAdaptor::StringMethodReplyCallback, AsWeakPtr(), Owned(tag));
 }
 
 ResultBoolCallback DBusAdaptor::GetBoolMethodReplyCallback(
-    const DBus::Tag *tag) {
+    const DBus::Tag* tag) {
   return Bind(&DBusAdaptor::BoolMethodReplyCallback, AsWeakPtr(), Owned(tag));
 }
 
 template<typename T>
-void DBusAdaptor::TypedMethodReplyCallback(const DBus::Tag *tag,
-                                           const Error &error,
-                                           const T &returned) {
+void DBusAdaptor::TypedMethodReplyCallback(const DBus::Tag* tag,
+                                           const Error& error,
+                                           const T& returned) {
   if (error.IsFailure()) {
     DBus::Error dberror;
     error.ToDBusError(&dberror);
@@ -578,9 +578,9 @@ void DBusAdaptor::TypedMethodReplyCallback(const DBus::Tag *tag,
   }
 }
 
-void DBusAdaptor::ReturnResultOrDefer(const DBus::Tag *tag,
-                                      const Error &error,
-                                      DBus::Error *dberror) {
+void DBusAdaptor::ReturnResultOrDefer(const DBus::Tag* tag,
+                                      const Error& error,
+                                      DBus::Error* dberror) {
   if (error.IsOngoing()) {
     DeferReply(tag);
   } else if (error.IsFailure()) {
@@ -588,8 +588,8 @@ void DBusAdaptor::ReturnResultOrDefer(const DBus::Tag *tag,
   }
 }
 
-void DBusAdaptor::MethodReplyCallback(const DBus::Tag *tag,
-                                      const Error &error) {
+void DBusAdaptor::MethodReplyCallback(const DBus::Tag* tag,
+                                      const Error& error) {
   if (error.IsFailure()) {
     DBus::Error dberror;
     error.ToDBusError(&dberror);
@@ -599,14 +599,14 @@ void DBusAdaptor::MethodReplyCallback(const DBus::Tag *tag,
   }
 }
 
-void DBusAdaptor::StringMethodReplyCallback(const DBus::Tag *tag,
-                                            const Error &error,
-                                            const string &returned) {
+void DBusAdaptor::StringMethodReplyCallback(const DBus::Tag* tag,
+                                            const Error& error,
+                                            const string& returned) {
   TypedMethodReplyCallback(tag, error, returned);
 }
 
-void DBusAdaptor::BoolMethodReplyCallback(const DBus::Tag *tag,
-                                          const Error &error,
+void DBusAdaptor::BoolMethodReplyCallback(const DBus::Tag* tag,
+                                          const Error& error,
                                           bool returned) {
   TypedMethodReplyCallback(tag, error, returned);
 }

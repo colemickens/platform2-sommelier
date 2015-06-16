@@ -16,37 +16,37 @@ namespace shill {
 class ArpPacket {
  public:
   ArpPacket();
-  ArpPacket(const IPAddress &local_ip, const IPAddress &remote_ip,
-            const ByteString &local_mac, const ByteString &remote_mac);
+  ArpPacket(const IPAddress& local_ip, const IPAddress& remote_ip,
+            const ByteString& local_mac, const ByteString& remote_mac);
   virtual ~ArpPacket();
 
   // Parse a payload and save to local parameters.
-  bool Parse(const ByteString &packet);
+  bool Parse(const ByteString& packet);
 
   // Output a payload from local parameters.
-  bool FormatRequest(ByteString *packet) const;
+  bool FormatRequest(ByteString* packet) const;
 
   // Returns true if this packet is an ARP response.
   bool IsReply() const;
 
   // Getters and seters.
-  const IPAddress &local_ip_address() const { return local_ip_address_; }
-  void set_local_ip_address(const IPAddress &address) {
+  const IPAddress& local_ip_address() const { return local_ip_address_; }
+  void set_local_ip_address(const IPAddress& address) {
     local_ip_address_ = address;
   }
 
-  const IPAddress &remote_ip_address() const { return remote_ip_address_; }
-  void set_remote_ip_address(const IPAddress &address) {
+  const IPAddress& remote_ip_address() const { return remote_ip_address_; }
+  void set_remote_ip_address(const IPAddress& address) {
     remote_ip_address_ = address;
   }
 
-  const ByteString &local_mac_address() const { return local_mac_address_; }
-  void set_local_mac_address(const ByteString &address) {
+  const ByteString& local_mac_address() const { return local_mac_address_; }
+  void set_local_mac_address(const ByteString& address) {
     local_mac_address_ = address;
   }
 
-  const ByteString &remote_mac_address() const { return remote_mac_address_; }
-  void set_remote_mac_address(const ByteString &address) {
+  const ByteString& remote_mac_address() const { return remote_mac_address_; }
+  void set_remote_mac_address(const ByteString& address) {
     remote_mac_address_ = address;
   }
 

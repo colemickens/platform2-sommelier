@@ -31,7 +31,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kConnection;
-static string ObjectID(Connection *c) {
+static string ObjectID(Connection* c) {
   if (c == nullptr)
     return "(connection)";
   return c->interface_name();
@@ -47,8 +47,8 @@ const uint32_t Connection::kMarkForUserTraffic = 0x1;
 // static
 const uint8_t Connection::kSecondaryTableId = 0x1;
 
-Connection::Binder::Binder(const string &name,
-                           const Closure &disconnect_callback)
+Connection::Binder::Binder(const string& name,
+                           const Closure& disconnect_callback)
     : name_(name),
       client_disconnect_callback_(disconnect_callback) {}
 
@@ -56,7 +56,7 @@ Connection::Binder::~Binder() {
   Attach(nullptr);
 }
 
-void Connection::Binder::Attach(const ConnectionRefPtr &to_connection) {
+void Connection::Binder::Attach(const ConnectionRefPtr& to_connection) {
   if (connection_) {
     connection_->DetachBinder(this);
     LOG(INFO) << name_ << ": unbound from connection: "
@@ -84,7 +84,7 @@ void Connection::Binder::OnDisconnect() {
 Connection::Connection(int interface_index,
                        const std::string& interface_name,
                        Technology::Identifier technology,
-                       const DeviceInfo *device_info)
+                       const DeviceInfo* device_info)
     : weak_ptr_factory_(this),
       is_default_(false),
       has_broadcast_domain_(false),
@@ -123,10 +123,10 @@ Connection::~Connection() {
   TearDownIptableEntries();
 }
 
-void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
+void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   SLOG(this, 2) << __func__ << " " << interface_name_;
 
-  const IPConfig::Properties &properties = config->properties();
+  const IPConfig::Properties& properties = config->properties();
   user_traffic_only_ = properties.user_traffic_only;
   table_id_ = user_traffic_only_ ? kSecondaryTableId : (uint8_t)RT_TABLE_MAIN;
 
@@ -299,7 +299,7 @@ void Connection::SetIsDefault(bool is_default) {
   routing_table_->FlushCache();
 }
 
-void Connection::UpdateDNSServers(const vector<string> &dns_servers) {
+void Connection::UpdateDNSServers(const vector<string>& dns_servers) {
   dns_servers_ = dns_servers;
   PushDNSConfig();
 }
@@ -347,7 +347,7 @@ void Connection::ReleaseRouting() {
   }
 }
 
-bool Connection::RequestHostRoute(const IPAddress &address) {
+bool Connection::RequestHostRoute(const IPAddress& address) {
   // Do not set interface_index_ since this may not be the default route through
   // which this destination can be found.  However, we should tag the created
   // route with our interface index so we can clean this route up when this
@@ -393,10 +393,10 @@ string Connection::GetSubnetName() const {
 }
 
 // static
-bool Connection::FixGatewayReachability(IPAddress *local,
-                                        IPAddress *peer,
-                                        IPAddress *gateway,
-                                        const IPAddress &trusted_ip) {
+bool Connection::FixGatewayReachability(IPAddress* local,
+                                        IPAddress* peer,
+                                        IPAddress* gateway,
+                                        const IPAddress& trusted_ip) {
   SLOG(nullptr, 2) << __func__
       << " local " << local->ToString()
       << ", peer " << peer->ToString()
@@ -516,8 +516,8 @@ uint32_t Connection::GetMetric(bool is_default) {
   return is_default ? kDefaultMetric : kNonDefaultMetricBase + interface_index_;
 }
 
-bool Connection::PinHostRoute(const IPAddress &trusted_ip,
-                              const IPAddress &gateway) {
+bool Connection::PinHostRoute(const IPAddress& trusted_ip,
+                              const IPAddress& gateway) {
   SLOG(this, 2) << __func__;
   if (!trusted_ip.IsValid()) {
     LOG(ERROR) << "No trusted IP -- unable to pin host route.";
@@ -553,7 +553,7 @@ void Connection::SetMTU(int32_t mtu) {
 }
 
 void Connection::OnRouteQueryResponse(int interface_index,
-                                      const RoutingTableEntry &entry) {
+                                      const RoutingTableEntry& entry) {
   SLOG(this, 2) << __func__ << "(" << interface_index << ", "
                 << entry.tag << ")" << " @ " << interface_name_;
   lower_binder_.Attach(nullptr);
@@ -614,19 +614,19 @@ void Connection::NotifyBindersOnDisconnect() {
   while (!binders_.empty()) {
     // Pop the binder first and then notify it to ensure that each binder is
     // notified only once.
-    Binder *binder = binders_.front();
+    Binder* binder = binders_.front();
     binders_.pop_front();
     binder->OnDisconnect();
   }
 }
 
-void Connection::AttachBinder(Binder *binder) {
+void Connection::AttachBinder(Binder* binder) {
   SLOG(this, 2) << __func__ << "(" << binder->name() << ")" << " @ "
                             << interface_name_;
   binders_.push_back(binder);
 }
 
-void Connection::DetachBinder(Binder *binder) {
+void Connection::DetachBinder(Binder* binder) {
   SLOG(this, 2) << __func__ << "(" << binder->name() << ")" << " @ "
                             << interface_name_;
   for (auto it = binders_.begin(); it != binders_.end(); ++it) {
@@ -639,7 +639,7 @@ void Connection::DetachBinder(Binder *binder) {
 
 ConnectionRefPtr Connection::GetCarrierConnection() {
   SLOG(this, 2) << __func__ << " @ " << interface_name_;
-  set<Connection *> visited;
+  set<Connection*> visited;
   ConnectionRefPtr carrier = this;
   while (carrier->GetLowerConnection()) {
     if (ContainsKey(visited, carrier.get())) {

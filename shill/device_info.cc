@@ -67,7 +67,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDevice;
-static string ObjectID(const DeviceInfo *d) { return "(device_info)"; }
+static string ObjectID(const DeviceInfo* d) { return "(device_info)"; }
 }
 
 // static
@@ -85,7 +85,7 @@ const char DeviceInfo::kInterfaceDevice[] = "device";
 const char DeviceInfo::kInterfaceDriver[] = "device/driver";
 const char DeviceInfo::kInterfaceTunFlags[] = "tun_flags";
 const char DeviceInfo::kInterfaceType[] = "type";
-const char *DeviceInfo::kModemDrivers[] = {
+const char* DeviceInfo::kModemDrivers[] = {
     "gobi",
     "QCUSBNet2k",
     "GobiNet",
@@ -96,10 +96,10 @@ const char DeviceInfo::kTunDeviceName[] = "/dev/net/tun";
 const int DeviceInfo::kDelayedDeviceCreationSeconds = 5;
 const int DeviceInfo::kRequestLinkStatisticsIntervalMilliseconds = 20000;
 
-DeviceInfo::DeviceInfo(ControlInterface *control_interface,
-                       EventDispatcher *dispatcher,
-                       Metrics *metrics,
-                       Manager *manager)
+DeviceInfo::DeviceInfo(ControlInterface* control_interface,
+                       EventDispatcher* dispatcher,
+                       Metrics* metrics,
+                       Manager* manager)
     : control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
@@ -119,7 +119,7 @@ DeviceInfo::DeviceInfo(ControlInterface *control_interface,
 
 DeviceInfo::~DeviceInfo() {}
 
-void DeviceInfo::AddDeviceToBlackList(const string &device_name) {
+void DeviceInfo::AddDeviceToBlackList(const string& device_name) {
   black_list_.insert(device_name);
   // Remove the current device info if it exist, since it will be out-dated.
   RemoveInfo(GetIndex(device_name));
@@ -129,7 +129,7 @@ void DeviceInfo::AddDeviceToBlackList(const string &device_name) {
   }
 }
 
-void DeviceInfo::RemoveDeviceFromBlackList(const string &device_name) {
+void DeviceInfo::RemoveDeviceFromBlackList(const string& device_name) {
   black_list_.erase(device_name);
   // Remove the current device info if it exist, since it will be out-dated.
   RemoveInfo(GetIndex(device_name));
@@ -139,7 +139,7 @@ void DeviceInfo::RemoveDeviceFromBlackList(const string &device_name) {
   }
 }
 
-bool DeviceInfo::IsDeviceBlackListed(const string &device_name) {
+bool DeviceInfo::IsDeviceBlackListed(const string& device_name) {
   return ContainsKey(black_list_, device_name);
 }
 
@@ -170,7 +170,7 @@ void DeviceInfo::Stop() {
 vector<string> DeviceInfo::GetUninitializedTechnologies() const {
   set<string> unique_technologies;
   set<Technology::Identifier> initialized_technologies;
-  for (const auto &info : infos_) {
+  for (const auto& info : infos_) {
     Technology::Identifier technology = info.second.technology;
     if (info.second.device) {
       // If there is more than one device for a technology and at least
@@ -187,7 +187,7 @@ vector<string> DeviceInfo::GetUninitializedTechnologies() const {
   return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
 
-void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
+void DeviceInfo::RegisterDevice(const DeviceRefPtr& device) {
   SLOG(this, 2) << __func__ << "(" << device->link_name() << ", "
                 << device->interface_index() << ")";
   delayed_devices_.erase(device->interface_index());
@@ -204,7 +204,7 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
   }
 }
 
-void DeviceInfo::DeregisterDevice(const DeviceRefPtr &device) {
+void DeviceInfo::DeregisterDevice(const DeviceRefPtr& device) {
   int interface_index = device->interface_index();
 
   SLOG(this, 2) << __func__ << "(" << device->link_name() << ", "
@@ -225,26 +225,26 @@ void DeviceInfo::DeregisterDevice(const DeviceRefPtr &device) {
   metrics_->DeregisterDevice(device->interface_index());
 }
 
-FilePath DeviceInfo::GetDeviceInfoPath(const string &iface_name,
-                                       const string &path_name) {
+FilePath DeviceInfo::GetDeviceInfoPath(const string& iface_name,
+                                       const string& path_name) {
   return device_info_root_.Append(iface_name).Append(path_name);
 }
 
-bool DeviceInfo::GetDeviceInfoContents(const string &iface_name,
-                                       const string &path_name,
-                                       string *contents_out) {
+bool DeviceInfo::GetDeviceInfoContents(const string& iface_name,
+                                       const string& path_name,
+                                       string* contents_out) {
   return base::ReadFileToString(GetDeviceInfoPath(iface_name, path_name),
                                 contents_out);
 }
-bool DeviceInfo::GetDeviceInfoSymbolicLink(const string &iface_name,
-                                           const string &path_name,
-                                           FilePath *path_out) {
+bool DeviceInfo::GetDeviceInfoSymbolicLink(const string& iface_name,
+                                           const string& path_name,
+                                           FilePath* path_out) {
   return base::ReadSymbolicLink(GetDeviceInfoPath(iface_name, path_name),
                                 path_out);
 }
 
 Technology::Identifier DeviceInfo::GetDeviceTechnology(
-    const string &iface_name) {
+    const string& iface_name) {
   string type_string;
   int arp_type = ARPHRD_VOID;
   if (GetDeviceInfoContents(iface_name, kInterfaceType, &type_string) &&
@@ -385,7 +385,7 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
   return Technology::kEthernet;
 }
 
-bool DeviceInfo::IsCdcEthernetModemDevice(const std::string &iface_name) {
+bool DeviceInfo::IsCdcEthernetModemDevice(const std::string& iface_name) {
   // A cdc_ether / cdc_ncm device is a modem device if it also exposes tty
   // interfaces. To determine this, we look for the existence of the tty
   // interface in the USB device sysfs tree.
@@ -433,7 +433,7 @@ bool DeviceInfo::IsCdcEthernetModemDevice(const std::string &iface_name) {
 }
 
 // static
-bool DeviceInfo::HasSubdir(const FilePath &base_dir, const FilePath &subdir) {
+bool DeviceInfo::HasSubdir(const FilePath& base_dir, const FilePath& subdir) {
   FileEnumerator::FileType type = static_cast<FileEnumerator::FileType>(
       FileEnumerator::DIRECTORIES | FileEnumerator::SHOW_SYM_LINKS);
   FileEnumerator dir_enum(base_dir, true, type);
@@ -445,8 +445,8 @@ bool DeviceInfo::HasSubdir(const FilePath &base_dir, const FilePath &subdir) {
   return false;
 }
 
-DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
-                                      const string &address,
+DeviceRefPtr DeviceInfo::CreateDevice(const string& link_name,
+                                      const string& address,
                                       int interface_index,
                                       Technology::Identifier technology) {
   DeviceRefPtr device;
@@ -570,7 +570,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
   return device;
 }
 
-void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
+void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
   DCHECK(msg.type() == RTNLMessage::kTypeLink &&
          msg.mode() == RTNLMessage::kModeAdd);
   int dev_index = msg.interface_index();
@@ -633,7 +633,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
   }
 }
 
-void DeviceInfo::DelLinkMsgHandler(const RTNLMessage &msg) {
+void DeviceInfo::DelLinkMsgHandler(const RTNLMessage& msg) {
   SLOG(this, 2) << __func__ << "(index=" << msg.interface_index() << ")";
 
   DCHECK(msg.type() == RTNLMessage::kTypeLink &&
@@ -646,17 +646,17 @@ void DeviceInfo::DelLinkMsgHandler(const RTNLMessage &msg) {
 }
 
 DeviceRefPtr DeviceInfo::GetDevice(int interface_index) const {
-  const Info *info = GetInfo(interface_index);
+  const Info* info = GetInfo(interface_index);
   return info ? info->device : nullptr;
 }
 
-int DeviceInfo::GetIndex(const string &interface_name) const {
+int DeviceInfo::GetIndex(const string& interface_name) const {
   map<string, int>::const_iterator it = indices_.find(interface_name);
   return it == indices_.end() ? -1 : it->second;
 }
 
-bool DeviceInfo::GetMACAddress(int interface_index, ByteString *address) const {
-  const Info *info = GetInfo(interface_index);
+bool DeviceInfo::GetMACAddress(int interface_index, ByteString* address) const {
+  const Info* info = GetInfo(interface_index);
   if (!info) {
     return false;
   }
@@ -673,7 +673,7 @@ bool DeviceInfo::GetMACAddress(int interface_index, ByteString *address) const {
 }
 
 ByteString DeviceInfo::GetMACAddressFromKernel(int interface_index) const {
-  const Info *info = GetInfo(interface_index);
+  const Info* info = GetInfo(interface_index);
   if (!info) {
     return ByteString();
   }
@@ -699,9 +699,9 @@ ByteString DeviceInfo::GetMACAddressFromKernel(int interface_index) const {
 }
 
 bool DeviceInfo::GetMACAddressOfPeer(int interface_index,
-                                     const IPAddress &peer,
-                                     ByteString *mac_address) const {
-  const Info *info = GetInfo(interface_index);
+                                     const IPAddress& peer,
+                                     ByteString* mac_address) const {
+  const Info* info = GetInfo(interface_index);
   if (!info || !peer.IsValid()) {
     return false;
   }
@@ -724,15 +724,15 @@ bool DeviceInfo::GetMACAddressOfPeer(int interface_index,
   strncpy(areq.arp_dev, info->name.c_str(), sizeof(areq.arp_dev) - 1);
   areq.arp_dev[sizeof(areq.arp_dev) - 1] = '\0';
 
-  struct sockaddr_in *protocol_address =
-      reinterpret_cast<struct sockaddr_in *>(&areq.arp_pa);
+  struct sockaddr_in* protocol_address =
+      reinterpret_cast<struct sockaddr_in*>(&areq.arp_pa);
   protocol_address->sin_family = AF_INET;
   CHECK_EQ(sizeof(protocol_address->sin_addr.s_addr), peer.GetLength());
   memcpy(&protocol_address->sin_addr.s_addr, peer.address().GetConstData(),
          sizeof(protocol_address->sin_addr.s_addr));
 
-  struct sockaddr_in *hardware_address =
-      reinterpret_cast<struct sockaddr_in *>(&areq.arp_ha);
+  struct sockaddr_in* hardware_address =
+      reinterpret_cast<struct sockaddr_in*>(&areq.arp_ha);
   hardware_address->sin_family = ARPHRD_ETHER;
 
   int err = sockets_->Ioctl(fd, SIOCGARP, &areq);
@@ -754,8 +754,8 @@ bool DeviceInfo::GetMACAddressOfPeer(int interface_index,
 }
 
 bool DeviceInfo::GetAddresses(int interface_index,
-                              vector<AddressData> *addresses) const {
-  const Info *info = GetInfo(interface_index);
+                              vector<AddressData>* addresses) const {
+  const Info* info = GetInfo(interface_index);
   if (!info) {
     return false;
   }
@@ -765,11 +765,11 @@ bool DeviceInfo::GetAddresses(int interface_index,
 
 void DeviceInfo::FlushAddresses(int interface_index) const {
   SLOG(this, 2) << __func__ << "(" << interface_index << ")";
-  const Info *info = GetInfo(interface_index);
+  const Info* info = GetInfo(interface_index);
   if (!info) {
     return;
   }
-  for (const auto &address_info : info->ip_addresses) {
+  for (const auto& address_info : info->ip_addresses) {
     if (address_info.address.family() == IPAddress::kFamilyIPv4 ||
         (address_info.scope == RT_SCOPE_UNIVERSE &&
          (address_info.flags & ~IFA_F_TEMPORARY) == 0)) {
@@ -783,15 +783,15 @@ void DeviceInfo::FlushAddresses(int interface_index) const {
 }
 
 bool DeviceInfo::HasOtherAddress(
-    int interface_index, const IPAddress &this_address) const {
+    int interface_index, const IPAddress& this_address) const {
   SLOG(this, 3) << __func__ << "(" << interface_index << ")";
-  const Info *info = GetInfo(interface_index);
+  const Info* info = GetInfo(interface_index);
   if (!info) {
     return false;
   }
   bool has_other_address = false;
   bool has_this_address = false;
-  for (const auto &local_address : info->ip_addresses) {
+  for (const auto& local_address : info->ip_addresses) {
     if (local_address.address.family() != this_address.family()) {
       continue;
     }
@@ -808,14 +808,14 @@ bool DeviceInfo::HasOtherAddress(
 }
 
 bool DeviceInfo::GetPrimaryIPv6Address(int interface_index,
-                                       IPAddress *address) {
-  const Info *info = GetInfo(interface_index);
+                                       IPAddress* address) {
+  const Info* info = GetInfo(interface_index);
   if (!info) {
     return false;
   }
   bool has_temporary_address = false;
   bool has_address = false;
-  for (const auto &local_address : info->ip_addresses) {
+  for (const auto& local_address : info->ip_addresses) {
     if (local_address.address.family() != IPAddress::kFamilyIPv6 ||
         local_address.scope != RT_SCOPE_UNIVERSE) {
       continue;
@@ -837,9 +837,9 @@ bool DeviceInfo::GetPrimaryIPv6Address(int interface_index,
 }
 
 bool DeviceInfo::GetIPv6DnsServerAddresses(int interface_index,
-                                           std::vector<IPAddress> *address_list,
-                                           uint32_t *life_time) {
-  const Info *info = GetInfo(interface_index);
+                                           std::vector<IPAddress>* address_list,
+                                           uint32_t* life_time) {
+  const Info* info = GetInfo(interface_index);
   if (!info || info->ipv6_dns_server_addresses.empty()) {
     return false;
   }
@@ -865,14 +865,14 @@ bool DeviceInfo::GetIPv6DnsServerAddresses(int interface_index,
 }
 
 bool DeviceInfo::HasDirectConnectivityTo(
-    int interface_index, const IPAddress &address) const {
+    int interface_index, const IPAddress& address) const {
   SLOG(this, 3) << __func__ << "(" << interface_index << ")";
-  const Info *info = GetInfo(interface_index);
+  const Info* info = GetInfo(interface_index);
   if (!info) {
     return false;
   }
 
-  for (const auto &local_address : info->ip_addresses) {
+  for (const auto& local_address : info->ip_addresses) {
     if (local_address.address.family() == address.family() &&
         local_address.address.CanReachAddress(address)) {
       return true;
@@ -882,8 +882,8 @@ bool DeviceInfo::HasDirectConnectivityTo(
   return false;
 }
 
-bool DeviceInfo::GetFlags(int interface_index, unsigned int *flags) const {
-  const Info *info = GetInfo(interface_index);
+bool DeviceInfo::GetFlags(int interface_index, unsigned int* flags) const {
+  const Info* info = GetInfo(interface_index);
   if (!info) {
     return false;
   }
@@ -892,9 +892,9 @@ bool DeviceInfo::GetFlags(int interface_index, unsigned int *flags) const {
 }
 
 bool DeviceInfo::GetByteCounts(int interface_index,
-                               uint64_t *rx_bytes,
-                               uint64_t *tx_bytes) const {
-  const Info *info = GetInfo(interface_index);
+                               uint64_t* rx_bytes,
+                               uint64_t* tx_bytes) const {
+  const Info* info = GetInfo(interface_index);
   if (!info) {
     return false;
   }
@@ -903,7 +903,7 @@ bool DeviceInfo::GetByteCounts(int interface_index,
   return true;
 }
 
-bool DeviceInfo::CreateTunnelInterface(string *interface_name) const {
+bool DeviceInfo::CreateTunnelInterface(string* interface_name) const {
   int fd = HANDLE_EINTR(open(kTunDeviceName, O_RDWR));
   if (fd < 0) {
     PLOG(ERROR) << "failed to open " << kTunDeviceName;
@@ -929,7 +929,7 @@ bool DeviceInfo::CreateTunnelInterface(string *interface_name) const {
   return true;
 }
 
-int DeviceInfo::OpenTunnelInterface(const std::string &interface_name) const {
+int DeviceInfo::OpenTunnelInterface(const std::string& interface_name) const {
   int fd = HANDLE_EINTR(open(kTunDeviceName, O_RDWR));
   if (fd < 0) {
     PLOG(ERROR) << "failed to open " << kTunDeviceName;
@@ -952,7 +952,7 @@ bool DeviceInfo::DeleteInterface(int interface_index) const {
   return rtnl_handler_->RemoveInterface(interface_index);
 }
 
-const DeviceInfo::Info *DeviceInfo::GetInfo(int interface_index) const {
+const DeviceInfo::Info* DeviceInfo::GetInfo(int interface_index) const {
   map<int, Info>::const_iterator iter = infos_.find(interface_index);
   if (iter == infos_.end()) {
     return nullptr;
@@ -979,7 +979,7 @@ void DeviceInfo::RemoveInfo(int interface_index) {
   }
 }
 
-void DeviceInfo::LinkMsgHandler(const RTNLMessage &msg) {
+void DeviceInfo::LinkMsgHandler(const RTNLMessage& msg) {
   DCHECK(msg.type() == RTNLMessage::kTypeLink);
   if (msg.mode() == RTNLMessage::kModeAdd) {
     AddLinkMsgHandler(msg);
@@ -990,7 +990,7 @@ void DeviceInfo::LinkMsgHandler(const RTNLMessage &msg) {
   }
 }
 
-void DeviceInfo::AddressMsgHandler(const RTNLMessage &msg) {
+void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
   SLOG(this, 2) << __func__;
   DCHECK(msg.type() == RTNLMessage::kTypeAddress);
   int interface_index = msg.interface_index();
@@ -999,7 +999,7 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage &msg) {
                   << interface_index;
     infos_[interface_index].has_addresses_only = true;
   }
-  const RTNLMessage::AddressStatus &status = msg.address_status();
+  const RTNLMessage::AddressStatus& status = msg.address_status();
   IPAddress address(msg.family(),
                     msg.HasAttribute(IFA_LOCAL) ?
                     msg.GetAttribute(IFA_LOCAL) : msg.GetAttribute(IFA_ADDRESS),
@@ -1008,7 +1008,7 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage &msg) {
   SLOG_IF(Device, 2, msg.HasAttribute(IFA_LOCAL))
       << "Found local address attribute for interface " << interface_index;
 
-  vector<AddressData> &address_list = infos_[interface_index].ip_addresses;
+  vector<AddressData>& address_list = infos_[interface_index].ip_addresses;
   vector<AddressData>::iterator iter;
   for (iter = address_list.begin(); iter != address_list.end(); ++iter) {
     if (address.Equals(iter->address)) {
@@ -1036,7 +1036,7 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage &msg) {
   }
 }
 
-void DeviceInfo::RdnssMsgHandler(const RTNLMessage &msg) {
+void DeviceInfo::RdnssMsgHandler(const RTNLMessage& msg) {
   SLOG(this, 2) << __func__;
   DCHECK(msg.type() == RTNLMessage::kTypeRdnss);
   int interface_index = msg.interface_index();
@@ -1045,7 +1045,7 @@ void DeviceInfo::RdnssMsgHandler(const RTNLMessage &msg) {
                   << interface_index;
   }
 
-  const RTNLMessage::RdnssOption &rdnss_option = msg.rdnss_option();
+  const RTNLMessage::RdnssOption& rdnss_option = msg.rdnss_option();
   infos_[interface_index].ipv6_dns_server_lifetime_seconds =
       rdnss_option.lifetime;
   infos_[interface_index].ipv6_dns_server_addresses = rdnss_option.addresses;
@@ -1079,7 +1079,7 @@ void DeviceInfo::DelayedDeviceCreationTask() {
     DCHECK(ContainsKey(infos_, dev_index));
     DCHECK(!GetDevice(dev_index));
 
-    const string &link_name = infos_[dev_index].name;
+    const string& link_name = infos_[dev_index].name;
     Technology::Identifier technology = GetDeviceTechnology(link_name);
 
     if (technology == Technology::kCDCEthernet) {
@@ -1104,7 +1104,7 @@ void DeviceInfo::DelayedDeviceCreationTask() {
 }
 
 void DeviceInfo::RetrieveLinkStatistics(int interface_index,
-                                        const RTNLMessage &msg) {
+                                        const RTNLMessage& msg) {
   if (!msg.HasAttribute(IFLA_STATS64)) {
     return;
   }
@@ -1148,7 +1148,7 @@ void DeviceInfo::GetWiFiInterfaceInfo(int interface_index) {
       Bind(&NetlinkManager::OnNetlinkMessageError));
 }
 
-void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message &msg) {
+void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
   if (msg.command() != NL80211_CMD_NEW_INTERFACE) {
     LOG(ERROR) << "Message is not a new interface response";
     return;
@@ -1166,7 +1166,7 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message &msg) {
     LOG(ERROR) << "Message contains no interface type";
     return;
   }
-  const Info *info = GetInfo(interface_index);
+  const Info* info = GetInfo(interface_index);
   if (!info) {
     LOG(ERROR) << "Could not find device info for interface index "
                << interface_index;
@@ -1198,7 +1198,7 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message &msg) {
 }
 #endif  // DISABLE_WIFI
 
-bool DeviceInfo::SetHostname(const std::string &hostname) const {
+bool DeviceInfo::SetHostname(const std::string& hostname) const {
   if (sethostname(hostname.c_str(), hostname.length())) {
     PLOG(ERROR) << "Failed to set hostname to: " << hostname;
     return false;

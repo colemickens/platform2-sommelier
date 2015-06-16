@@ -31,19 +31,19 @@ class ThirdPartyVpnAdaptorInterface;
 class ControlInterface {
  public:
   virtual ~ControlInterface() {}
-  virtual DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device) = 0;
-  virtual IPConfigAdaptorInterface *CreateIPConfigAdaptor(
-      IPConfig *ipconfig) = 0;
-  virtual ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager) = 0;
-  virtual ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile) = 0;
-  virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service) = 0;
-  virtual RPCTaskAdaptorInterface *CreateRPCTaskAdaptor(RPCTask *task) = 0;
+  virtual DeviceAdaptorInterface* CreateDeviceAdaptor(Device* device) = 0;
+  virtual IPConfigAdaptorInterface* CreateIPConfigAdaptor(
+      IPConfig* ipconfig) = 0;
+  virtual ManagerAdaptorInterface* CreateManagerAdaptor(Manager* manager) = 0;
+  virtual ProfileAdaptorInterface* CreateProfileAdaptor(Profile* profile) = 0;
+  virtual ServiceAdaptorInterface* CreateServiceAdaptor(Service* service) = 0;
+  virtual RPCTaskAdaptorInterface* CreateRPCTaskAdaptor(RPCTask* task) = 0;
 #ifndef DISABLE_VPN
-  virtual ThirdPartyVpnAdaptorInterface *CreateThirdPartyVpnAdaptor(
-      ThirdPartyVpnDriver *driver) = 0;
+  virtual ThirdPartyVpnAdaptorInterface* CreateThirdPartyVpnAdaptor(
+      ThirdPartyVpnDriver* driver) = 0;
 #endif
 
-  static void RpcIdToStorageId(std::string *rpc_id) {
+  static void RpcIdToStorageId(std::string* rpc_id) {
     CHECK(rpc_id);
     DCHECK_EQ(rpc_id->at(0), '/');
     rpc_id->erase(0, 1);

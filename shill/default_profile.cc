@@ -64,18 +64,18 @@ const char DefaultProfile::kStoragePortalCheckInterval[] =
 const char DefaultProfile::kStorageProhibitedTechnologies[] =
     "ProhibitedTechnologies";
 
-DefaultProfile::DefaultProfile(ControlInterface *control,
-                               Metrics *metrics,
-                               Manager *manager,
-                               const FilePath &storage_path,
-                               const string &profile_id,
-                               const Manager::Properties &manager_props)
+DefaultProfile::DefaultProfile(ControlInterface* control,
+                               Metrics* metrics,
+                               Manager* manager,
+                               const FilePath& storage_path,
+                               const string& profile_id,
+                               const Manager::Properties& manager_props)
     : Profile(control, metrics, manager, Identifier(profile_id), "", true),
       storage_path_(storage_path),
       profile_id_(profile_id),
       props_(manager_props),
       random_engine_(time(nullptr)) {
-  PropertyStore *store = this->mutable_store();
+  PropertyStore* store = this->mutable_store();
   store->RegisterConstBool(kArpGatewayProperty, &manager_props.arp_gateway);
   store->RegisterConstString(kCheckPortalListProperty,
                              &manager_props.check_portal_list);
@@ -96,7 +96,7 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
 
 DefaultProfile::~DefaultProfile() {}
 
-void DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
+void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props) {
   storage()->GetBool(kStorageId, kStorageArpGateway,
                      &manager_props->arp_gateway);
   storage()->GetString(kStorageId, kStorageHostName, &manager_props->host_name);
@@ -148,7 +148,7 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
   }
 }
 
-bool DefaultProfile::ConfigureService(const ServiceRefPtr &service) {
+bool DefaultProfile::ConfigureService(const ServiceRefPtr& service) {
   if (Profile::ConfigureService(service)) {
     return true;
   }
@@ -194,17 +194,17 @@ bool DefaultProfile::Save() {
   return Profile::Save();
 }
 
-bool DefaultProfile::UpdateDevice(const DeviceRefPtr &device) {
+bool DefaultProfile::UpdateDevice(const DeviceRefPtr& device) {
   return device->Save(storage()) && storage()->Flush();
 }
 
 #if !defined(DISABLE_WIFI)
-bool DefaultProfile::UpdateWiFiProvider(const WiFiProvider &wifi_provider) {
+bool DefaultProfile::UpdateWiFiProvider(const WiFiProvider& wifi_provider) {
   return wifi_provider.Save(storage()) && storage()->Flush();
 }
 #endif  // DISABLE_WIFI
 
-bool DefaultProfile::GetStoragePath(FilePath *path) {
+bool DefaultProfile::GetStoragePath(FilePath* path) {
   *path = storage_path_.Append(base::StringPrintf("%s.profile",
                                                   profile_id_.c_str()));
   return true;

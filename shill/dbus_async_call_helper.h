@@ -21,7 +21,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const DBus::Path *p) { return *p;}
+static string ObjectID(const DBus::Path* p) { return *p;}
 }
 
 // The dbus-c++ async call mechanism has a funny way of handling the
@@ -41,11 +41,11 @@ static string ObjectID(const DBus::Path *p) { return *p;}
 template<
     typename TraceMsgT, typename ProxyT, typename CallT,
     typename CallbackT, typename... ArgTypes>
-void BeginAsyncDBusCall(const TraceMsgT &trace_msg,
-                        ProxyT &proxy,  // NOLINT(runtime/references)
-                        const CallT &call, const CallbackT &callback,
-                        Error *error,
-                        void(*error_converter)(const DBus::Error &, Error *),
+void BeginAsyncDBusCall(const TraceMsgT& trace_msg,
+                        ProxyT& proxy,  // NOLINT(runtime/references)
+                        const CallT& call, const CallbackT& callback,
+                        Error* error,
+                        void(*error_converter)(const DBus::Error&, Error*),
                         int timeout, ArgTypes... call_args) {
   SLOG(&proxy.path(), 2) << trace_msg << " [timeout=" << timeout << "]";
   std::unique_ptr<CallbackT> cb(new CallbackT(callback));
@@ -61,7 +61,7 @@ void BeginAsyncDBusCall(const TraceMsgT &trace_msg,
     // you're leaking the object.  However, it's fine here, because
     // |proxy| now owns |cb|.
     ignore_result(cb.release());
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     if (error)
       error_converter(e, error);
   }

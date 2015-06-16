@@ -24,15 +24,15 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kPortal;
-static string ObjectID(Connection *c) { return c->interface_name(); }
+static string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
 const int ConnectionTester::kTrialTimeoutSeconds = 5;
 
 ConnectionTester::ConnectionTester(
     ConnectionRefPtr connection,
-    EventDispatcher *dispatcher,
-    const Callback<void()> &callback)
+    EventDispatcher* dispatcher,
+    const Callback<void()>& callback)
     : connection_(connection),
       dispatcher_(dispatcher),
       weak_ptr_factory_(this),

@@ -36,23 +36,23 @@ class EventDispatcher {
 
   // These are thin wrappers around calls of the same name in
   // <base/message_loop_proxy.h>
-  virtual bool PostTask(const base::Closure &task);
-  virtual bool PostDelayedTask(const base::Closure &task, int64_t delay_ms);
+  virtual bool PostTask(const base::Closure& task);
+  virtual bool PostDelayedTask(const base::Closure& task, int64_t delay_ms);
 
-  virtual IOHandler *CreateInputHandler(
+  virtual IOHandler* CreateInputHandler(
       int fd,
-      const IOHandler::InputCallback &input_callback,
-      const IOHandler::ErrorCallback &error_callback);
+      const IOHandler::InputCallback& input_callback,
+      const IOHandler::ErrorCallback& error_callback);
 
-  virtual IOHandler *CreateReadyHandler(
+  virtual IOHandler* CreateReadyHandler(
       int fd,
       IOHandler::ReadyMode mode,
-      const IOHandler::ReadyCallback &ready_callback);
+      const IOHandler::ReadyCallback& ready_callback);
 
  private:
   std::unique_ptr<base::MessageLoop> dont_use_directly_;
   scoped_refptr<base::MessageLoopProxy> message_loop_proxy_;
-  IOHandlerFactory *io_handler_factory_;
+  IOHandlerFactory* io_handler_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(EventDispatcher);
 };

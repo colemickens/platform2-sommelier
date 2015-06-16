@@ -44,7 +44,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   struct AddressData {
     AddressData()
         : address(IPAddress::kFamilyUnknown), flags(0), scope(0) {}
-    AddressData(const IPAddress &address_in,
+    AddressData(const IPAddress& address_in,
                 unsigned char flags_in,
                 unsigned char scope_in)
         : address(address_in), flags(flags_in), scope(scope_in) {}
@@ -62,15 +62,15 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Time interval for polling for link statistics.
   static const int kRequestLinkStatisticsIntervalMilliseconds;
 
-  DeviceInfo(ControlInterface *control_interface,
-             EventDispatcher *dispatcher,
-             Metrics *metrics,
-             Manager *manager);
+  DeviceInfo(ControlInterface* control_interface,
+             EventDispatcher* dispatcher,
+             Metrics* metrics,
+             Manager* manager);
   virtual ~DeviceInfo();
 
-  virtual void AddDeviceToBlackList(const std::string &device_name);
-  virtual void RemoveDeviceFromBlackList(const std::string &device_name);
-  virtual bool IsDeviceBlackListed(const std::string &device_name);
+  virtual void AddDeviceToBlackList(const std::string& device_name);
+  virtual void RemoveDeviceFromBlackList(const std::string& device_name);
+  virtual bool IsDeviceBlackListed(const std::string& device_name);
   void Start();
   void Stop();
 
@@ -78,16 +78,16 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
   // Adds |device| to this DeviceInfo instance so that we can handle its link
   // messages, and registers it with the manager.
-  virtual void RegisterDevice(const DeviceRefPtr &device);
+  virtual void RegisterDevice(const DeviceRefPtr& device);
 
   // Remove |device| from this DeviceInfo.  This function should only
   // be called for cellular devices because the lifetime of the
   // cellular devices is controlled by the Modem object and its
   // communication to modem manager, rather than by RTNL messages.
-  virtual void DeregisterDevice(const DeviceRefPtr &device);
+  virtual void DeregisterDevice(const DeviceRefPtr& device);
 
   virtual DeviceRefPtr GetDevice(int interface_index) const;
-  virtual bool GetMACAddress(int interface_index, ByteString *address) const;
+  virtual bool GetMACAddress(int interface_index, ByteString* address) const;
 
   // Queries the kernel for a MAC address for |interface_index|.  Returns an
   // empty ByteString on failure.
@@ -97,26 +97,26 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Returns true and populates |mac_address| on success, otherwise returns
   // false.
   virtual bool GetMACAddressOfPeer(int interface_index,
-                                   const IPAddress &peer,
-                                   ByteString *mac_address) const;
+                                   const IPAddress& peer,
+                                   ByteString* mac_address) const;
 
-  virtual bool GetFlags(int interface_index, unsigned int *flags) const;
+  virtual bool GetFlags(int interface_index, unsigned int* flags) const;
   virtual bool GetByteCounts(int interface_index,
-                             uint64_t *rx_bytes, uint64_t *tx_bytes) const;
+                             uint64_t* rx_bytes, uint64_t* tx_bytes) const;
   virtual bool GetAddresses(int interface_index,
-                            std::vector<AddressData> *addresses) const;
+                            std::vector<AddressData>* addresses) const;
 
   // Flush all addresses associated with |interface_index|.
   virtual void FlushAddresses(int interface_index) const;
   // Returns whether this interface does not have |this_address|
   // but has another non-temporary address of the same family.
   virtual bool HasOtherAddress(
-      int interface_index, const IPAddress &this_address) const;
+      int interface_index, const IPAddress& this_address) const;
 
   // Get the preferred globally scoped IPv6 address for |interface_index|.
   // This method returns true and sets |address| if a primary IPv6 address
   // exists.  Otherwise it returns false and leaves |address| unmodified.
-  virtual bool GetPrimaryIPv6Address(int interface_index, IPAddress *address);
+  virtual bool GetPrimaryIPv6Address(int interface_index, IPAddress* address);
 
   // Get the IPv6 DNS server addresses for |interface_index|. This method
   // returns true and sets |address_list| and |life_time_seconds| if the IPv6
@@ -127,23 +127,23 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // valid anymore, and value of 0xFFFFFFFF means the DNS server is valid
   // forever.
   virtual bool GetIPv6DnsServerAddresses(int interface_index,
-                                         std::vector<IPAddress> *address_list,
-                                         uint32_t *life_time_seconds);
+                                         std::vector<IPAddress>* address_list,
+                                         uint32_t* life_time_seconds);
 
   // Returns true if any of the addresses on |interface_index| are on the
   // same network prefix as |address|.
   virtual bool HasDirectConnectivityTo(
-      int interface_index, const IPAddress &address) const;
+      int interface_index, const IPAddress& address) const;
 
-  virtual bool CreateTunnelInterface(std::string *interface_name) const;
-  virtual int OpenTunnelInterface(const std::string &interface_name) const;
+  virtual bool CreateTunnelInterface(std::string* interface_name) const;
+  virtual int OpenTunnelInterface(const std::string& interface_name) const;
   virtual bool DeleteInterface(int interface_index) const;
 
   // Returns the interface index for |interface_name| or -1 if unknown.
-  virtual int GetIndex(const std::string &interface_name) const;
+  virtual int GetIndex(const std::string& interface_name) const;
 
   // Sets the system hostname to |hostname|.
-  virtual bool SetHostname(const std::string &hostname) const;
+  virtual bool SetHostname(const std::string& hostname) const;
 
  private:
   friend class DeviceInfoDelayedCreationTest;
@@ -212,7 +212,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // operating in monitor mode.
   static const char kInterfaceType[];
   // Modem drivers that we support.
-  static const char *kModemDrivers[];
+  static const char* kModemDrivers[];
   // Path to the tun device.
   static const char kTunDeviceName[];
   // Time to wait before registering devices which need extra time to detect.
@@ -221,74 +221,74 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Create a Device object for the interface named |linkname|, with a
   // string-form MAC address |address|, whose kernel interface index
   // is |interface_index| and detected technology is |technology|.
-  virtual DeviceRefPtr CreateDevice(const std::string &link_name,
-                                    const std::string &address,
+  virtual DeviceRefPtr CreateDevice(const std::string& link_name,
+                                    const std::string& address,
                                     int interface_index,
                                     Technology::Identifier technology);
 
   // Return the FilePath for a given |path_name| in the device sysinfo for
   // a specific interface |iface_name|.
-  base::FilePath GetDeviceInfoPath(const std::string &iface_name,
-                             const std::string &path_name);
+  base::FilePath GetDeviceInfoPath(const std::string& iface_name,
+                             const std::string& path_name);
   // Return the contents of the device info file |path_name| for interface
   // |iface_name| in output parameter |contents_out|.  Returns true if file
   // read succeeded, false otherwise.
-  bool GetDeviceInfoContents(const std::string &iface_name,
-                             const std::string &path_name,
-                             std::string *contents_out);
+  bool GetDeviceInfoContents(const std::string& iface_name,
+                             const std::string& path_name,
+                             std::string* contents_out);
 
   // Return the filepath for the target of the device info symbolic link
   // |path_name| for interface |iface_name| in output parameter |path_out|.
   // Returns true if symbolic link read succeeded, false otherwise.
-  bool GetDeviceInfoSymbolicLink(const std::string &iface_name,
-                                 const std::string &path_name,
-                                 base::FilePath *path_out);
+  bool GetDeviceInfoSymbolicLink(const std::string& iface_name,
+                                 const std::string& path_name,
+                                 base::FilePath* path_out);
   // Classify the device named |iface_name|, and return an identifier
   // indicating its type.
   virtual Technology::Identifier GetDeviceTechnology(
-      const std::string &iface_name);
+      const std::string& iface_name);
   // Checks the device specified by |iface_name| to see if it's a modem device.
   // This method assumes that |iface_name| has already been determined to be
   // using the cdc_ether / cdc_ncm driver.
-  bool IsCdcEthernetModemDevice(const std::string &iface_name);
+  bool IsCdcEthernetModemDevice(const std::string& iface_name);
   // Returns true if |base_dir| has a subdirectory named |subdir|.
   // |subdir| can be an immediate subdirectory of |base_dir| or can be
   // several levels deep.
-  static bool HasSubdir(const base::FilePath &base_dir,
-                        const base::FilePath &subdir);
+  static bool HasSubdir(const base::FilePath& base_dir,
+                        const base::FilePath& subdir);
 
-  void AddLinkMsgHandler(const RTNLMessage &msg);
-  void DelLinkMsgHandler(const RTNLMessage &msg);
-  void LinkMsgHandler(const RTNLMessage &msg);
-  void AddressMsgHandler(const RTNLMessage &msg);
-  void RdnssMsgHandler(const RTNLMessage &msg);
+  void AddLinkMsgHandler(const RTNLMessage& msg);
+  void DelLinkMsgHandler(const RTNLMessage& msg);
+  void LinkMsgHandler(const RTNLMessage& msg);
+  void AddressMsgHandler(const RTNLMessage& msg);
+  void RdnssMsgHandler(const RTNLMessage& msg);
 
-  const Info *GetInfo(int interface_index) const;
+  const Info* GetInfo(int interface_index) const;
   void RemoveInfo(int interface_index);
   void DelayDeviceCreation(int interface_index);
   void DelayedDeviceCreationTask();
-  void RetrieveLinkStatistics(int interface_index, const RTNLMessage &msg);
+  void RetrieveLinkStatistics(int interface_index, const RTNLMessage& msg);
   void RequestLinkStatistics();
 
 #if !defined(DISABLE_WIFI)
   // Use nl80211 to get information on |interface_index|.
   void GetWiFiInterfaceInfo(int interface_index);
-  void OnWiFiInterfaceInfoReceived(const Nl80211Message &message);
+  void OnWiFiInterfaceInfoReceived(const Nl80211Message& message);
 #endif  // DISABLE_WIFI
 
   void set_sockets(Sockets* sockets) { sockets_.reset(sockets); }
 
-  ControlInterface *control_interface_;
-  EventDispatcher *dispatcher_;
-  Metrics *metrics_;
-  Manager *manager_;
+  ControlInterface* control_interface_;
+  EventDispatcher* dispatcher_;
+  Metrics* metrics_;
+  Manager* manager_;
 
   std::map<int, Info> infos_;  // Maps interface index to Info.
   std::map<std::string, int> indices_;  // Maps interface name to index.
 
-  base::Callback<void(const RTNLMessage &)> link_callback_;
-  base::Callback<void(const RTNLMessage &)> address_callback_;
-  base::Callback<void(const RTNLMessage &)> rdnss_callback_;
+  base::Callback<void(const RTNLMessage&)> link_callback_;
+  base::Callback<void(const RTNLMessage&)> address_callback_;
+  base::Callback<void(const RTNLMessage&)> rdnss_callback_;
   std::unique_ptr<RTNLListener> link_listener_;
   std::unique_ptr<RTNLListener> address_listener_;
   std::unique_ptr<RTNLListener> rdnss_listener_;
@@ -303,16 +303,16 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   base::CancelableClosure request_link_statistics_callback_;
 
   // Cache copy of singleton pointers.
-  RoutingTable *routing_table_;
-  RTNLHandler *rtnl_handler_;
+  RoutingTable* routing_table_;
+  RTNLHandler* rtnl_handler_;
 #if !defined(DISABLE_WIFI)
-  NetlinkManager *netlink_manager_;
+  NetlinkManager* netlink_manager_;
 #endif  // DISABLE_WIFI
 
   // A member of the class so that a mock can be injected for testing.
   std::unique_ptr<Sockets> sockets_;
 
-  Time *time_;
+  Time* time_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceInfo);
 };

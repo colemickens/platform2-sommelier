@@ -29,7 +29,7 @@ class ConnectionInfoReader {
   // Loads IP connection tracking information from the file path returned by
   // GetConnectionInfoFilePath(). Existing entries in |info_list| are always
   // discarded. Returns true on success.
-  virtual bool LoadConnectionInfo(std::vector<ConnectionInfo> *info_list);
+  virtual bool LoadConnectionInfo(std::vector<ConnectionInfo>* info_list);
 
  private:
   FRIEND_TEST(ConnectionInfoReaderTest, ParseConnectionInfo);
@@ -39,14 +39,14 @@ class ConnectionInfoReader {
   FRIEND_TEST(ConnectionInfoReaderTest, ParseProtocol);
   FRIEND_TEST(ConnectionInfoReaderTest, ParseTimeToExpireSeconds);
 
-  bool ParseConnectionInfo(const std::string &input, ConnectionInfo *info);
-  bool ParseProtocol(const std::string &input, int *protocol);
-  bool ParseTimeToExpireSeconds(const std::string &input,
-                                int64_t *time_to_expire_seconds);
-  bool ParseIsUnreplied(const std::string &input, bool *is_unreplied);
-  bool ParseIPAddress(const std::string &input,
-                      IPAddress *ip_address, bool *is_source);
-  bool ParsePort(const std::string &input, uint16_t *port, bool *is_source);
+  bool ParseConnectionInfo(const std::string& input, ConnectionInfo* info);
+  bool ParseProtocol(const std::string& input, int* protocol);
+  bool ParseTimeToExpireSeconds(const std::string& input,
+                                int64_t* time_to_expire_seconds);
+  bool ParseIsUnreplied(const std::string& input, bool* is_unreplied);
+  bool ParseIPAddress(const std::string& input,
+                      IPAddress* ip_address, bool* is_source);
+  bool ParsePort(const std::string& input, uint16_t* port, bool* is_source);
 
   DISALLOW_COPY_AND_ASSIGN(ConnectionInfoReader);
 };

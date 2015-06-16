@@ -35,20 +35,20 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
  public:
   static const char kNullPath[];
 
-  DBusAdaptor(DBus::Connection* conn, const std::string &object_path);
+  DBusAdaptor(DBus::Connection* conn, const std::string& object_path);
   ~DBusAdaptor() override;
 
   // Set the property with |name| through |store|. Returns true if and
   // only if the property was changed. Updates |error| if a) an error
   // was encountered, and b) |error| is non-NULL. Otherwise, |error| is
   // unchanged.
-  static bool SetProperty(PropertyStore *store,
-                          const std::string &name,
-                          const ::DBus::Variant &value,
-                          ::DBus::Error *error);
-  static bool GetProperties(const PropertyStore &store,
-                            std::map<std::string, ::DBus::Variant> *out,
-                            ::DBus::Error *error);
+  static bool SetProperty(PropertyStore* store,
+                          const std::string& name,
+                          const ::DBus::Variant& value,
+                          ::DBus::Error* error);
+  static bool GetProperties(const PropertyStore& store,
+                            std::map<std::string, ::DBus::Variant>* out,
+                            ::DBus::Error* error);
   // Look for a property with |name| in |store|. If found, reset the
   // property to its "factory" value. If the property can not be
   // found, or if it can not be cleared (e.g., because it is
@@ -56,28 +56,28 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   //
   // Returns true if the property was found and cleared; returns false
   // otherwise.
-  static bool ClearProperty(PropertyStore *store,
-                            const std::string &name,
-                            ::DBus::Error *error);
+  static bool ClearProperty(PropertyStore* store,
+                            const std::string& name,
+                            ::DBus::Error* error);
   static void ArgsToKeyValueStore(
-      const std::map<std::string, ::DBus::Variant> &args,
-      KeyValueStore *out,
-      Error *error);
+      const std::map<std::string, ::DBus::Variant>& args,
+      KeyValueStore* out,
+      Error* error);
 
   static ::DBus::Variant BoolToVariant(bool value);
-  static ::DBus::Variant ByteArraysToVariant(const ByteArrays &value);
+  static ::DBus::Variant ByteArraysToVariant(const ByteArrays& value);
   static ::DBus::Variant ByteToVariant(uint8_t value);
   static ::DBus::Variant Int16ToVariant(int16_t value);
   static ::DBus::Variant Int32ToVariant(int32_t value);
-  static ::DBus::Variant KeyValueStoreToVariant(const KeyValueStore &value);
-  static ::DBus::Variant PathToVariant(const ::DBus::Path &value);
-  static ::DBus::Variant PathsToVariant(const std::vector<::DBus::Path> &value);
-  static ::DBus::Variant StringToVariant(const std::string &value);
-  static ::DBus::Variant StringmapToVariant(const Stringmap &value);
-  static ::DBus::Variant StringmapsToVariant(const Stringmaps &value);
-  static ::DBus::Variant StringsToVariant(const Strings &value);
+  static ::DBus::Variant KeyValueStoreToVariant(const KeyValueStore& value);
+  static ::DBus::Variant PathToVariant(const ::DBus::Path& value);
+  static ::DBus::Variant PathsToVariant(const std::vector<::DBus::Path>& value);
+  static ::DBus::Variant StringToVariant(const std::string& value);
+  static ::DBus::Variant StringmapToVariant(const Stringmap& value);
+  static ::DBus::Variant StringmapsToVariant(const Stringmaps& value);
+  static ::DBus::Variant StringsToVariant(const Strings& value);
   static ::DBus::Variant Uint16ToVariant(uint16_t value);
-  static ::DBus::Variant Uint16sToVariant(const Uint16s &value);
+  static ::DBus::Variant Uint16sToVariant(const Uint16s& value);
   static ::DBus::Variant Uint32ToVariant(uint32_t value);
   static ::DBus::Variant Uint64ToVariant(uint64_t value);
 
@@ -101,12 +101,12 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
  protected:
   FRIEND_TEST(DBusAdaptorTest, SanitizePathElement);
 
-  ResultCallback GetMethodReplyCallback(const DBus::Tag *tag);
+  ResultCallback GetMethodReplyCallback(const DBus::Tag* tag);
   // It would be nice if these two methods could be templated.  Unfortunately,
   // attempts to do so will trigger some fairly esoteric warnings from the
   // base library.
-  ResultStringCallback GetStringMethodReplyCallback(const DBus::Tag *tag);
-  ResultBoolCallback GetBoolMethodReplyCallback(const DBus::Tag *tag);
+  ResultStringCallback GetStringMethodReplyCallback(const DBus::Tag* tag);
+  ResultBoolCallback GetBoolMethodReplyCallback(const DBus::Tag* tag);
 
   // Adaptors call this method just before returning. If |error|
   // indicates that the operation has completed, with no asynchronously
@@ -126,34 +126,34 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   //
   // The general structure of an adaptor method is
   //
-  // void XXXXDBusAdaptor::SomeMethod(<args...>, DBus::Error &error) {
+  // void XXXXDBusAdaptor::SomeMethod(<args...>, DBus::Error& error) {
   //   Error e(Error::kOperationInitiated);
-  //   DBus::Tag *tag = new DBus::Tag();
+  //   DBus::Tag* tag = new DBus::Tag();
   //   xxxx_->SomeMethod(<args...>, &e, GetMethodReplyCallback(tag));
   //   ReturnResultOrDefer(tag, e, &error);
   // }
   //
-  void ReturnResultOrDefer(const DBus::Tag *tag,
-                           const Error &error,
-                           DBus::Error *dberror);
+  void ReturnResultOrDefer(const DBus::Tag* tag,
+                           const Error& error,
+                           DBus::Error* dberror);
 
   // Returns an object path fragment that conforms to D-Bus specifications.
-  static std::string SanitizePathElement(const std::string &object_path);
+  static std::string SanitizePathElement(const std::string& object_path);
 
  private:
-  void MethodReplyCallback(const DBus::Tag *tag, const Error &error);
-  void StringMethodReplyCallback(const DBus::Tag *tag, const Error &error,
-                                 const std::string &returned);
-  void BoolMethodReplyCallback(const DBus::Tag *tag, const Error &error,
+  void MethodReplyCallback(const DBus::Tag* tag, const Error& error);
+  void StringMethodReplyCallback(const DBus::Tag* tag, const Error& error,
+                                 const std::string& returned);
+  void BoolMethodReplyCallback(const DBus::Tag* tag, const Error& error,
                                bool returned);
   template<typename T>
-  void TypedMethodReplyCallback(const DBus::Tag *tag, const Error &error,
-                                const T &returned);
-  void DeferReply(const DBus::Tag *tag);
-  void ReplyNow(const DBus::Tag *tag);
+  void TypedMethodReplyCallback(const DBus::Tag* tag, const Error& error,
+                                const T& returned);
+  void DeferReply(const DBus::Tag* tag);
+  void ReplyNow(const DBus::Tag* tag);
   template <typename T>
-  void TypedReplyNow(const DBus::Tag *tag, const T &value);
-  void ReplyNowWithError(const DBus::Tag *tag, const DBus::Error &error);
+  void TypedReplyNow(const DBus::Tag* tag, const T& value);
+  void ReplyNowWithError(const DBus::Tag* tag, const DBus::Error& error);
 
   DISALLOW_COPY_AND_ASSIGN(DBusAdaptor);
 };

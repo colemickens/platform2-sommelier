@@ -52,7 +52,7 @@ class EapCredentials {
 
   // Add property accessors to the EAP credential parameters in |this| to
   // |store|.
-  void InitPropertyStore(PropertyStore *store);
+  void InitPropertyStore(PropertyStore* store);
 
   // Returns true if |property| is used for authentication in EapCredentials.
   static bool IsEapAuthenticationProperty(const std::string property);
@@ -66,48 +66,48 @@ class EapCredentials {
   virtual bool IsConnectableUsingPassphrase() const;
 
   // Loads EAP properties from |storage| in group |id|.
-  virtual void Load(StoreInterface *store, const std::string &id);
+  virtual void Load(StoreInterface* store, const std::string& id);
 
   // Output metrics about this EAP connection to |metrics| with technology
   // |technology|.
-  virtual void OutputConnectionMetrics(Metrics *metrics,
+  virtual void OutputConnectionMetrics(Metrics* metrics,
                                        Technology::Identifier technology) const;
 
   // Populate the wpa_supplicant DBus parameter map |params| with the
   // credentials in |this|.  To do so, this function may use |certificate_file|
   // to export CA certificates to be passed to wpa_supplicant.
   virtual void PopulateSupplicantProperties(
-      CertificateFile *certificate_file,
-      std::map<std::string, DBus::Variant> *params) const;
+      CertificateFile* certificate_file,
+      std::map<std::string, DBus::Variant>* params) const;
 
   // Populate the WiMax connection parameters |params| with the
   // credentials in |this|.
   virtual void PopulateWiMaxProperties(
-      KeyValueStore *params) const;
+      KeyValueStore* params) const;
 
   // Save EAP properties to |storage| in group |id|.  If |save_credentials|
   // is true, passwords and identities that are a part of the credentials are
   // also saved.
-  virtual void Save(StoreInterface *store, const std::string &id,
+  virtual void Save(StoreInterface* store, const std::string& id,
                     bool save_credentials) const;
 
   // Restore EAP properties to their initial state.
   virtual void Reset();
 
   // Setter that guards against emptying the "Key Management" value.
-  virtual bool SetKeyManagement(const std::string &key_management,
-                                Error *error);
+  virtual bool SetKeyManagement(const std::string& key_management,
+                                Error* error);
 
   // Getters and setters.
-  virtual const std::string &identity() const { return identity_; }
-  void set_identity(const std::string &identity) {
+  virtual const std::string& identity() const { return identity_; }
+  void set_identity(const std::string& identity) {
     identity_ = identity;
   }
-  virtual const std::string &key_management() const { return key_management_; }
-  virtual void set_password(const std::string &password) {
+  virtual const std::string& key_management() const { return key_management_; }
+  virtual void set_password(const std::string& password) {
     password_ = password;
   }
-  virtual const std::string &pin() const { return pin_; }
+  virtual const std::string& pin() const { return pin_; }
 
  private:
   friend class EapCredentialsTest;
@@ -122,10 +122,10 @@ class EapCredentials {
   // Reads of the property will be handled by invoking |get|.
   // Writes to the property will be handled by invoking |set|.
   void HelpRegisterDerivedString(
-      PropertyStore *store,
-      const std::string &name,
-      std::string(EapCredentials::*get)(Error *error),
-      bool(EapCredentials::*set)(const std::string &value, Error *error));
+      PropertyStore* store,
+      const std::string& name,
+      std::string(EapCredentials::*get)(Error* error),
+      bool(EapCredentials::*set)(const std::string& value, Error* error));
 
   // Expose a property in |store|, with the name |name|.
   //
@@ -136,28 +136,28 @@ class EapCredentials {
   // is an error to call this method with both |clear| and
   // |default_value| non-NULL.
   void HelpRegisterWriteOnlyDerivedString(
-      PropertyStore *store,
-      const std::string &name,
-      bool(EapCredentials::*set)(const std::string &value, Error *error),
-      void(EapCredentials::*clear)(Error *error),
-      const std::string *default_value);
+      PropertyStore* store,
+      const std::string& name,
+      bool(EapCredentials::*set)(const std::string& value, Error* error),
+      void(EapCredentials::*clear)(Error* error),
+      const std::string* default_value);
 
   // Assigns |value| to |key| in |storage| if |value| is non-empty and |save| is
   // true. Otherwise, removes |key| from |storage|. If |crypted| is true, the
   // value is encrypted.
-  static void SaveString(StoreInterface *storage,
-                         const std::string &id,
-                         const std::string &key,
-                         const std::string &value,
+  static void SaveString(StoreInterface* storage,
+                         const std::string& id,
+                         const std::string& key,
+                         const std::string& value,
                          bool crypted,
                          bool save);
 
   // Setters for write-only RPC properties.
-  bool SetEapPassword(const std::string &password, Error *error);
-  bool SetEapPrivateKeyPassword(const std::string &password, Error *error);
+  bool SetEapPassword(const std::string& password, Error* error);
+  bool SetEapPrivateKeyPassword(const std::string& password, Error* error);
 
   // RPC getter for key_management_.
-  std::string GetKeyManagement(Error *error);
+  std::string GetKeyManagement(Error* error);
 
   // When there is an inner EAP type, use this identity for the outer.
   std::string anonymous_identity_;

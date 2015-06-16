@@ -23,20 +23,20 @@ class StoreInterface;
 // promotion of entries contained herein to the currently active profile.
 class EphemeralProfile : public Profile {
  public:
-  EphemeralProfile(ControlInterface *control_interface,
-                   Metrics *metrics,
-                   Manager *manager);
+  EphemeralProfile(ControlInterface* control_interface,
+                   Metrics* metrics,
+                   Manager* manager);
   ~EphemeralProfile() override;
 
   std::string GetFriendlyName() override;
-  bool AdoptService(const ServiceRefPtr &service) override;
-  bool AbandonService(const ServiceRefPtr &service) override;
+  bool AdoptService(const ServiceRefPtr& service) override;
+  bool AbandonService(const ServiceRefPtr& service) override;
 
   // Should not be called.
   bool Save() override;
 
   // Leaves |path| untouched and returns false.
-  bool GetStoragePath(base::FilePath */*path*/) override {
+  bool GetStoragePath(base::FilePath* /*path*/) override {
     return false;
   }
 

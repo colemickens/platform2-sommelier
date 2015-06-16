@@ -43,10 +43,10 @@ class DNSServerTester {
   };
 
   DNSServerTester(ConnectionRefPtr connection,
-                  EventDispatcher *dispatcher,
-                  const std::vector<std::string> &dns_servers,
+                  EventDispatcher* dispatcher,
+                  const std::vector<std::string>& dns_servers,
                   const bool retry_until_success,
-                  const base::Callback<void(const Status)> &callback);
+                  const base::Callback<void(const Status)>& callback);
   virtual ~DNSServerTester();
 
   // Start the test.
@@ -71,17 +71,17 @@ class DNSServerTester {
   void StartAttemptTask();
   void StopAttempt();
   void CompleteAttempt(Status status);
-  void DNSClientCallback(const Error &error, const IPAddress &ip);
+  void DNSClientCallback(const Error& error, const IPAddress& ip);
 
   ConnectionRefPtr connection_;
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   // Flag indicating to continuously probing the DNS servers until it succeed.
   // The callback is only invoke when the test succeed or test failed to start.
   bool retry_until_success_;
   base::WeakPtrFactory<DNSServerTester> weak_ptr_factory_;
   base::CancelableClosure start_attempt_;
   base::Callback<void(const Status)> dns_result_callback_;
-  base::Callback<void(const Error &, const IPAddress &)>
+  base::Callback<void(const Error&, const IPAddress&)>
       dns_client_callback_;
   std::unique_ptr<DNSClient> dns_test_client_;
 

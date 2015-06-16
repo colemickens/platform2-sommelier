@@ -27,20 +27,20 @@ class Metrics;
 // Non-functional Device subclass used for non-operable or blacklisted devices
 class DeviceStub : public Device {
  public:
-  DeviceStub(ControlInterface *control_interface,
-             EventDispatcher *dispatcher,
-             Metrics *metrics,
-             Manager *manager,
-             const std::string &link_name,
-             const std::string &address,
+  DeviceStub(ControlInterface* control_interface,
+             EventDispatcher* dispatcher,
+             Metrics* metrics,
+             Manager* manager,
+             const std::string& link_name,
+             const std::string& address,
              int interface_index,
              Technology::Identifier technology)
       : Device(control_interface, dispatcher, metrics, manager, link_name,
                address, interface_index, technology) {}
-  void Start(Error */*error*/,
-             const EnabledStateChangedCallback &/*callback*/) {}
-  void Stop(Error */*error*/,
-            const EnabledStateChangedCallback &/*callback*/) {}
+  void Start(Error* /*error*/,
+             const EnabledStateChangedCallback& /*callback*/) {}
+  void Stop(Error* /*error*/,
+            const EnabledStateChangedCallback& /*callback*/) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DeviceStub);

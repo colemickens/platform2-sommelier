@@ -39,7 +39,7 @@ DiagnosticsReporter::DiagnosticsReporter()
 DiagnosticsReporter::~DiagnosticsReporter() {}
 
 // static
-DiagnosticsReporter *DiagnosticsReporter::GetInstance() {
+DiagnosticsReporter* DiagnosticsReporter::GetInstance() {
   return g_reporter.Pointer();
 }
 
@@ -60,14 +60,14 @@ void DiagnosticsReporter::OnConnectivityEvent() {
   base::DeleteFile(stashed_net_log_, false);
 
   LOG(INFO) << "Spawning " << kNetDiagsUpload << " @ " << last_log_stash_;
-  vector<char *> args;
-  args.push_back(const_cast<char *>(kNetDiagsUpload));
+  vector<char*> args;
+  args.push_back(const_cast<char*>(kNetDiagsUpload));
   if (IsReportingEnabled()) {
-    args.push_back(const_cast<char *>("--upload"));
+    args.push_back(const_cast<char*>("--upload"));
   }
   args.push_back(nullptr);
   pid_t pid = 0;
-  struct minijail *jail = minijail_->New();
+  struct minijail* jail = minijail_->New();
   minijail_->DropRoot(jail, kNetDiagsUploadUser, kNetDiagsUploadUser);
   if (minijail_->RunAndDestroy(jail, args, &pid)) {
     process_killer_->Wait(pid, Closure());

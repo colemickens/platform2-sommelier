@@ -35,11 +35,11 @@ void EventDispatcher::DispatchPendingEvents() {
   base::RunLoop().RunUntilIdle();
 }
 
-bool EventDispatcher::PostTask(const Closure &task) {
+bool EventDispatcher::PostTask(const Closure& task) {
   return message_loop_proxy_->PostTask(FROM_HERE, task);
 }
 
-bool EventDispatcher::PostDelayedTask(const Closure &task, int64_t delay_ms) {
+bool EventDispatcher::PostDelayedTask(const Closure& task, int64_t delay_ms) {
   return message_loop_proxy_->PostDelayedTask(
       FROM_HERE, task, base::TimeDelta::FromMilliseconds(delay_ms));
 }
@@ -47,10 +47,10 @@ bool EventDispatcher::PostDelayedTask(const Closure &task, int64_t delay_ms) {
 // TODO(zqiu): Remove all reference to this function and use the
 // IOHandlerFactory function directly. Delete this function once
 // all references are removed.
-IOHandler *EventDispatcher::CreateInputHandler(
+IOHandler* EventDispatcher::CreateInputHandler(
     int fd,
-    const IOHandler::InputCallback &input_callback,
-    const IOHandler::ErrorCallback &error_callback) {
+    const IOHandler::InputCallback& input_callback,
+    const IOHandler::ErrorCallback& error_callback) {
   return io_handler_factory_->CreateIOInputHandler(
           fd, input_callback, error_callback);
 }
@@ -58,10 +58,10 @@ IOHandler *EventDispatcher::CreateInputHandler(
 // TODO(zqiu): Remove all reference to this function and use the
 // IOHandlerFactory function directly. Delete this function once
 // all references are removed.
-IOHandler *EventDispatcher::CreateReadyHandler(
+IOHandler* EventDispatcher::CreateReadyHandler(
     int fd,
     IOHandler::ReadyMode mode,
-    const Callback<void(int)> &ready_callback) {
+    const Callback<void(int)>& ready_callback) {
   return io_handler_factory_->CreateIOReadyHandler(
           fd, mode, ready_callback);
 }

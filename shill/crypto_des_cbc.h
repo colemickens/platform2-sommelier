@@ -28,20 +28,20 @@ class CryptoDESCBC : public CryptoInterface {
  public:
   static const char kID[];
 
-  explicit CryptoDESCBC(GLib *glib);
+  explicit CryptoDESCBC(GLib* glib);
 
   // Sets the DES key to the last |kBlockSize| bytes of |key_matter_path| and
   // the DES initialization vector to the second to last |kBlockSize| bytes of
   // |key_matter_path|. Returns true on success.
-  bool LoadKeyMatter(const base::FilePath &path);
+  bool LoadKeyMatter(const base::FilePath& path);
 
   // Inherited from CryptoInterface.
   virtual std::string GetID();
-  virtual bool Encrypt(const std::string &plaintext, std::string *ciphertext);
-  virtual bool Decrypt(const std::string &ciphertext, std::string *plaintext);
+  virtual bool Encrypt(const std::string& plaintext, std::string* ciphertext);
+  virtual bool Decrypt(const std::string& ciphertext, std::string* plaintext);
 
-  const std::vector<char> &key() const { return key_; }
-  const std::vector<char> &iv() const { return iv_; }
+  const std::vector<char>& key() const { return key_; }
+  const std::vector<char>& iv() const { return iv_; }
 
  private:
   FRIEND_TEST(CryptoDESCBCTest, Decrypt);
@@ -51,7 +51,7 @@ class CryptoDESCBC : public CryptoInterface {
   static const char kSentinel[];
   static const char kVersion2Prefix[];
 
-  GLib *glib_;
+  GLib* glib_;
   std::vector<char> key_;
   std::vector<char> iv_;
 

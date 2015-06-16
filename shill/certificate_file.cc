@@ -26,7 +26,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCrypto;
-static string ObjectID(CertificateFile *c) { return "(certificate_file)"; }
+static string ObjectID(CertificateFile* c) { return "(certificate_file)"; }
 }
 
 const char CertificateFile::kDefaultRootDirectory[] =
@@ -47,9 +47,9 @@ CertificateFile::~CertificateFile() {
 }
 
 FilePath CertificateFile::CreatePEMFromStrings(
-    const vector<string> &pem_contents) {
+    const vector<string>& pem_contents) {
   vector<string> pem_output;
-  for (const auto &content : pem_contents) {
+  for (const auto& content : pem_contents) {
     string hex_data = ExtractHexData(content);
     if (hex_data.empty()) {
       return FilePath();
@@ -61,7 +61,7 @@ FilePath CertificateFile::CreatePEMFromStrings(
 }
 
 // static
-string CertificateFile::ExtractHexData(const std::string &pem_data) {
+string CertificateFile::ExtractHexData(const std::string& pem_data) {
   bool found_header = false;
   bool found_footer = false;
   const bool kCaseSensitive = false;
@@ -101,7 +101,7 @@ string CertificateFile::ExtractHexData(const std::string &pem_data) {
   return JoinString(output_lines, "\n");
 }
 
-FilePath CertificateFile::WriteFile(const string &output_data) {
+FilePath CertificateFile::WriteFile(const string& output_data) {
   if (!base::DirectoryExists(root_directory_)) {
     if (!base::CreateDirectory(root_directory_)) {
       LOG(ERROR) << "Unable to create parent directory  "

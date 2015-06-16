@@ -54,14 +54,14 @@ class ConnectionHealthChecker {
   };
 
   ConnectionHealthChecker(ConnectionRefPtr connection,
-                          EventDispatcher *dispatcher,
-                          IPAddressStore *remote_ips,
-                          const base::Callback<void(Result)> &result_callback);
+                          EventDispatcher* dispatcher,
+                          IPAddressStore* remote_ips,
+                          const base::Callback<void(Result)>& result_callback);
   virtual ~ConnectionHealthChecker();
 
   // A new ConnectionHealthChecker is created with a default URL to attempt the
   // TCP connection with. Add a URL to try.
-  virtual void AddRemoteURL(const std::string &url_string);
+  virtual void AddRemoteURL(const std::string& url_string);
 
   // Name resolution can fail in conditions -(1)- and -(2)-. Add an IP address
   // to attempt the TCP connection with.
@@ -87,15 +87,15 @@ class ConnectionHealthChecker {
   // Calling Stop() on a Stop()ed health check is a no-op.
   virtual void Stop();
 
-  static const char *ResultToString(Result result);
+  static const char* ResultToString(Result result);
 
   // Accessors.
-  const IPAddressStore *remote_ips() const { return remote_ips_; }
+  const IPAddressStore* remote_ips() const { return remote_ips_; }
   virtual bool health_check_in_progress() const;
 
  protected:
   // For unit-tests.
-  void set_dispatcher(EventDispatcher *dispatcher) {
+  void set_dispatcher(EventDispatcher* dispatcher) {
     dispatcher_ = dispatcher;
   }
   void set_sock_fd(int sock_fd) { sock_fd_ = sock_fd; }
@@ -123,8 +123,8 @@ class ConnectionHealthChecker {
     old_transmit_queue_value_ = val;
   }
   Result health_check_result() const { return health_check_result_; }
-  AsyncConnection *tcp_connection() const { return tcp_connection_.get(); }
-  Connection *connection() const { return connection_.get(); }
+  AsyncConnection* tcp_connection() const { return tcp_connection_.get(); }
+  Connection* connection() const { return connection_.get(); }
 
  private:
   friend class ConnectionHealthCheckerTest;
@@ -136,7 +136,7 @@ class ConnectionHealthChecker {
   FRIEND_TEST(ConnectionHealthCheckerTest, VerifySentData);
 
   // List of static IPs for connection health check.
-  static const char *kDefaultRemoteIPPool[];
+  static const char* kDefaultRemoteIPPool[];
   // Time to wait for DNS server.
   static const int kDNSTimeoutMilliseconds;
   static const int kInvalidSocket;
@@ -160,7 +160,7 @@ class ConnectionHealthChecker {
   static const int kTCPStateUpdateWaitMilliseconds;
 
   // Callback for DnsClient
-  void GetDNSResult(const Error &error, const IPAddress &ip);
+  void GetDNSResult(const Error& error, const IPAddress& ip);
   void GarbageCollectDNSClients();
 
   // Start a new AsyncConnection with callback set to OnConnectionComplete().
@@ -172,16 +172,16 @@ class ConnectionHealthChecker {
   void OnConnectionComplete(bool success, int sock_fd);
 
   void VerifySentData();
-  bool GetSocketInfo(int sock_fd, SocketInfo *sock_info);
+  bool GetSocketInfo(int sock_fd, SocketInfo* sock_info);
 
   void SetSocketDescriptor(int sock_fd);
   void ClearSocketDescriptor();
 
   // The connection on which the health check is being run.
   ConnectionRefPtr connection_;
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   // Set of IPs to create TCP connection with for the health check.
-  IPAddressStore *remote_ips_;
+  IPAddressStore* remote_ips_;
   base::Callback<void(Result)> result_callback_;
 
   std::unique_ptr<Sockets> socket_;
@@ -198,7 +198,7 @@ class ConnectionHealthChecker {
   // Interface to read TCP connection information from the system.
   std::unique_ptr<SocketInfoReader> socket_info_reader_;
 
-  DNSClientFactory *dns_client_factory_;
+  DNSClientFactory* dns_client_factory_;
   ScopedVector<DNSClient> dns_clients_;
   const base::Callback<void(const Error&, const IPAddress&)>
       dns_client_callback_;

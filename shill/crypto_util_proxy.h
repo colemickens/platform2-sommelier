@@ -34,7 +34,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   static const char kCommandEncrypt[];
   static const char kCryptoUtilShimPath[];
 
-  CryptoUtilProxy(EventDispatcher *dispatcher, GLib *glib);
+  CryptoUtilProxy(EventDispatcher* dispatcher, GLib* glib);
   virtual ~CryptoUtilProxy();
 
   // Verify credentials for the currently connected endpoint of
@@ -50,15 +50,15 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   // |destination_udn| has no format requirements.
   // |ssid| has no constraints.
   // |bssid| should be in the human readable format: 00:11:22:33:44:55.
-  virtual bool VerifyDestination(const std::string &certificate,
-                                 const std::string &public_key,
-                                 const std::string &nonce,
-                                 const std::string &signed_data,
-                                 const std::string &destination_udn,
-                                 const std::vector<uint8_t> &ssid,
-                                 const std::string &bssid,
-                                 const ResultBoolCallback &result_callback,
-                                 Error *error);
+  virtual bool VerifyDestination(const std::string& certificate,
+                                 const std::string& public_key,
+                                 const std::string& nonce,
+                                 const std::string& signed_data,
+                                 const std::string& destination_udn,
+                                 const std::vector<uint8_t>& ssid,
+                                 const std::string& bssid,
+                                 const ResultBoolCallback& result_callback,
+                                 Error* error);
 
   // Encrypt |data| under |public_key|.  This is a fairly time consuming
   // process.  Returns true if we've succeeded in kicking off a job to an
@@ -68,10 +68,10 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   //
   // |public_key| is a base64 encoded DER RSAPublicKey format public key.
   // |data| has no particular format requirements.
-  virtual bool EncryptData(const std::string &public_key,
-                           const std::string &data,
-                           const ResultStringCallback &result_callback,
-                           Error *error);
+  virtual bool EncryptData(const std::string& public_key,
+                           const std::string& data,
+                           const ResultStringCallback& result_callback,
+                           Error* error);
 
  private:
   friend class CryptoUtilProxyTest;
@@ -88,7 +88,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
 
   // Helper method for parsing the proto buffer return codes sent back by the
   // shim.
-  static bool ParseResponseReturnCode(int proto_return_code, Error *e);
+  static bool ParseResponseReturnCode(int proto_return_code, Error* e);
 
   // Kick off a run of the shim to verify credentials or sign data.  Callers
   // pass in the command they want to run on the shim (literally a command line
@@ -96,36 +96,36 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   // called both on errors, timeouts, and success.  Behind the scenes, we first
   // send |input| down to the shim through a pipe to its stdin, then wait for
   // bytes to comes back over a pipe connected to the shim's stdout.
-  virtual bool StartShimForCommand(const std::string &command,
-                                   const std::string &input,
-                                   const StringCallback &result_handler);
+  virtual bool StartShimForCommand(const std::string& command,
+                                   const std::string& input,
+                                   const StringCallback& result_handler);
   // This is the big hammer we use to clean up past shim state.
-  virtual void CleanupShim(const Error &shim_result);
+  virtual void CleanupShim(const Error& shim_result);
   virtual void OnShimDeath();
 
   // Callbacks that handle IO operations between shill and the shim.  Called by
   // GLib on changes in file descriptor state.
   void HandleShimStdinReady(int fd);
-  void HandleShimOutput(InputData *data);
-  void HandleShimReadError(const std::string &error_msg);
-  void HandleShimError(const Error &error);
+  void HandleShimOutput(InputData* data);
+  void HandleShimReadError(const std::string& error_msg);
+  void HandleShimError(const Error& error);
   void HandleShimTimeout();
   // Used to handle the final result of both operations.  |result| is a
   // seriallized protocol buffer or an empty string on error.  On error,
   // |error| is filled in with an appropriate error condition.
   // |result_callback| is a callback from the original caller (the manager).
-  void HandleVerifyResult(const ResultBoolCallback &result_handler,
-                          const std::string &result,
-                          const Error &error);
-  void HandleEncryptResult(const ResultStringCallback &result_handler,
-                           const std::string &result,
-                           const Error &error);
+  void HandleVerifyResult(const ResultBoolCallback& result_handler,
+                          const std::string& result,
+                          const Error& error);
+  void HandleEncryptResult(const ResultStringCallback& result_handler,
+                           const std::string& result,
+                           const Error& error);
 
-  EventDispatcher *dispatcher_;
-  GLib *glib_;
-  chromeos::Minijail *minijail_;
-  ProcessKiller *process_killer_;
-  FileIO *file_io_;
+  EventDispatcher* dispatcher_;
+  GLib* glib_;
+  chromeos::Minijail* minijail_;
+  ProcessKiller* process_killer_;
+  FileIO* file_io_;
   std::string input_buffer_;
   std::string::const_iterator next_input_byte_;
   std::string output_buffer_;

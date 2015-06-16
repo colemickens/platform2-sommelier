@@ -17,9 +17,9 @@ class DBusManager;
 
 class DBusNameWatcher : public base::SupportsWeakPtr<DBusNameWatcher> {
  public:
-  typedef base::Callback<void(const std::string &name,
-                              const std::string &owner)> NameAppearedCallback;
-  typedef base::Callback<void(const std::string &name)> NameVanishedCallback;
+  typedef base::Callback<void(const std::string& name,
+                              const std::string& owner)> NameAppearedCallback;
+  typedef base::Callback<void(const std::string& name)> NameVanishedCallback;
 
   // Constructs a watcher to monitor a given DBus service |name|. When the
   // service appears, |name_appeared_callback| is invoked if non-null. When the
@@ -27,18 +27,18 @@ class DBusNameWatcher : public base::SupportsWeakPtr<DBusNameWatcher> {
   // construction, it registers to a DBus manager |dbus_manager| in order to
   // receive notifications when |name| appears on or vanishes from DBus. At
   // desctruction, it dereigisters from |dbus_manager|.
-  DBusNameWatcher(DBusManager *dbus_manager,
-                  const std::string &name,
-                  const NameAppearedCallback &name_appeared_callback,
-                  const NameVanishedCallback &name_vanished_callback);
+  DBusNameWatcher(DBusManager* dbus_manager,
+                  const std::string& name,
+                  const NameAppearedCallback& name_appeared_callback,
+                  const NameVanishedCallback& name_vanished_callback);
   ~DBusNameWatcher();
 
   // Called by |dbus_manager_| when |name_| appears on or vanishes from DBus.
   // |name_appeared_callback_| or |name_vanished_callback_| is invoked
   // accordingly if non-null.
-  void OnNameOwnerChanged(const std::string &name) const;
+  void OnNameOwnerChanged(const std::string& name) const;
 
-  const std::string &name() const { return name_; }
+  const std::string& name() const { return name_; }
 
  private:
   base::WeakPtr<DBusManager> dbus_manager_;

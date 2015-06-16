@@ -29,7 +29,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
-static string ObjectID(Connection *c) { return c->interface_name(); }
+static string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
 const int ActiveLinkMonitor::kDefaultTestPeriodMilliseconds = 5000;
@@ -38,12 +38,12 @@ const int ActiveLinkMonitor::kFastTestPeriodMilliseconds = 200;
 const int ActiveLinkMonitor::kMaxResponseSampleFilterDepth = 5;
 const int ActiveLinkMonitor::kUnicastReplyReliabilityThreshold = 10;
 
-ActiveLinkMonitor::ActiveLinkMonitor(const ConnectionRefPtr &connection,
-                                     EventDispatcher *dispatcher,
-                                     Metrics *metrics,
-                                     DeviceInfo *device_info,
-                                     const FailureCallback &failure_callback,
-                                     const SuccessCallback &success_callback)
+ActiveLinkMonitor::ActiveLinkMonitor(const ConnectionRefPtr& connection,
+                                     EventDispatcher* dispatcher,
+                                     Metrics* metrics,
+                                     DeviceInfo* device_info,
+                                     const FailureCallback& failure_callback,
+                                     const SuccessCallback& success_callback)
     : connection_(connection),
       dispatcher_(dispatcher),
       metrics_(metrics),
@@ -164,7 +164,7 @@ void ActiveLinkMonitor::AddResponseTimeSample(int response_time_milliseconds) {
 }
 
 // static
-string ActiveLinkMonitor::HardwareAddressToString(const ByteString &address) {
+string ActiveLinkMonitor::HardwareAddressToString(const ByteString& address) {
   std::vector<string> address_parts;
   for (size_t i = 0; i < address.GetLength(); ++i) {
     address_parts.push_back(
@@ -275,7 +275,7 @@ void ActiveLinkMonitor::ReceiveResponse(int fd) {
   }
 
   if (!gateway_mac_address_.Equals(packet.local_mac_address())) {
-    const ByteString &new_mac_address = packet.local_mac_address();
+    const ByteString& new_mac_address = packet.local_mac_address();
     if (!IsGatewayFound()) {
       SLOG(connection_.get(), 2) << "Found gateway at "
                                  << HardwareAddressToString(new_mac_address);

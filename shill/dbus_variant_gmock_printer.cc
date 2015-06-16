@@ -10,7 +10,7 @@
 
 namespace DBus {
 
-void PrintTo(const ::DBus::Variant &value, ::std::ostream *os) {
+void PrintTo(const ::DBus::Variant& value, ::std::ostream* os) {
   if (shill::DBusAdaptor::IsBool(value.signature()))
     *os << value.reader().get_bool();
   else if (shill::DBusAdaptor::IsByte(value.signature()))

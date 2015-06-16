@@ -11,10 +11,10 @@ using std::string;
 namespace shill {
 
 DBusNameWatcher::DBusNameWatcher(
-    DBusManager *dbus_manager,
-    const string &name,
-    const NameAppearedCallback &name_appeared_callback,
-    const NameVanishedCallback &name_vanished_callback)
+    DBusManager* dbus_manager,
+    const string& name,
+    const NameAppearedCallback& name_appeared_callback,
+    const NameVanishedCallback& name_vanished_callback)
     : dbus_manager_(dbus_manager->AsWeakPtr()),
       name_(name),
       name_appeared_callback_(name_appeared_callback),
@@ -25,7 +25,7 @@ DBusNameWatcher::~DBusNameWatcher() {
     dbus_manager_->RemoveNameWatcher(this);
 }
 
-void DBusNameWatcher::OnNameOwnerChanged(const string &owner) const {
+void DBusNameWatcher::OnNameOwnerChanged(const string& owner) const {
   if (owner.empty()) {
     if (!name_vanished_callback_.is_null()) {
       name_vanished_callback_.Run(name_);

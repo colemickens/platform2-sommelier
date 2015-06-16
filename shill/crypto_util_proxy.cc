@@ -37,7 +37,7 @@ const char CryptoUtilProxy::kCryptoUtilShimPath[] = SHIMDIR "/crypto-util";
 const char CryptoUtilProxy::kDestinationVerificationUser[] = "shill-crypto";
 const int CryptoUtilProxy::kShimJobTimeoutMilliseconds = 30 * 1000;
 
-CryptoUtilProxy::CryptoUtilProxy(EventDispatcher *dispatcher, GLib *glib)
+CryptoUtilProxy::CryptoUtilProxy(EventDispatcher* dispatcher, GLib* glib)
     : dispatcher_(dispatcher),
       glib_(glib),
       minijail_(chromeos::Minijail::GetInstance()),
@@ -57,16 +57,16 @@ CryptoUtilProxy::~CryptoUtilProxy() {
 }
 
 bool CryptoUtilProxy::VerifyDestination(
-    const string &certificate,
-    const string &public_key,
-    const string &nonce,
-    const string &signed_data,
-    const string &destination_udn,
-    const vector<uint8_t> &ssid,
-    const string &bssid,
-    const ResultBoolCallback &result_callback,
-    Error *error) {
-  string unsigned_data(reinterpret_cast<const char *>(&ssid[0]),
+    const string& certificate,
+    const string& public_key,
+    const string& nonce,
+    const string& signed_data,
+    const string& destination_udn,
+    const vector<uint8_t>& ssid,
+    const string& bssid,
+    const ResultBoolCallback& result_callback,
+    Error* error) {
+  string unsigned_data(reinterpret_cast<const char*>(&ssid[0]),
                        ssid.size());
   string upper_case_bssid(base::StringToUpperASCII(bssid));
   unsigned_data.append(StringPrintf(",%s,%s,%s,%s",
@@ -107,10 +107,10 @@ bool CryptoUtilProxy::VerifyDestination(
 }
 
 bool CryptoUtilProxy::EncryptData(
-    const string &public_key,
-    const string &data,
-    const ResultStringCallback &result_callback,
-    Error *error) {
+    const string& public_key,
+    const string& data,
+    const ResultStringCallback& result_callback,
+    Error* error) {
   string decoded_public_key;
   if (!glib_->B64Decode(public_key, &decoded_public_key)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
@@ -141,9 +141,9 @@ bool CryptoUtilProxy::EncryptData(
 }
 
 bool CryptoUtilProxy::StartShimForCommand(
-    const string &command,
-    const string &input,
-    const StringCallback &result_handler) {
+    const string& command,
+    const string& input,
+    const StringCallback& result_handler) {
   if (shim_pid_) {
     LOG(ERROR) << "Can't run concurrent shim operations.";
     return false;
@@ -152,15 +152,15 @@ bool CryptoUtilProxy::StartShimForCommand(
     LOG(ERROR) << "Refusing to start a shim with no input data.";
     return false;
   }
-  struct minijail * jail = minijail_->New();
+  struct minijail* jail = minijail_->New();
   if (!minijail_->DropRoot(jail, kDestinationVerificationUser,
                            kDestinationVerificationUser)) {
     LOG(ERROR) << "Minijail failed to drop root privileges?";
     return false;
   }
-  vector<char *> args;
-  args.push_back(const_cast<char *>(kCryptoUtilShimPath));
-  args.push_back(const_cast<char *>(command.c_str()));
+  vector<char*> args;
+  args.push_back(const_cast<char*>(kCryptoUtilShimPath));
+  args.push_back(const_cast<char*>(command.c_str()));
   args.push_back(nullptr);
   if (!minijail_->RunPipesAndDestroy(jail, args, &shim_pid_,
                                      &shim_stdin_, &shim_stdout_, nullptr)) {
@@ -202,7 +202,7 @@ bool CryptoUtilProxy::StartShimForCommand(
   return false;
 }
 
-void CryptoUtilProxy::CleanupShim(const Error &shim_result) {
+void CryptoUtilProxy::CleanupShim(const Error& shim_result) {
   LOG(INFO) << __func__;
   shim_result_.CopyFrom(shim_result);
   if (shim_stdin_ > -1) {
@@ -272,13 +272,13 @@ void CryptoUtilProxy::HandleShimStdinReady(int fd) {
   }
 }
 
-void CryptoUtilProxy::HandleShimOutput(InputData *data) {
+void CryptoUtilProxy::HandleShimOutput(InputData* data) {
   CHECK(shim_pid_);
   CHECK(!result_handler_.is_null());
   if (data->len > 0) {
     // Everyone is shipping features and I'm just here copying bytes from one
     // buffer to another.
-    output_buffer_.append(reinterpret_cast<char *>(data->buf), data->len);
+    output_buffer_.append(reinterpret_cast<char*>(data->buf), data->len);
     return;
   }
   // EOF -> we're done!
@@ -291,13 +291,13 @@ void CryptoUtilProxy::HandleShimOutput(InputData *data) {
   CleanupShim(no_error);
 }
 
-void CryptoUtilProxy::HandleShimError(const Error &error) {
+void CryptoUtilProxy::HandleShimError(const Error& error) {
   // Abort abort abort.  There is very little we can do here.
   output_buffer_.clear();
   CleanupShim(error);
 }
 
-void CryptoUtilProxy::HandleShimReadError(const string &error_msg) {
+void CryptoUtilProxy::HandleShimReadError(const string& error_msg) {
   Error e(Error::kOperationFailed, error_msg);
   HandleShimError(e);
 }
@@ -308,9 +308,9 @@ void CryptoUtilProxy::HandleShimTimeout() {
 }
 
 void CryptoUtilProxy::HandleVerifyResult(
-    const ResultBoolCallback &result_handler,
-    const std::string &result,
-    const Error &error) {
+    const ResultBoolCallback& result_handler,
+    const std::string& result,
+    const Error& error) {
   if (!error.IsSuccess()) {
     result_handler.Run(error, false);
     return;
@@ -329,7 +329,7 @@ void CryptoUtilProxy::HandleVerifyResult(
 
 // static
 bool CryptoUtilProxy::ParseResponseReturnCode(int proto_return_code,
-                                              Error *e) {
+                                              Error* e) {
   bool success = false;
   switch (proto_return_code) {
   case shill_protos::OK:
@@ -355,9 +355,9 @@ bool CryptoUtilProxy::ParseResponseReturnCode(int proto_return_code,
 }
 
 void CryptoUtilProxy::HandleEncryptResult(
-    const ResultStringCallback &result_handler,
-    const std::string &result,
-    const Error &error) {
+    const ResultStringCallback& result_handler,
+    const std::string& result,
+    const Error& error) {
   if (!error.IsSuccess()) {
     result_handler.Run(error, "");
     return;

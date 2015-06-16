@@ -16,19 +16,19 @@ namespace shill {
 class DBusServiceProxyInterface {
  public:
   typedef base::Callback<
-      void(const std::string &name,
-           const std::string &old_owner,
-           const std::string &new_owner)> NameOwnerChangedCallback;
+      void(const std::string& name,
+           const std::string& old_owner,
+           const std::string& new_owner)> NameOwnerChangedCallback;
 
   virtual ~DBusServiceProxyInterface() {}
 
-  virtual void GetNameOwner(const std::string &name,
-                            Error *error,
-                            const StringCallback &callback,
+  virtual void GetNameOwner(const std::string& name,
+                            Error* error,
+                            const StringCallback& callback,
                             int timeout) = 0;
 
   virtual void set_name_owner_changed_callback(
-      const NameOwnerChangedCallback &callback) = 0;
+      const NameOwnerChangedCallback& callback) = 0;
 };
 
 }  // namespace shill

@@ -32,7 +32,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kService;
-static string ObjectID(const EapCredentials *e) { return "(eap_credentials)"; }
+static string ObjectID(const EapCredentials* e) { return "(eap_credentials)"; }
 }
 
 const char EapCredentials::kStorageEapAnonymousIdentity[] =
@@ -66,8 +66,8 @@ EapCredentials::~EapCredentials() {}
 
 // static
 void EapCredentials::PopulateSupplicantProperties(
-    CertificateFile *certificate_file,
-    map<string, DBus::Variant> *params) const {
+    CertificateFile* certificate_file,
+    map<string, DBus::Variant>* params) const {
   string ca_cert = ca_cert_;
   if (!ca_cert_pem_.empty()) {
     FilePath certfile =
@@ -80,7 +80,7 @@ void EapCredentials::PopulateSupplicantProperties(
   }
 
 
-  typedef std::pair<const char *, const char *> KeyVal;
+  typedef std::pair<const char*, const char*> KeyVal;
   KeyVal init_propertyvals[] = {
     // Authentication properties.
     KeyVal(WPASupplicant::kNetworkPropertyEapAnonymousIdentity,
@@ -145,7 +145,7 @@ void EapCredentials::PopulateSupplicantProperties(
         append_uint32(WPASupplicant::kProactiveKeyCachingDisabled);
   }
 
-  for (const auto &keyval : propertyvals) {
+  for (const auto& keyval : propertyvals) {
     if (strlen(keyval.second) > 0) {
       (*params)[keyval.first].writer().append_string(keyval.second);
     }
@@ -153,7 +153,7 @@ void EapCredentials::PopulateSupplicantProperties(
 }
 
 // static
-void EapCredentials::PopulateWiMaxProperties(KeyValueStore *params) const {
+void EapCredentials::PopulateWiMaxProperties(KeyValueStore* params) const {
   if (!anonymous_identity_.empty()) {
     params->SetString(wimax_manager::kEAPAnonymousIdentity,
                       anonymous_identity_);
@@ -166,7 +166,7 @@ void EapCredentials::PopulateWiMaxProperties(KeyValueStore *params) const {
   }
 }
 
-void EapCredentials::InitPropertyStore(PropertyStore *store) {
+void EapCredentials::InitPropertyStore(PropertyStore* store) {
   // Authentication properties.
   store->RegisterString(kEapAnonymousIdentityProperty, &anonymous_identity_);
   store->RegisterString(kEapCertIdProperty, &cert_id_);
@@ -268,7 +268,7 @@ bool EapCredentials::IsConnectableUsingPassphrase() const {
   return !identity_.empty() && !password_.empty();
 }
 
-void EapCredentials::Load(StoreInterface *storage, const string &id) {
+void EapCredentials::Load(StoreInterface* storage, const string& id) {
   // Authentication properties.
   storage->GetCryptedString(id,
                             kStorageEapAnonymousIdentity,
@@ -301,7 +301,7 @@ void EapCredentials::Load(StoreInterface *storage, const string &id) {
 }
 
 void EapCredentials::OutputConnectionMetrics(
-    Metrics *metrics, Technology::Identifier technology) const {
+    Metrics* metrics, Technology::Identifier technology) const {
   Metrics::EapOuterProtocol outer_protocol =
       Metrics::EapOuterProtocolStringToEnum(eap_);
   metrics->SendEnumToUMA(
@@ -319,7 +319,7 @@ void EapCredentials::OutputConnectionMetrics(
       Metrics::kMetricNetworkEapInnerProtocolMax);
 }
 
-void EapCredentials::Save(StoreInterface *storage, const string &id,
+void EapCredentials::Save(StoreInterface* storage, const string& id,
                           bool save_credentials) const {
   // Authentication properties.
   Service::SaveString(storage,
@@ -445,7 +445,7 @@ void EapCredentials::Reset() {
   use_proactive_key_caching_ = false;
 }
 
-bool EapCredentials::SetEapPassword(const string &password, Error */*error*/) {
+bool EapCredentials::SetEapPassword(const string& password, Error* /*error*/) {
   if (password_ == password) {
     return false;
   }
@@ -453,8 +453,8 @@ bool EapCredentials::SetEapPassword(const string &password, Error */*error*/) {
   return true;
 }
 
-bool EapCredentials::SetEapPrivateKeyPassword(const string &password,
-                                              Error */*error*/) {
+bool EapCredentials::SetEapPrivateKeyPassword(const string& password,
+                                              Error* /*error*/) {
   if (private_key_password_ == password) {
     return false;
   }
@@ -462,12 +462,12 @@ bool EapCredentials::SetEapPrivateKeyPassword(const string &password,
   return true;
 }
 
-string EapCredentials::GetKeyManagement(Error */*error*/) {
+string EapCredentials::GetKeyManagement(Error* /*error*/) {
   return key_management_;
 }
 
-bool EapCredentials::SetKeyManagement(const std::string &key_management,
-                                      Error */*error*/) {
+bool EapCredentials::SetKeyManagement(const std::string& key_management,
+                                      Error* /*error*/) {
   if (key_management.empty()) {
     return false;
   }
@@ -485,10 +485,10 @@ bool EapCredentials::ClientAuthenticationUsesCryptoToken() const {
 }
 
 void EapCredentials::HelpRegisterDerivedString(
-    PropertyStore *store,
-    const string &name,
-    string(EapCredentials::*get)(Error *error),
-    bool(EapCredentials::*set)(const string&, Error *)) {
+    PropertyStore* store,
+    const string& name,
+    string(EapCredentials::*get)(Error* error),
+    bool(EapCredentials::*set)(const string&, Error*)) {
   store->RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<EapCredentials, string>(
@@ -496,11 +496,11 @@ void EapCredentials::HelpRegisterDerivedString(
 }
 
 void EapCredentials::HelpRegisterWriteOnlyDerivedString(
-    PropertyStore *store,
-    const string &name,
-    bool(EapCredentials::*set)(const string &, Error *),
-    void(EapCredentials::*clear)(Error *error),
-    const string *default_value) {
+    PropertyStore* store,
+    const string& name,
+    bool(EapCredentials::*set)(const string&, Error*),
+    void(EapCredentials::*clear)(Error* error),
+    const string* default_value) {
   store->RegisterDerivedString(
       name,
       StringAccessor(

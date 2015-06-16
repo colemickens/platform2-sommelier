@@ -21,7 +21,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(DBusManager *d) { return "(dbus_manager)"; }
+static string ObjectID(DBusManager* d) { return "(dbus_manager)"; }
 }
 
 namespace {
@@ -51,10 +51,10 @@ void DBusManager::Stop() {
   name_watchers_.clear();
 }
 
-DBusNameWatcher *DBusManager::CreateNameWatcher(
-    const string &name,
-    const DBusNameWatcher::NameAppearedCallback &name_appeared_callback,
-    const DBusNameWatcher::NameVanishedCallback &name_vanished_callback) {
+DBusNameWatcher* DBusManager::CreateNameWatcher(
+    const string& name,
+    const DBusNameWatcher::NameAppearedCallback& name_appeared_callback,
+    const DBusNameWatcher::NameVanishedCallback& name_vanished_callback) {
   // DBusNameWatcher holds a weak pointer to, and thus may outlive, this
   // DBusManager object.
   std::unique_ptr<DBusNameWatcher> name_watcher(new DBusNameWatcher(
@@ -76,7 +76,7 @@ DBusNameWatcher *DBusManager::CreateNameWatcher(
   return name_watcher.release();
 }
 
-void DBusManager::RemoveNameWatcher(DBusNameWatcher *name_watcher) {
+void DBusManager::RemoveNameWatcher(DBusNameWatcher* name_watcher) {
   CHECK(name_watcher);
 
   auto watcher_iterator = name_watchers_.find(name_watcher->name());
@@ -86,22 +86,22 @@ void DBusManager::RemoveNameWatcher(DBusNameWatcher *name_watcher) {
 }
 
 void DBusManager::OnNameOwnerChanged(
-    const string &name, const string &old_owner, const string &new_owner) {
+    const string& name, const string& old_owner, const string& new_owner) {
   auto watcher_iterator = name_watchers_.find(name);
   if (watcher_iterator == name_watchers_.end()) {
     return;
   }
   LOG(INFO) << "DBus name '" << name << "' owner changed ('" << old_owner
             << "' -> '" << new_owner << "')";
-  for (const auto &watcher : watcher_iterator->second) {
+  for (const auto& watcher : watcher_iterator->second) {
     watcher->OnNameOwnerChanged(new_owner);
   }
 }
 
 void DBusManager::OnGetNameOwnerComplete(
-    const base::WeakPtr<DBusNameWatcher> &watcher,
-    const string &unique_name,
-    const Error &error) {
+    const base::WeakPtr<DBusNameWatcher>& watcher,
+    const string& unique_name,
+    const Error& error) {
   if (watcher) {
     LOG(INFO) << "DBus name '" << watcher->name() << "' owner '" << unique_name
               << "' (" << error.message() << ")";

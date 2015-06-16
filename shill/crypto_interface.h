@@ -18,12 +18,12 @@ class CryptoInterface {
   virtual std::string GetID() = 0;
 
   // Encrypts |plaintext| into |ciphertext|. Returns true on success.
-  virtual bool Encrypt(const std::string &plaintext,
-                       std::string *ciphertext) = 0;
+  virtual bool Encrypt(const std::string& plaintext,
+                       std::string* ciphertext) = 0;
 
   // Decrypts |ciphertext| into |plaintext|. Returns true on success.
-  virtual bool Decrypt(const std::string &ciphertext,
-                       std::string *plaintext) = 0;
+  virtual bool Decrypt(const std::string& ciphertext,
+                       std::string* plaintext) = 0;
 };
 
 }  // namespace shill

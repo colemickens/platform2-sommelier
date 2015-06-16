@@ -19,21 +19,21 @@ class GLib;
 
 class CryptoProvider {
  public:
-  explicit CryptoProvider(GLib *glib);
+  explicit CryptoProvider(GLib* glib);
 
   void Init();
 
   // Returns |plaintext| encrypted by the highest priority available crypto
   // module capable of performing the operation. If no module succeeds, returns
   // |plaintext| as is.
-  std::string Encrypt(const std::string &plaintext);
+  std::string Encrypt(const std::string& plaintext);
 
   // Returns |ciphertext| decrypted by the highest priority available crypto
   // module capable of performing the operation. If no module succeeds, returns
   // |ciphertext| as is.
-  std::string Decrypt(const std::string &ciphertext);
+  std::string Decrypt(const std::string& ciphertext);
 
-  void set_key_matter_file(const base::FilePath &path) {
+  void set_key_matter_file(const base::FilePath& path) {
     key_matter_file_ = path;
   }
 
@@ -44,7 +44,7 @@ class CryptoProvider {
 
   static const char kKeyMatterFile[];
 
-  GLib *glib_;
+  GLib* glib_;
 
   // Registered crypto modules in high to low priority order.
   Cryptos cryptos_;

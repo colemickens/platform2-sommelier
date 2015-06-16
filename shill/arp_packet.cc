@@ -21,8 +21,8 @@ ArpPacket::ArpPacket()
       remote_ip_address_(IPAddress::kFamilyUnknown) {}
 
 ArpPacket::ArpPacket(
-    const IPAddress &local_ip, const IPAddress &remote_ip,
-    const ByteString &local_mac, const ByteString &remote_mac)
+    const IPAddress& local_ip, const IPAddress& remote_ip,
+    const ByteString& local_mac, const ByteString& remote_mac)
     : local_ip_address_(local_ip),
       remote_ip_address_(remote_ip),
       local_mac_address_(local_mac),
@@ -50,7 +50,7 @@ ArpPacket::~ArpPacket() {}
 // +-----------------------------------------------------------------------+
 // | Target IP Address (of length "Protocol Length")...                    |
 // +-----------------------------------------------------------------------+
-bool ArpPacket::Parse(const ByteString &packet) {
+bool ArpPacket::Parse(const ByteString& packet) {
   arphdr header;
   if (packet.GetLength() < sizeof(header)) {
     LOG(ERROR) << "Packet size " << packet.GetLength()
@@ -117,7 +117,7 @@ bool ArpPacket::Parse(const ByteString &packet) {
 }
 
 // Output a payload from local parameters.
-bool ArpPacket::FormatRequest(ByteString *packet) const {
+bool ArpPacket::FormatRequest(ByteString* packet) const {
   if (!local_ip_address_.IsValid() || !remote_ip_address_.IsValid()) {
     LOG(ERROR) << "Local or remote IP address is not valid.";
     return false;
@@ -153,7 +153,7 @@ bool ArpPacket::FormatRequest(ByteString *packet) const {
   header.ar_pln = ip_address_length;
   header.ar_op = htons(ARPOP_REQUEST);
 
-  *packet = ByteString(reinterpret_cast<const unsigned char *>(&header),
+  *packet = ByteString(reinterpret_cast<const unsigned char*>(&header),
                        sizeof(header));
 
   packet->Append(local_mac_address_);

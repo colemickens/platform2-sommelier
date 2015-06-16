@@ -12,16 +12,16 @@ using testing::Return;
 
 namespace shill {
 
-ArpClientTestHelper::ArpClientTestHelper(MockArpClient *client)
+ArpClientTestHelper::ArpClientTestHelper(MockArpClient* client)
     : client_(client) {}
 
 ArpClientTestHelper::~ArpClientTestHelper() {}
 
 void ArpClientTestHelper::GeneratePacket(uint16_t operation,
-                                         const IPAddress &local_ip,
-                                         const ByteString &local_mac,
-                                         const IPAddress &remote_ip,
-                                         const ByteString &remote_mac) {
+                                         const IPAddress& local_ip,
+                                         const ByteString& local_mac,
+                                         const IPAddress& remote_ip,
+                                         const ByteString& remote_mac) {
   packet_.set_operation(operation);
   packet_.set_local_ip_address(local_ip);
   packet_.set_local_mac_address(local_mac);
@@ -32,8 +32,8 @@ void ArpClientTestHelper::GeneratePacket(uint16_t operation,
       .WillOnce(Invoke(this, &ArpClientTestHelper::SimulateReceivePacket));
 }
 
-bool ArpClientTestHelper::SimulateReceivePacket(ArpPacket *packet,
-                                                ByteString *sender) {
+bool ArpClientTestHelper::SimulateReceivePacket(ArpPacket* packet,
+                                                ByteString* sender) {
   packet->set_operation(packet_.operation());
   packet->set_local_ip_address(packet_.local_ip_address());
   packet->set_local_mac_address(packet_.local_mac_address());

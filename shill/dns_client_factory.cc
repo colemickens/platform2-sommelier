@@ -19,17 +19,17 @@ base::LazyInstance<DNSClientFactory> g_dns_client_factory
 DNSClientFactory::DNSClientFactory() {}
 DNSClientFactory::~DNSClientFactory() {}
 
-DNSClientFactory *DNSClientFactory::GetInstance() {
+DNSClientFactory* DNSClientFactory::GetInstance() {
   return g_dns_client_factory.Pointer();
 }
 
-DNSClient *DNSClientFactory::CreateDNSClient(
+DNSClient* DNSClientFactory::CreateDNSClient(
     IPAddress::Family family,
-    const string &interface_name,
-    const vector<string> &dns_servers,
+    const string& interface_name,
+    const vector<string>& dns_servers,
     int timeout_ms,
-    EventDispatcher *dispatcher,
-    const DNSClient::ClientCallback &callback) {
+    EventDispatcher* dispatcher,
+    const DNSClient::ClientCallback& callback) {
   return new DNSClient(family,
                        interface_name,
                        dns_servers,

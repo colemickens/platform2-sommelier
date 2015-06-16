@@ -29,21 +29,21 @@ class DefaultProfile : public Profile {
  public:
   static const char kDefaultId[];
 
-  DefaultProfile(ControlInterface *control,
-                 Metrics *metrics,
-                 Manager *manager,
-                 const base::FilePath &storage_path,
-                 const std::string &profile_id,
-                 const Manager::Properties &manager_props);
+  DefaultProfile(ControlInterface* control,
+                 Metrics* metrics,
+                 Manager* manager,
+                 const base::FilePath& storage_path,
+                 const std::string& profile_id,
+                 const Manager::Properties& manager_props);
   ~DefaultProfile() override;
 
   // Loads global configuration into manager properties.  This should
   // only be called by the Manager.
-  virtual void LoadManagerProperties(Manager::Properties *manager_props);
+  virtual void LoadManagerProperties(Manager::Properties* manager_props);
 
   // Override the Profile superclass implementation to accept all Ethernet
   // services, since these should have an affinity for the default profile.
-  bool ConfigureService(const ServiceRefPtr &service) override;
+  bool ConfigureService(const ServiceRefPtr& service) override;
 
   // Persists profile information, as well as that of discovered devices
   // and bound services, to disk.
@@ -51,11 +51,11 @@ class DefaultProfile : public Profile {
   bool Save() override;
 
   // Inherited from Profile.
-  bool UpdateDevice(const DeviceRefPtr &device) override;
+  bool UpdateDevice(const DeviceRefPtr& device) override;
 
 #if !defined(DISABLE_WIFI)
   // Inherited from Profile.
-  bool UpdateWiFiProvider(const WiFiProvider &wifi_provider) override;
+  bool UpdateWiFiProvider(const WiFiProvider& wifi_provider) override;
 #endif  // DISABLE_WIFI
 
   bool IsDefault() const override { return true; }
@@ -66,7 +66,7 @@ class DefaultProfile : public Profile {
   // appropriate file location.
   //
   // In this implementation, |name_| is ignored.
-  bool GetStoragePath(base::FilePath *path) override;
+  bool GetStoragePath(base::FilePath* path) override;
 
  private:
   friend class DefaultProfileTest;
@@ -91,7 +91,7 @@ class DefaultProfile : public Profile {
 
   const base::FilePath storage_path_;
   const std::string profile_id_;
-  const Manager::Properties &props_;
+  const Manager::Properties& props_;
   std::default_random_engine random_engine_;
 
   DISALLOW_COPY_AND_ASSIGN(DefaultProfile);

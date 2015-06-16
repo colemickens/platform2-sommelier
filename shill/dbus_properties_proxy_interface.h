@@ -20,28 +20,28 @@ class DBusPropertiesProxyInterface {
  public:
   // Callback invoked when an object sends a DBus property change signal.
   typedef base::Callback<void(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties)>
+      const std::string& interface,
+      const DBusPropertiesMap& changed_properties,
+      const std::vector<std::string>& invalidated_properties)>
     PropertiesChangedCallback;
 
   // Callback invoked when the classic modem manager sends a DBus
   // property change signal.
   typedef base::Callback<void(
-      const std::string &interface,
-      const DBusPropertiesMap &properties)>
+      const std::string& interface,
+      const DBusPropertiesMap& properties)>
     ModemManagerPropertiesChangedCallback;
 
   virtual ~DBusPropertiesProxyInterface() {}
 
-  virtual DBusPropertiesMap GetAll(const std::string &interface_name) = 0;
-  virtual DBus::Variant Get(const std::string &interface_name,
-                            const std::string &property) = 0;
+  virtual DBusPropertiesMap GetAll(const std::string& interface_name) = 0;
+  virtual DBus::Variant Get(const std::string& interface_name,
+                            const std::string& property) = 0;
 
   virtual void set_properties_changed_callback(
-      const PropertiesChangedCallback &callback) = 0;
+      const PropertiesChangedCallback& callback) = 0;
   virtual void set_modem_manager_properties_changed_callback(
-      const ModemManagerPropertiesChangedCallback &callback) = 0;
+      const ModemManagerPropertiesChangedCallback& callback) = 0;
 };
 
 }  // namespace shill

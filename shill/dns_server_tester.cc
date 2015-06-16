@@ -32,10 +32,10 @@ const int DNSServerTester::kDNSTestRetryIntervalMilliseconds = 60000;
 const int DNSServerTester::kDNSTimeoutMilliseconds = 5000;
 
 DNSServerTester::DNSServerTester(ConnectionRefPtr connection,
-                                 EventDispatcher *dispatcher,
-                                 const vector<string> &dns_servers,
+                                 EventDispatcher* dispatcher,
+                                 const vector<string>& dns_servers,
                                  const bool retry_until_success,
-                                 const Callback<void(const Status)> &callback)
+                                 const Callback<void(const Status)>& callback)
     : connection_(connection),
       dispatcher_(dispatcher),
       retry_until_success_(retry_until_success),
@@ -98,7 +98,7 @@ void DNSServerTester::CompleteAttempt(Status status) {
   dns_result_callback_.Run(status);
 }
 
-void DNSServerTester::DNSClientCallback(const Error &error,
+void DNSServerTester::DNSClientCallback(const Error& error,
                                         const IPAddress& ip) {
   Status status = kStatusSuccess;
   if (!error.IsSuccess()) {

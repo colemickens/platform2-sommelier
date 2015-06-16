@@ -24,7 +24,7 @@ class DiagnosticsReporter {
   virtual ~DiagnosticsReporter();
 
   // This is a singleton -- use DiagnosticsReporter::GetInstance()->Foo().
-  static DiagnosticsReporter *GetInstance();
+  static DiagnosticsReporter* GetInstance();
 
   // Handle a connectivity event -- collect and stash diagnostics data, possibly
   // uploading it for analysis.
@@ -41,9 +41,9 @@ class DiagnosticsReporter {
 
   static const int kLogStashThrottleSeconds;
 
-  chromeos::Minijail *minijail_;
-  ProcessKiller *process_killer_;
-  Time *time_;
+  chromeos::Minijail* minijail_;
+  ProcessKiller* process_killer_;
+  Time* time_;
   uint64_t last_log_stash_;  // Monotonic time seconds.
   base::FilePath stashed_net_log_;
 

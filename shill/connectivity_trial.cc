@@ -31,7 +31,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kPortal;
-static string ObjectID(Connection *c) { return c->interface_name(); }
+static string ObjectID(Connection* c) { return c->interface_name(); }
 }
 
 const char ConnectivityTrial::kDefaultURL[] =
@@ -40,9 +40,9 @@ const char ConnectivityTrial::kResponseExpected[] = "HTTP/?.? 204";
 
 ConnectivityTrial::ConnectivityTrial(
     ConnectionRefPtr connection,
-    EventDispatcher *dispatcher,
+    EventDispatcher* dispatcher,
     int trial_timeout_seconds,
-    const Callback<void(Result)> &callback)
+    const Callback<void(Result)>& callback)
     : connection_(connection),
       dispatcher_(dispatcher),
       trial_timeout_seconds_(trial_timeout_seconds),
@@ -70,7 +70,7 @@ bool ConnectivityTrial::Retry(int start_delay_milliseconds) {
   return true;
 }
 
-bool ConnectivityTrial::Start(const string &url_string,
+bool ConnectivityTrial::Start(const string& url_string,
                               int start_delay_milliseconds) {
   SLOG(connection_.get(), 3) << "In " << __func__;
 
@@ -125,7 +125,7 @@ bool ConnectivityTrial::IsActive() {
   return is_active_;
 }
 
-void ConnectivityTrial::RequestReadCallback(const ByteString &response_data) {
+void ConnectivityTrial::RequestReadCallback(const ByteString& response_data) {
   const string response_expected(kResponseExpected);
   bool expected_length_received = false;
   int compare_length = 0;
@@ -140,7 +140,7 @@ void ConnectivityTrial::RequestReadCallback(const ByteString &response_data) {
   }
 
   if (MatchPattern(
-          string(reinterpret_cast<const char *>(response_data.GetConstData()),
+          string(reinterpret_cast<const char*>(response_data.GetConstData()),
                  compare_length),
           response_expected.substr(0, compare_length))) {
     if (expected_length_received) {
@@ -153,7 +153,7 @@ void ConnectivityTrial::RequestReadCallback(const ByteString &response_data) {
 }
 
 void ConnectivityTrial::RequestResultCallback(
-    HTTPRequest::Result result, const ByteString &/*response_data*/) {
+    HTTPRequest::Result result, const ByteString& /*response_data*/) {
   CompleteTrial(GetPortalResultForRequestResult(result));
 }
 

@@ -17,19 +17,19 @@ namespace shill {
 // Class for simulate ARP client receiving ARP packets for unit test purpose.
 class ArpClientTestHelper {
  public:
-  explicit ArpClientTestHelper(MockArpClient *client);
+  explicit ArpClientTestHelper(MockArpClient* client);
   virtual ~ArpClientTestHelper();
 
   void GeneratePacket(uint16_t operation,
-                      const IPAddress &local_ip,
-                      const ByteString &local_mac,
-                      const IPAddress &remote_ip,
-                      const ByteString &remote_mac);
+                      const IPAddress& local_ip,
+                      const ByteString& local_mac,
+                      const IPAddress& remote_ip,
+                      const ByteString& remote_mac);
 
  private:
-  bool SimulateReceivePacket(ArpPacket *packet, ByteString *sender);
+  bool SimulateReceivePacket(ArpPacket* packet, ByteString* sender);
 
-  MockArpClient *client_;
+  MockArpClient* client_;
   ArpPacket packet_;
 
   DISALLOW_COPY_AND_ASSIGN(ArpClientTestHelper);

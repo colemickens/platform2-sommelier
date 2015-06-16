@@ -23,7 +23,7 @@ class EapListener {
  public:
   typedef base::Callback<void()> EapRequestReceivedCallback;
 
-  explicit EapListener(EventDispatcher *event_dispatcher,
+  explicit EapListener(EventDispatcher* event_dispatcher,
                        int interface_index);
   virtual ~EapListener();
 
@@ -36,7 +36,7 @@ class EapListener {
 
   // Setter for |request_received_callback_|.
   virtual void set_request_received_callback(
-      const EapRequestReceivedCallback &callback) {
+      const EapRequestReceivedCallback& callback) {
     request_received_callback_ = callback;
   }
 
@@ -54,7 +54,7 @@ class EapListener {
   void ReceiveRequest(int fd);
 
   // Event dispatcher to use for creating an input handler.
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
 
   // The interface index fo the device to monitor.
   const int interface_index_;

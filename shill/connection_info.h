@@ -25,10 +25,10 @@ class ConnectionInfo {
                  uint16_t reply_source_port,
                  IPAddress reply_destination_ip_address,
                  uint16_t reply_destination_port);
-  ConnectionInfo(const ConnectionInfo &info);
+  ConnectionInfo(const ConnectionInfo& info);
   ~ConnectionInfo();
 
-  ConnectionInfo &operator=(const ConnectionInfo &info);
+  ConnectionInfo& operator=(const ConnectionInfo& info);
 
   int protocol() const { return protocol_; }
   void set_protocol(int protocol) { protocol_ = protocol; }
@@ -41,11 +41,11 @@ class ConnectionInfo {
   bool is_unreplied() const { return is_unreplied_; }
   void set_is_unreplied(bool is_unreplied) { is_unreplied_ = is_unreplied; }
 
-  const IPAddress &original_source_ip_address() const {
+  const IPAddress& original_source_ip_address() const {
     return original_source_ip_address_;
   }
   void set_original_source_ip_address(
-      const IPAddress &original_source_ip_address) {
+      const IPAddress& original_source_ip_address) {
     original_source_ip_address_ = original_source_ip_address;
   }
 
@@ -54,11 +54,11 @@ class ConnectionInfo {
     original_source_port_ = original_source_port;
   }
 
-  const IPAddress &original_destination_ip_address() const {
+  const IPAddress& original_destination_ip_address() const {
     return original_destination_ip_address_;
   }
   void set_original_destination_ip_address(
-      const IPAddress &original_destination_ip_address) {
+      const IPAddress& original_destination_ip_address) {
     original_destination_ip_address_ = original_destination_ip_address;
   }
 
@@ -69,11 +69,11 @@ class ConnectionInfo {
     original_destination_port_ = original_destination_port;
   }
 
-  const IPAddress &reply_source_ip_address() const {
+  const IPAddress& reply_source_ip_address() const {
     return reply_source_ip_address_;
   }
   void set_reply_source_ip_address(
-      const IPAddress &reply_source_ip_address) {
+      const IPAddress& reply_source_ip_address) {
     reply_source_ip_address_ = reply_source_ip_address;
   }
 
@@ -82,11 +82,11 @@ class ConnectionInfo {
     reply_source_port_ = reply_source_port;
   }
 
-  const IPAddress &reply_destination_ip_address() const {
+  const IPAddress& reply_destination_ip_address() const {
     return reply_destination_ip_address_;
   }
   void set_reply_destination_ip_address(
-      const IPAddress &reply_destination_ip_address) {
+      const IPAddress& reply_destination_ip_address) {
     reply_destination_ip_address_ = reply_destination_ip_address;
   }
 

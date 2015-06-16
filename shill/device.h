@@ -60,12 +60,12 @@ class Device : public base::RefCounted<Device> {
   enum ScanType { kProgressiveScan, kFullScan };
 
   // A constructor for the Device object
-  Device(ControlInterface *control_interface,
-         EventDispatcher *dispatcher,
-         Metrics *metrics,
-         Manager *manager,
-         const std::string &link_name,
-         const std::string &address,
+  Device(ControlInterface* control_interface,
+         EventDispatcher* dispatcher,
+         Metrics* metrics,
+         Manager* manager,
+         const std::string& link_name,
+         const std::string& address,
          int interface_index,
          Technology::Identifier technology);
 
@@ -79,30 +79,30 @@ class Device : public base::RefCounted<Device> {
   // TODO(quiche): Replace both of the next two methods with calls to
   // SetEnabledChecked.
   virtual void SetEnabledNonPersistent(bool enable,
-                                       Error *error,
-                                       const ResultCallback &callback);
+                                       Error* error,
+                                       const ResultCallback& callback);
   // Enable or disable the device, and save the setting in the profile.
   // The setting is persisted before the enable or disable operation
   // starts, so that even if it fails, the user's intent is still recorded
   // for the next time shill restarts.
   virtual void SetEnabledPersistent(bool enable,
-                                    Error *error,
-                                    const ResultCallback &callback);
+                                    Error* error,
+                                    const ResultCallback& callback);
   // Enable or disable the Device, depending on |enable|.
   // Save the new setting to the profile, if |persist| is true.
   // Report synchronous errors using |error|, and asynchronous completion
   // with |callback|.
   virtual void SetEnabledChecked(bool enable,
                                  bool persist,
-                                 Error *error,
-                                 const ResultCallback &callback);
+                                 Error* error,
+                                 const ResultCallback& callback);
   // Similar to SetEnabledChecked, but without sanity checking, and
   // without saving the new value of |enable| to the profile. If you
   // are sane (i.e. not Cellular), you should use
   // SetEnabledChecked instead.
   virtual void SetEnabledUnchecked(bool enable,
-                                   Error *error,
-                                   const ResultCallback &callback);
+                                   Error* error,
+                                   const ResultCallback& callback);
 
   // Returns true if the underlying device reports that it is already enabled.
   // Used when the device is registered with the Manager, so that shill can
@@ -113,26 +113,26 @@ class Device : public base::RefCounted<Device> {
   virtual void LinkEvent(unsigned flags, unsigned change);
 
   // The default implementation sets |error| to kNotSupported.
-  virtual void Scan(ScanType scan_type, Error *error,
-                    const std::string &reason);
+  virtual void Scan(ScanType scan_type, Error* error,
+                    const std::string& reason);
   // The default implementation sets |error| to kNotSupported.
-  virtual void SetSchedScan(bool enable, Error *error);
-  virtual void RegisterOnNetwork(const std::string &network_id, Error *error,
-                                 const ResultCallback &callback);
-  virtual void RequirePIN(const std::string &pin, bool require,
-                          Error *error, const ResultCallback &callback);
-  virtual void EnterPIN(const std::string &pin,
-                        Error *error, const ResultCallback &callback);
-  virtual void UnblockPIN(const std::string &unblock_code,
-                          const std::string &pin,
-                          Error *error, const ResultCallback &callback);
-  virtual void ChangePIN(const std::string &old_pin,
-                         const std::string &new_pin,
-                         Error *error, const ResultCallback &callback);
-  virtual void Reset(Error *error, const ResultCallback &callback);
+  virtual void SetSchedScan(bool enable, Error* error);
+  virtual void RegisterOnNetwork(const std::string& network_id, Error* error,
+                                 const ResultCallback& callback);
+  virtual void RequirePIN(const std::string& pin, bool require,
+                          Error* error, const ResultCallback& callback);
+  virtual void EnterPIN(const std::string& pin,
+                        Error* error, const ResultCallback& callback);
+  virtual void UnblockPIN(const std::string& unblock_code,
+                          const std::string& pin,
+                          Error* error, const ResultCallback& callback);
+  virtual void ChangePIN(const std::string& old_pin,
+                         const std::string& new_pin,
+                         Error* error, const ResultCallback& callback);
+  virtual void Reset(Error* error, const ResultCallback& callback);
 
-  virtual void SetCarrier(const std::string &carrier,
-                          Error *error, const ResultCallback &callback);
+  virtual void SetCarrier(const std::string& carrier,
+                          Error* error, const ResultCallback& callback);
 
   // Returns true if IPv6 is allowed and should be enabled when the device
   // tries to acquire an IP configuration. The default implementation allows
@@ -159,7 +159,7 @@ class Device : public base::RefCounted<Device> {
   // Returns true if the selected service on the device (if any) is connected
   // and matches the passed-in argument |service|.  Returns false if there is
   // no connected service, or if it does not match |service|.
-  virtual bool IsConnectedToService(const ServiceRefPtr &service) const;
+  virtual bool IsConnectedToService(const ServiceRefPtr& service) const;
 
   // Returns true if the DHCP parameters provided indicate that we are tethered
   // to a mobile device.
@@ -185,9 +185,9 @@ class Device : public base::RefCounted<Device> {
   // TDLS link with |peer|.  This method is only valid for WiFi devices,
   // but needs to be declared here since it is part of the Device RPC
   // API.
-  virtual std::string PerformTDLSOperation(const std::string &operation,
-                                           const std::string &peer,
-                                           Error *error);
+  virtual std::string PerformTDLSOperation(const std::string& operation,
+                                           const std::string& peer,
+                                           Error* error);
 
   // Reset the persisted byte counters associated with the device.
   void ResetByteCounters();
@@ -216,44 +216,44 @@ class Device : public base::RefCounted<Device> {
   // http://linux-ip.net/html/ether-arp.html for more details on this effect.
   virtual void SetIsMultiHomed(bool is_multi_homed);
 
-  const std::string &address() const { return hardware_address_; }
-  const std::string &link_name() const { return link_name_; }
+  const std::string& address() const { return hardware_address_; }
+  const std::string& link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
-  virtual const ConnectionRefPtr &connection() const { return connection_; }
+  virtual const ConnectionRefPtr& connection() const { return connection_; }
   bool enabled() const { return enabled_; }
   bool enabled_persistent() const { return enabled_persistent_; }
   virtual Technology::Identifier technology() const { return technology_; }
-  std::string GetTechnologyString(Error *error);
+  std::string GetTechnologyString(Error* error);
 
-  virtual const IPConfigRefPtr &ipconfig() const { return ipconfig_; }
-  virtual const IPConfigRefPtr &ip6config() const { return ip6config_; }
-  virtual const IPConfigRefPtr &dhcpv6_config() const { return dhcpv6_config_; }
-  void set_ipconfig(const IPConfigRefPtr &config) { ipconfig_ = config; }
+  virtual const IPConfigRefPtr& ipconfig() const { return ipconfig_; }
+  virtual const IPConfigRefPtr& ip6config() const { return ip6config_; }
+  virtual const IPConfigRefPtr& dhcpv6_config() const { return dhcpv6_config_; }
+  void set_ipconfig(const IPConfigRefPtr& config) { ipconfig_ = config; }
 
-  const std::string &FriendlyName() const;
+  const std::string& FriendlyName() const;
 
   // Returns a string that is guaranteed to uniquely identify this Device
   // instance.
-  const std::string &UniqueName() const;
+  const std::string& UniqueName() const;
 
-  PropertyStore *mutable_store() { return &store_; }
-  const PropertyStore &store() const { return store_; }
-  RTNLHandler *rtnl_handler() { return rtnl_handler_; }
+  PropertyStore* mutable_store() { return &store_; }
+  const PropertyStore& store() const { return store_; }
+  RTNLHandler* rtnl_handler() { return rtnl_handler_; }
   bool running() const { return running_; }
 
-  EventDispatcher *dispatcher() const { return dispatcher_; }
+  EventDispatcher* dispatcher() const { return dispatcher_; }
 
   // Load configuration for the device from |storage|.  This may include
   // instantiating non-visible services for which configuration has been
   // stored.
-  virtual bool Load(StoreInterface *storage);
+  virtual bool Load(StoreInterface* storage);
 
   // Save configuration for the device to |storage|.
-  virtual bool Save(StoreInterface *storage);
+  virtual bool Save(StoreInterface* storage);
 
-  void set_dhcp_provider(DHCPProvider *provider) { dhcp_provider_ = provider; }
+  void set_dhcp_provider(DHCPProvider* provider) { dhcp_provider_ = provider; }
 
-  DeviceAdaptorInterface *adaptor() const { return adaptor_.get(); }
+  DeviceAdaptorInterface* adaptor() const { return adaptor_.get(); }
 
   // Suspend event handler. Called by Manager before the system
   // suspends. This handler, along with any other suspend handlers,
@@ -265,7 +265,7 @@ class Device : public base::RefCounted<Device> {
   //
   // The default implementation invokes the |callback| immediately, since
   // there is nothing to be done in the general case.
-  virtual void OnBeforeSuspend(const ResultCallback &callback);
+  virtual void OnBeforeSuspend(const ResultCallback& callback);
 
   // Resume event handler. Called by Manager as the system resumes.
   // The base class implementation takes care of renewing a DHCP lease
@@ -282,11 +282,11 @@ class Device : public base::RefCounted<Device> {
   //
   // The default implementation invokes the |callback| immediately, since
   // there is nothing to be done in the general case.
-  virtual void OnDarkResume(const ResultCallback &callback);
+  virtual void OnDarkResume(const ResultCallback& callback);
 
   // Destroy the lease, if any, with this |name|.
   // Called by the service during Unload() as part of the cleanup sequence.
-  virtual void DestroyIPConfigLease(const std::string &name);
+  virtual void DestroyIPConfigLease(const std::string& name);
 
   // Called by DeviceInfo when the kernel adds or removes a globally-scoped
   // IPv6 address from this interface.
@@ -307,16 +307,16 @@ class Device : public base::RefCounted<Device> {
   // Program a rule into the NIC to wake the system from suspend upon receiving
   // packets from |ip_endpoint|. |error| indicates the result of the
   // operation.
-  virtual void AddWakeOnPacketConnection(const std::string &ip_endpoint,
-                                         Error *error);
+  virtual void AddWakeOnPacketConnection(const std::string& ip_endpoint,
+                                         Error* error);
   // Removes a rule previously programmed into the NIC to wake the system from
   // suspend upon receiving packets from |ip_endpoint|. |error| indicates the
   // result of the operation.
-  virtual void RemoveWakeOnPacketConnection(const std::string &ip_endpoint,
-                                            Error *error);
+  virtual void RemoveWakeOnPacketConnection(const std::string& ip_endpoint,
+                                            Error* error);
   // Removes all wake-on-packet rules programmed into the NIC. |error| indicates
   // the result of the operation.
-  virtual void RemoveAllWakeOnPacketConnections(Error *error);
+  virtual void RemoveAllWakeOnPacketConnections(Error* error);
 
   // Initiate renewal of existing DHCP lease.
   void RenewDHCPLease();
@@ -326,17 +326,17 @@ class Device : public base::RefCounted<Device> {
   // address, or could involve an ARP table lookup.  Returns true and populates
   // |output| if the resolution completes, otherwise returns false and
   // populates |error|.
-  virtual bool ResolvePeerMacAddress(const std::string &input,
-                                     std::string *output,
-                                     Error *error);
+  virtual bool ResolvePeerMacAddress(const std::string& input,
+                                     std::string* output,
+                                     Error* error);
 
   // Creates a byte vector from a colon-separated hardware address string.
   static std::vector<uint8_t> MakeHardwareAddressFromString(
-      const std::string &address_string);
+      const std::string& address_string);
 
   // Creates a colon-separated hardware address string from a byte vector.
   static std::string MakeStringFromHardwareAddress(
-      const std::vector<uint8_t> &address_data);
+      const std::vector<uint8_t>& address_data);
 
  protected:
   friend class base::RefCounted<Device>;
@@ -416,22 +416,22 @@ class Device : public base::RefCounted<Device> {
   // is not used. If neither of these two conditions holds, then |error|
   // should not be modified, and |callback| should be passed to the
   // method that will initiate the non-blocking operation.
-  virtual void Start(Error *error,
-                     const EnabledStateChangedCallback &callback) = 0;
+  virtual void Start(Error* error,
+                     const EnabledStateChangedCallback& callback) = 0;
 
   // Each device must implement this method to do the work needed to
   // disable the device, i.e., clear any running state, and make the
   // device no longer capable of establishing network connections.
   // The discussion for Start() regarding the use of |error| and
   // |callback| apply to Stop() as well.
-  virtual void Stop(Error *error,
-                    const EnabledStateChangedCallback &callback) = 0;
+  virtual void Stop(Error* error,
+                    const EnabledStateChangedCallback& callback) = 0;
 
   // The EnabledStateChangedCallback that gets passed to the device's
   // Start() and Stop() methods is bound to this method. |callback|
   // is the callback that was passed to SetEnabled().
-  void OnEnabledStateChanged(const ResultCallback &callback,
-                             const Error &error);
+  void OnEnabledStateChanged(const ResultCallback& callback,
+                             const Error& error);
 
   // Drops the currently selected service along with its IP configuration and
   // connection, if any.
@@ -453,29 +453,29 @@ class Device : public base::RefCounted<Device> {
   // based on the passed-in |lease_name|.  Registers a callback to
   // IPConfigUpdatedCallback on IP configuration changes. Returns true if the IP
   // request was successfully sent.
-  bool AcquireIPConfigWithLeaseName(const std::string &lease_name);
+  bool AcquireIPConfigWithLeaseName(const std::string& lease_name);
 
   // Assigns the IP configuration |properties| to |ipconfig_|.
-  void AssignIPConfig(const IPConfig::Properties &properties);
+  void AssignIPConfig(const IPConfig::Properties& properties);
 
   // Callback invoked on successful IP configuration updates.
-  virtual void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig,
+  virtual void OnIPConfigUpdated(const IPConfigRefPtr& ipconfig,
                                  bool new_lease_acquired);
 
   // Called when IPv6 configuration changes.
   virtual void OnIPv6ConfigUpdated();
 
   // Callback invoked on IP configuration failures.
-  void OnIPConfigFailed(const IPConfigRefPtr &ipconfig);
+  void OnIPConfigFailed(const IPConfigRefPtr& ipconfig);
 
   // Callback invoked when "Refresh" is invoked on an IPConfig.  This usually
   // signals a change in static IP parameters.
-  void OnIPConfigRefreshed(const IPConfigRefPtr &ipconfig);
+  void OnIPConfigRefreshed(const IPConfigRefPtr& ipconfig);
 
   // Callback invoked when an IPConfig restarts due to lease expiry.  This
   // is advisory, since an "Updated" or "Failed" signal is guaranteed to
   // follow.
-  void OnIPConfigExpired(const IPConfigRefPtr &ipconfig);
+  void OnIPConfigExpired(const IPConfigRefPtr& ipconfig);
 
   // Called by Device so that subclasses can run hooks on the selected service
   // failing to get an IP.  The default implementation disconnects the selected
@@ -483,16 +483,16 @@ class Device : public base::RefCounted<Device> {
   virtual void OnIPConfigFailure();
 
   // Callback invoked on successful DHCPv6 configuration updates.
-  void OnDHCPv6ConfigUpdated(const IPConfigRefPtr &ipconfig,
+  void OnDHCPv6ConfigUpdated(const IPConfigRefPtr& ipconfig,
                              bool new_lease_acquired);
 
   // Callback invoked on DHCPv6 configuration failures.
-  void OnDHCPv6ConfigFailed(const IPConfigRefPtr &ipconfig);
+  void OnDHCPv6ConfigFailed(const IPConfigRefPtr& ipconfig);
 
   // Callback invoked when an DHCPv6Config restarts due to lease expiry.  This
   // is advisory, since an "Updated" or "Failed" signal is guaranteed to
   // follow.
-  void OnDHCPv6ConfigExpired(const IPConfigRefPtr &ipconfig);
+  void OnDHCPv6ConfigExpired(const IPConfigRefPtr& ipconfig);
 
   // Maintain connection state (Routes, IP Addresses and DNS) in the OS.
   void CreateConnection();
@@ -502,7 +502,7 @@ class Device : public base::RefCounted<Device> {
 
   // Selects a service to be "current" -- i.e. link-state or configuration
   // events that happen to the device are attributed to this service.
-  void SelectService(const ServiceRefPtr &service);
+  void SelectService(const ServiceRefPtr& service);
 
   // Set the state of the |selected_service_|.
   virtual void SetServiceState(Service::ConnectState state);
@@ -519,7 +519,7 @@ class Device : public base::RefCounted<Device> {
   // Called by the Portal Detector whenever a trial completes.  Device
   // subclasses that choose unique mappings from portal results to connected
   // states can override this method in order to do so.
-  virtual void PortalDetectorCallback(const PortalDetector::Result &result);
+  virtual void PortalDetectorCallback(const PortalDetector::Result& result);
 
   // Initiate portal detection, if enabled for this device type.
   bool StartPortalDetection();
@@ -558,9 +558,9 @@ class Device : public base::RefCounted<Device> {
   // start (internal error). This function will return false if there is a test
   // that's already running, and true otherwise.
   virtual bool StartDNSTest(
-      const std::vector<std::string> &dns_servers,
+      const std::vector<std::string>& dns_servers,
       const bool retry_until_success,
-      const base::Callback<void(const DNSServerTester::Status)> &callback);
+      const base::Callback<void(const DNSServerTester::Status)>& callback);
   // Stop DNS test if one is running.
   virtual void StopDNSTest();
 
@@ -592,40 +592,40 @@ class Device : public base::RefCounted<Device> {
   // Indicates if the selected service is configured with static nameservers.
   bool IsUsingStaticNameServers() const;
 
-  const ServiceRefPtr &selected_service() const { return selected_service_; }
+  const ServiceRefPtr& selected_service() const { return selected_service_; }
 
   void HelpRegisterConstDerivedString(
-      const std::string &name,
-      std::string(Device::*get)(Error *));
+      const std::string& name,
+      std::string(Device::*get)(Error*));
 
   void HelpRegisterConstDerivedRpcIdentifier(
-      const std::string &name,
-      RpcIdentifier(Device::*get)(Error *));
+      const std::string& name,
+      RpcIdentifier(Device::*get)(Error*));
 
   void HelpRegisterConstDerivedRpcIdentifiers(
-      const std::string &name,
-      RpcIdentifiers(Device::*get)(Error *));
+      const std::string& name,
+      RpcIdentifiers(Device::*get)(Error*));
 
   void HelpRegisterConstDerivedUint64(
-      const std::string &name,
-      uint64_t(Device::*get)(Error *));
+      const std::string& name,
+      uint64_t(Device::*get)(Error*));
 
   // Called by the ConnectionTester whenever a connectivity test completes.
   virtual void ConnectionTesterCallback();
 
   // Property getters reserved for subclasses
-  ControlInterface *control_interface() const { return control_interface_; }
-  Metrics *metrics() const { return metrics_; }
-  Manager *manager() const { return manager_; }
-  const LinkMonitor *link_monitor() const { return link_monitor_.get(); }
-  void set_link_monitor(LinkMonitor *link_monitor);
+  ControlInterface* control_interface() const { return control_interface_; }
+  Metrics* metrics() const { return metrics_; }
+  Manager* manager() const { return manager_; }
+  const LinkMonitor* link_monitor() const { return link_monitor_.get(); }
+  void set_link_monitor(LinkMonitor* link_monitor);
   // Use for unit test.
-  void set_traffic_monitor(TrafficMonitor *traffic_monitor);
+  void set_traffic_monitor(TrafficMonitor* traffic_monitor);
 
   // Calculates the time (in seconds) till a DHCP lease is due for renewal,
   // and stores this value in |result|. Returns false is there is no upcoming
   // DHCP lease renewal, true otherwise.
-  bool TimeToNextDHCPLeaseRenewal(uint32_t *result);
+  bool TimeToNextDHCPLeaseRenewal(uint32_t* result);
 
  private:
   friend class CellularCapabilityTest;
@@ -675,15 +675,15 @@ class Device : public base::RefCounted<Device> {
   // It's not clear that this makes sense long-term, but that's how it is now.
   // This call generates a string in the right format for this persisting.
   // |suffix| is injected into the storage identifier used for the configs.
-  std::string SerializeIPConfigs(const std::string &suffix);
+  std::string SerializeIPConfigs(const std::string& suffix);
 
   // Set an IP configuration flag on the device. |family| should be "ipv6" or
   // "ipv4". |flag| should be the name of the flag to be set and |value| is
   // what this flag should be set to. Overridden by unit tests to pretend
   // writing to procfs.
   virtual bool SetIPFlag(IPAddress::Family family,
-                         const std::string &flag,
-                         const std::string &value);
+                         const std::string& flag,
+                         const std::string& value);
 
   // Request the removal of reverse-path filtering for this interface.
   // This will allow packets destined for this interface to be accepted,
@@ -703,18 +703,18 @@ class Device : public base::RefCounted<Device> {
   // will contain the best local address for the target.
   void EnableArpFiltering();
 
-  std::string GetSelectedServiceRpcIdentifier(Error *error);
-  std::vector<std::string> AvailableIPConfigs(Error *error);
+  std::string GetSelectedServiceRpcIdentifier(Error* error);
+  std::vector<std::string> AvailableIPConfigs(Error* error);
   std::string GetRpcConnectionIdentifier();
 
   // Get the LinkMonitor's average response time.
-  uint64_t GetLinkMonitorResponseTime(Error *error);
+  uint64_t GetLinkMonitorResponseTime(Error* error);
 
   // Get receive and transmit byte counters. These methods simply wrap
   // GetReceiveByteCount and GetTransmitByteCount in order to be used by
   // HelpRegisterConstDerivedUint64.
-  uint64_t GetReceiveByteCountProperty(Error *error);
-  uint64_t GetTransmitByteCountProperty(Error *error);
+  uint64_t GetReceiveByteCountProperty(Error* error);
+  uint64_t GetTransmitByteCountProperty(Error* error);
 
   // Emit a property change signal for the "IPConfigs" property of this device.
   void UpdateIPConfigsProperty();
@@ -726,34 +726,34 @@ class Device : public base::RefCounted<Device> {
   void ConfigDNSResultCallback(const DNSServerTester::Status status);
 
   // Update DNS setting with the given DNS servers for the current connection.
-  void SwitchDNSServers(const std::vector<std::string> &dns_servers);
+  void SwitchDNSServers(const std::vector<std::string>& dns_servers);
 
   // Called when the lifetime for IPv6 DNS server expires.
   void IPv6DNSServerExpired();
 
   // Return true if given IP configuration contain both IP address and DNS
   // servers. Hence, ready to be used for network connection.
-  bool IPConfigCompleted(const IPConfigRefPtr &ipconfig);
+  bool IPConfigCompleted(const IPConfigRefPtr& ipconfig);
 
   // Setup network connection with given IP configuration, and start portal
   // detection on that connection.
-  void SetupConnection(const IPConfigRefPtr &ipconfig);
+  void SetupConnection(const IPConfigRefPtr& ipconfig);
 
   // Set the system hostname to |hostname| if this device is configured to
   // do so.  If |hostname| is too long, truncate this parameter to fit within
   // the maximum hostname size.
-  bool SetHostname(const std::string &hostname);
+  bool SetHostname(const std::string& hostname);
 
   // Prepend the Manager's configured list of DNS servers into |ipconfig|
   // ensuring that only DNS servers of the same address family as |ipconfig| are
   // included in the final list.
-  void PrependDNSServersIntoIPConfig(const IPConfigRefPtr &ipconfig);
+  void PrependDNSServersIntoIPConfig(const IPConfigRefPtr& ipconfig);
 
   // Mutate |servers| to include the Manager's prepended list of DNS servers for
   // |family|.  On return, it is guaranteed that there are no duplicate entries
   // in |servers|.
   void PrependDNSServers(const IPAddress::Family family,
-                         std::vector<std::string> *servers);
+                         std::vector<std::string>* servers);
 
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
@@ -792,10 +792,10 @@ class Device : public base::RefCounted<Device> {
   bool running_;  // indicates whether the device is actually in operation
   const std::string link_name_;
   const std::string unique_id_;
-  ControlInterface *control_interface_;
-  EventDispatcher *dispatcher_;
-  Metrics *metrics_;
-  Manager *manager_;
+  ControlInterface* control_interface_;
+  EventDispatcher* dispatcher_;
+  Metrics* metrics_;
+  Manager* manager_;
   IPConfigRefPtr ipconfig_;
   IPConfigRefPtr ip6config_;
   IPConfigRefPtr dhcpv6_config_;
@@ -806,7 +806,7 @@ class Device : public base::RefCounted<Device> {
   std::unique_ptr<LinkMonitor> link_monitor_;
   // Used for verifying whether DNS server is functional.
   std::unique_ptr<DNSServerTester> dns_server_tester_;
-  base::Callback<void(const PortalDetector::Result &)>
+  base::Callback<void(const PortalDetector::Result&)>
       portal_detector_callback_;
   // Callback to invoke when IPv6 DNS servers lifetime expired.
   base::CancelableClosure ipv6_dns_server_expired_callback_;
@@ -829,11 +829,11 @@ class Device : public base::RefCounted<Device> {
   ServiceRefPtr selected_service_;
 
   // Cache singleton pointers for performance and test purposes.
-  DHCPProvider *dhcp_provider_;
-  RTNLHandler *rtnl_handler_;
+  DHCPProvider* dhcp_provider_;
+  RTNLHandler* rtnl_handler_;
 
   // Time when link monitor last failed.
-  Time *time_;
+  Time* time_;
   time_t last_link_monitor_failed_time_;
   // Callback to invoke when link becomes reliable again after it was previously
   // unreliable.

@@ -70,9 +70,9 @@ class ConnectivityTrial {
   static const char kResponseExpected[];
 
   ConnectivityTrial(ConnectionRefPtr connection,
-                    EventDispatcher *dispatcher,
+                    EventDispatcher* dispatcher,
                     int trial_timeout_seconds,
-                    const base::Callback<void(Result)> &trial_callback);
+                    const base::Callback<void(Result)>& trial_callback);
   virtual ~ConnectivityTrial();
 
   // Static method used to map a portal detection phase tp a string.  This
@@ -98,7 +98,7 @@ class ConnectivityTrial {
   //
   // After a trial completes, the callback supplied in the constructor is
   // called.
-  virtual bool Start(const std::string &url_string,
+  virtual bool Start(const std::string& url_string,
                      int start_delay_milliseconds);
 
   // After a trial completes, the calling class may call Retry on the trial.
@@ -140,11 +140,11 @@ class ConnectivityTrial {
   void StartTrialTask();
 
   // Callback used to return data read from the HTTPRequest.
-  void RequestReadCallback(const ByteString &response_data);
+  void RequestReadCallback(const ByteString& response_data);
 
   // Callback used to return the result of the HTTPRequest.
   void RequestResultCallback(HTTPRequest::Result result,
-                             const ByteString &response_data);
+                             const ByteString& response_data);
 
   // Internal method used to clean up state and call the original caller that
   // created and triggered this ConnectivityTrial.
@@ -160,12 +160,12 @@ class ConnectivityTrial {
   void TimeoutTrialTask();
 
   ConnectionRefPtr connection_;
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   int trial_timeout_seconds_;
   base::Callback<void(Result)> trial_callback_;
   base::WeakPtrFactory<ConnectivityTrial> weak_ptr_factory_;
-  base::Callback<void(const ByteString &)> request_read_callback_;
-  base::Callback<void(HTTPRequest::Result, const ByteString &)>
+  base::Callback<void(const ByteString&)> request_read_callback_;
+  base::Callback<void(HTTPRequest::Result, const ByteString&)>
         request_result_callback_;
   std::unique_ptr<HTTPRequest> request_;
 

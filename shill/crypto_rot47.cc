@@ -16,14 +16,14 @@ string CryptoROT47::GetID() {
   return kID;
 }
 
-bool CryptoROT47::Encrypt(const string &plaintext, string *ciphertext) {
+bool CryptoROT47::Encrypt(const string& plaintext, string* ciphertext) {
   const int kRotSize = 94;
   const int kRotHalf = kRotSize / 2;
   const char kRotMin = '!';
   const char kRotMax = kRotMin + kRotSize - 1;
 
   *ciphertext = plaintext;
-  for (auto &ch : *ciphertext) {
+  for (auto& ch : *ciphertext) {
     if (ch < kRotMin || ch > kRotMax) {
       continue;
     }
@@ -33,7 +33,7 @@ bool CryptoROT47::Encrypt(const string &plaintext, string *ciphertext) {
   return true;
 }
 
-bool CryptoROT47::Decrypt(const string &ciphertext, string *plaintext) {
+bool CryptoROT47::Decrypt(const string& ciphertext, string* plaintext) {
   // ROT47 is self-reciprocal.
   return Encrypt(ciphertext, plaintext);
 }

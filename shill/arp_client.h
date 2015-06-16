@@ -39,11 +39,11 @@ class ArpClient {
   // Also return the sender's MAC address (which may be different from the
   // MAC address in the ARP response) in |sender|.  Returns true on
   // succes, false otherwise.
-  virtual bool ReceivePacket(ArpPacket *packet, ByteString *sender) const;
+  virtual bool ReceivePacket(ArpPacket* packet, ByteString* sender) const;
 
   // Send a formatted ARP request from |packet|.  Returns true on
   // success, false otherwise.
-  virtual bool TransmitRequest(const ArpPacket &packet) const;
+  virtual bool TransmitRequest(const ArpPacket& packet) const;
 
   virtual int socket() const { return socket_; }
 

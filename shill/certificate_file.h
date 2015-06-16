@@ -24,10 +24,10 @@ class CertificateFile {
   // Write out a PEM file from an input vector of strings in PEM format.
   // Returns an empty path on failure.
   virtual base::FilePath CreatePEMFromStrings(
-      const std::vector<std::string> &pem_contents);
+      const std::vector<std::string>& pem_contents);
 
   // Setters.
-  void set_root_directory(const base::FilePath &root_directory) {
+  void set_root_directory(const base::FilePath& root_directory) {
     root_directory_ = root_directory;
   }
 
@@ -46,11 +46,11 @@ class CertificateFile {
   // neither a header nor a footer appears, assume they were not provided
   // by the caller and return all non-empty lines.  Returns the resulting
   // inner portion on success, or an empty string otherwise.
-  static std::string ExtractHexData(const std::string &pem_data);
+  static std::string ExtractHexData(const std::string& pem_data);
 
   // Creates a temporary output file with |output_data| in it.  Returns the
   // path the output data on success or an empty FilePath otherwise.
-  base::FilePath WriteFile(const std::string &output_data);
+  base::FilePath WriteFile(const std::string& output_data);
 
   // Root directory in which output new files will be created.
   base::FilePath root_directory_;

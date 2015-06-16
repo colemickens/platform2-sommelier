@@ -23,7 +23,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kLink;
-static string ObjectID(ConnectionInfoReader *c) {
+static string ObjectID(ConnectionInfoReader* c) {
   return "(connection_info_reader)";
 }
 }
@@ -48,7 +48,7 @@ FilePath ConnectionInfoReader::GetConnectionInfoFilePath() const {
 }
 
 bool ConnectionInfoReader::LoadConnectionInfo(
-    vector<ConnectionInfo> *info_list) {
+    vector<ConnectionInfo>* info_list) {
   info_list->clear();
 
   FilePath info_file_path = GetConnectionInfoFilePath();
@@ -68,8 +68,8 @@ bool ConnectionInfoReader::LoadConnectionInfo(
   return true;
 }
 
-bool ConnectionInfoReader::ParseConnectionInfo(const string &input,
-                                               ConnectionInfo *info) {
+bool ConnectionInfoReader::ParseConnectionInfo(const string& input,
+                                               ConnectionInfo* info) {
   vector<string> tokens;
   base::SplitStringAlongWhitespace(input, &tokens);
   if (tokens.size() < 10) {
@@ -143,7 +143,7 @@ bool ConnectionInfoReader::ParseConnectionInfo(const string &input,
   return true;
 }
 
-bool ConnectionInfoReader::ParseProtocol(const string &input, int *protocol) {
+bool ConnectionInfoReader::ParseProtocol(const string& input, int* protocol) {
   if (!base::StringToInt(input, protocol) ||
       *protocol < 0 || *protocol >= IPPROTO_MAX) {
     return false;
@@ -152,7 +152,7 @@ bool ConnectionInfoReader::ParseProtocol(const string &input, int *protocol) {
 }
 
 bool ConnectionInfoReader::ParseTimeToExpireSeconds(
-    const string &input, int64_t *time_to_expire_seconds) {
+    const string& input, int64_t* time_to_expire_seconds) {
   if (!base::StringToInt64(input, time_to_expire_seconds) ||
       *time_to_expire_seconds < 0) {
     return false;
@@ -161,7 +161,7 @@ bool ConnectionInfoReader::ParseTimeToExpireSeconds(
 }
 
 bool ConnectionInfoReader::ParseIPAddress(
-    const string &input, IPAddress *ip_address, bool *is_source) {
+    const string& input, IPAddress* ip_address, bool* is_source) {
   string ip_address_string;
 
   if (base::StartsWithASCII(input, kSourceIPAddressTag, false)) {
@@ -190,7 +190,7 @@ bool ConnectionInfoReader::ParseIPAddress(
 }
 
 bool ConnectionInfoReader::ParsePort(
-    const string &input, uint16_t *port, bool *is_source) {
+    const string& input, uint16_t* port, bool* is_source) {
   int result = 0;
   string port_string;
 
