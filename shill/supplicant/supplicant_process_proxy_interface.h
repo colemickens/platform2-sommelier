@@ -18,10 +18,10 @@ class SupplicantProcessProxyInterface {
  public:
   virtual ~SupplicantProcessProxyInterface() {}
   virtual ::DBus::Path CreateInterface(
-      const std::map<std::string, ::DBus::Variant> &args) = 0;
-  virtual ::DBus::Path GetInterface(const std::string &ifname) = 0;
-  virtual void RemoveInterface(const ::DBus::Path &path) = 0;
-  virtual void SetDebugLevel(const std::string &level) = 0;
+      const std::map<std::string, ::DBus::Variant>& args) = 0;
+  virtual ::DBus::Path GetInterface(const std::string& ifname) = 0;
+  virtual void RemoveInterface(const ::DBus::Path& path) = 0;
+  virtual void SetDebugLevel(const std::string& level) = 0;
   virtual std::string GetDebugLevel() = 0;
 };
 

@@ -31,7 +31,7 @@ class SupplicantEAPStateHandlerTest : public testing::Test {
     Mock::VerifyAndClearExpectations(&log_);
   }
 
-  const string &GetTLSError() { return handler_.tls_error_; }
+  const string& GetTLSError() { return handler_.tls_error_; }
 
   SupplicantEAPStateHandler handler_;
   Service::ConnectFailure failure_;

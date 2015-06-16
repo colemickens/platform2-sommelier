@@ -18,16 +18,16 @@ using std::string;
 namespace shill {
 
 namespace Logging {
-static string ObjectID(SupplicantBSSProxy *s) {
+static string ObjectID(SupplicantBSSProxy* s) {
   return "(supplicant_bss_proxy)";
 }
 }
 
 SupplicantBSSProxy::SupplicantBSSProxy(
-    WiFiEndpoint *wifi_endpoint,
-    DBus::Connection *bus,
-    const ::DBus::Path &object_path,
-    const char *dbus_addr)
+    WiFiEndpoint* wifi_endpoint,
+    DBus::Connection* bus,
+    const ::DBus::Path& object_path,
+    const char* dbus_addr)
     : proxy_(wifi_endpoint, bus, object_path, dbus_addr) {}
 
 SupplicantBSSProxy::~SupplicantBSSProxy() {}
@@ -35,15 +35,15 @@ SupplicantBSSProxy::~SupplicantBSSProxy() {}
 // definitions for private class SupplicantBSSProxy::Proxy
 
 SupplicantBSSProxy::Proxy::Proxy(
-    WiFiEndpoint *wifi_endpoint, DBus::Connection *bus,
-    const DBus::Path &dbus_path, const char *dbus_addr)
+    WiFiEndpoint* wifi_endpoint, DBus::Connection* bus,
+    const DBus::Path& dbus_path, const char* dbus_addr)
     : DBus::ObjectProxy(*bus, dbus_path, dbus_addr),
       wifi_endpoint_(wifi_endpoint) {}
 
 SupplicantBSSProxy::Proxy::~Proxy() {}
 
 void SupplicantBSSProxy::Proxy::PropertiesChanged(
-    const std::map<string, ::DBus::Variant> &properties) {
+    const std::map<string, ::DBus::Variant>& properties) {
   SLOG(DBus, nullptr, 2) << __func__;
   wifi_endpoint_->PropertiesChanged(properties);
 }

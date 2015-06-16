@@ -21,9 +21,9 @@ namespace shill {
 class SupplicantNetworkProxy
     : public SupplicantNetworkProxyInterface {
  public:
-  SupplicantNetworkProxy(DBus::Connection *bus,
-                         const ::DBus::Path &object_path,
-                         const char *dbus_addr);
+  SupplicantNetworkProxy(DBus::Connection* bus,
+                         const ::DBus::Path& object_path,
+                         const char* dbus_addr);
   ~SupplicantNetworkProxy() override;
 
   void SetEnabled(bool enabled) override;
@@ -32,9 +32,9 @@ class SupplicantNetworkProxy
   class Proxy : public fi::w1::wpa_supplicant1::Network_proxy,
     public ::DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *bus,
-          const ::DBus::Path &object_path,
-          const char *dbus_addr);
+    Proxy(DBus::Connection* bus,
+          const ::DBus::Path& object_path,
+          const char* dbus_addr);
     ~Proxy() override;
 
    private:

@@ -22,29 +22,29 @@ class SupplicantEventDelegateInterface {
   virtual ~SupplicantEventDelegateInterface() {}
 
   // Supplicant has added a BSS to its table of visible endpoints.
-  virtual void BSSAdded(const ::DBus::Path &BSS,
-                        const PropertyMap &properties) = 0;
+  virtual void BSSAdded(const ::DBus::Path& BSS,
+                        const PropertyMap& properties) = 0;
 
   // Supplicant has removed a BSS from its table of visible endpoints.
-  virtual void BSSRemoved(const ::DBus::Path &BSS) = 0;
+  virtual void BSSRemoved(const ::DBus::Path& BSS) = 0;
 
   // Supplicant has received a certficate from the remote server during
   // the process of authentication.
-  virtual void Certification(const PropertyMap &properties) = 0;
+  virtual void Certification(const PropertyMap& properties) = 0;
 
   // Supplicant state machine has output an EAP event notification.
-  virtual void EAPEvent(const std::string &status,
-                        const std::string &parameter) = 0;
+  virtual void EAPEvent(const std::string& status,
+                        const std::string& parameter) = 0;
 
   // The interface element in the supplicant has changed one or more
   // properties.
-  virtual void PropertiesChanged(const PropertyMap &properties) = 0;
+  virtual void PropertiesChanged(const PropertyMap& properties) = 0;
 
   // A scan has completed on this interface.
-  virtual void ScanDone(const bool &success) = 0;
+  virtual void ScanDone(const bool& success) = 0;
 
   // A TDLS discovery response received on this interface.
-  virtual void TDLSDiscoverResponse(const std::string &peer_address) = 0;
+  virtual void TDLSDiscoverResponse(const std::string& peer_address) = 0;
 };
 
 }  // namespace shill

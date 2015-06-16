@@ -27,9 +27,9 @@ class SupplicantEAPStateHandler {
   // |failure| will be set to reflect the type of failure that occurred,
   // false will be returned.  If this EAP event has no direct outcome,
   // this function returns false without changing |failure|.
-  virtual bool ParseStatus(const std::string &status,
-                           const std::string &parameter,
-                           Service::ConnectFailure *failure);
+  virtual bool ParseStatus(const std::string& status,
+                           const std::string& parameter,
+                           Service::ConnectFailure* failure);
 
   // Resets the internal state of the handler.
   virtual void Reset();

@@ -23,11 +23,11 @@ class MockSupplicantProcessProxy : public SupplicantProcessProxyInterface {
 
   MOCK_METHOD1(CreateInterface,
                ::DBus::Path(
-                   const std::map<std::string, ::DBus::Variant> &args));
-  MOCK_METHOD1(GetInterface, ::DBus::Path(const std::string &ifname));
-  MOCK_METHOD1(RemoveInterface, void(const ::DBus::Path &path));
+                   const std::map<std::string, ::DBus::Variant>& args));
+  MOCK_METHOD1(GetInterface, ::DBus::Path(const std::string& ifname));
+  MOCK_METHOD1(RemoveInterface, void(const ::DBus::Path& path));
   MOCK_METHOD0(GetDebugLevel, std::string());
-  MOCK_METHOD1(SetDebugLevel, void(const std::string &level));
+  MOCK_METHOD1(SetDebugLevel, void(const std::string& level));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSupplicantProcessProxy);

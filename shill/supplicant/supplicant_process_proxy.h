@@ -17,34 +17,34 @@ namespace shill {
 
 class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
  public:
-  SupplicantProcessProxy(DBus::Connection *bus,
-                         const char *dbus_path,
-                         const char *dbus_addr);
+  SupplicantProcessProxy(DBus::Connection* bus,
+                         const char* dbus_path,
+                         const char* dbus_addr);
   ~SupplicantProcessProxy() override;
 
   ::DBus::Path CreateInterface(
-      const std::map<std::string, ::DBus::Variant> &args) override;
-  void RemoveInterface(const ::DBus::Path &path) override;
-  ::DBus::Path GetInterface(const std::string &ifname) override;
-  void SetDebugLevel(const std::string &level) override;
+      const std::map<std::string, ::DBus::Variant>& args) override;
+  void RemoveInterface(const ::DBus::Path& path) override;
+  ::DBus::Path GetInterface(const std::string& ifname) override;
+  void SetDebugLevel(const std::string& level) override;
   std::string GetDebugLevel() override;
 
  private:
   class Proxy : public fi::w1::wpa_supplicant1_proxy,
     public ::DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *bus, const char *dbus_path, const char *dbus_addr);
+    Proxy(DBus::Connection* bus, const char* dbus_path, const char* dbus_addr);
     ~Proxy() override;
 
    private:
     // signal handlers called by dbus-c++, via
     // wpa_supplicant1_proxy interface.
     void InterfaceAdded(
-        const ::DBus::Path &path,
-        const std::map<std::string, ::DBus::Variant> &properties) override;
-    void InterfaceRemoved(const ::DBus::Path &path) override;
+        const ::DBus::Path& path,
+        const std::map<std::string, ::DBus::Variant>& properties) override;
+    void InterfaceRemoved(const ::DBus::Path& path) override;
     void PropertiesChanged(
-        const std::map<std::string, ::DBus::Variant> &properties) override;
+        const std::map<std::string, ::DBus::Variant>& properties) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

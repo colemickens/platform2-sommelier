@@ -19,24 +19,24 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDBus;
-static string ObjectID(const DBus::Path *p) { return *p; }
+static string ObjectID(const DBus::Path* p) { return *p; }
 }
 
 SupplicantInterfaceProxy::SupplicantInterfaceProxy(
-    SupplicantEventDelegateInterface *delegate,
-    DBus::Connection *bus,
-    const ::DBus::Path &object_path,
-    const char *dbus_addr)
+    SupplicantEventDelegateInterface* delegate,
+    DBus::Connection* bus,
+    const ::DBus::Path& object_path,
+    const char* dbus_addr)
     : proxy_(delegate, bus, object_path, dbus_addr) {}
 
 SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {}
 
 ::DBus::Path SupplicantInterfaceProxy::AddNetwork(
-    const map<string, ::DBus::Variant> &args) {
+    const map<string, ::DBus::Variant>& args) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.AddNetwork(args);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << " args keys are: " << DBusProperties::KeysToString(args);
     throw;  // Re-throw the exception.
@@ -47,7 +47,7 @@ void SupplicantInterfaceProxy::EnableHighBitrates() {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.EnableHighBitrates();
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     throw;  // Re-throw the exception.
   }
@@ -57,7 +57,7 @@ void SupplicantInterfaceProxy::EAPLogoff() {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.EAPLogoff();
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     throw;  // Re-throw the exception.
   }
@@ -67,7 +67,7 @@ void SupplicantInterfaceProxy::EAPLogon() {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.EAPLogon();
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     throw;  // Re-throw the exception.
   }
@@ -77,29 +77,29 @@ void SupplicantInterfaceProxy::Disconnect() {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Disconnect();
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     throw;  // Re-throw the exception.
   }
 }
 
-void SupplicantInterfaceProxy::FlushBSS(const uint32_t &age) {
+void SupplicantInterfaceProxy::FlushBSS(const uint32_t& age) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.FlushBSS(age);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
                << " age: " << age;
   }
 }
 
-void SupplicantInterfaceProxy::NetworkReply(const ::DBus::Path &network,
-                                            const string &field,
-                                            const string &value) {
+void SupplicantInterfaceProxy::NetworkReply(const ::DBus::Path& network,
+                                            const string& field,
+                                            const string& value) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.NetworkReply(network, field, value);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     throw;  // Re-throw the exception.
   }
@@ -109,7 +109,7 @@ void SupplicantInterfaceProxy::Reassociate() {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Reassociate();
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     throw;  // Re-throw the exception.
   }
@@ -119,7 +119,7 @@ void SupplicantInterfaceProxy::Reattach() {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Reattach();
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     throw;  // Re-throw the exception.
   }
@@ -129,47 +129,47 @@ void SupplicantInterfaceProxy::RemoveAllNetworks() {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.RemoveAllNetworks();
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
   }
 }
 
-void SupplicantInterfaceProxy::RemoveNetwork(const ::DBus::Path &network) {
+void SupplicantInterfaceProxy::RemoveNetwork(const ::DBus::Path& network) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.RemoveNetwork(network);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     throw;  // Re-throw the exception.
   }
 }
 
-void SupplicantInterfaceProxy::Scan(const map<string, ::DBus::Variant> &args) {
+void SupplicantInterfaceProxy::Scan(const map<string, ::DBus::Variant>& args) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Scan(args);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << " args keys are: " << DBusProperties::KeysToString(args);
     throw;  // Re-throw the exception.
   }
 }
 
-void SupplicantInterfaceProxy::SelectNetwork(const ::DBus::Path &network) {
+void SupplicantInterfaceProxy::SelectNetwork(const ::DBus::Path& network) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.SelectNetwork(network);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
   }
 }
 
-void SupplicantInterfaceProxy::SetHT40Enable(const ::DBus::Path &network,
+void SupplicantInterfaceProxy::SetHT40Enable(const ::DBus::Path& network,
                                              bool enable) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.SetHT40Enable(network, enable);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
   }
 }
@@ -178,7 +178,7 @@ void SupplicantInterfaceProxy::SetFastReauth(bool enabled) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.FastReauth(enabled);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << "enabled: " << enabled;
     throw;  // Re-throw the exception.
@@ -190,7 +190,7 @@ void SupplicantInterfaceProxy::SetRoamThreshold(uint16_t threshold) {
   try {
     proxy_.RoamThreshold(threshold);
     return;
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << " threshold: " << threshold;
     throw;  // Re-throw the exception.
@@ -201,7 +201,7 @@ void SupplicantInterfaceProxy::SetScanInterval(int32_t scan_interval) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.ScanInterval(scan_interval);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << " scan interval: " << scan_interval;
     throw;  // Re-throw the exception.
@@ -213,7 +213,7 @@ void SupplicantInterfaceProxy::SetDisableHighBitrates(
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.DisableHighBitrates(disable_high_bitrates);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << "disable_high_bitrates: " << disable_high_bitrates;
     throw;  // Re-throw the exception.
@@ -224,7 +224,7 @@ void SupplicantInterfaceProxy::SetSchedScan(bool enable) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.SchedScan(enable);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << "enable: " << enable;
     throw;  // Re-throw the exception.
@@ -235,48 +235,48 @@ void SupplicantInterfaceProxy::SetScan(bool enable) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.Scan(enable);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << "enable: " << enable;
     throw;  // Re-throw the exception.
   }
 }
 
-void SupplicantInterfaceProxy::TDLSDiscover(const string &peer) {
+void SupplicantInterfaceProxy::TDLSDiscover(const string& peer) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.TDLSDiscover(peer);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     throw;  // Re-throw the exception.
   }
 }
 
-void SupplicantInterfaceProxy::TDLSSetup(const string &peer) {
+void SupplicantInterfaceProxy::TDLSSetup(const string& peer) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.TDLSSetup(peer);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     throw;  // Re-throw the exception.
   }
 }
 
-string SupplicantInterfaceProxy::TDLSStatus(const string &peer) {
+string SupplicantInterfaceProxy::TDLSStatus(const string& peer) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.TDLSStatus(peer);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     throw;  // Re-throw the exception.
   }
 }
 
-void SupplicantInterfaceProxy::TDLSTeardown(const string &peer) {
+void SupplicantInterfaceProxy::TDLSTeardown(const string& peer) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
     return proxy_.TDLSTeardown(peer);
-  } catch (const DBus::Error &e) {
+  } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
     throw;  // Re-throw the exception.
   }
@@ -285,81 +285,81 @@ void SupplicantInterfaceProxy::TDLSTeardown(const string &peer) {
 // definitions for private class SupplicantInterfaceProxy::Proxy
 
 SupplicantInterfaceProxy::Proxy::Proxy(
-    SupplicantEventDelegateInterface *delegate, DBus::Connection *bus,
-    const DBus::Path &dbus_path, const char *dbus_addr)
+    SupplicantEventDelegateInterface* delegate, DBus::Connection* bus,
+    const DBus::Path& dbus_path, const char* dbus_addr)
     : DBus::ObjectProxy(*bus, dbus_path, dbus_addr),
       delegate_(delegate) {}
 
 SupplicantInterfaceProxy::Proxy::~Proxy() {}
 
-void SupplicantInterfaceProxy::Proxy::BlobAdded(const string &/*blobname*/) {
+void SupplicantInterfaceProxy::Proxy::BlobAdded(const string& /*blobname*/) {
   SLOG(&path(), 2) << __func__;
   // XXX
 }
 
-void SupplicantInterfaceProxy::Proxy::BlobRemoved(const string &/*blobname*/) {
+void SupplicantInterfaceProxy::Proxy::BlobRemoved(const string& /*blobname*/) {
   SLOG(&path(), 2) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::BSSAdded(
-    const ::DBus::Path &BSS,
-    const std::map<string, ::DBus::Variant> &properties) {
+    const ::DBus::Path& BSS,
+    const std::map<string, ::DBus::Variant>& properties) {
   SLOG(&path(), 2) << __func__;
   delegate_->BSSAdded(BSS, properties);
 }
 
 void SupplicantInterfaceProxy::Proxy::Certification(
-    const std::map<string, ::DBus::Variant> &properties) {
+    const std::map<string, ::DBus::Variant>& properties) {
   SLOG(&path(), 2) << __func__;
   delegate_->Certification(properties);
 }
 
 void SupplicantInterfaceProxy::Proxy::EAP(
-    const string &status, const string &parameter) {
+    const string& status, const string& parameter) {
   SLOG(&path(), 2) << __func__ << ": status " << status
                 << ", parameter " << parameter;
   delegate_->EAPEvent(status, parameter);
 }
 
-void SupplicantInterfaceProxy::Proxy::BSSRemoved(const ::DBus::Path &BSS) {
+void SupplicantInterfaceProxy::Proxy::BSSRemoved(const ::DBus::Path& BSS) {
   SLOG(&path(), 2) << __func__;
   delegate_->BSSRemoved(BSS);
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkAdded(
-    const ::DBus::Path &/*network*/,
-    const std::map<string, ::DBus::Variant> &/*properties*/) {
+    const ::DBus::Path& /*network*/,
+    const std::map<string, ::DBus::Variant>& /*properties*/) {
   SLOG(&path(), 2) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkRemoved(
-    const ::DBus::Path &/*network*/) {
+    const ::DBus::Path& /*network*/) {
   SLOG(&path(), 2) << __func__;
   // TODO(quiche): Pass this up to the delegate, so that it can clean its
   // rpcid_by_service_ map. crbug.com/207648
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkSelected(
-    const ::DBus::Path &/*network*/) {
+    const ::DBus::Path& /*network*/) {
   SLOG(&path(), 2) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::PropertiesChanged(
-    const std::map<string, ::DBus::Variant> &properties) {
+    const std::map<string, ::DBus::Variant>& properties) {
   SLOG(&path(), 2) << __func__;
   delegate_->PropertiesChanged(properties);
 }
 
-void SupplicantInterfaceProxy::Proxy::ScanDone(const bool &success) {
+void SupplicantInterfaceProxy::Proxy::ScanDone(const bool& success) {
   SLOG(&path(), 2) << __func__ << ": " << success;
   delegate_->ScanDone(success);
 }
 
 void SupplicantInterfaceProxy::Proxy::TDLSDiscoverResponse(
-    const std::string &peer_address) {
+    const std::string& peer_address) {
   SLOG(&path(), 2) << __func__ << ": " << peer_address;
   delegate_->TDLSDiscoverResponse(peer_address);
 }

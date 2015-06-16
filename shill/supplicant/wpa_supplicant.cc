@@ -150,8 +150,8 @@ const char WPASupplicant::kSupplicantConfPath[] =
 
 // static
 bool WPASupplicant::ExtractRemoteCertification(
-      const map<string, DBus::Variant> &properties,
-      string *subject, uint32_t *depth) {
+      const map<string, DBus::Variant>& properties,
+      string* subject, uint32_t* depth) {
   map<string, ::DBus::Variant>::const_iterator depth_it =
       properties.find(WPASupplicant::kInterfacePropertyDepth);
   if (depth_it == properties.end()) {

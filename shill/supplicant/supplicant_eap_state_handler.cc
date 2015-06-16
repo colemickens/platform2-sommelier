@@ -16,9 +16,9 @@ SupplicantEAPStateHandler::SupplicantEAPStateHandler()
 
 SupplicantEAPStateHandler::~SupplicantEAPStateHandler() {}
 
-bool SupplicantEAPStateHandler::ParseStatus(const string &status,
-                                            const string &parameter,
-                                            Service::ConnectFailure *failure) {
+bool SupplicantEAPStateHandler::ParseStatus(const string& status,
+                                            const string& parameter,
+                                            Service::ConnectFailure* failure) {
   if (status == WPASupplicant::kEAPStatusAcceptProposedMethod) {
     LOG(INFO) << "EAP: accepted method " << parameter;
   } else if (status == WPASupplicant::kEAPStatusCompletion) {
