@@ -34,10 +34,10 @@ const int PPPoEService::kDefaultLCPEchoInterval = 30;
 const int PPPoEService::kDefaultLCPEchoFailure = 3;
 const int PPPoEService::kDefaultMaxAuthFailure = 3;
 
-PPPoEService::PPPoEService(ControlInterface *control_interface,
-                           EventDispatcher *dispatcher,
-                           Metrics *metrics,
-                           Manager *manager,
+PPPoEService::PPPoEService(ControlInterface* control_interface,
+                           EventDispatcher* dispatcher,
+                           Metrics* metrics,
+                           Manager* manager,
                            base::WeakPtr<Ethernet> ethernet)
     : EthernetService(control_interface, dispatcher, metrics, manager,
                       Technology::kPPPoE, ethernet),
@@ -47,7 +47,7 @@ PPPoEService::PPPoEService(ControlInterface *control_interface,
       max_auth_failure_(kDefaultMaxAuthFailure),
       authenticating_(false),
       weak_ptr_factory_(this) {
-  PropertyStore *store = this->mutable_store();
+  PropertyStore* store = this->mutable_store();
   store->RegisterString(kPPPoEUsernameProperty, &username_);
   store->RegisterString(kPPPoEPasswordProperty, &password_);
   store->RegisterInt32(kPPPoELCPEchoIntervalProperty, &lcp_echo_interval_);
@@ -62,7 +62,7 @@ PPPoEService::PPPoEService(ControlInterface *control_interface,
 
 PPPoEService::~PPPoEService() {}
 
-void PPPoEService::Connect(Error *error, const char *reason) {
+void PPPoEService::Connect(Error* error, const char* reason) {
   Service::Connect(error, reason);
 
   CHECK(ethernet());
@@ -114,7 +114,7 @@ void PPPoEService::Connect(Error *error, const char *reason) {
   SetState(Service::kStateAssociating);
 }
 
-void PPPoEService::Disconnect(Error *error, const char *reason) {
+void PPPoEService::Disconnect(Error* error, const char* reason) {
   EthernetService::Disconnect(error, reason);
   if (ppp_device_) {
     ppp_device_->DropConnection();
@@ -128,7 +128,7 @@ void PPPoEService::Disconnect(Error *error, const char *reason) {
   pppd_.reset();
 }
 
-bool PPPoEService::Load(StoreInterface *storage) {
+bool PPPoEService::Load(StoreInterface* storage) {
   if (!Service::Load(storage)) {
     return false;
   }
@@ -143,7 +143,7 @@ bool PPPoEService::Load(StoreInterface *storage) {
   return true;
 }
 
-bool PPPoEService::Save(StoreInterface *storage) {
+bool PPPoEService::Save(StoreInterface* storage) {
   if (!Service::Save(storage)) {
     return false;
   }
@@ -164,14 +164,14 @@ bool PPPoEService::Unload() {
   return Service::Unload();
 }
 
-void PPPoEService::GetLogin(string *user, string *password) {
+void PPPoEService::GetLogin(string* user, string* password) {
   CHECK(user && password);
   *user = username_;
   *password = password_;
 }
 
-void PPPoEService::Notify(const string &reason,
-                          const map<string, string> &dict) {
+void PPPoEService::Notify(const string& reason,
+                          const map<string, string>& dict) {
   if (reason == kPPPReasonAuthenticating) {
     OnPPPAuthenticating();
   } else if (reason == kPPPReasonAuthenticated) {
@@ -197,10 +197,10 @@ void PPPoEService::OnPPPAuthenticated() {
   authenticating_ = false;
 }
 
-void PPPoEService::OnPPPConnected(const map<string, string> &params) {
+void PPPoEService::OnPPPConnected(const map<string, string>& params) {
   const string interface_name = PPPDevice::GetInterfaceName(params);
 
-  DeviceInfo *device_info = manager()->device_info();
+  DeviceInfo* device_info = manager()->device_info();
   const int interface_index = device_info->GetIndex(interface_name);
   if (interface_index < 0) {
     NOTIMPLEMENTED() << ": No device info for " << interface_name;

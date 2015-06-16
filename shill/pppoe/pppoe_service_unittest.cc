@@ -144,12 +144,12 @@ TEST_F(PPPoEServiceTest, Disconnect) {
   FakeConnectionSuccess();
 
   auto weak_ptr = service_->weak_ptr_factory_.GetWeakPtr();
-  MockExternalTask *pppd = new MockExternalTask(
+  MockExternalTask* pppd = new MockExternalTask(
       &control_interface_, &glib_, weak_ptr,
       base::Bind(&PPPoEService::OnPPPDied, weak_ptr));
   service_->pppd_.reset(pppd);
 
-  MockPPPDevice *ppp_device = new MockPPPDevice(
+  MockPPPDevice* ppp_device = new MockPPPDevice(
       &control_interface_, &dispatcher_, &metrics_, &manager_, "ppp0", 0);
   service_->ppp_device_ = ppp_device;
 

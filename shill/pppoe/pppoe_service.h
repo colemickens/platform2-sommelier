@@ -32,24 +32,24 @@ class StoreInterface;
 // created them.
 class PPPoEService : public EthernetService, public RPCTaskDelegate {
  public:
-  PPPoEService(ControlInterface *control_interface,
-               EventDispatcher *dispatcher,
-               Metrics *metrics,
-               Manager *manager,
+  PPPoEService(ControlInterface* control_interface,
+               EventDispatcher* dispatcher,
+               Metrics* metrics,
+               Manager* manager,
                base::WeakPtr<Ethernet> ethernet);
   ~PPPoEService() override;
 
   // Inherited from EthernetService.
-  void Connect(Error *error, const char *reason) override;
-  void Disconnect(Error *error, const char *reason) override;
-  bool Load(StoreInterface *storage) override;
-  bool Save(StoreInterface *storage) override;
+  void Connect(Error* error, const char* reason) override;
+  void Disconnect(Error* error, const char* reason) override;
+  bool Load(StoreInterface* storage) override;
+  bool Save(StoreInterface* storage) override;
   bool Unload() override;
 
   // Inherited from RPCTaskDelegate.
-  void GetLogin(std::string *user, std::string *password) override;
-  void Notify(const std::string &reason,
-              const std::map<std::string, std::string> &dict) override;
+  void GetLogin(std::string* user, std::string* password) override;
+  void Notify(const std::string& reason,
+              const std::map<std::string, std::string>& dict) override;
 
  private:
   FRIEND_TEST(PPPoEServiceTest, Disconnect);
@@ -60,11 +60,11 @@ class PPPoEService : public EthernetService, public RPCTaskDelegate {
 
   void OnPPPAuthenticating();
   void OnPPPAuthenticated();
-  void OnPPPConnected(const std::map<std::string, std::string> &params);
+  void OnPPPConnected(const std::map<std::string, std::string>& params);
   void OnPPPDisconnected();
   void OnPPPDied(pid_t pid, int exit);
 
-  ControlInterface *control_interface_;
+  ControlInterface* control_interface_;
 
   std::string username_;
   std::string password_;
