@@ -75,41 +75,41 @@ class VPNServiceTest : public testing::Test {
     service_->connectable_ = connectable;
   }
 
-  const char *GetAutoConnOffline() {
+  const char* GetAutoConnOffline() {
     return Service::kAutoConnOffline;
   }
 
-  const char *GetAutoConnNeverConnected() {
+  const char* GetAutoConnNeverConnected() {
     return VPNService::kAutoConnNeverConnected;
   }
 
-  const char *GetAutoConnVPNAlreadyActive() {
+  const char* GetAutoConnVPNAlreadyActive() {
     return VPNService::kAutoConnVPNAlreadyActive;
   }
 
-  bool IsAutoConnectable(const char **reason) const {
+  bool IsAutoConnectable(const char** reason) const {
     return service_->IsAutoConnectable(reason);
   }
 
   // Takes ownership of |provider|.
-  void SetVPNProvider(VPNProvider *provider) {
+  void SetVPNProvider(VPNProvider* provider) {
     manager_.vpn_provider_.reset(provider);
     manager_.UpdateProviderMapping();
   }
 
-  ServiceMockAdaptor *GetAdaptor() {
-    return dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+  ServiceMockAdaptor* GetAdaptor() {
+    return dynamic_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
   std::string interface_name_;
   std::string ipconfig_rpc_identifier_;
-  MockVPNDriver *driver_;  // Owned by |service_|.
+  MockVPNDriver* driver_;  // Owned by |service_|.
   NiceMockControl control_;
   MockManager manager_;
   MockMetrics metrics_;
   MockDeviceInfo device_info_;
   scoped_refptr<NiceMock<MockConnection>> connection_;
-  MockSockets *sockets_;  // Owned by |service_|.
+  MockSockets* sockets_;  // Owned by |service_|.
   VPNServiceRefPtr service_;
 };
 
@@ -212,7 +212,7 @@ TEST_F(VPNServiceTest, Unload) {
   service_->set_save_credentials(true);
   EXPECT_CALL(*driver_, Disconnect());
   EXPECT_CALL(*driver_, UnloadCredentials());
-  MockVPNProvider *provider = new MockVPNProvider;
+  MockVPNProvider* provider = new MockVPNProvider;
   SetVPNProvider(provider);
   provider->services_.push_back(service_);
   service_->Unload();
@@ -255,7 +255,7 @@ TEST_F(VPNServiceTest, OnConnectionDisconnected) {
 
 TEST_F(VPNServiceTest, IsAutoConnectableOffline) {
   EXPECT_TRUE(service_->connectable());
-  const char *reason = nullptr;
+  const char* reason = nullptr;
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
   EXPECT_FALSE(IsAutoConnectable(&reason));
   EXPECT_STREQ(GetAutoConnOffline(), reason);
@@ -264,7 +264,7 @@ TEST_F(VPNServiceTest, IsAutoConnectableOffline) {
 TEST_F(VPNServiceTest, IsAutoConnectableNeverConnected) {
   EXPECT_TRUE(service_->connectable());
   EXPECT_FALSE(service_->has_ever_connected());
-  const char *reason = nullptr;
+  const char* reason = nullptr;
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(true));
   EXPECT_FALSE(IsAutoConnectable(&reason));
   EXPECT_STREQ(GetAutoConnNeverConnected(), reason);
@@ -274,16 +274,16 @@ TEST_F(VPNServiceTest, IsAutoConnectableVPNAlreadyActive) {
   EXPECT_TRUE(service_->connectable());
   SetHasEverConnected(true);
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(true));
-  MockVPNProvider *provider = new MockVPNProvider;
+  MockVPNProvider* provider = new MockVPNProvider;
   SetVPNProvider(provider);
   EXPECT_CALL(*provider, HasActiveService()).WillOnce(Return(true));
-  const char *reason = nullptr;
+  const char* reason = nullptr;
   EXPECT_FALSE(IsAutoConnectable(&reason));
   EXPECT_STREQ(GetAutoConnVPNAlreadyActive(), reason);
 }
 
 TEST_F(VPNServiceTest, IsAutoConnectableNotConnectable) {
-  const char *reason = nullptr;
+  const char* reason = nullptr;
   SetConnectable(false);
   EXPECT_FALSE(IsAutoConnectable(&reason));
 }
@@ -292,10 +292,10 @@ TEST_F(VPNServiceTest, IsAutoConnectable) {
   EXPECT_TRUE(service_->connectable());
   SetHasEverConnected(true);
   EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(true));
-  MockVPNProvider *provider = new MockVPNProvider;
+  MockVPNProvider* provider = new MockVPNProvider;
   SetVPNProvider(provider);
   EXPECT_CALL(*provider, HasActiveService()).WillOnce(Return(false));
-  const char *reason = nullptr;
+  const char* reason = nullptr;
   EXPECT_TRUE(IsAutoConnectable(&reason));
   EXPECT_FALSE(reason);
 }

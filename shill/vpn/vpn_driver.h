@@ -29,27 +29,27 @@ class VPNDriver {
  public:
   virtual ~VPNDriver();
 
-  virtual bool ClaimInterface(const std::string &link_name,
+  virtual bool ClaimInterface(const std::string& link_name,
                               int interface_index) = 0;
-  virtual void Connect(const VPNServiceRefPtr &service, Error *error) = 0;
+  virtual void Connect(const VPNServiceRefPtr& service, Error* error) = 0;
   virtual void Disconnect() = 0;
   virtual std::string GetProviderType() const = 0;
 
   // Invoked by VPNService when the underlying connection disconnects.
   virtual void OnConnectionDisconnected() = 0;
 
-  virtual void InitPropertyStore(PropertyStore *store);
+  virtual void InitPropertyStore(PropertyStore* store);
 
-  virtual bool Load(StoreInterface *storage, const std::string &storage_id);
-  virtual bool Save(StoreInterface *storage,
-                    const std::string &storage_id,
+  virtual bool Load(StoreInterface* storage, const std::string& storage_id);
+  virtual bool Save(StoreInterface* storage,
+                    const std::string& storage_id,
                     bool save_credentials);
   virtual void UnloadCredentials();
 
   std::string GetHost() const;
 
-  KeyValueStore *args() { return &args_; }
-  const KeyValueStore *const_args() const { return &args_; }
+  KeyValueStore* args() { return &args_; }
+  const KeyValueStore* const_args() const { return &args_; }
 
  protected:
   struct Property {
@@ -60,21 +60,21 @@ class VPNDriver {
       kArray = 1 << 3,       // Property is an array of strings.
     };
 
-    const char *property;
+    const char* property;
     int flags;
   };
 
   static const int kDefaultConnectTimeoutSeconds;
 
-  VPNDriver(EventDispatcher *dispatcher,
-            Manager *manager,
-            const Property *properties,
+  VPNDriver(EventDispatcher* dispatcher,
+            Manager* manager,
+            const Property* properties,
             size_t property_count);
 
-  EventDispatcher *dispatcher() const { return dispatcher_; }
-  Manager *manager() const { return manager_; }
+  EventDispatcher* dispatcher() const { return dispatcher_; }
+  Manager* manager() const { return manager_; }
 
-  virtual KeyValueStore GetProvider(Error *error);
+  virtual KeyValueStore GetProvider(Error* error);
 
   // Initializes a callback that will invoke OnConnectTimeout after
   // |timeout_seconds|. The timeout will not be restarted if it's already
@@ -95,20 +95,20 @@ class VPNDriver {
  private:
   friend class VPNDriverTest;
 
-  void ClearMappedStringProperty(const size_t &index, Error *error);
-  void ClearMappedStringsProperty(const size_t &index, Error *error);
-  std::string GetMappedStringProperty(const size_t &index, Error *error);
+  void ClearMappedStringProperty(const size_t& index, Error* error);
+  void ClearMappedStringsProperty(const size_t& index, Error* error);
+  std::string GetMappedStringProperty(const size_t& index, Error* error);
   std::vector<std::string> GetMappedStringsProperty(
-      const size_t &index, Error *error);
+      const size_t& index, Error* error);
   bool SetMappedStringProperty(
-      const size_t &index, const std::string &value, Error *error);
+      const size_t& index, const std::string& value, Error* error);
   bool SetMappedStringsProperty(
-      const size_t &index, const std::vector<std::string> &value, Error *error);
+      const size_t& index, const std::vector<std::string>& value, Error* error);
 
   base::WeakPtrFactory<VPNDriver> weak_ptr_factory_;
-  EventDispatcher *dispatcher_;
-  Manager *manager_;
-  const Property * const properties_;
+  EventDispatcher* dispatcher_;
+  Manager* manager_;
+  const Property* const properties_;
   const size_t property_count_;
   KeyValueStore args_;
 

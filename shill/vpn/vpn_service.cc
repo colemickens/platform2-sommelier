@@ -28,17 +28,17 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static string ObjectID(const VPNService *s) { return s->GetRpcIdentifier(); }
+static string ObjectID(const VPNService* s) { return s->GetRpcIdentifier(); }
 }
 
 const char VPNService::kAutoConnNeverConnected[] = "never connected";
 const char VPNService::kAutoConnVPNAlreadyActive[] = "vpn already active";
 
-VPNService::VPNService(ControlInterface *control,
-                       EventDispatcher *dispatcher,
-                       Metrics *metrics,
-                       Manager *manager,
-                       VPNDriver *driver)
+VPNService::VPNService(ControlInterface* control,
+                       EventDispatcher* dispatcher,
+                       Metrics* metrics,
+                       Manager* manager,
+                       VPNDriver* driver)
     : Service(control, dispatcher, metrics, manager, Technology::kVPN),
       driver_(driver) {
   SetConnectable(true);
@@ -55,7 +55,7 @@ VPNService::VPNService(ControlInterface *control,
 
 VPNService::~VPNService() {}
 
-void VPNService::Connect(Error *error, const char *reason) {
+void VPNService::Connect(Error* error, const char* reason) {
   if (IsConnected()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kAlreadyConnected,
                           StringPrintf("VPN service %s already connected.",
@@ -72,7 +72,7 @@ void VPNService::Connect(Error *error, const char *reason) {
   driver_->Connect(this, error);
 }
 
-void VPNService::Disconnect(Error *error, const char *reason) {
+void VPNService::Disconnect(Error* error, const char* reason) {
   SLOG(this, 1) << "Disconnect from service " << unique_name();
   Service::Disconnect(error, reason);
   driver_->Disconnect();
@@ -83,8 +83,8 @@ string VPNService::GetStorageIdentifier() const {
 }
 
 // static
-string VPNService::CreateStorageIdentifier(const KeyValueStore &args,
-                                           Error *error) {
+string VPNService::CreateStorageIdentifier(const KeyValueStore& args,
+                                           Error* error) {
   string host = args.LookupString(kProviderHostProperty, "");
   if (host.empty()) {
     Error::PopulateAndLog(
@@ -102,17 +102,17 @@ string VPNService::CreateStorageIdentifier(const KeyValueStore &args,
   return id;
 }
 
-string VPNService::GetDeviceRpcId(Error *error) const {
+string VPNService::GetDeviceRpcId(Error* error) const {
   error->Populate(Error::kNotSupported);
   return "/";
 }
 
-bool VPNService::Load(StoreInterface *storage) {
+bool VPNService::Load(StoreInterface* storage) {
   return Service::Load(storage) &&
       driver_->Load(storage, GetStorageIdentifier());
 }
 
-bool VPNService::Save(StoreInterface *storage) {
+bool VPNService::Save(StoreInterface* storage) {
   return Service::Save(storage) &&
       driver_->Save(storage, GetStorageIdentifier(), save_credentials());
 }
@@ -140,7 +140,7 @@ void VPNService::EnableAndRetainAutoConnect() {
   RetainAutoConnect();
 }
 
-void VPNService::SetConnection(const ConnectionRefPtr &connection) {
+void VPNService::SetConnection(const ConnectionRefPtr& connection) {
   // Construct the connection binder here rather than in the constructor because
   // there's really no reason to construct a binder if we never connect to this
   // service. It's safe to use an unretained callback to driver's method because
@@ -162,7 +162,7 @@ void VPNService::SetConnection(const ConnectionRefPtr &connection) {
   Service::SetConnection(connection);
 }
 
-bool VPNService::IsAutoConnectable(const char **reason) const {
+bool VPNService::IsAutoConnectable(const char** reason) const {
   if (!Service::IsAutoConnectable(reason)) {
     return false;
   }
@@ -180,7 +180,7 @@ bool VPNService::IsAutoConnectable(const char **reason) const {
   return true;
 }
 
-string VPNService::GetTethering(Error *error) const {
+string VPNService::GetTethering(Error* error) const {
   ConnectionRefPtr conn = connection();
   if (conn)
     conn = conn->GetCarrierConnection();
@@ -202,14 +202,14 @@ string VPNService::GetTethering(Error *error) const {
   return "";
 }
 
-bool VPNService::SetNameProperty(const string &name, Error *error) {
+bool VPNService::SetNameProperty(const string& name, Error* error) {
   if (name == friendly_name()) {
     return false;
   }
   LOG(INFO) << "Renaming service " << unique_name() << ": "
             << friendly_name() << " -> " << name;
 
-  KeyValueStore *args = driver_->args();
+  KeyValueStore* args = driver_->args();
   args->SetString(kNameProperty, name);
   string new_storage_id = CreateStorageIdentifier(*args, error);
   if (new_storage_id.empty()) {
@@ -228,7 +228,7 @@ bool VPNService::SetNameProperty(const string &name, Error *error) {
   return true;
 }
 
-string VPNService::GetPhysicalTechnologyProperty(Error *error) {
+string VPNService::GetPhysicalTechnologyProperty(Error* error) {
   ConnectionRefPtr conn = connection();
   if (conn)
     conn = conn->GetCarrierConnection();

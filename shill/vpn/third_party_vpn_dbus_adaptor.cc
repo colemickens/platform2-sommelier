@@ -16,7 +16,7 @@ namespace shill {
 namespace Logging {
 
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static std::string ObjectID(const ThirdPartyVpnAdaptor *v) {
+static std::string ObjectID(const ThirdPartyVpnAdaptor* v) {
   return "(third_party_vpn_adaptor)";
 }
 
@@ -27,7 +27,7 @@ namespace {
 // The API converts external connection state to internal one
 bool ConvertConnectState(
     ThirdPartyVpnAdaptor::ExternalConnectState external_state,
-    Service::ConnectState *internal_state) {
+    Service::ConnectState* internal_state) {
   switch (external_state) {
     case ThirdPartyVpnAdaptor::kStateConnected:
       *internal_state = Service::kStateConnected;
@@ -45,15 +45,15 @@ bool ConvertConnectState(
 
 ThirdPartyVpnAdaptorInterface::~ThirdPartyVpnAdaptorInterface() {}
 
-ThirdPartyVpnAdaptor::ThirdPartyVpnAdaptor(DBus::Connection *conn,
-                                           ThirdPartyVpnDriver *client)
+ThirdPartyVpnAdaptor::ThirdPartyVpnAdaptor(DBus::Connection* conn,
+                                           ThirdPartyVpnDriver* client)
     : DBusAdaptor(conn, kObjectPathBase + client->object_path_suffix()),
       client_(client) {}
 
 ThirdPartyVpnAdaptor::~ThirdPartyVpnAdaptor() {}
 
 void ThirdPartyVpnAdaptor::EmitPacketReceived(
-    const std::vector<uint8_t> &packet) {
+    const std::vector<uint8_t>& packet) {
   SLOG(this, 2) << __func__;
   OnPacketReceived(packet);
 }
@@ -64,8 +64,8 @@ void ThirdPartyVpnAdaptor::EmitPlatformMessage(uint32_t message) {
 }
 
 std::string ThirdPartyVpnAdaptor::SetParameters(
-    const std::map<std::string, std::string> &parameters,
-    ::DBus::Error &error) {  // NOLINT
+    const std::map<std::string, std::string>& parameters,
+    ::DBus::Error& error) {  // NOLINT
   SLOG(this, 2) << __func__;
   std::string error_message;
   std::string warning_message;
@@ -78,8 +78,8 @@ std::string ThirdPartyVpnAdaptor::SetParameters(
 }
 
 void ThirdPartyVpnAdaptor::UpdateConnectionState(
-    const uint32_t &connection_state,
-    ::DBus::Error &error) {  // NOLINT
+    const uint32_t& connection_state,
+    ::DBus::Error& error) {  // NOLINT
   SLOG(this, 2) << __func__ << "(" << connection_state << ")";
   // Externally supported states are from Service::kStateConnected to
   // Service::kStateOnline.
@@ -96,8 +96,8 @@ void ThirdPartyVpnAdaptor::UpdateConnectionState(
   }
 }
 
-void ThirdPartyVpnAdaptor::SendPacket(const std::vector<uint8_t> &ip_packet,
-                                      ::DBus::Error &error) {  // NOLINT
+void ThirdPartyVpnAdaptor::SendPacket(const std::vector<uint8_t>& ip_packet,
+                                      ::DBus::Error& error) {  // NOLINT
   SLOG(this, 2) << __func__;
   std::string error_message;
   client_->SendPacket(ip_packet, &error_message);

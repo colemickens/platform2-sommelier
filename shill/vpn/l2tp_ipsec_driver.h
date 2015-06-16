@@ -33,12 +33,12 @@ class PPPDeviceFactory;
 class L2TPIPSecDriver : public VPNDriver,
                         public RPCTaskDelegate {
  public:
-  L2TPIPSecDriver(ControlInterface *control,
-                  EventDispatcher *dispatcher,
-                  Metrics *metrics,
-                  Manager *manager,
-                  DeviceInfo *device_info,
-                  GLib *glib);
+  L2TPIPSecDriver(ControlInterface* control,
+                  EventDispatcher* dispatcher,
+                  Metrics* metrics,
+                  Manager* manager,
+                  DeviceInfo* device_info,
+                  GLib* glib);
   ~L2TPIPSecDriver() override;
 
   // Method to return service RPC identifier.
@@ -46,9 +46,9 @@ class L2TPIPSecDriver : public VPNDriver,
 
  protected:
   // Inherited from VPNDriver.
-  bool ClaimInterface(const std::string &link_name,
+  bool ClaimInterface(const std::string& link_name,
                       int interface_index) override;
-  void Connect(const VPNServiceRefPtr &service, Error *error) override;
+  void Connect(const VPNServiceRefPtr& service, Error* error) override;
   void Disconnect() override;
   std::string GetProviderType() const override;
   void OnConnectionDisconnected() override;
@@ -80,12 +80,12 @@ class L2TPIPSecDriver : public VPNDriver,
   static const char kL2TPIPSecVPNPath[];
   static const Property kProperties[];
 
-  bool SpawnL2TPIPSecVPN(Error *error);
+  bool SpawnL2TPIPSecVPN(Error* error);
 
-  bool InitOptions(std::vector<std::string> *options, Error *error);
-  bool InitPSKOptions(std::vector<std::string> *options, Error *error);
-  bool InitPEMOptions(std::vector<std::string> *options);
-  bool InitXauthOptions(std::vector<std::string> *options, Error *error);
+  bool InitOptions(std::vector<std::string>* options, Error* error);
+  bool InitPSKOptions(std::vector<std::string>* options, Error* error);
+  bool InitPEMOptions(std::vector<std::string>* options);
+  bool InitXauthOptions(std::vector<std::string>* options, Error* error);
 
   // Resets the VPN state and deallocates all resources. If there's a service
   // associated through Connect, sets its state to Service::kStateIdle and
@@ -103,19 +103,19 @@ class L2TPIPSecDriver : public VPNDriver,
   // the failure reason to |failure|; disassociates from the service.
   void Cleanup(Service::ConnectState state, Service::ConnectFailure failure);
 
-  void DeleteTemporaryFile(base::FilePath *temporary_file);
+  void DeleteTemporaryFile(base::FilePath* temporary_file);
   void DeleteTemporaryFiles();
 
   // Returns true if an opton was appended.
-  bool AppendValueOption(const std::string &property,
-                         const std::string &option,
-                         std::vector<std::string> *options);
+  bool AppendValueOption(const std::string& property,
+                         const std::string& option,
+                         std::vector<std::string>* options);
 
   // Returns true if a flag was appended.
-  bool AppendFlag(const std::string &property,
-                  const std::string &true_option,
-                  const std::string &false_option,
-                  std::vector<std::string> *options);
+  bool AppendFlag(const std::string& property,
+                  const std::string& true_option,
+                  const std::string& false_option,
+                  std::vector<std::string>* options);
 
   static Service::ConnectFailure TranslateExitStatusToFailure(int status);
 
@@ -124,22 +124,22 @@ class L2TPIPSecDriver : public VPNDriver,
   bool IsPskRequired() const;
 
   // Inherit from VPNDriver to add custom properties.
-  KeyValueStore GetProvider(Error *error) override;
+  KeyValueStore GetProvider(Error* error) override;
 
   // Implements RPCTaskDelegate.
-  void GetLogin(std::string *user, std::string *password) override;
-  void Notify(const std::string &reason,
-              const std::map<std::string, std::string> &dict) override;
+  void GetLogin(std::string* user, std::string* password) override;
+  void Notify(const std::string& reason,
+              const std::map<std::string, std::string>& dict) override;
   // Called when the l2tpipsec_vpn process exits.
   void OnL2TPIPSecVPNDied(pid_t pid, int status);
 
   void ReportConnectionMetrics();
 
-  ControlInterface *control_;
-  Metrics *metrics_;
-  DeviceInfo *device_info_;
-  GLib *glib_;
-  PPPDeviceFactory *ppp_device_factory_;
+  ControlInterface* control_;
+  Metrics* metrics_;
+  DeviceInfo* device_info_;
+  GLib* glib_;
+  PPPDeviceFactory* ppp_device_factory_;
 
   VPNServiceRefPtr service_;
   std::unique_ptr<ExternalTask> external_task_;

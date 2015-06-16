@@ -47,12 +47,12 @@ class OpenVPNDriver : public VPNDriver,
     kReconnectReasonTLSError,
   };
 
-  OpenVPNDriver(ControlInterface *control,
-                EventDispatcher *dispatcher,
-                Metrics *metrics,
-                Manager *manager,
-                DeviceInfo *device_info,
-                GLib *glib);
+  OpenVPNDriver(ControlInterface* control,
+                EventDispatcher* dispatcher,
+                Metrics* metrics,
+                Manager* manager,
+                DeviceInfo* device_info,
+                GLib* glib);
   ~OpenVPNDriver() override;
 
   virtual void OnReconnecting(ReconnectReason reason);
@@ -67,41 +67,41 @@ class OpenVPNDriver : public VPNDriver,
   // the failure reason to |failure|, sets its ErrorDetails property to
   // |error_details|, and disassociates from the service.
   virtual void FailService(Service::ConnectFailure failure,
-                           const std::string &error_details);
+                           const std::string& error_details);
 
   // Append zero-valued, single-valued and double-valued options to the
   // |options| array.
   static void AppendOption(
-      const std::string &option,
-      std::vector<std::vector<std::string>> *options);
+      const std::string& option,
+      std::vector<std::vector<std::string>>* options);
   static void AppendOption(
-      const std::string &option,
-      const std::string &value,
-      std::vector<std::vector<std::string>> *options);
+      const std::string& option,
+      const std::string& value,
+      std::vector<std::vector<std::string>>* options);
   static void AppendOption(
-      const std::string &option,
-      const std::string &value0,
-      const std::string &value1,
-      std::vector<std::vector<std::string>> *options);
+      const std::string& option,
+      const std::string& value0,
+      const std::string& value1,
+      std::vector<std::vector<std::string>>* options);
 
   // Returns true if an option was appended.
-  bool AppendValueOption(const std::string &property,
-                         const std::string &option,
-                         std::vector<std::vector<std::string>> *options);
+  bool AppendValueOption(const std::string& property,
+                         const std::string& option,
+                         std::vector<std::vector<std::string>>* options);
 
   // If |property| exists, split its value up using |delimiter|.  Each element
   // will be a separate argument to |option|. Returns true if the option was
   // appended to |options|.
   bool AppendDelimitedValueOption(
-      const std::string &property,
-      const std::string &option,
+      const std::string& property,
+      const std::string& option,
       char delimiter,
-      std::vector<std::vector<std::string>> *options);
+      std::vector<std::vector<std::string>>* options);
 
   // Returns true if a flag was appended.
-  bool AppendFlag(const std::string &property,
-                  const std::string &option,
-                  std::vector<std::vector<std::string>> *options);
+  bool AppendFlag(const std::string& property,
+                  const std::string& option,
+                  std::vector<std::vector<std::string>>* options);
 
   virtual std::string GetServiceRpcIdentifier() const;
 
@@ -112,8 +112,8 @@ class OpenVPNDriver : public VPNDriver,
   // process by setting up and spawning an external 'openvpn' process. IP
   // configuration settings are passed back from the external process through
   // the |Notify| RPC service method.
-  void Connect(const VPNServiceRefPtr &service, Error *error) override;
-  bool ClaimInterface(const std::string &link_name,
+  void Connect(const VPNServiceRefPtr& service, Error* error) override;
+  bool ClaimInterface(const std::string& link_name,
                       int interface_index) override;
   void Disconnect() override;
   std::string GetProviderType() const override;
@@ -174,45 +174,45 @@ class OpenVPNDriver : public VPNDriver,
   static const int kReconnectOfflineTimeoutSeconds;
   static const int kReconnectTLSErrorTimeoutSeconds;
 
-  static void ParseForeignOptions(const ForeignOptions &options,
-                                  IPConfig::Properties *properties);
-  static void ParseForeignOption(const std::string &option,
-                                 std::vector<std::string> *domain_search,
-                                 std::vector<std::string> *dns_servers);
-  static IPConfig::Route *GetRouteOptionEntry(const std::string &prefix,
-                                              const std::string &key,
-                                              RouteOptions *routes);
-  static void ParseRouteOption(const std::string &key,
-                               const std::string &value,
-                               RouteOptions *routes);
-  static void SetRoutes(const RouteOptions &routes,
-                        IPConfig::Properties *properties);
+  static void ParseForeignOptions(const ForeignOptions& options,
+                                  IPConfig::Properties* properties);
+  static void ParseForeignOption(const std::string& option,
+                                 std::vector<std::string>* domain_search,
+                                 std::vector<std::string>* dns_servers);
+  static IPConfig::Route* GetRouteOptionEntry(const std::string& prefix,
+                                              const std::string& key,
+                                              RouteOptions* routes);
+  static void ParseRouteOption(const std::string& key,
+                               const std::string& value,
+                               RouteOptions* routes);
+  static void SetRoutes(const RouteOptions& routes,
+                        IPConfig::Properties* properties);
 
   // If |host| is in the "name:port" format, sets up |name| and |port|
   // appropriately and returns true. Otherwise, returns false.
-  static bool SplitPortFromHost(const std::string &host,
-                                std::string *name,
-                                std::string *port);
+  static bool SplitPortFromHost(const std::string& host,
+                                std::string* name,
+                                std::string* port);
 
   void InitOptions(
-      std::vector<std::vector<std::string>> *options, Error *error);
+      std::vector<std::vector<std::string>>* options, Error* error);
   bool InitCAOptions(
-      std::vector<std::vector<std::string>> *options, Error *error);
+      std::vector<std::vector<std::string>>* options, Error* error);
   void InitCertificateVerifyOptions(
-      std::vector<std::vector<std::string>> *options);
-  void InitClientAuthOptions(std::vector<std::vector<std::string>> *options);
+      std::vector<std::vector<std::string>>* options);
+  void InitClientAuthOptions(std::vector<std::vector<std::string>>* options);
   bool InitExtraCertOptions(
-      std::vector<std::vector<std::string>> *options, Error *error);
-  void InitPKCS11Options(std::vector<std::vector<std::string>> *options);
+      std::vector<std::vector<std::string>>* options, Error* error);
+  void InitPKCS11Options(std::vector<std::vector<std::string>>* options);
   bool InitManagementChannelOptions(
-      std::vector<std::vector<std::string>> *options, Error *error);
-  void InitLoggingOptions(std::vector<std::vector<std::string>> *options);
+      std::vector<std::vector<std::string>>* options, Error* error);
+  void InitLoggingOptions(std::vector<std::vector<std::string>>* options);
 
-  void InitEnvironment(std::vector<std::string> *environment);
+  void InitEnvironment(std::vector<std::string>* environment);
   void ParseIPConfiguration(
-      const std::map<std::string, std::string> &configuration,
-      IPConfig::Properties *properties) const;
-  bool ParseLSBRelease(std::map<std::string, std::string> *lsb_release);
+      const std::map<std::string, std::string>& configuration,
+      IPConfig::Properties* properties) const;
+  bool ParseLSBRelease(std::map<std::string, std::string>* lsb_release);
 
   bool SpawnOpenVPN();
 
@@ -223,47 +223,47 @@ class OpenVPNDriver : public VPNDriver,
   // ErrorDetails property to |error_details|; disassociates from the service.
   void Cleanup(Service::ConnectState state,
                Service::ConnectFailure failure,
-               const std::string &error_details);
+               const std::string& error_details);
 
   static int GetReconnectTimeoutSeconds(ReconnectReason reason);
 
   // Join a list of options into a single string.
   static std::string JoinOptions(
-      const std::vector<std::vector<std::string>> &options, char separator);
+      const std::vector<std::vector<std::string>>& options, char separator);
 
   // Output an OpenVPN configuration.
-  bool WriteConfigFile(const std::vector<std::vector<std::string>> &options,
-                       base::FilePath *config_file);
+  bool WriteConfigFile(const std::vector<std::vector<std::string>>& options,
+                       base::FilePath* config_file);
 
   // Called when the openpvn process exits.
   static void OnOpenVPNDied(GPid pid, gint status, gpointer data);
 
   // Standalone callback used to delete the tunnel interface when the openvpn
   // process dies.
-  static void DeleteInterface(const base::WeakPtr<DeviceInfo> &device_info,
+  static void DeleteInterface(const base::WeakPtr<DeviceInfo>& device_info,
                               int interface_index);
 
   // Inherit from VPNDriver to add custom properties.
-  KeyValueStore GetProvider(Error *error) override;
+  KeyValueStore GetProvider(Error* error) override;
 
   // Implements RPCTaskDelegate.
-  void GetLogin(std::string *user, std::string *password) override;
-  void Notify(const std::string &reason,
-              const std::map<std::string, std::string> &dict) override;
+  void GetLogin(std::string* user, std::string* password) override;
+  void Notify(const std::string& reason,
+              const std::map<std::string, std::string>& dict) override;
 
-  void OnDefaultServiceChanged(const ServiceRefPtr &service);
+  void OnDefaultServiceChanged(const ServiceRefPtr& service);
 
   void ReportConnectionMetrics();
 
-  ControlInterface *control_;
-  Metrics *metrics_;
-  DeviceInfo *device_info_;
-  GLib *glib_;
+  ControlInterface* control_;
+  Metrics* metrics_;
+  DeviceInfo* device_info_;
+  GLib* glib_;
   Sockets sockets_;
   std::unique_ptr<OpenVPNManagementServer> management_server_;
   std::unique_ptr<CertificateFile> certificate_file_;
   std::unique_ptr<CertificateFile> extra_certificates_file_;
-  ProcessKiller *process_killer_;
+  ProcessKiller* process_killer_;
   base::FilePath lsb_release_file_;
 
   VPNServiceRefPtr service_;

@@ -27,14 +27,14 @@ class OpenVPNManagementServer {
   static const char kStateReconnecting[];
   static const char kStateResolve[];
 
-  OpenVPNManagementServer(OpenVPNDriver *driver, GLib *glib);
+  OpenVPNManagementServer(OpenVPNDriver* driver, GLib* glib);
   virtual ~OpenVPNManagementServer();
 
   // Returns false on failure. On success, returns true and appends management
   // interface openvpn options to |options|.
-  virtual bool Start(EventDispatcher *dispatcher,
-                     Sockets *sockets,
-                     std::vector<std::vector<std::string>> *options);
+  virtual bool Start(EventDispatcher* dispatcher,
+                     Sockets* sockets,
+                     std::vector<std::vector<std::string>>* options);
 
   virtual void Stop();
 
@@ -52,7 +52,7 @@ class OpenVPNManagementServer {
   virtual void Restart();
 
   // OpenVPN client state.
-  const std::string &state() const { return state_; }
+  const std::string& state() const { return state_; }
 
   // Method to get service identifier for logging.
   virtual std::string GetServiceRpcIdentifier();
@@ -89,35 +89,35 @@ class OpenVPNManagementServer {
 
   // IO handler callbacks.
   void OnReady(int fd);
-  void OnInput(InputData *data);
-  void OnInputError(const std::string &error_msg);
+  void OnInput(InputData* data);
+  void OnInputError(const std::string& error_msg);
 
-  void Send(const std::string &data);
-  void SendState(const std::string &state);
-  void SendUsername(const std::string &tag, const std::string &username);
-  void SendPassword(const std::string &tag, const std::string &password);
+  void Send(const std::string& data);
+  void SendState(const std::string& state);
+  void SendUsername(const std::string& tag, const std::string& username);
+  void SendPassword(const std::string& tag, const std::string& password);
   void SendHoldRelease();
-  void SendSignal(const std::string &signal);
+  void SendSignal(const std::string& signal);
 
-  void ProcessMessage(const std::string &message);
-  bool ProcessInfoMessage(const std::string &message);
-  bool ProcessNeedPasswordMessage(const std::string &message);
-  bool ProcessFailedPasswordMessage(const std::string &message);
-  bool ProcessAuthTokenMessage(const std::string &message);
-  bool ProcessStateMessage(const std::string &message);
-  bool ProcessHoldMessage(const std::string &message);
-  bool ProcessSuccessMessage(const std::string &message);
+  void ProcessMessage(const std::string& message);
+  bool ProcessInfoMessage(const std::string& message);
+  bool ProcessNeedPasswordMessage(const std::string& message);
+  bool ProcessFailedPasswordMessage(const std::string& message);
+  bool ProcessAuthTokenMessage(const std::string& message);
+  bool ProcessStateMessage(const std::string& message);
+  bool ProcessHoldMessage(const std::string& message);
+  bool ProcessSuccessMessage(const std::string& message);
 
-  void PerformStaticChallenge(const std::string &tag);
-  void PerformAuthentication(const std::string &tag);
-  void SupplyTPMToken(const std::string &tag);
+  void PerformStaticChallenge(const std::string& tag);
+  void PerformAuthentication(const std::string& tag);
+  void SupplyTPMToken(const std::string& tag);
 
   // Returns the first substring in |message| enclosed by the |start| and |end|
   // substrings. Note that the first |end| substring after the position of
   // |start| is matched.
-  static std::string ParseSubstring(const std::string &message,
-                                    const std::string &start,
-                                    const std::string &end);
+  static std::string ParseSubstring(const std::string& message,
+                                    const std::string& start,
+                                    const std::string& end);
 
   // Password messages come in two forms:
   //
@@ -127,23 +127,23 @@ class OpenVPNManagementServer {
   // ParsePasswordTag parses AUTH_TYPE out of a password |message| and returns
   // it. ParsePasswordFailedReason parses REASON_STRING, if any, out of a
   // password |message| and returns it.
-  static std::string ParsePasswordTag(const std::string &message);
-  static std::string ParsePasswordFailedReason(const std::string &message);
+  static std::string ParsePasswordTag(const std::string& message);
+  static std::string ParsePasswordFailedReason(const std::string& message);
 
   // Escapes |str| per OpenVPN's command parsing rules assuming |str| will be
   // sent over the management interface quoted (i.e., whitespace is not
   // escaped).
-  static std::string EscapeToQuote(const std::string &str);
+  static std::string EscapeToQuote(const std::string& str);
 
   bool IsStarted() const { return sockets_; }
 
-  OpenVPNDriver *driver_;
-  GLib *glib_;
+  OpenVPNDriver* driver_;
+  GLib* glib_;
 
-  Sockets *sockets_;
+  Sockets* sockets_;
   int socket_;
   std::unique_ptr<IOHandler> ready_handler_;
-  EventDispatcher *dispatcher_;
+  EventDispatcher* dispatcher_;
   int connected_socket_;
   std::unique_ptr<IOHandler> input_handler_;
 

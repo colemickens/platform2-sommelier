@@ -6,11 +6,11 @@
 
 namespace shill {
 
-MockVPNService::MockVPNService(ControlInterface *control,
-                               EventDispatcher *dispatcher,
-                               Metrics *metrics,
-                               Manager *manager,
-                               VPNDriver *driver)
+MockVPNService::MockVPNService(ControlInterface* control,
+                               EventDispatcher* dispatcher,
+                               Metrics* metrics,
+                               Manager* manager,
+                               VPNDriver* driver)
     : VPNService(control, dispatcher, metrics, manager, driver) {}
 
 MockVPNService::~MockVPNService() {}

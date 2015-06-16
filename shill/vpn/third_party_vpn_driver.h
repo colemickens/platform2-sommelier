@@ -37,41 +37,41 @@ class ThirdPartyVpnDriver : public VPNDriver {
     kError
   };
 
-  ThirdPartyVpnDriver(ControlInterface *control, EventDispatcher *dispatcher,
-                      Metrics *metrics, Manager *manager,
-                      DeviceInfo *device_info);
+  ThirdPartyVpnDriver(ControlInterface* control, EventDispatcher* dispatcher,
+                      Metrics* metrics, Manager* manager,
+                      DeviceInfo* device_info);
   ~ThirdPartyVpnDriver() override;
 
   // UpdateConnectionState is called by DBus adaptor when
   // "UpdateConnectionState" method is called on the DBus interface.
   void UpdateConnectionState(Service::ConnectState connection_state,
-                             std::string *error_message);
+                             std::string* error_message);
 
   // SendPacket is called by the DBus adaptor when "SendPacket" method is called
   // on the DBus interface.
-  void SendPacket(const std::vector<uint8_t> &data, std::string *error_message);
+  void SendPacket(const std::vector<uint8_t>& data, std::string* error_message);
 
   // SetParameters is called by the DBus adaptor when "SetParameter" method is
   // called on the DBus interface.
-  void SetParameters(const std::map<std::string, std::string> &parameters,
-                     std::string *error_message, std::string *warning_message);
+  void SetParameters(const std::map<std::string, std::string>& parameters,
+                     std::string* error_message, std::string* warning_message);
 
-  void ClearExtensionId(Error *error);
-  bool SetExtensionId(const std::string &value, Error *error);
+  void ClearExtensionId(Error* error);
+  bool SetExtensionId(const std::string& value, Error* error);
 
   // Implementation of VPNDriver
-  void InitPropertyStore(PropertyStore *store) override;
-  bool ClaimInterface(const std::string &link_name,
+  void InitPropertyStore(PropertyStore* store) override;
+  bool ClaimInterface(const std::string& link_name,
                       int interface_index) override;
-  void Connect(const VPNServiceRefPtr &service, Error *error) override;
+  void Connect(const VPNServiceRefPtr& service, Error* error) override;
   std::string GetProviderType() const override;
   void Disconnect() override;
   void OnConnectionDisconnected() override;
-  bool Load(StoreInterface *storage, const std::string &storage_id) override;
-  bool Save(StoreInterface *storage, const std::string &storage_id,
+  bool Load(StoreInterface* storage, const std::string& storage_id) override;
+  bool Save(StoreInterface* storage, const std::string& storage_id,
             bool save_credentials) override;
 
-  const std::string &object_path_suffix() const { return object_path_suffix_; }
+  const std::string& object_path_suffix() const { return object_path_suffix_; }
 
  protected:
   void OnConnectTimeout() override;
@@ -91,7 +91,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // Closes the handle to tun device, IO handler if open and deactivates itself
   // with the |thirdpartyvpn_adaptor_| if active.
   void Cleanup(Service::ConnectState state, Service::ConnectFailure failure,
-               const std::string &error_details);
+               const std::string& error_details);
 
   // This function first checks if a value is present for a particular |key| in
   // the dictionary |parameters|.
@@ -101,9 +101,9 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // key as an error. The function adds to |error_messages|, when there is a
   // failure.
   // This function supports only IPV4 addresses now.
-  void ProcessIp(const std::map<std::string, std::string> &parameters,
-                 const char *key, std::string *target, bool mandatory,
-                 std::string *error_message);
+  void ProcessIp(const std::map<std::string, std::string>& parameters,
+                 const char* key, std::string* target, bool mandatory,
+                 std::string* error_message);
 
   // This function first checks if a value is present for a particular |key| in
   // the dictionary |parameters|.
@@ -114,9 +114,9 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // key as an error. The function adds to |error_message|, when there is a
   // failure and |warn_message| when there is a warning.
   void ProcessIPArray(
-      const std::map<std::string, std::string> &parameters, const char *key,
-      char delimiter, std::vector<std::string> *target, bool mandatory,
-      std::string *error_message, std::string *warn_message);
+      const std::map<std::string, std::string>& parameters, const char* key,
+      char delimiter, std::vector<std::string>* target, bool mandatory,
+      std::string* error_message, std::string* warn_message);
 
   // This function first checks if a value is present for a particular |key| in
   // the dictionary |parameters|.
@@ -127,9 +127,9 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // missing key as an error. The function adds to |error_message|, when there
   // is a failure and |warn_message| when there is a warning.
   void ProcessIPArrayCIDR(
-      const std::map<std::string, std::string> &parameters, const char *key,
-      char delimiter, std::vector<std::string> *target, bool mandatory,
-      std::string *error_message, std::string *warn_message);
+      const std::map<std::string, std::string>& parameters, const char* key,
+      char delimiter, std::vector<std::string>* target, bool mandatory,
+      std::string* error_message, std::string* warn_message);
 
   // This function first checks if a value is present for a particular |key| in
   // the dictionary |parameters|.
@@ -139,9 +139,9 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // key as an error. The function adds to |error_messages|, when there is a
   // failure.
   void ProcessSearchDomainArray(
-      const std::map<std::string, std::string> &parameters, const char *key,
-      char delimiter, std::vector<std::string> *target, bool mandatory,
-      std::string *error_message);
+      const std::map<std::string, std::string>& parameters, const char* key,
+      char delimiter, std::vector<std::string>* target, bool mandatory,
+      std::string* error_message);
 
   // This function first checks if a value is present for a particular |key| in
   // the dictionary |parameters|.
@@ -151,27 +151,27 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // The flag |mandatory| when set to true, makes the function treat a missing
   // key as an error. The function adds to |error_messages|, when there is a
   // failure.
-  void ProcessInt32(const std::map<std::string, std::string> &parameters,
-                    const char *key, int32_t *target, int32_t min_value,
+  void ProcessInt32(const std::map<std::string, std::string>& parameters,
+                    const char* key, int32_t* target, int32_t min_value,
                     int32_t max_value, bool mandatory,
-                    std::string *error_message);
+                    std::string* error_message);
 
   // These functions are called whe there is input and error in the tun
   // interface.
-  void OnInput(InputData *data);
-  void OnInputError(const std::string &error);
+  void OnInput(InputData* data);
+  void OnInputError(const std::string& error);
 
   static const Property kProperties[];
 
   // This variable keeps track of the active instance. There can be multiple
   // instance of this class at a time but only one would be active that can
   // communicate with the VPN client over DBUS.
-  static ThirdPartyVpnDriver *active_client_;
+  static ThirdPartyVpnDriver* active_client_;
 
-  ControlInterface *control_;
-  EventDispatcher *dispatcher_;
-  Metrics *metrics_;
-  DeviceInfo *device_info_;
+  ControlInterface* control_;
+  EventDispatcher* dispatcher_;
+  Metrics* metrics_;
+  DeviceInfo* device_info_;
 
   // ThirdPartyVpnAdaptorInterface manages the DBus communication and provides
   // an unique identifier for the ThirdPartyVpnDriver.
@@ -201,7 +201,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
   std::unique_ptr<IOHandler> io_handler_;
 
   // The object is used to write to tun device.
-  FileIO *file_io_;
+  FileIO* file_io_;
 
   // Set used to identify duplicate entries in inclusion and exclusion list.
   std::set<std::string> known_cidrs_;

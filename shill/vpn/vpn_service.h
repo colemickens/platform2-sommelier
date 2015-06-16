@@ -20,36 +20,36 @@ class VPNDriver;
 
 class VPNService : public Service {
  public:
-  VPNService(ControlInterface *control,
-             EventDispatcher *dispatcher,
-             Metrics *metrics,
-             Manager *manager,
-             VPNDriver *driver);  // Takes ownership of |driver|.
+  VPNService(ControlInterface* control,
+             EventDispatcher* dispatcher,
+             Metrics* metrics,
+             Manager* manager,
+             VPNDriver* driver);  // Takes ownership of |driver|.
   ~VPNService() override;
 
   // Inherited from Service.
-  void Connect(Error *error, const char *reason) override;
-  void Disconnect(Error *error, const char *reason) override;
+  void Connect(Error* error, const char* reason) override;
+  void Disconnect(Error* error, const char* reason) override;
   std::string GetStorageIdentifier() const override;
-  bool Load(StoreInterface *storage) override;
-  bool Save(StoreInterface *storage) override;
+  bool Load(StoreInterface* storage) override;
+  bool Save(StoreInterface* storage) override;
   bool Unload() override;
   void EnableAndRetainAutoConnect() override;
-  void SetConnection(const ConnectionRefPtr &connection) override;
-  bool SetNameProperty(const std::string &name, Error *error) override;
+  void SetConnection(const ConnectionRefPtr& connection) override;
+  bool SetNameProperty(const std::string& name, Error* error) override;
 
   virtual void InitDriverPropertyStore();
 
-  VPNDriver *driver() const { return driver_.get(); }
+  VPNDriver* driver() const { return driver_.get(); }
 
-  static std::string CreateStorageIdentifier(const KeyValueStore &args,
-                                             Error *error);
-  void set_storage_id(const std::string &id) { storage_id_ = id; }
+  static std::string CreateStorageIdentifier(const KeyValueStore& args,
+                                             Error* error);
+  void set_storage_id(const std::string& id) { storage_id_ = id; }
 
  protected:
   // Inherited from Service.
-  bool IsAutoConnectable(const char **reason) const override;
-  std::string GetTethering(Error *error) const override;
+  bool IsAutoConnectable(const char** reason) const override;
+  std::string GetTethering(Error* error) const override;
 
  private:
   friend class VPNServiceTest;
@@ -62,11 +62,11 @@ class VPNService : public Service {
   static const char kAutoConnNeverConnected[];
   static const char kAutoConnVPNAlreadyActive[];
 
-  std::string GetDeviceRpcId(Error *error) const override;
+  std::string GetDeviceRpcId(Error* error) const override;
 
   // Returns the Type name of the lowest connection (presumably the "physical"
   // connection) that this service depends on.
-  std::string GetPhysicalTechnologyProperty(Error *error);
+  std::string GetPhysicalTechnologyProperty(Error* error);
 
   std::string storage_id_;
   std::unique_ptr<VPNDriver> driver_;

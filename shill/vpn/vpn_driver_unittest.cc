@@ -54,13 +54,13 @@ const char kStorageID[] = "vpn_service_id";
 
 class VPNDriverUnderTest : public VPNDriver {
  public:
-  VPNDriverUnderTest(EventDispatcher *dispatcher, Manager *manager);
+  VPNDriverUnderTest(EventDispatcher* dispatcher, Manager* manager);
   virtual ~VPNDriverUnderTest() {}
 
   // Inherited from VPNDriver.
-  MOCK_METHOD2(ClaimInterface, bool(const string &link_name,
+  MOCK_METHOD2(ClaimInterface, bool(const string& link_name,
                                     int interface_index));
-  MOCK_METHOD2(Connect, void(const VPNServiceRefPtr &service, Error *error));
+  MOCK_METHOD2(Connect, void(const VPNServiceRefPtr& service, Error* error));
   MOCK_METHOD0(Disconnect, void());
   MOCK_METHOD0(OnConnectionDisconnected, void());
   MOCK_CONST_METHOD0(GetProviderType, string());
@@ -85,7 +85,7 @@ const VPNDriverUnderTest::Property VPNDriverUnderTest::kProperties[] = {
 };
 
 VPNDriverUnderTest::VPNDriverUnderTest(
-    EventDispatcher *dispatcher, Manager *manager)
+    EventDispatcher* dispatcher, Manager* manager)
     : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)) {}
 
 class VPNDriverTest : public Test {
@@ -99,12 +99,12 @@ class VPNDriverTest : public Test {
   virtual ~VPNDriverTest() {}
 
  protected:
-  EventDispatcher *dispatcher() { return driver_.dispatcher_; }
-  void set_dispatcher(EventDispatcher *dispatcher) {
+  EventDispatcher* dispatcher() { return driver_.dispatcher_; }
+  void set_dispatcher(EventDispatcher* dispatcher) {
     driver_.dispatcher_ = dispatcher;
   }
 
-  const base::CancelableClosure &connect_timeout_callback() {
+  const base::CancelableClosure& connect_timeout_callback() {
     return driver_.connect_timeout_callback_;
   }
 
@@ -117,23 +117,23 @@ class VPNDriverTest : public Test {
 
   void StopConnectTimeout() { driver_.StopConnectTimeout(); }
 
-  void SetArg(const string &arg, const string &value) {
+  void SetArg(const string& arg, const string& value) {
     driver_.args()->SetString(arg, value);
   }
 
-  void SetArgArray(const string &arg, const vector<string> &value) {
+  void SetArgArray(const string& arg, const vector<string>& value) {
     driver_.args()->SetStrings(arg, value);
   }
 
-  KeyValueStore *GetArgs() { return driver_.args(); }
+  KeyValueStore* GetArgs() { return driver_.args(); }
 
-  bool GetProviderPropertyString(const PropertyStore &store,
-                                 const string &key,
-                                 string *value);
+  bool GetProviderPropertyString(const PropertyStore& store,
+                                 const string& key,
+                                 string* value);
 
-  bool GetProviderPropertyStrings(const PropertyStore &store,
-                                  const string &key,
-                                  vector<string> *value);
+  bool GetProviderPropertyStrings(const PropertyStore& store,
+                                  const string& key,
+                                  vector<string>* value);
 
   NiceMockControl control_;
   NiceMock<MockDeviceInfo> device_info_;
@@ -144,9 +144,9 @@ class VPNDriverTest : public Test {
   VPNDriverUnderTest driver_;
 };
 
-bool VPNDriverTest::GetProviderPropertyString(const PropertyStore &store,
-                                              const string &key,
-                                              string *value) {
+bool VPNDriverTest::GetProviderPropertyString(const PropertyStore& store,
+                                              const string& key,
+                                              string* value) {
   KeyValueStore provider_properties;
   Error error;
   EXPECT_TRUE(store.GetKeyValueStoreProperty(
@@ -160,9 +160,9 @@ bool VPNDriverTest::GetProviderPropertyString(const PropertyStore &store,
   return true;
 }
 
-bool VPNDriverTest::GetProviderPropertyStrings(const PropertyStore &store,
-                                               const string &key,
-                                               vector<string> *value) {
+bool VPNDriverTest::GetProviderPropertyStrings(const PropertyStore& store,
+                                               const string& key,
+                                               vector<string>* value) {
   KeyValueStore provider_properties;
   Error error;
   EXPECT_TRUE(store.GetKeyValueStoreProperty(

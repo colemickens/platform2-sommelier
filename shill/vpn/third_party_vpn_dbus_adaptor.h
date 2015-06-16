@@ -31,24 +31,24 @@ class ThirdPartyVpnAdaptor
     kStateFailure,
   };
 
-  ThirdPartyVpnAdaptor(DBus::Connection *conn, ThirdPartyVpnDriver *client);
+  ThirdPartyVpnAdaptor(DBus::Connection* conn, ThirdPartyVpnDriver* client);
   ~ThirdPartyVpnAdaptor() override;
 
   // Implementation of ThirdPartyVpnAdaptorInterface
-  void EmitPacketReceived(const std::vector<uint8_t> &packet) override;
+  void EmitPacketReceived(const std::vector<uint8_t>& packet) override;
   void EmitPlatformMessage(uint32_t message) override;
 
   // Implementation of org::chromium::flimflam::ThirdPartyVpn_adaptor
   std::string SetParameters(
-      const std::map<std::string, std::string> &parameters,
-      ::DBus::Error &error) override;  // NOLINT
-  void UpdateConnectionState(const uint32_t &connection_state,
-                             ::DBus::Error &error) override;  // NOLINT
-  void SendPacket(const std::vector<uint8_t> &ip_packet,
-                  ::DBus::Error &error) override;  // NOLINT
+      const std::map<std::string, std::string>& parameters,
+      ::DBus::Error& error) override;  // NOLINT
+  void UpdateConnectionState(const uint32_t& connection_state,
+                             ::DBus::Error& error) override;  // NOLINT
+  void SendPacket(const std::vector<uint8_t>& ip_packet,
+                  ::DBus::Error& error) override;  // NOLINT
 
  private:
-  ThirdPartyVpnDriver *client_;
+  ThirdPartyVpnDriver* client_;
 };
 
 }  // namespace shill

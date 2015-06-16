@@ -76,15 +76,15 @@ class L2TPIPSecDriverTest : public testing::Test,
   static const char kInterfaceName[];
   static const int kInterfaceIndex;
 
-  void SetArg(const string &arg, const string &value) {
+  void SetArg(const string& arg, const string& value) {
     driver_->args()->SetString(arg, value);
   }
 
-  void SetArgArray(const string &arg, const vector<string> &value) {
+  void SetArgArray(const string& arg, const vector<string>& value) {
     driver_->args()->SetStrings(arg, value);
   }
 
-  KeyValueStore *GetArgs() {
+  KeyValueStore* GetArgs() {
     return driver_->args();
   }
 
@@ -92,11 +92,11 @@ class L2TPIPSecDriverTest : public testing::Test,
     return driver_->GetProviderType();
   }
 
-  void SetDevice(const PPPDeviceRefPtr &device) {
+  void SetDevice(const PPPDeviceRefPtr& device) {
     driver_->device_ = device;
   }
 
-  void SetService(const VPNServiceRefPtr &service) {
+  void SetService(const VPNServiceRefPtr& service) {
     driver_->service_ = service;
   }
 
@@ -116,19 +116,19 @@ class L2TPIPSecDriverTest : public testing::Test,
     return driver_->IsConnectTimeoutStarted();
   }
 
-  bool IsPSKFileCleared(const FilePath &psk_file_path) const {
+  bool IsPSKFileCleared(const FilePath& psk_file_path) const {
     return !base::PathExists(psk_file_path) && GetPSKFile().empty();
   }
 
   bool IsXauthCredentialsFileCleared(
-      const FilePath &xauth_credentials_file_path) const {
+      const FilePath& xauth_credentials_file_path) const {
     return !base::PathExists(xauth_credentials_file_path) &&
         GetXauthCredentialsFile().empty();
   }
 
   // Used to assert that a flag appears in the options.
-  void ExpectInFlags(const vector<string> &options, const string &flag,
-                     const string &value);
+  void ExpectInFlags(const vector<string>& options, const string& flag,
+                     const string& value);
 
   FilePath SetupPSKFile();
   FilePath SetupXauthCredentialsFile();
@@ -138,18 +138,18 @@ class L2TPIPSecDriverTest : public testing::Test,
       return driver_->xauth_credentials_file_;
   }
 
-  void InvokeNotify(const string &reason, const map<string, string> &dict) {
+  void InvokeNotify(const string& reason, const map<string, string>& dict) {
     driver_->Notify(reason, dict);
   }
 
-  void FakeUpConnect(FilePath *psk_file, FilePath *xauth_credentials_file) {
+  void FakeUpConnect(FilePath* psk_file, FilePath* xauth_credentials_file) {
     *psk_file = SetupPSKFile();
     *xauth_credentials_file = SetupXauthCredentialsFile();
     SetService(service_);
     StartConnectTimeout(0);
   }
 
-  void ExpectDeviceConnected(const map<string, string> &ppp_config) {
+  void ExpectDeviceConnected(const map<string, string>& ppp_config) {
     EXPECT_CALL(*device_, SetEnabled(true));
     EXPECT_CALL(*device_, SelectService(static_cast<ServiceRefPtr>(service_)));
     EXPECT_CALL(*device_, UpdateIPConfigFromPPPWithMTU(
@@ -177,8 +177,8 @@ class L2TPIPSecDriverTest : public testing::Test,
   }
 
   // Inherited from RPCTaskDelegate.
-  virtual void GetLogin(string *user, string *password);
-  virtual void Notify(const string &reason, const map<string, string> &dict);
+  virtual void GetLogin(string* user, string* password);
+  virtual void Notify(const string& reason, const map<string, string>& dict);
 
   base::ScopedTempDir temp_dir_;
   NiceMockControl control_;
@@ -187,23 +187,23 @@ class L2TPIPSecDriverTest : public testing::Test,
   MockMetrics metrics_;
   MockGLib glib_;
   MockManager manager_;
-  L2TPIPSecDriver *driver_;  // Owned by |service_|.
+  L2TPIPSecDriver* driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
   scoped_refptr<MockPPPDevice> device_;
-  MockCertificateFile *certificate_file_;  // Owned by |driver_|.
+  MockCertificateFile* certificate_file_;  // Owned by |driver_|.
   base::WeakPtrFactory<L2TPIPSecDriverTest> weak_ptr_factory_;
 };
 
 const char L2TPIPSecDriverTest::kInterfaceName[] = "ppp0";
 const int L2TPIPSecDriverTest::kInterfaceIndex = 123;
 
-void L2TPIPSecDriverTest::GetLogin(string */*user*/, string */*password*/) {}
+void L2TPIPSecDriverTest::GetLogin(string* /*user*/, string* /*password*/) {}
 
 void L2TPIPSecDriverTest::Notify(
-    const string &/*reason*/, const map<string, string> &/*dict*/) {}
+    const string& /*reason*/, const map<string, string>& /*dict*/) {}
 
 void L2TPIPSecDriverTest::ExpectInFlags(
-    const vector<string> &options, const string &flag, const string &value) {
+    const vector<string>& options, const string& flag, const string& value) {
   string flagValue = base::StringPrintf("%s=%s", flag.c_str(), value.c_str());
   vector<string>::const_iterator it =
       find(options.begin(), options.end(), flagValue);
@@ -639,7 +639,7 @@ MATCHER_P(IsIPAddress, address, "") {
 
 TEST_F(L2TPIPSecDriverTest, Notify) {
   map<string, string> config{{kPPPInterfaceName, kInterfaceName}};
-  MockPPPDeviceFactory *mock_ppp_device_factory =
+  MockPPPDeviceFactory* mock_ppp_device_factory =
       MockPPPDeviceFactory::GetInstance();
   FilePath psk_file;
   FilePath xauth_credentials_file;
@@ -671,7 +671,7 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
 
 TEST_F(L2TPIPSecDriverTest, NotifyWithExistingDevice) {
   map<string, string> config{{kPPPInterfaceName, kInterfaceName}};
-  MockPPPDeviceFactory *mock_ppp_device_factory =
+  MockPPPDeviceFactory* mock_ppp_device_factory =
       MockPPPDeviceFactory::GetInstance();
   FilePath psk_file;
   FilePath xauth_credentials_file;
@@ -693,7 +693,7 @@ TEST_F(L2TPIPSecDriverTest, NotifyWithExistingDevice) {
 TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
   map<string, string> dict;
   base::Callback<void(pid_t, int)> death_callback;
-  MockExternalTask *local_external_task =
+  MockExternalTask* local_external_task =
       new MockExternalTask(&control_, &glib_, weak_ptr_factory_.GetWeakPtr(),
                            death_callback);
   driver_->device_ = device_;

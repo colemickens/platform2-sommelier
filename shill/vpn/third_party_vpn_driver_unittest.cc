@@ -67,8 +67,8 @@ class ThirdPartyVpnDriverTest : public testing::Test {
   MockFileIO mock_file_io_;
   MockGLib glib_;
   MockManager manager_;
-  ThirdPartyVpnDriver *driver_;                  // Owned by |service_|
-  ThirdPartyVpnMockAdaptor *adaptor_interface_;  // Owned by |driver_|
+  ThirdPartyVpnDriver* driver_;                  // Owned by |service_|
+  ThirdPartyVpnMockAdaptor* adaptor_interface_;  // Owned by |driver_|
   scoped_refptr<MockVPNService> service_;
   scoped_refptr<MockVirtualDevice> device_;
 };
@@ -79,7 +79,7 @@ const int ThirdPartyVpnDriverTest::kInterfaceIndex = 123;
 
 TEST_F(ThirdPartyVpnDriverTest, ConnectAndDisconnect) {
   const std::string interface = kInterfaceName;
-  IOHandler *io_handler = new IOHandler();  // Owned by |driver_|
+  IOHandler* io_handler = new IOHandler();  // Owned by |driver_|
   int fd = 1;
 
   EXPECT_CALL(*service_, SetState(Service::kStateConfiguring)).Times(1);

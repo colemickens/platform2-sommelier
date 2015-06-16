@@ -29,7 +29,7 @@ namespace shill {
 
 namespace {
 MATCHER_P(VoidStringEq, value, "") {
-  return value == reinterpret_cast<const char *>(arg);
+  return value == reinterpret_cast<const char*>(arg);
 }
 }  // namespace
 
@@ -52,7 +52,7 @@ class OpenVPNManagementServerTest : public testing::Test {
     SetSockets();
   }
 
-  void ExpectSend(const string &value) {
+  void ExpectSend(const string& value) {
     EXPECT_CALL(sockets_,
                 Send(kConnectedSocket, VoidStringEq(value), value.size(), 0))
         .WillOnce(Return(value.size()));
@@ -99,53 +99,53 @@ class OpenVPNManagementServerTest : public testing::Test {
     ExpectSend("signal SIGUSR1\n");
   }
 
-  InputData CreateInputDataFromString(const string &str) {
+  InputData CreateInputDataFromString(const string& str) {
     InputData data(
-        reinterpret_cast<unsigned char *>(const_cast<char *>(str.data())),
+        reinterpret_cast<unsigned char*>(const_cast<char*>(str.data())),
         str.size());
     return data;
   }
 
-  void SendSignal(const string &signal) {
+  void SendSignal(const string& signal) {
     server_.SendSignal(signal);
   }
 
-  void OnInput(InputData *data) {
+  void OnInput(InputData* data) {
     server_.OnInput(data);
   }
 
-  void ProcessMessage(const string &message) {
+  void ProcessMessage(const string& message) {
     server_.ProcessMessage(message);
   }
 
-  bool ProcessSuccessMessage(const string &message) {
+  bool ProcessSuccessMessage(const string& message) {
     return server_.ProcessSuccessMessage(message);
   }
 
-  bool ProcessStateMessage(const string &message) {
+  bool ProcessStateMessage(const string& message) {
     return server_.ProcessStateMessage(message);
   }
 
-  bool ProcessAuthTokenMessage(const string &message) {
+  bool ProcessAuthTokenMessage(const string& message) {
     return server_.ProcessAuthTokenMessage(message);
   }
 
   bool GetHoldWaiting() { return server_.hold_waiting_; }
 
   static string ParseSubstring(
-      const string &message, const string &start, const string &end) {
+      const string& message, const string& start, const string& end) {
     return OpenVPNManagementServer::ParseSubstring(message, start, end);
   }
 
-  static string ParsePasswordTag(const string &message) {
+  static string ParsePasswordTag(const string& message) {
     return OpenVPNManagementServer::ParsePasswordTag(message);
   }
 
-  static string ParsePasswordFailedReason(const string &message) {
+  static string ParsePasswordFailedReason(const string& message) {
     return OpenVPNManagementServer::ParsePasswordFailedReason(message);
   }
 
-  void SetClientState(const string &state) {
+  void SetClientState(const string& state) {
     server_.state_ = state;
   }
 

@@ -25,15 +25,15 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static string ObjectID(VPNDriver *v) { return "(vpn_driver)"; }
+static string ObjectID(VPNDriver* v) { return "(vpn_driver)"; }
 }
 
 // static
 const int VPNDriver::kDefaultConnectTimeoutSeconds = 60;
 
-VPNDriver::VPNDriver(EventDispatcher *dispatcher,
-                     Manager *manager,
-                     const Property *properties,
+VPNDriver::VPNDriver(EventDispatcher* dispatcher,
+                     Manager* manager,
+                     const Property* properties,
                      size_t property_count)
     : weak_ptr_factory_(this),
       dispatcher_(dispatcher),
@@ -44,7 +44,7 @@ VPNDriver::VPNDriver(EventDispatcher *dispatcher,
 
 VPNDriver::~VPNDriver() {}
 
-bool VPNDriver::Load(StoreInterface *storage, const string &storage_id) {
+bool VPNDriver::Load(StoreInterface* storage, const string& storage_id) {
   SLOG(this, 2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
     if ((properties_[i].flags & Property::kEphemeral)) {
@@ -75,8 +75,8 @@ bool VPNDriver::Load(StoreInterface *storage, const string &storage_id) {
   return true;
 }
 
-bool VPNDriver::Save(StoreInterface *storage,
-                     const string &storage_id,
+bool VPNDriver::Save(StoreInterface* storage,
+                     const string& storage_id,
                      bool save_credentials) {
   SLOG(this, 2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
@@ -121,7 +121,7 @@ void VPNDriver::UnloadCredentials() {
   }
 }
 
-void VPNDriver::InitPropertyStore(PropertyStore *store) {
+void VPNDriver::InitPropertyStore(PropertyStore* store) {
   SLOG(this, 2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
     if (properties_[i].flags & Property::kArray) {
@@ -154,7 +154,7 @@ void VPNDriver::InitPropertyStore(PropertyStore *store) {
               this, &VPNDriver::GetProvider, nullptr)));
 }
 
-void VPNDriver::ClearMappedStringProperty(const size_t &index, Error *error) {
+void VPNDriver::ClearMappedStringProperty(const size_t& index, Error* error) {
   CHECK(index < property_count_);
   if (args_.ContainsString(properties_[index].property)) {
     args_.RemoveString(properties_[index].property);
@@ -163,7 +163,7 @@ void VPNDriver::ClearMappedStringProperty(const size_t &index, Error *error) {
   }
 }
 
-void VPNDriver::ClearMappedStringsProperty(const size_t &index, Error *error) {
+void VPNDriver::ClearMappedStringsProperty(const size_t& index, Error* error) {
   CHECK(index < property_count_);
   if (args_.ContainsStrings(properties_[index].property)) {
     args_.RemoveStrings(properties_[index].property);
@@ -172,7 +172,7 @@ void VPNDriver::ClearMappedStringsProperty(const size_t &index, Error *error) {
   }
 }
 
-string VPNDriver::GetMappedStringProperty(const size_t &index, Error *error) {
+string VPNDriver::GetMappedStringProperty(const size_t& index, Error* error) {
   // Provider properties are set via SetProperty calls to "Provider.XXX",
   // however, they are retrieved via a GetProperty call, which returns all
   // properties in a single "Provider" dict.  Therefore, none of the individual
@@ -183,7 +183,7 @@ string VPNDriver::GetMappedStringProperty(const size_t &index, Error *error) {
   return string();
 }
 
-Strings VPNDriver::GetMappedStringsProperty(const size_t &index, Error *error) {
+Strings VPNDriver::GetMappedStringsProperty(const size_t& index, Error* error) {
   // Provider properties are set via SetProperty calls to "Provider.XXX",
   // however, they are retrieved via a GetProperty call, which returns all
   // properties in a single "Provider" dict.  Therefore, none of the individual
@@ -195,7 +195,7 @@ Strings VPNDriver::GetMappedStringsProperty(const size_t &index, Error *error) {
 }
 
 bool VPNDriver::SetMappedStringProperty(
-    const size_t &index, const string &value, Error *error) {
+    const size_t& index, const string& value, Error* error) {
   CHECK(index < property_count_);
   if (args_.ContainsString(properties_[index].property) &&
       args_.GetString(properties_[index].property) == value) {
@@ -206,7 +206,7 @@ bool VPNDriver::SetMappedStringProperty(
 }
 
 bool VPNDriver::SetMappedStringsProperty(
-    const size_t &index, const Strings &value, Error *error) {
+    const size_t& index, const Strings& value, Error* error) {
   CHECK(index < property_count_);
   if (args_.ContainsStrings(properties_[index].property) &&
       args_.GetStrings(properties_[index].property) == value) {
@@ -216,7 +216,7 @@ bool VPNDriver::SetMappedStringsProperty(
   return true;
 }
 
-KeyValueStore VPNDriver::GetProvider(Error *error) {
+KeyValueStore VPNDriver::GetProvider(Error* error) {
   SLOG(this, 2) << __func__;
   string provider_prefix = string(kProviderProperty) + ".";
   KeyValueStore provider_properties;

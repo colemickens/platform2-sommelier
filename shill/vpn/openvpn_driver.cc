@@ -39,7 +39,7 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kVPN;
-static string ObjectID(const OpenVPNDriver *o) {
+static string ObjectID(const OpenVPNDriver* o) {
   return o->GetServiceRpcIdentifier();
 }
 }
@@ -140,12 +140,12 @@ const char OpenVPNDriver::kDefaultOpenVPNConfigurationDirectory[] =
 const int OpenVPNDriver::kReconnectOfflineTimeoutSeconds = 2 * 60;
 const int OpenVPNDriver::kReconnectTLSErrorTimeoutSeconds = 20;
 
-OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
-                             EventDispatcher *dispatcher,
-                             Metrics *metrics,
-                             Manager *manager,
-                             DeviceInfo *device_info,
-                             GLib *glib)
+OpenVPNDriver::OpenVPNDriver(ControlInterface* control,
+                             EventDispatcher* dispatcher,
+                             Metrics* metrics,
+                             Manager* manager,
+                             DeviceInfo* device_info,
+                             GLib* glib)
     : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)),
       control_(control),
       metrics_(metrics),
@@ -172,13 +172,13 @@ void OpenVPNDriver::IdleService() {
 }
 
 void OpenVPNDriver::FailService(Service::ConnectFailure failure,
-                                const string &error_details) {
+                                const string& error_details) {
   Cleanup(Service::kStateFailure, failure, error_details);
 }
 
 void OpenVPNDriver::Cleanup(Service::ConnectState state,
                             Service::ConnectFailure failure,
-                            const string &error_details) {
+                            const string& error_details) {
   SLOG(this, 2) << __func__ << "(" << Service::ConnectStateToString(state)
                 << ", " << error_details << ")";
   StopConnectTimeout();
@@ -237,12 +237,12 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
 }
 
 // static
-string OpenVPNDriver::JoinOptions(const vector<vector<string>> &options,
+string OpenVPNDriver::JoinOptions(const vector<vector<string>>& options,
                                   char separator) {
   vector<string> option_strings;
-  for (const auto &option : options) {
+  for (const auto& option : options) {
     vector<string> quoted_option;
-    for (const auto &argument : option) {
+    for (const auto& argument : option) {
       if (argument.find(' ') != string::npos ||
           argument.find('\t') != string::npos ||
           argument.find('"') != string::npos ||
@@ -263,8 +263,8 @@ string OpenVPNDriver::JoinOptions(const vector<vector<string>> &options,
 }
 
 bool OpenVPNDriver::WriteConfigFile(
-    const vector<vector<string>> &options,
-    FilePath *config_file) {
+    const vector<vector<string>>& options,
+    FilePath* config_file) {
   if (!base::DirectoryExists(openvpn_config_directory_)) {
     if (!base::CreateDirectory(openvpn_config_directory_)) {
       LOG(ERROR) << "Unable to create configuration directory  "
@@ -306,19 +306,19 @@ bool OpenVPNDriver::SpawnOpenVPN() {
 
   // TODO(quiche): This should be migrated to use ExternalTask.
   // (crbug.com/246263).
-  vector<char *> process_args;
-  process_args.push_back(const_cast<char *>(kOpenVPNPath));
-  process_args.push_back(const_cast<char *>("--config"));
-  process_args.push_back(const_cast<char *>(
+  vector<char*> process_args;
+  process_args.push_back(const_cast<char*>(kOpenVPNPath));
+  process_args.push_back(const_cast<char*>("--config"));
+  process_args.push_back(const_cast<char*>(
       openvpn_config_file_.value().c_str()));
   process_args.push_back(nullptr);
 
   vector<string> environment;
   InitEnvironment(&environment);
 
-  vector<char *> process_env;
-  for (const auto &environment_variable : environment) {
-    process_env.push_back(const_cast<char *>(environment_variable.c_str()));
+  vector<char*> process_env;
+  for (const auto& environment_variable : environment) {
+    process_env.push_back(const_cast<char*>(environment_variable.c_str()));
   }
   process_env.push_back(nullptr);
 
@@ -342,7 +342,7 @@ bool OpenVPNDriver::SpawnOpenVPN() {
 // static
 void OpenVPNDriver::OnOpenVPNDied(GPid pid, gint status, gpointer data) {
   SLOG(nullptr, 2) << __func__ << "(" << pid << ", "  << status << ")";
-  OpenVPNDriver *me = reinterpret_cast<OpenVPNDriver *>(data);
+  OpenVPNDriver* me = reinterpret_cast<OpenVPNDriver*>(data);
   me->child_watch_tag_ = 0;
   CHECK_EQ(pid, me->pid_);
   me->pid_ = 0;
@@ -351,7 +351,7 @@ void OpenVPNDriver::OnOpenVPNDied(GPid pid, gint status, gpointer data) {
 }
 
 // static
-void OpenVPNDriver::DeleteInterface(const WeakPtr<DeviceInfo> &device_info,
+void OpenVPNDriver::DeleteInterface(const WeakPtr<DeviceInfo>& device_info,
                                     int interface_index) {
   if (device_info) {
     LOG(INFO) << "Deleting interface " << interface_index;
@@ -359,7 +359,7 @@ void OpenVPNDriver::DeleteInterface(const WeakPtr<DeviceInfo> &device_info,
   }
 }
 
-bool OpenVPNDriver::ClaimInterface(const string &link_name,
+bool OpenVPNDriver::ClaimInterface(const string& link_name,
                                    int interface_index) {
   if (link_name != tunnel_interface_) {
     return false;
@@ -383,12 +383,12 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
   return true;
 }
 
-void OpenVPNDriver::GetLogin(string */*user*/, string */*password*/) {
+void OpenVPNDriver::GetLogin(string* /*user*/, string* /*password*/) {
   NOTREACHED();
 }
 
-void OpenVPNDriver::Notify(const string &reason,
-                           const map<string, string> &dict) {
+void OpenVPNDriver::Notify(const string& reason,
+                           const map<string, string>& dict) {
   LOG(INFO) << "IP configuration received: " << reason;
   if (reason != "up") {
     device_->DropConnection();
@@ -403,8 +403,8 @@ void OpenVPNDriver::Notify(const string &reason,
 }
 
 void OpenVPNDriver::ParseIPConfiguration(
-    const map<string, string> &configuration,
-    IPConfig::Properties *properties) const {
+    const map<string, string>& configuration,
+    IPConfig::Properties* properties) const {
   ForeignOptions foreign_options;
   RouteOptions routes;
   bool is_gateway_route_required = false;
@@ -414,9 +414,9 @@ void OpenVPNDriver::ParseIPConfiguration(
     properties->subnet_prefix =
         IPAddress::GetMaxPrefixLength(properties->address_family);
   }
-  for (const auto &configuration_map : configuration) {
-    const string &key = configuration_map.first;
-    const string &value = configuration_map.second;
+  for (const auto& configuration_map : configuration) {
+    const string& key = configuration_map.first;
+    const string& value = configuration_map.second;
     SLOG(this, 2) << "Processing: " << key << " -> " << value;
     if (base::LowerCaseEqualsASCII(key, kOpenVPNIfconfigLocal)) {
       properties->address = value;
@@ -489,11 +489,11 @@ void OpenVPNDriver::ParseIPConfiguration(
 }
 
 // static
-void OpenVPNDriver::ParseForeignOptions(const ForeignOptions &options,
-                                        IPConfig::Properties *properties) {
+void OpenVPNDriver::ParseForeignOptions(const ForeignOptions& options,
+                                        IPConfig::Properties* properties) {
   vector<string> domain_search;
   vector<string> dns_servers;
-  for (const auto &option_map : options) {
+  for (const auto& option_map : options) {
     ParseForeignOption(option_map.second, &domain_search, &dns_servers);
   }
   if (!domain_search.empty()) {
@@ -509,9 +509,9 @@ void OpenVPNDriver::ParseForeignOptions(const ForeignOptions &options,
 }
 
 // static
-void OpenVPNDriver::ParseForeignOption(const string &option,
-                                       vector<string> *domain_search,
-                                       vector<string> *dns_servers) {
+void OpenVPNDriver::ParseForeignOption(const string& option,
+                                       vector<string>* domain_search,
+                                       vector<string>* dns_servers) {
   SLOG(nullptr, 2) << __func__ << "(" << option << ")";
   vector<string> tokens;
   SplitString(option, ' ', &tokens);
@@ -527,20 +527,20 @@ void OpenVPNDriver::ParseForeignOption(const string &option,
 }
 
 // static
-IPConfig::Route *OpenVPNDriver::GetRouteOptionEntry(
-    const string &prefix, const string &key, RouteOptions *routes) {
+IPConfig::Route* OpenVPNDriver::GetRouteOptionEntry(
+    const string& prefix, const string& key, RouteOptions* routes) {
   int order = 0;
   if (!base::StartsWithASCII(key, prefix, false) ||
       !base::StringToInt(key.substr(prefix.size()), &order)) {
     return nullptr;
   }
-  return &(*routes)[order];
+  return&(*routes)[order];
 }
 
 // static
 void OpenVPNDriver::ParseRouteOption(
-    const string &key, const string &value, RouteOptions *routes) {
-  IPConfig::Route *route = GetRouteOptionEntry("network_", key, routes);
+    const string& key, const string& value, RouteOptions* routes) {
+  IPConfig::Route* route = GetRouteOptionEntry("network_", key, routes);
   if (route) {
     route->host = value;
     return;
@@ -559,11 +559,11 @@ void OpenVPNDriver::ParseRouteOption(
 }
 
 // static
-void OpenVPNDriver::SetRoutes(const RouteOptions &routes,
-                              IPConfig::Properties *properties) {
+void OpenVPNDriver::SetRoutes(const RouteOptions& routes,
+                              IPConfig::Properties* properties) {
   vector<IPConfig::Route> new_routes;
-  for (const auto &route_map : routes) {
-    const IPConfig::Route &route = route_map.second;
+  for (const auto& route_map : routes) {
+    const IPConfig::Route& route = route_map.second;
     if (route.host.empty() || route.netmask.empty() || route.gateway.empty()) {
       LOG(WARNING) << "Ignoring incomplete route: " << route_map.first;
       continue;
@@ -578,7 +578,7 @@ void OpenVPNDriver::SetRoutes(const RouteOptions &routes,
 
 // static
 bool OpenVPNDriver::SplitPortFromHost(
-    const string &host, string *name, string *port) {
+    const string& host, string* name, string* port) {
   vector<string> tokens;
   SplitString(host, ':', &tokens);
   int port_number = 0;
@@ -592,7 +592,7 @@ bool OpenVPNDriver::SplitPortFromHost(
   return true;
 }
 
-void OpenVPNDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
+void OpenVPNDriver::Connect(const VPNServiceRefPtr& service, Error* error) {
   StartConnectTimeout(kDefaultConnectTimeoutSeconds);
   service_ = service;
   service_->SetState(Service::kStateConfiguring);
@@ -605,7 +605,7 @@ void OpenVPNDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
   // Wait for the ClaimInterface callback to continue the connection process.
 }
 
-void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
+void OpenVPNDriver::InitOptions(vector<vector<string>>* options, Error* error) {
   string vpnhost = args()->LookupString(kProviderHostProperty, "");
   if (vpnhost.empty()) {
     Error::PopulateAndLog(
@@ -730,7 +730,7 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
 }
 
 bool OpenVPNDriver::InitCAOptions(
-    vector<vector<string>> *options, Error *error) {
+    vector<vector<string>>* options, Error* error) {
   string ca_cert =
       args()->LookupString(kOpenVPNCaCertProperty, "");
   vector<string> ca_cert_pem;
@@ -774,7 +774,7 @@ bool OpenVPNDriver::InitCAOptions(
 }
 
 void OpenVPNDriver::InitCertificateVerifyOptions(
-    std::vector<std::vector<std::string>> *options) {
+    std::vector<std::vector<std::string>>* options) {
   AppendValueOption(kOpenVPNVerifyHashProperty, "verify-hash", options);
   string x509_name = args()->LookupString(kOpenVPNVerifyX509NameProperty, "");
   if (!x509_name.empty()) {
@@ -788,7 +788,7 @@ void OpenVPNDriver::InitCertificateVerifyOptions(
 }
 
 bool OpenVPNDriver::InitExtraCertOptions(
-    vector<vector<string>> *options, Error *error) {
+    vector<vector<string>>* options, Error* error) {
   if (!args()->ContainsStrings(kOpenVPNExtraCertPemProperty)) {
     // It's okay for this parameter to be unspecified.
     return true;
@@ -815,7 +815,7 @@ bool OpenVPNDriver::InitExtraCertOptions(
   return true;
 }
 
-void OpenVPNDriver::InitPKCS11Options(vector<vector<string>> *options) {
+void OpenVPNDriver::InitPKCS11Options(vector<vector<string>>* options) {
   string id = args()->LookupString(kOpenVPNClientCertIdProperty, "");
   if (!id.empty()) {
     string provider =
@@ -828,7 +828,7 @@ void OpenVPNDriver::InitPKCS11Options(vector<vector<string>> *options) {
   }
 }
 
-void OpenVPNDriver::InitClientAuthOptions(vector<vector<string>> *options) {
+void OpenVPNDriver::InitClientAuthOptions(vector<vector<string>>* options) {
   bool has_cert = AppendValueOption(kOpenVPNCertProperty, "cert", options) ||
       !args()->LookupString(kOpenVPNClientCertIdProperty, "").empty();
   bool has_key = AppendValueOption(kOpenVPNKeyProperty, "key", options);
@@ -843,7 +843,7 @@ void OpenVPNDriver::InitClientAuthOptions(vector<vector<string>> *options) {
 }
 
 bool OpenVPNDriver::InitManagementChannelOptions(
-    vector<vector<string>> *options, Error *error) {
+    vector<vector<string>>* options, Error* error) {
   if (!management_server_->Start(dispatcher(), &sockets_, options)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInternalError,
@@ -860,7 +860,7 @@ bool OpenVPNDriver::InitManagementChannelOptions(
   return true;
 }
 
-void OpenVPNDriver::InitLoggingOptions(vector<vector<string>> *options) {
+void OpenVPNDriver::InitLoggingOptions(vector<vector<string>>* options) {
   AppendOption("syslog", options);
 
   string verb = args()->LookupString(kOpenVPNVerbProperty, "");
@@ -873,29 +873,29 @@ void OpenVPNDriver::InitLoggingOptions(vector<vector<string>> *options) {
 }
 
 void OpenVPNDriver::AppendOption(
-    const string &option, vector<vector<string>> *options) {
+    const string& option, vector<vector<string>>* options) {
   options->push_back(vector<string>{ option });
 }
 
 void OpenVPNDriver::AppendOption(
-    const string &option,
-    const string &value,
-    vector<vector<string>> *options) {
+    const string& option,
+    const string& value,
+    vector<vector<string>>* options) {
   options->push_back(vector<string>{ option, value });
 }
 
 void OpenVPNDriver::AppendOption(
-    const string &option,
-    const string &value0,
-    const string &value1,
-    vector<vector<string>> *options) {
+    const string& option,
+    const string& value0,
+    const string& value1,
+    vector<vector<string>>* options) {
   options->push_back(vector<string>{ option, value0, value1 });
 }
 
 bool OpenVPNDriver::AppendValueOption(
-    const string &property,
-    const string &option,
-    vector<vector<string>> *options) {
+    const string& property,
+    const string& option,
+    vector<vector<string>>* options) {
   string value = args()->LookupString(property, "");
   if (!value.empty()) {
     AppendOption(option, value, options);
@@ -905,10 +905,10 @@ bool OpenVPNDriver::AppendValueOption(
 }
 
 bool OpenVPNDriver::AppendDelimitedValueOption(
-    const string &property,
-    const string &option,
+    const string& property,
+    const string& option,
     char delimiter,
-    vector<vector<string>> *options) {
+    vector<vector<string>>* options) {
   string value = args()->LookupString(property, "");
   if (!value.empty()) {
     vector<string> parts;
@@ -921,9 +921,9 @@ bool OpenVPNDriver::AppendDelimitedValueOption(
 }
 
 bool OpenVPNDriver::AppendFlag(
-    const string &property,
-    const string &option,
-    vector<vector<string>> *options) {
+    const string& property,
+    const string& option,
+    vector<vector<string>>* options) {
   if (args()->ContainsString(property)) {
     AppendOption(option, options);
     return true;
@@ -1002,7 +1002,7 @@ string OpenVPNDriver::GetProviderType() const {
   return kProviderOpenVpn;
 }
 
-KeyValueStore OpenVPNDriver::GetProvider(Error *error) {
+KeyValueStore OpenVPNDriver::GetProvider(Error* error) {
   SLOG(this, 2) << __func__;
   KeyValueStore props = VPNDriver::GetProvider(error);
   props.SetBool(kPassphraseRequiredProperty,
@@ -1013,7 +1013,7 @@ KeyValueStore OpenVPNDriver::GetProvider(Error *error) {
 
 // TODO(petkov): Consider refactoring lsb-release parsing out into a shared
 // singleton if it's used outside OpenVPN.
-bool OpenVPNDriver::ParseLSBRelease(map<string, string> *lsb_release) {
+bool OpenVPNDriver::ParseLSBRelease(map<string, string>* lsb_release) {
   SLOG(this, 2) << __func__ << "(" << lsb_release_file_.value() << ")";
   string contents;
   if (!base::ReadFileToString(lsb_release_file_, &contents)) {
@@ -1023,7 +1023,7 @@ bool OpenVPNDriver::ParseLSBRelease(map<string, string> *lsb_release) {
   }
   vector<string> lines;
   SplitString(contents, '\n', &lines);
-  for (const auto &line : lines) {
+  for (const auto& line : lines) {
     size_t assign = line.find('=');
     if (assign == string::npos) {
       continue;
@@ -1033,7 +1033,7 @@ bool OpenVPNDriver::ParseLSBRelease(map<string, string> *lsb_release) {
   return true;
 }
 
-void OpenVPNDriver::InitEnvironment(vector<string> *environment) {
+void OpenVPNDriver::InitEnvironment(vector<string>* environment) {
   // Adds the platform name and version to the environment so that openvpn can
   // send them to the server when OpenVPN.PushPeerInfo is set.
   map<string, string> lsb_release;
@@ -1048,7 +1048,7 @@ void OpenVPNDriver::InitEnvironment(vector<string> *environment) {
   }
 }
 
-void OpenVPNDriver::OnDefaultServiceChanged(const ServiceRefPtr &service) {
+void OpenVPNDriver::OnDefaultServiceChanged(const ServiceRefPtr& service) {
   SLOG(this, 2) << __func__
                 << "(" << (service ? service->unique_name() : "-") << ")";
   // Allow the openvpn client to connect/reconnect only over a connected
