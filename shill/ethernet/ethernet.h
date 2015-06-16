@@ -44,24 +44,24 @@ class Ethernet
     : public Device {
 #endif  // DISABLE_WIRED_8021X
  public:
-  Ethernet(ControlInterface *control_interface,
-           EventDispatcher *dispatcher,
-           Metrics *metrics,
-           Manager *manager,
+  Ethernet(ControlInterface* control_interface,
+           EventDispatcher* dispatcher,
+           Metrics* metrics,
+           Manager* manager,
            const std::string& link_name,
-           const std::string &address,
+           const std::string& address,
            int interface_index);
   ~Ethernet() override;
 
-  void Start(Error *error,
-             const EnabledStateChangedCallback &callback) override;
-  void Stop(Error *error, const EnabledStateChangedCallback &callback) override;
+  void Start(Error* error,
+             const EnabledStateChangedCallback& callback) override;
+  void Stop(Error* error, const EnabledStateChangedCallback& callback) override;
   void LinkEvent(unsigned int flags, unsigned int change) override;
-  bool Load(StoreInterface *storage) override;
-  bool Save(StoreInterface *storage) override;
+  bool Load(StoreInterface* storage) override;
+  bool Save(StoreInterface* storage) override;
 
-  virtual void ConnectTo(EthernetService *service);
-  virtual void DisconnectFrom(EthernetService *service);
+  virtual void ConnectTo(EthernetService* service);
+  virtual void DisconnectFrom(EthernetService* service);
 
 #if !defined(DISABLE_WIRED_8021X)
   // Test to see if conditions are correct for EAP authentication (both
@@ -73,17 +73,17 @@ class Ethernet
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
   void BSSAdded(
-      const ::DBus::Path &BSS,
-      const std::map<std::string, ::DBus::Variant> &properties) override;
-  void BSSRemoved(const ::DBus::Path &BSS) override;
+      const ::DBus::Path& BSS,
+      const std::map<std::string, ::DBus::Variant>& properties) override;
+  void BSSRemoved(const ::DBus::Path& BSS) override;
   void Certification(
-      const std::map<std::string, ::DBus::Variant> &properties) override;
+      const std::map<std::string, ::DBus::Variant>& properties) override;
   void EAPEvent(
-  const std::string &status, const std::string &parameter) override;
+  const std::string& status, const std::string& parameter) override;
   void PropertiesChanged(
-      const std::map<std::string, ::DBus::Variant> &properties) override;
-  void ScanDone(const bool &/*success*/) override;
-  void TDLSDiscoverResponse(const std::string &peer_address) override;
+      const std::map<std::string, ::DBus::Variant>& properties) override;
+  void ScanDone(const bool& /*success*/) override;
+  void TDLSDiscoverResponse(const std::string& peer_address) override;
 #endif  // DISABLE_WIRED_8021X
 
   virtual bool link_up() const { return link_up_; }
@@ -95,7 +95,7 @@ class Ethernet
 
 #if !defined(DISABLE_WIRED_8021X)
   // Return a pointer to the EAP provider for Ethernet devices.
-  EthernetEapProvider *GetEapProvider();
+  EthernetEapProvider* GetEapProvider();
 
   // Return a reference to the shared service that contains EAP credentials
   // for Ethernet.
@@ -115,18 +115,18 @@ class Ethernet
   void SetIsEapAuthenticated(bool is_eap_authenticated);
 
   // Callback tasks run as a result of event delegate methods.
-  void CertificationTask(const std::string &subject, uint32_t depth);
-  void EAPEventTask(const std::string &status, const std::string &parameter);
-  void SupplicantStateChangedTask(const std::string &state);
+  void CertificationTask(const std::string& subject, uint32_t depth);
+  void EAPEventTask(const std::string& status, const std::string& parameter);
+  void SupplicantStateChangedTask(const std::string& state);
 
   // Callback task run as a result of TryEapAuthentication().
   void TryEapAuthenticationTask();
 #endif  // DISABLE_WIRED_8021X
 
   // Accessors for the PPoE property.
-  bool GetPPPoEMode(Error *error);
-  bool ConfigurePPPoEMode(const bool &mode, Error *error);
-  void ClearPPPoEMode(Error *error);
+  bool GetPPPoEMode(Error* error);
+  bool ConfigurePPPoEMode(const bool& mode, Error* error);
+  void ClearPPPoEMode(Error* error);
 
   // Helpers for creating services with |this| as their device.
   EthernetServiceRefPtr CreateEthernetService();
@@ -134,7 +134,7 @@ class Ethernet
 
   void SetupWakeOnLan();
 
-  ControlInterface *control_interface_;
+  ControlInterface* control_interface_;
 
   EthernetServiceRefPtr service_;
   bool link_up_;
@@ -167,7 +167,7 @@ class Ethernet
 #endif  // DISABLE_WIRED_8021X
 
   // Store cached copy of proxy factory singleton for speed/ease of testing.
-  ProxyFactory *proxy_factory_;
+  ProxyFactory* proxy_factory_;
 
   std::unique_ptr<Sockets> sockets_;
 

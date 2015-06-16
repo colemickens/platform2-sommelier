@@ -33,8 +33,8 @@ class EthernetEapServiceTest : public testing::Test {
   virtual ~EthernetEapServiceTest() {}
 
  protected:
-  ServiceMockAdaptor *GetAdaptor() {
-    return dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+  ServiceMockAdaptor* GetAdaptor() {
+    return dynamic_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
   MockControl control_;

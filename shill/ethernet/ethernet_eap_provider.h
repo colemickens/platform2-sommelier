@@ -27,36 +27,36 @@ class EthernetEapProvider : public ProviderInterface {
  public:
   typedef base::Callback<void()> CredentialChangeCallback;
 
-  EthernetEapProvider(ControlInterface *control_interface,
-                      EventDispatcher *dispatcher,
-                      Metrics *metrics,
-                      Manager *manager);
+  EthernetEapProvider(ControlInterface* control_interface,
+                      EventDispatcher* dispatcher,
+                      Metrics* metrics,
+                      Manager* manager);
   ~EthernetEapProvider() override;
 
   // Called by Manager as a part of the Provider interface.
-  void CreateServicesFromProfile(const ProfileRefPtr &profile) override;
-  ServiceRefPtr GetService(const KeyValueStore &args, Error *error) override;
+  void CreateServicesFromProfile(const ProfileRefPtr& profile) override;
+  ServiceRefPtr GetService(const KeyValueStore& args, Error* error) override;
   ServiceRefPtr FindSimilarService(
-      const KeyValueStore &args, Error *error) const override;
+      const KeyValueStore& args, Error* error) const override;
   ServiceRefPtr CreateTemporaryService(
-      const KeyValueStore &args, Error *error) override;
+      const KeyValueStore& args, Error* error) override;
   ServiceRefPtr CreateTemporaryServiceFromProfile(
-      const ProfileRefPtr &profile,
-      const std::string &entry_name,
-      Error *error) override;
+      const ProfileRefPtr& profile,
+      const std::string& entry_name,
+      Error* error) override;
   void Start() override;
   void Stop() override;
 
-  virtual const ServiceRefPtr &service() const { return service_; }
+  virtual const ServiceRefPtr& service() const { return service_; }
 
   // Notify |device| via |callback| when EAP credentials have changed.
   // Any previous callbacks for |device| are removed.  |device| is
   // only used a key to a map and is never dereferenced.
-  virtual void SetCredentialChangeCallback(Ethernet *device,
+  virtual void SetCredentialChangeCallback(Ethernet* device,
                                            CredentialChangeCallback callback);
 
   // Clear any previously registered callback for |device|.
-  virtual void ClearCredentialChangeCallback(Ethernet *device);
+  virtual void ClearCredentialChangeCallback(Ethernet* device);
 
   // Called by |service_| when EAP credentials are changed.  Notify all
   // listening Ethernet devices.
@@ -70,9 +70,9 @@ class EthernetEapProvider : public ProviderInterface {
   // Used only in Ethernet and Manager unit tests.
   // TODO(gauravsh): Remove this and allow mocks to work correctly
   // crbug.com/232134
-  void set_service(const ServiceRefPtr &service) { service_ = service; }
+  void set_service(const ServiceRefPtr& service) { service_ = service; }
 
-  typedef std::map<Ethernet *, CredentialChangeCallback> CallbackMap;
+  typedef std::map<Ethernet*, CredentialChangeCallback> CallbackMap;
 
   // Representative service on which EAP credentials are configured.
   ServiceRefPtr service_;
@@ -81,10 +81,10 @@ class EthernetEapProvider : public ProviderInterface {
   // have changed.
   CallbackMap callback_map_;
 
-  ControlInterface *control_interface_;
-  EventDispatcher *dispatcher_;
-  Metrics *metrics_;
-  Manager *manager_;
+  ControlInterface* control_interface_;
+  EventDispatcher* dispatcher_;
+  Metrics* metrics_;
+  Manager* manager_;
 };
 
 }  // namespace shill

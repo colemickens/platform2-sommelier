@@ -24,25 +24,25 @@ class Metrics;
 
 class EthernetService : public Service {
  public:
-  EthernetService(ControlInterface *control_interface,
-                  EventDispatcher *dispatcher,
-                  Metrics *metrics,
-                  Manager *manager,
+  EthernetService(ControlInterface* control_interface,
+                  EventDispatcher* dispatcher,
+                  Metrics* metrics,
+                  Manager* manager,
                   base::WeakPtr<Ethernet> ethernet);
   ~EthernetService() override;
 
   // Inherited from Service.
-  void Connect(Error *error, const char *reason) override;
-  void Disconnect(Error *error, const char *reason) override;
+  void Connect(Error* error, const char* reason) override;
+  void Disconnect(Error* error, const char* reason) override;
 
   // ethernet_<MAC>
   std::string GetStorageIdentifier() const override;
   bool IsAutoConnectByDefault() const override;
-  bool SetAutoConnectFull(const bool &connect, Error *error) override;
+  bool SetAutoConnectFull(const bool& connect, Error* error) override;
 
-  void Remove(Error *error) override;
+  void Remove(Error* error) override;
   bool IsVisible() const override;
-  bool IsAutoConnectable(const char **reason) const override;
+  bool IsAutoConnectable(const char** reason) const override;
 
   // Called by the Ethernet device when link state has caused the service
   // visibility to change.
@@ -54,15 +54,15 @@ class EthernetService : public Service {
   // intended for use by subclasses which want to override specific aspects of
   // EthernetService behavior, while still retaining their own technology
   // identifier.
-  EthernetService(ControlInterface *control_interface,
-                  EventDispatcher *dispatcher,
-                  Metrics *metrics,
-                  Manager *manager,
+  EthernetService(ControlInterface* control_interface,
+                  EventDispatcher* dispatcher,
+                  Metrics* metrics,
+                  Manager* manager,
                   Technology::Identifier technology,
                   base::WeakPtr<Ethernet> ethernet);
 
-  Ethernet *ethernet() const { return ethernet_.get(); }
-  std::string GetTethering(Error *error) const override;
+  Ethernet* ethernet() const { return ethernet_.get(); }
+  std::string GetTethering(Error* error) const override;
 
  private:
   FRIEND_TEST(EthernetServiceTest, GetTethering);
@@ -70,7 +70,7 @@ class EthernetService : public Service {
   static const char kAutoConnNoCarrier[];
   static const char kServiceType[];
 
-  std::string GetDeviceRpcId(Error *error) const override;
+  std::string GetDeviceRpcId(Error* error) const override;
 
   base::WeakPtr<Ethernet> ethernet_;
   DISALLOW_COPY_AND_ASSIGN(EthernetService);

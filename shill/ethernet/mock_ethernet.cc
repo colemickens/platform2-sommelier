@@ -10,12 +10,12 @@ namespace shill {
 
 using std::string;
 
-MockEthernet::MockEthernet(ControlInterface *control_interface,
-                           EventDispatcher *dispatcher,
-                           Metrics *metrics,
-                           Manager *manager,
-                           const string &link_name,
-                           const string &address,
+MockEthernet::MockEthernet(ControlInterface* control_interface,
+                           EventDispatcher* dispatcher,
+                           Metrics* metrics,
+                           Manager* manager,
+                           const string& link_name,
+                           const string& address,
                            int interface_index)
     : Ethernet(control_interface,
                dispatcher,

@@ -33,7 +33,7 @@ class EthernetEapProviderTest : public testing::Test {
   MOCK_METHOD0(Callback1, void());
 
  protected:
-  const EthernetEapProvider::CallbackMap &CallbackMap() {
+  const EthernetEapProvider::CallbackMap& CallbackMap() {
     return provider_.callback_map_;
   }
 

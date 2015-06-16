@@ -31,10 +31,10 @@ namespace shill {
 const char EthernetService::kAutoConnNoCarrier[] = "no carrier";
 const char EthernetService::kServiceType[] = "ethernet";
 
-EthernetService::EthernetService(ControlInterface *control_interface,
-                                 EventDispatcher *dispatcher,
-                                 Metrics *metrics,
-                                 Manager *manager,
+EthernetService::EthernetService(ControlInterface* control_interface,
+                                 EventDispatcher* dispatcher,
+                                 Metrics* metrics,
+                                 Manager* manager,
                                  base::WeakPtr<Ethernet> ethernet)
     : EthernetService(control_interface, dispatcher, metrics, manager,
                       Technology::kEthernet, ethernet) {
@@ -50,10 +50,10 @@ EthernetService::EthernetService(ControlInterface *control_interface,
   NotifyPropertyChanges();
 }
 
-EthernetService::EthernetService(ControlInterface *control_interface,
-                                 EventDispatcher *dispatcher,
-                                 Metrics *metrics,
-                                 Manager *manager,
+EthernetService::EthernetService(ControlInterface* control_interface,
+                                 EventDispatcher* dispatcher,
+                                 Metrics* metrics,
+                                 Manager* manager,
                                  Technology::Identifier technology,
                                  base::WeakPtr<Ethernet> ethernet)
   : Service(control_interface, dispatcher, metrics, manager, technology),
@@ -61,19 +61,19 @@ EthernetService::EthernetService(ControlInterface *control_interface,
 
 EthernetService::~EthernetService() { }
 
-void EthernetService::Connect(Error *error, const char *reason) {
+void EthernetService::Connect(Error* error, const char* reason) {
   Service::Connect(error, reason);
   CHECK(ethernet_);
   ethernet_->ConnectTo(this);
 }
 
-void EthernetService::Disconnect(Error *error, const char *reason) {
+void EthernetService::Disconnect(Error* error, const char* reason) {
   Service::Disconnect(error, reason);
   CHECK(ethernet_);
   ethernet_->DisconnectFrom(this);
 }
 
-std::string EthernetService::GetDeviceRpcId(Error */*error*/) const {
+std::string EthernetService::GetDeviceRpcId(Error* /*error*/) const {
   CHECK(ethernet_);
   return ethernet_->GetRpcIdentifier();
 }
@@ -89,8 +89,8 @@ bool EthernetService::IsAutoConnectByDefault() const {
   return true;
 }
 
-bool EthernetService::SetAutoConnectFull(const bool &connect,
-                                         Error *error) {
+bool EthernetService::SetAutoConnectFull(const bool& connect,
+                                         Error* error) {
   if (!connect) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInvalidArguments,
@@ -100,7 +100,7 @@ bool EthernetService::SetAutoConnectFull(const bool &connect,
   return Service::SetAutoConnectFull(connect, error);
 }
 
-void EthernetService::Remove(Error *error) {
+void EthernetService::Remove(Error* error) {
   error->Populate(Error::kNotSupported);
 }
 
@@ -109,7 +109,7 @@ bool EthernetService::IsVisible() const {
   return ethernet_->link_up();
 }
 
-bool EthernetService::IsAutoConnectable(const char **reason) const {
+bool EthernetService::IsAutoConnectable(const char** reason) const {
   if (!Service::IsAutoConnectable(reason)) {
     return false;
   }
@@ -125,7 +125,7 @@ void EthernetService::OnVisibilityChanged() {
   NotifyPropertyChanges();
 }
 
-string EthernetService::GetTethering(Error */*error*/) const {
+string EthernetService::GetTethering(Error* /*error*/) const {
   CHECK(ethernet_);
   return ethernet_->IsConnectedViaTether() ? kTetheringConfirmedState :
       kTetheringNotDetectedState;

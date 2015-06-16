@@ -13,17 +13,17 @@ namespace shill {
 
 class VirtioEthernet : public Ethernet {
  public:
-  VirtioEthernet(ControlInterface *control_interface,
-                 EventDispatcher *dispatcher,
-                 Metrics *metrics,
-                 Manager *manager,
+  VirtioEthernet(ControlInterface* control_interface,
+                 EventDispatcher* dispatcher,
+                 Metrics* metrics,
+                 Manager* manager,
                  const std::string& link_name,
-                 const std::string &address,
+                 const std::string& address,
                  int interface_index);
   ~VirtioEthernet() override;
 
-  void Start(Error *error,
-             const EnabledStateChangedCallback &callback) override;
+  void Start(Error* error,
+             const EnabledStateChangedCallback& callback) override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(VirtioEthernet);

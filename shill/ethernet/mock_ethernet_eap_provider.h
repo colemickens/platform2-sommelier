@@ -21,8 +21,8 @@ class MockEthernetEapProvider : public EthernetEapProvider {
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD2(SetCredentialChangeCallback,
-               void(Ethernet *device, CredentialChangeCallback callback));
-  MOCK_METHOD1(ClearCredentialChangeCallback, void(Ethernet *device));
+               void(Ethernet* device, CredentialChangeCallback callback));
+  MOCK_METHOD1(ClearCredentialChangeCallback, void(Ethernet* device));
   MOCK_CONST_METHOD0(OnCredentialsChanged, void());
 
  private:

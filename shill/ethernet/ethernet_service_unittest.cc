@@ -48,12 +48,12 @@ class EthernetServiceTest : public PropertyStoreTest {
     return service_->GetAutoConnect(nullptr);
   }
 
-  bool SetAutoConnect(const bool connect, Error *error) {
+  bool SetAutoConnect(const bool connect, Error* error) {
     return service_->SetAutoConnectFull(connect, error);
   }
 
-  ServiceMockAdaptor *GetAdaptor() {
-    return dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+  ServiceMockAdaptor* GetAdaptor() {
+    return dynamic_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
   MockManager mock_manager_;
@@ -130,7 +130,7 @@ TEST_F(EthernetServiceTest, IsAutoConnectable) {
   EXPECT_CALL(*ethernet_, link_up())
       .WillOnce(Return(false))
       .WillOnce(Return(true));
-  const char *reason;
+  const char* reason;
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ("no carrier", reason);
   EXPECT_TRUE(service_->IsAutoConnectable(nullptr));

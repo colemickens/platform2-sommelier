@@ -15,18 +15,18 @@ namespace shill {
 
 class MockEthernetService : public EthernetService {
  public:
-  MockEthernetService(ControlInterface *control_interface, Metrics *metrics,
+  MockEthernetService(ControlInterface* control_interface, Metrics* metrics,
                       base::WeakPtr<Ethernet> ethernet);
   ~MockEthernetService() override;
 
-  MOCK_METHOD2(AddEAPCertification, bool(const std::string &name,
+  MOCK_METHOD2(AddEAPCertification, bool(const std::string& name,
                                          size_t depth));
   MOCK_METHOD0(ClearEAPCertification, void());
-  MOCK_METHOD2(Configure, void(const KeyValueStore &args, Error *error));
-  MOCK_METHOD2(Disconnect, void(Error *error, const char *reason));
+  MOCK_METHOD2(Configure, void(const KeyValueStore& args, Error* error));
+  MOCK_METHOD2(Disconnect, void(Error* error, const char* reason));
   MOCK_METHOD3(DisconnectWithFailure,
-               void(ConnectFailure failure, Error *error, const char *reason));
-  MOCK_CONST_METHOD1(GetDeviceRpcId, std::string(Error *error));
+               void(ConnectFailure failure, Error* error, const char* reason));
+  MOCK_CONST_METHOD1(GetDeviceRpcId, std::string(Error* error));
   MOCK_CONST_METHOD0(GetStorageIdentifier, std::string());
   MOCK_CONST_METHOD0(Is8021xConnectable, bool());
   MOCK_CONST_METHOD0(IsConnected, bool());

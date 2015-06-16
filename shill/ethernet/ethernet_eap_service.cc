@@ -17,10 +17,10 @@ using std::string;
 
 namespace shill {
 
-EthernetEapService::EthernetEapService(ControlInterface *control_interface,
-                                       EventDispatcher *dispatcher,
-                                       Metrics *metrics,
-                                       Manager *manager)
+EthernetEapService::EthernetEapService(ControlInterface* control_interface,
+                                       EventDispatcher* dispatcher,
+                                       Metrics* metrics,
+                                       Manager* manager)
     : Service(control_interface, dispatcher, metrics, manager,
               Technology::kEthernetEap) {
   SetEapCredentials(new EapCredentials());
@@ -34,7 +34,7 @@ string EthernetEapService::GetStorageIdentifier() const {
       "%s_all", Technology::NameFromIdentifier(technology()).c_str());
 }
 
-string EthernetEapService::GetDeviceRpcId(Error */*error*/) const {
+string EthernetEapService::GetDeviceRpcId(Error* /*error*/) const {
   return "/";
 }
 

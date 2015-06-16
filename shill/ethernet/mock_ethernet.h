@@ -20,21 +20,21 @@ class EventDispatcher;
 
 class MockEthernet : public Ethernet {
  public:
-  MockEthernet(ControlInterface *control_interface,
-               EventDispatcher *dispatcher,
-               Metrics *metrics,
-               Manager *manager,
-               const std::string &link_name,
-               const std::string &address,
+  MockEthernet(ControlInterface* control_interface,
+               EventDispatcher* dispatcher,
+               Metrics* metrics,
+               Manager* manager,
+               const std::string& link_name,
+               const std::string& address,
                int interface_index);
   ~MockEthernet() override;
 
-  MOCK_METHOD2(Start, void(Error *error,
-                           const EnabledStateChangedCallback &callback));
-  MOCK_METHOD2(Stop, void(Error *error,
-                          const EnabledStateChangedCallback &callback));
-  MOCK_METHOD1(ConnectTo, void(EthernetService *service));
-  MOCK_METHOD1(DisconnectFrom, void(EthernetService *service));
+  MOCK_METHOD2(Start, void(Error* error,
+                           const EnabledStateChangedCallback& callback));
+  MOCK_METHOD2(Stop, void(Error* error,
+                          const EnabledStateChangedCallback& callback));
+  MOCK_METHOD1(ConnectTo, void(EthernetService* service));
+  MOCK_METHOD1(DisconnectFrom, void(EthernetService* service));
   MOCK_CONST_METHOD0(IsConnectedViaTether, bool());
   MOCK_CONST_METHOD0(link_up, bool());
 

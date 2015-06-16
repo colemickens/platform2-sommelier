@@ -17,11 +17,11 @@ using std::string;
 namespace shill {
 
 EthernetTemporaryService::EthernetTemporaryService(
-    ControlInterface *control_interface,
-    EventDispatcher *dispatcher,
-    Metrics *metrics,
-    Manager *manager,
-    const string &storage_identifier)
+    ControlInterface* control_interface,
+    EventDispatcher* dispatcher,
+    Metrics* metrics,
+    Manager* manager,
+    const string& storage_identifier)
   : Service(control_interface,
             dispatcher, metrics,
             manager,
@@ -32,7 +32,7 @@ EthernetTemporaryService::EthernetTemporaryService(
 
 EthernetTemporaryService::~EthernetTemporaryService() {}
 
-std::string EthernetTemporaryService::GetDeviceRpcId(Error */*error*/) const {
+std::string EthernetTemporaryService::GetDeviceRpcId(Error* /*error*/) const {
   return DBusAdaptor::kNullPath;
 }
 

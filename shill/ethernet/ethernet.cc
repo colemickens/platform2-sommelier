@@ -52,15 +52,15 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kEthernet;
-static string ObjectID(Ethernet *e) { return e->GetRpcIdentifier(); }
+static string ObjectID(Ethernet* e) { return e->GetRpcIdentifier(); }
 }
 
-Ethernet::Ethernet(ControlInterface *control_interface,
-                   EventDispatcher *dispatcher,
-                   Metrics *metrics,
-                   Manager *manager,
-                   const string &link_name,
-                   const string &address,
+Ethernet::Ethernet(ControlInterface* control_interface,
+                   EventDispatcher* dispatcher,
+                   Metrics* metrics,
+                   Manager* manager,
+                   const string& link_name,
+                   const string& address,
                    int interface_index)
     : Device(control_interface,
              dispatcher,
@@ -80,7 +80,7 @@ Ethernet::Ethernet(ControlInterface *control_interface,
       proxy_factory_(ProxyFactory::GetInstance()),
       sockets_(new Sockets()),
       weak_ptr_factory_(this) {
-  PropertyStore *store = this->mutable_store();
+  PropertyStore* store = this->mutable_store();
 #if !defined(DISABLE_WIRED_8021X)
   store->RegisterConstBool(kEapAuthenticationCompletedProperty,
                            &is_eap_authenticated_);
@@ -105,8 +105,8 @@ Ethernet::Ethernet(ControlInterface *control_interface,
 Ethernet::~Ethernet() {
 }
 
-void Ethernet::Start(Error *error,
-                     const EnabledStateChangedCallback &/*callback*/) {
+void Ethernet::Start(Error* error,
+                     const EnabledStateChangedCallback& /*callback*/) {
   rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   LOG(INFO) << "Registering " << link_name() << " with manager.";
@@ -117,8 +117,8 @@ void Ethernet::Start(Error *error,
     error->Reset();       // indicate immediate completion
 }
 
-void Ethernet::Stop(Error *error,
-                    const EnabledStateChangedCallback &/*callback*/) {
+void Ethernet::Stop(Error* error,
+                    const EnabledStateChangedCallback& /*callback*/) {
   manager()->DeregisterService(service_);
 #if !defined(DISABLE_WIRED_8021X)
   StopSupplicant();
@@ -159,7 +159,7 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
   }
 }
 
-bool Ethernet::Load(StoreInterface *storage) {
+bool Ethernet::Load(StoreInterface* storage) {
   const string id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
     SLOG(this, 2) << "Device is not available in the persistent store: " << id;
@@ -178,13 +178,13 @@ bool Ethernet::Load(StoreInterface *storage) {
   return Device::Load(storage);
 }
 
-bool Ethernet::Save(StoreInterface *storage) {
+bool Ethernet::Save(StoreInterface* storage) {
   const string id = GetStorageIdentifier();
   storage->SetBool(id, kPPPoEProperty, GetPPPoEMode(nullptr));
   return true;
 }
 
-void Ethernet::ConnectTo(EthernetService *service) {
+void Ethernet::ConnectTo(EthernetService* service) {
   CHECK(service == service_.get()) << "Ethernet was asked to connect the "
                                    << "wrong service?";
   CHECK(!GetPPPoEMode(nullptr)) << "We should never connect in PPPoE mode!";
@@ -201,7 +201,7 @@ void Ethernet::ConnectTo(EthernetService *service) {
   }
 }
 
-void Ethernet::DisconnectFrom(EthernetService *service) {
+void Ethernet::DisconnectFrom(EthernetService* service) {
   CHECK(service == service_.get()) << "Ethernet was asked to disconnect the "
                                    << "wrong service?";
   DropConnection();
@@ -215,16 +215,16 @@ void Ethernet::TryEapAuthentication() {
   dispatcher()->PostTask(try_eap_authentication_callback_.callback());
 }
 
-void Ethernet::BSSAdded(const ::DBus::Path &path,
-                        const map<string, ::DBus::Variant> &properties) {
+void Ethernet::BSSAdded(const ::DBus::Path& path,
+                        const map<string, ::DBus::Variant>& properties) {
   NOTREACHED() << __func__ << " is not implemented for Ethernet";
 }
 
-void Ethernet::BSSRemoved(const ::DBus::Path &path) {
+void Ethernet::BSSRemoved(const ::DBus::Path& path) {
   NOTREACHED() << __func__ << " is not implemented for Ethernet";
 }
 
-void Ethernet::Certification(const map<string, ::DBus::Variant> &properties) {
+void Ethernet::Certification(const map<string, ::DBus::Variant>& properties) {
   string subject;
   uint32_t depth;
   if (WPASupplicant::ExtractRemoteCertification(properties, &subject, &depth)) {
@@ -234,7 +234,7 @@ void Ethernet::Certification(const map<string, ::DBus::Variant> &properties) {
   }
 }
 
-void Ethernet::EAPEvent(const string &status, const string &parameter) {
+void Ethernet::EAPEvent(const string& status, const string& parameter) {
   dispatcher()->PostTask(Bind(&Ethernet::EAPEventTask,
                               weak_ptr_factory_.GetWeakPtr(),
                               status,
@@ -242,7 +242,7 @@ void Ethernet::EAPEvent(const string &status, const string &parameter) {
 }
 
 void Ethernet::PropertiesChanged(
-  const map<string, ::DBus::Variant> &properties) {
+  const map<string, ::DBus::Variant>& properties) {
   const map<string, ::DBus::Variant>::const_iterator properties_it =
       properties.find(WPASupplicant::kInterfacePropertyState);
   if (properties_it == properties.end()) {
@@ -253,16 +253,16 @@ void Ethernet::PropertiesChanged(
                               properties_it->second.reader().get_string()));
 }
 
-void Ethernet::ScanDone(const bool &/*success*/) {
+void Ethernet::ScanDone(const bool& /*success*/) {
   NOTREACHED() << __func__ << " is not implented for Ethernet";
 }
 
-void Ethernet::TDLSDiscoverResponse(const std::string &peer_address) {
+void Ethernet::TDLSDiscoverResponse(const std::string& peer_address) {
   NOTREACHED() << __func__ << " is not implented for Ethernet";
 }
 
-EthernetEapProvider *Ethernet::GetEapProvider() {
-  EthernetEapProvider *eap_provider = manager()->ethernet_eap_provider();
+EthernetEapProvider* Ethernet::GetEapProvider() {
+  EthernetEapProvider* eap_provider = manager()->ethernet_eap_provider();
   CHECK(eap_provider);
   return eap_provider;
 }
@@ -303,7 +303,7 @@ bool Ethernet::StartSupplicant() {
         append_string(WPASupplicant::kSupplicantConfPath);
     interface_path =
         supplicant_process_proxy_->CreateInterface(create_interface_args);
-  } catch (const DBus::Error &e) {  // NOLINT
+  } catch (const DBus::Error& e) {  // NOLINT
     if (!strcmp(e.name(), WPASupplicant::kErrorInterfaceExists)) {
       interface_path = supplicant_process_proxy_->GetInterface(link_name());
     } else {
@@ -338,7 +338,7 @@ bool Ethernet::StartEapAuthentication() {
     }
     supplicant_network_path_ = supplicant_interface_proxy_->AddNetwork(params);
     CHECK(!supplicant_network_path_.empty());
-  } catch (const DBus::Error &e) {  // NOLINT
+  } catch (const DBus::Error& e) {  // NOLINT
     LOG(ERROR) << "exception while adding network: " << e.what();
     return false;
   }
@@ -357,7 +357,7 @@ void Ethernet::StopSupplicant() {
     try {
       supplicant_process_proxy_->RemoveInterface(
           ::DBus::Path(supplicant_interface_path_));
-    } catch (const DBus::Error &e) {  // NOLINT
+    } catch (const DBus::Error& e) {  // NOLINT
       LOG(ERROR) << __func__ << ": Failed to remove interface from supplicant.";
     }
   }
@@ -381,13 +381,13 @@ void Ethernet::SetIsEapAuthenticated(bool is_eap_authenticated) {
                              is_eap_authenticated_);
 }
 
-void Ethernet::CertificationTask(const string &subject, uint32_t depth) {
+void Ethernet::CertificationTask(const string& subject, uint32_t depth) {
   CHECK(service_) << "Ethernet " << link_name() << " " << __func__
                   << " with no service.";
   service_->AddEAPCertification(subject, depth);
 }
 
-void Ethernet::EAPEventTask(const string &status, const string &parameter) {
+void Ethernet::EAPEventTask(const string& status, const string& parameter) {
   LOG(INFO) << "In " << __func__ << " with status " << status
             << ", parameter " << parameter;
   Service::ConnectFailure failure = Service::kFailureUnknown;
@@ -400,7 +400,7 @@ void Ethernet::EAPEventTask(const string &status, const string &parameter) {
   }
 }
 
-void Ethernet::SupplicantStateChangedTask(const string &state) {
+void Ethernet::SupplicantStateChangedTask(const string& state) {
   LOG(INFO) << "Supplicant state changed to " << state;
 }
 
@@ -468,7 +468,7 @@ void Ethernet::SetupWakeOnLan() {
   }
 }
 
-bool Ethernet::ConfigurePPPoEMode(const bool &enable, Error *error) {
+bool Ethernet::ConfigurePPPoEMode(const bool& enable, Error* error) {
 #if defined(DISABLE_PPPOE)
   if (enable) {
     LOG(WARNING) << "PPPoE support is not implemented.  Ignoring attempt "
@@ -498,14 +498,14 @@ bool Ethernet::ConfigurePPPoEMode(const bool &enable, Error *error) {
 #endif  // DISABLE_PPPOE
 }
 
-bool Ethernet::GetPPPoEMode(Error *error) {
+bool Ethernet::GetPPPoEMode(Error* error) {
   if (service_ == nullptr) {
     return false;
   }
   return service_->technology() == Technology::kPPPoE;
 }
 
-void Ethernet::ClearPPPoEMode(Error *error) {
+void Ethernet::ClearPPPoEMode(Error* error) {
   ConfigurePPPoEMode(false, error);
 }
 

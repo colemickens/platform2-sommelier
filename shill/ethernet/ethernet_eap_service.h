@@ -18,14 +18,14 @@ namespace shill {
 // authentication.
 class EthernetEapService : public Service {
  public:
-  EthernetEapService(ControlInterface *control_interface,
-                     EventDispatcher *dispatcher,
-                     Metrics *metrics,
-                     Manager *manager);
+  EthernetEapService(ControlInterface* control_interface,
+                     EventDispatcher* dispatcher,
+                     Metrics* metrics,
+                     Manager* manager);
   ~EthernetEapService() override;
 
   // Inherited from Service.
-  std::string GetDeviceRpcId(Error *error) const override;
+  std::string GetDeviceRpcId(Error* error) const override;
   std::string GetStorageIdentifier() const override;
   bool Is8021x() const override { return true; }
   bool IsVisible() const override { return false; }
