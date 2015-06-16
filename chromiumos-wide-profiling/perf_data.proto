@@ -399,14 +399,18 @@ message PerfDataProto {
     optional uint32 size = 3;
   }
 
-  // Next tag: 9
+  // Next tag: 10
   message PerfEvent {
     optional EventHeader header = 1;
 
     optional MMapEvent mmap_event = 2;
     optional SampleEvent sample_event = 3;
     optional CommEvent comm_event = 4;
+    // FORK and EXIT events are structurally identical. They only differ by the
+    // event type. But using two distinct fields allows us to differentiate
+    // between them without having to check the event type under |header|.
     optional ForkEvent fork_event = 5;
+    optional ForkEvent exit_event = 9;
     optional LostEvent lost_event = 6;
     optional ThrottleEvent throttle_event = 7;
     optional ReadEvent read_event = 8;
