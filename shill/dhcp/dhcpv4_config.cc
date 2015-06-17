@@ -79,14 +79,14 @@ const char DHCPv4Config::kType[] = "dhcp";
 
 
 DHCPv4Config::DHCPv4Config(ControlInterface* control_interface,
-                       EventDispatcher* dispatcher,
-                       DHCPProvider* provider,
-                       const string& device_name,
-                       const string& request_hostname,
-                       const string& lease_file_suffix,
-                       bool arp_gateway,
-                       GLib* glib,
-                       Metrics* metrics)
+                           EventDispatcher* dispatcher,
+                           DHCPProvider* provider,
+                           const string& device_name,
+                           const string& request_hostname,
+                           const string& lease_file_suffix,
+                           bool arp_gateway,
+                           GLib* glib,
+                           Metrics* metrics)
     : DHCPConfig(control_interface,
                  dispatcher,
                  provider,
@@ -106,7 +106,7 @@ DHCPv4Config::~DHCPv4Config() {
 }
 
 void DHCPv4Config::ProcessEventSignal(const string& reason,
-                                     const Configuration& configuration) {
+                                      const Configuration& configuration) {
   LOG(INFO) << "Event reason: " << reason;
   if (reason == kReasonFail) {
     LOG(ERROR) << "Received failure event from DHCP client.";
@@ -244,8 +244,8 @@ string DHCPv4Config::GetIPv4AddressString(unsigned int address) {
 }
 
 // static
-bool DHCPv4Config::ParseClasslessStaticRoutes(const string& classless_routes,
-                                             IPConfig::Properties* properties) {
+bool DHCPv4Config::ParseClasslessStaticRoutes(
+    const string& classless_routes, IPConfig::Properties* properties) {
   if (classless_routes.empty()) {
     // It is not an error for this string to be empty.
     return true;
@@ -313,7 +313,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(const string& classless_routes,
 
 // static
 bool DHCPv4Config::ParseConfiguration(const Configuration& configuration,
-                                     IPConfig::Properties* properties) {
+                                      IPConfig::Properties* properties) {
   SLOG(nullptr, 2) << __func__;
   properties->method = kTypeDHCP;
   properties->address_family = IPAddress::kFamilyIPv4;

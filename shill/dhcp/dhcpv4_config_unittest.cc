@@ -64,14 +64,14 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
         minijail_(new MockMinijail()),
         metrics_(dispatcher()),
         config_(new DHCPv4Config(&control_,
-                                dispatcher(),
-                                &provider_,
-                                kDeviceName,
-                                kHostName,
-                                kLeaseFileSuffix,
-                                kArpGateway,
-                                glib(),
-                                &metrics_)) {}
+                                 dispatcher(),
+                                 &provider_,
+                                 kDeviceName,
+                                 kHostName,
+                                 kLeaseFileSuffix,
+                                 kArpGateway,
+                                 glib(),
+                                 &metrics_)) {}
 
   virtual void SetUp() {
     config_->proxy_factory_ = &proxy_factory_;
@@ -124,14 +124,14 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
     const string& lease_suffix,
     bool arp_gateway) {
   DHCPv4ConfigRefPtr config(new DHCPv4Config(&control_,
-                                            dispatcher(),
-                                            &provider_,
-                                            kDeviceName,
-                                            hostname,
-                                            lease_suffix,
-                                            arp_gateway,
-                                            glib(),
-                                            &metrics_));
+                                             dispatcher(),
+                                             &provider_,
+                                             kDeviceName,
+                                             hostname,
+                                             lease_suffix,
+                                             arp_gateway,
+                                             glib(),
+                                             &metrics_));
   config->minijail_ = minijail_.get();
 
   return config;
@@ -140,14 +140,14 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
 DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
     const string& hostname, const string& lease_suffix, bool arp_gateway) {
   DHCPv4ConfigRefPtr config(new DHCPv4Config(&control_,
-                                            dispatcher(),
-                                            &provider_,
-                                            kDeviceName,
-                                            hostname,
-                                            lease_suffix,
-                                            arp_gateway,
-                                            glib(),
-                                            &metrics_));
+                                             dispatcher(),
+                                             &provider_,
+                                             kDeviceName,
+                                             hostname,
+                                             lease_suffix,
+                                             arp_gateway,
+                                             glib(),
+                                             &metrics_));
   config->minijail_ = minijail_.get();
   EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _))
       .WillOnce(DoAll(SetArgumentPointee<2>(kPID), Return(true)));
