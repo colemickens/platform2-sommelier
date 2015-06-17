@@ -1508,8 +1508,8 @@ TPM_RC TpmUtilityImpl::KeyDataToString(const TPM2B_PUBLIC& public_info,
     LOG(WARNING) << "Output arguments not defined.";
     return TPM_RC_SUCCESS;
   }
+  key_blob->clear();
   if ((public_info.size == 0) && (private_info.size == 0)) {
-    key_blob->clear();
     return TPM_RC_SUCCESS;
   }
   TPM_RC result = Serialize_TPM2B_PUBLIC(public_info, key_blob);
