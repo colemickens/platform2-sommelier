@@ -1,5 +1,10 @@
 {
   'target_defaults': {
+    'variables': {
+      'deps': [
+        'libchrome-<(libbase_ver)',
+      ],
+    },
     'include_dirs': ['.'],
   },
   'targets': [
@@ -7,6 +12,13 @@
       'target_name': 'settingsd_common',
       'type': 'static_library',
       'sources': [
+        'identifier_utils.cc',
+        'identifier_utils.h',
+        'settings_document.h',
+        'simple_settings_map.cc',
+        'simple_settings_map.h',
+        'version_stamp.cc',
+        'version_stamp.h',
       ],
     },
     {
@@ -17,7 +29,12 @@
       ],
       'includes': ['../common-mk/common_test.gypi'],
       'sources': [
+        'identifier_utils_unittest.cc',
+        'mock_settings_document.cc',
+        'mock_settings_document.h',
         'settingsd_testrunner.cc',
+        'simple_settings_map_unittest.cc',
+        'version_stamp_unittest.cc',
       ],
     }
   ],
