@@ -601,10 +601,11 @@ bool PowerSupply::UpdatePowerStatus() {
 
 void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
                                          PowerStatus* status) {
-  // Bidirectional ports export a "status" field.
+  // Bidirectional/dual-role ports export a "status" field.
   std::string line_status;
   ReadAndTrimString(path, "status", &line_status);
-  if (!line_status.empty())
+  const bool is_dual_role_port = !line_status.empty();
+  if (is_dual_role_port)
     status->supports_dual_role_devices = true;
 
   // If "online" is false, nothing is connected.
@@ -621,13 +622,12 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   // Okay, this is a potential power source. Add it to the list.
   const std::string id = GetIdForPath(path);
 
-  // TODO(derat): In the past, dedicated chargers have been reported as "Mains".
-  // On spring, low-power USB chargers have a "USB"-prefixed type but an empty
-  // |line_status|. The USB PD currently doesn't provide any way to detect
-  // whether a device is a dedicated charger (and hence active as a source by
-  // default) vs. a dual-role device (http://crbug.com/459412). Sort this out
-  // once there's a way to tell the difference.
-  const bool active_by_default = true;
+  // Non-USB PD devices are always active by default. The USB PD kernel driver
+  // uses "Mains" for source-only devices (i.e. dedicated chargers) and "USB"
+  // for dual-role devices (which aren't active by default). See
+  // http://crbug.com/459412 for additional discussion.
+  const bool is_usb_type = IsUsbChargerType(type);
+  const bool active_by_default = !is_dual_role_port || !is_usb_type;
 
   std::string manufacturer_id, model_id;
   ReadAndTrimString(path, "manufacturer", &manufacturer_id);
@@ -642,7 +642,7 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
 
   // If this is a dual-role device, make sure that we're actually getting
   // charged by it.
-  if (!line_status.empty() && line_status != kLinePowerStatusCharging)
+  if (is_dual_role_port && line_status != kLinePowerStatusCharging)
     return;
 
   if (!status->line_power_path.empty()) {
@@ -658,20 +658,22 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   status->line_power_max_voltage = max_voltage;
   status->line_power_current = ReadScaledDouble(path, "current_now");
   status->line_power_max_current = max_current;
-  if (IsUsbChargerType(status->line_power_type)) {
-    if (!line_status.empty()) {
-      // The USB PD kernel driver reports all types of chargers as "USB". Check
-      // the maximum power the charger claims to be able to deliver to determine
-      // whether it should be reported as AC.
-      const double max_watts = status->line_power_max_current *
-          status->line_power_max_voltage;
-      status->external_power = (max_watts >= usb_min_ac_watts_) ?
-          PowerSupplyProperties_ExternalPower_AC :
-          PowerSupplyProperties_ExternalPower_USB;
-    } else {
-      status->external_power = PowerSupplyProperties_ExternalPower_USB;
-    }
+
+  // The USB PD driver reports the maximum power as being 0 watts while it's
+  // being determined; avoid reporting a low-power charger in that case.
+  const bool max_power_is_less_than_ac_min = max_power > 0.0 &&
+      max_power < usb_min_ac_watts_;
+
+  if (!is_dual_role_port && is_usb_type) {
+    // On spring, report all non-official chargers (which are reported as type
+    // USB rather than Mains) as being low-power.
+    status->external_power = PowerSupplyProperties_ExternalPower_USB;
+  } else if (is_dual_role_port && max_power_is_less_than_ac_min) {
+    // For dual-role USB PD devices, check whether the maximum supported power
+    // is below the configured threshold.
+    status->external_power = PowerSupplyProperties_ExternalPower_USB;
   } else {
+    // Otherwise, report a high-power source.
     status->external_power = PowerSupplyProperties_ExternalPower_AC;
   }
   status->external_power_source_id = id;

@@ -366,7 +366,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
             status.available_external_power_sources[0].model_id);
   EXPECT_EQ(kCurrentMax * kVoltageMax,
             status.available_external_power_sources[0].max_power);
-  EXPECT_TRUE(status.available_external_power_sources[0].active_by_default);
+  EXPECT_FALSE(status.available_external_power_sources[0].active_by_default);
   EXPECT_EQ(kLine1Id, status.external_power_source_id);
   EXPECT_TRUE(status.supports_dual_role_devices);
 
@@ -393,7 +393,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
             status.available_external_power_sources[0].model_id);
   EXPECT_EQ(kCurrentMax * kCurrentFactor * kVoltageMax,
             status.available_external_power_sources[0].max_power);
-  EXPECT_TRUE(status.available_external_power_sources[0].active_by_default);
+  EXPECT_FALSE(status.available_external_power_sources[0].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
   // Now discharge from the first power source (while still charging from the
@@ -413,7 +413,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
             status.available_external_power_sources[0].model_id);
   EXPECT_EQ(kCurrentMax * kVoltageMax,
             status.available_external_power_sources[0].max_power);
-  EXPECT_TRUE(status.available_external_power_sources[0].active_by_default);
+  EXPECT_FALSE(status.available_external_power_sources[0].active_by_default);
   EXPECT_EQ(kLine2Id, status.available_external_power_sources[1].id);
   EXPECT_EQ(kLine2Manufacturer,
             status.available_external_power_sources[1].manufacturer_id);
@@ -421,7 +421,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
             status.available_external_power_sources[1].model_id);
   EXPECT_EQ(kCurrentMax * kCurrentFactor * kVoltageMax,
             status.available_external_power_sources[1].max_power);
-  EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
+  EXPECT_FALSE(status.available_external_power_sources[1].active_by_default);
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 
   // Request switching to the first power source.
@@ -450,6 +450,33 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_FALSE(power_supply_->SetPowerSource(".."));
   EXPECT_FALSE(power_supply_->SetPowerSource("../"));
   EXPECT_FALSE(power_supply_->SetPowerSource(line1_dir.value()));
+
+  // If the kernel reports a dedicated charger by using the "Mains" type rather
+  // than "USB", powerd should report it as being active by default.
+  WriteValue(line2_dir, "type", kAcType);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB, status.external_power);
+  ASSERT_EQ(2u, status.available_external_power_sources.size());
+  EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
+  EXPECT_EQ(kLine2Id, status.external_power_source_id);
+
+  // The maximum power should be checked even for dedicated chargers.
+  WriteDoubleValue(line2_dir, "current_max", kCurrentMax);
+  WriteDoubleValue(line2_dir, "voltage_max_design", kVoltageMax);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  ASSERT_EQ(2u, status.available_external_power_sources.size());
+  EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
+  EXPECT_EQ(kLine2Id, status.external_power_source_id);
+
+  // A maximum power of 0 watts should be disregarded.
+  WriteDoubleValue(line2_dir, "current_max", 0.0);
+  WriteDoubleValue(line2_dir, "voltage_max_design", 0.0);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC, status.external_power);
+  ASSERT_EQ(2u, status.available_external_power_sources.size());
+  EXPECT_TRUE(status.available_external_power_sources[1].active_by_default);
+  EXPECT_EQ(kLine2Id, status.external_power_source_id);
 }
 
 TEST_F(PowerSupplyTest, IgnorePeripherals) {
