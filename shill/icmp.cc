@@ -4,7 +4,6 @@
 
 #include "shill/icmp.h"
 
-#include <netinet/in.h>
 #include <netinet/ip_icmp.h>
 
 #include "shill/logging.h"
@@ -12,6 +11,8 @@
 #include "shill/net/sockets.h"
 
 namespace shill {
+
+const int Icmp::kIcmpEchoCode = 0;  // value specified in RFC 792.
 
 Icmp::Icmp()
     : sockets_(new Sockets()),
@@ -47,7 +48,8 @@ bool Icmp::IsStarted() const {
   return socket_closer_.get();
 }
 
-bool Icmp::TransmitEchoRequest(const IPAddress& destination) {
+bool Icmp::TransmitEchoRequest(const IPAddress& destination, uint16_t id,
+                               uint16_t seq_num) {
   if (!IsStarted() && !Start()) {
     return false;
   }
@@ -65,8 +67,10 @@ bool Icmp::TransmitEchoRequest(const IPAddress& destination) {
   struct icmphdr icmp_header;
   memset(&icmp_header, 0, sizeof(icmp_header));
   icmp_header.type = ICMP_ECHO;
-  icmp_header.un.echo.id = 1;
-  icmp_header.un.echo.sequence = 1;
+  icmp_header.code = kIcmpEchoCode;
+  icmp_header.un.echo.id = id;
+  icmp_header.un.echo.sequence = seq_num;
+  icmp_header.checksum = ComputeIcmpChecksum(icmp_header, sizeof(icmp_header));
 
   struct sockaddr_in destination_address;
   destination_address.sin_family = AF_INET;
@@ -97,6 +101,32 @@ bool Icmp::TransmitEchoRequest(const IPAddress& destination) {
   }
 
   return true;
+}
+
+// static
+uint16_t Icmp::ComputeIcmpChecksum(const struct icmphdr& hdr, size_t len) {
+  // Compute Internet Checksum for "len" bytes beginning at location "hdr".
+  // Adapted directly from the canonical implementation in RFC 1071 Section 4.1.
+  uint32_t sum = 0;
+  const uint16_t* addr = reinterpret_cast<const uint16_t*>(&hdr);
+
+  while (len > 1) {
+    sum += *addr;
+    ++addr;
+    len -= sizeof(*addr);
+  }
+
+  // Add left-over byte, if any.
+  if (len > 0) {
+    sum += *reinterpret_cast<const uint8_t*>(addr);
+  }
+
+  // Fold 32-bit sum to 16 bits.
+  while (sum >> 16) {
+    sum = (sum & 0xffff) + (sum >> 16);
+  }
+
+  return static_cast<uint16_t>(~sum);
 }
 
 }  // namespace shill

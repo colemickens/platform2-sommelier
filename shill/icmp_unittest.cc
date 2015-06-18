@@ -22,6 +22,22 @@ using testing::Test;
 
 namespace shill {
 
+namespace {
+
+// These binary blobs representing ICMP headers and their respective checksums
+// were taken directly from Wireshark ICMP packet captures and are given in big
+// endian. The checksum field is zeroed in |kIcmpEchoRequestEvenLen| and
+// |kIcmpEchoRequestOddLen| so the checksum can be calculated on the header in
+// IcmpTest.ComputeIcmpChecksum.
+const uint8_t kIcmpEchoRequestEvenLen[] = {0x08, 0x00, 0x00, 0x00,
+                                           0x71, 0x50, 0x00, 0x00};
+const uint8_t kIcmpEchoRequestEvenLenChecksum[] = {0x86, 0xaf};
+const uint8_t kIcmpEchoRequestOddLen[] = {0x08, 0x00, 0x00, 0x00, 0xac, 0x51,
+                                          0x00, 0x00, 0x00, 0x00, 0x01};
+const uint8_t kIcmpEchoRequestOddLenChecksum[] = {0x4a, 0xae};
+
+}  // namespace
+
 class IcmpTest : public Test {
  public:
   IcmpTest() {}
@@ -56,6 +72,9 @@ class IcmpTest : public Test {
     EXPECT_EQ(fd, icmp_.socket_);
     EXPECT_TRUE(icmp_.IsStarted());
     return start_status;
+  }
+  uint16_t ComputeIcmpChecksum(const struct icmphdr &hdr, size_t len) {
+    return Icmp::ComputeIcmpChecksum(hdr, len);
   }
 
   // Owned by Icmp, and tracked here only for mocks.
@@ -122,13 +141,14 @@ MATCHER_P(IsSocketAddress, address, "") {
 TEST_F(IcmpTest, TransmitEchoRequest) {
   StartIcmp();
   // Address isn't valid.
-  EXPECT_FALSE(icmp_.TransmitEchoRequest(IPAddress(IPAddress::kFamilyIPv4)));
+  EXPECT_FALSE(
+      icmp_.TransmitEchoRequest(IPAddress(IPAddress::kFamilyIPv4), 1, 1));
 
   // IPv6 adresses aren't implemented.
   IPAddress ipv6_destination(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_destination.SetAddressFromString(
       "fe80::1aa9:5ff:abcd:1234"));
-  EXPECT_FALSE(icmp_.TransmitEchoRequest(ipv6_destination));
+  EXPECT_FALSE(icmp_.TransmitEchoRequest(ipv6_destination, 1, 1));
 
   IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
@@ -136,8 +156,11 @@ TEST_F(IcmpTest, TransmitEchoRequest) {
   struct icmphdr icmp_header;
   memset(&icmp_header, 0, sizeof(icmp_header));
   icmp_header.type = ICMP_ECHO;
+  icmp_header.code = Icmp::kIcmpEchoCode;
   icmp_header.un.echo.id = 1;
   icmp_header.un.echo.sequence = 1;
+  icmp_header.checksum = ComputeIcmpChecksum(icmp_header, sizeof(icmp_header));
+
   EXPECT_CALL(*sockets_, SendTo(kSocketFD,
                                 IsIcmpHeader(icmp_header),
                                 sizeof(icmp_header),
@@ -158,11 +181,22 @@ TEST_F(IcmpTest, TransmitEchoRequest) {
         Log(logging::LOG_ERROR, _,
             HasSubstr("less than the expected result"))).Times(2);
 
-    EXPECT_FALSE(icmp_.TransmitEchoRequest(ipv4_destination));
-    EXPECT_FALSE(icmp_.TransmitEchoRequest(ipv4_destination));
-    EXPECT_FALSE(icmp_.TransmitEchoRequest(ipv4_destination));
-    EXPECT_TRUE(icmp_.TransmitEchoRequest(ipv4_destination));
+    EXPECT_FALSE(icmp_.TransmitEchoRequest(ipv4_destination, 1, 1));
+    EXPECT_FALSE(icmp_.TransmitEchoRequest(ipv4_destination, 1, 1));
+    EXPECT_FALSE(icmp_.TransmitEchoRequest(ipv4_destination, 1, 1));
+    EXPECT_TRUE(icmp_.TransmitEchoRequest(ipv4_destination, 1, 1));
   }
+}
+
+TEST_F(IcmpTest, ComputeIcmpChecksum) {
+  EXPECT_EQ(*reinterpret_cast<const uint16_t*>(kIcmpEchoRequestEvenLenChecksum),
+            ComputeIcmpChecksum(*reinterpret_cast<const struct icmphdr*>(
+                                    kIcmpEchoRequestEvenLen),
+                                sizeof(kIcmpEchoRequestEvenLen)));
+  EXPECT_EQ(*reinterpret_cast<const uint16_t*>(kIcmpEchoRequestOddLenChecksum),
+            ComputeIcmpChecksum(*reinterpret_cast<const struct icmphdr*>(
+                                    kIcmpEchoRequestOddLen),
+                                sizeof(kIcmpEchoRequestOddLen)));
 }
 
 }  // namespace shill
