@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -110,7 +111,7 @@ bool IsBatteryPresent(const base::FilePath& path) {
 }
 
 // Returns a string describing |type|.
-const char* ExternalPowerToString(PowerSupplyProperties_ExternalPower type) {
+const char* ExternalPowerToString(PowerSupplyProperties::ExternalPower type) {
   switch (type) {
     case PowerSupplyProperties_ExternalPower_AC:
       return "AC";
@@ -128,6 +129,34 @@ struct SourceComparator {
     return a.id < b.id;
   }
 };
+
+// Maps names from PowerSupplyProperties::PowerSource::Port to the corresponding
+// values.
+PowerSupplyProperties::PowerSource::Port GetPortFromString(
+    const std::string& name) {
+  if (name == "LEFT")
+    return PowerSupplyProperties_PowerSource_Port_LEFT;
+  else if (name == "RIGHT")
+    return PowerSupplyProperties_PowerSource_Port_RIGHT;
+  else if (name == "BACK")
+    return PowerSupplyProperties_PowerSource_Port_BACK;
+  else if (name == "FRONT")
+    return PowerSupplyProperties_PowerSource_Port_FRONT;
+  else if (name == "LEFT_FRONT")
+    return PowerSupplyProperties_PowerSource_Port_LEFT_FRONT;
+  else if (name == "LEFT_BACK")
+    return PowerSupplyProperties_PowerSource_Port_LEFT_BACK;
+  else if (name == "RIGHT_FRONT")
+    return PowerSupplyProperties_PowerSource_Port_RIGHT_FRONT;
+  else if (name == "RIGHT_BACK")
+    return PowerSupplyProperties_PowerSource_Port_RIGHT_BACK;
+  else if (name == "BACK_LEFT")
+    return PowerSupplyProperties_PowerSource_Port_BACK_LEFT;
+  else if (name == "BACK_RIGHT")
+    return PowerSupplyProperties_PowerSource_Port_BACK_RIGHT;
+  else
+    return PowerSupplyProperties_PowerSource_Port_UNKNOWN;
+}
 
 }  // namespace
 
@@ -156,9 +185,10 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
   }
 
   for (auto source : status.available_external_power_sources) {
-    PowerSupplyProperties_PowerSource* proto_source =
+    PowerSupplyProperties::PowerSource* proto_source =
         proto->add_available_external_power_source();
     proto_source->set_id(source.id);
+    proto_source->set_port(source.port);
     proto_source->set_manufacturer_id(source.manufacturer_id);
     proto_source->set_model_id(source.model_id);
     proto_source->set_max_power(source.max_power);
@@ -235,11 +265,13 @@ std::string GetPowerStatusBatteryDebugString(const PowerStatus& status) {
 }
 
 PowerStatus::Source::Source(const std::string& id,
+                            PowerSupplyProperties::PowerSource::Port port,
                             const std::string& manufacturer_id,
                             const std::string& model_id,
                             double max_power,
                             bool active_by_default)
     : id(id),
+      port(port),
       manufacturer_id(manufacturer_id),
       model_id(model_id),
       max_power(max_power),
@@ -375,6 +407,26 @@ void PowerSupply::Init(const base::FilePath& power_supply_path,
               << low_battery_shutdown_time_.InSeconds()
               << " secs and using low battery percent threshold of "
               << low_battery_shutdown_percent_;
+  }
+
+  std::string ports_string;
+  if (prefs_->GetString(kChargingPortsPref, &ports_string)) {
+    base::TrimWhitespaceASCII(ports_string, base::TRIM_TRAILING, &ports_string);
+    base::StringPairs pairs;
+    if (!base::SplitStringIntoKeyValuePairs(ports_string, ' ', '\n', &pairs))
+      LOG(FATAL) << "Failed parsing " << kChargingPortsPref << " pref";
+    for (const auto& pair : pairs) {
+      const PowerSupplyProperties::PowerSource::Port port =
+          GetPortFromString(pair.second);
+      if (port == PowerSupplyProperties_PowerSource_Port_UNKNOWN) {
+        LOG(FATAL) << "Unrecognized port \"" << pair.second << "\" for \""
+                   << pair.first << "\" in " << kChargingPortsPref << " pref";
+      }
+      if (!port_names_.insert(std::make_pair(pair.first, port)).second) {
+        LOG(FATAL) << "Duplicate entry for \"" << pair.first << "\" in "
+                   << kChargingPortsPref << " pref";
+      }
+    }
   }
 
   DeferBatterySampling(battery_stabilized_after_startup_delay_);
@@ -629,6 +681,12 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   const bool is_usb_type = IsUsbChargerType(type);
   const bool active_by_default = !is_dual_role_port || !is_usb_type;
 
+  const auto port_it = port_names_.find(path.BaseName().value());
+  const PowerSupplyProperties::PowerSource::Port port =
+      port_it != port_names_.end()
+          ? port_it->second
+          : PowerSupplyProperties_PowerSource_Port_UNKNOWN;
+
   std::string manufacturer_id, model_id;
   ReadAndTrimString(path, "manufacturer", &manufacturer_id);
   ReadAndTrimString(path, "model_name", &model_id);
@@ -638,7 +696,11 @@ void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
   const double max_power = max_voltage * max_current;  // watts
 
   status->available_external_power_sources.push_back(PowerStatus::Source(
-      id, manufacturer_id, model_id, max_power, active_by_default));
+      id, port, manufacturer_id, model_id, max_power, active_by_default));
+  VLOG(1) << "Added power source " << id << ": port=" << port
+          << " manufacturer=" << manufacturer_id << " model=" << model_id
+          << " max_power=" << max_power << " active_by_default="
+          << active_by_default;
 
   // If this is a dual-role device, make sure that we're actually getting
   // charged by it.

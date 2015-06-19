@@ -118,6 +118,13 @@ extern const char kMaxChargeSamplesPref[];
 // order for it to be classified as an AC power source.
 extern const char kUsbMinAcWattsPref[];
 
+// String describing the position of each charging port on the system. Each line
+// contains "NAME ENUM", where NAME is the basename of a sysfs subdirectory
+// describing the port (e.g. "CROS_USB_PD_CHARGER0") and ENUM is the name of
+// value from the PowerSupplyProperties::PowerSource::Port enum (e.g. "LEFT",
+// "RIGHT", "LEFT_FRONT", etc.).
+extern const char kChargingPortsPref[];
+
 // Milliseconds to wait after setting the backlight to 0 before asking Chrome to
 // turn off the display via DPMS.
 extern const char kTurnOffScreenTimeoutMsPref[];

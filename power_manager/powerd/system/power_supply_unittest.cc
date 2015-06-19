@@ -479,6 +479,44 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   EXPECT_EQ(kLine2Id, status.external_power_source_id);
 }
 
+TEST_F(PowerSupplyTest, ChargingPortNames) {
+  // Write a pref describing two charging ports and say that we're charging from
+  // the first one. PowerSupply will sort the sources by name.
+  const char kSecondName[] = "port2";
+  prefs_.SetString(
+      kChargingPortsPref,
+      base::StringPrintf("%s LEFT_FRONT\n%s RIGHT_BACK",
+                         ac_dir_.BaseName().value().c_str(), kSecondName));
+  WriteDefaultValues(POWER_AC);
+
+  // Connect a second, idle power source.
+  const base::FilePath kSecondDir = temp_dir_.path().Append(kSecondName);
+  ASSERT_TRUE(base::CreateDirectory(kSecondDir));
+  WriteValue(kSecondDir, "online", "1");
+  WriteValue(kSecondDir, "type", kUsbType);
+  WriteValue(kSecondDir, "status", kNotCharging);
+
+  // Add a third source that isn't described by the pref.
+  const char kThirdName[] = "port3";
+  const base::FilePath kThirdDir = temp_dir_.path().Append(kThirdName);
+  ASSERT_TRUE(base::CreateDirectory(kThirdDir));
+  WriteValue(kThirdDir, "online", "1");
+  WriteValue(kThirdDir, "type", kUsbType);
+  WriteValue(kThirdDir, "status", kNotCharging);
+
+  // Check that all three sources' ports are reported correctly.
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  ASSERT_EQ(3u, status.available_external_power_sources.size());
+  EXPECT_EQ(PowerSupplyProperties_PowerSource_Port_LEFT_FRONT,
+            status.available_external_power_sources[0].port);
+  EXPECT_EQ(PowerSupplyProperties_PowerSource_Port_RIGHT_BACK,
+            status.available_external_power_sources[1].port);
+  EXPECT_EQ(PowerSupplyProperties_PowerSource_Port_UNKNOWN,
+            status.available_external_power_sources[2].port);
+}
+
 TEST_F(PowerSupplyTest, IgnorePeripherals) {
   // Power supplies corresponding to external peripherals (i.e. with a "scope"
   // of "Device") should be ignored.
@@ -1222,19 +1260,24 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
 
   // Check that power source details are copied.
   const char kChargerId[] = "PORT1";
+  const PowerSupplyProperties::PowerSource::Port kChargerPort =
+      PowerSupplyProperties_PowerSource_Port_LEFT;
   const char kChargerManufacturerId[] = "ab4e";
   const char kChargerModelId[] = "0f31";
   const double kChargerMaxPower = 60.0;
   const char kPhoneId[] = "PORT2";
+  const PowerSupplyProperties::PowerSource::Port kPhonePort =
+      PowerSupplyProperties_PowerSource_Port_RIGHT;
   const char kPhoneManufacturerId[] = "468b";
   const char kPhoneModelId[] = "0429";
   const double kPhoneMaxPower = 7.5;
   status.external_power_source_id = kChargerId;
   status.available_external_power_sources.push_back(
-      PowerStatus::Source(kChargerId, kChargerManufacturerId, kChargerModelId,
-                          kChargerMaxPower, true));
-  status.available_external_power_sources.push_back(PowerStatus::Source(
-      kPhoneId, kPhoneManufacturerId, kPhoneModelId, kPhoneMaxPower, false));
+      PowerStatus::Source(kChargerId, kChargerPort, kChargerManufacturerId,
+                          kChargerModelId, kChargerMaxPower, true));
+  status.available_external_power_sources.push_back(
+      PowerStatus::Source(kPhoneId, kPhonePort, kPhoneManufacturerId,
+                          kPhoneModelId, kPhoneMaxPower, false));
   status.supports_dual_role_devices = true;
 
   proto.Clear();
@@ -1242,6 +1285,7 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   EXPECT_EQ(kChargerId, proto.external_power_source_id());
   ASSERT_EQ(2u, proto.available_external_power_source_size());
   EXPECT_EQ(kChargerId, proto.available_external_power_source(0).id());
+  EXPECT_EQ(kChargerPort, proto.available_external_power_source(0).port());
   EXPECT_EQ(kChargerManufacturerId,
             proto.available_external_power_source(0).manufacturer_id());
   EXPECT_EQ(kChargerModelId,
@@ -1250,6 +1294,7 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
             proto.available_external_power_source(0).max_power());
   EXPECT_TRUE(proto.available_external_power_source(0).active_by_default());
   EXPECT_EQ(kPhoneId, proto.available_external_power_source(1).id());
+  EXPECT_EQ(kPhonePort, proto.available_external_power_source(1).port());
   EXPECT_EQ(kPhoneManufacturerId,
             proto.available_external_power_source(1).manufacturer_id());
   EXPECT_EQ(kPhoneModelId, proto.available_external_power_source(1).model_id());

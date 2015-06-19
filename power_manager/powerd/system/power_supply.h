@@ -5,8 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_POWER_SUPPLY_H_
 #define POWER_MANAGER_POWERD_SYSTEM_POWER_SUPPLY_H_
 
-#include <stdint.h>
-
+#include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -46,6 +46,7 @@ struct PowerStatus {
   // Details about a power source.
   struct Source {
     Source(const std::string& id,
+           PowerSupplyProperties::PowerSource::Port port,
            const std::string& manufacturer_id,
            const std::string& model_id,
            double max_power,
@@ -54,6 +55,9 @@ struct PowerStatus {
 
     // Opaque ID corresponding to the power source.
     std::string id;
+
+    // The charging port to which this power source is connected.
+    PowerSupplyProperties::PowerSource::Port port;
 
     // Values read from |manufacturer| and |model_name|.
     std::string manufacturer_id;
@@ -141,8 +145,8 @@ struct PowerStatus {
   // Is the battery level so low that the machine should be shut down?
   bool battery_below_shutdown_threshold;
 
-  PowerSupplyProperties_ExternalPower external_power;
-  PowerSupplyProperties_BatteryState battery_state;
+  PowerSupplyProperties::ExternalPower external_power;
+  PowerSupplyProperties::BatteryState battery_state;
 
   // ID of the active source from |available_external_power_sources|.
   std::string external_power_source_id;
@@ -409,6 +413,11 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
   // Calls NotifyObservers().
   base::CancelableClosure notify_observers_task_;
+
+  // Maps from sysfs line power subdirectory basenames (e.g.
+  // "CROS_USB_PD_CHARGER0") to enum values describing the corresponding
+  // charging ports' positions. Loaded from kChargingPortsPref.
+  std::map<std::string, PowerSupplyProperties::PowerSource::Port> port_names_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerSupply);
 };
