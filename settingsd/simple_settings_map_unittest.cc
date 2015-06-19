@@ -34,8 +34,8 @@ TEST(SimpleSettingsMapTest, Basic) {
   // document B
   document_B->SetEntry(
       "A.B", std::unique_ptr<base::Value>(new base::FundamentalValue(2)));
-  document_B->SetEntry(
-      "A.B.", std::unique_ptr<base::Value>(base::Value::CreateNullValue()));
+  document_B->SetEntry("A.B.", std::unique_ptr<base::Value>(
+                                   base::Value::CreateNullValue().release()));
 
   SimpleSettingsMap settings_map;
   settings_map.InsertDocument(std::move(document_A));

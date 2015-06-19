@@ -10,6 +10,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "settingsd/settings_map.h"
 #include "settingsd/version_stamp.h"
@@ -21,25 +22,6 @@ class Value;
 namespace settingsd {
 
 class SettingsDocument;
-
-// Every SettingsContainer contains exactly one SettingsDocument.
-// SettingsContainer are owned by SettingsMap and their lifetime is controlled
-// by a reference count from SettingsMap's |prefix_container_map_| member. Once
-// the number of entries in this map referring to a particular container drops
-// to zero, the container goes out of scope and is destroyed.
-class SettingsContainer {
- public:
-  explicit SettingsContainer(std::unique_ptr<const SettingsDocument> document);
-  ~SettingsContainer();
-
-  const SettingsDocument& document() const { return *document_; }
-  const VersionStamp& GetVersionStamp() const;
-
- private:
-  const std::unique_ptr<const SettingsDocument> document_;
-
-  DISALLOW_COPY_AND_ASSIGN(SettingsContainer);
-};
 
 // Simple map-based implemenation of the SettingsMap.
 class SimpleSettingsMap : public SettingsMap {
@@ -57,22 +39,47 @@ class SimpleSettingsMap : public SettingsMap {
   void InsertDocument(
       std::unique_ptr<const SettingsDocument> document) override;
 
+  // This method gets invoked when a SettingsDocument has lost its last
+  // reference from |prefix_document_map_|, i.e. is currently not providing any
+  // active settings value anymore. The argument, |document|, to this method is
+  // a pointer to the now unreferenced SettingsDocument. This method then
+  // deletes the respective SettingsDocument by dropping the owning pointer from
+  // the |documents_| member.
+  void OnDocumentUnreferenced(const SettingsDocument* document);
+
  protected:
-  // Helper method that deletes all entries in |prefix_container_map_| whose
+  // Helper method that deletes all entries in |prefix_document_map_| whose
   // keys lie in the child prefix subspace of |prefix| and where the
   // VersionStamp of the document that is currently providing them is before
   // |upper_limit|. Note that this does not include |prefix| itself.
   void DeleteChildPrefixSpace(const std::string& prefix,
                               const VersionStamp& upper_limit);
 
-  // |prefix_container_map_| maps prefixes to the respective SettingsContainer
+  // Inserts the document into |documents_|, the list of documents sorted by
+  // their VersionStamp. Noteworthy points:
+  // (1) VersionStamps fulfil the properties of vector clocks and thus allow
+  // for the partial causal ordering of SettingsDocuments.
+  // (2) However their properties do not suffice to define a strict weak
+  // ordering, as the transitivity of equivalence is not fulfiled.
+  // (3) The insertion algorithm implemented here inserts documents at the
+  // latest compatible insertion point. This guarantees that all documents with
+  // an is-before relationship to a document are found at lower indices.
+  void InsertDocumentIntoSortedList(
+      std::unique_ptr<const SettingsDocument> document);
+
+  // The list of all active documents.
+  std::vector<std::unique_ptr<const SettingsDocument>> documents_;
+
+  // |prefix_document_map_| maps prefixes to the respective SettingsDocument
   // which is currently providing the active value. The entries in this map
-  // control the lifetime of the SettingsContainer: Once the number of entries
-  // in this map referring to a particular container drops to zero, the
-  // container goes out of scope and is destroyed.
-  using PrefixContainerMap =
-      std::map<std::string, std::shared_ptr<SettingsContainer>>;
-  PrefixContainerMap prefix_container_map_;
+  // indirectly control the lifetime of the SettingsDocument: Once the number of
+  // entries in this map referring to a particular document drops to zero, the
+  // OnDocumentUnreferenced method gets invoked with a pointer to that
+  // SettingsDocument. This method in turn then performs the clean-up, see
+  // OnDocumentUnreferenced above.
+  using PrefixDocumentMap =
+      std::map<std::string, std::shared_ptr<const SettingsDocument>>;
+  PrefixDocumentMap prefix_document_map_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SimpleSettingsMap);

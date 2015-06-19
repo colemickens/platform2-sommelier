@@ -11,19 +11,6 @@
 
 namespace settingsd {
 
-SettingsContainer::SettingsContainer(
-    std::unique_ptr<const SettingsDocument> document)
-    : document_(std::move(document)) {
-  CHECK(document_);
-}
-
-SettingsContainer::~SettingsContainer() {
-}
-
-const VersionStamp& SettingsContainer::GetVersionStamp() const {
-  return document_->GetVersionStamp();
-}
-
 SimpleSettingsMap::SimpleSettingsMap() {
 }
 
@@ -34,38 +21,55 @@ const base::Value* SimpleSettingsMap::GetValue(const std::string& key) const {
   if (!utils::IsKey(key))
     return nullptr;
 
-  auto it = prefix_container_map_.find(key);
-  if (it == prefix_container_map_.end())
+  auto it = prefix_document_map_.find(key);
+  if (it == prefix_document_map_.end())
     return nullptr;
 
-  return it->second->document().GetValue(key);
+  return it->second->GetValue(key);
 }
 
 std::set<std::string> SimpleSettingsMap::GetActiveChildKeys(
     const std::string& prefix) const {
   std::set<std::string> keys;
-  for (const auto& entry : prefix_container_map_) {
+  for (const auto& entry : prefix_document_map_) {
     if (utils::IsKey(entry.first))
       keys.insert(entry.first);
   }
   return keys;
 }
 
+void SimpleSettingsMap::InsertDocumentIntoSortedList(
+    std::unique_ptr<const SettingsDocument> document) {
+  auto pos = std::find_if(
+      documents_.begin(), documents_.end(),
+      [&document](const std::unique_ptr<const SettingsDocument>& pos) {
+        return pos->GetVersionStamp().IsAfter(document->GetVersionStamp());
+      });
+  documents_.insert(pos, std::move(document));
+}
+
 void SimpleSettingsMap::InsertDocument(
     std::unique_ptr<const SettingsDocument> document) {
-  std::shared_ptr<SettingsContainer> settings_container =
-      std::make_shared<SettingsContainer>(std::move(document));
+  // NOTE: The vector |documents_| actually has ownership of the
+  // SettingsDocuments. Here we use the shared_ptr merely as a notification
+  // system to inform SimpleSettingsMap of SettingsDocuments whose reference
+  // count has dropped to zero. To accomplish this, we pass
+  // OnDocumentUnreferenced as a deleter for std::shared_ptr<const
+  // SettingsDocument>.
+  std::shared_ptr<const SettingsDocument> document_ptr(
+      document.get(), std::bind(&SimpleSettingsMap::OnDocumentUnreferenced,
+                                this, std::placeholders::_1));
 
   // Convenience shortcuts.
-  const SettingsDocument& doc = settings_container->document();
-  const VersionStamp& version_stamp = doc.GetVersionStamp();
+  const VersionStamp& version_stamp = document_ptr->GetVersionStamp();
 
-  std::set<std::string> prefixes = doc.GetActiveChildPrefixes(kRootPrefix);
+  std::set<std::string> prefixes =
+      document_ptr->GetActiveChildPrefixes(kRootPrefix);
   for (const std::string& prefix : prefixes) {
-    DCHECK(doc.GetValue(prefix)) << "prefix " << prefix
-                                 << " has no assigned value.";
+    DCHECK(document_ptr->GetValue(prefix)) << "prefix " << prefix
+                                           << " has no assigned value.";
     DCHECK(utils::IsKey(prefix) ||
-           doc.GetValue(prefix)->IsType(base::Value::TYPE_NULL))
+           document_ptr->GetValue(prefix)->IsType(base::Value::TYPE_NULL))
         << prefix << " has a non-NULL value assigned to it.";
 
     // Check if there is already a value assigned for that prefix. If so, we
@@ -74,11 +78,11 @@ void SimpleSettingsMap::InsertDocument(
     // delete operation has happened in the parent prefix space since the time
     // that other value was installed, since that would have wiped out that key.
     // b) If we are earlier, the present key is going to overwrite us anyways.
-    auto current_entry = prefix_container_map_.find(prefix);
-    if (current_entry != prefix_container_map_.end()) {
+    auto current_entry = prefix_document_map_.find(prefix);
+    if (current_entry != prefix_document_map_.end()) {
       if (current_entry->second->GetVersionStamp().IsBefore(version_stamp)) {
         // Install it.
-        current_entry->second = settings_container;
+        current_entry->second = document_ptr;
 
         // If it is a delete, delete all earlier child prefixes.
         if (!utils::IsKey(prefix))
@@ -95,8 +99,8 @@ void SimpleSettingsMap::InsertDocument(
     std::string current_prefix = prefix;
     do {
       current_prefix = utils::GetParentPrefix(current_prefix);
-      auto delete_entry = prefix_container_map_.find(current_prefix);
-      if (delete_entry != prefix_container_map_.end() &&
+      auto delete_entry = prefix_document_map_.find(current_prefix);
+      if (delete_entry != prefix_document_map_.end() &&
           delete_entry->second->GetVersionStamp().IsAfter(version_stamp)) {
         deleted = true;
       }
@@ -104,23 +108,37 @@ void SimpleSettingsMap::InsertDocument(
 
     // If no later delete operation was found, install the prefix.
     if (!deleted) {
-      prefix_container_map_[prefix] = settings_container;
+      prefix_document_map_[prefix] = document_ptr;
 
       // If it is a delete, delete all earlier child prefixes.
       if (!utils::IsKey(prefix))
         DeleteChildPrefixSpace(prefix, version_stamp);
     }
   }
+
+  // Insert the document into the sorted vector of active documents only if it
+  // is currently providing a setting.
+  if (!document_ptr.unique())
+    InsertDocumentIntoSortedList(std::move(document));
+}
+
+void SimpleSettingsMap::OnDocumentUnreferenced(
+    const SettingsDocument* document) {
+  std::remove_if(
+      documents_.begin(), documents_.end(),
+      [&document](const std::unique_ptr<const SettingsDocument>& pos) {
+        return document == pos.get();
+      });
 }
 
 void SimpleSettingsMap::Clear() {
-  prefix_container_map_.clear();
+  prefix_document_map_.clear();
 }
 
 std::set<std::string> SimpleSettingsMap::GetActiveChildPrefixes(
     const std::string& prefix) const {
   std::set<std::string> result;
-  for (const auto& el : utils::GetChildPrefixes(prefix, prefix_container_map_))
+  for (const auto& el : utils::GetChildPrefixes(prefix, prefix_document_map_))
     result.insert(el.first);
   return result;
 }
@@ -128,10 +146,10 @@ std::set<std::string> SimpleSettingsMap::GetActiveChildPrefixes(
 void SimpleSettingsMap::DeleteChildPrefixSpace(
     const std::string& prefix,
     const VersionStamp& upper_limit) {
-  auto range = utils::GetChildPrefixes(prefix, prefix_container_map_);
+  auto range = utils::GetChildPrefixes(prefix, prefix_document_map_);
   for (const auto& entry : range) {
     if (entry.second->GetVersionStamp().IsBefore(upper_limit))
-      prefix_container_map_.erase(entry.first);
+      prefix_document_map_.erase(entry.first);
   }
 }
 
