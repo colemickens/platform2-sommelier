@@ -628,9 +628,7 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
       }
       case kWakeTriggerPattern: {
         // Create pattern and masks that we expect to find in |msg|.
-        set<pair<ByteString, ByteString>,
-            bool (*)(const pair<ByteString, ByteString> &,
-                     const pair<ByteString, ByteString> &)>
+        set<pair<ByteString, ByteString>, decltype(&ByteStringPairIsLessThan)>
             expected_patt_mask_pairs(ByteStringPairIsLessThan);
         ByteString temp_pattern;
         ByteString temp_mask;
@@ -698,9 +696,9 @@ bool WakeOnWiFi::WakeOnWiFiSettingsMatch(
         break;
       }
       case kWakeTriggerSSID: {
-        set<ByteString, bool (*)(const ByteString &, const ByteString &)>
-            expected_ssids(ssid_whitelist.begin(), ssid_whitelist.end(),
-                           ByteString::IsLessThan);
+        set<ByteString, decltype(&ByteString::IsLessThan)> expected_ssids(
+            ssid_whitelist.begin(), ssid_whitelist.end(),
+            ByteString::IsLessThan);
         AttributeListConstRefPtr scan_attributes;
         if (!triggers->ConstGetNestedAttributeList(
                 NL80211_WOWLAN_TRIG_NET_DETECT, &scan_attributes)) {
