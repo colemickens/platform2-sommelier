@@ -319,7 +319,8 @@ class CloudDelegateImpl : public CloudDelegate {
   void CallManagerRegisterDevice(const std::string& ticket_id, int retries) {
     chromeos::ErrorPtr error;
     if (device_->RegisterDevice(ticket_id, &error).empty())
-      RetryRegister(ticket_id, retries, error.get());
+      return RetryRegister(ticket_id, retries, error.get());
+    setup_state_ = SetupState(SetupState::kSuccess);
   }
 
   buffet::CommandInstance* GetCommandInternal(const std::string& command_id,
