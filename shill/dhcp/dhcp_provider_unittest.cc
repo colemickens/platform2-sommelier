@@ -46,6 +46,8 @@ class DHCPProviderTest : public Test {
   }
 
  protected:
+  void RetireUnboundPID(int pid) { provider_->RetireUnboundPID(pid); }
+
   MockControl control_;
   MockGLib glib_;
   DHCPProvider* provider_;
@@ -92,12 +94,12 @@ TEST_F(DHCPProviderTest, BindAndUnbind) {
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
 
   base::Closure task;
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _)).WillOnce(SaveArg<0>(&task));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _));  // TODO(pstew): crbug/502320
   provider_->UnbindPID(kPid);
   EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
   EXPECT_TRUE(provider_->IsRecentlyUnbound(kPid));
 
-  task.Run();  // Execute as if the PostDelayedTask() timer expired.
+  RetireUnboundPID(kPid);  // Execute as if the PostDelayedTask() timer expired.
   EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
 }
