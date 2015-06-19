@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 
+#include <base/location.h>
 #include <base/time/time.h>
 #include <glib.h>
 
@@ -22,8 +23,11 @@ class CHROMEOS_EXPORT GlibMessageLoop : public MessageLoop {
   ~GlibMessageLoop() override;
 
   // MessageLoop overrides.
-  MessageLoop::TaskId PostDelayedTask(const base::Closure &task,
-                                      base::TimeDelta delay) override;
+  MessageLoop::TaskId PostDelayedTask(
+      const tracked_objects::Location& from_here,
+      const base::Closure &task,
+      base::TimeDelta delay) override;
+  using MessageLoop::PostDelayedTask;
   bool CancelTask(TaskId task_id) override;
   bool RunOnce(bool may_block) override;
   void Run() override;
@@ -45,12 +49,12 @@ class CHROMEOS_EXPORT GlibMessageLoop : public MessageLoop {
     // A pointer to this GlibMessageLoop so we can remove the Task from the
     // glib callback.
     GlibMessageLoop* loop;
+    tracked_objects::Location location;
 
     MessageLoop::TaskId task_id;
     guint source_id;
     base::Closure closure;
   };
-
 
   std::map<MessageLoop::TaskId, ScheduledTask*> tasks_;
 

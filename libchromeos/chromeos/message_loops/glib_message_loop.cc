@@ -4,6 +4,8 @@
 
 #include <chromeos/message_loops/glib_message_loop.h>
 
+#include <chromeos/location_logging.h>
+
 using base::Closure;
 
 namespace chromeos {
@@ -16,14 +18,17 @@ GlibMessageLoop::~GlibMessageLoop() {
   g_main_loop_unref(loop_);
 }
 
-MessageLoop::TaskId GlibMessageLoop::PostDelayedTask(const Closure &task,
-                                                     base::TimeDelta delay) {
+MessageLoop::TaskId GlibMessageLoop::PostDelayedTask(
+    const tracked_objects::Location& from_here,
+    const Closure &task,
+    base::TimeDelta delay) {
   MessageLoop::TaskId task_id = ++last_id_;
   if (!task_id)
     task_id = ++last_id_;
   ScheduledTask* scheduled_task = new ScheduledTask{
-    this, task_id, 0, std::move(task)};
-
+    this, from_here, task_id, 0, std::move(task)};
+  DVLOG_LOC(from_here, 1) << "Scheduling delayed task_id " << task_id
+                          << " to run in " << delay << ".";
   scheduled_task->source_id = g_timeout_add_full(
       G_PRIORITY_DEFAULT,
       delay.InMillisecondsRoundedUp(),
@@ -41,6 +46,8 @@ bool GlibMessageLoop::CancelTask(TaskId task_id) {
   // It is a programmer error to attempt to remove a non-existent source.
   if (task == tasks_.end())
     return false;
+  DVLOG_LOC(task->second->location, 1)
+      << "Removing task_id " << task_id << " scheduled from this location.";
   guint source_id = task->second->source_id;
   // We remove here the entry from the tasks_ map, the pointer will be deleted
   // by the g_source_remove() call.
@@ -62,6 +69,9 @@ void GlibMessageLoop::BreakLoop() {
 
 gboolean GlibMessageLoop::OnRanPostedTask(gpointer user_data) {
   ScheduledTask* scheduled_task = reinterpret_cast<ScheduledTask*>(user_data);
+  DVLOG_LOC(scheduled_task->location, 1)
+      << "Running task_id " << scheduled_task->task_id
+      << " scheduled from this location.";
   scheduled_task->closure.Run();
   // We only need to remove this task_id from the map. DestroyPostedTask will be
   // called with this same |user_data| where we can delete the ScheduledTask.

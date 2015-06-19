@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/location.h>
 #include <base/test/simple_test_clock.h>
 #include <base/time/time.h>
 
@@ -34,8 +35,11 @@ class CHROMEOS_EXPORT FakeMessageLoop : public MessageLoop {
   explicit FakeMessageLoop(base::SimpleTestClock* clock);
   ~FakeMessageLoop() override = default;
 
-  MessageLoop::TaskId PostDelayedTask(const base::Closure &task,
-                                      base::TimeDelta delay) override;
+  MessageLoop::TaskId PostDelayedTask(
+      const tracked_objects::Location& from_here,
+      const base::Closure &task,
+      base::TimeDelta delay) override;
+  using MessageLoop::PostDelayedTask;
   bool CancelTask(TaskId task_id) override;
   bool RunOnce(bool may_block) override;
 
@@ -53,7 +57,8 @@ class CHROMEOS_EXPORT FakeMessageLoop : public MessageLoop {
       std::pair<base::Time, MessageLoop::TaskId>,
       std::vector<std::pair<base::Time, MessageLoop::TaskId>>,
       std::greater<std::pair<base::Time, MessageLoop::TaskId>>> fire_order_;
-  std::map<MessageLoop::TaskId, base::Closure> tasks_;
+  std::map<MessageLoop::TaskId,
+           std::pair<tracked_objects::Location, base::Closure>> tasks_;
 
   base::SimpleTestClock* test_clock_ = nullptr;
   base::Time current_time_ = base::Time::FromDoubleT(1246996800.);

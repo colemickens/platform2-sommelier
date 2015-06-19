@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/callback.h>
+#include <base/location.h>
 #include <base/time/time.h>
 #include <chromeos/chromeos_export.h>
 
@@ -42,13 +43,23 @@ class CHROMEOS_EXPORT MessageLoop {
   // Note that once the call is executed or canceled, the TaskId could be reused
   // at a later point.
   // This methond can only be called from the same thread running the main loop.
-  virtual TaskId PostDelayedTask(const base::Closure &task,
+  virtual TaskId PostDelayedTask(const tracked_objects::Location& from_here,
+                                 const base::Closure &task,
                                  base::TimeDelta delay) = 0;
+  // Variant without the Location for easier usage.
+  TaskId PostDelayedTask(const base::Closure &task,
+                         base::TimeDelta delay) {
+    return PostDelayedTask(tracked_objects::Location(), task, delay);
+  }
 
   // A convenience method to schedule a call with no delay.
   // This methond can only be called from the same thread running the main loop.
   TaskId PostTask(const base::Closure &task) {
     return PostDelayedTask(task, base::TimeDelta());
+  }
+  TaskId PostTask(const tracked_objects::Location& from_here,
+                  const base::Closure &task) {
+    return PostDelayedTask(from_here, task, base::TimeDelta());
   }
 
   // Cancel a scheduled task. Returns whether the task was canceled. For

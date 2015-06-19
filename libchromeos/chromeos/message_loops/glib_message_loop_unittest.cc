@@ -7,6 +7,7 @@
 #include <memory>
 
 #include <base/bind.h>
+#include <base/location.h>
 #include <gtest/gtest.h>
 
 #include <chromeos/bind_lambda.h>
@@ -37,7 +38,8 @@ TEST_F(GlibMessageLoopTest, CancelTaskInvalidValuesTest) {
 
 TEST_F(GlibMessageLoopTest, PostTaskTest) {
   bool called = false;
-  TaskId task_id = loop_->PostTask(Bind([&called]() { called = true; }));
+  TaskId task_id = loop_->PostTask(FROM_HERE,
+                                   Bind([&called]() { called = true; }));
   EXPECT_NE(MessageLoop::kTaskIdNull, task_id);
   MessageLoopRunMaxIterations(loop_.get(), 100);
   EXPECT_TRUE(called);
@@ -46,7 +48,8 @@ TEST_F(GlibMessageLoopTest, PostTaskTest) {
 // Tests that we can cancel tasks right after we schedule them.
 TEST_F(GlibMessageLoopTest, PostTaskCancelledTest) {
   bool called = false;
-  TaskId task_id = loop_->PostTask(Bind([&called]() { called = true; }));
+  TaskId task_id = loop_->PostTask(FROM_HERE,
+                                   Bind([&called]() { called = true; }));
   EXPECT_TRUE(loop_->CancelTask(task_id));
   MessageLoopRunMaxIterations(loop_.get(), 100);
   EXPECT_FALSE(called);
@@ -56,7 +59,8 @@ TEST_F(GlibMessageLoopTest, PostTaskCancelledTest) {
 
 TEST_F(GlibMessageLoopTest, PostDelayedTaskRunsEventuallyTest) {
   bool called = false;
-  TaskId task_id = loop_->PostDelayedTask(Bind([&called]() { called = true; }),
+  TaskId task_id = loop_->PostDelayedTask(FROM_HERE,
+                                          Bind([&called]() { called = true; }),
                                           TimeDelta::FromMilliseconds(100));
   EXPECT_NE(MessageLoop::kTaskIdNull, task_id);
   MessageLoopRunUntil(loop_.get(),
@@ -65,6 +69,14 @@ TEST_F(GlibMessageLoopTest, PostDelayedTaskRunsEventuallyTest) {
   // Check that the main loop finished before the 10 seconds timeout, so it
   // finished due to the callback being called and not due to the timeout.
   EXPECT_TRUE(called);
+}
+
+// Test that you can call the overloaded version of PostDelayedTask from
+// MessageLoop. This is important because only one of the two methods is
+// virtual, so you need to unhide the other when overriding the virtual one.
+TEST_F(GlibMessageLoopTest, PostDelayedTaskWithoutLocation) {
+  loop_->PostDelayedTask(Bind(&base::DoNothing), TimeDelta());
+  EXPECT_EQ(1, MessageLoopRunMaxIterations(loop_.get(), 100));
 }
 
 }  // namespace chromeos

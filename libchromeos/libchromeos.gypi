@@ -327,6 +327,7 @@
             'chromeos/http/http_utils_unittest.cc',
             'chromeos/key_value_store_unittest.cc',
             'chromeos/map_utils_unittest.cc',
+            'chromeos/message_loops/fake_message_loop_unittest.cc',
             'chromeos/message_loops/glib_message_loop_unittest.cc',
             'chromeos/mime_utils_unittest.cc',
             'chromeos/osrelease_reader_unittest.cc',

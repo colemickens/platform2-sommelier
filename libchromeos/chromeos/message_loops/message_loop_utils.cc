@@ -4,6 +4,7 @@
 
 #include <chromeos/message_loops/message_loop_utils.h>
 
+#include <base/location.h>
 #include <chromeos/bind_lambda.h>
 
 namespace chromeos {
@@ -14,8 +15,9 @@ void MessageLoopRunUntil(
     base::Callback<bool()> terminate) {
   bool timeout_called = false;
   MessageLoop::TaskId task_id = loop->PostDelayedTask(
-    base::Bind([&timeout_called]() { timeout_called = true; }),
-    timeout);
+      FROM_HERE,
+      base::Bind([&timeout_called]() { timeout_called = true; }),
+      timeout);
   while (!timeout_called && (terminate.is_null() || !terminate.Run()))
     loop->RunOnce(true);
 
