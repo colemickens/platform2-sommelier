@@ -201,7 +201,7 @@ void ProxyGenerator::GenerateInterfaceProxyInterface(
   text->PopOffset();
   text->AddLineWithOffset("protected:", kScopeOffset);
   text->AddLineWithOffset(
-      StringPrintf("~%s() = default;", base_interface_name.c_str()),
+      StringPrintf("virtual ~%s() = default;", base_interface_name.c_str()),
       kBlockOffset);
   text->AddLine("};");
   text->AddBlankLine();
@@ -382,7 +382,7 @@ void ProxyGenerator::AddConstructor(const ServiceConfig& config,
 void ProxyGenerator::AddDestructor(const string& class_name,
                                    IndentedText* text) {
   IndentedText block;
-  block.AddLine(StringPrintf("~%s() {", class_name.c_str()));
+  block.AddLine(StringPrintf("~%s() override {", class_name.c_str()));
   block.AddLine("}");
   block.AddBlankLine();
   text->AddBlock(block);

@@ -107,7 +107,7 @@ class TestInterfaceProxyInterface {
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
  protected:
-  ~TestInterfaceProxyInterface() = default;
+  virtual ~TestInterfaceProxyInterface() = default;
 };
 
 }  // namespace chromium
@@ -128,7 +128,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
               bus_->GetObjectProxy(service_name_, object_path_)} {
   }
 
-  ~TestInterfaceProxy() {
+  ~TestInterfaceProxy() override {
   }
 
   void RegisterCloserSignalHandler(
@@ -316,7 +316,7 @@ class TestInterface2ProxyInterface {
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
  protected:
-  ~TestInterface2ProxyInterface() = default;
+  virtual ~TestInterface2ProxyInterface() = default;
 };
 
 }  // namespace chromium
@@ -339,7 +339,7 @@ class TestInterface2Proxy final : public TestInterface2ProxyInterface {
               bus_->GetObjectProxy(service_name_, object_path_)} {
   }
 
-  ~TestInterface2Proxy() {
+  ~TestInterface2Proxy() override {
   }
 
   void ReleaseObjectProxy(const base::Closure& callback) {
@@ -422,7 +422,7 @@ namespace chromium {
 class TestInterfaceProxyInterface {
  public:
  protected:
-  ~TestInterfaceProxyInterface() = default;
+  virtual ~TestInterfaceProxyInterface() = default;
 };
 
 }  // namespace chromium
@@ -440,7 +440,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
           bus_->GetObjectProxy(service_name_, object_path_)} {
   }
 
-  ~TestInterfaceProxy() {
+  ~TestInterfaceProxy() override {
   }
 
   void RegisterCloserSignalHandler(
@@ -483,7 +483,7 @@ namespace chromium {
 class TestInterface2ProxyInterface {
  public:
  protected:
-  ~TestInterface2ProxyInterface() = default;
+  virtual ~TestInterface2ProxyInterface() = default;
 };
 
 }  // namespace chromium
@@ -504,7 +504,7 @@ class TestInterface2Proxy final : public TestInterface2ProxyInterface {
               bus_->GetObjectProxy(service_name_, object_path_)} {
   }
 
-  ~TestInterface2Proxy() {
+  ~TestInterface2Proxy() override {
   }
 
   void ReleaseObjectProxy(const base::Closure& callback) {
@@ -568,7 +568,7 @@ class Itf1ProxyInterface {
   virtual const std::string& data() const = 0;
 
  protected:
-  ~Itf1ProxyInterface() = default;
+  virtual ~Itf1ProxyInterface() = default;
 };
 
 }  // namespace chromium
@@ -607,7 +607,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
               bus_->GetObjectProxy(service_name_, object_path_)} {
   }
 
-  ~Itf1Proxy() {
+  ~Itf1Proxy() override {
   }
 
   void RegisterCloserSignalHandler(
@@ -670,7 +670,7 @@ namespace chromium {
 class Itf2ProxyInterface {
  public:
  protected:
-  ~Itf2ProxyInterface() = default;
+  virtual ~Itf2ProxyInterface() = default;
 };
 
 }  // namespace chromium
@@ -707,7 +707,7 @@ class Itf2Proxy final : public Itf2ProxyInterface {
               bus_->GetObjectProxy(service_name_, object_path_)} {
   }
 
-  ~Itf2Proxy() {
+  ~Itf2Proxy() override {
   }
 
   void ReleaseObjectProxy(const base::Closure& callback) {
@@ -945,7 +945,7 @@ namespace chromium {
 class Itf1ProxyInterface {
  public:
  protected:
-  ~Itf1ProxyInterface() = default;
+  virtual ~Itf1ProxyInterface() = default;
 };
 
 }  // namespace chromium
@@ -977,7 +977,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
           bus_->GetObjectProxy(service_name_, object_path_)} {
   }
 
-  ~Itf1Proxy() {
+  ~Itf1Proxy() override {
   }
 
   void RegisterCloserSignalHandler(
@@ -1020,7 +1020,7 @@ namespace chromium {
 class Itf2ProxyInterface {
  public:
  protected:
-  ~Itf2ProxyInterface() = default;
+  virtual ~Itf2ProxyInterface() = default;
 };
 
 }  // namespace chromium
@@ -1055,7 +1055,7 @@ class Itf2Proxy final : public Itf2ProxyInterface {
               bus_->GetObjectProxy(service_name_, object_path_)} {
   }
 
-  ~Itf2Proxy() {
+  ~Itf2Proxy() override {
   }
 
   void ReleaseObjectProxy(const base::Closure& callback) {
