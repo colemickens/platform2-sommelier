@@ -123,9 +123,34 @@ PerfTool::PerfTool(const CPUInfoReader& cpu_info,
 std::vector<uint8_t> PerfTool::GetRichPerfData(const uint32_t& duration_secs,
                                                DBus::Error* error) {
   const std::vector<std::string>& perf_args = random_selector_->GetNext();
+  if (perf_args[1] != "record")
+    return std::vector<uint8_t>();
+
   std::string output_string;
-  GetPerfDataHelper(duration_secs, perf_args, error, &output_string);
+  int result =
+      GetPerfOutputHelper(duration_secs, perf_args, error, &output_string);
+
+  if (result > 0)
+    return std::vector<uint8_t>();
+
   return std::vector<uint8_t>(output_string.begin(), output_string.end());
+}
+
+int PerfTool::GetRandomPerfOutput(const uint32_t& duration_secs,
+                                  std::vector<uint8_t>* perf_data,
+                                  std::vector<uint8_t>* perf_stat,
+                                  DBus::Error* error) {
+  const std::vector<std::string>& perf_args = random_selector_->GetNext();
+  std::string output_string;
+  int result =
+      GetPerfOutputHelper(duration_secs, perf_args, error, &output_string);
+
+  if (perf_args[1] == "record")
+    perf_data->assign(output_string.begin(), output_string.end());
+  else if (perf_args[1] == "stat")
+    perf_stat->assign(output_string.begin(), output_string.end());
+
+  return result;
 }
 
 PerfTool::CPUInfoReader::CPUInfoReader() {
@@ -139,10 +164,10 @@ PerfTool::CPUInfoReader::CPUInfoReader() {
     arch_ = uname_info.machine;
 }
 
-void PerfTool::GetPerfDataHelper(const uint32_t& duration_secs,
-                                 const std::vector<std::string>& perf_args,
-                                 DBus::Error* error,
-                                 std::string* data_string) {
+int PerfTool::GetPerfOutputHelper(const uint32_t& duration_secs,
+                                  const std::vector<std::string>& perf_args,
+                                  DBus::Error* error,
+                                  std::string* data_string) {
   // This whole method is synchronous, so we create a subprocess, let it run to
   // completion, then gather up its output to return it.
   ProcessWithOutput process;
@@ -162,6 +187,8 @@ void PerfTool::GetPerfDataHelper(const uint32_t& duration_secs,
   if (status != 0)
     *data_string = StringPrintf("<process exited with status: %d", status);
   process.GetOutput(data_string);
+
+  return status;
 }
 
 }  // namespace debugd

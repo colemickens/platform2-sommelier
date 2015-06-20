@@ -140,6 +140,16 @@ std::vector<uint8_t> DebugDaemon::GetRichPerfData(
   return perf_tool_->GetRichPerfData(duration, &error);
 }
 
+void DebugDaemon::GetRandomPerfOutput(
+    const uint32_t& duration,
+    int32_t& status,
+    std::vector<uint8_t>& perf_data,
+    std::vector<uint8_t>& perf_stat,
+    DBus::Error& error) {  // NOLINT
+  status =
+      perf_tool_->GetRandomPerfOutput(duration, &perf_data, &perf_stat, &error);
+}
+
 void DebugDaemon::GetDebugLogs(const DBus::FileDescriptor& fd,
                                DBus::Error& error) {  // NOLINT
   debug_logs_tool_->GetDebugLogs(true,  // is_compressed,

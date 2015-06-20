@@ -54,13 +54,22 @@ class PerfTool {
   std::vector<uint8_t> GetRichPerfData(const uint32_t& duration_secs,
                                        DBus::Error* error);
 
+  // Randomly runs the perf tool in various modes and collects various events
+  // for |duration_secs| seconds and returns either a perf_data or perf_stat
+  // protobuf in binary form.
+  int GetRandomPerfOutput(const uint32_t& duration_secs,
+                          std::vector<uint8_t>* perf_data,
+                          std::vector<uint8_t>* perf_stat,
+                          DBus::Error* error);
+
  private:
   // Helper function that runs perf for a given |duration_secs| returning the
-  // collected data in |data_string|.
-  void GetPerfDataHelper(const uint32_t& duration_secs,
-                         const std::vector<std::string>& perf_args,
-                         DBus::Error* error,
-                         std::string* data_string);
+  // collected data in |data_string|. Return value is the status from running
+  // perf.
+  int GetPerfOutputHelper(const uint32_t& duration_secs,
+                          const std::vector<std::string>& perf_args,
+                          DBus::Error* error,
+                          std::string* data_string);
 
   std::unique_ptr<RandomSelector> random_selector_;
 
