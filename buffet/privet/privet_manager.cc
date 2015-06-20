@@ -87,40 +87,22 @@ void Manager::Start(const Options& options,
   }
   state_store_->Init();
 
-  std::set<std::string> device_whitelist{options.device_whitelist};
-  // This state store key doesn't exist naturally, but developers
-  // sometime put it in their state store to cause the device to bring
-  // up WiFi bootstrapping while being connected to an ethernet interface.
-  std::string test_device_whitelist;
-  if (device_whitelist.empty() &&
-      state_store_->GetString(kWiFiBootstrapInterfaces,
-                              &test_device_whitelist)) {
-    auto interfaces =
-        chromeos::string_utils::Split(test_device_whitelist, ",", true, true);
-    device_whitelist.insert(interfaces.begin(), interfaces.end());
-  }
   device_ = DeviceDelegate::CreateDefault();
-  cloud_ = CloudDelegate::CreateDefault(
-      parser_->gcd_bootstrap_mode() != GcdBootstrapMode::kDisabled, device,
-      command_manager, state_manager);
+  cloud_ = CloudDelegate::CreateDefault(device, command_manager, state_manager);
   cloud_observer_.Add(cloud_.get());
   security_.reset(new SecurityManager(parser_->pairing_modes(),
                                       parser_->embedded_code_path(),
                                       disable_security_));
-  shill_client_.reset(new ShillClient(
-      bus, device_whitelist.empty() ? parser_->automatic_wifi_interfaces()
-                                    : device_whitelist));
+  shill_client_.reset(new ShillClient(bus, options.device_whitelist));
   shill_client_->RegisterConnectivityListener(
       base::Bind(&Manager::OnConnectivityChanged, base::Unretained(this)));
   ap_manager_client_.reset(new ApManagerClient(bus));
 
-  if (parser_->wifi_bootstrap_mode() != WiFiBootstrapMode::kDisabled) {
+  if (parser_->wifi_auto_setup_enabled()) {
     VLOG(1) << "Enabling WiFi bootstrapping.";
-    wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
-        state_store_.get(), shill_client_.get(), ap_manager_client_.get(),
-        cloud_.get(), parser_->connect_timeout_seconds(),
-        parser_->bootstrap_timeout_seconds(),
-        parser_->monitor_timeout_seconds()));
+    wifi_bootstrap_manager_.reset(
+        new WifiBootstrapManager(state_store_.get(), shill_client_.get(),
+                                 ap_manager_client_.get(), cloud_.get()));
     wifi_bootstrap_manager_->Init();
   }
 

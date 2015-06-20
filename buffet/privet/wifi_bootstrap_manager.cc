@@ -16,20 +16,20 @@
 
 namespace privetd {
 
+namespace {
+const int kConnectTimeoutSeconds = 60;
+const int kBootstrapTimeoutSeconds = 600;
+const int kMonitorTimeoutSeconds = 120;
+}
+
 WifiBootstrapManager::WifiBootstrapManager(DaemonState* state_store,
                                            ShillClient* shill_client,
                                            ApManagerClient* ap_manager_client,
-                                           CloudDelegate* gcd,
-                                           uint32_t connect_timeout_seconds,
-                                           uint32_t bootstrap_timeout_seconds,
-                                           uint32_t monitor_timeout_seconds)
+                                           CloudDelegate* gcd)
     : state_store_(state_store),
       shill_client_(shill_client),
       ap_manager_client_(ap_manager_client),
-      ssid_generator_(gcd, this),
-      connect_timeout_seconds_(connect_timeout_seconds),
-      bootstrap_timeout_seconds_(bootstrap_timeout_seconds),
-      monitor_timeout_seconds_(monitor_timeout_seconds) {
+      ssid_generator_(gcd, this) {
   cloud_observer_.Add(gcd);
 }
 
@@ -83,7 +83,7 @@ void WifiBootstrapManager::StartBootstrapping() {
     base::MessageLoop::current()->PostDelayedTask(
         FROM_HERE, base::Bind(&WifiBootstrapManager::OnBootstrapTimeout,
                               tasks_weak_factory_.GetWeakPtr()),
-        base::TimeDelta::FromSeconds(bootstrap_timeout_seconds_));
+        base::TimeDelta::FromSeconds(kBootstrapTimeoutSeconds));
   }
   // TODO(vitalybuka): Add SSID probing.
   std::string ssid = ssid_generator_.GenerateSsid();
@@ -103,7 +103,7 @@ void WifiBootstrapManager::StartConnecting(const std::string& ssid,
   base::MessageLoop::current()->PostDelayedTask(
       FROM_HERE, base::Bind(&WifiBootstrapManager::OnConnectTimeout,
                             tasks_weak_factory_.GetWeakPtr()),
-      base::TimeDelta::FromSeconds(connect_timeout_seconds_));
+      base::TimeDelta::FromSeconds(kConnectTimeoutSeconds));
   shill_client_->ConnectToService(
       ssid, passphrase, base::Bind(&WifiBootstrapManager::OnConnectSuccess,
                                    tasks_weak_factory_.GetWeakPtr(), ssid),
@@ -246,7 +246,7 @@ void WifiBootstrapManager::OnConnectivityChange(bool is_connected) {
       base::MessageLoop::current()->PostDelayedTask(
           FROM_HERE, base::Bind(&WifiBootstrapManager::OnMonitorTimeout,
                                 tasks_weak_factory_.GetWeakPtr()),
-          base::TimeDelta::FromSeconds(monitor_timeout_seconds_));
+          base::TimeDelta::FromSeconds(kMonitorTimeoutSeconds));
     }
   }
 }

@@ -45,12 +45,10 @@ buffet::CommandInstance* ReturnNotFound(const std::string& command_id,
 
 class CloudDelegateImpl : public CloudDelegate {
  public:
-  CloudDelegateImpl(bool is_gcd_setup_enabled,
-                    buffet::DeviceRegistrationInfo* device,
+  CloudDelegateImpl(buffet::DeviceRegistrationInfo* device,
                     buffet::CommandManager* command_manager,
                     buffet::StateManager* state_manager)
-      : is_gcd_setup_enabled_(is_gcd_setup_enabled),
-        device_{device},
+      : device_{device},
         command_manager_{command_manager},
         state_manager_{state_manager} {
     device_->AddOnConfigChangedCallback(base::Bind(
@@ -141,12 +139,6 @@ class CloudDelegateImpl : public CloudDelegate {
   bool Setup(const std::string& ticket_id,
              const std::string& user,
              chromeos::ErrorPtr* error) override {
-    if (!is_gcd_setup_enabled_) {
-      chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
-                             errors::kSetupUnavailable,
-                             "GCD setup unavailable");
-      return false;
-    }
     if (setup_state_.IsStatusEqual(SetupState::kInProgress)) {
       chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
                              errors::kDeviceBusy, "Setup in progress");
@@ -358,8 +350,6 @@ class CloudDelegateImpl : public CloudDelegate {
     return false;
   }
 
-  bool is_gcd_setup_enabled_{false};
-
   buffet::DeviceRegistrationInfo* device_{nullptr};
   buffet::CommandManager* command_manager_{nullptr};
   buffet::StateManager* state_manager_{nullptr};
@@ -396,12 +386,11 @@ CloudDelegate::~CloudDelegate() {
 
 // static
 std::unique_ptr<CloudDelegate> CloudDelegate::CreateDefault(
-    bool is_gcd_setup_enabled,
     buffet::DeviceRegistrationInfo* device,
     buffet::CommandManager* command_manager,
     buffet::StateManager* state_manager) {
-  return std::unique_ptr<CloudDelegateImpl>{new CloudDelegateImpl{
-      is_gcd_setup_enabled, device, command_manager, state_manager}};
+  return std::unique_ptr<CloudDelegateImpl>{
+      new CloudDelegateImpl{device, command_manager, state_manager}};
 }
 
 void CloudDelegate::NotifyOnDeviceInfoChanged() {
