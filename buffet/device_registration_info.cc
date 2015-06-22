@@ -331,8 +331,7 @@ void DeviceRegistrationInfo::StartNotificationChannel() {
   // call back to OnConnected() and at that time we'll switch to use the
   // primary channel and switch periodic poll into much more infrequent backup
   // poll mode.
-  const base::TimeDelta pull_interval =
-      base::TimeDelta::FromMilliseconds(config_->polling_period_ms());
+  const base::TimeDelta pull_interval = config_->polling_period();
   if (!pull_channel_) {
     pull_channel_.reset(new PullChannel{pull_interval, task_runner});
     pull_channel_->Start(this);
@@ -976,8 +975,7 @@ void DeviceRegistrationInfo::OnConnected(const std::string& channel_name) {
             << channel_name;
   CHECK_EQ(primary_notification_channel_->GetName(), channel_name);
   notification_channel_starting_ = false;
-  pull_channel_->UpdatePullInterval(
-      base::TimeDelta::FromMilliseconds(config_->backup_polling_period_ms()));
+  pull_channel_->UpdatePullInterval(config_->backup_polling_period());
   current_notification_channel_ = primary_notification_channel_.get();
   UpdateDeviceResource(base::Bind(&base::DoNothing),
                        base::Bind(&IgnoreCloudError));
@@ -985,8 +983,7 @@ void DeviceRegistrationInfo::OnConnected(const std::string& channel_name) {
 
 void DeviceRegistrationInfo::OnDisconnected() {
   LOG(INFO) << "Notification channel disconnected";
-  pull_channel_->UpdatePullInterval(
-      base::TimeDelta::FromMilliseconds(config_->polling_period_ms()));
+  pull_channel_->UpdatePullInterval(config_->polling_period());
   current_notification_channel_ = pull_channel_.get();
   UpdateDeviceResource(base::Bind(&base::DoNothing),
                        base::Bind(&IgnoreCloudError));

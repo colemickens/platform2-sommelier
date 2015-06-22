@@ -50,6 +50,14 @@ bool IsValidAccessRole(const std::string& role) {
   return role == "none" || role == "viewer" || role == "user";
 }
 
+bool StringToTimeDelta(const std::string& value, base::TimeDelta* delta) {
+  uint64_t ms{0};
+  if (!base::StringToUint64(value, &ms))
+    return false;
+  *delta = base::TimeDelta::FromMilliseconds(ms);
+  return true;
+}
+
 }  // namespace
 
 namespace buffet {
@@ -130,10 +138,10 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
 
   std::string polling_period_str;
   if (store.GetString(config_keys::kPollingPeriodMs, &polling_period_str))
-    CHECK(base::StringToUint64(polling_period_str, &polling_period_ms_));
+    CHECK(StringToTimeDelta(polling_period_str, &polling_period_));
 
   if (store.GetString(config_keys::kBackupPollingPeriodMs, &polling_period_str))
-    CHECK(base::StringToUint64(polling_period_str, &backup_polling_period_ms_));
+    CHECK(StringToTimeDelta(polling_period_str, &backup_polling_period_));
 
   store.GetBoolean(config_keys::kWifiAutoSetupEnabled,
                    &wifi_auto_setup_enabled_);

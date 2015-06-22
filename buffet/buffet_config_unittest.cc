@@ -55,8 +55,8 @@ TEST_F(BuffetConfigTest, Defaults) {
   EXPECT_EQ("Brillo", config_->model_name());
   EXPECT_EQ("AAAAA", config_->model_id());
   EXPECT_EQ("vendor", config_->device_kind());
-  EXPECT_EQ(7000, config_->polling_period_ms());
-  EXPECT_EQ(1800000, config_->backup_polling_period_ms());
+  EXPECT_EQ(base::TimeDelta::FromSeconds(7), config_->polling_period());
+  EXPECT_EQ(base::TimeDelta::FromMinutes(30), config_->backup_polling_period());
   EXPECT_TRUE(config_->wifi_auto_setup_enabled());
   EXPECT_EQ(std::set<privetd::PairingType>{privetd::PairingType::kPinCode},
             config_->pairing_modes());
@@ -115,8 +115,10 @@ TEST_F(BuffetConfigTest, LoadConfig) {
   EXPECT_EQ("conf_model_name", config_->model_name());
   EXPECT_EQ("ABCDE", config_->model_id());
   EXPECT_EQ("developmentBoard", config_->device_kind());
-  EXPECT_EQ(12345, config_->polling_period_ms());
-  EXPECT_EQ(6589, config_->backup_polling_period_ms());
+  EXPECT_EQ(base::TimeDelta::FromMilliseconds(12345),
+            config_->polling_period());
+  EXPECT_EQ(base::TimeDelta::FromMilliseconds(6589),
+            config_->backup_polling_period());
   EXPECT_FALSE(config_->wifi_auto_setup_enabled());
   std::set<privetd::PairingType> pairing_types{
       privetd::PairingType::kPinCode, privetd::PairingType::kEmbeddedCode,
@@ -199,9 +201,8 @@ TEST_F(BuffetConfigTest, LoadState) {
   EXPECT_EQ(default_.model_name(), config_->model_name());
   EXPECT_EQ(default_.model_id(), config_->model_id());
   EXPECT_EQ(default_.device_kind(), config_->device_kind());
-  EXPECT_EQ(default_.polling_period_ms(), config_->polling_period_ms());
-  EXPECT_EQ(default_.backup_polling_period_ms(),
-            config_->backup_polling_period_ms());
+  EXPECT_EQ(default_.polling_period(), config_->polling_period());
+  EXPECT_EQ(default_.backup_polling_period(), config_->backup_polling_period());
   EXPECT_EQ(default_.wifi_auto_setup_enabled(),
             config_->wifi_auto_setup_enabled());
   EXPECT_EQ(default_.pairing_modes(), config_->pairing_modes());

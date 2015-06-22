@@ -102,9 +102,9 @@ class BuffetConfig final {
   const std::string& model_name() const { return model_name_; }
   const std::string& model_id() const { return model_id_; }
   const std::string& device_kind() const { return device_kind_; }
-  uint64_t polling_period_ms() const { return polling_period_ms_; }
-  uint64_t backup_polling_period_ms() const {
-    return backup_polling_period_ms_;
+  base::TimeDelta polling_period() const { return polling_period_; }
+  base::TimeDelta backup_polling_period() const {
+    return backup_polling_period_;
   }
 
   bool wifi_auto_setup_enabled() const { return wifi_auto_setup_enabled_; }
@@ -149,8 +149,8 @@ class BuffetConfig final {
   std::string model_name_{"Brillo"};
   std::string model_id_{"AAAAA"};
   std::string device_kind_{"vendor"};
-  uint64_t polling_period_ms_{7000};  // 7 seconds.
-  uint64_t backup_polling_period_ms_{30 * 60 * 1000};  // 30 minutes.
+  base::TimeDelta polling_period_{base::TimeDelta::FromSeconds(7)};
+  base::TimeDelta backup_polling_period_{base::TimeDelta::FromMinutes(30)};
 
   bool wifi_auto_setup_enabled_{true};
   std::set<privetd::PairingType> pairing_modes_{privetd::PairingType::kPinCode};
