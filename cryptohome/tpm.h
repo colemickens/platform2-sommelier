@@ -12,7 +12,6 @@
 #include <base/synchronization/lock.h>
 #include <chromeos/secure_blob.h>
 #include <openssl/rsa.h>
-#include <trousers/tss.h>
 
 #include "tpm_status.pb.h"  // NOLINT(build/include)
 

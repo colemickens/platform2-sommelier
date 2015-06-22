@@ -6,13 +6,34 @@
 
 #include "cryptohome/tpm2_impl.h"
 
+#include <string>
+
 #include <base/logging.h>
+#include <trunks/error_codes.h>
+#include <trunks/tpm_constants.h>
+#include <trunks/trunks_factory.h>
+#include <trunks/trunks_factory_impl.h>
+#include <trunks/trunks_proxy.h>
 
 using chromeos::SecureBlob;
+using trunks::GetErrorString;
+using trunks::TPM_RC;
+using trunks::TPM_RC_SUCCESS;
+using trunks::TrunksFactory;
 
 namespace cryptohome {
 
-Tpm2Impl::Tpm2Impl() {}
+Tpm2Impl::Tpm2Impl()
+    : factory_(scoped_ptr<TrunksFactory>(new trunks::TrunksFactoryImpl())),
+      session_(factory_->GetHmacSession()),
+      state_(factory_->GetTpmState()),
+      utility_(factory_->GetTpmUtility()) {}
+
+Tpm2Impl::Tpm2Impl(TrunksFactory* factory)
+    : factory_(scoped_ptr<TrunksFactory>(factory)),
+      session_(factory_->GetHmacSession()),
+      state_(factory_->GetTpmState()),
+      utility_(factory_->GetTpmUtility()) {}
 
 Tpm2Impl::~Tpm2Impl() {}
 
@@ -39,57 +60,152 @@ Tpm::TpmRetryAction Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
 }
 
 bool Tpm2Impl::GetOwnerPassword(chromeos::Blob* owner_password) {
-  LOG(FATAL) << "Not Implemented.";
-  return false;
+  if (!owner_password_.empty()) {
+    owner_password->assign(owner_password_.begin(), owner_password_.end());
+  } else {
+    owner_password->clear();
+  }
+  return true;
 }
 
 void Tpm2Impl::SetOwnerPassword(const SecureBlob& owner_password) {
-  LOG(FATAL) << "Not Implemented.";
+  SecureBlob tmp(owner_password);
+  owner_password_.swap(tmp);
 }
 
 bool Tpm2Impl::PerformEnabledOwnedCheck(bool* enabled, bool* owned) {
-  LOG(FATAL) << "Not Implemented.";
-  return false;
+  TPM_RC result = state_->Initialize();
+  if (result != TPM_RC_SUCCESS) {
+    if (enabled) {
+      *enabled = false;
+    }
+    if (owned) {
+      *owned = false;
+    }
+    LOG(ERROR) << "Error getting tpm status for owned check: "
+               << GetErrorString(result);
+    return false;
+  }
+  if (enabled) {
+    *enabled = state_->IsEnabled();
+  }
+  if (owned) {
+    *owned = state_->IsOwned();
+  }
+  return true;
 }
 
 bool Tpm2Impl::GetRandomData(size_t length, chromeos::Blob* data) {
-  LOG(FATAL) << "Not Implemented.";
-  return false;
+  CHECK(data);
+  std::string random_data;
+  TPM_RC result = utility_->GenerateRandom(length,
+                                           nullptr,  // No authorization.
+                                           &random_data);
+  if ((result != TPM_RC_SUCCESS) || (random_data.size() != length)) {
+    LOG(ERROR) << "Error getting random data: " << GetErrorString(result);
+    return false;
+  }
+  data->assign(random_data.begin(), random_data.end());
+  return true;
 }
 
 bool Tpm2Impl::DefineLockOnceNvram(uint32_t index, size_t length) {
-  LOG(FATAL) << "Not Implemented.";
-  return false;
+  if (owner_password_.empty()) {
+    LOG(ERROR) << "Defining NVram needs owner_password.";
+    return false;
+  }
+  session_->SetEntityAuthorizationValue(owner_password_.to_string());
+  TPM_RC result = utility_->DefineNVSpace(index, length,
+                                          session_->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error defining NVram space: " << GetErrorString(result);
+    return false;
+  }
+  return true;
 }
 
 bool Tpm2Impl::DestroyNvram(uint32_t index) {
-  LOG(FATAL) << "Not Implemented.";
-  return false;
+  if (owner_password_.empty()) {
+    LOG(ERROR) << "Destroying NVram needs owner_password.";
+    return false;
+  }
+  session_->SetEntityAuthorizationValue(owner_password_.to_string());
+  TPM_RC result = utility_->DestroyNVSpace(index, session_->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error destroying NVram space: " << GetErrorString(result);
+    return false;
+  }
+  return true;
 }
 
 bool Tpm2Impl::WriteNvram(uint32_t index, const SecureBlob& blob) {
-  LOG(FATAL) << "Not Implemented.";
-  return false;
+  session_->SetEntityAuthorizationValue("");
+  TPM_RC result = utility_->WriteNVSpace(index,
+                                         0,  // offset
+                                         blob.to_string(),
+                                         session_->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error writing to NVSpace: " << GetErrorString(result);
+    return false;
+  }
+  result = utility_->LockNVSpace(index, session_->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error locking NVSpace: " << GetErrorString(result);
+    return false;
+  }
+  return true;
 }
 
 bool Tpm2Impl::ReadNvram(uint32_t index, SecureBlob* blob) {
-  LOG(FATAL) << "Not Implemented.";
-  return false;
+  std::string nvram_data;
+  session_->SetEntityAuthorizationValue("");
+  TPM_RC result = utility_->ReadNVSpace(index,
+                                        0,  // offset
+                                        GetNvramSize(index),
+                                        &nvram_data,
+                                        session_->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error reading from nvram: " << GetErrorString(result);
+    return false;
+  }
+  blob->assign(nvram_data.begin(), nvram_data.end());
+  return true;
 }
 
 bool Tpm2Impl::IsNvramDefined(uint32_t index) {
-  LOG(FATAL) << "Not Implemented.";
+  trunks::TPMS_NV_PUBLIC nvram_public;
+  TPM_RC result = utility_->GetNVSpacePublicArea(index, &nvram_public);
+  if (trunks::GetFormatOneError(result) == trunks::TPM_RC_HANDLE) {
+    return false;
+  } else if (result == TPM_RC_SUCCESS) {
+    return true;
+  } else {
+    LOG(ERROR) << "Error reading NV space for index " << index
+               << " with error: " << GetErrorString(result);
+  }
   return false;
 }
 
 bool Tpm2Impl::IsNvramLocked(uint32_t index) {
-  LOG(FATAL) << "Not Implemented.";
-  return false;
+  trunks::TPMS_NV_PUBLIC nvram_public;
+  TPM_RC result = utility_->GetNVSpacePublicArea(index, &nvram_public);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error reading NV space for index " << index
+               << " with error: " << GetErrorString(result);
+    return false;
+  }
+  return (nvram_public.attributes & trunks::TPMA_NV_WRITELOCKED) != 0;
 }
 
 unsigned int Tpm2Impl::GetNvramSize(uint32_t index) {
-  LOG(FATAL) << "Not Implemented.";
-  return 0;
+  trunks::TPMS_NV_PUBLIC nvram_public;
+  TPM_RC result = utility_->GetNVSpacePublicArea(index, &nvram_public);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error reading NV space for index " << index
+               << " with error: " << GetErrorString(result);
+    return 0;
+  }
+  return nvram_public.data_size;
 }
 
 bool Tpm2Impl::GetEndorsementPublicKey(SecureBlob* ek_public_key) {

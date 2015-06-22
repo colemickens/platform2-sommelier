@@ -43,12 +43,13 @@ void ScopedKeyHandle::reset(Tpm* tpm, TpmKeyHandle handle) {
 Tpm* Tpm::GetSingleton() {
   // TODO(fes): Replace with a better atomic operation
   singleton_lock_.Acquire();
-  if (!singleton_)
+  if (!singleton_) {
 #if USE_TPM2
     singleton_ = new Tpm2Impl();
 #else
     singleton_ = new TpmImpl();
 #endif
+  }
   singleton_lock_.Release();
   return singleton_;
 }

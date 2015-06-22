@@ -7,11 +7,18 @@
 
 #include "cryptohome/tpm.h"
 
+#include <trunks/hmac_session.h>
+#include <trunks/tpm_state.h>
+#include <trunks/tpm_utility.h>
+#include <trunks/trunks_factory.h>
+
 namespace cryptohome {
 
 class Tpm2Impl : public Tpm {
  public:
   Tpm2Impl();
+  // Takes ownership of factory.
+  explicit Tpm2Impl(trunks::TrunksFactory* factory);
   virtual ~Tpm2Impl();
   // Tpm methods
   TpmRetryAction EncryptBlob(TpmKeyHandle key_handle,
@@ -118,10 +125,17 @@ class Tpm2Impl : public Tpm {
       const chromeos::SecureBlob& delegate_secret) override;
 
  private:
+  scoped_ptr<trunks::TrunksFactory> factory_;
+  scoped_ptr<trunks::HmacSession> session_;
+  scoped_ptr<trunks::TpmState> state_;
+  scoped_ptr<trunks::TpmUtility> utility_;
+
   bool is_disabled_ = false;
   bool is_owned_ = false;
   bool initialized_ = false;
   bool is_being_owned_ = false;
+
+  chromeos::SecureBlob owner_password_;
 
   DISALLOW_COPY_AND_ASSIGN(Tpm2Impl);
 };
