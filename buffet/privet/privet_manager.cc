@@ -28,14 +28,13 @@
 #include <libwebserv/server.h>
 
 #include "buffet/dbus_constants.h"
+#include "buffet/device_registration_info.h"
 #include "buffet/privet/ap_manager_client.h"
 #include "buffet/privet/cloud_delegate.h"
 #include "buffet/privet/constants.h"
-#include "buffet/privet/daemon_state.h"
 #include "buffet/privet/device_delegate.h"
 #include "buffet/privet/peerd_client.h"
 #include "buffet/privet/privet_handler.h"
-#include "buffet/privet/privetd_conf_parser.h"
 #include "buffet/privet/security_manager.h"
 #include "buffet/privet/shill_client.h"
 #include "buffet/privet/wifi_bootstrap_manager.h"
@@ -48,8 +47,6 @@ using chromeos::dbus_utils::AsyncEventSequencer;
 using libwebserv::ProtocolHandler;
 using libwebserv::Request;
 using libwebserv::Response;
-
-const char kDefaultStateFilePath[] = "/var/lib/privetd/privetd.state";
 
 std::string GetFirstHeader(const Request& request, const std::string& name) {
   std::vector<std::string> headers = request.GetHeader(name);
@@ -72,37 +69,22 @@ void Manager::Start(const Options& options,
                     AsyncEventSequencer* sequencer) {
   disable_security_ = options.disable_security;
 
-  // TODO(vitalybuka): switch to BuffetConfig.
-  base::FilePath state_path{privetd::kDefaultStateFilePath};
-
-  state_store_.reset(new DaemonState(state_path));
-  parser_.reset(new PrivetdConfigParser);
-
-  chromeos::KeyValueStore config_store;
-  if (!config_store.Load(options.config_path)) {
-    LOG(ERROR) << "Failed to read privetd config file from "
-               << options.config_path.value();
-  } else {
-    CHECK(parser_->Parse(config_store)) << "Failed to read configuration file.";
-  }
-  state_store_->Init();
-
   device_ = DeviceDelegate::CreateDefault();
   cloud_ = CloudDelegate::CreateDefault(device, command_manager, state_manager);
   cloud_observer_.Add(cloud_.get());
-  security_.reset(new SecurityManager(parser_->pairing_modes(),
-                                      parser_->embedded_code_path(),
+  security_.reset(new SecurityManager(device->GetConfig().pairing_modes(),
+                                      device->GetConfig().embedded_code_path(),
                                       disable_security_));
   shill_client_.reset(new ShillClient(bus, options.device_whitelist));
   shill_client_->RegisterConnectivityListener(
       base::Bind(&Manager::OnConnectivityChanged, base::Unretained(this)));
   ap_manager_client_.reset(new ApManagerClient(bus));
 
-  if (parser_->wifi_auto_setup_enabled()) {
+  if (device->GetConfig().wifi_auto_setup_enabled()) {
     VLOG(1) << "Enabling WiFi bootstrapping.";
-    wifi_bootstrap_manager_.reset(
-        new WifiBootstrapManager(state_store_.get(), shill_client_.get(),
-                                 ap_manager_client_.get(), cloud_.get()));
+    wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
+        device->GetConfig().last_configured_ssid(), shill_client_.get(),
+        ap_manager_client_.get(), cloud_.get()));
     wifi_bootstrap_manager_->Init();
   }
 

@@ -360,6 +360,14 @@ void Manager::OnConfigChanged(const BuffetConfig& config) {
 
 void Manager::UpdateWiFiBootstrapState(
     privetd::WifiBootstrapManager::State state) {
+  if (auto wifi = privet_->GetWifiBootstrapManager()) {
+    const std::string& ssid{wifi->GetCurrentlyConnectedSsid()};
+    if (ssid != device_info_->GetConfig().last_configured_ssid()) {
+      BuffetConfig::Transaction change{device_info_->GetMutableConfig()};
+      change.set_last_configured_ssid(ssid);
+    }
+  }
+
   switch (state) {
     case privetd::WifiBootstrapManager::kDisabled:
       dbus_adaptor_.SetWiFiBootstrapState("disabled");

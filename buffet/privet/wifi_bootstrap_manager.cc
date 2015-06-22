@@ -22,14 +22,15 @@ const int kBootstrapTimeoutSeconds = 600;
 const int kMonitorTimeoutSeconds = 120;
 }
 
-WifiBootstrapManager::WifiBootstrapManager(DaemonState* state_store,
-                                           ShillClient* shill_client,
-                                           ApManagerClient* ap_manager_client,
-                                           CloudDelegate* gcd)
-    : state_store_(state_store),
-      shill_client_(shill_client),
-      ap_manager_client_(ap_manager_client),
-      ssid_generator_(gcd, this) {
+WifiBootstrapManager::WifiBootstrapManager(
+    const std::string& last_configured_ssid,
+    ShillClient* shill_client,
+    ApManagerClient* ap_manager_client,
+    CloudDelegate* gcd)
+    : shill_client_{shill_client},
+      ap_manager_client_{ap_manager_client},
+      ssid_generator_{gcd, this},
+      last_configured_ssid_{last_configured_ssid} {
   cloud_observer_.Add(gcd);
 }
 
@@ -38,18 +39,11 @@ void WifiBootstrapManager::Init() {
   std::string ssid = ssid_generator_.GenerateSsid();
   if (ssid.empty())
     return;  // Delay initialization until ssid_generator_ is ready.
-  chromeos::KeyValueStore state_store;
-  if (!state_store_->GetBoolean(state_key::kWifiHasBeenBootstrapped,
-                                &have_ever_been_bootstrapped_) ||
-      !state_store_->GetString(state_key::kWifiLastConfiguredSSID,
-                               &last_configured_ssid_)) {
-    have_ever_been_bootstrapped_ = false;
-  }
   UpdateConnectionState();
   shill_client_->RegisterConnectivityListener(
       base::Bind(&WifiBootstrapManager::OnConnectivityChange,
                  lifetime_weak_factory_.GetWeakPtr()));
-  if (!have_ever_been_bootstrapped_) {
+  if (last_configured_ssid_.empty()) {
     StartBootstrapping();
   } else {
     StartMonitoring();
@@ -76,7 +70,7 @@ void WifiBootstrapManager::StartBootstrapping() {
   }
 
   UpdateState(kBootstrapping);
-  if (have_ever_been_bootstrapped_) {
+  if (!last_configured_ssid_.empty()) {
     // If we have been configured before, we'd like to periodically take down
     // our AP and find out if we can connect again.  Many kinds of failures are
     // transient, and having an AP up prohibits us from connecting as a client.
@@ -202,13 +196,7 @@ void WifiBootstrapManager::OnDeviceInfoChanged() {
 
 void WifiBootstrapManager::OnConnectSuccess(const std::string& ssid) {
   VLOG(1) << "Wifi was connected successfully";
-  have_ever_been_bootstrapped_ = true;
   last_configured_ssid_ = ssid;
-  state_store_->SetBoolean(state_key::kWifiHasBeenBootstrapped,
-                           have_ever_been_bootstrapped_);
-  state_store_->SetString(state_key::kWifiLastConfiguredSSID,
-                          last_configured_ssid_);
-  state_store_->Save();
   setup_state_ = SetupState{SetupState::kSuccess};
   StartMonitoring();
 }
@@ -259,9 +247,8 @@ void WifiBootstrapManager::OnMonitorTimeout() {
 
 void WifiBootstrapManager::UpdateConnectionState() {
   connection_state_ = ConnectionState{ConnectionState::kUnconfigured};
-  if (!have_ever_been_bootstrapped_) {
+  if (last_configured_ssid_.empty())
     return;
-  }
   ServiceState service_state{shill_client_->GetConnectionState()};
   switch (service_state) {
     case ServiceState::kOffline:

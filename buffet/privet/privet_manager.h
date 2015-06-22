@@ -42,7 +42,6 @@ class DaemonState;
 class DeviceDelegate;
 class PeerdClient;
 class PrivetHandler;
-class PrivetdConfigParser;
 class SecurityManager;
 class ShillClient;
 class WifiBootstrapManager;
@@ -99,8 +98,6 @@ class Manager : public CloudDelegate::Observer {
       libwebserv::ProtocolHandler* protocol_handler);
 
   bool disable_security_{false};
-  std::unique_ptr<PrivetdConfigParser> parser_;
-  std::unique_ptr<DaemonState> state_store_;
   std::unique_ptr<CloudDelegate> cloud_;
   std::unique_ptr<DeviceDelegate> device_;
   std::unique_ptr<SecurityManager> security_;

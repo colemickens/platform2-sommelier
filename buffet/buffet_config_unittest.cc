@@ -4,6 +4,8 @@
 
 #include "buffet/buffet_config.h"
 
+#include <set>
+
 #include <base/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -54,6 +56,11 @@ TEST_F(BuffetConfigTest, Defaults) {
   EXPECT_EQ("AAAAA", config_->model_id());
   EXPECT_EQ("vendor", config_->device_kind());
   EXPECT_EQ(7000, config_->polling_period_ms());
+  EXPECT_EQ(1800000, config_->backup_polling_period_ms());
+  EXPECT_TRUE(config_->wifi_auto_setup_enabled());
+  EXPECT_EQ(std::set<privetd::PairingType>{privetd::PairingType::kPinCode},
+            config_->pairing_modes());
+  EXPECT_EQ("", config_->embedded_code_path().value());
   EXPECT_EQ("Developer device", config_->name());
   EXPECT_EQ("", config_->description());
   EXPECT_EQ("", config_->location());
@@ -63,6 +70,7 @@ TEST_F(BuffetConfigTest, Defaults) {
   EXPECT_EQ("", config_->device_id());
   EXPECT_EQ("", config_->refresh_token());
   EXPECT_EQ("", config_->robot_account());
+  EXPECT_EQ("", config_->last_configured_ssid());
 }
 
 TEST_F(BuffetConfigTest, LoadConfig) {
@@ -76,6 +84,11 @@ TEST_F(BuffetConfigTest, LoadConfig) {
   config_store.SetString("model_name", "conf_model_name");
   config_store.SetString("model_id", "ABCDE");
   config_store.SetString("polling_period_ms", "12345");
+  config_store.SetString("backup_polling_period_ms", "6589");
+  config_store.SetBoolean("wifi_auto_setup_enabled", false);
+  config_store.SetString("pairing_modes",
+                         "pinCode,embeddedCode,ultrasound32,audible32");
+  config_store.SetString("embedded_code_path", "/conf_code");
   config_store.SetString("name", "conf_name");
   config_store.SetString("description", "conf_description");
   config_store.SetString("location", "conf_location");
@@ -88,6 +101,7 @@ TEST_F(BuffetConfigTest, LoadConfig) {
   config_store.SetString("device_id", "conf_device_id");
   config_store.SetString("refresh_token", "conf_refresh_token");
   config_store.SetString("robot_account", "conf_robot_account");
+  config_store.SetString("last_configured_ssid", "conf_last_configured_ssid");
 
   EXPECT_CALL(*this, OnConfigChanged(_)).Times(1);
   config_->Load(config_store);
@@ -102,6 +116,13 @@ TEST_F(BuffetConfigTest, LoadConfig) {
   EXPECT_EQ("ABCDE", config_->model_id());
   EXPECT_EQ("developmentBoard", config_->device_kind());
   EXPECT_EQ(12345, config_->polling_period_ms());
+  EXPECT_EQ(6589, config_->backup_polling_period_ms());
+  EXPECT_FALSE(config_->wifi_auto_setup_enabled());
+  std::set<privetd::PairingType> pairing_types{
+      privetd::PairingType::kPinCode, privetd::PairingType::kEmbeddedCode,
+      privetd::PairingType::kUltrasound32, privetd::PairingType::kAudible32};
+  EXPECT_EQ(pairing_types, config_->pairing_modes());
+  EXPECT_EQ("/conf_code", config_->embedded_code_path().value());
   EXPECT_EQ("conf_name", config_->name());
   EXPECT_EQ("conf_description", config_->description());
   EXPECT_EQ("conf_location", config_->location());
@@ -113,6 +134,7 @@ TEST_F(BuffetConfigTest, LoadConfig) {
   EXPECT_EQ(default_.device_id(), config_->device_id());
   EXPECT_EQ(default_.refresh_token(), config_->refresh_token());
   EXPECT_EQ(default_.robot_account(), config_->robot_account());
+  EXPECT_EQ(default_.last_configured_ssid(), config_->last_configured_ssid());
 
   // Nothing should be saved yet.
   EXPECT_JSON_EQ("{}", *storage_->Load());
@@ -135,6 +157,7 @@ TEST_F(BuffetConfigTest, LoadConfig) {
     'oauth_url': 'conf_oauth_url',
     'refresh_token': '',
     'robot_account': '',
+    'last_configured_ssid': '',
     'service_url': 'conf_service_url'
   })";
   EXPECT_JSON_EQ(expected, *storage_->Load());
@@ -155,6 +178,7 @@ TEST_F(BuffetConfigTest, LoadState) {
     'oauth_url': 'state_oauth_url',
     'refresh_token': 'state_refresh_token',
     'robot_account': 'state_robot_account',
+    'last_configured_ssid': 'state_last_configured_ssid',
     'service_url': 'state_service_url'
   })";
   storage_->Save(*buffet::unittests::CreateDictionaryValue(state));
@@ -176,6 +200,12 @@ TEST_F(BuffetConfigTest, LoadState) {
   EXPECT_EQ(default_.model_id(), config_->model_id());
   EXPECT_EQ(default_.device_kind(), config_->device_kind());
   EXPECT_EQ(default_.polling_period_ms(), config_->polling_period_ms());
+  EXPECT_EQ(default_.backup_polling_period_ms(),
+            config_->backup_polling_period_ms());
+  EXPECT_EQ(default_.wifi_auto_setup_enabled(),
+            config_->wifi_auto_setup_enabled());
+  EXPECT_EQ(default_.pairing_modes(), config_->pairing_modes());
+  EXPECT_EQ(default_.embedded_code_path(), config_->embedded_code_path());
   EXPECT_EQ("state_name", config_->name());
   EXPECT_EQ("state_description", config_->description());
   EXPECT_EQ("state_location", config_->location());
@@ -185,6 +215,7 @@ TEST_F(BuffetConfigTest, LoadState) {
   EXPECT_EQ("state_device_id", config_->device_id());
   EXPECT_EQ("state_refresh_token", config_->refresh_token());
   EXPECT_EQ("state_robot_account", config_->robot_account());
+  EXPECT_EQ("state_last_configured_ssid", config_->last_configured_ssid());
 
   // Nothing should be saved yet.
   EXPECT_JSON_EQ("{}", *storage_->Load());
@@ -253,6 +284,9 @@ TEST_F(BuffetConfigTest, Setters) {
   change.set_robot_account("set_account");
   EXPECT_EQ("set_account", config_->robot_account());
 
+  change.set_last_configured_ssid("set_last_configured_ssid");
+  EXPECT_EQ("set_last_configured_ssid", config_->last_configured_ssid());
+
   EXPECT_CALL(*this, OnConfigChanged(_)).Times(1);
   change.Commit();
 
@@ -270,6 +304,7 @@ TEST_F(BuffetConfigTest, Setters) {
     'oauth_url': 'set_oauth_url',
     'refresh_token': 'set_token',
     'robot_account': 'set_account',
+    'last_configured_ssid': 'set_last_configured_ssid',
     'service_url': 'set_service_url'
   })";
   EXPECT_JSON_EQ(expected, *storage_->Load());

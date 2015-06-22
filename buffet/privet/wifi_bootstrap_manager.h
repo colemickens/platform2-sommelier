@@ -16,7 +16,6 @@
 #include <base/scoped_observer.h>
 
 #include "buffet/privet/cloud_delegate.h"
-#include "buffet/privet/daemon_state.h"
 #include "buffet/privet/privet_types.h"
 #include "buffet/privet/wifi_delegate.h"
 #include "buffet/privet/wifi_ssid_generator.h"
@@ -40,7 +39,7 @@ class WifiBootstrapManager : public WifiDelegate,
 
   using StateListener = base::Callback<void(State)>;
 
-  WifiBootstrapManager(DaemonState* state_store,
+  WifiBootstrapManager(const std::string& last_configured_ssid,
                        ShillClient* shill_client,
                        ApManagerClient* ap_manager_client,
                        CloudDelegate* gcd);
@@ -99,13 +98,11 @@ class WifiBootstrapManager : public WifiDelegate,
   // It is not persisted to disk.
   SetupState setup_state_{SetupState::kNone};
   ConnectionState connection_state_{ConnectionState::kDisabled};
-  DaemonState* state_store_;
   ShillClient* shill_client_;
   ApManagerClient* ap_manager_client_;
   WifiSsidGenerator ssid_generator_;
 
   std::vector<StateListener> state_listeners_;
-  bool have_ever_been_bootstrapped_{false};
   bool currently_online_{false};
   std::string last_configured_ssid_;
 

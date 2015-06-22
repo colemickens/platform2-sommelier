@@ -147,7 +147,9 @@ class DeviceRegistrationInfo : public NotificationDelegate {
                            const std::string& service_url,
                            chromeos::ErrorPtr* error);
 
+  // TODO(vitalybuka): remove getters and pass config to dependent code.
   const BuffetConfig& GetConfig() const { return *config_; }
+  BuffetConfig* GetMutableConfig() { return config_.get(); }
 
   base::WeakPtr<DeviceRegistrationInfo> AsWeakPtr() {
     return weak_factory_.GetWeakPtr();

@@ -5,6 +5,7 @@
 #ifndef BUFFET_BUFFET_CONFIG_H_
 #define BUFFET_BUFFET_CONFIG_H_
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,8 @@
 #include <base/files/file_path.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/key_value_store.h>
+
+#include "buffet/privet/security_delegate.h"
 
 namespace buffet {
 
@@ -77,6 +80,9 @@ class BuffetConfig final {
     void set_robot_account(const std::string& account) {
       config_->robot_account_ = account;
     }
+    void set_last_configured_ssid(const std::string& ssid) {
+      config_->last_configured_ssid_ = ssid;
+    }
 
     void Commit();
 
@@ -101,18 +107,29 @@ class BuffetConfig final {
     return backup_polling_period_ms_;
   }
 
+  bool wifi_auto_setup_enabled() const { return wifi_auto_setup_enabled_; }
+  const std::set<privetd::PairingType>& pairing_modes() const {
+    return pairing_modes_;
+  }
+  const base::FilePath& embedded_code_path() const {
+    return embedded_code_path_;
+  }
+
   const std::string& name() const { return name_; }
   const std::string& description() const { return description_; }
   const std::string& location() const { return location_; }
-  std::string local_anonymous_access_role() const {
+  const std::string& local_anonymous_access_role() const {
     return local_anonymous_access_role_;
   }
   bool local_pairing_enabled() const { return local_pairing_enabled_; }
   bool local_discovery_enabled() const { return local_discovery_enabled_; }
 
-  std::string device_id() const { return device_id_; }
-  std::string refresh_token() const { return refresh_token_; }
-  std::string robot_account() const { return robot_account_; }
+  const std::string& device_id() const { return device_id_; }
+  const std::string& refresh_token() const { return refresh_token_; }
+  const std::string& robot_account() const { return robot_account_; }
+  const std::string& last_configured_ssid() const {
+    return last_configured_ssid_;
+  }
 
  private:
   bool Save();
@@ -135,9 +152,14 @@ class BuffetConfig final {
   uint64_t polling_period_ms_{7000};  // 7 seconds.
   uint64_t backup_polling_period_ms_{30 * 60 * 1000};  // 30 minutes.
 
+  bool wifi_auto_setup_enabled_{true};
+  std::set<privetd::PairingType> pairing_modes_{privetd::PairingType::kPinCode};
+  base::FilePath embedded_code_path_;
+
   std::string device_id_;
   std::string refresh_token_;
   std::string robot_account_;
+  std::string last_configured_ssid_;
 
   // Serialization interface to save and load buffet state.
   std::unique_ptr<StorageInterface> storage_;

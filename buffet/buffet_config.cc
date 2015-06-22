@@ -4,9 +4,12 @@
 
 #include "buffet/buffet_config.h"
 
+#include <set>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <chromeos/strings/string_utils.h>
 
 #include "buffet/storage_impls.h"
 #include "buffet/storage_interface.h"
@@ -72,6 +75,10 @@ const char kBackupPollingPeriodMs[] = "backup_polling_period_ms";
 const char kRefreshToken[] = "refresh_token";
 const char kDeviceId[] = "device_id";
 const char kRobotAccount[] = "robot_account";
+const char kWifiAutoSetupEnabled[] = "wifi_auto_setup_enabled";
+const char kEmbeddedCodePath[] = "embedded_code_path";
+const char kPairingModes[] = "pairing_modes";
+const char kLastConfiguredSsid[] = "last_configured_ssid";
 
 }  // namespace config_keys
 
@@ -127,6 +134,28 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
 
   if (store.GetString(config_keys::kBackupPollingPeriodMs, &polling_period_str))
     CHECK(base::StringToUint64(polling_period_str, &backup_polling_period_ms_));
+
+  store.GetBoolean(config_keys::kWifiAutoSetupEnabled,
+                   &wifi_auto_setup_enabled_);
+
+  std::string embedded_code_path;
+  if (store.GetString(config_keys::kEmbeddedCodePath, &embedded_code_path)) {
+    embedded_code_path_ = base::FilePath(embedded_code_path);
+    if (!embedded_code_path_.empty())
+      pairing_modes_ = {privetd::PairingType::kEmbeddedCode};
+  }
+
+  std::string modes_str;
+  if (store.GetString(config_keys::kPairingModes, &modes_str)) {
+    std::set<privetd::PairingType> pairing_modes;
+    for (const std::string& mode :
+         chromeos::string_utils::Split(modes_str, ",", true, true)) {
+      privetd::PairingType pairing_mode;
+      CHECK(privetd::StringToPairingType(mode, &pairing_mode));
+      pairing_modes.insert(pairing_mode);
+    }
+    pairing_modes_ = std::move(pairing_modes);
+  }
 
   // Empty name set by user or server is allowed, still we expect some
   // meaningfull config value.
@@ -198,6 +227,9 @@ void BuffetConfig::Transaction::LoadState() {
   if (dict->GetString(config_keys::kRobotAccount, &tmp))
     set_robot_account(tmp);
 
+  if (dict->GetString(config_keys::kLastConfiguredSsid, &tmp))
+    set_last_configured_ssid(tmp);
+
   if (dict->GetString(config_keys::kDeviceId, &tmp))
     set_device_id(tmp);
 }
@@ -214,6 +246,7 @@ bool BuffetConfig::Save() {
   dict.SetString(config_keys::kRefreshToken, refresh_token_);
   dict.SetString(config_keys::kDeviceId, device_id_);
   dict.SetString(config_keys::kRobotAccount, robot_account_);
+  dict.SetString(config_keys::kLastConfiguredSsid, last_configured_ssid_);
   dict.SetString(config_keys::kName, name_);
   dict.SetString(config_keys::kDescription, description_);
   dict.SetString(config_keys::kLocation, location_);
