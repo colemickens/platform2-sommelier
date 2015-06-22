@@ -79,4 +79,18 @@ TEST_F(GlibMessageLoopTest, PostDelayedTaskWithoutLocation) {
   EXPECT_EQ(1, MessageLoopRunMaxIterations(loop_.get(), 100));
 }
 
+// Test that we can cancel the task we are running, and should just fail.
+TEST_F(GlibMessageLoopTest, DeleteTaskFromSelf) {
+  bool cancel_result = true;  // We would expect this to be false.
+  GlibMessageLoop* loop_ptr = loop_.get();
+  TaskId task_id;
+  task_id = loop_->PostTask(
+      FROM_HERE,
+      Bind([&cancel_result, loop_ptr, &task_id]() {
+        cancel_result = loop_ptr->CancelTask(task_id);
+      }));
+  EXPECT_EQ(1, MessageLoopRunMaxIterations(loop_.get(), 100));
+  EXPECT_FALSE(cancel_result);
+}
+
 }  // namespace chromeos

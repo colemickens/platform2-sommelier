@@ -72,10 +72,10 @@ gboolean GlibMessageLoop::OnRanPostedTask(gpointer user_data) {
   DVLOG_LOC(scheduled_task->location, 1)
       << "Running task_id " << scheduled_task->task_id
       << " scheduled from this location.";
-  scheduled_task->closure.Run();
   // We only need to remove this task_id from the map. DestroyPostedTask will be
   // called with this same |user_data| where we can delete the ScheduledTask.
   scheduled_task->loop->tasks_.erase(scheduled_task->task_id);
+  scheduled_task->closure.Run();
   return FALSE;  // Removes the source since a callback can only be called once.
 }
 
