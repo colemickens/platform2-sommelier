@@ -50,17 +50,17 @@ int Startup(bool use_ftdi) {
 }
 
 int Clear(bool use_ftdi) {
-  trunks::TrunksFactoryImpl factory;
+  trunks::TrunksFactoryImpl factory(use_ftdi);
   return factory.GetTpmUtility()->Clear();
 }
 
 int InitializeTpm(bool use_ftdi) {
-  trunks::TrunksFactoryImpl factory;
+  trunks::TrunksFactoryImpl factory(use_ftdi);
   return factory.GetTpmUtility()->InitializeTpm();
 }
 
 int AllocatePCR(bool use_ftdi) {
-  trunks::TrunksFactoryImpl factory;
+  trunks::TrunksFactoryImpl factory(use_ftdi);
   trunks::TPM_RC result;
   result = factory.GetTpmUtility()->AllocatePCR("");
   if (result != trunks::TPM_RC_SUCCESS) {
@@ -72,7 +72,7 @@ int AllocatePCR(bool use_ftdi) {
 }
 
 int TakeOwnership(const std::string& owner_password, bool use_ftdi) {
-  trunks::TrunksFactoryImpl factory;
+  trunks::TrunksFactoryImpl factory(use_ftdi);
   trunks::TPM_RC rc;
   rc = factory.GetTpmUtility()->TakeOwnership(owner_password,
                                               owner_password,
@@ -85,7 +85,7 @@ int TakeOwnership(const std::string& owner_password, bool use_ftdi) {
 }
 
 int DumpStatus(bool use_ftdi) {
-  trunks::TrunksFactoryImpl factory;
+  trunks::TrunksFactoryImpl factory(use_ftdi);
   scoped_ptr<trunks::TpmState> state = factory.GetTpmState();
   trunks::TPM_RC result = state->Initialize();
   if (result != trunks::TPM_RC_SUCCESS) {
