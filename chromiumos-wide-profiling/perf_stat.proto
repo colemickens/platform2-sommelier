@@ -45,6 +45,6 @@ message PerfStatProto {
     // This string should also appear as part of |PerfStatProto::command_line|.
     // "perf stat" will preserve the event name exactly as it is passed in via
     // the command line.
-    optional string event = 3;
+    optional string event_name = 3;
   }
 }
