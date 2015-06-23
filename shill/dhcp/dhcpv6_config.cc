@@ -41,7 +41,7 @@ const char DHCPv6Config::kConfigurationKeyDNS[] = "DHCPv6NameServers";
 const char DHCPv6Config::kConfigurationKeyDomainSearch[] = "DHCPv6DomainSearch";
 const char DHCPv6Config::kConfigurationKeyIPAddress[] = "DHCPv6Address";
 const char DHCPv6Config::kConfigurationKeyIPAddressLeaseTime[] =
-    "DHCPv6IPAddressLeaseTime";
+    "DHCPv6AddressLeaseTime";
 const char DHCPv6Config::kConfigurationKeyServerIdentifier[] =
     "DHCPv6ServerIdentifier";
 
