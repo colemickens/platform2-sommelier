@@ -4,7 +4,6 @@
 
 #include "permission_broker/permission_broker.h"
 
-#include <fcntl.h>
 #include <grp.h>
 #include <linux/usb/ch9.h>
 #include <sys/epoll.h>
@@ -15,7 +14,6 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/posix/eintr_wrapper.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -114,24 +112,6 @@ bool PermissionBroker::RequestPathAccess(const std::string& in_path,
   return false;
 }
 
-dbus::FileDescriptor PermissionBroker::OpenPath(const std::string& in_path) {
-  dbus::FileDescriptor result;
-
-  if (!rule_engine_.ProcessPath(in_path, -1 /* all interfaces */)) {
-    return result.Pass();
-  }
-
-  int fd = HANDLE_EINTR(open(in_path.c_str(), O_RDWR));
-  if (fd < 0) {
-    PLOG(INFO) << "Failed to open '" << in_path.c_str() << "'";
-    return result.Pass();
-  }
-
-  result.PutValue(fd);
-  result.CheckValidity();
-  return result.Pass();
-}
-
 bool PermissionBroker::RequestTcpPortAccess(
     uint16_t in_port,
     const std::string& in_interface,
@@ -173,7 +153,7 @@ bool PermissionBroker::RemoveVpnSetup() {
 
 bool PermissionBroker::GrantAccess(const std::string& path) {
   if (chown(path.c_str(), -1, access_group_)) {
-    PLOG(INFO) << "Could not grant access to " << path;
+    LOG(INFO) << "Could not grant access to " << path;
     return false;
   }
   return true;
