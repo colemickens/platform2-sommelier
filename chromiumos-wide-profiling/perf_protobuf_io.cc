@@ -15,11 +15,10 @@ namespace quipper {
 
 bool WriteProtobufToFile(const PerfDataProto& perf_data_proto,
                          const string& filename) {
-  string target;
-  perf_data_proto.SerializeToString(&target);
+  string output;
+  perf_data_proto.SerializeToString(&output);
 
-  std::vector<char> buffer(target.begin(), target.end());
-  return BufferToFile(filename, buffer);
+  return BufferToFile(filename, output);
 }
 
 bool ReadProtobufFromFile(PerfDataProto* perf_data_proto,
