@@ -26,21 +26,18 @@ class SettingsMap {
 
   // Retrieves the currently active value for the setting identified by |key|.
   // If no such setting is currently set, this method returns a nullptr.
-  virtual const base::Value* GetValue(const std::string& key) const = 0;
+  virtual const base::Value* GetValue(const Key& key) const = 0;
 
-  // Returns a list of currently active settings whose keys have |prefix| as a
-  // substring at the beginning.
-  virtual std::set<std::string> GetActiveChildKeys(
-      const std::string& prefix) const = 0;
-
-  // Returns a list of currently active prefixes have |prefix| as a substring
-  // at the beginning.
-  virtual std::set<std::string> GetActiveChildPrefixes(
-      const std::string& prefix) const = 0;
+  // Returns the list of currently active settings whose keys have |key| as an
+  // ancestor.
+  virtual std::set<Key> GetKeys(const Key& prefix) const = 0;
 
   // Inserts a settings document into the settings map.
   virtual void InsertDocument(
       std::unique_ptr<const SettingsDocument> document) = 0;
+
+  // Removes a settings document from the settings map and deletes it.
+  virtual void RemoveDocument(const SettingsDocument* document_ptr) = 0;
 
  private:
   DISALLOW_ASSIGN(SettingsMap);

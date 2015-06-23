@@ -31,57 +31,80 @@ class SimpleSettingsMap : public SettingsMap {
 
   // SettingsMap:
   void Clear() override;
-  const base::Value* GetValue(const std::string& key) const override;
-  std::set<std::string> GetActiveChildKeys(
-      const std::string& prefix) const override;
-  std::set<std::string> GetActiveChildPrefixes(
-      const std::string& prefix) const override;
+  const base::Value* GetValue(const Key& key) const override;
+  std::set<Key> GetKeys(const Key& key) const override;
   void InsertDocument(
       std::unique_ptr<const SettingsDocument> document) override;
+  void RemoveDocument(const SettingsDocument* document_ptr) override;
 
   // This method gets invoked when a SettingsDocument has lost its last
-  // reference from |prefix_document_map_|, i.e. is currently not providing any
-  // active settings value anymore. The argument, |document|, to this method is
-  // a pointer to the now unreferenced SettingsDocument. This method then
-  // deletes the respective SettingsDocument by dropping the owning pointer from
-  // the |documents_| member.
+  // reference from |value_map_| and |deletion_map_|, i.e. is currently
+  // providing neither any active settings value nor deletions. The argument,
+  // |document|, to this method is a pointer to the now unreferenced
+  // SettingsDocument.
   void OnDocumentUnreferenced(const SettingsDocument* document);
 
- protected:
-  // Helper method that deletes all entries in |prefix_document_map_| whose
-  // keys lie in the child prefix subspace of |prefix| and where the
-  // VersionStamp of the document that is currently providing them is before
-  // |upper_limit|. Note that this does not include |prefix| itself.
-  void DeleteChildPrefixSpace(const std::string& prefix,
-                              const VersionStamp& upper_limit);
+ private:
+  using WeakPtrDocumentList =
+      std::vector<std::weak_ptr<const SettingsDocument>>;
+  using KeyDocumentMap = std::map<Key, std::shared_ptr<const SettingsDocument>>;
+  friend class SimpleSettingsMapTest;
 
-  // Inserts the document into |documents_|, the list of documents sorted by
-  // their VersionStamp. Noteworthy points:
+  // Helper method that deletes all entries in |value_map_| and |deletion_map_|
+  // whose keys lie in the subtree rooted at |prefix| and where the VersionStamp
+  // of the document that is currently providing them is before |upper_limit|.
+  void DeleteSubtree(const Key& prefix, const VersionStamp& upper_limit);
+
+  // Returns true if |key| has a value assignment later than |lower_bound|.
+  // Otherwise, returns false.
+  bool HasLaterValueAssignment(const Key& key, const VersionStamp& lower_bound);
+
+  // Returns true if |prefix| has been removed by a deletion later than
+  // |lower_bound|. Otherwise, return false.
+  bool HasLaterSubtreeDeletion(const Key& prefix,
+                               const VersionStamp& lower_bound) const;
+
+  // Inserts the document into |documents_|, i.e. the list of documents sorted
+  // by their VersionStamp. Noteworthy points:
   // (1) VersionStamps fulfil the properties of vector clocks and thus allow
-  // for the partial causal ordering of SettingsDocuments.
+  //     for the partial causal ordering of SettingsDocuments.
   // (2) However their properties do not suffice to define a strict weak
-  // ordering, as the transitivity of equivalence is not fulfiled.
+  //     ordering, as the transitivity of equivalence is not fulfiled.
   // (3) The insertion algorithm implemented here inserts documents at the
-  // latest compatible insertion point. This guarantees that all documents with
-  // an is-before relationship to a document are found at lower indices.
+  //     latest compatible insertion point. This guarantees that all documents
+  //     with an is-before relationship to a document are found at lower
+  //     indices.
   void InsertDocumentIntoSortedList(
-      std::unique_ptr<const SettingsDocument> document);
+      std::shared_ptr<const SettingsDocument> document);
+
+  // Returns an iterator to the entry in |documents_| which points the same
+  // SettingsDocument as |document_ptr| does.
+  WeakPtrDocumentList::iterator FindDocumentInSortedList(
+      const SettingsDocument* document_ptr);
+
+  // Installs the subset of keys and subtree deletions provided by |document|
+  // for which at least one ancestor key is a member of |prefixes| into the
+  // |value_map_| or |deletion_map_|.
+  void InsertDocumentSubset(std::shared_ptr<const SettingsDocument> document,
+                            const std::set<Key>& prefixes);
 
   // The list of all active documents.
-  std::vector<std::unique_ptr<const SettingsDocument>> documents_;
+  WeakPtrDocumentList documents_;
 
-  // |prefix_document_map_| maps prefixes to the respective SettingsDocument
-  // which is currently providing the active value. The entries in this map
-  // indirectly control the lifetime of the SettingsDocument: Once the number of
-  // entries in this map referring to a particular document drops to zero, the
-  // OnDocumentUnreferenced method gets invoked with a pointer to that
+  // |value_map_| maps keys to the respective SettingsDocument which is
+  // currently providing the active value. The entries in this map indirectly
+  // control the lifetime of the SettingsDocument: Once the number of entries in
+  // this map and |deletion_map_| referring to a particular document drops to
+  // zero, the OnDocumentUnreferenced method gets invoked with a pointer to that
   // SettingsDocument. This method in turn then performs the clean-up, see
   // OnDocumentUnreferenced above.
-  using PrefixDocumentMap =
-      std::map<std::string, std::shared_ptr<const SettingsDocument>>;
-  PrefixDocumentMap prefix_document_map_;
+  KeyDocumentMap value_map_;
 
- private:
+  // |deletion_map_| maps keys to the respective SettingsDocument which is
+  // currently providing the delete operation for that subtree. See |value_map_|
+  // for comments regarding the lifetime of SettingsDocuments.
+  KeyDocumentMap deletion_map_;
+
   DISALLOW_COPY_AND_ASSIGN(SimpleSettingsMap);
 };
 

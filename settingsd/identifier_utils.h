@@ -9,29 +9,24 @@
 #include <set>
 #include <string>
 
+#include "settingsd/key.h"
+
 namespace settingsd {
 
 namespace utils {
-
-// Returns true if |prefix| is a key, i.e. does not have '.' as the last
-// character.
-bool IsKey(const std::string& prefix);
-
-// Returns the prefix of the parent namespace for |prefix|. If |prefix| is the
-// empty string, returns the empty string.
-std::string GetParentPrefix(const std::string& prefix);
 
 // A range adaptor for a pair of iterators.
 template <class Iter>
 class Range {
  public:
   Range(Iter begin, Iter end) : begin_(begin), end_(end) {}
-  Iter begin() { return begin_; }
-  Iter end() { return end_; }
+  Iter begin() const { return begin_; }
+  Iter end() const { return end_; }
+
 
  private:
-  Iter begin_;
-  Iter end_;
+  const Iter begin_;
+  const Iter end_;
 };
 
 // Convenience function for creating a Range.
@@ -40,22 +35,21 @@ Range<Iter> make_range(Iter begin, Iter end) {
   return Range<Iter>(begin, end);
 }
 
-// Returns a range covering the prefixes in |container| which start with
-// |prefix|. This set does not include |prefix| itself.
+// Returns a range of identifiers defined in |container| that are either equal
+// to |key| or have |key| as their ancestor. If |key| is the empty string,
+// returns the full range of the |container|. If |key| is not a valid key,
+// returns the empty range.
 template <class T>
-Range<typename T::const_iterator> GetChildPrefixes(const std::string& prefix,
-                                                   const T& container) {
-  // Keys don't have child prefixes.
-  if (utils::IsKey(prefix))
-    return make_range(container.end(), container.end());
-
-  // For the root prefix, always return the whole range.
-  if (prefix.size() == 0)
+Range<typename T::const_iterator> GetRange(const Key& key,
+                                           const T& container) {
+  // For the root key, always return the whole range.
+  if (key.IsRootKey())
     return make_range(container.begin(), container.end());
 
-  std::string end_key(prefix);
-  end_key[end_key.size() - 1]++;
-  return make_range(container.upper_bound(prefix),
+  Key start_key(key);
+  Key end_key(key.ToString() + "0");
+
+  return make_range(container.lower_bound(start_key),
                     container.lower_bound(end_key));
 }
 

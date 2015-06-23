@@ -22,16 +22,18 @@ class MockSettingsDocument : public SettingsDocument {
   ~MockSettingsDocument() override;
 
   // SettingsDocument:
-  const base::Value* GetValue(const std::string& prefix) const override;
-  std::set<std::string> GetActiveChildPrefixes(
-      const std::string& prefix) const override;
+  const base::Value* GetValue(const Key& key) const override;
+  std::set<Key> GetKeys(const Key& prefix) const override;
+  std::set<Key> GetDeletions(const Key& prefix) const override;
   const VersionStamp& GetVersionStamp() const override;
 
-  void SetEntry(const std::string& prefix, std::unique_ptr<base::Value> value);
+  void SetEntry(const Key& key, std::unique_ptr<base::Value> value);
+  void SetDeletion(const Key& key);
 
  private:
   const VersionStamp version_stamp_;
-  std::map<std::string, std::unique_ptr<base::Value>> prefix_value_map_;
+  std::map<Key, std::unique_ptr<base::Value>> key_value_map_;
+  std::set<Key> deletions_;
 
   DISALLOW_COPY_AND_ASSIGN(MockSettingsDocument);
 };

@@ -9,25 +9,26 @@
 namespace settingsd {
 
 MockSettingsDocument::MockSettingsDocument(const VersionStamp& version_stamp)
-    : version_stamp_(version_stamp) {
+    : version_stamp_(version_stamp) {}
+
+MockSettingsDocument::~MockSettingsDocument() {}
+
+const base::Value* MockSettingsDocument::GetValue(const Key& key) const {
+  auto entry = key_value_map_.find(key);
+  return entry != key_value_map_.end() ? entry->second.get() : nullptr;
 }
 
-MockSettingsDocument::~MockSettingsDocument() {
-}
-
-const base::Value* MockSettingsDocument::GetValue(
-    const std::string& prefix) const {
-  auto entry = prefix_value_map_.find(prefix);
-  if (entry != prefix_value_map_.end())
-    return entry->second.get();
-  return nullptr;
-}
-
-std::set<std::string> MockSettingsDocument::GetActiveChildPrefixes(
-    const std::string& prefix) const {
-  std::set<std::string> result;
-  for (const auto& entry : utils::GetChildPrefixes(prefix, prefix_value_map_))
+std::set<Key> MockSettingsDocument::GetKeys(const Key& key) const {
+  std::set<Key> result;
+  for (const auto& entry : utils::GetRange(key, key_value_map_))
     result.insert(entry.first);
+  return result;
+}
+
+std::set<Key> MockSettingsDocument::GetDeletions(const Key& key) const {
+  std::set<Key> result;
+  for (const auto& entry : utils::GetRange(key, deletions_))
+    result.insert(entry);
   return result;
 }
 
@@ -35,9 +36,13 @@ const VersionStamp& MockSettingsDocument::GetVersionStamp() const {
   return version_stamp_;
 }
 
-void MockSettingsDocument::SetEntry(const std::string& prefix,
+void MockSettingsDocument::SetEntry(const Key& key,
                                     std::unique_ptr<base::Value> value) {
-  prefix_value_map_.insert(make_pair(prefix, std::move(value)));
+  key_value_map_.insert(std::make_pair(key, std::move(value)));
+}
+
+void MockSettingsDocument::SetDeletion(const Key& key) {
+  deletions_.insert(key);
 }
 
 }  // namespace settingsd
