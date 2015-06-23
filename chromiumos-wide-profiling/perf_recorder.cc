@@ -10,8 +10,10 @@
 #include <sstream>
 #include <vector>
 
+#include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/perf_serializer.h"
+#include "chromiumos-wide-profiling/perf_stat_parser.h"
 #include "chromiumos-wide-profiling/run_command.h"
 #include "chromiumos-wide-profiling/scoped_temp_path.h"
 #include "chromiumos-wide-profiling/utils.h"
@@ -19,35 +21,52 @@
 namespace quipper {
 
 namespace {
+
+// Supported perf subcommands.
+const char kPerfRecordCommand[] = "record";
+const char kPerfStatCommand[] = "stat";
+
 string IntToString(const int i) {
   stringstream ss;
   ss << i;
   return ss.str();
 }
-}  // namespace
 
-bool PerfRecorder::RecordAndConvertToProtobuf(
-    const std::vector<string>& perf_args,
-    const int time,
-    quipper::PerfDataProto* perf_data) {
-  ScopedTempFile output_file;
-  if (std::find(perf_args.begin(), perf_args.end(), "--") != perf_args.end()) {
-    // Perf uses '--' to mark the end of arguments and the beginning of the
-    // command to run and profile. We need to run sleep, so disallow this.
-    LOG(ERROR) << "perf_args may contain a command. Refusing to run it!";
-    return false;
+// Returns true if |input| ends with "perf".
+bool IsPerfCommand(const string& input) {
+  // Name of the perf executable, without any path info.
+  const char kPerfBasename[] = "perf";
+  return input.size() >= strlen(kPerfBasename) &&
+         input.substr(input.size() - strlen(kPerfBasename)) == kPerfBasename;
+}
+
+// Given a perf command line, returns the subcommand, i.e. the argument that
+// follows "perf".
+// e.g. "sudo /usr/bin/perf record" -> "record".
+bool GetPerfSubcommand(const std::vector<string>& command_line_args,
+                      string* subcommand) {
+  for (size_t i = 0; i < command_line_args.size(); ++i) {
+    if (!IsPerfCommand(command_line_args[i]))
+      continue;
+    if (++i < command_line_args.size()) {
+      *subcommand = command_line_args[i];
+      return true;
+    }
   }
-  std::vector<string> full_perf_args(perf_args.begin(), perf_args.end());
-  full_perf_args.insert(full_perf_args.end(),
-                        {"-o", output_file.path(),
-                         "--",
-                         "sleep", IntToString(time)});
+  return false;
+}
 
-  // The perf command writes the output to a file, so ignore stdout.
-  if (!RunCommand(full_perf_args, nullptr)) {
-    return false;
-  }
+// Checks for suspicious or malformed args that may contain an unsafe command.
+// TODO(cwp-team): Should catch other things like non-perf commands.
+bool PerfArgsContainExtraCommand(const std::vector<string>& args) {
+  // Perf uses '--' to mark the end of arguments and the beginning of the
+  // command to run and profile. We need to run sleep, so disallow this.
+  return std::find(args.begin(), args.end(), "--") != args.end();
+}
 
+// Reads a perf data file and converts it to a PerfDataProto, which is stored as
+// a serialized string in |output_string|. Returns true on success.
+bool ParsePerfDataFileToString(const string& filename, string* output_string) {
   // Now convert it into a protobuf.
   PerfSerializer perf_serializer;
   PerfParser::Options options;
@@ -58,7 +77,84 @@ bool PerfRecorder::RecordAndConvertToProtobuf(
 
   perf_serializer.set_options(options);
 
-  return perf_serializer.SerializeFromFile(output_file.path(), perf_data);
+  PerfDataProto perf_data;
+  return perf_serializer.SerializeFromFile(filename, &perf_data) &&
+         perf_data.SerializeToString(output_string);
+}
+
+// Reads a perf data file and converts it to a PerfStatProto, which is stored as
+// a serialized string in |output_string|. Returns true on success.
+bool ParsePerfStatFileToString(const string& filename,
+                               const std::vector<string>& command_line_args,
+                               string* output_string) {
+  PerfStatProto perf_stat;
+  if (!ParsePerfStatFileToProto(filename, &perf_stat)) {
+    LOG(ERROR) << "Failed to parse PerfStatProto from " << filename;
+    return false;
+  }
+
+  // Fill in the command line field of the protobuf.
+  string command_line;
+  for (size_t i = 0; i < command_line_args.size(); ++i) {
+    const string& arg = command_line_args[i];
+    // Strip the output file argument from the command line.
+    if (arg == "-o") {
+      ++i;
+      continue;
+    }
+    command_line.append(arg + " ");
+  }
+  command_line.resize(command_line.size() - 1);
+  perf_stat.mutable_command_line()->assign(command_line);
+
+  return perf_stat.SerializeToString(output_string);
+}
+
+}  // namespace
+
+bool PerfRecorder::RunCommandAndGetSerializedOutput(
+    const std::vector<string>& perf_args,
+    const int time,
+    string* output_string) {
+  if (PerfArgsContainExtraCommand(perf_args)) {
+    LOG(ERROR) << "Perf arguments may contain a command. Refusing to run it!";
+    return false;
+  }
+
+  string perf_type;
+  if (!GetPerfSubcommand(perf_args, &perf_type)) {
+    LOG(ERROR) << "Could not determine perf command type from args.";
+    return false;
+  }
+
+  if (perf_type != kPerfRecordCommand && perf_type != kPerfStatCommand) {
+    LOG(ERROR) << "Unsupported perf subcommand: " << perf_type;
+    return false;
+  }
+
+  std::vector<string> full_perf_args(perf_args.begin(), perf_args.end());
+  ScopedTempFile output_file;
+  full_perf_args.insert(full_perf_args.end(), {"-o", output_file.path()});
+
+  // The perf stat output parser requires raw data from verbose output.
+  if (perf_type == kPerfStatCommand)
+    full_perf_args.emplace_back("-v");
+
+  // Append the sleep command to run perf for |time| seconds.
+  full_perf_args.insert(full_perf_args.end(),
+                        {"--", "sleep", IntToString(time)});
+
+  // The perf command writes the output to a file, so ignore stdout.
+  if (!RunCommand(full_perf_args, nullptr))
+    return false;
+
+  if (perf_type == kPerfRecordCommand)
+    return ParsePerfDataFileToString(output_file.path(), output_string);
+
+  // Otherwise, parse as perf stat output.
+  return ParsePerfStatFileToString(output_file.path(),
+                                   full_perf_args,
+                                   output_string);
 }
 
 }  // namespace quipper

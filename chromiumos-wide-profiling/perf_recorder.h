@@ -10,7 +10,6 @@
 
 #include "base/macros.h"
 
-#include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/perf_reader.h"
 
@@ -19,9 +18,14 @@ namespace quipper {
 class PerfRecorder {
  public:
   PerfRecorder() {}
-  bool RecordAndConvertToProtobuf(const std::vector<string>& perf_args,
-                                  const int time,
-                                  quipper::PerfDataProto* perf_data);
+
+  // Runs the perf command specified in |perf_args| for |time| seconds. The
+  // output is returned as a serialized protobuf in |output_string|. The
+  // protobuf format depends on the provided perf command.
+  bool RunCommandAndGetSerializedOutput(const std::vector<string>& perf_args,
+                                        const int time,
+                                        string* output_string);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(PerfRecorder);
 };
