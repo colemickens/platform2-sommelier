@@ -8,6 +8,7 @@
 #include <google/protobuf/text_format.h>
 
 #include "perf_data.pb.h"  // NOLINT(build/include)
+#include "perf_stat.pb.h"  // NOLINT(build/include)
 
 namespace quipper {
 

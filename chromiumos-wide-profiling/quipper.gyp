@@ -23,6 +23,7 @@
         'perf_reader.cc',
         'perf_recorder.cc',
         'perf_serializer.cc',
+        'perf_stat_parser.cc',
         'run_command.cc',
         'scoped_temp_path.cc',
         'utils.cc',
@@ -204,6 +205,18 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'perf_serializer_test.cc',
+          ]
+        },
+        {
+          'target_name': 'perf_stat_parser_test',
+          'type': 'executable',
+          'dependencies': [
+            'common',
+            'common_test',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'perf_stat_parser_test.cc',
           ]
         },
         {

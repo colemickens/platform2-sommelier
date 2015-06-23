@@ -20,6 +20,7 @@
 
 using quipper::PerfDataProto;
 using quipper::PerfSerializer;
+using quipper::SplitString;
 using quipper::TextFormat;
 
 namespace {
@@ -47,16 +48,6 @@ enum {
   PERF_REPORT_SHARED_OBJECT,
   NUM_PERF_REPORT_FIELDS,
 };
-
-// Splits a character array by |delimiter| into a vector of strings tokens.
-void SplitString(const string& str,
-                 char delimiter,
-                 std::vector<string>* tokens) {
-  std::stringstream ss(str);
-  std::string token;
-  while (std::getline(ss, token, delimiter))
-    tokens->push_back(token);
-}
 
 // Split a char buffer into separate lines.
 void SeparateLines(const std::vector<char>& bytes, std::vector<string>* lines) {
