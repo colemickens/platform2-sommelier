@@ -60,7 +60,7 @@ class CloudDelegateImpl : public CloudDelegate {
         &CloudDelegateImpl::OnCommandDefChanged, weak_factory_.GetWeakPtr()));
     command_manager_->AddOnCommandAddedCallback(base::Bind(
         &CloudDelegateImpl::OnCommandAdded, weak_factory_.GetWeakPtr()));
-    command_manager_->AddOnCommandAddedCallback(base::Bind(
+    command_manager_->AddOnCommandRemovedCallback(base::Bind(
         &CloudDelegateImpl::OnCommandRemoved, weak_factory_.GetWeakPtr()));
 
     state_manager_->AddOnChangedCallback(base::Bind(
