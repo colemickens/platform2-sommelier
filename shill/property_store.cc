@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/stl_util.h>
+#include <dbus/object_path.h>
 
 #include "shill/error.h"
 #include "shill/logging.h"
@@ -32,6 +33,85 @@ PropertyStore::PropertyStore(PropertyChangeCallback on_property_changed) :
 
 PropertyStore::~PropertyStore() {}
 
+// static.
+void PropertyStore::VariantDictionaryToKeyValueStore(
+    const chromeos::VariantDictionary& in, KeyValueStore* out, Error* error) {
+  for (const auto& kv : in) {
+    string key = kv.first;
+    chromeos::Any value = kv.second;
+
+    if (typeid(bool) == value.GetType()) {    // NOLINT
+      out->SetBool(key, value.Get<bool>());
+    } else if (typeid(int32_t) == value.GetType()) {
+      out->SetInt(key, value.Get<int32_t>());
+    } else if (typeid(string) == value.GetType()) {
+      out->SetString(key, value.Get<string>());
+    } else if (typeid(chromeos::VariantDictionary) == value.GetType()) {
+      // Unwrap a recursive KeyValueStore object.
+      KeyValueStore store;
+      Error convert_error;
+      VariantDictionaryToKeyValueStore(value.Get<chromeos::VariantDictionary>(),
+                                       &store,
+                                       &convert_error);
+      if (convert_error.IsSuccess()) {
+        out->SetKeyValueStore(key, store);
+      } else {
+        Error::PopulateAndLog(FROM_HERE, error, convert_error.type(),
+                              convert_error.message() + " in sub-key " + key);
+        return;  // Skip remaining args after error.
+      }
+    } else if (typeid(Strings) == value.GetType()) {
+      out->SetStrings(key, value.Get<Strings>());
+    } else if (typeid(Stringmap) == value.GetType()) {
+      out->SetStringmap(key, value.Get<Stringmap>());
+    } else {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
+                            "unsupported type for property " + key);
+      return;  // Skip remaining args after error.
+    }
+  }
+}
+
+// static.
+void PropertyStore::KeyValueStoreToVariantDictionary(
+    const KeyValueStore& in, chromeos::VariantDictionary* out) {
+  for (const auto& key_value_pair : in.string_properties()) {
+    out->insert(
+        std::make_pair(key_value_pair.first,
+                       chromeos::Any(key_value_pair.second)));
+  }
+  for (const auto& key_value_pair : in.stringmap_properties()) {
+    out->insert(
+        std::make_pair(key_value_pair.first,
+                       chromeos::Any(key_value_pair.second)));
+  }
+  for (const auto& key_value_pair : in.strings_properties()) {
+    out->insert(
+        std::make_pair(key_value_pair.first,
+                       chromeos::Any(key_value_pair.second)));
+  }
+  for (const auto& key_value_pair : in.bool_properties()) {
+    out->insert(
+        std::make_pair(key_value_pair.first,
+                       chromeos::Any(key_value_pair.second)));
+  }
+  for (const auto& key_value_pair : in.int_properties()) {
+    out->insert(
+        std::make_pair(key_value_pair.first,
+                       chromeos::Any(key_value_pair.second)));
+  }
+  for (const auto& key_value_pair : in.uint_properties()) {
+    out->insert(
+        std::make_pair(key_value_pair.first,
+                       chromeos::Any(key_value_pair.second)));
+  }
+  for (const auto& key_value_pair : in.key_value_store_properties()) {
+    chromeos::VariantDictionary dict;
+    KeyValueStoreToVariantDictionary(key_value_pair.second, &dict);
+    out->insert(std::make_pair(key_value_pair.first, dict));
+  }
+}
+
 bool PropertyStore::Contains(const string& prop) const {
   return (ContainsKey(bool_properties_, prop)  ||
           ContainsKey(int16_properties_, prop) ||
@@ -48,6 +128,172 @@ bool PropertyStore::Contains(const string& prop) const {
           ContainsKey(uint64_properties_, prop) ||
           ContainsKey(rpc_identifier_properties_, prop) ||
           ContainsKey(rpc_identifiers_properties_, prop));
+}
+
+bool PropertyStore::SetAnyProperty(const string& name,
+                                   const chromeos::Any& value,
+                                   Error* error) {
+  bool ret = false;
+  if (typeid(bool) == value.GetType()) {     // NOLINT
+    ret = SetBoolProperty(name, value.Get<bool>(), error);
+  } else if (typeid(uint8_t) == value.GetType()) {
+    ret = SetUint8Property(name, value.Get<uint8_t>(), error);
+  } else if (typeid(int16_t) == value.GetType()) {
+    ret = SetInt16Property(name, value.Get<int16_t>(), error);
+  } else if (typeid(int32_t) == value.GetType()) {
+    ret = SetInt32Property(name, value.Get<int32_t>(), error);
+  } else if (typeid(dbus::ObjectPath) == value.GetType()) {
+    ret = SetStringProperty(name, value.Get<dbus::ObjectPath>().value(), error);
+  } else if (typeid(string) == value.GetType()) {
+    ret = SetStringProperty(name, value.Get<string>(), error);
+  } else if (typeid(Stringmap) == value.GetType()) {
+    ret = SetStringmapProperty(name, value.Get<Stringmap>(), error);
+  } else if (typeid(Stringmaps) == value.GetType()) {
+    SLOG(nullptr, 1) << " can't yet handle setting type "
+                     << value.GetType().name();
+    error->Populate(Error::kInternalError);
+  } else if (typeid(Strings) == value.GetType()) {
+    ret = SetStringsProperty(name, value.Get<Strings>(), error);
+  } else if (typeid(uint16_t) == value.GetType()) {
+    ret = SetUint16Property(name, value.Get<uint16_t>(), error);
+  } else if (typeid(Uint16s) == value.GetType()) {
+    ret = SetUint16sProperty(name, value.Get<Uint16s>(), error);
+  } else if (typeid(uint32_t) == value.GetType()) {
+    ret = SetUint32Property(name, value.Get<uint32_t>(), error);
+  } else if (typeid(uint64_t) == value.GetType()) {
+    ret = SetUint64Property(name, value.Get<uint64_t>(), error);
+  } else if (typeid(chromeos::VariantDictionary) == value.GetType()) {
+    KeyValueStore store;
+    VariantDictionaryToKeyValueStore(value.Get<chromeos::VariantDictionary>(),
+                                     &store,
+                                     error);
+    if (error->IsSuccess()) {
+      ret = SetKeyValueStoreProperty(name, store, error);
+    }
+  } else {
+    NOTREACHED() << " unknown type: " << value.GetType().name();
+    error->Populate(Error::kInternalError);
+  }
+  return ret;
+}
+
+bool PropertyStore::SetProperties(const chromeos::VariantDictionary& in,
+                                  Error* error) {
+  for (const auto& kv : in) {
+    if (!SetAnyProperty(kv.first, kv.second, error)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool PropertyStore::GetProperties(chromeos::VariantDictionary* out,
+                                  Error* error) const {
+  {
+    ReadablePropertyConstIterator<bool> it = GetBoolPropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<int16_t> it = GetInt16PropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<int32_t> it = GetInt32PropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<RpcIdentifier> it =
+        GetRpcIdentifierPropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(
+          std::make_pair(it.Key(),
+                         chromeos::Any(dbus::ObjectPath(it.value()))));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<RpcIdentifiers> it =
+        GetRpcIdentifiersPropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      vector<dbus::ObjectPath> rpc_identifiers_as_paths;
+      for (const auto& path : it.value()) {
+        rpc_identifiers_as_paths.push_back(dbus::ObjectPath(path));
+      }
+      out->insert(
+          std::make_pair(it.Key(), chromeos::Any(rpc_identifiers_as_paths)));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<string> it = GetStringPropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<Stringmap> it = GetStringmapPropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<Stringmaps> it =
+        GetStringmapsPropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<Strings> it = GetStringsPropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<uint8_t> it = GetUint8PropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<uint16_t> it = GetUint16PropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<Uint16s> it = GetUint16sPropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<uint32_t> it = GetUint32PropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<uint64_t> it = GetUint64PropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      out->insert(std::make_pair(it.Key(), chromeos::Any(it.value())));
+    }
+  }
+  {
+    ReadablePropertyConstIterator<KeyValueStore> it =
+        GetKeyValueStorePropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      chromeos::VariantDictionary dict;
+      KeyValueStoreToVariantDictionary(it.value(), &dict);
+      out->insert(std::make_pair(it.Key(), dict));
+    }
+  }
+
+  return true;
 }
 
 bool PropertyStore::GetBoolProperty(const string& name,

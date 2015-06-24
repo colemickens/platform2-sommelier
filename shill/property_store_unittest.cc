@@ -535,4 +535,371 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
   }
 }
 
+TEST_F(PropertyStoreTest, SetAnyProperty) {
+  // Test that registered properties can be set using chromeos::Any variant
+  // type.
+  PropertyStore store;
+  {
+    // Register property value.
+    const string key = "boolp";
+    bool value = true;
+    store.RegisterBool(key, &value);
+
+    // Verify property value.
+    bool test_value;
+    Error error;
+    EXPECT_TRUE(store.GetBoolProperty(key, &test_value, &error));
+    EXPECT_EQ(value, test_value);
+
+    // Set property using chromeos::Any variant type.
+    bool new_value = false;
+    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.GetBoolProperty(key, &test_value, &error));
+    EXPECT_EQ(new_value, test_value);
+  }
+  {
+    // Register property value.
+    const string key = "int16p";
+    int16_t value = 127;
+    store.RegisterInt16(key, &value);
+
+    // Verify property value.
+    int16_t test_value;
+    Error error;
+    EXPECT_TRUE(store.GetInt16Property(key, &test_value, &error));
+    EXPECT_EQ(value, test_value);
+
+    // Set property using chromeos::Any variant type.
+    int16_t new_value = 128;
+    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.GetInt16Property(key, &test_value, &error));
+    EXPECT_EQ(new_value, test_value);
+  }
+  {
+    // Register property value.
+    const string key = "int32p";
+    int32_t value = 127;
+    store.RegisterInt32(key, &value);
+
+    // Verify property value.
+    int32_t test_value;
+    Error error;
+    EXPECT_TRUE(store.GetInt32Property(key, &test_value, &error));
+    EXPECT_EQ(value, test_value);
+
+    // Set property using chromeos::Any variant type.
+    int32_t new_value = 128;
+    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.GetInt32Property(key, &test_value, &error));
+    EXPECT_EQ(new_value, test_value);
+  }
+  {
+    // Register property value.
+    const string key = "stringp";
+    string value = "noooo";
+    store.RegisterString(key, &value);
+
+    // Verify property value.
+    string test_value;
+    Error error;
+    EXPECT_TRUE(store.GetStringProperty(key, &test_value, &error));
+    EXPECT_EQ(value, test_value);
+
+    // Set property using chromeos::Any variant type.
+    string new_value = "yesss";
+    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.GetStringProperty(key, &test_value, &error));
+    EXPECT_EQ(new_value, test_value);
+  }
+  {
+    // Register property value.
+    const string key = "stringmapp";
+    Stringmap value;
+    value["noooo"] = "yesss";
+    store.RegisterStringmap(key, &value);
+
+    // Verify property value.
+    Stringmap test_value;
+    Error error;
+    EXPECT_TRUE(store.GetStringmapProperty(key, &test_value, &error));
+    EXPECT_TRUE(value == test_value);
+
+    // Set property using chromeos::Any variant type.
+    Stringmap new_value;
+    new_value["yesss"] = "noooo";
+    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.GetStringmapProperty(key, &test_value, &error));
+    EXPECT_TRUE(new_value == test_value);
+  }
+  {
+    // Register property value.
+    const string key = "stringsp";
+    Strings value;
+    string element;
+    element = "noooo";
+    value.push_back(element);
+    store.RegisterStrings(key, &value);
+
+    // Verify property value.
+    Strings test_value;
+    Error error;
+    EXPECT_TRUE(store.GetStringsProperty(key, &test_value, &error));
+    EXPECT_TRUE(value == test_value);
+
+    // Set property using chromeos::Any variant type.
+    Strings new_value;
+    string new_element;
+    new_element = "yesss";
+    new_value.push_back(new_element);
+    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.GetStringsProperty(key, &test_value, &error));
+    EXPECT_TRUE(new_value == test_value);
+  }
+  {
+    // Register property value.
+    const string key = "uint8p";
+    uint8_t value = 127;
+    store.RegisterUint8(key, &value);
+
+    // Verify property value.
+    uint8_t test_value;
+    Error error;
+    EXPECT_TRUE(store.GetUint8Property(key, &test_value, &error));
+    EXPECT_EQ(value, test_value);
+
+    // Set property using chromeos::Any variant type.
+    uint8_t new_value = 128;
+    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.GetUint8Property(key, &test_value, &error));
+    EXPECT_EQ(new_value, test_value);
+  }
+  {
+    // Register property value.
+    const string key = "uint16p";
+    uint16_t value = 127;
+    store.RegisterUint16(key, &value);
+
+    // Verify property value.
+    uint16_t test_value;
+    Error error;
+    EXPECT_TRUE(store.GetUint16Property(key, &test_value, &error));
+    EXPECT_EQ(value, test_value);
+
+    // Set property using chromeos::Any variant type.
+    uint16_t new_value = 128;
+    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.GetUint16Property(key, &test_value, &error));
+    EXPECT_EQ(new_value, test_value);
+  }
+  {
+    // Register property value.
+    const string key = "uint32p";
+    uint32_t value = 127;
+    store.RegisterUint32(key, &value);
+
+    // Verify property value.
+    uint32_t test_value;
+    Error error;
+    EXPECT_TRUE(store.GetUint32Property(key, &test_value, &error));
+    EXPECT_EQ(value, test_value);
+
+    // Set property using chromeos::Any variant type.
+    uint32_t new_value = 128;
+    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(new_value), &error));
+    EXPECT_TRUE(store.GetUint32Property(key, &test_value, &error));
+    EXPECT_EQ(new_value, test_value);
+  }
+  {
+    // KeyValueStoreProperty is only defined for derived types so handle
+    // this case manually here.
+    const string key = "keyvaluestorep";
+    EXPECT_CALL(*this, GetKeyValueStoreCallback(_))
+        .WillOnce(Return(KeyValueStore()));
+    store.RegisterDerivedKeyValueStore(
+        key,
+        KeyValueStoreAccessor(
+            new CustomAccessor<PropertyStoreTest, KeyValueStore>(
+                this, &PropertyStoreTest::GetKeyValueStoreCallback,
+                &PropertyStoreTest::SetKeyValueStoreCallback)));
+
+    chromeos::VariantDictionary value;
+    EXPECT_CALL(*this, SetKeyValueStoreCallback(_, _)).WillOnce(Return(true));
+    Error error;
+    EXPECT_TRUE(store.SetAnyProperty(key, chromeos::Any(value), &error));
+  }
+}
+
+TEST_F(PropertyStoreTest, SetAndGetProperties) {
+  PropertyStore store;
+
+  // Register properties.
+  const string kBoolKey = "boolp";
+  const string kKeyValueStoreKey = "keyvaluestorep";
+  const string kInt16Key = "int16p";
+  const string kInt32Key = "int32p";
+  const string kStringKey = "stringp";
+  const string kStringsKey = "stringsp";
+  const string kStringmapKey = "stringmapp";
+  const string kUint8Key = "uint8p";
+  const string kUint16Key = "uint16p";
+  const string kUint32Key = "uint32p";
+  bool bool_value = true;
+  int16_t int16_value = 16;
+  int32_t int32_value = 32;
+  string string_value = "string";
+  Stringmap stringmap_value;
+  stringmap_value["noooo"] = "yesss";
+  Strings strings_value;
+  strings_value.push_back("yesss");
+  uint8_t uint8_value = 8;
+  uint16_t uint16_value = 16;
+  uint32_t uint32_value = 32;
+
+  store.RegisterBool(kBoolKey, &bool_value);
+  store.RegisterInt16(kInt16Key, &int16_value);
+  store.RegisterInt32(kInt32Key, &int32_value);
+  store.RegisterString(kStringKey, &string_value);
+  store.RegisterStrings(kStringsKey, &strings_value);
+  store.RegisterStringmap(kStringmapKey, &stringmap_value);
+  store.RegisterUint8(kUint8Key, &uint8_value);
+  store.RegisterUint16(kUint16Key, &uint16_value);
+  store.RegisterUint32(kUint32Key, &uint32_value);
+
+  // Special handling for KeyValueStore property.
+  EXPECT_CALL(*this, GetKeyValueStoreCallback(_))
+      .WillOnce(Return(KeyValueStore()));
+  store.RegisterDerivedKeyValueStore(
+      kKeyValueStoreKey,
+      KeyValueStoreAccessor(
+          new CustomAccessor<PropertyStoreTest, KeyValueStore>(
+              this, &PropertyStoreTest::GetKeyValueStoreCallback,
+              &PropertyStoreTest::SetKeyValueStoreCallback)));
+
+  // Update properties.
+  bool new_bool_value = false;
+  chromeos::VariantDictionary new_key_value_store_value;
+  int16_t new_int16_value = 17;
+  int32_t new_int32_value = 33;
+  string new_string_value = "strings";
+  Stringmap new_stringmap_value;
+  new_stringmap_value["yesss"] = "noooo";
+  Strings new_strings_value;
+  new_strings_value.push_back("noooo");
+  uint8_t new_uint8_value = 9;
+  uint16_t new_uint16_value = 17;
+  uint32_t new_uint32_value = 33;
+
+  chromeos::VariantDictionary dict;
+  dict.insert(std::make_pair(kBoolKey, chromeos::Any(new_bool_value)));
+  dict.insert(std::make_pair(kKeyValueStoreKey,
+                             chromeos::Any(new_key_value_store_value)));
+  dict.insert(std::make_pair(kInt16Key, chromeos::Any(new_int16_value)));
+  dict.insert(std::make_pair(kInt32Key, chromeos::Any(new_int32_value)));
+  dict.insert(std::make_pair(kStringKey, chromeos::Any(new_string_value)));
+  dict.insert(std::make_pair(kStringmapKey,
+                             chromeos::Any(new_stringmap_value)));
+  dict.insert(std::make_pair(kStringsKey, chromeos::Any(new_strings_value)));
+  dict.insert(std::make_pair(kUint8Key, chromeos::Any(new_uint8_value)));
+  dict.insert(std::make_pair(kUint16Key, chromeos::Any(new_uint16_value)));
+  dict.insert(std::make_pair(kUint32Key, chromeos::Any(new_uint32_value)));
+
+  EXPECT_CALL(*this, SetKeyValueStoreCallback(_, _)).WillOnce(Return(true));
+  Error error;
+  EXPECT_TRUE(store.SetProperties(dict, &error));
+
+  // Retrieve properties.
+  EXPECT_CALL(*this, GetKeyValueStoreCallback(_))
+      .WillOnce(Return(KeyValueStore()));
+  chromeos::VariantDictionary result_dict;
+  EXPECT_TRUE(store.GetProperties(&result_dict, &error));
+
+  // Verify property values.
+  EXPECT_EQ(new_bool_value, result_dict[kBoolKey].Get<bool>());
+  EXPECT_EQ(new_int16_value, result_dict[kInt16Key].Get<int16_t>());
+  EXPECT_EQ(new_int32_value, result_dict[kInt32Key].Get<int32_t>());
+  EXPECT_EQ(new_string_value, result_dict[kStringKey].Get<string>());
+  EXPECT_TRUE(
+      new_stringmap_value == result_dict[kStringmapKey].Get<Stringmap>());
+  EXPECT_TRUE(new_strings_value == result_dict[kStringsKey].Get<Strings>());
+  EXPECT_EQ(new_uint8_value, result_dict[kUint8Key].Get<uint8_t>());
+  EXPECT_EQ(new_uint16_value, result_dict[kUint16Key].Get<uint16_t>());
+  EXPECT_EQ(new_uint32_value, result_dict[kUint32Key].Get<uint32_t>());
+}
+
+TEST_F(PropertyStoreTest, VariantDictionaryToKeyValueStore) {
+  chromeos::VariantDictionary dict;
+  KeyValueStore store;
+  Error error;
+
+  const bool kBool = true;
+  const char kBoolKey[] = "bool_arg";
+  const int32_t kInt32 = 123;
+  const char kInt32Key[] = "int32_arg";
+  const string kString = "string";
+  const char kStringKey[] = "string_arg";
+  const map<string, string> kStringmap{ { "key0", "value0" } };
+  const char kStringmapKey[] = "stringmap_key";
+  const vector<string> kStrings{ "string0", "string1" };
+  const char kStringsKey[] = "strings_key";
+  chromeos::VariantDictionary variant_dict;
+  const char kVariantDictSubKey[] = "dict_sub_key";
+  variant_dict[kVariantDictSubKey] = chromeos::Any(true);
+  const char kVariantDictKey[] = "dict_key";
+
+  dict.insert(std::make_pair(kBoolKey, chromeos::Any(kBool)));
+  dict.insert(std::make_pair(kInt32Key, chromeos::Any(kInt32)));
+  dict.insert(std::make_pair(kStringKey, chromeos::Any(kString)));
+  dict.insert(std::make_pair(kStringmapKey, chromeos::Any(kStringmap)));
+  dict.insert(std::make_pair(kStringsKey, chromeos::Any(kStrings)));
+  dict.insert(std::make_pair(kVariantDictKey, chromeos::Any(variant_dict)));
+
+  PropertyStore::VariantDictionaryToKeyValueStore(dict, &store, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(kBool, store.GetBool(kBoolKey));
+  EXPECT_EQ(kInt32, store.GetInt(kInt32Key));
+  EXPECT_EQ(kString, store.GetString(kStringKey));
+  EXPECT_EQ(kStringmap, store.GetStringmap(kStringmapKey));
+  EXPECT_EQ(kStrings, store.GetStrings(kStringsKey));
+  KeyValueStore property_map;
+  property_map.SetBool(kVariantDictSubKey, true);
+  EXPECT_TRUE(property_map.Equals(store.GetKeyValueStore(kVariantDictKey)));
+}
+
+TEST_F(PropertyStoreTest, KeyValueStoreToVariantDictionary) {
+  chromeos::VariantDictionary dict;
+  KeyValueStore store;
+
+  const bool kBool = true;
+  const char kBoolKey[] = "bool_arg";
+  const int32_t kInt32 = 123;
+  const char kInt32Key[] = "int32_arg";
+  const string kString = "string";
+  const char kStringKey[] = "string_arg";
+  const map<string, string> kStringmap{ { "key0", "value0" } };
+  const char kStringmapKey[] = "stringmap_key";
+  const vector<string> kStrings{ "string0", "string1" };
+  const char kStringsKey[] = "strings_key";
+  const char kVariantDictKey[] = "dict_key";
+  const char kVariantDictSubKey[] = "dict_sub_key";
+  KeyValueStore variant_store;
+  variant_store.SetBool(kVariantDictSubKey, true);
+
+  store.SetBool(kBoolKey, kBool);
+  store.SetInt(kInt32Key, kInt32);
+  store.SetString(kStringKey, kString);
+  store.SetStringmap(kStringmapKey, kStringmap);
+  store.SetStrings(kStringsKey, kStrings);
+  store.SetKeyValueStore(kVariantDictKey, variant_store);
+
+  PropertyStore::KeyValueStoreToVariantDictionary(store, &dict);
+  EXPECT_EQ(kBool, dict[kBoolKey].Get<bool>());
+  EXPECT_EQ(kInt32, dict[kInt32Key].Get<int32_t>());
+  EXPECT_EQ(kString, dict[kStringKey].Get<string>());
+  EXPECT_EQ(kStringmap, dict[kStringmapKey].Get<Stringmap>());
+  EXPECT_EQ(kStrings, dict[kStringsKey].Get<Strings>());
+  chromeos::VariantDictionary variant_dict;
+  variant_dict = dict[kVariantDictKey].Get<chromeos::VariantDictionary>();
+  EXPECT_TRUE(variant_dict[kVariantDictSubKey].Get<bool>());
+}
+
 }  // namespace shill
