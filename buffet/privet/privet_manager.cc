@@ -63,6 +63,7 @@ Manager::~Manager() {
 
 void Manager::Start(const Options& options,
                     const scoped_refptr<dbus::Bus>& bus,
+                    ShillClient* shill_client,
                     buffet::DeviceRegistrationInfo* device,
                     buffet::CommandManager* command_manager,
                     buffet::StateManager* state_manager,
@@ -75,15 +76,14 @@ void Manager::Start(const Options& options,
   security_.reset(new SecurityManager(device->GetConfig().pairing_modes(),
                                       device->GetConfig().embedded_code_path(),
                                       disable_security_));
-  shill_client_.reset(new ShillClient(bus, options.device_whitelist));
-  shill_client_->RegisterConnectivityListener(
+  shill_client->RegisterConnectivityListener(
       base::Bind(&Manager::OnConnectivityChanged, base::Unretained(this)));
   ap_manager_client_.reset(new ApManagerClient(bus));
 
   if (device->GetConfig().wifi_auto_setup_enabled()) {
     VLOG(1) << "Enabling WiFi bootstrapping.";
     wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
-        device->GetConfig().last_configured_ssid(), shill_client_.get(),
+        device->GetConfig().last_configured_ssid(), shill_client,
         ap_manager_client_.get(), cloud_.get()));
     wifi_bootstrap_manager_->Init();
   }

@@ -5,8 +5,8 @@
 #ifndef BUFFET_MANAGER_H_
 #define BUFFET_MANAGER_H_
 
-#include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -61,6 +61,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
     base::FilePath state_path;
     base::FilePath test_definitions_path;
     bool xmpp_enabled{true};
+    std::set<std::string> device_whitelist;
     privetd::Manager::Options privet;
   };
 
@@ -137,6 +138,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   std::shared_ptr<StateManager> state_manager_;
   std::unique_ptr<DeviceRegistrationInfo> device_info_;
   std::unique_ptr<BaseApiHandler> base_api_handler_;
+  std::unique_ptr<privetd::ShillClient> shill_client_;
   std::unique_ptr<privetd::Manager> privet_;
 
   base::WeakPtrFactory<Manager> weak_ptr_factory_{this};

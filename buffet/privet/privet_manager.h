@@ -52,7 +52,6 @@ class Manager : public CloudDelegate::Observer {
     bool disable_privet{false};
     bool disable_security{false};
     bool enable_ping{false};
-    std::set<std::string> device_whitelist;
     base::FilePath config_path;
   };
 
@@ -61,6 +60,7 @@ class Manager : public CloudDelegate::Observer {
 
   void Start(const Options& options,
              const scoped_refptr<dbus::Bus>& bus,
+             ShillClient* shill_client,
              buffet::DeviceRegistrationInfo* device,
              buffet::CommandManager* command_manager,
              buffet::StateManager* state_manager,
@@ -101,7 +101,6 @@ class Manager : public CloudDelegate::Observer {
   std::unique_ptr<CloudDelegate> cloud_;
   std::unique_ptr<DeviceDelegate> device_;
   std::unique_ptr<SecurityManager> security_;
-  std::unique_ptr<ShillClient> shill_client_;
   std::unique_ptr<ApManagerClient> ap_manager_client_;
   std::unique_ptr<WifiBootstrapManager> wifi_bootstrap_manager_;
   std::unique_ptr<PeerdClient> peerd_client_;

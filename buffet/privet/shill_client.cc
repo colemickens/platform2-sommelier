@@ -464,19 +464,20 @@ void ShillClient::UpdateConnectivityState() {
       new_connectivity_state = kv.second.service_state;
     }
   }
-  VLOG(3) << "New connectivity state is "
+  VLOG(1) << "Connectivity changed: "
+          << ServiceStateToString(connectivity_state_) << " -> "
           << ServiceStateToString(new_connectivity_state);
-  if (new_connectivity_state != connectivity_state_) {
-    connectivity_state_ = new_connectivity_state;
-    // We may call UpdateConnectivityState whenever we mutate a data structure
-    // such that our connectivity status could change.  However, we don't want
-    // to allow people to call into ShillClient while some other operation is
-    // underway.  Therefore, call our callbacks later, when we're in a good
-    // state.
-    base::MessageLoop::current()->PostTask(
-        FROM_HERE, base::Bind(&ShillClient::NotifyConnectivityListeners,
-                              weak_factory_.GetWeakPtr(), AmOnline()));
-  }
+  // Notify listeners even if state changed to the same value. Listeners may
+  // want to handle this event.
+  connectivity_state_ = new_connectivity_state;
+  // We may call UpdateConnectivityState whenever we mutate a data structure
+  // such that our connectivity status could change.  However, we don't want
+  // to allow people to call into ShillClient while some other operation is
+  // underway.  Therefore, call our callbacks later, when we're in a good
+  // state.
+  base::MessageLoop::current()->PostTask(
+      FROM_HERE, base::Bind(&ShillClient::NotifyConnectivityListeners,
+                            weak_factory_.GetWeakPtr(), AmOnline()));
 }
 
 void ShillClient::NotifyConnectivityListeners(bool am_online) {

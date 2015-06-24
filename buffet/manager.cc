@@ -27,6 +27,7 @@
 #include "buffet/commands/schema_constants.h"
 #include "buffet/privet/constants.h"
 #include "buffet/privet/security_manager.h"
+#include "buffet/privet/shill_client.h"
 #include "buffet/privet/wifi_bootstrap_manager.h"
 #include "buffet/states/state_change_queue.h"
 #include "buffet/states/state_manager.h"
@@ -81,11 +82,14 @@ void Manager::Start(const Options& options, AsyncEventSequencer* sequencer) {
   transport->SetDefaultTimeout(base::TimeDelta::FromSeconds(
       kRequestTimeoutSeconds));
 
+  shill_client_.reset(new privetd::ShillClient(dbus_object_.GetBus(),
+                                               options.device_whitelist));
+
   // TODO(avakulenko): Figure out security implications of storing
   // device info state data unencrypted.
   device_info_.reset(new DeviceRegistrationInfo(
       command_manager_, state_manager_, std::move(config), transport,
-      options.xmpp_enabled));
+      options.xmpp_enabled, shill_client_.get()));
   device_info_->AddOnRegistrationChangedCallback(base::Bind(
       &Manager::OnRegistrationChanged, weak_ptr_factory_.GetWeakPtr()));
 
@@ -105,8 +109,9 @@ void Manager::Start(const Options& options, AsyncEventSequencer* sequencer) {
 void Manager::StartPrivet(const privetd::Manager::Options& options,
                           AsyncEventSequencer* sequencer) {
   privet_.reset(new privetd::Manager{});
-  privet_->Start(options, dbus_object_.GetBus(), device_info_.get(),
-                 command_manager_.get(), state_manager_.get(), sequencer);
+  privet_->Start(options, dbus_object_.GetBus(), shill_client_.get(),
+                 device_info_.get(), command_manager_.get(),
+                 state_manager_.get(), sequencer);
 
   if (privet_->GetWifiBootstrapManager()) {
     privet_->GetWifiBootstrapManager()->RegisterStateListener(base::Bind(

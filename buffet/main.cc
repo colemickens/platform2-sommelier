@@ -85,12 +85,12 @@ int main(int argc, char* argv[]) {
   options.state_path = base::FilePath{FLAGS_state_path};
   options.test_definitions_path = base::FilePath{FLAGS_test_definitions_path};
   options.xmpp_enabled = FLAGS_enable_xmpp;
+  options.device_whitelist.insert(device_whitelist.begin(),
+                                  device_whitelist.end());
   options.privet.config_path = base::FilePath{FLAGS_config_path};
   options.privet.disable_privet = FLAGS_disable_privet;
   options.privet.disable_security = FLAGS_disable_security;
   options.privet.enable_ping = FLAGS_enable_ping;
-  options.privet.device_whitelist.insert(device_whitelist.begin(),
-                                         device_whitelist.end());
 
   buffet::Daemon daemon{options};
   return daemon.Run();
