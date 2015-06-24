@@ -182,7 +182,7 @@ class CloudDelegateImpl : public CloudDelegate {
     if (!command_manager_->AddCommand(command, role, &id, &error))
       return error_callback.Run(error.get());
 
-    CHECK(command_owners_.emplace(id, user_info.user_id()).second);
+    command_owners_[id] = user_info.user_id();
     success_callback.Run(*command_manager_->FindCommand(id)->ToJson());
   }
 
