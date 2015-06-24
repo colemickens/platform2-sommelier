@@ -94,21 +94,10 @@ class PerfReader {
   bool ReadFromPointer(const char* data, size_t size);
   bool ReadFromData(DataReader* data);
 
-  // TODO(rohinmshah): GetSize should not use RegenerateHeader (so that it can
-  // be const).  Ideally, RegenerateHeader would be deleted and instead of
-  // having out_header_ as an instance variable, it would be computed
-  // dynamically whenever needed.
-
-  // Returns the size in bytes that would be written by any of the methods that
-  // write the entire perf data file (WriteFile, WriteToPointer, etc).
-  size_t GetSize();
-
   bool WriteFile(const string& filename);
   bool WriteToVector(std::vector<char>* data);
   bool WriteToString(string* str);
   bool WriteToPointer(char* buffer, size_t size);
-
-  bool RegenerateHeader();
 
   // Stores the mapping from filenames to build ids in build_id_events_.
   // Returns true on success.
@@ -229,14 +218,26 @@ class PerfReader {
   // Read perf data from piped perf output data.
   bool ReadPipedData(DataReader* data);
 
+  // Returns the size in bytes that would be written by any of the methods that
+  // write the entire perf data file (WriteFile, WriteToPointer, etc).
+  size_t GetSize() const;
+
+  // Populates |*header| with the proper contents based on the perf data that
+  // has been read.
+  void GenerateHeader(struct perf_file_header* header) const;
+
   // Like WriteToPointer, but does not check if the buffer is large enough.
   bool WriteToPointerWithoutCheckingSize(char* buffer, size_t size);
 
-  bool WriteHeader(DataWriter* data) const;
-  bool WriteAttrs(DataWriter* data) const;
-  bool WriteEventTypes(DataWriter* data) const;
-  bool WriteData(DataWriter* data) const;
-  bool WriteMetadata(DataWriter* data) const;
+  bool WriteHeader(const struct perf_file_header& header,
+                   DataWriter* data) const;
+  bool WriteAttrs(const struct perf_file_header& header,
+                  DataWriter* data) const;
+  bool WriteEventTypes(const struct perf_file_header& header,
+                       DataWriter* data) const;
+  bool WriteData(const struct perf_file_header& header, DataWriter* data) const;
+  bool WriteMetadata(const struct perf_file_header& header,
+                     DataWriter* data) const;
 
   // For writing the various types of metadata.
   bool WriteBuildIDMetadata(u32 type, DataWriter* data) const;

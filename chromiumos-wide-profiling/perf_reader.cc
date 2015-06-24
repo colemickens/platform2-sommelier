@@ -743,26 +743,26 @@ bool PerfReader::WriteToPointer(char* buffer, size_t size) {
 
 bool PerfReader::WriteToPointerWithoutCheckingSize(char* buffer, size_t size) {
   BufferWriter data(buffer, size);
-  if (!WriteHeader(&data) ||
-      !WriteAttrs(&data) ||
-      !WriteEventTypes(&data) ||
-      !WriteData(&data) ||
-      !WriteMetadata(&data)) {
-    return false;
-  }
-  return true;
+  struct perf_file_header header;
+  GenerateHeader(&header);
+
+  return
+      WriteHeader(header, &data) &&
+      WriteAttrs(header, &data) &&
+      WriteEventTypes(header, &data) &&
+      WriteData(header, &data) &&
+      WriteMetadata(header, &data);
 }
 
-size_t PerfReader::GetSize() {
-  // TODO(rohinmshah): This is not a good CHECK.  See TODO in perf_reader.h.
-  CHECK(RegenerateHeader());
+size_t PerfReader::GetSize() const {
+  struct perf_file_header header;
+  GenerateHeader(&header);
 
   size_t total_size = 0;
-  total_size = 0;
-  total_size += out_header_.size;
-  total_size += out_header_.attrs.size;
-  total_size += out_header_.event_types.size;
-  total_size += out_header_.data.size;
+  total_size += header.size;
+  total_size += header.attrs.size;
+  total_size += header.event_types.size;
+  total_size += header.data.size;
   // Add the ID info, whose size is not explicitly included in the header.
   for (size_t i = 0; i < attrs_.size(); ++i)
     total_size += attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
@@ -782,7 +782,7 @@ size_t PerfReader::GetSize() {
   return total_size;
 }
 
-bool PerfReader::RegenerateHeader() {
+void PerfReader::GenerateHeader(struct perf_file_header* header) const {
   // This is the order of the input perf file contents in normal mode:
   // 1. Header
   // 2. Attribute IDs (pointed to by attr.ids.offset)
@@ -793,29 +793,29 @@ bool PerfReader::RegenerateHeader() {
 
   // Compute offsets in the above order.
   CheckNoEventHeaderPadding();
-  memset(&out_header_, 0, sizeof(out_header_));
-  out_header_.magic = kPerfMagic;
-  out_header_.size = sizeof(out_header_);
-  out_header_.attr_size = sizeof(perf_file_attr);
-  out_header_.attrs.size = out_header_.attr_size * attrs_.size();
+  memset(header, 0, sizeof(*header));
+  header->magic = kPerfMagic;
+  header->size = sizeof(*header);
+  header->attr_size = sizeof(perf_file_attr);
+  header->attrs.size = header->attr_size * attrs_.size();
   for (size_t i = 0; i < events_.size(); i++)
-    out_header_.data.size += events_[i]->header.size;
-  out_header_.event_types.size = HaveEventNames() ?
+    header->data.size += events_[i]->header.size;
+  header->event_types.size = HaveEventNames() ?
       (attrs_.size() * sizeof(perf_trace_event_type)) : 0;
 
   u64 current_offset = 0;
-  current_offset += out_header_.size;
+  current_offset += header->size;
   for (size_t i = 0; i < attrs_.size(); i++)
     current_offset += sizeof(attrs_[i].ids[0]) * attrs_[i].ids.size();
-  out_header_.attrs.offset = current_offset;
-  current_offset += out_header_.attrs.size;
-  out_header_.event_types.offset = current_offset;
-  current_offset += out_header_.event_types.size;
+  header->attrs.offset = current_offset;
+  current_offset += header->attrs.size;
+  header->event_types.offset = current_offset;
+  current_offset += header->event_types.size;
 
-  out_header_.data.offset = current_offset;
+  header->data.offset = current_offset;
 
   // Construct the header feature bits.
-  memset(&out_header_.adds_features, 0, sizeof(out_header_.adds_features));
+  memset(&header->adds_features, 0, sizeof(header->adds_features));
   // The following code makes the assumption that all feature bits are in the
   // first word of |adds_features|.  If the perf data format changes and the
   // assumption is no longer valid, this CHECK will fail, at which point the
@@ -824,10 +824,8 @@ bool PerfReader::RegenerateHeader() {
   // This assumption is also used when reading metadata, so that code
   // will also have to be updated if this CHECK starts to fail.
   CHECK_LE(static_cast<size_t>(HEADER_LAST_FEATURE),
-           BytesToBits(sizeof(out_header_.adds_features[0])));
-  out_header_.adds_features[0] |= metadata_mask_ & kSupportedMetadataMask;
-
-  return true;
+           BytesToBits(sizeof(header->adds_features[0])));
+  header->adds_features[0] |= metadata_mask_ & kSupportedMetadataMask;
 }
 
 bool PerfReader::InjectBuildIDs(
@@ -1744,15 +1742,17 @@ bool PerfReader::ReadPipedData(DataReader* data) {
   return result;
 }
 
-bool PerfReader::WriteHeader(DataWriter* data) const {
+bool PerfReader::WriteHeader(const struct perf_file_header& header,
+                             DataWriter* data) const {
   CheckNoEventHeaderPadding();
-  size_t size = sizeof(out_header_);
-  return data->WriteDataValue(&out_header_, size, "file header");
+  size_t size = sizeof(header);
+  return data->WriteDataValue(&header, size, "file header");
 }
 
-bool PerfReader::WriteAttrs(DataWriter* data) const {
+bool PerfReader::WriteAttrs(const struct perf_file_header& header,
+                            DataWriter* data) const {
   CheckNoPerfEventAttrPadding();
-  const size_t id_offset = out_header_.size;
+  const size_t id_offset = header.size;
   CHECK_EQ(id_offset, data->Tell());
 
   std::vector<struct perf_file_section> id_sections;
@@ -1769,7 +1769,7 @@ bool PerfReader::WriteAttrs(DataWriter* data) const {
     }
   }
 
-  CHECK_EQ(out_header_.attrs.offset, data->Tell());
+  CHECK_EQ(header.attrs.offset, data->Tell());
   for (size_t i = 0; i < attrs_.size(); i++) {
     const struct perf_file_section& id_section = id_sections[i];
     const PerfFileAttr& attr = attrs_[i];
@@ -1781,8 +1781,9 @@ bool PerfReader::WriteAttrs(DataWriter* data) const {
   return true;
 }
 
-bool PerfReader::WriteData(DataWriter* data) const {
-  CHECK_EQ(out_header_.data.offset, data->Tell());
+bool PerfReader::WriteData(const struct perf_file_header& header,
+                           DataWriter* data) const {
+  CHECK_EQ(header.data.offset, data->Tell());
   for (size_t i = 0; i < events_.size(); ++i) {
     if (!data->WriteDataValue(events_[i].get(), events_[i]->header.size,
                               "event data")) {
@@ -1792,8 +1793,9 @@ bool PerfReader::WriteData(DataWriter* data) const {
   return true;
 }
 
-bool PerfReader::WriteMetadata(DataWriter* data) const {
-  const size_t header_offset = out_header_.data.offset + out_header_.data.size;
+bool PerfReader::WriteMetadata(const struct perf_file_header& header,
+                               DataWriter* data) const {
+  const size_t header_offset = header.data.offset + header.data.size;
   CHECK_EQ(header_offset, data->Tell());
 
   // There is one header for each feature pointing to the metadata for that
@@ -1808,7 +1810,7 @@ bool PerfReader::WriteMetadata(DataWriter* data) const {
   metadata_sections.reserve(GetNumSupportedMetadata());
 
   for (u32 type = HEADER_FIRST_FEATURE; type != HEADER_LAST_FEATURE; ++type) {
-    if ((out_header_.adds_features[0] & (1 << type)) == 0)
+    if ((header.adds_features[0] & (1 << type)) == 0)
       continue;
 
     struct perf_file_section header_entry;
@@ -2039,13 +2041,14 @@ bool PerfReader::WriteNUMATopologyMetadata(u32 type, DataWriter* data) const {
   return true;
 }
 
-bool PerfReader::WriteEventTypes(DataWriter* data) const {
+bool PerfReader::WriteEventTypes(const struct perf_file_header& header,
+                                 DataWriter* data) const {
   CheckNoEventTypePadding();
-  const size_t event_types_size = out_header_.event_types.size;
+  const size_t event_types_size = header.event_types.size;
   if (event_types_size == 0)
     return true;
 
-  data->SeekSet(out_header_.event_types.offset);
+  data->SeekSet(header.event_types.offset);
   for (size_t i = 0; i < attrs_.size(); ++i) {
     struct perf_trace_event_type event_type = {0};
     event_type.event_id = attrs_[i].attr.config;
@@ -2057,7 +2060,7 @@ bool PerfReader::WriteEventTypes(DataWriter* data) const {
       return false;
     }
   }
-  CHECK_EQ(event_types_size, data->Tell() - out_header_.event_types.offset);
+  CHECK_EQ(event_types_size, data->Tell() - header.event_types.offset);
   return true;
 }
 
