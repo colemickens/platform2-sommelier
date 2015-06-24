@@ -136,8 +136,7 @@ void DHCPCDProxy::Rebind(const string& interface) {
   try {
     proxy_.Rebind(interface);
   } catch (const DBus::Error& e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
-               << " interface: " << interface;
+    LogDbusError(e, __func__, interface);
   }
 }
 
@@ -146,13 +145,18 @@ void DHCPCDProxy::Release(const string& interface) {
   try {
     proxy_.Release(interface);
   } catch (const DBus::Error& e) {
-    if (!strcmp(e.name(), DBUS_ERROR_SERVICE_UNKNOWN) ||
-        !strcmp(e.name(), DBUS_ERROR_NO_REPLY)) {
-      LOG(INFO) << "dhcpcd daemon appears to have already exited.";
-    } else {
-      LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
-                 << " interface: " << interface;
-    }
+    LogDbusError(e, __func__, interface);
+  }
+}
+
+void DHCPCDProxy::LogDbusError(const DBus::Error& e, const string& method,
+                               const string& interface) {
+  if (!strcmp(e.name(), DBUS_ERROR_SERVICE_UNKNOWN) ||
+      !strcmp(e.name(), DBUS_ERROR_NO_REPLY)) {
+    LOG(INFO) << method << ": dhcpcd daemon appears to have exited.";
+  } else {
+    LOG(FATAL) << "DBus exception: " << method << ": "
+               << e.name() << ": " << e.what() << " interface: " << interface;
   }
 }
 

@@ -78,6 +78,10 @@ class DHCPCDProxy : public DHCPProxyInterface {
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
 
+  // Report a D-Bus method call failure.
+  void LogDbusError(const DBus::Error& e, const std::string& method,
+                    const std::string& interface);
+
   Proxy proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPCDProxy);
