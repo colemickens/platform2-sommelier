@@ -176,7 +176,8 @@ class PerfReader {
     return events_;
   }
 
-  const std::vector<build_id_event*>& build_id_events() const {
+  const std::vector<malloced_unique_ptr<build_id_event>>&
+      build_id_events() const {
     return build_id_events_;
   }
 
@@ -275,7 +276,7 @@ class PerfReader {
 
   std::vector<PerfFileAttr> attrs_;
   std::vector<malloced_unique_ptr<event_t>> events_;
-  std::vector<build_id_event*> build_id_events_;
+  std::vector<malloced_unique_ptr<build_id_event>> build_id_events_;
   std::vector<PerfStringMetadata> string_metadata_;
   std::vector<PerfUint32Metadata> uint32_metadata_;
   std::vector<PerfUint64Metadata> uint64_metadata_;

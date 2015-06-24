@@ -155,20 +155,20 @@ void CheckNoBuildIDEventPadding() {
 // Creates/updates a build id event with |build_id| and |filename|.
 // Passing "" to |build_id| or |filename| will leave the corresponding field
 // unchanged (in which case |event| must be non-null).
-// If |event| is null or is not large enough, a new event will be created.
-// In this case, if |event| is non-null, it will be freed.
+// If |event| is empty or is not large enough, a new event will be created.
 // Otherwise, updates the fields of the existing event.
 // |new_misc| indicates kernel vs user space, and is only used to fill in the
 // |header.misc| field of new events.
-// In either case, returns a pointer to the event containing the updated data,
-// or NULL in the case of a failure.
-build_id_event* CreateOrUpdateBuildID(const string& build_id,
-                                      const string& filename,
-                                      uint16_t new_misc,
-                                      build_id_event* event) {
+// In either case, returns a unique pointer to the event containing the updated
+// data, or NULL in the case of a failure.
+malloced_unique_ptr<build_id_event> CreateOrUpdateBuildID(
+    const string& build_id,
+    const string& filename,
+    uint16_t new_misc,
+    malloced_unique_ptr<build_id_event> event) {
   // When creating an event from scratch, build id and filename must be present.
   if (!event && (build_id.empty() || filename.empty()))
-    return NULL;
+    return nullptr;
   size_t new_len = GetUint64AlignedStringLength(
       filename.empty() ? event->filename : filename);
 
@@ -176,28 +176,27 @@ build_id_event* CreateOrUpdateBuildID(const string& build_id,
   // switch the new pointer with the existing pointer.
   size_t new_size = sizeof(*event) + new_len;
   if (!event || new_size > event->header.size) {
-    build_id_event* new_event = CallocMemoryForBuildID(new_size);
+    malloced_unique_ptr<build_id_event> new_event(
+        CallocMemoryForBuildID(new_size));
 
     if (event) {
-      // Copy over everything except the filename and free the event.
+      // Copy over everything except the filename.
       // It is guaranteed that we are changing the filename - otherwise, the old
       // size and the new size would be equal.
       *new_event = *event;
-      free(event);
     } else {
       // Fill in the fields appropriately.
       new_event->header.type = HEADER_BUILD_ID;
       new_event->header.misc = new_misc;
       new_event->pid = kDefaultBuildIDEventPid;
     }
-    event = new_event;
+    event = std::move(new_event);
   }
 
   // Here, event is the pointer to the build_id_event that we are keeping.
   // Update the event's size, build id, and filename.
   if (!build_id.empty() &&
       !StringToHex(build_id, event->build_id, arraysize(event->build_id))) {
-    free(event);
     return NULL;
   }
 
@@ -615,12 +614,7 @@ size_t WritePerfSampleToData(const perf_event_type event_type,
 
 }  // namespace
 
-PerfReader::~PerfReader() {
-  // Free allocated memory.
-  for (size_t i = 0; i < build_id_events_.size(); ++i)
-    if (build_id_events_[i])
-      free(build_id_events_[i]);
-}
+PerfReader::~PerfReader() {}
 
 void PerfReader::PerfizeBuildIDString(string* build_id) {
   build_id->resize(kBuildIDStringLength, '0');
@@ -841,16 +835,14 @@ bool PerfReader::InjectBuildIDs(
   metadata_mask_ |= (1 << HEADER_BUILD_ID);
   std::set<string> updated_filenames;
   // Inject new build ID's for existing build ID events.
-  for (size_t i = 0; i < build_id_events_.size(); ++i) {
-    build_id_event* event = build_id_events_[i];
+  for (malloced_unique_ptr<build_id_event>& event : build_id_events_) {
     string filename = event->filename;
     if (filenames_to_build_ids.find(filename) == filenames_to_build_ids.end())
       continue;
 
     string build_id = filenames_to_build_ids.at(filename);
     PerfizeBuildIDString(&build_id);
-    // Changing a build id should always result in an update, never creation.
-    CHECK_EQ(event, CreateOrUpdateBuildID(build_id, "", 0, event));
+    event = CreateOrUpdateBuildID(build_id, "", 0, std::move(event));
     updated_filenames.insert(filename);
   }
 
@@ -883,10 +875,10 @@ bool PerfReader::InjectBuildIDs(
 
     string build_id = it->second;
     PerfizeBuildIDString(&build_id);
-    build_id_event* event =
-        CreateOrUpdateBuildID(build_id, filename, new_misc, NULL);
+    malloced_unique_ptr<build_id_event> event =
+        CreateOrUpdateBuildID(build_id, filename, new_misc, nullptr);
     CHECK(event);
-    build_id_events_.push_back(event);
+    build_id_events_.push_back(std::move(event));
   }
 
   return true;
@@ -905,8 +897,7 @@ bool PerfReader::Localize(
   }
 
   std::map<string, string> filename_map;
-  for (size_t i = 0; i < build_id_events_.size(); ++i) {
-    build_id_event* event = build_id_events_[i];
+  for (malloced_unique_ptr<build_id_event>& event : build_id_events_) {
     string build_id = HexToString(event->build_id, kBuildIDArraySize);
     if (perfized_build_ids_to_filenames.find(build_id) ==
         perfized_build_ids_to_filenames.end()) {
@@ -915,9 +906,8 @@ bool PerfReader::Localize(
 
     string new_name = perfized_build_ids_to_filenames.at(build_id);
     filename_map[string(event->filename)] = new_name;
-    build_id_event* new_event = CreateOrUpdateBuildID("", new_name, 0, event);
-    CHECK(new_event);
-    build_id_events_[i] = new_event;
+    event = CreateOrUpdateBuildID("", new_name, 0, std::move(event));
+    CHECK(event);
   }
 
   LocalizeUsingFilenames(filename_map);
@@ -927,15 +917,13 @@ bool PerfReader::Localize(
 bool PerfReader::LocalizeUsingFilenames(
     const std::map<string, string>& filename_map) {
   LocalizeMMapFilenames(filename_map);
-  for (size_t i = 0; i < build_id_events_.size(); ++i) {
-    build_id_event* event = build_id_events_[i];
+  for (malloced_unique_ptr<build_id_event>& event : build_id_events_) {
     string old_name = event->filename;
 
     if (filename_map.find(event->filename) != filename_map.end()) {
       const string& new_name = filename_map.at(old_name);
-      build_id_event* new_event = CreateOrUpdateBuildID("", new_name, 0, event);
-      CHECK(new_event);
-      build_id_events_[i] = new_event;
+      event = CreateOrUpdateBuildID("", new_name, 0, std::move(event));
+      CHECK(event);
     }
   }
   return true;
@@ -964,7 +952,7 @@ void PerfReader::GetFilenamesToBuildIDs(
     std::map<string, string>* filenames_to_build_ids) const {
   filenames_to_build_ids->clear();
   for (size_t i = 0; i < build_id_events_.size(); ++i) {
-    const build_id_event& event = *build_id_events_[i];
+    const build_id_event& event = *build_id_events_[i].get();
     string build_id = HexToString(event.build_id, kBuildIDArraySize);
     (*filenames_to_build_ids)[event.filename] = build_id;
   }
@@ -1415,9 +1403,7 @@ bool PerfReader::ReadBuildIDMetadataWithoutHeader(
   // Perf tends to use more space than necessary, so fix the size.
   event->header.size =
       sizeof(*event) + GetUint64AlignedStringLength(event->filename);
-  // TODO(sque): Convert |build_id_events_| to a vector of
-  // malloced_unique_ptrs, so this can be done using std::move().
-  build_id_events_.push_back(event.release());
+  build_id_events_.push_back(std::move(event));
   return true;
 }
 
@@ -1901,7 +1887,7 @@ bool PerfReader::WriteMetadata(DataWriter* data) const {
 bool PerfReader::WriteBuildIDMetadata(u32 type, DataWriter* data) const {
   CheckNoBuildIDEventPadding();
   for (size_t i = 0; i < build_id_events_.size(); ++i) {
-    const build_id_event* event = build_id_events_[i];
+    const build_id_event* event = build_id_events_[i].get();
     if (!data->WriteDataValue(event, event->header.size, "Build ID metadata"))
       return false;
   }

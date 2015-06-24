@@ -816,17 +816,14 @@ bool PerfSerializer::DeserializeTracingMetadata(
 }
 
 bool PerfSerializer::SerializeBuildIDs(
-    const std::vector<build_id_event*>& from,
+    const std::vector<malloced_unique_ptr<build_id_event>>& from,
     RepeatedPtrField<PerfDataProto_PerfBuildID>* to) const {
   return SerializeBuildIDEvents(from, to);
 }
 
 bool PerfSerializer::DeserializeBuildIDs(
     const RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
-    std::vector<build_id_event*>* to) const {
-  // Free any existing build id events.
-  for (size_t i = 0; i < to->size(); ++i)
-    free(to->at(i));
+    std::vector<malloced_unique_ptr<build_id_event>>* to) const {
   to->clear();
 
   return DeserializeBuildIDEvents(from, to);
@@ -984,7 +981,7 @@ bool PerfSerializer::DeserializeMetadata(const PerfDataProto& from) {
 }
 
 bool PerfSerializer::SerializeBuildIDEvent(
-    const build_id_event* from,
+    const malloced_unique_ptr<build_id_event>& from,
     PerfDataProto_PerfBuildID* to) const {
   to->set_misc(from->header.misc);
   to->set_pid(from->pid);
@@ -996,12 +993,12 @@ bool PerfSerializer::SerializeBuildIDEvent(
 
 bool PerfSerializer::DeserializeBuildIDEvent(
     const PerfDataProto_PerfBuildID& from,
-    build_id_event** to) const {
+    malloced_unique_ptr<build_id_event>* to) const {
   const string& filename = from.filename();
   size_t size = sizeof(build_id_event) + GetUint64AlignedStringLength(filename);
 
-  build_id_event* event = CallocMemoryForBuildID(size);
-  *to = event;
+  malloced_unique_ptr<build_id_event>& event = *to;
+  event.reset(CallocMemoryForBuildID(size));
   event->header.type = PERF_RECORD_HEADER_BUILD_ID;
   event->header.size = size;
   event->header.misc = from.misc();
