@@ -15,6 +15,13 @@ GlibMessageLoop::GlibMessageLoop() {
 }
 
 GlibMessageLoop::~GlibMessageLoop() {
+  // Cancel all pending tasks when destroying the message loop.
+  for (const auto& task : tasks_) {
+    DVLOG_LOC(task.second->location, 1)
+        << "Removing task_id " << task.second->task_id
+        << " leaked on GlibMessageLoop, scheduled from this location.";
+    g_source_remove(task.second->source_id);
+  }
   g_main_loop_unref(loop_);
 }
 
