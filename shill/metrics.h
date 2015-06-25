@@ -1002,6 +1002,9 @@ class Metrics {
   virtual bool SendToUMA(const std::string& name, int sample, int min,
                          int max, int num_buckets);
 
+  // Sends sparse histogram data to UMA.
+  virtual bool SendSparseToUMA(const std::string& name, int sample);
+
   // Notifies this object that wake on WiFi has been disabled because of
   // excessive dark resume wakes.
   virtual void NotifyWakeOnWiFiThrottled();

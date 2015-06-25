@@ -1452,6 +1452,12 @@ bool Metrics::SendToUMA(const string& name, int sample, int min, int max,
   return library_->SendToUMA(name, sample, min, max, num_buckets);
 }
 
+bool Metrics::SendSparseToUMA(const string& name, int sample) {
+  SLOG(this, 5)
+      << "Sending sparse metric " << name << " with value " << sample << ".";
+  return library_->SendSparseToUMA(name, sample);
+}
+
 void Metrics::NotifyWakeOnWiFiThrottled() {
     wake_on_wifi_throttled_ = true;
 }
