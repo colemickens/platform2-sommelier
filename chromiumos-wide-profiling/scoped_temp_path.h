@@ -14,7 +14,6 @@
 namespace quipper {
 
 // Used to create a temporary file or directory.
-// TODO(cwp-team): add unit tests to this class.
 class ScopedTempPath {
  public:
   ScopedTempPath() {}
