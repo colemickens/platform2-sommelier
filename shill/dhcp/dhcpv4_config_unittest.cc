@@ -285,6 +285,8 @@ TEST_F(DHCPv4ConfigTest, ParseConfiguration) {
       "hostname");
   conf["UnknownKey"] = DBus::Variant();
 
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 600));
   IPConfig::Properties properties;
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ("4.3.2.1", properties.address);
@@ -308,20 +310,28 @@ TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
   conf[DHCPv4Config::kConfigurationKeyMTU].writer().append_uint16(576);
 
   IPConfig::Properties properties;
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 576));
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
+  Mock::VerifyAndClearExpectations(&metrics_);
 
   // With a minimum MTU set, values below the minimum should be ignored.
   config_->set_minimum_mtu(1500);
   conf.erase(DHCPv4Config::kConfigurationKeyMTU);
   conf[DHCPv4Config::kConfigurationKeyMTU].writer().append_uint16(1499);
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 1499));
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
+  Mock::VerifyAndClearExpectations(&metrics_);
 
   // A value (other than 576) should be accepted if it is >= mimimum_mtu.
   config_->set_minimum_mtu(577);
   conf.erase(DHCPv4Config::kConfigurationKeyMTU);
   conf[DHCPv4Config::kConfigurationKeyMTU].writer().append_uint16(577);
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 577));
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ(577, properties.mtu);
 }

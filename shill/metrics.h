@@ -723,9 +723,6 @@ class Metrics {
 
   // DHCP server reported MTU value.
   static const char kMetricDhcpClientMTUValue[];
-  static const int kMetricDhcpClientMTUValueMin;
-  static const int kMetricDhcpClientMTUValueMax;
-  static const int kMetricDhcpClientMTUValueNumBuckets;
 
   // Network connection IP type.
   static const char kMetricNetworkConnectionIPTypeSuffix[];

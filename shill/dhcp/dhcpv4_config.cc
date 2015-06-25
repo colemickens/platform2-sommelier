@@ -367,10 +367,7 @@ bool DHCPv4Config::ParseConfiguration(const Configuration& configuration,
       properties->domain_search = value.operator vector<string>();
     } else if (key == kConfigurationKeyMTU) {
       int mtu = value.reader().get_uint16();
-      metrics_->SendToUMA(Metrics::kMetricDhcpClientMTUValue, mtu,
-                          Metrics::kMetricDhcpClientMTUValueMin,
-                          Metrics::kMetricDhcpClientMTUValueMax,
-                          Metrics::kMetricDhcpClientMTUValueNumBuckets);
+      metrics_->SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, mtu);
       if (mtu >= minimum_mtu() && mtu != kMinIPv4MTU) {
         properties->mtu = mtu;
       }
