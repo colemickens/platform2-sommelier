@@ -14,6 +14,10 @@
 
 namespace cryptohome {
 
+const uint32_t kDefaultTpmRsaModulusSize = 2048;
+const uint32_t kDefaultTpmPublicExponent = 0x10001;
+const uint32_t kLockboxPCR = 15;
+
 class Tpm2Impl : public Tpm {
  public:
   Tpm2Impl();
@@ -112,9 +116,9 @@ class Tpm2Impl : public Tpm {
   bool TestTpmAuth(const chromeos::SecureBlob& owner_password) override;
   void SetOwnerPassword(const chromeos::SecureBlob& owner_password) override;
   bool IsTransient(TpmRetryAction retry_action) override;
-  bool WrapRsaKey(SecureBlob public_modulus,
-                  SecureBlob prime_factor,
-                  SecureBlob* wrapped_key) override;
+  bool WrapRsaKey(const chromeos::SecureBlob& public_modulus,
+                  const chromeos::SecureBlob& prime_factor,
+                  chromeos::SecureBlob* wrapped_key) override;
   TpmRetryAction LoadWrappedKey(const chromeos::SecureBlob& wrapped_key,
                                 ScopedKeyHandle* key_handle) override;
   bool LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
@@ -130,9 +134,14 @@ class Tpm2Impl : public Tpm {
       const chromeos::SecureBlob& delegate_secret) override;
 
  private:
-  scoped_ptr<trunks::TrunksFactory> factory_;
-  scoped_ptr<trunks::TpmState> state_;
-  scoped_ptr<trunks::TpmUtility> utility_;
+  // This method given a Tpm generated public area, returns the DER encoded
+  // public key.
+  bool PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
+                                chromeos::SecureBlob* public_key_der);
+
+  scoped_ptr<trunks::TrunksFactory> trunks_factory_;
+  scoped_ptr<trunks::TpmState> tpm_state_;
+  scoped_ptr<trunks::TpmUtility> trunks_utility_;
 
   bool is_disabled_ = false;
   bool is_owned_ = false;

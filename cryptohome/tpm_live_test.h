@@ -27,6 +27,13 @@ class TpmLiveTest {
   bool RunLiveTests(SecureBlob owner_password);
 
  private:
+  // This test checks if PCRs and PCR bound keys work correctly.
+  bool PCRKeyTest();
+
+  // This test checks if we can create and load an RSA decryption key and use
+  // it to encrypt and decrypt.
+  bool DecryptionKeyTest();
+
   // The below tests need |owner_password| to be provided to run.
   // This test verifies that the Nvram subsystem of the TPM is working
   // correctly.

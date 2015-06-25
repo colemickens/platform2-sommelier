@@ -2638,8 +2638,8 @@ void TpmImpl::SetOwnerPassword(const chromeos::SecureBlob& owner_password) {
   owner_password_.assign(owner_password.begin(), owner_password.end());
 }
 
-bool TpmImpl::WrapRsaKey(SecureBlob public_modulus,
-                         SecureBlob prime_factor,
+bool TpmImpl::WrapRsaKey(const SecureBlob& public_modulus,
+                         const SecureBlob& prime_factor,
                          SecureBlob* wrapped_key) {
   TSS_RESULT result;
   // Load the Storage Root Key
@@ -2720,7 +2720,8 @@ bool TpmImpl::WrapRsaKey(SecureBlob public_modulus,
     TPM_LOG(ERROR, result) << "Error assigning migration policy";
     return false;
   }
-  BYTE* public_modulus_buffer = static_cast<BYTE *>(public_modulus.data());
+  SecureBlob mutable_modulus(public_modulus.begin(), public_modulus.end());
+  BYTE* public_modulus_buffer = static_cast<BYTE *>(mutable_modulus.data());
   if (TPM_ERROR(result = Tspi_SetAttribData(local_key_handle,
                                             TSS_TSPATTRIB_RSAKEY_INFO,
                                             TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
@@ -2729,7 +2730,8 @@ bool TpmImpl::WrapRsaKey(SecureBlob public_modulus,
     TPM_LOG(ERROR, result) << "Error setting RSA modulus";
     return false;
   }
-  BYTE* prime_factor_buffer = static_cast<BYTE *>(prime_factor.data());
+  SecureBlob mutable_factor(prime_factor.begin(), prime_factor.end());
+  BYTE* prime_factor_buffer = static_cast<BYTE *>(mutable_factor.data());
   if (TPM_ERROR(result = Tspi_SetAttribData(local_key_handle,
                                             TSS_TSPATTRIB_KEY_BLOB,
                                             TSS_TSPATTRIB_KEYBLOB_PRIVATE_KEY,

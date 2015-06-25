@@ -111,8 +111,8 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(TestTpmAuth, bool(const chromeos::SecureBlob&));
   MOCK_METHOD1(SetOwnerPassword, void(const chromeos::SecureBlob&));
   MOCK_METHOD1(IsTransient, bool(TpmRetryAction));
-  MOCK_METHOD3(WrapRsaKey, bool(chromeos::SecureBlob,
-                                chromeos::SecureBlob,
+  MOCK_METHOD3(WrapRsaKey, bool(const chromeos::SecureBlob&,
+                                const chromeos::SecureBlob&,
                                 chromeos::SecureBlob*));
   MOCK_METHOD2(LoadWrappedKey, TpmRetryAction(const chromeos::SecureBlob&,
                                               ScopedKeyHandle*));

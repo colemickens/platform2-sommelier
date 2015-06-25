@@ -36,6 +36,9 @@ TpmKeyHandle ScopedKeyHandle::release() {
 }
 
 void ScopedKeyHandle::reset(Tpm* tpm, TpmKeyHandle handle) {
+  if ((tpm_ != nullptr) && (handle_ != kInvalidKeyHandle)) {
+    tpm_->CloseHandle(handle_);
+  }
   tpm_ = tpm;
   handle_ = handle;
 }

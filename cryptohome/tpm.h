@@ -441,8 +441,8 @@ class Tpm {
   //   public_modulus - the public modulus of the provided Rsa key
   //   prime_factor - one of the prime factors of the Rsa key to wrap
   //   wrapped_key (OUT) - A blob representing the wrapped key
-  virtual bool WrapRsaKey(chromeos::SecureBlob public_modulus,
-                          chromeos::SecureBlob prime_factor,
+  virtual bool WrapRsaKey(const chromeos::SecureBlob& public_modulus,
+                          const chromeos::SecureBlob& prime_factor,
                           chromeos::SecureBlob* wrapped_key) = 0;
 
   // Loads an SRK-wrapped key into the TPM.

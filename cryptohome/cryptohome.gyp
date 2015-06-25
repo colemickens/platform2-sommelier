@@ -400,6 +400,8 @@
           'conditions': [
             ['USE_tpm2 == 1', {
               'sources': [
+                '../trunks/mock_authorization_delegate.cc',
+                '../trunks/mock_blob_parser.cc',
                 '../trunks/mock_hmac_session.cc',
                 '../trunks/mock_policy_session.cc',
                 '../trunks/mock_session_manager.cc',
