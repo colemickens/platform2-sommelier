@@ -8,6 +8,7 @@
 #include <functional>
 #include <map>
 #include <queue>
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -35,21 +36,41 @@ class CHROMEOS_EXPORT FakeMessageLoop : public MessageLoop {
   explicit FakeMessageLoop(base::SimpleTestClock* clock);
   ~FakeMessageLoop() override = default;
 
-  MessageLoop::TaskId PostDelayedTask(
-      const tracked_objects::Location& from_here,
-      const base::Closure &task,
-      base::TimeDelta delay) override;
+  TaskId PostDelayedTask(const tracked_objects::Location& from_here,
+                         const base::Closure &task,
+                         base::TimeDelta delay) override;
   using MessageLoop::PostDelayedTask;
+  TaskId WatchFileDescriptor(const tracked_objects::Location& from_here,
+                             int fd,
+                             WatchMode mode,
+                             bool persistent,
+                             const base::Closure &task) override;
+  using MessageLoop::WatchFileDescriptor;
   bool CancelTask(TaskId task_id) override;
   bool RunOnce(bool may_block) override;
 
   // FakeMessageLoop methods:
+
+  // Pretend, for the purpose of the FakeMessageLoop watching for file
+  // descriptors, that the file descriptor |fd| readiness to perform the
+  // operation described by |mode| is |ready|. Initially, no file descriptor
+  // is ready for any operation.
+  void SetFileDescriptorReadiness(int fd, WatchMode mode, bool ready);
 
   // Return whether there are peding tasks. Useful to check that no
   // callbacks were leaked.
   bool PendingTasks();
 
  private:
+  struct ScheduledTask {
+    tracked_objects::Location location;
+    bool persistent;
+    base::Closure callback;
+  };
+
+  // The sparse list of scheduled pending callbacks.
+  std::map<MessageLoop::TaskId, ScheduledTask> tasks_;
+
   // Using std::greater<> for the priority_queue means that the top() of the
   // queue is the lowest (earliest) time, and for the same time, the smallest
   // TaskId. This determines the order in which the tasks will be fired.
@@ -57,8 +78,13 @@ class CHROMEOS_EXPORT FakeMessageLoop : public MessageLoop {
       std::pair<base::Time, MessageLoop::TaskId>,
       std::vector<std::pair<base::Time, MessageLoop::TaskId>>,
       std::greater<std::pair<base::Time, MessageLoop::TaskId>>> fire_order_;
-  std::map<MessageLoop::TaskId,
-           std::pair<tracked_objects::Location, base::Closure>> tasks_;
+
+  // The bag of watched (fd, mode) pair associated with the TaskId that's
+  // watching them.
+  std::multimap<std::pair<int, WatchMode>, MessageLoop::TaskId> fds_watched_;
+
+  // The set of (fd, mode) pairs that are faked as ready.
+  std::set<std::pair<int, WatchMode>> fds_ready_;
 
   base::SimpleTestClock* test_clock_ = nullptr;
   base::Time current_time_ = base::Time::FromDoubleT(1246996800.);

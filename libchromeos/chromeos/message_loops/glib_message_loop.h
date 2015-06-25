@@ -23,11 +23,16 @@ class CHROMEOS_EXPORT GlibMessageLoop : public MessageLoop {
   ~GlibMessageLoop() override;
 
   // MessageLoop overrides.
-  MessageLoop::TaskId PostDelayedTask(
-      const tracked_objects::Location& from_here,
-      const base::Closure &task,
-      base::TimeDelta delay) override;
+  TaskId PostDelayedTask(const tracked_objects::Location& from_here,
+                         const base::Closure &task,
+                         base::TimeDelta delay) override;
   using MessageLoop::PostDelayedTask;
+  TaskId WatchFileDescriptor(const tracked_objects::Location& from_here,
+                             int fd,
+                             WatchMode mode,
+                             bool persistent,
+                             const base::Closure &task) override;
+  using MessageLoop::WatchFileDescriptor;
   bool CancelTask(TaskId task_id) override;
   bool RunOnce(bool may_block) override;
   void Run() override;
@@ -39,9 +44,18 @@ class CHROMEOS_EXPORT GlibMessageLoop : public MessageLoop {
   // passed to this function as a gpointer on |user_data|.
   static gboolean OnRanPostedTask(gpointer user_data);
 
+  // Called by the GLib's main loop when the watched source |source| is
+  // ready to perform the operation given in |condition| without blocking.
+  static gboolean OnWatchedFdReady(GIOChannel *source,
+                                   GIOCondition condition,
+                                   gpointer user_data);
+
   // Called by the GLib's main loop when the scheduled callback is removed due
   // to it being executed or canceled.
   static void DestroyPostedTask(gpointer user_data);
+
+  // Return a new unused task_id.
+  TaskId NextTaskId();
 
   GMainLoop* loop_;
 
@@ -53,6 +67,7 @@ class CHROMEOS_EXPORT GlibMessageLoop : public MessageLoop {
 
     MessageLoop::TaskId task_id;
     guint source_id;
+    bool persistent;
     base::Closure closure;
   };
 

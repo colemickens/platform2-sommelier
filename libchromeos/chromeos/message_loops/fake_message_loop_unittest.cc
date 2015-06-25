@@ -81,6 +81,32 @@ TEST_F(FakeMessageLoopTest, PostDelayedTaskAdvancesTheTime) {
   EXPECT_EQ(start + TimeDelta::FromSeconds(3), clock_.Now());
 }
 
+TEST_F(FakeMessageLoopTest, WatchFileDescriptorWaits) {
+  int fd = 1234;
+  // We will simulate this situation. At the beginning, we will watch for a
+  // file descriptor that won't trigger for 10s. Then we will pretend it is
+  // ready after 10s and expect its callback to run just once.
+  int called = 0;
+  TaskId task_id = loop_->WatchFileDescriptor(
+      FROM_HERE, fd, MessageLoop::kWatchRead, false,
+      Bind([&called] { called++; }));
+  EXPECT_NE(MessageLoop::kTaskIdNull, task_id);
+
+  EXPECT_NE(MessageLoop::kTaskIdNull,
+            loop_->PostDelayedTask(Bind([this] { this->loop_->BreakLoop(); }),
+                                   TimeDelta::FromSeconds(10)));
+  EXPECT_NE(MessageLoop::kTaskIdNull,
+            loop_->PostDelayedTask(Bind([this] { this->loop_->BreakLoop(); }),
+                                   TimeDelta::FromSeconds(20)));
+  loop_->Run();
+  EXPECT_EQ(0, called);
+
+  loop_->SetFileDescriptorReadiness(fd, MessageLoop::kWatchRead, true);
+  loop_->Run();
+  EXPECT_EQ(1, called);
+  EXPECT_FALSE(loop_->CancelTask(task_id));
+}
+
 TEST_F(FakeMessageLoopTest, PendingTasksTest) {
   loop_->PostDelayedTask(Bind(&base::DoNothing), TimeDelta::FromSeconds(1));
   EXPECT_TRUE(loop_->PendingTasks());

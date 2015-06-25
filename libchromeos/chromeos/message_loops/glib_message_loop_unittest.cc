@@ -4,6 +4,9 @@
 
 #include <chromeos/message_loops/glib_message_loop.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+
 #include <memory>
 
 #include <base/bind.h>
@@ -16,6 +19,32 @@
 
 using base::Bind;
 using base::TimeDelta;
+
+namespace {
+// Helper class to create and close a unidirectional pipe. Used to provide valid
+// file descriptors when testing watching for a file descriptor.
+class ScopedPipe {
+ public:
+  ScopedPipe() {
+    int fds[2];
+    if (pipe(fds) != 0) {
+      PLOG(FATAL) << "Creating a pipe()";
+    }
+    reader = fds[0];
+    writer = fds[1];
+  }
+  ~ScopedPipe() {
+    if (reader != -1)
+      close(reader);
+    if (writer != -1)
+      close(writer);
+  }
+
+  // The reader and writer end of the pipe.
+  int reader{-1};
+  int writer{-1};
+};
+}  // namespace
 
 namespace chromeos {
 
@@ -77,6 +106,66 @@ TEST_F(GlibMessageLoopTest, PostDelayedTaskRunsEventuallyTest) {
 TEST_F(GlibMessageLoopTest, PostDelayedTaskWithoutLocation) {
   loop_->PostDelayedTask(Bind(&base::DoNothing), TimeDelta());
   EXPECT_EQ(1, MessageLoopRunMaxIterations(loop_.get(), 100));
+}
+
+TEST_F(GlibMessageLoopTest, WatchForInvalidFD) {
+  bool called = false;
+  EXPECT_EQ(MessageLoop::kTaskIdNull, loop_->WatchFileDescriptor(
+      FROM_HERE, -1, MessageLoop::kWatchRead, true,
+      Bind([&called] { called = true; })));
+  EXPECT_EQ(MessageLoop::kTaskIdNull, loop_->WatchFileDescriptor(
+      FROM_HERE, -1, MessageLoop::kWatchWrite, true,
+      Bind([&called] { called = true; })));
+  EXPECT_EQ(0, MessageLoopRunMaxIterations(loop_.get(), 100));
+  EXPECT_FALSE(called);
+}
+
+TEST_F(GlibMessageLoopTest, CancelWatchedFileDescriptor) {
+  ScopedPipe pipe;
+  bool called = false;
+  TaskId task_id = loop_->WatchFileDescriptor(
+      FROM_HERE, pipe.reader, MessageLoop::kWatchRead, true,
+      Bind([&called] { called = true; }));
+  EXPECT_NE(MessageLoop::kTaskIdNull, task_id);
+  // The reader end is blocked because we didn't write anything to the writer
+  // end.
+  EXPECT_EQ(0, MessageLoopRunMaxIterations(loop_.get(), 100));
+  EXPECT_FALSE(called);
+  EXPECT_TRUE(loop_->CancelTask(task_id));
+}
+
+// When a WatchFileDescriptor task is scheduled with |persistent| = true, we
+// should keep getting a call whenever the file descriptor is ready.
+TEST_F(GlibMessageLoopTest, WatchFileDescriptorPersistently) {
+  int fd = open("/dev/zero", O_RDONLY);
+  int called = 0;
+  TaskId task_id = loop_->WatchFileDescriptor(
+      FROM_HERE, fd, MessageLoop::kWatchRead, true,
+      Bind([&called] { called++; }));
+  EXPECT_NE(MessageLoop::kTaskIdNull, task_id);
+  // We let the main loop run for 20 iterations to give it enough iterations to
+  // verify that our callback was called more than one. We only check that our
+  // callback is called more than once.
+  EXPECT_EQ(20, MessageLoopRunMaxIterations(loop_.get(), 20));
+  EXPECT_LT(1, called);
+  EXPECT_TRUE(loop_->CancelTask(task_id));
+  close(fd);
+}
+
+TEST_F(GlibMessageLoopTest, WatchFileDescriptorNonPersistent) {
+  int fd = open("/dev/zero", O_RDONLY);
+  int called = 0;
+  TaskId task_id = loop_->WatchFileDescriptor(
+      fd, MessageLoop::kWatchRead, false, Bind([&called] { called++; }));
+  EXPECT_NE(MessageLoop::kTaskIdNull, task_id);
+  // We let the main loop run for 20 iterations but we just expect it to run
+  // at least once. The callback should be called exactly once since we
+  // scheduled it non-persistently. After it ran, we shouldn't be able to cancel
+  // this task.
+  EXPECT_LT(0, MessageLoopRunMaxIterations(loop_.get(), 20));
+  EXPECT_EQ(1, called);
+  EXPECT_FALSE(loop_->CancelTask(task_id));
+  close(fd);
 }
 
 // Test that we can cancel the task we are running, and should just fail.
