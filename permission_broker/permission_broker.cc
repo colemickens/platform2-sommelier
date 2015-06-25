@@ -47,6 +47,10 @@ using permission_broker::PermissionBroker;
 
 namespace {
 const uint16_t kLinuxFoundationUsbVendorId = 0x1d6b;
+
+const char kErrorDomainPermissionBroker[] = "permission_broker";
+const char kPermissionDeniedError[] = "permission_denied";
+const char kOpenFailedError[] = "open_failed";
 }
 
 namespace permission_broker {
@@ -103,7 +107,7 @@ void PermissionBroker::RegisterAsync(
 }
 
 bool PermissionBroker::CheckPathAccess(const std::string& in_path) {
-  return rule_engine_.ProcessPath(in_path, -1 /* all interfaces */);
+  return rule_engine_.ProcessPath(in_path, Rule::ANY_INTERFACE);
 }
 
 bool PermissionBroker::RequestPathAccess(const std::string& in_path,
@@ -114,22 +118,31 @@ bool PermissionBroker::RequestPathAccess(const std::string& in_path,
   return false;
 }
 
-dbus::FileDescriptor PermissionBroker::OpenPath(const std::string& in_path) {
-  dbus::FileDescriptor result;
-
-  if (!rule_engine_.ProcessPath(in_path, -1 /* all interfaces */)) {
-    return result.Pass();
+bool PermissionBroker::OpenPath(chromeos::ErrorPtr* error,
+                                const std::string& in_path,
+                                dbus::FileDescriptor* out_fd) {
+  if (!rule_engine_.ProcessPath(in_path, Rule::ANY_INTERFACE)) {
+    chromeos::Error::AddToPrintf(
+        error, FROM_HERE, kErrorDomainPermissionBroker, kPermissionDeniedError,
+        "Permission to open '%s' denied", in_path.c_str());
+    return false;
   }
 
   int fd = HANDLE_EINTR(open(in_path.c_str(), O_RDWR));
   if (fd < 0) {
-    PLOG(INFO) << "Failed to open '" << in_path.c_str() << "'";
-    return result.Pass();
+    chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainPermissionBroker,
+                                 kOpenFailedError, "Failed to open path '%s'",
+                                 in_path.c_str());
+    return false;
   }
 
+  dbus::FileDescriptor result;
   result.PutValue(fd);
   result.CheckValidity();
-  return result.Pass();
+
+  *out_fd = result.Pass();
+  return true;
 }
 
 bool PermissionBroker::RequestTcpPortAccess(

@@ -43,7 +43,9 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
   bool CheckPathAccess(const std::string& in_path) override;
   bool RequestPathAccess(const std::string& in_path,
                          int32_t in_interface_id) override;
-  dbus::FileDescriptor OpenPath(const std::string& in_path) override;
+  bool OpenPath(chromeos::ErrorPtr* error,
+                const std::string& in_path,
+                dbus::FileDescriptor* out_fd) override;
   bool RequestTcpPortAccess(uint16_t in_port,
                             const std::string& in_interface,
                             const dbus::FileDescriptor& dbus_fd) override;
