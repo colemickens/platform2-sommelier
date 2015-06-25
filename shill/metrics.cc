@@ -377,6 +377,7 @@ const char Metrics::kMetricDhcpClientStatus[] =
 // static
 const char Metrics::kMetricDhcpClientMTUValue[] =
     "Network.Shill.DHCPClientMTUValue";
+const char Metrics::kMetricPPPMTUValue[] = "Network.Shill.PPPMTUValue";
 
 // static
 const char Metrics::kMetricNetworkConnectionIPTypeSuffix[] =

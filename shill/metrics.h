@@ -721,8 +721,9 @@ class Metrics {
   // DHCP client status.
   static const char kMetricDhcpClientStatus[];
 
-  // DHCP server reported MTU value.
+  // Assigned MTU values, both from DHCP and PPP.
   static const char kMetricDhcpClientMTUValue[];
+  static const char kMetricPPPMTUValue[];
 
   // Network connection IP type.
   static const char kMetricNetworkConnectionIPTypeSuffix[];

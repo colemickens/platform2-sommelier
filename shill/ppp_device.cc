@@ -8,6 +8,7 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "shill/logging.h"
+#include "shill/metrics.h"
 #include "shill/technology.h"
 
 using std::map;
@@ -60,7 +61,6 @@ string PPPDevice::GetInterfaceName(const map<string, string>& configuration) {
   return string();
 }
 
-// static
 IPConfig::Properties PPPDevice::ParseIPConfiguration(
     const string& link_name, const map<string, string>& configuration) {
   SLOG(PPP, nullptr, 2) << __func__ << " on " << link_name;
@@ -95,6 +95,7 @@ IPConfig::Properties PPPDevice::ParseIPConfiguration(
         continue;
       }
       properties.mtu = mru;
+      metrics()->SendSparseToUMA(Metrics::kMetricPPPMTUValue, mru);
     } else {
       SLOG(PPP, nullptr, 2) << "Key ignored.";
     }
