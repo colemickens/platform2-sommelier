@@ -21,8 +21,12 @@
 		<method name="ClearProperty">
 			<arg type="s" direction="in"/>
 		</method>
-		<method name="Enable"/>
-		<method name="Disable"/>
+		<method name="Enable">
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+		</method>
+		<method name="Disable">
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+		</method>
 		<method name="ProposeScan"/>
 		<method name="AddIPConfig">
 			<arg type="s" direction="in"/>
@@ -30,31 +34,39 @@
 		</method>
 		<method name="Register">
 			<arg type="s" direction="in"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<method name="RequirePin">
 			<arg type="s" direction="in"/>
 			<arg type="b" direction="in"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<method name="EnterPin">
 			<arg type="s" direction="in"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<method name="UnblockPin">
 			<arg type="s" direction="in"/>
 			<arg type="s" direction="in"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<method name="ChangePin">
 			<arg type="s" direction="in"/>
 			<arg type="s" direction="in"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<method name="PerformTDLSOperation">
 			<arg type="s" direction="in"/>
 			<arg type="s" direction="in"/>
 			<arg type="s" direction="out"/>
 		</method>
-		<method name="Reset"/>
+		<method name="Reset">
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+		</method>
 		<method name="ResetByteCounters"/>
 		<method name="SetCarrier">
 			<arg type="s" direction="in"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<signal name="PropertyChanged">
 			<arg type="s"/>

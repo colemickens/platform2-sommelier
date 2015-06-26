@@ -124,6 +124,26 @@
       ],
       'includes': ['../common-mk/xml2cpp.gypi'],
     },
+    # ChromeOS DBus bindings.
+    # TODO(zqiu): remove the legacy dbus-c++ bindings when switching over
+    # to ChromeOS DBus.
+    {
+      'target_name': 'shill-chromeos-dbus-adaptors',
+      'type': 'none',
+      'variables': {
+        'dbus_adaptors_out_dir': 'include/shill/chromeos_dbus_adaptors',
+      },
+      'sources': [
+        'dbus_bindings/org.chromium.flimflam.Device.xml',
+        'dbus_bindings/org.chromium.flimflam.IPConfig.xml',
+        'dbus_bindings/org.chromium.flimflam.Manager.xml',
+        'dbus_bindings/org.chromium.flimflam.Profile.xml',
+        'dbus_bindings/org.chromium.flimflam.Service.xml',
+        'dbus_bindings/org.chromium.flimflam.Task.xml',
+        'dbus_bindings/org.chromium.flimflam.ThirdPartyVpn.xml',
+      ],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
+    },
     {
       'target_name': 'shim-protos',
       'type': 'static_library',
@@ -284,6 +304,13 @@
             'cellular/out_of_credits_detector.cc',
             'cellular/subscription_state_out_of_credits_detector.cc',
             'protobuf_lite_streams.cc',
+          ],
+        }],
+        ['USE_chromeos_dbus ==1', {
+          'sources': [
+            'dbus/chromeos_dbus_control.cc',
+            'dbus/chromeos_dbus_adaptor.cc',
+            'dbus/chromeos_device_dbus_adaptor.cc',
           ],
         }],
         ['USE_vpn == 1', {
@@ -765,6 +792,11 @@
                 'cellular/modem_manager_unittest.cc',
                 'cellular/modem_unittest.cc',
                 'cellular/subscription_state_out_of_credits_detector_unittest.cc',
+              ],
+            }],
+            ['USE_chromeos_dbus ==1', {
+              'sources': [
+                'dbus/chromeos_dbus_adaptor_unittest.cc',
               ],
             }],
             ['USE_dhcpv6 == 1', {
