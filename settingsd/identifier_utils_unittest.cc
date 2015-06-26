@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "settingsd/identifier_utils.h"
+
 #include <gtest/gtest.h>
 #include <map>
 #include <set>
 #include <string>
 
-#include "settingsd/identifier_utils.h"
-
 namespace settingsd {
 
-TEST(IdentifierUtilsTest, GetChildPrefixes) {
+TEST(IdentifierUtilsTest, GetRange) {
   std::map<Key, int> prefix_map = {
       {Key("A.A.B.C"), 0},
       {Key("A.A.B.C.D"), 1},
@@ -31,7 +31,7 @@ TEST(IdentifierUtilsTest, GetChildPrefixes) {
   EXPECT_TRUE(std::equal(expected.begin(), expected.end(), range.begin()));
 }
 
-TEST(IdentifierUtilsTest, GetChildPrefixesForRoot) {
+TEST(IdentifierUtilsTest, GetRangeForRoot) {
   std::map<Key, int> prefix_map = {
       {Key("A.A.B.C"), 0},
       {Key("A.A.B.C.D"), 1}

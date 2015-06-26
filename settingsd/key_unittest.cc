@@ -8,14 +8,31 @@
 
 namespace settingsd {
 
-TEST(KeyTest, GetParent) {
-  Key A("A.B");
-  Key parent = A.GetParent();
-  EXPECT_EQ(parent, Key("A"));
+TEST(KeyTest, IsValidKey) {
+  EXPECT_TRUE(Key::IsValidKey(""));
+  EXPECT_FALSE(Key::IsValidKey("."));
+  EXPECT_TRUE(Key::IsValidKey("A"));
+  EXPECT_FALSE(Key::IsValidKey(".A"));
+  EXPECT_FALSE(Key::IsValidKey("A."));
+  EXPECT_TRUE(Key::IsValidKey("A.B"));
+  EXPECT_FALSE(Key::IsValidKey("A..B"));
+  EXPECT_FALSE(Key::IsValidKey("A.!.B"));
 }
 
-TEST(KeyTest, GetParentForRoot) {
+TEST(KeyTest, GetParent) {
   EXPECT_EQ(Key().GetParent(), Key());
+  EXPECT_EQ(Key("A"), Key("A.B").GetParent());
+}
+
+TEST(KeyTest, Append) {
+  EXPECT_EQ(Key("A"), Key().Append(Key("A")));
+  EXPECT_EQ(Key("A.B"), Key("A").Append(Key("B")));
+}
+
+TEST(KeyTest, Extend) {
+  EXPECT_EQ(Key("A"), Key().Extend({"A"}));
+  EXPECT_EQ(Key("A.B"), Key("A").Extend({"B"}));
+  EXPECT_EQ(Key("A.B.C"), Key("A").Extend({"B", "C"}));
 }
 
 }  // namespace settingsd

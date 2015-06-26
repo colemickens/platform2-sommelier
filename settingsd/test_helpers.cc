@@ -14,4 +14,9 @@ std::unique_ptr<base::Value> MakeNullValue() {
   return std::unique_ptr<base::Value>(base::Value::CreateNullValue().release());
 }
 
+std::unique_ptr<base::Value> MakeStringValue(const std::string& str) {
+  return std::unique_ptr<base::Value>(new base::StringValue(str));
+}
+
+
 }  // namespace settingsd

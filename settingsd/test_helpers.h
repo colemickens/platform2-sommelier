@@ -6,6 +6,7 @@
 #define SETTINGSD_TEST_HELPERS_H_
 
 #include <memory>
+#include <string>
 
 #include <base/values.h>
 
@@ -13,6 +14,7 @@ namespace settingsd {
 
 std::unique_ptr<base::Value> MakeIntValue(int i);
 std::unique_ptr<base::Value> MakeNullValue();
+std::unique_ptr<base::Value> MakeStringValue(const std::string& str);
 
 }  // namespace settingsd
 
