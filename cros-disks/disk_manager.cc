@@ -240,12 +240,18 @@ void DiskManager::ProcessBlockDeviceEvents(
     disks_detected_.erase(device_path);
     events->push_back(DeviceEvent(DeviceEvent::kDiskRemoved, device_path));
   } else if (child_disk_removed) {
+    bool no_child_disks_found = true;
     if (ContainsKey(disks_detected_, device_path)) {
       set<string>& child_disks = disks_detected_[device_path];
+      no_child_disks_found = child_disks.empty();
       for (const auto& child_disk : child_disks) {
         events->push_back(DeviceEvent(DeviceEvent::kDiskRemoved, child_disk));
       }
     }
+    // When the device contains a full-disk partition, there are no child disks.
+    // Remove the device instead.
+    if (no_child_disks_found)
+      events->push_back(DeviceEvent(DeviceEvent::kDiskRemoved, device_path));
   }
 }
 
