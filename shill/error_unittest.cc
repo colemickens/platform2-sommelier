@@ -5,6 +5,7 @@
 #include "shill/error.h"
 
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/errors/error.h>
 #include <dbus-c++/error.h>
 #include <gtest/gtest.h>
 
@@ -75,6 +76,19 @@ TEST_F(ErrorTest, ToDBusError) {
   ASSERT_TRUE(dbus_error.is_set());
   EXPECT_STREQ(kErrorResultPermissionDenied, dbus_error.name());
   EXPECT_STREQ(kMessage, dbus_error.message());
+}
+
+TEST_F(ErrorTest, ToChromeosError) {
+  chromeos::ErrorPtr chromeos_error;
+  EXPECT_EQ(nullptr, chromeos_error.get());
+  Error().ToChromeosError(&chromeos_error);
+  EXPECT_EQ(nullptr, chromeos_error.get());
+  static const std::string kMessage = "Test error message";
+  Error(Error::kPermissionDenied, kMessage).ToChromeosError(&chromeos_error);
+  EXPECT_NE(nullptr, chromeos_error.get());
+  EXPECT_EQ("shill", chromeos_error->GetDomain());
+  EXPECT_EQ("permission_denied", chromeos_error->GetCode());
+  EXPECT_EQ(kMessage, chromeos_error->GetMessage());
 }
 
 TEST_F(ErrorTest, IsSuccessFailure) {

@@ -6,6 +6,7 @@
 
 #include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/errors/error.h>
 #include <dbus-c++/error.h>
 
 #include "shill/dbus_adaptor.h"
@@ -46,6 +47,38 @@ const Error::Info Error::kInfos[kNumErrors] = {
   { kErrorResultWrongState, "Wrong state" }
 };
 
+const Error::Info Error::kChromeosInfos[kNumErrors] = {
+    { "success", "Success (no error)" },
+    { "failure", "Operation failed (no other information)" },
+    { "already_connected", "Already connected" },
+    { "already_exists", "Already exists" },
+    { "incorrect_pin", "Incorrect PIN" },
+    { "in_progress", "In progress" },
+    { "internal_error", "Internal error" },
+    { "invalid_apn", "Invalid APN" },
+    { "invalid_arguments", "Invalid arguments" },
+    { "invalid_network_name", "Invalid network name" },
+    { "invalid_passphrase", "Invalid passphrase" },
+    { "invalid_property", "Invalid property" },
+    { "no_carrier", "No carrier" },
+    { "not_connected", "Not connected" },
+    { "not_found", "Not found" },
+    { "not_implemented", "Not implemented" },
+    { "not_on_home_network", "Not on home network" },
+    { "not_registered", "Not registered" },
+    { "not_supported", "Not supported" },
+    { "operation_aborted", "Operation aborted" },
+    { "operation_initiated", "Operation initiated" },
+    { "operation_timeout", "Operation timeout" },
+    { "passphrase_required", "Passphrase required" },
+    { "permission_denied", "Permission denied" },
+    { "pin_blocked", "SIM PIN is blocked"},
+    { "pin_required", "SIM PIN is required"},
+    { "wrong_state", "Wrong state" }
+};
+
+const char Error::kChromeosErrorDomain[] = "shill";
+
 Error::Error() {
   Reset();
 }
@@ -70,6 +103,15 @@ void Error::Populate(Type type, const string& message) {
   message_ = message;
 }
 
+void Error::Populate(Type type,
+                     const string& message,
+                     const tracked_objects::Location& location) {
+  CHECK(type < kNumErrors) << "Error type out of range: " << type;
+  type_ = type;
+  message_ = message;
+  location_ = location;
+}
+
 void Error::Reset() {
   Populate(kSuccess);
 }
@@ -85,6 +127,16 @@ bool Error::ToDBusError(::DBus::Error* error) const {
   } else {
     return false;
   }
+}
+
+bool Error::ToChromeosError(chromeos::ErrorPtr* error) const {
+  if (IsFailure()) {
+    chromeos::Error::AddTo(error, location_, kChromeosErrorDomain,
+                           kChromeosInfos[type_].dbus_result,
+                           message_);
+    return true;
+  }
+  return false;
 }
 
 // static
@@ -106,7 +158,7 @@ void Error::PopulateAndLog(const tracked_objects::Location& from_here,
   LOG(ERROR) << "[" << file_name << "("
              << from_here.line_number() << ")]: "<< message;
   if (error) {
-    error->Populate(type, message);
+    error->Populate(type, message, from_here);
   }
 }
 

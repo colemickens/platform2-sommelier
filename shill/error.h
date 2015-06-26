@@ -5,6 +5,7 @@
 #ifndef SHILL_ERROR_H_
 #define SHILL_ERROR_H_
 
+#include <memory>
 #include <string>
 
 #include <base/location.h>
@@ -13,6 +14,11 @@
 namespace DBus {
 class Error;
 }  // namespace DBus
+
+namespace chromeos {
+class Error;
+using ErrorPtr = std::unique_ptr<Error>;
+}  // namespace chromeos
 
 namespace shill {
 
@@ -56,6 +62,9 @@ class Error {
 
   void Populate(Type type);  // Uses the default message for |type|.
   void Populate(Type type, const std::string& message);
+  void Populate(Type type,
+                const std::string& message,
+                const tracked_objects::Location& location);
 
   void Reset();
 
@@ -64,6 +73,10 @@ class Error {
   // Sets the DBus |error| and returns true if Error represents failure.
   // Leaves |error| unchanged, and returns false, otherwise.
   bool ToDBusError(::DBus::Error* error) const;
+
+  // Sets the Chromeos |error| and returns true if Error represents failure.
+  // Leaves error unchanged, and returns false otherwise.
+  bool ToChromeosError(chromeos::ErrorPtr* error) const;
 
   Type type() const { return type_; }
   const std::string& message() const { return message_; }
@@ -88,9 +101,12 @@ class Error {
   };
 
   static const Info kInfos[kNumErrors];
+  static const Info kChromeosInfos[kNumErrors];
+  static const char kChromeosErrorDomain[];
 
   Type type_;
   std::string message_;
+  tracked_objects::Location location_;
 
   DISALLOW_COPY_AND_ASSIGN(Error);
 };
