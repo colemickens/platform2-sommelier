@@ -32,11 +32,21 @@ class CHROMEOS_EXPORT KeyValueStore {
   // whether reading the file succeeded.
   bool Load(const base::FilePath& path);
 
-  // Saves the current store to the given |path| file. Returns whether the file
-  // creation succeeded. Calling Load() and then Save() may result in different
-  // data being written if the original file contained backslash-terminated
-  // lines (i.e. these values will be rewritten on single lines).
+  // Loads the key=value pairs parsing the text passed in |data|. See Load() for
+  // details.
+  // Returns whether the parsing succeeded.
+  bool LoadFromString(const std::string& data);
+
+  // Saves the current store to the given |path| file. See SaveToString() for
+  // details on the formate of the created file.
+  // Returns whether the file creation succeeded.
   bool Save(const base::FilePath& path) const;
+
+  // Returns a string with the contents of the store as key=value lines.
+  // Calling LoadFromString() and then SaveToString() may result in different
+  // result if the original string contained backslash-terminated lines (i.e.
+  // these values will be rewritten on single lines), comments or empty lines.
+  std::string SaveToString() const;
 
   // Getter for the given key. Returns whether the key was found on the store.
   bool GetString(const std::string& key, std::string* value) const;

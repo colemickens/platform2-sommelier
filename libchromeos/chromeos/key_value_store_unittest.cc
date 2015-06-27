@@ -24,12 +24,6 @@ using std::vector;
 namespace chromeos {
 
 class KeyValueStoreTest : public ::testing::Test {
- public:
-  void SetUp() override {
-    CHECK(temp_dir_.CreateUniqueTempDir());
-    temp_file_ = temp_dir_.path().Append("temp.conf");
-  }
-
  protected:
   // Returns the value from |store_| corresponding to |key|, or an empty string
   // if the key is not present. Crashes if the store returns an empty value.
@@ -40,36 +34,43 @@ class KeyValueStoreTest : public ::testing::Test {
     return value;
   }
 
-  base::FilePath temp_file_;
-  base::ScopedTempDir temp_dir_;
   KeyValueStore store_;  // KeyValueStore under test.
 };
 
-TEST_F(KeyValueStoreTest, CommentsAreIgnored) {
-  string blob = "# comment\nA=B\n\n\n#another=comment\n  # leading spaces\n";
+TEST_F(KeyValueStoreTest, LoadAndSaveFromFile) {
+  base::ScopedTempDir temp_dir_;
+  CHECK(temp_dir_.CreateUniqueTempDir());
+  base::FilePath temp_file_ = temp_dir_.path().Append("temp.conf");
+  base::FilePath saved_temp_file_ = temp_dir_.path().Append("saved_temp.conf");
+
+  string blob = "A=B\n# Comment\n";
   ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
   ASSERT_TRUE(store_.Load(temp_file_));
 
-  ASSERT_TRUE(store_.Save(temp_file_));
+  string value;
+  EXPECT_TRUE(store_.GetString("A", &value));
+  EXPECT_EQ("B", value);
+
+  ASSERT_TRUE(store_.Save(saved_temp_file_));
   string read_blob;
-  ASSERT_TRUE(ReadFileToString(FilePath(temp_file_), &read_blob));
+  ASSERT_TRUE(ReadFileToString(FilePath(saved_temp_file_), &read_blob));
   EXPECT_EQ("A=B\n", read_blob);
 }
 
-TEST_F(KeyValueStoreTest, EmptyTest) {
-  ASSERT_EQ(0, base::WriteFile(temp_file_, "", 0));
-  ASSERT_TRUE(store_.Load(temp_file_));
+TEST_F(KeyValueStoreTest, CommentsAreIgnored) {
+  EXPECT_TRUE(store_.LoadFromString(
+      "# comment\nA=B\n\n\n#another=comment\n  # leading spaces\n"));
+  EXPECT_EQ("A=B\n", store_.SaveToString());
+}
 
-  ASSERT_TRUE(store_.Save(temp_file_));
-  string read_blob;
-  ASSERT_TRUE(ReadFileToString(FilePath(temp_file_), &read_blob));
-  EXPECT_EQ("", read_blob);
+TEST_F(KeyValueStoreTest, EmptyTest) {
+  EXPECT_TRUE(store_.LoadFromString(""));
+  EXPECT_EQ("", store_.SaveToString());
 }
 
 TEST_F(KeyValueStoreTest, LoadAndReloadTest) {
-  string blob = "A=B\nC=\nFOO=BAR=BAZ\nBAR=BAX\nMISSING=NEWLINE";
-  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
-  ASSERT_TRUE(store_.Load(temp_file_));
+  EXPECT_TRUE(store_.LoadFromString(
+      "A=B\nC=\nFOO=BAR=BAZ\nBAR=BAX\nMISSING=NEWLINE"));
 
   map<string, string> expected = {{"A", "B"},
                                   {"C", ""},
@@ -85,9 +86,8 @@ TEST_F(KeyValueStoreTest, LoadAndReloadTest) {
   }
 
   // Save, load and test again.
-  ASSERT_TRUE(store_.Save(temp_file_));
   KeyValueStore new_store;
-  ASSERT_TRUE(new_store.Load(temp_file_));
+  ASSERT_TRUE(new_store.LoadFromString(store_.SaveToString()));
 
   for (const auto& it : expected) {
     EXPECT_TRUE(new_store.GetString(it.first, &value)) << "key: " << it.first;
@@ -110,8 +110,7 @@ TEST_F(KeyValueStoreTest, SimpleBooleanTest) {
 
 TEST_F(KeyValueStoreTest, BooleanParsingTest) {
   string blob = "TRUE=true\nfalse=false\nvar=false\nDONT_SHOUT=TRUE\n";
-  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
-  ASSERT_TRUE(store_.Load(temp_file_));
+  EXPECT_TRUE(store_.LoadFromString(blob));
 
   map<string, bool> expected = {
       {"TRUE", true}, {"false", false}, {"var", false}};
@@ -128,9 +127,7 @@ TEST_F(KeyValueStoreTest, BooleanParsingTest) {
 }
 
 TEST_F(KeyValueStoreTest, TrimWhitespaceAroundKey) {
-  string blob = "  a=1\nb  =2\n c =3\n";
-  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
-  ASSERT_TRUE(store_.Load(temp_file_));
+  EXPECT_TRUE(store_.LoadFromString("  a=1\nb  =2\n c =3\n"));
 
   EXPECT_EQ("1", GetNonemptyStringValue("a"));
   EXPECT_EQ("2", GetNonemptyStringValue("b"));
@@ -147,22 +144,15 @@ TEST_F(KeyValueStoreTest, TrimWhitespaceAroundKey) {
 }
 
 TEST_F(KeyValueStoreTest, IgnoreWhitespaceLine) {
-  string blob = "a=1\n \t \nb=2";
-  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
-  ASSERT_TRUE(store_.Load(temp_file_));
+  EXPECT_TRUE(store_.LoadFromString("a=1\n \t \nb=2"));
 
   EXPECT_EQ("1", GetNonemptyStringValue("a"));
   EXPECT_EQ("2", GetNonemptyStringValue("b"));
 }
 
 TEST_F(KeyValueStoreTest, RejectEmptyKeys) {
-  string blob = "=1";
-  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
-  EXPECT_FALSE(store_.Load(temp_file_));
-
-  blob = " =2";
-  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
-  EXPECT_FALSE(store_.Load(temp_file_));
+  EXPECT_FALSE(store_.LoadFromString("=1"));
+  EXPECT_FALSE(store_.LoadFromString(" =2"));
 
   // Trying to set an empty (after trimming) key should fail an assert.
   EXPECT_DEATH(store_.SetString(" ", "3"), "");
@@ -170,15 +160,11 @@ TEST_F(KeyValueStoreTest, RejectEmptyKeys) {
 }
 
 TEST_F(KeyValueStoreTest, RejectBogusLines) {
-  string blob = "a=1\nbogus\nb=2";
-  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
-  EXPECT_FALSE(store_.Load(temp_file_));
+  EXPECT_FALSE(store_.LoadFromString("a=1\nbogus\nb=2"));
 }
 
 TEST_F(KeyValueStoreTest, MultilineValue) {
-  string blob = "a=foo\nb=bar\\\n  baz \\ \nc=3\n";
-  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
-  ASSERT_TRUE(store_.Load(temp_file_));
+  EXPECT_TRUE(store_.LoadFromString("a=foo\nb=bar\\\n  baz \\ \nc=3\n"));
 
   EXPECT_EQ("foo", GetNonemptyStringValue("a"));
   EXPECT_EQ("bar  baz \\ ", GetNonemptyStringValue("b"));
@@ -186,17 +172,9 @@ TEST_F(KeyValueStoreTest, MultilineValue) {
 }
 
 TEST_F(KeyValueStoreTest, UnterminatedMultilineValue) {
-  string blob = "a=foo\\";
-  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
-  EXPECT_FALSE(store_.Load(temp_file_));
-
-  blob = "a=foo\\\n";
-  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
-  EXPECT_FALSE(store_.Load(temp_file_));
-
-  blob = "a=foo\\\n\n# blah\n";
-  ASSERT_EQ(blob.size(), base::WriteFile(temp_file_, blob.data(), blob.size()));
-  EXPECT_FALSE(store_.Load(temp_file_));
+  EXPECT_FALSE(store_.LoadFromString("a=foo\\"));
+  EXPECT_FALSE(store_.LoadFromString("a=foo\\\n"));
+  EXPECT_FALSE(store_.LoadFromString("a=foo\\\n\n# blah\n"));
 }
 
 TEST_F(KeyValueStoreTest, GetKeys) {

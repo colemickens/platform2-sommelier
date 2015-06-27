@@ -41,10 +41,13 @@ bool KeyValueStore::Load(const base::FilePath& path) {
   string file_data;
   if (!base::ReadFileToString(path, &file_data))
     return false;
+  return LoadFromString(file_data);
+}
 
+bool KeyValueStore::LoadFromString(const std::string& data) {
   // Split along '\n', then along '='.
   vector<string> lines;
-  base::SplitStringDontTrim(file_data, '\n', &lines);
+  base::SplitStringDontTrim(data, '\n', &lines);
   for (auto it = lines.begin(); it != lines.end(); ++it) {
     std::string line;
     base::TrimWhitespace(*it, base::TRIM_LEADING, &line);
@@ -76,11 +79,14 @@ bool KeyValueStore::Load(const base::FilePath& path) {
 }
 
 bool KeyValueStore::Save(const base::FilePath& path) const {
+  return base::ImportantFileWriter::WriteFileAtomically(path, SaveToString());
+}
+
+string KeyValueStore::SaveToString() const {
   string data;
   for (const auto& key_value : store_)
     data += key_value.first + "=" + key_value.second + "\n";
-
-  return base::ImportantFileWriter::WriteFileAtomically(path, data);
+  return data;
 }
 
 bool KeyValueStore::GetString(const string& key, string* value) const {
