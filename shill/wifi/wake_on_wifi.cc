@@ -1276,13 +1276,23 @@ void WakeOnWiFi::OnDarkResume(
   suspend_actions_done_callback_ = done_callback;
   wake_on_ssid_whitelist_ = ssid_whitelist;
 
-  if (!is_connected) {
-    // Only record dark resume events where we wake up disconnected, since there
-    // are valid scenarios where we would dark resume frequently in a connected
-    // state (e.g. when wake on packet is enabled when there is a brief spike in
-    // incoming network traffic). We check the connection status on dark resume
-    // rather than the |last_wake_reason_| in case the WiFi driver does not
-    // support wakeup reason reporting.
+  if (last_wake_reason_ == kWakeTriggerSSID ||
+      last_wake_reason_ == kWakeTriggerDisconnect ||
+      (last_wake_reason_ == kWakeTriggerUnsupported && !is_connected)) {
+    // We want to disable wake on WiFi in two specific cases of thrashing:
+    //   1) Repeatedly waking on SSID in the presence of an AP that the WiFi
+    //      device cannot connect to
+    //   2) Repeatedly waking on disconnect because of a an AP that repeatedly
+    //      disconnects the WiFi device but allows it to reconnect immediately
+    // Therefore, we only count dark resumes caused by either of these wake
+    // reasons when deciding whether or not to throttle wake on WiFi.
+    //
+    // In case the WiFi driver does not support wake reason reporting, we use
+    // the WiFi device's connection status on dark resume as a proxy for these
+    // wake reasons (i.e. when we wake on either SSID or disconnect, we should
+    // be disconnected). This is not reliable for wake on disconnect, as the
+    // WiFi device will report that it is connected as it enters dark
+    // resume (crbug.com/505072).
     dark_resume_history_.RecordEvent();
   }
   if (dark_resume_history_.CountEventsWithinInterval(

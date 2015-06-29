@@ -67,6 +67,7 @@ class SHILL_EXPORT EventHistory {
  private:
   friend class EventHistoryTest;
   friend class ServiceTest;  // RecordEventInternal, time_
+  friend class WakeOnWiFiTest;  // time_
 
   void RecordEventInternal(Timestamp now);
 

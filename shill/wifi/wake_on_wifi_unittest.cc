@@ -26,8 +26,10 @@
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/mock_netlink_manager.h"
+#include "shill/net/mock_time.h"
 #include "shill/net/netlink_message_matchers.h"
 #include "shill/net/nl80211_message.h"
+#include "shill/net/shill_time.h"
 #include "shill/nice_mock_control.h"
 #include "shill/testing.h"
 
@@ -609,6 +611,7 @@ class WakeOnWiFiTest : public ::testing::Test {
     // By default our tests assume that the NIC supports more SSIDs than
     // whitelisted SSIDs.
     wake_on_wifi_->wake_on_wifi_max_ssids_ = 999;
+    wake_on_wifi_->dark_resume_history_.time_ = &time_;
 
     ON_CALL(netlink_manager_, SendNl80211Message(_, _, _, _))
         .WillByDefault(Return(true));
@@ -1008,7 +1011,13 @@ class WakeOnWiFiTest : public ::testing::Test {
     wake_on_wifi_->dark_resume_scan_retries_left_ = retries;
   }
 
-  MOCK_METHOD1(DoneCallback, void(const Error&));
+  Timestamp GetTimestampBootTime(int boottime_seconds) {
+    struct timeval monotonic = {.tv_sec = 0, .tv_usec = 0};
+    struct timeval boottime = {.tv_sec = boottime_seconds, .tv_usec = 0};
+    return Timestamp(monotonic, boottime, "");
+  }
+
+  MOCK_METHOD1(DoneCallback, void(const Error &));
   MOCK_METHOD0(RenewDHCPLeaseCallback, void(void));
   MOCK_METHOD1(InitiateScanCallback, void(const WiFi::FreqSet&));
   MOCK_METHOD0(RemoveSupplicantNetworksCallback, void(void));
@@ -1022,6 +1031,7 @@ class WakeOnWiFiTest : public ::testing::Test {
   MockMetrics metrics_;
   MockGLib glib_;
   MockNetlinkManager netlink_manager_;
+  MockTime time_;
   std::unique_ptr<WakeOnWiFi> wake_on_wifi_;
 };
 
@@ -2691,18 +2701,38 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_NotConnected_RecordEvent) {
 
 TEST_F(WakeOnWiFiTestWithDispatcher,
        OnDarkResume_NotConnected_MaxDarkResumes_ShortPeriod) {
-  const bool is_connected = false;
+  // These 3 dark resume timings are within a 1 minute interval, so as to
+  // trigger the short throttling threshold (3 in 1 minute).
+  const int kTimeSeconds[] = {10, 20, 30};
+  CHECK_EQ(static_cast<const unsigned int>(
+               WakeOnWiFi::kMaxDarkResumesPerPeriodShort),
+           arraysize(kTimeSeconds));
   vector<ByteString> whitelist;
+
+  // This test assumes that throttling takes place when 3 dark resumes have
+  // been triggered in the last 1 minute.
+  EXPECT_EQ(3, WakeOnWiFi::kMaxDarkResumesPerPeriodShort);
+  EXPECT_EQ(1, WakeOnWiFi::kDarkResumeFrequencySamplingPeriodShortMinutes);
+
+  // Wake on SSID dark resumes should be recorded in the dark resume history.
+  const bool is_connected = false;
+  SetLastWakeReason(WakeOnWiFi::kWakeTriggerSSID);
   EXPECT_TRUE(GetDarkResumeHistory()->Empty());
+
+  // First two dark resumes take place at 10 and 20 seconds respectively. This
+  // is still within the throttling threshold.
   for (int i = 0; i < WakeOnWiFi::kMaxDarkResumesPerPeriodShort - 1; ++i) {
+    EXPECT_CALL(metrics_, NotifyWakeOnWiFiThrottled()).Times(0);
+    EXPECT_CALL(time_, GetNow())
+        .WillRepeatedly(Return(GetTimestampBootTime(kTimeSeconds[i])));
     OnDarkResume(is_connected, whitelist);
   }
+  SetInDarkResume(false);  // this happens after BeforeSuspendActions
   EXPECT_EQ(WakeOnWiFi::kMaxDarkResumesPerPeriodShort - 1,
             GetDarkResumeHistory()->Size());
 
-  // Max dark resumes per (short) period reached, so disable wake on WiFi and
-  // start wake to scan timer.
-  SetInDarkResume(false);
+  // The 3rd dark resume takes place at 30 seconds, which makes 3 dark resumes
+  // in the past minute. Disable wake on WiFi and start wake to scan timer.
   ResetSuspendActionsDoneCallback();
   StartDHCPLeaseRenewalTimer();
   StopWakeToScanTimer();
@@ -2711,6 +2741,9 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   EXPECT_FALSE(WakeToScanTimerIsRunning());
   EXPECT_FALSE(GetDarkResumeHistory()->Empty());
   EXPECT_CALL(metrics_, NotifyWakeOnWiFiThrottled());
+  EXPECT_CALL(time_, GetNow())
+      .WillRepeatedly(Return(GetTimestampBootTime(
+          kTimeSeconds[WakeOnWiFi::kMaxDarkResumesPerPeriodShort - 1])));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(SuspendActionsCallbackIsNull());
   EXPECT_FALSE(DHCPLeaseRenewalTimerIsRunning());
@@ -2721,21 +2754,42 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
 
 TEST_F(WakeOnWiFiTestWithDispatcher,
        OnDarkResume_NotConnected_MaxDarkResumes_LongPeriod) {
-  const bool is_connected = false;
+  // These 10 dark resume timings are spaced 1 minute apart so as to trigger the
+  // long throttling threshold (10 in 10 minute) without triggering the short
+  // throttling threshold (3 in 1 minute).
+  const int kTimeSeconds[] = {10, 70, 130, 190, 250, 310, 370, 430, 490, 550};
+  CHECK_EQ(
+      static_cast<const unsigned int>(WakeOnWiFi::kMaxDarkResumesPerPeriodLong),
+      arraysize(kTimeSeconds));
   vector<ByteString> whitelist;
+
+  // This test assumes that throttling takes place when 3 dark resumes have been
+  // triggered in the last 1 minute, or when 10 dark resumes have been triggered
+  // in the last 10 minutes.
+  EXPECT_EQ(3, WakeOnWiFi::kMaxDarkResumesPerPeriodShort);
+  EXPECT_EQ(1, WakeOnWiFi::kDarkResumeFrequencySamplingPeriodShortMinutes);
+  EXPECT_EQ(10, WakeOnWiFi::kMaxDarkResumesPerPeriodLong);
+  EXPECT_EQ(10, WakeOnWiFi::kDarkResumeFrequencySamplingPeriodLongMinutes);
+
+  // Wake on SSID dark resumes should be recorded in the dark resume history.
+  const bool is_connected = false;
+  SetLastWakeReason(WakeOnWiFi::kWakeTriggerSSID);
   EXPECT_TRUE(GetDarkResumeHistory()->Empty());
-  // Simulate case where 1 dark resume happens every minute,  so the short
-  // history would not reach its throttling threshold, but the long history
-  // will.
+
+  // The first 9 dark resumes happen once per minute. This is still within the
+  // throttling threshold.
   for (int i = 0; i < WakeOnWiFi::kMaxDarkResumesPerPeriodLong - 1; ++i) {
-    GetDarkResumeHistory()->RecordEvent();
+    EXPECT_CALL(metrics_, NotifyWakeOnWiFiThrottled()).Times(0);
+    EXPECT_CALL(time_, GetNow())
+        .WillRepeatedly(Return(GetTimestampBootTime(kTimeSeconds[i])));
+    OnDarkResume(is_connected, whitelist);
   }
+  SetInDarkResume(false);  // this happens after BeforeSuspendActions
   EXPECT_EQ(WakeOnWiFi::kMaxDarkResumesPerPeriodLong - 1,
             GetDarkResumeHistory()->Size());
 
-  // Max dark resumes per (long) period reached, so disable wake on WiFi and
-  // start wake to scan timer.
-  SetInDarkResume(false);
+  // The occurrence of the 10th dark resume makes 10 dark resumes in the past 10
+  // minutes. Disable wake on WiFi and start wake to scan timer.
   ResetSuspendActionsDoneCallback();
   StartDHCPLeaseRenewalTimer();
   StopWakeToScanTimer();
@@ -2744,6 +2798,9 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   EXPECT_FALSE(WakeToScanTimerIsRunning());
   EXPECT_FALSE(GetDarkResumeHistory()->Empty());
   EXPECT_CALL(metrics_, NotifyWakeOnWiFiThrottled());
+  EXPECT_CALL(time_, GetNow())
+      .WillRepeatedly(Return(GetTimestampBootTime(
+          kTimeSeconds[WakeOnWiFi::kMaxDarkResumesPerPeriodLong - 1])));
   OnDarkResume(is_connected, whitelist);
   EXPECT_FALSE(SuspendActionsCallbackIsNull());
   EXPECT_FALSE(DHCPLeaseRenewalTimerIsRunning());

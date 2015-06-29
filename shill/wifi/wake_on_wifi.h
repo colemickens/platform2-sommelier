@@ -254,7 +254,7 @@ class WakeOnWiFi {
  private:
   friend class WakeOnWiFiTest;  // access to several members for tests
   friend class WiFiObjectTest;  // netlink_manager_
-  // Tests that need kWakeOnWiFiNotSupported.
+  // kWakeOnWiFiNotSupported.
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               WakeOnWiFiDisabled_SetWakeOnWiFiFeaturesEnabled);
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
@@ -263,27 +263,31 @@ class WakeOnWiFi {
               WakeOnWiFiDisabled_RemoveWakeOnPacketConnection_ReturnsError);
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               WakeOnWiFiDisabled_RemoveAllWakeOnPacketConnections_ReturnsError);
-  // Tests that need kMaxSetWakeOnPacketRetries.
+  // kMaxSetWakeOnPacketRetries.
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               RetrySetWakeOnPacketConnections_LessThanMaxRetries);
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               RetrySetWakeOnPacketConnections_MaxAttemptsWithCallbackSet);
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               RetrySetWakeOnPacketConnections_MaxAttemptsCallbackUnset);
-  // Tests that need WakeOnWiFi::kDarkResumeActionsTimeoutMilliseconds
+  // kDarkResumeActionsTimeoutMilliseconds
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               OnBeforeSuspend_DHCPLeaseRenewal);
-  // Tests that need dark resume wake reason strings
-  // (e.g. WakeOnWiFi::kWakeReasonStringDisconnect)
+  // Dark resume wake reason strings (e.g. kWakeReasonStringDisconnect)
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               OnWakeupReasonReceived_Disconnect);
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_SSID);
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_Pattern);
-  // Tests that need WakeOnWiFi::kMaxDarkResumesPerPeriodShort
+  // kMaxDarkResumesPerPeriodShort
   FRIEND_TEST(WakeOnWiFiTestWithDispatcher, OnBeforeSuspend_ClearsEventHistory);
+  // kDarkResumeFrequencySamplingPeriodShortMinutes,
+  // kMaxDarkResumesPerPeriodShort
   FRIEND_TEST(WakeOnWiFiTestWithDispatcher,
               OnDarkResume_NotConnected_MaxDarkResumes_ShortPeriod);
-  // Tests that need WakeOnWiFi::kMaxDarkResumesPerPeriodLong
+  // kDarkResumeFrequencySamplingPeriodLongMinutes,
+  // kMaxDarkResumesPerPeriodLong,
+  // kDarkResumeFrequencySamplingPeriodShortMinutes,
+  // kMaxDarkResumesPerPeriodShort
   FRIEND_TEST(WakeOnWiFiTestWithDispatcher,
               OnDarkResume_NotConnected_MaxDarkResumes_LongPeriod);
   // kMaxFreqsForDarkResumeScanRetries, kMaxDarkResumeScanRetries
