@@ -5,10 +5,11 @@
 #ifndef SETTINGSD_SOURCE_H_
 #define SETTINGSD_SOURCE_H_
 
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
-#include <vector>
+#include <utility>
 
 #include <base/macros.h>
 
@@ -17,6 +18,7 @@
 
 namespace settingsd {
 
+class SettingsDocument;
 class SettingsService;
 
 // Setting status values, in most permissive to least permissive order.
@@ -54,6 +56,13 @@ class Source {
   SettingStatus status() const { return status_; }
   const SourceDelegate* delegate() const { return delegate_.get(); }
 
+  // Checks whether this source has access control rules within |threshold| for
+  // all keys touched by |document|. This checks that the relevant (i.e. most
+  // specific) access control rule for each key is at least as permissive as
+  // |threshold|.
+  bool CheckAccess(const SettingsDocument* document,
+                   SettingStatus threshold) const;
+
   // Updates the source from settings.
   //
   // TODO(mnissler): Consider returning information on what changed such that
@@ -62,6 +71,12 @@ class Source {
               const SettingsService& settings);
 
  private:
+  using AccessRuleMap = std::map<Key, SettingStatus>;
+
+  // Finds the most specific matching access rule for |key|. Returns
+  // |access_.end()| if no rule matches.
+  AccessRuleMap::const_iterator FindMatchingAccessRule(const Key& key) const;
+
   // The source id.
   const std::string id_;
 
@@ -73,6 +88,13 @@ class Source {
 
   // The delegate.
   std::unique_ptr<SourceDelegate> delegate_;
+
+  // Access control rules. This maps key prefixes to SettingStatus values
+  // indicating whether the source may provide values for keys that match the
+  // prefix. When there are multiple matching prefixes for a key, the rule
+  // corresponding to the longest prefix wins. If there is no matching access
+  // control rule, the default to use is kSettingStatusInvalid.
+  AccessRuleMap access_;
 
   DISALLOW_COPY_AND_ASSIGN(Source);
 };

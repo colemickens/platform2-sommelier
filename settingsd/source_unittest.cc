@@ -13,14 +13,18 @@
 #include <gtest/gtest.h>
 
 #include "settingsd/identifier_utils.h"
+#include "settingsd/mock_settings_document.h"
 #include "settingsd/mock_settings_service.h"
 #include "settingsd/settings_keys.h"
 #include "settingsd/test_helpers.h"
+#include "settingsd/version_stamp.h"
 
 namespace settingsd {
 
 // Test source constants.
+const char kSource0[] = "source0";
 const char kSource1[] = "source1";
+const char kSource2[] = "source2";
 
 const char kName1[] = "Name1";
 
@@ -53,10 +57,38 @@ class SourceTest : public testing::Test {
     settings_.SetValue(
         MakeSourceKey(kSource1).Extend({keys::sources::kType}),
         MakeStringValue(kSourceType));
+    settings_.SetValue(
+        MakeSourceKey(kSource2).Extend({keys::sources::kStatus}),
+        MakeStringValue(SettingStatusToString(kSettingStatusWithdrawn)));
+
+    // Access rules for some random keys.
+    SetAccessRule(kSource1, Key("A.B"), kSettingStatusActive);
+    SetAccessRule(kSource1, Key("B"), kSettingStatusWithdrawn);
+    SetAccessRule(kSource1, Key("C"), kSettingStatusActive);
+    SetAccessRule(kSource1, Key("C.D.E"), kSettingStatusInvalid);
+    SetAccessRule(kSource1, Key("C.D.E.F"), kSettingStatusActive);
+    SetAccessRule(kSource1, Key("D"), kSettingStatusActive);
+
+    // Trust config access rules.
+    SetAccessRule(kSource1, MakeSourceKey(kSource0), kSettingStatusActive);
+    SetAccessRule(kSource1,
+                  MakeSourceKey(kSource1).Extend({keys::sources::kStatus}),
+                  kSettingStatusActive);
+    SetAccessRule(kSource1, MakeSourceKey(kSource2), kSettingStatusActive);
+
+    SetAccessRule(kSource2, Key(), kSettingStatusActive);
   }
 
   SourceDelegateFactoryFunction GetSourceDelegateFactoryFunction() {
     return std::ref(*this);
+  }
+
+  void SetAccessRule(const std::string& source,
+                     const Key& prefix,
+                     SettingStatus status) {
+    settings_.SetValue(
+        MakeSourceKey(source).Extend({keys::sources::kAccess}).Append(prefix),
+        MakeStringValue(SettingStatusToString(status)));
   }
 
   std::unique_ptr<SourceDelegate> operator()(
@@ -86,6 +118,122 @@ TEST_F(SourceTest, Update) {
   EXPECT_EQ(kName1, source.name());
   EXPECT_EQ(kSettingStatusActive, source.status());
   EXPECT_TRUE(source.delegate());
+}
+
+TEST_F(SourceTest, CheckAccess) {
+  Source source(kSource1);
+  MockSettingsDocument doc((VersionStamp()));
+
+  // No access - the source isn't marked as active.
+  EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  // Update the source from settings.
+  source.Update(GetSourceDelegateFactoryFunction(), settings_);
+
+  // Check access rules for keys work as expected.
+  EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusActive));
+
+  doc.SetKey(Key(), MakeIntValue(1));
+  EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusActive));
+
+  doc.ClearKeys();
+  doc.SetKey(Key("A.B"), MakeIntValue(0));
+  EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusActive));
+  doc.SetKey(Key("A.B.C"), MakeIntValue(0));
+  EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusActive));
+
+  doc.SetKey(Key("B"), MakeIntValue(0));
+  EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusActive));
+  EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  doc.SetKey(Key("C"), MakeIntValue(0));
+  EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  doc.SetKey(Key("C.D.E.suffix"), MakeIntValue(0));
+  EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  doc.ClearKey(Key("C.D.E.suffix"));
+  doc.SetKey(Key("C.D.E.F"), MakeIntValue(0));
+  doc.SetKey(Key("C.D.E.F.G"), MakeIntValue(0));
+  EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  doc.SetKey(Key("D.suffix"), MakeIntValue(0));
+  EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  doc.SetKey(Key("E"), MakeIntValue(0));
+  EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  // Check access rules for deletions work as expected.
+  doc.ClearKeys();
+  doc.SetDeletion(Key("A.B"));
+  EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusActive));
+
+  doc.SetDeletion(Key("B"));
+  EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusActive));
+  EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  doc.ClearDeletions();
+  doc.SetDeletion(Key("A"));
+  EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  doc.ClearDeletions();
+  doc.SetDeletion(Key("C"));
+  EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  doc.ClearDeletions();
+  doc.SetDeletion(Key());
+  EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  // A source in withdrawn state doesn't pass access checks for active state.
+  Source source2(kSource2);
+  source2.Update(GetSourceDelegateFactoryFunction(), settings_);
+  doc.ClearDeletions();
+  doc.SetKey(Key("A"), MakeIntValue(0));
+  EXPECT_FALSE(source2.CheckAccess(&doc, kSettingStatusActive));
+  EXPECT_TRUE(source2.CheckAccess(&doc, kSettingStatusWithdrawn));
+}
+
+TEST_F(SourceTest, CheckAccessTrustConfig) {
+  Source source(kSource1);
+  source.Update(GetSourceDelegateFactoryFunction(), settings_);
+
+  MockSettingsDocument doc((VersionStamp()));
+
+  // Access to higher-precedence sources is denied even though there's an
+  // explicit access rule.
+  doc.SetKey(MakeSourceKey(kSource0).Extend({keys::sources::kStatus}),
+             MakeIntValue(0));
+  EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  // Access to own trust config is denied.
+  doc.ClearKeys();
+  doc.SetKey(MakeSourceKey(kSource1).Extend({keys::sources::kStatus}),
+             MakeIntValue(0));
+  EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  doc.ClearKeys();
+  doc.SetKey(MakeSourceKey(kSource1), MakeIntValue(0));
+  EXPECT_FALSE(source.CheckAccess(&doc, kSettingStatusWithdrawn));
+
+  // Access to whitelisted lower-precedence source is allowed.
+  doc.ClearKeys();
+  doc.SetKey(MakeSourceKey(kSource2), MakeIntValue(0));
+  EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusActive));
+
+  // Deletions of lower-precedence sources are allowed.
+  doc.ClearKeys();
+  doc.SetDeletion(MakeSourceKey(kSource2));
+  EXPECT_TRUE(source.CheckAccess(&doc, kSettingStatusActive));
+
+  // Root deletions are disallowed because they include the off-bounds trust
+  // section, even if the root is explicitly whitelisted.
+  Source source2(kSource2);
+  source2.Update(GetSourceDelegateFactoryFunction(), settings_);
+  doc.ClearDeletions();
+  doc.SetKey(Key("A"), MakeIntValue(0));
+  EXPECT_TRUE(source2.CheckAccess(&doc, kSettingStatusWithdrawn));
+  doc.SetDeletion(Key());
+  EXPECT_FALSE(source2.CheckAccess(&doc, kSettingStatusWithdrawn));
 }
 
 TEST_F(SourceTest, Delegates) {

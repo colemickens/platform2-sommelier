@@ -73,7 +73,7 @@ class SimpleSettingsMapTest : public testing::Test {
 };
 
 TEST_F(SimpleSettingsMapTest, InsertionSingleDocument) {
-  document_A_->SetEntry(Key("A.B.C"), MakeIntValue(1));
+  document_A_->SetKey(Key("A.B.C"), MakeIntValue(1));
   document_A_->SetDeletion(Key("A.B"));
   document_A_->SetDeletion(Key("B"));
 
@@ -88,11 +88,11 @@ TEST_F(SimpleSettingsMapTest, InsertionSingleDocument) {
 }
 
 TEST_F(SimpleSettingsMapTest, InsertionTwoDocuments) {
-  document_A_->SetEntry(Key("A.B.C"), MakeIntValue(1));
+  document_A_->SetKey(Key("A.B.C"), MakeIntValue(1));
   document_A_->SetDeletion(Key("A.B"));
   document_A_->SetDeletion(Key("B"));
-  document_A_->SetEntry(Key("B.C"), MakeIntValue(2));
-  document_B_->SetEntry(Key("B.C"), MakeIntValue(3));
+  document_A_->SetKey(Key("B.C"), MakeIntValue(2));
+  document_B_->SetKey(Key("B.C"), MakeIntValue(3));
   document_B_->SetDeletion(Key("A"));
 
   SimpleSettingsMap settings_map;
@@ -107,10 +107,10 @@ TEST_F(SimpleSettingsMapTest, InsertionTwoDocuments) {
 }
 
 TEST_F(SimpleSettingsMapTest, InsertionTwoDocumentsInverseOrder) {
-  document_A_->SetEntry(Key("A.B.C"), MakeIntValue(1));
+  document_A_->SetKey(Key("A.B.C"), MakeIntValue(1));
   document_A_->SetDeletion(Key("A.B"));
   document_A_->SetDeletion(Key("B"));
-  document_B_->SetEntry(Key("B.C"), MakeIntValue(2));
+  document_B_->SetKey(Key("B.C"), MakeIntValue(2));
   document_B_->SetDeletion(Key("A"));
 
   SimpleSettingsMap settings_map;
@@ -125,9 +125,9 @@ TEST_F(SimpleSettingsMapTest, InsertionTwoDocumentsInverseOrder) {
 }
 
 TEST_F(SimpleSettingsMapTest, DocumentRemoval) {
-  document_A_->SetEntry(Key("A"), MakeIntValue(1));
-  document_A_->SetEntry(Key("B"), MakeIntValue(2));
-  document_B_->SetEntry(Key("B"), MakeIntValue(3));
+  document_A_->SetKey(Key("A"), MakeIntValue(1));
+  document_A_->SetKey(Key("B"), MakeIntValue(2));
+  document_B_->SetKey(Key("B"), MakeIntValue(3));
 
   SimpleSettingsMap settings_map;
   SettingsDocument* document_B_ptr = document_B_.get();
@@ -144,8 +144,8 @@ TEST_F(SimpleSettingsMapTest, DocumentRemoval) {
 }
 
 TEST_F(SimpleSettingsMapTest, RemovalOfDeletion) {
-  document_A_->SetEntry(Key("A"), MakeIntValue(1));
-  document_A_->SetEntry(Key("B.C"), MakeIntValue(2));
+  document_A_->SetKey(Key("A"), MakeIntValue(1));
+  document_A_->SetKey(Key("B.C"), MakeIntValue(2));
   document_B_->SetDeletion(Key("B"));
 
   SimpleSettingsMap settings_map;
@@ -163,10 +163,10 @@ TEST_F(SimpleSettingsMapTest, RemovalOfDeletion) {
 }
 
 TEST_F(SimpleSettingsMapTest, RemovalOfDeletionChildPrefixShineThrough) {
-  document_A_->SetEntry(Key("A.B.D"), MakeIntValue(1));
-  document_A_->SetEntry(Key("Z.A"), MakeIntValue(-1));
-  document_B_->SetEntry(Key("A.B.C"), MakeIntValue(2));
-  document_B_->SetEntry(Key("Z.B"), MakeIntValue(-1));
+  document_A_->SetKey(Key("A.B.D"), MakeIntValue(1));
+  document_A_->SetKey(Key("Z.A"), MakeIntValue(-1));
+  document_B_->SetKey(Key("A.B.C"), MakeIntValue(2));
+  document_B_->SetKey(Key("Z.B"), MakeIntValue(-1));
   document_C_->SetDeletion(Key("A.B"));
 
   SimpleSettingsMap settings_map;
@@ -187,11 +187,11 @@ TEST_F(SimpleSettingsMapTest, RemovalOfDeletionChildPrefixShineThrough) {
 }
 
 TEST_F(SimpleSettingsMapTest, RemovalOfDeletionParentDeleterUpstream) {
-  document_A_->SetEntry(Key("A.A"), MakeIntValue(1));
-  document_A_->SetEntry(Key("A.B.C"), MakeIntValue(2));
-  document_A_->SetEntry(Key("Z.A"), MakeIntValue(-1));
+  document_A_->SetKey(Key("A.A"), MakeIntValue(1));
+  document_A_->SetKey(Key("A.B.C"), MakeIntValue(2));
+  document_A_->SetKey(Key("Z.A"), MakeIntValue(-1));
   document_B_->SetDeletion(Key("A"));
-  document_B_->SetEntry(Key("Z.B"), MakeIntValue(-1));
+  document_B_->SetKey(Key("Z.B"), MakeIntValue(-1));
   document_C_->SetDeletion(Key("A.B"));
 
   SimpleSettingsMap settings_map;
@@ -210,11 +210,11 @@ TEST_F(SimpleSettingsMapTest, RemovalOfDeletionParentDeleterUpstream) {
 }
 
 TEST_F(SimpleSettingsMapTest, RemovalOfDeletionChildDeleterUpstream) {
-  document_A_->SetEntry(Key("A.B.C.D"), MakeIntValue(1));
-  document_A_->SetEntry(Key("A.B.D"), MakeIntValue(2));
-  document_A_->SetEntry(Key("Z.A"), MakeIntValue(-1));
+  document_A_->SetKey(Key("A.B.C.D"), MakeIntValue(1));
+  document_A_->SetKey(Key("A.B.D"), MakeIntValue(2));
+  document_A_->SetKey(Key("Z.A"), MakeIntValue(-1));
   document_B_->SetDeletion(Key("A.B.C"));
-  document_B_->SetEntry(Key("Z.B"), MakeIntValue(-1));
+  document_B_->SetKey(Key("Z.B"), MakeIntValue(-1));
   document_C_->SetDeletion(Key("A.B"));
 
   SimpleSettingsMap settings_map;
@@ -234,12 +234,12 @@ TEST_F(SimpleSettingsMapTest, RemovalOfDeletionChildDeleterUpstream) {
 }
 
 TEST_F(SimpleSettingsMapTest, BasicRemovalOfDeletionSameDeletionUpstream) {
-  document_A_->SetEntry(Key("A.B.C.D"), MakeIntValue(1));
-  document_A_->SetEntry(Key("A.B.D"), MakeIntValue(2));
-  document_A_->SetEntry(Key("Z.A"), MakeIntValue(-1));
+  document_A_->SetKey(Key("A.B.C.D"), MakeIntValue(1));
+  document_A_->SetKey(Key("A.B.D"), MakeIntValue(2));
+  document_A_->SetKey(Key("Z.A"), MakeIntValue(-1));
   document_B_->SetDeletion(Key("A.B"));
-  document_B_->SetEntry(Key("A.B.C"), MakeIntValue(3));
-  document_B_->SetEntry(Key("Z.B"), MakeIntValue(-1));
+  document_B_->SetKey(Key("A.B.C"), MakeIntValue(3));
+  document_B_->SetKey(Key("Z.B"), MakeIntValue(-1));
   document_C_->SetDeletion(Key("A.B"));
 
   SimpleSettingsMap settings_map;
@@ -259,8 +259,8 @@ TEST_F(SimpleSettingsMapTest, BasicRemovalOfDeletionSameDeletionUpstream) {
 }
 
 TEST_F(SimpleSettingsMapTest, DocumentCollision) {
-  document_C_->SetEntry(Key("A.B.C.D"), MakeIntValue(2));
-  document_D_->SetEntry(Key("A.B.C.D"), MakeIntValue(3));
+  document_C_->SetKey(Key("A.B.C.D"), MakeIntValue(2));
+  document_D_->SetKey(Key("A.B.C.D"), MakeIntValue(3));
 
   SimpleSettingsMap settings_map;
   EXPECT_TRUE(settings_map.InsertDocument(std::move(document_C_)));

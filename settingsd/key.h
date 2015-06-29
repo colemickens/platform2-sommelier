@@ -27,6 +27,7 @@ class Key {
   // These operators forward the respective operations to their std::string
   // equivalents for |key_|.
   bool operator<(const Key& rhs) const;
+  bool operator<=(const Key& rhs) const;
   bool operator==(const Key& rhs) const;
 
   // Returns a string representation of the key.
@@ -42,9 +43,25 @@ class Key {
   // Extends a key by appending the specified components.
   Key Extend(std::initializer_list<std::string> components) const;
 
+  // Computes the key that is the common prefix of |this| and |other|.
+  Key CommonPrefix(const Key& other) const;
+
+  // Returns true and fills in |suffix| if |prefix| is a prefix of this. Returns
+  // false and doesn't change |suffix| otherwise.
+  bool Suffix(const Key& prefix, Key* suffix) const;
+
+  // Computes the key that forms the upper bound of the subtree rooted at |this|
+  // in lexicographic sort order. In other words, the return value is the first
+  // key in order that is after every key for which IsPrefixOf() returns true.
+  Key PrefixUpperBound() const;
+
   // Returns true, if this key is the root key, i.e. has the empty string as its
   // string representation.
   bool IsRootKey() const;
+
+  // Checks whether this key is a prefix of |other|. Returns true also if the
+  // keys are identical.
+  bool IsPrefixOf(const Key& other) const;
 
  private:
   std::string key_;

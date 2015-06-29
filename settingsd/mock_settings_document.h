@@ -28,8 +28,13 @@ class MockSettingsDocument : public SettingsDocument {
   const VersionStamp& GetVersionStamp() const override;
   bool HasKeysOrDeletions(const Key& prefix) const override;
 
-  void SetEntry(const Key& key, std::unique_ptr<base::Value> value);
+  void SetKey(const Key& key, std::unique_ptr<base::Value> value);
+  void ClearKey(const Key& key);
+  void ClearKeys();
+
   void SetDeletion(const Key& key);
+  void ClearDeletion(const Key& key);
+  void ClearDeletions();
 
  private:
   const VersionStamp version_stamp_;

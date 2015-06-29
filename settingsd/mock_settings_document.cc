@@ -41,13 +41,29 @@ bool MockSettingsDocument::HasKeysOrDeletions(const Key& prefix) const {
          utils::HasKeys(prefix, deletions_);
 }
 
-void MockSettingsDocument::SetEntry(const Key& key,
-                                    std::unique_ptr<base::Value> value) {
+void MockSettingsDocument::SetKey(const Key& key,
+                                  std::unique_ptr<base::Value> value) {
   key_value_map_.insert(std::make_pair(key, std::move(value)));
+}
+
+void MockSettingsDocument::ClearKey(const Key& key) {
+  key_value_map_.erase(key);
+}
+
+void MockSettingsDocument::ClearKeys() {
+  key_value_map_.clear();
 }
 
 void MockSettingsDocument::SetDeletion(const Key& key) {
   deletions_.insert(key);
+}
+
+void MockSettingsDocument::ClearDeletion(const Key& key) {
+  deletions_.erase(key);
+}
+
+void MockSettingsDocument::ClearDeletions() {
+  deletions_.clear();
 }
 
 }  // namespace settingsd

@@ -45,11 +45,8 @@ Range<typename T::const_iterator> GetRange(const Key& key, const T& container) {
   if (key.IsRootKey())
     return make_range(container.begin(), container.end());
 
-  Key start_key(key);
-  Key end_key(key.ToString() + "0");
-
-  return make_range(container.lower_bound(start_key),
-                    container.lower_bound(end_key));
+  return make_range(container.lower_bound(key),
+                    container.lower_bound(key.PrefixUpperBound()));
 }
 
 // Checks whether |container| has any keys which are equal to or have |key| as

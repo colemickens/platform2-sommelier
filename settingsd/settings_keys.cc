@@ -16,6 +16,7 @@ namespace sources {
 const char kName[] = "name";
 const char kStatus[] = "status";
 const char kType[] = "type";
+const char kAccess[] = "access";
 
 }  // namespace sources
 }  // namespace keys

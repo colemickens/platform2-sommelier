@@ -4,6 +4,8 @@
 
 #include "settingsd/key.h"
 
+#include <algorithm>
+
 #include <base/logging.h>
 
 namespace settingsd {
@@ -71,6 +73,10 @@ bool Key::operator<(const Key& rhs) const {
   return key_ < rhs.key_;
 }
 
+bool Key::operator<=(const Key& rhs) const {
+  return key_ <= rhs.key_;
+}
+
 bool Key::operator==(const Key& rhs) const {
   return key_ == rhs.key_;
 }
@@ -80,22 +86,69 @@ const std::string& Key::ToString() const {
 }
 
 Key Key::GetParent() const {
-  size_t position = key_.find_last_of(".");
+  size_t position = key_.rfind('.');
   if (position == std::string::npos)
     return Key();
   return Key(key_.substr(0u, position));
 }
 
 Key Key::Append(const Key& other) const {
-  return IsRootKey() ? other : Key(key_ + "." + other.key_);
+  if (other.IsRootKey())
+    return *this;
+
+  if (IsRootKey())
+    return other;
+
+  return Key(key_ + "." + other.key_);
 }
 
 Key Key::Extend(std::initializer_list<std::string> components) const {
   return Append(Key(JoinComponents(components)));
 }
 
+Key Key::CommonPrefix(const Key& other) const {
+  size_t last_component_boundary = 0;
+  const size_t min_size = std::min(key_.size(), other.key_.size());
+  for (size_t i = 0; i < min_size; ++i) {
+    if (key_[i] != other.key_[i])
+      return Key(key_.substr(0, last_component_boundary));
+    if (key_[i] == '.')
+      last_component_boundary = i;
+  }
+
+  // If both keys have a component boundary at |min_size|, the common prefix
+  // ends at |min_size|.
+  if ((key_.size() == min_size || key_[min_size] == '.') &&
+      (other.key_.size() == min_size || other.key_[min_size] == '.')) {
+    return Key(key_.substr(0, min_size));
+  }
+
+  return Key(key_.substr(0, last_component_boundary));
+}
+
+bool Key::Suffix(const Key& prefix, Key* suffix) const {
+  if (prefix.IsRootKey()) {
+    *suffix = *this;
+    return true;
+  }
+
+  if (!prefix.IsPrefixOf(*this))
+    return false;
+
+  *suffix = Key(key_.substr(std::min(key_.size(), prefix.key_.size() + 1)));
+  return true;
+}
+
+Key Key::PrefixUpperBound() const {
+  return Key(key_ + '0');
+}
+
 bool Key::IsRootKey() const {
   return key_.empty();
+}
+
+bool Key::IsPrefixOf(const Key& other) const {
+  return *this == CommonPrefix(other);
 }
 
 }  // namespace settingsd

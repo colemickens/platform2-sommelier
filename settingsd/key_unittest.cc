@@ -35,4 +35,39 @@ TEST(KeyTest, Extend) {
   EXPECT_EQ(Key("A.B.C"), Key("A").Extend({"B", "C"}));
 }
 
+TEST(KeyTest, CommonPrefix) {
+  EXPECT_EQ(Key(), Key().CommonPrefix(Key()));
+  EXPECT_EQ(Key(), Key("A").CommonPrefix(Key()));
+  EXPECT_EQ(Key(), Key().CommonPrefix(Key("A")));
+  EXPECT_EQ(Key("A"), Key("A").CommonPrefix(Key("A")));
+  EXPECT_EQ(Key("A"), Key("A.B").CommonPrefix(Key("A")));
+  EXPECT_EQ(Key("A"), Key("A").CommonPrefix(Key("A.B")));
+  EXPECT_EQ(Key("A"), Key("A.BA.C").CommonPrefix(Key("A.B.C")));
+  EXPECT_EQ(Key(), Key("A.B").CommonPrefix(Key("B")));
+}
+
+TEST(KeyTest, Suffix) {
+  Key suffix;
+  EXPECT_TRUE(Key().Suffix(Key(), &suffix));
+  EXPECT_EQ(Key(), suffix);
+  EXPECT_FALSE(Key().Suffix(Key("A"), &suffix));
+  EXPECT_EQ(Key(), suffix);
+  EXPECT_TRUE(Key("A").Suffix(Key(""), &suffix));
+  EXPECT_EQ(Key("A"), suffix);
+  EXPECT_TRUE(Key("A").Suffix(Key("A"), &suffix));
+  EXPECT_EQ(Key(""), suffix);
+  EXPECT_TRUE(Key("A.B").Suffix(Key("A"), &suffix));
+  EXPECT_EQ(Key("B"), suffix);
+}
+
+TEST(KeyTest, IsPrefixOf) {
+  EXPECT_TRUE(Key().IsPrefixOf(Key()));
+  EXPECT_TRUE(Key().IsPrefixOf(Key("A")));
+  EXPECT_TRUE(Key("A").IsPrefixOf(Key("A")));
+  EXPECT_FALSE(Key("A").IsPrefixOf(Key()));
+  EXPECT_TRUE(Key("A.B").IsPrefixOf(Key("A.B.C")));
+  EXPECT_FALSE(Key("A.C").IsPrefixOf(Key("A.B.C")));
+  EXPECT_FALSE(Key("A.B").IsPrefixOf(Key("A.BC")));
+}
+
 }  // namespace settingsd

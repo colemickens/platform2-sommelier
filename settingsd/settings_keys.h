@@ -30,6 +30,8 @@ extern const char kName[];
 extern const char kStatus[];
 // Type - a string identifying the type of source.
 extern const char kType[];
+// Access - access control rules.
+extern const char kAccess[];
 
 }  // namespace sources
 }  // namespace keys
