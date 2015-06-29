@@ -25,7 +25,7 @@ class SettingsObserver {
 
   // Invoked when the observed setting changes. |keys| contains the set of keys
   // that have changed.
-  virtual void OnSettingsChanged(const std::set<Key> keys);
+  virtual void OnSettingsChanged(const std::set<Key> keys) = 0;
 };
 
 // SettingsService is the core API surface of settingsd. It allows consuming

@@ -81,6 +81,10 @@ bool Key::operator==(const Key& rhs) const {
   return key_ == rhs.key_;
 }
 
+bool Key::operator!=(const Key& rhs) const {
+  return key_ != rhs.key_;
+}
+
 const std::string& Key::ToString() const {
   return key_;
 }
@@ -106,27 +110,44 @@ Key Key::Extend(std::initializer_list<std::string> components) const {
   return Append(Key(JoinComponents(components)));
 }
 
+Key Key::Split(Key* suffix) const {
+  const size_t end = key_.find('.');
+
+  // N.B.: Construct the return value before assigning to |suffix|, because
+  // |suffix| might be |this|, so assigning |*suffix| may clobber |key_|.
+  Key return_value;
+  if (end == std::string::npos) {
+    return_value = *this;
+    if (suffix)
+      *suffix = Key();
+  } else {
+    return_value = Key(key_.substr(0, end));
+    if (suffix)
+      *suffix = Key(key_.substr(end + 1));
+  }
+
+  return return_value;
+}
+
 Key Key::CommonPrefix(const Key& other) const {
-  size_t last_component_boundary = 0;
-  const size_t min_size = std::min(key_.size(), other.key_.size());
-  for (size_t i = 0; i < min_size; ++i) {
-    if (key_[i] != other.key_[i])
-      return Key(key_.substr(0, last_component_boundary));
-    if (key_[i] == '.')
-      last_component_boundary = i;
+  Key common_prefix;
+  Key this_suffix = *this;
+  Key other_suffix = other;
+
+  while (true) {
+    Key this_prefix = this_suffix.Split(&this_suffix);
+    Key other_prefix = other_suffix.Split(&other_suffix);
+    if (this_prefix.IsRootKey() || this_prefix != other_prefix)
+      break;
+    common_prefix = common_prefix.Append(this_prefix);
   }
 
-  // If both keys have a component boundary at |min_size|, the common prefix
-  // ends at |min_size|.
-  if ((key_.size() == min_size || key_[min_size] == '.') &&
-      (other.key_.size() == min_size || other.key_[min_size] == '.')) {
-    return Key(key_.substr(0, min_size));
-  }
-
-  return Key(key_.substr(0, last_component_boundary));
+  return common_prefix;
 }
 
 bool Key::Suffix(const Key& prefix, Key* suffix) const {
+  DCHECK(suffix);
+
   if (prefix.IsRootKey()) {
     *suffix = *this;
     return true;

@@ -6,6 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include "settingsd/test_helpers.h"
+
 namespace settingsd {
 
 TEST(KeyTest, IsValidKey) {
@@ -33,6 +35,22 @@ TEST(KeyTest, Extend) {
   EXPECT_EQ(Key("A"), Key().Extend({"A"}));
   EXPECT_EQ(Key("A.B"), Key("A").Extend({"B"}));
   EXPECT_EQ(Key("A.B.C"), Key("A").Extend({"B", "C"}));
+}
+
+TEST(KeyTest, Split) {
+  Key suffix;
+  EXPECT_EQ(Key(), Key().Split(nullptr));
+  EXPECT_EQ(Key(), Key().Split(&suffix));
+  EXPECT_EQ(Key(), suffix);
+  EXPECT_EQ(Key("A"), Key("A").Split(nullptr));
+  EXPECT_EQ(Key("A"), Key("A").Split(&suffix));
+  EXPECT_EQ(Key(), suffix);
+  EXPECT_EQ(Key("A"), Key("A.B").Split(nullptr));
+  EXPECT_EQ(Key("A"), Key("A.B").Split(&suffix));
+  EXPECT_EQ(Key("B"), suffix);
+  EXPECT_EQ(Key("A"), Key("A.B.C").Split(nullptr));
+  EXPECT_EQ(Key("A"), Key("A.B.C").Split(&suffix));
+  EXPECT_EQ(Key("B.C"), suffix);
 }
 
 TEST(KeyTest, CommonPrefix) {

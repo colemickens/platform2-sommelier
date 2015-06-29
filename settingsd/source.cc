@@ -44,6 +44,8 @@ Key MakeSourceKey(const std::string& source_id) {
 Source::Source(const std::string& id)
     : id_(id), delegate_(new DummySourceDelegate()) {}
 
+Source::~Source() {}
+
 bool Source::CheckAccess(const SettingsDocument* document,
                          SettingStatus threshold) const {
   if (status_ > threshold)
@@ -85,23 +87,25 @@ bool Source::CheckAccess(const SettingsDocument* document,
   return true;
 }
 
-void Source::Update(
+bool Source::Update(
     const SourceDelegateFactoryFunction& delegate_factory_function,
     const SettingsService& settings) {
   const base::Value* value;
+  bool has_config = false;
 
   name_.clear();
   value = settings.GetValue(MakeSourceKey(id_).Extend({keys::sources::kName}));
   if (value)
-    value->GetAsString(&name_);
+    has_config |= value->GetAsString(&name_);
 
   value =
       settings.GetValue(MakeSourceKey(id_).Extend({keys::sources::kStatus}));
   std::string status_string;
   if (value)
-    value->GetAsString(&status_string);
+    has_config |= value->GetAsString(&status_string);
   status_ = SettingStatusFromString(status_string);
 
+  // TODO(mnissler): Update has_config for the delegate.
   delegate_ = delegate_factory_function(id_, settings);
 
   access_.clear();
@@ -109,6 +113,7 @@ void Source::Update(
       MakeSourceKey(id_).Extend({keys::sources::kAccess}));
   const std::set<Key> access_keys(settings.GetKeys(access_key_prefix));
   for (Key access_key : access_keys) {
+    has_config = true;
     status_string.clear();
     value = settings.GetValue(access_key);
     if (value)
@@ -119,6 +124,8 @@ void Source::Update(
     else
       NOTREACHED() << "Invalid access key " << access_key.ToString();
   }
+
+  return has_config;
 }
 
 Source::AccessRuleMap::const_iterator Source::FindMatchingAccessRule(

@@ -50,6 +50,7 @@ Key MakeSourceKey(const std::string& source_id);
 class Source {
  public:
   explicit Source(const std::string& id);
+  ~Source();
 
   const std::string& id() const { return id_; }
   const std::string& name() const { return name_; }
@@ -67,7 +68,7 @@ class Source {
   //
   // TODO(mnissler): Consider returning information on what changed such that
   // callers don't need to reprocess the entire source definition.
-  void Update(const SourceDelegateFactoryFunction& delegate_factory_function,
+  bool Update(const SourceDelegateFactoryFunction& delegate_factory_function,
               const SettingsService& settings);
 
  private:

@@ -29,6 +29,7 @@ class Key {
   bool operator<(const Key& rhs) const;
   bool operator<=(const Key& rhs) const;
   bool operator==(const Key& rhs) const;
+  bool operator!=(const Key& rhs) const;
 
   // Returns a string representation of the key.
   const std::string& ToString() const;
@@ -42,6 +43,11 @@ class Key {
 
   // Extends a key by appending the specified components.
   Key Extend(std::initializer_list<std::string> components) const;
+
+  // Splits off the first key component and returns its value, as well as the
+  // suffix. Returns an empty prefix and suffix for the root key. |suffix| may
+  // be nullptr, in which case the suffix doesn't get returned.
+  Key Split(Key *suffix) const;
 
   // Computes the key that is the common prefix of |this| and |other|.
   Key CommonPrefix(const Key& other) const;

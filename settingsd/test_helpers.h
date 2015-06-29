@@ -5,16 +5,22 @@
 #ifndef SETTINGSD_TEST_HELPERS_H_
 #define SETTINGSD_TEST_HELPERS_H_
 
+#include <iostream>
 #include <memory>
 #include <string>
 
 #include <base/values.h>
+
+#include "settingsd/key.h"
 
 namespace settingsd {
 
 std::unique_ptr<base::Value> MakeIntValue(int i);
 std::unique_ptr<base::Value> MakeNullValue();
 std::unique_ptr<base::Value> MakeStringValue(const std::string& str);
+
+// A gtest print helper for Keys.
+void PrintTo(const Key& key, std::ostream* os);
 
 }  // namespace settingsd
 

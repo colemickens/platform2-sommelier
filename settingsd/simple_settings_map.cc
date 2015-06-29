@@ -24,7 +24,7 @@ const base::Value* SimpleSettingsMap::GetValue(const Key& key) const {
 
 std::set<Key> SimpleSettingsMap::GetKeys(const Key& prefix) const {
   std::set<Key> keys;
-  for (const auto& entry : value_map_)
+  for (const auto& entry : utils::GetRange(prefix, value_map_))
     keys.insert(entry.first);
   return keys;
 }

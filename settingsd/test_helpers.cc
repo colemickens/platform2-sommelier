@@ -18,5 +18,8 @@ std::unique_ptr<base::Value> MakeStringValue(const std::string& str) {
   return std::unique_ptr<base::Value>(new base::StringValue(str));
 }
 
+void PrintTo(const Key& key, std::ostream* os) {
+  *os << "Key(\"" << key.ToString() << "\")";
+}
 
 }  // namespace settingsd
