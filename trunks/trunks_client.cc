@@ -21,8 +21,13 @@
 #include "trunks/tpm_utility.h"
 #include "trunks/trunks_client_test.h"
 #include "trunks/trunks_factory_impl.h"
+#include "trunks/trunks_ftdi_spi.h"
+#include "trunks/trunks_proxy.h"
 
 namespace {
+
+using trunks::CommandTransceiver;
+using trunks::TrunksFactory;
 
 void PrintUsage() {
   puts("Options:");
@@ -43,40 +48,35 @@ void PrintUsage() {
   puts("  --stress_test - Runs some basic stress tests.");
 }
 
-int Startup(bool use_ftdi) {
-  trunks::TrunksFactoryImpl factory(use_ftdi);
-  factory.GetTpmUtility()->Shutdown();
-  return factory.GetTpmUtility()->Startup();
+int Startup(TrunksFactory* factory) {
+  factory->GetTpmUtility()->Shutdown();
+  return factory->GetTpmUtility()->Startup();
 }
 
-int Clear(bool use_ftdi) {
-  trunks::TrunksFactoryImpl factory(use_ftdi);
-  return factory.GetTpmUtility()->Clear();
+int Clear(TrunksFactory* factory) {
+  return factory->GetTpmUtility()->Clear();
 }
 
-int InitializeTpm(bool use_ftdi) {
-  trunks::TrunksFactoryImpl factory(use_ftdi);
-  return factory.GetTpmUtility()->InitializeTpm();
+int InitializeTpm(TrunksFactory* factory) {
+  return factory->GetTpmUtility()->InitializeTpm();
 }
 
-int AllocatePCR(bool use_ftdi) {
-  trunks::TrunksFactoryImpl factory(use_ftdi);
+int AllocatePCR(TrunksFactory* factory) {
   trunks::TPM_RC result;
-  result = factory.GetTpmUtility()->AllocatePCR("");
+  result = factory->GetTpmUtility()->AllocatePCR("");
   if (result != trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error allocating PCR:" << trunks::GetErrorString(result);
     return result;
   }
-  factory.GetTpmUtility()->Shutdown();
-  return factory.GetTpmUtility()->Startup();
+  factory->GetTpmUtility()->Shutdown();
+  return factory->GetTpmUtility()->Startup();
 }
 
-int TakeOwnership(const std::string& owner_password, bool use_ftdi) {
-  trunks::TrunksFactoryImpl factory(use_ftdi);
+int TakeOwnership(const std::string& owner_password, TrunksFactory* factory) {
   trunks::TPM_RC rc;
-  rc = factory.GetTpmUtility()->TakeOwnership(owner_password,
-                                              owner_password,
-                                              owner_password);
+  rc = factory->GetTpmUtility()->TakeOwnership(owner_password,
+                                               owner_password,
+                                               owner_password);
   if (rc) {
     LOG(ERROR) << "Error taking ownership: " << trunks::GetErrorString(rc);
     return rc;
@@ -84,9 +84,8 @@ int TakeOwnership(const std::string& owner_password, bool use_ftdi) {
   return 0;
 }
 
-int DumpStatus(bool use_ftdi) {
-  trunks::TrunksFactoryImpl factory(use_ftdi);
-  scoped_ptr<trunks::TpmState> state = factory.GetTpmState();
+int DumpStatus(TrunksFactory* factory) {
+  scoped_ptr<trunks::TpmState> state = factory->GetTpmState();
   trunks::TPM_RC result = state->Initialize();
   if (result != trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "Failed to read TPM state: "
@@ -126,32 +125,44 @@ int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
   base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
-  bool use_ftdi = false;
-#if defined SPI_OVER_FTDI
-  use_ftdi  = cl->HasSwitch("ftdi");
-#endif
-  if (cl->HasSwitch("status")) {
-    return DumpStatus(use_ftdi);
-  }
-  if (cl->HasSwitch("startup")) {
-    return Startup(use_ftdi);
-  }
-  if (cl->HasSwitch("clear")) {
-    return Clear(use_ftdi);
-  }
-  if (cl->HasSwitch("init_tpm")) {
-    return InitializeTpm(use_ftdi);
-  }
-  if (cl->HasSwitch("allocate_pcr")) {
-    return AllocatePCR(use_ftdi);
-  }
   if (cl->HasSwitch("help")) {
     puts("Trunks Client: A command line tool to access the TPM.");
     PrintUsage();
     return 0;
   }
+
+  CommandTransceiver* proxy;
+  if (cl->HasSwitch("ftdi")) {
+    proxy = new trunks::TrunksFtdiSpi();
+  } else {
+    proxy = new trunks::TrunksProxy();
+  }
+  if (!proxy->Init()) {
+    LOG(ERROR) << "Error initializing proxy to communicate with TPM.";
+    return -1;
+  }
+  scoped_ptr<TrunksFactory> factory = scoped_ptr<TrunksFactory>(
+      new trunks::TrunksFactoryImpl(proxy));
+
+  if (cl->HasSwitch("status")) {
+    return DumpStatus(factory.get());
+  }
+  if (cl->HasSwitch("startup")) {
+    return Startup(factory.get());
+  }
+  if (cl->HasSwitch("clear")) {
+    return Clear(factory.get());
+  }
+  if (cl->HasSwitch("init_tpm")) {
+    return InitializeTpm(factory.get());
+  }
+  if (cl->HasSwitch("allocate_pcr")) {
+    return AllocatePCR(factory.get());
+  }
+
   if (cl->HasSwitch("own")) {
-    return TakeOwnership(cl->GetSwitchValueASCII("owner_password"), use_ftdi);
+    return TakeOwnership(cl->GetSwitchValueASCII("owner_password"),
+                         factory.get());
   }
   if (cl->HasSwitch("regression_test")) {
     trunks::TrunksClientTest test;

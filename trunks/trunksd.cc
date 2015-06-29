@@ -63,8 +63,7 @@ class TrunksDaemon : public chromeos::DBusServiceDaemon {
     // Chain together command transceivers:
     //   [IPC] --> TrunksService --> BackgroundCommandTransceiver -->
     //       ResourceManager --> TpmHandle --> [TPM]
-    tpm_.reset(new trunks::Tpm(tpm_handle_.get()));
-    factory_.reset(new trunks::TrunksFactoryImpl(tpm_.get()));
+    factory_.reset(new trunks::TrunksFactoryImpl(tpm_handle_.get()));
     resource_manager_.reset(new trunks::ResourceManager(
         *factory_,
         tpm_handle_.get()));
@@ -93,7 +92,6 @@ class TrunksDaemon : public chromeos::DBusServiceDaemon {
   std::unique_ptr<trunks::TpmHandle> tpm_handle_;
   // Thread for executing TPM comands.
   std::unique_ptr<base::Thread> background_thread_;
-  std::unique_ptr<trunks::Tpm> tpm_;
   std::unique_ptr<trunks::TrunksFactory> factory_;
   std::unique_ptr<trunks::ResourceManager> resource_manager_;
   std::unique_ptr<trunks::CommandTransceiver> background_transceiver_;
@@ -108,7 +106,6 @@ int main(int argc, char **argv) {
   trunks::TpmHandle tpm_handle;
   // AtExitManager must be instantiated before tpm_handle.Init()
   TrunksDaemon daemon(&tpm_handle);
-  CHECK(tpm_handle.Init());
   InitMinijailSandbox();
   LOG(INFO) << "Trunks Service Started";
   return daemon.Run();

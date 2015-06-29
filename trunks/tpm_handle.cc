@@ -32,7 +32,10 @@ TpmHandle::~TpmHandle() {
 }
 
 bool TpmHandle::Init() {
-  CHECK_EQ(fd_, kInvalidFileDescriptor);
+  if (fd_ != kInvalidFileDescriptor) {
+    VLOG(1) << "Tpm already initialized.";
+    return true;
+  }
   fd_ = HANDLE_EINTR(open(kTpmDevice, O_RDWR));
   if (fd_ == kInvalidFileDescriptor) {
     PLOG(ERROR) << "TPM: Error opening tpm0 file descriptor at " << kTpmDevice;
