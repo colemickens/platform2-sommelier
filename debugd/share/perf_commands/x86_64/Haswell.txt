@@ -1,4 +1,5 @@
-70 perf record -a -e cycles -c 1000003
+65 perf record -a -e cycles -c 1000003
 20 perf record -a -e cycles -g -c 4000037
+5 perf record -a -e r2c4 -b -c 20011
 5 perf record -a -e iTLB-misses -c 100003
 5 perf record -a -e dTLB-misses -c 100003

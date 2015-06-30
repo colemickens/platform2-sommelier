@@ -31,14 +31,18 @@ class PerfTool {
     const std::string& arch() const {
       return arch_;
     }
-    const std::string& model() const {
-      return model_;
+    const std::string& model_name() const {
+      return model_name_;
+    }
+    const std::string& intel_family_model() const {
+      return intel_family_model_;
     }
 
    protected:
     // The CPU arch and model info.
     std::string arch_;
-    std::string model_;
+    std::string model_name_;  // e.g. "Intel(R) Celeron(R) 2955U @ 1.40GHz"
+    std::string intel_family_model_;  // e.g. "06_45"
   };
 
   PerfTool();

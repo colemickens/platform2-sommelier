@@ -38,8 +38,11 @@ class MockCPUInfoReader : public PerfTool::CPUInfoReader {
   void set_arch(const std::string& arch) {
     arch_ = arch;
   }
-  void set_model(const std::string& model) {
-    model_ = model;
+  void set_model_name(const std::string& model_name) {
+    model_name_ = model_name;
+  }
+  void set_intel_family_model(const std::string& family_and_model) {
+    intel_family_model_ = family_and_model;
   }
 };
 
@@ -47,71 +50,90 @@ class MockCPUInfoReader : public PerfTool::CPUInfoReader {
 // name strings.
 TEST(PerfToolTest, TestCPUOddsFileLookup) {
   // Use a struct to define the expected outputs for each set of inputs.
-  struct OddsFileTestCase {
+  const struct {
     // Inputs.
     const char* arch;
-    const char* model;
+    const char* model_name;
+    const char* intel_model;  // family and model
     // Expected output.
     const char* filename;
   } kOddsFileTestCases[] = {
     // 64-bit x86.
     { .arch = "x86_64",
-      .model = "Intel(R) Celeron(R) 2955U @ 1.40GHz",
-      .filename = "/etc/perf_commands/x86_64/celeron-2955u.txt" },
+      .model_name = "Intel(R) Celeron(R) 2955U @ 1.40GHz",
+      .intel_model = "06_45",  // Haswell
+      .filename = "/etc/perf_commands/x86_64/Haswell.txt" },
     { .arch = "x86_64",
-      .model = "Intel(R) Core(TM) i5-2467M CPU @ 1.60GHz",
-      .filename = "/etc/perf_commands/x86_64/default.txt" },
+      .model_name = "Intel(R) Core(TM) i5-2467M CPU @ 1.60GHz",
+      .intel_model = "06_2A",  // SandyBridge
+      .filename = "/etc/perf_commands/x86_64/SandyBridge.txt" },
     { .arch = "x86_64",
-      .model = "Intel(R) Core(TM) i5-3427U CPU @ 1.80GHz",
-      .filename = "/etc/perf_commands/x86_64/default.txt" },
+      .model_name = "Intel(R) Core(TM) i5-3427U CPU @ 1.80GHz",
+      .intel_model = "06_3A",  // IvyBridge
+      .filename = "/etc/perf_commands/x86_64/IvyBridge.txt" },
     { .arch = "x86_64",
-      .model = "Intel(R) Celeron(R) CPU 867 @ 1.30GHz",
-      .filename = "/etc/perf_commands/x86_64/default.txt" },
+      .model_name = "Intel(R) Celeron(R) CPU 867 @ 1.30GHz",
+      .intel_model = "06_2A",  // SandyBridge
+      .filename = "/etc/perf_commands/x86_64/SandyBridge.txt" },
     { .arch = "x86_64",
-      .model = "Intel(R) Celeron(R) CPU 847 @ 1.10GHz",
+      .model_name = "Intel(R) Celeron(R) CPU 847 @ 1.10GHz",
+      .intel_model = "06_2A",  // SandyBridge
+      .filename = "/etc/perf_commands/x86_64/SandyBridge.txt" },
+    { .arch = "x86_64",
+      .model_name = "Intel(R) Celeron(R) CPU N2830 @ 2.13GHz",
+      .intel_model = "06_37",  // Silvermont
       .filename = "/etc/perf_commands/x86_64/default.txt" },
 
     // 32-bit x86.
     { .arch = "i686",
-      .model = "Intel(R) Atom(TM) CPU N455 @ 1.66GHz",
+      .model_name = "Intel(R) Atom(TM) CPU N455 @ 1.66GHz",
+      .intel_model = "06_1C",  // Bonnell
       .filename = "/etc/perf_commands/i686/default.txt" },
     { .arch = "i686",
-      .model = "Intel(R) Atom(TM) CPU N570 @ 1.66GHz",
+      .model_name = "Intel(R) Atom(TM) CPU N570 @ 1.66GHz",
+      .intel_model = "06_1C",  // Bonnell
       .filename = "/etc/perf_commands/i686/default.txt" },
     { .arch = "i686",
-      .model = "Intel(R) Pentium(TM) M 1.3 @ 1.3GHz",
+      .model_name = "Intel(R) Pentium(TM) M 1.3 @ 1.3GHz",
+      .intel_model = "06_0D",  // Dothan (probably)
       .filename = "/etc/perf_commands/i686/default.txt" },
     { .arch = "i686",
-      .model = "Intel(R) Pentium(TM) M 705 @ 1.5GHz",
+      .model_name = "Intel(R) Pentium(TM) M 705 @ 1.5GHz",
+      .intel_model = "06_09",  // Banias
       .filename = "/etc/perf_commands/i686/default.txt" },
 
     // ARMv7
     { .arch = "armv7l",
-      .model = "ARMv7 Processor rev 3 (v7l)",
+      .model_name = "ARMv7 Processor rev 3 (v7l)",
+      .intel_model = nullptr,
       .filename = "/etc/perf_commands/armv7l/default.txt" },
     { .arch = "armv7l",
-      .model = "ARMv7 Processor rev 4 (v7l)",
+      .model_name = "ARMv7 Processor rev 4 (v7l)",
+      .intel_model = nullptr,
       .filename = "/etc/perf_commands/armv7l/default.txt" },
 
     // Misc.
     { .arch = "MIPS",
-      .model = "blah",
+      .model_name = "blah",
+      .intel_model = nullptr,
       .filename = "/etc/perf_commands/unknown.txt" },
     { .arch = "AVR",
-      .model = "blah",
+      .model_name = "blah",
+      .intel_model = nullptr,
       .filename = "/etc/perf_commands/unknown.txt" },
     { .arch = "MC68000",
-      .model = "blah",
+      .model_name = "blah",
+      .intel_model = nullptr,
       .filename = "/etc/perf_commands/unknown.txt" },
   };
 
-  for (size_t i = 0; i < arraysize(kOddsFileTestCases); ++i) {
-    const OddsFileTestCase& test_case = kOddsFileTestCases[i];
-
+  for (const auto& test_case : kOddsFileTestCases) {
     // Set custom CPU info inputs.
     MockCPUInfoReader cpu_info;
     cpu_info.set_arch(test_case.arch);
-    cpu_info.set_model(test_case.model);
+    cpu_info.set_model_name(test_case.model_name);
+    if (test_case.intel_model)
+      cpu_info.set_intel_family_model(test_case.intel_model);
 
     // Instantiate a PerfTool with custom inputs.
     // |random_selector| will be deleted by PerfTool's destructor.

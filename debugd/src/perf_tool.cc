@@ -4,11 +4,13 @@
 
 #include "debugd/src/perf_tool.h"
 
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <sys/utsname.h>
 
 #include <algorithm>
+#include <map>
 
 #include "debugd/src/cpu_info_parser.h"
 #include "debugd/src/process_with_output.h"
@@ -16,13 +18,12 @@
 
 using base::StringPrintf;
 
+namespace debugd {
+
 namespace {
 
 // Location of quipper on ChromeOS.
 const char kQuipperLocation[] = "/usr/bin/quipper";
-
-// This is the key in /proc/cpuinfo whose value is the model name of the CPU.
-const char kCPUModelNameKey[] = "model name";
 
 // This is registered trademark symbol that appears in model name strings.
 const char kRegisteredTrademarkSymbol[] = "(R)";
@@ -31,7 +32,6 @@ const char kRegisteredTrademarkSymbol[] = "(R)";
 
 // For 64-bit x86 processors.
 const char* kx86_64CPUOddsFiles[] = {
-  "celeron-2955u",
   NULL,
 };
 
@@ -61,6 +61,42 @@ const char kCPUOddsFilePrefix[] = "/etc/perf_commands/";
 // Suffix to attach to the CPU odds file.
 const char kCPUOddsFileSuffix[] = ".txt";
 
+const std::map<std::string, std::string> kIntelUarchFileTable {
+    // These were found on various sources on the Internet. Main ones are:
+    // http://instlatx64.atw.hu/ for CPUID to model name and
+    // http://www.cpu-world.com for model name to microarchitecture
+    // {"06_1C", "Bonnell"},   // Atom
+    // {"06_26", "Bonnell"},   // Atom
+    // {"06_36", "Saltwell"},  // Atom
+    // {"06_4C", "Airmont"},   // Braswell
+    // {"06_4E", "Skylake"},
+    // {"06_3D", "Broadwell"},
+    {"06_3C", "Haswell"},
+    {"06_3F", "Haswell"},
+    {"06_45", "Haswell"},
+    {"06_46", "Haswell"},
+    {"06_3A", "IvyBridge"},
+    {"06_3E", "IvyBridge"},
+    {"06_2A", "SandyBridge"},
+    {"06_2D", "SandyBridge"},
+    // {"06_0F", "Merom"},
+    // {"06_16", "Merom"},
+    // {"06_17", "Nehalem"},
+    // {"06_1A", "Nehalem"},
+    // {"06_1D", "Nehalem"},
+    // {"06_1E", "Nehalem"},
+    // {"06_1F", "Nehalem"},
+    // {"06_2E", "Nehalem"},
+    // {"06_0D", "Dothan"},
+    // {"06_09", "Banias"},
+    // {"0F_03", "Prescott"},
+    // {"0F_04", "Prescott"},
+    // {"0F_06", "Presler"},
+    // {"06_25", "Westmere"},
+    // {"06_2C", "Westmere"},
+    // {"06_2F", "Westmere"},
+};
+
 // Converts an CPU model name string into a format that can be used as a file
 // name. The rules are:
 // - Replace spaces with hyphens.
@@ -73,20 +109,20 @@ std::string ModelNameToFileName(const std::string& model_name) {
   return base::StringToLowerASCII(result);
 }
 
-// For the given |cpu_arch| and |cpu_model_name|, look for the CPU odds file
-// that corresponds to these strings. If no matches are found for |CPU_arch|,
-// return the odds file for unknown CPU types. If |cpu_arch| is valid, but no
-// matches are found |cpu_model_name|, return the odds file for unknown models
-// of class |cpu_arch|.
-std::string GetOddsFilenameForCPU(const std::string& cpu_arch,
-                                  const std::string& cpu_model_name) {
+// For the given |cpu_info|, look for the CPU odds file that corresponds to
+// this CPU. If no matches are found for |cpu_info.arch()|, return the odds
+// file for unknown CPU types. If the arch is valid, but no matches are
+// found for |cpu_info.model_name()|, return the odds file for unknown models
+// of the CPU architecture.
+std::string GetOddsFilenameForCPU(const PerfTool::CPUInfoReader& cpu_info) {
+  const std::string& arch = cpu_info.arch();
+  const std::string& model_name = cpu_info.model_name();
   const char** cpu_odds_file_list = NULL;
-  if (cpu_arch == "i386" || cpu_arch == "i486" || cpu_arch == "i586" ||
-      cpu_arch == "i686") {
+  if (arch == "i386" || arch == "i486" || arch == "i586" || arch == "i686") {
     cpu_odds_file_list = kx86_32CPUOddsFiles;
-  } else if (cpu_arch == "amd64" || cpu_arch == "x86_64") {
+  } else if (arch == "amd64" || arch == "x86_64") {
     cpu_odds_file_list = kx86_64CPUOddsFiles;
-  } else if (cpu_arch == "armv7l") {
+  } else if (arch == "armv7l") {
     cpu_odds_file_list = kARMv7CPUOddsFiles;
   } else {
     // If the CPU arch doesn't match any of the recognized arch families, just
@@ -94,28 +130,35 @@ std::string GetOddsFilenameForCPU(const std::string& cpu_arch,
     return kMiscCPUArchOddsFile;
   }
 
-  std::string adjusted_model_name = ModelNameToFileName(cpu_model_name);
+  std::string adjusted_model_name = ModelNameToFileName(model_name);
   for (size_t i = 0; cpu_odds_file_list[i]; ++i) {
     if (adjusted_model_name.find(cpu_odds_file_list[i]) != std::string::npos) {
-      return cpu_arch + "/" + cpu_odds_file_list[i];
+      return arch + "/" + cpu_odds_file_list[i];
     }
   }
+
+  if (!cpu_info.intel_family_model().empty()) {
+    // See if we have a microarchitecture-specific file.
+    const auto& it = kIntelUarchFileTable.find(cpu_info.intel_family_model());
+    if (it != kIntelUarchFileTable.end()) {
+      const std::string& uarch = it->second;
+      return arch + "/" + uarch;
+    }
+  }
+
   // If there isn't an odds file for the particular model, use the generic odds
   // for the CPU arch.
-  return cpu_arch + "/" + kMiscCPUModelOddsFile;
+  return arch + "/" + kMiscCPUModelOddsFile;
 }
 
 }  // namespace
-
-namespace debugd {
 
 PerfTool::PerfTool() : PerfTool(CPUInfoReader(), new RandomSelector) {}
 
 PerfTool::PerfTool(const CPUInfoReader& cpu_info,
                    RandomSelector* random_selector)
     : random_selector_(random_selector) {
-  std::string odds_filename =
-      GetOddsFilenameForCPU(cpu_info.arch(), cpu_info.model());
+  std::string odds_filename = GetOddsFilenameForCPU(cpu_info);
   random_selector_->SetOddsFromFile(
       kCPUOddsFilePrefix + odds_filename + kCPUOddsFileSuffix);
 }
@@ -156,7 +199,22 @@ int PerfTool::GetRandomPerfOutput(const uint32_t& duration_secs,
 PerfTool::CPUInfoReader::CPUInfoReader() {
   // Get CPU model name, e.g. "Intel(R) Celeron(R) 2955U @ 1.40GHz".
   debugd::CPUInfoParser cpu_info_parser;
-  cpu_info_parser.GetKey(kCPUModelNameKey, &model_);
+  cpu_info_parser.GetKey("model name", &model_name_);
+  std::string vendor;
+  cpu_info_parser.GetKey("vendor_id", &vendor);
+  if (vendor == "GenuineIntel") {
+    std::string cpu_family;
+    cpu_info_parser.GetKey("cpu family", &cpu_family);
+    unsigned int cpu_family_int;
+    base::StringToUint(cpu_family, &cpu_family_int);
+
+    std::string model;
+    cpu_info_parser.GetKey("model", &model);
+    unsigned int model_int;
+    base::StringToUint(model, &model_int);
+
+    intel_family_model_ = StringPrintf("%02x_%02x", cpu_family_int, model_int);
+  }
 
   // Get CPU machine hardware class, e.g. "i686", "x86_64", "armv7l".
   struct utsname uname_info;
