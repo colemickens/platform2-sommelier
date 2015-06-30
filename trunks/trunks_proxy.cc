@@ -39,11 +39,17 @@ bool TrunksProxy::Init() {
   object_proxy_ = bus_->GetObjectProxy(
       trunks::kTrunksServiceName,
       dbus::ObjectPath(trunks::kTrunksServicePath));
+  origin_thread_id_ = base::PlatformThread::CurrentId();
   return (object_proxy_ != nullptr);
 }
 
 void TrunksProxy::SendCommand(const std::string& command,
                               const ResponseCallback& callback) {
+  if ((origin_thread_id_ != base::PlatformThread::CurrentId()) &&
+      (!Init())) {
+    LOG(ERROR) << "Error intializing trunks dbus proxy object.";
+    callback.Run(CreateErrorResponse(TRUNKS_RC_IPC_ERROR));
+  }
   SendCommandRequest tpm_command_proto;
   tpm_command_proto.set_command(command);
   auto on_error = [callback](chromeos::Error* error) {
@@ -62,6 +68,11 @@ void TrunksProxy::SendCommand(const std::string& command,
 }
 
 std::string TrunksProxy::SendCommandAndWait(const std::string& command) {
+  if ((origin_thread_id_ != base::PlatformThread::CurrentId()) &&
+      (!Init())) {
+    LOG(ERROR) << "Error intializing trunks dbus proxy object.";
+    return CreateErrorResponse(TRUNKS_RC_IPC_ERROR);
+  }
   SendCommandRequest tpm_command_proto;
   tpm_command_proto.set_command(command);
   chromeos::ErrorPtr error;

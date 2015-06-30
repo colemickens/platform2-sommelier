@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
+#include <base/threading/platform_thread.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
@@ -38,6 +39,7 @@ class TRUNKS_EXPORT TrunksProxy: public CommandTransceiver {
     return weak_factory_.GetWeakPtr();
   }
 
+  base::PlatformThreadId origin_thread_id_;
   scoped_refptr<dbus::Bus> bus_;
   dbus::ObjectProxy* object_proxy_;
 
