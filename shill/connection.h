@@ -92,6 +92,7 @@ class Connection : public base::RefCounted<Connection> {
   virtual const std::vector<std::string>& dns_servers() const {
     return dns_servers_;
   }
+  virtual uint8_t table_id() const { return table_id_; }
 
   virtual const std::string& ipconfig_rpc_identifier() const {
     return ipconfig_rpc_identifier_;
