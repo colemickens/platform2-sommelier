@@ -394,4 +394,23 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   VerifyIcmpSessionStopped();
 }
 
+TEST_F(IcmpSessionTest, AnyRepliesReceived) {
+  IcmpSession::IcmpSessionResult none_sent;
+  EXPECT_FALSE(IcmpSession::AnyRepliesReceived(none_sent));
+
+  IcmpSession::IcmpSessionResult two_sent_none_received;
+  two_sent_none_received.push_back(base::TimeDelta());
+  two_sent_none_received.push_back(base::TimeDelta());
+  EXPECT_FALSE(IcmpSession::AnyRepliesReceived(two_sent_none_received));
+
+  IcmpSession::IcmpSessionResult one_sent_one_received;
+  one_sent_one_received.push_back(base::TimeDelta::FromSeconds(10));
+  EXPECT_TRUE(IcmpSession::AnyRepliesReceived(one_sent_one_received));
+
+  IcmpSession::IcmpSessionResult two_sent_one_received;
+  two_sent_one_received.push_back(base::TimeDelta::FromSeconds(20));
+  two_sent_one_received.push_back(base::TimeDelta());
+  EXPECT_TRUE(IcmpSession::AnyRepliesReceived(two_sent_one_received));
+}
+
 }  // namespace shill

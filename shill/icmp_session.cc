@@ -88,6 +88,16 @@ void IcmpSession::Stop() {
   icmp_->Stop();
 }
 
+// static
+bool IcmpSession::AnyRepliesReceived(const IcmpSessionResult& result) {
+  for (const base::TimeDelta& latency : result) {
+    if (!latency.is_zero()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void IcmpSession::TransmitEchoRequestTask(const IPAddress& destination) {
   if (!IsStarted()) {
     // This might happen when ping times out or is stopped between two calls

@@ -70,6 +70,11 @@ class IcmpSession {
 
   bool IsStarted() { return icmp_->IsStarted(); }
 
+  // Utility function that returns false iff |result| indicates that no echo
+  // replies were received to any ICMP echo request that was sent during the
+  // ICMP session that generated |result|.
+  static bool AnyRepliesReceived(const IcmpSessionResult& result);
+
  private:
   using SentRecvTimePair = std::pair<base::TimeTicks, base::TimeTicks>;
 
