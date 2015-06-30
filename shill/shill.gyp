@@ -308,8 +308,13 @@
         }],
         ['USE_chromeos_dbus ==1', {
           'sources': [
-            'dbus/chromeos_dbus_control.cc',
+            # TODO(zqiu): putting "chromeos_daemon.cc" here temporarily until
+            # the legacy shill_daemon.cc is removed. This is a replacement for
+            # shill_daemon.
+            'chromeos_daemon.cc',
             'dbus/chromeos_dbus_adaptor.cc',
+            'dbus/chromeos_dbus_control.cc',
+            'dbus/chromeos_dbus_daemon.cc',
             'dbus/chromeos_device_dbus_adaptor.cc',
           ],
         }],
@@ -796,6 +801,10 @@
             }],
             ['USE_chromeos_dbus ==1', {
               'sources': [
+                # TODO(zqiu): putting "chromeos_daemon_unittest.cc" here
+                # temporarily until the legacy shill_daemon.cc is removed.
+                # This is a replacement for shill_daemon.
+                'chromeos_daemon_unittest.cc',
                 'dbus/chromeos_dbus_adaptor_unittest.cc',
               ],
             }],

@@ -30,4 +30,36 @@ DeviceAdaptorInterface* ChromeosDBusControl::CreateDeviceAdaptor(
           device);
 }
 
+IPConfigAdaptorInterface* ChromeosDBusControl::CreateIPConfigAdaptor(
+    IPConfig* config) {
+  return nullptr;
+}
+
+ManagerAdaptorInterface* ChromeosDBusControl::CreateManagerAdaptor(
+    Manager* manager) {
+  return nullptr;
+}
+
+ProfileAdaptorInterface* ChromeosDBusControl::CreateProfileAdaptor(
+    Profile* profile) {
+  return nullptr;
+}
+
+RPCTaskAdaptorInterface* ChromeosDBusControl::CreateRPCTaskAdaptor(
+    RPCTask* task) {
+  return nullptr;
+}
+
+ServiceAdaptorInterface* ChromeosDBusControl::CreateServiceAdaptor(
+    Service* service) {
+  return nullptr;
+}
+
+#ifndef DISABLE_VPN
+ThirdPartyVpnAdaptorInterface* ChromeosDBusControl::CreateThirdPartyVpnAdaptor(
+    ThirdPartyVpnDriver* driver) {
+  return nullptr;
+}
+#endif
+
 }  // namespace shill

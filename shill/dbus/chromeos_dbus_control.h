@@ -23,6 +23,15 @@ class ChromeosDBusControl : public ControlInterface {
   ~ChromeosDBusControl() override;
 
   DeviceAdaptorInterface* CreateDeviceAdaptor(Device* device) override;
+  IPConfigAdaptorInterface* CreateIPConfigAdaptor(IPConfig* ipconfig) override;
+  ManagerAdaptorInterface* CreateManagerAdaptor(Manager* manager) override;
+  ProfileAdaptorInterface* CreateProfileAdaptor(Profile* profile) override;
+  RPCTaskAdaptorInterface* CreateRPCTaskAdaptor(RPCTask* task) override;
+  ServiceAdaptorInterface* CreateServiceAdaptor(Service* service) override;
+#ifndef DISABLE_VPN
+  ThirdPartyVpnAdaptorInterface* CreateThirdPartyVpnAdaptor(
+      ThirdPartyVpnDriver* driver) override;
+#endif
 
  private:
   template <typename Object, typename AdaptorInterface, typename Adaptor>
