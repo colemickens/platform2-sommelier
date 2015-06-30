@@ -244,7 +244,6 @@ void Manager::Start() {
 
   InitializeProfiles();
   running_ = true;
-  adaptor_->UpdateRunning();
   device_info_.Start();
 #if !defined(DISABLE_CELLULAR)
   modem_info_.Start();
@@ -286,7 +285,6 @@ void Manager::Stop() {
     device->SetEnabled(false);
   }
 
-  adaptor_->UpdateRunning();
   for (const auto& provider_mapping : providers_) {
     provider_mapping.second->Stop();
   }

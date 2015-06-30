@@ -41,8 +41,6 @@ ManagerDBusAdaptor::~ManagerDBusAdaptor() {
   manager_ = nullptr;
 }
 
-void ManagerDBusAdaptor::UpdateRunning() {}
-
 void ManagerDBusAdaptor::EmitBoolChanged(const string& name, bool value) {
   SLOG(this, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::BoolToVariant(value));

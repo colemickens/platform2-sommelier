@@ -37,7 +37,6 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
 
   // Implementation of ManagerAdaptorInterface.
   const std::string& GetRpcIdentifier() override { return path(); }
-  void UpdateRunning() override;
   void EmitBoolChanged(const std::string& name, bool value) override;
   void EmitUintChanged(const std::string& name, uint32_t value) override;
   void EmitIntChanged(const std::string& name, int value) override;
