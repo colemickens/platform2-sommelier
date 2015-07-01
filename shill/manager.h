@@ -34,6 +34,14 @@
 #include "shill/upstart/upstart.h"
 #include "shill/wimax/wimax_provider.h"
 
+#ifndef DISABLE_CHROMEOS_DBUS
+namespace chromeos {
+namespace dbus_utils {
+class AsyncEventSequencer;
+}  // namespace dbus_utils
+}  // namespace chromeos
+#endif  // DISABLE_CHROMEOS_DBUS
+
 namespace shill {
 
 class ControlInterface;
@@ -102,6 +110,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
           const std::string& storage_directory,
           const std::string& user_storage_directory);
   virtual ~Manager();
+
+#ifndef DISABLE_CHROMEOS_DBUS
+  void RegisterAsync(chromeos::dbus_utils::AsyncEventSequencer* sequencer);
+#endif  // DISABLE_CHROMEOS_DBUS
 
   virtual void AddDeviceToBlackList(const std::string& device_name);
 

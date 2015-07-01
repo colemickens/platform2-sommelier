@@ -35,17 +35,14 @@ ChromeosDeviceDBusAdaptor::ChromeosDeviceDBusAdaptor(
                           bus,
                           kPath + SanitizePathElement(device->UniqueName())),
       device_(device) {
+  // Register DBus object.
+  RegisterWithDBusObject(dbus_object());
+  dbus_object()->RegisterAsync(
+      AsyncEventSequencer::GetDefaultCompletionAction());
 }
 
 ChromeosDeviceDBusAdaptor::~ChromeosDeviceDBusAdaptor() {
   device_ = nullptr;
-}
-
-void ChromeosDeviceDBusAdaptor::RegisterAsync(AsyncEventSequencer* sequencer) {
-  RegisterWithDBusObject(dbus_object());
-  dbus_object()->RegisterAsync(
-      sequencer->GetHandler(
-          "ChromeosDeviceDBusAdaptor.RegisterAsync() failed.", true));
 }
 
 const string& ChromeosDeviceDBusAdaptor::GetRpcIdentifier() {

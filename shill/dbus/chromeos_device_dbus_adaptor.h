@@ -36,10 +36,6 @@ class ChromeosDeviceDBusAdaptor
       Device* device);
   ~ChromeosDeviceDBusAdaptor() override;
 
-  // Implementation of ChromeosDBusAdaptor.
-  void RegisterAsync(
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer) override;
-
   // Implementation of DeviceAdaptorInterface.
   const std::string& GetRpcIdentifier() override;
   const std::string& GetRpcConnectionIdentifier() override;

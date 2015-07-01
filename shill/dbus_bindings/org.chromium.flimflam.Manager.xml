@@ -40,9 +40,11 @@
 		</method>
 		<method name="EnableTechnology">
 			<arg type="s" direction="in"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<method name="DisableTechnology">
 			<arg type="s" direction="in"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<method name="GetService">
 			<arg type="a{sv}" direction="in"/>
@@ -110,6 +112,7 @@
 			<arg name="hotspot_ssid" type="s" direction="in"/>
 			<arg name="hotspot_bssid" type="s" direction="in"/>
 			<arg type="b" direction="out"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<method name="VerifyAndEncryptCredentials">
 			<arg name="certificate" type="s" direction="in"/>
@@ -121,6 +124,7 @@
 			<arg name="hotspot_bssid" type="s" direction="in"/>
 			<arg name="network" type="o" direction="in"/>
 			<arg type="s" direction="out"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<method name="VerifyAndEncryptData">
 			<arg name="certificate" type="s" direction="in"/>
@@ -132,12 +136,14 @@
 			<arg name="hotspot_bssid" type="s" direction="in"/>
 			<arg name="data" type="s" direction="in"/>
 			<arg type="s" direction="out"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<method name="ConnectToBestServices"/>
 		<method name="CreateConnectivityReport"/>
 		<method name="ClaimInterface">
 			<arg name="claimer_name" type="s" direction="in"/>
 			<arg name="interface_name" type="s" direction="in"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<method name="ReleaseInterface">
 			<arg name="claimer_name" type="s" direction="in"/>

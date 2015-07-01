@@ -38,10 +38,6 @@ class ChromeosDBusAdaptor : public base::SupportsWeakPtr<ChromeosDBusAdaptor> {
 
   const dbus::ObjectPath& dbus_path() const { return dbus_path_; }
 
-  // Register DBus object.
-  virtual void RegisterAsync(
-      chromeos::dbus_utils::AsyncEventSequencer* sequencer) = 0;
-
  protected:
   FRIEND_TEST(ChromeosDBusAdaptorTest, SanitizePathElement);
 
@@ -81,8 +77,7 @@ class ChromeosDBusAdaptor : public base::SupportsWeakPtr<ChromeosDBusAdaptor> {
   //   ReturnResultOrDefer(callback, e);
   // }
   //
-  void ReturnResultOrDefer(const ResultCallback& callback,
-                           const Error& error);
+  void ReturnResultOrDefer(const ResultCallback& callback, const Error& error);
 
   chromeos::dbus_utils::DBusObject* dbus_object() const {
     return dbus_object_.get();

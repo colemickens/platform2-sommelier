@@ -9,6 +9,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/dbus/chromeos_dbus_control.h"
+#include "shill/manager.h"
 
 namespace shill {
 
@@ -44,10 +45,11 @@ void ChromeosDBusDaemon::OnShutdown(int* return_code) {
 
 void ChromeosDBusDaemon::RegisterDBusObjectsAsync(
     chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
-  // TODO(zqiu): Register "org.chromium.flimflam.Manager" interface.
+  // Register "org.chromium.flimflam.Manager" interface.
   // The daemon will request the ownership of the DBus service
   // "org.chromium.flimflam" after Manager interface registration is
   // completed.
+  manager()->RegisterAsync(sequencer);
 }
 
 }  // namespace shill

@@ -28,6 +28,11 @@
           'DISABLE_CELLULAR',
         ],
       }],
+      ['USE_chromeos_dbus == 0', {
+        'defines': [
+          'DISABLE_CHROMEOS_DBUS',
+        ],
+      }],
       ['USE_pppoe == 0', {
         'defines': [
           'DISABLE_PPPOE',
@@ -316,6 +321,7 @@
             'dbus/chromeos_dbus_control.cc',
             'dbus/chromeos_dbus_daemon.cc',
             'dbus/chromeos_device_dbus_adaptor.cc',
+            'dbus/chromeos_manager_dbus_adaptor.cc',
           ],
         }],
         ['USE_vpn == 1', {

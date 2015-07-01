@@ -219,6 +219,13 @@ Manager::Manager(ControlInterface* control_interface,
 
 Manager::~Manager() {}
 
+#ifndef DISABLE_CHROMEOS_DBUS
+void Manager::RegisterAsync(
+    chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
+  adaptor_->RegisterAsync(sequencer);
+}
+#endif  // DISABLE_CHROMEOS_DBUS
+
 void Manager::AddDeviceToBlackList(const string& device_name) {
   device_info_.AddDeviceToBlackList(device_name);
 }

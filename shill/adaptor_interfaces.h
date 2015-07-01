@@ -10,6 +10,14 @@
 
 #include "shill/accessor_interface.h"
 
+#ifndef DISABLE_CHROMEOS_DBUS
+namespace chromeos {
+namespace dbus_utils {
+class AsyncEventSequencer;
+}  // namespace dbus_utils
+}  // namespace chromeos
+#endif  // DISABLE_CHROMEOS_DBUS
+
 namespace shill {
 
 class Error;
@@ -69,6 +77,13 @@ class IPConfigAdaptorInterface {
 class ManagerAdaptorInterface {
  public:
   virtual ~ManagerAdaptorInterface() {}
+
+#ifndef DISABLE_CHROMEOS_DBUS
+  // TODO(zqiu): switch to pure virtual when the legacy manager adaptor is
+  // removed.
+  virtual void RegisterAsync(
+      chromeos::dbus_utils::AsyncEventSequencer* sequencer) {}
+#endif  // DISABLE_CHROMEOS_DBUS
 
   // Getter for the opaque identifier that represents this object on the
   // RPC interface to which the implementation is adapting.
