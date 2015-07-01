@@ -1512,7 +1512,7 @@ void Daemon::RequestTpmStatus() {
 
 void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   if (shutting_down_) {
-    LOG(WARNING) << "Shutdown already initiated";
+    LOG(INFO) << "Shutdown already initiated; ignoring additional request";
     return;
   }
 
