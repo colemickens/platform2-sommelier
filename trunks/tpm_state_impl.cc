@@ -20,6 +20,8 @@ const trunks::TPMA_PERMANENT kInLockoutMask = 1U << 9;
 
 // From definition of TPMA_STARTUP_CLEAR.
 const trunks::TPMA_STARTUP_CLEAR kPlatformHierarchyMask = 1U;
+const trunks::TPMA_STARTUP_CLEAR kStorageHierarchyMask = 1U << 1;
+const trunks::TPMA_STARTUP_CLEAR kEndorsementHierarchyMask = 1U << 2;
 const trunks::TPMA_STARTUP_CLEAR kOrderlyShutdownMask = 1U << 31;
 
 // From definition of TPMA_ALGORITHM
@@ -38,8 +40,7 @@ TpmStateImpl::TpmStateImpl(const TrunksFactory& factory)
       ecc_flags_(0) {
 }
 
-TpmStateImpl::~TpmStateImpl() {
-}
+TpmStateImpl::~TpmStateImpl() {}
 
 TPM_RC TpmStateImpl::Initialize() {
   Tpm* tpm = factory_.GetTpm();
@@ -143,6 +144,12 @@ bool TpmStateImpl::IsLockoutPasswordSet() {
   return ((permanent_flags_ & kLockoutAuthSetMask) == kLockoutAuthSetMask);
 }
 
+bool TpmStateImpl::IsOwned() {
+  return (IsOwnerPasswordSet() &&
+          IsEndorsementPasswordSet() &&
+          IsLockoutPasswordSet());
+}
+
 bool TpmStateImpl::IsInLockout() {
   CHECK(initialized_);
   return ((permanent_flags_ & kInLockoutMask) == kInLockoutMask);
@@ -152,6 +159,24 @@ bool TpmStateImpl::IsPlatformHierarchyEnabled() {
   CHECK(initialized_);
   return ((startup_clear_flags_ & kPlatformHierarchyMask) ==
       kPlatformHierarchyMask);
+}
+
+bool TpmStateImpl::IsStorageHierarchyEnabled() {
+  CHECK(initialized_);
+  return ((startup_clear_flags_ & kStorageHierarchyMask) ==
+      kStorageHierarchyMask);
+}
+
+bool TpmStateImpl::IsEndorsementHierarchyEnabled() {
+  CHECK(initialized_);
+  return ((startup_clear_flags_ & kEndorsementHierarchyMask) ==
+      kEndorsementHierarchyMask);
+}
+
+bool TpmStateImpl::IsEnabled() {
+  return (!IsPlatformHierarchyEnabled() &&
+          IsStorageHierarchyEnabled() &&
+          IsEndorsementHierarchyEnabled());
 }
 
 bool TpmStateImpl::WasShutdownOrderly() {

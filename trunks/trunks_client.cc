@@ -99,12 +99,20 @@ int DumpStatus(bool use_ftdi) {
          state->IsEndorsementPasswordSet() ? "true" : "false");
   printf("Lockout password set: %s\n",
          state->IsLockoutPasswordSet() ? "true" : "false");
+  printf("Ownership status: %s\n",
+         state->IsOwned() ? "true" : "false");
   printf("In lockout: %s\n",
          state->IsInLockout() ? "true" : "false");
   printf("Platform hierarchy enabled: %s\n",
-         state->IsOwnerPasswordSet() ? "true" : "false");
+         state->IsPlatformHierarchyEnabled() ? "true" : "false");
+  printf("Storage hierarchy enabled: %s\n",
+         state->IsStorageHierarchyEnabled() ? "true" : "false");
+  printf("Endorsement hierarchy enabled: %s\n",
+         state->IsEndorsementHierarchyEnabled() ? "true" : "false");
+  printf("Is Tpm enabled: %s\n",
+         state->IsEnabled() ? "true" : "false");
   printf("Was shutdown orderly: %s\n",
-         state->IsOwnerPasswordSet() ? "true" : "false");
+         state->WasShutdownOrderly() ? "true" : "false");
   printf("Is RSA supported: %s\n",
          state->IsRSASupported() ? "true" : "false");
   printf("Is ECC supported: %s\n",

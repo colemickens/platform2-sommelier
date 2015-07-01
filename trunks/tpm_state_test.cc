@@ -20,6 +20,9 @@ using testing::WithArgs;
 
 namespace trunks {
 
+// From definition of TPMA_STARTUP_CLEAR.
+const trunks::TPMA_STARTUP_CLEAR kPlatformHierarchyMask = 1U;
+
 // A test fixture for TpmState tests.
 class TpmStateTest : public testing::Test {
  public:
@@ -106,9 +109,15 @@ TEST(TpmState_DeathTest, NotInitialized) {
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsEndorsementPasswordSet(),
                             "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsLockoutPasswordSet(), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsOwned(), "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsInLockout(), "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsPlatformHierarchyEnabled(),
                             "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsStorageHierarchyEnabled(),
+                            "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsEndorsementHierarchyEnabled(),
+                            "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsEnabled(), "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.WasShutdownOrderly(), "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsRSASupported(), "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(tpm_state.IsECCSupported(), "Check failed");
@@ -121,7 +130,11 @@ TEST_F(TpmStateTest, FlagsClear) {
   EXPECT_FALSE(tpm_state.IsEndorsementPasswordSet());
   EXPECT_FALSE(tpm_state.IsLockoutPasswordSet());
   EXPECT_FALSE(tpm_state.IsInLockout());
+  EXPECT_FALSE(tpm_state.IsOwned());
   EXPECT_FALSE(tpm_state.IsPlatformHierarchyEnabled());
+  EXPECT_FALSE(tpm_state.IsStorageHierarchyEnabled());
+  EXPECT_FALSE(tpm_state.IsEndorsementHierarchyEnabled());
+  EXPECT_FALSE(tpm_state.IsEnabled());
   EXPECT_FALSE(tpm_state.WasShutdownOrderly());
   EXPECT_FALSE(tpm_state.IsRSASupported());
   EXPECT_FALSE(tpm_state.IsECCSupported());
@@ -137,11 +150,27 @@ TEST_F(TpmStateTest, FlagsSet) {
   EXPECT_TRUE(tpm_state.IsOwnerPasswordSet());
   EXPECT_TRUE(tpm_state.IsEndorsementPasswordSet());
   EXPECT_TRUE(tpm_state.IsLockoutPasswordSet());
+  EXPECT_TRUE(tpm_state.IsOwned());
   EXPECT_TRUE(tpm_state.IsInLockout());
   EXPECT_TRUE(tpm_state.IsPlatformHierarchyEnabled());
+  EXPECT_TRUE(tpm_state.IsStorageHierarchyEnabled());
+  EXPECT_TRUE(tpm_state.IsEndorsementHierarchyEnabled());
+  EXPECT_FALSE(tpm_state.IsEnabled());
   EXPECT_TRUE(tpm_state.WasShutdownOrderly());
   EXPECT_TRUE(tpm_state.IsRSASupported());
   EXPECT_TRUE(tpm_state.IsECCSupported());
+}
+
+TEST_F(TpmStateTest, EnabledTpm) {
+  startup_clear_data_.data.tpm_properties.tpm_property[0].value =
+      ~kPlatformHierarchyMask;
+  TpmStateImpl tpm_state(factory_);
+  EXPECT_EQ(TPM_RC_SUCCESS, tpm_state.Initialize());
+  EXPECT_FALSE(tpm_state.IsPlatformHierarchyEnabled());
+  EXPECT_TRUE(tpm_state.IsStorageHierarchyEnabled());
+  EXPECT_TRUE(tpm_state.IsEndorsementHierarchyEnabled());
+  EXPECT_TRUE(tpm_state.IsEnabled());
+  EXPECT_TRUE(tpm_state.WasShutdownOrderly());
 }
 
 TEST_F(TpmStateTest, BadResponsePermanentCapabilityType) {

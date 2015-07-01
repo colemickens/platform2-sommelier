@@ -27,8 +27,12 @@ class TRUNKS_EXPORT TpmStateImpl : public TpmState {
   bool IsOwnerPasswordSet() override;
   bool IsEndorsementPasswordSet() override;
   bool IsLockoutPasswordSet() override;
+  bool IsOwned() override;
   bool IsInLockout() override;
   bool IsPlatformHierarchyEnabled() override;
+  bool IsStorageHierarchyEnabled() override;
+  bool IsEndorsementHierarchyEnabled() override;
+  bool IsEnabled() override;
   bool WasShutdownOrderly() override;
   bool IsRSASupported() override;
   bool IsECCSupported() override;

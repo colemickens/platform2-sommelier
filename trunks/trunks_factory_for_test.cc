@@ -46,12 +46,28 @@ class TpmStateForwarder : public TpmState {
     return target_->IsLockoutPasswordSet();
   }
 
+  bool IsOwned() override {
+    return target_->IsOwned();
+  }
+
   bool IsInLockout() override {
     return target_->IsInLockout();
   }
 
   bool IsPlatformHierarchyEnabled() override {
     return target_->IsPlatformHierarchyEnabled();
+  }
+
+  bool IsStorageHierarchyEnabled() override {
+    return target_->IsStorageHierarchyEnabled();
+  }
+
+  bool IsEndorsementHierarchyEnabled() override {
+    return target_->IsEndorsementHierarchyEnabled();
+  }
+
+  bool IsEnabled() override {
+    return target_->IsEnabled();
   }
 
   bool WasShutdownOrderly() override {

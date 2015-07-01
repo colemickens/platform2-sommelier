@@ -20,8 +20,12 @@ class MockTpmState : public TpmState {
   MOCK_METHOD0(IsOwnerPasswordSet, bool());
   MOCK_METHOD0(IsEndorsementPasswordSet, bool());
   MOCK_METHOD0(IsLockoutPasswordSet, bool());
+  MOCK_METHOD0(IsOwned, bool());
   MOCK_METHOD0(IsInLockout, bool());
   MOCK_METHOD0(IsPlatformHierarchyEnabled, bool());
+  MOCK_METHOD0(IsStorageHierarchyEnabled, bool());
+  MOCK_METHOD0(IsEndorsementHierarchyEnabled, bool());
+  MOCK_METHOD0(IsEnabled, bool());
   MOCK_METHOD0(WasShutdownOrderly, bool());
   MOCK_METHOD0(IsRSASupported, bool());
   MOCK_METHOD0(IsECCSupported, bool());

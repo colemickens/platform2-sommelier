@@ -32,11 +32,23 @@ class TRUNKS_EXPORT TpmState {
   // Returns true iff TPMA_PERMANENT:lockoutAuthSet is set.
   virtual bool IsLockoutPasswordSet() = 0;
 
+  // Returns true iff owner, endorsement and lockout passwords are set.
+  virtual bool IsOwned() = 0;
+
   // Returns true iff TPMA_PERMANENT:inLockout is set.
   virtual bool IsInLockout() = 0;
 
   // Returns true iff TPMA_STARTUP_CLEAR:phEnable is set.
   virtual bool IsPlatformHierarchyEnabled() = 0;
+
+  // Returns true iff TPMA_STARTUP_CLEAR:shEnable is set.
+  virtual bool IsStorageHierarchyEnabled() = 0;
+
+  // Returns true iff TPMA_STARTUP_CLEAR:ehEnable is set.
+  virtual bool IsEndorsementHierarchyEnabled() = 0;
+
+  // Returns true iff shEnable and ehEnable are set and phEnable is clear.
+  virtual bool IsEnabled() = 0;
 
   // Returns true iff TPMA_STARTUP_CLEAR:orderly is set.
   virtual bool WasShutdownOrderly() = 0;

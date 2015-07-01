@@ -14,10 +14,14 @@ MockTpmState::MockTpmState() {
   ON_CALL(*this, IsOwnerPasswordSet()).WillByDefault(Return(true));
   ON_CALL(*this, IsEndorsementPasswordSet()).WillByDefault(Return(true));
   ON_CALL(*this, IsLockoutPasswordSet()).WillByDefault(Return(true));
+  ON_CALL(*this, IsOwned()).WillByDefault(Return(true));
+  ON_CALL(*this, IsPlatformHierarchyEnabled()).WillByDefault(Return(true));
+  ON_CALL(*this, IsStorageHierarchyEnabled()).WillByDefault(Return(true));
+  ON_CALL(*this, IsEndorsementHierarchyEnabled()).WillByDefault(Return(true));
+  ON_CALL(*this, IsEnabled()).WillByDefault(Return(true));
   ON_CALL(*this, WasShutdownOrderly()).WillByDefault(Return(true));
   ON_CALL(*this, IsRSASupported()).WillByDefault(Return(true));
   ON_CALL(*this, IsECCSupported()).WillByDefault(Return(true));
-  ON_CALL(*this, IsPlatformHierarchyEnabled()).WillByDefault(Return(true));
 }
 
 MockTpmState::~MockTpmState() {}
