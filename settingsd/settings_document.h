@@ -27,15 +27,26 @@ class SettingsDocument {
   virtual const base::Value* GetValue(const Key& key) const = 0;
 
   // Returns a list of all keys that have value assignments and are equal to or
-  // have |key| as an ancestor.
-  virtual std::set<Key> GetKeys(const Key& key) const = 0;
+  // have |prefix| as an ancestor.
+  virtual std::set<Key> GetKeys(const Key& prefix) const = 0;
 
   // Returns a list of all keys whose subtrees are being deleted by this
-  // document and that are either equal to or have |key| as an ancestor.
-  virtual std::set<Key> GetDeletions(const Key& key) const = 0;
+  // document and that are either equal to or have |prefix| as an ancestor.
+  virtual std::set<Key> GetDeletions(const Key& prefix) const = 0;
 
   // Returns the version stamp for this settings document.
   virtual const VersionStamp& GetVersionStamp() const = 0;
+
+  // Returns true if the document modifies keys that are equal to or have
+  // |prefix| as an ancestor. Otherwise, returns false. Modifications here could
+  // be value assignments for |prefix| or deletions of subtrees containing
+  // |prefix|.
+  virtual bool HasKeysOrDeletions(const Key& prefix) const = 0;
+
+  // Returns true if any of the keys or subtree deletions in document |A| and
+  // |B| overlap, i.e. there are keys that are equal or one is the ancestor of
+  // the other.
+  static bool HasOverlap(const SettingsDocument& A, const SettingsDocument& B);
 
  private:
   DISALLOW_ASSIGN(SettingsDocument);

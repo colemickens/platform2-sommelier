@@ -40,8 +40,7 @@ Range<Iter> make_range(Iter begin, Iter end) {
 // returns the full range of the |container|. If |key| is not a valid key,
 // returns the empty range.
 template <class T>
-Range<typename T::const_iterator> GetRange(const Key& key,
-                                           const T& container) {
+Range<typename T::const_iterator> GetRange(const Key& key, const T& container) {
   // For the root key, always return the whole range.
   if (key.IsRootKey())
     return make_range(container.begin(), container.end());
@@ -51,6 +50,14 @@ Range<typename T::const_iterator> GetRange(const Key& key,
 
   return make_range(container.lower_bound(start_key),
                     container.lower_bound(end_key));
+}
+
+// Checks whether |container| has any keys which are equal to or have |key| as
+// an ancestor.
+template <class T>
+bool HasKeys(const Key& key, const T& container) {
+  auto range = GetRange(key, container);
+  return range.begin() != range.end();
 }
 
 }  // namespace utils

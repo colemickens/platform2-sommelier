@@ -18,22 +18,27 @@ const base::Value* MockSettingsDocument::GetValue(const Key& key) const {
   return entry != key_value_map_.end() ? entry->second.get() : nullptr;
 }
 
-std::set<Key> MockSettingsDocument::GetKeys(const Key& key) const {
+std::set<Key> MockSettingsDocument::GetKeys(const Key& prefix) const {
   std::set<Key> result;
-  for (const auto& entry : utils::GetRange(key, key_value_map_))
+  for (const auto& entry : utils::GetRange(prefix, key_value_map_))
     result.insert(entry.first);
   return result;
 }
 
-std::set<Key> MockSettingsDocument::GetDeletions(const Key& key) const {
+std::set<Key> MockSettingsDocument::GetDeletions(const Key& prefix) const {
   std::set<Key> result;
-  for (const auto& entry : utils::GetRange(key, deletions_))
+  for (const auto& entry : utils::GetRange(prefix, deletions_))
     result.insert(entry);
   return result;
 }
 
 const VersionStamp& MockSettingsDocument::GetVersionStamp() const {
   return version_stamp_;
+}
+
+bool MockSettingsDocument::HasKeysOrDeletions(const Key& prefix) const {
+  return utils::HasKeys(prefix, key_value_map_) ||
+         utils::HasKeys(prefix, deletions_);
 }
 
 void MockSettingsDocument::SetEntry(const Key& key,

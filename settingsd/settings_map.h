@@ -32,11 +32,16 @@ class SettingsMap {
   // ancestor.
   virtual std::set<Key> GetKeys(const Key& prefix) const = 0;
 
-  // Inserts a settings document into the settings map.
-  virtual void InsertDocument(
+  // Inserts a settings document into the settings map. Returns true if the
+  // insertion is successful. If the document insertion fails due to a collision
+  // with a previously inserted document, returns false. In this case
+  // SettingsMap is unchanged.
+  virtual bool InsertDocument(
       std::unique_ptr<const SettingsDocument> document) = 0;
 
-  // Removes a settings document from the settings map and deletes it.
+  // Removes a settings document from the settings map and deletes it. The
+  // attempt to remove a document that not currently not contained in
+  // SettingsMap is a noop.
   virtual void RemoveDocument(const SettingsDocument* document_ptr) = 0;
 
  private:

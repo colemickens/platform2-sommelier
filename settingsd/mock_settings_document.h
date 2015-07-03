@@ -26,6 +26,7 @@ class MockSettingsDocument : public SettingsDocument {
   std::set<Key> GetKeys(const Key& prefix) const override;
   std::set<Key> GetDeletions(const Key& prefix) const override;
   const VersionStamp& GetVersionStamp() const override;
+  bool HasKeysOrDeletions(const Key& prefix) const override;
 
   void SetEntry(const Key& key, std::unique_ptr<base::Value> value);
   void SetDeletion(const Key& key);

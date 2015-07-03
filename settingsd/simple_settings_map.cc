@@ -126,8 +126,17 @@ void SimpleSettingsMap::InsertDocumentSubset(
   }
 }
 
-void SimpleSettingsMap::InsertDocument(
+bool SimpleSettingsMap::InsertDocument(
     std::unique_ptr<const SettingsDocument> document) {
+  // Check if |document| has a prefix collision with a previously inserted,
+  // concurrent document. In that case, abort.
+  for (auto& doc_ptr : documents_) {
+    std::shared_ptr<const SettingsDocument> doc = doc_ptr.lock();
+    if (doc->GetVersionStamp().IsConcurrent(document->GetVersionStamp()) &&
+        SettingsDocument::HasOverlap(*document, *doc))
+      return false;
+  }
+
   // NOTE: The vector |documents_| actually has ownership of the
   // SettingsDocuments. Here we use the shared_ptr merely as a notification
   // system to inform SimpleSettingsMap of SettingsDocuments whose reference
@@ -147,6 +156,8 @@ void SimpleSettingsMap::InsertDocument(
   // is currently providing a setting.
   if (!document_ptr.unique())
     InsertDocumentIntoSortedList(document_ptr);
+
+  return true;
 }
 
 void SimpleSettingsMap::RemoveDocument(const SettingsDocument* document_ptr) {

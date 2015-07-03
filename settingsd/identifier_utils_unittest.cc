@@ -42,4 +42,20 @@ TEST(IdentifierUtilsTest, GetChildPrefixesForRoot) {
   EXPECT_TRUE(std::equal(prefix_map.begin(), prefix_map.end(), range.begin()));
 }
 
+TEST(IdentifierUtilsTest, HasKeys) {
+  std::set<Key> container = {Key("A.B")};
+
+  EXPECT_TRUE(utils::HasKeys(Key("A"), container));
+  EXPECT_FALSE(utils::HasKeys(Key("A.A"), container));
+  EXPECT_TRUE(utils::HasKeys(Key("A.B"), container));
+  EXPECT_FALSE(utils::HasKeys(Key("A.B.C"), container));
+  EXPECT_TRUE(utils::HasKeys(Key(), container));
+}
+
+TEST(IdentifierUtilsTest, HasKeysEmptyContainer) {
+  std::set<Key> container;
+  EXPECT_FALSE(utils::HasKeys(Key(), container));
+  EXPECT_FALSE(utils::HasKeys(Key("A"), container));
+}
+
 }  // namespace settingsd

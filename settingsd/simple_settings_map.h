@@ -33,7 +33,7 @@ class SimpleSettingsMap : public SettingsMap {
   void Clear() override;
   const base::Value* GetValue(const Key& key) const override;
   std::set<Key> GetKeys(const Key& key) const override;
-  void InsertDocument(
+  bool InsertDocument(
       std::unique_ptr<const SettingsDocument> document) override;
   void RemoveDocument(const SettingsDocument* document_ptr) override;
 
