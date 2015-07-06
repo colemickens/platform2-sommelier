@@ -32,6 +32,8 @@ extern const char kStatus[];
 extern const char kType[];
 // Access - access control rules.
 extern const char kAccess[];
+// BlobFormat - the blob formats used for parsing.
+extern const char kBlobFormat[];
 
 }  // namespace sources
 }  // namespace keys

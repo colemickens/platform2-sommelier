@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/macros.h>
 
@@ -56,6 +57,7 @@ class Source {
   const std::string& name() const { return name_; }
   SettingStatus status() const { return status_; }
   const SourceDelegate* delegate() const { return delegate_.get(); }
+  const std::vector<std::string>& blob_formats() const { return blob_formats_; }
 
   // Checks whether this source has access control rules within |threshold| for
   // all keys touched by |document|. This checks that the relevant (i.e. most
@@ -96,6 +98,10 @@ class Source {
   // corresponding to the longest prefix wins. If there is no matching access
   // control rule, the default to use is kSettingStatusInvalid.
   AccessRuleMap access_;
+
+  // The set of blob formats allowed for parsing blobs belonging to this source.
+  // These formats are tried in order.
+  std::vector<std::string> blob_formats_;
 
   DISALLOW_COPY_AND_ASSIGN(Source);
 };

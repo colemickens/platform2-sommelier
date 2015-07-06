@@ -5,10 +5,11 @@
 #ifndef SETTINGSD_SETTINGS_DOCUMENT_H_
 #define SETTINGSD_SETTINGS_DOCUMENT_H_
 
-#include <base/macros.h>
-#include <base/values.h>
 #include <set>
 #include <string>
+
+#include <base/macros.h>
+#include <base/values.h>
 
 #include "settingsd/key.h"
 #include "settingsd/version_stamp.h"

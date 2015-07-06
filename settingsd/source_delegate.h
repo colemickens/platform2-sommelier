@@ -12,11 +12,13 @@
 
 #include <base/macros.h>
 
+#include "settingsd/blob_ref.h"
+
 namespace settingsd {
 
-class SettingsBlob;
+class LockedSettingsContainer;
+class LockedVersionComponent;
 class SettingsService;
-class VersionComponentBlob;
 
 // A delegate interface for implementing behavior specific to a configuration
 // source type. Subclasses implement specific logic for different approaches to
@@ -26,11 +28,12 @@ class SourceDelegate {
   virtual ~SourceDelegate() = default;
 
   // Validates a version stamp component signed by the source.
-  virtual bool ValidateVersionComponentBlob(
-      const VersionComponentBlob& blob) const = 0;
+  virtual bool ValidateVersionComponent(
+      const LockedVersionComponent& component) const = 0;
 
   // Validates a blob.
-  virtual bool ValidateSettingsBlob(const SettingsBlob& blob) const = 0;
+  virtual bool ValidateContainer(
+      const LockedSettingsContainer& container) const = 0;
 
  private:
   DISALLOW_ASSIGN(SourceDelegate);
@@ -43,15 +46,17 @@ class DummySourceDelegate : public SourceDelegate {
   virtual ~DummySourceDelegate() = default;
 
   // SourceDelegate:
-  bool ValidateVersionComponentBlob(
-      const VersionComponentBlob& blob) const override;
-  bool ValidateSettingsBlob(const SettingsBlob& blob) const override;
+  bool ValidateVersionComponent(
+      const LockedVersionComponent& component) const override;
+  bool ValidateContainer(
+      const LockedSettingsContainer& container) const override;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DummySourceDelegate);
 };
 
-// A function type to create source delegates.
+// A function type to create source delegates. Returns |nullptr| in case the
+// source configuration in |settings| are invalid.
 using SourceDelegateFactoryFunction =
     std::function<std::unique_ptr<SourceDelegate>(
         const std::string& source_id,
@@ -69,9 +74,8 @@ class SourceDelegateFactory {
 
   // Creates a delegate for the given source ID. Looks up the delegate type in
   // |settings|, finds the corresponding factory function, creates a delegate
-  // and returns it. Note that a dummy delegate that fails all validation will
-  // be returned in case the type is missing or unknown, so callers don't need
-  // to worry about handling these cases.
+  // and returns it. |nullptr| will be returned if there is no suitable factory
+  // function registered or the factory failed to create a delegate.
   std::unique_ptr<SourceDelegate> operator()(
       const std::string& source_id,
       const SettingsService& settings) const;

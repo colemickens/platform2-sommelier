@@ -11,6 +11,7 @@
 #include <string>
 
 #include "settingsd/identifier_utils.h"
+#include "settingsd/locked_settings.h"
 #include "settingsd/settings_document.h"
 #include "settingsd/settings_keys.h"
 #include "settingsd/settings_map.h"
@@ -50,10 +51,12 @@ SettingsDocumentManager::SourceMapEntry::SourceMapEntry(
 SettingsDocumentManager::SourceMapEntry::~SourceMapEntry() {}
 
 SettingsDocumentManager::SettingsDocumentManager(
+    const SettingsBlobParserFunction& settings_blob_parser_function,
     const SourceDelegateFactoryFunction& source_delegate_factory_function,
     std::unique_ptr<SettingsMap> settings_map,
-    std::unique_ptr<SettingsDocument> trusted_document)
-    : source_delegate_factory_function_(source_delegate_factory_function),
+    std::unique_ptr<const SettingsDocument> trusted_document)
+    : settings_blob_parser_function_(settings_blob_parser_function),
+      source_delegate_factory_function_(source_delegate_factory_function),
       trusted_document_(std::move(trusted_document)),
       settings_map_(std::move(settings_map)) {
   // The trusted document should have an empty version stamp.
@@ -90,9 +93,52 @@ void SettingsDocumentManager::RemoveSettingsObserver(
   observers_.RemoveObserver(observer);
 }
 
+SettingsDocumentManager::InsertionStatus SettingsDocumentManager::InsertBlob(
+    const std::string& source_id,
+    BlobRef blob) {
+  const Source* source = FindSource(source_id);
+  if (!source)
+    return kInsertionStatusUnknownSource;
+
+  // Parse the blob. Try with the formats allowed by the source. If there are no
+  // formats in source config, try the default format (identified by empty
+  // string).
+  std::unique_ptr<LockedSettingsContainer> container;
+  for (const std::string& format : source->blob_formats()) {
+    container = settings_blob_parser_function_(format, blob);
+    if (container)
+      break;
+  }
+  if (!container && source->blob_formats().empty())
+    container = settings_blob_parser_function_(std::string(), blob);
+  if (!container)
+    return kInsertionStatusParseError;
+
+  // Validate the blob, i.e. check its integrity and verify it's authentic
+  // with respect to the corresponding source configuration.
+  if (!source->delegate()->ValidateContainer(*container))
+    return kInsertionStatusValidationError;
+
+  for (auto& component : container->GetVersionComponents()) {
+    const Source* version_source = FindSource(component->GetSourceId());
+    if (!version_source ||
+        !version_source->delegate()->ValidateVersionComponent(*component)) {
+      return kInsertionStatusValidationError;
+    }
+  }
+
+  // Blob validation looks good. Unwrap the SettingsDocument and insert it.
+  std::unique_ptr<const SettingsDocument> document(
+      LockedSettingsContainer::DecodePayload(std::move(container)));
+  if (!document)
+    return kInsertionStatusBadPayload;
+
+  return InsertDocument(std::move(document), source_id);
+}
+
 SettingsDocumentManager::InsertionStatus
 SettingsDocumentManager::InsertDocument(
-    std::unique_ptr<SettingsDocument> document,
+    std::unique_ptr<const SettingsDocument> document,
     const std::string& source_id) {
   auto source_iter = sources_.find(source_id);
   CHECK(sources_.end() != source_iter);
@@ -101,7 +147,8 @@ SettingsDocumentManager::InsertDocument(
   // Find the insertion point.
   auto insertion_point = std::find_if(
       entry.documents_.begin(), entry.documents_.end(),
-      [&document, &source_id](const std::unique_ptr<SettingsDocument>& doc) {
+      [&document,
+       &source_id](const std::unique_ptr<const SettingsDocument>& doc) {
         return doc->GetVersionStamp().Get(source_id) >=
                document->GetVersionStamp().Get(source_id);
       });
@@ -209,6 +256,12 @@ bool SettingsDocumentManager::RevalidateDocument(
 
   // NB: When re-validating documents, "withdrawn" status is sufficient.
   return source->CheckAccess(doc, kSettingStatusWithdrawn);
+}
+
+const Source* SettingsDocumentManager::FindSource(
+    const std::string& source_id) const {
+  auto source_iter = sources_.find(source_id);
+  return source_iter == sources_.end() ? nullptr : &source_iter->second.source_;
 }
 
 }  // namespace settingsd

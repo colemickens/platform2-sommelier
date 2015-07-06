@@ -14,6 +14,8 @@
 #include <base/macros.h>
 #include <base/observer_list.h>
 
+#include "settingsd/blob_ref.h"
+#include "settingsd/settings_blob_parser.h"
 #include "settingsd/settings_service.h"
 #include "settingsd/source.h"
 
@@ -46,6 +48,10 @@ class SettingsDocumentManager : public SettingsService {
     kInsertionStatusVersionClash,     // Source version already used.
     kInsertionStatusCollision,        // Collision with other document.
     kInsertionStatusAccessViolation,  // Document touches off-bounds keys.
+    kInsertionStatusParseError,       // Failed to parse the blob.
+    kInsertionStatusValidationError,  // Blob failed validation.
+    kInsertionStatusBadPayload,       // Failed to decode blob payload.
+    kInsertionStatusUnknownSource,    // Blob origin unknown.
   };
 
   // Constructs a new instance. The initial trust configuration must  be passed
@@ -59,9 +65,10 @@ class SettingsDocumentManager : public SettingsService {
   // USER, NETWORK, UNTRUSTED STORAGE ETC. OR YOU WILL LOSE ALL END-TO-END
   // SETTINGS AUTHENTICATION AFFORDED BY SETTINGSD.
   SettingsDocumentManager(
+      const SettingsBlobParserFunction& settings_blob_parser_function,
       const SourceDelegateFactoryFunction& source_delegate_factory_function,
       std::unique_ptr<SettingsMap> settings_map,
-      std::unique_ptr<SettingsDocument> trusted_document);
+      std::unique_ptr<const SettingsDocument> trusted_document);
   ~SettingsDocumentManager();
 
   // SettingsService:
@@ -69,6 +76,18 @@ class SettingsDocumentManager : public SettingsService {
   const std::set<Key> GetKeys(const Key& prefix) const override;
   void AddSettingsObserver(SettingsObserver* observer) override;
   void RemoveSettingsObserver(SettingsObserver* observer) override;
+
+  // Decodes a binary settings blob and inserts the included settings document
+  // into the configuration. This runs the full set of validation against the
+  // settings blob, i.e. the blob gets validated against the source delegate
+  // (signature check etc.), it needs to have a valid non-conflicting version
+  // stamp, the source must have access to settings keys the document touches,
+  // etc.
+  //
+  // The return value indicates whether insertion was successful or hit an
+  // error. No settings changes will occur it the return value is not
+  // kInsertionStatusSuccess.
+  InsertionStatus InsertBlob(const std::string& source_id, BlobRef blob);
 
  private:
   friend class SettingsDocumentManagerTest;
@@ -85,7 +104,7 @@ class SettingsDocumentManager : public SettingsService {
 
     // All the documents owned by the source, sorted according to their
     // timestamps.
-    std::vector<std::unique_ptr<SettingsDocument>> documents_;
+    std::vector<std::unique_ptr<const SettingsDocument>> documents_;
   };
 
   // Install a new settings document. The |document| is assumed to be fully
@@ -96,8 +115,9 @@ class SettingsDocumentManager : public SettingsService {
   // The return value indicates whether the insertion succeeded or ran into an
   // error. For return values other than kInsertionStatusSuccess no settings
   // will be changed.
-  InsertionStatus InsertDocument(std::unique_ptr<SettingsDocument> document,
-                                 const std::string& source_id);
+  InsertionStatus InsertDocument(
+      std::unique_ptr<const SettingsDocument> document,
+      const std::string& source_id);
 
   // Revalidates a document, including trust configuration and signature checks.
   // Returns true if the document is still valid against current trust
@@ -118,11 +138,18 @@ class SettingsDocumentManager : public SettingsService {
   // by cascading removals.
   void UpdateTrustConfiguration(std::set<Key>* changed_keys);
 
+  // Look up the source with the provided |source_id|. Returns |nullptr| if
+  // there's no such source.
+  const Source* FindSource(const std::string& source_id) const;
+
+  // The parser used to decode binary settings blobs.
+  const SettingsBlobParserFunction settings_blob_parser_function_;
+
   // The source delegate factory.
   const SourceDelegateFactoryFunction source_delegate_factory_function_;
 
   // The trusted document that bootstraps trust configuration.
-  std::unique_ptr<SettingsDocument> trusted_document_;
+  std::unique_ptr<const SettingsDocument> trusted_document_;
 
   // A map of all sources currently present, along with their documents.
   std::unordered_map<std::string, SourceMapEntry> sources_;

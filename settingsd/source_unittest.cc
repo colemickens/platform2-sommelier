@@ -36,11 +36,12 @@ class TestSourceDelegate : public SourceDelegate {
   ~TestSourceDelegate() override = default;
 
   // SourceDelegate:
-  bool ValidateVersionComponentBlob(
-      const VersionComponentBlob& blob) const override {
+  bool ValidateVersionComponent(
+      const LockedVersionComponent& component) const override {
     return true;
   }
-  bool ValidateSettingsBlob(const SettingsBlob& blob) const override {
+  bool ValidateContainer(
+      const LockedSettingsContainer& container) const override {
     return true;
   }
 };

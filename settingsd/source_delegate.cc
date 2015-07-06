@@ -6,18 +6,20 @@
 
 #include <base/values.h>
 
+#include "settingsd/locked_settings.h"
 #include "settingsd/settings_keys.h"
 #include "settingsd/settings_service.h"
 #include "settingsd/source.h"
 
 namespace settingsd {
 
-bool DummySourceDelegate::ValidateVersionComponentBlob(
-    const VersionComponentBlob& blob) const {
+bool DummySourceDelegate::ValidateVersionComponent(
+    const LockedVersionComponent& component) const {
   return false;
 }
 
-bool DummySourceDelegate::ValidateSettingsBlob(const SettingsBlob& blob) const {
+bool DummySourceDelegate::ValidateContainer(
+    const LockedSettingsContainer& container) const {
   return false;
 }
 

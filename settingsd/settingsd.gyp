@@ -3,6 +3,8 @@
     'variables': {
       'deps': [
         'libchrome-<(libbase_ver)',
+        'openssl',
+        'protobuf-lite',
       ],
     },
     'include_dirs': ['.'],
@@ -12,6 +14,7 @@
       'target_name': 'settingsd_common',
       'type': 'static_library',
       'sources': [
+        'blob_ref.h',
         'blob_store.cc',
         'blob_store.h',
         'file_utils.h',
@@ -19,6 +22,10 @@
         'identifier_utils.h',
         'key.cc',
         'key.h',
+        'locked_settings.cc',
+        'locked_settings.h',
+        'settings_blob_parser.cc',
+        'settings_blob_parser.h',
         'settings_document.cc',
         'settings_document.h',
         'settings_document_manager.cc',
@@ -47,6 +54,8 @@
         'blob_store_unittest.cc',
         'identifier_utils_unittest.cc',
         'key_unittest.cc',
+        'mock_locked_settings.cc',
+        'mock_locked_settings.h',
         'mock_settings_document.cc',
         'mock_settings_document.h',
         'mock_settings_service.cc',

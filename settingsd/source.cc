@@ -105,8 +105,10 @@ bool Source::Update(
     has_config |= value->GetAsString(&status_string);
   status_ = SettingStatusFromString(status_string);
 
-  // TODO(mnissler): Update has_config for the delegate.
   delegate_ = delegate_factory_function(id_, settings);
+  has_config |= !!delegate_;
+  if (!delegate_)
+    delegate_.reset(new DummySourceDelegate());
 
   access_.clear();
   const Key access_key_prefix(
@@ -123,6 +125,20 @@ bool Source::Update(
       access_[suffix] = SettingStatusFromString(status_string);
     else
       NOTREACHED() << "Invalid access key " << access_key.ToString();
+  }
+
+  blob_formats_.clear();
+  value = settings.GetValue(
+      MakeSourceKey(id_).Extend({keys::sources::kBlobFormat}));
+  const base::ListValue* list_value = nullptr;
+  if (value)
+    has_config |= value->GetAsList(&list_value);
+  if (list_value) {
+    for (const base::Value* entry : *list_value) {
+      std::string blob_format;
+      if (entry->GetAsString(&blob_format))
+        blob_formats_.push_back(blob_format);
+    }
   }
 
   return has_config;
