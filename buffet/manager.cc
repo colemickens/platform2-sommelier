@@ -23,16 +23,16 @@
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
 
-#include "buffet/base_api_handler.h"
-#include "buffet/commands/command_instance.h"
-#include "buffet/commands/schema_constants.h"
-#include "buffet/privet/constants.h"
-#include "buffet/privet/security_manager.h"
-#include "buffet/privet/shill_client.h"
-#include "buffet/privet/wifi_bootstrap_manager.h"
-#include "buffet/states/state_change_queue.h"
-#include "buffet/states/state_manager.h"
-#include "buffet/storage_impls.h"
+#include "libweave/src/base_api_handler.h"
+#include "libweave/src/commands/command_instance.h"
+#include "libweave/src/commands/schema_constants.h"
+#include "libweave/src/privet/constants.h"
+#include "libweave/src/privet/security_manager.h"
+#include "libweave/src/privet/shill_client.h"
+#include "libweave/src/privet/wifi_bootstrap_manager.h"
+#include "libweave/src/states/state_change_queue.h"
+#include "libweave/src/states/state_manager.h"
+#include "libweave/src/storage_impls.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;

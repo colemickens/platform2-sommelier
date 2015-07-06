@@ -19,11 +19,11 @@
 #include <chromeos/dbus/exported_property_set.h>
 #include <chromeos/errors/error.h>
 
-#include "buffet/commands/command_manager.h"
-#include "buffet/device_registration_info.h"
 #include "buffet/org.chromium.Buffet.Manager.h"
-#include "buffet/privet/privet_manager.h"
-#include "buffet/privet/wifi_bootstrap_manager.h"
+#include "libweave/src/commands/command_manager.h"
+#include "libweave/src/device_registration_info.h"
+#include "libweave/src/privet/privet_manager.h"
+#include "libweave/src/privet/wifi_bootstrap_manager.h"
 
 namespace chromeos {
 namespace dbus_utils {
