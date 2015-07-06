@@ -246,7 +246,6 @@ void AddUiFlags(ChromiumCommandBuilder* builder) {
 
 // Adds enterprise-related flags to the command line.
 void AddEnterpriseFlags(ChromiumCommandBuilder* builder) {
-  builder->AddArg("--enterprise-enable-forced-re-enrollment");
   builder->AddArg("--enterprise-enrollment-initial-modulus=14");
   builder->AddArg("--enterprise-enrollment-modulus-limit=18");
 }
