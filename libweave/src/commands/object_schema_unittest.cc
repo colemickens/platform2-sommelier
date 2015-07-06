@@ -73,11 +73,10 @@ TEST(CommandSchema, IntPropType_ToJson) {
   IntPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_JSON_EQ("{}", *param2.ToJson(false, nullptr));
-  param2.FromJson(CreateDictionaryValue("{'minimum':3}").get(),
-                  &prop, nullptr);
+  param2.FromJson(CreateDictionaryValue("{'minimum':3}").get(), &prop, nullptr);
   EXPECT_JSON_EQ("{'minimum':3}", *param2.ToJson(false, nullptr));
-  param2.FromJson(CreateDictionaryValue("{'maximum':-7}").get(),
-                  &prop, nullptr);
+  param2.FromJson(CreateDictionaryValue("{'maximum':-7}").get(), &prop,
+                  nullptr);
   EXPECT_JSON_EQ("{'maximum':-7}", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'minimum':0,'maximum':5}").get(),
                   &prop, nullptr);
@@ -85,8 +84,8 @@ TEST(CommandSchema, IntPropType_ToJson) {
   param2.FromJson(CreateDictionaryValue("{'enum':[1,2,3]}").get(), &prop,
                   nullptr);
   EXPECT_JSON_EQ("[1,2,3]", *param2.ToJson(false, nullptr));
-  param2.FromJson(CreateDictionaryValue("{'default':123}").get(),
-                  &prop, nullptr);
+  param2.FromJson(CreateDictionaryValue("{'default':123}").get(), &prop,
+                  nullptr);
   EXPECT_JSON_EQ("{'default':123}", *param2.ToJson(false, nullptr));
 }
 
@@ -100,14 +99,13 @@ TEST(CommandSchema, IntPropType_FromJson) {
   EXPECT_EQ(2, prop.GetMinValue());
   EXPECT_EQ(8, prop.GetMaxValue());
   prop.AddMinMaxConstraint(-2, 30);
-  param2.FromJson(CreateDictionaryValue("{'minimum':7}").get(),
-                  &prop, nullptr);
+  param2.FromJson(CreateDictionaryValue("{'minimum':7}").get(), &prop, nullptr);
   EXPECT_TRUE(param2.HasOverriddenAttributes());
   EXPECT_TRUE(param2.IsBasedOnSchema());
   EXPECT_EQ(7, param2.GetMinValue());
   EXPECT_EQ(30, param2.GetMaxValue());
-  param2.FromJson(CreateDictionaryValue("{'maximum':17}").get(),
-                  &prop, nullptr);
+  param2.FromJson(CreateDictionaryValue("{'maximum':17}").get(), &prop,
+                  nullptr);
   EXPECT_TRUE(param2.HasOverriddenAttributes());
   EXPECT_TRUE(param2.IsBasedOnSchema());
   EXPECT_EQ(-2, param2.GetMinValue());
@@ -198,15 +196,14 @@ TEST(CommandSchema, BoolPropType_ToJson) {
   EXPECT_JSON_EQ("[true,false]", *param2.ToJson(false, nullptr));
   EXPECT_JSON_EQ("{'enum':[true,false],'type':'boolean'}",
                  *param2.ToJson(true, nullptr));
-  param2.FromJson(CreateDictionaryValue("{'default':true}").get(),
-                  &prop, nullptr);
+  param2.FromJson(CreateDictionaryValue("{'default':true}").get(), &prop,
+                  nullptr);
   EXPECT_JSON_EQ("{'default':true}", *param2.ToJson(false, nullptr));
 }
 
 TEST(CommandSchema, BoolPropType_FromJson) {
   BooleanPropType prop;
-  prop.FromJson(CreateDictionaryValue("{'enum':[true]}").get(), &prop,
-                nullptr);
+  prop.FromJson(CreateDictionaryValue("{'enum':[true]}").get(), &prop, nullptr);
   BooleanPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_FALSE(param2.HasOverriddenAttributes());
@@ -224,8 +221,7 @@ TEST(CommandSchema, BoolPropType_FromJson) {
 
 TEST(CommandSchema, BoolPropType_Validate) {
   BooleanPropType prop;
-  prop.FromJson(CreateDictionaryValue("{'enum':[true]}").get(), &prop,
-                nullptr);
+  prop.FromJson(CreateDictionaryValue("{'enum':[true]}").get(), &prop, nullptr);
   chromeos::ErrorPtr error;
   EXPECT_FALSE(prop.ValidateValue(CreateValue("false").get(), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
@@ -284,8 +280,7 @@ TEST(CommandSchema, DoublePropType_ToJson) {
   DoublePropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_JSON_EQ("{}", *param2.ToJson(false, nullptr));
-  param2.FromJson(CreateDictionaryValue("{'minimum':3}").get(), &prop,
-                  nullptr);
+  param2.FromJson(CreateDictionaryValue("{'minimum':3}").get(), &prop, nullptr);
   EXPECT_JSON_EQ("{'minimum':3.0}", *param2.ToJson(false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'maximum':-7}").get(), &prop,
                   nullptr);
@@ -294,8 +289,8 @@ TEST(CommandSchema, DoublePropType_ToJson) {
                   &prop, nullptr);
   EXPECT_JSON_EQ("{'maximum':5.0,'minimum':0.0}",
                  *param2.ToJson(false, nullptr));
-  param2.FromJson(CreateDictionaryValue("{'default':12.3}").get(),
-                  &prop, nullptr);
+  param2.FromJson(CreateDictionaryValue("{'default':12.3}").get(), &prop,
+                  nullptr);
   EXPECT_JSON_EQ("{'default':12.3}", *param2.ToJson(false, nullptr));
 }
 
@@ -309,8 +304,7 @@ TEST(CommandSchema, DoublePropType_FromJson) {
   EXPECT_DOUBLE_EQ(2.5, prop.GetMinValue());
   EXPECT_DOUBLE_EQ(8.7, prop.GetMaxValue());
   prop.AddMinMaxConstraint(-2.2, 30.4);
-  param2.FromJson(CreateDictionaryValue("{'minimum':7}").get(), &prop,
-                  nullptr);
+  param2.FromJson(CreateDictionaryValue("{'minimum':7}").get(), &prop, nullptr);
   EXPECT_TRUE(param2.HasOverriddenAttributes());
   EXPECT_TRUE(param2.IsBasedOnSchema());
   EXPECT_DOUBLE_EQ(7.0, param2.GetMinValue());
@@ -413,8 +407,8 @@ TEST(CommandSchema, StringPropType_ToJson) {
                   &prop, nullptr);
   EXPECT_JSON_EQ("{'maxLength':5,'minLength':0}",
                  *param2.ToJson(false, nullptr));
-  param2.FromJson(CreateDictionaryValue("{'default':'abcd'}").get(),
-                  &prop, nullptr);
+  param2.FromJson(CreateDictionaryValue("{'default':'abcd'}").get(), &prop,
+                  nullptr);
   EXPECT_JSON_EQ("{'default':'abcd'}", *param2.ToJson(false, nullptr));
 }
 
@@ -440,8 +434,8 @@ TEST(CommandSchema, StringPropType_FromJson) {
   EXPECT_TRUE(param2.IsBasedOnSchema());
   EXPECT_EQ(3, param2.GetMinLength());
   EXPECT_EQ(8, param2.GetMaxLength());
-  param2.FromJson(CreateDictionaryValue(
-      "{'minLength':1,'maxLength':7}").get(), &prop, nullptr);
+  param2.FromJson(CreateDictionaryValue("{'minLength':1,'maxLength':7}").get(),
+                  &prop, nullptr);
   EXPECT_TRUE(param2.HasOverriddenAttributes());
   EXPECT_TRUE(param2.IsBasedOnSchema());
   EXPECT_EQ(1, param2.GetMinLength());
@@ -567,9 +561,11 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
   EXPECT_JSON_EQ(expected, *prop2.ToJson(true, nullptr));
 
   ObjectPropType prop3;
-  ASSERT_TRUE(prop3.FromJson(CreateDictionaryValue(
-      "{'default':{'expires':3,'password':'abracadabra'}}").get(), &prop2,
-      nullptr));
+  ASSERT_TRUE(
+      prop3.FromJson(CreateDictionaryValue(
+                         "{'default':{'expires':3,'password':'abracadabra'}}")
+                         .get(),
+                     &prop2, nullptr));
   expected = R"({
     'default': {
       'expires': 3,
@@ -599,10 +595,12 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
   EXPECT_JSON_EQ(expected, *prop3.ToJson(true, nullptr));
 
   ObjectPropType prop4;
-  ASSERT_TRUE(prop4.FromJson(CreateDictionaryValue(
-      "{'additionalProperties':true,"
-      "'default':{'expires':3,'password':'abracadabra'}}").get(), &prop2,
-      nullptr));
+  ASSERT_TRUE(
+      prop4.FromJson(CreateDictionaryValue(
+                         "{'additionalProperties':true,"
+                         "'default':{'expires':3,'password':'abracadabra'}}")
+                         .get(),
+                     &prop2, nullptr));
   expected = R"({
     'additionalProperties': true,
     'default': {
@@ -642,9 +640,10 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
 
 TEST(CommandSchema, ObjectPropType_FromJson) {
   ObjectPropType base_prop;
-  EXPECT_TRUE(base_prop.FromJson(CreateDictionaryValue(
-      "{'properties':{'name':'string','age':'integer'}}").get(), nullptr,
-      nullptr));
+  EXPECT_TRUE(base_prop.FromJson(
+      CreateDictionaryValue("{'properties':{'name':'string','age':'integer'}}")
+          .get(),
+      nullptr, nullptr));
   auto schema = base_prop.GetObject()->GetObjectSchemaPtr();
   const PropType* prop = schema->GetProp("name");
   EXPECT_EQ(ValueType::String, prop->GetType());
@@ -652,9 +651,12 @@ TEST(CommandSchema, ObjectPropType_FromJson) {
   EXPECT_EQ(ValueType::Int, prop->GetType());
 
   ObjectPropType prop2;
-  ASSERT_TRUE(prop2.FromJson(CreateDictionaryValue(
-      "{'properties':{'name':'string','age':'integer'},"
-      "'default':{'name':'Bob','age':33}}").get(), nullptr, nullptr));
+  ASSERT_TRUE(
+      prop2.FromJson(CreateDictionaryValue(
+                         "{'properties':{'name':'string','age':'integer'},"
+                         "'default':{'name':'Bob','age':33}}")
+                         .get(),
+                     nullptr, nullptr));
   ASSERT_NE(nullptr, prop2.GetDefaultValue());
   const ObjectValue* defval = prop2.GetDefaultValue()->GetObject();
   ASSERT_NE(nullptr, defval);
@@ -666,26 +668,26 @@ TEST(CommandSchema, ObjectPropType_FromJson) {
 TEST(CommandSchema, ObjectPropType_Validate) {
   ObjectPropType prop;
   prop.FromJson(CreateDictionaryValue(
-      "{'properties':{'expires':'integer',"
-      "'password':{'maxLength':100,'minLength':6}}}").get(), nullptr,
-      nullptr);
+                    "{'properties':{'expires':'integer',"
+                    "'password':{'maxLength':100,'minLength':6}}}")
+                    .get(),
+                nullptr, nullptr);
   chromeos::ErrorPtr error;
-  EXPECT_TRUE(prop.ValidateValue(CreateValue(
-      "{'expires':10,'password':'abcdef'}").get(), &error));
+  EXPECT_TRUE(prop.ValidateValue(
+      CreateValue("{'expires':10,'password':'abcdef'}").get(), &error));
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(CreateValue(
-      "{'expires':10}").get(), &error));
+  EXPECT_FALSE(prop.ValidateValue(CreateValue("{'expires':10}").get(), &error));
   EXPECT_EQ("parameter_missing", error->GetCode());
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(CreateValue(
-      "{'password':'abcdef'}").get(), &error));
+  EXPECT_FALSE(
+      prop.ValidateValue(CreateValue("{'password':'abcdef'}").get(), &error));
   EXPECT_EQ("parameter_missing", error->GetCode());
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(CreateValue(
-      "{'expires':10,'password':'abcde'}").get(), &error));
+  EXPECT_FALSE(prop.ValidateValue(
+      CreateValue("{'expires':10,'password':'abcde'}").get(), &error));
   EXPECT_EQ("out_of_range", error->GetFirstError()->GetCode());
   error.reset();
 
@@ -693,29 +695,32 @@ TEST(CommandSchema, ObjectPropType_Validate) {
   EXPECT_EQ("type_mismatch", error->GetCode());
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(CreateValue(
-      "{'expires':10,'password':'abcdef','retry':true}").get(), &error));
+  EXPECT_FALSE(prop.ValidateValue(
+      CreateValue("{'expires':10,'password':'abcdef','retry':true}").get(),
+      &error));
   EXPECT_EQ("unexpected_parameter", error->GetCode());
   error.reset();
 }
 
 TEST(CommandSchema, ObjectPropType_Validate_Enum) {
   ObjectPropType prop;
-  EXPECT_TRUE(prop.FromJson(CreateDictionaryValue(
-      "{'properties':{'width':'integer','height':'integer'},"
-      "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}").get(),
+  EXPECT_TRUE(prop.FromJson(
+      CreateDictionaryValue(
+          "{'properties':{'width':'integer','height':'integer'},"
+          "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}")
+          .get(),
       nullptr, nullptr));
   chromeos::ErrorPtr error;
-  EXPECT_TRUE(prop.ValidateValue(CreateValue(
-      "{'height':20,'width':10}").get(), &error));
+  EXPECT_TRUE(prop.ValidateValue(CreateValue("{'height':20,'width':10}").get(),
+                                 &error));
   error.reset();
 
-  EXPECT_TRUE(prop.ValidateValue(CreateValue(
-      "{'height':200,'width':100}").get(), &error));
+  EXPECT_TRUE(prop.ValidateValue(
+      CreateValue("{'height':200,'width':100}").get(), &error));
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(CreateValue(
-      "{'height':12,'width':10}").get(), &error));
+  EXPECT_FALSE(prop.ValidateValue(CreateValue("{'height':12,'width':10}").get(),
+                                  &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
 }
@@ -723,9 +728,11 @@ TEST(CommandSchema, ObjectPropType_Validate_Enum) {
 TEST(CommandSchema, ObjectPropType_CreateValue) {
   ObjectPropType prop;
   IntPropType int_type;
-  ASSERT_TRUE(prop.FromJson(CreateDictionaryValue(
-      "{'properties':{'width':'integer','height':'integer'},"
-      "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}").get(),
+  ASSERT_TRUE(prop.FromJson(
+      CreateDictionaryValue(
+          "{'properties':{'width':'integer','height':'integer'},"
+          "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}")
+          .get(),
       nullptr, nullptr));
   native_types::Object obj{
       {"width", int_type.CreateValue(10, nullptr)},
@@ -779,8 +786,8 @@ TEST(CommandSchema, ArrayPropType_ToJson) {
   prop2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
   EXPECT_JSON_EQ("{}", *prop2.ToJson(false, nullptr));
   EXPECT_TRUE(prop2.IsBasedOnSchema());
-  prop2.FromJson(CreateDictionaryValue("{'default':[1,2,3]}").get(),
-                 &prop, nullptr);
+  prop2.FromJson(CreateDictionaryValue("{'default':[1,2,3]}").get(), &prop,
+                 nullptr);
   EXPECT_JSON_EQ("{'default':[1,2,3]}", *prop2.ToJson(false, nullptr));
   EXPECT_JSON_EQ(
       "{'default':[1,2,3],'items':{'type':'integer'},'type':'array'}",
@@ -789,14 +796,16 @@ TEST(CommandSchema, ArrayPropType_ToJson) {
 
 TEST(CommandSchema, ArrayPropType_FromJson) {
   ArrayPropType prop;
-  EXPECT_TRUE(prop.FromJson(
-      CreateDictionaryValue("{'items':'integer'}").get(), nullptr, nullptr));
+  EXPECT_TRUE(prop.FromJson(CreateDictionaryValue("{'items':'integer'}").get(),
+                            nullptr, nullptr));
   EXPECT_EQ(ValueType::Int, prop.GetItemTypePtr()->GetType());
 
   ArrayPropType prop2;
-  ASSERT_TRUE(prop2.FromJson(CreateDictionaryValue(
-    "{'items':'string','default':['foo', 'bar', 'baz']}").get(), nullptr,
-      nullptr));
+  ASSERT_TRUE(
+      prop2.FromJson(CreateDictionaryValue(
+                         "{'items':'string','default':['foo', 'bar', 'baz']}")
+                         .get(),
+                     nullptr, nullptr));
   ASSERT_NE(nullptr, prop2.GetDefaultValue());
   const ArrayValue* defval = prop2.GetDefaultValue()->GetArray();
   ASSERT_NE(nullptr, defval);
@@ -806,9 +815,9 @@ TEST(CommandSchema, ArrayPropType_FromJson) {
 
 TEST(CommandSchema, ArrayPropType_Validate) {
   ArrayPropType prop;
-  prop.FromJson(CreateDictionaryValue(
-      "{'items':{'minimum':2.3, 'maximum':10.5}}").get(), nullptr,
-      nullptr);
+  prop.FromJson(
+      CreateDictionaryValue("{'items':{'minimum':2.3, 'maximum':10.5}}").get(),
+      nullptr, nullptr);
 
   chromeos::ErrorPtr error;
   EXPECT_TRUE(prop.ValidateValue(CreateValue("[3,4,10.5]").get(), &error));
@@ -829,9 +838,10 @@ TEST(CommandSchema, ArrayPropType_Validate) {
 
 TEST(CommandSchema, ArrayPropType_Validate_Enum) {
   ArrayPropType prop;
-  prop.FromJson(CreateDictionaryValue(
-      "{'items':'integer', 'enum':[[1], [2,3], [4,5,6]]}").get(), nullptr,
-      nullptr);
+  prop.FromJson(
+      CreateDictionaryValue("{'items':'integer', 'enum':[[1], [2,3], [4,5,6]]}")
+          .get(),
+      nullptr, nullptr);
 
   chromeos::ErrorPtr error;
   EXPECT_TRUE(prop.ValidateValue(CreateValue("[2,3]").get(), &error));
@@ -850,8 +860,10 @@ TEST(CommandSchema, ArrayPropType_Validate_Enum) {
 
 TEST(CommandSchema, ArrayPropType_CreateValue) {
   ArrayPropType prop;
-  ASSERT_TRUE(prop.FromJson(CreateDictionaryValue(
-      "{'items':{'properties':{'width':'integer','height':'integer'}}}").get(),
+  ASSERT_TRUE(prop.FromJson(
+      CreateDictionaryValue(
+          "{'items':{'properties':{'width':'integer','height':'integer'}}}")
+          .get(),
       nullptr, nullptr));
 
   chromeos::ErrorPtr error;
@@ -865,8 +877,10 @@ TEST(CommandSchema, ArrayPropType_CreateValue) {
 
   IntPropType int_type;
   ObjectPropType obj_type;
-  ASSERT_TRUE(obj_type.FromJson(CreateDictionaryValue(
-      "{'properties':{'width':'integer','height':'integer'}}").get(),
+  ASSERT_TRUE(obj_type.FromJson(
+      CreateDictionaryValue(
+          "{'properties':{'width':'integer','height':'integer'}}")
+          .get(),
       nullptr, nullptr));
   arr.push_back(obj_type.CreateValue(
       native_types::Object{
@@ -897,8 +911,9 @@ TEST(CommandSchema, ArrayPropType_CreateValue) {
 TEST(CommandSchema, ArrayPropType_NestedArrays_NotSupported) {
   ArrayPropType prop;
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(prop.FromJson(CreateDictionaryValue(
-      "{'items':{'items':'integer'}}").get(), nullptr, &error));
+  EXPECT_FALSE(prop.FromJson(
+      CreateDictionaryValue("{'items':{'items':'integer'}}").get(), nullptr,
+      &error));
   EXPECT_EQ(errors::commands::kInvalidObjectSchema, error->GetCode());
   error.reset();
 }
@@ -907,7 +922,8 @@ TEST(CommandSchema, ArrayPropType_NestedArrays_NotSupported) {
 
 TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeName) {
   ObjectSchema schema;
-  const char* schema_str = "{"
+  const char* schema_str =
+      "{"
       "'param1':'integer',"
       "'param2':'number',"
       "'param3':'string'"
@@ -936,7 +952,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeName) {
 
 TEST(CommandSchema, ObjectSchema_FromJson_Full_TypeName) {
   ObjectSchema schema;
-  const char* schema_str = "{"
+  const char* schema_str =
+      "{"
       "'param1':{'type':'integer'},"
       "'param2':{'type':'number'},"
       "'param3':{'type':'string'},"
@@ -971,7 +988,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_Full_TypeName) {
 
 TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeDeduction_Scalar) {
   ObjectSchema schema;
-  const char* schema_str = "{"
+  const char* schema_str =
+      "{"
       "'param1' :{'minimum':2},"
       "'param2' :{'maximum':10},"
       "'param3' :{'maximum':8, 'minimum':2},"
@@ -1011,12 +1029,10 @@ TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeDeduction_Scalar) {
   EXPECT_EQ("string", schema.GetProp("param16")->GetTypeAsString());
   EXPECT_EQ("array", schema.GetProp("param17")->GetTypeAsString());
   auto prop17 = schema.GetProp("param17");
-  EXPECT_EQ("integer",
-            prop17->GetArray()->GetItemTypePtr()->GetTypeAsString());
+  EXPECT_EQ("integer", prop17->GetArray()->GetItemTypePtr()->GetTypeAsString());
   EXPECT_EQ("array", schema.GetProp("param18")->GetTypeAsString());
   auto prop18 = schema.GetProp("param18");
-  EXPECT_EQ("number",
-            prop18->GetArray()->GetItemTypePtr()->GetTypeAsString());
+  EXPECT_EQ("number", prop18->GetArray()->GetItemTypePtr()->GetTypeAsString());
 
   int min_int = (std::numeric_limits<int>::min)();
   int max_int = (std::numeric_limits<int>::max)();
@@ -1065,7 +1081,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeDeduction_Scalar) {
 
 TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeDeduction_Array) {
   ObjectSchema schema;
-  const char* schema_str = "{"
+  const char* schema_str =
+      "{"
       "'param1' :[0,1,2,3],"
       "'param2' :[0.0,1.1,2.2],"
       "'param3' :['id1', 'id2'],"
@@ -1079,7 +1096,7 @@ TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeDeduction_Array) {
       "'param11':[[0,1],[2,3]],"
       "'param12':[['foo','bar']],"
       "'param13':{'enum':[['id0', 'id1']]}"
-     "}";
+      "}";
   EXPECT_TRUE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
                               nullptr));
   EXPECT_EQ("integer", schema.GetProp("param1")->GetTypeAsString());
@@ -1130,7 +1147,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_Shorthand_TypeDeduction_Array) {
 }
 
 TEST(CommandSchema, ObjectSchema_FromJson_Inheritance) {
-  const char* base_schema_str = "{"
+  const char* base_schema_str =
+      "{"
       "'param0' :{'minimum':1, 'maximum':5},"
       "'param1' :{'minimum':1, 'maximum':5},"
       "'param2' :{'minimum':1, 'maximum':5},"
@@ -1158,7 +1176,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_Inheritance) {
   ObjectSchema base_schema;
   EXPECT_TRUE(base_schema.FromJson(CreateDictionaryValue(base_schema_str).get(),
                                    nullptr, nullptr));
-  const char* schema_str = "{"
+  const char* schema_str =
+      "{"
       "'param1' :{},"
       "'param2' :{'minimum':2},"
       "'param3' :{'maximum':9},"
@@ -1254,17 +1273,18 @@ TEST(CommandSchema, ObjectSchema_FromJson_Inheritance) {
 
 TEST(CommandSchema, ObjectSchema_UseDefaults) {
   ObjectPropType prop;
-  const char* schema_str = "{'properties':{"
+  const char* schema_str =
+      "{'properties':{"
       "'param1':{'default':true},"
       "'param2':{'default':2},"
       "'param3':{'default':3.3},"
       "'param4':{'default':'four'},"
       "'param5':{'default':{'x':5,'y':6},"
-                "'properties':{'x':'integer','y':'integer'}},"
+      "'properties':{'x':'integer','y':'integer'}},"
       "'param6':{'default':[1,2,3]}"
       "}}";
-  ASSERT_TRUE(prop.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
-                            nullptr));
+  ASSERT_TRUE(
+      prop.FromJson(CreateDictionaryValue(schema_str).get(), nullptr, nullptr));
 
   // Omit all.
   auto value = prop.CreateValue();
@@ -1282,7 +1302,8 @@ TEST(CommandSchema, ObjectSchema_UseDefaults) {
 
   // Specify some.
   value = prop.CreateValue();
-  const char* val_json = "{"
+  const char* val_json =
+      "{"
       "'param1':false,"
       "'param3':33.3,"
       "'param5':{'x':-5,'y':-6}"
@@ -1301,7 +1322,8 @@ TEST(CommandSchema, ObjectSchema_UseDefaults) {
 
   // Specify all.
   value = prop.CreateValue();
-  val_json = "{"
+  val_json =
+      "{"
       "'param1':false,"
       "'param2':22,"
       "'param3':333.3,"
@@ -1325,7 +1347,8 @@ TEST(CommandSchema, ObjectSchema_UseDefaults) {
 TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   ObjectSchema schema;
   chromeos::ErrorPtr error;
-  const char* schema_str = "{"
+  const char* schema_str =
+      "{"
       "'param1':{}"
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
@@ -1333,7 +1356,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("no_type_info", error->GetFirstError()->GetCode());
   error.reset();
 
-  schema_str = "{"
+  schema_str =
+      "{"
       "'param1':{'type':'foo'}"
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
@@ -1341,7 +1365,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("unknown_type", error->GetFirstError()->GetCode());
   error.reset();
 
-  schema_str = "{"
+  schema_str =
+      "{"
       "'param1':[]"
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
@@ -1349,7 +1374,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("no_type_info", error->GetFirstError()->GetCode());
   error.reset();
 
-  schema_str = "{"
+  schema_str =
+      "{"
       "'param1':{'minimum':'foo'}"
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
@@ -1357,7 +1383,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("type_mismatch", error->GetFirstError()->GetCode());
   error.reset();
 
-  schema_str = "{"
+  schema_str =
+      "{"
       "'param1':[1,2.2]"
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
@@ -1365,7 +1392,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("type_mismatch", error->GetFirstError()->GetCode());
   error.reset();
 
-  schema_str = "{"
+  schema_str =
+      "{"
       "'param1':{'minimum':1, 'enum':[1,2,3]}"  // can't have min/max & enum.
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
@@ -1373,7 +1401,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("unexpected_parameter", error->GetFirstError()->GetCode());
   error.reset();
 
-  schema_str = "{"
+  schema_str =
+      "{"
       "'param1':{'maximum':1, 'blah':2}"  // 'blah' is unexpected.
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
@@ -1381,7 +1410,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("unexpected_parameter", error->GetFirstError()->GetCode());
   error.reset();
 
-  schema_str = "{"
+  schema_str =
+      "{"
       "'param1':{'enum':[1,2,3],'default':5}"  // 'default' must be 1, 2, or 3.
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
@@ -1389,7 +1419,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("out_of_range", error->GetFirstError()->GetCode());
   error.reset();
 
-  schema_str = "{"
+  schema_str =
+      "{"
       "'param1':[[1,2.3]]"
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
@@ -1397,7 +1428,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("type_mismatch", error->GetFirstError()->GetCode());
   error.reset();
 
-  schema_str = "{"
+  schema_str =
+      "{"
       "'param1':[[1,2],[3,4],['blah']]"
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
@@ -1405,7 +1437,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("type_mismatch", error->GetFirstError()->GetCode());
   error.reset();
 
-  schema_str = "{"
+  schema_str =
+      "{"
       "'param1':{'default':[]}"
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
@@ -1413,7 +1446,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("no_type_info", error->GetFirstError()->GetCode());
   error.reset();
 
-  schema_str = "{"
+  schema_str =
+      "{"
       "'param1':[[[1]],[[2]]]"
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
@@ -1421,7 +1455,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("no_type_info", error->GetFirstError()->GetCode());
   error.reset();
 
-  schema_str = "{"
+  schema_str =
+      "{"
       "'param1':{'enum':[[['foo']]]}"
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
@@ -1429,7 +1464,8 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
   EXPECT_EQ("no_type_info", error->GetFirstError()->GetCode());
   error.reset();
 
-  schema_str = "{"
+  schema_str =
+      "{"
       "'param1':{'default':[[1],[2]]}"
       "}";
   EXPECT_FALSE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,

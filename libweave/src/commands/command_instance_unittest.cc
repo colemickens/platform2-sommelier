@@ -72,8 +72,7 @@ TEST_F(CommandInstanceTest, Test) {
   StringPropType str_prop;
   IntPropType int_prop;
   native_types::Object params;
-  params["phrase"] = str_prop.CreateValue(std::string("iPityDaFool"),
-                                          nullptr);
+  params["phrase"] = str_prop.CreateValue(std::string("iPityDaFool"), nullptr);
   params["volume"] = int_prop.CreateValue(5, nullptr);
   CommandInstance instance{
       "robot.speak", "cloud", dict_.FindCommand("robot.speak"), params};
@@ -200,8 +199,7 @@ TEST_F(CommandInstanceTest, FromJson_ParamError) {
             first->GetMessage());
   auto inner = error->GetInnerError();
   EXPECT_EQ("invalid_parameter_value", inner->GetCode());
-  EXPECT_EQ("Invalid value for property 'volume'",
-            inner->GetMessage());
+  EXPECT_EQ("Invalid value for property 'volume'", inner->GetMessage());
   EXPECT_EQ("command_failed", error->GetCode());
   EXPECT_EQ("Failed to validate command 'robot.speak'", error->GetMessage());
 }

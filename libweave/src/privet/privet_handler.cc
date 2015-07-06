@@ -597,9 +597,10 @@ void PrivetHandler::HandleInfo(const base::DictionaryValue&,
              CreateManifestSection(model_id, *cloud_).release());
   output.Set(kInfoServicesKey, ToValue(cloud_->GetServices()).release());
 
-  output.Set(kInfoAuthenticationKey,
-             CreateInfoAuthSection(
-                 *security_, GetAnonymousMaxScope(*cloud_, wifi_)).release());
+  output.Set(
+      kInfoAuthenticationKey,
+      CreateInfoAuthSection(*security_, GetAnonymousMaxScope(*cloud_, wifi_))
+          .release());
 
   output.Set(kInfoEndpointsKey, CreateEndpointsSection(*device_).release());
 

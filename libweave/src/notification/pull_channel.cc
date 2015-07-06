@@ -13,8 +13,7 @@ namespace buffet {
 PullChannel::PullChannel(
     base::TimeDelta pull_interval,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner)
-    : pull_interval_{pull_interval},
-      timer_{true, true} {
+    : pull_interval_{pull_interval}, timer_{true, true} {
   timer_.SetTaskRunner(task_runner);
 }
 
@@ -22,7 +21,9 @@ std::string PullChannel::GetName() const {
   return "pull";
 }
 
-bool PullChannel::IsConnected() const { return true; }
+bool PullChannel::IsConnected() const {
+  return true;
+}
 
 void PullChannel::AddChannelParameters(base::DictionaryValue* channel_json) {
   // No extra parameters needed for "Pull" channel.
@@ -31,9 +32,9 @@ void PullChannel::AddChannelParameters(base::DictionaryValue* channel_json) {
 void PullChannel::Start(NotificationDelegate* delegate) {
   CHECK(delegate);
   delegate_ = delegate;
-  timer_.Start(FROM_HERE, pull_interval_,
-               base::Bind(&PullChannel::OnTimer,
-                          weak_ptr_factory_.GetWeakPtr()));
+  timer_.Start(
+      FROM_HERE, pull_interval_,
+      base::Bind(&PullChannel::OnTimer, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void PullChannel::Stop() {

@@ -71,7 +71,7 @@ class CommandDefinition final {
   std::string category_;  // Cmd category. Could be "powerd" for "base.reboot".
   std::unique_ptr<const ObjectSchema> parameters_;  // Command parameters def.
   std::unique_ptr<const ObjectSchema> progress_;    // Command progress def.
-  std::unique_ptr<const ObjectSchema> results_;  // Command results def.
+  std::unique_ptr<const ObjectSchema> results_;     // Command results def.
   Visibility visibility_;  // Available to all by default.
   // Minimal role required to execute command.
   UserRole minimal_role_{UserRole::kUser};

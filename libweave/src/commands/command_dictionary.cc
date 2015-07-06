@@ -56,11 +56,10 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       }
       const base::DictionaryValue* command_def_json = nullptr;
       if (!command_iter.value().GetAsDictionary(&command_def_json)) {
-        chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                     errors::commands::kDomain,
-                                     errors::commands::kTypeMismatch,
-                                     "Expecting an object for command '%s'",
-                                     command_name.c_str());
+        chromeos::Error::AddToPrintf(
+            error, FROM_HERE, errors::commands::kDomain,
+            errors::commands::kTypeMismatch,
+            "Expecting an object for command '%s'", command_name.c_str());
         return false;
       }
       // Construct the compound command name as "pkg_name.cmd_name".
@@ -101,11 +100,8 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
       }
 
       auto parameters_schema = BuildObjectSchema(
-          command_def_json,
-          commands::attributes::kCommand_Parameters,
-          base_parameters_def,
-          full_command_name,
-          error);
+          command_def_json, commands::attributes::kCommand_Parameters,
+          base_parameters_def, full_command_name, error);
       if (!parameters_schema)
         return false;
 
@@ -116,11 +112,8 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
         return false;
 
       auto results_schema = BuildObjectSchema(
-          command_def_json,
-          commands::attributes::kCommand_Results,
-          base_results_def,
-          full_command_name,
-          error);
+          command_def_json, commands::attributes::kCommand_Results,
+          base_results_def, full_command_name, error);
       if (!results_schema)
         return false;
 
@@ -202,8 +195,7 @@ std::unique_ptr<ObjectSchema> CommandDictionary::BuildObjectSchema(
   }
 
   if (!object_schema->FromJson(schema_def, base_def, error)) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                 errors::commands::kDomain,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kInvalidObjectSchema,
                                  "Invalid definition for command '%s'",
                                  command_name.c_str());

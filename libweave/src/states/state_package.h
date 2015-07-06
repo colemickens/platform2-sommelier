@@ -53,7 +53,7 @@ class StatePackage final {
   //    }
   //  }
   std::unique_ptr<base::DictionaryValue> GetValuesAsJson(
-        chromeos::ErrorPtr* error) const;
+      chromeos::ErrorPtr* error) const;
 
   // Gets the value for a specific state property. |property_name| must not
   // include the package name as part of the property name.
@@ -65,11 +65,11 @@ class StatePackage final {
                         const chromeos::Any& value,
                         chromeos::ErrorPtr* error);
 
-  std::shared_ptr<const PropValue>
-  GetProperty(const std::string& property_name) const {
+  std::shared_ptr<const PropValue> GetProperty(
+      const std::string& property_name) const {
     auto it = values_.find(property_name);
-    return it != values_.end() ?
-        it->second : std::shared_ptr<const PropValue>{};
+    return it != values_.end() ? it->second
+                               : std::shared_ptr<const PropValue>{};
   }
 
   // Returns the name of the this package.

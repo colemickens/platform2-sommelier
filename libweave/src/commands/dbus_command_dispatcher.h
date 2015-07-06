@@ -30,8 +30,9 @@ class CommandInstance;
 // command queue and D-Bus ExportedObjectManager.
 class DBusCommandDispacher final {
  public:
-  explicit DBusCommandDispacher(const base::WeakPtr<
-      chromeos::dbus_utils::ExportedObjectManager>& object_manager);
+  explicit DBusCommandDispacher(
+      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
+          object_manager);
 
   void OnCommandAdded(CommandInstance* command_instance);
 

@@ -11,8 +11,7 @@ namespace buffet {
 XmppStreamParser::XmppStreamParser(Delegate* delegate) : delegate_{delegate} {
   parser_ = XML_ParserCreate(nullptr);
   XML_SetUserData(parser_, this);
-  XML_SetElementHandler(parser_,
-                        &XmppStreamParser::HandleElementStart,
+  XML_SetElementHandler(parser_, &XmppStreamParser::HandleElementStart,
                         &XmppStreamParser::HandleElementEnd);
   XML_SetCharacterDataHandler(parser_, &XmppStreamParser::HandleCharData);
 }

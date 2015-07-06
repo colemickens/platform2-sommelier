@@ -35,10 +35,10 @@ bool CommandDefinition::Visibility::FromString(const std::string& str,
     } else if (value == commands::attributes::kCommand_Visibility_Cloud) {
       cloud = true;
     } else {
-      chromeos::Error::AddToPrintf(
-          error, FROM_HERE, errors::commands::kDomain,
-          errors::commands::kInvalidPropValue,
-          "Invalid command visibility value '%s'", value.c_str());
+      chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                                   errors::commands::kInvalidPropValue,
+                                   "Invalid command visibility value '%s'",
+                                   value.c_str());
       return false;
     }
   }

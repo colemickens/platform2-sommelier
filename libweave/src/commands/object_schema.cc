@@ -59,10 +59,9 @@ void ErrorInvalidTypeInfo(chromeos::ErrorPtr* error) {
 // Helper function for PropFromJson to handle the case of parameter being
 // defined as a JSON string like this:
 //   "prop":"..."
-std::unique_ptr<PropType> PropFromJsonString(
-    const base::Value& value,
-    const PropType* base_schema,
-    chromeos::ErrorPtr* error) {
+std::unique_ptr<PropType> PropFromJsonString(const base::Value& value,
+                                             const PropType* base_schema,
+                                             chromeos::ErrorPtr* error) {
   std::string type_name;
   CHECK(value.GetAsString(&type_name)) << "Unable to get string value";
   std::unique_ptr<PropType> prop = CreatePropType(type_name, error);
@@ -86,41 +85,41 @@ std::string DetectArrayType(const base::ListValue* list,
     const base::Value* first_element = nullptr;
     if (list->Get(0, &first_element)) {
       switch (first_element->GetType()) {
-      case base::Value::TYPE_BOOLEAN:
-        type_name = PropType::GetTypeStringFromType(ValueType::Boolean);
-        break;
-      case base::Value::TYPE_INTEGER:
-        type_name = PropType::GetTypeStringFromType(ValueType::Int);
-        break;
-      case base::Value::TYPE_DOUBLE:
-        type_name = PropType::GetTypeStringFromType(ValueType::Double);
-        break;
-      case base::Value::TYPE_STRING:
-        type_name = PropType::GetTypeStringFromType(ValueType::String);
-        break;
-      case base::Value::TYPE_DICTIONARY:
-        type_name = PropType::GetTypeStringFromType(ValueType::Object);
-        break;
-      case base::Value::TYPE_LIST: {
-        if (allow_arrays) {
-          type_name = PropType::GetTypeStringFromType(ValueType::Array);
-          const base::ListValue* first_element_list = nullptr;
-          if (first_element->GetAsList(&first_element_list)) {
-            // We do not allow arrays of arrays.
-            auto child_type = DetectArrayType(first_element_list, nullptr,
-                                              false);
-            if (child_type.empty()) {
-              type_name.clear();
-            } else {
-              type_name += '.' + child_type;
+        case base::Value::TYPE_BOOLEAN:
+          type_name = PropType::GetTypeStringFromType(ValueType::Boolean);
+          break;
+        case base::Value::TYPE_INTEGER:
+          type_name = PropType::GetTypeStringFromType(ValueType::Int);
+          break;
+        case base::Value::TYPE_DOUBLE:
+          type_name = PropType::GetTypeStringFromType(ValueType::Double);
+          break;
+        case base::Value::TYPE_STRING:
+          type_name = PropType::GetTypeStringFromType(ValueType::String);
+          break;
+        case base::Value::TYPE_DICTIONARY:
+          type_name = PropType::GetTypeStringFromType(ValueType::Object);
+          break;
+        case base::Value::TYPE_LIST: {
+          if (allow_arrays) {
+            type_name = PropType::GetTypeStringFromType(ValueType::Array);
+            const base::ListValue* first_element_list = nullptr;
+            if (first_element->GetAsList(&first_element_list)) {
+              // We do not allow arrays of arrays.
+              auto child_type =
+                  DetectArrayType(first_element_list, nullptr, false);
+              if (child_type.empty()) {
+                type_name.clear();
+              } else {
+                type_name += '.' + child_type;
+              }
             }
           }
+          break;
         }
-        break;
-      }
-      default:
-        // The rest are unsupported.
-        break;
+        default:
+          // The rest are unsupported.
+          break;
       }
     }
   }
@@ -130,10 +129,9 @@ std::string DetectArrayType(const base::ListValue* list,
 // Helper function for PropFromJson to handle the case of parameter being
 // defined as a JSON array like this:
 //   "prop":[...]
-std::unique_ptr<PropType> PropFromJsonArray(
-    const base::Value& value,
-    const PropType* base_schema,
-    chromeos::ErrorPtr* error) {
+std::unique_ptr<PropType> PropFromJsonArray(const base::Value& value,
+                                            const PropType* base_schema,
+                                            chromeos::ErrorPtr* error) {
   std::unique_ptr<PropType> prop;
   const base::ListValue* list = nullptr;
   CHECK(value.GetAsList(&list)) << "Unable to get array value";
@@ -203,8 +201,8 @@ std::string DetectObjectType(const base::DictionaryValue* dict,
 
   // If we have "enum", it's an array. Detect type from array elements.
   const base::ListValue* list = nullptr;
-  if (dict->GetListWithoutPathExpansion(
-      commands::attributes::kOneOf_Enum, &list))
+  if (dict->GetListWithoutPathExpansion(commands::attributes::kOneOf_Enum,
+                                        &list))
     return DetectArrayType(list, base_schema, true);
 
   // If we have "default", try to use it for type detection.
@@ -233,10 +231,9 @@ std::string DetectObjectType(const base::DictionaryValue* dict,
 // Helper function for PropFromJson to handle the case of parameter being
 // defined as a JSON object like this:
 //   "prop":{...}
-std::unique_ptr<PropType> PropFromJsonObject(
-    const base::Value& value,
-    const PropType* base_schema,
-    chromeos::ErrorPtr* error) {
+std::unique_ptr<PropType> PropFromJsonObject(const base::Value& value,
+                                             const PropType* base_schema,
+                                             chromeos::ErrorPtr* error) {
   std::unique_ptr<PropType> prop;
   const base::DictionaryValue* dict = nullptr;
   CHECK(value.GetAsDictionary(&dict)) << "Unable to get dictionary value";
@@ -265,8 +262,10 @@ std::unique_ptr<PropType> PropFromJsonObject(
 
 }  // anonymous namespace
 
-ObjectSchema::ObjectSchema() {}
-ObjectSchema::~ObjectSchema() {}
+ObjectSchema::ObjectSchema() {
+}
+ObjectSchema::~ObjectSchema() {
+}
 
 std::unique_ptr<ObjectSchema> ObjectSchema::Clone() const {
   std::unique_ptr<ObjectSchema> cloned{new ObjectSchema};
@@ -289,7 +288,8 @@ const PropType* ObjectSchema::GetProp(const std::string& name) const {
 }
 
 std::unique_ptr<base::DictionaryValue> ObjectSchema::ToJson(
-    bool full_schema, chromeos::ErrorPtr* error) const {
+    bool full_schema,
+    chromeos::ErrorPtr* error) const {
   std::unique_ptr<base::DictionaryValue> value(new base::DictionaryValue);
   for (const auto& pair : properties_) {
     auto PropDef = pair.second->ToJson(full_schema, error);
@@ -341,17 +341,17 @@ std::unique_ptr<PropType> ObjectSchema::PropFromJson(
     return PropFromJsonObject(value, base_schema, error);
   }
   static const std::map<base::Value::Type, const char*> type_names = {
-    {base::Value::TYPE_NULL, "Null"},
-    {base::Value::TYPE_BOOLEAN, "Boolean"},
-    {base::Value::TYPE_INTEGER, "Integer"},
-    {base::Value::TYPE_DOUBLE, "Double"},
-    {base::Value::TYPE_STRING, "String"},
-    {base::Value::TYPE_BINARY, "Binary"},
-    {base::Value::TYPE_DICTIONARY, "Object"},
-    {base::Value::TYPE_LIST, "Array"},
+      {base::Value::TYPE_NULL, "Null"},
+      {base::Value::TYPE_BOOLEAN, "Boolean"},
+      {base::Value::TYPE_INTEGER, "Integer"},
+      {base::Value::TYPE_DOUBLE, "Double"},
+      {base::Value::TYPE_STRING, "String"},
+      {base::Value::TYPE_BINARY, "Binary"},
+      {base::Value::TYPE_DICTIONARY, "Object"},
+      {base::Value::TYPE_LIST, "Array"},
   };
-  const char* type_name = chromeos::GetOrDefault(type_names, value.GetType(),
-                                                 "<unknown>");
+  const char* type_name =
+      chromeos::GetOrDefault(type_names, value.GetType(), "<unknown>");
   chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                errors::commands::kUnknownType,
                                "Unexpected JSON value type: %s", type_name);

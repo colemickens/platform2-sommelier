@@ -121,8 +121,10 @@ TEST_F(BuffetConfigTest, LoadConfig) {
             config_->backup_polling_period());
   EXPECT_FALSE(config_->wifi_auto_setup_enabled());
   std::set<privetd::PairingType> pairing_types{
-      privetd::PairingType::kPinCode, privetd::PairingType::kEmbeddedCode,
-      privetd::PairingType::kUltrasound32, privetd::PairingType::kAudible32};
+      privetd::PairingType::kPinCode,
+      privetd::PairingType::kEmbeddedCode,
+      privetd::PairingType::kUltrasound32,
+      privetd::PairingType::kAudible32};
   EXPECT_EQ(pairing_types, config_->pairing_modes());
   EXPECT_EQ("/conf_code", config_->embedded_code_path().value());
   EXPECT_EQ("conf_name", config_->name());

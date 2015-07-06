@@ -53,9 +53,7 @@ class StateManager final {
   // Returns all the categories the state properties are registered from.
   // As with GCD command handling, the category normally represent a device
   // service (daemon) that is responsible for a set of properties.
-  const std::set<std::string>& GetCategories() const {
-    return categories_;
-  }
+  const std::set<std::string>& GetCategories() const { return categories_; }
 
   // Returns the recorded state changes since last time this method has been
   // called.

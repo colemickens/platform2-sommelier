@@ -24,24 +24,24 @@ namespace {
 
 std::string BuildXmppStartStreamCommand() {
   return "<stream:stream to='clouddevices.gserviceaccount.com' "
-      "xmlns:stream='http://etherx.jabber.org/streams' "
-      "xml:lang='*' version='1.0' xmlns='jabber:client'>";
+         "xmlns:stream='http://etherx.jabber.org/streams' "
+         "xml:lang='*' version='1.0' xmlns='jabber:client'>";
 }
 
-std::string BuildXmppAuthenticateCommand(
-    const std::string& account, const std::string& token) {
+std::string BuildXmppAuthenticateCommand(const std::string& account,
+                                         const std::string& token) {
   chromeos::Blob credentials;
   credentials.push_back(0);
   credentials.insert(credentials.end(), account.begin(), account.end());
   credentials.push_back(0);
   credentials.insert(credentials.end(), token.begin(), token.end());
-  std::string msg = "<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl' "
+  std::string msg =
+      "<auth xmlns='urn:ietf:params:xml:ns:xmpp-sasl' "
       "mechanism='X-OAUTH2' auth:service='oauth2' "
       "auth:allow-non-google-login='true' "
       "auth:client-uses-full-bind-result='true' "
       "xmlns:auth='http://www.google.com/talk/protocol/auth'>" +
-      chromeos::data_encoding::Base64Encode(credentials) +
-      "</auth>";
+      chromeos::data_encoding::Base64Encode(credentials) + "</auth>";
   return msg;
 }
 
@@ -49,29 +49,29 @@ std::string BuildXmppAuthenticateCommand(
 // Note: In order to ensure a minimum of 20 seconds between server errors,
 // we have a 30s +- 10s (33%) jitter initial backoff.
 const chromeos::BackoffEntry::Policy kDefaultBackoffPolicy = {
-  // Number of initial errors (in sequence) to ignore before applying
-  // exponential back-off rules.
-  0,
+    // Number of initial errors (in sequence) to ignore before applying
+    // exponential back-off rules.
+    0,
 
-  // Initial delay for exponential back-off in ms.
-  30 * 1000,  // 30 seconds.
+    // Initial delay for exponential back-off in ms.
+    30 * 1000,  // 30 seconds.
 
-  // Factor by which the waiting time will be multiplied.
-  2,
+    // Factor by which the waiting time will be multiplied.
+    2,
 
-  // Fuzzing percentage. ex: 10% will spread requests randomly
-  // between 90%-100% of the calculated time.
-  0.33,  // 33%.
+    // Fuzzing percentage. ex: 10% will spread requests randomly
+    // between 90%-100% of the calculated time.
+    0.33,  // 33%.
 
-  // Maximum amount of time we are willing to delay our request in ms.
-  10 * 60 * 1000,  // 10 minutes.
+    // Maximum amount of time we are willing to delay our request in ms.
+    10 * 60 * 1000,  // 10 minutes.
 
-  // Time to keep an entry from being discarded even when it
-  // has no significant state, -1 to never discard.
-  -1,
+    // Time to keep an entry from being discarded even when it
+    // has no significant state, -1 to never discard.
+    -1,
 
-  // Don't use initial delay unless the last request was an error.
-  false,
+    // Don't use initial delay unless the last request was an error.
+    false,
 };
 
 const char kDefaultXmppHost[] = "talk.google.com";
@@ -251,8 +251,9 @@ void XmppChannel::OnSessionEstablished(std::unique_ptr<XmlNode> reply) {
     return;
   }
   state_ = XmppState::kSubscribeStarted;
-  std::string body = "<subscribe xmlns='google:push'>"
-                     "<item channel='cloud_devices' from=''/></subscribe>";
+  std::string body =
+      "<subscribe xmlns='google:push'>"
+      "<item channel='cloud_devices' from=''/></subscribe>";
   iq_stanza_handler_->SendRequest(
       "set", "", account_, body,
       base::Bind(&XmppChannel::OnSubscribed, task_ptr_factory_.GetWeakPtr()),
@@ -370,14 +371,15 @@ void XmppChannel::OnWriteError(const chromeos::Error* error) {
   Restart();
 }
 
-void XmppChannel::Connect(const std::string& host, uint16_t port,
+void XmppChannel::Connect(const std::string& host,
+                          uint16_t port,
                           const base::Closure& callback) {
   state_ = XmppState::kConnecting;
   LOG(INFO) << "Starting XMPP connection to " << host << ":" << port;
   int socket_fd = ConnectSocket(host, port);
   if (socket_fd >= 0) {
     raw_socket_ =
-      chromeos::FileStream::FromFileDescriptor(socket_fd, true, nullptr);
+        chromeos::FileStream::FromFileDescriptor(socket_fd, true, nullptr);
     if (!raw_socket_) {
       close(socket_fd);
       socket_fd = -1;

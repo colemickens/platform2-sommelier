@@ -28,9 +28,10 @@ class TestTaskRunner : public base::SingleThreadTaskRunner {
  public:
   TestTaskRunner() = default;
 
-  MOCK_METHOD3(PostDelayedTask, bool(const tracked_objects::Location&,
-                                     const base::Closure&,
-                                     base::TimeDelta));
+  MOCK_METHOD3(PostDelayedTask,
+               bool(const tracked_objects::Location&,
+                    const base::Closure&,
+                    base::TimeDelta));
   MOCK_METHOD3(PostNonNestableDelayedTask,
                bool(const tracked_objects::Location&,
                     const base::Closure&,
@@ -163,7 +164,8 @@ TEST_F(IqStanzaHandlerTest, UnknownResponseId) {
 
 TEST_F(IqStanzaHandlerTest, SequentialResponses) {
   EXPECT_CALL(*task_runner_, PostDelayedTask(_, _, _))
-      .Times(2).WillRepeatedly(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
 
   EXPECT_CALL(mock_xmpp_channel_, SendMessage(_)).Times(2);
   iq_stanza_handler_->SendRequest("set", "", "", "<body/>",
@@ -172,7 +174,8 @@ TEST_F(IqStanzaHandlerTest, SequentialResponses) {
                                   receiver_.callback(2), {});
 
   EXPECT_CALL(*task_runner_, PostDelayedTask(_, _, _))
-      .Times(2).WillRepeatedly(Invoke(task_invoker_));
+      .Times(2)
+      .WillRepeatedly(Invoke(task_invoker_));
 
   EXPECT_CALL(receiver_, OnResponse(1, "foo"));
   auto request = XmlParser{}.Parse("<iq id='1' type='result'><foo/></iq>");
@@ -185,7 +188,8 @@ TEST_F(IqStanzaHandlerTest, SequentialResponses) {
 
 TEST_F(IqStanzaHandlerTest, OutOfOrderResponses) {
   EXPECT_CALL(*task_runner_, PostDelayedTask(_, _, _))
-      .Times(2).WillRepeatedly(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
 
   EXPECT_CALL(mock_xmpp_channel_, SendMessage(_)).Times(2);
   iq_stanza_handler_->SendRequest("set", "", "", "<body/>",
@@ -194,7 +198,8 @@ TEST_F(IqStanzaHandlerTest, OutOfOrderResponses) {
                                   receiver_.callback(2), {});
 
   EXPECT_CALL(*task_runner_, PostDelayedTask(_, _, _))
-      .Times(2).WillRepeatedly(Invoke(task_invoker_));
+      .Times(2)
+      .WillRepeatedly(Invoke(task_invoker_));
 
   EXPECT_CALL(receiver_, OnResponse(2, "bar"));
   auto request = XmlParser{}.Parse("<iq id='2' type='result'><bar/></iq>");

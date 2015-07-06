@@ -225,12 +225,12 @@ bool PropType::ValidateConstraints(const PropValue& value,
 
 const PropType::TypeMap& PropType::GetTypeMap() {
   static TypeMap map = {
-    {ValueType::Int,         "integer"},
-    {ValueType::Double,      "number"},
-    {ValueType::String,      "string"},
-    {ValueType::Boolean,     "boolean"},
-    {ValueType::Object,      "object"},
-    {ValueType::Array,       "array"},
+      {ValueType::Int, "integer"},
+      {ValueType::Double, "number"},
+      {ValueType::String, "string"},
+      {ValueType::Boolean, "boolean"},
+      {ValueType::Object, "object"},
+      {ValueType::Array, "array"},
   };
   return map;
 }
@@ -257,37 +257,37 @@ bool PropType::GetTypeFromTypeString(const std::string& name, ValueType* type) {
 std::unique_ptr<PropType> PropType::Create(ValueType type) {
   PropType* prop = nullptr;
   switch (type) {
-  case buffet::ValueType::Int:
-    prop = new IntPropType;
-    break;
-  case buffet::ValueType::Double:
-    prop = new DoublePropType;
-    break;
-  case buffet::ValueType::String:
-    prop = new StringPropType;
-    break;
-  case buffet::ValueType::Boolean:
-    prop = new BooleanPropType;
-    break;
-  case buffet::ValueType::Object:
-    prop = new ObjectPropType;
-    break;
-  case buffet::ValueType::Array:
-    prop = new ArrayPropType;
-    break;
+    case buffet::ValueType::Int:
+      prop = new IntPropType;
+      break;
+    case buffet::ValueType::Double:
+      prop = new DoublePropType;
+      break;
+    case buffet::ValueType::String:
+      prop = new StringPropType;
+      break;
+    case buffet::ValueType::Boolean:
+      prop = new BooleanPropType;
+      break;
+    case buffet::ValueType::Object:
+      prop = new ObjectPropType;
+      break;
+    case buffet::ValueType::Array:
+      prop = new ArrayPropType;
+      break;
   }
   return std::unique_ptr<PropType>(prop);
 }
 
 bool PropType::GenerateErrorValueTypeMismatch(chromeos::ErrorPtr* error) const {
   chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                                errors::commands::kTypeMismatch,
-                                "Unable to convert value to type '%s'",
-                                GetTypeAsString().c_str());
+                               errors::commands::kTypeMismatch,
+                               "Unable to convert value to type '%s'",
+                               GetTypeAsString().c_str());
   return false;
 }
 
-template<typename T>
+template <typename T>
 static std::unique_ptr<Constraint> LoadOneOfConstraint(
     const base::DictionaryValue* value,
     const PropType* prop_type,
@@ -306,7 +306,7 @@ static std::unique_ptr<Constraint> LoadOneOfConstraint(
   return constraint;
 }
 
-template<class ConstraintClass, typename T>
+template <class ConstraintClass, typename T>
 static std::unique_ptr<Constraint> LoadMinMaxConstraint(
     const char* dict_key,
     const base::DictionaryValue* value,
@@ -326,7 +326,7 @@ static std::unique_ptr<Constraint> LoadMinMaxConstraint(
 
 // PropTypeBase ----------------------------------------------------------------
 
-template<class Derived, class Value, typename T>
+template <class Derived, class Value, typename T>
 bool PropTypeBase<Derived, Value, T>::ConstraintsFromJson(
     const base::DictionaryValue* value,
     std::set<std::string>* processed_keys,
@@ -351,7 +351,7 @@ bool PropTypeBase<Derived, Value, T>::ConstraintsFromJson(
 
 // NumericPropTypeBase ---------------------------------------------------------
 
-template<class Derived, class Value, typename T>
+template <class Derived, class Value, typename T>
 bool NumericPropTypeBase<Derived, Value, T>::ConstraintsFromJson(
     const base::DictionaryValue* value,
     std::set<std::string>* processed_keys,
@@ -388,10 +388,9 @@ bool NumericPropTypeBase<Derived, Value, T>::ConstraintsFromJson(
 
 // StringPropType -------------------------------------------------------------
 
-bool StringPropType::ConstraintsFromJson(
-    const base::DictionaryValue* value,
-    std::set<std::string>* processed_keys,
-    chromeos::ErrorPtr* error) {
+bool StringPropType::ConstraintsFromJson(const base::DictionaryValue* value,
+                                         std::set<std::string>* processed_keys,
+                                         chromeos::ErrorPtr* error) {
   if (!Base::ConstraintsFromJson(value, processed_keys, error))
     return false;
 
@@ -445,11 +444,11 @@ int StringPropType::GetMaxLength() const {
 // ObjectPropType -------------------------------------------------------------
 
 ObjectPropType::ObjectPropType()
-    : object_schema_{ObjectSchema::Create(), false} {}
+    : object_schema_{ObjectSchema::Create(), false} {
+}
 
 bool ObjectPropType::HasOverriddenAttributes() const {
-  return PropType::HasOverriddenAttributes() ||
-         !object_schema_.is_inherited;
+  return PropType::HasOverriddenAttributes() || !object_schema_.is_inherited;
 }
 
 std::unique_ptr<PropType> ObjectPropType::Clone() const {
@@ -462,7 +461,8 @@ std::unique_ptr<PropType> ObjectPropType::Clone() const {
 }
 
 std::unique_ptr<base::Value> ObjectPropType::ToJson(
-    bool full_schema, chromeos::ErrorPtr* error) const {
+    bool full_schema,
+    chromeos::ErrorPtr* error) const {
   std::unique_ptr<base::Value> value = PropType::ToJson(full_schema, error);
   if (value) {
     base::DictionaryValue* dict = nullptr;
@@ -577,11 +577,11 @@ void ObjectPropType::SetObjectSchema(
 
 // ArrayPropType -------------------------------------------------------------
 
-ArrayPropType::ArrayPropType() {}
+ArrayPropType::ArrayPropType() {
+}
 
 bool ArrayPropType::HasOverriddenAttributes() const {
-  return PropType::HasOverriddenAttributes() ||
-         !item_type_.is_inherited;
+  return PropType::HasOverriddenAttributes() || !item_type_.is_inherited;
 }
 
 std::unique_ptr<PropType> ArrayPropType::Clone() const {
@@ -593,7 +593,8 @@ std::unique_ptr<PropType> ArrayPropType::Clone() const {
 }
 
 std::unique_ptr<base::Value> ArrayPropType::ToJson(
-    bool full_schema, chromeos::ErrorPtr* error) const {
+    bool full_schema,
+    chromeos::ErrorPtr* error) const {
   std::unique_ptr<base::Value> value = PropType::ToJson(full_schema, error);
   if (value) {
     base::DictionaryValue* dict = nullptr;

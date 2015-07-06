@@ -50,12 +50,10 @@ class CommandQueueTest : public testing::Test {
 class FakeDispatcher {
  public:
   explicit FakeDispatcher(CommandQueue* queue) {
-    queue->AddOnCommandAddedCallback(
-        base::Bind(&FakeDispatcher::OnCommandAdded,
-                   weak_ptr_factory_.GetWeakPtr()));
-    queue->AddOnCommandRemovedCallback(
-        base::Bind(&FakeDispatcher::OnCommandRemoved,
-                   weak_ptr_factory_.GetWeakPtr()));
+    queue->AddOnCommandAddedCallback(base::Bind(
+        &FakeDispatcher::OnCommandAdded, weak_ptr_factory_.GetWeakPtr()));
+    queue->AddOnCommandRemovedCallback(base::Bind(
+        &FakeDispatcher::OnCommandRemoved, weak_ptr_factory_.GetWeakPtr()));
   }
 
   void OnCommandAdded(CommandInstance* command_instance) {

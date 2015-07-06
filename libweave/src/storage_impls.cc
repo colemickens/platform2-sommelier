@@ -14,7 +14,8 @@
 namespace buffet {
 
 FileStorage::FileStorage(const base::FilePath& file_path)
-    : file_path_(file_path) { }
+    : file_path_(file_path) {
+}
 
 std::unique_ptr<base::DictionaryValue> FileStorage::Load() {
   std::string json;

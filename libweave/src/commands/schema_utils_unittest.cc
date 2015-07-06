@@ -177,9 +177,8 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Object) {
                                  &type, &value, nullptr));
   native_types::Object value2;
   value2.insert(std::make_pair("age", age_prop.CreateValue(20, nullptr)));
-  value2.insert(std::make_pair("name",
-                               name_prop.CreateValue(std::string("Bob"),
-                                                     nullptr)));
+  value2.insert(std::make_pair(
+      "name", name_prop.CreateValue(std::string("Bob"), nullptr)));
   EXPECT_EQ(value2, value);
 
   chromeos::ErrorPtr error;
@@ -228,9 +227,11 @@ TEST(CommandSchemaUtils, PropValueToDBusVariant) {
   EXPECT_EQ("foo", PropValueToDBusVariant(prop_value.get()).Get<std::string>());
 
   ObjectPropType obj_type;
-  ASSERT_TRUE(obj_type.FromJson(CreateDictionaryValue(
-      "{'properties':{'width':'integer','height':'integer'},"
-      "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}").get(),
+  ASSERT_TRUE(obj_type.FromJson(
+      CreateDictionaryValue(
+          "{'properties':{'width':'integer','height':'integer'},"
+          "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}")
+          .get(),
       nullptr, nullptr));
   native_types::Object obj{
       {"width", int_type.CreateValue(10, nullptr)},
@@ -290,7 +291,7 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_Bool) {
 TEST(CommandSchemaUtils, PropValueFromDBusVariant_Double) {
   DoublePropType dbl_type;
   ASSERT_TRUE(dbl_type.FromJson(CreateDictionaryValue("{'maximum':2.0}").get(),
-                                 nullptr, nullptr));
+                                nullptr, nullptr));
 
   auto prop_value = PropValueFromDBusVariant(&dbl_type, 1.0, nullptr);
   ASSERT_NE(nullptr, prop_value.get());
@@ -306,10 +307,10 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_Double) {
 TEST(CommandSchemaUtils, PropValueFromDBusVariant_String) {
   StringPropType str_type;
   ASSERT_TRUE(str_type.FromJson(CreateDictionaryValue("{'minLength': 4}").get(),
-                                 nullptr, nullptr));
+                                nullptr, nullptr));
 
-  auto prop_value = PropValueFromDBusVariant(&str_type, std::string{"blah"},
-                                             nullptr);
+  auto prop_value =
+      PropValueFromDBusVariant(&str_type, std::string{"blah"}, nullptr);
   ASSERT_NE(nullptr, prop_value.get());
   EXPECT_EQ("blah", prop_value->GetValueAsAny().Get<std::string>());
 
@@ -322,14 +323,15 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_String) {
 
 TEST(CommandSchemaUtils, PropValueFromDBusVariant_Object) {
   ObjectPropType obj_type;
-  ASSERT_TRUE(obj_type.FromJson(CreateDictionaryValue(
-      "{'properties':{'width':'integer','height':'integer'},"
-      "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}").get(),
+  ASSERT_TRUE(obj_type.FromJson(
+      CreateDictionaryValue(
+          "{'properties':{'width':'integer','height':'integer'},"
+          "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}")
+          .get(),
       nullptr, nullptr));
 
   VariantDictionary obj{
-    {"width", 100},
-    {"height", 200},
+      {"width", 100}, {"height", 200},
   };
   auto prop_value = PropValueFromDBusVariant(&obj_type, obj, nullptr);
   ASSERT_NE(nullptr, prop_value.get());

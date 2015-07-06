@@ -39,8 +39,8 @@ bool CommandManager::LoadBaseCommands(const base::DictionaryValue& json,
 
 bool CommandManager::LoadBaseCommands(const base::FilePath& json_file_path,
                                       chromeos::ErrorPtr* error) {
-  std::unique_ptr<const base::DictionaryValue> json = LoadJsonDict(
-      json_file_path, error);
+  std::unique_ptr<const base::DictionaryValue> json =
+      LoadJsonDict(json_file_path, error);
   if (!json)
     return false;
   return LoadBaseCommands(*json, error);
@@ -58,8 +58,8 @@ bool CommandManager::LoadCommands(const base::DictionaryValue& json,
 
 bool CommandManager::LoadCommands(const base::FilePath& json_file_path,
                                   chromeos::ErrorPtr* error) {
-  std::unique_ptr<const base::DictionaryValue> json = LoadJsonDict(
-      json_file_path, error);
+  std::unique_ptr<const base::DictionaryValue> json =
+      LoadJsonDict(json_file_path, error);
   if (!json)
     return false;
   std::string category = json_file_path.BaseName().RemoveExtension().value();
@@ -80,8 +80,7 @@ void CommandManager::Startup(const base::FilePath& definitions_path,
     base::FilePath device_command_dir{root.Append("commands")};
     VLOG(2) << "Looking for commands in " << root.value();
     base::FileEnumerator enumerator(device_command_dir, false,
-                                    base::FileEnumerator::FILES,
-                                    pattern);
+                                    base::FileEnumerator::FILES, pattern);
     base::FilePath json_file_path = enumerator.Next();
     while (!json_file_path.empty()) {
       LOG(INFO) << "Loading command schema from " << json_file_path.value();

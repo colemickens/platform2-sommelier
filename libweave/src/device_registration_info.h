@@ -106,14 +106,14 @@ class DeviceRegistrationInfo : public NotificationDelegate,
   // The base URL used to construct the full URL looks like this:
   //    https://www.googleapis.com/clouddevices/v1/devices/<device_id>/
   std::string GetDeviceURL(
-    const std::string& subpath = {},
-    const chromeos::data_encoding::WebParamList& params = {}) const;
+      const std::string& subpath = {},
+      const chromeos::data_encoding::WebParamList& params = {}) const;
 
   // Similar to GetServiceURL, GetOAuthURL() returns a URL of OAuth 2.0 server.
   // The base URL used is https://accounts.google.com/o/oauth2/.
   std::string GetOAuthURL(
-    const std::string& subpath = {},
-    const chromeos::data_encoding::WebParamList& params = {}) const;
+      const std::string& subpath = {},
+      const chromeos::data_encoding::WebParamList& params = {}) const;
 
   // Starts GCD device if credentials available.
   void Start();
@@ -196,7 +196,8 @@ class DeviceRegistrationInfo : public NotificationDelegate,
   // Parse the OAuth response, and sets registration status to
   // kInvalidCredentials if our registration is no longer valid.
   std::unique_ptr<base::DictionaryValue> ParseOAuthResponse(
-      chromeos::http::Response* response, chromeos::ErrorPtr* error);
+      chromeos::http::Response* response,
+      chromeos::ErrorPtr* error);
 
   // This attempts to open a notification channel. The channel needs to be
   // restarted anytime the access_token is refreshed.
@@ -207,12 +208,11 @@ class DeviceRegistrationInfo : public NotificationDelegate,
   // and device removal.  It is a recommended way to do cloud API
   // requests.
   // TODO(antonm): Consider moving into some other class.
-  void DoCloudRequest(
-      const std::string& method,
-      const std::string& url,
-      const base::DictionaryValue* body,
-      const CloudRequestCallback& success_callback,
-      const CloudRequestErrorCallback& error_callback);
+  void DoCloudRequest(const std::string& method,
+                      const std::string& url,
+                      const base::DictionaryValue* body,
+                      const CloudRequestCallback& success_callback,
+                      const CloudRequestErrorCallback& error_callback);
 
   // Helper for DoCloudRequest().
   struct CloudRequestData {
@@ -227,17 +227,14 @@ class DeviceRegistrationInfo : public NotificationDelegate,
       const std::shared_ptr<const CloudRequestData>& data,
       chromeos::http::RequestID request_id,
       std::unique_ptr<chromeos::http::Response> response);
-  void OnCloudRequestError(
-      const std::shared_ptr<const CloudRequestData>& data,
-      chromeos::http::RequestID request_id,
-      const chromeos::Error* error);
-  void RetryCloudRequest(
-      const std::shared_ptr<const CloudRequestData>& data);
+  void OnCloudRequestError(const std::shared_ptr<const CloudRequestData>& data,
+                           chromeos::http::RequestID request_id,
+                           const chromeos::Error* error);
+  void RetryCloudRequest(const std::shared_ptr<const CloudRequestData>& data);
   void OnAccessTokenRefreshed(
       const std::shared_ptr<const CloudRequestData>& data);
-  void OnAccessTokenError(
-      const std::shared_ptr<const CloudRequestData>& data,
-      const chromeos::Error* error);
+  void OnAccessTokenError(const std::shared_ptr<const CloudRequestData>& data,
+                          const chromeos::Error* error);
 
   void UpdateDeviceResource(const base::Closure& on_success,
                             const CloudRequestErrorCallback& on_failure);

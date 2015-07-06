@@ -37,19 +37,21 @@ MATCHER_P(MatchJson, str, "") {
 
 class MockCloudCommandUpdateInterface : public CloudCommandUpdateInterface {
  public:
-  MOCK_METHOD4(UpdateCommand, void(const std::string&,
-                                   const base::DictionaryValue&,
-                                   const base::Closure&,
-                                   const base::Closure&));
+  MOCK_METHOD4(UpdateCommand,
+               void(const std::string&,
+                    const base::DictionaryValue&,
+                    const base::Closure&,
+                    const base::Closure&));
 };
 
 // Mock-like task runner that allow the tests to inspect the calls to
 // TaskRunner::PostDelayedTask and verify the delays.
 class TestTaskRunner : public base::TaskRunner {
  public:
-  MOCK_METHOD3(PostDelayedTask, bool(const tracked_objects::Location&,
-                                     const base::Closure&,
-                                     base::TimeDelta));
+  MOCK_METHOD3(PostDelayedTask,
+               bool(const tracked_objects::Location&,
+                    const base::Closure&,
+                    base::TimeDelta));
 
   bool RunsTasksOnCurrentThread() const override { return true; }
 };
@@ -148,9 +150,12 @@ class CloudCommandProxyTest : public ::testing::Test {
         new TestBackoffEntry{&policy, &clock_}};
 
     // Finally construct the CloudCommandProxy we are going to test here.
-    std::unique_ptr<CloudCommandProxy> proxy{new CloudCommandProxy{
-        command_instance_.get(), &cloud_updater_, &state_change_queue_,
-        std::move(backoff), task_runner_}};
+    std::unique_ptr<CloudCommandProxy> proxy{
+        new CloudCommandProxy{command_instance_.get(),
+                              &cloud_updater_,
+                              &state_change_queue_,
+                              std::move(backoff),
+                              task_runner_}};
     command_instance_->AddProxy(std::move(proxy));
   }
 

@@ -9,11 +9,13 @@
 namespace buffet {
 
 PropValue::PropValue(std::unique_ptr<const PropType> type)
-    : type_{std::move(type)} {}
+    : type_{std::move(type)} {
+}
 
-PropValue::PropValue(const PropType* type_ptr)
-    : type_{type_ptr->Clone()} {}
+PropValue::PropValue(const PropType* type_ptr) : type_{type_ptr->Clone()} {
+}
 
-PropValue::~PropValue() {}
+PropValue::~PropValue() {
+}
 
 }  // namespace buffet

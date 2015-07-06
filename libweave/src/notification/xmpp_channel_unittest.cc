@@ -51,8 +51,7 @@ constexpr char kBindResponse[] =
     "<bind xmlns=\"urn:ietf:params:xml:ns:xmpp-bind\">"
     "<jid>110cc78f78d7032cc7bf2c6e14c1fa7d@clouddevices.gserviceaccount.com"
     "/19853128</jid></bind></iq>";
-constexpr char kSessionResponse[] =
-    "<iq type=\"result\" id=\"2\"/>";
+constexpr char kSessionResponse[] = "<iq type=\"result\" id=\"2\"/>";
 constexpr char kSubscribedResponse[] =
     "<iq to=\""
     "110cc78f78d7032cc7bf2c6e14c1fa7d@clouddevices.gserviceaccount.com/"
@@ -87,9 +86,10 @@ constexpr char kSubscribeMessage[] =
 // TaskRunner::PostDelayedTask and verify the delays.
 class TestTaskRunner : public base::SingleThreadTaskRunner {
  public:
-  MOCK_METHOD3(PostDelayedTask, bool(const tracked_objects::Location&,
-                                     const base::Closure&,
-                                     base::TimeDelta));
+  MOCK_METHOD3(PostDelayedTask,
+               bool(const tracked_objects::Location&,
+                    const base::Closure&,
+                    base::TimeDelta));
   MOCK_METHOD3(PostNonNestableDelayedTask,
                bool(const tracked_objects::Location&,
                     const base::Closure&,
@@ -104,13 +104,15 @@ class FakeXmppChannel : public XmppChannel {
       const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
       base::Clock* clock)
       : XmppChannel{kAccountName, kAccessToken, task_runner, nullptr},
-        fake_stream_{chromeos::Stream::AccessMode::READ_WRITE, task_runner,
+        fake_stream_{chromeos::Stream::AccessMode::READ_WRITE,
+                     task_runner,
                      clock} {}
 
   XmppState state() const { return state_; }
   void set_state(XmppState state) { state_ = state; }
 
-  void Connect(const std::string& host, uint16_t port,
+  void Connect(const std::string& host,
+               uint16_t port,
                const base::Closure& callback) override {
     set_state(XmppState::kConnecting);
     stream_ = &fake_stream_;
@@ -168,9 +170,7 @@ class XmppChannelTest : public ::testing::Test {
     }
   }
 
-  void SetIgnoreDelayedTasks(bool ignore) {
-    ignore_delayed_tasks_ = true;
-  }
+  void SetIgnoreDelayedTasks(bool ignore) { ignore_delayed_tasks_ = true; }
 
   std::unique_ptr<FakeXmppChannel> xmpp_client_;
   base::SimpleTestClock clock_;
@@ -194,8 +194,7 @@ TEST_F(XmppChannelTest, HandleStartedResponse) {
 
 TEST_F(XmppChannelTest, HandleTLSCompleted) {
   StartWithState(XmppChannel::XmppState::kTlsCompleted);
-  xmpp_client_->fake_stream_.AddReadPacketString(
-      {}, kTlsStreamResponse);
+  xmpp_client_->fake_stream_.AddReadPacketString({}, kTlsStreamResponse);
   xmpp_client_->fake_stream_.ExpectWritePacketString({},
                                                      kAuthenticationMessage);
   RunTasks(4);
@@ -215,8 +214,8 @@ TEST_F(XmppChannelTest, HandleAuthenticationSucceededResponse) {
 
 TEST_F(XmppChannelTest, HandleAuthenticationFailedResponse) {
   StartWithState(XmppChannel::XmppState::kAuthenticationStarted);
-  xmpp_client_->fake_stream_.AddReadPacketString(
-      {}, kAuthenticationFailedResponse);
+  xmpp_client_->fake_stream_.AddReadPacketString({},
+                                                 kAuthenticationFailedResponse);
   RunTasks(3);
   EXPECT_EQ(XmppChannel::XmppState::kAuthenticationFailed,
             xmpp_client_->state());
@@ -228,28 +227,26 @@ TEST_F(XmppChannelTest, HandleStreamRestartedResponse) {
   xmpp_client_->fake_stream_.AddReadPacketString({}, kRestartStreamResponse);
   xmpp_client_->fake_stream_.ExpectWritePacketString({}, kBindMessage);
   RunTasks(3);
-  EXPECT_EQ(XmppChannel::XmppState::kBindSent,
-            xmpp_client_->state());
+  EXPECT_EQ(XmppChannel::XmppState::kBindSent, xmpp_client_->state());
   EXPECT_TRUE(xmpp_client_->jid().empty());
 
   xmpp_client_->fake_stream_.AddReadPacketString({}, kBindResponse);
   xmpp_client_->fake_stream_.ExpectWritePacketString({}, kSessionMessage);
   RunTasks(9);
-  EXPECT_EQ(XmppChannel::XmppState::kSessionStarted,
-            xmpp_client_->state());
-  EXPECT_EQ("110cc78f78d7032cc7bf2c6e14c1fa7d@clouddevices.gserviceaccount.com"
-            "/19853128", xmpp_client_->jid());
+  EXPECT_EQ(XmppChannel::XmppState::kSessionStarted, xmpp_client_->state());
+  EXPECT_EQ(
+      "110cc78f78d7032cc7bf2c6e14c1fa7d@clouddevices.gserviceaccount.com"
+      "/19853128",
+      xmpp_client_->jid());
 
   xmpp_client_->fake_stream_.AddReadPacketString({}, kSessionResponse);
   xmpp_client_->fake_stream_.ExpectWritePacketString({}, kSubscribeMessage);
   RunTasks(4);
-  EXPECT_EQ(XmppChannel::XmppState::kSubscribeStarted,
-            xmpp_client_->state());
+  EXPECT_EQ(XmppChannel::XmppState::kSubscribeStarted, xmpp_client_->state());
 
   xmpp_client_->fake_stream_.AddReadPacketString({}, kSubscribedResponse);
   RunTasks(5);
-  EXPECT_EQ(XmppChannel::XmppState::kSubscribed,
-            xmpp_client_->state());
+  EXPECT_EQ(XmppChannel::XmppState::kSubscribed, xmpp_client_->state());
 }
 
 }  // namespace buffet

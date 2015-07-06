@@ -20,13 +20,7 @@
 
 namespace buffet {
 
-enum class ConstraintType {
-  Min,
-  Max,
-  StringLengthMin,
-  StringLengthMax,
-  OneOf
-};
+enum class ConstraintType { Min, Max, StringLengthMin, StringLengthMax, OneOf };
 
 // Abstract base class for all parameter constraints. Many constraints are
 // type-dependent. Thus, a numeric parameter could have "minimum" and/or
@@ -102,18 +96,15 @@ class Constraint {
 
 // ConstraintMinMaxBase is a base class for numeric Minimum and Maximum
 // constraints.
-template<typename T>
+template <typename T>
 class ConstraintMinMaxBase : public Constraint {
  public:
   explicit ConstraintMinMaxBase(const InheritableAttribute<T>& limit)
       : limit_(limit) {}
-  explicit ConstraintMinMaxBase(const T& limit)
-      : limit_(limit) {}
+  explicit ConstraintMinMaxBase(const T& limit) : limit_(limit) {}
 
   // Implementation of Constraint::HasOverriddenAttributes().
-  bool HasOverriddenAttributes() const override {
-    return !limit_.is_inherited;
-  }
+  bool HasOverriddenAttributes() const override { return !limit_.is_inherited; }
 
   // Implementation of Constraint::ToJson().
   std::unique_ptr<base::Value> ToJson(
@@ -131,13 +122,12 @@ class ConstraintMinMaxBase : public Constraint {
 };
 
 // Implementation of Minimum value constraint for Integer/Double types.
-template<typename T>
+template <typename T>
 class ConstraintMin : public ConstraintMinMaxBase<T> {
  public:
   explicit ConstraintMin(const InheritableAttribute<T>& limit)
       : ConstraintMinMaxBase<T>(limit) {}
-  explicit ConstraintMin(const T& limit)
-      : ConstraintMinMaxBase<T>(limit) {}
+  explicit ConstraintMin(const T& limit) : ConstraintMinMaxBase<T>(limit) {}
 
   // Implementation of Constraint::GetType().
   ConstraintType GetType() const override { return ConstraintType::Min; }
@@ -173,13 +163,12 @@ class ConstraintMin : public ConstraintMinMaxBase<T> {
 };
 
 // Implementation of Maximum value constraint for Integer/Double types.
-template<typename T>
+template <typename T>
 class ConstraintMax : public ConstraintMinMaxBase<T> {
  public:
   explicit ConstraintMax(const InheritableAttribute<T>& limit)
       : ConstraintMinMaxBase<T>(limit) {}
-  explicit ConstraintMax(const T& limit)
-      : ConstraintMinMaxBase<T>(limit) {}
+  explicit ConstraintMax(const T& limit) : ConstraintMinMaxBase<T>(limit) {}
 
   // Implementation of Constraint::GetType().
   ConstraintType GetType() const override { return ConstraintType::Max; }
@@ -301,14 +290,10 @@ class ConstraintOneOf : public Constraint {
   explicit ConstraintOneOf(native_types::Array set);
 
   // Implementation of Constraint::GetType().
-  ConstraintType GetType() const override {
-    return ConstraintType::OneOf;
-  }
+  ConstraintType GetType() const override { return ConstraintType::OneOf; }
 
   // Implementation of Constraint::HasOverriddenAttributes().
-  bool HasOverriddenAttributes() const override {
-    return !set_.is_inherited;
-  }
+  bool HasOverriddenAttributes() const override { return !set_.is_inherited; }
 
   // Implementation of Constraint::Validate().
   bool Validate(const PropValue& value,

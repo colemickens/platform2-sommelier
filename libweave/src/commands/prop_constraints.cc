@@ -26,7 +26,8 @@ std::string PropValueToString(const PropValue& value) {
 }  // anonymous namespace
 
 // Constraint ----------------------------------------------------------------
-Constraint::~Constraint() {}
+Constraint::~Constraint() {
+}
 
 bool Constraint::ReportErrorLessThan(chromeos::ErrorPtr* error,
                                      const std::string& val,
@@ -34,8 +35,8 @@ bool Constraint::ReportErrorLessThan(chromeos::ErrorPtr* error,
   chromeos::Error::AddToPrintf(
       error, FROM_HERE, errors::commands::kDomain,
       errors::commands::kOutOfRange,
-      "Value %s is out of range. It must not be less than %s",
-      val.c_str(), limit.c_str());
+      "Value %s is out of range. It must not be less than %s", val.c_str(),
+      limit.c_str());
   return false;
 }
 
@@ -45,8 +46,8 @@ bool Constraint::ReportErrorGreaterThan(chromeos::ErrorPtr* error,
   chromeos::Error::AddToPrintf(
       error, FROM_HERE, errors::commands::kDomain,
       errors::commands::kOutOfRange,
-      "Value %s is out of range. It must not be greater than %s",
-      val.c_str(), limit.c_str());
+      "Value %s is out of range. It must not be greater than %s", val.c_str(),
+      limit.c_str());
   return false;
 }
 
@@ -75,8 +76,11 @@ bool Constraint::AddToJsonDict(base::DictionaryValue* dict,
 
 // ConstraintStringLength -----------------------------------------------------
 ConstraintStringLength::ConstraintStringLength(
-    const InheritableAttribute<int>& limit) : limit_(limit) {}
-ConstraintStringLength::ConstraintStringLength(int limit) : limit_(limit) {}
+    const InheritableAttribute<int>& limit)
+    : limit_(limit) {
+}
+ConstraintStringLength::ConstraintStringLength(int limit) : limit_(limit) {
+}
 
 bool ConstraintStringLength::HasOverriddenAttributes() const {
   return !limit_.is_inherited;
@@ -89,9 +93,12 @@ std::unique_ptr<base::Value> ConstraintStringLength::ToJson(
 
 // ConstraintStringLengthMin --------------------------------------------------
 ConstraintStringLengthMin::ConstraintStringLengthMin(
-    const InheritableAttribute<int>& limit) : ConstraintStringLength(limit) {}
+    const InheritableAttribute<int>& limit)
+    : ConstraintStringLength(limit) {
+}
 ConstraintStringLengthMin::ConstraintStringLengthMin(int limit)
-    : ConstraintStringLength(limit) {}
+    : ConstraintStringLength(limit) {
+}
 
 bool ConstraintStringLengthMin::Validate(const PropValue& value,
                                          chromeos::ErrorPtr* error) const {
@@ -115,22 +122,24 @@ bool ConstraintStringLengthMin::Validate(const PropValue& value,
   return true;
 }
 
-std::unique_ptr<Constraint>
-ConstraintStringLengthMin::Clone() const {
+std::unique_ptr<Constraint> ConstraintStringLengthMin::Clone() const {
   return std::unique_ptr<Constraint>{new ConstraintStringLengthMin{limit_}};
 }
 
-std::unique_ptr<Constraint>
-ConstraintStringLengthMin::CloneAsInherited() const {
+std::unique_ptr<Constraint> ConstraintStringLengthMin::CloneAsInherited()
+    const {
   return std::unique_ptr<Constraint>{
       new ConstraintStringLengthMin{limit_.value}};
 }
 
 // ConstraintStringLengthMax --------------------------------------------------
 ConstraintStringLengthMax::ConstraintStringLengthMax(
-    const InheritableAttribute<int>& limit) : ConstraintStringLength(limit) {}
+    const InheritableAttribute<int>& limit)
+    : ConstraintStringLength(limit) {
+}
 ConstraintStringLengthMax::ConstraintStringLengthMax(int limit)
-    : ConstraintStringLength(limit) {}
+    : ConstraintStringLength(limit) {
+}
 
 bool ConstraintStringLengthMax::Validate(const PropValue& value,
                                          chromeos::ErrorPtr* error) const {
@@ -148,22 +157,23 @@ bool ConstraintStringLengthMax::Validate(const PropValue& value,
   return true;
 }
 
-std::unique_ptr<Constraint>
-ConstraintStringLengthMax::Clone() const {
+std::unique_ptr<Constraint> ConstraintStringLengthMax::Clone() const {
   return std::unique_ptr<Constraint>{new ConstraintStringLengthMax{limit_}};
 }
 
-std::unique_ptr<Constraint>
-ConstraintStringLengthMax::CloneAsInherited() const {
+std::unique_ptr<Constraint> ConstraintStringLengthMax::CloneAsInherited()
+    const {
   return std::unique_ptr<Constraint>{
       new ConstraintStringLengthMax{limit_.value}};
 }
 
 // ConstraintOneOf --------------------------------------------------
 ConstraintOneOf::ConstraintOneOf(InheritableAttribute<native_types::Array> set)
-    : set_(std::move(set)) {}
+    : set_(std::move(set)) {
+}
 ConstraintOneOf::ConstraintOneOf(native_types::Array set)
-    : set_(std::move(set)) {}
+    : set_(std::move(set)) {
+}
 
 bool ConstraintOneOf::Validate(const PropValue& value,
                                chromeos::ErrorPtr* error) const {

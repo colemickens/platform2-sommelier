@@ -43,9 +43,7 @@ const char kXmppStreamData[] =
 class XmppStreamParserTest : public testing::Test,
                              public XmppStreamParser::Delegate {
  public:
-  void SetUp() override {
-    parser_.reset(new XmppStreamParser{this});
-  }
+  void SetUp() override { parser_.reset(new XmppStreamParser{this}); }
 
   void OnStreamStart(const std::string& node_name,
                      std::map<std::string, std::string> attributes) override {
@@ -91,10 +89,8 @@ TEST_F(XmppStreamParserTest, FullStartElement) {
   parser_->ParseData("<foo bar=\"baz\" quux=\"1\">");
   EXPECT_TRUE(stream_started_);
   EXPECT_EQ("foo", stream_start_node_name_);
-  const std::map<std::string, std::string> expected_attrs{
-      {"bar", "baz"},
-      {"quux", "1"}
-  };
+  const std::map<std::string, std::string> expected_attrs{{"bar", "baz"},
+                                                          {"quux", "1"}};
   EXPECT_EQ(expected_attrs, stream_start_node_attributes_);
 }
 
@@ -109,10 +105,8 @@ TEST_F(XmppStreamParserTest, PartialStartElement) {
   parser_->ParseData("=\"1\">");
   EXPECT_TRUE(stream_started_);
   EXPECT_EQ("foo", stream_start_node_name_);
-  const std::map<std::string, std::string> expected_attrs{
-      {"bar", "baz"},
-      {"quux", "1"}
-  };
+  const std::map<std::string, std::string> expected_attrs{{"bar", "baz"},
+                                                          {"quux", "1"}};
   EXPECT_EQ(expected_attrs, stream_start_node_attributes_);
 }
 
@@ -124,8 +118,7 @@ TEST_F(XmppStreamParserTest, VariableLengthPackets) {
       {"id", "76EEB8FDB4495558"},
       {"version", "1.0"},
       {"xmlns:stream", "http://etherx.jabber.org/streams"},
-      {"xmlns", "jabber:client"}
-  };
+      {"xmlns", "jabber:client"}};
   // Try splitting the data into pieces from 1 character in size to the whole
   // data block and verify that we still can parse the whole message correctly.
   // Here |step| is the size of each individual data chunk.
@@ -159,11 +152,15 @@ TEST_F(XmppStreamParserTest, VariableLengthPackets) {
     EXPECT_EQ("message", stanza2->name());
     ASSERT_EQ(2u, stanza2->attributes().size());
     EXPECT_TRUE(stanza2->GetAttribute("from", &value));
-    EXPECT_EQ("cloud-devices@clouddevices.google.com/"
-              "srvenc-xgbCfg9hX6tCpxoMYsExqg==", value);
+    EXPECT_EQ(
+        "cloud-devices@clouddevices.google.com/"
+        "srvenc-xgbCfg9hX6tCpxoMYsExqg==",
+        value);
     EXPECT_TRUE(stanza2->GetAttribute("to", &value));
-    EXPECT_EQ("4783f652b387449fc52a76f9a16e616f@clouddevices.gserviceaccount."
-              "com/5A85ED9C", value);
+    EXPECT_EQ(
+        "4783f652b387449fc52a76f9a16e616f@clouddevices.gserviceaccount."
+        "com/5A85ED9C",
+        value);
     ASSERT_EQ(1u, stanza2->children().size());
 
     const XmlNode* child = stanza2->children().back().get();
@@ -179,15 +176,18 @@ TEST_F(XmppStreamParserTest, VariableLengthPackets) {
     EXPECT_EQ("push:recipient", child1->name());
     ASSERT_EQ(1u, child1->attributes().size());
     EXPECT_TRUE(child1->GetAttribute("to", &value));
-    EXPECT_EQ("4783f652b387449fc52a76f9a16e616f@clouddevices.gserviceaccount."
-              "com", value);
+    EXPECT_EQ(
+        "4783f652b387449fc52a76f9a16e616f@clouddevices.gserviceaccount."
+        "com",
+        value);
     EXPECT_TRUE(child1->children().empty());
 
     child2 = child->children()[1].get();
     EXPECT_EQ("push:data", child2->name());
     EXPECT_TRUE(child2->attributes().empty());
     EXPECT_TRUE(child2->children().empty());
-    const std::string expected_data = "eyJraW5kIjoiY2xvdWRkZXZpY2VzI25vdGlmaWNh"
+    const std::string expected_data =
+        "eyJraW5kIjoiY2xvdWRkZXZpY2VzI25vdGlmaWNh"
         "dGlvbiIsInR5cGUiOiJDT01NQU5EX0NSRUFURUQiLCJjb21tYW5kSWQiOiIwNWE3MTA5MC"
         "1hZWE4LWMzNzQtOTYwNS0xZTRhY2JhNDRmM2Y4OTAzZmM3Yy01NjExLWI5ODAtOTkyMy0y"
         "Njc2YjYwYzkxMGMiLCJkZXZpY2VJZCI6IjA1YTcxMDkwLWFlYTgtYzM3NC05NjA1LTFlNG"

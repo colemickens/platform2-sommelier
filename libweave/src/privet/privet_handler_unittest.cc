@@ -161,8 +161,8 @@ class PrivetHandlerTest : public testing::Test {
     EXPECT_CALL(cloud_, GetCloudId()).WillRepeatedly(Return(""));
     EXPECT_CALL(cloud_, GetConnectionState())
         .WillRepeatedly(ReturnRef(gcd_disabled_state_));
-    auto set_error =
-        [](const std::string&, const std::string&, chromeos::ErrorPtr* error) {
+    auto set_error = [](const std::string&, const std::string&,
+                        chromeos::ErrorPtr* error) {
       chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain,
                              "setupUnavailable", "");
     };
@@ -531,7 +531,8 @@ TEST_F(PrivetHandlerSetupTest, StatusGcdError) {
 
 TEST_F(PrivetHandlerSetupTest, SetupNameDescriptionLocation) {
   EXPECT_CALL(cloud_, UpdateDeviceInfo("testName", "testDescription",
-                                       "testLocation", _, _)).Times(1);
+                                       "testLocation", _, _))
+      .Times(1);
   const char kInput[] = R"({
     'name': 'testName',
     'description': 'testDescription',
@@ -572,8 +573,8 @@ TEST_F(PrivetHandlerSetupTest, WifiSetup) {
       'passphrase': 'testPass'
     }
   })";
-  auto set_error =
-      [](const std::string&, const std::string&, chromeos::ErrorPtr* error) {
+  auto set_error = [](const std::string&, const std::string&,
+                      chromeos::ErrorPtr* error) {
     chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain, "deviceBusy", "");
   };
   EXPECT_CALL(wifi_, ConfigureCredentials(_, _, _))
@@ -614,8 +615,8 @@ TEST_F(PrivetHandlerSetupTest, GcdSetup) {
     }
   })";
 
-  auto set_error =
-      [](const std::string&, const std::string&, chromeos::ErrorPtr* error) {
+  auto set_error = [](const std::string&, const std::string&,
+                      chromeos::ErrorPtr* error) {
     chromeos::Error::AddTo(error, FROM_HERE, errors::kDomain, "deviceBusy", "");
   };
   EXPECT_CALL(cloud_, Setup(_, _, _))

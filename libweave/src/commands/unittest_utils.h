@@ -49,15 +49,15 @@ inline std::unique_ptr<const BooleanValue> make_bool_prop_value(bool value) {
   return make_prop_value<BooleanValue, bool>(value);
 }
 
-inline std::unique_ptr<const StringValue>
-make_string_prop_value(const std::string& value) {
+inline std::unique_ptr<const StringValue> make_string_prop_value(
+    const std::string& value) {
   return make_prop_value<StringValue, std::string>(value);
 }
 
 }  // namespace unittests
 }  // namespace buffet
 
-#define EXPECT_JSON_EQ(expected, actual) \
+#define EXPECT_JSON_EQ(expected, actual)        \
   EXPECT_PRED2(buffet::unittests::IsEqualValue, \
                *buffet::unittests::CreateValue(expected), actual)
 

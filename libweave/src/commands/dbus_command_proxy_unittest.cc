@@ -103,10 +103,11 @@ class DBusCommandProxyTest : public ::testing::Test {
     // Use a mock exported object for the exported object manager.
     mock_exported_object_command_ =
         new dbus::MockExportedObject(bus_.get(), kCmdObjPath);
-    EXPECT_CALL(*bus_, GetExportedObject(kCmdObjPath)).Times(AnyNumber())
+    EXPECT_CALL(*bus_, GetExportedObject(kCmdObjPath))
+        .Times(AnyNumber())
         .WillRepeatedly(Return(mock_exported_object_command_.get()));
-    EXPECT_CALL(*mock_exported_object_command_,
-                ExportMethod(_, _, _, _)).Times(AnyNumber());
+    EXPECT_CALL(*mock_exported_object_command_, ExportMethod(_, _, _, _))
+        .Times(AnyNumber());
 
     std::unique_ptr<CommandProxyInterface> command_proxy(
         new DBusCommandProxy(nullptr, bus_, command_instance_.get(), cmd_path));
@@ -145,8 +146,7 @@ class DBusCommandProxyTest : public ::testing::Test {
 
 TEST_F(DBusCommandProxyTest, Init) {
   VariantDictionary params = {
-    {"height", int32_t{53}},
-    {"_jumpType", std::string{"_withKick"}},
+      {"height", int32_t{53}}, {"_jumpType", std::string{"_withKick"}},
   };
   EXPECT_EQ(CommandInstance::kStatusQueued, GetCommandAdaptor()->GetStatus());
   EXPECT_EQ(params, GetCommandAdaptor()->GetParameters());
@@ -178,8 +178,7 @@ TEST_F(DBusCommandProxyTest, SetProgress_OutOfRange) {
 TEST_F(DBusCommandProxyTest, SetResults) {
   EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
   const VariantDictionary results = {
-    {"foo", int32_t{42}},
-    {"bar", std::string{"foobar"}},
+      {"foo", int32_t{42}}, {"bar", std::string{"foobar"}},
   };
   EXPECT_TRUE(GetCommandInterface()->SetResults(nullptr, results));
   EXPECT_EQ(results, GetCommandAdaptor()->GetResults());
@@ -188,7 +187,7 @@ TEST_F(DBusCommandProxyTest, SetResults) {
 TEST_F(DBusCommandProxyTest, SetResults_UnknownProperty) {
   EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(0);
   const VariantDictionary results = {
-    {"quux", int32_t{42}},
+      {"quux", int32_t{42}},
   };
   EXPECT_FALSE(GetCommandInterface()->SetResults(nullptr, results));
 }
@@ -196,8 +195,7 @@ TEST_F(DBusCommandProxyTest, SetResults_UnknownProperty) {
 TEST_F(DBusCommandProxyTest, Abort) {
   EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
   GetCommandInterface()->Abort();
-  EXPECT_EQ(CommandInstance::kStatusAborted,
-            GetCommandAdaptor()->GetStatus());
+  EXPECT_EQ(CommandInstance::kStatusAborted, GetCommandAdaptor()->GetStatus());
 }
 
 TEST_F(DBusCommandProxyTest, Cancel) {

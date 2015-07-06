@@ -39,9 +39,9 @@ std::string BuildIqStanza(const std::string& id,
         << "Source address contains invalid XML characters";
     base::StringAppendF(&from_attr, " from='%s'", from.c_str());
   }
-  return base::StringPrintf("<iq id='%s' type='%s'%s%s>%s</iq>",
-                            id.c_str(), type.c_str(), from_attr.c_str(),
-                            to_attr.c_str(), body.c_str());
+  return base::StringPrintf("<iq id='%s' type='%s'%s%s>%s</iq>", id.c_str(),
+                            type.c_str(), from_attr.c_str(), to_attr.c_str(),
+                            body.c_str());
 }
 
 }  // anonymous namespace
@@ -49,15 +49,15 @@ std::string BuildIqStanza(const std::string& id,
 IqStanzaHandler::IqStanzaHandler(
     XmppChannelInterface* xmpp_channel,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner)
-    : xmpp_channel_{xmpp_channel}, task_runner_{task_runner} {}
+    : xmpp_channel_{xmpp_channel}, task_runner_{task_runner} {
+}
 
-void IqStanzaHandler::SendRequest(
-    const std::string& type,
-    const std::string& from,
-    const std::string& to,
-    const std::string& body,
-    const ResponseCallback& response_callback,
-    const TimeoutCallback& timeout_callback) {
+void IqStanzaHandler::SendRequest(const std::string& type,
+                                  const std::string& from,
+                                  const std::string& to,
+                                  const std::string& body,
+                                  const ResponseCallback& response_callback,
+                                  const TimeoutCallback& timeout_callback) {
   return SendRequestWithCustomTimeout(
       type, from, to, body,
       base::TimeDelta::FromSeconds(kTimeoutIntervalSeconds), response_callback,
@@ -83,8 +83,8 @@ void IqStanzaHandler::SendRequestWithCustomTimeout(
         timeout);
   }
 
-  std::string message = BuildIqStanza(std::to_string(last_request_id_),
-                                      type, to, from, body);
+  std::string message =
+      BuildIqStanza(std::to_string(last_request_id_), type, to, from, body);
   xmpp_channel_->SendMessage(message);
 }
 
@@ -112,8 +112,7 @@ bool IqStanzaHandler::HandleIqStanza(std::unique_ptr<XmlNode> stanza) {
     auto p = requests_.find(id);
     if (p != requests_.end()) {
       task_runner_->PostTask(
-          FROM_HERE,
-          base::Bind(p->second, base::Passed(std::move(stanza))));
+          FROM_HERE, base::Bind(p->second, base::Passed(std::move(stanza))));
       requests_.erase(p);
     }
   } else {
@@ -123,10 +122,9 @@ bool IqStanzaHandler::HandleIqStanza(std::unique_ptr<XmlNode> stanza) {
         "<error type='modify'>"
         "<feature-not-implemented xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>"
         "</error>";
-    std::string message = BuildIqStanza(id_str, "error",
-                                        stanza->GetAttributeOrEmpty("from"),
-                                        stanza->GetAttributeOrEmpty("to"),
-                                        error_body);
+    std::string message =
+        BuildIqStanza(id_str, "error", stanza->GetAttributeOrEmpty("from"),
+                      stanza->GetAttributeOrEmpty("to"), error_body);
     xmpp_channel_->SendMessage(message);
   }
   return true;

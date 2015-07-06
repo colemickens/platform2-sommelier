@@ -22,8 +22,7 @@ class XmppChannelInterface;
 
 class IqStanzaHandler {
  public:
-  using ResponseCallback =
-      base::Callback<void(std::unique_ptr<XmlNode>)>;
+  using ResponseCallback = base::Callback<void(std::unique_ptr<XmlNode>)>;
   using TimeoutCallback = base::Closure;
 
   IqStanzaHandler(
@@ -79,4 +78,3 @@ class IqStanzaHandler {
 }  // namespace buffet
 
 #endif  // LIBWEAVE_SRC_NOTIFICATION_XMPP_IQ_STANZA_HANDLER_H_
-

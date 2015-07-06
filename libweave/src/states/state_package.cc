@@ -28,9 +28,9 @@ bool StatePackage::AddSchemaFromJson(const base::DictionaryValue* json,
   for (const auto& pair : schema.GetProps()) {
     if (types_.GetProp(pair.first)) {
       chromeos::Error::AddToPrintf(error, FROM_HERE, errors::state::kDomain,
-                                    errors::state::kPropertyRedefinition,
-                                    "State property '%s.%s' is already defined",
-                                    name_.c_str(), pair.first.c_str());
+                                   errors::state::kPropertyRedefinition,
+                                   "State property '%s.%s' is already defined",
+                                   name_.c_str(), pair.first.c_str());
       return false;
     }
   }
@@ -53,9 +53,9 @@ bool StatePackage::AddValuesFromJson(const base::DictionaryValue* json,
     auto it = values_.find(property_name);
     if (it == values_.end()) {
       chromeos::Error::AddToPrintf(error, FROM_HERE, errors::state::kDomain,
-                                    errors::state::kPropertyNotDefined,
-                                    "State property '%s.%s' is not defined",
-                                    name_.c_str(), property_name.c_str());
+                                   errors::state::kPropertyNotDefined,
+                                   "State property '%s.%s' is not defined",
+                                   name_.c_str(), property_name.c_str());
       return false;
     }
     auto new_value = it->second->GetPropType()->CreateValue();
@@ -68,7 +68,7 @@ bool StatePackage::AddValuesFromJson(const base::DictionaryValue* json,
 }
 
 std::unique_ptr<base::DictionaryValue> StatePackage::GetValuesAsJson(
-      chromeos::ErrorPtr* error) const {
+    chromeos::ErrorPtr* error) const {
   std::unique_ptr<base::DictionaryValue> dict(new base::DictionaryValue);
   for (const auto& pair : values_) {
     auto value = pair.second->ToJson(error);
@@ -86,9 +86,9 @@ chromeos::Any StatePackage::GetPropertyValue(const std::string& property_name,
   auto it = values_.find(property_name);
   if (it == values_.end()) {
     chromeos::Error::AddToPrintf(error, FROM_HERE, errors::state::kDomain,
-                                  errors::state::kPropertyNotDefined,
-                                  "State property '%s.%s' is not defined",
-                                  name_.c_str(), property_name.c_str());
+                                 errors::state::kPropertyNotDefined,
+                                 "State property '%s.%s' is not defined",
+                                 name_.c_str(), property_name.c_str());
     return chromeos::Any();
   }
   return PropValueToDBusVariant(it->second.get());
@@ -100,13 +100,13 @@ bool StatePackage::SetPropertyValue(const std::string& property_name,
   auto it = values_.find(property_name);
   if (it == values_.end()) {
     chromeos::Error::AddToPrintf(error, FROM_HERE, errors::state::kDomain,
-                                  errors::state::kPropertyNotDefined,
-                                  "State property '%s.%s' is not defined",
-                                  name_.c_str(), property_name.c_str());
+                                 errors::state::kPropertyNotDefined,
+                                 "State property '%s.%s' is not defined",
+                                 name_.c_str(), property_name.c_str());
     return false;
   }
-  auto new_value = PropValueFromDBusVariant(it->second->GetPropType(),
-                                            value, error);
+  auto new_value =
+      PropValueFromDBusVariant(it->second->GetPropType(), value, error);
   if (!new_value)
     return false;
   it->second = std::move(new_value);

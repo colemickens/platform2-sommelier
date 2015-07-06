@@ -67,9 +67,7 @@ class StatePackageTest : public ::testing::Test {
     ASSERT_TRUE(package_->AddSchemaFromJson(GetTestSchema().get(), nullptr));
     ASSERT_TRUE(package_->AddValuesFromJson(GetTestValues().get(), nullptr));
   }
-  void TearDown() override {
-    package_.reset();
-  }
+  void TearDown() override { package_.reset(); }
   std::unique_ptr<StatePackage> package_;
 };
 
@@ -250,13 +248,12 @@ TEST_F(StatePackageTest, GetPropertyValue_Unknown) {
   EXPECT_TRUE(value.IsEmpty());
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
-  EXPECT_EQ("State property 'test.volume' is not defined",
-            error->GetMessage());
+  EXPECT_EQ("State property 'test.volume' is not defined", error->GetMessage());
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Simple) {
-  EXPECT_TRUE(package_->SetPropertyValue("color", std::string{"blue"},
-                                         nullptr));
+  EXPECT_TRUE(
+      package_->SetPropertyValue("color", std::string{"blue"}, nullptr));
   chromeos::Any value = package_->GetPropertyValue("color", nullptr);
   EXPECT_EQ("blue", value.TryGet<std::string>());
 
@@ -271,8 +268,7 @@ TEST_F(StatePackageTest, SetPropertyValue_Simple) {
 
 TEST_F(StatePackageTest, SetPropertyValue_Object) {
   chromeos::VariantDictionary direction{
-    {"altitude", double{45.0}},
-    {"azimuth", double{15.0}},
+      {"altitude", double{45.0}}, {"azimuth", double{15.0}},
   };
   EXPECT_TRUE(package_->SetPropertyValue("direction", direction, nullptr));
 
@@ -314,8 +310,7 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_OutOfRange) {
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_TypeMismatch) {
   chromeos::ErrorPtr error;
   chromeos::VariantDictionary direction{
-    {"altitude", double{45.0}},
-    {"azimuth", int{15}},
+      {"altitude", double{45.0}}, {"azimuth", int{15}},
   };
   ASSERT_FALSE(package_->SetPropertyValue("direction", direction, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
@@ -330,8 +325,7 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Object_TypeMismatch) {
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_OutOfRange) {
   chromeos::ErrorPtr error;
   chromeos::VariantDictionary direction{
-    {"altitude", double{100.0}},
-    {"azimuth", double{290.0}},
+      {"altitude", double{100.0}}, {"azimuth", double{290.0}},
   };
   ASSERT_FALSE(package_->SetPropertyValue("direction", direction, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
@@ -347,9 +341,9 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Object_OutOfRange) {
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_UnknownProperty) {
   chromeos::ErrorPtr error;
   chromeos::VariantDictionary direction{
-    {"altitude", double{10.0}},
-    {"azimuth", double{20.0}},
-    {"spin", double{30.0}},
+      {"altitude", double{10.0}},
+      {"azimuth", double{20.0}},
+      {"spin", double{30.0}},
   };
   ASSERT_FALSE(package_->SetPropertyValue("direction", direction, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
@@ -360,7 +354,7 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Object_UnknownProperty) {
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_MissingProperty) {
   chromeos::ErrorPtr error;
   chromeos::VariantDictionary direction{
-    {"altitude", double{10.0}},
+      {"altitude", double{10.0}},
   };
   ASSERT_FALSE(package_->SetPropertyValue("direction", direction, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
@@ -373,8 +367,7 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Unknown) {
   ASSERT_FALSE(package_->SetPropertyValue("volume", int{100}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
-  EXPECT_EQ("State property 'test.volume' is not defined",
-            error->GetMessage());
+  EXPECT_EQ("State property 'test.volume' is not defined", error->GetMessage());
 }
 
 }  // namespace buffet

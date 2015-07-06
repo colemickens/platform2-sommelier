@@ -27,7 +27,7 @@ DBusCommandProxy::DBusCommandProxy(ExportedObjectManager* object_manager,
 }
 
 void DBusCommandProxy::RegisterAsync(
-      const AsyncEventSequencer::CompletionAction& completion_callback) {
+    const AsyncEventSequencer::CompletionAction& completion_callback) {
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
 
   // Set the initial property values before registering the DBus object.
@@ -39,10 +39,10 @@ void DBusCommandProxy::RegisterAsync(
       ObjectToDBusVariant(command_instance_->GetProgress()));
   dbus_adaptor_.SetOrigin(command_instance_->GetOrigin());
 
-  dbus_adaptor_.SetParameters(ObjectToDBusVariant(
-      command_instance_->GetParameters()));
-  dbus_adaptor_.SetResults(ObjectToDBusVariant(
-      command_instance_->GetResults()));
+  dbus_adaptor_.SetParameters(
+      ObjectToDBusVariant(command_instance_->GetParameters()));
+  dbus_adaptor_.SetResults(
+      ObjectToDBusVariant(command_instance_->GetResults()));
 
   // Register the command DBus object and expose its methods and properties.
   dbus_object_.RegisterAsync(completion_callback);
@@ -80,8 +80,8 @@ bool DBusCommandProxy::SetProgress(
 
 bool DBusCommandProxy::SetResults(chromeos::ErrorPtr* error,
                                   const chromeos::VariantDictionary& results) {
-  LOG(INFO) << "Received call to Command<"
-            << command_instance_->GetName() << ">::SetResults()";
+  LOG(INFO) << "Received call to Command<" << command_instance_->GetName()
+            << ">::SetResults()";
 
   auto results_schema = command_instance_->GetCommandDefinition()->GetResults();
   native_types::Object obj;
@@ -93,22 +93,21 @@ bool DBusCommandProxy::SetResults(chromeos::ErrorPtr* error,
 }
 
 void DBusCommandProxy::Abort() {
-  LOG(INFO) << "Received call to Command<"
-            << command_instance_->GetName() << ">::Abort()";
+  LOG(INFO) << "Received call to Command<" << command_instance_->GetName()
+            << ">::Abort()";
   command_instance_->Abort();
 }
 
 void DBusCommandProxy::Cancel() {
-  LOG(INFO) << "Received call to Command<"
-            << command_instance_->GetName() << ">::Cancel()";
+  LOG(INFO) << "Received call to Command<" << command_instance_->GetName()
+            << ">::Cancel()";
   command_instance_->Cancel();
 }
 
 void DBusCommandProxy::Done() {
-  LOG(INFO) << "Received call to Command<"
-            << command_instance_->GetName() << ">::Done()";
+  LOG(INFO) << "Received call to Command<" << command_instance_->GetName()
+            << ">::Done()";
   command_instance_->Done();
 }
-
 
 }  // namespace buffet

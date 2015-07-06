@@ -86,4 +86,3 @@ class XmppStreamParser final {
 }  // namespace buffet
 
 #endif  // LIBWEAVE_SRC_NOTIFICATION_XMPP_STREAM_PARSER_H_
-

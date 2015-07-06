@@ -23,7 +23,7 @@ class MockStateChangeQueueInterface : public StateChangeQueueInterface {
   MOCK_CONST_METHOD0(GetLastStateChangeId, UpdateID());
   MOCK_METHOD1(MockAddOnStateUpdatedCallback,
                base::CallbackList<void(UpdateID)>::Subscription*(
-                  const base::Callback<void(UpdateID)>&));
+                   const base::Callback<void(UpdateID)>&));
   MOCK_METHOD1(NotifyStateUpdatedOnServer, void(UpdateID));
 
  private:

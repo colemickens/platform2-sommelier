@@ -24,7 +24,6 @@ const char kBaseStateFirmwareVersion[] = "base.firmwareVersion";
 
 }  // namespace
 
-
 StateManager::StateManager(StateChangeQueueInterface* state_change_queue)
     : state_change_queue_(state_change_queue) {
   CHECK(state_change_queue_) << "State change queue not specified";
@@ -89,17 +88,15 @@ void StateManager::Startup() {
   } else {
     LOG(ERROR) << "Failed to read file for firmwareVersion.";
   }
-  CHECK(SetPropertyValue(kBaseStateFirmwareVersion,
-                         firmware_version,
-                         base::Time::Now(),
-                         nullptr));
+  CHECK(SetPropertyValue(kBaseStateFirmwareVersion, firmware_version,
+                         base::Time::Now(), nullptr));
 
   for (const auto& cb : on_changed_)
     cb.Run();
 }
 
 std::unique_ptr<base::DictionaryValue> StateManager::GetStateValuesAsJson(
-      chromeos::ErrorPtr* error) const {
+    chromeos::ErrorPtr* error) const {
   std::unique_ptr<base::DictionaryValue> dict{new base::DictionaryValue};
   for (const auto& pair : packages_) {
     auto pkg_value = pair.second->GetValuesAsJson(error);
@@ -152,16 +149,16 @@ bool StateManager::SetPropertyValue(const std::string& full_property_name,
   StatePackage* package = FindPackage(package_name);
   if (package == nullptr) {
     chromeos::Error::AddToPrintf(error, FROM_HERE, errors::state::kDomain,
-                            errors::state::kPropertyNotDefined,
-                            "Unknown state property package '%s'",
-                            package_name.c_str());
+                                 errors::state::kPropertyNotDefined,
+                                 "Unknown state property package '%s'",
+                                 package_name.c_str());
     return false;
   }
   if (!package->SetPropertyValue(property_name, value, error))
     return false;
 
-  native_types::Object prop_set{{full_property_name,
-                                 package->GetProperty(property_name)}};
+  native_types::Object prop_set{
+      {full_property_name, package->GetProperty(property_name)}};
   state_change_queue_->NotifyPropertiesUpdated(timestamp, prop_set);
   return true;
 }
@@ -191,11 +188,10 @@ bool StateManager::LoadStateDefinition(const base::DictionaryValue& json,
     }
     const base::DictionaryValue* package_dict = nullptr;
     if (!iter.value().GetAsDictionary(&package_dict)) {
-      chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                   chromeos::errors::json::kDomain,
-                                   chromeos::errors::json::kObjectExpected,
-                                   "State package '%s' must be an object",
-                                   package_name.c_str());
+      chromeos::Error::AddToPrintf(
+          error, FROM_HERE, chromeos::errors::json::kDomain,
+          chromeos::errors::json::kObjectExpected,
+          "State package '%s' must be an object", package_name.c_str());
       return false;
     }
     StatePackage* package = FindOrCreatePackage(package_name);
@@ -227,8 +223,7 @@ bool StateManager::LoadStateDefinition(const base::FilePath& json_file_path,
 
   if (!LoadStateDefinition(*json, category, error)) {
     chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
-                                 kFileReadError,
-                                 "Failed to load file '%s'",
+                                 kFileReadError, "Failed to load file '%s'",
                                  json_file_path.value().c_str());
     return false;
   }
@@ -243,8 +238,7 @@ bool StateManager::LoadBaseStateDefinition(const base::FilePath& json_file_path,
     return false;
   if (!LoadStateDefinition(*json, kDefaultCategory, error)) {
     chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
-                                 kFileReadError,
-                                 "Failed to load file '%s'",
+                                 kFileReadError, "Failed to load file '%s'",
                                  json_file_path.value().c_str());
     return false;
   }
@@ -264,11 +258,10 @@ bool StateManager::LoadStateDefaults(const base::DictionaryValue& json,
     }
     const base::DictionaryValue* package_dict = nullptr;
     if (!iter.value().GetAsDictionary(&package_dict)) {
-      chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                   chromeos::errors::json::kDomain,
-                                   chromeos::errors::json::kObjectExpected,
-                                   "State package '%s' must be an object",
-                                   package_name.c_str());
+      chromeos::Error::AddToPrintf(
+          error, FROM_HERE, chromeos::errors::json::kDomain,
+          chromeos::errors::json::kObjectExpected,
+          "State package '%s' must be an object", package_name.c_str());
       return false;
     }
     StatePackage* package = FindPackage(package_name);
@@ -295,8 +288,7 @@ bool StateManager::LoadStateDefaults(const base::FilePath& json_file_path,
     return false;
   if (!LoadStateDefaults(*json, error)) {
     chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
-                                 kFileReadError,
-                                 "Failed to load file '%s'",
+                                 kFileReadError, "Failed to load file '%s'",
                                  json_file_path.value().c_str());
     return false;
   }
@@ -313,8 +305,8 @@ StatePackage* StateManager::FindOrCreatePackage(
   StatePackage* package = FindPackage(package_name);
   if (package == nullptr) {
     std::unique_ptr<StatePackage> new_package{new StatePackage(package_name)};
-    package = packages_.emplace(package_name,
-                                std::move(new_package)).first->second.get();
+    package = packages_.emplace(package_name, std::move(new_package))
+                  .first->second.get();
   }
   return package;
 }

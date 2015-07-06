@@ -42,7 +42,7 @@ std::string ToString(const native_types::Array& arr);
 // The |value| still specifies the actual attribute values, whether it
 // is inherited or overridden, while |is_inherited| can be used to identify
 // if the attribute was inherited (true) or overridden (false).
-template<typename T>
+template <typename T>
 class InheritableAttribute final {
  public:
   InheritableAttribute() = default;
@@ -69,7 +69,7 @@ std::unique_ptr<base::Value> TypedValueToJson(const native_types::Object& value,
                                               chromeos::ErrorPtr* error);
 std::unique_ptr<base::Value> TypedValueToJson(const native_types::Array& value,
                                               chromeos::ErrorPtr* error);
-template<typename T>
+template <typename T>
 std::unique_ptr<base::Value> TypedValueToJson(const std::vector<T>& values,
                                               chromeos::ErrorPtr* error) {
   std::unique_ptr<base::ListValue> list(new base::ListValue);
@@ -125,14 +125,14 @@ bool operator==(const native_types::Array& arr1,
 // which should work reliably for floating points also ("number" type).
 
 // Compare exact types using ==.
-template<typename T>
+template <typename T>
 inline typename std::enable_if<!std::is_floating_point<T>::value, bool>::type
 CompareValue(const T& v1, const T& v2) {
   return v1 == v2;
 }
 
 // Compare non-exact types (such as double) using precision margin (epsilon).
-template<typename T>
+template <typename T>
 inline typename std::enable_if<std::is_floating_point<T>::value, bool>::type
 CompareValue(const T& v1, const T& v2) {
   return std::abs(v1 - v2) <= std::numeric_limits<T>::epsilon();
@@ -144,8 +144,8 @@ CompareValue(const T& v1, const T& v2) {
 chromeos::Any PropValueToDBusVariant(const PropValue* value);
 // Converts native_types::Object to chromeos::VariantDictionary
 // with proper conversion of all nested properties.
-chromeos::VariantDictionary
-ObjectToDBusVariant(const native_types::Object& object);
+chromeos::VariantDictionary ObjectToDBusVariant(
+    const native_types::Object& object);
 // Converts D-Bus variant to PropValue.
 // Has special handling for Object types where chromeos::VariantDictionary
 // is converted to native_types::Object.

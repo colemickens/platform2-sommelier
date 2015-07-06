@@ -45,20 +45,29 @@ class PropType;
 // native C++ data representation.
 // The generic GetValueType<T>() is undefined, however particular
 // type specializations return the appropriate ValueType.
-template<typename T> ValueType GetValueType();  // Undefined.
-template<>
-inline ValueType GetValueType<int>() { return ValueType::Int; }
-template<>
-inline ValueType GetValueType<double>() { return ValueType::Double; }
-template<>
-inline ValueType GetValueType<std::string>() { return ValueType::String; }
-template<>
-inline ValueType GetValueType<bool>() { return ValueType::Boolean; }
-template<>
+template <typename T>
+ValueType GetValueType();  // Undefined.
+template <>
+inline ValueType GetValueType<int>() {
+  return ValueType::Int;
+}
+template <>
+inline ValueType GetValueType<double>() {
+  return ValueType::Double;
+}
+template <>
+inline ValueType GetValueType<std::string>() {
+  return ValueType::String;
+}
+template <>
+inline ValueType GetValueType<bool>() {
+  return ValueType::Boolean;
+}
+template <>
 inline ValueType GetValueType<native_types::Object>() {
   return ValueType::Object;
 }
-template<>
+template <>
 inline ValueType GetValueType<native_types::Array>() {
   return ValueType::Array;
 }
@@ -127,7 +136,7 @@ class PropValue {
 };
 
 // A helper template base class for implementing value classes.
-template<typename Derived, typename T>
+template <typename Derived, typename T>
 class TypedValueBase : public PropValue {
  public:
   // To help refer to this base class from derived classes, define Base to

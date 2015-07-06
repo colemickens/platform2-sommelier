@@ -26,7 +26,7 @@ CloudCommandProxy::CloudCommandProxy(
       cloud_backoff_entry_{std::move(backoff_entry)} {
   callback_token_ = state_change_queue_->AddOnStateUpdatedCallback(
       base::Bind(&CloudCommandProxy::OnDeviceStateUpdated,
-                  weak_ptr_factory_.GetWeakPtr()));
+                 weak_ptr_factory_.GetWeakPtr()));
 }
 
 void CloudCommandProxy::OnResultsChanged() {
@@ -94,9 +94,8 @@ void CloudCommandProxy::SendCommandUpdate() {
             << cloud_backoff_entry_->GetTimeUntilRelease()
             << " due to backoff policy";
     task_runner_->PostDelayedTask(
-        FROM_HERE,
-        base::Bind(&CloudCommandProxy::SendCommandUpdate,
-                   backoff_weak_ptr_factory_.GetWeakPtr()),
+        FROM_HERE, base::Bind(&CloudCommandProxy::SendCommandUpdate,
+                              backoff_weak_ptr_factory_.GetWeakPtr()),
         cloud_backoff_entry_->GetTimeUntilRelease());
     return;
   }

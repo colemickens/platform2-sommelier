@@ -63,7 +63,8 @@ class ObjectSchema final {
   // then all properties and constraints are saved, otherwise, only
   // the overridden (not inherited) ones are saved.
   std::unique_ptr<base::DictionaryValue> ToJson(
-      bool full_schema, chromeos::ErrorPtr* error) const;
+      bool full_schema,
+      chromeos::ErrorPtr* error) const;
 
   // Loads the object schema from JSON. If |object_schema| is not nullptr, it is
   // used as a base schema to inherit omitted properties and constraints from.

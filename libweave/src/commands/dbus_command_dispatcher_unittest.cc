@@ -52,12 +52,12 @@ class DBusCommandDispacherTest : public testing::Test {
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
     // Use a mock exported object manager.
-    mock_exported_object_manager_ = new dbus::MockExportedObject(
-        bus_.get(), kExportedObjectManagerPath);
+    mock_exported_object_manager_ =
+        new dbus::MockExportedObject(bus_.get(), kExportedObjectManagerPath);
     EXPECT_CALL(*bus_, GetExportedObject(kExportedObjectManagerPath))
         .WillRepeatedly(Return(mock_exported_object_manager_.get()));
-    EXPECT_CALL(*mock_exported_object_manager_,
-                ExportMethod(_, _, _, _)).Times(AnyNumber());
+    EXPECT_CALL(*mock_exported_object_manager_, ExportMethod(_, _, _, _))
+        .Times(AnyNumber());
     om_.reset(new chromeos::dbus_utils::ExportedObjectManager(
         bus_.get(), kExportedObjectManagerPath));
     om_->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
@@ -66,8 +66,8 @@ class DBusCommandDispacherTest : public testing::Test {
         base::Bind(&DBusCommandDispacher::OnCommandAdded,
                    base::Unretained(command_dispatcher_.get())));
     // Use a mock exported object for command proxy.
-    mock_exported_command_proxy_ = new dbus::MockExportedObject(
-        bus_.get(), kCmdObjPath);
+    mock_exported_command_proxy_ =
+        new dbus::MockExportedObject(bus_.get(), kCmdObjPath);
     EXPECT_CALL(*bus_, GetExportedObject(kCmdObjPath))
         .WillRepeatedly(Return(mock_exported_command_proxy_.get()));
     EXPECT_CALL(*mock_exported_command_proxy_, ExportMethod(_, _, _, _))
@@ -104,11 +104,10 @@ class DBusCommandDispacherTest : public testing::Test {
     on_exported_callback.Run(interface_name, method_name, true);
   }
 
-
   void AddNewCommand(const std::string& json, const std::string& id) {
-    auto command_instance = CommandInstance::FromJson(
-        CreateDictionaryValue(json.c_str()).get(), "cloud", dictionary_,
-        nullptr, nullptr);
+    auto command_instance =
+        CommandInstance::FromJson(CreateDictionaryValue(json.c_str()).get(),
+                                  "cloud", dictionary_, nullptr, nullptr);
     command_instance->SetID(id);
     // Two interfaces are added - Command and Properties.
     EXPECT_CALL(*mock_exported_object_manager_, SendSignal(_)).Times(2);
@@ -120,15 +119,12 @@ class DBusCommandDispacherTest : public testing::Test {
     return static_cast<DBusCommandProxy*>(command_instance->proxies_[0].get());
   }
 
-  void FinishCommand(DBusCommandProxy* proxy) {
-    proxy->Done();
-  }
+  void FinishCommand(DBusCommandProxy* proxy) { proxy->Done(); }
 
   void SetProgress(DBusCommandProxy* proxy,
                    const native_types::Object& progress) {
     EXPECT_TRUE(proxy->SetProgress(nullptr, ObjectToDBusVariant(progress)));
   }
-
 
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_manager_;
@@ -176,7 +172,8 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Reboot) {
     'parameters': {
       'delay': 20
     }
-  })", id);
+  })",
+                id);
   CommandInstance* command_instance = command_queue_.Find(id);
   ASSERT_NE(nullptr, command_instance);
   DBusCommandProxy* command_proxy = FindProxy(command_instance);
@@ -202,6 +199,5 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Reboot) {
 
   EXPECT_EQ(nullptr, command_queue_.Find(id));
 }
-
 
 }  // namespace buffet

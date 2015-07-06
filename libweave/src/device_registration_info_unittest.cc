@@ -32,30 +32,38 @@ namespace {
 
 namespace test_data {
 
-const char kServiceURL[]           = "http://gcd.server.com/";
-const char kOAuthURL[]             = "http://oauth.server.com/";
-const char kApiKey[]               = "GOadRdTf9FERf0k4w6EFOof56fUJ3kFDdFL3d7f";
-const char kClientId[]             = "123543821385-sfjkjshdkjhfk234sdfsdfkskd"
-                                     "fkjh7f.apps.googleusercontent.com";
-const char kClientSecret[]         = "5sdGdGlfolGlrFKfdFlgP6FG";
-const char kDeviceId[]             = "4a7ea2d1-b331-1e1f-b206-e863c7635196";
-const char kClaimTicketId[]        = "RTcUE";
-const char kAccessToken[]          = "ya29.1.AADtN_V-dLUM-sVZ0qVjG9Dxm5NgdS9J"
-                                     "Mx_JLUqhC9bED_YFjzHZtYt65ZzXCS35NMAeaVZ"
-                                     "Dei530-w0yE2urpQ";
-const char kRefreshToken[]         = "1/zQmxR6PKNvhcxf9SjXUrCjcmCrcqRKXctc6cp"
-                                     "1nI-GQ";
-const char kRobotAccountAuthCode[] = "4/Mf_ujEhPejVhOq-OxW9F5cSOnWzx."
-                                     "YgciVjTYGscRshQV0ieZDAqiTIjMigI";
-const char kRobotAccountEmail[]    = "6ed0b3f54f9bd619b942f4ad2441c252@"
-                                     "clouddevices.gserviceaccount.com";
-const char kUserAccountAuthCode[]  = "2/sd_GD1TGFKpJOLJ34-0g5fK0fflp.GlT"
-                                     "I0F5g7hNtFgj5HFGOf8FlGK9eflO";
-const char kUserAccessToken[]      = "sd56.4.FGDjG_F-gFGF-dFG6gGOG9Dxm5NgdS9"
-                                     "JMx_JLUqhC9bED_YFjLKjlkjLKJlkjLKjlKJea"
-                                     "VZDei530-w0yE2urpQ";
-const char kUserRefreshToken[]     = "1/zQLKjlKJlkLkLKjLkjLKjLkjLjLkjl0ftc6"
-                                     "cp1nI-GQ";
+const char kServiceURL[] = "http://gcd.server.com/";
+const char kOAuthURL[] = "http://oauth.server.com/";
+const char kApiKey[] = "GOadRdTf9FERf0k4w6EFOof56fUJ3kFDdFL3d7f";
+const char kClientId[] =
+    "123543821385-sfjkjshdkjhfk234sdfsdfkskd"
+    "fkjh7f.apps.googleusercontent.com";
+const char kClientSecret[] = "5sdGdGlfolGlrFKfdFlgP6FG";
+const char kDeviceId[] = "4a7ea2d1-b331-1e1f-b206-e863c7635196";
+const char kClaimTicketId[] = "RTcUE";
+const char kAccessToken[] =
+    "ya29.1.AADtN_V-dLUM-sVZ0qVjG9Dxm5NgdS9J"
+    "Mx_JLUqhC9bED_YFjzHZtYt65ZzXCS35NMAeaVZ"
+    "Dei530-w0yE2urpQ";
+const char kRefreshToken[] =
+    "1/zQmxR6PKNvhcxf9SjXUrCjcmCrcqRKXctc6cp"
+    "1nI-GQ";
+const char kRobotAccountAuthCode[] =
+    "4/Mf_ujEhPejVhOq-OxW9F5cSOnWzx."
+    "YgciVjTYGscRshQV0ieZDAqiTIjMigI";
+const char kRobotAccountEmail[] =
+    "6ed0b3f54f9bd619b942f4ad2441c252@"
+    "clouddevices.gserviceaccount.com";
+const char kUserAccountAuthCode[] =
+    "2/sd_GD1TGFKpJOLJ34-0g5fK0fflp.GlT"
+    "I0F5g7hNtFgj5HFGOf8FlGK9eflO";
+const char kUserAccessToken[] =
+    "sd56.4.FGDjG_F-gFGF-dFG6gGOG9Dxm5NgdS9"
+    "JMx_JLUqhC9bED_YFjLKjlkjLKJlkjLKjlKJea"
+    "VZDei530-w0yE2urpQ";
+const char kUserRefreshToken[] =
+    "1/zQLKjlKJlkLkLKjLkjLKjLkjLjLkjl0ftc6"
+    "cp1nI-GQ";
 }  // namespace test_data
 
 // Add the test device registration information.
@@ -107,8 +115,7 @@ void OAuth2Handler(const ServerRequest& request, ServerResponse* response) {
   response->ReplyJson(chromeos::http::status_code::Ok, &json);
 }
 
-void OAuth2HandlerFail(const ServerRequest& request,
-                       ServerResponse* response) {
+void OAuth2HandlerFail(const ServerRequest& request, ServerResponse* response) {
   base::DictionaryValue json;
   EXPECT_EQ("refresh_token", request.GetFormField("grant_type"));
   EXPECT_EQ(test_data::kRefreshToken, request.GetFormField("refresh_token"));
@@ -134,12 +141,13 @@ void DeviceInfoHandler(const ServerRequest& request, ServerResponse* response) {
   auth += test_data::kAccessToken;
   EXPECT_EQ(auth,
             request.GetHeader(chromeos::http::request_header::kAuthorization));
-  response->ReplyJson(chromeos::http::status_code::Ok, {
-    {"channel.supportedType", "xmpp"},
-    {"deviceKind", "vendor"},
-    {"id", test_data::kDeviceId},
-    {"kind", "clouddevices#device"},
-  });
+  response->ReplyJson(chromeos::http::status_code::Ok,
+                      {
+                          {"channel.supportedType", "xmpp"},
+                          {"deviceKind", "vendor"},
+                          {"id", test_data::kDeviceId},
+                          {"kind", "clouddevices#device"},
+                      });
 }
 
 void FinalizeTicketHandler(const ServerRequest& request,
@@ -147,17 +155,19 @@ void FinalizeTicketHandler(const ServerRequest& request,
   EXPECT_EQ(test_data::kApiKey, request.GetFormField("key"));
   EXPECT_TRUE(request.GetData().empty());
 
-  response->ReplyJson(chromeos::http::status_code::Ok, {
-    {"id", test_data::kClaimTicketId},
-    {"kind", "clouddevices#registrationTicket"},
-    {"oauthClientId", test_data::kClientId},
-    {"userEmail", "user@email.com"},
-    {"deviceDraft.id", test_data::kDeviceId},
-    {"deviceDraft.kind", "clouddevices#device"},
-    {"deviceDraft.channel.supportedType", "xmpp"},
-    {"robotAccountEmail", test_data::kRobotAccountEmail},
-    {"robotAccountAuthorizationCode", test_data::kRobotAccountAuthCode},
-  });
+  response->ReplyJson(
+      chromeos::http::status_code::Ok,
+      {
+          {"id", test_data::kClaimTicketId},
+          {"kind", "clouddevices#registrationTicket"},
+          {"oauthClientId", test_data::kClientId},
+          {"userEmail", "user@email.com"},
+          {"deviceDraft.id", test_data::kDeviceId},
+          {"deviceDraft.kind", "clouddevices#device"},
+          {"deviceDraft.channel.supportedType", "xmpp"},
+          {"robotAccountEmail", test_data::kRobotAccountEmail},
+          {"robotAccountAuthorizationCode", test_data::kRobotAccountAuthCode},
+      });
 }
 
 }  // anonymous namespace
@@ -174,9 +184,13 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
 
     std::unique_ptr<BuffetConfig> config{new BuffetConfig{std::move(storage)}};
     config_ = config.get();
-    dev_reg_.reset(new DeviceRegistrationInfo{command_manager_, state_manager_,
-                                              std::move(config), transport_,
-                                              nullptr, true, nullptr});
+    dev_reg_.reset(new DeviceRegistrationInfo{command_manager_,
+                                              state_manager_,
+                                              std::move(config),
+                                              transport_,
+                                              nullptr,
+                                              true,
+                                              nullptr});
 
     ReloadConfig();
   }
@@ -186,8 +200,8 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     config_store.SetString("client_id", test_data::kClientId);
     config_store.SetString("client_secret", test_data::kClientSecret);
     config_store.SetString("api_key", test_data::kApiKey);
-    config_store.SetString("device_kind",  "vendor");
-    config_store.SetString("name",  "Coffee Pot");
+    config_store.SetString("device_kind", "vendor");
+    config_store.SetString("name", "Coffee Pot");
     config_store.SetString("description", "Easy to clean");
     config_store.SetString("location", "Kitchen");
     config_store.SetString("local_anonymous_access_role", "viewer");
@@ -222,9 +236,7 @@ class DeviceRegistrationInfoTest : public ::testing::Test {
     return succeeded;
   }
 
-  void SetAccessToken() {
-    dev_reg_->access_token_ = test_data::kAccessToken;
-  }
+  void SetAccessToken() { dev_reg_->access_token_ = test_data::kAccessToken; }
 
   RegistrationStatus GetRegistrationStatus() const {
     return dev_reg_->registration_status_;
@@ -248,14 +260,14 @@ TEST_F(DeviceRegistrationInfoTest, GetServiceURL) {
   EXPECT_EQ(url, dev_reg_->GetServiceURL("registrationTickets"));
   url += "?key=";
   url += test_data::kApiKey;
-  EXPECT_EQ(url, dev_reg_->GetServiceURL("registrationTickets", {
-    {"key", test_data::kApiKey}
-  }));
+  EXPECT_EQ(url, dev_reg_->GetServiceURL("registrationTickets",
+                                         {{"key", test_data::kApiKey}}));
   url += "&restart=true";
-  EXPECT_EQ(url, dev_reg_->GetServiceURL("registrationTickets", {
-    {"key", test_data::kApiKey},
-    {"restart", "true"},
-  }));
+  EXPECT_EQ(url, dev_reg_->GetServiceURL(
+                     "registrationTickets",
+                     {
+                         {"key", test_data::kApiKey}, {"restart", "true"},
+                     }));
 }
 
 TEST_F(DeviceRegistrationInfoTest, GetOAuthURL) {
@@ -266,12 +278,12 @@ TEST_F(DeviceRegistrationInfoTest, GetOAuthURL) {
   url += "response_type=code&";
   url += "client_id=";
   url += test_data::kClientId;
-  EXPECT_EQ(url, dev_reg_->GetOAuthURL("auth", {
-    {"scope", "https://www.googleapis.com/auth/clouddevices"},
-    {"redirect_uri", "urn:ietf:wg:oauth:2.0:oob"},
-    {"response_type", "code"},
-    {"client_id", test_data::kClientId}
-  }));
+  EXPECT_EQ(url, dev_reg_->GetOAuthURL(
+                     "auth",
+                     {{"scope", "https://www.googleapis.com/auth/clouddevices"},
+                      {"redirect_uri", "urn:ietf:wg:oauth:2.0:oob"},
+                      {"response_type", "code"},
+                      {"client_id", test_data::kClientId}}));
 }
 
 TEST_F(DeviceRegistrationInfoTest, HaveRegistrationCredentials) {
@@ -339,8 +351,8 @@ TEST_F(DeviceRegistrationInfoTest, GetDeviceInfo) {
   base::RunLoop run_loop;
 
   bool succeeded = false;
-  auto on_success =
-      [&run_loop, &succeeded, this](const base::DictionaryValue& info) {
+  auto on_success = [&run_loop, &succeeded, this](
+      const base::DictionaryValue& info) {
     EXPECT_EQ(1, transport_->GetRequestCount());
     std::string id;
     EXPECT_TRUE(info.GetString("id", &id));
@@ -456,13 +468,12 @@ TEST_F(DeviceRegistrationInfoTest, RegisterDevice) {
   })");
   EXPECT_TRUE(command_manager_->LoadCommands(*json_cmds, "", nullptr));
 
-  transport_->AddHandler(dev_reg_->GetServiceURL(
-      std::string("registrationTickets/") + test_data::kClaimTicketId),
-      chromeos::http::request_type::kPatch,
-      base::Bind(update_ticket));
-  std::string ticket_url =
-      dev_reg_->GetServiceURL("registrationTickets/" +
-                             std::string(test_data::kClaimTicketId));
+  transport_->AddHandler(
+      dev_reg_->GetServiceURL(std::string("registrationTickets/") +
+                              test_data::kClaimTicketId),
+      chromeos::http::request_type::kPatch, base::Bind(update_ticket));
+  std::string ticket_url = dev_reg_->GetServiceURL(
+      "registrationTickets/" + std::string(test_data::kClaimTicketId));
   transport_->AddHandler(ticket_url + "/finalize",
                          chromeos::http::request_type::kPost,
                          base::Bind(FinalizeTicketHandler));
@@ -534,8 +545,7 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   ASSERT_NE(nullptr, command);
   StringPropType string_type;
   native_types::Object results{
-    {"status", string_type.CreateValue(std::string{"Ok"}, nullptr)}
-  };
+      {"status", string_type.CreateValue(std::string{"Ok"}, nullptr)}};
 
   // UpdateCommand when setting command results.
   auto update_command_results = [](const ServerRequest& request,
@@ -546,8 +556,7 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
                         chromeos::http::FormFieldList{});
   };
 
-  transport_->AddHandler(command_url,
-                         chromeos::http::request_type::kPatch,
+  transport_->AddHandler(command_url, chromeos::http::request_type::kPatch,
                          base::Bind(update_command_results));
 
   command->SetResults(results);
@@ -567,8 +576,7 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
                         chromeos::http::FormFieldList{});
   };
 
-  transport_->AddHandler(command_url,
-                         chromeos::http::request_type::kPatch,
+  transport_->AddHandler(command_url, chromeos::http::request_type::kPatch,
                          base::Bind(update_command_progress));
 
   native_types::Object progress{
@@ -584,12 +592,10 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
                         chromeos::http::FormFieldList{});
   };
 
-  transport_->AddHandler(command_url,
-                         chromeos::http::request_type::kPatch,
+  transport_->AddHandler(command_url, chromeos::http::request_type::kPatch,
                          base::Bind(update_command_state));
 
   command->Cancel();
 }
-
 
 }  // namespace buffet

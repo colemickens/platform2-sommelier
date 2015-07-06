@@ -24,7 +24,6 @@ class ExportedObjectManager;
 }  // namespace dbus_utils
 }  // namespace chromeos
 
-
 namespace buffet {
 
 class CommandInstance;
@@ -111,7 +110,7 @@ class CommandManager final {
 
  private:
   CommandDictionary base_dictionary_;  // Base/std command definitions/schemas.
-  CommandDictionary dictionary_;  // Command definitions/schemas.
+  CommandDictionary dictionary_;       // Command definitions/schemas.
   DBusCommandDispacher command_dispatcher_;
   CommandQueue command_queue_;
   std::vector<base::Callback<void()>> on_command_changed_;

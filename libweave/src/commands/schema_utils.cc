@@ -31,12 +31,12 @@ void ReportJsonTypeMismatch(const base::Value* value_in,
 // Template version of ReportJsonTypeMismatch that deduces the type of expected
 // data from the value_out parameter passed to particular overload of
 // TypedValueFromJson() function. Always returns false.
-template<typename T>
-bool ReportUnexpectedJson(const base::Value* value_in, T*,
+template <typename T>
+bool ReportUnexpectedJson(const base::Value* value_in,
+                          T*,
                           chromeos::ErrorPtr* error) {
-  ReportJsonTypeMismatch(value_in,
-                         PropType::GetTypeStringFromType(GetValueType<T>()),
-                         error);
+  ReportJsonTypeMismatch(
+      value_in, PropType::GetTypeStringFromType(GetValueType<T>()), error);
   return false;
 }
 
@@ -148,11 +148,10 @@ bool TypedValueFromJson(const base::Value* value_in,
           << "Unable to get parameter";
       if (!value->FromJson(param_value, error) ||
           !pair.second->ValidateValue(value->GetValueAsAny(), error)) {
-        chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                     errors::commands::kDomain,
-                                     errors::commands::kInvalidPropValue,
-                                     "Invalid value for property '%s'",
-                                     pair.first.c_str());
+        chromeos::Error::AddToPrintf(
+            error, FROM_HERE, errors::commands::kDomain,
+            errors::commands::kInvalidPropValue,
+            "Invalid value for property '%s'", pair.first.c_str());
         return false;
       }
       value_out->emplace_hint(value_out->end(), pair.first, std::move(value));
@@ -278,8 +277,8 @@ chromeos::Any PropValueToDBusVariant(const PropValue* value) {
   return value->GetValueAsAny();
 }
 
-chromeos::VariantDictionary
-ObjectToDBusVariant(const native_types::Object& object) {
+chromeos::VariantDictionary ObjectToDBusVariant(
+    const native_types::Object& object) {
   chromeos::VariantDictionary dict;
   for (const auto& pair : object) {
     // Since we are inserting the elements from native_types::Object which is
@@ -317,8 +316,7 @@ std::unique_ptr<const PropValue> PropValueFromDBusVariant(
         << "An object type must have a schema defined for it";
     native_types::Object obj;
     if (!ObjectFromDBusVariant(type->GetObject()->GetObjectSchemaPtr(),
-                               value.Get<chromeos::VariantDictionary>(),
-                               &obj,
+                               value.Get<chromeos::VariantDictionary>(), &obj,
                                error)) {
       return result;
     }
@@ -347,11 +345,10 @@ bool ObjectFromDBusVariant(const ObjectSchema* object_schema,
       CHECK(prop_type) << "Value property type must be available";
       auto prop_value = PropValueFromDBusVariant(prop_type, it->second, error);
       if (!prop_value) {
-        chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                     errors::commands::kDomain,
-                                     errors::commands::kInvalidPropValue,
-                                     "Invalid value for property '%s'",
-                                     pair.first.c_str());
+        chromeos::Error::AddToPrintf(
+            error, FROM_HERE, errors::commands::kDomain,
+            errors::commands::kInvalidPropValue,
+            "Invalid value for property '%s'", pair.first.c_str());
         return false;
       }
       obj->emplace_hint(obj->end(), pair.first, std::move(prop_value));
@@ -369,11 +366,10 @@ bool ObjectFromDBusVariant(const ObjectSchema* object_schema,
   if (!object_schema->GetExtraPropertiesAllowed()) {
     for (const auto& pair : dict) {
       if (keys_processed.find(pair.first) == keys_processed.end()) {
-        chromeos::Error::AddToPrintf(error, FROM_HERE,
-                                     errors::commands::kDomain,
-                                     errors::commands::kUnknownProperty,
-                                     "Unrecognized property '%s'",
-                                     pair.first.c_str());
+        chromeos::Error::AddToPrintf(
+            error, FROM_HERE, errors::commands::kDomain,
+            errors::commands::kUnknownProperty, "Unrecognized property '%s'",
+            pair.first.c_str());
         return false;
       }
     }

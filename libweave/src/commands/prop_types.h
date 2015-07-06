@@ -38,8 +38,7 @@ class PropType {
   // of particular type. Also it is expected to have at most one constraint
   // of each type (e.g. it makes no sense to impose two "minimum" constraints
   // onto a numeric parameter).
-  using ConstraintMap = std::map<ConstraintType,
-                                 std::unique_ptr<Constraint>>;
+  using ConstraintMap = std::map<ConstraintType, std::unique_ptr<Constraint>>;
 
   PropType();
   virtual ~PropType();
@@ -55,9 +54,7 @@ class PropType {
   // is available.
   const PropValue* GetDefaultValue() const { return default_.value.get(); }
   // Gets the constraints specified for the parameter, if any.
-  const ConstraintMap& GetConstraints() const {
-    return constraints_;
-  }
+  const ConstraintMap& GetConstraints() const { return constraints_; }
   // Checks if any of the type attributes were overridden from the base
   // schema definition. If this type does not inherit from a base schema,
   // this method returns true.
@@ -87,7 +84,8 @@ class PropType {
   // type as a factory class.
   virtual std::unique_ptr<PropValue> CreateValue() const = 0;
   virtual std::unique_ptr<PropValue> CreateValue(
-      const chromeos::Any& val, chromeos::ErrorPtr* error) const = 0;
+      const chromeos::Any& val,
+      chromeos::ErrorPtr* error) const = 0;
 
   // Converts an array of PropValue containing the values of the types described
   // by this instance of PropType into an Any containing std::vector<T>, where
@@ -196,7 +194,7 @@ class PropType {
 
 // Base class for all the derived concrete implementations of property
 // type classes. Provides implementations for common methods of PropType base.
-template<class Derived, class Value, typename T>
+template <class Derived, class Value, typename T>
 class PropTypeBase : public PropType {
  public:
   // Overrides from PropType.
@@ -209,7 +207,8 @@ class PropTypeBase : public PropType {
   }
 
   std::unique_ptr<PropValue> CreateValue(
-      const chromeos::Any& v, chromeos::ErrorPtr* error) const override {
+      const chromeos::Any& v,
+      chromeos::ErrorPtr* error) const override {
     std::unique_ptr<PropValue> prop_value;
     if (v.IsTypeCompatible<T>()) {
       std::unique_ptr<Value> value{new Value{Clone()}};
@@ -255,7 +254,7 @@ class PropTypeBase : public PropType {
 };
 
 // Helper base class for Int and Double parameter types.
-template<class Derived, class Value, typename T>
+template <class Derived, class Value, typename T>
 class NumericPropTypeBase : public PropTypeBase<Derived, Value, T> {
  public:
   using Base = PropTypeBase<Derived, Value, T>;
@@ -268,10 +267,10 @@ class NumericPropTypeBase : public PropTypeBase<Derived, Value, T> {
   void AddMinMaxConstraint(T min_value, T max_value) {
     InheritableAttribute<T> min_attr(min_value, false);
     InheritableAttribute<T> max_attr(max_value, false);
-    this->AddConstraint(std::unique_ptr<ConstraintMin<T>>{
-        new ConstraintMin<T>{min_attr}});
-    this->AddConstraint(std::unique_ptr<ConstraintMax<T>>{
-        new ConstraintMax<T>{max_attr}});
+    this->AddConstraint(
+        std::unique_ptr<ConstraintMin<T>>{new ConstraintMin<T>{min_attr}});
+    this->AddConstraint(
+        std::unique_ptr<ConstraintMax<T>>{new ConstraintMax<T>{max_attr}});
   }
   T GetMinValue() const {
     auto mmc = static_cast<const ConstraintMin<T>*>(
@@ -354,7 +353,7 @@ class ObjectPropType
                             chromeos::ErrorPtr* error) override;
 
   chromeos::Any ConvertArrayToDBusVariant(
-    const native_types::Array& source) const override;
+      const native_types::Array& source) const override;
 
   bool ConvertDBusVariantToArray(const chromeos::Any& source,
                                  native_types::Array* result,

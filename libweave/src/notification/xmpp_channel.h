@@ -77,7 +77,8 @@ class XmppChannel : public NotificationChannel,
  protected:
   // These methods are internal helpers that can be overloaded by unit tests
   // to help provide unit-test-specific functionality.
-  virtual void Connect(const std::string& host, uint16_t port,
+  virtual void Connect(const std::string& host,
+                       uint16_t port,
                        const base::Closure& callback);
   virtual void SchedulePing(base::TimeDelta interval, base::TimeDelta timeout);
   void ScheduleRegularPing();
@@ -170,4 +171,3 @@ class XmppChannel : public NotificationChannel,
 }  // namespace buffet
 
 #endif  // LIBWEAVE_SRC_NOTIFICATION_XMPP_CHANNEL_H_
-

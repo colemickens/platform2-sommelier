@@ -67,5 +67,4 @@ bool ParseNotificationJson(const base::DictionaryValue& notification,
   return true;
 }
 
-
 }  // namespace buffet

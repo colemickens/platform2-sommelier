@@ -42,14 +42,12 @@ class XmlParser : public XmppStreamParser::Delegate {
 class XmlNodeTest : public testing::Test {
  public:
   void SetUp() override {
-    node_.reset(new XmlNode{"test_node",
-                            {{"attr1", "val1"}, {"attr2", "val2"}}});
+    node_.reset(
+        new XmlNode{"test_node", {{"attr1", "val1"}, {"attr2", "val2"}}});
   }
 
   // Accessor helpers for private members of XmlNode.
-  static const XmlNode* GetParent(const XmlNode& node) {
-    return node.parent_;
-  }
+  static const XmlNode* GetParent(const XmlNode& node) { return node.parent_; }
 
   static void SetText(XmlNode* node, const std::string& text) {
     node->SetText(text);
@@ -99,10 +97,8 @@ TEST_F(XmlNodeTest, AddChild) {
 }
 
 TEST_F(XmlNodeTest, Attributes) {
-  const std::map<std::string, std::string> expected_attrs{
-      {"attr1", "val1"},
-      {"attr2", "val2"}
-  };
+  const std::map<std::string, std::string> expected_attrs{{"attr1", "val1"},
+                                                          {"attr2", "val2"}};
   EXPECT_EQ(expected_attrs, node_->attributes());
   std::string attr = "bar";
   EXPECT_FALSE(node_->GetAttribute("foo", &attr));

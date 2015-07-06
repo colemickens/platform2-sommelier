@@ -161,12 +161,14 @@ TEST(CommandDictionary, LoadCommands_CustomCommandNaming) {
   })");
   base_dict.LoadCommands(*json, "", nullptr, &error);
   EXPECT_TRUE(dict.LoadCommands(*json, "robotd", &base_dict, &error));
-  auto json2 = CreateDictionaryValue(
-      "{'base':{'jump':{'parameters':{},'results':{}}}}");
+  auto json2 =
+      CreateDictionaryValue("{'base':{'jump':{'parameters':{},'results':{}}}}");
   EXPECT_FALSE(dict.LoadCommands(*json2, "robotd", &base_dict, &error));
   EXPECT_EQ("invalid_command_name", error->GetCode());
-  EXPECT_EQ("The name of custom command 'jump' in package 'base' must start "
-            "with '_'", error->GetMessage());
+  EXPECT_EQ(
+      "The name of custom command 'jump' in package 'base' must start "
+      "with '_'",
+      error->GetMessage());
   error.reset();
 
   // If the command starts with "_", then it's Ok.
@@ -379,9 +381,9 @@ TEST(CommandDictionary, GetCommandsAsJsonWithVisibility) {
   })";
   EXPECT_JSON_EQ(expected, *json);
 
-  json = dict.GetCommandsAsJson(
-      [](const CommandDefinition* def) { return def->GetVisibility().local; },
-      false, nullptr);
+  json = dict.GetCommandsAsJson([](const CommandDefinition* def) {
+    return def->GetVisibility().local;
+  }, false, nullptr);
   ASSERT_NE(nullptr, json.get());
   expected = R"({
     'test': {
@@ -393,9 +395,9 @@ TEST(CommandDictionary, GetCommandsAsJsonWithVisibility) {
   })";
   EXPECT_JSON_EQ(expected, *json);
 
-  json = dict.GetCommandsAsJson(
-      [](const CommandDefinition* def) { return def->GetVisibility().cloud; },
-      false, nullptr);
+  json = dict.GetCommandsAsJson([](const CommandDefinition* def) {
+    return def->GetVisibility().cloud;
+  }, false, nullptr);
   ASSERT_NE(nullptr, json.get());
   expected = R"({
     'test': {
@@ -407,10 +409,9 @@ TEST(CommandDictionary, GetCommandsAsJsonWithVisibility) {
   })";
   EXPECT_JSON_EQ(expected, *json);
 
-  json = dict.GetCommandsAsJson(
-    [](const CommandDefinition* def) {
-      return def->GetVisibility().local && def->GetVisibility().cloud;
-    }, false, nullptr);
+  json = dict.GetCommandsAsJson([](const CommandDefinition* def) {
+    return def->GetVisibility().local && def->GetVisibility().cloud;
+  }, false, nullptr);
   ASSERT_NE(nullptr, json.get());
   expected = R"({
     'test': {

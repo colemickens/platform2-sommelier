@@ -108,7 +108,6 @@ class XmlNode final {
                                  bool recursive,
                                  std::vector<const XmlNode*>* children) const;
 
-
   const XmlNode* parent_{nullptr};  // Weak pointer to the parent node, if any.
   std::string name_;
   std::string text_;
@@ -121,4 +120,3 @@ class XmlNode final {
 }  // namespace buffet
 
 #endif  // LIBWEAVE_SRC_NOTIFICATION_XML_NODE_H_
-

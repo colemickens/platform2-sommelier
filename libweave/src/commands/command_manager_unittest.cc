@@ -152,12 +152,10 @@ TEST(CommandManager, ShouldLoadStandardAndTestDefinitions) {
                  test_commands_path.Append("test.json"));
   manager.Startup(base_path, test_path);
   EXPECT_EQ(3, manager.GetCommandDictionary().GetSize());
-  EXPECT_NE(nullptr,
-            manager.GetCommandDictionary().FindCommand("robot._jump"));
+  EXPECT_NE(nullptr, manager.GetCommandDictionary().FindCommand("robot._jump"));
   EXPECT_NE(nullptr,
             manager.GetCommandDictionary().FindCommand("robot._speak"));
-  EXPECT_NE(nullptr,
-            manager.GetCommandDictionary().FindCommand("test._yo"));
+  EXPECT_NE(nullptr, manager.GetCommandDictionary().FindCommand("test._yo"));
 }
 
 TEST(CommandManager, UpdateCommandVisibility) {
