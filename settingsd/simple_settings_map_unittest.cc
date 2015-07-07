@@ -23,8 +23,28 @@ const std::string kSourceId = "source";
 
 class SimpleSettingsMapTest : public testing::Test {
  public:
-  SimpleSettingsMapTest() {}
-  ~SimpleSettingsMapTest() override {}
+  SimpleSettingsMapTest() {
+    // Prepare document for writer A.
+    VersionStamp version_stamp_A;
+    version_stamp_A.Set("A", 1);
+    version_stamp_A.Set("B", 1);
+    document_A_.reset(new MockSettingsDocument(kSourceId, version_stamp_A));
+
+    // Prepare Document for writer B.
+    VersionStamp version_stamp_B;
+    version_stamp_B.Set("A", 2);
+    version_stamp_B.Set("B", 1);
+    document_B_.reset(new MockSettingsDocument(kSourceId, version_stamp_B));
+
+    // Prepare Document for writer C.
+    VersionStamp version_stamp_C;
+    version_stamp_C.Set("A", 3);
+    version_stamp_C.Set("B", 1);
+    document_C_.reset(new MockSettingsDocument(kSourceId, version_stamp_C));
+
+    // Prepare Document for writer D (concurrent to C).
+    document_D_.reset(new MockSettingsDocument(kSourceId, version_stamp_C));
+  }
 
   void CheckSettingsMapContents(
       const std::map<Key, std::shared_ptr<base::Value>>& expected_values,
@@ -49,29 +69,6 @@ class SimpleSettingsMapTest : public testing::Test {
   }
 
  protected:
-  void SetUp() override {
-    // Prepare document for writer A.
-    VersionStamp version_stamp_A;
-    version_stamp_A.Set("A", 1);
-    version_stamp_A.Set("B", 1);
-    document_A_.reset(new MockSettingsDocument(kSourceId, version_stamp_A));
-
-    // Prepare Document for writer B.
-    VersionStamp version_stamp_B;
-    version_stamp_B.Set("A", 2);
-    version_stamp_B.Set("B", 1);
-    document_B_.reset(new MockSettingsDocument(kSourceId, version_stamp_B));
-
-    // Prepare Document for writer C.
-    VersionStamp version_stamp_C;
-    version_stamp_C.Set("A", 3);
-    version_stamp_C.Set("B", 1);
-    document_C_.reset(new MockSettingsDocument(kSourceId, version_stamp_C));
-
-    // Prepare Document for writer D (concurrent to C).
-    document_D_.reset(new MockSettingsDocument(kSourceId, version_stamp_C));
-  }
-
   std::unique_ptr<MockSettingsDocument> document_A_;
   std::unique_ptr<MockSettingsDocument> document_B_;
   std::unique_ptr<MockSettingsDocument> document_C_;

@@ -46,7 +46,8 @@ class SimpleSettingsMap : public SettingsMap {
   // reference from |value_map_| and |deletion_map_|, i.e. is currently
   // providing neither any active settings value nor deletions. The argument,
   // |document|, to this method is a pointer to the now unreferenced
-  // SettingsDocument.
+  // SettingsDocument. This method removes the weak references to |document|
+  // from |documents_|.
   void OnDocumentUnreferenced(const SettingsDocument* document);
 
  private:
@@ -68,7 +69,7 @@ class SimpleSettingsMap : public SettingsMap {
   bool HasLaterValueAssignment(const Key& key, const VersionStamp& lower_bound);
 
   // Returns true if |prefix| has been removed by a deletion later than
-  // |lower_bound|. Otherwise, return false.
+  // |lower_bound|. Otherwise, returns false.
   bool HasLaterSubtreeDeletion(const Key& prefix,
                                const VersionStamp& lower_bound) const;
 
@@ -77,11 +78,17 @@ class SimpleSettingsMap : public SettingsMap {
   // (1) VersionStamps fulfil the properties of vector clocks and thus allow
   //     for the partial causal ordering of SettingsDocuments.
   // (2) However their properties do not suffice to define a strict weak
-  //     ordering, as the transitivity of equivalence is not fulfiled.
+  //     ordering, as the transitivity of equivalence is not fulfilled.
   // (3) The insertion algorithm implemented here inserts documents at the
   //     latest compatible insertion point. This guarantees that all documents
   //     with an is-before relationship to a document are found at lower
-  //     indices.
+  //     indices. Inserting at the latest compatible insertion point allows to
+  //     maintain this property without the need to reorder existing elements.
+  //     The earliest compatible insertion point would also work, but in order
+  //     to identify it, but we would have to scan to the first document that is
+  //     after the document to insert anyways to make sure all documents that
+  //     are before the document to insert are on the left of the insertion
+  //     point.
   void InsertDocumentIntoSortedList(
       std::shared_ptr<const SettingsDocument> document);
 
