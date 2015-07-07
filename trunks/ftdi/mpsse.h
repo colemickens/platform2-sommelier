@@ -204,7 +204,7 @@ void FlushAfterRead(struct mpsse_context* mpsse, int tf);
 int PinHigh(struct mpsse_context* mpsse, int pin);
 int PinLow(struct mpsse_context* mpsse, int pin);
 int SetDirection(struct mpsse_context* mpsse, uint8_t direction);
-int WriteBits(struct mpsse_context* mpsse, char bits, int size);
+int WriteBits(struct mpsse_context* mpsse, char bits, size_t size);
 char ReadBits(struct mpsse_context* mpsse, int size);
 int WritePins(struct mpsse_context* mpsse, uint8_t data);
 int ReadPins(struct mpsse_context* mpsse);

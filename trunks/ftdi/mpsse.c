@@ -636,9 +636,10 @@ int Start(struct mpsse_context* mpsse) {
  *
  * Returns MPSSE_OK on success, MPSSE_FAIL on failure.
  */
-int WriteBits(struct mpsse_context* mpsse, char bits, int size) {
+int WriteBits(struct mpsse_context* mpsse, char bits, size_t size) {
   uint8_t data[8] = {0};
-  int i = 0, retval = MPSSE_OK;
+  size_t i = 0;
+  int retval = MPSSE_OK;
 
   if (size > sizeof(data)) {
     size = sizeof(data);
@@ -674,7 +675,8 @@ int WriteBits(struct mpsse_context* mpsse, char bits, int size) {
  * Returns MPSSE_OK on success.
  * Returns MPSSE_FAIL on failure.
  */
-int Write(struct mpsse_context* mpsse, const void* data, int size) {
+int Write(struct mpsse_context* mpsse, const void* vdata, int size) {
+  const uint8_t* data = vdata;
   uint8_t* buf = NULL;
   int retval = MPSSE_FAIL, buf_size = 0, txsize = 0, n = 0;
 
@@ -723,7 +725,7 @@ int Write(struct mpsse_context* mpsse, const void* data, int size) {
 }
 
 /* Performs a read. For internal use only; see Read() and ReadBits(). */
-uint8_t* InternalRead(struct mpsse_context* mpsse, int size) {
+static uint8_t* InternalRead(struct mpsse_context* mpsse, int size) {
   uint8_t *data = NULL, *buf = NULL;
   uint8_t sbuf[SPI_RW_SIZE] = {0};
   int n = 0, rxsize = 0, data_size = 0, retval = 0;
