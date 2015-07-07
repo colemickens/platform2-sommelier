@@ -668,21 +668,21 @@ bool PerfReader::ReadFromData(DataReader* data) {
     if (header_.attrs.offset + header_.attrs.size > data->size()) {
       LOG(ERROR) << "Header says attrs section ends at "
                  << header_.attrs.offset + header_.attrs.size
-                 << "bytes, which is larger than perf data size of "
+                 << " bytes, which is larger than perf data size of "
                  << data->size() << " bytes.";
       return false;
     }
     if (header_.data.offset + header_.data.size > data->size()) {
       LOG(ERROR) << "Header says data section ends at "
                  << header_.data.offset + header_.data.size
-                 << "bytes, which is larger than perf data size of "
+                 << " bytes, which is larger than perf data size of "
                  << data->size() << " bytes.";
       return false;
     }
     if (header_.event_types.offset + header_.event_types.size > data->size()) {
       LOG(ERROR) << "Header says event_types section ends at "
                  << header_.event_types.offset + header_.event_types.size
-                 << "bytes, which is larger than perf data size of "
+                 << " bytes, which is larger than perf data size of "
                  << data->size() << " bytes.";
       return false;
     }
