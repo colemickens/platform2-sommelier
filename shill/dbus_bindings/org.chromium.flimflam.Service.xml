@@ -25,6 +25,7 @@
 		<method name="Remove"/>
 		<method name="ActivateCellularModem">
 			<arg type="s" direction="in"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
 		<method name="CompleteCellularActivation"/>
 		<method name="GetLoadableProfileEntries">

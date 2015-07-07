@@ -321,7 +321,12 @@
             'dbus/chromeos_dbus_control.cc',
             'dbus/chromeos_dbus_daemon.cc',
             'dbus/chromeos_device_dbus_adaptor.cc',
+            'dbus/chromeos_ipconfig_dbus_adaptor.cc',
             'dbus/chromeos_manager_dbus_adaptor.cc',
+            'dbus/chromeos_profile_dbus_adaptor.cc',
+            'dbus/chromeos_rpc_task_dbus_adaptor.cc',
+            'dbus/chromeos_service_dbus_adaptor.cc',
+            'dbus/chromeos_third_party_vpn_dbus_adaptor.cc',
           ],
         }],
         ['USE_vpn == 1', {
