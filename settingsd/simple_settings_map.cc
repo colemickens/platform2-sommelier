@@ -73,7 +73,8 @@ void SimpleSettingsMap::InsertDocumentIntoSortedList(
 }
 
 void SimpleSettingsMap::DeleteSubtree(const Key& prefix,
-                                      const VersionStamp& upper_limit) {
+                                      const VersionStamp& upper_limit,
+                                      std::set<Key>* modified_keys) {
   // Remove deletions.
   auto deletion_range = utils::GetRange(prefix, deletion_map_);
   for (auto it = deletion_range.begin(); it != deletion_range.end();) {
@@ -86,16 +87,20 @@ void SimpleSettingsMap::DeleteSubtree(const Key& prefix,
   // Remove value assignments.
   const auto value_range = utils::GetRange(prefix, value_map_);
   for (auto it = value_range.begin(); it != value_range.end();) {
-    if (it->second->GetVersionStamp().IsBefore(upper_limit))
+    if (it->second->GetVersionStamp().IsBefore(upper_limit)) {
+      if (modified_keys)
+        modified_keys->insert(it->first);
       value_map_.erase(it++);
-    else
+    } else {
       ++it;
+    }
   }
 }
 
 void SimpleSettingsMap::InsertDocumentSubset(
     std::shared_ptr<const SettingsDocument> document,
-    const std::set<Key>& prefixes) {
+    const std::set<Key>& prefixes,
+    std::set<Key>* modified_keys) {
   // Convenience shortcuts.
   const VersionStamp& version_stamp = document->GetVersionStamp();
 
@@ -107,7 +112,7 @@ void SimpleSettingsMap::InsertDocumentSubset(
       // Check if there is a later deletion in place higher up in the
       // ancestorial key hierarchy which renders this deletion obsolete.
       if (!HasLaterSubtreeDeletion(prefix_deletion, version_stamp)) {
-        DeleteSubtree(prefix_deletion, version_stamp);
+        DeleteSubtree(prefix_deletion, version_stamp, modified_keys);
         deletion_map_[prefix_deletion] = document;
       }
     }
@@ -120,6 +125,8 @@ void SimpleSettingsMap::InsertDocumentSubset(
       // assignment which would render this value assignment obsolete.
       if (!HasLaterSubtreeDeletion(key, version_stamp) &&
           !HasLaterValueAssignment(key, version_stamp)) {
+        if (modified_keys)
+          modified_keys->insert(key);
         value_map_[key] = document;
       }
     }
@@ -127,7 +134,8 @@ void SimpleSettingsMap::InsertDocumentSubset(
 }
 
 bool SimpleSettingsMap::InsertDocument(
-    std::unique_ptr<const SettingsDocument> document) {
+    std::unique_ptr<const SettingsDocument> document,
+    std::set<Key>* modified_keys) {
   // Check if |document| has a prefix collision with a previously inserted,
   // concurrent document. In that case, abort.
   for (auto& doc_ptr : documents_) {
@@ -150,7 +158,7 @@ bool SimpleSettingsMap::InsertDocument(
   // Insert the whole document into |value_map_| and |deletion_map_|.
   std::set<Key> root_set;
   root_set.insert(Key());
-  InsertDocumentSubset(document_ptr, root_set);
+  InsertDocumentSubset(document_ptr, root_set, modified_keys);
 
   // Insert the document into the sorted vector of active documents only if it
   // is currently providing a setting.
@@ -160,7 +168,8 @@ bool SimpleSettingsMap::InsertDocument(
   return true;
 }
 
-void SimpleSettingsMap::RemoveDocument(const SettingsDocument* document_ptr) {
+void SimpleSettingsMap::RemoveDocument(const SettingsDocument* document_ptr,
+                                       std::set<Key>* modified_keys) {
   auto position = FindDocumentInSortedList(document_ptr);
 
   // If the SettingsDocument |document_ptr| is not in the list of active
@@ -201,13 +210,13 @@ void SimpleSettingsMap::RemoveDocument(const SettingsDocument* document_ptr) {
   // Walk the sorted list of documents from the earliest document up to (but not
   // including) the current document and reinstall links in the |value_map_| and
   // |deletion_map_| which are now shining through.
-  for (auto current_document_ptr = documents_.begin();
-       current_document_ptr != position; ++current_document_ptr) {
+  WeakPtrDocumentList::reverse_iterator current_document_ptr(position);
+  for (; current_document_ptr != documents_.rend(); ++current_document_ptr) {
     std::shared_ptr<const SettingsDocument> current_document =
          current_document_ptr->lock();
 
      // Install the relevant prefixes into |value_map_| and |deletion_map_|.
-     InsertDocumentSubset(current_document, prefixes_to_restore);
+     InsertDocumentSubset(current_document, prefixes_to_restore, modified_keys);
   }
 
   // Trigger clean-up of the document to be removed by discarding the last

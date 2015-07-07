@@ -33,9 +33,10 @@ class SimpleSettingsMap : public SettingsMap {
   void Clear() override;
   const base::Value* GetValue(const Key& key) const override;
   std::set<Key> GetKeys(const Key& key) const override;
-  bool InsertDocument(
-      std::unique_ptr<const SettingsDocument> document) override;
-  void RemoveDocument(const SettingsDocument* document_ptr) override;
+  bool InsertDocument(std::unique_ptr<const SettingsDocument> document,
+                      std::set<Key>* modified_keys) override;
+  void RemoveDocument(const SettingsDocument* document_ptr,
+                      std::set<Key>* modified_keys) override;
 
   // This method gets invoked when a SettingsDocument has lost its last
   // reference from |value_map_| and |deletion_map_|, i.e. is currently
@@ -53,7 +54,9 @@ class SimpleSettingsMap : public SettingsMap {
   // Helper method that deletes all entries in |value_map_| and |deletion_map_|
   // whose keys lie in the subtree rooted at |prefix| and where the VersionStamp
   // of the document that is currently providing them is before |upper_limit|.
-  void DeleteSubtree(const Key& prefix, const VersionStamp& upper_limit);
+  void DeleteSubtree(const Key& prefix,
+                     const VersionStamp& upper_limit,
+                     std::set<Key>* modified_keys);
 
   // Returns true if |key| has a value assignment later than |lower_bound|.
   // Otherwise, returns false.
@@ -84,9 +87,14 @@ class SimpleSettingsMap : public SettingsMap {
 
   // Installs the subset of keys and subtree deletions provided by |document|
   // for which at least one ancestor key is a member of |prefixes| into the
-  // |value_map_| or |deletion_map_|.
+  // |value_map_| or |deletion_map_|. If the out parameter |modified_keys| is
+  // not the |nullptr|, keys that have been added or deleted by the insertion
+  // are inserted into the set. Note that this only includes currently visible
+  // modifications and not those that have been clobbered by a later document
+  // already present in the SettingsMap.
   void InsertDocumentSubset(std::shared_ptr<const SettingsDocument> document,
-                            const std::set<Key>& prefixes);
+                            const std::set<Key>& prefixes,
+                            std::set<Key>* modified_keys);
 
   // The list of all active documents.
   WeakPtrDocumentList documents_;
