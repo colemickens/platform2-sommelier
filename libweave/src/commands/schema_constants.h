@@ -38,6 +38,7 @@ extern const char kType[];
 extern const char kDisplayName[];
 extern const char kDefault[];
 extern const char kItems[];
+extern const char kIsRequired[];
 
 extern const char kNumeric_Min[];
 extern const char kNumeric_Max[];
@@ -50,6 +51,7 @@ extern const char kOneOf_Metadata[];
 
 extern const char kObject_Properties[];
 extern const char kObject_AdditionalProperties[];
+extern const char kObject_Required[];
 
 extern const char kCommand_Id[];
 extern const char kCommand_Name[];

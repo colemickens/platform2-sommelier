@@ -68,25 +68,26 @@ TEST(CommandSchema, IntPropType_Types) {
 
 TEST(CommandSchema, IntPropType_ToJson) {
   IntPropType prop;
-  EXPECT_JSON_EQ("'integer'", *prop.ToJson(false, nullptr));
-  EXPECT_JSON_EQ("{'type':'integer'}", *prop.ToJson(true, nullptr));
+  EXPECT_JSON_EQ("'integer'", *prop.ToJson(false, false, nullptr));
+  EXPECT_JSON_EQ("{'type':'integer'}", *prop.ToJson(true, false, nullptr));
   IntPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
-  EXPECT_JSON_EQ("{}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{}", *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'minimum':3}").get(), &prop, nullptr);
-  EXPECT_JSON_EQ("{'minimum':3}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'minimum':3}", *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'maximum':-7}").get(), &prop,
                   nullptr);
-  EXPECT_JSON_EQ("{'maximum':-7}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'maximum':-7}", *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'minimum':0,'maximum':5}").get(),
                   &prop, nullptr);
-  EXPECT_JSON_EQ("{'maximum':5,'minimum':0}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'maximum':5,'minimum':0}",
+                 *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'enum':[1,2,3]}").get(), &prop,
                   nullptr);
-  EXPECT_JSON_EQ("[1,2,3]", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("[1,2,3]", *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'default':123}").get(), &prop,
                   nullptr);
-  EXPECT_JSON_EQ("{'default':123}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'default':123}", *param2.ToJson(false, false, nullptr));
 }
 
 TEST(CommandSchema, IntPropType_FromJson) {
@@ -172,6 +173,7 @@ TEST(CommandSchema, BoolPropType_Empty) {
   EXPECT_FALSE(prop.HasOverriddenAttributes());
   EXPECT_FALSE(prop.IsBasedOnSchema());
   EXPECT_EQ(nullptr, prop.GetDefaultValue());
+  EXPECT_FALSE(prop.IsRequired());
 }
 
 TEST(CommandSchema, BoolPropType_Types) {
@@ -186,19 +188,19 @@ TEST(CommandSchema, BoolPropType_Types) {
 
 TEST(CommandSchema, BoolPropType_ToJson) {
   BooleanPropType prop;
-  EXPECT_JSON_EQ("'boolean'", *prop.ToJson(false, nullptr));
-  EXPECT_JSON_EQ("{'type':'boolean'}", *prop.ToJson(true, nullptr));
+  EXPECT_JSON_EQ("'boolean'", *prop.ToJson(false, false, nullptr));
+  EXPECT_JSON_EQ("{'type':'boolean'}", *prop.ToJson(true, false, nullptr));
   BooleanPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
-  EXPECT_JSON_EQ("{}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{}", *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'enum':[true,false]}").get(), &prop,
                   nullptr);
-  EXPECT_JSON_EQ("[true,false]", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("[true,false]", *param2.ToJson(false, false, nullptr));
   EXPECT_JSON_EQ("{'enum':[true,false],'type':'boolean'}",
-                 *param2.ToJson(true, nullptr));
+                 *param2.ToJson(true, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'default':true}").get(), &prop,
                   nullptr);
-  EXPECT_JSON_EQ("{'default':true}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'default':true}", *param2.ToJson(false, false, nullptr));
 }
 
 TEST(CommandSchema, BoolPropType_FromJson) {
@@ -261,6 +263,7 @@ TEST(CommandSchema, DoublePropType_Empty) {
   EXPECT_FALSE(prop.HasOverriddenAttributes());
   EXPECT_FALSE(prop.IsBasedOnSchema());
   EXPECT_EQ(nullptr, prop.GetDefaultValue());
+  EXPECT_FALSE(prop.IsRequired());
 }
 
 TEST(CommandSchema, DoublePropType_Types) {
@@ -275,23 +278,23 @@ TEST(CommandSchema, DoublePropType_Types) {
 
 TEST(CommandSchema, DoublePropType_ToJson) {
   DoublePropType prop;
-  EXPECT_JSON_EQ("'number'", *prop.ToJson(false, nullptr));
-  EXPECT_JSON_EQ("{'type':'number'}", *prop.ToJson(true, nullptr));
+  EXPECT_JSON_EQ("'number'", *prop.ToJson(false, false, nullptr));
+  EXPECT_JSON_EQ("{'type':'number'}", *prop.ToJson(true, false, nullptr));
   DoublePropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
-  EXPECT_JSON_EQ("{}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{}", *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'minimum':3}").get(), &prop, nullptr);
-  EXPECT_JSON_EQ("{'minimum':3.0}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'minimum':3.0}", *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'maximum':-7}").get(), &prop,
                   nullptr);
-  EXPECT_JSON_EQ("{'maximum':-7.0}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'maximum':-7.0}", *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'minimum':0,'maximum':5}").get(),
                   &prop, nullptr);
   EXPECT_JSON_EQ("{'maximum':5.0,'minimum':0.0}",
-                 *param2.ToJson(false, nullptr));
+                 *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'default':12.3}").get(), &prop,
                   nullptr);
-  EXPECT_JSON_EQ("{'default':12.3}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'default':12.3}", *param2.ToJson(false, false, nullptr));
 }
 
 TEST(CommandSchema, DoublePropType_FromJson) {
@@ -378,6 +381,7 @@ TEST(CommandSchema, StringPropType_Empty) {
   EXPECT_FALSE(prop.HasOverriddenAttributes());
   EXPECT_FALSE(prop.IsBasedOnSchema());
   EXPECT_EQ(nullptr, prop.GetDefaultValue());
+  EXPECT_FALSE(prop.IsRequired());
 }
 
 TEST(CommandSchema, StringPropType_Types) {
@@ -392,24 +396,24 @@ TEST(CommandSchema, StringPropType_Types) {
 
 TEST(CommandSchema, StringPropType_ToJson) {
   StringPropType prop;
-  EXPECT_JSON_EQ("'string'", *prop.ToJson(false, nullptr));
-  EXPECT_JSON_EQ("{'type':'string'}", *prop.ToJson(true, nullptr));
+  EXPECT_JSON_EQ("'string'", *prop.ToJson(false, false, nullptr));
+  EXPECT_JSON_EQ("{'type':'string'}", *prop.ToJson(true, false, nullptr));
   StringPropType param2;
   param2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
-  EXPECT_JSON_EQ("{}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{}", *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'minLength':3}").get(), &prop,
                   nullptr);
-  EXPECT_JSON_EQ("{'minLength':3}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'minLength':3}", *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'maxLength':7}").get(), &prop,
                   nullptr);
-  EXPECT_JSON_EQ("{'maxLength':7}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'maxLength':7}", *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'minLength':0,'maxLength':5}").get(),
                   &prop, nullptr);
   EXPECT_JSON_EQ("{'maxLength':5,'minLength':0}",
-                 *param2.ToJson(false, nullptr));
+                 *param2.ToJson(false, false, nullptr));
   param2.FromJson(CreateDictionaryValue("{'default':'abcd'}").get(), &prop,
                   nullptr);
-  EXPECT_JSON_EQ("{'default':'abcd'}", *param2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'default':'abcd'}", *param2.ToJson(false, false, nullptr));
 }
 
 TEST(CommandSchema, StringPropType_FromJson) {
@@ -501,6 +505,7 @@ TEST(CommandSchema, ObjectPropType_Empty) {
   EXPECT_TRUE(prop.HasOverriddenAttributes());
   EXPECT_FALSE(prop.IsBasedOnSchema());
   EXPECT_EQ(nullptr, prop.GetDefaultValue());
+  EXPECT_FALSE(prop.IsRequired());
 }
 
 TEST(CommandSchema, ObjectPropType_Types) {
@@ -516,14 +521,14 @@ TEST(CommandSchema, ObjectPropType_Types) {
 TEST(CommandSchema, ObjectPropType_ToJson) {
   ObjectPropType prop;
   EXPECT_JSON_EQ("{'additionalProperties':false,'properties':{}}",
-                 *prop.ToJson(false, nullptr));
+                 *prop.ToJson(false, false, nullptr));
   EXPECT_JSON_EQ(
       "{'additionalProperties':false,'properties':{},'type':'object'}",
-      *prop.ToJson(true, nullptr));
+      *prop.ToJson(true, false, nullptr));
   EXPECT_FALSE(prop.IsBasedOnSchema());
   ObjectPropType prop2;
   prop2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
-  EXPECT_JSON_EQ("{}", *prop2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{}", *prop2.ToJson(false, false, nullptr));
   EXPECT_TRUE(prop2.IsBasedOnSchema());
 
   auto schema = ObjectSchema::Create();
@@ -542,7 +547,7 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
       }
     }
   })";
-  EXPECT_JSON_EQ(expected, *prop2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ(expected, *prop2.ToJson(false, false, nullptr));
 
   expected = R"({
     'additionalProperties': false,
@@ -558,7 +563,7 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
     },
     'type': 'object'
   })";
-  EXPECT_JSON_EQ(expected, *prop2.ToJson(true, nullptr));
+  EXPECT_JSON_EQ(expected, *prop2.ToJson(true, false, nullptr));
 
   ObjectPropType prop3;
   ASSERT_TRUE(
@@ -572,7 +577,7 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
       'password': 'abracadabra'
     }
   })";
-  EXPECT_JSON_EQ(expected, *prop3.ToJson(false, nullptr));
+  EXPECT_JSON_EQ(expected, *prop3.ToJson(false, false, nullptr));
 
   expected = R"({
     'additionalProperties': false,
@@ -592,7 +597,7 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
     },
     'type': 'object'
   })";
-  EXPECT_JSON_EQ(expected, *prop3.ToJson(true, nullptr));
+  EXPECT_JSON_EQ(expected, *prop3.ToJson(true, false, nullptr));
 
   ObjectPropType prop4;
   ASSERT_TRUE(
@@ -615,7 +620,7 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
       }
     }
   })";
-  EXPECT_JSON_EQ(expected, *prop4.ToJson(false, nullptr));
+  EXPECT_JSON_EQ(expected, *prop4.ToJson(false, false, nullptr));
 
   expected = R"({
     'additionalProperties': true,
@@ -635,7 +640,7 @@ TEST(CommandSchema, ObjectPropType_ToJson) {
     },
     'type': 'object'
   })";
-  EXPECT_JSON_EQ(expected, *prop4.ToJson(true, nullptr));
+  EXPECT_JSON_EQ(expected, *prop4.ToJson(true, false, nullptr));
 }
 
 TEST(CommandSchema, ObjectPropType_FromJson) {
@@ -669,8 +674,8 @@ TEST(CommandSchema, ObjectPropType_Validate) {
   ObjectPropType prop;
   prop.FromJson(CreateDictionaryValue(
                     "{'properties':{'expires':'integer',"
-                    "'password':{'maxLength':100,'minLength':6}}}")
-                    .get(),
+                    "'password':{'maxLength':100,'minLength':6}},"
+                    "'required':['expires','password']}").get(),
                 nullptr, nullptr);
   chromeos::ErrorPtr error;
   EXPECT_TRUE(prop.ValidateValue(
@@ -763,6 +768,7 @@ TEST(CommandSchema, ArrayPropType_Empty) {
   EXPECT_TRUE(prop.HasOverriddenAttributes());
   EXPECT_FALSE(prop.IsBasedOnSchema());
   EXPECT_NE(nullptr, prop.GetItemTypePtr());
+  EXPECT_FALSE(prop.IsRequired());
 }
 
 TEST(CommandSchema, ArrayPropType_Types) {
@@ -778,20 +784,20 @@ TEST(CommandSchema, ArrayPropType_Types) {
 TEST(CommandSchema, ArrayPropType_ToJson) {
   ArrayPropType prop;
   prop.SetItemType(PropType::Create(ValueType::Int));
-  EXPECT_JSON_EQ("{'items':'integer'}", *prop.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'items':'integer'}", *prop.ToJson(false, false, nullptr));
   EXPECT_JSON_EQ("{'items':{'type':'integer'},'type':'array'}",
-                 *prop.ToJson(true, nullptr));
+                 *prop.ToJson(true, false, nullptr));
   EXPECT_FALSE(prop.IsBasedOnSchema());
   ArrayPropType prop2;
   prop2.FromJson(CreateDictionaryValue("{}").get(), &prop, nullptr);
-  EXPECT_JSON_EQ("{}", *prop2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{}", *prop2.ToJson(false, false, nullptr));
   EXPECT_TRUE(prop2.IsBasedOnSchema());
   prop2.FromJson(CreateDictionaryValue("{'default':[1,2,3]}").get(), &prop,
                  nullptr);
-  EXPECT_JSON_EQ("{'default':[1,2,3]}", *prop2.ToJson(false, nullptr));
+  EXPECT_JSON_EQ("{'default':[1,2,3]}", *prop2.ToJson(false, false, nullptr));
   EXPECT_JSON_EQ(
       "{'default':[1,2,3],'items':{'type':'integer'},'type':'array'}",
-      *prop2.ToJson(true, nullptr));
+      *prop2.ToJson(true, false, nullptr));
 }
 
 TEST(CommandSchema, ArrayPropType_FromJson) {
@@ -1472,6 +1478,240 @@ TEST(CommandSchema, ObjectSchema_FromJson_BaseSchema_Failures) {
                                &error));
   EXPECT_EQ("no_type_info", error->GetFirstError()->GetCode());
   error.reset();
+}
+
+TEST(CommandSchema, RequiredProperties_Integral) {
+  IntPropType prop;
+
+  prop.MakeRequired(false);
+  EXPECT_JSON_EQ("{'type':'integer'}", *prop.ToJson(true, false, nullptr));
+  EXPECT_JSON_EQ("{'isRequired':false,'type':'integer'}",
+                 *prop.ToJson(true, true, nullptr));
+
+  prop.MakeRequired(true);
+  EXPECT_JSON_EQ("{'type':'integer'}", *prop.ToJson(true, false, nullptr));
+  EXPECT_JSON_EQ("{'isRequired':true,'type':'integer'}",
+                 *prop.ToJson(true, true, nullptr));
+
+  IntPropType prop2;
+  EXPECT_TRUE(prop2.FromJson(CreateDictionaryValue("{}").get(), &prop,
+                             nullptr));
+  EXPECT_TRUE(prop2.IsRequired());
+
+  EXPECT_TRUE(prop2.FromJson(
+      CreateDictionaryValue("{'isRequired': false}").get(), &prop, nullptr));
+  EXPECT_FALSE(prop2.IsRequired());
+
+  EXPECT_JSON_EQ("{'type':'integer'}", *prop2.ToJson(true, false, nullptr));
+  EXPECT_JSON_EQ("{'isRequired':false,'type':'integer'}",
+                 *prop2.ToJson(true, true, nullptr));
+}
+
+TEST(CommandSchema, RequiredProperties_Object) {
+  ObjectPropType obj_type;
+  auto schema = ObjectSchema::Create();
+  auto type = PropType::Create(ValueType::Int);
+  type->MakeRequired(true);
+  schema->AddProp("prop1", std::move(type));
+  type = PropType::Create(ValueType::String);
+  type->MakeRequired(false);
+  schema->AddProp("prop2", std::move(type));
+  type = PropType::Create(ValueType::Boolean);
+  type->MakeRequired(true);
+  schema->AddProp("prop3", std::move(type));
+  type = PropType::Create(ValueType::Array);
+  type->GetArray()->SetItemType(PropType::Create(ValueType::String));
+  schema->AddProp("prop4", std::move(type));
+  auto expected1 = R"({
+    'prop1': 'integer',
+    'prop2': 'string',
+    'prop3': 'boolean',
+    'prop4': {'items': 'string'}
+  })";
+  EXPECT_JSON_EQ(expected1, *schema->ToJson(false, false, nullptr));
+  auto expected2 = R"({
+    'prop1': {'type':'integer','isRequired': true},
+    'prop2': {'type':'string','isRequired': false},
+    'prop3': {'type':'boolean','isRequired': true},
+    'prop4': {'items': 'string'}
+  })";
+  EXPECT_JSON_EQ(expected2, *schema->ToJson(false, true, nullptr));
+
+  obj_type.SetObjectSchema(std::move(schema));
+  auto expected3 = R"({
+    'additionalProperties': false,
+    'properties': {
+      'prop1': 'integer',
+      'prop2': 'string',
+      'prop3': 'boolean',
+      'prop4': {'items': 'string'}
+    },
+    'required': ['prop1','prop3']
+  })";
+  EXPECT_JSON_EQ(expected3, *obj_type.ToJson(false, false, nullptr));
+  EXPECT_JSON_EQ(expected3, *obj_type.ToJson(false, true, nullptr));
+}
+
+TEST(CommandSchema, RequiredProperties_Schema_FromJson) {
+  ObjectSchema schema;
+  auto schema_str = R"({
+    'prop1': {'type':'integer','isRequired': true},
+    'prop2': {'type':'string','isRequired': false},
+    'prop3': 'boolean'
+  })";
+  EXPECT_TRUE(schema.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
+                              nullptr));
+  EXPECT_TRUE(schema.GetProp("prop1")->IsRequired());
+  EXPECT_FALSE(schema.GetProp("prop2")->IsRequired());
+  EXPECT_FALSE(schema.GetProp("prop3")->IsRequired());
+  EXPECT_JSON_EQ(schema_str, *schema.ToJson(false, true, nullptr));
+}
+
+TEST(CommandSchema, RequiredProperties_Schema_FromJson_Inherit) {
+  ObjectSchema base_schema;
+  auto base_schema_str = R"({
+    'prop1': {'type':'integer','isRequired': true},
+    'prop2': {'type':'integer','isRequired': false},
+    'prop3': {'type':'integer','isRequired': true},
+    'prop4': {'type':'integer','isRequired': false}
+  })";
+  EXPECT_TRUE(base_schema.FromJson(CreateDictionaryValue(base_schema_str).get(),
+                                   nullptr, nullptr));
+  ObjectSchema schema;
+  auto schema_str = R"({
+    'prop1': {'isRequired': false},
+    'prop2': {'isRequired': true},
+    'prop3': {},
+    'prop4': 'integer'
+  })";
+  EXPECT_TRUE(schema.FromJson(CreateDictionaryValue(schema_str).get(),
+                              &base_schema, nullptr));
+  EXPECT_FALSE(schema.GetProp("prop1")->IsRequired());
+  EXPECT_TRUE(schema.GetProp("prop2")->IsRequired());
+  EXPECT_TRUE(schema.GetProp("prop3")->IsRequired());
+  EXPECT_FALSE(schema.GetProp("prop4")->IsRequired());
+  auto expected = R"({
+    'prop1': {'type':'integer','isRequired': false},
+    'prop2': {'type':'integer','isRequired': true},
+    'prop3': {},
+    'prop4': {}
+  })";
+  EXPECT_JSON_EQ(expected, *schema.ToJson(false, true, nullptr));
+}
+
+TEST(CommandSchema, RequiredProperties_ObjectPropType_FromJson) {
+  ObjectPropType obj_type;
+  auto type_str = R"({
+    'properties': {
+      'prop1': 'integer',
+      'prop2': 'string',
+      'prop3': {'type':'boolean','isRequired':true},
+      'prop4': {'items': 'string','isRequired':false},
+      'prop5': {'type':'number','isRequired':true}
+    },
+    'required': ['prop1','prop3','prop4','prop5']
+  })";
+  EXPECT_TRUE(obj_type.FromJson(CreateDictionaryValue(type_str).get(), nullptr,
+                                nullptr));
+  EXPECT_TRUE(obj_type.GetObjectSchemaPtr()->GetProp("prop1")->IsRequired());
+  EXPECT_FALSE(obj_type.GetObjectSchemaPtr()->GetProp("prop2")->IsRequired());
+  EXPECT_TRUE(obj_type.GetObjectSchemaPtr()->GetProp("prop3")->IsRequired());
+  // 'required' takes precedence over 'isRequired'.
+  EXPECT_TRUE(obj_type.GetObjectSchemaPtr()->GetProp("prop4")->IsRequired());
+  EXPECT_TRUE(obj_type.GetObjectSchemaPtr()->GetProp("prop5")->IsRequired());
+}
+
+TEST(CommandSchema, RequiredProperties_Failures) {
+  ObjectPropType obj_type;
+  chromeos::ErrorPtr error;
+
+  auto type_str = R"({
+    'properties': {
+      'prop1': 'integer',
+      'prop2': 'string'
+    },
+    'required': ['prop1','prop3','prop4']
+  })";
+  EXPECT_FALSE(obj_type.FromJson(CreateDictionaryValue(type_str).get(), nullptr,
+                                 &error));
+  EXPECT_EQ(errors::commands::kUnknownProperty, error->GetCode());
+  EXPECT_EQ("Unknown property 'prop3'", error->GetMessage());
+  error.reset();
+
+  type_str = R"({
+    'properties': {
+      'prop1': 'integer',
+      'prop2': 'string'
+    },
+    'required': 'prop1'
+  })";
+  EXPECT_FALSE(obj_type.FromJson(CreateDictionaryValue(type_str).get(), nullptr,
+                                 &error));
+  EXPECT_EQ(errors::commands::kInvalidObjectSchema, error->GetCode());
+  EXPECT_EQ("Property 'required' must be an array", error->GetMessage());
+  error.reset();
+}
+
+TEST(CommandSchema, ObjectSchema_UseRequired) {
+  ObjectPropType prop;
+  auto schema_str = R"({
+    'properties':{
+      'param1':'integer',
+      'param2':'integer',
+      'param3':{'default':3},
+      'param4':{'default':4}
+    },
+    'required':['param1','param3']
+  })";
+  ASSERT_TRUE(prop.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
+                            nullptr));
+
+  auto value = prop.CreateValue();
+  auto val_json = R"({
+    'param1':10,
+    'param2':20,
+    'param3':30,
+    'param4':40
+  })";
+  ASSERT_TRUE(value->FromJson(CreateDictionaryValue(val_json).get(), nullptr));
+  native_types::Object obj = value->GetObject()->GetValue();
+  EXPECT_EQ(10, obj["param1"]->GetInt()->GetValue());
+  EXPECT_EQ(20, obj["param2"]->GetInt()->GetValue());
+  EXPECT_EQ(30, obj["param3"]->GetInt()->GetValue());
+  EXPECT_EQ(40, obj["param4"]->GetInt()->GetValue());
+
+  value = prop.CreateValue();
+  val_json = "{'param1':100}";
+  ASSERT_TRUE(value->FromJson(CreateDictionaryValue(val_json).get(), nullptr));
+  obj = value->GetObject()->GetValue();
+  EXPECT_EQ(3, obj.size());
+
+  EXPECT_EQ(100, obj["param1"]->GetInt()->GetValue());
+  EXPECT_EQ(obj.end(), obj.find("param2"));
+  EXPECT_EQ(3, obj["param3"]->GetInt()->GetValue());
+  EXPECT_EQ(4, obj["param4"]->GetInt()->GetValue());
+}
+
+TEST(CommandSchema, ObjectSchema_UseRequired_Failure) {
+  ObjectPropType prop;
+  auto schema_str = R"({
+    'properties':{
+      'param1':'integer',
+      'param2':'integer',
+      'param3':{'default':3},
+      'param4':{'default':4}
+    },
+    'required':['param1','param3']
+  })";
+  ASSERT_TRUE(prop.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
+                            nullptr));
+
+  auto value = prop.CreateValue();
+  auto val_json = "{'param2':20}";
+  chromeos::ErrorPtr error;
+  ASSERT_FALSE(value->FromJson(CreateDictionaryValue(val_json).get(), &error));
+  EXPECT_EQ(errors::commands::kPropertyMissing, error->GetCode());
+  EXPECT_EQ("Required parameter missing: param1", error->GetMessage());
 }
 
 }  // namespace buffet

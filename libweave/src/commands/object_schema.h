@@ -49,6 +49,11 @@ class ObjectSchema final {
   // Gets the list of all the properties defined.
   const Properties& GetProps() const { return properties_; }
 
+  // Marks the property with given name as "required". If |name| specifies
+  // an unknown property, false is returned and |error| is set with detailed
+  // error message for the failure.
+  bool MarkPropRequired(const std::string& name, chromeos::ErrorPtr* error);
+
   // Specify whether extra properties are allowed on objects described by
   // this schema. When validating a value of an object type, we can
   // make sure that the value has only the properties explicitly defined by
@@ -64,6 +69,7 @@ class ObjectSchema final {
   // the overridden (not inherited) ones are saved.
   std::unique_ptr<base::DictionaryValue> ToJson(
       bool full_schema,
+      bool in_command_def,
       chromeos::ErrorPtr* error) const;
 
   // Loads the object schema from JSON. If |object_schema| is not nullptr, it is

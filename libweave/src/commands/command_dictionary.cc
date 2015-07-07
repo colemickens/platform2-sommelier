@@ -217,7 +217,7 @@ std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
       continue;
 
     std::unique_ptr<base::DictionaryValue> parameters =
-        pair.second->GetParameters()->ToJson(full_schema, error);
+        pair.second->GetParameters()->ToJson(full_schema, true, error);
     if (!parameters)
       return {};
     // Progress and results are not part of public commandDefs.

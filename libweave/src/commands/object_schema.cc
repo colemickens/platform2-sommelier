@@ -287,12 +287,25 @@ const PropType* ObjectSchema::GetProp(const std::string& name) const {
   return p != properties_.end() ? p->second.get() : nullptr;
 }
 
+bool ObjectSchema::MarkPropRequired(const std::string& name,
+                                    chromeos::ErrorPtr* error) {
+  auto p = properties_.find(name);
+  if (p == properties_.end()) {
+    chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
+                                  errors::commands::kUnknownProperty,
+                                  "Unknown property '%s'", name.c_str());
+    return false;
+  }
+  p->second->MakeRequired(true);
+  return true;
+}
 std::unique_ptr<base::DictionaryValue> ObjectSchema::ToJson(
     bool full_schema,
+    bool in_command_def,
     chromeos::ErrorPtr* error) const {
   std::unique_ptr<base::DictionaryValue> value(new base::DictionaryValue);
   for (const auto& pair : properties_) {
-    auto PropDef = pair.second->ToJson(full_schema, error);
+    auto PropDef = pair.second->ToJson(full_schema, in_command_def, error);
     if (!PropDef)
       return {};
     value->SetWithoutPathExpansion(pair.first, PropDef.release());

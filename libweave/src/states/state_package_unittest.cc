@@ -109,7 +109,7 @@ TEST(StatePackage, AddSchemaFromJson_OnEmpty) {
       'type': 'boolean'
     }
   })";
-  EXPECT_JSON_EQ(expected, *GetTypes(package).ToJson(true, nullptr));
+  EXPECT_JSON_EQ(expected, *GetTypes(package).ToJson(true, false, nullptr));
 
   expected = R"({
     'color': '',
@@ -171,7 +171,7 @@ TEST_F(StatePackageTest, AddSchemaFromJson_AddMore) {
       'type': 'boolean'
     }
   })";
-  EXPECT_JSON_EQ(expected, *GetTypes(*package_).ToJson(true, nullptr));
+  EXPECT_JSON_EQ(expected, *GetTypes(*package_).ToJson(true, false, nullptr));
 
   expected = R"({
     'brightness': '',

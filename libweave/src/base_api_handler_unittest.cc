@@ -179,6 +179,17 @@ TEST_F(BaseApiHandlerTest, UpdateDeviceInfo) {
   EXPECT_EQ("testName", config.name());
   EXPECT_EQ("testDescription", config.description());
   EXPECT_EQ("testLocation", config.location());
+
+  AddCommand(R"({
+    'name' : 'base.updateDeviceInfo',
+    'parameters': {
+      'location': 'newLocation'
+    }
+  })");
+
+  EXPECT_EQ("testName", config.name());
+  EXPECT_EQ("testDescription", config.description());
+  EXPECT_EQ("newLocation", config.location());
 }
 
 }  // namespace buffet

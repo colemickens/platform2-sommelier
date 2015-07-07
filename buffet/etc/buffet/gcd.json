@@ -26,7 +26,8 @@
       "minimalRole": "manager",
       "parameters": {
         "description": "string",
-        "name": "string"
+        "name": "string",
+        "location": "string"
       },
       "results": {}
     }

@@ -2,13 +2,14 @@
   "base": {
     "_jump": {
       "parameters": {
-        "_height":"integer"
+        "_height": "integer"
       },
       "progress": {
         "progress": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 100
+          "maximum": 100,
+          "isRequired": true
         }
       }
     }

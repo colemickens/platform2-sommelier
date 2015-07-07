@@ -35,6 +35,7 @@ const char kType[] = "type";
 const char kDisplayName[] = "displayName";
 const char kDefault[] = "default";
 const char kItems[] = "items";
+const char kIsRequired[] = "isRequired";
 
 const char kNumeric_Min[] = "minimum";
 const char kNumeric_Max[] = "maximum";
@@ -47,6 +48,7 @@ const char kOneOf_Metadata[] = "metadata";
 
 const char kObject_Properties[] = "properties";
 const char kObject_AdditionalProperties[] = "additionalProperties";
+const char kObject_Required[] = "required";
 
 const char kCommand_Id[] = "id";
 const char kCommand_Name[] = "name";

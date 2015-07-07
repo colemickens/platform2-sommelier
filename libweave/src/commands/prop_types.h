@@ -55,6 +55,12 @@ class PropType {
   const PropValue* GetDefaultValue() const { return default_.value.get(); }
   // Gets the constraints specified for the parameter, if any.
   const ConstraintMap& GetConstraints() const { return constraints_; }
+  // Returns true if this value is required. Properties are marked as required
+  // by using "isRequired" attribute or listed in "required" array.
+  bool IsRequired() const;
+  // Sets the required attribute to the value of |required| and marks it as
+  // overridden (not-inherited).
+  void MakeRequired(bool required);
   // Checks if any of the type attributes were overridden from the base
   // schema definition. If this type does not inherit from a base schema,
   // this method returns true.
@@ -109,7 +115,12 @@ class PropType {
   // saved.
   // If it fails, returns "nullptr" and fills in the |error| with additional
   // error information.
+  // |in_command_def| is set to true if the property type describes a
+  // GCD command parameter, otherwise it is for an object property.
+  // Command definitions handle required parameters differently (using
+  // "isRequired" property as opposed to "required" list for object properties).
   virtual std::unique_ptr<base::Value> ToJson(bool full_schema,
+                                              bool in_command_def,
                                               chromeos::ErrorPtr* error) const;
   // Parses an JSON parameter type definition. Optional |base_schema| may
   // specify the base schema type definition this type should be based upon.
@@ -190,6 +201,11 @@ class PropType {
   // Otherwise the parameter is treated as required and, if it is omitted,
   // this is treated as an error.
   InheritableAttribute<std::unique_ptr<PropValue>> default_;
+  // Specifies whether the parameter/property is required and must be specified
+  // (either directly, or by the default value being provided in the schema).
+  // Non-required parameters can be omitted completely and their values will not
+  // be present in the object instance.
+  InheritableAttribute<bool> required_;
 };
 
 // Base class for all the derived concrete implementations of property
@@ -346,6 +362,7 @@ class ObjectPropType
   std::unique_ptr<PropType> Clone() const override;
 
   std::unique_ptr<base::Value> ToJson(bool full_schema,
+                                      bool in_command_def,
                                       chromeos::ErrorPtr* error) const override;
   bool ObjectSchemaFromJson(const base::DictionaryValue* value,
                             const PropType* base_schema,
@@ -385,6 +402,7 @@ class ArrayPropType
   std::unique_ptr<PropType> Clone() const override;
 
   std::unique_ptr<base::Value> ToJson(bool full_schema,
+                                      bool in_command_def,
                                       chromeos::ErrorPtr* error) const override;
 
   bool ObjectSchemaFromJson(const base::DictionaryValue* value,
