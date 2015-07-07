@@ -5,6 +5,12 @@
 #include "shill/dbus/chromeos_dbus_control.h"
 
 #include "shill/dbus/chromeos_device_dbus_adaptor.h"
+#include "shill/dbus/chromeos_ipconfig_dbus_adaptor.h"
+#include "shill/dbus/chromeos_manager_dbus_adaptor.h"
+#include "shill/dbus/chromeos_profile_dbus_adaptor.h"
+#include "shill/dbus/chromeos_rpc_task_dbus_adaptor.h"
+#include "shill/dbus/chromeos_service_dbus_adaptor.h"
+#include "shill/dbus/chromeos_third_party_vpn_dbus_adaptor.h"
 
 using chromeos::dbus_utils::ExportedObjectManager;
 
@@ -32,33 +38,45 @@ DeviceAdaptorInterface* ChromeosDBusControl::CreateDeviceAdaptor(
 
 IPConfigAdaptorInterface* ChromeosDBusControl::CreateIPConfigAdaptor(
     IPConfig* config) {
-  return nullptr;
+  return
+      CreateAdaptor<IPConfig, IPConfigAdaptorInterface,
+                    ChromeosIPConfigDBusAdaptor>(config);
 }
 
 ManagerAdaptorInterface* ChromeosDBusControl::CreateManagerAdaptor(
     Manager* manager) {
-  return nullptr;
+  return
+      CreateAdaptor<Manager, ManagerAdaptorInterface,
+                    ChromeosManagerDBusAdaptor>(manager);
 }
 
 ProfileAdaptorInterface* ChromeosDBusControl::CreateProfileAdaptor(
     Profile* profile) {
-  return nullptr;
+  return
+      CreateAdaptor<Profile, ProfileAdaptorInterface,
+                    ChromeosProfileDBusAdaptor>(profile);
 }
 
 RPCTaskAdaptorInterface* ChromeosDBusControl::CreateRPCTaskAdaptor(
     RPCTask* task) {
-  return nullptr;
+  return
+      CreateAdaptor<RPCTask, RPCTaskAdaptorInterface,
+                    ChromeosRPCTaskDBusAdaptor>(task);
 }
 
 ServiceAdaptorInterface* ChromeosDBusControl::CreateServiceAdaptor(
     Service* service) {
-  return nullptr;
+  return
+      CreateAdaptor<Service, ServiceAdaptorInterface,
+                    ChromeosServiceDBusAdaptor>(service);
 }
 
 #ifndef DISABLE_VPN
 ThirdPartyVpnAdaptorInterface* ChromeosDBusControl::CreateThirdPartyVpnAdaptor(
     ThirdPartyVpnDriver* driver) {
-  return nullptr;
+  return
+      CreateAdaptor<ThirdPartyVpnDriver, ThirdPartyVpnAdaptorInterface,
+                    ChromeosThirdPartyVpnDBusAdaptor>(driver);
 }
 #endif
 
