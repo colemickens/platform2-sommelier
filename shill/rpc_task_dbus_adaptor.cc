@@ -24,7 +24,6 @@ const char RPCTaskDBusAdaptor::kPath[] = "/task/";
 RPCTaskDBusAdaptor::RPCTaskDBusAdaptor(DBus::Connection* conn, RPCTask* task)
     : DBusAdaptor(conn, kPath + task->UniqueName()),
       task_(task),
-      interface_name_(SHILL_INTERFACE ".Task"),
       connection_name_(conn->unique_name()) {}
 
 RPCTaskDBusAdaptor::~RPCTaskDBusAdaptor() {
@@ -33,13 +32,6 @@ RPCTaskDBusAdaptor::~RPCTaskDBusAdaptor() {
 
 const string& RPCTaskDBusAdaptor::GetRpcIdentifier() {
   return DBus::Object::path();
-}
-
-const string& RPCTaskDBusAdaptor::GetRpcInterfaceIdentifier() {
-  // TODO(petkov): We should be able to return DBus::Interface::name() or simply
-  // name() and avoid the need for the |interface_name_| data member. However,
-  // that's non-trivial due to multiple inheritance (crbug.com/209869).
-  return interface_name_;
 }
 
 const string& RPCTaskDBusAdaptor::GetRpcConnectionIdentifier() {

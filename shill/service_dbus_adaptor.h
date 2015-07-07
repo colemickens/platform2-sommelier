@@ -35,7 +35,6 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
 
   // Implementation of ServiceAdaptorInterface.
   const std::string& GetRpcIdentifier() override { return path(); }
-  void UpdateConnected() override;
   void EmitBoolChanged(const std::string& name, bool value) override;
   void EmitUint8Changed(const std::string& name, uint8_t value) override;
   void EmitUint16Changed(const std::string& name, uint16_t value) override;

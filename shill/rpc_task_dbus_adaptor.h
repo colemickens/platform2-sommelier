@@ -33,7 +33,6 @@ class RPCTaskDBusAdaptor : public org::chromium::flimflam::Task_adaptor,
 
   // Implementation of RPCTaskAdaptorInterface.
   const std::string& GetRpcIdentifier() override;
-  const std::string& GetRpcInterfaceIdentifier() override;
   const std::string& GetRpcConnectionIdentifier() override;
 
   // Implementation of Task_adaptor
@@ -46,7 +45,6 @@ class RPCTaskDBusAdaptor : public org::chromium::flimflam::Task_adaptor,
 
  private:
   RPCTask* task_;
-  const std::string interface_name_;
   const std::string connection_name_;
 
   DISALLOW_COPY_AND_ASSIGN(RPCTaskDBusAdaptor);

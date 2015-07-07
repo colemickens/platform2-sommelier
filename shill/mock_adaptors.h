@@ -128,7 +128,6 @@ class RPCTaskMockAdaptor : public RPCTaskAdaptorInterface {
   ~RPCTaskMockAdaptor() override;
 
   const std::string& GetRpcIdentifier() override;
-  const std::string& GetRpcInterfaceIdentifier() override;
   const std::string& GetRpcConnectionIdentifier() override;
 
  private:
@@ -146,7 +145,6 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
   ~ServiceMockAdaptor() override;
   const std::string& GetRpcIdentifier() override;
 
-  MOCK_METHOD0(UpdateConnected, void());
   MOCK_METHOD2(EmitBoolChanged, void(const std::string& name, bool value));
   MOCK_METHOD2(EmitUint8Changed, void(const std::string& name, uint8_t value));
   MOCK_METHOD2(EmitUint16Changed,

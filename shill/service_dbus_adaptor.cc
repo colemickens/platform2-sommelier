@@ -32,8 +32,6 @@ ServiceDBusAdaptor::~ServiceDBusAdaptor() {
   service_ = nullptr;
 }
 
-void ServiceDBusAdaptor::UpdateConnected() {}
-
 void ServiceDBusAdaptor::EmitBoolChanged(const string& name, bool value) {
   SLOG(this, 2) << __func__ << ": Service " << service_->unique_name()
                 << " " << name;
