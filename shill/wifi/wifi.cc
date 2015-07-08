@@ -103,6 +103,8 @@ const size_t WiFi::kStuckQueueLengthThreshold = 40;  // ~1 full-channel scan
 const int WiFi::kPostWakeConnectivityReportDelayMilliseconds = 1000;
 const uint32_t WiFi::kDefaultWiphyIndex = UINT32_MAX;
 const int WiFi::kPostScanFailedDelayMilliseconds = 10000;
+// Invalid 802.11 disconnect reason code.
+const int WiFi::kDefaultDisconnectReason = INT32_MAX;
 
 WiFi::WiFi(ControlInterface* control_interface,
            EventDispatcher* dispatcher,
@@ -126,6 +128,7 @@ WiFi::WiFi(ControlInterface* control_interface,
       supplicant_present_(false),
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
+      supplicant_disconnect_reason_(kDefaultDisconnectReason),
       need_bss_flush_(false),
       resumed_at_((struct timeval){0}),
       fast_scans_remaining_(kNumFastScanAttempts),
@@ -858,6 +861,21 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path& new_bss) {
   }
 }
 
+void WiFi::DisconnectReasonChanged(const int32 new_disconnect_reason) {
+  if (new_disconnect_reason == kDefaultDisconnectReason) {
+    SLOG(this, 3) << "WiFi clearing DisconnectReason for " << link_name();
+  } else {
+    string update = "";
+    if (supplicant_disconnect_reason_ != kDefaultDisconnectReason) {
+      update = StringPrintf(" (was %d)", supplicant_disconnect_reason_);
+    }
+    LOG(INFO) << "WiFi " << link_name()
+              << " supplicant updated DisconnectReason to "
+              << new_disconnect_reason << update;
+  }
+  supplicant_disconnect_reason_ = new_disconnect_reason;
+}
+
 void WiFi::HandleDisconnect() {
   // Identify the affected service. We expect to get a disconnect
   // event when we fall off a Service that we were connected
@@ -1367,6 +1385,12 @@ void WiFi::PropertiesChangedTask(
   if (properties_it != properties.end()) {
     StateChanged(properties_it->second.reader().get_string());
   }
+
+  properties_it =
+      properties.find(WPASupplicant::kInterfacePropertyDisconnectReason);
+  if (properties_it != properties.end()) {
+    DisconnectReasonChanged(properties_it->second.reader().get_int32());
+  }
 }
 
 void WiFi::ScanDoneTask() {
@@ -1575,6 +1599,13 @@ void WiFi::StateChanged(const string& new_state) {
     mac80211_monitor_->UpdateConnectedState(true);
   } else {
     mac80211_monitor_->UpdateConnectedState(false);
+  }
+
+  if (old_state == WPASupplicant::kInterfaceStateDisconnected &&
+      new_state != WPASupplicant::kInterfaceStateDisconnected) {
+    // The state has been changed from disconnect to something else, clearing
+    // out disconnect reason to avoid confusion about future disconnects.
+    DisconnectReasonChanged(kDefaultDisconnectReason);
   }
 
   // Identify the service to which the state change applies. If

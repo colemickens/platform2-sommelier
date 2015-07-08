@@ -1005,6 +1005,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   const string& GetSupplicantState() {
     return wifi_->supplicant_state_;
   }
+  int GetSupplicantDisconnectReason() {
+    return wifi_->supplicant_disconnect_reason_;
+  }
   void ClearCachedCredentials(const WiFiService* service) {
     return wifi_->ClearCachedCredentials(service);
   }
@@ -1075,6 +1078,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
   void ReportStateChanged(const string& new_state) {
     wifi_->StateChanged(new_state);
+  }
+  void ReportDisconnectReasonChanged(int reason) {
+    wifi_->DisconnectReasonChanged(reason);
   }
   void ReportWiFiDebugScopeChanged(bool enabled) {
     wifi_->OnWiFiDebugScopeChanged(enabled);
@@ -2855,6 +2861,36 @@ TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   Mock::VerifyAndClearExpectations(ipconfig.get());
   EXPECT_FALSE(GetIsRoamingInProgress());
+}
+
+TEST_F(WiFiMainTest, DisconnectReasonUpdated) {
+  ScopedMockLog log;
+  int test_reason = 4;
+  int test_reason_second = 0;
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _))
+      .Times(AnyNumber());
+  EXPECT_EQ(GetSupplicantDisconnectReason(), WiFi::kDefaultDisconnectReason);
+  EXPECT_CALL(log,
+              Log(logging::LOG_INFO, _, EndsWith(" DisconnectReason to 4")));
+  ReportDisconnectReasonChanged(test_reason);
+  EXPECT_EQ(GetSupplicantDisconnectReason(), test_reason);
+  EXPECT_CALL(log,
+              Log(logging::LOG_INFO, _, EndsWith("Reason to 0 (was 4)")));
+  ReportDisconnectReasonChanged(test_reason_second);
+  EXPECT_EQ(GetSupplicantDisconnectReason(), test_reason_second);
+}
+
+TEST_F(WiFiMainTest, DisconnectReasonCleared) {
+  int test_reason = 4;
+  // Clearing the value for supplicant_disconnect_reason_ is done prior to any
+  // early exits in the WiFi::StateChanged method.  This allows the value to be
+  // checked without a mock pending or current service.
+  ReportDisconnectReasonChanged(test_reason);
+  EXPECT_EQ(wifi().get()->supplicant_disconnect_reason_, test_reason);
+  ReportStateChanged(WPASupplicant::kInterfaceStateDisconnected);
+  ReportStateChanged(WPASupplicant::kInterfaceStateAssociated);
+  EXPECT_EQ(wifi().get()->supplicant_disconnect_reason_,
+            WiFi::kDefaultDisconnectReason);
 }
 
 TEST_F(WiFiMainTest, NewConnectPreemptsPending) {

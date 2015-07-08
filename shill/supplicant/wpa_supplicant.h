@@ -51,6 +51,7 @@ class WPASupplicant {
   static const char kInterfacePropertyConfigFile[];
   static const char kInterfacePropertyCurrentBSS[];
   static const char kInterfacePropertyDepth[];
+  static const char kInterfacePropertyDisconnectReason[];
   static const char kInterfacePropertyDriver[];
   static const char kInterfacePropertyName[];
   static const char kInterfacePropertyState[];

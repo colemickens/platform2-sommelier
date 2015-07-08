@@ -57,6 +57,8 @@ const char WPASupplicant::kErrorInterfaceExists[]
 const char WPASupplicant::kInterfacePropertyConfigFile[] = "ConfigFile";
 const char WPASupplicant::kInterfacePropertyCurrentBSS[] = "CurrentBSS";
 const char WPASupplicant::kInterfacePropertyDepth[] = "depth";
+const char WPASupplicant::kInterfacePropertyDisconnectReason[]
+    = "DisconnectReason";
 const char WPASupplicant::kInterfacePropertyDriver[] = "Driver";
 const char WPASupplicant::kInterfacePropertyName[] = "Ifname";
 const char WPASupplicant::kInterfacePropertyState[] = "State";

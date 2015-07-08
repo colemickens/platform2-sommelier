@@ -292,6 +292,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, ConnectToWithError);  // ScanState
   FRIEND_TEST(WiFiMainTest, ConnectWhileNotScanning);  // ScanState
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
+  FRIEND_TEST(WiFiMainTest, DisconnectReasonUpdated);
+  FRIEND_TEST(WiFiMainTest, DisconnectReasonCleared);
   FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
   FRIEND_TEST(WiFiMainTest, FullScanConnecting);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, FullScanConnectingToConnected);
@@ -363,6 +365,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Number of milliseconds to wait after failing to launch a scan before
   // resetting the scan state to idle.
   static const int kPostScanFailedDelayMilliseconds;
+  // Used to distinguish between a disconnect reason explicitly set by
+  // supplicant and a default.
+  static const int kDefaultDisconnectReason;
 
   void GetPhyInfo();
   void AppendBgscan(WiFiService* service,
@@ -396,6 +401,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void ClearBgscanMethod(const int& argument, Error* error);
 
   void CurrentBSSChanged(const ::DBus::Path& new_bss);
+  void DisconnectReasonChanged(const int32 new_disconnect_reason);
   // Return the RPC identifier associated with the wpa_supplicant network
   // entry created for |service|.  If one does not exist, an empty string
   // is returned, and |error| is populated.
@@ -631,6 +637,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   WiFiServiceRefPtr pending_service_;
   std::string supplicant_state_;
   std::string supplicant_bss_;
+  int32 supplicant_disconnect_reason_;
   std::string phy_name_;
   // Indicates that we should flush supplicant's BSS cache after the
   // next scan completes.
