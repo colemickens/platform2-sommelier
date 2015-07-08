@@ -372,57 +372,63 @@ bool PerfSerializer::DeserializeEvent(
   malloced_unique_ptr<event_t> temp_event(
       CallocMemoryForEvent(alloc_event_size));
   temp_event->header = header;
-  bool event_deserialized = true;
+  bool event_deserialized = false;
   switch (event_proto.header().type()) {
     case PERF_RECORD_SAMPLE:
-      if (!DeserializeRecordSample(event_proto.sample_event(),
-                                   temp_event.get()))
-        event_deserialized = false;
+      if (DeserializeRecordSample(event_proto.sample_event(), temp_event.get()))
+        event_deserialized = true;
       break;
     case PERF_RECORD_MMAP:
-      if (!DeserializeMMapSample(event_proto.mmap_event(), temp_event.get()))
-        event_deserialized = false;
+      if (DeserializeMMapSample(event_proto.mmap_event(), temp_event.get()))
+        event_deserialized = true;
       break;
     case PERF_RECORD_MMAP2:
-      if (!DeserializeMMap2Sample(event_proto.mmap_event(), temp_event.get()))
-        event_deserialized = false;
+      if (DeserializeMMap2Sample(event_proto.mmap_event(), temp_event.get()))
+        event_deserialized = true;
       break;
     case PERF_RECORD_COMM:
-      if (!DeserializeCommSample(event_proto.comm_event(), temp_event.get()))
-        event_deserialized = false;
+      if (DeserializeCommSample(event_proto.comm_event(), temp_event.get()))
+        event_deserialized = true;
       break;
     case PERF_RECORD_EXIT:
-      if (!DeserializeForkExitSample(event_proto.exit_event(),
-                                     temp_event.get())) {
-        event_deserialized = false;
+      if (event_proto.has_exit_event() &&
+          DeserializeForkExitSample(event_proto.exit_event(),
+                                    temp_event.get())) {
+        event_deserialized = true;
+      } else if (event_proto.has_fork_event() &&
+                 DeserializeForkExitSample(event_proto.fork_event(),
+                                           temp_event.get())) {
+        // Some older protobufs use the |fork_event| field to store exit events.
+        event_deserialized = true;
       }
       break;
     case PERF_RECORD_FORK:
-      if (!DeserializeForkExitSample(event_proto.fork_event(),
-                                     temp_event.get())) {
-        event_deserialized = false;
+      if (DeserializeForkExitSample(event_proto.fork_event(),
+                                    temp_event.get())) {
+        event_deserialized = true;
       }
       break;
     case PERF_RECORD_LOST:
-      if (!DeserializeLostSample(event_proto.lost_event(), temp_event.get()))
-        event_deserialized = false;
+      if (DeserializeLostSample(event_proto.lost_event(), temp_event.get()))
+        event_deserialized = true;
       break;
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
-      if (!DeserializeThrottleSample(event_proto.throttle_event(),
-                                     temp_event.get()))
-        event_deserialized = false;
+      if (DeserializeThrottleSample(event_proto.throttle_event(),
+                                    temp_event.get()))
+        event_deserialized = true;
       break;
     case PERF_RECORD_READ:
-      if (!DeserializeReadSample(event_proto.read_event(), temp_event.get()))
-        event_deserialized = false;
+      if (DeserializeReadSample(event_proto.read_event(), temp_event.get()))
+        event_deserialized = true;
       break;
     case PERF_RECORD_MAX:
     default:
-      event_deserialized = false;
       break;
   }
   if (!event_deserialized) {
+    LOG(ERROR) << "Could not deserialize event of type "
+               << event_proto.header().type();
     event->reset();
     return false;
   }

@@ -747,6 +747,66 @@ TEST(PerfSerializerTest, SerializesAndDeserializesForkAndExitEvents) {
   }
 }
 
+// Regression test for http://crbug.com/500746.
+TEST(PerfSerializerTest, DeserializeLegacyExitEvents) {
+  std::stringstream input;
+
+  // header
+  testing::ExamplePipedPerfDataFileHeader().WriteTo(&input);
+
+  // data
+
+  // PERF_RECORD_HEADER_ATTR
+  testing::ExamplePerfEventAttrEvent_Hardware(PERF_SAMPLE_TID |
+                                              PERF_SAMPLE_TIME,
+                                              true /*sample_id_all*/)
+      .WriteTo(&input);
+
+  // PERF_RECORD_EXIT
+  testing::ExampleExitEvent(
+      3010, 3020, 3030, 3040, 432ULL * 1000000000,
+      testing::SampleInfo().Tid(4010, 4020).Time(433ULL * 1000000000))
+          .WriteTo(&input);
+
+  // Parse and serialize.
+  PerfSerializer serializer;
+  ASSERT_TRUE(serializer.ReadFromString(input.str()));
+  PerfDataProto proto;
+  ASSERT_TRUE(serializer.Serialize(&proto));
+
+  EXPECT_EQ(1, proto.stats().num_exit_events());
+  EXPECT_EQ(1, proto.events_size());
+
+  ASSERT_TRUE(proto.events(0).has_exit_event());
+  ASSERT_FALSE(proto.events(0).has_fork_event());
+
+  // Modify the protobuf to store the exit event in the |fork_event| field
+  // instead.
+  proto.mutable_events(0)->mutable_fork_event()->Swap(
+      proto.mutable_events(0)->mutable_exit_event());
+  proto.mutable_events(0)->clear_exit_event();
+
+  PerfSerializer deserializer;
+  ASSERT_TRUE(deserializer.Deserialize(proto));
+
+  EXPECT_EQ(1U, deserializer.events().size());
+
+  const event_t& event = *deserializer.events()[0].get();
+  EXPECT_EQ(PERF_RECORD_EXIT, event.header.type);
+
+  EXPECT_EQ(3010, event.fork.pid);
+  EXPECT_EQ(3020, event.fork.ppid);
+  EXPECT_EQ(3030, event.fork.tid);
+  EXPECT_EQ(3040, event.fork.ptid);
+  EXPECT_EQ(432ULL * 1000000000, event.fork.time);
+
+  struct perf_sample sample_info;
+  EXPECT_TRUE(deserializer.ReadPerfSampleInfo(event, &sample_info));
+  EXPECT_EQ(4010, sample_info.pid);
+  EXPECT_EQ(4020, sample_info.tid);
+  EXPECT_EQ(433ULL * 1000000000, sample_info.time);
+}
+
 }  // namespace quipper
 
 int main(int argc, char * argv[]) {
