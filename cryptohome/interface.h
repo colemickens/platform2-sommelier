@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #include <base/logging.h>
-#include <chromeos/dbus/dbus.h>
+#include <chromeos/glib/dbus.h>
 #include <chromeos/glib/object.h>
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-bindings.h>

@@ -24,7 +24,7 @@
 #include <string>
 
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/dbus/dbus.h>
+#include <chromeos/glib/dbus.h>
 
 #include "cryptohome/cryptohome_event_source.h"
 

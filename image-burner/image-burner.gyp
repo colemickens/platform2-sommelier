@@ -12,6 +12,7 @@
         'gobject-2.0',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'libchromeos-glib-<(libbase_ver)',
       ],
     },
   },

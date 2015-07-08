@@ -7,6 +7,7 @@
       'deps': [
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
+        'libchromeos-glib-<(libbase_ver)',
         'libmetrics-<(libbase_ver)',
       ],
     },

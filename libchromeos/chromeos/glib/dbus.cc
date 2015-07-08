@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos/dbus/dbus.h"
+#include "chromeos/glib/dbus.h"
 
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-bindings.h>

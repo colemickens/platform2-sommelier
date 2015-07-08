@@ -5,10 +5,6 @@
         'libchrome-<(libbase_ver)'
       ],
     },
-    'cflags': [
-      # glib uses the deprecated "register" attribute in some header files.
-      '-Wno-deprecated-register',
-    ],
     'include_dirs': [
       '../libchromeos',
     ],
@@ -40,9 +36,6 @@
       'variables': {
         'exported_deps': [
           'dbus-1',
-          'dbus-c++-1',
-          'dbus-glib-1',
-          'glib-2.0',
         ],
         'deps': ['<@(exported_deps)'],
       },
@@ -60,10 +53,8 @@
         'chromeos/daemons/dbus_daemon.cc',
         'chromeos/daemons/daemon.cc',
         'chromeos/data_encoding.cc',
-        'chromeos/dbus/abstract_dbus_service.cc',
         'chromeos/dbus/async_event_sequencer.cc',
         'chromeos/dbus/data_serialization.cc',
-        'chromeos/dbus/dbus.cc',
         'chromeos/dbus/dbus_method_invoker.cc',
         'chromeos/dbus/dbus_method_response.cc',
         'chromeos/dbus/dbus_object.cc',
@@ -77,7 +68,6 @@
         'chromeos/file_utils.cc',
         'chromeos/flag_helper.cc',
         'chromeos/key_value_store.cc',
-        'chromeos/message_loops/glib_message_loop.cc',
         'chromeos/message_loops/message_loop.cc',
         'chromeos/message_loops/message_loop_utils.cc',
         'chromeos/mime_utils.cc',
@@ -227,7 +217,6 @@
       ],
       'variables': {
         'exported_deps': [
-          'glib-2.0',
           'openssl',
           'protobuf-lite',
         ],
@@ -248,6 +237,39 @@
         'chromeos/policy/device_policy_impl.cc',
         'chromeos/policy/libpolicy.cc',
       ],
+    },
+    {
+      'target_name': 'libchromeos-glib-<(libbase_ver)',
+      'type': 'shared_library',
+      'dependencies': [
+          'libchromeos-<(libbase_ver)',
+      ],
+      'variables': {
+        'exported_deps': [
+          'dbus-1',
+          'dbus-glib-1',
+          'glib-2.0',
+          'gobject-2.0',
+        ],
+        'deps': ['<@(exported_deps)'],
+      },
+      'cflags': [
+        # glib uses the deprecated "register" attribute in some header files.
+        '-Wno-deprecated-register',
+      ],
+      'all_dependent_settings': {
+        'variables': {
+          'deps': [
+            '<@(exported_deps)',
+          ],
+        },
+      },
+      'sources': [
+        'chromeos/glib/abstract_dbus_service.cc',
+        'chromeos/glib/dbus.cc',
+        'chromeos/message_loops/glib_message_loop.cc',
+      ],
+      'includes': ['../common-mk/deps.gypi'],
     },
     {
       'target_name': 'libchromeos-bootstat-<(libbase_ver)',
@@ -273,6 +295,7 @@
             'libchromeos-<(libbase_ver)',
             'libchromeos-test-<(libbase_ver)',
             'libchromeos-ui-<(libbase_ver)',
+            'libchromeos-glib-<(libbase_ver)',
           ],
           'variables': {
             'deps': [

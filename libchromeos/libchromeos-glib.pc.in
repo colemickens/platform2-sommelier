@@ -1,0 +1,8 @@
+bslot=@BSLOT@
+
+Name: libchromeos-glib
+Description: chromeos glib wrapper library
+Version: ${bslot}
+Requires.private: @PRIVATE_PC@
+Libs: -lchromeos-glib-${bslot}
+

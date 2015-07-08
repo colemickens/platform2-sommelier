@@ -25,7 +25,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/constants/cryptohome.h>
 #include <chromeos/cryptohome.h>
-#include <chromeos/dbus/dbus.h>
+#include <chromeos/glib/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/syslog_logging.h>

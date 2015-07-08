@@ -9,8 +9,8 @@
 
 #include <string>
 
-#include <chromeos/dbus/abstract_dbus_service.h>
-#include <chromeos/dbus/dbus.h>
+#include <chromeos/glib/abstract_dbus_service.h>
+#include <chromeos/glib/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "image-burner/image_burner_impl.h"

@@ -14,8 +14,8 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/threading/thread.h>
-#include <chromeos/dbus/abstract_dbus_service.h>
-#include <chromeos/dbus/dbus.h>
+#include <chromeos/glib/abstract_dbus_service.h>
+#include <chromeos/glib/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/glib/object.h>
 #include <chromeos/secure_blob.h>

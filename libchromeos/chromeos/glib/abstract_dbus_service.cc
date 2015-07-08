@@ -4,7 +4,7 @@
 
 #include <base/logging.h>
 
-#include "chromeos/dbus/abstract_dbus_service.h"
+#include "chromeos/glib/abstract_dbus_service.h"
 
 namespace chromeos {
 namespace dbus {

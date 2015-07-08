@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBCHROMEOS_CHROMEOS_DBUS_DBUS_H_
-#define LIBCHROMEOS_CHROMEOS_DBUS_DBUS_H_
+#ifndef LIBCHROMEOS_CHROMEOS_GLIB_DBUS_H_
+#define LIBCHROMEOS_CHROMEOS_GLIB_DBUS_H_
 
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
@@ -465,4 +465,4 @@ class CHROMEOS_EXPORT SignalWatcher {
 }  // namespace dbus
 }  // namespace chromeos
 
-#endif  // LIBCHROMEOS_CHROMEOS_DBUS_DBUS_H_
+#endif  // LIBCHROMEOS_CHROMEOS_GLIB_DBUS_H_

@@ -4,7 +4,7 @@
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
-#include <chromeos/dbus/dbus.h>
+#include <chromeos/glib/dbus.h>
 #include <gtest/gtest.h>
 
 int main(int argc, char **argv) {

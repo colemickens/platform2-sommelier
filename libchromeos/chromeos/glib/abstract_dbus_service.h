@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBCHROMEOS_CHROMEOS_DBUS_ABSTRACT_DBUS_SERVICE_H_
-#define LIBCHROMEOS_CHROMEOS_DBUS_ABSTRACT_DBUS_SERVICE_H_
+#ifndef LIBCHROMEOS_CHROMEOS_GLIB_ABSTRACT_DBUS_SERVICE_H_
+#define LIBCHROMEOS_CHROMEOS_GLIB_ABSTRACT_DBUS_SERVICE_H_
 
 #include <chromeos/chromeos_export.h>
-#include <chromeos/dbus/dbus.h>
+#include <chromeos/glib/dbus.h>
 
 namespace chromeos {
 
@@ -47,4 +47,4 @@ class CHROMEOS_EXPORT AbstractDbusService {
 }  // namespace dbus
 }  // namespace chromeos
 
-#endif  // LIBCHROMEOS_CHROMEOS_DBUS_ABSTRACT_DBUS_SERVICE_H_
+#endif  // LIBCHROMEOS_CHROMEOS_GLIB_ABSTRACT_DBUS_SERVICE_H_

@@ -40,4 +40,13 @@ for v; do
     -e "s/@BSLOT@/${v}/g" \
     -e "s/@PRIVATE_PC@/${deps_test}/g" \
     "libchromeos-test.pc.in" > "${OUT}/lib/libchromeos-test-${v}.pc"
+
+
+  deps_glib=$(<"${OUT}"/gen/libchromeos-glib-${v}-deps.txt)
+  pc_glib="${OUT}"/lib/libchromeos-glib-${v}.pc
+
+  sed \
+    -e "s/@BSLOT@/${v}/g" \
+    -e "s/@PRIVATE_PC@/${deps_glib}/g" \
+    "libchromeos-glib.pc.in" > "${pc_glib}"
 done
