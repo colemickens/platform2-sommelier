@@ -18,7 +18,6 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
-#include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "permission_broker/allow_group_tty_device_rule.h"

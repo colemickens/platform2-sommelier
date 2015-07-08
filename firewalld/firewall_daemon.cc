@@ -7,7 +7,6 @@
 #include <string>
 
 #include <base/logging.h>
-#include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace firewalld {

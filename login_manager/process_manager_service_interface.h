@@ -10,7 +10,6 @@
 
 #include <base/files/file_path.h>
 #include <base/memory/scoped_ptr.h>
-#include <chromeos/dbus/abstract_dbus_service.h>
 
 namespace login_manager {
 
