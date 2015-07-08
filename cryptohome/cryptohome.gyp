@@ -209,6 +209,7 @@
       },
       'sources': [
         'cryptohome.cc',
+        'tpm_live_test.cc'
       ],
     },
     {

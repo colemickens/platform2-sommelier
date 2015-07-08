@@ -25,13 +25,11 @@ namespace cryptohome {
 
 Tpm2Impl::Tpm2Impl()
     : factory_(scoped_ptr<TrunksFactory>(new trunks::TrunksFactoryImpl())),
-      session_(factory_->GetHmacSession()),
       state_(factory_->GetTpmState()),
       utility_(factory_->GetTpmUtility()) {}
 
 Tpm2Impl::Tpm2Impl(TrunksFactory* factory)
     : factory_(scoped_ptr<TrunksFactory>(factory)),
-      session_(factory_->GetHmacSession()),
       state_(factory_->GetTpmState()),
       utility_(factory_->GetTpmUtility()) {}
 
@@ -114,9 +112,14 @@ bool Tpm2Impl::DefineLockOnceNvram(uint32_t index, size_t length) {
     LOG(ERROR) << "Defining NVram needs owner_password.";
     return false;
   }
-  session_->SetEntityAuthorizationValue(owner_password_.to_string());
-  TPM_RC result = utility_->DefineNVSpace(index, length,
-                                          session_->GetDelegate());
+  scoped_ptr<trunks::HmacSession> session = factory_->GetHmacSession();
+  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
+    return false;
+  }
+  session->SetEntityAuthorizationValue(owner_password_.to_string());
+  result = utility_->DefineNVSpace(index, length, session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error defining NVram space: " << GetErrorString(result);
     return false;
@@ -129,8 +132,14 @@ bool Tpm2Impl::DestroyNvram(uint32_t index) {
     LOG(ERROR) << "Destroying NVram needs owner_password.";
     return false;
   }
-  session_->SetEntityAuthorizationValue(owner_password_.to_string());
-  TPM_RC result = utility_->DestroyNVSpace(index, session_->GetDelegate());
+  scoped_ptr<trunks::HmacSession> session = factory_->GetHmacSession();
+  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
+    return false;
+  }
+  session->SetEntityAuthorizationValue(owner_password_.to_string());
+  result = utility_->DestroyNVSpace(index, session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error destroying NVram space: " << GetErrorString(result);
     return false;
@@ -139,16 +148,27 @@ bool Tpm2Impl::DestroyNvram(uint32_t index) {
 }
 
 bool Tpm2Impl::WriteNvram(uint32_t index, const SecureBlob& blob) {
-  session_->SetEntityAuthorizationValue("");
-  TPM_RC result = utility_->WriteNVSpace(index,
-                                         0,  // offset
-                                         blob.to_string(),
-                                         session_->GetDelegate());
+  if (owner_password_.empty()) {
+    LOG(ERROR) << "Writing NVram needs owner_password.";
+    return false;
+  }
+  scoped_ptr<trunks::HmacSession> session = factory_->GetHmacSession();
+  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
+    return false;
+  }
+  session->SetEntityAuthorizationValue(owner_password_.to_string());
+  result = utility_->WriteNVSpace(index,
+                                  0,  // offset
+                                  blob.to_string(),
+                                  session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error writing to NVSpace: " << GetErrorString(result);
     return false;
   }
-  result = utility_->LockNVSpace(index, session_->GetDelegate());
+  session->SetEntityAuthorizationValue("");
+  result = utility_->LockNVSpace(index, session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error locking NVSpace: " << GetErrorString(result);
     return false;
@@ -157,13 +177,19 @@ bool Tpm2Impl::WriteNvram(uint32_t index, const SecureBlob& blob) {
 }
 
 bool Tpm2Impl::ReadNvram(uint32_t index, SecureBlob* blob) {
+  scoped_ptr<trunks::HmacSession> session = factory_->GetHmacSession();
+  TPM_RC result = session->StartUnboundSession(true  /* Enable encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting a session: " << GetErrorString(result);
+    return false;
+  }
+  session->SetEntityAuthorizationValue("");
   std::string nvram_data;
-  session_->SetEntityAuthorizationValue("");
-  TPM_RC result = utility_->ReadNVSpace(index,
-                                        0,  // offset
-                                        GetNvramSize(index),
-                                        &nvram_data,
-                                        session_->GetDelegate());
+  result = utility_->ReadNVSpace(index,
+                                 0,  // offset
+                                 GetNvramSize(index),
+                                 &nvram_data,
+                                 session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error reading from nvram: " << GetErrorString(result);
     return false;

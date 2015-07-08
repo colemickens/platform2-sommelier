@@ -93,7 +93,7 @@ TEST_F(Tpm2Test, EnabledOwnedNotEnabled) {
 TEST_F(Tpm2Test, EnabledOwnedNotOwned) {
   bool enabled;
   bool owned;
-  EXPECT_CALL(mock_tpm_state_, IsOnwed())
+  EXPECT_CALL(mock_tpm_state_, IsOwned())
       .WillOnce(Return(false));
   EXPECT_TRUE(tpm_->PerformEnabledOwnedCheck(&enabled, &owned));
   EXPECT_TRUE(enabled);
@@ -191,6 +191,8 @@ TEST_F(Tpm2Test, DestroyNvramFailure) {
 }
 
 TEST_F(Tpm2Test, WriteNvramSuccess) {
+  SecureBlob owner_pass("password");
+  tpm_->SetOwnerPassword(owner_pass);
   SecureBlob data("nvram_data");
   uint32_t index = 2;
   std::string written_data;
@@ -203,7 +205,15 @@ TEST_F(Tpm2Test, WriteNvramSuccess) {
   EXPECT_EQ(written_data, data.to_string());
 }
 
+TEST_F(Tpm2Test, WriteNvramNoOwnerPassword) {
+  SecureBlob data("nvram_data");
+  uint32_t index = 2;
+  EXPECT_FALSE(tpm_->WriteNvram(index, data));
+}
+
 TEST_F(Tpm2Test, WriteNvramFailure) {
+  SecureBlob owner_pass("password");
+  tpm_->SetOwnerPassword(owner_pass);
   SecureBlob data("nvram_data");
   uint32_t index = 2;
   EXPECT_CALL(mock_tpm_utility_, WriteNVSpace(index, 0, _, _))
@@ -211,8 +221,9 @@ TEST_F(Tpm2Test, WriteNvramFailure) {
   EXPECT_FALSE(tpm_->WriteNvram(index, data));
 }
 
-
 TEST_F(Tpm2Test, WriteNvramLockoutFailure) {
+  SecureBlob owner_pass("password");
+  tpm_->SetOwnerPassword(owner_pass);
   SecureBlob data("nvram_data");
   uint32_t index = 2;
   std::string written_data;

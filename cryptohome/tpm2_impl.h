@@ -126,7 +126,6 @@ class Tpm2Impl : public Tpm {
 
  private:
   scoped_ptr<trunks::TrunksFactory> factory_;
-  scoped_ptr<trunks::HmacSession> session_;
   scoped_ptr<trunks::TpmState> state_;
   scoped_ptr<trunks::TpmUtility> utility_;
 
