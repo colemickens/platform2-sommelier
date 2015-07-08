@@ -617,6 +617,13 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {
   ASSERT_EQ(0, backlight_.current_level());
   controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
+
+  // Both the explicit AC and battery brightness should have been updated
+  // (http://crbug.com/507944).
+  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
 
   // User activity corresponding to brightness- or volume-related key presses
   // shouldn't increase the brightness, though.

@@ -108,8 +108,8 @@ class InternalBacklightController : public BacklightController,
   // Snaps |percent| to the nearest step, as defined by |step_percent_|.
   double SnapBrightnessPercentToNearestStep(double percent) const;
 
-  // Returns either |plugged_explicit_brightness_percent_| or
-  // |unplugged_explicit_brightness_percent_| depending on |power_source_|.
+  // Returns either |ac_explicit_brightness_percent_| or
+  // |battery_explicit_brightness_percent_| depending on |power_source_|.
   double GetExplicitBrightnessPercent() const;
 
   // Returns the brightness percent that should be used when the system is
@@ -123,15 +123,15 @@ class InternalBacklightController : public BacklightController,
   // brightness was set to zero via a policy.
   void EnsureUserBrightnessIsNonzero();
 
-  // Method that disables ambient light adjustments, updates the appropriate
-  // |*_explicit_brightness_percent_| member, and updates the backlight's
+  // Method that disables ambient light adjustments, updates the
+  // |*_explicit_brightness_percent_| members, and updates the backlight's
   // brightness if needed. Returns true if the backlight's brightness was
   // changed.
   bool SetExplicitBrightnessPercent(
-      double percent,
+      double ac_percent,
+      double battery_percent,
       TransitionStyle style,
-      BrightnessChangeCause cause,
-      PowerSource power_source);
+      BrightnessChangeCause cause);
 
   // Updates the current brightness after assessing the current state
   // (based on |power_source_|, |dimmed_for_inactivity_|, etc.).  Should be
@@ -205,9 +205,9 @@ class InternalBacklightController : public BacklightController,
   // |ambient_light_handler_|.
   double ambient_light_brightness_percent_;
 
-  // User- or policy-set brightness percent when AC is plugged or unplugged.
-  double plugged_explicit_brightness_percent_;
-  double unplugged_explicit_brightness_percent_;
+  // User- or policy-set brightness percent when on AC or battery power.
+  double ac_explicit_brightness_percent_;
+  double battery_explicit_brightness_percent_;
 
   // True if the most-recently-received policy message requested a specific
   // brightness and no user adjustments have been made since then.

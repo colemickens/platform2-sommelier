@@ -150,8 +150,8 @@ InternalBacklightController::InternalBacklightController()
       als_adjustment_count_(0),
       user_adjustment_count_(0),
       ambient_light_brightness_percent_(kMaxPercent),
-      plugged_explicit_brightness_percent_(kMaxPercent),
-      unplugged_explicit_brightness_percent_(kMaxPercent),
+      ac_explicit_brightness_percent_(kMaxPercent),
+      battery_explicit_brightness_percent_(kMaxPercent),
       using_policy_brightness_(false),
       force_nonzero_brightness_for_user_activity_(true),
       max_level_(0),
@@ -191,9 +191,9 @@ void InternalBacklightController::Init(
 
   int64_t max_nits = 0;
   prefs_->GetInt64(kInternalBacklightMaxNitsPref, &max_nits);
-  plugged_explicit_brightness_percent_ = GetInitialBrightnessPercent(
+  ac_explicit_brightness_percent_ = GetInitialBrightnessPercent(
       prefs_, kInternalBacklightNoAlsAcBrightnessPref, max_nits);
-  unplugged_explicit_brightness_percent_ = GetInitialBrightnessPercent(
+  battery_explicit_brightness_percent_ = GetInitialBrightnessPercent(
       prefs_, kInternalBacklightNoAlsBatteryBrightnessPref, max_nits);
 
   prefs_->GetBool(kInstantTransitionsBelowMinLevelPref,
@@ -293,17 +293,13 @@ void InternalBacklightController::HandlePowerSourceChange(PowerSource source) {
   // Ensure that the screen isn't dimmed in response to a transition to AC
   // or brightened in response to a transition to battery.
   if (got_power_source_) {
-    bool plugged = source == POWER_AC;
-    bool unplugged_exceeds_plugged =
-        unplugged_explicit_brightness_percent_ >
-        plugged_explicit_brightness_percent_;
-    if (plugged && unplugged_exceeds_plugged) {
-      plugged_explicit_brightness_percent_ =
-          unplugged_explicit_brightness_percent_;
-    } else if (!plugged && unplugged_exceeds_plugged) {
-      unplugged_explicit_brightness_percent_ =
-          plugged_explicit_brightness_percent_;
-    }
+    const bool on_ac = source == POWER_AC;
+    const bool battery_exceeds_ac =
+        battery_explicit_brightness_percent_ > ac_explicit_brightness_percent_;
+    if (on_ac && battery_exceeds_ac)
+      ac_explicit_brightness_percent_ = battery_explicit_brightness_percent_;
+    else if (!on_ac && battery_exceeds_ac)
+      battery_explicit_brightness_percent_ = ac_explicit_brightness_percent_;
   }
 
   power_source_ = source;
@@ -351,26 +347,28 @@ void InternalBacklightController::HandleUserActivity(UserActivityType type) {
 
 void InternalBacklightController::HandlePolicyChange(
     const PowerManagementPolicy& policy) {
+  bool got_policy_brightness = false;
+
+  double ac_brightness = ac_explicit_brightness_percent_;
   if (policy.has_ac_brightness_percent()) {
     LOG(INFO) << "Got policy-triggered request to set AC brightness to "
               << policy.ac_brightness_percent() << "%";
-    SetExplicitBrightnessPercent(policy.ac_brightness_percent(),
-                                 TRANSITION_FAST,
-                                 BRIGHTNESS_CHANGE_AUTOMATED,
-                                 POWER_AC);
+    ac_brightness = policy.ac_brightness_percent();
+    got_policy_brightness = true;
   }
+  double battery_brightness = battery_explicit_brightness_percent_;
   if (policy.has_battery_brightness_percent()) {
     LOG(INFO) << "Got policy-triggered request to set battery brightness to "
               << policy.battery_brightness_percent() << "%";
-    SetExplicitBrightnessPercent(policy.battery_brightness_percent(),
-                                 TRANSITION_FAST,
-                                 BRIGHTNESS_CHANGE_AUTOMATED,
-                                 POWER_BATTERY);
+    battery_brightness = policy.battery_brightness_percent();
+    got_policy_brightness = true;
   }
 
-  using_policy_brightness_ = policy.has_ac_brightness_percent() ||
-      policy.has_battery_brightness_percent();
-
+  using_policy_brightness_ = got_policy_brightness;
+  if (got_policy_brightness) {
+    SetExplicitBrightnessPercent(ac_brightness, battery_brightness,
+                                 TRANSITION_FAST, BRIGHTNESS_CHANGE_AUTOMATED);
+  }
   force_nonzero_brightness_for_user_activity_ =
       policy.has_force_nonzero_brightness_for_user_activity() ?
       policy.force_nonzero_brightness_for_user_activity() : true;
@@ -446,14 +444,8 @@ bool InternalBacklightController::SetUserBrightnessPercent(
 
   // When the user explicitly requests a specific brightness level, use it for
   // both AC and battery power.
-  const PowerSource inactive_power_source =
-      power_source_ == POWER_AC ? POWER_BATTERY : POWER_AC;
-  SetExplicitBrightnessPercent(percent, style, BRIGHTNESS_CHANGE_USER_INITIATED,
-                               inactive_power_source);
-
-  return SetExplicitBrightnessPercent(percent, style,
-                                      BRIGHTNESS_CHANGE_USER_INITIATED,
-                                      power_source_);
+  return SetExplicitBrightnessPercent(percent, percent, style,
+                                      BRIGHTNESS_CHANGE_USER_INITIATED);
 }
 
 bool InternalBacklightController::IncreaseUserBrightness() {
@@ -517,8 +509,8 @@ double InternalBacklightController::SnapBrightnessPercentToNearestStep(
 }
 
 double InternalBacklightController::GetExplicitBrightnessPercent() const {
-  return power_source_ == POWER_AC ? plugged_explicit_brightness_percent_ :
-      unplugged_explicit_brightness_percent_;
+  return power_source_ == POWER_AC ? ac_explicit_brightness_percent_ :
+      battery_explicit_brightness_percent_;
 }
 
 double InternalBacklightController::GetUndimmedBrightnessPercent() const {
@@ -536,28 +528,23 @@ void InternalBacklightController::EnsureUserBrightnessIsNonzero() {
   if (force_nonzero_brightness_for_user_activity_ &&
       display_mode_ == DISPLAY_NORMAL &&
       GetExplicitBrightnessPercent() < kMinVisiblePercent &&
-      !using_policy_brightness_) {
-    SetExplicitBrightnessPercent(kMinVisiblePercent, TRANSITION_FAST,
-                                 BRIGHTNESS_CHANGE_AUTOMATED, power_source_);
+      !using_policy_brightness_ &&
+      !use_ambient_light_) {
+    SetExplicitBrightnessPercent(kMinVisiblePercent, kMinVisiblePercent,
+                                 TRANSITION_FAST, BRIGHTNESS_CHANGE_AUTOMATED);
   }
 }
 
 bool InternalBacklightController::SetExplicitBrightnessPercent(
-    double percent,
+    double ac_percent,
+    double battery_percent,
     TransitionStyle style,
-    BrightnessChangeCause cause,
-    PowerSource power_source) {
+    BrightnessChangeCause cause) {
   use_ambient_light_ = false;
-
-  const bool is_zero = percent <= kEpsilon;
-  percent = is_zero ? 0.0 : ClampPercentToVisibleRange(percent);
-  double* explicit_percent_ptr =
-      (power_source == POWER_AC) ? &plugged_explicit_brightness_percent_ :
-      &unplugged_explicit_brightness_percent_;
-  *explicit_percent_ptr = percent;
-
-  if (power_source != power_source_)
-    return false;
+  ac_explicit_brightness_percent_ = ac_percent <= kEpsilon ? 0.0 :
+      ClampPercentToVisibleRange(ac_percent);
+  battery_explicit_brightness_percent_ = battery_percent <= kEpsilon ? 0.0 :
+      ClampPercentToVisibleRange(battery_percent);
   return UpdateUndimmedBrightness(style, cause);
 }
 
