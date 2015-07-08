@@ -1,0 +1,26 @@
+{
+  "_jukebox": {
+    "_play": {
+      "parameters": {
+        "_songName": "string"
+      }
+    },
+    "_stop": {
+      "parameters": {
+      }
+    },
+    "_setVolume": {
+      "parameters": {
+        "_volume": "integer"
+      }
+    },
+    "_changeVolume": {
+      "parameters": {
+        "_delta": "integer"
+      },
+      "results": {
+        "_currentVolume": "integer"
+      }
+    }
+  }
+}
