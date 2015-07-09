@@ -38,6 +38,17 @@ TEST_F(KeyValueStoreTest, Bool) {
             static_cast<int>(store_.GetBool(kKey)));
 }
 
+TEST_F(KeyValueStoreTest, ByteArrays) {
+  const string kKey("foo");
+  const vector<vector<uint8_t>> kValue{ {1, 2, 3 } };
+  EXPECT_FALSE(store_.ContainsByteArrays(kKey));
+  store_.SetByteArrays(kKey, kValue);
+  EXPECT_TRUE(store_.ContainsByteArrays(kKey));
+  EXPECT_EQ(kValue, store_.GetByteArrays(kKey));
+  store_.RemoveByteArrays(kKey);
+  EXPECT_FALSE(store_.ContainsByteArrays(kKey));
+}
+
 TEST_F(KeyValueStoreTest, Int) {
   const string kKey("foo");
   const int kValue = 456;
@@ -52,6 +63,17 @@ TEST_F(KeyValueStoreTest, Int) {
   EXPECT_FALSE(store_.ContainsInt(kKey));
 }
 
+TEST_F(KeyValueStoreTest, Int16) {
+  const string kKey("foo");
+  const int16_t kValue = 123;
+  EXPECT_FALSE(store_.ContainsInt16(kKey));
+  store_.SetInt16(kKey, kValue);
+  EXPECT_TRUE(store_.ContainsInt16(kKey));
+  EXPECT_EQ(kValue, store_.GetInt16(kKey));
+  store_.RemoveInt16(kKey);
+  EXPECT_FALSE(store_.ContainsInt16(kKey));
+}
+
 TEST_F(KeyValueStoreTest, KeyValueStore) {
   const string kSubKey("foo");
   const map<string, string> kSubValue{ { "bar0", "baz0" }, { "bar1", "baz1" } };
@@ -64,6 +86,17 @@ TEST_F(KeyValueStoreTest, KeyValueStore) {
   EXPECT_TRUE(value.Equals(store_.GetKeyValueStore(kKey)));
   store_.RemoveKeyValueStore(kKey);
   EXPECT_FALSE(store_.ContainsKeyValueStore(kKey));
+}
+
+TEST_F(KeyValueStoreTest, RpcIdentifier) {
+  const string kKey("foo");
+  const string kValue("baz");
+  EXPECT_FALSE(store_.ContainsRpcIdentifier(kKey));
+  store_.SetRpcIdentifier(kKey, kValue);
+  EXPECT_TRUE(store_.ContainsRpcIdentifier(kKey));
+  EXPECT_EQ(kValue, store_.GetRpcIdentifier(kKey));
+  store_.RemoveRpcIdentifier(kKey);
+  EXPECT_FALSE(store_.ContainsRpcIdentifier(kKey));
 }
 
 TEST_F(KeyValueStoreTest, String) {
@@ -112,6 +145,37 @@ TEST_F(KeyValueStoreTest, Uint) {
   EXPECT_EQ(kValue, store_.GetUint(kKey));
 }
 
+TEST_F(KeyValueStoreTest, Uint16) {
+  const string kKey("foo");
+  const uint16_t kValue = 456;
+  EXPECT_FALSE(store_.ContainsUint16(kKey));
+  store_.SetUint16(kKey, kValue);
+  EXPECT_TRUE(store_.ContainsUint16(kKey));
+  EXPECT_EQ(kValue, store_.GetUint16(kKey));
+}
+
+TEST_F(KeyValueStoreTest, Uint8s) {
+  const string kKey("foo");
+  const vector<uint8_t> kValue{ 1, 2, 3 };
+  EXPECT_FALSE(store_.ContainsUint8s(kKey));
+  store_.SetUint8s(kKey, kValue);
+  EXPECT_TRUE(store_.ContainsUint8s(kKey));
+  EXPECT_EQ(kValue, store_.GetUint8s(kKey));
+  store_.RemoveUint8s(kKey);
+  EXPECT_FALSE(store_.ContainsUint8s(kKey));
+}
+
+TEST_F(KeyValueStoreTest, Uint32s) {
+  const string kKey("foo");
+  const vector<uint32_t> kValue{ 1, 2, 3 };
+  EXPECT_FALSE(store_.ContainsUint32s(kKey));
+  store_.SetUint32s(kKey, kValue);
+  EXPECT_TRUE(store_.ContainsUint32s(kKey));
+  EXPECT_EQ(kValue, store_.GetUint32s(kKey));
+  store_.RemoveUint32s(kKey);
+  EXPECT_FALSE(store_.ContainsUint32s(kKey));
+}
+
 TEST_F(KeyValueStoreTest, DoubleRemove) {
   const string kKey("foo");
   // Make sure we don't get an exception/infinite loop if we do a
@@ -127,12 +191,21 @@ TEST_F(KeyValueStoreTest, Clear) {
   const string kBoolKey("foo");
   const bool kBoolValue = true;
   store_.SetBool(kBoolKey, kBoolValue);
+  const string kByteArraysKey("bytearrays");
+  const vector<vector<uint8_t>> kByteArraysValue{ {1, 2} };
+  store_.SetByteArrays(kByteArraysKey, kByteArraysValue);
   const string kIntKey("bar");
   const int kIntValue = 123;
   store_.SetInt(kIntKey, kIntValue);
+  const string kInt16Key("int16");
+  const int16_t kInt16Value = 123;
+  store_.SetInt16(kInt16Key, kInt16Value);
   const string kKeyValueStoreKey("bear");
   const KeyValueStore kKeyValueStoreValue;
   store_.SetKeyValueStore(kKeyValueStoreKey, kKeyValueStoreValue);
+  const string kRpcIdentifierKey("rpcid");
+  const string kRpcIdentifierValue("rpc_identifier");
+  store_.SetRpcIdentifier(kRpcIdentifierKey, kRpcIdentifierValue);
   const string kStringKey("baz");
   const string kStringValue("string");
   store_.SetString(kStringKey, kStringValue);
@@ -145,24 +218,45 @@ TEST_F(KeyValueStoreTest, Clear) {
   const string kUintKey("bun");
   const uint32_t kUintValue = 456;
   store_.SetUint(kUintKey, kUintValue);
+  const string kUint16Key("uint16");
+  const uint16_t kUint16Value = 123;
+  store_.SetUint16(kUint16Key, kUint16Value);
+  const string kUint8sKey("uint8s");
+  const vector<uint8_t> kUint8sValue{ 1, 2, 3 };
+  store_.SetUint8s(kUint8sKey, kUint8sValue);
+  const string kUint32sKey("uint32s");
+  const vector<uint32_t> kUint32sValue{ 1, 2, 3 };
+  store_.SetUint32s(kUint32sKey, kUint32sValue);
 
   EXPECT_TRUE(store_.ContainsBool(kBoolKey));
+  EXPECT_TRUE(store_.ContainsByteArrays(kByteArraysKey));
   EXPECT_TRUE(store_.ContainsInt(kIntKey));
+  EXPECT_TRUE(store_.ContainsInt16(kInt16Key));
   EXPECT_TRUE(store_.ContainsKeyValueStore(kKeyValueStoreKey));
+  EXPECT_TRUE(store_.ContainsRpcIdentifier(kRpcIdentifierKey));
   EXPECT_TRUE(store_.ContainsString(kStringKey));
   EXPECT_TRUE(store_.ContainsStringmap(kStringmapKey));
   EXPECT_TRUE(store_.ContainsStrings(kStringsKey));
   EXPECT_TRUE(store_.ContainsUint(kUintKey));
+  EXPECT_TRUE(store_.ContainsUint16(kUint16Key));
+  EXPECT_TRUE(store_.ContainsUint8s(kUint8sKey));
+  EXPECT_TRUE(store_.ContainsUint32s(kUint32sKey));
   EXPECT_FALSE(store_.IsEmpty());
   store_.Clear();
   EXPECT_TRUE(store_.IsEmpty());
   EXPECT_FALSE(store_.ContainsBool(kBoolKey));
+  EXPECT_FALSE(store_.ContainsByteArrays(kByteArraysKey));
   EXPECT_FALSE(store_.ContainsInt(kIntKey));
+  EXPECT_FALSE(store_.ContainsInt16(kInt16Key));
   EXPECT_FALSE(store_.ContainsInt(kKeyValueStoreKey));
+  EXPECT_FALSE(store_.ContainsRpcIdentifier(kRpcIdentifierKey));
   EXPECT_FALSE(store_.ContainsString(kStringKey));
   EXPECT_FALSE(store_.ContainsStringmap(kStringmapKey));
   EXPECT_FALSE(store_.ContainsStrings(kStringsKey));
   EXPECT_FALSE(store_.ContainsUint(kUintKey));
+  EXPECT_FALSE(store_.ContainsUint16(kUint16Key));
+  EXPECT_FALSE(store_.ContainsUint8s(kUint8sKey));
+  EXPECT_FALSE(store_.ContainsUint32s(kUint32sKey));
 }
 
 TEST_F(KeyValueStoreTest, Equals) {
@@ -188,6 +282,21 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.SetBool("boolKey", false);
   EXPECT_FALSE(first.Equals(second));
 
+  const vector<vector<uint8_t>> kByteArrays1{ {1, 2} };
+  const vector<vector<uint8_t>> kByteArrays2{ {3, 4} };
+
+  first.Clear();
+  second.Clear();
+  first.SetByteArrays("byteArraysKey", kByteArrays1);
+  second.SetByteArrays("byteArraysOtherKey", kByteArrays1);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetByteArrays("byteArraysKey", kByteArrays1);
+  second.SetByteArrays("byteArraysOtherKey", kByteArrays2);
+  EXPECT_FALSE(first.Equals(second));
+
   first.Clear();
   second.Clear();
   first.SetInt("intKey", 123);
@@ -198,6 +307,18 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.Clear();
   first.SetInt("intKey", 123);
   second.SetInt("intKey", 456);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetInt16("int16Key", 123);
+  second.SetInt16("int16OtherKey", 123);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetInt16("int16Key", 123);
+  second.SetInt16("int16Key", 456);
   EXPECT_FALSE(first.Equals(second));
 
   KeyValueStore key_value0;
@@ -215,6 +336,18 @@ TEST_F(KeyValueStoreTest, Equals) {
   second.Clear();
   first.SetKeyValueStore("keyValueKey", key_value0);
   second.SetKeyValueStore("keyValueOtherKey", key_value0);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetRpcIdentifier("rpcIdentifierKey", "rpcIdentifier");
+  second.SetRpcIdentifier("rpcIdentifierOtherKey", "rpcIdentifier");
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetRpcIdentifier("rpcIdentifierKey", "rpcIdentifier");
+  second.SetRpcIdentifier("rpcIdentifierKey", "otherRpcIdentifier");
   EXPECT_FALSE(first.Equals(second));
 
   first.Clear();
@@ -280,18 +413,72 @@ TEST_F(KeyValueStoreTest, Equals) {
 
   first.Clear();
   second.Clear();
+  first.SetUint16("uint16Key", 1);
+  second.SetUint16("uint16OtherKey", 1);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetUint16("uint16Key", 1);
+  second.SetUint16("uint16Key", 2);
+  EXPECT_FALSE(first.Equals(second));
+
+  const vector<uint8_t> kUint8s1{ 1 };
+  const vector<uint8_t> kUint8s2{ 2 };
+
+  first.Clear();
+  second.Clear();
+  first.SetUint8s("uint8sKey", kUint8s1);
+  second.SetUint8s("uint8sOtherKey", kUint8s1);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetUint8s("uint8sKey", kUint8s1);
+  second.SetUint8s("uint8sKey", kUint8s2);
+  EXPECT_FALSE(first.Equals(second));
+
+  const vector<uint32_t> kUint32s1{ 1 };
+  const vector<uint32_t> kUint32s2{ 2 };
+
+  first.Clear();
+  second.Clear();
+  first.SetUint32s("uint32sKey", kUint32s1);
+  second.SetUint32s("uint32sOtherKey", kUint32s1);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
+  first.SetUint32s("uint32sKey", kUint32s1);
+  second.SetUint32s("uint32sKey", kUint32s2);
+  EXPECT_FALSE(first.Equals(second));
+
+  first.Clear();
+  second.Clear();
   first.SetBool("boolKey", true);
+  first.SetByteArrays("byteArraysKey", kByteArrays1);
   first.SetInt("intKey", 123);
+  first.SetInt("int16Key", 123);
+  first.SetRpcIdentifier("rpcIdentifierKey", "rpcid");
   first.SetString("stringKey", "value");
   first.SetStringmap("stringmapKey", kStringmap1);
   first.SetStrings("stringsKey", kStrings1);
   first.SetUint("uintKey", 1);
+  first.SetUint16("uint16Key", 1);
+  first.SetUint8s("uint8sKey", kUint8s1);
+  first.SetUint32s("uint32sKey", kUint32s1);
   second.SetBool("boolKey", true);
+  second.SetByteArrays("byteArraysKey", kByteArrays1);
   second.SetInt("intKey", 123);
+  second.SetInt("int16Key", 123);
+  second.SetRpcIdentifier("rpcIdentifierKey", "rpcid");
   second.SetString("stringKey", "value");
   second.SetStringmap("stringmapKey", kStringmap1);
   second.SetStrings("stringsKey", kStrings1);
   second.SetUint("uintKey", 1);
+  second.SetUint16("uint16Key", 1);
+  second.SetUint8s("uint8sKey", kUint8s1);
+  second.SetUint32s("uint32sKey", kUint32s1);
   EXPECT_TRUE(first.Equals(second));
 }
 
@@ -300,13 +487,22 @@ TEST_F(KeyValueStoreTest, CopyFrom) {
   const string kBoolKey("foo");
   const bool kBoolValue = true;
   donor.SetBool(kBoolKey, kBoolValue);
+  const string kByteArraysKey("bytearrays");
+  const vector<vector<uint8_t>> kByteArraysValue{ {1} };
+  donor.SetByteArrays(kByteArraysKey, kByteArraysValue);
   const string kIntKey("bar");
   const int kIntValue = 123;
   donor.SetInt(kIntKey, kIntValue);
+  const string kInt16Key("int16");
+  const int16_t kInt16Value = 123;
+  donor.SetInt16(kInt16Key, kInt16Value);
   const string kKeyValueStoreKey("bear");
   KeyValueStore keyValueStoreValue;
   keyValueStoreValue.SetInt(kIntKey, kIntValue);
   donor.SetKeyValueStore(kKeyValueStoreKey, keyValueStoreValue);
+  const string kRpcIdentifierKey("rpcidentifier");
+  const string kRpcIdentifierValue("rpcid");
+  donor.SetRpcIdentifier(kRpcIdentifierKey, kRpcIdentifierValue);
   const string kStringKey("baz");
   const string kStringValue("string");
   donor.SetString(kStringKey, kStringValue);
@@ -319,6 +515,15 @@ TEST_F(KeyValueStoreTest, CopyFrom) {
   const string kUintKey("bun");
   const uint32_t kUintValue = 456;
   donor.SetUint(kUintKey, kUintValue);
+  const string kUint16Key("uint16");
+  const uint16_t kUint16Value = 456;
+  donor.SetUint16(kUint16Key, kUint16Value);
+  const string kUint8sKey("uint8s");
+  const vector<uint8_t> kUint8sValue{ 1 };
+  donor.SetUint8s(kUint8sKey, kUint8sValue);
+  const string kUint32sKey("uint32s");
+  const vector<uint32_t> kUint32sValue{ 1 };
+  donor.SetUint32s(kUint32sKey, kUint32sValue);
 
   EXPECT_TRUE(store_.IsEmpty());
   store_.CopyFrom(donor);
