@@ -55,6 +55,13 @@ bool DBusProperties::GetBool(const DBusPropertiesMap& properties,
 }
 
 // static
+bool DBusProperties::GetByteArrays(const DBusPropertiesMap& properties,
+                                   const string& key,
+                                   vector<vector<uint8_t>>* value) {
+  return GetValue<vector<vector<uint8_t>>>(properties, key, value);
+}
+
+// static
 bool DBusProperties::GetDBusPropertiesMap(const DBusPropertiesMap& properties,
                                           const string& key,
                                           DBusPropertiesMap* value) {
@@ -158,6 +165,20 @@ bool DBusProperties::GetRpcIdentifiers(const DBusPropertiesMap& properties,
 }
 
 // static
+bool DBusProperties::GetUint8s(const DBusPropertiesMap& properties,
+                               const string& key,
+                               vector<uint8_t>* value) {
+  return GetValue<vector<uint8_t>>(properties, key, value);
+}
+
+// static
+bool DBusProperties::GetUint32s(const DBusPropertiesMap& properties,
+                               const string& key,
+                               vector<uint32_t>* value) {
+  return GetValue<vector<uint32_t>>(properties, key, value);
+}
+
+// static
 void DBusProperties::ConvertPathsToRpcIdentifiers(
     const vector<DBus::Path>& dbus_paths, RpcIdentifiers* rpc_identifiers) {
   CHECK(rpc_identifiers);
@@ -189,9 +210,121 @@ void DBusProperties::ConvertKeyValueStoreToMap(
     (*properties)[key_value_pair.first].writer()
         .append_int32(key_value_pair.second);
   }
+  for (const auto& key_value_pair : store.int16_properties()) {
+    (*properties)[key_value_pair.first].writer()
+        .append_int16(key_value_pair.second);
+  }
   for (const auto& key_value_pair : store.uint_properties()) {
     (*properties)[key_value_pair.first].writer()
         .append_uint32(key_value_pair.second);
+  }
+  for (const auto& key_value_pair : store.uint16_properties()) {
+    (*properties)[key_value_pair.first].writer()
+        .append_uint16(key_value_pair.second);
+  }
+  for (const auto& key_value_pair : store.uint8s_properties()) {
+    DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
+    writer << key_value_pair.second;
+  }
+  for (const auto& key_value_pair : store.uint32s_properties()) {
+    DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
+    writer << key_value_pair.second;
+  }
+  for (const auto& key_value_pair : store.byte_arrays_properties()) {
+    DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
+    writer << key_value_pair.second;
+  }
+  for (const auto& key_value_pair : store.key_value_store_properties()) {
+    DBusPropertiesMap props;
+    ConvertKeyValueStoreToMap(key_value_pair.second, &props);
+    DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
+    writer << props;
+  }
+  for (const auto& key_value_pair : store.rpc_identifier_properties()) {
+    (*properties)[key_value_pair.first].writer()
+        .append_path(key_value_pair.second.c_str());
+  }
+}
+
+// static
+void DBusProperties::ConvertMapToKeyValueStore(
+    const DBusPropertiesMap& properties,
+    KeyValueStore* store,
+    Error* error) {  // TODO(quiche): Should be ::DBus::Error?
+  for (const auto& key_value_pair : properties) {
+    string key = key_value_pair.first;
+
+    if (key_value_pair.second.signature() == ::DBus::type<bool>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got bool property " << key;
+      store->SetBool(key, key_value_pair.second.reader().get_bool());
+    } else if (key_value_pair.second.signature() ==
+        ::DBus::type<vector<vector<uint8_t>>>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got byte_arrays property " << key;
+      store->SetByteArrays(
+          key, key_value_pair.second.operator vector<vector<uint8_t>>());
+    } else if (key_value_pair.second.signature() ==
+        ::DBus::type<int32_t>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got int32_t property " << key;
+      store->SetInt(key, key_value_pair.second.reader().get_int32());
+    } else if (key_value_pair.second.signature() ==
+        ::DBus::type<int16_t>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got int16_t property " << key;
+      store->SetInt16(key, key_value_pair.second.reader().get_int16());
+    } else if (key_value_pair.second.signature() ==
+        ::DBus::type<map<string, ::DBus::Variant>>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got variant map property " << key;
+      // Unwrap a recursive KeyValueStore object.
+      KeyValueStore convert_store;
+      Error convert_error;
+      ConvertMapToKeyValueStore(
+          key_value_pair.second.operator map<string, ::DBus::Variant>(),
+          &convert_store,
+          &convert_error);
+      if (convert_error.IsSuccess()) {
+          store->SetKeyValueStore(key, convert_store);
+      } else {
+          Error::PopulateAndLog(FROM_HERE, error, convert_error.type(),
+                                convert_error.message() + " in sub-key " + key);
+          return;  // Skip remaining args after error.
+      }
+    } else if (key_value_pair.second.signature() ==
+        ::DBus::type<::DBus::Path>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got Path property " << key;
+      store->SetRpcIdentifier(key, key_value_pair.second.reader().get_path());
+    } else if (key_value_pair.second.signature() ==
+        ::DBus::type<string>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got string property " << key;
+      store->SetString(key, key_value_pair.second.reader().get_string());
+    } else if (key_value_pair.second.signature() ==
+        ::DBus::type<Strings>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got strings property " << key;
+      store->SetStrings(key, key_value_pair.second.operator vector<string>());
+    } else if (key_value_pair.second.signature() ==
+        ::DBus::type<Stringmap>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got stringmap property " << key;
+      store->SetStringmap(
+          key, key_value_pair.second.operator map<string, string>());
+    } else if (key_value_pair.second.signature() ==
+        ::DBus::type<uint32_t>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got uint32_t property " << key;
+      store->SetUint(key, key_value_pair.second.reader().get_uint32());
+    } else if (key_value_pair.second.signature() ==
+        ::DBus::type<uint16_t>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got uint16_t property " << key;
+      store->SetUint16(key, key_value_pair.second.reader().get_uint16());
+    } else if (key_value_pair.second.signature() ==
+        ::DBus::type<vector<uint8_t>>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got vector<uint8_t> property " << key;
+      store->SetUint8s(key, key_value_pair.second.operator vector<uint8_t>());
+    } else if (key_value_pair.second.signature() ==
+        ::DBus::type<vector<uint32_t>>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got vector<uint32_t> property " << key;
+      store->SetUint32s(key, key_value_pair.second.operator vector<uint32_t>());
+    } else {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
+                            "unsupported type for property " + key);
+      return;  // Skip remaining args after error.
+    }
   }
 }
 

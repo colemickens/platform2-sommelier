@@ -14,6 +14,7 @@
 
 #include "shill/accessor_interface.h"
 #include "shill/dbus_variant_gmock_printer.h"
+#include "shill/error.h"
 
 namespace shill {
 
@@ -25,6 +26,10 @@ class DBusProperties {
   static bool GetBool(const DBusPropertiesMap& properties,
                       const std::string& key,
                       bool* value);
+
+  static bool GetByteArrays(const DBusPropertiesMap& properties,
+                            const std::string& key,
+                            std::vector<std::vector<uint8_t>>* value);
 
   static bool GetDBusPropertiesMap(const DBusPropertiesMap& properties,
                                    const std::string& key,
@@ -77,6 +82,13 @@ class DBusProperties {
   static bool GetUint64(const DBusPropertiesMap& properties,
                         const std::string& key,
                         uint64_t* value);
+  static bool GetUint8s(const DBusPropertiesMap& properties,
+                        const std::string& key,
+                        std::vector<uint8_t>* value);
+
+  static bool GetUint32s(const DBusPropertiesMap& properties,
+                         const std::string& key,
+                         std::vector<uint32_t>* value);
 
   static bool GetRpcIdentifiers(const DBusPropertiesMap& properties,
                                 const std::string& key,
@@ -88,6 +100,8 @@ class DBusProperties {
 
   static void ConvertKeyValueStoreToMap(
       const KeyValueStore& store, DBusPropertiesMap* properties);
+  static void ConvertMapToKeyValueStore(
+      const DBusPropertiesMap& properties, KeyValueStore* store, Error* error);
 
   static std::string KeysToString(const DBusPropertiesMap& properties);
 

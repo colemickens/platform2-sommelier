@@ -46,6 +46,24 @@ TEST_F(DBusPropertiesTest, ConvertKeyValueStoreToMap) {
   const int32_t kInt32Value = 123;
   static const char kUint32Key[] = "Uint32Key";
   const uint32_t kUint32Value = 654;
+  static const char kByteArraysKey[] = "ByteArraysKey";
+  const vector<vector<uint8_t>> kByteArraysValue{ {1}, {2} };
+  static const char kInt16Key[] = "Int16Key";
+  const int16_t kInt16Value = 123;
+  static const char kRpcIdentifierKey[] = "RpcIdentifierKey";
+  static const char kRpcIdentifierValue[] = "/org/chromium/test";
+  static const char kUint16Key[] = "Uint16Key";
+  const uint16_t kUint16Value = 123;
+  static const char kUint8sKey[] = "Uint8sKey";
+  const vector<uint8_t> kUint8sValue{ 1, 2 };
+  static const char kUint32sKey[] = "Uint32sKey";
+  const vector<uint32_t> kUint32sValue{ 1, 2 };
+  static const char kKeyValueStoreKey[] = "KeyValueStoreKey";
+  static const char kNestedInt32Key[] = "NestedKey32Key";
+  const int32_t kNestedInt32Value = 1;
+  KeyValueStore nested_store;
+  nested_store.SetInt(kNestedInt32Key, kNestedInt32Value);
+
   KeyValueStore store;
   store.SetString(kStringKey, kStringValue);
   store.SetStringmap(kStringmapKey, kStringmapValue);
@@ -53,10 +71,18 @@ TEST_F(DBusPropertiesTest, ConvertKeyValueStoreToMap) {
   store.SetBool(kBoolKey, kBoolValue);
   store.SetInt(kInt32Key, kInt32Value);
   store.SetUint(kUint32Key, kUint32Value);
+  store.SetByteArrays(kByteArraysKey, kByteArraysValue);
+  store.SetInt16(kInt16Key, kInt16Value);
+  store.SetRpcIdentifier(kRpcIdentifierKey, kRpcIdentifierValue);
+  store.SetUint16(kUint16Key, kUint16Value);
+  store.SetUint8s(kUint8sKey, kUint8sValue);
+  store.SetUint32s(kUint32sKey, kUint32sValue);
+  store.SetKeyValueStore(kKeyValueStoreKey, nested_store);
+
   DBusPropertiesMap props;
   props["RandomKey"].writer().append_string("RandomValue");
   DBusProperties::ConvertKeyValueStoreToMap(store, &props);
-  EXPECT_EQ(6, props.size());
+  EXPECT_EQ(13, props.size());
   string string_value;
   EXPECT_TRUE(DBusProperties::GetString(props, kStringKey, &string_value));
   EXPECT_EQ(kStringValue, string_value);
@@ -76,6 +102,140 @@ TEST_F(DBusPropertiesTest, ConvertKeyValueStoreToMap) {
   uint32_t uint32_value = ~kUint32Value;
   EXPECT_TRUE(DBusProperties::GetUint32(props, kUint32Key, &uint32_value));
   EXPECT_EQ(kUint32Value, uint32_value);
+  vector<vector<uint8_t>> byte_arrays_value;
+  EXPECT_TRUE(
+      DBusProperties::GetByteArrays(props, kByteArraysKey, &byte_arrays_value));
+  EXPECT_EQ(kByteArraysValue, byte_arrays_value);
+  int16_t int16_value = ~kInt16Value;
+  EXPECT_TRUE(
+      DBusProperties::GetInt16(props, kInt16Key, &int16_value));
+  EXPECT_EQ(kInt16Value, int16_value);
+  DBus::Path rpc_identifier_value;
+  EXPECT_TRUE(
+      DBusProperties::GetObjectPath(props,
+                                    kRpcIdentifierKey,
+                                    &rpc_identifier_value));
+  EXPECT_EQ(kRpcIdentifierValue, rpc_identifier_value);
+  uint16_t uint16_value = ~kUint16Value;
+  EXPECT_TRUE(
+      DBusProperties::GetUint16(props, kUint16Key, &uint16_value));
+  EXPECT_EQ(kUint16Value, uint16_value);
+  vector<uint8_t> uint8s_value;
+  EXPECT_TRUE(
+      DBusProperties::GetUint8s(props, kUint8sKey, &uint8s_value));
+  EXPECT_EQ(kUint8sValue, uint8s_value);
+  vector<uint32_t> uint32s_value;
+  EXPECT_TRUE(
+      DBusProperties::GetUint32s(props, kUint32sKey, &uint32s_value));
+  EXPECT_EQ(kUint32sValue, uint32s_value);
+  DBusPropertiesMap nested_map;
+  EXPECT_TRUE(
+      DBusProperties::GetDBusPropertiesMap(props,
+                                           kKeyValueStoreKey,
+                                           &nested_map));
+  int32_t nested_int32_value = ~kNestedInt32Value;
+  EXPECT_TRUE(
+      DBusProperties::GetInt32(nested_map,
+                               kNestedInt32Key,
+                               &nested_int32_value));
+  EXPECT_EQ(kNestedInt32Value, nested_int32_value);
+}
+
+TEST_F(DBusPropertiesTest, ConvertMapToKeyValueStore) {
+  static const char kStringKey[] = "StringKey";
+  static const char kStringValue[] = "StringValue";
+  static const char kStringmapKey[] = "StringmapKey";
+  const map<string, string> kStringmapValue = { { "key", "value" } };
+  static const char kStringsKey[] = "StringsKey";
+  const vector<string> kStringsValue = {"StringsValue1", "StringsValue2"};
+  static const char kBoolKey[] = "BoolKey";
+  const bool kBoolValue = true;
+  static const char kInt32Key[] = "Int32Key";
+  const int32_t kInt32Value = 123;
+  static const char kUint32Key[] = "Uint32Key";
+  const uint32_t kUint32Value = 654;
+  static const char kByteArraysKey[] = "ByteArraysKey";
+  const vector<vector<uint8_t>> kByteArraysValue{ {1}, {2} };
+  static const char kInt16Key[] = "Int16Key";
+  const int16_t kInt16Value = 123;
+  static const char kRpcIdentifierKey[] = "RpcIdentifierKey";
+  static const char kRpcIdentifierValue[] = "/org/chromium/test";
+  static const char kUint16Key[] = "Uint16Key";
+  const uint16_t kUint16Value = 123;
+  static const char kUint8sKey[] = "Uint8sKey";
+  const vector<uint8_t> kUint8sValue{ 1, 2 };
+  static const char kUint32sKey[] = "Uint32sKey";
+  const vector<uint32_t> kUint32sValue{ 1, 2 };
+  static const char kKeyValueStoreKey[] = "KeyValueStoreKey";
+  static const char kNestedInt32Key[] = "NestedKey32Key";
+  const int32_t kNestedInt32Value = 1;
+
+  DBusPropertiesMap props;
+  props[kStringKey].writer().append_string(kStringValue);
+  {
+    DBus::MessageIter writer = props[kStringmapKey].writer();
+    writer << kStringmapValue;
+  }
+  {
+    DBus::MessageIter writer = props[kStringsKey].writer();
+    writer << kStringsValue;
+  }
+  props[kBoolKey].writer().append_bool(kBoolValue);
+  props[kInt32Key].writer().append_int32(kInt32Value);
+  props[kUint32Key].writer().append_uint32(kUint32Value);
+  {
+    DBus::MessageIter writer = props[kByteArraysKey].writer();
+    writer << kByteArraysValue;
+  }
+  props[kInt16Key].writer().append_int16(kInt16Value);
+  props[kRpcIdentifierKey].writer().append_path(kRpcIdentifierValue);
+  props[kUint16Key].writer().append_uint16(kUint16Value);
+  {
+    DBus::MessageIter writer = props[kUint8sKey].writer();
+    writer << kUint8sValue;
+  }
+  {
+    DBus::MessageIter writer = props[kUint32sKey].writer();
+    writer << kUint32sValue;
+  }
+  {
+    DBusPropertiesMap nested_props;
+    nested_props[kNestedInt32Key].writer().append_int32(kNestedInt32Value);
+    DBus::MessageIter writer = props[kKeyValueStoreKey].writer();
+    writer << nested_props;
+  }
+  KeyValueStore store;
+  Error error;
+  DBusProperties::ConvertMapToKeyValueStore(props, &store, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(store.ContainsString(kStringKey));
+  EXPECT_EQ(kStringValue, store.GetString(kStringKey));
+  EXPECT_TRUE(store.ContainsStringmap(kStringmapKey));
+  EXPECT_EQ(kStringmapValue, store.GetStringmap(kStringmapKey));
+  EXPECT_TRUE(store.ContainsStrings(kStringsKey));
+  EXPECT_EQ(kStringsValue, store.GetStrings(kStringsKey));
+  EXPECT_TRUE(store.ContainsBool(kBoolKey));
+  EXPECT_EQ(kBoolValue, store.GetBool(kBoolKey));
+  EXPECT_TRUE(store.ContainsInt(kInt32Key));
+  EXPECT_EQ(kInt32Value, store.GetInt(kInt32Key));
+  EXPECT_TRUE(store.ContainsUint(kUint32Key));
+  EXPECT_EQ(kUint32Value, store.GetUint(kUint32Key));
+  EXPECT_TRUE(store.ContainsByteArrays(kByteArraysKey));
+  EXPECT_EQ(kByteArraysValue, store.GetByteArrays(kByteArraysKey));
+  EXPECT_TRUE(store.ContainsInt16(kInt16Key));
+  EXPECT_EQ(kInt16Value, store.GetInt16(kInt16Key));
+  EXPECT_TRUE(store.ContainsRpcIdentifier(kRpcIdentifierKey));
+  EXPECT_EQ(kRpcIdentifierValue, store.GetRpcIdentifier(kRpcIdentifierKey));
+  EXPECT_TRUE(store.ContainsUint16(kUint16Key));
+  EXPECT_EQ(kUint16Value, store.GetUint16(kUint16Key));
+  EXPECT_TRUE(store.ContainsUint8s(kUint8sKey));
+  EXPECT_EQ(kUint8sValue, store.GetUint8s(kUint8sKey));
+  EXPECT_TRUE(store.ContainsUint32s(kUint32sKey));
+  EXPECT_EQ(kUint32sValue, store.GetUint32s(kUint32sKey));
+  EXPECT_TRUE(store.ContainsKeyValueStore(kKeyValueStoreKey));
+  KeyValueStore nested_store;
+  nested_store.SetInt(kNestedInt32Key, kNestedInt32Value);
+  EXPECT_TRUE(nested_store.Equals(store.GetKeyValueStore(kKeyValueStoreKey)));
 }
 
 template <typename T> class DBusPropertiesGetterTest : public Test {};
