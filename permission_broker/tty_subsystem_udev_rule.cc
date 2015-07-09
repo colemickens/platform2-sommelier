@@ -4,16 +4,55 @@
 
 #include "permission_broker/tty_subsystem_udev_rule.h"
 
+#include <grp.h>
 #include <libudev.h>
+#include <stdint.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <string>
+#include <vector>
 
 using std::string;
 
 namespace permission_broker {
 
-TtySubsystemUdevRule::TtySubsystemUdevRule(const string& name)
-    : UdevRule(name) {}
+// static
+std::string TtySubsystemUdevRule::GetDevNodeGroupName(udev_device* device) {
+  const char* const devnode = udev_device_get_devnode(device);
+  if (devnode == NULL) {
+    return "";
+  }
+
+  // Get gid for |devnode|.
+  struct stat st;
+  int ret = stat(devnode, &st);
+  if (ret < 0) {
+    return "";
+  }
+
+  // Get buffer size for getgrgid_r().
+  int64_t getgr_res = sysconf(_SC_GETGR_R_SIZE_MAX);
+  if (getgr_res < 0) {
+    return "";
+  }
+
+  // Get group name.
+  struct group gr;
+  struct group* pgr = nullptr;
+  size_t getgr_size = static_cast<size_t>(getgr_res);
+  std::vector<char> getgr_buf(getgr_size);
+  ret = getgrgid_r(st.st_gid, &gr, getgr_buf.data(), getgr_buf.size(), &pgr);
+  if (ret != 0 || pgr == NULL) {
+    return "";
+  }
+
+  return string(pgr->gr_name);
+}
+
+TtySubsystemUdevRule::TtySubsystemUdevRule(const string& name) : Rule(name) {
+}
 
 Rule::Result TtySubsystemUdevRule::ProcessDevice(udev_device* device) {
   const char* const subsystem = udev_device_get_subsystem(device);

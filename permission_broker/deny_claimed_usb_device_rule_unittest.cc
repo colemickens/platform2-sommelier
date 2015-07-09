@@ -12,6 +12,7 @@
 
 #include "base/logging.h"
 #include "base/stl_util.h"
+#include "permission_broker/rule_test.h"
 #include "permission_broker/udev_scopers.h"
 
 using std::set;
@@ -19,7 +20,7 @@ using std::string;
 
 namespace permission_broker {
 
-class DenyClaimedUsbDeviceRuleTest : public testing::Test {
+class DenyClaimedUsbDeviceRuleTest : public RuleTest {
  public:
   DenyClaimedUsbDeviceRuleTest() = default;
   ~DenyClaimedUsbDeviceRuleTest() override = default;
@@ -83,7 +84,7 @@ class DenyClaimedUsbDeviceRuleTest : public testing::Test {
 };
 
 TEST_F(DenyClaimedUsbDeviceRuleTest, IgnoreNonUsbDevice) {
-  ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/tty0"));
+  ASSERT_EQ(Rule::IGNORE, rule_.ProcessDevice(FindDevice("/dev/tty0").get()));
 }
 
 TEST_F(DenyClaimedUsbDeviceRuleTest, DenyClaimedUsbDevice) {
@@ -92,7 +93,8 @@ TEST_F(DenyClaimedUsbDeviceRuleTest, DenyClaimedUsbDevice) {
                  << "connected.";
 
   for (const string& device : claimed_devices_)
-    EXPECT_EQ(Rule::DENY, rule_.Process(device)) << device;
+    EXPECT_EQ(Rule::DENY, rule_.ProcessDevice(FindDevice(device).get()))
+        << device;
 }
 
 TEST_F(DenyClaimedUsbDeviceRuleTest, IgnoreUnclaimedUsbDevice) {
@@ -101,7 +103,8 @@ TEST_F(DenyClaimedUsbDeviceRuleTest, IgnoreUnclaimedUsbDevice) {
                  << "connected.";
 
   for (const string& device : unclaimed_devices_)
-    EXPECT_EQ(Rule::IGNORE, rule_.Process(device)) << device;
+    EXPECT_EQ(Rule::IGNORE, rule_.ProcessDevice(FindDevice(device).get()))
+        << device;
 }
 
 TEST_F(DenyClaimedUsbDeviceRuleTest,
@@ -111,7 +114,9 @@ TEST_F(DenyClaimedUsbDeviceRuleTest,
                  << "devices connected.";
 
   for (const string& device : partially_claimed_devices_)
-    EXPECT_EQ(Rule::ALLOW_WITH_LOCKDOWN, rule_.Process(device)) << device;
+    EXPECT_EQ(Rule::ALLOW_WITH_LOCKDOWN,
+              rule_.ProcessDevice(FindDevice(device).get()))
+        << device;
 }
 
 }  // namespace permission_broker

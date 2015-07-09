@@ -9,6 +9,8 @@
 
 #include <base/macros.h>
 
+struct udev_device;
+
 namespace permission_broker {
 
 // A Rule represents a single unit of policy used to decide to which paths
@@ -29,7 +31,7 @@ class Rule {
   virtual ~Rule() = default;
   const std::string& name() const;
 
-  virtual Result Process(const std::string& path) = 0;
+  virtual Result ProcessDevice(udev_device* device) = 0;
 
  protected:
   explicit Rule(const std::string& name);

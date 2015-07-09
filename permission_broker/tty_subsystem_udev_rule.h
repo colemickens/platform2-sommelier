@@ -7,15 +7,17 @@
 
 #include <string>
 
-#include "permission_broker/udev_rule.h"
+#include "permission_broker/rule.h"
 
 namespace permission_broker {
 
-// TtySubsystemUdevRule is a UdevRule that calls ProcessTtyDevice on every
+// TtySubsystemUdevRule is a Rule that calls ProcessTtyDevice on every
 // device that belongs to the TTY subsystem. All other non-TTY devices are
 // ignored by this rule.
-class TtySubsystemUdevRule : public UdevRule {
+class TtySubsystemUdevRule : public Rule {
  public:
+  static std::string GetDevNodeGroupName(udev_device* device);
+
   explicit TtySubsystemUdevRule(const std::string& name);
   ~TtySubsystemUdevRule() override = default;
 

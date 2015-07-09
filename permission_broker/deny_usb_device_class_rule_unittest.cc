@@ -3,13 +3,14 @@
 // found in the LICENSE file.
 
 #include "permission_broker/deny_usb_device_class_rule.h"
+#include "permission_broker/rule_test.h"
 
 #include <gtest/gtest.h>
 #include <linux/usb/ch9.h>
 
 namespace permission_broker {
 
-class DenyUsbDeviceClassRuleTest : public testing::Test {
+class DenyUsbDeviceClassRuleTest : public RuleTest {
  public:
   DenyUsbDeviceClassRuleTest() : rule_(USB_CLASS_HUB) {}
   ~DenyUsbDeviceClassRuleTest() override = default;
@@ -22,11 +23,12 @@ class DenyUsbDeviceClassRuleTest : public testing::Test {
 };
 
 TEST_F(DenyUsbDeviceClassRuleTest, IgnoreNonUsbDevice) {
-  ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/loop0"));
+  ASSERT_EQ(Rule::IGNORE, rule_.ProcessDevice(FindDevice("/dev/null").get()));
 }
 
 TEST_F(DenyUsbDeviceClassRuleTest, DISABLED_DenyMatchingUsbDevice) {
-  ASSERT_EQ(Rule::DENY, rule_.Process("/dev/bus/usb/001/001"));
+  ASSERT_EQ(Rule::DENY,
+            rule_.ProcessDevice(FindDevice("/dev/bus/usb/001/001").get()));
 }
 
 }  // namespace permission_broker

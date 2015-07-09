@@ -9,7 +9,6 @@
 #include <sys/inotify.h>
 
 #include "base/logging.h"
-#include "base/stl_util.h"
 #include "permission_broker/rule.h"
 
 namespace permission_broker {
@@ -28,13 +27,11 @@ RuleEngine::RuleEngine(
 }
 
 RuleEngine::~RuleEngine() {
-  STLDeleteContainerPointers(rules_.begin(), rules_.end());
-  udev_unref(udev_);
 }
 
 void RuleEngine::AddRule(Rule* rule) {
   CHECK(rule) << "Cannot add NULL as a rule.";
-  rules_.push_back(rule);
+  rules_.push_back(std::unique_ptr<Rule>(rule));
 }
 
 Rule::Result RuleEngine::ProcessPath(const std::string& path) {
@@ -42,26 +39,34 @@ Rule::Result RuleEngine::ProcessPath(const std::string& path) {
 
   LOG(INFO) << "ProcessPath(" << path << ")";
   Rule::Result result = Rule::IGNORE;
-  for (unsigned int i = 0; i < rules_.size(); ++i) {
-    const Rule::Result rule_result = rules_[i]->Process(path);
-    LOG(INFO) << "  " << rules_[i]->name() << ": "
-              << Rule::ResultToString(rule_result);
-    if (rule_result == Rule::DENY) {
-      result = Rule::DENY;
-      break;
-    } else if (rule_result == Rule::ALLOW_WITH_LOCKDOWN) {
-      result = Rule::ALLOW_WITH_LOCKDOWN;
-    } else if (rule_result == Rule::ALLOW &&
-               result != Rule::ALLOW_WITH_LOCKDOWN) {
-      result = Rule::ALLOW;
+
+  ScopedUdevDevicePtr device(FindUdevDevice(path));
+  if (device.get()) {
+    for (const std::unique_ptr<Rule>& rule : rules_) {
+      Rule::Result rule_result = rule->ProcessDevice(device.get());
+      LOG(INFO) << "  " << rule->name() << ": "
+                << Rule::ResultToString(rule_result);
+      if (rule_result == Rule::DENY) {
+        result = Rule::DENY;
+        break;
+      } else if (rule_result == Rule::ALLOW_WITH_LOCKDOWN) {
+        result = Rule::ALLOW_WITH_LOCKDOWN;
+      } else if (rule_result == Rule::ALLOW &&
+                 result != Rule::ALLOW_WITH_LOCKDOWN) {
+        result = Rule::ALLOW;
+      }
     }
+  } else {
+    LOG(INFO) << "No udev entry found for " << path << ", denying access.";
+    result = Rule::DENY;
   }
+
   LOG(INFO) << "Verdict for " << path << ": " << Rule::ResultToString(result);
   return result;
 }
 
 void RuleEngine::WaitForEmptyUdevQueue() {
-  struct udev_queue* queue = udev_queue_new(udev_);
+  struct udev_queue* queue = udev_queue_new(udev_.get());
   if (udev_queue_get_queue_is_empty(queue)) {
     udev_queue_unref(queue);
     return;
@@ -86,6 +91,25 @@ void RuleEngine::WaitForEmptyUdevQueue() {
   }
   udev_queue_unref(queue);
   close(udev_poll.fd);
+}
+
+ScopedUdevDevicePtr RuleEngine::FindUdevDevice(const std::string& path) {
+  ScopedUdevEnumeratePtr enumerate(udev_enumerate_new(udev_.get()));
+  udev_enumerate_scan_devices(enumerate.get());
+
+  struct udev_list_entry* entry = NULL;
+  udev_list_entry_foreach(entry,
+                          udev_enumerate_get_list_entry(enumerate.get())) {
+    const char* syspath = udev_list_entry_get_name(entry);
+    ScopedUdevDevicePtr device(
+        udev_device_new_from_syspath(udev_.get(), syspath));
+
+    const char* devnode = udev_device_get_devnode(device.get());
+    if (devnode && !strcmp(devnode, path.c_str()))
+      return device.Pass();
+  }
+
+  return nullptr;
 }
 
 }  // namespace permission_broker

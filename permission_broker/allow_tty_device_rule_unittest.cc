@@ -3,12 +3,13 @@
 // found in the LICENSE file.
 
 #include "permission_broker/allow_tty_device_rule.h"
+#include "permission_broker/rule_test.h"
 
 #include <gtest/gtest.h>
 
 namespace permission_broker {
 
-class AllowTtyDeviceRuleTest : public testing::Test {
+class AllowTtyDeviceRuleTest : public RuleTest {
  public:
   AllowTtyDeviceRuleTest() = default;
   ~AllowTtyDeviceRuleTest() override = default;
@@ -21,11 +22,11 @@ class AllowTtyDeviceRuleTest : public testing::Test {
 };
 
 TEST_F(AllowTtyDeviceRuleTest, IgnoreNonTtyDevice) {
-  ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/loop0"));
+  ASSERT_EQ(Rule::IGNORE, rule_.ProcessDevice(FindDevice("/dev/null").get()));
 }
 
 TEST_F(AllowTtyDeviceRuleTest, AllowTtyDevice) {
-  ASSERT_EQ(Rule::ALLOW, rule_.Process("/dev/tty"));
+  ASSERT_EQ(Rule::ALLOW, rule_.ProcessDevice(FindDevice("/dev/tty").get()));
 }
 
 }  // namespace permission_broker

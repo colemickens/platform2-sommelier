@@ -5,11 +5,11 @@
 #ifndef PERMISSION_BROKER_DENY_UNINITIALIZED_DEVICE_RULE_H_
 #define PERMISSION_BROKER_DENY_UNINITIALIZED_DEVICE_RULE_H_
 
-#include "permission_broker/udev_rule.h"
+#include "permission_broker/rule.h"
 
 namespace permission_broker {
 
-class DenyUninitializedDeviceRule : public UdevRule {
+class DenyUninitializedDeviceRule : public Rule {
  public:
   DenyUninitializedDeviceRule();
   ~DenyUninitializedDeviceRule() override = default;

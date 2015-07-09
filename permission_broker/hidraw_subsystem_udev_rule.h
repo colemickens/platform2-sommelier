@@ -9,14 +9,14 @@
 #include <vector>
 
 #include "permission_broker/hid_basictypes.h"
-#include "permission_broker/udev_rule.h"
+#include "permission_broker/rule.h"
 
 namespace permission_broker {
 
-// HidrawSubsystemUdevRule is a UdevRule that calls ProcessHidrawDevice on every
+// HidrawSubsystemUdevRule is a Rule that calls ProcessHidrawDevice on every
 // device that belongs to the hidraw subsystem. All non-hidraw devices are
 // ignored by this rule.
-class HidrawSubsystemUdevRule : public UdevRule {
+class HidrawSubsystemUdevRule : public Rule {
  public:
   explicit HidrawSubsystemUdevRule(const std::string &name);
   ~HidrawSubsystemUdevRule() override = default;
@@ -37,6 +37,7 @@ class HidrawSubsystemUdevRule : public UdevRule {
   // errors.
   static bool GetHidToplevelUsages(struct udev_device* device,
                                    std::vector<HidUsage>* usages);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(HidrawSubsystemUdevRule);
 };

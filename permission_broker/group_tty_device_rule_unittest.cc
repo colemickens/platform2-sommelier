@@ -6,10 +6,11 @@
 
 #include "permission_broker/allow_group_tty_device_rule.h"
 #include "permission_broker/deny_group_tty_device_rule.h"
+#include "permission_broker/rule_test.h"
 
 namespace permission_broker {
 
-class GroupTtyDeviceRuleTest : public testing::Test {
+class GroupTtyDeviceRuleTest : public RuleTest {
  public:
   GroupTtyDeviceRuleTest()
       : allow_rule_("nonexistent"), deny_rule_("nonexistent") {}
@@ -24,11 +25,13 @@ class GroupTtyDeviceRuleTest : public testing::Test {
 };
 
 TEST_F(GroupTtyDeviceRuleTest, AllowRuleIgnoreNonMatchingGroup) {
-  ASSERT_EQ(Rule::IGNORE, allow_rule_.Process("/dev/tty"));
+  ASSERT_EQ(Rule::IGNORE,
+            allow_rule_.ProcessDevice(FindDevice("/dev/tty").get()));
 }
 
 TEST_F(GroupTtyDeviceRuleTest, DenyRuleIgnoreNonMatchingGroup) {
-  ASSERT_EQ(Rule::IGNORE, deny_rule_.Process("/dev/tty"));
+  ASSERT_EQ(Rule::IGNORE,
+            deny_rule_.ProcessDevice(FindDevice("/dev/tty").get()));
 }
 
 }  // namespace permission_broker

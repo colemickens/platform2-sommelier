@@ -9,7 +9,8 @@
 namespace permission_broker {
 
 DenyUninitializedDeviceRule::DenyUninitializedDeviceRule()
-    : UdevRule("DenyUninitializedDeviceRule") {}
+    : Rule("DenyUninitializedDeviceRule") {
+}
 
 Rule::Result DenyUninitializedDeviceRule::ProcessDevice(
     struct udev_device *device) {

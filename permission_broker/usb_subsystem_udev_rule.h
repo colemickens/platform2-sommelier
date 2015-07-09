@@ -7,14 +7,14 @@
 
 #include <string>
 
-#include "permission_broker/udev_rule.h"
+#include "permission_broker/rule.h"
 
 namespace permission_broker {
 
-// UsbSubsystemUdevRule is a UdevRule that calls ProcessUsbDevice on every
+// UsbSubsystemUdevRule is a Rule that calls ProcessUsbDevice on every
 // device that belongs to the USB subsystem. All other non-USB devices are
 // ignored by this rule.
-class UsbSubsystemUdevRule : public UdevRule {
+class UsbSubsystemUdevRule : public Rule {
  public:
   explicit UsbSubsystemUdevRule(const std::string& name);
   ~UsbSubsystemUdevRule() override = default;

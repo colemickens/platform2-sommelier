@@ -11,7 +11,7 @@ AllowGroupTtyDeviceRule::AllowGroupTtyDeviceRule(const std::string& group_name)
 }
 
 Rule::Result AllowGroupTtyDeviceRule::ProcessTtyDevice(udev_device* device) {
-  const std::string& device_gr_name = UdevRule::GetDevNodeGroupName(device);
+  const std::string& device_gr_name = GetDevNodeGroupName(device);
   return group_name_ == device_gr_name ? ALLOW : IGNORE;
 }
 

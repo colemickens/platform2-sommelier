@@ -3,12 +3,13 @@
 // found in the LICENSE file.
 
 #include "permission_broker/allow_usb_device_rule.h"
+#include "permission_broker/rule_test.h"
 
 #include <gtest/gtest.h>
 
 namespace permission_broker {
 
-class AllowUsbDeviceRuleTest : public testing::Test {
+class AllowUsbDeviceRuleTest : public RuleTest {
  public:
   AllowUsbDeviceRuleTest() = default;
   ~AllowUsbDeviceRuleTest() override = default;
@@ -21,11 +22,12 @@ class AllowUsbDeviceRuleTest : public testing::Test {
 };
 
 TEST_F(AllowUsbDeviceRuleTest, IgnoreNonUsbDevice) {
-  ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/loop0"));
+  ASSERT_EQ(Rule::IGNORE, rule_.ProcessDevice(FindDevice("/dev/null").get()));
 }
 
 TEST_F(AllowUsbDeviceRuleTest, DISABLED_AllowUsbDevice) {
-  ASSERT_EQ(Rule::ALLOW, rule_.Process("/dev/bus/usb/001/001"));
+  ASSERT_EQ(Rule::ALLOW,
+            rule_.ProcessDevice(FindDevice("/dev/bus/usb/001/001").get()));
 }
 
 }  // namespace permission_broker

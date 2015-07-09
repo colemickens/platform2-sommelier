@@ -22,7 +22,7 @@ class MockRule : public Rule {
   MockRule() : Rule("MockRule") {}
   ~MockRule() override = default;
 
-  MOCK_METHOD1(Process, Result(const string& path));
+  MOCK_METHOD1(ProcessDevice, Result(udev_device* device));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockRule);
@@ -51,7 +51,7 @@ class RuleEngineTest : public testing::Test {
  protected:
   Rule *CreateMockRule(const Rule::Result result) const {
     MockRule *rule = new MockRule();
-    EXPECT_CALL(*rule, Process(_)).WillOnce(Return(result));
+    EXPECT_CALL(*rule, ProcessDevice(_)).WillOnce(Return(result));
     return rule;
   }
 
@@ -62,38 +62,38 @@ class RuleEngineTest : public testing::Test {
 };
 
 TEST_F(RuleEngineTest, EmptyRuleChain) {
-  EXPECT_EQ(Rule::IGNORE, ProcessPath("/dev/foo"));
+  EXPECT_EQ(Rule::IGNORE, ProcessPath("/dev/null"));
 }
 
 TEST_F(RuleEngineTest, AllowAccess) {
   engine_.AddRule(CreateMockRule(Rule::ALLOW));
-  EXPECT_EQ(Rule::ALLOW, ProcessPath("/dev/foo"));
+  EXPECT_EQ(Rule::ALLOW, ProcessPath("/dev/null"));
 }
 
 TEST_F(RuleEngineTest, DenyAccess) {
   engine_.AddRule(CreateMockRule(Rule::DENY));
-  EXPECT_EQ(Rule::DENY, ProcessPath("/dev/foo"));
+  EXPECT_EQ(Rule::DENY, ProcessPath("/dev/null"));
 }
 
 TEST_F(RuleEngineTest, DenyPrecedence) {
   engine_.AddRule(CreateMockRule(Rule::ALLOW));
   engine_.AddRule(CreateMockRule(Rule::IGNORE));
   engine_.AddRule(CreateMockRule(Rule::DENY));
-  EXPECT_EQ(Rule::DENY, ProcessPath("/dev/foo"));
+  EXPECT_EQ(Rule::DENY, ProcessPath("/dev/null"));
 }
 
 TEST_F(RuleEngineTest, AllowPrecedence) {
   engine_.AddRule(CreateMockRule(Rule::IGNORE));
   engine_.AddRule(CreateMockRule(Rule::ALLOW));
   engine_.AddRule(CreateMockRule(Rule::IGNORE));
-  EXPECT_EQ(Rule::ALLOW, ProcessPath("/dev/foo"));
+  EXPECT_EQ(Rule::ALLOW, ProcessPath("/dev/null"));
 }
 
 TEST_F(RuleEngineTest, LockdownPrecedence) {
   engine_.AddRule(CreateMockRule(Rule::IGNORE));
   engine_.AddRule(CreateMockRule(Rule::ALLOW_WITH_LOCKDOWN));
   engine_.AddRule(CreateMockRule(Rule::ALLOW));
-  EXPECT_EQ(Rule::ALLOW_WITH_LOCKDOWN, ProcessPath("/dev/foo"));
+  EXPECT_EQ(Rule::ALLOW_WITH_LOCKDOWN, ProcessPath("/dev/null"));
 }
 
 }  // namespace permission_broker

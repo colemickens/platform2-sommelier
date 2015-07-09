@@ -5,7 +5,7 @@
 #ifndef PERMISSION_BROKER_RULE_ENGINE_H_
 #define PERMISSION_BROKER_RULE_ENGINE_H_
 
-#include <set>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -13,10 +13,13 @@
 #include <base/macros.h>
 
 #include "permission_broker/rule.h"
+#include "permission_broker/udev_scopers.h"
 
 struct udev;
 
 namespace permission_broker {
+
+class UdevRule;
 
 class RuleEngine {
  public:
@@ -46,8 +49,11 @@ class RuleEngine {
   // dependency and overhead.
   virtual void WaitForEmptyUdevQueue();
 
-  struct udev* udev_;
-  std::vector<Rule*> rules_;
+  // Finds the udev_device where udev_device_get_devnode returns |path|.
+  ScopedUdevDevicePtr FindUdevDevice(const std::string& path);
+
+  ScopedUdevPtr udev_;
+  std::vector<std::unique_ptr<Rule>> rules_;
 
   int poll_interval_msecs_;
   std::string udev_run_path_;
