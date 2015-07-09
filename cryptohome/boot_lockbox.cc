@@ -21,12 +21,6 @@ using chromeos::SecureBlob;
 
 namespace {
 
-// The DER encoding of SHA-256 DigestInfo as defined in PKCS #1.
-const unsigned char kSha256DigestInfo[] = {
-    0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-    0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20
-};
-
 const int kPCRIndex = 15;
 
 const unsigned char kPCRValue[20] = {0};
@@ -63,12 +57,7 @@ bool BootLockbox::Sign(const chromeos::SecureBlob& data,
   if (!GetKeyBlob(&key_blob)) {
     return false;
   }
-  chromeos::SecureBlob der_header(std::begin(kSha256DigestInfo),
-                                  std::end(kSha256DigestInfo));
-  chromeos::SecureBlob der_encoded_input = SecureBlob::Combine(
-      der_header,
-      CryptoLib::Sha256(data));
-  return tpm_->Sign(key_blob, der_encoded_input, signature);
+  return tpm_->Sign(key_blob, data, signature);
 }
 
 bool BootLockbox::Verify(const chromeos::SecureBlob& data,

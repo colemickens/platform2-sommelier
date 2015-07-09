@@ -222,11 +222,6 @@ const Attestation::PCRValue Attestation::kKnownPCRValues[] = {
   { true,  true,  kDeveloper }
 };
 
-const unsigned char Attestation::kSha256DigestInfo[] = {
-    0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
-    0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20
-};
-
 const int Attestation::kNumTemporalValues = 5;
 
 const char Attestation::kAlternatePCAKeyAttributeName[] =
@@ -1813,15 +1808,8 @@ string Attestation::CreatePEMCertificate(const string& certificate) {
 bool Attestation::SignChallengeData(const CertifiedKey& key,
                                     const SecureBlob& data_to_sign,
                                     SecureBlob* response) {
-  SecureBlob der_header(std::begin(kSha256DigestInfo),
-                        std::end(kSha256DigestInfo));
-  SecureBlob der_encoded_input = SecureBlob::Combine(
-      der_header,
-      CryptoLib::Sha256(data_to_sign));
   SecureBlob signature;
-  if (!tpm_->Sign(SecureBlob(key.key_blob()),
-                  der_encoded_input,
-                  &signature)) {
+  if (!tpm_->Sign(SecureBlob(key.key_blob()), data_to_sign, &signature)) {
     LOG(ERROR) << "Failed to generate signature.";
     return false;
   }
@@ -1988,16 +1976,10 @@ bool Attestation::CreateSignedPublicKey(
     return false;
   SecureBlob data_to_sign(buffer, buffer + length);
   OPENSSL_free(buffer);
-  SecureBlob der_header(std::begin(kSha256DigestInfo),
-                        std::end(kSha256DigestInfo));
-  SecureBlob der_encoded_input = SecureBlob::Combine(
-      der_header,
-      CryptoLib::Sha256(data_to_sign));
   SecureBlob signature;
-  if (!tpm_->Sign(SecureBlob(key.key_blob()),
-                  der_encoded_input,
-                  &signature))
+  if (!tpm_->Sign(SecureBlob(key.key_blob()), data_to_sign, &signature)) {
     return false;
+  }
 
   // Fill in the signature and algorithm.
   if (!ASN1_BIT_STRING_set(spki.get()->signature,

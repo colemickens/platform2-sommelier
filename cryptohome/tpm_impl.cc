@@ -39,6 +39,12 @@ namespace {
 
 typedef scoped_ptr<BYTE, base::FreeDeleter> ScopedByteArray;
 
+// The DER encoding of SHA-256 DigestInfo as defined in PKCS #1.
+const unsigned char kSha256DigestInfo[] = {
+    0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+    0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20
+};
+
 // This is the well known UUID present in TPM1.2 implemenations. It is used
 // to load the cryptohome key into a TPM1.2 in a legacy path.
 const TSS_UUID kCryptohomeWellKnownUuid = {0x0203040b, 0, 0, 0, 0,
@@ -2334,7 +2340,7 @@ bool TpmImpl::ActivateIdentity(const SecureBlob& delegate_blob,
 }
 
 bool TpmImpl::Sign(const SecureBlob& key_blob,
-                   const SecureBlob& der_encoded_input,
+                   const SecureBlob& input,
                    SecureBlob* signature) {
   CHECK(signature);
   ScopedTssContext context_handle;
@@ -2375,6 +2381,13 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
     TPM_LOG(ERROR, result) << "Sign: Failed to create hash object.";
     return false;
   }
+
+  // Create the DER encoded input.
+  SecureBlob der_header(std::begin(kSha256DigestInfo),
+                        std::end(kSha256DigestInfo));
+  SecureBlob der_encoded_input = SecureBlob::Combine(
+      der_header,
+      CryptoLib::Sha256(input));
 
   // Don't hash anything, just push the input data into the hash object.
   result = Tspi_Hash_SetHashValue(

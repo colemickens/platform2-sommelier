@@ -352,11 +352,10 @@ class Tpm {
   //
   // Parameters
   //   key_blob - An SRK-wrapped private key blob.
-  //   der_encoded_input - The value to be signed, encoded as required by the
-  //                       TPM_SS_RSASSAPKCS1v15_DER scheme.
+  //   input - The value to be signed.
   //   signature - On success, will be populated with the signature.
   virtual bool Sign(const chromeos::SecureBlob& key_blob,
-                    const chromeos::SecureBlob& der_encoded_input,
+                    const chromeos::SecureBlob& input,
                     chromeos::SecureBlob* signature) = 0;
 
   // Creates an SRK-wrapped signing key that has both create attributes and

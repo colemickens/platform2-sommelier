@@ -11,6 +11,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/cryptolib.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
@@ -20,6 +21,12 @@ using testing::WithArgs;
 using testing::Return;
 
 namespace cryptohome {
+
+// The DER encoding of SHA-256 DigestInfo as defined in PKCS #1.
+const unsigned char kSha256DigestInfo[] = {
+    0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+    0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20
+};
 
 class BootLockboxTest : public testing::Test {
  public:
@@ -57,10 +64,15 @@ class BootLockboxTest : public testing::Test {
     lockbox2_.reset(new BootLockbox(&tpm_, &platform_, &crypto_));
   }
 
-  bool FakeSign(const chromeos::SecureBlob& der_encoded_input,
+  bool FakeSign(const chromeos::SecureBlob& input,
                 chromeos::SecureBlob* signature) {
     if (is_fake_extended_)
       return false;
+    chromeos::SecureBlob der_header(std::begin(kSha256DigestInfo),
+                                    std::end(kSha256DigestInfo));
+    chromeos::SecureBlob der_encoded_input = chromeos::SecureBlob::Combine(
+        der_header,
+        CryptoLib::Sha256(input));
     unsigned char buffer[256];
     int length = RSA_private_encrypt(
           der_encoded_input.size(),
