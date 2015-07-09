@@ -11,7 +11,7 @@
 #include "libweave/src/notification/xml_node.h"
 #include "libweave/src/notification/xmpp_channel.h"
 
-namespace buffet {
+namespace weave {
 
 namespace {
 
@@ -137,4 +137,4 @@ void IqStanzaHandler::OnTimeOut(RequestId id,
     timeout_callback.Run();
 }
 
-}  // namespace buffet
+}  // namespace weave

@@ -16,7 +16,7 @@
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/object_schema.h"
 
-namespace buffet {
+namespace weave {
 
 class CommandQueueTest : public testing::Test {
  public:
@@ -162,4 +162,4 @@ TEST_F(CommandQueueTest, Find) {
   EXPECT_EQ(id2, cmd2->GetID());
 }
 
-}  // namespace buffet
+}  // namespace weave

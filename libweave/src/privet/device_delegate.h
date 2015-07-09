@@ -10,7 +10,8 @@
 
 #include <base/time/time.h>
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 // Interface to provide access to general information about device.
 class DeviceDelegate {
@@ -40,6 +41,7 @@ class DeviceDelegate {
   static std::unique_ptr<DeviceDelegate> CreateDefault();
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_DEVICE_DELEGATE_H_

@@ -15,7 +15,8 @@
 #include "libweave/src/privet/device_delegate.h"
 #include "libweave/src/privet/wifi_delegate.h"
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 namespace {
 
@@ -89,4 +90,5 @@ void WifiSsidGenerator::SetRandomForTests(int n) {
   get_random_ = base::Bind(&base::RandInt, n, n);
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

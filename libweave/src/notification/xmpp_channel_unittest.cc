@@ -12,7 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-namespace buffet {
+namespace weave {
 
 using ::testing::DoAll;
 using ::testing::Return;
@@ -249,4 +249,4 @@ TEST_F(XmppChannelTest, HandleStreamRestartedResponse) {
   EXPECT_EQ(XmppChannel::XmppState::kSubscribed, xmpp_client_->state());
 }
 
-}  // namespace buffet
+}  // namespace weave

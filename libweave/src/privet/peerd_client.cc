@@ -18,7 +18,8 @@
 using chromeos::string_utils::Join;
 using org::chromium::peerd::PeerProxy;
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 namespace {
 
@@ -165,4 +166,5 @@ void PeerdClient::UpdateImpl() {
   ExposeService();
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

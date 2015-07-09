@@ -17,7 +17,7 @@
 #include "libweave/src/states/error_codes.h"
 #include "libweave/src/states/mock_state_change_queue_interface.h"
 
-namespace buffet {
+namespace weave {
 
 using testing::_;
 using testing::Return;
@@ -228,4 +228,4 @@ TEST_F(StateManagerTest, SetProperties) {
   EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson(nullptr));
 }
 
-}  // namespace buffet
+}  // namespace weave

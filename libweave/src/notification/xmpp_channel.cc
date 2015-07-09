@@ -18,7 +18,7 @@
 #include "libweave/src/privet/shill_client.h"
 #include "libweave/src/utils.h"
 
-namespace buffet {
+namespace weave {
 
 namespace {
 
@@ -93,7 +93,7 @@ XmppChannel::XmppChannel(
     const std::string& account,
     const std::string& access_token,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-    privetd::ShillClient* shill)
+    privet::ShillClient* shill)
     : account_{account},
       access_token_{access_token},
       backoff_entry_{&kDefaultBackoffPolicy},
@@ -532,4 +532,4 @@ void XmppChannel::OnConnectivityChanged(bool online) {
   ScheduleFastPing();
 }
 
-}  // namespace buffet
+}  // namespace weave

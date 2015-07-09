@@ -6,7 +6,7 @@
 
 #include "libweave/src/commands/prop_types.h"
 
-namespace buffet {
+namespace weave {
 
 PropValue::PropValue(std::unique_ptr<const PropType> type)
     : type_{std::move(type)} {
@@ -18,4 +18,4 @@ PropValue::PropValue(const PropType* type_ptr) : type_{type_ptr->Clone()} {
 PropValue::~PropValue() {
 }
 
-}  // namespace buffet
+}  // namespace weave

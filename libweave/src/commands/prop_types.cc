@@ -18,7 +18,7 @@
 #include "libweave/src/commands/prop_values.h"
 #include "libweave/src/commands/schema_constants.h"
 
-namespace buffet {
+namespace weave {
 
 // PropType -------------------------------------------------------------------
 PropType::PropType() {
@@ -292,22 +292,22 @@ bool PropType::GetTypeFromTypeString(const std::string& name, ValueType* type) {
 std::unique_ptr<PropType> PropType::Create(ValueType type) {
   PropType* prop = nullptr;
   switch (type) {
-    case buffet::ValueType::Int:
+    case ValueType::Int:
       prop = new IntPropType;
       break;
-    case buffet::ValueType::Double:
+    case ValueType::Double:
       prop = new DoublePropType;
       break;
-    case buffet::ValueType::String:
+    case ValueType::String:
       prop = new StringPropType;
       break;
-    case buffet::ValueType::Boolean:
+    case ValueType::Boolean:
       prop = new BooleanPropType;
       break;
-    case buffet::ValueType::Object:
+    case ValueType::Object:
       prop = new ObjectPropType;
       break;
-    case buffet::ValueType::Array:
+    case ValueType::Array:
       prop = new ArrayPropType;
       break;
   }
@@ -727,4 +727,4 @@ void ArrayPropType::SetItemType(std::unique_ptr<const PropType> item_type) {
   item_type_.is_inherited = false;
 }
 
-}  // namespace buffet
+}  // namespace weave

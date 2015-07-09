@@ -18,7 +18,7 @@
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/commands/unittest_utils.h"
 
-namespace buffet {
+namespace weave {
 
 using unittests::CreateDictionaryValue;
 using unittests::CreateValue;
@@ -370,4 +370,4 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_Array) {
   EXPECT_EQ(errors::commands::kOutOfRange, error->GetCode());
 }
 
-}  // namespace buffet
+}  // namespace weave

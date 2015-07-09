@@ -14,7 +14,7 @@
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/prop_values.h"
 
-namespace buffet {
+namespace weave {
 namespace {
 // Helper function to report "type mismatch" errors when parsing JSON.
 void ReportJsonTypeMismatch(const tracked_objects::Location& location,
@@ -384,4 +384,4 @@ bool ObjectFromDBusVariant(const ObjectSchema* object_schema,
   return true;
 }
 
-}  // namespace buffet
+}  // namespace weave

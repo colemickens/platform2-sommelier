@@ -13,7 +13,7 @@ using testing::SaveArg;
 using testing::Invoke;
 using testing::_;
 
-namespace buffet {
+namespace weave {
 
 using unittests::CreateDictionaryValue;
 
@@ -154,4 +154,4 @@ TEST_F(NotificationParserTest, IgnoredNotificationType) {
   EXPECT_TRUE(ParseNotificationJson(*json, &delegate_));
 }
 
-}  // namespace buffet
+}  // namespace weave

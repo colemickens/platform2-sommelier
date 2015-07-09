@@ -16,7 +16,7 @@
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/commands/schema_utils.h"
 
-namespace buffet {
+namespace weave {
 
 const char CommandInstance::kStatusQueued[] = "queued";
 const char CommandInstance::kStatusInProgress[] = "inProgress";
@@ -228,4 +228,4 @@ void CommandInstance::RemoveFromQueue() {
     queue_->DelayedRemove(GetID());
 }
 
-}  // namespace buffet
+}  // namespace weave

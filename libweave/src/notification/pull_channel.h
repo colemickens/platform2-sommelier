@@ -15,7 +15,7 @@
 
 #include "libweave/src/notification/notification_channel.h"
 
-namespace buffet {
+namespace weave {
 
 class PullChannel : public NotificationChannel {
  public:
@@ -43,6 +43,6 @@ class PullChannel : public NotificationChannel {
   DISALLOW_COPY_AND_ASSIGN(PullChannel);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_NOTIFICATION_PULL_CHANNEL_H_

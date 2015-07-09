@@ -20,7 +20,7 @@
 #include "libweave/src/commands/command_proxy_interface.h"
 #include "libweave/src/states/state_change_queue_interface.h"
 
-namespace buffet {
+namespace weave {
 
 class CommandInstance;
 
@@ -94,6 +94,6 @@ class CloudCommandProxy final : public CommandProxyInterface {
   DISALLOW_COPY_AND_ASSIGN(CloudCommandProxy);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_CLOUD_COMMAND_PROXY_H_

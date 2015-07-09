@@ -11,7 +11,7 @@
 #include "libweave/src/commands/schema_utils.h"
 #include "libweave/src/commands/unittest_utils.h"
 
-namespace buffet {
+namespace weave {
 
 using unittests::CreateDictionaryValue;
 using unittests::CreateValue;
@@ -237,4 +237,4 @@ TEST_F(CommandInstanceTest, ToJson) {
   }, *json, *converted);
 }
 
-}  // namespace buffet
+}  // namespace weave

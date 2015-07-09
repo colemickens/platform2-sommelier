@@ -20,7 +20,8 @@ class Value;
 class DictionaryValue;
 }  // namespace base
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 class DeviceDelegate;
 class IdentityDelegate;
@@ -134,6 +135,7 @@ class PrivetHandler : public CloudDelegate::Observer {
   DISALLOW_COPY_AND_ASSIGN(PrivetHandler);
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_PRIVET_HANDLER_H_

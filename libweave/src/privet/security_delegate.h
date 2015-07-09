@@ -14,7 +14,8 @@
 
 #include "libweave/src/privet/privet_types.h"
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 enum class PairingType {
   kPinCode,
@@ -74,6 +75,7 @@ std::string PairingTypeToString(PairingType id);
 bool StringToAuthScope(const std::string& scope, AuthScope* id);
 std::string AuthScopeToString(AuthScope id);
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_SECURITY_DELEGATE_H_

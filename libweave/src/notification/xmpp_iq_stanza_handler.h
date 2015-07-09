@@ -16,7 +16,7 @@
 
 #include "libweave/src/notification/xmpp_stream_parser.h"
 
-namespace buffet {
+namespace weave {
 
 class XmppChannelInterface;
 
@@ -75,6 +75,6 @@ class IqStanzaHandler {
   DISALLOW_COPY_AND_ASSIGN(IqStanzaHandler);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_NOTIFICATION_XMPP_IQ_STANZA_HANDLER_H_

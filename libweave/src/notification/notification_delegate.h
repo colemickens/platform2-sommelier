@@ -10,7 +10,7 @@
 
 #include <base/values.h>
 
-namespace buffet {
+namespace weave {
 
 class NotificationDelegate {
  public:
@@ -26,6 +26,6 @@ class NotificationDelegate {
   virtual ~NotificationDelegate() = default;
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_NOTIFICATION_NOTIFICATION_DELEGATE_H_

@@ -11,7 +11,7 @@
 
 #include "libweave/src/notification/notification_delegate.h"
 
-namespace buffet {
+namespace weave {
 
 // Parses the notification JSON object received from GCD server and invokes
 // the appropriate method from the |delegate|.
@@ -19,6 +19,6 @@ namespace buffet {
 bool ParseNotificationJson(const base::DictionaryValue& notification,
                            NotificationDelegate* delegate);
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_NOTIFICATION_NOTIFICATION_PARSER_H_

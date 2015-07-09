@@ -14,7 +14,8 @@
 #include "libweave/src/privet/constants.h"
 #include "libweave/src/privet/shill_client.h"
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 namespace {
 const int kConnectTimeoutSeconds = 60;
@@ -277,4 +278,5 @@ void WifiBootstrapManager::UpdateConnectionState() {
   connection_state_ = ConnectionState{std::move(error)};
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

@@ -15,7 +15,7 @@
 #include "libweave/src/commands/prop_values.h"
 #include "libweave/src/commands/schema_constants.h"
 
-namespace buffet {
+namespace weave {
 
 namespace {
 
@@ -375,4 +375,4 @@ std::unique_ptr<ObjectSchema> ObjectSchema::Create() {
   return std::unique_ptr<ObjectSchema>{new ObjectSchema};
 }
 
-}  // namespace buffet
+}  // namespace weave

@@ -16,7 +16,7 @@
 
 #include "libweave/src/privet/security_delegate.h"
 
-namespace buffet {
+namespace weave {
 
 class StorageInterface;
 
@@ -108,7 +108,7 @@ class BuffetConfig final {
   }
 
   bool wifi_auto_setup_enabled() const { return wifi_auto_setup_enabled_; }
-  const std::set<privetd::PairingType>& pairing_modes() const {
+  const std::set<privet::PairingType>& pairing_modes() const {
     return pairing_modes_;
   }
   const base::FilePath& embedded_code_path() const {
@@ -153,7 +153,7 @@ class BuffetConfig final {
   base::TimeDelta backup_polling_period_{base::TimeDelta::FromMinutes(30)};
 
   bool wifi_auto_setup_enabled_{true};
-  std::set<privetd::PairingType> pairing_modes_{privetd::PairingType::kPinCode};
+  std::set<privet::PairingType> pairing_modes_{privet::PairingType::kPinCode};
   base::FilePath embedded_code_path_;
 
   std::string device_id_;
@@ -169,6 +169,6 @@ class BuffetConfig final {
   DISALLOW_COPY_AND_ASSIGN(BuffetConfig);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_BUFFET_CONFIG_H_

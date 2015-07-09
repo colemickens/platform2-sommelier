@@ -9,7 +9,7 @@
 
 #include "libweave/src/commands/unittest_utils.h"
 
-namespace buffet {
+namespace weave {
 
 class StateChangeQueueTest : public ::testing::Test {
  public:
@@ -177,4 +177,4 @@ TEST_F(StateChangeQueueTest, DelayedStateChangeNotification) {
   queue_->AddOnStateUpdatedCallback(base::Bind(callback));
 }
 
-}  // namespace buffet
+}  // namespace weave

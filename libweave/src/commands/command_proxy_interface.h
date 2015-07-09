@@ -9,7 +9,7 @@
 
 #include "libweave/src/commands/schema_utils.h"
 
-namespace buffet {
+namespace weave {
 
 // This interface lets the command instance to update its proxy of command
 // state changes, so that the proxy can then notify clients of the changes over
@@ -23,6 +23,6 @@ class CommandProxyInterface {
   virtual void OnProgressChanged() = 0;
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_COMMAND_PROXY_INTERFACE_H_

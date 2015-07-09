@@ -14,7 +14,7 @@
 
 #include <base/macros.h>
 
-namespace buffet {
+namespace weave {
 
 class XmlNode;
 
@@ -83,6 +83,6 @@ class XmppStreamParser final {
   DISALLOW_COPY_AND_ASSIGN(XmppStreamParser);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_NOTIFICATION_XMPP_STREAM_PARSER_H_

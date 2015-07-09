@@ -8,7 +8,7 @@
 
 #include "libweave/src/notification/notification_delegate.h"
 
-namespace buffet {
+namespace weave {
 
 PullChannel::PullChannel(
     base::TimeDelta pull_interval,
@@ -53,4 +53,4 @@ void PullChannel::OnTimer() {
   delegate_->OnCommandCreated(empty_dict);
 }
 
-}  // namespace buffet
+}  // namespace weave

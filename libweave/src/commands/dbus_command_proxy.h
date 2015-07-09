@@ -20,7 +20,7 @@ class ExportedObjectManager;
 }  // namespace dbus_utils
 }  // namespace chromeos
 
-namespace buffet {
+namespace weave {
 
 class CommandInstance;
 
@@ -65,6 +65,6 @@ class DBusCommandProxy : public CommandProxyInterface,
   DISALLOW_COPY_AND_ASSIGN(DBusCommandProxy);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_DBUS_COMMAND_PROXY_H_

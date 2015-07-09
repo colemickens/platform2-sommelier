@@ -24,7 +24,7 @@ class ExportedObjectManager;
 }  // namespace dbus_utils
 }  // namespace chromeos
 
-namespace buffet {
+namespace weave {
 
 class CommandInstance;
 
@@ -119,6 +119,6 @@ class CommandManager final {
   DISALLOW_COPY_AND_ASSIGN(CommandManager);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_COMMAND_MANAGER_H_

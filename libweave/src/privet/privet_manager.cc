@@ -39,7 +39,8 @@
 #include "libweave/src/privet/shill_client.h"
 #include "libweave/src/privet/wifi_bootstrap_manager.h"
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 namespace {
 
@@ -64,9 +65,9 @@ Manager::~Manager() {
 void Manager::Start(const Options& options,
                     const scoped_refptr<dbus::Bus>& bus,
                     ShillClient* shill_client,
-                    buffet::DeviceRegistrationInfo* device,
-                    buffet::CommandManager* command_manager,
-                    buffet::StateManager* state_manager,
+                    DeviceRegistrationInfo* device,
+                    CommandManager* command_manager,
+                    StateManager* state_manager,
                     AsyncEventSequencer* sequencer) {
   disable_security_ = options.disable_security;
 
@@ -101,7 +102,7 @@ void Manager::Start(const Options& options,
   web_server_->OnProtocolHandlerDisconnected(base::Bind(
       &Manager::OnProtocolHandlerDisconnected, weak_ptr_factory_.GetWeakPtr()));
 
-  web_server_->Connect(bus, buffet::dbus_constants::kServiceName,
+  web_server_->Connect(bus, buffet::kServiceName,
                        sequencer->GetHandler("Server::Connect failed.", true),
                        base::Bind(&base::DoNothing),
                        base::Bind(&base::DoNothing));
@@ -206,4 +207,5 @@ void Manager::OnProtocolHandlerDisconnected(ProtocolHandler* protocol_handler) {
   }
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

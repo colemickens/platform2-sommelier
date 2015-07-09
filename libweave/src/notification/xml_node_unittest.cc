@@ -10,7 +10,7 @@
 
 #include "libweave/src/notification/xmpp_stream_parser.h"
 
-namespace buffet {
+namespace weave {
 namespace {
 
 class XmlParser : public XmppStreamParser::Delegate {
@@ -204,4 +204,4 @@ TEST_F(XmlNodeTest, FindChildren_Path) {
   ASSERT_EQ(0u, children.size());
 }
 
-}  // namespace buffet
+}  // namespace weave

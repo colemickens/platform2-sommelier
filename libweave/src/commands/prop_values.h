@@ -19,7 +19,7 @@ class Value;
 class DictionaryValue;
 }  // namespace base
 
-namespace buffet {
+namespace weave {
 
 // Enumeration to indicate supported command parameter types.
 enum class ValueType {
@@ -229,6 +229,6 @@ class ArrayValue final
   ArrayValue const* GetArray() const override { return this; }
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_PROP_VALUES_H_

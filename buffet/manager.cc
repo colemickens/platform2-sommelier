@@ -36,6 +36,7 @@
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
+namespace privet = weave::privet;
 
 namespace buffet {
 
@@ -63,18 +64,21 @@ Manager::~Manager() {
 
 void Manager::Start(const Options& options, AsyncEventSequencer* sequencer) {
   command_manager_ =
-      std::make_shared<CommandManager>(dbus_object_.GetObjectManager());
+      std::make_shared<weave::CommandManager>(dbus_object_.GetObjectManager());
   command_manager_->AddOnCommandDefChanged(base::Bind(
       &Manager::OnCommandDefsChanged, weak_ptr_factory_.GetWeakPtr()));
   command_manager_->Startup(base::FilePath{"/etc/buffet"},
                             options.test_definitions_path);
-  state_change_queue_.reset(new StateChangeQueue(kMaxStateChangeQueueSize));
-  state_manager_ = std::make_shared<StateManager>(state_change_queue_.get());
+  state_change_queue_.reset(
+      new weave::StateChangeQueue(kMaxStateChangeQueueSize));
+  state_manager_ =
+      std::make_shared<weave::StateManager>(state_change_queue_.get());
   state_manager_->AddOnChangedCallback(
       base::Bind(&Manager::OnStateChanged, weak_ptr_factory_.GetWeakPtr()));
   state_manager_->Startup();
 
-  std::unique_ptr<BuffetConfig> config{new BuffetConfig{options.state_path}};
+  std::unique_ptr<weave::BuffetConfig> config{
+      new weave::BuffetConfig{options.state_path}};
   config->AddOnChangedCallback(
       base::Bind(&Manager::OnConfigChanged, weak_ptr_factory_.GetWeakPtr()));
   config->Load(options.config_path);
@@ -83,19 +87,19 @@ void Manager::Start(const Options& options, AsyncEventSequencer* sequencer) {
   transport->SetDefaultTimeout(base::TimeDelta::FromSeconds(
       kRequestTimeoutSeconds));
 
-  shill_client_.reset(new privetd::ShillClient(dbus_object_.GetBus(),
-                                               options.device_whitelist));
+  shill_client_.reset(new weave::privet::ShillClient(dbus_object_.GetBus(),
+                                                     options.device_whitelist));
 
   // TODO(avakulenko): Figure out security implications of storing
   // device info state data unencrypted.
-  device_info_.reset(new DeviceRegistrationInfo(
+  device_info_.reset(new weave::DeviceRegistrationInfo(
       command_manager_, state_manager_, std::move(config), transport,
-      base::MessageLoop::current()->task_runner(),
-      options.xmpp_enabled, shill_client_.get()));
+      base::MessageLoop::current()->task_runner(), options.xmpp_enabled,
+      shill_client_.get()));
   device_info_->AddOnRegistrationChangedCallback(base::Bind(
       &Manager::OnRegistrationChanged, weak_ptr_factory_.GetWeakPtr()));
 
-  base_api_handler_.reset(new BaseApiHandler{
+  base_api_handler_.reset(new weave::BaseApiHandler{
       device_info_->AsWeakPtr(), state_manager_, command_manager_});
 
   device_info_->Start();
@@ -108,9 +112,9 @@ void Manager::Start(const Options& options, AsyncEventSequencer* sequencer) {
     StartPrivet(options.privet, sequencer);
 }
 
-void Manager::StartPrivet(const privetd::Manager::Options& options,
+void Manager::StartPrivet(const weave::privet::Manager::Options& options,
                           AsyncEventSequencer* sequencer) {
-  privet_.reset(new privetd::Manager{});
+  privet_.reset(new weave::privet::Manager{});
   privet_->Start(options, dbus_object_.GetBus(), shill_client_.get(),
                  device_info_.get(), command_manager_.get(),
                  state_manager_.get(), sequencer);
@@ -119,7 +123,7 @@ void Manager::StartPrivet(const privetd::Manager::Options& options,
     privet_->GetWifiBootstrapManager()->RegisterStateListener(base::Bind(
         &Manager::UpdateWiFiBootstrapState, weak_ptr_factory_.GetWeakPtr()));
   } else {
-    UpdateWiFiBootstrapState(privetd::WifiBootstrapManager::kDisabled);
+    UpdateWiFiBootstrapState(weave::privet::WifiBootstrapManager::kDisabled);
   }
 
   privet_->GetSecurityManager()->RegisterPairingListeners(
@@ -141,7 +145,7 @@ void Manager::CheckDeviceRegistered(
   // If it fails due to any reason other than 'device not registered',
   // treat it as a real error and report it to the caller.
   if (!registered &&
-      !error->HasError(kErrorDomainGCD, "device_not_registered")) {
+      !error->HasError(weave::kErrorDomainGCD, "device_not_registered")) {
     response->ReplyWithError(error.get());
     return;
   }
@@ -190,7 +194,8 @@ void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
   if (!error) {
     // TODO(zeuthen): This can be changed to CHECK(error) once
     // RegisterDevice() has been fixed to set |error| when failing.
-    chromeos::Error::AddTo(&error, FROM_HERE, kErrorDomainGCD, "internal_error",
+    chromeos::Error::AddTo(&error, FROM_HERE, weave::kErrorDomainGCD,
+                           "internal_error",
                            "device_id empty but error not set");
   }
   response->ReplyWithError(error.get());
@@ -230,7 +235,7 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
   }
 
   chromeos::ErrorPtr error;
-  UserRole role;
+  weave::UserRole role;
   if (!FromString(in_user_role, &role, &error))
     return response->ReplyWithError(error.get());
 
@@ -243,9 +248,10 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
 
 void Manager::GetCommand(DBusMethodResponsePtr<std::string> response,
                          const std::string& id) {
-  const CommandInstance* command = command_manager_->FindCommand(id);
+  const weave::CommandInstance* command = command_manager_->FindCommand(id);
   if (!command) {
-    response->ReplyWithError(FROM_HERE, kErrorDomainGCD, "unknown_command",
+    response->ReplyWithError(FROM_HERE, weave::kErrorDomainGCD,
+                             "unknown_command",
                              "Can't find command with id: " + id);
     return;
   }
@@ -258,7 +264,7 @@ void Manager::GetCommand(DBusMethodResponsePtr<std::string> response,
 void Manager::SetCommandVisibility(DBusMethodResponsePtr<> response,
                                    const std::vector<std::string>& in_names,
                                    const std::string& in_visibility) {
-  CommandDefinition::Visibility visibility;
+  weave::CommandDefinition::Visibility visibility;
   chromeos::ErrorPtr error;
   if (!visibility.FromString(in_visibility, &error)) {
     response->ReplyWithError(error.get());
@@ -280,15 +286,15 @@ bool Manager::EnableWiFiBootstrapping(
     chromeos::ErrorPtr* error,
     const dbus::ObjectPath& in_listener_path,
     const chromeos::VariantDictionary& in_options) {
-  chromeos::Error::AddTo(error, FROM_HERE, privetd::errors::kDomain,
-                         privetd::errors::kNotImplemented,
+  chromeos::Error::AddTo(error, FROM_HERE, weave::privet::errors::kDomain,
+                         weave::privet::errors::kNotImplemented,
                          "Manual WiFi bootstrapping is not implemented");
   return false;
 }
 
 bool Manager::DisableWiFiBootstrapping(chromeos::ErrorPtr* error) {
-  chromeos::Error::AddTo(error, FROM_HERE, privetd::errors::kDomain,
-                         privetd::errors::kNotImplemented,
+  chromeos::Error::AddTo(error, FROM_HERE, weave::privet::errors::kDomain,
+                         weave::privet::errors::kNotImplemented,
                          "Manual WiFi bootstrapping is not implemented");
   return false;
 }
@@ -297,15 +303,15 @@ bool Manager::EnableGCDBootstrapping(
     chromeos::ErrorPtr* error,
     const dbus::ObjectPath& in_listener_path,
     const chromeos::VariantDictionary& in_options) {
-  chromeos::Error::AddTo(error, FROM_HERE, privetd::errors::kDomain,
-                         privetd::errors::kNotImplemented,
+  chromeos::Error::AddTo(error, FROM_HERE, weave::privet::errors::kDomain,
+                         weave::privet::errors::kNotImplemented,
                          "Manual GCD bootstrapping is not implemented");
   return false;
 }
 
 bool Manager::DisableGCDBootstrapping(chromeos::ErrorPtr* error) {
-  chromeos::Error::AddTo(error, FROM_HERE, privetd::errors::kDomain,
-                         privetd::errors::kNotImplemented,
+  chromeos::Error::AddTo(error, FROM_HERE, weave::privet::errors::kDomain,
+                         weave::privet::errors::kNotImplemented,
                          "Manual GCD bootstrapping is not implemented");
   return false;
 }
@@ -331,9 +337,10 @@ bool Manager::UpdateServiceConfig(chromeos::ErrorPtr* error,
 void Manager::OnCommandDefsChanged() {
   // Limit only to commands that are visible to the local clients.
   auto commands = command_manager_->GetCommandDictionary().GetCommandsAsJson(
-      [](const buffet::CommandDefinition* def) {
+      [](const weave::CommandDefinition* def) {
         return def->GetVisibility().local;
-      }, true, nullptr);
+      },
+      true, nullptr);
   CHECK(commands);
   std::string json;
   base::JSONWriter::WriteWithOptions(
@@ -350,11 +357,11 @@ void Manager::OnStateChanged() {
   dbus_adaptor_.SetState(json);
 }
 
-void Manager::OnRegistrationChanged(RegistrationStatus status) {
+void Manager::OnRegistrationChanged(weave::RegistrationStatus status) {
   dbus_adaptor_.SetStatus(StatusToString(status));
 }
 
-void Manager::OnConfigChanged(const BuffetConfig& config) {
+void Manager::OnConfigChanged(const weave::BuffetConfig& config) {
   dbus_adaptor_.SetDeviceId(config.device_id());
   dbus_adaptor_.SetOemName(config.oem_name());
   dbus_adaptor_.SetModelName(config.model_name());
@@ -366,33 +373,33 @@ void Manager::OnConfigChanged(const BuffetConfig& config) {
 }
 
 void Manager::UpdateWiFiBootstrapState(
-    privetd::WifiBootstrapManager::State state) {
+    weave::privet::WifiBootstrapManager::State state) {
   if (auto wifi = privet_->GetWifiBootstrapManager()) {
     const std::string& ssid{wifi->GetCurrentlyConnectedSsid()};
     if (ssid != device_info_->GetConfig().last_configured_ssid()) {
-      BuffetConfig::Transaction change{device_info_->GetMutableConfig()};
+      weave::BuffetConfig::Transaction change{device_info_->GetMutableConfig()};
       change.set_last_configured_ssid(ssid);
     }
   }
 
   switch (state) {
-    case privetd::WifiBootstrapManager::kDisabled:
+    case weave::privet::WifiBootstrapManager::kDisabled:
       dbus_adaptor_.SetWiFiBootstrapState("disabled");
       break;
-    case privetd::WifiBootstrapManager::kBootstrapping:
+    case weave::privet::WifiBootstrapManager::kBootstrapping:
       dbus_adaptor_.SetWiFiBootstrapState("waiting");
       break;
-    case privetd::WifiBootstrapManager::kMonitoring:
+    case weave::privet::WifiBootstrapManager::kMonitoring:
       dbus_adaptor_.SetWiFiBootstrapState("monitoring");
       break;
-    case privetd::WifiBootstrapManager::kConnecting:
+    case weave::privet::WifiBootstrapManager::kConnecting:
       dbus_adaptor_.SetWiFiBootstrapState("connecting");
       break;
   }
 }
 
 void Manager::OnPairingStart(const std::string& session_id,
-                             privetd::PairingType pairing_type,
+                             privet::PairingType pairing_type,
                              const std::vector<uint8_t>& code) {
   // For now, just overwrite the exposed PairInfo with
   // the most recent pairing attempt.

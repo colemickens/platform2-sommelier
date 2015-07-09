@@ -25,7 +25,8 @@
 #include "libweave/src/privet/security_delegate.h"
 #include "libweave/src/privet/wifi_delegate.h"
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 namespace {
 
@@ -946,4 +947,5 @@ std::string AuthScopeToString(AuthScope id) {
   return EnumToString(id);
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

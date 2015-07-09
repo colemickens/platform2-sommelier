@@ -11,7 +11,7 @@
 
 #include "libweave/src/storage_interface.h"
 
-namespace buffet {
+namespace weave {
 
 // Persists the given Value to an atomically written file.
 class FileStorage : public StorageInterface {
@@ -39,6 +39,6 @@ class MemStorage : public StorageInterface {
   DISALLOW_COPY_AND_ASSIGN(MemStorage);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_STORAGE_IMPLS_H_

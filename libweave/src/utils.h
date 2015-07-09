@@ -12,7 +12,7 @@
 #include <base/files/file_path.h>
 #include <chromeos/errors/error.h>
 
-namespace buffet {
+namespace weave {
 
 // Buffet-wide errors.
 // TODO(avakulenko): This should be consolidated into errors::<domain> namespace
@@ -44,6 +44,6 @@ std::unique_ptr<base::DictionaryValue> LoadJsonDict(
 // Returns the connected socket file descriptor or -1 if failed.
 int ConnectSocket(const std::string& host, uint16_t port);
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_UTILS_H_

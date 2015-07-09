@@ -20,7 +20,7 @@ namespace base {
 class DictionaryValue;
 }  // namespace base
 
-namespace buffet {
+namespace weave {
 
 // A package is a set of related state properties. GCD specification defines
 // a number of standard state properties in "base" package such as
@@ -84,6 +84,6 @@ class StatePackage final {
   DISALLOW_COPY_AND_ASSIGN(StatePackage);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_STATES_STATE_PACKAGE_H_

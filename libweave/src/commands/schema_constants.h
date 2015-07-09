@@ -5,7 +5,7 @@
 #ifndef LIBWEAVE_SRC_COMMANDS_SCHEMA_CONSTANTS_H_
 #define LIBWEAVE_SRC_COMMANDS_SCHEMA_CONSTANTS_H_
 
-namespace buffet {
+namespace weave {
 
 namespace errors {
 namespace commands {
@@ -78,6 +78,6 @@ extern const char kCommand_Visibility_All[];
 }  // namespace attributes
 }  // namespace commands
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_SCHEMA_CONSTANTS_H_

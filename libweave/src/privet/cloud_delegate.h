@@ -20,13 +20,13 @@ namespace base {
 class DictionaryValue;
 }  // namespace base
 
-namespace buffet {
+namespace weave {
+
 class CommandManager;
 class DeviceRegistrationInfo;
 class StateManager;
-}
 
-namespace privetd {
+namespace privet {
 
 // Interface to provide GCD functionality for PrivetHandler.
 // TODO(vitalybuka): Rename to BuffetDelegate.
@@ -133,14 +133,15 @@ class CloudDelegate {
 
   // Create default instance.
   static std::unique_ptr<CloudDelegate> CreateDefault(
-      buffet::DeviceRegistrationInfo* device,
-      buffet::CommandManager* command_manager,
-      buffet::StateManager* state_manager);
+      DeviceRegistrationInfo* device,
+      CommandManager* command_manager,
+      StateManager* state_manager);
 
  private:
   base::ObserverList<Observer> observer_list_;
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_CLOUD_DELEGATE_H_

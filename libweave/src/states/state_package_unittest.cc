@@ -15,7 +15,7 @@
 #include "libweave/src/commands/unittest_utils.h"
 #include "libweave/src/states/error_codes.h"
 
-namespace buffet {
+namespace weave {
 
 using unittests::CreateDictionaryValue;
 
@@ -370,4 +370,4 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Unknown) {
   EXPECT_EQ("State property 'test.volume' is not defined", error->GetMessage());
 }
 
-}  // namespace buffet
+}  // namespace weave

@@ -13,7 +13,7 @@
 
 #include "libweave/src/commands/schema_utils.h"
 
-namespace buffet {
+namespace weave {
 
 // A simple notification record event to track device state changes.
 // The |timestamp| records the time of the state change.
@@ -64,6 +64,6 @@ class StateChangeQueueInterface {
   virtual ~StateChangeQueueInterface() {}
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_STATES_STATE_CHANGE_QUEUE_INTERFACE_H_

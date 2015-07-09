@@ -14,7 +14,7 @@
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/prop_values.h"
 
-namespace buffet {
+namespace weave {
 namespace unittests {
 
 // Helper method to create base::Value from a string as a smart pointer.
@@ -55,10 +55,10 @@ inline std::unique_ptr<const StringValue> make_string_prop_value(
 }
 
 }  // namespace unittests
-}  // namespace buffet
+}  // namespace weave
 
-#define EXPECT_JSON_EQ(expected, actual)        \
-  EXPECT_PRED2(buffet::unittests::IsEqualValue, \
-               *buffet::unittests::CreateValue(expected), actual)
+#define EXPECT_JSON_EQ(expected, actual)                                   \
+  EXPECT_PRED2(unittests::IsEqualValue, *unittests::CreateValue(expected), \
+               actual)
 
 #endif  // LIBWEAVE_SRC_COMMANDS_UNITTEST_UTILS_H_

@@ -9,7 +9,8 @@
 
 #include <chromeos/errors/error.h>
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 // Scopes in order of increasing privileges.
 enum class AuthScope {
@@ -93,6 +94,7 @@ class SetupState final {
   chromeos::ErrorPtr error_;
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_PRIVET_TYPES_H_

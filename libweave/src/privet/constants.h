@@ -5,7 +5,11 @@
 #ifndef LIBWEAVE_SRC_PRIVET_CONSTANTS_H_
 #define LIBWEAVE_SRC_PRIVET_CONSTANTS_H_
 
-namespace privetd {
+namespace weave {
+namespace privet {
+
+// Time to reply on privet HTTP.
+const int kSetupDelaySeconds = 1;
 
 namespace errors {
 
@@ -32,10 +36,7 @@ extern const char kInvalidPassphrase[];
 extern const char kNotFound[];
 extern const char kNotImplemented[];
 }  // namespace errors
-
-// Time to reply on privet HTTP.
-const int kSetupDelaySeconds = 1;
-
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_CONSTANTS_H_

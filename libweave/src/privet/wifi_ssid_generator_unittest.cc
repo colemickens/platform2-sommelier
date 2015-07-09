@@ -10,7 +10,8 @@
 #include "libweave/src/privet/mock_delegates.h"
 #include "libweave/src/privet/openssl_utils.h"
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 class WifiSsidGeneratorTest : public testing::Test {
  protected:
@@ -65,4 +66,5 @@ TEST_F(WifiSsidGeneratorTest, GenerateSsidNoName) {
   EXPECT_EQ("", ssid_generator_.GenerateSsid());
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

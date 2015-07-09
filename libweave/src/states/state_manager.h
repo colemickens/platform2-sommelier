@@ -26,7 +26,7 @@ class FilePath;
 class Time;
 }  // namespace base
 
-namespace buffet {
+namespace weave {
 
 // StateManager is the class that aggregates the device state fragments
 // provided by device daemons and makes the aggregate device state available
@@ -110,7 +110,7 @@ class StateManager final {
   // Finds a package by its name. If none exists, one will be created.
   StatePackage* FindOrCreatePackage(const std::string& package_name);
 
-  StateChangeQueueInterface* state_change_queue_;  // Owned by buffet::Manager.
+  StateChangeQueueInterface* state_change_queue_;  // Owned by Manager.
   std::map<std::string, std::unique_ptr<StatePackage>> packages_;
   std::set<std::string> categories_;
 
@@ -119,6 +119,6 @@ class StateManager final {
   DISALLOW_COPY_AND_ASSIGN(StateManager);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_STATES_STATE_MANAGER_H_

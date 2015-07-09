@@ -12,7 +12,7 @@
 
 #include <base/macros.h>
 
-namespace buffet {
+namespace weave {
 
 class XmlNodeTest;
 class XmppStreamParser;
@@ -117,6 +117,6 @@ class XmlNode final {
   DISALLOW_COPY_AND_ASSIGN(XmlNode);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_NOTIFICATION_XML_NODE_H_

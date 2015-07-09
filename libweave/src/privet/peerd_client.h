@@ -18,7 +18,8 @@ namespace dbus {
 class Bus;
 }  // namespace dbus
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 class CloudDelegate;
 class DeviceDelegate;
@@ -67,6 +68,7 @@ class PeerdClient : public IdentityDelegate {
   base::WeakPtrFactory<PeerdClient> weak_ptr_factory_{this};
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_PEERD_CLIENT_H_

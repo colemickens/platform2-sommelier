@@ -7,7 +7,7 @@
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 
-namespace buffet {
+namespace weave {
 namespace unittests {
 
 std::unique_ptr<base::Value> CreateValue(const char* json) {
@@ -34,4 +34,4 @@ std::unique_ptr<base::DictionaryValue> CreateDictionaryValue(const char* json) {
 }
 
 }  // namespace unittests
-}  // namespace buffet
+}  // namespace weave

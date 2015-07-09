@@ -13,7 +13,7 @@
 #include "libweave/src/commands/object_schema.h"
 #include "libweave/src/commands/user_role.h"
 
-namespace buffet {
+namespace weave {
 
 // A simple GCD command definition. This class contains the command category
 // and a full object schema describing the command parameter types and
@@ -79,6 +79,6 @@ class CommandDefinition final {
   DISALLOW_COPY_AND_ASSIGN(CommandDefinition);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_COMMAND_DEFINITION_H_

@@ -4,8 +4,8 @@
 
 #include "libweave/src/privet/constants.h"
 
-namespace privetd {
-
+namespace weave {
+namespace privet {
 namespace errors {
 
 const char kDomain[] = "privetd";
@@ -32,5 +32,5 @@ const char kNotFound[] = "notFound";
 const char kNotImplemented[] = "notImplemented";
 
 }  // namespace errors
-
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

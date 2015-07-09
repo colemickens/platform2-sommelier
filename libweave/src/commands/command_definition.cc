@@ -11,7 +11,7 @@
 
 #include "libweave/src/commands/schema_constants.h"
 
-namespace buffet {
+namespace weave {
 
 bool CommandDefinition::Visibility::FromString(const std::string& str,
                                                chromeos::ErrorPtr* error) {
@@ -72,4 +72,4 @@ void CommandDefinition::SetVisibility(const Visibility& visibility) {
   visibility_ = visibility;
 }
 
-}  // namespace buffet
+}  // namespace weave

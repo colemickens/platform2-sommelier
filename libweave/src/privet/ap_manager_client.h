@@ -13,7 +13,8 @@
 
 #include "apmanager/dbus-proxies.h"
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 // Manages soft AP for wifi bootstrapping.
 // Once created can handle multiple Start/Stop requests.
@@ -52,6 +53,7 @@ class ApManagerClient final {
   base::WeakPtrFactory<ApManagerClient> weak_ptr_factory_{this};
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_AP_MANAGER_CLIENT_H_

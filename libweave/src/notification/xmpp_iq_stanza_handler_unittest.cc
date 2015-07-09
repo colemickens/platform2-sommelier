@@ -19,7 +19,7 @@ using testing::Invoke;
 using testing::Return;
 using testing::_;
 
-namespace buffet {
+namespace weave {
 namespace {
 
 // Mock-like task runner that allow the tests to inspect the calls to
@@ -224,4 +224,4 @@ TEST_F(IqStanzaHandlerTest, RequestTimeout) {
   EXPECT_TRUE(called);
 }
 
-}  // namespace buffet
+}  // namespace weave

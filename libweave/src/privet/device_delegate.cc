@@ -9,7 +9,8 @@
 
 #include "libweave/src/privet/constants.h"
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 namespace {
 
@@ -51,4 +52,5 @@ std::unique_ptr<DeviceDelegate> DeviceDelegate::CreateDefault() {
   return std::unique_ptr<DeviceDelegate>(new DeviceDelegateImpl());
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

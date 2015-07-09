@@ -16,7 +16,7 @@
 #include <base/json/json_reader.h>
 #include <chromeos/errors/error_codes.h>
 
-namespace buffet {
+namespace weave {
 
 namespace {
 
@@ -106,4 +106,4 @@ int ConnectSocket(const std::string& host, uint16_t port) {
   return socket_fd;
 }
 
-}  // namespace buffet
+}  // namespace weave

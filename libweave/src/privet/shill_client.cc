@@ -23,7 +23,8 @@ using std::set;
 using std::string;
 using std::vector;
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 namespace {
 
@@ -500,4 +501,5 @@ void ShillClient::CleanupConnectingService(bool check_for_reset_pending) {
   connecting_service_reset_pending_ = false;
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

@@ -5,7 +5,7 @@
 #ifndef LIBWEAVE_SRC_STATES_ERROR_CODES_H_
 #define LIBWEAVE_SRC_STATES_ERROR_CODES_H_
 
-namespace buffet {
+namespace weave {
 namespace errors {
 namespace state {
 
@@ -20,6 +20,6 @@ extern const char kPropertyRedefinition[];
 
 }  // namespace state
 }  // namespace errors
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_STATES_ERROR_CODES_H_

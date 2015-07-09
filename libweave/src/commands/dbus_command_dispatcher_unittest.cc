@@ -20,7 +20,7 @@
 #include "libweave/src/commands/dbus_command_proxy.h"
 #include "libweave/src/commands/unittest_utils.h"
 
-namespace buffet {
+namespace weave {
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using testing::_;
@@ -41,7 +41,7 @@ class DBusCommandDispacherTest : public testing::Test {
     command_queue_.SetNowForTest(base::Time::Max());
 
     const dbus::ObjectPath kExportedObjectManagerPath("/test/om_path");
-    std::string cmd_path = dbus_constants::kCommandServicePathPrefix;
+    std::string cmd_path = buffet::kCommandServicePathPrefix;
     cmd_path += "1";
     const dbus::ObjectPath kCmdObjPath(cmd_path);
 
@@ -200,4 +200,4 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Reboot) {
   EXPECT_EQ(nullptr, command_queue_.Find(id));
 }
 
-}  // namespace buffet
+}  // namespace weave

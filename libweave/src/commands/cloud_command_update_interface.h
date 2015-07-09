@@ -10,7 +10,7 @@
 #include <base/callback_forward.h>
 #include <base/values.h>
 
-namespace buffet {
+namespace weave {
 
 // An abstract interface to allow for sending command update requests to the
 // cloud server.
@@ -25,6 +25,6 @@ class CloudCommandUpdateInterface {
   virtual ~CloudCommandUpdateInterface() = default;
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_CLOUD_COMMAND_UPDATE_INTERFACE_H_

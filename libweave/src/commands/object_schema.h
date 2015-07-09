@@ -16,7 +16,7 @@ class Value;
 class DictionaryValue;
 }  // namespace base
 
-namespace buffet {
+namespace weave {
 
 class PropType;
 
@@ -92,6 +92,6 @@ class ObjectSchema final {
   bool extra_properties_allowed_{false};
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_OBJECT_SCHEMA_H_

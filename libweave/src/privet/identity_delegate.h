@@ -7,7 +7,8 @@
 
 #include <string>
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 // Interface for an object that can identify ourselves.
 class IdentityDelegate {
@@ -19,6 +20,7 @@ class IdentityDelegate {
   virtual std::string GetId() const = 0;
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_IDENTITY_DELEGATE_H_

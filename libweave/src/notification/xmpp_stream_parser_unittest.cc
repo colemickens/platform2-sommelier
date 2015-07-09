@@ -10,7 +10,7 @@
 
 #include "libweave/src/notification/xml_node.h"
 
-namespace buffet {
+namespace weave {
 namespace {
 // Use some real-world XMPP stream snippet to make sure all the expected
 // elements are parsed properly.
@@ -202,4 +202,4 @@ TEST_F(XmppStreamParserTest, VariableLengthPackets) {
   }
 }
 
-}  // namespace buffet
+}  // namespace weave

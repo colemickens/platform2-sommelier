@@ -22,7 +22,7 @@
 #include "libweave/src/states/state_manager.h"
 #include "libweave/src/storage_impls.h"
 
-namespace buffet {
+namespace weave {
 
 using chromeos::http::request_header::kAuthorization;
 using chromeos::http::fake::ServerRequest;
@@ -598,4 +598,4 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   command->Cancel();
 }
 
-}  // namespace buffet
+}  // namespace weave

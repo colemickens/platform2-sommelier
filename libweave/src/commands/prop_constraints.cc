@@ -9,7 +9,7 @@
 #include "libweave/src/commands/prop_values.h"
 #include "libweave/src/commands/schema_constants.h"
 
-namespace buffet {
+namespace weave {
 
 namespace {
 
@@ -217,4 +217,4 @@ const char* ConstraintOneOf::GetDictKey() const {
   return commands::attributes::kOneOf_Enum;
 }
 
-}  // namespace buffet
+}  // namespace weave

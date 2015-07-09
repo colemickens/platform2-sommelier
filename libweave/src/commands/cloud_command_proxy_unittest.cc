@@ -22,7 +22,7 @@ using testing::Return;
 using testing::ReturnPointee;
 using testing::_;
 
-namespace buffet {
+namespace weave {
 
 using unittests::CreateDictionaryValue;
 using unittests::CreateValue;
@@ -411,4 +411,4 @@ TEST_F(CloudCommandProxyTest, NonEmptyStateChangeQueue) {
   callbacks_.Notify(20);
 }
 
-}  // namespace buffet
+}  // namespace weave

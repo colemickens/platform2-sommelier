@@ -21,7 +21,7 @@ class Value;
 class DictionaryValue;
 }  // namespace base
 
-namespace buffet {
+namespace weave {
 
 class ObjectSchema;
 
@@ -94,6 +94,6 @@ class CommandDictionary final {
   DISALLOW_COPY_AND_ASSIGN(CommandDictionary);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_COMMAND_DICTIONARY_H_

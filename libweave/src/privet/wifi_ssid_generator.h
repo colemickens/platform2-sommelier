@@ -9,7 +9,8 @@
 
 #include <base/callback.h>
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 class CloudDelegate;
 class WifiDelegate;
@@ -38,6 +39,7 @@ class WifiSsidGenerator final {
   DISALLOW_COPY_AND_ASSIGN(WifiSsidGenerator);
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_WIFI_SSID_GENERATOR_H_

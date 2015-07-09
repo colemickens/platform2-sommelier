@@ -17,8 +17,8 @@
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::DBusServiceDaemon;
-using buffet::dbus_constants::kServiceName;
-using buffet::dbus_constants::kRootServicePath;
+using buffet::kServiceName;
+using buffet::kRootServicePath;
 
 namespace buffet {
 

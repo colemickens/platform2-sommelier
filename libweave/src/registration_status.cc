@@ -6,7 +6,7 @@
 
 #include <base/logging.h>
 
-namespace buffet {
+namespace weave {
 
 std::string StatusToString(RegistrationStatus status) {
   switch (status) {
@@ -23,4 +23,4 @@ std::string StatusToString(RegistrationStatus status) {
   return "unknown";
 }
 
-}  // namespace buffet
+}  // namespace weave

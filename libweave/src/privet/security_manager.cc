@@ -26,7 +26,8 @@
 #include "libweave/src/privet/constants.h"
 #include "libweave/src/privet/openssl_utils.h"
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 namespace {
 
@@ -412,4 +413,5 @@ bool SecurityManager::CloseConfirmedSession(const std::string& session_id) {
   return confirmed_sessions_.erase(session_id) != 0;
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

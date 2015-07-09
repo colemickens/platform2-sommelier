@@ -6,7 +6,7 @@
 
 #include <base/logging.h>
 
-namespace buffet {
+namespace weave {
 
 StateChangeQueue::StateChangeQueue(size_t max_queue_size)
     : max_queue_size_(max_queue_size) {
@@ -68,4 +68,4 @@ void StateChangeQueue::NotifyStateUpdatedOnServer(UpdateID update_id) {
   callbacks_.Notify(update_id);
 }
 
-}  // namespace buffet
+}  // namespace weave

@@ -17,7 +17,7 @@
 #include "libweave/src/states/state_manager.h"
 #include "libweave/src/storage_impls.h"
 
-namespace buffet {
+namespace weave {
 
 class BaseApiHandlerTest : public ::testing::Test {
  protected:
@@ -65,7 +65,7 @@ class BaseApiHandlerTest : public ::testing::Test {
   }
 
   void AddCommand(const std::string& command) {
-    auto command_instance = buffet::CommandInstance::FromJson(
+    auto command_instance = CommandInstance::FromJson(
         unittests::CreateDictionaryValue(command.c_str()).get(),
         commands::attributes::kCommand_Visibility_Local,
         command_manager_->GetCommandDictionary(), nullptr, nullptr);
@@ -192,4 +192,4 @@ TEST_F(BaseApiHandlerTest, UpdateDeviceInfo) {
   EXPECT_EQ("newLocation", config.location());
 }
 
-}  // namespace buffet
+}  // namespace weave

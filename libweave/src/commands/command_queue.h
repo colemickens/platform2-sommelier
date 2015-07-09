@@ -17,7 +17,7 @@
 
 #include "libweave/src/commands/command_instance.h"
 
-namespace buffet {
+namespace weave {
 
 class CommandQueue final {
  public:
@@ -82,6 +82,6 @@ class CommandQueue final {
   DISALLOW_COPY_AND_ASSIGN(CommandQueue);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_COMMAND_QUEUE_H_

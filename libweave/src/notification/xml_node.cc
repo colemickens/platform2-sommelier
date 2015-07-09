@@ -7,7 +7,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/strings/string_utils.h>
 
-namespace buffet {
+namespace weave {
 
 XmlNode::XmlNode(const std::string& name,
                  std::map<std::string, std::string> attributes)
@@ -120,4 +120,4 @@ std::string XmlNode::ToString() const {
   return xml;
 }
 
-}  // namespace buffet
+}  // namespace weave

@@ -17,7 +17,7 @@
 #include <chromeos/errors/error.h>
 #include <chromeos/variant_dictionary.h>
 
-namespace buffet {
+namespace weave {
 
 class PropType;
 class PropValue;
@@ -159,6 +159,6 @@ bool ObjectFromDBusVariant(const ObjectSchema* object_schema,
                            native_types::Object* obj,
                            chromeos::ErrorPtr* error);
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_SCHEMA_UTILS_H_

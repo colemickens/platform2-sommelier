@@ -31,12 +31,14 @@ class ExportedObjectManager;
 }  // namespace dbus_utils
 }  // namespace chromeos
 
-namespace buffet {
-
+namespace weave {
 class BaseApiHandler;
 class BuffetConfig;
 class StateChangeQueue;
 class StateManager;
+}  // namespace weave
+
+namespace buffet {
 
 template<typename... Types>
 using DBusMethodResponsePtr =
@@ -62,7 +64,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
     base::FilePath test_definitions_path;
     bool xmpp_enabled{true};
     std::set<std::string> device_whitelist;
-    privetd::Manager::Options privet;
+    weave::privet::Manager::Options privet;
   };
 
   void Start(const Options& options,
@@ -117,29 +119,30 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
       const std::shared_ptr<DBusMethodResponse<std::string>>& response,
       const chromeos::Error* error);
 
-  void StartPrivet(const privetd::Manager::Options& options,
+  void StartPrivet(const weave::privet::Manager::Options& options,
                    chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   void OnCommandDefsChanged();
   void OnStateChanged();
-  void OnRegistrationChanged(RegistrationStatus status);
-  void OnConfigChanged(const BuffetConfig& config);
-  void UpdateWiFiBootstrapState(privetd::WifiBootstrapManager::State state);
+  void OnRegistrationChanged(weave::RegistrationStatus status);
+  void OnConfigChanged(const weave::BuffetConfig& config);
+  void UpdateWiFiBootstrapState(
+      weave::privet::WifiBootstrapManager::State state);
   void OnPairingStart(const std::string& session_id,
-                      privetd::PairingType pairing_type,
+                      weave::privet::PairingType pairing_type,
                       const std::vector<uint8_t>& code);
   void OnPairingEnd(const std::string& session_id);
 
   org::chromium::Buffet::ManagerAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
 
-  std::shared_ptr<CommandManager> command_manager_;
-  std::unique_ptr<StateChangeQueue> state_change_queue_;
-  std::shared_ptr<StateManager> state_manager_;
-  std::unique_ptr<DeviceRegistrationInfo> device_info_;
-  std::unique_ptr<BaseApiHandler> base_api_handler_;
-  std::unique_ptr<privetd::ShillClient> shill_client_;
-  std::unique_ptr<privetd::Manager> privet_;
+  std::shared_ptr<weave::CommandManager> command_manager_;
+  std::unique_ptr<weave::StateChangeQueue> state_change_queue_;
+  std::shared_ptr<weave::StateManager> state_manager_;
+  std::unique_ptr<weave::DeviceRegistrationInfo> device_info_;
+  std::unique_ptr<weave::BaseApiHandler> base_api_handler_;
+  std::unique_ptr<weave::privet::ShillClient> shill_client_;
+  std::unique_ptr<weave::privet::Manager> privet_;
 
   base::WeakPtrFactory<Manager> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Manager);

@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-namespace buffet {
+namespace weave {
 
 TEST(CommandVisibility, DefaultConstructor) {
   CommandDefinition::Visibility visibility;
@@ -91,4 +91,4 @@ TEST(CommandDefinition, Test) {
   EXPECT_EQ("local", def.GetVisibility().ToString());
 }
 
-}  // namespace buffet
+}  // namespace weave

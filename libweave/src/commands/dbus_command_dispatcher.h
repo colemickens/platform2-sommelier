@@ -17,7 +17,7 @@ class ExportedObjectManager;
 }  // namespace dbus_utils
 }  // namespace chromeos
 
-namespace buffet {
+namespace weave {
 
 class CommandInstance;
 
@@ -47,6 +47,6 @@ class DBusCommandDispacher final {
   DISALLOW_COPY_AND_ASSIGN(DBusCommandDispacher);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_DBUS_COMMAND_DISPATCHER_H_

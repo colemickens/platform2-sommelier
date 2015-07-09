@@ -23,7 +23,8 @@ namespace crypto {
 class P224EncryptedKeyExchange;
 }  // namespace crypto
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 class SecurityManager : public SecurityDelegate {
  public:
@@ -105,6 +106,7 @@ class SecurityManager : public SecurityDelegate {
   DISALLOW_COPY_AND_ASSIGN(SecurityManager);
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_SECURITY_MANAGER_H_

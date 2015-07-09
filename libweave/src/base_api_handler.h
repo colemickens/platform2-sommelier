@@ -10,7 +10,7 @@
 
 #include <base/memory/weak_ptr.h>
 
-namespace buffet {
+namespace weave {
 
 class CommandInstance;
 class CommandManager;
@@ -41,6 +41,6 @@ class BaseApiHandler final {
   DISALLOW_COPY_AND_ASSIGN(BaseApiHandler);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_BASE_API_HANDLER_H_

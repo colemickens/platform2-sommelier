@@ -7,7 +7,7 @@
 
 #include <string>
 
-namespace buffet {
+namespace weave {
 
 // Helps to map enumeration to stings and back.
 //
@@ -64,6 +64,6 @@ class EnumToString final {
   static const Map kMap[];
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_ENUM_TO_STRING_H_

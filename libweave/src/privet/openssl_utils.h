@@ -10,13 +10,15 @@
 
 #include <chromeos/secure_blob.h>
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 const size_t kSha256OutputSize = 32;
 
 chromeos::Blob HmacSha256(const chromeos::SecureBlob& key,
                           const chromeos::Blob& data);
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_OPENSSL_UTILS_H_

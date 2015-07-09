@@ -8,7 +8,7 @@
 
 #include "libweave/src/commands/unittest_utils.h"
 
-namespace buffet {
+namespace weave {
 
 using unittests::CreateDictionaryValue;
 using unittests::IsEqualValue;
@@ -585,4 +585,4 @@ TEST(CommandDictionary, LoadWithPermissions_InvalidRole) {
   error.reset();
 }
 
-}  // namespace buffet
+}  // namespace weave

@@ -12,7 +12,7 @@
 
 #include "libweave/src/commands/unittest_utils.h"
 
-namespace buffet {
+namespace weave {
 
 using unittests::CreateDictionaryValue;
 
@@ -214,4 +214,4 @@ TEST(CommandManager, UpdateCommandVisibility) {
   EXPECT_EQ("cloud", dict.FindCommand("bar._quux")->GetVisibility().ToString());
 }
 
-}  // namespace buffet
+}  // namespace weave

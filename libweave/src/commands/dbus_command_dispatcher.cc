@@ -13,7 +13,7 @@
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
 
-namespace buffet {
+namespace weave {
 
 DBusCommandDispacher::DBusCommandDispacher(
     const base::WeakPtr<ExportedObjectManager>& object_manager)
@@ -25,9 +25,9 @@ void DBusCommandDispacher::OnCommandAdded(CommandInstance* command_instance) {
     return;
   std::unique_ptr<DBusCommandProxy> proxy{new DBusCommandProxy(
       object_manager_.get(), object_manager_->GetBus(), command_instance,
-      dbus_constants::kCommandServicePathPrefix + std::to_string(++next_id_))};
+      buffet::kCommandServicePathPrefix + std::to_string(++next_id_))};
   proxy->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
   command_instance->AddProxy(std::move(proxy));
 }
 
-}  // namespace buffet
+}  // namespace weave

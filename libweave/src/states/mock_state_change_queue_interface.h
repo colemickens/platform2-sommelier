@@ -11,7 +11,7 @@
 
 #include "libweave/src/states/state_change_queue_interface.h"
 
-namespace buffet {
+namespace weave {
 
 class MockStateChangeQueueInterface : public StateChangeQueueInterface {
  public:
@@ -33,6 +33,6 @@ class MockStateChangeQueueInterface : public StateChangeQueueInterface {
   }
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_STATES_MOCK_STATE_CHANGE_QUEUE_INTERFACE_H_

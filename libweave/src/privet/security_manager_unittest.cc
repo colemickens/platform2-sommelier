@@ -31,7 +31,8 @@
 using testing::Eq;
 using testing::_;
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 namespace {
 
@@ -313,4 +314,5 @@ TEST_F(SecurityManagerTest, EmbeddedCodeNotReady) {
   EXPECT_EQ("deviceBusy", error->GetCode());
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

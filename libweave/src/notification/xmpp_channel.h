@@ -21,11 +21,11 @@
 #include "libweave/src/notification/xmpp_iq_stanza_handler.h"
 #include "libweave/src/notification/xmpp_stream_parser.h"
 
-namespace privetd {
+namespace weave {
+
+namespace privet {
 class ShillClient;
 }
-
-namespace buffet {
 
 // Simple interface to abstract XmppChannel's SendMessage() method.
 class XmppChannelInterface {
@@ -46,7 +46,7 @@ class XmppChannel : public NotificationChannel,
   XmppChannel(const std::string& account,
               const std::string& access_token,
               const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-              privetd::ShillClient* shill);
+              privet::ShillClient* shill);
   ~XmppChannel() override = default;
 
   // Overrides from NotificationChannel.
@@ -168,6 +168,6 @@ class XmppChannel : public NotificationChannel,
   DISALLOW_COPY_AND_ASSIGN(XmppChannel);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_NOTIFICATION_XMPP_CHANNEL_H_

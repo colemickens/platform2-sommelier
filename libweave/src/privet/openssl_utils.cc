@@ -11,7 +11,8 @@
 
 #include <base/logging.h>
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 chromeos::Blob HmacSha256(const chromeos::SecureBlob& key,
                           const chromeos::Blob& data) {
@@ -23,4 +24,5 @@ chromeos::Blob HmacSha256(const chromeos::SecureBlob& key,
   return mac;
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

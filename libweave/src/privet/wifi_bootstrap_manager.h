@@ -20,7 +20,8 @@
 #include "libweave/src/privet/wifi_delegate.h"
 #include "libweave/src/privet/wifi_ssid_generator.h"
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 class ApManagerClient;
 class CloudDelegate;
@@ -116,6 +117,7 @@ class WifiBootstrapManager : public WifiDelegate,
   DISALLOW_COPY_AND_ASSIGN(WifiBootstrapManager);
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_WIFI_BOOTSTRAP_MANAGER_H_

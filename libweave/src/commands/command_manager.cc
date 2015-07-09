@@ -14,7 +14,7 @@
 
 using chromeos::dbus_utils::ExportedObjectManager;
 
-namespace buffet {
+namespace weave {
 
 CommandManager::CommandManager()
     : CommandManager(base::WeakPtr<ExportedObjectManager>{}) {
@@ -102,7 +102,7 @@ bool CommandManager::AddCommand(const base::DictionaryValue& command,
                                 UserRole role,
                                 std::string* id,
                                 chromeos::ErrorPtr* error) {
-  auto command_instance = buffet::CommandInstance::FromJson(
+  auto command_instance = CommandInstance::FromJson(
       &command, commands::attributes::kCommand_Visibility_Local,
       GetCommandDictionary(), nullptr, error);
   if (!command_instance)
@@ -169,4 +169,4 @@ void CommandManager::AddOnCommandRemovedCallback(
   command_queue_.AddOnCommandRemovedCallback(callback);
 }
 
-}  // namespace buffet
+}  // namespace weave

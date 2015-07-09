@@ -15,12 +15,6 @@
 
 #include "libweave/src/privet/cloud_delegate.h"
 
-namespace buffet {
-class CommandManager;
-class DeviceRegistrationInfo;
-class StateManager;
-}
-
 namespace chromeos {
 namespace dbus_utils {
 class AsyncEventSequencer;
@@ -34,7 +28,13 @@ class Response;
 class Server;
 }
 
-namespace privetd {
+namespace weave {
+
+class CommandManager;
+class DeviceRegistrationInfo;
+class StateManager;
+
+namespace privet {
 
 class ApManagerClient;
 class CloudDelegate;
@@ -61,20 +61,20 @@ class Manager : public CloudDelegate::Observer {
   void Start(const Options& options,
              const scoped_refptr<dbus::Bus>& bus,
              ShillClient* shill_client,
-             buffet::DeviceRegistrationInfo* device,
-             buffet::CommandManager* command_manager,
-             buffet::StateManager* state_manager,
+             DeviceRegistrationInfo* device,
+             CommandManager* command_manager,
+             StateManager* state_manager,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   void OnShutdown();
 
   void OnDeviceInfoChanged() override;
 
-  privetd::WifiBootstrapManager* GetWifiBootstrapManager() {
+  privet::WifiBootstrapManager* GetWifiBootstrapManager() {
     return wifi_bootstrap_manager_.get();
   }
 
-  privetd::SecurityManager* GetSecurityManager() { return security_.get(); }
+  privet::SecurityManager* GetSecurityManager() { return security_.get(); }
 
  private:
   void PrivetRequestHandler(std::unique_ptr<libwebserv::Request> request,
@@ -113,6 +113,7 @@ class Manager : public CloudDelegate::Observer {
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_PRIVET_MANAGER_H_

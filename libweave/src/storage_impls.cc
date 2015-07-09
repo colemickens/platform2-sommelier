@@ -11,7 +11,7 @@
 
 #include "libweave/src/utils.h"
 
-namespace buffet {
+namespace weave {
 
 FileStorage::FileStorage(const base::FilePath& file_path)
     : file_path_(file_path) {
@@ -42,4 +42,4 @@ bool MemStorage::Save(const base::DictionaryValue& config) {
   return true;
 }
 
-}  // namespace buffet
+}  // namespace weave

@@ -23,20 +23,21 @@
 #include "libweave/src/privet/constants.h"
 #include "libweave/src/states/state_manager.h"
 
-namespace privetd {
-
-namespace {
-
 using chromeos::ErrorPtr;
 using chromeos::VariantDictionary;
 using org::chromium::Buffet::ManagerProxy;
 using org::chromium::Buffet::ObjectManagerProxy;
 
+namespace weave {
+namespace privet {
+
+namespace {
+
 const int kMaxSetupRetries = 5;
 const int kFirstRetryTimeoutSec = 1;
 
-buffet::CommandInstance* ReturnNotFound(const std::string& command_id,
-                                        chromeos::ErrorPtr* error) {
+CommandInstance* ReturnNotFound(const std::string& command_id,
+                                chromeos::ErrorPtr* error) {
   chromeos::Error::AddToPrintf(error, FROM_HERE, errors::kDomain,
                                errors::kNotFound, "Command not found, ID='%s'",
                                command_id.c_str());
@@ -45,9 +46,9 @@ buffet::CommandInstance* ReturnNotFound(const std::string& command_id,
 
 class CloudDelegateImpl : public CloudDelegate {
  public:
-  CloudDelegateImpl(buffet::DeviceRegistrationInfo* device,
-                    buffet::CommandManager* command_manager,
-                    buffet::StateManager* state_manager)
+  CloudDelegateImpl(DeviceRegistrationInfo* device,
+                    CommandManager* command_manager,
+                    StateManager* state_manager)
       : device_{device},
         command_manager_{command_manager},
         state_manager_{state_manager} {
@@ -174,7 +175,7 @@ class CloudDelegateImpl : public CloudDelegate {
     CHECK_NE(user_info.user_id(), 0u);
 
     chromeos::ErrorPtr error;
-    buffet::UserRole role;
+    UserRole role;
     if (!FromString(AuthScopeToString(user_info.scope()), &role, &error))
       return error_callback.Run(error.get());
 
@@ -233,33 +234,30 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
  private:
-  void OnCommandAdded(buffet::CommandInstance* command) {
+  void OnCommandAdded(CommandInstance* command) {
     // Set to 0 for any new unknown command.
     command_owners_.emplace(command->GetID(), 0);
   }
 
-  void OnCommandRemoved(buffet::CommandInstance* command) {
+  void OnCommandRemoved(CommandInstance* command) {
     CHECK(command_owners_.erase(command->GetID()));
   }
 
-  void OnConfigChanged(const buffet::BuffetConfig&) {
-    NotifyOnDeviceInfoChanged();
-  }
+  void OnConfigChanged(const BuffetConfig&) { NotifyOnDeviceInfoChanged(); }
 
-  void OnRegistrationChanged(buffet::RegistrationStatus status) {
-    if (status == buffet::RegistrationStatus::kUnconfigured) {
+  void OnRegistrationChanged(RegistrationStatus status) {
+    if (status == RegistrationStatus::kUnconfigured) {
       connection_state_ = ConnectionState{ConnectionState::kUnconfigured};
-    } else if (status == buffet::RegistrationStatus::kConnecting) {
+    } else if (status == RegistrationStatus::kConnecting) {
       // TODO(vitalybuka): Find conditions for kOffline.
       connection_state_ = ConnectionState{ConnectionState::kConnecting};
-    } else if (status == buffet::RegistrationStatus::kConnected) {
+    } else if (status == RegistrationStatus::kConnected) {
       connection_state_ = ConnectionState{ConnectionState::kOnline};
     } else {
       chromeos::ErrorPtr error;
-      chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
-                                   errors::kInvalidState,
-                                   "Unexpected buffet status: %s",
-                                   buffet::StatusToString(status).c_str());
+      chromeos::Error::AddToPrintf(
+          &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
+          "Unexpected buffet status: %s", StatusToString(status).c_str());
       connection_state_ = ConnectionState{std::move(error)};
     }
     NotifyOnDeviceInfoChanged();
@@ -276,9 +274,7 @@ class CloudDelegateImpl : public CloudDelegate {
   void OnCommandDefChanged() {
     command_defs_.Clear();
     auto commands = command_manager_->GetCommandDictionary().GetCommandsAsJson(
-        [](const buffet::CommandDefinition* def) {
-          return def->GetVisibility().local;
-        },
+        [](const CommandDefinition* def) { return def->GetVisibility().local; },
         true, nullptr);
     CHECK(commands);
     command_defs_.MergeDictionary(commands.get());
@@ -315,9 +311,9 @@ class CloudDelegateImpl : public CloudDelegate {
     setup_state_ = SetupState(SetupState::kSuccess);
   }
 
-  buffet::CommandInstance* GetCommandInternal(const std::string& command_id,
-                                              const UserInfo& user_info,
-                                              chromeos::ErrorPtr* error) const {
+  CommandInstance* GetCommandInternal(const std::string& command_id,
+                                      const UserInfo& user_info,
+                                      chromeos::ErrorPtr* error) const {
     if (user_info.scope() != AuthScope::kOwner) {
       auto it = command_owners_.find(command_id);
       if (it == command_owners_.end())
@@ -350,9 +346,9 @@ class CloudDelegateImpl : public CloudDelegate {
     return false;
   }
 
-  buffet::DeviceRegistrationInfo* device_{nullptr};
-  buffet::CommandManager* command_manager_{nullptr};
-  buffet::StateManager* state_manager_{nullptr};
+  DeviceRegistrationInfo* device_{nullptr};
+  CommandManager* command_manager_{nullptr};
+  StateManager* state_manager_{nullptr};
 
   // Primary state of GCD.
   ConnectionState connection_state_{ConnectionState::kDisabled};
@@ -386,9 +382,9 @@ CloudDelegate::~CloudDelegate() {
 
 // static
 std::unique_ptr<CloudDelegate> CloudDelegate::CreateDefault(
-    buffet::DeviceRegistrationInfo* device,
-    buffet::CommandManager* command_manager,
-    buffet::StateManager* state_manager) {
+    DeviceRegistrationInfo* device,
+    CommandManager* command_manager,
+    StateManager* state_manager) {
   return std::unique_ptr<CloudDelegateImpl>{
       new CloudDelegateImpl{device, command_manager, state_manager}};
 }
@@ -405,4 +401,5 @@ void CloudDelegate::NotifyOnStateChanged() {
   FOR_EACH_OBSERVER(Observer, observer_list_, OnStateChanged());
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

@@ -6,7 +6,7 @@
 
 #include "libweave/src/notification/xml_node.h"
 
-namespace buffet {
+namespace weave {
 
 XmppStreamParser::XmppStreamParser(Delegate* delegate) : delegate_{delegate} {
   parser_ = XML_ParserCreate(nullptr);
@@ -94,4 +94,4 @@ void XmppStreamParser::OnCharData(const std::string& text) {
   }
 }
 
-}  // namespace buffet
+}  // namespace weave

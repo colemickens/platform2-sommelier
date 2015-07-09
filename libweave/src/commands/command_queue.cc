@@ -7,7 +7,7 @@
 #include <base/bind.h>
 #include <base/time/time.h>
 
-namespace buffet {
+namespace weave {
 
 namespace {
 const int kRemoveCommandDelayMin = 5;
@@ -78,4 +78,4 @@ CommandInstance* CommandQueue::Find(const std::string& id) const {
   return (p != map_.end()) ? p->second.get() : nullptr;
 }
 
-}  // namespace buffet
+}  // namespace weave

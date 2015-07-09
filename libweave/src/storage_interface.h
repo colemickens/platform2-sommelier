@@ -9,7 +9,7 @@
 
 #include <base/values.h>
 
-namespace buffet {
+namespace weave {
 
 // We need to persist data in a couple places, and it is convenient to hide
 // the details of this storage behind an interface for test purposes.
@@ -27,6 +27,6 @@ class StorageInterface {
   virtual bool Save(const base::DictionaryValue& config) = 0;
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_STORAGE_INTERFACE_H_

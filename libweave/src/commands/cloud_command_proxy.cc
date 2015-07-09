@@ -11,7 +11,7 @@
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/schema_constants.h"
 
-namespace buffet {
+namespace weave {
 
 CloudCommandProxy::CloudCommandProxy(
     CommandInstance* command_instance,
@@ -147,4 +147,4 @@ void CloudCommandProxy::OnDeviceStateUpdated(UpdateID update_id) {
   SendCommandUpdate();
 }
 
-}  // namespace buffet
+}  // namespace weave

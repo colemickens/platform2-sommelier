@@ -19,7 +19,7 @@
 #include "libweave/src/commands/prop_constraints.h"
 #include "libweave/src/commands/prop_values.h"
 
-namespace buffet {
+namespace weave {
 
 class IntPropType;
 class DoublePropType;
@@ -420,6 +420,6 @@ class ArrayPropType
   InheritableAttribute<std::unique_ptr<const PropType>> item_type_;
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_PROP_TYPES_H_

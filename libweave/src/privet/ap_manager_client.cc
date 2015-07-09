@@ -4,7 +4,8 @@
 
 #include "libweave/src/privet/ap_manager_client.h"
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 using org::chromium::apmanager::ConfigProxy;
 using org::chromium::apmanager::ManagerProxy;
@@ -112,4 +113,5 @@ void ApManagerClient::OnManagerRemoved(const dbus::ObjectPath& object_path) {
   Stop();
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

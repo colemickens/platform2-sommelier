@@ -11,7 +11,8 @@
 
 #include "libweave/src/privet/privet_types.h"
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 enum class WifiType {
   kWifi24,
@@ -50,6 +51,7 @@ class WifiDelegate {
   virtual std::set<WifiType> GetTypes() const = 0;
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_WIFI_DELEGATE_H_

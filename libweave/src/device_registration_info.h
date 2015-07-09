@@ -41,13 +41,13 @@ namespace chromeos {
 class KeyValueStore;
 }  // namespace chromeos
 
-namespace privetd {
-class ShillClient;
-}
-
-namespace buffet {
+namespace weave {
 
 class StateManager;
+
+namespace privet {
+class ShillClient;
+}
 
 extern const char kErrorDomainOAuth2[];
 extern const char kErrorDomainGCD[];
@@ -71,7 +71,7 @@ class DeviceRegistrationInfo : public NotificationDelegate,
       const std::shared_ptr<chromeos::http::Transport>& transport,
       const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
       bool notifications_enabled,
-      privetd::ShillClient* shill_client);
+      privet::ShillClient* shill_client);
 
   ~DeviceRegistrationInfo() override;
 
@@ -135,7 +135,7 @@ class DeviceRegistrationInfo : public NotificationDelegate,
   std::string RegisterDevice(const std::string& ticket_id,
                              chromeos::ErrorPtr* error);
 
-  // Updates a command (override from buffet::CloudCommandUpdateInterface).
+  // Updates a command (override from CloudCommandUpdateInterface).
   void UpdateCommand(const std::string& command_id,
                      const base::DictionaryValue& command_patch,
                      const base::Closure& on_success,
@@ -330,7 +330,7 @@ class DeviceRegistrationInfo : public NotificationDelegate,
   NotificationChannel* current_notification_channel_{nullptr};
   bool notification_channel_starting_{false};
 
-  privetd::ShillClient* shill_client_{nullptr};
+  privet::ShillClient* shill_client_{nullptr};
 
   // Tracks our current registration status.
   RegistrationStatus registration_status_{RegistrationStatus::kUnconfigured};
@@ -341,6 +341,6 @@ class DeviceRegistrationInfo : public NotificationDelegate,
   DISALLOW_COPY_AND_ASSIGN(DeviceRegistrationInfo);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_DEVICE_REGISTRATION_INFO_H_

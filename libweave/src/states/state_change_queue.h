@@ -13,7 +13,7 @@
 
 #include "libweave/src/states/state_change_queue_interface.h"
 
-namespace buffet {
+namespace weave {
 
 // An object to record and retrieve device state change notification events.
 class StateChangeQueue : public StateChangeQueueInterface {
@@ -54,6 +54,6 @@ class StateChangeQueue : public StateChangeQueueInterface {
   DISALLOW_COPY_AND_ASSIGN(StateChangeQueue);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_STATES_STATE_CHANGE_QUEUE_H_

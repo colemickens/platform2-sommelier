@@ -9,7 +9,7 @@
 #include "libweave/src/device_registration_info.h"
 #include "libweave/src/states/state_manager.h"
 
-namespace buffet {
+namespace weave {
 
 namespace {
 
@@ -119,4 +119,4 @@ void BaseApiHandler::UpdateDeviceInfo(CommandInstance* command) {
   command->Done();
 }
 
-}  // namespace buffet
+}  // namespace weave

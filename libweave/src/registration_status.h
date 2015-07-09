@@ -7,7 +7,7 @@
 
 #include <string>
 
-namespace buffet {
+namespace weave {
 
 // See the DBus interface XML file for complete descriptions of these states.
 enum class RegistrationStatus {
@@ -19,6 +19,6 @@ enum class RegistrationStatus {
 
 std::string StatusToString(RegistrationStatus status);
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_REGISTRATION_STATUS_H_

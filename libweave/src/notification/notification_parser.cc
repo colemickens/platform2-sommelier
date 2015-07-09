@@ -6,7 +6,7 @@
 
 #include <base/logging.h>
 
-namespace buffet {
+namespace weave {
 
 namespace {
 
@@ -67,4 +67,4 @@ bool ParseNotificationJson(const base::DictionaryValue& notification,
   return true;
 }
 
-}  // namespace buffet
+}  // namespace weave

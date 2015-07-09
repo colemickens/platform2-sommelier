@@ -16,7 +16,7 @@
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
 
-namespace buffet {
+namespace weave {
 
 DBusCommandProxy::DBusCommandProxy(ExportedObjectManager* object_manager,
                                    const scoped_refptr<dbus::Bus>& bus,
@@ -110,4 +110,4 @@ void DBusCommandProxy::Done() {
   command_instance_->Done();
 }
 
-}  // namespace buffet
+}  // namespace weave

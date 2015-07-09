@@ -18,7 +18,7 @@
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/commands/schema_utils.h"
 
-namespace buffet {
+namespace weave {
 
 enum class ConstraintType { Min, Max, StringLengthMin, StringLengthMax, OneOf };
 
@@ -320,6 +320,6 @@ class ConstraintOneOf : public Constraint {
   DISALLOW_COPY_AND_ASSIGN(ConstraintOneOf);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_PROP_CONSTRAINTS_H_

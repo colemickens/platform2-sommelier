@@ -4,7 +4,7 @@
 
 #include "libweave/src/states/error_codes.h"
 
-namespace buffet {
+namespace weave {
 namespace errors {
 namespace state {
 
@@ -17,4 +17,4 @@ const char kPropertyRedefinition[] = "property_redefinition";
 
 }  // namespace state
 }  // namespace errors
-}  // namespace buffet
+}  // namespace weave

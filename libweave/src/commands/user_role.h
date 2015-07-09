@@ -8,7 +8,7 @@
 #include <string>
 #include <chromeos/errors/error.h>
 
-namespace buffet {
+namespace weave {
 
 enum class UserRole {
   kViewer,
@@ -23,6 +23,6 @@ bool FromString(const std::string& str,
                 UserRole* role,
                 chromeos::ErrorPtr* error);
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_USER_ROLE_H_

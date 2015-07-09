@@ -19,7 +19,7 @@
 #include "libweave/src/commands/command_instance.h"
 #include "libweave/src/commands/unittest_utils.h"
 
-namespace buffet {
+namespace weave {
 
 using ::testing::AnyNumber;
 using ::testing::Invoke;
@@ -97,7 +97,7 @@ class DBusCommandProxyTest : public ::testing::Test {
     command_instance_->SetID(kTestCommandId);
 
     // Set up a mock ExportedObject to be used with the DBus command proxy.
-    std::string cmd_path = dbus_constants::kCommandServicePathPrefix;
+    std::string cmd_path = buffet::kCommandServicePathPrefix;
     cmd_path += kTestCommandId;
     const dbus::ObjectPath kCmdObjPath(cmd_path);
     // Use a mock exported object for the exported object manager.
@@ -213,4 +213,4 @@ TEST_F(DBusCommandProxyTest, Done) {
   EXPECT_EQ(CommandInstance::kStatusDone, GetCommandAdaptor()->GetStatus());
 }
 
-}  // namespace buffet
+}  // namespace weave

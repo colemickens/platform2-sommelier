@@ -24,7 +24,8 @@ using testing::Return;
 using testing::ReturnRef;
 using testing::SetArgPointee;
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 ACTION_TEMPLATE(RunCallback,
                 HAS_1_TEMPLATE_PARAMS(int, k),
@@ -224,6 +225,7 @@ class MockIdentityDelegate : public IdentityDelegate {
   }
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_MOCK_DELEGATES_H_

@@ -4,7 +4,7 @@
 
 #include "libweave/src/commands/schema_constants.h"
 
-namespace buffet {
+namespace weave {
 
 namespace errors {
 namespace commands {
@@ -75,4 +75,4 @@ const char kCommand_Visibility_All[] = "all";
 }  // namespace attributes
 }  // namespace commands
 
-}  // namespace buffet
+}  // namespace weave

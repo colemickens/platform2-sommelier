@@ -13,7 +13,7 @@
 #include "libweave/src/commands/schema_utils.h"
 #include "libweave/src/states/error_codes.h"
 
-namespace buffet {
+namespace weave {
 
 StatePackage::StatePackage(const std::string& name) : name_(name) {
 }
@@ -113,4 +113,4 @@ bool StatePackage::SetPropertyValue(const std::string& property_name,
   return true;
 }
 
-}  // namespace buffet
+}  // namespace weave

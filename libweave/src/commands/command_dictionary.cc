@@ -10,7 +10,7 @@
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/schema_constants.h"
 
-namespace buffet {
+namespace weave {
 
 std::vector<std::string> CommandDictionary::GetCommandNamesByCategory(
     const std::string& category) const {
@@ -258,4 +258,4 @@ void CommandDictionary::Clear() {
   definitions_.clear();
 }
 
-}  // namespace buffet
+}  // namespace weave

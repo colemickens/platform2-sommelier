@@ -30,9 +30,11 @@
 #include "libweave/src/states/state_manager.h"
 #include "libweave/src/utils.h"
 
-const char buffet::kErrorDomainOAuth2[] = "oauth2";
-const char buffet::kErrorDomainGCD[] = "gcd";
-const char buffet::kErrorDomainGCDServer[] = "gcd_server";
+namespace weave {
+
+const char kErrorDomainOAuth2[] = "oauth2";
+const char kErrorDomainGCD[] = "gcd";
+const char kErrorDomainGCDServer[] = "gcd_server";
 
 namespace {
 
@@ -49,7 +51,7 @@ std::pair<std::string, std::string> BuildAuthHeader(
 }
 
 inline void SetUnexpectedError(chromeos::ErrorPtr* error) {
-  chromeos::Error::AddTo(error, FROM_HERE, buffet::kErrorDomainGCD,
+  chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainGCD,
                          "unexpected_response", "Unexpected GCD error");
 }
 
@@ -74,7 +76,7 @@ void ParseGCDError(const base::DictionaryValue* json,
     std::string error_code, error_message;
     if (error_object->GetString("reason", &error_code) &&
         error_object->GetString("message", &error_message)) {
-      chromeos::Error::AddTo(error, FROM_HERE, buffet::kErrorDomainGCDServer,
+      chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainGCDServer,
                              error_code, error_message);
     } else {
       SetUnexpectedError(error);
@@ -107,8 +109,6 @@ void IgnoreCloudResultWithCallback(const base::Closure& cb,
 
 }  // anonymous namespace
 
-namespace buffet {
-
 DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<CommandManager>& command_manager,
     const std::shared_ptr<StateManager>& state_manager,
@@ -116,7 +116,7 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<chromeos::http::Transport>& transport,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
     bool notifications_enabled,
-    privetd::ShillClient* shill_client)
+    privet::ShillClient* shill_client)
     : transport_{transport},
       task_runner_{task_runner},
       command_manager_{command_manager},
@@ -239,8 +239,8 @@ DeviceRegistrationInfo::ParseOAuthResponse(chromeos::http::Response* response,
     if (!resp->GetString("error_description", &error_message)) {
       error_message = "Unexpected OAuth error";
     }
-    chromeos::Error::AddTo(error, FROM_HERE, buffet::kErrorDomainOAuth2,
-                           error_code, error_message);
+    chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainOAuth2, error_code,
+                           error_message);
     return std::unique_ptr<base::DictionaryValue>();
   }
   return resp;
@@ -610,7 +610,7 @@ void DeviceRegistrationInfo::OnCloudRequestSuccess(
   if (!response->IsSuccessful()) {
     ParseGCDError(json_resp.get(), &error);
     if (status_code == chromeos::http::status_code::Forbidden &&
-        error->HasError(buffet::kErrorDomainGCDServer, "rateLimitExceeded")) {
+        error->HasError(kErrorDomainGCDServer, "rateLimitExceeded")) {
       // If we exceeded server quota, retry the request later.
       RetryCloudRequest(data);
       return;
@@ -648,7 +648,7 @@ void DeviceRegistrationInfo::OnAccessTokenRefreshed(
 void DeviceRegistrationInfo::OnAccessTokenError(
     const std::shared_ptr<const CloudRequestData>& data,
     const chromeos::Error* error) {
-  if (error->HasError(buffet::kErrorDomainOAuth2, "invalid_grant"))
+  if (error->HasError(kErrorDomainOAuth2, "invalid_grant"))
     MarkDeviceUnregistered();
   data->error_callback.Run(error);
 }
@@ -1058,7 +1058,7 @@ void DeviceRegistrationInfo::OnPermanentFailure() {
   auto mark_unregistered =
       base::Bind(&DeviceRegistrationInfo::MarkDeviceUnregistered, AsWeakPtr());
   auto error_callback = [mark_unregistered](const chromeos::Error* error) {
-    if (error->HasError(buffet::kErrorDomainOAuth2, "invalid_grant"))
+    if (error->HasError(kErrorDomainOAuth2, "invalid_grant"))
       mark_unregistered.Run();
   };
   RefreshAccessToken(base::Bind(&base::DoNothing), base::Bind(error_callback));
@@ -1113,4 +1113,4 @@ void DeviceRegistrationInfo::MarkDeviceUnregistered() {
   SetRegistrationStatus(RegistrationStatus::kInvalidCredentials);
 }
 
-}  // namespace buffet
+}  // namespace weave

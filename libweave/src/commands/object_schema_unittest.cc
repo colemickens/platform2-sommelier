@@ -19,7 +19,7 @@
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/commands/unittest_utils.h"
 
-namespace buffet {
+namespace weave {
 
 using unittests::CreateValue;
 using unittests::CreateDictionaryValue;
@@ -1714,4 +1714,4 @@ TEST(CommandSchema, ObjectSchema_UseRequired_Failure) {
   EXPECT_EQ("Required parameter missing: param1", error->GetMessage());
 }
 
-}  // namespace buffet
+}  // namespace weave

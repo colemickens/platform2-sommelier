@@ -27,7 +27,8 @@ using testing::Invoke;
 using testing::Return;
 using testing::SetArgPointee;
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 namespace {
 
@@ -724,4 +725,5 @@ TEST_F(PrivetHandlerSetupTest, CommandsList) {
                HandleRequest("/privet/v3/commands/list", "{}"));
 }
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave

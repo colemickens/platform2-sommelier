@@ -16,7 +16,7 @@
 #include "libweave/src/states/state_change_queue_interface.h"
 #include "libweave/src/utils.h"
 
-namespace buffet {
+namespace weave {
 
 namespace {
 
@@ -311,4 +311,4 @@ StatePackage* StateManager::FindOrCreatePackage(
   return package;
 }
 
-}  // namespace buffet
+}  // namespace weave

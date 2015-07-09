@@ -11,7 +11,7 @@ namespace base {
 class DictionaryValue;
 }  // namespace base
 
-namespace buffet {
+namespace weave {
 
 class NotificationDelegate;
 
@@ -27,6 +27,6 @@ class NotificationChannel {
   virtual void Stop() = 0;
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_NOTIFICATION_NOTIFICATION_CHANNEL_H_

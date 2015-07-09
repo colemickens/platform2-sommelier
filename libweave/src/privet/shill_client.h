@@ -19,7 +19,8 @@
 
 #include "shill/dbus-proxies.h"
 
-namespace privetd {
+namespace weave {
+namespace privet {
 
 enum class ServiceState {
   kOffline = 0,
@@ -128,6 +129,7 @@ class ShillClient final {
   DISALLOW_COPY_AND_ASSIGN(ShillClient);
 };
 
-}  // namespace privetd
+}  // namespace privet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_PRIVET_SHILL_CLIENT_H_

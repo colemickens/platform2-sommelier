@@ -20,7 +20,7 @@ namespace base {
 class Value;
 }  // namespace base
 
-namespace buffet {
+namespace weave {
 
 class CommandDefinition;
 class CommandDictionary;
@@ -151,6 +151,6 @@ class CommandInstance final {
   DISALLOW_COPY_AND_ASSIGN(CommandInstance);
 };
 
-}  // namespace buffet
+}  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_COMMAND_INSTANCE_H_

@@ -9,7 +9,7 @@
 #include "libweave/src/commands/enum_to_string.h"
 #include "libweave/src/commands/schema_constants.h"
 
-namespace buffet {
+namespace weave {
 
 template <>
 const EnumToString<UserRole>::Map EnumToString<UserRole>::kMap[] = {
@@ -34,4 +34,4 @@ bool FromString(const std::string& str,
   return false;
 }
 
-}  // namespace buffet
+}  // namespace weave
