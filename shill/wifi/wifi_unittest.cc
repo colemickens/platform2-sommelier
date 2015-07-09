@@ -1332,6 +1332,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_->scan_failed_callback_.IsCancelled();
   }
 
+  void SetWiFiEnabled(bool enabled) {
+    wifi_->enabled_ = enabled;
+  }
+
   MOCK_METHOD1(SuspendCallback, void(const Error& error));
 
   EventDispatcher* event_dispatcher_;
@@ -4390,15 +4394,29 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokesOnDHCPLeaseObtained) {
 }
 
 TEST_F(WiFiMainTest, OnBeforeSuspend_CallsWakeOnWiFi) {
+  SetWiFiEnabled(true);
   EXPECT_CALL(
       *wake_on_wifi_,
       OnBeforeSuspend(IsConnectedToCurrentService(), _, _, _, _, _, _));
   OnBeforeSuspend();
+
+  SetWiFiEnabled(false);
+  EXPECT_CALL(*wake_on_wifi_,
+              OnBeforeSuspend(IsConnectedToCurrentService(), _, _, _, _, _, _))
+      .Times(0);
+  OnBeforeSuspend();
 }
 
 TEST_F(WiFiMainTest, OnDarkResume_CallsWakeOnWiFi) {
+  SetWiFiEnabled(true);
   EXPECT_CALL(*wake_on_wifi_,
               OnDarkResume(IsConnectedToCurrentService(), _, _, _, _, _));
+  OnDarkResume();
+
+  SetWiFiEnabled(false);
+  EXPECT_CALL(*wake_on_wifi_,
+              OnDarkResume(IsConnectedToCurrentService(), _, _, _, _, _))
+      .Times(0);
   OnDarkResume();
 }
 
