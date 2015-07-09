@@ -70,7 +70,10 @@ const std::map<std::string, std::string> kIntelUarchFileTable {
     // {"06_36", "Saltwell"},  // Atom
     // {"06_4C", "Airmont"},   // Braswell
     // {"06_4E", "Skylake"},
-    // {"06_3D", "Broadwell"},
+    // {"06_37", "Silvermont"},
+    {"06_56", "Broadwell"},    // Broadwell-DE
+    {"06_47", "Broadwell"},    // Broadwell-H
+    {"06_3D", "Broadwell"},
     {"06_3C", "Haswell"},
     {"06_3F", "Haswell"},
     {"06_45", "Haswell"},
