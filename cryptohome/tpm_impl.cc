@@ -2634,14 +2634,15 @@ void TpmImpl::SetOwnerPassword(const chromeos::SecureBlob& owner_password) {
   owner_password_.assign(owner_password.begin(), owner_password.end());
 }
 
-bool TpmImpl::CreateWrappedRsaKey(SecureBlob* wrapped_key) {
+bool TpmImpl::WrapRsaKey(SecureBlob public_modulus,
+                         SecureBlob prime_factor,
+                         SecureBlob* wrapped_key) {
   TSS_RESULT result;
-
   // Load the Storage Root Key
   trousers::ScopedTssKey srk_handle(tpm_context_.value());
   if (!LoadSrk(tpm_context_.value(), srk_handle.ptr(), &result)) {
     if (result != kKeyNotFoundError) {
-      TPM_LOG(INFO, result) << "CreateWrappedRsaKey: Cannot load SRK";
+      TPM_LOG(INFO, result) << "WrapRsaKey: Cannot load SRK";
     }
     return false;
   }
@@ -2652,7 +2653,7 @@ bool TpmImpl::CreateWrappedRsaKey(SecureBlob* wrapped_key) {
   trousers::ScopedTssMemory public_srk(tpm_context_.value());
   if (TPM_ERROR(result = Tspi_Key_GetPubKey(srk_handle, &size_n,
                                             public_srk.ptr()))) {
-    TPM_LOG(INFO, result) << "CreateWrappedRsaKey: Cannot load SRK pub key";
+    TPM_LOG(INFO, result) << "WrapRsaKey: Cannot load SRK pub key";
     return false;
   }
 
@@ -2715,28 +2716,21 @@ bool TpmImpl::CreateWrappedRsaKey(SecureBlob* wrapped_key) {
     TPM_LOG(ERROR, result) << "Error assigning migration policy";
     return false;
   }
-
-  SecureBlob n;
-  SecureBlob p;
-  if (!CryptoLib::CreateRsaKey(kDefaultTpmRsaKeyBits, &n, &p)) {
-    LOG(ERROR) << "Error creating RSA key";
-    return false;
-  }
-
+  BYTE* public_modulus_buffer = static_cast<BYTE *>(public_modulus.data());
   if (TPM_ERROR(result = Tspi_SetAttribData(local_key_handle,
                                             TSS_TSPATTRIB_RSAKEY_INFO,
                                             TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
-                                            n.size(),
-                                            static_cast<BYTE *>(n.data())))) {
+                                            public_modulus.size(),
+                                            public_modulus_buffer))) {
     TPM_LOG(ERROR, result) << "Error setting RSA modulus";
     return false;
   }
-
+  BYTE* prime_factor_buffer = static_cast<BYTE *>(prime_factor.data());
   if (TPM_ERROR(result = Tspi_SetAttribData(local_key_handle,
                                             TSS_TSPATTRIB_KEY_BLOB,
                                             TSS_TSPATTRIB_KEYBLOB_PRIVATE_KEY,
-                                            p.size(),
-                                            static_cast<BYTE *>(p.data())))) {
+                                            prime_factor.size(),
+                                            prime_factor_buffer))) {
     TPM_LOG(ERROR, result) << "Error setting private key";
     return false;
   }

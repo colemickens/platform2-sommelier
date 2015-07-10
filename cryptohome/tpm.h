@@ -431,17 +431,20 @@ class Tpm {
 
   virtual bool IsTransient(TpmRetryAction retry_action) = 0;
 
-  // Creates an RSA key wrapped by the TPM's Storage Root Key. The key is
-  // created by OpenSSL, and not by the TPM.
+  // Wrapps a provided RSA key with the TPM's Storage Root Key.
   //
   // Parameters
+  //   public_modulus - the public modulus of the provided Rsa key
+  //   prime_factor - one of the prime factors of the Rsa key to wrap
   //   wrapped_key (OUT) - A blob representing the wrapped key
-  virtual bool CreateWrappedRsaKey(chromeos::SecureBlob* wrapped_key) = 0;
+  virtual bool WrapRsaKey(chromeos::SecureBlob public_modulus,
+                          chromeos::SecureBlob prime_factor,
+                          chromeos::SecureBlob* wrapped_key) = 0;
 
   // Loads an SRK-wrapped key into the TPM.
   //
   // Parameters
-  //   wrapped_key - The blob (as produced by CreateWrappedRsaKey).
+  //   wrapped_key - The blob (as produced by WrapRsaKey).
   //   key_handle (OUT) - A handle to the key loaded into the TPM.
   virtual TpmRetryAction LoadWrappedKey(const chromeos::SecureBlob& wrapped_key,
                                         ScopedKeyHandle* key_handle) = 0;

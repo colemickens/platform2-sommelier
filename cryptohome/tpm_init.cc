@@ -37,6 +37,7 @@ const char* kOpenCryptokiPath = "/var/lib/opencryptoki";
 const char kDefaultCryptohomeKeyFile[] = "/home/.shadow/cryptohome.key";
 
 const int kOwnerPasswordLength = 12;
+const unsigned int kDefaultTpmRsaKeyBits = 2048;
 const char kTpmWellKnownPassword[] = TSS_WELL_KNOWN_SECRET;
 
 // TpmInitTask is a private class used to handle asynchronous initialization of
@@ -492,9 +493,15 @@ bool TpmInit::IsOwnedCheckViaSysfs() {
 }
 
 bool TpmInit::CreateCryptohomeKey() {
+  SecureBlob n;
+  SecureBlob p;
+  if (!CryptoLib::CreateRsaKey(kDefaultTpmRsaKeyBits, &n, &p)) {
+    LOG(ERROR) << "Error creating RSA key";
+    return false;
+  }
   chromeos::SecureBlob wrapped_key;
-  if (!get_tpm()->CreateWrappedRsaKey(&wrapped_key)) {
-    LOG(ERROR) << "Couldn't create cryptohome key";
+  if (!get_tpm()->WrapRsaKey(n, p, &wrapped_key)) {
+    LOG(ERROR) << "Couldn't wrap cryptohome key";
     return false;
   }
 

@@ -110,7 +110,9 @@ class Tpm2Impl : public Tpm {
   bool TestTpmAuth(const chromeos::SecureBlob& owner_password) override;
   void SetOwnerPassword(const chromeos::SecureBlob& owner_password) override;
   bool IsTransient(TpmRetryAction retry_action) override;
-  bool CreateWrappedRsaKey(chromeos::SecureBlob* wrapped_key) override;
+  bool WrapRsaKey(SecureBlob public_modulus,
+                  SecureBlob prime_factor,
+                  SecureBlob* wrapped_key) override;
   TpmRetryAction LoadWrappedKey(const chromeos::SecureBlob& wrapped_key,
                                 ScopedKeyHandle* key_handle) override;
   bool LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,

@@ -127,7 +127,9 @@ class StubTpm : public Tpm {
   bool TestTpmAuth(const SecureBlob& owner_password) override { return false; }
   void SetOwnerPassword(const SecureBlob& owner_password) override {}
   bool IsTransient(TpmRetryAction retry_action) override { return false; }
-  bool CreateWrappedRsaKey(SecureBlob* wrapped_key) override { return false; }
+  bool WrapRsaKey(SecureBlob public_modulus,
+                  SecureBlob prime_factor,
+                  SecureBlob* wrapped_key) override { return false; }
   TpmRetryAction LoadWrappedKey(const SecureBlob& wrapped_key,
                                 ScopedKeyHandle* key_handle) override
     { return kTpmRetryFatal; }

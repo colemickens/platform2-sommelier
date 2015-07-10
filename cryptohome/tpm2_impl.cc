@@ -377,7 +377,9 @@ bool Tpm2Impl::IsTransient(TpmRetryAction retry_action) {
   return false;
 }
 
-bool Tpm2Impl::CreateWrappedRsaKey(SecureBlob* wrapped_key) {
+bool Tpm2Impl::WrapRsaKey(SecureBlob public_modulus,
+                          SecureBlob prime_factor,
+                          SecureBlob* wrapped_key) {
   LOG(FATAL) << "Not Implemented.";
   return false;
 }
