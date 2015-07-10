@@ -96,6 +96,26 @@ class CryptoLib {
                                          PaddingScheme padding, BlockMode mode,
                                          chromeos::SecureBlob* ciphertext);
 
+  // Obscure an RSA message by encrypting part of it.
+  // The TPM could _in theory_ produce an RSA message (as a response from Bind)
+  // that contains a header of a known format. If it did, and we encrypted the
+  // whole message with a passphrase-derived AES key, then one could test
+  // passphrase correctness by trial-decrypting the header. Instead, encrypt
+  // only part of the message, and hope the part we encrypt is part of the RSA
+  // message.
+  //
+  // In practice, this never makes any difference, because no TPM does that; the
+  // result is always a bare PKCS1.5-padded RSA-encrypted message, which is
+  // (as far as the author knows, although no proof is known) indistinguishable
+  // from random data, and hence the attack this would protect against is
+  // infeasible.
+  static bool ObscureRSAMessage(const chromeos::SecureBlob& plaintext,
+                                const chromeos::SecureBlob& key,
+                                chromeos::SecureBlob* ciphertext);
+  static  bool UnobscureRSAMessage(const chromeos::SecureBlob& ciphertext,
+                                   const chromeos::SecureBlob& key,
+                                   chromeos::SecureBlob* plaintext);
+
   // Encodes a binary blob to hex-ascii. Similar to base::HexEncode but
   // produces lowercase letters for hex digits.
   //

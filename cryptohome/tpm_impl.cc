@@ -482,7 +482,7 @@ Tpm::TpmRetryAction TpmImpl::EncryptBlob(TpmKeyHandle key_handle,
     LOG(ERROR) << __func__ << ": Failed to read encrypted blob.";
     return kTpmRetryFailNoRetry;
   }
-  if (!ObscureRSAMessage(enc_data_blob, key, ciphertext)) {
+  if (!CryptoLib::ObscureRSAMessage(enc_data_blob, key, ciphertext)) {
     LOG(ERROR) << "Error obscuring message.";
     return kTpmRetryFailNoRetry;
   }
@@ -495,7 +495,10 @@ Tpm::TpmRetryAction TpmImpl::DecryptBlob(TpmKeyHandle key_handle,
                                          SecureBlob* plaintext) {
   TSS_RESULT result = TSS_SUCCESS;
   SecureBlob local_data;
-  UnobscureRSAMessage(ciphertext, key, &local_data);
+  if (!CryptoLib::UnobscureRSAMessage(ciphertext, key, &local_data)) {
+    LOG(ERROR) << "Error unobscureing message.";
+    return kTpmRetryFailNoRetry;
+  }
 
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
   ScopedTssKey enc_handle(tpm_context_.value());
@@ -529,80 +532,6 @@ Tpm::TpmRetryAction TpmImpl::DecryptBlob(TpmKeyHandle key_handle,
   chromeos::SecureMemset(dec_data.value(), 0, dec_data_length);
 
   return kTpmRetryNone;
-}
-
-// Obscure (and deobscure) RSA messages.
-// Let k be a key derived from the user passphrase. On disk, we store
-// m = ObscureRSAMessage(RSA-on-TPM(random-data), k). The reason for this
-// function is the existence of an ambiguity in the TPM spec: the format of data
-// returned by Tspi_Data_Bind is unspecified, so it's _possible_ (although does
-// not happen in practice) that RSA-on-TPM(random-data) could start with some
-// kind of ASN.1 header or whatever (some known data). If this was true, and we
-// encrypted all of RSA-on-TPM(random-data), then one could test values of k by
-// decrypting RSA-on-TPM(random-data) and looking for the known header, which
-// would allow brute-forcing the user passphrase without talking to the TPM.
-//
-// Therefore, we instead encrypt _one block_ of RSA-on-TPM(random-data) with AES
-// in ECB mode; we pick the last AES block, in the hope that that block will be
-// part of the RSA message. TODO(ellyjones): why? if the TPM could add a header,
-// it could also add a footer, and we'd be just as sunk.
-//
-// If we do encrypt part of the RSA message, the entirety of
-// RSA-on-TPM(random-data) should be impossible to decrypt, without encrypting
-// any known plaintext. This approach also requires brute-force attempts on k to
-// go through the TPM, since there's no way to test a potential decryption
-// without doing UnRSA-on-TPM() to see if the message is valid now.
-bool TpmImpl::ObscureRSAMessage(const SecureBlob& plaintext,
-                                const SecureBlob& key,
-                                SecureBlob* ciphertext) {
-  unsigned int aes_block_size = CryptoLib::GetAesBlockSize();
-  if (plaintext.size() < aes_block_size * 2) {
-    LOG(ERROR) << "Plaintext is too small.";
-    return false;
-  }
-  unsigned int offset = plaintext.size() - aes_block_size;
-
-  SecureBlob obscured_chunk;
-  if (!CryptoLib::AesEncryptSpecifyBlockMode(plaintext, offset, aes_block_size,
-                                             key, SecureBlob(0),
-                                             CryptoLib::kPaddingNone,
-                                             CryptoLib::kEcb,
-                                             &obscured_chunk)) {
-    LOG(ERROR) << "AES encryption failed.";
-    return false;
-  }
-  ciphertext->resize(plaintext.size());
-  char *data = reinterpret_cast<char*>(ciphertext->data());
-  memcpy(data, plaintext.data(), plaintext.size());
-  memcpy(data + offset, obscured_chunk.data(), obscured_chunk.size());
-  return true;
-}
-
-bool TpmImpl::UnobscureRSAMessage(const SecureBlob& ciphertext,
-                                  const SecureBlob& key,
-                                  SecureBlob* plaintext) {
-  unsigned int aes_block_size = CryptoLib::GetAesBlockSize();
-  if (ciphertext.size() < aes_block_size * 2) {
-    LOG(ERROR) << "Ciphertext is is too small.";
-    return false;
-  }
-  unsigned int offset = ciphertext.size() - aes_block_size;
-
-  SecureBlob unobscured_chunk;
-  if (!CryptoLib::AesDecryptSpecifyBlockMode(ciphertext, offset, aes_block_size,
-                                           key, SecureBlob(0),
-                                           CryptoLib::kPaddingNone,
-                                           CryptoLib::kEcb,
-                                           &unobscured_chunk)) {
-    LOG(ERROR) << "AES decryption failed.";
-    return false;
-  }
-  plaintext->resize(ciphertext.size());
-  char *data = reinterpret_cast<char*>(plaintext->data());
-  memcpy(data, ciphertext.data(), ciphertext.size());
-  memcpy(data + offset, unobscured_chunk.data(),
-         unobscured_chunk.size());
-  return true;
 }
 
 bool TpmImpl::GetPublicKeyBlob(TSS_HCONTEXT context_handle,
