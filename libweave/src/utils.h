@@ -14,10 +14,9 @@
 
 namespace weave {
 
-// Buffet-wide errors.
 // TODO(avakulenko): This should be consolidated into errors::<domain> namespace
 // See crbug.com/417274
-extern const char kErrorDomainBuffet[];
+extern const char kErrorDomain[];
 extern const char kFileReadError[];
 extern const char kInvalidCategoryError[];
 extern const char kInvalidPackageError[];

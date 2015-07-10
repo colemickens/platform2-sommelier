@@ -14,6 +14,9 @@
 #include <base/scoped_observer.h>
 
 #include "libweave/src/privet/cloud_delegate.h"
+#include "libweave/src/privet/security_manager.h"
+#include "libweave/src/privet/wifi_bootstrap_manager.h"
+#include "weave/device.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -44,21 +47,13 @@ class PeerdClient;
 class PrivetHandler;
 class SecurityManager;
 class ShillClient;
-class WifiBootstrapManager;
 
 class Manager : public CloudDelegate::Observer {
  public:
-  struct Options {
-    bool disable_privet{false};
-    bool disable_security{false};
-    bool enable_ping{false};
-    base::FilePath config_path;
-  };
-
   Manager();
   ~Manager();
 
-  void Start(const Options& options,
+  void Start(const weave::Device::Options& options,
              const scoped_refptr<dbus::Bus>& bus,
              ShillClient* shill_client,
              DeviceRegistrationInfo* device,
@@ -66,17 +61,21 @@ class Manager : public CloudDelegate::Observer {
              StateManager* state_manager,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
-  void OnShutdown();
+  std::string GetCurrentlyConnectedSsid() const;
 
-  void OnDeviceInfoChanged() override;
+  void AddOnWifiSetupChangedCallback(
+      const WifiBootstrapManager::StateListener& callback);
 
-  privet::WifiBootstrapManager* GetWifiBootstrapManager() {
-    return wifi_bootstrap_manager_.get();
-  }
+  void AddOnPairingChangedCallbacks(
+      const SecurityManager::PairingStartListener& on_start,
+      const SecurityManager::PairingEndListener& on_end);
 
-  privet::SecurityManager* GetSecurityManager() { return security_.get(); }
+  void Shutdown();
 
  private:
+  // CloudDelegate::Observer
+  void OnDeviceInfoChanged() override;
+
   void PrivetRequestHandler(std::unique_ptr<libwebserv::Request> request,
                             std::unique_ptr<libwebserv::Response> response);
 
@@ -88,7 +87,6 @@ class Manager : public CloudDelegate::Observer {
                          std::unique_ptr<libwebserv::Response> response);
 
   void OnChanged();
-
   void OnConnectivityChanged(bool online);
 
   void OnProtocolHandlerConnected(

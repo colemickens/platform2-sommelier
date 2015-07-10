@@ -704,7 +704,7 @@ bool DeviceRegistrationInfo::UpdateBaseConfig(
     chromeos::ErrorPtr* error) {
   BuffetConfig::Transaction change(config_.get());
   if (!change.set_local_anonymous_access_role(anonymous_access_role)) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain,
                                  "invalid_parameter", "Invalid role: %s",
                                  anonymous_access_role.c_str());
     return false;
@@ -724,8 +724,7 @@ bool DeviceRegistrationInfo::UpdateServiceConfig(
     const std::string& service_url,
     chromeos::ErrorPtr* error) {
   if (HaveRegistrationCredentials()) {
-    chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainBuffet,
-                           "already_registered",
+    chromeos::Error::AddTo(error, FROM_HERE, kErrorDomain, "already_registered",
                            "Unable to change config for registered device");
     return false;
   }
@@ -1010,7 +1009,7 @@ void DeviceRegistrationInfo::OnPublishStateError(const chromeos::Error* error) {
 void DeviceRegistrationInfo::SetRegistrationStatus(
     RegistrationStatus new_status) {
   VLOG_IF(1, new_status != registration_status_)
-      << "Changing registration status to " << StatusToString(new_status);
+      << "Changing registration status to " << static_cast<int>(new_status);
   registration_status_ = new_status;
   for (const auto& cb : on_registration_changed_)
     cb.Run(registration_status_);

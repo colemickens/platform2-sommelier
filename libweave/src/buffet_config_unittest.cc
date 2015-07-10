@@ -58,7 +58,7 @@ TEST_F(BuffetConfigTest, Defaults) {
   EXPECT_EQ(base::TimeDelta::FromSeconds(7), config_->polling_period());
   EXPECT_EQ(base::TimeDelta::FromMinutes(30), config_->backup_polling_period());
   EXPECT_TRUE(config_->wifi_auto_setup_enabled());
-  EXPECT_EQ(std::set<privet::PairingType>{privet::PairingType::kPinCode},
+  EXPECT_EQ(std::set<PairingType>{PairingType::kPinCode},
             config_->pairing_modes());
   EXPECT_EQ("", config_->embedded_code_path().value());
   EXPECT_EQ("Developer device", config_->name());
@@ -120,9 +120,9 @@ TEST_F(BuffetConfigTest, LoadConfig) {
   EXPECT_EQ(base::TimeDelta::FromMilliseconds(6589),
             config_->backup_polling_period());
   EXPECT_FALSE(config_->wifi_auto_setup_enabled());
-  std::set<privet::PairingType> pairing_types{
-      privet::PairingType::kPinCode, privet::PairingType::kEmbeddedCode,
-      privet::PairingType::kUltrasound32, privet::PairingType::kAudible32};
+  std::set<PairingType> pairing_types{
+      PairingType::kPinCode, PairingType::kEmbeddedCode,
+      PairingType::kUltrasound32, PairingType::kAudible32};
   EXPECT_EQ(pairing_types, config_->pairing_modes());
   EXPECT_EQ("/conf_code", config_->embedded_code_path().value());
   EXPECT_EQ("conf_name", config_->name());

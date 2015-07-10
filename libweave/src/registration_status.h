@@ -7,16 +7,11 @@
 
 #include <string>
 
+#include "weave/types.h"
+
 namespace weave {
 
-// See the DBus interface XML file for complete descriptions of these states.
-enum class RegistrationStatus {
-  kUnconfigured,        // We have no credentials.
-  kConnecting,          // We have credentials but not yet connected.
-  kConnected,           // We're registered and connected to the cloud.
-  kInvalidCredentials,  // Our registration has been revoked.
-};
-
+// TODO(vitalybuka): Use EnumToString.
 std::string StatusToString(RegistrationStatus status);
 
 }  // namespace weave

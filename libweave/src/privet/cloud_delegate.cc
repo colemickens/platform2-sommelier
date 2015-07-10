@@ -21,6 +21,7 @@
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/device_registration_info.h"
 #include "libweave/src/privet/constants.h"
+#include "libweave/src/registration_status.h"
 #include "libweave/src/states/state_manager.h"
 
 using chromeos::ErrorPtr;

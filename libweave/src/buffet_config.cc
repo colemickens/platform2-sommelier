@@ -150,15 +150,15 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
   if (store.GetString(config_keys::kEmbeddedCodePath, &embedded_code_path)) {
     embedded_code_path_ = base::FilePath(embedded_code_path);
     if (!embedded_code_path_.empty())
-      pairing_modes_ = {privet::PairingType::kEmbeddedCode};
+      pairing_modes_ = {PairingType::kEmbeddedCode};
   }
 
   std::string modes_str;
   if (store.GetString(config_keys::kPairingModes, &modes_str)) {
-    std::set<privet::PairingType> pairing_modes;
+    std::set<PairingType> pairing_modes;
     for (const std::string& mode :
          chromeos::string_utils::Split(modes_str, ",", true, true)) {
-      privet::PairingType pairing_mode;
+      PairingType pairing_mode;
       CHECK(privet::StringToPairingType(mode, &pairing_mode));
       pairing_modes.insert(pairing_mode);
     }

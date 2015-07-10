@@ -108,9 +108,7 @@ class BuffetConfig final {
   }
 
   bool wifi_auto_setup_enabled() const { return wifi_auto_setup_enabled_; }
-  const std::set<privet::PairingType>& pairing_modes() const {
-    return pairing_modes_;
-  }
+  const std::set<PairingType>& pairing_modes() const { return pairing_modes_; }
   const base::FilePath& embedded_code_path() const {
     return embedded_code_path_;
   }
@@ -153,7 +151,7 @@ class BuffetConfig final {
   base::TimeDelta backup_polling_period_{base::TimeDelta::FromMinutes(30)};
 
   bool wifi_auto_setup_enabled_{true};
-  std::set<privet::PairingType> pairing_modes_{privet::PairingType::kPinCode};
+  std::set<PairingType> pairing_modes_{PairingType::kPinCode};
   base::FilePath embedded_code_path_;
 
   std::string device_id_;

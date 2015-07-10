@@ -46,6 +46,7 @@
         '../libweave/src/commands/schema_constants.cc',
         '../libweave/src/commands/schema_utils.cc',
         '../libweave/src/commands/user_role.cc',
+        '../libweave/src/device_manager.cc',
         '../libweave/src/device_registration_info.cc',
         '../libweave/src/notification/notification_parser.cc',
         '../libweave/src/notification/pull_channel.cc',

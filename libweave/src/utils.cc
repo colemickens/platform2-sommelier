@@ -33,7 +33,7 @@ const size_t kMaxStrLen = 1700;  // Log messages are limited to 2000 chars.
 
 }  // anonymous namespace
 
-const char kErrorDomainBuffet[] = "buffet";
+const char kErrorDomain[] = "weave";
 const char kFileReadError[] = "file_read_error";
 const char kInvalidCategoryError[] = "invalid_category";
 const char kInvalidPackageError[] = "invalid_package";
@@ -44,8 +44,8 @@ std::unique_ptr<base::DictionaryValue> LoadJsonDict(
   std::string json_string;
   if (!base::ReadFileToString(json_file_path, &json_string)) {
     chromeos::errors::system::AddSystemError(error, FROM_HERE, errno);
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
-                                 kFileReadError, "Failed to read file '%s'",
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
+                                 "Failed to read file '%s'",
                                  json_file_path.value().c_str());
     return {};
   }

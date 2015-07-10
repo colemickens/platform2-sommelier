@@ -29,7 +29,6 @@
 #include "libweave/src/notification/notification_channel.h"
 #include "libweave/src/notification/notification_delegate.h"
 #include "libweave/src/notification/pull_channel.h"
-#include "libweave/src/registration_status.h"
 #include "libweave/src/states/state_change_queue_interface.h"
 #include "libweave/src/storage_interface.h"
 

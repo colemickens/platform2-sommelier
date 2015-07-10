@@ -31,12 +31,7 @@ class ShillClient;
 class WifiBootstrapManager : public WifiDelegate,
                              public CloudDelegate::Observer {
  public:
-  enum State {
-    kDisabled,
-    kBootstrapping,
-    kMonitoring,
-    kConnecting,
-  };
+  using State = WifiSetupState;
 
   using StateListener = base::Callback<void(State)>;
 
@@ -94,7 +89,7 @@ class WifiBootstrapManager : public WifiDelegate,
 
   // Initialization could be delayed if ssid_generator_ is not ready.
   bool is_initialized_{false};
-  State state_{kDisabled};
+  State state_{State::kDisabled};
   // Setup state is the temporal state of the most recent bootstrapping attempt.
   // It is not persisted to disk.
   SetupState setup_state_{SetupState::kNone};

@@ -35,9 +35,7 @@
 #include "libweave/src/privet/device_delegate.h"
 #include "libweave/src/privet/peerd_client.h"
 #include "libweave/src/privet/privet_handler.h"
-#include "libweave/src/privet/security_manager.h"
 #include "libweave/src/privet/shill_client.h"
-#include "libweave/src/privet/wifi_bootstrap_manager.h"
 
 namespace weave {
 namespace privet {
@@ -62,7 +60,7 @@ Manager::Manager() {
 Manager::~Manager() {
 }
 
-void Manager::Start(const Options& options,
+void Manager::Start(const Device::Options& options,
                     const scoped_refptr<dbus::Bus>& bus,
                     ShillClient* shill_client,
                     DeviceRegistrationInfo* device,
@@ -123,7 +121,27 @@ void Manager::Start(const Options& options,
   }
 }
 
-void Manager::OnShutdown() {
+std::string Manager::GetCurrentlyConnectedSsid() const {
+  return wifi_bootstrap_manager_
+             ? wifi_bootstrap_manager_->GetCurrentlyConnectedSsid()
+             : "";
+}
+
+void Manager::AddOnWifiSetupChangedCallback(
+    const WifiBootstrapManager::StateListener& callback) {
+  if (wifi_bootstrap_manager_)
+    wifi_bootstrap_manager_->RegisterStateListener(callback);
+  else
+    callback.Run(WifiSetupState::kDisabled);
+}
+
+void Manager::AddOnPairingChangedCallbacks(
+    const SecurityManager::PairingStartListener& on_start,
+    const SecurityManager::PairingEndListener& on_end) {
+  security_->RegisterPairingListeners(on_start, on_end);
+}
+
+void Manager::Shutdown() {
   web_server_->Disconnect();
 }
 

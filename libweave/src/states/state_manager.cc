@@ -181,7 +181,7 @@ bool StateManager::LoadStateDefinition(const base::DictionaryValue& json,
   while (!iter.IsAtEnd()) {
     std::string package_name = iter.key();
     if (package_name.empty()) {
-      chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainBuffet,
+      chromeos::Error::AddTo(error, FROM_HERE, kErrorDomain,
                              kInvalidPackageError,
                              "State package name is empty");
       return false;
@@ -214,7 +214,7 @@ bool StateManager::LoadStateDefinition(const base::FilePath& json_file_path,
     return false;
   std::string category = json_file_path.BaseName().RemoveExtension().value();
   if (category == kDefaultCategory) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain,
                                  kInvalidCategoryError,
                                  "Invalid state category specified in '%s'",
                                  json_file_path.value().c_str());
@@ -222,8 +222,8 @@ bool StateManager::LoadStateDefinition(const base::FilePath& json_file_path,
   }
 
   if (!LoadStateDefinition(*json, category, error)) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
-                                 kFileReadError, "Failed to load file '%s'",
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
+                                 "Failed to load file '%s'",
                                  json_file_path.value().c_str());
     return false;
   }
@@ -237,8 +237,8 @@ bool StateManager::LoadBaseStateDefinition(const base::FilePath& json_file_path,
   if (!json)
     return false;
   if (!LoadStateDefinition(*json, kDefaultCategory, error)) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
-                                 kFileReadError, "Failed to load file '%s'",
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
+                                 "Failed to load file '%s'",
                                  json_file_path.value().c_str());
     return false;
   }
@@ -251,7 +251,7 @@ bool StateManager::LoadStateDefaults(const base::DictionaryValue& json,
   while (!iter.IsAtEnd()) {
     std::string package_name = iter.key();
     if (package_name.empty()) {
-      chromeos::Error::AddTo(error, FROM_HERE, kErrorDomainBuffet,
+      chromeos::Error::AddTo(error, FROM_HERE, kErrorDomain,
                              kInvalidPackageError,
                              "State package name is empty");
       return false;
@@ -287,8 +287,8 @@ bool StateManager::LoadStateDefaults(const base::FilePath& json_file_path,
   if (!json)
     return false;
   if (!LoadStateDefaults(*json, error)) {
-    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomainBuffet,
-                                 kFileReadError, "Failed to load file '%s'",
+    chromeos::Error::AddToPrintf(error, FROM_HERE, kErrorDomain, kFileReadError,
+                                 "Failed to load file '%s'",
                                  json_file_path.value().c_str());
     return false;
   }

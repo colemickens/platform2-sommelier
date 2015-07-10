@@ -70,7 +70,7 @@ void WifiBootstrapManager::StartBootstrapping() {
     return;
   }
 
-  UpdateState(kBootstrapping);
+  UpdateState(State::kBootstrapping);
   if (!last_configured_ssid_.empty()) {
     // If we have been configured before, we'd like to periodically take down
     // our AP and find out if we can connect again.  Many kinds of failures are
@@ -94,7 +94,7 @@ void WifiBootstrapManager::StartConnecting(const std::string& ssid,
                                            const std::string& passphrase) {
   VLOG(1) << "WiFi is attempting to connect. (ssid=" << ssid
           << ", pass=" << passphrase << ").";
-  UpdateState(kConnecting);
+  UpdateState(State::kConnecting);
   base::MessageLoop::current()->PostDelayedTask(
       FROM_HERE, base::Bind(&WifiBootstrapManager::OnConnectTimeout,
                             tasks_weak_factory_.GetWeakPtr()),
@@ -112,27 +112,28 @@ void WifiBootstrapManager::StartMonitoring() {
   VLOG(1) << "Monitoring connectivity.";
   // We already have a callback in place with |shill_client_| to update our
   // connectivity state.  See OnConnectivityChange().
-  UpdateState(kMonitoring);
+  UpdateState(State::kMonitoring);
 }
 
 void WifiBootstrapManager::EndMonitoring() {
 }
 
 void WifiBootstrapManager::UpdateState(State new_state) {
-  VLOG(3) << "Switching state from " << state_ << " to " << new_state;
+  VLOG(3) << "Switching state from " << static_cast<int>(state_) << " to "
+          << static_cast<int>(new_state);
   // Abort irrelevant tasks.
   tasks_weak_factory_.InvalidateWeakPtrs();
 
   switch (state_) {
-    case kDisabled:
+    case State::kDisabled:
       break;
-    case kBootstrapping:
+    case State::kBootstrapping:
       EndBootstrapping();
       break;
-    case kMonitoring:
+    case State::kMonitoring:
       EndMonitoring();
       break;
-    case kConnecting:
+    case State::kConnecting:
       EndConnecting();
       break;
   }
@@ -221,11 +222,11 @@ void WifiBootstrapManager::OnConnectivityChange(bool is_connected) {
   VLOG(3) << "ConnectivityChanged: " << is_connected;
   UpdateConnectionState();
 
-  if (state_ == kBootstrapping) {
+  if (state_ == State::kBootstrapping) {
     StartMonitoring();
     return;
   }
-  if (state_ == kMonitoring) {
+  if (state_ == State::kMonitoring) {
     if (is_connected) {
       tasks_weak_factory_.InvalidateWeakPtrs();
     } else {

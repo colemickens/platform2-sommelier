@@ -20,23 +20,13 @@
 #include <chromeos/errors/error.h>
 
 #include "buffet/org.chromium.Buffet.Manager.h"
-#include "libweave/src/commands/command_manager.h"
-#include "libweave/src/device_registration_info.h"
-#include "libweave/src/privet/privet_manager.h"
-#include "libweave/src/privet/wifi_bootstrap_manager.h"
+#include "weave/device.h"
 
 namespace chromeos {
 namespace dbus_utils {
 class ExportedObjectManager;
 }  // namespace dbus_utils
 }  // namespace chromeos
-
-namespace weave {
-class BaseApiHandler;
-class BuffetConfig;
-class StateChangeQueue;
-class StateManager;
-}  // namespace weave
 
 namespace buffet {
 
@@ -58,16 +48,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
           object_manager);
   ~Manager();
 
-  struct Options {
-    base::FilePath config_path;
-    base::FilePath state_path;
-    base::FilePath test_definitions_path;
-    bool xmpp_enabled{true};
-    std::set<std::string> device_whitelist;
-    weave::privet::Manager::Options privet;
-  };
-
-  void Start(const Options& options,
+  void Start(const weave::Device::Options& options,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   void Stop();
@@ -80,9 +61,9 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   void RegisterDevice(DBusMethodResponsePtr<std::string> response,
                       const std::string& ticket_id) override;
   bool UpdateDeviceInfo(chromeos::ErrorPtr* error,
-                        const std::string& in_name,
-                        const std::string& in_description,
-                        const std::string& in_location) override;
+                        const std::string& name,
+                        const std::string& description,
+                        const std::string& location) override;
   bool UpdateServiceConfig(chromeos::ErrorPtr* error,
                            const std::string& client_id,
                            const std::string& client_secret,
@@ -119,30 +100,23 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
       const std::shared_ptr<DBusMethodResponse<std::string>>& response,
       const chromeos::Error* error);
 
-  void StartPrivet(const weave::privet::Manager::Options& options,
+  void StartPrivet(const weave::Device::Options& options,
                    chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   void OnCommandDefsChanged();
   void OnStateChanged();
   void OnRegistrationChanged(weave::RegistrationStatus status);
   void OnConfigChanged(const weave::BuffetConfig& config);
-  void UpdateWiFiBootstrapState(
-      weave::privet::WifiBootstrapManager::State state);
+  void UpdateWiFiBootstrapState(weave::WifiSetupState state);
   void OnPairingStart(const std::string& session_id,
-                      weave::privet::PairingType pairing_type,
+                      weave::PairingType pairing_type,
                       const std::vector<uint8_t>& code);
   void OnPairingEnd(const std::string& session_id);
 
   org::chromium::Buffet::ManagerAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
 
-  std::shared_ptr<weave::CommandManager> command_manager_;
-  std::unique_ptr<weave::StateChangeQueue> state_change_queue_;
-  std::shared_ptr<weave::StateManager> state_manager_;
-  std::unique_ptr<weave::DeviceRegistrationInfo> device_info_;
-  std::unique_ptr<weave::BaseApiHandler> base_api_handler_;
-  std::unique_ptr<weave::privet::ShillClient> shill_client_;
-  std::unique_ptr<weave::privet::Manager> privet_;
+  std::unique_ptr<weave::Device> device_;
 
   base::WeakPtrFactory<Manager> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Manager);

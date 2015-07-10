@@ -13,16 +13,10 @@
 #include <chromeos/secure_blob.h>
 
 #include "libweave/src/privet/privet_types.h"
+#include "weave/types.h"
 
 namespace weave {
 namespace privet {
-
-enum class PairingType {
-  kPinCode,
-  kEmbeddedCode,
-  kUltrasound32,
-  kAudible32,
-};
 
 enum class CryptoType {
   kNone,

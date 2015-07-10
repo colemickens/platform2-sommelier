@@ -24,7 +24,7 @@ namespace buffet {
 
 class Daemon final : public DBusServiceDaemon {
  public:
-  explicit Daemon(const buffet::Manager::Options& options)
+  explicit Daemon(const weave::Device::Options& options)
       : DBusServiceDaemon(kServiceName, kRootServicePath), options_{options} {}
 
  protected:
@@ -36,7 +36,7 @@ class Daemon final : public DBusServiceDaemon {
   void OnShutdown(int* return_code) override { manager_->Stop(); }
 
  private:
-  buffet::Manager::Options options_;
+  weave::Device::Options options_;
   std::unique_ptr<buffet::Manager> manager_;
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
@@ -80,17 +80,17 @@ int main(int argc, char* argv[]) {
   auto device_whitelist =
       chromeos::string_utils::Split(FLAGS_device_whitelist, ",", true, true);
 
-  buffet::Manager::Options options;
+  weave::Device::Options options;
   options.config_path = base::FilePath{FLAGS_config_path};
   options.state_path = base::FilePath{FLAGS_state_path};
+  options.definitions_path = base::FilePath{"/etc/buffet"};
   options.test_definitions_path = base::FilePath{FLAGS_test_definitions_path};
   options.xmpp_enabled = FLAGS_enable_xmpp;
   options.device_whitelist.insert(device_whitelist.begin(),
                                   device_whitelist.end());
-  options.privet.config_path = base::FilePath{FLAGS_config_path};
-  options.privet.disable_privet = FLAGS_disable_privet;
-  options.privet.disable_security = FLAGS_disable_security;
-  options.privet.enable_ping = FLAGS_enable_ping;
+  options.disable_privet = FLAGS_disable_privet;
+  options.disable_security = FLAGS_disable_security;
+  options.enable_ping = FLAGS_enable_ping;
 
   buffet::Daemon daemon{options};
   return daemon.Run();
