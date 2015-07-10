@@ -39,7 +39,7 @@ class SettingsMap {
   // |nullptr|, keys that have been added or deleted by the insertion are
   // inserted into the set. Note that this only includes all keys for which the
   // return value of GetValue() has changed.
-  virtual bool InsertDocument(std::unique_ptr<const SettingsDocument> document,
+  virtual bool InsertDocument(const SettingsDocument* document,
                               std::set<Key>* modified_keys) = 0;
 
   // Removes a settings document from the settings map and deletes it. The
@@ -48,7 +48,7 @@ class SettingsMap {
   // |nullptr|, keys that have been added or deleted by the deletion are
   // inserted into the set. Note that this only includes all keys for which the
   // return value of GetValue() has changed.
-  virtual void RemoveDocument(const SettingsDocument* document_ptr,
+  virtual void RemoveDocument(const SettingsDocument* document,
                               std::set<Key>* modified_keys) = 0;
 
  private:

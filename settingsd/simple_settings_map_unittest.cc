@@ -80,7 +80,7 @@ TEST_F(SimpleSettingsMapTest, InsertionSingleDocument) {
   SimpleSettingsMap settings_map;
   std::set<Key> modified_keys;
   EXPECT_TRUE(
-      settings_map.InsertDocument(std::move(document_A_), &modified_keys));
+      settings_map.InsertDocument(document_A_.get(), &modified_keys));
   std::set<Key> expected_modifications = {Key("A.B.C")};
   EXPECT_EQ(expected_modifications, modified_keys);
 
@@ -100,10 +100,10 @@ TEST_F(SimpleSettingsMapTest, InsertionTwoDocuments) {
   document_B_->SetDeletion(Key("A"));
 
   SimpleSettingsMap settings_map;
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_A_), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_A_.get(), nullptr));
   std::set<Key> modified_keys;
   EXPECT_TRUE(
-      settings_map.InsertDocument(std::move(document_B_), &modified_keys));
+      settings_map.InsertDocument(document_B_.get(), &modified_keys));
   std::set<Key> expected_modifications = {Key("A.B.C"), Key("B.C")};
   EXPECT_EQ(expected_modifications, modified_keys);
 
@@ -122,10 +122,10 @@ TEST_F(SimpleSettingsMapTest, InsertionTwoDocumentsInverseOrder) {
   document_B_->SetDeletion(Key("A"));
 
   SimpleSettingsMap settings_map;
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_B_), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_B_.get(), nullptr));
   std::set<Key> modified_keys;
   EXPECT_TRUE(
-      settings_map.InsertDocument(std::move(document_A_), &modified_keys));
+      settings_map.InsertDocument(document_A_.get(), &modified_keys));
   std::set<Key> expected_modifications;
   EXPECT_EQ(expected_modifications, modified_keys);
 
@@ -142,11 +142,10 @@ TEST_F(SimpleSettingsMapTest, DocumentRemoval) {
   document_B_->SetKey(Key("B"), MakeIntValue(3));
 
   SimpleSettingsMap settings_map;
-  SettingsDocument* document_B_ptr = document_B_.get();
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_A_), nullptr));
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_B_), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_A_.get(), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_B_.get(), nullptr));
   std::set<Key> modified_keys;
-  settings_map.RemoveDocument(document_B_ptr, &modified_keys);
+  settings_map.RemoveDocument(document_B_.get(), &modified_keys);
   std::set<Key> expected_modifications = {Key("B")};
   EXPECT_EQ(expected_modifications, modified_keys);
 
@@ -164,11 +163,10 @@ TEST_F(SimpleSettingsMapTest, RemovalOfDeletion) {
   document_B_->SetDeletion(Key("B"));
 
   SimpleSettingsMap settings_map;
-  SettingsDocument* document_B_ptr = document_B_.get();
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_A_), nullptr));
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_B_), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_A_.get(), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_B_.get(), nullptr));
   std::set<Key> modified_keys;
-  settings_map.RemoveDocument(document_B_ptr, &modified_keys);
+  settings_map.RemoveDocument(document_B_.get(), &modified_keys);
   std::set<Key> expected_modifications = {Key("B.C")};
   EXPECT_EQ(expected_modifications, modified_keys);
 
@@ -188,12 +186,11 @@ TEST_F(SimpleSettingsMapTest, RemovalOfDeletionChildPrefixShineThrough) {
   document_C_->SetDeletion(Key("A.B"));
 
   SimpleSettingsMap settings_map;
-  SettingsDocument* document_C_ptr = document_C_.get();
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_A_), nullptr));
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_B_), nullptr));
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_C_), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_A_.get(), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_B_.get(), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_C_.get(), nullptr));
   std::set<Key> modified_keys;
-  settings_map.RemoveDocument(document_C_ptr, &modified_keys);
+  settings_map.RemoveDocument(document_C_.get(), &modified_keys);
   std::set<Key> expected_modifications = {Key("A.B.C"), Key("A.B.D")};
   EXPECT_EQ(expected_modifications, modified_keys);
 
@@ -216,12 +213,11 @@ TEST_F(SimpleSettingsMapTest, RemovalOfDeletionParentDeleterUpstream) {
   document_C_->SetDeletion(Key("A.B"));
 
   SimpleSettingsMap settings_map;
-  SettingsDocument* document_C_ptr = document_C_.get();
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_A_), nullptr));
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_B_), nullptr));
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_C_), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_A_.get(), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_B_.get(), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_C_.get(), nullptr));
   std::set<Key> modified_keys;
-  settings_map.RemoveDocument(document_C_ptr, &modified_keys);
+  settings_map.RemoveDocument(document_C_.get(), &modified_keys);
   std::set<Key> expected_modifications;
   EXPECT_EQ(expected_modifications, modified_keys);
 
@@ -242,12 +238,11 @@ TEST_F(SimpleSettingsMapTest, RemovalOfDeletionChildDeleterUpstream) {
   document_C_->SetDeletion(Key("A.B"));
 
   SimpleSettingsMap settings_map;
-  SettingsDocument* document_C_ptr = document_C_.get();
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_A_), nullptr));
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_B_), nullptr));
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_C_), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_A_.get(), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_B_.get(), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_C_.get(), nullptr));
   std::set<Key> modified_keys;
-  settings_map.RemoveDocument(document_C_ptr, &modified_keys);
+  settings_map.RemoveDocument(document_C_.get(), &modified_keys);
   std::set<Key> expected_modifications = {Key("A.B.D")};
   EXPECT_EQ(expected_modifications, modified_keys);
 
@@ -270,12 +265,11 @@ TEST_F(SimpleSettingsMapTest, BasicRemovalOfDeletionSameDeletionUpstream) {
   document_C_->SetDeletion(Key("A.B"));
 
   SimpleSettingsMap settings_map;
-  SettingsDocument* document_C_ptr = document_C_.get();
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_A_), nullptr));
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_B_), nullptr));
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_C_), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_A_.get(), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_B_.get(), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_C_.get(), nullptr));
   std::set<Key> modified_keys;
-  settings_map.RemoveDocument(document_C_ptr, &modified_keys);
+  settings_map.RemoveDocument(document_C_.get(), &modified_keys);
   std::set<Key> expected_modifications = {Key("A.B.C")};
   EXPECT_EQ(expected_modifications, modified_keys);
 
@@ -293,9 +287,9 @@ TEST_F(SimpleSettingsMapTest, DocumentCollision) {
   document_D_->SetKey(Key("A.B.C.D"), MakeIntValue(3));
 
   SimpleSettingsMap settings_map;
-  EXPECT_TRUE(settings_map.InsertDocument(std::move(document_C_), nullptr));
+  EXPECT_TRUE(settings_map.InsertDocument(document_C_.get(), nullptr));
   std::set<Key> modified_keys;
-  EXPECT_FALSE(settings_map.InsertDocument(std::move(document_D_), nullptr));
+  EXPECT_FALSE(settings_map.InsertDocument(document_D_.get(), nullptr));
   std::set<Key> expected_modifications;
   EXPECT_EQ(expected_modifications, modified_keys);
 

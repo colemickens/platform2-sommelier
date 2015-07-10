@@ -33,9 +33,9 @@ class SimpleSettingsMap : public SettingsMap {
   void Clear() override;
   const base::Value* GetValue(const Key& key) const override;
   std::set<Key> GetKeys(const Key& key) const override;
-  bool InsertDocument(std::unique_ptr<const SettingsDocument> document,
+  bool InsertDocument(const SettingsDocument* document,
                       std::set<Key>* modified_keys) override;
-  void RemoveDocument(const SettingsDocument* document_ptr,
+  void RemoveDocument(const SettingsDocument* document,
                       std::set<Key>* modified_keys) override;
 
   // This method gets invoked when a SettingsDocument has lost its last

@@ -133,9 +133,8 @@ void SimpleSettingsMap::InsertDocumentSubset(
   }
 }
 
-bool SimpleSettingsMap::InsertDocument(
-    std::unique_ptr<const SettingsDocument> document,
-    std::set<Key>* modified_keys) {
+bool SimpleSettingsMap::InsertDocument(const SettingsDocument* document,
+                                       std::set<Key>* modified_keys) {
   // Check if |document| has a prefix collision with a previously inserted,
   // concurrent document. In that case, abort.
   for (auto& doc_ptr : documents_) {
@@ -152,8 +151,8 @@ bool SimpleSettingsMap::InsertDocument(
   // OnDocumentUnreferenced as a deleter for
   // std::shared_ptr<const SettingsDocument>.
   std::shared_ptr<const SettingsDocument> document_ptr(
-      document.release(), std::bind(&SimpleSettingsMap::OnDocumentUnreferenced,
-                                    this, std::placeholders::_1));
+      document, std::bind(&SimpleSettingsMap::OnDocumentUnreferenced, this,
+                          std::placeholders::_1));
 
   // Insert the whole document into |value_map_| and |deletion_map_|.
   std::set<Key> root_set;
@@ -234,7 +233,6 @@ void SimpleSettingsMap::OnDocumentUnreferenced(
                      [](const std::weak_ptr<const SettingsDocument>& doc) {
                        return doc.expired();
                         }));
-  delete document;
 }
 
 void SimpleSettingsMap::Clear() {
