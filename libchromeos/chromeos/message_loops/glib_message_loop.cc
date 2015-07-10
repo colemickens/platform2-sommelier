@@ -63,10 +63,10 @@ MessageLoop::TaskId GlibMessageLoop::WatchFileDescriptor(
   GIOCondition condition = G_IO_NVAL;
   switch (mode) {
     case MessageLoop::kWatchRead:
-      condition = G_IO_IN;
+      condition = static_cast<GIOCondition>(G_IO_IN | G_IO_HUP | G_IO_NVAL);
       break;
     case MessageLoop::kWatchWrite:
-      condition = G_IO_OUT;
+      condition = static_cast<GIOCondition>(G_IO_OUT | G_IO_HUP | G_IO_NVAL);
       break;
     default:
       return MessageLoop::kTaskIdNull;
