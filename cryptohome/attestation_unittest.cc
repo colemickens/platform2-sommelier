@@ -429,9 +429,9 @@ TEST_F(AttestationTest, CertRequestStorageFailure) {
 }
 
 TEST_F(AttestationTest, SimpleChallenge) {
-  EXPECT_CALL(tpm_, Sign(_, _, _))
+  EXPECT_CALL(tpm_, Sign(_, _, _, _))
       .WillOnce(Return(false))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(SecureBlob("signature")),
+      .WillRepeatedly(DoAll(SetArgumentPointee<3>(SecureBlob("signature")),
                             Return(true)));
   chromeos::SecureBlob blob;
   attestation_.PrepareForEnrollment();
@@ -461,8 +461,8 @@ TEST_F(AttestationTest, SimpleChallenge) {
 }
 
 TEST_F(AttestationTest, EMKChallenge) {
-  EXPECT_CALL(tpm_, Sign(_, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(SecureBlob("signature")),
+  EXPECT_CALL(tpm_, Sign(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<3>(SecureBlob("signature")),
                             Return(true)));
   chromeos::SecureBlob blob;
   attestation_.PrepareForEnrollment();
@@ -504,8 +504,8 @@ TEST_F(AttestationTest, EMKChallenge) {
 }
 
 TEST_F(AttestationTest, EUKChallenge) {
-  EXPECT_CALL(tpm_, Sign(_, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(SecureBlob("signature")),
+  EXPECT_CALL(tpm_, Sign(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<3>(SecureBlob("signature")),
                             Return(true)));
   EXPECT_CALL(key_store_, Read(true, kTestUser, "test", _))
       .WillRepeatedly(DoAll(

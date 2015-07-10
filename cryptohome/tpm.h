@@ -26,6 +26,7 @@ using TpmKeyHandle = uint32_t;
 class Tpm;
 
 const TpmKeyHandle kInvalidKeyHandle = 0;
+const int kNotBoundToPCR = -1;
 
 // This class provides a wrapper around TpmKeyHandle, and manages freeing of
 // TPM reseources associated with TPM keys. It does not take ownership of the
@@ -353,9 +354,13 @@ class Tpm {
   // Parameters
   //   key_blob - An SRK-wrapped private key blob.
   //   input - The value to be signed.
+  //   bound_pcr_index - If the signing key used is a PCR bound key, this arg
+  //                     is the pcr to which it was bound. Else it is
+  //                     kNotBoundToPCR.
   //   signature - On success, will be populated with the signature.
   virtual bool Sign(const chromeos::SecureBlob& key_blob,
                     const chromeos::SecureBlob& input,
+                    int bound_pcr_index,
                     chromeos::SecureBlob* signature) = 0;
 
   // Creates an SRK-wrapped signing key that has both create attributes and

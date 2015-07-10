@@ -309,6 +309,7 @@ bool Tpm2Impl::ActivateIdentity(const SecureBlob& delegate_blob,
 
 bool Tpm2Impl::Sign(const SecureBlob& key_blob,
                     const SecureBlob& input,
+                    int bound_pcr_index,
                     SecureBlob* signature) {
   LOG(FATAL) << "Not Implemented.";
   return false;

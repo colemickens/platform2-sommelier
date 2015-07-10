@@ -2270,6 +2270,7 @@ bool TpmImpl::ActivateIdentity(const SecureBlob& delegate_blob,
 
 bool TpmImpl::Sign(const SecureBlob& key_blob,
                    const SecureBlob& input,
+                   int bound_pcr_index,
                    SecureBlob* signature) {
   CHECK(signature);
   ScopedTssContext context_handle;

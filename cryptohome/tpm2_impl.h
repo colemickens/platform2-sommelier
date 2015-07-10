@@ -89,6 +89,7 @@ class Tpm2Impl : public Tpm {
                         chromeos::SecureBlob* identity_credential) override;
   bool Sign(const chromeos::SecureBlob& key_blob,
             const chromeos::SecureBlob& input,
+            int bound_pcr_index,
             chromeos::SecureBlob* signature) override;
   bool CreatePCRBoundKey(int pcr_index,
                          const chromeos::SecureBlob& pcr_value,

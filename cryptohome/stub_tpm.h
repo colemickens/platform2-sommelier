@@ -101,6 +101,7 @@ class StubTpm : public Tpm {
     { return false; }
   bool Sign(const SecureBlob& key_blob,
             const SecureBlob& der_encoded_input,
+            int bound_pcr_index,
             SecureBlob* signature) override { return false; }
   bool CreatePCRBoundKey(int pcr_index,
                          const SecureBlob& pcr_value,

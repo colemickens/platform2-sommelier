@@ -38,8 +38,8 @@ class BootLockboxTest : public testing::Test {
 
   void SetUp() {
     // Configure a fake TPM.
-    ON_CALL(tpm_, Sign(_, _, _))
-        .WillByDefault(WithArgs<1, 2>(Invoke(this,
+    ON_CALL(tpm_, Sign(_, _, _, _))
+        .WillByDefault(WithArgs<1, 3>(Invoke(this,
                                              &BootLockboxTest::FakeSign)));
     ON_CALL(tpm_, CreatePCRBoundKey(_, _, _, _))
         .WillByDefault(WithArgs<3>(Invoke(this, &BootLockboxTest::FakeCreate)));
@@ -205,8 +205,7 @@ TEST_F(BootLockboxTest, FileErrors) {
 }
 
 TEST_F(BootLockboxTest, SignError) {
-  EXPECT_CALL(tpm_, Sign(_, _, _)).WillRepeatedly(Return(false));
-
+  EXPECT_CALL(tpm_, Sign(_, _, _, _)).WillRepeatedly(Return(false));
   chromeos::SecureBlob data(100);
   chromeos::SecureBlob signature;
   ASSERT_FALSE(lockbox_->Sign(data, &signature));

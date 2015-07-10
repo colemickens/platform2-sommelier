@@ -41,7 +41,7 @@ MockTpm::MockTpm() {
       .WillByDefault(Return(true));
   ON_CALL(*this, CreateCertifiedKey(_, _, _, _, _, _, _))
       .WillByDefault(Return(true));
-  ON_CALL(*this, Sign(_, _, _))
+  ON_CALL(*this, Sign(_, _, _, _))
       .WillByDefault(Return(true));
   ON_CALL(*this, CreatePCRBoundKey(_, _, _, _))
       .WillByDefault(Return(true));

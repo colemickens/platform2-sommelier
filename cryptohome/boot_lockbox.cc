@@ -57,7 +57,7 @@ bool BootLockbox::Sign(const chromeos::SecureBlob& data,
   if (!GetKeyBlob(&key_blob)) {
     return false;
   }
-  return tpm_->Sign(key_blob, data, signature);
+  return tpm_->Sign(key_blob, data, kPCRIndex, signature);
 }
 
 bool BootLockbox::Verify(const chromeos::SecureBlob& data,

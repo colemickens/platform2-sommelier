@@ -1809,7 +1809,10 @@ bool Attestation::SignChallengeData(const CertifiedKey& key,
                                     const SecureBlob& data_to_sign,
                                     SecureBlob* response) {
   SecureBlob signature;
-  if (!tpm_->Sign(SecureBlob(key.key_blob()), data_to_sign, &signature)) {
+  if (!tpm_->Sign(SecureBlob(key.key_blob()),
+                  data_to_sign,
+                  kNotBoundToPCR,
+                  &signature)) {
     LOG(ERROR) << "Failed to generate signature.";
     return false;
   }
@@ -1977,7 +1980,10 @@ bool Attestation::CreateSignedPublicKey(
   SecureBlob data_to_sign(buffer, buffer + length);
   OPENSSL_free(buffer);
   SecureBlob signature;
-  if (!tpm_->Sign(SecureBlob(key.key_blob()), data_to_sign, &signature)) {
+  if (!tpm_->Sign(SecureBlob(key.key_blob()),
+                  data_to_sign,
+                  kNotBoundToPCR,
+                  &signature)) {
     return false;
   }
 
