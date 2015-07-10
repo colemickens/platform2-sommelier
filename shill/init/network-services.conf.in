@@ -1,0 +1,20 @@
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+description    "Abstract job that runs when boot-services is complete"
+author         "chromium-os-dev@chromium.org"
+
+# The shill task and iptables will start when this task is started.
+# This allows shill to be restarted without restarting iptables.
+start on started boot-services
+
+pre-start script
+  # Load the module that provides the WiFi configuration API, since
+  # shill will abort if that API is not available. In most cases,
+  # cfg80211 will be loaded implicitly when the device driver is
+  # loaded (in preload-network).  However, this deals with the
+  # first-boot case, in case shill starts before the device driver is
+  # loaded.
+  @load_cfg80211@ || logger -p err -t "$UPSTART_JOB" "Failed to load cfg80211"
+end script

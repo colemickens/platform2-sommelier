@@ -32,14 +32,6 @@ env SHILL_TEST_DEVICES=""
 
 pre-start script
   bootstat shill-start
-  # Load the module that provides the WiFi configuration API, since
-  # shill will abort if that API is not available. In most cases,
-  # cfg80211 will be loaded implicitly when the device driver is
-  # loaded (in preload-network).  However, this deals with the
-  # first-boot case, in case shill starts before the device driver is
-  # loaded.
-  modprobe cfg80211 ||
-    logger -p err -t "$UPSTART_JOB" "Failed to load cfg80211"
 
   # Create state directory
   mkdir -p /var/run/shill
