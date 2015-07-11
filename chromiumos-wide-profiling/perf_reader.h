@@ -74,8 +74,7 @@ class DataWriter;
 class PerfReader {
  public:
   PerfReader() : sample_type_(0),
-                 read_format_(0),
-                 is_cross_endian_(0) {}
+                 read_format_(0) {}
   ~PerfReader();
 
   // Makes |build_id| fit the perf format, by either truncating it or adding
@@ -126,8 +125,6 @@ class PerfReader {
   // since there may be no build id event corresponding to the MMAP/MMAP2.
   void GetFilenamesToBuildIDs(
       std::map<string, string>* filenames_to_build_ids) const;
-
-  static bool IsSupportedEventType(uint32_t type);
 
   // If a program using PerfReader calls events(), it could work with the
   // resulting events by importing kernel/perf_internals.h.  This would also
@@ -252,8 +249,8 @@ class PerfReader {
   bool ReadAttrEventBlock(DataReader* data, size_t size);
 
   // Swaps byte order for non-header fields of the data structure pointed to by
-  // |event|, if |is_cross_endian_| is true. Otherwise leaves the data the same.
-  void MaybeSwapEventFields(event_t* event);
+  // |event|, if |is_cross_endian| is true. Otherwise leaves the data the same.
+  void MaybeSwapEventFields(event_t* event, bool is_cross_endian);
 
   // Returns the number of types of metadata stored and written to output data.
   size_t GetNumSupportedMetadata() const;
@@ -287,10 +284,6 @@ class PerfReader {
   uint64_t sample_type_;
   uint64_t read_format_;
   uint64_t metadata_mask_;
-
-  // Indicates that the perf data being read is from machine with a different
-  // endianness than the current machine.
-  bool is_cross_endian_;
 
  private:
   // The file header is either a normal header or a piped header.

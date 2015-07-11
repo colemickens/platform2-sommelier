@@ -5,11 +5,13 @@
 #ifndef CHROMIUMOS_WIDE_PROFILING_TEST_PERF_DATA_H_
 #define CHROMIUMOS_WIDE_PROFILING_TEST_PERF_DATA_H_
 
+#include <memory>
 #include <ostream>  // NOLINT
 #include <vector>
 
 #include "chromiumos-wide-profiling/compat/string.h"
 #include "chromiumos-wide-profiling/kernel/perf_internals.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 namespace testing {
@@ -22,8 +24,46 @@ union PunU32U64 {
 
 class StreamWriteable {
  public:
+  StreamWriteable() : is_cross_endian_(false) {}
   virtual ~StreamWriteable() {}
+
   virtual void WriteTo(std::ostream* out) const = 0;
+
+  virtual StreamWriteable& WithCrossEndianness(bool value) {
+    is_cross_endian_ = value;
+    return *this;
+  }
+
+  // Do not call MaybeSwap() directly. The syntax of test data structure
+  // initialization makes data sizes ambiguous, so these force the caller to
+  // explicitly specify value sizes.
+  uint16_t MaybeSwap16(uint16_t value) const {
+    return MaybeSwap(value);
+  }
+  uint32_t MaybeSwap32(uint32_t value) const {
+    return MaybeSwap(value);
+  }
+  uint64_t MaybeSwap64(uint64_t value) const {
+    return MaybeSwap(value);
+  }
+
+ protected:
+  // Derived classes can call this to determine the cross-endianness. However,
+  // the actual implementation of cross-endianness is up to the derived class,
+  // if it supports it at all.
+  bool is_cross_endian() const {
+    return is_cross_endian_;
+  }
+
+ private:
+  template <typename T>
+  T MaybeSwap(T value) const {
+    if (is_cross_endian())
+      ByteSwap(&value);
+    return value;
+  }
+
+  bool is_cross_endian_;
 };
 
 // Normal mode header
@@ -33,7 +73,10 @@ class ExamplePerfDataFileHeader : public StreamWriteable {
                                      const u64 data_size,
                                      const unsigned long features);  // NOLINT
 
-  const perf_file_header &header() const { return header_; }
+  const struct perf_file_header& header() const {
+    return header_;
+  }
+
   u64 data_end_offset() const {
     return header_.data.offset + header_.data.size;
   }
@@ -44,7 +87,7 @@ class ExamplePerfDataFileHeader : public StreamWriteable {
   void WriteTo(std::ostream* out) const override;
 
  protected:
-  perf_file_header header_;
+  struct perf_file_header header_;
 };
 
 // Normal mode header with custom event attr size.
@@ -282,8 +325,11 @@ class MetadataIndexEntry : public StreamWriteable {
   MetadataIndexEntry(u64 offset, u64 size)
     : index_entry_{.offset = offset, .size = size} {}
   void WriteTo(std::ostream* out) const override {
-    out->write(reinterpret_cast<const char*>(&index_entry_),
-               sizeof(index_entry_));
+    struct perf_file_section entry = {
+      .offset = MaybeSwap64(index_entry_.offset),
+      .size = MaybeSwap64(index_entry_.size),
+    };
+    out->write(reinterpret_cast<const char*>(&entry), sizeof(entry));
   }
  public:
   const perf_file_section index_entry_;
@@ -304,6 +350,12 @@ class ExampleStringMetadata : public StreamWriteable {
   const MetadataIndexEntry& index_entry() { return index_entry_; }
   size_t size() const {
     return sizeof(u32) + data_.size();
+  }
+
+  StreamWriteable& WithCrossEndianness(bool value) override {
+    // Set index_entry_'s endianness since it is owned by this class.
+    index_entry_.WithCrossEndianness(value);
+    return StreamWriteable::WithCrossEndianness(value);
   }
 
  private:

@@ -24,6 +24,21 @@ void WriteExtraBytes(size_t size, std::ostream* out) {
   out->write(padding.data(), size);
 }
 
+// TODO(sque): These following two functions are copied from elsewhere. Put them
+// in a common location and add a unit test.
+u8 ReverseByte(u8 x) {
+  x = (x & 0xf0) >> 4 | (x & 0x0f) << 4;  // exchange nibbles
+  x = (x & 0xcc) >> 2 | (x & 0x33) << 2;  // exchange pairs
+  x = (x & 0xaa) >> 1 | (x & 0x55) << 1;  // exchange neighbors
+  return x;
+}
+
+void SwapBitfieldOfBits(u8* field, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    field[i] = ReverseByte(field[i]);
+  }
+}
+
 }  // namespace
 
 ExamplePerfDataFileHeader::ExamplePerfDataFileHeader(
@@ -31,7 +46,7 @@ ExamplePerfDataFileHeader::ExamplePerfDataFileHeader(
     const u64 data_size,
     const unsigned long features) {  // NOLINT
   CHECK_EQ(112U, sizeof(perf_file_attr)) << "perf_file_attr has changed size!";
-  const size_t attrs_size = attr_count * sizeof(perf_file_attr);
+  const size_t attrs_size = attr_count * sizeof(struct perf_file_attr);
   header_ = {
     .magic = kPerfMagic,
     .size = 104,
@@ -44,7 +59,30 @@ ExamplePerfDataFileHeader::ExamplePerfDataFileHeader(
 }
 
 void ExamplePerfDataFileHeader::WriteTo(std::ostream* out) const {
-  out->write(reinterpret_cast<const char*>(&header_), sizeof(header_));
+  struct perf_file_header local_header = {
+    .magic = MaybeSwap64(header_.magic),
+    .size = MaybeSwap64(header_.size),
+    .attr_size = MaybeSwap64(header_.attr_size),
+    .attrs = { .offset = MaybeSwap64(header_.attrs.offset),
+               .size = MaybeSwap64(header_.attrs.size) },
+    .data = { .offset = MaybeSwap64(header_.data.offset),
+               .size = MaybeSwap64(header_.data.size) },
+    .event_types = { .offset = MaybeSwap64(header_.event_types.offset),
+               .size = MaybeSwap64(header_.event_types.size) },
+    .adds_features = {0},
+  };
+  // Copy over the features bits manually since the byte swapping is more
+  // complicated.
+  for (size_t i = 0;
+       i < sizeof(header_.adds_features) / sizeof(uint64_t);
+       ++i) {
+    reinterpret_cast<uint64_t*>(local_header.adds_features)[i] =
+      MaybeSwap64(reinterpret_cast<const uint64_t*>(header_.adds_features)[i]);
+  }
+
+  out->write(reinterpret_cast<const char*>(&local_header),
+             sizeof(local_header));
+  // Use original header values that weren't endian-swapped.
   CHECK_EQ(static_cast<u64>(out->tellp()), header_.size);
   CHECK_EQ(static_cast<u64>(out->tellp()), header_.attrs.offset);
 }
@@ -104,13 +142,26 @@ void ExamplePerfEventAttrEvent_Hardware::WriteTo(std::ostream* out) const {
 void ExamplePerfFileAttr_Hardware::WriteTo(std::ostream* out) const {
   // Due to the unnamed union fields (eg, sample_period), this structure can't
   // be initialized with designated initializers.
-  perf_event_attr attr = {};
-  attr.type = PERF_TYPE_HARDWARE;
-  attr.size = attr_size_;
-  attr.config = config_;
-  attr.sample_period = 1;
-  attr.sample_type = sample_type_;
+  perf_event_attr attr = {0};
+  attr.type = MaybeSwap32(PERF_TYPE_HARDWARE);
+  attr.size = MaybeSwap32(attr_size_);
+  attr.config = MaybeSwap64(config_);
+  attr.sample_period = MaybeSwap64(1);
+  attr.sample_type = MaybeSwap64(sample_type_);
+  // Bit fields.
   attr.sample_id_all = sample_id_all_;
+  attr.precise_ip = 2;    // For testing a bit field that is more than one bit.
+
+  if (is_cross_endian()) {
+    // The order of operations here is for native-to-cross-endian conversion.
+    // Contrast with similar code in PerfReader for cross-endian-to-native
+    // conversion, which performs these swap operations in reverse order.
+    const auto tmp = attr.precise_ip;
+    attr.precise_ip = (tmp & 0x2) >> 1 | (tmp & 0x1) << 1;
+
+    auto *const bitfield_start = &attr.read_format + 1;
+    SwapBitfieldOfBits(reinterpret_cast<u8*>(bitfield_start), sizeof(u64));
+  }
 
   // perf_event_attr can be of a size other than the static struct size. Thus we
   // cannot simply statically create a perf_file_attr (which contains a
@@ -118,10 +169,11 @@ void ExamplePerfFileAttr_Hardware::WriteTo(std::ostream* out) const {
   // component separately.
   out->write(reinterpret_cast<const char*>(&attr),
              std::min(sizeof(attr), static_cast<size_t>(attr_size_)));
-  if (sizeof(attr) < attr.size)
-    WriteExtraBytes(attr.size - sizeof(attr), out);
+  if (sizeof(attr) < attr_size_)
+    WriteExtraBytes(attr_size_ - sizeof(attr), out);
 
-  const perf_file_section ids = { .offset = 104, .size = 0 };
+  const perf_file_section ids = { .offset = MaybeSwap64(104),
+                                  .size = MaybeSwap64(0) };
   out->write(reinterpret_cast<const char*>(&ids), sizeof(ids));
 }
 
@@ -158,14 +210,15 @@ void ExampleMmapEvent::WriteTo(std::ostream* out) const {
 
   struct mmap_event event = {
     .header = {
-      .type = PERF_RECORD_MMAP,
+      .type = MaybeSwap32(PERF_RECORD_MMAP),
       .misc = 0,
-      .size = static_cast<u16>(event_size),
+      .size = MaybeSwap16(static_cast<u16>(event_size)),
     },
-    .pid = pid_, .tid = pid_,
-    .start = start_,
-    .len = len_,
-    .pgoff = pgoff_,
+    .pid = MaybeSwap32(pid_),
+    .tid = MaybeSwap32(pid_),
+    .start = MaybeSwap64(start_),
+    .len = MaybeSwap64(len_),
+    .pgoff = MaybeSwap64(pgoff_),
     // .filename = ..., // written separately
   };
 
@@ -177,7 +230,7 @@ void ExampleMmapEvent::WriteTo(std::ostream* out) const {
   out->write(sample_id_.data(), sample_id_.size());
   const size_t written_event_size =
       static_cast<size_t>(out->tellp()) - pre_mmap_offset;
-  CHECK_EQ(event.header.size,
+  CHECK_EQ(event_size,
            static_cast<u64>(written_event_size));
 }
 
@@ -225,13 +278,13 @@ void ExampleForkExitEvent::WriteTo(std::ostream* out) const {
 
   struct fork_event event = {
     .header = {
-      .type = type_,
+      .type = MaybeSwap32(type_),
       .misc = 0,
-      .size = static_cast<u16>(event_size),
+      .size = MaybeSwap16(static_cast<u16>(event_size)),
     },
-    .pid = pid_, .ppid = ppid_,
-    .tid = tid_, .ptid = ptid_,
-    .time = time_,
+    .pid = MaybeSwap32(pid_), .ppid = MaybeSwap32(ppid_),
+    .tid = MaybeSwap32(tid_), .ptid = MaybeSwap32(ptid_),
+    .time = MaybeSwap64(time_),
   };
 
   const size_t pre_event_offset = out->tellp();
@@ -239,7 +292,8 @@ void ExampleForkExitEvent::WriteTo(std::ostream* out) const {
   out->write(sample_id_.data(), sample_id_.size());
   const size_t written_event_size =
       static_cast<size_t>(out->tellp()) - pre_event_offset;
-  CHECK_EQ(event.header.size, static_cast<u64>(written_event_size));
+  CHECK_EQ(MaybeSwap16(event.header.size),
+           static_cast<u64>(written_event_size));
 }
 
 void FinishedRoundEvent::WriteTo(std::ostream* out) const {
@@ -258,9 +312,9 @@ size_t ExamplePerfSampleEvent::GetSize() const {
 void ExamplePerfSampleEvent::WriteTo(std::ostream* out) const {
   const sample_event event = {
     .header = {
-      .type = PERF_RECORD_SAMPLE,
-      .misc = PERF_RECORD_MISC_USER,
-      .size = static_cast<u16>(GetSize()),
+      .type = MaybeSwap32(PERF_RECORD_SAMPLE),
+      .misc = MaybeSwap16(PERF_RECORD_MISC_USER),
+      .size = MaybeSwap16(static_cast<u16>(GetSize())),
     }
   };
   out->write(reinterpret_cast<const char*>(&event), sizeof(event));
@@ -331,8 +385,9 @@ const size_t ExamplePerfSampleEvent_Tracepoint::kEventSize =
 void ExampleStringMetadata::WriteTo(std::ostream* out) const {
   const perf_file_section &index_entry = index_entry_.index_entry_;
   CHECK_EQ(static_cast<u64>(out->tellp()), index_entry.offset);
-  const u32 data_size = data_.size();
-  out->write(reinterpret_cast<const char*>(&data_size), sizeof(data_size));
+  const u32 data_size_value = MaybeSwap32(data_.size());
+  out->write(reinterpret_cast<const char*>(&data_size_value),
+             sizeof(data_size_value));
   out->write(data_.data(), data_.size());
 
   CHECK_EQ(static_cast<u64>(out->tellp()), index_entry.offset + size());

@@ -8,11 +8,13 @@
 #include <stddef.h>
 
 #include "chromiumos-wide-profiling/compat/string.h"
+#include "chromiumos-wide-profiling/utils.h"
 
 namespace quipper {
 
 class DataReader {
  public:
+  DataReader() : is_cross_endian_(false) {}
   virtual ~DataReader() {}
 
   // Moves the data read pointer to |offset| bytes from the beginning of the
@@ -35,14 +37,48 @@ class DataReader {
   virtual bool ReadDataValue(const size_t size, const string& value_name,
                              void* dest);
 
+  // Read integers with endian swapping.
+  bool ReadUint16(uint16_t* value) {
+    return ReadIntValue(value);
+  }
+  bool ReadUint32(uint32_t* value) {
+    return ReadIntValue(value);
+  }
+  bool ReadUint64(uint64_t* value) {
+    return ReadIntValue(value);
+  }
+
   // Read a string. Returns true if it managed to read |size| bytes (excluding
   // null terminator). The actual string may be shorter than the number of bytes
   // requested.
   virtual bool ReadString(const size_t size, string* str) = 0;
 
+  bool is_cross_endian() const {
+    return is_cross_endian_;
+  }
+
+  void set_is_cross_endian(bool value) {
+    is_cross_endian_ = value;
+  }
+
  protected:
   // Size of the data source.
   size_t size_;
+
+ private:
+  // Like ReadData(), but used specifically to read integers. Will swap byte
+  // order if necessary.
+  // For type-safety this one private and let public member functions call it.
+  template <typename T>
+  bool ReadIntValue(T* dest) {
+    if (!ReadData(sizeof(T), dest))
+      return false;
+    *dest = MaybeSwap(*dest, is_cross_endian_);
+    return true;
+  }
+
+  // For cross-endian data reading.
+  bool is_cross_endian_;
 };
 
 }  // namespace quipper

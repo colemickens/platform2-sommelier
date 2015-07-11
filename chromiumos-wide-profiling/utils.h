@@ -5,6 +5,7 @@
 #ifndef CHROMIUMOS_WIDE_PROFILING_UTILS_H_
 #define CHROMIUMOS_WIDE_PROFILING_UTILS_H_
 
+#include <byteswap.h>
 #include <stdint.h>
 #include <stdlib.h>  // for free()
 
@@ -54,6 +55,37 @@ bool BufferToFile(const string& filename, const CharContainer& contents) {
   }
   fclose(fp);
   return true;
+}
+
+// Swaps the byte order of 16-bit, 32-bit, and 64-bit unsigned integers.
+template <class T>
+void ByteSwap(T* input) {
+  switch (sizeof(T)) {
+  case sizeof(uint8_t):
+    LOG(WARNING) << "Attempting to byte swap on a single byte.";
+    break;
+  case sizeof(uint16_t):
+    *input = bswap_16(*input);
+    break;
+  case sizeof(uint32_t):
+    *input = bswap_32(*input);
+    break;
+  case sizeof(uint64_t):
+    *input = bswap_64(*input);
+    break;
+  default:
+    LOG(FATAL) << "Invalid size for byte swap: " << sizeof(T) << " bytes";
+    break;
+  }
+}
+
+// Swaps byte order of |value| if the |swap| flag is set. This function is
+// trivial but it avoids filling code with "if (swap) { ... } " statements.
+template <typename T>
+T MaybeSwap(T value, bool swap) {
+  if (swap)
+    ByteSwap(&value);
+  return value;
 }
 
 uint64_t Md5Prefix(const string& input);

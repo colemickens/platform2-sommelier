@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <byteswap.h>
+
 #include <algorithm>
 #include <map>
 #include <sstream>
@@ -1301,6 +1303,205 @@ TEST(PerfReaderTest, SmallPerfEventAttrPiped) {
   ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
   EXPECT_EQ(0x00000000002c100a, sample_info.ip);
   EXPECT_EQ(1002, sample_info.tid);
+}
+
+TEST(PerfReaderTest, CrossEndianAttrs) {
+  for (bool is_cross_endian : {true, false}) {
+    LOG(INFO) << "Testing with cross endianness = " << is_cross_endian;
+
+    std::stringstream input;
+
+    // header
+    const size_t data_size = 0;
+    const uint32_t features = 0;
+    testing::ExamplePerfDataFileHeader file_header(3, data_size, features);
+    file_header
+        .WithCrossEndianness(is_cross_endian)
+        .WriteTo(&input);
+
+    // attrs
+    // Provide two attrs with different sample_id_all values to test the
+    // correctness of byte swapping of the bit fields.
+    testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                          true /*sample_id_all*/)
+        .WithConfig(123)
+        .WithCrossEndianness(is_cross_endian)
+        .WriteTo(&input);
+    testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                          true /*sample_id_all*/)
+        .WithConfig(456)
+        .WithCrossEndianness(is_cross_endian)
+        .WriteTo(&input);
+    testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                          false /*sample_id_all*/)
+        .WithConfig(456)
+        .WithCrossEndianness(is_cross_endian)
+        .WriteTo(&input);
+
+    // No data.
+    // No metadata.
+
+    // Read data.
+
+    PerfReader pr;
+    EXPECT_TRUE(pr.ReadFromString(input.str()));
+
+    // Make sure the attr was recorded properly.
+    EXPECT_EQ(3, pr.attrs().size());
+
+    const perf_event_attr& attr0 = pr.attrs()[0].attr;
+    EXPECT_EQ(123, attr0.config);
+    EXPECT_EQ(1, attr0.sample_period);
+    EXPECT_EQ(PERF_SAMPLE_IP | PERF_SAMPLE_TID, attr0.sample_type);
+    EXPECT_TRUE(attr0.sample_id_all);
+    EXPECT_EQ(2, attr0.precise_ip);
+
+    const perf_event_attr& attr1 = pr.attrs()[1].attr;
+    EXPECT_EQ(456, attr1.config);
+    EXPECT_EQ(1, attr1.sample_period);
+    EXPECT_EQ(PERF_SAMPLE_IP | PERF_SAMPLE_TID, attr1.sample_type);
+    EXPECT_TRUE(attr1.sample_id_all);
+    EXPECT_EQ(2, attr1.precise_ip);
+
+    const perf_event_attr& attr2 = pr.attrs()[2].attr;
+    EXPECT_EQ(456, attr2.config);
+    EXPECT_EQ(1, attr2.sample_period);
+    EXPECT_EQ(PERF_SAMPLE_IP | PERF_SAMPLE_TID, attr2.sample_type);
+    EXPECT_FALSE(attr2.sample_id_all);
+    EXPECT_EQ(2, attr2.precise_ip);
+  }
+}
+
+TEST(PerfReaderTest, CrossEndianNormalPerfData) {
+  // data
+  // Do this before header to compute the total data size.
+  std::stringstream input_data;
+  testing::ExampleMmapEvent(
+      1234, 0x0000000000810000, 0x10000, 0x2000, "/usr/lib/foo.so",
+      testing::SampleInfo().Tid(bswap_32(1234), bswap_32(1235)))
+      .WithCrossEndianness(true)
+      .WriteTo(&input_data);
+  testing::ExampleForkEvent(
+      1236, 1234, 1237, 1235, 30ULL * 1000000000,
+      testing::SampleInfo().Tid(bswap_32(1236), bswap_32(1237)))
+      .WithCrossEndianness(true)
+      .WriteTo(&input_data);
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo()
+          .Ip(bswap_64(0x0000000000810100))
+          .Tid(bswap_32(1234), bswap_32(1235)))
+      .WithCrossEndianness(true)
+      .WriteTo(&input_data);
+  testing::ExamplePerfSampleEvent(
+      testing::SampleInfo()
+          .Ip(bswap_64(0x000000000081ff00))
+          .Tid(bswap_32(1236), bswap_32(1237)))
+      .WithCrossEndianness(true)
+      .WriteTo(&input_data);
+
+  std::stringstream input;
+
+  // header
+  const size_t data_size = input_data.str().size();
+  const uint32_t features = (1 << HEADER_HOSTNAME) | (1 << HEADER_OSRELEASE);
+  testing::ExamplePerfDataFileHeader file_header(1, data_size, features);
+  file_header
+      .WithCrossEndianness(true)
+      .WriteTo(&input);
+
+  // attrs
+  testing::ExamplePerfFileAttr_Hardware(PERF_SAMPLE_IP | PERF_SAMPLE_TID,
+                                        true /*sample_id_all*/)
+      .WithConfig(456)
+      .WithCrossEndianness(true)
+      .WriteTo(&input);
+
+  // Write data.
+
+  u64 data_offset = file_header.header().data.offset;
+  ASSERT_EQ(data_offset, static_cast<u64>(input.tellp()));
+  input << input_data.str();
+  ASSERT_EQ(data_offset + data_size, static_cast<u64>(input.tellp()));
+
+  // metadata
+  size_t metadata_offset =
+      file_header.data_end() + 2 * sizeof(perf_file_section);
+
+  // HEADER_HOSTNAME
+  testing::ExampleStringMetadata hostname_metadata("hostname", metadata_offset);
+  hostname_metadata.WithCrossEndianness(true);
+  metadata_offset += hostname_metadata.size();
+
+  // HEADER_OSRELEASE
+  testing::ExampleStringMetadata osrelease_metadata("osrelease",
+                                                    metadata_offset);
+  osrelease_metadata.WithCrossEndianness(true);
+  metadata_offset += osrelease_metadata.size();
+
+  hostname_metadata.index_entry().WriteTo(&input);
+  osrelease_metadata.index_entry().WriteTo(&input);
+
+  hostname_metadata.WriteTo(&input);
+  osrelease_metadata.WriteTo(&input);
+
+
+  //
+  // Parse input.
+  //
+
+  PerfReader pr;
+  EXPECT_TRUE(pr.ReadFromString(input.str()));
+
+  // Make sure the attr was recorded properly.
+  EXPECT_EQ(1, pr.attrs().size());
+  EXPECT_EQ(456, pr.attrs()[0].attr.config);
+  EXPECT_TRUE(pr.attrs()[0].attr.sample_id_all);
+
+  // Verify perf events.
+  ASSERT_EQ(4, pr.events().size());
+
+  {
+    const event_t& event = *pr.events()[0].get();
+    EXPECT_EQ(PERF_RECORD_MMAP, event.header.type);
+    EXPECT_EQ(1234, event.mmap.pid);
+    EXPECT_EQ(1234, event.mmap.tid);
+    EXPECT_EQ(string("/usr/lib/foo.so"), event.mmap.filename);
+    EXPECT_EQ(0x0000000000810000, event.mmap.start);
+    EXPECT_EQ(0x10000, event.mmap.len);
+    EXPECT_EQ(0x2000, event.mmap.pgoff);
+  }
+
+  {
+    const event_t& event = *pr.events()[1].get();
+    EXPECT_EQ(PERF_RECORD_FORK, event.header.type);
+    EXPECT_EQ(1236, event.fork.pid);
+    EXPECT_EQ(1234, event.fork.ppid);
+    EXPECT_EQ(1237, event.fork.tid);
+    EXPECT_EQ(1235, event.fork.ptid);
+    EXPECT_EQ(30ULL * 1000000000, event.fork.time);
+  }
+
+  {
+    const event_t& event = *pr.events()[2].get();
+    EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
+
+    perf_sample sample_info;
+    ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
+    EXPECT_EQ(0x0000000000810100, sample_info.ip);
+    EXPECT_EQ(1234, sample_info.pid);
+    EXPECT_EQ(1235, sample_info.tid);
+  }
+
+  {
+    const event_t& event = *pr.events()[3].get();
+    EXPECT_EQ(PERF_RECORD_SAMPLE, event.header.type);
+
+    perf_sample sample_info;
+    ASSERT_TRUE(pr.ReadPerfSampleInfo(event, &sample_info));
+    EXPECT_EQ(0x000000000081ff00, sample_info.ip);
+    EXPECT_EQ(1236, sample_info.pid);
+    EXPECT_EQ(1237, sample_info.tid);
+  }
 }
 
 }  // namespace quipper
