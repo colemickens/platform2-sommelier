@@ -61,14 +61,17 @@ class BootLockbox {
   // Returns the DER-encoded lockbox |public_key|.  Returns true on success.
   bool GetPublicKey(chromeos::SecureBlob* public_key);
 
+  // Returns the |creation_blob| for the lockbox key.  Returns true on success.
+  bool GetCreationBlob(chromeos::SecureBlob* creation_blob);
+
   // Loads the lockbox key protobuf from a file.  Returns true on success.
-  bool LoadKey(BootLockboxKey* key);
+  bool LoadKey();
 
   // Saves the lockbox key protobuf to a file.  Returns true on success.
-  bool SaveKey(const BootLockboxKey& key);
+  bool SaveKey();
 
-  // Creates a new lockbox key.  On success returns true and populates |key|.
-  bool CreateKey(BootLockboxKey* key);
+  // Creates a new lockbox key.  On success returns true and populates |key_|.
+  bool CreateKey();
 
   // Verifies an RSA-PKCS1-SHA256 signature as created by Sign().
   bool VerifySignature(const chromeos::SecureBlob& public_key,

@@ -41,9 +41,9 @@ class BootLockboxTest : public testing::Test {
     ON_CALL(tpm_, Sign(_, _, _, _))
         .WillByDefault(WithArgs<1, 3>(Invoke(this,
                                              &BootLockboxTest::FakeSign)));
-    ON_CALL(tpm_, CreatePCRBoundKey(_, _, _, _))
+    ON_CALL(tpm_, CreatePCRBoundKey(_, _, _, _, _))
         .WillByDefault(WithArgs<3>(Invoke(this, &BootLockboxTest::FakeCreate)));
-    ON_CALL(tpm_, VerifyPCRBoundKey(_, _, _))
+    ON_CALL(tpm_, VerifyPCRBoundKey(_, _, _, _))
         .WillByDefault(Return(true));
     ON_CALL(tpm_, ExtendPCR(_, _))
         .WillByDefault(InvokeWithoutArgs(this, &BootLockboxTest::FakeExtend));
@@ -217,7 +217,8 @@ TEST_F(BootLockboxTest, ExtendPCRError) {
 }
 
 TEST_F(BootLockboxTest, VerifyWithBadKey) {
-  EXPECT_CALL(tpm_, VerifyPCRBoundKey(_, _, _)).WillRepeatedly(Return(false));
+  EXPECT_CALL(tpm_, VerifyPCRBoundKey(_, _, _, _))
+      .WillRepeatedly(Return(false));
   chromeos::SecureBlob data(100);
   chromeos::SecureBlob signature;
   ASSERT_TRUE(lockbox_->Sign(data, &signature));

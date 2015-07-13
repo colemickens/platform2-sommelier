@@ -91,10 +91,12 @@ class TpmImpl : public Tpm {
   bool CreatePCRBoundKey(int pcr_index,
                          const chromeos::SecureBlob& pcr_value,
                          chromeos::SecureBlob* key_blob,
-                         chromeos::SecureBlob* public_key_der) override;
+                         chromeos::SecureBlob* public_key_der,
+                         chromeos::SecureBlob* creation_blob) override;
   bool VerifyPCRBoundKey(int pcr_index,
                          const chromeos::SecureBlob& pcr_value,
-                         const chromeos::SecureBlob& key_blob) override;
+                         const chromeos::SecureBlob& key_blob,
+                         const chromeos::SecureBlob& creation_blob) override;
   bool ExtendPCR(int pcr_index, const chromeos::SecureBlob& extension) override;
   bool ReadPCR(int pcr_index, chromeos::SecureBlob* pcr_value) override;
   bool IsEndorsementKeyAvailable() override;

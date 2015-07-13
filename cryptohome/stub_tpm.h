@@ -106,10 +106,12 @@ class StubTpm : public Tpm {
   bool CreatePCRBoundKey(int pcr_index,
                          const SecureBlob& pcr_value,
                          SecureBlob* key_blob,
-                         SecureBlob* public_key_der) override { return false; }
+                         SecureBlob* public_key_der,
+                         SecureBlob* creation_blob) override { return false; }
   bool VerifyPCRBoundKey(int pcr_index,
                          const SecureBlob& pcr_value,
-                         const SecureBlob& key_blob) override
+                         const SecureBlob& key_blob,
+                         const SecureBlob& creation_blob) override
     { return false; }
   bool ExtendPCR(int pcr_index, const SecureBlob& extension) override
     { return false; }

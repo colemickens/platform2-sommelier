@@ -2345,7 +2345,10 @@ bool TpmImpl::Sign(const SecureBlob& key_blob,
 bool TpmImpl::CreatePCRBoundKey(int pcr_index,
                                 const chromeos::SecureBlob& pcr_value,
                                 chromeos::SecureBlob* key_blob,
-                                chromeos::SecureBlob* public_key_der) {
+                                chromeos::SecureBlob* public_key_der,
+                                chromeos::SecureBlob* creation_blob) {
+  CHECK(creation_blob) << "Error no creation_blob.";
+  creation_blob->clear();
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
@@ -2432,7 +2435,8 @@ bool TpmImpl::CreatePCRBoundKey(int pcr_index,
 
 bool TpmImpl::VerifyPCRBoundKey(int pcr_index,
                                 const chromeos::SecureBlob& pcr_value,
-                                const chromeos::SecureBlob& key_blob) {
+                                const chromeos::SecureBlob& key_blob,
+                                const chromeos::SecureBlob& creation_blob) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {

@@ -318,14 +318,16 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
 bool Tpm2Impl::CreatePCRBoundKey(int pcr_index,
                                  const SecureBlob& pcr_value,
                                  SecureBlob* key_blob,
-                                 SecureBlob* public_key_der) {
+                                 SecureBlob* public_key_der,
+                                 SecureBlob* creation_blob) {
   LOG(FATAL) << "Not Implemented.";
   return false;
 }
 
 bool Tpm2Impl::VerifyPCRBoundKey(int pcr_index,
                                  const SecureBlob& pcr_value,
-                                 const SecureBlob& key_blob) {
+                                 const SecureBlob& key_blob,
+                                 const SecureBlob& creation_blob) {
   LOG(FATAL) << "Not Implemented.";
   return false;
 }

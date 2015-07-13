@@ -11,4 +11,6 @@ message BootLockboxKey {
   optional bytes key_blob = 1;
   // The DER-encoded public key corresponding to key_blob.
   optional bytes public_key_der = 2;
+  // The creation data issued by the Tpm when creating the key.
+  optional bytes creation_blob = 3;
 }
