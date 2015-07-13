@@ -7,7 +7,6 @@
 
 namespace firewalld {
 
-const char kFirewallInterface[] = "org.chromium.Firewalld";
 const char kFirewallServicePath[] = "/org/chromium/Firewalld";
 const char kFirewallServiceName[] = "org.chromium.Firewalld";
 

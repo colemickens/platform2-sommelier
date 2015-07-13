@@ -22,7 +22,6 @@
           'variables': {
             'dbus_service_config': '<(platform2_root)/permission_broker/dbus_bindings/dbus-service-config.json',
             'proxy_output_file': 'include/permission_broker/dbus-proxies.h',
-            'dbus_adaptors_out_dir': '',
           },
           'sources': [
             '<(platform2_root)/permission_broker/dbus_bindings/org.chromium.PermissionBroker.xml',
@@ -35,7 +34,7 @@
       'target_name': 'firewalld-dbus-adaptor',
       'type': 'none',
       'variables': {
-        'dbus_adaptors_type': 'adaptor',
+        'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
         'dbus_adaptors_out_dir': 'include/firewalld/dbus_adaptor',
       },
       'sources': [

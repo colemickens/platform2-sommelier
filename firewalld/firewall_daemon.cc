@@ -11,8 +11,14 @@
 
 namespace firewalld {
 
+FirewallDaemon::FirewallDaemon()
+    : chromeos::DBusServiceDaemon{kFirewallServiceName,
+                                  dbus::ObjectPath{kFirewallServicePath}} {
+}
+
 void FirewallDaemon::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
-  firewall_service_.reset(new firewalld::FirewallService(bus_));
+  firewall_service_.reset(
+      new firewalld::FirewallService{object_manager_.get()});
   firewall_service_->RegisterAsync(
       sequencer->GetHandler("Service.RegisterAsync() failed.", true));
 }

@@ -18,7 +18,7 @@ namespace firewalld {
 
 class FirewallDaemon : public chromeos::DBusServiceDaemon {
  public:
-  FirewallDaemon() : chromeos::DBusServiceDaemon(kFirewallServiceName) {}
+  FirewallDaemon();
 
  protected:
   void RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) override;

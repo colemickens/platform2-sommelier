@@ -9,10 +9,11 @@
 
 namespace firewalld {
 
-FirewallService::FirewallService(const scoped_refptr<dbus::Bus>& bus)
+FirewallService::FirewallService(
+    chromeos::dbus_utils::ExportedObjectManager* object_manager)
     : org::chromium::FirewalldAdaptor(&iptables_),
-      dbus_object_{nullptr, bus, dbus::ObjectPath{kFirewallServicePath}},
-      weak_ptr_factory_{this} {}
+      dbus_object_{object_manager, object_manager->GetBus(),
+                   org::chromium::FirewalldAdaptor::GetObjectPath()} {}
 
 void FirewallService::RegisterAsync(const CompletionAction& callback) {
   RegisterWithDBusObject(&dbus_object_);

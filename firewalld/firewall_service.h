@@ -23,7 +23,8 @@ namespace firewalld {
 
 class FirewallService : public org::chromium::FirewalldAdaptor {
  public:
-  explicit FirewallService(const scoped_refptr<dbus::Bus>& bus);
+  explicit FirewallService(
+      chromeos::dbus_utils::ExportedObjectManager* object_manager);
   virtual ~FirewallService() = default;
 
   // Connects to D-Bus system bus and exports methods.
@@ -37,7 +38,7 @@ class FirewallService : public org::chromium::FirewalldAdaptor {
       permission_broker_;
   IpTables iptables_;
 
-  base::WeakPtrFactory<FirewallService> weak_ptr_factory_;
+  base::WeakPtrFactory<FirewallService> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(FirewallService);
 };
 

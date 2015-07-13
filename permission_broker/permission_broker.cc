@@ -72,7 +72,7 @@ PermissionBroker::PermissionBroker(
                    dbus::ObjectPath(kPermissionBrokerServicePath)),
       // Create the FirewalldProxy object here, that way the PortTracker object
       // doesn't need to know about D-Bus, which makes testing easier.
-      firewalld_(object_manager->GetBus(), firewalld::kServiceName),
+      firewalld_(object_manager->GetBus()),
       // |firewalld_| is owned by PermissionBroker, the PortTracker object
       // will only call D-Bus methods.
       port_tracker_(&firewalld_) {

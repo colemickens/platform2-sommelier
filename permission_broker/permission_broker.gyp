@@ -51,6 +51,7 @@
         {
           'action_name': 'generate-firewalld-proxies',
           'variables': {
+            'dbus_service_config': '<(platform2_root)/firewalld/dbus_bindings/dbus-service-config.json',
             'mock_output_file': 'include/firewalld/dbus-mocks.h',
             'proxy_output_file': 'include/firewalld/dbus-proxies.h',
           },
