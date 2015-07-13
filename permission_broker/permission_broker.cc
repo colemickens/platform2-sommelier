@@ -5,7 +5,6 @@
 #include "permission_broker/permission_broker.h"
 
 #include <fcntl.h>
-#include <grp.h>
 #include <linux/usb/ch9.h>
 #include <linux/usbdevice_fs.h>
 #include <sys/epoll.h>
@@ -19,6 +18,7 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/userdb_utils.h>
 
 #include "permission_broker/allow_group_tty_device_rule.h"
 #include "permission_broker/allow_hidraw_device_rule.h"
@@ -76,17 +76,8 @@ PermissionBroker::PermissionBroker(
       // |firewalld_| is owned by PermissionBroker, the PortTracker object
       // will only call D-Bus methods.
       port_tracker_(&firewalld_) {
-  CHECK(!access_group_name.empty()) << "You must specify a group name via the "
-                                    << "--access_group flag.";
-  struct group group_buffer;
-  struct group* access_group = NULL;
-  char buffer[256];
-  getgrnam_r(access_group_name.c_str(), &group_buffer, buffer, sizeof(buffer),
-             &access_group);
-  CHECK(access_group) << "Could not resolve \"" << access_group_name << "\" "
-                      << "to a named group.";
-  access_group_ = access_group->gr_gid;
-
+  CHECK(chromeos::userdb::GetGroupInfo(access_group_name, &access_group_))
+      << "You must specify a group name via the --access_group flag.";
   rule_engine_.AddRule(new AllowUsbDeviceRule());
   rule_engine_.AddRule(new AllowTtyDeviceRule());
   rule_engine_.AddRule(new DenyClaimedUsbDeviceRule());
