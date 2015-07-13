@@ -185,6 +185,8 @@ void SimpleSettingsMap::RemoveDocument(const SettingsDocument* document_ptr,
   for (auto it = value_map_.begin(); it != value_map_.end();) {
     if (it->second == document) {
       prefixes_to_restore.insert(it->first);
+      if (modified_keys)
+        modified_keys->insert(it->first);
       value_map_.erase(it++);
     } else {
       ++it;

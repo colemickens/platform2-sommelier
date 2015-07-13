@@ -140,13 +140,14 @@ TEST_F(SimpleSettingsMapTest, DocumentRemoval) {
   document_A_->SetKey(Key("A"), MakeIntValue(1));
   document_A_->SetKey(Key("B"), MakeIntValue(2));
   document_B_->SetKey(Key("B"), MakeIntValue(3));
+  document_B_->SetKey(Key("C"), MakeIntValue(4));
 
   SimpleSettingsMap settings_map;
   EXPECT_TRUE(settings_map.InsertDocument(document_A_.get(), nullptr));
   EXPECT_TRUE(settings_map.InsertDocument(document_B_.get(), nullptr));
   std::set<Key> modified_keys;
   settings_map.RemoveDocument(document_B_.get(), &modified_keys);
-  std::set<Key> expected_modifications = {Key("B")};
+  std::set<Key> expected_modifications = {Key("B"), Key("C")};
   EXPECT_EQ(expected_modifications, modified_keys);
 
   std::set<Key> expected_deletions = {};
