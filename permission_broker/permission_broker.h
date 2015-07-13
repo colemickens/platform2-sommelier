@@ -29,6 +29,7 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                          public org::chromium::PermissionBrokerInterface {
  public:
   PermissionBroker(chromeos::dbus_utils::ExportedObjectManager* object_manager,
+                   org::chromium::FirewalldProxy* firewalld,
                    const std::string& access_group,
                    const std::string& udev_run_path,
                    int poll_interval_msecs);
@@ -68,7 +69,6 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
   RuleEngine rule_engine_;
   chromeos::dbus_utils::DBusObject dbus_object_;
   gid_t access_group_;
-  org::chromium::FirewalldProxy firewalld_;
   PortTracker port_tracker_;
 
   DISALLOW_COPY_AND_ASSIGN(PermissionBroker);

@@ -14,7 +14,6 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <chromeos/dbus/service_constants.h>
@@ -62,6 +61,7 @@ namespace permission_broker {
 
 PermissionBroker::PermissionBroker(
     chromeos::dbus_utils::ExportedObjectManager* object_manager,
+    org::chromium::FirewalldProxy* firewalld,
     const std::string& access_group_name,
     const std::string& udev_run_path,
     int poll_interval_msecs)
@@ -70,12 +70,9 @@ PermissionBroker::PermissionBroker(
       dbus_object_(object_manager,
                    object_manager->GetBus(),
                    dbus::ObjectPath(kPermissionBrokerServicePath)),
-      // Create the FirewalldProxy object here, that way the PortTracker object
-      // doesn't need to know about D-Bus, which makes testing easier.
-      firewalld_(object_manager->GetBus()),
-      // |firewalld_| is owned by PermissionBroker, the PortTracker object
-      // will only call D-Bus methods.
-      port_tracker_(&firewalld_) {
+      // |firewalld_| is owned by Firewalld's object manager proxy,
+      // the PortTracker object will only call D-Bus methods.
+      port_tracker_(firewalld) {
   CHECK(chromeos::userdb::GetGroupInfo(access_group_name, &access_group_))
       << "You must specify a group name via the --access_group flag.";
   rule_engine_.AddRule(new AllowUsbDeviceRule());
