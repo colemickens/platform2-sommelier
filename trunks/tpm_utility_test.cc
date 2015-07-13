@@ -1204,16 +1204,40 @@ TEST_F(TpmUtilityTest, ImportRSAKeyFail) {
 }
 
 TEST_F(TpmUtilityTest, CreateRSAKeyPairSuccess) {
+  TPM2B_CREATION_DATA creation_data;
+  creation_data.creation_data.pcr_select.count = 1;
+  creation_data.creation_data.pcr_select.pcr_selections[0].hash =
+      TPM_ALG_SHA256;
+  creation_data.creation_data.pcr_select.pcr_selections[0].sizeof_select =
+      PCR_SELECT_MIN;
+  creation_data.creation_data.pcr_digest.size = 0;
+  creation_data.creation_data.parent_name_alg = TPM_ALG_SHA256;
+  creation_data.creation_data.parent_name.size = 0;
+  creation_data.creation_data.parent_qualified_name.size = 0;
+  creation_data.creation_data.outside_info.size = 0;
   TPM2B_PUBLIC public_area;
   EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey,
                                          _, _, _, _, _, _, _, _,
                                          &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<2>(&public_area),
+                      SetArgPointee<6>(creation_data),
                       Return(TPM_RC_SUCCESS)));
   std::string key_blob;
+  std::string creation_blob;
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, 2048, 0x10001,
-      "password", "", false, &mock_authorization_delegate_, &key_blob));
+      "password", "", false, &mock_authorization_delegate_, &key_blob,
+      &creation_blob));
+  TPM2B_CREATION_DATA tpm_creation_data;
+  EXPECT_EQ(TPM_RC_SUCCESS, Parse_TPM2B_CREATION_DATA(&creation_blob,
+                                                      &tpm_creation_data,
+                                                      nullptr));
+  TPMS_CREATION_DATA& creation_info = tpm_creation_data.creation_data;
+  EXPECT_EQ(1, creation_info.pcr_select.count);
+  EXPECT_EQ(TPM_ALG_SHA256, creation_info.parent_name_alg);
+  EXPECT_EQ(TPM_ALG_SHA256, creation_info.pcr_select.pcr_selections[0].hash);
+  EXPECT_EQ(PCR_SELECT_MIN,
+            creation_info.pcr_select.pcr_selections[0].sizeof_select);
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
   EXPECT_EQ(public_area.public_area.object_attributes & kUserWithAuth,
@@ -1232,8 +1256,8 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairDecryptKeySuccess) {
                       Return(TPM_RC_SUCCESS)));
   std::string key_blob;
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateRSAKeyPair(
-      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
-      "password", "", false, &mock_authorization_delegate_, &key_blob));
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001, "password",
+      "", false, &mock_authorization_delegate_, &key_blob, nullptr));
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, kDecrypt);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, 0);
   EXPECT_EQ(public_area.public_area.parameters.rsa_detail.scheme.scheme,
@@ -1255,7 +1279,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccess) {
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001, key_auth,
       policy_digest, true,  // use_only_policy_authorization
-      &mock_authorization_delegate_, &key_blob));
+      &mock_authorization_delegate_, &key_blob, nullptr));
   EXPECT_EQ(public_area.public_area.object_attributes & kDecrypt, 0);
   EXPECT_EQ(public_area.public_area.object_attributes & kSign, kSign);
   EXPECT_EQ(public_area.public_area.object_attributes & kUserWithAuth, 0);
@@ -1277,7 +1301,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairBadDelegate) {
   std::string key_blob;
   EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001, "password",
-      "", false, nullptr, &key_blob));
+      "", false, nullptr, &key_blob, nullptr));
 }
 
 TEST_F(TpmUtilityTest, CreateRSAKeyPairFailure) {
@@ -1288,7 +1312,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairFailure) {
   std::string key_blob;
   EXPECT_EQ(TPM_RC_FAILURE, utility_.CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001, "password",
-      "", false, &mock_authorization_delegate_, &key_blob));
+      "", false, &mock_authorization_delegate_, &key_blob, nullptr));
 }
 
 TEST_F(TpmUtilityTest, LoadKeySuccess) {

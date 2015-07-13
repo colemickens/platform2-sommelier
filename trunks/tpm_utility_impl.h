@@ -87,7 +87,8 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                           const std::string& policy_digest,
                           bool use_only_policy_authorization,
                           AuthorizationDelegate* delegate,
-                          std::string* key_blob) override;
+                          std::string* key_blob,
+                          std::string* creation_blob) override;
   TPM_RC LoadKey(const std::string& key_blob,
                  AuthorizationDelegate* delegate,
                  TPM_HANDLE* key_handle) override;

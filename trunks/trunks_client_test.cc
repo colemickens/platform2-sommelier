@@ -80,10 +80,10 @@ bool TrunksClientTest::SignTest() {
   std::string key_authorization("sign");
   std::string key_blob;
   session->SetEntityAuthorizationValue("");
-  result = utility->CreateRSAKeyPair(TpmUtility::AsymmetricKeyUsage::kSignKey,
-                                     2048, 0x10001, key_authorization, "",
-                                     false,  // use_only_policy_authorization
-                                     session->GetDelegate(), &key_blob);
+  result = utility->CreateRSAKeyPair(
+      TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001,
+      key_authorization, "", false,  // use_only_policy_authorization
+      session->GetDelegate(), &key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating signing key: " << GetErrorString(result);
     return false;
@@ -126,7 +126,7 @@ bool TrunksClientTest::DecryptTest() {
   result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
       key_authorization, "", false,  // use_only_policy_authorization
-      session->GetDelegate(), &key_blob);
+      session->GetDelegate(), &key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating decrypt key: " << GetErrorString(result);
     return false;
@@ -188,7 +188,7 @@ bool TrunksClientTest::AuthChangeTest() {
   result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
       "old_pass", "", false,  // use_only_policy_authorization
-      session->GetDelegate(), &key_blob);
+      session->GetDelegate(), &key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating change auth key: " << GetErrorString(result);
     return false;
@@ -292,7 +292,7 @@ bool TrunksClientTest::PolicyAuthValueTest() {
   result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, 2048, 0x10001,
       "password", policy_digest, true,  // use_only_policy_authorization
-      hmac_session->GetDelegate(), &key_blob);
+      hmac_session->GetDelegate(), &key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating RSA key: " << GetErrorString(result);
     return false;
@@ -421,7 +421,7 @@ bool TrunksClientTest::PolicyAndTest() {
   result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, 2048, 0x10001,
       key_authorization, policy_digest, true,  // use_only_policy_authorization
-      hmac_session->GetDelegate(), &key_blob);
+      hmac_session->GetDelegate(), &key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating RSA key: " << GetErrorString(result);
     return false;
@@ -601,7 +601,7 @@ bool TrunksClientTest::PolicyOrTest() {
   result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, 2048, 0x10001,
       key_authorization, policy_digest, true,  // use_only_policy_authorization
-      hmac_session->GetDelegate(), &key_blob);
+      hmac_session->GetDelegate(), &key_blob, nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating RSA key: " << GetErrorString(result);
     return false;

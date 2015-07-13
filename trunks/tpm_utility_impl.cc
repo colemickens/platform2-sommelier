@@ -773,7 +773,8 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                                         const std::string& policy_digest,
                                         bool use_only_policy_authorization,
                                         AuthorizationDelegate* delegate,
-                                        std::string* key_blob) {
+                                        std::string* key_blob,
+                                        std::string* creation_blob) {
   CHECK(key_blob);
   TPM_RC result;
   if (delegate == nullptr) {
@@ -845,6 +846,14 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error serializing key_blob: " << GetErrorString(result);
     return result;
+  }
+  if (creation_blob) {
+    result = Serialize_TPM2B_CREATION_DATA(creation_data, creation_blob);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Error serializing creation data struct: "
+                 << GetErrorString(result);
+      return result;
+    }
   }
   return TPM_RC_SUCCESS;
 }

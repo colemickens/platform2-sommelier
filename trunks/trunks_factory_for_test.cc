@@ -221,11 +221,12 @@ class TpmUtilityForwarder : public TpmUtility {
                           const std::string& policy_digest,
                           bool use_only_policy_authorization,
                           AuthorizationDelegate* delegate,
-                          std::string* key_blob) override {
+                          std::string* key_blob,
+                          std::string* creation_blob) override {
     return target_->CreateRSAKeyPair(key_type, modulus_bits, public_exponent,
                                      password, policy_digest,
                                      use_only_policy_authorization,
-                                     delegate, key_blob);
+                                     delegate, key_blob, creation_blob);
   }
 
   TPM_RC LoadKey(const std::string& key_blob,
