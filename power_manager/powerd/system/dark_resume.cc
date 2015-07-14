@@ -13,7 +13,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <components/timers/alarm_timer.h>
+#include <components/timers/alarm_timer_chromeos.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -64,9 +64,7 @@ void DarkResume::Init(PowerSupplyInterface* power_supply,
   power_supply_ = power_supply;
   prefs_ = prefs;
 
-  scoped_ptr<timers::AlarmTimer> timer(
-      new timers::AlarmTimer(true /* retain_user_task */,
-                             false /* is_repeating */));
+  scoped_ptr<timers::SimpleAlarmTimer> timer(new timers::SimpleAlarmTimer());
   if (timer->can_wake_from_suspend())
     timer_ = timer.Pass();
 

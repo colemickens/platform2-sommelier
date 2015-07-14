@@ -18,7 +18,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <components/timers/alarm_timer.h>
+#include <components/timers/alarm_timer_chromeos.h>
 
 #include "shill/callbacks.h"
 #include "shill/ip_address_store.h"
@@ -513,9 +513,9 @@ class WakeOnWiFi {
   // Describes the wake on WiFi features that are currently enabled.
   std::string wake_on_wifi_features_enabled_;
   // Timer that wakes the system to renew DHCP leases.
-  timers::AlarmTimer dhcp_lease_renewal_timer_;
+  timers::SimpleAlarmTimer dhcp_lease_renewal_timer_;
   // Timer that wakes the system to scan for networks.
-  timers::AlarmTimer wake_to_scan_timer_;
+  timers::SimpleAlarmTimer wake_to_scan_timer_;
   // Executes when the dark resume actions timer expires. Calls
   // ScanTimerHandler.
   base::CancelableClosure dark_resume_actions_timeout_callback_;

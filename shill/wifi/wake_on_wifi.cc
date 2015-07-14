@@ -16,7 +16,6 @@
 
 #include <base/cancelable_callback.h>
 #include <chromeos/dbus/service_constants.h>
-#include <components/timers/alarm_timer.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -35,7 +34,6 @@ using std::pair;
 using std::set;
 using std::string;
 using std::vector;
-using timers::AlarmTimer;
 
 namespace shill {
 
@@ -95,8 +93,6 @@ WakeOnWiFi::WakeOnWiFi(
       // DBus.
       wake_on_wifi_features_enabled_(kWakeOnWiFiFeaturesEnabledNone),
 #endif  // DISABLE_WAKE_ON_WIFI
-      dhcp_lease_renewal_timer_(true, false),
-      wake_to_scan_timer_(true, false),
       in_dark_resume_(false),
       wake_to_scan_period_seconds_(kDefaultWakeToScanPeriodSeconds),
       net_detect_scan_period_seconds_(kDefaultNetDetectScanPeriodSeconds),
