@@ -220,6 +220,7 @@ bool IpTables::AddAcceptRule(const std::string& executable_path,
   }
   argv.push_back("-j");
   argv.push_back("ACCEPT");
+  argv.push_back("-w");  // Wait for xtables lock.
 
   // Use CAP_NET_ADMIN|CAP_NET_RAW.
   return ExecvNonRoot(argv, kIpTablesCapMask) == 0;
@@ -243,6 +244,7 @@ bool IpTables::DeleteAcceptRule(const std::string& executable_path,
   }
   argv.push_back("-j");
   argv.push_back("ACCEPT");
+  argv.push_back("-w");  // Wait for xtables lock.
 
   // Use CAP_NET_ADMIN|CAP_NET_RAW.
   return ExecvNonRoot(argv, kIpTablesCapMask) == 0;
