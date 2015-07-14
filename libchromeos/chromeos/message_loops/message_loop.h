@@ -44,21 +44,21 @@ class CHROMEOS_EXPORT MessageLoop {
   // at a later point.
   // This methond can only be called from the same thread running the main loop.
   virtual TaskId PostDelayedTask(const tracked_objects::Location& from_here,
-                                 const base::Closure &task,
+                                 const base::Closure& task,
                                  base::TimeDelta delay) = 0;
   // Variant without the Location for easier usage.
-  TaskId PostDelayedTask(const base::Closure &task,
+  TaskId PostDelayedTask(const base::Closure& task,
                          base::TimeDelta delay) {
     return PostDelayedTask(tracked_objects::Location(), task, delay);
   }
 
   // A convenience method to schedule a call with no delay.
   // This methond can only be called from the same thread running the main loop.
-  TaskId PostTask(const base::Closure &task) {
+  TaskId PostTask(const base::Closure& task) {
     return PostDelayedTask(task, base::TimeDelta());
   }
   TaskId PostTask(const tracked_objects::Location& from_here,
-                  const base::Closure &task) {
+                  const base::Closure& task) {
     return PostDelayedTask(from_here, task, base::TimeDelta());
   }
 
@@ -79,13 +79,13 @@ class CHROMEOS_EXPORT MessageLoop {
                                      int fd,
                                      WatchMode mode,
                                      bool persistent,
-                                     const base::Closure &task) = 0;
+                                     const base::Closure& task) = 0;
 
   // Convenience function to call WatchFileDescriptor() without a location.
   TaskId WatchFileDescriptor(int fd,
                              WatchMode mode,
                              bool persistent,
-                             const base::Closure &task) {
+                             const base::Closure& task) {
     return WatchFileDescriptor(
         tracked_objects::Location(), fd, mode, persistent, task);
   }

@@ -15,7 +15,7 @@ FakeMessageLoop::FakeMessageLoop(base::SimpleTestClock* clock)
 
 MessageLoop::TaskId FakeMessageLoop::PostDelayedTask(
     const tracked_objects::Location& from_here,
-    const base::Closure &task,
+    const base::Closure& task,
     base::TimeDelta delay) {
   // If no SimpleTestClock was provided, we use the last time we fired a
   // callback. In this way, tasks scheduled from a Closure will have the right
@@ -38,7 +38,7 @@ MessageLoop::TaskId FakeMessageLoop::WatchFileDescriptor(
     int fd,
     WatchMode mode,
     bool persistent,
-    const base::Closure &task) {
+    const base::Closure& task) {
   MessageLoop::TaskId current_id = ++last_id_;
   // FakeMessageLoop is limited to only 2^64 tasks. That should be enough.
   CHECK(current_id);

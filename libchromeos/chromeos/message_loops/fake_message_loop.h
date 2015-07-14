@@ -37,14 +37,14 @@ class CHROMEOS_EXPORT FakeMessageLoop : public MessageLoop {
   ~FakeMessageLoop() override = default;
 
   TaskId PostDelayedTask(const tracked_objects::Location& from_here,
-                         const base::Closure &task,
+                         const base::Closure& task,
                          base::TimeDelta delay) override;
   using MessageLoop::PostDelayedTask;
   TaskId WatchFileDescriptor(const tracked_objects::Location& from_here,
                              int fd,
                              WatchMode mode,
                              bool persistent,
-                             const base::Closure &task) override;
+                             const base::Closure& task) override;
   using MessageLoop::WatchFileDescriptor;
   bool CancelTask(TaskId task_id) override;
   bool RunOnce(bool may_block) override;
