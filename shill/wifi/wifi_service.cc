@@ -631,19 +631,17 @@ void WiFiService::Connect(Error* error, const char* reason) {
   wifi->ConnectTo(this);
 }
 
-DBusPropertiesMap WiFiService::GetSupplicantConfigurationParameters() const {
-  DBusPropertiesMap params;
-  DBus::MessageIter writer;
+KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
+  KeyValueStore params;
 
-  params[WPASupplicant::kNetworkPropertyMode].writer().
-      append_uint32(WiFiEndpoint::ModeStringToUint(mode_));
+  params.SetUint(WPASupplicant::kNetworkPropertyMode,
+                 WiFiEndpoint::ModeStringToUint(mode_));
 
   if (mode_ == kModeAdhoc && frequency_ != 0) {
     // Frequency is required in order to successfully connect to an IBSS
     // with wpa_supplicant.  If we have one from our endpoint, insert it
     // here.
-    params[WPASupplicant::kNetworkPropertyFrequency].writer().
-        append_int32(frequency_);
+    params.SetInt(WPASupplicant::kNetworkPropertyFrequency, frequency_);
   }
 
   if (Is8021x()) {
@@ -655,42 +653,37 @@ DBusPropertiesMap WiFiService::GetSupplicantConfigurationParameters() const {
         base::StringPrintf("%s %s",
                            WPASupplicant::kSecurityModeWPA,
                            WPASupplicant::kSecurityModeRSN);
-    params[WPASupplicant::kPropertySecurityProtocol].writer().
-        append_string(psk_proto.c_str());
-    params[WPASupplicant::kPropertyPreSharedKey].writer().
-        append_string(passphrase_.c_str());
+    params.SetString(WPASupplicant::kPropertySecurityProtocol, psk_proto);
+    params.SetString(WPASupplicant::kPropertyPreSharedKey, passphrase_);
   } else if (security_ == kSecurityWep) {
-    params[WPASupplicant::kPropertyAuthAlg].writer().
-        append_string(WPASupplicant::kSecurityAuthAlg);
+    params.SetString(WPASupplicant::kPropertyAuthAlg,
+                     WPASupplicant::kSecurityAuthAlg);
     Error unused_error;
     int key_index;
     std::vector<uint8_t> password_bytes;
     ParseWEPPassphrase(passphrase_, &key_index, &password_bytes, &unused_error);
-    writer = params[WPASupplicant::kPropertyWEPKey +
-                    base::IntToString(key_index)].writer();
-    writer << password_bytes;
-    params[WPASupplicant::kPropertyWEPTxKeyIndex].writer().
-        append_uint32(key_index);
+    params.SetUint8s(WPASupplicant::kPropertyWEPKey +
+                         base::IntToString(key_index),
+                     password_bytes);
+    params.SetUint(WPASupplicant::kPropertyWEPTxKeyIndex, key_index);
   } else if (security_ == kSecurityNone) {
     // Nothing special to do here.
   } else {
     NOTIMPLEMENTED() << "Unsupported security method " << security_;
   }
 
-  params[WPASupplicant::kNetworkPropertyEapKeyManagement].writer().
-      append_string(key_management().c_str());
+  params.SetString(WPASupplicant::kNetworkPropertyEapKeyManagement,
+                   key_management());
 
   if (ieee80211w_required_) {
     // TODO(pstew): We should also enable IEEE 802.11w if the user
     // explicitly enables support for this through a service / device
     // property.  crbug.com/219950
-    params[WPASupplicant::kNetworkPropertyIeee80211w].writer().
-        append_uint32(WPASupplicant::kNetworkIeee80211wEnabled);
+    params.SetUint(WPASupplicant::kNetworkPropertyIeee80211w,
+                   WPASupplicant::kNetworkIeee80211wEnabled);
   }
 
-  // See note in dbus_adaptor.cc on why we need to use a local.
-  writer = params[WPASupplicant::kNetworkPropertySSID].writer();
-  writer << ssid_;
+  params.SetUint8s(WPASupplicant::kNetworkPropertySSID, ssid_);
 
   return params;
 }

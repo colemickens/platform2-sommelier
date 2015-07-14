@@ -86,11 +86,11 @@ class ProxyFactory {
 
   virtual SupplicantInterfaceProxyInterface* CreateSupplicantInterfaceProxy(
       SupplicantEventDelegateInterface* delegate,
-      const DBus::Path& object_path,
+      const std::string& object_path,
       const char* dbus_addr);
 
   virtual SupplicantNetworkProxyInterface* CreateSupplicantNetworkProxy(
-      const DBus::Path& object_path,
+      const std::string& object_path,
       const char* dbus_addr);
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
@@ -98,7 +98,7 @@ class ProxyFactory {
   // See comment in supplicant_bss_proxy.h, about bare pointer.
   virtual SupplicantBSSProxyInterface* CreateSupplicantBSSProxy(
       WiFiEndpoint* wifi_endpoint,
-      const DBus::Path& object_path,
+      const std::string& object_path,
       const char* dbus_addr);
 #endif  // DISABLE_WIFI
 

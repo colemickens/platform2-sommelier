@@ -7,8 +7,6 @@
 
 #include <map>
 
-#include <dbus-c++/dbus.h>
-
 namespace shill {
 
 // SupplicantNetworkProxyInterface declares only the subset of
@@ -17,7 +15,7 @@ class SupplicantNetworkProxyInterface {
  public:
   virtual ~SupplicantNetworkProxyInterface() {}
 
-  virtual void SetEnabled(bool enabled) = 0;
+  virtual bool SetEnabled(bool enabled) = 0;
 };
 
 }  // namespace shill

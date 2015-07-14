@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include "shill/dbus_properties.h"
 #include "shill/dbus_proxies/supplicant-interface.h"
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
@@ -160,7 +159,7 @@ class WiFiService : public Service {
   virtual void ResetWiFi();
 
   // Called by WiFi to retrieve configuration parameters for wpa_supplicant.
-  virtual DBusPropertiesMap GetSupplicantConfigurationParameters() const;
+  virtual KeyValueStore GetSupplicantConfigurationParameters() const;
 
   // "wpa", "rsn" and "psk" are equivalent from a configuration perspective.
   // This function maps them all into "psk".

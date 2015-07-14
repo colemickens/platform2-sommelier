@@ -51,6 +51,7 @@ using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
+using testing::SetArgumentPointee;
 using testing::StrEq;
 using testing::StrictMock;
 using testing::Throw;
@@ -179,8 +180,9 @@ class EthernetTest : public testing::Test {
         ExpectCreateSupplicantInterfaceProxy();
     MockSupplicantProcessProxy* process_proxy =
         ExpectCreateSupplicantProcessProxy();
-    EXPECT_CALL(*process_proxy, CreateInterface(_))
-        .WillOnce(Return(kInterfacePath));
+    EXPECT_CALL(*process_proxy, CreateInterface(_, _))
+        .WillOnce(DoAll(SetArgumentPointee<1>(string(kInterfacePath)),
+                        Return(true)));
     EXPECT_TRUE(InvokeStartSupplicant());
     EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
     EXPECT_EQ(process_proxy, GetSupplicantProcessProxy());
@@ -196,7 +198,7 @@ class EthernetTest : public testing::Test {
 
   MockSupplicantInterfaceProxy* ExpectCreateSupplicantInterfaceProxy() {
     EXPECT_CALL(proxy_factory_,
-                CreateSupplicantInterfaceProxy(_, DBus::Path(kInterfacePath),
+                CreateSupplicantInterfaceProxy(_, kInterfacePath,
                                                StrEq(WPASupplicant::kDBusAddr)))
         .WillOnce(ReturnAndReleasePointee(&supplicant_interface_proxy_));
     return supplicant_interface_proxy_.get();
@@ -440,7 +442,7 @@ TEST_F(EthernetTest, StartSupplicant) {
 
   // Starting it again should not invoke another call to create an interface.
   Mock::VerifyAndClearExpectations(process_proxy);
-  EXPECT_CALL(*process_proxy, CreateInterface(_)).Times(0);
+  EXPECT_CALL(*process_proxy, CreateInterface(_, _)).Times(0);
   EXPECT_TRUE(InvokeStartSupplicant());
 
   // Also, the mock pointers should remain; if the MockProxyFactory was
@@ -455,12 +457,10 @@ TEST_F(EthernetTest, StartSupplicantWithInterfaceExistsException) {
       ExpectCreateSupplicantProcessProxy();
   MockSupplicantInterfaceProxy* interface_proxy =
       ExpectCreateSupplicantInterfaceProxy();
-  EXPECT_CALL(*process_proxy, CreateInterface(_))
-      .WillOnce(Throw(DBus::Error(
-          "fi.w1.wpa_supplicant1.InterfaceExists",
-          "test threw fi.w1.wpa_supplicant1.InterfaceExists")));
-  EXPECT_CALL(*process_proxy, GetInterface(kDeviceName))
-      .WillOnce(Return(kInterfacePath));
+  EXPECT_CALL(*process_proxy, CreateInterface(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(*process_proxy, GetInterface(kDeviceName, _))
+      .WillOnce(
+          DoAll(SetArgumentPointee<1>(string(kInterfacePath)), Return(true)));
   EXPECT_TRUE(InvokeStartSupplicant());
   EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
   EXPECT_EQ(process_proxy, GetSupplicantProcessProxy());
@@ -470,11 +470,9 @@ TEST_F(EthernetTest, StartSupplicantWithInterfaceExistsException) {
 TEST_F(EthernetTest, StartSupplicantWithUnknownException) {
   MockSupplicantProcessProxy* process_proxy =
       ExpectCreateSupplicantProcessProxy();
-  EXPECT_CALL(*process_proxy, CreateInterface(_))
-      .WillOnce(Throw(DBus::Error(
-          "fi.w1.wpa_supplicant1.UnknownError",
-          "test threw fi.w1.wpa_supplicant1.UnknownError")));
-  EXPECT_CALL(*process_proxy, GetInterface(kDeviceName)).Times(0);
+  EXPECT_CALL(*process_proxy, CreateInterface(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(*process_proxy, GetInterface(kDeviceName, _))
+      .WillOnce(Return(false));
   EXPECT_FALSE(InvokeStartSupplicant());
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxy());
   EXPECT_EQ(nullptr, GetSupplicantProcessProxy());
@@ -494,10 +492,8 @@ TEST_F(EthernetTest, StartEapAuthentication) {
       .WillOnce(Return(&mock_eap_credentials));
   EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
   EXPECT_CALL(*interface_proxy, RemoveNetwork(_)).Times(0);
-  EXPECT_CALL(*interface_proxy, AddNetwork(_))
-      .WillOnce(Throw(DBus::Error(
-          "fi.w1.wpa_supplicant1.UnknownError",
-          "test threw fi.w1.wpa_supplicant1.UnknownError")));
+  EXPECT_CALL(*interface_proxy, AddNetwork(_, _))
+      .WillOnce(Return(false));
   EXPECT_CALL(*interface_proxy, SelectNetwork(_)).Times(0);
   EXPECT_CALL(*interface_proxy, EAPLogon()).Times(0);
   EXPECT_FALSE(InvokeStartEapAuthentication());
@@ -512,8 +508,10 @@ TEST_F(EthernetTest, StartEapAuthentication) {
       .WillOnce(Return(&mock_eap_credentials));
   EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
   const char kFirstNetworkPath[] = "/network/first-path";
-  EXPECT_CALL(*interface_proxy, AddNetwork(_))
-      .WillOnce(Return(kFirstNetworkPath));
+  EXPECT_CALL(*interface_proxy, AddNetwork(_, _))
+      .WillOnce(
+          DoAll(SetArgumentPointee<1>(string(kFirstNetworkPath)),
+                Return(true)));
   EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kFirstNetworkPath)));
   EXPECT_CALL(*interface_proxy, EAPLogon());
   EXPECT_TRUE(InvokeStartEapAuthentication());
@@ -524,13 +522,16 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_EQ(kFirstNetworkPath, GetSupplicantNetworkPath());
 
   EXPECT_CALL(*mock_service_, ClearEAPCertification());
-  EXPECT_CALL(*interface_proxy, RemoveNetwork(StrEq(kFirstNetworkPath)));
+  EXPECT_CALL(*interface_proxy, RemoveNetwork(StrEq(kFirstNetworkPath)))
+      .WillOnce(Return(true));
   EXPECT_CALL(*mock_eap_service_, eap())
       .WillOnce(Return(&mock_eap_credentials));
   EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _));
   const char kSecondNetworkPath[] = "/network/second-path";
-  EXPECT_CALL(*interface_proxy, AddNetwork(_))
-      .WillOnce(Return(kSecondNetworkPath));
+  EXPECT_CALL(*interface_proxy, AddNetwork(_, _))
+      .WillOnce(
+          DoAll(SetArgumentPointee<1>(string(kSecondNetworkPath)),
+                Return(true)));
   EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kSecondNetworkPath)));
   EXPECT_CALL(*interface_proxy, EAPLogon());
   EXPECT_TRUE(InvokeStartEapAuthentication());
@@ -544,8 +545,9 @@ TEST_F(EthernetTest, StopSupplicant) {
   StartSupplicant();
   SetIsEapAuthenticated(true);
   SetSupplicantNetworkPath("/network/1");
-  EXPECT_CALL(*interface_proxy, EAPLogoff());
-  EXPECT_CALL(*process_proxy, RemoveInterface(StrEq(kInterfacePath)));
+  EXPECT_CALL(*interface_proxy, EAPLogoff()).WillOnce(Return(true));
+  EXPECT_CALL(*process_proxy, RemoveInterface(StrEq(kInterfacePath)))
+      .WillOnce(Return(true));
   InvokeStopSupplicant();
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxy());
   EXPECT_EQ(nullptr, GetSupplicantProcessProxy());

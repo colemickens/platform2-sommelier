@@ -92,7 +92,7 @@ SupplicantProcessProxyInterface* ProxyFactory::CreateSupplicantProcessProxy(
 
 SupplicantInterfaceProxyInterface* ProxyFactory::CreateSupplicantInterfaceProxy(
     SupplicantEventDelegateInterface* delegate,
-    const DBus::Path& object_path,
+    const string& object_path,
     const char* dbus_addr) {
   return new SupplicantInterfaceProxy(delegate,
                                       GetConnection(),
@@ -101,7 +101,7 @@ SupplicantInterfaceProxyInterface* ProxyFactory::CreateSupplicantInterfaceProxy(
 }
 
 SupplicantNetworkProxyInterface* ProxyFactory::CreateSupplicantNetworkProxy(
-    const DBus::Path& object_path,
+    const string& object_path,
     const char* dbus_addr) {
   return new SupplicantNetworkProxy(GetConnection(),
                                     object_path,
@@ -112,7 +112,7 @@ SupplicantNetworkProxyInterface* ProxyFactory::CreateSupplicantNetworkProxy(
 #if !defined(DISABLE_WIFI)
 SupplicantBSSProxyInterface* ProxyFactory::CreateSupplicantBSSProxy(
     WiFiEndpoint* wifi_endpoint,
-    const DBus::Path& object_path,
+    const string& object_path,
     const char* dbus_addr) {
   return new SupplicantBSSProxy(
       wifi_endpoint, GetConnection(), object_path, dbus_addr);

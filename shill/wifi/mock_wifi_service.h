@@ -53,7 +53,7 @@ class MockWiFiService : public WiFiService {
   MOCK_CONST_METHOD0(HasEndpoints, bool());
   MOCK_CONST_METHOD0(IsRemembered, bool());
   MOCK_METHOD0(ResetWiFi, void());
-  MOCK_CONST_METHOD0(GetSupplicantConfigurationParameters, DBusPropertiesMap());
+  MOCK_CONST_METHOD0(GetSupplicantConfigurationParameters, KeyValueStore());
   MOCK_CONST_METHOD1(IsAutoConnectable, bool(const char** reason));
   MOCK_CONST_METHOD0(HasStaticIPAddress, bool());
 

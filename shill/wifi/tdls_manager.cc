@@ -97,44 +97,38 @@ void TDLSManager::OnDiscoverResponseReceived(const string& peer_mac_address) {
 }
 
 bool TDLSManager::DiscoverPeer(const string& peer_mac_address) {
-  try {
-    supplicant_interface_proxy_->TDLSDiscover(peer_mac_address);
-    peer_discovery_state_[peer_mac_address] = PeerDiscoveryState::kRequestSent;
-    StartPeerDiscoveryCleanupTimer();
-  } catch (const DBus::Error& e) {  // NOLINT
-    LOG(ERROR) << "exception while performing TDLS discover: " << e.what();
+  if (!supplicant_interface_proxy_->TDLSDiscover(peer_mac_address)) {
+    LOG(ERROR) << "Failed to perform TDLS discover";
     return false;
   }
+  peer_discovery_state_[peer_mac_address] = PeerDiscoveryState::kRequestSent;
+  StartPeerDiscoveryCleanupTimer();
   return true;
 }
 
 bool TDLSManager::SetupPeer(const string& peer_mac_address) {
-  try {
-    supplicant_interface_proxy_->TDLSSetup(peer_mac_address);
-  } catch (const DBus::Error& e) {  // NOLINT
-    LOG(ERROR) << "exception while performing TDLS setup: " << e.what();
+  if (!supplicant_interface_proxy_->TDLSSetup(peer_mac_address)) {
+    LOG(ERROR) << "Failed to perform TDLS setup";
     return false;
   }
   return true;
 }
 
 bool TDLSManager::TearDownPeer(const string& peer_mac_address) {
-  try {
-    supplicant_interface_proxy_->TDLSTeardown(peer_mac_address);
-  } catch (const DBus::Error& e) {  // NOLINT
-    LOG(ERROR) << "exception while performing TDLS teardown: " << e.what();
+  if (!supplicant_interface_proxy_->TDLSTeardown(peer_mac_address)) {
+    LOG(ERROR) << "Failed to perform TDLS teardown";
     return false;
   }
   return true;
 }
 
 string TDLSManager::PeerStatus(const string& peer_mac_address) {
-  try {
-    return supplicant_interface_proxy_->TDLSStatus(peer_mac_address);
-  } catch (const DBus::Error& e) {  // NOLINT
-    LOG(ERROR) << "exception while getting TDLS status: " << e.what();
+  string status;
+  if (!supplicant_interface_proxy_->TDLSStatus(peer_mac_address, &status)) {
+    LOG(ERROR) << "Failed to perform TDLS status";
     return "";
   }
+  return status;
 }
 
 void TDLSManager::StartPeerDiscoveryCleanupTimer() {

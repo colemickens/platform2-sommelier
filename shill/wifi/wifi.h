@@ -85,7 +85,6 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
-#include <dbus-c++/dbus.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/timer.h>
 
@@ -162,16 +161,13 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
-  void BSSAdded(
-      const ::DBus::Path& BSS,
-      const std::map<std::string, ::DBus::Variant>& properties) override;
-  void BSSRemoved(const ::DBus::Path& BSS) override;
-  void Certification(
-      const std::map<std::string, ::DBus::Variant>& properties) override;
+  void BSSAdded(const std::string& BSS,
+                const KeyValueStore& properties) override;
+  void BSSRemoved(const std::string& BSS) override;
+  void Certification(const KeyValueStore& properties) override;
   void EAPEvent(
       const std::string& status, const std::string& parameter) override;
-  void PropertiesChanged(
-      const std::map<std::string, ::DBus::Variant>& properties) override;
+  void PropertiesChanged(const KeyValueStore& properties) override;
   void ScanDone(const bool& success) override;
   void TDLSDiscoverResponse(const std::string& peer_address) override;
 
@@ -259,12 +255,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Result from a BSSAdded or BSSRemoved event.
   struct ScanResult {
     ScanResult() : is_removal(false) {}
-    ScanResult(const ::DBus::Path& path_in,
-               const std::map<std::string, ::DBus::Variant>& properties_in,
+    ScanResult(const std::string& path_in,
+               const KeyValueStore& properties_in,
                bool is_removal_in)
         : path(path_in), properties(properties_in), is_removal(is_removal_in) {}
-    ::DBus::Path path;
-    std::map<std::string, ::DBus::Variant> properties;
+    std::string path;
+    KeyValueStore properties;
     bool is_removal;
   };
 
@@ -371,7 +367,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   void GetPhyInfo();
   void AppendBgscan(WiFiService* service,
-                    std::map<std::string, DBus::Variant>* service_params) const;
+                    KeyValueStore* service_params) const;
   std::string GetBgscanMethod(const int& argument, Error* error);
   uint16_t GetBgscanShortInterval(Error* /* error */) {
     return bgscan_short_interval_seconds_;
@@ -400,7 +396,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool SetScanInterval(const uint16_t& seconds, Error* error);
   void ClearBgscanMethod(const int& argument, Error* error);
 
-  void CurrentBSSChanged(const ::DBus::Path& new_bss);
+  void CurrentBSSChanged(const std::string& new_bss);
   void DisconnectReasonChanged(const int32 new_disconnect_reason);
   // Return the RPC identifier associated with the wpa_supplicant network
   // entry created for |service|.  If one does not exist, an empty string
@@ -413,15 +409,13 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // and failure is not already set. Then set the state of the service back
   // to idle, so it can be used for future connections.
   void ServiceDisconnected(WiFiServiceRefPtr service);
-  void HandleRoam(const ::DBus::Path& new_bssid);
-  void BSSAddedTask(const ::DBus::Path& BSS,
-                    const std::map<std::string, ::DBus::Variant>& properties);
-  void BSSRemovedTask(const ::DBus::Path& BSS);
-  void CertificationTask(
-      const std::map<std::string, ::DBus::Variant>& properties);
+  void HandleRoam(const std::string& new_bssid);
+  void BSSAddedTask(const std::string& BSS,
+                    const KeyValueStore& properties);
+  void BSSRemovedTask(const std::string& BSS);
+  void CertificationTask(const KeyValueStore& properties);
   void EAPEventTask(const std::string& status, const std::string& parameter);
-  void PropertiesChangedTask(
-      const std::map<std::string, ::DBus::Variant>& properties);
+  void PropertiesChangedTask(const KeyValueStore& properties);
   void ScanDoneTask();
   void ScanFailedTask();
   // UpdateScanStateAfterScanDone is spawned as a task from ScanDoneTask in
@@ -461,7 +455,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Disable a network entry in wpa_supplicant, and catch any exception
   // that occurs.  Returns false if an exception occurred, true otherwise.
-  bool DisableNetwork(const ::DBus::Path& network);
+  bool DisableNetwork(const std::string& network);
   // Disable the wpa_supplicant network entry associated with |service|.
   // Any cached credentials stored in wpa_supplicant related to this
   // network entry will be preserved.  This will have the side-effect of
@@ -472,7 +466,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
       const WiFiService* service, Error* error);
   // Remove a network entry from wpa_supplicant, and catch any exception
   // that occurs.  Returns false if an exception occurred, true otherwise.
-  bool RemoveNetwork(const ::DBus::Path& network);
+  bool RemoveNetwork(const std::string& network);
   // Remove the wpa_supplicant network entry associated with |service|.
   // Any cached credentials stored in wpa_supplicant related to this
   // network entry will be removed.  This will have the side-effect of
@@ -583,10 +577,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Add a scan result to the list of pending scan results, and post a task
   // for handling these results if one is not already running.
-  void AddPendingScanResult(
-    const ::DBus::Path& path,
-    const std::map<std::string, ::DBus::Variant>& properties,
-    bool is_removal);
+  void AddPendingScanResult(const std::string& path,
+                            const KeyValueStore& properties,
+                            bool is_removal);
 
   // Callback invoked to handle pending scan results from AddPendingScanResult.
   void PendingScanResultsHandler();
@@ -619,8 +612,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::unique_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
   std::unique_ptr<SupplicantInterfaceProxyInterface>
       supplicant_interface_proxy_;
-  // wpa_supplicant's DBus path for this device/interface.
-  ::DBus::Path supplicant_interface_path_;
+  // wpa_supplicant's RPC path for this device/interface.
+  std::string supplicant_interface_path_;
   // The rpcid used as the key is wpa_supplicant's D-Bus path for the
   // Endpoint (BSS, in supplicant parlance).
   EndpointMap endpoint_by_rpcid_;

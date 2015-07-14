@@ -151,23 +151,20 @@ const char WPASupplicant::kSupplicantConfPath[] =
     SHIMDIR "/wpa_supplicant.conf";
 
 // static
-bool WPASupplicant::ExtractRemoteCertification(
-      const map<string, DBus::Variant>& properties,
-      string* subject, uint32_t* depth) {
-  map<string, ::DBus::Variant>::const_iterator depth_it =
-      properties.find(WPASupplicant::kInterfacePropertyDepth);
-  if (depth_it == properties.end()) {
+bool WPASupplicant::ExtractRemoteCertification(const KeyValueStore& properties,
+                                               string* subject,
+                                               uint32_t* depth) {
+  if (!properties.ContainsUint(WPASupplicant::kInterfacePropertyDepth)) {
     LOG(ERROR) << __func__ << " no depth parameter.";
     return false;
   }
-  map<string, ::DBus::Variant>::const_iterator subject_it =
-      properties.find(WPASupplicant::kInterfacePropertySubject);
-  if (subject_it == properties.end()) {
+  if (!properties.ContainsString(WPASupplicant::kInterfacePropertySubject)) {
     LOG(ERROR) << __func__ << " no subject parameter.";
     return false;
   }
-  *depth = depth_it->second.reader().get_uint32();
-  *subject = subject_it->second.reader().get_string();
+
+  *depth = properties.GetUint(WPASupplicant::kInterfacePropertyDepth);
+  *subject = properties.GetString(WPASupplicant::kInterfacePropertySubject);
   return true;
 }
 

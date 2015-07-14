@@ -26,7 +26,7 @@ MockWiFiService::MockWiFiService(ControlInterface* control_interface,
         control_interface, dispatcher, metrics, manager, provider, ssid, mode,
         security, hidden_ssid) {
   ON_CALL(*this, GetSupplicantConfigurationParameters())
-      .WillByDefault(testing::Return(DBusPropertiesMap()));
+      .WillByDefault(testing::Return(KeyValueStore()));
 }
 
 MockWiFiService::~MockWiFiService() {}

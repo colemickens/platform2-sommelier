@@ -12,10 +12,10 @@
 #include <vector>
 
 #include <base/memory/ref_counted.h>
-#include <dbus-c++/dbus.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/event_dispatcher.h"
+#include "shill/key_value_store.h"
 #include "shill/metrics.h"
 #include "shill/refptr_types.h"
 
@@ -49,7 +49,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   WiFiEndpoint(ProxyFactory* proxy_factory,
                const WiFiRefPtr& device,
                const std::string& rpc_id,
-               const std::map<std::string, ::DBus::Variant>& properties);
+               const KeyValueStore& properties);
   virtual ~WiFiEndpoint();
 
   // Set up RPC channel. Broken out from the ctor, so that WiFi can
@@ -59,8 +59,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
 
   // Called by SupplicantBSSProxy, in response to events from
   // wpa_supplicant.
-  void PropertiesChanged(
-      const std::map<std::string, ::DBus::Variant>& properties);
+  void PropertiesChanged(const KeyValueStore& properties);
 
   // Called by WiFi when it polls for signal strength from the kernel.
   void UpdateSignalStrength(int16_t strength);
@@ -141,25 +140,24 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   // The stored data in the |flags| parameter is merged with the provided
   // properties, and the security value returned is the result of the
   // merger.
-  static const char* ParseSecurity(
-      const std::map<std::string, ::DBus::Variant>& properties,
-      SecurityFlags* flags);
+  static const char* ParseSecurity(const KeyValueStore& properties,
+                                   SecurityFlags* flags);
   // Parses an Endpoint's properties' "RSN" or "WPA" sub-dictionary, to
   // identify supported key management methods (802.1x or PSK).
   static void ParseKeyManagementMethods(
-      const std::map<std::string, ::DBus::Variant>& security_method_properties,
+      const KeyValueStore& security_method_properties,
       std::set<KeyManagement>* key_management_methods);
   // Determine the negotiated operating mode for the channel by looking at
   // the information elements, frequency and data rates.  The information
   // elements and data rates live in |properties|.
   static Metrics::WiFiNetworkPhyMode DeterminePhyModeFromFrequency(
-      const std::map<std::string, ::DBus::Variant>& properties,
+      const KeyValueStore& properties,
       uint16_t frequency);
   // Parse information elements to determine the physical mode, vendor
   // information and IEEE 802.11w requirement information associated
   // with the AP.  Returns true if a physical mode was determined from
   // the IE elements, false otherwise.
-  static bool ParseIEs(const std::map<std::string, ::DBus::Variant>& properties,
+  static bool ParseIEs(const KeyValueStore& properties,
                        Metrics::WiFiNetworkPhyMode* phy_mode,
                        VendorInformation* vendor_information,
                        bool* ieee80211w_required, std::string* country_code);

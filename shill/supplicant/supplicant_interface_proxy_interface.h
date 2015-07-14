@@ -8,7 +8,7 @@
 #include <map>
 #include <string>
 
-#include <dbus-c++/dbus.h>
+#include "shill/key_value_store.h"
 
 namespace shill {
 
@@ -18,34 +18,34 @@ class SupplicantInterfaceProxyInterface {
  public:
   virtual ~SupplicantInterfaceProxyInterface() {}
 
-  virtual ::DBus::Path AddNetwork(
-      const std::map<std::string, ::DBus::Variant>& args) = 0;
-  virtual void EnableHighBitrates() = 0;
-  virtual void EAPLogoff() = 0;
-  virtual void EAPLogon() = 0;
-  virtual void Disconnect() = 0;
-  virtual void FlushBSS(const uint32_t& age) = 0;
-  virtual void NetworkReply(const ::DBus::Path& network,
+  virtual bool AddNetwork(const KeyValueStore& args,
+                          std::string* network) = 0;
+  virtual bool EnableHighBitrates() = 0;
+  virtual bool EAPLogoff() = 0;
+  virtual bool EAPLogon() = 0;
+  virtual bool Disconnect() = 0;
+  virtual bool FlushBSS(const uint32_t& age) = 0;
+  virtual bool NetworkReply(const std::string& network,
                             const std::string& field,
                             const std::string& value) = 0;
-  virtual void Reassociate() = 0;
-  virtual void Reattach() = 0;
-  virtual void RemoveAllNetworks() = 0;
-  virtual void RemoveNetwork(const ::DBus::Path& network) = 0;
-  virtual void Scan(
-      const std::map<std::string, ::DBus::Variant>& args) = 0;
-  virtual void SelectNetwork(const ::DBus::Path& network) = 0;
-  virtual void SetFastReauth(bool enabled) = 0;
-  virtual void SetRoamThreshold(uint16_t seconds) = 0;
-  virtual void SetScanInterval(int seconds) = 0;
-  virtual void SetDisableHighBitrates(bool disable_high_bitrates) = 0;
-  virtual void SetSchedScan(bool enable) = 0;
-  virtual void SetScan(bool enable) = 0;
-  virtual void TDLSDiscover(const std::string& peer) = 0;
-  virtual void TDLSSetup(const std::string& peer) = 0;
-  virtual std::string TDLSStatus(const std::string& peer) = 0;
-  virtual void TDLSTeardown(const std::string& peer) = 0;
-  virtual void SetHT40Enable(const ::DBus::Path& network, bool enable) = 0;
+  virtual bool Reassociate() = 0;
+  virtual bool Reattach() = 0;
+  virtual bool RemoveAllNetworks() = 0;
+  virtual bool RemoveNetwork(const std::string& network) = 0;
+  virtual bool Scan(const KeyValueStore& args) = 0;
+  virtual bool SelectNetwork(const std::string& network) = 0;
+  virtual bool SetFastReauth(bool enabled) = 0;
+  virtual bool SetRoamThreshold(uint16_t seconds) = 0;
+  virtual bool SetScanInterval(int seconds) = 0;
+  virtual bool SetDisableHighBitrates(bool disable_high_bitrates) = 0;
+  virtual bool SetSchedScan(bool enable) = 0;
+  virtual bool SetScan(bool enable) = 0;
+  virtual bool TDLSDiscover(const std::string& peer) = 0;
+  virtual bool TDLSSetup(const std::string& peer) = 0;
+  virtual bool TDLSStatus(const std::string& peer,
+                                      std::string* status) = 0;
+  virtual bool TDLSTeardown(const std::string& peer) = 0;
+  virtual bool SetHT40Enable(const std::string& network, bool enable) = 0;
 };
 
 }  // namespace shill

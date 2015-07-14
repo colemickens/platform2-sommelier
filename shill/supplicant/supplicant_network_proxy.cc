@@ -29,15 +29,16 @@ SupplicantNetworkProxy::SupplicantNetworkProxy(
 
 SupplicantNetworkProxy::~SupplicantNetworkProxy() {}
 
-void SupplicantNetworkProxy::SetEnabled(bool enabled) {
+bool SupplicantNetworkProxy::SetEnabled(bool enabled) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
-    return proxy_.Enabled(enabled);
+    proxy_.Enabled(enabled);
   } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << "enabled: " << enabled;
-    throw;  // Re-throw the exception.
+    return false;
   }
+  return true;
 }
 
 // definitions for private class SupplicantNetworkProxy::Proxy

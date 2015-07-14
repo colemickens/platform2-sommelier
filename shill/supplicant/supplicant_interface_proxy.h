@@ -32,34 +32,32 @@ class SupplicantInterfaceProxy
                            const char* dbus_addr);
   ~SupplicantInterfaceProxy() override;
 
-  ::DBus::Path AddNetwork(
-      const std::map<std::string, ::DBus::Variant>& args) override;
-  void EnableHighBitrates() override;
-  void EAPLogon() override;
-  void EAPLogoff() override;
-  void Disconnect() override;
-  void FlushBSS(const uint32_t& age) override;
-  void NetworkReply(const ::DBus::Path& network,
+  bool AddNetwork(const KeyValueStore& args, std::string* network) override;
+  bool EnableHighBitrates() override;
+  bool EAPLogon() override;
+  bool EAPLogoff() override;
+  bool Disconnect() override;
+  bool FlushBSS(const uint32_t& age) override;
+  bool NetworkReply(const std::string& network,
                     const std::string& field,
                     const std::string& value) override;
-  void Reassociate() override;
-  void Reattach() override;
-  void RemoveAllNetworks() override;
-  void RemoveNetwork(const ::DBus::Path& network) override;
-  void Scan(
-      const std::map<std::string, ::DBus::Variant>& args) override;
-  void SelectNetwork(const ::DBus::Path& network) override;
-  void SetFastReauth(bool enabled) override;
-  void SetRoamThreshold(uint16_t threshold) override;
-  void SetScanInterval(int seconds) override;
-  void SetDisableHighBitrates(bool disable_high_bitrates) override;
-  void SetSchedScan(bool enable) override;
-  void SetScan(bool enable) override;
-  void TDLSDiscover(const std::string& peer) override;
-  void TDLSSetup(const std::string& peer) override;
-  std::string TDLSStatus(const std::string& peer) override;
-  void TDLSTeardown(const std::string& peer) override;
-  void SetHT40Enable(const ::DBus::Path& network, bool enable) override;
+  bool Reassociate() override;
+  bool Reattach() override;
+  bool RemoveAllNetworks() override;
+  bool RemoveNetwork(const std::string& network) override;
+  bool Scan(const KeyValueStore& args) override;
+  bool SelectNetwork(const std::string& network) override;
+  bool SetFastReauth(bool enabled) override;
+  bool SetRoamThreshold(uint16_t threshold) override;
+  bool SetScanInterval(int seconds) override;
+  bool SetDisableHighBitrates(bool disable_high_bitrates) override;
+  bool SetSchedScan(bool enable) override;
+  bool SetScan(bool enable) override;
+  bool TDLSDiscover(const std::string& peer) override;
+  bool TDLSSetup(const std::string& peer) override;
+  bool TDLSStatus(const std::string& peer, std::string* status) override;
+  bool TDLSTeardown(const std::string& peer) override;
+  bool SetHT40Enable(const std::string& network, bool enable) override;
 
  private:
   class Proxy : public fi::w1::wpa_supplicant1::Interface_proxy,

@@ -29,53 +29,63 @@ SupplicantProcessProxy::SupplicantProcessProxy(DBus::Connection* bus,
 
 SupplicantProcessProxy::~SupplicantProcessProxy() {}
 
-::DBus::Path SupplicantProcessProxy::CreateInterface(
-    const map<string, ::DBus::Variant>& args) {
+bool SupplicantProcessProxy::CreateInterface(const KeyValueStore& args,
+                                             string* rpc_identifier) {
   SLOG(&proxy_.path(), 2) << __func__;
+  DBusPropertiesMap dbus_args;
+  DBusProperties::ConvertKeyValueStoreToMap(args, &dbus_args);
   try {
-    return proxy_.CreateInterface(args);
+    *rpc_identifier = proxy_.CreateInterface(dbus_args);
   } catch (const DBus::Error& e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
-               << " args keys are: " << DBusProperties::KeysToString(args);
-    throw;  // Re-throw the exception.
+               << " args keys are: " << DBusProperties::KeysToString(dbus_args);
+    return false;
   }
+  return true;
 }
 
-void SupplicantProcessProxy::RemoveInterface(const ::DBus::Path& path) {
+bool SupplicantProcessProxy::RemoveInterface(const std::string& path) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
-    return proxy_.RemoveInterface(path);
+    proxy_.RemoveInterface(::DBus::Path(path));
   } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return false;  // Make the compiler happy.
   }
+  return true;
 }
 
-::DBus::Path SupplicantProcessProxy::GetInterface(const string& ifname) {
+bool SupplicantProcessProxy::GetInterface(const string& ifname,
+                                          string* rpc_identifier) {
   SLOG(&proxy_.path(), 2) << __func__;
   try {
-    return proxy_.GetInterface(ifname);
+    *rpc_identifier = proxy_.GetInterface(ifname);
   } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
                << " ifname: " << ifname;
-    return ::DBus::Path();  // Make the compiler happy.
+    return false;  // Make the compiler happy.
   }
+  return true;
 }
 
-string SupplicantProcessProxy::GetDebugLevel() {
+bool SupplicantProcessProxy::GetDebugLevel(string* level) {
   try {
-    return proxy_.DebugLevel();
+    *level = proxy_.DebugLevel();
   } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
-    return "";  // Make the compiler happy.
+    return false;  // Make the compiler happy.
   }
+  return true;
 }
 
-void SupplicantProcessProxy::SetDebugLevel(const string& level) {
+bool SupplicantProcessProxy::SetDebugLevel(const string& level) {
   try {
     proxy_.DebugLevel(level);
   } catch (const DBus::Error& e) {
     LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return false;  // Make the compiler happy.
   }
+  return true;
 }
 
 // definitions for private class SupplicantProcessProxy::Proxy

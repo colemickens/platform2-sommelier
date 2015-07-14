@@ -22,34 +22,33 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MockSupplicantInterfaceProxy();
   ~MockSupplicantInterfaceProxy() override;
 
-  MOCK_METHOD1(AddNetwork, ::DBus::Path(
-      const std::map<std::string, ::DBus::Variant>& args));
-  MOCK_METHOD0(EnableHighBitrates, void());
-  MOCK_METHOD0(EAPLogoff, void());
-  MOCK_METHOD0(EAPLogon, void());
-  MOCK_METHOD0(Disconnect, void());
-  MOCK_METHOD1(FlushBSS, void(const uint32_t& age));
-  MOCK_METHOD3(NetworkReply, void(const ::DBus::Path& network,
+  MOCK_METHOD2(AddNetwork,
+               bool(const KeyValueStore& args, std::string* rpc_identifier));
+  MOCK_METHOD0(EnableHighBitrates, bool());
+  MOCK_METHOD0(EAPLogoff, bool());
+  MOCK_METHOD0(EAPLogon, bool());
+  MOCK_METHOD0(Disconnect, bool());
+  MOCK_METHOD1(FlushBSS, bool(const uint32_t& age));
+  MOCK_METHOD3(NetworkReply, bool(const std::string& network,
                                   const std::string& field,
                                   const std::string& value));
-  MOCK_METHOD0(Reassociate, void());
-  MOCK_METHOD0(Reattach, void());
-  MOCK_METHOD0(RemoveAllNetworks, void());
-  MOCK_METHOD1(RemoveNetwork, void(const ::DBus::Path& network));
-  MOCK_METHOD1(Scan,
-               void(const std::map<std::string, ::DBus::Variant>& args));
-  MOCK_METHOD1(SelectNetwork, void(const ::DBus::Path& network));
-  MOCK_METHOD1(SetFastReauth, void(bool enabled));
-  MOCK_METHOD1(SetRoamThreshold, void(uint16_t threshold));
-  MOCK_METHOD1(SetScanInterval, void(int32_t seconds));
-  MOCK_METHOD1(SetDisableHighBitrates, void(bool disable_high_bitrates));
-  MOCK_METHOD1(SetSchedScan, void(bool enable));
-  MOCK_METHOD1(SetScan, void(bool enable));
-  MOCK_METHOD1(TDLSDiscover, void(const std::string& peer));
-  MOCK_METHOD1(TDLSSetup, void(const std::string& peer));
-  MOCK_METHOD1(TDLSStatus, std::string(const std::string& peer));
-  MOCK_METHOD1(TDLSTeardown, void(const std::string& peer));
-  MOCK_METHOD2(SetHT40Enable, void(const ::DBus::Path& network, bool enable));
+  MOCK_METHOD0(Reassociate, bool());
+  MOCK_METHOD0(Reattach, bool());
+  MOCK_METHOD0(RemoveAllNetworks, bool());
+  MOCK_METHOD1(RemoveNetwork, bool(const std::string& network));
+  MOCK_METHOD1(Scan, bool(const KeyValueStore& args));
+  MOCK_METHOD1(SelectNetwork, bool(const std::string& network));
+  MOCK_METHOD1(SetFastReauth, bool(bool enabled));
+  MOCK_METHOD1(SetRoamThreshold, bool(uint16_t threshold));
+  MOCK_METHOD1(SetScanInterval, bool(int32_t seconds));
+  MOCK_METHOD1(SetDisableHighBitrates, bool(bool disable_high_bitrates));
+  MOCK_METHOD1(SetSchedScan, bool(bool enable));
+  MOCK_METHOD1(SetScan, bool(bool enable));
+  MOCK_METHOD1(TDLSDiscover, bool(const std::string& peer));
+  MOCK_METHOD1(TDLSSetup, bool(const std::string& peer));
+  MOCK_METHOD2(TDLSStatus, bool(const std::string& peer, std::string* status));
+  MOCK_METHOD1(TDLSTeardown, bool(const std::string& peer));
+  MOCK_METHOD2(SetHT40Enable, bool(const std::string& network, bool enable));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockSupplicantInterfaceProxy);

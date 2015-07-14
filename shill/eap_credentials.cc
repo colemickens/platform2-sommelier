@@ -66,8 +66,7 @@ EapCredentials::~EapCredentials() {}
 
 // static
 void EapCredentials::PopulateSupplicantProperties(
-    CertificateFile* certificate_file,
-    map<string, DBus::Variant>* params) const {
+    CertificateFile* certificate_file, KeyValueStore* params) const {
   string ca_cert = ca_cert_;
   if (!ca_cert_pem_.empty()) {
     FilePath certfile =
@@ -133,21 +132,21 @@ void EapCredentials::PopulateSupplicantProperties(
         WPASupplicant::kEnginePKCS11));
     // We can't use the propertyvals vector for this since this argument
     // is a uint32_t, not a string.
-    (*params)[WPASupplicant::kNetworkPropertyEngine].writer().
-        append_uint32(WPASupplicant::kDefaultEngine);
+    params->SetUint(WPASupplicant::kNetworkPropertyEngine,
+                   WPASupplicant::kDefaultEngine);
   }
 
   if (use_proactive_key_caching_) {
-    (*params)[WPASupplicant::kNetworkPropertyEapProactiveKeyCaching].writer().
-        append_uint32(WPASupplicant::kProactiveKeyCachingEnabled);
+    params->SetUint(WPASupplicant::kNetworkPropertyEapProactiveKeyCaching,
+                   WPASupplicant::kProactiveKeyCachingEnabled);
   } else {
-    (*params)[WPASupplicant::kNetworkPropertyEapProactiveKeyCaching].writer().
-        append_uint32(WPASupplicant::kProactiveKeyCachingDisabled);
+    params->SetUint(WPASupplicant::kNetworkPropertyEapProactiveKeyCaching,
+                   WPASupplicant::kProactiveKeyCachingDisabled);
   }
 
   for (const auto& keyval : propertyvals) {
     if (strlen(keyval.second) > 0) {
-      (*params)[keyval.first].writer().append_string(keyval.second);
+      params->SetString(keyval.first, keyval.second);
     }
   }
 }

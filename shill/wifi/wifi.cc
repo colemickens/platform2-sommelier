@@ -270,14 +270,9 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
   if (supplicant_present_ &&
       supplicant_process_proxy_ &&
       supplicant_interface_proxy_) {
-    try {
       supplicant_process_proxy_->RemoveInterface(supplicant_interface_path_);
-    } catch (const DBus::Error& e) {  // NOLINT
-      LOG(ERROR) << "Failed to remove interface " << supplicant_interface_path_
-                 << " from supplicant";
-    }
   }
-  supplicant_interface_path_ = ::DBus::Path();
+  supplicant_interface_path_ = "";
   SetSupplicantInterfaceProxy(nullptr);
   supplicant_process_proxy_.reset();
   pending_scan_results_.reset();
@@ -367,10 +362,9 @@ void WiFi::SetSchedScan(bool enable, Error* /*error*/) {
       Bind(&WiFi::SetSchedScanTask, weak_ptr_factory_.GetWeakPtr(), enable));
 }
 
-void WiFi::AddPendingScanResult(
-    const ::DBus::Path& path,
-    const map<string, ::DBus::Variant>& properties,
-    bool is_removal) {
+void WiFi::AddPendingScanResult(const string& path,
+                                const KeyValueStore& properties,
+                                bool is_removal) {
   if (!pending_scan_results_) {
     pending_scan_results_.reset(new PendingScanResults(
         Bind(&WiFi::PendingScanResultsHandler,
@@ -380,20 +374,19 @@ void WiFi::AddPendingScanResult(
   pending_scan_results_->results.emplace_back(path, properties, is_removal);
 }
 
-void WiFi::BSSAdded(const ::DBus::Path& path,
-                    const map<string, ::DBus::Variant>& properties) {
+void WiFi::BSSAdded(const string& path, const KeyValueStore& properties) {
   // Called from a D-Bus signal handler, and may need to send a D-Bus
   // message. So defer work to event loop.
   AddPendingScanResult(path, properties, false);
 }
 
-void WiFi::BSSRemoved(const ::DBus::Path& path) {
+void WiFi::BSSRemoved(const string& path) {
   // Called from a D-Bus signal handler, and may need to send a D-Bus
   // message. So defer work to event loop.
   AddPendingScanResult(path, {}, true);
 }
 
-void WiFi::Certification(const map<string, ::DBus::Variant>& properties) {
+void WiFi::Certification(const KeyValueStore& properties) {
   dispatcher()->PostTask(Bind(&WiFi::CertificationTask,
                               weak_ptr_factory_.GetWeakPtr(), properties));
 }
@@ -405,7 +398,7 @@ void WiFi::EAPEvent(const string& status, const string& parameter) {
                               parameter));
 }
 
-void WiFi::PropertiesChanged(const map<string, ::DBus::Variant>& properties) {
+void WiFi::PropertiesChanged(const KeyValueStore& properties) {
   SLOG(this, 2) << __func__;
   // Called from D-Bus signal handler, but may need to send a D-Bus
   // message. So defer work to event loop.
@@ -438,7 +431,7 @@ void WiFi::ScanDone(const bool& success) {
 
 void WiFi::ConnectTo(WiFiService* service) {
   CHECK(service) << "Can't connect to NULL service.";
-  DBus::Path network_path;
+  string network_path;
 
   // TODO(quiche): Handle cases where already connected.
   if (pending_service_ && pending_service_ == service) {
@@ -472,23 +465,21 @@ void WiFi::ConnectTo(WiFiService* service) {
   Error unused_error;
   network_path = FindNetworkRpcidForService(service, &unused_error);
   if (network_path.empty()) {
-    try {
-      DBusPropertiesMap service_params =
-          service->GetSupplicantConfigurationParameters();
-      const uint32_t scan_ssid = 1;  // "True": Use directed probe.
-      service_params[WPASupplicant::kNetworkPropertyScanSSID].writer().
-          append_uint32(scan_ssid);
-      AppendBgscan(service, &service_params);
-      service_params[WPASupplicant::kNetworkPropertyDisableVHT].writer().
-          append_uint32(provider_->disable_vht());
-      network_path = supplicant_interface_proxy_->AddNetwork(service_params);
-      CHECK(!network_path.empty());  // No DBus path should be empty.
-      rpcid_by_service_[service] = network_path;
-    } catch (const DBus::Error& e) {  // NOLINT
-      LOG(ERROR) << "exception while adding network: " << e.what();
+    KeyValueStore service_params =
+        service->GetSupplicantConfigurationParameters();
+    const uint32_t scan_ssid = 1;  // "True": Use directed probe.
+    service_params.SetUint(WPASupplicant::kNetworkPropertyScanSSID, scan_ssid);
+    AppendBgscan(service, &service_params);
+    service_params.SetUint(WPASupplicant::kNetworkPropertyDisableVHT,
+                           provider_->disable_vht());
+    if (!supplicant_interface_proxy_->AddNetwork(service_params,
+                                                 &network_path)) {
+      LOG(ERROR) << "Failed to add network";
       SetScanState(kScanIdle, scan_method_, __func__);
       return;
     }
+    CHECK(!network_path.empty());  // No DBus path should be empty.
+    rpcid_by_service_[service] = network_path;
   }
 
   if (service->HasRecentConnectionIssues()) {
@@ -582,13 +573,10 @@ void WiFi::DisconnectFrom(WiFiService* service) {
     return;
   }
 
-  bool disconnect_in_progress;
-  try {
-    supplicant_interface_proxy_->Disconnect();
-    disconnect_in_progress = true;
-    // We'll call RemoveNetwork and reset |current_service_| after
-    // supplicant notifies us that the CurrentBSS has changed.
-  } catch (const DBus::Error& e) {  // NOLINT
+  bool disconnect_in_progress = true;
+  // We'll call RemoveNetwork and reset |current_service_| after
+  // supplicant notifies us that the CurrentBSS has changed.
+  if (!supplicant_interface_proxy_->Disconnect()) {
     disconnect_in_progress = false;
   }
 
@@ -614,38 +602,19 @@ void WiFi::DisconnectFrom(WiFiService* service) {
         current_service_.get() != pending_service_.get());
 }
 
-bool WiFi::DisableNetwork(const ::DBus::Path& network) {
+bool WiFi::DisableNetwork(const string& network) {
   std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy(
       proxy_factory_->CreateSupplicantNetworkProxy(
           network, WPASupplicant::kDBusAddr));
-  try {
-    supplicant_network_proxy->SetEnabled(false);
-  } catch (const DBus::Error& e) {  // NOLINT
+  if (!supplicant_network_proxy->SetEnabled(false)) {
     LOG(ERROR) << "DisableNetwork for " << network << " failed.";
     return false;
   }
   return true;
 }
 
-bool WiFi::RemoveNetwork(const ::DBus::Path& network) {
-  try {
-    supplicant_interface_proxy_->RemoveNetwork(network);
-  } catch (const DBus::Error& e) {  // NOLINT
-    // RemoveNetwork can fail with three different errors.
-    //
-    // If RemoveNetwork fails with a NetworkUnknown error, supplicant has
-    // already removed the network object, so return true as if
-    // RemoveNetwork removes the network object successfully.
-    //
-    // As shill always passes a valid network object path, RemoveNetwork
-    // should not fail with an InvalidArgs error. Return false in such case
-    // as something weird may have happened. Similarly, return false in case
-    // of an UnknownError.
-    if (strcmp(e.name(), WPASupplicant::kErrorNetworkUnknown) != 0) {
-      return false;
-    }
-  }
-  return true;
+bool WiFi::RemoveNetwork(const string& network) {
+  return supplicant_interface_proxy_->RemoveNetwork(network);
 }
 
 void WiFi::SetHT40EnableForService(const WiFiService* service, bool enable) {
@@ -662,9 +631,7 @@ void WiFi::SetHT40EnableForService(const WiFiService* service, bool enable) {
       return;
   }
 
-  try {
-    supplicant_interface_proxy_->SetHT40Enable(rpcid, enable);
-  } catch (DBus::Error& e) {
+  if (!supplicant_interface_proxy_->SetHT40Enable(rpcid, enable)) {
     LOG(ERROR) << "SetHT40Enable for " << rpcid << " failed.";
   }
 }
@@ -694,7 +661,7 @@ void WiFi::NotifyEndpointChanged(const WiFiEndpointConstRefPtr& endpoint) {
 }
 
 void WiFi::AppendBgscan(WiFiService* service,
-                        map<string, DBus::Variant>* service_params) const {
+                        KeyValueStore* service_params) const {
   int scan_interval = kBackgroundScanIntervalSeconds;
   string method = bgscan_method_;
   if (method.empty()) {
@@ -721,8 +688,8 @@ void WiFi::AppendBgscan(WiFiService* service,
                                       bgscan_signal_threshold_dbm_,
                                       scan_interval);
   LOG(INFO) << "Background scan: " << config_string;
-  (*service_params)[WPASupplicant::kNetworkPropertyBgscan].writer()
-      .append_string(config_string.c_str());
+  service_params->SetString(WPASupplicant::kNetworkPropertyBgscan,
+                           config_string);
 }
 
 string WiFi::GetBgscanMethod(const int& /*argument*/, Error* /* error */) {
@@ -800,7 +767,7 @@ void WiFi::ClearBgscanMethod(const int& /*argument*/, Error* /*error*/) {
   bgscan_method_.clear();
 }
 
-void WiFi::CurrentBSSChanged(const ::DBus::Path& new_bss) {
+void WiFi::CurrentBSSChanged(const string& new_bss) {
   SLOG(this, 3) << "WiFi " << link_name() << " CurrentBSS "
                 << supplicant_bss_ << " -> " << new_bss;
   supplicant_bss_ = new_bss;
@@ -987,7 +954,7 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service) {
 
 // We use the term "Roam" loosely. In particular, we include the case
 // where we "Roam" to a BSS from the disconnected state.
-void WiFi::HandleRoam(const ::DBus::Path& new_bss) {
+void WiFi::HandleRoam(const string& new_bss) {
   EndpointMap::iterator endpoint_it = endpoint_by_rpcid_.find(new_bss);
   if (endpoint_it == endpoint_by_rpcid_.end()) {
     LOG(WARNING) << "WiFi " << link_name() << " connected to unknown BSS "
@@ -1250,9 +1217,7 @@ void WiFi::OnScanStarted(const NetlinkMessage& netlink_message) {
   wake_on_wifi_->OnScanStarted(is_active_scan);
 }
 
-void WiFi::BSSAddedTask(
-    const ::DBus::Path& path,
-    const map<string, ::DBus::Variant>& properties) {
+void WiFi::BSSAddedTask(const string& path, const KeyValueStore& properties) {
   // Note: we assume that BSSIDs are unique across endpoints. This
   // means that if an AP reuses the same BSSID for multiple SSIDs, we
   // lose.
@@ -1291,7 +1256,7 @@ void WiFi::BSSAddedTask(
   endpoint->Start();
 }
 
-void WiFi::BSSRemovedTask(const ::DBus::Path& path) {
+void WiFi::BSSRemovedTask(const string& path) {
   EndpointMap::iterator i = endpoint_by_rpcid_.find(path);
   if (i == endpoint_by_rpcid_.end()) {
     SLOG(this, 1) << "WiFi " << link_name()
@@ -1321,8 +1286,7 @@ void WiFi::BSSRemovedTask(const ::DBus::Path& path) {
   }
 }
 
-void WiFi::CertificationTask(
-    const map<string, ::DBus::Variant>& properties) {
+void WiFi::CertificationTask(const KeyValueStore& properties) {
   if (!current_service_) {
     LOG(ERROR) << "WiFi " << link_name() << " " << __func__
                << " with no current service.";
@@ -1367,29 +1331,28 @@ void WiFi::EAPEventTask(const string& status, const string& parameter) {
 }
 
 void WiFi::PropertiesChangedTask(
-    const map<string, ::DBus::Variant>& properties) {
+    const KeyValueStore& properties) {
   // TODO(quiche): Handle changes in other properties (e.g. signal
   // strength).
 
   // Note that order matters here. In particular, we want to process
   // changes in the current BSS before changes in state. This is so
   // that we update the state of the correct Endpoint/Service.
-
-  map<string, ::DBus::Variant>::const_iterator properties_it =
-      properties.find(WPASupplicant::kInterfacePropertyCurrentBSS);
-  if (properties_it != properties.end()) {
-    CurrentBSSChanged(properties_it->second.reader().get_path());
+  if (properties.ContainsRpcIdentifier(
+      WPASupplicant::kInterfacePropertyCurrentBSS)) {
+    CurrentBSSChanged(
+        properties.GetRpcIdentifier(
+            WPASupplicant::kInterfacePropertyCurrentBSS));
   }
 
-  properties_it = properties.find(WPASupplicant::kInterfacePropertyState);
-  if (properties_it != properties.end()) {
-    StateChanged(properties_it->second.reader().get_string());
+  if (properties.ContainsString(WPASupplicant::kInterfacePropertyState)) {
+    StateChanged(properties.GetString(WPASupplicant::kInterfacePropertyState));
   }
 
-  properties_it =
-      properties.find(WPASupplicant::kInterfacePropertyDisconnectReason);
-  if (properties_it != properties.end()) {
-    DisconnectReasonChanged(properties_it->second.reader().get_int32());
+  if (properties.ContainsInt(
+      WPASupplicant::kInterfacePropertyDisconnectReason)) {
+    DisconnectReasonChanged(
+        properties.GetInt(WPASupplicant::kInterfacePropertyDisconnectReason));
   }
 }
 
@@ -1480,9 +1443,9 @@ void WiFi::ScanTask() {
     SLOG(this, 2) << "Ignoring scan request while connecting to an AP.";
     return;
   }
-  map<string, DBus::Variant> scan_args;
-  scan_args[WPASupplicant::kPropertyScanType].writer().
-      append_string(WPASupplicant::kScanTypeActive);
+  KeyValueStore scan_args;
+  scan_args.SetString(WPASupplicant::kPropertyScanType,
+                      WPASupplicant::kScanTypeActive);
 
   ByteArrays hidden_ssids = provider_->GetHiddenSSIDList();
   if (!hidden_ssids.empty()) {
@@ -1498,23 +1461,22 @@ void WiFi::ScanTask() {
     // behavior of doing a broadcast probe.
     hidden_ssids.push_back(ByteArray());
 
-    scan_args[WPASupplicant::kPropertyScanSSIDs] =
-        DBusAdaptor::ByteArraysToVariant(hidden_ssids);
+    scan_args.SetByteArrays(WPASupplicant::kPropertyScanSSIDs, hidden_ssids);
   }
 
-  try {
-    supplicant_interface_proxy_->Scan(scan_args);
-    // Only set the scan state/method if we are starting a full scan from
-    // scratch.  Keep the existing method if this is a failover from a
-    // progressive scan.
-    if (scan_state_ != kScanScanning) {
-      SetScanState(IsIdle() ? kScanScanning : kScanBackgroundScanning,
-                   kScanMethodFull, __func__);
-    }
-  } catch (const DBus::Error& e) {  // NOLINT
+  if (!supplicant_interface_proxy_->Scan(scan_args)) {
     // A scan may fail if, for example, the wpa_supplicant vanishing
     // notification is posted after this task has already started running.
-    LOG(WARNING) << "Scan failed: " << e.what();
+    LOG(WARNING) << "Scan failed";
+    return;
+  }
+
+  // Only set the scan state/method if we are starting a full scan from
+  // scratch.  Keep the existing method if this is a failover from a
+  // progressive scan.
+  if (scan_state_ != kScanScanning) {
+    SetScanState(IsIdle() ? kScanScanning : kScanBackgroundScanning,
+                 kScanMethodFull, __func__);
   }
 }
 
@@ -1563,10 +1525,8 @@ void WiFi::SetSchedScanTask(bool enable) {
                   << "while supplicant is not present.";
     return;
   }
-  try {
-    supplicant_interface_proxy_->SetSchedScan(enable);
-  } catch (const DBus::Error& e) {  // NOLINT
-    LOG(WARNING) << "Failed to set SchedScan: " << e.what();
+  if (!supplicant_interface_proxy_->SetSchedScan(enable)) {
+    LOG(WARNING) << "Failed to set SchedScan";
   }
 }
 
@@ -1776,18 +1736,17 @@ void WiFi::OnLinkMonitorFailure() {
     return;
   }
 
-  try {
-    // This will force a transition out of connected, if we are actually
-    // connected.
-    supplicant_interface_proxy_->Reattach();
-    // If we don't eventually get a transition back into a connected state,
-    // there is something wrong.
-    StartReconnectTimer();
-    LOG(INFO) << "In " << __func__ << "(): Called Reattach().";
-  } catch (const DBus::Error& e) {  // NOLINT
+  // This will force a transition out of connected, if we are actually
+  // connected.
+  if (!supplicant_interface_proxy_->Reattach()) {
     LOG(ERROR) << "In " << __func__ << "(): failed to call Reattach().";
     return;
   }
+
+  // If we don't eventually get a transition back into a connected state,
+  // there is something wrong.
+  StartReconnectTimer();
+  LOG(INFO) << "In " << __func__ << "(): Called Reattach().";
 }
 
 void WiFi::OnUnreliableLink() {
@@ -1968,11 +1927,9 @@ void WiFi::InitiateScanInDarkResume(const FreqSet& freqs) {
   // prevents either from performing incorrect actions that can prolong dark
   // resume (e.g. attempting to auto-connect to a WiFi service whose endpoint
   // disappeared before the dark resume).
-  try {
-    supplicant_interface_proxy_->FlushBSS(0);
-  } catch (const DBus::Error& e) {  // NOLINT
+  if (!supplicant_interface_proxy_->FlushBSS(0)) {
     LOG(WARNING) << __func__
-                 << ": Failed to flush wpa_supplicant BSS cache: " << e.what();
+                 << ": Failed to flush wpa_supplicant BSS cache";
   }
   // Suppress any autoconnect attempts until this scan is done and endpoints
   // are updated.
@@ -2253,9 +2210,7 @@ void WiFi::OnWiFiDebugScopeChanged(bool enabled) {
     return;
   }
   string current_level;
-  try {
-    current_level = supplicant_process_proxy_->GetDebugLevel();
-  } catch (const DBus::Error& e) {  // NOLINT
+  if (!supplicant_process_proxy_->GetDebugLevel(&current_level)) {
     LOG(ERROR) << __func__ << ": Failed to get wpa_supplicant debug level.";
     return;
   }
@@ -2276,9 +2231,7 @@ void WiFi::OnWiFiDebugScopeChanged(bool enabled) {
     return;
   }
 
-  try {
-    supplicant_process_proxy_->SetDebugLevel(new_level);
-  } catch (const DBus::Error& e) {  // NOLINT
+  if (!supplicant_process_proxy_->SetDebugLevel(new_level)) {
     LOG(ERROR) << __func__ << ": Failed to set wpa_supplicant debug level.";
   }
 }
@@ -2320,23 +2273,20 @@ void WiFi::ConnectToSupplicant() {
           WPASupplicant::kDBusPath, WPASupplicant::kDBusAddr));
   OnWiFiDebugScopeChanged(
       ScopeLogger::GetInstance()->IsScopeEnabled(ScopeLogger::kWiFi));
-  try {
-    map<string, DBus::Variant> create_interface_args;
-    create_interface_args[WPASupplicant::kInterfacePropertyName].writer().
-        append_string(link_name().c_str());
-    create_interface_args[WPASupplicant::kInterfacePropertyDriver].writer().
-        append_string(WPASupplicant::kDriverNL80211);
-    create_interface_args[
-        WPASupplicant::kInterfacePropertyConfigFile].writer().
-        append_string(WPASupplicant::kSupplicantConfPath);
-    supplicant_interface_path_ =
-        supplicant_process_proxy_->CreateInterface(create_interface_args);
-  } catch (const DBus::Error& e) {  // NOLINT
-    if (!strcmp(e.name(), WPASupplicant::kErrorInterfaceExists)) {
-      supplicant_interface_path_ =
-          supplicant_process_proxy_->GetInterface(link_name());
+
+  KeyValueStore create_interface_args;
+  create_interface_args.SetString(WPASupplicant::kInterfacePropertyName,
+                                  link_name());
+  create_interface_args.SetString(WPASupplicant::kInterfacePropertyDriver,
+                                  WPASupplicant::kDriverNL80211);
+  create_interface_args.SetString(WPASupplicant::kInterfacePropertyConfigFile,
+                                  WPASupplicant::kSupplicantConfPath);
+  if (!supplicant_process_proxy_->CreateInterface(
+      create_interface_args, &supplicant_interface_path_)) {
+    // Interface might've already been created, attempt to retrieve it.
+    if (!supplicant_process_proxy_->GetInterface(link_name(),
+                                                 &supplicant_interface_path_)) {
       // TODO(quiche): Is it okay to crash here, if device is missing?
-    } else {
       LOG(ERROR) << __func__ << ": Failed to create interface with supplicant.";
       return;
     }
@@ -2358,34 +2308,26 @@ void WiFi::ConnectToSupplicant() {
   // all BSSes (not just new ones since the last scan).
   supplicant_interface_proxy_->FlushBSS(0);
 
-  try {
-    // TODO(pstew): Disable fast_reauth until supplicant can properly deal
-    // with RADIUS servers that respond strangely to such requests.
-    // crbug.com/208561
-    supplicant_interface_proxy_->SetFastReauth(false);
-  } catch (const DBus::Error& e) {  // NOLINT
+  // TODO(pstew): Disable fast_reauth until supplicant can properly deal
+  // with RADIUS servers that respond strangely to such requests.
+  // crbug.com/208561
+  if (!supplicant_interface_proxy_->SetFastReauth(false)) {
     LOG(ERROR) << "Failed to disable fast_reauth. "
                << "May be running an older version of wpa_supplicant.";
   }
 
-  try {
-    supplicant_interface_proxy_->SetRoamThreshold(roam_threshold_db_);
-  } catch (const DBus::Error& e) {  // NOLINT
+  if (!supplicant_interface_proxy_->SetRoamThreshold(roam_threshold_db_)) {
     LOG(ERROR) << "Failed to set roam_threshold. "
                << "May be running an older version of wpa_supplicant.";
   }
 
-  try {
-    // Helps with passing WiFiRoaming.001SSIDSwitchBack.
-    supplicant_interface_proxy_->SetScanInterval(kRescanIntervalSeconds);
-  } catch (const DBus::Error& e) {  // NOLINT
+  // Helps with passing WiFiRoaming.001SSIDSwitchBack.
+  if (!supplicant_interface_proxy_->SetScanInterval(kRescanIntervalSeconds)) {
     LOG(ERROR) << "Failed to set scan_interval. "
                << "May be running an older version of wpa_supplicant.";
   }
 
-  try {
-    supplicant_interface_proxy_->SetDisableHighBitrates(true);
-  } catch (const DBus::Error& e) {  // NOLINT
+  if (!supplicant_interface_proxy_->SetDisableHighBitrates(true)) {
     LOG(ERROR) << "Failed to disable high bitrates. "
                << "May be running an older version of wpa_supplicant.";
   }
@@ -2396,10 +2338,8 @@ void WiFi::ConnectToSupplicant() {
 
 void WiFi::EnableHighBitrates() {
   LOG(INFO) << "Enabling high bitrates.";
-  try {
-    supplicant_interface_proxy_->EnableHighBitrates();
-  } catch (const DBus::Error& e) {  // NOLINT
-    LOG(ERROR) << "exception while enabling high rates: " << e.what();
+  if (!supplicant_interface_proxy_->EnableHighBitrates()) {
+    LOG(ERROR) << "Failed to enable high rates";
   }
 }
 

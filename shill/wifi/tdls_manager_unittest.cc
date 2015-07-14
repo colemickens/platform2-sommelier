@@ -21,6 +21,7 @@ using std::vector;
 using ::testing::_;
 using ::testing::Mock;
 using ::testing::Return;
+using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Throw;
@@ -73,7 +74,7 @@ TEST_F(TDLSManagerTest, DiscoverPeer) {
 
   // TDLS discover operation succeed.
   EXPECT_CALL(supplicant_interface_proxy_, TDLSDiscover(StrEq(kPeer)))
-      .WillOnce(Return());
+      .WillOnce(Return(true));
   // Post delayed task for discover peer cleanup timer.
   EXPECT_CALL(event_dispatcher_, PostDelayedTask(_, _)).Times(1);
   EXPECT_EQ("",
@@ -88,10 +89,7 @@ TEST_F(TDLSManagerTest, DiscoverPeer) {
   // TDLS discover operation failed.
   error.Reset();
   EXPECT_CALL(supplicant_interface_proxy_, TDLSDiscover(StrEq(kPeer)))
-      .WillOnce(Throw(
-          DBus::Error(
-              "fi.w1.wpa_supplicant1.UnknownError",
-              "test threw fi.w1.wpa_supplicant1.UnknownError")));
+      .WillOnce(Return(false));
   EXPECT_CALL(event_dispatcher_, PostDelayedTask(_, _)).Times(0);
   EXPECT_EQ("",
             tdls_manager_.PerformOperation(
@@ -107,7 +105,7 @@ TEST_F(TDLSManagerTest, SetupPeer) {
 
   // TDLS setup operation succeed.
   EXPECT_CALL(supplicant_interface_proxy_, TDLSSetup(StrEq(kPeer)))
-      .WillOnce(Return());
+      .WillOnce(Return(true));
   EXPECT_EQ("",
             tdls_manager_.PerformOperation(
                 kPeer, kTDLSSetupOperation, &error));
@@ -117,10 +115,7 @@ TEST_F(TDLSManagerTest, SetupPeer) {
   // TDLS setup operation failed.
   error.Reset();
   EXPECT_CALL(supplicant_interface_proxy_, TDLSSetup(StrEq(kPeer)))
-      .WillOnce(Throw(
-          DBus::Error(
-              "fi.w1.wpa_supplicant1.UnknownError",
-              "test threw fi.w1.wpa_supplicant1.UnknownError")));
+      .WillOnce(Return(false));
   EXPECT_EQ("",
             tdls_manager_.PerformOperation(
                 kPeer, kTDLSSetupOperation, &error));
@@ -134,7 +129,7 @@ TEST_F(TDLSManagerTest, TeardownPeer) {
 
   // TDLS teardown operation succeed.
   EXPECT_CALL(supplicant_interface_proxy_, TDLSTeardown(StrEq(kPeer)))
-      .WillOnce(Return());
+      .WillOnce(Return(true));
   EXPECT_EQ("",
             tdls_manager_.PerformOperation(
                 kPeer, kTDLSTeardownOperation, &error));
@@ -144,10 +139,7 @@ TEST_F(TDLSManagerTest, TeardownPeer) {
   // TDLS teardown operation failed.
   error.Reset();
   EXPECT_CALL(supplicant_interface_proxy_, TDLSTeardown(StrEq(kPeer)))
-      .WillOnce(Throw(
-          DBus::Error(
-              "fi.w1.wpa_supplicant1.UnknownError",
-              "test threw fi.w1.wpa_supplicant1.UnknownError")));
+      .WillOnce(Return(false));
   EXPECT_EQ("",
             tdls_manager_.PerformOperation(
                 kPeer, kTDLSTeardownOperation, &error));
@@ -169,8 +161,8 @@ TEST_F(TDLSManagerTest, PeerStatus) {
   };
   for (const auto& it : kTDLSStatusMap) {
     error.Reset();
-    EXPECT_CALL(supplicant_interface_proxy_, TDLSStatus(StrEq(kPeer)))
-        .WillOnce(Return(it.first));
+    EXPECT_CALL(supplicant_interface_proxy_, TDLSStatus(StrEq(kPeer), _))
+        .WillOnce(DoAll(SetArgumentPointee<1>(it.first), Return(true)));
     EXPECT_EQ(it.second,
               tdls_manager_.PerformOperation(
                   kPeer, kTDLSStatusOperation, &error));
@@ -181,8 +173,11 @@ TEST_F(TDLSManagerTest, PeerStatus) {
   // Discovered Peer in non-existent state should return "Disconnected" state.
   error.Reset();
   SetPeerDiscovered(kPeer);
-  EXPECT_CALL(supplicant_interface_proxy_, TDLSStatus(StrEq(kPeer)))
-      .WillOnce(Return(WPASupplicant::kTDLSStatePeerDoesNotExist));
+  EXPECT_CALL(supplicant_interface_proxy_, TDLSStatus(StrEq(kPeer), _))
+      .WillOnce(
+          DoAll(SetArgumentPointee<1>(
+                    string(WPASupplicant::kTDLSStatePeerDoesNotExist)),
+                Return(true)));
   EXPECT_EQ(kTDLSDisconnectedState,
             tdls_manager_.PerformOperation(
                 kPeer, kTDLSStatusOperation, &error));
@@ -191,11 +186,8 @@ TEST_F(TDLSManagerTest, PeerStatus) {
 
   // TDLS status operation failed.
   error.Reset();
-  EXPECT_CALL(supplicant_interface_proxy_, TDLSStatus(StrEq(kPeer)))
-      .WillOnce(Throw(
-          DBus::Error(
-              "fi.w1.wpa_supplicant1.UnknownError",
-              "test threw fi.w1.wpa_supplicant1.UnknownError")));
+  EXPECT_CALL(supplicant_interface_proxy_, TDLSStatus(StrEq(kPeer), _))
+      .WillOnce(Return(false));
   EXPECT_EQ("",
             tdls_manager_.PerformOperation(
                 kPeer, kTDLSStatusOperation, &error));
@@ -226,7 +218,7 @@ TEST_F(TDLSManagerTest, PeerDiscoveryCleanup) {
   // Start TDLS discover for a peer |kPeer|.
   Error error;
   EXPECT_CALL(supplicant_interface_proxy_, TDLSDiscover(StrEq(kPeer)))
-      .WillOnce(Return());
+      .WillOnce(Return(true));
   // Post delayed task for discover peer cleanup timer.
   EXPECT_CALL(event_dispatcher_, PostDelayedTask(_, _)).Times(1);
   EXPECT_EQ("",

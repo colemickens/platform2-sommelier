@@ -458,21 +458,21 @@ TEST_F(WiFiServiceTest, NonUTF8SSID) {
                                                    kModeManaged,
                                                    kSecurityNone,
                                                    false);
-  map<string, ::DBus::Variant> properties;
+  chromeos::VariantDictionary properties;
   // if service doesn't propertly sanitize SSID, this will generate SIGABRT.
-  DBusAdaptor::GetProperties(wifi_service->store(), &properties, nullptr);
+  EXPECT_TRUE(wifi_service->store().GetProperties(&properties, nullptr));
 }
 
 MATCHER(PSKSecurityArgs, "") {
-  return ContainsKey(arg, WPASupplicant::kPropertySecurityProtocol) &&
-      arg.find(WPASupplicant::kPropertySecurityProtocol)->second.
-           reader().get_string() == string("WPA RSN") &&
-      ContainsKey(arg, WPASupplicant::kPropertyPreSharedKey);
+  return arg.ContainsString(WPASupplicant::kPropertySecurityProtocol) &&
+      arg.GetString(WPASupplicant::kPropertySecurityProtocol) ==
+          string("WPA RSN") &&
+      arg.ContainsString(WPASupplicant::kPropertyPreSharedKey);
 }
 
 MATCHER_P(FrequencyArg, has_arg, "") {
   return has_arg ==
-      ContainsKey(arg, WPASupplicant::kNetworkPropertyFrequency);
+      arg.ContainsInt(WPASupplicant::kNetworkPropertyFrequency);
 }
 
 TEST_F(WiFiServiceTest, ConnectReportBSSes) {
@@ -574,9 +574,10 @@ TEST_F(WiFiServiceTest, ConnectTask8021x) {
   service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
   EXPECT_CALL(*wifi(), ConnectTo(service.get()));
   service->Connect(nullptr, "in test");
-  DBusPropertiesMap params = service->GetSupplicantConfigurationParameters();
-  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kNetworkPropertyEapIdentity));
-  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kNetworkPropertyCaPath));
+  KeyValueStore params = service->GetSupplicantConfigurationParameters();
+  EXPECT_TRUE(
+      params.ContainsString(WPASupplicant::kNetworkPropertyEapIdentity));
+  EXPECT_TRUE(params.ContainsString(WPASupplicant::kNetworkPropertyCaPath));
 }
 
 TEST_F(WiFiServiceTest, ConnectTask8021xWithMockEap) {
@@ -669,21 +670,20 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA80211w) {
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(nullptr, "in test");
 
-  DBusPropertiesMap params =
+  KeyValueStore params =
       wifi_service->GetSupplicantConfigurationParameters();
-  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kPropertySecurityProtocol));
-  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kPropertyPreSharedKey));
-  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kNetworkPropertyIeee80211w));
+  EXPECT_TRUE(params.ContainsString(WPASupplicant::kPropertySecurityProtocol));
+  EXPECT_TRUE(params.ContainsString(WPASupplicant::kPropertyPreSharedKey));
+  EXPECT_TRUE(params.ContainsUint(WPASupplicant::kNetworkPropertyIeee80211w));
 }
 
 MATCHER_P(WEPSecurityArgsKeyIndex, index, "") {
   uint32_t index_u32 = index;
-  return ContainsKey(arg, WPASupplicant::kPropertyAuthAlg) &&
-      ContainsKey(arg,
+  return arg.ContainsString(WPASupplicant::kPropertyAuthAlg) &&
+      arg.ContainsUint8s(
                   WPASupplicant::kPropertyWEPKey + base::IntToString(index)) &&
-      ContainsKey(arg, WPASupplicant::kPropertyWEPTxKeyIndex) &&
-      (arg.find(WPASupplicant::kPropertyWEPTxKeyIndex)->second.
-           reader().get_uint32() == index_u32);
+      arg.ContainsUint(WPASupplicant::kPropertyWEPTxKeyIndex) &&
+      (arg.GetUint(WPASupplicant::kPropertyWEPTxKeyIndex) == index_u32);
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskWEP) {
@@ -730,11 +730,13 @@ TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
   wifi_service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get()));
   wifi_service->Connect(nullptr, "in test");
-  DBusPropertiesMap params =
+  KeyValueStore params =
       wifi_service->GetSupplicantConfigurationParameters();
-  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kNetworkPropertyEapIdentity));
-  EXPECT_TRUE(ContainsKey(params, WPASupplicant::kNetworkPropertyCaPath));
-  EXPECT_FALSE(ContainsKey(params, WPASupplicant::kPropertySecurityProtocol));
+  EXPECT_TRUE(
+      params.ContainsString(WPASupplicant::kNetworkPropertyEapIdentity));
+  EXPECT_TRUE(params.ContainsString(WPASupplicant::kNetworkPropertyCaPath));
+  EXPECT_FALSE(
+      params.ContainsString(WPASupplicant::kPropertySecurityProtocol));
 }
 
 TEST_F(WiFiServiceTest, SetPassphraseResetHasEverConnected) {
@@ -1401,17 +1403,16 @@ TEST_F(WiFiServiceTest, ClearWriteOnlyDerivedProperty) {
 
   EXPECT_EQ("", wifi_service->passphrase_);
 
-  ::DBus::Error error;
-  EXPECT_TRUE(DBusAdaptor::SetProperty(
-      wifi_service->mutable_store(),
-      kPassphraseProperty,
-      DBusAdaptor::StringToVariant("0:abcde"),
-      &error));
-  EXPECT_EQ("0:abcde", wifi_service->passphrase_);
+  Error error;
+  const string kPassphrase = "0:abcde";
+  EXPECT_TRUE(
+      wifi_service->mutable_store()->SetAnyProperty(kPassphraseProperty,
+                                                    chromeos::Any(kPassphrase),
+                                                    &error));
+  EXPECT_EQ(kPassphrase, wifi_service->passphrase_);
 
-  EXPECT_TRUE(DBusAdaptor::ClearProperty(wifi_service->mutable_store(),
-                                         kPassphraseProperty,
-                                         &error));
+  EXPECT_TRUE(wifi_service->mutable_store()->ClearProperty(kPassphraseProperty,
+                                                           &error));
   EXPECT_EQ("", wifi_service->passphrase_);
 }
 

@@ -215,16 +215,15 @@ void Ethernet::TryEapAuthentication() {
   dispatcher()->PostTask(try_eap_authentication_callback_.callback());
 }
 
-void Ethernet::BSSAdded(const ::DBus::Path& path,
-                        const map<string, ::DBus::Variant>& properties) {
+void Ethernet::BSSAdded(const string& path, const KeyValueStore& properties) {
   NOTREACHED() << __func__ << " is not implemented for Ethernet";
 }
 
-void Ethernet::BSSRemoved(const ::DBus::Path& path) {
+void Ethernet::BSSRemoved(const string& path) {
   NOTREACHED() << __func__ << " is not implemented for Ethernet";
 }
 
-void Ethernet::Certification(const map<string, ::DBus::Variant>& properties) {
+void Ethernet::Certification(const KeyValueStore& properties) {
   string subject;
   uint32_t depth;
   if (WPASupplicant::ExtractRemoteCertification(properties, &subject, &depth)) {
@@ -241,16 +240,14 @@ void Ethernet::EAPEvent(const string& status, const string& parameter) {
                               parameter));
 }
 
-void Ethernet::PropertiesChanged(
-  const map<string, ::DBus::Variant>& properties) {
-  const map<string, ::DBus::Variant>::const_iterator properties_it =
-      properties.find(WPASupplicant::kInterfacePropertyState);
-  if (properties_it == properties.end()) {
+void Ethernet::PropertiesChanged(const KeyValueStore& properties) {
+  if (!properties.ContainsString(WPASupplicant::kInterfacePropertyState)) {
     return;
   }
-  dispatcher()->PostTask(Bind(&Ethernet::SupplicantStateChangedTask,
-                              weak_ptr_factory_.GetWeakPtr(),
-                              properties_it->second.reader().get_string()));
+  dispatcher()->PostTask(
+      Bind(&Ethernet::SupplicantStateChangedTask,
+           weak_ptr_factory_.GetWeakPtr(),
+           properties.GetString(WPASupplicant::kInterfacePropertyState)));
 }
 
 void Ethernet::ScanDone(const bool& /*success*/) {
@@ -291,27 +288,25 @@ bool Ethernet::StartSupplicant() {
   supplicant_process_proxy_.reset(
       proxy_factory_->CreateSupplicantProcessProxy(
           WPASupplicant::kDBusPath, WPASupplicant::kDBusAddr));
-  ::DBus::Path interface_path;
-  try {
-    map<string, DBus::Variant> create_interface_args;
-    create_interface_args[WPASupplicant::kInterfacePropertyName].writer().
-        append_string(link_name().c_str());
-    create_interface_args[WPASupplicant::kInterfacePropertyDriver].writer().
-        append_string(WPASupplicant::kDriverWired);
-    create_interface_args[
-        WPASupplicant::kInterfacePropertyConfigFile].writer().
-        append_string(WPASupplicant::kSupplicantConfPath);
-    interface_path =
-        supplicant_process_proxy_->CreateInterface(create_interface_args);
-  } catch (const DBus::Error& e) {  // NOLINT
-    if (!strcmp(e.name(), WPASupplicant::kErrorInterfaceExists)) {
-      interface_path = supplicant_process_proxy_->GetInterface(link_name());
-    } else {
+  string interface_path;
+  KeyValueStore create_interface_args;
+  create_interface_args.SetString(WPASupplicant::kInterfacePropertyName,
+                                  link_name());
+  create_interface_args.SetString(WPASupplicant::kInterfacePropertyDriver,
+                                  WPASupplicant::kDriverWired);
+  create_interface_args.SetString(WPASupplicant::kInterfacePropertyConfigFile,
+                                  WPASupplicant::kSupplicantConfPath);
+  if (!supplicant_process_proxy_->CreateInterface(create_interface_args,
+                                                  &interface_path)) {
+    // Interface might've already been created, try to retrieve it.
+    if (!supplicant_process_proxy_->GetInterface(link_name(),
+                                                 &interface_path)) {
       LOG(ERROR) << __func__ << ": Failed to create interface with supplicant.";
       StopSupplicant();
       return false;
     }
   }
+
   supplicant_interface_proxy_.reset(
       proxy_factory_->CreateSupplicantInterfaceProxy(
           this, interface_path, WPASupplicant::kDBusAddr));
@@ -320,28 +315,29 @@ bool Ethernet::StartSupplicant() {
 }
 
 bool Ethernet::StartEapAuthentication() {
-  map<string, DBus::Variant> params;
+  KeyValueStore params;
   GetEapService()->eap()->PopulateSupplicantProperties(
       &certificate_file_, &params);
-  params[WPASupplicant::kNetworkPropertyEapKeyManagement].writer().
-      append_string(WPASupplicant::kKeyManagementIeee8021X);
-  params[WPASupplicant::kNetworkPropertyEapolFlags].writer().
-      append_uint32(0);
-  params[WPASupplicant::kNetworkPropertyScanSSID].writer().
-      append_uint32(0);
+  params.SetString(WPASupplicant::kNetworkPropertyEapKeyManagement,
+                   WPASupplicant::kKeyManagementIeee8021X);
+  params.SetUint(WPASupplicant::kNetworkPropertyEapolFlags, 0);
+  params.SetUint(WPASupplicant::kNetworkPropertyScanSSID, 0);
+
   service_->ClearEAPCertification();
   eap_state_handler_.Reset();
 
-  try {
-    if (!supplicant_network_path_.empty()) {
-      supplicant_interface_proxy_->RemoveNetwork(supplicant_network_path_);
+  if (!supplicant_network_path_.empty()) {
+    if (!supplicant_interface_proxy_->RemoveNetwork(supplicant_network_path_)) {
+      LOG(ERROR) << "Failed to remove network: " << supplicant_network_path_;
+      return false;
     }
-    supplicant_network_path_ = supplicant_interface_proxy_->AddNetwork(params);
-    CHECK(!supplicant_network_path_.empty());
-  } catch (const DBus::Error& e) {  // NOLINT
-    LOG(ERROR) << "exception while adding network: " << e.what();
+  }
+  if (!supplicant_interface_proxy_->AddNetwork(params,
+                                               &supplicant_network_path_)) {
+    LOG(ERROR) << "Failed to add network";
     return false;
   }
+  CHECK(!supplicant_network_path_.empty());
 
   supplicant_interface_proxy_->SelectNetwork(supplicant_network_path_);
   supplicant_interface_proxy_->EAPLogon();
@@ -354,10 +350,8 @@ void Ethernet::StopSupplicant() {
   }
   supplicant_interface_proxy_.reset();
   if (!supplicant_interface_path_.empty() && supplicant_process_proxy_.get()) {
-    try {
-      supplicant_process_proxy_->RemoveInterface(
-          ::DBus::Path(supplicant_interface_path_));
-    } catch (const DBus::Error& e) {  // NOLINT
+    if (!supplicant_process_proxy_->RemoveInterface(
+        supplicant_interface_path_)) {
       LOG(ERROR) << __func__ << ": Failed to remove interface from supplicant.";
     }
   }

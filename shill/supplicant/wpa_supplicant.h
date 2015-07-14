@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <dbus-c++/dbus.h>
+#include "shill/key_value_store.h"
 
 namespace shill {
 
@@ -147,9 +147,9 @@ class WPASupplicant {
   // as contained the the |properties| to a Certification event from
   // wpa_supplicant.  Returns true if an |subject| and |depth| were
   // extracted successfully, false otherwise.
-  static bool ExtractRemoteCertification(
-      const std::map<std::string, DBus::Variant>& properties,
-      std::string* subject, uint32_t* depth);
+  static bool ExtractRemoteCertification(const KeyValueStore& properties,
+                                         std::string* subject,
+                                         uint32_t* depth);
 };
 
 }  // namespace shill

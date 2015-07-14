@@ -32,16 +32,16 @@ class MockProxyFactory : public ProxyFactory {
   MOCK_METHOD3(CreateSupplicantInterfaceProxy,
                SupplicantInterfaceProxyInterface*(
                    SupplicantEventDelegateInterface* delegate,
-                   const DBus::Path& object_path,
+                   const std::string& object_path,
                    const char* dbus_addr));
   MOCK_METHOD2(CreateSupplicantNetworkProxy,
-               SupplicantNetworkProxyInterface*(const DBus::Path& object_path,
+               SupplicantNetworkProxyInterface*(const std::string& object_path,
                                                 const char* dbus_addr));
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 #if !defined(DISABLE_WIFI)
   MOCK_METHOD3(CreateSupplicantBSSProxy,
                SupplicantBSSProxyInterface*(WiFiEndpoint* wifi_endpoint,
-                                            const DBus::Path& object_path,
+                                            const std::string& object_path,
                                             const char* dbus_addr));
 #endif  // DISABLE_WIFI
   MOCK_METHOD1(CreateDHCPProxy,

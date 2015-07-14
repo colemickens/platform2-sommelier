@@ -60,38 +60,36 @@ class WiFiEndpointTest : public PropertyStoreTest {
     return strvec;
   }
 
-  map<string, ::DBus::Variant> make_key_management_args(
+  KeyValueStore make_key_management_args(
       vector<string> key_management_method_strings) {
-    map<string, ::DBus::Variant> args;
-    ::DBus::MessageIter writer;
-    writer =
-        args[WPASupplicant::kSecurityMethodPropertyKeyManagement].writer();
-    writer << key_management_method_strings;
+    KeyValueStore args;
+    args.SetStrings(WPASupplicant::kSecurityMethodPropertyKeyManagement,
+                    key_management_method_strings);
     return args;
   }
 
-  map<string, ::DBus::Variant> make_privacy_args(bool is_private) {
-    map<string, ::DBus::Variant> props;
-    props[WPASupplicant::kPropertyPrivacy].writer().append_bool(is_private);
+  KeyValueStore make_privacy_args(bool is_private) {
+    KeyValueStore props;
+    props.SetBool(WPASupplicant::kPropertyPrivacy, is_private);
     return props;
   }
 
-  map<string, ::DBus::Variant> make_security_args(
+  KeyValueStore make_security_args(
       const string& security_protocol,
       const string& key_management_method) {
-    map<string, ::DBus::Variant> args;
-    ::DBus::MessageIter writer;
-    writer = args[security_protocol].writer();
+    KeyValueStore args;
     vector<string> key_management_method_vector;
     if (!key_management_method.empty()) {
       key_management_method_vector = make_string_vector1(key_management_method);
     }
-    writer << make_key_management_args(key_management_method_vector);
+    args.SetKeyValueStore(
+        security_protocol,
+        make_key_management_args(key_management_method_vector));
     return args;
   }
 
   const char* ParseSecurity(
-    const map<string, ::DBus::Variant>& properties) {
+    const KeyValueStore& properties) {
     WiFiEndpoint::SecurityFlags security_flags;
     return WiFiEndpoint::ParseSecurity(properties, &security_flags);
   }
@@ -128,12 +126,9 @@ class WiFiEndpointTest : public PropertyStoreTest {
     wps->insert(wps->end(), value.begin(), value.end());
   }
 
-  map<string, ::DBus::Variant> MakeBSSPropertiesWithIEs(
-      const vector<uint8_t>& ies) {
-    map<string, ::DBus::Variant> properties;
-    ::DBus::MessageIter writer =
-          properties[WPASupplicant::kBSSPropertyIEs].writer();
-    writer << ies;
+  KeyValueStore MakeBSSPropertiesWithIEs(const vector<uint8_t>& ies) {
+    KeyValueStore properties;
+    properties.SetUint8s(WPASupplicant::kBSSPropertyIEs, ies);
     return properties;
   }
 
@@ -165,7 +160,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
     return rsn;
   }
 
-  bool ParseIEs(const std::map<std::string, ::DBus::Variant>& properties,
+  bool ParseIEs(const KeyValueStore& properties,
                 Metrics::WiFiNetworkPhyMode* phy_mode,
                 WiFiEndpoint::VendorInformation* vendor_information,
                 bool* ieee80211w_required, std::string* country_code) {
@@ -265,7 +260,7 @@ TEST_F(WiFiEndpointTest, ParseSecurityWEP) {
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityNone) {
-  map<string, ::DBus::Variant> top_params;
+  KeyValueStore top_params;
   EXPECT_STREQ(kSecurityNone, ParseSecurity(top_params));
 }
 
@@ -290,25 +285,21 @@ TEST_F(WiFiEndpointTest, SSIDWithNull) {
 
 TEST_F(WiFiEndpointTest, DeterminePhyModeFromFrequency) {
   {
-    map<string, ::DBus::Variant> properties;
+    KeyValueStore properties;
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11a,
               WiFiEndpoint::DeterminePhyModeFromFrequency(properties, 3200));
   }
   {
-    map<string, ::DBus::Variant> properties;
+    KeyValueStore properties;
     vector<uint32_t> rates(1, 22000000);
-    ::DBus::MessageIter writer =
-        properties[WPASupplicant::kBSSPropertyRates].writer();
-    writer << rates;
+    properties.SetUint32s(WPASupplicant::kBSSPropertyRates, rates);
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11b,
               WiFiEndpoint::DeterminePhyModeFromFrequency(properties, 2400));
   }
   {
-    map<string, ::DBus::Variant> properties;
+    KeyValueStore properties;
     vector<uint32_t> rates(1, 54000000);
-    ::DBus::MessageIter writer =
-        properties[WPASupplicant::kBSSPropertyRates].writer();
-    writer << rates;
+    properties.SetUint32s(WPASupplicant::kBSSPropertyRates, rates);
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11g,
               WiFiEndpoint::DeterminePhyModeFromFrequency(properties, 2400));
   }
@@ -648,7 +639,7 @@ TEST_F(WiFiEndpointTest, PropertiesChangedNone) {
   EXPECT_EQ(kModeManaged, endpoint->network_mode());
   EXPECT_EQ(kSecurityNone, endpoint->security_mode());
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
-  map<string, ::DBus::Variant> no_changed_properties;
+  KeyValueStore no_changed_properties;
   endpoint->PropertiesChanged(no_changed_properties);
   EXPECT_EQ(kModeManaged, endpoint->network_mode());
   EXPECT_EQ(kSecurityNone, endpoint->security_mode());
@@ -657,13 +648,12 @@ TEST_F(WiFiEndpointTest, PropertiesChangedNone) {
 TEST_F(WiFiEndpointTest, PropertiesChangedStrength) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");
-  map<string, ::DBus::Variant> changed_properties;
+  KeyValueStore changed_properties;
   int16_t signal_strength = 10;
 
   EXPECT_NE(signal_strength, endpoint->signal_strength());
-  ::DBus::MessageIter writer =
-      changed_properties[WPASupplicant::kBSSPropertySignal].writer();
-  writer << signal_strength;
+  changed_properties.SetInt16(WPASupplicant::kBSSPropertySignal,
+                              signal_strength);
 
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_));
   endpoint->PropertiesChanged(changed_properties);
@@ -675,10 +665,9 @@ TEST_F(WiFiEndpointTest, PropertiesChangedNetworkMode) {
       MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");
   EXPECT_EQ(kModeManaged, endpoint->network_mode());
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
-  map<string, ::DBus::Variant> changed_properties;
-  ::DBus::MessageIter writer =
-      changed_properties[WPASupplicant::kBSSPropertyMode].writer();
-  writer << string(WPASupplicant::kNetworkModeAdHoc);
+  KeyValueStore changed_properties;
+  changed_properties.SetString(WPASupplicant::kBSSPropertyMode,
+                               WPASupplicant::kNetworkModeAdHoc);
   endpoint->PropertiesChanged(changed_properties);
   EXPECT_EQ(kModeAdhoc, endpoint->network_mode());
 }
@@ -695,7 +684,7 @@ TEST_F(WiFiEndpointTest, PropertiesChangedSecurityMode) {
   EXPECT_EQ(kSecurityWep, endpoint->security_mode());
 
   // Make sure we don't downgrade if no interesting arguments arrive.
-  map<string, ::DBus::Variant> no_changed_properties;
+  KeyValueStore no_changed_properties;
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   endpoint->PropertiesChanged(no_changed_properties);
   Mock::VerifyAndClearExpectations(wifi().get());

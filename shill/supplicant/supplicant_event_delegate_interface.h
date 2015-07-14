@@ -5,10 +5,7 @@
 #ifndef SHILL_SUPPLICANT_SUPPLICANT_EVENT_DELEGATE_INTERFACE_H_
 #define SHILL_SUPPLICANT_SUPPLICANT_EVENT_DELEGATE_INTERFACE_H_
 
-#include <map>
 #include <string>
-
-#include <dbus-c++/dbus.h>
 
 namespace shill {
 
@@ -17,20 +14,18 @@ namespace shill {
 // wpa_supplicant events occur on the network interface interface.
 class SupplicantEventDelegateInterface {
  public:
-  typedef std::map<std::string, ::DBus::Variant> PropertyMap;
-
   virtual ~SupplicantEventDelegateInterface() {}
 
   // Supplicant has added a BSS to its table of visible endpoints.
-  virtual void BSSAdded(const ::DBus::Path& BSS,
-                        const PropertyMap& properties) = 0;
+  virtual void BSSAdded(const std::string& BSS,
+                        const KeyValueStore& properties) = 0;
 
   // Supplicant has removed a BSS from its table of visible endpoints.
-  virtual void BSSRemoved(const ::DBus::Path& BSS) = 0;
+  virtual void BSSRemoved(const std::string& BSS) = 0;
 
   // Supplicant has received a certficate from the remote server during
   // the process of authentication.
-  virtual void Certification(const PropertyMap& properties) = 0;
+  virtual void Certification(const KeyValueStore& properties) = 0;
 
   // Supplicant state machine has output an EAP event notification.
   virtual void EAPEvent(const std::string& status,
@@ -38,7 +33,7 @@ class SupplicantEventDelegateInterface {
 
   // The interface element in the supplicant has changed one or more
   // properties.
-  virtual void PropertiesChanged(const PropertyMap& properties) = 0;
+  virtual void PropertiesChanged(const KeyValueStore& properties) = 0;
 
   // A scan has completed on this interface.
   virtual void ScanDone(const bool& success) = 0;

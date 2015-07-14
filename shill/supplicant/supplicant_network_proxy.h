@@ -26,7 +26,7 @@ class SupplicantNetworkProxy
                          const char* dbus_addr);
   ~SupplicantNetworkProxy() override;
 
-  void SetEnabled(bool enabled) override;
+  bool SetEnabled(bool enabled) override;
 
  private:
   class Proxy : public fi::w1::wpa_supplicant1::Network_proxy,

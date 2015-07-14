@@ -9,6 +9,7 @@
 
 #include <dbus-c++/dbus.h>
 
+#include "shill/dbus_properties.h"
 #include "shill/logging.h"
 #include "shill/wifi/wifi_endpoint.h"
 
@@ -45,7 +46,16 @@ SupplicantBSSProxy::Proxy::~Proxy() {}
 void SupplicantBSSProxy::Proxy::PropertiesChanged(
     const std::map<string, ::DBus::Variant>& properties) {
   SLOG(DBus, nullptr, 2) << __func__;
-  wifi_endpoint_->PropertiesChanged(properties);
+  KeyValueStore properties_store;
+  Error error;
+  DBusProperties::ConvertMapToKeyValueStore(properties,
+                                            &properties_store,
+                                            &error);
+  if (error.IsFailure()) {
+    LOG(ERROR) << "Error encountered while parsing properties";
+    return;
+  }
+  wifi_endpoint_->PropertiesChanged(properties_store);
 }
 
 }  // namespace shill

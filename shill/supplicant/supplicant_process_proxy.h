@@ -22,12 +22,13 @@ class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
                          const char* dbus_addr);
   ~SupplicantProcessProxy() override;
 
-  ::DBus::Path CreateInterface(
-      const std::map<std::string, ::DBus::Variant>& args) override;
-  void RemoveInterface(const ::DBus::Path& path) override;
-  ::DBus::Path GetInterface(const std::string& ifname) override;
-  void SetDebugLevel(const std::string& level) override;
-  std::string GetDebugLevel() override;
+  bool CreateInterface(const KeyValueStore& args,
+                       std::string* rpc_identifier) override;
+  bool RemoveInterface(const std::string& rpc_identifier) override;
+  bool GetInterface(const std::string& ifname,
+                    std::string* rpc_identifier) override;
+  bool SetDebugLevel(const std::string& level) override;
+  bool GetDebugLevel(std::string* level) override;
 
  private:
   class Proxy : public fi::w1::wpa_supplicant1_proxy,

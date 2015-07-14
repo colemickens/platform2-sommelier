@@ -5,10 +5,9 @@
 #ifndef SHILL_SUPPLICANT_SUPPLICANT_PROCESS_PROXY_INTERFACE_H_
 #define SHILL_SUPPLICANT_SUPPLICANT_PROCESS_PROXY_INTERFACE_H_
 
-#include <map>
 #include <string>
 
-#include <dbus-c++/dbus.h>
+#include "shill/key_value_store.h"
 
 namespace shill {
 
@@ -17,12 +16,13 @@ namespace shill {
 class SupplicantProcessProxyInterface {
  public:
   virtual ~SupplicantProcessProxyInterface() {}
-  virtual ::DBus::Path CreateInterface(
-      const std::map<std::string, ::DBus::Variant>& args) = 0;
-  virtual ::DBus::Path GetInterface(const std::string& ifname) = 0;
-  virtual void RemoveInterface(const ::DBus::Path& path) = 0;
-  virtual void SetDebugLevel(const std::string& level) = 0;
-  virtual std::string GetDebugLevel() = 0;
+  virtual bool CreateInterface(const KeyValueStore& args,
+                               std::string* rpc_identifier) = 0;
+  virtual bool GetInterface(const std::string& ifname,
+                            std::string* rpc_identifier) = 0;
+  virtual bool RemoveInterface(const std::string& rpc_identifier) = 0;
+  virtual bool SetDebugLevel(const std::string& level) = 0;
+  virtual bool GetDebugLevel(std::string* level) = 0;
 };
 
 }  // namespace shill

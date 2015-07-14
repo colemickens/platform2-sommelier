@@ -10,7 +10,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <dbus-c++/dbus.h>
 
 #include "shill/technology.h"
 
@@ -78,7 +77,7 @@ class EapCredentials {
   // to export CA certificates to be passed to wpa_supplicant.
   virtual void PopulateSupplicantProperties(
       CertificateFile* certificate_file,
-      std::map<std::string, DBus::Variant>* params) const;
+      KeyValueStore* params) const;
 
   // Populate the WiMax connection parameters |params| with the
   // credentials in |this|.

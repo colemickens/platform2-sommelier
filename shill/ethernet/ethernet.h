@@ -18,6 +18,7 @@
 #include "shill/refptr_types.h"
 
 #if !defined(DISABLE_WIRED_8021X)
+#include "shill/key_value_store.h"
 #include "shill/supplicant/supplicant_eap_state_handler.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
 #endif  // DISABLE_WIRED_8021X
@@ -73,15 +74,13 @@ class Ethernet
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
   void BSSAdded(
-      const ::DBus::Path& BSS,
-      const std::map<std::string, ::DBus::Variant>& properties) override;
-  void BSSRemoved(const ::DBus::Path& BSS) override;
-  void Certification(
-      const std::map<std::string, ::DBus::Variant>& properties) override;
-  void EAPEvent(
-  const std::string& status, const std::string& parameter) override;
-  void PropertiesChanged(
-      const std::map<std::string, ::DBus::Variant>& properties) override;
+      const std::string& BSS,
+      const KeyValueStore& properties) override;
+  void BSSRemoved(const std::string& BSS) override;
+  void Certification(const KeyValueStore& properties) override;
+  void EAPEvent(const std::string& status,
+                const std::string& parameter) override;
+  void PropertiesChanged(const KeyValueStore& properties) override;
   void ScanDone(const bool& /*success*/) override;
   void TDLSDiscoverResponse(const std::string& peer_address) override;
 #endif  // DISABLE_WIRED_8021X
