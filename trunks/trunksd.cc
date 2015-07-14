@@ -55,18 +55,18 @@ void InitMinijailSandbox() {
 
 class TrunksDaemon : public chromeos::DBusServiceDaemon {
  public:
-  explicit TrunksDaemon(trunks::TpmHandle* tpm_handle) :
+  explicit TrunksDaemon(trunks::CommandTransceiver* transceiver) :
       chromeos::DBusServiceDaemon(trunks::kTrunksServiceName) {
-    tpm_handle_.reset(tpm_handle);
+    transceiver_.reset(transceiver);
     background_thread_.reset(new base::Thread(kBackgroundThreadName));
     CHECK(background_thread_->Start());
     // Chain together command transceivers:
     //   [IPC] --> TrunksService --> BackgroundCommandTransceiver -->
     //       ResourceManager --> TpmHandle --> [TPM]
-    factory_.reset(new trunks::TrunksFactoryImpl(tpm_handle_.get()));
+    factory_.reset(new trunks::TrunksFactoryImpl(transceiver_.get()));
     resource_manager_.reset(new trunks::ResourceManager(
         *factory_,
-        tpm_handle_.get()));
+        transceiver_.get()));
     background_thread_->message_loop_proxy()->PostNonNestableTask(
         FROM_HERE,
         base::Bind(&trunks::ResourceManager::Initialize,
@@ -89,7 +89,7 @@ class TrunksDaemon : public chromeos::DBusServiceDaemon {
 
  private:
   std::unique_ptr<trunks::TrunksService> trunks_service_;
-  std::unique_ptr<trunks::TpmHandle> tpm_handle_;
+  std::unique_ptr<trunks::CommandTransceiver> transceiver_;
   // Thread for executing TPM comands.
   std::unique_ptr<base::Thread> background_thread_;
   std::unique_ptr<trunks::TrunksFactory> factory_;
@@ -106,6 +106,7 @@ int main(int argc, char **argv) {
   trunks::TpmHandle tpm_handle;
   // AtExitManager must be instantiated before tpm_handle.Init()
   TrunksDaemon daemon(&tpm_handle);
+  CHECK(tpm_handle.Init());
   InitMinijailSandbox();
   LOG(INFO) << "Trunks Service Started";
   return daemon.Run();
