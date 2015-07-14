@@ -223,7 +223,8 @@ bool TPM2UtilityImpl::GenerateKey(int slot,
       "",  // Policy Digest
       false,  // use_only_policy_authorization
       session_->GetDelegate(),
-      key_blob);
+      key_blob,
+      nullptr);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error creating RSA key pair: "
                << trunks::GetErrorString(result);
