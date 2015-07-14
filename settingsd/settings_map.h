@@ -11,6 +11,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "settingsd/settings_document.h"
 
@@ -38,18 +39,28 @@ class SettingsMap {
   // SettingsMap is unchanged. If the out parameter |modified_keys| is not the
   // |nullptr|, keys that have been added or deleted by the insertion are
   // inserted into the set. Note that this only includes all keys for which the
-  // return value of GetValue() has changed.
-  virtual bool InsertDocument(const SettingsDocument* document,
-                              std::set<Key>* modified_keys) = 0;
+  // return value of GetValue() has changed. If the out parameter
+  // |unreferenced_documents| is not the |nullptr|, |unreferenced_documents|
+  // will be replaced with a list of documents that are now unreferenced due
+  // to the insertion.
+  virtual bool InsertDocument(
+      const SettingsDocument* document,
+      std::set<Key>* modified_keys,
+      std::vector<const SettingsDocument*>* unreferenced_documents) = 0;
 
   // Removes a settings document from the settings map and deletes it. The
   // attempt to remove a document that not currently not contained in
   // SettingsMap is a noop. If the out parameter |modified_keys| is not the
   // |nullptr|, keys that have been added or deleted by the deletion are
   // inserted into the set. Note that this only includes all keys for which the
-  // return value of GetValue() has changed.
-  virtual void RemoveDocument(const SettingsDocument* document,
-                              std::set<Key>* modified_keys) = 0;
+  // return value of GetValue() has changed. If the out parameter
+  // |unreferenced_documents| is not the |nullptr|, |unreferenced_documents|
+  // will be replaced with a list of documents that are now unreferenced due
+  // to the insertion.
+  virtual void RemoveDocument(
+      const SettingsDocument* document,
+      std::set<Key>* modified_keys,
+      std::vector<const SettingsDocument*>* unreferenced_documents) = 0;
 
  private:
   DISALLOW_ASSIGN(SettingsMap);

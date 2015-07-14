@@ -63,7 +63,11 @@ SettingsDocumentManager::SettingsDocumentManager(
 
   // Insert the trusted document.
   std::set<Key> changed_keys;
-  CHECK(settings_map_->InsertDocument(trusted_document_.get(), &changed_keys));
+  std::vector<const SettingsDocument*> unreferenced_documents;
+  CHECK(settings_map_->InsertDocument(trusted_document_.get(), &changed_keys,
+                                      &unreferenced_documents));
+  if (!unreferenced_documents.empty())
+    LOG(ERROR) << "Initial SettingsDocument is empty.";
   UpdateTrustConfiguration(&changed_keys);
 }
 
@@ -120,8 +124,9 @@ SettingsDocumentManager::InsertDocument(
     return kInsertionStatusAccessViolation;
 
   // Everything looks good, attempt the insertion.
+  // TODO(cschuet): Properly handle the unreferenced documents here.
   std::set<Key> changed_keys;
-  if (!settings_map_->InsertDocument(document.get(), &changed_keys))
+  if (!settings_map_->InsertDocument(document.get(), &changed_keys, nullptr))
     return kInsertionStatusCollision;
 
   entry.documents_.insert(insertion_point, std::move(document));
@@ -178,8 +183,10 @@ void SettingsDocumentManager::UpdateTrustConfiguration(
 
       // |doc| is no longer valid, remove it from |documents_| and
       // |settings_map_|.
+      // TODO(cschuet): Properly handle the unreferenced documents here.
       std::set<Key> keys_changed_by_removal;
-      settings_map_->RemoveDocument(doc->get(), &keys_changed_by_removal);
+      settings_map_->RemoveDocument(doc->get(), &keys_changed_by_removal,
+                                    nullptr);
       doc = entry.documents_.erase(doc);
       UpdateSourceValidationQueue(keys_changed_by_removal,
                                   &sources_to_revalidate);

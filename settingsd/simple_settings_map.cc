@@ -51,7 +51,7 @@ bool SimpleSettingsMap::HasLaterSubtreeDeletion(
   return false;
 }
 
-SimpleSettingsMap::WeakPtrDocumentList::iterator
+SimpleSettingsMap::DocumentWeakPtrList::iterator
 SimpleSettingsMap::FindDocumentInSortedList(
     const SettingsDocument* document_ptr) {
   return std::find_if(
@@ -133,8 +133,13 @@ void SimpleSettingsMap::InsertDocumentSubset(
   }
 }
 
-bool SimpleSettingsMap::InsertDocument(const SettingsDocument* document,
-                                       std::set<Key>* modified_keys) {
+bool SimpleSettingsMap::InsertDocument(
+    const SettingsDocument* document,
+    std::set<Key>* modified_keys,
+    std::vector<const SettingsDocument*>* unreferenced_documents) {
+  // |unreferenced_documents_| should be empty.
+  DCHECK(unreferenced_documents_.empty());
+
   // Check if |document| has a prefix collision with a previously inserted,
   // concurrent document. In that case, abort.
   for (auto& doc_ptr : documents_) {
@@ -164,11 +169,27 @@ bool SimpleSettingsMap::InsertDocument(const SettingsDocument* document,
   if (!document_ptr.unique())
     InsertDocumentIntoSortedList(document_ptr);
 
+  // If the document to be inserted has not become active, discarding the last
+  // shared_ptr referring to it will add it to the list of unreferenced
+  // documents.
+  document_ptr.reset();
+
+  // If the out parameter |unreferenced_documents| is non-null, output the list
+  // of unreferenced documents.
+  if (unreferenced_documents)
+    std::swap(*unreferenced_documents, unreferenced_documents_);
+  unreferenced_documents_.clear();
+
   return true;
 }
 
-void SimpleSettingsMap::RemoveDocument(const SettingsDocument* document_ptr,
-                                       std::set<Key>* modified_keys) {
+void SimpleSettingsMap::RemoveDocument(
+    const SettingsDocument* document_ptr,
+    std::set<Key>* modified_keys,
+    std::vector<const SettingsDocument*>* unreferenced_documents) {
+  // |unreferenced_documents_| should be empty.
+  DCHECK(unreferenced_documents_.empty());
+
   auto position = FindDocumentInSortedList(document_ptr);
 
   // If the SettingsDocument |document_ptr| is not in the list of active
@@ -211,7 +232,7 @@ void SimpleSettingsMap::RemoveDocument(const SettingsDocument* document_ptr,
   // Walk the sorted list of documents from the earliest document up to (but not
   // including) the current document and reinstall links in the |value_map_| and
   // |deletion_map_| which are now shining through.
-  WeakPtrDocumentList::reverse_iterator current_document_ptr(position);
+  DocumentWeakPtrList::reverse_iterator current_document_ptr(position);
   for (; current_document_ptr != documents_.rend(); ++current_document_ptr) {
     std::shared_ptr<const SettingsDocument> current_document =
          current_document_ptr->lock();
@@ -220,21 +241,29 @@ void SimpleSettingsMap::RemoveDocument(const SettingsDocument* document_ptr,
      InsertDocumentSubset(current_document, prefixes_to_restore, modified_keys);
   }
 
-  // Trigger clean-up of the document to be removed by discarding the last
-  // shared_ptr referring to it.
+  // Trigger clean-up of the document to be removed and addition to the list of
+  // unreferenced documents by discarding the last shared_ptr referring to it.
   document.reset();
 
   // This should have triggered the clean-up of |document|.
   DCHECK(documents_.end() == FindDocumentInSortedList(document_ptr));
+
+  // If the out parameter |unreferenced_documents| is non-null, output the list
+  // of unreferenced documents.
+  if (unreferenced_documents)
+    std::swap(*unreferenced_documents, unreferenced_documents_);
+  unreferenced_documents_.clear();
 }
 
 void SimpleSettingsMap::OnDocumentUnreferenced(
     const SettingsDocument* document) {
-  documents_.erase(
+  DocumentWeakPtrList::iterator position =
       std::remove_if(documents_.begin(), documents_.end(),
                      [](const std::weak_ptr<const SettingsDocument>& doc) {
                        return doc.expired();
-                        }));
+                     });
+  documents_.erase(position, documents_.end());
+  unreferenced_documents_.push_back(document);
 }
 
 void SimpleSettingsMap::Clear() {

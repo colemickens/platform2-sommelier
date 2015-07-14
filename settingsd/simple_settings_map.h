@@ -33,10 +33,14 @@ class SimpleSettingsMap : public SettingsMap {
   void Clear() override;
   const base::Value* GetValue(const Key& key) const override;
   std::set<Key> GetKeys(const Key& key) const override;
-  bool InsertDocument(const SettingsDocument* document,
-                      std::set<Key>* modified_keys) override;
-  void RemoveDocument(const SettingsDocument* document,
-                      std::set<Key>* modified_keys) override;
+  bool InsertDocument(
+      const SettingsDocument* document,
+      std::set<Key>* modified_keys,
+      std::vector<const SettingsDocument*>* unreferenced_documents) override;
+  void RemoveDocument(
+      const SettingsDocument* document,
+      std::set<Key>* modified_keys,
+      std::vector<const SettingsDocument*>* unreferenced_documents) override;
 
   // This method gets invoked when a SettingsDocument has lost its last
   // reference from |value_map_| and |deletion_map_|, i.e. is currently
@@ -46,7 +50,8 @@ class SimpleSettingsMap : public SettingsMap {
   void OnDocumentUnreferenced(const SettingsDocument* document);
 
  private:
-  using WeakPtrDocumentList =
+  using DocumentPtrList = std::vector<const SettingsDocument*>;
+  using DocumentWeakPtrList =
       std::vector<std::weak_ptr<const SettingsDocument>>;
   using KeyDocumentMap = std::map<Key, std::shared_ptr<const SettingsDocument>>;
   friend class SimpleSettingsMapTest;
@@ -82,7 +87,7 @@ class SimpleSettingsMap : public SettingsMap {
 
   // Returns an iterator to the entry in |documents_| which points the same
   // SettingsDocument as |document_ptr| does.
-  WeakPtrDocumentList::iterator FindDocumentInSortedList(
+  DocumentWeakPtrList::iterator FindDocumentInSortedList(
       const SettingsDocument* document_ptr);
 
   // Installs the subset of keys and subtree deletions provided by |document|
@@ -97,7 +102,10 @@ class SimpleSettingsMap : public SettingsMap {
                             std::set<Key>* modified_keys);
 
   // The list of all active documents.
-  WeakPtrDocumentList documents_;
+  DocumentWeakPtrList documents_;
+
+  // The list of currently unreferenced documents.
+  DocumentPtrList unreferenced_documents_;
 
   // |value_map_| maps keys to the respective SettingsDocument which is
   // currently providing the active value. The entries in this map indirectly
