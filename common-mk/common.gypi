@@ -28,6 +28,7 @@
     'USE_cros_host%': 0,
     'USE_dhcpv6%': 0,
     'USE_feedback%': 0,
+    'USE_ftdi_tpm%': 0,
     'USE_gdmwimax%': 0,
     'USE_mtd%': 0,
     'USE_opengles%': 0,

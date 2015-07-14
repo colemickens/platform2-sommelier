@@ -21,7 +21,6 @@
 #include "trunks/tpm_utility.h"
 #include "trunks/trunks_client_test.h"
 #include "trunks/trunks_factory_impl.h"
-#include "trunks/trunks_ftdi_spi.h"
 #include "trunks/trunks_proxy.h"
 
 namespace {
@@ -33,9 +32,6 @@ void PrintUsage() {
   puts("Options:");
   puts("  --allocate_pcr - Configures PCR 0-15 under the SHA256 bank.");
   puts("  --clear - Clears the TPM. Use before initializing the TPM.");
-#if defined SPI_OVER_FTDI
-  puts("  --ftdi - Tries to communicate with a TPM2 chip over FTDI.");
-#endif
   puts("  --help - Prints this message.");
   puts("  --init_tpm - Initializes a TPM as CrOS firmware does.");
   puts("  --own - Takes ownership of the TPM with the provided password.");
@@ -131,12 +127,8 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  CommandTransceiver* proxy;
-  if (cl->HasSwitch("ftdi")) {
-    proxy = new trunks::TrunksFtdiSpi();
-  } else {
-    proxy = new trunks::TrunksProxy();
-  }
+  CommandTransceiver* proxy = new trunks::TrunksProxy();
+
   if (!proxy->Init()) {
     LOG(ERROR) << "Error initializing proxy to communicate with TPM.";
     return -1;

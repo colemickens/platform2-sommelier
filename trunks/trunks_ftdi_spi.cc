@@ -206,6 +206,11 @@ std::string TrunksFtdiSpi::SendCommandAndWait(const std::string& command) {
   uint32_t expected_status_bits;
   std::string rv("");
 
+  if (!mpsse_) {
+    LOG(ERROR) << "attempt to use an uninitialized FTDI TPM!";
+    return rv;
+  }
+
   if (command.length() > burst_count_) {
     LOG(ERROR) << "cannot (yet) transmit more than " << burst_count_
                << " bytes";

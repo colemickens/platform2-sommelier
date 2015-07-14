@@ -19,6 +19,7 @@
 #include "trunks/resource_manager.h"
 #include "trunks/tpm_handle.h"
 #include "trunks/trunks_factory_impl.h"
+#include "trunks/trunks_ftdi_spi.h"
 #include "trunks/trunks_service.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
@@ -102,11 +103,15 @@ class TrunksDaemon : public chromeos::DBusServiceDaemon {
 int main(int argc, char **argv) {
   base::CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
-  // Open a handle to the TPM and drop privilege.
-  trunks::TpmHandle tpm_handle;
-  // AtExitManager must be instantiated before tpm_handle.Init()
-  TrunksDaemon daemon(&tpm_handle);
-  CHECK(tpm_handle.Init());
+  base::CommandLine *cl = base::CommandLine::ForCurrentProcess();
+  trunks::CommandTransceiver *transceiver;
+  if (cl->HasSwitch("ftdi")) {
+    transceiver = new trunks::TrunksFtdiSpi();
+  } else {
+    transceiver = new trunks::TpmHandle();
+  }
+  CHECK(transceiver->Init()) << "Error initializing transceiver";
+  TrunksDaemon daemon(transceiver);
   InitMinijailSandbox();
   LOG(INFO) << "Trunks Service Started";
   return daemon.Run();

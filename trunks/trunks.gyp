@@ -48,7 +48,7 @@
         'dbus_interface_proto',
       ],
       'conditions': [
-        ['USE_cros_host == 1', {
+        ['USE_ftdi_tpm == 1', {
             'sources': [
               'ftdi/mpsse.c',
               'ftdi/support.c',
@@ -73,14 +73,6 @@
       ],
       'dependencies': [
         'trunks',
-      ],
-      'conditions': [
-        ['USE_cros_host == 1', {
-            'defines': [
-              'SPI_OVER_FTDI=1',
-            ],
-          },
-        ],
       ],
     },
     {
@@ -109,6 +101,14 @@
         'dbus_interface_proto',
         'trunks',
         'trunksd_lib',
+      ],
+      'conditions': [
+        ['USE_ftdi_tpm == 1', {
+            'defines': [
+              'SPI_OVER_FTDI=1',
+            ],
+          },
+        ],
       ],
     },
   ],
