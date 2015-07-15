@@ -64,8 +64,8 @@ bool IcmpSession::Start(const IPAddress& destination,
       icmp_->socket(), echo_reply_callback_,
       Bind(&IcmpSession::OnEchoReplyError, weak_ptr_factory_.GetWeakPtr())));
   result_callback_ = result_callback;
-  timeout_callback_.Reset(
-      Bind(&IcmpSession::Stop, weak_ptr_factory_.GetWeakPtr()));
+  timeout_callback_.Reset(Bind(&IcmpSession::ReportResultAndStopSession,
+                               weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(timeout_callback_.callback(),
                                kTimeoutSeconds * 1000);
   seq_num_to_sent_recv_time_.clear();
@@ -82,7 +82,6 @@ void IcmpSession::Stop() {
     return;
   }
   timeout_callback_.Cancel();
-  result_callback_.Run(GenerateIcmpResult());
   result_callback_.Reset();
   echo_reply_handler_.reset();
   icmp_->Stop();
@@ -168,8 +167,9 @@ void IcmpSession::OnEchoReplyReceived(InputData* data) {
   received_echo_reply_seq_numbers_.insert(received_seq_num);
 
   if (received_echo_reply_seq_numbers_.size() == kTotalNumEchoRequests) {
-    // All requests send and replies received, so stop the ICMP session.
-    Stop();
+    // All requests sent and replies received, so report results and end the
+    // ICMP session.
+    ReportResultAndStopSession();
   }
 }
 
@@ -194,6 +194,15 @@ void IcmpSession::OnEchoReplyError(const std::string& error_msg) {
   LOG(ERROR) << __func__ << ": " << error_msg;
   // Do nothing when we encounter an IO error, so we can continue receiving
   // other pending echo replies.
+}
+
+void IcmpSession::ReportResultAndStopSession() {
+  if (!IsStarted()) {
+    LOG(WARNING) << "ICMP session not started";
+    return;
+  }
+  result_callback_.Run(GenerateIcmpResult());
+  Stop();
 }
 
 }  // namespace shill

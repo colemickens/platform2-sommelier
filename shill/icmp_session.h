@@ -46,7 +46,7 @@ class IcmpSession {
   using IcmpSessionResultCallback =
       base::Callback<void(const IcmpSessionResult&)>;
 
-  explicit IcmpSession(EventDispatcher *dispatcher);
+  explicit IcmpSession(EventDispatcher* dispatcher);
 
   // We always call IcmpSession::Stop in the destructor to clean up, in case an
   // ICMP session is still in progress.
@@ -55,17 +55,13 @@ class IcmpSession {
   // Starts an ICMP session, sending |kNumEchoRequestsToSend| echo requests to
   // |destination|, |kEchoRequestIntervalSeconds| apart. |result_callback| will
   // be called a) after all echo requests are sent and all echo replies are
-  // received, or b) after |kTimeoutSeconds| have passed, or c) when
-  // IcmpSession::Stop is called. |result_callback| will only be invoked once on
-  // the first occurrence of any of these events.
+  // received, or b) after |kTimeoutSeconds| have passed. |result_callback| will
+  // only be invoked once on the first occurrence of either of these events.
   bool Start(const IPAddress& destination,
              const IcmpSessionResultCallback& result_callback);
 
-  // Stops the current ICMP session by closing the ICMP socket and calling
-  // |result_callback_| with the results collected so far. This function is
-  // called automatically when the ICMP session successfully completes, when it
-  // times out, or when this object is destroyed. Does nothing if a ICMP session
-  // is not started.
+  // Stops the current ICMP session by closing the ICMP socket and resetting
+  // callbacks. Does nothing if a ICMP session is not started.
   void Stop();
 
   bool IsStarted() { return icmp_->IsStarted(); }
@@ -101,6 +97,12 @@ class IcmpSession {
 
   // Called when the input handler |echo_reply_handler_| encounters an error.
   void OnEchoReplyError(const std::string& error_msg);
+
+  // Calls |result_callback_| with the results collected so far, then stops the
+  // IcmpSession. This function is called when the ICMP session successfully
+  // completes, or when it times out. Does nothing if an ICMP session is not
+  // started.
+  void ReportResultAndStopSession();
 
   base::WeakPtrFactory<IcmpSession> weak_ptr_factory_;
   EventDispatcher* dispatcher_;

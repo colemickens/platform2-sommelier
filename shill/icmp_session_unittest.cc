@@ -112,6 +112,10 @@ class IcmpSessionTest : public Test {
     icmp_session_.TransmitEchoRequestTask(destination);
   }
 
+  void ReportResultAndStopSession() {
+    icmp_session_.ReportResultAndStopSession();
+  }
+
   void VerifyIcmpSessionStopped() {
     EXPECT_TRUE(icmp_session_.timeout_callback_.IsCancelled());
     EXPECT_TRUE(icmp_session_.result_callback_.is_null());
@@ -383,14 +387,25 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   EXPECT_EQ(now, GetSeqNumToSentRecvTime()->at(kIcmpEchoReply3_SeqNum).first);
   EXPECT_EQ(kIcmpEchoReply3_SeqNum + 1, GetCurrentSequenceNumber());
 
-  // Timeout triggered or session manually stopped, so we report partial
-  // results.
+  // Timeout triggered, so report partial results.
   EXPECT_CALL(*this, ResultCallback(expected_partial_result));
   EXPECT_CALL(*icmp_, Stop());
-  Stop();
+  ReportResultAndStopSession();
   EXPECT_EQ(2, GetSeqNumToSentRecvTime()->size());
   EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
+  VerifyIcmpSessionStopped();
+}
 
+TEST_F(IcmpSessionTest, DoNotReportResultsOnStop) {
+  // Initiate session.
+  IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
+  StartAndVerify(ipv4_destination);
+
+  // Session interrupted manually by calling Stop(), so do not report results.
+  EXPECT_CALL(*this, ResultCallback(_)).Times(0);
+  EXPECT_CALL(*icmp_, Stop());
+  Stop();
   VerifyIcmpSessionStopped();
 }
 
