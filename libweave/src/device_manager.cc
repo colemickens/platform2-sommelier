@@ -6,12 +6,14 @@
 
 #include <string>
 
-#include <chromeos/dbus/dbus_object.h>
-
 #include <base/message_loop/message_loop.h>
+#include <chromeos/dbus/dbus_object.h>
+#include <chromeos/http/http_transport.h>
 
 #include "libweave/src/base_api_handler.h"
+#include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/command_manager.h"
+#include "libweave/src/device_registration_info.h"
 #include "libweave/src/privet/privet_manager.h"
 #include "libweave/src/privet/shill_client.h"
 #include "libweave/src/states/state_change_queue.h"
@@ -69,23 +71,23 @@ void DeviceManager::Start(
     StartPrivet(options, dbus_object, sequencer);
 }
 
-CommandManager* DeviceManager::GetCommands() {
+Commands* DeviceManager::GetCommands() {
   return command_manager_.get();
 }
 
-StateManager* DeviceManager::GetState() {
+State* DeviceManager::GetState() {
   return state_manager_.get();
 }
 
-BuffetConfig* DeviceManager::GetConfig() {
+Config* DeviceManager::GetConfig() {
   return device_info_->GetMutableConfig();
 }
 
-DeviceRegistrationInfo* DeviceManager::GetCloud() {
+Cloud* DeviceManager::GetCloud() {
   return device_info_.get();
 }
 
-privet::Manager* DeviceManager::GetPrivet() {
+Privet* DeviceManager::GetPrivet() {
   return privet_.get();
 }
 

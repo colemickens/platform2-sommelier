@@ -31,6 +31,8 @@
 #include "libweave/src/notification/pull_channel.h"
 #include "libweave/src/states/state_change_queue_interface.h"
 #include "libweave/src/storage_interface.h"
+#include "weave/cloud.h"
+#include "weave/config.h"
 
 namespace base {
 class DictionaryValue;
@@ -53,13 +55,12 @@ extern const char kErrorDomainGCD[];
 extern const char kErrorDomainGCDServer[];
 
 // The DeviceRegistrationInfo class represents device registration information.
-class DeviceRegistrationInfo : public NotificationDelegate,
+class DeviceRegistrationInfo : public Cloud,
+                               public NotificationDelegate,
                                public CloudCommandUpdateInterface {
  public:
-  using OnRegistrationChangedCallback =
-      base::Callback<void(RegistrationStatus)>;
   using CloudRequestCallback =
-      base::Callback<void(const base::DictionaryValue&)>;
+      base::Callback<void(const base::DictionaryValue& response)>;
   using CloudRequestErrorCallback =
       base::Callback<void(const chromeos::Error* error)>;
 
@@ -74,13 +75,31 @@ class DeviceRegistrationInfo : public NotificationDelegate,
 
   ~DeviceRegistrationInfo() override;
 
-  // Add callback to listen for changes in registration status.
+  // Cloud overrides.
   void AddOnRegistrationChangedCallback(
-      const OnRegistrationChangedCallback& callback);
+      const OnRegistrationChangedCallback& callback) override;
+  void GetDeviceInfo(
+      const OnCloudRequestCallback& success_callback,
+      const OnCloudRequestErrorCallback& error_callback) override;
+  std::string RegisterDevice(const std::string& ticket_id,
+                             chromeos::ErrorPtr* error) override;
+  bool UpdateDeviceInfo(const std::string& name,
+                        const std::string& description,
+                        const std::string& location,
+                        chromeos::ErrorPtr* error) override;
+  bool UpdateBaseConfig(const std::string& anonymous_access_role,
+                        bool local_discovery_enabled,
+                        bool local_pairing_enabled,
+                        chromeos::ErrorPtr* error) override;
+  bool UpdateServiceConfig(const std::string& client_id,
+                           const std::string& client_secret,
+                           const std::string& api_key,
+                           const std::string& oauth_url,
+                           const std::string& service_url,
+                           chromeos::ErrorPtr* error) override;
 
   // Add callback to listen for changes in config.
-  void AddOnConfigChangedCallback(
-      const BuffetConfig::OnChangedCallback& callback);
+  void AddOnConfigChangedCallback(const Config::OnChangedCallback& callback);
 
   // Returns the authorization HTTP header that can be used to talk
   // to GCD server for authenticated device communication.
@@ -123,42 +142,11 @@ class DeviceRegistrationInfo : public NotificationDelegate,
   // are available.
   bool VerifyRegistrationCredentials(chromeos::ErrorPtr* error) const;
 
-  // Gets the full device description JSON object asynchronously.
-  // Passes the device info as the first argument to |callback|, or nullptr if
-  // the device is not registered or in case of communication failure.
-  void GetDeviceInfo(const CloudRequestCallback& success_callback,
-                     const CloudRequestErrorCallback& error_callback);
-
-  // Registers the device.
-  // Returns a device ID on success.
-  std::string RegisterDevice(const std::string& ticket_id,
-                             chromeos::ErrorPtr* error);
-
   // Updates a command (override from CloudCommandUpdateInterface).
   void UpdateCommand(const std::string& command_id,
                      const base::DictionaryValue& command_patch,
                      const base::Closure& on_success,
                      const base::Closure& on_error) override;
-
-  // Updates basic device information.
-  bool UpdateDeviceInfo(const std::string& name,
-                        const std::string& description,
-                        const std::string& location,
-                        chromeos::ErrorPtr* error);
-
-  // Updates base device config.
-  bool UpdateBaseConfig(const std::string& anonymous_access_role,
-                        bool local_discovery_enabled,
-                        bool local_pairing_enabled,
-                        chromeos::ErrorPtr* error);
-
-  // Updates GCD service configuration. Usually for testing.
-  bool UpdateServiceConfig(const std::string& client_id,
-                           const std::string& client_secret,
-                           const std::string& api_key,
-                           const std::string& oauth_url,
-                           const std::string& service_url,
-                           chromeos::ErrorPtr* error);
 
   // TODO(vitalybuka): remove getters and pass config to dependent code.
   const BuffetConfig& GetConfig() const { return *config_; }

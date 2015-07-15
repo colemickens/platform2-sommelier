@@ -15,51 +15,25 @@
 #include <chromeos/key_value_store.h>
 
 #include "libweave/src/privet/security_delegate.h"
+#include "weave/config.h"
 
 namespace weave {
 
 class StorageInterface;
 
-struct Settings {
-  std::string client_id;
-  std::string client_secret;
-  std::string api_key;
-  std::string oauth_url;
-  std::string service_url;
-  std::string name;
-  std::string description;
-  std::string location;
-  std::string local_anonymous_access_role;
-  bool local_discovery_enabled{true};
-  bool local_pairing_enabled{true};
-  std::string oem_name;
-  std::string model_name;
-  std::string model_id;
-  std::string device_kind;
-  base::TimeDelta polling_period;
-  base::TimeDelta backup_polling_period;
-
-  bool wifi_auto_setup_enabled{true};
-  std::set<PairingType> pairing_modes;
-  base::FilePath embedded_code_path;
-
-  std::string device_id;
-  std::string refresh_token;
-  std::string robot_account;
-  std::string last_configured_ssid;
-};
-
 // Handles reading buffet config and state files.
-class BuffetConfig final {
+class BuffetConfig final : public Config {
  public:
   using OnChangedCallback = base::Callback<void(const Settings&)>;
+  ~BuffetConfig() override = default;
 
   explicit BuffetConfig(std::unique_ptr<StorageInterface> storage);
 
   explicit BuffetConfig(const base::FilePath& state_path);
 
-  void AddOnChangedCallback(const OnChangedCallback& callback);
-  const Settings& GetSettings() const;
+  // Config overrides.
+  void AddOnChangedCallback(const OnChangedCallback& callback) override;
+  const Settings& GetSettings() const override;
 
   void Load(const base::FilePath& config_path);
   void Load(const chromeos::KeyValueStore& store);

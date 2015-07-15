@@ -48,10 +48,10 @@ class PrivetHandler;
 class SecurityManager;
 class ShillClient;
 
-class Manager : public CloudDelegate::Observer {
+class Manager : public Privet, public CloudDelegate::Observer {
  public:
   Manager();
-  ~Manager();
+  ~Manager() override;
 
   void Start(const weave::Device::Options& options,
              const scoped_refptr<dbus::Bus>& bus,
@@ -64,11 +64,11 @@ class Manager : public CloudDelegate::Observer {
   std::string GetCurrentlyConnectedSsid() const;
 
   void AddOnWifiSetupChangedCallback(
-      const WifiBootstrapManager::StateListener& callback);
+      const OnWifiSetupChangedCallback& callback) override;
 
   void AddOnPairingChangedCallbacks(
-      const SecurityManager::PairingStartListener& on_start,
-      const SecurityManager::PairingEndListener& on_end);
+      const OnPairingStartedCallback& on_start,
+      const OnPairingEndedCallback& on_end) override;
 
   void Shutdown();
 

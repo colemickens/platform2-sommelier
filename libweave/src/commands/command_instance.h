@@ -15,6 +15,7 @@
 
 #include "libweave/src/commands/prop_values.h"
 #include "libweave/src/commands/schema_utils.h"
+#include "weave/command.h"
 
 namespace base {
 class Value;
@@ -27,7 +28,7 @@ class CommandDictionary;
 class CommandProxyInterface;
 class CommandQueue;
 
-class CommandInstance final {
+class CommandInstance final : public Command {
  public:
   // Construct a command instance given the full command |name| which must
   // be in format "<package_name>.<command_name>", a command |category| and
@@ -36,7 +37,10 @@ class CommandInstance final {
                   const std::string& origin,
                   const CommandDefinition* command_definition,
                   const native_types::Object& parameters);
-  ~CommandInstance();
+  ~CommandInstance() override;
+
+  // Command overrides.
+  std::unique_ptr<base::DictionaryValue> ToJson() const override;
 
   // Returns the full command ID.
   const std::string& GetID() const { return id_; }
@@ -73,9 +77,6 @@ class CommandInstance final {
       const CommandDictionary& dictionary,
       std::string* command_id,
       chromeos::ErrorPtr* error);
-
-  // Returns JSON representation of the command.
-  std::unique_ptr<base::DictionaryValue> ToJson() const;
 
   // Sets the command ID (normally done by CommandQueue when the command
   // instance is added to it).

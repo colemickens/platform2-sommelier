@@ -19,6 +19,7 @@
 
 #include "libweave/src/states/state_change_queue_interface.h"
 #include "libweave/src/states/state_package.h"
+#include "weave/state.h"
 
 namespace base {
 class DictionaryValue;
@@ -31,24 +32,21 @@ namespace weave {
 // StateManager is the class that aggregates the device state fragments
 // provided by device daemons and makes the aggregate device state available
 // to the GCD cloud server and local clients.
-class StateManager final {
+class StateManager final : public State {
  public:
   explicit StateManager(StateChangeQueueInterface* state_change_queue);
+  ~StateManager() override;
 
-  void AddOnChangedCallback(const base::Closure& callback);
+  // State overrides.
+  void AddOnChangedCallback(const base::Closure& callback) override;
+  bool SetProperties(const chromeos::VariantDictionary& property_set,
+                     chromeos::ErrorPtr* error) override;
+  std::unique_ptr<base::DictionaryValue> GetStateValuesAsJson(
+      chromeos::ErrorPtr* error) const override;
 
   // Initializes the state manager and load device state fragments.
   // Called by Buffet daemon at startup.
   void Startup();
-
-  // Returns aggregated state properties across all registered packages as
-  // a JSON object that can be used to send the device state to the GCD server.
-  std::unique_ptr<base::DictionaryValue> GetStateValuesAsJson(
-      chromeos::ErrorPtr* error) const;
-
-  // Updates a multiple property values.
-  bool SetProperties(const chromeos::VariantDictionary& property_set,
-                     chromeos::ErrorPtr* error);
 
   // Returns all the categories the state properties are registered from.
   // As with GCD command handling, the category normally represent a device

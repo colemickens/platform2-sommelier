@@ -17,6 +17,7 @@
 #include "libweave/src/commands/command_dictionary.h"
 #include "libweave/src/commands/command_queue.h"
 #include "libweave/src/commands/dbus_command_dispatcher.h"
+#include "weave/commands.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -31,18 +32,24 @@ class CommandInstance;
 // CommandManager class that will have a list of all the device command
 // schemas as well as the live command queue of pending command instances
 // dispatched to the device.
-class CommandManager final {
+class CommandManager final : public Commands {
  public:
   CommandManager();
   explicit CommandManager(
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
           object_manager);
 
+  ~CommandManager() override;
+
+  // Commands overrides.
+  bool AddCommand(const base::DictionaryValue& command,
+                  UserRole role,
+                  std::string* id,
+                  chromeos::ErrorPtr* error) override;
+  CommandInstance* FindCommand(const std::string& id) override;
+
   // Sets callback which is called when command definitions is changed.
-  void AddOnCommandDefChanged(const base::Closure& callback) {
-    on_command_changed_.push_back(callback);
-    callback.Run();
-  }
+  void AddOnCommandDefChanged(const base::Closure& callback);
 
   // Returns the command definitions for the device.
   const CommandDictionary& GetCommandDictionary() const;
@@ -87,15 +94,6 @@ class CommandManager final {
 
   // Adds a new command to the command queue.
   void AddCommand(std::unique_ptr<CommandInstance> command_instance);
-  bool AddCommand(const base::DictionaryValue& command,
-                  UserRole role,
-                  std::string* id,
-                  chromeos::ErrorPtr* error);
-
-  // Finds a command by the command |id|. Returns nullptr if the command with
-  // the given |id| is not found. The returned pointer should not be persisted
-  // for a long period of time.
-  CommandInstance* FindCommand(const std::string& id) const;
 
   // Changes the visibility of commands.
   bool SetCommandVisibility(const std::vector<std::string>& command_names,

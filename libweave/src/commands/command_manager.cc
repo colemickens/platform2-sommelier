@@ -29,6 +29,13 @@ CommandManager::CommandManager(
                  base::Unretained(&command_dispatcher_)));
 }
 
+CommandManager::~CommandManager() {}
+
+void CommandManager::AddOnCommandDefChanged(const base::Closure& callback) {
+  on_command_changed_.push_back(callback);
+  callback.Run();
+}
+
 const CommandDictionary& CommandManager::GetCommandDictionary() const {
   return dictionary_;
 }
@@ -125,7 +132,7 @@ bool CommandManager::AddCommand(const base::DictionaryValue& command,
   return true;
 }
 
-CommandInstance* CommandManager::FindCommand(const std::string& id) const {
+CommandInstance* CommandManager::FindCommand(const std::string& id) {
   return command_queue_.Find(id);
 }
 

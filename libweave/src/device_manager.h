@@ -5,6 +5,8 @@
 #ifndef LIBWEAVE_SRC_DEVICE_MANAGER_H_
 #define LIBWEAVE_SRC_DEVICE_MANAGER_H_
 
+#include <base/memory/weak_ptr.h>
+
 #include "weave/device.h"
 
 namespace chromeos {
@@ -36,11 +38,11 @@ class DeviceManager final : public Device {
              chromeos::dbus_utils::DBusObject* dbus_object,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer) override;
 
-  CommandManager* GetCommands() override;
-  StateManager* GetState() override;
-  BuffetConfig* GetConfig() override;
-  DeviceRegistrationInfo* GetCloud() override;
-  privet::Manager* GetPrivet() override;
+  Commands* GetCommands() override;
+  State* GetState() override;
+  Config* GetConfig() override;
+  Cloud* GetCloud() override;
+  Privet* GetPrivet() override;
 
  private:
   void StartPrivet(const Options& options,

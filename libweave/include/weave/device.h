@@ -13,7 +13,11 @@
 #include <chromeos/errors/error.h>
 #include <chromeos/variant_dictionary.h>
 
-#include "weave/types.h"
+#include "weave/cloud.h"
+#include "weave/commands.h"
+#include "weave/config.h"
+#include "weave/privet.h"
+#include "weave/state.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -23,21 +27,6 @@ class DBusObject;
 }
 
 namespace weave {
-
-class CommandManager;
-class StateManager;
-class BuffetConfig;
-class DeviceRegistrationInfo;
-namespace privet {
-class Manager;
-}
-
-// TODO(vitalybuka): Replace with interfaces.
-using Commands = CommandManager;
-using State = StateManager;
-using Config = BuffetConfig;
-using Cloud = DeviceRegistrationInfo;
-using Privet = privet::Manager;
 
 class Device {
  public:
@@ -70,12 +59,5 @@ class Device {
 };
 
 }  // namespace weave
-
-// TODO(vitalybuka): Replace with interfaces
-#include "libweave/src/buffet_config.h"
-#include "libweave/src/commands/command_manager.h"
-#include "libweave/src/device_registration_info.h"
-#include "libweave/src/privet/privet_manager.h"
-#include "libweave/src/states/state_manager.h"
 
 #endif  // LIBWEAVE_INCLUDE_WEAVE_DEVICE_H_

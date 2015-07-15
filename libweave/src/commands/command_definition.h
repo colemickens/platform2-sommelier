@@ -11,7 +11,7 @@
 #include <base/macros.h>
 
 #include "libweave/src/commands/object_schema.h"
-#include "libweave/src/commands/user_role.h"
+#include "weave/commands.h"
 
 namespace weave {
 

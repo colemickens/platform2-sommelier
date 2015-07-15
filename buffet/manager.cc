@@ -185,8 +185,7 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
 
 void Manager::GetCommand(DBusMethodResponsePtr<std::string> response,
                          const std::string& id) {
-  const weave::CommandInstance* command =
-      device_->GetCommands()->FindCommand(id);
+  const weave::Command* command = device_->GetCommands()->FindCommand(id);
   if (!command) {
     response->ReplyWithError(FROM_HERE, kErrorDomain, "unknown_command",
                              "Can't find command with id: " + id);

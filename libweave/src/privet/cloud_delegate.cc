@@ -22,7 +22,6 @@
 #include "libweave/src/device_registration_info.h"
 #include "libweave/src/privet/constants.h"
 #include "libweave/src/states/state_manager.h"
-#include "weave/enum_to_string.h"
 
 using chromeos::ErrorPtr;
 using chromeos::VariantDictionary;

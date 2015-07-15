@@ -13,7 +13,7 @@
 #include <chromeos/secure_blob.h>
 
 #include "libweave/src/privet/privet_types.h"
-#include "weave/types.h"
+#include "weave/privet.h"
 
 namespace weave {
 namespace privet {

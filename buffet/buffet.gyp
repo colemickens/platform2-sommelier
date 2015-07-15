@@ -65,6 +65,7 @@
         '../libweave/src/privet/privet_types.cc',
         '../libweave/src/privet/security_manager.cc',
         '../libweave/src/privet/shill_client.cc',
+        '../libweave/src/privet/privet_types.cc',
         '../libweave/src/privet/wifi_bootstrap_manager.cc',
         '../libweave/src/privet/wifi_ssid_generator.cc',
         '../libweave/src/registration_status.cc',
