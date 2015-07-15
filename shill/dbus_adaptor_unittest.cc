@@ -342,7 +342,7 @@ TEST_F(DBusAdaptorTest, ArgsToKeyValueStore) {
   EXPECT_EQ(kStrings, args_kv.GetStrings(kStringsKey));
   KeyValueStore property_map;
   property_map.SetBool(kVariantMapSubKey, true);
-  EXPECT_TRUE(property_map.Equals(args_kv.GetKeyValueStore(kVariantMapKey)));
+  EXPECT_EQ(property_map, args_kv.GetKeyValueStore(kVariantMapKey));
 }
 
 TEST_F(DBusAdaptorTest, KeyValueStoreToVariant) {

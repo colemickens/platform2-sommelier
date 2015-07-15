@@ -371,23 +371,25 @@ bool KeyFileStore::SetCryptedString(const string& group,
 
 bool KeyFileStore::DoesGroupMatchProperties(
     const string& group, const KeyValueStore& properties) const {
-  map<string, bool>::const_iterator bool_it;
-  for (const auto& property : properties.bool_properties()) {
-    bool value;
-    if (!GetBool(group, property.first, &value) || value != property.second) {
-      return false;
-    }
-  }
-  for (const auto& property : properties.int_properties()) {
-    int value;
-    if (!GetInt(group, property.first, &value) || value != property.second) {
-      return false;
-    }
-  }
-  for (const auto& property : properties.string_properties()) {
-    string value;
-    if (!GetString(group, property.first, &value) || value != property.second) {
-      return false;
+  for (const auto& property : properties.properties()) {
+    if (property.second.GetType() == typeid(bool)) {    // NOLINT
+      bool value;
+      if (!GetBool(group, property.first, &value) ||
+          value != property.second.Get<bool>()) {
+        return false;
+      }
+    } else if (property.second.GetType() == typeid(int32_t)) {
+      int value;
+      if (!GetInt(group, property.first, &value) ||
+          value != property.second.Get<int32_t>()) {
+        return false;
+      }
+    } else if (property.second.GetType() == typeid(string)) {
+      string value;
+      if (!GetString(group, property.first, &value) ||
+          value != property.second.Get<string>()) {
+        return false;
+      }
     }
   }
   return true;

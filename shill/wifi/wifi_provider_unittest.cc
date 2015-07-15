@@ -424,11 +424,7 @@ class WiFiProviderTest : public testing::Test {
 };
 
 MATCHER(TypeWiFiPropertyMatch, "") {
-  return
-      arg.bool_properties().empty() &&
-      arg.int_properties().empty() &&
-      arg.uint_properties().empty() &&
-      arg.string_properties().size() == 1 &&
+  return arg.properties().size() == 1 &&
       arg.LookupString(kTypeProperty, "") == kTypeWifi;
 }
 

@@ -646,34 +646,6 @@ TEST_F(CellularCapabilityGSMTest, GetRoamingStateString) {
   EXPECT_EQ(kRoamingStateUnknown, capability_->GetRoamingStateString());
 }
 
-MATCHER_P(KeyValueStoreEq, value, "") {
-  bool match = value.bool_properties() == arg.bool_properties() &&
-      value.int_properties() == arg.int_properties() &&
-      value.string_properties() == arg.string_properties() &&
-      value.uint_properties() == arg.uint_properties();
-  if (!match) {
-    *result_listener << "\nExpected KeyValueStore:\n"
-                     << "\tbool_properties: "
-                     << testing::PrintToString(value.bool_properties())
-                     << "\n\tint_properties: "
-                     << testing::PrintToString(value.int_properties())
-                     << "\n\tstring_properties: "
-                     << testing::PrintToString(value.string_properties())
-                     << "\n\tint_properties: "
-                     << testing::PrintToString(value.uint_properties())
-                     << "\nGot KeyValueStore:\n"
-                     << "\tbool_properties: "
-                     << testing::PrintToString(arg.bool_properties())
-                     << "\n\tint_properties: "
-                     << testing::PrintToString(arg.int_properties())
-                     << "\n\tstring_properties: "
-                     << testing::PrintToString(arg.string_properties())
-                     << "\n\tuint_properties: "
-                     << testing::PrintToString(arg.uint_properties());
-  }
-  return match;
-}
-
 TEST_F(CellularCapabilityGSMTest, OnDBusPropertiesChanged) {
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN, capability_->access_technology_);
   EXPECT_FALSE(capability_->sim_lock_status_.enabled);

@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/variant_dictionary.h>
+
 namespace shill {
 
 class KeyValueStore {
@@ -28,9 +30,13 @@ class KeyValueStore {
  public:
   KeyValueStore();
 
+  // Required for equality comparison when KeyValueStore is wrapped inside a
+  // chromeos::Any object.
+  bool operator==(const KeyValueStore& rhs) const;
+  bool operator!=(const KeyValueStore& rhs) const;
+
   void Clear();
   void CopyFrom(const KeyValueStore& b);
-  bool Equals(const KeyValueStore& other) const;
   bool IsEmpty();
 
   bool ContainsBool(const std::string& name) const;
@@ -99,72 +105,12 @@ class KeyValueStore {
   std::string LookupString(const std::string& name,
                            const std::string& default_value) const;
 
-  const std::map<std::string, bool>& bool_properties() const {
-    return bool_properties_;
-  }
-  const std::map<std::string, std::vector<std::vector<uint8_t>>>&
-      byte_arrays_properties() const {
-    return byte_arrays_properties_;
-  }
-
-  const std::map<std::string, int32_t>& int_properties() const {
-    return int_properties_;
-  }
-  const std::map<std::string, int16_t>& int16_properties() const {
-    return int16_properties_;
-  }
-  const std::map<std::string, KeyValueStore>
-      &key_value_store_properties() const {
-    return key_value_store_properties_;
-  }
-  const std::map<std::string, std::string>& rpc_identifier_properties() const {
-    return rpc_identifier_properties_;
-  }
-  const std::map<std::string, std::string>& string_properties() const {
-    return string_properties_;
-  }
-  const std::map<
-      std::string,
-      std::map<std::string, std::string>>& stringmap_properties() const {
-    return stringmap_properties_;
-  }
-  const std::map<std::string,
-                 std::vector<std::string>>& strings_properties() const {
-    return strings_properties_;
-  }
-  const std::map<std::string, uint32_t>& uint_properties() const {
-    return uint_properties_;
-  }
-  const std::map<std::string, uint16_t>& uint16_properties() const {
-    return uint16_properties_;
-  }
-  const std::map<std::string, std::vector<uint8_t>>& uint8s_properties() const {
-    return uint8s_properties_;
-  }
-  const std::map<std::string, std::vector<uint32_t>>&
-      uint32s_properties() const {
-    return uint32s_properties_;
+  const chromeos::VariantDictionary& properties() const {
+    return properties_;
   }
 
  private:
-  // Recursively compare KeyValueStore properties with |other|.
-  bool KeyValueStorePropertiesAreEqual(const KeyValueStore& other) const;
-
-  std::map<std::string, bool> bool_properties_;
-  std::map<std::string, std::vector<std::vector<uint8_t>>>
-      byte_arrays_properties_;
-  std::map<std::string, int32_t> int_properties_;
-  std::map<std::string, int16_t> int16_properties_;
-  std::map<std::string, KeyValueStore> key_value_store_properties_;
-  std::map<std::string, std::string> rpc_identifier_properties_;
-  std::map<std::string, std::string> string_properties_;
-  std::map<std::string,
-           std::map<std::string, std::string>> stringmap_properties_;
-  std::map<std::string, std::vector<std::string>> strings_properties_;
-  std::map<std::string, uint32_t> uint_properties_;
-  std::map<std::string, uint16_t> uint16_properties_;
-  std::map<std::string, std::vector<uint8_t>> uint8s_properties_;
-  std::map<std::string, std::vector<uint32_t>> uint32s_properties_;
+  chromeos::VariantDictionary properties_;
 };
 
 }  // namespace shill

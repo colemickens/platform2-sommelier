@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
+#include "shill/key_value_store.h"
 #include "shill/logging.h"
 
 namespace shill {
@@ -59,6 +60,16 @@ MATCHER(NotNullRefPtr, "") {
 // system teardown.
 MATCHER_P(IsRefPtrTo, ref_address, "") {
   return arg.get() == ref_address;
+}
+
+MATCHER_P(KeyValueStoreEq, value, "") {
+  bool match = value.properties() == arg.properties();
+  if (!match) {
+    *result_listener << "\nExpected KeyValueStore:\n"
+                     << "\tproperties: "
+                     << testing::PrintToString(value.properties());
+  }
+  return match;
 }
 
 template<int error_argument_index>

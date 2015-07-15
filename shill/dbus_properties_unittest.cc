@@ -235,7 +235,7 @@ TEST_F(DBusPropertiesTest, ConvertMapToKeyValueStore) {
   EXPECT_TRUE(store.ContainsKeyValueStore(kKeyValueStoreKey));
   KeyValueStore nested_store;
   nested_store.SetInt(kNestedInt32Key, kNestedInt32Value);
-  EXPECT_TRUE(nested_store.Equals(store.GetKeyValueStore(kKeyValueStoreKey)));
+  EXPECT_EQ(nested_store, store.GetKeyValueStore(kKeyValueStoreKey));
 }
 
 template <typename T> class DBusPropertiesGetterTest : public Test {};

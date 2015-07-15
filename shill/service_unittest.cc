@@ -1265,14 +1265,14 @@ TEST_F(ServiceTest, ConfigureKeyValueStoreProperty) {
   KeyValueStore key_value_store1;
   key_value_store1.SetInt("key1", 1);
   service_->SetKeyValueStore(key_value_store0, NULL);
-  ASSERT_TRUE(key_value_store0.Equals(service_->GetKeyValueStore(NULL)));
+  ASSERT_EQ(key_value_store0, service_->GetKeyValueStore(NULL));
   KeyValueStore args;
   args.SetKeyValueStore(
       ServiceUnderTest::kKeyValueStoreProperty, key_value_store1);
   Error error;
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_TRUE(key_value_store1.Equals(service_->GetKeyValueStore(NULL)));
+  EXPECT_EQ(key_value_store1, service_->GetKeyValueStore(NULL));
 }
 
 TEST_F(ServiceTest, DoPropertiesMatch) {

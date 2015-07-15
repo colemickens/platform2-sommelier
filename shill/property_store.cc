@@ -75,40 +75,17 @@ void PropertyStore::VariantDictionaryToKeyValueStore(
 // static.
 void PropertyStore::KeyValueStoreToVariantDictionary(
     const KeyValueStore& in, chromeos::VariantDictionary* out) {
-  for (const auto& key_value_pair : in.string_properties()) {
-    out->insert(
-        std::make_pair(key_value_pair.first,
-                       chromeos::Any(key_value_pair.second)));
-  }
-  for (const auto& key_value_pair : in.stringmap_properties()) {
-    out->insert(
-        std::make_pair(key_value_pair.first,
-                       chromeos::Any(key_value_pair.second)));
-  }
-  for (const auto& key_value_pair : in.strings_properties()) {
-    out->insert(
-        std::make_pair(key_value_pair.first,
-                       chromeos::Any(key_value_pair.second)));
-  }
-  for (const auto& key_value_pair : in.bool_properties()) {
-    out->insert(
-        std::make_pair(key_value_pair.first,
-                       chromeos::Any(key_value_pair.second)));
-  }
-  for (const auto& key_value_pair : in.int_properties()) {
-    out->insert(
-        std::make_pair(key_value_pair.first,
-                       chromeos::Any(key_value_pair.second)));
-  }
-  for (const auto& key_value_pair : in.uint_properties()) {
-    out->insert(
-        std::make_pair(key_value_pair.first,
-                       chromeos::Any(key_value_pair.second)));
-  }
-  for (const auto& key_value_pair : in.key_value_store_properties()) {
-    chromeos::VariantDictionary dict;
-    KeyValueStoreToVariantDictionary(key_value_pair.second, &dict);
-    out->insert(std::make_pair(key_value_pair.first, dict));
+  for (const auto& key_value_pair : in.properties()) {
+    // Special handling for nested KeyValueStore (convert it to
+    // nested chromeos::VariantDictionary).
+    if (key_value_pair.second.GetType() == typeid(KeyValueStore)) {
+      chromeos::VariantDictionary dict;
+      KeyValueStoreToVariantDictionary(
+          key_value_pair.second.Get<KeyValueStore>(), &dict);
+      (*out)[key_value_pair.first] = chromeos::Any(dict);
+    } else {
+      (*out)[key_value_pair.first] = key_value_pair.second;
+    }
   }
 }
 

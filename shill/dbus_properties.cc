@@ -190,59 +190,52 @@ void DBusProperties::ConvertKeyValueStoreToMap(
     const KeyValueStore& store, DBusPropertiesMap* properties) {
   CHECK(properties);
   properties->clear();
-  for (const auto& key_value_pair : store.string_properties()) {
-    (*properties)[key_value_pair.first].writer()
-        .append_string(key_value_pair.second.c_str());
-  }
-  for (const auto& key_value_pair : store.stringmap_properties()) {
-    DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
-    writer << key_value_pair.second;
-  }
-  for (const auto& key_value_pair : store.strings_properties()) {
-    DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
-    writer << key_value_pair.second;
-  }
-  for (const auto& key_value_pair : store.bool_properties()) {
-    (*properties)[key_value_pair.first].writer()
-        .append_bool(key_value_pair.second);
-  }
-  for (const auto& key_value_pair : store.int_properties()) {
-    (*properties)[key_value_pair.first].writer()
-        .append_int32(key_value_pair.second);
-  }
-  for (const auto& key_value_pair : store.int16_properties()) {
-    (*properties)[key_value_pair.first].writer()
-        .append_int16(key_value_pair.second);
-  }
-  for (const auto& key_value_pair : store.uint_properties()) {
-    (*properties)[key_value_pair.first].writer()
-        .append_uint32(key_value_pair.second);
-  }
-  for (const auto& key_value_pair : store.uint16_properties()) {
-    (*properties)[key_value_pair.first].writer()
-        .append_uint16(key_value_pair.second);
-  }
-  for (const auto& key_value_pair : store.uint8s_properties()) {
-    DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
-    writer << key_value_pair.second;
-  }
-  for (const auto& key_value_pair : store.uint32s_properties()) {
-    DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
-    writer << key_value_pair.second;
-  }
-  for (const auto& key_value_pair : store.byte_arrays_properties()) {
-    DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
-    writer << key_value_pair.second;
-  }
-  for (const auto& key_value_pair : store.key_value_store_properties()) {
-    DBusPropertiesMap props;
-    ConvertKeyValueStoreToMap(key_value_pair.second, &props);
-    DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
-    writer << props;
-  }
-  for (const auto& key_value_pair : store.rpc_identifier_properties()) {
-    (*properties)[key_value_pair.first].writer()
-        .append_path(key_value_pair.second.c_str());
+  for (const auto& key_value_pair : store.properties()) {
+    if (key_value_pair.second.GetType() == typeid(string)) {
+      (*properties)[key_value_pair.first].writer()
+          .append_string(key_value_pair.second.Get<string>().c_str());
+    } else if (key_value_pair.second.GetType() == typeid(Stringmap)) {
+      DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
+      writer << key_value_pair.second.Get<Stringmap>();
+    } else if (key_value_pair.second.GetType() == typeid(Strings)) {
+      DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
+      writer << key_value_pair.second.Get<Strings>();
+    } else if (key_value_pair.second.GetType() == typeid(bool)) {    // NOLINT
+      (*properties)[key_value_pair.first].writer()
+          .append_bool(key_value_pair.second.Get<bool>());
+    } else if (key_value_pair.second.GetType() == typeid(int32_t)) {
+      (*properties)[key_value_pair.first].writer()
+          .append_int32(key_value_pair.second.Get<int32_t>());
+    } else if (key_value_pair.second.GetType() == typeid(int16_t)) {
+      (*properties)[key_value_pair.first].writer()
+          .append_int16(key_value_pair.second.Get<int16_t>());
+    } else if (key_value_pair.second.GetType() == typeid(uint32_t)) {
+      (*properties)[key_value_pair.first].writer()
+          .append_uint32(key_value_pair.second.Get<uint32_t>());
+    } else if (key_value_pair.second.GetType() == typeid(uint16_t)) {
+      (*properties)[key_value_pair.first].writer()
+          .append_uint16(key_value_pair.second.Get<uint16_t>());
+    } else if (key_value_pair.second.GetType() == typeid(vector<uint8_t>)) {
+      DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
+      writer << key_value_pair.second.Get<vector<uint8_t>>();
+    } else if (key_value_pair.second.GetType() == typeid(vector<uint32_t>)) {
+      DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
+      writer << key_value_pair.second.Get<vector<uint32_t>>();
+    } else if (key_value_pair.second.GetType() ==
+        typeid(vector<vector<uint8_t>>)) {
+      DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
+      writer << key_value_pair.second.Get<vector<vector<uint8_t>>>();
+    } else if (key_value_pair.second.GetType() == typeid(KeyValueStore)) {
+      DBusPropertiesMap props;
+      ConvertKeyValueStoreToMap(key_value_pair.second.Get<KeyValueStore>(),
+                                &props);
+      DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
+      writer << props;
+    } else if (key_value_pair.second.GetType() == typeid(dbus::ObjectPath)) {
+      (*properties)[key_value_pair.first].writer()
+          .append_path(
+              key_value_pair.second.Get<dbus::ObjectPath>().value().c_str());
+    }
   }
 }
 

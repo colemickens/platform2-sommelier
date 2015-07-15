@@ -862,7 +862,7 @@ TEST_F(PropertyStoreTest, VariantDictionaryToKeyValueStore) {
   EXPECT_EQ(kStrings, store.GetStrings(kStringsKey));
   KeyValueStore property_map;
   property_map.SetBool(kVariantDictSubKey, true);
-  EXPECT_TRUE(property_map.Equals(store.GetKeyValueStore(kVariantDictKey)));
+  EXPECT_EQ(property_map, store.GetKeyValueStore(kVariantDictKey));
 }
 
 TEST_F(PropertyStoreTest, KeyValueStoreToVariantDictionary) {

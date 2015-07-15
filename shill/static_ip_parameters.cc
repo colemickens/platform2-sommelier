@@ -459,7 +459,7 @@ KeyValueStore StaticIPParameters::GetStaticIPConfig(Error* /*error*/) {
 
 bool StaticIPParameters::SetStaticIPConfig(const KeyValueStore& value,
                                            Error* /*error*/) {
-  if (args_.Equals(value)) {
+  if (args_ == value) {
     return false;
   }
   args_ = value;

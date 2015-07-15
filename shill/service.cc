@@ -644,132 +644,131 @@ void Service::SaveToCurrentProfile() {
 }
 
 void Service::Configure(const KeyValueStore& args, Error* error) {
-  SLOG(this, 5) << "Configuring bool properties:";
-  for (const auto& bool_it : args.bool_properties()) {
-    if (ContainsKey(parameters_ignored_for_configure_, bool_it.first)) {
-      continue;
-    }
-    SLOG(this, 5) << "   " << bool_it.first;
-    Error set_error;
-    store_.SetBoolProperty(bool_it.first, bool_it.second, &set_error);
-    if (error->IsSuccess() && set_error.IsFailure()) {
-      error->CopyFrom(set_error);
-    }
-  }
-  SLOG(this, 5) << "Configuring int32_t properties:";
-  for (const auto& int_it : args.int_properties()) {
-    if (ContainsKey(parameters_ignored_for_configure_, int_it.first)) {
-      continue;
-    }
-    SLOG(this, 5) << "   " << int_it.first;
-    Error set_error;
-    store_.SetInt32Property(int_it.first, int_it.second, &set_error);
-    if (error->IsSuccess() && set_error.IsFailure()) {
-      error->CopyFrom(set_error);
-    }
-  }
-  SLOG(this, 5) << "Configuring key value store properties:";
-  for (const auto& key_value_it : args.key_value_store_properties()) {
-    if (ContainsKey(parameters_ignored_for_configure_, key_value_it.first)) {
-      continue;
-    }
-    SLOG(this, 5) << "   " << key_value_it.first;
-    Error set_error;
-    store_.SetKeyValueStoreProperty(key_value_it.first,
-                                    key_value_it.second, &set_error);
-    if (error->IsSuccess() && set_error.IsFailure()) {
-      error->CopyFrom(set_error);
-    }
-  }
-  SLOG(this, 5) << "Configuring string properties:";
-  for (const auto& string_it : args.string_properties()) {
-    if (ContainsKey(parameters_ignored_for_configure_, string_it.first)) {
-      continue;
-    }
-    SLOG(this, 5) << "   " << string_it.first;
-    Error set_error;
-    store_.SetStringProperty(string_it.first, string_it.second, &set_error);
-    if (error->IsSuccess() && set_error.IsFailure()) {
-      error->CopyFrom(set_error);
-    }
-  }
-  SLOG(this, 5) << "Configuring string array properties:";
-  for (const auto& strings_it : args.strings_properties()) {
-    if (ContainsKey(parameters_ignored_for_configure_, strings_it.first)) {
-      continue;
-    }
-    SLOG(this, 5) << "   " << strings_it.first;
-    Error set_error;
-    store_.SetStringsProperty(strings_it.first, strings_it.second, &set_error);
-    if (error->IsSuccess() && set_error.IsFailure()) {
-      error->CopyFrom(set_error);
-    }
-  }
-  SLOG(this, 5) << "Configuring string map properties:";
-  for (const auto& stringmap_it : args.stringmap_properties()) {
-    if (ContainsKey(parameters_ignored_for_configure_, stringmap_it.first)) {
-      continue;
-    }
-    SLOG(this, 5) << "   " << stringmap_it.first;
-    Error set_error;
-    store_.SetStringmapProperty(
-        stringmap_it.first, stringmap_it.second, &set_error);
-    if (error->IsSuccess() && set_error.IsFailure()) {
-      error->CopyFrom(set_error);
+  for (const auto it : args.properties()) {
+    if (it.second.GetType() == typeid(bool)) {    // NOLINT
+      if (ContainsKey(parameters_ignored_for_configure_, it.first)) {
+        SLOG(this, 5) << "Ignoring bool property: " << it.first;
+        continue;
+      }
+      SLOG(this, 5) << "Configuring bool property: " << it.first;
+      Error set_error;
+      store_.SetBoolProperty(it.first, it.second.Get<bool>(), &set_error);
+      if (error->IsSuccess() && set_error.IsFailure()) {
+        error->CopyFrom(set_error);
+      }
+    } else if (it.second.GetType() == typeid(int32_t)) {
+      if (ContainsKey(parameters_ignored_for_configure_, it.first)) {
+        SLOG(this, 5) << "Ignoring int32_t property: " << it.first;
+        continue;
+      }
+      SLOG(this, 5) << "Configuring int32_t property: " << it.first;
+      Error set_error;
+      store_.SetInt32Property(it.first, it.second.Get<int32_t>(), &set_error);
+      if (error->IsSuccess() && set_error.IsFailure()) {
+        error->CopyFrom(set_error);
+      }
+    } else if (it.second.GetType() == typeid(KeyValueStore)) {
+      if (ContainsKey(parameters_ignored_for_configure_, it.first)) {
+        SLOG(this, 5) << "Ignoring key value store property: " << it.first;
+        continue;
+      }
+      SLOG(this, 5) << "Configuring key value store property: " << it.first;
+      Error set_error;
+      store_.SetKeyValueStoreProperty(it.first,
+                                      it.second.Get<KeyValueStore>(),
+                                      &set_error);
+      if (error->IsSuccess() && set_error.IsFailure()) {
+        error->CopyFrom(set_error);
+      }
+    } else if (it.second.GetType() == typeid(string)) {
+      if (ContainsKey(parameters_ignored_for_configure_, it.first)) {
+        SLOG(this, 5) << "Ignoring string property: " << it.first;
+        continue;
+      }
+      SLOG(this, 5) << "Configuring string property: " << it.first;
+      Error set_error;
+      store_.SetStringProperty(it.first, it.second.Get<string>(), &set_error);
+      if (error->IsSuccess() && set_error.IsFailure()) {
+        error->CopyFrom(set_error);
+      }
+    } else if (it.second.GetType() == typeid(Strings)) {
+      if (ContainsKey(parameters_ignored_for_configure_, it.first)) {
+        SLOG(this, 5) << "Ignoring strings property: " << it.first;
+        continue;
+      }
+      SLOG(this, 5) << "Configuring strings property: " << it.first;
+      Error set_error;
+      store_.SetStringsProperty(it.first, it.second.Get<Strings>(), &set_error);
+      if (error->IsSuccess() && set_error.IsFailure()) {
+        error->CopyFrom(set_error);
+      }
+    } else if (it.second.GetType() == typeid(Stringmap)) {
+      if (ContainsKey(parameters_ignored_for_configure_, it.first)) {
+        SLOG(this, 5) << "Ignoring stringmap property: " << it.first;
+        continue;
+      }
+      SLOG(this, 5) << "Configuring stringmap property: " << it.first;
+      Error set_error;
+      store_.SetStringmapProperty(it.first,
+                                  it.second.Get<Stringmap>(),
+                                  &set_error);
+      if (error->IsSuccess() && set_error.IsFailure()) {
+        error->CopyFrom(set_error);
+      }
     }
   }
 }
 
 bool Service::DoPropertiesMatch(const KeyValueStore& args) const {
-  SLOG(this, 5) << "Checking bool properties:";
-  for (const auto& bool_it : args.bool_properties()) {
-    SLOG(this, 5) << "   " << bool_it.first;
-    Error get_error;
-    bool value;
-    if (!store_.GetBoolProperty(bool_it.first, &value, &get_error) ||
-        value != bool_it.second) {
-      return false;
-    }
-  }
-  SLOG(this, 5) << "Checking int32_t properties:";
-  for (const auto& int_it : args.int_properties()) {
-    SLOG(this, 5) << "   " << int_it.first;
-    Error get_error;
-    int32_t value;
-    if (!store_.GetInt32Property(int_it.first, &value, &get_error) ||
-        value != int_it.second) {
-      return false;
-    }
-  }
-  SLOG(this, 5) << "Checking string properties:";
-  for (const auto& string_it : args.string_properties()) {
-    SLOG(this, 5) << "   " << string_it.first;
-    Error get_error;
-    string value;
-    if (!store_.GetStringProperty(string_it.first, &value, &get_error) ||
-        value != string_it.second) {
-      return false;
-    }
-  }
-  SLOG(this, 5) << "Checking string array properties:";
-  for (const auto& strings_it : args.strings_properties()) {
-    SLOG(this, 5) << "   " << strings_it.first;
-    Error get_error;
-    vector<string> value;
-    if (!store_.GetStringsProperty(strings_it.first, &value, &get_error) ||
-        value != strings_it.second) {
-      return false;
-    }
-  }
-  SLOG(this, 5) << "Checking key value store properties:";
-  for (const auto& key_value_it : args.key_value_store_properties()) {
-    SLOG(this, 5) << "   " << key_value_it.first;
-    Error get_error;
-    KeyValueStore value;
-    if (!store_.GetKeyValueStoreProperty(
-            key_value_it.first, &value, &get_error) ||
-        !value.Equals(key_value_it.second)) {
-      return false;
+  for (const auto& it : args.properties()) {
+    if (it.second.GetType() == typeid(bool)) {    // NOLINT
+      SLOG(this, 5) << "Checking bool property: " << it.first;
+      Error get_error;
+      bool value;
+      if (!store_.GetBoolProperty(it.first, &value, &get_error) ||
+          value != it.second.Get<bool>()) {
+        return false;
+      }
+    } else if (it.second.GetType() == typeid(int32_t)) {
+      SLOG(this, 5) << "Checking int32 property: " << it.first;
+      Error get_error;
+      int32_t value;
+      if (!store_.GetInt32Property(it.first, &value, &get_error) ||
+          value != it.second.Get<int32_t>()) {
+        return false;
+      }
+    } else if (it.second.GetType() == typeid(string)) {
+      SLOG(this, 5) << "Checking string property: " << it.first;
+      Error get_error;
+      string value;
+      if (!store_.GetStringProperty(it.first, &value, &get_error) ||
+          value != it.second.Get<string>()) {
+        return false;
+      }
+    } else if (it.second.GetType() == typeid(Strings)) {
+      SLOG(this, 5) << "Checking strings property: " << it.first;
+      Error get_error;
+      Strings value;
+      if (!store_.GetStringsProperty(it.first, &value, &get_error) ||
+          value != it.second.Get<Strings>()) {
+        return false;
+      }
+    } else if (it.second.GetType() == typeid(Stringmap)) {
+      SLOG(this, 5) << "Checking stringmap property: " << it.first;
+      Error get_error;
+      Stringmap value;
+      if (!store_.GetStringmapProperty(it.first, &value, &get_error) ||
+          value != it.second.Get<Stringmap>()) {
+        return false;
+      }
+    } else if (it.second.GetType() == typeid(KeyValueStore)) {
+      SLOG(this, 5) << "Checking key value store property: " << it.first;
+      Error get_error;
+      KeyValueStore value;
+      if (!store_.GetKeyValueStoreProperty(it.first, &value, &get_error) ||
+          value != it.second.Get<KeyValueStore>()) {
+        return false;
+      }
     }
   }
   return true;
