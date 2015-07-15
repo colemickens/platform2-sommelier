@@ -13,10 +13,10 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/synchronization/waitable_event.h"
+#include "chromeos/process.h"
+#include "chromeos/syslog_logging.h"
 #include "components/feedback/feedback_common.h"
 #include "feedback/feedback_service_interface.h"
-#include "libchromeos/chromeos/process.h"
-#include "libchromeos/chromeos/syslog_logging.h"
 
 #include <sysexits.h>
 

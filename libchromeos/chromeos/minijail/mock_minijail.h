@@ -10,7 +10,7 @@
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
-#include "libchromeos/chromeos/minijail/minijail.h"
+#include "chromeos/minijail/minijail.h"
 
 namespace chromeos {
 

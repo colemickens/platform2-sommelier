@@ -8,8 +8,8 @@
 #include <sys/wait.h>
 
 #include <base/macros.h>
-#include <libchromeos/chromeos/asynchronous_signal_handler.h>
-#include <libchromeos/chromeos/daemons/daemon.h>
+#include <chromeos/asynchronous_signal_handler.h>
+#include <chromeos/daemons/daemon.h>
 
 namespace germ {
 

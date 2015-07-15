@@ -10,8 +10,8 @@
 
 #include <base/bind.h>
 #include <base/posix/eintr_wrapper.h>
-#include <libchromeos/chromeos/asynchronous_signal_handler.h>
-#include <libchromeos/chromeos/daemons/daemon.h>
+#include <chromeos/asynchronous_signal_handler.h>
+#include <chromeos/daemons/daemon.h>
 
 namespace germ {
 

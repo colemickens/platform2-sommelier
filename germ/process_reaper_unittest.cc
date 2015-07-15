@@ -13,8 +13,8 @@
 #include <base/location.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
+#include <chromeos/asynchronous_signal_handler.h>
 #include <gtest/gtest.h>
-#include <libchromeos/chromeos/asynchronous_signal_handler.h>
 
 #include "germ/test_util.h"
 

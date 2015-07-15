@@ -4,7 +4,7 @@
 
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
-#include "libchromeos/chromeos/process.h"
+#include "chromeos/process.h"
 
 namespace {
 
