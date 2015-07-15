@@ -5,6 +5,7 @@
 #include <chromeos/data_encoding.h>
 
 #include <algorithm>
+#include <numeric>
 
 #include <gtest/gtest.h>
 

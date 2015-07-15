@@ -5,6 +5,7 @@
 #include <chromeos/streams/file_stream.h>
 
 #include <limits>
+#include <numeric>
 #include <string>
 #include <sys/stat.h>
 #include <vector>
