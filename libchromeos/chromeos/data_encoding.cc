@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include <chromeos/data_encoding.h>
-#include <chromeos/modp_b64/modp_b64.h>
+#include <modp_b64/modp_b64.h>
 
 #include <memory>
 

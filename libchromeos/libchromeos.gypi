@@ -46,6 +46,7 @@
           ],
         },
       },
+      'libraries': ['-lmodp_b64'],
       'sources': [
         'chromeos/any.cc',
         'chromeos/asynchronous_signal_handler.cc',
@@ -72,7 +73,6 @@
         'chromeos/message_loops/message_loop.cc',
         'chromeos/message_loops/message_loop_utils.cc',
         'chromeos/mime_utils.cc',
-        'chromeos/modp_b64/modp_b64.cc',
         'chromeos/osrelease_reader.cc',
         'chromeos/process.cc',
         'chromeos/process_information.cc',
