@@ -7,7 +7,9 @@
 #include <gmock/gmock.h>
 
 #include "trunks/authorization_delegate.h"
+#include "trunks/blob_parser.h"
 #include "trunks/hmac_session.h"
+#include "trunks/mock_blob_parser.h"
 #include "trunks/mock_hmac_session.h"
 #include "trunks/mock_policy_session.h"
 #include "trunks/mock_session_manager.h"
@@ -28,7 +30,7 @@ namespace trunks {
 class TpmStateForwarder : public TpmState {
  public:
   explicit TpmStateForwarder(TpmState* target) : target_(target) {}
-  ~TpmStateForwarder() override {}
+  ~TpmStateForwarder() override = default;
 
   TPM_RC Initialize() override {
     return target_->Initialize();
@@ -90,7 +92,7 @@ class TpmStateForwarder : public TpmState {
 class TpmUtilityForwarder : public TpmUtility {
  public:
   explicit TpmUtilityForwarder(TpmUtility* target) : target_(target) {}
-  ~TpmUtilityForwarder() override {}
+  ~TpmUtilityForwarder() override = default;
 
   TPM_RC Startup() override {
     return target_->Startup();
@@ -220,12 +222,14 @@ class TpmUtilityForwarder : public TpmUtility {
                           const std::string& password,
                           const std::string& policy_digest,
                           bool use_only_policy_authorization,
+                          int creation_pcr_index,
                           AuthorizationDelegate* delegate,
                           std::string* key_blob,
                           std::string* creation_blob) override {
     return target_->CreateRSAKeyPair(key_type, modulus_bits, public_exponent,
                                      password, policy_digest,
                                      use_only_policy_authorization,
+                                     creation_pcr_index,
                                      delegate, key_blob, creation_blob);
   }
 
@@ -293,7 +297,7 @@ class AuthorizationDelegateForwarder : public AuthorizationDelegate {
  public:
   explicit AuthorizationDelegateForwarder(AuthorizationDelegate* target)
       : target_(target) {}
-  ~AuthorizationDelegateForwarder() override {}
+  ~AuthorizationDelegateForwarder() override = default;
 
   bool GetCommandAuthorization(const std::string& command_hash,
                                bool is_command_parameter_encryption_possible,
@@ -354,7 +358,7 @@ class SessionManagerForwarder : public SessionManager {
 class HmacSessionForwarder : public HmacSession {
  public:
   explicit HmacSessionForwarder(HmacSession* target): target_(target) {}
-  ~HmacSessionForwarder() override {}
+  ~HmacSessionForwarder() override = default;
 
   AuthorizationDelegate* GetDelegate() override {
     return target_->GetDelegate();
@@ -389,7 +393,7 @@ class HmacSessionForwarder : public HmacSession {
 class PolicySessionForwarder : public PolicySession {
  public:
   explicit PolicySessionForwarder(PolicySession* target): target_(target) {}
-  ~PolicySessionForwarder() override {}
+  ~PolicySessionForwarder() override = default;
 
   AuthorizationDelegate* GetDelegate() override {
     return target_->GetDelegate();
@@ -435,6 +439,44 @@ class PolicySessionForwarder : public PolicySession {
   PolicySession* target_;
 };
 
+// Forwards all calls to a target instance.
+class BlobParserForwarder : public BlobParser {
+ public:
+  explicit BlobParserForwarder(BlobParser* target): target_(target) {}
+  ~BlobParserForwarder() override = default;
+
+  bool SerializeKeyBlob(const TPM2B_PUBLIC& public_info,
+                        const TPM2B_PRIVATE& private_info,
+                        std::string* key_blob) override {
+    return target_->SerializeKeyBlob(public_info, private_info, key_blob);
+  }
+
+  bool ParseKeyBlob(const std::string& key_blob,
+                    TPM2B_PUBLIC* public_info,
+                    TPM2B_PRIVATE* private_info) override {
+    return target_->ParseKeyBlob(key_blob, public_info, private_info);
+  }
+
+  bool SerializeCreationBlob(const TPM2B_CREATION_DATA& creation_data,
+                             const TPM2B_DIGEST& creation_hash,
+                             const TPMT_TK_CREATION& creation_ticket,
+                             std::string* creation_blob) override {
+    return target_->SerializeCreationBlob(creation_data, creation_hash,
+                                          creation_ticket, creation_blob);
+  }
+
+  bool ParseCreationBlob(const std::string& creation_blob,
+                         TPM2B_CREATION_DATA* creation_data,
+                         TPM2B_DIGEST* creation_hash,
+                         TPMT_TK_CREATION* creation_ticket) override {
+    return target_->ParseCreationBlob(creation_blob, creation_data,
+                                      creation_hash, creation_ticket);
+  }
+
+ private:
+  BlobParser* target_;
+};
+
 TrunksFactoryForTest::TrunksFactoryForTest()
     : default_tpm_(new NiceMock<MockTpm>()),
       tpm_(default_tpm_.get()),
@@ -449,7 +491,9 @@ TrunksFactoryForTest::TrunksFactoryForTest()
       default_hmac_session_(new NiceMock<MockHmacSession>()),
       hmac_session_(default_hmac_session_.get()),
       default_policy_session_(new NiceMock<MockPolicySession>()),
-      policy_session_(default_policy_session_.get()) {
+      policy_session_(default_policy_session_.get()),
+      default_blob_parser_(new NiceMock<MockBlobParser>()),
+      blob_parser_(default_blob_parser_.get()) {
 }
 
 TrunksFactoryForTest::~TrunksFactoryForTest() {}
@@ -488,6 +532,10 @@ scoped_ptr<PolicySession> TrunksFactoryForTest::GetPolicySession() const {
 
 scoped_ptr<PolicySession> TrunksFactoryForTest::GetTrialSession() const {
   return scoped_ptr<PolicySession>(new PolicySessionForwarder(policy_session_));
+}
+
+scoped_ptr<BlobParser> TrunksFactoryForTest::GetBlobParser() const {
+  return scoped_ptr<BlobParser>(new BlobParserForwarder(blob_parser_));
 }
 
 }  // namespace trunks

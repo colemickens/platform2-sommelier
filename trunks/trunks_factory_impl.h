@@ -41,6 +41,7 @@ class TRUNKS_EXPORT TrunksFactoryImpl : public TrunksFactory {
   scoped_ptr<HmacSession> GetHmacSession() const override;
   scoped_ptr<PolicySession> GetPolicySession() const override;
   scoped_ptr<PolicySession> GetTrialSession() const override;
+  scoped_ptr<BlobParser> GetBlobParser() const override;
 
  private:
   scoped_ptr<CommandTransceiver> default_transceiver_;

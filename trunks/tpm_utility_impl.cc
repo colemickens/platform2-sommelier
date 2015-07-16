@@ -14,6 +14,7 @@
 #include <openssl/rand.h>
 
 #include "trunks/authorization_delegate.h"
+#include "trunks/blob_parser.h"
 #include "trunks/error_codes.h"
 #include "trunks/hmac_authorization_delegate.h"
 #include "trunks/hmac_session.h"
@@ -672,11 +673,9 @@ TPM_RC TpmUtilityImpl::ChangeKeyAuthorizationData(
     if (result != TPM_RC_SUCCESS) {
       return result;
     }
-    result = KeyDataToString(Make_TPM2B_PUBLIC(public_data),
-                             new_private_data,
-                             key_blob);
-    if (result != TPM_RC_SUCCESS) {
-      return result;
+    if (!factory_.GetBlobParser()->SerializeKeyBlob(
+        Make_TPM2B_PUBLIC(public_data), new_private_data, key_blob)) {
+      return SAPI_RC_BAD_TCTI_STRUCTURE;
     }
   }
   return TPM_RC_SUCCESS;
@@ -758,9 +757,9 @@ TPM_RC TpmUtilityImpl::ImportRSAKey(AsymmetricKeyUsage key_type,
     return result;
   }
   if (key_blob) {
-    result = KeyDataToString(public_data, tpm_private_data, key_blob);
-    if (result != TPM_RC_SUCCESS) {
-      return result;
+    if (!factory_.GetBlobParser()->SerializeKeyBlob(
+        public_data, tpm_private_data, key_blob)) {
+      return SAPI_RC_BAD_TCTI_STRUCTURE;
     }
   }
   return TPM_RC_SUCCESS;
@@ -772,6 +771,7 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
                                         const std::string& password,
                                         const std::string& policy_digest,
                                         bool use_only_policy_authorization,
+                                        int creation_pcr_index,
                                         AuthorizationDelegate* delegate,
                                         std::string* key_blob,
                                         std::string* creation_blob) {
@@ -811,8 +811,20 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
   }
   public_area.parameters.rsa_detail.key_bits = modulus_bits;
   public_area.parameters.rsa_detail.exponent = public_exponent;
-  TPML_PCR_SELECTION creation_pcrs;
-  creation_pcrs.count = 0;
+  TPML_PCR_SELECTION creation_pcrs = {};
+  if (creation_pcr_index == kNoCreationPCR) {
+    creation_pcrs.count = 0;
+  } else if (creation_pcr_index < 0 ||
+             creation_pcr_index > (PCR_SELECT_MIN * 8)) {
+    LOG(ERROR) << "Creation PCR index is not within the allocated bank.";
+    return SAPI_RC_BAD_PARAMETER;
+  } else {
+    creation_pcrs.count = 1;
+    creation_pcrs.pcr_selections[0].hash = TPM_ALG_SHA256;
+    creation_pcrs.pcr_selections[0].sizeof_select = PCR_SELECT_MIN;
+    creation_pcrs.pcr_selections[0].pcr_select[creation_pcr_index / 8] =
+        1 << (creation_pcr_index % 8);
+  }
   TPMS_SENSITIVE_CREATE sensitive;
   sensitive.user_auth = Make_TPM2B_DIGEST(password);
   sensitive.data = Make_TPM2B_SENSITIVE_DATA("");
@@ -842,17 +854,14 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
     LOG(ERROR) << "Error creating RSA key: " << GetErrorString(result);
     return result;
   }
-  result = KeyDataToString(out_public, out_private, key_blob);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error serializing key_blob: " << GetErrorString(result);
-    return result;
+  if (!factory_.GetBlobParser()->SerializeKeyBlob(
+      out_public, out_private, key_blob)) {
+    return SAPI_RC_BAD_TCTI_STRUCTURE;
   }
   if (creation_blob) {
-    result = Serialize_TPM2B_CREATION_DATA(creation_data, creation_blob);
-    if (result != TPM_RC_SUCCESS) {
-      LOG(ERROR) << "Error serializing creation data struct: "
-                 << GetErrorString(result);
-      return result;
+    if (!factory_.GetBlobParser()->SerializeCreationBlob(
+        creation_data, creation_hash, creation_ticket, creation_blob)) {
+      return SAPI_RC_BAD_TCTI_STRUCTURE;
     }
   }
   return TPM_RC_SUCCESS;
@@ -861,6 +870,7 @@ TPM_RC TpmUtilityImpl::CreateRSAKeyPair(AsymmetricKeyUsage key_type,
 TPM_RC TpmUtilityImpl::LoadKey(const std::string& key_blob,
                                AuthorizationDelegate* delegate,
                                TPM_HANDLE* key_handle) {
+  CHECK(key_handle);
   TPM_RC result;
   if (delegate == nullptr) {
     result = SAPI_RC_INVALID_SESSIONS;
@@ -876,12 +886,10 @@ TPM_RC TpmUtilityImpl::LoadKey(const std::string& key_blob,
   }
   TPM2B_PUBLIC in_public;
   TPM2B_PRIVATE in_private;
-  result = StringToKeyData(key_blob, &in_public, &in_private);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error parsing key_blob: " << GetErrorString(result);
-    return result;
+  if (!factory_.GetBlobParser()->ParseKeyBlob(
+      key_blob, &in_public, &in_private)) {
+    return SAPI_RC_BAD_TCTI_STRUCTURE;
   }
-  CHECK(key_handle);
   TPM2B_NAME key_name;
   key_name.size = 0;
   result = factory_.GetTpm()->LoadSync(kRSAStorageRootKey,
@@ -1482,57 +1490,6 @@ TPM_RC TpmUtilityImpl::DisablePlatformHierarchy(
       TPM_RH_PLATFORM,  // The target hierarchy.
       0,  // Disable.
       authorization);
-}
-
-TPM_RC TpmUtilityImpl::StringToKeyData(const std::string& key_blob,
-                                       TPM2B_PUBLIC* public_info,
-                                       TPM2B_PRIVATE* private_info) {
-  if (!public_info || !private_info) {
-    LOG(WARNING) << "Output arguments not defined.";
-    return TPM_RC_SUCCESS;
-  }
-  if (key_blob.size() == 0) {
-    public_info->size = 0;
-    private_info->size = 0;
-    return TPM_RC_SUCCESS;
-  }
-  std::string mutable_key_blob = key_blob;
-  TPM_RC result = Parse_TPM2B_PUBLIC(&mutable_key_blob, public_info, nullptr);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error parsing TPM2B_Public: " << GetErrorString(result);
-    return result;
-  }
-  result = Parse_TPM2B_PRIVATE(&mutable_key_blob, private_info, nullptr);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error parsing TPM2B_Private: " << GetErrorString(result);
-    return result;
-  }
-  return TPM_RC_SUCCESS;
-}
-
-TPM_RC TpmUtilityImpl::KeyDataToString(const TPM2B_PUBLIC& public_info,
-                                       const TPM2B_PRIVATE& private_info,
-                                       std::string* key_blob) {
-  if (!key_blob) {
-    LOG(WARNING) << "Output arguments not defined.";
-    return TPM_RC_SUCCESS;
-  }
-  key_blob->clear();
-  if ((public_info.size == 0) && (private_info.size == 0)) {
-    return TPM_RC_SUCCESS;
-  }
-  TPM_RC result = Serialize_TPM2B_PUBLIC(public_info, key_blob);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error serializing TPM2B_Public: " << GetErrorString(result);
-    return result;
-  }
-  result = Serialize_TPM2B_PRIVATE(private_info, key_blob);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error serializing TPM2B_Private: "
-               << GetErrorString(result);
-    return result;
-  }
-  return TPM_RC_SUCCESS;
 }
 
 TPM_RC TpmUtilityImpl::ComputeKeyName(const TPMT_PUBLIC& public_area,

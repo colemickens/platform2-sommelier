@@ -86,6 +86,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                           const std::string& password,
                           const std::string& policy_digest,
                           bool use_only_policy_authorization,
+                          int creation_pcr_index,
                           AuthorizationDelegate* delegate,
                           std::string* key_blob,
                           std::string* creation_blob) override;
@@ -148,14 +149,6 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   // Disables the TPM platform hierarchy until the next startup. This requires
   // platform |authorization|.
   TPM_RC DisablePlatformHierarchy(AuthorizationDelegate* authorization);
-
-  TPM_RC StringToKeyData(const std::string& key_blob,
-                         TPM2B_PUBLIC* public_info,
-                         TPM2B_PRIVATE* private_info);
-
-  TPM_RC KeyDataToString(const TPM2B_PUBLIC& public_info,
-                         const TPM2B_PRIVATE& private_info,
-                         std::string* key_blob);
 
   // Given a public area, this method computes the object name. Following
   // TPM2.0 Specification Part 1 section 16,

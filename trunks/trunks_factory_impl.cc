@@ -4,6 +4,7 @@
 
 #include "trunks/trunks_factory_impl.h"
 
+#include "trunks/blob_parser.h"
 #include "trunks/hmac_session_impl.h"
 #include "trunks/password_authorization_delegate.h"
 #include "trunks/policy_session_impl.h"
@@ -63,6 +64,10 @@ scoped_ptr<PolicySession> TrunksFactoryImpl::GetPolicySession() const {
 
 scoped_ptr<PolicySession> TrunksFactoryImpl::GetTrialSession() const {
   return scoped_ptr<PolicySession>(new PolicySessionImpl(*this, TPM_SE_TRIAL));
+}
+
+scoped_ptr<BlobParser> TrunksFactoryImpl::GetBlobParser() const {
+  return scoped_ptr<BlobParser>(new BlobParser());
 }
 
 }  // namespace trunks

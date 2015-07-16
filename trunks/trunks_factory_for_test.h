@@ -18,6 +18,7 @@
 namespace trunks {
 
 class AuthorizationDelegate;
+class MockBlobParser;
 class MockHmacSession;
 class MockPolicySession;
 class MockSessionManager;
@@ -57,6 +58,7 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   scoped_ptr<HmacSession> GetHmacSession() const override;
   scoped_ptr<PolicySession> GetPolicySession() const override;
   scoped_ptr<PolicySession> GetTrialSession() const override;
+  scoped_ptr<BlobParser> GetBlobParser() const override;
 
   // Mutators to inject custom mocks.
   void set_tpm(Tpm* tpm) {
@@ -87,6 +89,10 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
     policy_session_ = policy_session;
   }
 
+  void set_blob_parser(BlobParser* blob_parser) {
+    blob_parser_ = blob_parser;
+  }
+
  private:
   scoped_ptr<MockTpm> default_tpm_;
   Tpm* tpm_;
@@ -102,6 +108,8 @@ class TRUNKS_EXPORT TrunksFactoryForTest : public TrunksFactory {
   HmacSession* hmac_session_;
   scoped_ptr<MockPolicySession> default_policy_session_;
   PolicySession* policy_session_;
+  scoped_ptr<MockBlobParser> default_blob_parser_;
+  BlobParser* blob_parser_;
 
   DISALLOW_COPY_AND_ASSIGN(TrunksFactoryForTest);
 };

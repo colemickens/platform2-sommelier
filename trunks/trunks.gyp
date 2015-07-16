@@ -31,6 +31,7 @@
       'target_name': 'trunks',
       'type': 'shared_library',
       'sources': [
+        'blob_parser.cc',
         'error_codes.cc',
         'hmac_authorization_delegate.cc',
         'hmac_session_impl.cc',
@@ -124,6 +125,7 @@
             'hmac_authorization_delegate_unittest.cc',
             'hmac_session_test.cc',
             'mock_authorization_delegate.cc',
+            'mock_blob_parser.cc',
             'mock_command_transceiver.cc',
             'mock_hmac_session.cc',
             'mock_policy_session.cc',

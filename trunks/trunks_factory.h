@@ -15,6 +15,7 @@
 namespace trunks {
 
 class AuthorizationDelegate;
+class BlobParser;
 class HmacSession;
 class PolicySession;
 class SessionManager;
@@ -55,6 +56,9 @@ class TRUNKS_EXPORT TrunksFactory {
 
   // Returns a TrialSession instance. The caller takes ownership.
   virtual scoped_ptr<PolicySession> GetTrialSession() const = 0;
+
+  // Returns a BlobParser instance. The caller takes ownership.
+  virtual scoped_ptr<BlobParser> GetBlobParser() const = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TrunksFactory);

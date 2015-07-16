@@ -222,6 +222,7 @@ bool TPM2UtilityImpl::GenerateKey(int slot,
       auth_data.to_string(),
       "",  // Policy Digest
       false,  // use_only_policy_authorization
+      trunks::kNoCreationPCR,
       session_->GetDelegate(),
       key_blob,
       nullptr);
