@@ -987,11 +987,14 @@ void Device::OnIPConfigFailed(const IPConfigRefPtr& ipconfig) {
   ipconfig->ResetProperties();
   UpdateIPConfigsProperty();
 
-  // Fallback to IPv6 if we have an IPv6 configuration that's ready for
-  // connection, and we're not currently using an IPv6 connection.
-  if (IPConfigCompleted(ip6config_) &&
-      (!connection_ || !connection_->IsIPv6())) {
-    SetupConnection(ip6config_);
+  // Fallback to IPv6 if possible.
+  if (IPConfigCompleted(ip6config_)) {
+    if (!connection_ || !connection_->IsIPv6()) {
+      // Setup IPv6 connection.
+      SetupConnection(ip6config_);
+    } else {
+      // Ignore IPv4 config failure, since IPv6 is up.
+    }
     return;
   }
 

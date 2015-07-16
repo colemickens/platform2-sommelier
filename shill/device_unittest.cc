@@ -652,6 +652,34 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
   OnIPConfigFailed(ipconfig.get());
 }
 
+// IPv4 configuration failed with existing IPv6 connection.
+TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Connection) {
+  // Setup IPv6 configuration.
+  SetupIPv6Config();
+  EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
+
+  scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
+                                                          kDeviceName);
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  SelectService(service);
+  scoped_refptr<MockConnection> connection(
+      new StrictMock<MockConnection>(&device_info_));
+  SetConnection(connection.get());
+
+  EXPECT_CALL(*ipconfig, ResetProperties());
+  EXPECT_CALL(*connection, IsIPv6())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
+  EXPECT_CALL(*service, SetConnection(IsNullRefPtr())).Times(0);
+  OnIPConfigFailed(ipconfig.get());
+  // Verify connection not teardown.
+  EXPECT_THAT(device_->connection(), NotNullRefPtr());
+}
+
 TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
   scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
