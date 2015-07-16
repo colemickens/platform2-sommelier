@@ -451,7 +451,7 @@ class WakeOnWiFi {
 
   // Needed for |dhcp_lease_renewal_timer_| and |wake_to_scan_timer_| since
   // passing a empty base::Closure() causes a run-time DCHECK error when
-  // AlarmTimer::Start or AlarmTimer::Reset are called.
+  // SimpleAlarmTimer::Start or SimpleAlarmTimer::Reset are called.
   void OnTimerWakeDoNothing() {}
 
   // Parses an attribute list containing the SSID matches that caused the
