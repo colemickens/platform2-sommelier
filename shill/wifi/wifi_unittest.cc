@@ -573,6 +573,12 @@ MATCHER_P(EndpointMatch, endpoint, "") {
 
 class WiFiObjectTest : public ::testing::TestWithParam<string> {
  public:
+  // Note: When this constructor is called (via the initialization lists in the
+  // constructors of WiFiMainTest and WiFiTimerTest), |dispatcher| will point to
+  // an uninitialized EventDispatcher. Any functions (including constructors in
+  // the initialization list) that use the message loop should not be called in
+  // this constructor, since the delayed initialization of the message loop can
+  // cause concurrency-related bugs. (See crbug.com/509138 for an example.)
   explicit WiFiObjectTest(EventDispatcher* dispatcher)
       : event_dispatcher_(dispatcher),
         metrics_(nullptr),
@@ -596,7 +602,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         supplicant_network_proxy_(new NiceMock<MockSupplicantNetworkProxy>()) {
     wifi_->mac80211_monitor_.reset(mac80211_monitor_);
     InstallMockScanSession();
-    InstallMockWakeOnWiFi();
     ON_CALL(*supplicant_process_proxy_.get(), CreateInterface(_, _))
         .WillByDefault(DoAll(SetArgumentPointee<1>(string("/default/path")),
                              Return(true)));
@@ -663,6 +668,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
     EXPECT_CALL(*supplicant_bss_proxy_, Die()).Times(AnyNumber());
+    // Must be called here instead of in the constructor so that the destructor
+    // of SimpleAlarmTimer will not be invoked before the EventDispatcher is
+    // properly constructed (crbug.com/509138).
+    InstallMockWakeOnWiFi();
   }
 
   virtual void TearDown() {
