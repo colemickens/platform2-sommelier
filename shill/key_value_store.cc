@@ -325,4 +325,38 @@ string KeyValueStore::LookupString(const string& name,
   return it->second.Get<string>();
 }
 
+// static.
+void KeyValueStore::ConvertToVariantDictionary(
+    const KeyValueStore& in_store, chromeos::VariantDictionary* out_dict) {
+  for (const auto& key_value_pair : in_store.properties_) {
+    if (key_value_pair.second.IsTypeCompatible<KeyValueStore>()) {
+      // Special handling for nested KeyValueStore (convert it to
+      // nested chromeos::VariantDictionary).
+      chromeos::VariantDictionary dict;
+      ConvertToVariantDictionary(
+          key_value_pair.second.Get<KeyValueStore>(), &dict);
+      out_dict->emplace(key_value_pair.first, dict);
+    } else {
+      out_dict->insert(key_value_pair);
+    }
+  }
+}
+
+// static.
+void KeyValueStore::ConvertFromVariantDictionary(
+    const chromeos::VariantDictionary& in_dict, KeyValueStore* out_store) {
+  for (const auto& key_value_pair : in_dict) {
+    if (key_value_pair.second.IsTypeCompatible<chromeos::VariantDictionary>()) {
+      // Special handling for nested chromeos::VariantDictionary (convert it to
+      // nested KeyValueStore).
+      KeyValueStore store;
+      ConvertFromVariantDictionary(
+          key_value_pair.second.Get<chromeos::VariantDictionary>(), &store);
+      out_store->properties_.emplace(key_value_pair.first, store);
+    } else {
+      out_store->properties_.insert(key_value_pair);
+    }
+  }
+}
+
 }  // namespace shill

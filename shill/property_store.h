@@ -30,13 +30,6 @@ class PropertyStore {
 
   virtual bool Contains(const std::string& property) const;
 
-  // Utility functions for conversion between chromeos::VariantDictionary and
-  // KeyValueStore.
-  static void VariantDictionaryToKeyValueStore(
-      const chromeos::VariantDictionary& in, KeyValueStore* out, Error* error);
-  static void KeyValueStoreToVariantDictionary(
-      const KeyValueStore& in, chromeos::VariantDictionary* out);
-
   // Setting properties using chromeos::Any variant type.
   bool SetAnyProperty(const std::string& name,
                       const chromeos::Any& value,

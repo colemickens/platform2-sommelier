@@ -120,13 +120,7 @@ bool ChromeosServiceDBusAdaptor::SetProperties(
     chromeos::ErrorPtr* error, const chromeos::VariantDictionary& args) {
   SLOG(this, 2) << __func__;
   KeyValueStore args_store;
-  Error key_value_store_error;
-  PropertyStore::VariantDictionaryToKeyValueStore(args,
-                                                  &args_store,
-                                                  &key_value_store_error);
-  if (key_value_store_error.ToChromeosError(error)) {
-    return false;
-  }
+  KeyValueStore::ConvertFromVariantDictionary(args, &args_store);
   Error configure_error;
   service_->Configure(args_store, &configure_error);
   return !configure_error.ToChromeosError(error);

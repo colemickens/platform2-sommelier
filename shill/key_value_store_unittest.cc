@@ -532,4 +532,153 @@ TEST_F(KeyValueStoreTest, CopyFrom) {
   EXPECT_EQ(donor, store_);
 }
 
+TEST_F(KeyValueStoreTest, ConvertToVariantDictionary) {
+  static const char kStringKey[] = "StringKey";
+  static const char kStringValue[] = "StringValue";
+  static const char kStringmapKey[] = "StringmapKey";
+  const map<string, string> kStringmapValue = { { "key", "value" } };
+  static const char kStringsKey[] = "StringsKey";
+  const vector<string> kStringsValue = {"StringsValue1", "StringsValue2"};
+  static const char kBoolKey[] = "BoolKey";
+  const bool kBoolValue = true;
+  static const char kInt32Key[] = "Int32Key";
+  const int32_t kInt32Value = 123;
+  static const char kUint32Key[] = "Uint32Key";
+  const uint32_t kUint32Value = 654;
+  static const char kByteArraysKey[] = "ByteArraysKey";
+  const vector<vector<uint8_t>> kByteArraysValue{ {1}, {2} };
+  static const char kInt16Key[] = "Int16Key";
+  const int16_t kInt16Value = 123;
+  static const char kRpcIdentifierKey[] = "RpcIdentifierKey";
+  static const char kRpcIdentifierValue[] = "/org/chromium/test";
+  static const char kUint16Key[] = "Uint16Key";
+  const uint16_t kUint16Value = 123;
+  static const char kUint8sKey[] = "Uint8sKey";
+  const vector<uint8_t> kUint8sValue{ 1, 2 };
+  static const char kUint32sKey[] = "Uint32sKey";
+  const vector<uint32_t> kUint32sValue{ 1, 2 };
+  static const char kKeyValueStoreKey[] = "KeyValueStoreKey";
+  static const char kNestedInt32Key[] = "NestedKey32Key";
+  const int32_t kNestedInt32Value = 1;
+  KeyValueStore nested_store;
+  nested_store.SetInt(kNestedInt32Key, kNestedInt32Value);
+
+  KeyValueStore store;
+  store.SetString(kStringKey, kStringValue);
+  store.SetStringmap(kStringmapKey, kStringmapValue);
+  store.SetStrings(kStringsKey, kStringsValue);
+  store.SetBool(kBoolKey, kBoolValue);
+  store.SetInt(kInt32Key, kInt32Value);
+  store.SetUint(kUint32Key, kUint32Value);
+  store.SetByteArrays(kByteArraysKey, kByteArraysValue);
+  store.SetInt16(kInt16Key, kInt16Value);
+  store.SetRpcIdentifier(kRpcIdentifierKey, kRpcIdentifierValue);
+  store.SetUint16(kUint16Key, kUint16Value);
+  store.SetUint8s(kUint8sKey, kUint8sValue);
+  store.SetUint32s(kUint32sKey, kUint32sValue);
+  store.SetKeyValueStore(kKeyValueStoreKey, nested_store);
+
+  chromeos::VariantDictionary dict;
+  KeyValueStore::ConvertToVariantDictionary(store, &dict);
+  EXPECT_EQ(13, dict.size());
+  EXPECT_EQ(kStringValue, dict[kStringKey].Get<string>());
+  map<string, string> stringmap_value =
+      dict[kStringmapKey].Get<map<string, string>>();
+  EXPECT_EQ(kStringmapValue, stringmap_value);
+  EXPECT_EQ(kStringsValue, dict[kStringsKey].Get<vector<string>>());
+  EXPECT_EQ(kBoolValue, dict[kBoolKey].Get<bool>());
+  EXPECT_EQ(kInt32Value, dict[kInt32Key].Get<int32_t>());
+  EXPECT_EQ(kUint32Value, dict[kUint32Key].Get<uint32_t>());
+  EXPECT_EQ(kByteArraysValue,
+            dict[kByteArraysKey].Get<vector<vector<uint8_t>>>());
+  EXPECT_EQ(kInt16Value, dict[kInt16Key].Get<int16_t>());
+  EXPECT_EQ(kRpcIdentifierValue,
+            dict[kRpcIdentifierKey].Get<dbus::ObjectPath>().value());
+  EXPECT_EQ(kUint16Value, dict[kUint16Key].Get<uint16_t>());
+  EXPECT_EQ(kUint8sValue, dict[kUint8sKey].Get<vector<uint8_t>>());
+  EXPECT_EQ(kUint32sValue, dict[kUint32sKey].Get<vector<uint32_t>>());
+  chromeos::VariantDictionary nested_dict =
+      dict[kKeyValueStoreKey].Get<chromeos::VariantDictionary>();
+  EXPECT_EQ(kNestedInt32Value, nested_dict[kNestedInt32Key].Get<int32_t>());
+}
+
+TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
+  static const char kStringKey[] = "StringKey";
+  static const char kStringValue[] = "StringValue";
+  static const char kStringmapKey[] = "StringmapKey";
+  const map<string, string> kStringmapValue = { { "key", "value" } };
+  static const char kStringsKey[] = "StringsKey";
+  const vector<string> kStringsValue = {"StringsValue1", "StringsValue2"};
+  static const char kBoolKey[] = "BoolKey";
+  const bool kBoolValue = true;
+  static const char kInt32Key[] = "Int32Key";
+  const int32_t kInt32Value = 123;
+  static const char kUint32Key[] = "Uint32Key";
+  const uint32_t kUint32Value = 654;
+  static const char kByteArraysKey[] = "ByteArraysKey";
+  const vector<vector<uint8_t>> kByteArraysValue{ {1}, {2} };
+  static const char kInt16Key[] = "Int16Key";
+  const int16_t kInt16Value = 123;
+  static const char kRpcIdentifierKey[] = "RpcIdentifierKey";
+  static const char kRpcIdentifierValue[] = "/org/chromium/test";
+  static const char kUint16Key[] = "Uint16Key";
+  const uint16_t kUint16Value = 123;
+  static const char kUint8sKey[] = "Uint8sKey";
+  const vector<uint8_t> kUint8sValue{ 1, 2 };
+  static const char kUint32sKey[] = "Uint32sKey";
+  const vector<uint32_t> kUint32sValue{ 1, 2 };
+  static const char kKeyValueStoreKey[] = "KeyValueStoreKey";
+  static const char kNestedInt32Key[] = "NestedKey32Key";
+  const int32_t kNestedInt32Value = 1;
+
+  chromeos::VariantDictionary dict;
+  dict[kStringKey] = chromeos::Any(string(kStringValue));
+  dict[kStringmapKey] = chromeos::Any(kStringmapValue);
+  dict[kStringsKey] = chromeos::Any(kStringsValue);
+  dict[kBoolKey] = chromeos::Any(kBoolValue);
+  dict[kInt32Key] = chromeos::Any(kInt32Value);
+  dict[kUint32Key] = chromeos::Any(kUint32Value);
+  dict[kByteArraysKey] = chromeos::Any(kByteArraysValue);
+  dict[kInt16Key] = chromeos::Any(kInt16Value);
+  dict[kRpcIdentifierKey] =
+      chromeos::Any(dbus::ObjectPath(kRpcIdentifierValue));
+  dict[kUint16Key] = chromeos::Any(kUint16Value);
+  dict[kUint8sKey] = chromeos::Any(kUint8sValue);
+  dict[kUint32sKey] = chromeos::Any(kUint32sValue);
+  chromeos::VariantDictionary nested_dict;
+  nested_dict[kNestedInt32Key] = chromeos::Any(kNestedInt32Value);
+  dict[kKeyValueStoreKey] = chromeos::Any(nested_dict);
+
+  KeyValueStore store;
+  KeyValueStore::ConvertFromVariantDictionary(dict, &store);
+  EXPECT_TRUE(store.ContainsString(kStringKey));
+  EXPECT_EQ(kStringValue, store.GetString(kStringKey));
+  EXPECT_TRUE(store.ContainsStringmap(kStringmapKey));
+  EXPECT_EQ(kStringmapValue, store.GetStringmap(kStringmapKey));
+  EXPECT_TRUE(store.ContainsStrings(kStringsKey));
+  EXPECT_EQ(kStringsValue, store.GetStrings(kStringsKey));
+  EXPECT_TRUE(store.ContainsBool(kBoolKey));
+  EXPECT_EQ(kBoolValue, store.GetBool(kBoolKey));
+  EXPECT_TRUE(store.ContainsInt(kInt32Key));
+  EXPECT_EQ(kInt32Value, store.GetInt(kInt32Key));
+  EXPECT_TRUE(store.ContainsUint(kUint32Key));
+  EXPECT_EQ(kUint32Value, store.GetUint(kUint32Key));
+  EXPECT_TRUE(store.ContainsByteArrays(kByteArraysKey));
+  EXPECT_EQ(kByteArraysValue, store.GetByteArrays(kByteArraysKey));
+  EXPECT_TRUE(store.ContainsInt16(kInt16Key));
+  EXPECT_EQ(kInt16Value, store.GetInt16(kInt16Key));
+  EXPECT_TRUE(store.ContainsRpcIdentifier(kRpcIdentifierKey));
+  EXPECT_EQ(kRpcIdentifierValue, store.GetRpcIdentifier(kRpcIdentifierKey));
+  EXPECT_TRUE(store.ContainsUint16(kUint16Key));
+  EXPECT_EQ(kUint16Value, store.GetUint16(kUint16Key));
+  EXPECT_TRUE(store.ContainsUint8s(kUint8sKey));
+  EXPECT_EQ(kUint8sValue, store.GetUint8s(kUint8sKey));
+  EXPECT_TRUE(store.ContainsUint32s(kUint32sKey));
+  EXPECT_EQ(kUint32sValue, store.GetUint32s(kUint32sKey));
+  EXPECT_TRUE(store.ContainsKeyValueStore(kKeyValueStoreKey));
+  KeyValueStore nested_store;
+  nested_store.SetInt(kNestedInt32Key, kNestedInt32Value);
+  EXPECT_EQ(nested_store, store.GetKeyValueStore(kKeyValueStoreKey));
+}
+
 }  // namespace shill

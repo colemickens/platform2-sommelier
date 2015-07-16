@@ -109,6 +109,15 @@ class KeyValueStore {
     return properties_;
   }
 
+  // Conversion function between KeyValueStore and chromeos::VariantDictionary.
+  // Since we already use chromeos::VariantDictionary for storing key value
+  // pairs, all conversions will be trivial except nested KeyValueStore and
+  // nested chromeos::VariantDictionary.
+  static void ConvertToVariantDictionary(const KeyValueStore& in_store,
+                                         chromeos::VariantDictionary* out_dict);
+  static void ConvertFromVariantDictionary(
+      const chromeos::VariantDictionary& in_dict, KeyValueStore* out_store);
+
  private:
   chromeos::VariantDictionary properties_;
 };

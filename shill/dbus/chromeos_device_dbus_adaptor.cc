@@ -105,7 +105,7 @@ void ChromeosDeviceDBusAdaptor::EmitKeyValueStoreChanged(
     const string& name, const KeyValueStore& value) {
   SLOG(this, 2) << __func__ << ": " << name;
   chromeos::VariantDictionary dict;
-  PropertyStore::KeyValueStoreToVariantDictionary(value, &dict);
+  KeyValueStore::ConvertToVariantDictionary(value, &dict);
   SendPropertyChangedSignal(name, chromeos::Any(dict));
 }
 

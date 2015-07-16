@@ -33,62 +33,6 @@ PropertyStore::PropertyStore(PropertyChangeCallback on_property_changed) :
 
 PropertyStore::~PropertyStore() {}
 
-// static.
-void PropertyStore::VariantDictionaryToKeyValueStore(
-    const chromeos::VariantDictionary& in, KeyValueStore* out, Error* error) {
-  for (const auto& kv : in) {
-    string key = kv.first;
-    chromeos::Any value = kv.second;
-
-    if (typeid(bool) == value.GetType()) {    // NOLINT
-      out->SetBool(key, value.Get<bool>());
-    } else if (typeid(int32_t) == value.GetType()) {
-      out->SetInt(key, value.Get<int32_t>());
-    } else if (typeid(string) == value.GetType()) {
-      out->SetString(key, value.Get<string>());
-    } else if (typeid(chromeos::VariantDictionary) == value.GetType()) {
-      // Unwrap a recursive KeyValueStore object.
-      KeyValueStore store;
-      Error convert_error;
-      VariantDictionaryToKeyValueStore(value.Get<chromeos::VariantDictionary>(),
-                                       &store,
-                                       &convert_error);
-      if (convert_error.IsSuccess()) {
-        out->SetKeyValueStore(key, store);
-      } else {
-        Error::PopulateAndLog(FROM_HERE, error, convert_error.type(),
-                              convert_error.message() + " in sub-key " + key);
-        return;  // Skip remaining args after error.
-      }
-    } else if (typeid(Strings) == value.GetType()) {
-      out->SetStrings(key, value.Get<Strings>());
-    } else if (typeid(Stringmap) == value.GetType()) {
-      out->SetStringmap(key, value.Get<Stringmap>());
-    } else {
-      Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
-                            "unsupported type for property " + key);
-      return;  // Skip remaining args after error.
-    }
-  }
-}
-
-// static.
-void PropertyStore::KeyValueStoreToVariantDictionary(
-    const KeyValueStore& in, chromeos::VariantDictionary* out) {
-  for (const auto& key_value_pair : in.properties()) {
-    // Special handling for nested KeyValueStore (convert it to
-    // nested chromeos::VariantDictionary).
-    if (key_value_pair.second.GetType() == typeid(KeyValueStore)) {
-      chromeos::VariantDictionary dict;
-      KeyValueStoreToVariantDictionary(
-          key_value_pair.second.Get<KeyValueStore>(), &dict);
-      (*out)[key_value_pair.first] = chromeos::Any(dict);
-    } else {
-      (*out)[key_value_pair.first] = key_value_pair.second;
-    }
-  }
-}
-
 bool PropertyStore::Contains(const string& prop) const {
   return (ContainsKey(bool_properties_, prop)  ||
           ContainsKey(int16_properties_, prop) ||
@@ -141,12 +85,9 @@ bool PropertyStore::SetAnyProperty(const string& name,
     ret = SetUint64Property(name, value.Get<uint64_t>(), error);
   } else if (typeid(chromeos::VariantDictionary) == value.GetType()) {
     KeyValueStore store;
-    VariantDictionaryToKeyValueStore(value.Get<chromeos::VariantDictionary>(),
-                                     &store,
-                                     error);
-    if (error->IsSuccess()) {
-      ret = SetKeyValueStoreProperty(name, store, error);
-    }
+    KeyValueStore::ConvertFromVariantDictionary(
+        value.Get<chromeos::VariantDictionary>(), &store);
+    ret = SetKeyValueStoreProperty(name, store, error);
   } else {
     NOTREACHED() << " unknown type: " << value.GetType().name();
     error->Populate(Error::kInternalError);
@@ -265,7 +206,7 @@ bool PropertyStore::GetProperties(chromeos::VariantDictionary* out,
         GetKeyValueStorePropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       chromeos::VariantDictionary dict;
-      KeyValueStoreToVariantDictionary(it.value(), &dict);
+      KeyValueStore::ConvertToVariantDictionary(it.value(), &dict);
       out->insert(std::make_pair(it.Key(), dict));
     }
   }

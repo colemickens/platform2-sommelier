@@ -250,10 +250,8 @@ bool ChromeosManagerDBusAdaptor::GetService(
   ServiceRefPtr service;
   KeyValueStore args_store;
   Error e;
-  PropertyStore::VariantDictionaryToKeyValueStore(args, &args_store, &e);
-  if (e.IsSuccess()) {
-    service = manager_->GetService(args_store, &e);
-  }
+  KeyValueStore::ConvertFromVariantDictionary(args, &args_store);
+  service = manager_->GetService(args_store, &e);
   if (e.ToChromeosError(error)) {
     return false;
   }
@@ -287,13 +285,7 @@ bool ChromeosManagerDBusAdaptor::ConfigureService(
   SLOG(this, 2) << __func__;
   ServiceRefPtr service;
   KeyValueStore args_store;
-  Error key_value_store_error;
-  PropertyStore::VariantDictionaryToKeyValueStore(args,
-                                                  &args_store,
-                                                  &key_value_store_error);
-  if (key_value_store_error.ToChromeosError(error)) {
-    return false;
-  }
+  KeyValueStore::ConvertFromVariantDictionary(args, &args_store);
   Error configure_error;
   service = manager_->ConfigureService(args_store, &configure_error);
   if (configure_error.ToChromeosError(error)) {
@@ -311,13 +303,7 @@ bool ChromeosManagerDBusAdaptor::ConfigureServiceForProfile(
   SLOG(this, 2) << __func__;
   ServiceRefPtr service;
   KeyValueStore args_store;
-  Error key_value_store_error;
-  PropertyStore::VariantDictionaryToKeyValueStore(args,
-                                                  &args_store,
-                                                  &key_value_store_error);
-  if (key_value_store_error.ToChromeosError(error)) {
-    return false;
-  }
+  KeyValueStore::ConvertFromVariantDictionary(args, &args_store);
   Error configure_error;
   service = manager_->ConfigureServiceForProfile(
       profile_rpcid.value(), args_store, &configure_error);
@@ -334,13 +320,7 @@ bool ChromeosManagerDBusAdaptor::FindMatchingService(
     dbus::ObjectPath* service_path) {  // NOLINT
   SLOG(this, 2) << __func__;
   KeyValueStore args_store;
-  Error value_error;
-  PropertyStore::VariantDictionaryToKeyValueStore(args,
-                                                  &args_store,
-                                                  &value_error);
-  if (value_error.ToChromeosError(error)) {
-    return false;
-  }
+  KeyValueStore::ConvertFromVariantDictionary(args, &args_store);
 
   Error find_error;
   ServiceRefPtr service =
