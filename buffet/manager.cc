@@ -80,12 +80,16 @@ void Manager::Start(const weave::Device::Options& options,
   device_->GetCloud()->AddOnRegistrationChangedCallback(base::Bind(
       &Manager::OnRegistrationChanged, weak_ptr_factory_.GetWeakPtr()));
 
-  device_->GetPrivet()->AddOnWifiSetupChangedCallback(base::Bind(
-      &Manager::UpdateWiFiBootstrapState, weak_ptr_factory_.GetWeakPtr()));
+  if (device_->GetPrivet()) {
+    device_->GetPrivet()->AddOnWifiSetupChangedCallback(base::Bind(
+        &Manager::UpdateWiFiBootstrapState, weak_ptr_factory_.GetWeakPtr()));
 
-  device_->GetPrivet()->AddOnPairingChangedCallbacks(
-      base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&Manager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
+    device_->GetPrivet()->AddOnPairingChangedCallbacks(
+        base::Bind(&Manager::OnPairingStart, weak_ptr_factory_.GetWeakPtr()),
+        base::Bind(&Manager::OnPairingEnd, weak_ptr_factory_.GetWeakPtr()));
+  } else {
+    UpdateWiFiBootstrapState(weave::WifiSetupState::kDisabled);
+  }
 
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(
