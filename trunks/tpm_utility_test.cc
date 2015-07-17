@@ -1052,6 +1052,35 @@ TEST_F(TpmUtilityTest, VerifySchemeForward) {
   EXPECT_EQ(signature_in.signature.rsassa.hash, TPM_ALG_SHA1);
 }
 
+TEST_F(TpmUtilityTest, CertifyCreationSuccess) {
+  TPM_HANDLE key_handle = 42;
+  std::string creation_blob;
+  EXPECT_CALL(mock_tpm_, CertifyCreationSyncShort(TPM_RH_NULL, key_handle,
+                                                  _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+            utility_.CertifyCreation(key_handle, creation_blob));
+}
+
+TEST_F(TpmUtilityTest, CertifyCreationParserError) {
+  TPM_HANDLE key_handle = 42;
+  std::string creation_blob;
+  EXPECT_CALL(mock_blob_parser_, ParseCreationBlob(creation_blob, _, _, _))
+      .WillOnce(Return(false));
+  EXPECT_EQ(SAPI_RC_BAD_PARAMETER,
+            utility_.CertifyCreation(key_handle, creation_blob));
+}
+
+TEST_F(TpmUtilityTest, CertifyCreationFailure) {
+  TPM_HANDLE key_handle = 42;
+  std::string creation_blob;
+  EXPECT_CALL(mock_tpm_, CertifyCreationSyncShort(TPM_RH_NULL, key_handle,
+                                                  _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE,
+            utility_.CertifyCreation(key_handle, creation_blob));
+}
+
 TEST_F(TpmUtilityTest, ChangeAuthDataSuccess) {
   TPM_HANDLE key_handle = 1;
   std::string new_password;

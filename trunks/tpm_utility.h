@@ -141,6 +141,13 @@ class TRUNKS_EXPORT TpmUtility {
                         const std::string& signature,
                         AuthorizationDelegate* delegate) = 0;
 
+  // This method is used to check if a key was created in the TPM. |key_handle|
+  // refers to a loaded Tpm2.0 object, and |creation_blob| is the blob
+  // generated when the object was created. Returns TPM_RC_SUCCESS iff the
+  // object was created in the TPM.
+  virtual TPM_RC CertifyCreation(TPM_HANDLE key_handle,
+                                 const std::string& creation_blob) = 0;
+
   // This method is used to change the authorization value associated with a
   // |key_handle| to |new_password|. |delegate| is an AuthorizationDelegate
   // that is loaded with the old authorization value of |key_handle|.

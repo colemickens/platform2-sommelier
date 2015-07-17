@@ -626,6 +626,44 @@ TPM_RC TpmUtilityImpl::Verify(TPM_HANDLE key_handle,
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::CertifyCreation(TPM_HANDLE key_handle,
+                                       const std::string& creation_blob) {
+  TPM2B_CREATION_DATA creation_data;
+  TPM2B_DIGEST creation_hash;
+  TPMT_TK_CREATION creation_ticket;
+  if (!factory_.GetBlobParser()->ParseCreationBlob(creation_blob,
+                                                   &creation_data,
+                                                   &creation_hash,
+                                                   &creation_ticket)) {
+    LOG(ERROR) << "Error parsing CreationBlob.";
+    return SAPI_RC_BAD_PARAMETER;
+  }
+  TPM2B_DATA qualifying_data;
+  qualifying_data.size = 0;
+  TPMT_SIG_SCHEME in_scheme;
+  in_scheme.scheme = TPM_ALG_NULL;
+  TPM2B_ATTEST certify_info;
+  TPMT_SIGNATURE signature;
+  scoped_ptr<AuthorizationDelegate> delegate =
+      factory_.GetPasswordAuthorization("");
+  TPM_RC result = factory_.GetTpm()->CertifyCreationSync(TPM_RH_NULL,
+                                                         "",
+                                                         key_handle,
+                                                         "",
+                                                         qualifying_data,
+                                                         creation_hash,
+                                                         in_scheme,
+                                                         creation_ticket,
+                                                         &certify_info,
+                                                         &signature,
+                                                         delegate.get());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error certifying key creation: " << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC TpmUtilityImpl::ChangeKeyAuthorizationData(
     TPM_HANDLE key_handle,
     const std::string& new_password,

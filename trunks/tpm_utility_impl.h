@@ -69,6 +69,8 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                 const std::string& plaintext,
                 const std::string& signature,
                 AuthorizationDelegate* delegate) override;
+  TPM_RC CertifyCreation(TPM_HANDLE key_handle,
+                         const std::string& creation_blob) override;
   TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,
                                     const std::string& new_password,
                                     AuthorizationDelegate* delegate,

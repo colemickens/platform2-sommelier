@@ -180,6 +180,10 @@ int main(int argc, char **argv) {
       LOG(ERROR) << "Error running AuthChangeTest.";
       return -1;
     }
+    if (!test.VerifyKeyCreationTest()) {
+      LOG(ERROR) << "Error running VerifyKeyCreationTest.";
+      return -1;
+    }
     LOG(INFO) << "Running PCR test.";
     if (!test.PCRTest()) {
       LOG(ERROR) << "Error running PCRTest.";

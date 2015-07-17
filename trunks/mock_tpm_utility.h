@@ -57,6 +57,8 @@ class MockTpmUtility : public TpmUtility {
                               const std::string&,
                               const std::string&,
                               AuthorizationDelegate*));
+  MOCK_METHOD2(CertifyCreation, TPM_RC(TPM_HANDLE,
+                                       const std::string&));
   MOCK_METHOD4(ChangeKeyAuthorizationData, TPM_RC(TPM_HANDLE,
                                                   const std::string&,
                                                   AuthorizationDelegate*,

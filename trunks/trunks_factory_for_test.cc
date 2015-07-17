@@ -195,6 +195,11 @@ class TpmUtilityForwarder : public TpmUtility {
                            plaintext, signature, delegate);
   }
 
+  TPM_RC CertifyCreation(TPM_HANDLE key_handle,
+                         const std::string& creation_blob) override {
+    return target_->CertifyCreation(key_handle, creation_blob);
+  }
+
   TPM_RC ChangeKeyAuthorizationData(TPM_HANDLE key_handle,
                                     const std::string& new_password,
                                     AuthorizationDelegate* delegate,

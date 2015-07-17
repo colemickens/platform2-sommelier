@@ -218,6 +218,64 @@ bool TrunksClientTest::AuthChangeTest() {
                                      session.get());
 }
 
+bool TrunksClientTest::VerifyKeyCreationTest() {
+  scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
+  scoped_ptr<HmacSession> session = factory_->GetHmacSession();
+  TPM_RC result = session->StartUnboundSession(true /* enable encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+    return false;
+  }
+  std::string key_blob;
+  std::string creation_blob;
+  session->SetEntityAuthorizationValue("");
+  result = utility->CreateRSAKeyPair(
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
+      "", "", false,  // use_only_policy_authorization
+      kNoCreationPCR, session->GetDelegate(), &key_blob, &creation_blob);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating certify key: " << GetErrorString(result);
+    return false;
+  }
+  std::string alternate_key_blob;
+  result = utility->CreateRSAKeyPair(
+      TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
+      "", "", false,  // use_only_policy_authorization
+      kNoCreationPCR, session->GetDelegate(), &alternate_key_blob,
+      nullptr);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating alternate key: " << GetErrorString(result);
+    return false;
+  }
+  TPM_HANDLE key_handle;
+  result = utility->LoadKey(key_blob, session->GetDelegate(), &key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading certify key: " << GetErrorString(result);
+    return false;
+  }
+  TPM_HANDLE alternate_key_handle;
+  result = utility->LoadKey(alternate_key_blob,
+                            session->GetDelegate(),
+                            &alternate_key_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading alternate key: " << GetErrorString(result);
+    return false;
+  }
+  ScopedKeyHandle certify_key(*factory_.get(), key_handle);
+  ScopedKeyHandle alternate_key(*factory_.get(), alternate_key_handle);
+  result = utility->CertifyCreation(certify_key.get(), creation_blob);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error certifying key: " << GetErrorString(result);
+    return false;
+  }
+  result = utility->CertifyCreation(alternate_key.get(), creation_blob);
+  if (result == TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error alternate key certified with wrong creation data.";
+    return false;
+  }
+  return true;
+}
+
 bool TrunksClientTest::PCRTest() {
   scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
   scoped_ptr<HmacSession> session = factory_->GetHmacSession();
