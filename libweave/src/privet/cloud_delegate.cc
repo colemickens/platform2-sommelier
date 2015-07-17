@@ -21,8 +21,8 @@
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/device_registration_info.h"
 #include "libweave/src/privet/constants.h"
-#include "libweave/src/registration_status.h"
 #include "libweave/src/states/state_manager.h"
+#include "weave/enum_to_string.h"
 
 using chromeos::ErrorPtr;
 using chromeos::VariantDictionary;
@@ -125,8 +125,8 @@ class CloudDelegateImpl : public CloudDelegate {
 
   AuthScope GetAnonymousMaxScope() const override {
     AuthScope scope;
-    if (StringToAuthScope(device_->GetConfig().local_anonymous_access_role(),
-                          &scope)) {
+    if (StringToEnum(device_->GetConfig().local_anonymous_access_role(),
+                     &scope)) {
       return scope;
     }
     return AuthScope::kNone;
@@ -177,8 +177,13 @@ class CloudDelegateImpl : public CloudDelegate {
 
     chromeos::ErrorPtr error;
     UserRole role;
-    if (!FromString(AuthScopeToString(user_info.scope()), &role, &error))
+    std::string str_scope = EnumToString(user_info.scope());
+    if (!StringToEnum(str_scope, &role)) {
+      chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                                   errors::kInvalidParams, "Invalid role: '%s'",
+                                   str_scope.c_str());
       return error_callback.Run(error.get());
+    }
 
     std::string id;
     if (!command_manager_->AddCommand(command, role, &id, &error))
@@ -258,7 +263,7 @@ class CloudDelegateImpl : public CloudDelegate {
       chromeos::ErrorPtr error;
       chromeos::Error::AddToPrintf(
           &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
-          "Unexpected buffet status: %s", StatusToString(status).c_str());
+          "Unexpected buffet status: %s", EnumToString(status).c_str());
       connection_state_ = ConnectionState{std::move(error)};
     }
     NotifyOnDeviceInfoChanged();

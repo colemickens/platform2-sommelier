@@ -13,6 +13,7 @@
 
 #include "libweave/src/storage_impls.h"
 #include "libweave/src/storage_interface.h"
+#include "weave/enum_to_string.h"
 
 namespace {
 
@@ -159,7 +160,7 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
     for (const std::string& mode :
          chromeos::string_utils::Split(modes_str, ",", true, true)) {
       PairingType pairing_mode;
-      CHECK(privet::StringToPairingType(mode, &pairing_mode));
+      CHECK(StringToEnum(mode, &pairing_mode));
       pairing_modes.insert(pairing_mode);
     }
     pairing_modes_ = std::move(pairing_modes);

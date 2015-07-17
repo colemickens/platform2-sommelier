@@ -18,12 +18,6 @@
 namespace weave {
 namespace privet {
 
-enum class CryptoType {
-  kNone,
-  kSpake_p224,
-  kSpake_p256,
-};
-
 // Interface to provide Security related logic for |PrivetHandler|.
 class SecurityDelegate {
  public:
@@ -62,12 +56,6 @@ class SecurityDelegate {
   virtual bool CancelPairing(const std::string& session_id,
                              chromeos::ErrorPtr* error) = 0;
 };
-
-bool StringToPairingType(const std::string& mode, PairingType* id);
-std::string PairingTypeToString(PairingType id);
-
-bool StringToAuthScope(const std::string& scope, AuthScope* id);
-std::string AuthScopeToString(AuthScope id);
 
 }  // namespace privet
 }  // namespace weave

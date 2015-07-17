@@ -12,6 +12,17 @@
 namespace weave {
 namespace privet {
 
+enum class CryptoType {
+  kNone,
+  kSpake_p224,
+  kSpake_p256,
+};
+
+enum class WifiType {
+  kWifi24,
+  kWifi50,
+};
+
 // Scopes in order of increasing privileges.
 enum class AuthScope {
   kNone,

@@ -24,6 +24,7 @@
 #include "libweave/src/privet/identity_delegate.h"
 #include "libweave/src/privet/security_delegate.h"
 #include "libweave/src/privet/wifi_delegate.h"
+#include "weave/enum_to_string.h"
 
 namespace weave {
 namespace privet {
@@ -121,86 +122,6 @@ std::unique_ptr<base::ListValue> ToValue(const Container& list) {
   return value_list;
 }
 
-template <typename T>
-class EnumToStringMap final {
- public:
-  static std::string FindNameById(T id) {
-    for (const Map& m : kMap) {
-      if (m.id == id) {
-        CHECK(m.name);
-        return m.name;
-      }
-    }
-    NOTREACHED() << static_cast<int>(id) << " is not part of "
-                 << typeid(T).name();
-    return std::string();
-  }
-
-  static bool FindIdByName(const std::string& name, T* id) {
-    for (const Map& m : kMap) {
-      if (m.name && m.name == name) {
-        *id = m.id;
-        return true;
-      }
-    }
-    return false;
-  }
-
- private:
-  struct Map {
-    const T id;
-    const char* const name;
-  };
-  static const Map kMap[];
-};
-
-template <>
-const EnumToStringMap<ConnectionState::Status>::Map
-    EnumToStringMap<ConnectionState::Status>::kMap[] = {
-        {ConnectionState::kDisabled, "disabled"},
-        {ConnectionState::kUnconfigured, "unconfigured"},
-        {ConnectionState::kConnecting, "connecting"},
-        {ConnectionState::kOnline, "online"},
-        {ConnectionState::kOffline, "offline"},
-};
-
-template <>
-const EnumToStringMap<SetupState::Status>::Map
-    EnumToStringMap<SetupState::Status>::kMap[] = {
-        {SetupState::kNone, nullptr},
-        {SetupState::kInProgress, "inProgress"},
-        {SetupState::kSuccess, "success"},
-};
-
-template <>
-const EnumToStringMap<WifiType>::Map EnumToStringMap<WifiType>::kMap[] = {
-    {WifiType::kWifi24, "2.4GHz"},
-    {WifiType::kWifi50, "5.0GHz"},
-};
-
-template <>
-const EnumToStringMap<PairingType>::Map EnumToStringMap<PairingType>::kMap[] = {
-    {PairingType::kPinCode, "pinCode"},
-    {PairingType::kEmbeddedCode, "embeddedCode"},
-    {PairingType::kUltrasound32, "ultrasound32"},
-    {PairingType::kAudible32, "audible32"},
-};
-
-template <>
-const EnumToStringMap<CryptoType>::Map EnumToStringMap<CryptoType>::kMap[] = {
-    {CryptoType::kNone, "none"},
-    {CryptoType::kSpake_p224, "p224_spake2"},
-    {CryptoType::kSpake_p256, "p256_spake2"},
-};
-
-template <>
-const EnumToStringMap<AuthScope>::Map EnumToStringMap<AuthScope>::kMap[] = {
-    {AuthScope::kNone, "none"},
-    {AuthScope::kViewer, "viewer"},
-    {AuthScope::kUser, "user"},
-    {AuthScope::kOwner, "owner"},
-};
-
 struct {
   const char* const reason;
   int code;
@@ -225,16 +146,6 @@ struct {
     {errors::kNotFound, chromeos::http::status_code::NotFound},
     {errors::kNotImplemented, chromeos::http::status_code::NotSupported},
 };
-
-template <typename T>
-std::string EnumToString(T id) {
-  return EnumToStringMap<T>::FindNameById(id);
-}
-
-template <typename T>
-bool StringToEnum(const std::string& name, T* id) {
-  return EnumToStringMap<T>::FindIdByName(name, id);
-}
 
 AuthScope AuthScopeFromString(const std::string& scope, AuthScope auto_scope) {
   if (scope == kAuthScopeAutoValue)
@@ -929,22 +840,6 @@ void PrivetHandler::HandleCommandsCancel(const base::DictionaryValue& input,
   cloud_->CancelCommand(id, user_info,
                         base::Bind(&OnCommandRequestSucceeded, callback),
                         base::Bind(&OnCommandRequestFailed, callback));
-}
-
-bool StringToPairingType(const std::string& mode, PairingType* id) {
-  return StringToEnum(mode, id);
-}
-
-std::string PairingTypeToString(PairingType id) {
-  return EnumToString(id);
-}
-
-bool StringToAuthScope(const std::string& scope, AuthScope* id) {
-  return StringToEnum(scope, id);
-}
-
-std::string AuthScopeToString(AuthScope id) {
-  return EnumToString(id);
 }
 
 }  // namespace privet

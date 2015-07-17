@@ -2,25 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libweave/src/registration_status.h"
-
-#include <base/logging.h>
+#include "weave/enum_to_string.h"
+#include "weave/types.h"
 
 namespace weave {
 
-std::string StatusToString(RegistrationStatus status) {
-  switch (status) {
-    case RegistrationStatus::kUnconfigured:
-      return "unconfigured";
-    case RegistrationStatus::kConnecting:
-      return "connecting";
-    case RegistrationStatus::kConnected:
-      return "connected";
-    case RegistrationStatus::kInvalidCredentials:
-      return "invalid_credentials";
-  }
-  CHECK(0) << "Unknown status";
-  return "unknown";
-}
+namespace {
+
+const EnumToStringMap<RegistrationStatus>::Map kMap[] = {
+    {RegistrationStatus::kUnconfigured, "unconfigured"},
+    {RegistrationStatus::kConnecting, "connecting"},
+    {RegistrationStatus::kConnected, "connected"},
+    {RegistrationStatus::kInvalidCredentials, "invalid_credentials"},
+};
+
+}  // namespace
+
+template <>
+EnumToStringMap<RegistrationStatus>::EnumToStringMap()
+    : EnumToStringMap(kMap) {}
 
 }  // namespace weave

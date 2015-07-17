@@ -9,6 +9,7 @@
 
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/schema_constants.h"
+#include "weave/enum_to_string.h"
 
 namespace weave {
 
@@ -131,7 +132,11 @@ bool CommandDictionary::LoadCommands(const base::DictionaryValue& json,
 
       if (command_def_json->GetString(commands::attributes::kCommand_Role,
                                       &value)) {
-        if (!FromString(value, &minimal_role, error)) {
+        if (!StringToEnum(value, &minimal_role)) {
+          chromeos::Error::AddToPrintf(error, FROM_HERE,
+                                       errors::commands::kDomain,
+                                       errors::commands::kInvalidPropValue,
+                                       "Invalid role: '%s'", value.c_str());
           chromeos::Error::AddToPrintf(
               error, FROM_HERE, errors::commands::kDomain,
               errors::commands::kInvalidMinimalRole,
@@ -236,7 +241,7 @@ std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
     command_def->Set(commands::attributes::kCommand_Parameters,
                      parameters.release());
     command_def->SetString(commands::attributes::kCommand_Role,
-                           ToString(pair.second->GetMinimalRole()));
+                           EnumToString(pair.second->GetMinimalRole()));
     package->SetWithoutPathExpansion(command_name, command_def);
   }
   return dict;

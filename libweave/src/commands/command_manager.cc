@@ -11,6 +11,7 @@
 
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/utils.h"
+#include "weave/enum_to_string.h"
 
 using chromeos::dbus_utils::ExportedObjectManager;
 
@@ -113,8 +114,8 @@ bool CommandManager::AddCommand(const base::DictionaryValue& command,
   if (role < minimal_role) {
     chromeos::Error::AddToPrintf(
         error, FROM_HERE, errors::commands::kDomain, "access_denied",
-        "User role '%s' less than minimal: '%s'", ToString(role).c_str(),
-        ToString(minimal_role).c_str());
+        "User role '%s' less than minimal: '%s'", EnumToString(role).c_str(),
+        EnumToString(minimal_role).c_str());
     return false;
   }
 

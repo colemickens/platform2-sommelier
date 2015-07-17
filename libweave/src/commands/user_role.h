@@ -17,12 +17,6 @@ enum class UserRole {
   kOwner,
 };
 
-std::string ToString(UserRole role);
-
-bool FromString(const std::string& str,
-                UserRole* role,
-                chromeos::ErrorPtr* error);
-
 }  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_USER_ROLE_H_

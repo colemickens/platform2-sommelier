@@ -14,11 +14,6 @@
 namespace weave {
 namespace privet {
 
-enum class WifiType {
-  kWifi24,
-  kWifi50,
-};
-
 // Interface to provide WiFi functionality for PrivetHandler.
 class WifiDelegate {
  public:

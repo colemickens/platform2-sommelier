@@ -23,6 +23,8 @@
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
 
+#include "weave/enum_to_string.h"
+
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
 
@@ -36,21 +38,6 @@ const char kPairingCodeKey[] = "code";
 
 const char kErrorDomain[] = "buffet";
 const char kNotImplemented[] = "notImplemented";
-
-std::string StatusToString(weave::RegistrationStatus status) {
-  switch (status) {
-    case weave::RegistrationStatus::kUnconfigured:
-      return "unconfigured";
-    case weave::RegistrationStatus::kConnecting:
-      return "connecting";
-    case weave::RegistrationStatus::kConnected:
-      return "connected";
-    case weave::RegistrationStatus::kInvalidCredentials:
-      return "invalid_credentials";
-  }
-  CHECK(0) << "Unknown status";
-  return "unknown";
-}
 
 }  // anonymous namespace
 
@@ -185,8 +172,12 @@ void Manager::AddCommand(DBusMethodResponsePtr<std::string> response,
 
   chromeos::ErrorPtr error;
   weave::UserRole role;
-  if (!FromString(in_user_role, &role, &error))
+  if (!StringToEnum(in_user_role, &role)) {
+    chromeos::Error::AddToPrintf(&error, FROM_HERE, kErrorDomain,
+                                 "invalid_user_role", "Invalid role: '%s'",
+                                 in_user_role.c_str());
     return response->ReplyWithError(error.get());
+  }
 
   std::string id;
   if (!device_->GetCommands()->AddCommand(*command, role, &id, &error))
@@ -305,7 +296,7 @@ void Manager::OnStateChanged() {
 }
 
 void Manager::OnRegistrationChanged(weave::RegistrationStatus status) {
-  dbus_adaptor_.SetStatus(StatusToString(status));
+  dbus_adaptor_.SetStatus(weave::EnumToString(status));
 }
 
 void Manager::OnConfigChanged(const weave::BuffetConfig& config) {
@@ -319,22 +310,8 @@ void Manager::OnConfigChanged(const weave::BuffetConfig& config) {
   dbus_adaptor_.SetAnonymousAccessRole(config.local_anonymous_access_role());
 }
 
-void Manager::UpdateWiFiBootstrapState(
-    weave::privet::WifiBootstrapManager::State state) {
-  switch (state) {
-    case weave::WifiSetupState::kDisabled:
-      dbus_adaptor_.SetWiFiBootstrapState("disabled");
-      break;
-    case weave::WifiSetupState::kBootstrapping:
-      dbus_adaptor_.SetWiFiBootstrapState("waiting");
-      break;
-    case weave::WifiSetupState::kMonitoring:
-      dbus_adaptor_.SetWiFiBootstrapState("monitoring");
-      break;
-    case weave::WifiSetupState::kConnecting:
-      dbus_adaptor_.SetWiFiBootstrapState("connecting");
-      break;
-  }
+void Manager::UpdateWiFiBootstrapState(weave::WifiSetupState state) {
+  dbus_adaptor_.SetWiFiBootstrapState(weave::EnumToString(state));
 }
 
 void Manager::OnPairingStart(const std::string& session_id,
@@ -344,7 +321,7 @@ void Manager::OnPairingStart(const std::string& session_id,
   // the most recent pairing attempt.
   dbus_adaptor_.SetPairingInfo(chromeos::VariantDictionary{
       {kPairingSessionIdKey, session_id},
-      {kPairingModeKey, weave::privet::PairingTypeToString(pairing_type)},
+      {kPairingModeKey, weave::EnumToString(pairing_type)},
       {kPairingCodeKey, code},
   });
 }
