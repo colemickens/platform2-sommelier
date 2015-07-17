@@ -362,6 +362,27 @@
             'supplicant/supplicant_process_proxy.cc',
             'supplicant/wpa_supplicant.cc',
           ],
+          'conditions': [
+            ['USE_chromeos_dbus == 1', {
+              'sources': [
+                'dbus/chromeos_supplicant_process_proxy.cc',
+              ],
+              'actions': [
+                {
+                  'action_name': 'generate-supplicant-proxies',
+                  'variables': {
+                    'proxy_output_file': 'include/supplicant/dbus-proxies.h',
+                  },
+                  'sources': [
+                    'dbus_bindings/supplicant-interface.xml',
+                    'dbus_bindings/supplicant-network.xml',
+                    'dbus_bindings/supplicant-process.xml',
+                  ],
+                  'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+                },
+              ],
+            }],
+          ],
         }],
         ['USE_wimax == 1', {
           'sources': [
