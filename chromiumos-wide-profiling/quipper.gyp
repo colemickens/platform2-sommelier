@@ -19,6 +19,7 @@
         'data_reader.cc',
         'data_writer.cc',
         'file_reader.cc',
+        'perf_option_parser.cc',
         'perf_parser.cc',
         'perf_protobuf_io.cc',
         'perf_reader.cc',
@@ -170,6 +171,18 @@
           'includes': ['../common-mk/common_test.gypi'],
           'sources': [
             'file_reader_test.cc',
+          ]
+        },
+        {
+          'target_name': 'perf_option_parser_test',
+          'type': 'executable',
+          'dependencies': [
+            'common',
+            'common_test',
+          ],
+          'includes': ['../common-mk/common_test.gypi'],
+          'sources': [
+            'perf_option_parser_test.cc',
           ]
         },
         {
