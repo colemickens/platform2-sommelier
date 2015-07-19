@@ -46,11 +46,12 @@ class Device {
     base::FilePath state_path;
     base::FilePath definitions_path;
     base::FilePath test_definitions_path;
-    bool xmpp_enabled{true};
+    bool xmpp_enabled = true;
     std::set<std::string> device_whitelist;
-    bool disable_privet{false};
-    bool disable_security{false};
-    bool enable_ping{false};
+    bool disable_privet = false;
+    bool disable_security = false;
+    bool enable_ping = false;
+    std::string test_privet_ssid;
   };
 
   virtual ~Device() = default;

@@ -36,6 +36,7 @@ class WifiBootstrapManager : public WifiDelegate,
   using StateListener = base::Callback<void(State)>;
 
   WifiBootstrapManager(const std::string& last_configured_ssid,
+                       const std::string& test_privet_ssid,
                        ShillClient* shill_client,
                        ApManagerClient* ap_manager_client,
                        CloudDelegate* gcd);
@@ -76,6 +77,8 @@ class WifiBootstrapManager : public WifiDelegate,
   void UpdateState(State new_state);
   void NotifyStateListeners(State new_state) const;
 
+  std::string GenerateSsid() const;
+
   // If we've been bootstrapped successfully before, and we're bootstrapping
   // again because we slipped offline for a sufficiently longtime, we want
   // to return to monitoring mode periodically in case our connectivity issues
@@ -101,6 +104,7 @@ class WifiBootstrapManager : public WifiDelegate,
   std::vector<StateListener> state_listeners_;
   bool currently_online_{false};
   std::string last_configured_ssid_;
+  std::string test_privet_ssid_;
 
   ScopedObserver<CloudDelegate, CloudDelegate::Observer> cloud_observer_{this};
 

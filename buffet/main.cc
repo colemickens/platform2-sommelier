@@ -56,17 +56,22 @@ int main(int argc, char* argv[]) {
                 "Path to file containing config information.");
   DEFINE_string(state_path, kDefaultStateFilePath,
                 "Path to file containing state information.");
-  DEFINE_string(test_definitions_path, "",
-                "Path to directory containing additional command "
-                "and state definitions.  For use in test only.");
   DEFINE_bool(enable_xmpp, true,
               "Connect to GCD via a persistent XMPP connection.");
   DEFINE_bool(disable_privet, false, "disable Privet protocol");
-  DEFINE_bool(disable_security, false, "disable Privet security for tests");
   DEFINE_bool(enable_ping, false, "enable test HTTP handler at /privet/ping");
   DEFINE_string(device_whitelist, "",
                 "Comma separated list of network interfaces to monitor for "
                 "connectivity (an empty list enables all interfaces).");
+
+  DEFINE_bool(disable_security, false,
+              "disable Privet security for tests. For test only.");
+  DEFINE_string(test_privet_ssid, "",
+                "Fixed SSID for WiFi bootstrapping. For test only.");
+  DEFINE_string(test_definitions_path, "",
+                "Path to directory containing additional command "
+                "and state definitions. For test only.");
+
   chromeos::FlagHelper::Init(argc, argv, "Privet protocol handler daemon");
   if (FLAGS_config_path.empty())
     FLAGS_config_path = kDefaultConfigFilePath;
@@ -91,6 +96,7 @@ int main(int argc, char* argv[]) {
   options.disable_privet = FLAGS_disable_privet;
   options.disable_security = FLAGS_disable_security;
   options.enable_ping = FLAGS_enable_ping;
+  options.test_privet_ssid = FLAGS_test_privet_ssid;
 
   buffet::Daemon daemon{options};
   return daemon.Run();

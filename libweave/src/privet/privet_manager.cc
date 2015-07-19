@@ -82,8 +82,8 @@ void Manager::Start(const Device::Options& options,
   if (device->GetConfig().wifi_auto_setup_enabled()) {
     VLOG(1) << "Enabling WiFi bootstrapping.";
     wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
-        device->GetConfig().last_configured_ssid(), shill_client,
-        ap_manager_client_.get(), cloud_.get()));
+        device->GetConfig().last_configured_ssid(), options.test_privet_ssid,
+        shill_client, ap_manager_client_.get(), cloud_.get()));
     wifi_bootstrap_manager_->Init();
   }
 

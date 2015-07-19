@@ -25,19 +25,21 @@ const int kMonitorTimeoutSeconds = 120;
 
 WifiBootstrapManager::WifiBootstrapManager(
     const std::string& last_configured_ssid,
+    const std::string& test_privet_ssid,
     ShillClient* shill_client,
     ApManagerClient* ap_manager_client,
     CloudDelegate* gcd)
     : shill_client_{shill_client},
       ap_manager_client_{ap_manager_client},
       ssid_generator_{gcd, this},
-      last_configured_ssid_{last_configured_ssid} {
+      last_configured_ssid_{last_configured_ssid},
+      test_privet_ssid_{test_privet_ssid} {
   cloud_observer_.Add(gcd);
 }
 
 void WifiBootstrapManager::Init() {
   CHECK(!is_initialized_);
-  std::string ssid = ssid_generator_.GenerateSsid();
+  std::string ssid = GenerateSsid();
   if (ssid.empty())
     return;  // Delay initialization until ssid_generator_ is ready.
   UpdateConnectionState();
@@ -81,7 +83,7 @@ void WifiBootstrapManager::StartBootstrapping() {
         base::TimeDelta::FromSeconds(kBootstrapTimeoutSeconds));
   }
   // TODO(vitalybuka): Add SSID probing.
-  std::string ssid = ssid_generator_.GenerateSsid();
+  std::string ssid = GenerateSsid();
   CHECK(!ssid.empty());
   ap_manager_client_->Start(ssid);
 }
@@ -153,6 +155,11 @@ void WifiBootstrapManager::UpdateState(State new_state) {
 void WifiBootstrapManager::NotifyStateListeners(State new_state) const {
   for (const StateListener& listener : state_listeners_)
     listener.Run(new_state);
+}
+
+std::string WifiBootstrapManager::GenerateSsid() const {
+  return test_privet_ssid_.empty() ? ssid_generator_.GenerateSsid()
+                                   : test_privet_ssid_;
 }
 
 const ConnectionState& WifiBootstrapManager::GetConnectionState() const {
