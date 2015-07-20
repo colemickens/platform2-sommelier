@@ -18,6 +18,7 @@ const char kStatus[] = "status";
 const char kType[] = "type";
 const char kAccess[] = "access";
 const char kBlobFormat[] = "blob_format";
+const char kNVRamIndex[] = "nvram_index";
 
 }  // namespace sources
 }  // namespace keys

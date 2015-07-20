@@ -40,7 +40,7 @@ std::set<Key> MockSettingsDocument::GetDeletions(const Key& prefix) const {
   return result;
 }
 
-const VersionStamp& MockSettingsDocument::GetVersionStamp() const {
+VersionStamp MockSettingsDocument::GetVersionStamp() const {
   return version_stamp_;
 }
 

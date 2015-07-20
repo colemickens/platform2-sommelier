@@ -39,7 +39,7 @@ class SettingsDocument {
   virtual std::set<Key> GetDeletions(const Key& prefix) const = 0;
 
   // Returns the version stamp for this settings document.
-  virtual const VersionStamp& GetVersionStamp() const = 0;
+  virtual VersionStamp GetVersionStamp() const = 0;
 
   // Returns true if the document modifies keys that are equal to or have
   // |prefix| as an ancestor. Otherwise, returns false. Modifications here could

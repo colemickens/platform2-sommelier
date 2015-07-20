@@ -34,6 +34,8 @@ extern const char kType[];
 extern const char kAccess[];
 // BlobFormat - the blob formats used for parsing.
 extern const char kBlobFormat[];
+// NVRamIndex - indicates nvram space containing install attributes parameters.
+extern const char kNVRamIndex[];
 
 }  // namespace sources
 }  // namespace keys

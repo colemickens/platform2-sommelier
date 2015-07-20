@@ -5,6 +5,7 @@
 #include "settingsd/blob_ref.h"
 
 #include <algorithm>
+#include <cstring>
 
 #include <base/logging.h>
 
@@ -23,6 +24,9 @@ BlobRef::BlobRef(const std::vector<uint8_t>* data)
 
 BlobRef::BlobRef(const std::string* data)
     : BlobRef(reinterpret_cast<const uint8_t*>(data->data()), data->size()) {}
+
+BlobRef::BlobRef(const char* data)
+    : BlobRef(reinterpret_cast<const uint8_t*>(data), std::strlen(data)) {}
 
 bool BlobRef::Equals(const BlobRef& that) const {
   CHECK(valid());

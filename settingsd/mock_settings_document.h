@@ -27,7 +27,7 @@ class MockSettingsDocument : public SettingsDocument {
   BlobRef GetValue(const Key& key) const override;
   std::set<Key> GetKeys(const Key& prefix) const override;
   std::set<Key> GetDeletions(const Key& prefix) const override;
-  const VersionStamp& GetVersionStamp() const override;
+  VersionStamp GetVersionStamp() const override;
   bool HasKeysOrDeletions(const Key& prefix) const override;
 
   void SetKey(const Key& key, const std::string& value);

@@ -13,6 +13,9 @@
     {
       'target_name': 'settingsd_common',
       'type': 'static_library',
+      'dependencies': [
+        '../common-mk/external_dependencies.gyp:policy-protos',
+      ],
       'variables': {
         'dbus_adaptors_out_dir': 'include/settingsd',
         'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
@@ -23,6 +26,11 @@
         'blob_ref.h',
         'blob_store.cc',
         'blob_store.h',
+        'cros_install_attributes.cc',
+        'cros_install_attributes.h',
+        'crypto.h',
+        'crypto_openssl.cc',
+        'dbus_bindings/org.chromium.Settingsd.Settings.xml',
         'dbus_settings_service_impl.cc',
         'dbus_settings_service_impl.h',
         'file_utils.h',
@@ -32,6 +40,7 @@
         'key.h',
         'locked_settings.cc',
         'locked_settings.h',
+        'nvram.h',
         'settings_blob_parser.cc',
         'settings_blob_parser.h',
         'settings_document.cc',
@@ -80,10 +89,13 @@
       'includes': ['../common-mk/common_test.gypi'],
       'sources':[
         'blob_store_unittest.cc',
+        'cros_install_attributes_unittest.cc',
         'identifier_utils_unittest.cc',
         'key_unittest.cc',
         'mock_locked_settings.cc',
         'mock_locked_settings.h',
+        'mock_nvram.cc',
+        'mock_nvram.h',
         'mock_settings_document.cc',
         'mock_settings_document.h',
         'mock_settings_service.cc',
