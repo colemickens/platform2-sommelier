@@ -12,6 +12,10 @@
       'target_name': 'settingsd_common',
       'type': 'static_library',
       'sources': [
+        'blob_store.cc',
+        'blob_store.h',
+        'file_utils.h',
+        'file_utils_chromeos.cc',
         'identifier_utils.h',
         'key.cc',
         'key.h',
@@ -40,6 +44,7 @@
       ],
       'includes': ['../common-mk/common_test.gypi'],
       'sources':[
+        'blob_store_unittest.cc',
         'identifier_utils_unittest.cc',
         'key_unittest.cc',
         'mock_settings_document.cc',
