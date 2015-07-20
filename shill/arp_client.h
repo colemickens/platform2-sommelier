@@ -47,6 +47,8 @@ class ArpClient {
 
   virtual int socket() const { return socket_; }
 
+  bool IsStarted() { return socket_closer_.get(); }
+
  private:
   friend class ArpClientTest;
 
