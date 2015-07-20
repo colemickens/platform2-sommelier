@@ -102,7 +102,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
 
   void OnStateChanged();
   void OnRegistrationChanged(weave::RegistrationStatus status);
-  void OnConfigChanged(const weave::BuffetConfig& config);
+  void OnConfigChanged(const weave::Settings& settings);
   void UpdateWiFiBootstrapState(weave::WifiSetupState state);
   void OnPairingStart(const std::string& session_id,
                       weave::PairingType pairing_type,

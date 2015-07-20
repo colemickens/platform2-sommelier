@@ -249,7 +249,7 @@ class CloudDelegateImpl : public CloudDelegate {
     CHECK(command_owners_.erase(command->GetID()));
   }
 
-  void OnConfigChanged(const BuffetConfig&) { NotifyOnDeviceInfoChanged(); }
+  void OnConfigChanged(const Settings&) { NotifyOnDeviceInfoChanged(); }
 
   void OnRegistrationChanged(RegistrationStatus status) {
     if (status == RegistrationStatus::kUnconfigured) {

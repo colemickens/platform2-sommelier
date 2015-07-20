@@ -91,6 +91,28 @@ const char kLastConfiguredSsid[] = "last_configured_ssid";
 
 }  // namespace config_keys
 
+Settings BuffetConfig::CreateDefaultSettings() {
+  Settings result;
+  result.client_id = "58855907228.apps.googleusercontent.com";
+  result.client_secret = "eHSAREAHrIqPsHBxCE9zPPBi";
+  result.api_key = "AIzaSyDSq46gG-AxUnC3zoqD9COIPrjolFsMfMA";
+  result.oauth_url = "https://accounts.google.com/o/oauth2/";
+  result.service_url = "https://www.googleapis.com/clouddevices/v1/";
+  result.name = "Developer device";
+  result.local_anonymous_access_role = "viewer";
+  result.local_discovery_enabled = true;
+  result.local_pairing_enabled = true;
+  result.oem_name = "Chromium";
+  result.model_name = "Brillo";
+  result.model_id = "AAAAA";
+  result.device_kind = "vendor";
+  result.polling_period = base::TimeDelta::FromSeconds(7);
+  result.backup_polling_period = base::TimeDelta::FromMinutes(30);
+  result.wifi_auto_setup_enabled = true;
+  result.pairing_modes.emplace(PairingType::kPinCode);
+  return result;
+}
+
 BuffetConfig::BuffetConfig(std::unique_ptr<StorageInterface> storage)
     : storage_{std::move(storage)} {
 }
@@ -98,6 +120,16 @@ BuffetConfig::BuffetConfig(std::unique_ptr<StorageInterface> storage)
 BuffetConfig::BuffetConfig(const base::FilePath& state_path)
     : BuffetConfig{
           std::unique_ptr<StorageInterface>{new FileStorage{state_path}}} {
+}
+
+void BuffetConfig::AddOnChangedCallback(const OnChangedCallback& callback) {
+  on_changed_.push_back(callback);
+  // Force to read current state.
+  callback.Run(settings_);
+}
+
+const Settings& BuffetConfig::GetSettings() const {
+  return settings_;
 }
 
 void BuffetConfig::Load(const base::FilePath& config_path) {
@@ -113,45 +145,46 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
   Transaction change{this};
   change.save_ = false;
 
-  store.GetString(config_keys::kClientId, &client_id_);
-  CHECK(!client_id_.empty());
+  store.GetString(config_keys::kClientId, &settings_.client_id);
+  CHECK(!settings_.client_id.empty());
 
-  store.GetString(config_keys::kClientSecret, &client_secret_);
-  CHECK(!client_secret_.empty());
+  store.GetString(config_keys::kClientSecret, &settings_.client_secret);
+  CHECK(!settings_.client_secret.empty());
 
-  store.GetString(config_keys::kApiKey, &api_key_);
-  CHECK(!api_key_.empty());
+  store.GetString(config_keys::kApiKey, &settings_.api_key);
+  CHECK(!settings_.api_key.empty());
 
-  store.GetString(config_keys::kOAuthURL, &oauth_url_);
-  CHECK(!oauth_url_.empty());
+  store.GetString(config_keys::kOAuthURL, &settings_.oauth_url);
+  CHECK(!settings_.oauth_url.empty());
 
-  store.GetString(config_keys::kServiceURL, &service_url_);
-  CHECK(!service_url_.empty());
+  store.GetString(config_keys::kServiceURL, &settings_.service_url);
+  CHECK(!settings_.service_url.empty());
 
-  store.GetString(config_keys::kOemName, &oem_name_);
-  CHECK(!oem_name_.empty());
+  store.GetString(config_keys::kOemName, &settings_.oem_name);
+  CHECK(!settings_.oem_name.empty());
 
-  store.GetString(config_keys::kModelName, &model_name_);
-  CHECK(!model_name_.empty());
+  store.GetString(config_keys::kModelName, &settings_.model_name);
+  CHECK(!settings_.model_name.empty());
 
-  store.GetString(config_keys::kModelId, &model_id_);
-  device_kind_ = GetDeviceKind(model_id_);
+  store.GetString(config_keys::kModelId, &settings_.model_id);
+  settings_.device_kind = GetDeviceKind(settings_.model_id);
 
   std::string polling_period_str;
   if (store.GetString(config_keys::kPollingPeriodMs, &polling_period_str))
-    CHECK(StringToTimeDelta(polling_period_str, &polling_period_));
+    CHECK(StringToTimeDelta(polling_period_str, &settings_.polling_period));
 
   if (store.GetString(config_keys::kBackupPollingPeriodMs, &polling_period_str))
-    CHECK(StringToTimeDelta(polling_period_str, &backup_polling_period_));
+    CHECK(StringToTimeDelta(polling_period_str,
+                            &settings_.backup_polling_period));
 
   store.GetBoolean(config_keys::kWifiAutoSetupEnabled,
-                   &wifi_auto_setup_enabled_);
+                   &settings_.wifi_auto_setup_enabled);
 
   std::string embedded_code_path;
   if (store.GetString(config_keys::kEmbeddedCodePath, &embedded_code_path)) {
-    embedded_code_path_ = base::FilePath(embedded_code_path);
-    if (!embedded_code_path_.empty())
-      pairing_modes_ = {PairingType::kEmbeddedCode};
+    settings_.embedded_code_path = base::FilePath(embedded_code_path);
+    if (!settings_.embedded_code_path.empty())
+      settings_.pairing_modes = {PairingType::kEmbeddedCode};
   }
 
   std::string modes_str;
@@ -163,25 +196,26 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
       CHECK(StringToEnum(mode, &pairing_mode));
       pairing_modes.insert(pairing_mode);
     }
-    pairing_modes_ = std::move(pairing_modes);
+    settings_.pairing_modes = std::move(pairing_modes);
   }
 
   // Empty name set by user or server is allowed, still we expect some
   // meaningfull config value.
-  store.GetString(config_keys::kName, &name_);
-  CHECK(!name_.empty());
+  store.GetString(config_keys::kName, &settings_.name);
+  CHECK(!settings_.name.empty());
 
-  store.GetString(config_keys::kDescription, &description_);
-  store.GetString(config_keys::kLocation, &location_);
+  store.GetString(config_keys::kDescription, &settings_.description);
+  store.GetString(config_keys::kLocation, &settings_.location);
 
   store.GetString(config_keys::kLocalAnonymousAccessRole,
-                  &local_anonymous_access_role_);
-  CHECK(IsValidAccessRole(local_anonymous_access_role_))
-      << "Invalid role: " << local_anonymous_access_role_;
+                  &settings_.local_anonymous_access_role);
+  CHECK(IsValidAccessRole(settings_.local_anonymous_access_role))
+      << "Invalid role: " << settings_.local_anonymous_access_role;
 
   store.GetBoolean(config_keys::kLocalDiscoveryEnabled,
-                   &local_discovery_enabled_);
-  store.GetBoolean(config_keys::kLocalPairingEnabled, &local_pairing_enabled_);
+                   &settings_.local_discovery_enabled);
+  store.GetBoolean(config_keys::kLocalPairingEnabled,
+                   &settings_.local_pairing_enabled);
 
   change.LoadState();
 }
@@ -247,23 +281,25 @@ bool BuffetConfig::Save() {
   if (!storage_)
     return false;
   base::DictionaryValue dict;
-  dict.SetString(config_keys::kClientId, client_id_);
-  dict.SetString(config_keys::kClientSecret, client_secret_);
-  dict.SetString(config_keys::kApiKey, api_key_);
-  dict.SetString(config_keys::kOAuthURL, oauth_url_);
-  dict.SetString(config_keys::kServiceURL, service_url_);
-  dict.SetString(config_keys::kRefreshToken, refresh_token_);
-  dict.SetString(config_keys::kDeviceId, device_id_);
-  dict.SetString(config_keys::kRobotAccount, robot_account_);
-  dict.SetString(config_keys::kLastConfiguredSsid, last_configured_ssid_);
-  dict.SetString(config_keys::kName, name_);
-  dict.SetString(config_keys::kDescription, description_);
-  dict.SetString(config_keys::kLocation, location_);
+  dict.SetString(config_keys::kClientId, settings_.client_id);
+  dict.SetString(config_keys::kClientSecret, settings_.client_secret);
+  dict.SetString(config_keys::kApiKey, settings_.api_key);
+  dict.SetString(config_keys::kOAuthURL, settings_.oauth_url);
+  dict.SetString(config_keys::kServiceURL, settings_.service_url);
+  dict.SetString(config_keys::kRefreshToken, settings_.refresh_token);
+  dict.SetString(config_keys::kDeviceId, settings_.device_id);
+  dict.SetString(config_keys::kRobotAccount, settings_.robot_account);
+  dict.SetString(config_keys::kLastConfiguredSsid,
+                 settings_.last_configured_ssid);
+  dict.SetString(config_keys::kName, settings_.name);
+  dict.SetString(config_keys::kDescription, settings_.description);
+  dict.SetString(config_keys::kLocation, settings_.location);
   dict.SetString(config_keys::kLocalAnonymousAccessRole,
-                 local_anonymous_access_role_);
+                 settings_.local_anonymous_access_role);
   dict.SetBoolean(config_keys::kLocalDiscoveryEnabled,
-                  local_discovery_enabled_);
-  dict.SetBoolean(config_keys::kLocalPairingEnabled, local_pairing_enabled_);
+                  settings_.local_discovery_enabled);
+  dict.SetBoolean(config_keys::kLocalPairingEnabled,
+                  settings_.local_pairing_enabled);
 
   return storage_->Save(dict);
 }
@@ -278,7 +314,7 @@ bool BuffetConfig::Transaction::set_local_anonymous_access_role(
     LOG(ERROR) << "Invalid role: " << role;
     return false;
   }
-  config_->local_anonymous_access_role_ = role;
+  settings_->local_anonymous_access_role = role;
   return true;
 }
 
@@ -288,7 +324,7 @@ void BuffetConfig::Transaction::Commit() {
   if (save_)
     config_->Save();
   for (const auto& cb : config_->on_changed_)
-    cb.Run(*config_);
+    cb.Run(*settings_);
   config_ = nullptr;
 }
 

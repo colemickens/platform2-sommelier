@@ -31,7 +31,7 @@ class BuffetConfigTest : public ::testing::Test {
         base::Bind(&BuffetConfigTest::OnConfigChanged, base::Unretained(this)));
   }
 
-  MOCK_METHOD1(OnConfigChanged, void(const BuffetConfig&));
+  MOCK_METHOD1(OnConfigChanged, void(const Settings&));
 
   StorageInterface* storage_{nullptr};
   std::unique_ptr<BuffetConfig> config_;

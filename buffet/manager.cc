@@ -264,15 +264,15 @@ void Manager::OnRegistrationChanged(weave::RegistrationStatus status) {
   dbus_adaptor_.SetStatus(weave::EnumToString(status));
 }
 
-void Manager::OnConfigChanged(const weave::BuffetConfig& config) {
-  dbus_adaptor_.SetDeviceId(config.device_id());
-  dbus_adaptor_.SetOemName(config.oem_name());
-  dbus_adaptor_.SetModelName(config.model_name());
-  dbus_adaptor_.SetModelId(config.model_id());
-  dbus_adaptor_.SetName(config.name());
-  dbus_adaptor_.SetDescription(config.description());
-  dbus_adaptor_.SetLocation(config.location());
-  dbus_adaptor_.SetAnonymousAccessRole(config.local_anonymous_access_role());
+void Manager::OnConfigChanged(const weave::Settings& settings) {
+  dbus_adaptor_.SetDeviceId(settings.device_id);
+  dbus_adaptor_.SetOemName(settings.oem_name);
+  dbus_adaptor_.SetModelName(settings.model_name);
+  dbus_adaptor_.SetModelId(settings.model_id);
+  dbus_adaptor_.SetName(settings.name);
+  dbus_adaptor_.SetDescription(settings.description);
+  dbus_adaptor_.SetLocation(settings.location);
+  dbus_adaptor_.SetAnonymousAccessRole(settings.local_anonymous_access_role);
 }
 
 void Manager::UpdateWiFiBootstrapState(weave::WifiSetupState state) {
