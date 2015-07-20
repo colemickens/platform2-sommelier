@@ -1806,7 +1806,7 @@ class CommandParser(object):
   _COMMENT_RE = re.compile(r'^_COMMENT\s+(.*)')
   # Args which are handled internally by the generated method.
   _INTERNAL_ARGS = ('tag', 'Tag', 'commandSize', 'commandCode', 'responseSize',
-                    'responseCode')
+                    'responseCode', 'returnCode')
 
   def __init__(self, in_file):
     """Initializes a CommandParser instance.

@@ -13075,6 +13075,7 @@ TPM_RC Tpm::SerializeCommand_MakeCredential(
 TPM_RC Tpm::ParseResponse_MakeCredential(
       const std::string& response,
       TPM2B_ID_OBJECT* credential_blob,
+      TPM2B_ENCRYPTED_SECRET* secret,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(3) << __func__;
   VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
@@ -13161,6 +13162,14 @@ TPM_RC Tpm::ParseResponse_MakeCredential(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
+  std::string secret_bytes;
+  rc = Parse_TPM2B_ENCRYPTED_SECRET(
+      &buffer,
+      secret,
+      &secret_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
   if (tag == TPM_ST_SESSIONS) {
     CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
@@ -13185,7 +13194,8 @@ void MakeCredentialErrorCallback(
     TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code,
-               TPM2B_ID_OBJECT());
+               TPM2B_ID_OBJECT(),
+               TPM2B_ENCRYPTED_SECRET());
 }
 
 void MakeCredentialResponseParser(
@@ -13196,9 +13206,11 @@ void MakeCredentialResponseParser(
   base::Callback<void(TPM_RC)> error_reporter =
       base::Bind(MakeCredentialErrorCallback, callback);
   TPM2B_ID_OBJECT credential_blob;
+  TPM2B_ENCRYPTED_SECRET secret;
   TPM_RC rc = Tpm::ParseResponse_MakeCredential(
       response,
       &credential_blob,
+      &secret,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
     error_reporter.Run(rc);
@@ -13206,7 +13218,8 @@ void MakeCredentialResponseParser(
   }
   callback.Run(
       rc,
-      credential_blob);
+      credential_blob,
+      secret);
 }
 
 void Tpm::MakeCredential(
@@ -13244,6 +13257,7 @@ TPM_RC Tpm::MakeCredentialSync(
       const TPM2B_DIGEST& credential,
       const TPM2B_NAME& object_name,
       TPM2B_ID_OBJECT* credential_blob,
+      TPM2B_ENCRYPTED_SECRET* secret,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(1) << __func__;
   std::string command;
@@ -13261,6 +13275,7 @@ TPM_RC Tpm::MakeCredentialSync(
   rc = ParseResponse_MakeCredential(
       response,
       credential_blob,
+      secret,
       authorization_delegate);
   return rc;
 }
@@ -13990,6 +14005,7 @@ TPM_RC Tpm::ParseResponse_Duplicate(
       const std::string& response,
       TPM2B_DATA* encryption_key_out,
       TPM2B_PRIVATE* duplicate,
+      TPM2B_ENCRYPTED_SECRET* out_sym_seed,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(3) << __func__;
   VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
@@ -14084,6 +14100,14 @@ TPM_RC Tpm::ParseResponse_Duplicate(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
+  std::string out_sym_seed_bytes;
+  rc = Parse_TPM2B_ENCRYPTED_SECRET(
+      &buffer,
+      out_sym_seed,
+      &out_sym_seed_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
   if (tag == TPM_ST_SESSIONS) {
     CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
@@ -14109,7 +14133,8 @@ void DuplicateErrorCallback(
   VLOG(1) << __func__;
   callback.Run(response_code,
                TPM2B_DATA(),
-               TPM2B_PRIVATE());
+               TPM2B_PRIVATE(),
+               TPM2B_ENCRYPTED_SECRET());
 }
 
 void DuplicateResponseParser(
@@ -14121,10 +14146,12 @@ void DuplicateResponseParser(
       base::Bind(DuplicateErrorCallback, callback);
   TPM2B_DATA encryption_key_out;
   TPM2B_PRIVATE duplicate;
+  TPM2B_ENCRYPTED_SECRET out_sym_seed;
   TPM_RC rc = Tpm::ParseResponse_Duplicate(
       response,
       &encryption_key_out,
       &duplicate,
+      &out_sym_seed,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
     error_reporter.Run(rc);
@@ -14133,7 +14160,8 @@ void DuplicateResponseParser(
   callback.Run(
       rc,
       encryption_key_out,
-      duplicate);
+      duplicate,
+      out_sym_seed);
 }
 
 void Tpm::Duplicate(
@@ -14178,6 +14206,7 @@ TPM_RC Tpm::DuplicateSync(
       const TPMT_SYM_DEF_OBJECT& symmetric_alg,
       TPM2B_DATA* encryption_key_out,
       TPM2B_PRIVATE* duplicate,
+      TPM2B_ENCRYPTED_SECRET* out_sym_seed,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(1) << __func__;
   std::string command;
@@ -14198,6 +14227,7 @@ TPM_RC Tpm::DuplicateSync(
       response,
       encryption_key_out,
       duplicate,
+      out_sym_seed,
       authorization_delegate);
   return rc;
 }
@@ -14209,6 +14239,7 @@ TPM_RC Tpm::SerializeCommand_Rewrap(
       const std::string& new_parent_name,
       const TPM2B_PRIVATE& in_duplicate,
       const TPM2B_NAME& name,
+      const TPM2B_ENCRYPTED_SECRET& in_sym_seed,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(3) << __func__;
@@ -14255,6 +14286,13 @@ TPM_RC Tpm::SerializeCommand_Rewrap(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
+  std::string in_sym_seed_bytes;
+  rc = Serialize_TPM2B_ENCRYPTED_SECRET(
+      in_sym_seed,
+      &in_sym_seed_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
   if (authorization_delegate) {
     // Encrypt just the parameter data, not the size.
     std::string tmp = in_duplicate_bytes.substr(2);
@@ -14283,6 +14321,10 @@ TPM_RC Tpm::SerializeCommand_Rewrap(
                name_bytes.size());
   parameter_section_bytes += name_bytes;
   command_size += name_bytes.size();
+  hash->Update(in_sym_seed_bytes.data(),
+               in_sym_seed_bytes.size());
+  parameter_section_bytes += in_sym_seed_bytes;
+  command_size += in_sym_seed_bytes.size();
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
@@ -14337,6 +14379,7 @@ TPM_RC Tpm::SerializeCommand_Rewrap(
 TPM_RC Tpm::ParseResponse_Rewrap(
       const std::string& response,
       TPM2B_PRIVATE* out_duplicate,
+      TPM2B_ENCRYPTED_SECRET* out_sym_seed,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(3) << __func__;
   VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
@@ -14423,6 +14466,14 @@ TPM_RC Tpm::ParseResponse_Rewrap(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
+  std::string out_sym_seed_bytes;
+  rc = Parse_TPM2B_ENCRYPTED_SECRET(
+      &buffer,
+      out_sym_seed,
+      &out_sym_seed_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
   if (tag == TPM_ST_SESSIONS) {
     CHECK(authorization_delegate) << "Authorization delegate missing!";
     // Decrypt just the parameter data, not the size.
@@ -14447,7 +14498,8 @@ void RewrapErrorCallback(
     TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code,
-               TPM2B_PRIVATE());
+               TPM2B_PRIVATE(),
+               TPM2B_ENCRYPTED_SECRET());
 }
 
 void RewrapResponseParser(
@@ -14458,9 +14510,11 @@ void RewrapResponseParser(
   base::Callback<void(TPM_RC)> error_reporter =
       base::Bind(RewrapErrorCallback, callback);
   TPM2B_PRIVATE out_duplicate;
+  TPM2B_ENCRYPTED_SECRET out_sym_seed;
   TPM_RC rc = Tpm::ParseResponse_Rewrap(
       response,
       &out_duplicate,
+      &out_sym_seed,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
     error_reporter.Run(rc);
@@ -14468,7 +14522,8 @@ void RewrapResponseParser(
   }
   callback.Run(
       rc,
-      out_duplicate);
+      out_duplicate,
+      out_sym_seed);
 }
 
 void Tpm::Rewrap(
@@ -14478,6 +14533,7 @@ void Tpm::Rewrap(
       const std::string& new_parent_name,
       const TPM2B_PRIVATE& in_duplicate,
       const TPM2B_NAME& name,
+      const TPM2B_ENCRYPTED_SECRET& in_sym_seed,
       AuthorizationDelegate* authorization_delegate,
       const RewrapResponse& callback) {
   VLOG(1) << __func__;
@@ -14495,6 +14551,7 @@ void Tpm::Rewrap(
       new_parent_name,
       in_duplicate,
       name,
+      in_sym_seed,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
@@ -14511,7 +14568,9 @@ TPM_RC Tpm::RewrapSync(
       const std::string& new_parent_name,
       const TPM2B_PRIVATE& in_duplicate,
       const TPM2B_NAME& name,
+      const TPM2B_ENCRYPTED_SECRET& in_sym_seed,
       TPM2B_PRIVATE* out_duplicate,
+      TPM2B_ENCRYPTED_SECRET* out_sym_seed,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(1) << __func__;
   std::string command;
@@ -14522,6 +14581,7 @@ TPM_RC Tpm::RewrapSync(
       new_parent_name,
       in_duplicate,
       name,
+      in_sym_seed,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
@@ -14531,6 +14591,7 @@ TPM_RC Tpm::RewrapSync(
   rc = ParseResponse_Rewrap(
       response,
       out_duplicate,
+      out_sym_seed,
       authorization_delegate);
   return rc;
 }
@@ -25375,6 +25436,7 @@ TPM_RC Tpm::SerializeCommand_PolicySigned(
       const TPM2B_NONCE& nonce_tpm,
       const TPM2B_DIGEST& cp_hash_a,
       const TPM2B_NONCE& policy_ref,
+      const INT32& expiration,
       const TPMT_SIGNATURE& auth,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
@@ -25429,6 +25491,13 @@ TPM_RC Tpm::SerializeCommand_PolicySigned(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
+  std::string expiration_bytes;
+  rc = Serialize_INT32(
+      expiration,
+      &expiration_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
   std::string auth_bytes;
   rc = Serialize_TPMT_SIGNATURE(
       auth,
@@ -25468,6 +25537,10 @@ TPM_RC Tpm::SerializeCommand_PolicySigned(
                policy_ref_bytes.size());
   parameter_section_bytes += policy_ref_bytes;
   command_size += policy_ref_bytes.size();
+  hash->Update(expiration_bytes.data(),
+               expiration_bytes.size());
+  parameter_section_bytes += expiration_bytes;
+  command_size += expiration_bytes.size();
   hash->Update(auth_bytes.data(),
                auth_bytes.size());
   parameter_section_bytes += auth_bytes;
@@ -25681,6 +25754,7 @@ void Tpm::PolicySigned(
       const TPM2B_NONCE& nonce_tpm,
       const TPM2B_DIGEST& cp_hash_a,
       const TPM2B_NONCE& policy_ref,
+      const INT32& expiration,
       const TPMT_SIGNATURE& auth,
       AuthorizationDelegate* authorization_delegate,
       const PolicySignedResponse& callback) {
@@ -25700,6 +25774,7 @@ void Tpm::PolicySigned(
       nonce_tpm,
       cp_hash_a,
       policy_ref,
+      expiration,
       auth,
       &command,
       authorization_delegate);
@@ -25718,6 +25793,7 @@ TPM_RC Tpm::PolicySignedSync(
       const TPM2B_NONCE& nonce_tpm,
       const TPM2B_DIGEST& cp_hash_a,
       const TPM2B_NONCE& policy_ref,
+      const INT32& expiration,
       const TPMT_SIGNATURE& auth,
       TPM2B_TIMEOUT* timeout,
       TPMT_TK_AUTH* policy_ticket,
@@ -25732,6 +25808,7 @@ TPM_RC Tpm::PolicySignedSync(
       nonce_tpm,
       cp_hash_a,
       policy_ref,
+      expiration,
       auth,
       &command,
       authorization_delegate);
@@ -25755,6 +25832,7 @@ TPM_RC Tpm::SerializeCommand_PolicySecret(
       const TPM2B_NONCE& nonce_tpm,
       const TPM2B_DIGEST& cp_hash_a,
       const TPM2B_NONCE& policy_ref,
+      const INT32& expiration,
       std::string* serialized_command,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(3) << __func__;
@@ -25808,6 +25886,13 @@ TPM_RC Tpm::SerializeCommand_PolicySecret(
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
+  std::string expiration_bytes;
+  rc = Serialize_INT32(
+      expiration,
+      &expiration_bytes);
+  if (rc != TPM_RC_SUCCESS) {
+    return rc;
+  }
   if (authorization_delegate) {
     // Encrypt just the parameter data, not the size.
     std::string tmp = nonce_tpm_bytes.substr(2);
@@ -25840,6 +25925,10 @@ TPM_RC Tpm::SerializeCommand_PolicySecret(
                policy_ref_bytes.size());
   parameter_section_bytes += policy_ref_bytes;
   command_size += policy_ref_bytes.size();
+  hash->Update(expiration_bytes.data(),
+               expiration_bytes.size());
+  parameter_section_bytes += expiration_bytes;
+  command_size += expiration_bytes.size();
   std::string command_hash(32, 0);
   hash->Finish(string_as_array(&command_hash), command_hash.size());
   std::string authorization_section_bytes;
@@ -26049,6 +26138,7 @@ void Tpm::PolicySecret(
       const TPM2B_NONCE& nonce_tpm,
       const TPM2B_DIGEST& cp_hash_a,
       const TPM2B_NONCE& policy_ref,
+      const INT32& expiration,
       AuthorizationDelegate* authorization_delegate,
       const PolicySecretResponse& callback) {
   VLOG(1) << __func__;
@@ -26067,6 +26157,7 @@ void Tpm::PolicySecret(
       nonce_tpm,
       cp_hash_a,
       policy_ref,
+      expiration,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
@@ -26084,6 +26175,7 @@ TPM_RC Tpm::PolicySecretSync(
       const TPM2B_NONCE& nonce_tpm,
       const TPM2B_DIGEST& cp_hash_a,
       const TPM2B_NONCE& policy_ref,
+      const INT32& expiration,
       TPM2B_TIMEOUT* timeout,
       TPMT_TK_AUTH* policy_ticket,
       AuthorizationDelegate* authorization_delegate) {
@@ -26097,6 +26189,7 @@ TPM_RC Tpm::PolicySecretSync(
       nonce_tpm,
       cp_hash_a,
       policy_ref,
+      expiration,
       &command,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
@@ -35738,7 +35831,6 @@ TPM_RC Tpm::SerializeCommand_ReadClock(
 
 TPM_RC Tpm::ParseResponse_ReadClock(
       const std::string& response,
-      TPM_RC* return_code,
       TPMS_TIME_INFO* current_time,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(3) << __func__;
@@ -35818,14 +35910,6 @@ TPM_RC Tpm::ParseResponse_ReadClock(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
-  std::string return_code_bytes;
-  rc = Parse_TPM_RC(
-      &buffer,
-      return_code,
-      &return_code_bytes);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
   std::string current_time_bytes;
   rc = Parse_TPMS_TIME_INFO(
       &buffer,
@@ -35842,7 +35926,6 @@ void ReadClockErrorCallback(
     TPM_RC response_code) {
   VLOG(1) << __func__;
   callback.Run(response_code,
-               TPM_RC(),
                TPMS_TIME_INFO());
 }
 
@@ -35853,11 +35936,9 @@ void ReadClockResponseParser(
   VLOG(1) << __func__;
   base::Callback<void(TPM_RC)> error_reporter =
       base::Bind(ReadClockErrorCallback, callback);
-  TPM_RC return_code;
   TPMS_TIME_INFO current_time;
   TPM_RC rc = Tpm::ParseResponse_ReadClock(
       response,
-      &return_code,
       &current_time,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
@@ -35866,7 +35947,6 @@ void ReadClockResponseParser(
   }
   callback.Run(
       rc,
-      return_code,
       current_time);
 }
 
@@ -35892,7 +35972,6 @@ void Tpm::ReadClock(
 }
 
 TPM_RC Tpm::ReadClockSync(
-      TPM_RC* return_code,
       TPMS_TIME_INFO* current_time,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(1) << __func__;
@@ -35906,7 +35985,6 @@ TPM_RC Tpm::ReadClockSync(
   std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ReadClock(
       response,
-      return_code,
       current_time,
       authorization_delegate);
   return rc;
@@ -36013,7 +36091,6 @@ TPM_RC Tpm::SerializeCommand_ClockSet(
 
 TPM_RC Tpm::ParseResponse_ClockSet(
       const std::string& response,
-      TPM_RC* return_code,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(3) << __func__;
   VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
@@ -36092,14 +36169,6 @@ TPM_RC Tpm::ParseResponse_ClockSet(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
-  std::string return_code_bytes;
-  rc = Parse_TPM_RC(
-      &buffer,
-      return_code,
-      &return_code_bytes);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
   return TPM_RC_SUCCESS;
 }
 
@@ -36107,8 +36176,7 @@ void ClockSetErrorCallback(
     const Tpm::ClockSetResponse& callback,
     TPM_RC response_code) {
   VLOG(1) << __func__;
-  callback.Run(response_code,
-               TPM_RC());
+  callback.Run(response_code);
 }
 
 void ClockSetResponseParser(
@@ -36118,18 +36186,15 @@ void ClockSetResponseParser(
   VLOG(1) << __func__;
   base::Callback<void(TPM_RC)> error_reporter =
       base::Bind(ClockSetErrorCallback, callback);
-  TPM_RC return_code;
   TPM_RC rc = Tpm::ParseResponse_ClockSet(
       response,
-      &return_code,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
     error_reporter.Run(rc);
     return;
   }
   callback.Run(
-      rc,
-      return_code);
+      rc);
 }
 
 void Tpm::ClockSet(
@@ -36163,7 +36228,6 @@ TPM_RC Tpm::ClockSetSync(
       const TPMI_RH_PROVISION& auth,
       const std::string& auth_name,
       const UINT64& new_time,
-      TPM_RC* return_code,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(1) << __func__;
   std::string command;
@@ -36179,7 +36243,6 @@ TPM_RC Tpm::ClockSetSync(
   std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ClockSet(
       response,
-      return_code,
       authorization_delegate);
   return rc;
 }
@@ -36285,7 +36348,6 @@ TPM_RC Tpm::SerializeCommand_ClockRateAdjust(
 
 TPM_RC Tpm::ParseResponse_ClockRateAdjust(
       const std::string& response,
-      TPM_RC* return_code,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(3) << __func__;
   VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
@@ -36364,14 +36426,6 @@ TPM_RC Tpm::ParseResponse_ClockRateAdjust(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
-  std::string return_code_bytes;
-  rc = Parse_TPM_RC(
-      &buffer,
-      return_code,
-      &return_code_bytes);
-  if (rc != TPM_RC_SUCCESS) {
-    return rc;
-  }
   return TPM_RC_SUCCESS;
 }
 
@@ -36379,8 +36433,7 @@ void ClockRateAdjustErrorCallback(
     const Tpm::ClockRateAdjustResponse& callback,
     TPM_RC response_code) {
   VLOG(1) << __func__;
-  callback.Run(response_code,
-               TPM_RC());
+  callback.Run(response_code);
 }
 
 void ClockRateAdjustResponseParser(
@@ -36390,18 +36443,15 @@ void ClockRateAdjustResponseParser(
   VLOG(1) << __func__;
   base::Callback<void(TPM_RC)> error_reporter =
       base::Bind(ClockRateAdjustErrorCallback, callback);
-  TPM_RC return_code;
   TPM_RC rc = Tpm::ParseResponse_ClockRateAdjust(
       response,
-      &return_code,
       authorization_delegate);
   if (rc != TPM_RC_SUCCESS) {
     error_reporter.Run(rc);
     return;
   }
   callback.Run(
-      rc,
-      return_code);
+      rc);
 }
 
 void Tpm::ClockRateAdjust(
@@ -36435,7 +36485,6 @@ TPM_RC Tpm::ClockRateAdjustSync(
       const TPMI_RH_PROVISION& auth,
       const std::string& auth_name,
       const TPM_CLOCK_ADJUST& rate_adjust,
-      TPM_RC* return_code,
       AuthorizationDelegate* authorization_delegate) {
   VLOG(1) << __func__;
   std::string command;
@@ -36451,7 +36500,6 @@ TPM_RC Tpm::ClockRateAdjustSync(
   std::string response = transceiver_->SendCommandAndWait(command);
   rc = ParseResponse_ClockRateAdjust(
       response,
-      return_code,
       authorization_delegate);
   return rc;
 }

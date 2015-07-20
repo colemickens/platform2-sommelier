@@ -6116,7 +6116,9 @@ TPM2B_ID_OBJECT
 
 credentialBlob
 
-TPM2B_ENCRYPTED_SECRET secret
+TPM2B_ENCRYPTED_SECRET
+
+secret
 
 Page 68
 October 31, 2013
@@ -6910,7 +6912,9 @@ duplicate
 private area that may be encrypted by encryptionKeyIn;
 and may be doubly encrypted
 
-TPM2B_ENCRYPTED_SECRET outSymSeed
+TPM2B_ENCRYPTED_SECRET
+
+outSymSeed
 
 Page 78
 October 31, 2013
@@ -7261,7 +7265,9 @@ name
 
 the Name of the object being rewrapped
 
-TPM2B_ENCRYPTED_SECRET inSymSeed
+TPM2B_ENCRYPTED_SECRET
+
+inSymSeed
 
 Description
 
@@ -7294,7 +7300,9 @@ TPM2B_PRIVATE
 
 outDuplicate
 
-TPM2B_ENCRYPTED_SECRET outSymSeed
+TPM2B_ENCRYPTED_SECRET
+
+outSymSeed
 
 Page 82
 October 31, 2013

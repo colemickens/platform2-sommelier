@@ -37,7 +37,7 @@ cat $1 |
   sed 's/^Table [0-9]* . \(.*\) Response$/_OUTPUT_START \1/' |
   # Mark argument types.
   sed 's/^\(TPM[_A-Z0-9+]*\)$/_TYPE \1/' |
-  sed 's/^\(UINT[0-9]*\)$/_TYPE \1/' |
+  sed 's/^\(U*INT[0-9]*\)$/_TYPE \1/' |
   # Filter out a few special cases that look like types but are not.
   sed 's/^_TYPE TPM_ST_NO_SESSIONS$/TPM_ST_NO_SESSIONS/' |
   sed 's/^_TYPE TPM_ALG_NULL$/TPM_ALG_NULL/' |

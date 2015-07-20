@@ -124,6 +124,22 @@ TPM_RC MockTpm::CommitSync(
   return CommitSyncShort(sign_handle, param_size, p1, y2, param_size_out, k,
                          l, e, counter, authorization_delegate);
 }
+void MockTpm::PolicySigned(
+    const TPMI_DH_OBJECT& auth_object,
+    const std::string& auth_object_name,
+    const TPMI_SH_POLICY& policy_session,
+    const std::string& policy_session_name,
+    const TPM2B_NONCE& nonce_tpm,
+    const TPM2B_DIGEST& cp_hash_a,
+    const TPM2B_NONCE& policy_ref,
+    const INT32& expiration,
+    const TPMT_SIGNATURE& auth,
+    AuthorizationDelegate* authorization_delegate,
+    const PolicySignedResponse& callback) {
+  PolicySignedShort(auth_object, policy_session, nonce_tpm, cp_hash_a,
+                    policy_ref, expiration, auth, authorization_delegate,
+                    callback);
+}
 TPM_RC MockTpm::PolicySignedSync(
     const TPMI_DH_OBJECT& auth_object,
     const std::string& auth_object_name,
@@ -132,12 +148,29 @@ TPM_RC MockTpm::PolicySignedSync(
     const TPM2B_NONCE& nonce_tpm,
     const TPM2B_DIGEST& cp_hash_a,
     const TPM2B_NONCE& policy_ref,
+    const INT32& expiration,
     const TPMT_SIGNATURE& auth,
     TPM2B_TIMEOUT* timeout,
     TPMT_TK_AUTH* policy_ticket,
     AuthorizationDelegate* authorization_delegate) {
   return PolicySignedSyncShort(auth_object, policy_session, nonce_tpm,
-                               cp_hash_a, policy_ref, auth, timeout,
+                               cp_hash_a, policy_ref, expiration, auth, timeout,
+                               policy_ticket, authorization_delegate);
+}
+TPM_RC MockTpm::PolicySecretSync(
+    const TPMI_DH_ENTITY& auth_handle,
+    const std::string& auth_handle_name,
+    const TPMI_SH_POLICY& policy_session,
+    const std::string& policy_session_name,
+    const TPM2B_NONCE& nonce_tpm,
+    const TPM2B_DIGEST& cp_hash_a,
+    const TPM2B_NONCE& policy_ref,
+    const INT32& expiration,
+    TPM2B_TIMEOUT* timeout,
+    TPMT_TK_AUTH* policy_ticket,
+    AuthorizationDelegate* authorization_delegate) {
+  return PolicySecretSyncShort(auth_handle, policy_session, nonce_tpm,
+                               cp_hash_a, policy_ref, expiration, timeout,
                                policy_ticket, authorization_delegate);
 }
 void MockTpm::PolicyNV(const TPMI_RH_NV_AUTH& auth_handle,
