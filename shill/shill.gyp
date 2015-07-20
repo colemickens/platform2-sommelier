@@ -199,6 +199,7 @@
         'net/netlink_attribute.cc',
         'net/netlink_manager.cc',
         'net/netlink_message.cc',
+        'net/netlink_packet.cc',
         'net/netlink_socket.cc',
         'net/nl80211_attribute.cc',
         'net/nl80211_message.cc',
@@ -884,6 +885,7 @@
               'sources': [
                 'net/netlink_manager_unittest.cc',
                 'net/netlink_message_unittest.cc',
+                'net/netlink_packet_unittest.cc',
                 'net/netlink_socket_unittest.cc',
                 'supplicant/mock_supplicant_bss_proxy.cc',
                 'wifi/callback80211_metrics_unittest.cc',
