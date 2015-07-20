@@ -55,9 +55,6 @@ void Manager::Start(const weave::Device::Options& options,
   device_ = weave::Device::Create();
   device_->Start(options, &dbus_object_, sequencer);
 
-  device_->GetCommands()->AddOnCommandDefChanged(base::Bind(
-      &Manager::OnCommandDefsChanged, weak_ptr_factory_.GetWeakPtr()));
-
   device_->GetState()->AddOnChangedCallback(
       base::Bind(&Manager::OnStateChanged, weak_ptr_factory_.GetWeakPtr()));
 
@@ -201,23 +198,6 @@ void Manager::GetCommand(DBusMethodResponsePtr<std::string> response,
   response->Return(command_str);
 }
 
-void Manager::SetCommandVisibility(DBusMethodResponsePtr<> response,
-                                   const std::vector<std::string>& in_names,
-                                   const std::string& in_visibility) {
-  weave::CommandDefinition::Visibility visibility;
-  chromeos::ErrorPtr error;
-  if (!visibility.FromString(in_visibility, &error)) {
-    response->ReplyWithError(error.get());
-    return;
-  }
-  if (!device_->GetCommands()->SetCommandVisibility(in_names, visibility,
-                                                    &error)) {
-    response->ReplyWithError(error.get());
-    return;
-  }
-  response->Return();
-}
-
 std::string Manager::TestMethod(const std::string& message) {
   LOG(INFO) << "Received call to test method: " << message;
   return message;
@@ -269,21 +249,6 @@ bool Manager::UpdateServiceConfig(chromeos::ErrorPtr* error,
                                   const std::string& service_url) {
   return device_->GetCloud()->UpdateServiceConfig(
       client_id, client_secret, api_key, oauth_url, service_url, error);
-}
-
-void Manager::OnCommandDefsChanged() {
-  // Limit only to commands that are visible to the local clients.
-  auto commands =
-      device_->GetCommands()->GetCommandDictionary().GetCommandsAsJson(
-          [](const weave::CommandDefinition* def) {
-            return def->GetVisibility().local;
-          },
-          true, nullptr);
-  CHECK(commands);
-  std::string json;
-  base::JSONWriter::WriteWithOptions(
-      *commands, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json);
-  dbus_adaptor_.SetCommandDefs(json);
 }
 
 void Manager::OnStateChanged() {

@@ -54,23 +54,6 @@
       <arg name="json_command" type="s" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
-    <method name="SetCommandVisibility">
-      <tp:docstring>
-        Changes the visibility of command definition.
-        Parameters:
-          names       - a list of the full names of commands to update
-                        (each command name should look like 'base.identify').
-          visibility  - the new visibility state of the command:
-                        "none"  - Command is hidden/unavailable.
-                        "local" - Command is available to local clients only.
-                        "cloud" - Command is available to cloud clients only.
-                        "all"   - Command is available to both local and cloud
-                                  clients.
-      </tp:docstring>
-      <arg name="names" type="as" direction="in"/>
-      <arg name="visibility" type="s" direction="in"/>
-      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
-    </method>
     <method name="TestMethod">
       <arg name="message" type="s" direction="in"/>
       <arg name="echoed_message" type="s" direction="out"/>
@@ -129,11 +112,6 @@
     <property name="DeviceId" type="s" access="read">
       <tp:docstring>
         GCD ID if the device is registered or empty otherwise.
-      </tp:docstring>
-    </property>
-    <property name="CommandDefs" type="s" access="read">
-      <tp:docstring>
-        JSON with command definitions of the devices.
       </tp:docstring>
     </property>
     <property name="State" type="s" access="read">

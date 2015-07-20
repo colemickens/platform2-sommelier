@@ -78,9 +78,6 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
                   const std::string& in_user_role) override;
   void GetCommand(DBusMethodResponsePtr<std::string> response,
                   const std::string& id) override;
-  void SetCommandVisibility(DBusMethodResponsePtr<> response,
-                            const std::vector<std::string>& in_names,
-                            const std::string& in_visibility) override;
   std::string TestMethod(const std::string& message) override;
   bool EnableWiFiBootstrapping(
       chromeos::ErrorPtr* error,
@@ -103,7 +100,6 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   void StartPrivet(const weave::Device::Options& options,
                    chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
-  void OnCommandDefsChanged();
   void OnStateChanged();
   void OnRegistrationChanged(weave::RegistrationStatus status);
   void OnConfigChanged(const weave::BuffetConfig& config);
