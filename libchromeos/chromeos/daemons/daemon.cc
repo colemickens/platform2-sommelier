@@ -15,6 +15,7 @@
 namespace chromeos {
 
 Daemon::Daemon() : exit_code_{EX_OK} {
+  chromeos_message_loop_.SetAsCurrent();
 }
 
 Daemon::~Daemon() {
@@ -22,34 +23,19 @@ Daemon::~Daemon() {
 
 int Daemon::Run() {
   int exit_code = OnInit();
-  if (exit_code != EX_OK) {
-    quit_closure_.Reset();
+  if (exit_code != EX_OK)
     return exit_code;
-  }
 
-  // Scope.
-  {
-    // The main run loop.
-    base::RunLoop run_loop;
-    quit_closure_ = run_loop.QuitClosure();
-    run_loop.Run();
-    quit_closure_.Reset();
-  }
+  chromeos_message_loop_.Run();
 
   OnShutdown(&exit_code_);
 
-  // Scope.
-  {
-    // base::RunLoop::QuitClosure() causes the message loop to quit
-    // immediately, even if pending tasks are still queued.
-    // Run a secondary loop to make sure all those are processed.
-    // This becomes important when working with D-Bus since dbus::Bus does
-    // a bunch of clean-up tasks asynchronously when shutting down.
-    base::RunLoop run_loop;
-    quit_closure_ = run_loop.QuitClosure();
-    run_loop.RunUntilIdle();
-    quit_closure_.Reset();
-  }
+  // base::RunLoop::QuitClosure() causes the message loop to quit
+  // immediately, even if pending tasks are still queued.
+  // Run a secondary loop to make sure all those are processed.
+  // This becomes important when working with D-Bus since dbus::Bus does
+  // a bunch of clean-up tasks asynchronously when shutting down.
+  while (chromeos_message_loop_.RunOnce(false /* may_block */)) {}
 
   return exit_code_;
 }
@@ -58,7 +44,7 @@ void Daemon::Quit() { QuitWithExitCode(EX_OK); }
 
 void Daemon::QuitWithExitCode(int exit_code) {
   exit_code_ = exit_code;
-  message_loop_.PostTask(FROM_HERE, quit_closure_);
+  message_loop_.PostTask(FROM_HERE, QuitClosure());
 }
 
 void Daemon::RegisterHandler(

@@ -12,6 +12,7 @@
 #include <base/message_loop/message_loop.h>
 #include <chromeos/asynchronous_signal_handler.h>
 #include <chromeos/chromeos_export.h>
+#include <chromeos/message_loops/base_message_loop.h>
 
 struct signalfd_siginfo;
 
@@ -81,8 +82,10 @@ class CHROMEOS_EXPORT Daemon {
   // your overload.
   virtual bool OnRestart();
 
-  // Returns a delegate to Quit() method.
-  base::Closure QuitClosure() const { return quit_closure_; }
+  // Returns a delegate to Quit() method in the base::RunLoop instance.
+  base::Closure QuitClosure() const {
+    return chromeos_message_loop_.QuitClosure();
+  }
 
  private:
   // Called when SIGTERM/SIGINT signals are received.
@@ -98,8 +101,8 @@ class CHROMEOS_EXPORT Daemon {
   AsynchronousSignalHandler async_signal_handler_;
   // The main message loop for the daemon.
   base::MessageLoopForIO message_loop_;
-  // Message loop's Quit closure.
-  base::Closure quit_closure_;
+  // The chromeos wrapper for the main message loop.
+  BaseMessageLoop chromeos_message_loop_{&message_loop_};
   // Process exit code specified in QuitWithExitCode() method call.
   int exit_code_;
 

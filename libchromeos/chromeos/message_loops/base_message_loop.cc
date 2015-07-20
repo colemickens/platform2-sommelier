@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <base/bind.h>
+#include <base/run_loop.h>
 
 #include <chromeos/location_logging.h>
 
@@ -148,10 +149,13 @@ bool BaseMessageLoop::CancelTask(TaskId task_id) {
 
 bool BaseMessageLoop::RunOnce(bool may_block) {
   run_once_ = true;
+  base::RunLoop run_loop;  // Uses the base::MessageLoopForIO implicitly.
+  base_run_loop_ = &run_loop;
   if (!may_block)
-    base_loop_->RunUntilIdle();
+    run_loop.RunUntilIdle();
   else
-    base_loop_->Run();
+    run_loop.Run();
+  base_run_loop_ = nullptr;
   // If the flag was reset to false, it means a closure was run.
   if (!run_once_)
     return true;
@@ -161,11 +165,24 @@ bool BaseMessageLoop::RunOnce(bool may_block) {
 }
 
 void BaseMessageLoop::Run() {
-  base_loop_->Run();
+  base::RunLoop run_loop;  // Uses the base::MessageLoopForIO implicitly.
+  base_run_loop_ = &run_loop;
+  run_loop.Run();
+  base_run_loop_ = nullptr;
 }
 
 void BaseMessageLoop::BreakLoop() {
-  base_loop_->QuitNow();
+  if (base_run_loop_ == nullptr) {
+    DVLOG(1) << "Message loop not running, ignoring BreakLoop().";
+    return;  // Message loop not running, nothing to do.
+  }
+  base_run_loop_->Quit();
+}
+
+Closure BaseMessageLoop::QuitClosure() const {
+  if (base_run_loop_ == nullptr)
+    return base::Bind(&base::DoNothing);
+  return base_run_loop_->QuitClosure();
 }
 
 MessageLoop::TaskId BaseMessageLoop::NextTaskId() {
@@ -196,7 +213,7 @@ void BaseMessageLoop::OnRanPostedTask(MessageLoop::TaskId task_id) {
     // only once callback.
     if (run_once_) {
       run_once_ = false;
-      base_loop_->QuitNow();
+      BreakLoop();
     }
   }
   delayed_tasks_.erase(task_it);
@@ -243,7 +260,7 @@ void BaseMessageLoop::IOTask::OnFileReady(int fd) {
 
   if (loop_ptr->run_once_) {
     loop_ptr->run_once_ = false;
-    loop_ptr->base_loop_->QuitNow();
+    loop_ptr->BreakLoop();
   }
 }
 

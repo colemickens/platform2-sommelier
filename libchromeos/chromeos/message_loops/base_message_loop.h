@@ -46,6 +46,10 @@ class CHROMEOS_EXPORT BaseMessageLoop : public MessageLoop {
   void Run() override;
   void BreakLoop() override;
 
+  // Returns a callback that will quit the current message loop. If the message
+  // loop is not running, an empty (null) callback is returned.
+  base::Closure QuitClosure() const;
+
  private:
   // Called by base::MessageLoopForIO when is time to call the callback
   // scheduled with Post*Task() of id |task_id|, even if it was canceled.
@@ -109,6 +113,9 @@ class CHROMEOS_EXPORT BaseMessageLoop : public MessageLoop {
   // The pointer to the libchrome base::MessageLoopForIO we are wrapping with
   // this interface.
   base::MessageLoopForIO* base_loop_;
+
+  // The RunLoop instance used to run the main loop from Run().
+  base::RunLoop* base_run_loop_{nullptr};
 
   // We use a WeakPtrFactory to schedule tasks with the base::MessageLoopForIO
   // since we can't cancel the callbacks we have scheduled there once this
