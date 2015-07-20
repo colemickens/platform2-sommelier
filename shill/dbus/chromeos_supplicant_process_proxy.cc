@@ -19,16 +19,27 @@ static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
 }
 
+const char ChromeosSupplicantProcessProxy::kPropertyDebugLevel[] =
+    "DebugLevel";
+const char ChromeosSupplicantProcessProxy::kPropertyDebugTimestamp[] =
+    "DebugTimestamp";
+const char ChromeosSupplicantProcessProxy::kPropertyDebugShowKeys[] =
+    "DebugShowKeys";
+const char ChromeosSupplicantProcessProxy::kPropertyInterfaces[] =
+    "Interfaces";
+const char ChromeosSupplicantProcessProxy::kPropertyEapMethods[] =
+    "EapMethods";
+
 ChromeosSupplicantProcessProxy::PropertySet::PropertySet(
     dbus::ObjectProxy* object_proxy,
     const std::string& interface_name,
     const PropertyChangedCallback& callback)
     : dbus::PropertySet(object_proxy, interface_name, callback) {
-  RegisterProperty("DebugLevel", &debug_level);
-  RegisterProperty("DebugTimestamp", &debug_timestamp);
-  RegisterProperty("DebugShowKeys", &debug_show_keys);
-  RegisterProperty("Interfaces", &interfaces);
-  RegisterProperty("EapMethods", &eap_methods);
+  RegisterProperty(kPropertyDebugLevel, &debug_level);
+  RegisterProperty(kPropertyDebugTimestamp, &debug_timestamp);
+  RegisterProperty(kPropertyDebugShowKeys, &debug_show_keys);
+  RegisterProperty(kPropertyInterfaces, &interfaces);
+  RegisterProperty(kPropertyEapMethods, &eap_methods);
 }
 
 ChromeosSupplicantProcessProxy::ChromeosSupplicantProcessProxy(

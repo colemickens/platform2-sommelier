@@ -365,6 +365,9 @@
           'conditions': [
             ['USE_chromeos_dbus == 1', {
               'sources': [
+                'dbus/chromeos_supplicant_bss_proxy.cc',
+                'dbus/chromeos_supplicant_interface_proxy.cc',
+                'dbus/chromeos_supplicant_network_proxy.cc',
                 'dbus/chromeos_supplicant_process_proxy.cc',
               ],
               'actions': [
@@ -374,6 +377,7 @@
                     'proxy_output_file': 'include/supplicant/dbus-proxies.h',
                   },
                   'sources': [
+                    'dbus_bindings/supplicant-bss.xml',
                     'dbus_bindings/supplicant-interface.xml',
                     'dbus_bindings/supplicant-network.xml',
                     'dbus_bindings/supplicant-process.xml',
