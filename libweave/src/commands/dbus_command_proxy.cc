@@ -62,6 +62,10 @@ void DBusCommandProxy::OnProgressChanged() {
       ObjectToDBusVariant(command_instance_->GetProgress()));
 }
 
+void DBusCommandProxy::OnCommandDestroyed() {
+  delete this;
+}
+
 bool DBusCommandProxy::SetProgress(
     chromeos::ErrorPtr* error,
     const chromeos::VariantDictionary& progress) {

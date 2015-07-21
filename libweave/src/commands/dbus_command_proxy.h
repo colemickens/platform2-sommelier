@@ -41,6 +41,7 @@ class DBusCommandProxy : public CommandProxyInterface,
   void OnResultsChanged() override;
   void OnStatusChanged() override;
   void OnProgressChanged() override;
+  void OnCommandDestroyed() override;
 
  private:
   // Handles calls to org.chromium.Buffet.Command.SetProgress(progress).

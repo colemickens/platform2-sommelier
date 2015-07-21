@@ -944,7 +944,7 @@ void DeviceRegistrationInfo::PublishCommand(
                               state_manager_->GetStateChangeQueue(),
                               std::move(backoff_entry),
                               task_runner_}};
-    command_instance->AddProxy(std::move(cloud_proxy));
+    command_instance->AddProxy(cloud_proxy.release());
     command_manager_->AddCommand(std::move(command_instance));
   }
 }

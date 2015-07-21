@@ -111,7 +111,7 @@ class DBusCommandProxyTest : public ::testing::Test {
 
     std::unique_ptr<CommandProxyInterface> command_proxy(
         new DBusCommandProxy(nullptr, bus_, command_instance_.get(), cmd_path));
-    command_instance_->AddProxy(std::move(command_proxy));
+    command_instance_->AddProxy(command_proxy.release());
     GetCommandProxy()->RegisterAsync(
         AsyncEventSequencer::GetDefaultCompletionAction());
   }
@@ -125,7 +125,7 @@ class DBusCommandProxyTest : public ::testing::Test {
 
   DBusCommandProxy* GetCommandProxy() const {
     CHECK_EQ(command_instance_->proxies_.size(), 1U);
-    return static_cast<DBusCommandProxy*>(command_instance_->proxies_[0].get());
+    return static_cast<DBusCommandProxy*>(command_instance_->proxies_[0]);
   }
 
   org::chromium::Buffet::CommandAdaptor* GetCommandAdaptor() const {

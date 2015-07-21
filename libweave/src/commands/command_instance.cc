@@ -38,7 +38,11 @@ CommandInstance::CommandInstance(const std::string& name,
   CHECK(command_definition_);
 }
 
-CommandInstance::~CommandInstance() = default;
+CommandInstance::~CommandInstance() {
+  for (auto& proxy : proxies_) {
+    proxy->OnCommandDestroyed();
+  }
+}
 
 const std::string& CommandInstance::GetCategory() const {
   return command_definition_->GetCategory();
@@ -169,8 +173,8 @@ std::unique_ptr<base::DictionaryValue> CommandInstance::ToJson() const {
   return json;
 }
 
-void CommandInstance::AddProxy(std::unique_ptr<CommandProxyInterface> proxy) {
-  proxies_.push_back(std::move(proxy));
+void CommandInstance::AddProxy(CommandProxyInterface* proxy) {
+  proxies_.push_back(proxy);
 }
 
 bool CommandInstance::SetResults(const native_types::Object& results) {

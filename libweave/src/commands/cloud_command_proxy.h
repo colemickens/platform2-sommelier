@@ -38,6 +38,7 @@ class CloudCommandProxy final : public CommandProxyInterface {
   void OnResultsChanged() override;
   void OnStatusChanged() override;
   void OnProgressChanged() override;
+  void OnCommandDestroyed() override;
 
  private:
   using UpdateID = StateChangeQueueInterface::UpdateID;

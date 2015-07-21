@@ -50,6 +50,10 @@ void CloudCommandProxy::OnProgressChanged() {
   QueueCommandUpdate(std::move(patch));
 }
 
+void CloudCommandProxy::OnCommandDestroyed() {
+  delete this;
+}
+
 void CloudCommandProxy::QueueCommandUpdate(
     std::unique_ptr<base::DictionaryValue> patch) {
   UpdateID id = state_change_queue_->GetLastStateChangeId();

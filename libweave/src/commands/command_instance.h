@@ -83,7 +83,7 @@ class CommandInstance final : public Command {
   void SetID(const std::string& id) { id_ = id; }
   // Adds a proxy for this command.
   // The proxy object is not owned by this class.
-  void AddProxy(std::unique_ptr<CommandProxyInterface> proxy);
+  void AddProxy(CommandProxyInterface* proxy);
   // Sets the pointer to queue this command is part of.
   void SetCommandQueue(CommandQueue* queue) { queue_ = queue; }
 
@@ -142,7 +142,7 @@ class CommandInstance final : public Command {
   // Current command status.
   std::string status_ = kStatusQueued;
   // Command proxies for the command.
-  std::vector<std::unique_ptr<CommandProxyInterface>> proxies_;
+  std::vector<CommandProxyInterface*> proxies_;
   // Pointer to the command queue this command instance is added to.
   // The queue owns the command instance, so it outlives this object.
   CommandQueue* queue_ = nullptr;

@@ -21,6 +21,7 @@ class CommandProxyInterface {
   virtual void OnResultsChanged() = 0;
   virtual void OnStatusChanged() = 0;
   virtual void OnProgressChanged() = 0;
+  virtual void OnCommandDestroyed() = 0;
 };
 
 }  // namespace weave

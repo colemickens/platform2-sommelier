@@ -156,7 +156,7 @@ class CloudCommandProxyTest : public ::testing::Test {
                               &state_change_queue_,
                               std::move(backoff),
                               task_runner_}};
-    command_instance_->AddProxy(std::move(proxy));
+    command_instance_->AddProxy(proxy.release());
   }
 
   StateChangeQueueInterface::UpdateID current_state_update_id_{0};
