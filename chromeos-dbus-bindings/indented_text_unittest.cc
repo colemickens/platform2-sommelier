@@ -26,7 +26,7 @@ class IndentedTextTest : public Test {
 
 TEST_F(IndentedTextTest, Constructor) {
   EXPECT_EQ("", text_.GetContents());
-  EXPECT_EQ(0, GetOffset());
+  EXPECT_EQ(0u, GetOffset());
   EXPECT_TRUE(GetHistory().empty());
 }
 
@@ -34,14 +34,14 @@ TEST_F(IndentedTextTest, AddLine) {
   const char kTestString0[] = "test";
   text_.AddLine(kTestString0);
   EXPECT_EQ(string(kTestString0) + "\n", text_.GetContents());
-  EXPECT_EQ(0, GetOffset());
+  EXPECT_EQ(0u, GetOffset());
   EXPECT_TRUE(GetHistory().empty());
 
   const char kTestString1[] = "me";
   text_.AddLine(kTestString1);
   EXPECT_EQ(string(kTestString0) + "\n" + kTestString1 + "\n",
             text_.GetContents());
-  EXPECT_EQ(0, GetOffset());
+  EXPECT_EQ(0u, GetOffset());
   EXPECT_TRUE(GetHistory().empty());
 }
 
@@ -73,11 +73,11 @@ TEST_F(IndentedTextTest, AddBlock) {
 TEST_F(IndentedTextTest, AddBlockWithOffset) {
   const char kTestString[] = "test";
   IndentedText block;
-  const int kOffset0 = 0;
+  const size_t kOffset0 = 0;
   block.AddLineWithOffset(kTestString, kOffset0);
-  const int kOffset1 = 4;
+  const size_t kOffset1 = 4;
   block.AddLineWithOffset(kTestString, kOffset1);
-  const int kOffset2 = 20;
+  const size_t kOffset2 = 20;
   text_.AddBlockWithOffset(block, kOffset2);
   EXPECT_EQ(string(kOffset2 + kOffset0, ' ') + kTestString + "\n" +
             string(kOffset2 + kOffset1, ' ') + kTestString + "\n",
@@ -88,13 +88,13 @@ TEST_F(IndentedTextTest, PushPop) {
   const char kTestString[] = "test";
   text_.AddLine(kTestString);
 
-  const int kShift0 = 2;
+  const size_t kShift0 = 2;
   text_.PushOffset(kShift0);
-  EXPECT_EQ(2, GetOffset());
+  EXPECT_EQ(2u, GetOffset());
   EXPECT_THAT(GetHistory(), ElementsAre(kShift0));
   text_.AddLine(kTestString);
 
-  const int kShift1 = 4;
+  const size_t kShift1 = 4;
   text_.PushOffset(kShift1);
   EXPECT_EQ(kShift0 + kShift1, GetOffset());
   EXPECT_THAT(GetHistory(), ElementsAre(kShift0, kShift1));
@@ -102,12 +102,12 @@ TEST_F(IndentedTextTest, PushPop) {
 
   text_.PopOffset();
   text_.AddLine(kTestString);
-  EXPECT_EQ(2, GetOffset());
+  EXPECT_EQ(2u, GetOffset());
   EXPECT_THAT(GetHistory(), ElementsAre(kShift0));
 
   text_.PopOffset();
   text_.AddLine(kTestString);
-  EXPECT_EQ(0, GetOffset());
+  EXPECT_EQ(0u, GetOffset());
   EXPECT_TRUE(GetHistory().empty());
 
   EXPECT_EQ(string(kTestString) + "\n" +
@@ -122,11 +122,11 @@ TEST_F(IndentedTextTest, Reset) {
   text_.PushOffset(10);
   text_.AddLine("test");
   EXPECT_NE("", text_.GetContents());
-  EXPECT_NE(0, GetOffset());
+  EXPECT_NE(0u, GetOffset());
   EXPECT_FALSE(GetHistory().empty());
   text_.Reset();
   EXPECT_EQ("", text_.GetContents());
-  EXPECT_EQ(0, GetOffset());
+  EXPECT_EQ(0u, GetOffset());
   EXPECT_TRUE(GetHistory().empty());
 }
 
