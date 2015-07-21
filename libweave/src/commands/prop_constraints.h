@@ -286,8 +286,8 @@ class ConstraintStringLengthMax : public ConstraintStringLength {
 // Implementation of OneOf constraint for different data types.
 class ConstraintOneOf : public Constraint {
  public:
-  explicit ConstraintOneOf(InheritableAttribute<native_types::Array> set);
-  explicit ConstraintOneOf(native_types::Array set);
+  explicit ConstraintOneOf(InheritableAttribute<ValueVector> set);
+  explicit ConstraintOneOf(ValueVector set);
 
   // Implementation of Constraint::GetType().
   ConstraintType GetType() const override { return ConstraintType::OneOf; }
@@ -314,7 +314,7 @@ class ConstraintOneOf : public Constraint {
   // Stores the list of acceptable values for the parameter.
   // |set_.is_inherited| indicates whether the constraint is inherited
   // from base schema or overridden.
-  InheritableAttribute<native_types::Array> set_;
+  InheritableAttribute<ValueVector> set_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ConstraintOneOf);

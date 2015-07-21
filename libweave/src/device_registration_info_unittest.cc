@@ -544,7 +544,7 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   auto command = command_manager_->FindCommand("1234");
   ASSERT_NE(nullptr, command);
   StringPropType string_type;
-  native_types::Object results{
+  ValueMap results{
       {"status", string_type.CreateValue(std::string{"Ok"}, nullptr)}};
 
   // UpdateCommand when setting command results.
@@ -579,8 +579,7 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   transport_->AddHandler(command_url, chromeos::http::request_type::kPatch,
                          base::Bind(update_command_progress));
 
-  native_types::Object progress{
-      {"progress", unittests::make_int_prop_value(18)}};
+  ValueMap progress{{"progress", unittests::make_int_prop_value(18)}};
   command->SetProgress(progress);
 
   // UpdateCommand when changing command status.

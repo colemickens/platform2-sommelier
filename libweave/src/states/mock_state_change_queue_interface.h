@@ -17,8 +17,7 @@ class MockStateChangeQueueInterface : public StateChangeQueueInterface {
  public:
   MOCK_CONST_METHOD0(IsEmpty, bool());
   MOCK_METHOD2(NotifyPropertiesUpdated,
-               bool(base::Time timestamp,
-                    native_types::Object changed_properties));
+               bool(base::Time timestamp, ValueMap changed_properties));
   MOCK_METHOD0(GetAndClearRecordedStateChanges, std::vector<StateChange>());
   MOCK_CONST_METHOD0(GetLastStateChangeId, UpdateID());
   MOCK_METHOD1(MockAddOnStateUpdatedCallback,

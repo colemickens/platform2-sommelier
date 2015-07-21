@@ -71,13 +71,13 @@ class CommandInstanceTest : public ::testing::Test {
 TEST_F(CommandInstanceTest, Test) {
   StringPropType str_prop;
   IntPropType int_prop;
-  native_types::Object params;
+  ValueMap params;
   params["phrase"] = str_prop.CreateValue(std::string("iPityDaFool"), nullptr);
   params["volume"] = int_prop.CreateValue(5, nullptr);
   CommandInstance instance{
       "robot.speak", "cloud", dict_.FindCommand("robot.speak"), params};
 
-  native_types::Object results;
+  ValueMap results;
   results["foo"] = int_prop.CreateValue(239, nullptr);
   instance.SetResults(results);
 
@@ -216,13 +216,13 @@ TEST_F(CommandInstanceTest, ToJson) {
   auto instance =
       CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr, nullptr);
   instance->SetProgress(
-      native_types::Object{{"progress", unittests::make_int_prop_value(15)}});
+      ValueMap{{"progress", unittests::make_int_prop_value(15)}});
   instance->SetProgress(
-      native_types::Object{{"progress", unittests::make_int_prop_value(15)}});
+      ValueMap{{"progress", unittests::make_int_prop_value(15)}});
   instance->SetID("testId");
-  native_types::Object results;
+  ValueMap results;
   instance->SetResults(
-      native_types::Object{{"testResult", unittests::make_int_prop_value(17)}});
+      ValueMap{{"testResult", unittests::make_int_prop_value(17)}});
 
   json->MergeDictionary(CreateDictionaryValue(R"({
     'id': 'testId',

@@ -64,11 +64,11 @@ inline ValueType GetValueType<bool>() {
   return ValueType::Boolean;
 }
 template <>
-inline ValueType GetValueType<native_types::Object>() {
+inline ValueType GetValueType<ValueMap>() {
   return ValueType::Object;
 }
 template <>
-inline ValueType GetValueType<native_types::Array>() {
+inline ValueType GetValueType<ValueVector>() {
   return ValueType::Array;
 }
 
@@ -212,8 +212,7 @@ class BooleanValue final : public TypedValueBase<BooleanValue, bool> {
 };
 
 // Value of type Object.
-class ObjectValue final
-    : public TypedValueBase<ObjectValue, native_types::Object> {
+class ObjectValue final : public TypedValueBase<ObjectValue, ValueMap> {
  public:
   using Base::Base;  // Expose the custom constructor of the base class.
   ObjectValue* GetObject() override { return this; }
@@ -221,8 +220,7 @@ class ObjectValue final
 };
 
 // Value of type Array.
-class ArrayValue final
-    : public TypedValueBase<ArrayValue, native_types::Array> {
+class ArrayValue final : public TypedValueBase<ArrayValue, ValueVector> {
  public:
   using Base::Base;  // Expose the custom constructor of the base class.
   ArrayValue* GetArray() override { return this; }

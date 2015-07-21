@@ -26,7 +26,7 @@ class StatePackageTestHelper {
     return package.types_;
   }
   // Returns the all state property values in this package.
-  static const native_types::Object& GetValues(const StatePackage& package) {
+  static const ValueMap& GetValues(const StatePackage& package) {
     return package.values_;
   }
 };
@@ -54,7 +54,7 @@ inline const ObjectSchema& GetTypes(const StatePackage& package) {
   return StatePackageTestHelper::GetTypes(package);
 }
 // Returns the all state property values in this package.
-inline const native_types::Object& GetValues(const StatePackage& package) {
+inline const ValueMap& GetValues(const StatePackage& package) {
   return StatePackageTestHelper::GetValues(package);
 }
 

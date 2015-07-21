@@ -36,7 +36,7 @@ class CommandInstance final : public Command {
   CommandInstance(const std::string& name,
                   const std::string& origin,
                   const CommandDefinition* command_definition,
-                  const native_types::Object& parameters);
+                  const ValueMap& parameters);
   ~CommandInstance() override;
 
   // Command overrides.
@@ -50,9 +50,9 @@ class CommandInstance final : public Command {
   // Returns the command category.
   const std::string& GetCategory() const;
   // Returns the command parameters and their values.
-  const native_types::Object& GetParameters() const { return parameters_; }
+  const ValueMap& GetParameters() const { return parameters_; }
   // Returns the command results and their values.
-  const native_types::Object& GetResults() const { return results_; }
+  const ValueMap& GetResults() const { return results_; }
   // Finds a command parameter value by parameter |name|. If the parameter
   // with given name does not exist, returns nullptr.
   const PropValue* FindParameter(const std::string& name) const;
@@ -87,11 +87,11 @@ class CommandInstance final : public Command {
 
   // Updates the command progress. The |progress| should match the schema.
   // Returns false if |results| value is incorrect.
-  bool SetProgress(const native_types::Object& progress);
+  bool SetProgress(const ValueMap& progress);
 
   // Updates the command results. The |results| should match the schema.
   // Returns false if |results| value is incorrect.
-  bool SetResults(const native_types::Object& results);
+  bool SetResults(const ValueMap& results);
 
   // Aborts command execution.
   void Abort();
@@ -101,7 +101,7 @@ class CommandInstance final : public Command {
   void Done();
 
   // Command state getters.
-  const native_types::Object& GetProgress() const { return progress_; }
+  const ValueMap& GetProgress() const { return progress_; }
   const std::string& GetStatus() const { return status_; }
 
   // Values for command execution status.
@@ -132,11 +132,11 @@ class CommandInstance final : public Command {
   // Command definition.
   const CommandDefinition* command_definition_;
   // Command parameters and their values.
-  native_types::Object parameters_;
+  ValueMap parameters_;
   // Current command execution progress.
-  native_types::Object progress_;
+  ValueMap progress_;
   // Command results.
-  native_types::Object results_;
+  ValueMap results_;
   // Current command status.
   std::string status_ = kStatusQueued;
   // Command observer for the command.

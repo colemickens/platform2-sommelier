@@ -29,7 +29,7 @@ const char CommandInstance::kStatusExpired[] = "expired";
 CommandInstance::CommandInstance(const std::string& name,
                                  const std::string& origin,
                                  const CommandDefinition* command_definition,
-                                 const native_types::Object& parameters)
+                                 const ValueMap& parameters)
     : name_{name},
       origin_{origin},
       command_definition_{command_definition},
@@ -61,7 +61,7 @@ namespace {
 // |error|.
 bool GetCommandParameters(const base::DictionaryValue* json,
                           const CommandDefinition* command_def,
-                          native_types::Object* parameters,
+                          ValueMap* parameters,
                           chromeos::ErrorPtr* error) {
   // Get the command parameters from 'parameters' property.
   base::DictionaryValue no_params;  // Placeholder when no params are specified.
@@ -137,7 +137,7 @@ std::unique_ptr<CommandInstance> CommandInstance::FromJson(
     return instance;
   }
 
-  native_types::Object parameters;
+  ValueMap parameters;
   if (!GetCommandParameters(json, command_def, &parameters, error)) {
     chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                  errors::commands::kCommandFailed,
@@ -175,7 +175,7 @@ void CommandInstance::AddObserver(Observer* observer) {
   observers_.push_back(observer);
 }
 
-bool CommandInstance::SetResults(const native_types::Object& results) {
+bool CommandInstance::SetResults(const ValueMap& results) {
   // TODO(antonm): Add validation.
   if (results != results_) {
     results_ = results;
@@ -185,7 +185,7 @@ bool CommandInstance::SetResults(const native_types::Object& results) {
   return true;
 }
 
-bool CommandInstance::SetProgress(const native_types::Object& progress) {
+bool CommandInstance::SetProgress(const ValueMap& progress) {
   // Change status even if progress unchanged, e.g. 0% -> 0%.
   SetStatus(kStatusInProgress);
   if (progress != progress_) {

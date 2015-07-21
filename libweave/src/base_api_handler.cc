@@ -13,11 +13,11 @@ namespace weave {
 
 namespace {
 
-// Helps to get parameters from native_types::Object representing
+// Helps to get parameters from ValueMap representing
 // CommandInstance parameters.
 class ParametersReader final {
  public:
-  explicit ParametersReader(const native_types::Object* parameters)
+  explicit ParametersReader(const ValueMap* parameters)
       : parameters_{parameters} {}
 
   bool GetParameter(const std::string& name, std::string* value) const {
@@ -43,7 +43,7 @@ class ParametersReader final {
   }
 
  private:
-  const native_types::Object* parameters_;
+  const ValueMap* parameters_;
 };
 
 }  // namespace

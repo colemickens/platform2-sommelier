@@ -74,7 +74,7 @@ bool DBusCommandProxy::SetProgress(
 
   auto progress_schema =
       command_instance_->GetCommandDefinition()->GetProgress();
-  native_types::Object obj;
+  ValueMap obj;
   if (!ObjectFromDBusVariant(progress_schema, progress, &obj, error))
     return false;
 
@@ -88,7 +88,7 @@ bool DBusCommandProxy::SetResults(chromeos::ErrorPtr* error,
             << ">::SetResults()";
 
   auto results_schema = command_instance_->GetCommandDefinition()->GetResults();
-  native_types::Object obj;
+  ValueMap obj;
   if (!ObjectFromDBusVariant(results_schema, results, &obj, error))
     return false;
 

@@ -331,12 +331,12 @@ static std::unique_ptr<Constraint> LoadOneOfConstraint(
   const base::Value* list = nullptr;  // Owned by |value|
   CHECK(value->Get(commands::attributes::kOneOf_Enum, &list))
       << "'enum' property missing in JSON dictionary";
-  native_types::Array choice_list;
+  ValueVector choice_list;
   ArrayPropType array_type;
   array_type.SetItemType(prop_type->Clone());
   if (!TypedValueFromJson(list, &array_type, &choice_list, error))
     return constraint;
-  InheritableAttribute<native_types::Array> val(std::move(choice_list), false);
+  InheritableAttribute<ValueVector> val(std::move(choice_list), false);
   constraint.reset(new ConstraintOneOf{std::move(val)});
   return constraint;
 }
@@ -608,7 +608,7 @@ bool ObjectPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
 }
 
 chromeos::Any ObjectPropType::ConvertArrayToDBusVariant(
-    const native_types::Array& source) const {
+    const ValueVector& source) const {
   std::vector<chromeos::VariantDictionary> result;
   result.reserve(source.size());
   for (const auto& prop_value : source) {
@@ -620,7 +620,7 @@ chromeos::Any ObjectPropType::ConvertArrayToDBusVariant(
 
 bool ObjectPropType::ConvertDBusVariantToArray(
     const chromeos::Any& source,
-    native_types::Array* result,
+    ValueVector* result,
     chromeos::ErrorPtr* error) const {
   if (!source.IsTypeCompatible<std::vector<chromeos::VariantDictionary>>())
     return GenerateErrorValueTypeMismatch(error);

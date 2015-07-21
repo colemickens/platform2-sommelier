@@ -20,10 +20,10 @@ namespace weave {
 // |changed_properties| contains a property set with the new property values
 // which were updated at the time the event was recorded.
 struct StateChange {
-  StateChange(base::Time time, native_types::Object properties)
+  StateChange(base::Time time, ValueMap properties)
       : timestamp{time}, changed_properties{std::move(properties)} {}
   base::Time timestamp;
-  native_types::Object changed_properties;
+  ValueMap changed_properties;
 };
 
 // An abstract interface to StateChangeQueue to record and retrieve state
@@ -38,9 +38,8 @@ class StateChangeQueueInterface {
   virtual bool IsEmpty() const = 0;
 
   // Called by StateManager when device state properties are updated.
-  virtual bool NotifyPropertiesUpdated(
-      base::Time timestamp,
-      native_types::Object changed_properties) = 0;
+  virtual bool NotifyPropertiesUpdated(base::Time timestamp,
+                                       ValueMap changed_properties) = 0;
 
   // Returns the recorded state changes since last time this method was called.
   virtual std::vector<StateChange> GetAndClearRecordedStateChanges() = 0;

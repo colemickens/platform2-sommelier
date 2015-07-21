@@ -13,9 +13,8 @@ StateChangeQueue::StateChangeQueue(size_t max_queue_size)
   CHECK_GT(max_queue_size_, 0U) << "Max queue size must not be zero";
 }
 
-bool StateChangeQueue::NotifyPropertiesUpdated(
-    base::Time timestamp,
-    native_types::Object changed_properties) {
+bool StateChangeQueue::NotifyPropertiesUpdated(base::Time timestamp,
+                                               ValueMap changed_properties) {
   DCHECK(thread_checker_.CalledOnValidThread());
   auto it = state_changes_.lower_bound(timestamp);
   if (it == state_changes_.end() || it->first != timestamp) {

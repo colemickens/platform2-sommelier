@@ -27,7 +27,7 @@ using unittests::CreateDictionaryValue;
 namespace {
 
 template <typename T>
-std::vector<T> GetArrayValues(const native_types::Array& arr) {
+std::vector<T> GetArrayValues(const ValueVector& arr) {
   std::vector<T> values;
   values.reserve(arr.size());
   for (const auto& prop_value : arr) {
@@ -665,7 +665,7 @@ TEST(CommandSchema, ObjectPropType_FromJson) {
   ASSERT_NE(nullptr, prop2.GetDefaultValue());
   const ObjectValue* defval = prop2.GetDefaultValue()->GetObject();
   ASSERT_NE(nullptr, defval);
-  native_types::Object objval = defval->GetValue();
+  ValueMap objval = defval->GetValue();
   EXPECT_EQ("Bob", objval["name"]->GetString()->GetValue());
   EXPECT_EQ(33, objval["age"]->GetInt()->GetValue());
 }
@@ -739,7 +739,7 @@ TEST(CommandSchema, ObjectPropType_CreateValue) {
           "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}")
           .get(),
       nullptr, nullptr));
-  native_types::Object obj{
+  ValueMap obj{
       {"width", int_type.CreateValue(10, nullptr)},
       {"height", int_type.CreateValue(20, nullptr)},
   };
@@ -748,7 +748,7 @@ TEST(CommandSchema, ObjectPropType_CreateValue) {
   auto val = prop.CreateValue(obj, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_EQ(obj, val->GetValueAsAny().Get<native_types::Object>());
+  EXPECT_EQ(obj, val->GetValueAsAny().Get<ValueMap>());
 
   val = prop.CreateValue("blah", &error);
   EXPECT_EQ(nullptr, val.get());
@@ -873,12 +873,12 @@ TEST(CommandSchema, ArrayPropType_CreateValue) {
       nullptr, nullptr));
 
   chromeos::ErrorPtr error;
-  native_types::Array arr;
+  ValueVector arr;
 
   auto val = prop.CreateValue(arr, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_EQ(arr, val->GetValueAsAny().Get<native_types::Array>());
+  EXPECT_EQ(arr, val->GetValueAsAny().Get<ValueVector>());
   EXPECT_JSON_EQ("[]", *val->ToJson(nullptr));
 
   IntPropType int_type;
@@ -889,13 +889,13 @@ TEST(CommandSchema, ArrayPropType_CreateValue) {
           .get(),
       nullptr, nullptr));
   arr.push_back(obj_type.CreateValue(
-      native_types::Object{
+      ValueMap{
           {"width", int_type.CreateValue(10, nullptr)},
           {"height", int_type.CreateValue(20, nullptr)},
       },
       nullptr));
   arr.push_back(obj_type.CreateValue(
-      native_types::Object{
+      ValueMap{
           {"width", int_type.CreateValue(17, nullptr)},
           {"height", int_type.CreateValue(18, nullptr)},
       },
@@ -904,7 +904,7 @@ TEST(CommandSchema, ArrayPropType_CreateValue) {
   val = prop.CreateValue(arr, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_EQ(arr, val->GetValueAsAny().Get<native_types::Array>());
+  EXPECT_EQ(arr, val->GetValueAsAny().Get<ValueVector>());
   EXPECT_JSON_EQ("[{'height':20,'width':10},{'height':18,'width':17}]",
                  *val->ToJson(nullptr));
 
@@ -1295,15 +1295,15 @@ TEST(CommandSchema, ObjectSchema_UseDefaults) {
   // Omit all.
   auto value = prop.CreateValue();
   ASSERT_TRUE(value->FromJson(CreateDictionaryValue("{}").get(), nullptr));
-  native_types::Object obj = value->GetObject()->GetValue();
+  ValueMap obj = value->GetObject()->GetValue();
   EXPECT_TRUE(obj["param1"]->GetBoolean()->GetValue());
   EXPECT_EQ(2, obj["param2"]->GetInt()->GetValue());
   EXPECT_DOUBLE_EQ(3.3, obj["param3"]->GetDouble()->GetValue());
   EXPECT_EQ("four", obj["param4"]->GetString()->GetValue());
-  native_types::Object param5 = obj["param5"]->GetObject()->GetValue();
+  ValueMap param5 = obj["param5"]->GetObject()->GetValue();
   EXPECT_EQ(5, param5["x"]->GetInt()->GetValue());
   EXPECT_EQ(6, param5["y"]->GetInt()->GetValue());
-  native_types::Array param6 = obj["param6"]->GetArray()->GetValue();
+  ValueVector param6 = obj["param6"]->GetArray()->GetValue();
   EXPECT_EQ((std::vector<int>{1, 2, 3}), GetArrayValues<int>(param6));
 
   // Specify some.
@@ -1674,7 +1674,7 @@ TEST(CommandSchema, ObjectSchema_UseRequired) {
     'param4':40
   })";
   ASSERT_TRUE(value->FromJson(CreateDictionaryValue(val_json).get(), nullptr));
-  native_types::Object obj = value->GetObject()->GetValue();
+  ValueMap obj = value->GetObject()->GetValue();
   EXPECT_EQ(10, obj["param1"]->GetInt()->GetValue());
   EXPECT_EQ(20, obj["param2"]->GetInt()->GetValue());
   EXPECT_EQ(30, obj["param3"]->GetInt()->GetValue());

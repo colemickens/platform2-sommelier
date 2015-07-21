@@ -159,8 +159,7 @@ bool StateManager::SetPropertyValue(const std::string& full_property_name,
   if (!package->SetPropertyValue(property_name, value, error))
     return false;
 
-  native_types::Object prop_set{
-      {full_property_name, package->GetProperty(property_name)}};
+  ValueMap prop_set{{full_property_name, package->GetProperty(property_name)}};
   state_change_queue_->NotifyPropertiesUpdated(timestamp, prop_set);
   return true;
 }

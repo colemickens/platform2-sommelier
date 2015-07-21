@@ -97,7 +97,7 @@ class PropType {
   // by this instance of PropType into an Any containing std::vector<T>, where
   // T corresponds to the native representation of this PropType.
   virtual chromeos::Any ConvertArrayToDBusVariant(
-      const native_types::Array& source) const = 0;
+      const ValueVector& source) const = 0;
 
   // ConvertAnyToArray is the opposite of ConvertArrayToAny().
   // Given an Any containing std::vector<T>, converts each value into the
@@ -105,7 +105,7 @@ class PropType {
   // |result| array. If type conversion fails, this function returns false
   // and specifies the error details in |error|.
   virtual bool ConvertDBusVariantToArray(const chromeos::Any& source,
-                                         native_types::Array* result,
+                                         ValueVector* result,
                                          chromeos::ErrorPtr* error) const = 0;
 
   // Saves the parameter type definition as a JSON object.
@@ -238,7 +238,7 @@ class PropTypeBase : public PropType {
   }
 
   chromeos::Any ConvertArrayToDBusVariant(
-      const native_types::Array& source) const override {
+      const ValueVector& source) const override {
     std::vector<T> result;
     result.reserve(source.size());
     for (const auto& prop_value : source) {
@@ -248,7 +248,7 @@ class PropTypeBase : public PropType {
   }
 
   bool ConvertDBusVariantToArray(const chromeos::Any& source,
-                                 native_types::Array* result,
+                                 ValueVector* result,
                                  chromeos::ErrorPtr* error) const override {
     if (!source.IsTypeCompatible<std::vector<T>>())
       return GenerateErrorValueTypeMismatch(error);
@@ -348,9 +348,9 @@ class BooleanPropType
 
 // Parameter definition of Object type.
 class ObjectPropType
-    : public PropTypeBase<ObjectPropType, ObjectValue, native_types::Object> {
+    : public PropTypeBase<ObjectPropType, ObjectValue, ValueMap> {
  public:
-  using Base = PropTypeBase<ObjectPropType, ObjectValue, native_types::Object>;
+  using Base = PropTypeBase<ObjectPropType, ObjectValue, ValueMap>;
   ObjectPropType();
 
   // Overrides from the ParamType base class.
@@ -370,10 +370,10 @@ class ObjectPropType
                             chromeos::ErrorPtr* error) override;
 
   chromeos::Any ConvertArrayToDBusVariant(
-      const native_types::Array& source) const override;
+      const ValueVector& source) const override;
 
   bool ConvertDBusVariantToArray(const chromeos::Any& source,
-                                 native_types::Array* result,
+                                 ValueVector* result,
                                  chromeos::ErrorPtr* error) const override;
 
   // Returns a schema for Object-type parameter.
@@ -388,9 +388,9 @@ class ObjectPropType
 
 // Parameter definition of Array type.
 class ArrayPropType
-    : public PropTypeBase<ArrayPropType, ArrayValue, native_types::Array> {
+    : public PropTypeBase<ArrayPropType, ArrayValue, ValueVector> {
  public:
-  using Base = PropTypeBase<ArrayPropType, ArrayValue, native_types::Array>;
+  using Base = PropTypeBase<ArrayPropType, ArrayValue, ValueVector>;
   ArrayPropType();
 
   // Overrides from the ParamType base class.

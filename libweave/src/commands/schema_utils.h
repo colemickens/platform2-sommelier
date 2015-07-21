@@ -24,18 +24,17 @@ class PropValue;
 class ObjectSchema;
 class ObjectValue;
 
-namespace native_types {
 // C++ representation of object values.
-using Object = std::map<std::string, std::shared_ptr<const PropValue>>;
+using ValueMap = std::map<std::string, std::shared_ptr<const PropValue>>;
+
 // C++ representation of array of values.
-using Array = std::vector<std::shared_ptr<const PropValue>>;
-}  // namespace native_types
+using ValueVector = std::vector<std::shared_ptr<const PropValue>>;
 
 // Converts an object to string.
-std::string ToString(const native_types::Object& obj);
+std::string ToString(const ValueMap& obj);
 
 // Converts an array to string.
-std::string ToString(const native_types::Array& arr);
+std::string ToString(const ValueVector& arr);
 
 // InheritableAttribute class is used for specifying various command parameter
 // attributes that can be inherited from a base (parent) schema.
@@ -65,9 +64,9 @@ std::unique_ptr<base::Value> TypedValueToJson(double value,
                                               chromeos::ErrorPtr* error);
 std::unique_ptr<base::Value> TypedValueToJson(const std::string& value,
                                               chromeos::ErrorPtr* error);
-std::unique_ptr<base::Value> TypedValueToJson(const native_types::Object& value,
+std::unique_ptr<base::Value> TypedValueToJson(const ValueMap& value,
                                               chromeos::ErrorPtr* error);
-std::unique_ptr<base::Value> TypedValueToJson(const native_types::Array& value,
+std::unique_ptr<base::Value> TypedValueToJson(const ValueVector& value,
                                               chromeos::ErrorPtr* error);
 template <typename T>
 std::unique_ptr<base::Value> TypedValueToJson(const std::vector<T>& values,
@@ -103,17 +102,15 @@ bool TypedValueFromJson(const base::Value* value_in,
                         chromeos::ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
-                        native_types::Object* value_out,
+                        ValueMap* value_out,
                         chromeos::ErrorPtr* error);
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
-                        native_types::Array* value_out,
+                        ValueVector* value_out,
                         chromeos::ErrorPtr* error);
 
-bool operator==(const native_types::Object& obj1,
-                const native_types::Object& obj2);
-bool operator==(const native_types::Array& arr1,
-                const native_types::Array& arr2);
+bool operator==(const ValueMap& obj1, const ValueMap& obj2);
+bool operator==(const ValueVector& arr1, const ValueVector& arr2);
 
 // CompareValue is a helper function to help with implementing EqualsTo operator
 // for various data types. For most scalar types it is using operator==(),
@@ -139,16 +136,15 @@ CompareValue(const T& v1, const T& v2) {
 }
 
 // Converts PropValue to Any in a format understood by D-Bus data serialization.
-// Has special handling for Object types where native_types::Object are
+// Has special handling for Object types where ValueMap are
 // converted to chromeos::VariantDictionary.
 chromeos::Any PropValueToDBusVariant(const PropValue* value);
-// Converts native_types::Object to chromeos::VariantDictionary
+// Converts ValueMap to chromeos::VariantDictionary
 // with proper conversion of all nested properties.
-chromeos::VariantDictionary ObjectToDBusVariant(
-    const native_types::Object& object);
+chromeos::VariantDictionary ObjectToDBusVariant(const ValueMap& object);
 // Converts D-Bus variant to PropValue.
 // Has special handling for Object types where chromeos::VariantDictionary
-// is converted to native_types::Object.
+// is converted to ValueMap.
 std::unique_ptr<const PropValue> PropValueFromDBusVariant(
     const PropType* type,
     const chromeos::Any& value,
@@ -156,7 +152,7 @@ std::unique_ptr<const PropValue> PropValueFromDBusVariant(
 // Converts D-Bus variant to ObjectValue.
 bool ObjectFromDBusVariant(const ObjectSchema* object_schema,
                            const chromeos::VariantDictionary& dict,
-                           native_types::Object* obj,
+                           ValueMap* obj,
                            chromeos::ErrorPtr* error);
 
 }  // namespace weave

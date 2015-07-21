@@ -168,12 +168,9 @@ std::unique_ptr<Constraint> ConstraintStringLengthMax::CloneAsInherited()
 }
 
 // ConstraintOneOf --------------------------------------------------
-ConstraintOneOf::ConstraintOneOf(InheritableAttribute<native_types::Array> set)
-    : set_(std::move(set)) {
-}
-ConstraintOneOf::ConstraintOneOf(native_types::Array set)
-    : set_(std::move(set)) {
-}
+ConstraintOneOf::ConstraintOneOf(InheritableAttribute<ValueVector> set)
+    : set_(std::move(set)) {}
+ConstraintOneOf::ConstraintOneOf(ValueVector set) : set_(std::move(set)) {}
 
 bool ConstraintOneOf::Validate(const PropValue& value,
                                chromeos::ErrorPtr* error) const {
@@ -190,7 +187,7 @@ bool ConstraintOneOf::Validate(const PropValue& value,
 }
 
 std::unique_ptr<Constraint> ConstraintOneOf::Clone() const {
-  InheritableAttribute<native_types::Array> attr;
+  InheritableAttribute<ValueVector> attr;
   attr.is_inherited = set_.is_inherited;
   attr.value.reserve(set_.value.size());
   for (const auto& prop_value : set_.value) {
@@ -200,7 +197,7 @@ std::unique_ptr<Constraint> ConstraintOneOf::Clone() const {
 }
 
 std::unique_ptr<Constraint> ConstraintOneOf::CloneAsInherited() const {
-  native_types::Array cloned;
+  ValueVector cloned;
   cloned.reserve(set_.value.size());
   for (const auto& prop_value : set_.value) {
     cloned.push_back(prop_value->Clone());

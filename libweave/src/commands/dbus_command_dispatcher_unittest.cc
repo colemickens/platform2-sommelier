@@ -121,8 +121,7 @@ class DBusCommandDispacherTest : public testing::Test {
 
   void FinishCommand(DBusCommandProxy* proxy) { proxy->Done(); }
 
-  void SetProgress(DBusCommandProxy* proxy,
-                   const native_types::Object& progress) {
+  void SetProgress(DBusCommandProxy* proxy, const ValueMap& progress) {
     EXPECT_TRUE(proxy->SetProgress(nullptr, ObjectToDBusVariant(progress)));
   }
 
@@ -146,8 +145,7 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Shutdown) {
 
   // Two properties are set, Progress = 50%, Status = "inProgress"
   EXPECT_CALL(*mock_exported_command_proxy_, SendSignal(_)).Times(2);
-  native_types::Object progress{
-      {"progress", unittests::make_int_prop_value(50)}};
+  ValueMap progress{{"progress", unittests::make_int_prop_value(50)}};
   SetProgress(command_proxy, progress);
   EXPECT_EQ(CommandInstance::kStatusInProgress, command_instance->GetStatus());
   EXPECT_EQ(progress, command_instance->GetProgress());
@@ -182,7 +180,7 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Reboot) {
 
   // One property is set, Status = "inProgress"
   EXPECT_CALL(*mock_exported_command_proxy_, SendSignal(_)).Times(1);
-  native_types::Object progress{};
+  ValueMap progress{};
   SetProgress(command_proxy, progress);
   EXPECT_EQ(CommandInstance::kStatusInProgress, command_instance->GetStatus());
   EXPECT_EQ(progress, command_instance->GetProgress());

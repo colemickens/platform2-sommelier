@@ -52,7 +52,7 @@ TEST(CommandSchemaUtils, TypedValueToJson_Scalar) {
 
 TEST(CommandSchemaUtils, TypedValueToJson_Object) {
   IntPropType int_type;
-  native_types::Object object;
+  ValueMap object;
 
   object.insert(std::make_pair("width", int_type.CreateValue(640, nullptr)));
   object.insert(std::make_pair("height", int_type.CreateValue(480, nullptr)));
@@ -62,7 +62,7 @@ TEST(CommandSchemaUtils, TypedValueToJson_Object) {
 
 TEST(CommandSchemaUtils, TypedValueToJson_Array) {
   IntPropType int_type;
-  native_types::Array arr;
+  ValueVector arr;
 
   arr.push_back(int_type.CreateValue(640, nullptr));
   arr.push_back(int_type.CreateValue(480, nullptr));
@@ -160,7 +160,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_String) {
 }
 
 TEST(CommandSchemaUtils, TypedValueFromJson_Object) {
-  native_types::Object value;
+  ValueMap value;
   std::unique_ptr<ObjectSchema> schema{new ObjectSchema};
 
   IntPropType age_prop;
@@ -175,7 +175,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Object) {
   type.SetObjectSchema(std::move(schema));
   EXPECT_TRUE(TypedValueFromJson(CreateValue("{'age':20,'name':'Bob'}").get(),
                                  &type, &value, nullptr));
-  native_types::Object value2;
+  ValueMap value2;
   value2.insert(std::make_pair("age", age_prop.CreateValue(20, nullptr)));
   value2.insert(std::make_pair(
       "name", name_prop.CreateValue(std::string("Bob"), nullptr)));
@@ -189,7 +189,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Object) {
 }
 
 TEST(CommandSchemaUtils, TypedValueFromJson_Array) {
-  native_types::Array arr;
+  ValueVector arr;
   StringPropType str_type;
   str_type.AddLengthConstraint(3, 100);
   ArrayPropType type;
@@ -197,7 +197,7 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Array) {
 
   EXPECT_TRUE(TypedValueFromJson(CreateValue("['foo', 'bar']").get(), &type,
                                  &arr, nullptr));
-  native_types::Array arr2;
+  ValueVector arr2;
   arr2.push_back(str_type.CreateValue(std::string{"foo"}, nullptr));
   arr2.push_back(str_type.CreateValue(std::string{"bar"}, nullptr));
   EXPECT_EQ(arr2, arr);
@@ -233,7 +233,7 @@ TEST(CommandSchemaUtils, PropValueToDBusVariant) {
           "'enum':[{'width':10,'height':20},{'width':100,'height':200}]}")
           .get(),
       nullptr, nullptr));
-  native_types::Object obj{
+  ValueMap obj{
       {"width", int_type.CreateValue(10, nullptr)},
       {"height", int_type.CreateValue(20, nullptr)},
   };
@@ -245,7 +245,7 @@ TEST(CommandSchemaUtils, PropValueToDBusVariant) {
 
   ArrayPropType arr_type;
   arr_type.SetItemType(str_type.Clone());
-  native_types::Array arr;
+  ValueVector arr;
   arr.push_back(str_type.CreateValue(std::string{"foo"}, nullptr));
   arr.push_back(str_type.CreateValue(std::string{"bar"}, nullptr));
   arr.push_back(str_type.CreateValue(std::string{"baz"}, nullptr));
@@ -335,7 +335,7 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_Object) {
   };
   auto prop_value = PropValueFromDBusVariant(&obj_type, obj, nullptr);
   ASSERT_NE(nullptr, prop_value.get());
-  auto value = prop_value->GetValueAsAny().Get<native_types::Object>();
+  auto value = prop_value->GetValueAsAny().Get<ValueMap>();
   EXPECT_EQ(100, value["width"].get()->GetValueAsAny().Get<int>());
   EXPECT_EQ(200, value["height"].get()->GetValueAsAny().Get<int>());
 
@@ -355,7 +355,7 @@ TEST(CommandSchemaUtils, PropValueFromDBusVariant_Array) {
   std::vector<int> data{0, 1, 1, 100};
   auto prop_value = PropValueFromDBusVariant(&arr_type, data, nullptr);
   ASSERT_NE(nullptr, prop_value.get());
-  auto arr = prop_value->GetValueAsAny().Get<native_types::Array>();
+  auto arr = prop_value->GetValueAsAny().Get<ValueVector>();
   ASSERT_EQ(4u, arr.size());
   EXPECT_EQ(0, arr[0]->GetInt()->GetValue());
   EXPECT_EQ(1, arr[1]->GetInt()->GetValue());

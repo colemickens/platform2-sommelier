@@ -78,7 +78,7 @@ class StatePackage final {
  private:
   std::string name_;
   ObjectSchema types_;
-  native_types::Object values_;
+  ValueMap values_;
 
   friend class StatePackageTestHelper;
   DISALLOW_COPY_AND_ASSIGN(StatePackage);

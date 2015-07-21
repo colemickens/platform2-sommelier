@@ -132,7 +132,7 @@ TEST_F(StateManagerTest, LoadStateDefinition) {
 }
 
 TEST_F(StateManagerTest, SetPropertyValue) {
-  native_types::Object expected_prop_set{
+  ValueMap expected_prop_set{
       {"terminator.target", unittests::make_string_prop_value("John Connor")},
   };
   EXPECT_CALL(mock_state_change_queue_,
@@ -192,8 +192,7 @@ TEST_F(StateManagerTest, GetAndClearRecordedStateChanges) {
                                nullptr));
   std::vector<StateChange> expected_val;
   expected_val.emplace_back(
-      timestamp_,
-      native_types::Object{{"terminator.target",
+      timestamp_, ValueMap{{"terminator.target",
                             unittests::make_string_prop_value("John Connor")}});
   EXPECT_CALL(mock_state_change_queue_, GetAndClearRecordedStateChanges())
       .WillOnce(Return(expected_val));
@@ -205,7 +204,7 @@ TEST_F(StateManagerTest, GetAndClearRecordedStateChanges) {
 }
 
 TEST_F(StateManagerTest, SetProperties) {
-  native_types::Object expected_prop_set{
+  ValueMap expected_prop_set{
       {"base.manufacturer", unittests::make_string_prop_value("No Name")},
   };
   EXPECT_CALL(mock_state_change_queue_,

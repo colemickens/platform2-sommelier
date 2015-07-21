@@ -74,7 +74,7 @@ std::unique_ptr<base::Value> TypedValueToJson(const std::string& value,
   return std::unique_ptr<base::Value>(new base::StringValue(value));
 }
 
-std::unique_ptr<base::Value> TypedValueToJson(const native_types::Object& value,
+std::unique_ptr<base::Value> TypedValueToJson(const ValueMap& value,
                                               chromeos::ErrorPtr* error) {
   std::unique_ptr<base::DictionaryValue> dict(new base::DictionaryValue);
   for (const auto& pair : value) {
@@ -86,7 +86,7 @@ std::unique_ptr<base::Value> TypedValueToJson(const native_types::Object& value,
   return std::move(dict);
 }
 
-std::unique_ptr<base::Value> TypedValueToJson(const native_types::Array& value,
+std::unique_ptr<base::Value> TypedValueToJson(const ValueVector& value,
                                               chromeos::ErrorPtr* error) {
   std::unique_ptr<base::ListValue> list(new base::ListValue);
   for (const auto& item : value) {
@@ -132,7 +132,7 @@ bool TypedValueFromJson(const base::Value* value_in,
 
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
-                        native_types::Object* value_out,
+                        ValueMap* value_out,
                         chromeos::ErrorPtr* error) {
   const base::DictionaryValue* dict = nullptr;
   if (!value_in->GetAsDictionary(&dict))
@@ -202,7 +202,7 @@ bool TypedValueFromJson(const base::Value* value_in,
 
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
-                        native_types::Array* value_out,
+                        ValueVector* value_out,
                         chromeos::ErrorPtr* error) {
   const base::ListValue* list = nullptr;
   if (!value_in->GetAsList(&list))
@@ -229,13 +229,12 @@ bool TypedValueFromJson(const base::Value* value_in,
 }
 
 // Compares two sets of key-value pairs from two Objects.
-static bool obj_cmp(const native_types::Object::value_type& v1,
-                    const native_types::Object::value_type& v2) {
+static bool obj_cmp(const ValueMap::value_type& v1,
+                    const ValueMap::value_type& v2) {
   return (v1.first == v2.first) && v1.second->IsEqual(v2.second.get());
 }
 
-bool operator==(const native_types::Object& obj1,
-                const native_types::Object& obj2) {
+bool operator==(const ValueMap& obj1, const ValueMap& obj2) {
   if (obj1.size() != obj2.size())
     return false;
 
@@ -243,12 +242,11 @@ bool operator==(const native_types::Object& obj1,
   return pair == std::make_pair(obj1.end(), obj2.end());
 }
 
-bool operator==(const native_types::Array& arr1,
-                const native_types::Array& arr2) {
+bool operator==(const ValueVector& arr1, const ValueVector& arr2) {
   if (arr1.size() != arr2.size())
     return false;
 
-  using Type = const native_types::Array::value_type;
+  using Type = const ValueVector::value_type;
   // Compare two array items.
   auto arr_cmp = [](const Type& v1, const Type& v2) {
     return v1->IsEqual(v2.get());
@@ -257,14 +255,14 @@ bool operator==(const native_types::Array& arr1,
   return pair == std::make_pair(arr1.end(), arr2.end());
 }
 
-std::string ToString(const native_types::Object& obj) {
+std::string ToString(const ValueMap& obj) {
   auto val = TypedValueToJson(obj, nullptr);
   std::string str;
   base::JSONWriter::Write(*val, &str);
   return str;
 }
 
-std::string ToString(const native_types::Array& arr) {
+std::string ToString(const ValueVector& arr) {
   auto val = TypedValueToJson(arr, nullptr);
   std::string str;
   base::JSONWriter::Write(*val, &str);
@@ -283,11 +281,10 @@ chromeos::Any PropValueToDBusVariant(const PropValue* value) {
   return value->GetValueAsAny();
 }
 
-chromeos::VariantDictionary ObjectToDBusVariant(
-    const native_types::Object& object) {
+chromeos::VariantDictionary ObjectToDBusVariant(const ValueMap& object) {
   chromeos::VariantDictionary dict;
   for (const auto& pair : object) {
-    // Since we are inserting the elements from native_types::Object which is
+    // Since we are inserting the elements from ValueMap which is
     // a map, the keys are already sorted. So use the "end()" position as a hint
     // for dict.insert() so the destination map can optimize its insertion
     // time.
@@ -305,22 +302,22 @@ std::unique_ptr<const PropValue> PropValueFromDBusVariant(
   if (type->GetType() == ValueType::Array) {
     // Special case for array types.
     // We expect the |value| to contain std::vector<T>, while PropValue must use
-    // native_types::Array instead. Do the conversion.
-    native_types::Array arr;
+    // ValueVector instead. Do the conversion.
+    ValueVector arr;
     const PropType* item_type = type->GetArray()->GetItemTypePtr();
     if (item_type->ConvertDBusVariantToArray(value, &arr, error))
       result = type->CreateValue(arr, error);
   } else if (type->GetType() == ValueType::Object) {
     // Special case for object types.
     // We expect the |value| to contain chromeos::VariantDictionary, while
-    // PropValue must use native_types::Object instead. Do the conversion.
+    // PropValue must use ValueMap instead. Do the conversion.
     if (!value.IsTypeCompatible<chromeos::VariantDictionary>()) {
       type->GenerateErrorValueTypeMismatch(error);
       return result;
     }
     CHECK(nullptr != type->GetObject()->GetObjectSchemaPtr())
         << "An object type must have a schema defined for it";
-    native_types::Object obj;
+    ValueMap obj;
     if (!ObjectFromDBusVariant(type->GetObject()->GetObjectSchemaPtr(),
                                value.Get<chromeos::VariantDictionary>(), &obj,
                                error)) {
@@ -337,7 +334,7 @@ std::unique_ptr<const PropValue> PropValueFromDBusVariant(
 
 bool ObjectFromDBusVariant(const ObjectSchema* object_schema,
                            const chromeos::VariantDictionary& dict,
-                           native_types::Object* obj,
+                           ValueMap* obj,
                            chromeos::ErrorPtr* error) {
   std::set<std::string> keys_processed;
   obj->clear();

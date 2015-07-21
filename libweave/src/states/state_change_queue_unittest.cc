@@ -29,7 +29,7 @@ TEST_F(StateChangeQueueTest, Empty) {
 TEST_F(StateChangeQueueTest, UpdateOne) {
   StateChange change{
       base::Time::Now(),
-      native_types::Object{{"prop.name", unittests::make_int_prop_value(23)}}};
+      ValueMap{{"prop.name", unittests::make_int_prop_value(23)}}};
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(change.timestamp,
                                               change.changed_properties));
   EXPECT_FALSE(queue_->IsEmpty());
@@ -46,12 +46,12 @@ TEST_F(StateChangeQueueTest, UpdateOne) {
 TEST_F(StateChangeQueueTest, UpdateMany) {
   StateChange change1{
       base::Time::Now(),
-      native_types::Object{{"prop.name1", unittests::make_int_prop_value(23)}}};
+      ValueMap{{"prop.name1", unittests::make_int_prop_value(23)}}};
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(change1.timestamp,
                                               change1.changed_properties));
   StateChange change2{
       base::Time::Now(),
-      native_types::Object{
+      ValueMap{
           {"prop.name1", unittests::make_int_prop_value(17)},
           {"prop.name2", unittests::make_double_prop_value(1.0)},
           {"prop.name3", unittests::make_bool_prop_value(false)},
@@ -75,30 +75,27 @@ TEST_F(StateChangeQueueTest, GroupByTimestamp) {
   base::TimeDelta time_delta = base::TimeDelta::FromMinutes(1);
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
-      timestamp,
-      native_types::Object{{"prop.name1", unittests::make_int_prop_value(1)}}));
+      timestamp, ValueMap{{"prop.name1", unittests::make_int_prop_value(1)}}));
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
-      timestamp,
-      native_types::Object{{"prop.name2", unittests::make_int_prop_value(2)}}));
+      timestamp, ValueMap{{"prop.name2", unittests::make_int_prop_value(2)}}));
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
-      timestamp,
-      native_types::Object{{"prop.name1", unittests::make_int_prop_value(3)}}));
+      timestamp, ValueMap{{"prop.name1", unittests::make_int_prop_value(3)}}));
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
       timestamp + time_delta,
-      native_types::Object{{"prop.name1", unittests::make_int_prop_value(4)}}));
+      ValueMap{{"prop.name1", unittests::make_int_prop_value(4)}}));
 
   auto changes = queue_->GetAndClearRecordedStateChanges();
   EXPECT_EQ(4, queue_->GetLastStateChangeId());
   ASSERT_EQ(2, changes.size());
 
-  native_types::Object expected1{
+  ValueMap expected1{
       {"prop.name1", unittests::make_int_prop_value(3)},
       {"prop.name2", unittests::make_int_prop_value(2)},
   };
-  native_types::Object expected2{
+  ValueMap expected2{
       {"prop.name1", unittests::make_int_prop_value(4)},
   };
   EXPECT_EQ(timestamp, changes[0].timestamp);
@@ -114,21 +111,21 @@ TEST_F(StateChangeQueueTest, MaxQueueSize) {
   base::TimeDelta time_delta2 = base::TimeDelta::FromMinutes(3);
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
-      start_time, native_types::Object{
+      start_time, ValueMap{
                       {"prop.name1", unittests::make_int_prop_value(1)},
                       {"prop.name2", unittests::make_int_prop_value(2)},
                   }));
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
       start_time + time_delta1,
-      native_types::Object{
+      ValueMap{
           {"prop.name1", unittests::make_int_prop_value(3)},
           {"prop.name3", unittests::make_int_prop_value(4)},
       }));
 
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
       start_time + time_delta2,
-      native_types::Object{
+      ValueMap{
           {"prop.name10", unittests::make_int_prop_value(10)},
           {"prop.name11", unittests::make_int_prop_value(11)},
       }));
@@ -137,7 +134,7 @@ TEST_F(StateChangeQueueTest, MaxQueueSize) {
   auto changes = queue_->GetAndClearRecordedStateChanges();
   ASSERT_EQ(2, changes.size());
 
-  native_types::Object expected1{
+  ValueMap expected1{
       {"prop.name1", unittests::make_int_prop_value(3)},
       {"prop.name2", unittests::make_int_prop_value(2)},
       {"prop.name3", unittests::make_int_prop_value(4)},
@@ -145,7 +142,7 @@ TEST_F(StateChangeQueueTest, MaxQueueSize) {
   EXPECT_EQ(start_time + time_delta1, changes[0].timestamp);
   EXPECT_EQ(expected1, changes[0].changed_properties);
 
-  native_types::Object expected2{
+  ValueMap expected2{
       {"prop.name10", unittests::make_int_prop_value(10)},
       {"prop.name11", unittests::make_int_prop_value(11)},
   };
@@ -166,7 +163,7 @@ TEST_F(StateChangeQueueTest, ImmediateStateChangeNotification) {
 TEST_F(StateChangeQueueTest, DelayedStateChangeNotification) {
   // When queue is not empty, registering a new callback will not trigger it.
   ASSERT_TRUE(queue_->NotifyPropertiesUpdated(
-      base::Time::Now(), native_types::Object{
+      base::Time::Now(), ValueMap{
                              {"prop.name1", unittests::make_int_prop_value(1)},
                              {"prop.name2", unittests::make_int_prop_value(2)},
                          }));
