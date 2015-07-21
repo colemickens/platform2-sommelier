@@ -27,7 +27,7 @@ void DBusCommandDispacher::OnCommandAdded(CommandInstance* command_instance) {
       object_manager_.get(), object_manager_->GetBus(), command_instance,
       buffet::kCommandServicePathPrefix + std::to_string(++next_id_))};
   proxy->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
-  command_instance->AddProxy(proxy.release());
+  command_instance->AddObserver(proxy.release());
 }
 
 }  // namespace weave

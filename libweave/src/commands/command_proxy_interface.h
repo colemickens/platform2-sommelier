@@ -14,9 +14,9 @@ namespace weave {
 // This interface lets the command instance to update its proxy of command
 // state changes, so that the proxy can then notify clients of the changes over
 // their supported protocol (e.g. D-Bus).
-class CommandProxyInterface {
+class CommandObserver {
  public:
-  virtual ~CommandProxyInterface() = default;
+  virtual ~CommandObserver() = default;
 
   virtual void OnResultsChanged() = 0;
   virtual void OnStatusChanged() = 0;

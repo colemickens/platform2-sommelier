@@ -109,9 +109,9 @@ class DBusCommandProxyTest : public ::testing::Test {
     EXPECT_CALL(*mock_exported_object_command_, ExportMethod(_, _, _, _))
         .Times(AnyNumber());
 
-    std::unique_ptr<CommandProxyInterface> command_proxy(
+    std::unique_ptr<CommandObserver> command_proxy(
         new DBusCommandProxy(nullptr, bus_, command_instance_.get(), cmd_path));
-    command_instance_->AddProxy(command_proxy.release());
+    command_instance_->AddObserver(command_proxy.release());
     GetCommandProxy()->RegisterAsync(
         AsyncEventSequencer::GetDefaultCompletionAction());
   }
@@ -124,8 +124,8 @@ class DBusCommandProxyTest : public ::testing::Test {
   }
 
   DBusCommandProxy* GetCommandProxy() const {
-    CHECK_EQ(command_instance_->proxies_.size(), 1U);
-    return static_cast<DBusCommandProxy*>(command_instance_->proxies_[0]);
+    CHECK_EQ(command_instance_->observers_.size(), 1U);
+    return static_cast<DBusCommandProxy*>(command_instance_->observers_[0]);
   }
 
   org::chromium::Buffet::CommandAdaptor* GetCommandAdaptor() const {

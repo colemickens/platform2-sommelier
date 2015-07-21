@@ -25,7 +25,7 @@ namespace weave {
 class CommandInstance;
 
 // Command proxy which publishes command updates to the cloud.
-class CloudCommandProxy final : public CommandProxyInterface {
+class CloudCommandProxy final : public CommandObserver {
  public:
   CloudCommandProxy(CommandInstance* command_instance,
                     CloudCommandUpdateInterface* cloud_command_updater,

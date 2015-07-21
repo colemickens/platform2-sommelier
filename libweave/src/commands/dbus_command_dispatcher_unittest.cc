@@ -115,8 +115,8 @@ class DBusCommandDispacherTest : public testing::Test {
   }
 
   DBusCommandProxy* FindProxy(CommandInstance* command_instance) {
-    CHECK_EQ(command_instance->proxies_.size(), 1U);
-    return static_cast<DBusCommandProxy*>(command_instance->proxies_[0]);
+    CHECK_EQ(command_instance->observers_.size(), 1U);
+    return static_cast<DBusCommandProxy*>(command_instance->observers_[0]);
   }
 
   void FinishCommand(DBusCommandProxy* proxy) { proxy->Done(); }

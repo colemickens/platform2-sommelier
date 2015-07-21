@@ -25,7 +25,7 @@ namespace weave {
 
 class CommandDefinition;
 class CommandDictionary;
-class CommandProxyInterface;
+class CommandObserver;
 class CommandQueue;
 
 class CommandInstance final : public Command {
@@ -81,9 +81,9 @@ class CommandInstance final : public Command {
   // Sets the command ID (normally done by CommandQueue when the command
   // instance is added to it).
   void SetID(const std::string& id) { id_ = id; }
-  // Adds a proxy for this command.
-  // The proxy object is not owned by this class.
-  void AddProxy(CommandProxyInterface* proxy);
+  // Adds a observer for this command. The observer object is not owned by this
+  // class.
+  void AddObserver(CommandObserver* observer);
   // Sets the pointer to queue this command is part of.
   void SetCommandQueue(CommandQueue* queue) { queue_ = queue; }
 
@@ -141,8 +141,8 @@ class CommandInstance final : public Command {
   native_types::Object results_;
   // Current command status.
   std::string status_ = kStatusQueued;
-  // Command proxies for the command.
-  std::vector<CommandProxyInterface*> proxies_;
+  // Command observer for the command.
+  std::vector<CommandObserver*> observers_;
   // Pointer to the command queue this command instance is added to.
   // The queue owns the command instance, so it outlives this object.
   CommandQueue* queue_ = nullptr;

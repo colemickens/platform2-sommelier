@@ -24,7 +24,7 @@ namespace weave {
 
 class CommandInstance;
 
-class DBusCommandProxy : public CommandProxyInterface,
+class DBusCommandProxy : public CommandObserver,
                          public org::chromium::Buffet::CommandInterface {
  public:
   DBusCommandProxy(chromeos::dbus_utils::ExportedObjectManager* object_manager,

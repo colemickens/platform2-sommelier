@@ -39,9 +39,8 @@ CommandInstance::CommandInstance(const std::string& name,
 }
 
 CommandInstance::~CommandInstance() {
-  for (auto& proxy : proxies_) {
-    proxy->OnCommandDestroyed();
-  }
+  for (auto observer : observers_)
+    observer->OnCommandDestroyed();
 }
 
 const std::string& CommandInstance::GetCategory() const {
@@ -173,17 +172,16 @@ std::unique_ptr<base::DictionaryValue> CommandInstance::ToJson() const {
   return json;
 }
 
-void CommandInstance::AddProxy(CommandProxyInterface* proxy) {
-  proxies_.push_back(proxy);
+void CommandInstance::AddObserver(CommandObserver* observer) {
+  observers_.push_back(observer);
 }
 
 bool CommandInstance::SetResults(const native_types::Object& results) {
   // TODO(antonm): Add validation.
   if (results != results_) {
     results_ = results;
-    for (auto& proxy : proxies_) {
-      proxy->OnResultsChanged();
-    }
+    for (auto observer : observers_)
+      observer->OnResultsChanged();
   }
   return true;
 }
@@ -193,9 +191,8 @@ bool CommandInstance::SetProgress(const native_types::Object& progress) {
   SetStatus(kStatusInProgress);
   if (progress != progress_) {
     progress_ = progress;
-    for (auto& proxy : proxies_) {
-      proxy->OnProgressChanged();
-    }
+    for (auto observer : observers_)
+      observer->OnProgressChanged();
   }
   return true;
 }
@@ -221,9 +218,8 @@ void CommandInstance::Done() {
 void CommandInstance::SetStatus(const std::string& status) {
   if (status != status_) {
     status_ = status;
-    for (auto& proxy : proxies_) {
-      proxy->OnStatusChanged();
-    }
+    for (auto observer : observers_)
+      observer->OnStatusChanged();
   }
 }
 
