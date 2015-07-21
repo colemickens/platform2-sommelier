@@ -134,10 +134,12 @@ TEST_F(ProcessTest, BadExecutable) {
 
 void ProcessTest::CheckStderrCaptured() {
   std::string contents;
-  process_.AddArg(kBinCp);
+  process_.AddArg(kBinBash);
+  process_.AddArg("-c");
+  process_.AddArg("echo errormessage 1>&2 && exit 1");
   EXPECT_EQ(1, process_.Run());
   EXPECT_TRUE(base::ReadFileToString(FilePath(output_file_), &contents));
-  EXPECT_NE(std::string::npos, contents.find("missing file operand"));
+  EXPECT_NE(std::string::npos, contents.find("errormessage"));
   EXPECT_EQ("", GetLog());
 }
 
@@ -159,7 +161,9 @@ FilePath ProcessTest::GetFdPath(int fd) {
 TEST_F(ProcessTest, RedirectStderrUsingPipe) {
   std::string contents;
   process_.RedirectOutput("");
-  process_.AddArg(kBinCp);
+  process_.AddArg(kBinBash);
+  process_.AddArg("-c");
+  process_.AddArg("echo errormessage >&2 && exit 1");
   process_.RedirectUsingPipe(STDERR_FILENO, false);
   EXPECT_EQ(-1, process_.GetPipe(STDERR_FILENO));
   EXPECT_EQ(1, process_.Run());
@@ -168,7 +172,7 @@ TEST_F(ProcessTest, RedirectStderrUsingPipe) {
   EXPECT_EQ(-1, process_.GetPipe(STDOUT_FILENO));
   EXPECT_EQ(-1, process_.GetPipe(STDIN_FILENO));
   EXPECT_TRUE(base::ReadFileToString(GetFdPath(pipe_fd), &contents));
-  EXPECT_NE(std::string::npos, contents.find("missing file operand"));
+  EXPECT_NE(std::string::npos, contents.find("errormessage"));
   EXPECT_EQ("", GetLog());
 }
 
