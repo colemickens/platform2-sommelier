@@ -14,9 +14,7 @@
 #include <base/values.h>
 #include <chromeos/errors/error.h>
 #include <chromeos/variant_dictionary.h>
-#include <dbus/bus.h>
 
-#include "buffet/dbus-proxies.h"
 #include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/device_registration_info.h"
@@ -25,8 +23,6 @@
 
 using chromeos::ErrorPtr;
 using chromeos::VariantDictionary;
-using org::chromium::Buffet::ManagerProxy;
-using org::chromium::Buffet::ObjectManagerProxy;
 
 namespace weave {
 namespace privet {

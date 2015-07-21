@@ -6,7 +6,6 @@
 
 #include <base/logging.h>
 #include <base/values.h>
-#include <chromeos/dbus/data_serialization.h>
 
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/prop_values.h"
