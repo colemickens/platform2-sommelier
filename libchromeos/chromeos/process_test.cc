@@ -127,15 +127,6 @@ TEST_F(ProcessTest, BadOutputFile) {
   EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
 }
 
-TEST_F(ProcessTest, ExistingOutputFile) {
-  process_.AddArg(kBinEcho);
-  process_.AddArg("hello world");
-  EXPECT_FALSE(base::PathExists(FilePath(output_file_)));
-  EXPECT_EQ(0, process_.Run());
-  EXPECT_TRUE(base::PathExists(FilePath(output_file_)));
-  EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
-}
-
 TEST_F(ProcessTest, BadExecutable) {
   process_.AddArg("false");
   EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
