@@ -8,9 +8,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop/message_loop.h>
+#include <base/posix/eintr_wrapper.h>
 
 namespace {
 const int kInvalidDescriptor = -1;
@@ -19,8 +21,7 @@ const int kInvalidDescriptor = -1;
 namespace chromeos {
 
 AsynchronousSignalHandler::AsynchronousSignalHandler()
-    : fd_watcher_(new base::MessageLoopForIO::FileDescriptorWatcher),
-      descriptor_(kInvalidDescriptor) {
+    : descriptor_(kInvalidDescriptor) {
   CHECK_EQ(sigemptyset(&signal_mask_), 0) << "Failed to initialize signal mask";
   CHECK_EQ(sigemptyset(&saved_signal_mask_), 0)
       << "Failed to initialize signal mask";
@@ -28,9 +29,9 @@ AsynchronousSignalHandler::AsynchronousSignalHandler()
 
 AsynchronousSignalHandler::~AsynchronousSignalHandler() {
   if (descriptor_ != kInvalidDescriptor) {
-    fd_watcher_->StopWatchingFileDescriptor();
+    MessageLoop::current()->CancelTask(fd_watcher_task_);
 
-    if (close(descriptor_) != 0)
+    if (IGNORE_EINTR(close(descriptor_)) != 0)
       PLOG(WARNING) << "Failed to close file descriptor";
 
     descriptor_ = kInvalidDescriptor;
@@ -44,12 +45,14 @@ void AsynchronousSignalHandler::Init() {
   descriptor_ =
       signalfd(descriptor_, &signal_mask_, SFD_CLOEXEC | SFD_NONBLOCK);
   CHECK_NE(kInvalidDescriptor, descriptor_);
-  CHECK(base::MessageLoopForIO::current()->WatchFileDescriptor(
+  fd_watcher_task_ = MessageLoop::current()->WatchFileDescriptor(
+      FROM_HERE,
       descriptor_,
+      MessageLoop::WatchMode::kWatchRead,
       true,
-      base::MessageLoopForIO::WATCH_READ,
-      fd_watcher_.get(),
-      this))
+      base::Bind(&AsynchronousSignalHandler::OnFileCanReadWithoutBlocking,
+                 base::Unretained(this)));
+  CHECK(fd_watcher_task_ != MessageLoop::kTaskIdNull)
       << "Watching shutdown pipe failed.";
 }
 
@@ -68,9 +71,10 @@ void AsynchronousSignalHandler::UnregisterHandler(int signal) {
   }
 }
 
-void AsynchronousSignalHandler::OnFileCanReadWithoutBlocking(int fd) {
+void AsynchronousSignalHandler::OnFileCanReadWithoutBlocking() {
   struct signalfd_siginfo info;
-  while (base::ReadFromFD(fd, reinterpret_cast<char*>(&info), sizeof(info))) {
+  while (base::ReadFromFD(descriptor_,
+                          reinterpret_cast<char*>(&info), sizeof(info))) {
     int signal = info.ssi_signo;
     Callbacks::iterator callback_it = registered_callbacks_.find(signal);
     if (callback_it == registered_callbacks_.end()) {
@@ -85,10 +89,6 @@ void AsynchronousSignalHandler::OnFileCanReadWithoutBlocking(int fd) {
       UnregisterHandler(signal);
     }
   }
-}
-
-void AsynchronousSignalHandler::OnFileCanWriteWithoutBlocking(int fd) {
-  NOTREACHED();
 }
 
 void AsynchronousSignalHandler::ResetSignal(int signal) {

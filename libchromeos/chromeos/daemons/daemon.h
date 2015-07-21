@@ -96,13 +96,13 @@ class CHROMEOS_EXPORT Daemon {
   // |at_exit_manager_| must be first to make sure it is initialized before
   // other members, especially the |message_loop_|.
   base::AtExitManager at_exit_manager_;
-  // A helper to dispatch signal handlers asynchronously, so that the main
-  // system signal handler returns as soon as possible.
-  AsynchronousSignalHandler async_signal_handler_;
   // The main message loop for the daemon.
   base::MessageLoopForIO message_loop_;
   // The chromeos wrapper for the main message loop.
   BaseMessageLoop chromeos_message_loop_{&message_loop_};
+  // A helper to dispatch signal handlers asynchronously, so that the main
+  // system signal handler returns as soon as possible.
+  AsynchronousSignalHandler async_signal_handler_;
   // Process exit code specified in QuitWithExitCode() method call.
   int exit_code_;
 

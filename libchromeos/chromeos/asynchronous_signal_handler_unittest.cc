@@ -14,6 +14,7 @@
 #include <base/macros.h>
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
+#include <chromeos/message_loops/base_message_loop.h>
 #include <gtest/gtest.h>
 
 namespace chromeos {
@@ -23,23 +24,22 @@ class AsynchronousSignalHandlerTest : public ::testing::Test {
   AsynchronousSignalHandlerTest() {}
   virtual ~AsynchronousSignalHandlerTest() {}
 
-  virtual void SetUp() { handler_.Init(); }
+  virtual void SetUp() {
+    chromeos_loop_.SetAsCurrent();
+    handler_.Init();
+  }
 
   virtual void TearDown() {}
 
   bool RecordInfoAndQuit(bool response, const struct signalfd_siginfo& info) {
     infos_.push_back(info);
-    loop_.PostTask(FROM_HERE, base::MessageLoop::QuitClosure());
+    chromeos_loop_.PostTask(FROM_HERE, chromeos_loop_.QuitClosure());
     return response;
   }
 
-  void Run() {
-    base::RunLoop run_loop;
-    run_loop.Run();
-  }
-
  protected:
-  base::MessageLoopForIO loop_;
+  base::MessageLoopForIO base_loop_;
+  BaseMessageLoop chromeos_loop_{&base_loop_};
   std::vector<struct signalfd_siginfo> infos_;
   AsynchronousSignalHandler handler_;
 
@@ -57,7 +57,7 @@ TEST_F(AsynchronousSignalHandlerTest, CheckTerm) {
   EXPECT_EQ(0, kill(getpid(), SIGTERM));
 
   // Spin the message loop.
-  Run();
+  MessageLoop::current()->Run();
 
   ASSERT_EQ(1, infos_.size());
   EXPECT_EQ(SIGTERM, infos_[0].ssi_signo);
@@ -73,7 +73,7 @@ TEST_F(AsynchronousSignalHandlerTest, CheckSignalUnregistration) {
   EXPECT_EQ(0, kill(getpid(), SIGCHLD));
 
   // Spin the message loop.
-  Run();
+  MessageLoop::current()->Run();
 
   ASSERT_EQ(1, infos_.size());
   EXPECT_EQ(SIGCHLD, infos_[0].ssi_signo);
@@ -81,10 +81,11 @@ TEST_F(AsynchronousSignalHandlerTest, CheckSignalUnregistration) {
   EXPECT_EQ(0, kill(getpid(), SIGCHLD));
 
   // Run the loop with a timeout, as no message are expected.
-  loop_.PostDelayedTask(FROM_HERE,
-                        base::MessageLoop::QuitClosure(),
-                        base::TimeDelta::FromMilliseconds(10));
-  Run();
+  chromeos_loop_.PostDelayedTask(FROM_HERE,
+                                 base::Bind(&MessageLoop::BreakLoop,
+                                            base::Unretained(&chromeos_loop_)),
+                                 base::TimeDelta::FromMilliseconds(10));
+  MessageLoop::current()->Run();
 
   // The signal handle should have been unregistered. No new message are
   // expected.
@@ -103,7 +104,7 @@ TEST_F(AsynchronousSignalHandlerTest, CheckMultipleSignal) {
     EXPECT_EQ(0, kill(getpid(), SIGCHLD));
 
     // Spin the message loop.
-    Run();
+    MessageLoop::current()->Run();
   }
 
   ASSERT_EQ(NB_SIGNALS, infos_.size());
@@ -125,7 +126,7 @@ TEST_F(AsynchronousSignalHandlerTest, CheckChld) {
 
   EXPECT_EQ(0, infos_.size());
   // Spin the message loop.
-  Run();
+  MessageLoop::current()->Run();
 
   ASSERT_EQ(1, infos_.size());
   EXPECT_EQ(SIGCHLD, infos_[0].ssi_signo);
