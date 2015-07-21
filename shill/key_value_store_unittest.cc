@@ -154,6 +154,17 @@ TEST_F(KeyValueStoreTest, Uint16) {
   EXPECT_EQ(kValue, store_.GetUint16(kKey));
 }
 
+TEST_F(KeyValueStoreTest, Uint8) {
+  const string kKey("foo");
+  const uint8_t kValue = 123;
+  EXPECT_FALSE(store_.ContainsUint8(kKey));
+  store_.SetUint8(kKey, kValue);
+  EXPECT_TRUE(store_.ContainsUint8(kKey));
+  EXPECT_EQ(kValue, store_.GetUint8(kKey));
+  store_.RemoveUint8(kKey);
+  EXPECT_FALSE(store_.ContainsUint8(kKey));
+}
+
 TEST_F(KeyValueStoreTest, Uint8s) {
   const string kKey("foo");
   const vector<uint8_t> kValue{ 1, 2, 3 };

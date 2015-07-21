@@ -37,6 +37,7 @@ bool KeyValueStore::operator!=(const KeyValueStore& rhs) const {
 }
 
 bool KeyValueStore::ContainsBool(const string& name) const {
+  // TODO(zqiu): Replace typeid comparison with chromeos::Any::IsTypeCompatible.
   return ContainsKey(properties_, name) &&
       properties_.find(name)->second.GetType() == typeid(bool);    // NOLINT
 }
@@ -87,6 +88,11 @@ bool KeyValueStore::ContainsUint(const string& name) const {
       properties_.find(name)->second.GetType() == typeid(uint32_t);
 }
 
+bool KeyValueStore::ContainsUint8(const string& name) const {
+  return ContainsKey(properties_, name) &&
+      properties_.find(name)->second.GetType() == typeid(uint8_t);
+}
+
 bool KeyValueStore::ContainsUint16(const string& name) const {
   return ContainsKey(properties_, name) &&
       properties_.find(name)->second.GetType() == typeid(uint16_t);
@@ -104,6 +110,7 @@ bool KeyValueStore::ContainsUint32s(const string& name) const {
 
 bool KeyValueStore::GetBool(const string& name) const {
   const auto it(properties_.find(name));
+  // TODO(zqiu): Replace typeid comparison with chromeos::Any::IsTypeCompatible.
   CHECK(it != properties_.end() && it->second.GetType() == typeid(bool))
       << "for bool property " << name;
   return it->second.Get<bool>();
@@ -181,6 +188,13 @@ uint16_t KeyValueStore::GetUint16(const string& name) const {
   return it->second.Get<uint16_t>();
 }
 
+uint8_t KeyValueStore::GetUint8(const string& name) const {
+  const auto it(properties_.find(name));
+  CHECK(it != properties_.end() && it->second.GetType() == typeid(uint8_t))
+      << "for uint8 property " << name;
+  return it->second.Get<uint8_t>();
+}
+
 const vector<uint8_t>& KeyValueStore::GetUint8s(const string& name) const {
   const auto it(properties_.find(name));
   CHECK(it != properties_.end() && it->second.GetType() ==
@@ -243,6 +257,10 @@ void KeyValueStore::SetUint16(const string& name, uint16_t value) {
   properties_[name] = chromeos::Any(value);
 }
 
+void KeyValueStore::SetUint8(const string& name, uint8_t value) {
+  properties_[name] = chromeos::Any(value);
+}
+
 void KeyValueStore::SetUint8s(const string& name,
                               const vector<uint8_t>& value) {
   properties_[name] = chromeos::Any(value);
@@ -286,6 +304,10 @@ void KeyValueStore::RemoveStrings(const string& name) {
 }
 
 void KeyValueStore::RemoveUint16(const string& name) {
+  properties_.erase(name);
+}
+
+void KeyValueStore::RemoveUint8(const string& name) {
   properties_.erase(name);
 }
 

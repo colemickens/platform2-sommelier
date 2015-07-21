@@ -50,6 +50,7 @@ class KeyValueStore {
   bool ContainsStrings(const std::string& name) const;
   bool ContainsUint(const std::string& name) const;
   bool ContainsUint16(const std::string& name) const;
+  bool ContainsUint8(const std::string& name) const;
   bool ContainsUint8s(const std::string& name) const;
   bool ContainsUint32s(const std::string& name) const;
 
@@ -66,9 +67,13 @@ class KeyValueStore {
   const std::vector<std::string>& GetStrings(const std::string& name) const;
   uint32_t GetUint(const std::string& name) const;
   uint16_t GetUint16(const std::string& name) const;
+  uint8_t GetUint8(const std::string& name) const;
   const std::vector<uint8_t>& GetUint8s(const std::string& name) const;
   const std::vector<uint32_t>& GetUint32s(const std::string& name) const;
 
+  // TODO(zqiu): remove type specific set functions and add a generic set
+  // function instead.  This way, we don't need to add new functions every
+  // time we need to support a new type.
   void SetBool(const std::string& name, bool value);
   void SetByteArrays(const std::string& name,
                      const std::vector<std::vector<uint8_t>>& value);
@@ -83,9 +88,12 @@ class KeyValueStore {
                   const std::vector<std::string>& value);
   void SetUint(const std::string& name, uint32_t value);
   void SetUint16(const std::string& name, uint16_t value);
+  void SetUint8(const std::string& name, uint8_t value);
   void SetUint8s(const std::string& name, const std::vector<uint8_t>& value);
   void SetUint32s(const std::string& name, const std::vector<uint32_t>& value);
 
+  // TODO(zqiu): remove type specific remove functions and add a generic remove
+  // function instead.
   void RemoveString(const std::string& name);
   void RemoveStringmap(const std::string& name);
   void RemoveStrings(const std::string& name);
@@ -95,6 +103,7 @@ class KeyValueStore {
   void RemoveRpcIdentifier(const std::string& name);
   void RemoveByteArrays(const std::string& name);
   void RemoveUint16(const std::string& name);
+  void RemoveUint8(const std::string& name);
   void RemoveUint8s(const std::string& name);
   void RemoveUint32s(const std::string& name);
 

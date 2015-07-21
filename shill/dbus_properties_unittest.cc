@@ -54,6 +54,8 @@ TEST_F(DBusPropertiesTest, ConvertKeyValueStoreToMap) {
   static const char kRpcIdentifierValue[] = "/org/chromium/test";
   static const char kUint16Key[] = "Uint16Key";
   const uint16_t kUint16Value = 123;
+  static const char kUint8Key[] = "Uint8Key";
+  const uint8_t kUint8Value = 123;
   static const char kUint8sKey[] = "Uint8sKey";
   const vector<uint8_t> kUint8sValue{ 1, 2 };
   static const char kUint32sKey[] = "Uint32sKey";
@@ -75,6 +77,7 @@ TEST_F(DBusPropertiesTest, ConvertKeyValueStoreToMap) {
   store.SetInt16(kInt16Key, kInt16Value);
   store.SetRpcIdentifier(kRpcIdentifierKey, kRpcIdentifierValue);
   store.SetUint16(kUint16Key, kUint16Value);
+  store.SetUint8(kUint8Key, kUint8Value);
   store.SetUint8s(kUint8sKey, kUint8sValue);
   store.SetUint32s(kUint32sKey, kUint32sValue);
   store.SetKeyValueStore(kKeyValueStoreKey, nested_store);
@@ -82,7 +85,7 @@ TEST_F(DBusPropertiesTest, ConvertKeyValueStoreToMap) {
   DBusPropertiesMap props;
   props["RandomKey"].writer().append_string("RandomValue");
   DBusProperties::ConvertKeyValueStoreToMap(store, &props);
-  EXPECT_EQ(13, props.size());
+  EXPECT_EQ(14, props.size());
   string string_value;
   EXPECT_TRUE(DBusProperties::GetString(props, kStringKey, &string_value));
   EXPECT_EQ(kStringValue, string_value);
@@ -120,6 +123,10 @@ TEST_F(DBusPropertiesTest, ConvertKeyValueStoreToMap) {
   EXPECT_TRUE(
       DBusProperties::GetUint16(props, kUint16Key, &uint16_value));
   EXPECT_EQ(kUint16Value, uint16_value);
+  uint8_t uint8_value = ~kUint8Value;
+  EXPECT_TRUE(
+      DBusProperties::GetUint8(props, kUint8Key, &uint8_value));
+  EXPECT_EQ(kUint8Value, uint8_value);
   vector<uint8_t> uint8s_value;
   EXPECT_TRUE(
       DBusProperties::GetUint8s(props, kUint8sKey, &uint8s_value));
@@ -162,6 +169,8 @@ TEST_F(DBusPropertiesTest, ConvertMapToKeyValueStore) {
   static const char kRpcIdentifierValue[] = "/org/chromium/test";
   static const char kUint16Key[] = "Uint16Key";
   const uint16_t kUint16Value = 123;
+  static const char kUint8Key[] = "Uint8Key";
+  const uint8_t kUint8Value = 123;
   static const char kUint8sKey[] = "Uint8sKey";
   const vector<uint8_t> kUint8sValue{ 1, 2 };
   static const char kUint32sKey[] = "Uint32sKey";
@@ -190,6 +199,7 @@ TEST_F(DBusPropertiesTest, ConvertMapToKeyValueStore) {
   props[kInt16Key].writer().append_int16(kInt16Value);
   props[kRpcIdentifierKey].writer().append_path(kRpcIdentifierValue);
   props[kUint16Key].writer().append_uint16(kUint16Value);
+  props[kUint8Key].writer().append_byte(kUint8Value);
   {
     DBus::MessageIter writer = props[kUint8sKey].writer();
     writer << kUint8sValue;
@@ -228,6 +238,8 @@ TEST_F(DBusPropertiesTest, ConvertMapToKeyValueStore) {
   EXPECT_EQ(kRpcIdentifierValue, store.GetRpcIdentifier(kRpcIdentifierKey));
   EXPECT_TRUE(store.ContainsUint16(kUint16Key));
   EXPECT_EQ(kUint16Value, store.GetUint16(kUint16Key));
+  EXPECT_TRUE(store.ContainsUint8(kUint8Key));
+  EXPECT_EQ(kUint8Value, store.GetUint8(kUint8Key));
   EXPECT_TRUE(store.ContainsUint8s(kUint8sKey));
   EXPECT_EQ(kUint8sValue, store.GetUint8s(kUint8sKey));
   EXPECT_TRUE(store.ContainsUint32s(kUint32sKey));

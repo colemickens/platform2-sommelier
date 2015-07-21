@@ -215,6 +215,9 @@ void DBusProperties::ConvertKeyValueStoreToMap(
     } else if (key_value_pair.second.GetType() == typeid(uint16_t)) {
       (*properties)[key_value_pair.first].writer()
           .append_uint16(key_value_pair.second.Get<uint16_t>());
+    } else if (key_value_pair.second.GetType() == typeid(uint8_t)) {
+      (*properties)[key_value_pair.first].writer()
+          .append_byte(key_value_pair.second.Get<uint8_t>());
     } else if (key_value_pair.second.GetType() == typeid(vector<uint8_t>)) {
       DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
       writer << key_value_pair.second.Get<vector<uint8_t>>();
@@ -305,6 +308,10 @@ void DBusProperties::ConvertMapToKeyValueStore(
         ::DBus::type<uint16_t>::sig()) {
       SLOG(DBus, nullptr, 5) << "Got uint16_t property " << key;
       store->SetUint16(key, key_value_pair.second.reader().get_uint16());
+    } else if (key_value_pair.second.signature() ==
+        ::DBus::type<uint8_t>::sig()) {
+      SLOG(DBus, nullptr, 5) << "Got uint8_t property " << key;
+      store->SetUint8(key, key_value_pair.second.reader().get_byte());
     } else if (key_value_pair.second.signature() ==
         ::DBus::type<vector<uint8_t>>::sig()) {
       SLOG(DBus, nullptr, 5) << "Got vector<uint8_t> property " << key;
