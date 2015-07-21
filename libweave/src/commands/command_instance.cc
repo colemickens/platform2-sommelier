@@ -10,7 +10,6 @@
 
 #include "libweave/src/commands/command_definition.h"
 #include "libweave/src/commands/command_dictionary.h"
-#include "libweave/src/commands/command_proxy_interface.h"
 #include "libweave/src/commands/command_queue.h"
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/schema_constants.h"
@@ -172,7 +171,7 @@ std::unique_ptr<base::DictionaryValue> CommandInstance::ToJson() const {
   return json;
 }
 
-void CommandInstance::AddObserver(CommandObserver* observer) {
+void CommandInstance::AddObserver(Observer* observer) {
   observers_.push_back(observer);
 }
 

@@ -109,7 +109,7 @@ class DBusCommandProxyTest : public ::testing::Test {
     EXPECT_CALL(*mock_exported_object_command_, ExportMethod(_, _, _, _))
         .Times(AnyNumber());
 
-    std::unique_ptr<CommandObserver> command_proxy(
+    std::unique_ptr<Command::Observer> command_proxy(
         new DBusCommandProxy(nullptr, bus_, command_instance_.get(), cmd_path));
     command_instance_->AddObserver(command_proxy.release());
     GetCommandProxy()->RegisterAsync(

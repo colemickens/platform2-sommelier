@@ -12,7 +12,7 @@
 #include <chromeos/dbus/dbus_object.h>
 
 #include "buffet/org.chromium.Buffet.Command.h"
-#include "libweave/src/commands/command_proxy_interface.h"
+#include "weave/command.h"
 
 namespace chromeos {
 namespace dbus_utils {
@@ -24,7 +24,7 @@ namespace weave {
 
 class CommandInstance;
 
-class DBusCommandProxy : public CommandObserver,
+class DBusCommandProxy : public Command::Observer,
                          public org::chromium::Buffet::CommandInterface {
  public:
   DBusCommandProxy(chromeos::dbus_utils::ExportedObjectManager* object_manager,

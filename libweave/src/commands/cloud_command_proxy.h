@@ -17,15 +17,15 @@
 #include <chromeos/backoff_entry.h>
 
 #include "libweave/src/commands/cloud_command_update_interface.h"
-#include "libweave/src/commands/command_proxy_interface.h"
 #include "libweave/src/states/state_change_queue_interface.h"
+#include "weave/command.h"
 
 namespace weave {
 
 class CommandInstance;
 
 // Command proxy which publishes command updates to the cloud.
-class CloudCommandProxy final : public CommandObserver {
+class CloudCommandProxy final : public Command::Observer {
  public:
   CloudCommandProxy(CommandInstance* command_instance,
                     CloudCommandUpdateInterface* cloud_command_updater,

@@ -41,6 +41,7 @@ class CommandInstance final : public Command {
 
   // Command overrides.
   std::unique_ptr<base::DictionaryValue> ToJson() const override;
+  void AddObserver(Observer* observer) override;
 
   // Returns the full command ID.
   const std::string& GetID() const { return id_; }
@@ -81,9 +82,6 @@ class CommandInstance final : public Command {
   // Sets the command ID (normally done by CommandQueue when the command
   // instance is added to it).
   void SetID(const std::string& id) { id_ = id; }
-  // Adds a observer for this command. The observer object is not owned by this
-  // class.
-  void AddObserver(CommandObserver* observer);
   // Sets the pointer to queue this command is part of.
   void SetCommandQueue(CommandQueue* queue) { queue_ = queue; }
 
@@ -142,7 +140,7 @@ class CommandInstance final : public Command {
   // Current command status.
   std::string status_ = kStatusQueued;
   // Command observer for the command.
-  std::vector<CommandObserver*> observers_;
+  std::vector<Observer*> observers_;
   // Pointer to the command queue this command instance is added to.
   // The queue owns the command instance, so it outlives this object.
   CommandQueue* queue_ = nullptr;
