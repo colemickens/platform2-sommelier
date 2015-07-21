@@ -16,7 +16,7 @@
 using base::FilePath;
 
 // This test assumes the following standard binaries are installed.
-static const char kBinBash[] = "/bin/bash";
+static const char kBinSh[] = "/bin/sh";
 static const char kBinCat[] = "/bin/cat";
 static const char kBinCp[] = "/bin/cp";
 static const char kBinEcho[] = "/bin/echo";
@@ -134,7 +134,7 @@ TEST_F(ProcessTest, BadExecutable) {
 
 void ProcessTest::CheckStderrCaptured() {
   std::string contents;
-  process_.AddArg(kBinBash);
+  process_.AddArg(kBinSh);
   process_.AddArg("-c");
   process_.AddArg("echo errormessage 1>&2 && exit 1");
   EXPECT_EQ(1, process_.Run());
@@ -161,7 +161,7 @@ FilePath ProcessTest::GetFdPath(int fd) {
 TEST_F(ProcessTest, RedirectStderrUsingPipe) {
   std::string contents;
   process_.RedirectOutput("");
-  process_.AddArg(kBinBash);
+  process_.AddArg(kBinSh);
   process_.AddArg("-c");
   process_.AddArg("echo errormessage >&2 && exit 1");
   process_.RedirectUsingPipe(STDERR_FILENO, false);
@@ -258,7 +258,7 @@ TEST_F(ProcessTest, NoParams) {
 }
 
 TEST_F(ProcessTest, SegFaultHandling) {
-  process_.AddArg(kBinBash);
+  process_.AddArg(kBinSh);
   process_.AddArg("-c");
   process_.AddArg("kill -SEGV $$");
   EXPECT_EQ(-1, process_.Run());
