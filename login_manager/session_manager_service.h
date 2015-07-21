@@ -116,7 +116,6 @@ class SessionManagerService
   };
 
   SessionManagerService(scoped_ptr<BrowserJobInterface> child_job,
-                        const base::Closure& quit_closure,
                         uid_t uid,
                         int kill_timeout,
                         bool enable_browser_abort_on_hang,
@@ -214,10 +213,6 @@ class SessionManagerService
   scoped_ptr<BrowserJobInterface> browser_;
   bool exit_on_child_done_;
   const base::TimeDelta kill_timeout_;
-
-  // All task posting should be done via the MessageLoopProxy in loop_proxy_.
-  scoped_refptr<base::MessageLoopProxy> loop_proxy_;
-  base::Closure quit_closure_;
 
   scoped_refptr<dbus::Bus> bus_;
   const std::string match_rule_;

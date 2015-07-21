@@ -19,11 +19,10 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>
-#include <base/message_loop/message_loop_proxy.h>
-#include <base/run_loop.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/message_loops/message_loop.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
@@ -92,7 +91,7 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
   } else {
     info.si_status = WTERMSIG(status);
   }
-  session_manager_service_->loop_proxy_->PostTask(
+  chromeos::MessageLoop::current()->PostTask(
       FROM_HERE,
       base::Bind(
           &SessionManagerService::HandleExit, session_manager_service_, info));
@@ -100,7 +99,6 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
 
 SessionManagerService::SessionManagerService(
     scoped_ptr<BrowserJobInterface> child_job,
-    const base::Closure& quit_closure,
     uid_t uid,
     int kill_timeout,
     bool enable_browser_abort_on_hang,
@@ -110,8 +108,6 @@ SessionManagerService::SessionManagerService(
     : browser_(child_job.Pass()),
       exit_on_child_done_(false),
       kill_timeout_(base::TimeDelta::FromSeconds(kill_timeout)),
-      loop_proxy_(base::MessageLoopForIO::current()->message_loop_proxy()),
-      quit_closure_(quit_closure),
       match_rule_(base::StringPrintf("type='method_call', interface='%s'",
                                      kSessionManagerInterface)),
       login_metrics_(metrics),
@@ -149,7 +145,6 @@ bool SessionManagerService::Initialize() {
 
   liveness_checker_.reset(new LivenessCheckerImpl(this,
                                                   chrome_dbus_proxy,
-                                                  loop_proxy_,
                                                   enable_browser_abort_on_hang_,
                                                   liveness_checking_interval_));
 
@@ -433,7 +428,7 @@ void SessionManagerService::ShutDownDBus() {
 void SessionManagerService::AllowGracefulExitOrRunForever() {
   if (exit_on_child_done_) {
     LOG(INFO) << "SessionManagerService set to exit on child done";
-    loop_proxy_->PostTask(
+    chromeos::MessageLoop::current()->PostTask(
         FROM_HERE,
         base::Bind(base::IgnoreResult(&SessionManagerService::ScheduleShutdown),
                    this));
@@ -452,7 +447,10 @@ void SessionManagerService::SetExitAndScheduleShutdown(ExitCode code) {
   CleanupChildren(GetKillTimeout());
   impl_->AnnounceSessionStopped();
 
-  loop_proxy_->PostTask(FROM_HERE, quit_closure_);
+  chromeos::MessageLoop::current()->PostTask(
+      FROM_HERE,
+      base::Bind(&chromeos::MessageLoop::BreakLoop,
+                 base::Unretained(chromeos::MessageLoop::current())));
   LOG(INFO) << "SessionManagerService quitting run loop";
 }
 

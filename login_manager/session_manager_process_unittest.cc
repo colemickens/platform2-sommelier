@@ -14,10 +14,8 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop.h>
-#include <base/message_loop/message_loop_proxy.h>
-#include <base/run_loop.h>
 #include <base/strings/string_util.h>
+#include <chromeos/message_loops/fake_message_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -35,21 +33,10 @@
 
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
-using ::testing::AtMost;
-using ::testing::Contains;
-using ::testing::DoAll;
-using ::testing::HasSubstr;
-using ::testing::Invoke;
-using ::testing::Not;
 using ::testing::Return;
-using ::testing::ReturnRef;
 using ::testing::Sequence;
-using ::testing::SetArgPointee;
-using ::testing::StrEq;
-using ::testing::WithArgs;
 using ::testing::_;
 
-using std::string;
 
 namespace login_manager {
 
@@ -64,18 +51,19 @@ class SessionManagerProcessTest : public ::testing::Test {
         must_destroy_mocks_(true) {
   }
 
-  virtual ~SessionManagerProcessTest() {
+  ~SessionManagerProcessTest() override {
     if (must_destroy_mocks_) {
       delete liveness_checker_;
       delete session_manager_impl_;
     }
   }
 
-  virtual void SetUp() {
+  void SetUp() override {
+    fake_loop_.SetAsCurrent();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
   }
 
-  virtual void TearDown() {
+  void TearDown() override {
     must_destroy_mocks_ = !manager_.get();
     manager_ = NULL;
   }
@@ -117,7 +105,6 @@ class SessionManagerProcessTest : public ::testing::Test {
 
   void InitManager(FakeBrowserJob* job) {
     manager_ = new SessionManagerService(scoped_ptr<BrowserJobInterface>(job),
-                                         run_loop_.QuitClosure(),
                                          getuid(),
                                          3,
                                          false,
@@ -131,11 +118,11 @@ class SessionManagerProcessTest : public ::testing::Test {
   void SimpleRunManager() {
     ExpectShutdown();
     manager_->RunBrowser();
-    run_loop_.Run();
+    fake_loop_.Run();
   }
 
   void ForceRunLoop() {
-    run_loop_.Run();
+    fake_loop_.Run();
   }
 
   FakeBrowserJob* CreateMockJobAndInitManager(bool schedule_exit) {
@@ -166,8 +153,7 @@ class SessionManagerProcessTest : public ::testing::Test {
  private:
   bool must_destroy_mocks_;
   base::ScopedTempDir tmpdir_;
-  base::MessageLoopForIO message_loop_;
-  base::RunLoop run_loop_;
+  chromeos::FakeMessageLoop fake_loop_{nullptr};
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerProcessTest);
 };
@@ -197,12 +183,12 @@ TEST_F(SessionManagerProcessTest, BrowserRunningShutdown) {
   EXPECT_CALL(*job, Kill(SIGTERM, _)).Times(1);
   EXPECT_CALL(*job, WaitAndAbort(_)).Times(1);
 
-  base::MessageLoopProxy::current()->PostTask(
+  chromeos::MessageLoop::current()->PostTask(
       FROM_HERE,
       base::Bind(&SessionManagerService::RunBrowser,
                  manager_.get()));
 
-  base::MessageLoopProxy::current()->PostTask(
+  chromeos::MessageLoop::current()->PostTask(
       FROM_HERE,
       base::Bind(&SessionManagerService::ScheduleShutdown,
                  manager_.get()));

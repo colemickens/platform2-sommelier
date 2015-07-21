@@ -104,6 +104,7 @@
           'dependencies': ['libsession_manager'],
           'variables': {
             'deps': [
+              'libchromeos-test-<(libbase_ver)',
               'libchrome-test-<(libbase_ver)',
             ],
           },

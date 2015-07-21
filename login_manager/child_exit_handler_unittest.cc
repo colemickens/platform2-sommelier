@@ -15,6 +15,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <chromeos/asynchronous_signal_handler.h>
+#include <chromeos/message_loops/base_message_loop.h>
 #include <gtest/gtest.h>
 
 #include "login_manager/job_manager.h"
@@ -25,8 +26,8 @@ namespace login_manager {
 // A fake job manager implementation for testing.
 class FakeJobManager : public JobManagerInterface {
  public:
-  explicit FakeJobManager(base::RunLoop* run_loop) : run_loop_(run_loop) {}
-  virtual ~FakeJobManager() {}
+  FakeJobManager() = default;
+  ~FakeJobManager() override = default;
 
   pid_t managed_pid() { return 0; }
   const siginfo_t& last_status() { return last_status_; }
@@ -35,13 +36,12 @@ class FakeJobManager : public JobManagerInterface {
   bool IsManagedJob(pid_t pid) override { return true; }
   void HandleExit(const siginfo_t& s) override {
     last_status_ = s;
-    run_loop_->Quit();
+    chromeos::MessageLoop::current()->BreakLoop();
   }
   void RequestJobExit() override {}
   void EnsureJobExit(base::TimeDelta timeout) override {}
 
  private:
-  base::RunLoop* run_loop_;
   siginfo_t last_status_;
 
   DISALLOW_COPY_AND_ASSIGN(FakeJobManager);
@@ -49,11 +49,11 @@ class FakeJobManager : public JobManagerInterface {
 
 class ChildExitHandlerTest : public ::testing::Test {
  public:
-  ChildExitHandlerTest()
-      : fake_manager_(&run_loop_) {}
-  virtual ~ChildExitHandlerTest() {}
+  ChildExitHandlerTest() = default;
+  ~ChildExitHandlerTest() override = default;
 
-  virtual void SetUp() {
+  void SetUp() override {
+    chromeos_loop_.SetAsCurrent();
     std::vector<JobManagerInterface*> managers;
     managers.push_back(&fake_manager_);
     signal_handler_.Init();
@@ -62,7 +62,7 @@ class ChildExitHandlerTest : public ::testing::Test {
 
  protected:
   base::MessageLoopForIO loop_;
-  base::RunLoop run_loop_;
+  chromeos::BaseMessageLoop chromeos_loop_{&loop_};
   SystemUtilsImpl system_utils_;
   chromeos::AsynchronousSignalHandler signal_handler_;
   ChildExitHandler handler_;
@@ -80,7 +80,7 @@ TEST_F(ChildExitHandlerTest, ChildExit) {
   }
 
   // Spin the message loop.
-  run_loop_.Run();
+  chromeos_loop_.Run();
 
   // Verify child termination has been reported to |fake_manager|.
   EXPECT_EQ(child_pid, fake_manager_.last_status().si_pid);

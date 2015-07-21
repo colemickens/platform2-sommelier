@@ -12,7 +12,6 @@
 #include <base/compiler_specific.h>
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop.h>
 
 struct signalfd_siginfo;
 
@@ -22,7 +21,6 @@ class AsynchronousSignalHandler;
 
 namespace login_manager {
 class JobManagerInterface;
-class SystemUtils;
 
 // Listen for SIGCHLD and informs the appropriate object that manages that
 // child.

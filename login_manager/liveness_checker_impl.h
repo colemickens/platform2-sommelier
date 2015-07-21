@@ -34,7 +34,6 @@ class LivenessCheckerImpl : public LivenessChecker {
  public:
   LivenessCheckerImpl(ProcessManagerServiceInterface* manager,
                       dbus::ObjectProxy* chrome_dbus_proxy,
-                      const scoped_refptr<base::MessageLoopProxy>& loop,
                       bool enable_aborting,
                       base::TimeDelta interval);
   virtual ~LivenessCheckerImpl();
@@ -61,7 +60,6 @@ class LivenessCheckerImpl : public LivenessChecker {
 
   ProcessManagerServiceInterface* manager_;  // Owned by the caller.
   dbus::ObjectProxy* chrome_dbus_proxy_;  // Owned by the caller.
-  scoped_refptr<base::MessageLoopProxy> loop_proxy_;
 
   const bool enable_aborting_;
   const base::TimeDelta interval_;

@@ -12,9 +12,9 @@
 #include <base/compiler_specific.h>
 #include <base/location.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop_proxy.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/message_loops/message_loop.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
@@ -25,12 +25,10 @@ namespace login_manager {
 LivenessCheckerImpl::LivenessCheckerImpl(
     ProcessManagerServiceInterface* manager,
     dbus::ObjectProxy* chrome_dbus_proxy,
-    const scoped_refptr<base::MessageLoopProxy>& loop,
     bool enable_aborting,
     base::TimeDelta interval)
     : manager_(manager),
       chrome_dbus_proxy_(chrome_dbus_proxy),
-      loop_proxy_(loop),
       enable_aborting_(enable_aborting),
       interval_(interval),
       last_ping_acked_(true),
@@ -48,7 +46,7 @@ void LivenessCheckerImpl::Start() {
       base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
                  weak_ptr_factory_.GetWeakPtr(),
                  interval_));
-  loop_proxy_->PostDelayedTask(
+  chromeos::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
       liveness_check_.callback(),
       interval_);
@@ -92,7 +90,7 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
   liveness_check_.Reset(
       base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
                  weak_ptr_factory_.GetWeakPtr(), interval));
-  loop_proxy_->PostDelayedTask(
+  chromeos::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
       liveness_check_.callback(),
       interval);

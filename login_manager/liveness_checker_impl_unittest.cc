@@ -6,11 +6,9 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop.h>
-#include <base/message_loop/message_loop_proxy.h>
-#include <base/run_loop.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/message_loops/fake_message_loop.h>
 #include <dbus/message.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -20,11 +18,8 @@
 #include "login_manager/mock_system_utils.h"
 
 using ::base::TimeDelta;
-using ::testing::AtLeast;
-using ::testing::DoAll;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
-using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::_;
 
@@ -35,15 +30,14 @@ class LivenessCheckerImplTest : public ::testing::Test {
   LivenessCheckerImplTest() {}
   virtual ~LivenessCheckerImplTest() {}
 
-  virtual void SetUp() {
+  void SetUp() override {
+    fake_loop_.SetAsCurrent();
     manager_.reset(new StrictMock<MockProcessManagerService>);
     object_proxy_ = new MockObjectProxy;
-    loop_proxy_ = base::MessageLoopProxy::current();
     checker_.reset(new LivenessCheckerImpl(manager_.get(),
                                            object_proxy_.get(),
-                                           loop_proxy_,
                                            true,
-                                           TimeDelta::FromSeconds(0)));
+                                           TimeDelta::FromSeconds(10)));
   }
 
   void ExpectUnAckedLivenessPing() {
@@ -66,12 +60,11 @@ class LivenessCheckerImplTest : public ::testing::Test {
         .WillOnce(Invoke(this, &LivenessCheckerImplTest::Respond))
         .WillOnce(Return())
         .WillOnce(
-            InvokeWithoutArgs(base::MessageLoop::current(),
-                              &base::MessageLoop::QuitNow));
+            InvokeWithoutArgs(chromeos::MessageLoop::current(),
+                              &chromeos::MessageLoop::BreakLoop));
   }
 
-  base::MessageLoop loop_;
-  scoped_refptr<base::MessageLoopProxy> loop_proxy_;
+  chromeos::FakeMessageLoop fake_loop_{nullptr};
   scoped_refptr<MockObjectProxy> object_proxy_;
   scoped_ptr<StrictMock<MockProcessManagerService>> manager_;
 
@@ -91,26 +84,25 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
   ExpectUnAckedLivenessPing();
   EXPECT_CALL(*manager_.get(), AbortBrowser(SIGABRT, _)).Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta());
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();  // Runs until the message loop is empty.
 }
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
   ExpectLivenessPingResponsePing();
   EXPECT_CALL(*manager_.get(), AbortBrowser(SIGABRT, _)).Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta());
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();  // Runs until the message loop is empty.
 }
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
   checker_.reset(new LivenessCheckerImpl(manager_.get(),
                                          object_proxy_.get(),
-                                         loop_proxy_,
                                          false,  // Disable aborting
-                                         TimeDelta()));
+                                         TimeDelta::FromSeconds(10)));
   ExpectPingResponsePingCheckPingAndQuit();
   // Expect _no_ browser abort!
-  checker_->CheckAndSendLivenessPing(TimeDelta());
-  base::RunLoop().RunUntilIdle();
+  checker_->CheckAndSendLivenessPing(TimeDelta::FromSeconds(1));
+  fake_loop_.Run();  // Runs until the message loop is empty.
 }
 
 TEST_F(LivenessCheckerImplTest, StartStop) {

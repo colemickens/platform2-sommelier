@@ -22,11 +22,11 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_loop.h>
-#include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
+#include <chromeos/message_loops/base_message_loop.h>
 #include <chromeos/syslog_logging.h>
 #include <linux/limits.h>
 #include <rootdev/rootdev.h>
@@ -191,11 +191,11 @@ int main(int argc, char* argv[]) {
   bool should_run_browser = browser_job->ShouldRunBrowser();
 
   base::MessageLoopForIO message_loop;
-  base::RunLoop run_loop;
+  chromeos::BaseMessageLoop chromeos_loop(&message_loop);
+  chromeos_loop.SetAsCurrent();
 
   scoped_refptr<SessionManagerService> manager = new SessionManagerService(
       browser_job.Pass(),
-      run_loop.QuitClosure(),
       uid,
       kill_timeout,
       enable_hang_detection,
@@ -206,10 +206,11 @@ int main(int argc, char* argv[]) {
   if (manager->Initialize()) {
     // Allows devs to start/stop browser manually.
     if (should_run_browser) {
-      message_loop.PostTask(
+      chromeos_loop.PostTask(
           FROM_HERE, base::Bind(&SessionManagerService::RunBrowser, manager));
     }
-    run_loop.Run();  // Returns when run_loop's QuitClosure is posted and run.
+    // Returns when chromeos_loop.BreakLoop() is called.
+    chromeos_loop.Run();
   }
   manager->Finalize();
 
