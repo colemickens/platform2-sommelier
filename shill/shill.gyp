@@ -327,6 +327,19 @@
             'dbus/chromeos_rpc_task_dbus_adaptor.cc',
             'dbus/chromeos_service_dbus_adaptor.cc',
             'dbus/chromeos_third_party_vpn_dbus_adaptor.cc',
+            'dbus/chromeos_upstart_proxy.cc',
+          ],
+          'actions': [
+            {
+              'action_name': 'generate-upstart-proxies',
+              'variables': {
+                'proxy_output_file': 'include/upstart/dbus-proxies.h',
+              },
+              'sources': [
+                'dbus_bindings/upstart.xml',
+              ],
+              'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+            },
           ],
         }],
         ['USE_vpn == 1', {
