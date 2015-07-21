@@ -10,10 +10,6 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 
-namespace base {
-class MessageLoopProxy;
-}  // namespace base
-
 namespace chromeos {
 class AsynchronousSignalHandler;
 }  // namespace chromeos
@@ -35,7 +31,6 @@ class Daemon {
  public:
   Daemon(scoped_ptr<easy_unlock::Service> service_impl,
          const scoped_refptr<dbus::Bus>& bus,
-         const base::Closure& quit_closure,
          bool install_signal_handler);
   ~Daemon();
 
@@ -61,9 +56,6 @@ class Daemon {
 
   scoped_ptr<easy_unlock::Service> service_impl_;
   scoped_ptr<DBusAdaptor> adaptor_;
-
-  base::Closure quit_closure_;
-  scoped_refptr<base::MessageLoopProxy> loop_proxy_;
 
   // Handler for termination signals. The handled signals cause |Quit| to get
   // called.

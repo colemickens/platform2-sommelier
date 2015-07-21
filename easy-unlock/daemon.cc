@@ -9,10 +9,9 @@
 
 #include <base/bind.h>
 #include <base/location.h>
-#include <base/message_loop/message_loop.h>
-#include <base/message_loop/message_loop_proxy.h>
 #include <chromeos/asynchronous_signal_handler.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/message_loops/message_loop.h>
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 
@@ -34,11 +33,8 @@ bool HandleSignal(const base::Closure& callback,
 
 Daemon::Daemon(scoped_ptr<easy_unlock::Service> service_impl,
                const scoped_refptr<dbus::Bus>& bus,
-               const base::Closure& quit_closure,
                bool install_signal_handler)
     : service_impl_(service_impl.Pass()),
-      quit_closure_(quit_closure),
-      loop_proxy_(base::MessageLoopForIO::current()->message_loop_proxy()),
       termination_signal_handler_(new chromeos::AsynchronousSignalHandler()),
       bus_(bus),
      install_signal_handler_(install_signal_handler) {
@@ -79,7 +75,10 @@ void Daemon::TakeDBusServiceOwnership() {
 }
 
 void Daemon::Quit() {
-  loop_proxy_->PostTask(FROM_HERE, quit_closure_);
+  chromeos::MessageLoop::current()->PostTask(
+      FROM_HERE,
+      base::Bind(&chromeos::MessageLoop::BreakLoop,
+                 base::Unretained(chromeos::MessageLoop::current())));
 }
 
 void Daemon::SetupSignalHandlers() {

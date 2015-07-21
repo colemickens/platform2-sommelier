@@ -11,6 +11,7 @@
 #include <base/message_loop/message_loop.h>
 #include <base/run_loop.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/message_loops/base_message_loop.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -123,6 +124,8 @@ class EasyUnlockTest : public ::testing::Test {
   virtual ~EasyUnlockTest() {}
 
   virtual void SetUp() {
+    chromeos_message_loop_.SetAsCurrent();
+
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = new dbus::MockBus(options);
@@ -251,12 +254,12 @@ class EasyUnlockTest : public ::testing::Test {
         new easy_unlock::Daemon(
             scoped_ptr<easy_unlock::Service>(new easy_unlock::FakeService()),
             bus_,
-            base::Closure(),
             false));
     return daemon_->Initialize();
   }
 
   base::MessageLoopForIO message_loop_;
+  chromeos::BaseMessageLoop chromeos_message_loop_{&message_loop_};
 
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockExportedObject> exported_object_;

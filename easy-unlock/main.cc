@@ -13,6 +13,7 @@
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/message_loops/base_message_loop.h>
 #include <chromeos/syslog_logging.h>
 #include <dbus/bus.h>
 
@@ -93,7 +94,8 @@ int main(int argc, char** argv) {
     PLOG_IF(FATAL, ::daemon(0, 0) == 1) << "Failed to create daemon";
 
   base::MessageLoopForIO message_loop;
-  base::RunLoop run_loop;
+  chromeos::BaseMessageLoop chromeos_message_loop(&message_loop);
+  chromeos_message_loop.SetAsCurrent();
 
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
@@ -103,13 +105,12 @@ int main(int argc, char** argv) {
   scoped_ptr<easy_unlock::Daemon> daemon(
       new easy_unlock::Daemon(service.Pass(),
       bus,
-      run_loop.QuitClosure(),
       true /* install signal handler */));
   LOG_IF(FATAL, !daemon->Initialize());
 
   LOG(INFO) << "EasyUnlock dbus service started.";
 
-  run_loop.Run();
+  chromeos_message_loop.Run();
 
   LOG(INFO) << "Cleaning up and exiting.";
   daemon->Finalize();
