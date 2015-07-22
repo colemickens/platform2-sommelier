@@ -18,11 +18,7 @@ FileStorage::FileStorage(const base::FilePath& file_path)
 }
 
 std::unique_ptr<base::DictionaryValue> FileStorage::Load() {
-  std::string json;
-  if (!base::ReadFileToString(file_path_, &json))
-    return std::unique_ptr<base::DictionaryValue>();
-
-  return LoadJsonDict(json, nullptr);
+  return LoadJsonDict(file_path_, nullptr);
 }
 
 bool FileStorage::Save(const base::DictionaryValue& config) {

@@ -63,8 +63,9 @@ std::unique_ptr<base::DictionaryValue> LoadJsonDict(
     chromeos::Error::AddToPrintf(
         error, FROM_HERE, chromeos::errors::json::kDomain,
         chromeos::errors::json::kParseError,
-        "Error parsing JSON string '%s': %s",
-        LimitString(json_string, kMaxStrLen).c_str(), error_message.c_str());
+        "Error parsing JSON string '%s' (%zu): %s",
+        LimitString(json_string, kMaxStrLen).c_str(), json_string.size(),
+        error_message.c_str());
     return result;
   }
   base::DictionaryValue* dict_value = nullptr;

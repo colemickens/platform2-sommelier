@@ -159,15 +159,16 @@ class DeviceRegistrationInfo : public Cloud,
  private:
   friend class DeviceRegistrationInfoTest;
 
-  // Cause DeviceRegistrationInfo to attempt to StartDevice on its own later.
-  void ScheduleStartDevice(const base::TimeDelta& later);
+  // Cause DeviceRegistrationInfo to attempt to connect to cloud server on
+  // its own later.
+  void ScheduleCloudConnection(const base::TimeDelta& delay);
 
-  // Starts device execution.
+  // Initiates the connection to the cloud server.
   // Device will do required start up chores and then start to listen
   // to new commands.
-  // TODO(antonm): Consider moving into some other class.
-  void StartDevice(chromeos::ErrorPtr* error,
-                   const base::TimeDelta& retry_delay);
+  void ConnectToCloud();
+  // Notification called when ConnectToCloud() succeeds.
+  void OnConnectedToCloud();
 
   // Forcibly refreshes the access token.
   void RefreshAccessToken(const base::Closure& success_callback,
@@ -220,15 +221,27 @@ class DeviceRegistrationInfo : public Cloud,
   void RetryCloudRequest(const std::shared_ptr<const CloudRequestData>& data);
   void OnAccessTokenRefreshed(
       const std::shared_ptr<const CloudRequestData>& data);
-  void OnAccessTokenError(const std::shared_ptr<const CloudRequestData>& data,
-                          const chromeos::Error* error);
+  void OnAccessTokenError(
+      const std::shared_ptr<const CloudRequestData>& data,
+      const chromeos::Error* error);
+  void CheckAccessTokenError(const chromeos::Error* error);
 
   void UpdateDeviceResource(const base::Closure& on_success,
                             const CloudRequestErrorCallback& on_failure);
   void StartQueuedUpdateDeviceResource();
   // Success/failure callbacks for UpdateDeviceResource().
-  void OnUpdateDeviceResourceSuccess(const base::DictionaryValue& reply);
+  void OnUpdateDeviceResourceSuccess(const base::DictionaryValue& device_info);
   void OnUpdateDeviceResourceError(const chromeos::Error* error);
+
+  // Callback from GetDeviceInfo() to retrieve the device resource timestamp
+  // and retry UpdateDeviceResource() call.
+  void OnDeviceInfoRetrieved(const base::DictionaryValue& device_info);
+
+  // Extracts the timestamp from the device resource and sets it to
+  // |last_device_resource_updated_timestamp_|.
+  // Returns false if the "lastUpdateTimeMs" field is not found in the device
+  // resource or it is invalid.
+  bool UpdateDeviceInfoTimestamp(const base::DictionaryValue& device_info);
 
   void FetchCommands(
       const base::Callback<void(const base::ListValue&)>& on_success,
@@ -256,11 +269,6 @@ class DeviceRegistrationInfo : public Cloud,
   void NotifyCommandAborted(const std::string& command_id,
                             chromeos::ErrorPtr error);
 
-  // When NotifyCommandAborted() fails, RetryNotifyCommandAborted() schedules
-  // a retry attempt.
-  void RetryNotifyCommandAborted(const std::string& command_id,
-                                 chromeos::ErrorPtr error);
-
   // Builds Cloud API devices collection REST resource which matches
   // current state of the device including command definitions
   // for all supported commands and current device state.
@@ -287,6 +295,12 @@ class DeviceRegistrationInfo : public Cloud,
   // Transient data
   std::string access_token_;
   base::Time access_token_expiration_;
+  // The time stamp of last device resource update on the server.
+  std::string last_device_resource_updated_timestamp_;
+  // Set to true if the device has connected to the cloud server correctly.
+  // At this point, normal state and command updates can be dispatched to the
+  // server.
+  bool connected_to_cloud_{false};
 
   // HTTP transport used for communications.
   std::shared_ptr<chromeos::http::Transport> transport_;
