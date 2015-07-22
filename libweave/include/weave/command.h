@@ -5,8 +5,9 @@
 #ifndef LIBWEAVE_INCLUDE_WEAVE_COMMAND_H_
 #define LIBWEAVE_INCLUDE_WEAVE_COMMAND_H_
 
+#include <string>
+
 #include <base/values.h>
-#include <chromeos/errors/error.h>
 
 namespace weave {
 
@@ -23,12 +24,37 @@ class Command {
     virtual void OnCommandDestroyed() = 0;
   };
 
-  // Returns JSON representation of the command.
-  virtual std::unique_ptr<base::DictionaryValue> ToJson() const = 0;
-
   // Adds an observer for this command. The observer object is not owned by this
   // class.
   virtual void AddObserver(Observer* observer) = 0;
+
+  // Returns the full command ID.
+  virtual const std::string& GetID() const = 0;
+
+  // Returns the full name of the command.
+  virtual const std::string& GetName() const = 0;
+
+  // Returns the command category.
+  virtual const std::string& GetCategory() const = 0;
+
+  // Returns the command status.
+  // TODO(vitalybuka): Status should be enum.
+  virtual const std::string& GetStatus() const = 0;
+
+  // Returns the origin of the command.
+  virtual const std::string& GetOrigin() const = 0;
+
+  // Returns the command parameters.
+  virtual std::unique_ptr<base::DictionaryValue> GetParameters() const = 0;
+
+  // Returns the command progress.
+  virtual std::unique_ptr<base::DictionaryValue> GetProgress() const = 0;
+
+  // Returns the command results.
+  virtual std::unique_ptr<base::DictionaryValue> GetResults() const = 0;
+
+  // Returns JSON representation of the command.
+  virtual std::unique_ptr<base::DictionaryValue> ToJson() const = 0;
 
  protected:
   virtual ~Command() = default;

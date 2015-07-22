@@ -11,43 +11,6 @@
 
 namespace weave {
 
-namespace {
-
-// Helps to get parameters from ValueMap representing
-// CommandInstance parameters.
-class ParametersReader final {
- public:
-  explicit ParametersReader(const ValueMap* parameters)
-      : parameters_{parameters} {}
-
-  bool GetParameter(const std::string& name, std::string* value) const {
-    auto it = parameters_->find(name);
-    if (it == parameters_->end())
-      return false;
-    const StringValue* string_value = it->second->GetString();
-    if (!string_value)
-      return false;
-    *value = string_value->GetValue();
-    return true;
-  }
-
-  bool GetParameter(const std::string& name, bool* value) const {
-    auto it = parameters_->find(name);
-    if (it == parameters_->end())
-      return false;
-    const BooleanValue* bool_value = it->second->GetBoolean();
-    if (!bool_value)
-      return false;
-    *value = bool_value->GetValue();
-    return true;
-  }
-
- private:
-  const ValueMap* parameters_;
-};
-
-}  // namespace
-
 BaseApiHandler::BaseApiHandler(
     const base::WeakPtr<DeviceRegistrationInfo>& device_info,
     const std::shared_ptr<StateManager>& state_manager,
@@ -76,11 +39,10 @@ void BaseApiHandler::UpdateBaseConfiguration(CommandInstance* command) {
   bool discovery_enabled{config.local_discovery_enabled()};
   bool pairing_enabled{config.local_pairing_enabled()};
 
-  ParametersReader parameters{&command->GetParameters()};
-  parameters.GetParameter("localAnonymousAccessMaxRole",
-                          &anonymous_access_role);
-  parameters.GetParameter("localDiscoveryEnabled", &discovery_enabled);
-  parameters.GetParameter("localPairingEnabled", &pairing_enabled);
+  auto parameters = command->GetParameters();
+  parameters->GetString("localAnonymousAccessMaxRole", &anonymous_access_role);
+  parameters->GetBoolean("localDiscoveryEnabled", &discovery_enabled);
+  parameters->GetBoolean("localPairingEnabled", &pairing_enabled);
 
   chromeos::VariantDictionary state{
       {"base.localAnonymousAccessMaxRole", anonymous_access_role},
@@ -107,10 +69,10 @@ void BaseApiHandler::UpdateDeviceInfo(CommandInstance* command) {
   std::string description{config.description()};
   std::string location{config.location()};
 
-  ParametersReader parameters(&command->GetParameters());
-  parameters.GetParameter("name", &name);
-  parameters.GetParameter("description", &description);
-  parameters.GetParameter("location", &location);
+  auto parameters = command->GetParameters();
+  parameters->GetString("name", &name);
+  parameters->GetString("description", &description);
+  parameters->GetString("location", &location);
 
   if (!device_info_->UpdateDeviceInfo(name, description, location, nullptr)) {
     return command->Abort();

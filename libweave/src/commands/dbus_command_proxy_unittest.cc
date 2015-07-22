@@ -6,6 +6,7 @@
 
 #include <functional>
 #include <memory>
+#include <vector>
 
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -70,6 +71,12 @@ class DBusCommandProxyTest : public ::testing::Test {
             },
             'bar': {
               'type': 'string'
+            },
+            'resultList': {
+              'type': 'array',
+              'items': {
+                'type': 'integer'
+              }
             }
           },
           'progress': {
@@ -177,11 +184,25 @@ TEST_F(DBusCommandProxyTest, SetProgress_OutOfRange) {
 
 TEST_F(DBusCommandProxyTest, SetResults) {
   EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
-  const VariantDictionary results = {
-      {"foo", int32_t{42}}, {"bar", std::string{"foobar"}},
-  };
+  VariantDictionary results = {{"foo", int32_t{42}},
+                               {"bar", std::string{"foobar"}},
+                               {"resultList", std::vector<int>{1, 2, 3}}};
   EXPECT_TRUE(GetCommandInterface()->SetResults(nullptr, results));
   EXPECT_EQ(results, GetCommandAdaptor()->GetResults());
+  auto list = chromeos::GetVariantValueOrDefault<std::vector<int>>(
+      GetCommandAdaptor()->GetResults(), "resultList");
+  EXPECT_EQ((std::vector<int>{1, 2, 3}), list);
+}
+
+TEST_F(DBusCommandProxyTest, SetResults_WithEmptyList) {
+  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
+  VariantDictionary results = {{"foo", int32_t{42}},
+                               {"bar", std::string{"foobar"}},
+                               {"resultList", std::vector<int>{}}};
+  EXPECT_TRUE(GetCommandInterface()->SetResults(nullptr, results));
+  auto list = chromeos::GetVariantValueOrDefault<std::vector<int>>(
+      GetCommandAdaptor()->GetResults(), "resultList");
+  EXPECT_EQ(std::vector<int>(), list);
 }
 
 TEST_F(DBusCommandProxyTest, SetResults_UnknownProperty) {

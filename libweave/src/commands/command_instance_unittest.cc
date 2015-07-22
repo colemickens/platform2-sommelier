@@ -85,12 +85,9 @@ TEST_F(CommandInstanceTest, Test) {
   EXPECT_EQ("robot.speak", instance.GetName());
   EXPECT_EQ("robotd", instance.GetCategory());
   EXPECT_EQ("cloud", instance.GetOrigin());
-  EXPECT_EQ(params, instance.GetParameters());
-  EXPECT_EQ("iPityDaFool",
-            instance.FindParameter("phrase")->GetString()->GetValue());
-  EXPECT_EQ(5, instance.FindParameter("volume")->GetInt()->GetValue());
-  EXPECT_EQ(nullptr, instance.FindParameter("blah"));
-  EXPECT_EQ(results, instance.GetResults());
+  EXPECT_JSON_EQ("{'phrase': 'iPityDaFool', 'volume': 5}",
+                 *instance.GetParameters());
+  EXPECT_JSON_EQ("{'foo': 239}", *instance.GetResults());
 
   CommandInstance instance2{
       "base.reboot", "local", dict_.FindCommand("base.reboot"), {}};
@@ -121,9 +118,8 @@ TEST_F(CommandInstanceTest, FromJson) {
   EXPECT_EQ("abcd", instance->GetID());
   EXPECT_EQ("robot.jump", instance->GetName());
   EXPECT_EQ("robotd", instance->GetCategory());
-  EXPECT_EQ(53, instance->FindParameter("height")->GetInt()->GetValue());
-  EXPECT_EQ("_withKick",
-            instance->FindParameter("_jumpType")->GetString()->GetValue());
+  EXPECT_JSON_EQ("{'height': 53, '_jumpType': '_withKick'}",
+                 *instance->GetParameters());
 }
 
 TEST_F(CommandInstanceTest, FromJson_ParamsOmitted) {
@@ -132,7 +128,7 @@ TEST_F(CommandInstanceTest, FromJson_ParamsOmitted) {
       CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr, nullptr);
   EXPECT_EQ("base.reboot", instance->GetName());
   EXPECT_EQ("robotd", instance->GetCategory());
-  EXPECT_TRUE(instance->GetParameters().empty());
+  EXPECT_JSON_EQ("{}", *instance->GetParameters());
 }
 
 TEST_F(CommandInstanceTest, FromJson_NotObject) {

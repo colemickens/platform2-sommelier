@@ -148,7 +148,7 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Shutdown) {
   ValueMap progress{{"progress", unittests::make_int_prop_value(50)}};
   SetProgress(command_proxy, progress);
   EXPECT_EQ(CommandInstance::kStatusInProgress, command_instance->GetStatus());
-  EXPECT_EQ(progress, command_instance->GetProgress());
+  EXPECT_JSON_EQ("{'progress': 50}", *command_instance->GetProgress());
 
   // Command must be removed from the queue and proxy destroyed after calling
   // FinishCommand().
@@ -183,7 +183,7 @@ TEST_F(DBusCommandDispacherTest, Test_Command_Base_Reboot) {
   ValueMap progress{};
   SetProgress(command_proxy, progress);
   EXPECT_EQ(CommandInstance::kStatusInProgress, command_instance->GetStatus());
-  EXPECT_EQ(progress, command_instance->GetProgress());
+  EXPECT_JSON_EQ("{}", *command_instance->GetProgress());
 
   // Command must be removed from the queue and proxy destroyed after calling
   // FinishCommand().

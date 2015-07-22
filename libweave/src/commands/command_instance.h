@@ -42,22 +42,14 @@ class CommandInstance final : public Command {
   // Command overrides.
   std::unique_ptr<base::DictionaryValue> ToJson() const override;
   void AddObserver(Observer* observer) override;
-
-  // Returns the full command ID.
-  const std::string& GetID() const { return id_; }
-  // Returns the full name of the command.
-  const std::string& GetName() const { return name_; }
-  // Returns the command category.
-  const std::string& GetCategory() const;
-  // Returns the command parameters and their values.
-  const ValueMap& GetParameters() const { return parameters_; }
-  // Returns the command results and their values.
-  const ValueMap& GetResults() const { return results_; }
-  // Finds a command parameter value by parameter |name|. If the parameter
-  // with given name does not exist, returns nullptr.
-  const PropValue* FindParameter(const std::string& name) const;
-  // Returns the full name of the command.
-  const std::string& GetOrigin() const { return origin_; }
+  const std::string& GetID() const override;
+  const std::string& GetName() const override;
+  const std::string& GetCategory() const override;
+  const std::string& GetStatus() const override;
+  const std::string& GetOrigin() const override;
+  std::unique_ptr<base::DictionaryValue> GetParameters() const override;
+  std::unique_ptr<base::DictionaryValue> GetProgress() const override;
+  std::unique_ptr<base::DictionaryValue> GetResults() const override;
 
   // Returns command definition.
   const CommandDefinition* GetCommandDefinition() const {
@@ -99,10 +91,6 @@ class CommandInstance final : public Command {
   void Cancel();
   // Marks the command as completed successfully.
   void Done();
-
-  // Command state getters.
-  const ValueMap& GetProgress() const { return progress_; }
-  const std::string& GetStatus() const { return status_; }
 
   // Values for command execution status.
   static const char kStatusQueued[];

@@ -16,6 +16,7 @@
 #include <chromeos/any.h>
 #include <chromeos/errors/error.h>
 
+#include "libweave/src/commands/dbus_conversion.h"
 #include "libweave/src/commands/prop_constraints.h"
 #include "libweave/src/commands/prop_values.h"
 

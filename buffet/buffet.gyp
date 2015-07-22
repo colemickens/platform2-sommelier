@@ -39,6 +39,7 @@
         '../libweave/src/commands/command_queue.cc',
         '../libweave/src/commands/dbus_command_dispatcher.cc',
         '../libweave/src/commands/dbus_command_proxy.cc',
+        '../libweave/src/commands/dbus_conversion.cc',
         '../libweave/src/commands/object_schema.cc',
         '../libweave/src/commands/prop_constraints.cc',
         '../libweave/src/commands/prop_types.cc',

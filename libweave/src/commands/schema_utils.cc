@@ -51,6 +51,7 @@ bool ErrorMissingProperty(chromeos::ErrorPtr* error,
                                "Required parameter missing: %s", param_name);
   return false;
 }
+
 }  // namespace
 
 // Specializations of TypedValueToJson<T>() for supported C++ types.
@@ -274,118 +275,6 @@ std::string ToString(const ValueVector& arr) {
   std::string str;
   base::JSONWriter::Write(*val, &str);
   return str;
-}
-
-chromeos::Any PropValueToDBusVariant(const PropValue* value) {
-  if (value->GetType() == ValueType::Object)
-    return ObjectToDBusVariant(value->GetObject()->GetValue());
-
-  if (value->GetType() == ValueType::Array) {
-    const PropType* item_type =
-        value->GetPropType()->GetArray()->GetItemTypePtr();
-    return item_type->ConvertArrayToDBusVariant(value->GetArray()->GetValue());
-  }
-  return value->GetValueAsAny();
-}
-
-chromeos::VariantDictionary ObjectToDBusVariant(const ValueMap& object) {
-  chromeos::VariantDictionary dict;
-  for (const auto& pair : object) {
-    // Since we are inserting the elements from ValueMap which is
-    // a map, the keys are already sorted. So use the "end()" position as a hint
-    // for dict.insert() so the destination map can optimize its insertion
-    // time.
-    chromeos::Any prop = PropValueToDBusVariant(pair.second.get());
-    dict.emplace_hint(dict.end(), pair.first, std::move(prop));
-  }
-  return dict;
-}
-
-std::unique_ptr<const PropValue> PropValueFromDBusVariant(
-    const PropType* type,
-    const chromeos::Any& value,
-    chromeos::ErrorPtr* error) {
-  std::unique_ptr<const PropValue> result;
-  if (type->GetType() == ValueType::Array) {
-    // Special case for array types.
-    // We expect the |value| to contain std::vector<T>, while PropValue must use
-    // ValueVector instead. Do the conversion.
-    ValueVector arr;
-    const PropType* item_type = type->GetArray()->GetItemTypePtr();
-    if (item_type->ConvertDBusVariantToArray(value, &arr, error))
-      result = type->CreateValue(arr, error);
-  } else if (type->GetType() == ValueType::Object) {
-    // Special case for object types.
-    // We expect the |value| to contain chromeos::VariantDictionary, while
-    // PropValue must use ValueMap instead. Do the conversion.
-    if (!value.IsTypeCompatible<chromeos::VariantDictionary>()) {
-      type->GenerateErrorValueTypeMismatch(error);
-      return result;
-    }
-    CHECK(nullptr != type->GetObject()->GetObjectSchemaPtr())
-        << "An object type must have a schema defined for it";
-    ValueMap obj;
-    if (!ObjectFromDBusVariant(type->GetObject()->GetObjectSchemaPtr(),
-                               value.Get<chromeos::VariantDictionary>(), &obj,
-                               error)) {
-      return result;
-    }
-
-    result = type->CreateValue(std::move(obj), error);
-  } else {
-    result = type->CreateValue(value, error);
-  }
-
-  return result;
-}
-
-bool ObjectFromDBusVariant(const ObjectSchema* object_schema,
-                           const chromeos::VariantDictionary& dict,
-                           ValueMap* obj,
-                           chromeos::ErrorPtr* error) {
-  std::set<std::string> keys_processed;
-  obj->clear();
-  // First go over all object parameters defined by type's object schema and
-  // extract the corresponding parameters from the source dictionary.
-  for (const auto& pair : object_schema->GetProps()) {
-    const PropValue* def_value = pair.second->GetDefaultValue();
-    auto it = dict.find(pair.first);
-    if (it != dict.end()) {
-      const PropType* prop_type = pair.second.get();
-      CHECK(prop_type) << "Value property type must be available";
-      auto prop_value = PropValueFromDBusVariant(prop_type, it->second, error);
-      if (!prop_value) {
-        chromeos::Error::AddToPrintf(
-            error, FROM_HERE, errors::commands::kDomain,
-            errors::commands::kInvalidPropValue,
-            "Invalid value for property '%s'", pair.first.c_str());
-        return false;
-      }
-      obj->emplace_hint(obj->end(), pair.first, std::move(prop_value));
-    } else if (def_value) {
-      obj->emplace_hint(obj->end(), pair.first, def_value->Clone());
-    } else {
-      ErrorMissingProperty(error, FROM_HERE, pair.first.c_str());
-      return false;
-    }
-    keys_processed.insert(pair.first);
-  }
-
-  // Make sure that we processed all the necessary properties and there weren't
-  // any extra (unknown) ones specified, unless the schema allows them.
-  if (!object_schema->GetExtraPropertiesAllowed()) {
-    for (const auto& pair : dict) {
-      if (keys_processed.find(pair.first) == keys_processed.end()) {
-        chromeos::Error::AddToPrintf(
-            error, FROM_HERE, errors::commands::kDomain,
-            errors::commands::kUnknownProperty, "Unrecognized property '%s'",
-            pair.first.c_str());
-        return false;
-      }
-    }
-  }
-
-  return true;
 }
 
 }  // namespace weave

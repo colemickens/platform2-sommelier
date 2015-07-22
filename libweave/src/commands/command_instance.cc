@@ -42,13 +42,36 @@ CommandInstance::~CommandInstance() {
     observer->OnCommandDestroyed();
 }
 
+const std::string& CommandInstance::GetID() const {
+  return id_;
+}
+
+const std::string& CommandInstance::GetName() const {
+  return name_;
+}
+
 const std::string& CommandInstance::GetCategory() const {
   return command_definition_->GetCategory();
 }
 
-const PropValue* CommandInstance::FindParameter(const std::string& name) const {
-  auto p = parameters_.find(name);
-  return (p != parameters_.end()) ? p->second.get() : nullptr;
+const std::string& CommandInstance::GetStatus() const {
+  return status_;
+}
+
+const std::string& CommandInstance::GetOrigin() const {
+  return origin_;
+}
+
+std::unique_ptr<base::DictionaryValue> CommandInstance::GetParameters() const {
+  return TypedValueToJson(parameters_, nullptr);
+}
+
+std::unique_ptr<base::DictionaryValue> CommandInstance::GetProgress() const {
+  return TypedValueToJson(progress_, nullptr);
+}
+
+std::unique_ptr<base::DictionaryValue> CommandInstance::GetResults() const {
+  return TypedValueToJson(results_, nullptr);
 }
 
 namespace {

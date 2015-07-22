@@ -31,8 +31,8 @@ CloudCommandProxy::CloudCommandProxy(
 
 void CloudCommandProxy::OnResultsChanged() {
   std::unique_ptr<base::DictionaryValue> patch{new base::DictionaryValue};
-  auto json = TypedValueToJson(command_instance_->GetResults(), nullptr);
-  patch->Set(commands::attributes::kCommand_Results, json.release());
+  patch->Set(commands::attributes::kCommand_Results,
+             command_instance_->GetResults().release());
   QueueCommandUpdate(std::move(patch));
 }
 
@@ -45,8 +45,8 @@ void CloudCommandProxy::OnStatusChanged() {
 
 void CloudCommandProxy::OnProgressChanged() {
   std::unique_ptr<base::DictionaryValue> patch{new base::DictionaryValue};
-  auto json = TypedValueToJson(command_instance_->GetProgress(), nullptr);
-  patch->Set(commands::attributes::kCommand_Progress, json.release());
+  patch->Set(commands::attributes::kCommand_Progress,
+             command_instance_->GetProgress().release());
   QueueCommandUpdate(std::move(patch));
 }
 

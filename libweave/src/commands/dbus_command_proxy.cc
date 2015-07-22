@@ -36,13 +36,12 @@ void DBusCommandProxy::RegisterAsync(
   dbus_adaptor_.SetId(command_instance_->GetID());
   dbus_adaptor_.SetStatus(command_instance_->GetStatus());
   dbus_adaptor_.SetProgress(
-      ObjectToDBusVariant(command_instance_->GetProgress()));
+      DictionaryToDBusVariantDictionary(*command_instance_->GetProgress()));
   dbus_adaptor_.SetOrigin(command_instance_->GetOrigin());
-
   dbus_adaptor_.SetParameters(
-      ObjectToDBusVariant(command_instance_->GetParameters()));
+      DictionaryToDBusVariantDictionary(*command_instance_->GetParameters()));
   dbus_adaptor_.SetResults(
-      ObjectToDBusVariant(command_instance_->GetResults()));
+      DictionaryToDBusVariantDictionary(*command_instance_->GetResults()));
 
   // Register the command DBus object and expose its methods and properties.
   dbus_object_.RegisterAsync(completion_callback);
@@ -50,7 +49,7 @@ void DBusCommandProxy::RegisterAsync(
 
 void DBusCommandProxy::OnResultsChanged() {
   dbus_adaptor_.SetResults(
-      ObjectToDBusVariant(command_instance_->GetResults()));
+      DictionaryToDBusVariantDictionary(*command_instance_->GetResults()));
 }
 
 void DBusCommandProxy::OnStatusChanged() {
@@ -59,7 +58,7 @@ void DBusCommandProxy::OnStatusChanged() {
 
 void DBusCommandProxy::OnProgressChanged() {
   dbus_adaptor_.SetProgress(
-      ObjectToDBusVariant(command_instance_->GetProgress()));
+      DictionaryToDBusVariantDictionary(*command_instance_->GetProgress()));
 }
 
 void DBusCommandProxy::OnCommandDestroyed() {
