@@ -79,6 +79,12 @@ TEST(PerfOptionParserTest, BadStat_BannedOptions) {
       {"perf", "stat", "--log-fd", "4"}));
 }
 
+TEST(PerfOptionParserTest, DontAllowOtherPerfSubcommands) {
+  EXPECT_FALSE(ValidatePerfCommandLine({"perf", "list"}));
+  EXPECT_FALSE(ValidatePerfCommandLine({"perf", "report"}));
+  EXPECT_FALSE(ValidatePerfCommandLine({"perf", "trace"}));
+}
+
 // Unsafe command lines for either perf command.
 TEST(PerfOptionParserTest, Ugly) {
   for (const string &subcmd : { "record", "stat" }) {

@@ -177,7 +177,6 @@ bool ValidatePerfCommandLine(const std::vector<string> &args) {
   if (args.size() < 2) {
     return false;
   }
-  // TODO(dhsharp): (raised by sque) what about "/usr/bin/perf"? Is that valid?
   if (args[0] != "perf") {
     return false;
   }

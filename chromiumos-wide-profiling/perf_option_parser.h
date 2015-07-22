@@ -17,6 +17,8 @@ namespace quipper {
 // This check should be made on the arguments coming from an untrusted caller of
 // quipper before quipper adds its own arguments, like "-- sleep 2" to set the
 // profile duration, or "-o /tmp/perf.data" to set the output path.
+// This also requires that args[0] is "perf". Quipper can later substitute
+// this with the One True perf binary.
 // Returns |true| iff the command line is safe.
 bool ValidatePerfCommandLine(const std::vector<string> &args);
 

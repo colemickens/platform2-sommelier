@@ -25,26 +25,31 @@ bool IsPerfRecordAvailable() {
       NULL);
 }
 
-TEST(PerfRecorderTest, RecordToProtobuf) {
+class PerfRecorderTest : public ::testing::Test {
+ public:
+  PerfRecorderTest() : perf_recorder_({"sudo", GetPerfPath()}) {}
+ protected:
+  PerfRecorder perf_recorder_;
+};
+
+TEST_F(PerfRecorderTest, RecordToProtobuf) {
   // Read perf data using the PerfReader class.
   // Dump it to a string and convert to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
   string output_string;
-  PerfRecorder perf_recorder;
-  EXPECT_TRUE(perf_recorder.RunCommandAndGetSerializedOutput(
-      {"sudo", GetPerfPath(), "record"}, 1, &output_string));
+  EXPECT_TRUE(perf_recorder_.RunCommandAndGetSerializedOutput(
+      {"perf", "record"}, 1, &output_string));
 
   quipper::PerfDataProto perf_data_proto;
   EXPECT_TRUE(perf_data_proto.ParseFromString(output_string));
   EXPECT_GT(perf_data_proto.build_ids_size(), 0);
 }
 
-TEST(PerfRecorderTest, StatToProtobuf) {
+TEST_F(PerfRecorderTest, StatToProtobuf) {
   // Run perf stat and verify output.
   string output_string;
-  PerfRecorder perf_recorder;
-  EXPECT_TRUE(perf_recorder.RunCommandAndGetSerializedOutput(
-      {"sudo", GetPerfPath(), "stat"}, 1, &output_string));
+  EXPECT_TRUE(perf_recorder_.RunCommandAndGetSerializedOutput(
+      {"perf", "stat"}, 1, &output_string));
 
   EXPECT_GT(output_string.size(), 0);
   quipper::PerfStatProto stat;
@@ -52,11 +57,10 @@ TEST(PerfRecorderTest, StatToProtobuf) {
   EXPECT_GT(stat.line_size(), 0);
 }
 
-TEST(PerfRecorderTest, StatSingleEvent) {
+TEST_F(PerfRecorderTest, StatSingleEvent) {
   string output_string;
-  PerfRecorder perf_recorder;
-  ASSERT_TRUE(perf_recorder.RunCommandAndGetSerializedOutput(
-      {"sudo", GetPerfPath(), "stat", "-a", "-e", "cycles"},
+  ASSERT_TRUE(perf_recorder_.RunCommandAndGetSerializedOutput(
+      {"perf", "stat", "-a", "-e", "cycles"},
       1, &output_string));
 
   EXPECT_GT(output_string.size(), 0);
@@ -78,11 +82,10 @@ TEST(PerfRecorderTest, StatSingleEvent) {
   EXPECT_EQ("cycles", stat.line(0).event_name());
 }
 
-TEST(PerfRecorderTest, StatMultipleEvents) {
+TEST_F(PerfRecorderTest, StatMultipleEvents) {
   string output_string;
-  PerfRecorder perf_recorder;
-  ASSERT_TRUE(perf_recorder.RunCommandAndGetSerializedOutput(
-      { "sudo", GetPerfPath(), "stat", "-a",
+  ASSERT_TRUE(perf_recorder_.RunCommandAndGetSerializedOutput(
+      { "perf", "stat", "-a",
         "-e", "cycles",
         "-e", "instructions",
         "-e", "branches",
@@ -137,30 +140,21 @@ TEST(PerfRecorderTest, StatMultipleEvents) {
   EXPECT_EQ("branch-misses", stat.line(3).event_name());
 }
 
-TEST(PerfRecorderTest, DontAllowCommands) {
+TEST_F(PerfRecorderTest, DontAllowCommands) {
   string output_string;
-  PerfRecorder perf_recorder;
-  EXPECT_FALSE(perf_recorder.RunCommandAndGetSerializedOutput(
-      {"sudo", GetPerfPath(), "record", "--", "sh", "-c", "echo 'malicious'"},
+  EXPECT_FALSE(perf_recorder_.RunCommandAndGetSerializedOutput(
+      {"perf", "record", "--", "sh", "-c", "echo 'malicious'"},
       1, &output_string));
-  EXPECT_FALSE(perf_recorder.RunCommandAndGetSerializedOutput(
-      {"sudo", GetPerfPath(), "stat", "--", "sh", "-c", "echo 'malicious'"},
+  EXPECT_FALSE(perf_recorder_.RunCommandAndGetSerializedOutput(
+      {"perf", "stat", "--", "sh", "-c", "echo 'malicious'"},
       1, &output_string));
 }
 
-TEST(PerfRecorderTest, DontAllowOtherPerfSubcommands) {
+TEST(PerfRecorderNoPerfTest, FailsIfPerfDoesntExist) {
   string output_string;
-  PerfRecorder perf_recorder;
-  // Run a few other valid perf commands.
+  PerfRecorder perf_recorder({"sudo", "/doesnt-exist/usr/not-bin/not-perf"});
   EXPECT_FALSE(perf_recorder.RunCommandAndGetSerializedOutput(
-      {"sudo", GetPerfPath(), "list"},
-      1, &output_string));
-  EXPECT_FALSE(perf_recorder.RunCommandAndGetSerializedOutput(
-      {"sudo", GetPerfPath(), "report"},
-      1, &output_string));
-  EXPECT_FALSE(perf_recorder.RunCommandAndGetSerializedOutput(
-      {"sudo", GetPerfPath(), "trace"},
-      1, &output_string));
+      {"perf", "record"}, 1, &output_string));
 }
 
 }  // namespace quipper

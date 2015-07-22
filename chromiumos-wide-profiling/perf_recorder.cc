@@ -12,6 +12,7 @@
 
 #include "chromiumos-wide-profiling/compat/proto.h"
 #include "chromiumos-wide-profiling/compat/string.h"
+#include "chromiumos-wide-profiling/perf_option_parser.h"
 #include "chromiumos-wide-profiling/perf_serializer.h"
 #include "chromiumos-wide-profiling/perf_stat_parser.h"
 #include "chromiumos-wide-profiling/run_command.h"
@@ -30,38 +31,6 @@ string IntToString(const int i) {
   stringstream ss;
   ss << i;
   return ss.str();
-}
-
-// Returns true if |input| ends with "perf".
-bool IsPerfCommand(const string& input) {
-  // Name of the perf executable, without any path info.
-  const char kPerfBasename[] = "perf";
-  return input.size() >= strlen(kPerfBasename) &&
-         input.substr(input.size() - strlen(kPerfBasename)) == kPerfBasename;
-}
-
-// Given a perf command line, returns the subcommand, i.e. the argument that
-// follows "perf".
-// e.g. "sudo /usr/bin/perf record" -> "record".
-bool GetPerfSubcommand(const std::vector<string>& command_line_args,
-                      string* subcommand) {
-  for (size_t i = 0; i < command_line_args.size(); ++i) {
-    if (!IsPerfCommand(command_line_args[i]))
-      continue;
-    if (++i < command_line_args.size()) {
-      *subcommand = command_line_args[i];
-      return true;
-    }
-  }
-  return false;
-}
-
-// Checks for suspicious or malformed args that may contain an unsafe command.
-// TODO(cwp-team): Should catch other things like non-perf commands.
-bool PerfArgsContainExtraCommand(const std::vector<string>& args) {
-  // Perf uses '--' to mark the end of arguments and the beginning of the
-  // command to run and profile. We need to run sleep, so disallow this.
-  return std::find(args.begin(), args.end(), "--") != args.end();
 }
 
 // Reads a perf data file and converts it to a PerfDataProto, which is stored as
@@ -112,28 +81,42 @@ bool ParsePerfStatFileToString(const string& filename,
 
 }  // namespace
 
+PerfRecorder::PerfRecorder() : PerfRecorder({"/usr/bin/perf"}) {}
+
+PerfRecorder::PerfRecorder(const std::vector<string>& perf_binary_command)
+    : perf_binary_command_(perf_binary_command) {
+}
+
 bool PerfRecorder::RunCommandAndGetSerializedOutput(
     const std::vector<string>& perf_args,
     const int time,
     string* output_string) {
-  if (PerfArgsContainExtraCommand(perf_args)) {
-    LOG(ERROR) << "Perf arguments may contain a command. Refusing to run it!";
+  if (!ValidatePerfCommandLine(perf_args)) {
+    LOG(ERROR) << "Perf arguments are not safe to run!";
     return false;
   }
 
-  string perf_type;
-  if (!GetPerfSubcommand(perf_args, &perf_type)) {
-    LOG(ERROR) << "Could not determine perf command type from args.";
-    return false;
-  }
+  // ValidatePerfCommandLine should have checked perf_args[0] == "perf", and
+  // that perf_args[1] is a supported sub-command (e.g. "record" or "stat").
+
+  const string& perf_type = perf_args[1];
 
   if (perf_type != kPerfRecordCommand && perf_type != kPerfStatCommand) {
     LOG(ERROR) << "Unsupported perf subcommand: " << perf_type;
     return false;
   }
 
-  std::vector<string> full_perf_args(perf_args.begin(), perf_args.end());
   ScopedTempFile output_file;
+
+  // Assemble the full command line:
+  // - Replace "perf" in |perf_args[0]| with |perf_binary_command_| to
+  //   guarantee we're running a binary we believe we can trust.
+  // - Add our own paramters.
+
+  std::vector<string> full_perf_args(perf_binary_command_);
+  full_perf_args.insert(full_perf_args.end(),
+                        perf_args.begin() + 1,  // skip "perf"
+                        perf_args.end());
   full_perf_args.insert(full_perf_args.end(), {"-o", output_file.path()});
 
   // The perf stat output parser requires raw data from verbose output.
@@ -145,8 +128,10 @@ bool PerfRecorder::RunCommandAndGetSerializedOutput(
                         {"--", "sleep", IntToString(time)});
 
   // The perf command writes the output to a file, so ignore stdout.
-  if (!RunCommand(full_perf_args, nullptr))
+  if (!RunCommand(full_perf_args, nullptr)) {
+    LOG(ERROR) << "Failed to run perf command.";
     return false;
+  }
 
   if (perf_type == kPerfRecordCommand)
     return ParsePerfDataFileToString(output_file.path(), output_string);
