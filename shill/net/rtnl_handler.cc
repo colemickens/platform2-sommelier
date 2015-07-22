@@ -219,6 +219,7 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   if (seq != last_dump_sequence_)
     return;
 
+  IPAddress::Family family = IPAddress::kFamilyUnknown;
   if ((request_flags_ & kRequestAddr) != 0) {
     type = RTNLMessage::kTypeAddress;
     flag = kRequestAddr;
@@ -231,6 +232,10 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   } else if ((request_flags_ & kRequestNeighbor) != 0) {
     type = RTNLMessage::kTypeNeighbor;
     flag = kRequestNeighbor;
+  } else if ((request_flags_ & kRequestBridgeNeighbor) != 0) {
+    type = RTNLMessage::kTypeNeighbor;
+    flag = kRequestBridgeNeighbor;
+    family = AF_BRIDGE;
   } else {
     VLOG(2) << "Done with requests";
     in_request_ = false;
@@ -244,7 +249,7 @@ void RTNLHandler::NextRequest(uint32_t seq) {
       0,
       0,
       0,
-      IPAddress::kFamilyUnknown);
+      family);
   CHECK(SendMessage(&msg));
 
   last_dump_sequence_ = msg.seq();
