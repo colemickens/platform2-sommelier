@@ -1,4 +1,0 @@
-Name: libprotobinder
-Description: Binder IPC library
-Version: @PV@
-Libs: -lprotobinder

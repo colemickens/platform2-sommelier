@@ -1,1 +1,0 @@
-KERNEL=="binder", MODE="0666"
