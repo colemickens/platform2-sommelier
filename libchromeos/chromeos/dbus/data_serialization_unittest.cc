@@ -277,8 +277,10 @@ TEST(DBusUtils, AppendAndPopVariantDataTypes) {
   AppendValueToWriterAsVariant(&writer, std::string{"data"});
   AppendValueToWriterAsVariant(&writer, ObjectPath{"/obj/path"});
   AppendValueToWriterAsVariant(&writer, Any{17});
+  AppendValueToWriterAsVariant(&writer,
+                               Any{std::vector<std::vector<int>>{{6, 7}}});
 
-  EXPECT_EQ("vvvvvvvvvvvv", message->GetSignature());
+  EXPECT_EQ("vvvvvvvvvvvvv", message->GetSignature());
 
   uint8_t byte_value = 0;
   bool bool_value = true;
@@ -292,6 +294,7 @@ TEST(DBusUtils, AppendAndPopVariantDataTypes) {
   std::string string_value;
   ObjectPath object_path_value;
   Any any_value;
+  Any any_vector_vector;
 
   MessageReader reader(message.get());
   EXPECT_TRUE(reader.HasMoreData());
@@ -307,9 +310,10 @@ TEST(DBusUtils, AppendAndPopVariantDataTypes) {
   EXPECT_TRUE(PopVariantValueFromReader(&reader, &string_value));
   EXPECT_TRUE(PopVariantValueFromReader(&reader, &object_path_value));
   EXPECT_TRUE(PopVariantValueFromReader(&reader, &any_value));
+  // Not implemented.
+  EXPECT_FALSE(PopVariantValueFromReader(&reader, &any_vector_vector));
   EXPECT_FALSE(reader.HasMoreData());
 
-  // Must be: 10, false, 12, 13, 14, 15, 16, 17, 18.5, "data", "/obj/path".
   EXPECT_EQ(10, byte_value);
   EXPECT_FALSE(bool_value);
   EXPECT_EQ(12, int16_value);
@@ -322,6 +326,7 @@ TEST(DBusUtils, AppendAndPopVariantDataTypes) {
   EXPECT_EQ("data", string_value);
   EXPECT_EQ(ObjectPath{"/obj/path"}, object_path_value);
   EXPECT_EQ(17, any_value.Get<int>());
+  EXPECT_TRUE(any_vector_vector.IsEmpty());
 }
 
 TEST(DBusUtils, AppendAndPopBasicAny) {
