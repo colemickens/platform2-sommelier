@@ -266,14 +266,58 @@ bool Tpm2Impl::QuotePCR(int pcr_index,
 
 bool Tpm2Impl::SealToPCR0(const chromeos::Blob& value,
                           chromeos::Blob* sealed_value) {
-  LOG(FATAL) << "Not Implemented.";
-  return false;
+  std::string policy_digest;
+  TPM_RC result = trunks_utility_->GetPolicyDigestForPcrValue(0, "",
+                                                              &policy_digest);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
+    return false;
+  }
+  scoped_ptr<trunks::HmacSession> session = trunks_factory_->GetHmacSession();
+  if (trunks_utility_->StartSession(session.get()) != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session.";
+    return false;
+  }
+  std::string data_to_seal(value.begin(), value.end());
+  std::string sealed_data;
+  result = trunks_utility_->SealData(data_to_seal,
+                                     policy_digest,
+                                     session->GetDelegate(),
+                                     &sealed_data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating sealed object: " << GetErrorString(result);
+    return false;
+  }
+  sealed_value->assign(sealed_data.begin(), sealed_data.end());
+  return true;
 }
 
 bool Tpm2Impl::Unseal(const chromeos::Blob& sealed_value,
                       chromeos::Blob* value) {
-  LOG(FATAL) << "Not Implemented.";
-  return false;
+  scoped_ptr<trunks::PolicySession> policy_session =
+      trunks_factory_->GetPolicySession();
+  TPM_RC result = policy_session->StartUnboundSession(false);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyPCR(0, "");
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to pcr 0: "
+               << GetErrorString(result);
+    return false;
+  }
+  std::string sealed_data(sealed_value.begin(), sealed_value.end());
+  std::string unsealed_data;
+  result = trunks_utility_->UnsealData(sealed_data,
+                                       policy_session->GetDelegate(),
+                                       &unsealed_data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error unsealing object: " << GetErrorString(result);
+    return false;
+  }
+  value->assign(unsealed_data.begin(), unsealed_data.end());
+  return true;
 }
 
 bool Tpm2Impl::CreateCertifiedKey(const SecureBlob& identity_key_blob,
@@ -391,21 +435,9 @@ bool Tpm2Impl::CreatePCRBoundKey(int pcr_index,
                                  SecureBlob* creation_blob) {
   CHECK(key_blob) << "No key blob argument provided.";
   CHECK(creation_blob) << "No creation blob argument provided.";
-  scoped_ptr<trunks::PolicySession> trial_session =
-      trunks_factory_->GetTrialSession();
-  TPM_RC result = trial_session->StartUnboundSession(true);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting a trial session: " << GetErrorString(result);
-    return false;
-  }
-  result = trial_session->PolicyPCR(pcr_index, pcr_value.to_string());
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error restricting trial policy to pcr value: "
-               << GetErrorString(result);
-    return false;
-  }
   std::string policy_digest;
-  result = trial_session->GetDigest(&policy_digest);
+  TPM_RC result = trunks_utility_->GetPolicyDigestForPcrValue(
+      pcr_index, pcr_value.to_string(), &policy_digest);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
     return false;

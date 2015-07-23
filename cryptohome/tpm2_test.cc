@@ -336,6 +336,72 @@ TEST_F(Tpm2Test, GetNvramSizeFailure) {
   EXPECT_EQ(tpm_->GetNvramSize(index), 0);
 }
 
+TEST_F(Tpm2Test, SealToPCR0Success) {
+  SecureBlob value("value");
+  SecureBlob sealed_value;
+  std::string policy_digest("digest");
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValue(0, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(policy_digest),
+                      Return(TPM_RC_SUCCESS)));
+  std::string data_to_seal;
+  EXPECT_CALL(mock_tpm_utility_, SealData(_, policy_digest, _, _))
+      .WillOnce(DoAll(SaveArg<0>(&data_to_seal),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_TRUE(tpm_->SealToPCR0(value, &sealed_value));
+  EXPECT_EQ(data_to_seal, value.to_string());
+}
+
+TEST_F(Tpm2Test, SealToPCR0PolicyFailure) {
+  SecureBlob value("value");
+  SecureBlob sealed_value;
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValue(0, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(tpm_->SealToPCR0(value, &sealed_value));
+}
+
+TEST_F(Tpm2Test, SealToPCR0Failure) {
+  SecureBlob value("value");
+  SecureBlob sealed_value;
+  EXPECT_CALL(mock_tpm_utility_, SealData(_, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(tpm_->SealToPCR0(value, &sealed_value));
+}
+
+TEST_F(Tpm2Test, UnsealSuccess) {
+  SecureBlob sealed_value("sealed");
+  SecureBlob value;
+  std::string unsealed_data("unsealed");
+  EXPECT_CALL(mock_tpm_utility_, UnsealData(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(unsealed_data),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_TRUE(tpm_->Unseal(sealed_value, &value));
+  EXPECT_EQ(unsealed_data, value.to_string());
+}
+
+TEST_F(Tpm2Test, UnsealStartPolicySessionFail) {
+  SecureBlob sealed_value("sealed");
+  SecureBlob value;
+  EXPECT_CALL(mock_policy_session_, StartUnboundSession(false))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(tpm_->Unseal(sealed_value, &value));
+}
+
+TEST_F(Tpm2Test, UnsealPolicyPCRFailure) {
+  SecureBlob sealed_value("sealed");
+  SecureBlob value;
+  EXPECT_CALL(mock_policy_session_, PolicyPCR(0, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(tpm_->Unseal(sealed_value, &value));
+}
+
+TEST_F(Tpm2Test, UnsealFailure) {
+  SecureBlob sealed_value("sealed");
+  SecureBlob value;
+  EXPECT_CALL(mock_tpm_utility_, UnsealData(_, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_FALSE(tpm_->Unseal(sealed_value, &value));
+}
+
 TEST_F(Tpm2Test, SignPolicySuccess) {
   int pcr_index = 5;
   EXPECT_CALL(mock_policy_session_, PolicyPCR(pcr_index, _))
@@ -405,46 +471,19 @@ TEST_F(Tpm2Test, CreatePCRBoundKeySuccess) {
   SecureBlob creation_blob;
   uint32_t modulus = 2048;
   uint32_t exponent = 0x10001;
-  std::string pcr_policy_value;
-  EXPECT_CALL(mock_policy_session_, PolicyPCR(index, _))
-      .WillOnce(DoAll(SaveArg<1>(&pcr_policy_value),
-                      Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_,
               CreateRSAKeyPair(_, modulus, exponent, _, _, true, _, _, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_TRUE(tpm_->CreatePCRBoundKey(index, pcr_value, &key_blob,
                                       nullptr, &creation_blob));
-  EXPECT_EQ(pcr_policy_value, pcr_value.to_string());
 }
 
-TEST_F(Tpm2Test, CreatePCRBoundKeyBadSession) {
+TEST_F(Tpm2Test, CreatePCRBoundKeyPolicyFailure) {
   int index = 2;
   SecureBlob pcr_value("pcr_value");
   SecureBlob key_blob;
   SecureBlob creation_blob;
-  EXPECT_CALL(mock_policy_session_, StartUnboundSession(true))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_->CreatePCRBoundKey(index, pcr_value, &key_blob,
-                                       nullptr, &creation_blob));
-}
-
-TEST_F(Tpm2Test, CreatePCRBoundKeyBadPolicy) {
-  int index = 2;
-  SecureBlob pcr_value("pcr_value");
-  SecureBlob key_blob;
-  SecureBlob creation_blob;
-  EXPECT_CALL(mock_policy_session_, PolicyPCR(index, _))
-      .WillOnce(Return(TPM_RC_FAILURE));
-  EXPECT_FALSE(tpm_->CreatePCRBoundKey(index, pcr_value, &key_blob,
-                                       nullptr, &creation_blob));
-}
-
-TEST_F(Tpm2Test, CreatePCRBoundKeyBadDigest) {
-  int index = 2;
-  SecureBlob pcr_value("pcr_value");
-  SecureBlob key_blob;
-  SecureBlob creation_blob;
-  EXPECT_CALL(mock_policy_session_, GetDigest(_))
+  EXPECT_CALL(mock_tpm_utility_, GetPolicyDigestForPcrValue(index, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   EXPECT_FALSE(tpm_->CreatePCRBoundKey(index, pcr_value, &key_blob,
                                        nullptr, &creation_blob));
