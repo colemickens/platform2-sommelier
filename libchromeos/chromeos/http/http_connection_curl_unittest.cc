@@ -217,6 +217,10 @@ TEST_F(HttpCurlConnectionTest, FinishRequestAsync) {
   connection_->FinishRequestAsync({}, {});
 }
 
+MATCHER_P(MatchStringBuffer, data, "") {
+  return data.compare(static_cast<const char*>(arg)) == 0;
+}
+
 TEST_F(HttpCurlConnectionTest, FinishRequest) {
   std::string request_data{"Foo Bar Baz"};
   std::string response_data{"<html><body>OK</body></html>"};
@@ -228,7 +232,9 @@ TEST_F(HttpCurlConnectionTest, FinishRequest) {
       {"X-Foo", "bar"},
   };
   std::unique_ptr<MockStream> response_stream(new MockStream);
-  EXPECT_CALL(*response_stream, WriteAllBlocking(_, response_data.size(), _))
+  EXPECT_CALL(*response_stream,
+              WriteAllBlocking(MatchStringBuffer(response_data),
+                               response_data.size(), _))
       .WillOnce(Return(true));
   EXPECT_CALL(*response_stream, CanSeek())
       .WillOnce(Return(false));
