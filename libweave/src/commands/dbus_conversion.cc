@@ -25,17 +25,45 @@ chromeos::Any ValueToAny(const base::Value& json,
   return val;
 }
 
+chromeos::Any ValueToAny(const base::Value& json);
+
 template <typename T>
-chromeos::Any ListToAny(const base::ListValue& list);
+chromeos::Any ListToAny(const base::ListValue& list,
+                        bool (base::Value::*fnc)(T*) const) {
+  std::vector<T> result;
+  result.reserve(list.GetSize());
+  for (const base::Value* v : list) {
+    T val;
+    CHECK((v->*fnc)(&val));
+    result.push_back(val);
+  }
+  return result;
+}
+
+chromeos::Any DictListToAny(const base::ListValue& list) {
+  std::vector<chromeos::VariantDictionary> result;
+  result.reserve(list.GetSize());
+  for (const base::Value* v : list) {
+    const base::DictionaryValue* dict = nullptr;
+    CHECK(v->GetAsDictionary(&dict));
+    result.push_back(DictionaryToDBusVariantDictionary(*dict));
+  }
+  return result;
+}
+
+chromeos::Any ListListToAny(const base::ListValue& list) {
+  std::vector<chromeos::Any> result;
+  result.reserve(list.GetSize());
+  for (const base::Value* v : list)
+    result.push_back(ValueToAny(*v));
+  return result;
+}
 
 // Converts a JSON value into an Any so it can be sent over D-Bus using
 // UpdateState D-Bus method from Buffet.
 chromeos::Any ValueToAny(const base::Value& json) {
   chromeos::Any prop_value;
   switch (json.GetType()) {
-    case base::Value::TYPE_NULL:
-      prop_value = nullptr;
-      break;
     case base::Value::TYPE_BOOLEAN:
       prop_value = ValueToAny<bool>(json, &base::Value::GetAsBoolean);
       break;
@@ -48,9 +76,6 @@ chromeos::Any ValueToAny(const base::Value& json) {
     case base::Value::TYPE_STRING:
       prop_value = ValueToAny<std::string>(json, &base::Value::GetAsString);
       break;
-    case base::Value::TYPE_BINARY:
-      LOG(FATAL) << "Binary values should not happen";
-      break;
     case base::Value::TYPE_DICTIONARY: {
       const base::DictionaryValue* dict = nullptr;
       CHECK(json.GetAsDictionary(&dict));
@@ -61,7 +86,9 @@ chromeos::Any ValueToAny(const base::Value& json) {
       const base::ListValue* list = nullptr;
       CHECK(json.GetAsList(&list));
       if (list->empty()) {
-        prop_value = ListToAny<chromeos::Any>(*list);
+        // We don't know type of objects this list intended for, so we just use
+        // vector<chromeos::Any>.
+        prop_value = ListListToAny(*list);
         break;
       }
       auto type = (*list->begin())->GetType();
@@ -70,19 +97,25 @@ chromeos::Any ValueToAny(const base::Value& json) {
 
       switch (type) {
         case base::Value::TYPE_BOOLEAN:
-          prop_value = ListToAny<bool>(*list);
+          prop_value = ListToAny<bool>(*list, &base::Value::GetAsBoolean);
           break;
         case base::Value::TYPE_INTEGER:
-          prop_value = ListToAny<int>(*list);
+          prop_value = ListToAny<int>(*list, &base::Value::GetAsInteger);
           break;
         case base::Value::TYPE_DOUBLE:
-          prop_value = ListToAny<double>(*list);
+          prop_value = ListToAny<double>(*list, &base::Value::GetAsDouble);
           break;
         case base::Value::TYPE_STRING:
-          prop_value = ListToAny<std::string>(*list);
+          prop_value = ListToAny<std::string>(*list, &base::Value::GetAsString);
           break;
         case base::Value::TYPE_DICTIONARY:
-          prop_value = ListToAny<chromeos::VariantDictionary>(*list);
+          prop_value = DictListToAny(*list);
+          break;
+        case base::Value::TYPE_LIST:
+          // We can't support Any{vector<vector<>>} as the type is only known
+          // in runtime when we need to instantiate templates in compile time.
+          // We can use Any{vector<Any>} instead.
+          prop_value = ListListToAny(*list);
           break;
         default:
           LOG(FATAL) << "Unsupported JSON value type for list element: "
@@ -95,15 +128,6 @@ chromeos::Any ValueToAny(const base::Value& json) {
       break;
   }
   return prop_value;
-}
-
-template <typename T>
-chromeos::Any ListToAny(const base::ListValue& list) {
-  std::vector<T> val;
-  val.reserve(list.GetSize());
-  for (const base::Value* v : list)
-    val.push_back(ValueToAny(*v).Get<T>());
-  return val;
 }
 
 bool ErrorMissingProperty(chromeos::ErrorPtr* error,
