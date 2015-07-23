@@ -70,6 +70,9 @@ void TrunksFtdiSpi::StartTransaction(bool read_write,
   unsigned char *response;
   SpiFrameHeader header;
 
+  usleep(10000);  // give it 10 ms. TODO(vbendeb): remove this once
+                  // cr50 SPS TPM driver performance is fixed.
+
   // The first byte of the frame header encodes the transaction type (read or
   // write) and size (set to lenth - 1).
   header.body[0] = (read_write ? 0x80 : 0) | 0x40 | (bytes - 1);
@@ -147,21 +150,23 @@ bool TrunksFtdiSpi::Init() {
 
   FtdiReadReg(TPM_DID_VID_REG, sizeof(did_vid), &did_vid);
 
-  if ((did_vid & 0xffff) != 0x15d1) {
-    LOG(ERROR) << "unknown vid: 0x" << std::hex << (did_vid & 0xffff);
+  uint16_t vid = did_vid & 0xffff;
+  if ((vid != 0x15d1) && (vid != 0x1ae0)) {
+    LOG(ERROR) << "unknown did_vid: 0x" << std::hex << did_vid;
     return false;
   }
 
   // Try claiming locality zero.
   FtdiReadReg(TPM_ACCESS_REG, sizeof(cmd), &cmd);
-  if (cmd != (tpmRegValidSts | tpmEstablishment)) {
+  // tpmEstablishment can be either set or not.
+  if ((cmd & ~tpmEstablishment) != tpmRegValidSts) {
     LOG(ERROR) << "invalid reset status: 0x" << std::hex << (unsigned)cmd;
     return false;
   }
   cmd = requestUse;
   FtdiWriteReg(TPM_ACCESS_REG, sizeof(cmd), &cmd);
   FtdiReadReg(TPM_ACCESS_REG, sizeof(cmd), &cmd);
-  if (cmd != (tpmRegValidSts | activeLocality | tpmEstablishment)) {
+  if ((cmd &  ~tpmEstablishment) != (tpmRegValidSts | activeLocality)) {
     LOG(ERROR) << "failed to claim locality, status: 0x" << std::hex
                << (unsigned)cmd;
     return false;
