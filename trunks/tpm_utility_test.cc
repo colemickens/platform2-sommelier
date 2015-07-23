@@ -13,6 +13,7 @@
 #include "trunks/mock_authorization_delegate.h"
 #include "trunks/mock_blob_parser.h"
 #include "trunks/mock_hmac_session.h"
+#include "trunks/mock_policy_session.h"
 #include "trunks/mock_tpm.h"
 #include "trunks/mock_tpm_state.h"
 #include "trunks/tpm_constants.h"
@@ -38,6 +39,7 @@ class TpmUtilityTest : public testing::Test {
     factory_.set_tpm_state(&mock_tpm_state_);
     factory_.set_tpm(&mock_tpm_);
     factory_.set_hmac_session(&mock_hmac_session_);
+    factory_.set_policy_session(&mock_policy_session_);
   }
 
   TPM_RC ComputeKeyName(const TPMT_PUBLIC& public_area,
@@ -79,6 +81,7 @@ class TpmUtilityTest : public testing::Test {
   NiceMock<MockTpm> mock_tpm_;
   NiceMock<MockAuthorizationDelegate> mock_authorization_delegate_;
   NiceMock<MockHmacSession> mock_hmac_session_;
+  NiceMock<MockPolicySession> mock_policy_session_;
   TpmUtilityImpl utility_;
 };
 
@@ -1419,6 +1422,199 @@ TEST_F(TpmUtilityTest, LoadKeyParserFail) {
       .WillOnce(Return(false));
   EXPECT_EQ(SAPI_RC_BAD_TCTI_STRUCTURE, utility_.LoadKey(
       key_blob, &mock_authorization_delegate_, &key_handle));
+}
+
+TEST_F(TpmUtilityTest, SealedDataSuccess) {
+  std::string data_to_seal("seal_data");
+  std::string sealed_data;
+  TPM2B_SENSITIVE_CREATE sensitive_create;
+  TPM2B_PUBLIC in_public;
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey, _, _,
+                                         _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<1>(&sensitive_create),
+                      SaveArg<2>(&in_public),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.SealData(
+      data_to_seal, "", &mock_authorization_delegate_, &sealed_data));
+  EXPECT_EQ(sensitive_create.sensitive.data.size, data_to_seal.size());
+  EXPECT_EQ(0, memcmp(sensitive_create.sensitive.data.buffer,
+                      data_to_seal.data(), data_to_seal.size()));
+  EXPECT_EQ(in_public.public_area.type, TPM_ALG_KEYEDHASH);
+  EXPECT_EQ(in_public.public_area.name_alg, TPM_ALG_SHA256);
+}
+
+TEST_F(TpmUtilityTest, SealDataBadDelegate) {
+  std::string data_to_seal("seal_data");
+  std::string sealed_data;
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.SealData(
+      data_to_seal, "", nullptr, &sealed_data));
+}
+
+TEST_F(TpmUtilityTest, SealDataFailure) {
+  std::string data_to_seal("seal_data");
+  std::string sealed_data;
+  EXPECT_CALL(mock_tpm_, CreateSyncShort(kRSAStorageRootKey, _, _,
+                                         _, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.SealData(
+      data_to_seal, "", &mock_authorization_delegate_, &sealed_data));
+}
+
+TEST_F(TpmUtilityTest, SealDataParserFail) {
+  std::string data_to_seal("seal_data");
+  std::string sealed_data;
+  EXPECT_CALL(mock_blob_parser_, SerializeKeyBlob(_, _, &sealed_data))
+      .WillOnce(Return(false));
+  EXPECT_EQ(SAPI_RC_BAD_TCTI_STRUCTURE, utility_.SealData(
+      data_to_seal, "", &mock_authorization_delegate_, &sealed_data));
+}
+
+TEST_F(TpmUtilityTest, UnsealDataSuccess) {
+  std::string sealed_data;
+  std::string unsealed_data;
+  TPM_HANDLE object_handle = 42;
+  EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(object_handle),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_, UnsealSync(object_handle, _, _, _))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.UnsealData(
+      sealed_data, &mock_authorization_delegate_, &unsealed_data));
+}
+
+TEST_F(TpmUtilityTest, UnsealDataBadDelegate) {
+  std::string sealed_data;
+  std::string unsealed_data;
+  EXPECT_EQ(SAPI_RC_INVALID_SESSIONS, utility_.UnsealData(
+      sealed_data, nullptr, &unsealed_data));
+}
+
+TEST_F(TpmUtilityTest, UnsealDataLoadFail) {
+  std::string sealed_data;
+  std::string unsealed_data;
+  EXPECT_CALL(mock_tpm_, LoadSync(_, _, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.UnsealData(
+      sealed_data, &mock_authorization_delegate_, &unsealed_data));
+}
+
+TEST_F(TpmUtilityTest, UnsealDataBadKeyName) {
+  std::string sealed_data;
+  std::string unsealed_data;
+  EXPECT_CALL(mock_tpm_, ReadPublicSync(_, _, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.UnsealData(
+      sealed_data, &mock_authorization_delegate_, &unsealed_data));
+}
+
+TEST_F(TpmUtilityTest, UnsealObjectFailure) {
+  std::string sealed_data;
+  std::string unsealed_data;
+  EXPECT_CALL(mock_tpm_, UnsealSync(_, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE, utility_.UnsealData(
+      sealed_data, &mock_authorization_delegate_, &unsealed_data));
+}
+
+TEST_F(TpmUtilityTest, StartSessionSuccess) {
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true))
+      .WillOnce(Return(TPM_RC_SUCCESS));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+      utility_.StartSession(&mock_hmac_session_));
+}
+
+TEST_F(TpmUtilityTest, StartSessionFailure) {
+  EXPECT_CALL(mock_hmac_session_, StartUnboundSession(true))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE,
+      utility_.StartSession(&mock_hmac_session_));
+}
+
+TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValueSuccess) {
+  int index = 5;
+  std::string pcr_value("pcr_value");
+  std::string policy_digest;
+  TPML_PCR_SELECTION pcr_select;
+  pcr_select.count = 1;
+  pcr_select.pcr_selections[0].hash = TPM_ALG_SHA256;
+  pcr_select.pcr_selections[0].sizeof_select = 1;
+  pcr_select.pcr_selections[0].pcr_select[index / 8] = 1 << (index % 8);
+  TPML_DIGEST pcr_values;
+  pcr_values.count = 1;
+  pcr_values.digests[0] = Make_TPM2B_DIGEST(pcr_value);
+  EXPECT_CALL(mock_tpm_, PCR_ReadSync(_, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(pcr_select),
+                      SetArgPointee<3>(pcr_values),
+                      Return(TPM_RC_SUCCESS)));
+  std::string tpm_pcr_value;
+  EXPECT_CALL(mock_policy_session_, PolicyPCR(index, _))
+      .WillOnce(DoAll(SaveArg<1>(&tpm_pcr_value),
+                      Return(TPM_RC_SUCCESS)));
+  std::string tpm_policy_digest("digest");
+  EXPECT_CALL(mock_policy_session_, GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(tpm_policy_digest),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+      utility_.GetPolicyDigestForPcrValue(index, "", &policy_digest));
+  EXPECT_EQ(policy_digest, tpm_policy_digest);
+  EXPECT_EQ(pcr_value, tpm_pcr_value);
+}
+
+TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValueSuccessWithPcrValue) {
+  int index = 5;
+  std::string pcr_value("pcr_value");
+  std::string policy_digest;
+  std::string tpm_pcr_value;
+  EXPECT_CALL(mock_policy_session_, PolicyPCR(index, _))
+      .WillOnce(DoAll(SaveArg<1>(&tpm_pcr_value),
+                      Return(TPM_RC_SUCCESS)));
+  std::string tpm_policy_digest("digest");
+  EXPECT_CALL(mock_policy_session_, GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(tpm_policy_digest),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_EQ(TPM_RC_SUCCESS,
+      utility_.GetPolicyDigestForPcrValue(index, pcr_value, &policy_digest));
+  EXPECT_EQ(policy_digest, tpm_policy_digest);
+  EXPECT_EQ(pcr_value, tpm_pcr_value);
+}
+
+TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValueBadSession) {
+  int index = 5;
+  std::string pcr_value("value");
+  std::string policy_digest;
+  EXPECT_CALL(mock_policy_session_, StartUnboundSession(false))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE,
+      utility_.GetPolicyDigestForPcrValue(index, pcr_value, &policy_digest));
+}
+
+TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValuePcrReadFail) {
+  int index = 5;
+  std::string policy_digest;
+  EXPECT_CALL(mock_tpm_, PCR_ReadSync(_, _, _, _, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE,
+      utility_.GetPolicyDigestForPcrValue(index, "", &policy_digest));
+}
+
+TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValueBadPcr) {
+  int index = 5;
+  std::string pcr_value("value");
+  std::string policy_digest;
+  EXPECT_CALL(mock_policy_session_, PolicyPCR(index, _))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE,
+      utility_.GetPolicyDigestForPcrValue(index, pcr_value, &policy_digest));
+}
+
+TEST_F(TpmUtilityTest, GetPolicyDigestForPcrValueBadDigest) {
+  int index = 5;
+  std::string pcr_value("value");
+  std::string policy_digest;
+  EXPECT_CALL(mock_policy_session_, GetDigest(&policy_digest))
+      .WillOnce(Return(TPM_RC_FAILURE));
+  EXPECT_EQ(TPM_RC_FAILURE,
+      utility_.GetPolicyDigestForPcrValue(index, pcr_value, &policy_digest));
 }
 
 TEST_F(TpmUtilityTest, DefineNVSpaceSuccess) {

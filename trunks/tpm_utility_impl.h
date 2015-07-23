@@ -98,6 +98,17 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC GetKeyName(TPM_HANDLE handle, std::string* name) override;
   TPM_RC GetKeyPublicArea(TPM_HANDLE handle,
                           TPMT_PUBLIC* public_data) override;
+  TPM_RC SealData(const std::string& data_to_seal,
+                  const std::string& policy_digest,
+                  AuthorizationDelegate* delegate,
+                  std::string* sealed_data) override;
+  TPM_RC UnsealData(const std::string& sealed_data,
+                    AuthorizationDelegate* delegate,
+                    std::string* unsealed_data) override;
+  TPM_RC StartSession(HmacSession* session) override;
+  TPM_RC GetPolicyDigestForPcrValue(int pcr_index,
+                                    const std::string& pcr_value,
+                                    std::string* policy_digest) override;
   TPM_RC DefineNVSpace(uint32_t index,
                        size_t num_bytes,
                        AuthorizationDelegate* delegate) override;

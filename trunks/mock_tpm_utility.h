@@ -85,6 +85,17 @@ class MockTpmUtility : public TpmUtility {
                                TPM_HANDLE*));
   MOCK_METHOD2(GetKeyName, TPM_RC(TPM_HANDLE, std::string*));
   MOCK_METHOD2(GetKeyPublicArea, TPM_RC(TPM_HANDLE, TPMT_PUBLIC*));
+  MOCK_METHOD4(SealData, TPM_RC(const std::string&,
+                                const std::string&,
+                                AuthorizationDelegate*,
+                                std::string*));
+  MOCK_METHOD3(UnsealData, TPM_RC(const std::string&,
+                                  AuthorizationDelegate*,
+                                  std::string*));
+  MOCK_METHOD1(StartSession, TPM_RC(HmacSession*));
+  MOCK_METHOD3(GetPolicyDigestForPcrValue, TPM_RC(int,
+                                                  const std::string&,
+                                                  std::string*));
   MOCK_METHOD3(DefineNVSpace, TPM_RC(uint32_t,
                                      size_t,
                                      AuthorizationDelegate*));

@@ -184,6 +184,11 @@ int main(int argc, char **argv) {
       LOG(ERROR) << "Error running VerifyKeyCreationTest.";
       return -1;
     }
+    LOG(INFO) << "Running Sealed Data test.";
+    if (!test.SealedDataTest()) {
+      LOG(ERROR) << "Error running SealedDataTest.";
+      return -1;
+    }
     LOG(INFO) << "Running PCR test.";
     if (!test.PCRTest()) {
       LOG(ERROR) << "Error running PCRTest.";

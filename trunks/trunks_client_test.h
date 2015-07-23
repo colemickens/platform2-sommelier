@@ -53,6 +53,10 @@ class TrunksClientTest {
   // was created by the TPM.
   bool VerifyKeyCreationTest();
 
+  // This test verifies that we can seal a secret to the TPM and access
+  // it later.
+  bool SealedDataTest();
+
   // This test performs a simple PCR extension and then reads the value in the
   // PCR to verify if it is correct.
   // NOTE: PCR banks need to be configured for this test to succeed. Normally

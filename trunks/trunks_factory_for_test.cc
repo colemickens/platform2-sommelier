@@ -253,6 +253,31 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->GetKeyPublicArea(handle, public_data);
   }
 
+  TPM_RC SealData(const std::string& data_to_seal,
+                  const std::string& policy_digest,
+                  AuthorizationDelegate* delegate,
+                  std::string* sealed_data) override {
+    return target_->SealData(data_to_seal, policy_digest,
+                             delegate, sealed_data);
+  }
+
+  TPM_RC UnsealData(const std::string& sealed_data,
+                    AuthorizationDelegate* delegate,
+                    std::string* unsealed_data) override {
+    return target_->UnsealData(sealed_data, delegate, unsealed_data);
+  }
+
+  TPM_RC StartSession(HmacSession* session) override {
+    return target_->StartSession(session);
+  }
+
+  TPM_RC GetPolicyDigestForPcrValue(int pcr_index,
+                                    const std::string& pcr_value,
+                                    std::string* policy_digest) override {
+    return target_->GetPolicyDigestForPcrValue(pcr_index, pcr_value,
+                                               policy_digest);
+  }
+
   TPM_RC DefineNVSpace(uint32_t index,
                        size_t num_bytes,
                        AuthorizationDelegate* delegate) override {

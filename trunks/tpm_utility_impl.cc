@@ -18,6 +18,7 @@
 #include "trunks/error_codes.h"
 #include "trunks/hmac_authorization_delegate.h"
 #include "trunks/hmac_session.h"
+#include "trunks/policy_session.h"
 #include "trunks/scoped_key_handle.h"
 #include "trunks/tpm_constants.h"
 #include "trunks/tpm_state.h"
@@ -982,6 +983,150 @@ TPM_RC TpmUtilityImpl::GetKeyPublicArea(TPM_HANDLE handle,
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::SealData(const std::string& data_to_seal,
+                                const std::string& policy_digest,
+                                AuthorizationDelegate* delegate,
+                                std::string* sealed_data) {
+  CHECK(sealed_data);
+  TPM_RC result;
+  if (delegate == nullptr) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << "This method needs a valid authorization delegate: "
+               << GetErrorString(result);
+    return result;
+  }
+  std::string parent_name;
+  result = GetKeyName(kRSAStorageRootKey, &parent_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting Key name for RSA-SRK: "
+               << GetErrorString(result);
+    return result;
+  }
+  // We seal data to the TPM by creating a KEYEDHASH object with sign and
+  // decrypt attributes disabled.
+  TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_KEYEDHASH);
+  public_area.auth_policy = Make_TPM2B_DIGEST(policy_digest);
+  public_area.object_attributes = kAdminWithPolicy | kNoDA;
+  public_area.unique.keyed_hash.size = 0;
+  TPML_PCR_SELECTION creation_pcrs = {};
+  TPMS_SENSITIVE_CREATE sensitive;
+  sensitive.user_auth = Make_TPM2B_DIGEST("");
+  sensitive.data = Make_TPM2B_SENSITIVE_DATA(data_to_seal);
+  TPM2B_SENSITIVE_CREATE sensitive_create = Make_TPM2B_SENSITIVE_CREATE(
+      sensitive);
+  TPM2B_DATA outside_info = Make_TPM2B_DATA("");
+  TPM2B_PUBLIC out_public;
+  out_public.size = 0;
+  TPM2B_PRIVATE out_private;
+  out_private.size = 0;
+  TPM2B_CREATION_DATA creation_data;
+  TPM2B_DIGEST creation_hash;
+  TPMT_TK_CREATION creation_ticket;
+  result = factory_.GetTpm()->CreateSync(kRSAStorageRootKey,
+                                         parent_name,
+                                         sensitive_create,
+                                         Make_TPM2B_PUBLIC(public_area),
+                                         outside_info,
+                                         creation_pcrs,
+                                         &out_private,
+                                         &out_public,
+                                         &creation_data,
+                                         &creation_hash,
+                                         &creation_ticket,
+                                         delegate);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating sealed object: " << GetErrorString(result);
+    return result;
+  }
+  if (!factory_.GetBlobParser()->SerializeKeyBlob(
+      out_public, out_private, sealed_data)) {
+    return SAPI_RC_BAD_TCTI_STRUCTURE;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::UnsealData(const std::string& sealed_data,
+                                  AuthorizationDelegate* delegate,
+                                  std::string* unsealed_data) {
+  CHECK(unsealed_data);
+  TPM_RC result;
+  if (delegate == nullptr) {
+    result = SAPI_RC_INVALID_SESSIONS;
+    LOG(ERROR) << "This method needs a valid authorization delegate: "
+               << GetErrorString(result);
+    return result;
+  }
+  TPM_HANDLE object_handle;
+  scoped_ptr<AuthorizationDelegate> password_delegate =
+      factory_.GetPasswordAuthorization("");
+  result = LoadKey(sealed_data, password_delegate.get(), &object_handle);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error loading sealed object: " << GetErrorString(result);
+    return result;
+  }
+  ScopedKeyHandle sealed_object(factory_, object_handle);
+  std::string object_name;
+  result = GetKeyName(sealed_object.get(), &object_name);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting object name: " << GetErrorString(result);
+    return result;
+  }
+  TPM2B_SENSITIVE_DATA out_data;
+  result = factory_.GetTpm()->UnsealSync(sealed_object.get(), object_name,
+                                         &out_data, delegate);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error unsealing object: " << GetErrorString(result);
+    return result;
+  }
+  *unsealed_data = StringFrom_TPM2B_SENSITIVE_DATA(out_data);
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::StartSession(HmacSession* session) {
+  TPM_RC result = session->StartUnboundSession(true  /* enable_encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting unbound session: " << GetErrorString(result);
+    return result;
+  }
+  session->SetEntityAuthorizationValue("");
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::GetPolicyDigestForPcrValue(int pcr_index,
+                                                  const std::string& pcr_value,
+                                                  std::string* policy_digest) {
+  CHECK(policy_digest);
+  scoped_ptr<PolicySession> session = factory_.GetTrialSession();
+  TPM_RC result = session->StartUnboundSession(false);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting unbound trial session: "
+               << GetErrorString(result);
+    return result;
+  }
+  std::string mutable_pcr_value;
+  if (pcr_value.empty()) {
+    result = ReadPCR(pcr_index, &mutable_pcr_value);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << "Error reading pcr_value: " << GetErrorString(result);
+      return result;
+    }
+  } else {
+    mutable_pcr_value = pcr_value;
+  }
+  result = session->PolicyPCR(pcr_index, mutable_pcr_value);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to PCR value: "
+               << GetErrorString(result);
+    return result;
+  }
+  result = session->GetDigest(policy_digest);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting policy digest: " << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC TpmUtilityImpl::DefineNVSpace(uint32_t index,
                                      size_t num_bytes,
                                      AuthorizationDelegate* delegate) {
@@ -1498,6 +1643,9 @@ TPMT_PUBLIC TpmUtilityImpl::CreateDefaultPublicArea(TPM_ALG_ID key_alg) {
         TPM_ALG_SHA256;
     public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER("");
     public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER("");
+  } else if (key_alg == TPM_ALG_KEYEDHASH) {
+    public_area.type = TPM_ALG_KEYEDHASH;
+    public_area.parameters.keyed_hash_detail.scheme.scheme = TPM_ALG_NULL;
   } else {
     LOG(WARNING) << "Unrecognized key_type. Not filling parameters.";
   }

@@ -40,21 +40,18 @@ TrunksClientTest::~TrunksClientTest() {}
 bool TrunksClientTest::RNGTest() {
   scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
   scoped_ptr<HmacSession> session = factory_->GetHmacSession();
+  if (utility->StartSession(session.get()) != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session.";
+    return false;
+  }
   std::string entropy_data("entropy_data");
   std::string random_data;
   size_t num_bytes = 70;
-  TPM_RC result = session->StartUnboundSession(true /* enable encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
-    return false;
-  }
-  session->SetEntityAuthorizationValue("");
-  result = utility->StirRandom(entropy_data, session->GetDelegate());
+  TPM_RC result = utility->StirRandom(entropy_data, session->GetDelegate());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error stirring TPM RNG: " << GetErrorString(result);
     return false;
   }
-  session->SetEntityAuthorizationValue("");
   result = utility->GenerateRandom(num_bytes, session->GetDelegate(),
                                    &random_data);
   if (result != TPM_RC_SUCCESS) {
@@ -72,15 +69,13 @@ bool TrunksClientTest::RNGTest() {
 bool TrunksClientTest::SignTest() {
   scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
   scoped_ptr<HmacSession> session = factory_->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true /* enable encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+  if (utility->StartSession(session.get()) != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session.";
     return false;
   }
   std::string key_authorization("sign");
   std::string key_blob;
-  session->SetEntityAuthorizationValue("");
-  result = utility->CreateRSAKeyPair(
+  TPM_RC result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kSignKey, 2048, 0x10001,
       key_authorization, "", false,  // use_only_policy_authorization
       kNoCreationPCR, session->GetDelegate(), &key_blob, nullptr);
@@ -115,15 +110,13 @@ bool TrunksClientTest::SignTest() {
 bool TrunksClientTest::DecryptTest() {
   scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
   scoped_ptr<HmacSession> session = factory_->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true /* enable encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+  if (utility->StartSession(session.get()) != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session.";
     return false;
   }
   std::string key_authorization("decrypt");
   std::string key_blob;
-  session->SetEntityAuthorizationValue("");
-  result = utility->CreateRSAKeyPair(
+  TPM_RC result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
       key_authorization, "", false,  // use_only_policy_authorization
       kNoCreationPCR, session->GetDelegate(), &key_blob, nullptr);
@@ -145,9 +138,8 @@ bool TrunksClientTest::DecryptTest() {
 bool TrunksClientTest::ImportTest() {
   scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
   scoped_ptr<HmacSession> session = factory_->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true /* enable encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+  if (utility->StartSession(session.get()) != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session.";
     return false;
   }
   std::string modulus;
@@ -155,8 +147,7 @@ bool TrunksClientTest::ImportTest() {
   GenerateRSAKeyPair(&modulus, &prime_factor, nullptr);
   std::string key_blob;
   std::string key_authorization("import");
-  session->SetEntityAuthorizationValue("");
-  result = utility->ImportRSAKey(
+  TPM_RC result = utility->ImportRSAKey(
       TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey, modulus, 0x10001,
       prime_factor, key_authorization, session->GetDelegate(), &key_blob);
   if (result != TPM_RC_SUCCESS) {
@@ -177,15 +168,13 @@ bool TrunksClientTest::ImportTest() {
 bool TrunksClientTest::AuthChangeTest() {
   scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
   scoped_ptr<HmacSession> session = factory_->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true /* enable encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+  if (utility->StartSession(session.get()) != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session.";
     return false;
   }
   std::string key_authorization("new_pass");
   std::string key_blob;
-  session->SetEntityAuthorizationValue("");
-  result = utility->CreateRSAKeyPair(
+  TPM_RC result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
       "old_pass", "", false,  // use_only_policy_authorization
       kNoCreationPCR, session->GetDelegate(), &key_blob, nullptr);
@@ -221,15 +210,14 @@ bool TrunksClientTest::AuthChangeTest() {
 bool TrunksClientTest::VerifyKeyCreationTest() {
   scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
   scoped_ptr<HmacSession> session = factory_->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true /* enable encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+  if (utility->StartSession(session.get()) != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session.";
     return false;
   }
   std::string key_blob;
   std::string creation_blob;
   session->SetEntityAuthorizationValue("");
-  result = utility->CreateRSAKeyPair(
+  TPM_RC result = utility->CreateRSAKeyPair(
       TpmUtility::AsymmetricKeyUsage::kDecryptKey, 2048, 0x10001,
       "", "", false,  // use_only_policy_authorization
       kNoCreationPCR, session->GetDelegate(), &key_blob, &creation_blob);
@@ -276,20 +264,84 @@ bool TrunksClientTest::VerifyKeyCreationTest() {
   return true;
 }
 
+bool TrunksClientTest::SealedDataTest() {
+  scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
+  scoped_ptr<HmacSession> session = factory_->GetHmacSession();
+  if (utility->StartSession(session.get()) != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session.";
+    return false;
+  }
+  int pcr_index = 5;
+  std::string policy_digest;
+  TPM_RC result = utility->GetPolicyDigestForPcrValue(pcr_index, "",
+                                                      &policy_digest);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error getting policy_digest: " << GetErrorString(result);
+    return false;
+  }
+  std::string data_to_seal("seal_data");
+  std::string sealed_data;
+  result = utility->SealData(data_to_seal, policy_digest,
+                             session->GetDelegate(), &sealed_data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error creating Sealed Object: " << GetErrorString(result);
+    return false;
+  }
+  scoped_ptr<PolicySession> policy_session = factory_->GetPolicySession();
+  result = policy_session->StartUnboundSession(false);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting policy session: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyPCR(pcr_index, "");
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to pcr value: "
+               << GetErrorString(result);
+    return false;
+  }
+  std::string unsealed_data;
+  result = utility->UnsealData(sealed_data, policy_session->GetDelegate(),
+                               &unsealed_data);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error unsealing object: " << GetErrorString(result);
+    return false;
+  }
+  if (data_to_seal != unsealed_data) {
+    LOG(ERROR) << "Error unsealed data from TPM does not match original data.";
+    return false;
+  }
+  result = utility->ExtendPCR(pcr_index, "extend", session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error extending pcr: " << GetErrorString(result);
+    return false;
+  }
+  result = policy_session->PolicyPCR(pcr_index, "");
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error restricting policy to pcr value: "
+               << GetErrorString(result);
+    return false;
+  }
+  result = utility->UnsealData(sealed_data, policy_session->GetDelegate(),
+                               &unsealed_data);
+  if (result == TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error object was unsealed with wrong policy_digest.";
+    return false;
+  }
+  return true;
+}
+
 bool TrunksClientTest::PCRTest() {
   scoped_ptr<TpmUtility> utility = factory_->GetTpmUtility();
   scoped_ptr<HmacSession> session = factory_->GetHmacSession();
-  TPM_RC result = session->StartUnboundSession(true /* enable encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << "Error starting hmac session: " << GetErrorString(result);
+  if (utility->StartSession(session.get()) != TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error starting hmac session.";
     return false;
   }
   // We are using PCR 2 because it is currently not used by ChromeOS.
   uint32_t pcr_index = 2;
   std::string extend_data("data");
   std::string old_data;
-  session->SetEntityAuthorizationValue("");
-  result = utility->ReadPCR(pcr_index, &old_data);
+  TPM_RC result = utility->ReadPCR(pcr_index, &old_data);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error reading from PCR: " << GetErrorString(result);
     return false;
