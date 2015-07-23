@@ -8,6 +8,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "chromeos/process_mock.h"
@@ -72,15 +73,11 @@ TEST(SimpleProcess, BindFd) {
 class ProcessTest : public ::testing::Test {
  public:
   void SetUp() {
-    test_path_ = FilePath("test");
-    output_file_ = test_path_.Append("fork_out").value();
-    base::DeleteFile(test_path_, true);
-    base::CreateDirectory(test_path_);
+    CHECK(temp_dir_.CreateUniqueTempDir());
+    output_file_ = temp_dir_.path().Append("fork_out").value();
     process_.RedirectOutput(output_file_);
     ClearLog();
   }
-
-  void TearDown() { base::DeleteFile(test_path_, true); }
 
  protected:
   void CheckStderrCaptured();
@@ -89,7 +86,7 @@ class ProcessTest : public ::testing::Test {
   ProcessImpl process_;
   std::vector<const char*> args_;
   std::string output_file_;
-  FilePath test_path_;
+  base::ScopedTempDir temp_dir_;
 };
 
 TEST_F(ProcessTest, Basic) {
@@ -277,7 +274,7 @@ TEST_F(ProcessTest, ProcessExists) {
 }
 
 TEST_F(ProcessTest, ResetPidByFile) {
-  FilePath pid_path = test_path_.Append("pid");
+  FilePath pid_path = temp_dir_.path().Append("pid");
   EXPECT_FALSE(process_.ResetPidByFile(pid_path.value()));
   EXPECT_TRUE(base::WriteFile(pid_path, "456\n", 4));
   EXPECT_TRUE(process_.ResetPidByFile(pid_path.value()));
