@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/type_name_undecorate.h>
+
 #include "libweave/src/commands/object_schema.h"
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/prop_values.h"
@@ -93,7 +95,7 @@ chromeos::Any ValueToAny(const base::Value& json) {
       }
       auto type = (*list->begin())->GetType();
       for (const base::Value* v : *list)
-        CHECK_EQ(v->GetType(), type);
+        CHECK_EQ(v->GetType(), type) << "Unsupported different type elements";
 
       switch (type) {
         case base::Value::TYPE_BOOLEAN:
@@ -128,6 +130,94 @@ chromeos::Any ValueToAny(const base::Value& json) {
       break;
   }
   return prop_value;
+}
+
+template <typename T>
+std::unique_ptr<base::Value> CreateValue(const T& value,
+                                         chromeos::ErrorPtr* error) {
+  return std::unique_ptr<base::Value>{new base::FundamentalValue{value}};
+}
+
+template <>
+std::unique_ptr<base::Value> CreateValue<std::string>(
+    const std::string& value,
+    chromeos::ErrorPtr* error) {
+  return std::unique_ptr<base::Value>{new base::StringValue{value}};
+}
+
+template <>
+std::unique_ptr<base::Value> CreateValue<chromeos::VariantDictionary>(
+    const chromeos::VariantDictionary& value,
+    chromeos::ErrorPtr* error) {
+  return DictionaryFromDBusVariantDictionary(value, error);
+}
+
+template <typename T>
+std::unique_ptr<base::ListValue> CreateListValue(const std::vector<T>& value,
+                                                 chromeos::ErrorPtr* error) {
+  std::unique_ptr<base::ListValue> list{new base::ListValue};
+
+  for (const T& i : value) {
+    auto item = CreateValue(i, error);
+    if (!item)
+      return nullptr;
+    list->Append(item.release());
+  }
+
+  return list;
+}
+
+// Returns false only in case of error. True can be returned if type is not
+// matched.
+template <typename T>
+bool TryCreateValue(const chromeos::Any& any,
+                    std::unique_ptr<base::Value>* value,
+                    chromeos::ErrorPtr* error) {
+  if (any.IsTypeCompatible<T>()) {
+    *value = CreateValue(any.Get<T>(), error);
+    return *value != nullptr;
+  }
+
+  if (any.IsTypeCompatible<std::vector<T>>()) {
+    *value = CreateListValue(any.Get<std::vector<T>>(), error);
+    return *value != nullptr;
+  }
+
+  return true;  // Not an error, we will try different type.
+}
+
+template <>
+std::unique_ptr<base::Value> CreateValue<chromeos::Any>(
+    const chromeos::Any& any,
+    chromeos::ErrorPtr* error) {
+  std::unique_ptr<base::Value> result;
+  if (!TryCreateValue<bool>(any, &result, error) || result)
+    return result;
+
+  if (!TryCreateValue<int>(any, &result, error) || result)
+    return result;
+
+  if (!TryCreateValue<double>(any, &result, error) || result)
+    return result;
+
+  if (!TryCreateValue<std::string>(any, &result, error) || result)
+    return result;
+
+  if (!TryCreateValue<chromeos::VariantDictionary>(any, &result, error) ||
+      result) {
+    return result;
+  }
+
+  // This will collapse Any{Any{T}} and vector{Any{T}}.
+  if (!TryCreateValue<chromeos::Any>(any, &result, error) || result)
+    return result;
+
+  chromeos::Error::AddToPrintf(
+      error, FROM_HERE, errors::commands::kDomain,
+      errors::commands::kUnknownType, "Type '%s' is not supported.",
+      chromeos::UndecorateTypeName(any.GetType().name()).c_str());
+
+  return nullptr;
 }
 
 bool ErrorMissingProperty(chromeos::ErrorPtr* error,
@@ -260,6 +350,21 @@ chromeos::VariantDictionary DictionaryToDBusVariantDictionary(
 
   for (base::DictionaryValue::Iterator it(object); !it.IsAtEnd(); it.Advance())
     result.emplace(it.key(), ValueToAny(it.value()));
+
+  return result;
+}
+
+std::unique_ptr<base::DictionaryValue> DictionaryFromDBusVariantDictionary(
+    const chromeos::VariantDictionary& object,
+    chromeos::ErrorPtr* error) {
+  std::unique_ptr<base::DictionaryValue> result{new base::DictionaryValue};
+
+  for (const auto& pair : object) {
+    auto value = CreateValue(pair.second, error);
+    if (!value)
+      return nullptr;
+    result->Set(pair.first, value.release());
+  }
 
   return result;
 }

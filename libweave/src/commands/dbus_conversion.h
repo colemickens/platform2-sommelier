@@ -41,6 +41,11 @@ bool ObjectFromDBusVariant(const ObjectSchema* object_schema,
 chromeos::VariantDictionary DictionaryToDBusVariantDictionary(
     const base::DictionaryValue& object);
 
+// Converts D-Bus variant dictionary to DictionaryValue.
+std::unique_ptr<base::DictionaryValue> DictionaryFromDBusVariantDictionary(
+    const chromeos::VariantDictionary& object,
+    chromeos::ErrorPtr* error);
+
 }  // namespace weave
 
 #endif  // LIBWEAVE_SRC_COMMANDS_DBUS_CONVERSION_H_
