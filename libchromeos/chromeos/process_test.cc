@@ -251,7 +251,7 @@ TEST_F(ProcessTest, WithIllegalGid) {
 }
 
 TEST_F(ProcessTest, NoParams) {
-  EXPECT_EQ(static_cast<pid_t>(Process::kErrorExitStatus), process_.Run());
+  EXPECT_EQ(-1, process_.Run());
 }
 
 TEST_F(ProcessTest, SegFaultHandling) {

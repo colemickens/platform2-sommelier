@@ -146,6 +146,10 @@ bool ProcessImpl::PopulatePipeMap() {
 }
 
 bool ProcessImpl::Start() {
+  // If no arguments are provided, fail.
+  if (arguments_.empty()) {
+    return false;
+  }
   scoped_ptr<char*[]> argv(new char*[arguments_.size() + 1]);
 
   for (size_t i = 0; i < arguments_.size(); ++i)
