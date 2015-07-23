@@ -28,8 +28,8 @@
         'xml2cpp_out_dir': 'include/wimax_manager/dbus_proxies',
       },
       'sources': [
+        '../power_manager/dbus_bindings/org.chromium.PowerManager.xml',
         '<(xml2cpp_in_dir)/org.freedesktop.DBus.xml',
-        '<(xml2cpp_in_dir)/org.chromium.PowerManager.xml',
         '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.xml',
         '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.Device.xml',
         '<(xml2cpp_in_dir)/org.chromium.WiMaxManager.Network.xml',
