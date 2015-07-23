@@ -24,6 +24,7 @@
 #include "shill/net/generic_netlink_message.h"
 #include "shill/net/io_handler.h"
 #include "shill/net/netlink_message.h"
+#include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/net/shill_time.h"
 #include "shill/net/sockets.h"
@@ -562,18 +563,19 @@ bool NetlinkManager::SendMessageInternal(
 }
 
 NetlinkMessage::MessageContext NetlinkManager::InferMessageContext(
-    const nlmsghdr* msg) {
+    const NetlinkPacket& packet) {
   NetlinkMessage::MessageContext context;
 
-  const uint32_t sequence_number = msg->nlmsg_seq;
+  const uint32_t sequence_number = packet.GetMessageSequence();
   if (!ContainsKey(message_handlers_, sequence_number) &&
-      msg->nlmsg_type != ErrorAckMessage::kMessageType) {
+      packet.GetMessageType() != ErrorAckMessage::kMessageType) {
     context.is_broadcast = true;
   }
 
-  if (msg->nlmsg_type == Nl80211Message::GetMessageType()) {
-    genlmsghdr* gnlh = reinterpret_cast<genlmsghdr*>(nlmsg_data(msg));
-    context.nl80211_cmd = gnlh->cmd;
+  genlmsghdr genl_header;
+  if (packet.GetMessageType() == Nl80211Message::GetMessageType() &&
+      packet.GetGenlMsgHdr(&genl_header)) {
+    context.nl80211_cmd = genl_header.cmd;
   }
 
   return context;
@@ -652,36 +654,33 @@ void NetlinkManager::OnRawNlMessageReceived(InputData* data) {
   unsigned char* buf = data->buf;
   unsigned char* end = buf + data->len;
   while (buf < end) {
-    nlmsghdr* msg = reinterpret_cast<nlmsghdr*>(buf);
-    size_t bytes_left = end - buf;
-    if (bytes_left < sizeof(nlmsghdr) || bytes_left < msg->nlmsg_len) {
-      LOG(ERROR) << "Discarding incomplete message.";
-      return;
+    NetlinkPacket packet(buf, end - buf);
+    if (!packet.IsValid()) {
+      break;
     }
-    OnNlMessageReceived(msg);
-    buf += msg->nlmsg_len;
+    buf += packet.GetLength();
+    OnNlMessageReceived(&packet);
   }
 }
 
-void NetlinkManager::OnNlMessageReceived(nlmsghdr* msg) {
-  if (!msg) {
-    LOG(ERROR) << __func__ << "() called with null header.";
+void NetlinkManager::OnNlMessageReceived(NetlinkPacket* packet) {
+  if (!packet) {
+    LOG(ERROR) << __func__ << "() called with null packet.";
     return;
   }
-  const uint32_t sequence_number = msg->nlmsg_seq;
+  const uint32_t sequence_number = packet->GetMessageSequence();
 
   std::unique_ptr<NetlinkMessage> message(
-      message_factory_.CreateMessage(msg, InferMessageContext(msg)));
+      message_factory_.CreateMessage(packet, InferMessageContext(*packet)));
   if (message == nullptr) {
     VLOG(3) << "NL Message " << sequence_number << " <===";
     VLOG(3) << __func__ << "(msg:NULL)";
     return;  // Skip current message, continue parsing buffer.
   }
-  VLOG(5) << "NL Message " << sequence_number << " Received (" << msg->nlmsg_len
-          << " bytes) <===";
+  VLOG(5) << "NL Message " << sequence_number << " Received ("
+          << packet->GetLength() << " bytes) <===";
   message->Print(6, 7);
-  NetlinkMessage::PrintBytes(8, reinterpret_cast<const unsigned char*>(msg),
-                             msg->nlmsg_len);
+  NetlinkMessage::PrintPacket(8, *packet);
 
   bool is_error_ack_message = false;
   uint32_t error_code = 0;

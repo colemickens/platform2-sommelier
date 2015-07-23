@@ -18,6 +18,8 @@
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "shill/net/netlink_packet.h"
+
 using base::StringAppendF;
 using base::StringPrintf;
 using std::map;
@@ -59,36 +61,22 @@ ByteString NetlinkMessage::EncodeHeader(uint32_t sequence_number) {
   return result;
 }
 
-bool NetlinkMessage::InitAndStripHeader(ByteString* input) {
-  if (!input) {
-    LOG(ERROR) << "NULL input";
-    return false;
-  }
-  if (input->GetLength() < sizeof(nlmsghdr)) {
-    LOG(ERROR) << "Insufficient input to extract nlmsghdr";
-    return false;
-  }
+bool NetlinkMessage::InitAndStripHeader(NetlinkPacket* packet) {
+  const nlmsghdr& header = packet->GetNlMsgHeader();
+  message_type_ = header.nlmsg_type;
+  flags_ = header.nlmsg_flags;
+  sequence_number_ = header.nlmsg_seq;
 
-  // Read the nlmsghdr.
-  nlmsghdr* header = reinterpret_cast<nlmsghdr*>(input->GetData());
-  message_type_ = header->nlmsg_type;
-  flags_ = header->nlmsg_flags;
-  sequence_number_ = header->nlmsg_seq;
-
-  // Strip the nlmsghdr.
-  input->RemovePrefix(NLMSG_ALIGN(sizeof(struct nlmsghdr)));
   return true;
 }
 
-bool NetlinkMessage::InitFromNlmsg(const nlmsghdr* const_msg,
-                                   NetlinkMessage::MessageContext context) {
-  if (!const_msg) {
-    LOG(ERROR) << "Null |const_msg| parameter";
+bool NetlinkMessage::InitFromPacket(NetlinkPacket* packet,
+                                    NetlinkMessage::MessageContext context) {
+  if (!packet) {
+    LOG(ERROR) << "Null |packet| parameter";
     return false;
   }
-  ByteString message(reinterpret_cast<const unsigned char*>(const_msg),
-                     const_msg->nlmsg_len);
-  if (!InitAndStripHeader(&message)) {
+  if (!InitAndStripHeader(packet)) {
     return false;
   }
   return true;
@@ -104,26 +92,7 @@ void NetlinkMessage::PrintBytes(int log_level, const unsigned char* buf,
   }
 
   if (num_bytes >= sizeof(nlmsghdr)) {
-      const nlmsghdr* header = reinterpret_cast<const nlmsghdr*>(buf);
-      VLOG(log_level) << StringPrintf(
-          "len:          %02x %02x %02x %02x = %u bytes",
-          buf[0], buf[1], buf[2], buf[3], header->nlmsg_len);
-
-      VLOG(log_level) << StringPrintf(
-          "type | flags: %02x %02x %02x %02x - type:%u flags:%s%s%s%s%s",
-          buf[4], buf[5], buf[6], buf[7], header->nlmsg_type,
-          ((header->nlmsg_flags & NLM_F_REQUEST) ? " REQUEST" : ""),
-          ((header->nlmsg_flags & NLM_F_MULTI) ? " MULTI" : ""),
-          ((header->nlmsg_flags & NLM_F_ACK) ? " ACK" : ""),
-          ((header->nlmsg_flags & NLM_F_ECHO) ? " ECHO" : ""),
-          ((header->nlmsg_flags & NLM_F_DUMP_INTR) ? " BAD-SEQ" : ""));
-
-      VLOG(log_level) << StringPrintf(
-          "sequence:     %02x %02x %02x %02x = %u",
-          buf[8], buf[9], buf[10], buf[11], header->nlmsg_seq);
-      VLOG(log_level) << StringPrintf(
-          "pid:          %02x %02x %02x %02x = %u",
-          buf[12], buf[13], buf[14], buf[15], header->nlmsg_pid);
+      PrintHeader(log_level, reinterpret_cast<const nlmsghdr*>(buf));
       buf += sizeof(nlmsghdr);
       num_bytes -= sizeof(nlmsghdr);
   } else {
@@ -132,6 +101,49 @@ void NetlinkMessage::PrintBytes(int log_level, const unsigned char* buf,
                     << sizeof(nlmsghdr) << ").";
   }
 
+  PrintPayload(log_level, buf, num_bytes);
+}
+
+// static
+void NetlinkMessage::PrintPacket(int log_level, const NetlinkPacket& packet) {
+  VLOG(log_level) << "Netlink Message -- Examining Packet";
+  if (!packet.IsValid()) {
+    VLOG(log_level) << "<Invalid Buffer>";
+    return;
+  }
+
+  PrintHeader(log_level, &packet.GetNlMsgHeader());
+  const ByteString& payload = packet.GetPayload();
+  PrintPayload(log_level, payload.GetConstData(), payload.GetLength());
+}
+
+// static
+void NetlinkMessage::PrintHeader(int log_level, const nlmsghdr* header) {
+  const unsigned char* buf = reinterpret_cast<const unsigned char*>(header);
+  VLOG(log_level) << StringPrintf(
+      "len:          %02x %02x %02x %02x = %u bytes",
+      buf[0], buf[1], buf[2], buf[3], header->nlmsg_len);
+
+  VLOG(log_level) << StringPrintf(
+      "type | flags: %02x %02x %02x %02x - type:%u flags:%s%s%s%s%s",
+      buf[4], buf[5], buf[6], buf[7], header->nlmsg_type,
+      ((header->nlmsg_flags & NLM_F_REQUEST) ? " REQUEST" : ""),
+      ((header->nlmsg_flags & NLM_F_MULTI) ? " MULTI" : ""),
+      ((header->nlmsg_flags & NLM_F_ACK) ? " ACK" : ""),
+      ((header->nlmsg_flags & NLM_F_ECHO) ? " ECHO" : ""),
+      ((header->nlmsg_flags & NLM_F_DUMP_INTR) ? " BAD-SEQ" : ""));
+
+  VLOG(log_level) << StringPrintf(
+      "sequence:     %02x %02x %02x %02x = %u",
+      buf[8], buf[9], buf[10], buf[11], header->nlmsg_seq);
+  VLOG(log_level) << StringPrintf(
+      "pid:          %02x %02x %02x %02x = %u",
+      buf[12], buf[13], buf[14], buf[15], header->nlmsg_pid);
+}
+
+// static
+void NetlinkMessage::PrintPayload(int log_level, const unsigned char* buf,
+                                  size_t num_bytes) {
   while (num_bytes) {
     string output;
     size_t bytes_this_row = min(num_bytes, static_cast<size_t>(32));
@@ -147,21 +159,18 @@ void NetlinkMessage::PrintBytes(int log_level, const unsigned char* buf,
 
 const uint16_t ErrorAckMessage::kMessageType = NLMSG_ERROR;
 
-bool ErrorAckMessage::InitFromNlmsg(const nlmsghdr* const_msg,
-                                    NetlinkMessage::MessageContext context) {
-  if (!const_msg) {
+bool ErrorAckMessage::InitFromPacket(NetlinkPacket* packet,
+                                     NetlinkMessage::MessageContext context) {
+  if (!packet) {
     LOG(ERROR) << "Null |const_msg| parameter";
     return false;
   }
-  ByteString message(reinterpret_cast<const unsigned char*>(const_msg),
-                     const_msg->nlmsg_len);
-  if (!InitAndStripHeader(&message)) {
+  if (!InitAndStripHeader(packet)) {
     return false;
   }
 
   // Get the error code from the payload.
-  error_ = *(reinterpret_cast<const uint32_t*>(message.GetConstData()));
-  return true;
+  return packet->ConsumeData(sizeof(error_), &error_);
 }
 
 ByteString ErrorAckMessage::Encode(uint32_t sequence_number) {
@@ -262,41 +271,32 @@ bool NetlinkMessageFactory::AddFactoryMethod(uint16_t message_type,
 }
 
 NetlinkMessage* NetlinkMessageFactory::CreateMessage(
-    const nlmsghdr* const_msg, NetlinkMessage::MessageContext context) const {
-  if (!const_msg) {
-    LOG(ERROR) << "NULL |const_msg| parameter";
-    return nullptr;
-  }
-
+    NetlinkPacket* packet, NetlinkMessage::MessageContext context) const {
   std::unique_ptr<NetlinkMessage> message;
 
-  if (const_msg->nlmsg_type == NoopMessage::kMessageType) {
+  auto message_type = packet->GetMessageType();
+  if (message_type == NoopMessage::kMessageType) {
     message.reset(new NoopMessage());
-  } else if (const_msg->nlmsg_type == DoneMessage::kMessageType) {
+  } else if (message_type == DoneMessage::kMessageType) {
     message.reset(new DoneMessage());
-  } else if (const_msg->nlmsg_type == OverrunMessage::kMessageType) {
+  } else if (message_type == OverrunMessage::kMessageType) {
     message.reset(new OverrunMessage());
-  } else if (const_msg->nlmsg_type == ErrorAckMessage::kMessageType) {
+  } else if (message_type == ErrorAckMessage::kMessageType) {
     message.reset(new ErrorAckMessage());
-  } else if (ContainsKey(factories_, const_msg->nlmsg_type)) {
+  } else if (ContainsKey(factories_, message_type)) {
     map<uint16_t, FactoryMethod>::const_iterator factory;
-    factory = factories_.find(const_msg->nlmsg_type);
-    message.reset(factory->second.Run(const_msg));
+    factory = factories_.find(message_type);
+    message.reset(factory->second.Run(*packet));
   }
 
   // If no factory exists for this message _or_ if a factory exists but it
   // failed, there'll be no message.  Handle either of those cases, by
   // creating an |UnknownMessage|.
   if (!message) {
-    // Casting away constness since, while nlmsg_data doesn't change its
-    // parameter, it also doesn't declare its paramenter as const.
-    nlmsghdr* msg = const_cast<nlmsghdr*>(const_msg);
-    ByteString payload(reinterpret_cast<char*>(nlmsg_data(msg)),
-                       nlmsg_datalen(msg));
-    message.reset(new UnknownMessage(msg->nlmsg_type, payload));
+    message.reset(new UnknownMessage(message_type, packet->GetPayload()));
   }
 
-  if (!message->InitFromNlmsg(const_msg, context)) {
+  if (!message->InitFromPacket(packet, context)) {
     LOG(ERROR) << "Message did not initialize properly";
     return nullptr;
   }

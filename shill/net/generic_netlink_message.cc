@@ -12,6 +12,7 @@
 #include <base/strings/stringprintf.h>
 
 #include "shill/net/netlink_attribute.h"
+#include "shill/net/netlink_packet.h"
 
 using base::Bind;
 using base::StringPrintf;
@@ -62,24 +63,25 @@ ByteString GenericNetlinkMessage::Encode(uint32_t sequence_number) {
   return result;
 }
 
-bool GenericNetlinkMessage::InitAndStripHeader(ByteString* input) {
-  if (!input) {
-    LOG(ERROR) << "NULL input";
+bool GenericNetlinkMessage::InitAndStripHeader(NetlinkPacket* packet) {
+  if (!packet) {
+    LOG(ERROR) << "NULL packet";
     return false;
   }
-  if (!NetlinkMessage::InitAndStripHeader(input)) {
+  if (!NetlinkMessage::InitAndStripHeader(packet)) {
     return false;
   }
 
-  // Read the genlmsghdr.
-  genlmsghdr* gnlh = reinterpret_cast<genlmsghdr*>(input->GetData());
-  if (command_ != gnlh->cmd) {
+  genlmsghdr gnlh;
+  if (!packet->ConsumeData(sizeof(gnlh), &gnlh)) {
+    return false;
+  }
+
+  if (command_ != gnlh.cmd) {
     LOG(WARNING) << "This object thinks it's a " << command_
-                 << " but the message thinks it's a " << gnlh->cmd;
+                 << " but the message thinks it's a " << gnlh.cmd;
   }
 
-  // Strip the genlmsghdr.
-  input->RemovePrefix(NLMSG_ALIGN(sizeof(struct genlmsghdr)));
   return true;
 }
 
@@ -95,18 +97,21 @@ void GenericNetlinkMessage::Print(int header_log_level,
 
 const uint16_t ControlNetlinkMessage::kMessageType = GENL_ID_CTRL;
 
-bool ControlNetlinkMessage::InitFromNlmsg(
-    const nlmsghdr* const_msg, NetlinkMessage::MessageContext context) {
-  if (!const_msg) {
-    LOG(ERROR) << "Null |msg| parameter";
+bool ControlNetlinkMessage::InitFromPacket(
+    NetlinkPacket* packet, NetlinkMessage::MessageContext context) {
+  if (!packet) {
+    LOG(ERROR) << "Null |packet| parameter";
     return false;
   }
-  ByteString message(reinterpret_cast<const unsigned char*>(const_msg),
-                     const_msg->nlmsg_len);
 
-  if (!InitAndStripHeader(&message)) {
+  if (!InitAndStripHeader(packet)) {
     return false;
   }
+
+  // TODO(pstew): Implement a parser in NetlinkPacket instead of directly
+  // accessing the payload here and using nla_parse().  crbug.com/512152.
+  ByteString message = packet->GetPayload();
+  message.RemovePrefix(message.GetLength() - packet->GetRemainingLength());
 
   // Attributes.
   // Parse the attributes from the nl message payload into the 'tb' array.
@@ -140,25 +145,22 @@ GetFamilyMessage::GetFamilyMessage()
 
 // static
 NetlinkMessage* ControlNetlinkMessage::CreateMessage(
-    const nlmsghdr* const_msg) {
-  if (!const_msg) {
-    LOG(ERROR) << "NULL |const_msg| parameter";
+    const NetlinkPacket& packet) {
+  genlmsghdr header;
+  if (!packet.GetGenlMsgHdr(&header)) {
+    LOG(ERROR) << "Could not read genl header.";
     return nullptr;
   }
-  // Casting away constness since, while nlmsg_data doesn't change its
-  // parameter, it also doesn't declare its paramenter as const.
-  nlmsghdr* msg = const_cast<nlmsghdr*>(const_msg);
-  void* payload = nlmsg_data(msg);
-  genlmsghdr* gnlh = reinterpret_cast<genlmsghdr*>(payload);
 
-  switch (gnlh->cmd) {
+  switch (header.cmd) {
     case NewFamilyMessage::kCommand:
       return new NewFamilyMessage();
     case GetFamilyMessage::kCommand:
       return new GetFamilyMessage();
     default:
-      LOG(WARNING) << "Unknown/unhandled netlink control message " << gnlh->cmd;
-      return new UnknownControlMessage(gnlh->cmd);
+      LOG(WARNING) << "Unknown/unhandled netlink control message "
+                   << header.cmd;
+      return new UnknownControlMessage(header.cmd);
       break;
   }
   return nullptr;

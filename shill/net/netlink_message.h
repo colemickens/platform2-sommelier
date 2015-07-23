@@ -64,6 +64,8 @@ namespace shill {
 // Do all of this before you start to create NetlinkMessages so that
 // NetlinkMessage can be instantiated with a valid |message_type_|.
 
+class NetlinkPacket;
+
 class SHILL_EXPORT NetlinkMessage {
  public:
   // Describes the context of the netlink message for parsing purposes.
@@ -89,7 +91,7 @@ class SHILL_EXPORT NetlinkMessage {
 
   // Initializes the |NetlinkMessage| from a complete and legal message
   // (potentially received from the kernel via a netlink socket).
-  virtual bool InitFromNlmsg(const nlmsghdr* msg, MessageContext context);
+  virtual bool InitFromPacket(NetlinkPacket* packet, MessageContext context);
 
   uint16_t message_type() const { return message_type_; }
   void AddFlag(uint16_t new_flag) { flags_ |= new_flag; }
@@ -104,6 +106,9 @@ class SHILL_EXPORT NetlinkMessage {
   static void PrintBytes(int log_level, const unsigned char* buf,
                          size_t num_bytes);
 
+  // Logs a netlink message (with minimal interpretation).
+  static void PrintPacket(int log_level, const NetlinkPacket& packet);
+
  protected:
   friend class NetlinkManagerTest;
   FRIEND_TEST(NetlinkManagerTest, NL80211_CMD_NOTIFY_CQM);
@@ -111,14 +116,19 @@ class SHILL_EXPORT NetlinkMessage {
   // Returns a string of bytes representing an |nlmsghdr|, filled-in, and its
   // padding.
   virtual ByteString EncodeHeader(uint32_t sequence_number);
-  // Reads the |nlmsghdr| and removes it from |input|.
-  virtual bool InitAndStripHeader(ByteString* input);
+  // Reads the |nlmsghdr|.  Subclasses may read additional data from the
+  // payload.
+  virtual bool InitAndStripHeader(NetlinkPacket* packet);
 
   uint16_t flags_;
   uint16_t message_type_;
   uint32_t sequence_number_;
 
  private:
+  static void PrintHeader(int log_level, const nlmsghdr* header);
+  static void PrintPayload(int log_level, const unsigned char* buf,
+                           size_t num_bytes);
+
   DISALLOW_COPY_AND_ASSIGN(NetlinkMessage);
 };
 
@@ -138,9 +148,9 @@ class SHILL_EXPORT ErrorAckMessage : public NetlinkMessage {
   explicit ErrorAckMessage(uint32_t err)
       : NetlinkMessage(kMessageType), error_(err) {}
   static uint16_t GetMessageType() { return kMessageType; }
-  virtual bool InitFromNlmsg(const nlmsghdr* const_msg, MessageContext context);
-  virtual ByteString Encode(uint32_t sequence_number);
-  virtual void Print(int header_log_level, int detail_log_level) const;
+  bool InitFromPacket(NetlinkPacket* packet, MessageContext context) override;
+  ByteString Encode(uint32_t sequence_number) override;
+  void Print(int header_log_level, int detail_log_level) const override;
   std::string ToString() const;
   uint32_t error() const { return -error_; }
 
@@ -216,7 +226,8 @@ class SHILL_EXPORT UnknownMessage : public NetlinkMessage {
 
 class SHILL_EXPORT NetlinkMessageFactory {
  public:
-  typedef base::Callback<NetlinkMessage*(const nlmsghdr* msg)> FactoryMethod;
+  typedef base::Callback<NetlinkMessage*(const NetlinkPacket& packet)>
+      FactoryMethod;
 
   NetlinkMessageFactory() {}
 
@@ -226,7 +237,7 @@ class SHILL_EXPORT NetlinkMessageFactory {
 
   // Ownership of the message is passed to the caller and, as such, he should
   // delete it.
-  NetlinkMessage* CreateMessage(const nlmsghdr* msg,
+  NetlinkMessage* CreateMessage(NetlinkPacket* packet,
                                 NetlinkMessage::MessageContext context) const;
 
  private:

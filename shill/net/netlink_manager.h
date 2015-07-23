@@ -75,12 +75,11 @@
 #include "shill/net/shill_time.h"
 #include "shill/shill_export.h"
 
-struct nlmsghdr;
-
 namespace shill {
 
 class ControlNetlinkMessage;
 struct InputData;
+class NetlinkPacket;
 class Nl80211Message;
 
 // NetlinkManager is a singleton that coordinates sending netlink messages to,
@@ -338,7 +337,7 @@ class SHILL_EXPORT NetlinkManager {
   // the message to either the NetlinkManager callback that matches the sequence
   // number of the message or, if there isn't one, to all of the default
   // NetlinkManager callbacks in |broadcast_handlers_|.
-  void OnNlMessageReceived(nlmsghdr* msg);
+  void OnNlMessageReceived(NetlinkPacket* packet);
 
   // Sends the pending dump message, and decrement the message's retry count if
   // it was resent successfully.
@@ -380,10 +379,11 @@ class SHILL_EXPORT NetlinkManager {
   // serial number to |message| before it is sent.
   bool SendMessageInternal(const NetlinkPendingMessage& pending_message);
 
-  // Given a netlink message |msg|, infers the context of this netlink message
-  // (for message parsing purposes) and returns a MessageContext describing this
-  // context.
-  NetlinkMessage::MessageContext InferMessageContext(const nlmsghdr* msg);
+  // Given a netlink packet |packet|, infers the context of this netlink
+  // message (for message parsing purposes) and returns a MessageContext
+  // describing this context.
+  NetlinkMessage::MessageContext InferMessageContext(
+      const NetlinkPacket& packet);
 
   // Called when we time out waiting for a response to a netlink dump message.
   // Invokes the error handler with kTimeoutWaitingForResponse, deletes the

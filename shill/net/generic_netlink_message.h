@@ -10,9 +10,9 @@
 #include "shill/net/netlink_message.h"
 #include "shill/shill_export.h"
 
-struct nlmsghdr;
-
 namespace shill {
+
+class NetlinkPacket;
 
 // Objects of the |GenericNetlinkMessage| type represent messages that contain
 // a |genlmsghdr| after a |nlmsghdr|.  These messages seem to all contain a
@@ -77,9 +77,9 @@ class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
   // Returns a string of bytes representing _both_ an |nlmsghdr| and a
   // |genlmsghdr|, filled-in, and its padding.
   ByteString EncodeHeader(uint32_t sequence_number) override;
-  // Reads the |nlmsghdr| and |genlmsghdr| headers and removes them from
-  // |input|.
-  bool InitAndStripHeader(ByteString* input) override;
+  // Reads the |nlmsghdr| and |genlmsghdr| headers and consumes the latter
+  // from the payload of |packet|.
+  bool InitAndStripHeader(NetlinkPacket* packet) override;
 
   AttributeListRefPtr attributes_;
   const uint8_t command_;
@@ -99,10 +99,10 @@ class SHILL_EXPORT ControlNetlinkMessage : public GenericNetlinkMessage {
 
   static uint16_t GetMessageType() { return kMessageType; }
 
-  bool InitFromNlmsg(const nlmsghdr* msg, MessageContext context);
+  bool InitFromPacket(NetlinkPacket* packet, MessageContext context);
 
   // Message factory for all types of Control netlink message.
-  static NetlinkMessage* CreateMessage(const nlmsghdr* const_msg);
+  static NetlinkMessage* CreateMessage(const NetlinkPacket& packet);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ControlNetlinkMessage);

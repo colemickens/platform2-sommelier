@@ -15,9 +15,9 @@
 #include "shill/net/generic_netlink_message.h"
 #include "shill/shill_export.h"
 
-struct nlmsghdr;
-
 namespace shill {
+
+class NetlinkPacket;
 
 // Class for messages received from the mac80211 drivers by way of the
 // cfg80211 kernel module.
@@ -35,7 +35,7 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
   // Sets the family_id / message_type for all Nl80211 messages.
   static void SetMessageType(uint16_t message_type);
 
-  bool InitFromNlmsg(const nlmsghdr* msg, MessageContext context) override;
+  bool InitFromPacket(NetlinkPacket* packet, MessageContext context) override;
 
   uint8_t command() const { return command_; }
   const char* command_string() const { return command_string_; }
@@ -50,7 +50,7 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
   static std::string StringFromStatus(uint16_t status);
 
   // Message factory for all types of Nl80211 message.
-  static NetlinkMessage* CreateMessage(const nlmsghdr* const_msg);
+  static NetlinkMessage* CreateMessage(const NetlinkPacket& packet);
 
  private:
   static std::map<uint16_t, std::string>* reason_code_string_;
@@ -518,7 +518,8 @@ class Nl80211MessageDataCollector {
  public:
   static Nl80211MessageDataCollector* GetInstance();
 
-  void CollectDebugData(const Nl80211Message& message, nlmsghdr* msg);
+  void CollectDebugData(
+      const Nl80211Message& message, const NetlinkPacket& packet);
 
  protected:
   friend struct

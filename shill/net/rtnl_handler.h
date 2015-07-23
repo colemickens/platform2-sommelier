@@ -20,8 +20,6 @@
 #include "shill/net/rtnl_message.h"
 #include "shill/shill_export.h"
 
-struct nlmsghdr;
-
 namespace shill {
 
 class Sockets;

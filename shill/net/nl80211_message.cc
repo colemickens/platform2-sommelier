@@ -41,6 +41,7 @@
 #include "shill/net/attribute_list.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/netlink_attribute.h"
+#include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_attribute.h"  // For Nl80211AttributeMac
 
 using base::Bind;
@@ -78,18 +79,21 @@ void Nl80211Message::SetMessageType(uint16_t message_type) {
   nl80211_message_type_ = message_type;
 }
 
-bool Nl80211Message::InitFromNlmsg(const nlmsghdr* const_msg,
-                                   NetlinkMessage::MessageContext context) {
-  if (!const_msg) {
-    LOG(ERROR) << "Null |msg| parameter";
+bool Nl80211Message::InitFromPacket(NetlinkPacket* packet,
+                                    NetlinkMessage::MessageContext context) {
+  if (!packet) {
+    LOG(ERROR) << "Null |packet| parameter";
     return false;
   }
-  ByteString message(reinterpret_cast<const unsigned char*>(const_msg),
-                     const_msg->nlmsg_len);
 
-  if (!InitAndStripHeader(&message)) {
+  if (!InitAndStripHeader(packet)) {
     return false;
   }
+
+  // TODO(pstew): Implement a parser in NetlinkPacket instead of directly
+  // accessing the payload here and using nla_parse().  crbug.com/512152.
+  ByteString message = packet->GetPayload();
+  message.RemovePrefix(message.GetLength() - packet->GetRemainingLength());
 
   // Attributes.
   // Parse the attributes from the nl message payload into the 'tb' array.
@@ -607,19 +611,15 @@ const char SurveyResultsMessage::kCommandString[] =
     "NL80211_CMD_NEW_SURVEY_RESULTS";
 
 // static
-NetlinkMessage* Nl80211Message::CreateMessage(const nlmsghdr* const_msg) {
-  if (!const_msg) {
-    LOG(ERROR) << "NULL |const_msg| parameter";
+NetlinkMessage* Nl80211Message::CreateMessage(const NetlinkPacket& packet) {
+  genlmsghdr header;
+  if (!packet.GetGenlMsgHdr(&header)) {
+    LOG(ERROR) << "Could not read genl header.";
     return nullptr;
   }
-  // Casting away constness since, while nlmsg_data doesn't change its
-  // parameter, it also doesn't declare its paramenter as const.
-  nlmsghdr* msg = const_cast<nlmsghdr*>(const_msg);
-  void* payload = nlmsg_data(msg);
-  genlmsghdr* gnlh = reinterpret_cast<genlmsghdr*>(payload);
   std::unique_ptr<NetlinkMessage> message;
 
-  switch (gnlh->cmd) {
+  switch (header.cmd) {
     case AssociateMessage::kCommand:
       return new AssociateMessage();
     case AuthenticateMessage::kCommand:
@@ -688,8 +688,8 @@ NetlinkMessage* Nl80211Message::CreateMessage(const nlmsghdr* const_msg) {
       return new SurveyResultsMessage();
     default:
       LOG(WARNING) << base::StringPrintf(
-          "Unknown/unhandled netlink nl80211 message 0x%02x", gnlh->cmd);
-      return new UnknownNl80211Message(gnlh->cmd);
+          "Unknown/unhandled netlink nl80211 message 0x%02x", header.cmd);
+      return new UnknownNl80211Message(header.cmd);
       break;
   }
   return nullptr;
@@ -722,36 +722,31 @@ Nl80211MessageDataCollector::Nl80211MessageDataCollector() {
 }
 
 void Nl80211MessageDataCollector::CollectDebugData(
-    const Nl80211Message& message, nlmsghdr* msg) {
-  if (!msg) {
-    LOG(ERROR) << "NULL |msg| parameter";
-    return;
-  }
-
-  bool doit = false;
-
+    const Nl80211Message& message, const NetlinkPacket& packet) {
   map<uint8_t, bool>::const_iterator node;
   node = need_to_print.find(message.command());
-  if (node != need_to_print.end())
-    doit = node->second;
+  if (node == need_to_print.end() || !node->second)
+    return;
 
-  if (doit) {
-    LOG(INFO) << "@@const unsigned char "
-               << "k" << message.command_string()
-               << "[] = {";
+  LOG(INFO) << "@@const unsigned char "
+             << "k" << message.command_string()
+             << "[] = {";
 
-    int payload_bytes = nlmsg_datalen(msg);
-
-    size_t bytes = nlmsg_total_size(payload_bytes);
-    unsigned char* rawdata = reinterpret_cast<unsigned char*>(msg);
-    for (size_t i = 0; i < bytes; ++i) {
-      LOG(INFO) << "  0x"
-                 << std::hex << std::setfill('0') << std::setw(2)
-                 << + rawdata[i] << ",";
-    }
-    LOG(INFO) << "};";
-    need_to_print[message.command()] = false;
+  const unsigned char* rawdata =
+      reinterpret_cast<const unsigned char*>(&packet.GetNlMsgHeader());
+  for (size_t i = 0; i < sizeof(nlmsghdr); ++i) {
+    LOG(INFO) << "  0x"
+               << std::hex << std::setfill('0') << std::setw(2)
+               << + rawdata[i] << ",";
   }
+  rawdata = packet.GetPayload().GetConstData();
+  for (size_t i = 0; i < packet.GetPayload().GetLength(); ++i) {
+    LOG(INFO) << "  0x"
+               << std::hex << std::setfill('0') << std::setw(2)
+               << + rawdata[i] << ",";
+  }
+  LOG(INFO) << "};";
+  need_to_print[message.command()] = false;
 }
 
 }  // namespace shill.

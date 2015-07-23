@@ -17,6 +17,7 @@
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/net/ieee80211.h"
+#include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/refptr_types.h"
 
@@ -143,20 +144,18 @@ class Callback80211MetricsTest : public Test {
 
 // Make sure that notifications happen for correctly formed messages.
 TEST_F(Callback80211MetricsTest, DisconnectMessage) {
+  NetlinkPacket packet(kDisconnectMessage, sizeof(kDisconnectMessage));
   unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      const_cast<nlmsghdr*>(
-          reinterpret_cast<const nlmsghdr*>(kDisconnectMessage)),
-      NetlinkMessage::MessageContext()));
+      &packet, NetlinkMessage::MessageContext()));
   EXPECT_CALL(metrics_, Notify80211Disconnect(Metrics::kDisconnectedByAp,
                                               kExpectedDisconnectReason));
   callback_.CollectDisconnectStatistics(*netlink_message);
 }
 
 TEST_F(Callback80211MetricsTest, DeauthMessage) {
+  NetlinkPacket packet(kDeauthenticateMessage, sizeof(kDeauthenticateMessage));
   unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      const_cast<nlmsghdr*>(
-          reinterpret_cast<const nlmsghdr*>(kDeauthenticateMessage)),
-      NetlinkMessage::MessageContext()));
+      &packet, NetlinkMessage::MessageContext()));
   EXPECT_CALL(metrics_, Notify80211Disconnect(Metrics::kDisconnectedNotByAp,
                                               kExpectedDisconnectReason));
   callback_.CollectDisconnectStatistics(*netlink_message);
@@ -164,38 +163,36 @@ TEST_F(Callback80211MetricsTest, DeauthMessage) {
 
 // Make sure there's no notification if there's no reason code in the message.
 TEST_F(Callback80211MetricsTest, EmptyDisconnectMessage) {
+  NetlinkPacket packet(
+      kEmptyDisconnectMessage, sizeof(kEmptyDisconnectMessage));
   unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      const_cast<nlmsghdr*>(
-          reinterpret_cast<const nlmsghdr*>(kEmptyDisconnectMessage)),
-      NetlinkMessage::MessageContext()));
+      &packet, NetlinkMessage::MessageContext()));
   EXPECT_CALL(metrics_, Notify80211Disconnect(_, _)).Times(0);
   callback_.CollectDisconnectStatistics(*netlink_message);
 }
 
 TEST_F(Callback80211MetricsTest, EmptyDeauthMessage) {
+  NetlinkPacket packet(
+      kEmptyDeauthenticateMessage, sizeof(kEmptyDeauthenticateMessage));
   unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      const_cast<nlmsghdr*>(
-          reinterpret_cast<const nlmsghdr*>(kEmptyDeauthenticateMessage)),
-      NetlinkMessage::MessageContext()));
+      &packet, NetlinkMessage::MessageContext()));
   EXPECT_CALL(metrics_, Notify80211Disconnect(_, _)).Times(0);
   callback_.CollectDisconnectStatistics(*netlink_message);
 }
 
 // Make sure the callback doesn't notify anyone for message of the wrong type.
 TEST_F(Callback80211MetricsTest, Nl80211NotDisconnectDeauthMessage) {
+  NetlinkPacket packet(kNewStationMessage, sizeof(kNewStationMessage));
   unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      const_cast<nlmsghdr*>(
-          reinterpret_cast<const nlmsghdr*>(kNewStationMessage)),
-      NetlinkMessage::MessageContext()));
+      &packet, NetlinkMessage::MessageContext()));
   EXPECT_CALL(metrics_, Notify80211Disconnect(_, _)).Times(0);
   callback_.CollectDisconnectStatistics(*netlink_message);
 }
 
 TEST_F(Callback80211MetricsTest, NotNl80211Message) {
+  NetlinkPacket packet(kGetFamilyMessage, sizeof(kGetFamilyMessage));
   unique_ptr<NetlinkMessage> netlink_message(message_factory_.CreateMessage(
-      const_cast<nlmsghdr*>(
-          reinterpret_cast<const nlmsghdr*>(kGetFamilyMessage)),
-      NetlinkMessage::MessageContext()));
+      &packet, NetlinkMessage::MessageContext()));
   EXPECT_CALL(metrics_, Notify80211Disconnect(_, _)).Times(0);
   callback_.CollectDisconnectStatistics(*netlink_message);
 }

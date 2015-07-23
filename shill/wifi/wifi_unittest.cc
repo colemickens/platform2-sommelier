@@ -52,6 +52,7 @@
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_time.h"
 #include "shill/net/netlink_message_matchers.h"
+#include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_attribute.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/nice_mock_control.h"
@@ -393,7 +394,7 @@ const uint8_t kNewWiphyNlMsg[] = {
     0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 const uint32_t kNewWiphyNlMsg_WiphyIndex = 2;
-const int kNewWiphyNlMsg_Nl80211AttrWiphyOffset = 20;
+const int kNewWiphyNlMsg_Nl80211AttrWiphyOffset = 4;
 const uint16_t kNewWiphyNlMsg_UniqueFrequencies[] = {
     2412, 2417, 2422, 2427, 2432, 2437, 2442, 2447, 2452, 2457,
     2462, 2467, 2472, 2484, 5180, 5200, 5220, 5240, 5260, 5280,
@@ -4381,9 +4382,8 @@ TEST_F(WiFiMainTest, PerformTDLSOperation) {
 
 TEST_F(WiFiMainTest, OnNewWiphy) {
   NewWiphyMessage new_wiphy_message;
-  new_wiphy_message.InitFromNlmsg(
-      reinterpret_cast<const nlmsghdr*>(kNewWiphyNlMsg),
-      NetlinkMessage::MessageContext());
+  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  new_wiphy_message.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_CALL(*mac80211_monitor(), Start(_));
   EXPECT_CALL(*wake_on_wifi_, ParseWakeOnWiFiCapabilities(_));
   EXPECT_CALL(*wake_on_wifi_, OnWiphyIndexReceived(kNewWiphyNlMsg_WiphyIndex));
@@ -4618,8 +4618,8 @@ TEST_F(WiFiMainTest, ParseWiphyIndex_Success) {
   // for having the wiphy index is set by ParseWiphyIndex.
   EXPECT_EQ(GetWiphyIndex(), WiFi::kDefaultWiphyIndex);
   NewWiphyMessage msg;
-  msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr*>(kNewWiphyNlMsg),
-                    NetlinkMessage::MessageContext());
+  NetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_TRUE(ParseWiphyIndex(msg));
   EXPECT_EQ(GetWiphyIndex(), kNewWiphyNlMsg_WiphyIndex);
 }
@@ -4630,13 +4630,12 @@ TEST_F(WiFiMainTest, ParseWiphyIndex_Failure) {
   // U32 attribute, so that this message no longer contains a wiphy_index to be
   // parsed.
   NewWiphyMessage msg;
-  uint8_t message_memory[sizeof(kNewWiphyNlMsg)];
-  memcpy(message_memory, kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
+  MutableNetlinkPacket packet(kNewWiphyNlMsg, sizeof(kNewWiphyNlMsg));
   struct nlattr* nl80211_attr_wiphy = reinterpret_cast<struct nlattr*>(
-      &message_memory[kNewWiphyNlMsg_Nl80211AttrWiphyOffset]);
+      &packet.GetMutablePayload()->GetData()[
+          kNewWiphyNlMsg_Nl80211AttrWiphyOffset]);
   nl80211_attr_wiphy->nla_type = NL80211_ATTR_WIPHY_FREQ;
-  msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr*>(message_memory),
-                    NetlinkMessage::MessageContext());
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
                        "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY"));
@@ -4647,8 +4646,9 @@ TEST_F(WiFiMainTest, ParseWiphyIndex_Failure) {
 TEST_F(WiFiMainTest, OnScanStarted_ActiveScan) {
   SetWiphyIndex(kScanTriggerMsgWiphyIndex);
   TriggerScanMessage msg;
-  msg.InitFromNlmsg(reinterpret_cast<const nlmsghdr*>(kActiveScanTriggerNlMsg),
-                    NetlinkMessage::MessageContext());
+  NetlinkPacket packet(
+      kActiveScanTriggerNlMsg, sizeof(kActiveScanTriggerNlMsg));
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_CALL(*wake_on_wifi_, OnScanStarted(true));
   OnScanStarted(msg);
 }
@@ -4656,9 +4656,9 @@ TEST_F(WiFiMainTest, OnScanStarted_ActiveScan) {
 TEST_F(WiFiMainTest, OnScanStarted_PassiveScan) {
   SetWiphyIndex(kScanTriggerMsgWiphyIndex);
   TriggerScanMessage msg;
-  msg.InitFromNlmsg(
-      reinterpret_cast<const nlmsghdr*>(kPassiveScanTriggerNlMsg),
-      NetlinkMessage::MessageContext());
+  NetlinkPacket packet(
+      kPassiveScanTriggerNlMsg, sizeof(kPassiveScanTriggerNlMsg));
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
   EXPECT_CALL(*wake_on_wifi_, OnScanStarted(false));
   OnScanStarted(msg);
 }

@@ -37,22 +37,22 @@ bool NetlinkPacket::IsValid() const {
 }
 
 size_t NetlinkPacket::GetLength() const {
-  return IsValid() ? header_.nlmsg_len : 0;
+  return GetNlMsgHeader().nlmsg_len;
 }
 
 uint16_t NetlinkPacket::GetMessageType() const {
-  return header_.nlmsg_type;
+  return GetNlMsgHeader().nlmsg_type;
 }
 
 uint16_t NetlinkPacket::GetMessageSequence() const {
-  return header_.nlmsg_seq;
+  return GetNlMsgHeader().nlmsg_seq;
 }
 
 size_t NetlinkPacket::GetRemainingLength() const {
-  return payload_->GetLength() - consumed_bytes_;
+  return GetPayload().GetLength() - consumed_bytes_;
 }
 
-const ByteString &NetlinkPacket::GetPayload() const {
+const ByteString& NetlinkPacket::GetPayload() const {
   CHECK(IsValid());
   return *payload_.get();
 }
@@ -69,12 +69,47 @@ bool NetlinkPacket::ConsumeData(size_t len, void* data) {
   return true;
 }
 
-bool NetlinkPacket::GetGenlMsgHdr(genlmsghdr *header) const {
-  if (!IsValid() || payload_->GetLength() < sizeof(*header)) {
+
+const nlmsghdr& NetlinkPacket::GetNlMsgHeader() const {
+  CHECK(IsValid());
+  return header_;
+}
+
+bool NetlinkPacket::GetGenlMsgHdr(genlmsghdr* header) const {
+  if (GetPayload().GetLength() < sizeof(*header)) {
     return false;
   }
   memcpy(header, payload_->GetConstData(), sizeof(*header));
   return true;
+}
+
+MutableNetlinkPacket::MutableNetlinkPacket(const unsigned char* buf, size_t len)
+    : NetlinkPacket(buf, len) {
+}
+
+MutableNetlinkPacket::~MutableNetlinkPacket() {
+}
+
+void MutableNetlinkPacket::ResetConsumedBytes() {
+  set_consumed_bytes(0);
+}
+
+nlmsghdr* MutableNetlinkPacket::GetMutableHeader() {
+  CHECK(IsValid());
+  return mutable_header();
+}
+
+ByteString* MutableNetlinkPacket::GetMutablePayload() {
+  CHECK(IsValid());
+  return mutable_payload();
+}
+
+void MutableNetlinkPacket::SetMessageType(uint16_t type) {
+  mutable_header()->nlmsg_type = type;
+}
+
+void MutableNetlinkPacket::SetMessageSequence(uint16_t sequence) {
+  mutable_header()->nlmsg_seq = sequence;
 }
 
 }  // namespace shill.

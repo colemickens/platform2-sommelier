@@ -42,7 +42,7 @@ class SHILL_EXPORT NetlinkPacket {
   };
 
   NetlinkPacket(const unsigned char* buf, size_t len);
-  ~NetlinkPacket();
+  virtual ~NetlinkPacket();
 
   // Returns whether a packet was properly retrieved in the constructor.
   bool IsValid() const;
@@ -75,9 +75,20 @@ class SHILL_EXPORT NetlinkPacket {
   // Copies the initial part of the payload to |header| without
   // consuming any data.  Returns true if this operation succeeds (there
   // is enough data in the payload), false otherwise.
-  bool GetGenlMsgHdr(genlmsghdr *header) const;
+  bool GetGenlMsgHdr(genlmsghdr* header) const;
 
-  const nlmsghdr& header() const { return header_; }
+  // Returns the nlmsghdr associated with the packet.  It is a fatal error
+  // to call this method on an invalid packet.
+  const nlmsghdr& GetNlMsgHeader() const;
+
+ protected:
+  // These getters are protected so that derived classes may allow
+  // the packet contents to be modified.
+  nlmsghdr* mutable_header() { return &header_; }
+  ByteString* mutable_payload() { return payload_.get(); }
+  void set_consumed_bytes(size_t consumed_bytes) {
+      consumed_bytes_ = consumed_bytes;
+  }
 
  private:
   friend class NetlinkPacketTest;
@@ -87,6 +98,33 @@ class SHILL_EXPORT NetlinkPacket {
   size_t consumed_bytes_;
 
   DISALLOW_COPY_AND_ASSIGN(NetlinkPacket);
+};
+
+// Mutable Netlink packets are used in unit tests where it is convenient
+// to modify the header and payload of a packet before passing it to the
+// NetlinkMessage subclasses or NetlinkManager.
+class SHILL_EXPORT MutableNetlinkPacket : public NetlinkPacket {
+ public:
+  MutableNetlinkPacket(const unsigned char* buf, size_t len);
+  virtual ~MutableNetlinkPacket();
+
+  // Reset consumed_bytes_ as if this packet never underwent processing.
+  // This is useful for unit tests that wish to re-send a previously
+  // processed packet.
+  void ResetConsumedBytes();
+
+  // Returns mutable references to the header and payload.
+  nlmsghdr* GetMutableHeader();
+  ByteString* GetMutablePayload();
+
+  // Set the message type in the header.
+  void SetMessageType(uint16_t type);
+
+  // Set the sequence number in the header.
+  void SetMessageSequence(uint16_t sequence);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MutableNetlinkPacket);
 };
 
 }  // namespace shill

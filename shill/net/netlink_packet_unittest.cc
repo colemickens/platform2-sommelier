@@ -21,7 +21,6 @@ TEST_F(NetlinkPacketTest, Constructor) {
   // an invalid packet.
   NetlinkPacket null_packet(nullptr, 100);
   EXPECT_FALSE(null_packet.IsValid());
-  EXPECT_EQ(0, null_packet.GetLength());
 
   unsigned char data[sizeof(nlmsghdr) + 1];
   memset(&data, 0, sizeof(data));
@@ -29,13 +28,11 @@ TEST_F(NetlinkPacketTest, Constructor) {
   // A packet that is too short to contain an nlmsghdr should be invalid.
   NetlinkPacket short_packet(data, sizeof(nlmsghdr) - 1);
   EXPECT_FALSE(short_packet.IsValid());
-  EXPECT_EQ(0, short_packet.GetLength());
 
   // A packet that contains an invalid nlmsg_len (should be at least
   // as large as sizeof(nlmgsghdr)) should be invalid.
   NetlinkPacket invalid_packet(data, sizeof(nlmsghdr));
   EXPECT_FALSE(invalid_packet.IsValid());
-  EXPECT_EQ(0, invalid_packet.GetLength());
 
   // Successfully parse a well-formed packet that has no payload.
   nlmsghdr hdr;
@@ -57,7 +54,6 @@ TEST_F(NetlinkPacketTest, Constructor) {
   memcpy(&data, &hdr, sizeof(hdr));
   NetlinkPacket incomplete_packet(data, sizeof(nlmsghdr));
   EXPECT_FALSE(incomplete_packet.IsValid());
-  EXPECT_EQ(0, incomplete_packet.GetLength());
 
   // Retrieve a byte from a well-formed packet.  After that byte is
   // retrieved, no more data can be consumed.
@@ -66,6 +62,7 @@ TEST_F(NetlinkPacketTest, Constructor) {
   EXPECT_TRUE(complete_packet.IsValid());
   EXPECT_EQ(sizeof(nlmsghdr) + 1, complete_packet.GetLength());
   EXPECT_EQ(2, complete_packet.GetMessageType());
+  EXPECT_EQ(1, complete_packet.GetRemainingLength());
   EXPECT_TRUE(complete_packet.ConsumeData(1, &payload_byte));
   EXPECT_EQ(10, payload_byte);
   EXPECT_FALSE(complete_packet.ConsumeData(1, &payload_byte));
