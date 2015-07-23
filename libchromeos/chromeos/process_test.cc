@@ -64,7 +64,7 @@ TEST(SimpleProcess, BindFd) {
   process.AddArg(kBinEcho);
   process.AddArg(kMsg);
   process.BindFd(fds[1], 1);
-  process.Start();
+  process.Run();
   memset(buf, 0, sizeof(buf));
   EXPECT_EQ(read(fds[0], buf, sizeof(buf) - 1), strlen(kMsg) + 1);
   EXPECT_EQ(std::string(kMsg) + "\n", std::string(buf));
