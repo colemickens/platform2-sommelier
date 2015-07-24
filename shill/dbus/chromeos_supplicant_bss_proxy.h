@@ -34,13 +34,13 @@ class ChromeosSupplicantBSSProxy
                          const std::string& signal_name,
                          bool success);
 
-  base::WeakPtrFactory<ChromeosSupplicantBSSProxy> weak_factory_{this};
   std::unique_ptr<fi::w1::wpa_supplicant1::BSSProxy> bss_proxy_;
   // We use a bare pointer, because each ChromeosSupplcantBSSProxy is
   // owned (using a unique_ptr) by a WiFiEndpoint. This means that if
   // |wifi_endpoint_| is invalid, then so is |this|.
   WiFiEndpoint* wifi_endpoint_;
 
+  base::WeakPtrFactory<ChromeosSupplicantBSSProxy> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ChromeosSupplicantBSSProxy);
 };
 

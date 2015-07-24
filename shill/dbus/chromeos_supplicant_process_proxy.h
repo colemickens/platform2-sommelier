@@ -86,7 +86,6 @@ class ChromeosSupplicantProcessProxy : public SupplicantProcessProxyInterface {
                          const std::string& signal_name,
                          bool success);
 
-  base::WeakPtrFactory<ChromeosSupplicantProcessProxy> weak_factory_{this};
   std::unique_ptr<fi::w1::wpa_supplicant1Proxy> supplicant_proxy_;
   std::unique_ptr<PropertySet> properties_;
   EventDispatcher* dispatcher_;
@@ -94,6 +93,7 @@ class ChromeosSupplicantProcessProxy : public SupplicantProcessProxyInterface {
   base::Closure service_vanished_callback_;
   bool service_available_;
 
+  base::WeakPtrFactory<ChromeosSupplicantProcessProxy> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ChromeosSupplicantProcessProxy);
 };
 

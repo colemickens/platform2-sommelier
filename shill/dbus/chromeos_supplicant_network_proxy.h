@@ -60,10 +60,10 @@ class ChromeosSupplicantNetworkProxy
                          const std::string& signal_name,
                          bool success);
 
-  base::WeakPtrFactory<ChromeosSupplicantNetworkProxy> weak_factory_{this};
   std::unique_ptr<fi::w1::wpa_supplicant1::NetworkProxy> network_proxy_;
   std::unique_ptr<PropertySet> properties_;
 
+  base::WeakPtrFactory<ChromeosSupplicantNetworkProxy> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ChromeosSupplicantNetworkProxy);
 };
 

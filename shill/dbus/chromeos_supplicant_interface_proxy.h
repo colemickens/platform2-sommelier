@@ -138,7 +138,6 @@ class ChromeosSupplicantInterfaceProxy
   // Callback invoked when property |property_name| set completed.
   void OnPropertySet(const std::string& property_name, bool success);
 
-  base::WeakPtrFactory<ChromeosSupplicantInterfaceProxy> weak_factory_{this};
   std::unique_ptr<fi::w1::wpa_supplicant1::InterfaceProxy> interface_proxy_;
   std::unique_ptr<PropertySet> properties_;
 
@@ -146,6 +145,7 @@ class ChromeosSupplicantInterfaceProxy
   // MUST destroy |this| before destroying itself.
   SupplicantEventDelegateInterface* delegate_;
 
+  base::WeakPtrFactory<ChromeosSupplicantInterfaceProxy> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ChromeosSupplicantInterfaceProxy);
 };
 

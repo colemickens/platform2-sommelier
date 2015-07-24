@@ -36,9 +36,9 @@ class ChromeosUpstartProxy : public UpstartProxyInterface {
   void OnEmitEventSuccess();
   void OnEmitEventFailure(chromeos::Error* error);
 
-  base::WeakPtrFactory<ChromeosUpstartProxy> weak_factory_{this};
   std::unique_ptr<com::ubuntu::Upstart0_6Proxy> upstart_proxy_;
 
+  base::WeakPtrFactory<ChromeosUpstartProxy> weak_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(ChromeosUpstartProxy);
 };
 

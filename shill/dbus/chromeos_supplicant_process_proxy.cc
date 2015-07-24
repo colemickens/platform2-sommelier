@@ -52,16 +52,18 @@ ChromeosSupplicantProcessProxy::ChromeosSupplicantProcessProxy(
             bus,
             WPASupplicant::kDBusAddr,
             dbus::ObjectPath(WPASupplicant::kDBusPath))),
-      properties_(
-          new PropertySet(
-              supplicant_proxy_->GetObjectProxy(),
-              WPASupplicant::kDBusAddr,
-              base::Bind(&ChromeosSupplicantProcessProxy::OnPropertyChanged,
-                         weak_factory_.GetWeakPtr()))),
       dispatcher_(dispatcher),
       service_appeared_callback_(service_appeared_callback),
       service_vanished_callback_(service_vanished_callback),
       service_available_(false) {
+  // Register properties.
+  properties_.reset(
+      new PropertySet(
+          supplicant_proxy_->GetObjectProxy(),
+          WPASupplicant::kDBusAddr,
+          base::Bind(&ChromeosSupplicantProcessProxy::OnPropertyChanged,
+                     weak_factory_.GetWeakPtr())));
+
   // Register signal handlers.
   dbus::ObjectProxy::OnConnectedCallback on_connected_callback =
       base::Bind(&ChromeosSupplicantProcessProxy::OnSignalConnected,

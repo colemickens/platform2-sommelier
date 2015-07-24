@@ -41,13 +41,15 @@ ChromeosSupplicantNetworkProxy::ChromeosSupplicantNetworkProxy(
         new fi::w1::wpa_supplicant1::NetworkProxy(
             bus,
             WPASupplicant::kDBusAddr,
-            dbus::ObjectPath(object_path))),
-      properties_(
-          new PropertySet(
-              network_proxy_->GetObjectProxy(),
-              WPASupplicant::kDBusAddr,
-              base::Bind(&ChromeosSupplicantNetworkProxy::OnPropertyChanged,
-                         weak_factory_.GetWeakPtr()))) {
+            dbus::ObjectPath(object_path))) {
+  // Register properties.
+  properties_.reset(
+      new PropertySet(
+          network_proxy_->GetObjectProxy(),
+          WPASupplicant::kDBusAddr,
+          base::Bind(&ChromeosSupplicantNetworkProxy::OnPropertyChanged,
+                     weak_factory_.GetWeakPtr())));
+
   // Register signal handler.
   network_proxy_->RegisterPropertiesChangedSignalHandler(
       base::Bind(&ChromeosSupplicantNetworkProxy::PropertiesChanged,

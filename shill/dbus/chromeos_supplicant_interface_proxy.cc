@@ -82,13 +82,15 @@ ChromeosSupplicantInterfaceProxy::ChromeosSupplicantInterfaceProxy(
               bus,
               WPASupplicant::kDBusAddr,
               dbus::ObjectPath(object_path))),
-      properties_(
-          new PropertySet(
-              interface_proxy_->GetObjectProxy(),
-              WPASupplicant::kDBusAddr,
-              base::Bind(&ChromeosSupplicantInterfaceProxy::OnPropertyChanged,
-                         weak_factory_.GetWeakPtr()))),
       delegate_(delegate) {
+  // Register properites.
+  properties_.reset(
+      new PropertySet(
+          interface_proxy_->GetObjectProxy(),
+          WPASupplicant::kDBusAddr,
+          base::Bind(&ChromeosSupplicantInterfaceProxy::OnPropertyChanged,
+                     weak_factory_.GetWeakPtr())));
+
   // Register signal handlers.
   dbus::ObjectProxy::OnConnectedCallback on_connected_callback =
       base::Bind(&ChromeosSupplicantInterfaceProxy::OnSignalConnected,
