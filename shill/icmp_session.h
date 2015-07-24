@@ -50,19 +50,19 @@ class IcmpSession {
 
   // We always call IcmpSession::Stop in the destructor to clean up, in case an
   // ICMP session is still in progress.
-  ~IcmpSession();
+  virtual ~IcmpSession();
 
   // Starts an ICMP session, sending |kNumEchoRequestsToSend| echo requests to
   // |destination|, |kEchoRequestIntervalSeconds| apart. |result_callback| will
   // be called a) after all echo requests are sent and all echo replies are
   // received, or b) after |kTimeoutSeconds| have passed. |result_callback| will
   // only be invoked once on the first occurrence of either of these events.
-  bool Start(const IPAddress& destination,
-             const IcmpSessionResultCallback& result_callback);
+  virtual bool Start(const IPAddress& destination,
+                     const IcmpSessionResultCallback& result_callback);
 
   // Stops the current ICMP session by closing the ICMP socket and resetting
   // callbacks. Does nothing if a ICMP session is not started.
-  void Stop();
+  virtual void Stop();
 
   bool IsStarted() { return icmp_->IsStarted(); }
 
