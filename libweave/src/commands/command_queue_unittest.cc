@@ -56,18 +56,17 @@ class FakeDispatcher {
         &FakeDispatcher::OnCommandRemoved, weak_ptr_factory_.GetWeakPtr()));
   }
 
-  void OnCommandAdded(CommandInstance* command_instance) {
-    CHECK(ids_.insert(command_instance->GetID()).second)
-        << "Command ID already exists: " << command_instance->GetID();
-    CHECK(commands_.insert(command_instance).second)
+  void OnCommandAdded(Command* command) {
+    CHECK(ids_.insert(command->GetID()).second) << "Command ID already exists: "
+                                                << command->GetID();
+    CHECK(commands_.insert(command).second)
         << "Command instance already exists";
   }
 
-  void OnCommandRemoved(CommandInstance* command_instance) {
-    CHECK_EQ(1u, ids_.erase(command_instance->GetID()))
-        << "Command ID not found: " << command_instance->GetID();
-    CHECK_EQ(1u, commands_.erase(command_instance))
-        << "Command instance not found";
+  void OnCommandRemoved(Command* command) {
+    CHECK_EQ(1u, ids_.erase(command->GetID())) << "Command ID not found: "
+                                               << command->GetID();
+    CHECK_EQ(1u, commands_.erase(command)) << "Command instance not found";
   }
 
   // Get the comma-separated list of command IDs currently accumulated in the
@@ -79,7 +78,7 @@ class FakeDispatcher {
 
  private:
   std::set<std::string> ids_;
-  std::set<CommandInstance*> commands_;
+  std::set<Command*> commands_;
   base::WeakPtrFactory<FakeDispatcher> weak_ptr_factory_{this};
 };
 

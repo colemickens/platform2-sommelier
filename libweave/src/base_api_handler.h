@@ -12,7 +12,7 @@
 
 namespace weave {
 
-class CommandInstance;
+class Command;
 class CommandManager;
 class DeviceRegistrationInfo;
 class StateManager;
@@ -30,9 +30,9 @@ class BaseApiHandler final {
                  const std::shared_ptr<CommandManager>& command_manager);
 
  private:
-  void OnCommandAdded(CommandInstance* command);
-  void UpdateBaseConfiguration(CommandInstance* command);
-  void UpdateDeviceInfo(CommandInstance* command);
+  void OnCommandAdded(Command* command);
+  void UpdateBaseConfiguration(Command* command);
+  void UpdateDeviceInfo(Command* command);
 
   base::WeakPtr<DeviceRegistrationInfo> device_info_;
   std::shared_ptr<StateManager> state_manager_;

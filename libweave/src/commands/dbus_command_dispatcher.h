@@ -11,6 +11,8 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 
+#include "weave/commands.h"
+
 namespace chromeos {
 namespace dbus_utils {
 class ExportedObjectManager;
@@ -32,18 +34,20 @@ class DBusCommandDispacher final {
  public:
   explicit DBusCommandDispacher(
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
-          object_manager);
-
-  void OnCommandAdded(CommandInstance* command_instance);
+          object_manager,
+      Commands* command_manager);
 
  private:
+  void OnCommandAdded(Command* command);
+
   base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager> object_manager_;
   int next_id_{0};
 
   // Default constructor is used in special circumstances such as for testing.
   DBusCommandDispacher() = default;
 
-  friend class CommandManager;
+  base::WeakPtrFactory<DBusCommandDispacher> weak_ptr_factory_{this};
+
   DISALLOW_COPY_AND_ASSIGN(DBusCommandDispacher);
 };
 

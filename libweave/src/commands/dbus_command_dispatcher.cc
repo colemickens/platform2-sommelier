@@ -7,8 +7,8 @@
 #include <chromeos/dbus/exported_object_manager.h>
 
 #include "buffet/dbus_constants.h"
-#include "libweave/src/commands/command_instance.h"
 #include "libweave/src/commands/dbus_command_proxy.h"
+#include "weave/command.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
@@ -16,18 +16,21 @@ using chromeos::dbus_utils::ExportedObjectManager;
 namespace weave {
 
 DBusCommandDispacher::DBusCommandDispacher(
-    const base::WeakPtr<ExportedObjectManager>& object_manager)
+    const base::WeakPtr<ExportedObjectManager>& object_manager,
+    Commands* command_manager)
     : object_manager_{object_manager} {
+  command_manager->AddOnCommandAddedCallback(base::Bind(
+      &DBusCommandDispacher::OnCommandAdded, weak_ptr_factory_.GetWeakPtr()));
 }
 
-void DBusCommandDispacher::OnCommandAdded(CommandInstance* command_instance) {
+void DBusCommandDispacher::OnCommandAdded(Command* command) {
   if (!object_manager_)
     return;
   std::unique_ptr<DBusCommandProxy> proxy{new DBusCommandProxy(
-      object_manager_.get(), object_manager_->GetBus(), command_instance,
+      object_manager_.get(), object_manager_->GetBus(), command,
       buffet::kCommandServicePathPrefix + std::to_string(++next_id_))};
   proxy->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
-  command_instance->AddObserver(proxy.release());
+  command->AddObserver(proxy.release());
 }
 
 }  // namespace weave

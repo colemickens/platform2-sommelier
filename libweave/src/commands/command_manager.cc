@@ -23,11 +23,7 @@ CommandManager::CommandManager()
 
 CommandManager::CommandManager(
     const base::WeakPtr<ExportedObjectManager>& object_manager)
-    : command_dispatcher_(object_manager) {
-  command_queue_.AddOnCommandAddedCallback(
-      base::Bind(&DBusCommandDispacher::OnCommandAdded,
-                 base::Unretained(&command_dispatcher_)));
-}
+    : command_dispatcher_(object_manager, this) {}
 
 CommandManager::~CommandManager() {}
 
@@ -168,12 +164,12 @@ bool CommandManager::SetCommandVisibility(
 }
 
 void CommandManager::AddOnCommandAddedCallback(
-    const CommandQueue::Callback& callback) {
+    const OnCommandCallback& callback) {
   command_queue_.AddOnCommandAddedCallback(callback);
 }
 
 void CommandManager::AddOnCommandRemovedCallback(
-    const CommandQueue::Callback& callback) {
+    const OnCommandCallback& callback) {
   command_queue_.AddOnCommandRemovedCallback(callback);
 }
 

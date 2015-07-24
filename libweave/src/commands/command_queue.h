@@ -16,19 +16,19 @@
 #include <base/macros.h>
 
 #include "libweave/src/commands/command_instance.h"
+#include "weave/commands.h"
 
 namespace weave {
 
 class CommandQueue final {
  public:
-  using Callback = base::Callback<void(CommandInstance*)>;
   CommandQueue() = default;
 
   // Adds notifications callback for a new command is added to the queue.
-  void AddOnCommandAddedCallback(const Callback& callback);
+  void AddOnCommandAddedCallback(const Commands::OnCommandCallback& callback);
 
   // Adds notifications callback for a command is removed from the queue.
-  void AddOnCommandRemovedCallback(const Callback& callback);
+  void AddOnCommandRemovedCallback(const Commands::OnCommandCallback& callback);
 
   // Checks if the command queue is empty.
   bool IsEmpty() const { return map_.empty(); }
@@ -75,7 +75,7 @@ class CommandQueue final {
   // Queue of commands to be removed.
   std::queue<std::pair<base::Time, std::string>> remove_queue_;
 
-  using CallbackList = std::vector<Callback>;
+  using CallbackList = std::vector<Commands::OnCommandCallback>;
   CallbackList on_command_added_;
   CallbackList on_command_removed_;
 

@@ -35,8 +35,26 @@ const char kCommandCategory[] = "test_category";
 
 }  // anonymous namespace
 
-class DBusCommandDispacherTest : public testing::Test {
+class DBusCommandDispacherTest : public testing::Test, public Commands {
  public:
+  void AddOnCommandAddedCallback(const OnCommandCallback& callback) override {
+    command_queue_.AddOnCommandAddedCallback(callback);
+  }
+
+  void AddOnCommandRemovedCallback(const OnCommandCallback& callback) override {
+    command_queue_.AddOnCommandRemovedCallback(callback);
+  }
+
+  MOCK_METHOD4(AddCommand,
+               bool(const base::DictionaryValue&,
+                    UserRole,
+                    std::string*,
+                    chromeos::ErrorPtr*));
+
+  Command* FindCommand(const std::string& id) override {
+    return command_queue_.Find(id);
+  }
+
   void SetUp() override {
     command_queue_.SetNowForTest(base::Time::Max());
 
@@ -61,10 +79,7 @@ class DBusCommandDispacherTest : public testing::Test {
     om_.reset(new chromeos::dbus_utils::ExportedObjectManager(
         bus_.get(), kExportedObjectManagerPath));
     om_->RegisterAsync(AsyncEventSequencer::GetDefaultCompletionAction());
-    command_dispatcher_.reset(new DBusCommandDispacher(om_->AsWeakPtr()));
-    command_queue_.AddOnCommandAddedCallback(
-        base::Bind(&DBusCommandDispacher::OnCommandAdded,
-                   base::Unretained(command_dispatcher_.get())));
+    command_dispatcher_.reset(new DBusCommandDispacher(om_->AsWeakPtr(), this));
     // Use a mock exported object for command proxy.
     mock_exported_command_proxy_ =
         new dbus::MockExportedObject(bus_.get(), kCmdObjPath);

@@ -20,7 +20,7 @@ BaseApiHandler::BaseApiHandler(
       &BaseApiHandler::OnCommandAdded, weak_ptr_factory_.GetWeakPtr()));
 }
 
-void BaseApiHandler::OnCommandAdded(CommandInstance* command) {
+void BaseApiHandler::OnCommandAdded(Command* command) {
   if (command->GetStatus() != CommandInstance::kStatusQueued)
     return;
 
@@ -31,7 +31,7 @@ void BaseApiHandler::OnCommandAdded(CommandInstance* command) {
     return UpdateDeviceInfo(command);
 }
 
-void BaseApiHandler::UpdateBaseConfiguration(CommandInstance* command) {
+void BaseApiHandler::UpdateBaseConfiguration(Command* command) {
   command->SetProgress(base::DictionaryValue{}, nullptr);
 
   const BuffetConfig& config{device_info_->GetConfig()};
@@ -61,7 +61,7 @@ void BaseApiHandler::UpdateBaseConfiguration(CommandInstance* command) {
   command->Done();
 }
 
-void BaseApiHandler::UpdateDeviceInfo(CommandInstance* command) {
+void BaseApiHandler::UpdateDeviceInfo(Command* command) {
   command->SetProgress(base::DictionaryValue{}, nullptr);
 
   const BuffetConfig& config{device_info_->GetConfig()};

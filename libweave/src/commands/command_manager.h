@@ -47,6 +47,8 @@ class CommandManager final : public Commands {
                   std::string* id,
                   chromeos::ErrorPtr* error) override;
   CommandInstance* FindCommand(const std::string& id) override;
+  void AddOnCommandAddedCallback(const OnCommandCallback& callback) override;
+  void AddOnCommandRemovedCallback(const OnCommandCallback& callback) override;
 
   // Sets callback which is called when command definitions is changed.
   void AddOnCommandDefChanged(const base::Closure& callback);
@@ -100,17 +102,11 @@ class CommandManager final : public Commands {
                             CommandDefinition::Visibility visibility,
                             chromeos::ErrorPtr* error);
 
-  // Adds notifications callback for a new command being added to the queue.
-  void AddOnCommandAddedCallback(const CommandQueue::Callback& callback);
-
-  // Adds notifications callback for a command being removed from the queue.
-  void AddOnCommandRemovedCallback(const CommandQueue::Callback& callback);
-
  private:
   CommandDictionary base_dictionary_;  // Base/std command definitions/schemas.
   CommandDictionary dictionary_;       // Command definitions/schemas.
-  DBusCommandDispacher command_dispatcher_;
   CommandQueue command_queue_;
+  DBusCommandDispacher command_dispatcher_;
   std::vector<base::Callback<void()>> on_command_changed_;
   uint32_t next_command_id_{0};
 

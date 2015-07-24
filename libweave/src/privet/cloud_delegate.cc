@@ -32,8 +32,8 @@ namespace {
 const int kMaxSetupRetries = 5;
 const int kFirstRetryTimeoutSec = 1;
 
-CommandInstance* ReturnNotFound(const std::string& command_id,
-                                chromeos::ErrorPtr* error) {
+Command* ReturnNotFound(const std::string& command_id,
+                        chromeos::ErrorPtr* error) {
   chromeos::Error::AddToPrintf(error, FROM_HERE, errors::kDomain,
                                errors::kNotFound, "Command not found, ID='%s'",
                                command_id.c_str());
@@ -235,12 +235,12 @@ class CloudDelegateImpl : public CloudDelegate {
   }
 
  private:
-  void OnCommandAdded(CommandInstance* command) {
+  void OnCommandAdded(Command* command) {
     // Set to 0 for any new unknown command.
     command_owners_.emplace(command->GetID(), 0);
   }
 
-  void OnCommandRemoved(CommandInstance* command) {
+  void OnCommandRemoved(Command* command) {
     CHECK(command_owners_.erase(command->GetID()));
   }
 
@@ -312,9 +312,9 @@ class CloudDelegateImpl : public CloudDelegate {
     setup_state_ = SetupState(SetupState::kSuccess);
   }
 
-  CommandInstance* GetCommandInternal(const std::string& command_id,
-                                      const UserInfo& user_info,
-                                      chromeos::ErrorPtr* error) const {
+  Command* GetCommandInternal(const std::string& command_id,
+                              const UserInfo& user_info,
+                              chromeos::ErrorPtr* error) const {
     if (user_info.scope() != AuthScope::kOwner) {
       auto it = command_owners_.find(command_id);
       if (it == command_owners_.end())

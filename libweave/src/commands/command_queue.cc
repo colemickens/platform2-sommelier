@@ -13,14 +13,16 @@ namespace {
 const int kRemoveCommandDelayMin = 5;
 }
 
-void CommandQueue::AddOnCommandAddedCallback(const Callback& callback) {
+void CommandQueue::AddOnCommandAddedCallback(
+    const Commands::OnCommandCallback& callback) {
   on_command_added_.push_back(callback);
   // Send all pre-existed commands.
   for (const auto& command : map_)
     callback.Run(command.second.get());
 }
 
-void CommandQueue::AddOnCommandRemovedCallback(const Callback& callback) {
+void CommandQueue::AddOnCommandRemovedCallback(
+    const Commands::OnCommandCallback& callback) {
   on_command_removed_.push_back(callback);
 }
 

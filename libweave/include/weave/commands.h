@@ -24,6 +24,15 @@ enum class UserRole {
 
 class Commands {
  public:
+  using OnCommandCallback = base::Callback<void(Command*)>;
+
+  // Adds notification callback for a new command being added to the queue.
+  virtual void AddOnCommandAddedCallback(const OnCommandCallback& callback) = 0;
+
+  // Adds notification callback for a command being removed from the queue.
+  virtual void AddOnCommandRemovedCallback(
+      const OnCommandCallback& callback) = 0;
+
   // Adds a new command to the command queue.
   virtual bool AddCommand(const base::DictionaryValue& command,
                           UserRole role,
