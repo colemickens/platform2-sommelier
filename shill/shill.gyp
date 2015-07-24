@@ -33,6 +33,13 @@
           'DISABLE_CHROMEOS_DBUS',
         ],
       }],
+      ['USE_chromeos_dbus == 1', {
+        'variables': {
+          'deps': [
+            'dbus-1',
+          ],
+        },
+      }],
       ['USE_pppoe == 0', {
         'defines': [
           'DISABLE_PPPOE',
@@ -322,6 +329,8 @@
             'dbus/chromeos_dbus_control.cc',
             'dbus/chromeos_dbus_daemon.cc',
             'dbus/chromeos_device_dbus_adaptor.cc',
+            'dbus/chromeos_dhcpcd_listener.cc',
+            'dbus/chromeos_dhcpcd_proxy.cc',
             'dbus/chromeos_ipconfig_dbus_adaptor.cc',
             'dbus/chromeos_manager_dbus_adaptor.cc',
             'dbus/chromeos_profile_dbus_adaptor.cc',
@@ -331,6 +340,16 @@
             'dbus/chromeos_upstart_proxy.cc',
           ],
           'actions': [
+            {
+              'action_name': 'generate-dhcpcd-proxies',
+              'variables': {
+                'proxy_output_file': 'include/dhcpcd/dbus-proxies.h',
+              },
+              'sources': [
+                'dbus_bindings/dhcpcd.xml',
+              ],
+              'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+            },
             {
               'action_name': 'generate-upstart-proxies',
               'variables': {
