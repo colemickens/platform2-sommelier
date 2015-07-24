@@ -21,7 +21,7 @@ MockDHCPConfig::MockDHCPConfig(ControlInterface* control_interface,
 MockDHCPConfig::~MockDHCPConfig() {}
 
 void MockDHCPConfig::ProcessEventSignal(const std::string& reason,
-                                        const Configuration& configuration) {}
+                                        const KeyValueStore& configuration) {}
 void MockDHCPConfig::ProcessStatusChangeSignal(const std::string& status) {}
 
 }  // namespace shill

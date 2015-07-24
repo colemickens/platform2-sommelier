@@ -74,7 +74,7 @@ DHCPv6Config::~DHCPv6Config() {
 }
 
 void DHCPv6Config::ProcessEventSignal(const string& reason,
-                                      const Configuration& configuration) {
+                                      const KeyValueStore& configuration) {
   LOG(INFO) << "Event reason: " << reason;
   if (reason == kReasonFail) {
     LOG(ERROR) << "Received failure event from DHCPv6 client.";
@@ -128,28 +128,27 @@ vector<string> DHCPv6Config::GetFlags() {
   return flags;
 }
 
-bool DHCPv6Config::ParseConfiguration(const Configuration& configuration) {
+bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
   SLOG(nullptr, 2) << __func__;
   properties_.method = kTypeDHCP6;
   properties_.address_family = IPAddress::kFamilyIPv6;
-  for (Configuration::const_iterator it = configuration.begin();
-       it != configuration.end(); ++it) {
-    const string& key = it->first;
-    const DBus::Variant& value = it->second;
+  for (const auto it :  configuration.properties()) {
+    const string& key = it.first;
+    const chromeos::Any& value = it.second;
     SLOG(nullptr, 2) << "Processing key: " << key;
     if (key == kConfigurationKeyIPAddress) {
-      properties_.address = value.reader().get_string();
+      properties_.address = value.Get<string>();
     } else if (key == kConfigurationKeyDNS) {
-      properties_.dns_servers = value.operator vector<string>();
+      properties_.dns_servers = value.Get<vector<string>>();
     } else if (key == kConfigurationKeyDomainSearch) {
-      properties_.domain_search = value.operator vector<string>();
+      properties_.domain_search = value.Get<vector<string>>();
     } else if (key == kConfigurationKeyIPAddressLeaseTime ||
                key == kConfigurationKeyDelegatedPrefixLeaseTime) {
-      UpdateLeaseTime(value.reader().get_uint32());
+      UpdateLeaseTime(value.Get<uint32_t>());
     } else if (key == kConfigurationKeyDelegatedPrefix) {
-      properties_.delegated_prefix = value.reader().get_string();
+      properties_.delegated_prefix = value.Get<string>()
     } else if (key == kConfigurationKeyDelegatedPrefixLength) {
-      properties_.delegated_prefix_length = value.reader().get_uint32();
+      properties_.delegated_prefix_length = value.Get<uint32_t>();
     } else {
       SLOG(nullptr, 2) << "Key ignored.";
     }

@@ -71,7 +71,7 @@ class TestDHCPConfig : public DHCPConfig {
   ~TestDHCPConfig() {}
 
   void ProcessEventSignal(const std::string& reason,
-                          const Configuration& configuration) override {}
+                          const KeyValueStore& configuration) override {}
   void ProcessStatusChangeSignal(const std::string& status) override {}
 
   MOCK_METHOD0(ShouldFailOnAcquisitionTimeout, bool());

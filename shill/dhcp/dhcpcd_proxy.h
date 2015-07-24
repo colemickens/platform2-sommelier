@@ -5,6 +5,7 @@
 #ifndef SHILL_DHCP_DHCPCD_PROXY_H_
 #define SHILL_DHCP_DHCPCD_PROXY_H_
 
+#include <map>
 #include <string>
 
 #include <base/macros.h>
@@ -72,7 +73,7 @@ class DHCPCDProxy : public DHCPProxyInterface {
     void Event(
         const uint32_t& pid,
         const std::string& reason,
-        const DHCPConfig::Configuration& configuration) override;
+        const std::map<std::string, DBus::Variant>& configuration) override;
     void StatusChanged(const uint32_t& pid, const std::string& status) override;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);

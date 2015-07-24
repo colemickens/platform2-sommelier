@@ -106,7 +106,7 @@ DHCPv4Config::~DHCPv4Config() {
 }
 
 void DHCPv4Config::ProcessEventSignal(const string& reason,
-                                      const Configuration& configuration) {
+                                      const KeyValueStore& configuration) {
   LOG(INFO) << "Event reason: " << reason;
   if (reason == kReasonFail) {
     LOG(ERROR) << "Received failure event from DHCP client.";
@@ -312,33 +312,32 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
 }
 
 // static
-bool DHCPv4Config::ParseConfiguration(const Configuration& configuration,
+bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
                                       IPConfig::Properties* properties) {
   SLOG(nullptr, 2) << __func__;
   properties->method = kTypeDHCP;
   properties->address_family = IPAddress::kFamilyIPv4;
   string classless_static_routes;
   bool default_gateway_parse_error = false;
-  for (Configuration::const_iterator it = configuration.begin();
-       it != configuration.end(); ++it) {
-    const string& key = it->first;
-    const DBus::Variant& value = it->second;
+  for (const auto it :  configuration.properties()) {
+    const string& key = it.first;
+    const chromeos::Any& value = it.second;
     SLOG(nullptr, 2) << "Processing key: " << key;
     if (key == kConfigurationKeyIPAddress) {
-      properties->address = GetIPv4AddressString(value.reader().get_uint32());
+      properties->address = GetIPv4AddressString(value.Get<uint32_t>());
       if (properties->address.empty()) {
         return false;
       }
     } else if (key == kConfigurationKeySubnetCIDR) {
-      properties->subnet_prefix = value.reader().get_byte();
+      properties->subnet_prefix = value.Get<uint8_t>();
     } else if (key == kConfigurationKeyBroadcastAddress) {
       properties->broadcast_address =
-          GetIPv4AddressString(value.reader().get_uint32());
+          GetIPv4AddressString(value.Get<uint32_t>());
       if (properties->broadcast_address.empty()) {
         return false;
       }
     } else if (key == kConfigurationKeyRouters) {
-      vector<unsigned int> routers = value.operator vector<unsigned int>();
+      vector<uint32_t> routers = value.Get<vector<uint32_t>>();
       if (routers.empty()) {
         LOG(ERROR) << "No routers provided.";
         default_gateway_parse_error = true;
@@ -350,7 +349,7 @@ bool DHCPv4Config::ParseConfiguration(const Configuration& configuration,
         }
       }
     } else if (key == kConfigurationKeyDNS) {
-      vector<unsigned int> servers = value.operator vector<unsigned int>();
+      vector<uint32_t> servers = value.Get<vector<uint32_t>>();
       for (vector<unsigned int>::const_iterator it = servers.begin();
            it != servers.end(); ++it) {
         string server = GetIPv4AddressString(*it);
@@ -360,25 +359,25 @@ bool DHCPv4Config::ParseConfiguration(const Configuration& configuration,
         properties->dns_servers.push_back(server);
       }
     } else if (key == kConfigurationKeyDomainName) {
-      properties->domain_name = value.reader().get_string();
+      properties->domain_name = value.Get<string>();
     } else if (key == kConfigurationKeyHostname) {
-      properties->accepted_hostname = value.reader().get_string();
+      properties->accepted_hostname = value.Get<string>();
     } else if (key == kConfigurationKeyDomainSearch) {
-      properties->domain_search = value.operator vector<string>();
+      properties->domain_search = value.Get<vector<string>>();
     } else if (key == kConfigurationKeyMTU) {
-      int mtu = value.reader().get_uint16();
+      int mtu = value.Get<uint16_t>();
       metrics_->SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, mtu);
       if (mtu >= minimum_mtu() && mtu != kMinIPv4MTU) {
         properties->mtu = mtu;
       }
     } else if (key == kConfigurationKeyClasslessStaticRoutes) {
-      classless_static_routes = value.reader().get_string();
+      classless_static_routes = value.Get<string>();
     } else if (key == kConfigurationKeyVendorEncapsulatedOptions) {
-      properties->vendor_encapsulated_options = value.reader().get_string();
+      properties->vendor_encapsulated_options = value.Get<string>();
     } else if (key == kConfigurationKeyWebProxyAutoDiscoveryUrl) {
-      properties->web_proxy_auto_discovery = value.reader().get_string();
+      properties->web_proxy_auto_discovery = value.Get<string>();
     } else if (key == kConfigurationKeyLeaseTime) {
-      properties->lease_duration_seconds = value.reader().get_uint32();
+      properties->lease_duration_seconds = value.Get<uint32_t>();
     } else {
       SLOG(nullptr, 2) << "Key ignored.";
     }

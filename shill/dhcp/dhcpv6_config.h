@@ -31,7 +31,7 @@ class DHCPv6Config : public DHCPConfig {
 
   // Inherited from DHCPConfig.
   void ProcessEventSignal(const std::string& reason,
-                          const Configuration& configuration) override;
+                          const KeyValueStore& configuration) override;
   void ProcessStatusChangeSignal(const std::string& status) override;
 
  protected:
@@ -69,7 +69,7 @@ class DHCPv6Config : public DHCPConfig {
 
   // Parses |configuration| into |properties|. Returns true on success, and
   // false otherwise.
-  bool ParseConfiguration(const Configuration& configuration);
+  bool ParseConfiguration(const KeyValueStore& configuration);
 
   void UpdateLeaseTime(uint32_t lease_time);
 

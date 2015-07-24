@@ -12,8 +12,8 @@
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/logging.h"
 
+using std::map;
 using std::string;
-using std::vector;
 
 namespace shill {
 
@@ -75,7 +75,7 @@ void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage& signal) {
                << " interface: " << signal.interface()
                << " member: " << signal.member() << " path: " << signal.path();
   }
-  DHCPConfig::Configuration configuration;
+  map<string, DBus::Variant> configuration;
   try {
     ri >> configuration;
   } catch (const DBus::Error& e) {
@@ -83,7 +83,16 @@ void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage& signal) {
                << " interface: " << signal.interface()
                << " member: " << signal.member() << " path: " << signal.path();
   }
-  config->ProcessEventSignal(reason, configuration);
+  KeyValueStore configuration_store;
+  Error error;
+  DBusProperties::ConvertMapToKeyValueStore(configuration,
+                                            &configuration_store,
+                                            &error);
+  if (error.IsFailure()) {
+    LOG(ERROR) << "Failed to parse configuration properties";
+    return;
+  }
+  config->ProcessEventSignal(reason, configuration_store);
 }
 
 void DHCPCDListener::Proxy::StatusChangedSignal(
@@ -174,7 +183,7 @@ DHCPCDProxy::Proxy::~Proxy() {}
 void DHCPCDProxy::Proxy::Event(
     const uint32_t& /*pid*/,
     const std::string& /*reason*/,
-    const DHCPConfig::Configuration& /*configuration*/) {
+    const std::map<std::string, DBus::Variant>& /*configuration*/) {
   SLOG(DBus, nullptr, 2) << __func__;
   NOTREACHED();
 }

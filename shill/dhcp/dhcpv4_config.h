@@ -36,7 +36,7 @@ class DHCPv4Config : public DHCPConfig {
 
   // Inherited from DHCPConfig.
   void ProcessEventSignal(const std::string& reason,
-                          const Configuration& configuration) override;
+                          const KeyValueStore& configuration) override;
   void ProcessStatusChangeSignal(const std::string& status) override;
 
  protected:
@@ -117,7 +117,7 @@ class DHCPv4Config : public DHCPConfig {
 
   // Parses |configuration| into |properties|. Returns true on success, and
   // false otherwise.
-  bool ParseConfiguration(const Configuration& configuration,
+  bool ParseConfiguration(const KeyValueStore& configuration,
                           IPConfig::Properties* properties);
 
   // Returns the string representation of the IP address |address|, or an

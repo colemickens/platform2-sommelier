@@ -14,11 +14,11 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/minijail/minijail.h>
-#include <dbus-c++/types.h>
 #include <glib.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
+#include "shill/key_value_store.h"
 
 namespace shill {
 
@@ -39,8 +39,6 @@ class ProxyFactory;
 // Otherwise, the lease file persists and will be re-used in future attempts.
 class DHCPConfig : public IPConfig {
  public:
-  typedef std::map<std::string, DBus::Variant> Configuration;
-
   DHCPConfig(ControlInterface* control_interface,
              EventDispatcher* dispatcher,
              DHCPProvider* provider,
@@ -61,7 +59,7 @@ class DHCPConfig : public IPConfig {
 
   // Processes an Event signal from dhcpcd.
   virtual void ProcessEventSignal(const std::string& reason,
-                                  const Configuration& configuration) = 0;
+                                  const KeyValueStore& configuration) = 0;
 
   // Processes an Status Change signal from dhcpcd.
   virtual void ProcessStatusChangeSignal(const std::string& status) = 0;

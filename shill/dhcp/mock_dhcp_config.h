@@ -21,7 +21,7 @@ class MockDHCPConfig : public DHCPConfig {
   ~MockDHCPConfig() override;
 
   void ProcessEventSignal(const std::string& reason,
-                          const Configuration& configuration) override;
+                          const KeyValueStore& configuration) override;
   void ProcessStatusChangeSignal(const std::string& status) override;
 
   MOCK_METHOD0(RequestIP, bool());
