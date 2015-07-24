@@ -786,7 +786,7 @@ void DeviceRegistrationInfo::NotifyCommandAborted(const std::string& command_id,
                                                   chromeos::ErrorPtr error) {
   base::DictionaryValue command_patch;
   command_patch.SetString(commands::attributes::kCommand_State,
-                          CommandInstance::kStatusAborted);
+                          EnumToString(CommandStatus::kAborted));
   if (error) {
     command_patch.SetString(commands::attributes::kCommand_ErrorCode,
                             chromeos::string_utils::Join(
@@ -997,8 +997,8 @@ void DeviceRegistrationInfo::PublishCommand(
   std::string command_id;
   chromeos::ErrorPtr error;
   auto command_instance = CommandInstance::FromJson(
-      &command, commands::attributes::kCommand_Visibility_Cloud,
-      command_manager_->GetCommandDictionary(), &command_id, &error);
+      &command, CommandOrigin::kCloud, command_manager_->GetCommandDictionary(),
+      &command_id, &error);
   if (!command_instance) {
     LOG(WARNING) << "Failed to parse a command instance: " << command;
     if (!command_id.empty())

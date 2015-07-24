@@ -34,7 +34,7 @@ class CommandInstance final : public Command {
   // be in format "<package_name>.<command_name>", a command |category| and
   // a list of parameters and their values specified in |parameters|.
   CommandInstance(const std::string& name,
-                  const std::string& origin,
+                  CommandOrigin origin,
                   const CommandDefinition* command_definition,
                   const ValueMap& parameters);
   ~CommandInstance() override;
@@ -45,8 +45,8 @@ class CommandInstance final : public Command {
   const std::string& GetID() const override;
   const std::string& GetName() const override;
   const std::string& GetCategory() const override;
-  const std::string& GetStatus() const override;
-  const std::string& GetOrigin() const override;
+  CommandStatus GetStatus() const override;
+  CommandOrigin GetOrigin() const override;
   std::unique_ptr<base::DictionaryValue> GetParameters() const override;
   std::unique_ptr<base::DictionaryValue> GetProgress() const override;
   std::unique_ptr<base::DictionaryValue> GetResults() const override;
@@ -73,7 +73,7 @@ class CommandInstance final : public Command {
   // This is used to report parse failures back to the server.
   static std::unique_ptr<CommandInstance> FromJson(
       const base::Value* value,
-      const std::string& origin,
+      CommandOrigin origin,
       const CommandDictionary& dictionary,
       std::string* command_id,
       chromeos::ErrorPtr* error);
@@ -84,20 +84,10 @@ class CommandInstance final : public Command {
   // Sets the pointer to queue this command is part of.
   void SetCommandQueue(CommandQueue* queue) { queue_ = queue; }
 
-  // Values for command execution status.
-  static const char kStatusQueued[];
-  static const char kStatusInProgress[];
-  static const char kStatusPaused[];
-  static const char kStatusError[];
-  static const char kStatusDone[];
-  static const char kStatusCancelled[];
-  static const char kStatusAborted[];
-  static const char kStatusExpired[];
-
  private:
   // Helper function to update the command status.
   // Used by Abort(), Cancel(), Done() methods.
-  void SetStatus(const std::string& status);
+  void SetStatus(CommandStatus status);
   // Helper method that removes this command from the command queue.
   // Note that since the command queue owns the lifetime of the command instance
   // object, removing a command from the queue will also destroy it.
@@ -108,7 +98,7 @@ class CommandInstance final : public Command {
   // Full command name as "<package_name>.<command_name>".
   std::string name_;
   // The origin of the command, either "local" or "cloud".
-  std::string origin_;
+  CommandOrigin origin_ = CommandOrigin::kLocal;
   // Command definition.
   const CommandDefinition* command_definition_;
   // Command parameters and their values.
@@ -118,7 +108,7 @@ class CommandInstance final : public Command {
   // Command results.
   ValueMap results_;
   // Current command status.
-  std::string status_ = kStatusQueued;
+  CommandStatus status_ = CommandStatus::kQueued;
   // Command observer for the command.
   std::vector<Observer*> observers_;
   // Pointer to the command queue this command instance is added to.

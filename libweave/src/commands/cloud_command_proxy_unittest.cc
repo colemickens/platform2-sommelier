@@ -139,8 +139,9 @@ class CloudCommandProxyTest : public ::testing::Test {
     })");
     CHECK(command_json.get());
 
-    command_instance_ = CommandInstance::FromJson(
-        command_json.get(), "cloud", command_dictionary_, nullptr, nullptr);
+    command_instance_ =
+        CommandInstance::FromJson(command_json.get(), CommandOrigin::kCloud,
+                                  command_dictionary_, nullptr, nullptr);
     CHECK(command_instance_.get());
 
     // Backoff - start at 1s and double with each backoff attempt and no jitter.

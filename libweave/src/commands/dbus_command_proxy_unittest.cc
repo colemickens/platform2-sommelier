@@ -20,6 +20,8 @@
 #include "libweave/src/commands/command_instance.h"
 #include "libweave/src/commands/unittest_utils.h"
 
+#include "weave/enum_to_string.h"
+
 namespace weave {
 
 using ::testing::AnyNumber;
@@ -99,8 +101,8 @@ class DBusCommandProxyTest : public ::testing::Test {
         '_jumpType': '_withKick'
       }
     })");
-    command_instance_ =
-        CommandInstance::FromJson(json.get(), "local", dict_, nullptr, nullptr);
+    command_instance_ = CommandInstance::FromJson(
+        json.get(), CommandOrigin::kLocal, dict_, nullptr, nullptr);
     command_instance_->SetID(kTestCommandId);
 
     // Set up a mock ExportedObject to be used with the DBus command proxy.
@@ -144,6 +146,12 @@ class DBusCommandProxyTest : public ::testing::Test {
     return GetCommandProxy();
   }
 
+  CommandStatus GetCommandStatus() const {
+    CommandStatus status;
+    EXPECT_TRUE(StringToEnum(GetCommandAdaptor()->GetStatus(), &status));
+    return status;
+  }
+
   std::unique_ptr<CommandInstance> command_instance_;
   CommandDictionary dict_;
 
@@ -155,7 +163,7 @@ TEST_F(DBusCommandProxyTest, Init) {
   VariantDictionary params = {
       {"height", int32_t{53}}, {"_jumpType", std::string{"_withKick"}},
   };
-  EXPECT_EQ(CommandInstance::kStatusQueued, GetCommandAdaptor()->GetStatus());
+  EXPECT_EQ(CommandStatus::kQueued, GetCommandStatus());
   EXPECT_EQ(params, GetCommandAdaptor()->GetParameters());
   EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetProgress());
   EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetResults());
@@ -168,8 +176,7 @@ TEST_F(DBusCommandProxyTest, SetProgress) {
   EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(2);
   EXPECT_TRUE(
       GetCommandInterface()->SetProgress(nullptr, {{"progress", int32_t{10}}}));
-  EXPECT_EQ(CommandInstance::kStatusInProgress,
-            GetCommandAdaptor()->GetStatus());
+  EXPECT_EQ(CommandStatus::kInProgress, GetCommandStatus());
 
   VariantDictionary progress{{"progress", int32_t{10}}};
   EXPECT_EQ(progress, GetCommandAdaptor()->GetProgress());
@@ -178,7 +185,7 @@ TEST_F(DBusCommandProxyTest, SetProgress) {
 TEST_F(DBusCommandProxyTest, SetProgress_OutOfRange) {
   EXPECT_FALSE(GetCommandInterface()->SetProgress(
       nullptr, {{"progress", int32_t{110}}}));
-  EXPECT_EQ(CommandInstance::kStatusQueued, GetCommandAdaptor()->GetStatus());
+  EXPECT_EQ(CommandStatus::kQueued, GetCommandStatus());
   EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetProgress());
 }
 
@@ -216,14 +223,13 @@ TEST_F(DBusCommandProxyTest, SetResults_UnknownProperty) {
 TEST_F(DBusCommandProxyTest, Abort) {
   EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
   GetCommandInterface()->Abort();
-  EXPECT_EQ(CommandInstance::kStatusAborted, GetCommandAdaptor()->GetStatus());
+  EXPECT_EQ(CommandStatus::kAborted, GetCommandStatus());
 }
 
 TEST_F(DBusCommandProxyTest, Cancel) {
   EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
   GetCommandInterface()->Cancel();
-  EXPECT_EQ(CommandInstance::kStatusCancelled,
-            GetCommandAdaptor()->GetStatus());
+  EXPECT_EQ(CommandStatus::kCancelled, GetCommandStatus());
 }
 
 TEST_F(DBusCommandProxyTest, Done) {
@@ -231,7 +237,7 @@ TEST_F(DBusCommandProxyTest, Done) {
   // status: queued -> done
   EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
   GetCommandInterface()->Done();
-  EXPECT_EQ(CommandInstance::kStatusDone, GetCommandAdaptor()->GetStatus());
+  EXPECT_EQ(CommandStatus::kDone, GetCommandStatus());
 }
 
 }  // namespace weave

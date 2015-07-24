@@ -10,6 +10,7 @@
 #include "libweave/src/commands/prop_constraints.h"
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/schema_constants.h"
+#include "weave/enum_to_string.h"
 
 namespace weave {
 
@@ -39,7 +40,7 @@ void CloudCommandProxy::OnResultsChanged() {
 void CloudCommandProxy::OnStatusChanged() {
   std::unique_ptr<base::DictionaryValue> patch{new base::DictionaryValue};
   patch->SetString(commands::attributes::kCommand_State,
-                   command_instance_->GetStatus());
+                   EnumToString(command_instance_->GetStatus()));
   QueueCommandUpdate(std::move(patch));
 }
 

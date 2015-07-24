@@ -21,7 +21,7 @@ BaseApiHandler::BaseApiHandler(
 }
 
 void BaseApiHandler::OnCommandAdded(Command* command) {
-  if (command->GetStatus() != CommandInstance::kStatusQueued)
+  if (command->GetStatus() != CommandStatus::kQueued)
     return;
 
   if (command->GetName() == "base.updateBaseConfiguration")

@@ -107,8 +107,7 @@ bool CommandManager::AddCommand(const base::DictionaryValue& command,
                                 std::string* id,
                                 chromeos::ErrorPtr* error) {
   auto command_instance = CommandInstance::FromJson(
-      &command, commands::attributes::kCommand_Visibility_Local,
-      GetCommandDictionary(), nullptr, error);
+      &command, CommandOrigin::kLocal, GetCommandDictionary(), nullptr, error);
   if (!command_instance)
     return false;
 

@@ -8,6 +8,7 @@
 #include <chromeos/dbus/exported_object_manager.h>
 
 #include "libweave/src/commands/dbus_conversion.h"
+#include "weave/enum_to_string.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
@@ -29,10 +30,10 @@ void DBusCommandProxy::RegisterAsync(
   dbus_adaptor_.SetName(command_->GetName());
   dbus_adaptor_.SetCategory(command_->GetCategory());
   dbus_adaptor_.SetId(command_->GetID());
-  dbus_adaptor_.SetStatus(command_->GetStatus());
+  dbus_adaptor_.SetStatus(EnumToString(command_->GetStatus()));
   dbus_adaptor_.SetProgress(
       DictionaryToDBusVariantDictionary(*command_->GetProgress()));
-  dbus_adaptor_.SetOrigin(command_->GetOrigin());
+  dbus_adaptor_.SetOrigin(EnumToString(command_->GetOrigin()));
   dbus_adaptor_.SetParameters(
       DictionaryToDBusVariantDictionary(*command_->GetParameters()));
   dbus_adaptor_.SetResults(
@@ -48,7 +49,7 @@ void DBusCommandProxy::OnResultsChanged() {
 }
 
 void DBusCommandProxy::OnStatusChanged() {
-  dbus_adaptor_.SetStatus(command_->GetStatus());
+  dbus_adaptor_.SetStatus(EnumToString(command_->GetStatus()));
 }
 
 void DBusCommandProxy::OnProgressChanged() {

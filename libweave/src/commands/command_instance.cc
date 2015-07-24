@@ -14,20 +14,40 @@
 #include "libweave/src/commands/prop_types.h"
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/commands/schema_utils.h"
+#include "weave/enum_to_string.h"
 
 namespace weave {
 
-const char CommandInstance::kStatusQueued[] = "queued";
-const char CommandInstance::kStatusInProgress[] = "inProgress";
-const char CommandInstance::kStatusPaused[] = "paused";
-const char CommandInstance::kStatusError[] = "error";
-const char CommandInstance::kStatusDone[] = "done";
-const char CommandInstance::kStatusCancelled[] = "cancelled";
-const char CommandInstance::kStatusAborted[] = "aborted";
-const char CommandInstance::kStatusExpired[] = "expired";
+namespace {
+
+const EnumToStringMap<CommandStatus>::Map kMapStatus[] = {
+    {CommandStatus::kQueued, "queued"},
+    {CommandStatus::kInProgress, "inProgress"},
+    {CommandStatus::kPaused, "paused"},
+    {CommandStatus::kError, "error"},
+    {CommandStatus::kDone, "done"},
+    {CommandStatus::kCancelled, "cancelled"},
+    {CommandStatus::kAborted, "aborted"},
+    {CommandStatus::kExpired, "expired"},
+};
+
+const EnumToStringMap<CommandOrigin>::Map kMapOrigin[] = {
+    {CommandOrigin::kLocal, "local"},
+    {CommandOrigin::kCloud, "cloud"},
+};
+
+}  // namespace
+
+template <>
+EnumToStringMap<CommandStatus>::EnumToStringMap()
+    : EnumToStringMap(kMapStatus) {}
+
+template <>
+EnumToStringMap<CommandOrigin>::EnumToStringMap()
+    : EnumToStringMap(kMapOrigin) {}
 
 CommandInstance::CommandInstance(const std::string& name,
-                                 const std::string& origin,
+                                 CommandOrigin origin,
                                  const CommandDefinition* command_definition,
                                  const ValueMap& parameters)
     : name_{name},
@@ -54,11 +74,11 @@ const std::string& CommandInstance::GetCategory() const {
   return command_definition_->GetCategory();
 }
 
-const std::string& CommandInstance::GetStatus() const {
+CommandStatus CommandInstance::GetStatus() const {
   return status_;
 }
 
-const std::string& CommandInstance::GetOrigin() const {
+CommandOrigin CommandInstance::GetOrigin() const {
   return origin_;
 }
 
@@ -84,7 +104,7 @@ bool CommandInstance::SetProgress(const base::DictionaryValue& progress,
     return false;
 
   // Change status even if progress unchanged, e.g. 0% -> 0%.
-  SetStatus(kStatusInProgress);
+  SetStatus(CommandStatus::kInProgress);
   if (obj != progress_) {
     progress_ = obj;
     for (auto observer : observers_)
@@ -155,7 +175,7 @@ bool GetCommandParameters(const base::DictionaryValue* json,
 
 std::unique_ptr<CommandInstance> CommandInstance::FromJson(
     const base::Value* value,
-    const std::string& origin,
+    CommandOrigin origin,
     const CommandDictionary& dictionary,
     std::string* command_id,
     chromeos::ErrorPtr* error) {
@@ -225,7 +245,7 @@ std::unique_ptr<base::DictionaryValue> CommandInstance::ToJson() const {
             TypedValueToJson(progress_, nullptr).release());
   json->Set(commands::attributes::kCommand_Results,
             TypedValueToJson(results_, nullptr).release());
-  json->SetString(commands::attributes::kCommand_State, status_);
+  json->SetString(commands::attributes::kCommand_State, EnumToString(status_));
 
   return json;
 }
@@ -235,24 +255,24 @@ void CommandInstance::AddObserver(Observer* observer) {
 }
 
 void CommandInstance::Abort() {
-  SetStatus(kStatusAborted);
+  SetStatus(CommandStatus::kAborted);
   RemoveFromQueue();
   // The command will be destroyed after that, so do not access any members.
 }
 
 void CommandInstance::Cancel() {
-  SetStatus(kStatusCancelled);
+  SetStatus(CommandStatus::kCancelled);
   RemoveFromQueue();
   // The command will be destroyed after that, so do not access any members.
 }
 
 void CommandInstance::Done() {
-  SetStatus(kStatusDone);
+  SetStatus(CommandStatus::kDone);
   RemoveFromQueue();
   // The command will be destroyed after that, so do not access any members.
 }
 
-void CommandInstance::SetStatus(const std::string& status) {
+void CommandInstance::SetStatus(CommandStatus status) {
   if (status != status_) {
     status_ = status;
     for (auto observer : observers_)

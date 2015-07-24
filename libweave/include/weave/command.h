@@ -12,6 +12,19 @@
 
 namespace weave {
 
+enum class CommandStatus {
+  kQueued,
+  kInProgress,
+  kPaused,
+  kError,
+  kDone,
+  kCancelled,
+  kAborted,
+  kExpired,
+};
+
+enum class CommandOrigin { kLocal, kCloud };
+
 class Command {
  public:
   // This interface lets the command to notify clients about changes.
@@ -39,11 +52,10 @@ class Command {
   virtual const std::string& GetCategory() const = 0;
 
   // Returns the command status.
-  // TODO(vitalybuka): Status should be enum.
-  virtual const std::string& GetStatus() const = 0;
+  virtual CommandStatus GetStatus() const = 0;
 
   // Returns the origin of the command.
-  virtual const std::string& GetOrigin() const = 0;
+  virtual CommandOrigin GetOrigin() const = 0;
 
   // Returns the command parameters.
   virtual std::unique_ptr<base::DictionaryValue> GetParameters() const = 0;

@@ -75,8 +75,8 @@ TEST_F(CommandInstanceTest, Test) {
   ValueMap params;
   params["phrase"] = str_prop.CreateValue(std::string("iPityDaFool"), nullptr);
   params["volume"] = int_prop.CreateValue(5, nullptr);
-  CommandInstance instance{
-      "robot.speak", "cloud", dict_.FindCommand("robot.speak"), params};
+  CommandInstance instance{"robot.speak", CommandOrigin::kCloud,
+                           dict_.FindCommand("robot.speak"), params};
 
   EXPECT_TRUE(
       instance.SetResults(*CreateDictionaryValue("{'foo': 239}"), nullptr));
@@ -84,19 +84,23 @@ TEST_F(CommandInstanceTest, Test) {
   EXPECT_EQ("", instance.GetID());
   EXPECT_EQ("robot.speak", instance.GetName());
   EXPECT_EQ("robotd", instance.GetCategory());
-  EXPECT_EQ("cloud", instance.GetOrigin());
+  EXPECT_EQ(CommandOrigin::kCloud, instance.GetOrigin());
   EXPECT_JSON_EQ("{'phrase': 'iPityDaFool', 'volume': 5}",
                  *instance.GetParameters());
   EXPECT_JSON_EQ("{'foo': 239}", *instance.GetResults());
 
-  CommandInstance instance2{
-      "base.reboot", "local", dict_.FindCommand("base.reboot"), {}};
-  EXPECT_EQ("local", instance2.GetOrigin());
+  CommandInstance instance2{"base.reboot",
+                            CommandOrigin::kLocal,
+                            dict_.FindCommand("base.reboot"),
+                            {}};
+  EXPECT_EQ(CommandOrigin::kLocal, instance2.GetOrigin());
 }
 
 TEST_F(CommandInstanceTest, SetID) {
-  CommandInstance instance{
-      "base.reboot", "local", dict_.FindCommand("base.reboot"), {}};
+  CommandInstance instance{"base.reboot",
+                           CommandOrigin::kLocal,
+                           dict_.FindCommand("base.reboot"),
+                           {}};
   instance.SetID("command_id");
   EXPECT_EQ("command_id", instance.GetID());
 }
@@ -112,8 +116,8 @@ TEST_F(CommandInstanceTest, FromJson) {
     'results': {}
   })");
   std::string id;
-  auto instance =
-      CommandInstance::FromJson(json.get(), "cloud", dict_, &id, nullptr);
+  auto instance = CommandInstance::FromJson(json.get(), CommandOrigin::kCloud,
+                                            dict_, &id, nullptr);
   EXPECT_EQ("abcd", id);
   EXPECT_EQ("abcd", instance->GetID());
   EXPECT_EQ("robot.jump", instance->GetName());
@@ -124,8 +128,8 @@ TEST_F(CommandInstanceTest, FromJson) {
 
 TEST_F(CommandInstanceTest, FromJson_ParamsOmitted) {
   auto json = CreateDictionaryValue("{'name': 'base.reboot'}");
-  auto instance =
-      CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr, nullptr);
+  auto instance = CommandInstance::FromJson(json.get(), CommandOrigin::kCloud,
+                                            dict_, nullptr, nullptr);
   EXPECT_EQ("base.reboot", instance->GetName());
   EXPECT_EQ("robotd", instance->GetCategory());
   EXPECT_JSON_EQ("{}", *instance->GetParameters());
@@ -134,8 +138,8 @@ TEST_F(CommandInstanceTest, FromJson_ParamsOmitted) {
 TEST_F(CommandInstanceTest, FromJson_NotObject) {
   auto json = CreateValue("'string'");
   chromeos::ErrorPtr error;
-  auto instance =
-      CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr, &error);
+  auto instance = CommandInstance::FromJson(json.get(), CommandOrigin::kCloud,
+                                            dict_, nullptr, &error);
   EXPECT_EQ(nullptr, instance.get());
   EXPECT_EQ("json_object_expected", error->GetCode());
   EXPECT_EQ("Command instance is not a JSON object", error->GetMessage());
@@ -144,8 +148,8 @@ TEST_F(CommandInstanceTest, FromJson_NotObject) {
 TEST_F(CommandInstanceTest, FromJson_NameMissing) {
   auto json = CreateDictionaryValue("{'param': 'value'}");
   chromeos::ErrorPtr error;
-  auto instance =
-      CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr, &error);
+  auto instance = CommandInstance::FromJson(json.get(), CommandOrigin::kCloud,
+                                            dict_, nullptr, &error);
   EXPECT_EQ(nullptr, instance.get());
   EXPECT_EQ("parameter_missing", error->GetCode());
   EXPECT_EQ("Command name is missing", error->GetMessage());
@@ -154,8 +158,8 @@ TEST_F(CommandInstanceTest, FromJson_NameMissing) {
 TEST_F(CommandInstanceTest, FromJson_UnknownCommand) {
   auto json = CreateDictionaryValue("{'name': 'robot.scream'}");
   chromeos::ErrorPtr error;
-  auto instance =
-      CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr, &error);
+  auto instance = CommandInstance::FromJson(json.get(), CommandOrigin::kCloud,
+                                            dict_, nullptr, &error);
   EXPECT_EQ(nullptr, instance.get());
   EXPECT_EQ("invalid_command_name", error->GetCode());
   EXPECT_EQ("Unknown command received: robot.scream", error->GetMessage());
@@ -167,8 +171,8 @@ TEST_F(CommandInstanceTest, FromJson_ParamsNotObject) {
     'parameters': 'hello'
   })");
   chromeos::ErrorPtr error;
-  auto instance =
-      CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr, &error);
+  auto instance = CommandInstance::FromJson(json.get(), CommandOrigin::kCloud,
+                                            dict_, nullptr, &error);
   EXPECT_EQ(nullptr, instance.get());
   auto inner = error->GetInnerError();
   EXPECT_EQ("json_object_expected", inner->GetCode());
@@ -186,8 +190,8 @@ TEST_F(CommandInstanceTest, FromJson_ParamError) {
     }
   })");
   chromeos::ErrorPtr error;
-  auto instance =
-      CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr, &error);
+  auto instance = CommandInstance::FromJson(json.get(), CommandOrigin::kCloud,
+                                            dict_, nullptr, &error);
   EXPECT_EQ(nullptr, instance.get());
   auto first = error->GetFirstError();
   EXPECT_EQ("out_of_range", first->GetCode());
@@ -209,8 +213,8 @@ TEST_F(CommandInstanceTest, ToJson) {
     },
     'results': {}
   })");
-  auto instance =
-      CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr, nullptr);
+  auto instance = CommandInstance::FromJson(json.get(), CommandOrigin::kCloud,
+                                            dict_, nullptr, nullptr);
   EXPECT_TRUE(instance->SetProgress(*CreateDictionaryValue("{'progress': 15}"),
                                     nullptr));
   EXPECT_TRUE(instance->SetProgress(*CreateDictionaryValue("{'progress': 15}"),

@@ -23,8 +23,8 @@ class CommandQueueTest : public testing::Test {
   std::unique_ptr<CommandInstance> CreateDummyCommandInstance(
       const std::string& name,
       const std::string& id) {
-    std::unique_ptr<CommandInstance> cmd{
-        new CommandInstance{name, "local", &command_definition_, {}}};
+    std::unique_ptr<CommandInstance> cmd{new CommandInstance{
+        name, CommandOrigin::kLocal, &command_definition_, {}}};
     cmd->SetID(id);
     return cmd;
   }
