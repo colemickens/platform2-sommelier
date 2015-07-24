@@ -193,7 +193,6 @@
             '../libweave/src/commands/command_instance_unittest.cc',
             '../libweave/src/commands/command_manager_unittest.cc',
             '../libweave/src/commands/command_queue_unittest.cc',
-            '../libweave/src/commands/dbus_command_dispatcher_unittest.cc',
             '../libweave/src/commands/dbus_command_proxy_unittest.cc',
             '../libweave/src/commands/dbus_conversion_unittest.cc',
             '../libweave/src/commands/object_schema_unittest.cc',
