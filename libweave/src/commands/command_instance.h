@@ -50,6 +50,13 @@ class CommandInstance final : public Command {
   std::unique_ptr<base::DictionaryValue> GetParameters() const override;
   std::unique_ptr<base::DictionaryValue> GetProgress() const override;
   std::unique_ptr<base::DictionaryValue> GetResults() const override;
+  bool SetProgress(const base::DictionaryValue& progress,
+                   chromeos::ErrorPtr* error) override;
+  bool SetResults(const base::DictionaryValue& results,
+                  chromeos::ErrorPtr* error) override;
+  void Abort() override;
+  void Cancel() override;
+  void Done() override;
 
   // Returns command definition.
   const CommandDefinition* GetCommandDefinition() const {
@@ -76,21 +83,6 @@ class CommandInstance final : public Command {
   void SetID(const std::string& id) { id_ = id; }
   // Sets the pointer to queue this command is part of.
   void SetCommandQueue(CommandQueue* queue) { queue_ = queue; }
-
-  // Updates the command progress. The |progress| should match the schema.
-  // Returns false if |results| value is incorrect.
-  bool SetProgress(const ValueMap& progress);
-
-  // Updates the command results. The |results| should match the schema.
-  // Returns false if |results| value is incorrect.
-  bool SetResults(const ValueMap& results);
-
-  // Aborts command execution.
-  void Abort();
-  // Cancels command execution.
-  void Cancel();
-  // Marks the command as completed successfully.
-  void Done();
 
   // Values for command execution status.
   static const char kStatusQueued[];

@@ -7,11 +7,7 @@
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
 
-#include "libweave/src/commands/command_definition.h"
-#include "libweave/src/commands/command_instance.h"
-#include "libweave/src/commands/object_schema.h"
-#include "libweave/src/commands/prop_constraints.h"
-#include "libweave/src/commands/prop_types.h"
+#include "libweave/src/commands/dbus_conversion.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
@@ -20,9 +16,9 @@ namespace weave {
 
 DBusCommandProxy::DBusCommandProxy(ExportedObjectManager* object_manager,
                                    const scoped_refptr<dbus::Bus>& bus,
-                                   CommandInstance* command_instance,
+                                   Command* command,
                                    std::string object_path)
-    : command_instance_{command_instance},
+    : command_{command},
       dbus_object_{object_manager, bus, dbus::ObjectPath{object_path}} {
 }
 
@@ -31,17 +27,17 @@ void DBusCommandProxy::RegisterAsync(
   dbus_adaptor_.RegisterWithDBusObject(&dbus_object_);
 
   // Set the initial property values before registering the DBus object.
-  dbus_adaptor_.SetName(command_instance_->GetName());
-  dbus_adaptor_.SetCategory(command_instance_->GetCategory());
-  dbus_adaptor_.SetId(command_instance_->GetID());
-  dbus_adaptor_.SetStatus(command_instance_->GetStatus());
+  dbus_adaptor_.SetName(command_->GetName());
+  dbus_adaptor_.SetCategory(command_->GetCategory());
+  dbus_adaptor_.SetId(command_->GetID());
+  dbus_adaptor_.SetStatus(command_->GetStatus());
   dbus_adaptor_.SetProgress(
-      DictionaryToDBusVariantDictionary(*command_instance_->GetProgress()));
-  dbus_adaptor_.SetOrigin(command_instance_->GetOrigin());
+      DictionaryToDBusVariantDictionary(*command_->GetProgress()));
+  dbus_adaptor_.SetOrigin(command_->GetOrigin());
   dbus_adaptor_.SetParameters(
-      DictionaryToDBusVariantDictionary(*command_instance_->GetParameters()));
+      DictionaryToDBusVariantDictionary(*command_->GetParameters()));
   dbus_adaptor_.SetResults(
-      DictionaryToDBusVariantDictionary(*command_instance_->GetResults()));
+      DictionaryToDBusVariantDictionary(*command_->GetResults()));
 
   // Register the command DBus object and expose its methods and properties.
   dbus_object_.RegisterAsync(completion_callback);
@@ -49,16 +45,16 @@ void DBusCommandProxy::RegisterAsync(
 
 void DBusCommandProxy::OnResultsChanged() {
   dbus_adaptor_.SetResults(
-      DictionaryToDBusVariantDictionary(*command_instance_->GetResults()));
+      DictionaryToDBusVariantDictionary(*command_->GetResults()));
 }
 
 void DBusCommandProxy::OnStatusChanged() {
-  dbus_adaptor_.SetStatus(command_instance_->GetStatus());
+  dbus_adaptor_.SetStatus(command_->GetStatus());
 }
 
 void DBusCommandProxy::OnProgressChanged() {
   dbus_adaptor_.SetProgress(
-      DictionaryToDBusVariantDictionary(*command_instance_->GetProgress()));
+      DictionaryToDBusVariantDictionary(*command_->GetProgress()));
 }
 
 void DBusCommandProxy::OnCommandDestroyed() {
@@ -68,49 +64,40 @@ void DBusCommandProxy::OnCommandDestroyed() {
 bool DBusCommandProxy::SetProgress(
     chromeos::ErrorPtr* error,
     const chromeos::VariantDictionary& progress) {
-  LOG(INFO) << "Received call to Command<" << command_instance_->GetName()
+  LOG(INFO) << "Received call to Command<" << command_->GetName()
             << ">::SetProgress()";
-
-  auto progress_schema =
-      command_instance_->GetCommandDefinition()->GetProgress();
-  ValueMap obj;
-  if (!ObjectFromDBusVariant(progress_schema, progress, &obj, error))
+  auto dictionary = DictionaryFromDBusVariantDictionary(progress, error);
+  if (!dictionary)
     return false;
-
-  command_instance_->SetProgress(obj);
-  return true;
+  return command_->SetProgress(*dictionary, error);
 }
 
 bool DBusCommandProxy::SetResults(chromeos::ErrorPtr* error,
                                   const chromeos::VariantDictionary& results) {
-  LOG(INFO) << "Received call to Command<" << command_instance_->GetName()
+  LOG(INFO) << "Received call to Command<" << command_->GetName()
             << ">::SetResults()";
-
-  auto results_schema = command_instance_->GetCommandDefinition()->GetResults();
-  ValueMap obj;
-  if (!ObjectFromDBusVariant(results_schema, results, &obj, error))
+  auto dictionary = DictionaryFromDBusVariantDictionary(results, error);
+  if (!dictionary)
     return false;
-
-  command_instance_->SetResults(obj);
-  return true;
+  return command_->SetResults(*dictionary, error);
 }
 
 void DBusCommandProxy::Abort() {
-  LOG(INFO) << "Received call to Command<" << command_instance_->GetName()
+  LOG(INFO) << "Received call to Command<" << command_->GetName()
             << ">::Abort()";
-  command_instance_->Abort();
+  command_->Abort();
 }
 
 void DBusCommandProxy::Cancel() {
-  LOG(INFO) << "Received call to Command<" << command_instance_->GetName()
+  LOG(INFO) << "Received call to Command<" << command_->GetName()
             << ">::Cancel()";
-  command_instance_->Cancel();
+  command_->Cancel();
 }
 
 void DBusCommandProxy::Done() {
-  LOG(INFO) << "Received call to Command<" << command_instance_->GetName()
+  LOG(INFO) << "Received call to Command<" << command_->GetName()
             << ">::Done()";
-  command_instance_->Done();
+  command_->Done();
 }
 
 }  // namespace weave

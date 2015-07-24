@@ -41,7 +41,8 @@ class CommandInstanceTest : public ::testing::Test {
               'enum': ['_withAirFlip', '_withSpin', '_withKick']
             }
           },
-          'results': {}
+          'progress': {'progress': 'integer'},
+          'results': {'testResult': 'integer'}
         },
         'speak': {
           'parameters': {
@@ -56,7 +57,7 @@ class CommandInstanceTest : public ::testing::Test {
               'maximum': 10
             }
           },
-          'results': {}
+          'results': {'foo': 'integer'}
         }
       }
     })");
@@ -77,9 +78,8 @@ TEST_F(CommandInstanceTest, Test) {
   CommandInstance instance{
       "robot.speak", "cloud", dict_.FindCommand("robot.speak"), params};
 
-  ValueMap results;
-  results["foo"] = int_prop.CreateValue(239, nullptr);
-  instance.SetResults(results);
+  EXPECT_TRUE(
+      instance.SetResults(*CreateDictionaryValue("{'foo': 239}"), nullptr));
 
   EXPECT_EQ("", instance.GetID());
   EXPECT_EQ("robot.speak", instance.GetName());
@@ -211,14 +211,13 @@ TEST_F(CommandInstanceTest, ToJson) {
   })");
   auto instance =
       CommandInstance::FromJson(json.get(), "cloud", dict_, nullptr, nullptr);
-  instance->SetProgress(
-      ValueMap{{"progress", unittests::make_int_prop_value(15)}});
-  instance->SetProgress(
-      ValueMap{{"progress", unittests::make_int_prop_value(15)}});
+  EXPECT_TRUE(instance->SetProgress(*CreateDictionaryValue("{'progress': 15}"),
+                                    nullptr));
+  EXPECT_TRUE(instance->SetProgress(*CreateDictionaryValue("{'progress': 15}"),
+                                    nullptr));
   instance->SetID("testId");
-  ValueMap results;
-  instance->SetResults(
-      ValueMap{{"testResult", unittests::make_int_prop_value(17)}});
+  EXPECT_TRUE(instance->SetResults(*CreateDictionaryValue("{'testResult': 17}"),
+                                   nullptr));
 
   json->MergeDictionary(CreateDictionaryValue(R"({
     'id': 'testId',

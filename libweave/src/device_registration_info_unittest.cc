@@ -24,9 +24,10 @@
 
 namespace weave {
 
-using chromeos::http::request_header::kAuthorization;
 using chromeos::http::fake::ServerRequest;
 using chromeos::http::fake::ServerResponse;
+using chromeos::http::request_header::kAuthorization;
+using unittests::CreateDictionaryValue;
 
 namespace {
 
@@ -522,6 +523,7 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
     'robot': {
       '_jump': {
         'parameters': {'_height': 'integer'},
+        'progress': {'progress': 'integer'},
         'results': {'status': 'string'},
         'minimalRole': 'user'
       }
@@ -543,9 +545,6 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   PublishCommands(*command_list);
   auto command = command_manager_->FindCommand("1234");
   ASSERT_NE(nullptr, command);
-  StringPropType string_type;
-  ValueMap results{
-      {"status", string_type.CreateValue(std::string{"Ok"}, nullptr)}};
 
   // UpdateCommand when setting command results.
   auto update_command_results = [](const ServerRequest& request,
@@ -559,7 +558,8 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   transport_->AddHandler(command_url, chromeos::http::request_type::kPatch,
                          base::Bind(update_command_results));
 
-  command->SetResults(results);
+  EXPECT_TRUE(
+      command->SetResults(*CreateDictionaryValue("{'status': 'Ok'}"), nullptr));
 
   // UpdateCommand when setting command progress.
   int count = 0;  // This will be called twice...
@@ -579,8 +579,8 @@ TEST_F(DeviceRegistrationInfoTest, UpdateCommand) {
   transport_->AddHandler(command_url, chromeos::http::request_type::kPatch,
                          base::Bind(update_command_progress));
 
-  ValueMap progress{{"progress", unittests::make_int_prop_value(18)}};
-  command->SetProgress(progress);
+  EXPECT_TRUE(command->SetProgress(*CreateDictionaryValue("{'progress': 18}"),
+                                   nullptr));
 
   // UpdateCommand when changing command status.
   auto update_command_state = [](const ServerRequest& request,

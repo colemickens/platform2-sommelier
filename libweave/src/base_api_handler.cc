@@ -32,7 +32,7 @@ void BaseApiHandler::OnCommandAdded(CommandInstance* command) {
 }
 
 void BaseApiHandler::UpdateBaseConfiguration(CommandInstance* command) {
-  command->SetProgress({});
+  command->SetProgress(base::DictionaryValue{}, nullptr);
 
   const BuffetConfig& config{device_info_->GetConfig()};
   std::string anonymous_access_role{config.local_anonymous_access_role()};
@@ -62,7 +62,7 @@ void BaseApiHandler::UpdateBaseConfiguration(CommandInstance* command) {
 }
 
 void BaseApiHandler::UpdateDeviceInfo(CommandInstance* command) {
-  command->SetProgress({});
+  command->SetProgress(base::DictionaryValue{}, nullptr);
 
   const BuffetConfig& config{device_info_->GetConfig()};
   std::string name{config.name()};

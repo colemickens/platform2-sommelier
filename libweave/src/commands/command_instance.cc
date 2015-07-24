@@ -74,6 +74,42 @@ std::unique_ptr<base::DictionaryValue> CommandInstance::GetResults() const {
   return TypedValueToJson(results_, nullptr);
 }
 
+bool CommandInstance::SetProgress(const base::DictionaryValue& progress,
+                                  chromeos::ErrorPtr* error) {
+  ObjectPropType obj_prop_type;
+  obj_prop_type.SetObjectSchema(command_definition_->GetProgress()->Clone());
+
+  ValueMap obj;
+  if (!TypedValueFromJson(&progress, &obj_prop_type, &obj, error))
+    return false;
+
+  // Change status even if progress unchanged, e.g. 0% -> 0%.
+  SetStatus(kStatusInProgress);
+  if (obj != progress_) {
+    progress_ = obj;
+    for (auto observer : observers_)
+      observer->OnProgressChanged();
+  }
+  return true;
+}
+
+bool CommandInstance::SetResults(const base::DictionaryValue& results,
+                                 chromeos::ErrorPtr* error) {
+  ObjectPropType obj_prop_type;
+  obj_prop_type.SetObjectSchema(command_definition_->GetResults()->Clone());
+
+  ValueMap obj;
+  if (!TypedValueFromJson(&results, &obj_prop_type, &obj, error))
+    return false;
+
+  if (obj != results_) {
+    results_ = obj;
+    for (auto observer : observers_)
+      observer->OnResultsChanged();
+  }
+  return true;
+}
+
 namespace {
 
 // Helper method to retrieve command parameters from the command definition
@@ -196,27 +232,6 @@ std::unique_ptr<base::DictionaryValue> CommandInstance::ToJson() const {
 
 void CommandInstance::AddObserver(Observer* observer) {
   observers_.push_back(observer);
-}
-
-bool CommandInstance::SetResults(const ValueMap& results) {
-  // TODO(antonm): Add validation.
-  if (results != results_) {
-    results_ = results;
-    for (auto observer : observers_)
-      observer->OnResultsChanged();
-  }
-  return true;
-}
-
-bool CommandInstance::SetProgress(const ValueMap& progress) {
-  // Change status even if progress unchanged, e.g. 0% -> 0%.
-  SetStatus(kStatusInProgress);
-  if (progress != progress_) {
-    progress_ = progress;
-    for (auto observer : observers_)
-      observer->OnProgressChanged();
-  }
-  return true;
 }
 
 void CommandInstance::Abort() {

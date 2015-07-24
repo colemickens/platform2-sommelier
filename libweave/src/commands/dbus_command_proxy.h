@@ -29,7 +29,7 @@ class DBusCommandProxy : public Command::Observer,
  public:
   DBusCommandProxy(chromeos::dbus_utils::ExportedObjectManager* object_manager,
                    const scoped_refptr<dbus::Bus>& bus,
-                   CommandInstance* command_instance,
+                   Command* command,
                    std::string object_path);
   ~DBusCommandProxy() override = default;
 
@@ -57,7 +57,7 @@ class DBusCommandProxy : public Command::Observer,
   // Handles calls to org.chromium.Buffet.Command.Done().
   void Done() override;
 
-  CommandInstance* command_instance_;
+  Command* command_;
   org::chromium::Buffet::CommandAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
 

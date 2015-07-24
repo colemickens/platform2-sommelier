@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/values.h>
+#include <chromeos/errors/error.h>
 
 namespace weave {
 
@@ -52,6 +53,25 @@ class Command {
 
   // Returns the command results.
   virtual std::unique_ptr<base::DictionaryValue> GetResults() const = 0;
+
+  // Updates the command progress. The |progress| should match the schema.
+  // Returns false if |progress| value is incorrect.
+  virtual bool SetProgress(const base::DictionaryValue& progress,
+                           chromeos::ErrorPtr* error) = 0;
+
+  // Updates the command results. The |results| should match the schema.
+  // Returns false if |results| value is incorrect.
+  virtual bool SetResults(const base::DictionaryValue& results,
+                          chromeos::ErrorPtr* error) = 0;
+
+  // Aborts command execution.
+  virtual void Abort() = 0;
+
+  // Cancels command execution.
+  virtual void Cancel() = 0;
+
+  // Marks the command as completed successfully.
+  virtual void Done() = 0;
 
   // Returns JSON representation of the command.
   virtual std::unique_ptr<base::DictionaryValue> ToJson() const = 0;

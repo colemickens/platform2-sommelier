@@ -200,8 +200,8 @@ TEST_F(CloudCommandProxyTest, InFlightRequest) {
   EXPECT_CALL(cloud_updater_,
               UpdateCommand(kCmdID, MatchJson("{'state':'inProgress'}"), _, _))
       .WillOnce(SaveArg<2>(&on_success));
-  command_instance_->SetProgress(
-      {{"status", unittests::make_string_prop_value("ready")}});
+  EXPECT_TRUE(command_instance_->SetProgress(
+      *CreateDictionaryValue("{'status': 'ready'}"), nullptr));
 
   // Now simulate the first request completing.
   // The second request should be sent now.
@@ -217,8 +217,8 @@ TEST_F(CloudCommandProxyTest, CombineMultiple) {
   //    state=inProgress
   //    progress={...}
   // Both updates will be held until device state is updated.
-  command_instance_->SetProgress(
-      {{"status", unittests::make_string_prop_value("ready")}});
+  EXPECT_TRUE(command_instance_->SetProgress(
+      *CreateDictionaryValue("{'status': 'ready'}"), nullptr));
 
   // Now simulate the device state updated. Both updates should come in one
   // request.
@@ -235,8 +235,8 @@ TEST_F(CloudCommandProxyTest, RetryFailed) {
   const char expect1[] = "{'state':'inProgress'}";
   EXPECT_CALL(cloud_updater_, UpdateCommand(kCmdID, MatchJson(expect1), _, _))
       .WillOnce(SaveArg<3>(&on_error));
-  command_instance_->SetProgress(
-      {{"status", unittests::make_string_prop_value("ready")}});
+  EXPECT_TRUE(command_instance_->SetProgress(
+      *CreateDictionaryValue("{'status': 'ready'}"), nullptr));
 
   // Now pretend the first command update request has failed.
   // We should retry with both state and progress fields updated this time,
@@ -273,11 +273,11 @@ TEST_F(CloudCommandProxyTest, RetryFailed) {
 
 TEST_F(CloudCommandProxyTest, GateOnStateUpdates) {
   current_state_update_id_ = 20;
-  command_instance_->SetProgress(
-      {{"status", unittests::make_string_prop_value("ready")}});
+  EXPECT_TRUE(command_instance_->SetProgress(
+      *CreateDictionaryValue("{'status': 'ready'}"), nullptr));
   current_state_update_id_ = 21;
-  command_instance_->SetProgress(
-      {{"status", unittests::make_string_prop_value("busy")}});
+  EXPECT_TRUE(command_instance_->SetProgress(
+      *CreateDictionaryValue("{'status': 'busy'}"), nullptr));
   current_state_update_id_ = 22;
   command_instance_->Done();
 
@@ -312,11 +312,11 @@ TEST_F(CloudCommandProxyTest, GateOnStateUpdates) {
 
 TEST_F(CloudCommandProxyTest, CombineSomeStates) {
   current_state_update_id_ = 20;
-  command_instance_->SetProgress(
-      {{"status", unittests::make_string_prop_value("ready")}});
+  EXPECT_TRUE(command_instance_->SetProgress(
+      *CreateDictionaryValue("{'status': 'ready'}"), nullptr));
   current_state_update_id_ = 21;
-  command_instance_->SetProgress(
-      {{"status", unittests::make_string_prop_value("busy")}});
+  EXPECT_TRUE(command_instance_->SetProgress(
+      *CreateDictionaryValue("{'status': 'busy'}"), nullptr));
   current_state_update_id_ = 22;
   command_instance_->Done();
 
@@ -341,11 +341,11 @@ TEST_F(CloudCommandProxyTest, CombineSomeStates) {
 
 TEST_F(CloudCommandProxyTest, CombineAllStates) {
   current_state_update_id_ = 20;
-  command_instance_->SetProgress(
-      {{"status", unittests::make_string_prop_value("ready")}});
+  EXPECT_TRUE(command_instance_->SetProgress(
+      *CreateDictionaryValue("{'status': 'ready'}"), nullptr));
   current_state_update_id_ = 21;
-  command_instance_->SetProgress(
-      {{"status", unittests::make_string_prop_value("busy")}});
+  EXPECT_TRUE(command_instance_->SetProgress(
+      *CreateDictionaryValue("{'status': 'busy'}"), nullptr));
   current_state_update_id_ = 22;
   command_instance_->Done();
 
@@ -360,13 +360,14 @@ TEST_F(CloudCommandProxyTest, CombineAllStates) {
 
 TEST_F(CloudCommandProxyTest, CoalesceUpdates) {
   current_state_update_id_ = 20;
-  command_instance_->SetProgress(
-      {{"status", unittests::make_string_prop_value("ready")}});
-  command_instance_->SetProgress(
-      {{"status", unittests::make_string_prop_value("busy")}});
-  command_instance_->SetProgress(
-      {{"status", unittests::make_string_prop_value("finished")}});
-  command_instance_->SetResults({{"sum", unittests::make_int_prop_value(30)}});
+  EXPECT_TRUE(command_instance_->SetProgress(
+      *CreateDictionaryValue("{'status': 'ready'}"), nullptr));
+  EXPECT_TRUE(command_instance_->SetProgress(
+      *CreateDictionaryValue("{'status': 'busy'}"), nullptr));
+  EXPECT_TRUE(command_instance_->SetProgress(
+      *CreateDictionaryValue("{'status': 'finished'}"), nullptr));
+  EXPECT_TRUE(command_instance_->SetResults(
+      *CreateDictionaryValue("{'sum': 30}"), nullptr));
   command_instance_->Done();
 
   const char expected[] = R"({
