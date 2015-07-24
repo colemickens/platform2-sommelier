@@ -10,7 +10,7 @@
 namespace weave {
 namespace unittests {
 
-std::unique_ptr<base::Value> CreateValue(const char* json) {
+std::unique_ptr<base::Value> CreateValue(const std::string& json) {
   std::string json2(json);
   // Convert apostrophes to double-quotes so JSONReader can parse the string.
   std::replace(json2.begin(), json2.end(), '\'', '"');
@@ -24,7 +24,8 @@ std::unique_ptr<base::Value> CreateValue(const char* json) {
   return value;
 }
 
-std::unique_ptr<base::DictionaryValue> CreateDictionaryValue(const char* json) {
+std::unique_ptr<base::DictionaryValue> CreateDictionaryValue(
+    const std::string& json) {
   std::unique_ptr<base::Value> value = CreateValue(json);
   base::DictionaryValue* dict = nullptr;
   value->GetAsDictionary(&dict);

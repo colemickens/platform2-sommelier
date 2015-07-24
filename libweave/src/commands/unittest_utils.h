@@ -20,10 +20,11 @@ namespace unittests {
 // Helper method to create base::Value from a string as a smart pointer.
 // For ease of definition in C++ code, double-quotes in the source definition
 // are replaced with apostrophes.
-std::unique_ptr<base::Value> CreateValue(const char* json);
+std::unique_ptr<base::Value> CreateValue(const std::string& json);
 
 // Helper method to create a JSON dictionary object from a string.
-std::unique_ptr<base::DictionaryValue> CreateDictionaryValue(const char* json);
+std::unique_ptr<base::DictionaryValue> CreateDictionaryValue(
+    const std::string& json);
 
 inline bool IsEqualValue(const base::Value& val1, const base::Value& val2) {
   return val1.Equals(&val2);

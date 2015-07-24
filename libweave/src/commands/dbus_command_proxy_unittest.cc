@@ -16,17 +16,18 @@
 #include <gtest/gtest.h>
 
 #include "buffet/dbus_constants.h"
-#include "libweave/src/commands/command_dictionary.h"
-#include "libweave/src/commands/command_instance.h"
 #include "libweave/src/commands/unittest_utils.h"
+#include "weave/command.h"
 
 #include "weave/enum_to_string.h"
+#include "weave/mock_command.h"
+#include "weave/mock_commands.h"
 
 namespace weave {
 
 using ::testing::AnyNumber;
-using ::testing::Invoke;
 using ::testing::Return;
+using ::testing::ReturnRefOfCopy;
 using ::testing::_;
 
 using chromeos::VariantDictionary;
@@ -37,6 +38,11 @@ namespace {
 
 const char kTestCommandCategoty[] = "test_command_category";
 const char kTestCommandId[] = "cmd_1";
+
+MATCHER_P(EqualToJson, json, "") {
+  auto json_value = CreateDictionaryValue(json);
+  return unittests::IsEqualValue(*json_value, arg);
+}
 
 }  // namespace
 
@@ -51,59 +57,24 @@ class DBusCommandProxyTest : public ::testing::Test {
     EXPECT_CALL(*bus_, AssertOnOriginThread()).Times(AnyNumber());
     EXPECT_CALL(*bus_, AssertOnDBusThread()).Times(AnyNumber());
 
-    // Command instance.
-    // TODO(antonm): Test results.
-    auto json = CreateDictionaryValue(R"({
-      'robot': {
-        'jump': {
-          'parameters': {
-            'height': {
-              'type': 'integer',
-              'minimum': 0,
-              'maximum': 100
-            },
-            '_jumpType': {
-              'type': 'string',
-              'enum': ['_withAirFlip', '_withSpin', '_withKick']
-            }
-          },
-          'results': {
-            'foo': {
-              'type': 'integer'
-            },
-            'bar': {
-              'type': 'string'
-            },
-            'resultList': {
-              'type': 'array',
-              'items': {
-                'type': 'integer'
-              }
-            }
-          },
-          'progress': {
-            'progress': {
-              'type': 'integer',
-              'minimum': 0,
-              'maximum': 100
-            }
-          }
-        }
-      }
-    })");
-    CHECK(dict_.LoadCommands(*json, kTestCommandCategoty, nullptr, nullptr))
-        << "Failed to parse test command dictionary";
-
-    json = CreateDictionaryValue(R"({
-      'name': 'robot.jump',
-      'parameters': {
-        'height': 53,
-        '_jumpType': '_withKick'
-      }
-    })");
-    command_instance_ = CommandInstance::FromJson(
-        json.get(), CommandOrigin::kLocal, dict_, nullptr, nullptr);
-    command_instance_->SetID(kTestCommandId);
+    EXPECT_CALL(command_, GetID())
+        .WillOnce(ReturnRefOfCopy<std::string>(kTestCommandId));
+    // Use WillRepeatedly becase GetName is used for logging.
+    EXPECT_CALL(command_, GetName())
+        .WillRepeatedly(ReturnRefOfCopy<std::string>("robot.jump"));
+    EXPECT_CALL(command_, GetCategory())
+        .WillOnce(ReturnRefOfCopy<std::string>(kTestCommandCategoty));
+    EXPECT_CALL(command_, GetStatus()).WillOnce(Return(CommandStatus::kQueued));
+    EXPECT_CALL(command_, GetOrigin()).WillOnce(Return(CommandOrigin::kLocal));
+    EXPECT_CALL(command_, MockGetParameters())
+        .WillOnce(ReturnRefOfCopy<std::string>(R"({
+          'height': 53,
+          '_jumpType': '_withKick'
+        })"));
+    EXPECT_CALL(command_, MockGetProgress())
+        .WillOnce(ReturnRefOfCopy<std::string>("{}"));
+    EXPECT_CALL(command_, MockGetResults())
+        .WillOnce(ReturnRefOfCopy<std::string>("{}"));
 
     // Set up a mock ExportedObject to be used with the DBus command proxy.
     std::string cmd_path = buffet::kCommandServicePathPrefix;
@@ -118,24 +89,17 @@ class DBusCommandProxyTest : public ::testing::Test {
     EXPECT_CALL(*mock_exported_object_command_, ExportMethod(_, _, _, _))
         .Times(AnyNumber());
 
-    std::unique_ptr<Command::Observer> command_proxy(
-        new DBusCommandProxy(nullptr, bus_, command_instance_.get(), cmd_path));
-    command_instance_->AddObserver(command_proxy.release());
+    proxy_.reset(new DBusCommandProxy(nullptr, bus_, &command_, cmd_path));
     GetCommandProxy()->RegisterAsync(
         AsyncEventSequencer::GetDefaultCompletionAction());
   }
 
   void TearDown() override {
     EXPECT_CALL(*mock_exported_object_command_, Unregister()).Times(1);
-    command_instance_.reset();
-    dict_.Clear();
     bus_ = nullptr;
   }
 
-  DBusCommandProxy* GetCommandProxy() const {
-    CHECK_EQ(command_instance_->observers_.size(), 1U);
-    return static_cast<DBusCommandProxy*>(command_instance_->observers_[0]);
-  }
+  DBusCommandProxy* GetCommandProxy() const { return proxy_.get(); }
 
   org::chromium::Buffet::CommandAdaptor* GetCommandAdaptor() const {
     return &GetCommandProxy()->dbus_adaptor_;
@@ -152,11 +116,11 @@ class DBusCommandProxyTest : public ::testing::Test {
     return status;
   }
 
-  std::unique_ptr<CommandInstance> command_instance_;
-  CommandDictionary dict_;
-
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_command_;
   scoped_refptr<dbus::MockBus> bus_;
+
+  MockCommand command_;
+  std::unique_ptr<DBusCommandProxy> proxy_;
 };
 
 TEST_F(DBusCommandProxyTest, Init) {
@@ -172,72 +136,69 @@ TEST_F(DBusCommandProxyTest, Init) {
   EXPECT_EQ(kTestCommandId, GetCommandAdaptor()->GetId());
 }
 
-TEST_F(DBusCommandProxyTest, SetProgress) {
-  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(2);
-  EXPECT_TRUE(
-      GetCommandInterface()->SetProgress(nullptr, {{"progress", int32_t{10}}}));
-  EXPECT_EQ(CommandStatus::kInProgress, GetCommandStatus());
-
-  VariantDictionary progress{{"progress", int32_t{10}}};
-  EXPECT_EQ(progress, GetCommandAdaptor()->GetProgress());
+TEST_F(DBusCommandProxyTest, OnProgressChanged) {
+  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
+  EXPECT_CALL(command_, MockGetProgress())
+      .WillOnce(ReturnRefOfCopy<std::string>("{'progress': 10}"));
+  proxy_->OnProgressChanged();
+  EXPECT_EQ((VariantDictionary{{"progress", int32_t{10}}}),
+            GetCommandAdaptor()->GetProgress());
 }
 
-TEST_F(DBusCommandProxyTest, SetProgress_OutOfRange) {
-  EXPECT_FALSE(GetCommandInterface()->SetProgress(
-      nullptr, {{"progress", int32_t{110}}}));
-  EXPECT_EQ(CommandStatus::kQueued, GetCommandStatus());
-  EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetProgress());
+TEST_F(DBusCommandProxyTest, OnResultsChanged) {
+  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
+  EXPECT_CALL(command_, MockGetResults())
+      .WillOnce(ReturnRefOfCopy<std::string>(
+          "{'foo': 42, 'bar': 'foobar', 'resultList': [1, 2, 3]}"));
+  proxy_->OnResultsChanged();
+
+  EXPECT_EQ((VariantDictionary{{"foo", int32_t{42}},
+                               {"bar", std::string{"foobar"}},
+                               {"resultList", std::vector<int>{1, 2, 3}}}),
+            GetCommandAdaptor()->GetResults());
+}
+
+TEST_F(DBusCommandProxyTest, OnStatusChanged) {
+  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
+  EXPECT_CALL(command_, GetStatus())
+      .WillOnce(Return(CommandStatus::kInProgress));
+  proxy_->OnStatusChanged();
+  EXPECT_EQ(CommandStatus::kInProgress, GetCommandStatus());
+}
+
+TEST_F(DBusCommandProxyTest, SetProgress) {
+  EXPECT_CALL(command_, SetProgress(EqualToJson("{'progress': 10}"), _))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(
+      GetCommandInterface()->SetProgress(nullptr, {{"progress", int32_t{10}}}));
 }
 
 TEST_F(DBusCommandProxyTest, SetResults) {
-  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
-  VariantDictionary results = {{"foo", int32_t{42}},
-                               {"bar", std::string{"foobar"}},
-                               {"resultList", std::vector<int>{1, 2, 3}}};
-  EXPECT_TRUE(GetCommandInterface()->SetResults(nullptr, results));
-  EXPECT_EQ(results, GetCommandAdaptor()->GetResults());
-  auto list = chromeos::GetVariantValueOrDefault<std::vector<int>>(
-      GetCommandAdaptor()->GetResults(), "resultList");
-  EXPECT_EQ((std::vector<int>{1, 2, 3}), list);
-}
-
-TEST_F(DBusCommandProxyTest, SetResults_WithEmptyList) {
-  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
-  VariantDictionary results = {{"foo", int32_t{42}},
-                               {"bar", std::string{"foobar"}},
-                               {"resultList", std::vector<int>{}}};
-  EXPECT_TRUE(GetCommandInterface()->SetResults(nullptr, results));
-  auto list = chromeos::GetVariantValueOrDefault<std::vector<int>>(
-      GetCommandAdaptor()->GetResults(), "resultList");
-  EXPECT_EQ(std::vector<int>(), list);
-}
-
-TEST_F(DBusCommandProxyTest, SetResults_UnknownProperty) {
-  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(0);
-  const VariantDictionary results = {
-      {"quux", int32_t{42}},
-  };
-  EXPECT_FALSE(GetCommandInterface()->SetResults(nullptr, results));
+  EXPECT_CALL(
+      command_,
+      SetResults(
+          EqualToJson("{'foo': 42, 'bar': 'foobar', 'resultList': [1, 2, 3]}"),
+          _))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(GetCommandInterface()->SetResults(
+      nullptr, VariantDictionary{{"foo", int32_t{42}},
+                                 {"bar", std::string{"foobar"}},
+                                 {"resultList", std::vector<int>{1, 2, 3}}}));
 }
 
 TEST_F(DBusCommandProxyTest, Abort) {
-  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
+  EXPECT_CALL(command_, Abort());
   GetCommandInterface()->Abort();
-  EXPECT_EQ(CommandStatus::kAborted, GetCommandStatus());
 }
 
 TEST_F(DBusCommandProxyTest, Cancel) {
-  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
+  EXPECT_CALL(command_, Cancel());
   GetCommandInterface()->Cancel();
-  EXPECT_EQ(CommandStatus::kCancelled, GetCommandStatus());
 }
 
 TEST_F(DBusCommandProxyTest, Done) {
-  // 1 property update:
-  // status: queued -> done
-  EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
+  EXPECT_CALL(command_, Done());
   GetCommandInterface()->Done();
-  EXPECT_EQ(CommandStatus::kDone, GetCommandStatus());
 }
 
 }  // namespace weave

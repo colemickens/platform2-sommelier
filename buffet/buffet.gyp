@@ -195,6 +195,7 @@
             '../libweave/src/commands/command_queue_unittest.cc',
             '../libweave/src/commands/dbus_command_proxy_unittest.cc',
             '../libweave/src/commands/dbus_conversion_unittest.cc',
+            '../libweave/src/commands/mock_command.cc',
             '../libweave/src/commands/object_schema_unittest.cc',
             '../libweave/src/commands/schema_utils_unittest.cc',
             '../libweave/src/commands/unittest_utils.cc',
