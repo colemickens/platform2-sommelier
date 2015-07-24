@@ -32,7 +32,10 @@ const int kRequestTimeoutSeconds = 30;
 
 DeviceManager::DeviceManager() {}
 
-DeviceManager::~DeviceManager() {}
+DeviceManager::~DeviceManager() {
+  if (privet_)
+    privet_->Shutdown();
+}
 
 void DeviceManager::Start(
     const Options& options,
