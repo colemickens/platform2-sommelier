@@ -17,13 +17,19 @@
 using base::FilePath;
 
 // This test assumes the following standard binaries are installed.
-static const char kBinSh[] = "/bin/sh";
-static const char kBinCat[] = "/bin/cat";
-static const char kBinCp[] = "/bin/cp";
-static const char kBinEcho[] = "/bin/echo";
-static const char kBinFalse[] = "/bin/false";
-static const char kBinSleep[] = "/bin/sleep";
-static const char kBinTrue[] = "/bin/true";
+#if defined(__BRILLO__)
+# define SYSTEM_PREFIX "/system"
+#else
+# define SYSTEM_PREFIX ""
+#endif
+
+static const char kBinSh[] = SYSTEM_PREFIX "/bin/sh";
+static const char kBinCat[] = SYSTEM_PREFIX "/bin/cat";
+static const char kBinCp[] = SYSTEM_PREFIX "/bin/cp";
+static const char kBinEcho[] = SYSTEM_PREFIX "/bin/echo";
+static const char kBinFalse[] = SYSTEM_PREFIX "/bin/false";
+static const char kBinSleep[] = SYSTEM_PREFIX "/bin/sleep";
+static const char kBinTrue[] = SYSTEM_PREFIX "/bin/true";
 
 namespace chromeos {
 
