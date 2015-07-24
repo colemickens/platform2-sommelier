@@ -15,13 +15,10 @@
 
 #if !defined(DISABLE_CELLULAR)
 #include "shill/cellular/dbus_objectmanager_proxy.h"
-#include "shill/cellular/mm1_bearer_proxy.h"
-#include "shill/cellular/mm1_modem_location_proxy.h"
 #include "shill/cellular/mm1_modem_modem3gpp_proxy.h"
 #include "shill/cellular/mm1_modem_modemcdma_proxy.h"
 #include "shill/cellular/mm1_modem_proxy.h"
 #include "shill/cellular/mm1_modem_simple_proxy.h"
-#include "shill/cellular/mm1_modem_time_proxy.h"
 #include "shill/cellular/mm1_sim_proxy.h"
 #include "shill/cellular/modem_cdma_proxy.h"
 #include "shill/cellular/modem_gobi_proxy.h"
@@ -207,28 +204,10 @@ mm1::ModemSimpleProxyInterface* ProxyFactory::CreateMM1ModemSimpleProxy(
   return new mm1::ModemSimpleProxy(GetConnection(), path, service);
 }
 
-mm1::ModemTimeProxyInterface* ProxyFactory::CreateMM1ModemTimeProxy(
-      const string& path,
-      const string& service) {
-  return new mm1::ModemTimeProxy(GetConnection(), path, service);
-}
-
-mm1::ModemLocationProxyInterface* ProxyFactory::CreateMM1ModemLocationProxy(
-      const string& path,
-      const string& service) {
-  return new mm1::ModemLocationProxy(GetConnection(), path, service);
-}
-
 mm1::SimProxyInterface* ProxyFactory::CreateSimProxy(
       const string& path,
       const string& service) {
   return new mm1::SimProxy(GetConnection(), path, service);
-}
-
-mm1::BearerProxyInterface* ProxyFactory::CreateBearerProxy(
-      const string& path,
-      const string& service) {
-  return new mm1::BearerProxy(GetConnection(), path, service);
 }
 
 #endif  // DISABLE_CELLULAR

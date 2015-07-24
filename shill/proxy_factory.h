@@ -49,13 +49,10 @@ class SupplicantProcessProxyInterface;
 
 namespace mm1 {
 
-class BearerProxyInterface;
-class ModemLocationProxyInterface;
 class ModemModem3gppProxyInterface;
 class ModemModemCdmaProxyInterface;
 class ModemProxyInterface;
 class ModemSimpleProxyInterface;
-class ModemTimeProxyInterface;
 class SimProxyInterface;
 
 }  // namespace mm1
@@ -155,23 +152,11 @@ class ProxyFactory {
       const std::string& path,
       const std::string& service);
 
-  virtual mm1::ModemLocationProxyInterface* CreateMM1ModemLocationProxy(
-      const std::string& path,
-      const std::string& service);
-
   virtual mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(
       const std::string& path,
       const std::string& service);
 
-  virtual mm1::ModemTimeProxyInterface* CreateMM1ModemTimeProxy(
-      const std::string& path,
-      const std::string& service);
-
   virtual mm1::SimProxyInterface* CreateSimProxy(
-      const std::string& path,
-      const std::string& service);
-
-  virtual mm1::BearerProxyInterface* CreateBearerProxy(
       const std::string& path,
       const std::string& service);
 

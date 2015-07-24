@@ -87,21 +87,12 @@ class MockProxyFactory : public ProxyFactory {
   MOCK_METHOD2(CreateMM1ModemProxy,
                mm1::ModemProxyInterface*(const std::string& path,
                                          const std::string& service));
-  MOCK_METHOD2(CreateMM1ModemLocationProxy,
-               mm1::ModemLocationProxyInterface*(const std::string& path,
-                                                 const std::string& service));
   MOCK_METHOD2(CreateMM1ModemSimpleProxy,
                mm1::ModemSimpleProxyInterface*(const std::string& path,
                                                const std::string& service));
-  MOCK_METHOD2(CreateMM1ModemTimeProxy,
-               mm1::ModemTimeProxyInterface*(const std::string& path,
-                                             const std::string& service));
   MOCK_METHOD2(CreateSimProxy,
                mm1::SimProxyInterface*(const std::string& path,
                                        const std::string& service));
-  MOCK_METHOD2(CreateBearerProxy,
-               mm1::BearerProxyInterface*(const std::string& path,
-                                          const std::string& service));
 
 #endif  // DISABLE_CELLULAR
 
