@@ -11,9 +11,16 @@
 
 namespace settingsd {
 
+namespace {
+
+const std::string kSourceId = "source";
+
+}  // namespace
+
 class SettingsDocumentTestBase : public testing::Test {
  public:
-  SettingsDocumentTestBase() : A(version_stamp), B(version_stamp) {}
+  SettingsDocumentTestBase()
+      : A(kSourceId, version_stamp), B(kSourceId, version_stamp) {}
 
  protected:
   VersionStamp version_stamp;

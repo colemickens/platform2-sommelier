@@ -41,11 +41,12 @@ bool ReadFile(const std::string& path,
               std::vector<uint8_t>* contents,
               size_t max_size);
 
-// Save |data| to |path| in an atomic manner. We achieve this by writing to a
-// temporary file. Only after that write is successful, we rename the temporary
-// file to target filename, call fdatasync() and return.
+// Save |data| of size |size| to |path| in an atomic manner. We achieve this by
+// writing to a temporary file. Only after that write is successful, we rename
+// the temporary file to target filename, call fdatasync() and return.
 bool WriteFileAtomically(const std::string& path,
-                         const std::vector<uint8_t>& data);
+                         const uint8_t* data,
+                         size_t size);
 
 }  // namespace utils
 

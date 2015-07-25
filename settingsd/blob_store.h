@@ -11,6 +11,8 @@
 
 #include <base/macros.h>
 
+#include "settingsd/blob_ref.h"
+
 namespace settingsd {
 
 // A class that loads and stores Blobs.
@@ -25,10 +27,11 @@ class BlobStore {
     Handle(unsigned int blob_id, const std::string& source_id);
 
     // 0 is considered to be an invalid blob id.
-    const unsigned int blob_id_;
-    const std::string source_id_;
+    unsigned int blob_id_;
+    std::string source_id_;
 
     friend class BlobStore;
+    friend class SettingsDocumentManagerTest;
   };
 
  public:
@@ -39,8 +42,7 @@ class BlobStore {
 
   // Stores the |blob| originating from the source identifid by |source_id| on
   // the disk.
-  Handle Store(const std::string& source_id,
-               const std::vector<uint8_t>& blob) const;
+  Handle Store(const std::string& source_id, const BlobRef blob) const;
 
   // Loads the blob identified by |handle| from disk.
   const std::vector<uint8_t> Load(Handle handle) const;
@@ -48,6 +50,11 @@ class BlobStore {
   // Returns the list of handles to all documents provided by the source
   // identified by |source_id| in increasing order of blob id.
   std::vector<Handle> List(const std::string& source_id) const;
+
+  // Deletes the blob identified by |handle| from disk. Returns true on success.
+  // Otherwise, returns false. Note that passing an invalid handle is considered
+  // an error.
+  bool Purge(Handle handle) const;
 
  private:
   // Path to the root of the directory hierarchy to store blobs in.

@@ -56,7 +56,7 @@ class SettingsMap {
   // return value of GetValue() has changed. If the out parameter
   // |unreferenced_documents| is not the |nullptr|, |unreferenced_documents|
   // will be replaced with a list of documents that are now unreferenced due
-  // to the insertion.
+  // to the document removal. Note that this will include the |document| itself.
   virtual void RemoveDocument(
       const SettingsDocument* document,
       std::set<Key>* modified_keys,

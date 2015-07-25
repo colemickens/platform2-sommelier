@@ -18,13 +18,15 @@ namespace settingsd {
 
 class MockSettingsDocument : public SettingsDocument {
  public:
-  explicit MockSettingsDocument(const VersionStamp& version_stamp);
+  explicit MockSettingsDocument(const std::string& source_id,
+                                const VersionStamp& version_stamp);
   ~MockSettingsDocument() override;
 
   // SettingsDocument:
   const base::Value* GetValue(const Key& key) const override;
   std::set<Key> GetKeys(const Key& prefix) const override;
   std::set<Key> GetDeletions(const Key& prefix) const override;
+  const std::string& GetSourceId() const override;
   const VersionStamp& GetVersionStamp() const override;
   bool HasKeysOrDeletions(const Key& prefix) const override;
 
@@ -37,6 +39,7 @@ class MockSettingsDocument : public SettingsDocument {
   void ClearDeletions();
 
  private:
+  const std::string source_id_;
   const VersionStamp version_stamp_;
   std::map<Key, std::unique_ptr<base::Value>> key_value_map_;
   std::set<Key> deletions_;

@@ -11,6 +11,7 @@
 #include <memory>
 #include <set>
 
+#include <base/files/scoped_temp_dir.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
 
@@ -172,7 +173,7 @@ std::unique_ptr<const SettingsDocument> CreateInitialTrustedSettingsDocument() {
   // anything and doesn't have an associated source for which it'd need to
   // supply a unique version component.
   std::unique_ptr<MockSettingsDocument> document(
-      new MockSettingsDocument(VersionStamp()));
+      new MockSettingsDocument(kTestSource0, VersionStamp()));
   ConfigureSource(document.get(), kTestSource0, kSettingStatusActive,
                   {{MakeSourceKey(kTestSource1), kSettingStatusActive},
                    {MakeSourceKey(kTestSource2), kSettingStatusActive}});
@@ -183,16 +184,21 @@ std::unique_ptr<const SettingsDocument> CreateInitialTrustedSettingsDocument() {
 
 class SettingsDocumentManagerTest : public testing::Test {
  public:
-  SettingsDocumentManagerTest()
-      : manager_(std::ref(parser_),
-                 std::ref(source_delegate_factory_),
-                 std::unique_ptr<SettingsMap>(new SimpleSettingsMap()),
-                 CreateInitialTrustedSettingsDocument()) {
+  SettingsDocumentManagerTest() {
     // Create permissive source delegates for the test sources.
     for (auto& source : {kTestSource0, kTestSource1, kTestSource2}) {
       source_delegate_factory_.RegisterFunction(
           source, MockSourceDelegate::GetFactoryFunction(true, true));
     }
+  }
+
+  void SetUp() override {
+    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
+    manager_.reset(new SettingsDocumentManager(
+        std::ref(parser_), std::ref(source_delegate_factory_),
+        tmpdir_.path().value(),
+        std::unique_ptr<SettingsMap>(new SimpleSettingsMap()),
+        CreateInitialTrustedSettingsDocument()));
   }
 
   // Creates a container with a bumped version stamp.
@@ -209,8 +215,8 @@ class SettingsDocumentManagerTest : public testing::Test {
       const std::string& source_id,
       BlobRef blob,
       const std::deque<std::set<Key>>& expected_changes) {
-    SettingsChangeVerifier verifier(&manager_, expected_changes);
-    return manager_.InsertBlob(source_id, blob);
+    SettingsChangeVerifier verifier(manager_.get(), expected_changes);
+    return manager_->InsertBlob(source_id, blob);
   }
 
   // Creates a settings document with a bumped version stamp.
@@ -218,7 +224,7 @@ class SettingsDocumentManagerTest : public testing::Test {
       const std::string& source_id) {
     current_version_.Set(source_id, current_version_.Get(source_id) + 1);
     return std::unique_ptr<MockSettingsDocument>(
-        new MockSettingsDocument(current_version_));
+        new MockSettingsDocument(source_id, current_version_));
   }
 
   // Wrapper for SettingsDocumentManager::InsertDocument, which is private.
@@ -226,8 +232,9 @@ class SettingsDocumentManagerTest : public testing::Test {
       std::unique_ptr<const SettingsDocument> document,
       const std::string& source_id,
       const std::deque<std::set<Key>>& expected_changes) {
-    SettingsChangeVerifier verifier(&manager_, expected_changes);
-    return manager_.InsertDocument(std::move(document), source_id);
+    SettingsChangeVerifier verifier(manager_.get(), expected_changes);
+    return manager_->InsertDocument(std::move(document), BlobStore::Handle(),
+                                    source_id);
   }
 
   // A helper to configure a trusted source.
@@ -255,7 +262,7 @@ class SettingsDocumentManagerTest : public testing::Test {
   void CheckSentinelValues(std::initializer_list<std::string> present,
                            std::initializer_list<std::string> absent) {
     for (auto& source : present) {
-      const base::Value* value = manager_.GetValue(Key(source));
+      const base::Value* value = manager_->GetValue(Key(source));
       EXPECT_TRUE(value) << "Sentinel value " << source << " missing.";
       base::StringValue sentinel_value(source);
       EXPECT_TRUE(base::Value::Equals(&sentinel_value, value))
@@ -263,15 +270,16 @@ class SettingsDocumentManagerTest : public testing::Test {
     }
 
     for (auto& source : absent) {
-      const base::Value* value = manager_.GetValue(Key(source));
+      const base::Value* value = manager_->GetValue(Key(source));
       EXPECT_FALSE(value) << "Sentinel value " << source << " present.";
     }
   }
 
+  base::ScopedTempDir tmpdir_;
   MockSettingsBlobParser parser_;
   SourceDelegateFactory source_delegate_factory_;
   VersionStamp current_version_;
-  SettingsDocumentManager manager_;
+  std::unique_ptr<SettingsDocumentManager> manager_;
 };
 
 TEST_F(SettingsDocumentManagerTest, ValueInsertionAndRemoval) {
@@ -283,7 +291,7 @@ TEST_F(SettingsDocumentManagerTest, ValueInsertionAndRemoval) {
   document->SetKey(kTestKey, MakeIntValue(42));
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusSuccess,
             InsertDocument(std::move(document), kTestSource1, {{kTestKey}}));
-  const base::Value* value = manager_.GetValue(kTestKey);
+  const base::Value* value = manager_->GetValue(kTestKey);
   base::FundamentalValue expected_int_value(42);
   EXPECT_TRUE(base::Value::Equals(&expected_int_value, value));
 
@@ -292,7 +300,7 @@ TEST_F(SettingsDocumentManagerTest, ValueInsertionAndRemoval) {
   document->SetKey(kTestKey, MakeStringValue("string"));
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusSuccess,
             InsertDocument(std::move(document), kTestSource1, {{kTestKey}}));
-  value = manager_.GetValue(kTestKey);
+  value = manager_->GetValue(kTestKey);
   base::StringValue expected_string_value("string");
   EXPECT_TRUE(base::Value::Equals(&expected_string_value, value));
 
@@ -301,7 +309,7 @@ TEST_F(SettingsDocumentManagerTest, ValueInsertionAndRemoval) {
   document->SetDeletion(kTestKey);
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusSuccess,
             InsertDocument(std::move(document), kTestSource1, {{kTestKey}}));
-  value = manager_.GetValue(kTestKey);
+  value = manager_->GetValue(kTestKey);
   EXPECT_FALSE(value);
 }
 
@@ -459,7 +467,7 @@ TEST_F(SettingsDocumentManagerTest, InsertionFailureVersionClash) {
   version_stamp.Set(kTestSource2, current_version_.Get(kTestSource2) + 1);
   EXPECT_TRUE(version_stamp.IsAfter(current_version_));
   std::unique_ptr<MockSettingsDocument> document(
-      new MockSettingsDocument(version_stamp));
+      new MockSettingsDocument(kTestSource2, version_stamp));
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusVersionClash,
             InsertDocument(std::move(document), kTestSource1, {}));
 }

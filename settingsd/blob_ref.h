@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string>
+#include <vector>
 
 namespace settingsd {
 
@@ -18,6 +19,8 @@ class BlobRef {
  public:
   BlobRef() : data_(nullptr), size_(0) {}
   BlobRef(const uint8_t* data, size_t size) : data_(data), size_(size) {}
+  explicit BlobRef(const std::vector<uint8_t>* data)
+      : data_(data->data()), size_(data->size()) {}
   explicit BlobRef(const std::string* data)
       : data_(reinterpret_cast<const uint8_t*>(data->data())),
         size_(data->size()) {}

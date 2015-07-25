@@ -60,7 +60,7 @@ TEST_F(BlobStoreTest, StoreListAndLoad) {
   BlobStore store(GetStoragePath());
 
   // Store.
-  BlobStore::Handle h = store.Store(source_id, blob);
+  BlobStore::Handle h = store.Store(source_id, BlobRef(&blob));
   EXPECT_TRUE(h.IsValid());
 
   // List.
@@ -82,11 +82,11 @@ TEST_F(BlobStoreTest, ListWithBogusFilename) {
   // Set up some bogus files.
   utils::CreateDirectory(GetSourcePath(source_id));
   utils::WriteFileAtomically(GetSourcePath(source_id) + "/" + "blob_AAA",
-                             blob0);
+                             blob0.data(), blob0.size());
   utils::WriteFileAtomically(GetSourcePath(source_id) + "/" + "blob_009",
-                             blob0);
+                             blob0.data(), blob0.size());
   utils::WriteFileAtomically(GetSourcePath(source_id) + "/" + "blob_00001",
-                             blob0);
+                             blob0.data(), blob0.size());
 
   // List.
   std::vector<BlobStore::Handle> handles = store.List(source_id);
@@ -97,7 +97,7 @@ TEST_F(BlobStoreTest, ListWithBogusFilename) {
 
   // Store a good blob.
   const std::vector<uint8_t> blob1(CreateBlob("DATA1"));
-  BlobStore::Handle h = store.Store(source_id, blob1);
+  BlobStore::Handle h = store.Store(source_id, BlobRef(&blob1));
   EXPECT_TRUE(h.IsValid());
 
   // List again and check blob contents.
@@ -109,7 +109,7 @@ TEST_F(BlobStoreTest, ListWithBogusFilename) {
 
   // Store another good blob.
   std::vector<uint8_t> blob2(CreateBlob("DATA2"));
-  BlobStore::Handle h2 = store.Store(source_id, blob2);
+  BlobStore::Handle h2 = store.Store(source_id, BlobRef(&blob2));
   EXPECT_TRUE(h2.IsValid());
 
   // List again and check blob contents.

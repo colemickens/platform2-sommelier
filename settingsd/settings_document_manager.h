@@ -6,6 +6,7 @@
 #define SETTINGSD_SETTINGS_DOCUMENT_MANAGER_H_
 
 #include <memory>
+#include <queue>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -15,6 +16,7 @@
 #include <base/observer_list.h>
 
 #include "settingsd/blob_ref.h"
+#include "settingsd/blob_store.h"
 #include "settingsd/settings_blob_parser.h"
 #include "settingsd/settings_service.h"
 #include "settingsd/source.h"
@@ -51,6 +53,7 @@ class SettingsDocumentManager : public SettingsService {
     kInsertionStatusParseError,       // Failed to parse the blob.
     kInsertionStatusValidationError,  // Blob failed validation.
     kInsertionStatusBadPayload,       // Failed to decode blob payload.
+    kInsertionStatusStorageFailure,   // Failed to write the blob to BlobStore.
     kInsertionStatusUnknownSource,    // Blob origin unknown.
   };
 
@@ -67,6 +70,7 @@ class SettingsDocumentManager : public SettingsService {
   SettingsDocumentManager(
       const SettingsBlobParserFunction& settings_blob_parser_function,
       const SourceDelegateFactoryFunction& source_delegate_factory_function,
+      const std::string& storage_path,
       std::unique_ptr<SettingsMap> settings_map,
       std::unique_ptr<const SettingsDocument> trusted_document);
   ~SettingsDocumentManager();
@@ -92,7 +96,21 @@ class SettingsDocumentManager : public SettingsService {
  private:
   friend class SettingsDocumentManagerTest;
 
-  // Keeps track of all known sources and their associated documents.
+  // Keeps track of all documents and their corresponding BlobStore handles for
+  // a source.
+  struct DocumentEntry {
+    DocumentEntry(std::unique_ptr<const SettingsDocument> document,
+                  BlobStore::Handle handle);
+
+    // A SettingsDocument.
+    std::unique_ptr<const SettingsDocument> document_;
+
+    // The BlobStore handle that the Blob the above document was parsed from can
+    // be retrieved with.
+    BlobStore::Handle handle_;
+  };
+
+  // Keeps track of all known sources and their associated document entries.
   struct SourceMapEntry {
     explicit SourceMapEntry(const std::string& source_id);
     ~SourceMapEntry();
@@ -102,9 +120,10 @@ class SettingsDocumentManager : public SettingsService {
     // sources will get re-parsed.
     Source source_;
 
-    // All the documents owned by the source, sorted according to their
-    // timestamps.
-    std::vector<std::unique_ptr<const SettingsDocument>> documents_;
+    // All documents owned by the source and their respective handles, sorted
+    // according to |source_|'s version component in the document's version
+    // stamp.
+    std::vector<DocumentEntry> document_entries_;
   };
 
   // Install a new settings document. The |document| is assumed to be fully
@@ -117,13 +136,29 @@ class SettingsDocumentManager : public SettingsService {
   // will be changed.
   InsertionStatus InsertDocument(
       std::unique_ptr<const SettingsDocument> document,
+      BlobStore::Handle,
       const std::string& source_id);
+
+  // Finds the DocumentEntry, deletes the Blob associated with the entry's
+  // handle in BlobStore and deletes the DocumentEntry from the source map.
+  // Returns true on success. Otherwise, returns false.
+  bool PurgeBlobAndDocumentEntry(const SettingsDocument* document);
 
   // Revalidates a document, including trust configuration and signature checks.
   // Returns true if the document is still valid against current trust
   // configuration.
   bool RevalidateDocument(const Source* source,
                           const SettingsDocument* doc) const;
+
+  // Re-validate all documents belonging to a source. Documents that fail
+  // validation are removed from the SettingsMap, the SettingsDocument is
+  // deleted and the corresponding blob purged from the BlobStore. The keys that
+  // have changed due to the removal are added to |changed_keys| and the
+  // |sources_to_revalidate| queue is updated accordingly.
+  void RevalidateSourceDocuments(
+      const SourceMapEntry& entry,
+      std::set<Key>* changed_keys,
+      std::priority_queue<std::string>* sources_to_revalidate);
 
   // Updates trust configuration after |changed_keys| adjust their value. This
   // re-parses all the source configurations affected by the change and
@@ -150,6 +185,10 @@ class SettingsDocumentManager : public SettingsService {
 
   // The trusted document that bootstraps trust configuration.
   std::unique_ptr<const SettingsDocument> trusted_document_;
+
+  // The BlobStore responsible for storing, loading and enumerating settings
+  // blobs.
+  BlobStore blob_store_;
 
   // A map of all sources currently present, along with their documents.
   std::unordered_map<std::string, SourceMapEntry> sources_;

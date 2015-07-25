@@ -52,7 +52,7 @@ BlobStore::BlobStore(const std::string& storage_path)
 }
 
 BlobStore::Handle BlobStore::Store(const std::string& source_id,
-                                   const std::vector<uint8_t>& blob) const {
+                                   BlobRef blob) const {
   DCHECK(!source_id.empty());
 
   // Check if the directory for |source_id| exists, if it doesn't, create it.
@@ -68,7 +68,7 @@ BlobStore::Handle BlobStore::Store(const std::string& source_id,
   std::string blob_path = GetBlobPath(blob_id, source_id);
   if (blob_path.empty())
     return Handle();
-  if (utils::WriteFileAtomically(blob_path, blob))
+  if (utils::WriteFileAtomically(blob_path, blob.data(), blob.size()))
     return Handle(blob_id, source_id);
 
   // Failed to write the file. Return an invalid Handle.
@@ -97,6 +97,15 @@ std::vector<BlobStore::Handle> BlobStore::List(
       handles.push_back(handle);
   }
   return handles;
+}
+
+bool BlobStore::Purge(Handle handle) const {
+  if (!handle.IsValid())
+    return false;
+  std::string blob_path = GetBlobPath(handle.blob_id_, handle.source_id_);
+  if (blob_path.empty())
+    return false;
+  return utils::DeleteFile(blob_path);
 }
 
 std::string BlobStore::GetBlobPath(unsigned int blob_id,

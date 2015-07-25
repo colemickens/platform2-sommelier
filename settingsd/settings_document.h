@@ -35,6 +35,9 @@ class SettingsDocument {
   // document and that are either equal to or have |prefix| as an ancestor.
   virtual std::set<Key> GetDeletions(const Key& prefix) const = 0;
 
+  // Returns the source identifier this settings document belongs to.
+  virtual const std::string& GetSourceId() const = 0;
+
   // Returns the version stamp for this settings document.
   virtual const VersionStamp& GetVersionStamp() const = 0;
 

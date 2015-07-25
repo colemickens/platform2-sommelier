@@ -65,8 +65,10 @@ bool ReadFile(const std::string& path,
 }
 
 bool WriteFileAtomically(const std::string& path,
-                         const std::vector<uint8_t>& data) {
-  std::string out_data(data.begin(), data.end());
+                         const uint8_t* data,
+                         size_t size) {
+  DCHECK_EQ(sizeof(char), sizeof(uint8_t));
+  std::string out_data(reinterpret_cast<const char*>(data), size);
   return base::ImportantFileWriter::WriteFileAtomically(
       base::FilePath(FILE_PATH_LITERAL(path)), out_data);
 }

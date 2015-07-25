@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <memory>
-#include <queue>
 #include <set>
 #include <string>
 
@@ -44,6 +43,11 @@ void UpdateSourceValidationQueue(
 
 }  // namespace
 
+SettingsDocumentManager::DocumentEntry::DocumentEntry(
+    std::unique_ptr<const SettingsDocument> document,
+    BlobStore::Handle handle)
+    : document_(std::move(document)), handle_(handle) {}
+
 SettingsDocumentManager::SourceMapEntry::SourceMapEntry(
     const std::string& source_id)
     : source_(source_id) {}
@@ -53,12 +57,17 @@ SettingsDocumentManager::SourceMapEntry::~SourceMapEntry() {}
 SettingsDocumentManager::SettingsDocumentManager(
     const SettingsBlobParserFunction& settings_blob_parser_function,
     const SourceDelegateFactoryFunction& source_delegate_factory_function,
+    const std::string& storage_path,
     std::unique_ptr<SettingsMap> settings_map,
     std::unique_ptr<const SettingsDocument> trusted_document)
     : settings_blob_parser_function_(settings_blob_parser_function),
       source_delegate_factory_function_(source_delegate_factory_function),
       trusted_document_(std::move(trusted_document)),
+      blob_store_(storage_path),
       settings_map_(std::move(settings_map)) {
+  // TODO(cschuet): When SettingsDocumentManager starts up it should enumerate
+  // the already existing SettingsDocuments found in BlobStore and load them.
+  //
   // The trusted document should have an empty version stamp.
   CHECK(!VersionStamp().IsBefore(trusted_document_->GetVersionStamp()));
 
@@ -133,12 +142,31 @@ SettingsDocumentManager::InsertionStatus SettingsDocumentManager::InsertBlob(
   if (!document)
     return kInsertionStatusBadPayload;
 
-  return InsertDocument(std::move(document), source_id);
+  // Verify that the source id the Blob was parsed for coincides with the source
+  // id the SettingsDocument contains.
+  if (source_id != document->GetSourceId())
+    return kInsertionStatusValidationError;
+
+  // Write the blob to the BlobStore.
+  BlobStore::Handle handle = blob_store_.Store(source_id, blob);
+  if (!handle.IsValid())
+    return kInsertionStatusStorageFailure;
+
+  InsertionStatus status =
+      InsertDocument(std::move(document), handle, source_id);
+
+  // If the insertion failed remove the corresponding blob from the BlobStore.
+  if (status != kInsertionStatusSuccess && !blob_store_.Purge(handle)) {
+    LOG(ERROR) << "Failed to purge document.";
+  }
+
+  return status;
 }
 
 SettingsDocumentManager::InsertionStatus
 SettingsDocumentManager::InsertDocument(
     std::unique_ptr<const SettingsDocument> document,
+    BlobStore::Handle handle,
     const std::string& source_id) {
   auto source_iter = sources_.find(source_id);
   CHECK(sources_.end() != source_iter);
@@ -146,10 +174,9 @@ SettingsDocumentManager::InsertDocument(
 
   // Find the insertion point.
   auto insertion_point = std::find_if(
-      entry.documents_.begin(), entry.documents_.end(),
-      [&document,
-       &source_id](const std::unique_ptr<const SettingsDocument>& doc) {
-        return doc->GetVersionStamp().Get(source_id) >=
+      entry.document_entries_.begin(), entry.document_entries_.end(),
+      [&document, &source_id](const DocumentEntry& doc_entry) {
+        return doc_entry.document_->GetVersionStamp().Get(source_id) >=
                document->GetVersionStamp().Get(source_id);
       });
 
@@ -158,9 +185,9 @@ SettingsDocumentManager::InsertDocument(
   // component in the version stamp. This enforces that all documents from the
   // same source are in well-defined order to each other, regardless of whether
   // they overlap or not.
-  if (insertion_point != entry.documents_.end()) {
-    CHECK_NE(insertion_point->get(), document.get());
-    if ((*insertion_point)->GetVersionStamp().Get(source_id) ==
+  if (insertion_point != entry.document_entries_.end()) {
+    CHECK_NE(insertion_point->document_.get(), document.get());
+    if (insertion_point->document_->GetVersionStamp().Get(source_id) ==
         document->GetVersionStamp().Get(source_id)) {
       return kInsertionStatusVersionClash;
     }
@@ -171,12 +198,25 @@ SettingsDocumentManager::InsertDocument(
     return kInsertionStatusAccessViolation;
 
   // Everything looks good, attempt the insertion.
-  // TODO(cschuet): Properly handle the unreferenced documents here.
   std::set<Key> changed_keys;
-  if (!settings_map_->InsertDocument(document.get(), &changed_keys, nullptr))
+  std::vector<const SettingsDocument*> unreferenced_documents;
+  if (!settings_map_->InsertDocument(document.get(), &changed_keys,
+                                     &unreferenced_documents)) {
+    DCHECK(unreferenced_documents.empty());
     return kInsertionStatusCollision;
+  }
 
-  entry.documents_.insert(insertion_point, std::move(document));
+  entry.document_entries_.insert(
+      insertion_point, DocumentEntry(std::move(document), handle));
+
+  // Purge any unreferenced documents. Note that this may invalidate the
+  // iterator |insertion_point|. This might actually include |document|, if e.g.
+  // all values |document| provides are already clobbered by a newer document
+  // inserted before.
+  for (auto unreferenced_document : unreferenced_documents) {
+    if (!PurgeBlobAndDocumentEntry(unreferenced_document))
+        LOG(ERROR) << "Failed to purge unreferenced document";
+  }
 
   // Process any trust configuration changes.
   UpdateTrustConfiguration(&changed_keys);
@@ -184,6 +224,46 @@ SettingsDocumentManager::InsertDocument(
   FOR_EACH_OBSERVER(SettingsObserver, observers_,
                     OnSettingsChanged(changed_keys));
   return kInsertionStatusSuccess;
+}
+
+void SettingsDocumentManager::RevalidateSourceDocuments(
+    const SourceMapEntry& entry,
+    std::set<Key>* changed_keys,
+    std::priority_queue<std::string>* sources_to_revalidate) {
+  std::vector<const SettingsDocument*> obsolete_documents;
+  for (auto& doc_entry : entry.document_entries_) {
+    if (RevalidateDocument(&entry.source_, doc_entry.document_.get()))
+      // |doc| is still valid.
+      continue;
+
+    // |doc| is no longer valid, remove it from the |settings_map_|.
+    std::set<Key> keys_changed_by_removal;
+    std::vector<const SettingsDocument*> unreferenced_documents;
+    settings_map_->RemoveDocument(doc_entry.document_.get(),
+                                  &keys_changed_by_removal,
+                                  &unreferenced_documents);
+
+    // Note that the document that is being removed here, must not be removed
+    // from its DocumentEntry vector, since it gets added to the list of
+    // unreferenced documents anyways. Since these are deleted below this
+    // would result in a double free().
+    obsolete_documents.insert(obsolete_documents.end(),
+                              unreferenced_documents.begin(),
+                              unreferenced_documents.end());
+
+    UpdateSourceValidationQueue(keys_changed_by_removal,
+                                sources_to_revalidate);
+
+    // Update |changed_keys| to include the keys affected by the removal.
+    changed_keys->insert(keys_changed_by_removal.begin(),
+                         keys_changed_by_removal.end());
+  }
+
+  // Purge any unreferenced documents.
+  for (auto obsolete_document : obsolete_documents) {
+    if (!PurgeBlobAndDocumentEntry(obsolete_document))
+      LOG(ERROR) << "Failed to purge unreferenced document";
+  }
 }
 
 void SettingsDocumentManager::UpdateTrustConfiguration(
@@ -220,32 +300,31 @@ void SettingsDocumentManager::UpdateTrustConfiguration(
         !entry.source_.Update(source_delegate_factory_function_, *this);
 
     // Re-validate all documents belonging to this source.
-    for (auto doc = entry.documents_.begin(); doc != entry.documents_.end();) {
-      if (RevalidateDocument(&entry.source_, doc->get())) {
-        // |doc| is still valid.
-        CHECK(!purge_source);
-        ++doc;
-        continue;
-      }
-
-      // |doc| is no longer valid, remove it from |documents_| and
-      // |settings_map_|.
-      // TODO(cschuet): Properly handle the unreferenced documents here.
-      std::set<Key> keys_changed_by_removal;
-      settings_map_->RemoveDocument(doc->get(), &keys_changed_by_removal,
-                                    nullptr);
-      doc = entry.documents_.erase(doc);
-      UpdateSourceValidationQueue(keys_changed_by_removal,
-                                  &sources_to_revalidate);
-
-      // Update |changed_keys| to include the keys affected by the removal.
-      changed_keys->insert(keys_changed_by_removal.begin(),
-                           keys_changed_by_removal.end());
-    }
+    RevalidateSourceDocuments(entry, changed_keys, &sources_to_revalidate);
 
     if (purge_source)
       sources_.erase(source_id);
   }
+}
+
+bool SettingsDocumentManager::PurgeBlobAndDocumentEntry(
+    const SettingsDocument* document) {
+  const std::string& source_id = document->GetSourceId();
+  auto source_iter = sources_.find(source_id);
+  if (source_iter == sources_.end())
+    return false;
+  auto& source_entry = source_iter->second;
+  auto document_iter =
+      std::find_if(source_entry.document_entries_.begin(),
+                   source_entry.document_entries_.end(),
+                   [&document](const DocumentEntry& doc_entry) {
+                     return document == doc_entry.document_.get();
+                   });
+  if (document_iter == source_entry.document_entries_.end())
+    return false;
+  BlobStore::Handle handle(document_iter->handle_);
+  source_entry.document_entries_.erase(document_iter);
+  return blob_store_.Purge(handle);
 }
 
 bool SettingsDocumentManager::RevalidateDocument(
