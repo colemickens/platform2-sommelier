@@ -46,17 +46,15 @@ class MockSettingsBlobParser {
   std::unique_ptr<LockedSettingsContainer> operator()(const std::string& format,
                                                       BlobRef data) {
     auto entry = containers_.find(data.ToString());
-    if (entry != containers_.end()) {
-      EXPECT_TRUE(entry->second.get()) << "Duplicate parse request.";
-      return std::move(entry->second);
-    }
+    if (entry != containers_.end())
+      return entry->second->Clone();
 
     return std::unique_ptr<LockedSettingsContainer>();
   }
 
   // Registers a LockedSettingsContainer with the parser. Returns the BlobRef
   // that'll make the parser return the container.
-  BlobRef Register(std::unique_ptr<LockedSettingsContainer> container) {
+  BlobRef Register(std::unique_ptr<MockLockedSettingsContainer> container) {
     const std::string blob_id = "blob_" + std::to_string(next_blob_id_++);
     containers_[blob_id].reset(container.release());
     return BlobRef(&containers_.find(blob_id)->first);
@@ -64,7 +62,7 @@ class MockSettingsBlobParser {
 
  private:
   int next_blob_id_ = 0;
-  std::unordered_map<std::string, std::unique_ptr<LockedSettingsContainer>>
+  std::unordered_map<std::string, std::unique_ptr<MockLockedSettingsContainer>>
       containers_;
 
   DISALLOW_COPY_AND_ASSIGN(MockSettingsBlobParser);
@@ -204,7 +202,7 @@ class SettingsDocumentManagerTest : public testing::Test {
   // Creates a container with a bumped version stamp.
   std::unique_ptr<MockLockedSettingsContainer> MakeContainer(
       const std::string& source_id,
-      std::unique_ptr<SettingsDocument> payload) {
+      std::unique_ptr<MockSettingsDocument> payload) {
     current_version_.Set(source_id, current_version_.Get(source_id) + 1);
     std::unique_ptr<MockLockedSettingsContainer> container(
         new MockLockedSettingsContainer(std::move(payload)));

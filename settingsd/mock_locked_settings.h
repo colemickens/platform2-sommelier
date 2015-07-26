@@ -25,6 +25,9 @@ class MockLockedVersionComponent : public LockedVersionComponent {
   MockLockedVersionComponent();
   ~MockLockedVersionComponent() override;
 
+  // Returns a copy of this component.
+  std::unique_ptr<MockLockedVersionComponent> Clone() const;
+
   // VersionComponentBlob:
   std::string GetSourceId() const override;
 
@@ -39,8 +42,11 @@ class MockLockedVersionComponent : public LockedVersionComponent {
 class MockLockedSettingsContainer : public LockedSettingsContainer {
  public:
   explicit MockLockedSettingsContainer(
-      std::unique_ptr<const SettingsDocument> payload);
+      std::unique_ptr<const MockSettingsDocument> payload);
   ~MockLockedSettingsContainer() override;
+
+  // Returns a copy of this container.
+  std::unique_ptr<MockLockedSettingsContainer> Clone() const;
 
   // LockedSettingsContainer:
   std::vector<const LockedVersionComponent*> GetVersionComponents()
@@ -52,7 +58,7 @@ class MockLockedSettingsContainer : public LockedSettingsContainer {
  private:
   std::unordered_map<std::string, std::unique_ptr<MockLockedVersionComponent>>
       version_component_blobs_;
-  std::unique_ptr<const SettingsDocument> payload_;
+  std::unique_ptr<const MockSettingsDocument> payload_;
 
   DISALLOW_COPY_AND_ASSIGN(MockLockedSettingsContainer);
 };

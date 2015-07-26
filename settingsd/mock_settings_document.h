@@ -22,6 +22,9 @@ class MockSettingsDocument : public SettingsDocument {
                                 const VersionStamp& version_stamp);
   ~MockSettingsDocument() override;
 
+  // Returns a copy of the current document.
+  std::unique_ptr<MockSettingsDocument> Clone() const;
+
   // SettingsDocument:
   const base::Value* GetValue(const Key& key) const override;
   std::set<Key> GetKeys(const Key& prefix) const override;

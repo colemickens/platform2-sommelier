@@ -12,6 +12,14 @@ MockLockedVersionComponent::MockLockedVersionComponent() {}
 
 MockLockedVersionComponent::~MockLockedVersionComponent() {}
 
+std::unique_ptr<MockLockedVersionComponent> MockLockedVersionComponent::Clone()
+    const {
+  std::unique_ptr<MockLockedVersionComponent> copy(
+      new MockLockedVersionComponent);
+  copy->source_id_ = source_id_;
+  return copy;
+}
+
 std::string MockLockedVersionComponent::GetSourceId() const {
   return source_id_;
 }
@@ -21,10 +29,21 @@ void MockLockedVersionComponent::SetSourceId(const std::string& source_id) {
 }
 
 MockLockedSettingsContainer::MockLockedSettingsContainer(
-    std::unique_ptr<const SettingsDocument> payload)
+    std::unique_ptr<const MockSettingsDocument> payload)
     : payload_(std::move(payload)) {}
 
 MockLockedSettingsContainer::~MockLockedSettingsContainer() {}
+
+std::unique_ptr<MockLockedSettingsContainer>
+MockLockedSettingsContainer::Clone() const {
+  std::unique_ptr<MockLockedSettingsContainer> copy(
+      new MockLockedSettingsContainer(payload_ ? payload_->Clone() : nullptr));
+  for (const auto& entry : version_component_blobs_) {
+    copy->version_component_blobs_.insert(
+        std::make_pair(entry.first, entry.second->Clone()));
+  }
+  return copy;
+}
 
 std::vector<const LockedVersionComponent*>
 MockLockedSettingsContainer::GetVersionComponents() const {

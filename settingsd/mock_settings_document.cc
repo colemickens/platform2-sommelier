@@ -14,6 +14,17 @@ MockSettingsDocument::MockSettingsDocument(const std::string& source_id,
 
 MockSettingsDocument::~MockSettingsDocument() {}
 
+std::unique_ptr<MockSettingsDocument> MockSettingsDocument::Clone() const {
+  std::unique_ptr<MockSettingsDocument> copy(
+      new MockSettingsDocument(source_id_, version_stamp_));
+  copy->deletions_ = deletions_;
+  for (const auto& entry : key_value_map_) {
+    copy->key_value_map_.insert(std::make_pair(
+        entry.first, std::unique_ptr<base::Value>(entry.second->DeepCopy())));
+  }
+  return copy;
+}
+
 const base::Value* MockSettingsDocument::GetValue(const Key& key) const {
   auto entry = key_value_map_.find(key);
   return entry != key_value_map_.end() ? entry->second.get() : nullptr;
