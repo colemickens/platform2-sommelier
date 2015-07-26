@@ -131,7 +131,7 @@ class SettingsChangeVerifier : public SettingsObserver {
     manager_->RemoveSettingsObserver(this);
   }
 
-  void OnSettingsChanged(const std::set<Key> keys) override {
+  void OnSettingsChanged(const std::set<Key>& keys) override {
     ASSERT_FALSE(expectations_.empty());
     EXPECT_TRUE(std::includes(keys.begin(), keys.end(),
                               expectations_.front().begin(),

@@ -13,10 +13,17 @@
     {
       'target_name': 'settingsd_common',
       'type': 'static_library',
+      'variables': {
+        'dbus_adaptors_out_dir': 'include/settingsd',
+        'dbus_service_config': 'dbus_bindings/dbus-service-config.json',
+      },
       'sources': [
+        'dbus_bindings/org.chromium.Settingsd.Settings.xml',
         'blob_ref.h',
         'blob_store.cc',
         'blob_store.h',
+        'dbus_settings_service_impl.cc',
+        'dbus_settings_service_impl.h',
         'file_utils.h',
         'file_utils_chromeos.cc',
         'identifier_utils.h',
@@ -42,6 +49,7 @@
         'version_stamp.cc',
         'version_stamp.h',
       ],
+      'includes': ['../common-mk/generate-dbus-adaptors.gypi'],
     },
     {
       'target_name': 'settingsd_testrunner',
