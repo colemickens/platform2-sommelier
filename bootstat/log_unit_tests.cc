@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos/bootstat/bootstat.h"
-#include "chromeos/bootstat/bootstat_test.h"
+#include "bootstat/bootstat.h"
+#include "bootstat/bootstat_test.h"
 
 #include <errno.h>
 #include <stdlib.h>

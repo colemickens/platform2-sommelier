@@ -263,6 +263,7 @@
           ],
         },
         'libraries': [
+          '-lbootstat',
           '-lrootdev',
           '-lrt'
         ],

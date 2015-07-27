@@ -25,7 +25,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/userdb_utils.h>
-#include <chromeos/bootstat/bootstat.h>
+#include <metrics/bootstat.h>
 
 #include "chromeos/ui/util.h"
 

@@ -45,6 +45,11 @@
       'dependencies': [
         '../common-mk/external_dependencies.gyp:policy-protos',
       ],
+      'link_settings': {
+        'libraries': [
+          '-lbootstat',
+        ],
+      },
       'sources': [
         'browser_job.cc',
         'child_exit_handler.cc',

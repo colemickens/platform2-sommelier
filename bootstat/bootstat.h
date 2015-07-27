@@ -7,8 +7,8 @@
 // mechanism to associate a named event with the time that it
 // occurred and with other relevant statistics.
 
-#ifndef LIBCHROMEOS_CHROMEOS_BOOTSTAT_BOOTSTAT_H_
-#define LIBCHROMEOS_CHROMEOS_BOOTSTAT_BOOTSTAT_H_
+#ifndef BOOTSTAT_BOOTSTAT_H_
+#define BOOTSTAT_BOOTSTAT_H_
 
 #if defined(__cplusplus)
 extern "C" {
@@ -39,4 +39,4 @@ extern void bootstat_log(const char* event_name);
 #if defined(__cplusplus)
 }
 #endif
-#endif  // LIBCHROMEOS_CHROMEOS_BOOTSTAT_BOOTSTAT_H_
+#endif  // BOOTSTAT_BOOTSTAT_H_

@@ -14,7 +14,6 @@
       'target_name': 'libchromeos-<(libbase_ver)',
       'type': 'none',
       'dependencies': [
-        'libchromeos-bootstat-<(libbase_ver)',
         'libchromeos-core-<(libbase_ver)',
         'libchromeos-cryptohome-<(libbase_ver)',
         'libchromeos-http-<(libbase_ver)',
@@ -198,8 +197,10 @@
       'target_name': 'libchromeos-ui-<(libbase_ver)',
       'type': 'shared_library',
       'dependencies': [
-        'libchromeos-bootstat-<(libbase_ver)',
         'libchromeos-core-<(libbase_ver)',
+      ],
+      'libraries': [
+        '-lbootstat',
       ],
       'cflags': [
         '-fvisibility=default',
@@ -272,19 +273,6 @@
         'chromeos/message_loops/glib_message_loop.cc',
       ],
       'includes': ['../common-mk/deps.gypi'],
-    },
-    {
-      'target_name': 'libchromeos-bootstat-<(libbase_ver)',
-      'type': 'shared_library',
-      'sources': [
-        'chromeos/bootstat/bootstat_log.c',
-      ],
-      'cflags': [
-        '-fvisibility=default',
-      ],
-      'libraries': [
-        '-lrootdev',
-      ],
     },
   ],
   'conditions': [
@@ -385,19 +373,6 @@
           'sources': [
             'chromeos/policy/tests/libpolicy_unittest.cc',
           ]
-        },
-        {
-          'target_name': 'libbootstat_unittests',
-          'type': 'executable',
-          'dependencies': [
-            'libchromeos-bootstat-<(libbase_ver)',
-          ],
-          'includes': [
-            '../common-mk/common_test.gypi',
-          ],
-          'sources': [
-            'chromeos/bootstat/log_unit_tests.cc',
-          ],
         },
       ],
     }],
