@@ -189,6 +189,14 @@ string ByteString::HexEncode() const {
   return base::HexEncode(GetConstData(), GetLength());
 }
 
+bool ByteString::CopyData(size_t size, void* output) const {
+  if (output == nullptr || GetLength() < size) {
+    return false;
+  }
+  memcpy(output, GetConstData(), size);
+  return true;
+}
+
 void ByteString::RemovePrefix(size_t offset) {
   if (offset >= GetLength()) {
     begin_ = data_.end();

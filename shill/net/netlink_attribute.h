@@ -31,7 +31,7 @@ namespace shill {
 // and a value.  In an nlattr (the underlying format for an attribute in a
 // message), the data is stored as a blob without type information; the writer
 // and reader of the attribute must agree on the data type.
-class NetlinkAttribute {
+class SHILL_EXPORT NetlinkAttribute {
  public:
   enum Type {
     kTypeU8,
@@ -55,7 +55,7 @@ class NetlinkAttribute {
   static NetlinkAttribute* NewNl80211AttributeFromId(
       NetlinkMessage::MessageContext context, int id);
 
-  virtual bool InitFromNlAttr(const nlattr* data);
+  virtual bool InitFromValue(const ByteString& input);
 
   // Accessors for the attribute's id and datatype information.
   int id() const { return id_; }
@@ -108,24 +108,6 @@ class NetlinkAttribute {
 
   bool has_a_value() const { return has_a_value_; }
 
-  // Wrappers for libnl parsers.  Needed because, while |nla_get_*| don't
-  // change their arguments, these methods don't declare themselves as 'const'.
-  static char* NlaGetString(const nlattr* input) {
-    return nla_get_string(const_cast<nlattr*>(input));
-  }
-  static uint8_t NlaGetU8(const nlattr* input) {
-    return nla_get_u8(const_cast<nlattr*>(input));
-  }
-  static uint16_t NlaGetU16(const nlattr* input) {
-    return nla_get_u16(const_cast<nlattr*>(input));
-  }
-  static uint32_t NlaGetU32(const nlattr* input) {
-    return nla_get_u32(const_cast<nlattr*>(input));
-  }
-  static uint64_t NlaGetU64(const nlattr* input) {
-    return nla_get_u64(const_cast<nlattr*>(input));
-  }
-
  protected:
   // Builds a string to precede a printout of this attribute.
   std::string HeaderToPrint(int indent) const;
@@ -157,7 +139,7 @@ class NetlinkU8Attribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkU8Attribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromNlAttr(const nlattr* data);
+  virtual bool InitFromValue(const ByteString& data);
   virtual bool GetU8Value(uint8_t* value) const;
   virtual bool SetU8Value(uint8_t new_value);
   virtual bool ToString(std::string* value) const;
@@ -175,7 +157,7 @@ class NetlinkU16Attribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkU16Attribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromNlAttr(const nlattr* data);
+  virtual bool InitFromValue(const ByteString& data);
   virtual bool GetU16Value(uint16_t* value) const;
   virtual bool SetU16Value(uint16_t new_value);
   virtual bool ToString(std::string* value) const;
@@ -193,7 +175,7 @@ class NetlinkU32Attribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkU32Attribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromNlAttr(const nlattr* data);
+  virtual bool InitFromValue(const ByteString& data);
   virtual bool GetU32Value(uint32_t* value) const;
   virtual bool SetU32Value(uint32_t new_value);
   virtual bool ToString(std::string* value) const;
@@ -211,7 +193,7 @@ class NetlinkU64Attribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkU64Attribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromNlAttr(const nlattr* data);
+  virtual bool InitFromValue(const ByteString& data);
   virtual bool GetU64Value(uint64_t* value) const;
   virtual bool SetU64Value(uint64_t new_value);
   virtual bool ToString(std::string* value) const;
@@ -229,7 +211,7 @@ class NetlinkFlagAttribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkFlagAttribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromNlAttr(const nlattr* data);
+  virtual bool InitFromValue(const ByteString& data);
   virtual bool GetFlagValue(bool* value) const;
   virtual bool SetFlagValue(bool new_value);
   virtual bool ToString(std::string* value) const;
@@ -241,13 +223,14 @@ class NetlinkFlagAttribute : public NetlinkAttribute {
   DISALLOW_COPY_AND_ASSIGN(NetlinkFlagAttribute);
 };
 
-class NetlinkStringAttribute : public NetlinkAttribute {
+// Set SHILL_EXPORT to allow unit tests to instantiate these.
+class SHILL_EXPORT NetlinkStringAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
   NetlinkStringAttribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromNlAttr(const nlattr* data);
+  virtual bool InitFromValue(const ByteString& data);
   virtual bool GetStringValue(std::string* value) const;
   virtual bool SetStringValue(const std::string new_value);
   virtual bool ToString(std::string* value) const;
@@ -278,7 +261,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   static const char kMyTypeString[];
   static const Type kType;
   NetlinkNestedAttribute(int id, const char* id_string);
-  virtual bool InitFromNlAttr(const nlattr* data);
+  virtual bool InitFromValue(const ByteString& data);
   virtual bool GetNestedAttributeList(AttributeListRefPtr* value);
   virtual bool ConstGetNestedAttributeList(
       AttributeListConstRefPtr* value) const;
@@ -291,7 +274,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   // Describes a single nested attribute.  Provides the expected values and
   // type (including further nesting).  Normally, an array of these, one for
   // each attribute at one level of nesting is presented, along with the data
-  // to be parsed, to |InitNestedFromNlAttr|.  If the attributes on one level
+  // to be parsed, to |InitNestedFromValue|.  If the attributes on one level
   // represent an array, a single |NestedData| is provided and |is_array| is
   // set (note that one level of nesting either contains _only_ an array or
   // _no_ array).
@@ -326,9 +309,10 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   static const size_t kArrayAttrEnumVal;
 
   // Builds an AttributeList (|list|) that contains all of the attriubtes in
-  // |const_data|.  |const_data| should point to the enclosing nested attribute
-  // header; for the example of the nested attribute NL80211_ATTR_CQM:
-  //    nlattr::nla_type: NL80211_ATTR_CQM <-- const_data points here
+  // |value|.  |value| should contain the payload of the nested attribute
+  // and not the nested attribute header itself; for the example of the nested
+  // attribute NL80211_ATTR_CQM should contain:
+  //    nlattr::nla_type: NL80211_ATTR_CQM
   //    nlattr::nla_len: 12 bytes
   //      nlattr::nla_type: PKT_LOSS_EVENT (1st and only nested attribute)
   //      nlattr::nla_len: 8 bytes
@@ -339,28 +323,28 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   // The data is parsed using the expected configuration in |nested_template|.
   // If the code expects an array, it will pass a single template element and
   // mark that as an array.
-  static bool InitNestedFromNlAttr(
-      AttributeList* list, const NestedData::NestedDataMap& templates,
-      const nlattr* const_data);
+  static bool InitNestedFromValue(
+      const AttributeListRefPtr& list,
+      const NestedData::NestedDataMap& templates,
+      const ByteString& value);
 
-  static bool ParseNestedArray(
-      AttributeList* list, const NestedData& templates,
-      const nlattr* const_data);
-
-  static bool ParseNestedStructure(
-      AttributeList* list, const NestedData::NestedDataMap& templates,
-      const nlattr* const_data);
-
-  // Helper function used by InitNestedFromNlAttr to add a single child
-  // attribute to a nested attribute.
-  static void AddAttributeToNested(AttributeList* list, uint16_t type, size_t i,
-                                   const std::string& attribute_name,
-                                   const nlattr& attr,
-                                   const NestedData& nested_data);
   AttributeListRefPtr value_;
   NestedData::NestedDataMap nested_template_;
 
  private:
+  // Helper functions used by InitNestedFromValue to add a single child
+  // attribute to a nested attribute.
+  static bool AddAttributeToNestedMap(
+    const NetlinkNestedAttribute::NestedData::NestedDataMap& templates,
+    const AttributeListRefPtr& list, int id, const ByteString& value);
+  static bool AddAttributeToNestedArray(
+    const NetlinkNestedAttribute::NestedData& array_template,
+    const AttributeListRefPtr& list, int id, const ByteString& value);
+  static bool AddAttributeToNestedInner(
+    const NetlinkNestedAttribute::NestedData& nested_template,
+    const std::string& attribute_name, const AttributeListRefPtr& list,
+    int id, const ByteString& value);
+
   DISALLOW_COPY_AND_ASSIGN(NetlinkNestedAttribute);
 };
 
@@ -370,7 +354,7 @@ class NetlinkRawAttribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkRawAttribute(int id, const char* id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  virtual bool InitFromNlAttr(const nlattr* data);
+  virtual bool InitFromValue(const ByteString& data);
   // Gets the value of the data (the header is not stored).
   virtual bool GetRawValue(ByteString* value) const;
   // Should set the value of the data (not the attribute header).

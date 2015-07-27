@@ -49,11 +49,19 @@ bool AttributeList::CreateNl80211Attribute(
 }
 
 bool AttributeList::CreateAndInitAttribute(
-    int id, const nlattr* data, AttributeList::NewFromIdMethod factory) {
+    const AttributeList::NewFromIdMethod& factory,
+    int id, const ByteString& value) {
   if (!CreateAttribute(id, factory)) {
     return false;
   }
-  return attributes_[id]->InitFromNlAttr(data);
+  return InitAttributeFromValue(id, value);
+}
+
+bool AttributeList::InitAttributeFromValue(int id, const ByteString& value) {
+  NetlinkAttribute* attribute = GetAttribute(id);
+  if (!attribute)
+    return false;
+  return attribute->InitFromValue(value);
 }
 
 void AttributeList::Print(int log_level, int indent) const {
@@ -62,6 +70,46 @@ void AttributeList::Print(int log_level, int indent) const {
   for (i = attributes_.begin(); i != attributes_.end(); ++i) {
     i->second->Print(log_level, indent);
   }
+}
+
+// static
+bool AttributeList::IterateAttributes(
+    const ByteString& payload, size_t offset,
+    const AttributeList::AttributeMethod& method) {
+  const unsigned char* ptr = payload.GetConstData() + NLA_ALIGN(offset);
+  const unsigned char* end = payload.GetConstData() + payload.GetLength();
+  while (ptr + sizeof(nlattr) <= end) {
+    const nlattr* attribute = reinterpret_cast<const nlattr*>(ptr);
+    if (attribute->nla_len < sizeof(*attribute) ||
+        ptr + attribute->nla_len > end) {
+      LOG(ERROR) << "Malformed nla attribute indicates length "
+                 << attribute->nla_len << ".  "
+                 << (end - ptr - NLA_HDRLEN) << " bytes remain in buffer.  "
+                 << "Error occurred at offset "
+                 << (ptr - payload.GetConstData()) << ".";
+      return false;
+    }
+    ByteString value;
+    if (attribute->nla_len > NLA_HDRLEN) {
+      value = ByteString(ptr + NLA_HDRLEN, attribute->nla_len - NLA_HDRLEN);
+    }
+    if (!method.Run(attribute->nla_type, value)) {
+      return false;
+    }
+    ptr += NLA_ALIGN(attribute->nla_len);
+  }
+  if (ptr < end) {
+    LOG(INFO) << "Decode left " << (end - ptr) << " unparsed bytes.";
+  }
+  return true;
+}
+
+bool AttributeList::Decode(const ByteString& payload,
+                           size_t offset,
+                           const AttributeList::NewFromIdMethod& factory) {
+  return IterateAttributes(
+      payload, offset, base::Bind(&AttributeList::CreateAndInitAttribute,
+                                  base::Unretained(this), factory));
 }
 
 ByteString AttributeList::Encode() const {

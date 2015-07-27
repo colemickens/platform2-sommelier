@@ -57,6 +57,14 @@ const ByteString& NetlinkPacket::GetPayload() const {
   return *payload_.get();
 }
 
+bool NetlinkPacket::ConsumeAttributes(
+    const AttributeList::NewFromIdMethod& factory,
+    const AttributeListRefPtr& attributes) {
+  bool result = attributes->Decode(GetPayload(), consumed_bytes_, factory);
+  consumed_bytes_ = GetPayload().GetLength();
+  return result;
+}
+
 bool NetlinkPacket::ConsumeData(size_t len, void* data) {
   if (GetRemainingLength() < len) {
     LOG(ERROR) << "Not enough bytes remaining.";

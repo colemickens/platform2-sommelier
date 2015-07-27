@@ -108,25 +108,8 @@ bool ControlNetlinkMessage::InitFromPacket(
     return false;
   }
 
-  // TODO(pstew): Implement a parser in NetlinkPacket instead of directly
-  // accessing the payload here and using nla_parse().  crbug.com/512152.
-  ByteString message = packet->GetPayload();
-  message.RemovePrefix(message.GetLength() - packet->GetRemainingLength());
-
-  // Attributes.
-  // Parse the attributes from the nl message payload into the 'tb' array.
-  nlattr* tb[CTRL_ATTR_MAX + 1];
-  nla_parse(tb, CTRL_ATTR_MAX,
-            reinterpret_cast<nlattr*>(message.GetData()), message.GetLength(),
-            nullptr);
-
-  for (int i = 0; i < CTRL_ATTR_MAX + 1; ++i) {
-    if (tb[i]) {
-      attributes_->CreateAndInitAttribute(
-          i, tb[i], Bind(&NetlinkAttribute::NewControlAttributeFromId));
-    }
-  }
-  return true;
+  return packet->ConsumeAttributes(
+      Bind(&NetlinkAttribute::NewControlAttributeFromId), attributes_);
 }
 
 // Specific Control types.

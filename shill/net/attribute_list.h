@@ -30,8 +30,9 @@ class NetlinkRawAttribute;
 
 class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
  public:
-  typedef std::shared_ptr<NetlinkAttribute> AttributePointer;
-  typedef base::Callback<NetlinkAttribute*(int id)> NewFromIdMethod;
+  using AttributePointer = std::shared_ptr<NetlinkAttribute>;
+  using NewFromIdMethod = base::Callback<NetlinkAttribute*(int id)>;
+  using AttributeMethod = base::Callback<bool(int id, const ByteString& value)>;
 
   AttributeList() {}
 
@@ -45,15 +46,30 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
   // Helper function for creating nl80211 attribute.
   bool CreateNl80211Attribute(int id, NetlinkMessage::MessageContext context);
 
-  // Instantiates an NetlinkAttribute of the appropriate type from |id|,
-  // initializes it from |data|, and adds it to |attributes_|.
-  bool CreateAndInitAttribute(int id, const nlattr* data,
-                              AttributeList::NewFromIdMethod factory);
+  // Instantiates an NetlinkAttribute of the appropriate type from |id|
+  // using |factory|, initializes it from |value|, and adds it to |attributes_|.
+  bool CreateAndInitAttribute(const NewFromIdMethod& factory,
+                              int id, const ByteString& value);
+
+  // Initializes the attribute |id| from the data in |value|.
+  bool InitAttributeFromValue(int id, const ByteString& value);
 
   // Prints the attribute list with each attribute using no less than 1 line.
   // |indent| indicates the amout of leading spaces to be printed (useful for
   // nested attributes).
   void Print(int log_level, int indent) const;
+
+  // Visit each attribute in |payload| starting at |offset|.  Call |method|
+  // for each attribute.  If |method| returns false, the travesal is terminated
+  // and false is returned.  If a malformed attribute entry is encountered,
+  // this method also returns false.
+  static bool IterateAttributes(const ByteString& payload, size_t offset,
+                                const AttributeMethod& method);
+
+  // Decode an attribute list starting from |offset| within |payload|.  Use
+  // |factory| to create each attribute object.
+  bool Decode(const ByteString& payload,
+              size_t offset, const NewFromIdMethod& factory);
 
   // Returns the attributes as the payload portion of a netlink message
   // suitable for Sockets::Send.  Return value is empty on failure (or if no

@@ -68,4 +68,63 @@ TEST_F(NetlinkPacketTest, Constructor) {
   EXPECT_FALSE(complete_packet.ConsumeData(1, &payload_byte));
 }
 
+TEST_F(NetlinkPacketTest, ConsumeData) {
+  // This code assumes that the value of NLMSG_ALIGNTO is 4, and that nlmsghdr
+  // is aligned to a 4-byte boundary.
+  static_assert(NLMSG_ALIGNTO == 4, "NLMSG_ALIGNTO sized has changed");
+  static_assert((sizeof(nlmsghdr) % NLMSG_ALIGNTO) == 0,
+                "nlmsghdr is not aligned with NLMSG_ALIGNTO");
+
+  const char kString1[] = "A";
+  const char kString2[] = "pattern";
+  const char kString3[] = "so";
+  const char kString4[] = "grand";
+
+  // Assert string sizes (with null terminator).
+  ASSERT_EQ(2, sizeof(kString1));
+  ASSERT_EQ(8, sizeof(kString2));
+  ASSERT_EQ(3, sizeof(kString3));
+  ASSERT_EQ(6, sizeof(kString4));
+
+  unsigned char data[sizeof(nlmsghdr) + 22];
+  memset(data, 0, sizeof(data));
+  nlmsghdr hdr;
+  memset(&hdr, 0, sizeof(hdr));
+  hdr.nlmsg_len = sizeof(data);
+  memcpy(data, &hdr, sizeof(hdr));
+  memcpy(data + sizeof(nlmsghdr), kString1, sizeof(kString1));
+  memcpy(data + sizeof(nlmsghdr) + 4, kString2, sizeof(kString2));
+  memcpy(data + sizeof(nlmsghdr) + 12, kString3, sizeof(kString3));
+  memcpy(data + sizeof(nlmsghdr) + 16, kString4, sizeof(kString4));
+
+  NetlinkPacket packet(data, sizeof(data));
+  EXPECT_EQ(22, packet.GetRemainingLength());
+
+  // Consuming 2 bytes of data also consumed 2 bytes of padding.
+  char string_piece[8];
+  EXPECT_TRUE(packet.ConsumeData(2, &string_piece));
+  EXPECT_STREQ(kString1, string_piece);
+  EXPECT_EQ(18, packet.GetRemainingLength());
+
+  // An aligned read (8 bytes) should read no more than this number.
+  EXPECT_TRUE(packet.ConsumeData(8, &string_piece));
+  EXPECT_STREQ(kString2, string_piece);
+  EXPECT_EQ(10, packet.GetRemainingLength());
+
+  // Try an odd-numbered unaligned read.
+  EXPECT_TRUE(packet.ConsumeData(3, &string_piece));
+  EXPECT_STREQ(kString3, string_piece);
+  EXPECT_EQ(6, packet.GetRemainingLength());
+
+  // Reading more than is left should fail, and should not consume anything.
+  EXPECT_FALSE(packet.ConsumeData(7, &string_piece));
+  EXPECT_EQ(6, packet.GetRemainingLength());
+
+  // Reading a correctly-sized unalinged value which consumes the rest of
+  // the buffer should succeed.
+  EXPECT_TRUE(packet.ConsumeData(6, &string_piece));
+  EXPECT_STREQ(kString4, string_piece);
+  EXPECT_EQ(0, packet.GetRemainingLength());
+}
+
 }  // namespace shill

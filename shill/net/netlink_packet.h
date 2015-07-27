@@ -14,33 +14,14 @@
 
 #include <base/macros.h>
 
+#include "shill/net/attribute_list.h"
+
 namespace shill {
 
 class ByteString;
 
 class SHILL_EXPORT NetlinkPacket {
  public:
-  // These must continue to match the NLA_* values in the kernel header
-  // include/net/netlink.h.
-  enum AttributeType {
-    kAttributeTypeUnspecified,
-    kAttributeTypeU8,
-    kAttributeTypeU16,
-    kAttributeTypeU32,
-    kAttributeTypeU64,
-    kAttributeTypeString,
-    kAttributeTypeFlag,
-    kAttributeTypeMsecs,
-    kAttributeTypeNested,
-    kAttributeTypeNestedCompat,
-    kAttributeTypeNullString,
-    kAttributeTypeBinary,
-    kAttributeTypeS8,
-    kAttributeTypeS16,
-    kAttributeTypeS32,
-    kAttributeTypeS64,
-  };
-
   NetlinkPacket(const unsigned char* buf, size_t len);
   virtual ~NetlinkPacket();
 
@@ -65,6 +46,10 @@ class SHILL_EXPORT NetlinkPacket {
   // Returns the payload data.  It is a fatal error to call this method
   // on an invalid packet.
   const ByteString& GetPayload() const;
+
+  // Consume netlink attributes from the remaining payload.
+  bool ConsumeAttributes(const AttributeList::NewFromIdMethod& factory,
+                         const AttributeListRefPtr& attributes);
 
   // Consume |len| bytes out of the payload, and place them in |data|.
   // Any trailing alignment padding in |payload| is also consumed.  Returns

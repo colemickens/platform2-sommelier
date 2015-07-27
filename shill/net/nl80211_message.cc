@@ -90,25 +90,8 @@ bool Nl80211Message::InitFromPacket(NetlinkPacket* packet,
     return false;
   }
 
-  // TODO(pstew): Implement a parser in NetlinkPacket instead of directly
-  // accessing the payload here and using nla_parse().  crbug.com/512152.
-  ByteString message = packet->GetPayload();
-  message.RemovePrefix(message.GetLength() - packet->GetRemainingLength());
-
-  // Attributes.
-  // Parse the attributes from the nl message payload into the 'tb' array.
-  nlattr* tb[NL80211_ATTR_MAX + 1];
-  nla_parse(tb, NL80211_ATTR_MAX,
-            reinterpret_cast<nlattr*>(message.GetData()), message.GetLength(),
-            nullptr);
-
-  for (int i = 0; i < NL80211_ATTR_MAX + 1; ++i) {
-    if (tb[i]) {
-      attributes_->CreateAndInitAttribute(
-          i, tb[i],
-          Bind(&NetlinkAttribute::NewNl80211AttributeFromId, context));
-    }
-  }
+  return packet->ConsumeAttributes(
+      Bind(&NetlinkAttribute::NewNl80211AttributeFromId, context), attributes_);
 
   // Convert integer values provided by libnl (for example, from the
   // NL80211_ATTR_STATUS_CODE or NL80211_ATTR_REASON_CODE attribute) into

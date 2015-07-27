@@ -435,8 +435,8 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
   NetlinkPacket trigger_scan_packet(
       kNL80211_CMD_TRIGGER_SCAN, sizeof(kNL80211_CMD_TRIGGER_SCAN));
   unique_ptr<NetlinkMessage> netlink_message(
-      message_factory_.CreateMessage(&trigger_scan_packet,
-      NetlinkMessage::MessageContext()));
+      message_factory_.CreateMessage(
+          &trigger_scan_packet, NetlinkMessage::MessageContext()));
 
   EXPECT_NE(nullptr, netlink_message);
   EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());

@@ -414,7 +414,7 @@ TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
 
 TEST_F(NetlinkManagerTest, BroadcastHandler) {
   Reset();
-  NetlinkPacket packet(
+  MutableNetlinkPacket packet(
       kNL80211_CMD_DISCONNECT, sizeof(kNL80211_CMD_DISCONNECT));
 
   MockHandlerNetlink handler1;
@@ -428,18 +428,21 @@ TEST_F(NetlinkManagerTest, BroadcastHandler) {
   EXPECT_TRUE(
       netlink_manager_->FindBroadcastHandler(handler1.on_netlink_message()));
   netlink_manager_->OnNlMessageReceived(&packet);
+  packet.ResetConsumedBytes();
 
   // Add a second handler.
   EXPECT_CALL(handler1, OnNetlinkMessage(_)).Times(1);
   EXPECT_CALL(handler2, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->AddBroadcastHandler(handler2.on_netlink_message());
   netlink_manager_->OnNlMessageReceived(&packet);
+  packet.ResetConsumedBytes();
 
   // Verify that a handler can't be added twice.
   EXPECT_CALL(handler1, OnNetlinkMessage(_)).Times(1);
   EXPECT_CALL(handler2, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->AddBroadcastHandler(handler1.on_netlink_message());
   netlink_manager_->OnNlMessageReceived(&packet);
+  packet.ResetConsumedBytes();
 
   // Check that we can remove a handler.
   EXPECT_CALL(handler1, OnNetlinkMessage(_)).Times(0);
@@ -447,12 +450,14 @@ TEST_F(NetlinkManagerTest, BroadcastHandler) {
   EXPECT_TRUE(netlink_manager_->RemoveBroadcastHandler(
       handler1.on_netlink_message()));
   netlink_manager_->OnNlMessageReceived(&packet);
+  packet.ResetConsumedBytes();
 
   // Check that re-adding the handler goes smoothly.
   EXPECT_CALL(handler1, OnNetlinkMessage(_)).Times(1);
   EXPECT_CALL(handler2, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->AddBroadcastHandler(handler1.on_netlink_message());
   netlink_manager_->OnNlMessageReceived(&packet);
+  packet.ResetConsumedBytes();
 
   // Check that ClearBroadcastHandlers works.
   netlink_manager_->ClearBroadcastHandlers();
@@ -481,6 +486,7 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   // message-specific handler has been installed.
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(&received_message);
+  received_message.ResetConsumedBytes();
 
   // Send the message and give our handler.  Verify that we get called back.
   NetlinkManager::NetlinkAuxilliaryMessageHandler null_error_handler;
@@ -493,11 +499,13 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   received_message.SetMessageSequence(netlink_socket_->GetLastSequenceNumber());
   EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(&received_message);
+  received_message.ResetConsumedBytes();
 
   // Verify that broadcast handler is called for the message after the
   // message-specific handler is called once.
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(&received_message);
+  received_message.ResetConsumedBytes();
 
   // Install and then uninstall message-specific handler; verify broadcast
   // handler is called on message receipt.
@@ -508,6 +516,7 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   EXPECT_TRUE(netlink_manager_->RemoveMessageHandler(sent_message_1));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(&received_message);
+  received_message.ResetConsumedBytes();
 
   // Install handler for different message; verify that broadcast handler is
   // called for _this_ message.
@@ -516,6 +525,7 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
       null_ack_handler, null_error_handler));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(&received_message);
+  received_message.ResetConsumedBytes();
 
   // Change the ID for the message to that of the second handler; verify that
   // the appropriate handler is called for _that_ message.
@@ -561,6 +571,7 @@ TEST_F(NetlinkManagerTest, AckHandler) {
       netlink_socket_->GetLastSequenceNumber());
   EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(&received_response_message);
+  received_response_message.ResetConsumedBytes();
 
   // Send the message and give a Nl80211 response handler and Ack handler again,
   // but remove other callbacks after executing the Ack handler.

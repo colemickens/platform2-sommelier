@@ -110,6 +110,11 @@ class SHILL_EXPORT ByteString {
 
   std::string HexEncode() const;
 
+  // Ensures that |size| bytes are available in the payload, then copies
+  // these bytes to |output|.  Returns false if |this| does not contain enough
+  // data.
+  bool CopyData(size_t size, void* output) const;
+
   // Discards |offset| bytes from the beginning of the ByteString (but does
   // not cause a copy).
   void RemovePrefix(size_t offset);
