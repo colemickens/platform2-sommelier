@@ -21,8 +21,7 @@ namespace quipper {
 // way to get information from the counters.
 bool IsPerfRecordAvailable() {
   return RunCommand(
-      {"perf", "record", "-a", "-o", "-", "--", "sleep", "1"},
-      NULL);
+      {"perf", "record", "-a", "-o", "-", "--", "sleep", "1"}, NULL) == 0;
 }
 
 class PerfRecorderTest : public ::testing::Test {

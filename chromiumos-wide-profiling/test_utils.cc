@@ -147,8 +147,8 @@ bool GetPerfBuildIDMap(const string& filename,
   LOG(INFO) << filename + kBuildIDListExtension;
   if (!quipper::FileToBuffer(filename + kBuildIDListExtension, &buildid_list)) {
     buildid_list.clear();
-    if (!RunCommand({GetPerfPath(), "buildid-list", "--force", "-i", filename},
-                    &buildid_list)) {
+    if (RunCommand({GetPerfPath(), "buildid-list", "--force", "-i", filename},
+                   &buildid_list) != 0) {
       LOG(ERROR) << "Failed to run perf buildid-list";
       return false;
     }

@@ -13,9 +13,10 @@
 namespace quipper {
 
 // Executes |command|. stderr is directed to /dev/null. If |output| is not null,
-// stdout is stored in |output|, and to /dev/null otherwise. Returns true iff
-// the command was successfully executed and returned a successful status.
-bool RunCommand(const std::vector<string>& command,
+// stdout is stored in |output|, and to /dev/null otherwise. Returns the exit
+// status of the command if it exited normally, or -1 otherwise. If the call
+// to exec failed, then errno is set accordingly.
+int RunCommand(const std::vector<string>& command,
                 std::vector<char>* output);
 
 }  // nampspace quipper

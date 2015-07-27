@@ -128,8 +128,9 @@ bool PerfRecorder::RunCommandAndGetSerializedOutput(
                         {"--", "sleep", IntToString(time)});
 
   // The perf command writes the output to a file, so ignore stdout.
-  if (!RunCommand(full_perf_args, nullptr)) {
-    LOG(ERROR) << "Failed to run perf command.";
+  int status = RunCommand(full_perf_args, nullptr);
+  if (status != 0) {
+    PLOG(ERROR) << "perf command failed with status: " << status << ", Error";
     return false;
   }
 
