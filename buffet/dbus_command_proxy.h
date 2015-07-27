@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEAVE_SRC_COMMANDS_DBUS_COMMAND_PROXY_H_
-#define LIBWEAVE_SRC_COMMANDS_DBUS_COMMAND_PROXY_H_
+#ifndef BUFFET_DBUS_COMMAND_PROXY_H_
+#define BUFFET_DBUS_COMMAND_PROXY_H_
 
 #include <string>
 
@@ -20,16 +20,14 @@ class ExportedObjectManager;
 }  // namespace dbus_utils
 }  // namespace chromeos
 
-namespace weave {
+namespace buffet {
 
-class CommandInstance;
-
-class DBusCommandProxy : public Command::Observer,
+class DBusCommandProxy : public weave::Command::Observer,
                          public org::chromium::Buffet::CommandInterface {
  public:
   DBusCommandProxy(chromeos::dbus_utils::ExportedObjectManager* object_manager,
                    const scoped_refptr<dbus::Bus>& bus,
-                   Command* command,
+                   weave::Command* command,
                    std::string object_path);
   ~DBusCommandProxy() override = default;
 
@@ -57,7 +55,7 @@ class DBusCommandProxy : public Command::Observer,
   // Handles calls to org.chromium.Buffet.Command.Done().
   void Done() override;
 
-  Command* command_;
+  weave::Command* command_;
   org::chromium::Buffet::CommandAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
 
@@ -66,6 +64,6 @@ class DBusCommandProxy : public Command::Observer,
   DISALLOW_COPY_AND_ASSIGN(DBusCommandProxy);
 };
 
-}  // namespace weave
+}  // namespace buffet
 
-#endif  // LIBWEAVE_SRC_COMMANDS_DBUS_COMMAND_PROXY_H_
+#endif  // BUFFET_DBUS_COMMAND_PROXY_H_

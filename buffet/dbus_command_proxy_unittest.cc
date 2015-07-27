@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libweave/src/commands/dbus_command_proxy.h"
+#include "buffet/dbus_command_proxy.h"
 
 #include <functional>
 #include <memory>
@@ -16,14 +16,13 @@
 #include <gtest/gtest.h>
 
 #include "buffet/dbus_constants.h"
-#include "libweave/src/commands/unittest_utils.h"
 #include "weave/command.h"
-
 #include "weave/enum_to_string.h"
 #include "weave/mock_command.h"
 #include "weave/mock_commands.h"
+#include "weave/unittest_utils.h"
 
-namespace weave {
+namespace buffet {
 
 using ::testing::AnyNumber;
 using ::testing::Return;
@@ -32,7 +31,8 @@ using ::testing::_;
 
 using chromeos::VariantDictionary;
 using chromeos::dbus_utils::AsyncEventSequencer;
-using unittests::CreateDictionaryValue;
+using weave::unittests::CreateDictionaryValue;
+using weave::unittests::IsEqualValue;
 
 namespace {
 
@@ -41,7 +41,7 @@ const char kTestCommandId[] = "cmd_1";
 
 MATCHER_P(EqualToJson, json, "") {
   auto json_value = CreateDictionaryValue(json);
-  return unittests::IsEqualValue(*json_value, arg);
+  return IsEqualValue(*json_value, arg);
 }
 
 }  // namespace
@@ -64,8 +64,10 @@ class DBusCommandProxyTest : public ::testing::Test {
         .WillRepeatedly(ReturnRefOfCopy<std::string>("robot.jump"));
     EXPECT_CALL(command_, GetCategory())
         .WillOnce(ReturnRefOfCopy<std::string>(kTestCommandCategoty));
-    EXPECT_CALL(command_, GetStatus()).WillOnce(Return(CommandStatus::kQueued));
-    EXPECT_CALL(command_, GetOrigin()).WillOnce(Return(CommandOrigin::kLocal));
+    EXPECT_CALL(command_, GetStatus())
+        .WillOnce(Return(weave::CommandStatus::kQueued));
+    EXPECT_CALL(command_, GetOrigin())
+        .WillOnce(Return(weave::CommandOrigin::kLocal));
     EXPECT_CALL(command_, MockGetParameters())
         .WillOnce(ReturnRefOfCopy<std::string>(R"({
           'height': 53,
@@ -110,8 +112,8 @@ class DBusCommandProxyTest : public ::testing::Test {
     return GetCommandProxy();
   }
 
-  CommandStatus GetCommandStatus() const {
-    CommandStatus status;
+  weave::CommandStatus GetCommandStatus() const {
+    weave::CommandStatus status;
     EXPECT_TRUE(StringToEnum(GetCommandAdaptor()->GetStatus(), &status));
     return status;
   }
@@ -119,7 +121,7 @@ class DBusCommandProxyTest : public ::testing::Test {
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_command_;
   scoped_refptr<dbus::MockBus> bus_;
 
-  unittests::MockCommand command_;
+  weave::unittests::MockCommand command_;
   std::unique_ptr<DBusCommandProxy> proxy_;
 };
 
@@ -127,7 +129,7 @@ TEST_F(DBusCommandProxyTest, Init) {
   VariantDictionary params = {
       {"height", int32_t{53}}, {"_jumpType", std::string{"_withKick"}},
   };
-  EXPECT_EQ(CommandStatus::kQueued, GetCommandStatus());
+  EXPECT_EQ(weave::CommandStatus::kQueued, GetCommandStatus());
   EXPECT_EQ(params, GetCommandAdaptor()->GetParameters());
   EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetProgress());
   EXPECT_EQ(VariantDictionary{}, GetCommandAdaptor()->GetResults());
@@ -161,9 +163,9 @@ TEST_F(DBusCommandProxyTest, OnResultsChanged) {
 TEST_F(DBusCommandProxyTest, OnStatusChanged) {
   EXPECT_CALL(*mock_exported_object_command_, SendSignal(_)).Times(1);
   EXPECT_CALL(command_, GetStatus())
-      .WillOnce(Return(CommandStatus::kInProgress));
+      .WillOnce(Return(weave::CommandStatus::kInProgress));
   proxy_->OnStatusChanged();
-  EXPECT_EQ(CommandStatus::kInProgress, GetCommandStatus());
+  EXPECT_EQ(weave::CommandStatus::kInProgress, GetCommandStatus());
 }
 
 TEST_F(DBusCommandProxyTest, SetProgress) {
@@ -201,4 +203,4 @@ TEST_F(DBusCommandProxyTest, Done) {
   GetCommandInterface()->Done();
 }
 
-}  // namespace weave
+}  // namespace buffet

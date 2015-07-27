@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEAVE_SRC_COMMANDS_DBUS_COMMAND_DISPATCHER_H_
-#define LIBWEAVE_SRC_COMMANDS_DBUS_COMMAND_DISPATCHER_H_
+#ifndef BUFFET_DBUS_COMMAND_DISPATCHER_H_
+#define BUFFET_DBUS_COMMAND_DISPATCHER_H_
 
 #include <map>
 #include <string>
@@ -19,9 +19,7 @@ class ExportedObjectManager;
 }  // namespace dbus_utils
 }  // namespace chromeos
 
-namespace weave {
-
-class CommandInstance;
+namespace buffet {
 
 // Implements D-Bus dispatch of commands. When OnCommandAdded is called,
 // DBusCommandDispacher creates an instance of DBusCommandProxy object and
@@ -35,10 +33,10 @@ class DBusCommandDispacher final {
   explicit DBusCommandDispacher(
       const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
           object_manager,
-      Commands* command_manager);
+      weave::Commands* command_manager);
 
  private:
-  void OnCommandAdded(Command* command);
+  void OnCommandAdded(weave::Command* command);
 
   base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager> object_manager_;
   int next_id_{0};
@@ -51,6 +49,6 @@ class DBusCommandDispacher final {
   DISALLOW_COPY_AND_ASSIGN(DBusCommandDispacher);
 };
 
-}  // namespace weave
+}  // namespace buffet
 
-#endif  // LIBWEAVE_SRC_COMMANDS_DBUS_COMMAND_DISPATCHER_H_
+#endif  // BUFFET_DBUS_COMMAND_DISPATCHER_H_

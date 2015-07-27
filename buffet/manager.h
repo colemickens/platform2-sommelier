@@ -22,10 +22,6 @@
 #include "buffet/org.chromium.Buffet.Manager.h"
 #include "weave/device.h"
 
-namespace weave {
-class DBusCommandDispacher;
-}
-
 namespace chromeos {
 namespace dbus_utils {
 class ExportedObjectManager;
@@ -33,6 +29,8 @@ class ExportedObjectManager;
 }  // namespace chromeos
 
 namespace buffet {
+
+class DBusCommandDispacher;
 
 template<typename... Types>
 using DBusMethodResponsePtr =
@@ -117,7 +115,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   chromeos::dbus_utils::DBusObject dbus_object_;
 
   std::unique_ptr<weave::Device> device_;
-  std::unique_ptr<weave::DBusCommandDispacher> command_dispatcher_;
+  std::unique_ptr<DBusCommandDispacher> command_dispatcher_;
 
   base::WeakPtrFactory<Manager> weak_ptr_factory_{this};
   DISALLOW_COPY_AND_ASSIGN(Manager);

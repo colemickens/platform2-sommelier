@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libweave/src/commands/dbus_conversion.h"
+#include "buffet/dbus_conversion.h"
 
 #include <limits>
 #include <memory>
@@ -15,16 +15,16 @@
 #include <chromeos/variant_dictionary.h>
 #include <gtest/gtest.h>
 
-#include "libweave/src/commands/object_schema.h"
-#include "libweave/src/commands/unittest_utils.h"
+#include "weave/unittest_utils.h"
 
-namespace weave {
+namespace buffet {
 
 namespace {
 
 using chromeos::Any;
 using chromeos::VariantDictionary;
-using unittests::CreateDictionaryValue;
+using weave::unittests::CreateDictionaryValue;
+using weave::unittests::IsEqualValue;
 
 chromeos::VariantDictionary ToDBus(const base::DictionaryValue& object) {
   return DictionaryToDBusVariantDictionary(object);
@@ -182,7 +182,7 @@ TEST(DBusConversionTest, DBusRandomDictionaryConversion) {
   auto dict = CreateRandomDictionary(10000);
   auto varian_dict = ToDBus(*dict);
   auto dict_restored = FromDBus(varian_dict);
-  EXPECT_PRED2(unittests::IsEqualValue, *dict, *dict_restored);
+  EXPECT_PRED2(IsEqualValue, *dict, *dict_restored);
 }
 
-}  // namespace weave
+}  // namespace buffet

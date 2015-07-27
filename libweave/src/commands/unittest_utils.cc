@@ -5,7 +5,6 @@
 #include "libweave/src/commands/unittest_utils.h"
 
 #include <base/json/json_reader.h>
-#include <base/json/json_writer.h>
 
 namespace weave {
 namespace unittests {

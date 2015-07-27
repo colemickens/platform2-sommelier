@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libweave/src/commands/dbus_conversion.h"
+#include "buffet/dbus_conversion.h"
 
 #include <set>
 #include <string>
@@ -10,11 +10,7 @@
 
 #include <chromeos/type_name_undecorate.h>
 
-#include "libweave/src/commands/object_schema.h"
-#include "libweave/src/commands/prop_types.h"
-#include "libweave/src/commands/prop_values.h"
-
-namespace weave {
+namespace buffet {
 
 namespace {
 
@@ -213,8 +209,7 @@ std::unique_ptr<base::Value> CreateValue<chromeos::Any>(
     return result;
 
   chromeos::Error::AddToPrintf(
-      error, FROM_HERE, errors::commands::kDomain,
-      errors::commands::kUnknownType, "Type '%s' is not supported.",
+      error, FROM_HERE, "buffet", "unknown_type", "Type '%s' is not supported.",
       chromeos::UndecorateTypeName(any.GetType().name()).c_str());
 
   return nullptr;
@@ -248,4 +243,4 @@ std::unique_ptr<base::DictionaryValue> DictionaryFromDBusVariantDictionary(
   return result;
 }
 
-}  // namespace weave
+}  // namespace buffet

@@ -2,22 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libweave/src/commands/dbus_command_proxy.h"
+#include "buffet/dbus_command_proxy.h"
 
 #include <chromeos/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/exported_object_manager.h>
 
-#include "libweave/src/commands/dbus_conversion.h"
+#include "buffet/dbus_conversion.h"
 #include "weave/enum_to_string.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
 using chromeos::dbus_utils::ExportedObjectManager;
 
-namespace weave {
+namespace buffet {
 
 DBusCommandProxy::DBusCommandProxy(ExportedObjectManager* object_manager,
                                    const scoped_refptr<dbus::Bus>& bus,
-                                   Command* command,
+                                   weave::Command* command,
                                    std::string object_path)
     : command_{command},
       dbus_object_{object_manager, bus, dbus::ObjectPath{object_path}} {}
@@ -100,4 +100,4 @@ void DBusCommandProxy::Done() {
   command_->Done();
 }
 
-}  // namespace weave
+}  // namespace buffet

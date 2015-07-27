@@ -23,9 +23,8 @@
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
 
-// TODO(vitalybuka): Will be moved into buffet soon.
-#include "libweave/src/commands/dbus_command_dispatcher.h"
-#include "libweave/src/commands/dbus_conversion.h"
+#include "buffet/dbus_command_dispatcher.h"
+#include "buffet/dbus_conversion.h"
 #include "weave/enum_to_string.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
@@ -58,7 +57,7 @@ void Manager::Start(const weave::Device::Options& options,
   device_ = weave::Device::Create();
   device_->Start(options, &dbus_object_, sequencer);
 
-  command_dispatcher_.reset(new weave::DBusCommandDispacher{
+  command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});
 
   device_->GetState()->AddOnChangedCallback(
@@ -143,8 +142,7 @@ void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
 void Manager::UpdateState(DBusMethodResponsePtr<> response,
                           const chromeos::VariantDictionary& property_set) {
   chromeos::ErrorPtr error;
-  auto properties =
-      weave::DictionaryFromDBusVariantDictionary(property_set, &error);
+  auto properties = DictionaryFromDBusVariantDictionary(property_set, &error);
   if (!properties)
     response->ReplyWithError(error.get());
 
