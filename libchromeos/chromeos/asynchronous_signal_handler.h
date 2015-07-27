@@ -15,6 +15,7 @@
 #include <base/macros.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop/message_loop.h>
+#include <chromeos/asynchronous_signal_handler_interface.h>
 #include <chromeos/chromeos_export.h>
 #include <chromeos/message_loops/message_loop.h>
 
@@ -22,36 +23,26 @@ namespace chromeos {
 // Sets up signal handlers for registered signals, and converts signal receipt
 // into a write on a pipe. Watches that pipe for data and, when some appears,
 // execute the associated callback.
-class CHROMEOS_EXPORT AsynchronousSignalHandler final {
+class CHROMEOS_EXPORT AsynchronousSignalHandler final :
+    public AsynchronousSignalHandlerInterface {
  public:
   AsynchronousSignalHandler();
-  ~AsynchronousSignalHandler();
+  ~AsynchronousSignalHandler() override;
 
-  // The callback called when a signal is received.
-  typedef base::Callback<bool(const struct signalfd_siginfo&)> SignalHandler;
+  using AsynchronousSignalHandlerInterface::SignalHandler;
 
   // Initialize the handler.
   void Init();
 
-  // Register a new handler for the given |signal|, replacing any previously
-  // registered handler. |callback| will be called on the thread the
-  // |AsynchronousSignalHandler| is bound to when a signal is received. The
-  // received |signalfd_siginfo| will be passed to |callback|. |callback| must
-  // returns |true| if the signal handler must be unregistered, and |false|
-  // otherwise. Due to an implementation detail, you cannot set any sigaction
-  // flags you might be accustomed to using. This might matter if you hoped to
-  // use SA_NOCLDSTOP to avoid getting a SIGCHLD when a child process receives a
-  // SIGSTOP.
-  void RegisterHandler(int signal, const SignalHandler& callback);
+  // AsynchronousSignalHandlerInterface overrides.
+  void RegisterHandler(int signal, const SignalHandler& callback) override;
+  void UnregisterHandler(int signal) override;
 
-  // Unregister a previously registered handler for the given |signal|.
-  void UnregisterHandler(int signal);
-
+ private:
   // Called from the main loop when we can read from |descriptor_|, indicated
   // that a signal was processed.
   void OnFileCanReadWithoutBlocking();
 
- private:
   // Controller used to manage watching of signalling pipe.
   MessageLoop::TaskId fd_watcher_task_{MessageLoop::kTaskIdNull};
 

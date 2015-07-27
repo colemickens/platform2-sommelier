@@ -48,7 +48,8 @@ void Daemon::QuitWithExitCode(int exit_code) {
 }
 
 void Daemon::RegisterHandler(
-    int signal, const AsynchronousSignalHandler::SignalHandler& callback) {
+    int signal,
+    const AsynchronousSignalHandlerInterface::SignalHandler& callback) {
   async_signal_handler_.RegisterHandler(signal, callback);
 }
 

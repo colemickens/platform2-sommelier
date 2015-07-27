@@ -25,16 +25,15 @@ class CHROMEOS_EXPORT ProcessReaper final {
   ProcessReaper() = default;
   ~ProcessReaper();
 
-  // Register the ProcessReaper using either the provided chromeos::Daemon or
-  // chromeos::AsynchronousSignalHandler. You can call Unregister() to remove
-  // this ProcessReapper or it will be called during shutdown.
-  void RegisterWithAsynchronousSignalHandler(
-      AsynchronousSignalHandler* async_signal_handler);
-  void RegisterWithDaemon(Daemon* daemon);
+  // Register the ProcessReaper using either the provided
+  // chromeos::AsynchronousSignalHandlerInterface. You can call Unregister() to
+  // remove this ProcessReapper or it will be called during shutdown.
+  // You can only register this ProcessReaper with one signal handler at a time.
+  void Register(AsynchronousSignalHandlerInterface* async_signal_handler);
 
-  // Unregisters the ProcessReaper from the chromeos::Daemon or
-  // chromeos::AsynchronousSignalHandler passed in RegisterWith*(). It doesn't
-  // do anything if not registered.
+  // Unregisters the ProcessReaper from the
+  // chromeos::AsynchronousSignalHandlerInterface passed in Register(). It
+  // doesn't do anything if not registered.
   void Unregister();
 
   // Watch for the child process |pid| to finish and call |callback| when the
@@ -56,13 +55,9 @@ class CHROMEOS_EXPORT ProcessReaper final {
   };
   std::map<pid_t, WatchedProcess> watched_processes_;
 
-  // Whether the ProcessReaper already registered a signal.
-  bool registered_{false};
-
-  // The |async_signal_handler_| and |daemon_| are owned by the caller and only
-  // one of them is not nullptr.
-  AsynchronousSignalHandler* async_signal_handler_{nullptr};
-  Daemon* daemon_{nullptr};
+  // The |async_signal_handler_| is owned by the caller and is |nullptr| when
+  // not registered.
+  AsynchronousSignalHandlerInterface* async_signal_handler_{nullptr};
 
   DISALLOW_COPY_AND_ASSIGN(ProcessReaper);
 };

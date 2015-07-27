@@ -48,8 +48,7 @@ class ProcessReaperTest : public ::testing::Test {
   void SetUp() override {
     chromeos_loop_.SetAsCurrent();
     async_signal_handler_.Init();
-    process_reaper_.RegisterWithAsynchronousSignalHandler(
-        &async_signal_handler_);
+    process_reaper_.Register(&async_signal_handler_);
   }
 
  protected:
@@ -68,8 +67,7 @@ TEST_F(ProcessReaperTest, UnregisterWhenNotRegistered) {
 
 TEST_F(ProcessReaperTest, UnregisterAndReregister) {
   process_reaper_.Unregister();
-  process_reaper_.RegisterWithAsynchronousSignalHandler(
-      &async_signal_handler_);
+  process_reaper_.Register(&async_signal_handler_);
   // This checks that we can unregister the ProcessReaper and then destroy it.
   process_reaper_.Unregister();
 }

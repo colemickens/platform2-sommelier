@@ -25,7 +25,7 @@ namespace chromeos {
 // specialize it by creating your own class and deriving it from
 // chromeos::Daemon. Override some of the virtual methods provide to fine-tune
 // its behavior to suit your daemon's needs.
-class CHROMEOS_EXPORT Daemon {
+class CHROMEOS_EXPORT Daemon : public AsynchronousSignalHandlerInterface {
  public:
   Daemon();
   virtual ~Daemon();
@@ -49,13 +49,15 @@ class CHROMEOS_EXPORT Daemon {
   // this method.
   void QuitWithExitCode(int exit_code);
 
+  // AsynchronousSignalHandlerInterface overrides.
   // Register/unregister custom signal handlers for the daemon. The semantics
   // are identical to AsynchronousSignalHandler::RegisterHandler and
   // AsynchronousSignalHandler::UnregisterHandler, except that handlers for
   // SIGTERM, SIGINT, and SIGHUP cannot be modified.
   void RegisterHandler(
-      int signal, const AsynchronousSignalHandler::SignalHandler& callback);
-  void UnregisterHandler(int signal);
+      int signal, const
+      AsynchronousSignalHandlerInterface::SignalHandler& callback) override;
+  void UnregisterHandler(int signal) override;
 
  protected:
   // Overload to provide your own initialization code that should happen just

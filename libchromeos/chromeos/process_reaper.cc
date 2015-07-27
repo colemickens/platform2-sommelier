@@ -17,38 +17,23 @@
 namespace chromeos {
 
 ProcessReaper::~ProcessReaper() {
-  if (!registered_)
-    Unregister();
+  Unregister();
 }
 
-void ProcessReaper::RegisterWithAsynchronousSignalHandler(
-      AsynchronousSignalHandler* async_signal_handler) {
-  CHECK(!registered_);
+void ProcessReaper::Register(
+      AsynchronousSignalHandlerInterface* async_signal_handler) {
+  CHECK(!async_signal_handler_);
   async_signal_handler_ = async_signal_handler;
   async_signal_handler->RegisterHandler(
       SIGCHLD,
       base::Bind(&ProcessReaper::HandleSIGCHLD, base::Unretained(this)));
-  registered_ = true;
-}
-
-void ProcessReaper::RegisterWithDaemon(Daemon* daemon) {
-  CHECK(!registered_);
-  daemon_ = daemon;
-  daemon->RegisterHandler(SIGCHLD, base::Bind(&ProcessReaper::HandleSIGCHLD,
-                                              base::Unretained(this)));
-  registered_ = true;
 }
 
 void ProcessReaper::Unregister() {
-  if (daemon_) {
-    daemon_->UnregisterHandler(SIGCHLD);
-    daemon_ = nullptr;
-  }
-  if (async_signal_handler_) {
-    async_signal_handler_->UnregisterHandler(SIGCHLD);
-    async_signal_handler_ = nullptr;
-  }
-  registered_ = false;
+  if (!async_signal_handler_)
+    return;
+  async_signal_handler_->UnregisterHandler(SIGCHLD);
+  async_signal_handler_ = nullptr;
 }
 
 bool ProcessReaper::WatchForChild(const tracked_objects::Location& from_here,
