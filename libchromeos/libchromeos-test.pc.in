@@ -1,8 +1,0 @@
-bslot=@BSLOT@
-
-Name: libchromeos-test
-Description: chromeos test library
-Version: ${bslot}
-# Because libchromeos-test is static, we have to depend directly on everything.
-Requires: @PRIVATE_PC@
-Libs: -lchromeos-test-${bslot}
