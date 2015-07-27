@@ -175,7 +175,8 @@ bool ProcessImpl::Start() {
     // Close parent's side of the child pipes. dup2 ours into place and
     // then close our ends.
     for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
-      IGNORE_EINTR(close(i->second.parent_fd_));
+      if (i->second.parent_fd_ != -1)
+        IGNORE_EINTR(close(i->second.parent_fd_));
       HANDLE_EINTR(dup2(i->second.child_fd_, i->first));
     }
     // Defer the actual close() of the child fd until afterward; this lets the
