@@ -382,6 +382,7 @@ Daemon::Daemon(const base::FilePath& read_write_prefs_dir,
       created_suspended_state_file_(false),
       lock_vt_before_suspend_(false),
       log_suspend_with_mosys_eventlog_(false),
+      suspend_to_idle_(false),
       can_safely_exit_dark_resume_(
           base::PathExists(base::FilePath(kPMTestDelayPath))),
       weak_ptr_factory_(this) {
@@ -459,6 +460,7 @@ void Daemon::Init() {
 
   prefs_->GetBool(kLockVTBeforeSuspendPref, &lock_vt_before_suspend_);
   prefs_->GetBool(kMosysEventlogPref, &log_suspend_with_mosys_eventlog_);
+  prefs_->GetBool(kSuspendToIdlePref, &suspend_to_idle_);
 
   power_supply_->Init(base::FilePath(kPowerStatusPath),
                       prefs_.get(), udev_.get(),
@@ -720,6 +722,9 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     args += base::StringPrintf(" --suspend_duration=%" PRId64,
                                duration.InSeconds());
   }
+
+  if (suspend_to_idle_)
+    args += " --suspend_to_idle";
 
   const int exit_code = RunSetuidHelper("suspend", args, true);
   LOG(INFO) << "powerd_suspend returned " << exit_code;

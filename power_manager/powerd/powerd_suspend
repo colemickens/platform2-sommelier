@@ -13,6 +13,8 @@ DEFINE_integer wakeup_count -1 \
     "wakeup event count from start of suspend. -1 to disable" w
 DEFINE_integer suspend_duration -1 \
     "indicates that the system should wake up after this many seconds" d
+DEFINE_boolean suspend_to_idle false \
+    "indicates that the system should suspend to idle (freeze)" i
 
 # Exit codes returned by this script and reported via the
 # Power.SuspendResult histogram:
@@ -220,10 +222,16 @@ else
         setup_dark_resume
     fi
 
+    # Echo freeze to /sys/power/state on platforms that support suspend to idle.
+    action="mem"
+    if [ ${FLAGS_suspend_to_idle} -eq 0 ]; then
+        action="freeze"
+    fi
+
     # Suspend to RAM. This is piped through cat since we want to determine
     # the causes of failures -- dash's "echo" command appears to not print
     # anything in response to write errors.
-    error=$( (echo -n mem | cat > /sys/power/state) 2>&1)
+    error=$( (echo -n ${action} | cat > /sys/power/state) 2>&1)
     if [ $? = 0 ]; then
         # On resume:
         result=$RESULT_SUCCESS

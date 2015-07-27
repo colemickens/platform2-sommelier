@@ -188,6 +188,10 @@ extern const char kTpmCounterSuspendThresholdPref[];
 // Time interval between fetches of the TPM status, in seconds.
 extern const char kTpmStatusIntervalSecPref[];
 
+// If true, suspend to idle by writing freeze to /sys/power/state. Otherwise
+// suspend by writing mem to /sys/power/state.
+extern const char kSuspendToIdlePref[];
+
 // Miscellaneous constants.
 
 // Default directories where read/write and read-only powerd preference files

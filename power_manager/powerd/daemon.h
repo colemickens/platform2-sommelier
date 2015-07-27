@@ -319,6 +319,9 @@ class Daemon : public policy::BacklightControllerObserver,
   // timestamps in eventlog.
   bool log_suspend_with_mosys_eventlog_;
 
+  // True if the system should suspend to idle.
+  bool suspend_to_idle_;
+
   // True if the system can properly transition from dark resume to fully
   // resumed.
   bool can_safely_exit_dark_resume_;

@@ -75,6 +75,7 @@ const char kCheckActiveVTPref[] = "check_active_vt";
 const char kUseCrasPref[] = "use_cras";
 const char kTpmCounterSuspendThresholdPref[] = "tpm_counter_suspend_threshold";
 const char kTpmStatusIntervalSecPref[] = "tpm_status_interval_sec";
+const char kSuspendToIdlePref[] = "suspend_to_idle";
 
 // Miscellaneous constants.
 const char kReadWritePrefsDir[] = "/var/lib/power_manager";

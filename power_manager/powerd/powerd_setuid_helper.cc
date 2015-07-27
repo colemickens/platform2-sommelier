@@ -87,6 +87,8 @@ int main(int argc, char* argv[]) {
                 "powerd_suspend for the \"suspend\" action.");
   DEFINE_bool(suspend_wakeup_count_valid, false,
               "Should --suspend_wakeup_count be honored?");
+  DEFINE_bool(suspend_to_idle, false,
+              "Should the system suspend to idle (freeze)?");
   chromeos::FlagHelper::Init(argc, argv, "powerd setuid helper");
 
   if (FLAGS_action == "lock_vt") {
@@ -116,12 +118,14 @@ int main(int argc, char* argv[]) {
   } else if (FLAGS_action == "suspend") {
     std::string duration_flag = "--suspend_duration=" +
         base::IntToString(FLAGS_suspend_duration);
+    std::string idle_flag = FLAGS_suspend_to_idle ?
+        std::string("--suspend_to_idle") : std::string("--nosuspend_to_idle");
     std::string wakeup_flag;
     if (FLAGS_suspend_wakeup_count_valid) {
       wakeup_flag = "--wakeup_count=" +
           base::Uint64ToString(FLAGS_suspend_wakeup_count);
     }
-    RunCommand("powerd_suspend", duration_flag.c_str(),
+    RunCommand("powerd_suspend", duration_flag.c_str(), idle_flag.c_str(),
                wakeup_flag.empty() ? NULL : wakeup_flag.c_str(), NULL);
   } else if (FLAGS_action == "unlock_vt") {
     SetVTSwitchingAllowed(true);
