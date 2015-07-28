@@ -9,7 +9,7 @@
 # repository.
 
 GLBENCH_ROOT=$(dirname "$(readlink -f "$0")")
-export LC_COLLATE=C
+export LC_ALL=C
 
 main() {
   local result=0
