@@ -39,5 +39,7 @@
       ],
     }],
   ],
+  'message': 'Generating DBus proxies C++ headers from >@(_sources)',
+  'process_outputs_as_sources': 1,
   'hard_dependency': 1,
 }

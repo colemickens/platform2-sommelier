@@ -23,7 +23,7 @@
         '--adaptor=<(h_dir)/<(RULE_INPUT_ROOT).h',
       ],
       'msvs_cygwin_shell': 0,
-      'message': 'Generating C++ header from <(RULE_INPUT_PATH)',
+      'message': 'Generating DBus adaptor C++ header from <(RULE_INPUT_PATH)',
       'process_outputs_as_sources': 1,
     },
   ],
