@@ -30,8 +30,8 @@ std::unique_ptr<base::DictionaryValue> GetTestSchema() {
       'manufacturer':'string',
       'serialNumber':'string'
     },
-    'terminator': {
-      'target':'string'
+    'device': {
+      'state_property':'string'
     }
   })");
 }
@@ -39,8 +39,8 @@ std::unique_ptr<base::DictionaryValue> GetTestSchema() {
 std::unique_ptr<base::DictionaryValue> GetTestValues() {
   return CreateDictionaryValue(R"({
     'base': {
-      'manufacturer':'Skynet',
-      'serialNumber':'T1000'
+      'manufacturer':'Test Factory',
+      'serialNumber':'Test Model'
     }
   })");
 }
@@ -96,11 +96,11 @@ TEST_F(StateManagerTest, Initialized) {
   EXPECT_EQ(std::set<std::string>{"default"}, mgr_->GetCategories());
   auto expected = R"({
     'base': {
-      'manufacturer': 'Skynet',
-      'serialNumber': 'T1000'
+      'manufacturer': 'Test Factory',
+      'serialNumber': 'Test Model'
     },
-    'terminator': {
-      'target': ''
+    'device': {
+      'state_property': ''
     }
   })";
   EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson());
@@ -118,14 +118,14 @@ TEST_F(StateManagerTest, LoadStateDefinition) {
 
   auto expected = R"({
     'base': {
-      'manufacturer': 'Skynet',
-      'serialNumber': 'T1000'
+      'manufacturer': 'Test Factory',
+      'serialNumber': 'Test Model'
     },
     'power': {
       'battery_level': 0
     },
-    'terminator': {
-      'target': ''
+    'device': {
+      'state_property': ''
     }
   })";
   EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson());
@@ -133,20 +133,21 @@ TEST_F(StateManagerTest, LoadStateDefinition) {
 
 TEST_F(StateManagerTest, SetPropertyValue) {
   ValueMap expected_prop_set{
-      {"terminator.target", unittests::make_string_prop_value("John Connor")},
+      {"device.state_property",
+       unittests::make_string_prop_value("Test Value")},
   };
   EXPECT_CALL(mock_state_change_queue_,
               NotifyPropertiesUpdated(timestamp_, expected_prop_set))
       .WillOnce(Return(true));
-  ASSERT_TRUE(SetPropertyValue("terminator.target", std::string{"John Connor"},
-                               nullptr));
+  ASSERT_TRUE(SetPropertyValue("device.state_property",
+                               std::string{"Test Value"}, nullptr));
   auto expected = R"({
     'base': {
-      'manufacturer': 'Skynet',
-      'serialNumber': 'T1000'
+      'manufacturer': 'Test Factory',
+      'serialNumber': 'Test Model'
     },
-    'terminator': {
-      'target': 'John Connor'
+    'device': {
+      'state_property': 'Test Value'
     }
   })";
   EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson());
@@ -162,7 +163,7 @@ TEST_F(StateManagerTest, SetPropertyValue_Error_NoName) {
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_NoPackage) {
   chromeos::ErrorPtr error;
-  ASSERT_FALSE(SetPropertyValue("target", int{0}, &error));
+  ASSERT_FALSE(SetPropertyValue("state_property", int{0}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPackageNameMissing, error->GetCode());
   EXPECT_EQ("Package name is missing in the property name",
@@ -188,12 +189,12 @@ TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownProperty) {
 TEST_F(StateManagerTest, GetAndClearRecordedStateChanges) {
   EXPECT_CALL(mock_state_change_queue_, NotifyPropertiesUpdated(timestamp_, _))
       .WillOnce(Return(true));
-  ASSERT_TRUE(SetPropertyValue("terminator.target", std::string{"John Connor"},
-                               nullptr));
+  ASSERT_TRUE(SetPropertyValue("device.state_property",
+                               std::string{"Test Value"}, nullptr));
   std::vector<StateChange> expected_val;
   expected_val.emplace_back(
-      timestamp_, ValueMap{{"terminator.target",
-                            unittests::make_string_prop_value("John Connor")}});
+      timestamp_, ValueMap{{"device.state_property",
+                            unittests::make_string_prop_value("Test Value")}});
   EXPECT_CALL(mock_state_change_queue_, GetAndClearRecordedStateChanges())
       .WillOnce(Return(expected_val));
   auto changes = mgr_->GetAndClearRecordedStateChanges();
@@ -218,10 +219,10 @@ TEST_F(StateManagerTest, SetProperties) {
   auto expected = R"({
     'base': {
       'manufacturer': 'No Name',
-      'serialNumber': 'T1000'
+      'serialNumber': 'Test Model'
     },
-    'terminator': {
-      'target': ''
+    'device': {
+      'state_property': ''
     }
   })";
   EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson());
