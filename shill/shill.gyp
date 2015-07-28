@@ -428,6 +428,29 @@
             'wimax/wimax_provider.cc',
             'wimax/wimax_service.cc',
           ],
+          'conditions': [
+            ['USE_chromeos_dbus == 1', {
+              'sources': [
+                'dbus/chromeos_wimax_device_proxy.cc',
+                'dbus/chromeos_wimax_manager_proxy.cc',
+                'dbus/chromeos_wimax_network_proxy.cc',
+              ],
+              'actions': [
+                {
+                  'action_name': 'generate-wimax-manager-proxies',
+                  'variables': {
+                    'proxy_output_file': 'include/wimax-manager/dbus-proxies.h',
+                  },
+                  'sources': [
+                    '../wimax_manager/dbus_bindings/org.chromium.WiMaxManager.Device.xml',
+                    '../wimax_manager/dbus_bindings/org.chromium.WiMaxManager.Network.xml',
+                    '../wimax_manager/dbus_bindings/org.chromium.WiMaxManager.xml',
+                  ],
+                  'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+                },
+              ],
+            }],
+          ],
         }],
         ['USE_wired_8021x == 1', {
           'sources': [
