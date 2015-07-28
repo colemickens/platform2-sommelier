@@ -56,6 +56,7 @@ class ChromeosSupplicantProcessProxy : public SupplicantProcessProxyInterface {
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
   };
 
+  static const char kInterfaceName[];
   static const char kPropertyDebugLevel[];
   static const char kPropertyDebugTimestamp[];
   static const char kPropertyDebugShowKeys[];

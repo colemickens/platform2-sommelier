@@ -91,6 +91,7 @@ class ChromeosSupplicantInterfaceProxy
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
   };
 
+  static const char kInterfaceName[];
   static const char kPropertyApScan[];
   static const char kPropertyBlobs[];
   static const char kPropertyBridgeIfname[];

@@ -43,6 +43,7 @@ class ChromeosSupplicantNetworkProxy
     DISALLOW_COPY_AND_ASSIGN(PropertySet);
   };
 
+  static const char kInterfaceName[];
   static const char kPropertyEnabled[];
   static const char kPropertyProperties[];
 

@@ -21,6 +21,8 @@ static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
 }
 
+const char ChromeosSupplicantInterfaceProxy::kInterfaceName[] =
+    "fi.w1.wpa_supplicant1.Interface";
 const char ChromeosSupplicantInterfaceProxy::kPropertyApScan[] = "ApScan";
 const char ChromeosSupplicantInterfaceProxy::kPropertyBlobs[] = "Blobs";
 const char ChromeosSupplicantInterfaceProxy::kPropertyBridgeIfname[] =
@@ -87,7 +89,7 @@ ChromeosSupplicantInterfaceProxy::ChromeosSupplicantInterfaceProxy(
   properties_.reset(
       new PropertySet(
           interface_proxy_->GetObjectProxy(),
-          WPASupplicant::kDBusAddr,
+          kInterfaceName,
           base::Bind(&ChromeosSupplicantInterfaceProxy::OnPropertyChanged,
                      weak_factory_.GetWeakPtr())));
 

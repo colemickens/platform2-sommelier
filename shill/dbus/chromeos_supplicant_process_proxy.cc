@@ -19,6 +19,8 @@ static auto kModuleLogScope = ScopeLogger::kDBus;
 static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
 }
 
+const char ChromeosSupplicantProcessProxy::kInterfaceName[] =
+    "fi.w1.wpa_supplicant1";
 const char ChromeosSupplicantProcessProxy::kPropertyDebugLevel[] =
     "DebugLevel";
 const char ChromeosSupplicantProcessProxy::kPropertyDebugTimestamp[] =
@@ -60,7 +62,7 @@ ChromeosSupplicantProcessProxy::ChromeosSupplicantProcessProxy(
   properties_.reset(
       new PropertySet(
           supplicant_proxy_->GetObjectProxy(),
-          WPASupplicant::kDBusAddr,
+          kInterfaceName,
           base::Bind(&ChromeosSupplicantProcessProxy::OnPropertyChanged,
                      weak_factory_.GetWeakPtr())));
 

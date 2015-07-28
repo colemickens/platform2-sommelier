@@ -21,6 +21,8 @@ static string ObjectID(const dbus::ObjectPath* p) { return p->value(); }
 }
 
 // static.
+const char ChromeosSupplicantNetworkProxy::kInterfaceName[] =
+    "fi.w1.wpa_supplicant1.Network";
 const char ChromeosSupplicantNetworkProxy::kPropertyEnabled[] = "Enabled";
 const char ChromeosSupplicantNetworkProxy::kPropertyProperties[] =
     "Properties";
@@ -46,7 +48,7 @@ ChromeosSupplicantNetworkProxy::ChromeosSupplicantNetworkProxy(
   properties_.reset(
       new PropertySet(
           network_proxy_->GetObjectProxy(),
-          WPASupplicant::kDBusAddr,
+          kInterfaceName,
           base::Bind(&ChromeosSupplicantNetworkProxy::OnPropertyChanged,
                      weak_factory_.GetWeakPtr())));
 
