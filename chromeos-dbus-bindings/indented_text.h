@@ -41,6 +41,10 @@ class IndentedText {
   // Return a string representing the indented text.
   std::string GetContents() const;
 
+  // Return a list of lines representing the intended indented text, not
+  // including the \n.
+  std::vector<std::string> GetLines() const;
+
   // Add or remove an offset to the current stack of indentation offsets.
   void PushOffset(size_t shift);
   void PopOffset();

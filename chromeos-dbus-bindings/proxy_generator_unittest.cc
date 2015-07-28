@@ -107,6 +107,15 @@ class TestInterfaceProxyInterface {
       const base::Callback<void(chromeos::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
+  virtual void RegisterCloserSignalHandler(
+      const base::Closure& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
+
+  virtual void RegisterTheCurseOfKaZarSignalHandler(
+      const base::Callback<void(const std::vector<std::string>&,
+                                uint8_t)>& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
+
  protected:
   virtual ~TestInterfaceProxyInterface() = default;
 };
@@ -134,7 +143,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
 
   void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
-      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     chromeos::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
@@ -146,7 +155,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
   void RegisterTheCurseOfKaZarSignalHandler(
       const base::Callback<void(const std::vector<std::string>&,
                                 uint8_t)>& signal_callback,
-      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     chromeos::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
@@ -422,6 +431,10 @@ namespace chromium {
 // Abstract interface proxy for org::chromium::TestInterface.
 class TestInterfaceProxyInterface {
  public:
+  virtual void RegisterCloserSignalHandler(
+      const base::Closure& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
+
  protected:
   virtual ~TestInterfaceProxyInterface() = default;
 };
@@ -446,7 +459,7 @@ class TestInterfaceProxy final : public TestInterfaceProxyInterface {
 
   void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
-      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     chromeos::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.TestInterface",
@@ -565,6 +578,10 @@ namespace chromium {
 // Abstract interface proxy for org::chromium::Itf1.
 class Itf1ProxyInterface {
  public:
+  virtual void RegisterCloserSignalHandler(
+      const base::Closure& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
+
   static const char* DataName() { return "Data"; }
   virtual const std::string& data() const = 0;
 
@@ -613,7 +630,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
 
   void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
-      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     chromeos::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.Itf1",
@@ -945,6 +962,10 @@ namespace chromium {
 // Abstract interface proxy for org::chromium::Itf1.
 class Itf1ProxyInterface {
  public:
+  virtual void RegisterCloserSignalHandler(
+      const base::Closure& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
+
  protected:
   virtual ~Itf1ProxyInterface() = default;
 };
@@ -983,7 +1004,7 @@ class Itf1Proxy final : public Itf1ProxyInterface {
 
   void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
-      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) {
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {
     chromeos::dbus_utils::ConnectToSignal(
         dbus_object_proxy_,
         "org.chromium.Itf1",

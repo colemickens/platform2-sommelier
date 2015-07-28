@@ -88,6 +88,13 @@ class TestInterfaceProxyMock final : public TestInterfaceProxyInterface {
                void(const base::Callback<void()>& /*success_callback*/,
                     const base::Callback<void(chromeos::Error*)>& /*error_callback*/,
                     int /*timeout_ms*/));
+  MOCK_METHOD2(RegisterCloserSignalHandler,
+               void(const base::Closure& /*signal_callback*/,
+                    dbus::ObjectProxy::OnConnectedCallback /*on_connected_callback*/));
+  MOCK_METHOD2(RegisterTheCurseOfKaZarSignalHandler,
+               void(const base::Callback<void(const std::vector<std::string>&,
+                                              uint8_t)>& /*signal_callback*/,
+                    dbus::ObjectProxy::OnConnectedCallback /*on_connected_callback*/));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TestInterfaceProxyMock);

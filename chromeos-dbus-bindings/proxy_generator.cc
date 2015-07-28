@@ -196,6 +196,9 @@ void ProxyGenerator::GenerateInterfaceProxyInterface(
     AddMethodProxy(method, interface.name, true, text);
     AddAsyncMethodProxy(method, interface.name, true, text);
   }
+  for (const auto& signal : interface.signals) {
+    AddSignalHandlerRegistration(signal, interface.name, true, text);
+  }
   AddProperties(config, interface, true, text);
 
   text->PopOffset();
@@ -231,7 +234,9 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
   AddPropertySet(config, interface, text);
   AddConstructor(config, interface, proxy_name, text);
   AddDestructor(proxy_name, text);
-  AddSignalHandlerRegistration(interface, text);
+  for (const auto& signal : interface.signals) {
+    AddSignalHandlerRegistration(signal, interface.name, false, text);
+  }
   AddReleaseObjectProxy(text);
   AddGetObjectPath(text);
   AddGetObjectProxy(text);
@@ -312,6 +317,9 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
   for (const auto& method : interface.methods) {
     AddMethodMock(method, interface.name, text);
     AddAsyncMethodMock(method, interface.name, text);
+  }
+  for (const auto& signal : interface.signals) {
+    AddSignalHandlerRegistrationMock(signal, text);
   }
 
   DbusSignature signature;
@@ -444,56 +452,35 @@ void ProxyGenerator::AddOnPropertyChanged(IndentedText* text) {
   text->AddBlankLine();
 }
 
-void ProxyGenerator::AddSignalHandlerRegistration(const Interface& interface,
-                                                  IndentedText* text) {
+void ProxyGenerator::AddSignalHandlerRegistration(
+      const Interface::Signal& signal,
+      const string& interface_name,
+      bool declaration_only,
+      IndentedText* text) {
   IndentedText block;
-  DbusSignature signature;
-  for (const auto& signal : interface.signals) {
-    block.AddLine(
-        StringPrintf("void Register%sSignalHandler(", signal.name.c_str()));
-    block.PushOffset(kLineContinuationOffset);
-    if (signal.arguments.empty()) {
-      block.AddLine("const base::Closure& signal_callback,");
-    } else {
-      string last_argument;
-      string prefix{"const base::Callback<void("};
-      for (const auto argument : signal.arguments) {
-        if (!last_argument.empty()) {
-          if (!prefix.empty()) {
-            block.AddLineAndPushOffsetTo(
-                StringPrintf("%s%s,", prefix.c_str(), last_argument.c_str()),
-                1, '(');
-            prefix.clear();
-          } else {
-            block.AddLine(StringPrintf("%s,", last_argument.c_str()));
-          }
-        }
-        CHECK(signature.Parse(argument.type, &last_argument));
-        MakeConstReferenceIfNeeded(&last_argument);
-      }
-      block.AddLine(StringPrintf("%s%s)>& signal_callback,",
-                                 prefix.c_str(),
-                                 last_argument.c_str()));
-      if (prefix.empty()) {
-        block.PopOffset();
-      }
-    }
-    block.AddLine("dbus::ObjectProxy::OnConnectedCallback "
-                  "on_connected_callback) {");
+  block.AddLine(StringPrintf("%svoid Register%sSignalHandler(",
+                             declaration_only ? "virtual " : "",
+                             signal.name.c_str()));
+  block.PushOffset(kLineContinuationOffset);
+  AddSignalCallbackArg(signal, false, &block);
+  block.AddLine(StringPrintf(
+      "dbus::ObjectProxy::OnConnectedCallback on_connected_callback)%s",
+      declaration_only ? " = 0;" : " override {"));
+  if (!declaration_only) {
     block.PopOffset();  // Method signature arguments
     block.PushOffset(kBlockOffset);
     block.AddLine("chromeos::dbus_utils::ConnectToSignal(");
     block.PushOffset(kLineContinuationOffset);
     block.AddLine("dbus_object_proxy_,");
-    block.AddLine(StringPrintf("\"%s\",", interface.name.c_str()));
+    block.AddLine(StringPrintf("\"%s\",", interface_name.c_str()));
     block.AddLine(StringPrintf("\"%s\",", signal.name.c_str()));
     block.AddLine("signal_callback,");
     block.AddLine("on_connected_callback);");
     block.PopOffset();  // Function call line continuation
     block.PopOffset();  // Method body
     block.AddLine("}");
-    block.AddBlankLine();
   }
+  block.AddBlankLine();
   text->AddBlock(block);
 }
 
@@ -805,6 +792,68 @@ void ProxyGenerator::AddAsyncMethodMock(const Interface::Method& method,
   block.PopOffset();
   block.PopOffset();
   text->AddBlock(block);
+}
+
+// static
+void ProxyGenerator::AddSignalHandlerRegistrationMock(
+    const Interface::Signal& signal,
+    IndentedText* text) {
+  IndentedText callback_arg_text;
+  AddSignalCallbackArg(signal, true, &callback_arg_text);
+  vector<string> arg_lines = callback_arg_text.GetLines();
+
+  IndentedText block;
+  block.AddLineAndPushOffsetTo(
+      StringPrintf("MOCK_METHOD2(Register%sSignalHandler,",
+                   signal.name.c_str()),
+      1, '(');
+  for (size_t i = 0; i < arg_lines.size(); ++i) {
+    if (i == 0)
+      block.AddLineAndPushOffsetTo("void(" + arg_lines[i], 1, '(');
+    else
+      block.AddLine(arg_lines[i]);
+  }
+  block.AddLine(
+      "dbus::ObjectProxy::OnConnectedCallback /*on_connected_callback*/));");
+  text->AddBlock(block);
+}
+
+// static
+void ProxyGenerator::AddSignalCallbackArg(const Interface::Signal& signal,
+                                          bool comment_arg_name,
+                                          IndentedText* block) {
+  DbusSignature signature;
+  string signal_callback = StringPrintf("%ssignal_callback%s",
+                                        comment_arg_name ? "/*" : "",
+                                        comment_arg_name ? "*/" : "");
+  if (signal.arguments.empty()) {
+    block->AddLine(StringPrintf("const base::Closure& %s,",
+                                signal_callback.c_str()));
+  } else {
+    string last_argument;
+    string prefix{"const base::Callback<void("};
+    for (const auto argument : signal.arguments) {
+      if (!last_argument.empty()) {
+        if (!prefix.empty()) {
+          block->AddLineAndPushOffsetTo(
+              StringPrintf("%s%s,", prefix.c_str(), last_argument.c_str()),
+              1, '(');
+          prefix.clear();
+        } else {
+          block->AddLine(StringPrintf("%s,", last_argument.c_str()));
+        }
+      }
+      CHECK(signature.Parse(argument.type, &last_argument));
+      MakeConstReferenceIfNeeded(&last_argument);
+    }
+    block->AddLine(StringPrintf("%s%s)>& %s,",
+                                prefix.c_str(),
+                                last_argument.c_str(),
+                                signal_callback.c_str()));
+    if (prefix.empty()) {
+      block->PopOffset();
+    }
+  }
 }
 
 // static

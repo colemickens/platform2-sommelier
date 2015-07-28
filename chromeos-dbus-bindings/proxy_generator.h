@@ -80,7 +80,9 @@ class ProxyGenerator : public HeaderGenerator {
   static void AddOnPropertyChanged(IndentedText* text);
 
   // Generates logic permitting users to register handlers for signals.
-  static void AddSignalHandlerRegistration(const Interface& interface,
+  static void AddSignalHandlerRegistration(const Interface::Signal& signal,
+                                           const std::string& interface_name,
+                                           bool declaration_only,
                                            IndentedText* text);
 
   // Generates the property set class to contain interface properties.
@@ -115,6 +117,16 @@ class ProxyGenerator : public HeaderGenerator {
   static void AddAsyncMethodMock(const Interface::Method& interface,
                                  const std::string& interface_name,
                                  IndentedText* text);
+
+  // Generates a mock for the signal handler registration method.
+  static void AddSignalHandlerRegistrationMock(
+      const Interface::Signal& signal,
+      IndentedText* text);
+
+  // Generate the signal callback argument of a signal handler.
+  static void AddSignalCallbackArg(const Interface::Signal& signal,
+                                   bool comment_arg_name,
+                                   IndentedText* block);
 
   // Generates the Object Manager proxy class.
   struct ObjectManager {

@@ -171,4 +171,13 @@ TEST_F(IndentedTextTest, AddComments_Indentation) {
             "// line3\n", text_.GetContents());
 }
 
+TEST_F(IndentedTextTest, GetLines) {
+  text_.AddLine("no indent");
+  text_.PushOffset(2);
+  text_.AddLine("2 spaces");
+  text_.AddLine("");
+
+  EXPECT_EQ((vector<string>{"no indent", "  2 spaces", ""}), text_.GetLines());
+}
+
 }  // namespace chromeos_dbus_bindings

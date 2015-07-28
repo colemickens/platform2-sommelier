@@ -102,13 +102,22 @@ void IndentedText::AddComments(const std::string& doc_string) {
 
 string IndentedText::GetContents() const {
   string output;
+  for (const string& line : GetLines()) {
+    output.append(line);
+    output.append("\n");
+  }
+  return output;
+}
+
+std::vector<std::string> IndentedText::GetLines() const {
+  vector<string> result;
   for (const auto& member : contents_) {
     const string& line = member.first;
     size_t shift = line.empty() ? 0 : member.second;
     string indent(shift, ' ');
-    output.append(indent + line + "\n");
+    result.push_back(indent + line);
   }
-  return output;
+  return result;
 }
 
 void IndentedText::PushOffset(size_t shift) {
