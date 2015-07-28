@@ -124,7 +124,7 @@ TEST_F(BaseApiHandlerTest, UpdateBaseConfiguration) {
       'network': {}
     }
   })";
-  EXPECT_JSON_EQ(expected, *state_manager_->GetStateValuesAsJson(nullptr));
+  EXPECT_JSON_EQ(expected, *state_manager_->GetStateValuesAsJson());
 
   AddCommand(R"({
     'name' : 'base.updateBaseConfiguration',
@@ -146,7 +146,7 @@ TEST_F(BaseApiHandlerTest, UpdateBaseConfiguration) {
       'network': {}
     }
   })";
-  EXPECT_JSON_EQ(expected, *state_manager_->GetStateValuesAsJson(nullptr));
+  EXPECT_JSON_EQ(expected, *state_manager_->GetStateValuesAsJson());
 }
 
 TEST_F(BaseApiHandlerTest, UpdateDeviceInfo) {

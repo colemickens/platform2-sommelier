@@ -17,9 +17,9 @@ namespace {
 // error reporting.
 std::string PropValueToString(const PropValue& value) {
   std::string result;
-  auto json = value.ToJson(nullptr);
-  if (json)
-    base::JSONWriter::Write(*json, &result);
+  auto json = value.ToJson();
+  CHECK(json);
+  base::JSONWriter::Write(*json, &result);
   return result;
 }
 
@@ -62,16 +62,13 @@ bool Constraint::ReportErrorNotOneOf(chromeos::ErrorPtr* error,
   return false;
 }
 
-bool Constraint::AddToJsonDict(base::DictionaryValue* dict,
-                               bool overridden_only,
-                               chromeos::ErrorPtr* error) const {
+void Constraint::AddToJsonDict(base::DictionaryValue* dict,
+                               bool overridden_only) const {
   if (!overridden_only || HasOverriddenAttributes()) {
-    auto value = ToJson(error);
-    if (!value)
-      return false;
+    auto value = ToJson();
+    CHECK(value);
     dict->SetWithoutPathExpansion(GetDictKey(), value.release());
   }
-  return true;
 }
 
 // ConstraintStringLength -----------------------------------------------------
@@ -86,9 +83,8 @@ bool ConstraintStringLength::HasOverriddenAttributes() const {
   return !limit_.is_inherited;
 }
 
-std::unique_ptr<base::Value> ConstraintStringLength::ToJson(
-    chromeos::ErrorPtr* error) const {
-  return TypedValueToJson(limit_.value, error);
+std::unique_ptr<base::Value> ConstraintStringLength::ToJson() const {
+  return TypedValueToJson(limit_.value);
 }
 
 // ConstraintStringLengthMin --------------------------------------------------
@@ -205,9 +201,8 @@ std::unique_ptr<Constraint> ConstraintOneOf::CloneAsInherited() const {
   return std::unique_ptr<Constraint>{new ConstraintOneOf{std::move(cloned)}};
 }
 
-std::unique_ptr<base::Value> ConstraintOneOf::ToJson(
-    chromeos::ErrorPtr* error) const {
-  return TypedValueToJson(set_.value, error);
+std::unique_ptr<base::Value> ConstraintOneOf::ToJson() const {
+  return TypedValueToJson(set_.value);
 }
 
 const char* ConstraintOneOf::GetDictKey() const {

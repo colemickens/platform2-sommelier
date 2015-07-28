@@ -22,8 +22,8 @@ class State {
 
   // Returns aggregated state properties across all registered packages as
   // a JSON object that can be used to send the device state to the GCD server.
-  virtual std::unique_ptr<base::DictionaryValue> GetStateValuesAsJson(
-      chromeos::ErrorPtr* error) const = 0;
+  virtual std::unique_ptr<base::DictionaryValue> GetStateValuesAsJson()
+      const = 0;
 
  protected:
   virtual ~State() = default;

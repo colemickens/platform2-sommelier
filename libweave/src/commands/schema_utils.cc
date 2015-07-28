@@ -55,52 +55,40 @@ bool ErrorMissingProperty(chromeos::ErrorPtr* error,
 }  // namespace
 
 // Specializations of TypedValueToJson<T>() for supported C++ types.
-std::unique_ptr<base::FundamentalValue> TypedValueToJson(
-    bool value,
-    chromeos::ErrorPtr* error) {
+std::unique_ptr<base::FundamentalValue> TypedValueToJson(bool value) {
   return std::unique_ptr<base::FundamentalValue>(
       new base::FundamentalValue(value));
 }
 
-std::unique_ptr<base::FundamentalValue> TypedValueToJson(
-    int value,
-    chromeos::ErrorPtr* error) {
+std::unique_ptr<base::FundamentalValue> TypedValueToJson(int value) {
   return std::unique_ptr<base::FundamentalValue>(
       new base::FundamentalValue(value));
 }
 
-std::unique_ptr<base::FundamentalValue> TypedValueToJson(
-    double value,
-    chromeos::ErrorPtr* error) {
+std::unique_ptr<base::FundamentalValue> TypedValueToJson(double value) {
   return std::unique_ptr<base::FundamentalValue>(
       new base::FundamentalValue(value));
 }
 
-std::unique_ptr<base::StringValue> TypedValueToJson(const std::string& value,
-                                                    chromeos::ErrorPtr* error) {
+std::unique_ptr<base::StringValue> TypedValueToJson(const std::string& value) {
   return std::unique_ptr<base::StringValue>(new base::StringValue(value));
 }
 
-std::unique_ptr<base::DictionaryValue> TypedValueToJson(
-    const ValueMap& value,
-    chromeos::ErrorPtr* error) {
+std::unique_ptr<base::DictionaryValue> TypedValueToJson(const ValueMap& value) {
   std::unique_ptr<base::DictionaryValue> dict(new base::DictionaryValue);
   for (const auto& pair : value) {
-    auto prop_value = pair.second->ToJson(error);
-    if (!prop_value)
-      return nullptr;
+    auto prop_value = pair.second->ToJson();
+    CHECK(prop_value);
     dict->SetWithoutPathExpansion(pair.first, prop_value.release());
   }
   return dict;
 }
 
-std::unique_ptr<base::ListValue> TypedValueToJson(const ValueVector& value,
-                                                  chromeos::ErrorPtr* error) {
+std::unique_ptr<base::ListValue> TypedValueToJson(const ValueVector& value) {
   std::unique_ptr<base::ListValue> list(new base::ListValue);
   for (const auto& item : value) {
-    auto json = item->ToJson(error);
-    if (!json)
-      return nullptr;
+    auto json = item->ToJson();
+    CHECK(json);
     list->Append(json.release());
   }
   return list;
@@ -264,14 +252,14 @@ bool operator==(const ValueVector& arr1, const ValueVector& arr2) {
 }
 
 std::string ToString(const ValueMap& obj) {
-  auto val = TypedValueToJson(obj, nullptr);
+  auto val = TypedValueToJson(obj);
   std::string str;
   base::JSONWriter::Write(*val, &str);
   return str;
 }
 
 std::string ToString(const ValueVector& arr) {
-  auto val = TypedValueToJson(arr, nullptr);
+  auto val = TypedValueToJson(arr);
   std::string str;
   base::JSONWriter::Write(*val, &str);
   return str;

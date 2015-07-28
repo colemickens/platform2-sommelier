@@ -52,8 +52,7 @@ void PropType::MakeRequired(bool required) {
 }
 
 std::unique_ptr<base::Value> PropType::ToJson(bool full_schema,
-                                              bool in_command_def,
-                                              chromeos::ErrorPtr* error) const {
+                                              bool in_command_def) const {
   // Determine if we need to output "isRequired" attribute.
   const bool include_required = in_command_def && !required_.is_inherited;
 
@@ -66,7 +65,7 @@ std::unique_ptr<base::Value> PropType::ToJson(bool full_schema,
   if (!full_schema && !HasOverriddenAttributes()) {
     if (based_on_schema_)
       return std::unique_ptr<base::Value>(new base::DictionaryValue);
-    return TypedValueToJson(GetTypeAsString(), error);
+    return TypedValueToJson(GetTypeAsString());
   }
 
   std::unique_ptr<base::DictionaryValue> dict(new base::DictionaryValue);
@@ -93,20 +92,17 @@ std::unique_ptr<base::Value> PropType::ToJson(bool full_schema,
     // {'enum':[1,2,3]}
     auto p = constraints_.find(ConstraintType::OneOf);
     if (p != constraints_.end()) {
-      return p->second->ToJson(error);
+      return p->second->ToJson();
     }
   }
 
-  for (const auto& pair : constraints_) {
-    if (!pair.second->AddToJsonDict(dict.get(), !full_schema, error))
-      return std::unique_ptr<base::Value>();
-  }
+  for (const auto& pair : constraints_)
+    pair.second->AddToJsonDict(dict.get(), !full_schema);
 
   if (default_.value && (full_schema || !default_.is_inherited)) {
-    auto defval = default_.value->ToJson(error);
-    if (!defval)
-      return std::unique_ptr<base::Value>();
-    dict->Set(commands::attributes::kDefault, defval.release());
+    auto def_val = default_.value->ToJson();
+    CHECK(def_val);
+    dict->Set(commands::attributes::kDefault, def_val.release());
   }
 
   if (include_required)
@@ -495,35 +491,29 @@ std::unique_ptr<PropType> ObjectPropType::Clone() const {
   return cloned;
 }
 
-std::unique_ptr<base::Value> ObjectPropType::ToJson(
-    bool full_schema,
-    bool in_command_def,
-    chromeos::ErrorPtr* error) const {
+std::unique_ptr<base::Value> ObjectPropType::ToJson(bool full_schema,
+                                                    bool in_command_def) const {
   std::unique_ptr<base::Value> value =
-      PropType::ToJson(full_schema, in_command_def, error);
-  if (value) {
-    base::DictionaryValue* dict = nullptr;
-    CHECK(value->GetAsDictionary(&dict)) << "Expecting a JSON object";
-    if (!object_schema_.is_inherited || full_schema) {
-      auto object_schema =
-          object_schema_.value->ToJson(full_schema, false, error);
-      if (!object_schema) {
-        value.reset();
-        return value;
-      }
-      dict->SetWithoutPathExpansion(commands::attributes::kObject_Properties,
-                                    object_schema.release());
-      dict->SetBooleanWithoutPathExpansion(
-          commands::attributes::kObject_AdditionalProperties,
-          object_schema_.value->GetExtraPropertiesAllowed());
-      std::unique_ptr<base::ListValue> required{new base::ListValue};
-      for (const auto& pair : object_schema_.value->GetProps()) {
-        if (pair.second->IsRequired())
-          required->AppendString(pair.first);
-      }
-      if (required->GetSize() > 0) {
-        dict->Set(commands::attributes::kObject_Required, required.release());
-      }
+      PropType::ToJson(full_schema, in_command_def);
+  CHECK(value);
+  base::DictionaryValue* dict = nullptr;
+  CHECK(value->GetAsDictionary(&dict)) << "Expecting a JSON object";
+  if (!object_schema_.is_inherited || full_schema) {
+    auto object_schema = object_schema_.value->ToJson(full_schema, false);
+    CHECK(object_schema);
+
+    dict->SetWithoutPathExpansion(commands::attributes::kObject_Properties,
+                                  object_schema.release());
+    dict->SetBooleanWithoutPathExpansion(
+        commands::attributes::kObject_AdditionalProperties,
+        object_schema_.value->GetExtraPropertiesAllowed());
+    std::unique_ptr<base::ListValue> required{new base::ListValue};
+    for (const auto& pair : object_schema_.value->GetProps()) {
+      if (pair.second->IsRequired())
+        required->AppendString(pair.first);
+    }
+    if (required->GetSize() > 0) {
+      dict->Set(commands::attributes::kObject_Required, required.release());
     }
   }
   return value;
@@ -660,22 +650,17 @@ std::unique_ptr<PropType> ArrayPropType::Clone() const {
   return cloned;
 }
 
-std::unique_ptr<base::Value> ArrayPropType::ToJson(
-    bool full_schema,
-    bool in_command_def,
-    chromeos::ErrorPtr* error) const {
+std::unique_ptr<base::Value> ArrayPropType::ToJson(bool full_schema,
+                                                   bool in_command_def) const {
   std::unique_ptr<base::Value> value =
-      PropType::ToJson(full_schema, in_command_def, error);
-  if (value && (!item_type_.is_inherited || full_schema)) {
+      PropType::ToJson(full_schema, in_command_def);
+  CHECK(value);
+  if (!item_type_.is_inherited || full_schema) {
     base::DictionaryValue* dict = nullptr;
     CHECK(value->GetAsDictionary(&dict)) << "Expecting a JSON object";
-    auto type = item_type_.value->ToJson(full_schema, false, error);
-      if (!type) {
-        value.reset();
-        return value;
-      }
-      dict->SetWithoutPathExpansion(commands::attributes::kItems,
-                                    type.release());
+    auto type = item_type_.value->ToJson(full_schema, false);
+    CHECK(type);
+    dict->SetWithoutPathExpansion(commands::attributes::kItems, type.release());
   }
   return value;
 }

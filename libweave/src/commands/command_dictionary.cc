@@ -222,9 +222,8 @@ std::unique_ptr<base::DictionaryValue> CommandDictionary::GetCommandsAsJson(
       continue;
 
     std::unique_ptr<base::DictionaryValue> parameters =
-        pair.second->GetParameters()->ToJson(full_schema, true, error);
-    if (!parameters)
-      return {};
+        pair.second->GetParameters()->ToJson(full_schema, true);
+    CHECK(parameters);
     // Progress and results are not part of public commandDefs.
 
     auto cmd_name_parts = chromeos::string_utils::SplitAtFirst(pair.first, ".");

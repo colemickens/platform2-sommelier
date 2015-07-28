@@ -112,11 +112,8 @@ class PropValue {
   // Makes a full copy of this value class.
   virtual std::unique_ptr<PropValue> Clone() const = 0;
 
-  // Saves the value as a JSON object.
-  // If it fails, returns nullptr value and fills in the details for the
-  // failure in the |error| parameter.
-  virtual std::unique_ptr<base::Value> ToJson(
-      chromeos::ErrorPtr* error) const = 0;
+  // Saves the value as a JSON object. Never fails.
+  virtual std::unique_ptr<base::Value> ToJson() const = 0;
   // Parses a value from JSON.
   // If it fails, it returns false and provides additional information
   // via the |error| parameter.
@@ -154,9 +151,8 @@ class TypedValueBase : public PropValue {
     return std::move(derived);
   }
 
-  std::unique_ptr<base::Value> ToJson(
-      chromeos::ErrorPtr* error) const override {
-    return TypedValueToJson(value_, error);
+  std::unique_ptr<base::Value> ToJson() const override {
+    return TypedValueToJson(value_);
   }
 
   bool FromJson(const base::Value* value, chromeos::ErrorPtr* error) override {

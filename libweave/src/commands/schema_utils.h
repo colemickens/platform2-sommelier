@@ -54,30 +54,19 @@ class InheritableAttribute final {
 // A bunch of helper function to create base::Value for specific C++ classes,
 // including vectors of types. These are used in template classes below
 // to simplify specialization logic.
-std::unique_ptr<base::FundamentalValue> TypedValueToJson(
-    bool value,
-    chromeos::ErrorPtr* error);
-std::unique_ptr<base::FundamentalValue> TypedValueToJson(
-    int value,
-    chromeos::ErrorPtr* error);
-std::unique_ptr<base::FundamentalValue> TypedValueToJson(
-    double value,
-    chromeos::ErrorPtr* error);
-std::unique_ptr<base::StringValue> TypedValueToJson(const std::string& value,
-                                                    chromeos::ErrorPtr* error);
-std::unique_ptr<base::DictionaryValue> TypedValueToJson(
-    const ValueMap& value,
-    chromeos::ErrorPtr* error);
-std::unique_ptr<base::ListValue> TypedValueToJson(const ValueVector& value,
-                                                  chromeos::ErrorPtr* error);
+std::unique_ptr<base::FundamentalValue> TypedValueToJson(bool value);
+std::unique_ptr<base::FundamentalValue> TypedValueToJson(int value);
+std::unique_ptr<base::FundamentalValue> TypedValueToJson(double value);
+std::unique_ptr<base::StringValue> TypedValueToJson(const std::string& value);
+std::unique_ptr<base::DictionaryValue> TypedValueToJson(const ValueMap& value);
+std::unique_ptr<base::ListValue> TypedValueToJson(const ValueVector& value);
 template <typename T>
-std::unique_ptr<base::ListValue> TypedValueToJson(const std::vector<T>& values,
-                                                  chromeos::ErrorPtr* error) {
+std::unique_ptr<base::ListValue> TypedValueToJson(
+    const std::vector<T>& values) {
   std::unique_ptr<base::ListValue> list(new base::ListValue);
   for (const auto& v : values) {
-    auto json = TypedValueToJson(v, error);
-    if (!json)
-      return nullptr;
+    auto json = TypedValueToJson(v);
+    CHECK(json);
     list->Append(json.release());
   }
   return list;

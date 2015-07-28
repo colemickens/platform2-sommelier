@@ -398,9 +398,8 @@ DeviceRegistrationInfo::BuildDeviceResource(chromeos::ErrorPtr* error) {
     return nullptr;
 
   std::unique_ptr<base::DictionaryValue> state =
-      state_manager_->GetStateValuesAsJson(error);
-  if (!state)
-    return nullptr;
+      state_manager_->GetStateValuesAsJson();
+  CHECK(state);
 
   std::unique_ptr<base::DictionaryValue> resource{new base::DictionaryValue};
   if (!config_->device_id().empty())
@@ -1040,10 +1039,8 @@ void DeviceRegistrationInfo::PublishStateUpdates() {
 
     std::unique_ptr<base::DictionaryValue> changes{new base::DictionaryValue};
     for (const auto& pair : state_change.changed_properties) {
-      auto value = pair.second->ToJson(nullptr);
-      if (!value) {
-        return;
-      }
+      auto value = pair.second->ToJson();
+      CHECK(value);
       // The key in |pair.first| is the full property name in format
       // "package.property_name", so must use DictionaryValue::Set() instead of
       // DictionaryValue::SetWithoutPathExpansion to recreate the JSON

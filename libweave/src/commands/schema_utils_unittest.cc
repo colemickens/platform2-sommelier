@@ -25,29 +25,29 @@ using unittests::CreateValue;
 using chromeos::VariantDictionary;
 
 TEST(CommandSchemaUtils, TypedValueToJson_Scalar) {
-  EXPECT_JSON_EQ("true", *TypedValueToJson(true, nullptr));
-  EXPECT_JSON_EQ("false", *TypedValueToJson(false, nullptr));
+  EXPECT_JSON_EQ("true", *TypedValueToJson(true));
+  EXPECT_JSON_EQ("false", *TypedValueToJson(false));
 
-  EXPECT_JSON_EQ("0", *TypedValueToJson(0, nullptr));
-  EXPECT_JSON_EQ("-10", *TypedValueToJson(-10, nullptr));
-  EXPECT_JSON_EQ("20", *TypedValueToJson(20, nullptr));
+  EXPECT_JSON_EQ("0", *TypedValueToJson(0));
+  EXPECT_JSON_EQ("-10", *TypedValueToJson(-10));
+  EXPECT_JSON_EQ("20", *TypedValueToJson(20));
 
-  EXPECT_JSON_EQ("0.0", *TypedValueToJson(0.0, nullptr));
-  EXPECT_JSON_EQ("1.2", *TypedValueToJson(1.2, nullptr));
+  EXPECT_JSON_EQ("0.0", *TypedValueToJson(0.0));
+  EXPECT_JSON_EQ("1.2", *TypedValueToJson(1.2));
 
-  EXPECT_JSON_EQ("'abc'", *TypedValueToJson(std::string("abc"), nullptr));
+  EXPECT_JSON_EQ("'abc'", *TypedValueToJson(std::string("abc")));
 
   std::vector<bool> bool_array{true, false};
-  EXPECT_JSON_EQ("[true,false]", *TypedValueToJson(bool_array, nullptr));
+  EXPECT_JSON_EQ("[true,false]", *TypedValueToJson(bool_array));
 
   std::vector<int> int_array{1, 2, 5};
-  EXPECT_JSON_EQ("[1,2,5]", *TypedValueToJson(int_array, nullptr));
+  EXPECT_JSON_EQ("[1,2,5]", *TypedValueToJson(int_array));
 
   std::vector<double> dbl_array{1.1, 2.2};
-  EXPECT_JSON_EQ("[1.1,2.2]", *TypedValueToJson(dbl_array, nullptr));
+  EXPECT_JSON_EQ("[1.1,2.2]", *TypedValueToJson(dbl_array));
 
   std::vector<std::string> str_array{"a", "bc"};
-  EXPECT_JSON_EQ("['a','bc']", *TypedValueToJson(str_array, nullptr));
+  EXPECT_JSON_EQ("['a','bc']", *TypedValueToJson(str_array));
 }
 
 TEST(CommandSchemaUtils, TypedValueToJson_Object) {
@@ -56,8 +56,7 @@ TEST(CommandSchemaUtils, TypedValueToJson_Object) {
 
   object.insert(std::make_pair("width", int_type.CreateValue(640, nullptr)));
   object.insert(std::make_pair("height", int_type.CreateValue(480, nullptr)));
-  EXPECT_JSON_EQ("{'height':480,'width':640}",
-                 *TypedValueToJson(object, nullptr));
+  EXPECT_JSON_EQ("{'height':480,'width':640}", *TypedValueToJson(object));
 }
 
 TEST(CommandSchemaUtils, TypedValueToJson_Array) {
@@ -66,7 +65,7 @@ TEST(CommandSchemaUtils, TypedValueToJson_Array) {
 
   arr.push_back(int_type.CreateValue(640, nullptr));
   arr.push_back(int_type.CreateValue(480, nullptr));
-  EXPECT_JSON_EQ("[640,480]", *TypedValueToJson(arr, nullptr));
+  EXPECT_JSON_EQ("[640,480]", *TypedValueToJson(arr));
 }
 
 TEST(CommandSchemaUtils, TypedValueFromJson_Bool) {

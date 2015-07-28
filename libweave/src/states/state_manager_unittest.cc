@@ -103,7 +103,7 @@ TEST_F(StateManagerTest, Initialized) {
       'target': ''
     }
   })";
-  EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson(nullptr));
+  EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson());
 }
 
 TEST_F(StateManagerTest, LoadStateDefinition) {
@@ -128,7 +128,7 @@ TEST_F(StateManagerTest, LoadStateDefinition) {
       'target': ''
     }
   })";
-  EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson(nullptr));
+  EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson());
 }
 
 TEST_F(StateManagerTest, SetPropertyValue) {
@@ -149,7 +149,7 @@ TEST_F(StateManagerTest, SetPropertyValue) {
       'target': 'John Connor'
     }
   })";
-  EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson(nullptr));
+  EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson());
 }
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_NoName) {
@@ -224,7 +224,7 @@ TEST_F(StateManagerTest, SetProperties) {
       'target': ''
     }
   })";
-  EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson(nullptr));
+  EXPECT_JSON_EQ(expected, *mgr_->GetStateValuesAsJson());
 }
 
 }  // namespace weave

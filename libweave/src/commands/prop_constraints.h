@@ -55,17 +55,15 @@ class Constraint {
   // Saves the constraint into the specified JSON |dict| object, representing
   // the object schema. If |overridden_only| is set to true, then the
   // inherited constraints will not be added to the schema object.
-  virtual bool AddToJsonDict(base::DictionaryValue* dict,
-                             bool overridden_only,
-                             chromeos::ErrorPtr* error) const;
+  virtual void AddToJsonDict(base::DictionaryValue* dict,
+                             bool overridden_only) const;
 
   // Saves the value of constraint to JSON value. E.g., if the numeric
   // constraint was defined as {"minimum":20} this will create a JSON value
   // of 20. The current design implies that each constraint has one value
   // only. If this assumption changes, this interface needs to be updated
   // accordingly.
-  virtual std::unique_ptr<base::Value> ToJson(
-      chromeos::ErrorPtr* error) const = 0;
+  virtual std::unique_ptr<base::Value> ToJson() const = 0;
 
   // Overloaded by the concrete class implementation, it should return the
   // JSON object property name to store the constraint's value as.
@@ -107,9 +105,8 @@ class ConstraintMinMaxBase : public Constraint {
   bool HasOverriddenAttributes() const override { return !limit_.is_inherited; }
 
   // Implementation of Constraint::ToJson().
-  std::unique_ptr<base::Value> ToJson(
-      chromeos::ErrorPtr* error) const override {
-    return TypedValueToJson(limit_.value, error);
+  std::unique_ptr<base::Value> ToJson() const override {
+    return TypedValueToJson(limit_.value);
   }
 
   // Stores the upper/lower value limit for maximum/minimum constraint.
@@ -213,7 +210,7 @@ class ConstraintStringLength : public Constraint {
   // Implementation of Constraint::HasOverriddenAttributes().
   bool HasOverriddenAttributes() const override;
   // Implementation of Constraint::ToJson().
-  std::unique_ptr<base::Value> ToJson(chromeos::ErrorPtr* error) const override;
+  std::unique_ptr<base::Value> ToJson() const override;
 
   // Stores the upper/lower value limit for string length constraint.
   // |limit_.is_inherited| indicates whether the constraint is inherited
@@ -306,7 +303,7 @@ class ConstraintOneOf : public Constraint {
   std::unique_ptr<Constraint> CloneAsInherited() const override;
 
   // Implementation of Constraint::ToJson().
-  std::unique_ptr<base::Value> ToJson(chromeos::ErrorPtr* error) const override;
+  std::unique_ptr<base::Value> ToJson() const override;
 
   // Implementation of Constraint::GetDictKey().
   const char* GetDictKey() const override;

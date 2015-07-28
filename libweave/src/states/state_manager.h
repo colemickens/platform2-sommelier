@@ -41,8 +41,7 @@ class StateManager final : public State {
   void AddOnChangedCallback(const base::Closure& callback) override;
   bool SetProperties(const chromeos::VariantDictionary& property_set,
                      chromeos::ErrorPtr* error) override;
-  std::unique_ptr<base::DictionaryValue> GetStateValuesAsJson(
-      chromeos::ErrorPtr* error) const override;
+  std::unique_ptr<base::DictionaryValue> GetStateValuesAsJson() const override;
 
   // Initializes the state manager and load device state fragments.
   // Called by Buffet daemon at startup.

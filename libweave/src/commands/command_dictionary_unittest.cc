@@ -92,11 +92,11 @@ TEST(CommandDictionary, LoadWithInheritance) {
   EXPECT_EQ(UserRole::kViewer, cmd->GetMinimalRole());
 
   EXPECT_JSON_EQ("{'height': {'type': 'integer'}}",
-                 *cmd->GetParameters()->ToJson(true, true, nullptr));
+                 *cmd->GetParameters()->ToJson(true, true));
   EXPECT_JSON_EQ("{'progress': {'type': 'integer'}}",
-                 *cmd->GetProgress()->ToJson(true, false, nullptr));
+                 *cmd->GetProgress()->ToJson(true, false));
   EXPECT_JSON_EQ("{'success': {'type': 'boolean'}}",
-                 *cmd->GetResults()->ToJson(true, false, nullptr));
+                 *cmd->GetResults()->ToJson(true, false));
 }
 
 TEST(CommandDictionary, LoadCommands_Failures) {

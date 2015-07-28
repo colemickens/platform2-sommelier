@@ -144,9 +144,8 @@ void Manager::UpdateState(DBusMethodResponsePtr<> response,
 }
 
 bool Manager::GetState(chromeos::ErrorPtr* error, std::string* state) {
-  auto json = device_->GetState()->GetStateValuesAsJson(error);
-  if (!json)
-    return false;
+  auto json = device_->GetState()->GetStateValuesAsJson();
+  CHECK(json);
   base::JSONWriter::WriteWithOptions(
       *json, base::JSONWriter::OPTIONS_PRETTY_PRINT, state);
   return true;
@@ -251,7 +250,7 @@ bool Manager::UpdateServiceConfig(chromeos::ErrorPtr* error,
 }
 
 void Manager::OnStateChanged() {
-  auto state = device_->GetState()->GetStateValuesAsJson(nullptr);
+  auto state = device_->GetState()->GetStateValuesAsJson();
   CHECK(state);
   std::string json;
   base::JSONWriter::WriteWithOptions(

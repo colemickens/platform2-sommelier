@@ -97,15 +97,12 @@ void StateManager::Startup() {
     cb.Run();
 }
 
-std::unique_ptr<base::DictionaryValue> StateManager::GetStateValuesAsJson(
-    chromeos::ErrorPtr* error) const {
+std::unique_ptr<base::DictionaryValue> StateManager::GetStateValuesAsJson()
+    const {
   std::unique_ptr<base::DictionaryValue> dict{new base::DictionaryValue};
   for (const auto& pair : packages_) {
-    auto pkg_value = pair.second->GetValuesAsJson(error);
-    if (!pkg_value) {
-      dict.reset();
-      break;
-    }
+    auto pkg_value = pair.second->GetValuesAsJson();
+    CHECK(pkg_value);
     dict->SetWithoutPathExpansion(pair.first, pkg_value.release());
   }
   return dict;

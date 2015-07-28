@@ -83,15 +83,15 @@ CommandOrigin CommandInstance::GetOrigin() const {
 }
 
 std::unique_ptr<base::DictionaryValue> CommandInstance::GetParameters() const {
-  return TypedValueToJson(parameters_, nullptr);
+  return TypedValueToJson(parameters_);
 }
 
 std::unique_ptr<base::DictionaryValue> CommandInstance::GetProgress() const {
-  return TypedValueToJson(progress_, nullptr);
+  return TypedValueToJson(progress_);
 }
 
 std::unique_ptr<base::DictionaryValue> CommandInstance::GetResults() const {
-  return TypedValueToJson(results_, nullptr);
+  return TypedValueToJson(results_);
 }
 
 bool CommandInstance::SetProgress(const base::DictionaryValue& progress,
@@ -240,11 +240,11 @@ std::unique_ptr<base::DictionaryValue> CommandInstance::ToJson() const {
   json->SetString(commands::attributes::kCommand_Id, id_);
   json->SetString(commands::attributes::kCommand_Name, name_);
   json->Set(commands::attributes::kCommand_Parameters,
-            TypedValueToJson(parameters_, nullptr).release());
+            TypedValueToJson(parameters_).release());
   json->Set(commands::attributes::kCommand_Progress,
-            TypedValueToJson(progress_, nullptr).release());
+            TypedValueToJson(progress_).release());
   json->Set(commands::attributes::kCommand_Results,
-            TypedValueToJson(results_, nullptr).release());
+            TypedValueToJson(results_).release());
   json->SetString(commands::attributes::kCommand_State, EnumToString(status_));
 
   return json;

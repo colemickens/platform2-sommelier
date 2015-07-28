@@ -299,16 +299,15 @@ bool ObjectSchema::MarkPropRequired(const std::string& name,
   p->second->MakeRequired(true);
   return true;
 }
+
 std::unique_ptr<base::DictionaryValue> ObjectSchema::ToJson(
     bool full_schema,
-    bool in_command_def,
-    chromeos::ErrorPtr* error) const {
+    bool in_command_def) const {
   std::unique_ptr<base::DictionaryValue> value(new base::DictionaryValue);
   for (const auto& pair : properties_) {
-    auto PropDef = pair.second->ToJson(full_schema, in_command_def, error);
-    if (!PropDef)
-      return {};
-    value->SetWithoutPathExpansion(pair.first, PropDef.release());
+    auto prop_def = pair.second->ToJson(full_schema, in_command_def);
+    CHECK(prop_def);
+    value->SetWithoutPathExpansion(pair.first, prop_def.release());
   }
   return value;
 }

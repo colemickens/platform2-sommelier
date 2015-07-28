@@ -121,8 +121,7 @@ class PropType {
   // Command definitions handle required parameters differently (using
   // "isRequired" property as opposed to "required" list for object properties).
   virtual std::unique_ptr<base::Value> ToJson(bool full_schema,
-                                              bool in_command_def,
-                                              chromeos::ErrorPtr* error) const;
+                                              bool in_command_def) const;
   // Parses an JSON parameter type definition. Optional |base_schema| may
   // specify the base schema type definition this type should be based upon.
   // If not specified (nullptr), the parameter type is assumed to be a full
@@ -363,8 +362,7 @@ class ObjectPropType
   std::unique_ptr<PropType> Clone() const override;
 
   std::unique_ptr<base::Value> ToJson(bool full_schema,
-                                      bool in_command_def,
-                                      chromeos::ErrorPtr* error) const override;
+                                      bool in_command_def) const override;
   bool ObjectSchemaFromJson(const base::DictionaryValue* value,
                             const PropType* base_schema,
                             std::set<std::string>* processed_keys,
@@ -403,8 +401,7 @@ class ArrayPropType
   std::unique_ptr<PropType> Clone() const override;
 
   std::unique_ptr<base::Value> ToJson(bool full_schema,
-                                      bool in_command_def,
-                                      chromeos::ErrorPtr* error) const override;
+                                      bool in_command_def) const override;
 
   bool ObjectSchemaFromJson(const base::DictionaryValue* value,
                             const PropType* base_schema,

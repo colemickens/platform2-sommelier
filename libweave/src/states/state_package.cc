@@ -66,15 +66,11 @@ bool StatePackage::AddValuesFromJson(const base::DictionaryValue* json,
   return true;
 }
 
-std::unique_ptr<base::DictionaryValue> StatePackage::GetValuesAsJson(
-    chromeos::ErrorPtr* error) const {
+std::unique_ptr<base::DictionaryValue> StatePackage::GetValuesAsJson() const {
   std::unique_ptr<base::DictionaryValue> dict(new base::DictionaryValue);
   for (const auto& pair : values_) {
-    auto value = pair.second->ToJson(error);
-    if (!value) {
-      dict.reset();
-      break;
-    }
+    auto value = pair.second->ToJson();
+    CHECK(value);
     dict->SetWithoutPathExpansion(pair.first, value.release());
   }
   return dict;

@@ -266,7 +266,7 @@ class CloudDelegateImpl : public CloudDelegate {
 
   void OnStateChanged() {
     state_.Clear();
-    auto state = state_manager_->GetStateValuesAsJson(nullptr);
+    auto state = state_manager_->GetStateValuesAsJson();
     CHECK(state);
     state_.MergeDictionary(state.get());
     NotifyOnStateChanged();

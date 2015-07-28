@@ -52,8 +52,7 @@ class StatePackage final {
   //      "message": "Printer low on cyan ink"
   //    }
   //  }
-  std::unique_ptr<base::DictionaryValue> GetValuesAsJson(
-      chromeos::ErrorPtr* error) const;
+  std::unique_ptr<base::DictionaryValue> GetValuesAsJson() const;
 
   // Gets the value for a specific state property. |property_name| must not
   // include the package name as part of the property name.
