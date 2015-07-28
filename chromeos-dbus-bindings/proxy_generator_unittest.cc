@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "chromeos-dbus-bindings/interface.h"
+#include "chromeos-dbus-bindings/test_utils.h"
 
 using std::string;
 using std::vector;
@@ -1306,9 +1307,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptors) {
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for
   // the content we need within the string.
-  EXPECT_NE(string::npos, contents.find(kExpectedContent))
-      << "Expected to find the following content...\n"
-      << kExpectedContent << "...within content...\n" << contents;
+  test_utils::EXPECT_TEXT_CONTAINED(kExpectedContent, contents);
 }
 
 TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithServiceName) {
@@ -1327,9 +1326,7 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithServiceName) {
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for
   // the content we need within the string.
-  EXPECT_NE(string::npos, contents.find(kExpectedContentWithService))
-      << "Expected to find the following content...\n"
-      << kExpectedContentWithService << "...within content...\n" << contents;
+  test_utils::EXPECT_TEXT_CONTAINED(kExpectedContentWithService, contents);
 }
 
 TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithObjectManager) {
@@ -1350,10 +1347,8 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithObjectManager) {
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for
   // the content we need within the string.
-  EXPECT_NE(string::npos, contents.find(kExpectedContentWithObjectManager))
-      << "Expected to find the following content...\n"
-      << kExpectedContentWithObjectManager << "...within content...\n"
-      << contents;
+  test_utils::EXPECT_TEXT_CONTAINED(
+      kExpectedContentWithObjectManager, contents);
 }
 
 TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithObjectManagerAndServiceName) {
@@ -1374,11 +1369,8 @@ TEST_F(ProxyGeneratorTest, GenerateAdaptorsWithObjectManagerAndServiceName) {
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for
   // the content we need within the string.
-  EXPECT_NE(string::npos,
-            contents.find(kExpectedContentWithObjectManagerAndServiceName))
-      << "Expected to find the following content...\n"
-      << kExpectedContentWithObjectManagerAndServiceName
-      << "...within content...\n" << contents;
+  test_utils::EXPECT_TEXT_CONTAINED(
+      kExpectedContentWithObjectManagerAndServiceName, contents);
 }
 
 }  // namespace chromeos_dbus_bindings

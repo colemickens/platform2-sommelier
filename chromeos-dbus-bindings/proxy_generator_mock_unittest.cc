@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "chromeos-dbus-bindings/interface.h"
+#include "chromeos-dbus-bindings/test_utils.h"
 
 using std::string;
 using std::vector;
@@ -183,9 +184,7 @@ TEST_F(ProxyGeneratorMockTest, GenerateMocks) {
   EXPECT_TRUE(base::ReadFileToString(output_path, &contents));
   // The header guards contain the (temporary) filename, so we search for
   // the content we need within the string.
-  EXPECT_NE(string::npos, contents.find(kExpectedContent))
-      << "Expected to find the following content...\n"
-      << kExpectedContent << "...within content...\n" << contents;
+  test_utils::EXPECT_TEXT_CONTAINED(kExpectedContent, contents);
 }
 
 }  // namespace chromeos_dbus_bindings
