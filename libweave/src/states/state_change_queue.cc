@@ -16,17 +16,12 @@ StateChangeQueue::StateChangeQueue(size_t max_queue_size)
 bool StateChangeQueue::NotifyPropertiesUpdated(base::Time timestamp,
                                                ValueMap changed_properties) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  auto it = state_changes_.lower_bound(timestamp);
-  if (it == state_changes_.end() || it->first != timestamp) {
-    // This timestamp doesn't exist. Insert a new element.
-    state_changes_.emplace_hint(it, timestamp, std::move(changed_properties));
-  } else {
-    // Merge the old property set and the new one.
-    // For properties that exist in both old and new property sets, keep the
-    // new values.
-    changed_properties.insert(it->second.begin(), it->second.end());
-    it->second = std::move(changed_properties);
-  }
+
+  auto& stored_changes = state_changes_[timestamp];
+  // Merge the old property set.
+  changed_properties.insert(stored_changes.begin(), stored_changes.end());
+  stored_changes = std::move(changed_properties);
+
   while (state_changes_.size() > max_queue_size_) {
     // Queue is full.
     // Merge the two oldest records into one. The merge strategy is:
