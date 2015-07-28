@@ -131,8 +131,8 @@ class ProxyGeneratorMockTest : public Test {
   base::FilePath CreateInputFile(const string& contents) {
     base::FilePath path;
     EXPECT_TRUE(base::CreateTemporaryFileInDir(temp_dir_.path(), &path));
-    EXPECT_EQ(contents.size(),
-              base::WriteFile(path, contents.c_str(), contents.size()));
+    int written = base::WriteFile(path, contents.c_str(), contents.size());
+    EXPECT_EQ(contents.size(), static_cast<size_t>(written));
     return path;
   }
 

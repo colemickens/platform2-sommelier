@@ -75,34 +75,34 @@ TEST_F(XmlInterfaceParserTest, GoodInputFile) {
   EXPECT_TRUE(parser_.ParseXmlInterfaceFile(kGoodInterfaceFileContents,
                                             {"DummyInterface"}));
   const vector<Interface>& interfaces = parser_.interfaces();
-  ASSERT_EQ(1, interfaces.size());
+  ASSERT_EQ(1u, interfaces.size());
   const Interface& interface = interfaces.back();
 
   EXPECT_EQ(kInterfaceName, interface.name);
   EXPECT_EQ("/org/chromium/Test", interface.path);
-  ASSERT_EQ(2, interface.methods.size());
-  ASSERT_EQ(1, interface.signals.size());
+  ASSERT_EQ(2u, interface.methods.size());
+  ASSERT_EQ(1u, interface.signals.size());
 
   // <method name="Scan">
   EXPECT_EQ(kScanMethod, interface.methods[0].name);
   EXPECT_EQ(Interface::Method::Kind::kAsync, interface.methods[0].kind);
   EXPECT_FALSE(interface.methods[0].is_const);
   EXPECT_TRUE(interface.methods[0].include_dbus_message);
-  ASSERT_EQ(1, interface.methods[0].input_arguments.size());
+  ASSERT_EQ(1u, interface.methods[0].input_arguments.size());
 
   // <arg name="args" type="a{sv}" direction="in"/>
   EXPECT_EQ(kArgsArgument, interface.methods[0].input_arguments[0].name);
   EXPECT_EQ(kArrayStringVariantType,
             interface.methods[0].input_arguments[0].type);
-  EXPECT_EQ(0, interface.methods[0].output_arguments.size());
+  EXPECT_EQ(0u, interface.methods[0].output_arguments.size());
 
   // <method name="GetBlob">
   EXPECT_EQ(kGetBlobMethod, interface.methods[1].name);
   EXPECT_EQ(Interface::Method::Kind::kNormal, interface.methods[1].kind);
   EXPECT_TRUE(interface.methods[1].is_const);
   EXPECT_FALSE(interface.methods[1].include_dbus_message);
-  EXPECT_EQ(1, interface.methods[1].input_arguments.size());
-  EXPECT_EQ(1, interface.methods[1].output_arguments.size());
+  EXPECT_EQ(1u, interface.methods[1].input_arguments.size());
+  EXPECT_EQ(1u, interface.methods[1].output_arguments.size());
 
   // <arg name="name" type="s"/>  (direction="in" is implicit)
   EXPECT_EQ(kNameArgument, interface.methods[1].input_arguments[0].name);
@@ -114,7 +114,7 @@ TEST_F(XmlInterfaceParserTest, GoodInputFile) {
 
   // <signal name="BSSRemoved">
   EXPECT_EQ(kBssRemovedSignal, interface.signals[0].name);
-  EXPECT_EQ(1, interface.signals[0].arguments.size());
+  EXPECT_EQ(1u, interface.signals[0].arguments.size());
 
   // <arg name="BSS" type="o"/>
   EXPECT_EQ(kBssArgument, interface.signals[0].arguments[0].name);
