@@ -381,4 +381,12 @@ void KeyValueStore::ConvertFromVariantDictionary(
   }
 }
 
+// static.
+void KeyValueStore::ConvertPathsToRpcIdentifiers(
+  const vector<dbus::ObjectPath>& paths, vector<string>* rpc_identifiers) {
+  for (const auto& path : paths) {
+    rpc_identifiers->push_back(path.value());
+  }
+}
+
 }  // namespace shill

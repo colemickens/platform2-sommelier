@@ -127,6 +127,10 @@ class KeyValueStore {
   static void ConvertFromVariantDictionary(
       const chromeos::VariantDictionary& in_dict, KeyValueStore* out_store);
 
+  static void ConvertPathsToRpcIdentifiers(
+      const std::vector<dbus::ObjectPath>& paths,
+      std::vector<std::string>* rpc_identifiers);
+
  private:
   chromeos::VariantDictionary properties_;
 };

@@ -692,4 +692,18 @@ TEST_F(KeyValueStoreTest, ConvertFromVariantDictionary) {
   EXPECT_EQ(nested_store, store.GetKeyValueStore(kKeyValueStoreKey));
 }
 
+TEST_F(KeyValueStoreTest, ConvertPathsToRpcIdentifiers) {
+  const string kRpcIdentifier1("/test1");
+  const string kRpcIdentifier2("/test2");
+  vector<dbus::ObjectPath> paths;
+  paths.push_back(dbus::ObjectPath(kRpcIdentifier1));
+  paths.push_back(dbus::ObjectPath(kRpcIdentifier2));
+  vector<string> actual_rpc_identifiers;
+  KeyValueStore::ConvertPathsToRpcIdentifiers(paths, &actual_rpc_identifiers);
+  vector<string> expected_rpc_identifiers;
+  expected_rpc_identifiers.push_back(kRpcIdentifier1);
+  expected_rpc_identifiers.push_back(kRpcIdentifier2);
+  EXPECT_EQ(expected_rpc_identifiers, actual_rpc_identifiers);
+}
+
 }  // namespace shill
