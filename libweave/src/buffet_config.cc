@@ -85,6 +85,7 @@ const char kRefreshToken[] = "refresh_token";
 const char kDeviceId[] = "device_id";
 const char kRobotAccount[] = "robot_account";
 const char kWifiAutoSetupEnabled[] = "wifi_auto_setup_enabled";
+const char kBleSetupEnabled[] = "ble_setup_enabled";
 const char kEmbeddedCodePath[] = "embedded_code_path";
 const char kPairingModes[] = "pairing_modes";
 const char kLastConfiguredSsid[] = "last_configured_ssid";
@@ -109,6 +110,7 @@ Settings BuffetConfig::CreateDefaultSettings() {
   result.polling_period = base::TimeDelta::FromSeconds(7);
   result.backup_polling_period = base::TimeDelta::FromMinutes(30);
   result.wifi_auto_setup_enabled = true;
+  result.ble_setup_enabled = false;
   result.pairing_modes.emplace(PairingType::kPinCode);
   return result;
 }
@@ -179,6 +181,9 @@ void BuffetConfig::Load(const chromeos::KeyValueStore& store) {
 
   store.GetBoolean(config_keys::kWifiAutoSetupEnabled,
                    &settings_.wifi_auto_setup_enabled);
+
+  store.GetBoolean(config_keys::kBleSetupEnabled,
+                   &settings_.ble_setup_enabled);
 
   std::string embedded_code_path;
   if (store.GetString(config_keys::kEmbeddedCodePath, &embedded_code_path)) {

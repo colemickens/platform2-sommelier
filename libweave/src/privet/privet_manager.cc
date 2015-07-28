@@ -83,6 +83,7 @@ void Manager::Start(const Device::Options& options,
     VLOG(1) << "Enabling WiFi bootstrapping.";
     wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
         device->GetConfig().last_configured_ssid(), options.test_privet_ssid,
+        device->GetConfig().ble_setup_enabled(),
         shill_client, ap_manager_client_.get(), cloud_.get()));
     wifi_bootstrap_manager_->Init();
   }

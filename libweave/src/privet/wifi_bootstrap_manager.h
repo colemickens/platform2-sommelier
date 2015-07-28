@@ -37,6 +37,7 @@ class WifiBootstrapManager : public WifiDelegate,
 
   WifiBootstrapManager(const std::string& last_configured_ssid,
                        const std::string& test_privet_ssid,
+                       bool wifi_setup_enabled,
                        ShillClient* shill_client,
                        ApManagerClient* ap_manager_client,
                        CloudDelegate* gcd);
@@ -105,6 +106,7 @@ class WifiBootstrapManager : public WifiDelegate,
   bool currently_online_{false};
   std::string last_configured_ssid_;
   std::string test_privet_ssid_;
+  bool ble_setup_enabled_{false};
 
   ScopedObserver<CloudDelegate, CloudDelegate::Observer> cloud_observer_{this};
 

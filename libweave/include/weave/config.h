@@ -35,6 +35,7 @@ struct Settings {
   base::TimeDelta backup_polling_period;
 
   bool wifi_auto_setup_enabled{true};
+  bool ble_setup_enabled{false};
   std::set<PairingType> pairing_modes;
   base::FilePath embedded_code_path;
 

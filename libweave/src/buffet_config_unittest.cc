@@ -58,6 +58,7 @@ TEST_F(BuffetConfigTest, Defaults) {
   EXPECT_EQ(base::TimeDelta::FromSeconds(7), config_->polling_period());
   EXPECT_EQ(base::TimeDelta::FromMinutes(30), config_->backup_polling_period());
   EXPECT_TRUE(config_->wifi_auto_setup_enabled());
+  EXPECT_FALSE(config_->ble_setup_enabled());
   EXPECT_EQ(std::set<PairingType>{PairingType::kPinCode},
             config_->pairing_modes());
   EXPECT_EQ("", config_->embedded_code_path().value());
@@ -86,6 +87,7 @@ TEST_F(BuffetConfigTest, LoadConfig) {
   config_store.SetString("polling_period_ms", "12345");
   config_store.SetString("backup_polling_period_ms", "6589");
   config_store.SetBoolean("wifi_auto_setup_enabled", false);
+  config_store.SetBoolean("ble_setup_enabled", true);
   config_store.SetString("pairing_modes",
                          "pinCode,embeddedCode,ultrasound32,audible32");
   config_store.SetString("embedded_code_path", "/conf_code");
@@ -120,6 +122,7 @@ TEST_F(BuffetConfigTest, LoadConfig) {
   EXPECT_EQ(base::TimeDelta::FromMilliseconds(6589),
             config_->backup_polling_period());
   EXPECT_FALSE(config_->wifi_auto_setup_enabled());
+  EXPECT_TRUE(config_->ble_setup_enabled());
   std::set<PairingType> pairing_types{
       PairingType::kPinCode, PairingType::kEmbeddedCode,
       PairingType::kUltrasound32, PairingType::kAudible32};
@@ -205,6 +208,8 @@ TEST_F(BuffetConfigTest, LoadState) {
   EXPECT_EQ(default_.backup_polling_period(), config_->backup_polling_period());
   EXPECT_EQ(default_.wifi_auto_setup_enabled(),
             config_->wifi_auto_setup_enabled());
+  EXPECT_EQ(default_.ble_setup_enabled(),
+            config_->ble_setup_enabled());
   EXPECT_EQ(default_.pairing_modes(), config_->pairing_modes());
   EXPECT_EQ(default_.embedded_code_path(), config_->embedded_code_path());
   EXPECT_EQ("state_name", config_->name());

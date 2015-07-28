@@ -112,6 +112,9 @@ class BuffetConfig final : public Config {
   bool wifi_auto_setup_enabled() const {
     return settings_.wifi_auto_setup_enabled;
   }
+  bool ble_setup_enabled() const {
+    return settings_.ble_setup_enabled;
+  }
   const std::set<PairingType>& pairing_modes() const {
     return settings_.pairing_modes;
   }

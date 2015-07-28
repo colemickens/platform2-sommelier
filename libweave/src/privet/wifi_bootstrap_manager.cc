@@ -26,6 +26,7 @@ const int kMonitorTimeoutSeconds = 120;
 WifiBootstrapManager::WifiBootstrapManager(
     const std::string& last_configured_ssid,
     const std::string& test_privet_ssid,
+    bool ble_setup_enabled,
     ShillClient* shill_client,
     ApManagerClient* ap_manager_client,
     CloudDelegate* gcd)
@@ -33,7 +34,8 @@ WifiBootstrapManager::WifiBootstrapManager(
       ap_manager_client_{ap_manager_client},
       ssid_generator_{gcd, this},
       last_configured_ssid_{last_configured_ssid},
-      test_privet_ssid_{test_privet_ssid} {
+      test_privet_ssid_{test_privet_ssid},
+      ble_setup_enabled_{ble_setup_enabled} {
   cloud_observer_.Add(gcd);
 }
 
@@ -86,9 +88,11 @@ void WifiBootstrapManager::StartBootstrapping() {
   std::string ssid = GenerateSsid();
   CHECK(!ssid.empty());
   ap_manager_client_->Start(ssid);
+  LOG_IF(INFO, ble_setup_enabled_) << "BLE Bootstrap start: not implemented.";
 }
 
 void WifiBootstrapManager::EndBootstrapping() {
+  LOG_IF(INFO, ble_setup_enabled_) << "BLE Bootstrap stop: not implemented.";
   ap_manager_client_->Stop();
 }
 
