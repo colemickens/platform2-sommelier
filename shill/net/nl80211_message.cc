@@ -24,9 +24,6 @@
 
 #include "shill/net/nl80211_message.h"
 
-#include <netlink/msg.h>
-#include <netlink/netlink.h>
-
 #include <iomanip>
 #include <limits>
 #include <map>
@@ -93,7 +90,7 @@ bool Nl80211Message::InitFromPacket(NetlinkPacket* packet,
   return packet->ConsumeAttributes(
       Bind(&NetlinkAttribute::NewNl80211AttributeFromId, context), attributes_);
 
-  // Convert integer values provided by libnl (for example, from the
+  // Convert integer values provided by the kernel (for example, from the
   // NL80211_ATTR_STATUS_CODE or NL80211_ATTR_REASON_CODE attribute) into
   // strings describing the status.
   if (!reason_code_string_) {

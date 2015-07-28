@@ -4,7 +4,7 @@
 
 #include "shill/net/netlink_attribute.h"
 
-#include <netlink/attr.h>
+#include <linux/genetlink.h>
 
 #include <cctype>
 #include <map>
@@ -28,13 +28,6 @@ using base::StringAppendF;
 using base::StringPrintf;
 
 namespace shill {
-
-// This is a type-corrected copy of |nla_for_each_nested| from libnl.
-#define nla_for_each_nested_type_corrected(pos, nla, rem) \
-  for (pos = reinterpret_cast<struct nlattr*>(nla_data(nla)), \
-       rem = nla_len(nla); \
-    nla_ok(pos, rem); \
-    pos = nla_next(pos, &(rem)))
 
 NetlinkAttribute::NetlinkAttribute(int id,
                                    const char* id_string,
@@ -414,14 +407,14 @@ ByteString NetlinkAttribute::EncodeGeneric(const unsigned char* data,
   if (has_a_value_) {
     nlattr header;
     header.nla_type = id();
-    header.nla_len = nla_attr_size(num_bytes);
+    header.nla_len = NLA_HDRLEN + num_bytes;
     result = ByteString(reinterpret_cast<unsigned char*>(&header),
                         sizeof(header));
     result.Resize(NLA_HDRLEN);  // Add padding after the header.
     if (data && (num_bytes != 0)) {
       result.Append(ByteString(data, num_bytes));
     }
-    result.Resize(nla_total_size(num_bytes));  // Add padding.
+    result.Resize(NLA_ALIGN(result.GetLength()));  // Add padding.
   }
   return result;
 }
@@ -788,7 +781,7 @@ ByteString NetlinkNestedAttribute::Encode() const {
   // Encode attribute header.
   nlattr header;
   header.nla_type = id();
-  header.nla_len = nla_attr_size(sizeof(header));
+  header.nla_len = 0;  // Filled in at the end.
   ByteString result(reinterpret_cast<unsigned char*>(&header), sizeof(header));
   result.Resize(NLA_HDRLEN);  // Add padding after the header.
 
@@ -927,29 +920,29 @@ bool NetlinkNestedAttribute::AddAttributeToNestedInner(
     return true;
   }
   switch (nested_template.type) {
-    case NLA_UNSPEC:
+    case kTypeRaw:
       list->CreateRawAttribute(id, attribute_name.c_str());
       return list->SetRawAttributeValue(id, value);
-    case NLA_U8:
+    case kTypeU8:
       list->CreateU8Attribute(id, attribute_name.c_str());
       return list->InitAttributeFromValue(id, value);
-    case NLA_U16:
+    case kTypeU16:
       list->CreateU16Attribute(id, attribute_name.c_str());
       return list->InitAttributeFromValue(id, value);
-    case NLA_U32:
+    case kTypeU32:
       list->CreateU32Attribute(id, attribute_name.c_str());
       return list->InitAttributeFromValue(id, value);
       break;
-    case NLA_U64:
+    case kTypeU64:
       list->CreateU64Attribute(id, attribute_name.c_str());
       return list->InitAttributeFromValue(id, value);
-    case NLA_FLAG:
+    case kTypeFlag:
       list->CreateFlagAttribute(id, attribute_name.c_str());
       return list->SetFlagAttributeValue(id, true);
-    case NLA_STRING:
+    case kTypeString:
       list->CreateStringAttribute(id, attribute_name.c_str());
       return list->InitAttributeFromValue(id, value);
-    case NLA_NESTED:
+    case kTypeNested:
       {
         if (nested_template.deeper_nesting.empty()) {
           LOG(ERROR) << "No rules for nesting " << attribute_name
@@ -986,15 +979,16 @@ bool NetlinkNestedAttribute::AddAttributeToNestedInner(
 }
 
 NetlinkNestedAttribute::NestedData::NestedData()
-    : type(NLA_UNSPEC), attribute_name("<UNKNOWN>"), is_array(false) {}
+    : type(kTypeRaw), attribute_name("<UNKNOWN>"), is_array(false) {}
 NetlinkNestedAttribute::NestedData::NestedData(
-    uint16_t type_arg, string attribute_name_arg, bool is_array_arg)
+    NetlinkAttribute::Type type_arg, string attribute_name_arg,
+    bool is_array_arg)
     : type(type_arg), attribute_name(attribute_name_arg),
       is_array(is_array_arg) {}
 
 NetlinkNestedAttribute::NestedData::NestedData(
-    uint16_t type_arg, string attribute_name_arg, bool is_array_arg,
-    const AttributeParser& parse_attribute_arg)
+    NetlinkAttribute::Type type_arg, string attribute_name_arg,
+    bool is_array_arg, const AttributeParser& parse_attribute_arg)
     : type(type_arg), attribute_name(attribute_name_arg),
       is_array(is_array_arg), parse_attribute(parse_attribute_arg) {}
 

@@ -44,7 +44,7 @@ class SHILL_EXPORT Nl80211Message : public GenericNetlinkMessage {
   void set_sequence_number(uint32_t seq) { sequence_number_ = seq; }
 
   // Returns a string representing the passed-in |status| or |reason|, the
-  // value of which has been acquired from libnl (for example, from the
+  // value of which has been acquired from the kernel (for example, from the
   // NL80211_ATTR_STATUS_CODE or NL80211_ATTR_REASON_CODE attribute).
   static std::string StringFromReason(uint16_t reason);
   static std::string StringFromStatus(uint16_t status);

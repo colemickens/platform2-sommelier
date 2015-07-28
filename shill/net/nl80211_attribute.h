@@ -5,8 +5,6 @@
 #ifndef SHILL_NET_NL80211_ATTRIBUTE_H_
 #define SHILL_NET_NL80211_ATTRIBUTE_H_
 
-#include <netlink/attr.h>
-
 #include <string>
 
 #include <base/macros.h>

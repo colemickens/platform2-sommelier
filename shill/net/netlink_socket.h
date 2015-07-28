@@ -42,8 +42,7 @@ class ByteString;
 // Provides an abstraction to a netlink socket.  See
 // http://www.infradead.org/~tgr/libnl/doc/core.html#core_netlink_fundamentals
 // for documentation on how netlink sockets work (note that most of the rest of
-// this document discusses libnl -- something not used by this code for
-// netlink communication).
+// this document discusses libnl -- something not used by this code).
 class SHILL_EXPORT NetlinkSocket {
  public:
   static const int kReceiveBufferSize;

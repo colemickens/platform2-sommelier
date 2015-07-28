@@ -11,7 +11,6 @@
 #include "shill/net/netlink_manager.h"
 
 #include <errno.h>
-#include <netlink/netlink.h>
 
 #include <map>
 #include <string>

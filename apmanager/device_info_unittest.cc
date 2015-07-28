@@ -5,6 +5,7 @@
 #include "apmanager/device_info.h"
 
 #include <linux/netlink.h>
+#include <linux/rtnetlink.h>
 
 #include <map>
 #include <string>

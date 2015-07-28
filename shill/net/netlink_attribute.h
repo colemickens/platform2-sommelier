@@ -5,8 +5,6 @@
 #ifndef SHILL_NET_NETLINK_ATTRIBUTE_H_
 #define SHILL_NET_NETLINK_ATTRIBUTE_H_
 
-#include <netlink/attr.h>
-
 #include <map>
 #include <string>
 #include <utility>
@@ -285,10 +283,10 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
     typedef std::map<size_t, NestedData> NestedDataMap;
 
     NestedData();
-    NestedData(uint16_t type, std::string attribute_name, bool is_array);
-    NestedData(uint16_t type, std::string attribute_name, bool is_array,
+    NestedData(Type type, std::string attribute_name, bool is_array);
+    NestedData(Type type, std::string attribute_name, bool is_array,
                const AttributeParser& parse_attribute);
-    uint16_t type;
+    Type type;
     std::string attribute_name;
     NestedDataMap deeper_nesting;
     bool is_array;

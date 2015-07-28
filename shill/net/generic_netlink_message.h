@@ -50,9 +50,8 @@ class NetlinkPacket;
 // -----+-----+-+------+-+-----------+-+---------+-+--------+-----+-+--
 //                       |              ^        | |
 //                       |<-NLA_HDRLEN->|        | |
-//                       |              +---nla_data()
-//                       |<----nla_attr_size---->| |
-//                       |<-----nla_total_size---->|
+//                       |<-----hdr.nla_len----->| |
+//                       |<NLA_ALIGN(hdr.nla_len)->|
 
 class SHILL_EXPORT GenericNetlinkMessage : public NetlinkMessage {
  public:

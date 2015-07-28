@@ -185,13 +185,6 @@
     {
       'target_name': 'libshill-net-<(libbase_ver)',
       'type': 'shared_library',
-      'variables': {
-        'exported_deps': [
-          'libnl-3.0',
-          'libnl-genl-3.0',
-        ],
-        'deps': ['<@(exported_deps)'],
-      },
       'sources': [
         'net/attribute_list.cc',
         'net/byte_string.cc',
@@ -253,8 +246,6 @@
             'gio-2.0',
             'glib-2.0',
             'libcares',
-            'libnl-3.0',
-            'libnl-genl-3.0',
             # system_api depends on protobuf (or protobuf-lite). It must appear
             # before protobuf here or the linker flags won't be in the right
             # order.

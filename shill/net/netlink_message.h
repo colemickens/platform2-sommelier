@@ -29,25 +29,23 @@ namespace shill {
 // is common between the different types of netlink message.
 //
 // The common portions of Netlink Messages start with a |nlmsghdr|.  Those
-// messages look something like the following (the functions, macros, and
-// datatypes described are provided by libnl -- see also
-// http://www.infradead.org/~tgr/libnl/doc/core.html):
+// messages look something like the following:
 //
-//         |<--------------nlmsg_total_size()----------->|
-//         |       |<------nlmsg_datalen()-------------->|
-//         |       |                                     |
-//    -----+-----+-+-----------------------------------+-+----
-//     ... |     | |            netlink payload        | |
-//         |     | +------------+-+--------------------+ |
-//         | nl  | |            | |                    | | nl
-//         | msg |p| (optional) |p|                    |p| msg ...
-//         | hdr |a| family     |a|   family payload   |a| hdr
-//         |     |d| header     |d|                    |d|
-//         |     | |            | |                    | |
-//    -----+-----+-+------------+-+--------------------+-+----
+//         |<--------------NetlinkPacket::GetLength()------------->|
+//         |       |<--NetlinkPacket::GetPayload().GetLength() --->|
+//         |       |                                               |
+//    -----+-----+-+---------------------------------------------+-+----
+//     ... |     | |                 netlink payload             | |
+//         |     | +------------+-+------------------------------+ |
+//         | nl  | |            | |                              | | nl
+//         | msg |p| (optional) |p|                              |p| msg ...
+//         | hdr |a| family     |a|        family payload        |a| hdr
+//         |     |d| header     |d|                              |d|
+//         |     | |            | |                              | |
+//    -----+-----+-+------------+-+------------------------------+-+----
 //                  ^
 //                  |
-//                  +-- nlmsg_data()
+//                  +-- nlmsg payload (NetlinkPacket::GetPayload())
 //
 // All NetlinkMessages sent to the kernel need a valid message type (which is
 // found in the nlmsghdr structure) and all NetlinkMessages received from the

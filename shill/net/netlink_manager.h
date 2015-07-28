@@ -6,7 +6,7 @@
 // interface.  In its current implementation it is used, primarily, to
 // communicate with the cfg80211 kernel module and mac80211 drivers:
 //
-//         [shill]--[nl80211 library, libnl_genl/libnl libraries]
+//         [shill]--[nl80211 library]
 //            |
 //     (netlink socket)
 //            |
@@ -405,7 +405,7 @@ class SHILL_EXPORT NetlinkManager {
   uint16_t PendingDumpSequenceNumber();
 
   // NetlinkManager Handlers, OnRawNlMessageReceived invokes each of these
-  // User-supplied callback object when _it_ gets called to read libnl data.
+  // User-supplied callback object when _it_ gets called to read netlink data.
   std::list<NetlinkMessageHandler> broadcast_handlers_;
 
   // Message-specific callbacks, mapped by message ID.

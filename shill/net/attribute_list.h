@@ -6,7 +6,6 @@
 #define SHILL_NET_ATTRIBUTE_LIST_H_
 
 #include <linux/nl80211.h>
-#include <netlink/netlink.h>
 
 #include <map>
 #include <memory>

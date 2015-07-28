@@ -4,7 +4,7 @@
 
 #include "shill/net/control_netlink_attribute.h"
 
-#include <netlink/attr.h>
+#include <linux/genetlink.h>
 
 #include <utility>
 
@@ -32,13 +32,13 @@ const char ControlAttributeAttrOps::kNameString[] = "CTRL_ATTR_OPS";
 
 ControlAttributeAttrOps::ControlAttributeAttrOps()
     : NetlinkNestedAttribute(kName, kNameString) {
-  NestedData array(NLA_NESTED, "FIRST", true);
+  NestedData array(kTypeNested, "FIRST", true);
   array.deeper_nesting.insert(AttrDataPair(
-      CTRL_ATTR_OP_UNSPEC, NestedData(NLA_U32, "CTRL_ATTR_OP_UNSPEC", false)));
+      CTRL_ATTR_OP_UNSPEC, NestedData(kTypeU32, "CTRL_ATTR_OP_UNSPEC", false)));
   array.deeper_nesting.insert(AttrDataPair(
-      CTRL_ATTR_OP_ID, NestedData(NLA_U32, "CTRL_ATTR_OP_ID", false)));
+      CTRL_ATTR_OP_ID, NestedData(kTypeU32, "CTRL_ATTR_OP_ID", false)));
   array.deeper_nesting.insert(AttrDataPair(
-      CTRL_ATTR_OP_UNSPEC, NestedData(NLA_U32, "CTRL_ATTR_OP_UNSPEC", false)));
+      CTRL_ATTR_OP_UNSPEC, NestedData(kTypeU32, "CTRL_ATTR_OP_UNSPEC", false)));
 
   nested_template_.insert(AttrDataPair(kArrayAttrEnumVal, array));
 }
@@ -49,16 +49,16 @@ const char ControlAttributeMcastGroups::kNameString[] =
 
 ControlAttributeMcastGroups::ControlAttributeMcastGroups()
     : NetlinkNestedAttribute(kName, kNameString) {
-  NestedData array(NLA_NESTED, "FIRST", true);
+  NestedData array(kTypeNested, "FIRST", true);
   array.deeper_nesting.insert(
       AttrDataPair(CTRL_ATTR_MCAST_GRP_UNSPEC,
-                   NestedData(NLA_U32, "CTRL_ATTR_MCAST_GRP_UNSPEC", false)));
+                   NestedData(kTypeU32, "CTRL_ATTR_MCAST_GRP_UNSPEC", false)));
   array.deeper_nesting.insert(
       AttrDataPair(CTRL_ATTR_MCAST_GRP_NAME,
-                   NestedData(NLA_STRING, "CTRL_ATTR_MCAST_GRP_NAME", false)));
+                   NestedData(kTypeString, "CTRL_ATTR_MCAST_GRP_NAME", false)));
   array.deeper_nesting.insert(
       AttrDataPair(CTRL_ATTR_MCAST_GRP_ID,
-                   NestedData(NLA_U32, "CTRL_ATTR_MCAST_GRP_ID", false)));
+                   NestedData(kTypeU32, "CTRL_ATTR_MCAST_GRP_ID", false)));
 
   nested_template_.insert(AttrDataPair(kArrayAttrEnumVal, array));
 }

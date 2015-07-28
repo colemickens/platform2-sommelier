@@ -4,8 +4,6 @@
 
 #include "shill/net/nl80211_attribute.h"
 
-#include <netlink/attr.h>
-
 #include <string>
 #include <utility>
 
@@ -77,35 +75,35 @@ Nl80211AttributeBss::Nl80211AttributeBss()
     : NetlinkNestedAttribute(kName, kNameString) {
   nested_template_.insert(
       AttrDataPair(__NL80211_BSS_INVALID,
-                   NestedData(NLA_U32, "__NL80211_BSS_INVALID", false)));
+                   NestedData(kTypeU32, "__NL80211_BSS_INVALID", false)));
   nested_template_.insert(AttrDataPair(
-      NL80211_BSS_BSSID, NestedData(NLA_UNSPEC, "NL80211_BSS_BSSID", false)));
+      NL80211_BSS_BSSID, NestedData(kTypeRaw, "NL80211_BSS_BSSID", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_BSS_FREQUENCY,
-                   NestedData(NLA_U32, "NL80211_BSS_FREQUENCY", false)));
+                   NestedData(kTypeU32, "NL80211_BSS_FREQUENCY", false)));
   nested_template_.insert(AttrDataPair(
-      NL80211_BSS_TSF, NestedData(NLA_U64, "NL80211_BSS_TSF", false)));
+      NL80211_BSS_TSF, NestedData(kTypeU64, "NL80211_BSS_TSF", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_BSS_BEACON_INTERVAL,
-                   NestedData(NLA_U16, "NL80211_BSS_BEACON_INTERVAL", false)));
+                   NestedData(kTypeU16, "NL80211_BSS_BEACON_INTERVAL", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_BSS_CAPABILITY,
-                   NestedData(NLA_U16, "NL80211_BSS_CAPABILITY", false)));
+                   NestedData(kTypeU16, "NL80211_BSS_CAPABILITY", false)));
   nested_template_.insert(AttrDataPair(
       NL80211_BSS_INFORMATION_ELEMENTS,
-      NestedData(NLA_UNSPEC, "NL80211_BSS_INFORMATION_ELEMENTS", false,
+      NestedData(kTypeRaw, "NL80211_BSS_INFORMATION_ELEMENTS", false,
                  Bind(&Nl80211AttributeBss::ParseInformationElements))));
   nested_template_.insert(
       AttrDataPair(NL80211_BSS_SIGNAL_MBM,
-                   NestedData(NLA_U32, "NL80211_BSS_SIGNAL_MBM", false)));
+                   NestedData(kTypeU32, "NL80211_BSS_SIGNAL_MBM", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_BSS_SIGNAL_UNSPEC,
-                   NestedData(NLA_U8, "NL80211_BSS_SIGNAL_UNSPEC", false)));
+                   NestedData(kTypeU8, "NL80211_BSS_SIGNAL_UNSPEC", false)));
   nested_template_.insert(AttrDataPair(
-      NL80211_BSS_STATUS, NestedData(NLA_U32, "NL80211_BSS_STATUS", false)));
+      NL80211_BSS_STATUS, NestedData(kTypeU32, "NL80211_BSS_STATUS", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_BSS_SEEN_MS_AGO,
-                   NestedData(NLA_U32, "NL80211_BSS_SEEN_MS_AGO", false)));
+                   NestedData(kTypeU32, "NL80211_BSS_SEEN_MS_AGO", false)));
 }
 
 bool Nl80211AttributeBss::ParseInformationElements(
@@ -223,66 +221,67 @@ const char Nl80211AttributeWiphyBands::kNameString[] =
 Nl80211AttributeWiphyBands::Nl80211AttributeWiphyBands()
     : NetlinkNestedAttribute(kName, kNameString) {
   // Frequencies
-  NestedData freq(NLA_NESTED, "NL80211_BAND_ATTR_FREQ", true);
+  NestedData freq(kTypeNested, "NL80211_BAND_ATTR_FREQ", true);
   freq.deeper_nesting.insert(AttrDataPair(
       __NL80211_FREQUENCY_ATTR_INVALID,
-      NestedData(NLA_U32, "__NL80211_FREQUENCY_ATTR_INVALID", false)));
+      NestedData(kTypeU32, "__NL80211_FREQUENCY_ATTR_INVALID", false)));
   freq.deeper_nesting.insert(
       AttrDataPair(NL80211_FREQUENCY_ATTR_FREQ,
-                   NestedData(NLA_U32, "NL80211_FREQUENCY_ATTR_FREQ", false)));
+                   NestedData(kTypeU32, "NL80211_FREQUENCY_ATTR_FREQ", false)));
   freq.deeper_nesting.insert(AttrDataPair(
       NL80211_FREQUENCY_ATTR_DISABLED,
-      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_DISABLED", false)));
+      NestedData(kTypeFlag, "NL80211_FREQUENCY_ATTR_DISABLED", false)));
   freq.deeper_nesting.insert(AttrDataPair(
       NL80211_FREQUENCY_ATTR_PASSIVE_SCAN,
-      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_PASSIVE_SCAN", false)));
+      NestedData(kTypeFlag, "NL80211_FREQUENCY_ATTR_PASSIVE_SCAN", false)));
   freq.deeper_nesting.insert(AttrDataPair(
       NL80211_FREQUENCY_ATTR_NO_IBSS,
-      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_NO_IBSS", false)));
+      NestedData(kTypeFlag, "NL80211_FREQUENCY_ATTR_NO_IBSS", false)));
   freq.deeper_nesting.insert(AttrDataPair(
       NL80211_FREQUENCY_ATTR_RADAR,
-      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_RADAR", false)));
+      NestedData(kTypeFlag, "NL80211_FREQUENCY_ATTR_RADAR", false)));
   freq.deeper_nesting.insert(AttrDataPair(
       NL80211_FREQUENCY_ATTR_MAX_TX_POWER,
-      NestedData(NLA_U32, "NL80211_FREQUENCY_ATTR_MAX_TX_POWER", false)));
+      NestedData(kTypeU32, "NL80211_FREQUENCY_ATTR_MAX_TX_POWER", false)));
 
-  NestedData freqs(NLA_NESTED, "NL80211_BAND_ATTR_FREQS", false);
+  NestedData freqs(kTypeNested, "NL80211_BAND_ATTR_FREQS", false);
   freqs.deeper_nesting.insert(AttrDataPair(kArrayAttrEnumVal, freq));
 
   // Rates
-  NestedData rate(NLA_NESTED, "NL80211_BAND_ATTR_RATE", true);
+  NestedData rate(kTypeNested, "NL80211_BAND_ATTR_RATE", true);
   rate.deeper_nesting.insert(AttrDataPair(
       __NL80211_BITRATE_ATTR_INVALID,
-      NestedData(NLA_U32, "__NL80211_BITRATE_ATTR_INVALID", false)));
+      NestedData(kTypeU32, "__NL80211_BITRATE_ATTR_INVALID", false)));
   rate.deeper_nesting.insert(
       AttrDataPair(NL80211_BITRATE_ATTR_RATE,
-                   NestedData(NLA_U32, "NL80211_BITRATE_ATTR_RATE", false)));
+                   NestedData(kTypeU32, "NL80211_BITRATE_ATTR_RATE", false)));
   rate.deeper_nesting.insert(AttrDataPair(
       NL80211_BITRATE_ATTR_2GHZ_SHORTPREAMBLE,
-      NestedData(NLA_FLAG, "NL80211_BITRATE_ATTR_2GHZ_SHORTPREAMBLE", false)));
+      NestedData(kTypeFlag, "NL80211_BITRATE_ATTR_2GHZ_SHORTPREAMBLE", false)));
 
-  NestedData rates(NLA_NESTED, "NL80211_BAND_ATTR_RATES", true);
+  NestedData rates(kTypeNested, "NL80211_BAND_ATTR_RATES", true);
   rates.deeper_nesting.insert(AttrDataPair(kArrayAttrEnumVal, rate));
 
   // Main body of attribute
-  NestedData bands(NLA_NESTED, "NL80211_ATTR_BANDS", true);
+  NestedData bands(kTypeNested, "NL80211_ATTR_BANDS", true);
   bands.deeper_nesting.insert(
-      AttrDataPair(__NL80211_BAND_ATTR_INVALID,
-                   NestedData(NLA_U32, "__NL80211_BAND_ATTR_INVALID,", false)));
+      AttrDataPair(
+          __NL80211_BAND_ATTR_INVALID,
+          NestedData(kTypeU32, "__NL80211_BAND_ATTR_INVALID,", false)));
   bands.deeper_nesting.insert(AttrDataPair(NL80211_BAND_ATTR_FREQS, freqs));
   bands.deeper_nesting.insert(AttrDataPair(NL80211_BAND_ATTR_RATES, rates));
   bands.deeper_nesting.insert(AttrDataPair(
       NL80211_BAND_ATTR_HT_MCS_SET,
-      NestedData(NLA_UNSPEC, "NL80211_BAND_ATTR_HT_MCS_SET", false)));
+      NestedData(kTypeRaw, "NL80211_BAND_ATTR_HT_MCS_SET", false)));
   bands.deeper_nesting.insert(
       AttrDataPair(NL80211_BAND_ATTR_HT_CAPA,
-                   NestedData(NLA_U16, "NL80211_BAND_ATTR_HT_CAPA", false)));
+                   NestedData(kTypeU16, "NL80211_BAND_ATTR_HT_CAPA", false)));
   bands.deeper_nesting.insert(AttrDataPair(
       NL80211_BAND_ATTR_HT_AMPDU_FACTOR,
-      NestedData(NLA_U8, "NL80211_BAND_ATTR_HT_AMPDU_FACTOR", false)));
+      NestedData(kTypeU8, "NL80211_BAND_ATTR_HT_AMPDU_FACTOR", false)));
   bands.deeper_nesting.insert(AttrDataPair(
       NL80211_BAND_ATTR_HT_AMPDU_DENSITY,
-      NestedData(NLA_U8, "NL80211_BAND_ATTR_HT_AMPDU_DENSITY", false)));
+      NestedData(kTypeU8, "NL80211_BAND_ATTR_HT_AMPDU_DENSITY", false)));
 
   nested_template_.insert(AttrDataPair(kArrayAttrEnumVal, bands));
 }
@@ -301,21 +300,21 @@ Nl80211AttributeWowlanTriggers::Nl80211AttributeWowlanTriggers(
     // pattern that caused the wake.
     nested_template_.insert(AttrDataPair(
         NL80211_WOWLAN_TRIG_PKT_PATTERN,
-        NestedData(NLA_U32, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false)));
+        NestedData(kTypeU32, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false)));
   } else {
     // Otherwise, this attribute is meant to program the NIC, so parse it as
     // a nested attribute.
-    NestedData patterns(NLA_NESTED, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false);
-    NestedData individual_pattern(NLA_NESTED, "Pattern Match Info", true);
+    NestedData patterns(kTypeNested, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false);
+    NestedData individual_pattern(kTypeNested, "Pattern Match Info", true);
     individual_pattern.deeper_nesting.insert(
         AttrDataPair(NL80211_PKTPAT_MASK,
-                     NestedData(NLA_UNSPEC, "NL80211_PKTPAT_MASK", false)));
+                     NestedData(kTypeRaw, "NL80211_PKTPAT_MASK", false)));
     individual_pattern.deeper_nesting.insert(
         AttrDataPair(NL80211_PKTPAT_PATTERN,
-                     NestedData(NLA_UNSPEC, "NL80211_PKTPAT_PATTERN", false)));
+                     NestedData(kTypeRaw, "NL80211_PKTPAT_PATTERN", false)));
     individual_pattern.deeper_nesting.insert(
         AttrDataPair(NL80211_PKTPAT_OFFSET,
-                     NestedData(NLA_U32, "NL80211_PKTPAT_OFFSET", false)));
+                     NestedData(kTypeU32, "NL80211_PKTPAT_OFFSET", false)));
     patterns.deeper_nesting.insert(
         AttrDataPair(kArrayAttrEnumVal, individual_pattern));
     nested_template_.insert(
@@ -323,22 +322,22 @@ Nl80211AttributeWowlanTriggers::Nl80211AttributeWowlanTriggers(
   }
 
   // Net detect SSID matching trigger attribute.
-  NestedData net_detect(NLA_NESTED, "NL80211_WOWLAN_TRIG_NET_DETECT", false);
-  NestedData scan_freqs(NLA_NESTED, "NL80211_ATTR_SCAN_FREQUENCIES", true);
+  NestedData net_detect(kTypeNested, "NL80211_WOWLAN_TRIG_NET_DETECT", false);
+  NestedData scan_freqs(kTypeNested, "NL80211_ATTR_SCAN_FREQUENCIES", true);
   scan_freqs.deeper_nesting.insert(
       AttrDataPair(kArrayAttrEnumVal,
-                   NestedData(NLA_U32, "Frequency match", false)));
+                   NestedData(kTypeU32, "Frequency match", false)));
   net_detect.deeper_nesting.insert(
       AttrDataPair(NL80211_ATTR_SCAN_FREQUENCIES, scan_freqs));
   net_detect.deeper_nesting.insert(AttrDataPair(
       NL80211_ATTR_SCHED_SCAN_INTERVAL,
-      NestedData(NLA_U32, "NL80211_ATTR_SCHED_SCAN_INTERVAL", false)));
-  NestedData scan_matches(NLA_NESTED, "NL80211_ATTR_SCHED_SCAN_MATCH", false);
+      NestedData(kTypeU32, "NL80211_ATTR_SCHED_SCAN_INTERVAL", false)));
+  NestedData scan_matches(kTypeNested, "NL80211_ATTR_SCHED_SCAN_MATCH", false);
   NestedData individual_scan_match(
-      NLA_NESTED, "NL80211_ATTR_SCHED_SCAN_MATCH_SINGLE", true);
+      kTypeNested, "NL80211_ATTR_SCHED_SCAN_MATCH_SINGLE", true);
   individual_scan_match.deeper_nesting.insert(AttrDataPair(
       NL80211_SCHED_SCAN_MATCH_ATTR_SSID,
-      NestedData(NLA_UNSPEC, "NL80211_SCHED_SCAN_MATCH_ATTR_SSID", false)));
+      NestedData(kTypeRaw, "NL80211_SCHED_SCAN_MATCH_ATTR_SSID", false)));
   scan_matches.deeper_nesting.insert(
       AttrDataPair(kArrayAttrEnumVal, individual_scan_match));
   net_detect.deeper_nesting.insert(
@@ -346,24 +345,24 @@ Nl80211AttributeWowlanTriggers::Nl80211AttributeWowlanTriggers(
 
   // Net detect results attribute
   NestedData net_detect_results(
-      NLA_NESTED, "NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS", false);
-  NestedData single_result(NLA_NESTED, "NL80211_WOWLAN_TRIG_NET_DETECT_RESULT",
+      kTypeNested, "NL80211_WOWLAN_TRIG_NET_DETECT_RESULTS", false);
+  NestedData single_result(kTypeNested, "NL80211_WOWLAN_TRIG_NET_DETECT_RESULT",
                            true);
-  NestedData freq_list(NLA_NESTED, "NL80211_ATTR_SCAN_FREQUENCIES", false);
+  NestedData freq_list(kTypeNested, "NL80211_ATTR_SCAN_FREQUENCIES", false);
   freq_list.deeper_nesting.insert(
       AttrDataPair(kArrayAttrEnumVal,
-                   NestedData(NLA_U32, "Frequency match", true)));
+                   NestedData(kTypeU32, "Frequency match", true)));
   single_result.deeper_nesting.insert(
       AttrDataPair(NL80211_ATTR_SCAN_FREQUENCIES, freq_list));
   single_result.deeper_nesting.insert(AttrDataPair(
-      NL80211_ATTR_SSID, NestedData(NLA_UNSPEC, "NL80211_ATTR_SSID", false)));
+      NL80211_ATTR_SSID, NestedData(kTypeRaw, "NL80211_ATTR_SSID", false)));
   net_detect_results.deeper_nesting.insert(
       AttrDataPair(kArrayAttrEnumVal, single_result));
 
   // Main body of the triggers attribute.
   nested_template_.insert(AttrDataPair(
       NL80211_WOWLAN_TRIG_DISCONNECT,
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_DISCONNECT", false)));
+      NestedData(kTypeFlag, "NL80211_WOWLAN_TRIG_DISCONNECT", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_WOWLAN_TRIG_NET_DETECT, net_detect));
   nested_template_.insert(
@@ -380,13 +379,13 @@ Nl80211AttributeWowlanTriggersSupported::
     : NetlinkNestedAttribute(kName, kNameString) {
   nested_template_.insert(AttrDataPair(
       NL80211_WOWLAN_TRIG_DISCONNECT,
-      NestedData(NLA_FLAG, "NL80211_WOWLAN_TRIG_DISCONNECT", false)));
+      NestedData(kTypeFlag, "NL80211_WOWLAN_TRIG_DISCONNECT", false)));
   nested_template_.insert(AttrDataPair(
       NL80211_WOWLAN_TRIG_PKT_PATTERN,
-      NestedData(NLA_UNSPEC, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false)));
+      NestedData(kTypeRaw, "NL80211_WOWLAN_TRIG_PKT_PATTERN", false)));
   nested_template_.insert(AttrDataPair(
       NL80211_WOWLAN_TRIG_NET_DETECT,
-      NestedData(NLA_U32, "NL80211_WOWLAN_TRIG_NET_DETECT", false)));
+      NestedData(kTypeU32, "NL80211_WOWLAN_TRIG_NET_DETECT", false)));
 }
 
 const int Nl80211AttributeCipherSuites::kName = NL80211_ATTR_CIPHER_SUITES;
@@ -405,19 +404,19 @@ Nl80211AttributeCqm::Nl80211AttributeCqm()
     : NetlinkNestedAttribute(kName, kNameString) {
   nested_template_.insert(
       AttrDataPair(__NL80211_ATTR_CQM_INVALID,
-                   NestedData(NLA_U32, "__NL80211_ATTR_CQM_INVALID", false)));
+                   NestedData(kTypeU32, "__NL80211_ATTR_CQM_INVALID", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_ATTR_CQM_RSSI_THOLD,
-                   NestedData(NLA_U32, "NL80211_ATTR_CQM_RSSI_THOLD", false)));
+                   NestedData(kTypeU32, "NL80211_ATTR_CQM_RSSI_THOLD", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_ATTR_CQM_RSSI_HYST,
-                   NestedData(NLA_U32, "NL80211_ATTR_CQM_RSSI_HYST", false)));
+                   NestedData(kTypeU32, "NL80211_ATTR_CQM_RSSI_HYST", false)));
   nested_template_.insert(AttrDataPair(
       NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
-      NestedData(NLA_U32, "NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT", false)));
+      NestedData(kTypeU32, "NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT", false)));
   nested_template_.insert(AttrDataPair(
       NL80211_ATTR_CQM_PKT_LOSS_EVENT,
-      NestedData(NLA_U32, "NL80211_ATTR_CQM_PKT_LOSS_EVENT", false)));
+      NestedData(kTypeU32, "NL80211_ATTR_CQM_PKT_LOSS_EVENT", false)));
 }
 
 const int Nl80211AttributeDeviceApSme::kName = NL80211_ATTR_DEVICE_AP_SME;
@@ -560,7 +559,7 @@ const char Nl80211AttributeScanFrequencies::kNameString[] =
 Nl80211AttributeScanFrequencies::Nl80211AttributeScanFrequencies()
     : NetlinkNestedAttribute(kName, kNameString) {
   nested_template_.insert(AttrDataPair(
-      kArrayAttrEnumVal, NestedData(NLA_U32, "NL80211_SCAN_FREQ", true)));
+      kArrayAttrEnumVal, NestedData(kTypeU32, "NL80211_SCAN_FREQ", true)));
 }
 
 const int Nl80211AttributeScanSsids::kName = NL80211_ATTR_SCAN_SSIDS;
@@ -569,7 +568,7 @@ const char Nl80211AttributeScanSsids::kNameString[] = "NL80211_ATTR_SCAN_SSIDS";
 Nl80211AttributeScanSsids::Nl80211AttributeScanSsids()
     : NetlinkNestedAttribute(kName, kNameString) {
   nested_template_.insert(AttrDataPair(
-      kArrayAttrEnumVal, NestedData(NLA_STRING, "NL80211_SCAN_SSID", true)));
+      kArrayAttrEnumVal, NestedData(kTypeString, "NL80211_SCAN_SSID", true)));
 }
 
 const int Nl80211AttributeStaInfo::kName = NL80211_ATTR_STA_INFO;
@@ -577,121 +576,122 @@ const char Nl80211AttributeStaInfo::kNameString[] = "NL80211_ATTR_STA_INFO";
 
 Nl80211AttributeStaInfo::Nl80211AttributeStaInfo()
     : NetlinkNestedAttribute(kName, kNameString) {
-  NestedData tx_rates(NLA_NESTED, "NL80211_STA_INFO_TX_BITRATE", false);
+  NestedData tx_rates(kTypeNested, "NL80211_STA_INFO_TX_BITRATE", false);
   tx_rates.deeper_nesting.insert(
       AttrDataPair(__NL80211_RATE_INFO_INVALID,
-                   NestedData(NLA_U32, "__NL80211_RATE_INFO_INVALID", false)));
+                   NestedData(kTypeU32, "__NL80211_RATE_INFO_INVALID", false)));
   tx_rates.deeper_nesting.insert(
       AttrDataPair(NL80211_RATE_INFO_BITRATE,
-                   NestedData(NLA_U16, "NL80211_RATE_INFO_BITRATE", false)));
+                   NestedData(kTypeU16, "NL80211_RATE_INFO_BITRATE", false)));
   tx_rates.deeper_nesting.insert(
       AttrDataPair(NL80211_RATE_INFO_MCS,
-                   NestedData(NLA_U8, "NL80211_RATE_INFO_MCS", false)));
+                   NestedData(kTypeU8, "NL80211_RATE_INFO_MCS", false)));
   tx_rates.deeper_nesting.insert(AttrDataPair(
       NL80211_RATE_INFO_40_MHZ_WIDTH,
-      NestedData(NLA_FLAG, "NL80211_RATE_INFO_40_MHZ_WIDTH", false)));
+      NestedData(kTypeFlag, "NL80211_RATE_INFO_40_MHZ_WIDTH", false)));
   tx_rates.deeper_nesting.insert(
       AttrDataPair(NL80211_RATE_INFO_SHORT_GI,
-                   NestedData(NLA_FLAG, "NL80211_RATE_INFO_SHORT_GI", false)));
+                   NestedData(kTypeFlag, "NL80211_RATE_INFO_SHORT_GI", false)));
   tx_rates.deeper_nesting.insert(
       AttrDataPair(NL80211_RATE_INFO_BITRATE32,
-                   NestedData(NLA_U32, "NL80211_RATE_INFO_BITRATE32", false)));
+                   NestedData(kTypeU32, "NL80211_RATE_INFO_BITRATE32", false)));
   tx_rates.deeper_nesting.insert(
       AttrDataPair(NL80211_RATE_INFO_VHT_MCS,
-                   NestedData(NLA_U8, "NL80211_RATE_INFO_VHT_MCS", false)));
+                   NestedData(kTypeU8, "NL80211_RATE_INFO_VHT_MCS", false)));
   tx_rates.deeper_nesting.insert(
       AttrDataPair(NL80211_RATE_INFO_VHT_NSS,
-                   NestedData(NLA_U8, "NL80211_RATE_INFO_VHT_NSS", false)));
+                   NestedData(kTypeU8, "NL80211_RATE_INFO_VHT_NSS", false)));
   tx_rates.deeper_nesting.insert(AttrDataPair(
       NL80211_RATE_INFO_80_MHZ_WIDTH,
-      NestedData(NLA_FLAG, "NL80211_RATE_INFO_80_MHZ_WIDTH", false)));
+      NestedData(kTypeFlag, "NL80211_RATE_INFO_80_MHZ_WIDTH", false)));
   tx_rates.deeper_nesting.insert(AttrDataPair(
       NL80211_RATE_INFO_80P80_MHZ_WIDTH,
-      NestedData(NLA_FLAG, "NL80211_RATE_INFO_80P80_MHZ_WIDTH", false)));
+      NestedData(kTypeFlag, "NL80211_RATE_INFO_80P80_MHZ_WIDTH", false)));
   tx_rates.deeper_nesting.insert(AttrDataPair(
       NL80211_RATE_INFO_160_MHZ_WIDTH,
-      NestedData(NLA_FLAG, "NL80211_RATE_INFO_160_MHZ_WIDTH", false)));
+      NestedData(kTypeFlag, "NL80211_RATE_INFO_160_MHZ_WIDTH", false)));
 
-  NestedData rx_rates(NLA_NESTED, "NL80211_STA_INFO_RX_BITRATE", false);
+  NestedData rx_rates(kTypeNested, "NL80211_STA_INFO_RX_BITRATE", false);
   rx_rates.deeper_nesting = tx_rates.deeper_nesting;
 
-  NestedData bss(NLA_NESTED, "NL80211_STA_INFO_BSS_PARAM", false);
+  NestedData bss(kTypeNested, "NL80211_STA_INFO_BSS_PARAM", false);
   bss.deeper_nesting.insert(AttrDataPair(
       __NL80211_STA_BSS_PARAM_INVALID,
-      NestedData(NLA_U32, "__NL80211_STA_BSS_PARAM_INVALID", false)));
+      NestedData(kTypeU32, "__NL80211_STA_BSS_PARAM_INVALID", false)));
   bss.deeper_nesting.insert(AttrDataPair(
       NL80211_STA_BSS_PARAM_CTS_PROT,
-      NestedData(NLA_FLAG, "NL80211_STA_BSS_PARAM_CTS_PROT", false)));
+      NestedData(kTypeFlag, "NL80211_STA_BSS_PARAM_CTS_PROT", false)));
   bss.deeper_nesting.insert(AttrDataPair(
       NL80211_STA_BSS_PARAM_SHORT_PREAMBLE,
-      NestedData(NLA_FLAG, "NL80211_STA_BSS_PARAM_SHORT_PREAMBLE", false)));
+      NestedData(kTypeFlag, "NL80211_STA_BSS_PARAM_SHORT_PREAMBLE", false)));
   bss.deeper_nesting.insert(AttrDataPair(
       NL80211_STA_BSS_PARAM_SHORT_SLOT_TIME,
-      NestedData(NLA_FLAG, "NL80211_STA_BSS_PARAM_SHORT_SLOT_TIME", false)));
+      NestedData(kTypeFlag, "NL80211_STA_BSS_PARAM_SHORT_SLOT_TIME", false)));
   bss.deeper_nesting.insert(AttrDataPair(
       NL80211_STA_BSS_PARAM_DTIM_PERIOD,
-      NestedData(NLA_U8, "NL80211_STA_BSS_PARAM_DTIM_PERIOD", false)));
+      NestedData(kTypeU8, "NL80211_STA_BSS_PARAM_DTIM_PERIOD", false)));
   bss.deeper_nesting.insert(AttrDataPair(
       NL80211_STA_BSS_PARAM_BEACON_INTERVAL,
-      NestedData(NLA_U16, "NL80211_STA_BSS_PARAM_BEACON_INTERVAL", false)));
+      NestedData(kTypeU16, "NL80211_STA_BSS_PARAM_BEACON_INTERVAL", false)));
 
   nested_template_.insert(
       AttrDataPair(__NL80211_STA_INFO_INVALID,
-                   NestedData(NLA_U32, "__NL80211_STA_INFO_INVALID", false)));
+                   NestedData(kTypeU32, "__NL80211_STA_INFO_INVALID", false)));
   nested_template_.insert(AttrDataPair(
       NL80211_STA_INFO_INACTIVE_TIME,
-      NestedData(NLA_U32, "NL80211_STA_INFO_INACTIVE_TIME", false)));
+      NestedData(kTypeU32, "NL80211_STA_INFO_INACTIVE_TIME", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_RX_BYTES,
-                   NestedData(NLA_U32, "NL80211_STA_INFO_RX_BYTES", false)));
+                   NestedData(kTypeU32, "NL80211_STA_INFO_RX_BYTES", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_TX_BYTES,
-                   NestedData(NLA_U32, "NL80211_STA_INFO_TX_BYTES", false)));
+                   NestedData(kTypeU32, "NL80211_STA_INFO_TX_BYTES", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_RX_BYTES64,
-                   NestedData(NLA_U64, "NL80211_STA_INFO_RX_BYTES64", false)));
+                   NestedData(kTypeU64, "NL80211_STA_INFO_RX_BYTES64", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_TX_BYTES64,
-                   NestedData(NLA_U64, "NL80211_STA_INFO_TX_BYTES64", false)));
+                   NestedData(kTypeU64, "NL80211_STA_INFO_TX_BYTES64", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_LLID,
-                   NestedData(NLA_U16, "NL80211_STA_INFO_LLID", false)));
+                   NestedData(kTypeU16, "NL80211_STA_INFO_LLID", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_PLID,
-                   NestedData(NLA_U16, "NL80211_STA_INFO_PLID", false)));
+                   NestedData(kTypeU16, "NL80211_STA_INFO_PLID", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_PLINK_STATE,
-                   NestedData(NLA_U8, "NL80211_STA_INFO_PLINK_STATE", false)));
+                   NestedData(kTypeU8, "NL80211_STA_INFO_PLINK_STATE", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_SIGNAL,
-                   NestedData(NLA_U8, "NL80211_STA_INFO_SIGNAL", false)));
+                   NestedData(kTypeU8, "NL80211_STA_INFO_SIGNAL", false)));
   nested_template_.insert(AttrDataPair(NL80211_STA_INFO_TX_BITRATE, tx_rates));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_RX_PACKETS,
-                   NestedData(NLA_U32, "NL80211_STA_INFO_RX_PACKETS", false)));
+                   NestedData(kTypeU32, "NL80211_STA_INFO_RX_PACKETS", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_TX_PACKETS,
-                   NestedData(NLA_U32, "NL80211_STA_INFO_TX_PACKETS", false)));
+                   NestedData(kTypeU32, "NL80211_STA_INFO_TX_PACKETS", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_TX_RETRIES,
-                   NestedData(NLA_U32, "NL80211_STA_INFO_TX_RETRIES", false)));
+                   NestedData(kTypeU32, "NL80211_STA_INFO_TX_RETRIES", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_TX_FAILED,
-                   NestedData(NLA_U32, "NL80211_STA_INFO_TX_FAILED", false)));
+                   NestedData(kTypeU32, "NL80211_STA_INFO_TX_FAILED", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_SIGNAL_AVG,
-                   NestedData(NLA_U8, "NL80211_STA_INFO_SIGNAL_AVG", false)));
+                   NestedData(kTypeU8, "NL80211_STA_INFO_SIGNAL_AVG", false)));
   nested_template_.insert(AttrDataPair(NL80211_STA_INFO_RX_BITRATE, rx_rates));
   nested_template_.insert(AttrDataPair(NL80211_STA_INFO_BSS_PARAM, bss));
   nested_template_.insert(AttrDataPair(
       NL80211_STA_INFO_CONNECTED_TIME,
-      NestedData(NLA_U32, "NL80211_STA_INFO_CONNECTED_TIME", false)));
+      NestedData(kTypeU32, "NL80211_STA_INFO_CONNECTED_TIME", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_STA_FLAGS,
-                   NestedData(NLA_U64, "NL80211_STA_INFO_STA_FLAGS", false)));
+                   NestedData(kTypeU64, "NL80211_STA_INFO_STA_FLAGS", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_STA_INFO_BEACON_LOSS,
-                   NestedData(NLA_U32, "NL80211_STA_INFO_BEACON_LOSS", false)));
+                   NestedData(kTypeU32, "NL80211_STA_INFO_BEACON_LOSS",
+                   false)));
 }
 
 const int Nl80211AttributeSurveyInfo::kName = NL80211_ATTR_SURVEY_INFO;
@@ -702,29 +702,29 @@ Nl80211AttributeSurveyInfo::Nl80211AttributeSurveyInfo()
     : NetlinkNestedAttribute(kName, kNameString) {
   nested_template_.insert(
       AttrDataPair(NL80211_SURVEY_INFO_FREQUENCY,
-         NestedData(NLA_U32, "NL80211_SURVEY_INFO_FREQUENCY", false)));
+         NestedData(kTypeU32, "NL80211_SURVEY_INFO_FREQUENCY", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_SURVEY_INFO_NOISE,
-         NestedData(NLA_U8, "NL80211_SURVEY_INFO_NOISE", false)));
+         NestedData(kTypeU8, "NL80211_SURVEY_INFO_NOISE", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_SURVEY_INFO_IN_USE,
-         NestedData(NLA_FLAG, "NL80211_SURVEY_INFO_IN_USE", false)));
+         NestedData(kTypeFlag, "NL80211_SURVEY_INFO_IN_USE", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_SURVEY_INFO_CHANNEL_TIME,
-         NestedData(NLA_U64, "NL80211_SURVEY_INFO_CHANNEL_TIME", false)));
+         NestedData(kTypeU64, "NL80211_SURVEY_INFO_CHANNEL_TIME", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_SURVEY_INFO_CHANNEL_TIME_BUSY,
-         NestedData(NLA_U64, "NL80211_SURVEY_INFO_CHANNEL_TIME_BUSY", false)));
+         NestedData(kTypeU64, "NL80211_SURVEY_INFO_CHANNEL_TIME_BUSY", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_SURVEY_INFO_CHANNEL_TIME_EXT_BUSY,
-         NestedData(NLA_U64,
+         NestedData(kTypeU64,
              "NL80211_SURVEY_INFO_CHANNEL_TIME_EXT_BUSY", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_SURVEY_INFO_CHANNEL_TIME_RX,
-         NestedData(NLA_U64, "NL80211_SURVEY_INFO_CHANNEL_TIME_RX", false)));
+         NestedData(kTypeU64, "NL80211_SURVEY_INFO_CHANNEL_TIME_RX", false)));
   nested_template_.insert(
       AttrDataPair(NL80211_SURVEY_INFO_CHANNEL_TIME_TX,
-         NestedData(NLA_U64, "NL80211_SURVEY_INFO_CHANNEL_TIME_TX", false)));
+         NestedData(kTypeU64, "NL80211_SURVEY_INFO_CHANNEL_TIME_TX", false)));
 }
 
 const int Nl80211AttributeSupportedIftypes::kName =
@@ -735,7 +735,7 @@ Nl80211AttributeSupportedIftypes::Nl80211AttributeSupportedIftypes()
     : NetlinkNestedAttribute(kName, kNameString) {
   nested_template_.insert(AttrDataPair(
       kArrayAttrEnumVal,
-      NestedData(NLA_FLAG, "NL80211_SUPPORTED_IFTYPES_IFTYPE", true)));
+      NestedData(kTypeFlag, "NL80211_SUPPORTED_IFTYPES_IFTYPE", true)));
 }
 
 const int Nl80211AttributeStatusCode::kName = NL80211_ATTR_STATUS_CODE;

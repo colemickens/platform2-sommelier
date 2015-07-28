@@ -4,9 +4,6 @@
 
 #include "shill/net/generic_netlink_message.h"
 
-#include <netlink/msg.h>
-#include <netlink/netlink.h>
-
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>

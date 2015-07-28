@@ -5,7 +5,6 @@
 #include "shill/wifi/wake_on_wifi.h"
 
 #include <linux/nl80211.h>
-#include <netlink/netlink.h>
 
 #include <set>
 #include <string>

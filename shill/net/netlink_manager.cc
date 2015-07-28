@@ -5,8 +5,6 @@
 #include "shill/net/netlink_manager.h"
 
 #include <errno.h>
-#include <netlink/msg.h>
-#include <netlink/netlink.h>
 #include <sys/select.h>
 #include <sys/time.h>
 

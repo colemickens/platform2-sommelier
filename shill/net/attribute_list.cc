@@ -6,8 +6,6 @@
 
 #include <ctype.h>
 #include <linux/nl80211.h>
-#include <netlink/attr.h>
-#include <netlink/netlink.h>
 
 #include <iomanip>
 #include <map>

@@ -7,7 +7,6 @@
 #include <linux/if.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <netinet/ether.h>
-#include <netlink/attr.h>
 #include <sys/socket.h>
 
 #include <map>

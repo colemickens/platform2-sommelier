@@ -5,8 +5,6 @@
 #include "shill/net/netlink_message.h"
 
 #include <limits.h>
-#include <netlink/msg.h>
-#include <netlink/netlink.h>
 
 #include <algorithm>
 #include <map>
