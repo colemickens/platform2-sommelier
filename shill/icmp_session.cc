@@ -78,7 +78,6 @@ bool IcmpSession::Start(const IPAddress& destination,
 
 void IcmpSession::Stop() {
   if (!IsStarted()) {
-    LOG(WARNING) << "ICMP session not started";
     return;
   }
   timeout_callback_.Cancel();
