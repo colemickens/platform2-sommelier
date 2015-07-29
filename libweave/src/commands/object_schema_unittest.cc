@@ -31,7 +31,8 @@ std::vector<T> GetArrayValues(const ValueVector& arr) {
   std::vector<T> values;
   values.reserve(arr.size());
   for (const auto& prop_value : arr) {
-    values.push_back(prop_value->GetValueAsAny().Get<T>());
+    const auto& value = static_cast<const TypedValueBase<T>&>(*prop_value);
+    values.push_back(value.GetValue());
   }
   return values;
 }
@@ -153,12 +154,12 @@ TEST(CommandSchema, IntPropType_Validate) {
 TEST(CommandSchema, IntPropType_CreateValue) {
   IntPropType prop;
   chromeos::ErrorPtr error;
-  auto val = prop.CreateValue(2, &error);
+  auto val = prop.CreateValue(base::FundamentalValue{2}, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_EQ(2, val->GetValueAsAny().Get<int>());
+  EXPECT_EQ(2, val->GetValue());
 
-  val = prop.CreateValue("blah", &error);
+  val = prop.CreateValue(base::StringValue{"blah"}, &error);
   EXPECT_EQ(nullptr, val.get());
   ASSERT_NE(nullptr, error.get());
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
@@ -242,12 +243,12 @@ TEST(CommandSchema, BoolPropType_Validate) {
 TEST(CommandSchema, BoolPropType_CreateValue) {
   BooleanPropType prop;
   chromeos::ErrorPtr error;
-  auto val = prop.CreateValue(true, &error);
+  auto val = prop.CreateValue(base::FundamentalValue{true}, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_TRUE(val->GetValueAsAny().Get<bool>());
+  EXPECT_TRUE(val->GetValue());
 
-  val = prop.CreateValue("blah", &error);
+  val = prop.CreateValue(base::StringValue{"blah"}, &error);
   EXPECT_EQ(nullptr, val.get());
   ASSERT_NE(nullptr, error.get());
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
@@ -359,12 +360,12 @@ TEST(CommandSchema, DoublePropType_Validate) {
 TEST(CommandSchema, DoublePropType_CreateValue) {
   DoublePropType prop;
   chromeos::ErrorPtr error;
-  auto val = prop.CreateValue(2.0, &error);
+  auto val = prop.CreateValue(base::FundamentalValue{2.0}, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_DOUBLE_EQ(2.0, val->GetValueAsAny().Get<double>());
+  EXPECT_DOUBLE_EQ(2.0, val->GetValue());
 
-  val = prop.CreateValue("blah", &error);
+  val = prop.CreateValue(base::StringValue{"blah"}, &error);
   EXPECT_EQ(nullptr, val.get());
   ASSERT_NE(nullptr, error.get());
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
@@ -484,12 +485,12 @@ TEST(CommandSchema, StringPropType_Validate) {
 TEST(CommandSchema, StringPropType_CreateValue) {
   StringPropType prop;
   chromeos::ErrorPtr error;
-  auto val = prop.CreateValue(std::string{"blah"}, &error);
+  auto val = prop.CreateValue(base::StringValue{"blah"}, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_EQ("blah", val->GetValueAsAny().Get<std::string>());
+  EXPECT_EQ("blah", val->GetValue());
 
-  val = prop.CreateValue(4, &error);
+  val = prop.CreateValue(base::FundamentalValue{4}, &error);
   EXPECT_EQ(nullptr, val.get());
   ASSERT_NE(nullptr, error.get());
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
@@ -737,17 +738,18 @@ TEST(CommandSchema, ObjectPropType_CreateValue) {
           .get(),
       nullptr, nullptr));
   ValueMap obj{
-      {"width", int_type.CreateValue(10, nullptr)},
-      {"height", int_type.CreateValue(20, nullptr)},
+      {"width", int_type.CreateValue(base::FundamentalValue{10}, nullptr)},
+      {"height", int_type.CreateValue(base::FundamentalValue{20}, nullptr)},
   };
 
   chromeos::ErrorPtr error;
-  auto val = prop.CreateValue(obj, &error);
+  auto val = prop.CreateValue(
+      *CreateDictionaryValue("{'width': 10, 'height': 20}"), &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_EQ(obj, val->GetValueAsAny().Get<ValueMap>());
+  EXPECT_EQ(obj, val->GetValue());
 
-  val = prop.CreateValue("blah", &error);
+  val = prop.CreateValue(base::StringValue{"blah"}, &error);
   EXPECT_EQ(nullptr, val.get());
   ASSERT_NE(nullptr, error.get());
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
@@ -866,40 +868,21 @@ TEST(CommandSchema, ArrayPropType_CreateValue) {
   chromeos::ErrorPtr error;
   ValueVector arr;
 
-  auto val = prop.CreateValue(arr, &error);
+  auto val = prop.CreateValue(base::ListValue{}, &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_EQ(arr, val->GetValueAsAny().Get<ValueVector>());
+  EXPECT_EQ(arr, val->GetValue());
   EXPECT_JSON_EQ("[]", *val->ToJson());
 
-  IntPropType int_type;
-  ObjectPropType obj_type;
-  ASSERT_TRUE(obj_type.FromJson(
-      CreateDictionaryValue(
-          "{'properties':{'width':'integer','height':'integer'}}")
-          .get(),
-      nullptr, nullptr));
-  arr.push_back(obj_type.CreateValue(
-      ValueMap{
-          {"width", int_type.CreateValue(10, nullptr)},
-          {"height", int_type.CreateValue(20, nullptr)},
-      },
-      nullptr));
-  arr.push_back(obj_type.CreateValue(
-      ValueMap{
-          {"width", int_type.CreateValue(17, nullptr)},
-          {"height", int_type.CreateValue(18, nullptr)},
-      },
-      nullptr));
-
-  val = prop.CreateValue(arr, &error);
+  val = prop.CreateValue(
+      *CreateValue("[{'height':20,'width':10},{'width':17, 'height':18}]"),
+      &error);
   ASSERT_NE(nullptr, val.get());
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_EQ(arr, val->GetValueAsAny().Get<ValueVector>());
   EXPECT_JSON_EQ("[{'height':20,'width':10},{'height':18,'width':17}]",
                  *val->ToJson());
 
-  val = prop.CreateValue("blah", &error);
+  val = prop.CreateValue(base::StringValue{"blah"}, &error);
   EXPECT_EQ(nullptr, val.get());
   ASSERT_NE(nullptr, error.get());
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());

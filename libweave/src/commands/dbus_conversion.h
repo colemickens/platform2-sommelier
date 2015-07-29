@@ -14,29 +14,6 @@
 
 namespace weave {
 
-// Converts PropValue to Any in a format understood by D-Bus data serialization.
-// Has special handling for Object types where ValueMap are
-// converted to chromeos::VariantDictionary.
-chromeos::Any PropValueToDBusVariant(const PropValue* value);
-
-// Converts ValueMap to chromeos::VariantDictionary
-// with proper conversion of all nested properties.
-chromeos::VariantDictionary ObjectToDBusVariant(const ValueMap& object);
-
-// Converts D-Bus variant to PropValue.
-// Has special handling for Object types where chromeos::VariantDictionary
-// is converted to ValueMap.
-std::unique_ptr<const PropValue> PropValueFromDBusVariant(
-    const PropType* type,
-    const chromeos::Any& value,
-    chromeos::ErrorPtr* error);
-
-// Converts D-Bus variant to ObjectValue.
-bool ObjectFromDBusVariant(const ObjectSchema* object_schema,
-                           const chromeos::VariantDictionary& dict,
-                           ValueMap* obj,
-                           chromeos::ErrorPtr* error);
-
 // Converts DictionaryValue to D-Bus variant dictionary.
 chromeos::VariantDictionary DictionaryToDBusVariantDictionary(
     const base::DictionaryValue& object);

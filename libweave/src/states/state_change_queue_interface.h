@@ -9,7 +9,6 @@
 
 #include <base/callback_list.h>
 #include <base/time/time.h>
-#include <chromeos/variant_dictionary.h>
 
 #include "libweave/src/commands/schema_utils.h"
 

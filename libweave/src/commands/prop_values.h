@@ -9,7 +9,6 @@
 #include <memory>
 #include <string>
 
-#include <chromeos/any.h>
 #include <chromeos/errors/error.h>
 
 #include "libweave/src/commands/schema_utils.h"
@@ -85,11 +84,6 @@ inline ValueType GetValueType<ValueVector>() {
 class PropValue {
  public:
   explicit PropValue(std::unique_ptr<const PropType> type);
-  // Special out-of-line constructor to help implement PropValue::Clone().
-  // That method needs to clone the underlying type but can't do this in this
-  // header file since PropType is just forward-declared (it needs PropValue
-  // fully defined in its own inner workings).
-  explicit PropValue(const PropType* type_ptr);
   virtual ~PropValue();
 
   // Gets the type of the value.
@@ -120,36 +114,33 @@ class PropValue {
   virtual bool FromJson(const base::Value* value,
                         chromeos::ErrorPtr* error) = 0;
 
-  // Returns the contained C++ value as Any.
-  virtual chromeos::Any GetValueAsAny() const = 0;
-
   // Return the type definition of this value.
   const PropType* GetPropType() const { return type_.get(); }
   // Compares two values and returns true if they are equal.
   virtual bool IsEqual(const PropValue* value) const = 0;
 
  protected:
+  // Special out-of-line constructor to help implement PropValue::Clone().
+  // That method needs to clone the underlying type but can't do this in this
+  // header file since PropType is just forward-declared (it needs PropValue
+  // fully defined in its own inner workings).
+  explicit PropValue(const PropValue& other);
+
+ private:
   std::unique_ptr<const PropType> type_;
 };
 
 // A helper template base class for implementing value classes.
-template <typename Derived, typename T>
+template <typename T>
 class TypedValueBase : public PropValue {
  public:
   // To help refer to this base class from derived classes, define Base to
   // be this class.
-  using Base = TypedValueBase<Derived, T>;
-  // Expose the non-default constructor of the base class.
+  using Base = TypedValueBase<T>;
   using PropValue::PropValue;
 
   // Overrides from PropValue base class.
   ValueType GetType() const override { return GetValueType<T>(); }
-
-  std::unique_ptr<PropValue> Clone() const override {
-    std::unique_ptr<Derived> derived{new Derived{type_.get()}};
-    derived->value_ = value_;
-    return std::move(derived);
-  }
 
   std::unique_ptr<base::Value> ToJson() const override {
     return TypedValueToJson(value_);
@@ -170,7 +161,6 @@ class TypedValueBase : public PropValue {
   }
 
   // Helper methods to get and set the C++ representation of the value.
-  chromeos::Any GetValueAsAny() const override { return value_; }
   const T& GetValue() const { return value_; }
   bool SetValue(T value, chromeos::ErrorPtr* error) {
     std::swap(value_, value);  // Backup.
@@ -181,11 +171,31 @@ class TypedValueBase : public PropValue {
   }
 
  protected:
+  explicit TypedValueBase(const TypedValueBase& other)
+      : PropValue(other), value_(other.value_) {}
+
+ private:
   T value_{};  // The value of the parameter in C++ data representation.
 };
 
+// A helper template base class for implementing value classes.
+template <typename Derived, typename T>
+class TypedValueWithClone : public TypedValueBase<T> {
+ public:
+  using Base = TypedValueWithClone<Derived, T>;
+
+  // Expose the custom constructor of the base class.
+  using TypedValueBase<T>::TypedValueBase;
+  using PropValue::GetPropType;
+
+  std::unique_ptr<PropValue> Clone() const override {
+    return std::unique_ptr<PropValue>{
+        new Derived{*static_cast<const Derived*>(this)}};
+  }
+};
+
 // Value of type Integer.
-class IntValue final : public TypedValueBase<IntValue, int> {
+class IntValue final : public TypedValueWithClone<IntValue, int> {
  public:
   using Base::Base;  // Expose the custom constructor of the base class.
   IntValue* GetInt() override { return this; }
@@ -193,7 +203,7 @@ class IntValue final : public TypedValueBase<IntValue, int> {
 };
 
 // Value of type Number.
-class DoubleValue final : public TypedValueBase<DoubleValue, double> {
+class DoubleValue final : public TypedValueWithClone<DoubleValue, double> {
  public:
   using Base::Base;  // Expose the custom constructor of the base class.
   DoubleValue* GetDouble() override { return this; }
@@ -201,7 +211,7 @@ class DoubleValue final : public TypedValueBase<DoubleValue, double> {
 };
 
 // Value of type String.
-class StringValue final : public TypedValueBase<StringValue, std::string> {
+class StringValue final : public TypedValueWithClone<StringValue, std::string> {
  public:
   using Base::Base;  // Expose the custom constructor of the base class.
   StringValue* GetString() override { return this; }
@@ -209,7 +219,7 @@ class StringValue final : public TypedValueBase<StringValue, std::string> {
 };
 
 // Value of type Boolean.
-class BooleanValue final : public TypedValueBase<BooleanValue, bool> {
+class BooleanValue final : public TypedValueWithClone<BooleanValue, bool> {
  public:
   using Base::Base;  // Expose the custom constructor of the base class.
   BooleanValue* GetBoolean() override { return this; }
@@ -217,7 +227,7 @@ class BooleanValue final : public TypedValueBase<BooleanValue, bool> {
 };
 
 // Value of type Object.
-class ObjectValue final : public TypedValueBase<ObjectValue, ValueMap> {
+class ObjectValue final : public TypedValueWithClone<ObjectValue, ValueMap> {
  public:
   using Base::Base;  // Expose the custom constructor of the base class.
   ObjectValue* GetObject() override { return this; }
@@ -225,7 +235,7 @@ class ObjectValue final : public TypedValueBase<ObjectValue, ValueMap> {
 };
 
 // Value of type Array.
-class ArrayValue final : public TypedValueBase<ArrayValue, ValueVector> {
+class ArrayValue final : public TypedValueWithClone<ArrayValue, ValueVector> {
  public:
   using Base::Base;  // Expose the custom constructor of the base class.
   ArrayValue* GetArray() override { return this; }

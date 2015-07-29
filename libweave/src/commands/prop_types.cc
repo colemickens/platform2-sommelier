@@ -11,7 +11,6 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/values.h>
-#include <chromeos/any.h>
 #include <chromeos/strings/string_utils.h>
 
 #include "libweave/src/commands/object_schema.h"
@@ -239,11 +238,6 @@ bool PropType::ValidateValue(const base::Value* value,
   return val->FromJson(value, error);
 }
 
-bool PropType::ValidateValue(const chromeos::Any& value,
-                             chromeos::ErrorPtr* error) const {
-  return !!CreateValue(value, error);
-}
-
 bool PropType::ValidateConstraints(const PropValue& value,
                                    chromeos::ErrorPtr* error) const {
   for (const auto& pair : constraints_) {
@@ -307,14 +301,6 @@ std::unique_ptr<PropType> PropType::Create(ValueType type) {
       break;
   }
   return std::unique_ptr<PropType>(prop);
-}
-
-bool PropType::GenerateErrorValueTypeMismatch(chromeos::ErrorPtr* error) const {
-  chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
-                               errors::commands::kTypeMismatch,
-                               "Unable to convert value to type '%s'",
-                               GetTypeAsString().c_str());
-  return false;
 }
 
 template <typename T>
@@ -593,36 +579,6 @@ bool ObjectPropType::ObjectSchemaFromJson(const base::DictionaryValue* value,
   object_schema_.value = std::move(object_schema);
   object_schema_.is_inherited = inherited;
 
-  return true;
-}
-
-chromeos::Any ObjectPropType::ConvertArrayToDBusVariant(
-    const ValueVector& source) const {
-  std::vector<chromeos::VariantDictionary> result;
-  result.reserve(source.size());
-  for (const auto& prop_value : source) {
-    chromeos::Any dict = PropValueToDBusVariant(prop_value.get());
-    result.push_back(std::move(*dict.GetPtr<chromeos::VariantDictionary>()));
-  }
-  return result;
-}
-
-bool ObjectPropType::ConvertDBusVariantToArray(
-    const chromeos::Any& source,
-    ValueVector* result,
-    chromeos::ErrorPtr* error) const {
-  if (!source.IsTypeCompatible<std::vector<chromeos::VariantDictionary>>())
-    return GenerateErrorValueTypeMismatch(error);
-
-  const auto& source_array =
-      source.Get<std::vector<chromeos::VariantDictionary>>();
-  result->reserve(source_array.size());
-  for (const auto& value : source_array) {
-    auto prop_value = PropValueFromDBusVariant(this, value, error);
-    if (!prop_value)
-      return false;
-    result->push_back(std::move(prop_value));
-  }
   return true;
 }
 

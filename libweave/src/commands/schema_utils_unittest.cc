@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/values.h>
-#include <chromeos/variant_dictionary.h>
 #include <gtest/gtest.h>
 
 #include "libweave/src/commands/object_schema.h"
@@ -22,7 +21,6 @@ namespace weave {
 
 using unittests::CreateDictionaryValue;
 using unittests::CreateValue;
-using chromeos::VariantDictionary;
 
 TEST(CommandSchemaUtils, TypedValueToJson_Scalar) {
   EXPECT_JSON_EQ("true", *TypedValueToJson(true));
@@ -54,8 +52,10 @@ TEST(CommandSchemaUtils, TypedValueToJson_Object) {
   IntPropType int_type;
   ValueMap object;
 
-  object.insert(std::make_pair("width", int_type.CreateValue(640, nullptr)));
-  object.insert(std::make_pair("height", int_type.CreateValue(480, nullptr)));
+  object.insert(std::make_pair(
+      "width", int_type.CreateValue(base::FundamentalValue{640}, nullptr)));
+  object.insert(std::make_pair(
+      "height", int_type.CreateValue(base::FundamentalValue{480}, nullptr)));
   EXPECT_JSON_EQ("{'height':480,'width':640}", *TypedValueToJson(object));
 }
 
@@ -63,8 +63,8 @@ TEST(CommandSchemaUtils, TypedValueToJson_Array) {
   IntPropType int_type;
   ValueVector arr;
 
-  arr.push_back(int_type.CreateValue(640, nullptr));
-  arr.push_back(int_type.CreateValue(480, nullptr));
+  arr.push_back(int_type.CreateValue(base::FundamentalValue{640}, nullptr));
+  arr.push_back(int_type.CreateValue(base::FundamentalValue{480}, nullptr));
   EXPECT_JSON_EQ("[640,480]", *TypedValueToJson(arr));
 }
 
@@ -175,9 +175,10 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Object) {
   EXPECT_TRUE(TypedValueFromJson(CreateValue("{'age':20,'name':'Bob'}").get(),
                                  &type, &value, nullptr));
   ValueMap value2;
-  value2.insert(std::make_pair("age", age_prop.CreateValue(20, nullptr)));
   value2.insert(std::make_pair(
-      "name", name_prop.CreateValue(std::string("Bob"), nullptr)));
+      "age", age_prop.CreateValue(base::FundamentalValue{20}, nullptr)));
+  value2.insert(std::make_pair(
+      "name", name_prop.CreateValue(base::StringValue("Bob"), nullptr)));
   EXPECT_EQ(value2, value);
 
   chromeos::ErrorPtr error;
@@ -197,8 +198,8 @@ TEST(CommandSchemaUtils, TypedValueFromJson_Array) {
   EXPECT_TRUE(TypedValueFromJson(CreateValue("['foo', 'bar']").get(), &type,
                                  &arr, nullptr));
   ValueVector arr2;
-  arr2.push_back(str_type.CreateValue(std::string{"foo"}, nullptr));
-  arr2.push_back(str_type.CreateValue(std::string{"bar"}, nullptr));
+  arr2.push_back(str_type.CreateValue(base::StringValue{"foo"}, nullptr));
+  arr2.push_back(str_type.CreateValue(base::StringValue{"bar"}, nullptr));
   EXPECT_EQ(arr2, arr);
 
   chromeos::ErrorPtr error;

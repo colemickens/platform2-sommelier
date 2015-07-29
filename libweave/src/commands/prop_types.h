@@ -13,10 +13,8 @@
 #include <utility>
 #include <vector>
 
-#include <chromeos/any.h>
 #include <chromeos/errors/error.h>
 
-#include "libweave/src/commands/dbus_conversion.h"
 #include "libweave/src/commands/prop_constraints.h"
 #include "libweave/src/commands/prop_values.h"
 
@@ -90,24 +88,6 @@ class PropType {
   // Creates an instance of associated value object, using the parameter
   // type as a factory class.
   virtual std::unique_ptr<PropValue> CreateValue() const = 0;
-  virtual std::unique_ptr<PropValue> CreateValue(
-      const chromeos::Any& val,
-      chromeos::ErrorPtr* error) const = 0;
-
-  // Converts an array of PropValue containing the values of the types described
-  // by this instance of PropType into an Any containing std::vector<T>, where
-  // T corresponds to the native representation of this PropType.
-  virtual chromeos::Any ConvertArrayToDBusVariant(
-      const ValueVector& source) const = 0;
-
-  // ConvertAnyToArray is the opposite of ConvertArrayToAny().
-  // Given an Any containing std::vector<T>, converts each value into the
-  // corresponding PropValue of type of this PropType and adds them to
-  // |result| array. If type conversion fails, this function returns false
-  // and specifies the error details in |error|.
-  virtual bool ConvertDBusVariantToArray(const chromeos::Any& source,
-                                         ValueVector* result,
-                                         chromeos::ErrorPtr* error) const = 0;
 
   // Saves the parameter type definition as a JSON object.
   // If |full_schema| is set to true, the full type definition is saved,
@@ -152,10 +132,6 @@ class PropType {
   // the |error| parameter.
   bool ValidateValue(const base::Value* value, chromeos::ErrorPtr* error) const;
 
-  // Similar to the above method, but uses Any as the value container.
-  bool ValidateValue(const chromeos::Any& value,
-                     chromeos::ErrorPtr* error) const;
-
   // Additional helper static methods to help with converting a type enum
   // value into a string and back.
   using TypeMap = std::vector<std::pair<ValueType, std::string>>;
@@ -184,10 +160,6 @@ class PropType {
   // Validates the given value against all the constraints.
   bool ValidateConstraints(const PropValue& value,
                            chromeos::ErrorPtr* error) const;
-
-  // Helper method to generate "type mismatch" error when creating a value
-  // from this type. Always returns false.
-  bool GenerateErrorValueTypeMismatch(chromeos::ErrorPtr* error) const;
 
  protected:
   // Specifies if this parameter definition is derived from a base
@@ -222,44 +194,12 @@ class PropTypeBase : public PropType {
     return std::unique_ptr<PropValue>{new Value{Clone()}};
   }
 
-  std::unique_ptr<PropValue> CreateValue(
-      const chromeos::Any& v,
-      chromeos::ErrorPtr* error) const override {
-    if (!v.IsTypeCompatible<T>()) {
-      GenerateErrorValueTypeMismatch(error);
+  std::unique_ptr<Value> CreateValue(const base::Value& value,
+                                     chromeos::ErrorPtr* error) const {
+    std::unique_ptr<Value> prop_value{new Value{Clone()}};
+    if (!prop_value->FromJson(&value, error))
       return nullptr;
-    }
-    std::unique_ptr<Value> value{new Value{Clone()}};
-    if (!value->SetValue(v.Get<T>(), error))
-      return nullptr;
-    return std::move(value);
-  }
-
-  chromeos::Any ConvertArrayToDBusVariant(
-      const ValueVector& source) const override {
-    std::vector<T> result;
-    result.reserve(source.size());
-    for (const auto& prop_value : source) {
-      result.push_back(PropValueToDBusVariant(prop_value.get()).Get<T>());
-    }
-    return result;
-  }
-
-  bool ConvertDBusVariantToArray(const chromeos::Any& source,
-                                 ValueVector* result,
-                                 chromeos::ErrorPtr* error) const override {
-    if (!source.IsTypeCompatible<std::vector<T>>())
-      return GenerateErrorValueTypeMismatch(error);
-
-    const auto& source_array = source.Get<std::vector<T>>();
-    result->reserve(source_array.size());
-    for (const auto& value : source_array) {
-      auto prop_value = PropValueFromDBusVariant(this, value, error);
-      if (!prop_value)
-        return false;
-      result->push_back(std::move(prop_value));
-    }
-    return true;
+    return prop_value;
   }
 
   bool ConstraintsFromJson(const base::DictionaryValue* value,
@@ -365,13 +305,6 @@ class ObjectPropType
                             const PropType* base_schema,
                             std::set<std::string>* processed_keys,
                             chromeos::ErrorPtr* error) override;
-
-  chromeos::Any ConvertArrayToDBusVariant(
-      const ValueVector& source) const override;
-
-  bool ConvertDBusVariantToArray(const chromeos::Any& source,
-                                 ValueVector* result,
-                                 chromeos::ErrorPtr* error) const override;
 
   // Returns a schema for Object-type parameter.
   inline const ObjectSchema* GetObjectSchemaPtr() const {

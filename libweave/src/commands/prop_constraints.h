@@ -132,11 +132,12 @@ class ConstraintMin : public ConstraintMinMaxBase<T> {
   // Implementation of Constraint::Validate().
   bool Validate(const PropValue& value,
                 chromeos::ErrorPtr* error) const override {
-    T v = value.GetValueAsAny().Get<T>();
-    if (v < this->limit_.value)
+    const T& v = static_cast<const TypedValueBase<T>&>(value).GetValue();
+    if (v < this->limit_.value) {
       return this->ReportErrorLessThan(
           error, chromeos::string_utils::ToString(v),
           chromeos::string_utils::ToString(this->limit_.value));
+    }
     return true;
   }
 
@@ -173,7 +174,7 @@ class ConstraintMax : public ConstraintMinMaxBase<T> {
   // Implementation of Constraint::Validate().
   bool Validate(const PropValue& value,
                 chromeos::ErrorPtr* error) const override {
-    T v = value.GetValueAsAny().Get<T>();
+    const T& v = static_cast<const TypedValueBase<T>&>(value).GetValue();
     if (v > this->limit_.value)
       return this->ReportErrorGreaterThan(
           error, chromeos::string_utils::ToString(v),

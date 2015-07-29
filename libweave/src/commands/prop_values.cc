@@ -12,8 +12,8 @@ PropValue::PropValue(std::unique_ptr<const PropType> type)
     : type_{std::move(type)} {
 }
 
-PropValue::PropValue(const PropType* type_ptr) : type_{type_ptr->Clone()} {
-}
+PropValue::PropValue(const PropValue& other)
+    : PropValue{other.type_->Clone()} {}
 
 PropValue::~PropValue() {
 }

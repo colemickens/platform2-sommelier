@@ -13,7 +13,6 @@
 #include <base/message_loop/message_loop.h>
 #include <base/values.h>
 #include <chromeos/errors/error.h>
-#include <chromeos/variant_dictionary.h>
 
 #include "libweave/src/buffet_config.h"
 #include "libweave/src/commands/command_manager.h"
@@ -22,7 +21,6 @@
 #include "libweave/src/states/state_manager.h"
 
 using chromeos::ErrorPtr;
-using chromeos::VariantDictionary;
 
 namespace weave {
 namespace privet {

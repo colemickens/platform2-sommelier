@@ -11,7 +11,6 @@
 
 #include <base/files/file_path.h>
 #include <chromeos/errors/error.h>
-#include <chromeos/variant_dictionary.h>
 
 #include "weave/cloud.h"
 #include "weave/commands.h"

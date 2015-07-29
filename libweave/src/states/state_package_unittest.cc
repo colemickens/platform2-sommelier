@@ -299,8 +299,8 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_OutOfRange) {
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_TypeMismatch) {
   chromeos::ErrorPtr error;
   ASSERT_FALSE(package_->SetPropertyValue(
-      "direction", *CreateDictionaryValue("{'altitude': 45.0, 'azimuth': '15'}"),
-      &error));
+      "direction",
+      *CreateDictionaryValue("{'altitude': 45.0, 'azimuth': '15'}"), &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kInvalidPropValue, error->GetCode());
   const chromeos::Error* inner = error->GetInnerError();
