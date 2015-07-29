@@ -646,10 +646,10 @@ void PrivetHandler::HandleAuth(const base::DictionaryValue& input,
   }
 
   if (requested_auth_scope > max_auth_scope) {
-    chromeos::Error::AddToPrintf(
-        &error, FROM_HERE, errors::kDomain, errors::kAccessDenied,
-        "Scope '%s' is not allowed for '%s'",
-        EnumToString(requested_auth_scope).c_str(), auth_code.c_str());
+    chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
+                                 errors::kAccessDenied,
+                                 "Scope '%s' is not allowed",
+                                 EnumToString(requested_auth_scope).c_str());
     return ReturnError(*error, callback);
   }
 
