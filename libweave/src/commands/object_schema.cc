@@ -367,7 +367,7 @@ std::unique_ptr<PropType> ObjectSchema::PropFromJson(
   chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                errors::commands::kUnknownType,
                                "Unexpected JSON value type: %s", type_name);
-  return {};
+  return nullptr;
 }
 
 std::unique_ptr<ObjectSchema> ObjectSchema::Create() {

@@ -10,7 +10,6 @@
 #include <string>
 
 #include <base/macros.h>
-#include <chromeos/any.h>
 #include <chromeos/errors/error.h>
 
 #include "libweave/src/commands/object_schema.h"
@@ -56,12 +55,13 @@ class StatePackage final {
 
   // Gets the value for a specific state property. |property_name| must not
   // include the package name as part of the property name.
-  chromeos::Any GetPropertyValue(const std::string& property_name,
-                                 chromeos::ErrorPtr* error) const;
+  std::unique_ptr<base::Value> GetPropertyValue(
+      const std::string& property_name,
+      chromeos::ErrorPtr* error) const;
   // Sets the value for a specific state property. |property_name| must not
   // include the package name as part of the property name.
   bool SetPropertyValue(const std::string& property_name,
-                        const chromeos::Any& value,
+                        const base::Value& value,
                         chromeos::ErrorPtr* error);
 
   std::shared_ptr<const PropValue> GetProperty(

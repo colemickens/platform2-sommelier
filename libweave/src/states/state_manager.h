@@ -15,7 +15,6 @@
 #include <base/callback.h>
 #include <base/macros.h>
 #include <chromeos/errors/error.h>
-#include <chromeos/variant_dictionary.h>
 
 #include "libweave/src/states/state_change_queue_interface.h"
 #include "libweave/src/states/state_package.h"
@@ -39,7 +38,7 @@ class StateManager final : public State {
 
   // State overrides.
   void AddOnChangedCallback(const base::Closure& callback) override;
-  bool SetProperties(const chromeos::VariantDictionary& property_set,
+  bool SetProperties(const base::DictionaryValue& property_set,
                      chromeos::ErrorPtr* error) override;
   std::unique_ptr<base::DictionaryValue> GetStateValuesAsJson() const override;
 
@@ -72,7 +71,7 @@ class StateManager final : public State {
   // Updates a single property value. |full_property_name| must be the full
   // name of the property to update in format "package.property".
   bool SetPropertyValue(const std::string& full_property_name,
-                        const chromeos::Any& value,
+                        const base::Value& value,
                         const base::Time& timestamp,
                         chromeos::ErrorPtr* error);
 

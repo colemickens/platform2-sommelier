@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/values.h>
-#include <chromeos/variant_dictionary.h>
 #include <gtest/gtest.h>
 
 #include "libweave/src/commands/schema_constants.h"
@@ -36,7 +35,12 @@ std::unique_ptr<base::DictionaryValue> GetTestSchema() {
   return CreateDictionaryValue(R"({
     'light': 'boolean',
     'color': 'string',
-    'direction':{'properties':{'azimuth':'number','altitude':{'maximum':90.0}}},
+    'direction':{
+      'properties':{
+        'azimuth': {'type': 'number', 'isRequired': true},
+        'altitude': {'maximum': 90.0}
+      }
+    },
     'iso': [50, 100, 200, 400]
   })");
 }
@@ -99,7 +103,8 @@ TEST(StatePackage, AddSchemaFromJson_OnEmpty) {
           'type': 'number'
         }
       },
-      'type': 'object'
+      'type': 'object',
+      'required': [ 'azimuth' ]
     },
     'iso': {
       'enum': [50, 100, 200, 400],
@@ -161,7 +166,8 @@ TEST_F(StatePackageTest, AddSchemaFromJson_AddMore) {
           'type': 'number'
         }
       },
-      'type': 'object'
+      'type': 'object',
+      'required': [ 'azimuth' ]
     },
     'iso': {
       'enum': [50, 100, 200, 400],
@@ -222,50 +228,39 @@ TEST_F(StatePackageTest, AddValuesFromJson_Error_Undefined) {
 }
 
 TEST_F(StatePackageTest, GetPropertyValue) {
-  chromeos::Any value = package_->GetPropertyValue("color", nullptr);
-  EXPECT_EQ("white", value.TryGet<std::string>());
-
-  value = package_->GetPropertyValue("light", nullptr);
-  EXPECT_TRUE(value.TryGet<bool>());
-
-  value = package_->GetPropertyValue("iso", nullptr);
-  EXPECT_EQ(200, value.TryGet<int>());
-
-  value = package_->GetPropertyValue("direction", nullptr);
-  auto direction = value.TryGet<chromeos::VariantDictionary>();
-  ASSERT_FALSE(direction.empty());
-  EXPECT_DOUBLE_EQ(89.9, direction["altitude"].TryGet<double>());
-  EXPECT_DOUBLE_EQ(57.2957795, direction["azimuth"].TryGet<double>());
+  EXPECT_JSON_EQ("'white'", *package_->GetPropertyValue("color", nullptr));
+  EXPECT_JSON_EQ("true", *package_->GetPropertyValue("light", nullptr));
+  EXPECT_JSON_EQ("200", *package_->GetPropertyValue("iso", nullptr));
+  EXPECT_JSON_EQ("{'altitude': 89.9, 'azimuth': 57.2957795}",
+                 *package_->GetPropertyValue("direction", nullptr));
 }
 
 TEST_F(StatePackageTest, GetPropertyValue_Unknown) {
   chromeos::ErrorPtr error;
-  chromeos::Any value = package_->GetPropertyValue("volume", &error);
-  EXPECT_TRUE(value.IsEmpty());
+  EXPECT_EQ(nullptr, package_->GetPropertyValue("volume", &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Simple) {
   EXPECT_TRUE(
-      package_->SetPropertyValue("color", std::string{"blue"}, nullptr));
-  chromeos::Any value = package_->GetPropertyValue("color", nullptr);
-  EXPECT_EQ("blue", value.TryGet<std::string>());
-
-  EXPECT_TRUE(package_->SetPropertyValue("light", bool{false}, nullptr));
-  value = package_->GetPropertyValue("light", nullptr);
-  EXPECT_FALSE(value.TryGet<bool>());
-
-  EXPECT_TRUE(package_->SetPropertyValue("iso", int{400}, nullptr));
-  value = package_->GetPropertyValue("iso", nullptr);
-  EXPECT_EQ(400, value.TryGet<int>());
+      package_->SetPropertyValue("color", base::StringValue{"blue"}, nullptr));
+  EXPECT_JSON_EQ("'blue'", *package_->GetPropertyValue("color", nullptr));
+  EXPECT_TRUE(package_->SetPropertyValue("light", base::FundamentalValue{false},
+                                         nullptr));
+  bool light = false;
+  ASSERT_TRUE(
+      package_->GetPropertyValue("light", nullptr)->GetAsBoolean(&light));
+  EXPECT_FALSE(light);
+  EXPECT_TRUE(
+      package_->SetPropertyValue("iso", base::FundamentalValue{400}, nullptr));
+  EXPECT_JSON_EQ("400", *package_->GetPropertyValue("iso", nullptr));
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Object) {
-  chromeos::VariantDictionary direction{
-      {"altitude", double{45.0}}, {"azimuth", double{15.0}},
-  };
-  EXPECT_TRUE(package_->SetPropertyValue("direction", direction, nullptr));
+  EXPECT_TRUE(package_->SetPropertyValue(
+      "direction",
+      *CreateDictionaryValue("{'altitude': 45.0, 'azimuth': 15.0}"), nullptr));
 
   auto expected = R"({
     'color': 'white',
@@ -281,29 +276,31 @@ TEST_F(StatePackageTest, SetPropertyValue_Object) {
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_TypeMismatch) {
   chromeos::ErrorPtr error;
-  ASSERT_FALSE(package_->SetPropertyValue("color", int{12}, &error));
+  ASSERT_FALSE(
+      package_->SetPropertyValue("color", base::FundamentalValue{12}, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
   error.reset();
 
-  ASSERT_FALSE(package_->SetPropertyValue("iso", bool{false}, &error));
+  ASSERT_FALSE(
+      package_->SetPropertyValue("iso", base::FundamentalValue{false}, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_OutOfRange) {
   chromeos::ErrorPtr error;
-  ASSERT_FALSE(package_->SetPropertyValue("iso", int{150}, &error));
+  ASSERT_FALSE(
+      package_->SetPropertyValue("iso", base::FundamentalValue{150}, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kOutOfRange, error->GetCode());
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_TypeMismatch) {
   chromeos::ErrorPtr error;
-  chromeos::VariantDictionary direction{
-      {"altitude", double{45.0}}, {"azimuth", int{15}},
-  };
-  ASSERT_FALSE(package_->SetPropertyValue("direction", direction, &error));
+  ASSERT_FALSE(package_->SetPropertyValue(
+      "direction", *CreateDictionaryValue("{'altitude': 45.0, 'azimuth': '15'}"),
+      &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kInvalidPropValue, error->GetCode());
   const chromeos::Error* inner = error->GetInnerError();
@@ -313,10 +310,9 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Object_TypeMismatch) {
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_OutOfRange) {
   chromeos::ErrorPtr error;
-  chromeos::VariantDictionary direction{
-      {"altitude", double{100.0}}, {"azimuth", double{290.0}},
-  };
-  ASSERT_FALSE(package_->SetPropertyValue("direction", direction, &error));
+  ASSERT_FALSE(package_->SetPropertyValue(
+      "direction",
+      *CreateDictionaryValue("{'altitude': 100.0, 'azimuth': 290.0}"), &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kInvalidPropValue, error->GetCode());
   const chromeos::Error* inner = error->GetInnerError();
@@ -326,29 +322,28 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Object_OutOfRange) {
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_UnknownProperty) {
   chromeos::ErrorPtr error;
-  chromeos::VariantDictionary direction{
-      {"altitude", double{10.0}},
-      {"azimuth", double{20.0}},
-      {"spin", double{30.0}},
-  };
-  ASSERT_FALSE(package_->SetPropertyValue("direction", direction, &error));
+  ASSERT_FALSE(package_->SetPropertyValue(
+      "direction", *CreateDictionaryValue(
+                       "{'altitude': 10.0, 'azimuth': 20.0, 'spin': 30.0}"),
+      &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kUnknownProperty, error->GetCode());
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_MissingProperty) {
   chromeos::ErrorPtr error;
-  chromeos::VariantDictionary direction{
-      {"altitude", double{10.0}},
-  };
-  ASSERT_FALSE(package_->SetPropertyValue("direction", direction, &error));
+  ASSERT_TRUE(package_->SetPropertyValue(
+      "direction", *CreateDictionaryValue("{'azimuth': 10.0}"), &error));
+  ASSERT_FALSE(package_->SetPropertyValue(
+      "direction", *CreateDictionaryValue("{'altitude': 10.0}"), &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kPropertyMissing, error->GetCode());
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Unknown) {
   chromeos::ErrorPtr error;
-  ASSERT_FALSE(package_->SetPropertyValue("volume", int{100}, &error));
+  ASSERT_FALSE(package_->SetPropertyValue("volume", base::FundamentalValue{100},
+                                          &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
 }

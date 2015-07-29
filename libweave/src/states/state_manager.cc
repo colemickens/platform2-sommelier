@@ -90,8 +90,9 @@ void StateManager::Startup() {
   } else {
     LOG(ERROR) << "Failed to read file for firmwareVersion.";
   }
-  CHECK(SetPropertyValue(kBaseStateFirmwareVersion, firmware_version,
-                         base::Time::Now(), nullptr));
+  CHECK(SetPropertyValue(kBaseStateFirmwareVersion,
+                         base::StringValue{firmware_version}, base::Time::Now(),
+                         nullptr));
 
   for (const auto& cb : on_changed_)
     cb.Run();
@@ -108,13 +109,13 @@ std::unique_ptr<base::DictionaryValue> StateManager::GetStateValuesAsJson()
   return dict;
 }
 
-bool StateManager::SetProperties(
-    const chromeos::VariantDictionary& property_set,
-    chromeos::ErrorPtr* error) {
+bool StateManager::SetProperties(const base::DictionaryValue& property_set,
+                                 chromeos::ErrorPtr* error) {
   base::Time timestamp = base::Time::Now();
   bool all_success = true;
-  for (const auto& pair : property_set) {
-    if (!SetPropertyValue(pair.first, pair.second, timestamp, error)) {
+  for (base::DictionaryValue::Iterator it(property_set); !it.IsAtEnd();
+       it.Advance()) {
+    if (!SetPropertyValue(it.key(), it.value(), timestamp, error)) {
       // Remember that an error occurred but keep going and update the rest of
       // the properties if possible.
       all_success = false;
@@ -126,7 +127,7 @@ bool StateManager::SetProperties(
 }
 
 bool StateManager::SetPropertyValue(const std::string& full_property_name,
-                                    const chromeos::Any& value,
+                                    const base::Value& value,
                                     const base::Time& timestamp,
                                     chromeos::ErrorPtr* error) {
   std::string package_name;

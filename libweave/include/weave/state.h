@@ -7,7 +7,6 @@
 
 #include <base/callback.h>
 #include <base/values.h>
-#include <chromeos/variant_dictionary.h>
 
 namespace weave {
 
@@ -17,7 +16,7 @@ class State {
   virtual void AddOnChangedCallback(const base::Closure& callback) = 0;
 
   // Updates a multiple property values.
-  virtual bool SetProperties(const chromeos::VariantDictionary& property_set,
+  virtual bool SetProperties(const base::DictionaryValue& property_set,
                              chromeos::ErrorPtr* error) = 0;
 
   // Returns aggregated state properties across all registered packages as

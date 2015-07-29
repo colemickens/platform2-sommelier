@@ -74,7 +74,7 @@ class StateManagerTest : public ::testing::Test {
   }
 
   bool SetPropertyValue(const std::string& name,
-                        const chromeos::Any& value,
+                        const base::Value& value,
                         chromeos::ErrorPtr* error) {
     return mgr_->SetPropertyValue(name, value, timestamp_, error);
   }
@@ -140,7 +140,7 @@ TEST_F(StateManagerTest, SetPropertyValue) {
               NotifyPropertiesUpdated(timestamp_, expected_prop_set))
       .WillOnce(Return(true));
   ASSERT_TRUE(SetPropertyValue("device.state_property",
-                               std::string{"Test Value"}, nullptr));
+                               base::StringValue{"Test Value"}, nullptr));
   auto expected = R"({
     'base': {
       'manufacturer': 'Test Factory',
@@ -155,28 +155,31 @@ TEST_F(StateManagerTest, SetPropertyValue) {
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_NoName) {
   chromeos::ErrorPtr error;
-  ASSERT_FALSE(SetPropertyValue("", int{0}, &error));
+  ASSERT_FALSE(SetPropertyValue("", base::FundamentalValue{0}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNameMissing, error->GetCode());
 }
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_NoPackage) {
   chromeos::ErrorPtr error;
-  ASSERT_FALSE(SetPropertyValue("state_property", int{0}, &error));
+  ASSERT_FALSE(
+      SetPropertyValue("state_property", base::FundamentalValue{0}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPackageNameMissing, error->GetCode());
 }
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownPackage) {
   chromeos::ErrorPtr error;
-  ASSERT_FALSE(SetPropertyValue("power.level", int{0}, &error));
+  ASSERT_FALSE(
+      SetPropertyValue("power.level", base::FundamentalValue{0}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
 }
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownProperty) {
   chromeos::ErrorPtr error;
-  ASSERT_FALSE(SetPropertyValue("base.level", int{0}, &error));
+  ASSERT_FALSE(
+      SetPropertyValue("base.level", base::FundamentalValue{0}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
 }
@@ -185,7 +188,7 @@ TEST_F(StateManagerTest, GetAndClearRecordedStateChanges) {
   EXPECT_CALL(mock_state_change_queue_, NotifyPropertiesUpdated(timestamp_, _))
       .WillOnce(Return(true));
   ASSERT_TRUE(SetPropertyValue("device.state_property",
-                               std::string{"Test Value"}, nullptr));
+                               base::StringValue{"Test Value"}, nullptr));
   std::vector<StateChange> expected_val;
   expected_val.emplace_back(
       timestamp_, ValueMap{{"device.state_property",
@@ -209,7 +212,7 @@ TEST_F(StateManagerTest, SetProperties) {
 
   EXPECT_CALL(*this, OnStateChanged()).Times(1);
   ASSERT_TRUE(mgr_->SetProperties(
-      {{"base.manufacturer", std::string("No Name")}}, nullptr));
+      *CreateDictionaryValue("{'base.manufacturer': 'No Name'}"), nullptr));
 
   auto expected = R"({
     'base': {

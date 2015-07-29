@@ -44,11 +44,13 @@ void BaseApiHandler::UpdateBaseConfiguration(Command* command) {
   parameters->GetBoolean("localDiscoveryEnabled", &discovery_enabled);
   parameters->GetBoolean("localPairingEnabled", &pairing_enabled);
 
-  chromeos::VariantDictionary state{
-      {"base.localAnonymousAccessMaxRole", anonymous_access_role},
-      {"base.localDiscoveryEnabled", discovery_enabled},
-      {"base.localPairingEnabled", pairing_enabled},
-  };
+  base::DictionaryValue state;
+  state.SetStringWithoutPathExpansion("base.localAnonymousAccessMaxRole",
+                                      anonymous_access_role);
+  state.SetBooleanWithoutPathExpansion("base.localDiscoveryEnabled",
+                                       discovery_enabled);
+  state.SetBooleanWithoutPathExpansion("base.localPairingEnabled",
+                                       pairing_enabled);
   if (!state_manager_->SetProperties(state, nullptr)) {
     return command->Abort();
   }

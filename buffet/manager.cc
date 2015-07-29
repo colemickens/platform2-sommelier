@@ -23,6 +23,8 @@
 #include <dbus/object_path.h>
 #include <dbus/values_util.h>
 
+// TODO(vitalybuka): Will be moved into buffet soon.
+#include "libweave/src/commands/dbus_conversion.h"
 #include "weave/enum_to_string.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
@@ -137,7 +139,12 @@ void Manager::RegisterDevice(DBusMethodResponsePtr<std::string> response,
 void Manager::UpdateState(DBusMethodResponsePtr<> response,
                           const chromeos::VariantDictionary& property_set) {
   chromeos::ErrorPtr error;
-  if (!device_->GetState()->SetProperties(property_set, &error))
+  auto properties =
+      weave::DictionaryFromDBusVariantDictionary(property_set, &error);
+  if (!properties)
+    response->ReplyWithError(error.get());
+
+  if (!device_->GetState()->SetProperties(*properties, &error))
     response->ReplyWithError(error.get());
   else
     response->Return();
