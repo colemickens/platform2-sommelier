@@ -85,9 +85,10 @@ class PropType {
   // Makes a full copy of this type definition.
   virtual std::unique_ptr<PropType> Clone() const;
 
-  // Creates an instance of associated value object, using the parameter
-  // type as a factory class.
-  virtual std::unique_ptr<PropValue> CreateValue() const = 0;
+  // Creates an instance of associated value object.
+  virtual std::unique_ptr<PropValue> CreatePropValue(
+      const base::Value& value,
+      chromeos::ErrorPtr* error) const = 0;
 
   // Saves the parameter type definition as a JSON object.
   // If |full_schema| is set to true, the full type definition is saved,
@@ -125,13 +126,6 @@ class PropType {
     return true;
   }
 
-  // Validates a JSON value for the parameter type to make sure it satisfies
-  // the parameter type definition including any specified constraints.
-  // Returns false if the |value| does not meet the requirements of the type
-  // definition and returns additional information about the failure via
-  // the |error| parameter.
-  bool ValidateValue(const base::Value* value, chromeos::ErrorPtr* error) const;
-
   // Additional helper static methods to help with converting a type enum
   // value into a string and back.
   using TypeMap = std::vector<std::pair<ValueType, std::string>>;
@@ -162,6 +156,9 @@ class PropType {
                            chromeos::ErrorPtr* error) const;
 
  protected:
+  friend class StatePackage;
+  virtual std::unique_ptr<PropValue> CreateDefaultValue() const = 0;
+
   // Specifies if this parameter definition is derived from a base
   // object schema.
   bool based_on_schema_ = false;
@@ -188,23 +185,27 @@ class PropTypeBase : public PropType {
   // Overrides from PropType.
   ValueType GetType() const override { return GetValueType<T>(); }
 
-  std::unique_ptr<PropValue> CreateValue() const override {
-    if (GetDefaultValue())
-      return GetDefaultValue()->Clone();
-    return std::unique_ptr<PropValue>{new Value{Clone()}};
+  std::unique_ptr<PropValue> CreatePropValue(
+      const base::Value& value,
+      chromeos::ErrorPtr* error) const override {
+    return CreateValue(value, error);
   }
 
   std::unique_ptr<Value> CreateValue(const base::Value& value,
                                      chromeos::ErrorPtr* error) const {
-    std::unique_ptr<Value> prop_value{new Value{Clone()}};
-    if (!prop_value->FromJson(&value, error))
-      return nullptr;
-    return prop_value;
+    return Value::CreateFromJson(value, *this, error);
   }
 
   bool ConstraintsFromJson(const base::DictionaryValue* value,
                            std::set<std::string>* processed_keys,
                            chromeos::ErrorPtr* error) override;
+
+ protected:
+  std::unique_ptr<PropValue> CreateDefaultValue() const override {
+    if (GetDefaultValue())
+      return GetDefaultValue()->Clone();
+    return std::unique_ptr<PropValue>{new Value{*this}};
+  }
 };
 
 // Helper base class for Int and Double parameter types.

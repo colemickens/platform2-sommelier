@@ -330,10 +330,17 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Object_UnknownProperty) {
   EXPECT_EQ(errors::commands::kUnknownProperty, error->GetCode());
 }
 
+TEST_F(StatePackageTest, SetPropertyValue_Object_OptionalProperty) {
+  EXPECT_JSON_EQ("{'altitude': 89.9, 'azimuth': 57.2957795}",
+                 *package_->GetProperty("direction")->ToJson());
+  ASSERT_TRUE(package_->SetPropertyValue(
+      "direction", *CreateDictionaryValue("{'azimuth': 10.0}"), nullptr));
+  EXPECT_JSON_EQ("{'azimuth': 10.0}",
+                 *package_->GetProperty("direction")->ToJson());
+}
+
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_MissingProperty) {
   chromeos::ErrorPtr error;
-  ASSERT_TRUE(package_->SetPropertyValue(
-      "direction", *CreateDictionaryValue("{'azimuth': 10.0}"), &error));
   ASSERT_FALSE(package_->SetPropertyValue(
       "direction", *CreateDictionaryValue("{'altitude': 10.0}"), &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());

@@ -143,11 +143,11 @@ bool TypedValueFromJson(const base::Value* value_in,
   for (const auto& pair : object_schema->GetProps()) {
     const PropValue* def_value = pair.second->GetDefaultValue();
     if (dict->HasKey(pair.first)) {
-      auto value = pair.second->CreateValue();
       const base::Value* param_value = nullptr;
       CHECK(dict->GetWithoutPathExpansion(pair.first, &param_value))
           << "Unable to get parameter";
-      if (!value->FromJson(param_value, error)) {
+      auto value = pair.second->CreatePropValue(*param_value, error);
+      if (!value) {
         chromeos::Error::AddToPrintf(
             error, FROM_HERE, errors::commands::kDomain,
             errors::commands::kInvalidPropValue,
@@ -213,10 +213,10 @@ bool TypedValueFromJson(const base::Value* value_in,
   value_out->clear();
   value_out->reserve(list->GetSize());
   for (const base::Value* item : *list) {
-    std::unique_ptr<PropValue> prop_value = item_type->CreateValue();
-    if (!prop_value->FromJson(item, error)) {
+    std::unique_ptr<PropValue> prop_value =
+        item_type->CreatePropValue(*item, error);
+    if (!prop_value)
       return false;
-    }
     value_out->push_back(std::move(prop_value));
   }
   return true;

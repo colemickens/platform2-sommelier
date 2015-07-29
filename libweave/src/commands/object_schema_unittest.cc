@@ -47,6 +47,13 @@ std::vector<T> GetOneOfValues(const PropType* prop_type) {
   return GetArrayValues<T>(one_of->set_.value);
 }
 
+bool ValidateValue(const PropType& type,
+                   const base::Value& value,
+                   chromeos::ErrorPtr* error) {
+  std::unique_ptr<PropValue> val = type.CreatePropValue(value, error);
+  return val != nullptr;
+}
+
 }  // anonymous namespace
 
 TEST(CommandSchema, IntPropType_Empty) {
@@ -123,31 +130,31 @@ TEST(CommandSchema, IntPropType_Validate) {
   IntPropType prop;
   prop.AddMinMaxConstraint(2, 4);
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("-1").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("-1"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("0").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("0"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("1").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("1"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("2").get(), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("2"), &error));
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("3").get(), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("3"), &error));
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("4").get(), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("4"), &error));
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("5").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("5"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("true").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("true"), &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
   error.reset();
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("3.0").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("3.0"), &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
   error.reset();
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("'3'").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("'3'"), &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
 }
 
@@ -225,18 +232,18 @@ TEST(CommandSchema, BoolPropType_Validate) {
   BooleanPropType prop;
   prop.FromJson(CreateDictionaryValue("{'enum':[true]}").get(), &prop, nullptr);
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("false").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("false"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("true").get(), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("true"), &error));
   error.reset();
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("1").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("1"), &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
   error.reset();
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("3.0").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("3.0"), &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
   error.reset();
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("'3'").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("'3'"), &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
 }
 
@@ -335,25 +342,25 @@ TEST(CommandSchema, DoublePropType_Validate) {
   DoublePropType prop;
   prop.AddMinMaxConstraint(-1.2, 1.3);
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("-2").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("-2"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("-1.3").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("-1.3"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("-1.2").get(), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("-1.2"), &error));
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("0.0").get(), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("0.0"), &error));
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("1.3").get(), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("1.3"), &error));
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("1.31").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("1.31"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("true").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("true"), &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
   error.reset();
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("'0.0'").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("'0.0'"), &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
 }
 
@@ -454,30 +461,30 @@ TEST(CommandSchema, StringPropType_Validate) {
   StringPropType prop;
   prop.AddLengthConstraint(1, 3);
   chromeos::ErrorPtr error;
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("''").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("''"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
   prop.AddLengthConstraint(2, 3);
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("''").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("''"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("'a'").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("'a'"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("'ab'").get(), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("'ab'"), &error));
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("'abc'").get(), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("'abc'"), &error));
   EXPECT_EQ(nullptr, error.get());
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("'abcd'").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("'abcd'"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
 
   prop.FromJson(CreateDictionaryValue("{'enum':['abc','def','xyz!!']}").get(),
                 nullptr, &error);
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("'abc'").get(), &error));
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("'def'").get(), &error));
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("'xyz!!'").get(), &error));
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("'xyz'").get(), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("'abc'"), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("'def'"), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("'xyz!!'"), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("'xyz'"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
 }
@@ -676,30 +683,30 @@ TEST(CommandSchema, ObjectPropType_Validate) {
                     "'required':['expires','password']}").get(),
                 nullptr, nullptr);
   chromeos::ErrorPtr error;
-  EXPECT_TRUE(prop.ValidateValue(
-      CreateValue("{'expires':10,'password':'abcdef'}").get(), &error));
+  EXPECT_TRUE(ValidateValue(
+      prop, *CreateValue("{'expires':10,'password':'abcdef'}"), &error));
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("{'expires':10}").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("{'expires':10}"), &error));
   EXPECT_EQ("parameter_missing", error->GetCode());
   error.reset();
 
   EXPECT_FALSE(
-      prop.ValidateValue(CreateValue("{'password':'abcdef'}").get(), &error));
+      ValidateValue(prop, *CreateValue("{'password':'abcdef'}"), &error));
   EXPECT_EQ("parameter_missing", error->GetCode());
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(
-      CreateValue("{'expires':10,'password':'abcde'}").get(), &error));
+  EXPECT_FALSE(ValidateValue(
+      prop, *CreateValue("{'expires':10,'password':'abcde'}"), &error));
   EXPECT_EQ("out_of_range", error->GetFirstError()->GetCode());
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("2").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("2"), &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(
-      CreateValue("{'expires':10,'password':'abcdef','retry':true}").get(),
+  EXPECT_FALSE(ValidateValue(
+      prop, *CreateValue("{'expires':10,'password':'abcdef','retry':true}"),
       &error));
   EXPECT_EQ("unexpected_parameter", error->GetCode());
   error.reset();
@@ -714,16 +721,16 @@ TEST(CommandSchema, ObjectPropType_Validate_Enum) {
           .get(),
       nullptr, nullptr));
   chromeos::ErrorPtr error;
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("{'height':20,'width':10}").get(),
-                                 &error));
+  EXPECT_TRUE(
+      ValidateValue(prop, *CreateValue("{'height':20,'width':10}"), &error));
   error.reset();
 
-  EXPECT_TRUE(prop.ValidateValue(
-      CreateValue("{'height':200,'width':100}").get(), &error));
+  EXPECT_TRUE(
+      ValidateValue(prop, *CreateValue("{'height':200,'width':100}"), &error));
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("{'height':12,'width':10}").get(),
-                                  &error));
+  EXPECT_FALSE(
+      ValidateValue(prop, *CreateValue("{'height':12,'width':10}"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
 }
@@ -825,14 +832,14 @@ TEST(CommandSchema, ArrayPropType_Validate) {
       nullptr, nullptr);
 
   chromeos::ErrorPtr error;
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("[3,4,10.5]").get(), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("[3,4,10.5]"), &error));
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("[2]").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("[2]"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("[4, 5, 20]").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("[4, 5, 20]"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
 }
@@ -845,14 +852,14 @@ TEST(CommandSchema, ArrayPropType_Validate_Enum) {
       nullptr, nullptr);
 
   chromeos::ErrorPtr error;
-  EXPECT_TRUE(prop.ValidateValue(CreateValue("[2,3]").get(), &error));
+  EXPECT_TRUE(ValidateValue(prop, *CreateValue("[2,3]"), &error));
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("[2]").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("[2]"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
 
-  EXPECT_FALSE(prop.ValidateValue(CreateValue("[2,3,4]").get(), &error));
+  EXPECT_FALSE(ValidateValue(prop, *CreateValue("[2,3,4]"), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
   error.reset();
 }
@@ -1267,8 +1274,9 @@ TEST(CommandSchema, ObjectSchema_UseDefaults) {
       prop.FromJson(CreateDictionaryValue(schema_str).get(), nullptr, nullptr));
 
   // Omit all.
-  auto value = prop.CreateValue();
-  ASSERT_TRUE(value->FromJson(CreateDictionaryValue("{}").get(), nullptr));
+  auto value =
+      prop.CreatePropValue(*CreateDictionaryValue("{}").get(), nullptr);
+  ASSERT_NE(nullptr, value);
   ValueMap obj = value->GetObject()->GetValue();
   EXPECT_TRUE(obj["param1"]->GetBoolean()->GetValue());
   EXPECT_EQ(2, obj["param2"]->GetInt()->GetValue());
@@ -1281,14 +1289,14 @@ TEST(CommandSchema, ObjectSchema_UseDefaults) {
   EXPECT_EQ((std::vector<int>{1, 2, 3}), GetArrayValues<int>(param6));
 
   // Specify some.
-  value = prop.CreateValue();
   const char* val_json =
       "{"
       "'param1':false,"
       "'param3':33.3,"
       "'param5':{'x':-5,'y':-6}"
       "}";
-  ASSERT_TRUE(value->FromJson(CreateDictionaryValue(val_json).get(), nullptr));
+  value = prop.CreatePropValue(*CreateDictionaryValue(val_json).get(), nullptr);
+  ASSERT_NE(nullptr, value);
   obj = value->GetObject()->GetValue();
   EXPECT_FALSE(obj["param1"]->GetBoolean()->GetValue());
   EXPECT_EQ(2, obj["param2"]->GetInt()->GetValue());
@@ -1301,7 +1309,6 @@ TEST(CommandSchema, ObjectSchema_UseDefaults) {
   EXPECT_EQ((std::vector<int>{1, 2, 3}), GetArrayValues<int>(param6));
 
   // Specify all.
-  value = prop.CreateValue();
   val_json =
       "{"
       "'param1':false,"
@@ -1311,7 +1318,8 @@ TEST(CommandSchema, ObjectSchema_UseDefaults) {
       "'param5':{'x':-55,'y':66},"
       "'param6':[-1, 0]"
       "}";
-  ASSERT_TRUE(value->FromJson(CreateDictionaryValue(val_json).get(), nullptr));
+  value = prop.CreatePropValue(*CreateDictionaryValue(val_json).get(), nullptr);
+  ASSERT_NE(nullptr, value);
   obj = value->GetObject()->GetValue();
   EXPECT_FALSE(obj["param1"]->GetBoolean()->GetValue());
   EXPECT_EQ(22, obj["param2"]->GetInt()->GetValue());
@@ -1638,23 +1646,24 @@ TEST(CommandSchema, ObjectSchema_UseRequired) {
   ASSERT_TRUE(prop.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
                             nullptr));
 
-  auto value = prop.CreateValue();
   auto val_json = R"({
     'param1':10,
     'param2':20,
     'param3':30,
     'param4':40
   })";
-  ASSERT_TRUE(value->FromJson(CreateDictionaryValue(val_json).get(), nullptr));
+  auto value =
+      prop.CreatePropValue(*CreateDictionaryValue(val_json).get(), nullptr);
+  ASSERT_NE(nullptr, value);
   ValueMap obj = value->GetObject()->GetValue();
   EXPECT_EQ(10, obj["param1"]->GetInt()->GetValue());
   EXPECT_EQ(20, obj["param2"]->GetInt()->GetValue());
   EXPECT_EQ(30, obj["param3"]->GetInt()->GetValue());
   EXPECT_EQ(40, obj["param4"]->GetInt()->GetValue());
 
-  value = prop.CreateValue();
   val_json = "{'param1':100}";
-  ASSERT_TRUE(value->FromJson(CreateDictionaryValue(val_json).get(), nullptr));
+  value = prop.CreatePropValue(*CreateDictionaryValue(val_json).get(), nullptr);
+  ASSERT_NE(nullptr, value);
   obj = value->GetObject()->GetValue();
   EXPECT_EQ(3, obj.size());
 
@@ -1678,10 +1687,11 @@ TEST(CommandSchema, ObjectSchema_UseRequired_Failure) {
   ASSERT_TRUE(prop.FromJson(CreateDictionaryValue(schema_str).get(), nullptr,
                             nullptr));
 
-  auto value = prop.CreateValue();
   auto val_json = "{'param2':20}";
   chromeos::ErrorPtr error;
-  ASSERT_FALSE(value->FromJson(CreateDictionaryValue(val_json).get(), &error));
+  auto value =
+      prop.CreatePropValue(*CreateDictionaryValue(val_json).get(), &error);
+  ASSERT_EQ(nullptr, value);
   EXPECT_EQ(errors::commands::kPropertyMissing, error->GetCode());
 }
 

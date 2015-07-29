@@ -30,30 +30,27 @@ inline bool IsEqualValue(const base::Value& val1, const base::Value& val2) {
   return val1.Equals(&val2);
 }
 
-template <typename PropVal, typename T>
-std::unique_ptr<const PropVal> make_prop_value(const T& value) {
-  std::unique_ptr<PropVal> result{
-      new PropVal{PropType::Create(GetValueType<T>())}};
-  if (!result->SetValue(value, nullptr))
-    return nullptr;
-  return std::move(result);
+template <typename T>
+std::unique_ptr<const PropValue> make_prop_value(const base::Value& value) {
+  auto prop_type = PropType::Create(GetValueType<T>());
+  return prop_type->CreatePropValue(value, nullptr);
 }
 
-inline std::unique_ptr<const IntValue> make_int_prop_value(int value) {
-  return make_prop_value<IntValue, int>(value);
+inline std::unique_ptr<const PropValue> make_int_prop_value(int value) {
+  return make_prop_value<int>(base::FundamentalValue{value});
 }
 
-inline std::unique_ptr<const DoubleValue> make_double_prop_value(double value) {
-  return make_prop_value<DoubleValue, double>(value);
+inline std::unique_ptr<const PropValue> make_double_prop_value(double value) {
+  return make_prop_value<double>(base::FundamentalValue{value});
 }
 
-inline std::unique_ptr<const BooleanValue> make_bool_prop_value(bool value) {
-  return make_prop_value<BooleanValue, bool>(value);
+inline std::unique_ptr<const PropValue> make_bool_prop_value(bool value) {
+  return make_prop_value<bool>(base::FundamentalValue{value});
 }
 
-inline std::unique_ptr<const StringValue> make_string_prop_value(
+inline std::unique_ptr<const PropValue> make_string_prop_value(
     const std::string& value) {
-  return make_prop_value<StringValue, std::string>(value);
+  return make_prop_value<std::string>(base::StringValue{value});
 }
 
 }  // namespace unittests

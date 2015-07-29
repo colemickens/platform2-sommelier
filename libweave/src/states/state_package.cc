@@ -38,7 +38,7 @@ bool StatePackage::AddSchemaFromJson(const base::DictionaryValue* json,
   for (const auto& pair : schema.GetProps()) {
     types_.AddProp(pair.first, pair.second->Clone());
     // Create default value for this state property.
-    values_.emplace(pair.first, pair.second->CreateValue());
+    values_.emplace(pair.first, pair.second->CreateDefaultValue());
   }
 
   return true;
@@ -89,8 +89,8 @@ bool StatePackage::SetPropertyValue(const std::string& property_name,
                                  name_.c_str(), property_name.c_str());
     return false;
   }
-  auto new_value = it->second->GetPropType()->CreateValue();
-  if (!new_value->FromJson(&value, error))
+  auto new_value = it->second->GetPropType()->CreatePropValue(value, error);
+  if (!new_value)
     return false;
   it->second = std::move(new_value);
   return true;

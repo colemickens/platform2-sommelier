@@ -8,12 +8,9 @@
 
 namespace weave {
 
-PropValue::PropValue(std::unique_ptr<const PropType> type)
-    : type_{std::move(type)} {
-}
+PropValue::PropValue(const PropType& type) : type_{type.Clone()} {}
 
-PropValue::PropValue(const PropValue& other)
-    : PropValue{other.type_->Clone()} {}
+PropValue::PropValue(const PropValue& other) : PropValue{*other.type_} {}
 
 PropValue::~PropValue() {
 }

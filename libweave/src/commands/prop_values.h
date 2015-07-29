@@ -83,7 +83,8 @@ inline ValueType GetValueType<ValueVector>() {
 //     This is used to validate the values against "enum"/"one of" constraints.
 class PropValue {
  public:
-  explicit PropValue(std::unique_ptr<const PropType> type);
+  // Only CreateDefaultValue should use this constructor.
+  explicit PropValue(const PropType& type);
   virtual ~PropValue();
 
   // Gets the type of the value.
@@ -108,11 +109,6 @@ class PropValue {
 
   // Saves the value as a JSON object. Never fails.
   virtual std::unique_ptr<base::Value> ToJson() const = 0;
-  // Parses a value from JSON.
-  // If it fails, it returns false and provides additional information
-  // via the |error| parameter.
-  virtual bool FromJson(const base::Value* value,
-                        chromeos::ErrorPtr* error) = 0;
 
   // Return the type definition of this value.
   const PropType* GetPropType() const { return type_.get(); }
@@ -134,9 +130,6 @@ class PropValue {
 template <typename T>
 class TypedValueBase : public PropValue {
  public:
-  // To help refer to this base class from derived classes, define Base to
-  // be this class.
-  using Base = TypedValueBase<T>;
   using PropValue::PropValue;
 
   // Overrides from PropValue base class.
@@ -146,33 +139,22 @@ class TypedValueBase : public PropValue {
     return TypedValueToJson(value_);
   }
 
-  bool FromJson(const base::Value* value, chromeos::ErrorPtr* error) override {
-    T tmp_value;
-    if (!TypedValueFromJson(value, GetPropType(), &tmp_value, error))
-      return false;
-    return SetValue(tmp_value, error);
-  }
-
   bool IsEqual(const PropValue* value) const override {
     if (GetType() != value->GetType())
       return false;
-    const Base* value_base = static_cast<const Base*>(value);
-    return CompareValue(GetValue(), value_base->GetValue());
+    return CompareValue(GetValue(),
+                        static_cast<const TypedValueBase*>(value)->GetValue());
   }
 
   // Helper methods to get and set the C++ representation of the value.
   const T& GetValue() const { return value_; }
-  bool SetValue(T value, chromeos::ErrorPtr* error) {
-    std::swap(value_, value);  // Backup.
-    if (GetPropType()->ValidateConstraints(*this, error))
-      return true;
-    std::swap(value_, value);  // Restore.
-    return false;
-  }
 
  protected:
   explicit TypedValueBase(const TypedValueBase& other)
       : PropValue(other), value_(other.value_) {}
+
+  TypedValueBase(const PropType& type, T value)
+      : PropValue(type), value_(value) {}
 
  private:
   T value_{};  // The value of the parameter in C++ data representation.
@@ -192,12 +174,28 @@ class TypedValueWithClone : public TypedValueBase<T> {
     return std::unique_ptr<PropValue>{
         new Derived{*static_cast<const Derived*>(this)}};
   }
+
+  static std::unique_ptr<Derived> CreateFromJson(const base::Value& value,
+                                                 const PropType& type,
+                                                 chromeos::ErrorPtr* error) {
+    T tmp_value;
+    if (!TypedValueFromJson(&value, &type, &tmp_value, error))
+      return nullptr;
+
+    // Only place where invalid value can exist.
+    std::unique_ptr<Derived> result{new Derived{type, tmp_value}};
+    if (!result->GetPropType()->ValidateConstraints(*result, error))
+      return nullptr;
+
+    return result;
+  }
 };
 
 // Value of type Integer.
 class IntValue final : public TypedValueWithClone<IntValue, int> {
  public:
-  using Base::Base;  // Expose the custom constructor of the base class.
+  using Base::Base;
+  friend class TypedValueWithClone<IntValue, int>;
   IntValue* GetInt() override { return this; }
   IntValue const* GetInt() const override { return this; }
 };
@@ -205,7 +203,8 @@ class IntValue final : public TypedValueWithClone<IntValue, int> {
 // Value of type Number.
 class DoubleValue final : public TypedValueWithClone<DoubleValue, double> {
  public:
-  using Base::Base;  // Expose the custom constructor of the base class.
+  using Base::Base;
+  friend class TypedValueWithClone<DoubleValue, double>;
   DoubleValue* GetDouble() override { return this; }
   DoubleValue const* GetDouble() const override { return this; }
 };
@@ -213,7 +212,8 @@ class DoubleValue final : public TypedValueWithClone<DoubleValue, double> {
 // Value of type String.
 class StringValue final : public TypedValueWithClone<StringValue, std::string> {
  public:
-  using Base::Base;  // Expose the custom constructor of the base class.
+  using Base::Base;
+  friend class TypedValueWithClone<StringValue, std::string>;
   StringValue* GetString() override { return this; }
   StringValue const* GetString() const override { return this; }
 };
@@ -221,7 +221,8 @@ class StringValue final : public TypedValueWithClone<StringValue, std::string> {
 // Value of type Boolean.
 class BooleanValue final : public TypedValueWithClone<BooleanValue, bool> {
  public:
-  using Base::Base;  // Expose the custom constructor of the base class.
+  using Base::Base;
+  friend class TypedValueWithClone<BooleanValue, bool>;
   BooleanValue* GetBoolean() override { return this; }
   BooleanValue const* GetBoolean() const override { return this; }
 };
@@ -229,7 +230,8 @@ class BooleanValue final : public TypedValueWithClone<BooleanValue, bool> {
 // Value of type Object.
 class ObjectValue final : public TypedValueWithClone<ObjectValue, ValueMap> {
  public:
-  using Base::Base;  // Expose the custom constructor of the base class.
+  using Base::Base;
+  friend class TypedValueWithClone<ObjectValue, ValueMap>;
   ObjectValue* GetObject() override { return this; }
   ObjectValue const* GetObject() const override { return this; }
 };
@@ -237,7 +239,8 @@ class ObjectValue final : public TypedValueWithClone<ObjectValue, ValueMap> {
 // Value of type Array.
 class ArrayValue final : public TypedValueWithClone<ArrayValue, ValueVector> {
  public:
-  using Base::Base;  // Expose the custom constructor of the base class.
+  using Base::Base;
+  friend class TypedValueWithClone<ArrayValue, ValueVector>;
   ArrayValue* GetArray() override { return this; }
   ArrayValue const* GetArray() const override { return this; }
 };
