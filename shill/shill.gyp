@@ -331,6 +331,7 @@
             'dbus/chromeos_dhcpcd_proxy.cc',
             'dbus/chromeos_ipconfig_dbus_adaptor.cc',
             'dbus/chromeos_manager_dbus_adaptor.cc',
+            'dbus/chromeos_power_manager_proxy.cc',
             'dbus/chromeos_profile_dbus_adaptor.cc',
             'dbus/chromeos_rpc_task_dbus_adaptor.cc',
             'dbus/chromeos_service_dbus_adaptor.cc',
@@ -345,6 +346,16 @@
               },
               'sources': [
                 'dbus_bindings/dhcpcd.xml',
+              ],
+              'includes': ['../common-mk/generate-dbus-proxies.gypi'],
+            },
+            {
+              'action_name': 'generate-power-manager-proxies',
+              'variables': {
+                'proxy_output_file': 'include/power-manager/dbus-proxies.h',
+              },
+              'sources': [
+                '../power_manager/dbus_bindings/org.chromium.PowerManager.xml',
               ],
               'includes': ['../common-mk/generate-dbus-proxies.gypi'],
             },
