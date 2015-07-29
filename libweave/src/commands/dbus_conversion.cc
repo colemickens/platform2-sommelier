@@ -363,7 +363,7 @@ std::unique_ptr<base::DictionaryValue> DictionaryFromDBusVariantDictionary(
     auto value = CreateValue(pair.second, error);
     if (!value)
       return nullptr;
-    result->Set(pair.first, value.release());
+    result->SetWithoutPathExpansion(pair.first, value.release());
   }
 
   return result;
