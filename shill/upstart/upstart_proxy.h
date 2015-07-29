@@ -6,8 +6,6 @@
 #define SHILL_UPSTART_UPSTART_PROXY_H_
 
 // An implementation of UpstartProxyInterface.
-// Do not instantiate this class directly.  use
-// ProxyFactory::CreateUpstartProxy instead.
 
 #include <string>
 #include <vector>
@@ -24,6 +22,9 @@ class Error;
 
 class UpstartProxy : public UpstartProxyInterface {
  public:
+  // Constructs a Upstart DBus object proxy with signals dispatched to
+  // |delegate|.
+  explicit UpstartProxy(DBus::Connection* connection);
   ~UpstartProxy() override = default;
 
   // Inherited from UpstartProxyInterface.
@@ -56,10 +57,6 @@ class UpstartProxy : public UpstartProxyInterface {
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
-
-  // Constructs a Upstart DBus object proxy with signals dispatched to
-  // |delegate|.
-  explicit UpstartProxy(DBus::Connection* connection);
 
   // Dummy method required by async DBus call.
   static void FromDBusError(const DBus::Error& dbus_error, Error* error);

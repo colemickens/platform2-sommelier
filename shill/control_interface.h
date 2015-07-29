@@ -27,7 +27,50 @@ class ServiceAdaptorInterface;
 class ThirdPartyVpnDriver;
 class ThirdPartyVpnAdaptorInterface;
 
-// This is the Interface for an object factory that creates adaptor objects
+class DBusObjectManagerProxyInterface;
+class DBusPropertiesProxyInterface;
+class DBusServiceProxyInterface;
+class DHCPProxyInterface;
+class ModemCDMAProxyInterface;
+class ModemGSMCardProxyInterface;
+class ModemGSMNetworkProxyInterface;
+class ModemGobiProxyInterface;
+class ModemManagerClassic;
+class ModemManagerProxyInterface;
+class ModemProxyInterface;
+class ModemSimpleProxyInterface;
+class PermissionBrokerProxyInterface;
+class PowerManagerProxyDelegate;
+class PowerManagerProxyInterface;
+class UpstartProxyInterface;
+class WiMaxDeviceProxyInterface;
+class WiMaxManagerProxyInterface;
+class WiMaxNetworkProxyInterface;
+
+#if !defined(DISABLE_WIFI)
+class SupplicantBSSProxyInterface;
+class WiFiEndpoint;
+#endif  // DISABLE_WIFI
+
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+class SupplicantEventDelegateInterface;
+class SupplicantInterfaceProxyInterface;
+class SupplicantNetworkProxyInterface;
+class SupplicantProcessProxyInterface;
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+
+namespace mm1 {
+
+class ModemModem3gppProxyInterface;
+class ModemModemCdmaProxyInterface;
+class ModemProxyInterface;
+class ModemSimpleProxyInterface;
+class SimProxyInterface;
+
+}  // namespace mm1
+
+// This is the Interface for an object factory that creates adaptor/proxy
+// objects
 class ControlInterface {
  public:
   virtual ~ControlInterface() {}
@@ -42,6 +85,113 @@ class ControlInterface {
   virtual ThirdPartyVpnAdaptorInterface* CreateThirdPartyVpnAdaptor(
       ThirdPartyVpnDriver* driver) = 0;
 #endif
+
+  virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
+      const std::string& path,
+      const std::string& service) = 0;
+
+  virtual DBusServiceProxyInterface* CreateDBusServiceProxy() = 0;
+
+  // The caller retains ownership of 'delegate'.  It must not be deleted before
+  // the proxy.
+  virtual PowerManagerProxyInterface* CreatePowerManagerProxy(
+      PowerManagerProxyDelegate* delegate) = 0;
+
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+  virtual SupplicantProcessProxyInterface* CreateSupplicantProcessProxy(
+      const char* dbus_path,
+      const char* dbus_addr) = 0;
+
+  virtual SupplicantInterfaceProxyInterface* CreateSupplicantInterfaceProxy(
+      SupplicantEventDelegateInterface* delegate,
+      const std::string& object_path,
+      const char* dbus_addr) = 0;
+
+  virtual SupplicantNetworkProxyInterface* CreateSupplicantNetworkProxy(
+      const std::string& object_path,
+      const char* dbus_addr) = 0;
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+
+#if !defined(DISABLE_WIFI)
+  // See comment in supplicant_bss_proxy.h, about bare pointer.
+  virtual SupplicantBSSProxyInterface* CreateSupplicantBSSProxy(
+      WiFiEndpoint* wifi_endpoint,
+      const std::string& object_path,
+      const char* dbus_addr) = 0;
+#endif  // DISABLE_WIFI
+
+  virtual UpstartProxyInterface* CreateUpstartProxy() = 0;
+
+  virtual DHCPProxyInterface* CreateDHCPProxy(const std::string& service) = 0;
+
+  virtual PermissionBrokerProxyInterface* CreatePermissionBrokerProxy() = 0;
+
+#if !defined(DISABLE_CELLULAR)
+
+  virtual DBusObjectManagerProxyInterface* CreateDBusObjectManagerProxy(
+      const std::string& path,
+      const std::string& service) = 0;
+
+  virtual ModemManagerProxyInterface* CreateModemManagerProxy(
+      ModemManagerClassic* manager,
+      const std::string& path,
+      const std::string& service) = 0;
+
+  virtual ModemProxyInterface* CreateModemProxy(const std::string& path,
+                                                const std::string& service) = 0;
+
+  virtual ModemSimpleProxyInterface* CreateModemSimpleProxy(
+      const std::string& path,
+      const std::string& service) = 0;
+
+  virtual ModemCDMAProxyInterface* CreateModemCDMAProxy(
+      const std::string& path,
+      const std::string& service) = 0;
+
+  virtual ModemGSMCardProxyInterface* CreateModemGSMCardProxy(
+      const std::string& path,
+      const std::string& service) = 0;
+
+  virtual ModemGSMNetworkProxyInterface* CreateModemGSMNetworkProxy(
+      const std::string& path,
+      const std::string& service) = 0;
+
+  virtual ModemGobiProxyInterface* CreateModemGobiProxy(
+      const std::string& path,
+      const std::string& service) = 0;
+
+  // Proxies for ModemManager1 interfaces
+  virtual mm1::ModemModem3gppProxyInterface* CreateMM1ModemModem3gppProxy(
+      const std::string& path,
+      const std::string& service) = 0;
+
+  virtual mm1::ModemModemCdmaProxyInterface* CreateMM1ModemModemCdmaProxy(
+      const std::string& path,
+      const std::string& service) = 0;
+
+  virtual mm1::ModemProxyInterface* CreateMM1ModemProxy(
+      const std::string& path,
+      const std::string& service) = 0;
+
+  virtual mm1::ModemSimpleProxyInterface* CreateMM1ModemSimpleProxy(
+      const std::string& path,
+      const std::string& service) = 0;
+
+  virtual mm1::SimProxyInterface* CreateSimProxy(
+      const std::string& path,
+      const std::string& service) = 0;
+
+#endif  // DISABLE_CELLULAR
+
+#if !defined(DISABLE_WIMAX)
+
+  virtual WiMaxDeviceProxyInterface* CreateWiMaxDeviceProxy(
+      const std::string& path) = 0;
+  virtual WiMaxManagerProxyInterface* CreateWiMaxManagerProxy() = 0;
+  virtual WiMaxNetworkProxyInterface* CreateWiMaxNetworkProxy(
+      const std::string& path) = 0;
+
+#endif  // DISABLE_WIMAX
 
   static void RpcIdToStorageId(std::string* rpc_id) {
     CHECK(rpc_id);

@@ -5,7 +5,10 @@
 #ifndef SHILL_MOCK_CONTROL_H_
 #define SHILL_MOCK_CONTROL_H_
 
+#include <string>
+
 #include <base/macros.h>
+#include <gmock/gmock.h>
 
 #include "shill/control_interface.h"
 
@@ -29,6 +32,95 @@ class MockControl : public ControlInterface {
   ThirdPartyVpnAdaptorInterface* CreateThirdPartyVpnAdaptor(
       ThirdPartyVpnDriver* driver) override;
 #endif
+
+  MOCK_METHOD2(CreateDBusPropertiesProxy,
+               DBusPropertiesProxyInterface*(const std::string& path,
+                                             const std::string& service));
+  MOCK_METHOD0(CreateDBusServiceProxy, DBusServiceProxyInterface*());
+  MOCK_METHOD1(
+      CreatePowerManagerProxy,
+      PowerManagerProxyInterface*(PowerManagerProxyDelegate* delegate));
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+  MOCK_METHOD2(CreateSupplicantProcessProxy,
+               SupplicantProcessProxyInterface*(const char* dbus_path,
+                                                const char* dbus_addr));
+  MOCK_METHOD3(CreateSupplicantInterfaceProxy,
+               SupplicantInterfaceProxyInterface*(
+                   SupplicantEventDelegateInterface* delegate,
+                   const std::string& object_path,
+                   const char* dbus_addr));
+  MOCK_METHOD2(CreateSupplicantNetworkProxy,
+               SupplicantNetworkProxyInterface*(const std::string& object_path,
+                                                const char* dbus_addr));
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+#if !defined(DISABLE_WIFI)
+  MOCK_METHOD3(CreateSupplicantBSSProxy,
+               SupplicantBSSProxyInterface*(WiFiEndpoint* wifi_endpoint,
+                                            const std::string& object_path,
+                                            const char* dbus_addr));
+#endif  // DISABLE_WIFI
+  MOCK_METHOD1(CreateDHCPProxy,
+               DHCPProxyInterface*(const std::string& service));
+
+  MOCK_METHOD0(CreateUpstartProxy, UpstartProxyInterface*());
+
+  MOCK_METHOD0(CreatePermissionBrokerProxy, PermissionBrokerProxyInterface*());
+
+#if !defined(DISABLE_CELLULAR)
+
+  MOCK_METHOD2(CreateDBusObjectManagerProxy,
+               DBusObjectManagerProxyInterface*(const std::string& path,
+                                                const std::string& service));
+  MOCK_METHOD3(CreateModemManagerProxy,
+               ModemManagerProxyInterface*(ModemManagerClassic* manager,
+                                           const std::string& path,
+                                           const std::string& service));
+  MOCK_METHOD2(CreateModemProxy,
+               ModemProxyInterface*(const std::string& path,
+                                    const std::string& service));
+  MOCK_METHOD2(CreateModemSimpleProxy,
+               ModemSimpleProxyInterface*(const std::string& path,
+                                          const std::string& service));
+
+  MOCK_METHOD2(CreateModemCDMAProxy,
+               ModemCDMAProxyInterface*(const std::string& path,
+                                        const std::string& service));
+  MOCK_METHOD2(CreateModemGSMCardProxy,
+               ModemGSMCardProxyInterface*(const std::string& path,
+                                           const std::string& service));
+  MOCK_METHOD2(CreateModemGSMNetworkProxy,
+               ModemGSMNetworkProxyInterface*(const std::string& path,
+                                              const std::string& service));
+  MOCK_METHOD2(CreateModemGobiProxy,
+               ModemGobiProxyInterface*(const std::string& path,
+                                        const std::string& service));
+  MOCK_METHOD2(CreateMM1ModemModem3gppProxy,
+               mm1::ModemModem3gppProxyInterface*(const std::string& path,
+                                                  const std::string& service));
+  MOCK_METHOD2(CreateMM1ModemModemCdmaProxy,
+               mm1::ModemModemCdmaProxyInterface*(const std::string& path,
+                                                  const std::string& service));
+  MOCK_METHOD2(CreateMM1ModemProxy,
+               mm1::ModemProxyInterface*(const std::string& path,
+                                         const std::string& service));
+  MOCK_METHOD2(CreateMM1ModemSimpleProxy,
+               mm1::ModemSimpleProxyInterface*(const std::string& path,
+                                               const std::string& service));
+  MOCK_METHOD2(CreateSimProxy,
+               mm1::SimProxyInterface*(const std::string& path,
+                                       const std::string& service));
+
+#endif  // DISABLE_CELLULAR
+
+#if !defined(DISABLE_WIMAX)
+
+  MOCK_METHOD1(CreateWiMaxDeviceProxy,
+               WiMaxDeviceProxyInterface*(const std::string& path));
+  MOCK_METHOD0(CreateWiMaxManagerProxy, WiMaxManagerProxyInterface*());
+  MOCK_METHOD1(CreateWiMaxNetworkProxy,
+               WiMaxNetworkProxyInterface*(const std::string& path));
+
+#endif  // DISABLE_WIMAX
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockControl);

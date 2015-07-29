@@ -9,9 +9,6 @@
 // listens for events from the power manager.  When they occur, the delegate's
 // member functions are called.
 
-// Do not instantiate this class directly.  use
-// ProxyFactory::CreatePowerManagerProxy instead.
-
 #include <stdint.h>
 
 #include <string>
@@ -27,6 +24,10 @@ namespace shill {
 
 class PowerManagerProxy : public PowerManagerProxyInterface {
  public:
+  // Constructs a PowerManager DBus object proxy with signals dispatched to
+  // |delegate|.
+  PowerManagerProxy(PowerManagerProxyDelegate* delegate,
+                    DBus::Connection* connection);
   ~PowerManagerProxy() override;
 
   // Inherited from PowerManagerProxyInterface.
@@ -65,11 +66,6 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
-
-  // Constructs a PowerManager DBus object proxy with signals dispatched to
-  // |delegate|.
-  PowerManagerProxy(PowerManagerProxyDelegate* delegate,
-                    DBus::Connection* connection);
 
   bool RegisterSuspendDelayInternal(bool is_dark,
                                     base::TimeDelta timeout,
