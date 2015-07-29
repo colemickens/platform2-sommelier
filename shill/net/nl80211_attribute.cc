@@ -123,12 +123,17 @@ bool Nl80211AttributeBss::ParseInformationElements(
                << " which we just created.";
     return false;
   }
-  while (data.GetLength()) {
-    const uint8_t* sub_attribute = data.GetConstData();
-    const size_t kHeaderBytes = 2;
+  const uint8_t* sub_attribute = data.GetConstData();
+  const uint8_t* end = sub_attribute + data.GetLength();
+  const int kHeaderBytes = 2;
+  while (end - sub_attribute > kHeaderBytes) {
     uint8_t type = sub_attribute[0];
     uint8_t payload_bytes = sub_attribute[1];
     const uint8_t* payload = &sub_attribute[kHeaderBytes];
+    if (payload + payload_bytes > end) {
+      LOG(ERROR) << "Found malformed IE data.";
+      return false;
+    }
     // See http://dox.ipxe.org/ieee80211_8h_source.html for more info on types
     // and data inside information elements.
     switch (type) {
@@ -208,7 +213,7 @@ bool Nl80211AttributeBss::ParseInformationElements(
       default:
         break;
     }
-    data.RemovePrefix(kHeaderBytes + payload_bytes);
+    sub_attribute += kHeaderBytes + payload_bytes;
   }
   attribute_list->SetNestedAttributeHasAValue(id);
   return true;

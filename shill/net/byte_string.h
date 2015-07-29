@@ -17,30 +17,28 @@ namespace shill {
 // Provides a holder of a string of bytes
 class SHILL_EXPORT ByteString {
  public:
-  ByteString() : begin_(data_.begin()) {}
+  ByteString() {}
   ByteString(const ByteString& b);
 
-  explicit ByteString(const std::vector<unsigned char>& data)
-      : data_(data), begin_(data_.begin()) {}
+  explicit ByteString(const std::vector<unsigned char>& data) : data_(data) {}
 
-  explicit ByteString(size_t length) : data_(length), begin_(data_.begin()) {}
+  explicit ByteString(size_t length) : data_(length) {}
 
   ByteString(const unsigned char* data, size_t length)
-      : data_(data, data + length), begin_(data_.begin()) {}
+      : data_(data, data + length) {}
 
   ByteString(const char* data, size_t length)
-      : data_(data, data + length), begin_(data_.begin()) {}
+      : data_(data, data + length) {}
 
   ByteString(const signed char* data, size_t length)
-      : data_(data, data + length), begin_(data_.begin()) {}
+      : data_(data, data + length) {}
 
   ByteString(const std::string& data, bool copy_terminator)
     : data_(reinterpret_cast<const unsigned char*>(data.c_str()),
             reinterpret_cast<const unsigned char*>(data.c_str() +
                                                     data.length() +
                                                     (copy_terminator ?
-                                                     1 : 0))),
-      begin_(data_.begin()) {}
+                                                     1 : 0))) {}
 
   ByteString& operator=(const ByteString& b);
 
@@ -115,10 +113,6 @@ class SHILL_EXPORT ByteString {
   // data.
   bool CopyData(size_t size, void* output) const;
 
-  // Discards |offset| bytes from the beginning of the ByteString (but does
-  // not cause a copy).
-  void RemovePrefix(size_t offset);
-
   static bool IsLessThan(const ByteString& lhs, const ByteString& rhs);
 
  private:
@@ -132,8 +126,6 @@ class SHILL_EXPORT ByteString {
 
   Vector data_;
 
-  // Permit chopping-off the front part of the data without requiring a copy.
-  Vector::iterator begin_;
   // NO DISALLOW_COPY_AND_ASSIGN -- we assign ByteStrings in STL hashes
 };
 

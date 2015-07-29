@@ -19,14 +19,15 @@ namespace shill {
 namespace {
 const unsigned char kTest1[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 const char kTest1HexString[] = "00010203040506070809";
-const char kTest1HexSubstring[] = "0203040506070809";
-const char kTest1HexSubstringReordered[] = "0504030209080706";
+const char kTest1HexSubstring[] = "0001020304050607";
+const char kTest1HexSubstringReordered[] = "0302010007060504";
 const unsigned char kTest2[] = { 1, 2, 3, 0xa };
 const char kTest2HexString[] = "0102030A";
 const unsigned int kTest2Uint32 = 0x0102030a;
 const unsigned char kTest3[] = { 0, 0, 0, 0 };
 const char kTest4[] = "Hello world";
 const unsigned char kTest5[] = { 1, 2, 3 };
+const unsigned char kTest6[] = { 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
 }  // namespace
 
 class ByteStringTest : public Test {
@@ -34,40 +35,6 @@ class ByteStringTest : public Test {
   bool IsCPUSameAsNetOrder() {
     const uint32_t kTestValue = 0x12345678;
     return htonl(kTestValue) == kTestValue;
-  }
-
-  void CalculateBitwiseAndResult(ByteString* bs,
-                                 ByteString* mask,
-                                 ByteString* expected_result,
-                                 size_t count) {
-    ASSERT_NE(nullptr, bs);
-    ASSERT_NE(nullptr, mask);
-    ASSERT_NE(nullptr, expected_result);
-
-    for (size_t i = 0; i < count; i++) {
-      EXPECT_FALSE(bs->BitwiseAnd(*mask));
-      unsigned char val = count - i;
-      mask->Append(ByteString(&val, 1));
-      val &= bs->GetConstData()[i];
-      expected_result->Append(ByteString(&val, 1));
-    }
-  }
-
-  void CalculateBitwiseOrResult(ByteString* bs,
-                                ByteString* merge,
-                                ByteString* expected_result,
-                                size_t count) {
-    ASSERT_NE(nullptr, bs);
-    ASSERT_NE(nullptr, merge);
-    ASSERT_NE(nullptr, expected_result);
-
-    for (size_t i = 0; i < count; i++) {
-      EXPECT_FALSE(bs->BitwiseOr(*merge));
-      unsigned char val = sizeof(kTest1) - i;
-      merge->Append(ByteString(&val, 1));
-      val |= bs->GetConstData()[i];
-      expected_result->Append(ByteString(&val, 1));
-    }
   }
 };
 
@@ -200,187 +167,45 @@ TEST_F(ByteStringTest, HexEncode) {
   EXPECT_EQ(kTest2HexString, bs.HexEncode());
 }
 
-TEST_F(ByteStringTest, BitwiseAndWithAndWithoutOffsets) {
-  const size_t kOffset[] = {0, 2, 7};
-  for (size_t i = 0; i < arraysize(kOffset); ++i) {
-    ByteString bs(kTest1, sizeof(kTest1));
-    bs.RemovePrefix(kOffset[i]);
-    ByteString mask;
-    ByteString expected_result;
-    CalculateBitwiseAndResult(&bs, &mask, &expected_result,
-                              sizeof(kTest1) - kOffset[i]);
-    EXPECT_TRUE(bs.BitwiseAnd(mask));
-    EXPECT_TRUE(bs.Equals(expected_result));
-    bs.Resize(sizeof(kTest1) - 1);
-    EXPECT_FALSE(bs.BitwiseAnd(mask));
-  }
-}
-
-TEST_F(ByteStringTest, BitwiseOrWithAndWithoutOffsets) {
-  const size_t kOffset[] = {0, 2, 7};
-  for (size_t i = 0; i < arraysize(kOffset); ++i) {
-    ByteString bs(kTest1, sizeof(kTest1));
-    bs.RemovePrefix(kOffset[i]);
-    ByteString merge;
-    ByteString expected_result;
-    CalculateBitwiseOrResult(&bs, &merge, &expected_result,
-                             sizeof(kTest1) - kOffset[i]);
-    EXPECT_TRUE(bs.BitwiseOr(merge));
-    EXPECT_TRUE(bs.Equals(expected_result));
-    bs.Resize(sizeof(kTest1) - 1);
-    EXPECT_FALSE(bs.BitwiseOr(merge));
-  }
-}
-
-TEST_F(ByteStringTest, BitwiseInvertWithAndWithoutOffsets) {
-  const size_t kOffset[] = {0, 2, 7};
-  for (size_t i = 0; i < arraysize(kOffset); ++i) {
-    ByteString bs(kTest1, sizeof(kTest1));
-    bs.RemovePrefix(kOffset[i]);
-    ByteString invert;
-    for (size_t j = kOffset[i]; j < sizeof(kTest1); j++) {
-      unsigned char val = kTest1[j] ^ 0xff;
-      invert.Append(ByteString(&val, 1));
-    }
-    bs.BitwiseInvert();
-    EXPECT_TRUE(bs.Equals(invert));
-  }
-}
-
-// The tests, below, test various ByteString operations where some bytes have
-// been removed from the beginning of one or more of the ByteStrings in the
-// test.
-
-TEST_F(ByteStringTest, EmptyOffset) {
-  uint32_t val;
-
+TEST_F(ByteStringTest, BitwiseAnd) {
   ByteString bs1(kTest1, sizeof(kTest1));
-  bs1.RemovePrefix(sizeof(kTest1));
-  EXPECT_TRUE(bs1.IsEmpty());
-  EXPECT_EQ(0, bs1.GetLength());
-  EXPECT_EQ(nullptr, bs1.GetData());
-  EXPECT_FALSE(bs1.ConvertToNetUInt32(&val));
-  EXPECT_TRUE(bs1.IsZero());
+
+  // Unequal sizes should fail and not modify bs1.
+  EXPECT_FALSE(bs1.BitwiseAnd(ByteString(kTest2, sizeof(kTest2))));
+  EXPECT_TRUE(bs1.Equals(ByteString(kTest1, sizeof(kTest1))));
+
+  const ByteString bs6(kTest6, sizeof(kTest6));
+  EXPECT_TRUE(bs1.BitwiseAnd(bs6));
+
+  const unsigned char kAndResult[] = { 0, 0, 2, 2, 4, 4, 2, 2, 0, 0 };
+  const ByteString expected_result(kAndResult, sizeof(kAndResult));
+  EXPECT_TRUE(bs1.Equals(expected_result));
 }
 
-TEST_F(ByteStringTest, NonEmptyOffset) {
+TEST_F(ByteStringTest, BitwiseOr) {
   ByteString bs1(kTest1, sizeof(kTest1));
-  const size_t kNewLength1 = 2;
-  const size_t kOffset1 = sizeof(kTest1) - kNewLength1;
 
-  {
-    bs1.RemovePrefix(kOffset1);
-    ASSERT_NE(nullptr, bs1.GetData());
-    EXPECT_FALSE(bs1.IsEmpty());
-    EXPECT_EQ(kNewLength1, bs1.GetLength());
-    for (unsigned int i = kOffset1; i < sizeof(kTest1); i++) {
-      EXPECT_EQ(bs1.GetData()[i - kOffset1], kTest1[i]);
-    }
-    uint32_t val;
-    EXPECT_FALSE(bs1.ConvertToNetUInt32(&val));
-    EXPECT_FALSE(bs1.IsZero());
-  }
+  // Unequal sizes should fail and not modify bs1.
+  EXPECT_FALSE(bs1.BitwiseOr(ByteString(kTest2, sizeof(kTest2))));
+  EXPECT_TRUE(bs1.Equals(ByteString(kTest1, sizeof(kTest1))));
 
-  // Check a non-equal ByteString.
-  {
-    const size_t kNewLength2 = 3;
-    const size_t kOffset2 = sizeof(kTest2) - kNewLength2;
-    ByteString bs2(kTest2, sizeof(kTest2));
-    bs2.RemovePrefix(kOffset2);
-    ASSERT_NE(nullptr, bs2.GetData());
-    EXPECT_EQ(kNewLength2, bs2.GetLength());
-    for (unsigned int i = kOffset2; i < sizeof(kTest2); i++) {
-      EXPECT_EQ(bs2.GetData()[i - kOffset2], kTest2[i]);
-    }
-    EXPECT_FALSE(bs2.IsZero());
-    EXPECT_FALSE(bs2.Equals(bs1));
-  }
+  const ByteString bs6(kTest6, sizeof(kTest6));
+  EXPECT_TRUE(bs1.BitwiseOr(bs6));
 
-  // Check whether two equal ByteStrings are, in fact, equal.
-  {
-    ByteString bs6(kTest1, sizeof(kTest1));
-    bs6.RemovePrefix(kOffset1);
-    EXPECT_TRUE(bs6.Equals(bs1));
-  }
+  const unsigned char kOrResult[] = { 9, 9, 7, 7, 5, 5, 7, 7, 9, 9 };
+  const ByteString expected_result(kOrResult, sizeof(kOrResult));
+  EXPECT_TRUE(bs1.Equals(expected_result));
 }
 
-TEST_F(ByteStringTest, CopyTerminatorOffset) {
-  {
-    ByteString bs4(string(kTest4), false);
-    const size_t kOffset4 = 1;
-    bs4.RemovePrefix(kOffset4);
-    EXPECT_EQ(strlen(kTest4) - kOffset4, bs4.GetLength());
-    EXPECT_EQ(0, memcmp(kTest4 + kOffset4, bs4.GetData(), bs4.GetLength()));
-  }
-
-  {
-    ByteString bs5(string(kTest4), true);
-    const size_t kOffset5 = 1;
-    bs5.RemovePrefix(kOffset5);
-    EXPECT_EQ(strlen(kTest4) + 1 - kOffset5, bs5.GetLength());
-    EXPECT_EQ(0, memcmp(kTest4 + kOffset5, bs5.GetData(), bs5.GetLength()));
-  }
-}
-
-TEST_F(ByteStringTest, SubStringOffset) {
-  const size_t kFramgmetOffset = 3;
-  const size_t kFragmentLength = 4;
-  ByteString bs1(kTest1, sizeof(kTest1));
-  ByteString fragment(kTest1, kFramgmetOffset + kFragmentLength);
-  fragment.RemovePrefix(kFramgmetOffset);
-  EXPECT_TRUE(fragment.Equals(bs1.GetSubstring(kFramgmetOffset,
-                                               kFragmentLength)));
-
-  const int kMargin = sizeof(kTest1) - kFramgmetOffset;
-  ByteString end_fragment(kTest1 + kMargin, sizeof(kTest1) - kMargin);
-  EXPECT_TRUE(end_fragment.Equals(bs1.GetSubstring(kMargin, sizeof(kTest1))));
-
-  // Verify that the ByteString correctly handles accessing a substring
-  // outside the range of the ByteString.
-  const size_t kBogusOffset = 10;
-  EXPECT_TRUE(bs1.GetSubstring(sizeof(kTest1), kBogusOffset).IsEmpty());
-}
-
-TEST_F(ByteStringTest, ResizeOffset) {
-  ByteString bs(kTest2, sizeof(kTest2));
-  const size_t kOffset = 1;
-  bs.RemovePrefix(kOffset);
-
-  const size_t kSizeExtension = 10;
-  bs.Resize(sizeof(kTest2) + kSizeExtension);
-  EXPECT_EQ(sizeof(kTest2) + kSizeExtension, bs.GetLength());
-  ASSERT_NE(nullptr, bs.GetData());
-  EXPECT_EQ(0, memcmp(bs.GetData(),
-                      kTest2 + kOffset,
-                      sizeof(kTest2) - kOffset));
-  for (size_t i = sizeof(kTest2) - kOffset;
-       i < sizeof(kTest2) + kSizeExtension; ++i) {
-    EXPECT_EQ(0, bs.GetData()[i]);
-  }
-
-  const size_t kSizeReduction = 2;
-  bs.Resize(sizeof(kTest2) - kSizeReduction);
-  EXPECT_EQ(sizeof(kTest2) - kSizeReduction, bs.GetLength());
-  EXPECT_EQ(0, memcmp(bs.GetData(), kTest2 + kOffset,
-                      sizeof(kTest2) - kSizeReduction));
-}
-
-TEST_F(ByteStringTest, HexEncodeWithOffset) {
-  ByteString bs(kTest2, sizeof(kTest2));
-  const size_t kOffset = 2;
-  const size_t kBytesPerHexDigit = 2;
-  bs.RemovePrefix(kOffset);
-  EXPECT_EQ(kTest2HexString + kOffset * kBytesPerHexDigit, bs.HexEncode());
-}
-
-TEST_F(ByteStringTest, ChopByteClear) {
+TEST_F(ByteStringTest, BitwiseInvert) {
   ByteString bs(kTest1, sizeof(kTest1));
-  ByteString expected_result(kTest2, sizeof(kTest2));
-  bs.RemovePrefix(5);
-  bs.Clear();
-  bs.Append(ByteString(kTest2, sizeof(kTest2)));
-
-  EXPECT_TRUE(bs.Equals(expected_result));
+  ByteString invert;
+  for (size_t i = 0; i < sizeof(kTest1); i++) {
+    unsigned char val = kTest1[i] ^ 0xff;
+    invert.Append(ByteString(&val, 1));
+  }
+  bs.BitwiseInvert();
+  EXPECT_TRUE(bs.Equals(invert));
 }
 
 TEST_F(ByteStringTest, CreateFromHexString) {
@@ -414,9 +239,8 @@ TEST_F(ByteStringTest, ConvertFromNetToCPUUInt32Array) {
   EXPECT_EQ(kTest1HexString, bs2.HexEncode());
 
   // Conversion should succeed when the length of ByteString is a
-  // multiple of 4. Also test the case when bytes stored in ByteString
-  // is not word-aligned after calling RemovePrefix().
-  bs2.RemovePrefix(2);
+  // multiple of 4.
+  bs2.Resize(8);
   EXPECT_EQ(kTest1HexSubstring, bs2.HexEncode());
   EXPECT_TRUE(bs2.ConvertFromNetToCPUUInt32Array());
   if (IsCPUSameAsNetOrder()) {
@@ -439,9 +263,8 @@ TEST_F(ByteStringTest, ConvertFromCPUToNetUInt32Array) {
   EXPECT_EQ(kTest1HexString, bs2.HexEncode());
 
   // Conversion should succeed when the length of ByteString is a
-  // multiple of 4. Also test the case when bytes stored in ByteString
-  // is not word-aligned after calling RemovePrefix().
-  bs2.RemovePrefix(2);
+  // multiple of 4.
+  bs2.Resize(8);
   EXPECT_EQ(kTest1HexSubstring, bs2.HexEncode());
   EXPECT_TRUE(bs2.ConvertFromCPUToNetUInt32Array());
   if (IsCPUSameAsNetOrder()) {

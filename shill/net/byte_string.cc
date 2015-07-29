@@ -11,7 +11,6 @@
 
 #include <base/strings/string_number_conversions.h>
 
-using std::distance;
 using std::min;
 using std::string;
 using std::vector;
@@ -19,26 +18,24 @@ using std::vector;
 namespace shill {
 
 ByteString::ByteString(const ByteString& b) {
-  data_.assign(Vector::const_iterator(b.begin_), b.data_.end());
-  begin_ = data_.begin();
+  data_ = b.data_;
 }
 
 ByteString& ByteString::operator=(const ByteString& b) {
-  data_.assign(Vector::const_iterator(b.begin_), b.data_.end());
-  begin_ = data_.begin();
+  data_ = b.data_;
   return *this;
 }
 
 unsigned char* ByteString::GetData() {
-  return (GetLength() == 0) ? nullptr : &*begin_;
+  return (GetLength() == 0) ? nullptr : &data_.front();
 }
 
 const unsigned char* ByteString::GetConstData() const {
-  return (GetLength() == 0) ? nullptr : &*begin_;
+  return (GetLength() == 0) ? nullptr : &data_.front();
 }
 
 size_t ByteString::GetLength() const {
-  return distance(Vector::const_iterator(begin_), data_.end());
+  return data_.size();
 }
 
 ByteString ByteString::GetSubstring(size_t offset, size_t length) const {
@@ -93,7 +90,7 @@ bool ByteString::ConvertByteOrderAsUIntArray(T (*converter)(T)) {
   if ((length % sizeof(T)) != 0) {
     return false;
   }
-  for (Vector::iterator i = begin_; i != data_.end(); i += sizeof(T)) {
+  for (auto i = data_.begin(); i != data_.end(); i += sizeof(T)) {
     // Take care of word alignment.
     T val;
     memcpy(&val, &(*i), sizeof(T));
@@ -112,8 +109,8 @@ bool ByteString::ConvertFromCPUToNetUInt32Array() {
 }
 
 bool ByteString::IsZero() const {
-  for (Vector::const_iterator i = begin_; i != data_.end(); ++i) {
-    if (*i != 0) {
+  for (const auto& i : data_) {
+    if (i != 0) {
       return false;
     }
   }
@@ -124,10 +121,9 @@ bool ByteString::BitwiseAnd(const ByteString& b) {
   if (GetLength() != b.GetLength()) {
     return false;
   }
-  Vector::iterator lhs(begin_);
-  Vector::const_iterator rhs(b.begin_);
-  while (lhs != data_.end()) {
-    *lhs++ &= *rhs++;
+  auto lhs = data_.begin();
+  for (const auto& rhs : b.data_) {
+    *lhs++ &= rhs;
   }
   return true;
 }
@@ -136,17 +132,16 @@ bool ByteString::BitwiseOr(const ByteString& b) {
   if (GetLength() != b.GetLength()) {
     return false;
   }
-  Vector::iterator lhs(begin_);
-  Vector::const_iterator rhs(b.begin_);
-  while (lhs != data_.end()) {
-    *lhs++ |= *rhs++;
+  auto lhs = data_.begin();
+  for (const auto& rhs : b.data_) {
+    *lhs++ |= rhs;
   }
   return true;
 }
 
 void ByteString::BitwiseInvert() {
-  for (Vector::iterator i = begin_; i != data_.end(); ++i) {
-    *i = ~*i;
+  for (auto& i : data_) {
+    i = ~i;
   }
 }
 
@@ -154,10 +149,9 @@ bool ByteString::Equals(const ByteString& b) const {
   if (GetLength() != b.GetLength()) {
     return false;
   }
-  Vector::const_iterator lhs(begin_);
-  Vector::const_iterator rhs(b.begin_);
-  while (lhs != data_.end()) {
-    if (*lhs++ != *rhs++) {
+  auto lhs = data_.begin();
+  for (const auto& rhs : b.data_) {
+    if (*lhs++ != rhs) {
       return false;
     }
   }
@@ -165,24 +159,15 @@ bool ByteString::Equals(const ByteString& b) const {
 }
 
 void ByteString::Append(const ByteString& b) {
-  // Save and reapply offset since |insert| may reallocate the memory and
-  // invalidate the iterator.
-  size_t offset = distance(data_.begin(), begin_);
-  data_.insert(data_.end(), Vector::const_iterator(b.begin_), b.data_.end());
-  begin_ = data_.begin() + offset;
+  data_.insert(data_.end(), b.data_.begin(), b.data_.end());
 }
 
 void ByteString::Clear() {
   data_.clear();
-  begin_ = data_.begin();
 }
 
 void ByteString::Resize(int size) {
-  // Save and reapply offset since |resize| may reallocate the memory and
-  // invalidate the iterator.
-  size_t offset = distance(data_.begin(), begin_);
-  data_.resize(size + offset, 0);
-  begin_ = data_.begin() + offset;
+  data_.resize(size, 0);
 }
 
 string ByteString::HexEncode() const {
@@ -195,14 +180,6 @@ bool ByteString::CopyData(size_t size, void* output) const {
   }
   memcpy(output, GetConstData(), size);
   return true;
-}
-
-void ByteString::RemovePrefix(size_t offset) {
-  if (offset >= GetLength()) {
-    begin_ = data_.end();
-  } else {
-    begin_ += offset;
-  }
 }
 
 // static
