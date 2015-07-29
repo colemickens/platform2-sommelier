@@ -225,16 +225,14 @@ class PropTypeBase : public PropType {
   std::unique_ptr<PropValue> CreateValue(
       const chromeos::Any& v,
       chromeos::ErrorPtr* error) const override {
-    std::unique_ptr<PropValue> prop_value;
-    if (v.IsTypeCompatible<T>()) {
-      std::unique_ptr<Value> value{new Value{Clone()}};
-      value->SetValue(v.Get<T>());
-      if (ValidateConstraints(*value, error))
-        prop_value = std::move(value);
-    } else {
+    if (!v.IsTypeCompatible<T>()) {
       GenerateErrorValueTypeMismatch(error);
+      return nullptr;
     }
-    return prop_value;
+    std::unique_ptr<Value> value{new Value{Clone()}};
+    if (!value->SetValue(v.Get<T>(), error))
+      return nullptr;
+    return std::move(value);
   }
 
   chromeos::Any ConvertArrayToDBusVariant(

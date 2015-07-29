@@ -147,8 +147,7 @@ bool TypedValueFromJson(const base::Value* value_in,
       const base::Value* param_value = nullptr;
       CHECK(dict->GetWithoutPathExpansion(pair.first, &param_value))
           << "Unable to get parameter";
-      if (!value->FromJson(param_value, error) ||
-          !pair.second->ValidateValue(value->GetValueAsAny(), error)) {
+      if (!value->FromJson(param_value, error)) {
         chromeos::Error::AddToPrintf(
             error, FROM_HERE, errors::commands::kDomain,
             errors::commands::kInvalidPropValue,
@@ -215,8 +214,7 @@ bool TypedValueFromJson(const base::Value* value_in,
   value_out->reserve(list->GetSize());
   for (const base::Value* item : *list) {
     std::unique_ptr<PropValue> prop_value = item_type->CreateValue();
-    if (!prop_value->FromJson(item, error) ||
-        !item_type->ValidateValue(prop_value->GetValueAsAny(), error)) {
+    if (!prop_value->FromJson(item, error)) {
       return false;
     }
     value_out->push_back(std::move(prop_value));

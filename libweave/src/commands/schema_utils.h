@@ -75,6 +75,9 @@ std::unique_ptr<base::ListValue> TypedValueToJson(
 // Similarly to TypedValueToJson() function above, the following overloaded
 // helper methods allow to extract specific C++ data types from base::Value.
 // Also used in template classes below to simplify specialization logic.
+// TODO(vitalybuka): Fix this. Interface is misleading. Seeing PropType internal
+// type validation is expected. In reality only ValueMap and ValueVector do
+// validation.
 bool TypedValueFromJson(const base::Value* value_in,
                         const PropType* type,
                         bool* value_out,

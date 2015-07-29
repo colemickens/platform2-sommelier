@@ -34,7 +34,8 @@ template <typename PropVal, typename T>
 std::unique_ptr<const PropVal> make_prop_value(const T& value) {
   std::unique_ptr<PropVal> result{
       new PropVal{PropType::Create(GetValueType<T>())}};
-  result->SetValue(value);
+  if (!result->SetValue(value, nullptr))
+    return nullptr;
   return std::move(result);
 }
 

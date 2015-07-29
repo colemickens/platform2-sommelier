@@ -187,8 +187,7 @@ bool PropType::FromJson(const base::DictionaryValue* value,
   const base::Value* defval = nullptr;  // Owned by value
   if (value->GetWithoutPathExpansion(commands::attributes::kDefault, &defval)) {
     std::unique_ptr<PropValue> prop_value = CreateValue();
-    if (!prop_value->FromJson(defval, error) ||
-        !ValidateValue(prop_value->GetValueAsAny(), error)) {
+    if (!prop_value->FromJson(defval, error)) {
       chromeos::Error::AddToPrintf(error, FROM_HERE, errors::commands::kDomain,
                                    errors::commands::kInvalidPropValue,
                                    "Invalid value for property '%s'",
@@ -237,7 +236,7 @@ bool PropType::ValidateValue(const base::Value* value,
                              chromeos::ErrorPtr* error) const {
   std::unique_ptr<PropValue> val = CreateValue();
   CHECK(val) << "Failed to create value object";
-  return val->FromJson(value, error) && ValidateConstraints(*val, error);
+  return val->FromJson(value, error);
 }
 
 bool PropType::ValidateValue(const chromeos::Any& value,

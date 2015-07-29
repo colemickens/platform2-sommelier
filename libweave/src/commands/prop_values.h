@@ -156,7 +156,10 @@ class TypedValueBase : public PropValue {
   }
 
   bool FromJson(const base::Value* value, chromeos::ErrorPtr* error) override {
-    return TypedValueFromJson(value, GetPropType(), &value_, error);
+    T tmp_value;
+    if (!TypedValueFromJson(value, GetPropType(), &tmp_value, error))
+      return false;
+    return SetValue(tmp_value, error);
   }
 
   bool IsEqual(const PropValue* value) const override {
@@ -169,7 +172,13 @@ class TypedValueBase : public PropValue {
   // Helper methods to get and set the C++ representation of the value.
   chromeos::Any GetValueAsAny() const override { return value_; }
   const T& GetValue() const { return value_; }
-  void SetValue(T value) { value_ = std::move(value); }
+  bool SetValue(T value, chromeos::ErrorPtr* error) {
+    std::swap(value_, value);  // Backup.
+    if (GetPropType()->ValidateConstraints(*this, error))
+      return true;
+    std::swap(value_, value);  // Restore.
+    return false;
+  }
 
  protected:
   T value_{};  // The value of the parameter in C++ data representation.
