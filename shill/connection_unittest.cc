@@ -44,7 +44,6 @@ const char kTestDeviceName1[] = "netdev1";
 const int kTestDeviceInterfaceIndex1 = 321;
 const char kIPAddress0[] = "192.168.1.1";
 const char kGatewayAddress0[] = "192.168.1.254";
-const char kGatewayAddress1[] = "192.168.2.254";
 const char kBroadcastAddress0[] = "192.168.1.255";
 const char kNameServer0[] = "8.8.8.8";
 const char kNameServer1[] = "8.8.9.9";
@@ -218,6 +217,14 @@ MATCHER(IsNonNullCallback, "") {
 
 MATCHER_P(IsValidRoutingTableEntry, dst, "") {
   return dst.Equals(arg.dst);
+}
+
+MATCHER_P(IsLinkRouteTo, dst, "") {
+  return dst.HasSameAddressAs(arg.dst) &&
+      arg.dst.prefix() ==
+          IPAddress::GetMaxPrefixLength(IPAddress::kFamilyIPv4) &&
+      !arg.src.IsValid() && !arg.gateway.IsValid() &&
+      arg.scope == RT_SCOPE_LINK && !arg.from_rtnl;
 }
 
 }  // namespace
@@ -472,15 +479,20 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
   properties_.subnet_prefix = kPrefix1;
   UpdateProperties();
 
-  // Connection should override with a prefix which will allow the
+  // Connection should add a link route which will allow the
   // gateway to be reachable.
+  IPAddress gateway_address(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(gateway_address.SetAddressFromString(kGatewayAddress0));
+  EXPECT_CALL(routing_table_, AddRoute(kTestDeviceInterfaceIndex0,
+                                       IsLinkRouteTo(gateway_address)))
+      .WillOnce(Return(true));
   EXPECT_CALL(*device_info_,
               HasOtherAddress(kTestDeviceInterfaceIndex0,
-                              IsIPAddress(local_address_, kPrefix0)))
+                              IsIPAddress(local_address_, kPrefix1)))
       .WillOnce(Return(false));
   EXPECT_CALL(rtnl_handler_,
               AddInterfaceAddress(kTestDeviceInterfaceIndex0,
-                                  IsIPAddress(local_address_, kPrefix0),
+                                  IsIPAddress(local_address_, kPrefix1),
                                   IsIPAddress(broadcast_address_, 0),
                                   IsIPAddress(default_address_, 0)));
   EXPECT_CALL(routing_table_,
@@ -494,33 +506,6 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
                               ipconfig_,
                               GetDefaultMetric(),
                               RT_TABLE_MAIN));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
-                                             IPConfig::kDefaultMTU));
-  connection_->UpdateFromIPConfig(ipconfig_);
-
-  // Assign a gateway address that violates the minimum plausible prefix
-  // the Connection can assign.
-  properties_.gateway = kGatewayAddress1;
-  UpdateProperties();
-
-  IPAddress gateway_address1(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(gateway_address1.SetAddressFromString(kGatewayAddress1));
-  // Connection cannot override this prefix, so it will switch to a
-  // model where the peer address is set to the value of the gateway
-  // address.
-  EXPECT_CALL(*device_info_,
-              HasOtherAddress(kTestDeviceInterfaceIndex0,
-                              IsIPAddress(local_address_, kPrefix1)))
-      .WillOnce(Return(false));
-  EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(kTestDeviceInterfaceIndex0,
-                                  IsIPAddress(local_address_, kPrefix1),
-                                  IsIPAddress(broadcast_address_, 0),
-                                  IsIPAddress(gateway_address1, 0)));
-  EXPECT_CALL(routing_table_,
-              SetDefaultRoute(kTestDeviceInterfaceIndex0, _, _, RT_TABLE_MAIN));
-  EXPECT_CALL(routing_table_,
-              ConfigureRoutes(kTestDeviceInterfaceIndex0, _, _, RT_TABLE_MAIN));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMTU(kTestDeviceInterfaceIndex0,
                                              IPConfig::kDefaultMTU));
   connection_->UpdateFromIPConfig(ipconfig_);
@@ -764,6 +749,7 @@ TEST_F(ConnectionTest, PinHostRoute) {
 }
 
 TEST_F(ConnectionTest, FixGatewayReachability) {
+  ConnectionRefPtr connection = GetNewConnection();
   static const char kLocal[] = "10.242.2.13";
   IPAddress local(IPAddress::kFamilyIPv4);
   ASSERT_TRUE(local.SetAddressFromString(kLocal));
@@ -774,8 +760,8 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   IPAddress trusted_ip(IPAddress::kFamilyIPv4);
 
   // Should fail because no gateway is set.
-  EXPECT_FALSE(Connection::FixGatewayReachability(
-      &local, &peer, &gateway, trusted_ip));
+  EXPECT_FALSE(connection->FixGatewayReachability(
+      local, &peer, &gateway, trusted_ip));
   EXPECT_EQ(kPrefix, local.prefix());
   EXPECT_FALSE(peer.IsValid());
   EXPECT_FALSE(gateway.IsValid());
@@ -785,8 +771,8 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
   IPAddress gateway_backup(gateway);
   peer = IPAddress(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(Connection::FixGatewayReachability(
-      &local, &peer, &gateway, trusted_ip));
+  EXPECT_TRUE(connection->FixGatewayReachability(
+      local, &peer, &gateway, trusted_ip));
   // Prefix should remain unchanged.
   EXPECT_EQ(kPrefix, local.prefix());
   // Peer should remain unchanged.
@@ -794,62 +780,38 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   // Gateway should remain unchanged.
   EXPECT_TRUE(gateway_backup.Equals(gateway));
 
-  // Should succeed because we modified the prefix to match the gateway.
-  static const char kExpandableGateway[] = "10.242.3.14";
-  ASSERT_TRUE(gateway.SetAddressFromString(kExpandableGateway));
+  // Should succeed because we created a link route to the gateway.
+  static const char kRemoteGateway[] = "10.242.3.14";
+  ASSERT_TRUE(gateway.SetAddressFromString(kRemoteGateway));
   gateway_backup = gateway;
   peer = IPAddress(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(Connection::FixGatewayReachability(
-      &local, &peer, &gateway, trusted_ip));
-  // Prefix should have opened up by 1 bit.
-  EXPECT_EQ(kPrefix - 1, local.prefix());
+  EXPECT_CALL(routing_table_, AddRoute(kTestDeviceInterfaceIndex0,
+                                       IsLinkRouteTo(gateway)))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(connection->FixGatewayReachability(
+      local, &peer, &gateway, trusted_ip));
+
   // Peer should remain unchanged.
   EXPECT_FALSE(peer.IsValid());
   // Gateway should remain unchanged.
   EXPECT_TRUE(gateway_backup.Equals(gateway));
 
-  // Should change models to assuming point-to-point because we cannot
-  // plausibly expand the prefix past 8.
-  local.set_prefix(kPrefix);
-  static const char kUnreachableGateway[] = "11.242.2.14";
-  ASSERT_TRUE(gateway.SetAddressFromString(kUnreachableGateway));
-  gateway_backup = gateway;
-  peer = IPAddress(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(Connection::FixGatewayReachability(
-      &local, &peer, &gateway, trusted_ip));
-  // Prefix should not have changed.
-  EXPECT_EQ(kPrefix, local.prefix());
-  // Peer address should be set to the gateway address.
-  EXPECT_TRUE(peer.Equals(gateway));
-  // Gateway should remain unchanged.
-  EXPECT_TRUE(gateway_backup.Equals(gateway));
-
-  // Should also use point-to-point model if the netmask is set to the
-  // "all-ones" addresss, even if this address could have been made
-  // accessible by plausibly changing the prefix.
-  const int kIPv4MaxPrefix =
-      IPAddress::GetMaxPrefixLength(IPAddress::kFamilyIPv4);
-  local.set_prefix(kIPv4MaxPrefix);
-  ASSERT_TRUE(gateway.SetAddressFromString(kExpandableGateway));
-  gateway_backup = gateway;
-  peer = IPAddress(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(Connection::FixGatewayReachability(
-      &local, &peer, &gateway, trusted_ip));
-  // Prefix should not have changed.
-  EXPECT_EQ(kIPv4MaxPrefix, local.prefix());
-  // Peer address should be set to the gateway address.
-  EXPECT_TRUE(peer.Equals(gateway));
-  // Gateway should remain unchanged.
-  EXPECT_TRUE(gateway_backup.Equals(gateway));
+  // Should fail if AddRoute() fails.
+  EXPECT_CALL(routing_table_, AddRoute(kTestDeviceInterfaceIndex0,
+                                       IsLinkRouteTo(gateway)))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(connection->FixGatewayReachability(
+      local, &peer, &gateway, trusted_ip));
 
   // If this is a peer-to-peer interface and the peer matches the gateway,
   // we should succeed.
   local.set_prefix(kPrefix);
+  static const char kUnreachableGateway[] = "11.242.2.14";
   ASSERT_TRUE(gateway.SetAddressFromString(kUnreachableGateway));
   gateway_backup = gateway;
   ASSERT_TRUE(peer.SetAddressFromString(kUnreachableGateway));
-  EXPECT_TRUE(Connection::FixGatewayReachability(
-      &local, &peer, &gateway, trusted_ip));
+  EXPECT_TRUE(connection->FixGatewayReachability(
+      local, &peer, &gateway, trusted_ip));
   EXPECT_EQ(kPrefix, local.prefix());
   EXPECT_TRUE(peer.Equals(gateway));
   EXPECT_TRUE(gateway_backup.Equals(gateway));
@@ -857,8 +819,8 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   // If there is a peer specified and it does not match the gateway (even
   // if it was reachable via netmask), we should fail.
   ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
-  EXPECT_FALSE(Connection::FixGatewayReachability(
-      &local, &peer, &gateway, trusted_ip));
+  EXPECT_FALSE(connection->FixGatewayReachability(
+      local, &peer, &gateway, trusted_ip));
   EXPECT_EQ(kPrefix, local.prefix());
   EXPECT_FALSE(peer.Equals(gateway));
 
@@ -869,10 +831,13 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   ASSERT_TRUE(peer.SetAddressFromString(kUnreachableGateway));
   ASSERT_TRUE(trusted_ip.SetAddressAndPrefixFromString(
       string(kUnreachableGateway) + "/32"));
-  EXPECT_TRUE(Connection::FixGatewayReachability(
-      &local, &peer, &gateway, trusted_ip));
+  EXPECT_TRUE(connection->FixGatewayReachability(
+      local, &peer, &gateway, trusted_ip));
   EXPECT_TRUE(peer.IsDefault());
   EXPECT_TRUE(gateway.IsDefault());
+
+  // The destructor will remove the routes and addresses.
+  AddDestructorExpectations();
 }
 
 TEST_F(ConnectionTest, Binders) {

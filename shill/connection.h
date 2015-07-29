@@ -158,10 +158,10 @@ class Connection : public base::RefCounted<Connection> {
 
   // Work around misconfigured servers which provide a gateway address that
   // is unreachable with the provided netmask.
-  static bool FixGatewayReachability(IPAddress* local,
-                                     IPAddress* peer,
-                                     IPAddress* gateway,
-                                     const IPAddress& trusted_ip);
+  bool FixGatewayReachability(const IPAddress& local,
+                              IPAddress* peer,
+                              IPAddress* gateway,
+                              const IPAddress& trusted_ip);
   uint32_t GetMetric(bool is_default);
   bool PinHostRoute(const IPAddress& trusted_ip, const IPAddress& gateway);
   void SetMTU(int32_t mtu);

@@ -193,7 +193,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
     return;
   }
 
-  if (!FixGatewayReachability(&local, &peer, &gateway, trusted_ip)) {
+  if (!FixGatewayReachability(local, &peer, &gateway, trusted_ip)) {
     LOG(WARNING) << "Expect limited network connectivity.";
   }
 
@@ -392,13 +392,12 @@ string Connection::GetSubnetName() const {
                             local().prefix());
 }
 
-// static
-bool Connection::FixGatewayReachability(IPAddress* local,
+bool Connection::FixGatewayReachability(const IPAddress& local,
                                         IPAddress* peer,
                                         IPAddress* gateway,
                                         const IPAddress& trusted_ip) {
   SLOG(nullptr, 2) << __func__
-      << " local " << local->ToString()
+      << " local " << local.ToString()
       << ", peer " << peer->ToString()
       << ", gateway " << gateway->ToString()
       << ", trusted_ip " << trusted_ip.ToString();
@@ -470,42 +469,35 @@ bool Connection::FixGatewayReachability(IPAddress* local,
     return true;
   }
 
-  if (local->CanReachAddress(*gateway)) {
+  if (local.CanReachAddress(*gateway)) {
     return true;
   }
 
   LOG(WARNING) << "Gateway "
                << gateway->ToString()
                << " is unreachable from local address/prefix "
-               << local->ToString() << "/" << local->prefix();
+               << local.ToString() << "/" << local.prefix();
 
-  bool found_new_prefix = false;
-  size_t original_prefix = local->prefix();
-  // Only try to expand the netmask if the configured prefix is
-  // less than "all ones".  This special-cases the "all-ones"
-  // prefix as a forced conversion to point-to-point networking.
-  if (local->prefix() < IPAddress::GetMaxPrefixLength(local->family())) {
-    size_t prefix = original_prefix - 1;
-    for (; prefix >= local->GetMinPrefixLength(); --prefix) {
-      local->set_prefix(prefix);
-      if (local->CanReachAddress(*gateway)) {
-        found_new_prefix = true;
-        break;
-      }
-    }
+  IPAddress gateway_with_max_prefix(*gateway);
+  gateway_with_max_prefix.set_prefix(
+      IPAddress::GetMaxPrefixLength(gateway_with_max_prefix.family()));
+  IPAddress default_address(gateway->family());
+  RoutingTableEntry entry(gateway_with_max_prefix,
+                          default_address,
+                          default_address,
+                          0,
+                          RT_SCOPE_LINK,
+                          false,
+                          table_id_,
+                          RoutingTableEntry::kDefaultTag);
+
+  if (!routing_table_->AddRoute(interface_index_, entry)) {
+    LOG(ERROR) << "Unable to add link-scoped route to gateway.";
+    return false;
   }
 
-  if (!found_new_prefix) {
-    // Restore the original prefix since we cannot find a better one.
-    local->set_prefix(original_prefix);
-    DCHECK(!peer->IsValid());
-    LOG(WARNING) << "Assuming point-to-point configuration.";
-    *peer = *gateway;
-    return true;
-  }
+  LOG(WARNING) << "Mitigating this by creating a link route to the gateway.";
 
-  LOG(WARNING) << "Mitigating this by setting local prefix to "
-               << local->prefix();
   return true;
 }
 
