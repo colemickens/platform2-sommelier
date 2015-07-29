@@ -158,7 +158,6 @@ TEST_F(StateManagerTest, SetPropertyValue_Error_NoName) {
   ASSERT_FALSE(SetPropertyValue("", int{0}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNameMissing, error->GetCode());
-  EXPECT_EQ("Property name is missing", error->GetMessage());
 }
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_NoPackage) {
@@ -166,8 +165,6 @@ TEST_F(StateManagerTest, SetPropertyValue_Error_NoPackage) {
   ASSERT_FALSE(SetPropertyValue("state_property", int{0}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPackageNameMissing, error->GetCode());
-  EXPECT_EQ("Package name is missing in the property name",
-            error->GetMessage());
 }
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownPackage) {
@@ -175,7 +172,6 @@ TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownPackage) {
   ASSERT_FALSE(SetPropertyValue("power.level", int{0}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
-  EXPECT_EQ("Unknown state property package 'power'", error->GetMessage());
 }
 
 TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownProperty) {
@@ -183,7 +179,6 @@ TEST_F(StateManagerTest, SetPropertyValue_Error_UnknownProperty) {
   ASSERT_FALSE(SetPropertyValue("base.level", int{0}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
-  EXPECT_EQ("State property 'base.level' is not defined", error->GetMessage());
 }
 
 TEST_F(StateManagerTest, GetAndClearRecordedStateChanges) {

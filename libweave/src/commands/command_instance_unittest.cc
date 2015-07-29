@@ -142,7 +142,6 @@ TEST_F(CommandInstanceTest, FromJson_NotObject) {
                                             dict_, nullptr, &error);
   EXPECT_EQ(nullptr, instance.get());
   EXPECT_EQ("json_object_expected", error->GetCode());
-  EXPECT_EQ("Command instance is not a JSON object", error->GetMessage());
 }
 
 TEST_F(CommandInstanceTest, FromJson_NameMissing) {
@@ -152,7 +151,6 @@ TEST_F(CommandInstanceTest, FromJson_NameMissing) {
                                             dict_, nullptr, &error);
   EXPECT_EQ(nullptr, instance.get());
   EXPECT_EQ("parameter_missing", error->GetCode());
-  EXPECT_EQ("Command name is missing", error->GetMessage());
 }
 
 TEST_F(CommandInstanceTest, FromJson_UnknownCommand) {
@@ -162,7 +160,6 @@ TEST_F(CommandInstanceTest, FromJson_UnknownCommand) {
                                             dict_, nullptr, &error);
   EXPECT_EQ(nullptr, instance.get());
   EXPECT_EQ("invalid_command_name", error->GetCode());
-  EXPECT_EQ("Unknown command received: robot.scream", error->GetMessage());
 }
 
 TEST_F(CommandInstanceTest, FromJson_ParamsNotObject) {
@@ -176,9 +173,7 @@ TEST_F(CommandInstanceTest, FromJson_ParamsNotObject) {
   EXPECT_EQ(nullptr, instance.get());
   auto inner = error->GetInnerError();
   EXPECT_EQ("json_object_expected", inner->GetCode());
-  EXPECT_EQ("Property 'parameters' must be a JSON object", inner->GetMessage());
   EXPECT_EQ("command_failed", error->GetCode());
-  EXPECT_EQ("Failed to validate command 'robot.speak'", error->GetMessage());
 }
 
 TEST_F(CommandInstanceTest, FromJson_ParamError) {
@@ -195,13 +190,9 @@ TEST_F(CommandInstanceTest, FromJson_ParamError) {
   EXPECT_EQ(nullptr, instance.get());
   auto first = error->GetFirstError();
   EXPECT_EQ("out_of_range", first->GetCode());
-  EXPECT_EQ("Value 20 is out of range. It must not be greater than 10",
-            first->GetMessage());
   auto inner = error->GetInnerError();
   EXPECT_EQ("invalid_parameter_value", inner->GetCode());
-  EXPECT_EQ("Invalid value for property 'volume'", inner->GetMessage());
   EXPECT_EQ("command_failed", error->GetCode());
-  EXPECT_EQ("Failed to validate command 'robot.speak'", error->GetMessage());
 }
 
 TEST_F(CommandInstanceTest, ToJson) {

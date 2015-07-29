@@ -107,14 +107,12 @@ TEST(CommandDictionary, LoadCommands_Failures) {
   auto json = CreateDictionaryValue("{'robot':{'jump':0}}");
   EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
-  EXPECT_EQ("Expecting an object for command 'jump'", error->GetMessage());
   error.reset();
 
   // Package definition is not an object.
   json = CreateDictionaryValue("{'robot':'blah'}");
   EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
   EXPECT_EQ("type_mismatch", error->GetCode());
-  EXPECT_EQ("Expecting an object for package 'robot'", error->GetMessage());
   error.reset();
 
   // Invalid command definition is not an object.
@@ -122,7 +120,6 @@ TEST(CommandDictionary, LoadCommands_Failures) {
       "{'robot':{'jump':{'parameters':{'flip':0},'results':{}}}}");
   EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
   EXPECT_EQ("invalid_object_schema", error->GetCode());
-  EXPECT_EQ("Invalid definition for command 'robot.jump'", error->GetMessage());
   EXPECT_NE(nullptr, error->GetInnerError());  // Must have additional info.
   error.reset();
 
@@ -130,8 +127,6 @@ TEST(CommandDictionary, LoadCommands_Failures) {
   json = CreateDictionaryValue("{'robot':{'':{'parameters':{},'results':{}}}}");
   EXPECT_FALSE(dict.LoadCommands(*json, "robotd", nullptr, &error));
   EXPECT_EQ("invalid_command_name", error->GetCode());
-  EXPECT_EQ("Unnamed command encountered in package 'robot'",
-            error->GetMessage());
   error.reset();
 }
 
@@ -165,10 +160,6 @@ TEST(CommandDictionary, LoadCommands_CustomCommandNaming) {
       CreateDictionaryValue("{'base':{'jump':{'parameters':{},'results':{}}}}");
   EXPECT_FALSE(dict.LoadCommands(*json2, "robotd", &base_dict, &error));
   EXPECT_EQ("invalid_command_name", error->GetCode());
-  EXPECT_EQ(
-      "The name of custom command 'jump' in package 'base' must start "
-      "with '_'",
-      error->GetMessage());
   error.reset();
 
   // If the command starts with "_", then it's Ok.
@@ -202,14 +193,8 @@ TEST(CommandDictionary, LoadCommands_RedefineStdCommand) {
   })");
   EXPECT_FALSE(dict.LoadCommands(*json2, "robotd", &base_dict, &error));
   EXPECT_EQ("invalid_object_schema", error->GetCode());
-  EXPECT_EQ("Invalid definition for command 'base.reboot'",
-            error->GetMessage());
   EXPECT_EQ("invalid_parameter_definition", error->GetInnerError()->GetCode());
-  EXPECT_EQ("Error in definition of property 'delay'",
-            error->GetInnerError()->GetMessage());
   EXPECT_EQ("param_type_changed", error->GetFirstError()->GetCode());
-  EXPECT_EQ("Redefining a property of type integer as string",
-            error->GetFirstError()->GetMessage());
   error.reset();
 
   auto json3 = CreateDictionaryValue(R"({
@@ -222,15 +207,9 @@ TEST(CommandDictionary, LoadCommands_RedefineStdCommand) {
   })");
   EXPECT_FALSE(dict.LoadCommands(*json3, "robotd", &base_dict, &error));
   EXPECT_EQ("invalid_object_schema", error->GetCode());
-  EXPECT_EQ("Invalid definition for command 'base.reboot'",
-            error->GetMessage());
   // TODO(antonm): remove parameter from error below and use some generic.
   EXPECT_EQ("invalid_parameter_definition", error->GetInnerError()->GetCode());
-  EXPECT_EQ("Error in definition of property 'version'",
-            error->GetInnerError()->GetMessage());
   EXPECT_EQ("param_type_changed", error->GetFirstError()->GetCode());
-  EXPECT_EQ("Redefining a property of type integer as string",
-            error->GetFirstError()->GetMessage());
   error.reset();
 }
 

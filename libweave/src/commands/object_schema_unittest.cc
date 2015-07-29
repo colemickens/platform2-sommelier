@@ -828,14 +828,10 @@ TEST(CommandSchema, ArrayPropType_Validate) {
 
   EXPECT_FALSE(prop.ValidateValue(CreateValue("[2]").get(), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
-  EXPECT_EQ("Value 2 is out of range. It must not be less than 2.3",
-            error->GetMessage());
   error.reset();
 
   EXPECT_FALSE(prop.ValidateValue(CreateValue("[4, 5, 20]").get(), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
-  EXPECT_EQ("Value 20 is out of range. It must not be greater than 10.5",
-            error->GetMessage());
   error.reset();
 }
 
@@ -852,8 +848,6 @@ TEST(CommandSchema, ArrayPropType_Validate_Enum) {
 
   EXPECT_FALSE(prop.ValidateValue(CreateValue("[2]").get(), &error));
   EXPECT_EQ("out_of_range", error->GetCode());
-  EXPECT_EQ("Value [2] is invalid. Expected one of [[1],[2,3],[4,5,6]]",
-            error->GetMessage());
   error.reset();
 
   EXPECT_FALSE(prop.ValidateValue(CreateValue("[2,3,4]").get(), &error));
@@ -1632,7 +1626,6 @@ TEST(CommandSchema, RequiredProperties_Failures) {
   EXPECT_FALSE(obj_type.FromJson(CreateDictionaryValue(type_str).get(), nullptr,
                                  &error));
   EXPECT_EQ(errors::commands::kUnknownProperty, error->GetCode());
-  EXPECT_EQ("Unknown property 'prop3'", error->GetMessage());
   error.reset();
 
   type_str = R"({
@@ -1645,7 +1638,6 @@ TEST(CommandSchema, RequiredProperties_Failures) {
   EXPECT_FALSE(obj_type.FromJson(CreateDictionaryValue(type_str).get(), nullptr,
                                  &error));
   EXPECT_EQ(errors::commands::kInvalidObjectSchema, error->GetCode());
-  EXPECT_EQ("Property 'required' must be an array", error->GetMessage());
   error.reset();
 }
 
@@ -1708,7 +1700,6 @@ TEST(CommandSchema, ObjectSchema_UseRequired_Failure) {
   chromeos::ErrorPtr error;
   ASSERT_FALSE(value->FromJson(CreateDictionaryValue(val_json).get(), &error));
   EXPECT_EQ(errors::commands::kPropertyMissing, error->GetCode());
-  EXPECT_EQ("Required parameter missing: param1", error->GetMessage());
 }
 
 }  // namespace weave

@@ -198,7 +198,6 @@ TEST(CommandManager, UpdateCommandVisibility) {
       {"foo._baz", "foo._bar", "test.cmd"},
       CommandDefinition::Visibility::GetLocal(), &error));
   EXPECT_EQ(errors::commands::kInvalidCommandName, error->GetCode());
-  EXPECT_EQ("Command 'test.cmd' is unknown", error->GetMessage());
   // The visibility state of commands shouldn't have changed.
   EXPECT_EQ(3, update_count);
   EXPECT_EQ("local", dict.FindCommand("foo._baz")->GetVisibility().ToString());

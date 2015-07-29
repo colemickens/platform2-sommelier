@@ -62,7 +62,6 @@ TEST(CommandVisibility, FromString) {
   chromeos::ErrorPtr error;
   ASSERT_FALSE(visibility.FromString("cloud,all", &error));
   EXPECT_EQ("invalid_parameter_value", error->GetCode());
-  EXPECT_EQ("Invalid command visibility value 'all'", error->GetMessage());
 }
 
 TEST(CommandVisibility, ToString) {

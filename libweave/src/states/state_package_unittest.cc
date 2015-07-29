@@ -211,8 +211,6 @@ TEST_F(StatePackageTest, AddSchemaFromJson_Error_Redefined) {
   EXPECT_FALSE(package_->AddSchemaFromJson(dict.get(), &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyRedefinition, error->GetCode());
-  EXPECT_EQ("State property 'test.color' is already defined",
-            error->GetMessage());
 }
 
 TEST_F(StatePackageTest, AddValuesFromJson_Error_Undefined) {
@@ -221,8 +219,6 @@ TEST_F(StatePackageTest, AddValuesFromJson_Error_Undefined) {
   EXPECT_FALSE(package_->AddValuesFromJson(dict.get(), &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
-  EXPECT_EQ("State property 'test.brightness' is not defined",
-            error->GetMessage());
 }
 
 TEST_F(StatePackageTest, GetPropertyValue) {
@@ -248,7 +244,6 @@ TEST_F(StatePackageTest, GetPropertyValue_Unknown) {
   EXPECT_TRUE(value.IsEmpty());
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
-  EXPECT_EQ("State property 'test.volume' is not defined", error->GetMessage());
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Simple) {
@@ -289,13 +284,11 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_TypeMismatch) {
   ASSERT_FALSE(package_->SetPropertyValue("color", int{12}, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
-  EXPECT_EQ("Unable to convert value to type 'string'", error->GetMessage());
   error.reset();
 
   ASSERT_FALSE(package_->SetPropertyValue("iso", bool{false}, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kTypeMismatch, error->GetCode());
-  EXPECT_EQ("Unable to convert value to type 'integer'", error->GetMessage());
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_OutOfRange) {
@@ -303,8 +296,6 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_OutOfRange) {
   ASSERT_FALSE(package_->SetPropertyValue("iso", int{150}, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kOutOfRange, error->GetCode());
-  EXPECT_EQ("Value 150 is invalid. Expected one of [50,100,200,400]",
-            error->GetMessage());
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_TypeMismatch) {
@@ -315,11 +306,9 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Object_TypeMismatch) {
   ASSERT_FALSE(package_->SetPropertyValue("direction", direction, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kInvalidPropValue, error->GetCode());
-  EXPECT_EQ("Invalid value for property 'azimuth'", error->GetMessage());
   const chromeos::Error* inner = error->GetInnerError();
   EXPECT_EQ(errors::commands::kDomain, inner->GetDomain());
   EXPECT_EQ(errors::commands::kTypeMismatch, inner->GetCode());
-  EXPECT_EQ("Unable to convert value to type 'number'", inner->GetMessage());
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_OutOfRange) {
@@ -330,12 +319,9 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Object_OutOfRange) {
   ASSERT_FALSE(package_->SetPropertyValue("direction", direction, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kInvalidPropValue, error->GetCode());
-  EXPECT_EQ("Invalid value for property 'altitude'", error->GetMessage());
   const chromeos::Error* inner = error->GetInnerError();
   EXPECT_EQ(errors::commands::kDomain, inner->GetDomain());
   EXPECT_EQ(errors::commands::kOutOfRange, inner->GetCode());
-  EXPECT_EQ("Value 100 is out of range. It must not be greater than 90",
-            inner->GetMessage());
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_UnknownProperty) {
@@ -348,7 +334,6 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Object_UnknownProperty) {
   ASSERT_FALSE(package_->SetPropertyValue("direction", direction, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kUnknownProperty, error->GetCode());
-  EXPECT_EQ("Unrecognized property 'spin'", error->GetMessage());
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Object_MissingProperty) {
@@ -359,7 +344,6 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Object_MissingProperty) {
   ASSERT_FALSE(package_->SetPropertyValue("direction", direction, &error));
   EXPECT_EQ(errors::commands::kDomain, error->GetDomain());
   EXPECT_EQ(errors::commands::kPropertyMissing, error->GetCode());
-  EXPECT_EQ("Required parameter missing: azimuth", error->GetMessage());
 }
 
 TEST_F(StatePackageTest, SetPropertyValue_Error_Unknown) {
@@ -367,7 +351,6 @@ TEST_F(StatePackageTest, SetPropertyValue_Error_Unknown) {
   ASSERT_FALSE(package_->SetPropertyValue("volume", int{100}, &error));
   EXPECT_EQ(errors::state::kDomain, error->GetDomain());
   EXPECT_EQ(errors::state::kPropertyNotDefined, error->GetCode());
-  EXPECT_EQ("State property 'test.volume' is not defined", error->GetMessage());
 }
 
 }  // namespace weave
