@@ -24,6 +24,7 @@
 #include <dbus/values_util.h>
 
 // TODO(vitalybuka): Will be moved into buffet soon.
+#include "libweave/src/commands/dbus_command_dispatcher.h"
 #include "libweave/src/commands/dbus_conversion.h"
 #include "weave/enum_to_string.h"
 
@@ -56,6 +57,9 @@ void Manager::Start(const weave::Device::Options& options,
                     AsyncEventSequencer* sequencer) {
   device_ = weave::Device::Create();
   device_->Start(options, &dbus_object_, sequencer);
+
+  command_dispatcher_.reset(new weave::DBusCommandDispacher{
+      dbus_object_.GetObjectManager(), device_->GetCommands()});
 
   device_->GetState()->AddOnChangedCallback(
       base::Bind(&Manager::OnStateChanged, weak_ptr_factory_.GetWeakPtr()));

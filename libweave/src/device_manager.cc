@@ -41,8 +41,7 @@ void DeviceManager::Start(
     const Options& options,
     chromeos::dbus_utils::DBusObject* dbus_object,
     chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
-  command_manager_ =
-      std::make_shared<CommandManager>(dbus_object->GetObjectManager());
+  command_manager_ = std::make_shared<CommandManager>();
   command_manager_->Startup(options.definitions_path,
                             options.test_definitions_path);
   state_change_queue_.reset(new StateChangeQueue(kMaxStateChangeQueueSize));

@@ -13,17 +13,9 @@
 #include "libweave/src/utils.h"
 #include "weave/enum_to_string.h"
 
-using chromeos::dbus_utils::ExportedObjectManager;
-
 namespace weave {
 
-CommandManager::CommandManager()
-    : CommandManager(base::WeakPtr<ExportedObjectManager>{}) {
-}
-
-CommandManager::CommandManager(
-    const base::WeakPtr<ExportedObjectManager>& object_manager)
-    : command_dispatcher_(object_manager, this) {}
+CommandManager::CommandManager() {}
 
 CommandManager::~CommandManager() {}
 

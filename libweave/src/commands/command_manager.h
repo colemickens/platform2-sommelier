@@ -16,14 +16,7 @@
 
 #include "libweave/src/commands/command_dictionary.h"
 #include "libweave/src/commands/command_queue.h"
-#include "libweave/src/commands/dbus_command_dispatcher.h"
 #include "weave/commands.h"
-
-namespace chromeos {
-namespace dbus_utils {
-class ExportedObjectManager;
-}  // namespace dbus_utils
-}  // namespace chromeos
 
 namespace weave {
 
@@ -35,9 +28,6 @@ class CommandInstance;
 class CommandManager final : public Commands {
  public:
   CommandManager();
-  explicit CommandManager(
-      const base::WeakPtr<chromeos::dbus_utils::ExportedObjectManager>&
-          object_manager);
 
   ~CommandManager() override;
 
@@ -106,7 +96,6 @@ class CommandManager final : public Commands {
   CommandDictionary base_dictionary_;  // Base/std command definitions/schemas.
   CommandDictionary dictionary_;       // Command definitions/schemas.
   CommandQueue command_queue_;
-  DBusCommandDispacher command_dispatcher_;
   std::vector<base::Callback<void()>> on_command_changed_;
   uint32_t next_command_id_{0};
 
