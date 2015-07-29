@@ -59,6 +59,8 @@ namespace chromium {
 // Abstract interface proxy for org::chromium::TestInterface.
 class TestInterfaceProxyInterface {
  public:
+  virtual ~TestInterfaceProxyInterface() = default;
+
   virtual bool Elements(
       const std::string& in_space_walk,
       const std::vector<dbus::ObjectPath>& in_ramblin_man,
@@ -115,9 +117,6 @@ class TestInterfaceProxyInterface {
       const base::Callback<void(const std::vector<std::string>&,
                                 uint8_t)>& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
-
- protected:
-  virtual ~TestInterfaceProxyInterface() = default;
 };
 
 }  // namespace chromium
@@ -314,6 +313,8 @@ namespace chromium {
 // Abstract interface proxy for org::chromium::TestInterface2.
 class TestInterface2ProxyInterface {
  public:
+  virtual ~TestInterface2ProxyInterface() = default;
+
   virtual bool GetPersonInfo(
       std::string* out_name,
       int32_t* out_age,
@@ -324,9 +325,6 @@ class TestInterface2ProxyInterface {
       const base::Callback<void(const std::string& /*name*/, int32_t /*age*/)>& success_callback,
       const base::Callback<void(chromeos::Error*)>& error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
-
- protected:
-  virtual ~TestInterface2ProxyInterface() = default;
 };
 
 }  // namespace chromium
@@ -431,12 +429,11 @@ namespace chromium {
 // Abstract interface proxy for org::chromium::TestInterface.
 class TestInterfaceProxyInterface {
  public:
+  virtual ~TestInterfaceProxyInterface() = default;
+
   virtual void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
-
- protected:
-  virtual ~TestInterfaceProxyInterface() = default;
 };
 
 }  // namespace chromium
@@ -496,7 +493,6 @@ namespace chromium {
 // Abstract interface proxy for org::chromium::TestInterface2.
 class TestInterface2ProxyInterface {
  public:
- protected:
   virtual ~TestInterface2ProxyInterface() = default;
 };
 
@@ -578,15 +574,14 @@ namespace chromium {
 // Abstract interface proxy for org::chromium::Itf1.
 class Itf1ProxyInterface {
  public:
+  virtual ~Itf1ProxyInterface() = default;
+
   virtual void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
 
   static const char* DataName() { return "Data"; }
   virtual const std::string& data() const = 0;
-
- protected:
-  virtual ~Itf1ProxyInterface() = default;
 };
 
 }  // namespace chromium
@@ -687,7 +682,6 @@ namespace chromium {
 // Abstract interface proxy for org::chromium::Itf2.
 class Itf2ProxyInterface {
  public:
- protected:
   virtual ~Itf2ProxyInterface() = default;
 };
 
@@ -962,12 +956,11 @@ namespace chromium {
 // Abstract interface proxy for org::chromium::Itf1.
 class Itf1ProxyInterface {
  public:
+  virtual ~Itf1ProxyInterface() = default;
+
   virtual void RegisterCloserSignalHandler(
       const base::Closure& signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
-
- protected:
-  virtual ~Itf1ProxyInterface() = default;
 };
 
 }  // namespace chromium
@@ -1041,7 +1034,6 @@ namespace chromium {
 // Abstract interface proxy for org::chromium::Itf2.
 class Itf2ProxyInterface {
  public:
- protected:
   virtual ~Itf2ProxyInterface() = default;
 };
 

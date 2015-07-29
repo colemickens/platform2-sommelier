@@ -191,6 +191,8 @@ void ProxyGenerator::GenerateInterfaceProxyInterface(
   text->AddLine(StringPrintf("class %s {", base_interface_name.c_str()));
   text->AddLineWithOffset("public:", kScopeOffset);
   text->PushOffset(kBlockOffset);
+  text->AddLine(
+      StringPrintf("virtual ~%s() = default;", base_interface_name.c_str()));
 
   for (const auto& method : interface.methods) {
     AddMethodProxy(method, interface.name, true, text);
@@ -202,10 +204,6 @@ void ProxyGenerator::GenerateInterfaceProxyInterface(
   AddProperties(config, interface, true, text);
 
   text->PopOffset();
-  text->AddLineWithOffset("protected:", kScopeOffset);
-  text->AddLineWithOffset(
-      StringPrintf("virtual ~%s() = default;", base_interface_name.c_str()),
-      kBlockOffset);
   text->AddLine("};");
   text->AddBlankLine();
 
@@ -249,6 +247,7 @@ void ProxyGenerator::GenerateInterfaceProxy(const ServiceConfig& config,
   AddProperties(config, interface, false, text);
 
   text->PopOffset();
+  text->AddBlankLine();
   text->AddLineWithOffset("private:", kScopeOffset);
 
   text->PushOffset(kBlockOffset);
@@ -392,38 +391,38 @@ void ProxyGenerator::AddDestructor(const string& class_name,
   IndentedText block;
   block.AddLine(StringPrintf("~%s() override {", class_name.c_str()));
   block.AddLine("}");
-  block.AddBlankLine();
   text->AddBlock(block);
 }
 
 // static
 void ProxyGenerator::AddReleaseObjectProxy(IndentedText* text) {
+  text->AddBlankLine();
   text->AddLine("void ReleaseObjectProxy(const base::Closure& callback) {");
   text->AddLineWithOffset(
       "bus_->RemoveObjectProxy(service_name_, object_path_, callback);",
       kBlockOffset);
   text->AddLine("}");
-  text->AddBlankLine();
 }
 
 // static
 void ProxyGenerator::AddGetObjectPath(IndentedText* text) {
+  text->AddBlankLine();
   text->AddLine("const dbus::ObjectPath& GetObjectPath() const {");
   text->AddLineWithOffset("return object_path_;", kBlockOffset);
   text->AddLine("}");
-  text->AddBlankLine();
 }
 
 // static
 void ProxyGenerator::AddGetObjectProxy(IndentedText* text) {
+  text->AddBlankLine();
   text->AddLine("dbus::ObjectProxy* GetObjectProxy() const { "
                 "return dbus_object_proxy_; }");
-  text->AddBlankLine();
 }
 
 // static
 void ProxyGenerator::AddPropertyPublicMethods(const string& class_name,
                                               IndentedText* text) {
+  text->AddBlankLine();
   text->AddLine("void SetPropertyChangedCallback(");
   text->AddLineWithOffset(
       StringPrintf("const base::Callback<void(%s*, "
@@ -436,7 +435,6 @@ void ProxyGenerator::AddPropertyPublicMethods(const string& class_name,
   text->AddLine("const PropertySet* GetProperties() const "
                 "{ return property_set_; }");
   text->AddLine("PropertySet* GetProperties() { return property_set_; }");
-  text->AddBlankLine();
 }
 
 // static
@@ -458,6 +456,7 @@ void ProxyGenerator::AddSignalHandlerRegistration(
       bool declaration_only,
       IndentedText* text) {
   IndentedText block;
+  block.AddBlankLine();
   block.AddLine(StringPrintf("%svoid Register%sSignalHandler(",
                              declaration_only ? "virtual " : "",
                              signal.name.c_str()));
@@ -480,7 +479,6 @@ void ProxyGenerator::AddSignalHandlerRegistration(
     block.PopOffset();  // Method body
     block.AddLine("}");
   }
-  block.AddBlankLine();
   text->AddBlock(block);
 }
 
@@ -547,6 +545,9 @@ void ProxyGenerator::AddProperties(const ServiceConfig& config,
   if (config.object_manager.name.empty())
     return;
 
+  if (declaration_only && !interface.properties.empty())
+    text->AddBlankLine();
+
   DbusSignature signature;
   for (const auto& prop : interface.properties) {
     if (declaration_only) {
@@ -559,6 +560,8 @@ void ProxyGenerator::AddProperties(const ServiceConfig& config,
     CHECK(signature.Parse(prop.type, &type));
     MakeConstReferenceIfNeeded(&type);
     string name = NameParser{prop.name}.MakeVariableName();
+    if (!declaration_only)
+      text->AddBlankLine();
     text->AddLine(
         StringPrintf("%s%s %s() const%s",
                      declaration_only ? "virtual " : "",
@@ -570,12 +573,8 @@ void ProxyGenerator::AddProperties(const ServiceConfig& config,
           StringPrintf("return property_set_->%s.value();", name.c_str()),
           kBlockOffset);
       text->AddLine("}");
-      text->AddBlankLine();
     }
   }
-
-  if (declaration_only && !interface.properties.empty())
-    text->AddBlankLine();
 }
 
 // static
@@ -585,6 +584,7 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
                                     IndentedText* text) {
   IndentedText block;
   DbusSignature signature;
+  block.AddBlankLine();
   block.AddComments(method.doc_string);
   block.AddLine(StringPrintf("%sbool %s(",
                              declaration_only ? "virtual " : "",
@@ -641,7 +641,6 @@ void ProxyGenerator::AddMethodProxy(const Interface::Method& method,
     block.PopOffset();
     block.AddLine("}");
   }
-  block.AddBlankLine();
   text->AddBlock(block);
 }
 
@@ -652,6 +651,7 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
                                          IndentedText* text) {
   IndentedText block;
   DbusSignature signature;
+  block.AddBlankLine();
   block.AddComments(method.doc_string);
   block.AddLine(StringPrintf("%svoid %sAsync(",
                              declaration_only ? "virtual " : "",
@@ -707,7 +707,6 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
     block.PopOffset();
     block.AddLine("}");
   }
-  block.AddBlankLine();
   text->AddBlock(block);
 }
 
