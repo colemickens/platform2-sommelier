@@ -13,6 +13,7 @@
 #include "shill/dbus/chromeos_third_party_vpn_dbus_adaptor.h"
 
 using chromeos::dbus_utils::ExportedObjectManager;
+using std::string;
 
 namespace shill {
 
@@ -79,5 +80,169 @@ ThirdPartyVpnAdaptorInterface* ChromeosDBusControl::CreateThirdPartyVpnAdaptor(
                     ChromeosThirdPartyVpnDBusAdaptor>(driver);
 }
 #endif
+
+DBusPropertiesProxyInterface* ChromeosDBusControl::CreateDBusPropertiesProxy(
+    const string& path,
+    const string& service) {
+  return nullptr;
+}
+
+DBusServiceProxyInterface* ChromeosDBusControl::CreateDBusServiceProxy() {
+  return nullptr;
+}
+
+PowerManagerProxyInterface* ChromeosDBusControl::CreatePowerManagerProxy(
+    PowerManagerProxyDelegate* delegate) {
+  return nullptr;
+}
+
+#if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
+SupplicantProcessProxyInterface*
+    ChromeosDBusControl::CreateSupplicantProcessProxy(
+        const char* dbus_path,
+        const char* dbus_addr) {
+  return nullptr;
+}
+
+SupplicantInterfaceProxyInterface*
+    ChromeosDBusControl::CreateSupplicantInterfaceProxy(
+        SupplicantEventDelegateInterface* delegate,
+        const string& object_path,
+        const char* dbus_addr) {
+  return nullptr;
+}
+
+SupplicantNetworkProxyInterface*
+    ChromeosDBusControl::CreateSupplicantNetworkProxy(
+        const string& object_path,
+        const char* dbus_addr) {
+  return nullptr;
+}
+#endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
+
+#if !defined(DISABLE_WIFI)
+SupplicantBSSProxyInterface* ChromeosDBusControl::CreateSupplicantBSSProxy(
+    WiFiEndpoint* wifi_endpoint,
+    const string& object_path,
+    const char* dbus_addr) {
+  return nullptr;
+}
+#endif  // DISABLE_WIFI
+
+DHCPProxyInterface* ChromeosDBusControl::CreateDHCPProxy(
+    const string& service) {
+  return nullptr;
+}
+
+UpstartProxyInterface* ChromeosDBusControl::CreateUpstartProxy() {
+  return nullptr;
+}
+
+PermissionBrokerProxyInterface*
+    ChromeosDBusControl::CreatePermissionBrokerProxy() {
+  return nullptr;
+}
+
+#if !defined(DISABLE_CELLULAR)
+DBusObjectManagerProxyInterface*
+    ChromeosDBusControl::CreateDBusObjectManagerProxy(
+        const string& path,
+        const string& service) {
+  return nullptr;
+}
+
+ModemManagerProxyInterface*
+    ChromeosDBusControl::CreateModemManagerProxy(
+        ModemManagerClassic* manager,
+        const string& path,
+        const string& service) {
+  return nullptr;
+}
+
+ModemProxyInterface* ChromeosDBusControl::CreateModemProxy(
+    const string& path,
+    const string& service) {
+  return nullptr;
+}
+
+ModemSimpleProxyInterface* ChromeosDBusControl::CreateModemSimpleProxy(
+    const string& path,
+    const string& service) {
+  return nullptr;
+}
+
+ModemCDMAProxyInterface* ChromeosDBusControl::CreateModemCDMAProxy(
+    const string& path,
+    const string& service) {
+  return nullptr;
+}
+
+ModemGSMCardProxyInterface* ChromeosDBusControl::CreateModemGSMCardProxy(
+    const string& path,
+    const string& service) {
+  return nullptr;
+}
+
+ModemGSMNetworkProxyInterface* ChromeosDBusControl::CreateModemGSMNetworkProxy(
+    const string& path,
+    const string& service) {
+  return nullptr;
+}
+
+ModemGobiProxyInterface* ChromeosDBusControl::CreateModemGobiProxy(
+    const string& path,
+    const string& service) {
+  return nullptr;
+}
+
+// Proxies for ModemManager1 interfaces
+mm1::ModemModem3gppProxyInterface*
+    ChromeosDBusControl::CreateMM1ModemModem3gppProxy(
+        const string& path,
+        const string& service) {
+  return nullptr;
+}
+
+mm1::ModemModemCdmaProxyInterface*
+    ChromeosDBusControl::CreateMM1ModemModemCdmaProxy(
+        const string& path,
+        const string& service) {
+  return nullptr;
+}
+
+mm1::ModemProxyInterface* ChromeosDBusControl::CreateMM1ModemProxy(
+    const string& path,
+    const string& service) {
+  return nullptr;
+}
+
+mm1::ModemSimpleProxyInterface* ChromeosDBusControl::CreateMM1ModemSimpleProxy(
+    const string& path,
+    const string& service) {
+  return nullptr;
+}
+
+mm1::SimProxyInterface* ChromeosDBusControl::CreateSimProxy(
+    const string& path,
+    const string& service) {
+  return nullptr;
+}
+#endif  // DISABLE_CELLULAR
+
+#if !defined(DISABLE_WIMAX)
+WiMaxDeviceProxyInterface* ChromeosDBusControl::CreateWiMaxDeviceProxy(
+    const string& path) {
+  return nullptr;
+}
+
+WiMaxManagerProxyInterface* ChromeosDBusControl::CreateWiMaxManagerProxy() {
+  return nullptr;
+}
+
+WiMaxNetworkProxyInterface* ChromeosDBusControl::CreateWiMaxNetworkProxy(
+    const string& path) {
+  return nullptr;
+}
+#endif  // DISABLE_WIMAX
 
 }  // namespace shill
