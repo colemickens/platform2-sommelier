@@ -203,6 +203,28 @@
     </method>
 
     <!--
+        SetOwnerKeyComplete:
+        Defined as login_manager::kOwnerKeySetSignal, broadcast when the request
+        to persist the policy key was completed.
+        @success: A string value with either "success" or "failure" indicating
+                  whether the policy key was actually persisted.
+    -->
+    <signal name="SetOwnerKeyComplete">
+      <arg type="s" name="success" />
+    </signal>
+
+    <!--
+        PropertyChangeComplete:
+        Broadcast when a request to persist the policy blob file on disk was
+        completed.
+        @success: A string value with either "success" or "failure" indicating
+                  whether the policy blob was actually persisted.
+    -->
+    <signal name="PropertyChangeComplete">
+      <arg type="s" name="success" />
+    </signal>
+
+    <!--
         RetrieveSessionState:
         @state: The current session state.
 
