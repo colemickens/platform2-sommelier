@@ -37,10 +37,10 @@ const int CellularCapability::kTimeoutReset = 90000;
 const int CellularCapability::kTimeoutScan = 120000;
 
 CellularCapability::CellularCapability(Cellular* cellular,
-                                       ProxyFactory* proxy_factory,
+                                       ControlInterface* control_interface,
                                        ModemInfo* modem_info)
     : cellular_(cellular),
-      proxy_factory_(proxy_factory),
+      control_interface_(control_interface),
       modem_info_(modem_info) {}
 
 CellularCapability::~CellularCapability() {}

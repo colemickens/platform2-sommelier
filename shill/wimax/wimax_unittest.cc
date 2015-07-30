@@ -12,7 +12,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/nice_mock_control.h"
 #include "shill/testing.h"
 #include "shill/wimax/mock_wimax_device_proxy.h"
@@ -60,18 +59,15 @@ class WiMaxTest : public testing::Test {
   };
 
   virtual void SetUp() {
-    device_->proxy_factory_ = &proxy_factory_;
     device_->set_dhcp_provider(&dhcp_provider_);
   }
 
   virtual void TearDown() {
     device_->SelectService(nullptr);
     device_->pending_service_ = nullptr;
-    device_->proxy_factory_ = nullptr;
   }
 
   std::unique_ptr<MockWiMaxDeviceProxy> proxy_;
-  MockProxyFactory proxy_factory_;
   NiceMockControl control_;
   EventDispatcher dispatcher_;
   NiceMock<MockMetrics> metrics_;
@@ -88,7 +84,7 @@ TEST_F(WiMaxTest, Constructor) {
 
 TEST_F(WiMaxTest, StartStop) {
   EXPECT_FALSE(device_->proxy_.get());
-  EXPECT_CALL(proxy_factory_, CreateWiMaxDeviceProxy(_))
+  EXPECT_CALL(control_, CreateWiMaxDeviceProxy(_))
       .WillOnce(ReturnAndReleasePointee(&proxy_));
   EXPECT_CALL(*proxy_, Enable(_, _, _));
   EXPECT_CALL(*proxy_, set_networks_changed_callback(_));

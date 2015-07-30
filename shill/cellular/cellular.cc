@@ -40,7 +40,6 @@
 #include "shill/ppp_device_factory.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
-#include "shill/proxy_factory.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
 
@@ -72,8 +71,7 @@ Cellular::Cellular(ModemInfo* modem_info,
                    Type type,
                    const string& owner,
                    const string& service,
-                   const string& path,
-                   ProxyFactory* proxy_factory)
+                   const string& path)
     : Device(modem_info->control_interface(),
              modem_info->dispatcher(),
              modem_info->metrics(),
@@ -102,7 +100,6 @@ Cellular::Cellular(ModemInfo* modem_info,
       prl_version_(0),
       modem_info_(modem_info),
       type_(type),
-      proxy_factory_(proxy_factory),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       allow_roaming_(false),
       proposed_scan_in_progress_(false),
@@ -335,24 +332,24 @@ void Cellular::InitCapability(Type type) {
   switch (type) {
     case kTypeGSM:
       capability_.reset(new CellularCapabilityGSM(this,
-                                                  proxy_factory_,
+                                                  control_interface(),
                                                   modem_info_));
       break;
     case kTypeCDMA:
       capability_.reset(new CellularCapabilityCDMA(this,
-                                                   proxy_factory_,
+                                                   control_interface(),
                                                    modem_info_));
       break;
     case kTypeUniversal:
       capability_.reset(new CellularCapabilityUniversal(
           this,
-          proxy_factory_,
+          control_interface(),
           modem_info_));
       break;
     case kTypeUniversalCDMA:
       capability_.reset(new CellularCapabilityUniversalCDMA(
           this,
-          proxy_factory_,
+          control_interface(),
           modem_info_));
       break;
     default: NOTREACHED();

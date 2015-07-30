@@ -16,7 +16,6 @@
 #include "shill/manager.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
-#include "shill/proxy_factory.h"
 #include "shill/routing_table.h"
 #include "shill/shill_config.h"
 
@@ -44,7 +43,6 @@ ChromeosDaemon::ChromeosDaemon(const Settings& settings,
     : config_(config),
       control_(control),
       metrics_(new Metrics(&dispatcher_)),
-      proxy_factory_(ProxyFactory::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       dhcp_provider_(DHCPProvider::GetInstance()),

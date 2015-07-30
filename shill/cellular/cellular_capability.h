@@ -23,7 +23,6 @@ class Cellular;
 class CellularBearer;
 class Error;
 class ModemInfo;
-class ProxyFactory;
 
 // Cellular devices instantiate subclasses of CellularCapability that
 // handle the specific modem technologies and capabilities.
@@ -71,7 +70,7 @@ class CellularCapability {
 
   // |cellular| is the parent Cellular device.
   CellularCapability(Cellular* cellular,
-                     ProxyFactory* proxy_factory,
+                     ControlInterface* control_interface,
                      ModemInfo* modem_info);
   virtual ~CellularCapability();
 
@@ -263,7 +262,7 @@ class CellularCapability {
   // -------------------------------------------------------------------------
 
   Cellular* cellular() const { return cellular_; }
-  ProxyFactory* proxy_factory() const { return proxy_factory_; }
+  ControlInterface* control_interface() const { return control_interface_; }
   ModemInfo* modem_info() const { return modem_info_; }
 
  protected:
@@ -290,7 +289,7 @@ class CellularCapability {
   FRIEND_TEST(CellularTest, TearDown);
 
   Cellular* cellular_;
-  ProxyFactory* proxy_factory_;
+  ControlInterface* control_interface_;
   ModemInfo* modem_info_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapability);

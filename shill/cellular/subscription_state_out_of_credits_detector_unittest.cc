@@ -17,7 +17,6 @@
 #include "shill/mock_connection_health_checker.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/mock_traffic_monitor.h"
 
 using testing::Mock;
@@ -41,8 +40,7 @@ class SubscriptionStateOutOfCreditsDetectorTest : public testing::Test {
                                              Cellular::kTypeCDMA,
                                              "",
                                              "",
-                                             "",
-                                             ProxyFactory::GetInstance())),
+                                             "")),
         service_(new NiceMock<MockCellularService>(&modem_info_, cellular_)),
         connection_(new NiceMock<MockConnection>(&device_info_)),
         out_of_credits_detector_(

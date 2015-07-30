@@ -21,7 +21,7 @@
 
 namespace shill {
 
-class ProxyFactory;
+class ControlInterface;
 class SupplicantBSSProxyInterface;
 
 class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
@@ -46,7 +46,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
     std::string wps_device_name;
     std::set<uint32_t> oui_set;
   };
-  WiFiEndpoint(ProxyFactory* proxy_factory,
+  WiFiEndpoint(ControlInterface* control_interface,
                const WiFiRefPtr& device,
                const std::string& rpc_id,
                const KeyValueStore& properties);
@@ -115,7 +115,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   };
 
   // Build a simple WiFiEndpoint, for testing purposes.
-  static WiFiEndpoint* MakeEndpoint(ProxyFactory* proxy_factory,
+  static WiFiEndpoint* MakeEndpoint(ControlInterface* control_interface,
                                     const WiFiRefPtr& wifi,
                                     const std::string& ssid,
                                     const std::string& bssid,
@@ -125,7 +125,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
                                     bool has_wpa_property,
                                     bool has_rsn_property);
   // As above, but with the last two parameters false.
-  static WiFiEndpoint* MakeOpenEndpoint(ProxyFactory* proxy_factory,
+  static WiFiEndpoint* MakeOpenEndpoint(ControlInterface* control_interface,
                                         const WiFiRefPtr& wifi,
                                         const std::string& ssid,
                                         const std::string& bssid,
@@ -201,7 +201,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   bool has_tethering_signature_;
   SecurityFlags security_flags_;
 
-  ProxyFactory* proxy_factory_;
+  ControlInterface* control_interface_;
   WiFiRefPtr device_;
   std::string rpc_id_;
   std::unique_ptr<SupplicantBSSProxyInterface> supplicant_bss_proxy_;

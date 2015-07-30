@@ -12,10 +12,10 @@
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/control_interface.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/ieee80211.h"
-#include "shill/proxy_factory.h"
 #include "shill/supplicant/supplicant_bss_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/tethering.h"
@@ -34,14 +34,14 @@ static auto kModuleLogScope = ScopeLogger::kWiFi;
 static string ObjectID(WiFiEndpoint* w) { return "(wifi_endpoint)"; }
 }
 
-WiFiEndpoint::WiFiEndpoint(ProxyFactory* proxy_factory,
+WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
                            const WiFiRefPtr& device,
                            const string& rpc_id,
                            const KeyValueStore& properties)
     : frequency_(0),
       physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       ieee80211w_required_(false),
-      proxy_factory_(proxy_factory),
+      control_interface_(control_interface),
       device_(device),
       rpc_id_(rpc_id) {
   ssid_ = properties.GetUint8s(WPASupplicant::kBSSPropertySSID);
@@ -83,7 +83,7 @@ WiFiEndpoint::~WiFiEndpoint() {}
 
 void WiFiEndpoint::Start() {
   supplicant_bss_proxy_.reset(
-      proxy_factory_->CreateSupplicantBSSProxy(
+      control_interface_->CreateSupplicantBSSProxy(
           this, rpc_id_, WPASupplicant::kDBusAddr));
 }
 
@@ -238,20 +238,21 @@ bool WiFiEndpoint::has_tethering_signature() const {
 }
 
 // static
-WiFiEndpoint* WiFiEndpoint::MakeOpenEndpoint(ProxyFactory* proxy_factory,
-                                             const WiFiRefPtr& wifi,
-                                             const string& ssid,
-                                             const string& bssid,
-                                             const string& network_mode,
-                                             uint16_t frequency,
-                                             int16_t signal_dbm) {
-  return MakeEndpoint(proxy_factory, wifi, ssid, bssid, network_mode,
+WiFiEndpoint* WiFiEndpoint::MakeOpenEndpoint(
+    ControlInterface* control_interface,
+    const WiFiRefPtr& wifi,
+    const string& ssid,
+    const string& bssid,
+    const string& network_mode,
+    uint16_t frequency,
+    int16_t signal_dbm) {
+  return MakeEndpoint(control_interface, wifi, ssid, bssid, network_mode,
                       frequency, signal_dbm, false, false);
 }
 
 
 // static
-WiFiEndpoint* WiFiEndpoint::MakeEndpoint(ProxyFactory* proxy_factory,
+WiFiEndpoint* WiFiEndpoint::MakeEndpoint(ControlInterface* control_interface,
                                          const WiFiRefPtr& wifi,
                                          const string& ssid,
                                          const string& bssid,
@@ -283,7 +284,7 @@ WiFiEndpoint* WiFiEndpoint::MakeEndpoint(ProxyFactory* proxy_factory,
   }
 
   return new WiFiEndpoint(
-      proxy_factory, wifi, bssid, args);  // |bssid| fakes an RPC ID
+      control_interface, wifi, bssid, args);  // |bssid| fakes an RPC ID
 }
 
 // static

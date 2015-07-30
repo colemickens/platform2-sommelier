@@ -11,9 +11,9 @@
 #include <vector>
 
 #include <base/compiler_specific.h>
+#include <base/macros.h>
 
 #include "shill/dbus_proxies/upstart.h"
-#include "shill/proxy_factory.h"
 #include "shill/upstart/upstart_proxy_interface.h"
 
 namespace shill {
@@ -33,9 +33,6 @@ class UpstartProxy : public UpstartProxyInterface {
                  bool wait) override;
 
  private:
-  // Only this factory method can create an UpstartProxy.
-  friend UpstartProxyInterface* ProxyFactory::CreateUpstartProxy();
-
   static const int kCommandTimeoutMilliseconds;
 
   class Proxy : public com::ubuntu::Upstart0_6_proxy,

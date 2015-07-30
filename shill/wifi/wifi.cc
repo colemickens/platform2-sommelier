@@ -42,7 +42,6 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/shill_time.h"
 #include "shill/property_accessor.h"
-#include "shill/proxy_factory.h"
 #include "shill/scope_logger.h"
 #include "shill/supplicant/supplicant_eap_state_handler.h"
 #include "shill/supplicant/supplicant_interface_proxy.h"
@@ -123,7 +122,6 @@ WiFi::WiFi(ControlInterface* control_interface,
              Technology::kWifi),
       provider_(manager->wifi_provider()),
       weak_ptr_factory_(this),
-      proxy_factory_(ProxyFactory::GetInstance()),
       time_(Time::GetInstance()),
       supplicant_present_(false),
       supplicant_state_(kInterfaceStateUnknown),
@@ -604,7 +602,7 @@ void WiFi::DisconnectFrom(WiFiService* service) {
 
 bool WiFi::DisableNetwork(const string& network) {
   std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy(
-      proxy_factory_->CreateSupplicantNetworkProxy(
+      control_interface()->CreateSupplicantNetworkProxy(
           network, WPASupplicant::kDBusAddr));
   if (!supplicant_network_proxy->SetEnabled(false)) {
     LOG(ERROR) << "DisableNetwork for " << network << " failed.";
@@ -1222,7 +1220,7 @@ void WiFi::BSSAddedTask(const string& path, const KeyValueStore& properties) {
   // means that if an AP reuses the same BSSID for multiple SSIDs, we
   // lose.
   WiFiEndpointRefPtr endpoint(
-      new WiFiEndpoint(proxy_factory_, this, path, properties));
+      new WiFiEndpoint(control_interface(), this, path, properties));
   SLOG(this, 5) << "Found endpoint. "
                 << "RPC path: " << path << ", "
                 << LogSSID(endpoint->ssid_string()) << ", "
@@ -2271,7 +2269,7 @@ void WiFi::ConnectToSupplicant() {
     return;
   }
   supplicant_process_proxy_.reset(
-      proxy_factory_->CreateSupplicantProcessProxy(
+      control_interface()->CreateSupplicantProcessProxy(
           WPASupplicant::kDBusPath, WPASupplicant::kDBusAddr));
   OnWiFiDebugScopeChanged(
       ScopeLogger::GetInstance()->IsScopeEnabled(ScopeLogger::kWiFi));
@@ -2295,7 +2293,7 @@ void WiFi::ConnectToSupplicant() {
   }
 
   SetSupplicantInterfaceProxy(
-      proxy_factory_->CreateSupplicantInterfaceProxy(
+      control_interface()->CreateSupplicantInterfaceProxy(
           this, supplicant_interface_path_, WPASupplicant::kDBusAddr));
 
   RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,

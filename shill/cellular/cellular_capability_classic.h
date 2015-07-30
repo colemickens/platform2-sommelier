@@ -23,11 +23,11 @@
 namespace shill {
 
 class Cellular;
+class ControlInterface;
 class Error;
 class EventDispatcher;
 class ModemGobiProxyInterface;
 class ModemInfo;
-class ProxyFactory;
 
 enum ModemClassicState {
   kModemClassicStateUnknown = 0,
@@ -56,7 +56,7 @@ class CellularCapabilityClassic : public CellularCapability {
 
   // |cellular| is the parent Cellular device.
   CellularCapabilityClassic(Cellular* cellular,
-                            ProxyFactory* proxy_factory,
+                            ControlInterface* control_interface,
                             ModemInfo* modem_info);
   ~CellularCapabilityClassic() override;
 

@@ -14,8 +14,8 @@
 
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_service.h"
+#include "shill/control_interface.h"
 #include "shill/logging.h"
-#include "shill/proxy_factory.h"
 
 using base::Bind;
 using std::string;
@@ -33,10 +33,11 @@ static string ObjectID(CellularCapabilityCDMA* c) {
 // static
 const char CellularCapabilityCDMA::kPhoneNumber[] = "#777";
 
-CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular* cellular,
-                                               ProxyFactory* proxy_factory,
-                                               ModemInfo* modem_info)
-    : CellularCapabilityClassic(cellular, proxy_factory, modem_info),
+CellularCapabilityCDMA::CellularCapabilityCDMA(
+    Cellular* cellular,
+    ControlInterface* control_interface,
+    ModemInfo* modem_info)
+    : CellularCapabilityClassic(cellular, control_interface, modem_info),
       weak_ptr_factory_(this),
       activation_starting_(false),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
@@ -49,7 +50,7 @@ CellularCapabilityCDMA::~CellularCapabilityCDMA() {}
 
 void CellularCapabilityCDMA::InitProxies() {
   CellularCapabilityClassic::InitProxies();
-  proxy_.reset(proxy_factory()->CreateModemCDMAProxy(
+  proxy_.reset(control_interface()->CreateModemCDMAProxy(
       cellular()->dbus_path(), cellular()->dbus_owner()));
   proxy_->set_signal_quality_callback(
       Bind(&CellularCapabilityCDMA::OnSignalQualitySignal,

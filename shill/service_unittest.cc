@@ -30,7 +30,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_power_manager.h"
 #include "shill/mock_profile.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/net/mock_time.h"
@@ -84,8 +83,8 @@ class ServiceTest : public PropertyStoreTest {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
         eap_(new MockEapCredentials()),
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-        power_manager_(new MockPowerManager(nullptr, &proxy_factory_)) {
-    ON_CALL(proxy_factory_, CreatePowerManagerProxy(_))
+        power_manager_(new MockPowerManager(nullptr, &control_)) {
+    ON_CALL(control_, CreatePowerManagerProxy(_))
         .WillByDefault(ReturnNull());
 
     service_->time_ = &time_;
@@ -221,7 +220,7 @@ class ServiceTest : public PropertyStoreTest {
   scoped_refptr<ServiceUnderTest> service_;
   scoped_refptr<ServiceUnderTest> service2_;
   string storage_id_;
-  NiceMock<MockProxyFactory> proxy_factory_;
+  NiceMock<MockControl> control_;
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MockEapCredentials* eap_;  // Owned by |service_|.
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X

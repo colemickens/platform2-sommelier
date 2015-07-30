@@ -8,10 +8,10 @@
 
 #include <base/bind.h>
 
+#include "shill/control_interface.h"
 #include "shill/dbus_properties.h"
 #include "shill/dbus_properties_proxy.h"
 #include "shill/logging.h"
-#include "shill/proxy_factory.h"
 
 using std::string;
 using std::vector;
@@ -48,16 +48,16 @@ IPConfig::Method ConvertMMBearerIPConfigMethod(uint32_t method) {
 
 }  // namespace
 
-CellularBearer::CellularBearer(ProxyFactory* proxy_factory,
+CellularBearer::CellularBearer(ControlInterface* control_interface,
                                const string& dbus_path,
                                const string& dbus_service)
-    : proxy_factory_(proxy_factory),
+    : control_interface_(control_interface),
       dbus_path_(dbus_path),
       dbus_service_(dbus_service),
       connected_(false),
       ipv4_config_method_(IPConfig::kMethodUnknown),
       ipv6_config_method_(IPConfig::kMethodUnknown) {
-  CHECK(proxy_factory_);
+  CHECK(control_interface_);
 }
 
 CellularBearer::~CellularBearer() {}
@@ -67,7 +67,7 @@ bool CellularBearer::Init() {
                 << "', service='" << dbus_service_ << "'";
 
   dbus_properties_proxy_.reset(
-      proxy_factory_->CreateDBusPropertiesProxy(dbus_path_, dbus_service_));
+      control_interface_->CreateDBusPropertiesProxy(dbus_path_, dbus_service_));
   // It is possible that ProxyFactory::CreateDBusPropertiesProxy() returns
   // nullptr as the bearer DBus object may no longer exist.
   if (!dbus_properties_proxy_) {

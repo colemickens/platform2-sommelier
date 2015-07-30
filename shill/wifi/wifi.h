@@ -107,7 +107,6 @@ class Metrics;
 class NetlinkManager;
 class NetlinkMessage;
 class Nl80211Message;
-class ProxyFactory;
 class ScanSession;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
@@ -603,7 +602,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   base::WeakPtrFactory<WiFi> weak_ptr_factory_;
 
   // Store cached copies of singletons for speed/ease of testing.
-  ProxyFactory* proxy_factory_;
   Time* time_;
 
   std::unique_ptr<DBusNameWatcher> supplicant_name_watcher_;

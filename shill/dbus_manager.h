@@ -20,13 +20,13 @@
 
 namespace shill {
 
+class ControlInterface;
 class DBusServiceProxyInterface;
 class Error;
-class ProxyFactory;
 
 class DBusManager : public base::SupportsWeakPtr<DBusManager> {
  public:
-  DBusManager();
+  explicit DBusManager(ControlInterface* control_interface);
   virtual ~DBusManager();
 
   void Start();
@@ -71,7 +71,7 @@ class DBusManager : public base::SupportsWeakPtr<DBusManager> {
       const std::string& unique_name,
       const Error& error);
 
-  ProxyFactory* proxy_factory_;
+  ControlInterface* control_interface_;
 
   std::unique_ptr<DBusServiceProxyInterface> proxy_;
 

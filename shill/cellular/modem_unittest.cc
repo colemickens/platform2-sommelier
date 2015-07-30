@@ -24,7 +24,6 @@
 #include "shill/mock_device_info.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/rtnl_handler.h"
-#include "shill/proxy_factory.h"
 
 using std::string;
 using std::vector;
@@ -62,7 +61,8 @@ class ModemTest : public Test {
                 kOwner,
                 kService,
                 kPath,
-                &modem_info_)) {}
+                &modem_info_,
+                nullptr)) {}
   virtual void SetUp();
   virtual void TearDown();
 
@@ -135,8 +135,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
       Cellular::kTypeCDMA,
       kOwner,
       kService,
-      kPath,
-      ProxyFactory::GetInstance());
+      kPath);
 
   EXPECT_CALL(*modem_,
               ConstructCellular(StrEq(kLinkName),
@@ -220,8 +219,7 @@ TEST_F(ModemTest, CreateDevicePPP) {
       Cellular::kTypeUniversal,
       kOwner,
       kService,
-      kPath,
-      ProxyFactory::GetInstance());
+      kPath);
 
   EXPECT_CALL(*modem_, GetModemInterface()).
       WillRepeatedly(Return(MM_MODEM_INTERFACE));

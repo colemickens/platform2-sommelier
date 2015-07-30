@@ -16,10 +16,10 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/cellular_service.h"
+#include "shill/control_interface.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/property_accessor.h"
-#include "shill/proxy_factory.h"
 
 using base::Bind;
 using std::string;
@@ -54,10 +54,11 @@ const int CellularCapabilityGSM::kGetIMSIRetryLimit = 40;
 const int64_t CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds = 500;
 
 
-CellularCapabilityGSM::CellularCapabilityGSM(Cellular* cellular,
-                                             ProxyFactory* proxy_factory,
-                                             ModemInfo* modem_info)
-    : CellularCapabilityClassic(cellular, proxy_factory, modem_info),
+CellularCapabilityGSM::CellularCapabilityGSM(
+    Cellular* cellular,
+    ControlInterface* control_interface,
+    ModemInfo* modem_info)
+    : CellularCapabilityClassic(cellular, control_interface, modem_info),
       weak_ptr_factory_(this),
       mobile_operator_info_(new MobileOperatorInfo(cellular->dispatcher(),
                                                    "ParseScanResult")),
@@ -79,8 +80,8 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular* cellular,
   // but callbacks for DBus signal updates are not set up until the device is
   // enabled.
   card_proxy_.reset(
-      proxy_factory->CreateModemGSMCardProxy(cellular->dbus_path(),
-                                             cellular->dbus_owner()));
+      control_interface->CreateModemGSMCardProxy(cellular->dbus_path(),
+                                                 cellular->dbus_owner()));
   // TODO(benchan): To allow unit testing using a mock proxy without further
   // complicating the code, the test proxy factory is set up to return a nullptr
   // pointer when CellularCapabilityGSM is constructed. Refactor the code to
@@ -119,12 +120,12 @@ void CellularCapabilityGSM::InitProxies() {
   // initialization.
   if (!card_proxy_.get()) {
     card_proxy_.reset(
-        proxy_factory()->CreateModemGSMCardProxy(cellular()->dbus_path(),
-                                                 cellular()->dbus_owner()));
+        control_interface()->CreateModemGSMCardProxy(cellular()->dbus_path(),
+                                                     cellular()->dbus_owner()));
   }
   network_proxy_.reset(
-      proxy_factory()->CreateModemGSMNetworkProxy(cellular()->dbus_path(),
-                                                  cellular()->dbus_owner()));
+      control_interface()->CreateModemGSMNetworkProxy(
+          cellular()->dbus_path(), cellular()->dbus_owner()));
   network_proxy_->set_signal_quality_callback(
       Bind(&CellularCapabilityGSM::OnSignalQualitySignal,
            weak_ptr_factory_.GetWeakPtr()));

@@ -11,11 +11,11 @@
 
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_service.h"
+#include "shill/control_interface.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/pending_activation_store.h"
-#include "shill/proxy_factory.h"
 
 #ifdef MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN
 #error "Do not include mm-modem.h"
@@ -44,9 +44,9 @@ const char kPropertyConnectNumber[] = "number";
 
 CellularCapabilityUniversalCDMA::CellularCapabilityUniversalCDMA(
     Cellular* cellular,
-    ProxyFactory* proxy_factory,
+    ControlInterface* control_interface,
     ModemInfo* modem_info)
-    : CellularCapabilityUniversal(cellular, proxy_factory, modem_info),
+    : CellularCapabilityUniversal(cellular, control_interface, modem_info),
       weak_cdma_ptr_factory_(this),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       cdma_1x_registration_state_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
@@ -63,7 +63,7 @@ CellularCapabilityUniversalCDMA::~CellularCapabilityUniversalCDMA() {}
 void CellularCapabilityUniversalCDMA::InitProxies() {
   SLOG(this, 2) << __func__;
   modem_cdma_proxy_.reset(
-      proxy_factory()->CreateMM1ModemModemCdmaProxy(cellular()->dbus_path(),
+      control_interface()->CreateMM1ModemModemCdmaProxy(cellular()->dbus_path(),
                                                     cellular()->dbus_owner()));
   modem_cdma_proxy_->set_activation_state_callback(
       Bind(&CellularCapabilityUniversalCDMA::OnActivationStateChangedSignal,
@@ -242,8 +242,8 @@ void CellularCapabilityUniversalCDMA::GetProperties() {
   CellularCapabilityUniversal::GetProperties();
 
   std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
-      proxy_factory()->CreateDBusPropertiesProxy(cellular()->dbus_path(),
-                                                 cellular()->dbus_owner()));
+      control_interface()->CreateDBusPropertiesProxy(cellular()->dbus_path(),
+                                                     cellular()->dbus_owner()));
   DBusPropertiesMap properties(
       properties_proxy->GetAll(MM_DBUS_INTERFACE_MODEM_MODEMCDMA));
   OnModemCDMAPropertiesChanged(properties, vector<string>());

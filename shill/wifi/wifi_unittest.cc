@@ -43,7 +43,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/mock_store.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/ip_address.h"
@@ -594,7 +593,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_bss_proxy_(new NiceMock<MockSupplicantBSSProxy>()),
         dhcp_config_(new MockDHCPConfig(&control_interface_, kDeviceName)),
-        dbus_manager_(new DBusManager()),
+        dbus_manager_(new DBusManager(&control_interface_)),
         adaptor_(new DeviceMockAdaptor()),
         eap_state_handler_(new NiceMock<MockSupplicantEAPStateHandler>()),
         supplicant_interface_proxy_(
@@ -628,15 +627,15 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ON_CALL(*dhcp_config_.get(), RequestIP()).WillByDefault(Return(true));
     ON_CALL(*manager(), IsSuspending()).WillByDefault(Return(false));
 
-    ON_CALL(proxy_factory_, CreateDBusServiceProxy())
+    ON_CALL(control_interface_, CreateDBusServiceProxy())
         .WillByDefault(ReturnAndReleasePointee(&dbus_service_proxy_));
-    ON_CALL(proxy_factory_, CreateSupplicantProcessProxy(_, _))
+    ON_CALL(control_interface_, CreateSupplicantProcessProxy(_, _))
         .WillByDefault(ReturnAndReleasePointee(&supplicant_process_proxy_));
-    ON_CALL(proxy_factory_, CreateSupplicantInterfaceProxy(_, _, _))
+    ON_CALL(control_interface_, CreateSupplicantInterfaceProxy(_, _, _))
         .WillByDefault(ReturnAndReleasePointee(&supplicant_interface_proxy_));
-    ON_CALL(proxy_factory_, CreateSupplicantBSSProxy(_, _, _))
+    ON_CALL(control_interface_, CreateSupplicantBSSProxy(_, _, _))
         .WillByDefault(ReturnAndReleasePointee(&supplicant_bss_proxy_));
-    ON_CALL(proxy_factory_, CreateSupplicantNetworkProxy(_, _))
+    ON_CALL(control_interface_, CreateSupplicantNetworkProxy(_, _))
         .WillByDefault(ReturnAndReleasePointee(&supplicant_network_proxy_));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
 
@@ -661,8 +660,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     // EnableScopes... so that we can EXPECT_CALL for scoped log messages.
     ScopeLogger::GetInstance()->EnableScopesByName("wifi");
     ScopeLogger::GetInstance()->set_verbose_level(3);
-    dbus_manager_->proxy_factory_ = &proxy_factory_;
-    wifi_->proxy_factory_ = &proxy_factory_;
     static_cast<Device*>(wifi_.get())->rtnl_handler_ = &rtnl_handler_;
     wifi_->set_dhcp_provider(&dhcp_provider_);
     ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
@@ -682,14 +679,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
       EXPECT_CALL(*supplicant_bss_proxy_, Die());
     }
     EXPECT_CALL(*mac80211_monitor_, Stop());
-    wifi_->proxy_factory_ = nullptr;
     // must Stop WiFi instance, to clear its list of services.
     // otherwise, the WiFi instance will not be deleted. (because
     // services reference a WiFi instance, creating a cycle.)
     wifi_->Stop(nullptr, ResultCallback());
     wifi_->set_dhcp_provider(nullptr);
     dbus_manager_->Stop();
-    dbus_manager_->proxy_factory_ = nullptr;
     // Reset scope logging, to avoid interfering with other tests.
     ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
     ScopeLogger::GetInstance()->set_verbose_level(0);
@@ -835,7 +830,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   WiFiEndpointRefPtr MakeEndpointWithMode(
       const string& ssid, const string& bssid, const string& mode) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        &proxy_factory_, nullptr, ssid, bssid, mode, 0, 0);
+        &control_interface_, nullptr, ssid, bssid, mode, 0, 0);
   }
   MockWiFiServiceRefPtr MakeMockServiceWithSSID(
       vector<uint8_t> ssid, const std::string& security) {
@@ -1321,10 +1316,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return wifi_;
   }
 
-  MockProxyFactory* proxy_factory() {
-    return &proxy_factory_;
-  }
-
   MockWiFiProvider* wifi_provider() {
     return &wifi_provider_;
   }
@@ -1411,7 +1402,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
  private:
   unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
   unique_ptr<MockSupplicantNetworkProxy> supplicant_network_proxy_;
-  MockProxyFactory proxy_factory_;
 };
 
 const char WiFiObjectTest::kDeviceName[] = "wlan0";
@@ -2191,7 +2181,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
   // Expect that the entry associated with this network will be disabled.
   unique_ptr<MockSupplicantNetworkProxy> network_proxy(
       new MockSupplicantNetworkProxy());
-  EXPECT_CALL(*proxy_factory(),
+  EXPECT_CALL(*control_interface(),
               CreateSupplicantNetworkProxy(kPath, WPASupplicant::kDBusAddr))
       .WillOnce(ReturnAndReleasePointee(&network_proxy));
   EXPECT_CALL(*network_proxy, SetEnabled(false)).WillOnce(Return(true));
@@ -2218,7 +2208,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithFailure) {
   // Expect that the entry associated with this network will be disabled.
   unique_ptr<MockSupplicantNetworkProxy> network_proxy(
       new MockSupplicantNetworkProxy());
-  EXPECT_CALL(*proxy_factory(),
+  EXPECT_CALL(*control_interface(),
               CreateSupplicantNetworkProxy(kPath, WPASupplicant::kDBusAddr))
       .WillOnce(ReturnAndReleasePointee(&network_proxy));
   EXPECT_CALL(*network_proxy, SetEnabled(false)).WillOnce(Return(true));
@@ -3035,7 +3025,7 @@ TEST_F(WiFiMainTest, BSSAddedCreatesBSSProxy) {
   // we can test the interaction between WiFi and WiFiEndpoint. (Right
   // now, we're testing across multiple layers.)
   EXPECT_CALL(*supplicant_bss_proxy_, Die()).Times(AnyNumber());
-  EXPECT_CALL(*proxy_factory(), CreateSupplicantBSSProxy(_, _, _));
+  EXPECT_CALL(*control_interface(), CreateSupplicantBSSProxy(_, _, _));
   StartWiFi();
   ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
 }

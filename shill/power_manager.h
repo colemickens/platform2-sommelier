@@ -23,7 +23,7 @@ namespace shill {
 class DBusManager;
 class DBusNameWatcher;
 class EventDispatcher;
-class ProxyFactory;
+class ControlInterface;
 
 class PowerManager : public PowerManagerProxyDelegate {
  public:
@@ -46,10 +46,10 @@ class PowerManager : public PowerManagerProxyDelegate {
   // ReportDarkSuspendImminentReadiness will be called asynchronously.
   typedef base::Closure DarkSuspendImminentCallback;
 
-  // |proxy_factory| creates the PowerManagerProxy.  Usually this is
-  // ProxyFactory::GetInstance().  Use a fake for testing.
+  // |control_itnerface| creates the PowerManagerProxy. Use a fake for testing.
   // Note: |Start| should be called to initialize this object before using it.
-  PowerManager(EventDispatcher* dispatcher, ProxyFactory* proxy_factory);
+  PowerManager(EventDispatcher* dispatcher,
+               ControlInterface* control_interface);
   ~PowerManager() override;
 
   bool suspending() const { return suspending_; }

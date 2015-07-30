@@ -174,24 +174,24 @@ class WiFiEndpointTest : public PropertyStoreTest {
     endpoint->vendor_information_ = vendor_information;
   }
 
-  WiFiEndpoint* MakeEndpoint(ProxyFactory* proxy_factory,
+  WiFiEndpoint* MakeEndpoint(ControlInterface* control_interface,
                              const WiFiRefPtr& wifi,
                              const std::string& ssid,
                              const std::string& bssid,
                              bool has_wpa_property,
                              bool has_rsn_property) {
     return WiFiEndpoint::MakeEndpoint(
-        proxy_factory, wifi, ssid, bssid,
+        control_interface, wifi, ssid, bssid,
         WPASupplicant::kNetworkModeInfrastructure, 0, 0, has_wpa_property,
         has_rsn_property);
   }
 
-  WiFiEndpoint* MakeOpenEndpoint(ProxyFactory* proxy_factory,
+  WiFiEndpoint* MakeOpenEndpoint(ControlInterface* control_interface,
                                  const WiFiRefPtr& wifi,
                                  const std::string& ssid,
                                  const std::string& bssid) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        proxy_factory, wifi, ssid, bssid,
+        control_interface, wifi, ssid, bssid,
         WPASupplicant::kNetworkModeInfrastructure, 0, 0);
   }
 

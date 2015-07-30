@@ -19,7 +19,6 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_store.h"
 #include "shill/nice_mock_control.h"
-#include "shill/proxy_factory.h"
 #include "shill/service_property_change_test.h"
 
 using std::string;
@@ -43,8 +42,7 @@ class CellularServiceTest : public testing::Test {
                                  Cellular::kTypeCDMA,
                                  "",
                                  "",
-                                 "",
-                                 ProxyFactory::GetInstance())),
+                                 "")),
         service_(new CellularService(&modem_info_, device_)),
         adaptor_(nullptr) {}
 

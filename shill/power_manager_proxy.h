@@ -18,7 +18,6 @@
 
 #include "shill/dbus_proxies/power_manager.h"
 #include "shill/power_manager_proxy_interface.h"
-#include "shill/proxy_factory.h"
 
 namespace shill {
 
@@ -44,10 +43,6 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
   bool RecordDarkResumeWakeReason(const std::string& wake_reason) override;
 
  private:
-  // Only this factory method can create a PowerManagerProxy.
-  friend PowerManagerProxyInterface* ProxyFactory::CreatePowerManagerProxy(
-      PowerManagerProxyDelegate* delegate);
-
   class Proxy : public org::chromium::PowerManager_proxy,
                 public DBus::ObjectProxy {
    public:

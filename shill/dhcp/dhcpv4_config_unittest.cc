@@ -23,7 +23,6 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/property_store_unittest.h"
 #include "shill/testing.h"
 
@@ -74,12 +73,10 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
                                  &metrics_)) {}
 
   virtual void SetUp() {
-    config_->proxy_factory_ = &proxy_factory_;
     config_->minijail_ = minijail_.get();
   }
 
   virtual void TearDown() {
-    config_->proxy_factory_ = nullptr;
     config_->minijail_ = nullptr;
   }
 
@@ -108,7 +105,6 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
   FilePath pid_file_;
   ScopedTempDir temp_dir_;
   unique_ptr<MockDHCPProxy> proxy_;
-  MockProxyFactory proxy_factory_;
   MockControl control_;
   unique_ptr<MockMinijail> minijail_;
   MockMetrics metrics_;

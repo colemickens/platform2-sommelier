@@ -6,10 +6,10 @@
 
 #include <base/bind.h>
 
+#include "shill/control_interface.h"
 #include "shill/dbus_service_proxy_interface.h"
 #include "shill/error.h"
 #include "shill/logging.h"
-#include "shill/proxy_factory.h"
 
 using base::Bind;
 using base::Unretained;
@@ -30,8 +30,8 @@ const int kDefaultRPCTimeoutMS = 30000;
 
 }  // namespace
 
-DBusManager::DBusManager()
-    : proxy_factory_(ProxyFactory::GetInstance()) {}
+DBusManager::DBusManager(ControlInterface* control_interface)
+    : control_interface_(control_interface) {}
 
 DBusManager::~DBusManager() {}
 
@@ -40,7 +40,7 @@ void DBusManager::Start() {
   if (proxy_.get()) {
     return;
   }
-  proxy_.reset(proxy_factory_->CreateDBusServiceProxy());
+  proxy_.reset(control_interface_->CreateDBusServiceProxy());
   proxy_->set_name_owner_changed_callback(
       Bind(&DBusManager::OnNameOwnerChanged, Unretained(this)));
 }

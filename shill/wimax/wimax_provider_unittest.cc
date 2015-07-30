@@ -20,7 +20,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/nice_mock_control.h"
 #include "shill/testing.h"
 #include "shill/wimax/mock_wimax.h"
@@ -67,7 +66,7 @@ class WiMaxProviderTest : public testing::Test {
         metrics_(nullptr),
         manager_(&control_, nullptr, &metrics_, nullptr),
         device_info_(&control_, nullptr, &metrics_, &manager_),
-        dbus_manager_(new DBusManager()),
+        dbus_manager_(new DBusManager(&control_)),
         provider_(&control_, nullptr, &metrics_, &manager_) {
     manager_.dbus_manager_.reset(dbus_manager_);  // Transfers ownership.
   }
@@ -75,16 +74,6 @@ class WiMaxProviderTest : public testing::Test {
   virtual ~WiMaxProviderTest() {}
 
  protected:
-  virtual void SetUp() {
-    dbus_manager_->proxy_factory_ = &proxy_factory_;
-    provider_.proxy_factory_ = &proxy_factory_;
-  }
-
-  virtual void TearDown() {
-    dbus_manager_->proxy_factory_ = nullptr;
-    provider_.proxy_factory_ = nullptr;
-  }
-
   string GetServiceFriendlyName(const ServiceRefPtr& service) {
     return service->friendly_name();
   }
@@ -92,7 +81,6 @@ class WiMaxProviderTest : public testing::Test {
   std::unique_ptr<MockDBusServiceProxy> dbus_service_proxy_;
   std::unique_ptr<MockWiMaxManagerProxy> wimax_manager_proxy_;
   std::unique_ptr<MockWiMaxNetworkProxy> network_proxy_;
-  MockProxyFactory proxy_factory_;
   NiceMockControl control_;
   MockMetrics metrics_;
   MockManager manager_;
@@ -106,7 +94,7 @@ TEST_F(WiMaxProviderTest, StartStop) {
   EXPECT_FALSE(provider_.wimax_manager_proxy_.get());
 
   StringCallback get_name_owner_callback;
-  EXPECT_CALL(proxy_factory_, CreateDBusServiceProxy())
+  EXPECT_CALL(control_, CreateDBusServiceProxy())
       .WillOnce(ReturnAndReleasePointee(&dbus_service_proxy_));
   EXPECT_CALL(*dbus_service_proxy_.get(),
               GetNameOwner(wimax_manager::kWiMaxManagerServiceName, _, _, _))
@@ -116,7 +104,7 @@ TEST_F(WiMaxProviderTest, StartStop) {
   EXPECT_TRUE(provider_.wimax_manager_name_watcher_.get());
   EXPECT_FALSE(provider_.wimax_manager_proxy_.get());
   provider_.Start();
-  EXPECT_CALL(proxy_factory_, CreateWiMaxManagerProxy())
+  EXPECT_CALL(control_, CreateWiMaxManagerProxy())
       .WillOnce(ReturnAndReleasePointee(&wimax_manager_proxy_));
   EXPECT_CALL(*wimax_manager_proxy_, set_devices_changed_callback(_)).Times(1);
   EXPECT_CALL(*wimax_manager_proxy_, Devices(_))
@@ -134,7 +122,7 @@ TEST_F(WiMaxProviderTest, StartStop) {
 
 TEST_F(WiMaxProviderTest, ConnectDisconnectWiMaxManager) {
   EXPECT_FALSE(provider_.wimax_manager_proxy_.get());
-  EXPECT_CALL(proxy_factory_, CreateWiMaxManagerProxy())
+  EXPECT_CALL(control_, CreateWiMaxManagerProxy())
       .WillOnce(ReturnAndReleasePointee(&wimax_manager_proxy_));
   EXPECT_CALL(*wimax_manager_proxy_, set_devices_changed_callback(_)).Times(1);
   EXPECT_CALL(*wimax_manager_proxy_, Devices(_))
@@ -241,7 +229,7 @@ TEST_F(WiMaxProviderTest, RetrieveNetworkInfo) {
   const uint32_t kIdentifier = 0xabcdef;
   static const char kNetworkId[] = "00abcdef";
   string network_path = GetTestNetworkPath(kIdentifier);
-  EXPECT_CALL(proxy_factory_, CreateWiMaxNetworkProxy(network_path))
+  EXPECT_CALL(control_, CreateWiMaxNetworkProxy(network_path))
       .WillOnce(ReturnAndReleasePointee(&network_proxy_));
   EXPECT_CALL(*network_proxy_, Name(_)).WillOnce(Return(kName));
   EXPECT_CALL(*network_proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
@@ -381,7 +369,7 @@ TEST_F(WiMaxProviderTest, OnNetworksChanged) {
   service1->set_network_id(kNetworkId);
   service1->set_friendly_name(kName);
   service1->InitStorageIdentifier();
-  EXPECT_CALL(proxy_factory_, CreateWiMaxNetworkProxy(GetTestNetworkPath(101)))
+  EXPECT_CALL(control_, CreateWiMaxNetworkProxy(GetTestNetworkPath(101)))
       .Times(2)
       .WillOnce(ReturnAndReleasePointee(&network_proxy_))
       .WillOnce(ReturnNull());

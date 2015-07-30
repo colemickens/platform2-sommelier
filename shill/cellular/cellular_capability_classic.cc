@@ -9,10 +9,10 @@
 
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/modem_gobi_proxy_interface.h"
+#include "shill/control_interface.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/property_accessor.h"
-#include "shill/proxy_factory.h"
 
 using base::Bind;
 using base::Callback;
@@ -68,9 +68,9 @@ static Cellular::ModemState ConvertClassicToModemState(uint32_t classic_state) {
 
 CellularCapabilityClassic::CellularCapabilityClassic(
     Cellular* cellular,
-    ProxyFactory* proxy_factory,
+    ControlInterface* control_interface,
     ModemInfo* modem_info)
-    : CellularCapability(cellular, proxy_factory, modem_info),
+    : CellularCapability(cellular, control_interface, modem_info),
       weak_ptr_factory_(this) {
   // This class is currently instantiated only for Gobi modems so setup the
   // supported carriers list appropriately and expose it over RPC.
@@ -83,9 +83,9 @@ CellularCapabilityClassic::~CellularCapabilityClassic() {}
 
 void CellularCapabilityClassic::InitProxies() {
   SLOG(this, 2) << __func__;
-  proxy_.reset(proxy_factory()->CreateModemProxy(
+  proxy_.reset(control_interface()->CreateModemProxy(
       cellular()->dbus_path(), cellular()->dbus_owner()));
-  simple_proxy_.reset(proxy_factory()->CreateModemSimpleProxy(
+  simple_proxy_.reset(control_interface()->CreateModemSimpleProxy(
       cellular()->dbus_path(), cellular()->dbus_owner()));
   proxy_->set_state_changed_callback(
       Bind(&CellularCapabilityClassic::OnModemStateChangedSignal,
@@ -244,7 +244,7 @@ void CellularCapabilityClassic::SetCarrier(const string& carrier,
                                            const ResultCallback& callback) {
   LOG(INFO) << __func__ << "(" << carrier << ")";
   if (!gobi_proxy_.get()) {
-    gobi_proxy_.reset(proxy_factory()->CreateModemGobiProxy(
+    gobi_proxy_.reset(control_interface()->CreateModemGobiProxy(
         cellular()->dbus_path(), cellular()->dbus_owner()));
   }
   CHECK(error);

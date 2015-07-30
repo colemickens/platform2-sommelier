@@ -11,11 +11,11 @@
 #include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/control_interface.h"
 #include "shill/dbus_manager.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/power_manager_proxy_interface.h"
-#include "shill/proxy_factory.h"
 
 using base::Bind;
 using base::TimeDelta;
@@ -32,9 +32,9 @@ const char PowerManager::kDarkSuspendDelayDescription[] = "shill";
 const int PowerManager::kSuspendTimeoutMilliseconds = 15 * 1000;
 
 PowerManager::PowerManager(EventDispatcher* dispatcher,
-                           ProxyFactory* proxy_factory)
+                           ControlInterface* control_interface)
     : dispatcher_(dispatcher),
-      power_manager_proxy_(proxy_factory->CreatePowerManagerProxy(this)),
+      power_manager_proxy_(control_interface->CreatePowerManagerProxy(this)),
       suspend_delay_registered_(false),
       suspend_delay_id_(0),
       dark_suspend_delay_registered_(false),

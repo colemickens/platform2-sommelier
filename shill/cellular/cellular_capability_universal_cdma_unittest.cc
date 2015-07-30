@@ -26,13 +26,13 @@
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_control.h"
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_pending_activation_store.h"
 #include "shill/nice_mock_control.h"
-#include "shill/proxy_factory.h"
 
 using base::StringPrintf;
 using base::UintToString;
@@ -52,16 +52,16 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
  public:
   explicit CellularCapabilityUniversalCDMATest(EventDispatcher* dispatcher)
       : dispatcher_(dispatcher),
+        control_interface_(this),
         capability_(nullptr),
         device_adaptor_(nullptr),
-        modem_info_(nullptr, dispatcher, nullptr, nullptr, nullptr),
+        modem_info_(&control_interface_, dispatcher, nullptr, nullptr, nullptr),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
         modem_proxy_(new mm1::MockModemProxy()),
         modem_simple_proxy_(new mm1::MockModemSimpleProxy()),
         sim_proxy_(new mm1::MockSimProxy()),
         properties_proxy_(new MockDBusPropertiesProxy()),
-        proxy_factory_(this),
         cellular_(new Cellular(&modem_info_,
                                "",
                                kMachineAddress,
@@ -69,8 +69,7 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
                                Cellular::kTypeUniversalCDMA,
                                "",
                                "",
-                               "",
-                               &proxy_factory_)),
+                               "")),
         service_(new MockCellularService(&modem_info_,
                                          cellular_)),
         mock_home_provider_info_(nullptr),
@@ -91,7 +90,7 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   }
 
   virtual void TearDown() {
-    capability_->proxy_factory_ = nullptr;
+    capability_->control_interface_ = nullptr;
   }
 
   void SetService() {
@@ -130,10 +129,10 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   static const char kMachineAddress[];
   static const char kMeid[];
 
-  class TestProxyFactory : public ProxyFactory {
+  class TestControl : public MockControl {
    public:
-    explicit TestProxyFactory(CellularCapabilityUniversalCDMATest* test) :
-        test_(test) {}
+    explicit TestControl(CellularCapabilityUniversalCDMATest* test)
+        : test_(test) {}
 
     // TODO(armansito): Some of these methods won't be necessary after 3GPP
     // gets refactored out of CellularCapabilityUniversal.
@@ -178,6 +177,7 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   };
 
   EventDispatcher* dispatcher_;
+  TestControl control_interface_;
   CellularCapabilityUniversalCDMA* capability_;
   NiceMock<DeviceMockAdaptor>* device_adaptor_;
   MockModemInfo modem_info_;
@@ -189,7 +189,6 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   unique_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
   unique_ptr<mm1::MockSimProxy> sim_proxy_;
   unique_ptr<MockDBusPropertiesProxy> properties_proxy_;
-  TestProxyFactory proxy_factory_;
   CellularRefPtr cellular_;
   MockCellularService* service_;
 

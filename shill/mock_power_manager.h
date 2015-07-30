@@ -14,11 +14,12 @@
 
 namespace shill {
 
-class ProxyFactory;
+class ControlInterface;
 
 class MockPowerManager : public PowerManager {
  public:
-  MockPowerManager(EventDispatcher* dispatcher, ProxyFactory* proxy_factory);
+  MockPowerManager(EventDispatcher* dispatcher,
+                   ControlInterface* control_interface);
   ~MockPowerManager() override;
 
   MOCK_METHOD0(ReportSuspendReadiness, bool());

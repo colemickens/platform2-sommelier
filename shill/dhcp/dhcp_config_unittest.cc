@@ -21,7 +21,6 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/property_store_unittest.h"
 #include "shill/testing.h"
 
@@ -94,12 +93,10 @@ class DHCPConfigTest : public PropertyStoreTest {
                                    glib())) {}
 
   virtual void SetUp() {
-    config_->proxy_factory_ = &proxy_factory_;
     config_->minijail_ = minijail_.get();
   }
 
   virtual void TearDown() {
-    config_->proxy_factory_ = nullptr;
     config_->minijail_ = nullptr;
   }
 
@@ -114,7 +111,6 @@ class DHCPConfigTest : public PropertyStoreTest {
   static const unsigned int kTag;
 
   unique_ptr<MockDHCPProxy> proxy_;
-  MockProxyFactory proxy_factory_;
   MockControl control_;
   unique_ptr<MockMinijail> minijail_;
   TestDHCPConfigRefPtr config_;
@@ -142,7 +138,7 @@ TEST_F(DHCPConfigTest, InitProxy) {
   static const char kService[] = ":1.200";
   EXPECT_TRUE(proxy_.get());
   EXPECT_FALSE(config_->proxy_.get());
-  EXPECT_CALL(proxy_factory_, CreateDHCPProxy(kService))
+  EXPECT_CALL(control_, CreateDHCPProxy(kService))
       .WillOnce(ReturnAndReleasePointee(&proxy_));
   config_->InitProxy(kService);
   EXPECT_FALSE(proxy_.get());

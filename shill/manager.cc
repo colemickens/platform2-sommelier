@@ -41,7 +41,6 @@
 #include "shill/logging.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
-#include "shill/proxy_factory.h"
 #include "shill/resolver.h"
 #include "shill/result_aggregator.h"
 #include "shill/service.h"
@@ -233,18 +232,18 @@ void Manager::AddDeviceToBlackList(const string& device_name) {
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
 
-  dbus_manager_.reset(new DBusManager());
+  dbus_manager_.reset(new DBusManager(control_interface_));
   dbus_manager_->Start();
 
   power_manager_.reset(
-      new PowerManager(dispatcher_, ProxyFactory::GetInstance()));
+      new PowerManager(dispatcher_, control_interface_));
   power_manager_->Start(dbus_manager(),
                         base::TimeDelta::FromMilliseconds(
                             kTerminationActionsTimeoutMilliseconds),
                         Bind(&Manager::OnSuspendImminent, AsWeakPtr()),
                         Bind(&Manager::OnSuspendDone, AsWeakPtr()),
                         Bind(&Manager::OnDarkSuspendImminent, AsWeakPtr()));
-  upstart_.reset(new Upstart(ProxyFactory::GetInstance()));
+  upstart_.reset(new Upstart(control_interface_));
 
   CHECK(base::CreateDirectory(run_path_)) << run_path_.value();
   resolver_->set_path(run_path_.Append("resolv.conf"));

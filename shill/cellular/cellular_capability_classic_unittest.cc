@@ -20,9 +20,9 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_control.h"
 #include "shill/mock_profile.h"
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/proxy_factory.h"
 #include "shill/testing.h"
 
 using base::Bind;
@@ -37,7 +37,9 @@ namespace shill {
 class CellularCapabilityTest : public testing::Test {
  public:
   CellularCapabilityTest()
-      : modem_info_(nullptr, &dispatcher_, nullptr, nullptr, nullptr),
+      : control_interface_(this),
+        modem_info_(&control_interface_, &dispatcher_,
+                    nullptr, nullptr, nullptr),
         create_gsm_card_proxy_from_factory_(false),
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
@@ -45,7 +47,6 @@ class CellularCapabilityTest : public testing::Test {
         gsm_card_proxy_(new MockModemGSMCardProxy()),
         gsm_network_proxy_(new MockModemGSMNetworkProxy()),
         gobi_proxy_(new MockModemGobiProxy()),
-        proxy_factory_(this),
         capability_(nullptr),
         device_adaptor_(nullptr),
         cellular_(new Cellular(&modem_info_,
@@ -55,8 +56,7 @@ class CellularCapabilityTest : public testing::Test {
                                Cellular::kTypeGSM,
                                "",
                                "",
-                               "",
-                               &proxy_factory_)) {
+                               "")) {
     modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
                             Technology::kCellular);
   }
@@ -78,7 +78,7 @@ class CellularCapabilityTest : public testing::Test {
   }
 
   virtual void TearDown() {
-    capability_->proxy_factory_ = nullptr;
+    capability_->control_interface_ = nullptr;
   }
 
   void CreateService() {
@@ -158,9 +158,9 @@ class CellularCapabilityTest : public testing::Test {
   static const char kModelID[];
   static const char kHWRev[];
 
-  class TestProxyFactory : public ProxyFactory {
+  class TestControl : public MockControl {
    public:
-    explicit TestProxyFactory(CellularCapabilityTest* test) : test_(test) {}
+    explicit TestControl(CellularCapabilityTest* test) : test_(test) {}
 
     virtual ModemProxyInterface* CreateModemProxy(
         const string& /*path*/,
@@ -232,6 +232,7 @@ class CellularCapabilityTest : public testing::Test {
   }
 
   EventDispatcher dispatcher_;
+  TestControl control_interface_;
   MockModemInfo modem_info_;
   MockRTNLHandler rtnl_handler_;
   bool create_gsm_card_proxy_from_factory_;
@@ -241,7 +242,6 @@ class CellularCapabilityTest : public testing::Test {
   std::unique_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
   std::unique_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
   std::unique_ptr<MockModemGobiProxy> gobi_proxy_;
-  TestProxyFactory proxy_factory_;
   CellularCapabilityClassic* capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor* device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;

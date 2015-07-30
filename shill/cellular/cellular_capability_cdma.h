@@ -25,7 +25,7 @@ class ModemInfo;
 class CellularCapabilityCDMA : public CellularCapabilityClassic {
  public:
   CellularCapabilityCDMA(Cellular* cellular,
-                         ProxyFactory* proxy_factory,
+                         ControlInterface* control_interface,
                          ModemInfo* modem_info);
   ~CellularCapabilityCDMA() override;
 

@@ -9,11 +9,11 @@
 
 #include "shill/cellular/modem.h"
 #include "shill/cellular/modem_manager_proxy.h"
+#include "shill/control_interface.h"
 #include "shill/dbus_manager.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/proxy_factory.h"
 
 using std::string;
 using std::shared_ptr;
@@ -21,10 +21,11 @@ using std::vector;
 
 namespace shill {
 
-ModemManager::ModemManager(const string& service,
+ModemManager::ModemManager(ControlInterface* control_interface,
+                           const string& service,
                            const string& path,
                            ModemInfo* modem_info)
-    : proxy_factory_(ProxyFactory::GetInstance()),
+    : control_interface_(control_interface),
       service_(service),
       path_(path),
       modem_info_(modem_info) {}
@@ -97,18 +98,18 @@ void ModemManager::OnDeviceInfoAvailable(const string& link_name) {
 
 // ModemManagerClassic
 ModemManagerClassic::ModemManagerClassic(
+    ControlInterface* control_interface,
     const string& service,
     const string& path,
     ModemInfo* modem_info)
-    : ModemManager(service,
-                   path,
-                   modem_info) {}
+    : ModemManager(control_interface, service, path, modem_info) {}
 
 ModemManagerClassic::~ModemManagerClassic() {}
 
 void ModemManagerClassic::Connect(const string& supplied_owner) {
   ModemManager::Connect(supplied_owner);
-  proxy_.reset(proxy_factory()->CreateModemManagerProxy(this, path(), owner()));
+  proxy_.reset(
+      control_interface()->CreateModemManagerProxy(this, path(), owner()));
   // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
   vector<DBus::Path> devices = proxy_->EnumerateDevices();
 
@@ -125,7 +126,8 @@ void ModemManagerClassic::AddModemClassic(const string& path) {
   shared_ptr<ModemClassic> modem(new ModemClassic(owner(),
                                                   service(),
                                                   path,
-                                                  modem_info()));
+                                                  modem_info(),
+                                                  control_interface()));
   RecordAddedModem(modem);
   InitModemClassic(modem);
 }
@@ -142,8 +144,8 @@ void ModemManagerClassic::InitModemClassic(shared_ptr<ModemClassic> modem) {
   }
 
   std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
-      proxy_factory()->CreateDBusPropertiesProxy(modem->path(),
-                                                 modem->owner()));
+      control_interface()->CreateDBusPropertiesProxy(modem->path(),
+                                                     modem->owner()));
   DBusPropertiesMap properties =
       properties_proxy->GetAll(MM_MODEM_INTERFACE);
 

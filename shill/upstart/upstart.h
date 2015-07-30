@@ -13,13 +13,12 @@
 
 namespace shill {
 
-class ProxyFactory;
+class ControlInterface;
 
 class Upstart {
  public:
-  // |proxy_factory| creates the UpstartProxy.  Usually this is
-  // ProxyFactory::GetInstance().  Use a fake for testing.
-  explicit Upstart(ProxyFactory* proxy_factory);
+  // |control_interface| creates the UpstartProxy. Use a fake for testing.
+  explicit Upstart(ControlInterface* control_interface);
   virtual ~Upstart();
 
   // Report an event to upstart indicating that the system has disconnected.

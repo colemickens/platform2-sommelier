@@ -20,10 +20,9 @@ MockCellular::MockCellular(ModemInfo* modem_info,
                            Type type,
                            const std::string& owner,
                            const std::string& service,
-                           const std::string& path,
-                           ProxyFactory* proxy_factory)
+                           const std::string& path)
     : Cellular(modem_info, link_name, address, interface_index, type, owner,
-               service, path, proxy_factory) {}
+               service, path) {}
 
 MockCellular::~MockCellular() {}
 

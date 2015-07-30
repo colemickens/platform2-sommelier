@@ -25,7 +25,6 @@ class DHCPProvider;
 class Error;
 class GLib;
 class Metrics;
-class ProxyFactory;
 class RoutingTable;
 class RTNLHandler;
 
@@ -84,7 +83,6 @@ class Daemon {
   EventDispatcher dispatcher_;
   GLib glib_;
   std::unique_ptr<Metrics> metrics_;
-  ProxyFactory* proxy_factory_;
   RTNLHandler* rtnl_handler_;
   RoutingTable* routing_table_;
   DHCPProvider* dhcp_provider_;

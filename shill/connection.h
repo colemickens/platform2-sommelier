@@ -20,9 +20,9 @@
 
 namespace shill {
 
+class ControlInterface;
 class DeviceInfo;
 class PermissionBrokerProxyInterface;
-class ProxyFactory;
 class RTNLHandler;
 class Resolver;
 class RoutingTable;
@@ -67,7 +67,8 @@ class Connection : public base::RefCounted<Connection> {
   Connection(int interface_index,
              const std::string& interface_name,
              Technology::Identifier technology_,
-             const DeviceInfo* device_info);
+             const DeviceInfo* device_info,
+             ControlInterface* control_interface);
 
   // Add the contents of an IPConfig reference to the list of managed state.
   // This will replace all previous state for this address family.
@@ -214,7 +215,7 @@ class Connection : public base::RefCounted<Connection> {
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
 
-  ProxyFactory* proxy_factory_;
+  ControlInterface* control_interface_;
   std::unique_ptr<PermissionBrokerProxyInterface> permission_broker_;
 
   DISALLOW_COPY_AND_ASSIGN(Connection);

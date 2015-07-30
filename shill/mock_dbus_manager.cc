@@ -6,7 +6,7 @@
 
 namespace shill {
 
-MockDBusManager::MockDBusManager() : DBusManager() {}
+MockDBusManager::MockDBusManager() : DBusManager(nullptr) {}
 
 MockDBusManager::~MockDBusManager() {}
 

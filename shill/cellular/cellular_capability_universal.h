@@ -54,7 +54,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kConnectRMProtocol[];
 
   CellularCapabilityUniversal(Cellular* cellular,
-                              ProxyFactory* proxy_factory,
+                              ControlInterface* control_interface,
                               ModemInfo* modem_info);
   ~CellularCapabilityUniversal() override;
 

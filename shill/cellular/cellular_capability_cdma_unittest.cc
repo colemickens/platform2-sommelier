@@ -18,7 +18,6 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
-#include "shill/proxy_factory.h"
 
 using base::Bind;
 using base::Unretained;
@@ -42,8 +41,7 @@ class CellularCapabilityCDMATest : public testing::Test {
                                    Cellular::kTypeCDMA,
                                    "",
                                    "",
-                                   "",
-                                   ProxyFactory::GetInstance())),
+                                   "")),
         classic_proxy_(new MockModemProxy()),
         proxy_(new MockModemCDMAProxy()),
         capability_(nullptr) {

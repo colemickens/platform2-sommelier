@@ -13,9 +13,9 @@
 #include "shill/dbus_property_matchers.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
+#include "shill/mock_control.h"
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/testing.h"
@@ -54,13 +54,13 @@ class Modem1Test : public Test {
                 kOwner,
                 kService,
                 kPath,
-                &modem_info_)) {}
+                &modem_info_,
+                &control_interface_)) {}
   virtual void SetUp();
   virtual void TearDown();
 
   void ReplaceSingletons() {
     modem_->rtnl_handler_ = &rtnl_handler_;
-    modem_->proxy_factory_ = &proxy_factory_;
   }
 
  protected:
@@ -68,7 +68,7 @@ class Modem1Test : public Test {
   MockModemInfo modem_info_;
   MockDeviceInfo device_info_;
   std::unique_ptr<MockDBusPropertiesProxy> proxy_;
-  MockProxyFactory proxy_factory_;
+  MockControl control_interface_;
   std::unique_ptr<Modem1> modem_;
   MockRTNLHandler rtnl_handler_;
   ByteString expected_address_;
@@ -122,7 +122,7 @@ TEST_F(Modem1Test, CreateDeviceMM1) {
       registration_state_variant;
   properties[MM_DBUS_INTERFACE_MODEM_MODEM3GPP] = modem3gpp_properties;
 
-  EXPECT_CALL(proxy_factory_, CreateDBusPropertiesProxy(kPath, kOwner))
+  EXPECT_CALL(control_interface_, CreateDBusPropertiesProxy(kPath, kOwner))
       .WillOnce(ReturnAndReleasePointee(&proxy_));
   modem_->CreateDeviceMM1(properties);
   EXPECT_TRUE(modem_->device().get());

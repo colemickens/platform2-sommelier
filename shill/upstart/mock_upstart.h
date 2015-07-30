@@ -14,11 +14,9 @@
 
 namespace shill {
 
-class ProxyFactory;
-
 class MockUpstart : public Upstart {
  public:
-  explicit MockUpstart(ProxyFactory* proxy_factory);
+  explicit MockUpstart(ControlInterface* control_interface);
   ~MockUpstart() override;
 
   MOCK_METHOD0(NotifyDisconnected, void());

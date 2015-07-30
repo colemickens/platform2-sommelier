@@ -18,7 +18,6 @@
 
 namespace shill {
 
-class ProxyFactory;
 class WiMaxDeviceProxyInterface;
 
 class WiMax : public Device {
@@ -109,8 +108,6 @@ class WiMax : public Device {
   WiMaxServiceRefPtr pending_service_;
   std::set<RpcIdentifier> networks_;
   wimax_manager::DeviceStatus status_;
-
-  ProxyFactory* proxy_factory_;
 
   base::CancelableClosure connect_timeout_callback_;
   int connect_timeout_seconds_;

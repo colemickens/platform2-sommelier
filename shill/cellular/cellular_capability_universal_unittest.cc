@@ -29,12 +29,12 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_control.h"
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_pending_activation_store.h"
 #include "shill/mock_profile.h"
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/proxy_factory.h"
 #include "shill/testing.h"
 
 using base::Bind;
@@ -68,14 +68,14 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
  public:
   explicit CellularCapabilityUniversalTest(EventDispatcher* dispatcher)
       : dispatcher_(dispatcher),
-        modem_info_(nullptr, dispatcher, nullptr, nullptr, nullptr),
+        control_interface_(this),
+        modem_info_(&control_interface_, dispatcher, nullptr, nullptr, nullptr),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
         modem_proxy_(new mm1::MockModemProxy()),
         modem_simple_proxy_(new mm1::MockModemSimpleProxy()),
         sim_proxy_(new mm1::MockSimProxy()),
         properties_proxy_(new MockDBusPropertiesProxy()),
-        proxy_factory_(this),
         capability_(nullptr),
         device_adaptor_(nullptr),
         cellular_(new Cellular(&modem_info_,
@@ -85,8 +85,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                                Cellular::kTypeUniversal,
                                "",
                                "",
-                               "",
-                               &proxy_factory_)),
+                               "")),
         service_(new MockCellularService(&modem_info_, cellular_)),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr) {
@@ -117,7 +116,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   }
 
   virtual void TearDown() {
-    capability_->proxy_factory_ = nullptr;
+    capability_->control_interface_ = nullptr;
   }
 
   void CreateService() {
@@ -246,10 +245,10 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   static const uint32_t kAccessTechnologies;
   static const char kTestMobileProviderDBPath[];
 
-  class TestProxyFactory : public ProxyFactory {
+  class TestControl : public MockControl {
    public:
-    explicit TestProxyFactory(CellularCapabilityUniversalTest* test) :
-        test_(test) {
+    explicit TestControl(CellularCapabilityUniversalTest* test)
+        : test_(test) {
       active_bearer_properties_[MM_BEARER_PROPERTY_CONNECTED].writer()
           .append_bool(true);
       active_bearer_properties_[MM_BEARER_PROPERTY_INTERFACE].writer()
@@ -330,6 +329,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   };
 
   EventDispatcher* dispatcher_;
+  TestControl control_interface_;
   MockModemInfo modem_info_;
   unique_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
   unique_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
@@ -337,7 +337,6 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   unique_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
   unique_ptr<mm1::MockSimProxy> sim_proxy_;
   unique_ptr<MockDBusPropertiesProxy> properties_proxy_;
-  TestProxyFactory proxy_factory_;
   CellularCapabilityUniversal* capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor* device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;
@@ -535,7 +534,7 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemAltair) {
 
   const char kBearerDBusPath[] = "/bearer/dbus/path";
   capability_->set_active_bearer(
-      new CellularBearer(&proxy_factory_,
+      new CellularBearer(&control_interface_,
                          kBearerDBusPath,
                          cellular_->dbus_service()));  // Passes ownership.
 
@@ -582,7 +581,7 @@ TEST_F(CellularCapabilityUniversalMainTest,
 
   const char kBearerDBusPath[] = "/bearer/dbus/path";
   capability_->set_active_bearer(
-      new CellularBearer(&proxy_factory_,
+      new CellularBearer(&control_interface_,
                          kBearerDBusPath,
                          cellular_->dbus_service()));  // Passes ownership.
 

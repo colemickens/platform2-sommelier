@@ -11,11 +11,11 @@
 
 #include <base/strings/stringprintf.h>
 
+#include "shill/control_interface.h"
 #include "shill/device_info.h"
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/permission_broker_proxy.h"
-#include "shill/proxy_factory.h"
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
 
@@ -84,7 +84,8 @@ void Connection::Binder::OnDisconnect() {
 Connection::Connection(int interface_index,
                        const std::string& interface_name,
                        Technology::Identifier technology,
-                       const DeviceInfo* device_info)
+                       const DeviceInfo* device_info,
+                       ControlInterface* control_interface)
     : weak_ptr_factory_(this),
       is_default_(false),
       has_broadcast_domain_(false),
@@ -104,11 +105,11 @@ Connection::Connection(int interface_index,
       device_info_(device_info),
       resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
-      rtnl_handler_(RTNLHandler::GetInstance()) {
+      rtnl_handler_(RTNLHandler::GetInstance()),
+      control_interface_(control_interface) {
   SLOG(this, 2) << __func__ << "(" << interface_index << ", "
                 << interface_name << ", "
                 << Technology::NameFromIdentifier(technology) << ")";
-  proxy_factory_ = ProxyFactory::GetInstance();
 }
 
 Connection::~Connection() {
@@ -259,7 +260,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
 
 bool Connection::SetupIptableEntries() {
   if (!permission_broker_) {
-    permission_broker_.reset(proxy_factory_->CreatePermissionBrokerProxy());
+    permission_broker_.reset(control_interface_->CreatePermissionBrokerProxy());
   }
 
   std::vector<std::string> user_names;

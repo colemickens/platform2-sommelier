@@ -37,11 +37,13 @@ void ModemInfo::Start() {
   pending_activation_store_->InitStorage(manager_->glib(),
       manager_->storage_path());
 
-  RegisterModemManager(new ModemManagerClassic(cromo::kCromoServiceName,
+  RegisterModemManager(new ModemManagerClassic(control_interface_,
+                                               cromo::kCromoServiceName,
                                                cromo::kCromoServicePath,
                                                this));
   RegisterModemManager(
-      new ModemManager1(modemmanager::kModemManager1ServiceName,
+      new ModemManager1(control_interface_,
+                        modemmanager::kModemManager1ServiceName,
                         modemmanager::kModemManager1ServicePath,
                         this));
 }

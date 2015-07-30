@@ -8,8 +8,8 @@
 #include <base/memory/weak_ptr.h>
 
 #include "shill/error.h"
+#include "shill/mock_control.h"
 #include "shill/mock_dbus_service_proxy.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/testing.h"
 
 using base::Bind;
@@ -40,12 +40,7 @@ class DBusManagerTest : public testing::Test {
  public:
   DBusManagerTest()
       : proxy_(new MockDBusServiceProxy()),
-        manager_(new DBusManager()) {}
-
-  virtual void SetUp() {
-    // Replaces the real proxy factory with a local one providing mock proxies.
-    manager_->proxy_factory_ = &proxy_factory_;
-  }
+        manager_(new DBusManager(&control_)) {}
 
  protected:
   class DBusNameWatcherCallbackObserver {
@@ -82,13 +77,13 @@ class DBusManagerTest : public testing::Test {
   };
 
   MockDBusServiceProxy* ExpectCreateDBusServiceProxy() {
-    EXPECT_CALL(proxy_factory_, CreateDBusServiceProxy())
+    EXPECT_CALL(control_, CreateDBusServiceProxy())
         .WillOnce(ReturnAndReleasePointee(&proxy_));
     return proxy_.get();
   }
 
   unique_ptr<MockDBusServiceProxy> proxy_;
-  MockProxyFactory proxy_factory_;
+  MockControl control_;
   unique_ptr<DBusManager> manager_;
 };
 

@@ -21,6 +21,7 @@
 
 namespace shill {
 
+class ControlInterface;
 class DBusNameWatcher;
 class DBusObjectManagerProxyInterface;
 class DBusPropertiesProxyInterface;
@@ -28,12 +29,12 @@ class Modem1;
 class Modem;
 class ModemClassic;
 class ModemManagerProxyInterface;
-class ProxyFactory;
 
 // Handles a modem manager service and creates and destroys modem instances.
 class ModemManager {
  public:
-  ModemManager(const std::string& service,
+  ModemManager(ControlInterface* control_interface,
+               const std::string& service,
                const std::string& path,
                ModemInfo* modem_info);
   virtual ~ModemManager();
@@ -57,7 +58,7 @@ class ModemManager {
   const std::string& owner() const { return owner_; }
   const std::string& service() const { return service_; }
   const std::string& path() const { return path_; }
-  ProxyFactory* proxy_factory() const { return proxy_factory_; }
+  ControlInterface* control_interface() const { return control_interface_; }
   ModemInfo* modem_info() const { return modem_info_; }
 
   // Connect/Disconnect to a modem manager service.
@@ -88,8 +89,7 @@ class ModemManager {
   FRIEND_TEST(ModemManagerCoreTest, StartStopWithModemManagerServiceAbsent);
   FRIEND_TEST(ModemManagerCoreTest, StartStopWithModemManagerServicePresent);
 
-  // Store cached copies of singletons for speed/ease of testing.
-  ProxyFactory* proxy_factory_;
+  ControlInterface* control_interface_;
 
   const std::string service_;
   const std::string path_;
@@ -106,7 +106,8 @@ class ModemManager {
 
 class ModemManagerClassic : public ModemManager {
  public:
-  ModemManagerClassic(const std::string& service,
+  ModemManagerClassic(ControlInterface* control_interface,
+                      const std::string& service,
                       const std::string& path,
                       ModemInfo* modem_info);
 
@@ -134,7 +135,8 @@ class ModemManagerClassic : public ModemManager {
 
 class ModemManager1 : public ModemManager {
  public:
-  ModemManager1(const std::string& service,
+  ModemManager1(ControlInterface* control_interface,
+                const std::string& service,
                 const std::string& path,
                 ModemInfo* modem_info);
 

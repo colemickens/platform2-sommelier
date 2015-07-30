@@ -31,7 +31,7 @@ class ModemInfoTest : public Test {
                     &glib_) {}
 
   virtual void SetUp() {
-    manager_.dbus_manager_.reset(new DBusManager());
+    manager_.dbus_manager_.reset(new DBusManager(&control_interface_));
     dbus_service_proxy_ = new MockDBusServiceProxy();
     // Ownership  of |dbus_service_proxy_| is transferred to
     // |manager_.dbus_manager_|.
@@ -64,7 +64,10 @@ TEST_F(ModemInfoTest, RegisterModemManager) {
   static const char kService[] = "some.dbus.service";
   EXPECT_CALL(*dbus_service_proxy_, GetNameOwner(kService, _, _, _));
   modem_info_.RegisterModemManager(
-      new ModemManagerClassic(kService, "/dbus/service/path", &modem_info_));
+      new ModemManagerClassic(&control_interface_,
+                              kService,
+                              "/dbus/service/path",
+                              &modem_info_));
   ASSERT_EQ(1, modem_info_.modem_managers_.size());
   ModemManager* manager = modem_info_.modem_managers_[0];
   EXPECT_EQ(kService, manager->service_);

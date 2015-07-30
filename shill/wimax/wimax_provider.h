@@ -25,7 +25,6 @@ class EventDispatcher;
 class KeyValueStore;
 class Manager;
 class Metrics;
-class ProxyFactory;
 class StoreInterface;
 class WiMaxManagerProxyInterface;
 
@@ -163,8 +162,6 @@ class WiMaxProvider : public ProviderInterface {
   // Key is service's storage identifier.
   std::map<std::string, WiMaxServiceRefPtr> services_;
   std::map<RpcIdentifier, NetworkInfo> networks_;
-
-  ProxyFactory* proxy_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(WiMaxProvider);
 };

@@ -1072,7 +1072,8 @@ void Device::CreateConnection() {
     connection_ = new Connection(interface_index_,
                                  link_name_,
                                  technology_,
-                                 manager_->device_info());
+                                 manager_->device_info(),
+                                 control_interface_);
   }
 }
 

@@ -23,7 +23,6 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/mock_service.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_sockets.h"
@@ -91,7 +90,6 @@ class EthernetTest : public testing::Test {
 
   void SetUp() override {
     ethernet_->rtnl_handler_ = &rtnl_handler_;
-    ethernet_->proxy_factory_ = &proxy_factory_;
     ethernet_->sockets_.reset(mock_sockets_);  // Transfers ownership.
 
     ethernet_->set_dhcp_provider(&dhcp_provider_);
@@ -197,14 +195,14 @@ class EthernetTest : public testing::Test {
   }
 
   MockSupplicantInterfaceProxy* ExpectCreateSupplicantInterfaceProxy() {
-    EXPECT_CALL(proxy_factory_,
+    EXPECT_CALL(control_interface_,
                 CreateSupplicantInterfaceProxy(_, kInterfacePath,
                                                StrEq(WPASupplicant::kDBusAddr)))
         .WillOnce(ReturnAndReleasePointee(&supplicant_interface_proxy_));
     return supplicant_interface_proxy_.get();
   }
   MockSupplicantProcessProxy* ExpectCreateSupplicantProcessProxy() {
-    EXPECT_CALL(proxy_factory_,
+    EXPECT_CALL(control_interface_,
                 CreateSupplicantProcessProxy(StrEq(WPASupplicant::kDBusPath),
                                              StrEq(WPASupplicant::kDBusAddr)))
         .WillOnce(ReturnAndReleasePointee(&supplicant_process_proxy_));
@@ -238,7 +236,6 @@ class EthernetTest : public testing::Test {
 
   MockRTNLHandler rtnl_handler_;
   scoped_refptr<MockEthernetService> mock_service_;
-  NiceMock<MockProxyFactory> proxy_factory_;
 };
 
 // static

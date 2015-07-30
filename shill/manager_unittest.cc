@@ -40,7 +40,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager.h"
 #include "shill/mock_profile.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/mock_resolver.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
@@ -98,7 +97,7 @@ using ::testing::WithArg;
 class ManagerTest : public PropertyStoreTest {
  public:
   ManagerTest()
-      : power_manager_(new MockPowerManager(nullptr, &proxy_factory_)),
+      : power_manager_(new MockPowerManager(nullptr, control_interface())),
         device_info_(new NiceMock<MockDeviceInfo>(control_interface(),
                                                   nullptr,
                                                   nullptr,
@@ -112,8 +111,8 @@ class ManagerTest : public PropertyStoreTest {
 #endif  // DISABLE_WIFI
         crypto_util_proxy_(
             new NiceMock<MockCryptoUtilProxy>(dispatcher(), glib())),
-        upstart_(new NiceMock<MockUpstart>(&proxy_factory_)) {
-    ON_CALL(proxy_factory_, CreatePowerManagerProxy(_))
+        upstart_(new NiceMock<MockUpstart>(control_interface())) {
+    ON_CALL(*control_interface(), CreatePowerManagerProxy(_))
         .WillByDefault(ReturnNull());
 
     mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
@@ -482,7 +481,6 @@ class ManagerTest : public PropertyStoreTest {
     return manager()->technology_order_;
   }
 
-  NiceMock<MockProxyFactory> proxy_factory_;
   std::unique_ptr<MockPowerManager> power_manager_;
   vector<scoped_refptr<MockDevice>> mock_devices_;
   std::unique_ptr<MockDeviceInfo> device_info_;

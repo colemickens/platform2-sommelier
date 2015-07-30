@@ -9,8 +9,9 @@ namespace shill {
 MockModem::MockModem(const std::string& owner,
                      const std::string& service,
                      const std::string& path,
-                     ModemInfo* modem_info)
-    : Modem(owner, service, path, modem_info) {}
+                     ModemInfo* modem_info,
+                     ControlInterface* control_interface)
+    : Modem(owner, service, path, modem_info, control_interface) {}
 
 MockModem::~MockModem() {}
 

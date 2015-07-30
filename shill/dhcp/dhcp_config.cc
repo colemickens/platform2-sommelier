@@ -16,6 +16,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/minijail/minijail.h>
 
+#include "shill/control_interface.h"
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/dhcp/dhcpcd_proxy.h"
 #include "shill/event_dispatcher.h"
@@ -23,7 +24,6 @@
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
-#include "shill/proxy_factory.h"
 
 using std::string;
 using std::vector;
@@ -55,7 +55,7 @@ DHCPConfig::DHCPConfig(ControlInterface* control_interface,
                        const string& lease_file_suffix,
                        GLib* glib)
     : IPConfig(control_interface, device_name, type),
-      proxy_factory_(ProxyFactory::GetInstance()),
+      control_interface_(control_interface),
       provider_(provider),
       lease_file_suffix_(lease_file_suffix),
       pid_(0),
@@ -136,7 +136,7 @@ bool DHCPConfig::ReleaseIP(ReleaseReason reason) {
 void DHCPConfig::InitProxy(const string& service) {
   if (!proxy_.get()) {
     LOG(INFO) << "Init DHCP Proxy: " << device_name() << " at " << service;
-    proxy_.reset(proxy_factory_->CreateDHCPProxy(service));
+    proxy_.reset(control_interface_->CreateDHCPProxy(service));
   }
 }
 

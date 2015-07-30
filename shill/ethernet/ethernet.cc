@@ -31,7 +31,6 @@
 #include "shill/pppoe/pppoe_service.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
-#include "shill/proxy_factory.h"
 #include "shill/refptr_types.h"
 #include "shill/store_interface.h"
 
@@ -77,7 +76,6 @@ Ethernet::Ethernet(ControlInterface* control_interface,
       is_eap_detected_(false),
       eap_listener_(new EapListener(dispatcher, interface_index)),
 #endif  // DISABLE_WIRED_8021X
-      proxy_factory_(ProxyFactory::GetInstance()),
       sockets_(new Sockets()),
       weak_ptr_factory_(this) {
   PropertyStore* store = this->mutable_store();
@@ -286,7 +284,7 @@ bool Ethernet::StartSupplicant() {
   }
 
   supplicant_process_proxy_.reset(
-      proxy_factory_->CreateSupplicantProcessProxy(
+      control_interface_->CreateSupplicantProcessProxy(
           WPASupplicant::kDBusPath, WPASupplicant::kDBusAddr));
   string interface_path;
   KeyValueStore create_interface_args;
@@ -308,7 +306,7 @@ bool Ethernet::StartSupplicant() {
   }
 
   supplicant_interface_proxy_.reset(
-      proxy_factory_->CreateSupplicantInterfaceProxy(
+      control_interface_->CreateSupplicantInterfaceProxy(
           this, interface_path, WPASupplicant::kDBusAddr));
   supplicant_interface_path_ = interface_path;
   return true;

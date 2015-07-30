@@ -25,7 +25,6 @@
 
 namespace shill {
 
-class ProxyFactory;
 class Sockets;
 class StoreInterface;
 
@@ -164,9 +163,6 @@ class Ethernet
   // at a time.
   base::CancelableClosure try_eap_authentication_callback_;
 #endif  // DISABLE_WIRED_8021X
-
-  // Store cached copy of proxy factory singleton for speed/ease of testing.
-  ProxyFactory* proxy_factory_;
 
   std::unique_ptr<Sockets> sockets_;
 

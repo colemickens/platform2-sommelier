@@ -31,7 +31,6 @@ class Error;
 class ExternalTask;
 class MobileOperatorInfo;
 class PPPDeviceFactory;
-class ProxyFactory;
 
 class Cellular : public Device, public RPCTaskDelegate {
  public:
@@ -89,8 +88,7 @@ class Cellular : public Device, public RPCTaskDelegate {
            Type type,
            const std::string& owner,
            const std::string& service,
-           const std::string& path,
-           ProxyFactory* proxy_factory);
+           const std::string& path);
   ~Cellular() override;
 
   // Load configuration for the device from |storage|.
@@ -537,7 +535,6 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   ModemInfo* modem_info_;
   const Type type_;
-  ProxyFactory* proxy_factory_;
   PPPDeviceFactory* ppp_device_factory_;
 
   CellularServiceRefPtr service_;

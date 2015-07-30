@@ -8,7 +8,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/proxy_factory.h"
+#include "shill/mock_control.h"
 #include "shill/upstart/mock_upstart_proxy.h"
 #include "shill/upstart/upstart_proxy_interface.h"
 
@@ -19,9 +19,9 @@ namespace shill {
 
 namespace {
 
-class FakeProxyFactory : public ProxyFactory {
+class FakeControl : public MockControl {
  public:
-  FakeProxyFactory()
+  FakeControl()
       : upstart_proxy_raw_(new MockUpstartProxy),
         upstart_proxy_(upstart_proxy_raw_) {}
 
@@ -46,11 +46,11 @@ class FakeProxyFactory : public ProxyFactory {
 class UpstartTest : public Test {
  public:
   UpstartTest()
-      : upstart_(&factory_),
-        upstart_proxy_(factory_.upstart_proxy()) {}
+      : upstart_(&control_),
+        upstart_proxy_(control_.upstart_proxy()) {}
 
  protected:
-  FakeProxyFactory factory_;
+  FakeControl control_;
   Upstart upstart_;
   MockUpstartProxy* const upstart_proxy_;
 };

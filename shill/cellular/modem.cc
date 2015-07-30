@@ -8,10 +8,10 @@
 #include <base/strings/stringprintf.h>
 
 #include "shill/cellular/cellular.h"
+#include "shill/control_interface.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/rtnl_handler.h"
-#include "shill/proxy_factory.h"
 
 using base::Bind;
 using base::Unretained;
@@ -39,7 +39,8 @@ size_t Modem::fake_dev_serial_ = 0;
 Modem::Modem(const string& owner,
              const string& service,
              const string& path,
-             ModemInfo* modem_info)
+             ModemInfo* modem_info,
+             ControlInterface* control_interface)
     : owner_(owner),
       service_(service),
       path_(path),
@@ -47,7 +48,7 @@ Modem::Modem(const string& owner,
       type_(Cellular::kTypeInvalid),
       pending_device_info_(false),
       rtnl_handler_(RTNLHandler::GetInstance()),
-      proxy_factory_(ProxyFactory::GetInstance()) {
+      control_interface_(control_interface) {
   LOG(INFO) << "Modem created: " << owner << " at " << path;
 }
 
@@ -61,7 +62,7 @@ Modem::~Modem() {
 
 void Modem::Init() {
   dbus_properties_proxy_.reset(
-      proxy_factory_->CreateDBusPropertiesProxy(path(), owner()));
+      control_interface_->CreateDBusPropertiesProxy(path(), owner()));
   dbus_properties_proxy_->set_modem_manager_properties_changed_callback(
       Bind(&Modem::OnModemManagerPropertiesChanged, Unretained(this)));
   dbus_properties_proxy_->set_properties_changed_callback(
@@ -91,8 +92,7 @@ Cellular* Modem::ConstructCellular(const string& link_name,
                       type_,
                       owner_,
                       service_,
-                      path_,
-                      ProxyFactory::GetInstance());
+                      path_);
 }
 
 void Modem::CreateDeviceFromModemProperties(

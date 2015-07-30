@@ -30,7 +30,7 @@ class ModemInfo;
 class CellularCapabilityGSM : public CellularCapabilityClassic {
  public:
   CellularCapabilityGSM(Cellular* cellular,
-                        ProxyFactory* proxy_factory,
+                        ControlInterface* control_interface,
                         ModemInfo* modem_info);
   ~CellularCapabilityGSM() override;
 

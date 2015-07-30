@@ -16,8 +16,9 @@ namespace shill {
 ModemClassic::ModemClassic(const string& owner,
                            const string& service,
                            const string& path,
-                           ModemInfo* modem_info)
-    : Modem(owner, service, path, modem_info) {}
+                           ModemInfo* modem_info,
+                           ControlInterface* control_interface)
+    : Modem(owner, service, path, modem_info, control_interface) {}
 
 ModemClassic::~ModemClassic() {}
 

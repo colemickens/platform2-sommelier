@@ -6,8 +6,8 @@
 
 #include <ModemManager/ModemManager.h>
 
+#include "shill/mock_control.h"
 #include "shill/mock_dbus_properties_proxy.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/testing.h"
 
 using std::string;
@@ -39,8 +39,8 @@ const char* const kIPv6DNS[] = {
 class CellularBearerTest : public testing::Test {
  public:
   CellularBearerTest()
-      : proxy_factory_(new MockProxyFactory()),
-        bearer_(proxy_factory_.get(), kBearerDBusPath, kBearerDBusService) {}
+      : control_(new MockControl()),
+        bearer_(control_.get(), kBearerDBusPath, kBearerDBusService) {}
 
  protected:
   void VerifyDefaultProperties() {
@@ -131,7 +131,7 @@ class CellularBearerTest : public testing::Test {
     EXPECT_EQ(kIPv6DNS[2], ipv6_config_properties->dns_servers[2]);
   }
 
-  std::unique_ptr<MockProxyFactory> proxy_factory_;
+  std::unique_ptr<MockControl> control_;
   CellularBearer bearer_;
 };
 
@@ -141,10 +141,10 @@ TEST_F(CellularBearerTest, Constructor) {
 
 TEST_F(CellularBearerTest, Init) {
   // Ownership of |properties_proxy| is transferred to |bearer_| via
-  // |proxy_factory_|.
+  // |control_|.
   std::unique_ptr<MockDBusPropertiesProxy> properties_proxy(
       new MockDBusPropertiesProxy);
-  EXPECT_CALL(*proxy_factory_.get(),
+  EXPECT_CALL(*control_.get(),
               CreateDBusPropertiesProxy(kBearerDBusPath, kBearerDBusService))
       .WillOnce(ReturnAndReleasePointee(&properties_proxy));
   EXPECT_CALL(*properties_proxy.get(), set_properties_changed_callback(_))
@@ -161,7 +161,7 @@ TEST_F(CellularBearerTest, Init) {
 }
 
 TEST_F(CellularBearerTest, InitAndCreateDBusPropertiesProxyFails) {
-  EXPECT_CALL(*proxy_factory_.get(),
+  EXPECT_CALL(*control_.get(),
               CreateDBusPropertiesProxy(kBearerDBusPath, kBearerDBusService))
       .WillOnce(ReturnNull());
   bearer_.Init();

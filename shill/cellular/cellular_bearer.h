@@ -18,7 +18,7 @@
 namespace shill {
 
 class DBusPropertiesProxyInterface;
-class ProxyFactory;
+class ControlInterface;
 
 // A class for observing property changes of a bearer object exposed by
 // ModemManager.
@@ -30,8 +30,8 @@ class CellularBearer {
   // is not transferred, and should outlive this object.
   //
   // TODO(benchan): Use a context object approach to pass objects like
-  // ProxyFactory through constructor.
-  CellularBearer(ProxyFactory* proxy_factory,
+  // ControlInterface through constructor.
+  CellularBearer(ControlInterface* control_interface,
                  const std::string& dbus_path,
                  const std::string& dbus_service);
   ~CellularBearer();
@@ -105,7 +105,7 @@ class CellularBearer {
     ipv6_config_properties_ = std::move(ipv6_config_properties);
   }
 
-  ProxyFactory* proxy_factory_;
+  ControlInterface* control_interface_;
   std::string dbus_path_;
   std::string dbus_service_;
   std::unique_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;

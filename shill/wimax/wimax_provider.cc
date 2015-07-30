@@ -11,12 +11,12 @@
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/control_interface.h"
 #include "shill/error.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
-#include "shill/proxy_factory.h"
 #include "shill/store_interface.h"
 #include "shill/wimax/wimax.h"
 #include "shill/wimax/wimax_manager_proxy_interface.h"
@@ -43,8 +43,7 @@ WiMaxProvider::WiMaxProvider(ControlInterface* control,
     : control_(control),
       dispatcher_(dispatcher),
       metrics_(metrics),
-      manager_(manager),
-      proxy_factory_(ProxyFactory::GetInstance()) {}
+      manager_(manager) {}
 
 WiMaxProvider::~WiMaxProvider() {}
 
@@ -71,7 +70,7 @@ void WiMaxProvider::Stop() {
 void WiMaxProvider::ConnectToWiMaxManager() {
   DCHECK(!wimax_manager_proxy_.get());
   LOG(INFO) << "Connecting to WiMaxManager.";
-  wimax_manager_proxy_.reset(proxy_factory_->CreateWiMaxManagerProxy());
+  wimax_manager_proxy_.reset(control_->CreateWiMaxManagerProxy());
   wimax_manager_proxy_->set_devices_changed_callback(
       Bind(&WiMaxProvider::OnDevicesChanged, Unretained(this)));
   Error error;
@@ -394,7 +393,7 @@ void WiMaxProvider::RetrieveNetworkInfo(const RpcIdentifier& path) {
   }
   LOG(INFO) << "WiMAX network appeared: " << path;
   std::unique_ptr<WiMaxNetworkProxyInterface> proxy(
-      proxy_factory_->CreateWiMaxNetworkProxy(path));
+      control_->CreateWiMaxNetworkProxy(path));
   Error error;
   NetworkInfo info;
   info.name = proxy->Name(&error);
@@ -462,7 +461,7 @@ void WiMaxProvider::StartLiveServices() {
       if (service->network_id() != info.id || service->IsStarted()) {
         continue;
       }
-      if (!service->Start(proxy_factory_->CreateWiMaxNetworkProxy(path))) {
+      if (!service->Start(control_->CreateWiMaxNetworkProxy(path))) {
         LOG(ERROR) << "Unable to start service: "
                    << service->GetStorageIdentifier();
       }

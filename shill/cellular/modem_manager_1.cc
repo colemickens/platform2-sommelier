@@ -9,9 +9,9 @@
 #include <ModemManager/ModemManager.h>
 
 #include "shill/cellular/modem.h"
+#include "shill/control_interface.h"
 #include "shill/error.h"
 #include "shill/logging.h"
-#include "shill/proxy_factory.h"
 
 using base::Bind;
 using std::string;
@@ -20,10 +20,12 @@ using std::vector;
 
 namespace shill {
 
-ModemManager1::ModemManager1(const string& service,
+ModemManager1::ModemManager1(ControlInterface* control_interface,
+                             const string& service,
                              const string& path,
                              ModemInfo* modem_info)
-    : ModemManager(service,
+    : ModemManager(control_interface,
+                   service,
                    path,
                    modem_info),
       weak_ptr_factory_(this) {}
@@ -33,7 +35,7 @@ ModemManager1::~ModemManager1() {}
 void ModemManager1::Connect(const string& supplied_owner) {
   ModemManager::Connect(supplied_owner);
   proxy_.reset(
-      proxy_factory()->CreateDBusObjectManagerProxy(path(), owner()));
+      control_interface()->CreateDBusObjectManagerProxy(path(), owner()));
   proxy_->set_interfaces_added_callback(
       Bind(&ModemManager1::OnInterfacesAddedSignal,
            weak_ptr_factory_.GetWeakPtr()));
@@ -62,7 +64,8 @@ void ModemManager1::AddModem1(const string& path,
   shared_ptr<Modem1> modem1(new Modem1(owner(),
                                        service(),
                                        path,
-                                       modem_info()));
+                                       modem_info(),
+                                       control_interface()));
   RecordAddedModem(modem1);
   InitModem1(modem1, properties);
 }

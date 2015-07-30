@@ -60,7 +60,7 @@ class DBusNameWatcherCallbackObserver {
 
 class DBusNameWatcherTest : public testing::Test {
  protected:
-  DBusNameWatcherTest() : dbus_manager_(new DBusManager()) {}
+  DBusNameWatcherTest() : dbus_manager_(new DBusManager(nullptr)) {}
 
   unique_ptr<DBusManager> dbus_manager_;
   unique_ptr<DBusNameWatcher> watcher_;

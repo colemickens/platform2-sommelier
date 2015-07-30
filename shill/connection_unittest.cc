@@ -68,7 +68,8 @@ class ConnectionTest : public Test {
             kTestDeviceInterfaceIndex0,
             kTestDeviceName0,
             Technology::kUnknown,
-            device_info_.get())),
+            device_info_.get(),
+            &control_)),
         ipconfig_(new IPConfig(&control_, kTestDeviceName0)),
         ip6config_(new IPConfig(&control_, kTestDeviceName0)),
         local_address_(IPAddress::kFamilyIPv4),
@@ -176,7 +177,8 @@ class ConnectionTest : public Test {
     ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
                                                kTestDeviceName0,
                                                Technology::kUnknown,
-                                               device_info_.get()));
+                                               device_info_.get(),
+                                               &control_));
     ReplaceSingletons(connection);
     return connection;
   }
@@ -659,7 +661,8 @@ TEST_F(ConnectionTest, Destructor) {
   ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex1,
                                              kTestDeviceName1,
                                              Technology::kUnknown,
-                                             device_info_.get()));
+                                             device_info_.get(),
+                                             &control_));
   connection->resolver_ = &resolver_;
   connection->routing_table_ = &routing_table_;
   connection->rtnl_handler_ = &rtnl_handler_;

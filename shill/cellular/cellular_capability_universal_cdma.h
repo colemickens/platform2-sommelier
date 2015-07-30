@@ -21,7 +21,7 @@ namespace shill {
 class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
  public:
   CellularCapabilityUniversalCDMA(Cellular* cellular,
-                                  ProxyFactory* proxy_factory,
+                                  ControlInterface* control_interface,
                                   ModemInfo* modem_info);
   ~CellularCapabilityUniversalCDMA() override;
 

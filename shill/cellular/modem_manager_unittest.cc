@@ -15,7 +15,6 @@
 #include "shill/mock_control.h"
 #include "shill/mock_dbus_service_proxy.h"
 #include "shill/mock_manager.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/testing.h"
 
 using std::string;
@@ -39,8 +38,9 @@ class ModemManagerTest : public Test {
         dbus_service_proxy_(nullptr) {}
 
   virtual void SetUp() {
-    modem_.reset(new StrictModem(kOwner, kService, kModemPath, &modem_info_));
-    manager_.dbus_manager_.reset(new DBusManager());
+    modem_.reset(
+        new StrictModem(kOwner, kService, kModemPath, &modem_info_, &control_));
+    manager_.dbus_manager_.reset(new DBusManager(&control_));
     dbus_service_proxy_ = new MockDBusServiceProxy();
     // Ownership  of |dbus_service_proxy_| is transferred to
     // |manager_.dbus_manager_|.
@@ -59,7 +59,6 @@ class ModemManagerTest : public Test {
   MockControl control_;
   MockManager manager_;
   MockModemInfo modem_info_;
-  MockProxyFactory proxy_factory_;
   MockDBusServiceProxy* dbus_service_proxy_;
 };
 
@@ -72,7 +71,7 @@ class ModemManagerCoreTest : public ModemManagerTest {
  public:
   ModemManagerCoreTest()
       : ModemManagerTest(),
-        modem_manager_(kService, kPath, &modem_info_) {}
+        modem_manager_(nullptr, kService, kPath, &modem_info_) {}
 
  protected:
   ModemManager modem_manager_;
@@ -153,10 +152,11 @@ TEST_F(ModemManagerCoreTest, AddRemoveModem) {
 
 class ModemManagerClassicMockInit : public ModemManagerClassic {
  public:
-  ModemManagerClassicMockInit(const string& service,
+  ModemManagerClassicMockInit(ControlInterface* control_interface,
+                              const string& service,
                               const string& path,
                               ModemInfo* modem_info_) :
-      ModemManagerClassic(service, path, modem_info_) {}
+      ModemManagerClassic(control_interface, service, path, modem_info_) {}
 
   MOCK_METHOD1(InitModemClassic, void(shared_ptr<ModemClassic>));
 };
@@ -165,18 +165,10 @@ class ModemManagerClassicTest : public ModemManagerTest {
  public:
   ModemManagerClassicTest()
       : ModemManagerTest(),
-        modem_manager_(kService, kPath, &modem_info_),
+        modem_manager_(&control_, kService, kPath, &modem_info_),
         proxy_(new MockModemManagerProxy()) {}
 
  protected:
-  virtual void SetUp() {
-    modem_manager_.proxy_factory_ = &proxy_factory_;
-  }
-
-  virtual void TearDown() {
-    modem_manager_.proxy_factory_ = nullptr;
-  }
-
   ModemManagerClassicMockInit modem_manager_;
   std::unique_ptr<MockModemManagerProxy> proxy_;
 };
@@ -184,7 +176,7 @@ class ModemManagerClassicTest : public ModemManagerTest {
 TEST_F(ModemManagerClassicTest, Connect) {
   EXPECT_EQ("", modem_manager_.owner_);
 
-  EXPECT_CALL(proxy_factory_, CreateModemManagerProxy(_, kPath, kOwner))
+  EXPECT_CALL(control_, CreateModemManagerProxy(_, kPath, kOwner))
       .WillOnce(ReturnAndReleasePointee(&proxy_));
   EXPECT_CALL(*proxy_, EnumerateDevices())
       .WillOnce(Return(vector<DBus::Path>(1, kModemPath)));
@@ -202,10 +194,11 @@ TEST_F(ModemManagerClassicTest, Connect) {
 
 class ModemManager1MockInit : public ModemManager1 {
  public:
-  ModemManager1MockInit(const string& service,
+  ModemManager1MockInit(ControlInterface* control_interface,
+                        const string& service,
                         const string& path,
                         ModemInfo* modem_info_) :
-      ModemManager1(service, path, modem_info_) {}
+      ModemManager1(control_interface, service, path, modem_info_) {}
   MOCK_METHOD2(InitModem1, void(shared_ptr<Modem1>,
                                 const DBusInterfaceToProperties&));
 };
@@ -215,21 +208,16 @@ class ModemManager1Test : public ModemManagerTest {
  public:
   ModemManager1Test()
       : ModemManagerTest(),
-        modem_manager_(kService, kPath, &modem_info_),
+        modem_manager_(&control_, kService, kPath, &modem_info_),
         proxy_(new MockDBusObjectManagerProxy()) {}
 
  protected:
   virtual void SetUp() {
-    modem_manager_.proxy_factory_ = &proxy_factory_;
     proxy_->IgnoreSetCallbacks();
   }
 
-  virtual void TearDown() {
-    modem_manager_.proxy_factory_ = nullptr;
-  }
-
   void Connect(const DBusObjectsWithProperties& expected_objects) {
-    EXPECT_CALL(proxy_factory_, CreateDBusObjectManagerProxy(kPath, kOwner))
+    EXPECT_CALL(control_, CreateDBusObjectManagerProxy(kPath, kOwner))
         .WillOnce(ReturnAndReleasePointee(&proxy_));
     EXPECT_CALL(*proxy_, set_interfaces_added_callback(_));
     EXPECT_CALL(*proxy_, set_interfaces_removed_callback(_));
@@ -254,7 +242,7 @@ class ModemManager1Test : public ModemManagerTest {
 
   ModemManager1MockInit modem_manager_;
   std::unique_ptr<MockDBusObjectManagerProxy> proxy_;
-  MockProxyFactory proxy_factory_;
+  MockControl control_;
 };
 
 TEST_F(ModemManager1Test, Connect) {

@@ -13,12 +13,12 @@
 #include <gtest/gtest.h>
 
 #include "shill/dbus_manager.h"
+#include "shill/mock_control.h"
 #include "shill/mock_dbus_service_proxy.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager_proxy.h"
 #include "shill/power_manager_proxy_interface.h"
-#include "shill/proxy_factory.h"
 
 using base::Bind;
 using base::Unretained;
@@ -37,9 +37,9 @@ namespace shill {
 
 namespace {
 
-class FakeProxyFactory : public ProxyFactory {
+class FakeControl : public MockControl {
  public:
-  FakeProxyFactory()
+  FakeControl()
       : delegate_(nullptr),
         power_manager_proxy_raw_(new MockPowerManagerProxy),
         dbus_service_proxy_raw_(new MockDBusServiceProxy),
@@ -92,9 +92,10 @@ class PowerManagerTest : public Test {
 
   PowerManagerTest()
       : kTimeout(base::TimeDelta::FromSeconds(3)),
-        power_manager_(&dispatcher_, &factory_),
-        power_manager_proxy_(factory_.power_manager_proxy()),
-        delegate_(factory_.delegate()) {
+        dbus_manager_(&control_),
+        power_manager_(&dispatcher_, &control_),
+        power_manager_proxy_(control_.power_manager_proxy()),
+        delegate_(control_.delegate()) {
     suspend_imminent_callback_ =
         Bind(&PowerManagerTest::SuspendImminentAction, Unretained(this));
     suspend_done_callback_ =
@@ -109,15 +110,14 @@ class PowerManagerTest : public Test {
 
  protected:
   virtual void SetUp() {
-    dbus_manager_.proxy_factory_ = &factory_;
     dbus_manager_.Start();
 
-    EXPECT_CALL(*factory_.dbus_service_proxy(),
+    EXPECT_CALL(*control_.dbus_service_proxy(),
                 GetNameOwner(power_manager::kPowerManagerServiceName, _, _, _));
     power_manager_.Start(&dbus_manager_, kTimeout, suspend_imminent_callback_,
                          suspend_done_callback_,
                          dark_suspend_imminent_callback_);
-    Mock::VerifyAndClearExpectations(factory_.dbus_service_proxy());
+    Mock::VerifyAndClearExpectations(control_.dbus_service_proxy());
   }
 
   virtual void TearDown() { dbus_manager_.Stop(); }
@@ -178,17 +178,17 @@ class PowerManagerTest : public Test {
   }
 
   void OnSuspendImminent(int suspend_id) {
-    factory_.delegate()->OnSuspendImminent(suspend_id);
+    control_.delegate()->OnSuspendImminent(suspend_id);
     EXPECT_TRUE(power_manager_.suspending());
   }
 
   void OnSuspendDone(int suspend_id) {
-    factory_.delegate()->OnSuspendDone(suspend_id);
+    control_.delegate()->OnSuspendDone(suspend_id);
     EXPECT_FALSE(power_manager_.suspending());
   }
 
   void OnDarkSuspendImminent(int suspend_id) {
-    factory_.delegate()->OnDarkSuspendImminent(suspend_id);
+    control_.delegate()->OnDarkSuspendImminent(suspend_id);
   }
 
   void OnPowerManagerAppeared() {
@@ -205,7 +205,7 @@ class PowerManagerTest : public Test {
   const base::TimeDelta kTimeout;
 
   MockEventDispatcher dispatcher_;
-  FakeProxyFactory factory_;
+  FakeControl control_;
   DBusManager dbus_manager_;
   PowerManager power_manager_;
   MockPowerManagerProxy* const power_manager_proxy_;

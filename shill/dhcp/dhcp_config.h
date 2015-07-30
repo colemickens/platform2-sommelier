@@ -28,7 +28,6 @@ class DHCPProxyInterface;
 class EventDispatcher;
 class GLib;
 class Metrics;
-class ProxyFactory;
 
 // This class provides a DHCP client instance for the device |device_name|.
 //
@@ -170,8 +169,7 @@ class DHCPConfig : public IPConfig {
   // Kills DHCP client process.
   void KillClient();
 
-  // Store cached copies of singletons for speed/ease of testing.
-  ProxyFactory* proxy_factory_;
+  ControlInterface* control_interface_;
 
   DHCPProvider* provider_;
 

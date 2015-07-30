@@ -20,7 +20,6 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_proxy_factory.h"
 #include "shill/mock_routing_table.h"
 #include "shill/net/io_handler.h"
 #include "shill/net/mock_rtnl_handler.h"
@@ -206,7 +205,6 @@ class ShillDaemonTest : public Test {
     // Tests initialization done by the daemon's constructor
     ASSERT_NE(nullptr, daemon_.config_);
     ASSERT_NE(nullptr, daemon_.control_.get());
-    daemon_.proxy_factory_ = &proxy_factory_;
     daemon_.rtnl_handler_ = &rtnl_handler_;
     daemon_.routing_table_ = &routing_table_;
     daemon_.dhcp_provider_ = &dhcp_provider_;
@@ -240,7 +238,6 @@ class ShillDaemonTest : public Test {
  protected:
   TestConfig config_;
   Daemon daemon_;
-  MockProxyFactory proxy_factory_;
   MockRTNLHandler rtnl_handler_;
   MockRoutingTable routing_table_;
   MockDHCPProvider dhcp_provider_;

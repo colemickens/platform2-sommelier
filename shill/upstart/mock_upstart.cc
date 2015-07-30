@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockUpstart::MockUpstart(ProxyFactory* proxy_factory)
-    : Upstart(proxy_factory) {}
+MockUpstart::MockUpstart(ControlInterface* control_interface)
+    : Upstart(control_interface) {}
 
 MockUpstart::~MockUpstart() {}
 

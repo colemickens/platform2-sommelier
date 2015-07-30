@@ -33,6 +33,7 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_control.h"
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_external_task.h"
@@ -40,7 +41,6 @@
 #include "shill/mock_ppp_device_factory.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/property_store_unittest.h"
-#include "shill/proxy_factory.h"
 #include "shill/rpc_task.h"  // for RpcTaskDelegate
 #include "shill/testing.h"
 
@@ -83,8 +83,7 @@ class CellularPropertyTest : public PropertyStoreTest {
                              Cellular::kTypeCDMA,
                              "",
                              "",
-                             "",
-                             ProxyFactory::GetInstance())) {}
+                             "")) {}
   virtual ~CellularPropertyTest() {}
 
  protected:
@@ -138,13 +137,14 @@ class CellularTest : public testing::Test {
         kServingOperatorCode("10002"),
         kServingOperatorCountry("ca"),
         kServingOperatorName("ServingOperatorName"),
-        modem_info_(nullptr, &dispatcher_, nullptr, nullptr, nullptr),
+        control_interface_(this),
+        modem_info_(&control_interface_, &dispatcher_,
+                    nullptr, nullptr, nullptr),
         device_info_(modem_info_.control_interface(), &dispatcher_,
                      modem_info_.metrics(), modem_info_.manager()),
         dhcp_config_(new MockDHCPConfig(modem_info_.control_interface(),
                                         kTestDeviceName)),
         create_gsm_card_proxy_from_factory_(false),
-        proxy_factory_(this),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr),
         device_(new Cellular(&modem_info_,
@@ -154,8 +154,7 @@ class CellularTest : public testing::Test {
                              Cellular::kTypeGSM,
                              kDBusOwner,
                              kDBusService,
-                             kDBusPath,
-                             &proxy_factory_)) {
+                             kDBusPath)) {
     PopulateProxies();
     modem_info_.metrics()->RegisterDevice(device_->interface_index(),
                                           Technology::kCellular);
@@ -476,9 +475,9 @@ class CellularTest : public testing::Test {
   const string kServingOperatorCountry;
   const string kServingOperatorName;
 
-  class TestProxyFactory : public ProxyFactory {
+  class TestControl : public MockControl {
    public:
-    explicit TestProxyFactory(CellularTest* test) : test_(test) {}
+    explicit TestControl(CellularTest* test) : test_(test) {}
 
     virtual DBusPropertiesProxyInterface* CreateDBusPropertiesProxy(
         const std::string& path,
@@ -603,6 +602,7 @@ class CellularTest : public testing::Test {
   }
 
   EventDispatcher dispatcher_;
+  TestControl control_interface_;
   MockModemInfo modem_info_;
   MockDeviceInfo device_info_;
   NiceMock<MockRTNLHandler> rtnl_handler_;
@@ -620,7 +620,6 @@ class CellularTest : public testing::Test {
   unique_ptr<mm1::MockModemModem3gppProxy> mm1_modem_3gpp_proxy_;
   unique_ptr<mm1::MockModemProxy> mm1_proxy_;
   unique_ptr<mm1::MockModemSimpleProxy> mm1_simple_proxy_;
-  TestProxyFactory proxy_factory_;
   MockMobileOperatorInfo* mock_home_provider_info_;
   MockMobileOperatorInfo* mock_serving_operator_info_;
   CellularRefPtr device_;
@@ -2075,7 +2074,7 @@ TEST_F(CellularTest, ScanSuccess) {
 
 TEST_F(CellularTest, EstablishLinkDHCP) {
   unique_ptr<CellularBearer> bearer(
-      new CellularBearer(&proxy_factory_, "", ""));
+      new CellularBearer(&control_interface_, "", ""));
   bearer->set_ipv4_config_method(IPConfig::kMethodDHCP);
   SetCapabilityUniversalActiveBearer(std::move(bearer));
   device_->state_ = Cellular::kStateConnected;
@@ -2096,7 +2095,7 @@ TEST_F(CellularTest, EstablishLinkDHCP) {
 
 TEST_F(CellularTest, EstablishLinkPPP) {
   unique_ptr<CellularBearer> bearer(
-      new CellularBearer(&proxy_factory_, "", ""));
+      new CellularBearer(&control_interface_, "", ""));
   bearer->set_ipv4_config_method(IPConfig::kMethodPPP);
   SetCapabilityUniversalActiveBearer(std::move(bearer));
   device_->state_ = Cellular::kStateConnected;
@@ -2129,7 +2128,7 @@ TEST_F(CellularTest, EstablishLinkStatic) {
   ipconfig_properties->dns_servers = vector<string>{kDNS[0], kDNS[1], kDNS[2]};
 
   unique_ptr<CellularBearer> bearer(
-      new CellularBearer(&proxy_factory_, "", ""));
+      new CellularBearer(&control_interface_, "", ""));
   bearer->set_ipv4_config_method(IPConfig::kMethodStatic);
   bearer->set_ipv4_config_properties(std::move(ipconfig_properties));
   SetCapabilityUniversalActiveBearer(std::move(bearer));

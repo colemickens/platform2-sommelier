@@ -21,7 +21,7 @@
 
 namespace shill {
 
-class ProxyFactory;
+class ControlInterface;
 
 // Handles an instance of ModemManager.Modem and an instance of a Cellular
 // device.
@@ -33,7 +33,8 @@ class Modem {
   Modem(const std::string& owner,
         const std::string& service,
         const std::string& path,
-        ModemInfo* modem_info);
+        ModemInfo* modem_info,
+        ControlInterface* control_interface);
   virtual ~Modem();
 
   // Asynchronously initializes support for the modem.
@@ -122,8 +123,7 @@ class Modem {
   bool pending_device_info_;
   RTNLHandler* rtnl_handler_;
 
-  // Store cached copies of singletons for speed/ease of testing.
-  ProxyFactory* proxy_factory_;
+  ControlInterface* control_interface_;
 
   // Serial number used to uniquify fake device names for Cellular
   // devices that don't have network devices. (Names must be unique
@@ -138,7 +138,8 @@ class ModemClassic : public Modem {
   ModemClassic(const std::string& owner,
                const std::string& service,
                const std::string& path,
-               ModemInfo* modem_info);
+               ModemInfo* modem_info,
+               ControlInterface* control_interface);
   ~ModemClassic() override;
 
   // Gathers information and passes it to CreateDeviceFromModemProperties.
@@ -158,7 +159,8 @@ class Modem1 : public Modem {
   Modem1(const std::string& owner,
          const std::string& service,
          const std::string& path,
-         ModemInfo* modem_info);
+         ModemInfo* modem_info,
+         ControlInterface* control_interface);
   ~Modem1() override;
 
   // Gathers information and passes it to CreateDeviceFromModemProperties.

@@ -7,8 +7,8 @@
 namespace shill {
 
 MockPowerManager::MockPowerManager(EventDispatcher* dispatcher,
-                                   ProxyFactory* proxy_factory)
-    : PowerManager(dispatcher, proxy_factory) {}
+                                   ControlInterface* control_interface)
+    : PowerManager(dispatcher, control_interface) {}
 
 MockPowerManager::~MockPowerManager() {}
 

@@ -18,12 +18,12 @@
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/mobile_operator_info.h"
+#include "shill/control_interface.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/pending_activation_store.h"
 #include "shill/property_accessor.h"
-#include "shill/proxy_factory.h"
 
 #ifdef MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN
 #error "Do not include mm-modem.h"
@@ -132,9 +132,9 @@ string AccessTechnologyToTechnologyFamily(uint32_t access_technologies) {
 
 CellularCapabilityUniversal::CellularCapabilityUniversal(
     Cellular* cellular,
-    ProxyFactory* proxy_factory,
+    ControlInterface* control_interface,
     ModemInfo* modem_info)
-    : CellularCapability(cellular, proxy_factory, modem_info),
+    : CellularCapability(cellular, control_interface, modem_info),
       mobile_operator_info_(new MobileOperatorInfo(cellular->dispatcher(),
                                                    "ParseScanResult")),
       weak_ptr_factory_(this),
@@ -188,14 +188,14 @@ void CellularCapabilityUniversal::HelpRegisterConstDerivedKeyValueStore(
 
 void CellularCapabilityUniversal::InitProxies() {
   modem_3gpp_proxy_.reset(
-      proxy_factory()->CreateMM1ModemModem3gppProxy(cellular()->dbus_path(),
-                                                    cellular()->dbus_owner()));
+      control_interface()->CreateMM1ModemModem3gppProxy(
+          cellular()->dbus_path(), cellular()->dbus_owner()));
   modem_proxy_.reset(
-      proxy_factory()->CreateMM1ModemProxy(cellular()->dbus_path(),
-                                           cellular()->dbus_owner()));
+      control_interface()->CreateMM1ModemProxy(cellular()->dbus_path(),
+                                               cellular()->dbus_owner()));
   modem_simple_proxy_.reset(
-      proxy_factory()->CreateMM1ModemSimpleProxy(cellular()->dbus_path(),
-                                                 cellular()->dbus_owner()));
+      control_interface()->CreateMM1ModemSimpleProxy(cellular()->dbus_path(),
+                                                     cellular()->dbus_owner()));
 
   modem_proxy_->set_state_changed_callback(
       Bind(&CellularCapabilityUniversal::OnModemStateChangedSignal,
@@ -735,8 +735,8 @@ void CellularCapabilityUniversal::GetProperties() {
   SLOG(this, 3) << __func__;
 
   std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
-      proxy_factory()->CreateDBusPropertiesProxy(cellular()->dbus_path(),
-                                                 cellular()->dbus_owner()));
+      control_interface()->CreateDBusPropertiesProxy(cellular()->dbus_path(),
+                                                     cellular()->dbus_owner()));
   DBusPropertiesMap properties(
       properties_proxy->GetAll(MM_DBUS_INTERFACE_MODEM));
   OnModemPropertiesChanged(properties, vector<string>());
@@ -781,7 +781,9 @@ void CellularCapabilityUniversal::UpdateActiveBearer() {
   active_bearer_.reset();
   for (const auto& path : bearer_paths_) {
     std::unique_ptr<CellularBearer> bearer(
-        new CellularBearer(proxy_factory(), path, cellular()->dbus_service()));
+        new CellularBearer(control_interface(),
+                           path,
+                           cellular()->dbus_service()));
     // The bearer object may have vanished before ModemManager updates the
     // 'Bearers' property.
     if (!bearer->Init())
@@ -1290,8 +1292,8 @@ void CellularCapabilityUniversal::OnSimPathChanged(
 
   mm1::SimProxyInterface* proxy = nullptr;
   if (IsValidSimPath(sim_path))
-    proxy = proxy_factory()->CreateSimProxy(sim_path,
-                                            cellular()->dbus_owner());
+    proxy = control_interface()->CreateSimProxy(sim_path,
+                                                cellular()->dbus_owner());
   sim_path_ = sim_path;
   sim_proxy_.reset(proxy);
 
@@ -1306,8 +1308,8 @@ void CellularCapabilityUniversal::OnSimPathChanged(
   } else {
     cellular()->set_sim_present(true);
     std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
-        proxy_factory()->CreateDBusPropertiesProxy(sim_path,
-                                                   cellular()->dbus_owner()));
+        control_interface()->CreateDBusPropertiesProxy(
+            sim_path, cellular()->dbus_owner()));
     // TODO(jglasgow): convert to async interface
     DBusPropertiesMap properties(
         properties_proxy->GetAll(MM_DBUS_INTERFACE_SIM));
@@ -1444,8 +1446,8 @@ void CellularCapabilityUniversal::OnSimLockStatusChanged() {
       (sim_lock_status_.lock_type == MM_MODEM_LOCK_NONE ||
        sim_lock_status_.lock_type == MM_MODEM_LOCK_UNKNOWN)) {
     std::unique_ptr<DBusPropertiesProxyInterface> properties_proxy(
-        proxy_factory()->CreateDBusPropertiesProxy(sim_path_,
-                                                   cellular()->dbus_owner()));
+        control_interface()->CreateDBusPropertiesProxy(
+            sim_path_, cellular()->dbus_owner()));
     DBusPropertiesMap properties(
         properties_proxy->GetAll(MM_DBUS_INTERFACE_SIM));
     OnSimPropertiesChanged(properties, vector<string>());

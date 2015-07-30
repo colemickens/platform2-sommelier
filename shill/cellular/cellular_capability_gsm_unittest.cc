@@ -23,9 +23,9 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_control.h"
 #include "shill/mock_log.h"
 #include "shill/mock_profile.h"
-#include "shill/proxy_factory.h"
 #include "shill/testing.h"
 
 using base::Bind;
@@ -44,13 +44,14 @@ namespace shill {
 class CellularCapabilityGSMTest : public testing::Test {
  public:
   CellularCapabilityGSMTest()
-      : modem_info_(nullptr, &dispatcher_, nullptr, nullptr, nullptr),
+      : control_interface_(this),
+        modem_info_(&control_interface_, &dispatcher_,
+                    nullptr, nullptr, nullptr),
         create_card_proxy_from_factory_(false),
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
         card_proxy_(new MockModemGSMCardProxy()),
         network_proxy_(new MockModemGSMNetworkProxy()),
-        proxy_factory_(this),
         capability_(nullptr),
         device_adaptor_(nullptr),
         cellular_(new Cellular(&modem_info_,
@@ -60,8 +61,7 @@ class CellularCapabilityGSMTest : public testing::Test {
                                Cellular::kTypeGSM,
                                "",
                                "",
-                               "",
-                               &proxy_factory_)),
+                               "")),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr) {
     modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
@@ -178,9 +178,9 @@ class CellularCapabilityGSMTest : public testing::Test {
   static const char kMSISDN[];
   static const int kStrength;
 
-  class TestProxyFactory : public ProxyFactory {
+  class TestControl : public MockControl {
    public:
-    explicit TestProxyFactory(CellularCapabilityGSMTest* test) : test_(test) {}
+    explicit TestControl(CellularCapabilityGSMTest* test) : test_(test) {}
 
     virtual ModemProxyInterface* CreateModemProxy(
         const string& /*path*/,
@@ -309,13 +309,13 @@ class CellularCapabilityGSMTest : public testing::Test {
   }
 
   EventDispatcher dispatcher_;
+  TestControl control_interface_;
   MockModemInfo modem_info_;
   bool create_card_proxy_from_factory_;
   std::unique_ptr<MockModemProxy> proxy_;
   std::unique_ptr<MockModemSimpleProxy> simple_proxy_;
   std::unique_ptr<MockModemGSMCardProxy> card_proxy_;
   std::unique_ptr<MockModemGSMNetworkProxy> network_proxy_;
-  TestProxyFactory proxy_factory_;
   CellularCapabilityGSM* capability_;  // Owned by |cellular_|.
   DeviceMockAdaptor* device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;

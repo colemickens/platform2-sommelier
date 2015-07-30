@@ -4,8 +4,8 @@
 
 #include "shill/upstart/upstart.h"
 
+#include "shill/control_interface.h"
 #include "shill/upstart/upstart_proxy_interface.h"
-#include "shill/proxy_factory.h"
 
 namespace shill {
 
@@ -13,8 +13,8 @@ namespace shill {
 const char Upstart::kShillDisconnectEvent[] = "shill-disconnected";
 const char Upstart::kShillConnectEvent[] = "shill-connected";
 
-Upstart::Upstart(ProxyFactory* proxy_factory)
-    : upstart_proxy_(proxy_factory->CreateUpstartProxy()) {}
+Upstart::Upstart(ControlInterface* control_interface)
+    : upstart_proxy_(control_interface->CreateUpstartProxy()) {}
 
 Upstart::~Upstart() {}
 
