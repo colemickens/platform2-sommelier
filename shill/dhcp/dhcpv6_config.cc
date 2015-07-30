@@ -146,7 +146,7 @@ bool DHCPv6Config::ParseConfiguration(const KeyValueStore& configuration) {
                key == kConfigurationKeyDelegatedPrefixLeaseTime) {
       UpdateLeaseTime(value.Get<uint32_t>());
     } else if (key == kConfigurationKeyDelegatedPrefix) {
-      properties_.delegated_prefix = value.Get<string>()
+      properties_.delegated_prefix = value.Get<string>();
     } else if (key == kConfigurationKeyDelegatedPrefixLength) {
       properties_.delegated_prefix_length = value.Get<uint32_t>();
     } else {
