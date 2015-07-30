@@ -303,6 +303,13 @@ TEST_F(WiFiEndpointTest, DeterminePhyModeFromFrequency) {
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11g,
               WiFiEndpoint::DeterminePhyModeFromFrequency(properties, 2400));
   }
+  {
+    KeyValueStore properties;
+    vector<uint32_t> rates;
+    properties.SetUint32s(WPASupplicant::kBSSPropertyRates, rates);
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11b,
+              WiFiEndpoint::DeterminePhyModeFromFrequency(properties, 2400));
+  }
 }
 
 TEST_F(WiFiEndpointTest, ParseIEs) {

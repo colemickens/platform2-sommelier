@@ -371,7 +371,9 @@ Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyModeFromFrequency(
   if (properties.ContainsUint32s(WPASupplicant::kBSSPropertyRates)) {
     vector<uint32_t> rates =
         properties.GetUint32s(WPASupplicant::kBSSPropertyRates);
-    max_rate = rates[0];  // Rates are sorted in descending order
+    if (rates.size() > 0) {
+      max_rate = rates[0];  // Rates are sorted in descending order
+    }
   }
 
   Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
