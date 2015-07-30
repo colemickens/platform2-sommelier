@@ -5,14 +5,15 @@
 #ifndef LIBWEAVE_SRC_PRIVET_PEERD_CLIENT_H_
 #define LIBWEAVE_SRC_PRIVET_PEERD_CLIENT_H_
 
+#include <map>
 #include <memory>
 #include <string>
 
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
 
-#include "libweave/src/privet/identity_delegate.h"
 #include "peerd/dbus-proxies.h"
+#include "weave/mdns.h"
 
 namespace dbus {
 class Bus;
@@ -21,25 +22,18 @@ class Bus;
 namespace weave {
 namespace privet {
 
-class CloudDelegate;
-class DeviceDelegate;
-class WifiDelegate;
-
-// Publishes prived service on mDns using peerd.
-class PeerdClient : public IdentityDelegate {
+// Publishes privet service on mDns using peerd.
+class PeerdClient : public Mdns {
  public:
-  PeerdClient(const scoped_refptr<dbus::Bus>& bus,
-              const DeviceDelegate* device,
-              const CloudDelegate* cloud,
-              const WifiDelegate* wifi);
-  ~PeerdClient();
+  explicit PeerdClient(const scoped_refptr<dbus::Bus>& bus);
+  ~PeerdClient() override;
 
-  // Get the unique identifier for this device.  Note that if peerd has
-  // never been seen, this may be the empty string.
+  // Mdns implementation.
+  void PublishService(const std::string& service_name,
+                      uint16_t port,
+                      const std::map<std::string, std::string>& txt) override;
+  void StopPublishing(const std::string& service_name) override;
   std::string GetId() const override;
-
-  // Updates published information.  Removes service if HTTP is not alive.
-  void Update();
 
  private:
   void OnPeerdOnline(org::chromium::peerd::ManagerProxy* manager_proxy);
@@ -47,6 +41,9 @@ class PeerdClient : public IdentityDelegate {
   void OnNewPeer(org::chromium::peerd::PeerProxy* peer_proxy);
   void OnPeerPropertyChanged(org::chromium::peerd::PeerProxy* peer_proxy,
                              const std::string& property_name);
+
+  // Updates published information.  Removes service if HTTP is not alive.
+  void Update();
 
   void ExposeService();
   void RemoveService();
@@ -57,15 +54,17 @@ class PeerdClient : public IdentityDelegate {
   // |peerd_manager_proxy_| is owned by |peerd_object_manager_proxy_|.
   org::chromium::peerd::ManagerProxy* peerd_manager_proxy_{nullptr};
 
-  const DeviceDelegate* device_{nullptr};
-  const CloudDelegate* cloud_{nullptr};
-  const WifiDelegate* wifi_{nullptr};
-
   // Cached value of the device ID that we got from peerd.
   std::string device_id_;
 
+  std::string service_name_;
+  uint16_t port_{0};
+  std::map<std::string, std::string> txt_;
+
   base::WeakPtrFactory<PeerdClient> restart_weak_ptr_factory_{this};
   base::WeakPtrFactory<PeerdClient> weak_ptr_factory_{this};
+
+  DISALLOW_COPY_AND_ASSIGN(PeerdClient);
 };
 
 }  // namespace privet

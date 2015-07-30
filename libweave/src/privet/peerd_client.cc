@@ -10,12 +10,6 @@
 #include <chromeos/errors/error.h>
 #include <chromeos/strings/string_utils.h>
 
-#include "libweave/src/privet/cloud_delegate.h"
-#include "libweave/src/privet/device_delegate.h"
-#include "libweave/src/privet/wifi_bootstrap_manager.h"
-#include "libweave/src/privet/wifi_ssid_generator.h"
-
-using chromeos::string_utils::Join;
 using org::chromium::peerd::PeerProxy;
 
 namespace weave {
@@ -28,8 +22,6 @@ namespace {
 // updates relevant for a short amount of time.
 const int kCommitTimeoutSeconds = 1;
 
-// The name of the service we'll expose via peerd.
-const char kPrivetServiceId[] = "privet";
 const char kSelfPath[] = "/org/chromium/peerd/Self";
 
 void OnError(const std::string& operation, chromeos::Error* error) {
@@ -38,16 +30,8 @@ void OnError(const std::string& operation, chromeos::Error* error) {
 
 }  // namespace
 
-PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus,
-                         const DeviceDelegate* device,
-                         const CloudDelegate* cloud,
-                         const WifiDelegate* wifi)
-    : peerd_object_manager_proxy_{bus},
-      device_{device},
-      cloud_{cloud},
-      wifi_{wifi} {
-  CHECK(device_);
-  CHECK(cloud_);
+PeerdClient::PeerdClient(const scoped_refptr<dbus::Bus>& bus)
+    : peerd_object_manager_proxy_{bus} {
   peerd_object_manager_proxy_.SetManagerAddedCallback(
       base::Bind(&PeerdClient::OnPeerdOnline, weak_ptr_factory_.GetWeakPtr()));
   peerd_object_manager_proxy_.SetManagerRemovedCallback(
@@ -62,6 +46,28 @@ PeerdClient::~PeerdClient() {
 
 std::string PeerdClient::GetId() const {
   return device_id_;
+}
+
+void PeerdClient::PublishService(
+    const std::string& service_name,
+    uint16_t port,
+    const std::map<std::string, std::string>& txt) {
+  // Only one service supported.
+  CHECK(service_name_.empty() || service_name_ == service_name);
+  service_name_ = service_name;
+  port_ = port;
+  txt_ = txt;
+
+  Update();
+}
+
+void PeerdClient::StopPublishing(const std::string& service_name) {
+  // Only one service supported.
+  CHECK(service_name_.empty() || service_name_ == service_name);
+  service_name_ = service_name;
+  port_ = 0;
+
+  Update();
 }
 
 void PeerdClient::Update() {
@@ -110,44 +116,16 @@ void PeerdClient::ExposeService() {
   // Do nothing if peerd hasn't started yet.
   if (peerd_manager_proxy_ == nullptr)
     return;
-
-  std::string name;
-  std::string model_id;
-  if (!cloud_->GetName(&name, nullptr) ||
-      !cloud_->GetModelId(&model_id, nullptr)) {
-    return;
-  }
-  DCHECK_EQ(model_id.size(), 5U);
-
   VLOG(1) << "Starting peerd advertising.";
-  const uint16_t port = device_->GetHttpEnpoint().first;
+  CHECK_NE(port_, 0);
+  CHECK(!service_name_.empty());
+  CHECK(!txt_.empty());
   std::map<std::string, chromeos::Any> mdns_options{
-      {"port", chromeos::Any{port}},
+      {"port", chromeos::Any{port_}},
   };
-  DCHECK_NE(port, 0);
-
-  std::string services;
-  if (!cloud_->GetServices().empty())
-    services += "_";
-  services += Join(",_", cloud_->GetServices());
-
-  std::map<std::string, std::string> txt_record{
-      {"txtvers", "3"},
-      {"ty", name},
-      {"services", services},
-      {"id", GetId()},
-      {"mmid", model_id},
-      {"flags", WifiSsidGenerator{cloud_, wifi_}.GenerateFlags()},
-  };
-
-  if (!cloud_->GetCloudId().empty())
-    txt_record.emplace("gcd_id", cloud_->GetCloudId());
-
-  if (!cloud_->GetDescription().empty())
-    txt_record.emplace("note", cloud_->GetDescription());
 
   peerd_manager_proxy_->ExposeServiceAsync(
-      kPrivetServiceId, txt_record, {{"mdns", mdns_options}}, base::Closure(),
+      service_name_, txt_, {{"mdns", mdns_options}}, base::Closure(),
       base::Bind(&OnError, "ExposeService"));
 }
 
@@ -156,12 +134,14 @@ void PeerdClient::RemoveService() {
     return;
 
   VLOG(1) << "Stopping peerd advertising.";
-  peerd_manager_proxy_->RemoveExposedServiceAsync(
-      kPrivetServiceId, base::Closure(), base::Bind(&OnError, "RemoveService"));
+  if (!service_name_.empty()) {
+    peerd_manager_proxy_->RemoveExposedServiceAsync(
+        service_name_, base::Closure(), base::Bind(&OnError, "RemoveService"));
+  }
 }
 
 void PeerdClient::UpdateImpl() {
-  if (device_->GetHttpEnpoint().first == 0)
+  if (port_ == 0)
     return RemoveService();
   ExposeService();
 }

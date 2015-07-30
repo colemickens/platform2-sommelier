@@ -35,6 +35,7 @@
 #include "libweave/src/privet/device_delegate.h"
 #include "libweave/src/privet/peerd_client.h"
 #include "libweave/src/privet/privet_handler.h"
+#include "libweave/src/privet/publisher.h"
 #include "libweave/src/privet/shill_client.h"
 
 namespace weave {
@@ -88,12 +89,15 @@ void Manager::Start(const Device::Options& options,
     wifi_bootstrap_manager_->Init();
   }
 
-  peerd_client_.reset(new PeerdClient(bus, device_.get(), cloud_.get(),
-                                      wifi_bootstrap_manager_.get()));
+  peerd_client_.reset(new PeerdClient(bus));
+
+  publisher_.reset(new Publisher(device_.get(), cloud_.get(),
+                                 wifi_bootstrap_manager_.get(),
+                                 peerd_client_.get()));
 
   privet_handler_.reset(
       new PrivetHandler(cloud_.get(), device_.get(), security_.get(),
-                        wifi_bootstrap_manager_.get(), peerd_client_.get()));
+                        wifi_bootstrap_manager_.get(), publisher_.get()));
 
   web_server_.reset(new libwebserv::Server);
   web_server_->OnProtocolHandlerConnected(base::Bind(
@@ -195,8 +199,8 @@ void Manager::HelloWorldHandler(std::unique_ptr<Request> request,
 }
 
 void Manager::OnChanged() {
-  if (peerd_client_)
-    peerd_client_->Update();
+  if (publisher_)
+    publisher_->Update();
 }
 
 void Manager::OnConnectivityChanged(bool online) {
@@ -206,8 +210,8 @@ void Manager::OnConnectivityChanged(bool online) {
 void Manager::OnProtocolHandlerConnected(ProtocolHandler* protocol_handler) {
   if (protocol_handler->GetName() == ProtocolHandler::kHttp) {
     device_->SetHttpPort(*protocol_handler->GetPorts().begin());
-    if (peerd_client_)
-      peerd_client_->Update();
+    if (publisher_)
+      publisher_->Update();
   } else if (protocol_handler->GetName() == ProtocolHandler::kHttps) {
     device_->SetHttpsPort(*protocol_handler->GetPorts().begin());
     security_->SetCertificateFingerprint(
@@ -218,8 +222,8 @@ void Manager::OnProtocolHandlerConnected(ProtocolHandler* protocol_handler) {
 void Manager::OnProtocolHandlerDisconnected(ProtocolHandler* protocol_handler) {
   if (protocol_handler->GetName() == ProtocolHandler::kHttp) {
     device_->SetHttpPort(0);
-    if (peerd_client_)
-      peerd_client_->Update();
+    if (publisher_)
+      publisher_->Update();
   } else if (protocol_handler->GetName() == ProtocolHandler::kHttps) {
     device_->SetHttpsPort(0);
     security_->SetCertificateFingerprint({});

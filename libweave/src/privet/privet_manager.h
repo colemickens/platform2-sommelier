@@ -35,6 +35,7 @@ namespace weave {
 
 class CommandManager;
 class DeviceRegistrationInfo;
+class Mdns;
 class StateManager;
 
 namespace privet {
@@ -45,6 +46,7 @@ class DaemonState;
 class DeviceDelegate;
 class PeerdClient;
 class PrivetHandler;
+class Publisher;
 class SecurityManager;
 class ShillClient;
 
@@ -102,6 +104,7 @@ class Manager : public Privet, public CloudDelegate::Observer {
   std::unique_ptr<ApManagerClient> ap_manager_client_;
   std::unique_ptr<WifiBootstrapManager> wifi_bootstrap_manager_;
   std::unique_ptr<PeerdClient> peerd_client_;
+  std::unique_ptr<Publisher> publisher_;
   std::unique_ptr<PrivetHandler> privet_handler_;
   std::unique_ptr<libwebserv::Server> web_server_;
 
