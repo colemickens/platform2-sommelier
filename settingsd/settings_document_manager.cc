@@ -65,12 +65,13 @@ SettingsDocumentManager::SettingsDocumentManager(
       trusted_document_(std::move(trusted_document)),
       blob_store_(storage_path),
       settings_map_(std::move(settings_map)) {
-  // TODO(cschuet): When SettingsDocumentManager starts up it should enumerate
-  // the already existing SettingsDocuments found in BlobStore and load them.
-  //
   // The trusted document should have an empty version stamp.
   CHECK(!VersionStamp().IsBefore(trusted_document_->GetVersionStamp()));
+}
 
+SettingsDocumentManager::~SettingsDocumentManager() {}
+
+void SettingsDocumentManager::Init() {
   settings_map_->Clear();
 
   // Insert the trusted document.
@@ -81,9 +82,30 @@ SettingsDocumentManager::SettingsDocumentManager(
   if (!unreferenced_documents.empty())
     LOG(ERROR) << "Initial SettingsDocument is empty.";
   UpdateTrustConfiguration(&changed_keys);
-}
 
-SettingsDocumentManager::~SettingsDocumentManager() {}
+  // |trusted_document| should have installed at least one source.
+  if (sources_.empty())
+    LOG(WARNING) << "Initial settings document has not added any sources.";
+
+  // Load settings blobs from disk for known sources in the order of the source
+  // hierarchy.
+  for (auto source_iter = sources_.begin(); source_iter != sources_.end();
+       ++source_iter) {
+    const std::string current_source_id = source_iter->first;
+
+    // Find all documents for the source and InsertBlob() 'em.
+    for (const auto& handle : blob_store_.List(current_source_id)) {
+      const std::vector<uint8_t> blob = blob_store_.Load(handle);
+      InsertionStatus status = InsertBlob(current_source_id, BlobRef(&blob));
+      if (status != kInsertionStatusSuccess) {
+        LOG(ERROR) << "Failed to load settings blob for source "
+                   << current_source_id;
+      }
+    }
+    // Sources cannot remove themselves.
+    CHECK(sources_.end() != sources_.find(current_source_id));
+  }
+}
 
 const base::Value* SettingsDocumentManager::GetValue(const Key& key) const {
   return settings_map_->GetValue(key);
@@ -109,32 +131,12 @@ SettingsDocumentManager::InsertionStatus SettingsDocumentManager::InsertBlob(
   if (!source)
     return kInsertionStatusUnknownSource;
 
-  // Parse the blob. Try with the formats allowed by the source. If there are no
-  // formats in source config, try the default format (identified by empty
-  // string).
+  // Parse and validate the blob.
   std::unique_ptr<LockedSettingsContainer> container;
-  for (const std::string& format : source->blob_formats()) {
-    container = settings_blob_parser_function_(format, blob);
-    if (container)
-      break;
-  }
-  if (!container && source->blob_formats().empty())
-    container = settings_blob_parser_function_(std::string(), blob);
-  if (!container)
-    return kInsertionStatusParseError;
-
-  // Validate the blob, i.e. check its integrity and verify it's authentic
-  // with respect to the corresponding source configuration.
-  if (!source->delegate()->ValidateContainer(*container))
-    return kInsertionStatusValidationError;
-
-  for (auto& component : container->GetVersionComponents()) {
-    const Source* version_source = FindSource(component->GetSourceId());
-    if (!version_source ||
-        !version_source->delegate()->ValidateVersionComponent(*component)) {
-      return kInsertionStatusValidationError;
-    }
-  }
+  SettingsDocumentManager::InsertionStatus status =
+      ParseAndValidateBlob(source, blob, &container);
+  if (status != kInsertionStatusSuccess)
+    return status;
 
   // Blob validation looks good. Unwrap the SettingsDocument and insert it.
   std::unique_ptr<const SettingsDocument> document(
@@ -152,8 +154,7 @@ SettingsDocumentManager::InsertionStatus SettingsDocumentManager::InsertBlob(
   if (!handle.IsValid())
     return kInsertionStatusStorageFailure;
 
-  InsertionStatus status =
-      InsertDocument(std::move(document), handle, source_id);
+  status = InsertDocument(std::move(document), handle, source_id);
 
   // If the insertion failed remove the corresponding blob from the BlobStore.
   if (status != kInsertionStatusSuccess && !blob_store_.Purge(handle))
@@ -324,6 +325,40 @@ bool SettingsDocumentManager::PurgeBlobAndDocumentEntry(
   BlobStore::Handle handle(document_iter->handle_);
   source_entry.document_entries_.erase(document_iter);
   return blob_store_.Purge(handle);
+}
+
+SettingsDocumentManager::InsertionStatus
+SettingsDocumentManager::ParseAndValidateBlob(
+    const Source* source,
+    BlobRef blob,
+    std::unique_ptr<LockedSettingsContainer>* container) const {
+  // Parse the blob. Try with the formats allowed by the source. If there are no
+  // formats in source config, try the default format (identified by empty
+  // string).
+  for (const std::string& format : source->blob_formats()) {
+    *container = settings_blob_parser_function_(format, blob);
+    if (*container)
+      break;
+  }
+  if (!*container && source->blob_formats().empty())
+    *container = settings_blob_parser_function_(std::string(), blob);
+  if (!*container)
+    return kInsertionStatusParseError;
+
+  // Validate the blob, i.e. check its integrity and verify it's authentic
+  // with respect to the corresponding source configuration.
+  if (!source->delegate()->ValidateContainer(*container->get()))
+    return kInsertionStatusValidationError;
+
+  // Validate the blob's version components.
+  for (auto& component : (*container)->GetVersionComponents()) {
+    const Source* version_source = FindSource(component->GetSourceId());
+    if (!version_source ||
+        !version_source->delegate()->ValidateVersionComponent(*component)) {
+      return kInsertionStatusValidationError;
+    }
+  }
+  return kInsertionStatusSuccess;
 }
 
 bool SettingsDocumentManager::RevalidateDocument(

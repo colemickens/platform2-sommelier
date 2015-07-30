@@ -5,11 +5,11 @@
 #ifndef SETTINGSD_SETTINGS_DOCUMENT_MANAGER_H_
 #define SETTINGSD_SETTINGS_DOCUMENT_MANAGER_H_
 
+#include <map>
 #include <memory>
 #include <queue>
 #include <set>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include <base/macros.h>
@@ -74,6 +74,11 @@ class SettingsDocumentManager : public SettingsService {
       std::unique_ptr<SettingsMap> settings_map,
       std::unique_ptr<const SettingsDocument> trusted_document);
   ~SettingsDocumentManager();
+
+  // Initializes the SettingsDocumentManager by inserting the trusted document
+  // into the SettingsMap and loading settings blobs for all known sources from
+  // disk.
+  void Init();
 
   // SettingsService:
   const base::Value* GetValue(const Key& key) const override;
@@ -144,6 +149,15 @@ class SettingsDocumentManager : public SettingsService {
   // Returns true on success. Otherwise, returns false.
   bool PurgeBlobAndDocumentEntry(const SettingsDocument* document);
 
+  // Attempts to parse and validate a settings blob. On success, returns success
+  // status and populates |container| with the parsed and validated
+  // LockedSettingsContainer. On error, returns a status code indicating the
+  // failure mode.
+  SettingsDocumentManager::InsertionStatus ParseAndValidateBlob(
+      const Source* source,
+      BlobRef blob,
+      std::unique_ptr<LockedSettingsContainer>* container) const;
+
   // Revalidates a document, including trust configuration and signature checks.
   // Returns true if the document is still valid against current trust
   // configuration.
@@ -191,7 +205,7 @@ class SettingsDocumentManager : public SettingsService {
   BlobStore blob_store_;
 
   // A map of all sources currently present, along with their documents.
-  std::unordered_map<std::string, SourceMapEntry> sources_;
+  std::map<std::string, SourceMapEntry> sources_;
 
   // The underlying settings map that tracks effective configuration.
   std::unique_ptr<SettingsMap> settings_map_;

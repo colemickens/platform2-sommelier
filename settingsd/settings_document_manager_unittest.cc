@@ -48,7 +48,6 @@ class MockSettingsBlobParser {
     auto entry = containers_.find(data.ToString());
     if (entry != containers_.end())
       return entry->second->Clone();
-
     return std::unique_ptr<LockedSettingsContainer>();
   }
 
@@ -173,7 +172,8 @@ std::unique_ptr<const SettingsDocument> CreateInitialTrustedSettingsDocument() {
   std::unique_ptr<MockSettingsDocument> document(
       new MockSettingsDocument(kTestSource0, VersionStamp()));
   ConfigureSource(document.get(), kTestSource0, kSettingStatusActive,
-                  {{MakeSourceKey(kTestSource1), kSettingStatusActive},
+                  {{Key(kTestSource0), kSettingStatusActive},
+                   {MakeSourceKey(kTestSource1), kSettingStatusActive},
                    {MakeSourceKey(kTestSource2), kSettingStatusActive}});
   return std::move(document);
 }
@@ -192,11 +192,16 @@ class SettingsDocumentManagerTest : public testing::Test {
 
   void SetUp() override {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
+    ReinitializeSettingsDocumentManager();
+  }
+
+  void ReinitializeSettingsDocumentManager() {
     manager_.reset(new SettingsDocumentManager(
         std::ref(parser_), std::ref(source_delegate_factory_),
         tmpdir_.path().value(),
         std::unique_ptr<SettingsMap>(new SimpleSettingsMap()),
         CreateInitialTrustedSettingsDocument()));
+    manager_->Init();
   }
 
   // Creates a container and moves |payload| inside.
@@ -564,6 +569,12 @@ TEST_F(SettingsDocumentManagerTest, InsertBlobValidationErrorBadPayload) {
   EXPECT_EQ(
       SettingsDocumentManager::kInsertionStatusBadPayload,
       InsertBlob(kTestSource1, parser_.Register(MakeContainer(nullptr)), {}));
+}
+
+TEST_F(SettingsDocumentManagerTest, InsertBlobOnStartUp) {
+  AddSentinelValue(kTestSource0);
+  ReinitializeSettingsDocumentManager();
+  CheckSentinelValues({kTestSource0}, {});
 }
 
 }  // namespace settingsd
