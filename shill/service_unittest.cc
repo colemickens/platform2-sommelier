@@ -2320,6 +2320,11 @@ TEST_F(ServiceTest, Compare) {
       .WillRepeatedly(Return(true));
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
 
+  // Online preferred over just connected.
+  EXPECT_CALL(*service2.get(), state())
+      .WillRepeatedly(Return(Service::kStateOnline));
+  EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
+
   // Connectivity state ignored if this is specified.
   const bool kDoNotCompareConnectivityState = false;
   EXPECT_TRUE(SortingOrderIs(service2, service10,

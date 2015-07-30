@@ -717,6 +717,7 @@ class Service : public base::RefCounted<Service> {
   static const char kServiceSortDependency[];
   static const char kServiceSortIsConnecting[];
   static const char kServiceSortIsFailed[];
+  static const char kServiceSortIsOnline[];
   static const char kServiceSortIsPortalled[];
   static const char kServiceSortPriority[];
   static const char kServiceSortPriorityWithinTechnology[];

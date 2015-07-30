@@ -79,6 +79,7 @@ const char Service::kServiceSortHasEverConnected[] = "HasEverConnected";
 const char Service::kServiceSortIsConnected[] = "IsConnected";
 const char Service::kServiceSortIsConnecting[] = "IsConnecting";
 const char Service::kServiceSortIsFailed[] = "IsFailed";
+const char Service::kServiceSortIsOnline[] = "IsOnline";
 const char Service::kServiceSortIsPortalled[] = "IsPortal";
 const char Service::kServiceSortPriority[] = "Priority";
 const char Service::kServiceSortPriorityWithinTechnology[] =
@@ -1065,6 +1066,11 @@ bool Service::Compare(Manager* manager,
   bool ret;
 
   if (compare_connectivity_state && a->state() != b->state()) {
+    if (DecideBetween(a->IsOnline(), b->IsOnline(), &ret)) {
+      *reason = kServiceSortIsOnline;
+      return ret;
+    }
+
     if (DecideBetween(a->IsConnected(), b->IsConnected(), &ret)) {
       *reason = kServiceSortIsConnected;
       return ret;
