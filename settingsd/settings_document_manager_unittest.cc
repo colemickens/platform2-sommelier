@@ -105,8 +105,8 @@ class MockSourceDelegate : public SourceDelegate {
       bool version_component_status,
       const std::string& source_id,
       const SettingsService& settings) {
-    return std::unique_ptr<SourceDelegate>(new MockSourceDelegate(
-        container_status, version_component_status));
+    return std::unique_ptr<SourceDelegate>(
+        new MockSourceDelegate(container_status, version_component_status));
   }
 
   bool container_status_;
@@ -199,11 +199,9 @@ class SettingsDocumentManagerTest : public testing::Test {
         CreateInitialTrustedSettingsDocument()));
   }
 
-  // Creates a container with a bumped version stamp.
+  // Creates a container and moves |payload| inside.
   std::unique_ptr<MockLockedSettingsContainer> MakeContainer(
-      const std::string& source_id,
-      std::unique_ptr<MockSettingsDocument> payload) {
-    current_version_.Set(source_id, current_version_.Get(source_id) + 1);
+      std::unique_ptr<const MockSettingsDocument> payload) {
     std::unique_ptr<MockLockedSettingsContainer> container(
         new MockLockedSettingsContainer(std::move(payload)));
     return container;
@@ -225,14 +223,19 @@ class SettingsDocumentManagerTest : public testing::Test {
         new MockSettingsDocument(source_id, current_version_));
   }
 
-  // Wrapper for SettingsDocumentManager::InsertDocument, which is private.
+  // Convenience wrapper for SettingsDocumentManager::InsertBlob, which wraps
+  // the given |document| in a MockLockedSettingsContainer, registers the
+  // container with the parser, and inserts the resulting blob. This also makes
+  // sure that the parser can re-load the document for re-validation. This
+  // function is useful for test cases that just want to insert a document -
+  // call InsertBlob directly for test cases that exercise blob insertion logic.
   SettingsDocumentManager::InsertionStatus InsertDocument(
-      std::unique_ptr<const SettingsDocument> document,
+      std::unique_ptr<const MockSettingsDocument> document,
       const std::string& source_id,
       const std::deque<std::set<Key>>& expected_changes) {
     SettingsChangeVerifier verifier(manager_.get(), expected_changes);
-    return manager_->InsertDocument(std::move(document), BlobStore::Handle(),
-                                    source_id);
+    return manager_->InsertBlob(
+        source_id, parser_.Register(MakeContainer(std::move(document))));
   }
 
   // A helper to configure a trusted source.
@@ -465,7 +468,7 @@ TEST_F(SettingsDocumentManagerTest, InsertionFailureVersionClash) {
   version_stamp.Set(kTestSource2, current_version_.Get(kTestSource2) + 1);
   EXPECT_TRUE(version_stamp.IsAfter(current_version_));
   std::unique_ptr<MockSettingsDocument> document(
-      new MockSettingsDocument(kTestSource2, version_stamp));
+      new MockSettingsDocument(kTestSource1, version_stamp));
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusVersionClash,
             InsertDocument(std::move(document), kTestSource1, {}));
 }
@@ -497,8 +500,8 @@ TEST_F(SettingsDocumentManagerTest, InsertBlobSuccess) {
   std::unique_ptr<MockSettingsDocument> document(MakeDocument(kTestSource1));
   document->SetKey(Key(kTestSource1), MakeStringValue(kTestSource1));
   EXPECT_EQ(SettingsDocumentManager::kInsertionStatusSuccess,
-            InsertBlob(kTestSource1, parser_.Register(MakeContainer(
-                                         kTestSource1, std::move(document))),
+            InsertBlob(kTestSource1,
+                       parser_.Register(MakeContainer(std::move(document))),
                        {{Key(kTestSource1)}}));
   CheckSentinelValues({kTestSource1}, {});
 }
@@ -506,8 +509,8 @@ TEST_F(SettingsDocumentManagerTest, InsertBlobSuccess) {
 TEST_F(SettingsDocumentManagerTest, InsertBlobUnknownSource) {
   EXPECT_EQ(
       SettingsDocumentManager::kInsertionStatusUnknownSource,
-      InsertBlob(kTestSource1, parser_.Register(MakeContainer(
-                                   kTestSource1, MakeDocument(kTestSource1))),
+      InsertBlob(kTestSource1,
+                 parser_.Register(MakeContainer(MakeDocument(kTestSource1))),
                  {}));
 }
 
@@ -525,7 +528,7 @@ TEST_F(SettingsDocumentManagerTest, InsertBlobValidationErrorNoDelegate) {
       });
   ConfigureTrustedSource(kTestSource1);
   std::unique_ptr<MockLockedSettingsContainer> container(
-      MakeContainer(kTestSource1, MakeDocument(kTestSource1)));
+      MakeContainer(MakeDocument(kTestSource1)));
   container->GetVersionComponent(kTestSource1)->SetSourceId(kTestSource1);
   EXPECT_EQ(
       SettingsDocumentManager::kInsertionStatusValidationError,
@@ -538,8 +541,8 @@ TEST_F(SettingsDocumentManagerTest, InsertBlobValidationErrorSourceFailure) {
   ConfigureTrustedSource(kTestSource1);
   EXPECT_EQ(
       SettingsDocumentManager::kInsertionStatusValidationError,
-      InsertBlob(kTestSource1, parser_.Register(MakeContainer(
-                                   kTestSource1, MakeDocument(kTestSource1))),
+      InsertBlob(kTestSource1,
+                 parser_.Register(MakeContainer(MakeDocument(kTestSource1))),
                  {}));
 }
 
@@ -549,7 +552,7 @@ TEST_F(SettingsDocumentManagerTest,
       kTestSource1, MockSourceDelegate::GetFactoryFunction(true, false));
   ConfigureTrustedSource(kTestSource1);
   std::unique_ptr<MockLockedSettingsContainer> container(
-      MakeContainer(kTestSource1, MakeDocument(kTestSource1)));
+      MakeContainer(MakeDocument(kTestSource1)));
   container->GetVersionComponent(kTestSource1)->SetSourceId(kTestSource1);
   EXPECT_EQ(
       SettingsDocumentManager::kInsertionStatusValidationError,
@@ -560,8 +563,7 @@ TEST_F(SettingsDocumentManagerTest, InsertBlobValidationErrorBadPayload) {
   ConfigureTrustedSource(kTestSource1);
   EXPECT_EQ(
       SettingsDocumentManager::kInsertionStatusBadPayload,
-      InsertBlob(kTestSource1,
-                 parser_.Register(MakeContainer(kTestSource1, nullptr)), {}));
+      InsertBlob(kTestSource1, parser_.Register(MakeContainer(nullptr)), {}));
 }
 
 }  // namespace settingsd

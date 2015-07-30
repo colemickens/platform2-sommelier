@@ -156,9 +156,8 @@ SettingsDocumentManager::InsertionStatus SettingsDocumentManager::InsertBlob(
       InsertDocument(std::move(document), handle, source_id);
 
   // If the insertion failed remove the corresponding blob from the BlobStore.
-  if (status != kInsertionStatusSuccess && !blob_store_.Purge(handle)) {
+  if (status != kInsertionStatusSuccess && !blob_store_.Purge(handle))
     LOG(ERROR) << "Failed to purge document.";
-  }
 
   return status;
 }
