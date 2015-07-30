@@ -119,7 +119,7 @@ class DBusCommandProxyTest : public ::testing::Test {
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_command_;
   scoped_refptr<dbus::MockBus> bus_;
 
-  MockCommand command_;
+  unittests::MockCommand command_;
   std::unique_ptr<DBusCommandProxy> proxy_;
 };
 

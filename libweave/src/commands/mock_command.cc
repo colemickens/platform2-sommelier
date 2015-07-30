@@ -12,8 +12,7 @@
 #include "libweave/src/commands/unittest_utils.h"
 
 namespace weave {
-
-using unittests::CreateDictionaryValue;
+namespace unittests {
 
 std::unique_ptr<base::DictionaryValue> MockCommand::GetParameters() const {
   return CreateDictionaryValue(MockGetParameters());
@@ -31,4 +30,5 @@ std::unique_ptr<base::DictionaryValue> MockCommand::ToJson() const {
   return CreateDictionaryValue(MockToJson());
 }
 
+}  // namespace unittests
 }  // namespace weave

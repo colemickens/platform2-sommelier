@@ -12,6 +12,7 @@
 #include <gmock/gmock.h>
 
 namespace weave {
+namespace unittests {
 
 class MockCommands : public Commands {
  public:
@@ -27,6 +28,7 @@ class MockCommands : public Commands {
   MOCK_METHOD1(FindCommand, Command*(const std::string&));
 };
 
+}  // namespace unittests
 }  // namespace weave
 
 #endif  // LIBWEAVE_INCLUDE_WEAVE_MOCK_COMMANDS_H_

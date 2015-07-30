@@ -15,6 +15,7 @@
 #include <gmock/gmock.h>
 
 namespace weave {
+namespace unittests {
 
 class MockCommand : public Command {
  public:
@@ -44,6 +45,7 @@ class MockCommand : public Command {
   std::unique_ptr<base::DictionaryValue> ToJson() const override;
 };
 
+}  // namespace unittests
 }  // namespace weave
 
 #endif  // LIBWEAVE_INCLUDE_WEAVE_MOCK_COMMAND_H_
