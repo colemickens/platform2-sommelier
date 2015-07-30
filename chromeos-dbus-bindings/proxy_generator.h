@@ -118,6 +118,14 @@ class ProxyGenerator : public HeaderGenerator {
                                  const std::string& interface_name,
                                  IndentedText* text);
 
+  // Generates the MOCK_METHOD entry for the given arguments handling methods
+  // with more than 10 arguments.
+  static void AddMockMethodDeclaration(
+      const std::string& method_name,
+      const std::string& return_type,
+      const std::vector<std::string>& arguments,
+      IndentedText* text);
+
   // Generates a mock for the signal handler registration method.
   static void AddSignalHandlerRegistrationMock(
       const Interface::Signal& signal,

@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/format_macros.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/strings/string_utils.h>
@@ -115,6 +116,7 @@ bool ProxyGenerator::GenerateMocks(const ServiceConfig& config,
   text.AddLine("#include <vector>");
   text.AddBlankLine();
   text.AddLine("#include <base/callback_forward.h>");
+  text.AddLine("#include <base/logging.h>");
   text.AddLine("#include <base/macros.h>");
   text.AddLine("#include <chromeos/any.h>");
   text.AddLine("#include <chromeos/errors/error.h>");
@@ -306,7 +308,7 @@ void ProxyGenerator::GenerateInterfaceMock(const ServiceConfig& config,
 
   text->AddLine(StringPrintf("// Mock object for %s.",
                              base_interface_name.c_str()));
-  text->AddLine(StringPrintf("class %s final : public %s {",
+  text->AddLine(StringPrintf("class %s : public %s {",
                              mock_name.c_str(), base_interface_name.c_str()));
   text->AddLineWithOffset("public:", kScopeOffset);
   text->PushOffset(kBlockOffset);
@@ -714,7 +716,6 @@ void ProxyGenerator::AddAsyncMethodProxy(const Interface::Method& method,
 void ProxyGenerator::AddMethodMock(const Interface::Method& method,
                                    const string& interface_name,
                                    IndentedText* text) {
-  IndentedText block;
   DbusSignature signature;
   vector<string> arguments;
   for (const auto& argument : method.input_arguments) {
@@ -735,25 +736,13 @@ void ProxyGenerator::AddMethodMock(const Interface::Method& method,
   }
   arguments.push_back("chromeos::ErrorPtr* /*error*/");
   arguments.push_back("int /*timeout_ms*/");
-
-  block.AddLineAndPushOffsetTo(
-      StringPrintf("MOCK_METHOD%ju(%s,", arguments.size(), method.name.c_str()),
-      1, '(');
-  block.AddLineAndPushOffsetTo(
-      StringPrintf("bool(%s,", arguments.front().c_str()), 1, '(');
-  for (size_t i = 1; i < arguments.size() - 1; i++)
-    block.AddLine(StringPrintf("%s,", arguments[i].c_str()));
-  block.AddLine(StringPrintf("%s));", arguments.back().c_str()));
-  block.PopOffset();
-  block.PopOffset();
-  text->AddBlock(block);
+  AddMockMethodDeclaration(method.name, "bool", arguments, text);
 }
 
 // static
 void ProxyGenerator::AddAsyncMethodMock(const Interface::Method& method,
                                         const string& interface_name,
                                         IndentedText* text) {
-  IndentedText block;
   DbusSignature signature;
   vector<string> arguments;
   for (const auto& argument : method.input_arguments) {
@@ -779,17 +768,56 @@ void ProxyGenerator::AddAsyncMethodMock(const Interface::Method& method,
   arguments.push_back(
       "const base::Callback<void(chromeos::Error*)>& /*error_callback*/");
   arguments.push_back("int /*timeout_ms*/");
+  AddMockMethodDeclaration(method.name + "Async", "void", arguments, text);
+}
 
-  block.AddLineAndPushOffsetTo(
-      StringPrintf("MOCK_METHOD%ju(%sAsync,", arguments.size(),
-                   method.name.c_str()), 1, '(');
-  block.AddLineAndPushOffsetTo(
-      StringPrintf("void(%s,", arguments.front().c_str()), 1, '(');
-  for (size_t i = 1; i < arguments.size() - 1; i++)
-    block.AddLine(StringPrintf("%s,", arguments[i].c_str()));
-  block.AddLine(StringPrintf("%s));", arguments.back().c_str()));
-  block.PopOffset();
-  block.PopOffset();
+void ProxyGenerator::AddMockMethodDeclaration(const string& method_name,
+                                              const string& return_type,
+                                              const vector<string>& arguments,
+                                              IndentedText* text) {
+  IndentedText block;
+  // GMOCK doesn't go all the way up to 11, so we need to handle methods with
+  // 11 arguments or more in a different way.
+  if (arguments.size() >= 11) {
+    block.AddLineAndPushOffsetTo(
+        StringPrintf("%s %s(%s,",
+                     return_type.c_str(),
+                     method_name.c_str(),
+                     arguments.front().c_str()),
+        1, '(');
+    for (size_t i = 1; i < arguments.size() - 1; i++)
+      block.AddLine(StringPrintf("%s,", arguments[i].c_str()));
+    block.AddLine(StringPrintf("%s) override {", arguments.back().c_str()));
+    block.PopOffset();
+    block.PushOffset(kBlockOffset);
+    block.AddLine(StringPrintf(
+        "LOG(WARNING) << \"%s(): gmock can't handle methods with %" PRIuS
+        " arguments. You can override this method in a subclass if you need"
+        " to.\";",
+        method_name.c_str(), arguments.size()));
+    if (return_type == "void") {
+      // No return added here.
+    } else if (return_type == "bool") {
+      block.AddLine("return false;");
+    } else {
+      LOG(FATAL) << "The return type is not supported.";
+    }
+    block.PopOffset();
+    block.AddLine("}");
+  } else {
+    block.AddLineAndPushOffsetTo(
+        StringPrintf("MOCK_METHOD%ju(%s,",
+                     arguments.size(), method_name.c_str()),
+        1, '(');
+    block.AddLineAndPushOffsetTo(
+        StringPrintf("%s(%s,", return_type.c_str(), arguments.front().c_str()),
+        1, '(');
+    for (size_t i = 1; i < arguments.size() - 1; i++)
+      block.AddLine(StringPrintf("%s,", arguments[i].c_str()));
+    block.AddLine(StringPrintf("%s));", arguments.back().c_str()));
+    block.PopOffset();
+    block.PopOffset();
+  }
   text->AddBlock(block);
 }
 

@@ -36,6 +36,7 @@ const char kExpectedContent[] = R"literal_string(
 #include <vector>
 
 #include <base/callback_forward.h>
+#include <base/logging.h>
 #include <base/macros.h>
 #include <chromeos/any.h>
 #include <chromeos/errors/error.h>
@@ -48,7 +49,7 @@ namespace org {
 namespace chromium {
 
 // Mock object for TestInterfaceProxyInterface.
-class TestInterfaceProxyMock final : public TestInterfaceProxyInterface {
+class TestInterfaceProxyMock : public TestInterfaceProxyInterface {
  public:
   TestInterfaceProxyMock() = default;
 
@@ -88,6 +89,33 @@ class TestInterfaceProxyMock final : public TestInterfaceProxyInterface {
                void(const base::Callback<void()>& /*success_callback*/,
                     const base::Callback<void(chromeos::Error*)>& /*error_callback*/,
                     int /*timeout_ms*/));
+  bool AllTheWayUpToEleven(bool /*in_arg1*/,
+                           bool /*in_arg2*/,
+                           bool /*in_arg3*/,
+                           bool /*in_arg4*/,
+                           bool /*in_arg5*/,
+                           bool /*in_arg6*/,
+                           bool /*in_arg7*/,
+                           bool /*in_arg8*/,
+                           bool* /*out_arg9*/,
+                           chromeos::ErrorPtr* /*error*/,
+                           int /*timeout_ms*/) override {
+    LOG(WARNING) << "AllTheWayUpToEleven(): gmock can't handle methods with 11 arguments. You can override this method in a subclass if you need to.";
+    return false;
+  }
+  void AllTheWayUpToElevenAsync(bool /*in_arg1*/,
+                                bool /*in_arg2*/,
+                                bool /*in_arg3*/,
+                                bool /*in_arg4*/,
+                                bool /*in_arg5*/,
+                                bool /*in_arg6*/,
+                                bool /*in_arg7*/,
+                                bool /*in_arg8*/,
+                                const base::Callback<void(bool /*arg9*/)>& /*success_callback*/,
+                                const base::Callback<void(chromeos::Error*)>& /*error_callback*/,
+                                int /*timeout_ms*/) override {
+    LOG(WARNING) << "AllTheWayUpToElevenAsync(): gmock can't handle methods with 11 arguments. You can override this method in a subclass if you need to.";
+  }
   MOCK_METHOD2(RegisterCloserSignalHandler,
                void(const base::Closure& /*signal_callback*/,
                     dbus::ObjectProxy::OnConnectedCallback /*on_connected_callback*/));
@@ -106,7 +134,7 @@ namespace org {
 namespace chromium {
 
 // Mock object for TestInterface2ProxyInterface.
-class TestInterface2ProxyMock final : public TestInterface2ProxyInterface {
+class TestInterface2ProxyMock : public TestInterface2ProxyInterface {
  public:
   TestInterface2ProxyMock() = default;
 
@@ -166,6 +194,21 @@ TEST_F(ProxyGeneratorMockTest, GenerateMocks) {
       vector<Interface::Argument>{{"", kDBusTypeBool}},
       vector<Interface::Argument>{});
   interface.methods.emplace_back("ExperimentNumberSix");
+  // gmock can't handle more than 10 args. The generated method will also
+  // include the timeout and error arguments in the synchronous case, and two
+  // callbacks and the timeout in the asynchronous case.
+  interface.methods.emplace_back(
+      "AllTheWayUpToEleven",
+      vector<Interface::Argument>{
+          {"arg1", kDBusTypeBool},
+          {"arg2", kDBusTypeBool},
+          {"arg3", kDBusTypeBool},
+          {"arg4", kDBusTypeBool},
+          {"arg5", kDBusTypeBool},
+          {"arg6", kDBusTypeBool},
+          {"arg7", kDBusTypeBool},
+          {"arg8", kDBusTypeBool}},
+      vector<Interface::Argument>{{"arg9", kDBusTypeBool}});
   interface.signals.emplace_back("Closer");
   interface.signals.emplace_back(
       "TheCurseOfKaZar",
