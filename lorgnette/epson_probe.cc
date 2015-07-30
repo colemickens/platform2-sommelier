@@ -100,7 +100,7 @@ static bool CreateBroadcastSocket(int *broadcast_socket, uint16_t *port) {
     return false;
   }
 
-  *broadcast_socket = sock;
+  *broadcast_socket = scoped_socket.release();
   *port = ntohs(local.sin_port);
   LOG(INFO) << "Bound to port " << ntohs(*port);
 
@@ -191,7 +191,7 @@ void ProbeForScanners(FirewallManager* firewall_manager,
   if (!CreateBroadcastSocket(&probe_socket, &local_port)) {
     return;
   }
-
+  base::ScopedFD scoped_socket(probe_socket);
   firewall_manager->RequestUdpPortAccess(local_port);
   SendProbeAndListen(probe_socket, scanner_list);
   firewall_manager->ReleaseUdpPortAccess(local_port);
