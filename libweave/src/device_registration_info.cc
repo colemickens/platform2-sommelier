@@ -1012,10 +1012,13 @@ void DeviceRegistrationInfo::PublishCommand(
               << "' arrived, ID: " << command_instance->GetID();
     std::unique_ptr<chromeos::BackoffEntry> backoff_entry{
         new chromeos::BackoffEntry{cloud_backoff_policy_.get()}};
-    std::unique_ptr<Command::Observer> cloud_proxy{new CloudCommandProxy{
+    std::unique_ptr<CloudCommandProxy> cloud_proxy{new CloudCommandProxy{
         command_instance.get(), this, state_manager_->GetStateChangeQueue(),
         std::move(backoff_entry), task_runner_}};
-    command_instance->AddObserver(cloud_proxy.release());
+    // CloudCommandProxy::CloudCommandProxy() subscribe itself to weave::Command
+    // notifications. When weave::Command is being destroyed it sends
+    // ::OnCommandDestroyed() and CloudCommandProxy deletes itself.
+    cloud_proxy.release();
     command_manager_->AddCommand(std::move(command_instance));
   }
 }

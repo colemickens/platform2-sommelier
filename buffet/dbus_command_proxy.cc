@@ -20,7 +20,9 @@ DBusCommandProxy::DBusCommandProxy(ExportedObjectManager* object_manager,
                                    weave::Command* command,
                                    std::string object_path)
     : command_{command},
-      dbus_object_{object_manager, bus, dbus::ObjectPath{object_path}} {}
+      dbus_object_{object_manager, bus, dbus::ObjectPath{object_path}} {
+  observer_.Add(command);
+}
 
 void DBusCommandProxy::RegisterAsync(
     const AsyncEventSequencer::CompletionAction& completion_callback) {

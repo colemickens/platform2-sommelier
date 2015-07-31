@@ -13,6 +13,7 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/scoped_observer.h>
 #include <base/task_runner.h>
 #include <chromeos/backoff_entry.h>
 
@@ -89,6 +90,8 @@ class CloudCommandProxy final : public Command::Observer {
   // Last device state update ID that has been sent out to the server
   // successfully.
   UpdateID last_state_update_id_{0};
+
+  ScopedObserver<Command, Command::Observer> observer_{this};
 
   base::WeakPtrFactory<CloudCommandProxy> backoff_weak_ptr_factory_{this};
   base::WeakPtrFactory<CloudCommandProxy> weak_ptr_factory_{this};

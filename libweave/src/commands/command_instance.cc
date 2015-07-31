@@ -58,8 +58,7 @@ CommandInstance::CommandInstance(const std::string& name,
 }
 
 CommandInstance::~CommandInstance() {
-  for (auto observer : observers_)
-    observer->OnCommandDestroyed();
+  FOR_EACH_OBSERVER(Observer, observers_, OnCommandDestroyed());
 }
 
 const std::string& CommandInstance::GetID() const {
@@ -107,8 +106,7 @@ bool CommandInstance::SetProgress(const base::DictionaryValue& progress,
   SetStatus(CommandStatus::kInProgress);
   if (obj != progress_) {
     progress_ = obj;
-    for (auto observer : observers_)
-      observer->OnProgressChanged();
+    FOR_EACH_OBSERVER(Observer, observers_, OnProgressChanged());
   }
   return true;
 }
@@ -124,8 +122,7 @@ bool CommandInstance::SetResults(const base::DictionaryValue& results,
 
   if (obj != results_) {
     results_ = obj;
-    for (auto observer : observers_)
-      observer->OnResultsChanged();
+    FOR_EACH_OBSERVER(Observer, observers_, OnResultsChanged());
   }
   return true;
 }
@@ -251,7 +248,11 @@ std::unique_ptr<base::DictionaryValue> CommandInstance::ToJson() const {
 }
 
 void CommandInstance::AddObserver(Observer* observer) {
-  observers_.push_back(observer);
+  observers_.AddObserver(observer);
+}
+
+void CommandInstance::RemoveObserver(Observer* observer) {
+  observers_.RemoveObserver(observer);
 }
 
 void CommandInstance::Abort() {
@@ -275,8 +276,7 @@ void CommandInstance::Done() {
 void CommandInstance::SetStatus(CommandStatus status) {
   if (status != status_) {
     status_ = status;
-    for (auto observer : observers_)
-      observer->OnStatusChanged();
+    FOR_EACH_OBSERVER(Observer, observers_, OnStatusChanged());
   }
 }
 

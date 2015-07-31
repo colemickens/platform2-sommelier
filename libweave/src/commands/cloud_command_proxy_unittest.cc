@@ -157,7 +157,10 @@ class CloudCommandProxyTest : public ::testing::Test {
                               &state_change_queue_,
                               std::move(backoff),
                               task_runner_}};
-    command_instance_->AddObserver(proxy.release());
+    // CloudCommandProxy::CloudCommandProxy() subscribe itself to weave::Command
+    // notifications. When weave::Command is being destroyed it sends
+    // ::OnCommandDestroyed() and CloudCommandProxy deletes itself.
+    proxy.release();
   }
 
   StateChangeQueueInterface::UpdateID current_state_update_id_{0};

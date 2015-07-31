@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <base/observer_list.h>
 #include <chromeos/errors/error.h>
 
 #include "libweave/src/commands/prop_values.h"
@@ -42,6 +43,7 @@ class CommandInstance final : public Command {
   // Command overrides.
   std::unique_ptr<base::DictionaryValue> ToJson() const override;
   void AddObserver(Observer* observer) override;
+  void RemoveObserver(Observer* observer) override;
   const std::string& GetID() const override;
   const std::string& GetName() const override;
   const std::string& GetCategory() const override;
@@ -109,8 +111,8 @@ class CommandInstance final : public Command {
   ValueMap results_;
   // Current command status.
   CommandStatus status_ = CommandStatus::kQueued;
-  // Command observer for the command.
-  std::vector<Observer*> observers_;
+  // Command observers.
+  base::ObserverList<Observer> observers_;
   // Pointer to the command queue this command instance is added to.
   // The queue owns the command instance, so it outlives this object.
   CommandQueue* queue_ = nullptr;

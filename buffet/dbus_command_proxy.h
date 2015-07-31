@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/macros.h>
+#include <base/scoped_observer.h>
 #include <chromeos/dbus/data_serialization.h>
 #include <chromeos/dbus/dbus_object.h>
 
@@ -58,6 +59,8 @@ class DBusCommandProxy : public weave::Command::Observer,
   weave::Command* command_;
   org::chromium::Buffet::CommandAdaptor dbus_adaptor_{this};
   chromeos::dbus_utils::DBusObject dbus_object_;
+
+  ScopedObserver<weave::Command, weave::Command::Observer> observer_{this};
 
   friend class DBusCommandProxyTest;
   friend class DBusCommandDispacherTest;

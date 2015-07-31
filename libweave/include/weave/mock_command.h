@@ -22,6 +22,7 @@ class MockCommand : public Command {
   ~MockCommand() override = default;
 
   MOCK_METHOD1(AddObserver, void(Observer*));
+  MOCK_METHOD1(RemoveObserver, void(Observer*));
   MOCK_CONST_METHOD0(GetID, const std::string&());
   MOCK_CONST_METHOD0(GetName, const std::string&());
   MOCK_CONST_METHOD0(GetCategory, const std::string&());

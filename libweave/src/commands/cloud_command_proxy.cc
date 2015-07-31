@@ -28,6 +28,7 @@ CloudCommandProxy::CloudCommandProxy(
   callback_token_ = state_change_queue_->AddOnStateUpdatedCallback(
       base::Bind(&CloudCommandProxy::OnDeviceStateUpdated,
                  weak_ptr_factory_.GetWeakPtr()));
+  observer_.Add(command_instance);
 }
 
 void CloudCommandProxy::OnResultsChanged() {
