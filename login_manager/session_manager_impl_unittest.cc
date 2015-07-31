@@ -590,35 +590,40 @@ TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {
   EXPECT_EQ(active_users[email2], SanitizeUserName(email2));
 }
 
-TEST_F(SessionManagerImplTest, RestartJob_UnknownPid) {
-  EXPECT_CALL(manager_, IsBrowser(kDummyPid)).WillOnce(Return(false));
-
-  EXPECT_FALSE(impl_.RestartJob(kDummyPid, "", &error_));
-  EXPECT_EQ(dbus_error::kUnknownPid, error_.name());
+TEST_F(SessionManagerImplTest, RestartJobBadSocket) {
+  EXPECT_FALSE(impl_.RestartJob(-1, {}, &error_));
+  EXPECT_EQ("GetPeerCredsFailed", error_.name());
 }
 
-TEST_F(SessionManagerImplTest, RestartJob) {
-  const char arguments[] = "dummy";
 
-  EXPECT_CALL(manager_, IsBrowser(kDummyPid)).WillOnce(Return(true));
-  EXPECT_CALL(manager_, RestartBrowserWithArgs(ElementsAre(arguments), false))
-      .Times(1);
-  ExpectGuestSession();
-
-  EXPECT_EQ(TRUE, impl_.RestartJob(kDummyPid, arguments, NULL));
-}
-
-TEST_F(SessionManagerImplTest, RestartJobWithAuth_PidAuth) {
-  const char arguments[] = "dummy";
+TEST_F(SessionManagerImplTest, RestartJobBadPid) {
   int sockets[2] = {-1, -1};
   ASSERT_GE(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
 
+  EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(false));
+  EXPECT_FALSE(impl_.RestartJob(sockets[1], {}, &error_));
+  EXPECT_EQ(dbus_error::kUnknownPid, error_.name());
+}
+
+TEST_F(SessionManagerImplTest, RestartJobSuccess) {
+  int sockets[2] = {-1, -1};
+  ASSERT_GE(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets), 0);
+  const std::vector<std::string> argv = {
+      "program",
+      "--switch1",
+      "--switch2=switch2_value",
+      "--switch3=escaped_\"_quote",
+      "--switch4=white space",
+      "arg1",
+      "arg 2",
+  };
+
   EXPECT_CALL(manager_, IsBrowser(getpid())).WillRepeatedly(Return(true));
-  EXPECT_CALL(manager_, RestartBrowserWithArgs(ElementsAre(arguments), false))
+  EXPECT_CALL(manager_, RestartBrowserWithArgs(ElementsAreArray(argv), false))
       .Times(1);
   ExpectGuestSession();
 
-  EXPECT_EQ(TRUE, impl_.RestartJobWithAuth(sockets[1], arguments, NULL));
+  EXPECT_EQ(TRUE, impl_.RestartJob(sockets[1], argv, &error_));
 }
 
 TEST_F(SessionManagerImplTest, SupervisedUserCreation) {

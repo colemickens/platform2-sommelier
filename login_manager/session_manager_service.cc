@@ -197,6 +197,8 @@ void SessionManagerService::RunBrowser() {
   browser_->RunInBackground();
   DLOG(INFO) << "Browser is " << browser_->CurrentPid();
   liveness_checker_->Start();
+  // Note that |child_exit_handler_| will catch browser process termination and
+  // call HandleExit().
 }
 
 void SessionManagerService::AbortBrowser(int signal,
@@ -217,7 +219,7 @@ void SessionManagerService::RestartBrowserWithArgs(
     browser_->SetExtraArguments(args);
   else
     browser_->SetArguments(args);
-  // The browser will be restarted in HandleBrowserExit().
+  // The browser will be restarted in HandleExit().
 }
 
 void SessionManagerService::SetBrowserSessionForUser(

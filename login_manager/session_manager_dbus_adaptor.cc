@@ -493,15 +493,19 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::HandleLockScreenDismissed(
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RestartJob(
     dbus::MethodCall* call) {
-  int pid;
-  std::string arguments;
+  dbus::FileDescriptor fd;
+  std::vector<std::string> argv;
   dbus::MessageReader reader(call);
-  if (!reader.PopInt32(&pid) || !reader.PopString(&arguments))
+  if (!reader.PopFileDescriptor(&fd) || !reader.PopArrayOfStrings(&argv))
     return CreateInvalidArgsError(call, call->GetSignature());
 
+  fd.CheckValidity();
+  CHECK(fd.is_valid());
+
   SessionManagerImpl::Error error;
-  bool success = impl_->RestartJob(static_cast<pid_t>(pid), arguments, &error);
-  return CraftAppropriateResponseWithBool(call, error, success);
+  if (impl_->RestartJob(fd.value(), argv, &error))
+    return dbus::Response::FromMethodCall(call);
+  return CreateError(call, error.name(), error.message());
 }
 
 scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RestartJobWithAuth(

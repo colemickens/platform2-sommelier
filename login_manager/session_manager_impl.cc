@@ -347,7 +347,7 @@ bool SessionManagerImpl::StopSession() {
   LOG(INFO) << "Stopping all sessions";
   // Most calls to StopSession() will log the reason for the call.
   // If you don't see a log message saying the reason for the call, it is
-  // likely a DBUS message. See dbus_glib_shim.cc for that call.
+  // likely a DBUS message. See session_manager_dbus_adaptor.cc for that call.
   manager_->ScheduleShutdown();
   // TODO(cmasone): re-enable these when we try to enable logout without exiting
   //                the session manager
@@ -495,16 +495,35 @@ void SessionManagerImpl::HandleLockScreenDismissed() {
   dbus_emitter_->EmitSignal(kScreenIsUnlockedSignal);
 }
 
-bool SessionManagerImpl::RestartJob(pid_t pid,
-                                    const std::string& arguments,
+bool SessionManagerImpl::RestartJob(int fd,
+                                    const std::vector<std::string>& argv,
                                     Error* error) {
-  if (!manager_->IsBrowser(pid)) {
+  struct ucred ucred = {0};
+  socklen_t len = sizeof(struct ucred);
+  if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
+    PLOG(ERROR) << "Can't get peer creds";
+    error->Set("GetPeerCredsFailed", strerror(errno));
+    return false;
+  }
+
+  if (!manager_->IsBrowser(ucred.pid)) {
     const char msg[] = "Provided pid is unknown.";
     LOG(ERROR) << msg;
     error->Set(dbus_error::kUnknownPid, msg);
     return false;
   }
 
+  // To set "logged-in" state for BWSI mode.
+  if (!StartSession(kGuestUserName, "", error))
+    return false;
+  manager_->RestartBrowserWithArgs(argv, false);
+  return true;
+}
+
+bool SessionManagerImpl::RestartJobWithAuth(
+    int fd,
+    const std::string& arguments,
+    Error* error) {
   gchar** argv = NULL;
   gint argc = 0;
   GError* parse_error = NULL;
@@ -517,25 +536,7 @@ bool SessionManagerImpl::RestartJob(pid_t pid,
   base::CommandLine new_command_line(argc, argv);
   g_strfreev(argv);
 
-  // To set "logged-in" state for BWSI mode.
-  if (!StartSession(kGuestUserName, "", error))
-    return false;
-  manager_->RestartBrowserWithArgs(new_command_line.argv(), false);
-  return true;
-}
-
-bool SessionManagerImpl::RestartJobWithAuth(int fd,
-                                            const std::string& arguments,
-                                            Error* error) {
-  struct ucred ucred = {0};
-  socklen_t len = sizeof(struct ucred);
-  if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &ucred, &len) == -1) {
-    PLOG(ERROR) << "Can't get peer creds";
-    error->Set("GetPeerCredsFailed", strerror(errno));
-    return false;
-  }
-
-  return RestartJob(ucred.pid, arguments, error);
+  return RestartJob(fd, new_command_line.argv(), error);
 }
 
 void SessionManagerImpl::StartDeviceWipe(const std::string& reason,

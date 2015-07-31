@@ -309,18 +309,16 @@
 
     <!--
         RestartJob:
-        @pid: PID of the job to restart.
-        @command_line: Command line arguments to restart the job with.
-        @done: True on success. Error returned on failure, so likely redundant.
+        @cred_fd: File descriptor that provides PID to be restarted.
+        @argv: Command line arguments to restart the job with.
 
-        Restarts job with specified @pid replacing its command line arguments
-        with those provided. Only works for the browser process managed by
-        the SessionManager.
+        Restarts job with pid returned when querying @cred_fd using
+        SO_PEERCRED, replacing its command line arguments with those provided.
+        Only works for the browser process managed by the SessionManager.
     -->
     <method name="RestartJob">
-      <arg type="i" name="pid" direction="in" />
-      <arg type="s" name="command_line" direction="in" />
-      <arg type="b" name="done" direction="out" />
+      <arg type="h" name="cred_fd" direction="in" />
+      <arg type="as" name="argv" direction="in" />
     </method>
 
     <!--

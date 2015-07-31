@@ -154,8 +154,8 @@ class SessionManagerImpl : public SessionManagerInterface,
   void HandleLockScreenShown();
   void HandleLockScreenDismissed();
 
+  bool RestartJob(int fd, const std::vector<std::string>& argv, Error* error);
   // DEPRECATED.
-  bool RestartJob(pid_t pid, const std::string& arguments, Error* error);
   bool RestartJobWithAuth(int fd, const std::string& arguments, Error* error);
   void StartDeviceWipe(const std::string& reason, Error* error);
   void SetFlagsForUser(const std::string& user_email,
