@@ -44,7 +44,6 @@ class ApManagerClient;
 class CloudDelegate;
 class DaemonState;
 class DeviceDelegate;
-class PeerdClient;
 class PrivetHandler;
 class Publisher;
 class SecurityManager;
@@ -61,6 +60,7 @@ class Manager : public Privet, public CloudDelegate::Observer {
              DeviceRegistrationInfo* device,
              CommandManager* command_manager,
              StateManager* state_manager,
+             Mdns* mdns,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   std::string GetCurrentlyConnectedSsid() const;
@@ -103,7 +103,6 @@ class Manager : public Privet, public CloudDelegate::Observer {
   std::unique_ptr<SecurityManager> security_;
   std::unique_ptr<ApManagerClient> ap_manager_client_;
   std::unique_ptr<WifiBootstrapManager> wifi_bootstrap_manager_;
-  std::unique_ptr<PeerdClient> peerd_client_;
   std::unique_ptr<Publisher> publisher_;
   std::unique_ptr<PrivetHandler> privet_handler_;
   std::unique_ptr<libwebserv::Server> web_server_;

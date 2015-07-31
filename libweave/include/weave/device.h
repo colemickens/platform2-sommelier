@@ -15,6 +15,7 @@
 #include "weave/cloud.h"
 #include "weave/commands.h"
 #include "weave/config.h"
+#include "weave/mdns.h"
 #include "weave/privet.h"
 #include "weave/state.h"
 
@@ -45,6 +46,7 @@ class Device {
   virtual ~Device() = default;
 
   virtual void Start(const Options& options,
+                     Mdns* mdns,
                      chromeos::dbus_utils::DBusObject* dbus_object,
                      chromeos::dbus_utils::AsyncEventSequencer* sequencer) = 0;
 

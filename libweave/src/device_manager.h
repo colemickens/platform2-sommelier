@@ -35,6 +35,7 @@ class DeviceManager final : public Device {
   ~DeviceManager() override;
 
   void Start(const Options& options,
+             Mdns* mdns,
              chromeos::dbus_utils::DBusObject* dbus_object,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer) override;
 
@@ -46,6 +47,7 @@ class DeviceManager final : public Device {
 
  private:
   void StartPrivet(const Options& options,
+                   Mdns* mdns,
                    chromeos::dbus_utils::DBusObject* dbus_object,
                    chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 

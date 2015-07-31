@@ -25,6 +25,7 @@
 
 #include "buffet/dbus_command_dispatcher.h"
 #include "buffet/dbus_conversion.h"
+#include "buffet/peerd_client.h"
 #include "weave/enum_to_string.h"
 
 using chromeos::dbus_utils::AsyncEventSequencer;
@@ -54,8 +55,10 @@ Manager::~Manager() {
 
 void Manager::Start(const weave::Device::Options& options,
                     AsyncEventSequencer* sequencer) {
+  peerd_client_.reset(new PeerdClient{dbus_object_.GetBus()});
+
   device_ = weave::Device::Create();
-  device_->Start(options, &dbus_object_, sequencer);
+  device_->Start(options, peerd_client_.get(), &dbus_object_, sequencer);
 
   command_dispatcher_.reset(new DBusCommandDispacher{
       dbus_object_.GetObjectManager(), device_->GetCommands()});

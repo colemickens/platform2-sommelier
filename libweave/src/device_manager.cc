@@ -39,6 +39,7 @@ DeviceManager::~DeviceManager() {
 
 void DeviceManager::Start(
     const Options& options,
+    Mdns* mdns,
     chromeos::dbus_utils::DBusObject* dbus_object,
     chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
   command_manager_ = std::make_shared<CommandManager>();
@@ -70,7 +71,7 @@ void DeviceManager::Start(
   device_info_->Start();
 
   if (!options.disable_privet)
-    StartPrivet(options, dbus_object, sequencer);
+    StartPrivet(options, mdns, dbus_object, sequencer);
 }
 
 Commands* DeviceManager::GetCommands() {
@@ -95,12 +96,13 @@ Privet* DeviceManager::GetPrivet() {
 
 void DeviceManager::StartPrivet(
     const Options& options,
+    Mdns* mdns,
     chromeos::dbus_utils::DBusObject* dbus_object,
     chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
   privet_.reset(new privet::Manager{});
   privet_->Start(options, dbus_object->GetBus(), shill_client_.get(),
                  device_info_.get(), command_manager_.get(),
-                 state_manager_.get(), sequencer);
+                 state_manager_.get(), mdns, sequencer);
 
   privet_->AddOnWifiSetupChangedCallback(
       base::Bind(&DeviceManager::OnWiFiBootstrapStateChanged,

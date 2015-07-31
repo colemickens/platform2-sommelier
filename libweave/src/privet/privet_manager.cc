@@ -33,7 +33,6 @@
 #include "libweave/src/privet/cloud_delegate.h"
 #include "libweave/src/privet/constants.h"
 #include "libweave/src/privet/device_delegate.h"
-#include "libweave/src/privet/peerd_client.h"
 #include "libweave/src/privet/privet_handler.h"
 #include "libweave/src/privet/publisher.h"
 #include "libweave/src/privet/shill_client.h"
@@ -67,6 +66,7 @@ void Manager::Start(const Device::Options& options,
                     DeviceRegistrationInfo* device,
                     CommandManager* command_manager,
                     StateManager* state_manager,
+                    Mdns* mdns,
                     AsyncEventSequencer* sequencer) {
   disable_security_ = options.disable_security;
 
@@ -89,11 +89,8 @@ void Manager::Start(const Device::Options& options,
     wifi_bootstrap_manager_->Init();
   }
 
-  peerd_client_.reset(new PeerdClient(bus));
-
   publisher_.reset(new Publisher(device_.get(), cloud_.get(),
-                                 wifi_bootstrap_manager_.get(),
-                                 peerd_client_.get()));
+                                 wifi_bootstrap_manager_.get(), mdns));
 
   privet_handler_.reset(
       new PrivetHandler(cloud_.get(), device_.get(), security_.get(),

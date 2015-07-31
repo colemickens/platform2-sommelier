@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libweave/src/privet/peerd_client.h"
+#include "buffet/peerd_client.h"
 
 #include <map>
 
@@ -12,8 +12,7 @@
 
 using org::chromium::peerd::PeerProxy;
 
-namespace weave {
-namespace privet {
+namespace buffet {
 
 namespace {
 
@@ -146,5 +145,4 @@ void PeerdClient::UpdateImpl() {
   ExposeService();
 }
 
-}  // namespace privet
-}  // namespace weave
+}  // namespace buffet

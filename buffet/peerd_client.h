@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEAVE_SRC_PRIVET_PEERD_CLIENT_H_
-#define LIBWEAVE_SRC_PRIVET_PEERD_CLIENT_H_
+#ifndef BUFFET_PRIVET_PEERD_CLIENT_H_
+#define BUFFET_PRIVET_PEERD_CLIENT_H_
 
 #include <map>
 #include <memory>
@@ -19,11 +19,10 @@ namespace dbus {
 class Bus;
 }  // namespace dbus
 
-namespace weave {
-namespace privet {
+namespace buffet {
 
 // Publishes privet service on mDns using peerd.
-class PeerdClient : public Mdns {
+class PeerdClient : public weave::Mdns {
  public:
   explicit PeerdClient(const scoped_refptr<dbus::Bus>& bus);
   ~PeerdClient() override;
@@ -67,7 +66,6 @@ class PeerdClient : public Mdns {
   DISALLOW_COPY_AND_ASSIGN(PeerdClient);
 };
 
-}  // namespace privet
-}  // namespace weave
+}  // namespace buffet
 
-#endif  // LIBWEAVE_SRC_PRIVET_PEERD_CLIENT_H_
+#endif  // BUFFET_PRIVET_PEERD_CLIENT_H_
