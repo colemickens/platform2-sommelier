@@ -4,7 +4,6 @@
 
 #include <string>
 
-#include <base/message_loop/message_loop_proxy.h>
 #include <base/time/time.h>
 
 #include "login_manager/fake_generator_job.h"
@@ -39,7 +38,7 @@ namespace login_manager {
 MockDevicePolicyService::MockDevicePolicyService()
     : DevicePolicyService(base::FilePath(), base::FilePath(), base::FilePath(),
                           scoped_ptr<PolicyStore>(),
-                          NULL, NULL, NULL, NULL, NULL) {}
+                          NULL, NULL, NULL, NULL) {}
 MockDevicePolicyService::~MockDevicePolicyService() {}
 
 MockDBusSignalEmitter::MockDBusSignalEmitter() {}
@@ -64,7 +63,7 @@ MockPolicyKey::MockPolicyKey() : PolicyKey(base::FilePath(), NULL) {}
 MockPolicyKey::~MockPolicyKey() {}
 
 MockPolicyService::MockPolicyService()
-    : PolicyService(scoped_ptr<PolicyStore>(), NULL, NULL) {}
+    : PolicyService(scoped_ptr<PolicyStore>(), NULL) {}
 MockPolicyService::~MockPolicyService() {}
 
 MockPolicyServiceDelegate::MockPolicyServiceDelegate() {}
@@ -80,7 +79,7 @@ MockSessionManager::MockSessionManager() {}
 MockSessionManager::~MockSessionManager() {}
 
 MockUserPolicyServiceFactory::MockUserPolicyServiceFactory()
-    : UserPolicyServiceFactory(0, NULL, NULL, NULL) {}
+    : UserPolicyServiceFactory(0, NULL, NULL) {}
 MockUserPolicyServiceFactory::~MockUserPolicyServiceFactory() {}
 
 }  // namespace login_manager

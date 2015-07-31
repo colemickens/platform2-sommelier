@@ -13,9 +13,8 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/message_loop/message_loop.h>
-#include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
+#include <chromeos/message_loops/fake_message_loop.h>
 #include <crypto/scoped_nss_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -68,6 +67,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   }
 
   virtual void SetUp() {
+    fake_loop_.SetAsCurrent();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     serial_recovery_flag_file_ =
         tmpdir_.path().AppendASCII("serial_recovery_flag");
@@ -113,14 +113,11 @@ class DevicePolicyServiceTest : public ::testing::Test {
     store_ = new StrictMock<MockPolicyStore>;
     metrics_.reset(new MockMetrics);
     mitigator_.reset(new StrictMock<MockMitigator>);
-    scoped_refptr<base::MessageLoopProxy> message_loop(
-        base::MessageLoopProxy::current());
     service_.reset(new DevicePolicyService(serial_recovery_flag_file_,
                                            policy_file_,
                                            install_attributes_file_,
                                            scoped_ptr<PolicyStore>(store_),
                                            &key_,
-                                           message_loop,
                                            metrics_.get(),
                                            mitigator_.get(),
                                            nss));
@@ -181,7 +178,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
     EXPECT_CALL(key_, Persist()).WillOnce(Return(true));
     EXPECT_CALL(*store_, Persist()).WillOnce(Return(true));
-    base::RunLoop().RunUntilIdle();
+    fake_loop_.Run();
   }
 
   void ExpectNoPersistKeyAndPolicy() {
@@ -190,7 +187,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
     EXPECT_CALL(key_, Persist()).Times(0);
     EXPECT_CALL(*store_, Persist()).Times(0);
-    base::RunLoop().RunUntilIdle();
+    fake_loop_.Run();
   }
 
   void ExpectKeyPopulated(bool key_populated) {
@@ -254,7 +251,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   std::vector<uint8_t> fake_key_vector_;
   std::string new_fake_sig_;
 
-  base::MessageLoop loop_;
+  chromeos::FakeMessageLoop fake_loop_{nullptr};
 
   base::ScopedTempDir tmpdir_;
   base::FilePath serial_recovery_flag_file_;
@@ -837,7 +834,7 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
                       policy_str_.size(),
                       completion_,
                       PolicyService::KEY_CLOBBER));
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
   EXPECT_EQ(service_->GetSettings().SerializeAsString(),
             settings.SerializeAsString());
 }
@@ -866,7 +863,7 @@ TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
                       policy_str_.size(),
                       completion_,
                       PolicyService::KEY_CLOBBER));
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
 
   std::vector<std::string> flags = service_->GetStartUpFlags();
   EXPECT_EQ(6, flags.size());

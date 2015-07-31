@@ -11,7 +11,6 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop_proxy.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <chromeos/cryptohome.h>
@@ -35,12 +34,9 @@ const base::FilePath::CharType
 
 DeviceLocalAccountPolicyService::DeviceLocalAccountPolicyService(
     const base::FilePath& device_local_account_dir,
-    PolicyKey* owner_key,
-    const scoped_refptr<base::MessageLoopProxy>& main_loop)
+    PolicyKey* owner_key)
     : device_local_account_dir_(device_local_account_dir),
-      owner_key_(owner_key),
-      main_loop_(main_loop) {
-}
+      owner_key_(owner_key) {}
 
 DeviceLocalAccountPolicyService::~DeviceLocalAccountPolicyService() {
   STLDeleteValues(&policy_map_);
@@ -159,7 +155,7 @@ PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(
       LOG(WARNING) << "Failed to load policy for device-local account "
                    << account_id;
     }
-    entry->second = new PolicyService(store.Pass(), owner_key_, main_loop_);
+    entry->second = new PolicyService(store.Pass(), owner_key_);
   }
 
   return entry->second;

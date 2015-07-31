@@ -30,10 +30,6 @@ struct signalfd_siginfo;
 
 class MessageLoop;
 
-namespace base {
-class MessageLoopProxy;
-}  // namespace base
-
 namespace dbus {
 class ExportedObject;
 class ObjectProxy;

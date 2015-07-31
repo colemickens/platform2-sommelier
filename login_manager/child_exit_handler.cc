@@ -10,7 +10,6 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/message_loop/message_loop.h>
 #include <base/time/time.h>
 #include <chromeos/asynchronous_signal_handler.h>
 

@@ -22,7 +22,6 @@ class PolicyFetchResponse;
 }
 
 namespace base {
-class MessageLoopProxy;
 class WaitableEvent;
 }  // namespace base
 
@@ -74,8 +73,7 @@ class PolicyService {
   };
 
   PolicyService(scoped_ptr<PolicyStore> policy_store,
-                PolicyKey* policy_key,
-                const scoped_refptr<base::MessageLoopProxy>& main_loop);
+                PolicyKey* policy_key);
   virtual ~PolicyService();
 
   // Stores a new policy. Verifies the passed-in policy blob against the policy
@@ -108,9 +106,6 @@ class PolicyService {
 
   PolicyStore* store() { return policy_store_.get(); }
   PolicyKey* key() { return policy_key_; }
-  const scoped_refptr<base::MessageLoopProxy>& main_loop() {
-    return main_loop_;
-  }
 
   // Schedules the key to be persisted.
   void PersistKey();
@@ -148,7 +143,6 @@ class PolicyService {
  private:
   scoped_ptr<PolicyStore> policy_store_;
   PolicyKey* policy_key_;
-  scoped_refptr<base::MessageLoopProxy> main_loop_;
   Delegate* delegate_;
 
   base::WeakPtrFactory<PolicyService> weak_ptr_factory_;

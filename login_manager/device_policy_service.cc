@@ -9,10 +9,9 @@
 
 #include <vector>
 
-#include <base/files/file_util.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/message_loop/message_loop_proxy.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <crypto/rsa_private_key.h>
 #include <crypto/scoped_nss_types.h>
@@ -70,15 +69,13 @@ DevicePolicyService* DevicePolicyService::Create(
     LoginMetrics* metrics,
     PolicyKey* owner_key,
     OwnerKeyLossMitigator* mitigator,
-    NssUtil* nss,
-    const scoped_refptr<base::MessageLoopProxy>& main_loop) {
+    NssUtil* nss) {
   return new DevicePolicyService(
       base::FilePath(kSerialRecoveryFlagFile),
       base::FilePath(kPolicyPath),
       base::FilePath(kInstallAttributesPath),
       scoped_ptr<PolicyStore>(new PolicyStore(base::FilePath(kPolicyPath))),
       owner_key,
-      main_loop,
       metrics,
       mitigator,
       nss);
@@ -154,11 +151,10 @@ DevicePolicyService::DevicePolicyService(
     const base::FilePath& install_attributes_file,
     scoped_ptr<PolicyStore> policy_store,
     PolicyKey* policy_key,
-    const scoped_refptr<base::MessageLoopProxy>& main_loop,
     LoginMetrics* metrics,
     OwnerKeyLossMitigator* mitigator,
     NssUtil* nss)
-    : PolicyService(policy_store.Pass(), policy_key, main_loop),
+    : PolicyService(policy_store.Pass(), policy_key),
       serial_recovery_flag_file_(serial_recovery_flag_file),
       policy_file_(policy_file),
       install_attributes_file_(install_attributes_file),

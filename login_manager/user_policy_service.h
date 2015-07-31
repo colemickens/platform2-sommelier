@@ -24,7 +24,6 @@ class UserPolicyService : public PolicyService {
   UserPolicyService(scoped_ptr<PolicyStore> policy_store,
                     scoped_ptr<PolicyKey> policy_key,
                     const base::FilePath& key_copy_path,
-                    const scoped_refptr<base::MessageLoopProxy>& main_loop,
                     SystemUtils* system_utils);
   virtual ~UserPolicyService();
 

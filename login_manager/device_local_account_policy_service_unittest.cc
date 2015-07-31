@@ -10,10 +10,9 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop.h>
-#include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
 #include <chromeos/cryptohome.h>
+#include <chromeos/message_loops/fake_message_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -36,6 +35,7 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
       : fake_account_("account@example.com"), salt_("salt") {}
 
   void SetUp() override {
+    fake_loop_.SetAsCurrent();
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     chromeos::cryptohome::home::SetSystemSalt(&salt_);
 
@@ -50,10 +50,8 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
     policy_proto.set_policy_data_signature("policy-data-signature");
     ASSERT_TRUE(policy_proto.SerializeToString(&policy_blob_));
 
-    scoped_refptr<base::MessageLoopProxy> message_loop(
-        base::MessageLoopProxy::current());
-    service_.reset(new DeviceLocalAccountPolicyService(
-        temp_dir_.path(), &key_, message_loop));
+    service_.reset(
+        new DeviceLocalAccountPolicyService(temp_dir_.path(), &key_));
   }
 
   void SetupAccount() {
@@ -79,7 +77,7 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
   std::string salt_;
   std::string policy_blob_;
 
-  base::MessageLoop loop_;
+  chromeos::FakeMessageLoop fake_loop_{nullptr};
   base::ScopedTempDir temp_dir_;
 
   MockPolicyKey key_;
@@ -96,7 +94,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreInvalidAccount) {
                       reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
                       policy_blob_.size(),
                       MockPolicyService::CreateExpectFailureCallback()));
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
 }
 
@@ -109,7 +107,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreSuccess) {
                       reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
                       policy_blob_.size(),
                       MockPolicyService::CreateExpectSuccessCallback()));
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
   EXPECT_TRUE(base::PathExists(fake_account_policy_path_));
 }
 
@@ -124,7 +122,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreBadPolicy) {
                       reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
                       policy_blob_.size(),
                       MockPolicyService::CreateExpectFailureCallback()));
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
 }
 
@@ -138,7 +136,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreBadSignature) {
                       reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
                       policy_blob_.size(),
                       MockPolicyService::CreateExpectFailureCallback()));
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
 }
 
@@ -165,7 +163,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreNoRotation) {
                       reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
                       policy_blob_.size(),
                       MockPolicyService::CreateExpectFailureCallback()));
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
 }
 
@@ -250,7 +248,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, LegacyPublicSessionIdFallback) {
                       reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
                       policy_blob_.size(),
                       MockPolicyService::CreateExpectSuccessCallback()));
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
   EXPECT_TRUE(base::PathExists(fake_account_policy_path_));
 
   std::vector<uint8_t> policy_data;
@@ -280,7 +278,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, LegacyPublicSessionIdIgnored) {
                       reinterpret_cast<const uint8_t*>(policy_blob_.c_str()),
                       policy_blob_.size(),
                       MockPolicyService::CreateExpectFailureCallback()));
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(fake_account_policy_path_));
 }
 

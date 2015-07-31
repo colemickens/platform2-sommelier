@@ -12,7 +12,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/message_loop/message_loop_proxy.h>
 #include <base/strings/stringprintf.h>
 
 #include "chromeos/cryptohome.h"
@@ -52,11 +51,9 @@ const base::FilePath::CharType kPolicyKeyCopyFile[] =
 
 UserPolicyServiceFactory::UserPolicyServiceFactory(
     uid_t uid,
-    const scoped_refptr<base::MessageLoopProxy>& main_loop,
     NssUtil* nss,
     SystemUtils* system_utils)
     : uid_(uid),
-      main_loop_(main_loop),
       nss_(nss),
       system_utils_(system_utils) {
 }
@@ -95,7 +92,7 @@ PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
                                                   kPolicyKeyCopyFile));
 
   UserPolicyService* service = new UserPolicyService(
-      store.Pass(), key.Pass(), key_copy_file, main_loop_, system_utils_);
+      store.Pass(), key.Pass(), key_copy_file, system_utils_);
   service->PersistKeyCopy();
   return service;
 }

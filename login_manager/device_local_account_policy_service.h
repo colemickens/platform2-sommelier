@@ -42,8 +42,7 @@ class DeviceLocalAccountPolicyService {
 
   DeviceLocalAccountPolicyService(
       const base::FilePath& device_local_account_dir,
-      PolicyKey* owner_key,
-      const scoped_refptr<base::MessageLoopProxy>& main_loop);
+      PolicyKey* owner_key);
   ~DeviceLocalAccountPolicyService();
 
   // Store policy for |account_id|, return false if the device-local account is
@@ -90,9 +89,6 @@ class DeviceLocalAccountPolicyService {
 
   // The policy key to verify signatures against.
   PolicyKey* owner_key_;
-
-  // Main loop for the policy service to use.
-  scoped_refptr<base::MessageLoopProxy> main_loop_;
 
   // Keeps lazily-created instances of the device-local account policy services.
   // The keys present in this map are kept in sync with device policy. Entries

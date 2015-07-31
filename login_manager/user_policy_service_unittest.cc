@@ -11,9 +11,8 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/message_loop/message_loop.h>
-#include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
+#include <chromeos/message_loops/fake_message_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -42,17 +41,15 @@ class UserPolicyServiceTest : public ::testing::Test {
       : fake_signature_("fake_signature"), policy_data_(NULL), policy_len_(0) {}
 
   virtual void SetUp() {
+    fake_loop_.SetAsCurrent();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     key_copy_file_ = tmpdir_.path().Append("hash/key_copy.pub");
 
     key_ = new StrictMock<MockPolicyKey>;
     store_ = new StrictMock<MockPolicyStore>;
-    scoped_refptr<base::MessageLoopProxy> message_loop(
-        base::MessageLoopProxy::current());
     service_.reset(new UserPolicyService(scoped_ptr<PolicyStore>(store_),
                                          scoped_ptr<PolicyKey>(key_),
                                          key_copy_file_,
-                                         message_loop,
                                          &system_utils_));
   }
 
@@ -94,7 +91,7 @@ class UserPolicyServiceTest : public ::testing::Test {
   const uint8_t* policy_data_;
   uint32_t policy_len_;
 
-  base::MessageLoop loop_;
+  chromeos::FakeMessageLoop fake_loop_{nullptr};
 
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.
@@ -118,7 +115,7 @@ TEST_F(UserPolicyServiceTest, StoreSignedPolicy) {
   ExpectStorePolicy(s1);
 
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_, 0));
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
 }
 
 TEST_F(UserPolicyServiceTest, StoreUnmanagedSigned) {
@@ -129,7 +126,7 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedSigned) {
   ExpectStorePolicy(s1);
 
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_, 0));
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
 }
 
 TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
@@ -149,7 +146,7 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
 
   EXPECT_FALSE(base::PathExists(key_copy_file_));
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_, 0));
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
 
   EXPECT_TRUE(base::PathExists(key_copy_file_));
   std::string content;
@@ -167,7 +164,7 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedNoKey) {
   EXPECT_CALL(*key_, IsPopulated()).WillRepeatedly(Return(false));
 
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, completion_, 0));
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
   EXPECT_FALSE(base::PathExists(key_copy_file_));
 }
 
@@ -181,7 +178,7 @@ TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
                                MockPolicyService::CreateExpectFailureCallback(),
                                0));
 
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
 }
 
 TEST_F(UserPolicyServiceTest, PersistKeyCopy) {

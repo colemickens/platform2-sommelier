@@ -18,7 +18,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>

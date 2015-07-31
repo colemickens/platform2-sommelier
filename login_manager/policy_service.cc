@@ -13,9 +13,9 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
-#include <base/message_loop/message_loop_proxy.h>
 #include <base/stl_util.h>
 #include <base/synchronization/waitable_event.h>
+#include <chromeos/message_loops/message_loop.h>
 
 #include "bindings/device_management_backend.pb.h"
 #include "login_manager/dbus_error_types.h"
@@ -46,11 +46,9 @@ PolicyService::Delegate::~Delegate() {
 
 PolicyService::PolicyService(
     scoped_ptr<PolicyStore> policy_store,
-    PolicyKey* policy_key,
-    const scoped_refptr<base::MessageLoopProxy>& main_loop)
+    PolicyKey* policy_key)
     : policy_store_(policy_store.Pass()),
       policy_key_(policy_key),
-      main_loop_(main_loop),
       delegate_(NULL),
       weak_ptr_factory_(this) {
 }
@@ -92,23 +90,21 @@ bool PolicyService::PersistPolicySync() {
 }
 
 void PolicyService::PersistKey() {
-  main_loop_->PostTask(FROM_HERE,
-                       base::Bind(&PolicyService::PersistKeyOnLoop,
-                                  weak_ptr_factory_.GetWeakPtr()));
+  chromeos::MessageLoop::current()->PostTask(
+      FROM_HERE, base::Bind(&PolicyService::PersistKeyOnLoop,
+                            weak_ptr_factory_.GetWeakPtr()));
 }
 
 void PolicyService::PersistPolicy() {
-  main_loop_->PostTask(FROM_HERE,
-                       base::Bind(&PolicyService::PersistPolicyOnLoop,
-                                  weak_ptr_factory_.GetWeakPtr(),
-                                  Completion()));
+  chromeos::MessageLoop::current()->PostTask(
+      FROM_HERE, base::Bind(&PolicyService::PersistPolicyOnLoop,
+                            weak_ptr_factory_.GetWeakPtr(), Completion()));
 }
 
 void PolicyService::PersistPolicyWithCompletion(Completion completion) {
-  main_loop_->PostTask(FROM_HERE,
-                       base::Bind(&PolicyService::PersistPolicyOnLoop,
-                                  weak_ptr_factory_.GetWeakPtr(),
-                                  completion));
+  chromeos::MessageLoop::current()->PostTask(
+      FROM_HERE, base::Bind(&PolicyService::PersistPolicyOnLoop,
+                            weak_ptr_factory_.GetWeakPtr(), completion));
 }
 
 bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
@@ -179,12 +175,10 @@ void PolicyService::OnKeyPersisted(bool status) {
 }
 
 void PolicyService::PersistKeyOnLoop() {
-  DCHECK(main_loop_->BelongsToCurrentThread());
   OnKeyPersisted(key()->Persist());
 }
 
 void PolicyService::PersistPolicyOnLoop(Completion completion) {
-  DCHECK(main_loop_->BelongsToCurrentThread());
   OnPolicyPersisted(completion, store()->Persist());
 }
 

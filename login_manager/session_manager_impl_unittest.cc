@@ -20,8 +20,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
-#include <base/message_loop/message_loop.h>
-#include <base/message_loop/message_loop_proxy.h>
 #include <base/strings/string_util.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/dbus/service_constants.h>
@@ -103,7 +101,7 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_CALL(*factory, Create(_)).WillRepeatedly(
         Invoke(this, &SessionManagerImplTest::CreateUserPolicyService));
     scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy(
-        new DeviceLocalAccountPolicyService(tmpdir_.path(), NULL, NULL));
+        new DeviceLocalAccountPolicyService(tmpdir_.path(), NULL));
     impl_.InjectPolicyServices(
         scoped_ptr<DevicePolicyService>(device_policy_service_),
         scoped_ptr<UserPolicyServiceFactory>(factory),

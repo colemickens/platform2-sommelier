@@ -13,10 +13,6 @@
 
 #include "login_manager/liveness_checker.h"
 
-namespace base {
-class MessageLoopProxy;
-}  // namespace base
-
 namespace dbus {
 class ObjectProxy;
 class Response;

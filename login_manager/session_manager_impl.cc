@@ -18,8 +18,6 @@
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop.h>
-#include <base/message_loop/message_loop_proxy.h>
 #include <base/stl_util.h>
 #include <base/strings/string_util.h>
 #include <chromeos/cryptohome.h>
@@ -191,19 +189,16 @@ bool SessionManagerImpl::ShouldEndSession() {
 
 
 bool SessionManagerImpl::Initialize() {
-  scoped_refptr<base::MessageLoopProxy> loop_proxy =
-      base::MessageLoop::current()->message_loop_proxy();
-
   key_gen_->set_delegate(this);
 
   device_policy_.reset(DevicePolicyService::Create(
-      login_metrics_, &owner_key_, &mitigator_, nss_, loop_proxy));
+      login_metrics_, &owner_key_, &mitigator_, nss_));
   device_policy_->set_delegate(this);
 
   user_policy_factory_.reset(
-      new UserPolicyServiceFactory(getuid(), loop_proxy, nss_, system_));
+      new UserPolicyServiceFactory(getuid(), nss_, system_));
   device_local_account_policy_.reset(new DeviceLocalAccountPolicyService(
-      base::FilePath(kDeviceLocalAccountStateDir), &owner_key_, loop_proxy));
+      base::FilePath(kDeviceLocalAccountStateDir), &owner_key_));
 
   if (device_policy_->Initialize()) {
     device_local_account_policy_->UpdateDeviceSettings(

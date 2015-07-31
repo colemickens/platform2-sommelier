@@ -11,10 +11,9 @@
 #include <vector>
 
 #include <base/memory/scoped_ptr.h>
-#include <base/message_loop/message_loop.h>
-#include <base/message_loop/message_loop_proxy.h>
 #include <base/run_loop.h>
 #include <base/threading/thread.h>
+#include <chromeos/message_loops/fake_message_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -49,11 +48,9 @@ class PolicyServiceTest : public testing::Test {
   }
 
   virtual void SetUp() {
+    fake_loop_.SetAsCurrent();
     store_ = new StrictMock<MockPolicyStore>;
-    scoped_refptr<base::MessageLoopProxy> message_loop(
-        base::MessageLoopProxy::current());
-    service_.reset(new PolicyService(
-        scoped_ptr<PolicyStore>(store_), &key_, message_loop));
+    service_.reset(new PolicyService(scoped_ptr<PolicyStore>(store_), &key_));
     service_->set_delegate(&delegate_);
   }
 
@@ -119,7 +116,7 @@ class PolicyServiceTest : public testing::Test {
         service_->Store(policy_data_, policy_len_,
                         MockPolicyService::CreateExpectFailureCallback(),
                         flags));
-    base::RunLoop().RunUntilIdle();
+    fake_loop_.Run();
   }
 
   PolicyStore* store() { return service_->store(); }
@@ -140,7 +137,7 @@ class PolicyServiceTest : public testing::Test {
   const uint8_t* policy_data_;
   uint32_t policy_len_;
 
-  base::MessageLoop loop_;
+  chromeos::FakeMessageLoop fake_loop_{nullptr};
 
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.
@@ -178,7 +175,7 @@ TEST_F(PolicyServiceTest, Store) {
   EXPECT_TRUE(
       service_->Store(policy_data_, policy_len_, completion_, kAllKeyFlags));
 
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
 }
 
 TEST_F(PolicyServiceTest, StoreWrongSignature) {
@@ -244,7 +241,7 @@ TEST_F(PolicyServiceTest, StoreNewKey) {
   EXPECT_TRUE(
       service_->Store(policy_data_, policy_len_, completion_, kAllKeyFlags));
 
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
 }
 
 TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
@@ -264,7 +261,7 @@ TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
   EXPECT_TRUE(service_->Store(
       policy_data_, policy_len_, completion_, PolicyService::KEY_CLOBBER));
 
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
 }
 
 TEST_F(PolicyServiceTest, StoreNewKeySame) {
@@ -280,7 +277,7 @@ TEST_F(PolicyServiceTest, StoreNewKeySame) {
   EXPECT_TRUE(
       service_->Store(policy_data_, policy_len_, completion_, kAllKeyFlags));
 
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
 }
 
 TEST_F(PolicyServiceTest, StoreNewKeyNotAllowed) {
@@ -310,7 +307,7 @@ TEST_F(PolicyServiceTest, StoreRotation) {
   EXPECT_TRUE(
       service_->Store(policy_data_, policy_len_, completion_, kAllKeyFlags));
 
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
 }
 
 TEST_F(PolicyServiceTest, StoreRotationClobber) {
@@ -330,7 +327,7 @@ TEST_F(PolicyServiceTest, StoreRotationClobber) {
   EXPECT_TRUE(service_->Store(
       policy_data_, policy_len_, completion_, PolicyService::KEY_CLOBBER));
 
-  base::RunLoop().RunUntilIdle();
+  fake_loop_.Run();
 }
 
 TEST_F(PolicyServiceTest, StoreRotationNoSignature) {

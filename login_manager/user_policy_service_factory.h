@@ -12,10 +12,6 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 
-namespace base {
-class MessageLoopProxy;
-}  // namespace base
-
 namespace login_manager {
 class NssUtil;
 class PolicyService;
@@ -27,7 +23,6 @@ class UserPolicyServiceFactory {
  public:
   UserPolicyServiceFactory(
       uid_t uid,
-      const scoped_refptr<base::MessageLoopProxy>& main_loop,
       NssUtil* nss,
       SystemUtils* system_utils);
   virtual ~UserPolicyServiceFactory();
@@ -39,7 +34,6 @@ class UserPolicyServiceFactory {
   // UID to check for.
   uid_t uid_;
 
-  scoped_refptr<base::MessageLoopProxy> main_loop_;
   NssUtil* nss_;
   SystemUtils* system_utils_;
 

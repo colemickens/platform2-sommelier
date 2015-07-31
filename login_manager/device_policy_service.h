@@ -23,8 +23,8 @@ class RSAPrivateKey;
 }
 
 namespace enterprise_management {
-class PolicyFetchResponse;
 class ChromeDeviceSettingsProto;
+class PolicyFetchResponse;
 }
 
 namespace login_manager {
@@ -47,8 +47,7 @@ class DevicePolicyService : public PolicyService {
       LoginMetrics* metrics,
       PolicyKey* owner_key,
       OwnerKeyLossMitigator* mitigator,
-      NssUtil* nss,
-      const scoped_refptr<base::MessageLoopProxy>& main_loop);
+      NssUtil* nss);
 
   // Checks whether the given |current_user| is the device owner. The result of
   // the check is returned in |is_owner|. If so, it is validated that the device
@@ -119,7 +118,6 @@ class DevicePolicyService : public PolicyService {
                       const base::FilePath& install_attributes_file,
                       scoped_ptr<PolicyStore> policy_store,
                       PolicyKey* owner_key,
-                      const scoped_refptr<base::MessageLoopProxy>& main_loop,
                       LoginMetrics* metrics,
                       OwnerKeyLossMitigator* mitigator,
                       NssUtil* nss);
