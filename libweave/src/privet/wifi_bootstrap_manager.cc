@@ -284,10 +284,9 @@ void WifiBootstrapManager::UpdateConnectionState() {
       return;
   }
   chromeos::ErrorPtr error;
-  chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
-                               errors::kInvalidState,
-                               "Unknown state returned from ShillClient: %s",
-                               EnumToString(service_state).c_str());
+  chromeos::Error::AddToPrintf(
+      &error, FROM_HERE, errors::kDomain, errors::kInvalidState,
+      "Unknown network state: %s", EnumToString(service_state).c_str());
   connection_state_ = ConnectionState{std::move(error)};
 }
 

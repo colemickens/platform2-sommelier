@@ -25,7 +25,6 @@ class StateChangeQueue;
 class StateManager;
 
 namespace privet {
-class ShillClient;
 class Manager;
 }  // namespace privet
 
@@ -36,6 +35,7 @@ class DeviceManager final : public Device {
 
   void Start(const Options& options,
              Mdns* mdns,
+             Network* network,
              chromeos::dbus_utils::DBusObject* dbus_object,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer) override;
 
@@ -48,6 +48,7 @@ class DeviceManager final : public Device {
  private:
   void StartPrivet(const Options& options,
                    Mdns* mdns,
+                   Network* network,
                    chromeos::dbus_utils::DBusObject* dbus_object,
                    chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
@@ -58,7 +59,6 @@ class DeviceManager final : public Device {
   std::shared_ptr<StateManager> state_manager_;
   std::unique_ptr<DeviceRegistrationInfo> device_info_;
   std::unique_ptr<BaseApiHandler> base_api_handler_;
-  std::unique_ptr<privet::ShillClient> shill_client_;
   std::unique_ptr<privet::Manager> privet_;
 
   base::WeakPtrFactory<DeviceManager> weak_ptr_factory_{this};

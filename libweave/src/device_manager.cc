@@ -15,7 +15,6 @@
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/device_registration_info.h"
 #include "libweave/src/privet/privet_manager.h"
-#include "libweave/src/privet/shill_client.h"
 #include "libweave/src/states/state_change_queue.h"
 #include "libweave/src/states/state_manager.h"
 
@@ -40,6 +39,7 @@ DeviceManager::~DeviceManager() {
 void DeviceManager::Start(
     const Options& options,
     Mdns* mdns,
+    Network* network,
     chromeos::dbus_utils::DBusObject* dbus_object,
     chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
   command_manager_ = std::make_shared<CommandManager>();
@@ -56,22 +56,19 @@ void DeviceManager::Start(
   std::unique_ptr<BuffetConfig> config{new BuffetConfig{options.state_path}};
   config->Load(options.config_path);
 
-  shill_client_.reset(
-      new privet::ShillClient(dbus_object->GetBus(), options.device_whitelist));
-
   // TODO(avakulenko): Figure out security implications of storing
   // device info state data unencrypted.
   device_info_.reset(new DeviceRegistrationInfo(
       command_manager_, state_manager_, std::move(config), transport,
       base::MessageLoop::current()->task_runner(), options.xmpp_enabled,
-      shill_client_.get()));
+      network));
   base_api_handler_.reset(new BaseApiHandler{device_info_->AsWeakPtr(),
                                              state_manager_, command_manager_});
 
   device_info_->Start();
 
   if (!options.disable_privet)
-    StartPrivet(options, mdns, dbus_object, sequencer);
+    StartPrivet(options, mdns, network, dbus_object, sequencer);
 }
 
 Commands* DeviceManager::GetCommands() {
@@ -97,12 +94,12 @@ Privet* DeviceManager::GetPrivet() {
 void DeviceManager::StartPrivet(
     const Options& options,
     Mdns* mdns,
+    Network* network,
     chromeos::dbus_utils::DBusObject* dbus_object,
     chromeos::dbus_utils::AsyncEventSequencer* sequencer) {
   privet_.reset(new privet::Manager{});
-  privet_->Start(options, dbus_object->GetBus(), shill_client_.get(),
-                 device_info_.get(), command_manager_.get(),
-                 state_manager_.get(), mdns, sequencer);
+  privet_->Start(options, dbus_object->GetBus(), network, device_info_.get(),
+                 command_manager_.get(), state_manager_.get(), mdns, sequencer);
 
   privet_->AddOnWifiSetupChangedCallback(
       base::Bind(&DeviceManager::OnWiFiBootstrapStateChanged,

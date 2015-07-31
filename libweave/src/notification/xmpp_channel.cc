@@ -15,7 +15,6 @@
 #include "libweave/src/notification/notification_delegate.h"
 #include "libweave/src/notification/notification_parser.h"
 #include "libweave/src/notification/xml_node.h"
-#include "libweave/src/privet/shill_client.h"
 #include "libweave/src/utils.h"
 #include "weave/network.h"
 

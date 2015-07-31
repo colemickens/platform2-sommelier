@@ -16,6 +16,7 @@
 #include "weave/commands.h"
 #include "weave/config.h"
 #include "weave/mdns.h"
+#include "weave/network.h"
 #include "weave/privet.h"
 #include "weave/state.h"
 
@@ -36,7 +37,6 @@ class Device {
     base::FilePath definitions_path;
     base::FilePath test_definitions_path;
     bool xmpp_enabled = true;
-    std::set<std::string> device_whitelist;
     bool disable_privet = false;
     bool disable_security = false;
     bool enable_ping = false;
@@ -47,6 +47,7 @@ class Device {
 
   virtual void Start(const Options& options,
                      Mdns* mdns,
+                     Network* network,
                      chromeos::dbus_utils::DBusObject* dbus_object,
                      chromeos::dbus_utils::AsyncEventSequencer* sequencer) = 0;
 

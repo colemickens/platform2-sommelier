@@ -25,10 +25,6 @@ namespace weave {
 
 class Network;
 
-namespace privet {
-class ShillClient;
-}
-
 // Simple interface to abstract XmppChannel's SendMessage() method.
 class XmppChannelInterface {
  public:

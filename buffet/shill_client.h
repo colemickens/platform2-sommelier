@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBWEAVE_SRC_PRIVET_SHILL_CLIENT_H_
-#define LIBWEAVE_SRC_PRIVET_SHILL_CLIENT_H_
+#ifndef BUFFET_SHILL_CLIENT_H_
+#define BUFFET_SHILL_CLIENT_H_
 
 #include <map>
 #include <set>
@@ -20,10 +20,9 @@
 #include "shill/dbus-proxies.h"
 #include "weave/network.h"
 
-namespace weave {
-namespace privet {
+namespace buffet {
 
-class ShillClient final : public Network {
+class ShillClient final : public weave::Network {
  public:
   ShillClient(const scoped_refptr<dbus::Bus>& bus,
               const std::set<std::string>& device_whitelist);
@@ -38,7 +37,7 @@ class ShillClient final : public Network {
                         const std::string& passphrase,
                         const base::Closure& on_success,
                         chromeos::ErrorPtr* error) override;
-  NetworkState GetConnectionState() const override;
+  weave::NetworkState GetConnectionState() const override;
 
  private:
   struct DeviceState {
@@ -48,7 +47,7 @@ class ShillClient final : public Network {
     // service (for instance, in the period between configuring a WiFi service
     // with credentials, and when Connect() is called.)
     std::shared_ptr<org::chromium::flimflam::ServiceProxy> selected_service;
-    NetworkState service_state{NetworkState::kOffline};
+    weave::NetworkState service_state{weave::NetworkState::kOffline};
   };
 
   bool IsMonitoredDevice(org::chromium::flimflam::DeviceProxy* device);
@@ -104,14 +103,13 @@ class ShillClient final : public Network {
 
   // State for tracking our online connectivity.
   std::map<dbus::ObjectPath, DeviceState> devices_;
-  NetworkState connectivity_state_{NetworkState::kOffline};
+  weave::NetworkState connectivity_state_{weave::NetworkState::kOffline};
 
   base::WeakPtrFactory<ShillClient> weak_factory_{this};
 
   DISALLOW_COPY_AND_ASSIGN(ShillClient);
 };
 
-}  // namespace privet
-}  // namespace weave
+}  // namespace buffet
 
-#endif  // LIBWEAVE_SRC_PRIVET_SHILL_CLIENT_H_
+#endif  // BUFFET_SHILL_CLIENT_H_

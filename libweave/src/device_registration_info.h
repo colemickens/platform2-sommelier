@@ -45,10 +45,7 @@ class KeyValueStore;
 namespace weave {
 
 class StateManager;
-
-namespace privet {
-class ShillClient;
-}
+class Network;
 
 extern const char kErrorDomainOAuth2[];
 extern const char kErrorDomainGCD[];
@@ -71,7 +68,7 @@ class DeviceRegistrationInfo : public Cloud,
       const std::shared_ptr<chromeos::http::Transport>& transport,
       const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
       bool notifications_enabled,
-      privet::ShillClient* shill_client);
+      weave::Network* network);
 
   ~DeviceRegistrationInfo() override;
 
@@ -341,7 +338,7 @@ class DeviceRegistrationInfo : public Cloud,
   NotificationChannel* current_notification_channel_{nullptr};
   bool notification_channel_starting_{false};
 
-  privet::ShillClient* shill_client_{nullptr};
+  weave::Network* network_{nullptr};
 
   // Tracks our current registration status.
   RegistrationStatus registration_status_{RegistrationStatus::kUnconfigured};

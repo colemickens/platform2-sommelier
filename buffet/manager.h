@@ -30,9 +30,9 @@ class ExportedObjectManager;
 
 namespace buffet {
 
-class PeerdClient;
-
 class DBusCommandDispacher;
+class PeerdClient;
+class ShillClient;
 
 template<typename... Types>
 using DBusMethodResponsePtr =
@@ -53,6 +53,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   ~Manager();
 
   void Start(const weave::Device::Options& options,
+             const std::set<std::string>& device_whitelist,
              chromeos::dbus_utils::AsyncEventSequencer* sequencer);
 
   void Stop();
@@ -117,6 +118,7 @@ class Manager final : public org::chromium::Buffet::ManagerInterface {
   chromeos::dbus_utils::DBusObject dbus_object_;
 
   std::unique_ptr<PeerdClient> peerd_client_;
+  std::unique_ptr<ShillClient> shill_client_;
   std::unique_ptr<weave::Device> device_;
   std::unique_ptr<DBusCommandDispacher> command_dispatcher_;
 

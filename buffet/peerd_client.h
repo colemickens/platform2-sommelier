@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BUFFET_PRIVET_PEERD_CLIENT_H_
-#define BUFFET_PRIVET_PEERD_CLIENT_H_
+#ifndef BUFFET_PEERD_CLIENT_H_
+#define BUFFET_PEERD_CLIENT_H_
 
 #include <map>
 #include <memory>
@@ -68,4 +68,4 @@ class PeerdClient : public weave::Mdns {
 
 }  // namespace buffet
 
-#endif  // BUFFET_PRIVET_PEERD_CLIENT_H_
+#endif  // BUFFET_PEERD_CLIENT_H_

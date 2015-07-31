@@ -28,9 +28,9 @@
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/notification/xmpp_channel.h"
-#include "libweave/src/privet/shill_client.h"
 #include "libweave/src/states/state_manager.h"
 #include "libweave/src/utils.h"
+#include "weave/network.h"
 
 namespace weave {
 
@@ -114,14 +114,14 @@ DeviceRegistrationInfo::DeviceRegistrationInfo(
     const std::shared_ptr<chromeos::http::Transport>& transport,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
     bool notifications_enabled,
-    privet::ShillClient* shill_client)
+    weave::Network* network)
     : transport_{transport},
       task_runner_{task_runner},
       command_manager_{command_manager},
       state_manager_{state_manager},
       config_{std::move(config)},
       notifications_enabled_{notifications_enabled},
-      shill_client_{shill_client} {
+      network_{network} {
   cloud_backoff_policy_.reset(new chromeos::BackoffEntry::Policy{});
   cloud_backoff_policy_->num_errors_to_ignore = 0;
   cloud_backoff_policy_->initial_delay_ms = 1000;
@@ -374,7 +374,7 @@ void DeviceRegistrationInfo::StartNotificationChannel() {
 
   notification_channel_starting_ = true;
   primary_notification_channel_.reset(new XmppChannel{
-      config_->robot_account(), access_token_, task_runner_, shill_client_});
+      config_->robot_account(), access_token_, task_runner_, network_});
   primary_notification_channel_->Start(this);
 }
 
