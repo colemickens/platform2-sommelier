@@ -87,8 +87,8 @@ const std::map<string, OptionType>& GetPerfRecordOptions() {
     /* Banned: {"--per-thread", OptionType::Boolean},
      * Only briefly present in v3.12-v3.13, but also banned:
      * {"--force-per-cpu", OptionType::Boolean}, */
-    {"-I", OptionType::Boolean},
-    {"--intr-regs", OptionType::Boolean},
+    /* Banned: {"-I", OptionType::Boolean},  // may reveal PII
+    {"--intr-regs", OptionType::Boolean}, */
     {"--running-time", OptionType::Boolean},
     {"-k", OptionType::Value},
     {"--clockid", OptionType::Value},
