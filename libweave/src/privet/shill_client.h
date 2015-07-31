@@ -18,45 +18,27 @@
 #include <dbus/bus.h>
 
 #include "shill/dbus-proxies.h"
+#include "weave/network.h"
 
 namespace weave {
 namespace privet {
 
-enum class ServiceState {
-  kOffline = 0,
-  kFailure,
-  kConnecting,
-  kConnected,
-};
-
-std::string ServiceStateToString(ServiceState state);
-
-class ShillClient final {
+class ShillClient final : public Network {
  public:
-  // A callback that interested parties can register to be notified of
-  // transitions from online to offline and vice versa.  The boolean
-  // parameter will be true if we're online, and false if we're offline.
-  using ConnectivityListener = base::Callback<void(bool)>;
-
   ShillClient(const scoped_refptr<dbus::Bus>& bus,
               const std::set<std::string>& device_whitelist);
   ~ShillClient() = default;
 
   void Init();
-  void RegisterConnectivityListener(const ConnectivityListener& listener);
-  // Causes shill to attempt to connect to the given network with the given
-  // passphrase.  This is accomplished by:
-  //  1) Configuring a service through the Manager with the SSID and passphrase.
-  //  2) Calling Connect() on the service.
-  //  2) Monitoring the returned Service object until we reach an online state,
-  //     an error state, or another call to ConnectToService() occurs.
-  // Returns false on immediate failures with some descriptive codes in |error|.
+
+  // Network implementation.
+  void AddOnConnectionChangedCallback(
+      const OnConnectionChangedCallback& listener) override;
   bool ConnectToService(const std::string& ssid,
                         const std::string& passphrase,
                         const base::Closure& on_success,
-                        chromeos::ErrorPtr* error);
-  ServiceState GetConnectionState() const;
-  bool AmOnline() const;
+                        chromeos::ErrorPtr* error) override;
+  NetworkState GetConnectionState() const override;
 
  private:
   struct DeviceState {
@@ -66,7 +48,7 @@ class ShillClient final {
     // service (for instance, in the period between configuring a WiFi service
     // with credentials, and when Connect() is called.)
     std::shared_ptr<org::chromium::flimflam::ServiceProxy> selected_service;
-    ServiceState service_state{ServiceState::kOffline};
+    NetworkState service_state{NetworkState::kOffline};
   };
 
   bool IsMonitoredDevice(org::chromium::flimflam::DeviceProxy* device);
@@ -112,7 +94,7 @@ class ShillClient final {
   // There is logic that assumes we will never change this device list
   // in OnManagerPropertyChange.  Do not be tempted to remove this const.
   const std::set<std::string> device_whitelist_;
-  std::vector<ConnectivityListener> connectivity_listeners_;
+  std::vector<OnConnectionChangedCallback> connectivity_listeners_;
 
   // State for tracking where we are in our attempts to connect to a service.
   bool connecting_service_reset_pending_{false};
@@ -122,7 +104,7 @@ class ShillClient final {
 
   // State for tracking our online connectivity.
   std::map<dbus::ObjectPath, DeviceState> devices_;
-  ServiceState connectivity_state_{ServiceState::kOffline};
+  NetworkState connectivity_state_{NetworkState::kOffline};
 
   base::WeakPtrFactory<ShillClient> weak_factory_{this};
 

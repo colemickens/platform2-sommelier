@@ -35,7 +35,7 @@
 #include "libweave/src/privet/device_delegate.h"
 #include "libweave/src/privet/privet_handler.h"
 #include "libweave/src/privet/publisher.h"
-#include "libweave/src/privet/shill_client.h"
+#include "weave/network.h"
 
 namespace weave {
 namespace privet {
@@ -62,7 +62,7 @@ Manager::~Manager() {
 
 void Manager::Start(const Device::Options& options,
                     const scoped_refptr<dbus::Bus>& bus,
-                    ShillClient* shill_client,
+                    Network* network,
                     DeviceRegistrationInfo* device,
                     CommandManager* command_manager,
                     StateManager* state_manager,
@@ -76,7 +76,7 @@ void Manager::Start(const Device::Options& options,
   security_.reset(new SecurityManager(device->GetConfig().pairing_modes(),
                                       device->GetConfig().embedded_code_path(),
                                       disable_security_));
-  shill_client->RegisterConnectivityListener(
+  network->AddOnConnectionChangedCallback(
       base::Bind(&Manager::OnConnectivityChanged, base::Unretained(this)));
   ap_manager_client_.reset(new ApManagerClient(bus));
 
@@ -85,7 +85,7 @@ void Manager::Start(const Device::Options& options,
     wifi_bootstrap_manager_.reset(new WifiBootstrapManager(
         device->GetConfig().last_configured_ssid(), options.test_privet_ssid,
         device->GetConfig().ble_setup_enabled(),
-        shill_client, ap_manager_client_.get(), cloud_.get()));
+        network, ap_manager_client_.get(), cloud_.get()));
     wifi_bootstrap_manager_->Init();
   }
 

@@ -28,6 +28,7 @@
 #include "libweave/src/commands/command_manager.h"
 #include "libweave/src/commands/schema_constants.h"
 #include "libweave/src/notification/xmpp_channel.h"
+#include "libweave/src/privet/shill_client.h"
 #include "libweave/src/states/state_manager.h"
 #include "libweave/src/utils.h"
 

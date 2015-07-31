@@ -36,6 +36,7 @@ namespace weave {
 class CommandManager;
 class DeviceRegistrationInfo;
 class Mdns;
+class Network;
 class StateManager;
 
 namespace privet {
@@ -47,7 +48,6 @@ class DeviceDelegate;
 class PrivetHandler;
 class Publisher;
 class SecurityManager;
-class ShillClient;
 
 class Manager : public Privet, public CloudDelegate::Observer {
  public:
@@ -56,7 +56,7 @@ class Manager : public Privet, public CloudDelegate::Observer {
 
   void Start(const weave::Device::Options& options,
              const scoped_refptr<dbus::Bus>& bus,
-             ShillClient* shill_client,
+             Network* network,
              DeviceRegistrationInfo* device,
              CommandManager* command_manager,
              StateManager* state_manager,

@@ -8,6 +8,7 @@
 
 #include "weave/enum_to_string.h"
 #include "weave/privet.h"
+#include "weave/network.h"
 
 namespace weave {
 
@@ -65,6 +66,13 @@ const EnumToStringMap<WifiSetupState>::Map kWifiSetupStateMap[] = {
     {WifiSetupState::kConnecting, "connecting"},
 };
 
+const EnumToStringMap<NetworkState>::Map kNetworkStateMap[] = {
+    {NetworkState::kOffline, "offline"},
+    {NetworkState::kFailure, "failure"},
+    {NetworkState::kConnecting, "connecting"},
+    {NetworkState::kConnected, "connected"},
+};
+
 }  // namespace
 
 template <>
@@ -94,5 +102,9 @@ EnumToStringMap<AuthScope>::EnumToStringMap()
 template <>
 EnumToStringMap<WifiSetupState>::EnumToStringMap()
     : EnumToStringMap(kWifiSetupStateMap) {}
+
+template <>
+EnumToStringMap<NetworkState>::EnumToStringMap()
+    : EnumToStringMap(kNetworkStateMap) {}
 
 }  // namespace weave

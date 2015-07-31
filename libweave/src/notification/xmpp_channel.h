@@ -23,6 +23,8 @@
 
 namespace weave {
 
+class Network;
+
 namespace privet {
 class ShillClient;
 }
@@ -46,7 +48,7 @@ class XmppChannel : public NotificationChannel,
   XmppChannel(const std::string& account,
               const std::string& access_token,
               const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-              privet::ShillClient* shill);
+              Network* network);
   ~XmppChannel() override = default;
 
   // Overrides from NotificationChannel.

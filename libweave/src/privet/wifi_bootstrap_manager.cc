@@ -12,7 +12,8 @@
 
 #include "libweave/src/privet/ap_manager_client.h"
 #include "libweave/src/privet/constants.h"
-#include "libweave/src/privet/shill_client.h"
+#include "weave/enum_to_string.h"
+#include "weave/network.h"
 
 namespace weave {
 namespace privet {
@@ -27,10 +28,10 @@ WifiBootstrapManager::WifiBootstrapManager(
     const std::string& last_configured_ssid,
     const std::string& test_privet_ssid,
     bool ble_setup_enabled,
-    ShillClient* shill_client,
+    Network* network,
     ApManagerClient* ap_manager_client,
     CloudDelegate* gcd)
-    : shill_client_{shill_client},
+    : network_{network},
       ap_manager_client_{ap_manager_client},
       ssid_generator_{gcd, this},
       last_configured_ssid_{last_configured_ssid},
@@ -45,7 +46,7 @@ void WifiBootstrapManager::Init() {
   if (ssid.empty())
     return;  // Delay initialization until ssid_generator_ is ready.
   UpdateConnectionState();
-  shill_client_->RegisterConnectivityListener(
+  network_->AddOnConnectionChangedCallback(
       base::Bind(&WifiBootstrapManager::OnConnectivityChange,
                  lifetime_weak_factory_.GetWeakPtr()));
   if (last_configured_ssid_.empty()) {
@@ -64,7 +65,7 @@ void WifiBootstrapManager::RegisterStateListener(
 }
 
 void WifiBootstrapManager::StartBootstrapping() {
-  if (shill_client_->AmOnline()) {
+  if (network_->GetConnectionState() == NetworkState::kConnected) {
     // If one of the devices we monitor for connectivity is online, we need not
     // start an AP.  For most devices, this is a situation which happens in
     // testing when we have an ethernet connection.  If you need to always
@@ -105,10 +106,10 @@ void WifiBootstrapManager::StartConnecting(const std::string& ssid,
       FROM_HERE, base::Bind(&WifiBootstrapManager::OnConnectTimeout,
                             tasks_weak_factory_.GetWeakPtr()),
       base::TimeDelta::FromSeconds(kConnectTimeoutSeconds));
-  shill_client_->ConnectToService(
-      ssid, passphrase, base::Bind(&WifiBootstrapManager::OnConnectSuccess,
-                                   tasks_weak_factory_.GetWeakPtr(), ssid),
-      nullptr);
+  network_->ConnectToService(ssid, passphrase,
+                             base::Bind(&WifiBootstrapManager::OnConnectSuccess,
+                                        tasks_weak_factory_.GetWeakPtr(), ssid),
+                             nullptr);
 }
 
 void WifiBootstrapManager::EndConnecting() {
@@ -116,7 +117,7 @@ void WifiBootstrapManager::EndConnecting() {
 
 void WifiBootstrapManager::StartMonitoring() {
   VLOG(1) << "Monitoring connectivity.";
-  // We already have a callback in place with |shill_client_| to update our
+  // We already have a callback in place with |network_| to update our
   // connectivity state.  See OnConnectivityChange().
   UpdateState(State::kMonitoring);
 }
@@ -262,12 +263,12 @@ void WifiBootstrapManager::UpdateConnectionState() {
   connection_state_ = ConnectionState{ConnectionState::kUnconfigured};
   if (last_configured_ssid_.empty())
     return;
-  ServiceState service_state{shill_client_->GetConnectionState()};
+  NetworkState service_state{network_->GetConnectionState()};
   switch (service_state) {
-    case ServiceState::kOffline:
+    case NetworkState::kOffline:
       connection_state_ = ConnectionState{ConnectionState::kOffline};
       return;
-    case ServiceState::kFailure: {
+    case NetworkState::kFailure: {
       // TODO(wiley) Pull error information from somewhere.
       chromeos::ErrorPtr error;
       chromeos::Error::AddTo(&error, FROM_HERE, errors::kDomain,
@@ -275,10 +276,10 @@ void WifiBootstrapManager::UpdateConnectionState() {
       connection_state_ = ConnectionState{std::move(error)};
       return;
     }
-    case ServiceState::kConnecting:
+    case NetworkState::kConnecting:
       connection_state_ = ConnectionState{ConnectionState::kConnecting};
       return;
-    case ServiceState::kConnected:
+    case NetworkState::kConnected:
       connection_state_ = ConnectionState{ConnectionState::kOnline};
       return;
   }
@@ -286,7 +287,7 @@ void WifiBootstrapManager::UpdateConnectionState() {
   chromeos::Error::AddToPrintf(&error, FROM_HERE, errors::kDomain,
                                errors::kInvalidState,
                                "Unknown state returned from ShillClient: %s",
-                               ServiceStateToString(service_state).c_str());
+                               EnumToString(service_state).c_str());
   connection_state_ = ConnectionState{std::move(error)};
 }
 

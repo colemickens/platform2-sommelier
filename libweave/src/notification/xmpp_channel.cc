@@ -17,6 +17,7 @@
 #include "libweave/src/notification/xml_node.h"
 #include "libweave/src/privet/shill_client.h"
 #include "libweave/src/utils.h"
+#include "weave/network.h"
 
 namespace weave {
 
@@ -93,15 +94,15 @@ XmppChannel::XmppChannel(
     const std::string& account,
     const std::string& access_token,
     const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
-    privet::ShillClient* shill)
+    Network* network)
     : account_{account},
       access_token_{access_token},
       backoff_entry_{&kDefaultBackoffPolicy},
       task_runner_{task_runner},
       iq_stanza_handler_{new IqStanzaHandler{this, task_runner}} {
   read_socket_data_.resize(4096);
-  if (shill) {
-    shill->RegisterConnectivityListener(base::Bind(
+  if (network) {
+    network->AddOnConnectionChangedCallback(base::Bind(
         &XmppChannel::OnConnectivityChanged, weak_ptr_factory_.GetWeakPtr()));
   }
 }

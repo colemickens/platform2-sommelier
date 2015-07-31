@@ -21,12 +21,14 @@
 #include "libweave/src/privet/wifi_ssid_generator.h"
 
 namespace weave {
+
+class Network;
+
 namespace privet {
 
 class ApManagerClient;
 class CloudDelegate;
 class DeviceDelegate;
-class ShillClient;
 
 class WifiBootstrapManager : public WifiDelegate,
                              public CloudDelegate::Observer {
@@ -38,7 +40,7 @@ class WifiBootstrapManager : public WifiDelegate,
   WifiBootstrapManager(const std::string& last_configured_ssid,
                        const std::string& test_privet_ssid,
                        bool wifi_setup_enabled,
-                       ShillClient* shill_client,
+                       Network* shill_client,
                        ApManagerClient* ap_manager_client,
                        CloudDelegate* gcd);
   ~WifiBootstrapManager() override = default;
@@ -98,7 +100,7 @@ class WifiBootstrapManager : public WifiDelegate,
   // It is not persisted to disk.
   SetupState setup_state_{SetupState::kNone};
   ConnectionState connection_state_{ConnectionState::kDisabled};
-  ShillClient* shill_client_;
+  Network* network_;
   ApManagerClient* ap_manager_client_;
   WifiSsidGenerator ssid_generator_;
 
