@@ -17,7 +17,6 @@
 #endif
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
-#include "shill/shared_dbus_connection.h"
 
 using base::FilePath;
 using std::string;
@@ -40,8 +39,7 @@ constexpr char DHCPProvider::kDHCPCDPathFormatLease6[];
 #endif  // DISABLE_DHCPV6
 
 DHCPProvider::DHCPProvider()
-    : shared_dbus_connection_(SharedDBusConnection::GetInstance()),
-      root_("/"),
+    : root_("/"),
       control_interface_(nullptr),
       dispatcher_(nullptr),
       glib_(nullptr),
@@ -62,8 +60,7 @@ void DHCPProvider::Init(ControlInterface* control_interface,
                         GLib* glib,
                         Metrics* metrics) {
   SLOG(this, 2) << __func__;
-  DBus::Connection* connection = shared_dbus_connection_->GetProxyConnection();
-  listener_.reset(new DHCPCDListener(connection, this));
+  listener_.reset(control_interface->CreateDHCPCDListener(this));
   glib_ = glib;
   control_interface_ = control_interface;
   dispatcher_ = dispatcher;

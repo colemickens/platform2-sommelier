@@ -17,6 +17,8 @@
 
 #include <chromeos/variant_dictionary.h>
 
+#include "shill/dhcp/dhcpcd_listener_interface.h"
+
 namespace shill {
 
 class DHCPProvider;
@@ -25,12 +27,12 @@ class EventDispatcher;
 // The DHCPCD listener is a singleton proxy that listens to signals from all
 // DHCP clients and dispatches them through the DHCP provider to the appropriate
 // client based on the PID.
-class ChromeosDHCPCDListener final {
+class ChromeosDHCPCDListener final : public DHCPCDListenerInterface {
  public:
   ChromeosDHCPCDListener(const scoped_refptr<dbus::Bus>& bus,
                          EventDispatcher* dispatcher,
                          DHCPProvider* provider);
-  ~ChromeosDHCPCDListener();
+  ~ChromeosDHCPCDListener() override;
 
  private:
   static const char kDBusInterfaceName[];

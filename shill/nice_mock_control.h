@@ -59,6 +59,8 @@ class NiceMockControl : public ControlInterface {
                                             const std::string& object_path,
                                             const char* dbus_addr));
 #endif  // DISABLE_WIFI
+  MOCK_METHOD1(CreateDHCPCDListener,
+               DHCPCDListenerInterface*(DHCPProvider* provider));
   MOCK_METHOD1(CreateDHCPProxy,
                DHCPProxyInterface*(const std::string& service));
 

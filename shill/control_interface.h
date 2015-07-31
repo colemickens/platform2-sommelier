@@ -30,6 +30,8 @@ class ThirdPartyVpnAdaptorInterface;
 class DBusObjectManagerProxyInterface;
 class DBusPropertiesProxyInterface;
 class DBusServiceProxyInterface;
+class DHCPCDListenerInterface;
+class DHCPProvider;
 class DHCPProxyInterface;
 class ModemCDMAProxyInterface;
 class ModemGSMCardProxyInterface;
@@ -121,6 +123,9 @@ class ControlInterface {
 #endif  // DISABLE_WIFI
 
   virtual UpstartProxyInterface* CreateUpstartProxy() = 0;
+
+  virtual DHCPCDListenerInterface* CreateDHCPCDListener(
+      DHCPProvider* provider) = 0;
 
   virtual DHCPProxyInterface* CreateDHCPProxy(const std::string& service) = 0;
 

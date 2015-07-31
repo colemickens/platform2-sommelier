@@ -68,6 +68,9 @@ class DBusControl : public ControlInterface {
 
   UpstartProxyInterface* CreateUpstartProxy() override;
 
+  DHCPCDListenerInterface* CreateDHCPCDListener(
+      DHCPProvider* provider) override;
+
   DHCPProxyInterface* CreateDHCPProxy(const std::string& service) override;
 
   PermissionBrokerProxyInterface* CreatePermissionBrokerProxy() override;

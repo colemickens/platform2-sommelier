@@ -19,11 +19,10 @@
 namespace shill {
 
 class ControlInterface;
-class DHCPCDListener;
+class DHCPCDListenerInterface;
 class EventDispatcher;
 class GLib;
 class Metrics;
-class SharedDBusConnection;
 
 // DHCPProvider is a singleton providing the main DHCP configuration
 // entrypoint. Once the provider is initialized through its Init method, DHCP
@@ -116,12 +115,9 @@ class DHCPProvider {
   // Retire |pid| from the set of recently retired PIDs.
   void RetireUnboundPID(int pid);
 
-  // Store cached copies of singletons for speed/ease of testing.
-  SharedDBusConnection* shared_dbus_connection_;
-
   // A single listener is used to catch signals from all DHCP clients and
   // dispatch them to the appropriate DHCP configuration instance.
-  std::unique_ptr<DHCPCDListener> listener_;
+  std::unique_ptr<DHCPCDListenerInterface> listener_;
 
   // A map that binds PIDs to DHCP configuration instances.
   PIDConfigMap configs_;

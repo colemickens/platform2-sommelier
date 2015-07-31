@@ -129,6 +129,11 @@ SupplicantBSSProxyInterface* ChromeosDBusControl::CreateSupplicantBSSProxy(
 }
 #endif  // DISABLE_WIFI
 
+DHCPCDListenerInterface* ChromeosDBusControl::CreateDHCPCDListener(
+    DHCPProvider* provider) {
+  return nullptr;
+}
+
 DHCPProxyInterface* ChromeosDBusControl::CreateDHCPProxy(
     const string& service) {
   return nullptr;

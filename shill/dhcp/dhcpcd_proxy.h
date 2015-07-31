@@ -13,6 +13,7 @@
 #include "shill/dbus_proxies/dhcpcd.h"
 #include "shill/dhcp/dhcp_config.h"
 #include "shill/dhcp/dhcp_proxy_interface.h"
+#include "shill/dhcp/dhcpcd_listener_interface.h"
 
 namespace shill {
 
@@ -21,7 +22,7 @@ class DHCPProvider;
 // The DHCPCD listener is a singleton proxy that listens to signals from all
 // DHCP clients and dispatches them through the DHCP provider to the appropriate
 // client based on the PID.
-class DHCPCDListener {
+class DHCPCDListener : public DHCPCDListenerInterface {
  public:
   DHCPCDListener(DBus::Connection* connection, DHCPProvider* provider);
 

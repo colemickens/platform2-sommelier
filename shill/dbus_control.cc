@@ -169,6 +169,11 @@ SupplicantBSSProxyInterface* DBusControl::CreateSupplicantBSSProxy(
 }
 #endif  // DISABLE_WIFI
 
+DHCPCDListenerInterface* DBusControl::CreateDHCPCDListener(
+    DHCPProvider* provider) {
+  return new DHCPCDListener(GetProxyConnection(), provider);
+}
+
 DHCPProxyInterface* DBusControl::CreateDHCPProxy(const string& service) {
   return new DHCPCDProxy(GetProxyConnection(), service);
 }
@@ -182,7 +187,6 @@ PermissionBrokerProxyInterface* DBusControl::CreatePermissionBrokerProxy() {
 }
 
 #if !defined(DISABLE_CELLULAR)
-
 DBusObjectManagerProxyInterface* DBusControl::CreateDBusObjectManagerProxy(
     const string& path,
     const string& service) {
@@ -262,11 +266,9 @@ mm1::SimProxyInterface* DBusControl::CreateSimProxy(
       const string& service) {
   return new mm1::SimProxy(GetProxyConnection(), path, service);
 }
-
 #endif  // DISABLE_CELLULAR
 
 #if !defined(DISABLE_WIMAX)
-
 WiMaxDeviceProxyInterface* DBusControl::CreateWiMaxDeviceProxy(
     const string& path) {
   return new WiMaxDeviceProxy(GetProxyConnection(), path);
@@ -280,7 +282,6 @@ WiMaxNetworkProxyInterface* DBusControl::CreateWiMaxNetworkProxy(
     const string& path) {
   return new WiMaxNetworkProxy(GetProxyConnection(), path);
 }
-
 #endif  // DISABLE_WIMAX
 
 void DBusControl::Init() {
