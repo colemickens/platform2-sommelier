@@ -7,7 +7,6 @@
     'variables': {
       'deps': [
         'dbus-1',
-        'glib-2.0',
         'libchrome-<(libbase_ver)',
         'libchromeos-<(libbase_ver)',
         'libmetrics-<(libbase_ver)',

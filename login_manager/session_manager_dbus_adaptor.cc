@@ -261,9 +261,6 @@ void SessionManagerDBusAdaptor::ExportDBusMethods(
                        kSessionManagerRestartJob,
                        &SessionManagerDBusAdaptor::RestartJob);
   ExportSyncDBusMethod(object,
-                       kSessionManagerRestartJobWithAuth,
-                       &SessionManagerDBusAdaptor::RestartJobWithAuth);
-  ExportSyncDBusMethod(object,
                        kSessionManagerStartDeviceWipe,
                        &SessionManagerDBusAdaptor::StartDeviceWipe);
   ExportSyncDBusMethod(object,
@@ -504,23 +501,6 @@ scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RestartJob(
 
   SessionManagerImpl::Error error;
   if (impl_->RestartJob(fd.value(), argv, &error))
-    return dbus::Response::FromMethodCall(call);
-  return CreateError(call, error.name(), error.message());
-}
-
-scoped_ptr<dbus::Response> SessionManagerDBusAdaptor::RestartJobWithAuth(
-    dbus::MethodCall* call) {
-  dbus::FileDescriptor fd;
-  std::string arguments;
-  dbus::MessageReader reader(call);
-  if (!reader.PopFileDescriptor(&fd) || !reader.PopString(&arguments))
-    return CreateInvalidArgsError(call, call->GetSignature());
-
-  fd.CheckValidity();
-  CHECK(fd.is_valid());
-
-  SessionManagerImpl::Error error;
-  if (impl_->RestartJobWithAuth(fd.value(), arguments, &error))
     return dbus::Response::FromMethodCall(call);
   return CreateError(call, error.name(), error.message());
 }

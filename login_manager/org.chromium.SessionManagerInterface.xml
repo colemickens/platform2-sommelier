@@ -322,20 +322,6 @@
     </method>
 
     <!--
-        RestartJobWithAuth:
-        @cred_fd: File descriptor that provides PID to be restarted.
-        @command_line: Command line arguments to restart the job with.
-
-        Restarts job with pid returned when querying @cred_fd using SO_PEERCRED,
-        replacing its command line arguments with those provided. Only works
-        for the browser process managed by the SessionManager.
-    -->
-    <method name="RestartJobWithAuth">
-      <arg type="h" name="cred_fd" direction="in" />
-      <arg type="s" name="command_line" direction="in" />
-    </method>
-
-    <!--
         StartDeviceWipe:
         @done: True on success. Error returned on failure, so likely redundant.
 

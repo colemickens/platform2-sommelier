@@ -5,7 +5,6 @@
 #include "login_manager/session_manager_impl.h"
 
 #include <errno.h>
-#include <glib.h>
 #include <stdint.h>
 #include <sys/socket.h>
 
@@ -14,11 +13,11 @@
 #include <string>
 
 #include <base/callback.h>
-#include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
+#include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <chromeos/cryptohome.h>
 #include <crypto/scoped_nss_types.h>
@@ -518,25 +517,6 @@ bool SessionManagerImpl::RestartJob(int fd,
     return false;
   manager_->RestartBrowserWithArgs(argv, false);
   return true;
-}
-
-bool SessionManagerImpl::RestartJobWithAuth(
-    int fd,
-    const std::string& arguments,
-    Error* error) {
-  gchar** argv = NULL;
-  gint argc = 0;
-  GError* parse_error = NULL;
-  if (!g_shell_parse_argv(arguments.c_str(), &argc, &argv, &parse_error)) {
-    LOG(ERROR) << "Could not parse command: " << parse_error->message;
-    g_strfreev(argv);
-    error->Set(DBUS_ERROR_INVALID_ARGS, parse_error->message);
-    return false;
-  }
-  base::CommandLine new_command_line(argc, argv);
-  g_strfreev(argv);
-
-  return RestartJob(fd, new_command_line.argv(), error);
 }
 
 void SessionManagerImpl::StartDeviceWipe(const std::string& reason,
